@@ -5,10 +5,12 @@ import re
 from collections import defaultdict
 
 from comment_payloads import (
+    RUNNER_COMMANDS,
     SQL_CLIENTS,
     command_words,
     inline_source_index,
     runner_command_start,
+    runner_trailing_index,
     sql_client_source_index,
 )
 
@@ -650,7 +652,7 @@ class PythonBindings:
         except ValueError:
             return args[0], "unsupported", None
         for index, word in enumerate(words[first:], start=first):
-            nested = word.rsplit("/", 1)[-1] if word else None
+            nested = word.rsplit("/", 1)[-1] if word and not any(char.isspace() for char in word) else None
             if nested and (
                 nested.startswith("python")
                 or nested in {"node", "sh", "bash", "zsh"} | SQL_CLIENTS | UNMODELED_INTERPRETERS
@@ -660,7 +662,23 @@ class PythonBindings:
             word is not None and INLINE_SHAPED_FLAG.fullmatch(word) for word in words[1:]
         ):
             return args[0], "unsupported", None
+        if name in RUNNER_COMMANDS:
+            inner = self.runner_string_args(args, words, name)
+            if inner is not None:
+                return inner
         return None
+
+    def runner_string_args(
+        self, args: list[ast.expr], words: list[str | None], name: str
+    ) -> tuple[ast.AST, str, str | None] | None:
+        first = runner_trailing_index(words, name)
+        trailing = words[first:]
+        if len(trailing) != 1 or trailing[0] is None:
+            return None
+        text = self.literal(args[first])
+        if text is None or not text.strip():
+            return None
+        return args[first], "bash", text
 
     def inline_process_payload(
         self, args: list[ast.expr], words: list[str | None], language: str | None

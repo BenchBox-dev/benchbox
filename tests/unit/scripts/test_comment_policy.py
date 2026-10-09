@@ -1256,6 +1256,38 @@ def test_python_executable_strings_reach_scanner(source: str) -> None:
 
 
 @pytest.mark.parametrize(
+    ("source", "text"),
+    [
+        ('import subprocess\nsubprocess.run(["ssh", "host", "python3 -c \'# explanation\'"])', "# explanation"),
+        (
+            'import subprocess\nsubprocess.run(["watch", "-n", "1", "bash -c \'echo ok # explanation\'"])',
+            "# explanation",
+        ),
+        ('import subprocess\nsubprocess.run(["ssh", "host", "echo ok # bare"])', "# bare"),
+        (
+            'import subprocess\nsubprocess.run(["xargs", "-I{}", "sh -c \'echo ok # explanation\'"])',
+            "# explanation",
+        ),
+        ('import subprocess\nsubprocess.run(["ssh", "host", "python3", "-c", "# split"])', "# split"),
+    ],
+)
+def test_python_runner_command_strings_are_scanned(source: str, text: str) -> None:
+    assert [f.text for f in python_findings("a.py", source)] == [text]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        'import subprocess\nsubprocess.run(["ssh", "host", "ls -l"])',
+        'import subprocess\nsubprocess.run(["ssh", host, command])',
+        'import subprocess\nsubprocess.run(["xargs", "-I{}", "echo", "hi"])',
+    ],
+)
+def test_python_runner_commands_without_static_strings_stay_clean(source: str) -> None:
+    assert python_findings("a.py", source) == []
+
+
+@pytest.mark.parametrize(
     "source",
     [
         'import subprocess, sys\nsubprocess.run([sys.executable, "-m", "pytest", "-c", config])',
@@ -1373,6 +1405,97 @@ def test_local_execution_names_and_ordinary_strings_are_data(source: str) -> Non
 )
 def test_shell_executable_arguments_are_routed(source: str) -> None:
     assert [f.text for f in scan("a.sh", source, "bash")] == ["# explanation"]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "echo '# explanation' | python3",
+        "echo '# explanation' | python",
+        "echo '# explanation' | python3 -",
+        "echo -n '# explanation' | sh",
+        "printf '# explanation' | bash",
+        "printf '%s\\n' '# explanation' | zsh",
+        "echo 'echo ok # explanation' | bash",
+    ],
+)
+def test_piped_producer_payloads_reach_stdin_interpreters(source: str) -> None:
+    findings = scan("a.sh", source, "bash")
+    assert [f.text for f in findings] == ["# explanation"]
+    assert all("pipe" in f.symbol for f in findings)
+
+
+def test_piped_node_payload_reaches_the_typescript_scanner() -> None:
+    requests = javascript_requests("a.sh", "echo '// explanation' | node", "bash")
+    assert list(requests.values()) == ["// explanation"]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        'echo "$code" | python3',
+        "echo hi $name | bash",
+        "printf '%s\\n' \"$code\" | python3",
+        "echo x | perl",
+        "echo x | ruby",
+    ],
+)
+def test_piped_dynamic_or_unmodeled_stdin_fails_closed(source: str) -> None:
+    assert [f.kind for f in scan("a.sh", source, "bash")] == ["coverage-error"]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "echo hi | grep x",
+        "echo '# data' | python3 script.py",
+        "echo '# data' | python3 -c 'pass'",
+        "cat file | python3 -",
+        "echo x | perl script.pl",
+        "printf -v out '# data' | python3",
+    ],
+)
+def test_piped_non_stdin_programs_stay_data(source: str) -> None:
+    assert scan("a.sh", source, "bash") == []
+
+
+@pytest.mark.parametrize(
+    ("source", "text"),
+    [
+        ("ssh host \"python3 -c '# explanation'\"", "# explanation"),
+        ("ssh -p 22 host \"python3 -c '# explanation'\"", "# explanation"),
+        ("watch \"bash -c 'echo ok # explanation'\"", "# explanation"),
+        ("watch -n 1 \"bash -c 'echo ok # explanation'\"", "# explanation"),
+        ("sudo \"python3 -c '# explanation'\"", "# explanation"),
+        ("nohup \"python3 -c '# explanation'\"", "# explanation"),
+        ("xargs -I{} \"sh -c 'echo ok # explanation'\"", "# explanation"),
+        ("env FOO=bar \"python3 -c '# explanation'\"", "# explanation"),
+        ('ssh host "echo ok # bare"', "# bare"),
+    ],
+)
+def test_runner_command_strings_are_scanned(source: str, text: str) -> None:
+    findings = scan("a.sh", source, "bash")
+    assert [f.text for f in findings] == [text]
+    assert all("runner" in f.symbol for f in findings)
+
+
+def test_split_runner_commands_still_resolve_without_recursion() -> None:
+    findings = scan("a.sh", "ssh host python3 -c '# split'", "bash")
+    assert [(f.kind, f.text) for f in findings] == [("comment", "# split")]
+    assert all("runner" not in f.symbol for f in findings)
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "ssh host ls -l",
+        "sudo make install",
+        'watch -n 1 "echo ok"',
+        'ssh host "ls -l"',
+    ],
+)
+def test_runner_commands_without_comments_stay_clean(source: str) -> None:
+    assert scan("a.sh", source, "bash") == []
 
 
 @pytest.mark.parametrize(
@@ -2786,10 +2909,10 @@ def test_reviewed_javascript_flows_still_occur() -> None:
     import shutil
     import subprocess
 
-    from comment_syntax import REVIEWED_JAVASCRIPT_FLOWS
+    from comment_syntax import REVIEWED_JAVASCRIPT_FLOWS, resolve_typescript_dir
 
-    typescript = os.environ.get("COMMENT_POLICY_TYPESCRIPT", str(ROOT / "results-explorer/node_modules/typescript"))
-    if shutil.which("node") is None or not Path(typescript).exists():
+    typescript = resolve_typescript_dir(ROOT)
+    if shutil.which("node") is None or typescript is None or not typescript.exists():
         pytest.skip("the TypeScript package for scripts/comment_syntax_js.cjs is not installed")
     paths = sorted({path for path, _ in REVIEWED_JAVASCRIPT_FLOWS})
     requests = {path: (ROOT / path).read_text(encoding="utf-8") for path in paths}
@@ -2802,6 +2925,47 @@ def test_reviewed_javascript_flows_still_occur() -> None:
     )
     observed = {(path, row["text"]) for path, rows in json.loads(result.stdout).items() for row in rows}
     assert set(REVIEWED_JAVASCRIPT_FLOWS) <= observed
+
+
+def test_typescript_resolution_prefers_environment_then_local(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from comment_syntax import resolve_typescript_dir
+
+    monkeypatch.setenv("COMMENT_POLICY_TYPESCRIPT", "/env/typescript")
+    assert resolve_typescript_dir(tmp_path) == Path("/env/typescript")
+    monkeypatch.delenv("COMMENT_POLICY_TYPESCRIPT")
+    local = tmp_path / "results-explorer" / "node_modules" / "typescript"
+    local.mkdir(parents=True)
+    assert resolve_typescript_dir(tmp_path) == local
+
+
+def test_typescript_resolution_falls_back_to_git_common_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import comment_syntax
+    from comment_syntax import resolve_typescript_dir
+
+    monkeypatch.delenv("COMMENT_POLICY_TYPESCRIPT", raising=False)
+    primary = tmp_path / "primary" / "results-explorer" / "node_modules" / "typescript"
+    primary.mkdir(parents=True)
+
+    def fake_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess:
+        return subprocess.CompletedProcess(args, 0, str(tmp_path / "primary" / ".git"))
+
+    monkeypatch.setattr(comment_syntax.subprocess, "run", fake_run)
+    assert resolve_typescript_dir(tmp_path / "linked-worktree") == primary.resolve()
+
+
+def test_typescript_resolution_returns_none_when_git_is_unavailable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import comment_syntax
+    from comment_syntax import resolve_typescript_dir
+
+    monkeypatch.delenv("COMMENT_POLICY_TYPESCRIPT", raising=False)
+
+    def missing_git(*args: object, **kwargs: object) -> subprocess.CompletedProcess:
+        raise FileNotFoundError("no git on PATH")
+
+    monkeypatch.setattr(comment_syntax.subprocess, "run", missing_git)
+    assert resolve_typescript_dir(tmp_path) is None
 
 
 @pytest.mark.parametrize(
@@ -3201,9 +3365,78 @@ def test_unparseable_chunk_with_perl_pod_or_ruby_block_comment_fails_closed() ->
     assert [f.kind for f in scan("a.sh", ruby, "bash")] == ["coverage-error"]
 
 
-def test_mdx_pages_are_scanned_like_markdown() -> None:
+def test_mdx_pages_scan_prose_fences_and_imports() -> None:
     from comment_syntax import language
 
-    assert language("website/src/content/docs/page.mdx") == "examples"
+    assert language("website/src/content/docs/page.mdx") == "mdx"
     source = "import X from './x.astro';\n\n```python\nx = 1  # note\n```\n"
-    assert [f.text for f in scan("website/src/content/docs/page.mdx", source, "examples", {})] == ["# note"]
+    rows = {key: [] for key in javascript_requests("website/src/content/docs/page.mdx", source, "mdx")}
+    assert [f.text for f in scan("website/src/content/docs/page.mdx", source, "mdx", rows)] == ["# note"]
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        ("# Title\n\n{/* explanation */}\n", [(3, "{/* explanation */}")]),
+        ("{/* first */}\n\n{/* second */}\n", [(1, "{/* first */}"), (3, "{/* second */}")]),
+        ("<div>\n  {/* explanation */}\n</div>\n", [(2, "{/* explanation */}")]),
+        ("{/* multi\nline */}\n", [(1, "{/* multi\nline */}")]),
+    ],
+)
+def test_mdx_jsx_comments_are_found(source: str, expected: list[tuple[int, str]]) -> None:
+    findings = scan("website/src/content/docs/page.mdx", source, "mdx", {})
+    assert [(f.kind, f.line, f.text) for f in findings] == [("comment", *item) for item in expected]
+
+
+def test_mdx_prose_and_fences_are_scanned_once() -> None:
+    source = "```python\n# explanation\n```\n\n{/* prose */}\n"
+    findings = scan("website/src/content/docs/page.mdx", source, "mdx", {})
+    assert [(f.line, f.text) for f in findings] == [(2, "# explanation"), (5, "{/* prose */}")]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "import regulations are strict\n",
+        "export controls are important\n",
+        "important notes follow\n",
+    ],
+)
+def test_mdx_prose_import_lookalikes_are_not_code(source: str) -> None:
+    assert scan("website/src/content/docs/page.mdx", source, "mdx", {}) == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "import X from './x'; // explanation\n",
+        "import {\n  A, // explanation\n  B,\n} from './x';\n",
+        "export const meta = 1; // explanation\n",
+    ],
+)
+def test_mdx_imports_reach_the_typescript_scanner(source: str) -> None:
+    requests = javascript_requests("website/src/content/docs/page.mdx", source, "mdx")
+    assert len(requests) == 1
+    rows = {
+        key: [
+            {
+                "kind": "comment",
+                "line": 2 if source.startswith("import {\n") else 1,
+                "text": "// explanation",
+                "symbol": "",
+            }
+        ]
+        for key in requests
+    }
+    findings = scan("website/src/content/docs/page.mdx", source, "mdx", rows)
+    assert [(f.kind, f.text) for f in findings] == [("comment", "// explanation")]
+    assert [f.line for f in findings] == [2 if source.startswith("import {\n") else 1]
+
+
+def test_mdx_import_comment_lines_map_to_source_lines() -> None:
+    source = "# Title\n\nimport X from './x'; // explanation\n"
+    requests = javascript_requests("website/src/content/docs/page.mdx", source, "mdx")
+    rows = {key: [{"kind": "comment", "line": 1, "text": "// explanation", "symbol": ""}] for key in requests}
+    assert [(f.line, f.text) for f in scan("website/src/content/docs/page.mdx", source, "mdx", rows)] == [
+        (3, "// explanation")
+    ]

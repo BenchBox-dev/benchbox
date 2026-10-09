@@ -4,18 +4,22 @@ import ast
 import hashlib
 import io
 import json
+import os
 import re
 import shlex
+import subprocess
 import tokenize
 from dataclasses import dataclass
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 
 import yaml
 from comment_execution import PythonBindings, python_html_sources
 from comment_payloads import (
     astro_template_comments,
     bounded_html_template,
+    mdx_jsx_comments,
     nested_sources,
+    piped_stdin_payloads,
     shell_payloads,
     sql_template_sources,
 )
@@ -56,6 +60,7 @@ LANGUAGES = {
     ".htm": "html",
     ".jinja": "html+jinja",
     ".j2": "html+jinja",
+    ".mdx": "mdx",
     ".js": "javascript",
     ".mjs": "javascript",
     ".cjs": "javascript",
@@ -164,7 +169,7 @@ def language(path: str) -> str | None:
         return "make"
     if name.startswith("Dockerfile"):
         return "docker"
-    if path.endswith((".md", ".mdx", ".rst")) and not path.startswith(("_project/", "_blog/")):
+    if path.endswith((".md", ".rst")) and not path.startswith(("_project/", "_blog/")):
         return "examples"
     if not PurePosixPath(path).suffix and path.startswith(OWNED_ROOTS):
         return "unsupported"
@@ -447,6 +452,29 @@ def python_executable_findings(path: str, tree: ast.AST, scopes: list[tuple[int,
     return result
 
 
+def resolve_typescript_dir(root: Path | str) -> Path | None:
+    override = os.environ.get("COMMENT_POLICY_TYPESCRIPT")
+    if override:
+        return Path(override)
+    local = Path(root) / "results-explorer" / "node_modules" / "typescript"
+    if local.exists():
+        return local
+    try:
+        raw = subprocess.run(
+            ["git", "rev-parse", "--git-common-dir"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    common = Path(raw)
+    if not common.is_absolute():
+        common = Path(root) / common
+    return (common.parent / "results-explorer" / "node_modules" / "typescript").resolve()
+
+
 def javascript_key(path: str, source: str) -> str:
     suffix = ".tsx" if path.endswith((".tsx", ".jsx")) else ".ts"
     return hashlib.sha256(source.encode()).hexdigest() + suffix
@@ -567,6 +595,13 @@ def mask_embedded_sources(path: str, source: str, lang: str) -> str:
         for start, _, text, _, _ in shell_payloads(path, source, include_data=True):
             for index in range(start - 1, start - 1 + len(text.splitlines())):
                 lines[index] = re.sub(r"[^\n]", " ", lines[index])
+        try:
+            piped = piped_stdin_payloads(path, source)
+        except ValueError:
+            piped = []
+        for start, _, text, _, _ in piped:
+            for index in range(start - 1, start - 1 + len(text.splitlines())):
+                lines[index] = re.sub(r"[^\n]", " ", lines[index])
         return "".join(lines) + "\n"
     if lang in {"html", "html+jinja"}:
         return re.sub(
@@ -595,6 +630,12 @@ def astro_findings(path: str, source: str, lang: str) -> list[Finding]:
     return [Finding(path, line, "comment", text) for line, text in astro_template_comments(source)]
 
 
+def mdx_findings(path: str, source: str, lang: str) -> list[Finding]:
+    if lang != "mdx":
+        return []
+    return [Finding(path, line, "comment", text) for line, text in mdx_jsx_comments(source)]
+
+
 def scan(path: str, source: str, lang: str, js_results: dict[str, list[dict]] | None = None) -> list[Finding]:
     try:
         if source.startswith("#!"):
@@ -611,8 +652,8 @@ def scan(path: str, source: str, lang: str, js_results: dict[str, list[dict]] | 
             for f in scan(child_path, text, child_lang, js_results)
         ]
         nested.extend(template_coverage(path, source, lang))
-        if lang in {"notebook", "examples", "astro"}:
-            return nested + astro_findings(path, source, lang)
+        if lang in {"notebook", "examples", "astro", "mdx"}:
+            return nested + astro_findings(path, source, lang) + mdx_findings(path, source, lang)
         source = mask_embedded_sources(path, source, lang)
         if lang == "unsupported":
             raise ValueError("source language has no registered adapter")

@@ -172,8 +172,8 @@ Known gaps, each a place where a comment can pass unreported:
 - Unknown programs that take `-c` or `-e` as data are listed in
   `DATA_FLAG_PROGRAMS` in `scripts/comment_execution.py`; any other program
   given such a flag is reported.
-- Commands passed to a runner such as `ssh` or `watch` as one string are not
-  split, so an interpreter inside that string is not followed.
+- Commands passed to a runner such as `ssh` or `watch` as a dynamic string
+  are not split, so an interpreter inside that string is not followed.
 - HTML comments and MyST `%` lines in Markdown prose are not scanned. In the
   maintained docs they are copyright headers, generator start and end markers,
   `<!-- content-ok -->` markers read by `scripts/blog_content_validation.py`,
@@ -183,10 +183,10 @@ Known gaps, each a place where a comment can pass unreported:
   such comments where they are part of the product's output, for example
   maintenance SQL headers, dry-run DDL previews, stream-file headers, the Trino
   tuning note and the AWS Glue job script.
-- A program piped to an unmodeled interpreter on stdin (such as `printf '...' | perl`
-  or `echo '...' | ruby`) is not scanned.
+- A program piped to an interpreter on stdin from a producer other than `echo`
+  or `printf` (such as `curl ... | sh`) is not scanned.
 - A whole-file pinned notice in `quality/comment-cleanup-scope.json` (such as
   `_sources/tpc-h/PATCHES.md`) is verified against its recorded digest, but
   changes to the file are not guarded to require an accompanying pin update on branches.
-- MDX (`.mdx`) files map to the Markdown scanner, so MDX imports and JSX `{/* */}`
-  comments outside Markdown code fences are not inspected.
+- JSX `{// ...}` line-comment expressions in MDX prose are not extracted, so
+  comments in that form outside Markdown code fences are not inspected.
