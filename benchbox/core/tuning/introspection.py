@@ -210,6 +210,11 @@ _QUOTED_IDENTIFIER_RE = re.compile(r'"(?P<body>(?:[^"]|"")+)"')
 _BARE_IDENTIFIER_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_$]*")
 _IDENTIFIER_LIST_ITEM_RE = re.compile(r'\s*(?P<item>"(?:[^"]|"")*"|[^",\s]+)\s*(?P<sep>,|$)')
 _NON_DOUBLE_QUOTE_OPENERS = ("`", "[", "'")
+_UNMASKED_LITERAL_RES = (
+    re.compile(r"\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$"),
+    re.compile(r"(?<![A-Za-z0-9_$])[eE]'"),
+    re.compile(r"/\*(?:(?!\*/).)*?/\*", re.DOTALL),
+)
 _ASCII_LOWER = str.maketrans(string.ascii_uppercase, string.ascii_lowercase)
 _LAYOUT_KEYWORD_RES = (_ORDER_BY_KEYWORD_RE, _PARTITION_BY_KEYWORD_RE, _CLUSTER_BY_KEYWORD_RE)
 _TRANSIENT_PREFIXES = ("set ", "pragma ", "set\t", "pragma\t", "reset ", "use ")
@@ -338,6 +343,14 @@ def _statement_table(statement: AppliedStatement) -> str | None:
     if statement.table:
         return normalize_identifier(statement.table)
     return None
+
+
+def constraint_tables(ledger: AppliedTuningLedger) -> set[str]:
+    tables: set[str] = set()
+    for statement in ledger.executed_statements:
+        _klass, intents = _classify(statement)
+        tables.update(intent.table for intent in intents if intent.kind == KIND_CONSTRAINT and intent.table)
+    return tables
 
 
 def statement_table(statement: AppliedStatement) -> str | None:
@@ -514,6 +527,8 @@ def _constraint_intents(statement_text: str) -> list[_Intent] | None:
     body = _create_table_body_span(stripped, header.end())
     if body is None:
         return []
+    if any(pattern.search(statement_text) for pattern in _UNMASKED_LITERAL_RES):
+        return None
     begin, end = body
     if end < 0:
         return None if _CONSTRAINT_KEYWORD_RE.search(stripped, begin) else []
@@ -855,6 +870,7 @@ __all__ = [
     "ReceiptEntry",
     "TRANSIENT",
     "UNVERIFIABLE",
+    "constraint_tables",
     "corroborate",
     "fold_physical_identifier",
     "ledger_tables",

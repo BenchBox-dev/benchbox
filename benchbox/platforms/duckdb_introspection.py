@@ -16,6 +16,7 @@ from benchbox.core.tuning.introspection import (
     KIND_INDEX,
     IntrospectedObject,
     IntrospectedState,
+    constraint_tables,
     fold_physical_identifier,
     ledger_tables,
     normalize_columns,
@@ -76,7 +77,7 @@ class DuckDBTuningIntrospector:
             )
 
         try:
-            constraints, constraints_truncated = _read_constraints(connection, tables)
+            constraints, constraints_truncated = _read_constraints(connection, constraint_tables(ledger))
         except Exception as exc:
             logger.debug("duckdb constraint introspection degraded: %s", exc)
             return IntrospectedState(platform=self.platform, error=f"duckdb_constraints read failed: {exc}")
@@ -99,7 +100,7 @@ def _read_constraints(connection: Any, tables: set[str]) -> tuple[list[Introspec
         "SELECT * FROM duckdb_constraints() "
         f"WHERE constraint_type IN ({type_list}) "
         "AND database_name = current_database() AND schema_name = current_schema() "
-        f"AND lower(trim(table_name)) IN ({placeholders}) "
+        f"AND lower(table_name) IN ({placeholders}) "
         f"LIMIT {_MAX_CONSTRAINT_ROWS}",
         ordered_tables,
     )
@@ -112,7 +113,7 @@ def _read_constraints(connection: Any, tables: set[str]) -> tuple[list[Introspec
     for row in rows:
         fact = dict(zip(names, row, strict=False))
         table_name = fact["table_name"]
-        if normalize_identifier(table_name or "") not in tables:
+        if not isinstance(table_name, str) or fold_physical_identifier(table_name) not in tables:
             continue
         constraint_type = str(fact["constraint_type"] or "").strip().upper()
         if constraint_type not in _CATALOG_CONSTRAINT_TYPES:

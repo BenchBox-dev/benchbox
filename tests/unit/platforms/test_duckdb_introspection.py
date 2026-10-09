@@ -268,7 +268,7 @@ def _constraint_facts(state) -> dict[tuple[str, str], object]:
 class TestDuckDBConstraintFacts:
     def test_reads_primary_unique_and_foreign_keys_as_structured_facts(self):
         con = _constrained_connection()
-        state = DuckDBTuningIntrospector().introspect(con, _ledger_for(*_CONSTRAINED_DDL))
+        state = DuckDBTuningIntrospector().introspect(con, _ledger_for(_CONSTRAINED_DDL[0], _PARSED_ORDERS_DDL))
 
         assert state.error is None
         assert state.constraint_types == {CONSTRAINT_PRIMARY_KEY, CONSTRAINT_UNIQUE, CONSTRAINT_FOREIGN_KEY}
@@ -284,9 +284,14 @@ class TestDuckDBConstraintFacts:
         assert (fk.columns, fk.referenced_table, fk.referenced_columns) == (("o_custkey",), "customer", ("c_custkey",))
         assert fk.evidence["referenced_column_names"] == ["c_custkey"]
 
-    def test_not_null_and_check_rows_are_not_read(self):
+    def test_tables_whose_statement_yields_no_constraint_intent_are_not_read(self):
         con = _constrained_connection()
         state = DuckDBTuningIntrospector().introspect(con, _ledger_for(*_CONSTRAINED_DDL))
+        assert {obj.table for obj in state.objects} == {"customer"}
+
+    def test_not_null_and_check_rows_are_not_read(self):
+        con = _constrained_connection()
+        state = DuckDBTuningIntrospector().introspect(con, _ledger_for(_CONSTRAINED_DDL[0], _PARSED_ORDERS_DDL))
         assert {obj.constraint_type for obj in state.objects} <= {
             CONSTRAINT_PRIMARY_KEY,
             CONSTRAINT_UNIQUE,
@@ -448,3 +453,57 @@ class TestDuckDBPhysicalConstraintIdentifiers:
         )
         assert receipt.corroborated is True
         assert len(receipt.entries) == 4
+
+
+class TestDuckDBConstraintTableLookup:
+    @pytest.mark.parametrize(
+        ("ddl", "catalog_name"),
+        [
+            ('CREATE TABLE "my t" (a INTEGER PRIMARY KEY)', "my t"),
+            ('CREATE TABLE "q""t" (a INTEGER PRIMARY KEY)', 'q"t'),
+            ('CREATE TABLE IF NOT EXISTS "Mixed Case" (a INTEGER PRIMARY KEY)', "Mixed Case"),
+        ],
+        ids=["space", "escaped-quote", "mixed-case"],
+    )
+    def test_quoted_table_names_are_read_and_corroborate(self, ddl, catalog_name):
+        con = duckdb.connect(":memory:")
+        ledger = AppliedTuningLedger()
+        recording_connection(con, ledger, PHASE_DDL).execute(ddl)
+        state = DuckDBTuningIntrospector().introspect(con, ledger)
+        assert [obj.table for obj in state.objects if obj.kind == KIND_CONSTRAINT] == [catalog_name]
+        receipt = corroborate(ledger, state)
+        assert [(entry.constraint_type, entry.verdict) for entry in receipt.entries] == [
+            (CONSTRAINT_PRIMARY_KEY, CORROBORATED)
+        ]
+
+    def test_a_similarly_named_table_does_not_stand_in(self):
+        con = duckdb.connect(":memory:")
+        con.execute('CREATE TABLE "my" (a INTEGER PRIMARY KEY)')
+        con.execute('CREATE TABLE "my t" (a INTEGER)')
+        ledger = AppliedTuningLedger()
+        recording_connection(con, ledger, PHASE_DDL).execute(
+            'CREATE TABLE IF NOT EXISTS "my t" (a INTEGER PRIMARY KEY)'
+        )
+        receipt = corroborate(ledger, DuckDBTuningIntrospector().introspect(con, ledger))
+        assert [entry.verdict for entry in receipt.entries] == [ABSENT]
+
+
+class TestDuckDBUnmaskableLiterals:
+    @pytest.mark.parametrize(
+        "executed",
+        [
+            "CREATE TABLE IF NOT EXISTS t (a INTEGER PRIMARY KEY, b VARCHAR DEFAULT $$)$$ CHECK (length(b) > 0))",
+            "CREATE TABLE IF NOT EXISTS t (a INTEGER PRIMARY KEY, b VARCHAR DEFAULT $x$)$x$ CHECK (length(b) > 0))",
+            "CREATE TABLE IF NOT EXISTS t (a INTEGER PRIMARY KEY, b VARCHAR DEFAULT E'\\')' CHECK (length(b) > 0))",
+            "CREATE TABLE IF NOT EXISTS t (a INTEGER PRIMARY KEY /* x /* y */ ) */, b VARCHAR CHECK (length(b) > 0))",
+        ],
+        ids=["dollar", "tagged-dollar", "escape-string", "nested-block-comment"],
+    )
+    def test_hidden_check_does_not_let_an_existing_key_corroborate(self, executed):
+        con = duckdb.connect(":memory:")
+        con.execute("CREATE TABLE t (a INTEGER PRIMARY KEY, b VARCHAR)")
+        ledger = AppliedTuningLedger()
+        recording_connection(con, ledger, PHASE_DDL).execute(executed)
+        receipt = corroborate(ledger, DuckDBTuningIntrospector().introspect(con, ledger))
+        assert receipt.corroborated is False
+        assert [entry.verdict for entry in receipt.entries] == [UNVERIFIABLE]

@@ -17,6 +17,7 @@ from benchbox.core.tuning.introspection import (
     IntrospectedState,
     _classify,
     _match_object,
+    constraint_tables,
     corroborate,
 )
 
@@ -422,3 +423,39 @@ class TestPhysicalIdentifiers:
         assert index.columns == ("a", "b")
         _klass, [sort_key] = _classify(_stmt("CREATE TABLE t (a Int64) ENGINE = MergeTree() ORDER BY (A, b)"))
         assert sort_key.columns == ("a", "b")
+
+
+class TestLiteralsTheScannerCannotMask:
+    @pytest.mark.parametrize(
+        "ddl",
+        [
+            "CREATE TABLE IF NOT EXISTS t (a INTEGER PRIMARY KEY, b VARCHAR DEFAULT $$)$$ CHECK (length(b) > 0))",
+            "CREATE TABLE t (a INTEGER PRIMARY KEY, b VARCHAR DEFAULT $tag$)$tag$ CHECK (length(b) > 0))",
+            "CREATE TABLE t (a INTEGER PRIMARY KEY, b VARCHAR DEFAULT E'\\')' CHECK (length(b) > 0))",
+            "CREATE TABLE t (a INTEGER PRIMARY KEY, b VARCHAR DEFAULT e'x' )",
+            "CREATE TABLE t (a INTEGER PRIMARY KEY /* x /* y */ ) */, b INTEGER CHECK (b > 0))",
+        ],
+        ids=["dollar", "tagged-dollar", "escape-string", "lowercase-escape-string", "nested-block-comment"],
+    )
+    def test_statement_with_an_unmaskable_literal_is_unverifiable(self, ddl):
+        assert _classify(_stmt(ddl)) == (UNVERIFIABLE, [])
+        receipt = _receipt(ddl, _state([_fact(CONSTRAINT_PRIMARY_KEY, ["a"], table="t")]))
+        assert receipt.corroborated is False
+
+    def test_masked_comments_and_strings_still_parse(self):
+        ddl = (
+            "CREATE TABLE t (a INTEGER PRIMARY KEY, -- ) CHECK (\nb VARCHAR DEFAULT 'it''s )' /* ) */, \"c)\" INTEGER)"
+        )
+        klass, intents = _classify(_stmt(ddl))
+        assert klass == "verifiable"
+        assert [(i.constraint_type, i.columns) for i in intents] == [(CONSTRAINT_PRIMARY_KEY, ("a",))]
+
+
+class TestConstraintTables:
+    def test_constraint_tables_use_the_physical_table_name(self):
+        ledger = AppliedTuningLedger()
+        ledger.record('CREATE TABLE "my t" (a INTEGER PRIMARY KEY)', PHASE_DDL)
+        ledger.record('CREATE TABLE "q""T" (a INTEGER, UNIQUE (a))', PHASE_DDL)
+        ledger.record("CREATE INDEX i ON other (a)", PHASE_DDL)
+        ledger.record("CREATE TABLE plain (a INTEGER NOT NULL)", PHASE_DDL)
+        assert constraint_tables(ledger) == {"my t", 'q"t'}
