@@ -192,7 +192,15 @@ that constraint type, which is every platform except DuckDB, and when a
 catalog foreign-key fact with the same child columns lacks its referenced
 table or columns. This applies even when the same statement also carries a
 corroborated sort, partition or cluster key, so a constraint never rides on
-another clause's verdict. A quoted table name binds the statement's
+another clause's verdict. Constraint identifiers compare by their physical
+contents, the way DuckDB resolves them: ASCII letters fold to lower case, and
+everything else, including whitespace inside a quoted identifier, is kept, so
+a key on `" a "` never corroborates a key on `a`. The catalog's names are
+compared without the quote and whitespace stripping that index and sort-key
+columns use. A table, column or referenced name that is not one bare
+identifier or one double-quoted identifier, such as a schema-qualified name or
+a backtick- or bracket-quoted one, keeps the statement `unverifiable`.
+A quoted table name binds the statement's
 constraints to that table; sort, partition and cluster clauses of a
 `CREATE TABLE` with a quoted table name stay `unverifiable` as before.
 

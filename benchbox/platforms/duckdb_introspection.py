@@ -16,6 +16,7 @@ from benchbox.core.tuning.introspection import (
     KIND_INDEX,
     IntrospectedObject,
     IntrospectedState,
+    fold_physical_identifier,
     ledger_tables,
     normalize_columns,
     normalize_identifier,
@@ -98,7 +99,7 @@ def _read_constraints(connection: Any, tables: set[str]) -> tuple[list[Introspec
         "SELECT * FROM duckdb_constraints() "
         f"WHERE constraint_type IN ({type_list}) "
         "AND database_name = current_database() AND schema_name = current_schema() "
-        f"AND lower(table_name) IN ({placeholders}) "
+        f"AND lower(trim(table_name)) IN ({placeholders}) "
         f"LIMIT {_MAX_CONSTRAINT_ROWS}",
         ordered_tables,
     )
@@ -117,12 +118,12 @@ def _read_constraints(connection: Any, tables: set[str]) -> tuple[list[Introspec
         if constraint_type not in _CATALOG_CONSTRAINT_TYPES:
             continue
         referenced_table = fact.get("referenced_table") or None
-        referenced_columns = normalize_columns(fact.get("referenced_column_names"))
+        referenced_columns = _physical_columns(fact.get("referenced_column_names"))
         objects.append(
             IntrospectedObject(
                 kind=KIND_CONSTRAINT,
                 table=table_name,
-                columns=normalize_columns(fact["constraint_column_names"]),
+                columns=_physical_columns(fact["constraint_column_names"]),
                 name=fact.get("constraint_name"),
                 constraint_type=constraint_type,
                 referenced_table=referenced_table,
@@ -137,6 +138,12 @@ def _read_constraints(connection: Any, tables: set[str]) -> tuple[list[Introspec
             )
         )
     return objects, len(rows) >= _MAX_CONSTRAINT_ROWS
+
+
+def _physical_columns(names: Any) -> tuple[str, ...]:
+    if not isinstance(names, (list, tuple)) or any(not isinstance(name, str) or not name for name in names):
+        return ()
+    return tuple(fold_physical_identifier(name) for name in names)
 
 
 __all__ = ["DuckDBTuningIntrospector"]

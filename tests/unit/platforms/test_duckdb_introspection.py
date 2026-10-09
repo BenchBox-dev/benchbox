@@ -392,3 +392,59 @@ def test_shipped_template_schema_constraints_all_corroborate(benchmark_name, tmp
     assert constraint_entries
     assert {entry.verdict for entry in constraint_entries} == {CORROBORATED}
     assert {entry.verdict for entry in receipt.entries} == {CORROBORATED}
+
+
+class TestDuckDBPhysicalConstraintIdentifiers:
+    def _receipt(self, existing: list[str], executed: str):
+        con = duckdb.connect(":memory:")
+        con.execute('CREATE TABLE u (k INTEGER PRIMARY KEY, " k " INTEGER UNIQUE)')
+        for statement in existing:
+            con.execute(statement)
+        ledger = AppliedTuningLedger()
+        recording_connection(con, ledger, PHASE_DDL).execute(executed)
+        return corroborate(ledger, DuckDBTuningIntrospector().introspect(con, ledger))
+
+    def test_catalog_keeps_whitespace_in_constraint_columns(self):
+        con = duckdb.connect(":memory:")
+        statement = 'CREATE TABLE t (a INTEGER, " a " INTEGER, PRIMARY KEY (" a "))'
+        con.execute(statement)
+        state = DuckDBTuningIntrospector().introspect(con, _ledger_for(statement))
+        assert [obj.columns for obj in state.objects if obj.kind == KIND_CONSTRAINT] == [(" a ",)]
+
+    def test_existing_key_on_a_padded_column_does_not_corroborate_a_requested_primary_key(self):
+        receipt = self._receipt(
+            ['CREATE TABLE t (a INTEGER, " a " INTEGER, PRIMARY KEY (" a "))'],
+            'CREATE TABLE IF NOT EXISTS t (a INTEGER PRIMARY KEY, " a " INTEGER)',
+        )
+        assert [(e.constraint_type, e.verdict) for e in receipt.entries] == [(CONSTRAINT_PRIMARY_KEY, MISMATCH)]
+        assert receipt.corroborated is False
+
+    def test_existing_unique_on_a_padded_column_does_not_corroborate_a_requested_unique(self):
+        receipt = self._receipt(
+            ['CREATE TABLE t (a INTEGER, " a " INTEGER UNIQUE)'],
+            'CREATE TABLE IF NOT EXISTS t (a INTEGER UNIQUE, " a " INTEGER)',
+        )
+        assert [(e.constraint_type, e.verdict) for e in receipt.entries] == [(CONSTRAINT_UNIQUE, MISMATCH)]
+
+    def test_existing_foreign_key_from_a_padded_column_does_not_corroborate(self):
+        receipt = self._receipt(
+            ['CREATE TABLE t (a INTEGER, " a " INTEGER REFERENCES u (k))'],
+            'CREATE TABLE IF NOT EXISTS t (a INTEGER REFERENCES u (k), " a " INTEGER)',
+        )
+        assert [(e.constraint_type, e.verdict) for e in receipt.entries] == [(CONSTRAINT_FOREIGN_KEY, MISMATCH)]
+
+    def test_existing_foreign_key_to_a_padded_referenced_column_does_not_corroborate(self):
+        receipt = self._receipt(
+            ['CREATE TABLE t (a INTEGER REFERENCES u (" k "))'],
+            "CREATE TABLE IF NOT EXISTS t (a INTEGER REFERENCES u (k))",
+        )
+        assert [(e.constraint_type, e.verdict) for e in receipt.entries] == [(CONSTRAINT_FOREIGN_KEY, MISMATCH)]
+
+    def test_matching_physical_identifiers_corroborate(self):
+        receipt = self._receipt(
+            [],
+            'CREATE TABLE t (A INTEGER PRIMARY KEY, " a " INTEGER UNIQUE REFERENCES u (" k "), '
+            "FOREIGN KEY (A) REFERENCES U (K))",
+        )
+        assert receipt.corroborated is True
+        assert len(receipt.entries) == 4

@@ -123,10 +123,11 @@ class TestClassification:
         assert klass == "verifiable"
         assert [i.columns for i in intents] == [("a",)]
 
-    def test_quoted_table_name_with_a_space_cannot_corroborate(self):
+    def test_quoted_table_name_with_a_space_binds_to_that_exact_table(self):
         ddl = 'CREATE TABLE "my t" (a INTEGER, PRIMARY KEY (a))'
-        receipt = _receipt(ddl, _state([_fact(CONSTRAINT_PRIMARY_KEY, ["a"], table="my t")]))
-        assert receipt.corroborated is False
+        assert _receipt(ddl, _state([_fact(CONSTRAINT_PRIMARY_KEY, ["a"], table="my t")])).corroborated is True
+        for other in ("my", "myt", " my t"):
+            assert _receipt(ddl, _state([_fact(CONSTRAINT_PRIMARY_KEY, ["a"], table=other)])).corroborated is False
 
     def test_quoted_column_with_inline_key_uses_the_quoted_name(self):
         ddl = 'CREATE TABLE t ("Unique" INTEGER PRIMARY KEY)'
@@ -336,3 +337,88 @@ class TestPayload:
         payload = _receipt(ddl, IntrospectedState(platform="clickhouse", objects=[sort_key])).to_payload()
         assert "constraint_type" not in payload["entries"][0]
         assert "constraint_type" not in payload["observed"][0]
+
+
+class TestPhysicalIdentifiers:
+    _DDL = (
+        'CREATE TABLE IF NOT EXISTS t (a INTEGER PRIMARY KEY, " a " INTEGER, b INTEGER, '
+        "UNIQUE (a, b), FOREIGN KEY (a) REFERENCES u (k))"
+    )
+
+    def _verdict(self, constraint_type, fact):
+        return _verdicts(_receipt(self._DDL, _state([fact])))[constraint_type]
+
+    def test_padded_quoted_identifier_keeps_its_whitespace(self):
+        _klass, intents = _classify(_stmt('CREATE TABLE t (" a " INTEGER, PRIMARY KEY (" a "))'))
+        assert [i.columns for i in intents] == [(" a ",)]
+
+    def test_primary_key_on_a_padded_column_does_not_corroborate_a_key_on_a(self):
+        assert self._verdict(CONSTRAINT_PRIMARY_KEY, _fact(CONSTRAINT_PRIMARY_KEY, [" a "], table="t")) == MISMATCH
+        assert self._verdict(CONSTRAINT_PRIMARY_KEY, _fact(CONSTRAINT_PRIMARY_KEY, ["A"], table="T")) == CORROBORATED
+
+    def test_unique_on_a_padded_column_does_not_corroborate_unique_on_a(self):
+        padded = _fact(CONSTRAINT_UNIQUE, [" a ", "b"], table="t")
+        assert self._verdict(CONSTRAINT_UNIQUE, padded) == MISMATCH
+        assert self._verdict(CONSTRAINT_UNIQUE, _fact(CONSTRAINT_UNIQUE, ["a", "b"], table="t")) == CORROBORATED
+
+    @pytest.mark.parametrize(
+        ("columns", "referenced_table", "referenced_columns"),
+        [([" a "], "u", ["k"]), (["a"], "u", [" k "]), (["a"], " u ", ["k"]), (["a"], '"u"', ["k"])],
+        ids=["padded-child", "padded-referenced-column", "padded-referenced-table", "quote-characters-in-name"],
+    )
+    def test_foreign_key_identifiers_compare_by_physical_contents(self, columns, referenced_table, referenced_columns):
+        fact = _fact(CONSTRAINT_FOREIGN_KEY, columns, "t", referenced_table, referenced_columns)
+        assert self._verdict(CONSTRAINT_FOREIGN_KEY, fact) == MISMATCH
+
+    def test_foreign_key_with_exact_identifiers_corroborates(self):
+        fact = _fact(CONSTRAINT_FOREIGN_KEY, ["A"], "t", "U", ["K"])
+        assert self._verdict(CONSTRAINT_FOREIGN_KEY, fact) == CORROBORATED
+
+    def test_padded_table_name_does_not_corroborate_a_key_on_t(self):
+        assert self._verdict(CONSTRAINT_PRIMARY_KEY, _fact(CONSTRAINT_PRIMARY_KEY, ["a"], table=" t ")) == ABSENT
+
+    def test_case_folding_is_ascii_only(self):
+        ddl = 'CREATE TABLE t ("É" INTEGER, PRIMARY KEY ("É"))'
+        assert _verdicts(_receipt(ddl, _state([_fact(CONSTRAINT_PRIMARY_KEY, ["é"], table="t")]))) == {
+            CONSTRAINT_PRIMARY_KEY: MISMATCH
+        }
+
+    def test_escaped_quote_is_unescaped(self):
+        _klass, intents = _classify(_stmt('CREATE TABLE t ("a""b" INTEGER PRIMARY KEY)'))
+        assert [i.columns for i in intents] == [('a"b',)]
+
+    @pytest.mark.parametrize(
+        "ddl",
+        [
+            "CREATE TABLE main.t (a INTEGER, PRIMARY KEY (a))",
+            'CREATE TABLE "main"."t" (a INTEGER, PRIMARY KEY (a))',
+            "CREATE TABLE t (a INTEGER, PRIMARY KEY (`a`))",
+            "CREATE TABLE t (a INTEGER, PRIMARY KEY ([a]))",
+            "CREATE TABLE t (a INTEGER, PRIMARY KEY (a b))",
+            "CREATE TABLE t (a INTEGER, PRIMARY KEY (a,))",
+            'CREATE TABLE t (a INTEGER, PRIMARY KEY (""))',
+            "CREATE TABLE t (a INTEGER, FOREIGN KEY (a) REFERENCES main.u (k))",
+            "CREATE TABLE t (a INTEGER REFERENCES u (k + 1))",
+            "CREATE TABLE t (`a` INTEGER PRIMARY KEY)",
+        ],
+        ids=[
+            "qualified-table",
+            "quoted-qualified-table",
+            "backtick-column",
+            "bracket-column",
+            "two-tokens",
+            "dangling-comma",
+            "empty-quoted",
+            "qualified-referenced-table",
+            "expression-reference",
+            "backtick-inline-column",
+        ],
+    )
+    def test_identifiers_that_do_not_parse_unambiguously_block_the_statement(self, ddl):
+        assert _classify(_stmt(ddl)) == (UNVERIFIABLE, [])
+
+    def test_index_and_sort_key_columns_keep_their_existing_normalization(self):
+        _klass, [index] = _classify(_stmt('CREATE INDEX i ON t (" A ", B)'))
+        assert index.columns == ("a", "b")
+        _klass, [sort_key] = _classify(_stmt("CREATE TABLE t (a Int64) ENGINE = MergeTree() ORDER BY (A, b)"))
+        assert sort_key.columns == ("a", "b")

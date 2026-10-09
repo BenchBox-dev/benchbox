@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import logging
 import re
+import string
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
@@ -202,6 +203,14 @@ _TABLE_FOREIGN_KEY_RE = re.compile(
 )
 _INLINE_REFERENCES_RE = re.compile(r"references\s+(?P<table>[^\s(]+)\s*\((?P<ref>[^()]*)\)", re.IGNORECASE)
 _COLUMN_NAME_RE = re.compile(r'\s*(?P<name>"(?:[^"]|"")+"|[^\s"(),]+)')
+_CREATE_TABLE_PREFIX_RE = re.compile(
+    r"\s*create\s+(?:or\s+replace\s+)?table\s+(?:if\s+not\s+exists\s+)?", re.IGNORECASE
+)
+_QUOTED_IDENTIFIER_RE = re.compile(r'"(?P<body>(?:[^"]|"")+)"')
+_BARE_IDENTIFIER_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_$]*")
+_IDENTIFIER_LIST_ITEM_RE = re.compile(r'\s*(?P<item>"(?:[^"]|"")*"|[^",\s]+)\s*(?P<sep>,|$)')
+_NON_DOUBLE_QUOTE_OPENERS = ("`", "[", "'")
+_ASCII_LOWER = str.maketrans(string.ascii_uppercase, string.ascii_lowercase)
 _LAYOUT_KEYWORD_RES = (_ORDER_BY_KEYWORD_RE, _PARTITION_BY_KEYWORD_RE, _CLUSTER_BY_KEYWORD_RE)
 _TRANSIENT_PREFIXES = ("set ", "pragma ", "set\t", "pragma\t", "reset ", "use ")
 _MAINTENANCE_PREFIXES = ("optimize ", "vacuum", "analyze", "compact ")
@@ -355,6 +364,39 @@ def ledger_tables(ledger: AppliedTuningLedger) -> set[str]:
     return tables
 
 
+def fold_physical_identifier(value: Any) -> str:
+    return str(value).translate(_ASCII_LOWER)
+
+
+def _physical_identifier(text: str) -> str | None:
+    candidate = text.strip()
+    quoted = _QUOTED_IDENTIFIER_RE.fullmatch(candidate)
+    if quoted is not None:
+        return fold_physical_identifier(quoted.group("body").replace('""', '"'))
+    if _BARE_IDENTIFIER_RE.fullmatch(candidate):
+        return fold_physical_identifier(candidate)
+    return None
+
+
+def _physical_identifier_list(text: str) -> tuple[str, ...] | None:
+    if not text.strip():
+        return None
+    identifiers: list[str] = []
+    position = 0
+    while position < len(text):
+        item = _IDENTIFIER_LIST_ITEM_RE.match(text, position)
+        if item is None:
+            return None
+        identifier = _physical_identifier(item.group("item"))
+        if identifier is None:
+            return None
+        identifiers.append(identifier)
+        position = item.end()
+        if not item.group("sep"):
+            return tuple(identifiers)
+    return None
+
+
 def _create_table_body_span(stripped: str, start: int) -> tuple[int, int] | None:
     index = start
     while index < len(stripped) and stripped[index].isspace():
@@ -420,25 +462,24 @@ def _table_level_constraint(element: str, keywords: list[str], table: str) -> _I
         return None
     if match is None:
         return None
-    columns = normalize_columns(match.group("cols"))
-    if not columns:
+    columns = _physical_identifier_list(match.group("cols"))
+    if columns is None:
         return None
     if constraint_type != CONSTRAINT_FOREIGN_KEY:
         return _constraint_intent(constraint_type, table, columns)
-    referenced_columns = normalize_columns(match.group("ref"))
-    if not referenced_columns:
+    referenced_table = _physical_identifier(match.group("table"))
+    referenced_columns = _physical_identifier_list(match.group("ref"))
+    if referenced_table is None or referenced_columns is None:
         return None
-    return _constraint_intent(
-        constraint_type, table, columns, normalize_identifier(match.group("table")), referenced_columns
-    )
+    return _constraint_intent(constraint_type, table, columns, referenced_table, referenced_columns)
 
 
 def _column_level_constraints(element: str, keyword_matches: list[re.Match[str]], table: str) -> list[_Intent] | None:
     name = _COLUMN_NAME_RE.match(element)
     if name is None:
         return None
-    column = normalize_identifier(name.group("name"))
-    if not column:
+    column = _physical_identifier(name.group("name"))
+    if column is None:
         return None
     intents: list[_Intent] = []
     for keyword_match in keyword_matches:
@@ -451,28 +492,24 @@ def _column_level_constraints(element: str, keyword_matches: list[re.Match[str]]
             reference = _INLINE_REFERENCES_RE.match(element, keyword_match.start())
             if reference is None:
                 return None
-            referenced_columns = normalize_columns(reference.group("ref"))
-            if not referenced_columns:
+            referenced_table = _physical_identifier(reference.group("table"))
+            referenced_columns = _physical_identifier_list(reference.group("ref"))
+            if referenced_table is None or referenced_columns is None:
                 return None
             intents.append(
-                _constraint_intent(
-                    CONSTRAINT_FOREIGN_KEY,
-                    table,
-                    (column,),
-                    normalize_identifier(reference.group("table")),
-                    referenced_columns,
-                )
+                _constraint_intent(CONSTRAINT_FOREIGN_KEY, table, (column,), referenced_table, referenced_columns)
             )
         else:
             return None
     return intents
 
 
-def _constraint_intents(statement_text: str, table: str) -> list[_Intent] | None:
+def _constraint_intents(statement_text: str) -> list[_Intent] | None:
     stripped = _strip_sql_literals_and_comments(statement_text)
     quoted = _strip_sql_literals_and_comments(statement_text, keep_double_quoted=True)
     header = _CREATE_TABLE_RE.match(quoted)
-    if header is None:
+    prefix = _CREATE_TABLE_PREFIX_RE.match(quoted)
+    if header is None or prefix is None:
         return []
     body = _create_table_body_span(stripped, header.end())
     if body is None:
@@ -482,13 +519,16 @@ def _constraint_intents(statement_text: str, table: str) -> list[_Intent] | None
         return None if _CONSTRAINT_KEYWORD_RE.search(stripped, begin) else []
     if _FOLLOWING_STATEMENT_RE.search(stripped, end + 1):
         return None
+    table = _physical_identifier(quoted[prefix.end() : begin - 1])
     intents: list[_Intent] = []
     for element_begin, element_end in _top_level_element_spans(stripped, begin, end):
         stripped_element = stripped[element_begin:element_end]
         keyword_matches = list(_CONSTRAINT_KEYWORD_RE.finditer(stripped_element))
         if not keyword_matches:
             continue
-        if _REFERENTIAL_ACTION_RE.search(stripped_element):
+        if table is None or _REFERENTIAL_ACTION_RE.search(stripped_element):
+            return None
+        if statement_text[element_begin:element_end].lstrip()[:1] in _NON_DOUBLE_QUOTE_OPENERS:
             return None
         element = quoted[element_begin:element_end]
         if stripped_element[: keyword_matches[0].start()].strip():
@@ -556,8 +596,7 @@ def _classify(statement: AppliedStatement) -> tuple[str, list[_Intent]]:
                 return UNVERIFIABLE, []
         elif any(pattern.search(text) for pattern in _LAYOUT_KEYWORD_RES):
             return UNVERIFIABLE, []
-        constraint_table = normalize_identifier((quoted_ct or ct).group("table"))
-        constraints = _constraint_intents(str(statement.statement or ""), constraint_table)
+        constraints = _constraint_intents(str(statement.statement or ""))
         if constraints is None:
             return UNVERIFIABLE, []
         intents.extend(constraints)
@@ -601,8 +640,12 @@ def _foreign_key_diff(intent: _Intent, fact: IntrospectedObject | None) -> str:
     expected = _references(intent.columns, intent.referenced_table, intent.referenced_columns)
     if fact is None:
         return f"expected {expected} != observed nothing"
-    observed_table = normalize_identifier(fact.referenced_table) if fact.referenced_table else None
+    observed_table = fold_physical_identifier(fact.referenced_table) if fact.referenced_table else None
     return f"expected {expected} != observed {_references(fact.columns, observed_table, fact.referenced_columns)}"
+
+
+def _folded(identifiers: tuple[str, ...]) -> tuple[str, ...]:
+    return tuple(fold_physical_identifier(identifier) for identifier in identifiers)
 
 
 def _has_reference(fact: IntrospectedObject) -> bool:
@@ -617,13 +660,14 @@ def _match_constraint(intent: _Intent, state: IntrospectedState) -> tuple[str, I
         for obj in state.objects
         if obj.kind == KIND_CONSTRAINT
         and obj.constraint_type == intent.constraint_type
-        and normalize_identifier(obj.table or "") == (intent.table or "")
+        and obj.table is not None
+        and fold_physical_identifier(obj.table) == intent.table
     ]
     if not same_type:
         return ABSENT, None, f"no {intent.constraint_type} constraint found in catalog"
     if not intent.columns:
         return MISMATCH, same_type[0], None
-    same_columns = [obj for obj in same_type if obj.columns == intent.columns]
+    same_columns = [obj for obj in same_type if _folded(obj.columns) == intent.columns]
     if intent.constraint_type != CONSTRAINT_FOREIGN_KEY:
         return (CORROBORATED, same_columns[0], None) if same_columns else (MISMATCH, same_type[0], None)
     if not intent.referenced_table or not intent.referenced_columns:
@@ -631,8 +675,8 @@ def _match_constraint(intent: _Intent, state: IntrospectedState) -> tuple[str, I
     for obj in same_columns:
         if (
             _has_reference(obj)
-            and normalize_identifier(obj.referenced_table) == intent.referenced_table
-            and obj.referenced_columns == intent.referenced_columns
+            and fold_physical_identifier(obj.referenced_table) == intent.referenced_table
+            and _folded(obj.referenced_columns) == intent.referenced_columns
         ):
             return CORROBORATED, obj, None
     incomplete = next((obj for obj in same_columns if not _has_reference(obj)), None)
@@ -812,6 +856,7 @@ __all__ = [
     "TRANSIENT",
     "UNVERIFIABLE",
     "corroborate",
+    "fold_physical_identifier",
     "ledger_tables",
     "normalize_columns",
     "normalize_identifier",
