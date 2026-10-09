@@ -719,6 +719,8 @@ def test_liveness_domain_checks_out_the_default_branch_that_scheduled_runs_come_
     )
 
     assert checkout["with"]["ref"] == "develop"
+
+
 def test_windows_domain_runs_the_fast_tier_without_continue_on_error() -> None:
     job = _load()["jobs"]["windows"]
     text = _run_text(job)
