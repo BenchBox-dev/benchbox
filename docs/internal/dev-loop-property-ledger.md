@@ -405,6 +405,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `uat-loc-table` | tooling | UAT table hygiene |
 | `timing-policy-check` | product-safety | Monotonic-clock policy |
 | `comment-policy` | tooling | Comments, docstrings, parser coverage and completed-scope enforcement |
+| `audit-raw` | tooling | Dependency inventory drift against `dependency-audit-raw.md` |
 | `timing-policy-fast-lane` | pure-process | Fast-lane mechanics |
 | `pr-preflight` | pure-process | PR-loop mechanics |
 | `blind-spot-validate` | product-safety | Blind-spot coverage |

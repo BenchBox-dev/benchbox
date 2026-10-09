@@ -59,6 +59,13 @@ jobs:
             exit 1
           fi
           python -I "$RUNNER_TEMP/comment-policy-runner.py" --native-tests
+      - name: Enforce pinned notice drift
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          : "${BASE_REF:?BASE_REF is required}"
+          python -I scripts/check_comment_cleanup_scope.py --check-drift --base "$BASE_REF"
 
   base-guard:
     name: PR base branch is an integration branch

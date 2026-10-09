@@ -644,3 +644,49 @@ format passed for both changed Python files. Full-project `uv run ty check`
 reported 674 diagnostics with exit status 0. `make comment-policy-check`
 passed 5,779 source files with zero violations, zero enforced failures and all
 19 native syntax tests passing.
+## PR #2829 pinned notice drift
+
+`quality/comment-cleanup-scope.json` registered these 19 whole-file notice
+paths: `LICENSE`, `COPYRIGHT.md`, `_binaries/tpc-ds/NOTICE.txt`,
+`_binaries/tpc-ds/darwin-arm64/EULA.txt`,
+`_binaries/tpc-ds/darwin-x86_64/EULA.txt`,
+`_binaries/tpc-ds/linux-arm64/EULA.txt`,
+`_binaries/tpc-ds/linux-x86_64/EULA.txt`,
+`_binaries/tpc-ds/windows-arm64/EULA.txt`,
+`_binaries/tpc-ds/windows-x86_64/EULA.txt`, `_sources/tpc-h/EULA.txt`,
+`_sources/tpc-ds/EULA.txt`,
+`_binaries/tpc-ds/darwin-arm64/NOTICE.txt`,
+`_binaries/tpc-ds/darwin-x86_64/NOTICE.txt`,
+`_binaries/tpc-ds/linux-arm64/NOTICE.txt`,
+`_binaries/tpc-ds/linux-x86_64/NOTICE.txt`,
+`_binaries/tpc-ds/windows-arm64/NOTICE.txt`,
+`_binaries/tpc-ds/windows-x86_64/NOTICE.txt`,
+`_sources/tpc-h/PATCHES.md`, and `_sources/tpc-ds/PATCHES.md`. The test
+parameterizes each actual manifest path and changes only that file in a
+temporary Git repository.
+
+The changed file is the producer; its base blob digest and the current
+`quality/comment-cleanup-scope.json` pin are the durable comparison.
+`pinned_notice_drift_findings` consumes the Git diff and rejects drift. Required
+CI keeps the base-sourced comment-policy launcher unchanged and runs the
+candidate drift checker as a separate step. The checker, manifest, test, and
+workflow are registered soundness paths and require independent review.
+
+- Every manifest path rejects a modification without a matching pin update
+  through `test_pinned_notice_drift_rejects_a_modification_without_a_pin_update`
+  (19 parametrized cases).
+- `test_pinned_notice_drift_accepts_an_unmodified_tree` and
+  `test_pinned_notice_drift_accepts_a_modification_with_a_pin_update` accept
+  the unchanged and correctly updated states.
+- `test_pinned_notice_drift_rejects_a_deleted_file` rejects deletion;
+  `test_check_drift_main_reports_zero_for_a_clean_tree_and_one_for_drift`
+  verifies CLI success and failure.
+
+`tests/unit/scripts/test_comment_cleanup_scope.py` passed 137 tests;
+`tests/system/test_ci_lint_parity.py` and
+`tests/unit/test_ledger_coverage.py` each passed 10 tests. The isolated CI
+command `uv run -- python -I scripts/check_comment_cleanup_scope.py
+--check-drift --base 68ba3ff27aa479464d685b17d28da1221136529b` reported
+zero findings. `make comment-policy-check` scanned 5,749 files with zero
+violations, passed all 19 native tests, and reported zero drift; `ci.yml`
+parsed successfully.

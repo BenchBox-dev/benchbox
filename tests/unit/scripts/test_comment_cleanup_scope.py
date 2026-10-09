@@ -13,6 +13,10 @@ import pytest
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 ROOT = Path(__file__).resolve().parents[3]
+NOTICE_PATHS = tuple(
+    entry["path"]
+    for entry in json.loads((ROOT / "quality/comment-cleanup-scope.json").read_text(encoding="utf-8"))["notices"]
+)
 SPEC = importlib.util.spec_from_file_location("comment_cleanup_scope", ROOT / "scripts/check_comment_cleanup_scope.py")
 assert SPEC and SPEC.loader
 scope = importlib.util.module_from_spec(SPEC)
@@ -1198,7 +1202,7 @@ def _drift_notice(path: str, payload: bytes) -> dict:
     }
 
 
-def _drift_repo(tmp_path: Path, policy: dict, payload: bytes) -> tuple[Path, str]:
+def _drift_repo(tmp_path: Path, policy: dict, payload: bytes, path: str = "PATCHES.md") -> tuple[Path, str]:
     root = tmp_path / "drift"
     root.mkdir()
     setup = (
@@ -1208,7 +1212,9 @@ def _drift_repo(tmp_path: Path, policy: dict, payload: bytes) -> tuple[Path, str
     )
     for args in setup:
         subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True)
-    (root / "PATCHES.md").write_bytes(payload)
+    notice_path = root / path
+    notice_path.parent.mkdir(parents=True, exist_ok=True)
+    notice_path.write_bytes(payload)
     (root / "quality").mkdir()
     (root / "quality" / "comment-cleanup-scope.json").write_text(json.dumps(policy), encoding="utf-8")
     subprocess.run(["git", "-C", str(root), "add", "."], check=True, capture_output=True)
@@ -1224,14 +1230,17 @@ def test_pinned_notice_drift_accepts_an_unmodified_tree(tmp_path: Path, policy: 
     assert scope.pinned_notice_drift_findings(root, base) == []
 
 
-def test_pinned_notice_drift_rejects_a_modification_without_a_pin_update(tmp_path: Path, policy: dict) -> None:
+@pytest.mark.parametrize("path", NOTICE_PATHS, ids=NOTICE_PATHS)
+def test_pinned_notice_drift_rejects_a_modification_without_a_pin_update(
+    tmp_path: Path, policy: dict, path: str
+) -> None:
     payload = b"pinned\n"
-    policy["notices"] = [_drift_notice("PATCHES.md", payload)]
-    root, base = _drift_repo(tmp_path, policy, payload)
-    (root / "PATCHES.md").write_bytes(payload + b"more\n")
+    policy["notices"] = [_drift_notice(path, payload)]
+    root, base = _drift_repo(tmp_path, policy, payload, path)
+    (root / path).write_bytes(payload + b"more\n")
     findings = scope.pinned_notice_drift_findings(root, base)
     assert [finding.code for finding in findings] == ["SCOPE008"]
-    assert findings[0].subject == "PATCHES.md"
+    assert findings[0].subject == path
     assert "quality/comment-cleanup-scope.json" in findings[0].detail
 
 

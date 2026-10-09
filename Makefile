@@ -447,8 +447,7 @@ windows-antipatterns-check:
 
 .PHONY: comment-policy-check
 comment-policy-check:
-	uv run -- python scripts/run_comment_policy.py --native-tests
-	uv run -- python scripts/check_comment_cleanup_scope.py --check-drift $(if $(BASE_REF),--base "$(BASE_REF)",)
+	uv run -- python scripts/run_comment_policy.py --native-tests && uv run -- python scripts/check_comment_cleanup_scope.py --check-drift $(if $(BASE_REF),--base "$(BASE_REF)",)
 
 .PHONY: check-comment-scope
 check-comment-scope:

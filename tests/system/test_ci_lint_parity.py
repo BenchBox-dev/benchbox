@@ -68,6 +68,7 @@ MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "code-test", "Run changed tests on the curated release tree"): "scripts/release_curation_dry_run.py",
     ("ci.yml", "comment-policy", "Enforce comment and docstring policy"): "comment-policy-check",
     ("ci.yml", "medium-test", "Install locked TypeScript parser"): "test-medium",
+    ("ci.yml", "comment-policy", "Enforce pinned notice drift"): "comment-policy-check",
     ("ci.yml", "site-build", "Typecheck, audit and build website"): "site-check",
     ("ci.yml", "site-build", "Test built website and not-found fallback"): "site-test-built",
     ("ci.yml", "public-site-visual-astro-dry-run", "Capture public site from the Astro build"): "site-visual-capture",
