@@ -375,10 +375,11 @@ def mdx_js_sources(path: str, source: str) -> list[tuple[int, str, str, str, str
         if line is not None and MDX_STATEMENT_START.match(line):
             end = mdx_statement_end(lines, index)
             text = "\n".join(str(lines[number]) for number in range(index, end))
+            shape = re.sub(r"/\*.*?\*/", " ", text, flags=re.S)
             keep = (
-                MDX_IMPORT_FROM.search(text) or MDX_IMPORT_BARE.match(text)
+                MDX_IMPORT_FROM.search(shape) or MDX_IMPORT_BARE.match(shape)
                 if line.startswith("import")
-                else MDX_EXPORT_SHAPE.match(text)
+                else MDX_EXPORT_SHAPE.match(shape)
             )
             if keep:
                 result.append((index + 1, path + ".tsx", text, "javascript", f"mdx:{len(result)}"))
@@ -1460,25 +1461,113 @@ def piped_consumer_language(command: str) -> str | None:
     return {"node": "javascript", "sh": "bash", "bash": "bash", "zsh": "bash"}.get(command)
 
 
+def shell_output_escapes(text: str) -> tuple[str, bool]:
+    result = []
+    index = 0
+    escaped = {
+        "a": "\a",
+        "b": "\b",
+        "f": "\f",
+        "n": "\n",
+        "r": "\r",
+        "t": "\t",
+        "v": "\v",
+        "\\": "\\",
+    }
+    while index < len(text):
+        if text[index] != "\\":
+            result.append(text[index])
+            index += 1
+            continue
+        index += 1
+        if index == len(text):
+            raise ValueError("trailing escape in piped producer output requires an adapter")
+        char = text[index]
+        if char == "c":
+            return "".join(result), True
+        if char in escaped:
+            result.append(escaped[char])
+            index += 1
+            continue
+        if char in "01234567":
+            end = index + 1
+            while end < min(index + 3, len(text)) and text[end] in "01234567":
+                end += 1
+            result.append(chr(int(text[index:end], 8)))
+            index = end
+            continue
+        if char == "x" and index + 1 < len(text) and text[index + 1] in "0123456789abcdefABCDEF":
+            end = index + 2
+            if end < len(text) and text[end] in "0123456789abcdefABCDEF":
+                end += 1
+            result.append(chr(int(text[index + 1 : end], 16)))
+            index = end
+            continue
+        raise ValueError("unsupported escape in piped producer output requires an adapter")
+    return "".join(result), False
+
+
+def piped_printf_text(args: list) -> str:
+    if any(word.parts for word in args):
+        raise ValueError("dynamic piped interpreter source requires an adapter")
+    if not args:
+        return ""
+    format_text, stopped = shell_output_escapes(args[0].word)
+    if stopped:
+        return format_text
+    values = [word.word for word in args[1:]]
+    result = []
+    value_index = 0
+    while True:
+        index = 0
+        while index < len(format_text):
+            char = format_text[index]
+            if char != "%":
+                result.append(char)
+                index += 1
+            elif format_text[index : index + 2] == "%%":
+                result.append("%")
+                index += 2
+            elif format_text[index : index + 2] == "%s":
+                result.append(values[value_index] if value_index < len(values) else "")
+                value_index += 1
+                index += 2
+            else:
+                raise ValueError("unsupported piped printf format requires an adapter")
+        if "%s" not in format_text.replace("%%", "") or value_index >= len(values):
+            break
+    return "".join(result)
+
+
 def piped_producer_text(words: list) -> str | None:
     head = words[0].word.rsplit("/", 1)[-1]
     args = words[1:]
     if head == "echo":
+        no_newline = False
+        escapes = False
         while args and not args[0].parts and re.fullmatch(r"-[neE]+", args[0].word):
+            for option in args[0].word[1:]:
+                no_newline |= option == "n"
+                escapes = option == "e" if option in "eE" else escapes
             args = args[1:]
-    else:
-        while args and not args[0].parts and args[0].word.startswith("-") and args[0].word != "-":
-            if args[0].word == "--":
-                args = args[1:]
-                break
-            if args[0].word == "-v":
-                return None
-            raise ValueError("piped printf option requires an adapter")
-        if args and not args[0].parts and args[0].word == "--":
+        if any(word.parts for word in args):
+            raise ValueError("dynamic piped interpreter source requires an adapter")
+        text = " ".join(word.word for word in args)
+        if escapes:
+            text, stopped = shell_output_escapes(text)
+            if stopped:
+                return text or None
+        return (text + ("" if no_newline else "\n")) or None
+    while args and not args[0].parts and args[0].word.startswith("-") and args[0].word != "-":
+        if args[0].word == "--":
             args = args[1:]
-    if any(word.parts for word in args):
-        raise ValueError("dynamic piped interpreter source requires an adapter")
-    return " ".join(word.word for word in args) or None
+            break
+        if args[0].word == "-v":
+            return None
+        raise ValueError("piped printf option requires an adapter")
+    if args and not args[0].parts and args[0].word == "--":
+        args = args[1:]
+    return piped_printf_text(args) or None
 
 
 def piped_sides(node: bashlex.ast.node) -> list | None:

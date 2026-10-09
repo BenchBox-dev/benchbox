@@ -315,3 +315,40 @@ Changed-test Ruff check and format check, codespell 2.4.3, and
 passed their expected rejection outcome. Docker CLI is unavailable in this
 environment; no real Compose CLI config or live registry inspection was
 performed.
+
+## PR #2821 scanner review findings
+
+The four Oracle findings were reproduced on the pre-fix branch. Each fix keeps
+the original source as the durable input; the scanner adapter output is consumed
+by the comment-policy parser and its finding rows.
+
+- Shell pipeline masking: the shell source producer writes
+  `echo 'pass' | python3 # explanation`; `mask_embedded_sources` now masks
+  embedded heredocs only, leaving the shell line for the tokenizer. The
+  consumer test is
+  `tests/unit/scripts/test_comment_policy.py::test_piped_interpreter_masking_preserves_trailing_shell_comment`;
+  it requires the trailing comment and rejects embedded payload leakage.
+- Static `echo` and `printf` output: bashlex supplies producer arguments,
+  `piped_producer_text` reconstructs supported bytes and formats, and the
+  interpreter scanner consumes the reconstructed source. Positive cases,
+  including octal escapes, `echo -e`, `%s`, and empty `printf` formats, run in
+  `test_piped_producer_payloads_reach_stdin_interpreters` and
+  `test_piped_printf_format_is_evaluated`; `test_piped_node_source_reports_javascript_comment`
+  exercises the Node consumer. The rejected `%d` conversion and dynamic or
+  unsupported producers are controls in
+  `test_piped_dynamic_or_unmodeled_stdin_fails_closed`.
+- MDX ESM shape recognition: the original MDX source is retained after
+  block-comment-tolerant shape validation; `javascript_requests` sends the
+  complete statement to the TypeScript scanner. Both inter-token forms are
+  exercised end-to-end by `test_mdx_esm_intertoken_comments_are_reported`;
+  `test_mdx_prose_import_lookalikes_are_not_code` rejects prose lookalikes.
+- Static runner paths with spaces: the shell command AST feeds
+  `PythonBindings.runner_payload`, which now tests executable basenames rather
+  than rejecting whitespace anywhere in an absolute path. The positive
+  `/opt/My Tools/python3` case is in
+  `test_python_runner_command_strings_are_scanned`; non-source application
+  arguments remain covered by `test_shell_application_arguments_are_not_executable_source`.
+
+The focused scanner regressions passed 36 tests; the full policy unit file
+passed 706 tests with `-n 0`. `make comment-policy-check` scanned 5,749
+files with zero violations and passed all 19 native syntax tests.

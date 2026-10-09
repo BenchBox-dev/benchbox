@@ -144,6 +144,9 @@ Python is read with its AST and tokenizer, including standalone strings and
 runtime docstring assignments; JavaScript and TypeScript with the isolated
 TypeScript parser; SQL-valued strings and execution-sink arguments as SQL; other
 formats with Pygments lexers; embedded code with its own language check.
+Shell heredocs and literal `echo`/`printf` pipelines into supported stdin
+interpreters are scanned; MDX top-level ESM and JSX block comments are
+extracted.
 Unknown input is a coverage error, never a pass, and under blocking enforcement
 or in strict mode changed files and completed scopes always reject it. While
 enforcement is advisory a coverage error is reported and counted but does not
@@ -172,8 +175,9 @@ Known gaps, each a place where a comment can pass unreported:
 - Unknown programs that take `-c` or `-e` as data are listed in
   `DATA_FLAG_PROGRAMS` in `scripts/comment_execution.py`; any other program
   given such a flag is reported.
-- Commands passed to a runner such as `ssh` or `watch` as a dynamic string
-  are not split, so an interpreter inside that string is not followed.
+- Static inner commands passed as a single argument to supported runners such as
+  `ssh`, `watch` or `xargs` are followed; dynamically assembled commands are
+  not.
 - HTML comments and MyST `%` lines in Markdown prose are not scanned. In the
   maintained docs they are copyright headers, generator start and end markers,
   `<!-- content-ok -->` markers read by `scripts/blog_content_validation.py`,
@@ -185,8 +189,10 @@ Known gaps, each a place where a comment can pass unreported:
   tuning note and the AWS Glue job script.
 - A program piped to an interpreter on stdin from a producer other than `echo`
   or `printf` (such as `curl ... | sh`) is not scanned.
-- A whole-file pinned notice in `quality/comment-cleanup-scope.json` (such as
-  `_sources/tpc-h/PATCHES.md`) is verified against its recorded digest, but
-  changes to the file are not guarded to require an accompanying pin update on branches.
+- Whole-file pinned notices in `quality/comment-cleanup-scope.json` are checked
+  against their recorded digest, but changed files do not yet require a pin
+  update on the same branch.
+- Unsupported `printf` formats or `echo -e` escapes in a recognized pipeline
+  produce a coverage error.
 - JSX `{// ...}` line-comment expressions in MDX prose are not extracted, so
   comments in that form outside Markdown code fences are not inspected.

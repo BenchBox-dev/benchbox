@@ -1269,6 +1269,10 @@ def test_python_executable_strings_reach_scanner(source: str) -> None:
             "# explanation",
         ),
         ('import subprocess\nsubprocess.run(["ssh", "host", "python3", "-c", "# split"])', "# split"),
+        (
+            'import subprocess\nsubprocess.run(["docker", "exec", "container", "/opt/My Tools/python3", "-c", "# hidden"])',
+            "# hidden",
+        ),
     ],
 )
 def test_python_runner_command_strings_are_scanned(source: str, text: str) -> None:
@@ -1408,26 +1412,36 @@ def test_shell_executable_arguments_are_routed(source: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "source",
+    ("source", "expected"),
     [
-        "echo '# explanation' | python3",
-        "echo '# explanation' | python",
-        "echo '# explanation' | python3 -",
-        "echo -n '# explanation' | sh",
-        "printf '# explanation' | bash",
-        "printf '%s\\n' '# explanation' | zsh",
-        "echo 'echo ok # explanation' | bash",
+        ("echo '# explanation' | python3", "# explanation"),
+        ("echo '# explanation' | python", "# explanation"),
+        ("echo '# explanation' | python3 -", "# explanation"),
+        ("echo -n '# explanation' | sh", "# explanation"),
+        ("printf '# explanation' | bash", "# explanation"),
+        ("printf '%s\\n' '# explanation' | zsh", "# explanation"),
+        ("printf '\\043 hidden\\n' | sh", "# hidden"),
+        ("echo -e '\\043 hidden' | sh", "# hidden"),
     ],
 )
-def test_piped_producer_payloads_reach_stdin_interpreters(source: str) -> None:
+def test_piped_producer_payloads_reach_stdin_interpreters(source: str, expected: str) -> None:
     findings = scan("a.sh", source, "bash")
-    assert [f.text for f in findings] == ["# explanation"]
-    assert all("pipe" in f.symbol for f in findings)
+    assert [finding.text for finding in findings] == [expected]
+    assert all("pipe" in finding.symbol for finding in findings)
 
 
-def test_piped_node_payload_reaches_the_typescript_scanner() -> None:
-    requests = javascript_requests("a.sh", "echo '// explanation' | node", "bash")
-    assert list(requests.values()) == ["// explanation"]
+def test_piped_interpreter_masking_preserves_trailing_shell_comment() -> None:
+    findings = scan("a.sh", "echo 'pass' | python3 # explanation", "bash")
+    assert [(finding.kind, finding.text) for finding in findings] == [("comment", "# explanation")]
+
+
+def test_piped_printf_format_is_evaluated() -> None:
+    assert scan("a.sh", "printf '%s\\n' 'pass' | python3", "bash") == []
+
+
+def test_piped_node_source_reports_javascript_comment() -> None:
+    findings = scan_sources(ROOT, {"a.sh": b"echo '// explanation' | node"}, policy())
+    assert [(finding.kind, finding.text) for finding in findings] == [("comment", "// explanation")]
 
 
 @pytest.mark.parametrize(
@@ -1436,7 +1450,10 @@ def test_piped_node_payload_reaches_the_typescript_scanner() -> None:
         'echo "$code" | python3',
         "echo hi $name | bash",
         "printf '%s\\n' \"$code\" | python3",
+        "printf '%d\\n' 1 | python3",
         "echo x | perl",
+        r"echo -e '\e hidden' | bash",
+        r"echo -e '\E hidden' | bash",
         "echo x | ruby",
     ],
 )
@@ -3431,6 +3448,19 @@ def test_mdx_imports_reach_the_typescript_scanner(source: str) -> None:
     findings = scan("website/src/content/docs/page.mdx", source, "mdx", rows)
     assert [(f.kind, f.text) for f in findings] == [("comment", "// explanation")]
     assert [f.line for f in findings] == [2 if source.startswith("import {\n") else 1]
+
+
+@pytest.mark.parametrize(
+    ("source", "comment"),
+    [
+        ("export /* hidden */ const value = 1;", "/* hidden */"),
+        ("import /* hidden */ './x.js';", "/* hidden */"),
+    ],
+)
+def test_mdx_esm_intertoken_comments_are_reported(source: str, comment: str) -> None:
+    path = "website/src/content/docs/page.mdx"
+    findings = scan_sources(ROOT, {path: source.encode()}, policy())
+    assert [(finding.kind, finding.text) for finding in findings] == [("comment", comment)]
 
 
 def test_mdx_import_comment_lines_map_to_source_lines() -> None:

@@ -19,7 +19,6 @@ from comment_payloads import (
     bounded_html_template,
     mdx_jsx_comments,
     nested_sources,
-    piped_stdin_payloads,
     shell_payloads,
     sql_template_sources,
 )
@@ -593,13 +592,6 @@ def mask_embedded_sources(path: str, source: str, lang: str) -> str:
     if lang == "bash":
         lines = source.splitlines(keepends=True)
         for start, _, text, _, _ in shell_payloads(path, source, include_data=True):
-            for index in range(start - 1, start - 1 + len(text.splitlines())):
-                lines[index] = re.sub(r"[^\n]", " ", lines[index])
-        try:
-            piped = piped_stdin_payloads(path, source)
-        except ValueError:
-            piped = []
-        for start, _, text, _, _ in piped:
             for index in range(start - 1, start - 1 + len(text.splitlines())):
                 lines[index] = re.sub(r"[^\n]", " ", lines[index])
         return "".join(lines) + "\n"

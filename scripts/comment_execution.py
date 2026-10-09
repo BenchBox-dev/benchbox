@@ -652,10 +652,14 @@ class PythonBindings:
         except ValueError:
             return args[0], "unsupported", None
         for index, word in enumerate(words[first:], start=first):
-            nested = word.rsplit("/", 1)[-1] if word and not any(char.isspace() for char in word) else None
-            if nested and (
-                nested.startswith("python")
-                or nested in {"node", "sh", "bash", "zsh"} | SQL_CLIENTS | UNMODELED_INTERPRETERS
+            nested = word.rsplit("/", 1)[-1] if word else None
+            if (
+                nested
+                and not any(char.isspace() for char in nested)
+                and (
+                    nested.startswith("python")
+                    or nested in {"node", "sh", "bash", "zsh"} | SQL_CLIENTS | UNMODELED_INTERPRETERS
+                )
             ):
                 return self.process_payload(args[index:])
         if name not in DATA_FLAG_PROGRAMS and any(
