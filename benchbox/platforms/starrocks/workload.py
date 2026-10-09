@@ -142,6 +142,8 @@ class StarRocksWorkloadMixin:
 
             if use_pk and pk_cols_raw:
                 pk_clause = f"PRIMARY KEY ({pk_cols_raw.strip()})"
+                if table_tunings is not None:
+                    self._record_starrocks_tuning_to_ledger(self._created_table_name(statement), [pk_clause])
                 stripped = statement.rstrip()
                 if stripped.endswith(";"):
                     statement = stripped[:-1] + f"\n{pk_clause};"
@@ -199,10 +201,9 @@ class StarRocksWorkloadMixin:
         if not table_tunings:
             return None, None
 
-        match = re.search(r"CREATE TABLE(?:\s+IF NOT EXISTS)?\s+`?(\w+)`?", statement, re.IGNORECASE)
-        if not match:
+        table_name = self._created_table_name(statement)
+        if table_name is None:
             return None, None
-        table_name = match.group(1)
 
         table_tuning = None
         for configured_name, configured_tuning in table_tunings.items():
@@ -217,6 +218,11 @@ class StarRocksWorkloadMixin:
         if clauses.is_empty():
             return None, table_name
         return clauses, table_name
+
+    @staticmethod
+    def _created_table_name(statement: str) -> str | None:
+        match = re.search(r"CREATE TABLE(?:\s+IF NOT EXISTS)?\s+`?(\w+)`?", statement, re.IGNORECASE)
+        return match.group(1) if match else None
 
     def _record_starrocks_tuning_to_ledger(self, table_name: str | None, clauses: list[str]) -> None:
         ledger = getattr(self, "_applied_tuning_ledger", None)

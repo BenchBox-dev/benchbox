@@ -38,6 +38,7 @@ file	benchbox/core/tuning/introspection.py
 file	benchbox/core/tuning/applied_ledger.py
 file	benchbox/core/tuning/capability_registry.py
 file	benchbox/core/tuning/metadata.py
+file	benchbox/core/tuning/reconciliation.py
 file	benchbox/platforms/clickhouse/introspection.py
 file	benchbox/platforms/dataframe/tuning_trust.py
 glob	benchbox/platforms/*_introspection.py

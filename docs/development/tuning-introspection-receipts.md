@@ -75,6 +75,67 @@ The adapter files themselves (`adapter.py`, `duckdb.py`,
 trust-relevant methods as one-line delegates pinned by tests, so a change that
 routes around these modules fails the suite.
 
+## Requested-versus-rendered reconciliation
+
+Many adapters accept a tuning request and render nothing for it: the
+PostgreSQL family, BigQuery, Trino, the managed Spark platforms, DataFusion
+and others. Before reconciliation such a run recorded an empty ledger, so the
+result could not show that the request was ignored. The ADR-001 ledger
+vocabulary addendum (2026-10-04) decides that every requested intent ends as
+`executed`, `failed`, `dropped(reason)` or `satisfied_by(reference)`.
+
+`benchbox/core/tuning/reconciliation.py` implements that rule.
+`PlatformAdapter.run_enhanced_benchmark` calls it once per fresh tuned SQL
+platform run,
+after the data loads and the layout operations are folded into the ledger,
+through the one-line delegate `_reconcile_requested_tuning` and
+`tuning_trust.reconcile_requested_tuning`. It never runs at apply time,
+because post-load mechanisms such as the DuckDB sort index and the CTAS sort
+have not run yet. Reused databases, dry runs and untuned runs are skipped.
+DataFrame platforms use a different tuning configuration and are not
+reconciled.
+
+The requested intents are each table's partitioning, clustering,
+distribution and sorting columns, each enabled constraint type, and each
+enabled platform optimization flag. For each intent, in order:
+
+1. **Evidence.** An executed `ddl` or `post_load` statement on the same table
+   whose SQL carries the footprint of that tuning type, with the requested
+   columns named in that clause in the requested order, realizes the intent.
+   Column names inside string literals do not count, except in property-style
+   clauses such as `partitioned_by = ARRAY['col']`. Footprints are generic
+   (`ORDER BY`, index column lists, `CLUSTER BY`, `PARTITION BY`,
+   `DISTRIBUTED BY`, `PRIMARY KEY` and so on), plus the registry mechanism
+   where a platform folds one type into another clause: ClickHouse clustering
+   into `ORDER BY`, Snowflake partitioning into `CLUSTER BY`. When the
+   registry renders the type through `ddl` and the statement is in the `ddl`
+   phase, a `satisfied` entry references that statement's index, unless one
+   already covers the intent. Otherwise the intent needs no entry.
+2. **Already accounted.** A failed attempt on the same table and type, or an
+   existing dropped or satisfied entry for it (adapter drops, sorted-ingestion
+   entries, Snowflake's already-present clustering key), leaves the intent
+   as it is.
+3. **Drop.** When the registry marks the type `none` or `:preview_only` for
+   the platform, the drop reason is the registry note. Otherwise, including
+   platforms with no registry entry, it is `adapter rendered no statement`.
+
+Until the physical sort rewrite is recorded as an executed ledger statement
+(ADR-001 addendum of 2026-10-04 on sort evidence), a table in the adapter's executed
+sorted-ingestion list counts as sort evidence. That only withholds a drop;
+it never adds corroboration.
+
+Reconciliation can only append dropped and satisfied entries. It never
+changes a statement, the applied ledger hash, or a receipt verdict, so it
+cannot make a run more verified: a drop blocks `applied_verified`, and a
+satisfied entry is never a verdict and never corroboration. Drops never
+produce `failed`; a ledger whose only outcomes are drops is `noop`. If
+reconciliation raises, it records the blocking drop `tuning_reconciliation`
+with the error instead of passing silently.
+
+Constraint toggles are reconciled as requested. No shipped benchmark declares
+`UNIQUE` or `CHECK` constraints and no adapter renders them, so a
+configuration that enables them records a blocking drop for each.
+
 ## Statement classes (per phase x mechanism)
 
 `corroborate()` gates every ledger statement by recorded status and phase,

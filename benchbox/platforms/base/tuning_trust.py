@@ -10,6 +10,7 @@ from benchbox.core.tuning.applied_ledger import (
     STATEMENT_FAILED,
 )
 from benchbox.core.tuning.introspection import corroborate
+from benchbox.core.tuning.reconciliation import RECONCILIATION_FAILED_INTENT, reconcile_requested_intents
 
 if TYPE_CHECKING:
     from benchbox.platforms.base.adapter import PlatformAdapter
@@ -109,6 +110,26 @@ def fold_layout_operations_into_ledger(adapter: PlatformAdapter) -> None:
                 adapter.logger.debug("applied-ledger unknown layout-op status %r; recorded as failed", op.get("status"))
         except Exception as exc:
             adapter.logger.debug("applied-ledger layout fold degraded: %s", exc)
+
+
+def reconcile_requested_tuning(adapter: PlatformAdapter, config: Any) -> None:
+    ledger = getattr(adapter, "_applied_tuning_ledger", None)
+    if ledger is None or not config or not adapter.tuning_enabled:
+        return
+    if getattr(adapter, "database_was_reused", False) or adapter.is_dry_run:
+        return
+    dropped_before = len(ledger.dropped)
+    try:
+        reconcile_requested_intents(
+            config,
+            ledger,
+            adapter.canonical_platform_type,
+            sorted_tables=list(getattr(adapter, "_sorted_ingestion_applied_tables", None) or []),
+        )
+    except Exception as exc:
+        ledger.record_dropped(RECONCILIATION_FAILED_INTENT, f"reconciliation failed: {exc}")
+    for dropped in ledger.dropped[dropped_before:]:
+        adapter.logger.warning("Requested tuning intent not applied: %s (%s)", dropped.intent, dropped.reason)
 
 
 def apply_phase_status(adapter: PlatformAdapter, has_config: bool) -> str:

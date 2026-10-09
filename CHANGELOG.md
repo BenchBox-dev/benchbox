@@ -214,6 +214,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `phases.throughput_test.stream_numbering` holds the basis and the first
   stream id. `run.streams` in a combined run now counts throughput streams
   only.
+- **Tuned results list tuning requests the platform ignored.** After the data
+  loads on a SQL platform, every requested table layout, enabled constraint type and enabled
+  platform optimization with no executed, failed or skipped statement is
+  recorded in `platform.tuning.applied.dropped`. The reason is the capability
+  registry's note, or `adapter rendered no statement`. Before, platforms that
+  render nothing, such as the PostgreSQL family, BigQuery, Trino, the managed
+  Spark platforms and DataFusion, reported `noop` with an empty list. A
+  dropped intent keeps a run from `applied_verified`, and a run whose only
+  outcomes are drops stays `noop`. Configurations that enable `UNIQUE` or
+  `CHECK` constraints now show those as dropped, because no benchmark declares
+  them. That includes the default `tuned-fallback` configuration and the shipped
+  DuckDB (TPC-H, TPC-DS, SSB, JOB, TPC-H Havoc, Read Primitives), Databricks
+  and Snowflake tuned templates. None of those runs changes status, because
+  their constraint statements already kept them from `applied_verified`. Intents a
+  `CREATE TABLE` realized, such as an inline primary key or a ClickHouse
+  `PARTITION BY`, are listed in `satisfied`. StarRocks tuned runs with primary
+  keys now record the rendered `PRIMARY KEY` clause, so their applied ledger
+  hash changes and a keys-only tuned run reports `applied_unverified` instead of
+  `noop`.
 
 ### Added
 

@@ -56,6 +56,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
         "benchbox/core/tuning/applied_ledger.py",
         "benchbox/core/tuning/capability_registry.py",
         "benchbox/core/tuning/metadata.py",
+        "benchbox/core/tuning/reconciliation.py",
         "benchbox/platforms/duckdb_introspection.py",
         "benchbox/platforms/snowflake_introspection.py",
         "benchbox/platforms/clickhouse/introspection.py",
@@ -189,6 +190,7 @@ TUNING_TRUST_FILES = (
     "benchbox/core/tuning/applied_ledger.py",
     "benchbox/core/tuning/capability_registry.py",
     "benchbox/core/tuning/metadata.py",
+    "benchbox/core/tuning/reconciliation.py",
     "benchbox/platforms/clickhouse/introspection.py",
     "benchbox/platforms/dataframe/tuning_trust.py",
 )
