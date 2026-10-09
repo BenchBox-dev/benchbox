@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -33,6 +34,7 @@ DOMAIN_JOBS = {
     "quarantine": "t3:quarantine",
     "linkcheck": "t3:linkcheck",
     "liveness": "t3:liveness",
+    "windows": "t3:windows",
     "durations-refresh": "t3:durations",
 }
 
@@ -446,14 +448,15 @@ def test_perf_comparison_uses_only_the_current_job_result(tmp_path: Path, result
         setup["run"], tmp_path, {"RUNNER_TEMP": str(runner_temp), "GITHUB_ENV": str(github_env)}
     )
     assert setup_result.returncode == 0, setup_result.stdout + setup_result.stderr
-    key, _, configured_root = github_env.read_text().strip().partition("=")
+    key, _, configured_root = github_env.read_text(encoding="utf-8").strip().partition("=")
     assert key == "BENCHBOX_OUTPUT_DIR" and Path(configured_root) == output_root
     step = next(step for step in _steps(job) if step.get("id") == "current")
     github_output = tmp_path / "github-output"
     result = _run_workflow_script(step["run"], tmp_path, {key: configured_root, "GITHUB_OUTPUT": str(github_output)})
     assert (result.returncode == 0) == (result_count == 1), result.stdout + result.stderr
     if result_count == 1:
-        assert github_output.read_text().strip() == f"path={results / 'tpch_sf001_duckdb_sql_0.json'}"
+        published = github_output.read_text(encoding="utf-8").strip().removeprefix("path=")
+        assert Path(published) == results / "tpch_sf001_duckdb_sql_0.json"
 
 
 @pytest.mark.parametrize("tier", ["fast", "slow"])
@@ -483,9 +486,11 @@ def test_duration_measurement_keeps_assertion_reports_and_rejects_runner_failure
     )
     result = _run_workflow_script(step["run"], tmp_path)
     assert result.returncode == expected, result.stdout + result.stderr
-    assert (tmp_path / "t3-durations" / f"junit-{tier}.xml").read_text() == '<testsuite tests="1"/>'
+    assert (tmp_path / "t3-durations" / f"junit-{tier}.xml").read_text(encoding="utf-8") == '<testsuite tests="1"/>'
     if tee_exit == 0:
-        assert (tmp_path / "t3-durations" / f"pytest-{tier}.exit").read_text().strip() == str(pytest_exit)
+        assert (tmp_path / "t3-durations" / f"pytest-{tier}.exit").read_text(encoding="utf-8").strip() == str(
+            pytest_exit
+        )
 
 
 @pytest.mark.parametrize("compare_exit", [0, 1])
@@ -501,7 +506,7 @@ def test_perf_comparison_preserves_threshold_and_failure(tmp_path: Path, compare
     script = 'uv() { printf "%s\\n" "$@" > "$ARGUMENTS"; return "$COMPARE_EXIT"; }\n' + script
     result = _run_workflow_script(script, tmp_path, {"ARGUMENTS": str(arguments), "COMPARE_EXIT": str(compare_exit)})
     assert result.returncode == compare_exit, result.stdout + result.stderr
-    assert arguments.read_text().splitlines() == [
+    assert arguments.read_text(encoding="utf-8").splitlines() == [
         "run",
         "benchbox",
         "compare",
@@ -563,14 +568,14 @@ def test_failed_duration_samples_keep_both_reports_and_regenerated_artifact(
     env = {"FAST_EXIT": str(fast_exit), "SLOW_EXIT": str(slow_exit)}
     for name in ["Measure fast tier durations", "Measure slow tier durations", "Regenerate duration file"]:
         step = next(step for step in steps if step.get("name") == name)
-        script = step["run"].replace("uv run -- python", f"uv run -- {sys.executable}")
+        script = step["run"].replace("uv run -- python", f"uv run -- {shlex.quote(Path(sys.executable).as_posix())}")
         result = _run_workflow_script(script, tmp_path, env)
         assert result.returncode == 0, result.stdout + result.stderr
     output = tmp_path / "t3-durations"
     for tier in ["fast", "slow"]:
         assert (output / f"junit-{tier}.xml").is_file()
-        assert (output / f"durations-{tier}.txt").read_text().strip() == f"measurement {tier}"
-    artifact = json.loads((output / "test_durations.json").read_text())
+        assert (output / f"durations-{tier}.txt").read_text(encoding="utf-8").strip() == f"measurement {tier}"
+    artifact = json.loads((output / "test_durations.json").read_text(encoding="utf-8"))
     assert len(artifact["tests"]) == 2
     final = next(step for step in steps if step.get("name") == "Require successful sampled tests")
     result = _run_workflow_script(final["run"], tmp_path)
@@ -714,3 +719,18 @@ def test_liveness_domain_checks_out_the_default_branch_that_scheduled_runs_come_
     )
 
     assert checkout["with"]["ref"] == "develop"
+def test_windows_domain_runs_the_fast_tier_without_continue_on_error() -> None:
+    job = _load()["jobs"]["windows"]
+    text = _run_text(job)
+
+    assert job["runs-on"] == "windows-latest"
+    assert "continue-on-error" not in job
+    assert "fast and not (slow or stress or resource_heavy or live_integration)" in text
+    assert "python-version" in str([step.get("with") for step in _steps(job)])
+    assert isinstance(job["timeout-minutes"], int) and job["timeout-minutes"] <= 60
+
+
+def test_windows_domain_timeout_leaves_margin_over_the_measured_run() -> None:
+    measured_run_minutes = 38.13
+
+    assert _load()["jobs"]["windows"]["timeout-minutes"] >= measured_run_minutes * 1.25
