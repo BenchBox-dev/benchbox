@@ -1181,3 +1181,89 @@ def test_native_checker_reuses_the_scope_schema_validator() -> None:
     assert native.matches is shared.comment_policy_matches
     assert native.DIRECTIVES is shared.COMMENT_POLICY_DIRECTIVES
     assert native.ENFORCEMENT_MODES is shared.COMMENT_POLICY_ENFORCEMENT_MODES
+
+
+def _drift_notice(path: str, payload: bytes) -> dict:
+    digest = hashlib.sha256(payload).hexdigest()
+    return {
+        "path": path,
+        "blob_sha256": digest,
+        "byte_start": 0,
+        "byte_end": len(payload),
+        "retained_sha256": digest,
+        "governing_requirement": "Fixture pin.",
+        "source_identity": "Fixture source.",
+        "owner": "comment-cleanup-external-ownership",
+        "blocking_disposition": "Fixture disposition.",
+    }
+
+
+def _drift_repo(tmp_path: Path, policy: dict, payload: bytes) -> tuple[Path, str]:
+    root = tmp_path / "drift"
+    root.mkdir()
+    setup = (
+        ["init"],
+        ["config", "user.email", "drift@example.com"],
+        ["config", "user.name", "Drift"],
+    )
+    for args in setup:
+        subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True)
+    (root / "PATCHES.md").write_bytes(payload)
+    (root / "quality").mkdir()
+    (root / "quality" / "comment-cleanup-scope.json").write_text(json.dumps(policy), encoding="utf-8")
+    subprocess.run(["git", "-C", str(root), "add", "."], check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(root), "commit", "-m", "base"], check=True, capture_output=True)
+    base = subprocess.check_output(["git", "-C", str(root), "rev-parse", "HEAD"], text=True).strip()
+    return root, base
+
+
+def test_pinned_notice_drift_accepts_an_unmodified_tree(tmp_path: Path, policy: dict) -> None:
+    payload = b"pinned\n"
+    policy["notices"] = [_drift_notice("PATCHES.md", payload)]
+    root, base = _drift_repo(tmp_path, policy, payload)
+    assert scope.pinned_notice_drift_findings(root, base) == []
+
+
+def test_pinned_notice_drift_rejects_a_modification_without_a_pin_update(tmp_path: Path, policy: dict) -> None:
+    payload = b"pinned\n"
+    policy["notices"] = [_drift_notice("PATCHES.md", payload)]
+    root, base = _drift_repo(tmp_path, policy, payload)
+    (root / "PATCHES.md").write_bytes(payload + b"more\n")
+    findings = scope.pinned_notice_drift_findings(root, base)
+    assert [finding.code for finding in findings] == ["SCOPE008"]
+    assert findings[0].subject == "PATCHES.md"
+    assert "quality/comment-cleanup-scope.json" in findings[0].detail
+
+
+def test_pinned_notice_drift_accepts_a_modification_with_a_pin_update(tmp_path: Path, policy: dict) -> None:
+    payload = b"pinned\n"
+    policy["notices"] = [_drift_notice("PATCHES.md", payload)]
+    root, base = _drift_repo(tmp_path, policy, payload)
+    updated = payload + b"more\n"
+    (root / "PATCHES.md").write_bytes(updated)
+    policy["notices"] = [_drift_notice("PATCHES.md", updated)]
+    (root / "quality" / "comment-cleanup-scope.json").write_text(json.dumps(policy), encoding="utf-8")
+    assert scope.pinned_notice_drift_findings(root, base) == []
+
+
+def test_pinned_notice_drift_rejects_a_deleted_file(tmp_path: Path, policy: dict) -> None:
+    payload = b"pinned\n"
+    policy["notices"] = [_drift_notice("PATCHES.md", payload)]
+    root, base = _drift_repo(tmp_path, policy, payload)
+    (root / "PATCHES.md").unlink()
+    findings = scope.pinned_notice_drift_findings(root, base)
+    assert [finding.code for finding in findings] == ["SCOPE008"]
+    assert findings[0].subject == "PATCHES.md"
+
+
+def test_check_drift_main_reports_zero_for_a_clean_tree_and_one_for_drift(
+    tmp_path: Path, policy: dict, capsys: pytest.CaptureFixture[str]
+) -> None:
+    payload = b"pinned\n"
+    policy["notices"] = [_drift_notice("PATCHES.md", payload)]
+    root, base = _drift_repo(tmp_path, policy, payload)
+    assert scope.main(["--check-drift", "--root", str(root), "--base", base]) == 0
+    (root / "PATCHES.md").write_bytes(payload + b"more\n")
+    assert scope.main(["--check-drift", "--root", str(root), "--base", base]) == 1
+    captured = capsys.readouterr()
+    assert "SCOPE008 PATCHES.md" in captured.err

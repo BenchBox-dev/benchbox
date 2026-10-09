@@ -6,6 +6,7 @@ import email
 import hashlib
 import io
 import json
+import os
 import re
 import subprocess
 import sys
@@ -1196,14 +1197,103 @@ def output_path(root: Path, value: str | None) -> Path | None:
     return path
 
 
+def resolve_drift_base(root: Path, requested: str | None) -> str:
+    if requested:
+        if len(requested) != 40 or any(char not in "0123456789abcdef" for char in requested):
+            raise PolicyError("base must be a full lowercase commit SHA")
+        return requested
+    base = subprocess.check_output(
+        ["git", "-C", str(root), "rev-parse", "--verify", "origin/develop^{commit}"],
+        stderr=subprocess.PIPE,
+        text=True,
+    ).strip()
+    merged = subprocess.check_output(
+        ["git", "-C", str(root), "merge-base", base, "HEAD"], stderr=subprocess.PIPE, text=True
+    ).strip()
+    if len(merged) != 40 or any(char not in "0123456789abcdef" for char in merged):
+        raise PolicyError("cannot resolve a drift base commit")
+    return merged
+
+
+def pinned_notice_drift_findings(root: Path, base: str) -> list[Finding]:
+    try:
+        policy = load_policy(root / POLICY_PATH)
+    except (OSError, UnicodeError, json.JSONDecodeError, PolicyError) as error:
+        return [Finding("SCOPE008", POLICY_PATH, f"cannot load scope policy for drift check: {error}")]
+    findings = []
+    for entry in policy["notices"]:
+        if not isinstance(entry, dict):
+            findings.append(Finding("SCOPE008", POLICY_PATH, "notice entry must be an object"))
+            continue
+        path = entry.get("path")
+        if not isinstance(path, str) or not valid_path(path):
+            findings.append(Finding("SCOPE008", POLICY_PATH, f"notice has an invalid path: {path!r}"))
+            continue
+        try:
+            frozen = base_blob(root, base, path)
+        except subprocess.CalledProcessError:
+            findings.append(Finding("SCOPE008", path, "pinned notice is not tracked at the base"))
+            continue
+        try:
+            current = (root / path).read_bytes()
+        except OSError:
+            findings.append(
+                Finding("SCOPE008", path, "pinned notice is missing from the working tree without a pin update")
+            )
+            continue
+        start = entry.get("byte_start")
+        end = entry.get("byte_end")
+        retained = entry.get("retained_sha256")
+        if (
+            entry.get("blob_sha256") != hashlib.sha256(current).hexdigest()
+            or not isinstance(start, int)
+            or isinstance(start, bool)
+            or not isinstance(end, int)
+            or isinstance(end, bool)
+            or not isinstance(retained, str)
+            or start < 0
+            or end <= start
+            or end > len(current)
+            or hashlib.sha256(current[start:end]).hexdigest() != retained
+        ):
+            if current == frozen:
+                detail = "digest pin does not match the pinned file content"
+            else:
+                detail = "pinned notice modified without updating the digest pin in quality/comment-cleanup-scope.json"
+            findings.append(Finding("SCOPE008", path, detail))
+    return findings
+
+
+def run_drift_check(root: Path, base: str | None, policy_path: str) -> int:
+    try:
+        if policy_path != POLICY_PATH:
+            raise PolicyError("policy location is fixed")
+        resolved = resolve_drift_base(root, base)
+        findings = pinned_notice_drift_findings(root, resolved)
+    except (OSError, UnicodeError, PolicyError, subprocess.CalledProcessError) as error:
+        print(f"comment-cleanup-scope: configuration failure: {error}", file=sys.stderr)
+        return 2
+    for finding in findings:
+        print(finding, file=sys.stderr)
+    print(f"comment-cleanup-scope drift: {len(findings)} pinned notice findings")
+    return int(bool(findings))
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", type=Path, default=Path.cwd())
-    parser.add_argument("--base", required=True)
-    parser.add_argument("--task-set", required=True)
+    parser.add_argument("--base", required=False, default=os.environ.get("BASE_REF"))
+    parser.add_argument("--task-set", required=False, default=None)
     parser.add_argument("--policy", default=POLICY_PATH)
     parser.add_argument("--output")
+    parser.add_argument("--check-drift", action="store_true")
     args = parser.parse_args(argv)
+    if args.check_drift:
+        return run_drift_check(args.root.resolve(), args.base, args.policy)
+    if not args.base:
+        parser.error("--base is required")
+    if not args.task_set:
+        parser.error("--task-set is required")
     try:
         root = args.root.resolve()
         policy_path = root / args.policy

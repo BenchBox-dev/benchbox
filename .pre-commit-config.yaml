@@ -20,6 +20,14 @@ repos:
         stages: [pre-commit]
         files: ^results-data/bundles/
 
+      - id: audit-raw
+        name: dependency audit raw inventory drift check
+        entry: uv run -- python _project/scripts/dependency_audit/parse_deps.py --check
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+        files: ^(pyproject\.toml|_project/scripts/dependency_audit/parse_deps\.py|docs/development/dependency-audit-raw\.md)$
+
       - id: uv-lock-revision-guard
         name: uv.lock revision downgrade guard
         entry: python3 _project/scripts/check_uv_lock_revision.py
