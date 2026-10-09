@@ -10,7 +10,11 @@ from benchbox.core.tuning.applied_ledger import (
     STATEMENT_FAILED,
 )
 from benchbox.core.tuning.introspection import corroborate
-from benchbox.core.tuning.reconciliation import RECONCILIATION_FAILED_INTENT, reconcile_requested_intents
+from benchbox.core.tuning.reconciliation import (
+    RECONCILIATION_FAILED_INTENT,
+    declared_constraint_types,
+    reconcile_requested_intents,
+)
 
 if TYPE_CHECKING:
     from benchbox.platforms.base.adapter import PlatformAdapter
@@ -125,6 +129,7 @@ def reconcile_requested_tuning(adapter: PlatformAdapter, config: Any) -> None:
             ledger,
             adapter.canonical_platform_type,
             sorted_tables=list(getattr(adapter, "_sorted_ingestion_applied_tables", None) or []),
+            declared_constraints=declared_constraint_types(getattr(adapter, "benchmark", None)),
         )
     except Exception as exc:
         ledger.record_dropped(RECONCILIATION_FAILED_INTENT, f"reconciliation failed: {exc}")

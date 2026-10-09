@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from unittest.mock import Mock
+
 import pytest
 
 from benchbox.core.tuning.applied_ledger import (
@@ -33,6 +35,7 @@ from benchbox.core.tuning.reconciliation import (
     DDL_REALIZED_REASON,
     NOT_RENDERED_REASON,
     RequestedIntent,
+    declared_constraint_types,
     reconcile_requested_intents,
     requested_intents,
 )
@@ -491,3 +494,66 @@ def test_mechanism_footprints_name_registry_mechanisms():
         capability.mechanism_id for entries in PLATFORM_TUNING_CAPABILITIES.values() for capability in entries.values()
     }
     assert set(_MECHANISM_FOOTPRINTS) <= mechanisms
+
+
+class TestDeclaredConstraints:
+    def test_probe_reads_the_constraint_types_a_benchmark_declares(self, tmp_path):
+        from benchbox.core.ssb.benchmark import SSBBenchmark
+        from benchbox.core.tpch.benchmark import TPCHBenchmark
+
+        tpch = declared_constraint_types(TPCHBenchmark(scale_factor=0.01, output_dir=tmp_path))
+        ssb = declared_constraint_types(SSBBenchmark(scale_factor=0.01, output_dir=tmp_path))
+
+        assert tpch == {TuningType.PRIMARY_KEYS, TuningType.FOREIGN_KEYS}
+        assert ssb == {TuningType.PRIMARY_KEYS}
+
+    @pytest.mark.parametrize(
+        "candidate",
+        [None, object(), Mock(), Mock(get_create_tables_sql=Mock(side_effect=TypeError("no tuning_config")))],
+    )
+    def test_probe_is_unknown_when_the_benchmark_cannot_say(self, candidate):
+        assert declared_constraint_types(candidate) is None
+
+    def test_unique_and_check_toggles_without_declared_constraints_give_no_drop(self):
+        ledger = AppliedTuningLedger()
+        ledger.record("CREATE TABLE nation (n_nationkey INTEGER PRIMARY KEY)", PHASE_DDL)
+        ledger.record("CREATE TABLE region (r_regionkey INTEGER REFERENCES nation (n_nationkey))", PHASE_DDL)
+        config = UnifiedTuningConfiguration()
+
+        _reconcile(
+            config,
+            ledger,
+            "duckdb",
+            declared_constraints=frozenset({TuningType.PRIMARY_KEYS, TuningType.FOREIGN_KEYS}),
+        )
+
+        assert ledger.dropped == []
+        assert [item.intent for item in ledger.satisfied] == ["primary_keys", "foreign_keys"]
+
+    @pytest.mark.parametrize("platform", ["duckdb", "datafusion", "postgresql"])
+    def test_declared_keys_that_were_not_rendered_still_drop(self, platform):
+        ledger = AppliedTuningLedger()
+
+        _reconcile(
+            UnifiedTuningConfiguration(),
+            ledger,
+            platform,
+            declared_constraints=frozenset({TuningType.PRIMARY_KEYS, TuningType.FOREIGN_KEYS}),
+        )
+
+        assert {item.intent: item.reason for item in ledger.dropped} == {
+            "primary_keys": NOT_RENDERED_REASON,
+            "foreign_keys": NOT_RENDERED_REASON,
+        }
+
+    def test_unknown_declarations_reconcile_every_enabled_toggle(self):
+        ledger = AppliedTuningLedger()
+
+        _reconcile(UnifiedTuningConfiguration(), ledger, "datafusion", declared_constraints=None)
+
+        assert [item.intent for item in ledger.dropped] == [
+            "primary_keys",
+            "foreign_keys",
+            "unique_constraints",
+            "check_constraints",
+        ]

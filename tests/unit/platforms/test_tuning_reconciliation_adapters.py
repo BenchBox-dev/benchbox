@@ -212,8 +212,9 @@ class TestFamilies:
         adapter = _tuned(DataFusionAdapter(type="datafusion"))
         config = UnifiedTuningConfiguration()
         adapter.unified_tuning_configuration = config
+        adapter.benchmark = TPCHBenchmark(scale_factor=0.01, output_dir=tmp_path)
         connection = adapter.create_connection()
-        adapter.create_schema(TPCHBenchmark(scale_factor=0.01, output_dir=tmp_path), connection)
+        adapter.create_schema(adapter.benchmark, connection)
         adapter.apply_unified_tuning(config, connection)
 
         adapter._reconcile_requested_tuning(config)
@@ -221,8 +222,6 @@ class TestFamilies:
         assert _drops(adapter) == {
             "primary_keys": NOT_RENDERED_REASON,
             "foreign_keys": NOT_RENDERED_REASON,
-            "unique_constraints": NOT_RENDERED_REASON,
-            "check_constraints": NOT_RENDERED_REASON,
         }
         assert adapter._applied_tuning_ledger.statements == []
         assert _status(adapter) == NOOP
@@ -314,6 +313,16 @@ class TestSeam:
         adapter._reconcile_requested_tuning(_layout_config(sorting=_columns("L_ORDERKEY")))
 
         assert adapter._applied_tuning_ledger.dropped == []
+
+    def test_constraint_toggles_follow_what_the_run_benchmark_declares(self, tmp_path):
+        from benchbox.core.ssb.benchmark import SSBBenchmark
+
+        adapter = self._adapter()
+        adapter.benchmark = SSBBenchmark(scale_factor=0.01, output_dir=tmp_path)
+
+        adapter._reconcile_requested_tuning(UnifiedTuningConfiguration())
+
+        assert _drops(adapter) == {"primary_keys": NOT_RENDERED_REASON}
 
     def test_reconciliation_error_fails_closed_with_a_blocking_drop(self, monkeypatch):
         adapter = self._adapter()

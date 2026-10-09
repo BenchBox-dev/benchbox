@@ -14,7 +14,7 @@ from benchbox.core.tuning.applied_ledger import (
     AppliedTuningLedger,
 )
 from benchbox.core.tuning.capability_registry import TuningCapability, get_capability
-from benchbox.core.tuning.interface import TuningType
+from benchbox.core.tuning.interface import TuningType, UnifiedTuningConfiguration
 from benchbox.core.tuning.introspection import normalize_identifier, statement_table
 
 NOT_RENDERED_REASON = "adapter rendered no statement"
@@ -120,7 +120,25 @@ class RequestedIntent:
         return f"{self.tuning_type.value}:{self.table} ({', '.join(self.columns)})"
 
 
-def requested_intents(config: Any) -> list[RequestedIntent]:
+def declared_constraint_types(benchmark: Any) -> frozenset[TuningType] | None:
+    generate = getattr(benchmark, "get_create_tables_sql", None)
+    if not callable(generate):
+        return None
+    try:
+        ddl = generate(dialect="duckdb", tuning_config=UnifiedTuningConfiguration())
+    except Exception:
+        return None
+    if not isinstance(ddl, str):
+        return None
+    text = _SQL_STRING_LITERAL.sub(" ", _SQL_COMMENT.sub(" ", ddl))
+    return frozenset(
+        tuning_type
+        for _attribute, tuning_type in CONSTRAINT_TOGGLES
+        if any(re.search(pattern, text, re.IGNORECASE) for pattern in _FOOTPRINTS[tuning_type])
+    )
+
+
+def requested_intents(config: Any, declared_constraints: frozenset[TuningType] | None = None) -> list[RequestedIntent]:
     intents: list[RequestedIntent] = []
     for table_name, table_tuning in (getattr(config, "table_tunings", None) or {}).items():
         for attribute, tuning_type in LAYOUT_SLOTS:
@@ -129,7 +147,8 @@ def requested_intents(config: Any) -> list[RequestedIntent]:
                 intents.append(RequestedIntent(tuning_type, str(table_name), tuple(c.name for c in columns)))
     for attribute, tuning_type in CONSTRAINT_TOGGLES:
         toggle = getattr(config, attribute, None)
-        if toggle is not None and getattr(toggle, "enabled", False):
+        declared = declared_constraints is None or tuning_type in declared_constraints
+        if toggle is not None and getattr(toggle, "enabled", False) and declared:
             intents.append(RequestedIntent(tuning_type))
     optimizations = getattr(config, "platform_optimizations", None)
     for attribute, tuning_type in OPTIMIZATION_FLAGS:
@@ -144,9 +163,10 @@ def reconcile_requested_intents(
     platform: str,
     *,
     sorted_tables: Iterable[str] = (),
+    declared_constraints: frozenset[TuningType] | None = None,
 ) -> None:
     executed_sorts = {_bare_table(table) for table in sorted_tables}
-    for intent in requested_intents(config):
+    for intent in requested_intents(config, declared_constraints):
         capability = get_capability(platform, intent.tuning_type)
         footprints = _footprints(intent.tuning_type, capability)
 
@@ -296,6 +316,7 @@ __all__ = [
     "OPTIMIZATION_FLAGS",
     "RECONCILIATION_FAILED_INTENT",
     "RequestedIntent",
+    "declared_constraint_types",
     "reconcile_requested_intents",
     "requested_intents",
 ]

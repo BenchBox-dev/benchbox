@@ -96,8 +96,9 @@ DataFrame platforms use a different tuning configuration and are not
 reconciled.
 
 The requested intents are each table's partitioning, clustering,
-distribution and sorting columns, each enabled constraint type, and each
-enabled platform optimization flag. For each intent, in order:
+distribution and sorting columns, each enabled constraint type that the
+benchmark declares, and each enabled platform optimization flag. For each
+intent, in order:
 
 1. **Evidence.** An executed `ddl` or `post_load` statement on the same table
    whose SQL carries the footprint of that tuning type, with the requested
@@ -132,9 +133,14 @@ produce `failed`; a ledger whose only outcomes are drops is `noop`. If
 reconciliation raises, it records the blocking drop `tuning_reconciliation`
 with the error instead of passing silently.
 
-Constraint toggles are reconciled as requested. No shipped benchmark declares
-`UNIQUE` or `CHECK` constraints and no adapter renders them, so a
-configuration that enables them records a blocking drop for each.
+A constraint toggle is an intent only when the benchmark declares a
+constraint of that type. The run's benchmark is asked for its `CREATE TABLE`
+statements with every constraint enabled, and the constraint types found in
+them are the declared ones. No shipped benchmark declares `UNIQUE` or `CHECK`
+constraints, so enabling them records nothing. Declared primary or foreign
+keys that the platform does not render are still dropped. When the benchmark
+cannot answer (no `get_create_tables_sql`, an error, or a result that is not
+SQL text), every enabled toggle is reconciled, which errs toward a drop.
 
 ## Statement classes (per phase x mechanism)
 

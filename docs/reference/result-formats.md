@@ -239,9 +239,10 @@ to answer what a run requested and what it applied:
   `platform.tuning` itself.
   - `dropped` lists requested intents that no executed statement realized, each
     with a `reason`. A dropped intent blocks `applied_verified`. After the data
-    loads on a SQL platform, the run checks every requested intent (each table's partitioning,
-    clustering, distribution and sorting, each enabled constraint type, and
-    each enabled platform optimization) against the ledger. An intent with no
+    loads on a SQL platform, the run checks every requested intent (each
+    table's partitioning, clustering, distribution and sorting, each enabled
+    constraint type that the benchmark declares, and each enabled platform
+    optimization) against the ledger. An intent with no
     executed, failed, dropped or satisfied record is added here. Its reason is
     the capability registry's note when the registry says the platform does not
     render that tuning type, and `adapter rendered no statement` otherwise.
