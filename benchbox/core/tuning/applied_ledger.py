@@ -349,10 +349,22 @@ class _RecordingProxy:
         self._record_all(statements, EXECUTED)
         return result
 
-    def _run_verb(self, fn: Any, statement: Any, args: tuple, kwargs: dict) -> Any:
-        statements = [] if _is_dry_run(args, kwargs) else self._recordable_statements(statement)
+    def _run_verb(self, fn: Any, args: tuple, kwargs: dict) -> Any:
+        statements: list[str] = []
         try:
-            result = fn(statement, *args, **kwargs)
+            name = _first_parameter_name(fn)
+            if args:
+                statement, rest, rest_kwargs = args[0], args[1:], kwargs
+            elif name in kwargs:
+                statement, rest, rest_kwargs = kwargs[name], args, {k: v for k, v in kwargs.items() if k != name}
+            else:
+                raise LookupError(name)
+            if not _is_dry_run(rest, rest_kwargs):
+                statements = self._recordable_statements(statement)
+        except Exception as exc:
+            logger.debug("applied-ledger statement capture degraded: %s", exc)
+        try:
+            result = fn(*args, **kwargs)
         except Exception as exc:
             self._record_all(statements, STATEMENT_FAILED, exc)
             raise
@@ -362,6 +374,16 @@ class _RecordingProxy:
             return _RecordingJob(result, self._ledger, self._phase, statements)
         self._record_all(statements, EXECUTED)
         return result
+
+
+def _first_parameter_name(fn: Any) -> str | None:
+    import inspect
+
+    for parameter in inspect.signature(fn).parameters.values():
+        if parameter.kind in (parameter.POSITIONAL_OR_KEYWORD, parameter.KEYWORD_ONLY):
+            return parameter.name
+        break
+    return None
 
 
 def _is_dry_run(args: tuple, kwargs: dict) -> bool:
@@ -443,8 +465,8 @@ class RecordingConnection(_RecordingProxy):
         attribute = getattr(self._conn, name)
         if name in self._verbs and callable(attribute):
 
-            def call(statement: Any, *args: Any, **kwargs: Any) -> Any:
-                return self._run_verb(attribute, statement, args, kwargs)
+            def call(*args: Any, **kwargs: Any) -> Any:
+                return self._run_verb(attribute, args, kwargs)
 
             return call
         return attribute

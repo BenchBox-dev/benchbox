@@ -158,7 +158,7 @@ _LEADING_COMMENTS_RE = re.compile(r"\A(?:\s*(?:--[^\n]*(?:\n|$)|/\*.*?\*/))+\s*"
 _FIXED_SIZE_ARRAY_TYPE_RE = re.compile(r"\b([A-Za-z]\w*)\s*\[\s*\d+\s*\]")
 _ARRAY_FIXED_SIZE_SUFFIX_RE = re.compile(r"(>)\s*\[\s*\d+\s*\]")
 _CREATE_TABLE_COLUMN_LIST_RE = re.compile(
-    r"\A\s*CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[^\s(]+\s*\(",
+    r"\A\s*CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:\"[^\"]*\"|`[^`]*`|[^\s(\"`])+\s*\(",
     re.IGNORECASE,
 )
 
@@ -168,15 +168,25 @@ def _column_list_end(statement: str) -> int:
     if not match:
         return len(statement)
     depth = 1
+    quote = ""
     cursor = match.end()
-    while cursor < len(statement) and depth:
+    while cursor < len(statement):
         ch = statement[cursor]
-        if ch == "(":
+        cursor += 1
+        if quote:
+            if ch == "\\" and quote == "'":
+                cursor += 1
+            elif ch == quote:
+                quote = ""
+        elif ch in "'\"`":
+            quote = ch
+        elif ch == "(":
             depth += 1
         elif ch == ")":
             depth -= 1
-        cursor += 1
-    return cursor if depth == 0 else len(statement)
+            if depth == 0:
+                return cursor
+    return len(statement)
 
 
 def _strip_balanced_paren_constraints(statement: str) -> str:
