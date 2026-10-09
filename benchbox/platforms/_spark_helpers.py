@@ -157,6 +157,26 @@ _REPEATED_SPACE_RE = re.compile(r"[ \t]{2,}")
 _LEADING_COMMENTS_RE = re.compile(r"\A(?:\s*(?:--[^\n]*(?:\n|$)|/\*.*?\*/))+\s*", re.DOTALL)
 _FIXED_SIZE_ARRAY_TYPE_RE = re.compile(r"\b([A-Za-z]\w*)\s*\[\s*\d+\s*\]")
 _ARRAY_FIXED_SIZE_SUFFIX_RE = re.compile(r"(>)\s*\[\s*\d+\s*\]")
+_CREATE_TABLE_COLUMN_LIST_RE = re.compile(
+    r"\A\s*CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[^\s(]+\s*\(",
+    re.IGNORECASE,
+)
+
+
+def _column_list_end(statement: str) -> int:
+    match = _CREATE_TABLE_COLUMN_LIST_RE.match(statement)
+    if not match:
+        return len(statement)
+    depth = 1
+    cursor = match.end()
+    while cursor < len(statement) and depth:
+        ch = statement[cursor]
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        cursor += 1
+    return cursor if depth == 0 else len(statement)
 
 
 def _strip_balanced_paren_constraints(statement: str) -> str:
@@ -227,7 +247,9 @@ def optimize_spark_table_definition(
 
     if ")" in statement:
         fmt = (table_format or "parquet").upper()
-        statement = statement.rstrip(";").rstrip() + f" USING {fmt}"
+        statement = statement.rstrip(";").rstrip()
+        end = _column_list_end(statement)
+        statement = f"{statement[:end]} USING {fmt}{statement[end:]}"
     return statement
 
 
@@ -255,6 +277,8 @@ def purge_orphaned_warehouse_directory(spark: Any, *, logger: logging.Logger) ->
 
 
 class SparkLikeAdapterMixin:
+    ledger_execute_verbs = ("sql",)
+
     def apply_constraint_configuration(
         self,
         primary_key_config: Any,

@@ -310,6 +310,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   there. Receipt entries for constraints carry `kind: "constraint"` and a
   `constraint_type`. Quoted non-ASCII table names, such as "É", are now found
   consistently with DuckDB's `lower(table_name)` catalog filters.
+- **Tuning statements issued through `.sql()` and `.query()` are recorded.**
+  Spark, PySpark, LakeSail, Velox, DataFusion and BigQuery tuned schema DDL now
+  reaches the applied-tuning ledger, so a tuned Spark run no longer reports
+  `noop`. BigQuery statements are recorded with the final state of the job, not
+  at submission. Multi-statement strings are split before recording, so a
+  leading `SET` can no longer hide a tuning statement. Schema capture also
+  recognises `PARTITIONED BY`, `CLUSTERED BY`, `DISTKEY`, `DISTSTYLE`,
+  `DUPLICATE KEY`, `PRIMARY INDEX`, `distribution =`, `partitioning =`,
+  `sorted_by` and `bucketed_by`.
+  Spark table definitions now put `USING <format>` before a trailing
+  `PARTITIONED BY` or `CLUSTER BY`, which Spark requires.
 
 ### Changed
 

@@ -86,6 +86,7 @@ class BigQueryAdapter(PlatformAdapter):
     physical_identifier_case = "upper"
     _DELIMITED_FORMATS = frozenset({"tbl", "csv"})
     plan_capture_phase_eligible = False
+    ledger_execute_verbs = ("query",)
 
     def __init__(self, **config):
         super().__init__(**config)

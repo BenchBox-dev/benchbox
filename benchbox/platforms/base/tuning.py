@@ -62,6 +62,7 @@ class TuningHooksMixin:
     _supported_tuning_type_names: Iterable[str] | None = None
     physical_identifier_case: str = "preserve"
     post_load_connection_recording: bool = True
+    ledger_execute_verbs: tuple[str, ...] = ()
 
     @staticmethod
     def table_tuning_for(effective_config: Any, table_name: str) -> Any:
@@ -85,7 +86,11 @@ class TuningHooksMixin:
 
         ledger = getattr(self, "_applied_tuning_ledger", None)
         record = ledger is not None and self.post_load_connection_recording
-        target = recording_connection(connection, ledger, PHASE_POST_LOAD) if record else connection
+        target = (
+            recording_connection(connection, ledger, PHASE_POST_LOAD, execute_verbs=self.ledger_execute_verbs)
+            if record
+            else connection
+        )
         performed = False
         start = mono_time()
         try:

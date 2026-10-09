@@ -150,6 +150,14 @@ class TestOptimizeSparkTableDefinition:
         assert "DELTA" not in result.upper()
         assert result.endswith("USING PARQUET")
 
+    @pytest.mark.parametrize("clause", ["PARTITIONED BY (id)", "CLUSTER BY (id)"])
+    def test_using_precedes_trailing_tuning_clause(self, clause: str) -> None:
+        result = optimize_spark_table_definition(
+            f"CREATE TABLE t (id INT, amount DECIMAL(10,2))\n{clause};",
+            table_format="delta",
+        )
+        assert result == f"CREATE TABLE t (id INT, amount DECIMAL(10,2)) USING DELTA\n{clause}"
+
     def test_non_create_table_unchanged(self) -> None:
         sql = "INSERT INTO t VALUES (1)"
         assert optimize_spark_table_definition(sql, table_format="parquet") == sql

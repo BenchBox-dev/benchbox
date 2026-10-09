@@ -594,7 +594,12 @@ class PlatformAdapter(
 
             benchmark_type = run_config.get("benchmark_type", "olap")
             self.configure_for_benchmark(
-                recording_connection(connection, self._applied_tuning_ledger, PHASE_SESSION),
+                recording_connection(
+                    connection,
+                    self._applied_tuning_ledger,
+                    PHASE_SESSION,
+                    execute_verbs=self.ledger_execute_verbs,
+                ),
                 benchmark_type,
             )
 
@@ -921,6 +926,7 @@ class PlatformAdapter(
                 getattr(self, "_applied_tuning_ledger", None),
                 PHASE_DDL,
                 statement_filter=is_schema_tuning_statement,
+                execute_verbs=self.ledger_execute_verbs,
             )
             if schema_records_ddl
             else connection
