@@ -4,7 +4,15 @@ import logging
 from typing import Any, Literal
 
 from benchbox.core.dataframe.tuning.interface import DataFrameTuningConfiguration
+from benchbox.core.tuning.capability_registry import resolve_platform_key
 from benchbox.core.tuning.interface import UnifiedTuningConfiguration
+
+
+def build_default_unified_config(platform: str | None) -> UnifiedTuningConfiguration:
+    config = UnifiedTuningConfiguration()
+    if platform and resolve_platform_key(str(platform).split(":", 1)[0]) == "duckdb":
+        config.check_constraints.enabled = False
+    return config
 
 
 def build_baseline_unified_config() -> UnifiedTuningConfiguration:

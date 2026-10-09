@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from benchbox.cli.commands.run import _load_unified_tuning_config
-from benchbox.cli.tuning_resolver import TuningSource
+from benchbox.cli.tuning_resolver import TuningMode, TuningSource
 
 pytestmark = [
     pytest.mark.unit,
@@ -46,3 +46,26 @@ def test_dataframe_run_loads_without_the_sql_guard(tmp_path):
     _load_unified_tuning_config(s)
 
     assert s.loaded_unified_config == "loaded"
+
+
+@pytest.mark.parametrize(
+    ("mode", "source"),
+    [(TuningMode.TUNED, TuningSource.FALLBACK), (TuningMode.AUTO, TuningSource.SMART_DEFAULTS)],
+)
+@pytest.mark.parametrize(("platform", "check_enabled"), [("duckdb", False), ("postgresql", True)])
+def test_fallback_and_auto_request_check_constraints_except_on_duckdb(mode, source, platform, check_enabled):
+    s = SimpleNamespace(
+        tuning_resolution=SimpleNamespace(config_file=None, source=source, mode=mode),
+        resolved_mode="sql",
+        config=MagicMock(),
+        logger=None,
+        ctx=MagicMock(),
+        platform=platform,
+        non_interactive=True,
+        quiet=True,
+    )
+
+    _load_unified_tuning_config(s)
+
+    assert s.loaded_unified_config.check_constraints.enabled is check_enabled
+    assert s.loaded_unified_config.primary_keys.enabled is True

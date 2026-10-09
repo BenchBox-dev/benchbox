@@ -82,6 +82,7 @@ from benchbox.cli.tuning_resolver import (
 )
 from benchbox.cli.tuning_runtime import (
     build_baseline_unified_config,
+    build_default_unified_config,
     infer_runtime_tuning_mode,
     resolve_dataframe_tuning_config,
 )
@@ -764,8 +765,6 @@ def _resolve_tuning(s: types.SimpleNamespace, *, non_interactive_override: bool 
 
 def _load_unified_tuning_config(s: types.SimpleNamespace, *, non_interactive_override: bool | None = None) -> None:
     s.loaded_unified_config = None
-    from benchbox.core.tuning.interface import UnifiedTuningConfiguration
-
     tuning_resolution = s.tuning_resolution
     if tuning_resolution.config_file:
         if getattr(s, "resolved_mode", None) == "sql" and is_dataframe_tuning_file(tuning_resolution.config_file):
@@ -814,13 +813,13 @@ def _load_unified_tuning_config(s: types.SimpleNamespace, *, non_interactive_ove
                     tuning_resolution.source = TuningSource.BASELINE
                 console.print("[green]✅ Tuning configuration completed[/green]")
             else:
-                s.loaded_unified_config = UnifiedTuningConfiguration()
+                s.loaded_unified_config = build_default_unified_config(s.platform)
         else:
-            s.loaded_unified_config = UnifiedTuningConfiguration()
+            s.loaded_unified_config = build_default_unified_config(s.platform)
         if s.logger:
             s.logger.debug("Using basic constraints-only configuration (fallback)")
     else:
-        s.loaded_unified_config = UnifiedTuningConfiguration()
+        s.loaded_unified_config = build_default_unified_config(s.platform)
         warn_sql_auto_mode(tuning_resolution, s.resolved_mode, console, s.logger, quiet=bool(s.quiet))
 
     s.tuning_source_value = tuning_resolution.source.value

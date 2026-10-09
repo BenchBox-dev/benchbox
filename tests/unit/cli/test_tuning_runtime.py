@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from benchbox.cli.tuning_runtime import build_baseline_unified_config, infer_runtime_tuning_mode
+from benchbox.cli.tuning_runtime import (
+    build_baseline_unified_config,
+    build_default_unified_config,
+    infer_runtime_tuning_mode,
+)
 from benchbox.core.tuning.interface import TuningType, UnifiedTuningConfiguration
 
 pytestmark = [
@@ -53,3 +57,18 @@ def test_build_baseline_unified_config_reports_no_clustering_strategy() -> None:
     assert config.platform_optimizations.databricks_clustering_strategy == "none"
     assert config.platform_optimizations.z_ordering_enabled is False
     assert config.platform_optimizations.liquid_clustering_enabled is False
+
+
+@pytest.mark.parametrize("platform", ["duckdb", "DuckDB", "duckdb:memory"])
+def test_default_unified_config_disables_check_constraints_on_duckdb(platform: str) -> None:
+    config = build_default_unified_config(platform)
+
+    assert config.check_constraints.enabled is False
+    assert config.primary_keys.enabled is True
+    assert config.foreign_keys.enabled is True
+    assert config.unique_constraints.enabled is True
+
+
+@pytest.mark.parametrize("platform", [None, "motherduck", "postgresql", "snowflake"])
+def test_default_unified_config_keeps_check_constraints_elsewhere(platform: str | None) -> None:
+    assert build_default_unified_config(platform).to_dict() == UnifiedTuningConfiguration().to_dict()
