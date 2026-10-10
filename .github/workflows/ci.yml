@@ -1502,7 +1502,19 @@ jobs:
             _project/scripts/explorer_pipeline/
             _project/scripts/explorer_publish.py
             _project/scripts/results_explorer_snapshot_invariants.py
-            results-data/ results-explorer/ scripts/
+            results-data/ results-explorer/
+            scripts/assemble_public_site.py
+            scripts/capture_chart_images.py
+            scripts/check_doc_relative_links.py
+            scripts/check_example_syntax.py
+            scripts/generate_compat_docs.py
+            scripts/generate_landing_quickstarts.py
+            scripts/generate_query_docs.py
+            scripts/publication/
+            scripts/site_inputs.py
+            scripts/site_inventory.py
+            scripts/validate_example_references.py
+            scripts/validate_visualization_images.py
             .github/workflows/ci.yml .github/workflows/docs.yml Makefile README.md pyproject.toml uv.lock
           )
           RENDER_PATHS=(
@@ -1647,7 +1659,7 @@ jobs:
     if: ${{ needs.visual-inputs.outputs.render_changed == 'true' && github.event_name == 'pull_request' }}
     needs: [visual-inputs, docs-build]
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
@@ -1693,6 +1705,7 @@ jobs:
           PUBLIC_SITE_VISUAL_BASE_SHA: ${{ needs.visual-inputs.outputs.base_sha }}
           PUBLIC_SITE_VISUAL_BASELINE_CANDIDATES: ${{ needs.visual-inputs.outputs.baseline_candidates }}
           PUBLIC_SITE_VISUAL_BASELINE: ${{ runner.temp }}/public-site-visual-baseline
+          PUBLIC_SITE_VISUAL_BASELINE_WAIT_SECONDS: "4800"
         run: node scripts/download-public-site-visual-baseline.mjs
         working-directory: results-explorer
 
