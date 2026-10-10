@@ -293,12 +293,24 @@ def _resolve_source(
 
 
 def _redacted_publish_source(source_bundle: Path) -> tuple[Path | None, TemporaryDirectory[str] | None]:
+    source = Path(source_bundle)
     try:
-        payload = json.loads(Path(source_bundle).read_text(encoding="utf-8"))
+        payload = json.loads(source.read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        return Path(source_bundle), None
+        return source, None
     if not unanonymized_tuning_findings(payload):
-        return Path(source_bundle), None
+        for suffix in COMPANION_SUFFIXES:
+            companion = source.parent / (source.stem + suffix)
+            if not companion.exists():
+                continue
+            try:
+                companion_payload = json.loads(companion.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                return None, None
+            if unanonymized_tuning_findings(companion_payload):
+                break
+        else:
+            return Path(source_bundle), None
     try:
         loaded, _ = load_result_file(source_bundle)
     except (ResultLoadError, UnsupportedSchemaError, FileNotFoundError, OSError, ValueError):
@@ -315,7 +327,6 @@ def _redacted_publish_source(source_bundle: Path) -> tuple[Path | None, Temporar
         scratch.cleanup()
         return None, None
     redacted_path = Path(redacted)
-    source = Path(source_bundle)
     for suffix in COMPANION_SUFFIXES:
         if not (source.parent / (source.stem + suffix)).exists():
             continue
