@@ -247,3 +247,42 @@ The original focused scanner regressions passed 36 tests; the five additional
 fix groups passed 25 tests. The full policy unit file passed 716 tests with
 `-n 0`. `make comment-policy-check` scanned 5,749 files with zero violations
 and passed all 19 native syntax tests.
+
+### Findings D10-D12
+
+- Split runners: the review's plain `sudo`, `env` and `nohup` forms already
+  yielded comment findings on this head. The option-bearing
+  `sudo -u nobody python3 -c '# explanation'` form instead returned a coverage
+  error. `sudo` and `nohup` now use `runner_command_start` and the registered
+  option parser; `env` retains its existing strict `command_words` normalization.
+  `test_split_runner_interpreter_arguments_are_scanned` checks eight split forms.
+  Unsupported `sudo` and `nohup` flags fail closed in
+  `test_unknown_split_runner_options_fail_closed`.
+- `printf %%`: before the fix,
+  `printf '%%\n# explanation\n' | python3` reconstructed two percent bytes and
+  returned a syntax coverage error with the doubled-percent payload. The
+  formatter now reconstructs one percent byte. The valid Python fixture in
+  `test_piped_printf_escaped_percent_matches_shell_output` asserts the exact
+  source bytes reaching the Python scanner.
+- Pipeline sides: before the fix,
+  `echo '# hidden' | python3 | $dynamic` and
+  `echo 'pass' | $interpreter` both returned no findings. The adapter now scans
+  the first producer/consumer pair and reports a coverage error for a dynamic
+  immediate consumer. The gate ignores the quoted `$$|$${key}` sed delimiter
+  and still recognizes unspaced shell pipes. Regressions:
+  `test_dynamic_later_pipeline_command_does_not_hide_interpreter_input`,
+  `test_dynamic_pipeline_consumer_fails_closed`,
+  `test_dynamic_pipeline_consumer_without_spaces_fails_closed`, and
+  `test_quoted_pipe_delimiter_does_not_trigger_pipeline_gate`.
+
+The focused D10-D12 regression selection passed 17 tests with
+`BENCHBOX_SKIP_TEST_LOCK=1 uv run -- python -m pytest tests/unit/scripts/test_comment_policy.py -k 'split_runner_interpreter_arguments or unknown_split_runner_options or dynamic_pipeline_consumer or dynamic_later_pipeline_command or piped_printf_escaped_percent or quoted_pipe_delimiter' -q -n0`.
+The full policy unit file passed 739 tests with
+`BENCHBOX_SKIP_TEST_LOCK=1 uv run -- python -m pytest tests/unit/scripts/test_comment_policy.py -q -n0`.
+`make comment-policy-check` passed: 5,776 source files, zero violations,
+zero enforced failures, and all 19 native syntax tests passed.
+
+The medium-test job now installs the locked TypeScript package in an isolated
+temporary directory and exports its module path. A local npm 11.19.1 install
+with the same manifest and lockfile passed, and the MDX scanner test passed
+four cases using that isolated TypeScript path.
