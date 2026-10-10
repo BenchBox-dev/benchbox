@@ -468,6 +468,12 @@ class TestLiteralsTheScannerCannotMask:
         receipt = _receipt(ddl, _state([_fact(CONSTRAINT_PRIMARY_KEY, ["a"], table="t")]))
         assert receipt.corroborated is False
 
+    def test_unclosed_block_comment_is_unverifiable(self):
+        ddl = "CREATE TABLE t (a INTEGER PRIMARY KEY) /* unclosed"
+        assert _classify(_stmt(ddl)) == (UNVERIFIABLE, [])
+        receipt = _receipt(ddl, _state([_fact(CONSTRAINT_PRIMARY_KEY, ["a"], table="t")]))
+        assert receipt.corroborated is False
+
     def test_brackets_without_constraint_keywords_keep_layout_intents(self):
         klass, intents = _classify(_stmt("CREATE TABLE t (`a` Array(Int64) DEFAULT [1]) ORDER BY (a)"))
         assert klass == "verifiable"

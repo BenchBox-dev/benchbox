@@ -214,6 +214,7 @@ _UNMASKED_LITERAL_RES = (
     re.compile(r"\$(?:[^\W$]\w*)?\$"),
     re.compile(r"(?<![A-Za-z0-9_$])[eE]'"),
     re.compile(r"/\*(?:(?!\*/).)*?/\*", re.DOTALL),
+    re.compile(r"/\*(?!.*\*/)", re.DOTALL),
     re.compile(r"\\['\"]"),
 )
 _DIALECT_DEPENDENT_QUOTE_RE = re.compile(r"[\[`]")
