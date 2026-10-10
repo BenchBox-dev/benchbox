@@ -434,13 +434,33 @@ class TestLiteralsTheScannerCannotMask:
             "CREATE TABLE t (a INTEGER PRIMARY KEY, b VARCHAR DEFAULT E'\\')' CHECK (length(b) > 0))",
             "CREATE TABLE t (a INTEGER PRIMARY KEY, b VARCHAR DEFAULT e'x' )",
             "CREATE TABLE t (a INTEGER PRIMARY KEY /* x /* y */ ) */, b INTEGER CHECK (b > 0))",
+            "CREATE TABLE IF NOT EXISTS t (a INTEGER PRIMARY KEY, b VARCHAR[] DEFAULT [']', ')', 'x'] "
+            "CHECK (length(b) > 0))",
+            "CREATE TABLE t (a INTEGER PRIMARY KEY, b INTEGER[] DEFAULT [1] CHECK (len(b) > 0))",
+            "CREATE TABLE t (a INTEGER PRIMARY KEY, b VARCHAR DEFAULT ']' CHECK (b <> ''))",
+            "CREATE TABLE t (a INTEGER PRIMARY KEY, b VARCHAR DEFAULT 1 ` 2 CHECK (b <> ''))",
         ],
-        ids=["dollar", "tagged-dollar", "escape-string", "lowercase-escape-string", "nested-block-comment"],
+        ids=[
+            "dollar",
+            "tagged-dollar",
+            "escape-string",
+            "lowercase-escape-string",
+            "nested-block-comment",
+            "list-literal-with-quoted-brackets",
+            "list-literal",
+            "bracket-in-string",
+            "backtick-operator",
+        ],
     )
     def test_statement_with_an_unmaskable_literal_is_unverifiable(self, ddl):
         assert _classify(_stmt(ddl)) == (UNVERIFIABLE, [])
         receipt = _receipt(ddl, _state([_fact(CONSTRAINT_PRIMARY_KEY, ["a"], table="t")]))
         assert receipt.corroborated is False
+
+    def test_brackets_without_constraint_keywords_keep_layout_intents(self):
+        klass, intents = _classify(_stmt("CREATE TABLE t (`a` Array(Int64) DEFAULT [1]) ORDER BY (a)"))
+        assert klass == "verifiable"
+        assert [(i.kind, i.columns) for i in intents] == [(KIND_SORT_KEY, ("a",))]
 
     def test_masked_comments_and_strings_still_parse(self):
         ddl = (

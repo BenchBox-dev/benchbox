@@ -189,7 +189,10 @@ constraint text that is not fully parsed: a `CHECK` constraint, a named
 `REFERENCES` without a column list, trailing clause text, an unbalanced
 list, a second SQL statement in the same ledger entry, or a literal the
 scanner cannot mask exactly: a dollar-quoted string (`$$...$$` or
-`$tag$...$tag$`), an escape string (`E'...'`), or a nested block comment.
+`$tag$...$tag$`), an escape string (`E'...'`), a nested block comment, or a
+`[` or backtick anywhere in a statement that carries constraint text. DuckDB
+reads `[` as list syntax and a backtick as an operator, not as identifier
+quotes, so the scanner cannot tell which text they enclose.
 Such a statement is `unverifiable` as a whole, including any sort, partition
 or cluster clause in it. A constraint entry is `unverifiable` when the introspector does not read
 that constraint type, which is every platform except DuckDB, and when a
@@ -275,7 +278,11 @@ that itself reaches the cap remains explicitly truncated.
   clause to those types, the current database and schema, and the tables
   that carry constraint intents. Those table names come from the same parser
   as the intents, so a quoted name such as `"my t"` or `"q""t"` is looked up
-  by its physical name. `NOT NULL` and `CHECK` rows are never read, so `CHECK` constraints
+  by its physical name. Because those names are unqualified, a table name
+  that also exists in another schema or attached database, including a
+  temporary table, degrades the whole state: the catalog cannot show which of
+  them the statement changed, for example after `SET schema` or `USE`.
+  `NOT NULL` and `CHECK` rows are never read, so `CHECK` constraints
   stay `unverifiable`. Each row becomes a `constraint` fact carrying
   `constraint_column_names` as its columns and, for foreign keys,
   `referenced_table` and `referenced_column_names`. A DuckDB build whose

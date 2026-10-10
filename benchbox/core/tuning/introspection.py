@@ -215,6 +215,7 @@ _UNMASKED_LITERAL_RES = (
     re.compile(r"(?<![A-Za-z0-9_$])[eE]'"),
     re.compile(r"/\*(?:(?!\*/).)*?/\*", re.DOTALL),
 )
+_DIALECT_DEPENDENT_QUOTE_RE = re.compile(r"[\[`]")
 _ASCII_LOWER = str.maketrans(string.ascii_uppercase, string.ascii_lowercase)
 _LAYOUT_KEYWORD_RES = (_ORDER_BY_KEYWORD_RE, _PARTITION_BY_KEYWORD_RE, _CLUSTER_BY_KEYWORD_RE)
 _TRANSIENT_PREFIXES = ("set ", "pragma ", "set\t", "pragma\t", "reset ", "use ")
@@ -528,6 +529,8 @@ def _constraint_intents(statement_text: str) -> list[_Intent] | None:
     if body is None:
         return []
     if any(pattern.search(statement_text) for pattern in _UNMASKED_LITERAL_RES):
+        return None
+    if _DIALECT_DEPENDENT_QUOTE_RE.search(statement_text) and _CONSTRAINT_KEYWORD_RE.search(statement_text):
         return None
     begin, end = body
     if end < 0:

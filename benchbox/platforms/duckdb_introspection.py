@@ -76,11 +76,18 @@ class DuckDBTuningIntrospector:
                 )
             )
 
+        tables_with_constraints = constraint_tables(ledger)
         try:
-            constraints, constraints_truncated = _read_constraints(connection, constraint_tables(ledger))
+            ambiguous = _tables_in_several_schemas(connection, tables_with_constraints)
+            constraints, constraints_truncated = _read_constraints(connection, tables_with_constraints)
         except Exception as exc:
             logger.debug("duckdb constraint introspection degraded: %s", exc)
             return IntrospectedState(platform=self.platform, error=f"duckdb_constraints read failed: {exc}")
+        if ambiguous:
+            return IntrospectedState(
+                platform=self.platform,
+                error=f"constraint tables {ambiguous} exist in more than one database schema",
+            )
         objects.extend(constraints)
         return IntrospectedState(
             platform=self.platform,
@@ -88,6 +95,20 @@ class DuckDBTuningIntrospector:
             truncated=truncated or constraints_truncated,
             constraint_types=_CATALOG_CONSTRAINT_TYPES,
         )
+
+
+def _tables_in_several_schemas(connection: Any, tables: set[str]) -> list[str]:
+    if not tables:
+        return []
+    ordered_tables = sorted(tables)
+    placeholders = ", ".join("?" for _ in ordered_tables)
+    rows = connection.execute(
+        "SELECT lower(table_name) FROM duckdb_tables() "
+        f"WHERE lower(table_name) IN ({placeholders}) "
+        "GROUP BY lower(table_name) HAVING count(*) > 1",
+        ordered_tables,
+    ).fetchall()
+    return sorted(str(row[0]) for row in rows)
 
 
 def _read_constraints(connection: Any, tables: set[str]) -> tuple[list[IntrospectedObject], bool]:

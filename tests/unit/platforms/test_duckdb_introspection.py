@@ -17,6 +17,7 @@ from benchbox.core.tuning.applied_ledger import (
     APPLIED_VERIFIED,
     PHASE_DDL,
     PHASE_POST_LOAD,
+    PHASE_SESSION,
     AppliedTuningLedger,
     recording_connection,
 )
@@ -302,10 +303,13 @@ class TestDuckDBConstraintFacts:
         con = _constrained_connection()
         con.execute("CREATE TABLE part (p_partkey INTEGER PRIMARY KEY)")
         con.execute("CREATE SCHEMA other")
-        con.execute("CREATE TABLE other.customer (c_name VARCHAR PRIMARY KEY, c_custkey INTEGER)")
+        con.execute("CREATE TABLE other.nation (n_nationkey INTEGER PRIMARY KEY)")
 
-        state = DuckDBTuningIntrospector().introspect(con, _ledger_for(_CONSTRAINED_DDL[0]))
+        state = DuckDBTuningIntrospector().introspect(
+            con, _ledger_for(_CONSTRAINED_DDL[0], "CREATE TABLE nation (n_nationkey INTEGER PRIMARY KEY)")
+        )
 
+        assert state.error is None
         assert [(obj.table, obj.columns) for obj in state.objects] == [("customer", ("c_custkey",))]
 
     def test_ledger_statements_corroborate_against_the_catalog(self):
@@ -360,7 +364,7 @@ class TestDuckDBConstraintFacts:
             def execute(self, sql, params=None):
                 if "duckdb_constraints()" in sql:
                     raise RuntimeError("constraint catalog exploded")
-                return con.execute(sql)
+                return con.execute(sql, params) if params is not None else con.execute(sql)
 
         state = DuckDBTuningIntrospector().introspect(_ConstraintsFail(), _ledger_for(*_CONSTRAINED_DDL))
         assert state.error is not None and "duckdb_constraints" in state.error
@@ -507,3 +511,67 @@ class TestDuckDBUnmaskableLiterals:
         receipt = corroborate(ledger, DuckDBTuningIntrospector().introspect(con, ledger))
         assert receipt.corroborated is False
         assert [entry.verdict for entry in receipt.entries] == [UNVERIFIABLE]
+
+
+class TestDuckDBListLiterals:
+    @pytest.mark.parametrize(
+        "executed",
+        [
+            "CREATE TABLE IF NOT EXISTS t (a INTEGER PRIMARY KEY, b VARCHAR[] DEFAULT [']', ')', 'x'] "
+            "CHECK (length(b) > 0))",
+            "CREATE TABLE IF NOT EXISTS t (a INTEGER PRIMARY KEY, b INTEGER[] DEFAULT [1, 2] CHECK (len(b) > 0))",
+            "CREATE TABLE IF NOT EXISTS t (a INTEGER PRIMARY KEY, b VARCHAR DEFAULT ([')'])[1] CHECK (b <> ''))",
+        ],
+        ids=["quoted-brackets-in-list", "plain-list", "subscripted-list"],
+    )
+    def test_list_syntax_does_not_let_an_existing_key_corroborate(self, executed):
+        con = duckdb.connect(":memory:")
+        con.execute("CREATE TABLE t (a INTEGER PRIMARY KEY, b VARCHAR[])")
+        ledger = AppliedTuningLedger()
+        recording_connection(con, ledger, PHASE_DDL).execute(executed)
+        receipt = corroborate(ledger, DuckDBTuningIntrospector().introspect(con, ledger))
+        assert receipt.corroborated is False
+        assert [entry.verdict for entry in receipt.entries] == [UNVERIFIABLE]
+
+
+class TestDuckDBNameResolution:
+    @pytest.mark.parametrize(
+        ("setup", "switch"),
+        [
+            ("CREATE SCHEMA other; CREATE TABLE other.t (a INTEGER PRIMARY KEY)", "SET schema = 'other'"),
+            ("CREATE SCHEMA other; CREATE TABLE other.t (a INTEGER PRIMARY KEY)", "SET search_path = 'other'"),
+            ("CREATE SCHEMA other; CREATE TABLE other.t (a INTEGER PRIMARY KEY)", "USE memory.other"),
+            ("ATTACH ':memory:' AS other_db; CREATE TABLE other_db.main.t (a INTEGER PRIMARY KEY)", "USE other_db"),
+        ],
+        ids=["set-schema", "set-search-path", "use-schema", "use-database"],
+    )
+    def test_table_in_the_switched_to_schema_does_not_corroborate_the_target(self, setup, switch):
+        con = duckdb.connect(":memory:")
+        con.execute("CREATE TABLE main.t (a INTEGER)")
+        con.execute(setup)
+        ledger = AppliedTuningLedger()
+        recording_connection(con, ledger, PHASE_DDL).execute("CREATE TABLE IF NOT EXISTS t (a INTEGER PRIMARY KEY)")
+        recording_connection(con, ledger, PHASE_SESSION).execute(switch)
+
+        state = DuckDBTuningIntrospector().introspect(con, ledger)
+        receipt = corroborate(ledger, state)
+
+        assert state.error is not None and "['t']" in state.error
+        assert receipt.corroborated is False
+        assert [entry.verdict for entry in receipt.entries if entry.kind == KIND_CONSTRAINT] == [UNVERIFIABLE]
+
+    def test_temporary_table_with_the_same_name_blocks_corroboration(self):
+        con = duckdb.connect(":memory:")
+        con.execute("CREATE TABLE t (a INTEGER PRIMARY KEY)")
+        con.execute("CREATE TEMP TABLE t (a INTEGER)")
+        ledger = _ledger_for("CREATE TABLE IF NOT EXISTS t (a INTEGER PRIMARY KEY)")
+        assert corroborate(ledger, DuckDBTuningIntrospector().introspect(con, ledger)).corroborated is False
+
+    def test_target_in_the_current_schema_alone_still_corroborates(self):
+        con = duckdb.connect(":memory:")
+        con.execute("CREATE SCHEMA other")
+        con.execute("CREATE TABLE other.u (a INTEGER PRIMARY KEY)")
+        ledger = AppliedTuningLedger()
+        recording_connection(con, ledger, PHASE_DDL).execute("CREATE TABLE t (a INTEGER PRIMARY KEY)")
+        receipt = corroborate(ledger, DuckDBTuningIntrospector().introspect(con, ledger))
+        assert receipt.corroborated is True
