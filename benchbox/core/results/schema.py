@@ -1518,8 +1518,18 @@ def _build_tuning_summary(result: BenchmarkResults) -> dict[str, Any]:
         summary["validation_status"] = validation_status
 
     from benchbox.core.tuning.policy_generation import TUNING_POLICY_GENERATION
+    from benchbox.core.tuning.template_evidence import evidence_state_for_run
 
     summary["tuning_policy_generation"] = TUNING_POLICY_GENERATION
+
+    state = evidence_state_for_run(
+        result.tuning_source_file,
+        result.platform,
+        result.benchmark_name,
+        tunings_applied=result.tunings_applied,
+    )
+    if state:
+        summary["template_evidence"] = state
 
     table_tunings = tuning_applied.get("table_tunings") or {}
     tuning_types = _tuning_types_present(tuning_applied)

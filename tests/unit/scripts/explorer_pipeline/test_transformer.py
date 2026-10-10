@@ -1575,3 +1575,29 @@ class TestKnownDefectExclusion:
         entry = BundleTransformer().to_manifest_entry(bundle_file)
 
         assert entry.ranking_exclusion_reason == "known_defective_data"
+
+
+class TestTemplateEvidence:
+    def _write_bundle(self, bundle_file: Path, tuning: dict | None) -> None:
+        data = copy.deepcopy(MINIMAL_BUNDLE)
+        if tuning is None:
+            data["platform"].pop("tuning", None)
+        else:
+            data["platform"]["tuning"] = tuning
+        bundle_file.write_text(json.dumps(data), encoding="utf-8")
+
+    def test_template_evidence_flows_to_manifest_and_detail(self, bundle_file: Path) -> None:
+        self._write_bundle(bundle_file, {"template_evidence": "unmeasured"})
+        transformer = BundleTransformer()
+        rid = transformer.result_id_from_bundle(bundle_file)
+
+        assert transformer.to_manifest_entry(bundle_file).template_evidence == "unmeasured"
+        assert transformer.to_detail_result(bundle_file, rid).template_evidence == "unmeasured"
+
+    def test_template_evidence_absent_without_tuning_block(self, bundle_file: Path) -> None:
+        self._write_bundle(bundle_file, None)
+        transformer = BundleTransformer()
+        rid = transformer.result_id_from_bundle(bundle_file)
+
+        assert transformer.to_manifest_entry(bundle_file).template_evidence is None
+        assert transformer.to_detail_result(bundle_file, rid).template_evidence is None

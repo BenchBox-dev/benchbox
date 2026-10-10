@@ -558,6 +558,11 @@ def _tuning_policy_generation(bundle: BundleDocument) -> str | None:
     return summary.tuning_policy_generation
 
 
+def _template_evidence(bundle: BundleDocument) -> str | None:
+    summary = _tuning_summary(bundle)
+    return summary.template_evidence
+
+
 def _logical_profile(bundle: BundleDocument) -> BundleLogicalProfile | None:
     return bundle.platform.tuning.logical_profile
 
@@ -1214,6 +1219,7 @@ class BundleTransformer:
             override_approver=override["override_approver"],
             override_expires=override["override_expires"],
             tuning_policy_generation=_tuning_policy_generation(bundle),
+            template_evidence=_template_evidence(bundle),
             test_type=test_type,
             validation_status=_validation_status(bundle, bundle_data),
             failed_query_count=failed_query_count,
@@ -1309,6 +1315,7 @@ class BundleTransformer:
             override_approver=override["override_approver"],
             override_expires=override["override_expires"],
             tuning_policy_generation=_tuning_policy_generation(bundle),
+            template_evidence=_template_evidence(bundle),
             test_type=test_type,
             validation_status=_validation_status(bundle, bundle_data),
             failed_query_count=bundle_failed_query_count(bundle_data),

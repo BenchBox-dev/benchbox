@@ -97,6 +97,7 @@ export interface DetailResult extends CostDeploymentFields {
   override_approver?: string | null;
   override_expires?: string | null;
   tuning_policy_generation?: string | null;
+  template_evidence?: string | null;
   test_type: string | null;
   validation_status: string | null;
   cost_usd: number | null;

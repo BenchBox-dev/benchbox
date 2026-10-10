@@ -135,6 +135,7 @@ export interface ResultRow extends CostDeploymentFields {
   applied_ledger_hash?: string | null;
   tuning_validation_status?: string | null;
   tuning_policy_generation?: string | null;
+  template_evidence?: string | null;
   test_type: string | null;
   validation_status: string | null;
   cost_usd: number | null;
@@ -393,6 +394,7 @@ const RESULT_COLUMNS = [
   "applied_ledger_hash",
   "tuning_validation_status",
   "tuning_policy_generation",
+  "template_evidence",
   "test_type",
   "validation_status",
   "override_rules",
@@ -465,6 +467,7 @@ const RESULT_DETAIL_METRICS_COLUMNS = [
   "override_approver",
   "override_expires",
   "tuning_policy_generation",
+  "template_evidence",
   "test_type",
   "validation_status",
   "cost_usd",
@@ -871,6 +874,7 @@ function detailResultFromWideRow(
     override_approver: wide.override_approver ?? null,
     override_expires: wide.override_expires ?? null,
     tuning_policy_generation: wide.tuning_policy_generation ?? null,
+    template_evidence: wide.template_evidence ?? null,
     test_type: wide.test_type,
     validation_status: wide.validation_status,
     cost_usd: wide.cost_usd,

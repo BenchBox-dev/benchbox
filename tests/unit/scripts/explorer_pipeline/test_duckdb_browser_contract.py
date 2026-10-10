@@ -95,6 +95,7 @@ class TestG1SchemaContract:
             "throughput_at_size",
             "stream_count",
             "tuning_policy_generation",
+            "template_evidence",
         },
         "result_environment": {
             "result_id",
@@ -278,6 +279,7 @@ class TestG1SchemaContract:
             "throughput_at_size",
             "stream_count",
             "tuning_policy_generation",
+            "template_evidence",
             "os",
             "arch",
             "cpu_count",

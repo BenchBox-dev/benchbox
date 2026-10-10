@@ -346,6 +346,21 @@ def _execute_orchestrated_run(
 LOAD_FAILURE_MARKER = "BENCHBOX_LOAD_FAILURE_JSON="
 
 
+def _print_template_evidence_warning(result: Any, *, quiet: bool) -> None:
+    if quiet:
+        return
+    from benchbox.core.tuning.template_evidence import evidence_warning
+
+    message = evidence_warning(
+        getattr(result, "platform", None),
+        getattr(result, "benchmark_name", None),
+        source_file=getattr(result, "tuning_source_file", None),
+        tunings_applied=getattr(result, "tunings_applied", None),
+    )
+    if message is not None:
+        console.print(message, soft_wrap=True)
+
+
 def _emit_load_failure_marker(result: Any) -> None:
 
     details = getattr(result, "validation_details", None)
@@ -393,6 +408,7 @@ def _export_orchestrated_result(
     with silence_output(enabled=bool(quiet)):
         exported_files = exporter.export_result(result, formats)
     _print_tuning_verification_summary(result, quiet=bool(quiet))
+    _print_template_evidence_warning(result, quiet=bool(quiet))
     return exported_files
 
 
