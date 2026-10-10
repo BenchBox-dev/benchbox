@@ -2016,6 +2016,41 @@ def unanonymized_tuning_findings(data: Any) -> list[str]:
     return findings
 
 
+def _unanonymized_operator_metadata_findings(node: Any, where: str) -> list[str]:
+    if not isinstance(node, dict):
+        return []
+    findings: list[str] = []
+    physical = node.get("physical_operator")
+    if isinstance(physical, dict) and physical.get("platform_metadata"):
+        findings.append(f"{where} exposes unanonymized operator platform_metadata")
+    children = node.get("children")
+    if isinstance(children, list):
+        for child in children:
+            findings.extend(_unanonymized_operator_metadata_findings(child, where))
+    return findings
+
+
+def unanonymized_plans_findings(data: Any) -> list[str]:
+    if not isinstance(data, dict):
+        return []
+    queries = data.get("queries")
+    if not isinstance(queries, dict):
+        return []
+    findings: list[str] = []
+    for query_id, entry in queries.items():
+        if not isinstance(entry, dict):
+            continue
+        plan = entry.get("plan")
+        if not isinstance(plan, dict):
+            continue
+        if plan.get("raw_explain_output") is not None:
+            findings.append(f"plans.queries[{query_id}].plan exposes unanonymized raw_explain_output")
+        findings.extend(
+            _unanonymized_operator_metadata_findings(plan.get("logical_root"), f"plans.queries[{query_id}].plan")
+        )
+    return findings
+
+
 def _validate_manifest_provenance(manifest: dict[str, Any], primary_path: Path, vr: ValidationResult) -> None:
     funding = manifest.get("funding")
     if funding is not None and funding not in FUNDING_SOURCES:

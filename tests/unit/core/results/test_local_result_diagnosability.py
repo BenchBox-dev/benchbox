@@ -294,6 +294,140 @@ class TestOutwardPathsStayRedacted:
         assert (tmp_path / "published" / (source.stem + ".plans.json")).exists()
         assert "+ 1 companion file(s) also published" in result.output
 
+    def test_redacted_publish_records_original_source_and_dedups(self, tmp_path):
+        from benchbox.cli.commands.publish import _redacted_publish_source
+        from benchbox.core.publishing.bundle_publisher import BundlePublisher
+        from benchbox.core.publishing.store import PublicationStore
+
+        source = ResultExporter(output_dir=tmp_path / "local", anonymize=False).export_result(
+            _tuned_result(), ["json"]
+        )["json"]
+        store = PublicationStore(store_path=tmp_path / "store.json")
+        first_redacted, first_scratch = _redacted_publish_source(source)
+        try:
+            assert first_redacted is not None
+            assert first_redacted != source
+            first = BundlePublisher(destination=tmp_path / "published", store=store, label="local").publish(
+                first_redacted, record_source=source
+            )
+            assert first.success
+            assert first.record is not None
+            assert Path(first.record.source_path) == source.resolve()
+        finally:
+            if first_scratch is not None:
+                first_scratch.cleanup()
+        assert Path(first.record.source_path).exists()
+        second_redacted, second_scratch = _redacted_publish_source(source)
+        try:
+            assert second_redacted is not None
+            second = BundlePublisher(destination=tmp_path / "published", store=store, label="local").publish(
+                second_redacted, record_source=source
+            )
+            assert second.success
+            assert second.record is not None
+            assert second.record.pub_id == first.record.pub_id
+        finally:
+            if second_scratch is not None:
+                second_scratch.cleanup()
+        assert len(store.list_all()) == 1
+
+    def test_publish_bundle_passes_original_source_for_record_keeping(self, tmp_path, monkeypatch):
+        import benchbox.cli.commands.publish as publish_mod
+        from benchbox.cli.commands.publish import publish_bundle
+        from benchbox.core.publishing.store import PublicationStore
+
+        source = ResultExporter(output_dir=tmp_path / "local", anonymize=False).export_result(
+            _tuned_result(), ["json"]
+        )["json"]
+        store = PublicationStore(store_path=tmp_path / "store.json")
+        monkeypatch.setattr(publish_mod, "PublicationStore", lambda *args, **kwargs: store)
+        seen: dict = {}
+        real_publisher = publish_mod.BundlePublisher
+
+        class _SpyPublisher:
+            def __init__(self, *args, **kwargs):
+                self._inner = real_publisher(*args, **kwargs)
+
+            def publish(self, source_bundle, *args, **kwargs):
+                seen["record_source"] = kwargs.get("record_source", args[0] if args else None)
+                return self._inner.publish(source_bundle, *args, **kwargs)
+
+        monkeypatch.setattr(publish_mod, "BundlePublisher", _SpyPublisher)
+        assert publish_bundle(source, target=str(tmp_path / "published"), label="local", quiet=True) is not None
+        assert seen.get("record_source") is not None
+        assert Path(seen["record_source"]).resolve() == source.resolve()
+        records = store.list_all()
+        assert len(records) == 1
+        assert Path(records[0].source_path) == source.resolve()
+        assert Path(records[0].source_path).exists()
+
+    def test_clean_primary_with_dirty_plans_companion_routes_redacted(self, tmp_path, monkeypatch):
+        import copy as _copy
+        import json as _json
+
+        import benchbox.cli.commands.publish as publish_mod
+        from benchbox.cli.commands.publish import _redacted_publish_source, publish_bundle
+        from benchbox.core.publishing.store import PublicationStore
+        from benchbox.core.results.query_plan_models import (
+            LogicalOperator,
+            LogicalOperatorType,
+            QueryPlanDAG,
+        )
+        from benchbox.validation.bundle import unanonymized_plans_findings, unanonymized_tuning_findings
+
+        result = _tuned_result()
+        root = LogicalOperator(
+            operator_type=LogicalOperatorType.SCAN,
+            operator_id="scan_1",
+            table_name="lineitem",
+        )
+        result.query_results = [
+            {
+                "query_id": "Q1",
+                "execution_time": 1.0,
+                "status": "SUCCESS",
+                "rows_returned": 4,
+                "query_plan": QueryPlanDAG(query_id="Q1", platform="duckdb", logical_root=root),
+            }
+        ]
+        result.query_plans_captured = 1
+        source = ResultExporter(output_dir=tmp_path / "local", anonymize=True).export_result(result, ["json"])["json"]
+        assert unanonymized_tuning_findings(_json.loads(source.read_text(encoding="utf-8"))) == []
+        plans_path = source.parent / (source.stem + ".plans.json")
+        assert unanonymized_plans_findings(_json.loads(plans_path.read_text(encoding="utf-8"))) == []
+        dirty = _copy.deepcopy(_json.loads(plans_path.read_text(encoding="utf-8")))
+        for entry in dirty["queries"].values():
+            plan = entry["plan"]
+            plan["raw_explain_output"] = "EXPLAIN SELECT * FROM lineitem"
+            logical = plan.get("logical_root")
+            if isinstance(logical, dict):
+                logical["physical_operator"] = {
+                    "operator_type": "Seq Scan",
+                    "operator_id": "scan_1",
+                    "properties": {},
+                    "platform_metadata": {"sql": "SELECT * FROM lineitem"},
+                }
+            break
+        plans_path.write_text(_json.dumps(dirty), encoding="utf-8")
+        assert unanonymized_plans_findings(_json.loads(plans_path.read_text(encoding="utf-8"))) != []
+        redacted, scratch = _redacted_publish_source(source)
+        try:
+            assert redacted is not None
+            assert redacted != source
+            assert unanonymized_tuning_findings(_json.loads(redacted.read_text(encoding="utf-8"))) == []
+            redacted_plans = redacted.parent / (redacted.stem + ".plans.json")
+            assert redacted_plans.exists()
+            assert unanonymized_plans_findings(_json.loads(redacted_plans.read_text(encoding="utf-8"))) == []
+        finally:
+            if scratch is not None:
+                scratch.cleanup()
+        store = PublicationStore(store_path=tmp_path / "store.json")
+        monkeypatch.setattr(publish_mod, "PublicationStore", lambda *args, **kwargs: store)
+        assert publish_bundle(source, target=str(tmp_path / "published"), label="local", quiet=True) is not None
+        published_plans = tmp_path / "published" / (source.stem + ".plans.json")
+        assert published_plans.exists()
+        assert unanonymized_plans_findings(_json.loads(published_plans.read_text(encoding="utf-8"))) == []
+
 
 class TestTuningVerificationSummary:
     def test_none_without_ledger(self):

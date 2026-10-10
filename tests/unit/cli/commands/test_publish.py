@@ -86,7 +86,9 @@ def test_publish_run_allows_unofficial_with_correct_label(monkeypatch: pytest.Mo
         pub,
         "BundlePublisher",
         lambda **_kw: SimpleNamespace(
-            publish=lambda _: SimpleNamespace(success=True, errors=[], reference="file:///test/ref", record=None)
+            publish=lambda *_a, **_k: SimpleNamespace(
+                success=True, errors=[], reference="file:///test/ref", record=None
+            )
         ),
     )
     monkeypatch.setattr(pub, "PublicationStore", lambda: SimpleNamespace())
@@ -110,7 +112,9 @@ def test_publish_run_label_check_is_case_insensitive(monkeypatch: pytest.MonkeyP
         pub,
         "BundlePublisher",
         lambda **_kw: SimpleNamespace(
-            publish=lambda _: SimpleNamespace(success=True, errors=[], reference="file:///test/ref", record=None)
+            publish=lambda *_a, **_k: SimpleNamespace(
+                success=True, errors=[], reference="file:///test/ref", record=None
+            )
         ),
     )
     monkeypatch.setattr(pub, "PublicationStore", lambda: SimpleNamespace())
@@ -184,7 +188,7 @@ def test_publish_bundle_allows_unofficial_with_correct_label(monkeypatch: pytest
         pub,
         "BundlePublisher",
         lambda **_kw: SimpleNamespace(
-            publish=lambda _: SimpleNamespace(success=True, errors=[], reference="file:///ref")
+            publish=lambda *_a, **_k: SimpleNamespace(success=True, errors=[], reference="file:///ref")
         ),
     )
     monkeypatch.setattr(pub, "PublicationStore", lambda: SimpleNamespace())
@@ -207,7 +211,7 @@ def test_publish_bundle_official_result_not_blocked(monkeypatch: pytest.MonkeyPa
         pub,
         "BundlePublisher",
         lambda **_kw: SimpleNamespace(
-            publish=lambda _: SimpleNamespace(success=True, errors=[], reference="file:///ref")
+            publish=lambda *_a, **_k: SimpleNamespace(success=True, errors=[], reference="file:///ref")
         ),
     )
     monkeypatch.setattr(pub, "PublicationStore", lambda: SimpleNamespace())

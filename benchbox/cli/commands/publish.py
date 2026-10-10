@@ -16,7 +16,7 @@ from benchbox.core.publishing.admission import publish_admission
 from benchbox.core.publishing.bundle_publisher import COMPANION_SUFFIXES, VALID_LABELS, BundlePublisher
 from benchbox.core.publishing.store import PublicationStore
 from benchbox.core.results.loader import ResultLoadError, UnsupportedSchemaError, load_result_file
-from benchbox.validation.bundle import unanonymized_tuning_findings
+from benchbox.validation.bundle import unanonymized_plans_findings, unanonymized_tuning_findings
 
 
 @click.group(
@@ -122,7 +122,7 @@ def publish_run(ctx, result_file, target, label, last, benchmark, platform, dry_
     try:
         store = PublicationStore()
         publisher = BundlePublisher(destination=target, store=store, label=label)
-        result = publisher.publish(publish_source)
+        result = publisher.publish(publish_source, record_source=source_path)
     finally:
         if scratch is not None:
             scratch.cleanup()
@@ -298,7 +298,7 @@ def _redacted_publish_source(source_bundle: Path) -> tuple[Path | None, Temporar
         payload = json.loads(source.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return source, None
-    if not unanonymized_tuning_findings(payload):
+    if not unanonymized_tuning_findings(payload) and not unanonymized_plans_findings(payload):
         for suffix in COMPANION_SUFFIXES:
             companion = source.parent / (source.stem + suffix)
             if not companion.exists():
@@ -307,7 +307,7 @@ def _redacted_publish_source(source_bundle: Path) -> tuple[Path | None, Temporar
                 companion_payload = json.loads(companion.read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 return None, None
-            if unanonymized_tuning_findings(companion_payload):
+            if unanonymized_tuning_findings(companion_payload) or unanonymized_plans_findings(companion_payload):
                 break
         else:
             return Path(source_bundle), None
@@ -383,7 +383,7 @@ def publish_bundle(
     try:
         store = PublicationStore()
         publisher = BundlePublisher(destination=target, store=store, label=label)
-        result = publisher.publish(publish_source)
+        result = publisher.publish(publish_source, record_source=Path(source_bundle))
     finally:
         if scratch is not None:
             scratch.cleanup()

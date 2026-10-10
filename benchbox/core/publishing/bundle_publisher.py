@@ -53,7 +53,7 @@ class BundlePublisher:
             raise ValueError(f"Invalid trust label {label!r}; must be one of {VALID_LABELS}.")
         self.label = label
 
-    def publish(self, source_bundle: str | Path) -> BundlePublishResult:
+    def publish(self, source_bundle: str | Path, *, record_source: str | Path | None = None) -> BundlePublishResult:
         bundle_path = Path(source_bundle)
 
         if not bundle_path.exists():
@@ -88,8 +88,9 @@ class BundlePublisher:
         reference = build_reference(self.destination, dest_filename)
 
         try:
+            record_source_path = Path(record_source) if record_source is not None else bundle_path
             record = self.store.add(
-                source_path=bundle_path,
+                source_path=record_source_path,
                 destination=self.destination,
                 reference=reference,
                 label=self.label,
