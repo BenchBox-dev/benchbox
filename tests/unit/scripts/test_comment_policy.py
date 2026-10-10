@@ -1416,6 +1416,62 @@ def test_shell_executable_arguments_are_routed(source: str) -> None:
 
 
 @pytest.mark.parametrize(
+    "source",
+    [
+        "sudo python3 -c '# explanation'",
+        "sudo -u nobody python3 -c '# explanation'",
+        "sudo --user nobody python3 -c '# explanation'",
+        "env python3 -c '# explanation'",
+        "env POLICY_TEST=1 python3 -c '# explanation'",
+        "env -i POLICY_TEST=1 python3 -c '# explanation'",
+        "nohup python3 -c '# explanation'",
+        "nohup -- python3 -c '# explanation'",
+    ],
+)
+def test_split_runner_interpreter_arguments_are_scanned(source: str) -> None:
+    assert [finding.text for finding in scan("a.sh", source, "bash")] == ["# explanation"]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "sudo --unknown value python3 -c '# explanation'",
+        "nohup -x python3 -c '# explanation'",
+    ],
+)
+def test_unknown_split_runner_options_fail_closed(source: str) -> None:
+    assert [finding.kind for finding in scan("a.sh", source, "bash")] == ["coverage-error"]
+
+
+@pytest.mark.parametrize("consumer", ["$interpreter", "${INTERPRETER}", '"$1"'])
+def test_dynamic_pipeline_consumer_fails_closed(consumer: str) -> None:
+    findings = scan("a.sh", f"echo 'pass' | {consumer}", "bash")
+    assert [finding.kind for finding in findings] == ["coverage-error"]
+
+
+def test_dynamic_pipeline_consumer_without_spaces_fails_closed() -> None:
+    findings = scan("a.sh", "echo 'pass'|$interpreter", "bash")
+    assert [finding.kind for finding in findings] == ["coverage-error"]
+
+
+def test_quoted_pipe_delimiter_does_not_trigger_pipeline_gate() -> None:
+    source = 'sed -i -E "s|^[[:space:]]*$${key}[[:space:]]*=.*$$|$${key} = $${value}|" "$$file"'
+    assert scan("a.sh", source, "bash") == []
+
+
+def test_dynamic_later_pipeline_command_does_not_hide_interpreter_input() -> None:
+    findings = scan("a.sh", "echo '# hidden' | python3 | $dynamic", "bash")
+    assert [(finding.kind, finding.text) for finding in findings] == [("comment", "# hidden")]
+
+
+def test_piped_printf_escaped_percent_matches_shell_output() -> None:
+    findings = scan("a.sh", "printf 'print(\"%%\")\\n# explanation\\n' | python3", "bash")
+    assert [(finding.kind, finding.text, finding.payload) for finding in findings] == [
+        ("comment", "# explanation", 'print("%")\n# explanation\n')
+    ]
+
+
+@pytest.mark.parametrize(
     ("source", "expected"),
     [
         ("echo '# explanation' | python3", "# explanation"),

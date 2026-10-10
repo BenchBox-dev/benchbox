@@ -1037,6 +1037,11 @@ def shell_payloads(path: str, source: str, include_data: bool = False) -> list[t
 def unwrap_static_command(words: list) -> list:
     command = words[0].word.rsplit("/", 1)[-1]
     if command in SHELL_WRAPPERS or (command == "uv" and [word.word for word in words[1:3]] == ["tool", "run"]):
+        if command in RUNNER_COMMANDS:
+            skip = runner_command_start([None if word.parts else word.word for word in words], command)
+            if skip >= len(words):
+                return words
+            return unwrap_static_command(words[skip:])
         skip = 3 if command == "uv" else 2 if command == "timeout" else 1
         if command == "time":
             while skip < len(words) and not words[skip].parts and words[skip].word in TIME_FLAGS:
@@ -1073,6 +1078,7 @@ SHELL_INLINE_INTERPRETER = re.compile(
     r"|(?<![\w.-])find\b[^\n]*\s-(?:exec|execdir|ok|okdir)\b"
     r"|\|[^\n]*(?<![\w.-])(?:python[0-9.]*|node|bash|sh|zsh|ksh|dash|fish|perl|ruby|php|lua|pwsh|powershell|deno|bun|tclsh"
     r"|osascript|Rscript|awk|gawk|mawk|psql|duckdb|sqlite3)(?=[\s;|&)\"']|$)"
+    r"""|(?<!\$)\|[ \t]*(?:"[^"\n]*\$|\$\S)"""
     r"|\b(?:ssh|watch|xargs|env|sudo|nohup)\s"
 )
 SHELL_WRAPPERS = {"sudo", "nice", "nohup", "timeout", "time", "command", "exec", "stdbuf", "ionice", "uvx"}
@@ -1167,6 +1173,14 @@ FIND_EXEC_ACTIONS = {"-exec", "-execdir", "-ok", "-okdir"}
 
 
 def runner_command_start(words: list[str | None], command: str) -> int:
+    if command in {"sudo", "nohup"}:
+        index = runner_command_index(words, command)
+        if any(word is None for word in words[1:index]):
+            raise ValueError("dynamic runner options require an adapter")
+        for word in words[1:index]:
+            if word is not None and word.startswith("-") and word not in RUNNER_VALUE_OPTIONS[command] and word != "--":
+                raise ValueError("unsupported runner options require an adapter")
+        return index
     if command != "find":
         return 1
     for index, word in enumerate(words[1:], start=1):
@@ -1188,6 +1202,8 @@ SHELL_COMMAND_RUNNERS = {
     "nsenter",
     "flock",
     "watch",
+    "sudo",
+    "nohup",
     "su",
     "runuser",
     "doas",
@@ -1545,7 +1561,7 @@ def piped_printf_text(args: list) -> str:
                 expanded.append(char)
                 index += 1
             elif format_raw[index : index + 2] == "%%":
-                expanded.append("%%")
+                expanded.append("%")
                 index += 2
             elif format_raw[index : index + 2] == "%s":
                 val = values[value_index] if value_index < len(values) else ""
@@ -1618,10 +1634,12 @@ def piped_sides(node: bashlex.ast.node) -> list | None:
     if len(commands) < 2:
         return None
     sides = [[part for part in command.parts if part.kind == "word"] for command in commands]
-    if any(not side or side[0].parts for side in sides):
+    if not sides[0] or not sides[1] or sides[0][0].parts:
         return None
     if sides[0][0].word.rsplit("/", 1)[-1] not in PIPED_PRODUCERS:
         return None
+    if sides[1][0].parts:
+        raise ValueError("dynamic piped interpreter consumer requires an adapter")
     unwrapped_consumer = sides[1]
     if not any(w.parts for w in sides[1]):
         head_cmd = sides[1][0].word.rsplit("/", 1)[-1]
