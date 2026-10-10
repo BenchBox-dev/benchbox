@@ -298,7 +298,11 @@ def _redacted_publish_source(source_bundle: Path) -> tuple[Path | None, Temporar
         payload = json.loads(source.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return source, None
-    if not unanonymized_tuning_findings(payload) and not unanonymized_plans_findings(payload):
+    if (
+        payload.get("export", {}).get("anonymized") is True
+        and not unanonymized_tuning_findings(payload)
+        and not unanonymized_plans_findings(payload)
+    ):
         for suffix in COMPANION_SUFFIXES:
             companion = source.parent / (source.stem + suffix)
             if not companion.exists():

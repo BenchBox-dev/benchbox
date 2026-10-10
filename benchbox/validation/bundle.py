@@ -2149,14 +2149,26 @@ def validate_bundles(
         parsed.append((data, vr))
 
         applied_name = f"{bundle_path.stem}.applied.json".lower()
+        plans_name = f"{bundle_path.stem}.plans.json".lower()
         for companion in bundle_path.parent.iterdir():
-            if companion.name.lower() != applied_name:
+            comp_lower = companion.name.lower()
+            if comp_lower not in (applied_name, plans_name):
                 continue
             if companion.is_symlink():
                 vr.error(f"Companion file is a symlink, not a regular file: {companion.name} (symlinks not allowed)")
             elif companion.is_file():
-                _validate_applied_companion_limits(companion, vr)
-
+                if comp_lower == applied_name:
+                    _validate_applied_companion_limits(companion, vr)
+                elif comp_lower == plans_name:
+                    try:
+                        plans_payload = json.loads(companion.read_text(encoding="utf-8"))
+                    except (OSError, json.JSONDecodeError):
+                        plans_payload = None
+                    if isinstance(plans_payload, dict):
+                        for finding in unanonymized_plans_findings(plans_payload):
+                            vr.error(
+                                f"Public privacy contract rejects unanonymized plans diagnostics in {companion.name}: {finding}"
+                            )
         per_bundle_manifest = bundle_path.parent / f"{bundle_path.stem}{SUBMISSION_MANIFEST_SUFFIX}"
         legacy_manifest = bundle_path.parent / SUBMISSION_MANIFEST_FILENAME
         manifest_path = (

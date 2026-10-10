@@ -428,6 +428,32 @@ class TestOutwardPathsStayRedacted:
         assert published_plans.exists()
         assert unanonymized_plans_findings(_json.loads(published_plans.read_text(encoding="utf-8"))) == []
 
+    def test_verbatim_publish_refuses_when_anonymized_flag_is_not_true(self, tmp_path):
+        from benchbox.cli.commands.publish import _redacted_publish_source
+
+        # Result with export.anonymized == False (or missing) must not take the verbatim bypass
+        clean_local = ResultExporter(output_dir=tmp_path / "clean", anonymize=False).export_result(
+            _tuned_result(), ["json"]
+        )["json"]
+        # Strip any tuning findings from the payload to simulate clean payload without anonymized=True
+        raw = json.loads(clean_local.read_text(encoding="utf-8"))
+        assert raw.get("export", {}).get("anonymized") is False
+        # Even if tuning/plans findings are clean:
+        raw["platform"].pop("tuning", None)
+        clean_local.write_text(json.dumps(raw), encoding="utf-8")
+
+        redacted_path, scratch = _redacted_publish_source(clean_local)
+        try:
+            # Must NOT return verbatim clean_local (scratch must be created)
+            assert scratch is not None
+            assert redacted_path is not None
+            assert redacted_path != clean_local
+            exported = json.loads(redacted_path.read_text(encoding="utf-8"))
+            assert exported.get("export", {}).get("anonymized") is True
+        finally:
+            if scratch is not None:
+                scratch.cleanup()
+
 
 class TestTuningVerificationSummary:
     def test_none_without_ledger(self):
@@ -489,6 +515,43 @@ class TestUnanonymizedBundleRejection:
 
         assert len(results) == 1
         assert any("unanonymized tuning" in error for error in results[0].errors), results[0].errors
+
+    def test_submission_validation_rejects_unanonymized_plans_companion(self, tmp_path):
+        import copy
+
+        from benchbox.core.results.query_plan_models import LogicalOperator, LogicalOperatorType, QueryPlanDAG
+
+        result = _tuned_result()
+        root = LogicalOperator(
+            operator_type=LogicalOperatorType.SCAN,
+            operator_id="scan_1",
+            table_name="lineitem",
+        )
+        result.query_results = [
+            {
+                "query_id": "Q1",
+                "execution_time": 1.0,
+                "status": "SUCCESS",
+                "rows_returned": 4,
+                "query_plan": QueryPlanDAG(query_id="Q1", platform="duckdb", logical_root=root),
+            }
+        ]
+        result.query_plans_captured = 1
+        public = ResultExporter(output_dir=tmp_path, anonymize=True).export_result(result, ["json"])["json"]
+        plans_path = public.parent / (public.stem + ".plans.json")
+        assert plans_path.exists()
+        dirty = copy.deepcopy(json.loads(plans_path.read_text(encoding="utf-8")))
+        for entry in dirty["queries"].values():
+            entry["plan"]["logical_root"]["physical_operator"] = {
+                "platform_metadata": {"cardinality": 42},
+            }
+            break
+        plans_path.write_text(json.dumps(dirty), encoding="utf-8")
+
+        results = validate_bundles([public])
+
+        assert len(results) == 1
+        assert any("unanonymized plans" in error for error in results[0].errors), results[0].errors
 
     def test_privacy_script_rejects_unanonymized_bundle(self, tmp_path):
         from scripts.publication.check_artifact_privacy import scan_directory_for_privacy
