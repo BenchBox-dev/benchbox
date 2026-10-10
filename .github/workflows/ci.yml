@@ -896,6 +896,25 @@ jobs:
       - name: Install dependencies
         run: uv sync --group dev
 
+      - name: Set up Node.js for TypeScript comment parsing
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: '20'
+
+      - name: Install locked TypeScript parser
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_dir="$RUNNER_TEMP/comment-policy-node"
+          mkdir -p "$package_dir"
+          cp quality/comment-policy-package.json "$package_dir/package.json"
+          cp quality/comment-policy-package-lock.json "$package_dir/package-lock.json"
+          (
+            cd "$package_dir"
+            npm ci --ignore-scripts --no-audit --no-fund
+          )
+          echo "COMMENT_POLICY_TYPESCRIPT=$package_dir/node_modules/typescript" >> "$GITHUB_ENV"
+
       - name: Download medium collection evidence
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:

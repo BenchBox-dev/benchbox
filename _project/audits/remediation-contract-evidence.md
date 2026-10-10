@@ -188,3 +188,101 @@ The behavioral instances in
 These instances and the existing complete-receipt round trip passed together
 with CLI export and Explorer transformer tests: 230 passed. Replay with
 `uv run -- python -m pytest tests/unit/core/results/test_execution_variant_schema.py tests/unit/cli/test_cli_output.py tests/unit/test_results_exporter.py tests/unit/scripts/explorer_pipeline/test_transformer.py -q`.
+## PR #2821 scanner review findings
+
+The nine Oracle findings were reproduced on the pre-fix branch. Each fix keeps
+the original source as the durable input; the scanner adapter output is consumed
+by the comment-policy parser and its finding rows.
+
+- Shell pipeline masking: the shell source producer writes
+  `echo 'pass' | python3 # explanation`; `mask_embedded_sources` now masks
+  embedded heredocs only, leaving the shell line for the tokenizer. The
+  consumer test is
+  `tests/unit/scripts/test_comment_policy.py::test_piped_interpreter_masking_preserves_trailing_shell_comment`;
+  it requires the trailing comment and rejects embedded payload leakage.
+- Static `echo` and `printf` output: bashlex supplies producer arguments,
+  `piped_producer_text` reconstructs supported bytes and formats, and the
+  interpreter scanner consumes the reconstructed source. Positive cases,
+  including octal escapes, `echo -e`, `%s`, and empty `printf` formats, run in
+  `test_piped_producer_payloads_reach_stdin_interpreters` and
+  `test_piped_printf_format_is_evaluated`; `test_piped_node_source_reports_javascript_comment`
+  exercises the Node consumer. The rejected `%d` conversion and dynamic or
+  unsupported producers are controls in
+  `test_piped_dynamic_or_unmodeled_stdin_fails_closed`.
+- MDX ESM shape recognition: the original MDX source is retained after
+  block-comment-tolerant shape validation; `javascript_requests` sends the
+  complete statement to the TypeScript scanner. Both inter-token forms are
+  exercised end-to-end by `test_mdx_esm_intertoken_comments_are_reported`;
+  `test_mdx_prose_import_lookalikes_are_not_code` rejects prose lookalikes.
+- Static runner paths with spaces: the shell command AST feeds
+  `PythonBindings.runner_payload`, which now tests executable basenames rather
+  than rejecting whitespace anywhere in an absolute path. The positive
+  `/opt/My Tools/python3` case is in
+  `test_python_runner_command_strings_are_scanned`; non-source application
+  arguments remain covered by `test_shell_application_arguments_are_not_executable_source`.
+- Absolute interpreter paths in pipelines: `SHELL_INLINE_INTERPRETER` now
+  admits recognized executable basenames behind a path prefix, so
+  `echo '# hidden' | /usr/bin/python3` reaches the consumer scanner. The
+  regression is in `test_piped_producer_payloads_reach_stdin_interpreters`.
+- Pipeline redirects: descriptor analysis preserves consumer stdout and
+  stderr plus producer stderr, while requiring coverage for a consumer stdin
+  override. The positive and fail-closed controls are
+  `test_piped_unrelated_redirections_preserve_stdin` and
+  `test_piped_consumer_stdin_redirection_fails_closed`.
+- Bash `echo -e` octal escapes: the decoder treats `\0` followed by up to three
+  octal digits as one escape, separately from the `printf` format path.
+  `test_piped_producer_payloads_reach_stdin_interpreters` exercises
+  `\0043 hidden` as `# hidden`.
+- Runner command string ordering: Python runner payloads now scan a complete
+  static shell command string before matching an interpreter basename at its
+  suffix. `test_python_runner_command_strings_are_scanned` covers a comment
+  followed by `/usr/bin/python3`.
+- Multiline MDX block comments: statement extraction tracks block-comment
+  boundaries before shape validation and passes the complete statement to the
+  TypeScript scanner. The multiline case in
+  `test_mdx_esm_intertoken_comments_are_reported` requires the comment.
+
+
+The original focused scanner regressions passed 36 tests; the five additional
+fix groups passed 25 tests. The full policy unit file passed 716 tests with
+`-n 0`. `make comment-policy-check` scanned 5,749 files with zero violations
+and passed all 19 native syntax tests.
+
+### Findings D10-D12
+
+- Split runners: the review's plain `sudo`, `env` and `nohup` forms already
+  yielded comment findings on this head. The option-bearing
+  `sudo -u nobody python3 -c '# explanation'` form instead returned a coverage
+  error. `sudo` and `nohup` now use `runner_command_start` and the registered
+  option parser; `env` retains its existing strict `command_words` normalization.
+  `test_split_runner_interpreter_arguments_are_scanned` checks eight split forms.
+  Unsupported `sudo` and `nohup` flags fail closed in
+  `test_unknown_split_runner_options_fail_closed`.
+- `printf %%`: before the fix,
+  `printf '%%\n# explanation\n' | python3` reconstructed two percent bytes and
+  returned a syntax coverage error with the doubled-percent payload. The
+  formatter now reconstructs one percent byte. The valid Python fixture in
+  `test_piped_printf_escaped_percent_matches_shell_output` asserts the exact
+  source bytes reaching the Python scanner.
+- Pipeline sides: before the fix,
+  `echo '# hidden' | python3 | $dynamic` and
+  `echo 'pass' | $interpreter` both returned no findings. The adapter now scans
+  the first producer/consumer pair and reports a coverage error for a dynamic
+  immediate consumer. The gate ignores the quoted `$$|$${key}` sed delimiter
+  and still recognizes unspaced shell pipes. Regressions:
+  `test_dynamic_later_pipeline_command_does_not_hide_interpreter_input`,
+  `test_dynamic_pipeline_consumer_fails_closed`,
+  `test_dynamic_pipeline_consumer_without_spaces_fails_closed`, and
+  `test_quoted_pipe_delimiter_does_not_trigger_pipeline_gate`.
+
+The focused D10-D12 regression selection passed 17 tests with
+`BENCHBOX_SKIP_TEST_LOCK=1 uv run -- python -m pytest tests/unit/scripts/test_comment_policy.py -k 'split_runner_interpreter_arguments or unknown_split_runner_options or dynamic_pipeline_consumer or dynamic_later_pipeline_command or piped_printf_escaped_percent or quoted_pipe_delimiter' -q -n0`.
+The full policy unit file passed 739 tests with
+`BENCHBOX_SKIP_TEST_LOCK=1 uv run -- python -m pytest tests/unit/scripts/test_comment_policy.py -q -n0`.
+`make comment-policy-check` passed: 5,776 source files, zero violations,
+zero enforced failures, and all 19 native syntax tests passed.
+
+The medium-test job now installs the locked TypeScript package in an isolated
+temporary directory and exports its module path. A local npm 11.19.1 install
+with the same manifest and lockfile passed, and the MDX scanner test passed
+four cases using that isolated TypeScript path.
