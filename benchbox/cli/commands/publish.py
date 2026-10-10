@@ -119,6 +119,7 @@ def publish_run(ctx, result_file, target, label, last, benchmark, platform, dry_
     if publish_source is None:
         console.print("[red]Publish refused:[/red] result carries unanonymized tuning diagnostics.")
         raise SystemExit(1)
+    companion_count = _count_companions(publish_source)
     try:
         store = PublicationStore()
         publisher = BundlePublisher(destination=target, store=store, label=label)
@@ -126,7 +127,6 @@ def publish_run(ctx, result_file, target, label, last, benchmark, platform, dry_
     finally:
         if scratch is not None:
             scratch.cleanup()
-
     if not result.success:
         for err in result.errors:
             console.print(f"[red]Error:[/red] {err}")
@@ -142,7 +142,6 @@ def publish_run(ctx, result_file, target, label, last, benchmark, platform, dry_
     console.print(f"  Reference: {result.reference}")
     console.print(f"  Label:     {label}")
 
-    companion_count = _count_companions(publish_source)
     if companion_count:
         console.print(f"  + {companion_count} companion file(s) also published")
 

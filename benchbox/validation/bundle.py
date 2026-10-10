@@ -1868,7 +1868,8 @@ def _validate_manifest_companion(
 
 
 def _validate_applied_companion_limits(companion: Path, vr: ValidationResult) -> bool:
-    if not companion.name.lower().endswith(".applied.json"):
+    comp_lower = companion.name.lower()
+    if not (comp_lower.endswith(".applied.json") or comp_lower.endswith(".tuning.json")):
         return True
     try:
         size = companion.stat().st_size
@@ -2149,15 +2150,16 @@ def validate_bundles(
         parsed.append((data, vr))
 
         applied_name = f"{bundle_path.stem}.applied.json".lower()
+        tuning_name = f"{bundle_path.stem}.tuning.json".lower()
         plans_name = f"{bundle_path.stem}.plans.json".lower()
         for companion in bundle_path.parent.iterdir():
             comp_lower = companion.name.lower()
-            if comp_lower not in (applied_name, plans_name):
+            if comp_lower not in (applied_name, tuning_name, plans_name):
                 continue
             if companion.is_symlink():
                 vr.error(f"Companion file is a symlink, not a regular file: {companion.name} (symlinks not allowed)")
             elif companion.is_file():
-                if comp_lower == applied_name:
+                if comp_lower in (applied_name, tuning_name):
                     _validate_applied_companion_limits(companion, vr)
                 elif comp_lower == plans_name:
                     try:
