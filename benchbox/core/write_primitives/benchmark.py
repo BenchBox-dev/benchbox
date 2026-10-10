@@ -989,12 +989,17 @@ class WritePrimitivesBenchmark(TransactionalBenchmarkBase["OperationResult"]):
     def skip_dataframe_data_loading(self) -> bool:
         return True
 
-    def get_dataframe_operations(self, platform_name: str) -> "DataFrameWriteOperationsManager | None":
+    def get_dataframe_operations(
+        self, platform_name: str, *, execution_engine: str | None = None
+    ) -> "DataFrameWriteOperationsManager | None":
         from benchbox.core.write_primitives.dataframe_operations import (
             get_dataframe_write_manager,
         )
 
-        return get_dataframe_write_manager(platform_name)
+        selected_engine = execution_engine
+        if selected_engine is None:
+            selected_engine = self.config.get("execution_engine", "default")
+        return get_dataframe_write_manager(platform_name, execution_engine=selected_engine)
 
     def get_dataframe_capabilities(self, platform_name: str) -> "DataFrameWriteCapabilities | None":
         manager = self.get_dataframe_operations(platform_name)

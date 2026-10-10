@@ -62,6 +62,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   observed engines without exposing selectors. Legacy `force_execution` and
   `use_distributed` options warn and map to their canonical engine values.
 
+- Polars write-primitive bulk loads and DataFrame maintenance now materialize
+  lazy frames with the resolved execution engine. Untimed comparison, profiling,
+  validation and dataframe-surface equivalence paths continue to use Polars'
+  default engine.
 ### Before you upgrade
 - Vendor compute names now warn once per run; move saved configurations and
   credential profiles to `compute_resource` and `compute_size` (Fabric Data

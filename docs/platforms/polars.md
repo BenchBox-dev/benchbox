@@ -73,6 +73,13 @@ benchbox run --platform polars-df --benchmark tpch --scale 0.1 --execution-engin
 A version that cannot honour the value fails the run. The `streaming`
 platform option is a deprecated alias for `--execution-engine streaming`.
 
+Write-primitive bulk loads and DataFrame maintenance operations honor the
+resolved `execution_engine` when materializing lazy frames. Other untimed
+materialization paths remain on Polars' default engine: benchmark-suite
+comparison, profiling explanations, validation, dataframe-surface equivalence,
+and cross-surface comparison. These paths do not contribute to timed benchmark
+results, and are intentionally outside the engine-routing contract.
+
 ### Platform Options (DataFrame Mode: `polars-df`)
 
 | Option | Default | Description |

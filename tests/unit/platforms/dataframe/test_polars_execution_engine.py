@@ -12,10 +12,11 @@ import pytest
 pl = pytest.importorskip("polars")
 
 from benchbox.cli.platform_hooks import PlatformHookRegistry, PlatformOptionError
+from benchbox.core.dataframe.maintenance_interface import get_maintenance_operations_for_platform
 from benchbox.core.execution_engine import ExecutionEngineUnavailableError, UnsupportedExecutionEngineError
 from benchbox.core.results.platform_info import build_platform_info
 from benchbox.platforms import get_dataframe_adapter, polars_compat
-from benchbox.platforms.dataframe import expression_family, polars_df, unified_frame
+from benchbox.platforms.dataframe import expression_family, polars_df, polars_maintenance, unified_frame
 from benchbox.platforms.dataframe.polars_df import PolarsDataFrameAdapter
 from benchbox.platforms.dataframe.unified_frame import UnifiedLazyFrame
 
@@ -148,6 +149,87 @@ class TestCollectGuard:
         assert branches
         violations = [call for branch in branches for stmt in branch.body for call in _collect_calls_in(stmt)]
         assert violations == []
+
+
+class TestExecutionEngineReachesWriteAndMaintenance:
+    @pytest.mark.parametrize("execution_engine", ["auto", "in-memory", "streaming"])
+    @pytest.mark.parametrize("source_format", ["parquet", "csv"])
+    def test_write_benchmark_manager_uses_resolved_engine(
+        self, tmp_path, collect_calls, execution_engine, source_format
+    ):
+        from benchbox.core.write_primitives.benchmark import WritePrimitivesBenchmark
+
+        adapter = PolarsDataFrameAdapter(execution_engine=execution_engine)
+        benchmark = WritePrimitivesBenchmark(scale_factor=0.01, output_dir=tmp_path)
+        manager = benchmark.get_dataframe_operations("polars-df", execution_engine=adapter.collect_engine)
+        assert manager is not None
+        source = tmp_path / f"source.{source_format}"
+        dataframe = pl.DataFrame({"value": [1]})
+        if source_format == "parquet":
+            dataframe.write_parquet(source)
+        else:
+            dataframe.write_csv(source)
+        collect_calls.clear()
+
+        result = manager.execute_bulk_load(source, tmp_path / "target", source_format=source_format)
+
+        assert result.success
+        assert collect_calls == [{"engine": execution_engine}]
+
+    @pytest.mark.parametrize("execution_engine", ["auto", "in-memory", "streaming"])
+    def test_maintenance_uses_requested_engine(self, tmp_path, collect_calls, execution_engine):
+        adapter = PolarsDataFrameAdapter(execution_engine=execution_engine)
+        operations = get_maintenance_operations_for_platform("polars-df", adapter.collect_engine)
+        assert operations is not None
+        collect_calls.clear()
+
+        assert operations._do_insert(tmp_path / "table", pl.LazyFrame({"value": [1]}), None, "append") == 1
+
+        assert collect_calls == [{"engine": execution_engine}]
+
+    @pytest.mark.parametrize("execution_engine", ["auto", "in-memory", "streaming"])
+    def test_delete_and_update_use_requested_engine(self, tmp_path, collect_calls, execution_engine):
+        table_path = tmp_path / "table"
+        table_path.mkdir()
+        pl.DataFrame({"id": [1, 2], "value": [10, 20]}).write_parquet(table_path / "part-00000.parquet")
+        adapter = PolarsDataFrameAdapter(execution_engine=execution_engine)
+        operations = get_maintenance_operations_for_platform("polars-df", adapter.collect_engine)
+        assert operations is not None
+        expected_kwargs = [{"engine": execution_engine}] * 3
+
+        collect_calls.clear()
+        assert operations._do_update(table_path, "id = 1", {"value": "99"}) == 1
+        assert pl.read_parquet(table_path).sort("id")["value"].to_list() == [99, 20]
+        assert collect_calls == expected_kwargs
+
+        collect_calls.clear()
+        assert operations._do_delete(table_path, "id = 2") == 1
+        assert pl.read_parquet(table_path).select("id").to_series().to_list() == [1]
+        assert collect_calls == expected_kwargs
+
+    @pytest.mark.parametrize("execution_engine", ["auto", "in-memory", "streaming"])
+    def test_merge_uses_requested_engine(self, tmp_path, collect_calls, execution_engine):
+        table_path = tmp_path / "table"
+        table_path.mkdir()
+        pl.DataFrame({"id": [1], "value": [10]}).write_parquet(table_path / "part-00000.parquet")
+        adapter = PolarsDataFrameAdapter(execution_engine=execution_engine)
+        operations = get_maintenance_operations_for_platform("polars-df", adapter.collect_engine)
+        assert operations is not None
+        source = pl.LazyFrame({"id": [1, 2], "value": [99, 20]})
+        collect_calls.clear()
+
+        assert (
+            operations._do_merge(
+                table_path,
+                source,
+                "target.id = source.id",
+                {"value": "source.value"},
+                {"id": "source.id"},
+            )
+            == 2
+        )
+        assert pl.read_parquet(table_path).sort("id").to_dict(as_series=False) == {"id": [1, 2], "value": [99, 20]}
+        assert collect_calls == [{"engine": execution_engine}] * 2
 
 
 class TestEngineReachesEveryCollect:

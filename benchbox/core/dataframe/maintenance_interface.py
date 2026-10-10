@@ -468,7 +468,9 @@ class BaseDataFrameMaintenanceOperations(ABC):
             return MaintenanceResult.failure(operation, str(e), start_time)
 
 
-def get_maintenance_operations_for_platform(platform_name: str) -> DataFrameMaintenanceOperations | None:
+def get_maintenance_operations_for_platform(
+    platform_name: str, execution_engine: str = "default"
+) -> DataFrameMaintenanceOperations | None:
     platform_lower = platform_name.lower()
 
     if platform_lower in ("polars-df", "polars"):
@@ -477,7 +479,7 @@ def get_maintenance_operations_for_platform(platform_name: str) -> DataFrameMain
                 get_polars_maintenance_operations,
             )
 
-            return get_polars_maintenance_operations()
+            return get_polars_maintenance_operations(execution_engine=execution_engine)
         except ImportError:
             logger.debug("Polars maintenance not available (polars not installed)")
             return None
