@@ -14,6 +14,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the earlier `engine` option name used by the recorded bundles.
 
 ### Added
+- Manifest capability `gateways` defines intermediary query routers (`espresso`, `greybeam`, `custom`)
+  with route targets, engine classes and host requirements. Snowflake and Databricks declare supported gateways.
+  The core registers the `--gateway` CLI flag and gateway connection options (`gateway_host`, `gateway_port`,
+  `gateway_protocol`, `gateway_ca_bundle`, `gateway_ocsp_fail_open`, `allow_insecure_gateway`). Result bundles
+  record `platform.gateway` with `name` and `routed: true`, set `tpc_compliant: false` whenever routed,
+  restrict per-query `execution_engine` to `routes_to` targets plus `unknown`, and observe `mixed` when queries
+  differ. The core `variants_comparable` guard protects `benchbox compare` and regression baseline selection
+  against comparing different gateway, deployment, or engine variants unless `--allow-heterogeneous-comparison`
+  is provided.
+
 
 - Result schema 2.3 supports execution-engine receipts, query engine observations,
   compute resource and size, selected deployment, routed gateway, and variant identity.

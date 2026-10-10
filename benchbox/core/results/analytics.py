@@ -137,6 +137,11 @@ def _load_regression_runs(
             if not _matches_filters(run_platform, run_benchmark, platform, benchmark):
                 continue
 
+            from benchbox.core.gateway import variants_comparable
+
+            if runs and not variants_comparable(runs[0]["data"], data):
+                continue
+
             runs.append(
                 {
                     "file": file_path.name,

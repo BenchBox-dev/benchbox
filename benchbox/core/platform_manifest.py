@@ -146,6 +146,7 @@ def _validate_capabilities(key: str, capabilities: object) -> None:
 
     _validate_compute(key, capabilities.get("compute", {}))
     _validate_execution_engines(key, capabilities.get("execution_engines", {}))
+    _validate_gateways(key, capabilities.get("gateways", {}))
 
 
 def _validate_execution_engines(key: str, engines: object) -> None:
@@ -167,6 +168,30 @@ def _validate_execution_engines(key: str, engines: object) -> None:
             raise ValueError(f"Platform {key!r} execution engine {name!r} dependencies must be a list of strings")
         if not isinstance(engine["selectable"], bool):
             raise ValueError(f"Platform {key!r} execution engine {name!r} selectable must be a boolean")
+
+
+def _validate_gateways(key: str, gateways: object) -> None:
+    if not isinstance(gateways, dict):
+        raise ValueError(f"Platform {key!r} gateways must be an object")
+    for name, gateway in gateways.items():
+        if name in {"native"} or not _PLATFORM_KEY_PATTERN.fullmatch(name):
+            raise ValueError(f"Platform {key!r} cannot declare gateway {name!r}")
+        if not isinstance(gateway, dict) or set(gateway) != {"routes_to", "requires_host"}:
+            raise ValueError(f"Platform {key!r} gateway {name!r} must have routes_to and requires_host")
+        if not isinstance(gateway["requires_host"], bool):
+            raise ValueError(f"Platform {key!r} gateway {name!r} requires_host must be a boolean")
+        if name == "custom" and not gateway["requires_host"]:
+            raise ValueError(f"Platform {key!r} gateway 'custom' must require a host")
+        routes_to = gateway["routes_to"]
+        if not isinstance(routes_to, dict) or not routes_to:
+            raise ValueError(f"Platform {key!r} gateway {name!r} routes_to must be a non-empty object")
+        for engine_name, engine_spec in routes_to.items():
+            if not isinstance(engine_spec, dict) or set(engine_spec) != {"class"}:
+                raise ValueError(f"Platform {key!r} gateway {name!r} engine {engine_name!r} must have class")
+            if engine_spec["class"] not in EXECUTION_ENGINE_CLASSES:
+                raise ValueError(
+                    f"Platform {key!r} gateway {name!r} engine {engine_name!r} has unknown class {engine_spec['class']!r}"
+                )
 
 
 COMPUTE_RESOURCE_KINDS: tuple[str, ...] = (
@@ -336,6 +361,16 @@ def _validate_manifest_set(entries: list[PlatformManifestEntry]) -> None:
                     f"Execution engine {name!r} is {first_class!r} on {first_key!r} "
                     f"but {engine['class']!r} on {entry.key!r}"
                 )
+        for gw_name, gateway in entry.capabilities.get("gateways", {}).items():
+            for name, engine in gateway.get("routes_to", {}).items():
+                first_key, first_class = engine_classes.setdefault(
+                    name, (f"{entry.key} gateway {gw_name}", engine["class"])
+                )
+                if first_class != engine["class"]:
+                    raise ValueError(
+                        f"Execution engine {name!r} is {first_class!r} on {first_key!r} "
+                        f"but {engine['class']!r} on {entry.key} gateway {gw_name!r}"
+                    )
 
     adapter_coordinates = [
         (entry.adapter.module, entry.adapter.class_name) for entry in entries if entry.adapter is not None
@@ -1098,6 +1133,24 @@ _PLATFORM_MANIFEST_JSON = """[
           "dependencies": [],
           "selectable": false
         }
+      },
+      "gateways": {
+        "espresso": {
+          "requires_host": false,
+          "routes_to": {
+            "databricks": {
+              "class": "standard"
+            }
+          }
+        },
+        "custom": {
+          "requires_host": true,
+          "routes_to": {
+            "databricks": {
+              "class": "standard"
+            }
+          }
+        }
       }
     },
     "required_credentials": [
@@ -1199,6 +1252,35 @@ _PLATFORM_MANIFEST_JSON = """[
         "resource_kind": "warehouse",
         "native_resource_keys": ["warehouse"],
         "native_size_keys": ["warehouse_size"]
+      },
+      "gateways": {
+        "espresso": {
+          "requires_host": false,
+          "routes_to": {
+            "snowflake": {
+              "class": "standard"
+            }
+          }
+        },
+        "greybeam": {
+          "requires_host": false,
+          "routes_to": {
+            "snowflake": {
+              "class": "standard"
+            },
+            "duckdb": {
+              "class": "delegated"
+            }
+          }
+        },
+        "custom": {
+          "requires_host": true,
+          "routes_to": {
+            "snowflake": {
+              "class": "standard"
+            }
+          }
+        }
       }
     },
     "required_credentials": [

@@ -2653,6 +2653,11 @@ def _interactive_handle_result(s: types.SimpleNamespace, result: Any, orchestrat
     hidden=True,
     help="Deprecated alias for --execution-engine streaming on polars-df.",
 )
+@advanced_option(
+    "--gateway",
+    default=None,
+    help="Route queries through a gateway (e.g. espresso, greybeam, custom)."
+)
 @advanced_option("--seed", type=int, help="RNG seed for query parameter generation")
 @advanced_option(
     "--streams",
@@ -2770,6 +2775,7 @@ def run(
     benchmark_option_pairs: tuple[tuple[str, str], ...],
     mode: str | None,
     execution_engine: str | None,
+    gateway: str | None,
     seed: int | None,
     concurrency: int | None,
     iterations: int | None,
@@ -2826,6 +2832,7 @@ def run(
         benchmark_option_pairs=benchmark_option_pairs,
         mode=mode,
         execution_engine=execution_engine,
+        gateway=gateway,
         seed=seed,
         concurrency=concurrency,
         iterations=iterations,

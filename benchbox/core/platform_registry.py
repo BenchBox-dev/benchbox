@@ -102,6 +102,17 @@ class ExecutionEngineCapability:
     selectable: bool = True
 
 
+@dataclass(frozen=True)
+class GatewayRouteCapability:
+    engine_class: str
+
+
+@dataclass(frozen=True)
+class GatewayCapability:
+    requires_host: bool
+    routes_to: dict[str, GatewayRouteCapability] = field(default_factory=dict)
+
+
 @dataclass
 class PlatformCapability:
     supports_sql: bool = False
@@ -114,6 +125,7 @@ class PlatformCapability:
     inherits_from: Optional[str] = None
     cost_class: CostClass = "free"
     unsupported_benchmarks: dict[str, str] = field(default_factory=dict)
+    gateways: dict[str, GatewayCapability] = field(default_factory=dict)
 
 
 class PlatformRegistry:
@@ -560,6 +572,16 @@ class PlatformRegistry:
             )
             for name, spec in caps.get("execution_engines", {}).items()
         }
+        gateways = {
+            name: GatewayCapability(
+                requires_host=spec["requires_host"],
+                routes_to={
+                    engine_name: GatewayRouteCapability(engine_class=engine_spec["class"])
+                    for engine_name, engine_spec in spec.get("routes_to", {}).items()
+                },
+            )
+            for name, spec in caps.get("gateways", {}).items()
+        }
 
         import benchbox.sql_compat.rules.benchmark_gate.clickhouse_local_gate  # noqa: F401
         import benchbox.sql_compat.rules.benchmark_gate.lakesail_gate  # noqa: F401
@@ -590,6 +612,7 @@ class PlatformRegistry:
             platform_family=caps.get("platform_family"),
             inherits_from=caps.get("inherits_from"),
             cost_class=caps.get("cost_class", "free"),
+            gateways=gateways,
             unsupported_benchmarks=unsupported,
         )
 
@@ -753,6 +776,16 @@ class PlatformRegistry:
     def supports_execution_engine(cls, platform_name: str, engine: str) -> bool:
         caps = cls.get_platform_capabilities(platform_name)
         return caps is not None and engine in caps.execution_engines
+
+    @classmethod
+    def get_available_gateways(cls, platform_name: str) -> dict[str, GatewayCapability]:
+        caps = cls.get_platform_capabilities(platform_name)
+        return {} if caps is None else caps.gateways
+
+    @classmethod
+    def supports_gateway(cls, platform_name: str, gateway: str) -> bool:
+        caps = cls.get_platform_capabilities(platform_name)
+        return caps is not None and gateway in caps.gateways
 
 
 _OPTIONAL_ADAPTERS: tuple[tuple[str, str, str], ...] = get_adapter_imports()

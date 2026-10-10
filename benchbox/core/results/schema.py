@@ -226,6 +226,29 @@ def build_result_payload(result: BenchmarkResults, *, sanitize_platform_secrets:
         "phases": order_dict(phases_block, PHASE_KEY_ORDER),
         "queries": queries_list,
     }
+    if platform.get("gateway", {}).get("routed") is True:
+        payload["tpc_compliant"] = False
+        gateway_name = platform["gateway"].get("name")
+        from benchbox.core.gateway import supported_gateways
+
+        gateways = supported_gateways(str(result.platform))
+        allowed_engines = set()
+        if gateway_name in gateways:
+            allowed_engines = set(gateways[gateway_name].routes_to.keys())
+
+        query_engines = set()
+        for q in queries_list:
+            engine = q.get("execution_engine")
+            if engine:
+                if allowed_engines and engine not in allowed_engines:
+                    q["execution_engine"] = "unknown"
+                    engine = "unknown"
+                query_engines.add(engine)
+
+        if len(query_engines) > 1 and "execution_engine" in payload["platform"]:
+            engine_map = dict(payload["platform"]["execution_engine"])
+            engine_map["observed"] = "mixed"
+            payload["platform"]["execution_engine"] = order_dict(engine_map, PLATFORM_EXECUTION_ENGINE_KEY_ORDER)
 
     if environment:
         payload["environment"] = environment
@@ -581,6 +604,8 @@ def _add_execution_variant_fields(platform: dict[str, Any], result: BenchmarkRes
     gateway_block = gateway_payload(_platform_info_entry(platform_info, "gateway"))
     if gateway_block:
         platform["gateway"] = order_dict(gateway_block, PLATFORM_GATEWAY_KEY_ORDER)
+        if gateway_block.get("routed") is True:
+            platform["tpc_compliant"] = False
     for key, lead in (("compute", PLATFORM_COMPUTE_LEAD_KEYS), ("deployment", PLATFORM_DEPLOYMENT_LEAD_KEYS)):
         block = platform.get(key)
         if isinstance(block, Mapping):
