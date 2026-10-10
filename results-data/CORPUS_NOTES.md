@@ -12,7 +12,8 @@ points are DuckDB 1.0.0, 1.1.3, 1.2.2, 1.3.2, 1.4.4, 1.5.5, and
 1.6.0.dev365 (the current latest 1.6 development wheel at capture time).
 
 The runner and analyzer are `scripts/run_duckdb_version_matrix.py` and
-`scripts/analyze_duckdb_version_matrix.py`. The analyzer's
+`scripts/analyze_duckdb_version_matrix.py`, which run the DuckDB spec of the engine-neutral
+`scripts/run_version_matrix.py` and `scripts/analyze_version_matrix.py`. The analyzer's
 `--explorer-bundles-dir` option creates the 28 median bundles for promotion. All raw
 data, databases, logs, and analysis outputs remain in the external operator output
 directory; only those anonymized median bundles are promoted here. DuckDB development wheels can report a separate internal

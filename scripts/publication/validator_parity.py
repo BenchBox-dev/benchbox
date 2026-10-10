@@ -1,36 +1,4 @@
 #!/usr/bin/env python3
-"""Compare PR-head vs merge-SHA validation outcomes (A2 w4 parity).
-
-This script validates that the trusted-base validator produces identical
-outcomes when run against payload extracted from MERGE_SHA versus the PR head.
-It is the local parity counterpart to the pull_request_target + MERGE_SHA
-revalidation in .github/workflows/validate-submission.yml.
-
-Contract:
-- Executes validator from trusted base checkout (ref: BASE_SHA). Payload is
-  extracted from MERGE_SHA via ``git show $MERGE_SHA:path`` or sparse checkout
-  to /tmp/payload. Never executes validator code from the PR branch.
-- Discovers changed bundles via three-dot ``BASE_SHA...MERGE_SHA`` diff with
-  --diff-filter=ACMRD, then back-maps CHANGED_MANIFESTS / CHANGED_APPLIED /
-  CHANGED_COMPANIONS to primary bundles via ``git ls-tree $MERGE_SHA``.
-- Corpus parity: if CORPUS_CHANGED_PATHS_FILE is provided, validates it against
-  the MERGE_SHA file list and runs ``scripts/generate_corpus_inventory.py --check``
-  logic on the merge payload; empty file means no corpus changes, missing file
-  is an error.
-- Parity with benchbox/validation/bundle.py and scripts/validate_submission.py
-  --corpus-changed-paths flag.
-
-Usage:
-  uv run -- python scripts/publication/validator_parity.py --base-sha <sha> --merge-sha <sha> --head-sha <sha>
-  uv run -- python scripts/publication/validator_parity.py --base-sha $BASE_SHA --merge-sha $MERGE_SHA --head-sha $HEAD_SHA --corpus-changed-paths /tmp/corpus_changed_paths.txt
-  # Env fallback:
-  BASE_SHA=... MERGE_SHA=... HEAD_SHA=... CORPUS_CHANGED_PATHS_FILE=/tmp/corpus_changed_paths.txt uv run -- python scripts/publication/validator_parity.py
-
-Exit codes:
-  0 - parity holds (head and merge outcomes identical and both succeed)
-  1 - validation failure or parity divergence
-  2 - usage / environment error (missing SHA, missing file, git failure)
-"""
 
 from __future__ import annotations
 
@@ -41,11 +9,44 @@ import sys
 import tempfile
 from pathlib import Path
 
+CLI_DESCRIPTION = (
+    "Compare PR-head vs merge-SHA validation outcomes (A2 w4 parity).\n"
+    "\n"
+    "This script validates that the trusted-base validator produces identical\n"
+    "outcomes when run against payload extracted from MERGE_SHA versus the PR head.\n"
+    "It is the local parity counterpart to the pull_request_target + MERGE_SHA\n"
+    "revalidation in .github/workflows/validate-submission.yml.\n"
+    "\n"
+    "Contract:\n"
+    "- Executes validator from trusted base checkout (ref: BASE_SHA). Payload is\n"
+    "  extracted from MERGE_SHA via ``git show $MERGE_SHA:path`` or sparse checkout\n"
+    "  to /tmp/payload. Never executes validator code from the PR branch.\n"
+    "- Discovers changed bundles via three-dot ``BASE_SHA...MERGE_SHA`` diff with\n"
+    "  --diff-filter=ACMRD, then back-maps CHANGED_MANIFESTS / CHANGED_APPLIED /\n"
+    "  CHANGED_COMPANIONS to primary bundles via ``git ls-tree $MERGE_SHA``.\n"
+    "- Corpus parity: if CORPUS_CHANGED_PATHS_FILE is provided, validates it against\n"
+    "  the MERGE_SHA file list and runs ``scripts/generate_corpus_inventory.py --check``\n"
+    "  logic on the merge payload; empty file means no corpus changes, missing file\n"
+    "  is an error.\n"
+    "- Parity with benchbox/validation/bundle.py and scripts/validate_submission.py\n"
+    "  --corpus-changed-paths flag.\n"
+    "\n"
+    "Usage:\n"
+    "  uv run -- python scripts/publication/validator_parity.py --base-sha <sha> --merge-sha <sha> --head-sha <sha>\n"
+    "  uv run -- python scripts/publication/validator_parity.py --base-sha $BASE_SHA --merge-sha $MERGE_SHA --head-sha $HEAD_SHA --corpus-changed-paths /tmp/corpus_changed_paths.txt\n"
+    "  # Env fallback:\n"
+    "  BASE_SHA=... MERGE_SHA=... HEAD_SHA=... CORPUS_CHANGED_PATHS_FILE=/tmp/corpus_changed_paths.txt uv run -- python scripts/publication/validator_parity.py\n"
+    "\n"
+    "Exit codes:\n"
+    "  0 - parity holds (head and merge outcomes identical and both succeed)\n"
+    "  1 - validation failure or parity divergence\n"
+    "  2 - usage / environment error (missing SHA, missing file, git failure)\n"
+)
+
 CHECKOUT_ROOT = Path(__file__).resolve().parents[2]
 if str(CHECKOUT_ROOT) not in sys.path:
     sys.path.insert(0, str(CHECKOUT_ROOT))
 
-# Reuse trusted-base validator implementation
 try:
     from benchbox.validation.bundle import discover_bundles, validate_bundles
 except ImportError:
@@ -59,8 +60,8 @@ except ImportError:
     sys.modules[spec.name] = bundle
     assert spec.loader is not None
     spec.loader.exec_module(bundle)
-    discover_bundles = bundle.discover_bundles  # type: ignore[attr-defined]
-    validate_bundles = bundle.validate_bundles  # type: ignore[attr-defined]
+    discover_bundles = bundle.discover_bundles
+    validate_bundles = bundle.validate_bundles
 
 
 def _run_git(*args: str, cwd: Path | None = None) -> str:
@@ -87,9 +88,6 @@ def _resolve_sha(label: str, value: str | None, *alt_env: str) -> str:
 
 
 def _diff_name_only(base_sha: str, merge_sha: str, *pathspecs: str, diff_filter: str = "ACMRD") -> list[str]:
-    """Three-dot diff semantics: BASE_SHA...MERGE_SHA."""
-    # Use three-dot range to capture changes on the PR branch since divergence
-    # from base, matching the workflow's git diff --name-only $BASE_SHA...$MERGE_SHA
     args = ["diff", "--no-renames", "--name-only", f"--diff-filter={diff_filter}", f"{base_sha}...{merge_sha}", "--"]
     args.extend(pathspecs)
     out = _run_git(*args)
@@ -103,16 +101,11 @@ def _ls_tree_at(sha: str, prefix: str) -> set[str]:
 
 
 def _extract_payload(merge_sha: str, paths: list[str], dest: Path) -> list[Path]:
-    """Extract payload files from MERGE_SHA via git show to dest, return local Paths."""
     extracted: list[Path] = []
     for rel in paths:
-        # Read blob via git show
         try:
             content = _run_git("show", f"{merge_sha}:{rel}")
-            # For binary-safe, use git show with -- raw? Text is sufficient for JSON bundles.
-            # Fallback to git cat-file for raw bytes if needed
         except RuntimeError:
-            # Try binary-safe path
             result = subprocess.run(
                 ["git", "show", f"{merge_sha}:{rel}"],
                 cwd=str(CHECKOUT_ROOT),
@@ -125,7 +118,6 @@ def _extract_payload(merge_sha: str, paths: list[str], dest: Path) -> list[Path]
             content = result.stdout.decode("utf-8", errors="replace")
         local = dest / rel
         local.parent.mkdir(parents=True, exist_ok=True)
-        # Use cat-file for exact bytes to preserve hash
         raw_result = subprocess.run(
             ["git", "cat-file", "-p", f"{merge_sha}:{rel}"],
             cwd=str(CHECKOUT_ROOT),
@@ -141,8 +133,6 @@ def _extract_payload(merge_sha: str, paths: list[str], dest: Path) -> list[Path]
 
 
 def _discover_changed_bundles(base_sha: str, merge_sha: str) -> list[str]:  # noqa: C901
-    """Return primary bundle paths changed at MERGE_SHA, handling companion back-maps."""
-    # Primary pattern: exclude companions
     changed = _diff_name_only(
         base_sha,
         merge_sha,
@@ -150,7 +140,6 @@ def _discover_changed_bundles(base_sha: str, merge_sha: str) -> list[str]:  # no
         ":(icase,glob)results-data/bundles/**/*.json",
         diff_filter="ACMR",
     )
-    # Filter companions out of primary list
     filtered: list[str] = []
     for path in changed:
         lower = path.lower()
@@ -166,25 +155,19 @@ def _discover_changed_bundles(base_sha: str, merge_sha: str) -> list[str]:  # no
             continue
         filtered.append(path)
 
-    # Companion back-mapping via git ls-tree $MERGE_SHA
     merge_files = _ls_tree_at(merge_sha, "results-data/bundles")
 
     def _stem_to_bundle(stem: str) -> str | None:
-        # Find file in merge_files where stem + ".json" matches case-insensitively
         target_lower = f"{stem.lower()}.json"
         for candidate in merge_files:
             if candidate.lower() == target_lower:
                 return candidate
-            # Also handle nested: candidate lower ends with /<stem>.json ?
-            # Actually stem includes directory, so exact match is sufficient
-        # Try prefix search: look for any file whose lower without .json == stem lower
         for candidate in merge_files:
             lower = candidate.lower()
             if lower.endswith(".json") and lower[:-5] == stem.lower():
                 return candidate
         return None
 
-    # Manifests
     changed_manifests = _diff_name_only(
         base_sha,
         merge_sha,
@@ -194,14 +177,12 @@ def _discover_changed_bundles(base_sha: str, merge_sha: str) -> list[str]:  # no
     )
     changed_manifests = [p for p in changed_manifests if p.lower().endswith(".manifest.json")]
     for manifest in changed_manifests:
-        stem = manifest[:-14]  # strip .manifest.json
+        stem = manifest[:-14]
         bundle = _stem_to_bundle(stem)
         if bundle and bundle not in filtered:
-            # Check existence at MERGE_SHA
             if bundle in merge_files:
                 filtered.append(bundle)
 
-    # Applied
     changed_applied_raw = _diff_name_only(
         base_sha,
         merge_sha,
@@ -216,7 +197,6 @@ def _discover_changed_bundles(base_sha: str, merge_sha: str) -> list[str]:  # no
         if bundle and bundle not in filtered and bundle in merge_files:
             filtered.append(bundle)
 
-    # Plans / tuning
     changed_companions_raw = _diff_name_only(
         base_sha,
         merge_sha,
@@ -243,7 +223,6 @@ def _discover_changed_bundles(base_sha: str, merge_sha: str) -> list[str]:  # no
             continue
         bundle = _stem_to_bundle(stem)
         if bundle is None:
-            # Companion with no primary bundle at MERGE_SHA -> error (parity with workflow)
             if companion in merge_files:
                 print(f"::error::Live companion has no primary bundle at {stem}.json", file=sys.stderr)
                 raise SystemExit(1)
@@ -255,48 +234,35 @@ def _discover_changed_bundles(base_sha: str, merge_sha: str) -> list[str]:  # no
 
 
 def _validate_corpus_changed_paths(corpus_file: Path | None, base_sha: str, merge_sha: str) -> int:
-    """Validate CORPUS_CHANGED_PATHS_FILE semantics. Returns 0 on success, 1 on failure."""
-    # Empty-file vs missing-file semantics: missing file is an error if corpus may have changed,
-    # empty file means no corpus changes.
     if corpus_file is None:
         return 0
-    # Consumer validation: file must exist (producer guarantees atomic write)
     if not corpus_file.exists():
         print(
             f"::error::CORPUS_CHANGED_PATHS_FILE missing: {corpus_file} (expected atomic write via git diff + mv)",
             file=sys.stderr,
         )
         return 1
-    # Validate lifecycle: file should be at /tmp and contain corpus paths from MERGE_SHA ls-tree
     try:
         content = corpus_file.read_text(encoding="utf-8")
     except OSError as exc:
         print(f"::error::Cannot read corpus changed paths file {corpus_file}: {exc}", file=sys.stderr)
         return 1
     paths = [line.strip() for line in content.splitlines() if line.strip()]
-    # If file is empty, no corpus changes -> ok
     if not paths:
         return 0
-    # Validate each path is under results-data/corpus/ and exists at MERGE_SHA
     merge_corpus_files = _ls_tree_at(merge_sha, "results-data/corpus")
-    # Also check via git diff three-dot
     expected = _diff_name_only(base_sha, merge_sha, "results-data/corpus/**", diff_filter="ACMRD")
     expected_set = set(expected)
     for p in paths:
         if not p.startswith("results-data/corpus/"):
             print(f"::error::Corpus changed path not under results-data/corpus/: {p}", file=sys.stderr)
             return 1
-        # If producer wrote via git ls-tree $MERGE_SHA filtering, it should be subset of expected diff
-        # Allow but warn if not in expected
         if p not in expected_set and p not in merge_corpus_files:
-            # Could be a deleted file: check diff includes it but ls-tree at merge may not have it
             if p not in expected_set:
                 print(
                     f"Warning: corpus path {p} not in diff {base_sha}...{merge_sha} and not at {merge_sha}",
                     file=sys.stderr,
                 )
-    # Local parity with generate_corpus_inventory: ensure inventory check would still pass on merge payload
-    # We do not run full inventory here, just ensure file list is consistent
     return 0
 
 
@@ -308,25 +274,20 @@ def _run_validation_on_payload(
     with tempfile.TemporaryDirectory(prefix="payload_") as tmpdir:
         dest = Path(tmpdir) / "payload"
         dest.mkdir(parents=True, exist_ok=True)
-        # Extract bundles + companions + manifests for validation
-        # Include all files under results-data/bundles at MERGE_SHA that are siblings of changed bundles
         merge_files = _ls_tree_at(merge_sha, "results-data/bundles")
         to_extract: set[str] = set(bundle_paths)
         for bundle in bundle_paths:
             stem = bundle[:-5] if bundle.lower().endswith(".json") else bundle
             for suffix in [".manifest.json", ".applied.json", ".plans.json", ".tuning.json", ".override.json"]:
                 candidate = f"{stem}{suffix}"
-                # Case-insensitive match against merge_files
                 for mf in merge_files:
                     if mf.lower() == candidate.lower():
                         to_extract.add(mf)
-            # Legacy manifest
             legacy = str(Path(bundle).parent / "submission-manifest.json")
             for mf in merge_files:
                 if mf.lower() == legacy.lower():
                     to_extract.add(mf)
         _extract_payload(merge_sha, sorted(to_extract), dest)
-        # Map extracted bundle paths to local paths
         local_bundles: list[Path] = []
         for b in bundle_paths:
             local = dest / b
@@ -335,10 +296,6 @@ def _run_validation_on_payload(
             else:
                 print(f"Warning: bundle {b} not extracted at {local}", file=sys.stderr)
         if not local_bundles:
-            # bundle_paths was non-empty but nothing extracted at this SHA:
-            # fail closed. Returning 0 here would let compare_head_merge_outcomes
-            # print "Parity OK" over two vacuous zeros (e.g. HEAD payload never
-            # fetched while MERGE validation also extracted nothing).
             print(
                 f"::error::No bundle files extracted at {merge_sha} for {len(bundle_paths)} requested bundle(s)",
                 file=sys.stderr,
@@ -353,7 +310,7 @@ def _run_validation_on_payload(
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=CLI_DESCRIPTION)
     parser.add_argument(
         "--base-sha",
         dest="base_sha",
@@ -401,7 +358,6 @@ def compare_head_merge_outcomes(
     require_manifest: bool = False,
     allow_partial: bool = False,
 ) -> tuple[int, str]:
-    """Run validation on MERGE_SHA and HEAD_SHA payloads; return (exit_code, message)."""
     merge_rc, merge_summary = _run_validation_on_payload(
         changed_bundles,
         merge_sha,
@@ -448,12 +404,10 @@ def main(argv: list[str] | None = None) -> int:
         print("::error::HEAD_SHA is required (--head-sha or env HEAD_SHA / PR_HEAD_SHA)", file=sys.stderr)
         return 2
 
-    # Validate SHAs look like hex
     for label, sha in [("BASE_SHA", base_sha), ("MERGE_SHA", merge_sha), ("HEAD_SHA", head_sha)]:
         if len(sha) < 7 or not all(c in "0123456789abcdef" for c in sha.lower()):
             print(f"::error::{label} does not look like a valid SHA: {sha}", file=sys.stderr)
             return 2
-    # Verify SHAs resolve
     for label, sha in [("BASE_SHA", base_sha), ("MERGE_SHA", merge_sha), ("HEAD_SHA", head_sha)]:
         try:
             _run_git("cat-file", "-e", sha)
@@ -461,11 +415,6 @@ def main(argv: list[str] | None = None) -> int:
             print(f"::error::{label} not found in repo: {sha}", file=sys.stderr)
             return 2
 
-    # Three-dot vs two-dot semantics note: we use three-dot BASE_SHA...MERGE_SHA
-    # to include changes on PR branch since merge-base, which is the correct
-    # contract for PR validation (two-dot BASE_SHA..MERGE_SHA would miss merge-base context).
-
-    # Discover changed bundles at MERGE_SHA (same discovery used for both payload extractions)
     try:
         changed_bundles = _discover_changed_bundles(base_sha, merge_sha)
     except SystemExit as exc:
@@ -481,7 +430,6 @@ def main(argv: list[str] | None = None) -> int:
     for bundle in changed_bundles:
         print(f"  {bundle}")
 
-    # Corpus parity
     corpus_rc = _validate_corpus_changed_paths(corpus_file, base_sha, merge_sha)
     if corpus_rc != 0:
         return 1
@@ -496,12 +444,11 @@ def main(argv: list[str] | None = None) -> int:
     if rc != 0:
         return rc
 
-    # Optional corpus inventory length signal when corpus paths changed
     if corpus_file is not None and corpus_file.exists():
         content = corpus_file.read_text(encoding="utf-8")
         if content.strip():
             try:
-                from scripts.generate_corpus_inventory import generate_inventory  # type: ignore
+                from scripts.generate_corpus_inventory import generate_inventory
 
                 local_inv = generate_inventory(CHECKOUT_ROOT / "results-data" / "bundles")
                 print(f"Local inventory bundles: {len(local_inv.get('bundles', []))} (parity check)")

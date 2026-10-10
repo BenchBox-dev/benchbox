@@ -68,8 +68,10 @@ document already described in prose.
 ## Seed Corpus
 
 After the 2026-08-28 trust boundary, the checked-in
-corpus holds **395** maintainer-run bundles across **20** benchmarks and **61**
-cohorts, all at the >=3-identity validator floor. Covered families include the
+corpus holds **399** maintainer-run bundles across **20** benchmarks and **62**
+cohorts. All 61 power cohorts meet the >=3-identity validator floor. The
+throughput cohort (`tpch@sf1.0#throughput#3streams`, DuckDB only) has one
+identity and does not meet that floor. Covered families include the
 local set (amplab, clickbench, coffeeshop, h2odb, joinorder, read_primitives,
 ssb, tpcds, tpch, tpch_skew), the admitted datavault, flightdata, nyctaxi,
 tpcdi, tpcds_obt, and tpchavoc cohorts, and 150 live cloud bundles (BigQuery,

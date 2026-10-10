@@ -1,10 +1,4 @@
 #!/usr/bin/env python3
-"""CLI wrapper for public submission bundle validation.
-
-Usage:
-    uv run -- python scripts/validate_submission.py results-data/bundles/
-    uv run -- python scripts/validate_submission.py path/to/bundle1.json path/to/bundle2.json
-"""
 
 from __future__ import annotations
 
@@ -14,9 +8,6 @@ import re
 import sys
 from pathlib import Path
 
-# `uv run --no-project -- python scripts/validate_submission.py` executes with
-# scripts/ on sys.path, not the checkout root. Add the root explicitly so the
-# mirrored `benchbox.validation` package is importable without installing BenchBox.
 CHECKOUT_ROOT = Path(__file__).resolve().parents[1]
 if str(CHECKOUT_ROOT) not in sys.path:
     sys.path.insert(0, str(CHECKOUT_ROOT))
@@ -54,7 +45,7 @@ except ImportError:
 
 try:
     from benchbox.core.results.anonymization import find_public_path_leaks
-except ImportError:  # pragma: no cover - published-results keeps a slim package mirror.
+except ImportError:  # pragma: no cover
     _PRIVATE_LOCAL_PATH_RE = re.compile(
         r"(?<![A-Za-z0-9_])(?:"
         r"(?:~|/Users|/home|/root|/private/var|/var/folders|/var/run|/Volumes)/[^\s'\",;)]*"
@@ -64,22 +55,9 @@ except ImportError:  # pragma: no cover - published-results keeps a slim package
     )
 
     def find_public_path_leaks(value, key_path=()):
-        """Slim-branch fallback for the shared public path privacy contract.
-
-        Must stay behaviourally identical to
-        ``benchbox.core.results.anonymization.find_public_path_leaks``. This
-        copy is the one that actually runs on ``published-results``: the
-        slim-branch allowlist in
-        ``.github/workflows/sync-results-data-to-published.yml`` mirrors this
-        file and ``benchbox/validation/bundle.py`` but not the canonical
-        module, so the import above always fails there. A key check added only
-        upstream would leave the real public-corpus gate blind to it.
-        """
         if isinstance(value, dict):
             leaks = []
             for key, child in value.items():
-                # Elide a leaking key in its own report and in every
-                # descendant's path; the raw key is itself the private path.
                 label = str(key)
                 if isinstance(key, str) and _PRIVATE_LOCAL_PATH_RE.search(key):
                     label = "<key>"
@@ -111,7 +89,6 @@ _PUBLIC_COMPANION_SUFFIXES = (".plans.json", ".tuning.json", ".applied.json", ".
 
 
 def _public_json_surfaces(bundle_path: Path) -> list[Path]:
-    """Return a primary bundle plus its JSON companions for privacy scanning."""
     candidates = [bundle_path]
     try:
         siblings = {path.name.lower(): path for path in bundle_path.parent.iterdir() if path.is_file()}
@@ -128,7 +105,6 @@ def _public_json_surfaces(bundle_path: Path) -> list[Path]:
 
 
 def _append_public_privacy_errors(paths: list[Path], results: list[ValidationResult]) -> None:
-    """Fail closed when any public JSON surface contains a private absolute path."""
     by_path = {Path(result.path): result for result in results}
     for bundle_path in paths:
         result = by_path.get(bundle_path)
@@ -161,10 +137,6 @@ CORPUS_RELATIVE_ROOT = "results-data/bundles"
 _CORPUS_ROOT_PARTS = ("results-data", "bundles")
 _CORPUS_METADATA_SUFFIXES = (".plans.json", ".tuning.json", ".applied.json", ".manifest.json", ".override.json")
 _CORPUS_METADATA_FILENAMES = ("corpus-inventory.json", "submission-manifest.json")
-# JSON-named files that are NOT corpus data: package/TS manifests and other
-# executable or tool surfaces that must not ride into the corpus tree even
-# though they end in ``.json``. This is a bounded set of non-data types, not a
-# deny-list of executables; every other file is a primary result bundle.
 _CORPUS_NON_DATA_JSON = {
     "package.json",
     "package-lock.json",
@@ -176,7 +148,6 @@ _CORPUS_NON_DATA_JSON = {
 
 
 def _is_allowed_corpus_data_name(name: str) -> bool:
-    """Return whether a corpus leaf name is an explicitly supported data type."""
     lower = name.lower()
     if lower in _CORPUS_METADATA_FILENAMES or lower.endswith(_CORPUS_METADATA_SUFFIXES):
         return True
@@ -186,24 +157,6 @@ def _is_allowed_corpus_data_name(name: str) -> bool:
 
 
 def corpus_permit_rejections(changed_paths) -> list[str]:
-    """Reject any changed corpus path that is not an explicitly allowed data file.
-
-    Positive allowlist (see A2 anti-pattern: never a deny-list of executables).
-    A path is allowed only when ALL hold:
-
-      - it is inside ``results-data/bundles/``;
-      - it is a plain relative leaf with no traversal (``..``, absolute, empty);
-      - every component is a normal directory name (no dot-prefixed hidden
-        control dirs such as ``.github``);
-      - the final name is a ``.json`` data file (bundle, companion, sidecar
-        manifest, or the inventory) - never a workflow, script, package, or
-        other executable surface;
-      - on disk it is a regular file, not a symlink, and carries no executable
-        mode bit.
-
-    Changed paths are read from CI's diff, so this guard runs on the PR's
-    changed file set, not just on bundles that happen to be discovered.
-    """
     rejections: list[str] = []
     for raw in changed_paths:
         path = Path(raw).as_posix().rstrip("/")
@@ -211,9 +164,7 @@ def corpus_permit_rejections(changed_paths) -> list[str]:
             continue
         parts = tuple(part for part in Path(path).parts if part)
 
-        # Hostile input fails closed regardless of where it points: a changed
-        # path is never trusted to escape the tree or be absolute.
-        if Path(path).is_absolute():
+        if path.startswith("/") or Path(path).is_absolute():
             rejections.append(f"{raw}: absolute paths are not allowed")
             continue
         if any(part == ".." for part in parts):
@@ -221,7 +172,7 @@ def corpus_permit_rejections(changed_paths) -> list[str]:
             continue
 
         if parts[: len(_CORPUS_ROOT_PARTS)] != _CORPUS_ROOT_PARTS:
-            continue  # not a corpus path - outside this gate's authority
+            continue
 
         fail = None
         if not _is_allowed_corpus_data_name(parts[-1]):
@@ -248,12 +199,6 @@ def corpus_permit_rejections(changed_paths) -> list[str]:
 
 
 def executable_mode(path: Path) -> bool:
-    """Return True when any owner/group/other execute bit is set.
-
-    Git records executable intent as mode ``100755``. A benign bundle that was
-    accidentally committed executable would be surfaced here; legitimate corpus
-    data files must be plain ``100644``.
-    """
     try:
         mode = path.stat().st_mode
     except OSError:
@@ -264,17 +209,6 @@ def executable_mode(path: Path) -> bool:
 def _validate_corpus_changed_paths_file(
     corpus_changed_paths_file: Path | None,
 ) -> int | None:
-    """Backwards-compatible alias for w4 parity tests (A2 w4).
-
-    The canonical gate is :func:`corpus_permit_rejections`; this wrapper exists
-    so ``tests/unit/publication/test_validator_parity.py::test_validate_submission_corpus_flag_exists``
-    (written against the w4 branch) continues to import. Contract:
-    - ``None`` -> ``None`` (no corpus gate)
-    - missing file -> ``1`` (fail-closed)
-    - empty file -> ``None`` (no corpus changes)
-    - non-empty with allowlist rejections -> ``1``
-    - otherwise -> ``None``
-    """
     if corpus_changed_paths_file is None:
         return None
     if not corpus_changed_paths_file.exists():
@@ -310,8 +244,6 @@ def _print_rules_version() -> int:
 
 
 class _Args:
-    """Parsed CLI surface for main()."""
-
     def __init__(self) -> None:
         self.pr_comment_path: Path | None = None
         self.corpus_changed_paths_path: Path | None = None
@@ -321,7 +253,6 @@ class _Args:
 
 
 def _parse_args(args: list[str], parsed: _Args) -> int | None:
-    """Fold argv into ``parsed``; return an exit code when parsing decides it."""
     i = 0
     while i < len(args):
         if args[i] == "--pr-comment" and i + 1 < len(args):
@@ -337,16 +268,12 @@ def _parse_args(args: list[str], parsed: _Args) -> int | None:
             i += 1
             continue
         if args[i] == "--allow-partial-validation":
-            # Trusted maintainer mirror only: seed corpus includes partial
-            # cohorts. Community CI must not pass this flag.
             parsed.allow_partial_validation = True
             i += 1
             continue
         if args[i] == "--rules-version":
             return _print_rules_version()
         if args[i].startswith("--"):
-            # Fail closed: an unrecognized flag must never silently degrade
-            # into a positional path (version pinning would otherwise no-op).
             print(f"Error: unrecognized flag: {args[i]}", file=sys.stderr)
             return 2
         parsed.positional.append(args[i])
@@ -407,10 +334,6 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print("No bundle files found.", file=sys.stderr)
 
-    # Exit contract: errors always fail. Unsatisfied warn-require-override
-    # findings fail community mode (no override path exists yet — the
-    # committed override artifact narrows this); the trusted mirror lane
-    # renders them advisory so pre-gate cohorts keep syncing.
     pending = {} if allow_partial_validation else unsatisfied_override_rules(results)
     for path, rule_ids in sorted(pending.items()):
         print(f"ERROR: {path} requires overrides: {', '.join(sorted(rule_ids))}")

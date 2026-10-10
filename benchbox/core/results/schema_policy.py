@@ -1,11 +1,3 @@
-"""Consumer-specific result schema version policy.
-
-BenchBox result bundles are consumed by runtime loaders, public submission
-validation, normalization utilities, and the explorer build pipeline. Those
-consumers intentionally have different risk postures, so this module names the
-policy for each consumer instead of hiding them behind one global allowlist.
-"""
-
 from __future__ import annotations
 
 import re
@@ -22,8 +14,6 @@ _NUMERIC_SCHEMA_VERSION_RE = re.compile(r"^\d+\.\d+(?:\.\d+)?$")
 
 @dataclass(frozen=True)
 class SchemaVersionDecision:
-    """Result of evaluating one raw schema version against a named policy."""
-
     policy_name: str
     raw_version: Any
     normalized_version: str | None
@@ -33,7 +23,6 @@ class SchemaVersionDecision:
     remediation: str
 
     def error_message(self) -> str:
-        """Return an actionable unsupported-version error."""
         if self.raw_version is None or self.raw_version == "":
             rendered_version = "<missing>"
         else:
@@ -46,8 +35,6 @@ class SchemaVersionDecision:
 
 @dataclass(frozen=True)
 class SchemaVersionPolicy:
-    """Declarative schema-version policy for one result-bundle consumer."""
-
     policy_name: str
     accepted_versions: tuple[str, ...]
     accepted_versions_description: str
@@ -56,7 +43,6 @@ class SchemaVersionPolicy:
     legacy_fallback_version: str | None = None
 
     def evaluate(self, raw_version: Any) -> SchemaVersionDecision:
-        """Evaluate *raw_version* without reading any bundle fields."""
         version, problem = normalize_schema_version_value(raw_version)
 
         if problem is not None:
@@ -111,17 +97,10 @@ class SchemaVersionPolicy:
 
 
 def schema_version_major(version: str) -> str:
-    """Return the major component from a normalized schema version string."""
     return version.split(".", 1)[0]
 
 
 def normalize_schema_version_value(raw_version: Any) -> tuple[str | None, str | None]:
-    """Normalize a raw version value and classify missing/malformed inputs.
-
-    Returns ``(normalized_version, problem)``. ``problem`` is ``None`` when the
-    version is syntactically usable, otherwise ``"missing"`` or
-    ``"malformed"``.
-    """
     if raw_version is None:
         return None, "missing"
     if not isinstance(raw_version, str):
@@ -135,7 +114,6 @@ def normalize_schema_version_value(raw_version: Any) -> tuple[str | None, str | 
 
 
 def result_schema_version_value(data: dict[str, Any]) -> Any:
-    """Return the explicit result schema version from a bundle-like mapping."""
     if not isinstance(data, dict):
         return None
     if "result_schema_version" in data and "version" in data:
@@ -198,7 +176,6 @@ EXPLORER_INPUT_SCHEMA_POLICY = SchemaVersionPolicy(
 
 
 def detect_normalizer_schema_version(data: dict[str, Any]) -> str:
-    """Return the schema family the normalizer should use for *data*."""
     decision = NORMALIZER_SCHEMA_POLICY.evaluate(result_schema_version_value(data))
     assert decision.accepted
     assert decision.normalized_version is not None
@@ -206,5 +183,4 @@ def detect_normalizer_schema_version(data: dict[str, Any]) -> str:
 
 
 def is_loader_supported_result_schema(data: dict[str, Any]) -> bool:
-    """Return whether *data* is acceptable for runtime result loading."""
     return LOADER_SCHEMA_POLICY.evaluate(result_schema_version_value(data)).accepted

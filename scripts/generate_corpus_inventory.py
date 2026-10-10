@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Generate `results-data/corpus-inventory.json` from schema-v2 bundles."""
 
 from __future__ import annotations
 
@@ -25,13 +24,11 @@ if str(CHECKOUT_ROOT) not in sys.path:
 
 from benchbox.validation.bundle import discover_bundles as discover_primary_bundles
 
-# Canonical provenance vocabulary. Import the one source of truth when the full
-# package is available; fall back to inline literals on the slim
-# published-results branch (which runs this script without benchbox/). Keep the
-# fallback in lockstep with benchbox/core/results/provenance.py.
+CLI_DESCRIPTION = "Generate `results-data/corpus-inventory.json` from schema-v2 bundles."
+
 try:
     from benchbox.core.results.provenance import DEFAULT_FUNDING, FUNDING_SOURCES, SOURCE_TO_TRUST_LABEL
-except ImportError:  # pragma: no cover - slim published-results branch.
+except ImportError:  # pragma: no cover
     FUNDING_SOURCES = ("employer", "personal", "free-trial", "vendor-sponsored", "grant", "unspecified")
     DEFAULT_FUNDING = "unspecified"
     SOURCE_TO_TRUST_LABEL = {
@@ -44,15 +41,10 @@ DEFAULT_TRUST_LABEL = SOURCE_TO_TRUST_LABEL["internal"]
 COMMUNITY_TRUST_LABEL = SOURCE_TO_TRUST_LABEL["community"]
 VENDOR_TRUST_LABEL = SOURCE_TO_TRUST_LABEL["vendor"]
 
-# A bundle whose path lives under this directory component is maintainer-curated
-# vendor-supplied output (gated by CODEOWNERS on the published-results branch);
-# the submission validator enforces that only such bundles may carry the vendor
-# result_source. See benchbox/validation/bundle.py::_validate_manifest_provenance.
 VENDOR_SUBTREE_COMPONENT = "vendor"
 
 
 def _normalize_funding(value: object) -> str:
-    """Return a known funding value, defaulting unknown/empty to 'unspecified'."""
     token = str(value).strip().lower() if value is not None else ""
     return token if token in FUNDING_SOURCES else DEFAULT_FUNDING
 
@@ -72,25 +64,14 @@ def _cohort_phase_suffix(bundle_path: Path) -> str:
 
 
 def discover_bundles(bundles_dir: Path) -> list[Path]:
-    """Find all primary bundle JSON files."""
     return discover_primary_bundles(bundles_dir)
 
 
 def _bundle_hash(bundle_path: Path) -> str:
-    """Compute the SHA-256 of a bundle JSON file."""
     return hashlib.sha256(bundle_path.read_bytes()).hexdigest()
 
 
 def _is_vendor_subtree(bundle_path: Path, bundles_dir: Path) -> bool:
-    """True when the bundle lives directly under the top-level ``vendor/`` subtree.
-
-    Anchored to ``<bundles_dir>/vendor/...`` (the first path component under the
-    bundles root), NOT any nested directory that merely happens to be named
-    ``vendor`` — so the label surface matches a CODEOWNERS prefix of
-    ``/results-data/bundles/vendor/``. This is the maintainer-controlled path;
-    CODEOWNERS on the submission branch gates who may add to it (that gate is the
-    enforced control — the trust label here is derived from the resulting path).
-    """
     try:
         rel = bundle_path.relative_to(bundles_dir)
     except ValueError:
@@ -99,27 +80,6 @@ def _is_vendor_subtree(bundle_path: Path, bundles_dir: Path) -> bool:
 
 
 def _bundle_trust_label(bundle_path: Path, bundles_dir: Path) -> str:
-    """Resolve trust label from the bundle's location and recorded provenance.
-
-    Precedence:
-      1. vendor-supplied — bundle under the maintainer-controlled top-level
-         ``vendor/`` subtree (see :func:`_is_vendor_subtree`).
-      2. the sidecar's explicit ``result_source``, mapped through
-         ``SOURCE_TO_TRUST_LABEL``. This is the authoritative signal.
-      3. community-submission — a sidecar exists but records no
-         ``result_source``. Unknown provenance fails safe to the
-         less-trusted label; it is never promoted by assumption.
-      4. maintainer-run — the default for maintainer-committed bundles with no
-         sidecar at all.
-
-    Sidecar *presence* used to imply community provenance on its own, which was
-    wrong in one direction that mattered: ``benchbox submit`` writes a sidecar
-    unconditionally, including when a maintainer runs it. That labelled 191 of
-    207 maintainer-generated bundles ``community-submission``, and because
-    community submissions are not ranking-eligible the public leaderboard
-    rendered 15 of 207 results. Reading the recorded source instead of
-    inferring from a file's existence fixes the cause rather than the symptom.
-    """
     if _is_vendor_subtree(bundle_path, bundles_dir):
         return VENDOR_TRUST_LABEL
 
@@ -130,17 +90,10 @@ def _bundle_trust_label(bundle_path: Path, bundles_dir: Path) -> str:
     source = manifest.get("result_source")
     if source in SOURCE_TO_TRUST_LABEL:
         return SOURCE_TO_TRUST_LABEL[source]
-    # A sidecar with no recorded source has unknown provenance. Fail safe.
     return COMMUNITY_TRUST_LABEL
 
 
 def _read_submission_manifest(bundle_path: Path) -> dict | None:
-    """Return the bundle's submission manifest, or None when it has none.
-
-    Prefers the per-bundle name (``<stem>.manifest.json``) and falls back to
-    the legacy directory-wide singleton so already-merged submissions keep
-    their recorded provenance.
-    """
     for candidate in (
         bundle_path.parent / f"{bundle_path.stem}{SUBMISSION_MANIFEST_SUFFIX}",
         bundle_path.parent / SUBMISSION_MANIFEST,
@@ -155,14 +108,6 @@ def _read_submission_manifest(bundle_path: Path) -> dict | None:
 
 
 def _bundle_funding(bundle_path: Path, data: dict) -> str:
-    """Resolve the funding value for a bundle.
-
-    Precedence: the submission manifest sidecar's ``funding`` field (already
-    resolved against ``--funding`` at submit time - see
-    ``benchbox/cli/commands/submit.py``, which prefers the explicit CLI
-    override over the bundle's own declared value), then the bundle's own
-    ``provenance.funding`` block, then ``unspecified``.
-    """
     for name in (f"{bundle_path.stem}{SUBMISSION_MANIFEST_SUFFIX}", SUBMISSION_MANIFEST):
         sidecar = bundle_path.parent / name
         if sidecar.is_file():
@@ -190,7 +135,6 @@ def _query_count(bundle_data: dict) -> int:
 
 
 def _platform_version(data: dict) -> str:
-    """Return the comparison version, preserving DuckDB package identity."""
     platform = data.get("platform", {})
     execution = data.get("execution", {})
     if isinstance(platform, dict) and str(platform.get("name", "")).lower() == "duckdb":
@@ -212,7 +156,6 @@ def _platform_version(data: dict) -> str:
 
 
 def extract_metadata(bundle_path: Path, bundles_dir: Path) -> dict:
-    """Extract inventory metadata from a bundle file."""
     try:
         data = json.loads(bundle_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
@@ -230,6 +173,7 @@ def extract_metadata(bundle_path: Path, bundles_dir: Path) -> dict:
         "platform": platform.get("name", "unknown"),
         "platform_version": _platform_version(data),
         "scale_factor": benchmark.get("scale_factor", 0),
+        "phase": _load_corpus_validator().bundle_phase(data),
         "timestamp": run.get("timestamp"),
         "query_count": _query_count(data),
         "trust_label": _bundle_trust_label(bundle_path, bundles_dir),
@@ -239,7 +183,6 @@ def extract_metadata(bundle_path: Path, bundles_dir: Path) -> dict:
 
 
 def _is_public_benchmark(benchmark_id: str) -> bool:
-    """Return whether a bundle should be included in the public corpus inventory."""
     try:
         from benchbox.core.benchmark_registry import get_benchmark_surface
     except ImportError:
@@ -248,7 +191,6 @@ def _is_public_benchmark(benchmark_id: str) -> bool:
 
 
 def generate_inventory(bundles_dir: Path) -> dict:
-    """Generate the full inventory dict."""
     bundle_paths = discover_bundles(bundles_dir)
     entries = []
     for path in bundle_paths:
@@ -266,7 +208,6 @@ def generate_inventory(bundles_dir: Path) -> dict:
         )
     )
 
-    cohorts: dict[str, list[str]] = {}
     cohort_members: defaultdict[tuple[str, str], set[str]] = defaultdict(set)
     for entry in entries:
         key = (entry["benchmark"], str(entry["scale_factor"]) + _cohort_phase_suffix(bundles_dir / entry["file"]))
@@ -275,6 +216,7 @@ def generate_inventory(bundles_dir: Path) -> dict:
             identity = f"{identity} v{entry['platform_version']}"
         cohort_members[key].add(identity)
 
+    cohorts: dict[str, list[str]] = {}
     for (benchmark, scale_factor), platforms in sorted(cohort_members.items()):
         cohorts[f"{benchmark}@sf{scale_factor}"] = sorted(platforms)
 
@@ -282,6 +224,7 @@ def generate_inventory(bundles_dir: Path) -> dict:
     by_platform = Counter(entry["platform"] for entry in entries)
     by_trust_label = Counter(entry["trust_label"] for entry in entries)
     by_funding = Counter(entry["funding"] for entry in entries)
+    by_phase = Counter(entry["phase"] for entry in entries)
 
     return {
         "schema_version": "2.3",
@@ -294,20 +237,19 @@ def generate_inventory(bundles_dir: Path) -> dict:
             "by_platform": dict(sorted(by_platform.items())),
             "by_trust_label": dict(sorted(by_trust_label.items())),
             "by_funding": dict(sorted(by_funding.items())),
+            "by_phase": dict(sorted(by_phase.items())),
         },
     }
 
 
 def _normalized_inventory(inventory: dict) -> dict:
-    """Normalize away timestamp-only drift for deterministic comparisons."""
     normalized = dict(inventory)
     normalized.pop("generated_at", None)
     return normalized
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    """Parse command-line arguments."""
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=CLI_DESCRIPTION)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--check", action="store_true", help="Fail if the on-disk inventory is stale.")
     mode.add_argument("--write", action="store_true", help="Write the regenerated inventory to disk.")

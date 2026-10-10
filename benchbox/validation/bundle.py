@@ -1,25 +1,3 @@
-"""Validate submission bundles in results-data/bundles/.
-
-Used by CI to check that PRs adding result bundles conform to schema-v2,
-have sane timing data, valid platform/benchmark names, and (when a
-submission manifest is present) matching SHA-256 hashes. The public
-CLI wrapper is `scripts/validate_submission.py`; this module is the
-shared implementation used by both develop and the slim published-results
-branch.
-
-Mirror-allowlist obligation: new validation rules must live in this
-module (or another file already mirrored) using stdlib only. A rule in
-a new module would silently not run on published-results, where only
-``scripts/validate_submission.py``, this module,
-``benchbox/core/results/query_status.py``,
-``benchbox/core/results/schema_policy.py``,
-``scripts/generate_corpus_inventory.py``, and the workflows exist —
-add the module to the sync allowlist
-(``sync-results-data-to-published.yml``) and the self-green guard
-(``validate-submission.yml``) in the same change, and register the rule
-in RULES below.
-"""
-
 from __future__ import annotations
 
 import datetime
@@ -36,15 +14,6 @@ from typing import Any
 
 
 def _load_schema_policy_helpers():
-    """Load version helpers without running results package initializers.
-
-    Prefers the canonical package import; on the slim published-results
-    branch mirror (which ships this module plus
-    ``benchbox/core/results/schema_policy.py`` without the installable
-    package) loads the helper straight from the mirrored file, mirroring
-    how ``_load_bundle_failed_query_count`` loads its policy. There is a
-    single implementation: no inline duplicate lives here.
-    """
     try:
         from benchbox.core.results.schema_policy import (
             PUBLIC_SUBMISSION_SCHEMA_POLICY,
@@ -59,8 +28,6 @@ def _load_schema_policy_helpers():
     if spec is None or spec.loader is None:
         raise ImportError(f"Cannot load schema version policy from {helper_path}")
     module = importlib.util.module_from_spec(spec)
-    # Register before exec: dataclass processing resolves types through
-    # sys.modules[module.__name__] and fails on an unregistered module.
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module.PUBLIC_SUBMISSION_SCHEMA_POLICY, module.result_schema_version_value
@@ -69,19 +36,14 @@ def _load_schema_policy_helpers():
 PUBLIC_SUBMISSION_SCHEMA_POLICY, result_schema_version_value = _load_schema_policy_helpers()
 
 
-# Canonical provenance vocabulary. Import from the one source of truth when the
-# full package is present; fall back to inline literals on the slim
-# published-results branch mirror (which ships this module without benchbox/).
-# Keep the fallback in lockstep with benchbox/core/results/provenance.py.
 try:
     from benchbox.core.results.provenance import FUNDING_SOURCES, RESULT_SOURCES
-except ImportError:  # pragma: no cover - slim published-results branch mirror.
+except ImportError:  # pragma: no cover
     FUNDING_SOURCES = ("employer", "personal", "free-trial", "vendor-sponsored", "grant", "unspecified")
     RESULT_SOURCES = ("internal", "community", "vendor")
 
 
 def _load_bundle_failed_query_count():
-    """Load the stdlib-only helper without running results package initializers."""
     helper_path = Path(__file__).resolve().parents[1] / "core" / "results" / "query_status.py"
     spec = importlib.util.spec_from_file_location("_benchbox_query_status", helper_path)
     if spec is None or spec.loader is None:
@@ -93,7 +55,6 @@ def _load_bundle_failed_query_count():
 
 bundle_failed_query_count = _load_bundle_failed_query_count()
 
-# Max length for the optional free-text submission_notes manifest field.
 SUBMISSION_NOTES_MAX_LEN = 500
 
 KNOWN_DEFECT_IDS = frozenset(
@@ -103,16 +64,9 @@ KNOWN_DEFECT_IDS = frozenset(
     }
 )
 
-# Applied tuning receipts are attacker-controlled submission companions. These
-# ceilings sit well above realistic runs while bounding validation and Explorer
-# ingestion work. Oversized submissions fail loudly; the Explorer pipeline has
-# a separate defensive truncation marker for already-published legacy inputs.
 APPLIED_RECEIPT_MAX_ENTRIES = 10_000
 APPLIED_COMPANION_MAX_BYTES = 8 * 1024 * 1024
 
-# ---------------------------------------------------------------------------
-# Schema-v2 required top-level keys
-# ---------------------------------------------------------------------------
 
 REQUIRED_TOP_KEYS = ("result_schema_version", "run", "benchmark", "platform", "summary", "queries")
 REQUIRED_RUN_KEYS = {"id", "timestamp", "total_duration_ms"}
@@ -120,8 +74,6 @@ REQUIRED_BENCHMARK_KEYS = {"id", "scale_factor"}
 REQUIRED_PLATFORM_KEYS = {"name"}
 REQUIRED_QUERY_KEYS = {"id", "ms"}
 
-# Standalone fallback used when this module is mirrored to published-results
-# without the full BenchBox package.
 ACCEPTED_VERSION_PREFIX = "2."
 NUMERIC_SCHEMA_VERSION_RE = re.compile(r"^\d+\.\d+(?:\.\d+)?$")
 ROW_COUNT_VALIDATION_SCHEMA_VERSION = (2, 2)
@@ -130,32 +82,15 @@ ROW_COUNT_VALIDATION_STATUSES = frozenset({"PASSED", "FAILED", "SKIPPED", "ERROR
 ROW_COUNT_VALIDATION_FIELDS = frozenset({"status", "expected", "actual", "error", "warning"})
 ROW_COUNT_VALIDATION_REQUIRED_FIELDS = frozenset({"status", "expected", "actual"})
 
-# Companion file suffixes - skipped during bundle discovery, and copied
-# alongside their result bundle by publish/submit. `.applied.json` carries the
-# applied tuning ledger + `applied_ledger_hash`; leaving it out of this tuple
-# dropped that evidence from public bundles and surfaced it as a standalone run
-# in discovery paths.
 OVERRIDE_SUFFIX = ".override.json"
 COMPANION_SUFFIXES = (".plans.json", ".tuning.json", ".applied.json", OVERRIDE_SUFFIX)
 SUBMISSION_MANIFEST_FILENAME = "submission-manifest.json"
 SUBMISSION_MANIFEST_SUFFIX = ".manifest.json"
 PUBLIC_CLEAN_VALIDATION_STATUS = "passed"
-# Maintainer seed corpus includes partial and historically unvalidated cohorts
-# by design. Trusted mirror validation may retain these explicit non-clean
-# states; community submissions may not. Explorer ranking still excludes every
-# non-clean state, including ``not_run``.
 PUBLIC_MIRROR_ALLOWED_VALIDATION_STATUSES = frozenset({"passed", "partial", "not_run"})
 PUBLIC_NON_CLEAN_TRANSLATION_STATUSES = {"fallback", "failed"}
-# The two known-unofficial classes. The community submission gate below is a
-# whitelist (only "official" passes), but admission, UAT phases, and
-# per-benchmark compliance tests still match on these values directly.
 CLI_REFUSED_COMPLIANCE_CLASSES = frozenset({"unofficial_nonstandard", "unofficial_subscale"})
 
-# Canonical logical query counts per benchmark family: the deterministic
-# denominator for the query-set coverage gate below. Kept in lockstep with
-# _project/scripts/explorer_pipeline/transformer.py::_KNOWN_LOGICAL_QUERY_COUNTS
-# by hand: this module must stay importable without the installable package
-# (slim published-results branch mirror), so it cannot import the transformer.
 CANONICAL_LOGICAL_QUERY_COUNTS: dict[str, int] = {
     "tpch": 22,
     "tpch_skew": 22,
@@ -187,15 +122,6 @@ _SSB_CANONICAL_IDS = frozenset(
 )
 _CLICKBENCH_CANONICAL_IDS = frozenset(str(i) for i in range(1, 44))
 
-# Canonical logical query IDs per benchmark family: the membership set for
-# the query-set coverage gate below. Counts alone accept any 22 distinct
-# labels (e.g. FAKE0-FAKE21 for TPC-H); comparing normalized IDs against
-# this set keeps such bundles out of ranking-eligible cohorts. IDs are
-# stored in producer-normalized form (see _normalize_coverage_query_id, kept
-# in lockstep with benchbox/core/results/query_normalizer.py::
-# normalize_query_id by hand for the same slim-mirror reason as the counts
-# above). Every key/denominator pair must agree with
-# CANONICAL_LOGICAL_QUERY_COUNTS.
 CANONICAL_LOGICAL_QUERY_IDS: dict[str, frozenset[str]] = {
     "tpch": _TPCH_CANONICAL_IDS,
     "tpch_skew": _TPCH_CANONICAL_IDS,
@@ -206,9 +132,6 @@ CANONICAL_LOGICAL_QUERY_IDS: dict[str, frozenset[str]] = {
     "clickbench": _CLICKBENCH_CANONICAL_IDS,
 }
 
-# Keep this stdlib-only snapshot in sync with the TPC-Havoc variant registry and
-# execution-filter skip dictionaries. The public results mirror does not ship
-# those modules; the unit contract test checks both copies on the source branch.
 TPCHAVOC_CANONICAL_VARIANTS = frozenset(f"{query}_v{variant}" for query in range(1, 23) for variant in range(1, 11))
 TPCHAVOC_DOCUMENTED_SKIPS: dict[str, frozenset[str]] = {
     "datafusion": frozenset(
@@ -324,8 +247,6 @@ def _tpchavoc_documented_skips(platform_name: Any) -> frozenset[str]:
 
 
 def _tpchavoc_variant_has_usable_timing(query: dict) -> bool:
-    # A SUCCESS row with no timing (null, non-numeric, non-finite, or zero
-    # ms) must not satisfy variant coverage: it carries no measurement.
     try:
         ms = float(query.get("ms"))
     except (TypeError, ValueError):
@@ -334,15 +255,6 @@ def _tpchavoc_variant_has_usable_timing(query: dict) -> bool:
 
 
 def _normalize_coverage_query_id(raw_id: Any) -> str | None:
-    """Normalize a bundle query ID for coverage membership, or None.
-
-    Mirrors ``benchbox.core.results.query_normalizer.normalize_query_id``
-    for string inputs (``Q1``/``q1``/``query_1``/`` 1 `` all name query
-    ``1``; SSB ``Q1.1`` names ``1.1``) without importing the package, which
-    the slim published-results branch mirror cannot do. Non-string and
-    blank IDs return None: they contribute nothing to coverage (fail
-    closed) instead of passing as distinct unknowns.
-    """
     if not isinstance(raw_id, str):
         return None
     text = raw_id.strip()
@@ -360,7 +272,7 @@ def _normalize_coverage_query_id(raw_id: Any) -> str | None:
         return None
     if "." in text:
         base, _, ext = text.rpartition(".")
-        if ext.isalpha():  # "sql", "q", "txt" -> strip; "1", "2" -> keep.
+        if ext.isalpha():
             text = base.strip()
             if not text:
                 return None
@@ -371,7 +283,6 @@ def _normalize_coverage_query_id(raw_id: Any) -> str | None:
     return text
 
 
-# Known benchmarks and platforms - warn (not fail) on unknown values.
 KNOWN_BENCHMARKS = {
     "tpch",
     "tpcds",
@@ -399,14 +310,12 @@ KNOWN_BENCHMARKS = {
     "vector_search",
 }
 KNOWN_PLATFORMS = {
-    # Core
     "duckdb",
     "datafusion",
     "ducklake",
     "polars",
     "sqlite",
     "motherduck",
-    # SQL - cloud & managed
     "clickhouse",
     "clickhouse-local",
     "clickhouse-server",
@@ -417,7 +326,6 @@ KNOWN_PLATFORMS = {
     "redshift",
     "athena",
     "firebolt",
-    # SQL - self-hosted & extensions
     "postgresql",
     "cedardb",
     "timescaledb",
@@ -433,28 +341,21 @@ KNOWN_PLATFORMS = {
     "starrocks",
     "databend",
     "doris",
-    # Spark-family
     "spark",
     "pyspark",
     "lakesail",
-    # DataFrame
     "pandas",
     "cudf",
     "dask",
-    # Microsoft Fabric / Synapse
     "synapse",
     "fabric_dw",
     "fabric-lakehouse",
     "fabric-spark",
 }
 
-# Sanity thresholds
-MAX_QUERY_DURATION_MS = 7_200_000  # 2 hours per query
-MAX_TOTAL_DURATION_MS = 86_400_000  # 24 hours total
+MAX_QUERY_DURATION_MS = 7_200_000
+MAX_TOTAL_DURATION_MS = 86_400_000
 
-# Normalized cost provenance required before public leaderboard cost totals
-# are accepted. Keep this standalone so the published-results validator can run
-# without importing the full BenchBox package.
 NORMALIZED_COST_MODEL_SOURCE = "benchbox.core.cost.pricing"
 NORMALIZED_COST_REQUIRED_KEYS = {
     "normalized_cost_usd",
@@ -468,13 +369,6 @@ NORMALIZED_COST_REQUIRED_KEYS = {
 NORMALIZED_COST_SCOPES = {"compute_only", "compute_plus_storage"}
 NORMALIZED_COST_STATUSES = {"normalized", "not_applicable_local", "unavailable"}
 
-# Concrete billing_unit vocabulary the cost calculator can emit for normalized
-# cost. Scan-priced platforms report the unit actually billed: BigQuery is
-# priced per tebibyte ("tib_scanned"); Athena and Synapse serverless print
-# "TB", read as decimal terabytes ("tb_scanned"). See
-# docs/development/adr/adr-billing-unit-tb-tib-contract.md. Legacy bundles
-# that recorded BigQuery as "tb_scanned" stay valid: the value remains in the
-# vocabulary, so no result-bundle schema bump is implied.
 NORMALIZED_COST_BILLING_UNITS = frozenset(
     {
         "tib_scanned",
@@ -492,25 +386,12 @@ DIRECT_COST_TOTAL_KEYS = ("total_usd", "total_cost")
 TOP_LEVEL_DIRECT_COST_KEYS = ("cost_usd",)
 
 
-# ---------------------------------------------------------------------------
-# Validation helpers
-# ---------------------------------------------------------------------------
-
-
 class ValidationResult:
-    """Collects errors, warnings, and override findings for a single bundle."""
-
     def __init__(self, path: str) -> None:
         self.path = path
         self.errors: list[str] = []
         self.warnings: list[str] = []
-        # Rule ids (see RULES) whose findings require a committed override
-        # before the bundle may publish. The finding text is dual-recorded
-        # in ``warnings`` so existing renderers and counters keep working;
-        # this list is the machine-readable subset the exit contract and
-        # the override workflow consume.
         self.override_required: list[str] = []
-        # Metadata extracted during validation, used by format_pr_comment.
         self.benchmark_id: str = "-"
         self.platform_name: str = "-"
         self.scale_factor: str = "-"
@@ -522,7 +403,6 @@ class ValidationResult:
         self.warnings.append(msg)
 
     def require_override(self, rule_id: str, msg: str) -> None:
-        """Record a warn-require-override finding for ``rule_id``."""
         if rule_id not in {known_id for known_id, _, _ in RULES}:
             raise ValueError(
                 f"unknown rubric rule {rule_id!r}: a typo here would create an "
@@ -537,17 +417,8 @@ class ValidationResult:
         return len(self.errors) == 0
 
 
-# Rubric rule registry. ``RULES_VERSION`` versions the active set for
-# ``validate_submission.py --rules-version``; bump it whenever a rule is
-# added or a severity changes. Severities: ``refuse`` (error),
-# ``warn-require-override`` (blocking warning pending a committed
-# override), ``info`` (advisory warning, never refused alone). The two
-# deterministic refuse gates (compliance-class, query-set-coverage)
-# register here when they land; keep this table in lockstep with the
-# checks below.
 RULES_VERSION = "1"
 RULES: tuple[tuple[str, str, str], ...] = (
-    # (rule id, rule version, severity)
     ("timing-plateau", "1", "warn-require-override"),
     ("scale-invariant", "1", "warn-require-override"),
     ("floor-outlier", "1", "info"),
@@ -555,25 +426,12 @@ RULES: tuple[tuple[str, str, str], ...] = (
 )
 
 
-# Committed override artifact: ``<bundle_stem>.override.json`` beside the
-# bundle it covers (one artifact per bundle, covering one or more rules).
-# Schema:
-#   rules (non-empty list of {rule, rule_version}: id in RULES with
-#     severity warn-require-override, plus the exact registry pin — a rule
-#     change forces re-review),
-#   reason + evidence (non-empty strings; evidence is a link),
-#   expires ("YYYY-MM-DD" UTC date or "single-batch"),
-#   approver (maintainer handle; separation from the submitter is enforced
-#     by the submission workflow via GitHub review, never by file content),
-#   bundles (optional list that must contain the artifact's own stem).
-# Unknown fields are refused so typos (``aprover``) fail loudly.
 OVERRIDE_REQUIRED_FIELDS = ("rules", "reason", "evidence", "expires", "approver")
 OVERRIDE_OPTIONAL_FIELDS = ("bundles",)
 OVERRIDE_RULE_ENTRY_FIELDS = ("rule", "rule_version")
 
 
 def _override_artifact_path(bundle_path: str | Path) -> Path | None:
-    """Return the sibling override path for a bundle, or None when N/A."""
     try:
         candidate = Path(bundle_path)
     except (TypeError, ValueError):
@@ -587,7 +445,6 @@ def _override_artifact_path(bundle_path: str | Path) -> Path | None:
 
 
 def validate_override_document(payload: Any, *, bundle_stem: str) -> list[str]:
-    """Check an override artifact payload; return error strings (empty OK)."""
     if not isinstance(payload, dict):
         return ["override artifact must be a JSON object"]
     unknown = sorted(k for k in payload if k not in OVERRIDE_REQUIRED_FIELDS + OVERRIDE_OPTIONAL_FIELDS)
@@ -633,7 +490,6 @@ def validate_override_document(payload: Any, *, bundle_stem: str) -> list[str]:
 
 
 def _validate_override_rule_entry(entry: Any, index: int, registry: dict[str, tuple[str, str]]) -> list[str]:
-    """Check one rules[] entry; return error strings (empty OK)."""
     prefix = f"override artifact rules[{index}]"
     if not isinstance(entry, dict):
         return [f"{prefix} must be an object"]
@@ -660,11 +516,6 @@ def _validate_override_rule_entry(entry: Any, index: int, registry: dict[str, tu
 
 
 def accepted_override_rules(bundle_path: str | Path) -> tuple[set[str], list[str]]:
-    """Return (accepted rule ids, artifact errors) for a bundle's override file.
-
-    A missing artifact is not an error — it simply satisfies nothing, so
-    the rule stays unsatisfied and community validation keeps failing.
-    """
     artifact = _override_artifact_path(bundle_path)
     if artifact is None or not artifact.is_file():
         return set(), []
@@ -679,12 +530,6 @@ def accepted_override_rules(bundle_path: str | Path) -> tuple[set[str], list[str
 
 
 def unsatisfied_override_rules(results: list[ValidationResult]) -> dict[str, list[str]]:
-    """Map bundle path to override rule ids still requiring an override.
-
-    Rules covered by a valid committed sibling artifact are satisfied;
-    everything else fails closed in community mode. Findings fail closed
-    because a missing artifact satisfies nothing.
-    """
     pending: dict[str, list[str]] = {}
     for vr in results:
         if not vr.override_required:
@@ -697,27 +542,17 @@ def unsatisfied_override_rules(results: list[ValidationResult]) -> dict[str, lis
 
 
 def override_artifact_errors(bundle_path: str | Path) -> list[str]:
-    """Return schema errors for a bundle's sibling override file, if any."""
     _accepted, errors = accepted_override_rules(bundle_path)
     return errors
 
 
 def validation_failed(results: list[ValidationResult], *, strict_overrides: bool = True) -> bool:
-    """Success contract shared by the validator CLI and ``benchbox submit --dry-run``.
-
-    Errors always fail. Unsatisfied warn-require-override findings fail community
-    (strict) mode; the trusted mirror lane passes ``strict_overrides=False`` so
-    pre-gate cohorts render advisory. ``ValidationResult.ok`` stays errors-only
-    on purpose so renderers and the mirror lane keep working — every exit or
-    preview decision must go through this helper instead of ``ok`` alone.
-    """
     if any(not vr.ok for vr in results):
         return True
     return bool(strict_overrides and unsatisfied_override_rules(results))
 
 
 def _capture_metadata(data: dict, vr: ValidationResult) -> None:
-    """Pull benchmark/platform identifiers out of the bundle for PR-comment formatting."""
     bm = data.get("benchmark")
     if isinstance(bm, dict):
         vr.benchmark_id = bm.get("id", "-")
@@ -793,22 +628,6 @@ def _validate_benchmark_section(benchmark: Any, vr: ValidationResult) -> None:
         vr.error(f"scale_factor must be positive: {sf_f}")
 
 
-# ---------------------------------------------------------------------------
-# Timing plausibility (warnings only)
-#
-# These gates catch obviously incorrect measurement regimes — overhead-
-# dominated runs whose timings cannot reflect query execution — without
-# refusing anything. Every rule emits ``vr.warn`` so the finding is visible
-# in the PR comment and available to the later warn-require-override
-# contract, but validation still passes. Thresholds were calibrated on the
-# September cloud TPC-H runs (Snowflake flat at ~4.5s across 100x data with
-# max/min 1.43 and CV 0.08, versus BigQuery 4.51/0.34 and Databricks
-# 11.01/0.89 at the same scale).
-# ---------------------------------------------------------------------------
-
-# Benchmarks whose queries vary by design. Micro-benchmarks (primitives and
-# friends) are uniform by construction — a tight band there is expected, not
-# a defect — so the plateau gate stays scoped to this allowlist.
 TIMING_PLAUSIBILITY_HETEROGENEOUS_BENCHMARKS = frozenset(
     {
         "tpch",
@@ -821,36 +640,18 @@ TIMING_PLAUSIBILITY_HETEROGENEOUS_BENCHMARKS = frozenset(
     }
 )
 
-# Within-run spread below both of these marks a plateau. The two conditions
-# are near-redundant by construction; both are reported so the PR comment
-# carries the raw numbers for human judgment.
 PLATEAU_MAX_MIN_RATIO = 2.0
 PLATEAU_MAX_CV = 0.15
-# Spreads over fewer distinct queries are unevaluable noise, not evidence.
 PLATEAU_MIN_DISTINCT_QUERIES = 3
-# Absolute scale gate: a tight band is only evidence of fixed-overhead-dominated
-# measurement in the multi-second regime this rule was calibrated on (September
-# cloud TPC-H: Snowflake flat at ~4.5s per query). A tight band of genuinely
-# fast queries (e.g. the checked-in TPC-H SF0.01 DuckDB bundle at 5-8ms means)
-# is fast execution, not overhead, and must not require an override.
 PLATEAU_MIN_PEAK_MS = 1000.0
 
-# Cross-scale comparison only runs across a 10x or wider scale span; below
-# that, engine noise dominates and the rule stays silent (insufficient
-# history, not a pass).
 SCALE_INVARIANCE_MIN_SPAN = 10.0
 SCALE_INVARIANCE_MIN_GEOMEAN_RATIO = 1.5
 SCALE_INVARIANCE_MIN_PER_QUERY_MEDIAN_RATIO = 1.3
 
-# Cross-platform floor comparison needs at least this many peers before the
-# median is trustworthy, and stays informational: a genuinely slower engine
-# must never be refused by peer comparison alone.
 FLOOR_OUTLIER_PEER_MULTIPLE = 3.0
 FLOOR_OUTLIER_MIN_PEERS = 2
 
-# Absolute floor for tiny data: a sub-second dataset answering no query
-# faster than this is overhead-dominated. Rows evidence is optional — when
-# ``rows_loaded`` is absent the warning says so instead of silently passing.
 SMALL_SCALE_MAX_FACTOR = 0.1
 SMALL_SCALE_FLOOR_MIN_MS = 2000.0
 SMALL_SCALE_MAX_ROWS_LOADED = 1_000_000
@@ -859,15 +660,6 @@ _PASS_TIMING_STATUSES = frozenset({"SUCCESS", "PASS"})
 
 
 def _measurement_ms_by_query(data: dict[str, Any]) -> dict[str, list[float]]:
-    """Group positive SUCCESS measurement timings by query id.
-
-    Mirrors the query-row conventions used elsewhere in this module: an
-    absent ``run_type`` defaults to measurement, and only SUCCESS rows
-    count as measurement evidence. Rows with unparseable, non-positive,
-    or sub-millisecond ``ms`` are dropped — all-zero runs are owned by
-    the queries-section gate, and sub-millisecond minima would make
-    spread ratios noise-dominated (timer resolution, not engine speed).
-    """
     queries = data.get("queries")
     if not isinstance(queries, list):
         return {}
@@ -901,8 +693,6 @@ def _bundle_benchmark_id(data: dict[str, Any]) -> str | None:
     bm_id = benchmark.get("id")
     if not isinstance(bm_id, str) or not bm_id.strip():
         return None
-    # "TPCH" names the same family as "tpch" for scoping, cohorting, and
-    # messages alike; casing or padding must not change the verdict.
     return bm_id.strip().casefold()
 
 
@@ -935,12 +725,6 @@ def _bundle_passed_validation(data: dict[str, Any]) -> bool:
 
 
 def _bundle_geomean_ms(data: dict[str, Any]) -> float | None:
-    """Geometric-mean timing for cross-bundle comparison, or None.
-
-    Geometric only: falling back to an arithmetic mean would compare mixed
-    metrics across bundles while the warning message claims "geomean".
-    A bundle without a recorded geometric mean simply does not participate.
-    """
     summary = data.get("summary")
     if not isinstance(summary, dict):
         return None
@@ -965,8 +749,6 @@ def _bundle_rows_loaded(data: dict[str, Any]) -> int | None:
     if isinstance(rows, bool):
         return None
     if isinstance(rows, float) and not math.isfinite(rows):
-        # JSON numbers like 1e309 parse to inf; int() would raise
-        # OverflowError, so treat non-finite floats as unreported.
         return None
     try:
         value = int(rows)
@@ -976,7 +758,6 @@ def _bundle_rows_loaded(data: dict[str, Any]) -> int | None:
 
 
 def _warn_timing_plateau(data: dict[str, Any], vr: ValidationResult) -> None:
-    """Warn when a heterogeneous benchmark shows an implausibly tight band."""
     bm_id = _bundle_benchmark_id(data)
     if bm_id not in TIMING_PLAUSIBILITY_HETEROGENEOUS_BENCHMARKS:
         return
@@ -1001,7 +782,6 @@ def _warn_timing_plateau(data: dict[str, Any], vr: ValidationResult) -> None:
 
 
 def _warn_small_scale_floor(data: dict[str, Any], vr: ValidationResult) -> None:
-    """Warn when tiny data answers nothing fast."""
     sf = _bundle_scale_factor(data)
     if sf is None or sf > SMALL_SCALE_MAX_FACTOR:
         return
@@ -1029,14 +809,6 @@ def _passed_cohorts(
     dict[tuple[str, str], list[tuple[dict[str, Any], ValidationResult]]],
     dict[tuple[str, float], list[tuple[dict[str, Any], ValidationResult]]],
 ]:
-    """Group clean-validation bundles by platform cohort and peer set.
-
-    Only bundles claiming clean validation participate, so mirror-lane
-    partials never distort a comparison. Cohorts are further scoped to
-    heterogeneous benchmarks — micro-benchmarks are uniform by
-    construction, so a tight band or a flat scale curve there is expected
-    signal, not a plausibility finding (same rationale as the C1 scope).
-    """
     cohorts: dict[tuple[str, str], list[tuple[dict[str, Any], ValidationResult]]] = {}
     peers: dict[tuple[str, float], list[tuple[dict[str, Any], ValidationResult]]] = {}
     for data, vr in entries:
@@ -1059,7 +831,6 @@ def _passed_cohorts(
 def _warn_scale_invariance(
     cohorts: dict[tuple[str, str], list[tuple[dict[str, Any], ValidationResult]]],
 ) -> None:
-    """Warn when timings barely move across a 10x-or-wider scale span."""
     for (bm_id, _platform), members in cohorts.items():
         scales = sorted({sf for data, _ in members if (sf := _bundle_scale_factor(data)) is not None})
         if len(scales) < 2 or scales[-1] / scales[0] < SCALE_INVARIANCE_MIN_SPAN:
@@ -1103,7 +874,6 @@ def _merged_query_samples(
     members: list[tuple[dict[str, Any], ValidationResult]],
     scale: float,
 ) -> dict[str, list[float]]:
-    """Merge measurement samples per query id across members at one scale."""
     merged: dict[str, list[float]] = {}
     for data, _vr in members:
         if _bundle_scale_factor(data) != scale:
@@ -1116,15 +886,6 @@ def _merged_query_samples(
 def _warn_floor_outlier(
     peers: dict[tuple[str, float], list[tuple[dict[str, Any], ValidationResult]]],
 ) -> None:
-    """Warn when one bundle's fastest query dwarfs the peer median.
-
-    Peers are distinct platforms: same-platform reruns are consolidated to
-    one floor per platform (and never count toward the peer quorum), so
-    repeated runs of one engine cannot mark themselves an outlier.
-
-    Informational only: a genuinely slower engine must never be refused by
-    peer comparison alone.
-    """
     for (bm_id, sf), members in peers.items():
         if len(members) < FLOOR_OUTLIER_MIN_PEERS + 1:
             continue
@@ -1157,7 +918,6 @@ def _warn_floor_outlier(
 def _peer_floor_timings(
     members: list[tuple[dict[str, Any], ValidationResult]],
 ) -> dict[int, float]:
-    """Fastest positive measurement per member, by member index."""
     floors: dict[int, float] = {}
     for index, (data, _vr) in enumerate(members):
         grouped = _measurement_ms_by_query(data)
@@ -1167,26 +927,15 @@ def _peer_floor_timings(
 
 
 def _warn_cross_bundle_timing(entries: list[tuple[dict[str, Any], ValidationResult]]) -> None:
-    """Warn on scale-invariant and peer-floor outliers within one validation set.
-
-    Operates on bundles validated together (e.g. one submission PR): groups
-    with a single scale or without peers stay silent — insufficient history
-    is not a pass, it is no finding.
-    """
     cohorts, peers = _passed_cohorts(entries)
     _warn_scale_invariance(cohorts)
     _warn_floor_outlier(peers)
 
 
-#: Platforms whose adapters record a session cache-control receipt into
-#: ``platform.compute.cache_control``. Only these platforms can produce an
-#: absent receipt that contradicts a declared cache state; every other
-#: platform keeps the legacy absent-receipt exemption.
 _CACHE_RECEIPT_PLATFORMS = frozenset({"snowflake", "redshift", "databricks"})
 
 
 def _platform_records_cache_receipt(platform: dict) -> bool:
-    """Return True when the platform's adapter persists a cache receipt."""
     name = platform.get("name")
     return isinstance(name, str) and name.lower().replace(" ", "-") in _CACHE_RECEIPT_PLATFORMS
 
@@ -1197,25 +946,10 @@ def _validate_cache_control_section(
     *,
     allow_partial_validation: bool = False,
 ) -> None:
-    """Refuse clean claims whose runtime cache receipt contradicts them.
-
-    Cloud adapters record the sanitized session cache-control receipt at
-    ``platform.compute.cache_control`` when session validation runs. An
-    absent receipt passes for legacy bundles that predate runtime
-    persistence (grandfathered) and for platforms without receipt
-    machinery — unless the bundle affirmatively declares an enabled
-    result cache on a receipt-capable platform. Such a bundle advertises
-    cached timings with no disabling evidence, which is exactly what this
-    gate excludes. A present receipt must confirm ``validated`` and
-    ``cache_disabled`` — anything else means the timings were measured
-    under an unconfirmed or enabled cache and cannot stand as clean
-    evidence. The trusted mirror lane stays lenient to preserve
-    pre-gate cohorts as non-ranking evidence.
-    """
     if allow_partial_validation:
         return
     if not isinstance(platform, dict):
-        return  # _validate_platform_section owns the shape error.
+        return
     compute = platform.get("compute")
     if not isinstance(compute, dict):
         return
@@ -1245,19 +979,11 @@ def _validate_cache_control_section(
 
 
 def _warn_empty_result_rows(data: dict[str, Any], vr: ValidationResult) -> None:
-    """Warn when an all-SUCCESS run returns no result rows anywhere.
-
-    Per-query zeros stay silent — empty results are legitimate — but a run
-    whose every measurement SUCCESS reports zero or missing rows against
-    loaded data is silently-empty execution until proven otherwise. A zero
-    loaded volume excuses it (consistent empty-table run); an unreported
-    volume warns explicitly instead of silently passing.
-    """
     if not isinstance(data, dict):
         return
     queries = data.get("queries")
     if not isinstance(queries, list):
-        return  # _validate_queries_section owns the shape error.
+        return
     success_rows: list[Any] = []
     for q in queries:
         if not isinstance(q, dict):
@@ -1296,24 +1022,11 @@ def _validate_compliance_section(
     *,
     allow_partial_validation: bool = False,
 ) -> None:
-    """Refuse unofficial compliance classes on the community path.
-
-    ``benchbox submit`` and ``benchbox publish`` refuse these classes from
-    loaded result objects; without this rule a hand-authored bundle could
-    bypass that gate by arriving as a PR directly. An absent
-    ``compliance_class`` passes: legacy pre-stamp bundles are grandfathered,
-    and the trusted mirror lane (``allow_partial_validation``) preserves
-    pre-gate unofficial evidence as non-ranking cohorts.
-    """
     if not isinstance(benchmark, dict):
-        return  # _validate_benchmark_section owns the shape error.
+        return
     compliance = benchmark.get("compliance_class")
     if compliance is None:
         return
-    # Whitelist, not blacklist: any stamped value other than exactly
-    # "official" is refused, so "Official", "official " or an unexpected type
-    # cannot slip past on spelling. Absent stays grandfathered for legacy
-    # pre-stamp bundles; the trusted mirror lane stays exempt.
     if compliance != "official":
         if allow_partial_validation:
             return
@@ -1329,49 +1042,30 @@ def _validate_query_coverage(
     *,
     allow_partial_validation: bool = False,
 ) -> None:
-    """Refuse bundles whose query evidence misses canonical query IDs.
-
-    A run covering 5 of TPC-H's 22 queries must not present as a complete
-    result: the explorer derives its logical denominator from observed query
-    IDs, so short coverage would rank as complete. Cardinality alone is not
-    enough either: 22 timings named FAKE0-FAKE21 name none of the canonical
-    queries, so the gate compares normalized IDs against the benchmark's
-    canonical set and refuses on any miss. The trusted mirror lane is
-    exempt (it preserves partial cohorts by design); community partials
-    stay refused by the summary-validation gate regardless.
-    """
     if allow_partial_validation:
         return
     benchmark = data.get("benchmark")
     if not isinstance(benchmark, dict):
-        return  # _validate_benchmark_section owns the shape error.
+        return
     bm_id = benchmark.get("id")
-    # Normalize before the lookup: "TPCH" or "tpch " names the same family as
-    # "tpch", and must not slip past the gate on casing or padding.
     normalized_id = bm_id.strip().casefold() if isinstance(bm_id, str) else None
     canonical = CANONICAL_LOGICAL_QUERY_IDS.get(normalized_id) if normalized_id else None
     if not canonical:
-        return  # No canonical set: nothing deterministic to enforce.
+        return
     queries = data.get("queries")
     if not isinstance(queries, list):
-        return  # _validate_queries_section owns the shape error.
-    # Only non-empty string ids count as query evidence. Non-string ids
-    # (legacy integers) and blanks fail closed: they contribute nothing to
-    # coverage instead of passing as distinct unknowns.
+        return
     observed: set[str] = set()
     uncounted = 0
     for q in queries:
         if not isinstance(q, dict):
-            continue  # _validate_queries_section owns the shape error.
+            continue
         normalized_qid = _normalize_coverage_query_id(q.get("id"))
         if normalized_qid is None:
             uncounted += 1
         else:
             observed.add(normalized_qid)
     if normalized_id == "tpcds":
-        # The official TPC-DS stream executes both parts of these queries
-        # instead of a single unsuffixed query. Require the full pair before
-        # counting its logical query ID toward the 99-query denominator.
         for base_id in ("14", "23", "24", "39"):
             observed.discard(base_id)
             if {f"{base_id}a", f"{base_id}b"} <= observed:
@@ -1432,20 +1126,6 @@ def _validate_platform_section(platform: Any, vr: ValidationResult) -> None:
 
 
 def _validate_inline_applied_ledger(platform: dict, vr: ValidationResult) -> None:
-    """Bound the applied-tuning ledger inlined at ``platform.tuning.applied``.
-
-    The ledger is carried inside the bundle as well as in the ``.applied.json``
-    companion. ``_validate_applied_companion_limits`` bounds the companion by
-    filename, so the inlined copy needs its own bounds here: the validator runs
-    on attacker-controlled PR JSON, and a hand-authored bundle can inline an
-    unbounded ledger while shipping no companion at all.
-
-    Both dimensions are bounded, because either alone is evadable. An entry cap
-    alone passes a handful of entries holding multi-megabyte strings; a byte cap
-    alone passes a million tiny entries. The serialized size is measured over
-    this block only, so it bounds what the inlining added rather than the whole
-    bundle.
-    """
     tuning = platform.get("tuning")
     if not isinstance(tuning, dict):
         return
@@ -1461,8 +1141,6 @@ def _validate_inline_applied_ledger(platform: dict, vr: ValidationResult) -> Non
     try:
         size = len(json.dumps(applied, separators=(",", ":")).encode("utf-8"))
     except (TypeError, ValueError):
-        # Unserializable content is a shape problem owned by the producer; this
-        # gate gets no say in it and must not broaden rejection semantics.
         return
     if size > APPLIED_COMPANION_MAX_BYTES:
         vr.error(
@@ -1529,7 +1207,6 @@ def _validate_translation_section(data: dict, vr: ValidationResult) -> None:
 
 
 def _validate_environment_client_link(data: dict, vr: ValidationResult) -> None:
-    """Shape-check the optional ``environment.client_link`` block when present."""
     environment = data.get("environment")
     if environment is None:
         return
@@ -1567,7 +1244,6 @@ def _validate_environment_client_link(data: dict, vr: ValidationResult) -> None:
 
 
 def _validate_overhead_shape(overhead: Any, vr: ValidationResult) -> None:
-    """Shape-check the ``statement_overhead_ms`` probe block when present."""
     if not isinstance(overhead, dict):
         vr.error("'environment.client_link.statement_overhead_ms' must be a dict")
         return
@@ -1590,11 +1266,6 @@ def _validate_overhead_shape(overhead: Any, vr: ValidationResult) -> None:
 
 
 def _validate_tables_block(data: dict, vr: ValidationResult) -> None:
-    """Shape-check the optional ``tables`` block when present.
-
-    Absence means "not measured" and is always accepted; an explicit
-    ``load_ms: 0`` stays distinguishable from a missing key.
-    """
     tables = data.get("tables")
     if tables is None:
         return
@@ -1625,22 +1296,12 @@ def _validate_tables_block(data: dict, vr: ValidationResult) -> None:
             vr.error(f"'tables.{name}.load_ms' must be non-negative, got {load_ms!r}")
 
 
-#: Tables a benchmark's queries read, which must be loaded with rows. Kept as
-#: data rather than imported from the benchmark classes so the validator stays
-#: self-contained. Mirrors ``REQUIRED_LOADED_TABLES`` on the benchmark class.
 _REQUIRED_LOADED_TABLES: dict[str, tuple[str, ...]] = {
     "tpcds_obt": ("tpcds_sales_returns_obt",),
 }
 
 
 def _validate_required_tables(data: dict, vr: ValidationResult) -> None:
-    """Reject a bundle that measured without the benchmark's query tables.
-
-    A run that loads the wrong dataset can still finish: the schema creates
-    the query table empty and every query succeeds with no or trivial rows.
-    A bundle with measured queries must therefore show these tables in its
-    ``tables`` block; omitting the block is not evidence that they loaded.
-    """
     benchmark = data.get("benchmark")
     benchmark_id = str(benchmark.get("id") or "").lower() if isinstance(benchmark, dict) else ""
     required = _REQUIRED_LOADED_TABLES.get(benchmark_id)
@@ -1668,13 +1329,6 @@ def _validate_required_tables(data: dict, vr: ValidationResult) -> None:
 
 
 def _validate_platform_config_clustering(data: dict, vr: ValidationResult) -> None:
-    """Shape-check the optional ``platform.config`` clustering field when present.
-
-    The Databricks adapter records the resolved strategy at
-    ``platform.config.databricks_clustering_strategy`` (flattened out of
-    ``platform_info["configuration"]``); ``platform.tuning`` carries the
-    requested-tuning summary and never holds this key.
-    """
     platform = data.get("platform")
     if not isinstance(platform, dict):
         return
@@ -1699,17 +1353,6 @@ _TUNING_EVIDENCE_KEYS = ("requested", "tuning_source", "requested_config_hash", 
 
 
 def _warn_pre_cutoff_clustering_claim(data: dict, vr: ValidationResult) -> None:
-    """Warn on Databricks ``z_order`` claims that predate provenance.
-
-    Before the #2177 fix, untuned runs reported ``"z_order"`` while
-    applying only plain OPTIMIZE compaction. ``export.benchbox_version``
-    (introduced in #2199, after the fix) is the cutoff marker: a bundle
-    without it that claims ``z_order`` outside any tuning context may be
-    a mislabeled untuned run, so readers must treat it as unknown. Tuned
-    runs (``platform.tuning`` carrying a requested configuration or its
-    source or hash) and post-cutoff bundles are unaffected. Old bundles are
-    never rewritten; warn only.
-    """
     platform = data.get("platform")
     if not isinstance(platform, dict):
         return
@@ -1735,7 +1378,6 @@ def _warn_pre_cutoff_clustering_claim(data: dict, vr: ValidationResult) -> None:
 
 
 def _raw_normalized_cost_block(data: dict[str, Any]) -> dict[str, Any] | None:
-    """Find normalized cost in current and transitional bundle shapes."""
     raw = data.get("normalized_cost")
     if isinstance(raw, dict):
         return raw
@@ -1783,12 +1425,6 @@ def _validate_required_cost_string(raw: dict[str, Any], key: str, vr: Validation
 def _validate_normalized_cost_block(
     raw: dict[str, Any], vr: ValidationResult
 ) -> tuple[bool, Decimal | None, str | None, str | None]:
-    """Validate BenchBox normalized cost provenance.
-
-    Returns ``(is_valid, normalized_cost_usd, cost_status, cost_scope)`` so the
-    legacy cost-total guard can check whether old fields are consistent with
-    the canonical normalized block.
-    """
     error_count = len(vr.errors)
     missing = NORMALIZED_COST_REQUIRED_KEYS - set(raw.keys())
     if missing:
@@ -1859,7 +1495,6 @@ def _direct_cost_total_fields(data: dict[str, Any]) -> list[tuple[str, Any]]:
 
 
 def _validate_public_cost_section(data: dict[str, Any], vr: ValidationResult) -> None:
-    """Reject public leaderboard cost totals that lack BenchBox provenance."""
     direct_fields = _direct_cost_total_fields(data)
     raw_normalized = _raw_normalized_cost_block(data)
 
@@ -1972,7 +1607,6 @@ def _validate_row_count_validation(index: int, q: dict[str, Any], version: Any, 
 
 
 def _validate_single_query(index: int, q: Any, version: Any, vr: ValidationResult) -> bool:
-    """Validate one queries[i] entry. Returns True if ms>0 was seen (non-zero signal)."""
     if not isinstance(q, dict):
         vr.error(f"queries[{index}] is not a dict")
         return False
@@ -2023,7 +1657,6 @@ def _validate_queries_section(queries: Any, version: Any, vr: ValidationResult) 
 
 
 def _validate_execution_consistency(data: dict[str, Any], vr: ValidationResult) -> None:
-    """Reject a clean validation claim that contradicts measurement evidence."""
     summary = data.get("summary")
     if not isinstance(summary, dict) or _normalize_status(summary.get("validation")) != PUBLIC_CLEAN_VALIDATION_STATUS:
         return
@@ -2048,7 +1681,6 @@ def _validate_execution_consistency(data: dict[str, Any], vr: ValidationResult) 
 
 
 def _validate_validation_phase_consistency(data: dict[str, Any], vr: ValidationResult) -> None:
-    """Reject validation claims contradicted by supplied validation-phase evidence."""
     summary = data.get("summary")
     if not isinstance(summary, dict):
         return
@@ -2056,11 +1688,6 @@ def _validate_validation_phase_consistency(data: dict[str, Any], vr: ValidationR
     if summary_status not in {"passed", "partial"}:
         return
 
-    # ``phases`` is an optional extension to schema-v2. Older valid bundles do
-    # not carry phase evidence, so absence of the extension is not evidence of
-    # a failed validation claim. When the extension is present, however, keep
-    # the consistency check fail-closed for an explicitly missing/unknown
-    # validation phase.
     if "phases" not in data:
         return
     phases = data["phases"]
@@ -2084,7 +1711,6 @@ def _validate_bundle(
     *,
     allow_partial_validation: bool = False,
 ) -> None:
-    """Run all validation checks on a parsed bundle dict."""
     _capture_metadata(data, vr)
 
     try:
@@ -2100,7 +1726,7 @@ def _validate_bundle(
 
     if missing_top:
         vr.error(f"Missing required top-level keys: {sorted(missing_top)}")
-        return  # Can't continue without structure
+        return
 
     _validate_version(version, vr)
     _validate_run_section(data.get("run", {}), vr)
@@ -2134,30 +1760,20 @@ def _validate_bundle(
     _warn_small_scale_floor(data, vr)
     _validate_query_coverage(data, vr, allow_partial_validation=allow_partial_validation)
     _validate_execution_consistency(data, vr)
-    # A malformed committed override corrupts the audit trail in every
-    # lane; a missing one simply satisfies nothing (handled by the exit
-    # contract via unsatisfied_override_rules).
     for message in override_artifact_errors(vr.path):
         vr.error(message)
     _validate_validation_phase_consistency(data, vr)
 
 
 def _hash_file(file_path: Path) -> str:
-    """SHA-256 of a single file's contents."""
     return _hash_bytes(file_path.read_bytes())
 
 
 def _hash_bytes(data: bytes) -> str:
-    """SHA-256 of already-materialized bytes."""
     return hashlib.sha256(data).hexdigest()
 
 
 def _is_safe_bundle_filename(name: str) -> bool:
-    """Reject filenames that could escape the bundle directory.
-
-    The validator runs in CI on attacker-controlled PR JSON, so manifest-
-    supplied filenames must be plain leaf names, not paths.
-    """
     if not name or name in (".", ".."):
         return False
     if "/" in name or "\\" in name or "\x00" in name:
@@ -2169,18 +1785,6 @@ def _is_safe_bundle_filename(name: str) -> bool:
 
 
 def _validate_manifest_hash(manifest_path: Path, bundle_dir: Path, vr: ValidationResult) -> None:
-    """Verify the submission manifest hashes match the bundle file contents.
-
-    Contract (see also benchbox/cli/commands/submit.py):
-      - manifest.bundle_file: filename of the primary bundle JSON.
-      - manifest.bundle_hash: SHA-256 of just that file's contents.
-      - manifest.companion_hashes: optional dict of companion-file
-        names mapped to their SHA-256s. Empty dict if no companions.
-
-    The hash is per-file. Anything wider (a directory hash) does not
-    survive the user copying the bundle files into a results-data/bundles/
-    directory that already contains other bundles.
-    """
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
@@ -2190,16 +1794,6 @@ def _validate_manifest_hash(manifest_path: Path, bundle_dir: Path, vr: Validatio
         vr.error(f"Cannot read submission manifest file: {exc}")
         return
 
-    # Surface ALL missing required fields in one pass so a contributor
-    # whose manifest is missing both `bundle_file` and `bundle_hash`
-    # sees both errors instead of having to fix-and-retry one at a time.
-    #
-    # These are ERRORs, not warnings: a present manifest whose whole purpose is
-    # the bundle-hash contract must actually carry it. When they were warnings,
-    # ValidationResult.ok ignored them, so a present-but-empty `.manifest.json`
-    # passed CI *and* — because the pipeline/inventory treat sidecar presence as
-    # the community-submission trust signal — granted the community label
-    # without the bundle bytes ever being hash-verified.
     bundle_file = manifest.get("bundle_file")
     expected_hash = manifest.get("bundle_hash")
     missing_fields: list[str] = []
@@ -2217,12 +1811,6 @@ def _validate_manifest_hash(manifest_path: Path, bundle_dir: Path, vr: Validatio
         return
 
     primary_path = bundle_dir / bundle_file
-    # Symlink defense: the validator runs on PR-supplied content, so a
-    # malicious symlink (committed via a crafted git tree) could redirect
-    # the hash to attacker-chosen bytes outside the bundle. Reject before
-    # is_file() — is_file() follows symlinks. The writer (benchbox submit)
-    # uses shutil.copy2, which copies file contents not symlinks, so any
-    # symlink in a submitted bundle is suspicious by construction.
     if primary_path.is_symlink():
         vr.error(f"Bundle file is a symlink, not a regular file: {bundle_file} (symlinks not allowed)")
         return
@@ -2254,7 +1842,6 @@ def _validate_manifest_companion(
     bundle_dir: Path,
     vr: ValidationResult,
 ) -> None:
-    """Validate one manifest-declared companion without widening orchestration."""
     if not isinstance(comp_name, str) or not _is_safe_bundle_filename(comp_name):
         vr.error(f"Unsafe companion filename in manifest: {comp_name!r} (must be a plain filename)")
         return
@@ -2279,7 +1866,6 @@ def _validate_manifest_companion(
 
 
 def _validate_applied_companion_limits(companion: Path, vr: ValidationResult) -> bool:
-    """Reject an applied receipt that exceeds the public submission bounds."""
     if not companion.name.lower().endswith(".applied.json"):
         return True
     try:
@@ -2295,14 +1881,9 @@ def _validate_applied_companion_limits(companion: Path, vr: ValidationResult) ->
     try:
         payload = json.loads(companion.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        # Companion schema validation remains owned by its producer. This gate
-        # only bounds inputs and must not broaden existing rejection semantics.
         return True
     if not isinstance(payload, dict):
         return True
-    # Same array bounds the inlined copy gets. The file-size cap above stops the
-    # multi-megabyte-string shape; these stop the many-tiny-entries shape, which
-    # a byte cap alone lets through.
     oversized = _oversized_applied_ledger_arrays(payload)
     for label, count in oversized:
         vr.error(
@@ -2313,11 +1894,6 @@ def _validate_applied_companion_limits(companion: Path, vr: ValidationResult) ->
 
 
 def _oversized_applied_ledger_arrays(applied: dict) -> list[tuple[str, int]]:
-    """Return every applied-ledger array that breaches the per-array entry cap.
-
-    Shared by the companion gate and the inlined-block gate so one ledger shape
-    cannot be bounded in one location and unbounded in the other.
-    """
     receipt = applied.get("receipt") if isinstance(applied.get("receipt"), dict) else {}
     drift = applied.get("drift_check") if isinstance(applied.get("drift_check"), dict) else {}
     candidates = (
@@ -2341,21 +1917,6 @@ def _oversized_applied_ledger_arrays(applied: dict) -> list[tuple[str, int]]:
 
 
 def _validate_manifest_provenance(manifest: dict[str, Any], primary_path: Path, vr: ValidationResult) -> None:
-    """Validate the optional provenance fields on a submission manifest.
-
-    Runs on attacker-controlled PR JSON, so every value is checked against the
-    canonical allowlists and unknown values are hard errors (not warnings).
-
-    Governance: ``result_source == "vendor"`` (the ranking-eligible vendor tier)
-    is only valid for a bundle whose immediate parent directory is ``vendor/``
-    (``results-data/bundles/vendor/...``). The ENFORCED control is CODEOWNERS on
-    that path on the submission branch — a community contributor cannot create a
-    file under ``vendor/`` without maintainer review. This validator check is an
-    advisory consistency guard: it rejects a community-located bundle that
-    self-asserts the vendor label, but the authoritative label is derived from
-    the (CODEOWNERS-gated) path by generate_corpus_inventory.py, not from this
-    field.
-    """
     funding = manifest.get("funding")
     if funding is not None and funding not in FUNDING_SOURCES:
         vr.error(f"Invalid manifest funding {funding!r}: must be one of {sorted(FUNDING_SOURCES)}")
@@ -2392,18 +1953,11 @@ def _validate_manifest_provenance(manifest: dict[str, Any], primary_path: Path, 
                     vr.error(f"Unknown manifest known_defects id {defect!r}: must be one of {sorted(KNOWN_DEFECT_IDS)}")
 
 
-# ---------------------------------------------------------------------------
-# Discovery & orchestration
-# ---------------------------------------------------------------------------
-
-
 def discover_bundles(path: Path) -> list[Path]:
-    """Find all primary bundle JSON files under a directory (excludes companions)."""
     return [candidate for candidate in sorted(path.rglob("*")) if is_primary_bundle_file(candidate)]
 
 
 def is_primary_bundle_file(path: Path) -> bool:
-    """Return whether *path* is a regular primary bundle, case-insensitively."""
     if not path.is_file():
         return False
     name = path.name.lower()
@@ -2417,15 +1971,6 @@ def is_primary_bundle_file(path: Path) -> bool:
 
 
 def _is_submission_manifest_path(path: Path) -> bool:
-    """True for the legacy filename or any per-bundle ``<stem>.manifest.json``.
-
-    The trailing-suffix match is intentionally broad. Any file ending in
-    ``.manifest.json`` is treated as a sidecar regardless of stem so that
-    co-located manifest variants (per-bundle, hashing tools, ad-hoc copies)
-    are never validated as bundles. The submit CLI emits
-    ``<bundle_stem>.manifest.json`` exclusively, and the published-results
-    workflow filter mirrors this skip pattern.
-    """
     name = path.name.lower()
     return name == SUBMISSION_MANIFEST_FILENAME or name.endswith(SUBMISSION_MANIFEST_SUFFIX)
 
@@ -2436,30 +1981,6 @@ def validate_bundles(
     *,
     allow_partial_validation: bool = False,
 ) -> list[ValidationResult]:
-    """Validate a list of bundle files. Returns one ValidationResult per file.
-
-    When ``require_manifest`` is True, a primary bundle with no paired
-    submission manifest is an error. This is the community-submission contract:
-    the sidecar is what distinguishes a community submission from a
-    maintainer-run bundle (whose absence of a sidecar is intentional), so CI
-    passes this flag only for genuine contributor PRs — not for the maintainer
-    mirror PRs that sync develop's corpus onto ``published-results``. Without
-    it, a community bundle submitted without a sidecar would pass validation and
-    then inherit the ``maintainer-run`` trust label (and ranking eligibility).
-
-    When ``allow_partial_validation`` is True, ``summary.validation`` may be
-    ``passed``, ``partial``, or the explicit ``not_run`` state. That is for
-    the trusted maintainer mirror path only: the seed corpus intentionally
-    retains partial and legacy unvalidated evidence. Community submissions
-    must leave the flag off so every non-clean status remains refused.
-
-    The same lane split governs the two deterministic submission gates:
-    unofficial ``compliance_class`` values and short canonical query-set
-    coverage are errors in community mode but pass under the mirror flag,
-    which preserves pre-gate unofficial and partial cohorts as non-ranking
-    evidence. An absent ``compliance_class`` passes in both modes (legacy
-    pre-stamp grandfathering).
-    """
     results = []
     parsed: list[tuple[dict[str, Any], ValidationResult]] = []
     for bundle_path in paths:
@@ -2492,9 +2013,6 @@ def validate_bundles(
         _validate_bundle(data, vr, allow_partial_validation=allow_partial_validation)
         parsed.append((data, vr))
 
-        # Bound an adjacent applied companion even if a hand-authored manifest
-        # omitted it. The manifest hash contract is checked separately below;
-        # resource bounds must not depend on honest companion enumeration.
         applied_name = f"{bundle_path.stem}.applied.json".lower()
         for companion in bundle_path.parent.iterdir():
             if companion.name.lower() != applied_name:
@@ -2504,8 +2022,6 @@ def validate_bundles(
             elif companion.is_file():
                 _validate_applied_companion_limits(companion, vr)
 
-        # Check for submission manifest alongside the bundle.
-        # Prefer per-bundle name (<stem>.manifest.json), fall back to legacy.
         per_bundle_manifest = bundle_path.parent / f"{bundle_path.stem}{SUBMISSION_MANIFEST_SUFFIX}"
         legacy_manifest = bundle_path.parent / SUBMISSION_MANIFEST_FILENAME
         manifest_path = (
@@ -2526,15 +2042,11 @@ def validate_bundles(
 
         results.append(vr)
 
-    # Cross-bundle timing plausibility over the validated set (e.g. one
-    # submission PR). Warnings only; groups without scale span or peers
-    # stay silent.
     _warn_cross_bundle_timing(parsed)
     return results
 
 
 def format_summary(results: list[ValidationResult]) -> str:
-    """Format validation results as a human-readable summary."""
     lines: list[str] = []
     total_errors = 0
     total_warnings = 0
@@ -2562,12 +2074,6 @@ def format_summary(results: list[ValidationResult]) -> str:
 
 
 def format_pr_comment(results: list[ValidationResult], *, strict_overrides: bool = True) -> str:
-    """Format validation results as a GitHub PR comment (Markdown).
-
-    With ``strict_overrides`` (community mode), bundles carrying
-    unsatisfied override findings fail the header even when error-free;
-    the mirror lane passes ``False`` so pre-gate cohorts render advisory.
-    """
     pending = unsatisfied_override_rules(results)
     all_pass = all(vr.ok for vr in results) and not (strict_overrides and pending)
 
@@ -2580,7 +2086,6 @@ def format_pr_comment(results: list[ValidationResult], *, strict_overrides: bool
     lines.append(f"Validated **{len(results)}** bundle(s).")
     lines.append("")
 
-    # Summary table
     lines.append("| Bundle | Status | Benchmark | Platform | Scale |")
     lines.append("|--------|--------|-----------|----------|-------|")
 
@@ -2592,7 +2097,6 @@ def format_pr_comment(results: list[ValidationResult], *, strict_overrides: bool
         sf = vr.scale_factor.replace("|", "\\|")
         lines.append(f"| `{name}` | {status} | {bm_id} | {pl_name} | SF {sf} |")
 
-    # Detail errors/warnings
     has_issues = any(vr.errors or vr.warnings for vr in results)
     if has_issues:
         lines.append("")
@@ -2608,8 +2112,6 @@ def format_pr_comment(results: list[ValidationResult], *, strict_overrides: bool
                 lines.append(f"- WARN: {w}")
             lines.append("")
 
-    # Overrides required (rules version RULES_VERSION): per-bundle rule ids
-    # with the key numbers already present in the WARN text above.
     if pending:
         lines.append("")
         lines.append(f"### Overrides required (rules v{RULES_VERSION})")

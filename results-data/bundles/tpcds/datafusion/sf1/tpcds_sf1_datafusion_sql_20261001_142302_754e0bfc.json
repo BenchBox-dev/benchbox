@@ -1,0 +1,4519 @@
+{
+  "benchmark": {
+    "compliance_class": "official",
+    "data_generation_hash": "6c2327e588ae42b1c2143d42b84085f7ad57db46061637a9dd2aa3b05063095e",
+    "data_generation_version": 1,
+    "id": "tpcds",
+    "name": "TPC-DS",
+    "scale_factor": 1.0,
+    "test_type": "power"
+  },
+  "config": {
+    "compression": {
+      "level": 9,
+      "type": "zstd"
+    },
+    "mode": "sql",
+    "phases": [
+      "generate",
+      "load",
+      "power"
+    ],
+    "platform_option_sources": {
+      "batch_size": "saved_config",
+      "force_recreate": "saved_config",
+      "force_upload": "saved_config",
+      "normalize_plan_literals": "saved_config",
+      "parquet_pushdown": "saved_config",
+      "repartition_joins": "saved_config",
+      "show_query_plans": "saved_config",
+      "tuning_source": "saved_config"
+    },
+    "platform_options": {
+      "batch_size": 8192,
+      "force_recreate": false,
+      "force_upload": false,
+      "normalize_plan_literals": false,
+      "parquet_pushdown": true,
+      "repartition_joins": true,
+      "show_query_plans": false,
+      "tuning_source": "baseline"
+    },
+    "seed": 42
+  },
+  "cost": {
+    "model": "estimated",
+    "total_usd": 0
+  },
+  "environment": {
+    "arch": "x86_64",
+    "client_host": {
+      "arch": "x86_64",
+      "cpu_count": 4,
+      "cpu_identity_provenance": "measured",
+      "cpu_model": "Intel(R) Xeon(R) 6973P-C",
+      "cpu_vendor": "Intel",
+      "memory_gb": 15.613975524902344,
+      "os": "Linux 6.17.0-1022-azure",
+      "python": "3.12.14"
+    },
+    "client_link": {
+      "client_cloud": "azure",
+      "client_region": "centralus",
+      "collection_error_class": "AttributeError",
+      "collection_error_message": "AttributeError: statement overhead probe failed",
+      "collection_status": "partial",
+      "source": "observed"
+    },
+    "cpu_count": 4,
+    "cpu_identity_provenance": "measured",
+    "cpu_model": "Intel(R) Xeon(R) 6973P-C",
+    "cpu_vendor": "Intel",
+    "memory_gb": 15.613975524902344,
+    "os": "Linux 6.17.0-1022-azure",
+    "platform_runtime": {
+      "collection_status": "partial",
+      "runtime_type": "local_process",
+      "source": "inferred"
+    },
+    "python": "3.12.14"
+  },
+  "execution": {
+    "compression": {
+      "level": 9,
+      "type": "zstd"
+    },
+    "driver_package": "datafusion",
+    "driver_runtime_strategy": "current-process",
+    "driver_version_actual": "54.0.0",
+    "driver_version_resolved": "54.0.0",
+    "entry_point": "cli",
+    "mode": "sql",
+    "official": true,
+    "phases": [
+      "generate",
+      "load",
+      "power"
+    ],
+    "seed": 42,
+    "timestamp": "2026-10-01T14:20:54.067532",
+    "translation": {
+      "attempt_count": 1319,
+      "failed_count": 0,
+      "fallback_count": 0,
+      "outcomes": [
+        {
+          "calls": 923,
+          "count": 923,
+          "normalized_source_dialect": "postgres",
+          "normalized_target_dialect": "postgres",
+          "parser_grammar": "postgres",
+          "scope": "workload_query",
+          "source_dialect": "netezza",
+          "status": "success",
+          "strict_mode": false,
+          "target_dialect": "datafusion",
+          "translator": "sqlglot",
+          "unique_queries": 477
+        },
+        {
+          "calls": 396,
+          "count": 396,
+          "normalized_source_dialect": "postgres",
+          "normalized_target_dialect": "postgres",
+          "parser_grammar": "postgres",
+          "scope": "workload_query",
+          "source_dialect": "netezza",
+          "status": "success",
+          "strict_mode": false,
+          "target_dialect": "netezza",
+          "translator": "sqlglot",
+          "unique_queries": 99
+        }
+      ],
+      "source_dialects": [
+        "netezza"
+      ],
+      "status": "success",
+      "strict_mode": false,
+      "success_count": 1319,
+      "target_dialects": [
+        "datafusion",
+        "netezza"
+      ],
+      "total_transpilation_calls": 1319,
+      "translators": [
+        "sqlglot"
+      ],
+      "unique_queries_translated": 477
+    },
+    "tuning_mode": "notuning"
+  },
+  "export": {
+    "anonymized": true,
+    "benchbox_version": "0.4.1",
+    "timestamp": "2026-10-01T14:23:02.449891",
+    "tool": "benchbox-exporter"
+  },
+  "normalized_cost": {
+    "billing_unit": "not_applicable",
+    "cost_model_source": "benchbox.core.cost.pricing",
+    "cost_model_version": "2026.09",
+    "cost_scope": "compute_only",
+    "cost_status": "not_applicable_local",
+    "cost_usd": null,
+    "deployment": {
+      "cloud_provider": null,
+      "cloud_region": null,
+      "cluster_size": null,
+      "instance_type": null,
+      "node_count": null,
+      "storage_format": null,
+      "storage_tier": null,
+      "warehouse_size": null
+    },
+    "normalized_cost_usd": "0",
+    "pricing_region": "not_applicable"
+  },
+  "phases": {
+    "data_generation": {
+      "duration_ms": 0,
+      "status": "SUCCESS"
+    },
+    "data_loading": {
+      "duration_ms": 28935,
+      "status": "SUCCESS"
+    },
+    "power_test": {
+      "duration_ms": 66817,
+      "status": "COMPLETED"
+    },
+    "schema_creation": {
+      "duration_ms": 0,
+      "status": "SUCCESS"
+    },
+    "throughput_test": {
+      "status": "NOT_RUN"
+    },
+    "validation": {
+      "duration_ms": 50,
+      "status": "PASSED"
+    }
+  },
+  "platform": {
+    "client_version": "54.0.0",
+    "cloud": {
+      "collection_status": "unavailable",
+      "source": "unavailable"
+    },
+    "compute": {
+      "collection_status": "partial",
+      "result_cache_enabled": false,
+      "source": "requested"
+    },
+    "config": {
+      "batch_size": 8192,
+      "connection_mode": "in-memory",
+      "data_format": "parquet",
+      "driver_package": "datafusion",
+      "driver_runtime_strategy": "current-process",
+      "driver_version_actual": "54.0.0",
+      "driver_version_resolved": "54.0.0",
+      "execution_mode": "sql",
+      "memory_limit": "12GB",
+      "result_cache_enabled": false,
+      "target_partitions": 4
+    },
+    "deployment": {
+      "collection_status": "partial",
+      "connection_mode": "in-memory",
+      "deployment_type": "embedded",
+      "endpoint_class": "embedded_process",
+      "metadata_source": "inferred"
+    },
+    "driver_actual_version": "54.0.0",
+    "driver_package": "datafusion",
+    "driver_resolved_version": "54.0.0",
+    "driver_runtime_strategy": "current-process",
+    "name": "DataFusion",
+    "raw_config": {
+      "batch_size": 8192,
+      "data_format": "parquet",
+      "force_recreate": false,
+      "memory_limit": "12GB",
+      "normalize_plan_literals": false,
+      "parquet_pushdown": true,
+      "repartition_joins": true,
+      "result_cache_enabled": false,
+      "show_query_plans": false,
+      "target_partitions": 4,
+      "tuning_source": "baseline",
+      "type": "datafusion"
+    },
+    "storage": {
+      "collection_status": "unavailable",
+      "source": "unavailable"
+    },
+    "version": "54.0.0"
+  },
+  "queries": [
+    {
+      "id": "31",
+      "iter": 0,
+      "ms": 150.6,
+      "rows": 51,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "29",
+      "iter": 0,
+      "ms": 119.8,
+      "rows": 0,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "20",
+      "iter": 0,
+      "ms": 15.4,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "25",
+      "iter": 0,
+      "ms": 113.8,
+      "rows": 0,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "21",
+      "iter": 0,
+      "ms": 28.1,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "23a",
+      "iter": 0,
+      "ms": 529.6,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "23b",
+      "iter": 0,
+      "ms": 555.8,
+      "rows": 0,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "19",
+      "iter": 0,
+      "ms": 59.5,
+      "rows": 25,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "17",
+      "iter": 0,
+      "ms": 109.4,
+      "rows": 0,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "27",
+      "iter": 0,
+      "ms": 125.5,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "18",
+      "iter": 0,
+      "ms": 79.8,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "22",
+      "iter": 0,
+      "ms": 428.9,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "24a",
+      "iter": 0,
+      "ms": 172.3,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "24b",
+      "iter": 0,
+      "ms": 174.2,
+      "rows": 0,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "26",
+      "iter": 0,
+      "ms": 62.4,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "28",
+      "iter": 0,
+      "ms": 284.6,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "30",
+      "iter": 0,
+      "ms": 33.3,
+      "rows": 68,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "32",
+      "iter": 0,
+      "ms": 20.4,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "16",
+      "iter": 0,
+      "ms": 23.6,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "15",
+      "iter": 0,
+      "ms": 16.0,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "14a",
+      "iter": 0,
+      "ms": 442.4,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "14b",
+      "iter": 0,
+      "ms": 474.6,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "13",
+      "iter": 0,
+      "ms": 163.4,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "12",
+      "iter": 0,
+      "ms": 35.4,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "11",
+      "iter": 0,
+      "ms": 408.9,
+      "rows": 88,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "10",
+      "iter": 0,
+      "ms": 79.2,
+      "rows": 5,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "9",
+      "iter": 0,
+      "ms": 277.7,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "8",
+      "iter": 0,
+      "ms": 70.4,
+      "rows": 0,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "7",
+      "iter": 0,
+      "ms": 122.9,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "6",
+      "iter": 0,
+      "ms": 51.0,
+      "rows": 47,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "5",
+      "iter": 0,
+      "ms": 125.8,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "4",
+      "iter": 0,
+      "ms": 676.6,
+      "rows": 8,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "3",
+      "iter": 0,
+      "ms": 46.8,
+      "rows": 14,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "2",
+      "iter": 0,
+      "ms": 93.8,
+      "rows": 2520,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "1",
+      "iter": 0,
+      "ms": 40.0,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "34",
+      "iter": 0,
+      "ms": 56.2,
+      "rows": 335,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "35",
+      "iter": 0,
+      "ms": 80.6,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "36",
+      "iter": 0,
+      "ms": 81.5,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "37",
+      "iter": 0,
+      "ms": 9.2,
+      "rows": 0,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "38",
+      "iter": 0,
+      "ms": 80.1,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "39a",
+      "iter": 0,
+      "ms": 93.1,
+      "rows": 140,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "39b",
+      "iter": 0,
+      "ms": 93.6,
+      "rows": 2,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "40",
+      "iter": 0,
+      "ms": 22.7,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "41",
+      "iter": 0,
+      "ms": 15.6,
+      "rows": 0,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "42",
+      "iter": 0,
+      "ms": 35.6,
+      "rows": 10,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "43",
+      "iter": 0,
+      "ms": 55.8,
+      "rows": 6,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "44",
+      "iter": 0,
+      "ms": 85.5,
+      "rows": 0,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "45",
+      "iter": 0,
+      "ms": 39.2,
+      "rows": 21,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "46",
+      "iter": 0,
+      "ms": 97.4,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "47",
+      "iter": 0,
+      "ms": 360.7,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "48",
+      "iter": 0,
+      "ms": 134.6,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "49",
+      "iter": 0,
+      "ms": 175.9,
+      "rows": 33,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "50",
+      "iter": 0,
+      "ms": 91.1,
+      "rows": 6,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "51",
+      "iter": 0,
+      "ms": 189.3,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "52",
+      "iter": 0,
+      "ms": 39.0,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "53",
+      "iter": 0,
+      "ms": 60.0,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "54",
+      "iter": 0,
+      "ms": 59.2,
+      "rows": 0,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "55",
+      "iter": 0,
+      "ms": 38.1,
+      "rows": 24,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "56",
+      "iter": 0,
+      "ms": 60.0,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "57",
+      "iter": 0,
+      "ms": 161.2,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "58",
+      "iter": 0,
+      "ms": 128.1,
+      "rows": 0,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "59",
+      "iter": 0,
+      "ms": 184.6,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "60",
+      "iter": 0,
+      "ms": 63.4,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "61",
+      "iter": 0,
+      "ms": 14.3,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "62",
+      "iter": 0,
+      "ms": 44.5,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "63",
+      "iter": 0,
+      "ms": 61.7,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "64",
+      "iter": 0,
+      "ms": 590.6,
+      "rows": 409,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "65",
+      "iter": 0,
+      "ms": 196.8,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "66",
+      "iter": 0,
+      "ms": 96.2,
+      "rows": 5,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "67",
+      "iter": 0,
+      "ms": 463.2,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "68",
+      "iter": 0,
+      "ms": 105.6,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "69",
+      "iter": 0,
+      "ms": 78.8,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "70",
+      "iter": 0,
+      "ms": 177.5,
+      "rows": 3,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "71",
+      "iter": 0,
+      "ms": 59.7,
+      "rows": 1054,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "72",
+      "iter": 0,
+      "ms": 2011.4,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "73",
+      "iter": 0,
+      "ms": 60.4,
+      "rows": 3,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "74",
+      "iter": 0,
+      "ms": 248.5,
+      "rows": 92,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "75",
+      "iter": 0,
+      "ms": 206.9,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "76",
+      "iter": 0,
+      "ms": 67.9,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "77",
+      "iter": 0,
+      "ms": 94.1,
+      "rows": 44,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "78",
+      "iter": 0,
+      "ms": 290.0,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "79",
+      "iter": 0,
+      "ms": 84.7,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "80",
+      "iter": 0,
+      "ms": 173.5,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "81",
+      "iter": 0,
+      "ms": 31.4,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "82",
+      "iter": 0,
+      "ms": 10.0,
+      "rows": 0,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "83",
+      "iter": 0,
+      "ms": 37.2,
+      "rows": 25,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "84",
+      "iter": 0,
+      "ms": 26.5,
+      "rows": 24,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "85",
+      "iter": 0,
+      "ms": 121.3,
+      "rows": 0,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "86",
+      "iter": 0,
+      "ms": 30.7,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "87",
+      "iter": 0,
+      "ms": 87.5,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "88",
+      "iter": 0,
+      "ms": 215.9,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "89",
+      "iter": 0,
+      "ms": 65.5,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "90",
+      "iter": 0,
+      "ms": 22.5,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "91",
+      "iter": 0,
+      "ms": 43.8,
+      "rows": 5,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "92",
+      "iter": 0,
+      "ms": 33.6,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "93",
+      "iter": 0,
+      "ms": 79.5,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "94",
+      "iter": 0,
+      "ms": 37.9,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "95",
+      "iter": 0,
+      "ms": 142.9,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "96",
+      "iter": 0,
+      "ms": 35.7,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "97",
+      "iter": 0,
+      "ms": 80.1,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "98",
+      "iter": 0,
+      "ms": 62.7,
+      "rows": 2578,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "99",
+      "iter": 0,
+      "ms": 53.6,
+      "rows": 90,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "33",
+      "iter": 0,
+      "ms": 59.6,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "31",
+      "iter": 1,
+      "ms": 150.8,
+      "rows": 56,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "29",
+      "iter": 1,
+      "ms": 127.0,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "23a",
+      "iter": 1,
+      "ms": 465.8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "23b",
+      "iter": 1,
+      "ms": 475.8,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "21",
+      "iter": 1,
+      "ms": 43.7,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "25",
+      "iter": 1,
+      "ms": 122.9,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "22",
+      "iter": 1,
+      "ms": 440.1,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "20",
+      "iter": 1,
+      "ms": 17.4,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "18",
+      "iter": 1,
+      "ms": 87.5,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "27",
+      "iter": 1,
+      "ms": 133.2,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "19",
+      "iter": 1,
+      "ms": 64.8,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "33",
+      "iter": 1,
+      "ms": 61.1,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "24a",
+      "iter": 1,
+      "ms": 54.9,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "24b",
+      "iter": 1,
+      "ms": 48.7,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "26",
+      "iter": 1,
+      "ms": 57.2,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "28",
+      "iter": 1,
+      "ms": 287.8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "30",
+      "iter": 1,
+      "ms": 36.3,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "32",
+      "iter": 1,
+      "ms": 19.0,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "17",
+      "iter": 1,
+      "ms": 111.1,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "16",
+      "iter": 1,
+      "ms": 24.8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "15",
+      "iter": 1,
+      "ms": 17.1,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "14a",
+      "iter": 1,
+      "ms": 450.6,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "14b",
+      "iter": 1,
+      "ms": 469.8,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "13",
+      "iter": 1,
+      "ms": 166.4,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "12",
+      "iter": 1,
+      "ms": 36.2,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "11",
+      "iter": 1,
+      "ms": 428.0,
+      "rows": 95,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "10",
+      "iter": 1,
+      "ms": 81.4,
+      "rows": 10,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "9",
+      "iter": 1,
+      "ms": 283.8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "8",
+      "iter": 1,
+      "ms": 73.3,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "7",
+      "iter": 1,
+      "ms": 128.0,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "6",
+      "iter": 1,
+      "ms": 54.3,
+      "rows": 45,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "5",
+      "iter": 1,
+      "ms": 124.1,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "4",
+      "iter": 1,
+      "ms": 701.8,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "3",
+      "iter": 1,
+      "ms": 49.1,
+      "rows": 12,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "2",
+      "iter": 1,
+      "ms": 100.3,
+      "rows": 2520,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "1",
+      "iter": 1,
+      "ms": 41.9,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "35",
+      "iter": 1,
+      "ms": 79.5,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "36",
+      "iter": 1,
+      "ms": 82.9,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "37",
+      "iter": 1,
+      "ms": 17.3,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "38",
+      "iter": 1,
+      "ms": 86.6,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "39a",
+      "iter": 1,
+      "ms": 81.8,
+      "rows": 229,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "39b",
+      "iter": 1,
+      "ms": 84.3,
+      "rows": 11,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "40",
+      "iter": 1,
+      "ms": 20.7,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "41",
+      "iter": 1,
+      "ms": 15.1,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "42",
+      "iter": 1,
+      "ms": 36.0,
+      "rows": 10,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "43",
+      "iter": 1,
+      "ms": 56.1,
+      "rows": 6,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "44",
+      "iter": 1,
+      "ms": 87.9,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "45",
+      "iter": 1,
+      "ms": 38.6,
+      "rows": 19,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "46",
+      "iter": 1,
+      "ms": 96.0,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "47",
+      "iter": 1,
+      "ms": 383.1,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "48",
+      "iter": 1,
+      "ms": 133.4,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "49",
+      "iter": 1,
+      "ms": 176.7,
+      "rows": 32,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "50",
+      "iter": 1,
+      "ms": 93.1,
+      "rows": 6,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "51",
+      "iter": 1,
+      "ms": 183.9,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "52",
+      "iter": 1,
+      "ms": 39.0,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "53",
+      "iter": 1,
+      "ms": 61.3,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "54",
+      "iter": 1,
+      "ms": 70.7,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "55",
+      "iter": 1,
+      "ms": 38.1,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "56",
+      "iter": 1,
+      "ms": 60.6,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "57",
+      "iter": 1,
+      "ms": 149.6,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "58",
+      "iter": 1,
+      "ms": 126.4,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "59",
+      "iter": 1,
+      "ms": 182.9,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "60",
+      "iter": 1,
+      "ms": 66.0,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "61",
+      "iter": 1,
+      "ms": 14.3,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "62",
+      "iter": 1,
+      "ms": 44.2,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "63",
+      "iter": 1,
+      "ms": 57.6,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "64",
+      "iter": 1,
+      "ms": 596.9,
+      "rows": 6,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "65",
+      "iter": 1,
+      "ms": 185.4,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "66",
+      "iter": 1,
+      "ms": 98.6,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "67",
+      "iter": 1,
+      "ms": 464.5,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "68",
+      "iter": 1,
+      "ms": 112.1,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "69",
+      "iter": 1,
+      "ms": 83.2,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "70",
+      "iter": 1,
+      "ms": 177.9,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "71",
+      "iter": 1,
+      "ms": 57.9,
+      "rows": 1043,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "72",
+      "iter": 1,
+      "ms": 1848.5,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "73",
+      "iter": 1,
+      "ms": 60.6,
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "74",
+      "iter": 1,
+      "ms": 247.0,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "75",
+      "iter": 1,
+      "ms": 220.1,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "76",
+      "iter": 1,
+      "ms": 68.8,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "77",
+      "iter": 1,
+      "ms": 93.1,
+      "rows": 44,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "78",
+      "iter": 1,
+      "ms": 285.1,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "79",
+      "iter": 1,
+      "ms": 87.6,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "80",
+      "iter": 1,
+      "ms": 174.4,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "81",
+      "iter": 1,
+      "ms": 34.4,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "82",
+      "iter": 1,
+      "ms": 18.4,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "83",
+      "iter": 1,
+      "ms": 39.4,
+      "rows": 30,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "84",
+      "iter": 1,
+      "ms": 27.1,
+      "rows": 26,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "85",
+      "iter": 1,
+      "ms": 124.6,
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "86",
+      "iter": 1,
+      "ms": 29.9,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "87",
+      "iter": 1,
+      "ms": 90.4,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "88",
+      "iter": 1,
+      "ms": 216.7,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "89",
+      "iter": 1,
+      "ms": 70.6,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "90",
+      "iter": 1,
+      "ms": 20.7,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "91",
+      "iter": 1,
+      "ms": 46.8,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "92",
+      "iter": 1,
+      "ms": 36.0,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "93",
+      "iter": 1,
+      "ms": 86.7,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "94",
+      "iter": 1,
+      "ms": 39.3,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "95",
+      "iter": 1,
+      "ms": 151.3,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "96",
+      "iter": 1,
+      "ms": 36.7,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "97",
+      "iter": 1,
+      "ms": 83.8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "98",
+      "iter": 1,
+      "ms": 64.3,
+      "rows": 2640,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "99",
+      "iter": 1,
+      "ms": 55.3,
+      "rows": 90,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "34",
+      "iter": 1,
+      "ms": 62.0,
+      "rows": 334,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1,
+      "test_type": "power"
+    },
+    {
+      "id": "31",
+      "iter": 2,
+      "ms": 155.8,
+      "rows": 51,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "18",
+      "iter": 2,
+      "ms": 101.7,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "23a",
+      "iter": 2,
+      "ms": 562.3,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "23b",
+      "iter": 2,
+      "ms": 566.2,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "22",
+      "iter": 2,
+      "ms": 442.7,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "29",
+      "iter": 2,
+      "ms": 127.7,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "25",
+      "iter": 2,
+      "ms": 119.3,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "21",
+      "iter": 2,
+      "ms": 31.4,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "19",
+      "iter": 2,
+      "ms": 68.8,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "27",
+      "iter": 2,
+      "ms": 146.4,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "20",
+      "iter": 2,
+      "ms": 19.5,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "33",
+      "iter": 2,
+      "ms": 63.7,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "24a",
+      "iter": 2,
+      "ms": 183.7,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "24b",
+      "iter": 2,
+      "ms": 178.2,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "26",
+      "iter": 2,
+      "ms": 61.1,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "28",
+      "iter": 2,
+      "ms": 292.8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "30",
+      "iter": 2,
+      "ms": 35.8,
+      "rows": 15,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "32",
+      "iter": 2,
+      "ms": 20.5,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "34",
+      "iter": 2,
+      "ms": 59.6,
+      "rows": 345,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "17",
+      "iter": 2,
+      "ms": 116.2,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "16",
+      "iter": 2,
+      "ms": 31.4,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "15",
+      "iter": 2,
+      "ms": 16.1,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "14a",
+      "iter": 2,
+      "ms": 474.1,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "14b",
+      "iter": 2,
+      "ms": 470.1,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "13",
+      "iter": 2,
+      "ms": 170.5,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "12",
+      "iter": 2,
+      "ms": 36.0,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "11",
+      "iter": 2,
+      "ms": 443.2,
+      "rows": 90,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "10",
+      "iter": 2,
+      "ms": 85.4,
+      "rows": 10,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "9",
+      "iter": 2,
+      "ms": 289.1,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "8",
+      "iter": 2,
+      "ms": 75.0,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "7",
+      "iter": 2,
+      "ms": 128.7,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "6",
+      "iter": 2,
+      "ms": 54.4,
+      "rows": 47,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "5",
+      "iter": 2,
+      "ms": 129.4,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "4",
+      "iter": 2,
+      "ms": 697.5,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "3",
+      "iter": 2,
+      "ms": 58.6,
+      "rows": 37,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "2",
+      "iter": 2,
+      "ms": 113.8,
+      "rows": 2513,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "1",
+      "iter": 2,
+      "ms": 45.0,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "36",
+      "iter": 2,
+      "ms": 90.5,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "37",
+      "iter": 2,
+      "ms": 10.6,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "38",
+      "iter": 2,
+      "ms": 85.6,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "39a",
+      "iter": 2,
+      "ms": 103.9,
+      "rows": 165,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "39b",
+      "iter": 2,
+      "ms": 106.5,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "40",
+      "iter": 2,
+      "ms": 24.2,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "41",
+      "iter": 2,
+      "ms": 16.2,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "42",
+      "iter": 2,
+      "ms": 39.3,
+      "rows": 10,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "43",
+      "iter": 2,
+      "ms": 61.2,
+      "rows": 6,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "44",
+      "iter": 2,
+      "ms": 105.4,
+      "rows": 10,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "45",
+      "iter": 2,
+      "ms": 38.7,
+      "rows": 14,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "46",
+      "iter": 2,
+      "ms": 97.9,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "47",
+      "iter": 2,
+      "ms": 394.9,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "48",
+      "iter": 2,
+      "ms": 138.4,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "49",
+      "iter": 2,
+      "ms": 176.7,
+      "rows": 34,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "50",
+      "iter": 2,
+      "ms": 92.3,
+      "rows": 6,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "51",
+      "iter": 2,
+      "ms": 184.0,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "52",
+      "iter": 2,
+      "ms": 40.5,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "53",
+      "iter": 2,
+      "ms": 60.8,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "54",
+      "iter": 2,
+      "ms": 63.7,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "55",
+      "iter": 2,
+      "ms": 39.7,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "56",
+      "iter": 2,
+      "ms": 62.9,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "57",
+      "iter": 2,
+      "ms": 161.7,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "58",
+      "iter": 2,
+      "ms": 125.3,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "59",
+      "iter": 2,
+      "ms": 196.2,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "60",
+      "iter": 2,
+      "ms": 73.5,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "61",
+      "iter": 2,
+      "ms": 16.4,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "62",
+      "iter": 2,
+      "ms": 48.7,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "63",
+      "iter": 2,
+      "ms": 61.0,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "64",
+      "iter": 2,
+      "ms": 612.8,
+      "rows": 10,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "65",
+      "iter": 2,
+      "ms": 197.2,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "66",
+      "iter": 2,
+      "ms": 98.5,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "67",
+      "iter": 2,
+      "ms": 462.1,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "68",
+      "iter": 2,
+      "ms": 105.6,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "69",
+      "iter": 2,
+      "ms": 79.4,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "70",
+      "iter": 2,
+      "ms": 171.7,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "71",
+      "iter": 2,
+      "ms": 61.1,
+      "rows": 1006,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "72",
+      "iter": 2,
+      "ms": 2132.9,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "73",
+      "iter": 2,
+      "ms": 61.5,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "74",
+      "iter": 2,
+      "ms": 247.4,
+      "rows": 94,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "75",
+      "iter": 2,
+      "ms": 226.1,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "76",
+      "iter": 2,
+      "ms": 68.2,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "77",
+      "iter": 2,
+      "ms": 96.1,
+      "rows": 44,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "78",
+      "iter": 2,
+      "ms": 296.1,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "79",
+      "iter": 2,
+      "ms": 96.4,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "80",
+      "iter": 2,
+      "ms": 176.9,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "81",
+      "iter": 2,
+      "ms": 33.9,
+      "rows": 57,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "82",
+      "iter": 2,
+      "ms": 35.2,
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "83",
+      "iter": 2,
+      "ms": 41.5,
+      "rows": 37,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "84",
+      "iter": 2,
+      "ms": 31.8,
+      "rows": 28,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "85",
+      "iter": 2,
+      "ms": 132.6,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "86",
+      "iter": 2,
+      "ms": 30.4,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "87",
+      "iter": 2,
+      "ms": 87.6,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "88",
+      "iter": 2,
+      "ms": 223.1,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "89",
+      "iter": 2,
+      "ms": 70.1,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "90",
+      "iter": 2,
+      "ms": 24.7,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "91",
+      "iter": 2,
+      "ms": 45.7,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "92",
+      "iter": 2,
+      "ms": 35.4,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "93",
+      "iter": 2,
+      "ms": 85.7,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "94",
+      "iter": 2,
+      "ms": 39.5,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "95",
+      "iter": 2,
+      "ms": 148.7,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "96",
+      "iter": 2,
+      "ms": 36.6,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "97",
+      "iter": 2,
+      "ms": 78.5,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "98",
+      "iter": 2,
+      "ms": 67.1,
+      "rows": 2607,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "99",
+      "iter": 2,
+      "ms": 55.8,
+      "rows": 90,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "35",
+      "iter": 2,
+      "ms": 90.2,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2,
+      "test_type": "power"
+    },
+    {
+      "id": "31",
+      "iter": 3,
+      "ms": 154.2,
+      "rows": 43,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "19",
+      "iter": 3,
+      "ms": 65.7,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "25",
+      "iter": 3,
+      "ms": 126.8,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "22",
+      "iter": 3,
+      "ms": 502.8,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "29",
+      "iter": 3,
+      "ms": 131.8,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "23a",
+      "iter": 3,
+      "ms": 478.1,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "23b",
+      "iter": 3,
+      "ms": 502.8,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "35",
+      "iter": 3,
+      "ms": 90.4,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "20",
+      "iter": 3,
+      "ms": 17.6,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "27",
+      "iter": 3,
+      "ms": 139.1,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "21",
+      "iter": 3,
+      "ms": 44.9,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "33",
+      "iter": 3,
+      "ms": 63.8,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "24a",
+      "iter": 3,
+      "ms": 187.7,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "24b",
+      "iter": 3,
+      "ms": 181.0,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "26",
+      "iter": 3,
+      "ms": 70.1,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "28",
+      "iter": 3,
+      "ms": 293.7,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "30",
+      "iter": 3,
+      "ms": 36.3,
+      "rows": 51,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "32",
+      "iter": 3,
+      "ms": 14.3,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "34",
+      "iter": 3,
+      "ms": 60.0,
+      "rows": 371,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "18",
+      "iter": 3,
+      "ms": 85.3,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "17",
+      "iter": 3,
+      "ms": 116.8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "16",
+      "iter": 3,
+      "ms": 27.5,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "15",
+      "iter": 3,
+      "ms": 16.7,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "14a",
+      "iter": 3,
+      "ms": 482.5,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "14b",
+      "iter": 3,
+      "ms": 479.2,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "13",
+      "iter": 3,
+      "ms": 165.3,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "12",
+      "iter": 3,
+      "ms": 38.0,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "11",
+      "iter": 3,
+      "ms": 440.4,
+      "rows": 84,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "10",
+      "iter": 3,
+      "ms": 89.2,
+      "rows": 6,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "9",
+      "iter": 3,
+      "ms": 283.2,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "8",
+      "iter": 3,
+      "ms": 72.9,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "7",
+      "iter": 3,
+      "ms": 130.7,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "6",
+      "iter": 3,
+      "ms": 56.0,
+      "rows": 45,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "5",
+      "iter": 3,
+      "ms": 130.0,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "4",
+      "iter": 3,
+      "ms": 692.7,
+      "rows": 6,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "3",
+      "iter": 3,
+      "ms": 44.8,
+      "rows": 84,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "2",
+      "iter": 3,
+      "ms": 99.9,
+      "rows": 2513,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "1",
+      "iter": 3,
+      "ms": 41.4,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "37",
+      "iter": 3,
+      "ms": 10.2,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "38",
+      "iter": 3,
+      "ms": 87.0,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "39a",
+      "iter": 3,
+      "ms": 94.1,
+      "rows": 173,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "39b",
+      "iter": 3,
+      "ms": 94.1,
+      "rows": 7,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "40",
+      "iter": 3,
+      "ms": 22.4,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "41",
+      "iter": 3,
+      "ms": 16.4,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "42",
+      "iter": 3,
+      "ms": 39.8,
+      "rows": 10,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "43",
+      "iter": 3,
+      "ms": 59.8,
+      "rows": 6,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "44",
+      "iter": 3,
+      "ms": 103.5,
+      "rows": 10,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "45",
+      "iter": 3,
+      "ms": 39.7,
+      "rows": 19,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "46",
+      "iter": 3,
+      "ms": 98.2,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "47",
+      "iter": 3,
+      "ms": 400.3,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "48",
+      "iter": 3,
+      "ms": 138.2,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "49",
+      "iter": 3,
+      "ms": 190.3,
+      "rows": 35,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "50",
+      "iter": 3,
+      "ms": 93.7,
+      "rows": 6,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "51",
+      "iter": 3,
+      "ms": 190.2,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "52",
+      "iter": 3,
+      "ms": 40.5,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "53",
+      "iter": 3,
+      "ms": 62.2,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "54",
+      "iter": 3,
+      "ms": 63.2,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "55",
+      "iter": 3,
+      "ms": 37.8,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "56",
+      "iter": 3,
+      "ms": 62.4,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "57",
+      "iter": 3,
+      "ms": 155.1,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "58",
+      "iter": 3,
+      "ms": 127.2,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "59",
+      "iter": 3,
+      "ms": 183.9,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "60",
+      "iter": 3,
+      "ms": 66.7,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "61",
+      "iter": 3,
+      "ms": 14.9,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "62",
+      "iter": 3,
+      "ms": 45.3,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "63",
+      "iter": 3,
+      "ms": 62.3,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "64",
+      "iter": 3,
+      "ms": 614.9,
+      "rows": 19,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "65",
+      "iter": 3,
+      "ms": 184.8,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "66",
+      "iter": 3,
+      "ms": 102.4,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "67",
+      "iter": 3,
+      "ms": 464.0,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "68",
+      "iter": 3,
+      "ms": 101.6,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "69",
+      "iter": 3,
+      "ms": 76.0,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "70",
+      "iter": 3,
+      "ms": 174.5,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "71",
+      "iter": 3,
+      "ms": 57.7,
+      "rows": 1117,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "72",
+      "iter": 3,
+      "ms": 2055.1,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "73",
+      "iter": 3,
+      "ms": 57.8,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "74",
+      "iter": 3,
+      "ms": 239.3,
+      "rows": 83,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "75",
+      "iter": 3,
+      "ms": 201.8,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "76",
+      "iter": 3,
+      "ms": 67.9,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "77",
+      "iter": 3,
+      "ms": 91.8,
+      "rows": 44,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "78",
+      "iter": 3,
+      "ms": 286.7,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "79",
+      "iter": 3,
+      "ms": 100.4,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "80",
+      "iter": 3,
+      "ms": 173.4,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "81",
+      "iter": 3,
+      "ms": 31.1,
+      "rows": 54,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "82",
+      "iter": 3,
+      "ms": 57.0,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "83",
+      "iter": 3,
+      "ms": 43.2,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "84",
+      "iter": 3,
+      "ms": 30.6,
+      "rows": 25,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "85",
+      "iter": 3,
+      "ms": 123.0,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "86",
+      "iter": 3,
+      "ms": 30.0,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "87",
+      "iter": 3,
+      "ms": 85.2,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "88",
+      "iter": 3,
+      "ms": 221.0,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "89",
+      "iter": 3,
+      "ms": 69.4,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "90",
+      "iter": 3,
+      "ms": 23.4,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "91",
+      "iter": 3,
+      "ms": 42.4,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "92",
+      "iter": 3,
+      "ms": 19.5,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "93",
+      "iter": 3,
+      "ms": 81.4,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "94",
+      "iter": 3,
+      "ms": 38.4,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "95",
+      "iter": 3,
+      "ms": 143.9,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "96",
+      "iter": 3,
+      "ms": 35.7,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "97",
+      "iter": 3,
+      "ms": 78.6,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "98",
+      "iter": 3,
+      "ms": 63.7,
+      "rows": 2592,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "99",
+      "iter": 3,
+      "ms": 52.0,
+      "rows": 90,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    },
+    {
+      "id": "36",
+      "iter": 3,
+      "ms": 83.0,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3,
+      "test_type": "power"
+    }
+  ],
+  "result_schema_version": "2.2",
+  "run": {
+    "id": "754e0bfc",
+    "iterations": 3,
+    "query_time_ms": 46524,
+    "streams": 4,
+    "timestamp": "2026-10-01T14:23:02.407399",
+    "total_duration_ms": 96024
+  },
+  "summary": {
+    "data": {
+      "load_time_ms": 28935.4,
+      "rows_loaded": 19557376
+    },
+    "queries": {
+      "failed": 0,
+      "passed": 309,
+      "total": 309
+    },
+    "timing": {
+      "avg_ms": 150.6,
+      "geometric_mean_ms": 89.6,
+      "max_ms": 2132.9,
+      "min_ms": 10.2,
+      "p90_ms": 400.3,
+      "p95_ms": 478.1,
+      "p99_ms": 701.8,
+      "stdev_ms": 231.2,
+      "total_ms": 46524.3
+    },
+    "tpc_metrics": {
+      "power_at_size": 39967.222092121345
+    },
+    "validation": "passed"
+  },
+  "tables": {
+    "call_center": {
+      "load_ms": 6,
+      "rows": 6
+    },
+    "catalog_page": {
+      "load_ms": 126,
+      "rows": 11718
+    },
+    "catalog_returns": {
+      "load_ms": 313,
+      "rows": 144067
+    },
+    "catalog_sales": {
+      "load_ms": 6249,
+      "rows": 1441548
+    },
+    "customer": {
+      "load_ms": 131,
+      "rows": 100000
+    },
+    "customer_address": {
+      "load_ms": 167,
+      "rows": 50000
+    },
+    "customer_demographics": {
+      "load_ms": 725,
+      "rows": 1920800
+    },
+    "date_dim": {
+      "load_ms": 113,
+      "rows": 73049
+    },
+    "dbgen_version": {
+      "load_ms": 88,
+      "rows": 1
+    },
+    "household_demographics": {
+      "load_ms": 6,
+      "rows": 7200
+    },
+    "income_band": {
+      "load_ms": 43,
+      "rows": 20
+    },
+    "inventory": {
+      "load_ms": 3970,
+      "rows": 11745000
+    },
+    "item": {
+      "load_ms": 119,
+      "rows": 18000
+    },
+    "promotion": {
+      "load_ms": 138,
+      "rows": 300
+    },
+    "reason": {
+      "load_ms": 5,
+      "rows": 75
+    },
+    "ship_mode": {
+      "load_ms": 167,
+      "rows": 20
+    },
+    "store": {
+      "load_ms": 123,
+      "rows": 12
+    },
+    "store_returns": {
+      "load_ms": 612,
+      "rows": 287514
+    },
+    "store_sales": {
+      "load_ms": 13340,
+      "rows": 2880404
+    },
+    "time_dim": {
+      "load_ms": 50,
+      "rows": 86400
+    },
+    "warehouse": {
+      "load_ms": 3,
+      "rows": 5
+    },
+    "web_page": {
+      "load_ms": 3,
+      "rows": 60
+    },
+    "web_returns": {
+      "load_ms": 163,
+      "rows": 71763
+    },
+    "web_sales": {
+      "load_ms": 2242,
+      "rows": 719384
+    },
+    "web_site": {
+      "load_ms": 22,
+      "rows": 30
+    }
+  },
+  "version": "2.2"
+}

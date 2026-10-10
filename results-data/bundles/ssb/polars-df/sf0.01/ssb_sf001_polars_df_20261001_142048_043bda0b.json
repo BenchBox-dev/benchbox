@@ -1,0 +1,696 @@
+{
+  "benchmark": {
+    "data_generation_hash": "6c2327e588ae42b1c2143d42b84085f7ad57db46061637a9dd2aa3b05063095e",
+    "data_generation_version": 1,
+    "id": "ssb",
+    "name": "SSB",
+    "scale_factor": 0.01,
+    "test_type": "power"
+  },
+  "config": {
+    "compression": {
+      "level": 9,
+      "type": "zstd"
+    },
+    "mode": "dataframe",
+    "phases": [
+      "generate",
+      "load",
+      "power"
+    ]
+  },
+  "cost": {
+    "model": "estimated",
+    "total_usd": 0
+  },
+  "environment": {
+    "arch": "x86_64",
+    "client_host": {
+      "arch": "x86_64",
+      "cpu_count": 4,
+      "cpu_identity_provenance": "measured",
+      "cpu_model": "AMD EPYC 7763 64-Core Processor",
+      "memory_gb": 15.614940643310547,
+      "os": "Linux 6.17.0-1022-azure",
+      "python": "3.12.14"
+    },
+    "client_link": {
+      "client_cloud": "azure",
+      "client_region": "eastus",
+      "collection_status": "partial",
+      "source": "observed"
+    },
+    "cpu_count": 4,
+    "cpu_identity_provenance": "measured",
+    "cpu_model": "AMD EPYC 7763 64-Core Processor",
+    "memory_gb": 15.614940643310547,
+    "os": "Linux 6.17.0-1022-azure",
+    "platform_runtime": {
+      "collection_status": "partial",
+      "runtime_type": "dataframe_process",
+      "source": "inferred"
+    },
+    "python": "3.12.14"
+  },
+  "execution": {
+    "compression": {
+      "level": 9,
+      "type": "zstd"
+    },
+    "driver_package": "polars",
+    "driver_runtime_strategy": "current-process",
+    "driver_version_actual": "1.44.2",
+    "driver_version_resolved": "1.44.2",
+    "entry_point": "cli",
+    "mode": "dataframe",
+    "phases": [
+      "generate",
+      "load",
+      "power"
+    ],
+    "timestamp": "2026-10-01T14:20:46.548870",
+    "tuning_mode": "notuning"
+  },
+  "export": {
+    "anonymized": true,
+    "benchbox_version": "0.4.1",
+    "timestamp": "2026-10-01T14:20:48.025225",
+    "tool": "benchbox-exporter"
+  },
+  "normalized_cost": {
+    "billing_unit": "not_applicable",
+    "cost_model_source": "benchbox.core.cost.pricing",
+    "cost_model_version": "2026.09",
+    "cost_scope": "compute_only",
+    "cost_status": "not_applicable_local",
+    "cost_usd": null,
+    "deployment": {
+      "cloud_provider": null,
+      "cloud_region": null,
+      "cluster_size": null,
+      "instance_type": null,
+      "node_count": null,
+      "storage_format": null,
+      "storage_tier": null,
+      "warehouse_size": null
+    },
+    "normalized_cost_usd": "0",
+    "pricing_region": "not_applicable"
+  },
+  "phases": {
+    "data_generation": {
+      "status": "NOT_RUN"
+    },
+    "data_loading": {
+      "duration_ms": 86,
+      "status": "SUCCESS"
+    },
+    "power_test": {
+      "duration_ms": 161,
+      "status": "COMPLETED"
+    },
+    "schema_creation": {
+      "status": "NOT_RUN"
+    },
+    "throughput_test": {
+      "status": "NOT_RUN"
+    },
+    "validation": {
+      "status": "NOT_RUN"
+    }
+  },
+  "platform": {
+    "client_version": "unknown",
+    "cloud": {
+      "collection_status": "unavailable",
+      "source": "unavailable"
+    },
+    "compute": {
+      "collection_status": "unavailable",
+      "source": "unavailable"
+    },
+    "config": {
+      "driver_package": "polars",
+      "driver_runtime_strategy": "current-process",
+      "driver_version_actual": "1.44.2",
+      "driver_version_resolved": "1.44.2",
+      "execution_mode": "dataframe",
+      "family": "expression",
+      "rechunk": true,
+      "streaming": false
+    },
+    "deployment": {
+      "collection_status": "partial",
+      "deployment_type": "dataframe",
+      "endpoint_class": "embedded_process",
+      "metadata_source": "inferred"
+    },
+    "driver_actual_version": "1.44.2",
+    "driver_package": "polars",
+    "driver_resolved_version": "1.44.2",
+    "driver_runtime_strategy": "current-process",
+    "name": "Polars",
+    "raw_config": {
+      "memory_limit": "12GB",
+      "options": {
+        "force_recreate": false,
+        "force_upload": false,
+        "normalize_plan_literals": false,
+        "rechunk": true,
+        "show_query_plans": false,
+        "streaming": false
+      },
+      "rechunk": true,
+      "streaming": false,
+      "thread_limit": 4,
+      "tuning_source": "baseline"
+    },
+    "storage": {
+      "collection_status": "unavailable",
+      "source": "unavailable"
+    },
+    "version": "1.44.2"
+  },
+  "queries": [
+    {
+      "id": "1.1",
+      "iter": 0,
+      "ms": 3.4,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "1.2",
+      "iter": 0,
+      "ms": 2.5,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "1.3",
+      "iter": 0,
+      "ms": 2.5,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "2.1",
+      "iter": 0,
+      "ms": 4.7,
+      "rows": 86,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "2.2",
+      "iter": 0,
+      "ms": 5.8,
+      "rows": 19,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "2.3",
+      "iter": 0,
+      "ms": 4.4,
+      "rows": 2,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "3.1",
+      "iter": 0,
+      "ms": 4.0,
+      "rows": 120,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "3.2",
+      "iter": 0,
+      "ms": 3.6,
+      "rows": 0,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "3.3",
+      "iter": 0,
+      "ms": 3.5,
+      "rows": 0,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "3.4",
+      "iter": 0,
+      "ms": 3.2,
+      "rows": 0,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "4.1",
+      "iter": 0,
+      "ms": 7.6,
+      "rows": 35,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "4.2",
+      "iter": 0,
+      "ms": 6.9,
+      "rows": 18,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "4.3",
+      "iter": 0,
+      "ms": 4.3,
+      "rows": 8,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "1.1",
+      "iter": 1,
+      "ms": 2.6,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "1.2",
+      "iter": 1,
+      "ms": 2.3,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "1.3",
+      "iter": 1,
+      "ms": 2.4,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "2.1",
+      "iter": 1,
+      "ms": 4.3,
+      "rows": 86,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "2.2",
+      "iter": 1,
+      "ms": 4.3,
+      "rows": 19,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "2.3",
+      "iter": 1,
+      "ms": 3.9,
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "3.1",
+      "iter": 1,
+      "ms": 3.4,
+      "rows": 120,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "3.2",
+      "iter": 1,
+      "ms": 2.8,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "3.3",
+      "iter": 1,
+      "ms": 2.8,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "3.4",
+      "iter": 1,
+      "ms": 2.8,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "4.1",
+      "iter": 1,
+      "ms": 5.1,
+      "rows": 35,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "4.2",
+      "iter": 1,
+      "ms": 4.4,
+      "rows": 18,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "4.3",
+      "iter": 1,
+      "ms": 4.8,
+      "rows": 8,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "1.1",
+      "iter": 2,
+      "ms": 2.9,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "1.2",
+      "iter": 2,
+      "ms": 2.5,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "1.3",
+      "iter": 2,
+      "ms": 2.6,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "2.1",
+      "iter": 2,
+      "ms": 3.4,
+      "rows": 86,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "2.2",
+      "iter": 2,
+      "ms": 3.2,
+      "rows": 19,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "2.3",
+      "iter": 2,
+      "ms": 3.9,
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "3.1",
+      "iter": 2,
+      "ms": 3.2,
+      "rows": 120,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "3.2",
+      "iter": 2,
+      "ms": 2.7,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "3.3",
+      "iter": 2,
+      "ms": 2.8,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "3.4",
+      "iter": 2,
+      "ms": 2.7,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "4.1",
+      "iter": 2,
+      "ms": 5.3,
+      "rows": 35,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "4.2",
+      "iter": 2,
+      "ms": 4.7,
+      "rows": 18,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "4.3",
+      "iter": 2,
+      "ms": 4.5,
+      "rows": 8,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "1.1",
+      "iter": 3,
+      "ms": 2.5,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "1.2",
+      "iter": 3,
+      "ms": 2.8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "1.3",
+      "iter": 3,
+      "ms": 2.5,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "2.1",
+      "iter": 3,
+      "ms": 3.3,
+      "rows": 86,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "2.2",
+      "iter": 3,
+      "ms": 3.4,
+      "rows": 19,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "2.3",
+      "iter": 3,
+      "ms": 3.3,
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "3.1",
+      "iter": 3,
+      "ms": 3.3,
+      "rows": 120,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "3.2",
+      "iter": 3,
+      "ms": 2.9,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "3.3",
+      "iter": 3,
+      "ms": 2.8,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "3.4",
+      "iter": 3,
+      "ms": 2.8,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "4.1",
+      "iter": 3,
+      "ms": 4.6,
+      "rows": 35,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "4.2",
+      "iter": 3,
+      "ms": 4.5,
+      "rows": 18,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "4.3",
+      "iter": 3,
+      "ms": 4.6,
+      "rows": 8,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    }
+  ],
+  "result_schema_version": "2.2",
+  "run": {
+    "id": "043bda0b",
+    "iterations": 3,
+    "query_time_ms": 134,
+    "streams": 4,
+    "timestamp": "2026-10-01T14:20:47.704644",
+    "total_duration_ms": 304
+  },
+  "summary": {
+    "data": {
+      "load_time_ms": 86.2,
+      "rows_loaded": 64877
+    },
+    "queries": {
+      "failed": 0,
+      "passed": 39,
+      "total": 39
+    },
+    "timing": {
+      "avg_ms": 3.4,
+      "geometric_mean_ms": 3.3,
+      "max_ms": 5.3,
+      "min_ms": 2.3,
+      "p90_ms": 4.7,
+      "p95_ms": 5.1,
+      "p99_ms": 5.3,
+      "stdev_ms": 0.9,
+      "total_ms": 133.6
+    },
+    "validation": "not_run"
+  },
+  "tables": {
+    "customer": {
+      "load_ms": 1,
+      "rows": 300
+    },
+    "date": {
+      "load_ms": 7,
+      "rows": 2557
+    },
+    "lineorder": {
+      "rows": 60000
+    },
+    "part": {
+      "rows": 2000
+    },
+    "supplier": {
+      "rows": 20
+    }
+  },
+  "version": "2.2"
+}

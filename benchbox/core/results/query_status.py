@@ -1,12 +1,9 @@
-"""Stdlib-only failed-query policy shared with the public corpus validator."""
-
 from __future__ import annotations
 
 from typing import Any
 
 
 def bundle_failed_query_count(data: dict[str, Any]) -> int:
-    """Return failed measurement count from a schema-v2 bundle dict."""
     summary = data.get("summary")
     if isinstance(summary, dict):
         queries = summary.get("queries")
@@ -28,7 +25,6 @@ def bundle_failed_query_count(data: dict[str, Any]) -> int:
 
 
 def int_or_none(value: Any) -> int | None:
-    """Return an integer only when the input represents one exactly."""
     if isinstance(value, bool):
         return int(value)
     if isinstance(value, int):

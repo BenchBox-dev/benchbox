@@ -1,25 +1,4 @@
 #!/usr/bin/env python3
-"""Validate the seed corpus meets depth and schema requirements.
-
-`SEED_CORPUS_SPEC.md` states the hard requirement this enforces: every
-committed cohort must have at least 3 distinct comparison identities. A
-one-identity cohort is not a comparison, so publishing it would put a row on
-the public leaderboard that nothing can be read against.
-
-This script also prints a recency/staleness report derived from each bundle's
-``run.timestamp``. Age is informational only: it never fails the depth gate and
-never implies ranking exclusion or automatic withdrawal.
-
-Structured into functions so `tests/unit/scripts/test_corpus_cohort_depth.py`
-can import and assert the same rule instead of restating it. Before that, the
-script ran in no CI lane at all -- every workflow reference to it is a path
-list for mirroring -- so a corpus PR could violate the requirement, pass
-pr-preflight green, and merge. That is exactly what PR #1854 did.
-
-Kept deliberately stdlib-only and free of `benchbox` imports: this file is
-vendored onto the slim `published-results` branch, where the package is not
-installed.
-"""
 
 from __future__ import annotations
 
@@ -32,11 +11,9 @@ import re
 import sys
 from typing import NamedTuple
 
-#: Companion suffixes that are not primary result bundles.
 COMPANION_SUFFIXES = (".manifest.json", ".plans.json", ".tuning.json", ".applied.json", ".override.json")
 LEGACY_MANIFEST_NAME = "submission-manifest.json"
 
-#: A cohort below this many distinct comparison identities is not a comparison.
 MINIMUM_PLATFORMS_PER_COHORT = 3
 NON_CLEAN_VALIDATION_STATUSES = frozenset(
     {"failed", "interrupted", "partial", "error", "not_run", "not_validated", "uncertain", "unknown"}
@@ -58,6 +35,8 @@ KNOWN_LOGICAL_QUERY_COUNTS = {
 CANONICAL_TUNING_MODES = frozenset({"tuned", "tuned-fallback", "notuning", "auto", "custom"})
 APPLIED_TUNING_STATUSES = frozenset({"applied_unverified", "applied_verified"})
 POWER_SCORE_BENCHMARKS = frozenset({"tpch", "tpcds"})
+THROUGHPUT_SCORE_BENCHMARKS = frozenset({"tpch", "tpcds"})
+THROUGHPUT_PHASE = "throughput"
 UTC = _dt.timezone.utc
 DATE_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")
 TIMESTAMP_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-]\d{2}:\d{2})?$")
@@ -66,12 +45,10 @@ CohortKey = tuple[str, str]
 
 
 class CorpusReadError(Exception):
-    """A bundle could not be read or lacks the fields a cohort key needs."""
+    pass
 
 
 class RecencyStats(NamedTuple):
-    """Oldest/newest run dates and ages for one cohort or the whole corpus."""
-
     oldest: _dt.date
     newest: _dt.date
     oldest_age_days: int
@@ -80,7 +57,6 @@ class RecencyStats(NamedTuple):
 
 
 def discover_bundles(bundles_dir: pathlib.Path) -> list[pathlib.Path]:
-    """Primary result bundles under *bundles_dir*, companions excluded."""
     return sorted(
         path
         for path in bundles_dir.rglob("*.json")
@@ -89,11 +65,10 @@ def discover_bundles(bundles_dir: pathlib.Path) -> list[pathlib.Path]:
 
 
 def _load_bundle(bundle: pathlib.Path) -> dict:
-    """Read one primary bundle; any failure is fatal for corpus gates."""
     try:
         with open(bundle, encoding="utf-8") as handle:
             return json.load(handle)
-    except Exception as exc:  # noqa: BLE001 - any read failure is fatal here
+    except Exception as exc:
         raise CorpusReadError(f"ERROR reading {bundle}: {exc}") from exc
 
 
@@ -338,27 +313,51 @@ def _tuning_applied(payload: dict) -> bool:
     return bool(status) and str(status) in APPLIED_TUNING_STATUSES
 
 
-def _power_score(payload: dict) -> float | None:
-    # Power@Size only: QphH/QphDS are non-spec exports the driver no longer
-    # validates, and the explorer ranks TPC-H/TPC-DS on power_score derived
-    # from power_at_size alone, so the validator must agree here.
+def _tpc_metric(payload: dict, name: str) -> float | None:
     metrics = _mapping(_mapping(payload.get("summary")).get("tpc_metrics"))
-    value = metrics.get("power_at_size")
-    if value is not None:
-        try:
-            return float(value)
-        except (TypeError, ValueError):
-            return None
-    return None
+    value = metrics.get(name)
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _power_score(payload: dict) -> float | None:
+    return _tpc_metric(payload, "power_at_size")
+
+
+def _throughput_phase_clean(payload: dict) -> bool:
+    block = _mapping(_mapping(payload.get("phases")).get("throughput_test"))
+    if str(block.get("status") or "").upper() != "COMPLETED":
+        return False
+    streams = block.get("stream_results")
+    if not isinstance(streams, list) or not streams:
+        return False
+    if not all(isinstance(stream, dict) and stream.get("success") is True for stream in streams):
+        return False
+    return not block.get("errors") and not block.get("outstanding_work")
+
+
+def _throughput_score(payload: dict) -> float | None:
+    if not _throughput_phase_clean(payload):
+        return None
+    return _tpc_metric(payload, "throughput_at_size")
+
+
+def _primary_metric_value(payload: dict, display: list[tuple[str, float | None, int]]) -> float | None:
+    benchmark_id = str(_mapping(payload.get("benchmark")).get("id", "unknown"))
+    if bundle_phase(payload) == THROUGHPUT_PHASE and benchmark_id in THROUGHPUT_SCORE_BENCHMARKS:
+        return _throughput_score(payload)
+    if benchmark_id in POWER_SCORE_BENCHMARKS:
+        return _power_score(payload)
+    values = [value for _, value, _ in display if value is not None and value > 0]
+    return math.exp(sum(math.log(item) for item in values) / len(values)) if values else None
 
 
 def _primary_metric_reason(payload: dict, display: list[tuple[str, float | None, int]]) -> str | None:
-    benchmark_id = str(_mapping(payload.get("benchmark")).get("id", "unknown"))
-    if benchmark_id in POWER_SCORE_BENCHMARKS:
-        value = _power_score(payload)
-    else:
-        values = [value for _, value, _ in display if value is not None and value > 0]
-        value = math.exp(sum(math.log(item) for item in values) / len(values)) if values else None
+    value = _primary_metric_value(payload, display)
     if value is None:
         return "missing_primary_metric"
     if not math.isfinite(float(value)) or float(value) <= 0:
@@ -400,7 +399,7 @@ def _cohort_key(payload: dict) -> CohortKey:
     try:
         benchmark_id = payload["benchmark"]["id"]
         scale_factor = str(payload["benchmark"].get("scale_factor", ""))
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise CorpusReadError(f"ERROR missing cohort fields: {exc}") from exc
     return (benchmark_id, f"{scale_factor}{cohort_phase_suffix(payload)}")
 
@@ -424,7 +423,7 @@ def _comparison_identity(bundle: pathlib.Path, payload: dict) -> str:
                     if candidate and str(candidate) != "unknown":
                         version = candidate
                         break
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise CorpusReadError(f"ERROR reading platform identity from {bundle}: {exc}") from exc
     identity = str(platform)
     if version and str(version) != "unknown":
@@ -433,18 +432,10 @@ def _comparison_identity(bundle: pathlib.Path, payload: dict) -> str:
 
 
 def parse_run_date(payload: dict, *, bundle: pathlib.Path | None = None) -> _dt.date:
-    """Extract the calendar run date from ``run.timestamp``.
-
-    ``YYYY-MM-DD`` is an explicit UTC calendar date. A complete ISO timestamp
-    with ``Z`` or an offset is converted to its UTC calendar date. Legacy
-    complete timestamps without an offset are interpreted as UTC. Prefixes,
-    malformed times, and trailing text are rejected. Callers that treat age as
-    informational (``cohort_recency``) catch errors and omit the bad value.
-    """
     label = f" in {bundle}" if bundle is not None else ""
     try:
         timestamp = payload["run"]["timestamp"]
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise CorpusReadError(f"ERROR missing run.timestamp{label}: {exc}") from exc
     if not isinstance(timestamp, str):
         raise CorpusReadError(f"ERROR unparseable run.timestamp{label}: {timestamp!r}")
@@ -467,16 +458,10 @@ def parse_run_date(payload: dict, *, bundle: pathlib.Path | None = None) -> _dt.
 
 
 def utc_today() -> _dt.date:
-    """Current calendar date in UTC for informational recency calculations."""
     return _dt.datetime.now(UTC).date()
 
 
 def age_days(run_date: _dt.date, *, as_of: _dt.date | None = None) -> int:
-    """Whole days between *run_date* and *as_of* (default: current UTC day).
-
-    Informational only. Age does not fail the depth gate and does not affect
-    ranking eligibility (see ``ranking_exclusion_reason`` in explorer_pipeline).
-    """
     as_of = as_of or utc_today()
     return (as_of - run_date).days
 
@@ -494,20 +479,6 @@ def _stats_from_dates(dates: list[_dt.date], *, as_of: _dt.date) -> RecencyStats
 
 
 def cohort_platforms(bundles: list[pathlib.Path]) -> dict[CohortKey, set[str]]:
-    """Map a cohort to distinct platform/version comparison identities.
-
-    An explicitly segregated version-over-version corpus legitimately repeats
-    one platform name. Only bundles under ``duckdb-version-matrix/`` therefore
-    include a reported version in their identity. Ordinary cohorts retain the
-    historical platform-only identity so three versions of one engine cannot
-    weaken the cross-platform admission floor.
-
-    Raises:
-        CorpusReadError: if any bundle is unreadable or missing a key field.
-            Fail closed -- an unparseable bundle is exactly the state a
-            truncated or unreviewed one would be in, and skipping it would let
-            the corpus regress while this gate stayed green.
-    """
     cohorts: collections.defaultdict[CohortKey, set[str]] = collections.defaultdict(set)
     for bundle in bundles:
         payload = _load_bundle(bundle)
@@ -522,13 +493,6 @@ def cohort_recency(
     *,
     as_of: _dt.date | None = None,
 ) -> tuple[RecencyStats | None, dict[CohortKey, RecencyStats], list[str]]:
-    """Per-cohort and overall oldest/newest run ages from bundle timestamps.
-
-    Returns ``(overall, per_cohort, warnings)``. *overall* is ``None`` when no
-    parseable timestamps remain. Bundles with a missing or unparseable
-    ``run.timestamp`` are omitted from the report and listed in *warnings*.
-    Age never participates in the depth-gate exit code.
-    """
     as_of = as_of or utc_today()
     by_cohort: collections.defaultdict[CohortKey, list[_dt.date]] = collections.defaultdict(list)
     all_dates: list[_dt.date] = []
@@ -538,7 +502,6 @@ def cohort_recency(
         try:
             run_date = parse_run_date(payload, bundle=bundle)
         except CorpusReadError as exc:
-            # Age is informational: omit, warn, and leave the depth exit alone.
             warnings.append(str(exc).replace("ERROR", "WARN", 1))
             continue
         key = _cohort_key(payload)
@@ -555,7 +518,6 @@ def format_recency_report(
     *,
     as_of: _dt.date,
 ) -> str:
-    """Human-readable recency report; does not encode a pass/fail decision."""
     lines = [
         "Recency (from run.timestamp; informational only — age does not fail "
         "the depth gate and does not affect ranking eligibility):",
@@ -582,7 +544,6 @@ def format_recency_report(
 
 
 def shallow_cohorts(cohorts: dict[CohortKey, set[str]]) -> dict[CohortKey, set[str]]:
-    """Cohorts with fewer than the required number of platforms."""
     return {key: platforms for key, platforms in cohorts.items() if 0 < len(platforms) < MINIMUM_PLATFORMS_PER_COHORT}
 
 
@@ -591,7 +552,6 @@ def unranked_cohorts(cohorts: dict[CohortKey, set[str]]) -> list[CohortKey]:
 
 
 def main(bundles_dir: pathlib.Path | None = None, *, as_of: _dt.date | None = None) -> int:
-    """Print the cohort and recency reports; exit code reflects depth only."""
     bundles_dir = bundles_dir or pathlib.Path(__file__).parent / "bundles"
     as_of = as_of or utc_today()
     bundles = discover_bundles(bundles_dir)
@@ -613,13 +573,9 @@ def main(bundles_dir: pathlib.Path | None = None, *, as_of: _dt.date | None = No
             status = "WARN (<3 identities)"
         print(f"  {key[0]} SF={key[1]}: {len(platforms)} identities ({sorted(platforms)}) [{status}]")
 
-    # Recency is informational: timestamp parse failures warn and omit, and
-    # never override the depth exit code computed below.
     try:
         overall, per_cohort, recency_warnings = cohort_recency(bundles, as_of=as_of)
     except CorpusReadError as exc:
-        # Unreadable payload after a successful depth pass is unexpected; warn
-        # and continue with an empty recency report rather than flipping depth.
         print(f"WARN recency skipped: {exc}")
         overall, per_cohort, recency_warnings = None, {}, []
     for warning in recency_warnings:

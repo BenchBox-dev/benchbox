@@ -1,0 +1,8 @@
+{
+  "manifest_version": "1.0",
+  "bundle_file": "tpch_sf1_doris_sql_20261007_172956_5e453c54.json",
+  "bundle_hash": "2c74ef0a0d5df520b4e3afd0d0fe6b6bb6b4125a453406a6068a09159bb0f73a",
+  "result_source": "internal",
+  "submitted_by": "maintainer",
+  "funding": "unspecified"
+}
