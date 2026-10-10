@@ -4,7 +4,7 @@
     "A nightly-v2 run (scheduled or dispatched) passes t3:durations and writes the durations file.",
     "#2827 is closed."
   ],
-  "context": "Found in the 2026-10-09 tracker review. Blocks dlv2-22-nightly-t3-shadow.",
+  "context": "Found in the 2026-10-09 tracker review. Blocks dlv2-22-nightly-t3-shadow. Resolution: cause recorded on issue #2827 in comment https://github.com/BenchBox-dev/benchbox/issues/2827#issuecomment-6102538590. The source fix is already merged on develop as c419dd2d1 / PR #2833: import_chdb no longer rebinds the adapter-module global, and its test-local reset was removed. Nightly-v2 workflow_dispatch run 37991400931 (head 52d0c0db0ac710fd1e7c0ce79fcd0a282a1cff71) has successful t3:durations job; downloaded artifact contains both pytest exit markers set to 0 and test_durations.json with 37,627 entries. Issue #2827 is closed. No new implementation change was needed in this item.",
   "description": "Scheduled nightly-v2 run 37944292492 failed t3:durations with \"slow duration sample failed or has no successful pytest verdict\" (issue #2827). dlv2-22 needs green nightly-v2 runs, and this domain is red independently of perf and drift.\n\nFind why the slow duration sample fails, fix it, and confirm the refreshed durations file is produced.",
   "sessions": [
     {
@@ -22,6 +22,14 @@
       "generation": "1755cf6d89b6480a9d0642032e6499cd",
       "op": "take",
       "op_id": "115909c3f1d444249d32fdc13d56f54c",
+      "session_id": "12a278318efc4205bf01aa4132116f81"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0b65b59dfd5ecfabcfde36b0",
+      "at": "2026-10-10T21:49:53Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1ec96efbbe934d8aa92c79fd7861f960",
       "session_id": "12a278318efc4205bf01aa4132116f81"
     }
   ]
