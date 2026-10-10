@@ -138,7 +138,7 @@ def _write_phase_bundle(
     payload = {
         "benchmark": benchmark,
         "platform": {"name": platform},
-        "run": {"timestamp": "2026-08-01T12:00:00"},
+        "run": {"timestamp": "2026-08-01T12:00:00", "streams": streams},
         "phases": {"power_test": {"status": power}, "throughput_test": throughput_phase},
         "summary": {
             "queries": {"total": 2, "passed": 2, "failed": 0},
@@ -225,6 +225,55 @@ def test_throughput_stream_counts_do_not_pad_each_other(tmp_path: Path) -> None:
         ("tpch", "1.0#throughput#2streams"): {"DuckDB"},
         ("tpch", "1.0#throughput#3streams"): {"Spark", "Doris"},
     }
+
+
+@pytest.mark.parametrize("count_source", ["run", "config"])
+def test_corpus_validator_rejects_configured_stream_count_mismatch(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], count_source: str
+) -> None:
+    validator = _load_validator()
+    _write_phase_bundle(
+        tmp_path,
+        "bad-stream-count.json",
+        platform="DuckDB",
+        power="NOT_RUN",
+        throughput="COMPLETED",
+        test_type="throughput",
+    )
+    path = tmp_path / "bad-stream-count.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if count_source == "run":
+        payload["run"]["streams"] = 4
+    else:
+        payload["run"].pop("streams")
+        payload["config"] = {"streams": 4}
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    assert validator.main(tmp_path) == 1
+    output = capsys.readouterr().out
+    assert "bad-stream-count.json" in output
+    assert "configured=4" in output
+    assert "stream_results=3" in output
+
+
+def test_corpus_validator_skips_stream_count_check_without_a_configured_count(tmp_path: Path) -> None:
+    validator = _load_validator()
+    _write_phase_bundle(
+        tmp_path,
+        "older.json",
+        platform="DuckDB",
+        power="NOT_RUN",
+        throughput="COMPLETED",
+        test_type="throughput",
+    )
+    path = tmp_path / "older.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["run"].pop("streams")
+    payload["config"] = {}
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    assert validator._throughput_stream_count_mismatch(payload) is None
+    validator.cohort_platforms([path])
 
 
 def test_not_run_power_phase_does_not_make_a_throughput_bundle_power(tmp_path: Path) -> None:
@@ -693,6 +742,11 @@ def _explorer_view(path: Path) -> tuple[str, str | None]:
     return canonical_phase(entry.test_type), ranking_exclusion_reason(entry)
 
 
+def _explorer_pipeline_view(path: Path) -> tuple[str, str | None]:
+    entry = BundleTransformer().to_manifest_entry(path)
+    return canonical_phase(entry.test_type), entry.ranking_exclusion_reason
+
+
 def _parity_variants() -> dict[str, dict]:
     def variant(**changes: object) -> dict:
         import copy
@@ -881,7 +935,7 @@ def test_validator_agrees_with_the_explorer_on_phase_and_rankability(tmp_path: P
     payload = _parity_variants()[name]
     path.write_text(json.dumps(payload), encoding="utf-8")
 
-    explorer_phase, explorer_reason = _explorer_view(path)
+    explorer_phase, explorer_reason = _explorer_pipeline_view(path)
 
     assert validator.bundle_phase(payload) == explorer_phase
     assert validator.exclusion_reason(payload) == explorer_reason
@@ -980,28 +1034,30 @@ def test_copied_constants_match_their_explorer_sources() -> None:
 
 
 @pytest.mark.parametrize(
-    "name",
+    ("name", "expected_reason"),
     [
-        "throughput-timed-out-stream-with-score",
-        "throughput-phase-failed-with-score",
-        "throughput-stream-unsuccessful-with-score",
-        "throughput-stream-success-not-boolean",
-        "throughput-phase-errors-with-score",
-        "throughput-outstanding-work-with-score",
-        "throughput-empty-stream-results-with-score",
-        "throughput-phase-block-missing-with-score",
+        ("throughput-timed-out-stream-with-score", "stream_count_mismatch"),
+        ("throughput-phase-failed-with-score", "missing_primary_metric"),
+        ("throughput-stream-unsuccessful-with-score", "missing_primary_metric"),
+        ("throughput-stream-success-not-boolean", "stream_count_mismatch"),
+        ("throughput-phase-errors-with-score", "missing_primary_metric"),
+        ("throughput-outstanding-work-with-score", "missing_primary_metric"),
+        ("throughput-empty-stream-results-with-score", "stream_count_mismatch"),
+        ("throughput-phase-block-missing-with-score", "missing_primary_metric"),
     ],
 )
-def test_an_unvalidated_throughput_phase_is_not_ranked_even_with_a_score(tmp_path: Path, name: str) -> None:
+def test_an_unvalidated_throughput_phase_is_not_ranked_even_with_a_score(
+    tmp_path: Path, name: str, expected_reason: str
+) -> None:
     validator = _load_validator()
     path = tmp_path / "bundle.json"
     payload = _parity_variants()[name]
     path.write_text(json.dumps(payload), encoding="utf-8")
 
-    explorer_phase, explorer_reason = _explorer_view(path)
+    explorer_phase, explorer_reason = _explorer_pipeline_view(path)
 
-    assert validator.exclusion_reason(payload) == "missing_primary_metric"
-    assert explorer_reason == "missing_primary_metric"
+    assert validator.exclusion_reason(payload) == expected_reason
+    assert explorer_reason == expected_reason
     assert explorer_phase == "throughput"
     assert BundleTransformer().to_manifest_entry(path).throughput_at_size is None
 
@@ -1024,6 +1080,7 @@ def test_a_timed_out_stream_cannot_form_a_throughput_identity(tmp_path: Path) ->
     phase["stream_results"] = phase["stream_results"][:2]
     phase["errors"] = ["Stream 3 timed out"]
     timed_out["summary"]["tpc_metrics"]["throughput_at_size"] = 500.0
+    timed_out["run"].pop("streams")
     (tmp_path / "Doris.json").write_text(json.dumps(timed_out), encoding="utf-8")
 
     cohorts = validator.cohort_platforms(validator.discover_bundles(tmp_path))

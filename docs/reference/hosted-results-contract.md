@@ -313,6 +313,11 @@ side-by-side in the explore compare view.
 | `scale_factor` | Must be identical across all results in the cohort (e.g., `1.0`) |
 | `canonical_phase` | Must be identical for ranking identity. It is normalized raw `test_type` (lowercased, with `standard` folded into `power`), or explicit `unknown` when provenance is absent. |
 | `stream_count` | Throughput phase only. Must be identical; throughput results run with different numbers of streams are separate cohorts. It is the number of entries in `phases.throughput_test.stream_results`, and absent for every other phase. |
+For ranking eligibility, a configured `run.streams` count (or `config.streams`
+when absent from `run`) must equal the derived `stream_count`. Older bundles
+without either configured count retain the legacy interpretation. A mismatch
+excludes the throughput result with `stream_count_mismatch`; corpus validation
+rejects committed bundles with the mismatch.
 
 These fields form the ranking cohort key. Raw submitted benchmark and phase
 values are never rewritten; the derived identity is generated centrally by the

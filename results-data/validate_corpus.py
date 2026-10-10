@@ -94,6 +94,27 @@ def bundle_phase(payload: dict) -> str:
     return "unknown"
 
 
+def _configured_stream_count(payload: dict) -> int | None:
+    for section_name in ("run", "config"):
+        stream_count = _mapping(payload.get(section_name)).get("streams")
+        if isinstance(stream_count, int) and not isinstance(stream_count, bool):
+            return stream_count
+        if isinstance(stream_count, float) and stream_count.is_integer():
+            return int(stream_count)
+    return None
+
+
+def _throughput_stream_count_mismatch(payload: dict) -> tuple[int, int] | None:
+    configured_count = _configured_stream_count(payload)
+    phases = _mapping(payload.get("phases"))
+    stream_results = _mapping(phases.get("throughput_test")).get("stream_results")
+    if configured_count is None or not isinstance(stream_results, list):
+        return None
+    if len(stream_results) == configured_count:
+        return None
+    return configured_count, len(stream_results)
+
+
 def _stream_count(payload: dict) -> int | None:
     phases = payload.get("phases")
     throughput = phases.get("throughput_test") if isinstance(phases, dict) else None
@@ -335,6 +356,8 @@ def _throughput_phase_clean(payload: dict) -> bool:
     streams = block.get("stream_results")
     if not isinstance(streams, list) or not streams:
         return False
+    if _throughput_stream_count_mismatch(payload) is not None:
+        return False
     if not all(isinstance(stream, dict) and stream.get("success") is True for stream in streams):
         return False
     return not block.get("errors") and not block.get("outstanding_work")
@@ -372,6 +395,8 @@ def exclusion_reason(payload: dict) -> str | None:
         return "unofficial_compliance"
     if failed_query_count(payload):
         return "failed_queries"
+    if bundle_phase(payload) == THROUGHPUT_PHASE and _throughput_stream_count_mismatch(payload) is not None:
+        return "stream_count_mismatch"
     if bundle_validation_status(payload) in NON_CLEAN_VALIDATION_STATUSES:
         return "validation_not_clean"
     if not _tuning_applied(payload):
@@ -482,6 +507,13 @@ def cohort_platforms(bundles: list[pathlib.Path]) -> dict[CohortKey, set[str]]:
     cohorts: collections.defaultdict[CohortKey, set[str]] = collections.defaultdict(set)
     for bundle in bundles:
         payload = _load_bundle(bundle)
+        mismatch = _throughput_stream_count_mismatch(payload) if bundle_phase(payload) == THROUGHPUT_PHASE else None
+        if mismatch is not None:
+            configured_count, recorded_count = mismatch
+            raise CorpusReadError(
+                f"ERROR throughput stream count mismatch in {bundle}: configured={configured_count}, "
+                f"stream_results={recorded_count}"
+            )
         identities = cohorts[_cohort_key(payload)]
         if bundle_rankable(payload):
             identities.add(_comparison_identity(bundle, payload))

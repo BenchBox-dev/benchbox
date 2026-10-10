@@ -265,6 +265,30 @@ describe("local throughput import", () => {
     };
   }
 
+  it("withholds the local throughput score when run.streams disagrees with stream_results", async () => {
+    const preview = await parseLocalResultText(JSON.stringify(throughputBundle({
+      run: { id: "run", timestamp: "2026-10-03T18:42:47Z", total_duration_ms: 119000, streams: 4 },
+    })), "tp.json");
+
+    expect(preview.detail.throughput_at_size).toBeNull();
+    expect(preview.primaryMetric).toBe("throughput_at_size");
+  });
+
+  it("keeps the local throughput score when run.streams is absent", async () => {
+    const preview = await parseLocalResultText(JSON.stringify(throughputBundle()), "tp.json");
+
+    expect(preview.detail.throughput_at_size).toBe(3741.26);
+  });
+
+  it("uses config.streams when run.streams is absent", async () => {
+    const preview = await parseLocalResultText(JSON.stringify(throughputBundle({
+      run: { id: "run", timestamp: "2026-10-03T18:42:47Z", total_duration_ms: 119000 },
+      config: { mode: "sql", streams: 4 },
+    })), "tp.json");
+
+    expect(preview.detail.throughput_at_size).toBeNull();
+  });
+
   it("reads Throughput@Size and the stream count and ranks on the throughput metric", async () => {
     const preview = await parseLocalResultText(JSON.stringify(throughputBundle()), "tp.json");
 
