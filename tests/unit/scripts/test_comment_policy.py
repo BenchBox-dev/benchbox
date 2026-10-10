@@ -1429,6 +1429,11 @@ def test_shell_executable_arguments_are_routed(source: str) -> None:
         ("echo -e '\\0043 hidden' | bash", "# hidden"),
         ("echo '# hidden' | /usr/bin/python3", "# hidden"),
         ('echo "# hidden" | "/opt/My Tools/python3"', "# hidden"),
+        (r"echo -e '\0443 hidden' | bash", "# hidden"),
+        (r"printf '%s\c' '# hidden' | bash", "# hidden"),
+        ("echo '# hidden' | env python3", "# hidden"),
+        ("echo '# hidden' | python3 | cat", "# hidden"),
+        ("echo '# hidden' 1>&1 | bash", "# hidden"),
     ],
 )
 def test_piped_producer_payloads_reach_stdin_interpreters(source: str, expected: str) -> None:
@@ -3482,6 +3487,7 @@ def test_mdx_imports_reach_the_typescript_scanner(source: str) -> None:
         ("export /* hidden */ const value = 1;", "/* hidden */"),
         ("import /* hidden */ './x.js';", "/* hidden */"),
         ("import /*\n hidden\n*/ './x.js';", "/*\n hidden\n*/"),
+        ("import\n  React\n  from 'react'; /* hidden */", "/* hidden */"),
     ],
 )
 def test_mdx_esm_intertoken_comments_are_reported(source: str, comment: str) -> None:

@@ -326,7 +326,7 @@ MDX_STATEMENT_START = re.compile(r"(?:import|export)(?=\s|$)")
 MDX_IMPORT_FROM = re.compile(r"\bfrom\s+['\"][^'\"\n]+['\"]")
 MDX_IMPORT_BARE = re.compile(r"^import\s+['\"]")
 MDX_EXPORT_SHAPE = re.compile(r"^export\s+(?:default|const|let|var|function|class|async|\{|\*)")
-MDX_STATEMENT_CONTINUE = re.compile(r"(?:[{(\[=,:+*/?&|>-]|\bfrom|\bdefault)\s*$")
+MDX_STATEMENT_CONTINUE = re.compile(r"(?:[{(\[=,:+*/?&|>-]|\bfrom|\bdefault|\bimport|\bexport)\s*$")
 
 
 def mdx_masked_lines(source: str) -> list[str | None]:
@@ -374,8 +374,14 @@ def mdx_statement_end(lines: list[str | None], start: int) -> int:
             depth += (char in "{([") - (char in "})]")
             cursor += 1
         index += 1
-        if depth <= 0 and not in_block_comment and (index - start > 1 or not MDX_STATEMENT_CONTINUE.search(line)):
-            break
+        is_import = lines[start].startswith("import")
+        semicolon = bool(re.search(r";\s*(?://.*)?$", line))
+        if depth <= 0 and not in_block_comment:
+            if is_import:
+                if semicolon or MDX_IMPORT_FROM.search(line) or MDX_IMPORT_BARE.match(line):
+                    break
+            elif semicolon or not MDX_STATEMENT_CONTINUE.search(line):
+                break
     if depth > 0 or in_block_comment:
         raise ValueError("unterminated JavaScript statement in MDX source")
     return index
@@ -1508,7 +1514,7 @@ def shell_output_escapes(text: str, *, zero_prefix_octal: bool = False) -> tuple
             end = index + 1
             while end < min(limit, len(text)) and text[end] in "01234567":
                 end += 1
-            result.append(chr(int(text[index:end], 8)))
+            result.append(chr(int(text[index:end], 8) & 0xFF))
             index = end
             continue
         if char == "x" and index + 1 < len(text) and text[index + 1] in "0123456789abcdefABCDEF":
@@ -1527,31 +1533,31 @@ def piped_printf_text(args: list) -> str:
         raise ValueError("dynamic piped interpreter source requires an adapter")
     if not args:
         return ""
-    format_text, stopped = shell_output_escapes(args[0].word)
-    if stopped:
-        return format_text
+    format_raw = args[0].word
     values = [word.word for word in args[1:]]
-    result = []
+    expanded = []
     value_index = 0
     while True:
         index = 0
-        while index < len(format_text):
-            char = format_text[index]
+        while index < len(format_raw):
+            char = format_raw[index]
             if char != "%":
-                result.append(char)
+                expanded.append(char)
                 index += 1
-            elif format_text[index : index + 2] == "%%":
-                result.append("%")
+            elif format_raw[index : index + 2] == "%%":
+                expanded.append("%%")
                 index += 2
-            elif format_text[index : index + 2] == "%s":
-                result.append(values[value_index] if value_index < len(values) else "")
+            elif format_raw[index : index + 2] == "%s":
+                val = values[value_index] if value_index < len(values) else ""
+                expanded.append(val.replace("\\", "\\\\"))
                 value_index += 1
                 index += 2
             else:
                 raise ValueError("unsupported piped printf format requires an adapter")
-        if "%s" not in format_text.replace("%%", "") or value_index >= len(values):
+        if "%s" not in format_raw.replace("%%", "") or value_index >= len(values):
             break
-    return "".join(result)
+    format_text, _ = shell_output_escapes("".join(expanded))
+    return format_text
 
 
 def piped_producer_text(words: list) -> str | None:
@@ -1585,8 +1591,7 @@ def piped_producer_text(words: list) -> str | None:
     return piped_printf_text(args) or None
 
 
-def piped_redirect_effect(node: bashlex.ast.node) -> tuple[bool, bool]:
-    commands = [child for child in node.parts if child.kind == "command"]
+def piped_redirect_effect(commands: list) -> tuple[bool, bool]:
     stdin_redirects = {"<", "<<", "<<-", "<<<", "<>", "<&"}
     producer_stdout_redirected = False
     consumer_stdin_redirected = False
@@ -1597,8 +1602,12 @@ def piped_redirect_effect(node: bashlex.ast.node) -> tuple[bool, bool]:
             descriptor = part.input
             if descriptor is None:
                 descriptor = 0 if part.type in stdin_redirects else 1
-            producer_stdout_redirected |= command_index == 0 and descriptor == 1
-            consumer_stdin_redirected |= command_index == 1 and descriptor == 0
+            if command_index == 0 and descriptor == 1:
+                output_target = getattr(part, "output", None)
+                if not (part.type == ">&" and output_target == 1):
+                    producer_stdout_redirected = True
+            if command_index == 1 and descriptor == 0:
+                consumer_stdin_redirected = True
     return producer_stdout_redirected, consumer_stdin_redirected
 
 
@@ -1606,14 +1615,26 @@ def piped_sides(node: bashlex.ast.node) -> list | None:
     if node.kind != "pipeline":
         return None
     commands = [child for child in node.parts if child.kind == "command"]
-    if len(commands) != 2:
+    if len(commands) < 2:
         return None
     sides = [[part for part in command.parts if part.kind == "word"] for command in commands]
     if any(not side or side[0].parts for side in sides):
         return None
     if sides[0][0].word.rsplit("/", 1)[-1] not in PIPED_PRODUCERS:
         return None
-    return sides
+    unwrapped_consumer = sides[1]
+    if not any(w.parts for w in sides[1]):
+        head_cmd = sides[1][0].word.rsplit("/", 1)[-1]
+        if head_cmd == "env" and len(sides[1]) > 1:
+            idx = 1
+            while idx < len(sides[1]) and (
+                re.match(r"[A-Za-z_][A-Za-z0-9_]*=", sides[1][idx].word)
+                or sides[1][idx].word in {"-i", "--ignore-environment"}
+            ):
+                idx += 1
+            if idx < len(sides[1]) and not sides[1][idx].word.startswith("-"):
+                unwrapped_consumer = sides[1][idx:]
+    return [sides[0], unwrapped_consumer, commands[:2]]
 
 
 def piped_unmodeled_check(side: list) -> None:
@@ -1642,32 +1663,33 @@ def piped_bash_operands(static: list[str]) -> list[str]:
 
 
 def piped_stdin_entries(path: str, source: str, offset: int, unit: str, node: bashlex.ast.node, symbol: str) -> list:
-    sides = piped_sides(node)
-    if sides is None:
+    pipe_info = piped_sides(node)
+    if pipe_info is None:
         return []
-    producer_stdout_redirected, consumer_stdin_redirected = piped_redirect_effect(node)
+    producer_words, consumer_words, pair_commands = pipe_info
+    producer_stdout_redirected, consumer_stdin_redirected = piped_redirect_effect(pair_commands)
     if producer_stdout_redirected:
         return []
     if consumer_stdin_redirected:
         raise ValueError("piped interpreter stdin redirection requires an adapter")
-    producer = sides[0][0].word.rsplit("/", 1)[-1]
-    language = piped_consumer_language(sides[1][0].word.rsplit("/", 1)[-1])
+    producer = producer_words[0].word.rsplit("/", 1)[-1]
+    language = piped_consumer_language(consumer_words[0].word.rsplit("/", 1)[-1])
     if language is None:
-        piped_unmodeled_check(sides[1])
+        piped_unmodeled_check(consumer_words)
         return []
-    static = [word.word for word in sides[1] if not word.parts]
-    if len(static) != len(sides[1]):
+    static = [word.word for word in consumer_words if not word.parts]
+    if len(static) != len(consumer_words):
         raise ValueError("dynamic piped interpreter consumer requires an adapter")
     if inline_source_index(static, language) is not None:
         return []
     operands = piped_bash_operands(static[1:]) if language == "bash" else static[1:]
     if any(not word.startswith("-") and word != "-" for word in operands):
         return []
-    text = piped_producer_text(sides[0])
+    text = piped_producer_text(producer_words)
     if text is None:
         return []
     payload, resolved = scan_source_payload(text, language)
-    line = source[: offset + sides[0][0].pos[0]].count("\n") + 1
+    line = source[: offset + producer_words[0].pos[0]].count("\n") + 1
     return [(line, path + "." + resolved, payload, resolved, f"{symbol}:pipe:{producer}")]
 
 
