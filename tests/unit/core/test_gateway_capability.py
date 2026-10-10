@@ -32,6 +32,8 @@ from benchbox.core.results.analytics import _load_regression_runs
 from benchbox.core.results.models import BenchmarkResults, QueryExecution
 from benchbox.core.results.schema import SchemaV2Validator, build_result_payload
 
+pytestmark = [pytest.mark.unit, pytest.mark.fast]
+
 
 def test_manifest_declares_snowflake_and_databricks_gateways() -> None:
     snowflake = get_platform_manifest_entry("snowflake")
