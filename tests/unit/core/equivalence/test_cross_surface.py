@@ -35,6 +35,67 @@ pytestmark = [
 ]
 
 
+def test_production_contexts_reject_unsupported_execution_engine(tmp_path):
+    import benchbox.core.equivalence.cross_surface as cross_surface
+    from benchbox.core.execution_engine import UnsupportedExecutionEngineError
+
+    with pytest.raises(UnsupportedExecutionEngineError, match="execution engine 'gpu'"):
+        cross_surface.build_production_contexts(object(), tmp_path, backends=("expression",), execution_engine="gpu")
+
+
+def test_production_contexts_execute_polars_collect_with_requested_engine(monkeypatch, tmp_path):
+    pl = pytest.importorskip("polars")
+
+    import benchbox.core.equivalence.cross_surface as cross_surface
+    import benchbox.platforms.dataframe.polars_df as polars_df
+
+    engines = []
+    collect_frame = polars_df.collect_frame
+
+    def spy_collect_frame(frame, engine):
+        engines.append(engine)
+        return collect_frame(frame, engine)
+
+    def load_and_collect(adapter, benchmark, data_dir, *, scale_factor):
+        return adapter.materialize(pl.DataFrame({"value": [1]}).lazy())
+
+    monkeypatch.setattr(polars_df, "collect_frame", spy_collect_frame)
+    monkeypatch.setattr(polars_df.PolarsDataFrameAdapter, "load_benchmark_into_context", load_and_collect)
+
+    contexts = cross_surface.build_production_contexts(
+        object(), tmp_path, backends=("expression",), execution_engine="streaming"
+    )
+
+    assert contexts["expression"].to_dict(as_series=False) == {"value": [1]}
+    assert engines == ["streaming"]
+
+
+def test_production_contexts_keep_version_default_when_engine_is_unset(monkeypatch, tmp_path):
+    pl = pytest.importorskip("polars")
+
+    import benchbox.core.equivalence.cross_surface as cross_surface
+    import benchbox.platforms.dataframe.polars_df as polars_df
+
+    expected_engine = polars_df.PolarsDataFrameAdapter().collect_engine
+    engines = []
+    collect_frame = polars_df.collect_frame
+
+    def spy_collect_frame(frame, engine):
+        engines.append(engine)
+        return collect_frame(frame, engine)
+
+    def load_and_collect(adapter, benchmark, data_dir, *, scale_factor):
+        return adapter.materialize(pl.DataFrame({"value": [1]}).lazy())
+
+    monkeypatch.setattr(polars_df, "collect_frame", spy_collect_frame)
+    monkeypatch.setattr(polars_df.PolarsDataFrameAdapter, "load_benchmark_into_context", load_and_collect)
+
+    contexts = cross_surface.build_production_contexts(object(), tmp_path, backends=("expression",))
+
+    assert contexts["expression"].to_dict(as_series=False) == {"value": [1]}
+    assert engines == [expected_engine]
+
+
 def test_cross_surface_builders_are_decomposed_and_share_loader():
     import benchbox.core.equivalence.cross_surface as cross_surface
 

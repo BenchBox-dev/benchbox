@@ -167,54 +167,56 @@ tpchavoc-equivalence-report-clickhouse:
 tpchavoc-dataframe-equivalence-report:
 	uv run -- python -m benchbox.core.tpchavoc.dataframe_equivalence
 
+EXECUTION_ENGINE ?=
+EXECUTION_ENGINE_OPTION = $(if $(strip $(EXECUTION_ENGINE)),--execution-engine $(EXECUTION_ENGINE),)
+
 .PHONY: ssb-cross-surface-equivalence-report
 ssb-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark ssb
+	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark ssb $(EXECUTION_ENGINE_OPTION)
 
-.PHONY: amplab-cross-surface-equivalence-report
 amplab-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark amplab
+	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark amplab $(EXECUTION_ENGINE_OPTION)
 
 .PHONY: coffeeshop-cross-surface-equivalence-report
 coffeeshop-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark coffeeshop
+	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark coffeeshop $(EXECUTION_ENGINE_OPTION)
 
 .PHONY: clickbench-cross-surface-equivalence-report
 clickbench-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark clickbench
+	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark clickbench $(EXECUTION_ENGINE_OPTION)
 
 .PHONY: joinorder-synthetic-cross-surface-equivalence-report
 joinorder-synthetic-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark joinorder_synthetic
+	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark joinorder_synthetic $(EXECUTION_ENGINE_OPTION)
 
 .PHONY: h2odb-cross-surface-equivalence-report
 h2odb-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark h2odb
+	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark h2odb $(EXECUTION_ENGINE_OPTION)
 
 .PHONY: read-primitives-cross-surface-equivalence-report
 read-primitives-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark read_primitives
+	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark read_primitives $(EXECUTION_ENGINE_OPTION)
 
 flightdata-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark flightdata
+	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark flightdata $(EXECUTION_ENGINE_OPTION)
 
 datavault-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark datavault
+	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark datavault $(EXECUTION_ENGINE_OPTION)
 
 nyctaxi-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark nyctaxi
+	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark nyctaxi $(EXECUTION_ENGINE_OPTION)
 
 tsbs-devops-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark tsbs_devops
+	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark tsbs_devops $(EXECUTION_ENGINE_OPTION)
 
 tpch-skew-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark tpch_skew
+	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark tpch_skew $(EXECUTION_ENGINE_OPTION)
 
 tpch-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark tpch
+	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark tpch $(EXECUTION_ENGINE_OPTION)
 
 tpcds-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark tpcds --backend expression --backend datafusion
+	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark tpcds --backend expression --backend datafusion $(EXECUTION_ENGINE_OPTION)
 
 .PHONY: polars-df-compat-check
 polars-df-compat-check:
