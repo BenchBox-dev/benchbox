@@ -412,6 +412,9 @@ class ResultExporter:
                 if "reason" in entry:
                     entry.pop("reason", None)
                     entry["reason_redacted"] = True
+                if "error" in entry:
+                    entry.pop("error", None)
+                    entry["error_redacted"] = True
                 entry["statement_redacted"] = True
         for obj in receipt.get("observed") or []:
             if isinstance(obj, dict):

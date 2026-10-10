@@ -14,7 +14,7 @@ try:
 except ImportError:
 
     def unanonymized_tuning_findings(payload):
-        return []
+        return ["tuning detector unavailable (benchbox.validation.bundle could not be imported)"]
 
 
 SENSITIVE_PATTERNS = (

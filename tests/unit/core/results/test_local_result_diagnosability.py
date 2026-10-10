@@ -20,9 +20,10 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 _PROBE_STATEMENT = "CREATE INDEX idx_probe ON LINEITEM (l_orderkey)"
 _PROBE_REASON = "no catalog footprint for sort-only rewrite"
+_PROBE_ENTRY_ERROR = "dial tcp db.internal:5432: connect: connection refused"
+_PROBE_USER = "diagnosability-probe-user"
 _PROBE_DROP_INTENT = "partitioning:LINEITEM"
 _PROBE_DROP_REASON = "platform renders no partitioning clause"
-_PROBE_USER = "diagnosability-probe-user"
 
 
 def _applied_ledger() -> dict:
@@ -43,6 +44,7 @@ def _applied_ledger() -> dict:
                     "verdict": "unverifiable",
                     "reason": _PROBE_REASON,
                     "statement": _PROBE_STATEMENT,
+                    "error": _PROBE_ENTRY_ERROR,
                 },
             ],
         },
@@ -90,6 +92,7 @@ class TestLocalResultKeepsDiagnostics:
         assert applied["statements"][0]["statement"] == _PROBE_STATEMENT
         assert applied["receipt"]["entries"][0]["reason"] == _PROBE_REASON
         assert applied["receipt"]["entries"][0]["statement"] == _PROBE_STATEMENT
+        assert applied["receipt"]["entries"][0]["error"] == _PROBE_ENTRY_ERROR
         assert applied["dropped"] == [{"intent": _PROBE_DROP_INTENT, "reason": _PROBE_DROP_REASON}]
 
     def test_local_result_keeps_username_redaction(self, tmp_path):
@@ -109,6 +112,9 @@ class TestOutwardPathsStayRedacted:
         assert all(entry.get("statement_redacted") is True for entry in applied["statements"])
         assert all("reason" not in entry for entry in applied["receipt"]["entries"])
         assert all(entry.get("reason_redacted") is True for entry in applied["receipt"]["entries"])
+        assert all("error" not in entry for entry in applied["receipt"]["entries"])
+        assert all(entry.get("error_redacted") is True for entry in applied["receipt"]["entries"])
+        assert _PROBE_ENTRY_ERROR not in json.dumps(payload)
         assert applied["dropped"] == [{"redacted": True}]
         assert unanonymized_tuning_findings(payload) == []
 
@@ -157,6 +163,84 @@ class TestOutwardPathsStayRedacted:
         assert unanonymized_tuning_findings(published[0]) == []
         assert len(created) == 1
         assert not Path(created[0].name).exists()
+
+    def test_redacted_publish_carries_plans_companion(self, tmp_path):
+        from benchbox.cli.commands.publish import _count_companions, _redacted_publish_source, publish_bundle
+        from benchbox.core.results.query_plan_models import (
+            LogicalOperator,
+            LogicalOperatorType,
+            QueryPlanDAG,
+        )
+
+        result = _tuned_result()
+        root = LogicalOperator(
+            operator_type=LogicalOperatorType.SCAN,
+            operator_id="scan_1",
+            table_name="lineitem",
+        )
+        result.query_results = [
+            {
+                "query_id": "Q1",
+                "execution_time": 1.0,
+                "status": "SUCCESS",
+                "rows_returned": 4,
+                "query_plan": QueryPlanDAG(query_id="Q1", platform="duckdb", logical_root=root),
+            }
+        ]
+        result.query_plans_captured = 1
+        source = ResultExporter(output_dir=tmp_path / "local", anonymize=False).export_result(result, ["json"])["json"]
+
+        assert _count_companions(source) == 1
+
+        redacted, scratch = _redacted_publish_source(source)
+        try:
+            assert redacted is not None
+            assert _count_companions(redacted) == 1
+            assert unanonymized_tuning_findings(json.loads(redacted.read_text(encoding="utf-8"))) == []
+        finally:
+            if scratch is not None:
+                scratch.cleanup()
+
+        reference = publish_bundle(source, target=str(tmp_path / "published"), label="local", quiet=True)
+
+        assert reference is not None
+        published_names = sorted(path.name for path in (tmp_path / "published").glob("*.json"))
+        assert published_names == sorted([source.name, source.stem + ".plans.json"])
+        for path in (tmp_path / "published").glob("*.json"):
+            assert unanonymized_tuning_findings(json.loads(path.read_text(encoding="utf-8"))) == []
+
+    def test_redacted_publish_refuses_unredactable_override_companion(self, tmp_path):
+        from benchbox.cli.commands.publish import _redacted_publish_source, publish_bundle
+
+        source = ResultExporter(output_dir=tmp_path / "local", anonymize=False).export_result(
+            _tuned_result(), ["json"]
+        )["json"]
+        (source.parent / (source.stem + ".override.json")).write_text('{"rules": []}', encoding="utf-8")
+
+        redacted, scratch = _redacted_publish_source(source)
+
+        assert redacted is None
+        assert scratch is None
+        assert publish_bundle(source, target=str(tmp_path / "published"), label="local", quiet=True) is None
+        assert list((tmp_path / "published").glob("*.json")) == []
+
+    def test_publish_run_reports_actually_published_companions(self, tmp_path):
+        from benchbox.cli.commands.publish import publish_run
+
+        source = ResultExporter(output_dir=tmp_path / "local", anonymize=True).export_result(_tuned_result(), ["json"])[
+            "json"
+        ]
+        (source.parent / (source.stem + ".plans.json")).write_text('{"queries": {}}', encoding="utf-8")
+
+        result = CliRunner().invoke(
+            publish_run,
+            [str(source), "--target", str(tmp_path / "published"), "--label", "local"],
+        )
+
+        assert result.exit_code == 0, result.output
+        assert (tmp_path / "published" / source.name).exists()
+        assert (tmp_path / "published" / (source.stem + ".plans.json")).exists()
+        assert "+ 1 companion file(s) also published" in result.output
 
 
 class TestTuningVerificationSummary:

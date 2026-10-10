@@ -142,7 +142,7 @@ def publish_run(ctx, result_file, target, label, last, benchmark, platform, dry_
     console.print(f"  Reference: {result.reference}")
     console.print(f"  Label:     {label}")
 
-    companion_count = _count_companions(source_path)
+    companion_count = _count_companions(publish_source)
     if companion_count:
         console.print(f"  + {companion_count} companion file(s) also published")
 
@@ -314,7 +314,18 @@ def _redacted_publish_source(source_bundle: Path) -> tuple[Path | None, Temporar
     if redacted is None:
         scratch.cleanup()
         return None, None
-    return Path(redacted), scratch
+    redacted_path = Path(redacted)
+    source = Path(source_bundle)
+    for suffix in COMPANION_SUFFIXES:
+        if not (source.parent / (source.stem + suffix)).exists():
+            continue
+        if suffix in (".tuning.json", ".applied.json"):
+            continue
+        if (redacted_path.parent / (redacted_path.stem + suffix)).exists():
+            continue
+        scratch.cleanup()
+        return None, None
+    return redacted_path, scratch
 
 
 def _count_companions(source: Path) -> int:
