@@ -442,6 +442,10 @@ class TestLiteralsTheScannerCannotMask:
             "CREATE TABLE IF NOT EXISTS t (a Int64, b String DEFAULT '\\')\\'', CONSTRAINT positive "
             "CHECK a > 0) ENGINE = MergeTree() ORDER BY (a)",
             "CREATE TABLE t (a INTEGER PRIMARY KEY, b VARCHAR DEFAULT 'it\\'s ) CHECK (b <> ''))",
+            'CREATE TABLE t (a Int64, "b\\")\\"x" Int64, CONSTRAINT positive CHECK a > 0) '
+            "ENGINE = MergeTree() ORDER BY (a)",
+            "CREATE TABLE IF NOT EXISTS t (a INTEGER PRIMARY KEY, b VARCHAR DEFAULT $\u00e9$)$\u00e9$ "
+            "CHECK (length(b) > 0))",
         ],
         ids=[
             "dollar",
@@ -455,6 +459,8 @@ class TestLiteralsTheScannerCannotMask:
             "backtick-operator",
             "backslash-escaped-clickhouse-default",
             "backslash-escaped-quote",
+            "backslash-escaped-double-quote",
+            "non-ascii-dollar-tag",
         ],
     )
     def test_statement_with_an_unmaskable_literal_is_unverifiable(self, ddl):
@@ -480,6 +486,12 @@ class TestLiteralsTheScannerCannotMask:
         klass, intents = _classify(_stmt(ddl))
         assert klass == "verifiable"
         assert [(i.constraint_type, i.columns) for i in intents] == [(CONSTRAINT_PRIMARY_KEY, ("a",))]
+
+    def test_backslash_away_from_a_double_quote_still_parses(self):
+        ddl = 'CREATE TABLE t ("a\\b" INTEGER PRIMARY KEY)'
+        klass, intents = _classify(_stmt(ddl))
+        assert klass == "verifiable"
+        assert [(i.constraint_type, i.columns) for i in intents] == [(CONSTRAINT_PRIMARY_KEY, ("a\\b",))]
 
 
 class TestConstraintTables:

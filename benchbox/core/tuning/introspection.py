@@ -211,10 +211,10 @@ _BARE_IDENTIFIER_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_$]*")
 _IDENTIFIER_LIST_ITEM_RE = re.compile(r'\s*(?P<item>"(?:[^"]|"")*"|[^",\s]+)\s*(?P<sep>,|$)')
 _NON_DOUBLE_QUOTE_OPENERS = ("`", "[", "'")
 _UNMASKED_LITERAL_RES = (
-    re.compile(r"\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$"),
+    re.compile(r"\$(?:[^\W$]\w*)?\$"),
     re.compile(r"(?<![A-Za-z0-9_$])[eE]'"),
     re.compile(r"/\*(?:(?!\*/).)*?/\*", re.DOTALL),
-    re.compile(r"\\'"),
+    re.compile(r"\\['\"]"),
 )
 _DIALECT_DEPENDENT_QUOTE_RE = re.compile(r"[\[`]")
 _ASCII_LOWER = str.maketrans(string.ascii_uppercase, string.ascii_lowercase)

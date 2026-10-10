@@ -298,8 +298,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   columns. A tuned DuckDB run with the shipped TPC-H template now reaches
   `applied_verified`. A `CHECK` clause in a `CREATE TABLE`, and constraints on
   every other platform, still keep a run at `applied_unverified`. So does a
-  `CREATE TABLE` holding a backslash-escaped quote, which some engines read
-  as an escaped quote the scanner cannot mask; so do a
+  `CREATE TABLE` holding a backslash directly before a single or double
+  quote, which some engines read as an escaped quote the scanner cannot
+  mask, or holding a dollar-quoted string whose tag carries non-ASCII
+  characters; so do a
   DuckDB `CREATE TABLE` whose constraints sit next to list syntax (`[...]`),
   and a constrained table whose name also exists in another schema or
   attached database. On those

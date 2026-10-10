@@ -189,9 +189,11 @@ constraint text that is not fully parsed: a `CHECK` constraint, a named
 `REFERENCES` without a column list, trailing clause text, an unbalanced
 list, a second SQL statement in the same ledger entry, or a literal the
 scanner cannot mask exactly: a dollar-quoted string (`$$...$$` or
-`$tag$...$tag$`), an escape string (`E'...'`), a nested block comment, a
-backslash directly before a single quote (some engines read `\'` as an
-escaped quote, so the scanner cannot tell where the string ends), or a
+`$tag$...$tag$`, where a tag is any run of word characters, so non-ASCII
+tags count), an escape string (`E'...'`), a nested block comment, a
+backslash directly before a single or double quote (some engines read `\'`
+or `\"` as an escaped quote, so the scanner cannot tell where the string
+or quoted identifier ends), or a
 `[` or backtick anywhere in a statement that carries constraint text. DuckDB
 reads `[` as list syntax and a backtick as an operator, not as identifier
 quotes, so the scanner cannot tell which text they enclose.
