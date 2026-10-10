@@ -65,7 +65,7 @@ jobs:
         run: |
           set -euo pipefail
           : "${BASE_REF:?BASE_REF is required}"
-          if git cat-file -e "${BASE_REF}:scripts/check_comment_cleanup_scope.py" 2>/dev/null; then
+          if git cat-file -e "${BASE_REF}:scripts/check_comment_cleanup_scope.py" 2>/dev/null && git show "${BASE_REF}:scripts/check_comment_cleanup_scope.py" | grep -q -- "--check-drift"; then
             git show "${BASE_REF}:scripts/check_comment_cleanup_scope.py" > "$RUNNER_TEMP/trusted_check_scope.py"
             python -I "$RUNNER_TEMP/trusted_check_scope.py" --check-drift --base "$BASE_REF"
           else
