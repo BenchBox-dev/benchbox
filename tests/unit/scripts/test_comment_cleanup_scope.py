@@ -1265,6 +1265,18 @@ def test_pinned_notice_drift_rejects_a_deleted_file(tmp_path: Path, policy: dict
     assert findings[0].subject == "PATCHES.md"
 
 
+def test_pinned_notice_drift_rejects_removing_a_notice_entry(tmp_path: Path, policy: dict) -> None:
+    payload = b"pinned\n"
+    policy["notices"] = [_drift_notice("PATCHES.md", payload)]
+    root, base = _drift_repo(tmp_path, policy, payload)
+    candidate_policy = json.loads((root / scope.POLICY_PATH).read_text())
+    candidate_policy["notices"] = []
+    (root / scope.POLICY_PATH).write_text(json.dumps(candidate_policy))
+    findings = scope.pinned_notice_drift_findings(root, base)
+    assert [finding.code for finding in findings] == ["SCOPE008"]
+    assert "was removed" in findings[0].detail
+
+
 def test_check_drift_main_reports_zero_for_a_clean_tree_and_one_for_drift(
     tmp_path: Path, policy: dict, capsys: pytest.CaptureFixture[str]
 ) -> None:

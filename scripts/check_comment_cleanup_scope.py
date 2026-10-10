@@ -1220,7 +1220,19 @@ def pinned_notice_drift_findings(root: Path, base: str) -> list[Finding]:
         policy = load_policy(root / POLICY_PATH)
     except (OSError, UnicodeError, json.JSONDecodeError, PolicyError) as error:
         return [Finding("SCOPE008", POLICY_PATH, f"cannot load scope policy for drift check: {error}")]
+    try:
+        base_policy_bytes = base_blob(root, base, POLICY_PATH)
+        base_policy = load_policy_bytes(base_policy_bytes)
+    except (OSError, UnicodeError, json.JSONDecodeError, PolicyError, subprocess.CalledProcessError) as error:
+        return [Finding("SCOPE008", POLICY_PATH, f"cannot load base scope policy for drift check: {error}")]
     findings = []
+    base_notices = {entry.get("path"): entry for entry in base_policy.get("notices", []) if isinstance(entry, dict)}
+    candidate_notices = {entry.get("path"): entry for entry in policy.get("notices", []) if isinstance(entry, dict)}
+    for path, base_entry in base_notices.items():
+        if path not in candidate_notices:
+            findings.append(
+                Finding("SCOPE008", path, "pinned notice was removed from quality/comment-cleanup-scope.json")
+            )
     for entry in policy["notices"]:
         if not isinstance(entry, dict):
             findings.append(Finding("SCOPE008", POLICY_PATH, "notice entry must be an object"))

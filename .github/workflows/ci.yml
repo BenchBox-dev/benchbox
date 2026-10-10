@@ -65,7 +65,12 @@ jobs:
         run: |
           set -euo pipefail
           : "${BASE_REF:?BASE_REF is required}"
-          python -I scripts/check_comment_cleanup_scope.py --check-drift --base "$BASE_REF"
+          if git cat-file -e "${BASE_REF}:scripts/check_comment_cleanup_scope.py" 2>/dev/null; then
+            git show "${BASE_REF}:scripts/check_comment_cleanup_scope.py" > "$RUNNER_TEMP/trusted_check_scope.py"
+            python -I "$RUNNER_TEMP/trusted_check_scope.py" --check-drift --base "$BASE_REF"
+          else
+            python -I scripts/check_comment_cleanup_scope.py --check-drift --base "$BASE_REF"
+          fi
 
   base-guard:
     name: PR base branch is an integration branch
