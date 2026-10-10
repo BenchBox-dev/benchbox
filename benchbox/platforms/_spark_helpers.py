@@ -360,6 +360,13 @@ class SparkLikeAdapterMixin:
             pass
 
 
+def _run_schema_statement(spark: Any, statement: str) -> None:
+    result = spark.sql(statement)
+    collect = getattr(result, "collect", None)
+    if callable(collect):
+        collect()
+
+
 def run_spark_schema_creation_loop(
     spark: Any,
     statements: list[str],
@@ -381,7 +388,7 @@ def run_spark_schema_creation_loop(
         if not statement.strip():
             continue
         try:
-            spark.sql(statement)
+            _run_schema_statement(spark, statement)
             logger.debug(f"Executed schema statement: {statement[:100]}...")
         except Exception as exc:
             error_lower = str(exc).lower()
@@ -399,7 +406,7 @@ def run_spark_schema_creation_loop(
                     "drop the conflicting object manually."
                 ) from exc
 
-            spark.sql(f"DROP TABLE IF EXISTS {table_name}")
+            _run_schema_statement(spark, f"DROP TABLE IF EXISTS {table_name}")
             if on_location_collision is not None and "location_already_exists" in error_lower:
                 on_location_collision(spark, table_name)
-            spark.sql(statement)
+            _run_schema_statement(spark, statement)

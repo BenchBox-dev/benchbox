@@ -38,6 +38,43 @@ class _SqlDriver:
         return "executed"
 
 
+class _LazyFrame:
+    def __init__(self, error: Exception | None = None) -> None:
+        self._error = error
+        self.actions: list[str] = []
+
+    def collect(self, *args, **kwargs):
+        self.actions.append("collect")
+        if self._error is not None:
+            raise self._error
+        return [("row",)]
+
+    def show(self, *args, **kwargs):
+        self.actions.append("show")
+        if self._error is not None:
+            raise self._error
+        return None
+
+    def count(self, *args, **kwargs):
+        self.actions.append("count")
+        if self._error is not None:
+            raise self._error
+        return 1
+
+
+class _LazySqlDriver:
+    def __init__(self, error: Exception | None = None) -> None:
+        self.calls: list[str] = []
+        self.frames: list[_LazyFrame] = []
+        self._error = error
+
+    def sql(self, statement, *args, **kwargs):
+        self.calls.append(str(statement))
+        frame = _LazyFrame(self._error)
+        self.frames.append(frame)
+        return frame
+
+
 class _FakeJob:
     def __init__(self, error: Exception | None = None) -> None:
         self._error = error
@@ -373,6 +410,77 @@ class TestQueryJobs:
         assert [s.status for s in ledger.statements] == [STATEMENT_FAILED]
 
 
+class TestLazyFrames:
+    def test_submission_alone_records_nothing(self) -> None:
+        driver = _LazySqlDriver()
+        proxy, ledger = _ddl_proxy(driver, ("sql",))
+
+        proxy.sql("CREATE TABLE t (a INT) PARTITIONED BY (a)")
+
+        assert driver.calls == ["CREATE TABLE t (a INT) PARTITIONED BY (a)"]
+        assert ledger.is_empty()
+        assert ledger.overall_status(tuning_enabled=True, has_config=True) == "noop"
+
+    def test_action_records_executed_once(self) -> None:
+        driver = _LazySqlDriver()
+        proxy, ledger = _ddl_proxy(driver, ("sql",))
+
+        frame = proxy.sql("CREATE TABLE t (a INT) PARTITIONED BY (a)")
+        assert ledger.is_empty()
+        frame.collect()
+        frame.show()
+
+        assert [(s.phase, s.status) for s in ledger.statements] == [(PHASE_DDL, EXECUTED)]
+        assert "PARTITIONED BY (a)" in ledger.statements[0].statement
+
+    def test_failing_action_records_failed(self) -> None:
+        driver = _LazySqlDriver(error=RuntimeError("action failed"))
+        proxy, ledger = _ddl_proxy(driver, ("sql",))
+
+        frame = proxy.sql("CREATE TABLE t (a INT) PARTITIONED BY (a)")
+        assert ledger.is_empty()
+        with pytest.raises(RuntimeError, match="action failed"):
+            frame.collect()
+
+        assert [s.status for s in ledger.statements] == [STATEMENT_FAILED]
+        assert "action failed" in (ledger.statements[0].error or "")
+        assert ledger.overall_status(tuning_enabled=True, has_config=True) == "failed"
+
+    def test_readback_frame_action_is_not_recorded(self) -> None:
+        driver = _LazySqlDriver()
+        proxy, ledger = _ddl_proxy(driver, ("sql",))
+
+        frame = proxy.sql("SELECT COUNT(*) FROM t")
+        frame.collect()
+
+        assert len(driver.calls) == 1
+        assert ledger.is_empty()
+
+    def test_eager_none_result_still_records_at_submission(self) -> None:
+        driver = _SqlDriver()
+        proxy, ledger = _ddl_proxy(driver, ("sql",))
+
+        proxy.sql("CREATE TABLE t (a INT) PARTITIONED BY (a)")
+
+        assert [(s.phase, s.status) for s in ledger.statements] == [(PHASE_DDL, EXECUTED)]
+
+
+class TestExecutescriptFailures:
+    def test_failing_script_records_failed_per_statement(self) -> None:
+        class _FailingScriptDriver:
+            def executescript(self, script, *args, **kwargs):
+                raise RuntimeError("script boom")
+
+        proxy, ledger = _ddl_proxy(_FailingScriptDriver(), ())
+
+        with pytest.raises(RuntimeError, match="script boom"):
+            proxy.executescript("CREATE INDEX i ON t(x); CREATE INDEX j ON t(y);")
+
+        assert [s.status for s in ledger.statements] == [STATEMENT_FAILED, STATEMENT_FAILED]
+        assert all("script boom" in (s.error or "") for s in ledger.statements)
+        assert ledger.overall_status(tuning_enabled=True, has_config=True) == "failed"
+
+
 class TestFootprint:
     @pytest.mark.parametrize(
         "statement",
@@ -455,6 +563,33 @@ class TestAdapterCreateSchema:
         SparkAdapter.create_schema(fake_self, SimpleNamespace(), proxy)
 
         assert len(driver.calls) == 3
+        recorded = [s.statement for s in ledger.statements]
+        assert len(recorded) == 2
+        assert any("PARTITIONED BY" in s for s in recorded)
+        assert any("CLUSTER BY" in s for s in recorded)
+        assert {s.phase for s in ledger.statements} == {PHASE_DDL}
+        assert ledger.overall_status(tuning_enabled=True, has_config=True) == "applied_unverified"
+
+    def test_spark_tuned_schema_ddl_with_lazy_frames_reaches_the_ledger(self) -> None:
+        from benchbox.platforms.spark import SparkAdapter
+
+        driver = _LazySqlDriver()
+        proxy, ledger = _ddl_proxy(driver, SparkAdapter.ledger_execute_verbs)
+        fake_self = SimpleNamespace(
+            _create_schema_with_tuning=lambda *a, **k: (
+                "CREATE TABLE orders (o_id INT, o_date DATE) USING parquet PARTITIONED BY (o_date);\n"
+                "CREATE TABLE lineitem (l_id INT, l_key INT) USING delta CLUSTER BY (l_key);\n"
+                "CREATE TABLE plain (p_id INT);"
+            ),
+            table_format="parquet",
+            logger=logging.getLogger("test"),
+            _remove_orphaned_table_location=lambda *a, **k: None,
+        )
+
+        SparkAdapter.create_schema(fake_self, SimpleNamespace(), proxy)
+
+        assert len(driver.calls) == 3
+        assert all(frame.actions for frame in driver.frames)
         recorded = [s.statement for s in ledger.statements]
         assert len(recorded) == 2
         assert any("PARTITIONED BY" in s for s in recorded)

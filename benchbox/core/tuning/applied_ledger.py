@@ -391,6 +391,8 @@ class _RecordingProxy:
             return result
         if callable(getattr(result, "result", None)) and callable(getattr(result, "done", None)):
             return _RecordingJob(result, self._ledger, self._phase, statements)
+        if _is_lazy_frame(result):
+            return _RecordingFrame(result, self._ledger, self._phase, statements)
         self._record_all(statements, EXECUTED)
         return result
 
@@ -452,6 +454,66 @@ class _RecordingJob:
         return getattr(self._job, name)
 
 
+_LAZY_FRAME_SUBMISSION_METHODS = frozenset({"collect", "show", "fetchall", "fetch_all"})
+_LAZY_FRAME_ACTION_METHODS = frozenset(
+    {
+        "collect",
+        "show",
+        "fetchall",
+        "fetch_all",
+        "count",
+        "to_pandas",
+        "toPandas",
+        "to_polars",
+        "to_arrow",
+    }
+)
+
+
+def _is_lazy_frame(result: Any) -> bool:
+    try:
+        for name in _LAZY_FRAME_SUBMISSION_METHODS:
+            if callable(getattr(result, name, None)):
+                return True
+    except Exception:
+        return False
+    return False
+
+
+class _RecordingFrame:
+    __slots__ = ("_frame", "_ledger", "_phase", "_statements", "_settled")
+
+    def __init__(self, frame: Any, ledger: AppliedTuningLedger, phase: str, statements: list[str]) -> None:
+        object.__setattr__(self, "_frame", frame)
+        object.__setattr__(self, "_ledger", ledger)
+        object.__setattr__(self, "_phase", phase)
+        object.__setattr__(self, "_statements", statements)
+        object.__setattr__(self, "_settled", False)
+
+    def _settle(self, status: str, error: Any | None = None) -> None:
+        if self._settled:
+            return
+        object.__setattr__(self, "_settled", True)
+        for statement in self._statements:
+            self._ledger.record(statement, self._phase, status=status, error=error)
+
+    def __getattr__(self, name: str) -> Any:
+        attribute = getattr(self._frame, name)
+        if name in _LAZY_FRAME_ACTION_METHODS and callable(attribute):
+
+            def call(*args: Any, **kwargs: Any) -> Any:
+                try:
+                    outcome = attribute(*args, **kwargs)
+                except Exception as exc:
+                    self._settle(STATEMENT_FAILED, exc)
+                    raise
+                self._settle(EXECUTED)
+                return outcome
+
+            return call
+        return attribute
+
+
 class RecordingConnection(_RecordingProxy):
     __slots__ = ("_conn", "_verbs")
 
@@ -474,7 +536,13 @@ class RecordingConnection(_RecordingProxy):
         return _RecordingCursor(self._conn.cursor(*args, **kwargs), self._ledger, self._phase, self._statement_filter)
 
     def executescript(self, script: Any, *args: Any, **kwargs: Any) -> Any:
-        result = self._conn.executescript(script, *args, **kwargs)
+        try:
+            result = self._conn.executescript(script, *args, **kwargs)
+        except Exception as exc:
+            for statement in _split_sql_script(script):
+                if self._should_record(statement):
+                    self._ledger.record(statement, self._phase, status=STATEMENT_FAILED, error=exc)
+            raise
         for statement in _split_sql_script(script):
             if self._should_record(statement):
                 self._ledger.record(statement, self._phase, status=EXECUTED)
