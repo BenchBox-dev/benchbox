@@ -248,6 +248,50 @@ class TestCommentOnlyFragments:
         assert driver.calls == [f"SELECT 1; {_READBACK_SQL_COMMENT}"]
         assert ledger.is_empty()
 
+    def test_empty_split_fragment_after_execute_is_not_recorded(self) -> None:
+        driver = _SqlDriver()
+        ledger = AppliedTuningLedger()
+        proxy = recording_connection(driver, ledger, PHASE_DDL)
+
+        proxy.execute("CREATE INDEX idx ON t(x);;")
+
+        assert driver.calls == ["CREATE INDEX idx ON t(x);;"]
+        assert [s.statement for s in ledger.statements] == ["CREATE INDEX idx ON t(x);"]
+
+    def test_empty_split_fragment_after_verb_call_is_not_recorded(self) -> None:
+        driver = _SqlDriver()
+        ledger = AppliedTuningLedger()
+        proxy = recording_connection(driver, ledger, PHASE_DDL, execute_verbs=("sql",))
+
+        proxy.sql("CREATE INDEX idx ON t(x);;")
+
+        assert [s.statement for s in ledger.statements] == ["CREATE INDEX idx ON t(x);"]
+
+    def test_empty_split_fragment_after_executescript_is_not_recorded(self) -> None:
+        class _ScriptDriver:
+            def __init__(self) -> None:
+                self.scripts: list[str] = []
+
+            def executescript(self, script, *args, **kwargs):
+                self.scripts.append(str(script))
+
+        driver = _ScriptDriver()
+        ledger = AppliedTuningLedger()
+        proxy = recording_connection(driver, ledger, PHASE_DDL)
+
+        proxy.executescript("CREATE INDEX idx ON t(x);;")
+
+        assert [s.statement for s in ledger.statements] == ["CREATE INDEX idx ON t(x);"]
+
+    def test_delimiter_and_comment_tail_after_execute_is_not_recorded(self) -> None:
+        driver = _SqlDriver()
+        ledger = AppliedTuningLedger()
+        proxy = recording_connection(driver, ledger, PHASE_DDL)
+
+        proxy.execute(f"CREATE INDEX idx ON t(x);; {_TRAILING_SQL_COMMENT}")
+
+        assert [s.statement for s in ledger.statements] == ["CREATE INDEX idx ON t(x);"]
+
 
 class TestQueryJobs:
     def test_submission_alone_is_not_recorded(self) -> None:
@@ -383,6 +427,8 @@ class TestFootprint:
             "CREATE TABLE t (a INT) WITH (sorted_by = ARRAY['a'])",
             "CREATE TABLE t (a INT) WITH (bucketed_by = ARRAY['a'])",
             "CREATE TABLE t (a INT UNIQUE)",
+            "CREATE TABLE t (a INT, UNIQUE NULLS NOT DISTINCT (a))",
+            "CREATE TABLE t (a INT, UNIQUE NULLS DISTINCT (a))",
         ],
     )
     def test_bare_keyword_in_clause_syntax_is_schema_tuning(self, statement: str) -> None:

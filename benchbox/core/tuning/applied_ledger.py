@@ -76,10 +76,14 @@ _SCHEMA_TUNING_KEYWORD_RE = re.compile(
     r"\b(?:sortkey|distkey|diststyle|sorted_by|bucketed_by|unique|check)\b",
     re.IGNORECASE,
 )
+_UNIQUE_NULLS_DISTINCT_RE = re.compile(r"\s*nulls\s+(?:not\s+distinct|distinct)\s*\(", re.IGNORECASE)
 
 
 def _bare_keyword_is_clause(shape: str, match: re.Match[str]) -> bool:
-    if shape[match.end() :].lstrip()[:1] in ("(", "="):
+    rest = shape[match.end() :]
+    if rest.lstrip()[:1] in ("(", "="):
+        return True
+    if match.group(0).lower() == "unique" and _UNIQUE_NULLS_DISTINCT_RE.match(rest) is not None:
         return True
     return not shape[: match.start()].rstrip().endswith(("(", ","))
 
@@ -145,9 +149,10 @@ def _is_recordable_statement(statement: Any) -> bool:
         text = _SQL_COMMENT_RE.sub(" ", str(statement))
     except Exception:  # pragma: no cover
         return True
-    if not text.strip():
+    stripped = text.strip().strip(";").strip()
+    if not stripped:
         return False
-    return not text.lstrip().lstrip("(").lstrip().lower().startswith(_READBACK_PREFIXES)
+    return not stripped.lstrip("(").lstrip().lower().startswith(_READBACK_PREFIXES)
 
 
 @dataclass
