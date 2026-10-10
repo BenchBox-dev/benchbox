@@ -4,7 +4,7 @@
     "The owner merges PR #2837 and closes PRs #2746, #2747, #2770, #2777, #2780 and #2782 as superseded",
     "A later live drift verification passes or records the accepted exception"
   ],
-  "context": "Created from nightly-red handoff verification of run 37991400931; no second dispatch is authorized until the failure is understood.\n\n2026-10-09 tracker review: cause found (see description); acceptance 1 is met and acceptance 2 was rewritten from \"reconcile the corpus\" to the specific merge and close. The need on t3-drift-dispatch-verify-20261008 was removed because that item now needs this one (it was a cycle). The live drift verification is done by t3-drift-dispatch-verify-20261008 after #2837 merges.",
+  "context": "Created from nightly-v2 run 37991400931. The pricing, validator, privacy and cross-surface baseline checks passed; corpus drift was 25 paths behind develop because seven unmerged mirror PRs remained. Acceptance 1 is met by the recorded cause.\n\nOwner decision D-A1 (handoff 2026-10-09): merge #2837 only if its base is the current published-results tip, its diff is restricted to the sync-results-data-to-published allowlist, and corpus-mirror/validate-bundles passes; close the six superseded PRs with the exact comment and delete their branches.\n\nLive verification before merge: PR #2837 was OPEN/DRAFT, based on published-results@2f9298eb3da18be9737d8a59153220dcdb79fc14; the live published-results ref matched that SHA. Its head was a74c12660c7b3591d3095c5ee31ab0e006ac1e82. The complete diff contained only paths from the allowlist in .github/workflows/sync-results-data-to-published.yml:58-66. corpus-mirror/validate-bundles passed (run 37964265304). The merge method on earlier mirror PR #2727 was squash (same tree/parent, generated squash message).\n\nOwner action completed: marked #2837 ready, squash-merged it at 50a3221e628e1a498a5dc5e820e4a9a1e4240904, and verified published-results advanced to that merge SHA. Closed #2746, #2747, #2770, #2777, #2780 and #2782 with the comment `Superseded by #2837.`; GitHub confirmed each corresponding auto/results-mirror-* branch was deleted.\n\nAcceptance 1 and 2 are satisfied. Acceptance 3 remains: run the combined authorized nightly-v2 dispatch with run_drift=true after the relevant Docker/perf changes merge, and record a passing drift job or the accepted exception. The dependent t3-drift-dispatch-verify item is blocked on this item, so keep this item open and release the claim while other eligible items proceed. Do not dispatch early; the handoff batches the verification run after the related fixes are merged.",
   "description": "Nightly-v2 run 37991400931 on develop reported a failure in the corpus drift check (the pricing, validator, privacy and cross-surface baseline checks passed). The corpus check found that the published-results branch is 25 paths behind develop.\n\nCause: published-results lags because seven draft corpus-mirror PRs are unmerged: #2746, #2747, #2770, #2777, #2780, #2782 and #2837. The published-results tip is 2f9298eb3. PR #2837 was built from that tip, carries develop@c569f453, covers all 25 paths, and its corpus-mirror/validate-bundles check passed. The six older PRs are superseded by #2837.\n\nRemaining work is owner action: merge #2837 and close the six older mirror PRs as superseded. Optional follow-up: make the drift error message point at the open auto/results-mirror-* PRs, so the next reader finds the cause without a log hunt.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/issues/2471"
@@ -33,6 +33,14 @@
       "generation": "86d39ddb00194896ae0cf93fc3185ba6",
       "op": "take",
       "op_id": "458fd94496a54703be33c0fc2a4e8ccc",
+      "session_id": "12a278318efc4205bf01aa4132116f81"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0b65b59dfd5ecfabcfde36b0",
+      "at": "2026-10-10T21:41:15Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b8848110a0094e03b8c31a30adb9048e",
       "session_id": "12a278318efc4205bf01aa4132116f81"
     }
   ]
