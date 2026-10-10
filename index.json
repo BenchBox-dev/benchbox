@@ -15770,10 +15770,15 @@
       "title": "public_result_id is contractually permanent but has no alias/redirect mechanism"
     },
     "public-site-visual-baseline-missing-for-base-20261009": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-11T21:31:40Z",
+        "generation": "2c961360c0c64d5cbe6d93b1c25d03e8",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0b65b59dfd5ecfabcfde36b0"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "The non-required public-site visual regression check fails when no baseline has been built for the PR's base commit"
     },
     "publication-candidate-freshness-decouple-develop-tip": {
