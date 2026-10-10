@@ -297,7 +297,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the same order, and a foreign key must also reference the same table and
   columns. A tuned DuckDB run with the shipped TPC-H template now reaches
   `applied_verified`. A `CHECK` clause in a `CREATE TABLE`, and constraints on
-  every other platform, still keep a run at `applied_unverified`. So do a
+  every other platform, still keep a run at `applied_unverified`. So does a
+  `CREATE TABLE` holding a backslash-escaped quote, which some engines read
+  as an escaped quote the scanner cannot mask; so do a
   DuckDB `CREATE TABLE` whose constraints sit next to list syntax (`[...]`),
   and a constrained table whose name also exists in another schema or
   attached database. On those

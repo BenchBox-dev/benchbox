@@ -439,6 +439,9 @@ class TestLiteralsTheScannerCannotMask:
             "CREATE TABLE t (a INTEGER PRIMARY KEY, b INTEGER[] DEFAULT [1] CHECK (len(b) > 0))",
             "CREATE TABLE t (a INTEGER PRIMARY KEY, b VARCHAR DEFAULT ']' CHECK (b <> ''))",
             "CREATE TABLE t (a INTEGER PRIMARY KEY, b VARCHAR DEFAULT 1 ` 2 CHECK (b <> ''))",
+            "CREATE TABLE IF NOT EXISTS t (a Int64, b String DEFAULT '\\')\\'', CONSTRAINT positive "
+            "CHECK a > 0) ENGINE = MergeTree() ORDER BY (a)",
+            "CREATE TABLE t (a INTEGER PRIMARY KEY, b VARCHAR DEFAULT 'it\\'s ) CHECK (b <> ''))",
         ],
         ids=[
             "dollar",
@@ -450,6 +453,8 @@ class TestLiteralsTheScannerCannotMask:
             "list-literal",
             "bracket-in-string",
             "backtick-operator",
+            "backslash-escaped-clickhouse-default",
+            "backslash-escaped-quote",
         ],
     )
     def test_statement_with_an_unmaskable_literal_is_unverifiable(self, ddl):
@@ -466,6 +471,12 @@ class TestLiteralsTheScannerCannotMask:
         ddl = (
             "CREATE TABLE t (a INTEGER PRIMARY KEY, -- ) CHECK (\nb VARCHAR DEFAULT 'it''s )' /* ) */, \"c)\" INTEGER)"
         )
+        klass, intents = _classify(_stmt(ddl))
+        assert klass == "verifiable"
+        assert [(i.constraint_type, i.columns) for i in intents] == [(CONSTRAINT_PRIMARY_KEY, ("a",))]
+
+    def test_backslash_away_from_a_quote_still_parses(self):
+        ddl = "CREATE TABLE t (a INTEGER PRIMARY KEY, b VARCHAR DEFAULT 'C:\\data')"
         klass, intents = _classify(_stmt(ddl))
         assert klass == "verifiable"
         assert [(i.constraint_type, i.columns) for i in intents] == [(CONSTRAINT_PRIMARY_KEY, ("a",))]
