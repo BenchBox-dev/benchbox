@@ -21249,15 +21249,10 @@
       "title": "Review moved vendor prices and commit refreshed pricing evidence so t3:drift can pass"
     },
     "t3-durations-refresh-failure-20261009": {
-      "claim": {
-        "expires_at": "2026-10-11T21:42:43Z",
-        "generation": "1755cf6d89b6480a9d0642032e6499cd",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0b65b59dfd5ecfabcfde36b0"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Fix the nightly-v2 t3:durations job, which fails with no successful pytest verdict"
     },
     "t3-perf-aggregate-gate-tolerance-decision-20261009": {
