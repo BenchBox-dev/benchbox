@@ -640,6 +640,81 @@ class CheckConstraintConfiguration(ConstraintConfiguration):
         )
 
 
+_SPARK_STATIC_KEYS = frozenset(
+    {
+        "spark.sql.extensions",
+        "spark.sql.warehouse.dir",
+    }
+)
+_SPARK_STATIC_PREFIXES = ("spark.sql.catalog.",)
+_SPARK_CORE_PREFIXES = ("spark.driver.", "spark.executor.")
+_SPARK_ADAPTER_OWNED_KEYS = frozenset(
+    {
+        "spark.app.name",
+        "spark.plugins",
+        "spark.memory.offheap.enabled",
+        "spark.memory.offheap.size",
+        "spark.shuffle.manager",
+    }
+)
+_SPARK_CREDENTIAL_SUBSTRINGS = ("secret", "password", "token", "credential", "access.key")
+
+
+def _canonicalize_spark_config(raw: Any) -> dict[str, str]:
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise ValueError("Invalid 'spark' session-config map: expected a mapping of Spark key to value")
+    canonical: dict[str, str] = {}
+    seen: dict[str, str] = {}
+    for key, value in raw.items():
+        if not isinstance(key, str) or not key.strip():
+            raise ValueError("Invalid 'spark' session-config map: every key must be a non-empty string")
+        bare = key.strip()
+        qualified = bare if bare.startswith("spark.") else f"spark.{bare}"
+        if qualified in canonical:
+            raise ValueError(
+                f"Invalid 'spark' session-config map: duplicate key '{qualified}' "
+                f"(from '{seen[qualified]}' and '{key}'); use only the fully-qualified 'spark.*' form"
+            )
+        if isinstance(value, bool):
+            text = "true" if value else "false"
+        elif isinstance(value, int | float):
+            text = str(value)
+        elif isinstance(value, str):
+            text = value
+        else:
+            raise ValueError(
+                f"Invalid 'spark' session-config map: key '{qualified}' has unsupported value type "
+                f"{type(value).__name__}; use only bool, int, float, or str"
+            )
+        seen[qualified] = key
+        canonical[qualified] = text
+    for qualified in canonical:
+        lowered = qualified.lower()
+        if lowered in _SPARK_STATIC_KEYS or lowered.startswith(_SPARK_STATIC_PREFIXES):
+            raise ValueError(
+                f"Invalid 'spark' session-config map: key '{qualified}' is static and cannot be changed "
+                "with spark.conf.set; configure it through the adapter table-format or warehouse options instead"
+            )
+        if lowered.startswith(_SPARK_CORE_PREFIXES):
+            raise ValueError(
+                f"Invalid 'spark' session-config map: key '{qualified}' is a core deploy setting; "
+                "set it through the adapter resource options instead"
+            )
+        if lowered in _SPARK_ADAPTER_OWNED_KEYS:
+            raise ValueError(
+                f"Invalid 'spark' session-config map: key '{qualified}' is owned by the adapter; "
+                "configure it through the adapter options instead"
+            )
+        if any(marker in lowered for marker in _SPARK_CREDENTIAL_SUBSTRINGS):
+            raise ValueError(
+                f"Invalid 'spark' session-config map: key '{qualified}' looks like a credential; "
+                "credentials are not accepted in the spark session-config map"
+            )
+    return dict(sorted(canonical.items()))
+
+
 @dataclass
 class PlatformOptimizationConfiguration:
     z_ordering_enabled: bool = False
@@ -655,13 +730,14 @@ class PlatformOptimizationConfiguration:
     bloom_filters_enabled: bool = False
     bloom_filter_columns: list[str] = field(default_factory=list)
     materialized_views_enabled: bool = False
+    spark: dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
+        self.spark = _canonicalize_spark_config(self.spark)
         valid_modes = {"off", "auto", "force"}
         valid_methods = {"auto", "ctas", "z_order", "hilbert", "liquid_clustering", "vacuum_sort"}
         valid_dbx_strategies = {"z_order", "liquid_clustering", "liquid_clustering_auto", "none"}
         valid_dbx_renderings = {"databricks_z_order", "databricks_liquid_manual", "databricks_liquid_auto"}
-
         if self.sorted_ingestion_mode not in valid_modes:
             raise ValueError(
                 f"Invalid sorted_ingestion_mode: '{self.sorted_ingestion_mode}'. Must be one of {sorted(valid_modes)}."
@@ -681,17 +757,13 @@ class PlatformOptimizationConfiguration:
                 f"Invalid physical_rendering_id: '{self.physical_rendering_id}'. "
                 f"Must be one of {sorted(valid_dbx_renderings)}."
             )
-
         if self.sorted_ingestion_mode == "off" and self.sorted_ingestion_method != "auto":
             raise ValueError("sorted_ingestion_method must be 'auto' when sorted_ingestion_mode is 'off'")
-
         if self.liquid_clustering_columns and not self.liquid_clustering_enabled:
             raise ValueError("liquid_clustering_columns requires liquid_clustering_enabled=true")
-
         liquid_strategy = self.databricks_clustering_strategy in {"liquid_clustering", "liquid_clustering_auto"}
         liquid_requested = liquid_strategy or self.liquid_clustering_enabled or bool(self.liquid_clustering_columns)
         z_order_requested = self.z_ordering_enabled or bool(self.z_ordering_columns)
-
         if self.databricks_clustering_strategy == "none" and (
             self.liquid_clustering_enabled or self.liquid_clustering_columns or z_order_requested
         ):
@@ -725,7 +797,6 @@ class PlatformOptimizationConfiguration:
                 "liquid_clustering_columns; set databricks_clustering_strategy='liquid_clustering' for explicit keys "
                 "or 'liquid_clustering_auto' for CLUSTER BY AUTO."
             )
-
         if self.physical_rendering_id == "databricks_liquid_auto" and (
             self.databricks_clustering_strategy != "liquid_clustering_auto"
         ):
@@ -762,6 +833,8 @@ class PlatformOptimizationConfiguration:
         }
         if self.physical_rendering_id is not None:
             result["physical_rendering_id"] = self.physical_rendering_id
+        if self.spark:
+            result["spark"] = dict(sorted(self.spark.items()))
         return result
 
     @classmethod
@@ -791,6 +864,7 @@ class PlatformOptimizationConfiguration:
             bloom_filters_enabled=data.get("bloom_filters_enabled", False),
             bloom_filter_columns=data.get("bloom_filter_columns", []),
             materialized_views_enabled=data.get("materialized_views_enabled", False),
+            spark=_canonicalize_spark_config(data.get("spark")),
         )
 
 
