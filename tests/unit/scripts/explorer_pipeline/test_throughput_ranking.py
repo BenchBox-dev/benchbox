@@ -141,17 +141,18 @@ def test_missing_configured_stream_count_keeps_throughput_score(tmp_path: Path) 
     assert entry.throughput_at_size == pytest.approx(3741.26)
 
 
-def _timed_out_stream_bundle() -> dict:
+def _timed_out_stream_bundle(phase_status: str) -> dict:
     payload = throughput_bundle("spark", streams=3, throughput_at_size=500.0)
     phase = payload["phases"]["throughput_test"]
-    phase["status"] = "FAILED"
+    phase["status"] = phase_status
     phase["stream_results"] = phase["stream_results"][:2]
     phase["errors"] = ["Stream 3 timed out after 600s"]
     return payload
 
 
-def test_timed_out_stream_with_a_score_and_no_failed_queries_is_not_ranked(tmp_path: Path) -> None:
-    payload = _timed_out_stream_bundle()
+@pytest.mark.parametrize("phase_status", ["FAILED", "PARTIAL"])
+def test_timed_out_stream_with_a_score_and_no_failed_queries_is_not_ranked(tmp_path: Path, phase_status: str) -> None:
+    payload = _timed_out_stream_bundle(phase_status)
     assert payload["summary"]["queries"]["failed"] == 0
     ((entry, detail),) = _pairs(tmp_path, {"spark": payload})
 
@@ -159,8 +160,8 @@ def test_timed_out_stream_with_a_score_and_no_failed_queries_is_not_ranked(tmp_p
     assert entry.stream_count == 2
     assert entry.throughput_at_size is None
     assert detail.throughput_at_size is None
-    assert entry.ranking_exclusion_reason == "stream_count_mismatch"
-    assert detail.ranking_exclusion_reason == "stream_count_mismatch"
+    assert entry.ranking_exclusion_reason == "missing_primary_metric"
+    assert detail.ranking_exclusion_reason == "missing_primary_metric"
 
 
 @pytest.mark.parametrize(

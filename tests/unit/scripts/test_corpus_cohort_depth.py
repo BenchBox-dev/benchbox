@@ -256,6 +256,36 @@ def test_corpus_validator_rejects_configured_stream_count_mismatch(
     assert "stream_results=3" in output
 
 
+@pytest.mark.parametrize("phase_status", ["FAILED", "PARTIAL"])
+@pytest.mark.parametrize("count_source", ["run", "config"])
+def test_truncated_incomplete_throughput_phase_does_not_fail_corpus_validation(
+    tmp_path: Path, phase_status: str, count_source: str
+) -> None:
+    validator = _load_validator()
+    _write_phase_bundle(
+        tmp_path,
+        "incomplete.json",
+        platform="DuckDB",
+        power="NOT_RUN",
+        throughput="COMPLETED",
+        test_type="throughput",
+    )
+    path = tmp_path / "incomplete.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    phase = payload["phases"]["throughput_test"]
+    phase["status"] = phase_status
+    phase["stream_results"] = phase["stream_results"][:2]
+    phase["errors"] = ["Stream 3 timed out"]
+    if count_source == "config":
+        payload["run"].pop("streams")
+        payload["config"] = {"streams": 3}
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    cohorts = validator.cohort_platforms([path])
+
+    assert cohorts == {("tpch", "1.0#throughput#2streams"): set()}
+
+
 def test_corpus_validator_skips_stream_count_check_without_a_configured_count(tmp_path: Path) -> None:
     validator = _load_validator()
     _write_phase_bundle(
@@ -1036,7 +1066,7 @@ def test_copied_constants_match_their_explorer_sources() -> None:
 @pytest.mark.parametrize(
     ("name", "expected_reason"),
     [
-        ("throughput-timed-out-stream-with-score", "stream_count_mismatch"),
+        ("throughput-timed-out-stream-with-score", "missing_primary_metric"),
         ("throughput-phase-failed-with-score", "missing_primary_metric"),
         ("throughput-stream-unsuccessful-with-score", "missing_primary_metric"),
         ("throughput-stream-success-not-boolean", "stream_count_mismatch"),
@@ -1080,7 +1110,6 @@ def test_a_timed_out_stream_cannot_form_a_throughput_identity(tmp_path: Path) ->
     phase["stream_results"] = phase["stream_results"][:2]
     phase["errors"] = ["Stream 3 timed out"]
     timed_out["summary"]["tpc_metrics"]["throughput_at_size"] = 500.0
-    timed_out["run"].pop("streams")
     (tmp_path / "Doris.json").write_text(json.dumps(timed_out), encoding="utf-8")
 
     cohorts = validator.cohort_platforms(validator.discover_bundles(tmp_path))

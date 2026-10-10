@@ -348,7 +348,9 @@ def _configured_stream_count(bundle: BundleDocument) -> int | None:
 
 def _throughput_stream_count_mismatch(bundle: BundleDocument) -> bool:
     block = bundle.phases.get("throughput_test")
-    streams = block.stream_results if block is not None else None
+    if block is None or str(block.status or "").upper() != "COMPLETED":
+        return False
+    streams = block.stream_results
     configured_count = _configured_stream_count(bundle)
     return configured_count is not None and isinstance(streams, list) and len(streams) != configured_count
 

@@ -105,9 +105,11 @@ def _configured_stream_count(payload: dict) -> int | None:
 
 
 def _throughput_stream_count_mismatch(payload: dict) -> tuple[int, int] | None:
+    throughput = _mapping(_mapping(payload.get("phases")).get("throughput_test"))
+    if str(throughput.get("status") or "").upper() != "COMPLETED":
+        return None
     configured_count = _configured_stream_count(payload)
-    phases = _mapping(payload.get("phases"))
-    stream_results = _mapping(phases.get("throughput_test")).get("stream_results")
+    stream_results = throughput.get("stream_results")
     if configured_count is None or not isinstance(stream_results, list):
         return None
     if len(stream_results) == configured_count:
