@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 EXPLORER_BUILD_CONTRACT_VERSION = "6"
-EXPLORER_READ_MODEL_VERSION = 14
+EXPLORER_READ_MODEL_VERSION = 15
 EXPLORER_READ_MODEL_COMPATIBILITY = {
     "minimum_supported": EXPLORER_READ_MODEL_VERSION,
     "newer_policy": "warn-and-continue",

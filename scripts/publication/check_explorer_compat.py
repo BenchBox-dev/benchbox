@@ -61,8 +61,8 @@ try:
     CURRENT_SCHEMA_VERSION: int = _READ_MODEL_VERSION
     CONTRACT_VERSION: str = _CONTRACT_VERSION
 except ImportError:
-    SUPPORTED_SCHEMA_VERSIONS: tuple[int, ...] = (14,)
-    CURRENT_SCHEMA_VERSION: int = 14
+    SUPPORTED_SCHEMA_VERSIONS: tuple[int, ...] = (15,)
+    CURRENT_SCHEMA_VERSION: int = 15
     CONTRACT_VERSION: str = "6"
 
 _TYPE_ALIASES: dict[str, str] = {
@@ -343,6 +343,17 @@ TABLE_COLUMNS_V14: dict[str, dict[str, str]] = {
         "stream_count": "INTEGER",
     },
 }
+_V15_RESULTS_COLUMNS: dict[str, str] = {}
+for _column_name, _column_type in TABLE_COLUMNS_V14["results"].items():
+    _V15_RESULTS_COLUMNS[_column_name] = _column_type
+    if _column_name == "tuning_policy_generation":
+        _V15_RESULTS_COLUMNS["template_evidence"] = "VARCHAR"
+
+TABLE_COLUMNS_V15: dict[str, dict[str, str]] = {
+    **TABLE_COLUMNS_V14,
+    "results": _V15_RESULTS_COLUMNS,
+}
+
 
 SCHEMA_REGISTRY: dict[int, dict[str, dict[str, str]]] = {
     9: TABLE_COLUMNS_V9,
@@ -351,6 +362,7 @@ SCHEMA_REGISTRY: dict[int, dict[str, dict[str, str]]] = {
     12: TABLE_COLUMNS_V12,
     13: TABLE_COLUMNS_V13,
     14: TABLE_COLUMNS_V14,
+    15: TABLE_COLUMNS_V15,
 }
 
 REQUIRED_INDEXES_V9: list[tuple[str, str, list[str]]] = [
@@ -399,6 +411,12 @@ REQUIRED_VIEW_COLUMNS_V14: dict[str, list[str]] = {
         *REQUIRED_VIEW_COLUMNS_V13["result_detail_metrics"],
         "throughput_at_size",
         "stream_count",
+    ],
+}
+REQUIRED_VIEW_COLUMNS_V15: dict[str, list[str]] = {
+    "result_detail_metrics": [
+        *REQUIRED_VIEW_COLUMNS_V14["result_detail_metrics"],
+        "template_evidence",
     ],
 }
 
@@ -621,7 +639,9 @@ def validate_database_schema(con: Any, expected_version: int | None = None) -> l
     if missing_views:
         errors.append(f"missing required views for v{version_to_check}: {', '.join(missing_views)}")
 
-    if version_to_check >= 14:
+    if version_to_check >= 15:
+        view_column_requirements = REQUIRED_VIEW_COLUMNS_V15
+    elif version_to_check >= 14:
         view_column_requirements = REQUIRED_VIEW_COLUMNS_V14
     elif version_to_check >= 13:
         view_column_requirements = REQUIRED_VIEW_COLUMNS_V13
