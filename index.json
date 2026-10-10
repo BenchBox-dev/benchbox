@@ -4498,9 +4498,9 @@
     },
     "comment-scanner-unresolved-runner-commands": {
       "claim": {
-        "expires_at": "2026-10-11T21:17:26Z",
+        "expires_at": "2026-10-11T21:20:58Z",
         "generation": "9a6265ca94a5468a850dbf3e1ec1dcaf",
-        "renewals": 24,
+        "renewals": 25,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bd5956809339499407531943"
       },
       "needs": [],
