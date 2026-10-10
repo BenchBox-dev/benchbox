@@ -507,6 +507,9 @@ class TestVeloxPlatformInfo:
         assert info["offheap_size"] == "8g"
         assert info["velox_active"] is None
         assert info["platform_version"] is None
+        receipt = info["configuration"]["execution_engine"]
+        assert receipt["observed"] == "not_captured"
+        assert receipt["observed_source"] == "none"
 
     def test_platform_info_remote_has_endpoint(self, mock_pyspark):
         from benchbox.platforms.velox import VeloxAdapter
@@ -540,6 +543,9 @@ class TestVeloxPlatformInfo:
         info = adapter.get_platform_info(connection=mock_spark)
 
         assert info["velox_active"] is True
+        receipt = info["configuration"]["execution_engine"]
+        assert receipt["observed"] == "velox"
+        assert receipt["observed_source"] == "explain"
 
     def test_velox_active_probe_false_without_velox_nodes(self, mock_pyspark):
         from benchbox.platforms.velox import VeloxAdapter
@@ -554,6 +560,9 @@ class TestVeloxPlatformInfo:
         info = adapter.get_platform_info(connection=mock_spark)
 
         assert info["velox_active"] is False
+        receipt = info["configuration"]["execution_engine"]
+        assert receipt["observed"] == "standard"
+        assert receipt["observed_source"] == "explain"
 
 
 class TestVeloxQueryPlan:

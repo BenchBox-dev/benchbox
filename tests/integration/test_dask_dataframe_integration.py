@@ -41,7 +41,7 @@ class TestDaskDataFrameIntegration:
             working_dir=str(temp_working_dir),
             n_workers=2,
             threads_per_worker=1,
-            use_distributed=False,
+            execution_engine="threaded",
         )
         yield adapter
         adapter.close()
@@ -261,7 +261,7 @@ class TestDaskTPCHQueryExecution:
 
         adapter = DaskDataFrameAdapter(
             working_dir=str(temp_working_dir),
-            use_distributed=False,
+            execution_engine="threaded",
         )
         yield adapter
         adapter.close()

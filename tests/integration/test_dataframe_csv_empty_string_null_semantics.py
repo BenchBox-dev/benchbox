@@ -123,7 +123,7 @@ def _make_pyspark() -> Any:
 
 
 def _make_dask() -> Any:
-    return DaskDataFrameAdapter(use_distributed=False)
+    return DaskDataFrameAdapter(execution_engine="threaded")
 
 
 _ADAPTER_CASES = [

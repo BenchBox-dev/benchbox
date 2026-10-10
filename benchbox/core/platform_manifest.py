@@ -1082,6 +1082,22 @@ _PLATFORM_MANIFEST_JSON = """[
         "resource_kind": "warehouse",
         "native_resource_keys": ["warehouse_id"],
         "native_size_keys": []
+      },
+      "execution_engines": {
+        "photon": {
+          "class": "native-vectorized",
+          "display_name": "Photon",
+          "description": "Databricks SQL warehouse Photon engine",
+          "dependencies": [],
+          "selectable": false
+        },
+        "standard": {
+          "class": "standard",
+          "display_name": "Standard",
+          "description": "Databricks SQL warehouse standard engine",
+          "dependencies": [],
+          "selectable": false
+        }
       }
     },
     "required_credentials": [
@@ -1760,6 +1776,22 @@ _PLATFORM_MANIFEST_JSON = """[
           "auth_methods": [
             "token"
           ]
+        }
+      },
+      "execution_engines": {
+        "duckdb": {
+          "class": "delegated",
+          "display_name": "DuckDB",
+          "description": "Force pg_duckdb to route queries through DuckDB execution",
+          "dependencies": [],
+          "selectable": true
+        },
+        "postgres": {
+          "class": "standard",
+          "display_name": "PostgreSQL",
+          "description": "Allow PostgreSQL's normal query routing without forcing DuckDB execution",
+          "dependencies": [],
+          "selectable": true
         }
       }
     },
@@ -3015,6 +3047,22 @@ _PLATFORM_MANIFEST_JSON = """[
           ],
           "auth_methods": []
         }
+      },
+      "execution_engines": {
+        "velox": {
+          "class": "native-vectorized",
+          "display_name": "Velox",
+          "description": "Gluten offloads supported Spark operators to Velox",
+          "dependencies": [],
+          "selectable": false
+        },
+        "standard": {
+          "class": "standard",
+          "display_name": "Standard",
+          "description": "Spark executes operators without a Velox offload",
+          "dependencies": [],
+          "selectable": false
+        }
       }
     },
     "support_status": "experimental"
@@ -3316,7 +3364,23 @@ _PLATFORM_MANIFEST_JSON = """[
     "capabilities": {
       "supports_sql": false,
       "supports_dataframe": true,
-      "default_mode": "dataframe"
+      "default_mode": "dataframe",
+      "execution_engines": {
+        "threaded": {
+          "class": "standard",
+          "display_name": "Threaded",
+          "description": "Dask uses its local threaded scheduler",
+          "dependencies": [],
+          "selectable": true
+        },
+        "distributed": {
+          "class": "distributed",
+          "display_name": "Distributed",
+          "description": "Dask uses a local cluster or connected distributed scheduler",
+          "dependencies": [],
+          "selectable": true
+        }
+      }
     },
     "support_status": "beta"
   },

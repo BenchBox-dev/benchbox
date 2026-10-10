@@ -118,7 +118,7 @@ def test_generated_pandas_query_aggregation_supports_lazy_dask_frame(duckdb_conn
     if not DASK_AVAILABLE:
         pytest.skip("Dask not installed")
 
-    adapter = DaskDataFrameAdapter(use_distributed=False)
+    adapter = DaskDataFrameAdapter(execution_engine="threaded")
     ctx = adapter.create_context()
     for parquet_path in sorted(TINY_FIXTURE.glob("*.parquet")):
         ctx.register_table(parquet_path.stem, adapter.read_parquet(parquet_path))

@@ -515,7 +515,7 @@ pg-duckdb|work_mem|PostgreSQL work_mem setting for queries|{'default': '256MB'}
 pg-duckdb|maintenance_work_mem|PostgreSQL maintenance_work_mem for VACUUM/CREATE INDEX|{'default': '512MB'}
 pg-duckdb|effective_cache_size|PostgreSQL effective_cache_size planner hint|{'default': '1GB'}
 pg-duckdb|max_parallel_workers_per_gather|PostgreSQL max_parallel_workers_per_gather setting|{'parser': 'int', 'default': 2}
-pg-duckdb|force_execution|Force DuckDB execution engine for all queries|{'parser': 'parse_bool', 'default': True}
+pg-duckdb|force_execution|Deprecated alias: true selects duckdb, false selects postgres|{'parser': 'parse_bool'}
 pg-duckdb|postgres_scan_threads|Threads for parallel PostgreSQL table scanning (0 = auto)|{'parser': 'int', 'default': 0}
 pg-duckdb|compare_native|Run native DuckDB comparison for matched queries|{'parser': 'parse_bool', 'default': False}
 pg-duckdb|deployment_mode|Deprecated alias of the platform selector: 'self-hosted' for local PostgreSQL, 'motherduck' for MotherDuck cloud offload|{'choices': ('self-hosted', 'motherduck')}
@@ -661,7 +661,7 @@ cudf|device_id|CUDA device ID to use|{'parser': 'int', 'default': '0'}
 cudf|spill_to_host|Enable GPU memory spilling to host RAM|{'parser': 'parse_bool', 'default': 'true'}
 dask|n_workers|Number of worker processes|{'parser': 'int'}
 dask|threads_per_worker|Threads per worker process|{'parser': 'int'}
-dask|use_distributed|Use distributed scheduler (enables dashboard)|{'parser': 'parse_bool', 'default': True}
+dask|use_distributed|Deprecated alias: true selects distributed, false selects threaded|{'parser': 'parse_bool'}
 dask|scheduler_address|Connect to existing scheduler (e.g., 'tcp://...')|{}
 dask|memory_limit|Memory limit per local Dask worker (e.g., '4GB')|{}
 dask|spill_directory|Directory for Dask spill files; explicit directories are not deleted by close()|{}

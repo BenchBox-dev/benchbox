@@ -190,7 +190,7 @@ def _dask_context(tables, npartitions=2):
 
     from benchbox.platforms.dataframe.dask_df import DaskDataFrameAdapter
 
-    ctx = DaskDataFrameAdapter(use_distributed=False).create_context()
+    ctx = DaskDataFrameAdapter(execution_engine="threaded").create_context()
     for name, data in tables.items():
         ctx.register_table(name, dd.from_pandas(pd.DataFrame(data), npartitions=npartitions))
     return ctx
@@ -339,7 +339,7 @@ def test_q71_and_q76_run_on_dask_and_keep_a_null_total():
     from benchbox.platforms.dataframe.dask_df import DaskDataFrameAdapter
 
     def run(impl, tables):
-        ctx = DaskDataFrameAdapter(use_distributed=False).create_context()
+        ctx = DaskDataFrameAdapter(execution_engine="threaded").create_context()
         for name, data in tables.items():
             ctx.register_table(name, dd.from_pandas(pd.DataFrame(data), npartitions=2))
         return impl(ctx).compute().astype(object).where(lambda frame: frame.notna(), None)
@@ -362,7 +362,7 @@ def test_joined_aggregate_runs_on_dask_and_keeps_a_null_group_last():
     from benchbox.core.tpcds.dataframe_queries import queries
     from benchbox.platforms.dataframe.dask_df import DaskDataFrameAdapter
 
-    ctx = DaskDataFrameAdapter(use_distributed=False).create_context()
+    ctx = DaskDataFrameAdapter(execution_engine="threaded").create_context()
     data = {"g": ["x", "x", "x", "y", "y"], "k": ["b", None, "a", None, "c"], "v": [1.0, 2.0, 3.0, 4.0, 5.0]}
     ctx.register_table("t", dd.from_pandas(pd.DataFrame(data), npartitions=2))
     spec = {

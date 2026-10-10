@@ -15,6 +15,15 @@ Databricks provides a unified lakehouse platform combining data lakes with wareh
 - **Auto-scaling** - Dynamic cluster management
 - **Multi-cloud** - AWS, Azure, and GCP support
 
+## Execution Engine
+
+Databricks SQL declares `photon` and `standard` as observed engines, not
+selectable settings. The default lets the warehouse decide. When the SDK
+captures `warehouse.enable_photon`, result bundles record `photon` or
+`standard` in `platform.execution_engine.observed` with
+`observed_source="vendor_log"`; unavailable metadata is recorded as
+`not_captured`.
+
 ## Prerequisites
 
 - Databricks workspace (AWS, Azure, or GCP)
