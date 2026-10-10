@@ -147,6 +147,8 @@ formats with Pygments lexers; embedded code with its own language check.
 Shell heredocs and literal `echo`/`printf` pipelines into supported stdin
 interpreters are scanned; MDX top-level ESM and JSX block comments are
 extracted.
+Executable paths are matched by basename; consumer output redirects preserve
+piped input, while redirected stdin fails closed.
 Unknown input is a coverage error, never a pass, and under blocking enforcement
 or in strict mode changed files and completed scopes always reject it. While
 enforcement is advisory a coverage error is reported and counted but does not

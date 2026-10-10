@@ -341,6 +341,7 @@ def mdx_masked_lines(source: str) -> list[str | None]:
 def mdx_statement_end(lines: list[str | None], start: int) -> int:
     depth = 0
     index = start
+    in_block_comment = False
     while index < len(lines):
         line = lines[index]
         if line is None:
@@ -348,6 +349,14 @@ def mdx_statement_end(lines: list[str | None], start: int) -> int:
         cursor = 0
         while cursor < len(line):
             char = line[cursor]
+            if in_block_comment:
+                closing = line.find("*/", cursor)
+                if closing < 0:
+                    cursor = len(line)
+                    continue
+                cursor = closing + 2
+                in_block_comment = False
+                continue
             if char in "'\"`":
                 closing = line.find(char, cursor + 1)
                 while closing >= 0 and line[closing - 1] == "\\":
@@ -356,12 +365,18 @@ def mdx_statement_end(lines: list[str | None], start: int) -> int:
                     raise ValueError("unterminated string in MDX JavaScript statement")
                 cursor = closing + 1
                 continue
+            if line.startswith("//", cursor):
+                break
+            if line.startswith("/*", cursor):
+                in_block_comment = True
+                cursor += 2
+                continue
             depth += (char in "{([") - (char in "})]")
             cursor += 1
         index += 1
-        if depth <= 0 and (index - start > 1 or not MDX_STATEMENT_CONTINUE.search(line)):
+        if depth <= 0 and not in_block_comment and (index - start > 1 or not MDX_STATEMENT_CONTINUE.search(line)):
             break
-    if depth > 0:
+    if depth > 0 or in_block_comment:
         raise ValueError("unterminated JavaScript statement in MDX source")
     return index
 
@@ -1050,8 +1065,8 @@ SHELL_INLINE_INTERPRETER = re.compile(
     r"|(?<![\w.-])(?:ksh|dash|fish|perl|ruby|php|lua|pwsh|powershell|deno|bun|tclsh|osascript|Rscript|awk|gawk|mawk"
     r"|psql|duckdb|sqlite3)(?=[\s;|&)]|$)"
     r"|(?<![\w.-])find\b[^\n]*\s-(?:exec|execdir|ok|okdir)\b"
-    r"|\|\s*(?:python[0-9.]*|node|bash|sh|zsh|ksh|dash|fish|perl|ruby|php|lua|pwsh|powershell|deno|bun|tclsh"
-    r"|osascript|Rscript|awk|gawk|mawk|psql|duckdb|sqlite3)(?=[\s;|&)]|$)"
+    r"|\|[^\n]*(?<![\w.-])(?:python[0-9.]*|node|bash|sh|zsh|ksh|dash|fish|perl|ruby|php|lua|pwsh|powershell|deno|bun|tclsh"
+    r"|osascript|Rscript|awk|gawk|mawk|psql|duckdb|sqlite3)(?=[\s;|&)\"']|$)"
     r"|\b(?:ssh|watch|xargs|env|sudo|nohup)\s"
 )
 SHELL_WRAPPERS = {"sudo", "nice", "nohup", "timeout", "time", "command", "exec", "stdbuf", "ionice", "uvx"}
@@ -1446,7 +1461,6 @@ def chunk_can_hold_comment(chunk: str) -> bool:
 
 
 PIPED_PRODUCERS = {"echo", "printf"}
-PIPED_STDIN_REDIRECTS = {"<", "<<", "<<-", "<<<", ">", ">>", ">|", "<>"}
 
 
 def scan_source_payload(text: str, language: str) -> tuple[str, str]:
@@ -1461,7 +1475,7 @@ def piped_consumer_language(command: str) -> str | None:
     return {"node": "javascript", "sh": "bash", "bash": "bash", "zsh": "bash"}.get(command)
 
 
-def shell_output_escapes(text: str) -> tuple[str, bool]:
+def shell_output_escapes(text: str, *, zero_prefix_octal: bool = False) -> tuple[str, bool]:
     result = []
     index = 0
     escaped = {
@@ -1490,8 +1504,9 @@ def shell_output_escapes(text: str) -> tuple[str, bool]:
             index += 1
             continue
         if char in "01234567":
+            limit = index + (4 if zero_prefix_octal and char == "0" else 3)
             end = index + 1
-            while end < min(index + 3, len(text)) and text[end] in "01234567":
+            while end < min(limit, len(text)) and text[end] in "01234567":
                 end += 1
             result.append(chr(int(text[index:end], 8)))
             index = end
@@ -1554,7 +1569,7 @@ def piped_producer_text(words: list) -> str | None:
             raise ValueError("dynamic piped interpreter source requires an adapter")
         text = " ".join(word.word for word in args)
         if escapes:
-            text, stopped = shell_output_escapes(text)
+            text, stopped = shell_output_escapes(text, zero_prefix_octal=True)
             if stopped:
                 return text or None
         return (text + ("" if no_newline else "\n")) or None
@@ -1570,6 +1585,23 @@ def piped_producer_text(words: list) -> str | None:
     return piped_printf_text(args) or None
 
 
+def piped_redirect_effect(node: bashlex.ast.node) -> tuple[bool, bool]:
+    commands = [child for child in node.parts if child.kind == "command"]
+    stdin_redirects = {"<", "<<", "<<-", "<<<", "<>", "<&"}
+    producer_stdout_redirected = False
+    consumer_stdin_redirected = False
+    for command_index, command in enumerate(commands):
+        for part in command.parts:
+            if part.kind != "redirect":
+                continue
+            descriptor = part.input
+            if descriptor is None:
+                descriptor = 0 if part.type in stdin_redirects else 1
+            producer_stdout_redirected |= command_index == 0 and descriptor == 1
+            consumer_stdin_redirected |= command_index == 1 and descriptor == 0
+    return producer_stdout_redirected, consumer_stdin_redirected
+
+
 def piped_sides(node: bashlex.ast.node) -> list | None:
     if node.kind != "pipeline":
         return None
@@ -1578,10 +1610,6 @@ def piped_sides(node: bashlex.ast.node) -> list | None:
         return None
     sides = [[part for part in command.parts if part.kind == "word"] for command in commands]
     if any(not side or side[0].parts for side in sides):
-        return None
-    if any(
-        part.kind == "redirect" and part.type in PIPED_STDIN_REDIRECTS for command in commands for part in command.parts
-    ):
         return None
     if sides[0][0].word.rsplit("/", 1)[-1] not in PIPED_PRODUCERS:
         return None
@@ -1617,6 +1645,11 @@ def piped_stdin_entries(path: str, source: str, offset: int, unit: str, node: ba
     sides = piped_sides(node)
     if sides is None:
         return []
+    producer_stdout_redirected, consumer_stdin_redirected = piped_redirect_effect(node)
+    if producer_stdout_redirected:
+        return []
+    if consumer_stdin_redirected:
+        raise ValueError("piped interpreter stdin redirection requires an adapter")
     producer = sides[0][0].word.rsplit("/", 1)[-1]
     language = piped_consumer_language(sides[1][0].word.rsplit("/", 1)[-1])
     if language is None:

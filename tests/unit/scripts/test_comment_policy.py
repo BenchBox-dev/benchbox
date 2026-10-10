@@ -1273,6 +1273,10 @@ def test_python_executable_strings_reach_scanner(source: str) -> None:
             'import subprocess\nsubprocess.run(["docker", "exec", "container", "/opt/My Tools/python3", "-c", "# hidden"])',
             "# hidden",
         ),
+        (
+            'import subprocess\nsubprocess.run(["ssh", "host", "true # hidden\\n/usr/bin/python3"])',
+            "# hidden",
+        ),
     ],
 )
 def test_python_runner_command_strings_are_scanned(source: str, text: str) -> None:
@@ -1422,6 +1426,9 @@ def test_shell_executable_arguments_are_routed(source: str) -> None:
         ("printf '%s\\n' '# explanation' | zsh", "# explanation"),
         ("printf '\\043 hidden\\n' | sh", "# hidden"),
         ("echo -e '\\043 hidden' | sh", "# hidden"),
+        ("echo -e '\\0043 hidden' | bash", "# hidden"),
+        ("echo '# hidden' | /usr/bin/python3", "# hidden"),
+        ('echo "# hidden" | "/opt/My Tools/python3"', "# hidden"),
     ],
 )
 def test_piped_producer_payloads_reach_stdin_interpreters(source: str, expected: str) -> None:
@@ -1437,6 +1444,24 @@ def test_piped_interpreter_masking_preserves_trailing_shell_comment() -> None:
 
 def test_piped_printf_format_is_evaluated() -> None:
     assert scan("a.sh", "printf '%s\\n' 'pass' | python3", "bash") == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "echo '# hidden' | python3 > /dev/null",
+        "echo '# hidden' | python3 2>/dev/null",
+        "echo '# hidden' 2>/dev/null | python3",
+    ],
+)
+def test_piped_unrelated_redirections_preserve_stdin(source: str) -> None:
+    findings = scan("a.sh", source, "bash")
+    assert [(finding.kind, finding.text) for finding in findings] == [("comment", "# hidden")]
+
+
+def test_piped_consumer_stdin_redirection_fails_closed() -> None:
+    findings = scan("a.sh", "echo '# hidden' | python3 < /dev/null", "bash")
+    assert [finding.kind for finding in findings] == ["coverage-error"]
 
 
 def test_piped_node_source_reports_javascript_comment() -> None:
@@ -1488,6 +1513,7 @@ def test_piped_non_stdin_programs_stay_data(source: str) -> None:
         ("xargs -I{} \"sh -c 'echo ok # explanation'\"", "# explanation"),
         ("env FOO=bar \"python3 -c '# explanation'\"", "# explanation"),
         ('ssh host "echo ok # bare"', "# bare"),
+        ('ssh host "true # hidden\n/usr/bin/python3"', "# hidden"),
     ],
 )
 def test_runner_command_strings_are_scanned(source: str, text: str) -> None:
@@ -3455,6 +3481,7 @@ def test_mdx_imports_reach_the_typescript_scanner(source: str) -> None:
     [
         ("export /* hidden */ const value = 1;", "/* hidden */"),
         ("import /* hidden */ './x.js';", "/* hidden */"),
+        ("import /*\n hidden\n*/ './x.js';", "/*\n hidden\n*/"),
     ],
 )
 def test_mdx_esm_intertoken_comments_are_reported(source: str, comment: str) -> None:

@@ -647,6 +647,10 @@ class PythonBindings:
     def runner_payload(
         self, args: list[ast.expr], words: list[str | None], name: str
     ) -> tuple[ast.AST, str, str | None] | None:
+        if name in RUNNER_COMMANDS:
+            inner = self.runner_string_args(args, words, name)
+            if inner is not None:
+                return inner
         try:
             first = runner_command_start(words, name)
         except ValueError:
@@ -666,10 +670,6 @@ class PythonBindings:
             word is not None and INLINE_SHAPED_FLAG.fullmatch(word) for word in words[1:]
         ):
             return args[0], "unsupported", None
-        if name in RUNNER_COMMANDS:
-            inner = self.runner_string_args(args, words, name)
-            if inner is not None:
-                return inner
         return None
 
     def runner_string_args(

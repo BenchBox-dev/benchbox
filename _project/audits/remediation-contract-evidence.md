@@ -318,7 +318,7 @@ performed.
 
 ## PR #2821 scanner review findings
 
-The four Oracle findings were reproduced on the pre-fix branch. Each fix keeps
+The nine Oracle findings were reproduced on the pre-fix branch. Each fix keeps
 the original source as the durable input; the scanner adapter output is consumed
 by the comment-policy parser and its finding rows.
 
@@ -348,7 +348,30 @@ by the comment-policy parser and its finding rows.
   `/opt/My Tools/python3` case is in
   `test_python_runner_command_strings_are_scanned`; non-source application
   arguments remain covered by `test_shell_application_arguments_are_not_executable_source`.
+- Absolute interpreter paths in pipelines: `SHELL_INLINE_INTERPRETER` now
+  admits recognized executable basenames behind a path prefix, so
+  `echo '# hidden' | /usr/bin/python3` reaches the consumer scanner. The
+  regression is in `test_piped_producer_payloads_reach_stdin_interpreters`.
+- Pipeline redirects: descriptor analysis preserves consumer stdout and
+  stderr plus producer stderr, while requiring coverage for a consumer stdin
+  override. The positive and fail-closed controls are
+  `test_piped_unrelated_redirections_preserve_stdin` and
+  `test_piped_consumer_stdin_redirection_fails_closed`.
+- Bash `echo -e` octal escapes: the decoder treats `\0` followed by up to three
+  octal digits as one escape, separately from the `printf` format path.
+  `test_piped_producer_payloads_reach_stdin_interpreters` exercises
+  `\0043 hidden` as `# hidden`.
+- Runner command string ordering: Python runner payloads now scan a complete
+  static shell command string before matching an interpreter basename at its
+  suffix. `test_python_runner_command_strings_are_scanned` covers a comment
+  followed by `/usr/bin/python3`.
+- Multiline MDX block comments: statement extraction tracks block-comment
+  boundaries before shape validation and passes the complete statement to the
+  TypeScript scanner. The multiline case in
+  `test_mdx_esm_intertoken_comments_are_reported` requires the comment.
 
-The focused scanner regressions passed 36 tests; the full policy unit file
-passed 706 tests with `-n 0`. `make comment-policy-check` scanned 5,749
-files with zero violations and passed all 19 native syntax tests.
+
+The original focused scanner regressions passed 36 tests; the five additional
+fix groups passed 25 tests. The full policy unit file passed 716 tests with
+`-n 0`. `make comment-policy-check` scanned 5,749 files with zero violations
+and passed all 19 native syntax tests.
