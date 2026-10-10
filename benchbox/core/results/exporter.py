@@ -75,7 +75,7 @@ class ResultExporter:
     def __init__(
         self,
         output_dir: str | Path | None = None,
-        anonymize: bool = True,
+        anonymize: bool = False,
         anonymization_config: AnonymizationConfig | None = None,
         console: Console | None = None,
         plan_history_dir: str | Path | None = None,

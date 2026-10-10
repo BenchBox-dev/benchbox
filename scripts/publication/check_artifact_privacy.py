@@ -3,10 +3,19 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import sys
 from pathlib import Path
+
+try:
+    from benchbox.validation.bundle import unanonymized_tuning_findings
+except ImportError:
+
+    def unanonymized_tuning_findings(payload):
+        return []
+
 
 SENSITIVE_PATTERNS = (
     (re.compile(r"ghp_[0-9a-zA-Z]{36}"), "GitHub Personal Access Token (ghp_)"),
@@ -78,6 +87,14 @@ def scan_file_for_privacy(file_path: Path) -> list[str]:
         findings.append(
             f"Detected Database connection string with credentials in '{file_path.name}' ({conn_leaks} occurrence(s))"
         )
+
+    if file_path.suffix.lower() == ".json":
+        try:
+            payload = json.loads(content)
+        except ValueError:
+            payload = None
+        for finding in unanonymized_tuning_findings(payload):
+            findings.append(f"Detected unanonymized tuning diagnostics in '{file_path.name}': {finding}")
 
     return findings
 

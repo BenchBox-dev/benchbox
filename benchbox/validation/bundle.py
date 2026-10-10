@@ -1132,6 +1132,8 @@ def _validate_inline_applied_ledger(platform: dict, vr: ValidationResult) -> Non
     applied = tuning.get("applied")
     if not isinstance(applied, dict):
         return
+    for finding in unanonymized_tuning_findings({"platform": platform}):
+        vr.error(f"Public privacy contract rejects unanonymized tuning diagnostics: {finding}")
 
     for label, count in _oversized_applied_ledger_arrays(applied):
         vr.error(
@@ -1890,7 +1892,10 @@ def _validate_applied_companion_limits(companion: Path, vr: ValidationResult) ->
             f"Applied receipt {companion.name} exceeds the {APPLIED_RECEIPT_MAX_ENTRIES}-entry limit "
             f"at {label} ({count} entries)"
         )
-    return not oversized
+    unanonymized = unanonymized_tuning_findings(payload)
+    for finding in unanonymized:
+        vr.error(f"Public privacy contract rejects unanonymized tuning diagnostics in {companion.name}: {finding}")
+    return not oversized and not unanonymized
 
 
 def _oversized_applied_ledger_arrays(applied: dict) -> list[tuple[str, int]]:
@@ -1914,6 +1919,101 @@ def _oversized_applied_ledger_arrays(applied: dict) -> list[tuple[str, int]]:
         for label, value in candidates
         if isinstance(value, list) and len(value) > APPLIED_RECEIPT_MAX_ENTRIES
     ]
+
+
+_UNANONYMIZED_STATEMENT_KEYS = ("statement", "error", "table")
+_UNANONYMIZED_RECEIPT_ENTRY_KEYS = (
+    "statement",
+    "reason",
+    "error",
+    "diff",
+    "detail",
+    "evidence",
+    "table",
+    "name",
+    "expected_columns",
+    "observed_columns",
+)
+_UNANONYMIZED_OBSERVED_KEYS = ("table", "name", "columns", "evidence")
+_UNANONYMIZED_DRIFT_KEYS = (
+    "errors",
+    "warnings",
+    "configuration_mismatches",
+    "missing_tables",
+    "extra_tables",
+)
+
+
+def _applied_payload_for_privacy_scan(data: Any) -> tuple[dict[str, Any] | None, str]:
+    if not isinstance(data, dict):
+        return None, "applied"
+    platform = data.get("platform")
+    tuning = platform.get("tuning") if isinstance(platform, dict) else None
+    candidate = tuning.get("applied") if isinstance(tuning, dict) else None
+    if isinstance(candidate, dict):
+        return candidate, "platform.tuning.applied"
+    if "platform" not in data and (isinstance(data.get("receipt"), dict) or isinstance(data.get("statements"), list)):
+        return data, "applied"
+    return None, "applied"
+
+
+def _unanonymized_key_findings(entries: Any, keys: tuple[str, ...], where: str) -> list[str]:
+    findings: list[str] = []
+    if not isinstance(entries, list):
+        return findings
+    for index, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            continue
+        for key in keys:
+            if key in entry:
+                findings.append(f"{where}[{index}] exposes unanonymized tuning {key}")
+    return findings
+
+
+def _unanonymized_intent_findings(items: Any, where: str) -> list[str]:
+    if not isinstance(items, list):
+        return []
+    return [
+        f"{where}[{index}] exposes unanonymized tuning intent detail"
+        for index, item in enumerate(items)
+        if isinstance(item, dict) and ("intent" in item or "reason" in item)
+    ]
+
+
+def _unanonymized_receipt_findings(receipt: Any, prefix: str) -> list[str]:
+    if not isinstance(receipt, dict):
+        return []
+    findings: list[str] = []
+    if "error" in receipt:
+        findings.append(f"{prefix}.receipt exposes an unanonymized tuning error")
+    findings.extend(
+        _unanonymized_key_findings(
+            receipt.get("entries"), _UNANONYMIZED_RECEIPT_ENTRY_KEYS, f"{prefix}.receipt.entries"
+        )
+    )
+    findings.extend(
+        _unanonymized_key_findings(receipt.get("observed"), _UNANONYMIZED_OBSERVED_KEYS, f"{prefix}.receipt.observed")
+    )
+    findings.extend(_unanonymized_intent_findings(receipt.get("dropped"), f"{prefix}.receipt.dropped"))
+    return findings
+
+
+def unanonymized_tuning_findings(data: Any) -> list[str]:
+    applied, prefix = _applied_payload_for_privacy_scan(data)
+    if applied is None:
+        return []
+    findings = _unanonymized_key_findings(
+        applied.get("statements"), _UNANONYMIZED_STATEMENT_KEYS, f"{prefix}.statements"
+    )
+    for section in ("dropped", "satisfied"):
+        findings.extend(_unanonymized_intent_findings(applied.get(section), f"{prefix}.{section}"))
+    findings.extend(_unanonymized_receipt_findings(applied.get("receipt"), prefix))
+    drift = applied.get("drift_check")
+    if isinstance(drift, dict):
+        for key in _UNANONYMIZED_DRIFT_KEYS:
+            if key in drift:
+                findings.append(f"{prefix}.drift_check exposes unanonymized tuning {key}")
+    return findings
 
 
 def _validate_manifest_provenance(manifest: dict[str, Any], primary_path: Path, vr: ValidationResult) -> None:

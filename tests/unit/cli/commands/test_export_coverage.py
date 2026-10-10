@@ -16,7 +16,7 @@ pytestmark = [
 
 
 class _Exporter:
-    def __init__(self, output_dir: Path):
+    def __init__(self, output_dir: Path, *_a: object, **_k: object):
         self.output_dir = output_dir
 
     def export_result(self, _result, formats: list[str]):

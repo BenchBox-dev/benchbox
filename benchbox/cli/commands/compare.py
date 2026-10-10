@@ -1221,7 +1221,7 @@ def _perform_comparison(
     plan_threshold: float,
     output_format: str = "text",
 ) -> dict[str, Any]:
-    exporter = ResultExporter()
+    exporter = ResultExporter(anonymize=True)
     comparison = exporter.compare_results(baseline_path, current_path)
 
     if "error" in comparison:
