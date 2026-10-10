@@ -180,6 +180,12 @@ def _column_list_end(statement: str) -> int:
                 quote = ""
         elif ch in "'\"`":
             quote = ch
+        elif ch == "-" and statement[cursor : cursor + 1] == "-":
+            newline = statement.find("\n", cursor + 1)
+            cursor = len(statement) if newline == -1 else newline + 1
+        elif ch == "/" and statement[cursor : cursor + 1] == "*":
+            close = statement.find("*/", cursor + 1)
+            cursor = len(statement) if close == -1 else close + 2
         elif ch == "(":
             depth += 1
         elif ch == ")":

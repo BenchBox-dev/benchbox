@@ -196,6 +196,59 @@ class TestScriptSplitting:
         assert [s.statement for s in ledger.statements] == [statement]
 
 
+_TRAILING_SQL_COMMENT = "-- trailing comment"
+_READBACK_SQL_COMMENT = "-- readback with a trailing comment"
+
+
+class TestCommentOnlyFragments:
+    def test_trailing_comment_after_execute_is_not_recorded(self) -> None:
+        driver = _SqlDriver()
+        ledger = AppliedTuningLedger()
+        proxy = recording_connection(driver, ledger, PHASE_DDL)
+
+        proxy.execute(f"CREATE INDEX idx ON t(x); {_TRAILING_SQL_COMMENT}")
+
+        assert driver.calls == [f"CREATE INDEX idx ON t(x); {_TRAILING_SQL_COMMENT}"]
+        assert [s.statement for s in ledger.statements] == ["CREATE INDEX idx ON t(x);"]
+
+    def test_trailing_comment_after_verb_call_is_not_recorded(self) -> None:
+        driver = _SqlDriver()
+        ledger = AppliedTuningLedger()
+        proxy = recording_connection(driver, ledger, PHASE_DDL, execute_verbs=("sql",))
+
+        proxy.sql(f"CREATE INDEX idx ON t(x); {_TRAILING_SQL_COMMENT}")
+
+        assert [s.statement for s in ledger.statements] == ["CREATE INDEX idx ON t(x);"]
+        receipt = corroborate(ledger, None)
+        assert [entry.statement for entry in receipt.entries] == ["CREATE INDEX idx ON t(x);"]
+
+    def test_trailing_comment_after_executescript_is_not_recorded(self) -> None:
+        class _ScriptDriver:
+            def __init__(self) -> None:
+                self.scripts: list[str] = []
+
+            def executescript(self, script, *args, **kwargs):
+                self.scripts.append(str(script))
+
+        driver = _ScriptDriver()
+        ledger = AppliedTuningLedger()
+        proxy = recording_connection(driver, ledger, PHASE_DDL)
+
+        proxy.executescript(f"CREATE INDEX idx ON t(x); {_TRAILING_SQL_COMMENT}")
+
+        assert [s.statement for s in ledger.statements] == ["CREATE INDEX idx ON t(x);"]
+
+    def test_readback_script_with_comment_tail_records_nothing(self) -> None:
+        driver = _SqlDriver()
+        ledger = AppliedTuningLedger()
+        proxy = recording_connection(driver, ledger, PHASE_DDL)
+
+        proxy.execute(f"SELECT 1; {_READBACK_SQL_COMMENT}")
+
+        assert driver.calls == [f"SELECT 1; {_READBACK_SQL_COMMENT}"]
+        assert ledger.is_empty()
+
+
 class TestQueryJobs:
     def test_submission_alone_is_not_recorded(self) -> None:
         client = _QueryClient()
@@ -300,6 +353,40 @@ class TestFootprint:
 
     def test_keyword_inside_a_literal_does_not_count(self) -> None:
         assert not is_schema_tuning_statement("CREATE TABLE t (a INT) COMMENT 'partitioned by day'")
+
+    @pytest.mark.parametrize(
+        "statement",
+        [
+            "CREATE TABLE t (distkey INT)",
+            "CREATE TABLE t (a INT, distkey TEXT)",
+            "CREATE TABLE t (diststyle VARCHAR(16))",
+            "CREATE TABLE t (sortkey INT)",
+            "CREATE TABLE t (a INT, sorted_by DOUBLE)",
+            "CREATE TABLE t (bucketed_by INT)",
+            "CREATE TABLE t (unique INT)",
+            "CREATE TABLE t (check INT)",
+        ],
+    )
+    def test_bare_keyword_as_a_column_name_is_not_schema_tuning(self, statement: str) -> None:
+        assert not is_schema_tuning_statement(statement)
+
+    @pytest.mark.parametrize(
+        "statement",
+        [
+            "CREATE TABLE t (a INT) PARTITIONED BY (a)",
+            "CREATE TABLE t (a INT) CLUSTERED BY (a) INTO 4 BUCKETS",
+            "CREATE TABLE t (a INT) DISTSTYLE EVEN DISTKEY (a)",
+            "CREATE TABLE t (a INT) DUPLICATE KEY (a)",
+            "CREATE TABLE t (a INT) PRIMARY INDEX (a)",
+            "CREATE TABLE t (a INT) WITH (distribution = 'hash')",
+            "CREATE TABLE t (a INT) WITH (partitioning = ARRAY['a'])",
+            "CREATE TABLE t (a INT) WITH (sorted_by = ARRAY['a'])",
+            "CREATE TABLE t (a INT) WITH (bucketed_by = ARRAY['a'])",
+            "CREATE TABLE t (a INT UNIQUE)",
+        ],
+    )
+    def test_bare_keyword_in_clause_syntax_is_schema_tuning(self, statement: str) -> None:
+        assert is_schema_tuning_statement(statement)
 
 
 class TestAdapterCreateSchema:

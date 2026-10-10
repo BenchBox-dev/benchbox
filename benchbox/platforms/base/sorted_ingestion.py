@@ -184,6 +184,28 @@ class SortedIngestionMixin:
 
         return sort_columns
 
+    def _recording_ctas_connection(self, connection: Any) -> Any:
+        from benchbox.core.tuning.applied_ledger import (
+            PHASE_POST_LOAD,
+            RecordingConnection,
+            is_schema_tuning_statement,
+            recording_connection,
+        )
+
+        if getattr(self, "_applied_tuning_ledger", None) is None:
+            return connection
+        if isinstance(connection, RecordingConnection):
+            return connection
+        if not callable(getattr(connection, "execute", None)) and not callable(getattr(connection, "sql", None)):
+            return connection
+        return recording_connection(
+            connection,
+            self._applied_tuning_ledger,
+            PHASE_POST_LOAD,
+            statement_filter=is_schema_tuning_statement,
+            execute_verbs=("sql",),
+        )
+
     def _execute_ctas_sort(
         self,
         table_name: str,
@@ -206,6 +228,7 @@ class SortedIngestionMixin:
             return True
 
         ledger_statement = "\n".join(statements)
+        target = self._recording_ctas_connection(connection)
         transaction_started = False
         try:
             if atomic:
@@ -214,7 +237,7 @@ class SortedIngestionMixin:
                     self._record_sorted_ingestion_skip(validated_table, sorted_columns, reason)
                     self.logger.info("Skipping constraint-preserving CTAS sort for %s: %s", table_name, reason)
                     return False
-                self._execute_sql_statement(connection, "BEGIN TRANSACTION;")
+                self._execute_sql_statement(target, "BEGIN TRANSACTION;")
                 transaction_started = True
             if atomic and self._has_populated_fk_dependents(connection, validated_table):
                 self._rollback_transaction(connection)
@@ -228,13 +251,13 @@ class SortedIngestionMixin:
                 )
                 return False
             for statement in statements:
-                self._execute_sql_statement(connection, statement)
+                self._execute_sql_statement(target, statement)
             if atomic:
                 commit_method = getattr(connection, "commit", None)
                 if callable(commit_method):
                     commit_method()
                 else:
-                    self._execute_sql_statement(connection, "COMMIT;")
+                    self._execute_sql_statement(target, "COMMIT;")
                 transaction_started = False
         except Exception as exc:
             rollback_error: Exception | None = None

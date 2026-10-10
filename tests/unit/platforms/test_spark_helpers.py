@@ -178,6 +178,25 @@ class TestOptimizeSparkTableDefinition:
         assert result.index(f"({columns})") + len(f"({columns})") < result.index("USING DELTA")
         assert result.index("USING DELTA") < result.index("PARTITIONED BY")
 
+    @pytest.mark.parametrize(
+        "columns",
+        [
+            "id INT /* ) */, amount INT",
+            "id INT /* ( unbalanced */, amount INT",
+            "id INT -- )\n, amount INT",
+            "id INT -- ( unbalanced\n, amount INT",
+        ],
+    )
+    def test_using_stays_outside_column_list_with_comment_parentheses(self, columns: str) -> None:
+        result = optimize_spark_table_definition(
+            f"CREATE TABLE t ({columns}) PARTITIONED BY (id);",
+            table_format="delta",
+        )
+        assert f"({columns})" in result
+        assert result.count("USING DELTA") == 1
+        assert result.index(f"({columns})") + len(f"({columns})") < result.index("USING DELTA")
+        assert result.index("USING DELTA") < result.index("PARTITIONED BY")
+
     def test_non_create_table_unchanged(self) -> None:
         sql = "INSERT INTO t VALUES (1)"
         assert optimize_spark_table_definition(sql, table_format="parquet") == sql

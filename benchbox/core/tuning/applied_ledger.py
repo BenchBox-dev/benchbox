@@ -66,12 +66,22 @@ _SCHEMA_TUNING_STATEMENT_RE = re.compile(
     r"^\s*(?:create\s+index|create\s+(?:or\s+replace\s+)?table|alter\s+table)\b",
     re.IGNORECASE,
 )
-_SCHEMA_TUNING_FOOTPRINT_RE = re.compile(
+_SCHEMA_TUNING_PHRASE_RE = re.compile(
     r"\b(?:cluster\s+by|clustered\s+by|distributed\s+by|foreign\s+key|order\s+by|partition\s+by|"
-    r"partitioned\s+by|primary\s+key|primary\s+index|duplicate\s+key|sortkey|distkey|diststyle|"
-    r"sorted_by|bucketed_by|unique|check)\b|\b(?:distribution|partitioning)\s*=",
+    r"partitioned\s+by|primary\s+key|primary\s+index|duplicate\s+key)\b"
+    r"|\b(?:distribution|partitioning)\s*=",
     re.IGNORECASE,
 )
+_SCHEMA_TUNING_KEYWORD_RE = re.compile(
+    r"\b(?:sortkey|distkey|diststyle|sorted_by|bucketed_by|unique|check)\b",
+    re.IGNORECASE,
+)
+
+
+def _bare_keyword_is_clause(shape: str, match: re.Match[str]) -> bool:
+    if shape[match.end() :].lstrip()[:1] in ("(", "="):
+        return True
+    return not shape[: match.start()].rstrip().endswith(("(", ","))
 
 
 def _sql_shape(statement: Any) -> str:
@@ -86,7 +96,9 @@ def is_schema_tuning_statement(statement: Any) -> bool:
         return False
     if re.match(r"^\s*create\s+index\b", shape, re.IGNORECASE):
         return True
-    return _SCHEMA_TUNING_FOOTPRINT_RE.search(shape) is not None
+    if _SCHEMA_TUNING_PHRASE_RE.search(shape) is not None:
+        return True
+    return any(_bare_keyword_is_clause(shape, match) for match in _SCHEMA_TUNING_KEYWORD_RE.finditer(shape))
 
 
 def _split_sql_script(script: Any) -> list[str]:
@@ -130,10 +142,12 @@ def normalize_ledger_phase(phase: Any) -> str:
 
 def _is_recordable_statement(statement: Any) -> bool:
     try:
-        text = str(statement).lstrip().lstrip("(").lstrip().lower()
+        text = _SQL_COMMENT_RE.sub(" ", str(statement))
     except Exception:  # pragma: no cover
         return True
-    return not text.startswith(_READBACK_PREFIXES)
+    if not text.strip():
+        return False
+    return not text.lstrip().lstrip("(").lstrip().lower().startswith(_READBACK_PREFIXES)
 
 
 @dataclass
