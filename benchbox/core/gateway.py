@@ -59,14 +59,36 @@ def resolve_requested_gateway(
     return gateway
 
 
+def _requested_engine(
+    bundle_or_platform: Any,
+    platform_data: Mapping[str, Any],
+    config_data: Mapping[str, Any],
+    result_engine: Mapping[str, Any],
+) -> str:
+    if isinstance(bundle_or_platform, Mapping) and isinstance(bundle_or_platform.get("platform"), Mapping):
+        from benchbox.core.results.execution_variant import read_execution_engine
+
+        return str(read_execution_engine(bundle_or_platform).get("requested") or "default")
+    execution_engine = platform_data.get("execution_engine")
+    if isinstance(execution_engine, Mapping):
+        return str(execution_engine.get("requested") or "default")
+    if result_engine.get("requested"):
+        return str(result_engine["requested"])
+    return str(config_data.get("execution_engine") or "default")
+
+
 def extract_variant_tuple(bundle_or_platform: Any) -> tuple[str, str, str]:
     platform_data: Mapping[str, Any] = {}
     config_data: Mapping[str, Any] = {}
+    result_engine: Mapping[str, Any] = {}
 
     if hasattr(bundle_or_platform, "platform_info"):
         p_info = getattr(bundle_or_platform, "platform_info", None)
         if isinstance(p_info, Mapping):
             platform_data = p_info
+        recorded_engine = getattr(bundle_or_platform, "execution_engine", None)
+        if isinstance(recorded_engine, Mapping):
+            result_engine = recorded_engine
         e_meta = getattr(bundle_or_platform, "execution_metadata", None)
         if isinstance(e_meta, Mapping) and isinstance(e_meta.get("run_config"), Mapping):
             config_data = e_meta["run_config"]
@@ -89,11 +111,7 @@ def extract_variant_tuple(bundle_or_platform: Any) -> tuple[str, str, str]:
     elif "platform_mode" in config_data:
         deployment = str(config_data["platform_mode"])
 
-    engine = "default"
-    if "execution_engine" in platform_data and isinstance(platform_data["execution_engine"], Mapping):
-        engine = str(platform_data["execution_engine"].get("requested") or "default")
-    elif "execution_engine" in config_data:
-        engine = str(config_data["execution_engine"])
+    engine = _requested_engine(bundle_or_platform, platform_data, config_data, result_engine)
 
     gateway = DEFAULT_GATEWAY
     if "gateway" in platform_data and isinstance(platform_data["gateway"], Mapping):

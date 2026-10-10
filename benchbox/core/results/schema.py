@@ -102,6 +102,7 @@ class SchemaV2Validator:
     REQUIRED_KEYS = REQUIRED_TOP_KEYS
     OPTIONAL_KEYS = (
         "version",
+        "tpc_compliant",
         "environment",
         "tables",
         "errors",

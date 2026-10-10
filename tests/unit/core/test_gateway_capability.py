@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -29,7 +30,7 @@ from benchbox.core.platform_manifest import (
 from benchbox.core.platform_registry import PlatformRegistry
 from benchbox.core.results.analytics import _load_regression_runs
 from benchbox.core.results.models import BenchmarkResults, QueryExecution
-from benchbox.core.results.schema import build_result_payload
+from benchbox.core.results.schema import SchemaV2Validator, build_result_payload
 
 
 def test_manifest_declares_snowflake_and_databricks_gateways() -> None:
@@ -178,11 +179,38 @@ def test_variants_comparable() -> None:
             "execution_engine": {"requested": "streaming"},
         }
     }
+    run_legacy_streaming = {
+        "config": {"platform_options": {"streaming": True}},
+        "platform": {"deployment": {"selected": "managed"}},
+    }
+    run_legacy_engine_requested = {
+        "platform": {
+            "deployment": {"selected": "managed"},
+            "config": {"engine_requested": "streaming"},
+        }
+    }
+    loaded_legacy_result = BenchmarkResults(
+        benchmark_name="TPC-H",
+        platform="snowflake",
+        scale_factor=0.01,
+        execution_id="run-3",
+        timestamp=datetime.now(),
+        duration_seconds=1.0,
+        total_queries=0,
+        successful_queries=0,
+        failed_queries=0,
+        platform_info={"deployment": {"selected": "managed"}},
+        execution_engine={"requested": "streaming"},
+    )
 
     assert variants_comparable(run_native, run_native) is True
     assert variants_comparable(run_native, run_espresso) is False
     assert variants_comparable(run_espresso, run_greybeam) is False
     assert variants_comparable(run_native, run_diff_engine) is False
+    assert variants_comparable(run_native, run_legacy_streaming) is False
+    assert variants_comparable(run_native, run_legacy_engine_requested) is False
+    assert variants_comparable(run_legacy_streaming, run_legacy_engine_requested) is True
+    assert variants_comparable(run_native, loaded_legacy_result) is False
 
 
 def test_analytics_regression_baseline_excludes_heterogeneous_runs(tmp_path: Path) -> None:
@@ -240,8 +268,6 @@ def test_compare_cli_guards_heterogeneous_runs(tmp_path: Path) -> None:
 
 
 def test_build_result_payload_records_gateway_and_enforces_compliance() -> None:
-    from datetime import datetime
-
     res = BenchmarkResults(
         benchmark_name="TPC-H",
         platform="snowflake",
@@ -265,6 +291,7 @@ def test_build_result_payload_records_gateway_and_enforces_compliance() -> None:
         ],
     )
     payload = build_result_payload(res)
+    SchemaV2Validator().validate(payload)
 
     assert payload["platform"]["gateway"] == {"name": "greybeam", "routed": True}
     assert payload["platform"]["tpc_compliant"] is False
