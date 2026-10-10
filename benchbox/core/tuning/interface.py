@@ -1178,6 +1178,7 @@ class UnifiedTuningConfiguration:
         ("distribution", TuningType.DISTRIBUTION),
         ("sorting", TuningType.SORTING),
     ]
+    _SPARK_SESSION_CONFIG_PLATFORMS = frozenset({"spark", "velox", "lakesail"})
 
     def get_enabled_tuning_types(self) -> set[TuningType]:
         enabled_types: set[TuningType] = set()
@@ -1219,16 +1220,19 @@ class UnifiedTuningConfiguration:
                 errors.append(message)
 
         platform_key = platform.lower().replace("_", "-")
+        if self.platform_optimizations.spark and platform_key not in self._SPARK_SESSION_CONFIG_PLATFORMS:
+            warnings.append(
+                f"'spark' session-config map is not applied by platform '{platform}'; "
+                "run on spark, velox, or lakesail to apply it"
+            )
         validator = _get_effective_layout_validator(platform_key)
         if validator is not None:
             errors.extend(validator(self))
-
         if schema_primary_keys:
             from benchbox.core.tuning.capability_registry import resolve_platform_key
 
             if resolve_platform_key(platform_key) == "clickhouse":
                 errors.extend(_clickhouse_primary_key_prefix_errors(self, schema_primary_keys))
-
         return errors, warnings
 
     def to_dict(self) -> dict[str, Any]:
