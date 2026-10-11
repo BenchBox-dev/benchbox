@@ -23117,7 +23117,7 @@
         "tuning-evidence-tuned-mode-promise-20261008"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "blocked",
       "title": "Write the benefit rule for keeping a tuned template, with thresholds taken from the measured noise"
     },
     "tuning-evidence-measurement-harness-20261008": {
