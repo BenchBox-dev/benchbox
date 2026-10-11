@@ -20109,7 +20109,7 @@
         "site-split-20-seed-site-repo"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "blocked",
       "title": "Replay core changes to seeded site paths into the site repo until core removes them"
     },
     "site-split-27-advisory-visual-regression": {
