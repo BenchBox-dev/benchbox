@@ -4445,15 +4445,10 @@
       "title": "Concurrent comment-policy runs keep the shared host above the quiet-machine threshold for timed benchmarks"
     },
     "comment-policy-pinned-notice-drift-guard": {
-      "claim": {
-        "expires_at": "2026-10-12T13:55:08Z",
-        "generation": "2178dc61b2834b43b159cd6142318e73",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bd5956809339499407531943"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "Required CI must reject LICENSE/COPYRIGHT.md notice drift that would break later PRs"
     },
     "comment-policy-ratchet-wheel-upgrade": {
