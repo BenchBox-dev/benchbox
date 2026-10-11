@@ -583,11 +583,21 @@ supersede the paired scanner measurements recorded above.
   `test_piped_bash_shopt_option_is_not_treated_as_script_operand` verifies
   both forms.
 
-The focused D23-D24 regression run passed 32 tests. Before the fix, it
-reproduced three failures: the nested `env`/`sudo` chain and both Bash option
-forms. The full scanner unit file passed 786 tests; the CI parity file passed
-10. Ruff check and format checks passed for the changed Python files.
-Full-project type checking with `uv run ty check` exited 0 with 674 diagnostics.
+The focused D23-D24 regression run passed 32 tests, with 754 deselected.
+Before the fix, it reproduced three failures: the nested `env`/`sudo` chain and
+both Bash option forms.
+
+```bash
+uv run -- python -m pytest tests/unit/scripts/test_comment_policy.py -k 'piped_producer_payloads_reach_stdin_interpreters or piped_bash_shopt_option_is_not_treated_as_script_operand' -q -n0
+```
+
+The combined scanner unit and CI parity run passed 796 tests (786 and 10):
+
+```bash
+uv run -- python -m pytest tests/unit/scripts/test_comment_policy.py tests/system/test_ci_lint_parity.py -q -n0
+```
+
+Ruff check and format checks passed for the changed Python files; `uv run -- python -m py_compile scripts/comment_payloads.py` passed. Full-project type checking with `uv run ty check` exited 0 with 674 diagnostics.
 
 The full `make comment-policy-check` run passed: 5,779 source files, zero
 violations, zero enforced failures, and all 19 native syntax tests passed.
