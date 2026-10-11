@@ -5,7 +5,7 @@
     "Existing gate behaviour and output are unchanged when no engine is given",
     "PR merged through the normal flow"
   ],
-  "context": "Decision gate: start after core-exec-polars-cli-mcp-adoption. Guardrails: shared core-exec guardrails (see core-exec-d0-vocabulary-adr context); never install non-lock Polars in the primary clone.",
+  "context": "Decision gate: start after core-exec-polars-cli-mcp-adoption. Guardrails: shared core-exec guardrails (see core-exec-d0-vocabulary-adr context); never install non-lock Polars in the primary clone.\n\nCloseout (2026-10-11): PR #2904 merged into develop at head e39dfe45b25fb6f79ec3115126107432c4fc84e3 as merge commit aff90c299885efc815130695abf6337322aac655. Post-rebase verification: SSB cross-surface streaming smoke compared 13/13 cells with 0 divergent; make pr-preflight passed 147 tests (4 DeprecationWarnings). CI run 38143144363 completed with no failures; the exact-head Oracle review succeeded. The first Oracle check failed while waiting for review; rerunning after the review landed succeeded. The gate accepts the execution_engine argument through CLI/Make and the adapter, rejects unsupported values through the core validator, and preserves no-engine behavior. PR merged through the normal flow.",
   "description": "build_production_contexts (benchbox/core/equivalence/cross_surface.py) constructs each adapter with no options, so the gate always runs polars-df with the default engine. The only lever today is POLARS_ENGINE_AFFINITY, which changes the engine from Polars 1.31.0 on (probed 2026-10-08: the streaming engine's polars-stream log lines appear only with it set to streaming) and has no effect on 1.0.0, 1.12.0 and 1.22.0. After core-exec-polars-cli-mcp-adoption, let the gate take an execution_engine argument and pass it to the adapter, so the check uses the same core setting and code path as `benchbox run --execution-engine ...` and fails closed through resolve_requested on platforms or versions that cannot honour it.",
   "links": [
     "benchbox/core/equivalence/cross_surface.py",
@@ -35,6 +35,14 @@
       "generation": "9649a702db0947309df0f38520e211bb",
       "op": "take",
       "op_id": "eb0eb94faf494284855b0b1c3730acce",
+      "session_id": "5d4da70321324b3c9a505b143813724f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6e8a424eda2c7006605aa48b",
+      "at": "2026-10-11T17:47:34Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3b379cc7395e4c5bb7d9d421aa7790b5",
       "session_id": "5d4da70321324b3c9a505b143813724f"
     }
   ]
