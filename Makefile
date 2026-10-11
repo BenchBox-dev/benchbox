@@ -174,6 +174,7 @@ EXECUTION_ENGINE_OPTION = $(if $(strip $(EXECUTION_ENGINE)),--execution-engine $
 ssb-cross-surface-equivalence-report:
 	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark ssb $(EXECUTION_ENGINE_OPTION)
 
+.PHONY: amplab-cross-surface-equivalence-report
 amplab-cross-surface-equivalence-report:
 	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark amplab $(EXECUTION_ENGINE_OPTION)
 
