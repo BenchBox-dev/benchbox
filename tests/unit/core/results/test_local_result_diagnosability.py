@@ -209,20 +209,54 @@ class TestOutwardPathsStayRedacted:
         for path in (tmp_path / "published").glob("*.json"):
             assert unanonymized_tuning_findings(json.loads(path.read_text(encoding="utf-8"))) == []
 
-    def test_redacted_publish_refuses_unredactable_override_companion(self, tmp_path):
+    def test_redacted_publish_preserves_override_companion(self, tmp_path):
         from benchbox.cli.commands.publish import _redacted_publish_source, publish_bundle
 
         source = ResultExporter(output_dir=tmp_path / "local", anonymize=False).export_result(
             _tuned_result(), ["json"]
         )["json"]
-        (source.parent / (source.stem + ".override.json")).write_text('{"rules": []}', encoding="utf-8")
+        override = source.with_name(f"{source.stem}.override.json")
+        override_payload = {
+            "rules": [{"rule": "timing-plateau", "rule_version": "1"}],
+            "reason": "verified fixed-overhead regime",
+            "evidence": "https://example.com/trace",
+            "expires": "single-batch",
+            "approver": "reviewer2",
+        }
+        override.write_text(json.dumps(override_payload), encoding="utf-8")
 
         redacted, scratch = _redacted_publish_source(source)
+        try:
+            assert redacted is not None
+            redacted_override = redacted.with_name(f"{redacted.stem}.override.json")
+            assert redacted_override.read_text(encoding="utf-8") == override.read_text(encoding="utf-8")
+        finally:
+            if scratch is not None:
+                scratch.cleanup()
 
-        assert redacted is None
-        assert scratch is None
-        assert publish_bundle(source, target=str(tmp_path / "published"), label="local", quiet=True) is None
-        assert list((tmp_path / "published").glob("*.json")) == []
+        assert publish_bundle(source, target=str(tmp_path / "published"), label="local", quiet=True) is not None
+        published_override = tmp_path / "published" / override.name
+        assert published_override.read_text(encoding="utf-8") == override.read_text(encoding="utf-8")
+
+    @pytest.mark.parametrize("contents", (b'{"receipt": ', b"\xff"))
+    @pytest.mark.parametrize("suffix", (".plans.json", ".applied.json", ".tuning.json"))
+    def test_submission_rejects_unreadable_diagnostic_companion(self, contents, suffix, tmp_path):
+        source = ResultExporter(output_dir=tmp_path, anonymize=True).export_result(_tuned_result(), ["json"])["json"]
+        companion = source.with_name(f"{source.stem}{suffix}")
+        companion.write_bytes(contents)
+
+        (validation,) = validate_bundles([source])
+
+        assert not validation.ok
+        assert any(companion.name in error and "unreadable" in error.lower() for error in validation.errors)
+
+    def test_redacted_publish_refuses_unreadable_primary(self, tmp_path):
+        from benchbox.cli.commands.publish import _redacted_publish_source
+
+        source = tmp_path / "broken.json"
+        source.write_text('{"results": ', encoding="utf-8")
+
+        assert _redacted_publish_source(source) == (None, None)
 
     def test_clean_primary_with_dirty_applied_companion_never_publishes_verbatim(self, tmp_path):
         import json as _json
@@ -428,23 +462,72 @@ class TestOutwardPathsStayRedacted:
         assert published_plans.exists()
         assert unanonymized_plans_findings(_json.loads(published_plans.read_text(encoding="utf-8"))) == []
 
+    @pytest.mark.parametrize("dirty_kind", ("tuning", "plans"))
+    def test_redacted_publish_refuses_export_with_unanonymized_diagnostics(self, dirty_kind, monkeypatch, tmp_path):
+        import benchbox.cli.commands.publish as publish_mod
+        from benchbox.cli.commands.publish import _redacted_publish_source
+        from benchbox.core.results.query_plan_models import LogicalOperator, LogicalOperatorType, QueryPlanDAG
+
+        result = _tuned_result()
+        if dirty_kind == "plans":
+            result.query_results = [
+                {
+                    "query_id": "Q1",
+                    "execution_time": 1.0,
+                    "status": "SUCCESS",
+                    "rows_returned": 4,
+                    "query_plan": QueryPlanDAG(
+                        query_id="Q1",
+                        platform="duckdb",
+                        logical_root=LogicalOperator(
+                            operator_type=LogicalOperatorType.SCAN,
+                            operator_id="scan_1",
+                            table_name="lineitem",
+                        ),
+                    ),
+                }
+            ]
+            result.query_plans_captured = 1
+        source = ResultExporter(output_dir=tmp_path / "local", anonymize=False).export_result(result, ["json"])["json"]
+        real_exporter = publish_mod.ResultExporter
+
+        class _DirtyExporter:
+            def __init__(self, *args, **kwargs):
+                self.inner = real_exporter(*args, **kwargs)
+
+            def export_result(self, value, formats):
+                exported = self.inner.export_result(value, formats)
+                if dirty_kind == "tuning":
+                    primary = json.loads(exported["json"].read_text(encoding="utf-8"))
+                    primary["platform"]["tuning"]["applied"]["statements"][0]["statement"] = _PROBE_STATEMENT
+                    exported["json"].write_text(json.dumps(primary), encoding="utf-8")
+                else:
+                    plans = exported["json"].with_name(f"{exported['json'].stem}.plans.json")
+                    payload = json.loads(plans.read_text(encoding="utf-8"))
+                    next(iter(payload["queries"].values()))["plan"]["raw_explain_output"] = "EXPLAIN SELECT 1"
+                    plans.write_text(json.dumps(payload), encoding="utf-8")
+                return exported
+
+        monkeypatch.setattr(publish_mod, "ResultExporter", _DirtyExporter)
+
+        redacted, scratch = _redacted_publish_source(source)
+
+        assert redacted is None
+        assert scratch is None
+
     def test_verbatim_publish_refuses_when_anonymized_flag_is_not_true(self, tmp_path):
         from benchbox.cli.commands.publish import _redacted_publish_source
 
-        # Result with export.anonymized == False (or missing) must not take the verbatim bypass
         clean_local = ResultExporter(output_dir=tmp_path / "clean", anonymize=False).export_result(
             _tuned_result(), ["json"]
         )["json"]
-        # Strip any tuning findings from the payload to simulate clean payload without anonymized=True
         raw = json.loads(clean_local.read_text(encoding="utf-8"))
         assert raw.get("export", {}).get("anonymized") is False
-        # Even if tuning/plans findings are clean:
         raw["platform"].pop("tuning", None)
         clean_local.write_text(json.dumps(raw), encoding="utf-8")
 
         redacted_path, scratch = _redacted_publish_source(clean_local)
         try:
-            # Must NOT return verbatim clean_local (scratch must be created)
             assert scratch is not None
             assert redacted_path is not None
             assert redacted_path != clean_local

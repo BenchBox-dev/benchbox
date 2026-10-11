@@ -1883,10 +1883,12 @@ def _validate_applied_companion_limits(companion: Path, vr: ValidationResult) ->
         return False
     try:
         payload = json.loads(companion.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return True
+    except (OSError, ValueError) as exc:
+        vr.error(f"Diagnostic companion {companion.name} is unreadable: {exc}")
+        return False
     if not isinstance(payload, dict):
-        return True
+        vr.error(f"Diagnostic companion {companion.name} must contain a JSON object")
+        return False
     oversized = _oversized_applied_ledger_arrays(payload)
     for label, count in oversized:
         vr.error(
@@ -2164,13 +2166,16 @@ def validate_bundles(
                 elif comp_lower == plans_name:
                     try:
                         plans_payload = json.loads(companion.read_text(encoding="utf-8"))
-                    except (OSError, json.JSONDecodeError):
-                        plans_payload = None
-                    if isinstance(plans_payload, dict):
-                        for finding in unanonymized_plans_findings(plans_payload):
-                            vr.error(
-                                f"Public privacy contract rejects unanonymized plans diagnostics in {companion.name}: {finding}"
-                            )
+                    except (OSError, ValueError) as exc:
+                        vr.error(f"Plans companion {companion.name} is unreadable: {exc}")
+                        continue
+                    if not isinstance(plans_payload, dict):
+                        vr.error(f"Plans companion {companion.name} must contain a JSON object")
+                        continue
+                    for finding in unanonymized_plans_findings(plans_payload):
+                        vr.error(
+                            f"Public privacy contract rejects unanonymized plans diagnostics in {companion.name}: {finding}"
+                        )
         per_bundle_manifest = bundle_path.parent / f"{bundle_path.stem}{SUBMISSION_MANIFEST_SUFFIX}"
         legacy_manifest = bundle_path.parent / SUBMISSION_MANIFEST_FILENAME
         manifest_path = (
