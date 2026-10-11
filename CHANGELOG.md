@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+
+- The Polars version-matrix reproduction instructions now use
+  `--execution-engine` for default, in-memory and streaming setups, and identify
+  the earlier `engine` option name used by the recorded bundles.
+
 ### Added
 
 - Result schema 2.3 supports execution-engine receipts, query engine observations,

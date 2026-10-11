@@ -3,6 +3,7 @@
 Method, controls and selection rules: `methodology.md`. Per-comparison values: `polars-version-matrix-comparisons.csv`.
 
 Totals are the sum of per-query wall times for one power run, in seconds: median (min–max) of three rounds. Every value below is read from `polars-version-matrix-analysis.json`.
+Setups A, B and C use `--execution-engine default`, `--execution-engine in-memory`, and `--execution-engine streaming`, respectively. The committed 2026-10-09 bundles were recorded under the earlier Polars `engine` option name and map to the same requested values (`default`, `in-memory`, and `streaming`).
 
 ## Summary
 

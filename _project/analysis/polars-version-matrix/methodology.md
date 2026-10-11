@@ -11,9 +11,9 @@ How does Polars 2.0.0 perform against earlier 1.x releases on the four BenchBox 
 | Platform | `polars-df` (DataFrame API, Parquet input) |
 | Benchmarks | TPC-H, TPC-DS, SSB, ClickBench at scale factor 10 |
 | Versions | 1.31.0, 1.35.2, 1.40.1, 1.44.2, 2.0.0 |
-| Setup A | each version's default `collect()` (`engine=default`) |
-| Setup B | in-memory engine (`engine=in-memory`), 2.0.0 only |
-| Setup C | streaming engine (`engine=streaming`), 1.31.0, 1.40.1, 1.44.2, 2.0.0 |
+| Setup A | each version's default `collect()` (`--execution-engine default`) |
+| Setup B | in-memory engine (`--execution-engine in-memory`), 2.0.0 only |
+| Setup C | streaming engine (`--execution-engine streaming`), 1.31.0, 1.40.1, 1.44.2, 2.0.0 |
 | Threads | `POLARS_MAX_THREADS=10` |
 | Rechunk | off (`rechunk=false`) |
 | Rounds | 3, one invocation per cell per round, cell order shuffled each round (seed 20261009) |
