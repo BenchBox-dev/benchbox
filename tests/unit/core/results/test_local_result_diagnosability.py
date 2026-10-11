@@ -238,6 +238,22 @@ class TestOutwardPathsStayRedacted:
         published_override = tmp_path / "published" / override.name
         assert published_override.read_text(encoding="utf-8") == override.read_text(encoding="utf-8")
 
+    def test_redacted_publish_refuses_dirty_plans_without_redacted_output(self, tmp_path):
+        import json as _json
+
+        from benchbox.cli.commands.publish import _redacted_publish_source
+
+        source = ResultExporter(output_dir=tmp_path / "local", anonymize=False).export_result(
+            _tuned_result(), ["json"]
+        )["json"]
+        plans = source.with_name(f"{source.stem}.plans.json")
+        plans.write_text(
+            _json.dumps({"queries": {"Q1": {"plan": {"raw_explain_output": "EXPLAIN SELECT * FROM lineitem"}}}}),
+            encoding="utf-8",
+        )
+
+        assert _redacted_publish_source(source) == (None, None)
+
     @pytest.mark.parametrize("contents", (b'{"receipt": ', b"\xff"))
     @pytest.mark.parametrize("suffix", (".plans.json", ".applied.json", ".tuning.json"))
     def test_submission_rejects_unreadable_diagnostic_companion(self, contents, suffix, tmp_path):

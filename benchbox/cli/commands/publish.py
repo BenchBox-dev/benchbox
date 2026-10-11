@@ -365,9 +365,15 @@ def _redacted_bundle_is_complete_and_clean(source: Path, redacted_path: Path) ->
             except OSError:
                 return False
             continue
-        if suffix in (".tuning.json", ".applied.json"):
+        if output_companion.is_file():
             continue
-        if not output_companion.is_file():
+        if suffix == ".plans.json":
+            if _copy_clean_companion(source_companion, output_companion) is not True:
+                return False
+        elif suffix in (".tuning.json", ".applied.json"):
+            if _copy_clean_companion(source_companion, output_companion) is None:
+                return False
+        else:
             return False
     if not _redacted_output_is_clean(redacted_path, require_anonymized_marker=True):
         return False
@@ -377,6 +383,24 @@ def _redacted_bundle_is_complete_and_clean(source: Path, redacted_path: Path) ->
         output_companion = redacted_path.parent / (redacted_path.stem + suffix)
         if output_companion.exists() and not _redacted_output_is_clean(output_companion):
             return False
+    return True
+
+
+def _copy_clean_companion(source: Path, destination: Path) -> bool | None:
+    if source.is_symlink() or not source.is_file():
+        return None
+    try:
+        payload = json.loads(source.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    if unanonymized_tuning_findings(payload) or unanonymized_plans_findings(payload):
+        return False
+    try:
+        shutil.copyfile(source, destination)
+    except OSError:
+        return None
     return True
 
 
