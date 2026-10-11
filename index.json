@@ -20104,17 +20104,12 @@
       "title": "Run the site build in shadow against core site-deploy until three consecutive certified bundles match"
     },
     "site-split-26-seeded-path-replay": {
-      "claim": {
-        "expires_at": "2026-10-12T01:44:09Z",
-        "generation": "1e771e729c4c47a4bc4d37cd4bc9b3e1",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:34427fd6ff4639228ad9cd98"
-      },
+      "claim": null,
       "needs": [
         "site-split-20-seed-site-repo"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Replay core changes to seeded site paths into the site repo until core removes them"
     },
     "site-split-27-advisory-visual-regression": {
