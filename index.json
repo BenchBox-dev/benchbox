@@ -23132,7 +23132,9 @@
       "claim": null,
       "needs": [
         "tuning-evidence-measurement-harness-20261008",
-        "tuning-evidence-tuned-mode-promise-20261008"
+        "tuning-evidence-tuned-mode-promise-20261008",
+        "clickhouse-per-query-settings-declared-20261008",
+        "clickhouse-ssb-session-pack-ablation-20261008"
       ],
       "priority": "high",
       "status": "blocked",
