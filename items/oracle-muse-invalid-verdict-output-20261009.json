@@ -12,6 +12,7 @@
     "_project/scripts/oracle_reviewers/commands.py",
     ".github/oracle-reviewers.yml"
   ],
+  "not_before": "2026-10-12T00:00:00Z",
   "sessions": [
     {
       "actor": "mcp:claude-code:joe@joe-mac-mini.local:8c06561181af4cd0d5004653",
@@ -61,6 +62,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "179e9a9c3ebd48f5a794c6e25aeb7753",
+      "session_id": "12a278318efc4205bf01aa4132116f81"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0b65b59dfd5ecfabcfde36b0",
+      "at": "2026-10-11T10:41:53Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "dea058bbf4564449a7d38ae16fd76d8e",
       "session_id": "12a278318efc4205bf01aa4132116f81"
     }
   ]
