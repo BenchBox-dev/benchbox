@@ -4448,7 +4448,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "blocked",
       "title": "Required CI must reject LICENSE/COPYRIGHT.md notice drift that would break later PRs"
     },
     "comment-policy-ratchet-wheel-upgrade": {
