@@ -1796,7 +1796,9 @@ def piped_consumer_words(words: list) -> tuple[list, str]:
             dynamic_wrapper = any(word.parts for word in words[1:start])
         if dynamic_wrapper:
             raise ValueError("dynamic piped interpreter consumer requires an adapter")
-        return unwrapped, command
+        if unwrapped is words:
+            return unwrapped, command
+        return piped_consumer_words(unwrapped)
     if command == "env" and len(words) > 1:
         index = 1
         while index < len(words):
@@ -1809,7 +1811,7 @@ def piped_consumer_words(words: list) -> tuple[list, str]:
                 continue
             if value.startswith("-"):
                 break
-            return words[index:], value.rsplit("/", 1)[-1]
+            return piped_consumer_words(words[index:])
         static = [None if word.parts else word.word for word in words[1:]]
         tail = _wrapper_tail(
             static,
@@ -1825,7 +1827,7 @@ def piped_consumer_words(words: list) -> tuple[list, str]:
         unwrapped = words[consumed + 1 :]
         if not unwrapped or unwrapped[0].parts:
             raise ValueError("dynamic piped interpreter consumer requires an adapter")
-        return unwrapped, unwrapped[0].word.rsplit("/", 1)[-1]
+        return piped_consumer_words(unwrapped)
     return words, command
 
 
@@ -1904,7 +1906,7 @@ def piped_bash_operands(static: list[str]) -> list[str]:
     for word in static:
         if skip_operand:
             skip_operand = False
-        elif word in {"-o", "+o"}:
+        elif word in {"-o", "+o", "-O", "+O"}:
             skip_operand = True
         else:
             narrowed.append(word)

@@ -1529,6 +1529,8 @@ def test_piped_printf_escaped_percent_matches_shell_output() -> None:
         ("echo '# hidden' | ssh host python3", "# hidden"),
         ("sudo echo '# hidden' | python3", "# hidden"),
         ("env FOO=1 echo '# hidden' | python3", "# hidden"),
+        ("echo '# hidden' | sudo env python3", "# hidden"),
+        ("echo '# hidden' | env FOO=1 sudo python3", "# hidden"),
         ("echo '# hidden' 1>&1 | bash", "# hidden"),
     ],
 )
@@ -1633,6 +1635,12 @@ def test_piped_dynamic_or_unmodeled_stdin_fails_closed(source: str) -> None:
 )
 def test_piped_non_stdin_programs_stay_data(source: str) -> None:
     assert scan("a.sh", source, "bash") == []
+
+
+@pytest.mark.parametrize("option", ["-O", "+O"])
+def test_piped_bash_shopt_option_is_not_treated_as_script_operand(option: str) -> None:
+    findings = scan("a.sh", f"echo '# hidden' | bash {option} extglob", "bash")
+    assert [(finding.kind, finding.text) for finding in findings] == [("comment", "# hidden")]
 
 
 def test_piped_xargs_stdin_interpreter_fails_closed() -> None:

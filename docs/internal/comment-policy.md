@@ -182,10 +182,11 @@ Known gaps, each a place where a comment can pass unreported:
   `DATA_FLAG_PROGRAMS` in `scripts/comment_execution.py`; any other program
   given such a flag is reported.
 - Static `sudo`, `env` and `nohup` interpreter wrappers and `sudo`/`env`
-  literal-producer wrappers with supported options are scanned; dynamic or
-  unsupported wrapper options fail closed. Static inner shell commands passed
-  as one argument to runners such as `ssh`, `watch` or `xargs` are followed;
-  dynamically assembled commands are not.
+  literal-producer wrappers with supported options are scanned, including
+  nested static wrapper chains; dynamic or unsupported wrapper options fail
+  closed. Static inner shell commands passed as one argument to runners such as
+  `ssh`, `watch` or `xargs` are followed; dynamically assembled commands are
+  not.
 - HTML comments and MyST `%` lines in Markdown prose are not scanned. In the
   maintained docs they are copyright headers, generator start and end markers,
   `<!-- content-ok -->` markers read by `scripts/blog_content_validation.py`,
