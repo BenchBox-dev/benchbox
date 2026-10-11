@@ -10374,7 +10374,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "blocked",
+      "status": "open",
       "title": "Fix the flaky BigQuery credential-defaults tests that fail in full-suite CI but pass in isolation"
     },
     "flight-data-benchmark": {
