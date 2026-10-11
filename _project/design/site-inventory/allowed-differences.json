@@ -159,5 +159,12 @@
   "match": "/index\\.html: /hero\\.png .*",
   "reason": "the redesigned landing hero draws the block-character logo as inline SVG instead of hero.png; the image is still published as the social preview image",
   "owner_approval": "approved"
+ },
+ {
+  "id": "canonical-atom-entry-links",
+  "kind": "feed regression",
+  "match": "/blog/atom\\.xml: entry https://benchbox\\.dev/blog/blog/[^ ]+ lost link /blog/blog/[^ ]+",
+  "reason": "the former feed linked non-canonical /blog/blog/ URLs; links now use canonical /blog/ URLs while entry IDs remain stable",
+  "owner_approval": "approved"
  }
 ]

@@ -59,10 +59,11 @@ function summaryOf(post: BlogPost): string {
 
 function entry(post: BlogPost): string {
   const stamp = atomTimestamp(post.date);
+  const entryId = `${BLOG_BASE_URL}blog/${post.slug}.html`;
   const url = feedEntryUrl(post);
   const lines = [
     "  <entry>",
-    `    <id>${escapeXml(url)}</id>`,
+    `    <id>${escapeXml(entryId)}</id>`,
     `    <title>${escapeXml(post.title)}</title>`,
     `    <updated>${stamp}</updated>`,
     "    <author>",

@@ -91,7 +91,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- The Atom feed now uses canonical `/blog/` URLs for its self-link and entries.
+- The Atom feed uses canonical `/blog/` self and entry links while retaining stable entry IDs for existing subscribers.
 
 ### Before you upgrade
 - Vendor compute names now warn once per run; move saved configurations and
