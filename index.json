@@ -7909,15 +7909,10 @@
       "title": "Publish and verify the approved documentation remediation"
     },
     "docs-remediation-review-followups": {
-      "claim": {
-        "expires_at": "2026-10-12T02:30:23Z",
-        "generation": "cacd3ef4d1764dbca0867a99db8dbb7f",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c5daffc9eae3c5f9ce6578f7"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Fix remaining published-doc remediation review findings"
     },
     "docs-rewrite-architecture-and-structure": {
