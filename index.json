@@ -4463,7 +4463,8 @@
       "claim": null,
       "needs": [
         "comment-policy-strict-scope-mismatch",
-        "comment-policy-digest-and-base-exception-catch22-20261008"
+        "comment-policy-digest-and-base-exception-catch22-20261008",
+        "native-task-model-tier-selection-20261011"
       ],
       "priority": "high",
       "status": "open",
