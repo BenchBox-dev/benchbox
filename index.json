@@ -17603,6 +17603,15 @@
       "status": "done",
       "title": "Rename the release branch main->release (Decision B of the branching-strategy review)"
     },
+    "repair-public-pagefind-search": {
+      "claim": null,
+      "needs": [
+        "docs-remediation-full-surface-audit"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Repair Pagefind metadata loading in the public search UI"
+    },
     "repair-skill-sync-cross-agent-readiness-diagnostics": {
       "claim": null,
       "needs": [],
