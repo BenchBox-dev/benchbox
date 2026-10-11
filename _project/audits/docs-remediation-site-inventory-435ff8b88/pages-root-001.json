@@ -1,0 +1,367 @@
+{
+ "/404.html": {
+  "canonical": "https://benchbox.dev/404.html",
+  "description": "The page you requested could not be found on benchbox.dev.",
+  "h1": [
+   "Page not found"
+  ],
+  "headings": [
+   [
+    "h2",
+    "Search docs and blog"
+   ]
+  ],
+  "ids": [
+   "benchbox-site-header-nav",
+   "main",
+   "search-dialog-title",
+   "site-header-panel"
+  ],
+  "images": [],
+  "links": [
+   "/",
+   "/404.html#main"
+  ],
+  "title": "Page Not Found - BenchBox"
+ },
+ "/blog.html": {
+  "canonical": "https://benchbox.dev/blog.html",
+  "description": "All Posts - BenchBox blog post.",
+  "h1": [
+   "All Posts"
+  ],
+  "headings": [
+   [
+    "h2",
+    "Search docs and blog"
+   ]
+  ],
+  "ids": [
+   "benchbox-site-header-nav",
+   "blog-nav-tags",
+   "main",
+   "search-dialog-title",
+   "site-header-panel"
+  ],
+  "images": [],
+  "links": [
+   "/blog.html#main",
+   "/blog/",
+   "/blog/2026-01-22-welcome.html",
+   "/blog/2026-02-15-v0-1-2-release-summary.html",
+   "/blog/2026-02-15-why-we-deleted-plotly.html",
+   "/blog/2026-02-23-v0-1-3-release-summary.html",
+   "/blog/2026-03-03-duckdb-tpch-extension-vs-benchbox.html",
+   "/blog/2026-03-03-v0-1-4-release-summary.html",
+   "/blog/2026-03-10-extracting-textcharts.html",
+   "/blog/2026-03-10-v0-1-5-release-summary.html",
+   "/blog/2026-04-01-v0-2-0-release-summary.html",
+   "/blog/2026-04-26-scale-factor-harmonization.html",
+   "/blog/2026-04-26-v0-2-1-release-summary.html",
+   "/blog/2026-05-18-joinorder-imdb-2013-dataset.html",
+   "/blog/2026-05-18-sketch-functions-databricks-response.html",
+   "/blog/2026-05-18-v0-3-0-release-overview.html",
+   "/blog/2026-08-31-v0-4-0-release-overview.html",
+   "/blog/2026-09-15-results-explorer-introduction.html",
+   "/blog/2026-10-07-site-redesign.html"
+  ],
+  "title": "All Posts - BenchBox Blog"
+ },
+ "/index.html": {
+  "canonical": "https://benchbox.dev/",
+  "description": "Run your own benchmarks and compare database performance. 22 benchmarks (TPC-H/DS/DI, ClickBench, SSB, AI/ML, more). 50 platforms (DuckDB, Snowflake, Databricks, Polars, Onehouse, StarRocks, Doris, more). CLI, Python library, or MCP for AI assistants.",
+  "h1": [
+   "Run Your Own Benchmarks"
+  ],
+  "headings": [
+   [
+    "h2",
+    "Search docs and blog"
+   ],
+   [
+    "h2",
+    "What Makes It Simple"
+   ],
+   [
+    "h3",
+    "Python-Only Core"
+   ],
+   [
+    "h3",
+    "22 Benchmarks"
+   ],
+   [
+    "h3",
+    "SQL & DataFrame"
+   ],
+   [
+    "h3",
+    "One Benchmark, Run Anywhere"
+   ],
+   [
+    "h3",
+    "Generate Data at Any Scale"
+   ],
+   [
+    "h3",
+    "AI-Powered with MCP"
+   ],
+   [
+    "h2",
+    "Explore and Compare Benchmark Results"
+   ],
+   [
+    "h3",
+    "Four DuckDB versions, one comparable cohort"
+   ],
+   [
+    "h3",
+    "Find relevant runs"
+   ],
+   [
+    "h3",
+    "Compare like with like"
+   ],
+   [
+    "h3",
+    "Check your own result"
+   ],
+   [
+    "h2",
+    "Benchmarks by Category"
+   ],
+   [
+    "h3",
+    "TPC Standards"
+   ],
+   [
+    "h3",
+    "Academic Benchmarks"
+   ],
+   [
+    "h3",
+    "Industry Benchmarks"
+   ],
+   [
+    "h3",
+    "Real-World Data"
+   ],
+   [
+    "h3",
+    "Time-Series Benchmarks"
+   ],
+   [
+    "h3",
+    "BenchBox Primitives"
+   ],
+   [
+    "h3",
+    "AI & ML Benchmarks"
+   ],
+   [
+    "h3",
+    "BenchBox Experimental"
+   ],
+   [
+    "h2",
+    "Supported Platforms"
+   ],
+   [
+    "h3",
+    "Single-Node Analytics Engines"
+   ],
+   [
+    "h3",
+    "Row-Based & Postgres-Compatible"
+   ],
+   [
+    "h3",
+    "Cloud Data Platforms"
+   ],
+   [
+    "h3",
+    "Distributed Query Engines"
+   ],
+   [
+    "h3",
+    "Managed Spark Services"
+   ],
+   [
+    "h3",
+    "Time Series Databases"
+   ],
+   [
+    "h3",
+    "DataFrame Platforms"
+   ],
+   [
+    "h2",
+    "Open Table Formats"
+   ],
+   [
+    "h3",
+    "File Formats"
+   ],
+   [
+    "h3",
+    "Table Formats"
+   ],
+   [
+    "h2",
+    "AI Assistant Integration"
+   ],
+   [
+    "h3",
+    "Instruct a coding agent"
+   ],
+   [
+    "h3",
+    "Quick setup"
+   ],
+   [
+    "h3",
+    "What you can do"
+   ],
+   [
+    "h2",
+    "Get Started"
+   ],
+   [
+    "h3",
+    "Install"
+   ],
+   [
+    "h3",
+    "Run as CLI"
+   ],
+   [
+    "h3",
+    "Or use as a library"
+   ],
+   [
+    "h3",
+    "Requirements"
+   ],
+   [
+    "h2",
+    "Resources"
+   ],
+   [
+    "h2",
+    "Community"
+   ]
+  ],
+  "ids": [
+   "benchbox-site-header-nav",
+   "benchmarks",
+   "features",
+   "format-code",
+   "formats",
+   "hero-code",
+   "install",
+   "install-code",
+   "main",
+   "mcp",
+   "mcp-setup-code",
+   "overview",
+   "platforms",
+   "results-explorer",
+   "search-dialog-title",
+   "site-header-panel"
+  ],
+  "images": [],
+  "links": [
+   "/docs/",
+   "/docs/advanced/format-conversion.html#apache-hudi",
+   "/docs/advanced/format-conversion.html#apache-iceberg",
+   "/docs/advanced/format-conversion.html#apache-parquet",
+   "/docs/advanced/format-conversion.html#delta-lake",
+   "/docs/advanced/format-conversion.html#ducklake",
+   "/docs/advanced/format-conversion.html#vortex",
+   "/docs/benchmarks/ai-primitives.html",
+   "/docs/benchmarks/amplab.html",
+   "/docs/benchmarks/clickbench.html",
+   "/docs/benchmarks/coffeeshop.html",
+   "/docs/benchmarks/datavault.html",
+   "/docs/benchmarks/flightdata.html",
+   "/docs/benchmarks/h2odb.html",
+   "/docs/benchmarks/index.html",
+   "/docs/benchmarks/join-order.html",
+   "/docs/benchmarks/metadata-primitives.html",
+   "/docs/benchmarks/nyctaxi.html",
+   "/docs/benchmarks/read-primitives.html",
+   "/docs/benchmarks/ssb.html",
+   "/docs/benchmarks/tpc-di.html",
+   "/docs/benchmarks/tpc-ds-obt.html",
+   "/docs/benchmarks/tpc-ds.html",
+   "/docs/benchmarks/tpc-h.html",
+   "/docs/benchmarks/tpc-havoc.html",
+   "/docs/benchmarks/tpch-skew.html",
+   "/docs/benchmarks/transaction-primitives.html",
+   "/docs/benchmarks/tsbs-devops.html",
+   "/docs/benchmarks/vector-search.html",
+   "/docs/benchmarks/write-primitives.html",
+   "/docs/guides/mcp-integration.html",
+   "/docs/platforms/athena-spark.html",
+   "/docs/platforms/athena.html",
+   "/docs/platforms/aws-glue.html",
+   "/docs/platforms/azure-platforms.html",
+   "/docs/platforms/bigquery.html",
+   "/docs/platforms/cedardb.html",
+   "/docs/platforms/clickhouse-cloud.html",
+   "/docs/platforms/clickhouse-local-mode.html",
+   "/docs/platforms/clickhouse-server.html",
+   "/docs/platforms/cudf.html",
+   "/docs/platforms/dask-dataframe.html",
+   "/docs/platforms/databend.html",
+   "/docs/platforms/databricks-dataframe.html",
+   "/docs/platforms/databricks.html",
+   "/docs/platforms/dataframe.html",
+   "/docs/platforms/datafusion-dataframe.html",
+   "/docs/platforms/datafusion.html",
+   "/docs/platforms/dataproc-serverless.html",
+   "/docs/platforms/doris.html",
+   "/docs/platforms/duckdb.html",
+   "/docs/platforms/emr-serverless.html",
+   "/docs/platforms/fabric-lakehouse.html",
+   "/docs/platforms/fabric-spark.html",
+   "/docs/platforms/firebolt.html",
+   "/docs/platforms/gcp-dataproc.html",
+   "/docs/platforms/influxdb.html",
+   "/docs/platforms/lakesail.html",
+   "/docs/platforms/microsoft-fabric.html",
+   "/docs/platforms/motherduck.html",
+   "/docs/platforms/pandas-dataframe.html",
+   "/docs/platforms/pg_duckdb.html",
+   "/docs/platforms/pg_mooncake.html",
+   "/docs/platforms/polars.html",
+   "/docs/platforms/postgresql.html",
+   "/docs/platforms/presto.html",
+   "/docs/platforms/pyspark-dataframe.html",
+   "/docs/platforms/quanton.html",
+   "/docs/platforms/questdb.html",
+   "/docs/platforms/redshift.html",
+   "/docs/platforms/singlestore.html",
+   "/docs/platforms/snowflake.html",
+   "/docs/platforms/snowpark-connect.html",
+   "/docs/platforms/spark.html",
+   "/docs/platforms/sqlite.html",
+   "/docs/platforms/starburst.html",
+   "/docs/platforms/starrocks.html",
+   "/docs/platforms/synapse-spark.html",
+   "/docs/platforms/timescaledb.html",
+   "/docs/platforms/trino.html",
+   "/docs/platforms/velox.html",
+   "/docs/usage/data-generation.html",
+   "/docs/usage/dialect-translation.html",
+   "/docs/usage/getting-started.html",
+   "/docs/usage/installation.html",
+   "/docs/usage/installation.html#no-docker-required",
+   "/index.html#main",
+   "/index.html#mcp",
+   "/prompts/",
+   "/results/compare"
+  ],
+  "title": "BenchBox - Run Your Own Benchmarks"
+ }
+}

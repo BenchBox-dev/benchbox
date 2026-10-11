@@ -1,0 +1,55 @@
+{
+ "/prompts/index.html": {
+  "canonical": "https://benchbox.dev/prompts/index.html",
+  "description": "Build a copy-paste prompt that tells a coding agent how to run a BenchBox benchmark. Pick a surface, platform, benchmark, and scale; copy the prompt.",
+  "h1": [
+   "Instruct a coding agent to use BenchBox"
+  ],
+  "headings": [
+   [
+    "h2",
+    "Search docs and blog"
+   ],
+   [
+    "h2",
+    "📋 Agent prompt"
+   ],
+   [
+    "h2",
+    "🔧 MCP server config"
+   ],
+   [
+    "h2",
+    "Credential safety"
+   ]
+  ],
+  "ids": [
+   "benchbox-site-header-nav",
+   "block-cloud-safety",
+   "block-mcp-setup",
+   "block-prompt",
+   "cloud-safety-list",
+   "copy-status",
+   "main",
+   "mcp-setup-text",
+   "prompt-text",
+   "prompts-form",
+   "search-dialog-title",
+   "sel-benchmark",
+   "sel-deployment",
+   "sel-goal",
+   "sel-interface",
+   "sel-platform",
+   "sel-platformA",
+   "sel-platformB",
+   "sel-scale",
+   "sel-surface",
+   "site-header-panel"
+  ],
+  "images": [],
+  "links": [
+   "/prompts/index.html#main"
+  ],
+  "title": "Instruct a coding agent to use BenchBox"
+ }
+}
