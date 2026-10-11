@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The Polars version-matrix reproduction instructions now use
   `--execution-engine` for default, in-memory and streaming setups, and identify
   the earlier `engine` option name used by the recorded bundles.
+- Public result-analysis and submission guidance no longer exposes concrete
+  identifier-pseudonymization recipes or cross-submission salt reuse details;
+  public submissions require a private salt.
 
 ### Added
 - Manifest capability `gateways` defines intermediary query routers (`espresso`, `greybeam`, `custom`)
@@ -85,6 +88,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   suite, profiling, validation and dataframe-surface equivalence checks use
   Polars' default engine; these paths do not receive `benchbox run`'s
   execution-engine selection.
+
+### Fixed
+
+- The Atom feed now uses canonical `/blog/` URLs for its self-link and entries.
 
 ### Before you upgrade
 - Vendor compute names now warn once per run; move saved configurations and
