@@ -384,3 +384,80 @@ may time queries while merges still run. This favours the tuned cell and is now
 stated in the decision. The cause of the Q3, Q5 and Q18 slowdowns and the size
 of any effect at larger scales remain open. No decision changed: the template
 contents, the session pack contents and the Q21 override stay as decided.
+
+## Addendum (2026-10-10): benefit rule for tuned-template verdicts
+
+This rule was fixed before any verdict was recorded under it. No verdict below
+may be recorded from a cell measured before this addendum merged. One
+statistic is used throughout: every per-query ratio is the ratio of medians
+over rounds. Earlier mixed statistics (best-of-seven, geometric mean of
+geometric means) are superseded wherever verdicts are concerned.
+
+**Arms.** `N` is `notuning`, `T` is the tuned template. Both arms load once
+and both are settled after load. Rounds are shuffled and interleaved: 9 by
+default, 7 minimum. The seed is fixed and recorded.
+
+**Per query.** The median over rounds in each arm.
+
+**Primary metric `G`.** The geometric mean, over queries that pass in both
+arms, of `median_T / median_N`. Its 95% confidence interval comes from a
+percentile bootstrap that resamples rounds 2,000 times, with the seed
+recorded. Each cell also reports total elapsed time per arm, load and
+merge-settle time per arm, failures per arm, and `G` recomputed with every
+failed query penalized at the per-query timeout (default 300 s).
+
+**Calibration gate.** Before any verdict on a platform, benchmark and scale,
+an A/A run must have a 95% interval containing 1.0 and a point estimate
+between 0.95 and 1.05. If it fails, raise rounds (up to 15) and re-run on a
+quieter host. If it still fails, the cell is uncalibrated and yields no
+verdict. An answer mismatch between identical arms fails calibration on its
+own; a cell whose timed rounds did not run under the configured session is
+therefore uncalibrated, not a verdict.
+
+**Verdict.**
+
+- **Regression** if any of these holds: a query that passes in `N` fails in
+  `T`; any answer (row count or checksum) differs between the arms; the
+  interval lower bound is above 1.0; or the verdict would otherwise be
+  Neutral and `T`'s load plus merge-settle time is more than 1.5 times `N`'s.
+- **Benefit** if the interval upper bound is below 1.0.
+- **Neutral** otherwise.
+
+**Load-plus-settle accounting.** Load and merge-settle times are recorded
+separately per arm (merge settle in its own result phase), and the 1.5x
+comparison uses their sum. Merge settle has a floor of about 2 s per arm, so
+at small scales the ratio can exceed 1.5x on a few seconds of absolute
+difference. The verdict therefore always reports the absolute load and
+merge-settle times per arm alongside the ratio, and a Regression reached on
+this ground alone names the absolute excess so a floor-driven ratio is
+visible as such.
+
+**Named slow queries.** Every query whose median ratio is above 1.5x and
+whose per-query interval lower bound is above 1.0 is listed with its measured
+cause, or "unproven" where no cause was measured. This is reporting, not a
+veto.
+
+**Scope.** A verdict records scale factor, memory rung, engine version and
+date, and applies only to that tier. No per-benchmark relaxation.
+
+**Outcome.** Benefit or Neutral keeps the template and sets its evidence
+state. Regression removes the component the arms implicate (layout per table,
+then each session setting), then re-measures, repeating until Benefit or
+Neutral. If every component is removed and the cell is still Regression, the
+tuned template is deleted (`tuned` then resolves to `tuned-fallback`) and the
+deletion is recorded here.
+
+**Evidence narrative.** The 2026-10-07 sentence "The cause of the Q3, Q5 and
+Q18 slowdowns is unproven" is superseded as follows. Across two calibrated
+harness cells (SF1, ClickHouse 25.8, 5.25 GiB rung), the date-first lineitem
+order slows Q3 ~1.2x, Q5 ~1.5-1.6x and Q18 ~1.4-1.5x against `notuning`,
+while an orderkey-first lineitem order restores all three to ~1.0x but
+forfeits the Q6/Q14/Q15 date-pruning wins (Q6 1.02x, Q14 1.03x, Q15 0.99x
+against 0.32x/0.45x/0.25x date-first) and is slower overall (G 0.97 against
+0.83). Q18 is explained by lost primary-index pruning on the IN-subquery
+values. Q3 and Q5 run the identical hash-join plan at identical peak memory
+with 1.2-1.7x more user CPU on fewer input rows under date order. The Q13
+42/41 split was a session-settings artifact (`join_use_nulls` applied at load
+but lost before timed rounds), not engine behaviour; the correct answer is 42.
+No layout changes: the shipped date-first layout still wins on the overall
+geometric mean.
