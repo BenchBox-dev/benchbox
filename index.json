@@ -3037,7 +3037,9 @@
         "renewals": 0,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7e55d16b199130b0978d8efa"
       },
-      "needs": [],
+      "needs": [
+        "tuning-evidence-benefit-rule-20261008"
+      ],
       "priority": "medium",
       "status": "active",
       "title": "Find why TPC-DS Q10 exceeds the 5.25 GiB envelope on ClickHouse server at SF1"
