@@ -449,10 +449,10 @@ The missing-parser control
 failed as expected with one assertion, proving the CI test cannot silently
 skip the TypeScript flow check.
 
-The final `make comment-policy-check` passed: 5,776 source files, zero
+After rebasing, `make comment-policy-check` passed: 5,779 files, zero
 violations, zero enforced failures, and all 19 native syntax tests passed.
-Three final runs measured 269.54, 298.41, and 308.01 seconds wall. Prior paired
-candidate runs measured 252.23-295.88 seconds; the latter two final runs were
-2.53 and 12.13 seconds above that range. Earlier paired runs varied widely.
-These whole-gate timings do not isolate scanner performance; no explicit
-wall-time budget is set.
+`/usr/bin/time -p` measured 273.46 seconds wall, 230.01 user, and 33.32 sys.
+That run falls within the earlier candidate wall-time range of 252.23-295.88
+seconds and below the historical 358 seconds wall / 276 seconds user baseline.
+Three earlier final runs measured 269.54, 298.41, and 308.01 seconds wall,
+showing run-to-run variance. No explicit gate-time budget is set.
