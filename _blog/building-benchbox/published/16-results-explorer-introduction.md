@@ -197,12 +197,11 @@ That keeps the site cheap to run and the evidence portable: use the pages, query
 
 2. Package with `benchbox submit`
 
-   - One private, stable salt pseudonymizes the identifiers a public bundle keeps, such as endpoints and database names
-   - A new salt per run makes those identifiers inconsistent across your submissions
-   - Keep it out of the repo and the PR
+   - Public submissions require a private salt setting for retained identifiers
+   - Keep the value out of the repo and the PR
 
    ```bash
-   export BENCHBOX_MACHINE_ID_SALT="<stable-private-random-value>"
+   export BENCHBOX_MACHINE_ID_SALT="<private-random-value>"
    uv run -- benchbox submit --last --dry-run
    uv run -- benchbox submit --last --output ./submission
    ```

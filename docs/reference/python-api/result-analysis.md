@@ -609,21 +609,12 @@ Removes or replaces identifying data in results so they can be shared.
 <span id="benchbox.core.results.anonymization.AnonymizationManager.get_anonymous_machine_id"></span>
 <span id="get_anonymous_machine_id"></span>
 
-**Returns:** `str`, `machine_` followed by 16 hex digits. It is a SHA-256 hash of an operating-system machine ID (or, if none is available, a hardware fingerprint), plus the configured salt. The same machine and salt give the same value on every call and in every process, and a different salt gives a different value. The manager caches the first value it computes.
+**Returns:** `str`, an identifier used in anonymized results. The value may recur across related output and should not be treated as an anonymity or trust signal.
 
 ```python
-from benchbox.core.results.anonymization import AnonymizationConfig, AnonymizationManager
+from benchbox.core.results.anonymization import AnonymizationManager
 
-manager = AnonymizationManager()
-print(manager.get_anonymous_machine_id() == AnonymizationManager().get_anonymous_machine_id())
-
-salted = AnonymizationManager(AnonymizationConfig(machine_id_salt="your-org-salt"))
-print(salted.get_anonymous_machine_id() == manager.get_anonymous_machine_id())
-```
-
-```text
-True
-False
+machine_id = AnonymizationManager().get_anonymous_machine_id()
 ```
 
 #### `anonymize_result_payload(payload)`
@@ -640,8 +631,8 @@ Anonymizes a whole result payload in one pass.
 **Returns:** a new `dict`. Matching is by key name:
 
 - Values under secret-looking keys (such as `password`) become `<redacted>`.
-- Identifier values such as host names are replaced by a stable pseudonym of the form `host_` followed by 12 hex digits. The hash includes the configured salt, so one value always maps to one pseudonym.
-- Local file paths in values, including inside free text, are replaced by `path_` plus 12 hex digits, and PII matches in free text become `[REDACTED]`.
+- Identifier values such as host names are replaced with pseudonyms. A pseudonym is not identity or provenance evidence.
+- Local file paths in values, including inside free text, are replaced, and PII matches in free text become `[REDACTED]`.
 - Some keys that identify a location, such as `working_dir`, are dropped.
 
 Running the method again on its own output returned the same payload in the example below.
@@ -660,7 +651,7 @@ print(manager.anonymize_result_payload(public_payload) == public_payload)
 ```
 
 ```text
-{'rows': 100, 'platform': {'name': 'duckdb', 'password': '<redacted>', 'host': 'host_ba46e9e8a223'}, 'note': 'see path_cc24f4db1afb and [REDACTED]'}
+{'rows': 100, 'platform': {'name': 'duckdb', 'password': '<redacted>', 'host': '<host pseudonym>'}, 'note': 'see <path pseudonym> and [REDACTED]'}
 True
 ```
 
@@ -669,7 +660,7 @@ True
 <span id="benchbox.core.results.anonymization.AnonymizationManager.anonymize_tuning_payload"></span>
 <span id="anonymize_tuning_payload"></span>
 
-Anonymizes a tuning companion payload with the same pseudonyms as `anonymize_result_payload`, so a result bundle and its tuning data stay consistent.
+Anonymizes a tuning companion payload while preserving the corresponding identifier values used in the related result payload.
 
 | Name | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -687,8 +678,8 @@ print(manager.anonymize_tuning_payload({"source_file": "/home/alice/t.yaml"}))
 ```
 
 ```text
-{'requested': {'table_tunings': {'table_96dee3acda35': {'sorting': [{'name': 'column_68dde4b11b12'}]}}}, 'source_file': 'tunings/tpch/duckdb.yaml'}
-{'source_file': 'path_a1212a7212c5'}
+{'requested': {'table_tunings': {'<table pseudonym>': {'sorting': [{'name': '<column pseudonym>'}]}}}, 'source_file': 'tunings/tpch/duckdb.yaml'}
+{'source_file': '<path pseudonym>'}
 ```
 
 #### `remove_pii(text)`
@@ -731,7 +722,7 @@ A dataclass with the anonymization settings.
 
 | Name | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `machine_id_salt` | `str` or `None` | `None` | <span id="benchbox.core.results.anonymization.AnonymizationConfig.machine_id_salt"></span>Salt mixed into the machine ID and into every pseudonym hash. With the default, pseudonyms are the same on every installation, so anyone who knows the scheme can confirm a guessed value. Set a salt that only you know when you publish results. |
+| `machine_id_salt` | `str` or `None` | `None` | <span id="benchbox.core.results.anonymization.AnonymizationConfig.machine_id_salt"></span>Optional salt used by anonymization for identifier fields; the salt value is not included in the exported result. |
 | `pii_patterns` | `list[str]` | email, IPv4 and US SSN patterns | <span id="benchbox.core.results.anonymization.AnonymizationConfig.pii_patterns"></span>Regular expressions that `remove_pii` replaces with `[REDACTED]`. The default list matches IPv4 addresses, email addresses and strings shaped like `123-45-6789`. Passing `[]` turns these matches off. |
 | `custom_sanitizers` | `dict[str, str]` | `{}` | <span id="benchbox.core.results.anonymization.AnonymizationConfig.custom_sanitizers"></span>Maps a regular expression to its replacement text, applied by `remove_pii` after the built-in patterns. |
 
@@ -762,7 +753,6 @@ Class method that builds a configuration whose `machine_id_salt` comes from the 
 from benchbox.core.results.anonymization import AnonymizationConfig, AnonymizationManager
 
 config = AnonymizationConfig(
-    machine_id_salt="your-org-salt",
     custom_sanitizers={
         r"customer_\d+": "customer_[REDACTED]",
         r"project_[a-z]+": "project_[REDACTED]",
@@ -771,12 +761,12 @@ config = AnonymizationConfig(
 
 manager = AnonymizationManager(config)
 print(manager.remove_pii("see CUSTOMER_42 and a@b.io"))
-print(AnonymizationConfig.from_public_environ(environ={"BENCHBOX_MACHINE_ID_SALT": " abc "}).machine_id_salt)
+print(AnonymizationConfig.from_public_environ(environ={"BENCHBOX_MACHINE_ID_SALT": " example "}).machine_id_salt is not None)
 ```
 
 ```text
 see customer_[REDACTED] and [REDACTED]
-abc
+True
 ```
 
 ### Display Utilities
@@ -947,7 +937,6 @@ from benchbox.core.results.anonymization import AnonymizationConfig, find_public
 from benchbox.core.results.exporter import ResultExporter
 
 anon_config = AnonymizationConfig(
-    machine_id_salt="your-org-salt",
     custom_sanitizers={r"project_\w+": "[PROJECT]"},
 )
 
@@ -1033,7 +1022,7 @@ False
 
 2. **Enable Anonymization for Shared Results**
 
-   Use anonymization when sharing results publicly, and set a salt only your organization knows:
+   Anonymize results before sharing them publicly, then review the output for sensitive fields; anonymization does not guarantee that all identifying data is removed.
 
    ```python
    public_exporter = ResultExporter(anonymize=True)

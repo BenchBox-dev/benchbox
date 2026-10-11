@@ -4,10 +4,10 @@ const SITE_ORIGIN = "https://benchbox.dev";
 const GENERATOR = { uri: "https://astro.build/", name: "Astro" };
 
 export function feedEntryUrl(post: Pick<BlogPost, "slug">): string {
-  return `${BLOG_BASE_URL}blog/${post.slug}.html`;
+  return `${BLOG_BASE_URL}${post.slug}.html`;
 }
 
-export const FEED_SELF_URL = `${BLOG_BASE_URL}blog/atom.xml`;
+export const FEED_SELF_URL = `${BLOG_BASE_URL}atom.xml`;
 
 export function escapeXml(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
