@@ -270,7 +270,10 @@ def _shows(
     if intent.table is None or not match_columns:
         return any(re.search(pattern, _searched(pattern, raw, bare), re.IGNORECASE) for pattern in footprints)
     wanted = [normalize_identifier(column) for column in intent.columns]
-    return any(_in_order(wanted, _clause_identifiers(tail)) for tail in _clause_tails(raw, bare, footprints))
+    return any(
+        _contains_contiguous_sequence(wanted, _clause_identifiers(tail))
+        for tail in _clause_tails(raw, bare, footprints)
+    )
 
 
 def _searched(pattern: str, raw: str, bare: str) -> str:
@@ -290,9 +293,11 @@ def _clause_identifiers(clause: str) -> list[str]:
     return [token.casefold() for token in _IDENTIFIER.findall(clause)]
 
 
-def _in_order(wanted: list[str], identifiers: list[str]) -> bool:
-    remaining = iter(identifiers)
-    return all(column in remaining for column in wanted)
+def _contains_contiguous_sequence(wanted: list[str], identifiers: list[str]) -> bool:
+    width = len(wanted)
+    return width > 0 and any(
+        identifiers[offset : offset + width] == wanted for offset in range(len(identifiers) - width + 1)
+    )
 
 
 def _statement_target(statement: AppliedStatement) -> str | None:

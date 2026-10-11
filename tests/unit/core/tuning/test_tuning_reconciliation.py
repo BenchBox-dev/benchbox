@@ -128,6 +128,18 @@ class TestEvidence:
         assert dropped.intent == "sorting:LINEITEM (L_ORDERKEY, L_LINENUMBER)"
         assert dropped.reason == NOT_RENDERED_REASON
 
+    def test_intervening_index_column_does_not_realize_requested_sort(self):
+        ledger = AppliedTuningLedger()
+        ledger.record(
+            'CREATE INDEX idx_lineitem_sort ON "lineitem" ("l_orderkey", "l_linenumber", "l_shipdate")', PHASE_DDL
+        )
+
+        _reconcile(_config(sorting=_columns("L_ORDERKEY", "L_SHIPDATE")), ledger, "duckdb")
+
+        assert ledger.satisfied == []
+        [dropped] = ledger.dropped
+        assert dropped.intent == "sorting:LINEITEM (L_ORDERKEY, L_SHIPDATE)"
+
     def test_statement_on_other_table_is_not_evidence(self):
         ledger = AppliedTuningLedger()
         ledger.record('CREATE INDEX idx_orders_sort ON "orders" ("l_orderkey", "l_linenumber")', PHASE_DDL)
