@@ -4,7 +4,7 @@
     "A/A calibration passes on ClickHouse SF1 TPC-H without answer mismatch",
     "Existing harness suites pass"
   ],
-  "context": "Filed from item-26 findings (Q13 session artifact). Blocks item-25/27/28 ClickHouse verdicts.\n\n2026-10-10 implementation (native worker YoungestBison, verified by orchestrator): PR #2880 OPEN unarmed, head 7ab1af16086a5ba0145e667228c04a5ab5a13b96, local==remote==PR, committed as Joe Harris. Additive seam hook refresh_session (no-op default) called per arm per power round; ClickHouse server seam re-runs adapter session + settings-pack setup (+10/-0 production lines). Tests: 4 new (silent-reset re-application proof et al.), harness suite 97 pass, fast 37076/26, ruff/fmt/ty/policy clean, pr-preflight pass. Proof: kept-DB Q13 cells — 30/30 timed executions carry configured session incl. join_use_nulls=1; cell B (seed 43, 15 rounds) calibration PASSED G 0.9782, warmup 2x42 + timed 30x42, zero mismatches; cell A point-miss documented as noise. Evidence: runs/harness-session-reapply-20261010/. Containers removed. Self-review caught pre-commit settle/refresh mixup, fixed, gates re-run. Blockers: oracle review, CI, owner merge. Full 22-query post-fix verdict cell left for the item-25 pass. No completion claimed.",
+  "context": "Implementation merged in PR #2880: head 7ab1af16086a5ba0145e667228c04a5ab5a13b96, merge commit e9cdaf3ac288cf69658770b62cae2cc3a02be668. The additive `refresh_session` hook re-applies each arm's ClickHouse adapter session and settings pack before each power round. Evidence in runs/harness-session-reapply-20261010/: 30/30 timed executions carried the configured session; cell B (seed 43, 15 rounds, Q13-only) passed A/A with G 0.9782 and no answer mismatches; harness suite 97 passed; full fast suite 37,076 passed, 26 skipped. `gh pr checks 2880 --required` reports core, docs, explorer, landing, oracle-review, results-data, and tooling all pass.\n\nAcceptance is blocked on environment validity. The cell-B `summary.md` records host macOS-27.0.1, Mocker 0.7.2, and Apple Container CLI 1.1.0. `docs/operations/uat-framework.md:301` documents Mocker validation on macOS 26 only. The observed cell is therefore not supported-platform calibration evidence under current documentation. Rerun the Q13 A/A on Linux/Docker or a documented, validated Apple Container path before finishing. The full 22-query post-fix verdict cell remains with item 25; it is not an F1 acceptance item.",
   "description": "Item-26 evidence (runs/clickhouse-q3-q5-probe-20261008/findings-26.md section 5): ClickHouse server session SETs are applied once per arm connection at load; timed rounds can run under bare server defaults after the session is lost (Run 1: 180/180 timed executions with 2-setting bare session vs 20/20 configured warmups). The join_use_nulls flip moved Q13 42<->41 deterministically and solely blocked A/A calibration. Arm comparisons stay apples-to-apples but absolute parity with shipped runs breaks. Change: re-apply the adapter session per round (or attach settings per query, or pin session_id); add a test asserting timed executions carry the configured session. ClickHouse verdicts (benefit rule, per-query settings, session pack) should prefer post-fix cells.",
   "sessions": [
     {
@@ -39,6 +39,14 @@
       "generation": "ee650294daba4e7d93aab932c2925412",
       "op": "release",
       "op_id": "6ac84bd899df4db3ae2928cd10ed76a3",
+      "session_id": "4dbe22cfa4cf47a5bab075c4c3ac203f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7e55d16b199130b0978d8efa",
+      "at": "2026-10-11T11:13:29Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c87c2eba441a4a41992aa4ec233c4ff9",
       "session_id": "4dbe22cfa4cf47a5bab075c4c3ac203f"
     }
   ]

@@ -10928,7 +10928,7 @@
         "tuning-evidence-measurement-harness-20261008"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "blocked",
       "title": "Harness re-applies ClickHouse server session settings beyond load time"
     },
     "heavy-tier-merge-group-dead-code-20261009": {
