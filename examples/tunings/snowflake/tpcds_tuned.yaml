@@ -44,51 +44,21 @@ table_tunings:
     - name: CS_SOLD_DATE_SK
       type: INTEGER
       order: 1
-    - name: CS_ITEM_SK
+    - name: CS_SHIP_MODE_SK
       type: INTEGER
       order: 2
-    - name: CS_SHIP_MODE_SK
+    - name: CS_ITEM_SK
       type: INTEGER
       order: 3
 
   CUSTOMER:
     table_name: CUSTOMER
-    clustering:
-    - name: C_CUSTOMER_SK
-      type: INTEGER
-      order: 1
-    - name: C_CURRENT_ADDR_SK
-      type: INTEGER
-      order: 2
-    - name: C_CURRENT_CDEMO_SK
-      type: INTEGER
-      order: 3
 
   DATE_DIM:
     table_name: DATE_DIM
-    clustering:
-    - name: D_DATE_SK
-      type: INTEGER
-      order: 1
-    - name: D_YEAR
-      type: INTEGER
-      order: 2
-    - name: D_MOY
-      type: INTEGER
-      order: 3
 
   ITEM:
     table_name: ITEM
-    clustering:
-    - name: I_ITEM_SK
-      type: INTEGER
-      order: 1
-    - name: I_CATEGORY
-      type: VARCHAR
-      order: 2
-    - name: I_CLASS
-      type: VARCHAR
-      order: 3
 
   STORE_RETURNS:
     table_name: STORE_RETURNS
@@ -96,15 +66,12 @@ table_tunings:
     - name: SR_RETURNED_DATE_SK
       type: INTEGER
       order: 1
-    - name: SR_ITEM_SK
-      type: INTEGER
-      order: 2
-    - name: SR_CUSTOMER_SK
-      type: INTEGER
-      order: 3
     - name: SR_STORE_SK
       type: INTEGER
-      order: 4
+      order: 2
+    - name: SR_ITEM_SK
+      type: INTEGER
+      order: 3
 
   STORE_SALES:
     table_name: STORE_SALES
@@ -112,15 +79,12 @@ table_tunings:
     - name: SS_SOLD_DATE_SK
       type: INTEGER
       order: 1
-    - name: SS_ITEM_SK
-      type: INTEGER
-      order: 2
-    - name: SS_CUSTOMER_SK
-      type: INTEGER
-      order: 3
     - name: SS_STORE_SK
       type: INTEGER
-      order: 4
+      order: 2
+    - name: SS_PROMO_SK
+      type: INTEGER
+      order: 3
 
   WEB_RETURNS:
     table_name: WEB_RETURNS
@@ -138,12 +102,9 @@ table_tunings:
     - name: WS_SOLD_DATE_SK
       type: INTEGER
       order: 1
-    - name: WS_ITEM_SK
+    - name: WS_SHIP_MODE_SK
       type: INTEGER
       order: 2
-    - name: WS_WEB_PAGE_SK
-      type: INTEGER
-      order: 3
     - name: WS_WEB_SITE_SK
       type: INTEGER
-      order: 4
+      order: 3

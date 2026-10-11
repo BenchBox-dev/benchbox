@@ -337,6 +337,20 @@ def _load_tuning(platform: str, benchmark: str):
     )
 
 
+SNOWFLAKE_FACT_TABLES = {
+    "tpch": {"LINEITEM", "ORDERS"},
+    "tpcds": {
+        "STORE_SALES",
+        "STORE_RETURNS",
+        "CATALOG_SALES",
+        "CATALOG_RETURNS",
+        "WEB_SALES",
+        "WEB_RETURNS",
+        "INVENTORY",
+    },
+}
+
+
 @pytest.mark.parametrize(
     ("platform", "benchmark_id"),
     [
@@ -344,7 +358,9 @@ def _load_tuning(platform: str, benchmark: str):
         ("snowflake", "tpcds"),
     ],
 )
-def test_cloud_tpc_tuned_templates_certify_against_logical_profile(platform: str, benchmark_id: str) -> None:
+def test_cloud_tpc_tuned_templates_certify_fact_tables_against_logical_profile(
+    platform: str, benchmark_id: str
+) -> None:
     tuning_config = ConfigManager().load_unified_tuning_config(
         TUNING_ROOT / platform / f"{benchmark_id}_tuned.yaml",
         platform=platform,
@@ -356,11 +372,27 @@ def test_cloud_tpc_tuned_templates_certify_against_logical_profile(platform: str
         tuning_config=tuning_config,
     )
 
-    assert result.is_valid, [issue.to_dict() for issue in result.issues]
-
-    assert result.mapped_count + result.capped_count == result.required_count
     assert result.unsupported_count == 0
     assert result.waived_count == 0
+    fact_tables = SNOWFLAKE_FACT_TABLES[benchmark_id]
+    for mapping in result.mappings:
+        if mapping.candidate.table in fact_tables:
+            continue
+        assert not mapping.mapped
+        assert not mapping.capped
+    mapped_per_table: dict[str, int] = {}
+    required_per_table: dict[str, int] = {}
+    for mapping in result.mappings:
+        required_per_table[mapping.candidate.table] = required_per_table.get(mapping.candidate.table, 0) + 1
+        if mapping.mapped:
+            mapped_per_table[mapping.candidate.table] = mapped_per_table.get(mapping.candidate.table, 0) + 1
+    for table, required in required_per_table.items():
+        if table in fact_tables:
+            assert mapped_per_table.get(table, 0) == min(3, required)
+        else:
+            assert mapped_per_table.get(table, 0) == 0
+    assert result.issues
+    assert all("missing template mapping" in issue.message for issue in result.issues)
 
 
 def test_generated_cloud_templates_match_checked_in_files() -> None:
@@ -374,12 +406,12 @@ def test_generated_cloud_templates_match_checked_in_files() -> None:
     assert completed.returncode == 0, completed.stdout + completed.stderr
 
 
-def test_snowflake_templates_carry_at_most_four_clustering_columns() -> None:
+def test_snowflake_templates_carry_at_most_three_clustering_columns() -> None:
     for benchmark_id in ("tpch", "tpcds"):
         payload = yaml.safe_load((TUNING_ROOT / "snowflake" / f"{benchmark_id}_tuned.yaml").read_text(encoding="utf-8"))
         for table, block in payload.get("table_tunings", {}).items():
             clustering = block.get("clustering", []) or []
-            assert len(clustering) <= 4, f"snowflake/{benchmark_id} {table}: {len(clustering)} clustering columns"
+            assert len(clustering) <= 3, f"snowflake/{benchmark_id} {table}: {len(clustering)} clustering columns"
 
 
 def test_bigquery_and_redshift_templates_stay_out_of_the_certified_set() -> None:

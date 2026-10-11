@@ -30,13 +30,6 @@ platform_optimizations:
 table_tunings:
   CUSTOMER:
     table_name: CUSTOMER
-    clustering:
-    - name: C_CUSTKEY
-      type: INTEGER
-      order: 1
-    - name: C_NATIONKEY
-      type: INTEGER
-      order: 2
 
   LINEITEM:
     table_name: LINEITEM
@@ -44,15 +37,12 @@ table_tunings:
     - name: L_SHIPDATE
       type: DATE
       order: 1
-    - name: L_ORDERKEY
+    - name: L_SUPPKEY
       type: INTEGER
       order: 2
     - name: L_PARTKEY
       type: INTEGER
       order: 3
-    - name: L_SUPPKEY
-      type: INTEGER
-      order: 4
 
   ORDERS:
     table_name: ORDERS
@@ -60,42 +50,18 @@ table_tunings:
     - name: O_ORDERDATE
       type: DATE
       order: 1
-    - name: O_ORDERKEY
+    - name: O_CUSTKEY
       type: INTEGER
       order: 2
-    - name: O_CUSTKEY
+    - name: O_ORDERKEY
       type: INTEGER
       order: 3
 
   PART:
     table_name: PART
-    clustering:
-    - name: P_PARTKEY
-      type: INTEGER
-      order: 1
-    - name: P_TYPE
-      type: VARCHAR
-      order: 2
-    - name: P_SIZE
-      type: INTEGER
-      order: 3
 
   PARTSUPP:
     table_name: PARTSUPP
-    clustering:
-    - name: PS_PARTKEY
-      type: INTEGER
-      order: 1
-    - name: PS_SUPPKEY
-      type: INTEGER
-      order: 2
 
   SUPPLIER:
     table_name: SUPPLIER
-    clustering:
-    - name: S_SUPPKEY
-      type: INTEGER
-      order: 1
-    - name: S_NATIONKEY
-      type: INTEGER
-      order: 2

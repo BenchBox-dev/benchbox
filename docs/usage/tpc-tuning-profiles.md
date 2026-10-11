@@ -73,7 +73,7 @@ Databricks data-skipping documentation
 | BigQuery | joins, filters, group/order locality | clustering, with the four-column limit explicit; distribution keys are unsupported |
 | Redshift | distribution plus locality candidates | dist-key plus sort-key decisions; dist-key remains limited to a single key |
 | Redshift | locality candidates | sort-key decisions |
-| Snowflake | locality candidates | clustering keys where useful |
+| Snowflake | locality candidates | clustering keys on fact tables only, at most three per table ordered lowest to highest SF1 cardinality (date keys first, then foreign keys by referenced row count, then the table's own key) |
 | Snowflake | distribution candidates | unsupported; no user-managed distribution key |
 
 The checked-in ClickHouse templates (`examples/tunings/clickhouse/`) are not
