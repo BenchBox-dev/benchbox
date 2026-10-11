@@ -1,12 +1,12 @@
 {
   "acceptance": [
     "Confirm the current native task API's supported model-selection fields and identify the owning runtime project/maintainer.",
-    "If a selector exists, demonstrate that native dispatch honors explicit Sol and Luna choices; a role mapping or successful generic dispatch is insufficient evidence.",
-    "If the selector is not supported, link an owner-accepted upstream platform task and leave this BenchBox tracking item blocked until the capability or supported alternative is available.",
+    "Demonstrate that native dispatch honors explicit Sol and Luna choices; a role mapping or successful generic dispatch is insufficient evidence.",
+    "If the selector is not supported, link an owner-accepted upstream platform task, keep this item blocked while it is pending, then re-open only after the capability is available and the dispatch test passes.",
     "Do not use external agents in place of native subagents, and do not silently substitute or claim an unverified model tier."
   ],
-  "context": "Blocked: the selector is owned by the native task/runtime platform, not BenchBox; this session has no supported field to request Sol or Luna and no owner-accepted upstream issue is available. Next owner action: identify/notify the runtime maintainer and attach an accepted upstream task or a documented native selector before reopening.\n\nEvidence that this is a recurring product gap: `/Users/joe/Developer/.todo-batch/BenchBox-ci-devloop-20261009.txt`, lines 29-30, already records that the native API exposes no Sol/Luna selector; this new tracker item provides a durable owner/action and resume condition.",
-  "description": "The requested delegation policy assigns high-complexity work to Sol and low-complexity work to Luna. The native `functions.task` interface available in this session exposes an `agent` role but no model selector; explicit model selection was rejected in the earlier attempt. External agents are prohibited by the user. This is a runtime/tooling product gap, not a BenchBox implementation request. Identify the owning runtime project and supported model-selection contract; if native selection is unavailable, route this to the platform owner and keep this item blocked until there is an owner-accepted upstream issue or a documented supported alternative. Do not claim tier-specific dispatch unless a native run proves it.",
+  "context": "Blocked: the selector is owned by the native task/runtime platform, not BenchBox; this session has no supported field to request Sol or Luna and no owner-accepted upstream issue is available. Next owner action: identify/notify the runtime maintainer and attach an accepted upstream task. Keep this item blocked until the selector or an owner-documented native equivalent is available and verified.\n\nEvidence that this is a recurring product gap: `/Users/joe/Developer/.todo-batch/BenchBox-ci-devloop-20261009.txt`, lines 29-30, already records that the native API exposes no Sol/Luna selector; this new tracker item provides a durable owner/action and resume condition.",
+  "description": "The requested delegation policy assigns high-complexity work to Sol and low-complexity work to Luna. The native `functions.task` interface available in this session exposes an `agent` role but no model selector; explicit model selection was rejected in the earlier attempt. External agents are prohibited by the user. This is a runtime/tooling product gap, not a BenchBox implementation request. Identify the owning runtime project and supported model-selection contract. If native selection is unavailable, link an owner-accepted upstream issue but keep this item blocked until the capability is implemented and a native dispatch proves the explicit Sol and Luna choices (or an owner documents an equivalent native contract that satisfies those choices). Do not claim tier-specific dispatch unless a native run proves it.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0b65b59dfd5ecfabcfde36b0",
@@ -30,6 +30,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "c1c05e2d22b14eb0bdaa25b762e03543",
+      "session_id": "12a278318efc4205bf01aa4132116f81"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0b65b59dfd5ecfabcfde36b0",
+      "at": "2026-10-11T20:34:10Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a391fff44232490cb7313adaec39f42d",
       "session_id": "12a278318efc4205bf01aa4132116f81"
     }
   ]
