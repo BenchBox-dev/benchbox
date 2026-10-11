@@ -15,7 +15,7 @@ from benchbox.core.tuning.applied_ledger import (
 )
 from benchbox.core.tuning.capability_registry import TuningCapability, get_capability
 from benchbox.core.tuning.interface import TuningType, UnifiedTuningConfiguration
-from benchbox.core.tuning.introspection import normalize_identifier, statement_table
+from benchbox.core.tuning.introspection import normalize_identifier, statement_index_columns, statement_table
 
 NOT_RENDERED_REASON = "adapter rendered no statement"
 DDL_REALIZED_REASON = "realized by an executed DDL statement"
@@ -170,6 +170,25 @@ def reconcile_requested_intents(
         capability = get_capability(platform, intent.tuning_type)
         footprints = _footprints(intent.tuning_type, capability)
 
+        if capability is not None and capability.mechanism_id == "duckdb_ctas_sort":
+            index = _realizing_index(intent, (_INDEX_COLUMNS,), ledger)
+            has_sorted_ingestion = intent.table is not None and _bare_table(intent.table) in executed_sorts
+            if index is not None and has_sorted_ingestion:
+                continue
+            if _accounted(intent, footprints, ledger):
+                continue
+            if not has_sorted_ingestion and index is None:
+                ledger.record_dropped(intent.label, _drop_reason(capability))
+                continue
+            missing = []
+            if not has_sorted_ingestion:
+                missing.append("sorted_ingestion")
+            if index is None:
+                missing.append("index")
+            ledger.record_dropped(
+                intent.label, f"missing expected {' and '.join(missing)} evidence for {capability.mechanism_id}"
+            )
+            continue
         index = _realizing_index(intent, footprints, ledger)
         if index is not None:
             if _realized_in_ddl(capability, ledger.statements[index]) and not _covered(
@@ -270,10 +289,18 @@ def _shows(
     if intent.table is None or not match_columns:
         return any(re.search(pattern, _searched(pattern, raw, bare), re.IGNORECASE) for pattern in footprints)
     wanted = [normalize_identifier(column) for column in intent.columns]
-    return any(
-        _contains_contiguous_sequence(wanted, _clause_identifiers(tail))
-        for tail in _clause_tails(raw, bare, footprints)
-    )
+    for pattern in footprints:
+        if pattern == _INDEX_COLUMNS:
+            indexed = statement_index_columns(statement)
+            if wanted and indexed is not None and indexed[: len(wanted)] == tuple(wanted):
+                return True
+            continue
+        if any(
+            _contains_contiguous_sequence(wanted, _clause_identifiers(tail))
+            for tail in _clause_tails(raw, bare, (pattern,))
+        ):
+            return True
+    return False
 
 
 def _searched(pattern: str, raw: str, bare: str) -> str:

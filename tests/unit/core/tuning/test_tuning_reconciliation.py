@@ -101,32 +101,56 @@ class TestRequestedIntents:
 
 
 class TestEvidence:
-    def test_matching_executed_statement_is_done_without_an_entry(self):
+    @pytest.mark.parametrize("phase", [PHASE_DDL, PHASE_POST_LOAD])
+    def test_duckdb_index_without_sorted_ingestion_is_not_evidence(self, phase):
         ledger = AppliedTuningLedger()
-        ledger.record(DUCKDB_SORT_INDEX, PHASE_DDL)
+        ledger.record(DUCKDB_SORT_INDEX, phase, mechanism="sort_index", table="lineitem")
 
         _reconcile(_sorted_config(), ledger, "duckdb")
 
-        assert ledger.dropped == []
-        assert ledger.satisfied == []
+        [dropped] = ledger.dropped
+        assert dropped.reason == "missing expected sorted_ingestion evidence for duckdb_ctas_sort"
 
-    def test_post_load_statement_is_evidence(self):
+    def test_duckdb_sorted_ingestion_without_index_is_not_evidence(self):
+        ledger = AppliedTuningLedger()
+
+        _reconcile(_sorted_config(), ledger, "duckdb", sorted_tables=("lineitem",))
+
+        [dropped] = ledger.dropped
+        assert dropped.reason == "missing expected index evidence for duckdb_ctas_sort"
+
+    def test_duckdb_order_by_does_not_substitute_for_index_evidence(self):
+        ledger = AppliedTuningLedger()
+        ledger.record(
+            "CREATE TABLE lineitem (l_orderkey INTEGER, l_shipdate DATE) ORDER BY (l_orderkey, l_shipdate)",
+            PHASE_POST_LOAD,
+            mechanism="sorted_ingestion",
+            table="lineitem",
+        )
+
+        _reconcile(_sorted_config(), ledger, "duckdb", sorted_tables=("lineitem",))
+
+        [dropped] = ledger.dropped
+        assert dropped.reason == "missing expected index evidence for duckdb_ctas_sort"
+
+    def test_duckdb_sort_requires_sorted_ingestion_and_index(self):
         ledger = AppliedTuningLedger()
         ledger.record(DUCKDB_SORT_INDEX, PHASE_POST_LOAD, mechanism="sort_index", table="lineitem")
 
-        _reconcile(_sorted_config(), ledger, "duckdb")
+        _reconcile(_sorted_config(), ledger, "duckdb", sorted_tables=("lineitem",))
 
         assert ledger.dropped == []
+        assert ledger.satisfied == []
 
     def test_statement_on_other_columns_is_not_evidence(self):
         ledger = AppliedTuningLedger()
         ledger.record('CREATE INDEX idx_lineitem_sort ON "lineitem" ("l_partkey")', PHASE_DDL)
 
-        _reconcile(_sorted_config(), ledger, "duckdb")
+        _reconcile(_sorted_config(), ledger, "duckdb", sorted_tables=("lineitem",))
 
         [dropped] = ledger.dropped
         assert dropped.intent == "sorting:LINEITEM (L_ORDERKEY, L_LINENUMBER)"
-        assert dropped.reason == NOT_RENDERED_REASON
+        assert dropped.reason == "missing expected index evidence for duckdb_ctas_sort"
 
     def test_intervening_index_column_does_not_realize_requested_sort(self):
         ledger = AppliedTuningLedger()
@@ -134,7 +158,24 @@ class TestEvidence:
             'CREATE INDEX idx_lineitem_sort ON "lineitem" ("l_orderkey", "l_linenumber", "l_shipdate")', PHASE_DDL
         )
 
-        _reconcile(_config(sorting=_columns("L_ORDERKEY", "L_SHIPDATE")), ledger, "duckdb")
+        _reconcile(_config(sorting=_columns("L_ORDERKEY", "L_SHIPDATE")), ledger, "duckdb", sorted_tables=("lineitem",))
+
+        assert ledger.satisfied == []
+        [dropped] = ledger.dropped
+        assert dropped.intent == "sorting:LINEITEM (L_ORDERKEY, L_SHIPDATE)"
+
+    @pytest.mark.parametrize(
+        "index_columns",
+        [
+            "l_linenumber, l_orderkey, l_shipdate",
+            "l_orderkey + 1, l_shipdate",
+        ],
+    )
+    def test_index_with_leading_key_or_expression_does_not_realize_requested_sort(self, index_columns):
+        ledger = AppliedTuningLedger()
+        ledger.record(f'CREATE INDEX idx_lineitem_sort ON "lineitem" ({index_columns})', PHASE_DDL)
+
+        _reconcile(_config(sorting=_columns("L_ORDERKEY", "L_SHIPDATE")), ledger, "duckdb", sorted_tables=("lineitem",))
 
         assert ledger.satisfied == []
         [dropped] = ledger.dropped
@@ -144,7 +185,7 @@ class TestEvidence:
         ledger = AppliedTuningLedger()
         ledger.record('CREATE INDEX idx_orders_sort ON "orders" ("l_orderkey", "l_linenumber")', PHASE_DDL)
 
-        _reconcile(_sorted_config(), ledger, "duckdb")
+        _reconcile(_sorted_config(), ledger, "duckdb", sorted_tables=("lineitem",))
 
         assert len(ledger.dropped) == 1
 
@@ -453,7 +494,7 @@ class TestNeverMoreVerified:
         config = _sorted_config()
         config.table_tunings["ORDERS"] = TableTuning(table_name="ORDERS", sorting=_columns("O_ORDERDATE"))
 
-        _reconcile(config, ledger, "duckdb")
+        _reconcile(config, ledger, "duckdb", sorted_tables=("lineitem",))
 
         receipt = corroborate(ledger, state)
         assert {entry.verdict for entry in receipt.entries} == {CORROBORATED}

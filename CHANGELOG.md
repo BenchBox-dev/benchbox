@@ -232,8 +232,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   keys now record the rendered `PRIMARY KEY` clause, so their applied ledger
   hash changes and a keys-only tuned run reports `applied_unverified` instead of
   `noop`.
-  Reconciliation requires requested index columns to appear contiguously; an
-  intervening key no longer counts as evidence.
+  DuckDB sorting requires both sorted-ingestion and matching-index evidence.
+  Requested columns must match the ordered index prefix; leading, intervening,
+  or expression keys do not count as evidence.
 
 ### Added
 
