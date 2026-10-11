@@ -1351,6 +1351,8 @@ PIPED_ENV_FLAGS = {"-i", "--ignore-environment", "-0", "--null"}
 PIPED_ENV_VALUE_OPTIONS = RUNNER_VALUE_OPTIONS["env"] - {"-S", "--split-string"}
 PIPED_ENV_ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=.*")
 
+PIPED_SSH_NO_STDIN_FLAGS = {"-n", "-f", "-N"}
+
 
 def runner_command_index(words: list[str | None], command: str) -> int:
     value_options = RUNNER_VALUE_OPTIONS.get(command, set())
@@ -1528,15 +1530,18 @@ SHELL_UNMODELED_NAME = re.compile(
 
 
 def chunk_can_hold_comment(chunk: str) -> bool:
-    if SHELL_MODELED_INLINE.search(chunk) or (
-        not re.search(r"(?<!<)<<-?\s*", chunk) and SHELL_PIPED_MODELED_INTERPRETER.search(chunk)
-    ):
+    has_heredoc = bool(re.search(r"(?<!<)<<-?\s*", chunk))
+    if SHELL_MODELED_INLINE.search(chunk) or (not has_heredoc and SHELL_PIPED_MODELED_INTERPRETER.search(chunk)):
         return True
     for match in SHELL_UNMODELED_NAME.finditer(chunk):
         name = match.group(1)
         markers = re.compile(r"--|/\*") if name in SQL_CLIENTS else UNMODELED_MARKERS.get(name, re.compile(r"#"))
         if markers.search(chunk, match.end()):
             return True
+        if not has_heredoc:
+            pipe = chunk.rfind("|", 0, match.start())
+            if pipe >= 0 and markers.search(chunk, 0, pipe):
+                return True
     return False
 
 
@@ -1686,11 +1691,110 @@ def piped_redirect_effect(commands: list) -> tuple[bool, bool]:
     return producer_stdout_redirected, consumer_stdin_redirected
 
 
+def piped_runner_command_words(words: list) -> list:
+    if len(words) != 1 or words[0].parts:
+        return words
+    try:
+        trees = bashlex.parse(words[0].word)
+    except BASHLEX_FAILURES as exc:
+        raise ValueError("piped runner command requires an adapter") from exc
+    if len(trees) != 1 or trees[0].kind != "command":
+        raise ValueError("piped runner command requires an adapter")
+    command_words = [part for part in trees[0].parts if part.kind == "word"]
+    if not command_words or len(command_words) != len(trees[0].parts):
+        raise ValueError("piped runner command requires an adapter")
+    return command_words
+
+
+def piped_ssh_consumer_words(words: list) -> tuple[list, str]:
+    static = [None if word.parts else word.word for word in words]
+    first = runner_command_index(static, "ssh")
+    options = static[1:first]
+    if any(word is None for word in options):
+        raise ValueError("dynamic piped ssh options require an adapter")
+    if PIPED_SSH_NO_STDIN_FLAGS.intersection(options):
+        return words, "ssh"
+    if len(static) - first < 2:
+        raise ValueError("piped ssh login-shell input requires an adapter")
+    remote_words = piped_runner_command_words(words[first + 1 :])
+    if remote_words[0].parts:
+        raise ValueError("dynamic piped ssh command requires an adapter")
+    remote_command = remote_words[0].word.rsplit("/", 1)[-1]
+    if remote_command in {"env", "sudo", "nohup"}:
+        return piped_consumer_words(remote_words)
+    if re.fullmatch(r"python[0-9.]*", remote_command) or remote_command in SHELL_NESTED_TARGETS:
+        return remote_words, remote_command
+    return words, "ssh"
+
+
+def piped_watch_consumer_words(words: list) -> tuple[list, str]:
+    static = [None if word.parts else word.word for word in words]
+    first = runner_command_index(static, "watch")
+    if any(word is None for word in static[1:first]):
+        raise ValueError("dynamic piped watch options require an adapter")
+    if first >= len(words):
+        return words, "watch"
+    target = piped_runner_command_words(words[first:])
+    if any(word.parts for word in target):
+        raise ValueError("dynamic piped watch command requires an adapter")
+    nested = target[0].word.rsplit("/", 1)[-1]
+    if not re.fullmatch(r"python[0-9.]*", nested) and nested not in SHELL_NESTED_TARGETS:
+        return words, "watch"
+    language = piped_consumer_language(nested)
+    inline_index = None
+    if language is not None:
+        try:
+            inline_index = inline_source_index([word.word for word in target], language)
+        except ValueError as exc:
+            raise ValueError("piped watch input routing requires an adapter") from exc
+    has_file_operand = any(not word.word.startswith("-") and word.word != "-" for word in target[1:])
+    if inline_index is None and not has_file_operand:
+        raise ValueError("piped watch input routing requires an adapter")
+    return words, "watch"
+
+
+def piped_xargs_consumer_words(words: list) -> tuple[list, str]:
+    static = [None if word.parts else word.word for word in words]
+    first = runner_command_index(static, "xargs")
+    if any(word is None for word in static[1:first]):
+        raise ValueError("dynamic piped xargs options require an adapter")
+    if first >= len(words):
+        return words, "xargs"
+    target = piped_runner_command_words(words[first:])
+    if any(word.parts for word in target):
+        raise ValueError("dynamic piped xargs command requires an adapter")
+    nested = target[0].word.rsplit("/", 1)[-1]
+    if not re.fullmatch(r"python[0-9.]*", nested) and nested not in SHELL_NESTED_TARGETS:
+        return words, "xargs"
+    language = piped_consumer_language(nested)
+    inline_index = None
+    if language is not None:
+        try:
+            inline_index = inline_source_index([word.word for word in target], language)
+        except ValueError as exc:
+            raise ValueError("piped xargs input routing requires an adapter") from exc
+    has_file_operand = any(not word.word.startswith("-") and word.word != "-" for word in target[1:])
+    if inline_index is None and not has_file_operand:
+        raise ValueError("piped xargs input routing requires an adapter")
+    return words, "xargs"
+
+
 def piped_consumer_words(words: list) -> tuple[list, str]:
     command = words[0].word.rsplit("/", 1)[-1]
+    if command == "ssh":
+        return piped_ssh_consumer_words(words)
+    if command == "watch":
+        return piped_watch_consumer_words(words)
+    if command == "xargs":
+        return piped_xargs_consumer_words(words)
     if command in {"sudo", "nohup"}:
         unwrapped, command = unwrap_runner_command(words, command)
-        if unwrapped is words and any(word.parts for word in words[1:]):
+        if unwrapped is words:
+            dynamic_wrapper = any(word.parts for word in words[1:])
+        else:
+            start = len(words) - len(unwrapped)
+            dynamic_wrapper = any(word.parts for word in words[1:start])
+        if dynamic_wrapper:
             raise ValueError("dynamic piped interpreter consumer requires an adapter")
         return unwrapped, command
     if command == "env" and len(words) > 1:
@@ -1725,6 +1829,14 @@ def piped_consumer_words(words: list) -> tuple[list, str]:
     return words, command
 
 
+def piped_producer_words(words: list) -> tuple[list, str]:
+    command = words[0].word.rsplit("/", 1)[-1]
+    if command == "env":
+        return piped_consumer_words(words)
+    unwrapped = unwrap_static_command(words)
+    return unwrapped, unwrapped[0].word.rsplit("/", 1)[-1]
+
+
 def piped_passthrough_cat(command: bashlex.ast.node, words: list) -> bool:
     if not words or words[0].word.rsplit("/", 1)[-1] != "cat":
         return False
@@ -1751,7 +1863,12 @@ def piped_sides(node: bashlex.ast.node) -> list | None:
     sides = [[part for part in command.parts if part.kind == "word"] for command in commands]
     if not sides[0] or sides[0][0].parts:
         return None
-    if sides[0][0].word.rsplit("/", 1)[-1] not in PIPED_PRODUCERS:
+    producer_words, producer = piped_producer_words(sides[0])
+    if producer not in PIPED_PRODUCERS:
+        runner = sides[0][0].word.rsplit("/", 1)[-1]
+        if (runner in SHELL_WRAPPERS or runner == "env") and any(word.parts for word in sides[0][1:]):
+            if any(piped_may_execute_interpreter(side) for side in sides[1:]):
+                raise ValueError("dynamic piped producer requires an adapter")
         return None
     for index, side in enumerate(sides[1:], start=1):
         if not side:
@@ -1762,10 +1879,10 @@ def piped_sides(node: bashlex.ast.node) -> list | None:
             continue
         consumer_words, consumer = piped_consumer_words(side)
         if piped_consumer_language(consumer) is not None or consumer in SHELL_UNMODELED:
-            return [sides[0], consumer_words, commands[: index + 1]]
+            return [producer_words, consumer_words, commands[: index + 1]]
         if any(piped_may_execute_interpreter(later) for later in sides[index + 1 :]):
             raise ValueError("piped interpreter input through an unsupported command requires an adapter")
-        return [sides[0], consumer_words, commands[: index + 1]]
+        return [producer_words, consumer_words, commands[: index + 1]]
     return None
 
 
@@ -1823,14 +1940,6 @@ def piped_stdin_entries(path: str, source: str, offset: int, unit: str, node: ba
     payload, resolved = scan_source_payload(text, language)
     line = source[: offset + producer_words[0].pos[0]].count("\n") + 1
     return [(line, path + "." + resolved, payload, resolved, f"{symbol}:pipe:{producer}")]
-
-
-def piped_stdin_payloads(path: str, source: str) -> list[tuple[int, str, str, str, str]]:
-    try:
-        trees = bashlex.parse(source)
-    except BASHLEX_FAILURES:
-        return []
-    return [entry for tree in trees for entry in piped_stdin_entries(path, source, 0, source, tree, "")]
 
 
 def shell_command_payloads(path: str, source: str) -> list[tuple[int, str, str, str, str]]:

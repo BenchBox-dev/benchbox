@@ -146,8 +146,11 @@ TypeScript parser; SQL-valued strings and execution-sink arguments as SQL; other
 formats with Pygments lexers; embedded code with its own language check.
 Shell heredocs and literal `echo`/`printf` pipelines through plain `cat` stages
 or supported `sudo`, `env` and `nohup` wrappers into supported stdin
-interpreters are scanned. MDX top-level ESM and JSX block comments outside
-Markdown code spans and fences are extracted.
+interpreters are scanned. Static `sudo`/`env` producer wrappers are also
+scanned. Static SSH pipelines into supported remote stdin
+interpreters are also scanned; `watch` and `xargs` pipelines to stdin
+interpreters fail closed when input routing is ambiguous. MDX top-level ESM
+and JSX block comments outside Markdown code spans and fences are extracted.
 Executable paths are matched by basename; consumer output redirects preserve
 piped input, while redirected stdin fails closed.
 Unknown input is a coverage error, never a pass, and under blocking enforcement
@@ -178,10 +181,11 @@ Known gaps, each a place where a comment can pass unreported:
 - Unknown programs that take `-c` or `-e` as data are listed in
   `DATA_FLAG_PROGRAMS` in `scripts/comment_execution.py`; any other program
   given such a flag is reported.
-- Static `sudo`, `env` and `nohup` interpreter wrappers with supported options
-  are scanned; dynamic or unsupported wrapper options fail closed. Static inner
-  shell commands passed as one argument to runners such as `ssh`, `watch` or
-  `xargs` are followed; dynamically assembled commands are not.
+- Static `sudo`, `env` and `nohup` interpreter wrappers and `sudo`/`env`
+  literal-producer wrappers with supported options are scanned; dynamic or
+  unsupported wrapper options fail closed. Static inner shell commands passed
+  as one argument to runners such as `ssh`, `watch` or `xargs` are followed;
+  dynamically assembled commands are not.
 - HTML comments and MyST `%` lines in Markdown prose are not scanned. In the
   maintained docs they are copyright headers, generator start and end markers,
   `<!-- content-ok -->` markers read by `scripts/blog_content_validation.py`,

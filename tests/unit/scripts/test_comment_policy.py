@@ -1449,7 +1449,16 @@ def test_unknown_split_runner_options_fail_closed(source: str) -> None:
 
 @pytest.mark.parametrize(
     "consumer",
-    ["$interpreter", "${INTERPRETER}", '"$1"', "cat | $interpreter"],
+    [
+        "$interpreter",
+        "${INTERPRETER}",
+        '"$1"',
+        "cat | $interpreter",
+        'ssh "$HOST" python3',
+        'ssh host "$COMMAND"',
+        'xargs "$OPTIONS" python3',
+        'watch "$COMMAND"',
+    ],
 )
 def test_dynamic_pipeline_consumer_fails_closed(consumer: str) -> None:
     findings = scan("a.sh", f"echo 'pass' | {consumer}", "bash")
@@ -1517,6 +1526,9 @@ def test_piped_printf_escaped_percent_matches_shell_output() -> None:
         ("echo '# hidden' | cat | python3", "# hidden"),
         ("echo '# hidden' | cat | cat | python3", "# hidden"),
         ("echo '# hidden' | python3 | cat", "# hidden"),
+        ("echo '# hidden' | ssh host python3", "# hidden"),
+        ("sudo echo '# hidden' | python3", "# hidden"),
+        ("env FOO=1 echo '# hidden' | python3", "# hidden"),
         ("echo '# hidden' 1>&1 | bash", "# hidden"),
     ],
 )
@@ -1524,6 +1536,39 @@ def test_piped_producer_payloads_reach_stdin_interpreters(source: str, expected:
     findings = scan("a.sh", source, "bash")
     assert [finding.text for finding in findings] == [expected]
     assert all("pipe" in finding.symbol for finding in findings)
+
+
+def test_ssh_pipeline_skips_option_values_before_remote_command() -> None:
+    findings = scan("a.sh", "echo '# hidden' | ssh -i /opt/python3 host python3", "bash")
+    assert [(finding.kind, finding.text) for finding in findings] == [("comment", "# hidden")]
+
+
+def test_ssh_single_string_stdin_interpreter_is_scanned() -> None:
+    findings = scan("a.sh", "echo '# hidden' | ssh host 'python3 -'", "bash")
+    assert [(finding.kind, finding.text) for finding in findings] == [("comment", "# hidden")]
+
+
+def test_ssh_pipeline_with_key_path_but_no_remote_command_fails_closed() -> None:
+    findings = scan("a.sh", "echo '# hidden' | ssh -i /opt/python3 host", "bash")
+    assert [finding.kind for finding in findings] == ["coverage-error"]
+
+
+def test_ssh_pipeline_without_stdin_does_not_scan_remote_input() -> None:
+    assert scan("a.sh", "echo '# hidden' | ssh -n host python3", "bash") == []
+
+
+@pytest.mark.parametrize("runner", ["watch -n 1 python3", "watch 'python3 -'", "xargs 'python3 -'"])
+def test_runner_pipeline_to_stdin_interpreter_fails_closed(runner: str) -> None:
+    findings = scan("a.sh", f"echo '# hidden' | {runner}", "bash")
+    assert [finding.kind for finding in findings] == ["coverage-error"]
+
+
+@pytest.mark.parametrize(
+    "source",
+    ['sudo "$COMMAND" | python3', 'env COMMAND="$COMMAND" echo "# hidden" | python3'],
+)
+def test_dynamic_wrapped_piped_producer_fails_closed(source: str) -> None:
+    assert [finding.kind for finding in scan("a.sh", source, "bash")] == ["coverage-error"]
 
 
 def test_piped_interpreter_masking_preserves_trailing_shell_comment() -> None:
@@ -1588,6 +1633,11 @@ def test_piped_dynamic_or_unmodeled_stdin_fails_closed(source: str) -> None:
 )
 def test_piped_non_stdin_programs_stay_data(source: str) -> None:
     assert scan("a.sh", source, "bash") == []
+
+
+def test_piped_xargs_stdin_interpreter_fails_closed() -> None:
+    findings = scan("a.sh", "echo '# hidden' | xargs -a /dev/null python3 -", "bash")
+    assert [finding.kind for finding in findings] == ["coverage-error"]
 
 
 @pytest.mark.parametrize(
@@ -3408,6 +3458,8 @@ def test_every_astro_expression_is_sent_to_the_typescript_scanner() -> None:
         ("if ! awk -v s=\"$s\" 'BEGIN { exit !(s >= 1) }'; then\n  exit 1\nfi\n", []),
         ("LEVELS=($(psql -c 'SELECT 1 -- note'))\n", ["coverage-error"]),
         ("echo x | python3 )\n", ["coverage-error"]),
+        ("echo '# hidden' | perl )\n", ["coverage-error"]),
+        ("echo x | perl )\n", []),
         ("echo x | cat )\n", []),
         ("echo '| python3'\n", []),
     ],
