@@ -4,7 +4,7 @@
     "Resolve or suppress the warning at its source if it is an upstream deprecation or expected parameter notice",
     "Live ClickHouse tests run cleanly without triggering the warning in CI or local runs"
   ],
-  "context": "Blamed tests in run 37638195854 and 37794806634 were test_connection and test_create_schema (the first test executed on each xdist worker). Requires Linux with docker compose running at -n 0 so warnings summary is captured.\n\n2026-10-10 mocker repro (native worker ComplexEel, verified by orchestrator): REPRODUCED under mocker on macOS (fresh 25.8 container, 5376m, host load 3.21). Warning: ResourceWarning unclosed socket to 127.0.0.1:9000 from clickhouse_driver admin Clients never disconnected in _ensure_server_database_exists, check_server_database_exists, drop_database (GC-time attribution nondeterministic — mock.py/re locally, benchbox setup in CI). Fix: try/finally admin_client.disconnect() in all three (setup.py, diagnostics.py); test_close_connection strengthened (every constructed client disconnected exactly once). PR #2877 OPEN unarmed, head f13a035575a961113435a7771ff4779aa20efd65, local==remote==PR, Joe Harris. Evidence: runs/clickhouse-connection-warning-20261008/ (before: 4 passed + 2 ResourceWarnings + unraisable; after: 4 passed zero warnings; unit adapter 96 pass/3 pre-existing skips; ruff/fmt/pr-preflight green). Container removed, none running. Note: teardown-guard half of #2729 already resolved by merged #2789. Remote branch fix/clickhouse-compose-memory-admission touches setup.py comment-only, no functional overlap. Blockers: CI, owner merge. No completion claimed.",
+  "context": "Blamed tests in run 37638195854 and 37794806634 were test_connection and test_create_schema (the first test executed on each xdist worker). Requires Linux with docker compose running at -n 0 so warnings summary is captured.\n\n2026-10-10 mocker repro (native worker ComplexEel, verified by orchestrator): REPRODUCED under mocker on macOS (fresh 25.8 container, 5376m, host load 3.21). Warning: ResourceWarning unclosed socket to 127.0.0.1:9000 from clickhouse_driver admin Clients never disconnected in _ensure_server_database_exists, check_server_database_exists, drop_database (GC-time attribution nondeterministic — mock.py/re locally, benchbox setup in CI). Fix: try/finally admin_client.disconnect() in all three (setup.py, diagnostics.py); test_close_connection strengthened (every constructed client disconnected exactly once). PR #2877 merged with merge commit 36c676a621b169576bece56abbd9b3e1bfa779be.\n\nCloseout verification: local live mocker reproduction before/after recorded in runs/clickhouse-connection-warning-20261008/ (before: 4 passed + 2 ResourceWarnings + unraisable; after: 4 passed, zero warnings); unit adapter 96 pass/3 pre-existing skips; required checks on merged PR #2877 pass: core, docs, explorer, landing, oracle-review, results-data, tooling. Container removed; none running. Teardown-guard half of #2729 already resolved by merged #2789. No Linux-specific reproduction beyond mocker is claimed.",
   "description": "In the t3:docker nightly suite, live ClickHouse connection and schema creation emits a Python warning attributed to benchbox.platforms.clickhouse.setup. Because test teardowns failed with pytrace=False and CI emits no warnings summary, the underlying warning category and message text remain uncaptured. Reproduce on Linux with docker compose at -n 0, inspect the warning, and silence or resolve the source.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/issues/2729"
@@ -60,6 +60,14 @@
       "generation": "4ea1fd0ee0fb461b9c29a33fdea9fff3",
       "op": "take",
       "op_id": "b8eb435cfabd47cf8e7381ff93424691",
+      "session_id": "4dbe22cfa4cf47a5bab075c4c3ac203f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7e55d16b199130b0978d8efa",
+      "at": "2026-10-11T09:20:10Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b41397d5574d42e882e4748642e91212",
       "session_id": "4dbe22cfa4cf47a5bab075c4c3ac203f"
     }
   ]
