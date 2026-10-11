@@ -409,7 +409,7 @@ jobs:
       BENCHBOX_TEST_TIER: t3
     services:
       postgres:
-        image: postgres:17
+        image: public.ecr.aws/docker/library/postgres:17
         env:
           POSTGRES_USER: benchbox
           POSTGRES_PASSWORD: benchbox
@@ -700,14 +700,20 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 scripts/scheduled_workflow_liveness.py
 
+  mirror-cedardb:
+    uses: ./.github/workflows/mirror-ci-images.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      images: '["cedardb"]'
+
   throughput-uat:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
       contents: read
       actions: read
-    outputs:
-      cedardb_sweep_outcome: ${{ steps.cedardb-sweep.outcome }}
     env:
       THROUGHPUT_FLOOR_MEDIAN: ${{ vars.THROUGHPUT_FLOOR_MEDIAN }}
       THROUGHPUT_FLOOR_MAX_DROP_FRACTION: ${{ vars.THROUGHPUT_FLOOR_MAX_DROP_FRACTION }}
@@ -737,11 +743,6 @@ jobs:
         run: |
           make uat-sweep CONFIG=tests/uat/configs/uat-throughput-duckdb-nightly.yaml
 
-      - name: Run CedarDB throughput UAT cell (TPC-H SF1, run-official --streams 3)
-        id: cedardb-sweep
-        run: |
-          make uat-sweep CONFIG=tests/uat/configs/uat-throughput-cedardb-nightly.yaml
-
       - name: Download retained Throughput@Size baselines
         if: ${{ !cancelled() }}
         env:
@@ -770,20 +771,13 @@ jobs:
             --baseline-history "$HOME/Developer/benchmark_runs/throughput-baseline-history" \
             --baseline-out "$HOME/Developer/benchmark_runs/throughput-baseline"
 
-      - name: Assert the CedarDB cell stream count and per-stream success
-        if: ${{ !cancelled() }}
-        run: |
-          uv run -- python -m tests.uat.throughput assert \
-            --cells-glob "$HOME/Developer/benchmark_runs/logs/uat_throughput_cedardb_nightly_*/cells.jsonl" \
-            --platform cedardb --benchmark tpch --scale 1 --streams 3
-
       - name: Upload throughput UAT logs and results
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
-          name: throughput-uat-${{ github.run_id }}-${{ github.run_attempt }}
+          name: throughput-uat-duckdb-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            ~/Developer/benchmark_runs/logs/uat_throughput_*
+            ~/Developer/benchmark_runs/logs/uat_throughput_duckdb_*
             ~/Developer/benchmark_runs/results/tpch_sf1_*.json
           if-no-files-found: warn
           retention-days: 14
@@ -797,9 +791,63 @@ jobs:
           if-no-files-found: ignore
           retention-days: 90
 
+  throughput-uat-cedardb:
+    needs: mirror-cedardb
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      cedardb_sweep_outcome: ${{ steps.cedardb-sweep.outcome }}
+    env:
+      CEDARDB_IMAGE: ghcr.io/benchbox-dev/cedardb@sha256:dbbacb16b24421a9a123cd1d065e2a049c60b7cc6060d7db2f3cccbf69f5ff62
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Authenticate to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      - name: Run CedarDB throughput UAT cell (TPC-H SF1, run-official --streams 3)
+        id: cedardb-sweep
+        run: |
+          make uat-sweep CONFIG=tests/uat/configs/uat-throughput-cedardb-nightly.yaml
+
+      - name: Assert the CedarDB cell stream count and per-stream success
+        if: ${{ !cancelled() }}
+        run: |
+          uv run -- python -m tests.uat.throughput assert \
+            --cells-glob "$HOME/Developer/benchmark_runs/logs/uat_throughput_cedardb_nightly_*/cells.jsonl" \
+            --platform cedardb --benchmark tpch --scale 1 --streams 3
+
+      - name: Upload CedarDB throughput UAT logs and results
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: throughput-uat-cedardb-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ~/Developer/benchmark_runs/logs/uat_throughput_cedardb_*
+            ~/Developer/benchmark_runs/results/tpch_sf1_*.json
+          if-no-files-found: warn
+          retention-days: 14
+
   throughput-uat-signal:
     name: throughput-uat-signal
-    needs: throughput-uat
+    needs: [throughput-uat, throughput-uat-cedardb]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -809,18 +857,19 @@ jobs:
       - name: Publish the throughput-uat commit status
         env:
           GH_TOKEN: ${{ github.token }}
-          THROUGHPUT_UAT_RESULT: ${{ needs.throughput-uat.result }}
-          CEDARDB_SWEEP_OUTCOME: ${{ needs.throughput-uat.outputs.cedardb_sweep_outcome }}
+          DUCKDB_RESULT: ${{ needs.throughput-uat.result }}
+          CEDARDB_RESULT: ${{ needs.throughput-uat-cedardb.result }}
+          CEDARDB_SWEEP_OUTCOME: ${{ needs.throughput-uat-cedardb.outputs.cedardb_sweep_outcome }}
         run: |
-          case "${THROUGHPUT_UAT_RESULT}" in
-            success) state=success ;;
-            cancelled) state=error ;;
+          case "${DUCKDB_RESULT}:${CEDARDB_RESULT}" in
+            success:success) state=success ;;
+            cancelled:*|*:cancelled) state=error ;;
             *) state=failure ;;
           esac
           gh api "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state="${state}" \
             -f context="nightly/throughput-uat" \
-            -f description="throughput-uat ${THROUGHPUT_UAT_RESULT}; cedardb cell ${CEDARDB_SWEEP_OUTCOME:-not run}" \
+            -f description="throughput-uat DuckDB ${DUCKDB_RESULT}; CedarDB job ${CEDARDB_RESULT}; cell ${CEDARDB_SWEEP_OUTCOME:-not run}" \
             -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
   pyspark-tests:

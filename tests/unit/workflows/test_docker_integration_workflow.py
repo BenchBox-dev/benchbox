@@ -48,7 +48,6 @@ def test_dispatch_input_validated_with_exact_tokens() -> None:
         ("trino", "run_trino"),
     ):
         job = workflow["jobs"][job_name]
-        assert job.get("needs") == ["validate-input"], f"{job_name} must wait for validation"
         assert flag in job.get("if", ""), f"{job_name} must gate on {flag}"
 
 
@@ -72,6 +71,28 @@ def test_each_job_uses_own_compose_stack_and_guards_skips() -> None:
         assert compose in text, f"{job_name} must bring up {compose}"
         assert marker in text, f"{job_name} must run the {marker} suite"
         assert "no passing tests" in text, f"{job_name} must fail on all-skipped runs"
+
+
+@pytest.mark.parametrize(
+    ("service", "compose_path", "image_variable"),
+    [
+        ("clickhouse", "docker/clickhouse/docker-compose.yml", "CLICKHOUSE_IMAGE"),
+        ("trino", "docker/trino/docker-compose.yml", "TRINO_IMAGE"),
+    ],
+)
+def test_ci_mirror_refs_match_compose_default_digests(service: str, compose_path: str, image_variable: str) -> None:
+    compose = yaml.safe_load((REPO_ROOT / compose_path).read_text(encoding="utf-8"))
+    image = compose["services"][service]["image"]
+    prefix = "${" + image_variable + ":-"
+    assert image.startswith(prefix) and image.endswith("}")
+    upstream_image = image[len(prefix) : -1]
+    tag_and_digest = upstream_image.rsplit("/", 1)[-1].partition(":")[2]
+    expected = f"ghcr.io/benchbox-dev/{service}:{tag_and_digest}"
+    nightly = yaml.safe_load((REPO_ROOT / ".github" / "workflows" / "nightly-v2.yml").read_text(encoding="utf-8"))
+    integration = _load_workflow()
+    assert "@sha256:" in tag_and_digest
+    assert nightly["jobs"]["docker"]["env"][image_variable] == expected
+    assert integration["jobs"][service]["env"][image_variable] == expected
 
 
 def test_compose_files_referenced_exist() -> None:

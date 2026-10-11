@@ -1,6 +1,6 @@
 services:
   clickhouse:
-    image: clickhouse/clickhouse-server:25.8
+    image: ${CLICKHOUSE_IMAGE:-clickhouse/clickhouse-server:25.8@sha256:0152dd511befe6a2c2ef53e930726179669b08116da78500b37c51c96ff5ee77}
     mem_limit: ${CLICKHOUSE_MEMORY_LIMIT}
     environment:
       CLICKHOUSE_DB: default

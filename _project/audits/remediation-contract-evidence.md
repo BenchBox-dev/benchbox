@@ -2,6 +2,8 @@
 develop_sha: 2eb03f3e67ec8f7f1347738f29696fa39ed5f526
 measured_at_sha: dd20aed2d53a87a4c34ae74c73a187cfa9bf3c5e
 checked_sha: dd20aed2d53a87a4c34ae74c73a187cfa9bf3c5e
+replay_sha: 8405f5e3c76ecb679e46079c737083d36494ba57
+replay_scope: PR 2888 mirror, parity, throughput contract tests and full fast suite at replay tree 8405f5e3c76ecb679e46079c737083d36494ba57
 ---
 
 # Remediation contract evidence
@@ -188,3 +190,128 @@ The behavioral instances in
 These instances and the existing complete-receipt round trip passed together
 with CLI export and Explorer transformer tests: 230 passed. Replay with
 `uv run -- python -m pytest tests/unit/core/results/test_execution_variant_schema.py tests/unit/cli/test_cli_output.py tests/unit/test_results_exporter.py tests/unit/scripts/explorer_pipeline/test_transformer.py -q`.
+
+## PR #2888 review remediations
+
+Code source commit: `45b2751364e00e8d71d1c9ed907bb841b944ce76`.
+This is a replay of the contract tests and full fast suite; it does not replace
+the original measurements bound by this file's `checked_sha`.
+
+The accepted Oracle findings were on PR #2888 head
+`cccec335475cc35bc2f2c1c828989e47d009af5e`: mutable tag mirrors could diverge
+from upstream content, ClickHouse/Trino consumer overrides could drift from
+Compose, and CedarDB mirror failure could suppress DuckDB throughput evidence.
+The fixes below are in source commit `45b2751364e00e8d71d1c9ed907bb841b944ce76`.
+
+### Digest-pinned ClickHouse and Trino mirrors
+
+Enumerated instances: ClickHouse
+`clickhouse/clickhouse-server:25.8@sha256:0152dd511befe6a2c2ef53e930726179669b08116da78500b37c51c96ff5ee77`
+and Trino
+`trinodb/trino:480@sha256:1565e8cac299a32dd9177a4da2d748da4ceb9f1560a9c409d1d18fd72ea5253e`.
+
+The Compose defaults produce the source tag-plus-digest references.
+`mirror-ci-images.yml` extracts and requires the digest, inspects GHCR by
+repository digest, and persists copied content under a digest-derived tag using
+`skopeo copy --all --preserve-digests`; it then re-inspects the digest and hashes
+the raw manifest. `nightly-v2.yml` and `docker-integration.yml` consume GHCR
+references carrying those same digests; parity is independently checked below.
+
+The ClickHouse/Trino positive nodes in `tests/unit/workflows/test_nightly_t3_workflow.py` passed:
+
+- `test_mirror_reuses_an_existing_digest_without_reading_docker_hub[clickhouse-clickhouse/clickhouse-server:25.8]`
+- `test_mirror_reuses_an_existing_digest_without_reading_docker_hub[trino-trinodb/trino:480]`
+- `test_mirror_copies_only_a_missing_digest_and_checks_the_result[clickhouse-clickhouse/clickhouse-server:25.8]`
+- `test_mirror_copies_only_a_missing_digest_and_checks_the_result[trino-trinodb/trino:480]`
+
+Rejected controls passed for each source instance:
+
+- `test_mirror_refuses_an_unpinned_compose_source[clickhouse-clickhouse/clickhouse-server:25.8]`
+- `test_mirror_refuses_an_unpinned_compose_source[trino-trinodb/trino:480]`
+- `test_mirror_fails_if_existing_digest_reference_returns_other_content[clickhouse-clickhouse/clickhouse-server:25.8]`
+- `test_mirror_fails_if_existing_digest_reference_returns_other_content[trino-trinodb/trino:480]`
+- `test_mirror_checks_the_digest_after_copy[clickhouse-clickhouse/clickhouse-server:25.8]`
+- `test_mirror_checks_the_digest_after_copy[trino-trinodb/trino:480]`
+
+The non-missing-error matrix rejected auth denial, timeout, and HTTP 503 without
+a copy for each image:
+
+- `test_mirror_fails_closed_on_non_missing_registry_errors[unauthorized: access denied-clickhouse-clickhouse/clickhouse-server:25.8]`
+- `test_mirror_fails_closed_on_non_missing_registry_errors[unauthorized: access denied-trino-trinodb/trino:480]`
+- `test_mirror_fails_closed_on_non_missing_registry_errors[Get https://ghcr.io/v2/: dial tcp: i/o timeout-clickhouse-clickhouse/clickhouse-server:25.8]`
+- `test_mirror_fails_closed_on_non_missing_registry_errors[Get https://ghcr.io/v2/: dial tcp: i/o timeout-trino-trinodb/trino:480]`
+- `test_mirror_fails_closed_on_non_missing_registry_errors[unexpected status code 503 Service Unavailable-clickhouse-clickhouse/clickhouse-server:25.8]`
+- `test_mirror_fails_closed_on_non_missing_registry_errors[unexpected status code 503 Service Unavailable-trino-trinodb/trino:480]`
+
+The existing CedarDB digest control passed:
+`test_mirror_keeps_the_cedardb_digest_reference`.
+
+These nodes execute the workflow shell step with isolated fake registry tools.
+They prove digest handling and fail-closed branches, not live GHCR publication
+or a live Docker pull; those remain post-merge checks.
+
+### ClickHouse and Trino consumer parity
+
+The two enumerated Compose-to-consumer nodes in `tests/unit/workflows/test_docker_integration_workflow.py` passed:
+
+- `test_ci_mirror_refs_match_compose_default_digests[clickhouse-docker/clickhouse/docker-compose.yml-CLICKHOUSE_IMAGE]`
+- `test_ci_mirror_refs_match_compose_default_digests[trino-docker/trino/docker-compose.yml-TRINO_IMAGE]`
+
+The source is each Compose image default; the persisted consumer contract is
+the GHCR image override in each of `nightly-v2.yml` and
+`docker-integration.yml`; the downstream jobs use those overrides for their
+service image. Four isolated negative controls mutated ClickHouse and Trino
+independently in each consumer workflow; each mutation was rejected (4/4).
+
+### Independent DuckDB and CedarDB throughput evidence
+
+In `nightly.yml`, DuckDB `throughput-uat` produces its job result and artifacts
+independently; CedarDB `throughput-uat-cedardb` alone needs `mirror-cedardb` and
+exports `cedardb_sweep_outcome`. Both jobs upload logs on failure.
+`throughput-uat-signal` waits for both job results and publishes the
+`nightly/throughput-uat` commit status; only `success:success` maps to success,
+cancellation maps to error, and all other result pairs map to failure. The
+DuckDB baseline artifact is uploaded only after a successful DuckDB sweep.
+
+Passing positive nodes in `tests/unit/workflows/test_nightly_throughput_uat_contract.py`:
+`test_failure_signal_waits_for_both_independent_jobs`,
+`test_only_both_successful_jobs_publish_success[success-success-success]`,
+`test_baseline_record_is_uploaded_only_after_a_successful_duckdb_sweep`, and
+`test_status_description_reports_cedardb_sweep_outcome_without_a_quarantine_label`.
+
+Both separate failure-artifact instances passed:
+
+- `test_each_throughput_job_uploads_its_logs_on_failure[throughput-uat-Upload throughput UAT logs and results-~/Developer/benchmark_runs/logs/uat_throughput_duckdb_*]`
+- `test_each_throughput_job_uploads_its_logs_on_failure[throughput-uat-cedardb-Upload CedarDB throughput UAT logs and results-~/Developer/benchmark_runs/logs/uat_throughput_cedardb_*]`
+
+Rejected status controls passed:
+`test_only_both_successful_jobs_publish_success[success-skipped-failure]`,
+`test_only_both_successful_jobs_publish_success[success-failure-failure]`,
+and `test_only_both_successful_jobs_publish_success[failure-success-failure]`;
+cancellation is rejected as success by
+`test_only_both_successful_jobs_publish_success[cancelled-success-error]`.
+The signal test runs the actual workflow shell against a fake `gh` boundary
+and checks the emitted commit-status fields.
+
+A real nightly dispatch on merged `develop` is still required to verify actual
+GitHub job outputs, artifacts, and status contexts.
+
+### Verification at the rebased replay tree
+
+Focused workflow tests passed 105:
+
+```bash
+uv run -- python -m pytest tests/unit/workflows/test_nightly_t3_workflow.py tests/unit/workflows/test_docker_integration_workflow.py tests/unit/workflows/test_nightly_throughput_uat_contract.py -q
+```
+
+The full configured verifier passed: 37,273 tests passed, 26 skipped, 857
+warnings, and 4 subtests passed; `ty check` reported 669 diagnostics and exited 0.
+
+```bash
+uv run -- ruff check . && uv run ty check && uv run -- python -m pytest -m fast -q
+```
+Changed-test Ruff check and format check, codespell 2.4.3, and
+`make comment-policy-check` passed. The 4/4 consumer drift controls also
+passed their expected rejection outcome. Docker CLI is unavailable in this
+environment; no real Compose CLI config or live registry inspection was
+performed.

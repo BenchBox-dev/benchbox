@@ -1,6 +1,6 @@
 services:
   cedardb:
-    image: cedardb/cedardb@sha256:dbbacb16b24421a9a123cd1d065e2a049c60b7cc6060d7db2f3cccbf69f5ff62
+    image: ${CEDARDB_IMAGE:-cedardb/cedardb@sha256:dbbacb16b24421a9a123cd1d065e2a049c60b7cc6060d7db2f3cccbf69f5ff62}
     mem_limit: 2g
     ports:
       - "5435:5432"

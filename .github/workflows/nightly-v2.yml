@@ -22,8 +22,21 @@ permissions:
   contents: read
 
 jobs:
+  mirror-images:
+    uses: ./.github/workflows/mirror-ci-images.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      images: '["clickhouse", "trino"]'
+
   docker:
     name: "t3:docker | ${{ matrix.service }}"
+    needs: mirror-images
+    if: ${{ !cancelled() }}
+    permissions:
+      contents: read
+      packages: read
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -44,6 +57,8 @@ jobs:
             marker: live_trino
     env:
       CLICKHOUSE_MEMORY_LIMIT: 4g
+      CLICKHOUSE_IMAGE: ghcr.io/benchbox-dev/clickhouse:25.8@sha256:0152dd511befe6a2c2ef53e930726179669b08116da78500b37c51c96ff5ee77
+      TRINO_IMAGE: ghcr.io/benchbox-dev/trino:480@sha256:1565e8cac299a32dd9177a4da2d748da4ceb9f1560a9c409d1d18fd72ea5253e
     steps:
       - name: Checkout code
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
@@ -58,6 +73,12 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --group dev
+
+      - name: Authenticate to GHCR
+        if: ${{ matrix.service != 'postgres' }}
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
 
       - name: Bring up compose stack
         run: docker compose -f "${{ matrix.compose }}" up -d --wait
@@ -823,6 +844,7 @@ jobs:
     name: Report T3 results
     needs:
       - docker
+      - mirror-images
       - cloud
       - perf
       - matrix
@@ -857,6 +879,11 @@ jobs:
             esac
             label="t3:${domain}"
             result="$(printf '%s' "$NEEDS_JSON" | jq -r --arg j "$job" '.[$j].result')"
+            failure_detail="Domain job result: ${result}."
+            if [ "$job" = docker ] && [ "$(printf '%s' "$NEEDS_JSON" | jq -r '.["mirror-images"].result')" = failure ]; then
+              failure_detail="Image mirror infrastructure failed; database test job result: ${result}."
+              result=failure
+            fi
             echo "${label}: ${result}"
 
             existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --label "$label" \
@@ -864,7 +891,7 @@ jobs:
 
             case "$result" in
               failure)
-                comment="Nightly T3 run ${GITHUB_RUN_ID} failed for \`${label}\` on $(date -u +%F): ${RUN_URL}"
+                comment="Nightly T3 run ${GITHUB_RUN_ID} failed for \`${label}\` on $(date -u +%F): ${RUN_URL}. ${failure_detail}"
                 if [ -n "$existing" ]; then
                   gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body "$comment"
                   echo "Updated issue #${existing}"
@@ -875,6 +902,7 @@ jobs:
 
           - Run: ${RUN_URL}
           - Commit: ${GITHUB_SHA}
+          - Failure: ${failure_detail}
           - Artifacts: attached to the run (names start with \`t3-${domain}\` where the domain uploads any)
 
           The owner fixes or reverts within one working day. See ${DOC_URL} for the response policy. This issue stays open while the domain is red and closes when a nightly run passes."

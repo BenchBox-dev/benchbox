@@ -1,6 +1,6 @@
 services:
   postgresql:
-    image: postgres:18
+    image: public.ecr.aws/docker/library/postgres:18
     ports:
       - "5432:5432"
     environment:

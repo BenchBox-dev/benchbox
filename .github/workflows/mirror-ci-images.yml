@@ -1,0 +1,75 @@
+name: Mirror CI images
+
+on:
+  workflow_call:
+    inputs:
+      images:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ${{ fromJSON(inputs.images) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Install registry copy tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes skopeo
+
+      - name: Authenticate to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$GHCR_TOKEN" | skopeo login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      - name: Verify pinned digest and mirror image
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: |
+          set -euo pipefail
+          case "$IMAGE" in
+            clickhouse) compose=docker/clickhouse/docker-compose.yml; service=clickhouse ;;
+            trino) compose=docker/trino/docker-compose.yml; service=trino ;;
+            cedardb) compose=docker/cedardb/docker-compose.yml; service=cedardb ;;
+            *) echo "::error::Unsupported mirror image: $IMAGE"; exit 1 ;;
+          esac
+          source=$(CLICKHOUSE_MEMORY_LIMIT=4g docker compose -f "$compose" config --format json | jq -r --arg service "$service" '.services[$service].image')
+          if [[ ! "$source" =~ @sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::Mirror source must be pinned to a SHA-256 digest in compose: $source"
+            exit 1
+          fi
+          digest=${source##*@}
+          source_ref="docker://docker.io/$source"
+          destination="ghcr.io/benchbox-dev/$IMAGE@${digest}"
+          copy_destination="ghcr.io/benchbox-dev/$IMAGE:digest-${digest#sha256:}"
+          destination_ref="docker://$destination"
+          mirror_manifest="$RUNNER_TEMP/${IMAGE}-mirror-manifest.json"
+          inspect_error="$RUNNER_TEMP/${IMAGE}-mirror-inspect.err"
+          printf 'Pinned %s (%s): %s\n' "$IMAGE" "$source" "$digest" >> "$GITHUB_STEP_SUMMARY"
+          if skopeo inspect --raw "$destination_ref" > "$mirror_manifest" 2> "$inspect_error"; then
+            :
+          else
+            inspect_output=$(cat "$inspect_error")
+            if [[ "$inspect_output" != *"manifest unknown"* && "$inspect_output" != *"MANIFEST_UNKNOWN"* ]]; then
+              cat "$inspect_error" >&2
+              exit 1
+            fi
+            skopeo copy --all --preserve-digests "$source_ref" "docker://$copy_destination"
+            skopeo inspect --raw "$destination_ref" > "$mirror_manifest"
+          fi
+          mirror_digest="sha256:$(sha256sum "$mirror_manifest" | cut -d' ' -f1)"
+          if [[ "$mirror_digest" != "$digest" ]]; then
+            echo "::error::GHCR mirror digest mismatch for $source: expected $digest but got $mirror_digest."
+            exit 1
+          fi

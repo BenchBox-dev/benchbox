@@ -67,6 +67,26 @@ jobs:
           echo "run_trino=$run_trino" >> "$GITHUB_OUTPUT"
           echo "Selected: postgres=$run_postgres clickhouse=$run_clickhouse trino=$run_trino"
 
+  mirror-clickhouse:
+    needs: validate-input
+    if: ${{ needs.validate-input.outputs.run_clickhouse == 'true' }}
+    uses: ./.github/workflows/mirror-ci-images.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      images: '["clickhouse"]'
+
+  mirror-trino:
+    needs: validate-input
+    if: ${{ needs.validate-input.outputs.run_trino == 'true' }}
+    uses: ./.github/workflows/mirror-ci-images.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      images: '["trino"]'
+
   postgres:
     needs: [validate-input]
     if: ${{ needs.validate-input.outputs.run_postgres == 'true' }}
@@ -106,10 +126,15 @@ jobs:
         run: docker compose -f docker/postgresql/docker-compose.yml down -v
 
   clickhouse:
-    needs: [validate-input]
+    needs: [validate-input, mirror-clickhouse]
     if: ${{ needs.validate-input.outputs.run_clickhouse == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
+    env:
+      CLICKHOUSE_IMAGE: ghcr.io/benchbox-dev/clickhouse:25.8@sha256:0152dd511befe6a2c2ef53e930726179669b08116da78500b37c51c96ff5ee77
     steps:
       - name: Checkout code
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
@@ -124,6 +149,11 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --group dev
+
+      - name: Authenticate to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
 
       - name: Bring up ClickHouse compose stack
         env:
@@ -146,10 +176,15 @@ jobs:
         run: docker compose -f docker/clickhouse/docker-compose.yml down -v
 
   trino:
-    needs: [validate-input]
+    needs: [validate-input, mirror-trino]
     if: ${{ needs.validate-input.outputs.run_trino == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
+    env:
+      TRINO_IMAGE: ghcr.io/benchbox-dev/trino:480@sha256:1565e8cac299a32dd9177a4da2d748da4ceb9f1560a9c409d1d18fd72ea5253e
     steps:
       - name: Checkout code
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
@@ -164,6 +199,11 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --group dev
+
+      - name: Authenticate to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
 
       - name: Bring up Trino compose stack
         run: docker compose -f docker/trino/docker-compose.yml up -d --wait

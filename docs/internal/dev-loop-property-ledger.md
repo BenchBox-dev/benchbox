@@ -75,7 +75,8 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `extension-smoke.yml` | product-safety | Extension smoke coverage |
 | `gitignore-lint.yml` | tooling | Hygiene; standalone, not part of the ci.yml units |
 | `lint.yml` | tooling | Lint gate |
-| `nightly.yml` | product-safety | Scheduled validation; replaced by nightly T3; Windows legs, scheduled-workflow liveness and the Postgres throughput cell are non-blocking; ruleset drift runs as advisory |
+| `mirror-ci-images.yml` | product-safety | Seeds digest-pinned images in GHCR only when absent; scheduled CI checks mirrors by digest without routine Docker Hub reads |
+| `nightly.yml` | product-safety | Scheduled validation; nightly T3 replaces most domains; DuckDB and CedarDB throughput UAT run independently with a combined status; Windows legs and workflow liveness are non-blocking; ruleset drift runs as advisory |
 | `nightly-v2.yml` | product-safety | Nightly T3: platform matrix, docker engines, cross-browser, extension, install, drift, external documentation links |
 | `oracle-review.yml` | product-safety | Result-affecting changes need a success review of the head from the `benchbox-oracle` App, whose Bot identity only the owner controls, or a stand-in approval comment from an attester account posted after the oracle's latest review; that account is also the one local automation uses, so the stand-in records who vouched, not that a human read it |
 | `oracle-verdict.yml` | product-safety | Self-hosted soundness review: reviewers chosen by tier and availability, each with only its own credential, and a review and non-required `oracle-verdict` status posted by the owner's App, which the required `oracle-review` check reads |

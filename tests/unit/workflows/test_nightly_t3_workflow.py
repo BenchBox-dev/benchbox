@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -102,6 +103,275 @@ def test_docker_covers_all_three_services() -> None:
     services = {entry["service"] for entry in docker["strategy"]["matrix"]["include"]}
     assert services == {"postgres", "clickhouse", "trino"}
     assert docker["strategy"]["fail-fast"] is False
+
+
+def test_docker_attempts_pulls_after_mirror_failure_without_authenticating_postgres() -> None:
+    jobs = _load()["jobs"]
+    docker = jobs["docker"]
+    assert str(docker["if"]).replace(" ", "") == "${{!cancelled()}}"
+    needs = docker["needs"]
+    assert "mirror-images" in ([needs] if isinstance(needs, str) else needs)
+    login = next(step for step in _steps(docker) if "docker login ghcr.io" in str(step.get("run", "")))
+    assert str(login["if"]).replace(" ", "") == "${{matrix.service!='postgres'}}"
+    assert "mirror-images" in jobs["report"]["needs"]
+
+
+def _run_mirror_step(
+    tmp_path: Path,
+    *,
+    image: str,
+    source_image: str,
+    source_manifest: str,
+    mirror_manifest: str | None = None,
+    mirror_error: str | None = None,
+    copied_manifest: str | None = None,
+    pin_source: bool = True,
+) -> tuple[subprocess.CompletedProcess[str], list[list[str]]]:
+    if pin_source and "@sha256:" not in source_image:
+        digest = hashlib.sha256(source_manifest.encode("utf-8")).hexdigest()
+        source_image = f"{source_image}@sha256:{digest}"
+    mirror = _load(WORKFLOWS_DIR / "mirror-ci-images.yml")
+    step = next(
+        step for step in _steps(mirror["jobs"]["mirror"]) if step.get("name") == "Verify pinned digest and mirror image"
+    )
+    (tmp_path / "docker").write_text(
+        f"#!{sys.executable}\n"
+        "import json, os, sys\n"
+        "compose = sys.argv[sys.argv.index('-f') + 1]\n"
+        "service = {'docker/clickhouse/docker-compose.yml': 'clickhouse', "
+        "'docker/trino/docker-compose.yml': 'trino', "
+        "'docker/cedardb/docker-compose.yml': 'cedardb'}[compose]\n"
+        "print(json.dumps({'services': {service: {'image': os.environ['SOURCE_IMAGE']}}}))\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "jq").write_text(
+        f"#!{sys.executable}\nimport json, sys\nprint(json.load(sys.stdin)['services'][sys.argv[4]]['image'])\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "skopeo").write_text(
+        f"#!{sys.executable}\n"
+        "import json, os, sys\n"
+        "from pathlib import Path\n"
+        "args = sys.argv[1:]\n"
+        "calls = Path(os.environ['SKOPEO_CALLS'])\n"
+        "with calls.open('a', encoding='utf-8') as output:\n"
+        "    output.write(json.dumps(args) + '\\n')\n"
+        "if args[0] == 'inspect':\n"
+        "    mirror = Path(os.environ['MIRROR_STATE'])\n"
+        "    if mirror.exists():\n"
+        "        sys.stdout.write(mirror.read_text(encoding='utf-8'))\n"
+        "    elif 'MIRROR_MANIFEST' in os.environ:\n"
+        "        sys.stdout.write(os.environ['MIRROR_MANIFEST'])\n"
+        "    else:\n"
+        "        sys.stderr.write(os.environ.get('MIRROR_ERROR', "
+        "'Error reading manifest: manifest unknown'))\n"
+        "        raise SystemExit(1)\n"
+        "elif args[0] == 'copy':\n"
+        "    manifest = os.environ.get('COPIED_MANIFEST', os.environ['SOURCE_MANIFEST'])\n"
+        "    Path(os.environ['MIRROR_STATE']).write_text(manifest, encoding='utf-8')\n"
+        "else:\n"
+        "    raise SystemExit(2)\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "sha256sum").write_text(
+        f"#!{sys.executable}\n"
+        "import hashlib, sys\n"
+        "from pathlib import Path\n"
+        "path = Path(sys.argv[-1])\n"
+        "print(hashlib.sha256(path.read_bytes()).hexdigest() + '  ' + sys.argv[-1])\n",
+        encoding="utf-8",
+    )
+    for executable in ("docker", "jq", "skopeo", "sha256sum"):
+        (tmp_path / executable).chmod(0o755)
+    calls_path = tmp_path / "skopeo-calls.jsonl"
+    summary_path = tmp_path / "step-summary.md"
+    env = {
+        "IMAGE": image,
+        "SOURCE_IMAGE": source_image,
+        "SOURCE_MANIFEST": source_manifest,
+        "RUNNER_TEMP": str(tmp_path),
+        "GITHUB_STEP_SUMMARY": str(summary_path),
+        "SKOPEO_CALLS": str(calls_path),
+        "MIRROR_STATE": str(tmp_path / "mirror-manifest.json"),
+    }
+    if mirror_manifest is not None:
+        env["MIRROR_MANIFEST"] = mirror_manifest
+    if mirror_error is not None:
+        env["MIRROR_ERROR"] = mirror_error
+    if copied_manifest is not None:
+        env["COPIED_MANIFEST"] = copied_manifest
+    result = _run_workflow_script(step["run"], tmp_path, env)
+    calls = (
+        [json.loads(line) for line in calls_path.read_text(encoding="utf-8").splitlines()]
+        if calls_path.exists()
+        else []
+    )
+    return result, calls
+
+
+@pytest.mark.parametrize(
+    ("image", "source_image"),
+    [
+        ("clickhouse", "clickhouse/clickhouse-server:25.8"),
+        ("trino", "trinodb/trino:480"),
+    ],
+)
+def test_mirror_reuses_an_existing_digest_without_reading_docker_hub(
+    tmp_path: Path, image: str, source_image: str
+) -> None:
+    manifest = '{"schemaVersion":2,"annotations":{"revision":"same"}}'
+    result, calls = _run_mirror_step(
+        tmp_path,
+        image=image,
+        source_image=source_image,
+        source_manifest=manifest,
+        mirror_manifest=manifest,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert not any(call[0] == "copy" for call in calls)
+    assert all("docker://docker.io/" not in call[-1] for call in calls if call[0] == "inspect")
+    digest = hashlib.sha256(manifest.encode("utf-8")).hexdigest()
+    assert f"sha256:{digest}" in (tmp_path / "step-summary.md").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    ("image", "source_image"),
+    [
+        ("clickhouse", "clickhouse/clickhouse-server:25.8"),
+        ("trino", "trinodb/trino:480"),
+    ],
+)
+@pytest.mark.parametrize(
+    "inspect_error",
+    [
+        "unauthorized: access denied",
+        "Get https://ghcr.io/v2/: dial tcp: i/o timeout",
+        "unexpected status code 503 Service Unavailable",
+    ],
+)
+def test_mirror_fails_closed_on_non_missing_registry_errors(
+    tmp_path: Path, image: str, source_image: str, inspect_error: str
+) -> None:
+    result, calls = _run_mirror_step(
+        tmp_path,
+        image=image,
+        source_image=source_image,
+        source_manifest='{"schemaVersion":2}',
+        mirror_error=inspect_error,
+    )
+    assert result.returncode != 0
+    assert inspect_error in result.stdout + result.stderr
+    assert not any(call[0] == "copy" for call in calls)
+
+
+@pytest.mark.parametrize(
+    ("image", "source_image"),
+    [
+        ("clickhouse", "clickhouse/clickhouse-server:25.8"),
+        ("trino", "trinodb/trino:480"),
+    ],
+)
+def test_mirror_refuses_an_unpinned_compose_source(tmp_path: Path, image: str, source_image: str) -> None:
+    result, calls = _run_mirror_step(
+        tmp_path,
+        image=image,
+        source_image=source_image,
+        source_manifest='{"schemaVersion":2}',
+        pin_source=False,
+    )
+    assert result.returncode != 0
+    assert "must be pinned to a SHA-256 digest" in result.stdout + result.stderr
+    assert not calls
+
+
+@pytest.mark.parametrize(
+    ("image", "source_image"),
+    [
+        ("clickhouse", "clickhouse/clickhouse-server:25.8"),
+        ("trino", "trinodb/trino:480"),
+    ],
+)
+def test_mirror_fails_if_existing_digest_reference_returns_other_content(
+    tmp_path: Path, image: str, source_image: str
+) -> None:
+    result, calls = _run_mirror_step(
+        tmp_path,
+        image=image,
+        source_image=source_image,
+        source_manifest='{"schemaVersion":2,"annotations":{"revision":"pinned"}}',
+        mirror_manifest='{"schemaVersion":2,"annotations":{"revision":"other"}}',
+    )
+    assert result.returncode != 0
+    assert "GHCR mirror digest mismatch" in result.stdout + result.stderr
+    assert not any(call[0] == "copy" for call in calls)
+
+
+@pytest.mark.parametrize(
+    ("image", "source_image"),
+    [
+        ("clickhouse", "clickhouse/clickhouse-server:25.8"),
+        ("trino", "trinodb/trino:480"),
+    ],
+)
+def test_mirror_copies_only_a_missing_digest_and_checks_the_result(
+    tmp_path: Path, image: str, source_image: str
+) -> None:
+    manifest = '{"schemaVersion":2,"annotations":{"revision":"pinned"}}'
+    digest = hashlib.sha256(manifest.encode("utf-8")).hexdigest()
+    pinned_source = f"{source_image}@sha256:{digest}"
+    result, calls = _run_mirror_step(
+        tmp_path,
+        image=image,
+        source_image=source_image,
+        source_manifest=manifest,
+        mirror_error="Error reading manifest: MANIFEST_UNKNOWN: manifest unknown",
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    copy = next(call for call in calls if call[0] == "copy")
+    assert "--all" in copy and "--preserve-digests" in copy
+    assert copy[-2] == f"docker://docker.io/{pinned_source}"
+    assert copy[-1] == f"docker://ghcr.io/benchbox-dev/{image}:digest-{digest}"
+    assert any(
+        call[-1] == f"docker://ghcr.io/benchbox-dev/{image}@sha256:{digest}" for call in calls if call[0] == "inspect"
+    )
+
+
+@pytest.mark.parametrize(
+    ("image", "source_image"),
+    [
+        ("clickhouse", "clickhouse/clickhouse-server:25.8"),
+        ("trino", "trinodb/trino:480"),
+    ],
+)
+def test_mirror_checks_the_digest_after_copy(tmp_path: Path, image: str, source_image: str) -> None:
+    result, calls = _run_mirror_step(
+        tmp_path,
+        image=image,
+        source_image=source_image,
+        source_manifest='{"schemaVersion":2,"annotations":{"revision":"pinned"}}',
+        mirror_error="manifest unknown",
+        copied_manifest='{"schemaVersion":2,"annotations":{"revision":"different"}}',
+    )
+    assert result.returncode != 0
+    assert "GHCR mirror digest mismatch" in result.stdout + result.stderr
+    assert any(call[0] == "copy" for call in calls)
+
+
+def test_mirror_keeps_the_cedardb_digest_reference(tmp_path: Path) -> None:
+    manifest = '{"schemaVersion":2,"mediaType":"application/vnd.oci.image.index.v1+json"}'
+    digest = hashlib.sha256(manifest.encode("utf-8")).hexdigest()
+    result, calls = _run_mirror_step(
+        tmp_path,
+        image="cedardb",
+        source_image=f"cedardb/cedardb@sha256:{digest}",
+        source_manifest=manifest,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    copy = next(call for call in calls if call[0] == "copy")
+    assert copy[-1] == f"docker://ghcr.io/benchbox-dev/cedardb:digest-{digest}"
+    assert any(
+        call[-1] == f"docker://ghcr.io/benchbox-dev/cedardb@sha256:{digest}" for call in calls if call[0] == "inspect"
+    )
 
 
 def test_wheel_matrix_covers_python_versions_and_operating_systems() -> None:
@@ -328,25 +598,79 @@ def test_default_permissions_are_read_only() -> None:
     assert _load()["permissions"] == {"contents": "read"}
 
 
-def test_only_report_job_holds_issue_write() -> None:
+def test_write_permissions_are_scoped_to_reporting_and_image_publication() -> None:
     jobs = _load()["jobs"]
-    writers = {
-        name for name, job in jobs.items() if "write" in {str(v) for v in (job.get("permissions") or {}).values()}
-    }
-    assert writers == {"report"}
+    issue_writers = {name for name, job in jobs.items() if (job.get("permissions") or {}).get("issues") == "write"}
+    package_writers = {name for name, job in jobs.items() if (job.get("permissions") or {}).get("packages") == "write"}
+    assert issue_writers == {"report"}
+    assert package_writers == {"mirror-images"}
     assert jobs["report"]["permissions"] == {"contents": "read", "issues": "write"}
+    assert jobs["mirror-images"]["permissions"] == {"contents": "read", "packages": "write"}
+    assert jobs["docker"]["permissions"] == {"contents": "read", "packages": "read"}
+    for name in DOMAIN_JOBS:
+        assert "write" not in (jobs[name].get("permissions") or {}).values()
 
 
-def test_report_job_covers_every_domain_and_label() -> None:
-    report = _load()["jobs"]["report"]
-    assert set(report["needs"]) == set(DOMAIN_JOBS)
-    assert "always()" in str(report["if"])
-    text = _run_text(report)
-    for job in DOMAIN_JOBS:
-        assert re.search(rf"\b{re.escape(job)}\b", text), f"report loop omits {job}"
-    assert 'label="t3:${domain}"' in text
-    assert "durations-refresh) domain=durations" in text
-    assert "gh issue create" in text and "gh issue close" in text and "gh issue comment" in text
+@pytest.mark.parametrize(
+    "mirror_result, docker_result, existing, expected_action",
+    [
+        ("failure", "skipped", False, "create"),
+        ("failure", "success", False, "create"),
+        ("failure", "success", True, "comment"),
+        ("success", "failure", False, "create"),
+        ("success", "success", True, "close"),
+        ("success", "skipped", True, None),
+    ],
+)
+def test_report_keeps_mirror_failures_visible_and_optional_skips_unchanged(
+    tmp_path: Path, mirror_result: str, docker_result: str, existing: bool, expected_action: str | None
+) -> None:
+    if shutil.which("jq") is None:
+        pytest.skip("report execution requires jq")
+    gh = tmp_path / "gh"
+    gh.write_text(
+        f"#!{sys.executable}\n"
+        "import json, os, sys\n"
+        "from pathlib import Path\n"
+        "args = sys.argv[1:]\n"
+        "with Path(os.environ['GH_CALLS']).open('a') as output:\n"
+        "    output.write(json.dumps(args) + '\\n')\n"
+        "if args[:2] == ['issue', 'list'] and 't3:docker' in args and os.environ['EXISTING'] == 'true':\n"
+        "    print('42')\n",
+        encoding="utf-8",
+    )
+    gh.chmod(0o755)
+    needs = {job: {"result": "skipped"} for job in DOMAIN_JOBS}
+    needs["docker"]["result"] = docker_result
+    needs["mirror-images"] = {"result": mirror_result}
+    call_path = tmp_path / "gh-calls.jsonl"
+    result = _run_workflow_script(
+        _load()["jobs"]["report"]["steps"][0]["run"],
+        tmp_path,
+        {
+            "NEEDS_JSON": json.dumps(needs),
+            "GH_CALLS": str(call_path),
+            "EXISTING": str(existing).lower(),
+            "GITHUB_REPOSITORY": "example/repo",
+            "GITHUB_RUN_ID": "123",
+            "GITHUB_SHA": "abc",
+            "RUN_URL": "https://example.test/run/123",
+            "DOC_URL": "https://example.test/docs",
+        },
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    calls = [json.loads(line) for line in call_path.read_text(encoding="utf-8").splitlines()]
+    mutations = [args for args in calls if args[:2] in [["issue", "create"], ["issue", "comment"], ["issue", "close"]]]
+    if expected_action is None:
+        assert mutations == []
+    else:
+        assert any(args[:2] == ["issue", expected_action] for args in mutations)
+        assert all("t3:docker" in args or "42" in args for args in mutations)
+    if mirror_result == "failure":
+        assert not any(args[:2] == ["issue", "close"] for args in mutations)
+        body = next(args[args.index("--body") + 1] for args in mutations if "--body" in args)
+        assert "Image mirror infrastructure failed" in body
+        assert f"database test job result: {docker_result}" in body
 
 
 def test_actions_are_pinned_by_sha() -> None:

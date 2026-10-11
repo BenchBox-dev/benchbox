@@ -1,6 +1,6 @@
 services:
   trino:
-    image: trinodb/trino:480
+    image: ${TRINO_IMAGE:-trinodb/trino:480@sha256:1565e8cac299a32dd9177a4da2d748da4ceb9f1560a9c409d1d18fd72ea5253e}
     ports:
       - "${TRINO_HOST_PORT:-18080}:8080"
     volumes:
