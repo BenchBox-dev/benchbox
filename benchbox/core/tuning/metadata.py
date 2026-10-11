@@ -28,6 +28,17 @@ _COLUMN_TUNING_TYPE_VALUES = frozenset(
 )
 
 
+_PLATFORM_KEY_ALIASES = {
+    "azure_synapse": "synapse",
+    "fabric_warehouse": "fabric_dw",
+}
+
+
+def _normalize_platform_key(raw: object) -> str:
+    key = str(raw).strip().lower().replace("-", "_").replace(" ", "_")
+    return _PLATFORM_KEY_ALIASES.get(key, key)
+
+
 @dataclass
 class TuningMetadata:
     table_name: str
@@ -186,8 +197,8 @@ class TuningMetadataManager:
     def _platform_key(self) -> str:
         canonical = getattr(self.platform_adapter, "canonical_platform_type", None)
         if canonical:
-            return str(canonical).strip().lower()
-        return str(self.platform_adapter.platform_name).strip().lower().replace(" ", "-")
+            return _normalize_platform_key(canonical)
+        return _normalize_platform_key(self.platform_adapter.platform_name)
 
     @staticmethod
     def _hash_section(payload: dict[str, Any]) -> str:
@@ -420,12 +431,13 @@ class TuningMetadataManager:
             "postgresql",
             "timescaledb",
             "pg_duckdb",
+            "pg_mooncake",
             "paradedb",
             "citus",
             "cedardb",
         }
     )
-    _INDEX_TSQL_PLATFORMS = frozenset({"azure_synapse", "fabric_warehouse"})
+    _INDEX_TSQL_PLATFORMS = frozenset({"synapse", "fabric_dw"})
 
     def _metadata_unsupported_reason(self) -> Optional[str]:
         if self._platform_key() == "athena":
@@ -497,7 +509,7 @@ class TuningMetadataManager:
             return base_sql.replace("TIMESTAMP", "TIMESTAMP_NTZ")
         elif platform == "redshift":
             return base_sql
-        elif platform in {"clickhouse", "clickhouse-local", "clickhouse-server", "clickhouse-cloud"}:
+        elif platform in {"clickhouse", "clickhouse_local", "clickhouse_server", "clickhouse_cloud"}:
             return base_sql + " ENGINE = MergeTree() ORDER BY (table_name, tuning_type)"
         else:
             return base_sql
@@ -507,7 +519,7 @@ class TuningMetadataManager:
         index_name = f"idx_{self._metadata_table_name}_lookup"
 
         if (
-            platform in {"clickhouse", "clickhouse-local", "clickhouse-server", "clickhouse-cloud"}
+            platform in {"clickhouse", "clickhouse_local", "clickhouse_server", "clickhouse_cloud"}
             or platform == "bigquery"
         ):
             return None

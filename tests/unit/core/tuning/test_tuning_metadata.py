@@ -5,6 +5,7 @@ from typing import Any, Optional
 
 import pytest
 
+from benchbox.core.platform_registry import PlatformRegistry
 from benchbox.core.tuning.interface import (
     BenchmarkTunings,
     TableTuning,
@@ -16,6 +17,7 @@ from benchbox.core.tuning.metadata import (
     MetadataValidationResult,
     TuningMetadata,
     TuningMetadataManager,
+    _normalize_platform_key,
 )
 
 pytestmark = [
@@ -63,9 +65,11 @@ class _ExecuteOnlyConn:
 
 
 class _Adapter:
-    def __init__(self, platform_name: str = "duckdb"):
+    def __init__(self, platform_name: str = "duckdb", config_type: Optional[str] = None):
         self.platform_name = platform_name
-        self.platform_config = {}
+        self.platform_config = {"type": config_type} if config_type is not None else {}
+        if config_type is not None:
+            self.canonical_platform_type = config_type
         self.connections: list[_Conn] = []
 
     def create_connection(self, **_kwargs):
@@ -258,6 +262,9 @@ def test_bigquery_table_uses_bigquery_types():
         "postgresql",
         "timescaledb",
         "pg_duckdb",
+        "pg-duckdb",
+        "pg_mooncake",
+        "pg-mooncake",
         "paradedb",
         "citus",
         "cedardb",
@@ -269,7 +276,19 @@ def test_create_index_sql_uses_plain_form_where_supported(platform):
     assert "CREATE INDEX IF NOT EXISTS" in sql
 
 
-@pytest.mark.parametrize("platform", ["azure_synapse", "fabric_warehouse"])
+@pytest.mark.parametrize(
+    "platform",
+    [
+        "azure_synapse",
+        "fabric_warehouse",
+        "synapse",
+        "fabric_dw",
+        "azure-synapse",
+        "fabric-warehouse",
+        "Azure Synapse",
+        "Fabric Warehouse",
+    ],
+)
 def test_create_index_sql_uses_sys_indexes_guard_on_tsql(platform):
     sql = TuningMetadataManager(_Adapter(platform_name=platform))._get_create_index_sql()
     assert sql is not None
@@ -296,7 +315,7 @@ def test_create_index_sql_uses_sys_indexes_guard_on_tsql(platform):
         "datafusion",
         "questdb",
         "doris",
-        "starrocks",
+        "ducklake",
         "firebolt",
         "singlestore",
         "mystery_engine",
@@ -306,42 +325,104 @@ def test_create_index_sql_is_table_only_where_unsupported_or_unverified(platform
     assert TuningMetadataManager(_Adapter(platform_name=platform))._get_create_index_sql() is None
 
 
-@pytest.mark.parametrize(
-    ("platform", "dialect"),
-    [
-        ("duckdb", "duckdb"),
-        ("postgresql", "postgres"),
-        ("timescaledb", "postgres"),
-        ("sqlite", "sqlite"),
-        ("motherduck", "duckdb"),
-        ("snowflake", "snowflake"),
-        ("bigquery", "bigquery"),
-        ("redshift", "redshift"),
-        ("clickhouse", "clickhouse"),
-        ("clickhouse-cloud", "clickhouse"),
-        ("trino", "trino"),
-        ("presto", "presto"),
-        ("spark", "spark"),
-        ("databricks", "databricks"),
-        ("datafusion", None),
-        ("azure_synapse", "tsql"),
-        ("fabric_warehouse", "tsql"),
-        ("doris", "doris"),
-        ("athena", "athena"),
-    ],
-)
-def test_metadata_ddl_parses_for_target_dialect(platform, dialect):
+_ADAPTER_NAME_SEEDS = {
+    "DatabricksDataFrameAdapter": ({"execution_mode": "dataframe"}, "constructor default when unconfigured"),
+    "FireboltAdapter": ({"deployment_mode": "core"}, "single-node default; cloud spelling covered by key tests"),
+}
+
+_SQLGLOT_PARSE_WITHOUT_DIALECT = frozenset({"datafusion", "influxdb"})
+
+_NON_SQL_DATAFRAME_PLATFORMS = {
+    "pandas": "dataframe-only execution with no SQL DDL surface",
+    "polars": "dataframe-only execution with no SQL DDL surface",
+    "dask": "dataframe-only execution with no SQL DDL surface",
+    "cudf": "dataframe-only execution with no SQL DDL surface",
+}
+
+
+def _metadata_ddl_registry_cases() -> list:
+    cases = []
+    for registry_platform in sorted(PlatformRegistry.get_sql_platforms()):
+        adapter_class = PlatformRegistry.get_adapter_class(registry_platform)
+        probe = adapter_class.__new__(adapter_class)
+        seeds, _reason = _ADAPTER_NAME_SEEDS.get(adapter_class.__name__, ({}, ""))
+        for seed_key, seed_value in seeds.items():
+            setattr(probe, seed_key, seed_value)
+        adapter_dialect = probe.get_target_dialect()
+        sqlglot_read = None if adapter_dialect in _SQLGLOT_PARSE_WITHOUT_DIALECT else adapter_dialect
+        cases.append(
+            pytest.param(registry_platform, probe.platform_name, adapter_dialect, sqlglot_read, id=registry_platform)
+        )
+    return cases
+
+
+def test_dataframe_only_platforms_stay_out_of_metadata_ddl_scope():
+    sql_platforms = set(PlatformRegistry.get_sql_platforms())
+    assert _NON_SQL_DATAFRAME_PLATFORMS
+    for platform, reason in _NON_SQL_DATAFRAME_PLATFORMS.items():
+        assert reason
+        assert platform not in sql_platforms
+
+
+@pytest.mark.parametrize("registry_platform,adapter_name,adapter_dialect,sqlglot_read", _metadata_ddl_registry_cases())
+def test_metadata_ddl_parses_for_target_dialect(registry_platform, adapter_name, adapter_dialect, sqlglot_read):
     import sqlglot
 
-    manager = TuningMetadataManager(_Adapter(platform_name=platform))
-    statements = [manager._get_create_table_sql()]
-    index_sql = manager._get_create_index_sql()
+    by_config = TuningMetadataManager(_Adapter(config_type=registry_platform))
+    by_name = TuningMetadataManager(_Adapter(platform_name=adapter_name))
+    assert by_config._get_create_table_sql() == by_name._get_create_table_sql()
+    assert by_config._get_create_index_sql() == by_name._get_create_index_sql()
+    statements = [by_config._get_create_table_sql()]
+    index_sql = by_config._get_create_index_sql()
     if index_sql is not None:
         statements.append(index_sql)
     assert statements
     for sql in statements:
-        parsed = sqlglot.parse_one(sql, read=dialect) if dialect else sqlglot.parse_one(sql)
-        assert type(parsed).__name__ != "Command", f"{platform}: {sql[:80]}"
+        if sqlglot_read is None:
+            parsed = sqlglot.parse_one(sql)
+        else:
+            parsed = sqlglot.parse_one(sql, read=sqlglot_read)
+        assert type(parsed).__name__ != "Command", f"{registry_platform}/{adapter_dialect}: {sql[:80]}"
+
+
+@pytest.mark.parametrize("registry_platform", ["synapse", "fabric_dw"])
+def test_registry_tsql_platforms_use_sys_indexes_guard(registry_platform):
+    adapter_class = PlatformRegistry.get_adapter_class(registry_platform)
+    adapter_name = adapter_class.__new__(adapter_class).platform_name
+    for adapter in (_Adapter(config_type=registry_platform), _Adapter(platform_name=adapter_name)):
+        sql = TuningMetadataManager(adapter)._get_create_index_sql()
+        assert sql is not None
+        assert "IF NOT EXISTS" in sql
+        assert "sys.indexes" in sql
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("synapse", "synapse"),
+        ("azure_synapse", "synapse"),
+        ("azure-synapse", "synapse"),
+        ("Azure Synapse", "synapse"),
+        ("fabric_dw", "fabric_dw"),
+        ("fabric-dw", "fabric_dw"),
+        ("fabric_warehouse", "fabric_dw"),
+        ("Fabric Warehouse", "fabric_dw"),
+        ("pg-duckdb", "pg_duckdb"),
+        ("pg_duckdb", "pg_duckdb"),
+        ("pg-mooncake", "pg_mooncake"),
+        ("pg_mooncake", "pg_mooncake"),
+        ("timescaledb", "timescaledb"),
+        ("TimescaleDB", "timescaledb"),
+        ("ducklake", "ducklake"),
+        ("DuckLake", "ducklake"),
+        ("clickhouse-cloud", "clickhouse_cloud"),
+        ("ClickHouse Cloud", "clickhouse_cloud"),
+        ("Firebolt (Core)", "firebolt_(core)"),
+        ("Firebolt (Cloud)", "firebolt_(cloud)"),
+    ],
+)
+def test_platform_key_normalization_collapses_real_spellings(raw, expected):
+    assert _normalize_platform_key(raw) == expected
 
 
 def test_index_creation_failure_does_not_fail_table_creation(caplog):

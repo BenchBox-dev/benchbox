@@ -262,7 +262,7 @@ class TestMetadataPersistsCanonicalKey:
 
     def test_save_tunings_persists_canonical_platform_type(self):
         adapter = _MetadataStubAdapter("ClickHouse (Local)", canonical_platform_type="clickhouse-local")
-        assert self._saved_platforms(TuningMetadataManager(adapter)) == {"clickhouse-local"}
+        assert self._saved_platforms(TuningMetadataManager(adapter)) == {"clickhouse_local"}
 
     def test_save_tunings_falls_back_to_normalized_display_name(self):
         adapter = _MetadataStubAdapter("StarRocks")
