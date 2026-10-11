@@ -10927,15 +10927,10 @@
       "title": "Harness re-applies ClickHouse server session settings beyond load time"
     },
     "heavy-tier-merge-group-dead-code-20261009": {
-      "claim": {
-        "expires_at": "2026-10-12T11:41:20Z",
-        "generation": "6bbba44cedcc4a8292d4167b283584aa",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0b65b59dfd5ecfabcfde36b0"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "open",
       "title": "Remove the dead merge_group branch from heavy_tier_needed.py and its tests and docs"
     },
     "holistic-review-followup-metadata-truth": {
