@@ -5,18 +5,6 @@ primary_keys:
 
 foreign_keys:
   enabled: true
-  enforce_referential_integrity: true
-  on_delete_action: CASCADE
-  on_update_action: RESTRICT
-
-unique_constraints:
-  enabled: true
-  ignore_nulls: false
-
-check_constraints:
-  enabled: true
-  enforce_on_insert: true
-  enforce_on_update: true
 
 platform_optimizations:
   z_ordering_enabled: true
@@ -27,15 +15,10 @@ platform_optimizations:
   - lo_partkey
   auto_optimize_enabled: true
   auto_compact_enabled: true
-  materialized_views_enabled: true
 
 table_tunings:
   lineorder:
     table_name: lineorder
-    partitioning:
-    - name: lo_orderdate
-      type: INTEGER
-      order: 1
     clustering:
     - name: lo_orderdate
       type: INTEGER
@@ -49,18 +32,10 @@ table_tunings:
     - name: lo_partkey
       type: INTEGER
       order: 4
-    distribution:
-    - name: lo_orderdate
-      type: INTEGER
-      order: 1
 
   date:
     table_name: date
     clustering:
-    - name: d_datekey
-      type: INTEGER
-      order: 1
-    distribution:
     - name: d_datekey
       type: INTEGER
       order: 1
@@ -71,10 +46,6 @@ table_tunings:
     - name: c_custkey
       type: INTEGER
       order: 1
-    distribution:
-    - name: c_custkey
-      type: INTEGER
-      order: 1
 
   supplier:
     table_name: supplier
@@ -82,18 +53,10 @@ table_tunings:
     - name: s_suppkey
       type: INTEGER
       order: 1
-    distribution:
-    - name: s_suppkey
-      type: INTEGER
-      order: 1
 
   part:
     table_name: part
     clustering:
-    - name: p_partkey
-      type: INTEGER
-      order: 1
-    distribution:
     - name: p_partkey
       type: INTEGER
       order: 1

@@ -5,18 +5,6 @@ primary_keys:
 
 foreign_keys:
   enabled: true
-  enforce_referential_integrity: true
-  on_delete_action: CASCADE
-  on_update_action: RESTRICT
-
-unique_constraints:
-  enabled: true
-  ignore_nulls: false
-
-check_constraints:
-  enabled: true
-  enforce_on_insert: true
-  enforce_on_update: true
 
 platform_optimizations:
   z_ordering_enabled: true
@@ -26,35 +14,18 @@ platform_optimizations:
   - O_ORDERDATE
   auto_optimize_enabled: true
   auto_compact_enabled: true
-  materialized_views_enabled: true
 
 table_tunings:
   LINEITEM:
     table_name: LINEITEM
-    partitioning:
-    - name: L_SHIPDATE
-      type: DATE
-      order: 1
     clustering:
-    - name: L_ORDERKEY
-      type: INTEGER
-      order: 1
-    distribution:
     - name: L_ORDERKEY
       type: INTEGER
       order: 1
 
   ORDERS:
     table_name: ORDERS
-    partitioning:
-    - name: O_ORDERDATE
-      type: DATE
-      order: 1
     clustering:
-    - name: O_ORDERKEY
-      type: INTEGER
-      order: 1
-    distribution:
     - name: O_ORDERKEY
       type: INTEGER
       order: 1

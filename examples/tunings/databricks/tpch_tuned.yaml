@@ -5,18 +5,6 @@ primary_keys:
 
 foreign_keys:
   enabled: true
-  enforce_referential_integrity: true
-  on_delete_action: CASCADE
-  on_update_action: RESTRICT
-
-unique_constraints:
-  enabled: true
-  ignore_nulls: false
-
-check_constraints:
-  enabled: true
-  enforce_on_insert: true
-  enforce_on_update: true
 
 platform_optimizations:
   z_ordering_enabled: true
@@ -27,15 +15,10 @@ platform_optimizations:
   - C_CUSTKEY
   auto_optimize_enabled: true
   auto_compact_enabled: true
-  materialized_views_enabled: true
 
 table_tunings:
   LINEITEM:
     table_name: LINEITEM
-    partitioning:
-    - name: L_SHIPDATE
-      type: DATE
-      order: 1
     clustering:
     - name: L_ORDERKEY
       type: INTEGER
@@ -46,17 +29,9 @@ table_tunings:
     - name: L_SUPPKEY
       type: INTEGER
       order: 3
-    distribution:
-    - name: L_ORDERKEY
-      type: INTEGER
-      order: 1
 
   ORDERS:
     table_name: ORDERS
-    partitioning:
-    - name: O_ORDERDATE
-      type: DATE
-      order: 1
     clustering:
     - name: O_ORDERKEY
       type: INTEGER
@@ -64,10 +39,6 @@ table_tunings:
     - name: O_CUSTKEY
       type: INTEGER
       order: 2
-    distribution:
-    - name: O_ORDERKEY
-      type: INTEGER
-      order: 1
 
   PART:
     table_name: PART
@@ -81,10 +52,6 @@ table_tunings:
     - name: P_SIZE
       type: INTEGER
       order: 3
-    distribution:
-    - name: P_PARTKEY
-      type: INTEGER
-      order: 1
 
   SUPPLIER:
     table_name: SUPPLIER
@@ -95,10 +62,6 @@ table_tunings:
     - name: S_NATIONKEY
       type: INTEGER
       order: 2
-    distribution:
-    - name: S_SUPPKEY
-      type: INTEGER
-      order: 1
 
   CUSTOMER:
     table_name: CUSTOMER
@@ -109,10 +72,6 @@ table_tunings:
     - name: C_NATIONKEY
       type: INTEGER
       order: 2
-    distribution:
-    - name: C_CUSTKEY
-      type: INTEGER
-      order: 1
 
   PARTSUPP:
     table_name: PARTSUPP
@@ -123,10 +82,6 @@ table_tunings:
     - name: PS_SUPPKEY
       type: INTEGER
       order: 2
-    distribution:
-    - name: PS_PARTKEY
-      type: INTEGER
-      order: 1
 
 _metadata:
   version: '2.0'

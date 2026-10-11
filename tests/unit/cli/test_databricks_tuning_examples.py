@@ -6,8 +6,9 @@ import pytest
 import yaml
 
 from benchbox.cli.config import ConfigManager
-from benchbox.core.tuning.profile_validation import validate_tuning_template
-from benchbox.core.tuning.workload_profiles import load_tpc_tuning_profile
+from benchbox.core.tuning.platform_capabilities import UNSUPPORTED
+from benchbox.core.tuning.profile_validation import candidate_key, validate_tuning_template
+from benchbox.core.tuning.workload_profiles import TEMPORAL_PARTITION, load_tpc_tuning_profile
 
 pytestmark = [
     pytest.mark.unit,
@@ -25,8 +26,6 @@ def _load_databricks_tuning(filename: str):
 @pytest.mark.parametrize(
     ("filename", "benchmark_id", "expected_rendering", "expected_mechanism"),
     [
-        ("tpch_tuned.yaml", "tpch", "databricks_z_order", "z_order"),
-        ("tpcds_tuned.yaml", "tpcds", "databricks_z_order", "z_order"),
         ("tpch_liquid_tuned.yaml", "tpch", "databricks_liquid_auto", "liquid_clustering_auto"),
         ("tpcds_liquid_tuned.yaml", "tpcds", "databricks_liquid_auto", "liquid_clustering_auto"),
     ],
@@ -50,6 +49,37 @@ def test_databricks_tpc_tuned_examples_consume_logical_tpc_profile(
     metadata = result.to_metadata()
     assert metadata["physical_rendering_id"] == expected_rendering
     assert expected_mechanism in metadata["platform_physical_tuning_mechanisms"]
+    assert "distribution" not in metadata["platform_physical_tuning_mechanisms"]
+
+
+@pytest.mark.parametrize(
+    ("filename", "benchmark_id"),
+    [("tpch_tuned.yaml", "tpch"), ("tpcds_tuned.yaml", "tpcds")],
+)
+def test_databricks_z_order_tuned_examples_exclude_temporal_partitions(filename: str, benchmark_id: str) -> None:
+    tuning_config = _load_databricks_tuning(filename)
+    result = validate_tuning_template(
+        profile=load_tpc_tuning_profile(),
+        benchmark=benchmark_id,
+        platform="databricks",
+        tuning_config=tuning_config,
+    )
+    temporal = {
+        candidate_key(candidate)
+        for candidate in load_tpc_tuning_profile().required_candidates(benchmark_id)
+        if TEMPORAL_PARTITION in candidate.roles
+    }
+
+    unsupported = {
+        mapping.candidate_key for mapping in result.mappings if mapping.platform_mapping.decision == UNSUPPORTED
+    }
+    assert result.is_valid, [issue.to_dict() for issue in result.issues]
+    assert unsupported == temporal
+    assert result.mapped_count + result.unsupported_count == result.required_count
+    assert result.waived_count == 0
+    metadata = result.to_metadata()
+    assert metadata["physical_rendering_id"] == "databricks_z_order"
+    assert "z_order" in metadata["platform_physical_tuning_mechanisms"]
     assert "distribution" not in metadata["platform_physical_tuning_mechanisms"]
 
 

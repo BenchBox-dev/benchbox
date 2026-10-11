@@ -5,18 +5,6 @@ primary_keys:
 
 foreign_keys:
   enabled: true
-  enforce_referential_integrity: true
-  on_delete_action: CASCADE
-  on_update_action: RESTRICT
-
-unique_constraints:
-  enabled: true
-  ignore_nulls: false
-
-check_constraints:
-  enabled: true
-  enforce_on_insert: true
-  enforce_on_update: true
 
 platform_optimizations:
   z_ordering_enabled: false
@@ -27,7 +15,6 @@ platform_optimizations:
   physical_rendering_id: databricks_liquid_auto
   auto_optimize_enabled: true
   auto_compact_enabled: true
-  materialized_views_enabled: true
 
 table_tunings:
   LINEITEM:

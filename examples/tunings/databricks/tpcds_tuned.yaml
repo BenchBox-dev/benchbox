@@ -5,18 +5,6 @@ primary_keys:
 
 foreign_keys:
   enabled: true
-  enforce_referential_integrity: true
-  on_delete_action: CASCADE
-  on_update_action: RESTRICT
-
-unique_constraints:
-  enabled: true
-  ignore_nulls: false
-
-check_constraints:
-  enabled: true
-  enforce_on_insert: true
-  enforce_on_update: true
 
 platform_optimizations:
   z_ordering_enabled: true
@@ -29,15 +17,10 @@ platform_optimizations:
   - WS_ITEM_SK
   auto_optimize_enabled: true
   auto_compact_enabled: true
-  materialized_views_enabled: true
 
 table_tunings:
   STORE_SALES:
     table_name: STORE_SALES
-    partitioning:
-    - name: SS_SOLD_DATE_SK
-      type: INTEGER
-      order: 1
     clustering:
     - name: SS_ITEM_SK
       type: INTEGER
@@ -54,17 +37,9 @@ table_tunings:
     - name: SS_TICKET_NUMBER
       type: INTEGER
       order: 5
-    distribution:
-    - name: SS_ITEM_SK
-      type: INTEGER
-      order: 1
 
   STORE_RETURNS:
     table_name: STORE_RETURNS
-    partitioning:
-    - name: SR_RETURNED_DATE_SK
-      type: INTEGER
-      order: 1
     clustering:
     - name: SR_ITEM_SK
       type: INTEGER
@@ -78,17 +53,9 @@ table_tunings:
     - name: SR_TICKET_NUMBER
       type: INTEGER
       order: 4
-    distribution:
-    - name: SR_ITEM_SK
-      type: INTEGER
-      order: 1
 
   CATALOG_SALES:
     table_name: CATALOG_SALES
-    partitioning:
-    - name: CS_SOLD_DATE_SK
-      type: INTEGER
-      order: 1
     clustering:
     - name: CS_ITEM_SK
       type: INTEGER
@@ -96,32 +63,16 @@ table_tunings:
     - name: CS_SHIP_MODE_SK
       type: INTEGER
       order: 2
-    distribution:
-    - name: CS_ITEM_SK
-      type: INTEGER
-      order: 1
 
   CATALOG_RETURNS:
     table_name: CATALOG_RETURNS
-    partitioning:
-    - name: CR_RETURNED_DATE_SK
-      type: INTEGER
-      order: 1
     clustering:
-    - name: CR_ITEM_SK
-      type: INTEGER
-      order: 1
-    distribution:
     - name: CR_ITEM_SK
       type: INTEGER
       order: 1
 
   WEB_SALES:
     table_name: WEB_SALES
-    partitioning:
-    - name: WS_SOLD_DATE_SK
-      type: INTEGER
-      order: 1
     clustering:
     - name: WS_ITEM_SK
       type: INTEGER
@@ -135,22 +86,10 @@ table_tunings:
     - name: WS_SHIP_MODE_SK
       type: INTEGER
       order: 4
-    distribution:
-    - name: WS_ITEM_SK
-      type: INTEGER
-      order: 1
 
   WEB_RETURNS:
     table_name: WEB_RETURNS
-    partitioning:
-    - name: WR_RETURNED_DATE_SK
-      type: INTEGER
-      order: 1
     clustering:
-    - name: WR_ITEM_SK
-      type: INTEGER
-      order: 1
-    distribution:
     - name: WR_ITEM_SK
       type: INTEGER
       order: 1
@@ -167,10 +106,6 @@ table_tunings:
     - name: D_MOY
       type: INTEGER
       order: 3
-    distribution:
-    - name: D_DATE_SK
-      type: INTEGER
-      order: 1
 
   ITEM:
     table_name: ITEM
@@ -184,10 +119,6 @@ table_tunings:
     - name: I_CLASS
       type: VARCHAR
       order: 3
-    distribution:
-    - name: I_ITEM_SK
-      type: INTEGER
-      order: 1
 
   CUSTOMER:
     table_name: CUSTOMER
@@ -201,10 +132,6 @@ table_tunings:
     - name: C_CURRENT_CDEMO_SK
       type: INTEGER
       order: 3
-    distribution:
-    - name: C_CUSTOMER_SK
-      type: INTEGER
-      order: 1
 
 _metadata:
   version: '2.0'

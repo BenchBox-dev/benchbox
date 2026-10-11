@@ -294,8 +294,26 @@ class TestTuningValidateSql:
         assert "Tuning type 'sorting' is not supported by platform 'bigquery'" in output
         assert "Configuration has errors" in output
 
-    def test_registry_unrendered_type_is_reported_as_warning(self):
-        template = REPO_ROOT / "examples/tunings/databricks/tpch_tuned.yaml"
+    def test_registry_unrendered_type_is_reported_as_warning(self, tmp_path):
+        template = tmp_path / "databricks_distribution.yaml"
+        template.write_text(
+            "primary_keys:\n"
+            "  enabled: false\n"
+            "foreign_keys:\n"
+            "  enabled: false\n"
+            "unique_constraints:\n"
+            "  enabled: false\n"
+            "check_constraints:\n"
+            "  enabled: false\n"
+            "platform_optimizations: {}\n"
+            "table_tunings:\n"
+            "  ORDERS:\n"
+            "    table_name: ORDERS\n"
+            "    distribution:\n"
+            "    - name: O_ORDERKEY\n"
+            "      type: INTEGER\n"
+            "      order: 1\n"
+        )
 
         result, output = _run_validate([str(template), "--platform", "databricks"])
 

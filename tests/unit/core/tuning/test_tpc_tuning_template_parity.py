@@ -31,27 +31,37 @@ CHECKOUT_ROOT = REPO_ROOT
 TUNING_ROOT = REPO_ROOT / "examples" / "tunings"
 
 
-@pytest.mark.parametrize(
-    ("platform", "benchmark_id"),
-    [
-        ("databricks", "tpch"),
-        ("databricks", "tpcds"),
-        ("databricks", "ssb"),
-    ],
-)
-def test_tpc_tuned_templates_map_required_logical_profile_candidates(platform: str, benchmark_id: str) -> None:
-    tuning_config = _load_tuning(platform, benchmark_id)
+def _databricks_temporal_partition_candidates(benchmark_id: str) -> set[str]:
+    return {
+        candidate_key(candidate)
+        for candidate in load_tpc_tuning_profile().required_candidates(benchmark_id)
+        if TEMPORAL_PARTITION in candidate.roles
+    }
+
+
+@pytest.mark.parametrize("benchmark_id", ["tpch", "tpcds", "ssb"])
+def test_databricks_templates_map_every_candidate_except_temporal_partitions(benchmark_id: str) -> None:
     result = validate_tuning_template(
         profile=load_tpc_tuning_profile(),
         benchmark=benchmark_id,
-        platform=platform,
-        tuning_config=tuning_config,
+        platform="databricks",
+        tuning_config=_load_tuning("databricks", benchmark_id),
     )
 
+    unsupported = {
+        mapping.candidate_key for mapping in result.mappings if mapping.platform_mapping.decision == UNSUPPORTED
+    }
     assert result.is_valid, [issue.to_dict() for issue in result.issues]
-    assert result.mapped_count == result.required_count
-    assert result.unsupported_count == 0
+    assert unsupported == _databricks_temporal_partition_candidates(benchmark_id)
+    assert result.mapped_count + result.unsupported_count == result.required_count
     assert result.waived_count == 0
+    reasons = {
+        mapping.platform_mapping.reason
+        for mapping in result.mappings
+        if mapping.platform_mapping.decision == UNSUPPORTED
+    }
+    assert reasons, "temporal-partition exclusions must name the vendor reason"
+    assert all("Databricks" in reason for reason in reasons)
 
 
 def _duckdb_temporal_partition_candidates(benchmark_id: str) -> set[str]:
@@ -142,7 +152,7 @@ def test_dropped_low_evidence_candidates_fail_when_reintroduced() -> None:
 
 def test_multi_mechanism_candidates_fail_when_one_mapping_type_is_lost() -> None:
     tuning_config = _load_tuning("databricks", "tpch")
-    tuning_config.table_tunings["LINEITEM"].distribution = []
+    tuning_config.table_tunings["LINEITEM"].clustering = []
 
     result = validate_tuning_template(
         profile=load_tpc_tuning_profile(),
@@ -153,12 +163,12 @@ def test_multi_mechanism_candidates_fail_when_one_mapping_type_is_lost() -> None
 
     assert not result.is_valid
     assert any(
-        issue.candidate_key == "tpch.LINEITEM.L_ORDERKEY" and "distribution" in issue.message for issue in result.issues
+        issue.candidate_key == "tpch.LINEITEM.L_ORDERKEY" and "clustering" in issue.message for issue in result.issues
     )
     assert {
         unmapped["candidate"]: unmapped.get("missing_tuning_types", [])
         for unmapped in result.unmapped_logical_candidates
-    }["tpch.LINEITEM.L_ORDERKEY"] == ["distribution"]
+    }["tpch.LINEITEM.L_ORDERKEY"] == ["clustering"]
 
 
 def test_databricks_z_order_mapping_does_not_report_distribution_as_physical_mechanism() -> None:
@@ -206,10 +216,12 @@ def test_tuning_profile_metadata_exposes_comparison_semantics() -> None:
     assert metadata["logical_tuning_profile_id"] == "tpc-v1"
     assert metadata["physical_rendering_id"] == "databricks_z_order"
     assert "z_order" in metadata["platform_physical_tuning_mechanisms"]
-    assert (
-        metadata["logical_profile_coverage"]["mapped_count"] == metadata["logical_profile_coverage"]["required_count"]
-    )
-    assert metadata["unmapped_logical_candidates"] == []
+    coverage = metadata["logical_profile_coverage"]
+    temporal = _databricks_temporal_partition_candidates("tpch")
+    assert coverage["mapped_count"] + coverage["unsupported_count"] == coverage["required_count"]
+    assert coverage["unsupported_count"] == len(temporal)
+    assert {entry["candidate"] for entry in metadata["unmapped_logical_candidates"]} == temporal
+    assert {entry["decision"] for entry in metadata["unmapped_logical_candidates"]} == {UNSUPPORTED}
 
 
 def test_duckdb_tuning_profile_metadata_reports_temporal_partitions_as_unsupported() -> None:
