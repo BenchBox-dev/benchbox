@@ -2,8 +2,8 @@
 develop_sha: 2eb03f3e67ec8f7f1347738f29696fa39ed5f526
 measured_at_sha: dd20aed2d53a87a4c34ae74c73a187cfa9bf3c5e
 checked_sha: dd20aed2d53a87a4c34ae74c73a187cfa9bf3c5e
-replay_sha: 5c33b6075990429f875b441bc43665f6a1e1a991
-replay_scope: PR 2888 workflow and pipeline/publication/full-fast replay at 50183db50c15b46a1dbd474d3bf7cd297f1c2975; PR 2821 D20-D22 scanner fixes at 5c33b6075990429f875b441bc43665f6a1e1a991
+replay_sha: 86c85b22f446209df039341ec7ec64be6dfcb2f8
+replay_scope: PR 2888 workflow and pipeline/publication/full-fast replay at 50183db50c15b46a1dbd474d3bf7cd297f1c2975; PR 2821 D20-D24 scanner fixes, focused and full scanner verification at 86c85b22f446209df039341ec7ec64be6dfcb2f8
 ---
 
 # Remediation contract evidence
@@ -570,3 +570,26 @@ env-option support ranged from 321.52 to 483.21 seconds wall and 263.31 to
 319.96 user. These whole-gate timings use the immutable base checker in
 `scripts/run_comment_policy.py`; they do not isolate candidate scanner cost or
 supersede the paired scanner measurements recorded above.
+
+### Findings D23-D24
+
+- D23, nested piped runner wrappers: `piped_consumer_words` recursively
+  resolves static wrapper chains until it reaches the effective consumer.
+  `test_piped_producer_payloads_reach_stdin_interpreters` covers both
+  `sudo env python3` and `env FOO=1 sudo python3` forms. The latter missed the
+  stdin comment before the fix; the former already found it.
+- D24, Bash option operands: `piped_bash_operands` skips the argument to
+  `-O` and `+O` before deciding whether Bash has a script-file operand.
+  `test_piped_bash_shopt_option_is_not_treated_as_script_operand` verifies
+  both forms.
+
+The focused D23-D24 regression run passed 32 tests. Before the fix, it
+reproduced three failures: the nested `env`/`sudo` chain and both Bash option
+forms. The full scanner unit file passed 786 tests; the CI parity file passed
+10. Ruff check and format checks passed for the changed Python files.
+Full-project type checking with `uv run ty check` exited 0 with 674 diagnostics.
+
+The full `make comment-policy-check` run passed: 5,779 source files, zero
+violations, zero enforced failures, and all 19 native syntax tests passed.
+Its runtime overlapped with the commit hook's policy run, so no timing
+comparison is recorded for this replay.
