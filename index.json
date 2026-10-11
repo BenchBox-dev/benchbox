@@ -7791,9 +7791,7 @@
     },
     "docs-backend-exception-redaction-followup": {
       "claim": null,
-      "needs": [
-        "docs-remediation-full-surface-audit"
-      ],
+      "needs": [],
       "priority": "medium",
       "status": "open",
       "title": "Verify backend exception redaction across public result paths"

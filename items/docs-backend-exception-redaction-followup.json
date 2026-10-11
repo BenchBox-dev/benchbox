@@ -5,7 +5,7 @@
     "Fix every reproduced leak without suppressing useful error context.",
     "Update the published release note only if its warning is no longer accurate, and record the evidence."
   ],
-  "context": "Created from the full published-surface audit. This is a verification follow-up, not a confirmed current vulnerability.",
+  "context": "Created from the full published-surface audit. This is a verification follow-up, not a confirmed current vulnerability. Candidate full-surface evidence is recorded in `_project/audits/docs-remediation-full-surface-audit-2026-10-11.md`, inventory source `435ff8b884d6af12703238c8850b894a276e882d`. The user authorized continued work on the unmerged PR stack, so this follow-up no longer depends on the audit task reaching its merge/live evidence gate. As of 2026-10-11 the active todo-db did not advertise registered-batch support/schema; verify again, and use serial mode if still absent.",
   "description": "The published v0.4.0 release overview warns that backend-provided exception text can repeat values. This is broader than the targeted documentation cleanup and the current audit has not established whether the warning still describes current behavior. Trace backend exceptions through user-facing errors, result exports, and MCP responses; reproduce any exposure with synthetic credentials; harden confirmed leaks and retain or update the public warning based on evidence.",
   "links": [
     "docs/blog/2026-08-31-v0-4-0-release-overview.md"
@@ -17,6 +17,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "3c2490d4c15a436a8d8daaa990235be5",
+      "session_id": "f00fbcc194ab47a6a9508e7176243455"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c5daffc9eae3c5f9ce6578f7",
+      "at": "2026-10-11T19:33:12Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f60da4f04912422e930186a7c5edddda",
       "session_id": "f00fbcc194ab47a6a9508e7176243455"
     }
   ]
