@@ -129,6 +129,7 @@ help:
 	@echo ""
 	@echo "PR Workflow & Worktrees:"
 	@echo "  make agent-write-preflight  Refuse write work from the BenchBox primary clone unless explicitly overridden"
+	@echo "  make oracle-review-recover PR=n [REPO=owner/repo]  Retry failed Oracle runs serially, then close/reopen the PR to requeue checks"
 	@echo "  make pr-preflight    Ruff on changed Python files, then the tests for changed files (serial, no test lock; CI runs the full fast lane)"
 	@echo "  make pr-preflight-fast-tests  Run the full fast lane and content guard locally, as CI does (takes the shared test lock)"
 	@echo "  make make-timings-report [MAKE_TIMINGS_DAYS=30] [MAKE_TIMINGS_SLOWEST=5]  Per-target run count, median, p90 and max from ~/.benchbox/make-timings.jsonl (BENCHBOX_MAKE_TIMINGS=0 disables recording)"

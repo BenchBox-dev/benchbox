@@ -233,6 +233,7 @@ AGENT_MAKE_INTERFACES = [
     "duplicate-check-verbose",
     "help",
     "makefile-inventory-check",
+    "oracle-review-recover",
     "platform-manifest-check",
     "pr-arm",
     "pr-open",
