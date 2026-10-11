@@ -1439,6 +1439,8 @@ def test_split_runner_interpreter_arguments_are_scanned(source: str) -> None:
         "nohup -x python3 -c '# explanation'",
         "echo '# hidden' | sudo --unknown value python3",
         "echo '# hidden' | nohup -x python3",
+        "echo '# hidden' | env --unknown python3",
+        "echo '# hidden' | env -S python3",
     ],
 )
 def test_unknown_split_runner_options_fail_closed(source: str) -> None:
@@ -1505,6 +1507,9 @@ def test_piped_printf_escaped_percent_matches_shell_output() -> None:
         (r"echo -e '\0443 hidden' | bash", "# hidden"),
         (r"printf '%s\c' '# hidden' | bash", "# hidden"),
         ("echo '# hidden' | env python3", "# hidden"),
+        ("echo '# hidden' | env -u HOME python3", "# hidden"),
+        ("echo '# hidden' | env --unset=HOME python3", "# hidden"),
+        ("echo '# hidden' | env -C /tmp python3", "# hidden"),
         ("echo '# hidden' | sudo python3", "# hidden"),
         ("echo '# hidden' | sudo -u nobody python3", "# hidden"),
         ("echo '# hidden' | nohup python3", "# hidden"),
@@ -3401,8 +3406,10 @@ def test_every_astro_expression_is_sent_to_the_typescript_scanner() -> None:
         ('LEVELS=($(printf "%s\\n" 1 2 | awk -v max="$MAX" \'$1 <= max\' | sort -nu))\n', []),
         ('if ! awk "BEGIN { exit !($s >= 1) }"; then\n  exit 1\nfi\n', ["coverage-error"]),
         ("if ! awk -v s=\"$s\" 'BEGIN { exit !(s >= 1) }'; then\n  exit 1\nfi\n", []),
-        ("LEVELS=($(printf x | awk '{print} # note'))\n", ["coverage-error"]),
         ("LEVELS=($(psql -c 'SELECT 1 -- note'))\n", ["coverage-error"]),
+        ("echo x | python3 )\n", ["coverage-error"]),
+        ("echo x | cat )\n", []),
+        ("echo '| python3'\n", []),
     ],
 )
 def test_unparseable_shell_chunks_fail_closed_only_when_they_can_hold_a_comment(source: str, kinds: list) -> None:
@@ -3504,6 +3511,7 @@ def test_mdx_pages_scan_prose_fences_and_imports() -> None:
     ("source", "expected"),
     [
         ("# Title\n\n{/* explanation */}\n", [(3, "{/* explanation */}")]),
+        ("{ /* explanation */ }\n", [(1, "{ /* explanation */ }")]),
         ("{/* first */}\n\n{/* second */}\n", [(1, "{/* first */}"), (3, "{/* second */}")]),
         ("<div>\n  {/* explanation */}\n</div>\n", [(2, "{/* explanation */}")]),
         ("{/* multi\nline */}\n", [(1, "{/* multi\nline */}")]),
@@ -3518,6 +3526,7 @@ def test_mdx_jsx_comments_are_found(source: str, expected: list[tuple[int, str]]
     ("source", "expected"),
     [
         ("`{/* inline */}`", []),
+        ("`{ /* inline */ }`", []),
         ("``{/* inline */}``", []),
         ("`{/* inline\ncomment */}`\n{/* visible */}", [(3, "{/* visible */}")]),
         (r"\`{/* visible */}`", [(1, "{/* visible */}")]),

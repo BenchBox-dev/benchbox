@@ -321,7 +321,7 @@ def astro_expression_sources(path: str, source: str) -> list[tuple[int, str, str
     ]
 
 
-MDX_JSX_COMMENT = re.compile(r"\{/\*.*?\*/\s*\}", re.S)
+MDX_JSX_COMMENT = re.compile(r"\{\s*/\*.*?\*/\s*\}", re.S)
 MDX_STATEMENT_START = re.compile(r"(?:import|export)(?=\s|$)")
 MDX_IMPORT_FROM = re.compile(r"\bfrom\s+['\"][^'\"\n]+['\"]")
 MDX_IMPORT_BARE = re.compile(r"^import\s+['\"]")
@@ -1116,15 +1116,22 @@ def unwrap_static_command(words: list) -> list:
     return words
 
 
+SHELL_DYNAMIC_PIPED_COMMAND = r"""(?<!\$)\|[ \t]*(?:"[^"\n]*\$|\$\S)"""
+SHELL_PIPED_INTERPRETER = re.compile(
+    r"\|[^\n]*(?<![\w.-])(?:python[0-9.]*|node|bash|sh|zsh|ksh|dash|fish|perl|ruby|php|lua|pwsh|powershell|deno|bun|tclsh"
+    r"|osascript|Rscript|awk|gawk|mawk|psql|duckdb|sqlite3)(?=[\s;|&)\"']|$)" + "|" + SHELL_DYNAMIC_PIPED_COMMAND
+)
+SHELL_PIPED_MODELED_INTERPRETER = re.compile(
+    r"\|[^\n]*(?<![\w.-])(?:python[0-9.]*|node|bash|sh|zsh)(?=[\s;|&)\"']|$)" + "|" + SHELL_DYNAMIC_PIPED_COMMAND
+)
 SHELL_INLINE_INTERPRETER = re.compile(
     r"\beval\b|\b(?:python[0-9.]*|node|bash|sh|zsh)\b[^\n]*\s(?:-[A-Za-z]*[ceEp]|--eval|--command|--print)"
     r"|(?<![\w.-])(?:ksh|dash|fish|perl|ruby|php|lua|pwsh|powershell|deno|bun|tclsh|osascript|Rscript|awk|gawk|mawk"
     r"|psql|duckdb|sqlite3)(?=[\s;|&)]|$)"
     r"|(?<![\w.-])find\b[^\n]*\s-(?:exec|execdir|ok|okdir)\b"
-    r"|\|[^\n]*(?<![\w.-])(?:python[0-9.]*|node|bash|sh|zsh|ksh|dash|fish|perl|ruby|php|lua|pwsh|powershell|deno|bun|tclsh"
-    r"|osascript|Rscript|awk|gawk|mawk|psql|duckdb|sqlite3)(?=[\s;|&)\"']|$)"
-    r"""|(?<!\$)\|[ \t]*(?:"[^"\n]*\$|\$\S)"""
-    r"|\b(?:ssh|watch|xargs|env|sudo|nohup)\s"
+    + "|"
+    + SHELL_PIPED_INTERPRETER.pattern
+    + r"|\b(?:ssh|watch|xargs|env|sudo|nohup)\s"
 )
 SHELL_WRAPPERS = {"sudo", "nice", "nohup", "timeout", "time", "command", "exec", "stdbuf", "ionice", "uvx"}
 TIME_FLAGS = {"-l", "-p"}
@@ -1340,6 +1347,10 @@ RUNNER_VALUE_OPTIONS: dict[str, set[str]] = {
     "nohup": set(),
 }
 
+PIPED_ENV_FLAGS = {"-i", "--ignore-environment", "-0", "--null"}
+PIPED_ENV_VALUE_OPTIONS = RUNNER_VALUE_OPTIONS["env"] - {"-S", "--split-string"}
+PIPED_ENV_ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=.*")
+
 
 def runner_command_index(words: list[str | None], command: str) -> int:
     value_options = RUNNER_VALUE_OPTIONS.get(command, set())
@@ -1517,7 +1528,9 @@ SHELL_UNMODELED_NAME = re.compile(
 
 
 def chunk_can_hold_comment(chunk: str) -> bool:
-    if SHELL_MODELED_INLINE.search(chunk):
+    if SHELL_MODELED_INLINE.search(chunk) or (
+        not re.search(r"(?<!<)<<-?\s*", chunk) and SHELL_PIPED_MODELED_INTERPRETER.search(chunk)
+    ):
         return True
     for match in SHELL_UNMODELED_NAME.finditer(chunk):
         name = match.group(1)
@@ -1685,14 +1698,30 @@ def piped_consumer_words(words: list) -> tuple[list, str]:
         while index < len(words):
             word = words[index]
             if word.parts:
-                raise ValueError("dynamic piped interpreter consumer requires an adapter")
-            if re.match(r"[A-Za-z_][A-Za-z0-9_]*=", word.word) or word.word in {"-i", "--ignore-environment"}:
+                break
+            value = word.word
+            if value in PIPED_ENV_FLAGS or PIPED_ENV_ASSIGNMENT.fullmatch(value):
                 index += 1
                 continue
-            break
-        if index < len(words) and not words[index].word.startswith("-"):
-            unwrapped = words[index:]
-            return unwrapped, unwrapped[0].word.rsplit("/", 1)[-1]
+            if value.startswith("-"):
+                break
+            return words[index:], value.rsplit("/", 1)[-1]
+        static = [None if word.parts else word.word for word in words[1:]]
+        tail = _wrapper_tail(
+            static,
+            value_options=PIPED_ENV_VALUE_OPTIONS,
+            flag_options=PIPED_ENV_FLAGS,
+            wrapper="piped env",
+        )
+        while tail and tail[0] is not None and PIPED_ENV_ASSIGNMENT.fullmatch(tail[0]):
+            tail = tail[1:]
+        if not tail:
+            raise ValueError("piped env executable requires an adapter")
+        consumed = len(static) - len(tail)
+        unwrapped = words[consumed + 1 :]
+        if not unwrapped or unwrapped[0].parts:
+            raise ValueError("dynamic piped interpreter consumer requires an adapter")
+        return unwrapped, unwrapped[0].word.rsplit("/", 1)[-1]
     return words, command
 
 

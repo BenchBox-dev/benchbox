@@ -419,10 +419,10 @@ four cases using that isolated TypeScript path.
 
 - D13, runner-wrapped consumers: positive cases in
   `test_piped_producer_payloads_reach_stdin_interpreters` cover
-  `sudo python3`, `sudo -u nobody python3`, `nohup python3`, and
-  `nohup -- python3`. Negative controls in
-  `test_unknown_split_runner_options_fail_closed` cover `sudo --unknown` and
-  `nohup -x`, both as direct commands and piped consumers.
+  `sudo python3`, `sudo -u nobody python3`, `nohup python3`,
+  `nohup -- python3`, and `env` with `-u`, `--unset`, and `-C` options.
+  Negative controls in `test_unknown_split_runner_options_fail_closed` cover
+  unsupported `sudo`, `nohup`, and `env` options, including `env -S`.
 - D14, multi-hop pipelines: the same positive test covers
   `echo '# hidden' | cat | python3` and a two-`cat` chain. The dynamic
   consumer case `test_dynamic_pipeline_consumer_fails_closed[cat | $interpreter]`
@@ -442,17 +442,59 @@ four cases using that isolated TypeScript path.
 The focused regression selection passed 61 tests with
 `uv run -- pytest -q tests/unit/scripts/test_comment_policy.py -k 'piped_ or dynamic_pipeline_consumer or mdx_jsx_comments or reviewed_javascript_flows_still_occur'`.
 
-The full policy unit file passed 754 tests with
+The full policy unit file passed 759 tests with
 `uv run -- pytest -q tests/unit/scripts/test_comment_policy.py -n0`.
 The missing-parser control
 `env COMMENT_POLICY_TYPESCRIPT=/tmp/comment-policy-typescript-missing uv run -- pytest -q tests/unit/scripts/test_comment_policy.py -k reviewed_javascript_flows_still_occur -n0`
 failed as expected with one assertion, proving the CI test cannot silently
 skip the TypeScript flow check.
 
-After rebasing, `make comment-policy-check` passed: 5,779 files, zero
+After the env-option fix, `make comment-policy-check` passed: 5,779 files, zero
 violations, zero enforced failures, and all 19 native syntax tests passed.
-`/usr/bin/time -p` measured 273.46 seconds wall, 230.01 user, and 33.32 sys.
-That run falls within the earlier candidate wall-time range of 252.23-295.88
-seconds and below the historical 358 seconds wall / 276 seconds user baseline.
-Three earlier final runs measured 269.54, 298.41, and 308.01 seconds wall,
-showing run-to-run variance. No explicit gate-time budget is set.
+Two timed runs measured 483.21 seconds wall / 319.96 user / 63.34 sys and
+321.52 / 263.31 / 38.95. The latest run was below the historical 358-second
+wall / 276-second user baseline; the first exceeded it. An earlier post-rebase
+run before the env-option fix measured 273.46 / 230.01 / 33.32. Earlier paired
+candidate runs ranged from 252.23 to 295.88 seconds wall. Run-to-run variance
+is large; the measurements do not isolate scanner performance, and no explicit
+gate-time budget is set.
+
+### Findings D17-D19 and CI parity
+
+- D17, `env`-wrapped pipeline consumers: `piped_consumer_words` unwraps the
+  registered `env` value and flag options before identifying the interpreter.
+  `test_piped_producer_payloads_reach_stdin_interpreters` covers `-u`,
+  `--unset`, and `-C`; `test_unknown_split_runner_options_fail_closed` rejects
+  unknown options and `-S`/`--split-string`.
+- D18, unparseable piped consumers: the fallback now treats a non-heredoc pipe
+  to a modeled interpreter, or a dynamic pipe command, as comment-capable and
+  raises a coverage error when parsing cannot continue. The positive
+  `echo x | python3 )` and negative `echo x | cat )` plus quoted-pipe controls
+  are in `test_unparseable_shell_chunks_fail_closed_only_when_they_can_hold_a_comment`.
+  `test_piped_heredoc_is_executable` confirms heredoc payloads remain with the
+  dedicated shell payload adapter.
+- D19, whitespace-padded MDX JSX comments: `MDX_JSX_COMMENT` accepts
+  whitespace between `{` and `/*`. `test_mdx_jsx_comments_are_found` requires
+  the spaced comment; `test_mdx_jsx_comments_ignore_inline_code` rejects the
+  same shape inside a code span.
+- The CI parity regression lacked a local equivalent for the medium-test
+  locked TypeScript parser installation. `MERGE_GATE_LOCAL_EQUIVALENTS` maps
+  that step to `test-medium`, and `docs/operations/ci-local-parity.md` records
+  the local command.
+
+The focused D17-D19 regression selection passed 47 tests:
+
+```bash
+uv run -- python -m pytest tests/unit/scripts/test_comment_policy.py \
+  -k 'piped_producer_payloads_reach_stdin_interpreters or unknown_split_runner_options_fail_closed or unparseable_shell_chunks_fail_closed_only_when_they_can_hold_a_comment or mdx_jsx_comments_are_found or mdx_jsx_comments_ignore_inline_code' \
+  -q -n0
+```
+
+The full policy unit file passed 763 tests with
+`uv run -- python -m pytest tests/unit/scripts/test_comment_policy.py -q -n0`.
+The two affected CI parity tests passed with
+`uv run -- python -m pytest tests/system/test_ci_lint_parity.py::test_non_lint_merge_gate_guards_have_local_equivalent_or_documented_exemption tests/system/test_ci_lint_parity.py::test_merge_gate_local_equivalents_and_exemptions_are_documented -q -n0`.
+Ruff check and format checks passed for all three changed Python files.
+
+`make comment-policy-check` passed: 5,779 source files, zero violations, zero
+enforced failures, and all 19 native syntax tests passed.
