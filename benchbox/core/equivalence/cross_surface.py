@@ -35,6 +35,7 @@ from benchbox.core.equivalence.dataframe_surface import (
     find_surface_divergences,
     materialize_rows,
 )
+from benchbox.core.execution_engine import resolve_requested
 from benchbox.utils.printing import quiet_console as console
 
 _BACKEND_FAMILIES = {"expression": "expression", "pandas": "pandas", "datafusion": "expression"}
@@ -636,15 +637,25 @@ _PRODUCTION_ADAPTERS: dict[str, str] = {
 }
 
 
+def _validate_execution_engine(backends: tuple[str, ...], execution_engine: str | None) -> None:
+    if execution_engine is None:
+        return
+    resolve_requested("polars", execution_engine)
+    if "expression" not in backends:
+        raise ValueError("An execution engine requires the expression (Polars DataFrame) backend")
+
+
 def build_production_contexts(
     benchmark: Any,
     data_dir: Path,
     *,
     backends: tuple[str, ...] = DATAFRAME_BACKENDS,
     scale_factor: float = EQUIVALENCE_SCALE,
+    execution_engine: str | None = None,
 ) -> dict[str, Any]:
     import importlib
 
+    _validate_execution_engine(backends, execution_engine)
     contexts: dict[str, Any] = {}
     for backend in backends:
         target = _PRODUCTION_ADAPTERS.get(backend)
@@ -652,7 +663,10 @@ def build_production_contexts(
             raise ValueError(f"No production DataFrame adapter registered for backend {backend!r}")
         module_name, _, class_name = target.partition(":")
         adapter_cls = getattr(importlib.import_module(module_name), class_name)
-        adapter = adapter_cls()
+        adapter_options = (
+            {"execution_engine": execution_engine} if backend == "expression" and execution_engine is not None else {}
+        )
+        adapter = adapter_cls(**adapter_options)
         contexts[backend] = adapter.load_benchmark_into_context(benchmark, Path(data_dir), scale_factor=scale_factor)
     return contexts
 
@@ -1483,7 +1497,16 @@ def _report_flaky(name: str, flaky: list[tuple[str, str, list[str | None]]], rep
         line(f"  {query}_{cell}: diverged in {diverged} of {repeats} runs; e.g. {detail[:200]}")
 
 
-def run_gate(gate: CrossSurfaceGate, *, update_baseline: bool = False, repeats: int = 1) -> int:
+def run_gate(
+    gate: CrossSurfaceGate,
+    *,
+    update_baseline: bool = False,
+    repeats: int = 1,
+    execution_engine: str | None = None,
+) -> int:
+    if update_baseline and execution_engine is not None:
+        raise ValueError("Baseline updates cannot be combined with an explicit execution engine")
+    _validate_execution_engine(gate.backends, execution_engine)
     import tempfile
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -1504,7 +1527,11 @@ def run_gate(gate: CrossSurfaceGate, *, update_baseline: bool = False, repeats: 
                     canonical_json_text(data.query_parameters), markup=False, highlight=False, soft_wrap=True, end=""
                 )
             contexts = build_production_contexts(
-                data.benchmark, data.data_dir, backends=gate.backends, scale_factor=gate.scale_factor
+                data.benchmark,
+                data.data_dir,
+                backends=gate.backends,
+                scale_factor=gate.scale_factor,
+                execution_engine=execution_engine,
             )
             divergences = find_cross_surface_divergences(
                 connection,
@@ -1766,6 +1793,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--backend", action="append", choices=sorted(_PRODUCTION_ADAPTERS), help="Backend to compare.")
     parser.add_argument("--seed", type=int, help="TPC-DS Power Test query seed.")
     parser.add_argument("--power-stream", type=int, help="TPC-DS Power stream ID (default: 0).")
+    parser.add_argument("--execution-engine", help="Execution engine for the Polars DataFrame surface.")
     args = parser.parse_args(argv)
     if args.repeats < 1:
         parser.error("--repeats must be at least 1")
@@ -1775,8 +1803,15 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--seed and --power-stream must be nonnegative")
     if args.backend is not None and len(set(args.backend)) != len(args.backend):
         parser.error("--backend must not repeat a backend")
-    if args.update_baseline and (args.backend is not None or args.seed is not None or args.power_stream is not None):
-        parser.error("--update-baseline requires the default draw and backend selection")
+    if args.update_baseline and (
+        args.backend is not None
+        or args.seed is not None
+        or args.power_stream is not None
+        or args.execution_engine is not None
+    ):
+        parser.error(
+            "--update-baseline requires default draws and backends and cannot be combined with --execution-engine"
+        )
     gate = get_gate(args.benchmark)
     if args.backend is not None:
         gate = replace(gate, backends=tuple(args.backend))
@@ -1784,7 +1819,10 @@ def main(argv: list[str] | None = None) -> int:
         gate = replace(gate, build=partial(build_tpcds_duckdb, seed=args.seed, stream_id=args.power_stream or 0))
         if args.seed is not None or args.power_stream:
             gate = replace(gate, vacuity_classified=False)
-    return run_gate(gate, update_baseline=args.update_baseline, repeats=args.repeats)
+    run_options: dict[str, Any] = {"update_baseline": args.update_baseline, "repeats": args.repeats}
+    if args.execution_engine is not None:
+        run_options["execution_engine"] = args.execution_engine
+    return run_gate(gate, **run_options)
 
 
 if __name__ == "__main__":  # pragma: no cover

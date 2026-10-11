@@ -20,6 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Fields are omitted until producers supply them. Legacy engine requests map on read
   without changing legacy variant identity; explicit requests survive JSON re-export.
   Publication drops compute resource names and hashes gateway hosts.
+
+- The cross-surface equivalence gate accepts `--execution-engine`; its Make
+  targets pass `EXECUTION_ENGINE` through to the Polars DataFrame adapter.
+  Baseline updates reject explicit engine selection to preserve the shared
+  divergence baseline.
+
 - Platforms declare a `compute_resource` and, where the vendor bills a size,
   a `compute_size` setting. Vendor names (`warehouse`, `engine_name`,
   `workgroup`, `cluster_id`, `spark_pool_name`, `service_id`,
@@ -257,6 +263,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   message said "using basic constraints" everywhere. It now says "engine
   runtime defaults (streaming)" for Polars and "OLAP session pack" for
   ClickHouse, for example.
+
+### Fixed
+
+- **Databricks tuned templates keep unrendered constraints disabled.** Their
+  unique and check constraint flags now match the disabled baseline instead of
+  inheriting enabled model defaults when omitted.
 
 ## [0.4.2] - 2026-10-05
 

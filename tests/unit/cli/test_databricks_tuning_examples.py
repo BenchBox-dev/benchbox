@@ -17,10 +17,28 @@ pytestmark = [
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DATABRICKS_TUNING_DIR = REPO_ROOT / "examples" / "tunings" / "databricks"
+DATABRICKS_PACKAGED_TUNING_DIR = REPO_ROOT / "benchbox" / "core" / "tuning" / "templates" / "databricks"
 
 
 def _load_databricks_tuning(filename: str):
     return ConfigManager().load_unified_tuning_config(DATABRICKS_TUNING_DIR / filename, platform="databricks")
+
+
+@pytest.mark.parametrize(
+    "template_path",
+    sorted(
+        [
+            *DATABRICKS_TUNING_DIR.glob("*_tuned.yaml"),
+            *DATABRICKS_PACKAGED_TUNING_DIR.glob("*_tuned.yaml"),
+        ]
+    ),
+    ids=lambda path: path.relative_to(REPO_ROOT).as_posix(),
+)
+def test_databricks_tuned_templates_disable_unrendered_constraints(template_path: Path) -> None:
+    tuning_config = ConfigManager().load_unified_tuning_config(template_path, platform="databricks")
+
+    assert not tuning_config.unique_constraints.enabled
+    assert not tuning_config.check_constraints.enabled
 
 
 @pytest.mark.parametrize(
