@@ -100,7 +100,7 @@ def test_pull_requests_require_exact_base_comparison() -> None:
 
     assert download["env"]["PUBLIC_SITE_VISUAL_BASE_SHA"] == "${{ needs.visual-inputs.outputs.base_sha }}"
     assert download["if"] == "github.event_name == 'pull_request'"
-    assert "PUBLIC_SITE_VISUAL_BASELINE_WAIT_SECONDS" not in download["env"]
+    assert download["env"]["PUBLIC_SITE_VISUAL_BASELINE_WAIT_SECONDS"] == "4800"
     assert "continue-on-error" not in download
     assert "download-public-site-visual-baseline.mjs" in download["run"]
     assert run["env"]["PUBLIC_SITE_VISUAL_BASELINE"] == download["env"]["PUBLIC_SITE_VISUAL_BASELINE"]
@@ -166,6 +166,50 @@ def test_baseline_candidates_stop_at_the_first_site_input_change(tmp_path: Path)
     assert result.returncode == 0, result.stderr
     lines = dict(line.split("=", 1) for line in output.read_text().splitlines())
     assert lines["baseline_candidates"].split() == [base, quiet_one, site_change]
+
+
+def test_baseline_candidates_narrow_scripts_and_reject_non_equivalent_ancestor(tmp_path: Path) -> None:
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    _commit(tmp_path, "docs/index.md", "v1\n", "root")
+    site_change = _commit(tmp_path, "scripts/assemble_public_site.py", "# site script v1\n", "site script change")
+    unrelated_script = _commit(tmp_path, "scripts/run_comment_policy.py", "# unrelated v1\n", "unrelated script")
+    base = _commit(tmp_path, "tests/b.py", "b\n", "test change")
+    head = _commit(tmp_path, "tests/c.py", "c\n", "pr head")
+
+    classifier = _classifier(_workflow())
+    output = tmp_path / "github-output"
+    env = dict(os.environ)
+    env.update(
+        EVENT_NAME="pull_request",
+        PR_BASE_SHA=base,
+        RECOVERY_SOURCE_SHA="",
+        CURRENT_SHA=head,
+        CURRENT_REF="refs/pull/2/merge",
+        GITHUB_OUTPUT=str(output),
+    )
+    result = _run_sh(["bash", "-c", classifier], cwd=tmp_path, env=env, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    lines = dict(line.split("=", 1) for line in output.read_text().splitlines())
+    assert lines["baseline_candidates"].split() == [base, unrelated_script, site_change]
+
+
+def test_both_workflows_configure_baseline_wait_and_coherent_timeout() -> None:
+    for path in (DOCS_WORKFLOW, CI_WORKFLOW):
+        workflow = yaml.safe_load(path.read_text(encoding="utf-8"))
+        visual_job = workflow["jobs"]["public-site-visual-regression"]
+        assert visual_job["timeout-minutes"] == 90, f"expected 90m timeout in {path.name}"
+        download_step = next(
+            step
+            for step in visual_job["steps"]
+            if step.get("name") == "Download visual baseline for base or site-equivalent ancestor"
+        )
+        assert download_step["env"]["PUBLIC_SITE_VISUAL_BASELINE_WAIT_SECONDS"] == "4800", (
+            f"expected 4800s wait in {path.name}"
+        )
+        classifier = _classifier(workflow)
+        site_paths = classifier.split("SITE_PATHS=(")[1].split(")")[0]
+        assert "scripts/" not in site_paths.split(), f"expected narrowed scripts, not broad scripts/ in {path.name}"
+        assert "scripts/assemble_public_site.py" in site_paths, f"missing assemble_public_site.py in {path.name}"
 
 
 def test_no_workflow_publishes_a_merge_queue_candidate_baseline() -> None:
