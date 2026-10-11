@@ -6,7 +6,7 @@
     "Each untimed path is either routed or listed as excluded in the PR with the reason",
     "PR merged through the normal flow"
   ],
-  "context": "Evidence: adversarial library review of PRs #2771/#2781 on 2026-10-09 (Required finding: timed write-primitive and maintenance collects bypass the engine). Decision gate: start after core-exec-polars-cli-mcp-adoption; if routing maintenance through the adapter needs an interface change to maintenance_interface.py beyond passing one parameter, stop and propose it first. Guardrails: shared core-exec guardrails (see core-exec-d0-vocabulary-adr context).",
+  "context": "Evidence: adversarial library review of PRs #2771/#2781 on 2026-10-09 (Required finding: timed write-primitive and maintenance collects bypass the engine). Decision gate: start after core-exec-polars-cli-mcp-adoption; if routing maintenance through the adapter needs an interface change to maintenance_interface.py beyond passing one parameter, stop and propose it first. Guardrails: shared core-exec guardrails (see core-exec-d0-vocabulary-adr context).\n\nCloseout (2026-10-11): PR #2902 merged into develop as 873533e557c6f4cd6436e8e4e5db25b03efcc08f from head 04f81eb835b0fd59417e242c25260f0b4bf8629c. The implementation passes the resolved engine through the shared collector into timed write and maintenance collects; no wider maintenance interface change was needed. Local evidence: engine tests 70 passed; write/maintenance tests 161 passed; focused constructor coverage 20 passed; AST mutation proved a direct .collect call fails the guard; manual bulk-load and maintenance smokes showed the requested engine kwargs; lint, import layering, compatibility docs, and pr-preflight passed (460 passed, 2 deselected). PR checks/review passed and GitHub reports MERGED.",
   "description": "After core-exec-polars-cli-mcp-adoption, the core execution_engine setting routes every benchmark-query materialization on polars-df through polars_compat.collect_frame, and an AST guard enforces that for polars_df.py, expression_family.py and the Polars branches of unified_frame.py. Other Polars collects still bypass it:\n- Timed write-primitive operations: benchbox/core/write_primitives/dataframe_operations.py ~L497 and ~L499 (timed from start_time at ~L419). A Write Primitives run with --execution-engine streaming records requested=streaming while these collects use Polars' default.\n- Maintenance: benchbox/platforms/dataframe/polars_maintenance.py ~L60, 137, 148, 156, 205, 216, 231, 257, 278. Maintenance operations are built without an adapter (maintenance_interface.py ~L474-480), so the setting cannot reach them.\n- Untimed paths: core/dataframe/benchmark_suite.py (compare-dataframes builds the adapter with no options), core/dataframe/profiling.py explain() without the engine, validation.py ~L216, equivalence/dataframe_surface.py ~L61, cross_surface.py ~L555.\nDecide per path whether it follows the requested engine (timed paths should) and route it through collect_frame, or document the exclusion. Line numbers are from commit ecd08a9f0; re-read before editing.",
   "links": [
     "benchbox/platforms/polars_compat.py",
@@ -39,6 +39,14 @@
       "generation": "e5e05694b6804dc08404723a0a1a87b5",
       "op": "take",
       "op_id": "7d050a481b584d1983c4129c2b248575",
+      "session_id": "5d4da70321324b3c9a505b143813724f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6e8a424eda2c7006605aa48b",
+      "at": "2026-10-11T13:20:15Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8b1253ddc7fb4f989373e3fc4a0db989",
       "session_id": "5d4da70321324b3c9a505b143813724f"
     }
   ]
