@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "A generated bundle includes `_sources/tpc-ds/EULA.txt` when TPC-DS query templates are referenced and `_sources/tpc-h/EULA.txt` when TPC-H query templates are referenced.",
+    "Tests prove both sidecars are included only as companions to corresponding template downloads.",
+    "The site builds from the generated bundle and publishes the correct `TPC_EULA.txt` beside both TPC-H and TPC-DS downloads.",
+    "The bounded site-inputs tests and bundle verification pass."
+  ],
+  "context": "Discovered while replaying core #2891/#2893 to site. Bundle run 38087375221 for core `4628e72d66bcc77808b59740b9d8d0c777e2d2f7` does not contain `_sources/tpc-ds/EULA.txt` or `_sources/tpc-h/EULA.txt`; local site build fails with `TPC EULA is missing` at `website/src/lib/legacy-assets.ts`. Current core scripts/site_inputs.py builds `downloads/` from directly linked paths only.",
+  "description": "The site replay of the core EULA-download changes requires `_sources/tpc-ds/EULA.txt` and `_sources/tpc-h/EULA.txt` beside downloadable query templates. The certified site bundle currently copies only document-linked files, so the site build fails when it tries to publish these companion licenses. Extend site-inputs download selection to include the matching TPC EULA when a TPC-DS or TPC-H query template is included. Keep the bundle limited to referenced downloads plus their required license sidecars; do not copy unrelated files. Preserve bundle attestations and generated paths.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:34427fd6ff4639228ad9cd98",
+      "at": "2026-10-11T01:54:17Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ad6ce0c2515b4a4b9d0186e55f155c62",
+      "session_id": "8fa717097fcf438d8eac8a356ebf8686"
+    }
+  ]
+}
