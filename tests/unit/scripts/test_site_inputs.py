@@ -471,16 +471,21 @@ def test_referenced_downloads_keep_tracked_files_outside_docs(tmp_path: Path) ->
         ),
     ],
 )
-def test_referenced_downloads_include_matching_tpc_eula(
+@pytest.mark.parametrize("eula_tracked", [True, False])
+def test_referenced_downloads_include_matching_tpc_eula_only_when_tracked(
     tmp_path: Path,
     template: str,
     eula: str,
     other_eula: str,
+    eula_tracked: bool,
 ) -> None:
     docs = tmp_path / "docs"
     _write(docs / "guide/page.md", f"[template](../../{template})\n")
-    tracked = [template, eula, other_eula, "examples/other.py"]
-    assert site_inputs.referenced_downloads(docs, tracked) == sorted([template, eula])
+    tracked = [template, other_eula, "examples/other.py"]
+    if eula_tracked:
+        tracked.append(eula)
+    expected = sorted([template, eula]) if eula_tracked else [template]
+    assert site_inputs.referenced_downloads(docs, tracked) == expected
 
 
 @pytest.mark.parametrize(
