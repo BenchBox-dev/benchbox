@@ -14204,15 +14204,10 @@
       "title": "agy cannot read files as a headless oracle reviewer"
     },
     "oracle-author-family-labels-never-applied-20261009": {
-      "claim": {
-        "expires_at": "2026-10-12T02:06:51Z",
-        "generation": "949496887c474f239379e3aff9c26f30",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0b65b59dfd5ecfabcfde36b0"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Remove the oracle's author-family label lookup and hard-code the claude author default"
     },
     "oracle-checker-drop-legacy-first-line-20261023": {
