@@ -8,7 +8,7 @@
     "CHANGELOG [Unreleased] lists the new engines and deprecated keys",
     "No live cloud runs; PR merged through the normal flow"
   ],
-  "context": "Decision gates:\n- G1 Start after core-exec-polars-cli-mcp-adoption (the pattern is proven on Polars first).\n- G2 If a platform's switch also changes results semantics (not only performance), stop: it is not an execution engine under ADR D1.\n- G3 If the Dask default change would alter existing users' runs, ask before changing it; otherwise only document it.\n\nVerification rubric: per-adapter unit tests with mocks; parity test; compat-docs-check; make pr-preflight.\n\nGuardrails: shared core-exec guardrails (see core-exec-d0-vocabulary-adr context).",
+  "context": "Decision gates:\n- G1 Start after core-exec-polars-cli-mcp-adoption (the pattern is proven on Polars first).\n- G2 If a platform's switch also changes results semantics (not only performance), stop: it is not an execution engine under ADR D1.\n- G3 If the Dask default change would alter existing users' runs, ask before changing it; otherwise only document it.\n\nVerification rubric: per-adapter unit tests with mocks; parity test; compat-docs-check; make pr-preflight.\n\nGuardrails: shared core-exec guardrails (see core-exec-d0-vocabulary-adr context).\n\nCloseout (2026-10-11): PR #2896 merged into develop as b933e20ace1af2ae08f02e415cc94878d52596a8 from head 9067f0b74f2d483484ab9ca6f65edf6247af7d85. The PR acceptance covers pg-duckdb, Dask, Databricks and Velox declarations, legacy aliases and receipts. Local gates and CI passed; live GitHub checks at the merged head show lint, unit tests, compatibility/docs checks, parity-related checks and Oracle review successful. Tests used mocks; no live cloud runs.",
   "description": "Several existing platforms already switch or report an execution engine through ad-hoc keys. Move them onto the core execution_engines capability so the same values mean the same thing everywhere.\n\nWork (per ADR D3 naming and class rules):\n1. pg-duckdb: `force_execution` (default true, pg_duckdb.py:125,190-191) becomes engines duckdb (delegated, the current default) and postgres (standard); force_execution stays a deprecated alias.\n2. dask-df: `use_distributed`/`scheduler_address` (dask_df.py:91-92,129,236-256) become engines threads (standard) and distributed; scheduler_address stays a connection option. Fix the docs/code default mismatch (docs say false, code says True) as part of the decision.\n3. Databricks: Photon is a warehouse/cluster property, not selectable per run; declare photon (native-vectorized) and standard with selectable=false and record observed from warehouse.enable_photon (databricks/adapter.py:775) with observed_source.\n4. Velox (Spark + Gluten): declare velox (native-vectorized, selectable=false) and record observed from the existing EXPLAIN probe (velox_active, velox.py:240-246).\n5. Each adapter returns an ExecutionEngineReceipt from get_platform_info; docs list the engines from the manifest.",
   "links": [
     "benchbox/platforms/pg_duckdb.py",
@@ -40,6 +40,14 @@
       "generation": "7e96cd1421814be1956b37d407ed386d",
       "op": "take",
       "op_id": "8bf9c79eae2a4d25bad151046a3f88bf",
+      "session_id": "5d4da70321324b3c9a505b143813724f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6e8a424eda2c7006605aa48b",
+      "at": "2026-10-11T13:24:20Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e6b53c5025074eaeb06f0310e5c11072",
       "session_id": "5d4da70321324b3c9a505b143813724f"
     }
   ]
