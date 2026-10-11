@@ -5592,12 +5592,17 @@
       "title": "Cross-surface comparator: close the >=2 final-tie-group gap for a complete (non-truncated) final tie"
     },
     "cross-surface-gate-no-engine-option": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-12T17:47:20Z",
+        "generation": "9649a702db0947309df0f38520e211bb",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6e8a424eda2c7006605aa48b"
+      },
       "needs": [
         "core-exec-polars-cli-mcp-adoption"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Let the cross-surface gate run polars-df with a requested execution engine"
     },
     "cross-surface-gate-rollout-followups": {
