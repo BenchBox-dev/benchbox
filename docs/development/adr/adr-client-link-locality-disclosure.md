@@ -128,7 +128,7 @@ Locality disclosure must never compromise submitter privacy or leak infrastructu
 1. **No IP addresses:** Neither public nor private (RFC 1918) IP addresses are ever collected, probed, or written into `client_link`.
 2. **No hostnames or DNS records:** Machine hostnames, FQDNs, local network domain names, and database connection hostnames are excluded.
 3. **No cloud resource identifiers:** Cloud instance IDs, MAC addresses, VPC IDs, subnet IDs, security group IDs, and cloud account/tenant IDs are strictly omitted from IMDS extraction.
-4. **Machine ID isolation:** Host hardware identification remains confined to `environment.client_host.machine_id`, which is protected by BenchBox's salted SHA-256 anonymizer (`machine_<12hex>`).
+4. **Machine ID isolation:** Host hardware identification remains confined to `environment.client_host.machine_id`; publication omits this field.
 5. **Macro-granularity only:** Locality is disclosed solely at the provider (`"aws"`, `"gcp"`, `"azure"`) and region level (`"us-east-1"`, `"eu-west-2"`). This granularity provides full topological transparency for benchmarking purposes without identifying individual VPCs or accounts.
 
 All fields in `environment.client_link` are safe for public release in open repositories, adhering to the public contracts established in `docs/reference/public-contracts.md` and `docs/reference/hosted-results-contract.md`.

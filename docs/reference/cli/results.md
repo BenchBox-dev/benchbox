@@ -333,9 +333,9 @@ benchbox compare \
 ### Notes
 
 - The first result file is always treated as the baseline
-- Both result files must use schema version 1.0
+- Both result files must use a schema version accepted by the current result loader (schema 2.0 through 2.3).
 - Results should be from the same benchmark and scale factor for meaningful comparison
-- Multi-file comparison (>2 files) is planned for a future release
+- When more than two result paths are supplied, only the first two are compared.
 - Use `benchbox results` to find available result files for comparison
 
 ### Python API

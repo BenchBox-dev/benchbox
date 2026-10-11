@@ -18,10 +18,10 @@ Amazon EMR Serverless is AWS's serverless deployment option for running Apache S
 ## Installation
 
 ```bash
-uv add benchbox --extra emr-serverless
+uv add benchbox --extra cloud-spark-aws
 ```
 
-This installs the `boto3` dependency.
+This installs the AWS client dependency, `boto3`, via the `cloud-spark-aws` extra.
 
 ## Prerequisites
 

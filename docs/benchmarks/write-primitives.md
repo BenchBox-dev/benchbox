@@ -520,8 +520,8 @@ conn = duckdb.connect(":memory:")
 **Full write operation support**.
 
 ```python
-import psycopg2
-conn = psycopg2.connect("dbname=benchmark")
+import psycopg
+conn = psycopg.connect("dbname=benchmark")
 ```
 
 - Full SQL support ✅

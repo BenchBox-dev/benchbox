@@ -131,11 +131,10 @@ results = benchmark.run_dataframe(adapter)
 Run the same benchmark on both paradigms:
 
 ```bash
-benchbox run --platform duckdb --benchmark tpch --scale 1 --output sql_results.json
+sql_result=$(benchbox run --platform duckdb --benchmark tpch --scale 1 --output ./sql-run --quiet)
+df_result=$(benchbox run --platform polars-df --benchmark tpch --scale 1 --output ./df-run --quiet)
 
-benchbox run --platform polars-df --benchmark tpch --scale 1 --output df_results.json
-
-benchbox compare sql_results.json df_results.json
+benchbox compare "$sql_result" "$df_result"
 ```
 
 The first command runs SQL execution. The second runs DataFrame execution. The third compares the results.

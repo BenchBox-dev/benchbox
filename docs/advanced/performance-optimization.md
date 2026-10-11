@@ -51,7 +51,7 @@ tuning.enable_platform_optimization(
 )
 
 benchmark = TPCH(scale_factor=1.0)
-adapter = DuckDBAdapter(memory_limit="8GB", threads=8, tuning_config=tuning)
+adapter = DuckDBAdapter(memory_limit="8GB", thread_limit=8, tuning_config=tuning)
 results = adapter.run_benchmark(benchmark)
 ```
 
@@ -251,7 +251,7 @@ def create_comprehensive_tuning(benchmark_name: str, scale_factor: float):
 
 tuning = create_comprehensive_tuning("tpcds", scale_factor=10.0)
 benchmark = TPCDS(scale_factor=10.0)
-adapter = DuckDBAdapter(memory_limit="16GB", threads=16, tuning_config=tuning)
+adapter = DuckDBAdapter(memory_limit="16GB", thread_limit=16, tuning_config=tuning)
 results = adapter.run_benchmark(benchmark)
 ```
 
@@ -484,7 +484,7 @@ from benchbox.platforms.duckdb import DuckDBAdapter
 def run_memory_optimized_benchmark(scale_factor: float):
     adapter = DuckDBAdapter(
         memory_limit="8GB",
-        threads=4
+        thread_limit=4
     )
 
     benchmark = TPCDS(scale_factor=scale_factor)
@@ -504,7 +504,7 @@ def run_memory_optimized_benchmark(scale_factor: float):
 results = run_memory_optimized_benchmark(scale_factor=10.0)
 ```
 
-The explicit `memory_limit` sets a hard cap, and `threads=4` limits parallelism to control memory use. Garbage collection runs before loading and after the benchmark.
+The explicit `memory_limit` sets a hard cap, and `thread_limit=4` limits parallelism to control memory use. Garbage collection runs before loading and after the benchmark.
 
 ### Disk Space Management
 

@@ -55,10 +55,16 @@ describe.each(cases)("golden %s", (name) => {
 
   afterAll(() => rmSync(workDir, { recursive: true, force: true }));
 
-  it("converts to the expected output", () => {
+  it(name === "tpc-ds-diagrams" ? "renders the Mermaid entity diagram" : "converts to the expected output", () => {
     const result = buildSite({ docsRoot: materialize() });
     const errorsPath = path.join(expectedRoot, "errors.txt");
     const produced = result.errors.map((error) => error.message).join("\n");
+    if (name === "tpc-ds-diagrams") {
+      expect(result.errors).toEqual([]);
+      const output = result.files.get(outputFile(result.files, "benchmarks/tpc-ds.md"));
+      expect(output).toContain("<Mermaid diagram={");
+      return;
+    }
     if (update) {
       mkdirSync(expectedRoot, { recursive: true });
       if (result.errors.length > 0) writeFileSync(errorsPath, `${produced}\n`);

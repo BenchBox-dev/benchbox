@@ -11,10 +11,10 @@ Use the unified `benchbox compare` command to compare results across DataFrame p
 platform first, then compare the results:
 
 ```bash
-benchbox run --platform polars-df --benchmark tpch --scale 0.01 --output polars.json
-benchbox run --platform pandas-df --benchmark tpch --scale 0.01 --output pandas.json
+polars_result=$(benchbox run --platform polars-df --benchmark tpch --scale 0.01 --output ./polars-run --quiet)
+pandas_result=$(benchbox run --platform pandas-df --benchmark tpch --scale 0.01 --output ./pandas-run --quiet)
 
-benchbox compare polars.json pandas.json
+benchbox compare "$polars_result" "$pandas_result"
 ```
 
 ### SQL vs DataFrame Comparison
@@ -22,19 +22,18 @@ benchbox compare polars.json pandas.json
 Run the SQL benchmark and the DataFrame benchmark, then compare them:
 
 ```bash
-benchbox run --platform duckdb --benchmark tpch --scale 0.01 --output duckdb.json
+duckdb_result=$(benchbox run --platform duckdb --benchmark tpch --scale 0.01 --output ./duckdb-run --quiet)
+polars_result=$(benchbox run --platform polars-df --benchmark tpch --scale 0.01 --output ./polars-run --quiet)
 
-benchbox run --platform polars-df --benchmark tpch --scale 0.01 --output polars.json
-
-benchbox compare duckdb.json polars.json
+benchbox compare "$duckdb_result" "$polars_result"
 ```
 
 ### Visualization
 
-Generate charts from comparison results:
+Run this in the same shell session as the first comparison block, which captures the exact result paths:
 
 ```bash
-benchbox visualize polars.json pandas.json --chart-type performance_bar
+benchbox visualize "$polars_result" "$pandas_result" --chart-type performance_bar
 ```
 
 ## Platform Categories

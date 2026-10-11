@@ -148,11 +148,10 @@ print(f"Variance: {max(times) / min(times):.2f}x")
 Catch optimizer regressions between database versions:
 
 ```bash
-benchbox run --benchmark tpchavoc --platform postgres --scale 1.0 --output baseline.json
+baseline_result=$(benchbox run --benchmark tpchavoc --platform postgres --scale 1.0 --output ./baseline-run --quiet)
+new_result=$(benchbox run --benchmark tpchavoc --platform postgres --scale 1.0 --output ./new-run --quiet)
 
-benchbox run --benchmark tpchavoc --platform postgres --scale 1.0 --output new.json
-
-benchbox compare baseline.json new.json --fail-on-regression 50%
+benchbox compare "$baseline_result" "$new_result" --fail-on-regression 50%
 ```
 
 The first run is the baseline on the current database version, and the second runs after the upgrade. The `compare` command fails if any result regresses by more than 50%.

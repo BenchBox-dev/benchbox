@@ -175,7 +175,7 @@ Planned platform and benchmark additions, including DataFrame support expansion 
 **Database Read Primitives Benchmark**
 - **CLI name**: `read_primitives`
 - **Purpose**: Individual database operation testing
-- **Queries**: 136 primitive operation queries across 26 categories
+- **Queries**: 157 primitive operation queries across 31 categories
 - **Schema**: TPC-H schema for familiar data patterns
 - **Scale**: Lightweight focused testing
 - **Use Cases**: Unit testing, regression detection, optimizer sniff tests, development validation

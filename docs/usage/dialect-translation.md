@@ -72,11 +72,11 @@ Both translations work even though PostgreSQL and MySQL adapters do not exist ye
 
 *Self-Hosted/Federated*:
 
-- ✅ PostgreSQL - Requires `psycopg2`
+- ✅ PostgreSQL - Requires `psycopg` (install with `benchbox[postgresql]`)
 - ✅ Trino - Requires `trino`
 - ✅ Starburst - Requires `trino` (managed Trino)
 - ✅ Presto - Requires `presto-python-client`
-- ✅ TimescaleDB - Requires `psycopg2`
+- ✅ TimescaleDB - Requires `psycopg` (install with `benchbox[postgresql]`)
 
 *Spark Platforms*:
 

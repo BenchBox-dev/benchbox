@@ -176,7 +176,7 @@ Receipt resolution is `explicit`, `tuning_profile`, `legacy_option`,
 name, `mixed`, or `not_captured`; its source is `explain`, `vendor_log`,
 `session_var`, or `none`. Native arguments remain subject to publication
 privacy rules. Engine and gateway vocabulary stays readable; gateway hosts
-are hashed as endpoints.
+are represented as endpoint pseudonyms.
 
 The loader reads older bundles as requested `default`, with applied and
 observed `unknown`. Legacy `config.platform_options.streaming=true` maps to
@@ -637,72 +637,29 @@ print(f"Schema version family: {result.schema_version}")
 Results are anonymized by default to remove sensitive information:
 
 - Connection strings → redacted
-- Hostnames, endpoints, buckets, accounts → replaced by a stable pseudonym
-- Absolute local paths → replaced by a stable pseudonym
-- Usernames, IPs, emails → stripped
-- API keys/tokens → redacted
+- Selected identifiers → omitted or represented by pseudonyms according to the published field-set policy
+- Usernames, IP addresses, and emails → stripped
+- API keys and tokens → redacted
 
-Identifiers become `<kind>_<12 hex>` — for example `machine_3d46427037d2` — from
-a salted SHA-256. The pseudonym is stable for the same input, so results from
-one machine group together, and anonymizing an already-anonymized payload is a
-no-op rather than a second pseudonym.
-
-A pseudonym is a grouping key only. Because an already-anonymized value passes
-through unchanged, a submitter can hand-craft one, so it is never a provenance
-or trust signal — trust labels carry provenance.
-
-### Anonymization Config
+Published identifiers may be represented as `<kind>_<12 hex>` pseudonyms.
+Some identifier fields, including `machine_id`, are omitted from public output;
+others may retain pseudonyms. Pseudonyms can group retained values, but they
+are not provenance or trust signals.
 
 ```python
 from benchbox.core.results.exporter import ResultExporter
 from benchbox.core.results.anonymization import AnonymizationConfig
 
 config = AnonymizationConfig(
-    machine_id_salt="your-org-salt",
     custom_sanitizers={r"\bacct-\d+\b": "[REDACTED]"},
 )
 
 exporter = ResultExporter(anonymize=True, anonymization_config=config)
 ```
 
-`machine_id_salt` scopes pseudonyms derived from raw values to your organization, so the same machine publishes different pseudonyms under different salts. See the salt-rotation note below for what this does not cover. `custom_sanitizers` lists extra regexes stripped from free-text fields, on top of the built-in IP, email and SSN patterns.
+`custom_sanitizers` lists extra regexes stripped from free-text fields, on top
+of the built-in IP, email and SSN patterns.
 
-#### Default salt configuration
-
-`machine_id_salt` defaults to empty in local usage. Unread identifier fields are omitted entirely
-(see `docs/development/adr/adr-published-identifier-field-set.md`). Retained fields
-(`endpoint`, `database_name`, `submission_path`) publish pseudonyms.
-
-Operators who publish community submissions configure `machine_id_salt` or the
-`BENCHBOX_MACHINE_ID_SALT` environment variable to a deployment-private value
-before public export, so retained-field tokens are salted when minted.
-`ResultExporter(anonymize=True)` soft-reads `BENCHBOX_MACHINE_ID_SALT` when present.
-
-`benchbox submit` requires that the salt environment variable is set to a non-empty value
-for community submissions.
-#### Salt rotation
-
-The salt applies when a **raw** value is hashed. A value that is already a
-pseudonym passes through unchanged — that is what makes anonymization
-idempotent — and the pass-through happens *before* the salt is consulted:
-
-```python
-a = AnonymizationManager(AnonymizationConfig(machine_id_salt="org-A"))
-b = AnonymizationManager(AnonymizationConfig(machine_id_salt="org-B"))
-
-a.anonymize_result_payload({"machine_id": raw})
-b.anonymize_result_payload({"machine_id": raw})
-
-b.anonymize_result_payload({"machine_id": "machine_9ba319f754a5"})
-```
-
-The first call returns `machine_9ba319f754a5` and the second returns `machine_ac228f1f75af`, so different salts give different pseudonyms for the same raw value. In the third call, B re-anonymizes A's already-published bundle and the result is unchanged (`machine_9ba319f754a5`), because B's salt is never applied.
-
-So changing the salt does **not** re-pseudonymize an already-anonymized corpus.
-New captures adopt the new salt while stored bundles keep the old pseudonyms,
-which splits one machine across two identities. Rotating the salt therefore
-means re-deriving the corpus from the pre-anonymization originals, not just
-changing the config.
 
 ### Disable Anonymization
 

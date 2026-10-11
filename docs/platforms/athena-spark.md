@@ -17,10 +17,10 @@ Athena for Apache Spark is AWS's interactive Spark service with sub-second start
 
 ## Installation
 
-This installs Athena Spark support and the `boto3` dependency.
+This installs the AWS client dependency, `boto3`, via the `cloud-spark-aws` extra.
 
 ```bash
-uv add benchbox --extra athena-spark
+uv add benchbox --extra cloud-spark-aws
 ```
 
 ## Prerequisites

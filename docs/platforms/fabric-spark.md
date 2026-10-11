@@ -18,10 +18,10 @@ Microsoft Fabric is Microsoft's unified analytics platform providing SaaS Spark,
 ## Installation
 
 ```bash
-uv add benchbox --extra fabric-spark
+uv add benchbox --extra cloud-spark-azure
 ```
 
-This installs `azure-identity`, `azure-storage-file-datalake`, and `requests`.
+This installs Azure cloud-Spark dependencies, including `azure-identity`, `azure-storage-file-datalake`, and `requests`.
 
 ## Prerequisites
 

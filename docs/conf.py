@@ -136,7 +136,8 @@ def _unlisted_publish_list_pages(docs_root: Path) -> list[str]:
     pages = (
         page.relative_to(docs_root).as_posix()
         for root in PUBLISH_LIST_ROOTS
-        for page in (docs_root / root).rglob("*.md")
+        for suffix in ("*.md", "*.rst")
+        for page in (docs_root / root).rglob(suffix)
     )
     return sorted(page for page in pages if page not in listed)
 

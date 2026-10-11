@@ -17,11 +17,10 @@ Azure Synapse Analytics is Microsoft's enterprise analytics platform providing i
 
 ## Installation
 
-This installs Synapse Spark support and the `azure-identity`, `azure-storage-file-datalake` and `requests`
-dependencies.
+This installs the Azure cloud-Spark dependencies, including `azure-identity`, `azure-storage-file-datalake`, and `requests`.
 
 ```bash
-uv add benchbox --extra synapse-spark
+uv add benchbox --extra cloud-spark-azure
 ```
 
 ## Prerequisites

@@ -110,7 +110,7 @@ platform and scale.
 
 **Deep Analytics (High Complexity):**
 - Q14a/14b, Q23a/23b, Q24a/24b: Advanced-level analytical patterns
-- Recursive queries and complex mathematical calculations
+- Complex joins and mathematical calculations
 - Multi-level aggregation and correlation analysis
 
 **Data Mining Queries (Very High Complexity):**
@@ -327,7 +327,6 @@ queries above, so don't compare those queries one for one with newer results.
 | Simple Aggregation | Medium | Low | Sequential | Index selection |
 | Multi-Join | High | Medium | Random | Join order optimization |
 | Window Functions | High | High | Mixed | Partition management |
-| Recursive Queries | Very High | Very High | Complex | Recursive plan optimization |
 | Data Mining | Very High | Very High | Mixed | Statistical computation |
 
 ## Official TPC-DS Metrics
