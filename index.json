@@ -14290,10 +14290,15 @@
       "title": "Replace the muse installer hash pin, which protects only the bootstrap, with a plain install of the latest muse"
     },
     "oracle-muse-invalid-verdict-output-20261009": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-12T01:59:04Z",
+        "generation": "f5103b115de64977b0dc39c118efbd7a",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0b65b59dfd5ecfabcfde36b0"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "muse often returns output the oracle cannot parse as a verdict, so it is recorded absent (invalid)"
     },
     "oracle-oversize-pr-pending-loop-20261009": {
