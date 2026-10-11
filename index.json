@@ -3007,8 +3007,8 @@
       "needs": [
         "tuning-evidence-tuned-mode-promise-20261008",
         "tuning-evidence-measurement-harness-20261008",
-        "tuning-evidence-benefit-rule-20261008",
-        "clickhouse-tpch-q3-q5-slowdown-probe-20261008"
+        "clickhouse-tpch-q3-q5-slowdown-probe-20261008",
+        "harness-reapply-clickhouse-session-settings-20261010"
       ],
       "priority": "high",
       "status": "open",
