@@ -5,7 +5,7 @@
     "The site builds from the generated bundle and publishes the correct `TPC_EULA.txt` beside both TPC-H and TPC-DS downloads.",
     "The bounded site-inputs tests and bundle verification pass."
   ],
-  "context": "Core fix PR #2897 merged on 2026-10-11 as squash commit 07851d5e329f6830c6d58a74b3e41e95a580e8c4 (PR head d6409b068af3661c6c60b7dfa488b456254302a9). Code commit 509a0f014c29b5172f72804044244ade0fceabb8 adds the TPC EULA sidecars only when their paths are tracked; `_project/audits/site-inputs-tpc-eula-sidecars.md` records valid provenance and the inherited combined audit report is unchanged. Local audit check and preflight passed; PR CI run 38134102105 completed successfully. Oracle `SHIP` carried from d740 because the code patch was unchanged; exact-head oracle checks passed, the initial pre-verdict run was rerun successfully, and no review threads remain unresolved. Post-merge Trunk run 38136130332 is pending and Documentation run 38136130353 is in progress. No Site Inputs run for merged SHA 07851 is visible yet; the last successful bundle run 38135286087 is for b4571 and lacks the new sidecars. Core `SITE_BRIDGE_ENABLED=true`; site `SITE_DEPLOY_TARGET=rehearsal`, so a successful new bundle dispatch targets rehearsal, not production. Do not mark this task done until a certified artifact for current `develop` is verified and the site build/tests prove the EULAs are present. Then preserve and finish the existing site replay worktree with its three uncommitted changes; local bundle/build evidence from the old artifact is not certification.",
+  "context": "Core PR #2897 merged on 2026-10-11 as squash commit 07851d5e329f6830c6d58a74b3e41e95a580e8c4. PR CI 38134102105, exact-head Oracle check 38134131285, post-merge Trunk 38136130332, Documentation 38136130353, and Site Inputs run 38137600689 passed. Certified artifact site-inputs-07851d5e329f6830c6d58a74b3e41e95a580e8c4 (artifact 11701541951, digest sha256:8dd4337e0611b516eeb7d24c8350d2ae8b899b863f61f96ffed55335065ad005) verifies schema 3 and contains both EULAs.\n\nThe replay changes are in site PR #21, currently head 82bba20b1d1a3704074968085f66e4732fec601c. Self-review narrowed EULA attachment to TPC-DS query_templates and TPC-H templates/queries; tests prove unrelated files do not get sidecars and missing EULA fails. Local bundle verification, site build (1,846 pages), `npm run check` (0 errors, 14 hints), website tests (337/337), comment/repo guards, all 121 output hashes, and both local HTTP routes (200, exact bytes) passed.\n\nCurrent site CI run 38139720397 has schema 2/3 passed, core bundle and dependency audit in progress, with other required jobs incomplete. Visual run 38139720399 passed. Rehearsal dispatch 38138034781 succeeded against site main before PR #21; it does not verify the PR code. Production remains unchanged.\n\nNext: wait for current required CI, manually squash-merge PR #21 when green, verify the rehearsal deployment from merged site code, then finish this task with the existing claim generation.",
   "description": "The site replay of the core EULA-download changes requires `_sources/tpc-ds/EULA.txt` and `_sources/tpc-h/EULA.txt` beside downloadable query templates. The certified site bundle currently copies only document-linked files, so the site build fails when it tries to publish these companion licenses. Extend site-inputs download selection to include the matching TPC EULA when a TPC-DS or TPC-H query template is included. Keep the bundle limited to referenced downloads plus their required license sidecars; do not copy unrelated files. Preserve bundle attestations and generated paths.",
   "sessions": [
     {
@@ -71,6 +71,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "a3ef2ac242d540099b1b5f6c8f893541",
+      "session_id": "8fa717097fcf438d8eac8a356ebf8686"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:34427fd6ff4639228ad9cd98",
+      "at": "2026-10-11T12:40:01Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "cbb6eea0c22b4c999d4a7ed83cb32323",
       "session_id": "8fa717097fcf438d8eac8a356ebf8686"
     }
   ]
