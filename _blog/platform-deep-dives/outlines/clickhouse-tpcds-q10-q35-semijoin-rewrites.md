@@ -1,7 +1,7 @@
 # Outline: Rewriting TPC-DS Q10 and Q35 for ClickHouse
 
 **Post type:** Technical challenge (Style Guide post type 4), platform deep-dive series.
-**Target length:** 1,800-2,400 words plus two SQL listings and one results table.
+**Target length:** 1,800-2,400 words plus two SQL snippets (before/after) and one results table.
 **Audience:** Data engineers who run TPC-DS, or write dialect adapters, against
 ClickHouse. They know SQL and `EXISTS`; they may not know how ClickHouse plans a
 correlated subquery or why a benchmark tool rewrites a standard query.
@@ -120,7 +120,8 @@ consistency rewrite, and Q10 is the memory case. The outline below still works.
 - What differs: Q10 filters the outer side by five counties and uses
   `d_moy BETWEEN m AND m+3`; Q35 uses `d_qoy < 4` and picks its aggregates from a
   list. Include a short table; use E1 numbers once available.
-- One generated SQL listing, with `[YEAR]` shown as the dsqgen parameter.
+- Do not add a full-query SQL listing; the before/after predicate snippets in
+  section 4 carry the `[YEAR]` dsqgen parameter.
 
 ### 3. What failed and why (300-350 words)
 - E1 table: the cap sweep, original vs rewritten.
@@ -131,7 +132,8 @@ consistency rewrite, and Q10 is the memory case. The outline below still works.
   ClickHouse. State that at 12 GiB Q10 passes as written.
 
 ### 4. The rewrite (250-300 words)
-- Before and after listing for one predicate, then for the whole query.
+- Show a before/after SQL snippet for one predicate; describe the other two
+  substitutions in prose.
 - What BenchBox does: regex over the generated text, applies to the base query
   only, applies for every ClickHouse deployment mode, fails closed on a changed
   shape. Explain fail-closed with the test that proves it.
