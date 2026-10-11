@@ -8,7 +8,7 @@ import logging
 from functools import wraps
 from typing import TYPE_CHECKING, Any, Callable, Generic, TypeVar
 
-from benchbox.platforms.polars_compat import collect_frame
+from benchbox.utils.polars_collection import collect_frame
 
 if TYPE_CHECKING:
     import polars as pl

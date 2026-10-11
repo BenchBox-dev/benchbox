@@ -29,14 +29,13 @@ from benchbox.platforms.polars_compat import (
     active_runtime,
     collect_accepts_engine,
     collect_affinity,
-    collect_engine_option,
     collect_engine_supported,
-    collect_frame,
     csv_empty_string_option,
     default_collect_engine,
     reader_rechunk_effective,
     reader_rechunk_option,
 )
+from benchbox.utils.polars_collection import collect_engine_option, collect_frame
 
 logger = logging.getLogger(__name__)
 

@@ -17,6 +17,7 @@ from benchbox.core.dataframe.maintenance_interface import (
     get_maintenance_operations_for_platform,
 )
 from benchbox.core.dataframe_manager_factory import get_dataframe_manager
+from benchbox.utils.polars_collection import collect_frame
 
 if TYPE_CHECKING:
     pass
@@ -170,13 +171,13 @@ class DataFrameWriteResult:
 
 
 class DataFrameWriteOperationsManager:
-    def __init__(self, platform_name: str, spark_session: Any = None) -> None:
+    def __init__(self, platform_name: str, spark_session: Any = None, execution_engine: str = "default") -> None:
         self.platform_name = platform_name.lower()
         self.spark_session = spark_session
+        self.execution_engine = execution_engine
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self._maintenance_ops = self._get_maintenance_ops()
-
         self._capabilities = self._build_capabilities()
 
     def _get_maintenance_ops(self) -> Any:
@@ -198,7 +199,7 @@ class DataFrameWriteOperationsManager:
                 self.logger.debug("No SparkSession provided for PySpark platform")
                 return None
 
-        return get_maintenance_operations_for_platform(self.platform_name)
+        return get_maintenance_operations_for_platform(self.platform_name, self.execution_engine)
 
     def _build_capabilities(self) -> DataFrameWriteCapabilities:
         maintenance_caps = None
@@ -494,9 +495,9 @@ class DataFrameWriteOperationsManager:
             raise ImportError("Polars is required for polars-df bulk load") from e
 
         if source_format == "parquet":
-            df = pl.scan_parquet(source_path).collect()
+            df = collect_frame(pl.scan_parquet(source_path), self.execution_engine)
         elif source_format == "csv":
-            df = pl.scan_csv(source_path).collect()
+            df = collect_frame(pl.scan_csv(source_path), self.execution_engine)
         elif source_format == "json":
             df = pl.read_json(source_path)
         else:
@@ -786,6 +787,7 @@ class DataFrameWriteOperationsManager:
 def get_dataframe_write_manager(
     platform_name: str,
     spark_session: Any = None,
+    execution_engine: str = "default",
 ) -> DataFrameWriteOperationsManager | None:
     return get_dataframe_manager(
         platform_name,
@@ -794,6 +796,7 @@ def get_dataframe_write_manager(
         logger=logger,
         manager_label="write",
         spark_session=spark_session,
+        execution_engine=execution_engine,
     )
 
 

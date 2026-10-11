@@ -23,6 +23,7 @@ from benchbox.core.dataframe.maintenance_interface import (
     BaseDataFrameMaintenanceOperations,
     DataFrameMaintenanceCapabilities,
 )
+from benchbox.utils.polars_collection import collect_frame
 
 if TYPE_CHECKING:
     pass
@@ -31,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 class PolarsMaintenanceOperations(BaseDataFrameMaintenanceOperations):
-    def __init__(self, working_dir: str | Path | None = None) -> None:
+    def __init__(self, working_dir: str | Path | None = None, execution_engine: str = "default") -> None:
         super().__init__()
 
         if not POLARS_AVAILABLE:
@@ -42,7 +43,11 @@ class PolarsMaintenanceOperations(BaseDataFrameMaintenanceOperations):
             )
 
         self.working_dir = Path(working_dir) if working_dir else None
+        self.execution_engine = execution_engine
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
+    def _collect(self, frame: Any) -> Any:
+        return collect_frame(frame, self.execution_engine)
 
     def _get_capabilities(self) -> DataFrameMaintenanceCapabilities:
         return POLARS_CAPABILITIES
@@ -57,7 +62,7 @@ class PolarsMaintenanceOperations(BaseDataFrameMaintenanceOperations):
         table_path = Path(table_path)
 
         if isinstance(dataframe, pl.LazyFrame):
-            df = dataframe.collect()
+            df = self._collect(dataframe)
         elif isinstance(dataframe, pl.DataFrame):
             df = dataframe
         elif hasattr(dataframe, "to_parquet") and hasattr(dataframe, "columns"):
@@ -134,7 +139,7 @@ class PolarsMaintenanceOperations(BaseDataFrameMaintenanceOperations):
             return 0
 
         self.logger.debug(f"Reading {len(parquet_files)} files from {table_path}")
-        df = pl.scan_parquet(parquet_files).collect()
+        df = self._collect(pl.scan_parquet(parquet_files))
         original_count = df.height
 
         if original_count == 0:
@@ -145,7 +150,7 @@ class PolarsMaintenanceOperations(BaseDataFrameMaintenanceOperations):
             df_with_ctx.register("__table__", df)
 
             delete_query = f"SELECT COUNT(*) as cnt FROM __table__ WHERE {condition}"
-            delete_count_df = df_with_ctx.execute(delete_query).collect()
+            delete_count_df = self._collect(df_with_ctx.execute(delete_query))
             delete_count = delete_count_df["cnt"][0]
 
             if delete_count == 0:
@@ -153,7 +158,7 @@ class PolarsMaintenanceOperations(BaseDataFrameMaintenanceOperations):
                 return 0
 
             keep_query = f"SELECT * FROM __table__ WHERE NOT ({condition})"
-            remaining_df = df_with_ctx.execute(keep_query).collect()
+            remaining_df = self._collect(df_with_ctx.execute(keep_query))
 
         except Exception as e:
             self.logger.warning(f"SQL condition parsing failed: {e}. Trying expression parse.")
@@ -202,7 +207,7 @@ class PolarsMaintenanceOperations(BaseDataFrameMaintenanceOperations):
             self.logger.warning(f"No Parquet files found in {table_path}")
             return 0
 
-        df = pl.scan_parquet(parquet_files).collect()
+        df = self._collect(pl.scan_parquet(parquet_files))
         original_count = df.height
 
         if original_count == 0:
@@ -213,7 +218,7 @@ class PolarsMaintenanceOperations(BaseDataFrameMaintenanceOperations):
             df_with_ctx.register("__table__", df)
 
             count_query = f"SELECT COUNT(*) as cnt FROM __table__ WHERE {condition}"
-            match_count = df_with_ctx.execute(count_query).collect()["cnt"][0]
+            match_count = self._collect(df_with_ctx.execute(count_query))["cnt"][0]
 
             if match_count == 0:
                 self.logger.info("No rows match update condition")
@@ -228,7 +233,7 @@ class PolarsMaintenanceOperations(BaseDataFrameMaintenanceOperations):
                     select_cols.append(col_name)
 
             update_query = f"SELECT {', '.join(select_cols)} FROM __table__"
-            updated_df = df_with_ctx.execute(update_query).collect()
+            updated_df = self._collect(df_with_ctx.execute(update_query))
 
         except Exception as e:
             raise ValueError(
@@ -254,7 +259,7 @@ class PolarsMaintenanceOperations(BaseDataFrameMaintenanceOperations):
         table_path = Path(table_path)
 
         if isinstance(source_dataframe, pl.LazyFrame):
-            source_df = source_dataframe.collect()
+            source_df = self._collect(source_dataframe)
         elif isinstance(source_dataframe, pl.DataFrame):
             source_df = source_dataframe
         elif hasattr(source_dataframe, "to_parquet") and hasattr(source_dataframe, "columns"):
@@ -275,7 +280,7 @@ class PolarsMaintenanceOperations(BaseDataFrameMaintenanceOperations):
         if not parquet_files:
             return self._do_insert(table_path, source_df, None, "append")
 
-        target_df = pl.scan_parquet(parquet_files).collect()
+        target_df = self._collect(pl.scan_parquet(parquet_files))
 
         merge_key = self._parse_merge_key(str(merge_condition))
 
@@ -357,9 +362,11 @@ class PolarsMaintenanceOperations(BaseDataFrameMaintenanceOperations):
             raise RuntimeError(f"Atomic rewrite failed, restored from backup: {e}") from e
 
 
-def get_polars_maintenance_operations(working_dir: str | Path | None = None) -> PolarsMaintenanceOperations | None:
+def get_polars_maintenance_operations(
+    working_dir: str | Path | None = None, execution_engine: str = "default"
+) -> PolarsMaintenanceOperations | None:
     if not POLARS_AVAILABLE:
         logger.debug("Polars not available, cannot create maintenance operations")
         return None
 
-    return PolarsMaintenanceOperations(working_dir=working_dir)
+    return PolarsMaintenanceOperations(working_dir=working_dir, execution_engine=execution_engine)
