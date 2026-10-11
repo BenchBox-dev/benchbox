@@ -241,7 +241,7 @@ def build_result_payload(result: BenchmarkResults, *, sanitize_platform_secrets:
         for q in queries_list:
             engine = q.get("execution_engine")
             if engine:
-                if allowed_engines and engine not in allowed_engines:
+                if engine not in allowed_engines:
                     q["execution_engine"] = "unknown"
                     engine = "unknown"
                 query_engines.add(engine)

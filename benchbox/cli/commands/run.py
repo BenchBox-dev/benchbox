@@ -2657,11 +2657,7 @@ def _interactive_handle_result(s: types.SimpleNamespace, result: Any, orchestrat
     hidden=True,
     help="Deprecated alias for --execution-engine streaming on polars-df.",
 )
-@advanced_option(
-    "--gateway",
-    default=None,
-    help="Route queries through a gateway (e.g. espresso, greybeam, custom)."
-)
+@advanced_option("--gateway", default=None, help="Route queries through a gateway (e.g. espresso, greybeam, custom).")
 @advanced_option("--seed", type=int, help="RNG seed for query parameter generation")
 @advanced_option(
     "--streams",

@@ -306,3 +306,25 @@ def test_build_result_payload_records_gateway_and_enforces_compliance() -> None:
     assert queries["3"] == "unknown"
 
     assert payload["platform"]["execution_engine"]["observed"] == "mixed"
+
+
+def test_unknown_gateway_does_not_preserve_query_engine() -> None:
+    result = BenchmarkResults(
+        benchmark_name="TPC-H",
+        platform="snowflake",
+        scale_factor=0.01,
+        execution_id="run-unknown-gateway",
+        timestamp=datetime.now(),
+        duration_seconds=1.0,
+        total_queries=1,
+        successful_queries=1,
+        failed_queries=0,
+        platform_info={"gateway": {"name": "unregistered", "routed": True}},
+        query_results=[
+            QueryExecution(query_id="Q1", status="SUCCESS", execution_time_ms=1.0, execution_engine="rogue")
+        ],
+    )
+
+    payload = build_result_payload(result)
+
+    assert payload["queries"][0]["execution_engine"] == "unknown"
