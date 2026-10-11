@@ -637,6 +637,14 @@ _PRODUCTION_ADAPTERS: dict[str, str] = {
 }
 
 
+def _validate_execution_engine(backends: tuple[str, ...], execution_engine: str | None) -> None:
+    if execution_engine is None:
+        return
+    resolve_requested("polars", execution_engine)
+    if "expression" not in backends:
+        raise ValueError("An execution engine requires the expression (Polars DataFrame) backend")
+
+
 def build_production_contexts(
     benchmark: Any,
     data_dir: Path,
@@ -647,10 +655,7 @@ def build_production_contexts(
 ) -> dict[str, Any]:
     import importlib
 
-    if execution_engine is not None:
-        resolve_requested("polars", execution_engine)
-        if "expression" not in backends:
-            raise ValueError("An execution engine requires the expression (Polars DataFrame) backend")
+    _validate_execution_engine(backends, execution_engine)
     contexts: dict[str, Any] = {}
     for backend in backends:
         target = _PRODUCTION_ADAPTERS.get(backend)
@@ -1501,6 +1506,7 @@ def run_gate(
 ) -> int:
     if update_baseline and execution_engine is not None:
         raise ValueError("Baseline updates cannot be combined with an explicit execution engine")
+    _validate_execution_engine(gate.backends, execution_engine)
     import tempfile
 
     with tempfile.TemporaryDirectory() as tmp:

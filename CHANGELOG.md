@@ -21,9 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   without changing legacy variant identity; explicit requests survive JSON re-export.
   Publication drops compute resource names and hashes gateway hosts.
 
-- The cross-surface equivalence gate accepts `--execution-engine` and forwards
-  the requested engine to its Polars DataFrame adapter. Baseline updates reject
-  explicit engine selection to preserve the shared divergence baseline.
+- The cross-surface equivalence gate accepts `--execution-engine`; its Make
+  targets pass `EXECUTION_ENGINE` through to the Polars DataFrame adapter.
+  Baseline updates reject explicit engine selection to preserve the shared
+  divergence baseline.
 
 - Platforms declare a `compute_resource` and, where the vendor bills a size,
   a `compute_size` setting. Vendor names (`warehouse`, `engine_name`,

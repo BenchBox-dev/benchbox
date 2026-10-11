@@ -43,6 +43,16 @@ def test_production_contexts_reject_unsupported_execution_engine(tmp_path):
         cross_surface.build_production_contexts(object(), tmp_path, backends=("expression",), execution_engine="gpu")
 
 
+def test_run_gate_rejects_unsupported_execution_engine_before_build():
+    import benchbox.core.equivalence.cross_surface as cross_surface
+    from benchbox.core.execution_engine import UnsupportedExecutionEngineError
+
+    gate = CrossSurfaceGate(name="fake", build=lambda scale, path: pytest.fail("built gate data"))
+
+    with pytest.raises(UnsupportedExecutionEngineError, match="execution engine 'gpu'"):
+        cross_surface.run_gate(gate, execution_engine="gpu")
+
+
 def test_production_contexts_reject_engine_without_expression_backend(tmp_path):
     import benchbox.core.equivalence.cross_surface as cross_surface
 
