@@ -145,6 +145,15 @@
       "op": "release",
       "op_id": "244e38430f29471994d8a30bfd7ac5b6",
       "session_id": "12a278318efc4205bf01aa4132116f81"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0b65b59dfd5ecfabcfde36b0",
+      "at": "2026-10-11T18:32:23Z",
+      "client": "omp-coding-agent",
+      "generation": "575668124faa40ad901288685001347f",
+      "op": "take",
+      "op_id": "d1d359de889146f99ab6c50ee6e77be5",
+      "session_id": "12a278318efc4205bf01aa4132116f81"
     }
   ]
 }
