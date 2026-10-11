@@ -63,12 +63,17 @@ class ClickHouseDiagnosticsMixin:
 
         try:
             client = self._create_admin_client(**connection_config)
-            db_name = connection_config.get("database", self.database)
+            try:
+                db_name = connection_config.get("database", self.database)
 
-            result = client.execute("SHOW DATABASES")
-            databases = [row[0] for row in result]
+                result = client.execute("SHOW DATABASES")
+                databases = [row[0] for row in result]
 
-            return db_name in databases
+                return db_name in databases
+            finally:
+                disconnect = getattr(client, "disconnect", None)
+                if callable(disconnect):
+                    disconnect()
 
         except AttributeError:
             raise
@@ -81,8 +86,13 @@ class ClickHouseDiagnosticsMixin:
 
         try:
             client = self._create_admin_client(**connection_config)
-            db_name = connection_config.get("database", self.database)
-            client.execute(f"DROP DATABASE IF EXISTS {db_name}")
+            try:
+                db_name = connection_config.get("database", self.database)
+                client.execute(f"DROP DATABASE IF EXISTS {db_name}")
+            finally:
+                disconnect = getattr(client, "disconnect", None)
+                if callable(disconnect):
+                    disconnect()
 
         except Exception as e:
             raise RuntimeError(f"Failed to drop ClickHouse database: {e}") from e

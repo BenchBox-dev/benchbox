@@ -154,7 +154,10 @@ class ClickHouseSetupMixin:
 
     def _ensure_server_database_exists(self, database: str, **connection_config) -> None:
         admin_client = self._create_admin_client(**connection_config)
-        admin_client.execute(f"CREATE DATABASE IF NOT EXISTS {self._quote_database_identifier(database)}")
+        try:
+            admin_client.execute(f"CREATE DATABASE IF NOT EXISTS {self._quote_database_identifier(database)}")
+        finally:
+            admin_client.disconnect()
 
     def create_connection(self, **connection_config) -> Any:
         self.log_operation_start("ClickHouse connection", f"mode: {self.deployment_mode}")

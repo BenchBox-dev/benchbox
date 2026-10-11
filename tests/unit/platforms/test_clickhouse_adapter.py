@@ -734,15 +734,23 @@ class TestClickHouseAdapter:
 
     @patch("benchbox.platforms.clickhouse.setup.ClickHouseClient")
     def test_close_connection(self, mock_client_class):
-        mock_client = Mock()
-        mock_client_class.return_value = mock_client
+        created = []
+
+        def _factory(*args, **kwargs):
+            client = Mock()
+            created.append(client)
+            return client
+
+        mock_client_class.side_effect = _factory
 
         adapter = ClickHouseAdapter(deployment_mode="server")
         connection = adapter.create_connection()
 
         adapter.close_connection(connection)
 
-        mock_client.disconnect.assert_called_once()
+        assert len(created) >= 2
+        for client in created:
+            client.disconnect.assert_called_once()
 
     def test_test_connection(self):
         with patch("benchbox.platforms.clickhouse.setup.ClickHouseClient") as mock_client_class:
