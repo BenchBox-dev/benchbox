@@ -7900,10 +7900,15 @@
       "title": "Decide whether public-contracts and hosted-results-contract stay published"
     },
     "docs-remediation-review-followups": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-12T02:30:23Z",
+        "generation": "cacd3ef4d1764dbca0867a99db8dbb7f",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c5daffc9eae3c5f9ce6578f7"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Fix remaining published-doc remediation review findings"
     },
     "docs-rewrite-architecture-and-structure": {
