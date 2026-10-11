@@ -1437,13 +1437,18 @@ def test_split_runner_interpreter_arguments_are_scanned(source: str) -> None:
     [
         "sudo --unknown value python3 -c '# explanation'",
         "nohup -x python3 -c '# explanation'",
+        "echo '# hidden' | sudo --unknown value python3",
+        "echo '# hidden' | nohup -x python3",
     ],
 )
 def test_unknown_split_runner_options_fail_closed(source: str) -> None:
     assert [finding.kind for finding in scan("a.sh", source, "bash")] == ["coverage-error"]
 
 
-@pytest.mark.parametrize("consumer", ["$interpreter", "${INTERPRETER}", '"$1"'])
+@pytest.mark.parametrize(
+    "consumer",
+    ["$interpreter", "${INTERPRETER}", '"$1"', "cat | $interpreter"],
+)
 def test_dynamic_pipeline_consumer_fails_closed(consumer: str) -> None:
     findings = scan("a.sh", f"echo 'pass' | {consumer}", "bash")
     assert [finding.kind for finding in findings] == ["coverage-error"]
@@ -1462,6 +1467,18 @@ def test_quoted_pipe_delimiter_does_not_trigger_pipeline_gate() -> None:
 def test_dynamic_later_pipeline_command_does_not_hide_interpreter_input() -> None:
     findings = scan("a.sh", "echo '# hidden' | python3 | $dynamic", "bash")
     assert [(finding.kind, finding.text) for finding in findings] == [("comment", "# hidden")]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "echo '# hidden' | sed 's/x/y/' | python3",
+        "echo '# hidden' | sed 's/x/y/' | $dynamic",
+    ],
+)
+def test_piped_unsupported_intermediate_before_interpreter_fails_closed(source: str) -> None:
+    findings = scan("a.sh", source, "bash")
+    assert [finding.kind for finding in findings] == ["coverage-error"]
 
 
 def test_piped_printf_escaped_percent_matches_shell_output() -> None:
@@ -1488,6 +1505,12 @@ def test_piped_printf_escaped_percent_matches_shell_output() -> None:
         (r"echo -e '\0443 hidden' | bash", "# hidden"),
         (r"printf '%s\c' '# hidden' | bash", "# hidden"),
         ("echo '# hidden' | env python3", "# hidden"),
+        ("echo '# hidden' | sudo python3", "# hidden"),
+        ("echo '# hidden' | sudo -u nobody python3", "# hidden"),
+        ("echo '# hidden' | nohup python3", "# hidden"),
+        ("echo '# hidden' | nohup -- python3", "# hidden"),
+        ("echo '# hidden' | cat | python3", "# hidden"),
+        ("echo '# hidden' | cat | cat | python3", "# hidden"),
         ("echo '# hidden' | python3 | cat", "# hidden"),
         ("echo '# hidden' 1>&1 | bash", "# hidden"),
     ],
@@ -3009,15 +3032,14 @@ def test_reviewed_javascript_flows_are_exact_and_current() -> None:
 
 def test_reviewed_javascript_flows_still_occur() -> None:
     import json
-    import os
     import shutil
     import subprocess
 
     from comment_syntax import REVIEWED_JAVASCRIPT_FLOWS, resolve_typescript_dir
 
     typescript = resolve_typescript_dir(ROOT)
-    if shutil.which("node") is None or typescript is None or not typescript.exists():
-        pytest.skip("the TypeScript package for scripts/comment_syntax_js.cjs is not installed")
+    assert shutil.which("node") is not None, "Node.js is required to verify reviewed JavaScript flows"
+    assert typescript is not None and typescript.exists(), "the TypeScript parser is required for reviewed flows"
     paths = sorted({path for path, _ in REVIEWED_JAVASCRIPT_FLOWS})
     requests = {path: (ROOT / path).read_text(encoding="utf-8") for path in paths}
     result = subprocess.run(
@@ -3490,6 +3512,20 @@ def test_mdx_pages_scan_prose_fences_and_imports() -> None:
 def test_mdx_jsx_comments_are_found(source: str, expected: list[tuple[int, str]]) -> None:
     findings = scan("website/src/content/docs/page.mdx", source, "mdx", {})
     assert [(f.kind, f.line, f.text) for f in findings] == [("comment", *item) for item in expected]
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        ("`{/* inline */}`", []),
+        ("``{/* inline */}``", []),
+        ("`{/* inline\ncomment */}`\n{/* visible */}", [(3, "{/* visible */}")]),
+        (r"\`{/* visible */}`", [(1, "{/* visible */}")]),
+    ],
+)
+def test_mdx_jsx_comments_ignore_inline_code(source: str, expected: list[tuple[int, str]]) -> None:
+    findings = scan("website/src/content/docs/page.mdx", source, "mdx", {})
+    assert [(finding.line, finding.text) for finding in findings] == expected
 
 
 def test_mdx_prose_and_fences_are_scanned_once() -> None:

@@ -144,9 +144,10 @@ Python is read with its AST and tokenizer, including standalone strings and
 runtime docstring assignments; JavaScript and TypeScript with the isolated
 TypeScript parser; SQL-valued strings and execution-sink arguments as SQL; other
 formats with Pygments lexers; embedded code with its own language check.
-Shell heredocs and literal `echo`/`printf` pipelines into supported stdin
-interpreters are scanned; MDX top-level ESM and JSX block comments are
-extracted.
+Shell heredocs and literal `echo`/`printf` pipelines through plain `cat` stages
+or supported `sudo`, `env` and `nohup` wrappers into supported stdin
+interpreters are scanned. MDX top-level ESM and JSX block comments outside
+Markdown code spans and fences are extracted.
 Executable paths are matched by basename; consumer output redirects preserve
 piped input, while redirected stdin fails closed.
 Unknown input is a coverage error, never a pass, and under blocking enforcement

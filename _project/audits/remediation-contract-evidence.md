@@ -414,3 +414,45 @@ The medium-test job now installs the locked TypeScript package in an isolated
 temporary directory and exports its module path. A local npm 11.19.1 install
 with the same manifest and lockfile passed, and the MDX scanner test passed
 four cases using that isolated TypeScript path.
+
+### Findings D13-D16
+
+- D13, runner-wrapped consumers: positive cases in
+  `test_piped_producer_payloads_reach_stdin_interpreters` cover
+  `sudo python3`, `sudo -u nobody python3`, `nohup python3`, and
+  `nohup -- python3`. Negative controls in
+  `test_unknown_split_runner_options_fail_closed` cover `sudo --unknown` and
+  `nohup -x`, both as direct commands and piped consumers.
+- D14, multi-hop pipelines: the same positive test covers
+  `echo '# hidden' | cat | python3` and a two-`cat` chain. The dynamic
+  consumer case `test_dynamic_pipeline_consumer_fails_closed[cat | $interpreter]`
+  fails closed. `test_piped_unsupported_intermediate_before_interpreter_fails_closed`
+  covers both `sed ... | python3` and `sed ... | $dynamic`.
+- D15, MDX inline code: `test_mdx_jsx_comments_ignore_inline_code` checks
+  single-backtick, double-backtick, multiline and escaped-opener forms. It
+  rejects JSX-shaped text inside code spans and preserves a real adjacent
+  JSX comment.
+- D16, TypeScript flow coverage: `test_reviewed_javascript_flows_still_occur`
+  now fails if Node.js or TypeScript is unavailable. The `medium-test` job
+  installs the locked parser before running that test. The separate
+  `comment-policy` job's trusted `run_comment_policy.py` parser environment
+  also installs the locked package and exports `COMMENT_POLICY_TYPESCRIPT`;
+  each job retains the setup its consumer requires.
+
+The focused regression selection passed 61 tests with
+`uv run -- pytest -q tests/unit/scripts/test_comment_policy.py -k 'piped_ or dynamic_pipeline_consumer or mdx_jsx_comments or reviewed_javascript_flows_still_occur'`.
+
+The full policy unit file passed 754 tests with
+`uv run -- pytest -q tests/unit/scripts/test_comment_policy.py -n0`.
+The missing-parser control
+`env COMMENT_POLICY_TYPESCRIPT=/tmp/comment-policy-typescript-missing uv run -- pytest -q tests/unit/scripts/test_comment_policy.py -k reviewed_javascript_flows_still_occur -n0`
+failed as expected with one assertion, proving the CI test cannot silently
+skip the TypeScript flow check.
+
+The final `make comment-policy-check` passed: 5,776 source files, zero
+violations, zero enforced failures, and all 19 native syntax tests passed.
+Three final runs measured 269.54, 298.41, and 308.01 seconds wall. Prior paired
+candidate runs measured 252.23-295.88 seconds; the latter two final runs were
+2.53 and 12.13 seconds above that range. Earlier paired runs varied widely.
+These whole-gate timings do not isolate scanner performance; no explicit
+wall-time budget is set.

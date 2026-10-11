@@ -410,12 +410,57 @@ def mdx_js_sources(path: str, source: str) -> list[tuple[int, str, str, str, str
     return result
 
 
+def mdx_inline_code_mask(source: str) -> str:
+    masked = list(source)
+    index = 0
+    while index < len(source):
+        if source[index] != "`":
+            index += 1
+            continue
+        run_end = index + 1
+        while run_end < len(source) and source[run_end] == "`":
+            run_end += 1
+        backslash_count = 0
+        previous = index - 1
+        while previous >= 0 and source[previous] == "\\":
+            backslash_count += 1
+            previous -= 1
+        if backslash_count % 2:
+            index = run_end
+            continue
+        delimiter = source[index:run_end]
+        closing = source.find(delimiter, run_end)
+        while closing >= 0:
+            closing_end = closing + len(delimiter)
+            part_of_longer_run = (closing > 0 and source[closing - 1] == "`") or (
+                closing_end < len(source) and source[closing_end] == "`"
+            )
+            if part_of_longer_run:
+                closing = source.find(delimiter, closing_end)
+                continue
+            if "\0" in source[run_end:closing]:
+                closing = -1
+                break
+            for position in range(index, closing_end):
+                if source[position] not in {"\n", "\0"}:
+                    masked[position] = " "
+            index = closing_end
+            break
+        else:
+            index = run_end
+            continue
+        if closing < 0:
+            index = run_end
+    return "".join(masked)
+
+
 def mdx_jsx_comments(source: str) -> list[tuple[int, str]]:
     lines = mdx_masked_lines(source)
     for start, _, text, _, _ in mdx_js_sources(path="", source=source):
         for number in range(start - 1, start - 1 + len(text.splitlines())):
             lines[number] = None
-    prose = "\n".join("" if line is None else line for line in lines)
+    prose = "\n".join("\0" if line is None else line for line in lines)
+    prose = mdx_inline_code_mask(prose)
     return [
         (prose[: match.start()].count("\n") + 1, match.group().rstrip()) for match in MDX_JSX_COMMENT.finditer(prose)
     ]
@@ -1611,6 +1656,7 @@ def piped_redirect_effect(commands: list) -> tuple[bool, bool]:
     stdin_redirects = {"<", "<<", "<<-", "<<<", "<>", "<&"}
     producer_stdout_redirected = False
     consumer_stdin_redirected = False
+    consumer_index = len(commands) - 1
     for command_index, command in enumerate(commands):
         for part in command.parts:
             if part.kind != "redirect":
@@ -1622,9 +1668,49 @@ def piped_redirect_effect(commands: list) -> tuple[bool, bool]:
                 output_target = getattr(part, "output", None)
                 if not (part.type == ">&" and output_target == 1):
                     producer_stdout_redirected = True
-            if command_index == 1 and descriptor == 0:
+            if command_index == consumer_index and descriptor == 0:
                 consumer_stdin_redirected = True
     return producer_stdout_redirected, consumer_stdin_redirected
+
+
+def piped_consumer_words(words: list) -> tuple[list, str]:
+    command = words[0].word.rsplit("/", 1)[-1]
+    if command in {"sudo", "nohup"}:
+        unwrapped, command = unwrap_runner_command(words, command)
+        if unwrapped is words and any(word.parts for word in words[1:]):
+            raise ValueError("dynamic piped interpreter consumer requires an adapter")
+        return unwrapped, command
+    if command == "env" and len(words) > 1:
+        index = 1
+        while index < len(words):
+            word = words[index]
+            if word.parts:
+                raise ValueError("dynamic piped interpreter consumer requires an adapter")
+            if re.match(r"[A-Za-z_][A-Za-z0-9_]*=", word.word) or word.word in {"-i", "--ignore-environment"}:
+                index += 1
+                continue
+            break
+        if index < len(words) and not words[index].word.startswith("-"):
+            unwrapped = words[index:]
+            return unwrapped, unwrapped[0].word.rsplit("/", 1)[-1]
+    return words, command
+
+
+def piped_passthrough_cat(command: bashlex.ast.node, words: list) -> bool:
+    if not words or words[0].word.rsplit("/", 1)[-1] != "cat":
+        return False
+    if any(part.kind == "redirect" for part in command.parts) or any(word.parts for word in words):
+        return False
+    return len(words) == 1 or len(words) == 2 and words[1].word == "-"
+
+
+def piped_may_execute_interpreter(side: list) -> bool:
+    if not side:
+        return False
+    if side[0].parts:
+        return True
+    _, command = piped_consumer_words(side)
+    return piped_consumer_language(command) is not None or command in SHELL_UNMODELED
 
 
 def piped_sides(node: bashlex.ast.node) -> list | None:
@@ -1634,25 +1720,24 @@ def piped_sides(node: bashlex.ast.node) -> list | None:
     if len(commands) < 2:
         return None
     sides = [[part for part in command.parts if part.kind == "word"] for command in commands]
-    if not sides[0] or not sides[1] or sides[0][0].parts:
+    if not sides[0] or sides[0][0].parts:
         return None
     if sides[0][0].word.rsplit("/", 1)[-1] not in PIPED_PRODUCERS:
         return None
-    if sides[1][0].parts:
-        raise ValueError("dynamic piped interpreter consumer requires an adapter")
-    unwrapped_consumer = sides[1]
-    if not any(w.parts for w in sides[1]):
-        head_cmd = sides[1][0].word.rsplit("/", 1)[-1]
-        if head_cmd == "env" and len(sides[1]) > 1:
-            idx = 1
-            while idx < len(sides[1]) and (
-                re.match(r"[A-Za-z_][A-Za-z0-9_]*=", sides[1][idx].word)
-                or sides[1][idx].word in {"-i", "--ignore-environment"}
-            ):
-                idx += 1
-            if idx < len(sides[1]) and not sides[1][idx].word.startswith("-"):
-                unwrapped_consumer = sides[1][idx:]
-    return [sides[0], unwrapped_consumer, commands[:2]]
+    for index, side in enumerate(sides[1:], start=1):
+        if not side:
+            raise ValueError("empty piped interpreter consumer requires an adapter")
+        if side[0].parts:
+            raise ValueError("dynamic piped interpreter consumer requires an adapter")
+        if piped_passthrough_cat(commands[index], side):
+            continue
+        consumer_words, consumer = piped_consumer_words(side)
+        if piped_consumer_language(consumer) is not None or consumer in SHELL_UNMODELED:
+            return [sides[0], consumer_words, commands[: index + 1]]
+        if any(piped_may_execute_interpreter(later) for later in sides[index + 1 :]):
+            raise ValueError("piped interpreter input through an unsupported command requires an adapter")
+        return [sides[0], consumer_words, commands[: index + 1]]
+    return None
 
 
 def piped_unmodeled_check(side: list) -> None:
