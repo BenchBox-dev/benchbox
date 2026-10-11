@@ -3031,10 +3031,15 @@
       "title": "Fix ClickHouse read_primitives failures - dialect overrides, expected_failures, and error capture"
     },
     "clickhouse-server-tpcds-q10-memory-20261008": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-12T08:51:37Z",
+        "generation": "71ab11ce6207435fa5f8a6042ecb8374",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7e55d16b199130b0978d8efa"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Find why TPC-DS Q10 exceeds the 5.25 GiB envelope on ClickHouse server at SF1"
     },
     "clickhouse-session-policy-link-sqlglot-ast-gap-issue": {
