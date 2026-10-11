@@ -101,7 +101,7 @@ def _tables_in_several_schemas(connection: Any, tables: set[str]) -> list[str]:
     if not tables:
         return []
     ordered_tables = sorted(tables)
-    placeholders = ", ".join("?" for _ in ordered_tables)
+    placeholders = ", ".join("lower(?)" for _ in ordered_tables)
     rows = connection.execute(
         "SELECT lower(table_name) FROM duckdb_tables() "
         f"WHERE lower(table_name) IN ({placeholders}) "
@@ -115,7 +115,7 @@ def _read_constraints(connection: Any, tables: set[str]) -> tuple[list[Introspec
     if not tables:
         return [], False
     ordered_tables = sorted(tables)
-    placeholders = ", ".join("?" for _ in ordered_tables)
+    placeholders = ", ".join("lower(?)" for _ in ordered_tables)
     type_list = ", ".join(f"'{constraint_type}'" for constraint_type in sorted(_CATALOG_CONSTRAINT_TYPES))
     cursor = connection.execute(
         "SELECT * FROM duckdb_constraints() "

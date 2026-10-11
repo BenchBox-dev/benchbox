@@ -285,6 +285,19 @@ class TestDuckDBConstraintFacts:
         assert (fk.columns, fk.referenced_table, fk.referenced_columns) == (("o_custkey",), "customer", ("c_custkey",))
         assert fk.evidence["referenced_column_names"] == ["c_custkey"]
 
+    def test_quoted_unicode_table_name_constraints_are_read(self):
+        con = duckdb.connect(":memory:")
+        ddl = 'CREATE TABLE "É" (id INTEGER PRIMARY KEY)'
+        con.execute(ddl)
+        ledger = _ledger_for(ddl)
+
+        state = DuckDBTuningIntrospector().introspect(con, ledger)
+
+        assert state.error is None
+        [fact] = [obj for obj in state.objects if obj.kind == KIND_CONSTRAINT]
+        assert (fact.table, fact.columns) == ("É", ("id",))
+        assert corroborate(ledger, state).corroborated
+
     def test_tables_whose_statement_yields_no_constraint_intent_are_not_read(self):
         con = _constrained_connection()
         state = DuckDBTuningIntrospector().introspect(con, _ledger_for(*_CONSTRAINED_DDL))

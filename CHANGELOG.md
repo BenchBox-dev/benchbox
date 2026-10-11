@@ -308,7 +308,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   platforms this now also holds when the same `CREATE TABLE` carries a
   verified sort, partition or cluster key; before, the constraint was ignored
   there. Receipt entries for constraints carry `kind: "constraint"` and a
-  `constraint_type`.
+  `constraint_type`. Quoted non-ASCII table names, such as "É", are now found
+  consistently with DuckDB's `lower(table_name)` catalog filters.
 
 ### Changed
 
