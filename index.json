@@ -23535,12 +23535,7 @@
       "title": "Stop publishing Python repr() strings in bundle raw_config; make serialization fallbacks loud"
     },
     "tuning-requested-vs-rendered-reconciliation-20261001": {
-      "claim": {
-        "expires_at": "2026-10-12T02:10:12Z",
-        "generation": "b663d79555294db198840ee53d14266a",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7e55d16b199130b0978d8efa"
-      },
+      "claim": null,
       "needs": [
         "tuning-gate-ledger-outcome-vocabulary-20261001",
         "tuning-post-load-seam-20261001",
@@ -23548,7 +23543,7 @@
         "tuning-trust-paths-soundness-manifest-20261001"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Registry-driven post-load reconciliation: every requested tuning intent ends executed, failed, dropped or satisfied"
     },
     "tuning-residual-cleanups-20260716": {
