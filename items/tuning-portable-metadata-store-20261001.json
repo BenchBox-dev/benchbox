@@ -11,7 +11,9 @@
       "from_item": "tuning-portable-metadata-store-20261001",
       "id": 1,
       "reason": "finish needs a registered batch; serial mode has none and this session holds no owner_generation.",
-      "resolution": "open",
+      "resolution": "dismissed",
+      "resolved_at": "2026-10-11T08:50:40Z",
+      "resolved_reason": "This was a process-only wait for a registered batch owner. The repository is in serial mode because no compatible registered schema-3 batch is active; the PR is merged and all acceptance evidence is verified, so no product requirement remains deferred.",
       "summary": "Verified this session: 127 unit tests pass; DataFusion smoke PASSED, no metadata failure. Needs batch owner to finish."
     }
   ],
@@ -139,6 +141,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "c7a4de67eaf74d61a06fdb323e8e8f80",
+      "session_id": "4dbe22cfa4cf47a5bab075c4c3ac203f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7e55d16b199130b0978d8efa",
+      "at": "2026-10-11T08:50:40Z",
+      "client": "omp-coding-agent",
+      "op": "dismiss",
+      "op_id": "155c348042e94c51a2cef02990a4f196",
       "session_id": "4dbe22cfa4cf47a5bab075c4c3ac203f"
     }
   ]
