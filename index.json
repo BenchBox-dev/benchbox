@@ -23165,9 +23165,9 @@
     },
     "tuning-evidence-unmeasured-template-label-20261008": {
       "claim": {
-        "expires_at": "2026-10-12T17:54:06Z",
+        "expires_at": "2026-10-12T19:05:34Z",
         "generation": "456c5f8cd5b54f15b1fcbbe61d98b819",
-        "renewals": 0,
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7e55d16b199130b0978d8efa"
       },
       "needs": [
