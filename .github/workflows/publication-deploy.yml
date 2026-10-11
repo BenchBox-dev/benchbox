@@ -266,7 +266,9 @@ jobs:
             [ -n "${ARTIFACT_ID:-}" ] || continue
             RUN_META=$(gh api "repos/${{ github.repository }}/actions/runs/$RUN_ID" --jq '[.name, .status, .conclusion, .event] | @tsv')
             IFS=$'\t' read -r RUN_NAME RUN_STATUS RUN_CONCLUSION RUN_EVENT <<< "$RUN_META"
-            if [[ "$RUN_NAME" != "Publication Control Plane Deployment" || "$RUN_STATUS" != "completed" || "$RUN_EVENT" != "workflow_dispatch" ]]; then
+            if [[ "$RUN_NAME" == "Publication Control Plane Deployment" && "$RUN_STATUS" == "completed" && "$RUN_EVENT" == "workflow_dispatch" ]]; then
+              :
+            else
               continue
             fi
             rm -rf prior-candidate && mkdir prior-candidate
@@ -359,9 +361,11 @@ jobs:
           RUN_META=$(gh api "repos/${{ github.repository }}/actions/runs/$CANDIDATE_RUN_ID" \
             --jq '[.name, .status, .conclusion, .event, .head_branch, .head_sha] | @tsv')
           IFS=$'\t' read -r RUN_NAME RUN_STATUS RUN_CONCLUSION RUN_EVENT RUN_BRANCH RUN_HEAD_SHA <<< "$RUN_META"
-          if [[ "$RUN_NAME" != "Publication Control Plane Deployment" || "$RUN_STATUS" != "completed" || \
-                "$RUN_CONCLUSION" != "success" || "$RUN_EVENT" != "workflow_dispatch" || \
-                "$RUN_BRANCH" != "develop" || "$RUN_HEAD_SHA" != "$EXPECTED_WORKFLOW_SHA" ]]; then
+          if [[ "$RUN_NAME" == "Publication Control Plane Deployment" && "$RUN_STATUS" == "completed" && \
+                "$RUN_CONCLUSION" == "success" && "$RUN_EVENT" == "workflow_dispatch" && \
+                "$RUN_BRANCH" == "develop" && "$RUN_HEAD_SHA" == "$EXPECTED_WORKFLOW_SHA" ]]; then
+            :
+          else
             echo "::error::approved candidate run is not a successful develop publication rehearsal"
             exit 1
           fi
@@ -833,8 +837,13 @@ jobs:
             [ -n "${ARTIFACT_ID:-}" ] || continue
             RUN_META=$(gh api "repos/${{ github.repository }}/actions/runs/$RUN_ID" --jq '[.name, .status, .conclusion, .event] | @tsv')
             IFS=$'\t' read -r RUN_NAME RUN_STATUS RUN_CONCLUSION RUN_EVENT <<< "$RUN_META"
-            if [[ "$RUN_NAME" != "Publication Control Plane Deployment" && "$RUN_NAME" != "Publication Transactions" ]] || \
-               [[ "$RUN_STATUS" != "completed" || "$RUN_EVENT" != "workflow_dispatch" ]]; then
+            case "$RUN_NAME" in
+              "Publication Control Plane Deployment"|"Publication Transactions") ;;
+              *) continue ;;
+            esac
+            if [[ "$RUN_STATUS" == "completed" && "$RUN_EVENT" == "workflow_dispatch" ]]; then
+              :
+            else
               continue
             fi
             rm -rf current-candidate && mkdir current-candidate
@@ -1067,7 +1076,9 @@ jobs:
             [ -n "${ARTIFACT_ID:-}" ] || continue
             RUN_META=$(gh api "repos/${{ github.repository }}/actions/runs/$RUN_ID" --jq '[.name, .status, .conclusion, .event] | @tsv')
             IFS=$'\t' read -r RUN_NAME RUN_STATUS RUN_CONCLUSION RUN_EVENT <<< "$RUN_META"
-            if [[ "$RUN_NAME" != "Publication Control Plane Deployment" || "$RUN_STATUS" != "completed" || "$RUN_EVENT" != "workflow_dispatch" ]]; then
+            if [[ "$RUN_NAME" == "Publication Control Plane Deployment" && "$RUN_STATUS" == "completed" && "$RUN_EVENT" == "workflow_dispatch" ]]; then
+              :
+            else
               continue
             fi
             rm -rf candidate && mkdir candidate

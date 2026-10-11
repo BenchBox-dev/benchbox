@@ -328,7 +328,7 @@ def test_the_post_guard_skips_a_head_that_already_has_a_decision(
     plan_path.write_text(json.dumps({**plan, "bot_login": "benchbox-oracle"}), encoding="utf-8")
     calls: list[int] = []
     pauses: list[float] = []
-    monkeypatch.setattr(cli.time, "sleep", pauses.append)
+    monkeypatch.setattr(cli, "sleep", pauses.append)
 
     def reviews(repo: str, pr: int) -> list[dict[str, Any]]:
         calls.append(pr)

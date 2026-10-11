@@ -29,7 +29,8 @@ case "$original" in
   *) echo "Error: the creating worktree branch is missing or invalid." >&2; exit 1 ;;
 esac
 case "$current" in
-  "$branch"|"$original") ;;
+  "$branch") ;;
+  "$original") ;;
   *) echo "Error: expected $branch or its creating branch $original, found $current." >&2; exit 1 ;;
 esac
 

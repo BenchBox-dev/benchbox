@@ -1470,6 +1470,22 @@ def test_dynamic_pipeline_consumer_without_spaces_fails_closed() -> None:
     assert [finding.kind for finding in findings] == ["coverage-error"]
 
 
+def test_shell_boolean_or_does_not_trigger_pipeline_gate() -> None:
+    source = 'if [[ "$RUN_NAME" != "skip" || "$RUN_STATUS" != "completed" ]]; then\n  :\nfi\n'
+    assert scan("a.sh", source, "bash") == []
+
+
+@pytest.mark.parametrize("pattern", ['"$branch"|"$original") ;;', "python|node) ;;"])
+def test_case_pattern_alternatives_do_not_trigger_pipeline_gate(pattern: str) -> None:
+    source = f'case "$mode" in\n  {pattern}\n  *) ;;\nesac\n'
+    assert scan("a.sh", source, "bash") == []
+
+
+def test_case_body_dynamic_pipeline_remains_visible() -> None:
+    source = 'case "$mode" in\n  "$branch") echo code | "$interpreter" ;;\nesac\n'
+    assert [finding.kind for finding in scan("a.sh", source, "bash")] == ["coverage-error"]
+
+
 def test_quoted_pipe_delimiter_does_not_trigger_pipeline_gate() -> None:
     source = 'sed -i -E "s|^[[:space:]]*$${key}[[:space:]]*=.*$$|$${key} = $${value}|" "$$file"'
     assert scan("a.sh", source, "bash") == []
