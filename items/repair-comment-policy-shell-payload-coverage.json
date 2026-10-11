@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "All listed inputs are analyzed without coverage errors by the comment-policy checker.",
+    "Regression tests prove executable payload comments remain scanned, including shell/YAML payload boundaries.",
+    "`make comment-policy-check` passes and runs the native tests."
+  ],
+  "context": "Observed on 2026-10-12 while committing refreshed audit evidence for PR #2909. `make comment-policy-check` and the commit hook both exit nonzero with the same 10 coverage errors. The affected paths are unchanged in the current PR diff. No parser/config changes were made. The audit refresh remains staged but uncommitted; the user authorized follow-up TODO creation for findings too large for a targeted fix.",
+  "description": "The rebased docs-remediation branch cannot commit: the repository comment-policy hook returns 10 enforced coverage errors, `shell command source requires an executable-payload adapter`. The errors occur in `.github/workflows/publication-deploy.yml` (209, 357, 826, 1062), `.github/workflows/publication-preview-deploy.yml` (303), `.github/workflows/sync-results-data-to-published.yml` (359), `_project/scripts/concurrency_sweep.sh`, `_sources/compilation/scripts/compile-all-platforms.sh`, `scripts/make_timing_shell.sh`, and `scripts/release_cut_abort.sh`. This is broader than the targeted docs/feed fix and outside PR #2909's diff. Add correct parser support/adapters and tests; do not suppress coverage errors or weaken comment-policy enforcement.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/2909",
+    "scripts/comment_payloads.py",
+    "scripts/comment_syntax.py",
+    "quality/comment-policy.json"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c5daffc9eae3c5f9ce6578f7",
+      "at": "2026-10-11T22:26:59Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "183b5c6eacfa4bbcb771fdfb31985019",
+      "session_id": "f00fbcc194ab47a6a9508e7176243455"
+    }
+  ]
+}

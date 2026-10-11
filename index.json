@@ -17605,6 +17605,13 @@
       "status": "done",
       "title": "Rename the release branch main->release (Decision B of the branching-strategy review)"
     },
+    "repair-comment-policy-shell-payload-coverage": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Repair shell executable-payload coverage in the comment-policy checker"
+    },
     "repair-public-pagefind-search": {
       "claim": null,
       "needs": [],
