@@ -10334,15 +10334,10 @@
       "title": "Red test: CTAS caller-transaction preservation test fails on develop"
     },
     "flaky-bigquery-credential-defaults-confirm-prompt": {
-      "claim": {
-        "expires_at": "2026-10-11T22:02:49Z",
-        "generation": "37e92e82c4714feab6bd60c4e0974651",
-        "renewals": 1,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0b65b59dfd5ecfabcfde36b0"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "Fix the flaky BigQuery credential-defaults tests that fail in full-suite CI but pass in isolation"
     },
     "flight-data-benchmark": {
