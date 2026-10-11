@@ -5034,18 +5034,13 @@
       "title": "Add the core execution-engine module and manifest capability, with a vocabulary parity test"
     },
     "core-exec-gateway-capability": {
-      "claim": {
-        "expires_at": "2026-10-12T17:51:24Z",
-        "generation": "98672cf22a394bc3b30d507e28edd8bb",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6e8a424eda2c7006605aa48b"
-      },
+      "claim": null,
       "needs": [
         "core-exec-framework-manifest",
         "core-exec-result-schema-2-3"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Make gateway routing a core manifest capability with shared engine vocabulary and a core comparability guard"
     },
     "core-exec-new-platform-checklist": {
