@@ -5,7 +5,7 @@
     "The site builds from the generated bundle and publishes the correct `TPC_EULA.txt` beside both TPC-H and TPC-DS downloads.",
     "The bounded site-inputs tests and bundle verification pass."
   ],
-  "context": "Core sidecar fix is pushed to PR #2897 at head d6409b068af3661c6c60b7dfa488b456254302a9 (code guard commit 509a0f014c29b5172f72804044244ade0fceabb8; provenance correction commit d6409b068af3661c6c60b7dfa488b456254302a9). The previous combined audit report was restored unchanged; the TPC evidence is now in `_project/audits/site-inputs-tpc-eula-sidecars.md` with current develop/measurement/replay lineage. `make audit-sha-check` passed locally for that file. The preflight on the code head passed all 50 `test_site_inputs.py` cases; push hooks passed timing policy and `make pr-preflight`. The previous CI run on d740 (38108323183) failed `audit-sha` because that inherited report's replay hash was outside the branch history; it is superseded. New CI run 38134102105 is in progress. Oracle workflow 38134100025 posted a success verdict for d640, carried from reviewed head d740 because the patch was unchanged; no reviewer ran on d640. The `oracle-review` required check is still pending and must pass on the current head, together with all required CI, before arming/merging. After merge, fetch the official certified `develop` bundle and rerun the site build/tests; the locally built schema-3 bundle (11 members, 4 pass, 1 skip), 1,846-page build, 336 site tests, byte matches, and HTTP-200 browser smoke are not CI certification. The site replay worktree remains uncommitted and must be preserved.",
+  "context": "Core fix remains open on PR #2897 at head d6409b068af3661c6c60b7dfa488b456254302a9. The focused TPC evidence is in `_project/audits/site-inputs-tpc-eula-sidecars.md`; the unrelated combined audit report matches the base unchanged. Local `make audit-sha-check` passed for the new audit. The core preflight ran 50 `test_site_inputs.py` tests successfully; the commit/push hooks passed timing policy and `make pr-preflight`. Current CI run 38134102105 is in progress and its `audit-sha` job has passed; other required jobs are still running/pending. Oracle workflow 38134100025 posted `SHIP` for d640, carried from d740 because the patch was unchanged; no reviewer ran on d640. The current-head `oracle-review` check run 38134131285 passed. Do not arm/merge until all required checks on d640 are green. After merge, fetch the official certified `develop` bundle and rerun the site build/tests; the locally built schema-3 bundle (11 members, 4 pass, 1 skip), 1,846-page build, 336 site tests, byte matches, and HTTP-200 browser smoke remain local-only, not CI certification. The site replay worktree still has three uncommitted changes and must be preserved.",
   "description": "The site replay of the core EULA-download changes requires `_sources/tpc-ds/EULA.txt` and `_sources/tpc-h/EULA.txt` beside downloadable query templates. The certified site bundle currently copies only document-linked files, so the site build fails when it tries to publish these companion licenses. Extend site-inputs download selection to include the matching TPC EULA when a TPC-DS or TPC-H query template is included. Keep the bundle limited to referenced downloads plus their required license sidecars; do not copy unrelated files. Preserve bundle attestations and generated paths.",
   "sessions": [
     {
@@ -47,6 +47,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "54f165643c5e4c27a81da848f463dd92",
+      "session_id": "8fa717097fcf438d8eac8a356ebf8686"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:34427fd6ff4639228ad9cd98",
+      "at": "2026-10-11T11:05:19Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5e26f5034bb34920b8587e4344bbd4d4",
       "session_id": "8fa717097fcf438d8eac8a356ebf8686"
     }
   ]
