@@ -5,6 +5,7 @@ import logging
 import os
 import re
 from collections.abc import Mapping
+from dataclasses import asdict
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import urlparse
@@ -18,6 +19,8 @@ if TYPE_CHECKING:
         UnifiedTuningConfiguration,
     )
 
+from benchbox.core.execution_engine import ExecutionEngineReceipt, ObservedSource
+from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 from benchbox.core.upload_validation import UploadValidationEngine
 from benchbox.platforms.base import DriverIsolationCapability, PlatformAdapter
 from benchbox.platforms.base.runtime_metadata import build_default_normalized_result_metadata
@@ -817,6 +820,19 @@ class DatabricksAdapter(PlatformAdapter):
                 if isinstance(configuration, dict):
                     configuration["region"] = detected_region
 
+        photon_enabled = platform_info.get("compute_configuration", {}).get("enable_photon")
+        observed = "photon" if photon_enabled is True else "standard" if photon_enabled is False else "not_captured"
+        observed_source: ObservedSource = "vendor_log" if photon_enabled is not None else "none"
+        platform_info["configuration"]["execution_engine"] = asdict(
+            ExecutionEngineReceipt(
+                requested=DEFAULT_EXECUTION_ENGINE,
+                applied=None,
+                applied_class=None,
+                resolution="platform_default",
+                observed=observed,
+                observed_source=observed_source,
+            )
+        )
         return platform_info
 
     def get_normalized_result_metadata(

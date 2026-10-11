@@ -153,7 +153,7 @@ class TestRuntimeSettingsRecorded:
 
     @pytest.mark.skipif(not DASK_AVAILABLE, reason="Dask not installed")
     def test_default_dask_run_is_not_applicable_with_empty_ledger(self):
-        adapter = DaskDataFrameAdapter(use_distributed=False)
+        adapter = DaskDataFrameAdapter(execution_engine="threaded")
         assert adapter._applied_tuning_ledger.is_empty()
         assert adapter._derive_applied_tuning_status() == NOT_APPLICABLE
         assert adapter._applied_tuning_ledger.applied_ledger_hash() is None
@@ -161,7 +161,7 @@ class TestRuntimeSettingsRecorded:
     @pytest.mark.skipif(not DASK_AVAILABLE, reason="Dask not installed")
     def test_tuned_dask_non_distributed_run_does_not_record_cluster_settings(self):
         adapter = DaskDataFrameAdapter(
-            use_distributed=False,
+            execution_engine="threaded",
             tuning_config=_dask_worker_config(),
         )
         assert adapter._applied_tuning_ledger.is_empty()
@@ -171,7 +171,7 @@ class TestRuntimeSettingsRecorded:
     def test_tuned_dask_existing_scheduler_does_not_record_cluster_settings(self, monkeypatch):
         monkeypatch.setattr("benchbox.platforms.dataframe.dask_df.Client", lambda _address: object())
         adapter = DaskDataFrameAdapter(
-            use_distributed=False,
+            execution_engine="distributed",
             scheduler_address="tcp://scheduler:8786",
             tuning_config=_dask_worker_config(),
         )
@@ -194,7 +194,7 @@ class TestRuntimeSettingsRecorded:
         monkeypatch.setattr("benchbox.platforms.dataframe.dask_df.LocalCluster", FakeCluster)
         monkeypatch.setattr("benchbox.platforms.dataframe.dask_df.Client", FakeClient)
         adapter = DaskDataFrameAdapter(
-            use_distributed=True,
+            execution_engine="distributed",
             tuning_config=_dask_worker_config(),
         )
         statements = {s.statement for s in adapter._applied_tuning_ledger.statements}
@@ -213,7 +213,7 @@ class TestRuntimeSettingsRecorded:
         monkeypatch.setattr("benchbox.platforms.dataframe.dask_df.LocalCluster", FakeCluster)
         monkeypatch.setattr("benchbox.platforms.dataframe.dask_df.Client", lambda cluster: cluster)
         adapter = DaskDataFrameAdapter(
-            use_distributed=True,
+            execution_engine="distributed",
             tuning_config=_dask_worker_config(),
         )
         ledger = adapter._applied_tuning_ledger
@@ -254,7 +254,7 @@ class TestRuntimeSettingsRecorded:
         monkeypatch.setattr("benchbox.platforms.dataframe.dask_df.Client", FakeClient)
         spill_dir = tmp_path / "spill"
         adapter = DaskDataFrameAdapter(
-            use_distributed=True,
+            execution_engine="distributed",
             tuning_config=_dask_memory_config(spill_directory=str(spill_dir)),
         )
         ledger = adapter._applied_tuning_ledger
@@ -308,7 +308,7 @@ class TestRuntimeSettingsRecorded:
         spill_dir = tmp_path / "spill"
         cfg = DataFrameTuningConfiguration()
         cfg.memory.spill_directory = str(spill_dir)
-        adapter = DaskDataFrameAdapter(use_distributed=True, tuning_config=cfg)
+        adapter = DaskDataFrameAdapter(execution_engine="distributed", tuning_config=cfg)
 
         assert captured["local_directory"] == str(spill_dir)
         assert any(
@@ -356,7 +356,7 @@ class TestRuntimeSettingsRecorded:
         monkeypatch.setattr("benchbox.platforms.dataframe.dask_df.Client", FakeClient)
         cfg = DataFrameTuningConfiguration()
         cfg.memory.spill_directory = str(tmp_path / "spill")
-        adapter = DaskDataFrameAdapter(use_distributed=True, tuning_config=cfg)
+        adapter = DaskDataFrameAdapter(execution_engine="distributed", tuning_config=cfg)
 
         assert "local_directory" not in captured
         assert adapter._applied_tuning_ledger.is_empty()
@@ -385,7 +385,7 @@ class TestRuntimeSettingsRecorded:
         monkeypatch.setattr("benchbox.platforms.dataframe.dask_df.LocalCluster", FakeCluster)
         monkeypatch.setattr("benchbox.platforms.dataframe.dask_df.Client", FakeClient)
         spill_dir = tmp_path / "spill"
-        adapter = DaskDataFrameAdapter(use_distributed=True, spill_directory=str(spill_dir))
+        adapter = DaskDataFrameAdapter(execution_engine="distributed", spill_directory=str(spill_dir))
 
         assert captured["local_directory"] == str(spill_dir)
         assert adapter._applied_tuning_ledger.is_empty()
@@ -528,7 +528,7 @@ class TestRunBenchmarkCarriesLedger:
         monkeypatch.setattr("benchbox.platforms.dataframe.dask_df.LocalCluster", FakeCluster)
         monkeypatch.setattr("benchbox.platforms.dataframe.dask_df.Client", lambda cluster: cluster)
         adapter = DaskDataFrameAdapter(
-            use_distributed=True,
+            execution_engine="distributed",
             tuning_config=_dask_worker_config(),
         )
         result = _run_no_phases(adapter)
@@ -558,7 +558,7 @@ class TestRunBenchmarkCarriesLedger:
         monkeypatch.setattr("benchbox.platforms.dataframe.dask_df.LocalCluster", FakeCluster)
         monkeypatch.setattr("benchbox.platforms.dataframe.dask_df.Client", lambda cluster: cluster)
         adapter = DaskDataFrameAdapter(
-            use_distributed=True,
+            execution_engine="distributed",
             tuning_config=_dask_memory_config(spill_directory=str(tmp_path / "spill")),
         )
         result = _run_no_phases(adapter)
@@ -578,7 +578,7 @@ class TestRunBenchmarkCarriesLedger:
 
     @pytest.mark.skipif(not DASK_AVAILABLE, reason="Dask not installed")
     def test_default_dask_run_result_is_not_applicable(self):
-        adapter = DaskDataFrameAdapter(use_distributed=False)
+        adapter = DaskDataFrameAdapter(execution_engine="threaded")
         result = _run_no_phases(adapter)
         assert result.tuning_validation_status == NOT_APPLICABLE
         assert result.applied_tuning_ledger is None

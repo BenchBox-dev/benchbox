@@ -111,6 +111,38 @@ def test_polars_declares_adaptive_in_memory_and_streaming() -> None:
     assert not PlatformRegistry.supports_execution_engine("polars", "gpu")
 
 
+@pytest.mark.parametrize(
+    ("platform", "expected"),
+    [
+        ("pg-duckdb", {"duckdb": "delegated", "postgres": "standard"}),
+        ("dask-df", {"threaded": "standard", "distributed": "distributed"}),
+        ("databricks", {"photon": "native-vectorized", "standard": "standard"}),
+        ("velox", {"velox": "native-vectorized", "standard": "standard"}),
+    ],
+)
+def test_existing_platform_engine_declarations(platform: str, expected: dict[str, str]) -> None:
+    engines = supported_execution_engines(platform)
+
+    assert {name: engine.engine_class for name, engine in engines.items()} == expected
+    assert {name: engine.selectable for name, engine in engines.items()} == {
+        name: platform in {"pg-duckdb", "dask-df"} for name in expected
+    }
+
+
+@pytest.mark.parametrize(
+    ("platform", "engine"),
+    [
+        ("databricks", "photon"),
+        ("databricks", "standard"),
+        ("velox", "velox"),
+        ("velox", "standard"),
+    ],
+)
+def test_observed_platform_engines_reject_selection(platform: str, engine: str) -> None:
+    with pytest.raises(UnsupportedExecutionEngineError):
+        resolve_requested(platform, engine)
+
+
 def test_platform_without_engines_declares_none() -> None:
     assert dict(supported_execution_engines("duckdb")) == {}
     assert PlatformRegistry.get_available_execution_engines("duckdb") == []

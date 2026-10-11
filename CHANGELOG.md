@@ -57,6 +57,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `streaming` option, `--polars-streaming` and the MCP Polars `streaming` key
   are deprecated aliases for the streaming engine.
 
+- pg-duckdb declares selectable `duckdb` and `postgres` engines, and Dask
+  declares `threaded` and `distributed`. Databricks SQL and Velox record their
+  observed engines without exposing selectors. Legacy `force_execution` and
+  `use_distributed` options warn and map to their canonical engine values.
+
 ### Before you upgrade
 - Vendor compute names now warn once per run; move saved configurations and
   credential profiles to `compute_resource` and `compute_size` (Fabric Data

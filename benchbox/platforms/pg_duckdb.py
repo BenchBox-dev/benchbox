@@ -4,13 +4,22 @@
 
 from __future__ import annotations
 
+import argparse
 import logging
 import os
 import time
+import warnings
+from dataclasses import asdict
 from datetime import datetime, timezone
 from typing import Any
 
 from benchbox.core.deployment import deployment_class, select_adapter_deployment
+from benchbox.core.execution_engine import (
+    ExecutionEngineReceipt,
+    resolve_requested,
+    supported_execution_engines,
+)
+from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 
 from .base.config_utils import (
     POSTGRES_FAMILY_BASE_OPTIONS,
@@ -82,9 +91,9 @@ class PgDuckDBAdapter(PostgreSQLAdapter):
             parser.add_argument(
                 "--pgduckdb-force-execution",
                 dest="force_execution",
-                action="store_true",
-                default=True,
-                help="Force DuckDB execution engine for all queries (default: True)",
+                action=argparse.BooleanOptionalAction,
+                default=None,
+                help="Deprecated alias for --execution-engine (duckdb or postgres)",
             )
             parser.add_argument(
                 "--pgduckdb-threads",
@@ -99,11 +108,14 @@ class PgDuckDBAdapter(PostgreSQLAdapter):
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> PgDuckDBAdapter:
         adapter_config = _build_postgres_connection_kwargs(config)
-        adapter_config["force_execution"] = config.get("force_execution", True)
+        nested_options = config.get("options") if isinstance(config.get("options"), dict) else {}
+        adapter_config["force_execution"] = config.get("force_execution")
+        if adapter_config["force_execution"] is None:
+            adapter_config["force_execution"] = nested_options.get("force_execution")
+        adapter_config["execution_engine"] = config.get("execution_engine") or DEFAULT_EXECUTION_ENGINE
         adapter_config["postgres_scan_threads"] = config.get("postgres_scan_threads", 0)
         adapter_config["compare_native"] = config.get("compare_native", False)
         adapter_config["duckdb_db_path"] = config.get("duckdb_db_path")
-        nested_options = config.get("options") if isinstance(config.get("options"), dict) else {}
         adapter_config["deployment_mode"] = (
             config.get("deployment_mode") or nested_options.get("deployment_mode") or "self-hosted"
         )
@@ -127,9 +139,15 @@ class PgDuckDBAdapter(PostgreSQLAdapter):
         if self.deployment_mode == "motherduck":
             self._configure_motherduck_mode(config)
 
+        self._legacy_force_execution = config.get("force_execution")
+        if self._legacy_force_execution is None and isinstance(config.get("options"), dict):
+            self._legacy_force_execution = config["options"].get("force_execution")
+
         super().__init__(**config)
 
-        self.force_execution = config.get("force_execution", True)
+        requested = config.get("execution_engine") or DEFAULT_EXECUTION_ENGINE
+        self._engine_receipt = self.resolve_execution_engine(requested)
+        self.force_execution = self._engine_receipt.applied == "duckdb"
         self.postgres_scan_threads = config.get("postgres_scan_threads", 0)
 
         raw_compare = config.get("compare_native", False)
@@ -139,6 +157,40 @@ class PgDuckDBAdapter(PostgreSQLAdapter):
         self.duckdb_db_path: str | None = config.get("duckdb_db_path")
 
         self.motherduck_token = config.get("motherduck_token") or os.environ.get("MOTHERDUCK_TOKEN")
+
+    def resolve_execution_engine(self, requested: str) -> ExecutionEngineReceipt:
+        resolved = resolve_requested("pg-duckdb", requested)
+        explicit = None if resolved == DEFAULT_EXECUTION_ENGINE else resolved
+        legacy = None
+        if self._legacy_force_execution is not None:
+            if not isinstance(self._legacy_force_execution, bool):
+                raise ValueError("pg-duckdb force_execution must be a boolean")
+            legacy = "duckdb" if self._legacy_force_execution else "postgres"
+            warnings.warn(
+                "The pg-duckdb force_execution option is deprecated; use execution_engine='duckdb' or 'postgres'.",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+        if explicit is not None and legacy is not None and explicit != legacy:
+            raise ValueError(
+                "Conflicting execution engine sources: "
+                f"explicit setting requests {explicit!r} vs legacy option force_execution requests {legacy!r}"
+            )
+        selected = explicit or legacy or "duckdb"
+        engines = supported_execution_engines("pg-duckdb")
+        if explicit is not None:
+            resolution = "explicit"
+        elif legacy is not None:
+            resolution = "legacy_option"
+        else:
+            resolution = "platform_default"
+        return ExecutionEngineReceipt(
+            requested=selected if explicit is not None or legacy is not None else DEFAULT_EXECUTION_ENGINE,
+            applied=selected,
+            applied_class=engines[selected].engine_class,
+            applied_native={"duckdb.force_execution": selected == "duckdb"},
+            resolution=resolution,
+        )
 
     def _configure_motherduck_mode(self, config: dict) -> None:
         token = config.get("motherduck_token") or os.environ.get("MOTHERDUCK_TOKEN")
@@ -194,8 +246,8 @@ class PgDuckDBAdapter(PostgreSQLAdapter):
         return conn
 
     def _apply_pgduckdb_session_gucs(self, cursor: Any) -> None:
+        cursor.execute(f"SET duckdb.force_execution = {'true' if self.force_execution else 'false'}")
         if self.force_execution:
-            cursor.execute("SET duckdb.force_execution = true")
             self.logger.info("Enabled duckdb.force_execution for DuckDB query routing")
 
         if self.postgres_scan_threads > 0:
@@ -221,7 +273,7 @@ class PgDuckDBAdapter(PostgreSQLAdapter):
         cursor = connection.cursor()
         try:
             if benchmark_type == "olap":
-                cursor.execute("SET duckdb.force_execution = true")
+                cursor.execute(f"SET duckdb.force_execution = {'true' if self.force_execution else 'false'}")
 
             connection.commit()
         except Exception as e:
@@ -238,6 +290,7 @@ class PgDuckDBAdapter(PostgreSQLAdapter):
         platform_info["configuration"]["force_execution"] = self.force_execution
         platform_info["configuration"]["postgres_scan_threads"] = self.postgres_scan_threads
         platform_info["configuration"]["deployment_mode"] = self.deployment_mode
+        platform_info["configuration"]["execution_engine"] = asdict(self._engine_receipt)
 
         if connection:
             try:
@@ -349,7 +402,6 @@ _build_pg_duckdb_config = make_platform_config_builder(
     ),
     base_options={
         **POSTGRES_FAMILY_BASE_OPTIONS,
-        "force_execution": True,
         "postgres_scan_threads": 0,
         "compare_native": False,
     },

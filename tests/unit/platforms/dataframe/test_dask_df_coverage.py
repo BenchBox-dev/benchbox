@@ -121,6 +121,7 @@ def _make_adapter():
     adapter.threads_per_worker = 1
     adapter.use_distributed = False
     adapter.scheduler_address = None
+    adapter._legacy_use_distributed = None
     adapter._client = None
     adapter._cluster = None
     adapter.verbose = False
@@ -133,6 +134,7 @@ def _make_adapter():
     adapter._n_workers_configured = False
     adapter._threads_per_worker_configured = False
     adapter._memory_limit_configured = False
+    adapter._engine_receipt = adapter.resolve_execution_engine("threaded")
     return adapter
 
 
@@ -140,6 +142,85 @@ def test_init_raises_without_dask(monkeypatch):
     monkeypatch.setattr(mod, "DASK_AVAILABLE", False)
     with pytest.raises(ImportError, match="Dask not installed"):
         mod.DaskDataFrameAdapter()
+
+
+def _engine_resolver(*, legacy=None, scheduler_address=None):
+    adapter = object.__new__(mod.DaskDataFrameAdapter)
+    adapter._legacy_use_distributed = legacy
+    adapter.scheduler_address = scheduler_address
+    return adapter
+
+
+def test_default_execution_engine_resolves_to_distributed():
+    receipt = _engine_resolver().resolve_execution_engine("default")
+
+    assert receipt.requested == "default"
+    assert receipt.applied == "distributed"
+    assert receipt.applied_class == "distributed"
+    assert receipt.resolution == "platform_default"
+
+
+@pytest.mark.parametrize(("legacy", "engine"), [(True, "distributed"), (False, "threaded")])
+def test_legacy_use_distributed_alias_warns_and_maps(legacy, engine):
+    with pytest.warns(DeprecationWarning, match="use_distributed"):
+        receipt = _engine_resolver(legacy=legacy).resolve_execution_engine("default")
+
+    assert receipt.requested == engine
+    assert receipt.applied == engine
+    assert receipt.resolution == "legacy_option"
+
+
+def test_explicit_and_legacy_dask_engines_conflict():
+    with pytest.warns(DeprecationWarning, match="use_distributed"):
+        with pytest.raises(ValueError, match="Conflicting execution engine sources"):
+            _engine_resolver(legacy=False).resolve_execution_engine("distributed")
+
+
+def test_threaded_engine_rejects_scheduler_address():
+    with pytest.raises(ValueError, match="scheduler_address requires execution_engine='distributed'"):
+        _engine_resolver(scheduler_address="tcp://scheduler:8786").resolve_execution_engine("threaded")
+
+
+@pytest.mark.skipif(not mod.DASK_AVAILABLE, reason="Dask not installed")
+def test_saved_platform_option_resolves_legacy_dask_engine(tmp_path):
+    from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
+    from benchbox.platforms.adapter_factory import get_adapter
+
+    database_config = PlatformHookRegistry.build_database_config("dask", {"use_distributed": False})
+    option_names = PlatformHookRegistry.list_option_specs("dask")
+    options = {key: value for key, value in database_config.options.items() if key in option_names}
+    with pytest.warns(DeprecationWarning, match="use_distributed"):
+        adapter = get_adapter(
+            "dask",
+            mode="dataframe",
+            working_dir=tmp_path,
+            execution_engine=database_config.execution_engine,
+            **options,
+        )
+
+    receipt = adapter.get_platform_info()["execution_engine"]
+    assert receipt["requested"] == "threaded"
+    assert receipt["applied"] == "threaded"
+    assert receipt["resolution"] == "legacy_option"
+    adapter.close()
+
+
+@pytest.mark.skipif(not mod.DASK_AVAILABLE, reason="Dask not installed")
+def test_factory_applies_explicit_threaded_engine(tmp_path):
+    from benchbox.platforms.adapter_factory import get_adapter
+
+    adapter = get_adapter(
+        "dask",
+        mode="dataframe",
+        working_dir=tmp_path,
+        execution_engine="threaded",
+    )
+
+    receipt = adapter.get_platform_info()["execution_engine"]
+    assert receipt["requested"] == "threaded"
+    assert receipt["applied"] == "threaded"
+    assert receipt["resolution"] == "explicit"
+    adapter.close()
 
 
 def test_apply_tuning_and_setup_distributed_paths(monkeypatch, tmp_path):

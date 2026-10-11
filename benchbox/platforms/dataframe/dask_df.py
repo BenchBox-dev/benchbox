@@ -8,6 +8,8 @@ import logging
 import re
 import shutil
 import tempfile
+import warnings
+from dataclasses import asdict
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
@@ -32,6 +34,8 @@ except ImportError:
     PANDAS_AVAILABLE = False
 
 from benchbox.core.dataframe.tuning import DataFrameTuningConfiguration
+from benchbox.core.execution_engine import ExecutionEngineReceipt, resolve_requested, supported_execution_engines
+from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 from benchbox.platforms.dataframe.pandas_df import _pandas_string_columns
 from benchbox.platforms.dataframe.pandas_family import (
     PandasFamilyAdapter,
@@ -88,11 +92,12 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
         very_verbose: bool = False,
         n_workers: int | None = None,
         threads_per_worker: int | None = None,
-        use_distributed: bool = True,
+        use_distributed: bool | None = None,
         scheduler_address: str | None = None,
         memory_limit: str | None = None,
         spill_directory: str | Path | None = None,
         tuning_config: DataFrameTuningConfiguration | None = None,
+        execution_engine: str = "default",
     ) -> None:
         if not DASK_AVAILABLE:
             raise ImportError("Dask not installed. Install with: pip install dask[distributed]")
@@ -109,8 +114,10 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
 
         self.n_workers = n_workers
         self.threads_per_worker = threads_per_worker if threads_per_worker is not None else 1
-        self.use_distributed = use_distributed
         self.scheduler_address = scheduler_address
+        self._legacy_use_distributed = use_distributed
+        self._engine_receipt = self.resolve_execution_engine(execution_engine)
+        self.use_distributed = self._engine_receipt.applied == "distributed"
         self._memory_limit: str | None = memory_limit
         self._spill_to_disk = False
         self._configured_spill_directory = Path(spill_directory).expanduser() if spill_directory else None
@@ -126,9 +133,44 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
         self._validate_and_apply_tuning()
         self._apply_local_resource_envelope_defaults()
 
-        if use_distributed or scheduler_address:
+        if self.use_distributed:
             self._setup_distributed()
             self._record_distributed_tuning()
+
+    def resolve_execution_engine(self, requested: str) -> ExecutionEngineReceipt:
+        resolved = resolve_requested("dask", requested)
+        explicit = None if resolved == DEFAULT_EXECUTION_ENGINE else resolved
+        legacy = None
+        if self._legacy_use_distributed is not None:
+            if not isinstance(self._legacy_use_distributed, bool):
+                raise ValueError("Dask use_distributed must be a boolean")
+            legacy = "distributed" if self._legacy_use_distributed else "threaded"
+            warnings.warn(
+                "The Dask use_distributed option is deprecated; use execution_engine='distributed' or 'threaded'.",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+        if explicit is not None and legacy is not None and explicit != legacy:
+            raise ValueError(
+                "Conflicting execution engine sources: "
+                f"explicit setting requests {explicit!r} vs legacy option use_distributed requests {legacy!r}"
+            )
+        selected = explicit or legacy or "distributed"
+        if self.scheduler_address and selected != "distributed":
+            raise ValueError("Dask scheduler_address requires execution_engine='distributed'")
+        engines = supported_execution_engines("dask")
+        if explicit is not None:
+            resolution = "explicit"
+        elif legacy is not None:
+            resolution = "legacy_option"
+        else:
+            resolution = "platform_default"
+        return ExecutionEngineReceipt(
+            requested=selected if explicit is not None or legacy is not None else DEFAULT_EXECUTION_ENGINE,
+            applied=selected,
+            applied_class=engines[selected].engine_class,
+            resolution=resolution,
+        )
 
     def _apply_tuning(self) -> None:
         config = self._tuning_config
@@ -433,6 +475,7 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
             "spill_directory": str(self._spill_directory) if getattr(self, "_spill_directory", None) else None,
             "working_dir": str(self.working_dir),
         }
+        info["execution_engine"] = asdict(self._engine_receipt)
 
         if DASK_AVAILABLE:
             import dask

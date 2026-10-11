@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from typing import Any, Literal, Optional
 
 from benchbox.core.deployment import DEPLOYMENT_ALIAS_KEYS, resolve_deployment
-from benchbox.core.execution_engine import resolve_requested
+from benchbox.core.execution_engine import DEFAULT_EXECUTION_ENGINE, resolve_requested
 from benchbox.core.platform_registry import PlatformRegistry
 from benchbox.platforms.base.adapter import check_isolation_capability
 from benchbox.platforms.clickhouse.deployment_mode import (
@@ -133,9 +133,10 @@ def get_adapter(
     resolve_requested(base_platform, requested_engine)
 
     if resolved_mode == "sql":
+        if requested_engine != DEFAULT_EXECUTION_ENGINE:
+            config["execution_engine"] = requested_engine
         return _get_sql_adapter(base_platform, **config)
-    else:
-        return _get_dataframe_adapter(base_platform, execution_engine=requested_engine, **config)
+    return _get_dataframe_adapter(base_platform, execution_engine=requested_engine, **config)
 
 
 def _resolve_family_deployment(
@@ -182,8 +183,9 @@ def _get_sql_adapter(platform: str, **config: Any) -> Any:
 def _get_dataframe_adapter(platform: str, **config: Any) -> Any:
     import benchbox.platforms.dataframe as _df
 
-    requested_engine = config.pop("execution_engine", None) or "default"
-    if platform == "polars":
+    requested_engine = config.pop("execution_engine", None) or DEFAULT_EXECUTION_ENGINE
+
+    if platform in {"polars", "dask"}:
         config["execution_engine"] = requested_engine
     driver_package = config.pop("driver_package", None)
     driver_version = config.pop("driver_version", None) or config.pop("driver_version_requested", None)

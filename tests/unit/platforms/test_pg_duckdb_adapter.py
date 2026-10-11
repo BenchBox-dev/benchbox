@@ -40,6 +40,10 @@ class TestPgDuckDBAdapter:
         assert adapter.username == "postgres"
         assert adapter.schema == "public"
         assert adapter.force_execution is True
+        receipt = adapter.get_platform_info()["configuration"]["execution_engine"]
+        assert receipt["requested"] == "default"
+        assert receipt["applied"] == "duckdb"
+        assert receipt["resolution"] == "platform_default"
         assert adapter.postgres_scan_threads == 0
         assert adapter.deployment_mode == "self-hosted"
 
@@ -51,7 +55,7 @@ class TestPgDuckDBAdapter:
             username="custom_user",
             password="secret",
             schema="analytics",
-            force_execution=False,
+            execution_engine="postgres",
             postgres_scan_threads=4,
         )
 
@@ -75,7 +79,7 @@ class TestPgDuckDBAdapter:
             "host": "pgduckdb.local",
             "port": 5433,
             "database": "test_analytics",
-            "force_execution": True,
+            "execution_engine": "duckdb",
             "postgres_scan_threads": 8,
         }
 
@@ -86,6 +90,24 @@ class TestPgDuckDBAdapter:
         assert adapter.database == "test_analytics"
         assert adapter.force_execution is True
         assert adapter.postgres_scan_threads == 8
+
+    def test_saved_config_force_execution_alias_warns_and_maps(self, pg_duckdb_stubs):
+        with pytest.warns(DeprecationWarning, match="force_execution"):
+            adapter = PgDuckDBAdapter.from_config(
+                {
+                    "benchmark": "tpch",
+                    "scale_factor": 1.0,
+                    "execution_engine": "default",
+                    "options": {"force_execution": False},
+                }
+            )
+
+        receipt = adapter.get_platform_info()["configuration"]["execution_engine"]
+        assert adapter.force_execution is False
+        assert receipt["requested"] == "postgres"
+        assert receipt["applied"] == "postgres"
+        assert receipt["applied_class"] == "standard"
+        assert receipt["resolution"] == "legacy_option"
 
     def test_from_config_generates_database_name(self, pg_duckdb_stubs):
         config = {
@@ -143,7 +165,7 @@ class TestPgDuckDBAdapter:
 
     def test_get_platform_info_basic(self, pg_duckdb_stubs):
         adapter = PgDuckDBAdapter(
-            force_execution=True,
+            execution_engine="duckdb",
             postgres_scan_threads=4,
         )
 
@@ -154,6 +176,19 @@ class TestPgDuckDBAdapter:
         assert info["configuration"]["force_execution"] is True
         assert info["configuration"]["postgres_scan_threads"] == 4
         assert info["configuration"]["deployment_mode"] == "self-hosted"
+        assert info["configuration"]["execution_engine"]["requested"] == "duckdb"
+        assert info["configuration"]["execution_engine"]["applied"] == "duckdb"
+
+    def test_platform_factory_applies_requested_engine(self, pg_duckdb_stubs):
+        from benchbox.platforms.adapter_factory import get_adapter
+
+        adapter = get_adapter("pg-duckdb", execution_engine="postgres")
+        receipt = adapter.get_platform_info()["configuration"]["execution_engine"]
+
+        assert adapter.force_execution is False
+        assert receipt["requested"] == "postgres"
+        assert receipt["applied"] == "postgres"
+        assert receipt["resolution"] == "explicit"
 
 
 class TestPgDuckDBExtensionVerification:
@@ -197,7 +232,7 @@ class TestPgDuckDBExtensionVerification:
 
         pg_duckdb_stubs.connect.return_value = mock_conn
 
-        adapter = PgDuckDBAdapter(force_execution=True)
+        adapter = PgDuckDBAdapter(execution_engine="duckdb")
 
         with (
             patch.object(adapter, "check_server_database_exists", return_value=True),
@@ -208,6 +243,19 @@ class TestPgDuckDBExtensionVerification:
         calls = [str(call) for call in mock_cursor.execute.call_args_list]
         force_exec_set = any("force_execution" in call for call in calls)
         assert force_exec_set
+
+    def test_postgres_engine_sets_force_execution_false(self, pg_duckdb_stubs):
+        adapter = PgDuckDBAdapter(execution_engine="postgres")
+        cursor = Mock()
+        adapter._apply_pgduckdb_session_gucs(cursor)
+        cursor.execute.assert_called_once_with("SET duckdb.force_execution = false")
+
+        connection = Mock()
+        connection.cursor.return_value = cursor
+        cursor.reset_mock()
+        with patch.object(postgresql_module.PostgreSQLAdapter, "configure_for_benchmark"):
+            adapter.configure_for_benchmark(connection, "olap")
+        cursor.execute.assert_called_once_with("SET duckdb.force_execution = false")
 
     def test_create_connection_sets_thread_count(self, pg_duckdb_stubs):
         mock_conn = Mock()
@@ -242,7 +290,7 @@ class TestPgDuckDBExtensionVerification:
 
         pg_duckdb_stubs.connect.return_value = mock_conn
 
-        adapter = PgDuckDBAdapter(force_execution=True)
+        adapter = PgDuckDBAdapter(execution_engine="duckdb")
 
         stream_conn = adapter.new_stream_connection(Mock())
 
@@ -428,7 +476,7 @@ class TestPgDuckDBConfigBuilder:
         assert config.maintenance_work_mem == "512MB"
         assert config.effective_cache_size == "1GB"
         assert config.max_parallel_workers_per_gather == 2
-        assert config.force_execution is True
+        assert config.force_execution is None
         assert config.postgres_scan_threads == 0
 
     def test_platform_option_defaults_keep_numeric_types(self, pg_duckdb_stubs):
@@ -438,7 +486,7 @@ class TestPgDuckDBConfigBuilder:
         options = PlatformHookRegistry.parse_options("pg-duckdb", [])
 
         assert options["port"] == 5432
-        assert options["force_execution"] is True
+        assert "force_execution" not in options
         assert options["postgres_scan_threads"] == 0
         adapter = PgDuckDBAdapter.from_config(options)
         assert adapter.postgres_scan_threads == 0

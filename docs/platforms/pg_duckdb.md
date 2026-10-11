@@ -110,13 +110,15 @@ benchbox run --platform pg-duckdb --benchmark tpch --scale 1.0 \
   --platform-option password=secret
 
 benchbox run --platform pg-duckdb --benchmark tpch --scale 1.0 \
-  --platform-option force_execution=false
+  --execution-engine postgres
 
 benchbox run --platform pg-duckdb --benchmark tpch --scale 1.0 \
   --platform-option postgres_scan_threads=8
 ```
 
-The four commands run, in order: a basic TPC-H benchmark, a benchmark with a custom connection, a benchmark with `force_execution=false` (lets PostgreSQL choose when to use DuckDB), and a benchmark that configures parallel scan threads with `postgres_scan_threads`.
+The four commands run, in order: a basic TPC-H benchmark, a benchmark with a
+custom connection, a benchmark using PostgreSQL's normal query routing, and a
+benchmark that configures parallel scan threads with `postgres_scan_threads`.
 
 ## Configuration Options
 
@@ -127,8 +129,8 @@ The four commands run, in order: a basic TPC-H benchmark, a benchmark with a cus
 | `database` | auto-generated | Database name |
 | `username` | `postgres` | PostgreSQL username |
 | `password` | (none) | PostgreSQL password |
-| `schema` | `public` | PostgreSQL schema name |
-| `force_execution` | `true` | Force DuckDB execution for all queries |
+| `execution_engine` | `default` (`duckdb`) | Choose `duckdb` or PostgreSQL's normal query routing with `postgres` |
+| `force_execution` | - | Deprecated alias: `true` selects `duckdb`; `false` selects `postgres` |
 | `postgres_scan_threads` | `0` (auto) | Threads for parallel PostgreSQL table scanning |
 
 ## How It Works
@@ -137,8 +139,9 @@ pg_duckdb accelerates queries by routing them through DuckDB's vectorized execut
 
 1. **Schema creation** - Standard PostgreSQL DDL (CREATE TABLE) is used
 2. **Data loading** - PostgreSQL COPY loads data into standard heap tables
-3. **Query execution** - With `force_execution=true`, queries are executed by DuckDB's engine
+3. **Query execution** - `execution_engine=default` resolves to `duckdb` and forces DuckDB execution. `postgres` sets `duckdb.force_execution=false`, allowing PostgreSQL's normal routing.
 4. **Results** - Results are returned through the standard PostgreSQL wire protocol
+5. **Engine receipt** - Result bundles record the requested and applied engine in `platform.execution_engine`.
 
 ### Performance Characteristics
 

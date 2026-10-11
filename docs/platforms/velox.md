@@ -12,6 +12,7 @@ Apache Gluten is a plugin to Apache Spark that offloads physical operators to [V
 - **Native C++ execution** - Gluten routes Spark physical operators through Velox; unsupported operators transparently fall back to JVM execution.
 - **Columnar shuffle** - `ColumnarShuffleManager` is mandatory for meaningful acceleration (the adapter enforces this).
 - **Velox activity probe** - `get_platform_info()` runs `EXPLAIN SELECT count(*) FROM range(10)` and returns `velox_active: true/false` so you can confirm the plugin is live.
+- **Engine observation** - `platform.execution_engine.observed` records `velox` or `standard` from the existing probe with `observed_source="explain"`. These observed values cannot be selected; `execution_engine=default` preserves platform behavior.
 - **Plan annotation** - `get_query_plan()` labels every plan with `Velox native execution: YES/NOT DETECTED` and flags real JVM fallbacks (without false-positives on `VeloxColumnarToRow`).
 - **Two deployment modes** - `local` (in-process SparkSession) and `remote` (connect to a pre-started Gluten-enabled Spark-Connect server).
 - **Docker-first** on macOS / Windows - the provided image tracks the official Apache release tarball and defaults to `linux/amd64`.

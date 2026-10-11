@@ -14,6 +14,7 @@ from benchbox.core.execution_engine import (
     DEPRECATED_OPTION_ALIASES,
     EXECUTION_ENGINE_CLASSES,
     RESERVED_OPTION_KEYS,
+    supported_execution_engines,
 )
 from benchbox.core.hooks.platform_hooks import PlatformHookRegistry, PlatformOptionSpec
 from benchbox.core.platform_manifest import PLATFORM_MANIFEST
@@ -86,6 +87,21 @@ def test_engine_name_maps_to_one_class_on_every_platform() -> None:
         classes.setdefault(name, set()).add(engine_class)
     assert {name: values for name, values in classes.items() if len(values) > 1} == {}
     assert DEFAULT_EXECUTION_ENGINE not in classes
+
+
+@pytest.mark.parametrize(
+    ("platform", "document"),
+    [
+        ("pg-duckdb", "pg_duckdb.md"),
+        ("dask-df", "dask-dataframe.md"),
+        ("databricks", "databricks.md"),
+        ("velox", "velox.md"),
+    ],
+)
+def test_platform_guides_list_declared_execution_engines(platform: str, document: str) -> None:
+    doc_path = Path(__file__).resolve().parents[3] / "docs" / "platforms" / document
+    contents = doc_path.read_text(encoding="utf-8")
+    assert all(f"`{name}`" in contents for name in supported_execution_engines(platform))
 
 
 def test_no_unlisted_reserved_option_keys() -> None:

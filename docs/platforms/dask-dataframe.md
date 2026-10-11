@@ -80,44 +80,42 @@ python -c "import dask.dataframe as dd; print('Dask DataFrame ready')"
 benchbox run --platform dask-df --benchmark tpch --scale 0.1
 
 benchbox run --platform dask-df --benchmark tpch --scale 1 \
+  --execution-engine threaded \
+  --platform-option threads_per_worker=4
+
+benchbox run --platform dask-df --benchmark tpch --scale 10 \
+  --execution-engine distributed \
   --platform-option n_workers=4 \
   --platform-option threads_per_worker=2
 
-benchbox run --platform dask-df --benchmark tpch --scale 10 \
-  --platform-option use_distributed=true
-
 benchbox run --platform dask-df --benchmark tpch --scale 100 \
+  --execution-engine distributed \
   --platform-option scheduler_address=tcp://scheduler:8786
 ```
 
-The four commands run, in order: the default local setup, local execution with configured workers, the distributed scheduler, and a connection to an existing cluster.
+The default engine uses Dask Distributed with a local cluster. `threaded` uses
+Dask's local threaded scheduler. Set `scheduler_address` to connect the
+distributed engine to an existing cluster.
 
 ## Configuration Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `n_workers` | auto | Number of worker processes |
+| `execution_engine` | `default` (`distributed`) | Choose `threaded` or `distributed` |
+| `n_workers` | auto | Number of workers in the local distributed cluster |
 | `threads_per_worker` | 1 | Threads per worker |
-| `use_distributed` | false | Use Dask Distributed scheduler |
-| `scheduler_address` | - | Address of existing Dask scheduler |
+| `scheduler_address` | - | Existing Dask scheduler; requires `distributed` |
+| `use_distributed` | - | Deprecated alias: `true` selects `distributed`; `false` selects `threaded` |
 
 ### Scheduler Options
 
-**Synchronous** (default for small data):
-- Single-threaded, good for debugging
-- No parallelization overhead
+**Threaded** (`threaded`):
+- Runs tasks with local worker threads
+- Does not start a Dask Distributed cluster
 
-**Threaded** (default for local):
-- Multi-threaded within single process
-- Good for I/O-bound operations
-
-**Processes** (multi-core):
-- Multiple processes for CPU-bound work
-- Avoids Python GIL limitations
-
-**Distributed** (clusters):
-- Full distributed execution
-- Scales across multiple machines
+**Distributed** (`distributed`, the default):
+- Uses Dask Distributed with a local cluster or a remote scheduler
+- Scales across workers and machines
 
 ## Scale Factor Guidelines
 
@@ -207,13 +205,14 @@ from benchbox.platforms.dataframe import DaskDataFrameAdapter
 
 adapter = DaskDataFrameAdapter(
     working_dir="./benchmark_data",
+    execution_engine="threaded",
     n_workers=4,
     threads_per_worker=2
 )
 
 adapter = DaskDataFrameAdapter(
     working_dir="./benchmark_data",
-    use_distributed=True,
+    execution_engine="distributed",
     scheduler_address="tcp://scheduler:8786"
 )
 
@@ -226,7 +225,7 @@ result = adapter.execute_query(ctx, query)
 print(result)
 ```
 
-The first adapter runs locally. The second connects to a distributed cluster.
+The first adapter uses the local threaded scheduler. The second connects to a distributed cluster.
 
 ## Distributed Cluster Setup
 
@@ -243,7 +242,7 @@ cluster = LocalCluster(
 client = Client(cluster)
 
 adapter = DaskDataFrameAdapter(
-    use_distributed=True,
+    execution_engine="distributed",
     scheduler_address=client.scheduler.address
 )
 ```

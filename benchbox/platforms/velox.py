@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import re
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
 from benchbox.core.deployment import deployment_class, select_adapter_deployment
+from benchbox.core.execution_engine import ExecutionEngineReceipt, ObservedSource
+from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 from ..utils.dependencies import (
@@ -267,6 +270,19 @@ class VeloxAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
             platform_info["platform_version"] = None
             platform_info["velox_active"] = None
 
+        velox_active = platform_info["velox_active"]
+        observed = "velox" if velox_active is True else "standard" if velox_active is False else "not_captured"
+        observed_source: ObservedSource = "explain" if velox_active is not None else "none"
+        platform_info["configuration"]["execution_engine"] = asdict(
+            ExecutionEngineReceipt(
+                requested=DEFAULT_EXECUTION_ENGINE,
+                applied=None,
+                applied_class=None,
+                resolution="platform_default",
+                observed=observed,
+                observed_source=observed_source,
+            )
+        )
         return platform_info
 
     def get_target_dialect(self) -> str:

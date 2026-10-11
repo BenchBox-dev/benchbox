@@ -97,7 +97,8 @@ class TestAutoDetectDatabricksConfig:
 
 
 class TestGetPlatformInfoSdkPath:
-    def test_captures_compute_configuration_from_sdk(self):
+    @pytest.mark.parametrize(("enable_photon", "observed"), [(True, "photon"), (False, "standard")])
+    def test_captures_compute_configuration_from_sdk(self, enable_photon, observed):
         adapter = _make_adapter(http_path="/sql/1.0/warehouses/abc123")
 
         mock_warehouse = MagicMock()
@@ -107,7 +108,7 @@ class TestGetPlatformInfoSdkPath:
         mock_warehouse.auto_stop_mins = 30
         mock_warehouse.min_num_clusters = 1
         mock_warehouse.max_num_clusters = 4
-        mock_warehouse.enable_photon = True
+        mock_warehouse.enable_photon = enable_photon
         mock_warehouse.enable_serverless_compute = False
         mock_warehouse.warehouse_type = MagicMock()
         mock_warehouse.warehouse_type.value = "CLASSIC"
@@ -133,8 +134,13 @@ class TestGetPlatformInfoSdkPath:
         assert cc["warehouse_id"] == "abc123"
         assert cc["warehouse_name"] == "My Warehouse"
         assert cc["warehouse_size"] == "Medium"
-        assert cc["enable_photon"] is True
+        assert cc["enable_photon"] is enable_photon
         assert cc["warehouse_metadata_collection_status"] == "available"
+        receipt = info["configuration"]["execution_engine"]
+        assert receipt["requested"] == "default"
+        assert receipt["applied"] is None
+        assert receipt["observed"] == observed
+        assert receipt["observed_source"] == "vendor_log"
 
     def test_platform_info_sdk_import_error_silenced(self):
         adapter = _make_adapter()
@@ -149,6 +155,9 @@ class TestGetPlatformInfoSdkPath:
         assert info["compute_configuration"]["warehouse_id"] == "abc123"
         assert info["compute_configuration"]["warehouse_metadata_collection_status"] == "unavailable"
         assert info["compute_configuration"]["warehouse_metadata_error_class"] in {"ImportError", "ModuleNotFoundError"}
+        receipt = info["configuration"]["execution_engine"]
+        assert receipt["observed"] == "not_captured"
+        assert receipt["observed_source"] == "none"
 
     def test_platform_info_sdk_exception_silenced(self):
         adapter = _make_adapter()
