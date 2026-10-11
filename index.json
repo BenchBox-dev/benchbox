@@ -4247,17 +4247,12 @@
       "title": "Remove comments and docstrings from TPC-DS runtime and benchmark phases"
     },
     "comment-cleanup-tpcds-stream-decision": {
-      "claim": {
-        "expires_at": "2026-10-12T17:51:36Z",
-        "generation": "1a63ca141c2a46faae25186b0af97ec5",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cf29857b7864377c27f69396"
-      },
+      "claim": null,
       "needs": [
         "comment-cleanup-scope-policy"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Decide remaining TPC-DS legacy stream and RNG migration"
     },
     "comment-cleanup-tpch": {
