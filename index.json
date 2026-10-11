@@ -13644,6 +13644,13 @@
       "status": "done",
       "title": "Let native merge queue validate current-base integration without needless branch refreshes"
     },
+    "native-task-model-tier-selection-20261011": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Expose and verify model-tier selection for native subagent dispatch"
+    },
     "natural-language-to-sql-testing-framework": {
       "claim": null,
       "needs": [],
