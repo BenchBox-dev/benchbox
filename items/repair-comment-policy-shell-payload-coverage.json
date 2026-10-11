@@ -4,7 +4,7 @@
     "Regression tests prove executable payload comments remain scanned, including shell/YAML payload boundaries.",
     "`make comment-policy-check` passes and runs the native tests."
   ],
-  "context": "Observed on 2026-10-12 while committing refreshed audit evidence for PR #2909. `make comment-policy-check` and the commit hook both exit nonzero with the same 10 coverage errors. The affected paths are unchanged in the current PR diff. No parser/config changes were made. The audit refresh remains staged but uncommitted; the user authorized follow-up TODO creation for findings too large for a targeted fix.",
+  "context": "The current PR #2909 commit hook fails on 10 comment-policy shell-payload coverage errors. A separate existing open PR, #2907 `fix(ci): restore comment policy and scanner checks`, targets `develop` and changes `scripts/comment_payloads.py` plus the affected workflow/shell files. This appears to cover the same parser gap; its head is `8affc9b33ff9ba8c13123d41387635a25b0758a1`, state OPEN/BLOCKED, with Oracle verdict pending. Do not duplicate or use that branch. Revalidate #2907 and run `make comment-policy-check` after its fix lands; then resume this item only if the 10 errors remain. The refreshed #2909 audit report and inventory remain staged but uncommitted because the hook failed.",
   "description": "The rebased docs-remediation branch cannot commit: the repository comment-policy hook returns 10 enforced coverage errors, `shell command source requires an executable-payload adapter`. The errors occur in `.github/workflows/publication-deploy.yml` (209, 357, 826, 1062), `.github/workflows/publication-preview-deploy.yml` (303), `.github/workflows/sync-results-data-to-published.yml` (359), `_project/scripts/concurrency_sweep.sh`, `_sources/compilation/scripts/compile-all-platforms.sh`, `scripts/make_timing_shell.sh`, and `scripts/release_cut_abort.sh`. This is broader than the targeted docs/feed fix and outside PR #2909's diff. Add correct parser support/adapters and tests; do not suppress coverage errors or weaken comment-policy enforcement.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/2909",
@@ -37,6 +37,14 @@
       "generation": "321381d2535b407f80b6e71d2974c726",
       "op": "release",
       "op_id": "57a173ea0cbb49a393a73156eba7d94a",
+      "session_id": "f00fbcc194ab47a6a9508e7176243455"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c5daffc9eae3c5f9ce6578f7",
+      "at": "2026-10-11T22:31:39Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c23746b9401242c0a188fecb7705c2a5",
       "session_id": "f00fbcc194ab47a6a9508e7176243455"
     }
   ]
