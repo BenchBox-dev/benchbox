@@ -237,6 +237,10 @@ def referenced_downloads(docs_dir: Path, tracked: list[str]) -> list[str]:
                 continue
             if resolved in files and not resolved.endswith((".md", ".rst")):
                 found.add(resolved)
+                if resolved.startswith("_sources/tpc-ds/query_templates/") and resolved.endswith(".tpl"):
+                    found.add("_sources/tpc-ds/EULA.txt")
+                elif resolved.startswith("benchbox/_binaries/tpc-h/templates/queries/") and resolved.endswith(".sql"):
+                    found.add("_sources/tpc-h/EULA.txt")
     return sorted(found)
 
 

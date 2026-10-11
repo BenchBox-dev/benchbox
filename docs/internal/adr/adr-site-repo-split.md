@@ -45,6 +45,10 @@ No Python source in the site repo, no JS/TS source in core. Run-time
 third-party tools are allowed. The site-inputs bundle schema uses integer
 majors; the site supports N and N-1 for one release; core lands first.
 
+The bundle selects the TPC-DS or TPC-H EULA only when that benchmark's query
+templates are selected; the site publishes it beside those query downloads.
+Unrelated EULAs are not included.
+
 ## Supersessions
 
 - `_project/decisions/single-repo-migration.md`, in part: its A3 tree split
