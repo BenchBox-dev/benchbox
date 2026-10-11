@@ -7,7 +7,7 @@
     "Generated sitemap does not publish /blog/drafts.html and tests cover the behavior",
     "Focused docs, converter, and Sphinx policy checks pass"
   ],
-  "context": "Follow-up to merged PR #2891. Targeted fixes are in commit 77756ad089e741f6389a53ceb81f7a048a2ce399 and draft PR https://github.com/BenchBox-dev/benchbox/pull/2899 targets develop. Verified with make pr-preflight; make ci-docs; make comment-policy-check (0 violations); focused CLI/Sphinx pytest suites; npm run check; website build and tests (1846 pages, 331 tests); Results Explorer build. Full route inventory and HTTP status probing remain in TODO docs-remediation-full-surface-audit. Owner-authorized deployment and live-route verification remain in TODO docs-remediation-live-site-publish. The PR conflict scan warned about open PRs #2835 and #2829 in unrelated files; PR #2899 remains draft and unarmed. Production deployment requires owner authorization after merge.",
+  "context": "Follow-up to merged PR #2891. Targeted fixes are in commit 77756ad089e741f6389a53ceb81f7a048a2ce399 and PR https://github.com/BenchBox-dev/benchbox/pull/2899 targets develop. Current live PR state: open, ready (not draft), head unchanged, unmerged, reviewDecision empty, mergeStateStatus UNKNOWN; latest visible CI/docs/site/oracle checks succeeded, path-gated jobs skipped. The dependent items docs-remediation-full-surface-audit and docs-remediation-live-site-publish remain not ready until this item is completed. Do not treat checks or ready status as merge evidence. Full route inventory and HTTP status probing remain in TODO docs-remediation-full-surface-audit. Owner-authorized deployment and live-route verification remain in TODO docs-remediation-live-site-publish; no deployment authorization is implied. Earlier local conflict scan warned about PRs #2835 and #2829 in unrelated files; revalidate before landing.",
   "description": "Address the confirmed findings from the adversarial review of the 2026-10 documentation-exposure remediation: remove public re-identification guidance while preserving the published result contract; correct invalid platform extras and remaining benchmark, CLI, adapter, and driver documentation; make Sphinx allowlist enforcement cover all supported source suffixes; and remove the drafts page from the sitemap. Prepare a focused PR with targeted verification.",
   "sessions": [
     {
@@ -42,6 +42,14 @@
       "generation": "cacd3ef4d1764dbca0867a99db8dbb7f",
       "op": "release",
       "op_id": "7880d0ae6fb9419d9745eb45d81cbb59",
+      "session_id": "f00fbcc194ab47a6a9508e7176243455"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c5daffc9eae3c5f9ce6578f7",
+      "at": "2026-10-11T17:49:22Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7e496d16e55040f6a6d55db13d7223e9",
       "session_id": "f00fbcc194ab47a6a9508e7176243455"
     }
   ]
