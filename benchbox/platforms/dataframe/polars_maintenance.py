@@ -23,7 +23,7 @@ from benchbox.core.dataframe.maintenance_interface import (
     BaseDataFrameMaintenanceOperations,
     DataFrameMaintenanceCapabilities,
 )
-from benchbox.platforms.polars_compat import collect_frame
+from benchbox.utils.polars_collection import collect_frame
 
 if TYPE_CHECKING:
     pass

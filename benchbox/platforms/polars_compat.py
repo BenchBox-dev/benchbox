@@ -4,7 +4,6 @@ import inspect
 import sys
 from functools import cache
 from importlib import metadata
-from typing import Any
 
 RUNTIME_MODULE_PREFIX = "_polars_runtime_"
 RUNTIME_PACKAGE_ABSENT = "absent"
@@ -75,14 +74,6 @@ def collect_affinity() -> str | None:
 
     value = pl.Config.state().get(ENGINE_AFFINITY_KEY)
     return str(value) if value else None
-
-
-def collect_engine_option(engine: str) -> dict[str, str]:
-    return {} if engine == "default" else {"engine": engine}
-
-
-def collect_frame(frame: Any, engine: str = "default") -> Any:
-    return frame.collect(**collect_engine_option(engine))
 
 
 def active_runtime() -> tuple[str, str]:

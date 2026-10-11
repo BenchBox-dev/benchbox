@@ -17,7 +17,7 @@ from benchbox.core.dataframe.maintenance_interface import (
     get_maintenance_operations_for_platform,
 )
 from benchbox.core.dataframe_manager_factory import get_dataframe_manager
-from benchbox.platforms.polars_compat import collect_frame
+from benchbox.utils.polars_collection import collect_frame
 
 if TYPE_CHECKING:
     pass
