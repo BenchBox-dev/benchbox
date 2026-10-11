@@ -5,7 +5,7 @@
     "The gate's benchmark list matches the verdicts and is pinned by a unit test.",
     "The ADR-3 addendum states the pack's contents, its benchmark scope and the reason for each exclusion."
   ],
-  "context": "Source: tuning-evidence plan (2026-10-08), plan step 7. Covers muse F8, widened 2026-10-08 to a per-setting pack ablation because the remaining settings measured 1.03-1.06x on TPC-H (no benefit). Now waits for clickhouse-per-query-settings-declared-20261008, so the TPC-H tuned arm has its final Q21 handling. ssb-tuned-merge-settle-retest-20261008 (created by another session) asked for a merge-settle retest of the SSB layout; ADR-3's SSB row already records it (0.56x). PRE-DECIDED GATES: ~/Developer/benchmark_runs/HANDOFF-tuning-evidence-batch-20261008.md section 7.4 (Item 12).",
+  "context": "Source: tuning-evidence plan (2026-10-08), plan step 7. Covers muse F8, widened 2026-10-08 to a per-setting pack ablation because the remaining settings measured 1.03-1.06x on TPC-H (no benefit). Now waits for clickhouse-per-query-settings-declared-20261008, so the TPC-H tuned arm has its final Q21 handling. ssb-tuned-merge-settle-retest-20261008 (created by another session) asked for a merge-settle retest of the SSB layout; ADR-3's SSB row already records it (0.56x). PRE-DECIDED GATES: ~/Developer/benchmark_runs/HANDOFF-tuning-evidence-batch-20261008.md section 7.4 (Item 12).\n\n2026-10-11 plan correction: the owner-approved benefit-rule addendum is already merged in PR #2881 (merge commit 2e632a9c6c368696fc2a62d05aced671bbfb6ced). This ablation no longer waits for item 25's final retroactive pass; it follows item 27, which waits for item 26 and the post-F1 session-reapply work. Item 25's final retroactive pass follows this ablation so only final template states are recorded. This removes the regression-state dependency cycle.",
   "description": "## Problem\n- The tuned ClickHouse session pack applies only when `benchmark_type` is `olap`, `analytics`, `tpch` or `tpcds` (`benchbox/platforms/clickhouse/tuning.py:103-108`). SSB and every other benchmark are excluded, and nothing records why.\n- The SSB keep decision therefore measured layout alone, while TPC-H measured layout plus pack, so the two are not comparable.\n- The settings that stayed in the pack have no measured benefit. The ADR-3 ClickHouse addendum records them as \"within noise (1.03× to 1.06×)\" on TPC-H, which is slightly worse, not better. The settings are `max_bytes_in_join`, the external group-by and sort thresholds, `optimize_aggregation_in_order=1` and `group_by_two_level_threshold=100000`.\n\n## Change\n- With the harness, run each benchmark at SF1 on ClickHouse server (5.25 GiB rung) in these arms:\n  - `notuning`;\n  - tuned layout without the pack;\n  - tuned layout with the full pack;\n  - tuned layout with the pack minus each setting, one at a time.\n- Do this for TPC-H, SSB and TPC-DS.\n- Apply the benefit rule to the pack as a whole and to each setting. A setting stays only if removing it makes things worse beyond noise, or if it is needed to keep a query passing (record which query).\n- Decide whether `ssb` joins the gate. Record the gate's scope and the reason for each excluded benchmark in the ADR-3 addendum. Where the reason is that it was never measured, say so.\n\n## Decision gate\n- Change the gate or the pack only as the rule's verdicts direct.\n\n## Guardrails (must preserve)\n- No other benchmark joins the gate without its own measurement.\n- Keep memory-safety settings (`max_bytes_in_join` and the external thresholds) if removing them makes any query fail at the 5.25 GiB rung, even when they cost time. Record the trade-off.\n\n## Process guardrails\n- One PR per item against `develop`, via the AGENTS.md worktree flow (`make worktree-claim BRANCH=...`, `make agent-write-preflight`).\n- Verification ladder: `uv run -- python -m pytest -m fast -q`, `uv run -- ruff check .`, `uv run -- ruff format --check .` and `uv run -- ty check`. Then `make pr-preflight` and `make pr-open`.\n- Stage explicit paths; never `git add -A`.\n- Re-read every file:line anchor before editing. Anchors are from develop 5ca12e6ca.",
   "links": [
     "benchbox/platforms/clickhouse/tuning.py",
@@ -35,6 +35,14 @@
       "op": "update",
       "op_id": "e980032d5c574898b0014e31b7e67299",
       "session_id": "11344d8456c14298801d7c917bc4b4db"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7e55d16b199130b0978d8efa",
+      "at": "2026-10-11T18:54:52Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ce2c55e92e14472ba6ad5c798036c949",
+      "session_id": "4dbe22cfa4cf47a5bab075c4c3ac203f"
     }
   ]
 }

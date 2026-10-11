@@ -3056,7 +3056,8 @@
     "clickhouse-ssb-session-pack-ablation-20261008": {
       "claim": null,
       "needs": [
-        "tuning-evidence-benefit-rule-20261008",
+        "tuning-evidence-tuned-mode-promise-20261008",
+        "tuning-evidence-measurement-harness-20261008",
         "clickhouse-per-query-settings-declared-20261008"
       ],
       "priority": "medium",
