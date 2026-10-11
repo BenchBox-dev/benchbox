@@ -4,7 +4,7 @@
     "Either Q10 passes at the 5.25 GiB rung in notuning and tuned (bundle paths recorded), or the UAT memory-rung docs state the measured floor for TPC-DS SF1 on ClickHouse server.",
     "The ADR-3 TPC-DS row is updated to match the outcome."
   ],
-  "context": "Q10 transformation fix is merged in PR #2879, head 87d5000e0574233647e2c6b8e1d1c2e2c2d9cb93. The tracked evidence says Q10 passes warmup plus three runs in notuning and tuned at the 5.25 GiB rung; peak memory fell from the ~4.68 GiB kill to 308-334 MiB, with query-log and EXPLAIN evidence under runs/clickhouse-tpcds-q10-20261008.\n\nAcceptance is not yet complete: the ADR-3 TPC-DS row still says Q10 is the only failing query and reports three failed iterations. `pr://2879/diff` contains only code/test files; merged `pr://2881/diff` appends the benefit-rule addendum without correcting that prior row. The current checkout shows the stale row at docs/development/tuning-adr-003-baseline-and-single-renderer.md:344. Keep this task open and dependent on tuning-evidence-benefit-rule-20261008, whose post-rule ClickHouse SF1 retroactive pass must record the updated Q10 status in the ADR. Do not claim completion until that doc acceptance is verified.",
+  "context": "Q10 transformation fix is merged in PR #2879, head 87d5000e0574233647e2c6b8e1d1c2e2c2d9cb93. The tracked evidence says Q10 passes warmup plus three runs in notuning and tuned at the 5.25 GiB rung; peak memory fell from the ~4.68 GiB kill to 308-334 MiB, with query-log and EXPLAIN evidence under runs/clickhouse-tpcds-q10-20261008.\n\nAcceptance remains open: the ADR-3 TPC-DS row still reports the pre-fix Q10 failures; item 25 must update it after a valid post-rule pass. The Q10 evidence README records Apple M4 host, Mocker 0.7.2 and Apple Container CLI 1.1.0 but omits the macOS release. `docs/operations/uat-framework.md:301` says Mocker validation is for macOS 26 only; the F1 and item-26 manifests record macOS-27.0.1. Therefore the Q10 run's supported-platform provenance is unproven. Before treating it as certification evidence, establish its OS/runtime support or repeat it on Linux/Docker or a documented, validated Apple Container path. Keep item blocked and dependent on item 25; do not claim completion until ADR and evidence gates pass.",
   "description": "## Problem\nOn ClickHouse server at SF1 in a 5.25 GiB container, TPC-DS Q10 fails in every cell: `notuning`, tuned, and tuned with `optimize_after_load`. It fails in all three measured iterations and the warm-up with \"Code: 241 ... memory limit exceeded ... maximum: 4.67 GiB\". A query that always fails drops out of the geometric mean, so the TPC-DS keep decision silently excludes it. The ADR-3 addendum miscounts this as \"three queries\".\n\n## Change\n- Measure Q10's peak memory in each configuration (`system.query_log`).\n- Decide whether the cause is the query transform or plan (for example, how the correlated `EXISTS` subqueries are rewritten) or a true memory floor at SF1.\n- Outcome: either fix the transform so Q10 passes at the 5.25 GiB rung, or document a measured memory floor for TPC-DS SF1 on ClickHouse in the UAT memory-rung docs.\n\n## Decision gate\n- If the fix is a statement-level setting, check the owner's decision on per-query settings (`tuning-evidence-tuned-mode-promise-20261008`, D1) first. A fix needed for `notuning` to pass is a harness requirement, applied and recorded in all modes, not tuning.\n\n## Guardrails (must preserve)\n- Do not hide the failure: no skip lists, and no dropping Q10 from reports.\n- The query text must stay within TPC-DS rules: only implementation-level changes, nothing for performance.\n\n## Process guardrails\n- One PR per item against `develop`, via the AGENTS.md worktree flow (`make worktree-claim BRANCH=...`, `make agent-write-preflight`).\n- Verification ladder: `uv run -- python -m pytest -m fast -q`, `uv run -- ruff check .`, `uv run -- ruff format --check .` and `uv run -- ty check`. Then `make pr-preflight` and `make pr-open`.\n- Stage explicit paths; never `git add -A`.\n- Re-read every file:line anchor before editing. Anchors are from develop 5ca12e6ca.",
   "links": [
     "benchbox/platforms/clickhouse/workload.py",
@@ -85,6 +85,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "d3e722f6a9784b51aee5f80d1ac5ae30",
+      "session_id": "4dbe22cfa4cf47a5bab075c4c3ac203f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7e55d16b199130b0978d8efa",
+      "at": "2026-10-11T11:13:00Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "37884499afd14d898c227e21c889a6b6",
       "session_id": "4dbe22cfa4cf47a5bab075c4c3ac203f"
     }
   ]
