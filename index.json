@@ -17603,9 +17603,7 @@
     },
     "repair-results-query-deep-link": {
       "claim": null,
-      "needs": [
-        "docs-remediation-full-surface-audit"
-      ],
+      "needs": [],
       "priority": "high",
       "status": "open",
       "title": "Repair Results Explorer cold-start bootstrap"

@@ -6,7 +6,7 @@
     "In-app navigation to Find runs still works, and the Explorer reports no initialization or data-loading errors.",
     "Verify the fix in the deployed site after an authorized deployment; before that, verify the candidate build and record the live deployment limitation."
   ],
-  "context": "Live production smoke on 2026-10-11: initial overview tab loaded the snapshot and 414 rows; in-app navigation to `/results/query` rendered rows and filters. Two fresh direct query-tab attempts returned a static-host 404 and then `DuckDB instantiate did not respond within 30000ms`. After closing query tabs, a fresh overview tab also timed out during DuckDB instantiation (304 snapshot response, no rendered results). The failure affects cold-start bootstrap in this automation session; root cause and behavior in an independent browser profile remain unverified.",
+  "context": "Live production smoke on 2026-10-11: initial overview tab loaded the snapshot and 414 rows; in-app navigation to `/results/query` rendered rows and filters. Two fresh direct query-tab attempts returned a static-host 404 and then `DuckDB instantiate did not respond within 30000ms`. After closing query tabs, a fresh overview tab also timed out during DuckDB instantiation (304 snapshot response, no rendered results). The failure affects cold-start bootstrap in this automation session; root cause and behavior in an independent browser profile remain unverified. Candidate full-surface evidence is recorded in `_project/audits/docs-remediation-full-surface-audit-2026-10-11.md`, inventory source `435ff8b884d6af12703238c8850b894a276e882d`. The user authorized continued work on the unmerged PR stack, so this follow-up no longer depends on the audit task reaching its merge/live evidence gate. As of 2026-10-11 the active todo-db did not advertise registered-batch support/schema; verify again, and use serial mode if still absent.",
   "description": "Fresh production Chromium tabs failed to initialize the Results Explorer. Direct `/results/query` returned HTTP 404, ran the configured `/results/` SPA fallback, then displayed `DuckDB instantiate did not respond within 30000ms`; a separate fresh `/results/` tab also ended with that worker initialization error. In contrast, an already initialized overview navigated in-app to Find runs and displayed 414 rows. The root cause is not isolated; investigate cold-start worker/WASM initialization and the direct-route fallback rather than treating this as a query-filter-only bug.",
   "links": [
     "https://benchbox.dev/results/",
@@ -27,6 +27,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "0fda56b21f4a45c38273fc96015e91da",
+      "session_id": "f00fbcc194ab47a6a9508e7176243455"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c5daffc9eae3c5f9ce6578f7",
+      "at": "2026-10-11T19:33:06Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9682a7bcb0e04151927c452fed2eb231",
       "session_id": "f00fbcc194ab47a6a9508e7176243455"
     }
   ]
