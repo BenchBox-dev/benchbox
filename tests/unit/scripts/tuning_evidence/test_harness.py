@@ -53,6 +53,9 @@ class FakeSeam:
         self.events.append(("settle", handle.spec.name))
         return SettleRecord(hook="fake", settled=self.settled, waited_seconds=1.0)
 
+    def refresh_session(self, handle: ArmHandle) -> None:
+        self.events.append(("refresh", handle.spec.name))
+
     def run_query(
         self, handle: ArmHandle, connection: Any, query_id: str, sql: str, timeout_seconds: float
     ) -> QueryOutcome:
@@ -132,6 +135,60 @@ def test_settle_runs_for_every_arm_before_any_timed_query() -> None:
         assert payload["arms"][name]["pre_timing_settle"]["hook"] == "fake"
         assert payload["arms"][name]["load_plus_settle_seconds"] == pytest.approx(3.0)
     assert payload["status"] == "completed"
+
+
+class SessionConnection:
+    def __init__(self) -> None:
+        self.settings: dict[str, str] = {}
+
+    def execute(self, sql: str) -> list[tuple[str, str]]:
+        name, separator, value = sql.removeprefix("SET ").partition(" = ")
+        if separator:
+            self.settings[name] = value
+        return []
+
+
+class SessionSeam(FakeSeam):
+    def __init__(self) -> None:
+        super().__init__()
+        self.observed: list[dict[str, str]] = []
+
+    def load(self, arm: ArmSpec, loaded: Mapping[str, ArmHandle]) -> ArmHandle:
+        self.events.append(("load", arm.name))
+        connection = SessionConnection()
+        connection.execute("SET join_use_nulls = 1")
+        return ArmHandle(spec=arm, connection=connection, database=arm.name, load_seconds=2.0)
+
+    def refresh_session(self, handle: ArmHandle) -> None:
+        self.events.append(("refresh", handle.spec.name))
+        handle.connection.execute("SET join_use_nulls = 1")
+
+    def run_query(
+        self, handle: ArmHandle, connection: Any, query_id: str, sql: str, timeout_seconds: float
+    ) -> QueryOutcome:
+        self.observed.append(dict(connection.settings))
+        return QueryOutcome(ok=True, elapsed_seconds=0.1, wall_seconds=0.1, rows=10, checksum="sum-10")
+
+
+def test_power_rounds_reapply_the_session_after_a_silent_reset() -> None:
+    seam = SessionSeam()
+    cell = harness.Harness(
+        make_config(("N=notuning", "T=notuning")),
+        seam,
+        load_reader=lambda: 1.0,
+        sleep=lambda seconds: None,
+        log=lambda message: None,
+    )
+    cell._load_arms()
+    cell._prepare_queries()
+    cell._power_round(harness.PHASE_WARMUP, 0, 0)
+    assert seam.observed and all(snapshot == {"join_use_nulls": "1"} for snapshot in seam.observed)
+    seam.observed.clear()
+    for handle in cell.handles.values():
+        handle.connection.settings.clear()
+    cell._power_round(harness.PHASE_TIMED, 0, 0)
+    assert seam.observed and all(snapshot == {"join_use_nulls": "1"} for snapshot in seam.observed)
+    assert sorted(event[1] for event in seam.events if event[0] == "refresh") == ["N", "N", "T", "T"]
 
 
 def test_unsettled_arm_blocks_the_verdict() -> None:

@@ -291,3 +291,48 @@ def test_git_state_reports_commit_and_dirty_tree(tmp_path: Path) -> None:
         return subprocess.CompletedProcess(command, 0, stdout=output, stderr="")
 
     assert platforms.git_state(tmp_path, runner) == {"commit": "abc123", "dirty": True}
+
+
+class SessionAdapter:
+    def __init__(self) -> None:
+        self.configured: list[str] = []
+
+    def configure_for_benchmark(self, connection: Any, benchmark_type: str) -> None:
+        self.configured.append(benchmark_type)
+        connection.execute("SET join_use_nulls = 1")
+
+
+def test_server_refresh_session_reapplies_the_adapter_session(tmp_path: Path) -> None:
+    adapter = SessionAdapter()
+    client = FakeClient()
+    handle = ArmHandle(
+        spec=ArmSpec("N"),
+        connection=platforms.TaggedClient(client),
+        database="db",
+        load_seconds=1.0,
+        adapter=adapter,
+    )
+    server_seam(tmp_path).refresh_session(handle)
+    assert adapter.configured == ["olap"]
+    assert ("SET join_use_nulls = 1", {}) in client.calls
+
+
+def test_server_refresh_session_reapplies_the_settings_pack(tmp_path: Path) -> None:
+    adapter = SessionAdapter()
+    client = FakeClient(
+        {"SELECT name, value FROM system.settings WHERE name IN": [("max_bytes_in_join", "4294967296")]}
+    )
+    handle = ArmHandle(
+        spec=ArmSpec("M", pack="mbj"),
+        connection=platforms.TaggedClient(client),
+        database="db",
+        load_seconds=1.0,
+        adapter=adapter,
+    )
+    server_seam(tmp_path).refresh_session(handle)
+    assert ("SET max_bytes_in_join = 4294967296", {}) in client.calls
+
+
+def test_other_seams_leave_the_session_alone(tmp_path: Path) -> None:
+    seam = platforms.DuckDBSeam(benchmark="tpch", scale_factor=1.0, work_dir=tmp_path, run_tag="t1")
+    assert seam.refresh_session(handle_for(FakeClient())) is None

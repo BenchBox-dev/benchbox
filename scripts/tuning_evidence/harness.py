@@ -112,6 +112,8 @@ class Seam(Protocol):
 
     def settle(self, handle: ArmHandle) -> SettleRecord: ...
 
+    def refresh_session(self, handle: ArmHandle) -> None: ...
+
     def run_query(
         self, handle: ArmHandle, connection: Any, query_id: str, sql: str, timeout_seconds: float
     ) -> QueryOutcome: ...
@@ -404,6 +406,8 @@ class Harness:
 
     def _power_round(self, phase: str, index: int, attempt: int) -> tuple[list[dict[str, Any]], dict[str, float]]:
         executions = []
+        for handle in self.handles.values():
+            self.seam.refresh_session(handle)
         order = list(self.query_ids)
         self.rng.shuffle(order)
         for query in order:

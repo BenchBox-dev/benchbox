@@ -390,6 +390,9 @@ class AdapterSeam:
         if handle.spec.pack:
             raise ValueError(f"{self.platform_name} does not support settings packs")
 
+    def refresh_session(self, handle: ArmHandle) -> None:
+        return None
+
     def wrap(self, connection: Any) -> Any:
         return connection
 
@@ -655,6 +658,9 @@ class ClickHouseServerSeam(ClickHouseSeam):
         wrong = {name: effective.get(name) for name, value in settings.items() if effective.get(name) != str(value)}
         if wrong:
             raise RuntimeError(f"settings pack {handle.spec.pack} did not apply: {wrong}")
+
+    def refresh_session(self, handle: ArmHandle) -> None:
+        self.configure_session(handle, handle.connection)
 
     def wrap(self, connection: Any) -> Any:
         return connection if isinstance(connection, TaggedClient) else TaggedClient(connection)
