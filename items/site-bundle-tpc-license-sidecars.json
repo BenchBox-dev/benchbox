@@ -5,7 +5,7 @@
     "The site builds from the generated bundle and publishes the correct `TPC_EULA.txt` beside both TPC-H and TPC-DS downloads.",
     "The bounded site-inputs tests and bundle verification pass."
   ],
-  "context": "Core PR #2897 merged on 2026-10-11 as squash commit 07851d5e329f6830c6d58a74b3e41e95a580e8c4. PR CI 38134102105, exact-head Oracle check 38134131285, post-merge Trunk 38136130332, Documentation 38136130353, and Site Inputs run 38137600689 passed. Certified artifact site-inputs-07851d5e329f6830c6d58a74b3e41e95a580e8c4 (artifact 11701541951, digest sha256:8dd4337e0611b516eeb7d24c8350d2ae8b899b863f61f96ffed55335065ad005) verifies schema 3 and contains both EULAs.\n\nThe replay changes are in site PR #21, currently head 82bba20b1d1a3704074968085f66e4732fec601c. Self-review narrowed EULA attachment to TPC-DS query_templates and TPC-H templates/queries; tests prove unrelated files do not get sidecars and missing EULA fails. Local bundle verification, site build (1,846 pages), `npm run check` (0 errors, 14 hints), website tests (337/337), comment/repo guards, all 121 output hashes, and both local HTTP routes (200, exact bytes) passed.\n\nCurrent site CI run 38139720397 has schema 2/3 passed, core bundle and dependency audit in progress, with other required jobs incomplete. Visual run 38139720399 passed. Rehearsal dispatch 38138034781 succeeded against site main before PR #21; it does not verify the PR code. Production remains unchanged.\n\nNext: wait for current required CI, manually squash-merge PR #21 when green, verify the rehearsal deployment from merged site code, then finish this task with the existing claim generation.",
+  "context": "Core PR #2897 merged on 2026-10-11 as 07851d5e329f6830c6d58a74b3e41e95a580e8c4. PR CI 38134102105, exact-head Oracle check 38134131285, post-merge Trunk 38136130332, Documentation 38136130353, and Site Inputs 38137600689 passed. Certified artifact 11701541951 (schema 3, digest sha256:8dd4337e0611b516eeb7d24c8350d2ae8b899b863f61f96ffed55335065ad005) contains both EULAs. The replay is in site PR #21, merged on 2026-10-11 as 5738195a94e5c9c9a7f82577c0af18d91a67067e; required CI 38139720397 and visual run 38139720399 passed. Post-merge Deploy run 38140704786 succeeded with SITE_DEPLOY_TARGET=rehearsal. Live browser fetches from https://next.benchbox.dev returned HTTP 200 for both TPC-DS and TPC-H TPC_EULA.txt routes, each 17,809 bytes with SHA-256 1171fea59c4472ebd04cdb87d77d6652949fe8bc77d2601248e3c3e68bcdb6b9, matching the certified bundle sources. Production remains unchanged; no domain move or production deploy occurred. Local certified-bundle verification, site build (1,846 pages), npm run check (0 errors, 14 hints), 337 website tests, comment/repository guards, all 121 generated EULA hashes, and both local HTTP routes passed. This task's acceptance is complete; finish using the existing claim generation.",
   "description": "The site replay of the core EULA-download changes requires `_sources/tpc-ds/EULA.txt` and `_sources/tpc-h/EULA.txt` beside downloadable query templates. The certified site bundle currently copies only document-linked files, so the site build fails when it tries to publish these companion licenses. Extend site-inputs download selection to include the matching TPC EULA when a TPC-DS or TPC-H query template is included. Keep the bundle limited to referenced downloads plus their required license sidecars; do not copy unrelated files. Preserve bundle attestations and generated paths.",
   "sessions": [
     {
@@ -79,6 +79,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "cbb6eea0c22b4c999d4a7ed83cb32323",
+      "session_id": "8fa717097fcf438d8eac8a356ebf8686"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:34427fd6ff4639228ad9cd98",
+      "at": "2026-10-11T13:02:16Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "cccf89e9f42e46e8a9e766fdbb2ef577",
       "session_id": "8fa717097fcf438d8eac8a356ebf8686"
     }
   ]
