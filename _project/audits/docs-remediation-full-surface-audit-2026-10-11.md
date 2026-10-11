@@ -1,4 +1,7 @@
 ---
+develop_sha: b933e20ace1af2ae08f02e415cc94878d52596a8
+checked_sha: 435ff8b884d6af12703238c8850b894a276e882d
+measured_at_sha: 435ff8b884d6af12703238c8850b894a276e882d
 audited_source_sha: 435ff8b884d6af12703238c8850b894a276e882d
 candidate_inventory: _project/audits/docs-remediation-site-inventory-435ff8b88
 live_deployment_id: 6924683006
@@ -95,6 +98,14 @@ listing; individual download files were inspected.
   assets. No concrete fingerprint or salt-derivation recipe remained in the
   indexed payloads. This was a compressed-string signature scan, not a
   Pagefind-aware semantic decoder.
+- All 117 generated JavaScript and CSS assets under `website/dist/_astro/` and
+  `website/dist/results/assets/` were scanned for high-confidence credential
+  signatures, developer-home paths, and private-host URLs. No credential or
+  developer-home-path matches were found. The only private-host match was
+  `https://explorer.internal` in the Results Explorer bundle. Source inspection
+  traces it to `isInternalExplorerPath` in
+  `results-explorer/src/lib/dashboards.ts`, where it is only a URL-parsing base
+  for same-origin path validation, not a configured endpoint or network target.
 - The candidate and live Pagefind dialog both failed a real search with
   `Failed to load Pagefind metadata`; the query remained in `Searching…`. The
   JavaScript and entry manifest returned HTTP 200, but this does not establish
