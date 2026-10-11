@@ -15075,17 +15075,12 @@
       "title": "Decide whether to move the Polars lock to 2.0 and raise the supported floor"
     },
     "polars-maintenance-collect-bypasses-engine-option": {
-      "claim": {
-        "expires_at": "2026-10-12T03:24:32Z",
-        "generation": "e5e05694b6804dc08404723a0a1a87b5",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6e8a424eda2c7006605aa48b"
-      },
+      "claim": null,
       "needs": [
         "core-exec-polars-cli-mcp-adoption"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Polars maintenance and write-primitive operations call collect() directly and ignore the requested execution engine"
     },
     "polars-platform-adapter": {
