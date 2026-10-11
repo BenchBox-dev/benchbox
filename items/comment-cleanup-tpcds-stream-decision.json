@@ -6,7 +6,7 @@
     "Approved/no-change/rejected disposition is explicit. Any accepted algorithm change waits for later authorization and separate scoped implementation; source-only cleanup remains unchanged.",
     "Completed historical tracker claims are reconciled with current implementation rather than silently reopened or treated as live proof."
   ],
-  "context": "Resume notes 2026-10-11: follow-up PR #2898 (branch docs/tpcds-stream-decision-evidence, head 8864831ef6dea9c6d65a3e619df12a893630ae65) completes item4 acceptance; decision file from #2889 remains on origin/develop. Local `make ci-docs`, comment-policy (0 violations, 19 native checks), and `make pr-preflight` passed. Independent record review found no findings; prior current-head Oracle and CI run passed, and GraphQL reviewThreads is empty. PR is ready with SQUASH auto-merge enabled; current state OPEN/BLOCKED. Fresh ready-event gates: Oracle review 38133909878 PASS; plan 38133910113 PASS (`oracle-verdict: no soundness path changed`); CI run 38133909819 has test (ubuntu-latest, 3.12), lint, and comment-policy still pending, while ci-paths, content-guard, visual inputs, docs, explorer, landing, results-data, and base-branch pass. No new source changes. Next: wait for remaining CI statuses and auto-merge; once merged, verify the decision file on origin/develop, finish item4, then continue to item5. Claim is released during external wait.",
+  "context": "Resume notes 2026-10-11: follow-up PR #2898 (branch docs/tpcds-stream-decision-evidence, head 8864831ef6dea9c6d65a3e619df12a893630ae65) completed item4 acceptance. Local `make ci-docs`, comment-policy (0 violations, 19 native checks), and `make pr-preflight` passed. Independent record review found no findings. Fresh ready-event Oracle review 38133909878 and plan 38133910113 passed (`no soundness path changed`). CI run 38133909819 passed required test (ubuntu-latest, 3.12), lint, comment-policy, and remaining required checks. PR #2898 auto-merged by SQUASH at 2026-10-11T11:28:26Z; merge commit fdb6ab774f16bb89c1f16c36fb3eb7dab16ff6f9. Verified `origin/develop` contains `_project/decisions/tpcds-legacy-stream-and-rng-2026-10-09.md`, including the completed failure/timing-window analysis. No source changes. Item4 is ready to finish; next serial item is item5 `throughput-stream-count-derived-from-stream-results-length`, PR #2894: adopt claim and address Oracle-required phase-COMPLETED guards before validating and merging. Item6 onward remain held by serial dependencies. Earlier note: original decision PR #2889 was merged; #2898 was its acceptance-gap follow-up. No historical tracker claims reopened.",
   "description": "Read-only decision task. Evaluate all current legacy permutation/parameter callers in tpcds power tests, benchmark runner, throughput and dataframe query_resolution, including global random.seed effects. Prior completed items tpcds-throughput-permutation-compliance and dataframe-parameter-substitution-parity are historical context, not proof that all current callers migrated. Compare smallest viable retained/corrected/replaced design against official dsqgen ordered multi-stream output and public compatibility.\n\nDecision must disclose ordering, substitutions, seeds, RNG isolation, raw identity, result comparability and timed-window effects per caller. Text cleanup deletes false equivalence claims but preserves current algorithms. A migration requires later explicit behavior-change approval and separate implementation tasks/PRs, never hidden in comment removal. Execution guard: creation of this TODO is planning, not approval to execute the reviewed cleanup. Obtain later implementation authorization. Use a separate linked worktree and agent-write-preflight; preserve unrelated work. Freeze nonoverlapping code/test/doc paths with the integrator before dispatch. Ordinary independent PRs target develop; serialize shared test-lock checks and integration, not module edits. Required native/external soundness review remains mandatory, with no auto-merge bypass. No live cloud/stress, deployment, publication, historical-result rewriting, or unapproved external-repository writes.",
   "sessions": [
     {
@@ -238,6 +238,14 @@
       "generation": "1a63ca141c2a46faae25186b0af97ec5",
       "op": "take",
       "op_id": "7ff234c2e97740a0980fd13af05efa1c",
+      "session_id": "024527ae77c1405f86cdbdf1079f6e14"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cf29857b7864377c27f69396",
+      "at": "2026-10-11T17:52:14Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "682ecc64786d46429e622b39ae6727a8",
       "session_id": "024527ae77c1405f86cdbdf1079f6e14"
     }
   ]
