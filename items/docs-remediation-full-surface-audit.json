@@ -5,7 +5,7 @@
     "Check HTTP status for every changed or excluded live route and record the results against the exact site revision",
     "Record the exact source revision, inventory, findings, exceptions, and verification evidence in a durable audit artifact accessible to reviewers"
   ],
-  "context": "Follow-up to the adversarial review and explicit Part 3 acceptance in ~/.agents/handoffs/benchbox-docs-exposure-remediation-20261006.md. The old Claude artifact could not be opened during revalidation; this item is larger than a targeted source fix.",
+  "context": "Follow-up to the adversarial review and explicit Part 3 acceptance in ~/.agents/handoffs/benchbox-docs-exposure-remediation-20261006.md. Full candidate evidence is now committed at `_project/audits/docs-remediation-full-surface-audit-2026-10-11.md`; its site inventory pins public output to source SHA `435ff8b884d6af12703238c8850b894a276e882d`. Source fixes and evidence are in draft PR #2909 (branch `docs/docs-remediation-full-surface-audit`) based on open PR #2899 head `77756ad089e741f6389a53ceb81f7a048a2ce399`. User authorized continuing on the unmerged stack. Three independent follow-ups are ready; their audit dependency was removed so implementation can proceed, but no registered batch capability/schema is available, so use serial mode unless the live server advertises support. Do not finish this audit item until the stack merges and post-merge live/public-surface evidence is refreshed. Production remains on source `8c5104f4de43706598b9e286c585640f62d4126f`; the candidate was not deployed, and no deployment authorization is implied.",
   "description": "The handoff's final status records only a sample of generated query pages, while the acceptance criterion requires every published page and listed public surface to be checked. Rebuild from the merged remediation and recreate the external audit report because its prior artifact could not be accessed.",
   "sessions": [
     {
@@ -23,6 +23,14 @@
       "generation": "7bc8c7e2a6df44edb28b723c76073f45",
       "op": "take",
       "op_id": "0f7a2e72fd2e4b0eb9888f15d9473962",
+      "session_id": "f00fbcc194ab47a6a9508e7176243455"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c5daffc9eae3c5f9ce6578f7",
+      "at": "2026-10-11T19:54:26Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a632cbdc870f4c1b8e7d02d83e9dbec2",
       "session_id": "f00fbcc194ab47a6a9508e7176243455"
     }
   ]
