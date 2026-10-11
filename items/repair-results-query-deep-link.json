@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "A clean direct load of `https://benchbox.dev/results/query` resolves to a usable Find runs page rather than a 404/bootstrap failure.",
+    "A direct filter/share URL for the query page restores its selected filters and shows matching published rows.",
+    "In-app navigation to the same route still works, and the Results Explorer reports no DuckDB worker initialization or result-loading errors.",
+    "Verify the fixed route in the deployed site after an authorized deployment; until then, verify the candidate build and record the live deployment limitation."
+  ],
+  "context": "Production Chromium smoke on 2026-10-11: direct navigation to `/results/query` received 404, redirected through the configured `/results/` fallback, then showed `DuckDB instantiate did not respond within 30000ms` with no database request. A separate in-app click from `/results/` loaded the Find runs view and 414 rows. The same failure occurred in two clean direct-load attempts after closing other Results tabs.",
+  "description": "The live Results Explorer loads `/results/query` when reached by in-app navigation, but a direct production load returned HTTP 404, ran the `/results/` SPA fallback, and then displayed `DuckDB instantiate did not respond within 30000ms`; no results database request followed. This reproduced on two clean Chromium tab loads, while in-app navigation on the already-loaded overview showed 414 runs. Root cause remains unisolated; treat as a confirmed user-facing failure of the direct query route and investigate the static fallback / DuckDB initialization path before choosing a fix.",
+  "links": [
+    "https://benchbox.dev/results/query"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c5daffc9eae3c5f9ce6578f7",
+      "at": "2026-10-11T18:52:35Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1f4c0ce491264b06b270e72c8758db4b",
+      "session_id": "f00fbcc194ab47a6a9508e7176243455"
+    }
+  ]
+}

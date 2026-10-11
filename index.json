@@ -17607,6 +17607,15 @@
       "status": "open",
       "title": "Repair Pagefind metadata loading in the public search UI"
     },
+    "repair-results-query-deep-link": {
+      "claim": null,
+      "needs": [
+        "docs-remediation-full-surface-audit"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Repair direct Explorer query deep links"
+    },
     "repair-skill-sync-cross-agent-readiness-diagnostics": {
       "claim": null,
       "needs": [],
