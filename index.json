@@ -2916,9 +2916,9 @@
     },
     "clickhouse-docker-connection-warning-capture-20261008": {
       "claim": {
-        "expires_at": "2026-10-12T08:56:54Z",
-        "generation": "832cfce299164a8c8fd374ea14193662",
-        "renewals": 0,
+        "expires_at": "2026-10-12T09:19:32Z",
+        "generation": "4ea1fd0ee0fb461b9c29a33fdea9fff3",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7e55d16b199130b0978d8efa"
       },
       "needs": [
