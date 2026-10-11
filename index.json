@@ -23312,12 +23312,17 @@
       "title": "Give load-only runs the decided tuning semantics (lifecycle parity or refusal)"
     },
     "tuning-local-diagnosability-20261001": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-12T11:16:18Z",
+        "generation": "f4213a67e68b4670a7707a64ec369fe2",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7e55d16b199130b0978d8efa"
+      },
       "needs": [
         "tuning-gate-local-result-anonymization-20261001"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Let users see why their tuning did not verify (local result per D-3 plus a console verification summary)"
     },
     "tuning-metadata-drift-gaps-20260801": {
