@@ -274,17 +274,17 @@ class TestOutwardPathsStayRedacted:
 
         assert _redacted_publish_source(source) == (None, None)
 
-    def test_clean_primary_with_dirty_applied_companion_never_publishes_verbatim(self, tmp_path):
+    @pytest.mark.parametrize("suffix", (".applied.json", ".tuning.json"))
+    def test_clean_primary_with_dirty_tuning_companion_refuses_publish(self, suffix, tmp_path):
         import json as _json
 
-        from benchbox.cli.commands.publish import _redacted_publish_source, publish_bundle
-        from benchbox.validation.bundle import unanonymized_tuning_findings
+        from benchbox.cli.commands.publish import publish_bundle
 
         source = ResultExporter(output_dir=tmp_path / "local", anonymize=True).export_result(_tuned_result(), ["json"])[
             "json"
         ]
-        assert unanonymized_tuning_findings(_json.loads(source.read_text(encoding="utf-8"))) == []
-        (source.parent / (source.stem + ".applied.json")).write_text(
+        companion = source.with_name(f"{source.stem}{suffix}")
+        companion.write_text(
             _json.dumps(
                 {
                     "statements": [{"statement": _PROBE_STATEMENT, "phase": "ddl", "status": "executed"}],
@@ -294,22 +294,10 @@ class TestOutwardPathsStayRedacted:
             encoding="utf-8",
         )
 
-        redacted, scratch = _redacted_publish_source(source)
-        try:
-            assert redacted is not None
-            assert redacted != source
-            assert unanonymized_tuning_findings(_json.loads(redacted.read_text(encoding="utf-8"))) == []
-        finally:
-            if scratch is not None:
-                scratch.cleanup()
-
         reference = publish_bundle(source, target=str(tmp_path / "published"), label="local", quiet=True)
 
-        assert reference is not None
-        published = list((tmp_path / "published").glob("*.json"))
-        assert [path.name for path in published] == [source.name]
-        for path in published:
-            assert unanonymized_tuning_findings(_json.loads(path.read_text(encoding="utf-8"))) == []
+        assert reference is None
+        assert not (tmp_path / "published").exists()
 
     def test_clean_primary_with_clean_companions_publishes_verbatim(self, tmp_path):
         from benchbox.cli.commands.publish import _redacted_publish_source
