@@ -5056,12 +5056,17 @@
       "title": "Replace the Polars engine option with the core --execution-engine setting across CLI, MCP, config and the Polars adapters"
     },
     "core-exec-polars-matrix-docs-refresh": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-12T03:17:14Z",
+        "generation": "51f8dbc443ff4d759531167e3ef632e9",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6e8a424eda2c7006605aa48b"
+      },
       "needs": [
         "core-exec-polars-cli-mcp-adoption"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Update the committed Polars version-matrix methodology to name the core execution-engine setting"
     },
     "core-exec-remove-deprecated-aliases": {
