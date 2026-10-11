@@ -1,13 +1,15 @@
 {
   "acceptance": [
-    "A clean direct load of `https://benchbox.dev/results/query` resolves to a usable Find runs page rather than a 404/bootstrap failure.",
-    "A direct filter/share URL for the query page restores its selected filters and shows matching published rows.",
-    "In-app navigation to the same route still works, and the Results Explorer reports no DuckDB worker initialization or result-loading errors.",
-    "Verify the fixed route in the deployed site after an authorized deployment; until then, verify the candidate build and record the live deployment limitation."
+    "A fresh direct load of `https://benchbox.dev/results/` initializes DuckDB and displays the published results overview without a worker timeout.",
+    "A fresh direct load of `https://benchbox.dev/results/query` resolves through the static fallback into a usable Find runs page with published rows.",
+    "A direct query filter/share URL restores its selected filters and displays matching results.",
+    "In-app navigation to Find runs still works, and the Explorer reports no initialization or data-loading errors.",
+    "Verify the fix in the deployed site after an authorized deployment; before that, verify the candidate build and record the live deployment limitation."
   ],
-  "context": "Production Chromium smoke on 2026-10-11: direct navigation to `/results/query` received 404, redirected through the configured `/results/` fallback, then showed `DuckDB instantiate did not respond within 30000ms` with no database request. A separate in-app click from `/results/` loaded the Find runs view and 414 rows. The same failure occurred in two clean direct-load attempts after closing other Results tabs.",
-  "description": "The live Results Explorer loads `/results/query` when reached by in-app navigation, but a direct production load returned HTTP 404, ran the `/results/` SPA fallback, and then displayed `DuckDB instantiate did not respond within 30000ms`; no results database request followed. This reproduced on two clean Chromium tab loads, while in-app navigation on the already-loaded overview showed 414 runs. Root cause remains unisolated; treat as a confirmed user-facing failure of the direct query route and investigate the static fallback / DuckDB initialization path before choosing a fix.",
+  "context": "Live production smoke on 2026-10-11: initial overview tab loaded the snapshot and 414 rows; in-app navigation to `/results/query` rendered rows and filters. Two fresh direct query-tab attempts returned a static-host 404 and then `DuckDB instantiate did not respond within 30000ms`. After closing query tabs, a fresh overview tab also timed out during DuckDB instantiation (304 snapshot response, no rendered results). The failure affects cold-start bootstrap in this automation session; root cause and behavior in an independent browser profile remain unverified.",
+  "description": "Fresh production Chromium tabs failed to initialize the Results Explorer. Direct `/results/query` returned HTTP 404, ran the configured `/results/` SPA fallback, then displayed `DuckDB instantiate did not respond within 30000ms`; a separate fresh `/results/` tab also ended with that worker initialization error. In contrast, an already initialized overview navigated in-app to Find runs and displayed 414 rows. The root cause is not isolated; investigate cold-start worker/WASM initialization and the direct-route fallback rather than treating this as a query-filter-only bug.",
   "links": [
+    "https://benchbox.dev/results/",
     "https://benchbox.dev/results/query"
   ],
   "sessions": [
@@ -17,6 +19,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "1f4c0ce491264b06b270e72c8758db4b",
+      "session_id": "f00fbcc194ab47a6a9508e7176243455"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c5daffc9eae3c5f9ce6578f7",
+      "at": "2026-10-11T19:05:53Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "0fda56b21f4a45c38273fc96015e91da",
       "session_id": "f00fbcc194ab47a6a9508e7176243455"
     }
   ]

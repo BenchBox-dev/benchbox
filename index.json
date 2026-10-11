@@ -17615,7 +17615,7 @@
       ],
       "priority": "high",
       "status": "open",
-      "title": "Repair direct Explorer query deep links"
+      "title": "Repair Results Explorer cold-start bootstrap"
     },
     "repair-skill-sync-cross-agent-readiness-diagnostics": {
       "claim": null,
