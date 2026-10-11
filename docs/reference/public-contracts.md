@@ -47,6 +47,7 @@ The `textcharts-mcp` external visualization server is intentionally a separate-c
 | Generated compatibility docs | `generated` | Generated docs match registry and rule metadata; hand edits are drift unless the section says it is editorial. | `benchbox/sql_compat/`, generated docs under `docs/compat/` |
 | `benchbox.experimental` namespace | `experimental` | Ships in the default wheel for developer convenience but is outside the supported beta product surface. It may be promoted, extracted, or removed. | `README.md`, `pyproject.toml` |
 | `_project` scripts, audits, and analysis artifacts | `repo-only` | Contributor workflow aids in the source repository; not user-facing API. | Source repository only |
+| Contributor Make targets | `repo-only` | Repository workflow commands are maintainer tools, not user APIs; names and behavior can change with repository policy. | `Makefile`, `make/`, `make/help.mk` |
 | TODO, DONE, and ADR/future-state docs | `repo-only` | Planning and decision records guide implementation but do not themselves create runtime API. Accepted decisions move into user or developer docs when they become product contracts. | Source repository only |
 
 ### CLI compatibility note: deprecated `run-official` quiet-path contract

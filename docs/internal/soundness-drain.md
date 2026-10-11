@@ -27,9 +27,27 @@ is unresolved. It is not compared with the push time, but a later oracle
 review of the head supersedes it. An edited comment
 does not count, and neither does one with any other text, because Markdown
 around the line can hide or quote it.
-Posting the comment does not rerun the check: rerun the latest oracle-review
-run (`gh run rerun <run-id>`) or dispatch it with
-`gh workflow run oracle-review.yml --ref <feature-branch> -f pr=<number>`.
+Posting the stand-in comment does not rerun the check. After the Oracle or
+stand-in review is complete for the current head, run
+`make oracle-review-recover PR=<number>` if an unsuccessful `oracle-review`
+run is blocking the PR. The target verifies each run belongs to the current
+PR head and workflow, waits for each rerun serially, then closes and reopens
+the PR to fire a fresh `pull_request` event. The `reopened` action reruns CI
+and any other workflows subscribed to that action.
+
+The `pull_request_review` submitted and dismissed triggers stay enabled so the
+required Actions check `oracle-review` is reevaluated after the Oracle App
+submits or dismisses a review. A stand-in uses the recovery command above.
+Keeping this trigger means each submitted thread reply can enqueue an
+`oracle-review` run; per-PR concurrency cancels superseded runs but still
+consumes runner slots.
+
+The develop ruleset requires the Actions check `oracle-review` without binding
+it to a producer, and the separate `oracle-verdict` status cannot satisfy that
+requirement. Do not remove the review trigger until a source-bound,
+one-result-per-head replacement passes the early-failure / later-success
+canary without a skipped passing check.
+
 The attester account is also the one local automation uses, so the
 attestation records who vouched for the review, not that a human read it.
 
