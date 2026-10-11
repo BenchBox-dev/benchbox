@@ -1,6 +1,19 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const ts = require(process.env.COMMENT_POLICY_TYPESCRIPT || path.resolve(__dirname, '../results-explorer/node_modules/typescript'));
+
+function resolveTypescriptPath() {
+  if (process.env.COMMENT_POLICY_TYPESCRIPT) return process.env.COMMENT_POLICY_TYPESCRIPT;
+  const local = path.resolve(__dirname, '../results-explorer/node_modules/typescript');
+  if (fs.existsSync(local)) return local;
+  try {
+    const {execSync} = require('node:child_process');
+    const common = execSync('git rev-parse --git-common-dir', {encoding: 'utf8', cwd: __dirname}).trim();
+    return path.resolve(__dirname, common, '../results-explorer/node_modules/typescript');
+  } catch {
+    return local;
+  }
+}
+const ts = require(resolveTypescriptPath());
 
 const REVIEWED_SQL_WRAPPERS = {queryRows: 0, queryRowsOnce: 0, queryWithTimeout: 1};
 

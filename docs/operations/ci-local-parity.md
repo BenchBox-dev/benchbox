@@ -154,6 +154,10 @@ merge-gating workflows. Each such step must name a local equivalent or carry
 a written reason in the test's `MERGE_GATE_EXEMPTIONS` table, so a new check
 step cannot become a silent CI-only failure.
 
+The `medium-test` job installs the locked TypeScript parser used by
+`tests/unit/scripts/test_comment_policy.py`; `make test-medium` runs the same
+reviewed-JavaScript flow test locally.
+
 The `code-test` step that runs changed tests on the curated release tree has a
 local equivalent:
 `uv run -- python scripts/release_curation_dry_run.py --changed-since origin/develop`.

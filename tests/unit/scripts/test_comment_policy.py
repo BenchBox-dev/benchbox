@@ -1256,6 +1256,46 @@ def test_python_executable_strings_reach_scanner(source: str) -> None:
 
 
 @pytest.mark.parametrize(
+    ("source", "text"),
+    [
+        ('import subprocess\nsubprocess.run(["ssh", "host", "python3 -c \'# explanation\'"])', "# explanation"),
+        (
+            'import subprocess\nsubprocess.run(["watch", "-n", "1", "bash -c \'echo ok # explanation\'"])',
+            "# explanation",
+        ),
+        ('import subprocess\nsubprocess.run(["ssh", "host", "echo ok # bare"])', "# bare"),
+        (
+            'import subprocess\nsubprocess.run(["xargs", "-I{}", "sh -c \'echo ok # explanation\'"])',
+            "# explanation",
+        ),
+        ('import subprocess\nsubprocess.run(["ssh", "host", "python3", "-c", "# split"])', "# split"),
+        (
+            'import subprocess\nsubprocess.run(["docker", "exec", "container", "/opt/My Tools/python3", "-c", "# hidden"])',
+            "# hidden",
+        ),
+        (
+            'import subprocess\nsubprocess.run(["ssh", "host", "true # hidden\\n/usr/bin/python3"])',
+            "# hidden",
+        ),
+    ],
+)
+def test_python_runner_command_strings_are_scanned(source: str, text: str) -> None:
+    assert [f.text for f in python_findings("a.py", source)] == [text]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        'import subprocess\nsubprocess.run(["ssh", "host", "ls -l"])',
+        'import subprocess\nsubprocess.run(["ssh", host, command])',
+        'import subprocess\nsubprocess.run(["xargs", "-I{}", "echo", "hi"])',
+    ],
+)
+def test_python_runner_commands_without_static_strings_stay_clean(source: str) -> None:
+    assert python_findings("a.py", source) == []
+
+
+@pytest.mark.parametrize(
     "source",
     [
         'import subprocess, sys\nsubprocess.run([sys.executable, "-m", "pytest", "-c", config])',
@@ -1373,6 +1413,309 @@ def test_local_execution_names_and_ordinary_strings_are_data(source: str) -> Non
 )
 def test_shell_executable_arguments_are_routed(source: str) -> None:
     assert [f.text for f in scan("a.sh", source, "bash")] == ["# explanation"]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "sudo python3 -c '# explanation'",
+        "sudo -u nobody python3 -c '# explanation'",
+        "sudo --user nobody python3 -c '# explanation'",
+        "env python3 -c '# explanation'",
+        "env POLICY_TEST=1 python3 -c '# explanation'",
+        "env -i POLICY_TEST=1 python3 -c '# explanation'",
+        "nohup python3 -c '# explanation'",
+        "nohup -- python3 -c '# explanation'",
+    ],
+)
+def test_split_runner_interpreter_arguments_are_scanned(source: str) -> None:
+    assert [finding.text for finding in scan("a.sh", source, "bash")] == ["# explanation"]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "sudo --unknown value python3 -c '# explanation'",
+        "nohup -x python3 -c '# explanation'",
+        "echo '# hidden' | sudo --unknown value python3",
+        "echo '# hidden' | nohup -x python3",
+        "echo '# hidden' | env --unknown python3",
+        "echo '# hidden' | env -S python3",
+    ],
+)
+def test_unknown_split_runner_options_fail_closed(source: str) -> None:
+    assert [finding.kind for finding in scan("a.sh", source, "bash")] == ["coverage-error"]
+
+
+@pytest.mark.parametrize(
+    "consumer",
+    [
+        "$interpreter",
+        "${INTERPRETER}",
+        '"$1"',
+        "cat | $interpreter",
+        'ssh "$HOST" python3',
+        'ssh host "$COMMAND"',
+        'xargs "$OPTIONS" python3',
+        'watch "$COMMAND"',
+    ],
+)
+def test_dynamic_pipeline_consumer_fails_closed(consumer: str) -> None:
+    findings = scan("a.sh", f"echo 'pass' | {consumer}", "bash")
+    assert [finding.kind for finding in findings] == ["coverage-error"]
+
+
+def test_dynamic_pipeline_consumer_without_spaces_fails_closed() -> None:
+    findings = scan("a.sh", "echo 'pass'|$interpreter", "bash")
+    assert [finding.kind for finding in findings] == ["coverage-error"]
+
+
+def test_quoted_pipe_delimiter_does_not_trigger_pipeline_gate() -> None:
+    source = 'sed -i -E "s|^[[:space:]]*$${key}[[:space:]]*=.*$$|$${key} = $${value}|" "$$file"'
+    assert scan("a.sh", source, "bash") == []
+
+
+def test_dynamic_later_pipeline_command_does_not_hide_interpreter_input() -> None:
+    findings = scan("a.sh", "echo '# hidden' | python3 | $dynamic", "bash")
+    assert [(finding.kind, finding.text) for finding in findings] == [("comment", "# hidden")]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "echo '# hidden' | sed 's/x/y/' | python3",
+        "echo '# hidden' | sed 's/x/y/' | $dynamic",
+    ],
+)
+def test_piped_unsupported_intermediate_before_interpreter_fails_closed(source: str) -> None:
+    findings = scan("a.sh", source, "bash")
+    assert [finding.kind for finding in findings] == ["coverage-error"]
+
+
+def test_piped_printf_escaped_percent_matches_shell_output() -> None:
+    findings = scan("a.sh", "printf 'print(\"%%\")\\n# explanation\\n' | python3", "bash")
+    assert [(finding.kind, finding.text, finding.payload) for finding in findings] == [
+        ("comment", "# explanation", 'print("%")\n# explanation\n')
+    ]
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        ("echo '# explanation' | python3", "# explanation"),
+        ("echo '# explanation' | python", "# explanation"),
+        ("echo '# explanation' | python3 -", "# explanation"),
+        ("echo -n '# explanation' | sh", "# explanation"),
+        ("printf '# explanation' | bash", "# explanation"),
+        ("printf '%s\\n' '# explanation' | zsh", "# explanation"),
+        ("printf '\\043 hidden\\n' | sh", "# hidden"),
+        ("echo -e '\\043 hidden' | sh", "# hidden"),
+        ("echo -e '\\0043 hidden' | bash", "# hidden"),
+        ("echo '# hidden' | /usr/bin/python3", "# hidden"),
+        ('echo "# hidden" | "/opt/My Tools/python3"', "# hidden"),
+        (r"echo -e '\0443 hidden' | bash", "# hidden"),
+        (r"printf '%s\c' '# hidden' | bash", "# hidden"),
+        ("echo '# hidden' | env python3", "# hidden"),
+        ("echo '# hidden' | env -u HOME python3", "# hidden"),
+        ("echo '# hidden' | env --unset=HOME python3", "# hidden"),
+        ("echo '# hidden' | env -C /tmp python3", "# hidden"),
+        ("echo '# hidden' | sudo python3", "# hidden"),
+        ("echo '# hidden' | sudo -u nobody python3", "# hidden"),
+        ("echo '# hidden' | nohup python3", "# hidden"),
+        ("echo '# hidden' | nohup -- python3", "# hidden"),
+        ("echo '# hidden' | cat | python3", "# hidden"),
+        ("echo '# hidden' | cat | cat | python3", "# hidden"),
+        ("echo '# hidden' | python3 | cat", "# hidden"),
+        ("echo '# hidden' | ssh host python3", "# hidden"),
+        ("sudo echo '# hidden' | python3", "# hidden"),
+        ("env FOO=1 echo '# hidden' | python3", "# hidden"),
+        ("echo '# hidden' | sudo env python3", "# hidden"),
+        ("echo '# hidden' | env FOO=1 sudo python3", "# hidden"),
+        ("echo '# hidden' 1>&1 | bash", "# hidden"),
+    ],
+)
+def test_piped_producer_payloads_reach_stdin_interpreters(source: str, expected: str) -> None:
+    findings = scan("a.sh", source, "bash")
+    assert [finding.text for finding in findings] == [expected]
+    assert all("pipe" in finding.symbol for finding in findings)
+
+
+def test_ssh_pipeline_skips_option_values_before_remote_command() -> None:
+    findings = scan("a.sh", "echo '# hidden' | ssh -i /opt/python3 host python3", "bash")
+    assert [(finding.kind, finding.text) for finding in findings] == [("comment", "# hidden")]
+
+
+def test_ssh_single_string_stdin_interpreter_is_scanned() -> None:
+    findings = scan("a.sh", "echo '# hidden' | ssh host 'python3 -'", "bash")
+    assert [(finding.kind, finding.text) for finding in findings] == [("comment", "# hidden")]
+
+
+def test_ssh_pipeline_with_key_path_but_no_remote_command_fails_closed() -> None:
+    findings = scan("a.sh", "echo '# hidden' | ssh -i /opt/python3 host", "bash")
+    assert [finding.kind for finding in findings] == ["coverage-error"]
+
+
+def test_ssh_pipeline_without_stdin_does_not_scan_remote_input() -> None:
+    assert scan("a.sh", "echo '# hidden' | ssh -n host python3", "bash") == []
+
+
+@pytest.mark.parametrize("runner", ["watch -n 1 python3", "watch 'python3 -'", "xargs 'python3 -'"])
+def test_runner_pipeline_to_stdin_interpreter_fails_closed(runner: str) -> None:
+    findings = scan("a.sh", f"echo '# hidden' | {runner}", "bash")
+    assert [finding.kind for finding in findings] == ["coverage-error"]
+
+
+@pytest.mark.parametrize(
+    "source",
+    ['sudo "$COMMAND" | python3', 'env COMMAND="$COMMAND" echo "# hidden" | python3'],
+)
+def test_dynamic_wrapped_piped_producer_fails_closed(source: str) -> None:
+    assert [finding.kind for finding in scan("a.sh", source, "bash")] == ["coverage-error"]
+
+
+def test_piped_interpreter_masking_preserves_trailing_shell_comment() -> None:
+    findings = scan("a.sh", "echo 'pass' | python3 # explanation", "bash")
+    assert [(finding.kind, finding.text) for finding in findings] == [("comment", "# explanation")]
+
+
+def test_piped_printf_format_is_evaluated() -> None:
+    assert scan("a.sh", "printf '%s\\n' 'pass' | python3", "bash") == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "echo '# hidden' | python3 > /dev/null",
+        "echo '# hidden' | python3 2>/dev/null",
+        "echo '# hidden' 2>/dev/null | python3",
+    ],
+)
+def test_piped_unrelated_redirections_preserve_stdin(source: str) -> None:
+    findings = scan("a.sh", source, "bash")
+    assert [(finding.kind, finding.text) for finding in findings] == [("comment", "# hidden")]
+
+
+def test_piped_consumer_stdin_redirection_fails_closed() -> None:
+    findings = scan("a.sh", "echo '# hidden' | python3 < /dev/null", "bash")
+    assert [finding.kind for finding in findings] == ["coverage-error"]
+
+
+def test_piped_node_source_reports_javascript_comment() -> None:
+    findings = scan_sources(ROOT, {"a.sh": b"echo '// explanation' | node"}, policy())
+    assert [(finding.kind, finding.text) for finding in findings] == [("comment", "// explanation")]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "echo 'SELECT 1 -- hidden' | psql",
+        "echo 'SELECT 1 -- hidden' | psql --file=-",
+        "echo 'SELECT 1 -- hidden' | sqlite3 benchmark.db",
+        "echo 'SELECT 1 -- hidden' | duckdb benchmark.db",
+        "echo 'SELECT 1 -- hidden' | sqlite3 -cmd 'SELECT 0' benchmark.db",
+    ],
+)
+def test_piped_sql_client_stdin_reports_comments(source: str) -> None:
+    findings = scan_sources(ROOT, {"a.sh": source.encode()}, policy())
+    assert [(finding.kind, finding.text) for finding in findings] == [("comment", "-- hidden")]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "echo 'SELECT 1 -- hidden' | psql -f queries.sql",
+        "echo 'SELECT 1 -- hidden' | sqlite3 -no-stdin benchmark.db",
+        "echo 'SELECT 1 -- hidden' | duckdb benchmark.db 'SELECT 1'",
+        "echo 'SELECT 1 -- hidden' | psql --help",
+        "echo 'SELECT 1 -- hidden' | sqlite3 -help",
+        "echo 'SELECT 1 -- hidden' | duckdb -version",
+    ],
+)
+def test_piped_sql_clients_with_other_input_do_not_scan_pipe(source: str) -> None:
+    assert scan_sources(ROOT, {"a.sh": source.encode()}, policy()) == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        'echo "$code" | python3',
+        "echo hi $name | bash",
+        "printf '%s\\n' \"$code\" | python3",
+        "printf '%d\\n' 1 | python3",
+        "echo x | perl",
+        r"echo -e '\e hidden' | bash",
+        r"echo -e '\E hidden' | bash",
+        "echo x | ruby",
+    ],
+)
+def test_piped_dynamic_or_unmodeled_stdin_fails_closed(source: str) -> None:
+    assert [f.kind for f in scan("a.sh", source, "bash")] == ["coverage-error"]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "echo hi | grep x",
+        "echo '# data' | python3 script.py",
+        "echo '# data' | python3 -c 'pass'",
+        "cat file | python3 -",
+        "echo x | perl script.pl",
+        "printf -v out '# data' | python3",
+    ],
+)
+def test_piped_non_stdin_programs_stay_data(source: str) -> None:
+    assert scan("a.sh", source, "bash") == []
+
+
+@pytest.mark.parametrize("option", ["-O", "+O"])
+def test_piped_bash_shopt_option_is_not_treated_as_script_operand(option: str) -> None:
+    findings = scan("a.sh", f"echo '# hidden' | bash {option} extglob", "bash")
+    assert [(finding.kind, finding.text) for finding in findings] == [("comment", "# hidden")]
+
+
+def test_piped_xargs_stdin_interpreter_fails_closed() -> None:
+    findings = scan("a.sh", "echo '# hidden' | xargs -a /dev/null python3 -", "bash")
+    assert [finding.kind for finding in findings] == ["coverage-error"]
+
+
+@pytest.mark.parametrize(
+    ("source", "text"),
+    [
+        ("ssh host \"python3 -c '# explanation'\"", "# explanation"),
+        ("ssh -p 22 host \"python3 -c '# explanation'\"", "# explanation"),
+        ("watch \"bash -c 'echo ok # explanation'\"", "# explanation"),
+        ("watch -n 1 \"bash -c 'echo ok # explanation'\"", "# explanation"),
+        ("sudo \"python3 -c '# explanation'\"", "# explanation"),
+        ("nohup \"python3 -c '# explanation'\"", "# explanation"),
+        ("xargs -I{} \"sh -c 'echo ok # explanation'\"", "# explanation"),
+        ("env FOO=bar \"python3 -c '# explanation'\"", "# explanation"),
+        ('ssh host "echo ok # bare"', "# bare"),
+        ('ssh host "true # hidden\n/usr/bin/python3"', "# hidden"),
+    ],
+)
+def test_runner_command_strings_are_scanned(source: str, text: str) -> None:
+    findings = scan("a.sh", source, "bash")
+    assert [f.text for f in findings] == [text]
+    assert all("runner" in f.symbol for f in findings)
+
+
+def test_split_runner_commands_still_resolve_without_recursion() -> None:
+    findings = scan("a.sh", "ssh host python3 -c '# split'", "bash")
+    assert [(f.kind, f.text) for f in findings] == [("comment", "# split")]
+    assert all("runner" not in f.symbol for f in findings)
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "ssh host ls -l",
+        "sudo make install",
+        'watch -n 1 "echo ok"',
+        'ssh host "ls -l"',
+    ],
+)
+def test_runner_commands_without_comments_stay_clean(source: str) -> None:
+    assert scan("a.sh", source, "bash") == []
 
 
 @pytest.mark.parametrize(
@@ -2782,15 +3125,14 @@ def test_reviewed_javascript_flows_are_exact_and_current() -> None:
 
 def test_reviewed_javascript_flows_still_occur() -> None:
     import json
-    import os
     import shutil
     import subprocess
 
-    from comment_syntax import REVIEWED_JAVASCRIPT_FLOWS
+    from comment_syntax import REVIEWED_JAVASCRIPT_FLOWS, resolve_typescript_dir
 
-    typescript = os.environ.get("COMMENT_POLICY_TYPESCRIPT", str(ROOT / "results-explorer/node_modules/typescript"))
-    if shutil.which("node") is None or not Path(typescript).exists():
-        pytest.skip("the TypeScript package for scripts/comment_syntax_js.cjs is not installed")
+    typescript = resolve_typescript_dir(ROOT)
+    assert shutil.which("node") is not None, "Node.js is required to verify reviewed JavaScript flows"
+    assert typescript is not None and typescript.exists(), "the TypeScript parser is required for reviewed flows"
     paths = sorted({path for path, _ in REVIEWED_JAVASCRIPT_FLOWS})
     requests = {path: (ROOT / path).read_text(encoding="utf-8") for path in paths}
     result = subprocess.run(
@@ -2802,6 +3144,47 @@ def test_reviewed_javascript_flows_still_occur() -> None:
     )
     observed = {(path, row["text"]) for path, rows in json.loads(result.stdout).items() for row in rows}
     assert set(REVIEWED_JAVASCRIPT_FLOWS) <= observed
+
+
+def test_typescript_resolution_prefers_environment_then_local(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from comment_syntax import resolve_typescript_dir
+
+    monkeypatch.setenv("COMMENT_POLICY_TYPESCRIPT", "/env/typescript")
+    assert resolve_typescript_dir(tmp_path) == Path("/env/typescript")
+    monkeypatch.delenv("COMMENT_POLICY_TYPESCRIPT")
+    local = tmp_path / "results-explorer" / "node_modules" / "typescript"
+    local.mkdir(parents=True)
+    assert resolve_typescript_dir(tmp_path) == local
+
+
+def test_typescript_resolution_falls_back_to_git_common_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import comment_syntax
+    from comment_syntax import resolve_typescript_dir
+
+    monkeypatch.delenv("COMMENT_POLICY_TYPESCRIPT", raising=False)
+    primary = tmp_path / "primary" / "results-explorer" / "node_modules" / "typescript"
+    primary.mkdir(parents=True)
+
+    def fake_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess:
+        return subprocess.CompletedProcess(args, 0, str(tmp_path / "primary" / ".git"))
+
+    monkeypatch.setattr(comment_syntax.subprocess, "run", fake_run)
+    assert resolve_typescript_dir(tmp_path / "linked-worktree") == primary.resolve()
+
+
+def test_typescript_resolution_returns_none_when_git_is_unavailable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import comment_syntax
+    from comment_syntax import resolve_typescript_dir
+
+    monkeypatch.delenv("COMMENT_POLICY_TYPESCRIPT", raising=False)
+
+    def missing_git(*args: object, **kwargs: object) -> subprocess.CompletedProcess:
+        raise FileNotFoundError("no git on PATH")
+
+    monkeypatch.setattr(comment_syntax.subprocess, "run", missing_git)
+    assert resolve_typescript_dir(tmp_path) is None
 
 
 @pytest.mark.parametrize(
@@ -3111,8 +3494,12 @@ def test_every_astro_expression_is_sent_to_the_typescript_scanner() -> None:
         ('LEVELS=($(printf "%s\\n" 1 2 | awk -v max="$MAX" \'$1 <= max\' | sort -nu))\n', []),
         ('if ! awk "BEGIN { exit !($s >= 1) }"; then\n  exit 1\nfi\n', ["coverage-error"]),
         ("if ! awk -v s=\"$s\" 'BEGIN { exit !(s >= 1) }'; then\n  exit 1\nfi\n", []),
-        ("LEVELS=($(printf x | awk '{print} # note'))\n", ["coverage-error"]),
         ("LEVELS=($(psql -c 'SELECT 1 -- note'))\n", ["coverage-error"]),
+        ("echo x | python3 )\n", ["coverage-error"]),
+        ("echo '# hidden' | perl )\n", ["coverage-error"]),
+        ("echo x | perl )\n", []),
+        ("echo x | cat )\n", []),
+        ("echo '| python3'\n", []),
     ],
 )
 def test_unparseable_shell_chunks_fail_closed_only_when_they_can_hold_a_comment(source: str, kinds: list) -> None:
@@ -3201,9 +3588,132 @@ def test_unparseable_chunk_with_perl_pod_or_ruby_block_comment_fails_closed() ->
     assert [f.kind for f in scan("a.sh", ruby, "bash")] == ["coverage-error"]
 
 
-def test_mdx_pages_are_scanned_like_markdown() -> None:
+def test_mdx_pages_scan_prose_fences_and_imports() -> None:
     from comment_syntax import language
 
-    assert language("website/src/content/docs/page.mdx") == "examples"
+    assert language("website/src/content/docs/page.mdx") == "mdx"
     source = "import X from './x.astro';\n\n```python\nx = 1  # note\n```\n"
-    assert [f.text for f in scan("website/src/content/docs/page.mdx", source, "examples", {})] == ["# note"]
+    rows = {key: [] for key in javascript_requests("website/src/content/docs/page.mdx", source, "mdx")}
+    assert [f.text for f in scan("website/src/content/docs/page.mdx", source, "mdx", rows)] == ["# note"]
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        ("# Title\n\n{/* explanation */}\n", [(3, "{/* explanation */}")]),
+        ("{ /* explanation */ }\n", [(1, "{ /* explanation */ }")]),
+        ("{/* first */}\n\n{/* second */}\n", [(1, "{/* first */}"), (3, "{/* second */}")]),
+        ("<div>\n  {/* explanation */}\n</div>\n", [(2, "{/* explanation */}")]),
+        ("{/* multi\nline */}\n", [(1, "{/* multi\nline */}")]),
+    ],
+)
+def test_mdx_jsx_comments_are_found(source: str, expected: list[tuple[int, str]]) -> None:
+    findings = scan("website/src/content/docs/page.mdx", source, "mdx", {})
+    assert [(f.kind, f.line, f.text) for f in findings] == [("comment", *item) for item in expected]
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        ("`{/* inline */}`", []),
+        ("`{ /* inline */ }`", []),
+        ("``{/* inline */}``", []),
+        ("`{/* inline\ncomment */}`\n{/* visible */}", [(3, "{/* visible */}")]),
+        (r"\`{/* visible */}`", [(1, "{/* visible */}")]),
+    ],
+)
+def test_mdx_jsx_comments_ignore_inline_code(source: str, expected: list[tuple[int, str]]) -> None:
+    findings = scan("website/src/content/docs/page.mdx", source, "mdx", {})
+    assert [(finding.line, finding.text) for finding in findings] == expected
+
+
+def test_mdx_prose_and_fences_are_scanned_once() -> None:
+    source = "```python\n# explanation\n```\n\n{/* prose */}\n"
+    findings = scan("website/src/content/docs/page.mdx", source, "mdx", {})
+    assert [(f.line, f.text) for f in findings] == [(2, "# explanation"), (5, "{/* prose */}")]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "import regulations are strict\n",
+        "export controls are important\n",
+        "export types are important\n",
+        "export interfaces are important\n",
+        "export enums are important\n",
+        "export namespaces are important\n",
+        "export declares are important\n",
+        "export abstracts are important\n",
+        "important notes follow\n",
+    ],
+)
+def test_mdx_prose_import_lookalikes_are_not_code(source: str) -> None:
+    assert scan("website/src/content/docs/page.mdx", source, "mdx", {}) == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "import X from './x'; // explanation\n",
+        "import {\n  A, // explanation\n  B,\n} from './x';\n",
+        "export const meta = 1; // explanation\n",
+    ],
+)
+def test_mdx_imports_reach_the_typescript_scanner(source: str) -> None:
+    requests = javascript_requests("website/src/content/docs/page.mdx", source, "mdx")
+    assert len(requests) == 1
+    rows = {
+        key: [
+            {
+                "kind": "comment",
+                "line": 2 if source.startswith("import {\n") else 1,
+                "text": "// explanation",
+                "symbol": "",
+            }
+        ]
+        for key in requests
+    }
+    findings = scan("website/src/content/docs/page.mdx", source, "mdx", rows)
+    assert [(f.kind, f.text) for f in findings] == [("comment", "// explanation")]
+    assert [f.line for f in findings] == [2 if source.startswith("import {\n") else 1]
+
+
+@pytest.mark.parametrize(
+    ("source", "comment"),
+    [
+        ("export type Config = {\n  value: string; // explanation\n};\n", "// explanation"),
+        ("export interface Config {\n  value: string; // explanation\n}\n", "// explanation"),
+        ("export enum Config {\n  Value, // explanation\n}\n", "// explanation"),
+        ("export namespace Config {\n  export const value = 1; // explanation\n}\n", "// explanation"),
+        ("export declare const config: string; // explanation\n", "// explanation"),
+        ("export abstract class Config { // explanation\n}\n", "// explanation"),
+    ],
+)
+def test_mdx_type_like_exports_reach_typescript_scanner(source: str, comment: str) -> None:
+    path = "website/src/content/docs/page.mdx"
+    findings = scan_sources(ROOT, {path: source.encode()}, policy())
+    assert [(finding.kind, finding.text) for finding in findings] == [("comment", comment)]
+
+
+@pytest.mark.parametrize(
+    ("source", "comment"),
+    [
+        ("export /* hidden */ const value = 1;", "/* hidden */"),
+        ("import /* hidden */ './x.js';", "/* hidden */"),
+        ("import /*\n hidden\n*/ './x.js';", "/*\n hidden\n*/"),
+        ("import\n  React\n  from 'react'; /* hidden */", "/* hidden */"),
+    ],
+)
+def test_mdx_esm_intertoken_comments_are_reported(source: str, comment: str) -> None:
+    path = "website/src/content/docs/page.mdx"
+    findings = scan_sources(ROOT, {path: source.encode()}, policy())
+    assert [(finding.kind, finding.text) for finding in findings] == [("comment", comment)]
+
+
+def test_mdx_import_comment_lines_map_to_source_lines() -> None:
+    source = "# Title\n\nimport X from './x'; // explanation\n"
+    requests = javascript_requests("website/src/content/docs/page.mdx", source, "mdx")
+    rows = {key: [{"kind": "comment", "line": 1, "text": "// explanation", "symbol": ""}] for key in requests}
+    assert [(f.line, f.text) for f in scan("website/src/content/docs/page.mdx", source, "mdx", rows)] == [
+        (3, "// explanation")
+    ]
