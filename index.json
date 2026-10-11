@@ -13648,7 +13648,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "Expose and verify model-tier selection for native subagent dispatch"
     },
     "natural-language-to-sql-testing-framework": {

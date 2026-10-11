@@ -5,7 +5,7 @@
     "If the selector is not supported, link an owner-accepted upstream platform task and leave this BenchBox tracking item blocked until the capability or supported alternative is available.",
     "Do not use external agents in place of native subagents, and do not silently substitute or claim an unverified model tier."
   ],
-  "context": "User explicitly requested Sol for high-complexity subagent work and Luna for low-complexity work, while forbidding external agents. The native tool schema in the session has no `model` argument. The gap was not found in existing BenchBox TODO searches and cannot be fixed by editing BenchBox code alone.",
+  "context": "Blocked: the selector is owned by the native task/runtime platform, not BenchBox; this session has no supported field to request Sol or Luna and no owner-accepted upstream issue is available. Next owner action: identify/notify the runtime maintainer and attach an accepted upstream task or a documented native selector before reopening.",
   "description": "The requested delegation policy assigns high-complexity work to Sol and low-complexity work to Luna. The native `functions.task` interface available in this session exposes an `agent` role but no model selector; explicit model selection was rejected in the earlier attempt. External agents are prohibited by the user. This is a runtime/tooling product gap, not a BenchBox implementation request. Identify the owning runtime project and supported model-selection contract; if native selection is unavailable, route this to the platform owner and keep this item blocked until there is an owner-accepted upstream issue or a documented supported alternative. Do not claim tier-specific dispatch unless a native run proves it.",
   "sessions": [
     {
@@ -14,6 +14,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "a98694ef92344f12bc03839ca2ecd770",
+      "session_id": "12a278318efc4205bf01aa4132116f81"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0b65b59dfd5ecfabcfde36b0",
+      "at": "2026-10-11T20:25:13Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "84429afe3d064227bd0eb021c95649c4",
       "session_id": "12a278318efc4205bf01aa4132116f81"
     }
   ]
