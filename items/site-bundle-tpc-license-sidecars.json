@@ -5,7 +5,7 @@
     "The site builds from the generated bundle and publishes the correct `TPC_EULA.txt` beside both TPC-H and TPC-DS downloads.",
     "The bounded site-inputs tests and bundle verification pass."
   ],
-  "context": "Discovered while replaying core #2891/#2893 to site. Bundle run 38087375221 for core `4628e72d66bcc77808b59740b9d8d0c777e2d2f7` does not contain `_sources/tpc-ds/EULA.txt` or `_sources/tpc-h/EULA.txt`; local site build fails with `TPC EULA is missing` at `website/src/lib/legacy-assets.ts`. Current core scripts/site_inputs.py builds `downloads/` from directly linked paths only.",
+  "context": "Core sidecar fix is implemented in `fix/site-bundle-tpc-license-sidecars`: commit 509a0f014c29b5172f72804044244ade0fceabb8 adds a tracked-file guard for both EULA branches, parameterized tracked/untracked tests, and ADR clarification. Oracle review on prior head ff5e89e flagged the missing tracked-file guard; the actionable High finding is fixed locally. Its separate Low placeholder thread was explained and resolved as non-actionable. `test_site_inputs.py` passes 50 tests; `make pr-preflight` passes; a clean local schema-3 bundle verifies (11 members, 4 pass, 1 skip). Site build from that exact bundle is running. The PR is still at ff5e89e remotely until the corrective commit is pushed; current-head Oracle review and required CI remain mandatory. After merge, fetch the CI-certified develop bundle, verify the site build/tests against it, then complete the seeded site replay.",
   "description": "The site replay of the core EULA-download changes requires `_sources/tpc-ds/EULA.txt` and `_sources/tpc-h/EULA.txt` beside downloadable query templates. The certified site bundle currently copies only document-linked files, so the site build fails when it tries to publish these companion licenses. Extend site-inputs download selection to include the matching TPC EULA when a TPC-DS or TPC-H query template is included. Keep the bundle limited to referenced downloads plus their required license sidecars; do not copy unrelated files. Preserve bundle attestations and generated paths.",
   "sessions": [
     {
@@ -23,6 +23,14 @@
       "generation": "8bb5b9b0705f4c71a6c83c0d3e947cf7",
       "op": "take",
       "op_id": "6df04d9dbfb64ca8806d4da790dd858a",
+      "session_id": "8fa717097fcf438d8eac8a356ebf8686"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:34427fd6ff4639228ad9cd98",
+      "at": "2026-10-11T02:56:46Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "bfa0d12b1ff34836b2ec8e2fa0d8aae1",
       "session_id": "8fa717097fcf438d8eac8a356ebf8686"
     }
   ]
