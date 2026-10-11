@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Generate the complete current site inventory and enumerate every authored and generated page, query page, landing asset, Explorer artifact, Pagefind entry, sitemap URL, object inventory entry, blog image, robots/feed file, and listed download",
+    "Read every published page in full and inspect every listed public download and exposed asset for sensitive operational details, recording locations and kinds without copying secret values",
+    "Check HTTP status for every changed or excluded live route and record the results against the exact site revision",
+    "Record the exact source revision, inventory, findings, exceptions, and verification evidence in a durable audit artifact accessible to reviewers"
+  ],
+  "context": "Follow-up to the adversarial review and explicit Part 3 acceptance in ~/.agents/handoffs/benchbox-docs-exposure-remediation-20261006.md. The old Claude artifact could not be opened during revalidation; this item is larger than a targeted source fix.",
+  "description": "The handoff's final status records only a sample of generated query pages, while the acceptance criterion requires every published page and listed public surface to be checked. Rebuild from the merged remediation and recreate the external audit report because its prior artifact could not be accessed.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c5daffc9eae3c5f9ce6578f7",
+      "at": "2026-10-11T02:30:37Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "67d22b0436f94421b15cb2994967ad60",
+      "session_id": "f00fbcc194ab47a6a9508e7176243455"
+    }
+  ]
+}
