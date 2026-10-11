@@ -2,8 +2,8 @@
 develop_sha: 2eb03f3e67ec8f7f1347738f29696fa39ed5f526
 measured_at_sha: dd20aed2d53a87a4c34ae74c73a187cfa9bf3c5e
 checked_sha: dd20aed2d53a87a4c34ae74c73a187cfa9bf3c5e
-replay_sha: 86c85b22f446209df039341ec7ec64be6dfcb2f8
-replay_scope: PR 2888 workflow and pipeline/publication/full-fast replay at 50183db50c15b46a1dbd474d3bf7cd297f1c2975; PR 2821 D20-D24 scanner fixes, focused and full scanner verification at 86c85b22f446209df039341ec7ec64be6dfcb2f8
+replay_sha: 12acfd365b313374e057d97cb7191f4a98a5dc7d
+replay_scope: PR 2888 workflow and pipeline/publication/full-fast replay at 50183db50c15b46a1dbd474d3bf7cd297f1c2975; PR 2821 D20-D26 scanner fixes, focused and full scanner verification at 12acfd365b313374e057d97cb7191f4a98a5dc7d
 ---
 
 # Remediation contract evidence
@@ -603,3 +603,44 @@ The full `make comment-policy-check` run passed: 5,779 source files, zero
 violations, zero enforced failures, and all 19 native syntax tests passed.
 Its runtime overlapped with the commit hook's policy run, so no timing
 comparison is recorded for this replay.
+
+### Findings D25-D26
+
+D25, piped SQL-client stdin: `piped_consumer_language` routes `psql`,
+`sqlite3` and `duckdb` to the SQL scanner when their selected input mode reads
+stdin. `test_piped_sql_client_stdin_reports_comments` covers five stdin forms:
+psql's default input and `--file=-`, SQLite's database and `-cmd` forms, and
+DuckDB's database form. Each reports the SQL comment. The companion
+`test_piped_sql_clients_with_other_input_do_not_scan_pipe` rejects six
+controls: psql file input, SQLite `-no-stdin`, DuckDB positional SQL, and a
+help/version mode for each client.
+
+Producer-to-consumer trace: the shell producer writes the SQL bytes;
+`piped_stdin_entries` checks the effective SQL-client input mode and routes
+stdin through `scan_source_payload` as SQL; the SQL adapter returns the comment
+finding with its source location.
+
+D26, MDX type-like exports: `MDX_EXPORT_SHAPE` retains `type`, `interface`,
+`enum`, `namespace`, `declare` and `abstract` export forms.
+`test_mdx_type_like_exports_reach_typescript_scanner` exercises all six forms
+and requires each inline comment finding. Nine prose lookalikes, including
+keyword-prefix forms, remain clean in
+`test_mdx_prose_import_lookalikes_are_not_code`.
+
+Producer-to-consumer trace: `mdx_js_sources` preserves each complete ESM
+declaration and routes it through the TypeScript scanner; the returned finding
+maps back to the MDX source line. The regex word boundary rejects keyword-prefix
+prose instead of treating it as code.
+
+The focused regression selection passed 26 tests (5 SQL stdin cases, 6 SQL
+input-mode controls, 6 MDX declaration forms and 9 prose controls):
+
+```bash
+uv run -- python -m pytest tests/unit/scripts/test_comment_policy.py -k 'piped_sql_client_stdin_reports_comments or piped_sql_clients_with_other_input_do_not_scan_pipe or mdx_type_like_exports_reach_typescript_scanner or mdx_prose_import_lookalikes_are_not_code' -q -n0
+```
+
+The combined scanner unit and CI parity run passed 819 tests. Ruff check and
+format passed for both changed Python files. Full-project `uv run ty check`
+reported 674 diagnostics with exit status 0. `make comment-policy-check`
+passed 5,779 source files with zero violations, zero enforced failures and all
+19 native syntax tests passing.
