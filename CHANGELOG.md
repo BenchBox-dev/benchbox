@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   differ. The core `variants_comparable` guard protects `benchbox compare` and regression baseline selection
   against comparing different gateway, deployment, or engine variants unless `--allow-heterogeneous-comparison`
   is provided.
+  Interactive previews preserve the selected gateway in the equivalent
+  `benchbox run` command.
 
 
 - Result schema 2.3 supports execution-engine receipts, query engine observations,
