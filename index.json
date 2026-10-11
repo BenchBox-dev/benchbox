@@ -7899,6 +7899,13 @@
       "status": "done",
       "title": "Decide whether public-contracts and hosted-results-contract stay published"
     },
+    "docs-remediation-review-followups": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Fix remaining published-doc remediation review findings"
+    },
     "docs-rewrite-architecture-and-structure": {
       "claim": null,
       "needs": [],

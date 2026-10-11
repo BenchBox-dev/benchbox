@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Published ADR and result-format documentation no longer exposes a practical identifier-confirmation method or the supporting salt/algorithm details flagged by review, while documented user-facing result semantics remain accurate",
+    "All documented platform install extras exist in pyproject.toml or are replaced with the correct supported extras",
+    "Remaining TPC-DS recursion claim, Read Primitives count contradictions, file-shaped run --output examples, schema-version compare requirement, DuckDB thread keyword, and psycopg2 references are corrected against current code/catalog",
+    "Unlisted .rst pages under docs/development and docs/operations are excluded by Sphinx and covered by a negative test",
+    "Generated sitemap does not publish /blog/drafts.html and tests cover the behavior",
+    "Focused docs, converter, and Sphinx policy checks pass"
+  ],
+  "context": "Follow-up to merged PR #2891 and the adversarial review of current develop. The production deployment remains separate and requires an owner-authorized release/deploy after this source change is merged.",
+  "description": "Address the confirmed findings from the adversarial review of the 2026-10 documentation-exposure remediation: remove public re-identification guidance while preserving the published result contract; correct invalid platform extras and remaining benchmark, CLI, adapter, and driver documentation; make Sphinx allowlist enforcement cover all supported source suffixes; and remove the drafts page from the sitemap. Prepare a focused PR with targeted verification.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c5daffc9eae3c5f9ce6578f7",
+      "at": "2026-10-11T02:30:06Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c34c6b855aae4483989bf57a47830195",
+      "session_id": "f00fbcc194ab47a6a9508e7176243455"
+    }
+  ]
+}
