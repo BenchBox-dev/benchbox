@@ -10373,9 +10373,9 @@
     },
     "flaky-bigquery-credential-defaults-confirm-prompt": {
       "claim": {
-        "expires_at": "2026-10-12T19:01:46Z",
+        "expires_at": "2026-10-12T19:02:04Z",
         "generation": "7ae0eb6a9b9a474c94f935401c1e4231",
-        "renewals": 1,
+        "renewals": 2,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0b65b59dfd5ecfabcfde36b0"
       },
       "needs": [],
