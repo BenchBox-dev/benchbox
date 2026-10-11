@@ -1626,6 +1626,9 @@ def test_piped_sql_client_stdin_reports_comments(source: str) -> None:
         "echo 'SELECT 1 -- hidden' | psql -f queries.sql",
         "echo 'SELECT 1 -- hidden' | sqlite3 -no-stdin benchmark.db",
         "echo 'SELECT 1 -- hidden' | duckdb benchmark.db 'SELECT 1'",
+        "echo 'SELECT 1 -- hidden' | psql --help",
+        "echo 'SELECT 1 -- hidden' | sqlite3 -help",
+        "echo 'SELECT 1 -- hidden' | duckdb -version",
     ],
 )
 def test_piped_sql_clients_with_other_input_do_not_scan_pipe(source: str) -> None:

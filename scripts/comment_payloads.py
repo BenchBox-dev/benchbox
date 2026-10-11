@@ -761,6 +761,7 @@ def sql_client_source_index(name: str, words: Sequence[str | None]) -> int | Non
 
 
 SQL_CLIENTS = {"psql", "duckdb", "sqlite3"}
+SQL_CLIENT_NO_INPUT_OPTIONS = {"-?", "-V", "--help", "--version", "-help", "-version", "-no-stdin"}
 PSQL_VALUE_OPTIONS = {
     "-h",
     "--host",
@@ -787,50 +788,84 @@ PSQL_VALUE_OPTIONS = {
 }
 
 
+def sql_client_exit_option(word: str) -> bool:
+    return word in SQL_CLIENT_NO_INPUT_OPTIONS or word.startswith(("--help=", "--version="))
+
+
+def psql_reads_stdin(words: Sequence[str]) -> bool:
+    index = 1
+    while index < len(words):
+        word = words[index]
+        if sql_client_exit_option(word):
+            return False
+        if word in {"-f", "--file"}:
+            if index + 1 >= len(words):
+                raise ValueError("SQL client input file requires explicit support")
+            return words[index + 1] == "-"
+        if word.startswith("--file="):
+            return word.split("=", 1)[1] == "-"
+        if word.startswith("-f") and word != "-f":
+            return word[2:] == "-"
+        if word in PSQL_VALUE_OPTIONS:
+            if index + 1 >= len(words):
+                raise ValueError("SQL client option requires explicit support")
+            index += 2
+        else:
+            index += 1
+    return True
+
+
+def sqlite3_reads_stdin(words: Sequence[str], source_index: int | None) -> bool:
+    if source_index is not None and words[source_index - 1] != "-cmd":
+        return False
+    positionals = 0
+    index = 1
+    while index < len(words):
+        word = words[index]
+        if sql_client_exit_option(word):
+            return False
+        if word == "-cmd" or word in SQL_CLIENT_VALUE_OPTIONS:
+            if index + 1 >= len(words):
+                raise ValueError("SQL client option requires explicit support")
+            index += 2
+            continue
+        if word in SQL_CLIENT_FLAGS:
+            index += 1
+            continue
+        if word.startswith("-"):
+            raise ValueError("SQL client option requires explicit support")
+        positionals += 1
+        if positionals == 2:
+            return False
+        index += 1
+    return True
+
+
+def duckdb_reads_stdin(words: Sequence[str], source_index: int | None) -> bool:
+    if source_index is not None:
+        return False
+    index = 1
+    while index < len(words):
+        word = words[index]
+        if word in SQL_CLIENT_VALUE_OPTIONS:
+            if index + 1 >= len(words):
+                raise ValueError("SQL client option requires explicit support")
+            index += 2
+            continue
+        if sql_client_exit_option(word):
+            return False
+        index += 1
+    return True
+
+
 def sql_client_reads_stdin(name: str, words: Sequence[str]) -> bool:
     source_index = sql_client_source_index(name, words)
     if name == "psql":
-        if source_index is not None:
-            return False
-        index = 1
-        while index < len(words):
-            word = words[index]
-            if word in {"-f", "--file"}:
-                if index + 1 >= len(words):
-                    raise ValueError("SQL client input file requires explicit support")
-                return words[index + 1] == "-"
-            if word.startswith("--file="):
-                return word.split("=", 1)[1] == "-"
-            if word.startswith("-f") and word != "-f":
-                return word[2:] == "-"
-            index += 2 if word in PSQL_VALUE_OPTIONS else 1
-        return True
+        return source_index is None and psql_reads_stdin(words)
     if name == "sqlite3":
-        if "-no-stdin" in words:
-            return False
-        if source_index is not None and words[source_index - 1] != "-cmd":
-            return False
-        positionals = 0
-        index = 1
-        while index < len(words):
-            word = words[index]
-            if word == "-cmd" or word in SQL_CLIENT_VALUE_OPTIONS:
-                if index + 1 >= len(words):
-                    raise ValueError("SQL client option requires explicit support")
-                index += 2
-                continue
-            if word in SQL_CLIENT_FLAGS:
-                index += 1
-                continue
-            if word.startswith("-"):
-                raise ValueError("SQL client option requires explicit support")
-            positionals += 1
-            if positionals == 2:
-                return False
-            index += 1
-        return True
+        return sqlite3_reads_stdin(words, source_index)
     if name == "duckdb":
-        return source_index is None
+        return duckdb_reads_stdin(words, source_index)
     raise ValueError("unsupported SQL client stdin source")
 
 
