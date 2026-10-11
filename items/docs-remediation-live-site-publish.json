@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "An owner-approved release containing the remediation is available",
+    "The production site is deployed from that release",
+    "The public identifier ADR and result-format routes serve only the approved safe content and no longer expose the retired procedure",
+    "The changed and excluded production routes return the expected HTTP statuses and are recorded"
+  ],
+  "context": "Owner-only production release/deploy action. This item replaces the prior handoff's untracked open note about live-site redeploy timing and is intentionally dependent on source remediation and the full audit.",
+  "description": "The live site still serves the pre-remediation identifier-confirmation content. After the source PR is merged and the exhaustive audit is clean, the repository owner must authorize and perform the release/site deployment; deployment is not authorized by the current PR request.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c5daffc9eae3c5f9ce6578f7",
+      "at": "2026-10-11T02:30:47Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "fe723bccddc84e6da0a1cb82ed0060e1",
+      "session_id": "f00fbcc194ab47a6a9508e7176243455"
+    }
+  ]
+}

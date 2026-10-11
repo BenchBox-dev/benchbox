@@ -7908,6 +7908,16 @@
       "status": "open",
       "title": "Re-audit every published surface after remediation"
     },
+    "docs-remediation-live-site-publish": {
+      "claim": null,
+      "needs": [
+        "docs-remediation-review-followups",
+        "docs-remediation-full-surface-audit"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Publish and verify the approved documentation remediation"
+    },
     "docs-remediation-review-followups": {
       "claim": {
         "expires_at": "2026-10-12T02:30:23Z",
