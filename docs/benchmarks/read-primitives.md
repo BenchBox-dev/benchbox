@@ -11,7 +11,7 @@
 
 ## Overview
 
-The Read Primitives benchmark provides focused testing of fundamental database operations without the complexity of business logic. It offers systematic testing of specific database capabilities through 109 comprehensive primitive SQL queries organized into 26 operation categories.
+The Read Primitives benchmark provides focused testing of fundamental database operations without the complexity of business logic. It offers systematic testing of specific database capabilities through 157 primitive SQL queries organized into 31 operation categories.
 
 The benchmark uses the familiar TPC-H schema for data generation while focusing on isolated testing of individual database features. This approach enables developers to identify performance regressions, validate database engine optimizations, and perform focused hardware and configuration comparisons.
 
@@ -83,8 +83,8 @@ These extensions reflect modern SQL:2016+ features and real-world analytical wor
 
 ## Key Features
 
-- **109 comprehensive primitive queries** covering fundamental database operations
-- **26 operation categories** for systematic testing (aggregation, joins, filters, window functions, etc.)
+- **157 comprehensive primitive queries** covering fundamental database operations
+- **31 operation categories** for systematic testing (aggregation, joins, filters, window functions, etc.)
 - **Query categorization system** with metadata-driven organization
 - **Optimized data generation** leveraging existing TPC-H infrastructure
 - **Smart performance testing** with resource-aware optimization capabilities
@@ -105,7 +105,7 @@ The Read Primitives benchmark provides:
 
 ## Query Categories
 
-The 109 primitive queries are organized into 26 categories, each targeting specific database operations:
+The 157 primitive queries are organized into 31 categories, each targeting specific database operations:
 
 ### Core Operation Categories
 

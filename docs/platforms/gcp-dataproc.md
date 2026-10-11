@@ -18,11 +18,10 @@ Google Cloud Dataproc is Google Cloud's fully managed Apache Spark and Hadoop se
 ## Installation
 
 ```bash
-uv add benchbox --extra dataproc
-
+uv add benchbox --extra cloud-spark-gcp
 ```
 
-This installs the Dataproc extra, which adds `google-cloud-dataproc` and `google-cloud-storage`.
+This installs the Dataproc dependencies, including `google-cloud-dataproc` and `google-cloud-storage`.
 
 ## Prerequisites
 

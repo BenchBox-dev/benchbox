@@ -207,23 +207,15 @@ for comp in comparisons:
 
 ## Benchmark Results Analysis
 
-### Running Performance Benchmarks
+### Running and Comparing Results
 
 ```bash
-benchbox run --platform polars-df --benchmark tpch --scale 1 \
-  --output results/polars_sf1.json
+polars_result=$(benchbox run --platform polars-df --benchmark tpch --scale 1 --output ./polars-run --quiet)
+pandas_result=$(benchbox run --platform pandas-df --benchmark tpch --scale 1 --output ./pandas-run --quiet)
+duckdb_result=$(benchbox run --platform duckdb-df --benchmark tpch --scale 1 --output ./duckdb-run --quiet)
 
-benchbox run --platform pandas-df --benchmark tpch --scale 1 \
-  --output results/pandas_sf1.json
-
-benchbox run --platform duckdb-df --benchmark tpch --scale 1 \
-  --output results/duckdb_sf1.json
-```
-
-### Comparing Results
-
-```bash
-benchbox compare results/polars_sf1.json results/pandas_sf1.json results/duckdb_sf1.json
+benchbox compare "$polars_result" "$pandas_result"
+benchbox compare "$polars_result" "$duckdb_result"
 ```
 
 ### Programmatic Analysis

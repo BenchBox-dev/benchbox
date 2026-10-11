@@ -119,15 +119,24 @@ benchbox run --platform quanton --benchmark tpch --scale 10.0 \
 ### Cross-Format Comparison
 
 ```bash
-for format in iceberg hudi delta; do
-  benchbox run --platform quanton --benchmark tpch --scale 1.0 \
-    --platform-option s3_staging_dir=s3://my-bucket/benchbox \
-    --platform-option table_format=$format \
-    --output results/quanton_${format}.json
-done
+iceberg_result=$(benchbox run --platform quanton --benchmark tpch --scale 1.0 \
+  --platform-option s3_staging_dir=s3://my-bucket/benchbox \
+  --platform-option table_format=iceberg \
+  --output ./quanton-iceberg-run --quiet)
+hudi_result=$(benchbox run --platform quanton --benchmark tpch --scale 1.0 \
+  --platform-option s3_staging_dir=s3://my-bucket/benchbox \
+  --platform-option table_format=hudi \
+  --output ./quanton-hudi-run --quiet)
+delta_result=$(benchbox run --platform quanton --benchmark tpch --scale 1.0 \
+  --platform-option s3_staging_dir=s3://my-bucket/benchbox \
+  --platform-option table_format=delta \
+  --output ./quanton-delta-run --quiet)
+
+benchbox compare "$iceberg_result" "$hudi_result"
+benchbox compare "$iceberg_result" "$delta_result"
 ```
 
-The loop compares performance across table formats.
+Each comparison uses the Iceberg run as the baseline and compares one result file pair.
 
 ### Python API
 

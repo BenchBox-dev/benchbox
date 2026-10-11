@@ -18,11 +18,10 @@ Dataproc Serverless is Google Cloud's fully managed Apache Spark service that el
 ## Installation
 
 ```bash
-uv add benchbox --extra dataproc-serverless
+uv add benchbox --extra cloud-spark-gcp
 ```
 
-The `dataproc-serverless` extra installs `google-cloud-dataproc` and `google-cloud-storage`.
-
+This installs `google-cloud-dataproc` and `google-cloud-storage`.
 ## Prerequisites
 
 1. **GCP project** with Dataproc Serverless API enabled

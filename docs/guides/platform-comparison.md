@@ -21,14 +21,16 @@ BenchBox provides a unified comparison interface supporting:
 
 A key BenchBox design principle: benchmark data is generated once as Parquet files and shared across all platforms. When you compare DuckDB, DataFusion, SQLite, and Polars at the same scale factor, every engine reads from the same Parquet dataset. This eliminates data variability and ensures performance differences reflect the engines themselves.
 
-All three run commands read the same generated Parquet files. The final command compares the results.
+Every command reads the shared Parquet dataset. The comparisons use DuckDB as
+the baseline for both alternatives.
 
 ```bash
-benchbox run --platform duckdb --benchmark tpch --scale 1 --output results/duckdb.json
-benchbox run --platform datafusion --benchmark tpch --scale 1 --output results/datafusion.json
-benchbox run --platform polars-df --benchmark tpch --scale 1 --output results/polars.json
+duckdb_result=$(benchbox run --platform duckdb --benchmark tpch --scale 1 --output ./duckdb-run --quiet)
+datafusion_result=$(benchbox run --platform datafusion --benchmark tpch --scale 1 --output ./datafusion-run --quiet)
+polars_result=$(benchbox run --platform polars-df --benchmark tpch --scale 1 --output ./polars-run --quiet)
 
-benchbox compare results/duckdb.json results/datafusion.json results/polars.json
+benchbox compare "$duckdb_result" "$datafusion_result"
+benchbox compare "$duckdb_result" "$polars_result"
 ```
 
 Data is generated on the first run and cached in `benchmark_runs/<benchmark>/sf<scale>/data/`. Subsequent runs at the same scale factor reuse the cached data automatically.
@@ -122,7 +124,9 @@ benchbox compare -p polars-df -p pandas-df --scale 0.01
 ### Compare Result Files
 
 ```bash
-benchbox compare results/duckdb.json results/sqlite.json
+duckdb_result=$(benchbox run --platform duckdb --benchmark tpch --scale 0.1 --output ./duckdb-run --quiet)
+sqlite_result=$(benchbox run --platform sqlite --benchmark tpch --scale 0.1 --output ./sqlite-run --quiet)
+benchbox compare "$duckdb_result" "$sqlite_result"
 ```
 
 ### Interactive Mode
@@ -305,10 +309,9 @@ Compare previously saved benchmark results. The two `run` commands export result
 `compare` command compares the result files:
 
 ```bash
-benchbox run --platform duckdb --benchmark tpch --scale 0.1 --output results/duckdb
-benchbox run --platform sqlite --benchmark tpch --scale 0.1 --output results/sqlite
-
-benchbox compare results/duckdb/results.json results/sqlite/results.json
+duckdb_result=$(benchbox run --platform duckdb --benchmark tpch --scale 0.1 --output ./duckdb-run --quiet)
+sqlite_result=$(benchbox run --platform sqlite --benchmark tpch --scale 0.1 --output ./sqlite-run --quiet)
+benchbox compare "$duckdb_result" "$sqlite_result"
 ```
 
 ### Specific Query Subset
@@ -644,10 +647,10 @@ Plan comparison requires benchmark results captured with `--capture-plans`. The 
 the `compare` command then compares with plan analysis:
 
 ```bash
-benchbox run --platform duckdb --benchmark tpch --capture-plans --output baseline
-benchbox run --platform duckdb --benchmark tpch --capture-plans --output current
+baseline=$(benchbox run --platform duckdb --benchmark tpch --capture-plans --output ./baseline --quiet)
+current=$(benchbox run --platform duckdb --benchmark tpch --capture-plans --output ./current --quiet)
 
-benchbox compare baseline/results.json current/results.json --include-plans
+benchbox compare "$baseline" "$current" --include-plans
 ```
 
 ## Related Documentation

@@ -503,7 +503,6 @@ def test_submit_unsupported_schema_error(monkeypatch: pytest.MonkeyPatch, tmp_pa
     result = CliRunner().invoke(sub.submit, [str(src)])
     assert result.exit_code == 1
     assert "Unsupported schema version" in result.output
-    assert "schema version 2.0" in result.output
 
 
 def test_submit_file_not_found_error(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

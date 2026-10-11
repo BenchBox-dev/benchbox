@@ -17,7 +17,12 @@ def read_list(name: str) -> list[str]:
 
 
 def gated_pages() -> set[str]:
-    return {page.relative_to(DOCS).as_posix() for root in PUBLISH_LIST_ROOTS for page in (DOCS / root).rglob("*.md")}
+    return {
+        page.relative_to(DOCS).as_posix()
+        for root in PUBLISH_LIST_ROOTS
+        for suffix in ("*.md", "*.rst")
+        for page in (DOCS / root).rglob(suffix)
+    }
 
 
 ALLOWLIST = read_list("publish-allowlist.txt")
@@ -74,8 +79,12 @@ def test_sphinx_excludes_a_new_unlisted_page(conf: dict, tmp_path: Path) -> None
     (tmp_path / "development").mkdir()
     (tmp_path / "development" / "kept.md").write_text("# Kept\n")
     (tmp_path / "development" / "new-page.md").write_text("# New\n")
-    (tmp_path / "publish-allowlist.txt").write_text("# comment\ndevelopment/kept.md\n")
-    assert conf["_unlisted_publish_list_pages"](tmp_path) == ["development/new-page.md"]
+    (tmp_path / "development" / "kept.rst").write_text("Kept\n====\n")
+    (tmp_path / "development" / "new-page.rst").write_text("New\n===\n")
+    (tmp_path / "publish-allowlist.txt").write_text("# comment\ndevelopment/kept.md\ndevelopment/kept.rst\n")
+    exclude_patterns = conf["_unlisted_publish_list_pages"](tmp_path)
+    assert exclude_patterns == ["development/new-page.md", "development/new-page.rst"]
+    assert sphinx_docnames(tmp_path, exclude_patterns) == {"development/kept"}
 
 
 def test_missing_publish_list_publishes_nothing_in_gated_directories(conf: dict, tmp_path: Path) -> None:
@@ -94,9 +103,12 @@ def test_sphinx_discovers_no_excluded_or_unlisted_page(conf: dict) -> None:
     docnames = sphinx_docnames(DOCS, conf["exclude_patterns"])
     assert docnames
     assert sorted(name for name in docnames if name.split("/")[0] in EXCLUDED_ROOTS) == []
-    assert sorted(name for name in docnames if f"{name}.md" in EXCLUDED_FILES) == []
+    assert (
+        sorted(name for name in docnames if any(f"{name}{suffix}" in EXCLUDED_FILES for suffix in (".md", ".rst")))
+        == []
+    )
     gated = {name for name in docnames if name.split("/")[0] in PUBLISH_LIST_ROOTS}
-    assert sorted(name for name in gated if f"{name}.md" not in ALLOWLIST) == []
+    assert sorted(name for name in gated if not any(f"{name}{suffix}" in ALLOWLIST for suffix in (".md", ".rst"))) == []
 
 
 def test_sphinx_excludes_everything_under_a_listed_directory(tmp_path: Path) -> None:

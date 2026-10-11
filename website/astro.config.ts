@@ -68,7 +68,9 @@ const publishStatic = (): AstroIntegration => ({
       cpSync(path.join(repoRoot, "docs", "CNAME"), path.join(out, "CNAME"));
       writeFileSync(path.join(out, ".nojekyll"), "");
       writeFileSync(path.join(out, "robots.txt"), renderRobots());
-      const pages = htmlFiles(out).filter((file) => file !== "404.html" && !Object.hasOwn(REDIRECT_PAGES, file));
+      const pages = htmlFiles(out).filter(
+        (file) => file !== "404.html" && file !== "blog/drafts.html" && !Object.hasOwn(REDIRECT_PAGES, file),
+      );
       writeFileSync(path.join(out, "sitemap.xml"), renderSitemap(pages.map(sitemapPathForFile)));
       const legacy = JSON.parse(readFileSync(path.join(repoRoot, "website", ".generated", "manifest", "legacy-files.json"), "utf-8")) as LegacyFiles;
       for (const name of legacy.images) cpSync(path.join(images, name), path.join(out, "_images", name));

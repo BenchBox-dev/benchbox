@@ -258,7 +258,9 @@ counted in data-loading time.
 ### Integration with Other Tools
 
 ```bash
-benchbox run --platform clickhouse-local --benchmark tpch --scale 0.01 --output results.json
+benchbox run --platform clickhouse-local --benchmark tpch --scale 0.01 --output ./clickhouse-run
+
+find ./clickhouse-run/results -name '*.json'
 
 for benchmark in tpch tpcds ssb; do
   echo "Running $benchmark..."
@@ -266,7 +268,8 @@ for benchmark in tpch tpcds ssb; do
 done
 ```
 
-The first command exports results for analysis. The loop runs multiple benchmarks.
+The first command writes JSON results under `./clickhouse-run/results`; `find` lists those files. The loop runs multiple
+benchmarks.
 
 ## Technical Details
 

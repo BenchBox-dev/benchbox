@@ -630,7 +630,6 @@ def submit(
         return
     except UnsupportedSchemaError as e:
         console.print(f"[red]Error: {e}[/red]")
-        console.print("[dim]Only schema version 2.0 is currently supported for submission[/dim]")
         ctx.exit(1)
         return
     except ResultLoadError as e:

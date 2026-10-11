@@ -17,10 +17,10 @@ AWS Glue is a fully managed, serverless ETL service that runs Apache Spark for d
 
 ## Installation
 
-This installs Glue support and the `boto3` dependency.
+This installs the AWS client dependency, `boto3`, via the `cloud-spark-aws` extra.
 
 ```bash
-uv add benchbox --extra glue
+uv add benchbox --extra cloud-spark-aws
 ```
 
 ## Prerequisites

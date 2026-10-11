@@ -1186,7 +1186,6 @@ def _load_comparison_files(baseline_path: Path, current_path: Path) -> tuple[Any
         sys.exit(1)
     except UnsupportedSchemaError as e:
         console.print(f"[red]Error: {e}[/red]")
-        console.print("[dim]Only schema version 2.0 is supported[/dim]")
         sys.exit(1)
     except ResultLoadError as e:
         console.print(f"[red]Error loading result file: {e}[/red]")

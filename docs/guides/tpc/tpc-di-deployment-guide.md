@@ -227,7 +227,6 @@ export TPCDI_OUTPUT_DIR=/path/to/data
 export TPCDI_PARALLEL_WORKERS=4
 
 export DATABASE_URL="postgresql://user:pass@localhost:5432/tpcdi"
-export DATABASE_POOL_SIZE=10
 export DATABASE_TIMEOUT=30
 
 export TPCDI_BATCH_SIZE=10000
@@ -385,17 +384,17 @@ config = TPCDIConfig(
 
 benchmark = TPCDIBenchmark(config=config)
 
-import psycopg2
-from psycopg2.extras import RealDictCursor
+import psycopg
+from psycopg.rows import dict_row
 
 def get_database_connection():
-    return psycopg2.connect(
+    return psycopg.connect(
         host=os.getenv('DB_HOST', 'localhost'),
         port=int(os.getenv('DB_PORT', '5432')),
-        database=os.getenv('DB_NAME', 'tpcdi_staging'),
+        dbname=os.getenv('DB_NAME', 'tpcdi_staging'),
         user=os.getenv('DB_USER', 'tpcdi'),
         password=os.getenv('DB_PASSWORD'),
-        cursor_factory=RealDictCursor
+        row_factory=dict_row,
     )
 
 def run_staging_benchmark():
@@ -501,16 +500,9 @@ class ProductionTPCDI:
             raise ValueError("DATABASE_URL environment variable not set")
 
         if db_url.startswith('postgresql://'):
-            import psycopg2
-            from psycopg2 import pool
+            import psycopg
 
-            connection_pool = psycopg2.pool.ThreadedConnectionPool(
-                minconn=1,
-                maxconn=int(os.getenv('DB_POOL_SIZE', '10')),
-                dsn=db_url
-            )
-            return connection_pool.getconn()
-
+            return psycopg.connect(db_url)
         elif db_url.startswith('duckdb://'):
             import duckdb
             db_path = db_url.replace('duckdb://', '')
@@ -1089,27 +1081,21 @@ Fix the directory permissions as shown, or point `TPCDI_DATA_DIR` at a user-writ
 
 **Problem**: Database connection failures
 ```
-psycopg2.OperationalError: could not connect to server
+psycopg.OperationalError: could not connect to server
 ```
 
 **Solutions**:
 ```python
 import os
+import psycopg
+
 os.environ['DATABASE_URL'] = 'postgresql://user:pass@localhost:5432/tpcdi'
-
-import psycopg2
 try:
-    conn = psycopg2.connect(os.environ['DATABASE_URL'])
-    print("Connection successful")
-    conn.close()
-except Exception as e:
+    with psycopg.connect(os.environ['DATABASE_URL']) as conn:
+        print("Connection successful")
+except psycopg.OperationalError as e:
     print(f"Connection failed: {e}")
-
-from psycopg2 import pool
-connection_pool = psycopg2.pool.ThreadedConnectionPool(1, 10, os.environ['DATABASE_URL'])
 ```
-
-Verify the connection string, test the connection on its own, and use connection pooling in production (the last statement).
 
 #### 5. Query Execution Errors
 

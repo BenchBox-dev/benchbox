@@ -321,9 +321,9 @@ one name covers requested and observed values.
   publication pipeline or the Explorer reads a warehouse, engine or cluster
   name; only `warehouse_size` is read.
 - `resource_kind` and `size` stay readable.
-- Existing hashing of legacy keys (`warehouse`, `enginename` and others) is
+- Existing handling of legacy keys (`warehouse`, `enginename` and others) is
   unchanged, so no published byte moves.
-- `gateway_host` joins the endpoint keys and is hashed, like other endpoints.
+- `gateway_host` is published as a pseudonym, like other endpoints.
 - `execution_engine` and `gateway` values stay readable. They come from closed,
   declared lists and identify product behavior, not people or accounts.
 - Athena's literal `engine` field is renamed `product`.
@@ -331,12 +331,11 @@ one name covers requested and observed values.
 
 **Rejected alternatives:**
 
-- *Hashing `compute_resource`.* A hash with the public default salt is a
-  confirmation oracle, and the field has no reader. The field-set ADR drops
-  unread identifiers instead of hashing them.
+- *Retaining `compute_resource`.* The field has no reader. The field-set ADR
+  drops unread identifiers.
 - *Publishing `compute_resource` in plain text.* Resource names can identify
   an account or organization.
-- *Re-hashing legacy keys under the new name.* Published bytes and result IDs
+- *Changing legacy keys under the new name.* Published bytes and result IDs
   would change.
 
 ## D8. Identity

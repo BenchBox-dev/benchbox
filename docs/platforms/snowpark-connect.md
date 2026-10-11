@@ -30,10 +30,10 @@ Unlike Apache Spark, Snowpark Connect has some limitations:
 ## Installation
 
 ```bash
-uv add benchbox --extra snowpark-connect
+uv add benchbox --extra cloud-spark-snowflake
 ```
 
-This installs Snowpark Connect support, including the `snowflake-snowpark-python` dependency.
+This installs `snowflake-snowpark-python` and PySpark.
 
 ## Prerequisites
 
