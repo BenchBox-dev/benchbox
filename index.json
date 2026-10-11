@@ -3036,7 +3036,7 @@
         "tuning-evidence-benefit-rule-20261008"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "Find why TPC-DS Q10 exceeds the 5.25 GiB envelope on ClickHouse server at SF1"
     },
     "clickhouse-session-policy-link-sqlglot-ast-gap-issue": {
