@@ -147,6 +147,8 @@ def _apply_gateway_option(s: types.SimpleNamespace) -> None:
 
     gateway_host = s.parsed_platform_options.get("gateway_host") if hasattr(s, "parsed_platform_options") else None
     try:
+        if not s.platform_key:
+            raise GatewayConfigurationError("--gateway requires --platform")
         s.gateway = resolve_requested_gateway(s.platform_key, gateway, gateway_host)
     except (UnsupportedGatewayError, GatewayConfigurationError) as exc:
         console.print(f"[red]❌ {exc}[/red]")

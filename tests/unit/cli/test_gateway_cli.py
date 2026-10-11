@@ -95,6 +95,16 @@ def test_gateway_cli_validation_fails_before_database_work() -> None:
     database_manager.create_config.assert_not_called()
 
 
+def test_gateway_cli_requires_platform() -> None:
+    database_manager = MagicMock()
+
+    result = _run_cli(["run", "--gateway", "espresso"], database_manager)
+
+    assert result.exit_code == 1
+    assert "--gateway requires --platform" in result.output
+    database_manager.create_config.assert_not_called()
+
+
 def test_custom_gateway_without_host_fails_before_database_work() -> None:
     database_manager = MagicMock()
 
