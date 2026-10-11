@@ -264,6 +264,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   runtime defaults (streaming)" for Polars and "OLAP session pack" for
   ClickHouse, for example.
 
+### Fixed
+
+- **Databricks tuned templates keep unrendered constraints disabled.** Their
+  unique and check constraint flags now match the disabled baseline instead of
+  inheriting enabled model defaults when omitted.
+
 ## [0.4.2] - 2026-10-05
 
 ### Before you upgrade

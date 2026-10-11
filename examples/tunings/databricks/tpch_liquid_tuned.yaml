@@ -6,6 +6,15 @@ primary_keys:
 foreign_keys:
   enabled: true
 
+unique_constraints:
+  enabled: false
+  ignore_nulls: false
+
+check_constraints:
+  enabled: false
+  enforce_on_insert: false
+  enforce_on_update: false
+
 platform_optimizations:
   z_ordering_enabled: false
   z_ordering_columns: []
