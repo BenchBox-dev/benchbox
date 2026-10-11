@@ -62,6 +62,35 @@ def test_clickhouse_q35_rewrite_fails_closed_on_unexpected_shape():
         rewrite_q35_for_clickhouse("SELECT * FROM store_sales")
 
 
+def test_clickhouse_q10_rewrites_correlated_exists_to_semijoins_across_seeds():
+    bench = _bench()
+
+    for seed in SEEDS:
+        base = bench.get_query(10, seed=seed)
+        clickhouse = bench.get_query(10, seed=seed, dialect="clickhouse")
+
+        assert "exists" in base.lower()
+        assert "EXISTS" not in clickhouse
+        assert clickhouse.count("c.c_customer_sk IN (SELECT") == 3
+        assert "d_moy BETWEEN" in clickhouse
+
+
+def test_clickhouse_q10_rewrite_fails_closed_on_unexpected_shape():
+    with pytest.raises(ValueError, match="expected 3 semi-join predicates"):
+        from benchbox.core.tpcds.benchmark.clickhouse_overrides import rewrite_q10_for_clickhouse
+
+        rewrite_q10_for_clickhouse("SELECT * FROM store_sales")
+
+
+def test_non_clickhouse_q10_keeps_original_exists_shape():
+    bench = _bench()
+
+    query = bench.get_query(10, seed=SEEDS[0])
+
+    assert "exists" in query.lower()
+    assert "c.c_customer_sk IN (SELECT" not in query
+
+
 def test_non_clickhouse_q35_keeps_original_exists_shape():
     bench = _bench()
 
