@@ -17606,10 +17606,15 @@
       "title": "Rename the release branch main->release (Decision B of the branching-strategy review)"
     },
     "repair-comment-policy-shell-payload-coverage": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-12T22:27:10Z",
+        "generation": "321381d2535b407f80b6e71d2974c726",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c5daffc9eae3c5f9ce6578f7"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Repair shell executable-payload coverage in the comment-policy checker"
     },
     "repair-public-pagefind-search": {
