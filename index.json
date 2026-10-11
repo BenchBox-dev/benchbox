@@ -7793,6 +7793,15 @@
       "status": "done",
       "title": "Fix wrong install extras, options and stale claims in platform guides"
     },
+    "docs-backend-exception-redaction-followup": {
+      "claim": null,
+      "needs": [
+        "docs-remediation-full-surface-audit"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Verify backend exception redaction across public result paths"
+    },
     "docs-blog-index-broken-html-links": {
       "claim": null,
       "needs": [],
