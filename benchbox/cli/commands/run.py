@@ -349,6 +349,7 @@ LOAD_FAILURE_MARKER = "BENCHBOX_LOAD_FAILURE_JSON="
 def _print_template_evidence_warning(result: Any, *, quiet: bool) -> None:
     if quiet:
         return
+    from benchbox.core.results.schema import _tuning_evidence_engine_version
     from benchbox.core.tuning.template_evidence import evidence_warning
 
     message = evidence_warning(
@@ -356,6 +357,10 @@ def _print_template_evidence_warning(result: Any, *, quiet: bool) -> None:
         getattr(result, "benchmark_name", None),
         source_file=getattr(result, "tuning_source_file", None),
         tunings_applied=getattr(result, "tunings_applied", None),
+        scale_factor=getattr(result, "scale_factor", None),
+        execution_environment=getattr(result, "execution_environment", None),
+        system_profile=getattr(result, "system_profile", None),
+        engine_version=_tuning_evidence_engine_version(result),
     )
     if message is not None:
         console.print(message, soft_wrap=True)

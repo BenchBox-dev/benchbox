@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 
 import pytest
+import yaml
 
 from benchbox.core.results.models import BenchmarkResults
 from benchbox.core.results.schema import build_result_payload
@@ -39,6 +41,17 @@ def _make_result(**overrides) -> BenchmarkResults:
     }
     defaults.update(overrides)
     return BenchmarkResults(**defaults)
+
+
+def _measurement(state):
+    return {
+        "state": state,
+        "scale_factor": 0.01,
+        "memory": {"basis": "host_total_gb", "value": 16},
+        "engine_version": "v1",
+        "measured_on": "2026-10-11",
+        "evidence": "test evidence",
+    }
 
 
 def test_tuned_run_records_unmeasured_template_evidence_with_hash_unchanged():
@@ -89,16 +102,93 @@ def test_template_evidence_absent_off_registry():
     assert "template_evidence" not in build_result_payload(result)["platform"]["tuning"]
 
 
-def test_template_evidence_reflects_measured_state(monkeypatch):
-    monkeypatch.setattr(template_evidence, "_REGISTRY", {"duckdb": {"tpch": {"state": "measured"}}})
+@pytest.mark.parametrize("state", ("measured-benefit", "measured-neutral", "measured-regression"))
+def test_template_evidence_reflects_matching_measured_state(state, monkeypatch):
+    monkeypatch.setattr(template_evidence, "_REGISTRY", {"duckdb": {"tpch": {"measurements": [_measurement(state)]}}})
     config = _tuned_config()
     result = _make_result(
         tunings_applied=config.to_dict(),
         tuning_source_file="examples/tunings/duckdb/tpch_tuned.yaml",
         tuning_config_hash=config.get_configuration_hash(),
+        execution_environment={"platform_runtime": {"runtime_type": "local_process"}},
+        system_profile={"memory_gb": 16},
+        engine_version="v1",
     )
 
-    assert build_result_payload(result)["platform"]["tuning"]["template_evidence"] == "measured"
+    assert build_result_payload(result)["platform"]["tuning"]["template_evidence"] == state
+
+
+def test_template_evidence_scope_mismatch_stays_unmeasured(monkeypatch):
+    monkeypatch.setattr(
+        template_evidence,
+        "_REGISTRY",
+        {
+            "duckdb": {
+                "tpch": {
+                    "measurements": [
+                        {
+                            **_measurement("measured-benefit"),
+                            "scale_factor": 1.0,
+                        }
+                    ]
+                }
+            }
+        },
+    )
+    config = _tuned_config()
+    result = _make_result(
+        tunings_applied=config.to_dict(),
+        tuning_source_file="examples/tunings/duckdb/tpch_tuned.yaml",
+        tuning_config_hash=config.get_configuration_hash(),
+        execution_environment={"platform_runtime": {"runtime_type": "local_process"}},
+        system_profile={"memory_gb": 16},
+        engine_version="v1",
+    )
+
+    assert build_result_payload(result)["platform"]["tuning"]["template_evidence"] == "unmeasured"
+
+
+def test_requested_config_hash_is_independent_of_evidence_for_every_shipped_template(monkeypatch):
+    repo_root = Path(__file__).resolve().parents[4]
+    roots = (
+        repo_root / "benchbox" / "core" / "tuning" / "templates",
+        repo_root / "examples" / "tunings",
+    )
+    paths = sorted(path for root in roots for path in root.glob("*/*_tuned.yaml"))
+    assert paths, "no shipped tuned templates found"
+
+    for path in paths:
+        source_file = path.relative_to(repo_root).as_posix()
+        raw_config = yaml.safe_load(path.read_text(encoding="utf-8"))
+        config = UnifiedTuningConfiguration.from_dict(raw_config)
+        benchmark = path.stem.removesuffix("_liquid_tuned").removesuffix("_tuned")
+        cell = template_evidence.template_cell(source_file, path.parent.name, benchmark)
+        assert cell is not None, source_file
+        assert config.to_dict(), source_file
+        config_hash = config.get_configuration_hash()
+        result = _make_result(
+            benchmark_name=cell[1],
+            platform=cell[0],
+            scale_factor=0.01,
+            tunings_applied=config.to_dict(),
+            tuning_source_file=source_file,
+            tuning_config_hash=config_hash,
+            execution_environment={"platform_runtime": {"runtime_type": "local_process"}},
+            system_profile={"memory_gb": 16},
+            engine_version="v1",
+        )
+        hashes = []
+        for state in ("measured-benefit", "measured-neutral"):
+            monkeypatch.setattr(
+                template_evidence,
+                "_REGISTRY",
+                {cell[0]: {cell[1]: {"measurements": [_measurement(state)]}}},
+            )
+            summary = build_result_payload(result)["platform"]["tuning"]
+            assert summary["template_evidence"] == state, source_file
+            hashes.append(summary["requested_config_hash"])
+
+        assert hashes == [config_hash, config_hash], source_file
 
 
 def test_tuned_run_with_display_names_records_evidence():

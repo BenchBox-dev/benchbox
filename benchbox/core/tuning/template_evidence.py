@@ -5,11 +5,18 @@ from typing import Any, Mapping
 
 import yaml
 
+from benchbox.core.results.environment import system_profile_snapshot
 from benchbox.core.tuning.capability_registry import resolve_platform_key
 
 REGISTRY_PATH = Path(__file__).resolve().parent / "profiles" / "template_evidence.yaml"
 
 UNMEASURED = "unmeasured"
+EVIDENCE_STATES = (
+    "unmeasured",
+    "measured-benefit",
+    "measured-neutral",
+    "measured-regression",
+)
 
 BENCHMARK_ALIASES = {
     "tpc-h": "tpch",
@@ -39,7 +46,58 @@ def normalize_benchmark(benchmark: Any) -> str | None:
     return BENCHMARK_ALIASES.get(lowered, lowered)
 
 
-def evidence_state(platform: Any, benchmark: Any) -> str | None:
+def _memory_scope(execution_environment: Any, system_profile: Any) -> dict[str, Any] | None:
+    if isinstance(execution_environment, Mapping):
+        container = execution_environment.get("container")
+        client_host = execution_environment.get("client_host")
+        platform_runtime = execution_environment.get("platform_runtime")
+    else:
+        container = getattr(execution_environment, "container", None)
+        client_host = getattr(execution_environment, "client_host", None)
+        platform_runtime = getattr(execution_environment, "platform_runtime", None)
+    if container is not None:
+        if isinstance(container, Mapping):
+            memory_limit = container.get("memory_limit")
+        else:
+            memory_limit = getattr(container, "memory_limit", None)
+        if isinstance(memory_limit, str) and memory_limit.strip():
+            return {"basis": "container_limit", "value": memory_limit}
+        if isinstance(memory_limit, (int, float)) and not isinstance(memory_limit, bool) and memory_limit > 0:
+            return {"basis": "container_limit", "value": memory_limit}
+        return None
+    if isinstance(platform_runtime, Mapping):
+        runtime_type = platform_runtime.get("runtime_type")
+    else:
+        runtime_type = getattr(platform_runtime, "runtime_type", None)
+    if runtime_type not in {"local_process", "dataframe_process"}:
+        return None
+    if isinstance(client_host, Mapping):
+        host_memory = client_host.get("memory_gb")
+    else:
+        host_memory = getattr(client_host, "memory_gb", None)
+    if host_memory is None and system_profile is not None:
+        profile = system_profile_snapshot(system_profile)
+        host_memory = next(
+            (
+                profile[key]
+                for key in ("memory_gb", "memory_total_gb", "total_memory_gb")
+                if profile.get(key) is not None
+            ),
+            None,
+        )
+    if isinstance(host_memory, (int, float)) and not isinstance(host_memory, bool) and host_memory > 0:
+        return {"basis": "host_total_gb", "value": host_memory}
+    return None
+
+
+def evidence_state(
+    platform: Any,
+    benchmark: Any,
+    *,
+    scale_factor: Any = None,
+    memory: Any = None,
+    engine_version: Any = None,
+) -> str | None:
     normalized_benchmark = normalize_benchmark(benchmark)
     if not platform or not normalized_benchmark:
         return None
@@ -50,8 +108,23 @@ def evidence_state(platform: Any, benchmark: Any) -> str | None:
     entry = entries.get(normalized_benchmark)
     if not isinstance(entry, Mapping):
         return None
-    state = entry.get("state")
-    return str(state) if state else None
+    if scale_factor is None or memory is None or not engine_version:
+        return UNMEASURED
+    measurements = entry.get("measurements")
+    if not isinstance(measurements, list):
+        return UNMEASURED
+    matches = [
+        measurement
+        for measurement in measurements
+        if isinstance(measurement, Mapping)
+        and measurement.get("scale_factor") == scale_factor
+        and measurement.get("memory") == memory
+        and measurement.get("engine_version") == engine_version
+    ]
+    if len(matches) != 1:
+        return UNMEASURED
+    state = matches[0].get("state")
+    return str(state) if state in EVIDENCE_STATES else UNMEASURED
 
 
 def is_tuned_template_ref(source_file: Any) -> bool:
@@ -91,13 +164,22 @@ def evidence_state_for_run(
     benchmark: Any,
     *,
     tunings_applied: Any,
+    scale_factor: Any = None,
+    execution_environment: Any = None,
+    system_profile: Any = None,
+    engine_version: Any = None,
 ) -> str | None:
     if not tunings_applied:
         return None
     cell = template_cell(source_file, platform, benchmark)
     if cell is None:
         return None
-    return evidence_state(*cell)
+    return evidence_state(
+        *cell,
+        scale_factor=scale_factor,
+        memory=_memory_scope(execution_environment, system_profile),
+        engine_version=engine_version,
+    )
 
 
 def evidence_warning(
@@ -106,11 +188,27 @@ def evidence_warning(
     *,
     source_file: Any,
     tunings_applied: Any,
+    scale_factor: Any = None,
+    execution_environment: Any = None,
+    system_profile: Any = None,
+    engine_version: Any = None,
 ) -> str | None:
-    cell = template_cell(source_file, platform, benchmark)
-    if cell is None or not tunings_applied:
+    if not tunings_applied:
         return None
-    if evidence_state(*cell) != UNMEASURED:
+    cell = template_cell(source_file, platform, benchmark)
+    if cell is None:
+        return None
+    state = evidence_state_for_run(
+        source_file,
+        platform,
+        benchmark,
+        tunings_applied=tunings_applied,
+        scale_factor=scale_factor,
+        execution_environment=execution_environment,
+        system_profile=system_profile,
+        engine_version=engine_version,
+    )
+    if state != UNMEASURED:
         return None
     return (
         f"Tuned template {cell[0]}/{cell[1]} has no measured benefit: the result shows "
@@ -120,6 +218,7 @@ def evidence_warning(
 
 __all__ = [
     "BENCHMARK_ALIASES",
+    "EVIDENCE_STATES",
     "REGISTRY_PATH",
     "UNMEASURED",
     "evidence_state",

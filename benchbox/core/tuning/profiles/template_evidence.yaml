@@ -1,137 +1,42 @@
 clickhouse:
   tpch:
-    state: unmeasured
-    scale_factor: null
-    memory: null
-    engine_version: null
-    measured_on: null
-    evidence: no harness-grade measurement recorded
+    measurements: []
   tpcds:
-    state: unmeasured
-    scale_factor: null
-    memory: null
-    engine_version: null
-    measured_on: null
-    evidence: no harness-grade measurement recorded
+    measurements: []
   ssb:
-    state: unmeasured
-    scale_factor: null
-    memory: null
-    engine_version: null
-    measured_on: null
-    evidence: no harness-grade measurement recorded
+    measurements: []
 databricks:
   tpch:
-    state: unmeasured
-    scale_factor: null
-    memory: null
-    engine_version: null
-    measured_on: null
-    evidence: no harness-grade measurement recorded
+    measurements: []
   tpcds:
-    state: unmeasured
-    scale_factor: null
-    memory: null
-    engine_version: null
-    measured_on: null
-    evidence: no harness-grade measurement recorded
+    measurements: []
   ssb:
-    state: unmeasured
-    scale_factor: null
-    memory: null
-    engine_version: null
-    measured_on: null
-    evidence: no harness-grade measurement recorded
+    measurements: []
   tpchavoc:
-    state: unmeasured
-    scale_factor: null
-    memory: null
-    engine_version: null
-    measured_on: null
-    evidence: no harness-grade measurement recorded
+    measurements: []
   read_primitives:
-    state: unmeasured
-    scale_factor: null
-    memory: null
-    engine_version: null
-    measured_on: null
-    evidence: no harness-grade measurement recorded
+    measurements: []
 duckdb:
   tpch:
-    state: unmeasured
-    scale_factor: null
-    memory: null
-    engine_version: null
-    measured_on: null
-    evidence: no harness-grade measurement recorded
+    measurements: []
   tpcds:
-    state: unmeasured
-    scale_factor: null
-    memory: null
-    engine_version: null
-    measured_on: null
-    evidence: no harness-grade measurement recorded
+    measurements: []
   ssb:
-    state: unmeasured
-    scale_factor: null
-    memory: null
-    engine_version: null
-    measured_on: null
-    evidence: no harness-grade measurement recorded
+    measurements: []
   tpchavoc:
-    state: unmeasured
-    scale_factor: null
-    memory: null
-    engine_version: null
-    measured_on: null
-    evidence: no harness-grade measurement recorded
+    measurements: []
   amplab:
-    state: unmeasured
-    scale_factor: null
-    memory: null
-    engine_version: null
-    measured_on: null
-    evidence: no harness-grade measurement recorded
+    measurements: []
   h2odb:
-    state: unmeasured
-    scale_factor: null
-    memory: null
-    engine_version: null
-    measured_on: null
-    evidence: no harness-grade measurement recorded
+    measurements: []
   clickbench:
-    state: unmeasured
-    scale_factor: null
-    memory: null
-    engine_version: null
-    measured_on: null
-    evidence: no harness-grade measurement recorded
+    measurements: []
   read_primitives:
-    state: unmeasured
-    scale_factor: null
-    memory: null
-    engine_version: null
-    measured_on: null
-    evidence: no harness-grade measurement recorded
+    measurements: []
   joinorder:
-    state: unmeasured
-    scale_factor: null
-    memory: null
-    engine_version: null
-    measured_on: null
-    evidence: no harness-grade measurement recorded
+    measurements: []
 snowflake:
   tpch:
-    state: unmeasured
-    scale_factor: null
-    memory: null
-    engine_version: null
-    measured_on: null
-    evidence: no harness-grade measurement recorded
+    measurements: []
   tpcds:
-    state: unmeasured
-    scale_factor: null
-    memory: null
-    engine_version: null
-    measured_on: null
-    evidence: no harness-grade measurement recorded
+    measurements: []

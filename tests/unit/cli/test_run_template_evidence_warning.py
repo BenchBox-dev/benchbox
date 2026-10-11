@@ -3,10 +3,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import duckdb
 import pytest
 from click.testing import CliRunner
 
 from benchbox.cli.main import cli
+from benchbox.core.system import SystemProfiler
+from benchbox.core.tuning import template_evidence
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -86,3 +89,52 @@ def test_duckdb_notuning_run_has_no_evidence_warning(tmp_path, monkeypatch):
     assert result.exit_code == 0, result.output
     assert "has no measured benefit" not in result.output
     assert _tuned_run_payload(tmp_path) is None
+
+
+def test_duckdb_tuned_run_with_measured_benefit_has_no_warning(tmp_path, monkeypatch):
+    profile = SystemProfiler().get_system_profile()
+    monkeypatch.setattr(
+        template_evidence,
+        "_REGISTRY",
+        {
+            "duckdb": {
+                "tpch": {
+                    "measurements": [
+                        {
+                            "state": "measured-benefit",
+                            "scale_factor": 0.01,
+                            "memory": {"basis": "host_total_gb", "value": profile.memory_total_gb},
+                            "engine_version": duckdb.__version__,
+                            "measured_on": "2026-10-11",
+                            "evidence": "test fixture",
+                        }
+                    ]
+                }
+            }
+        },
+    )
+    monkeypatch.setenv("BENCHBOX_OUTPUT_DIR", str(tmp_path))
+
+    result = CliRunner().invoke(
+        cli,
+        [
+            "run",
+            "--platform",
+            "duckdb",
+            "--benchmark",
+            "tpch",
+            "--tuning",
+            "tuned",
+            "--scale",
+            "0.01",
+            "--queries",
+            "1",
+            "--non-interactive",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert WARNING not in result.output
+    payload = _tuned_run_payload(tmp_path)
+    assert payload is not None
+    assert payload["platform"]["tuning"]["template_evidence"] == "measured-benefit"

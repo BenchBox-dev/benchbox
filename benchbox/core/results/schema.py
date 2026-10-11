@@ -819,7 +819,9 @@ def _collect_engine_version_metadata(result: BenchmarkResults) -> dict[str, Any]
             metadata[key] = value
 
     if not metadata.get("engine_version"):
-        execution_metadata = result.execution_metadata if isinstance(result.execution_metadata, Mapping) else {}
+        execution_metadata = getattr(result, "execution_metadata", None)
+        if not isinstance(execution_metadata, Mapping):
+            execution_metadata = {}
         for key in ENGINE_VERSION_KEYS:
             if key not in metadata:
                 value = execution_metadata.get(key)
@@ -827,7 +829,9 @@ def _collect_engine_version_metadata(result: BenchmarkResults) -> dict[str, Any]
                     metadata[key] = value
 
     if not metadata.get("engine_version"):
-        platform_info = result.platform_info if isinstance(result.platform_info, Mapping) else {}
+        platform_info = getattr(result, "platform_info", None)
+        if not isinstance(platform_info, Mapping):
+            platform_info = {}
         for key in ENGINE_VERSION_KEYS:
             if key not in metadata:
                 value = platform_info.get(key)
@@ -835,6 +839,31 @@ def _collect_engine_version_metadata(result: BenchmarkResults) -> dict[str, Any]
                     metadata[key] = value
 
     return metadata
+
+
+def _tuning_evidence_engine_version(result: BenchmarkResults) -> str | None:
+    engine_version = _collect_engine_version_metadata(result).get("engine_version")
+    if engine_version:
+        return engine_version
+    execution_environment = getattr(result, "execution_environment", None)
+    if isinstance(execution_environment, Mapping):
+        platform_runtime = execution_environment.get("platform_runtime")
+    else:
+        platform_runtime = getattr(execution_environment, "platform_runtime", None)
+    if isinstance(platform_runtime, Mapping):
+        runtime_type = platform_runtime.get("runtime_type")
+    else:
+        runtime_type = getattr(platform_runtime, "runtime_type", None)
+    if runtime_type not in {"local_process", "dataframe_process"}:
+        return None
+    platform_info = getattr(result, "platform_info", None)
+    if not isinstance(platform_info, Mapping):
+        platform_info = {}
+    return (
+        platform_info.get("platform_version")
+        or platform_info.get("version")
+        or getattr(result, "driver_version_actual", None)
+    )
 
 
 def _inject_driver_metadata(exec_block: dict[str, Any], driver_metadata: dict[str, Any]) -> None:
@@ -1527,6 +1556,10 @@ def _build_tuning_summary(result: BenchmarkResults) -> dict[str, Any]:
         result.platform,
         result.benchmark_name,
         tunings_applied=result.tunings_applied,
+        scale_factor=result.scale_factor,
+        execution_environment=result.execution_environment,
+        system_profile=result.system_profile,
+        engine_version=_tuning_evidence_engine_version(result),
     )
     if state:
         summary["template_evidence"] = state
