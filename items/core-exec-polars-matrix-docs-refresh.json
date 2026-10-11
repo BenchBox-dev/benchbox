@@ -5,7 +5,7 @@
     "The reproduce commands shown in the documents run successfully as a dry run on develop",
     "PR merged through the normal flow; durable text carries no tracker IDs"
   ],
-  "context": "Decision gate: start only after core-exec-polars-cli-mcp-adoption is merged. If that item kept an `engine` alias (ADR D5), the documents say so instead.\n\nOut of scope here (raise separately if the user wants them fixed): the adversarial review of 2026-10-09 found other inaccuracies in these documents (the 14 GiB RSS limit cannot trip on macOS, the host-safety check overshoots its 6 GiB limit, and the 1.35.2 streaming divergence is not attributed to Polars by the probe record).\n\nGuardrails: shared core-exec guardrails (see core-exec-d0-vocabulary-adr context).",
+  "context": "Decision gate: start only after core-exec-polars-cli-mcp-adoption is merged. If that item kept an `engine` alias (ADR D5), the documents say so instead.\n\nOut of scope here (raise separately if the user wants them fixed): the adversarial review of 2026-10-09 found other inaccuracies in these documents (the 14 GiB RSS limit cannot trip on macOS, the host-safety check overshoots its 6 GiB limit, and the 1.35.2 streaming divergence is not attributed to Polars by the probe record).\n\nGuardrails: shared core-exec guardrails (see core-exec-d0-vocabulary-adr context).\n\nCloseout evidence (2026-10-11): PR #2895 merged to develop at head a08f8a53aeb4ce37f74b1a7ae5dc9f8ab9b9e265. PR diff touches CHANGELOG.md, findings.md and methodology.md only; no CSV path changed, and the doc diff changed only wording/setup option names. Clean current-develop worktree `/Users/joe/Developer/BenchBox.wt-polars-matrix-dry-run` at 7ac57fa21a414703716704381eccaa656e1716ed passed `make agent-write-preflight`; the Polars matrix script dry-run command `uv run -- python scripts/run_polars_version_matrix.py --output-dir /tmp/benchbox-polars-matrix-dry-run-20261011 --shuffle-seed 20261009 --rounds 3 --dry-run` succeeded and printed 129 lines, confirming 3 rounds x 40 planned invocations and the current `--execution-engine` values. This was planning-only; no benchmark/vendor run occurred and no tracked files changed. The first `--no-sync` attempt failed only because a new clean worktree had no psutil; normal `uv run` synced the locked environment and the dry run passed.",
   "description": "_project/analysis/polars-version-matrix/methodology.md and findings.md describe the three setups through the removed Polars `engine` option (setup A engine=default, B engine=in-memory, C engine=streaming). Once --execution-engine exists, update both documents so a reader reproducing the matrix uses the current setting, and state that the recorded 2026-10-09 bundles used the earlier option name and read through the legacy mapping. Do not change any measured value or conclusion. The Polars 2.0 blog draft (pvm-s6b-polars-2-blog-draft) depends on this item and must use the same wording.",
   "links": [
     "_project/analysis/polars-version-matrix/methodology.md",
@@ -43,6 +43,14 @@
       "generation": "51f8dbc443ff4d759531167e3ef632e9",
       "op": "take",
       "op_id": "102d82015e8e40f0859bd4e726a7c2ea",
+      "session_id": "5d4da70321324b3c9a505b143813724f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6e8a424eda2c7006605aa48b",
+      "at": "2026-10-11T03:22:45Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "db90d7ce32354345aebcb9fb3a993ff9",
       "session_id": "5d4da70321324b3c9a505b143813724f"
     }
   ]
