@@ -20410,15 +20410,10 @@
       "title": "Live-certify a tuned Snowflake run (no mid-run DROP, metadata persists, CLUSTERING_KEY shape, applied_verified)"
     },
     "snowflake-tuned-templates-clustering-guidance-20261008": {
-      "claim": {
-        "expires_at": "2026-10-12T11:10:33Z",
-        "generation": "cc72dcf5efaf4bc98199264cbe606522",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7e55d16b199130b0978d8efa"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Generate Snowflake tuned templates that cluster fact tables only, with keys ordered by cardinality"
     },
     "snowpark-connect-platform": {
