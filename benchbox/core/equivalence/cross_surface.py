@@ -658,7 +658,9 @@ def build_production_contexts(
             raise ValueError(f"No production DataFrame adapter registered for backend {backend!r}")
         module_name, _, class_name = target.partition(":")
         adapter_cls = getattr(importlib.import_module(module_name), class_name)
-        adapter_options = {"execution_engine": execution_engine} if backend == "expression" and execution_engine else {}
+        adapter_options = (
+            {"execution_engine": execution_engine} if backend == "expression" and execution_engine is not None else {}
+        )
         adapter = adapter_cls(**adapter_options)
         contexts[backend] = adapter.load_benchmark_into_context(benchmark, Path(data_dir), scale_factor=scale_factor)
     return contexts
@@ -1497,6 +1499,8 @@ def run_gate(
     repeats: int = 1,
     execution_engine: str | None = None,
 ) -> int:
+    if update_baseline and execution_engine is not None:
+        raise ValueError("Baseline updates cannot be combined with an explicit execution engine")
     import tempfile
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -1793,8 +1797,15 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--seed and --power-stream must be nonnegative")
     if args.backend is not None and len(set(args.backend)) != len(args.backend):
         parser.error("--backend must not repeat a backend")
-    if args.update_baseline and (args.backend is not None or args.seed is not None or args.power_stream is not None):
-        parser.error("--update-baseline requires the default draw and backend selection")
+    if args.update_baseline and (
+        args.backend is not None
+        or args.seed is not None
+        or args.power_stream is not None
+        or args.execution_engine is not None
+    ):
+        parser.error(
+            "--update-baseline requires default draws and backends and cannot be combined with --execution-engine"
+        )
     gate = get_gate(args.benchmark)
     if args.backend is not None:
         gate = replace(gate, backends=tuple(args.backend))
@@ -1802,12 +1813,10 @@ def main(argv: list[str] | None = None) -> int:
         gate = replace(gate, build=partial(build_tpcds_duckdb, seed=args.seed, stream_id=args.power_stream or 0))
         if args.seed is not None or args.power_stream:
             gate = replace(gate, vacuity_classified=False)
-    return run_gate(
-        gate,
-        update_baseline=args.update_baseline,
-        repeats=args.repeats,
-        execution_engine=args.execution_engine,
-    )
+    run_options: dict[str, Any] = {"update_baseline": args.update_baseline, "repeats": args.repeats}
+    if args.execution_engine is not None:
+        run_options["execution_engine"] = args.execution_engine
+    return run_gate(gate, **run_options)
 
 
 if __name__ == "__main__":  # pragma: no cover

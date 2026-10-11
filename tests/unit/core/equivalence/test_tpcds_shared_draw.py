@@ -247,6 +247,7 @@ def test_other_benchmark_defaults_are_unchanged(monkeypatch):
         ["--update-baseline", "--backend", "expression"],
         ["--benchmark", "tpcds", "--update-baseline", "--seed", "42"],
         ["--benchmark", "tpcds", "--update-baseline", "--power-stream", "0"],
+        ["--update-baseline", "--execution-engine", "streaming"],
     ],
 )
 def test_unsupported_cli_options_are_rejected_before_execution(monkeypatch, options):
