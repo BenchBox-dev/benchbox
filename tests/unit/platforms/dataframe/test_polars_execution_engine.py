@@ -16,7 +16,7 @@ from benchbox.core.dataframe.maintenance_interface import get_maintenance_operat
 from benchbox.core.execution_engine import ExecutionEngineUnavailableError, UnsupportedExecutionEngineError
 from benchbox.core.results.platform_info import build_platform_info
 from benchbox.platforms import get_dataframe_adapter, polars_compat
-from benchbox.platforms.dataframe import expression_family, polars_df, polars_maintenance, unified_frame
+from benchbox.platforms.dataframe import expression_family, polars_df, unified_frame
 from benchbox.platforms.dataframe.polars_df import PolarsDataFrameAdapter
 from benchbox.platforms.dataframe.unified_frame import UnifiedLazyFrame
 
@@ -94,6 +94,17 @@ def _collect_calls_in(node: ast.AST) -> list[ast.Call]:
     ]
 
 
+def _enclosing_function_path(tree: ast.Module, target: ast.AST) -> tuple[str, ...]:
+    parents = {child: node for node in ast.walk(tree) for child in ast.iter_child_nodes(node)}
+    path = []
+    current = parents.get(target)
+    while current is not None:
+        if isinstance(current, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            path.append(current.name)
+        current = parents.get(current)
+    return tuple(reversed(path))
+
+
 def _is_self_call(call: ast.Call) -> bool:
     receiver = call.func.value
     return isinstance(receiver, ast.Name) and receiver.id == "self"
@@ -150,6 +161,22 @@ class TestCollectGuard:
         violations = [call for branch in branches for stmt in branch.body for call in _collect_calls_in(stmt)]
         assert violations == []
 
+    def test_write_primitive_module_uses_collect_frame_for_polars(self):
+        from benchbox.core.write_primitives import dataframe_operations
+
+        tree = _parse(dataframe_operations)
+        spark_collect_functions = {
+            ("make_pyspark_hll_merge_extract", "merge_extract"),
+            ("make_pyspark_topk_merge_extract", "merge_extract"),
+        }
+
+        assert all(_enclosing_function_path(tree, call) in spark_collect_functions for call in _collect_calls_in(tree))
+
+    def test_polars_maintenance_module_never_calls_collect_directly(self):
+        from benchbox.platforms.dataframe import polars_maintenance
+
+        assert _collect_calls_in(_parse(polars_maintenance)) == []
+
 
 class TestExecutionEngineReachesWriteAndMaintenance:
     @pytest.mark.parametrize("execution_engine", ["auto", "in-memory", "streaming"])
@@ -175,6 +202,33 @@ class TestExecutionEngineReachesWriteAndMaintenance:
 
         assert result.success
         assert collect_calls == [{"engine": execution_engine}]
+
+    @pytest.mark.parametrize(
+        ("config", "expected_kwargs"),
+        [
+            ({}, {}),
+            ({"execution_engine": None}, {}),
+            ({"execution_engine": "auto"}, {"engine": "auto"}),
+            ({"execution_engine": "in-memory"}, {"engine": "in-memory"}),
+            ({"execution_engine": "streaming"}, {"engine": "streaming"}),
+        ],
+    )
+    def test_write_benchmark_manager_uses_config_or_default_when_engine_argument_is_omitted(
+        self, tmp_path, collect_calls, config, expected_kwargs
+    ):
+        from benchbox.core.write_primitives.benchmark import WritePrimitivesBenchmark
+
+        benchmark = WritePrimitivesBenchmark(scale_factor=0.01, output_dir=tmp_path, **config)
+        manager = benchmark.get_dataframe_operations("polars-df")
+        assert manager is not None
+        source = tmp_path / "source.parquet"
+        pl.DataFrame({"value": [1]}).write_parquet(source)
+        collect_calls.clear()
+
+        result = manager.execute_bulk_load(source, tmp_path / "target", source_format="parquet")
+
+        assert result.success
+        assert collect_calls == [expected_kwargs]
 
     @pytest.mark.parametrize("execution_engine", ["auto", "in-memory", "streaming"])
     def test_maintenance_uses_requested_engine(self, tmp_path, collect_calls, execution_engine):
