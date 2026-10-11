@@ -19953,12 +19953,17 @@
       "title": "Add SiriusDB (GPU-Native SQL Engine) Platform Adapter"
     },
     "site-bundle-tpc-license-sidecars": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-12T01:56:25Z",
+        "generation": "8bb5b9b0705f4c71a6c83c0d3e947cf7",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:34427fd6ff4639228ad9cd98"
+      },
       "needs": [
         "site-split-10-core-site-inputs"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Include TPC license sidecars for downloadable query templates in the certified site bundle"
     },
     "site-docs-broken-fragments-20261009": {
