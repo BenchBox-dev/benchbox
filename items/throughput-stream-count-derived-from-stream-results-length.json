@@ -4,7 +4,7 @@
     "Explorer pipeline and local result import withhold Throughput@Size when a completed phase's configured count differs from stream_results length; pipeline entries use stream_count_mismatch when the primary exclusion would otherwise be missing_primary_metric. Failed and partial phases retain the phase-failure exclusion instead of being relabeled as a count mismatch.",
     "Unit tests cover matching counts, absent configured counts, run.streams/config.streams mismatches, and failed/partial truncation across corpus validation and Explorer ranking/import behavior."
   ],
-  "context": "The fix is committed as e26d578 (`fix: scope stream-count checks to completed phases`) on `/Users/joe/Developer/BenchBox.wt-throughput-stream-count-derived`; the 1200-second commit attempt succeeded after the project hook completed (335s). Five intended files changed. Tests: 328 focused passed; runtime smoke confirmed corpus accepts FAILED 2-of-3 and Explorer preserves `missing_primary_metric`; docs/comment policy/Ruff/diff checks passed. PR #2894 still needs branch push and PR metadata update. Resolve Oracle threads `PRRT_kwDOQ7J64c6rHcEX` and `PRRT_kwDOQ7J64c6rHcEZ` after the fix is pushed; require current-head Oracle success and required CI before arming.",
+  "context": "Resume notes 2026-10-11: item4 PR #2898 merged at 11:28:26Z (merge commit fdb6ab774f16bb89c1f16c36fb3eb7dab16ff6f9), and its decision artifact is verified on origin/develop. Item5's existing fix was rebased onto current origin/develop 2e74dc9e8; PR #2894 now targets develop at head bff6c95c6364d0aacba17186a96289cdabe6c093 (commits d6f410653 and bff6c95c). Oracle findings `PRRT_kwDOQ7J64c6rHcEX` and `PRRT_kwDOQ7J64c6rHcEZ` are fixed and resolved. Auto-merge was disabled pending fresh review. Local verification: 328 targeted Python tests passed; 27 `throughputRanking.test.ts` Vitest tests passed; `make pr-preflight` passed with 476 mapped tests and Ruff; `make ci-docs` passed; `make duplicate-check-delta` showed +0 duplicated lines. Local `make comment-policy-check` failed on 10 enforced CP coverage-error findings in unchanged files (`.github/workflows/publication-deploy.yml`, `.github/workflows/publication-preview-deploy.yml`, `.github/workflows/sync-results-data-to-published.yml`, `_project/scripts/concurrency_sweep.sh`, `_sources/compilation/scripts/compile-all-platforms.sh`, `scripts/make_timing_shell.sh`, `scripts/release_cut_abort.sh`); none is in the PR diff. Await fresh PR CI run 38162387383 (pending) and current-head Oracle review 38162387375 (queued); current `oracle-verdict` run 38162387757 was skipped. Do not arm until all required current-head checks pass and threads are resolved. If CI confirms the unrelated comment-policy failures, keep this task open and report the exact blocker rather than editing out-of-scope files. If all checks pass, run `make pr-arm`, monitor to merge, verify develop, finish item5, then start item6.",
   "description": "For completed throughput phases, compare configured --streams (run.streams, falling back to config.streams) with the number of recorded stream_results. Report a mismatch instead of ranking an invalid completed run. Failed or partial phases may legitimately record fewer streams and must be excluded by phase status rather than treated as configuration defects.",
   "sessions": [
     {
@@ -201,6 +201,14 @@
       "generation": "56b2b48203124d70a30b7e9a397a7788",
       "op": "take",
       "op_id": "17ee181796844c8da33ce503c4590ed1",
+      "session_id": "024527ae77c1405f86cdbdf1079f6e14"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cf29857b7864377c27f69396",
+      "at": "2026-10-11T18:07:27Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c7ce2770d395467baf8be1e5ed90061c",
       "session_id": "024527ae77c1405f86cdbdf1079f6e14"
     }
   ]
