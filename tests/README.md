@@ -193,8 +193,7 @@ The standard gates are intentionally split by the risk they are meant to catch:
   blocking routine PRs.
 
 The `medium-test` job in `.github/workflows/ci.yml` runs `make test-medium`,
-but only when the heavy tier is needed: code-routed runs where the event is
-`merge_group` or the change touches soundness paths or packaging
+but only for code-routed pull requests that touch soundness paths or packaging
 (`scripts/heavy_tier_needed.py` reports `heavy-needed == 'true'`). Ordinary
 code-change PRs skip it, so do not assume medium coverage ran on a routine PR.
 Its marker selection excludes slow, stress, resource-heavy, and live

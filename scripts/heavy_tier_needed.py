@@ -12,7 +12,6 @@ from typing import Any, Callable, Iterable
 
 PREDICATE_REPO_PATH = "_project/scripts/soundness_paths.py"
 POLICY_PATHS = (PREDICATE_REPO_PATH, ".github/soundness-paths.txt")
-MERGE_GROUP_EVENT = "merge_group"
 
 
 class HeavyTierError(RuntimeError):
@@ -119,7 +118,6 @@ def soundness_touched(
 
 def heavy_needed(
     decision: dict[str, Any],
-    event: str,
     base_ref: str,
     repo_root: Path,
     read_base: Callable[[str, Path], dict[str, str]] | None = None,
@@ -137,8 +135,6 @@ def heavy_needed(
         needs_code_ci = decision["needs_code_ci"]
         if not needs_code_ci:
             return {"heavy_needed": False, "reason": "not a code-routed tree; the light lane already covers it"}
-        if event == MERGE_GROUP_EVENT:
-            return {"heavy_needed": True, "reason": "merge_group runs keep the full tier on every code-routed tree"}
         if decision["packaging_needed"]:
             return {"heavy_needed": True, "reason": "packaging paths touched (packaging carve-out)"}
         touched, reason = soundness_touched(changed, base_ref, repo_root, read_base, read_pr)
@@ -157,7 +153,6 @@ def _write_github_output(path: Path, needed: bool) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--decision-in", type=Path, default=None)
-    parser.add_argument("--event", default=os.environ.get("GITHUB_EVENT_NAME", ""))
     parser.add_argument("--base-ref", default=os.environ.get("GITHUB_BASE_REF", "origin/develop"))
     parser.add_argument("--repo-root", type=Path, default=Path.cwd())
     parser.add_argument("--github-output", type=Path, default=None)
@@ -177,7 +172,7 @@ def main(argv: list[str] | None = None) -> int:
             if not isinstance(decision, dict):
                 result = {"heavy_needed": True, "reason": "lookup failed closed: decision is not an object"}
             else:
-                result = heavy_needed(decision, args.event, args.base_ref, args.repo_root)
+                result = heavy_needed(decision, args.base_ref, args.repo_root)
 
     needed = bool(result["heavy_needed"])
     reason = str(result["reason"])
