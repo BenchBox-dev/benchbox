@@ -4,7 +4,7 @@
     "A test shows a PR changing only oracle-verdict.yml is classified as soundness (the required oracle-review check then needs an oracle decision)",
     "Merged through the normal oracle PR flow (the list itself is a soundness path)"
   ],
-  "context": "Found 2026-10-09 while writing the CI and dev-loop batch handoff. .github/oracle-reviewers.yml gate_paths (classifier tier) already lists oracle-verdict.yml; only the soundness list lacks it.\n\n2026-10-10 implementation: PR #2858, head 432a454f6d3c3f9504f936068350a069e31489c2, explicitly lists the verdict workflow and adds workflow-only predicate/checker coverage. The existing workflow-directory prefix already protected this path; before/after real-checker smoke returned blocking statuses for absent/failed decisions and pass for current-head success, so no pre-existing bypass was reproduced. Targeted tests: 215 passed; Ruff check/format passed. Comment-policy: 5768 source files, 0 violations, 19 native syntax tests passed. Initial standalone pr-preflight formatting failure was fixed and its exact mapped targets verified; push hook pr-preflight passed. Parent five-axis self-review has no remaining Critical/Required findings. Native worker session resolved to sol, despite requested luna profile; no external agents used.\n\nResumption: PR is OPEN; first gate snapshot showed required oracle-review QUEUED and no current-head oracle review. Auto-merge was briefly enabled by pr-arm, then deliberately withdrawn and live-confirmed autoMergeRequest=null to enforce repository policy: arm only after a current-head oracle success and resolved oracle threads. No tracker completion until verified merge. Next action: receive current-head oracle review and required CI results, fix scoped findings if any, then make pr-arm and verify merge.",
+  "context": "Found 2026-10-09 while writing the CI and dev-loop batch handoff. .github/oracle-reviewers.yml gate_paths (classifier tier) already lists oracle-verdict.yml; only the soundness list lacks it.\n\n2026-10-10 implementation: PR #2858, head 432a454f6d3c3f9504f936068350a069e31489c2, explicitly lists the verdict workflow and adds workflow-only predicate/checker coverage. The existing workflow-directory prefix already protected this path; before/after real-checker smoke returned blocking statuses for absent/failed decisions and pass for current-head success, so no pre-existing bypass was reproduced. Targeted tests: 215 passed; Ruff check/format passed. Comment-policy: 5768 source files, 0 violations, 19 native syntax tests passed. Initial standalone pr-preflight formatting failure was fixed and its exact mapped targets verified; push hook pr-preflight passed. Parent five-axis self-review has no remaining Critical/Required findings. Native worker session resolved to sol, despite requested luna profile; no external agents used.\n\n2026-10-11 closeout: Live PR read confirms #2858 is MERGED. Oracle review succeeded for the reviewed head, with later SHIP carried to the final PR head. The earlier batch ledger incorrectly showed this task done while tracker status remained open; re-adopted and finishing against the live merged PR and the acceptance evidence above.",
   "description": ".github/soundness-paths.txt lists the required checker (.github/workflows/oracle-review.yml, _project/scripts/oracle_review_check.py), the reviewer package (_project/scripts/oracle_reviewers/) and the policy (.github/oracle-reviewers.yml), but not .github/workflows/oracle-verdict.yml, the workflow that runs the reviewers with their credentials and posts the App review the required check reads. It was not listed under its old name (oracle-review-shadow.yml) either when #2758 made the oracle required. A PR that changes only oracle-verdict.yml therefore needs no oracle review and passes the required check without one, although the change alters every later review.\n\nAdd `file .github/workflows/oracle-verdict.yml` to .github/soundness-paths.txt and update the tests that pin the list. Adding a path only strengthens the gate.",
   "sessions": [
     {
@@ -48,6 +48,14 @@
       "generation": "2a2e4727155c4698b836094620861f83",
       "op": "take",
       "op_id": "db6a1f4fd2394ba99fc3f19f64f025c9",
+      "session_id": "12a278318efc4205bf01aa4132116f81"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0b65b59dfd5ecfabcfde36b0",
+      "at": "2026-10-11T01:43:45Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a72f6f1d5e92423090d1dbc11e69da4c",
       "session_id": "12a278318efc4205bf01aa4132116f81"
     }
   ]
