@@ -6,7 +6,7 @@
     "Approved/no-change/rejected disposition is explicit. Any accepted algorithm change waits for later authorization and separate scoped implementation; source-only cleanup remains unchanged.",
     "Completed historical tracker claims are reconciled with current implementation rather than silently reopened or treated as live proof."
   ],
-  "context": "The decision-only correction is staged in `/Users/joe/Developer/BenchBox.wt-tpcds-legacy-stream-timing-effects`. `make ci-docs`, `make comment-policy-check` (0 violations, 19 native checks), `git diff --check`, and earlier `make pr-preflight` passed. The 300-second commit attempt timed out during the comment/docstring hook; a retry with a 1200-second timeout is running as job bg_63. Do not bypass the hook. Effective worktree identity is Joe Harris <joeharris76@gmail.com>. After the hook commits, push/open the docs PR and follow CI/review/merge gates.",
+  "context": "Resume notes 2026-10-11: decision artifact exists on origin/develop from PR #2889; this follow-up completes live item4 acceptance. PR #2898 (branch docs/tpcds-stream-decision-evidence, head 8864831ef6dea9c6d65a3e619df12a893630ae65) is open draft with summary body. `make ci-docs` PASS, `make comment-policy-check` PASS (0 violations, 19 native checks), `make pr-preflight` PASS. Current `gh pr checks` snapshot showed multiple checks pending and a prior core run cancelled as superseded; the automatic Oracle run was cancelled when the manual current-head dispatch was started. Manual `oracle-review.yml` run 38107487166 was still running at snapshot; it is required because the record is on the soundness path. A separate reviewer agent attempt failed with provider quota 429; the implementation worker reported an independent review with no findings, and the author inspected the diff. Do not treat the old cancelled core/Oracle jobs as a code failure, but require current-head CI plus Oracle success before arming. Next: on the next scheduled gate check, inspect PR #2898 and workflow 38107487166 once; if required CI is green and the current-head Oracle review succeeds, run `make pr-arm` (after any review-thread resolutions), monitor auto-merge, verify the decision file on origin/develop, then finish this TODO. Only after merge continue to item5. This claim is being released while those external gates run.",
   "description": "Read-only decision task. Evaluate all current legacy permutation/parameter callers in tpcds power tests, benchmark runner, throughput and dataframe query_resolution, including global random.seed effects. Prior completed items tpcds-throughput-permutation-compliance and dataframe-parameter-substitution-parity are historical context, not proof that all current callers migrated. Compare smallest viable retained/corrected/replaced design against official dsqgen ordered multi-stream output and public compatibility.\n\nDecision must disclose ordering, substitutions, seeds, RNG isolation, raw identity, result comparability and timed-window effects per caller. Text cleanup deletes false equivalence claims but preserves current algorithms. A migration requires later explicit behavior-change approval and separate implementation tasks/PRs, never hidden in comment removal. Execution guard: creation of this TODO is planning, not approval to execute the reviewed cleanup. Obtain later implementation authorization. Use a separate linked worktree and agent-write-preflight; preserve unrelated work. Freeze nonoverlapping code/test/doc paths with the integrator before dispatch. Ordinary independent PRs target develop; serialize shared test-lock checks and integration, not module edits. Required native/external soundness review remains mandatory, with no auto-merge bypass. No live cloud/stress, deployment, publication, historical-result rewriting, or unapproved external-repository writes.",
   "sessions": [
     {
@@ -170,6 +170,14 @@
       "generation": "6a462830467643f8bf12465e2bbf144f",
       "op": "take",
       "op_id": "c53ddf59e6bf43c698d947d54de076b7",
+      "session_id": "024527ae77c1405f86cdbdf1079f6e14"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cf29857b7864377c27f69396",
+      "at": "2026-10-11T03:11:52Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "fbe8288d7a6246a7bfcc391203101282",
       "session_id": "024527ae77c1405f86cdbdf1079f6e14"
     }
   ]
