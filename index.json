@@ -4459,6 +4459,16 @@
       "status": "done",
       "title": "Comment-policy staged ratchet blocks all commits after legitimate vendored-wheel upgrade"
     },
+    "comment-policy-shell-payload-coverage-20261011": {
+      "claim": null,
+      "needs": [
+        "comment-policy-strict-scope-mismatch",
+        "comment-policy-digest-and-base-exception-catch22-20261008"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Resolve shell payload coverage errors blocking the required comment-policy gate"
+    },
     "comment-policy-strict-mode-reconciliation": {
       "claim": null,
       "needs": [],
