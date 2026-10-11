@@ -2,8 +2,8 @@
 develop_sha: 2eb03f3e67ec8f7f1347738f29696fa39ed5f526
 measured_at_sha: dd20aed2d53a87a4c34ae74c73a187cfa9bf3c5e
 checked_sha: dd20aed2d53a87a4c34ae74c73a187cfa9bf3c5e
-replay_sha: 8405f5e3c76ecb679e46079c737083d36494ba57
-replay_scope: PR 2888 mirror, parity, throughput contract tests and full fast suite at replay tree 8405f5e3c76ecb679e46079c737083d36494ba57
+replay_sha: 5c33b6075990429f875b441bc43665f6a1e1a991
+replay_scope: PR 2888 workflow and pipeline/publication/full-fast replay at 50183db50c15b46a1dbd474d3bf7cd297f1c2975; PR 2821 D20-D22 scanner fixes at 5c33b6075990429f875b441bc43665f6a1e1a991
 ---
 
 # Remediation contract evidence
@@ -296,7 +296,7 @@ and checks the emitted commit-status fields.
 A real nightly dispatch on merged `develop` is still required to verify actual
 GitHub job outputs, artifacts, and status contexts.
 
-### Verification at the rebased replay tree
+### Verification at historical replay tree `8405f5e3c76ecb679e46079c737083d36494ba57`
 
 Focused workflow tests passed 105:
 
@@ -315,6 +315,31 @@ Changed-test Ruff check and format check, codespell 2.4.3, and
 passed their expected rejection outcome. Docker CLI is unavailable in this
 environment; no real Compose CLI config or live registry inspection was
 performed.
+
+### Current replay at `50183db50c15b46a1dbd474d3bf7cd297f1c2975`
+
+After the branch rebase, the PR #2888 workflow contract selection passed 105
+tests:
+
+```bash
+uv run -- python -m pytest tests/unit/workflows/test_nightly_t3_workflow.py tests/unit/workflows/test_docker_integration_workflow.py tests/unit/workflows/test_nightly_throughput_uat_contract.py -q
+```
+
+The pipeline/publication seam replay passed 112 tests:
+
+```bash
+uv run -- python -m pytest tests/unit/scripts/explorer_pipeline/test_pipeline.py tests/unit/scripts/publication/test_transaction.py tests/unit/scripts/publication/test_journal.py -q
+```
+
+The full fast suite passed 37,273 tests, 26 skipped, 861 warnings, and four
+subtests in 297.20 seconds:
+
+```bash
+uv run -- python -m pytest -m fast -q
+```
+
+Full-project `uv run ruff check .` passed; `uv run ty check` exited 0 with 674
+diagnostics.
 
 ## PR #2821 scanner review findings
 
@@ -496,12 +521,52 @@ The two affected CI parity tests passed with
 `uv run -- python -m pytest tests/system/test_ci_lint_parity.py::test_non_lint_merge_gate_guards_have_local_equivalent_or_documented_exemption tests/system/test_ci_lint_parity.py::test_merge_gate_local_equivalents_and_exemptions_are_documented -q -n0`.
 Ruff check and format checks passed for all three changed Python files.
 
+### Findings D20-D22
+
+- D20, piped runner consumers: static SSH options are parsed before the remote
+  command, and a one-string remote command is decomposed before stdin routing.
+  `ssh -n` does not scan the producer as remote input. `watch` and `xargs`
+  pipelines to stdin interpreters fail closed when routing is ambiguous.
+  Regressions cover SSH option values, single-string remote stdin, disabled SSH
+  stdin, and direct or single-string watch/xargs consumers in
+  `test_ssh_pipeline_skips_option_values_before_remote_command`,
+  `test_ssh_single_string_stdin_interpreter_is_scanned`,
+  `test_ssh_pipeline_without_stdin_does_not_scan_remote_input`, and
+  `test_runner_pipeline_to_stdin_interpreter_fails_closed`. The
+  `test_dynamic_pipeline_consumer_fails_closed` rejects dynamic SSH hosts or
+  commands, dynamic xargs options, and dynamic watch commands. The
+  `test_piped_xargs_stdin_interpreter_fails_closed` case rejects an xargs
+  stdin route with ambiguous input.
+- D21, wrapped literal producers: `piped_producer_words` unwraps supported
+  `sudo` and `env` producer forms before reconstructing `echo`/`printf` output.
+  `test_piped_producer_payloads_reach_stdin_interpreters` covers both wrappers;
+  `test_dynamic_wrapped_piped_producer_fails_closed` rejects dynamic forms.
+- D22, unparseable piped interpreters: `chunk_can_hold_comment` checks for
+  comment markers before the pipe when the consumer is unmodeled. The
+  `echo '# hidden' | perl )` positive and `echo x | perl )` control are in
+  `test_unparseable_shell_chunks_fail_closed_only_when_they_can_hold_a_comment`.
+
+The focused D20-D22 regression selection passed 55 tests, with 727 deselected:
+
+```bash
+uv run -- python -m pytest tests/unit/scripts/test_comment_policy.py -k 'piped_producer_payloads_reach_stdin_interpreters or dynamic_pipeline_consumer_fails_closed or ssh_pipeline_skips_option_values_before_remote_command or ssh_single_string_stdin_interpreter_is_scanned or ssh_pipeline_with_key_path_but_no_remote_command_fails_closed or ssh_pipeline_without_stdin_does_not_scan_remote_input or runner_pipeline_to_stdin_interpreter_fails_closed or piped_xargs_stdin_interpreter_fails_closed or dynamic_wrapped_piped_producer_fails_closed or unparseable_shell_chunks_fail_closed_only_when_they_can_hold_a_comment' -q -n0
+```
+
+
+The scanner unit file and full CI parity file passed 792 tests total (782 and
+10).
+Ruff check and format checks passed for the changed Python files.
+
+`uv run ty check` exited 0 with 674 diagnostics.
+
 `make comment-policy-check` passed: 5,779 source files, zero violations, zero
 enforced failures, and all 19 native syntax tests passed.
 
-The latest timed gate run measured 690.49 seconds wall, 375.00 user, and 61.54
-sys, above the historical 358-second wall / 276-second user baseline. Earlier
-runs after env-option support ranged from 321.52 to 483.21 seconds wall and
-263.31 to 319.96 user. These whole-gate timings use the immutable base checker
-in `scripts/run_comment_policy.py`; they do not isolate candidate scanner cost
-or supersede the paired scanner measurements recorded above.
+The D20-D22 gate run completed in 287.27 seconds wall; user and system times
+were not captured. It passed 5,779 files and 19 native syntax tests. An earlier
+timed run measured 690.49 seconds wall, 375.00 user, and 61.54 sys, above the
+historical 358-second wall / 276-second user baseline. Earlier runs after
+env-option support ranged from 321.52 to 483.21 seconds wall and 263.31 to
+319.96 user. These whole-gate timings use the immutable base checker in
+`scripts/run_comment_policy.py`; they do not isolate candidate scanner cost or
+supersede the paired scanner measurements recorded above.
