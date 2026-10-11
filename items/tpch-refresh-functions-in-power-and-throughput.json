@@ -8,6 +8,7 @@
     "Tests cover fake-connection statement shapes, chunking, safety failures, set disjointness, formulae, Ts boundaries, each QphH refusal condition, and unsupported platforms. In-memory DuckDB and SQLite SF0.01 integrations prove inserted row counts and deleted keys. DuckDB SF0.01 end-to-end records refresh data but withholds the composite for unofficial_subscale; DuckDB SF1 with two streams exports QphH only when all conditions hold.",
     "Documentation covers opt-in options/defaults, set numbering and next-unused-set repeat runs, final-iteration behavior, verified platform support, QphH conditions, and deviations not implemented: 0.01-second refresh rounding, 1000x clamp, Ts rounding, and two-run lower-score rule."
   ],
+  "context": "Resume notes (2026-10-10): item7 has uncommitted implementation/tests/docs in /Users/joe/Developer/BenchBox.wt-tpch-refresh-power on feat/tpch-refresh-power, based at 4628e72d66bcc77808b59740b9d8d0c777e2d2f7; do not discard these user-authorized changes. A focused SQLite SF0.01 integration test failed at refresh.py DBGen invocation before RF operations; root cause not established. Adversarial review found empty-table integration fixtures omit the required base load; refresh safety prechecks are inside measured RF durations contrary to handoff R4; refresh_included semantics disagree with handoff; metrics/tutorial docs remain stale; required real SF1 official two-stream run is absent. Original handoff order requires items 5 and 6 merge before resuming item7. I am releasing this claim while I close/advance earlier serial items; resume after item6 merge, rebase this worktree on current develop, fix the cited issues, split PR A/B/C, and run all item7 acceptance checks. The branch is three commits behind origin/develop; preserve its uncommitted changes.",
   "description": "Scope moved here from tpch-qphh-missing-refresh-functions by owner decision on 2026-10-04: suppress the official QphH label first, and implement the spec later. Per the TPC-H spec, Power@Size uses the 24th root over the 22 query times plus RF1 and RF2, and the throughput test runs a refresh stream of S RF1/RF2 pairs concurrently with the S query streams, inside Ts. Currently neither test runs refresh functions (tpch/power_test.py, tpch/throughput_test.py), and maintenance runs afterwards with concurrent_with_queries=False (execution.py:692-698).",
   "links": [
     "benchbox/core/tpch/power_test.py",
@@ -47,6 +48,14 @@
       "generation": "ce1355ac9b3f4e0c9bb1cf32de9befe8",
       "op": "take",
       "op_id": "0afc668ab3b94a8aa357806c4fa45a74",
+      "session_id": "024527ae77c1405f86cdbdf1079f6e14"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cf29857b7864377c27f69396",
+      "at": "2026-10-11T02:29:02Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c6f275624c1c4acc9344cad70fb50ee3",
       "session_id": "024527ae77c1405f86cdbdf1079f6e14"
     }
   ]
