@@ -63,9 +63,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `use_distributed` options warn and map to their canonical engine values.
 
 - Polars write-primitive bulk loads and DataFrame maintenance now materialize
-  lazy frames with the resolved execution engine. DataFrame comparison tools,
-  profiling, validation and equivalence checks continue to use the default
-  engine; these paths do not receive `benchbox run`'s execution-engine selection.
+  lazy frames with the resolved execution engine. The DataFrame comparison
+  suite, profiling, validation and dataframe-surface equivalence checks use
+  Polars' default engine; these paths do not receive `benchbox run`'s
+  execution-engine selection.
 
 ### Before you upgrade
 - Vendor compute names now warn once per run; move saved configurations and
