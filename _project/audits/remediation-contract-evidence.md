@@ -498,3 +498,10 @@ Ruff check and format checks passed for all three changed Python files.
 
 `make comment-policy-check` passed: 5,779 source files, zero violations, zero
 enforced failures, and all 19 native syntax tests passed.
+
+The latest timed gate run measured 690.49 seconds wall, 375.00 user, and 61.54
+sys, above the historical 358-second wall / 276-second user baseline. Earlier
+runs after env-option support ranged from 321.52 to 483.21 seconds wall and
+263.31 to 319.96 user. These whole-gate timings use the immutable base checker
+in `scripts/run_comment_policy.py`; they do not isolate candidate scanner cost
+or supersede the paired scanner measurements recorded above.
