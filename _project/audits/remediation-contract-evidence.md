@@ -315,3 +315,19 @@ Changed-test Ruff check and format check, codespell 2.4.3, and
 passed their expected rejection outcome. Docker CLI is unavailable in this
 environment; no real Compose CLI config or live registry inspection was
 performed.
+
+## PR #2897 Oracle review remediation
+
+### Tracked TPC EULA sidecars
+
+The Oracle High finding on head `ff5e89e08231ab39b685a098e2f4cc7b09122b6f` identified that `referenced_downloads` added each EULA without checking membership in its `git ls-files` set. Commit `509a0f014c29b5172f72804044244ade0fceabb8` now adds a sidecar only when the corresponding path is tracked. The bundle schema remains 3.
+
+The producer's two sidecar instances and positive/rejected controls are enumerated in `tests/unit/scripts/test_site_inputs.py::test_referenced_downloads_include_matching_tpc_eula_only_when_tracked`:
+
+- TPC-DS template `_sources/tpc-ds/query_templates/query1.tpl` maps to `_sources/tpc-ds/EULA.txt`. With `eula_tracked=True`, the result includes the template and matching EULA; with `False`, it returns only the template.
+- TPC-H template `benchbox/_binaries/tpc-h/templates/queries/1.sql` maps to `_sources/tpc-h/EULA.txt`. With `eula_tracked=True`, the result includes the template and matching EULA; with `False`, it returns only the template.
+- The rejected non-template controls in `test_referenced_downloads_exclude_tpc_eula_for_non_template_files` cover TPC-DS `templates.lst` and the TPC-H query-template `README`; neither selects an EULA.
+
+The producer-to-consumer seam is `referenced_downloads` → `build_downloads` copies selected paths into the bundle's `downloads` member → `website/src/lib/legacy-assets.ts::publishLegacyFiles` copies each companion license as `TPC_EULA.txt` beside the query download. The actual bundle builder and site build exercised this seam from core commit `509a0f014c29b5172f72804044244ade0fceabb8`: verification reported schema 3, 11 members, 4 pass attestations, and 1 skip; the site build generated 1,846 pages. Both generated `TPC_EULA.txt` files compared byte-for-byte with their bundle sources. A local Chromium preview rendered the TPC-DS Q1 page and fetched both EULA URLs with HTTP 200.
+
+The bounded core preflight and `test_site_inputs.py` passed. The local bundle is not CI-certified; after the core PR merges, the site must be rebuilt from the current certified `develop` artifact.
