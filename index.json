@@ -20194,7 +20194,7 @@
         "site-split-30-rehearsal"
       ],
       "priority": "high",
-      "status": "blocked",
+      "status": "open",
       "title": "Cut benchbox.dev over to the site repo with the owner present, then gather per-route production evidence"
     },
     "site-split-50-core-site-removal": {
