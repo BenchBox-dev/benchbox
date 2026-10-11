@@ -4,6 +4,7 @@ import json
 import re
 import shlex
 import textwrap
+from collections.abc import Sequence
 from pathlib import PurePosixPath
 from typing import Any
 
@@ -325,7 +326,9 @@ MDX_JSX_COMMENT = re.compile(r"\{\s*/\*.*?\*/\s*\}", re.S)
 MDX_STATEMENT_START = re.compile(r"(?:import|export)(?=\s|$)")
 MDX_IMPORT_FROM = re.compile(r"\bfrom\s+['\"][^'\"\n]+['\"]")
 MDX_IMPORT_BARE = re.compile(r"^import\s+['\"]")
-MDX_EXPORT_SHAPE = re.compile(r"^export\s+(?:default|const|let|var|function|class|async|\{|\*)")
+MDX_EXPORT_SHAPE = re.compile(
+    r"^export\s+(?:(?:default|const|let|var|function|class|async|type|interface|enum|namespace|declare|abstract)\b|\{|\*)"
+)
 MDX_STATEMENT_CONTINUE = re.compile(r"(?:[{(\[=,:+*/?&|>-]|\bfrom|\bdefault|\bimport|\bexport)\s*$")
 
 
@@ -719,7 +722,7 @@ SQL_CLIENT_FLAGS = {
 }
 
 
-def sql_client_source_index(name: str, words: list[str | None]) -> int | None:
+def sql_client_source_index(name: str, words: Sequence[str | None]) -> int | None:
     if name == "psql":
         index = 1
         while index < len(words):
@@ -782,6 +785,53 @@ PSQL_VALUE_OPTIONS = {
     "-F",
     "-R",
 }
+
+
+def sql_client_reads_stdin(name: str, words: Sequence[str]) -> bool:
+    source_index = sql_client_source_index(name, words)
+    if name == "psql":
+        if source_index is not None:
+            return False
+        index = 1
+        while index < len(words):
+            word = words[index]
+            if word in {"-f", "--file"}:
+                if index + 1 >= len(words):
+                    raise ValueError("SQL client input file requires explicit support")
+                return words[index + 1] == "-"
+            if word.startswith("--file="):
+                return word.split("=", 1)[1] == "-"
+            if word.startswith("-f") and word != "-f":
+                return word[2:] == "-"
+            index += 2 if word in PSQL_VALUE_OPTIONS else 1
+        return True
+    if name == "sqlite3":
+        if "-no-stdin" in words:
+            return False
+        if source_index is not None and words[source_index - 1] != "-cmd":
+            return False
+        positionals = 0
+        index = 1
+        while index < len(words):
+            word = words[index]
+            if word == "-cmd" or word in SQL_CLIENT_VALUE_OPTIONS:
+                if index + 1 >= len(words):
+                    raise ValueError("SQL client option requires explicit support")
+                index += 2
+                continue
+            if word in SQL_CLIENT_FLAGS:
+                index += 1
+                continue
+            if word.startswith("-"):
+                raise ValueError("SQL client option requires explicit support")
+            positionals += 1
+            if positionals == 2:
+                return False
+            index += 1
+        return True
+    if name == "duckdb":
+        return source_index is None
+    raise ValueError("unsupported SQL client stdin source")
 
 
 def command_words(words: list[str | None]) -> list[str | None]:
@@ -1557,6 +1607,8 @@ def scan_source_payload(text: str, language: str) -> tuple[str, str]:
 def piped_consumer_language(command: str) -> str | None:
     if re.fullmatch(r"python[0-9.]*", command):
         return "python"
+    if command in SQL_CLIENTS:
+        return "sql"
     return {"node": "javascript", "sh": "bash", "bash": "bash", "zsh": "bash"}.get(command)
 
 
@@ -1924,18 +1976,23 @@ def piped_stdin_entries(path: str, source: str, offset: int, unit: str, node: ba
     if consumer_stdin_redirected:
         raise ValueError("piped interpreter stdin redirection requires an adapter")
     producer = producer_words[0].word.rsplit("/", 1)[-1]
-    language = piped_consumer_language(consumer_words[0].word.rsplit("/", 1)[-1])
+    consumer = consumer_words[0].word.rsplit("/", 1)[-1]
+    language = piped_consumer_language(consumer)
     if language is None:
         piped_unmodeled_check(consumer_words)
         return []
     static = [word.word for word in consumer_words if not word.parts]
     if len(static) != len(consumer_words):
         raise ValueError("dynamic piped interpreter consumer requires an adapter")
-    if inline_source_index(static, language) is not None:
-        return []
-    operands = piped_bash_operands(static[1:]) if language == "bash" else static[1:]
-    if any(not word.startswith("-") and word != "-" for word in operands):
-        return []
+    if language == "sql":
+        if not sql_client_reads_stdin(consumer, static):
+            return []
+    else:
+        if inline_source_index(static, language) is not None:
+            return []
+        operands = piped_bash_operands(static[1:]) if language == "bash" else static[1:]
+        if any(not word.startswith("-") and word != "-" for word in operands):
+            return []
     text = piped_producer_text(producer_words)
     if text is None:
         return []

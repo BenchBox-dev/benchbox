@@ -1608,6 +1608,33 @@ def test_piped_node_source_reports_javascript_comment() -> None:
 @pytest.mark.parametrize(
     "source",
     [
+        "echo 'SELECT 1 -- hidden' | psql",
+        "echo 'SELECT 1 -- hidden' | psql --file=-",
+        "echo 'SELECT 1 -- hidden' | sqlite3 benchmark.db",
+        "echo 'SELECT 1 -- hidden' | duckdb benchmark.db",
+        "echo 'SELECT 1 -- hidden' | sqlite3 -cmd 'SELECT 0' benchmark.db",
+    ],
+)
+def test_piped_sql_client_stdin_reports_comments(source: str) -> None:
+    findings = scan_sources(ROOT, {"a.sh": source.encode()}, policy())
+    assert [(finding.kind, finding.text) for finding in findings] == [("comment", "-- hidden")]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "echo 'SELECT 1 -- hidden' | psql -f queries.sql",
+        "echo 'SELECT 1 -- hidden' | sqlite3 -no-stdin benchmark.db",
+        "echo 'SELECT 1 -- hidden' | duckdb benchmark.db 'SELECT 1'",
+    ],
+)
+def test_piped_sql_clients_with_other_input_do_not_scan_pipe(source: str) -> None:
+    assert scan_sources(ROOT, {"a.sh": source.encode()}, policy()) == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
         'echo "$code" | python3',
         "echo hi $name | bash",
         "printf '%s\\n' \"$code\" | python3",
@@ -3608,6 +3635,12 @@ def test_mdx_prose_and_fences_are_scanned_once() -> None:
     [
         "import regulations are strict\n",
         "export controls are important\n",
+        "export types are important\n",
+        "export interfaces are important\n",
+        "export enums are important\n",
+        "export namespaces are important\n",
+        "export declares are important\n",
+        "export abstracts are important\n",
         "important notes follow\n",
     ],
 )
@@ -3640,6 +3673,23 @@ def test_mdx_imports_reach_the_typescript_scanner(source: str) -> None:
     findings = scan("website/src/content/docs/page.mdx", source, "mdx", rows)
     assert [(f.kind, f.text) for f in findings] == [("comment", "// explanation")]
     assert [f.line for f in findings] == [2 if source.startswith("import {\n") else 1]
+
+
+@pytest.mark.parametrize(
+    ("source", "comment"),
+    [
+        ("export type Config = {\n  value: string; // explanation\n};\n", "// explanation"),
+        ("export interface Config {\n  value: string; // explanation\n}\n", "// explanation"),
+        ("export enum Config {\n  Value, // explanation\n}\n", "// explanation"),
+        ("export namespace Config {\n  export const value = 1; // explanation\n}\n", "// explanation"),
+        ("export declare const config: string; // explanation\n", "// explanation"),
+        ("export abstract class Config { // explanation\n}\n", "// explanation"),
+    ],
+)
+def test_mdx_type_like_exports_reach_typescript_scanner(source: str, comment: str) -> None:
+    path = "website/src/content/docs/page.mdx"
+    findings = scan_sources(ROOT, {path: source.encode()}, policy())
+    assert [(finding.kind, finding.text) for finding in findings] == [("comment", comment)]
 
 
 @pytest.mark.parametrize(

@@ -146,13 +146,16 @@ TypeScript parser; SQL-valued strings and execution-sink arguments as SQL; other
 formats with Pygments lexers; embedded code with its own language check.
 Shell heredocs and literal `echo`/`printf` pipelines through plain `cat` stages
 or supported `sudo`, `env` and `nohup` wrappers into supported stdin
-interpreters are scanned. Static `sudo`/`env` producer wrappers are also
-scanned. Static SSH pipelines into supported remote stdin
-interpreters are also scanned; `watch` and `xargs` pipelines to stdin
-interpreters fail closed when input routing is ambiguous. MDX top-level ESM
-and JSX block comments outside Markdown code spans and fences are extracted.
-Executable paths are matched by basename; consumer output redirects preserve
-piped input, while redirected stdin fails closed.
+interpreters are scanned. Static `sudo`/`env` producer wrappers and static SSH
+pipelines into supported remote stdin interpreters are also scanned. SQL-client
+stdin for `psql`, `duckdb` and `sqlite3` is scanned when the command reads from
+stdin; explicit query/file inputs and `sqlite3 -no-stdin` are not treated as
+piped input. `watch` and `xargs` pipelines to stdin interpreters fail closed
+when input routing is ambiguous. MDX top-level ESM imports and exports,
+including TypeScript `type`, `interface`, `enum`, `namespace`, `declare` and
+`abstract` exports, and JSX block comments outside Markdown code spans and
+fences are extracted. Executable paths are matched by basename; consumer
+output redirects preserve piped input, while redirected stdin fails closed.
 Unknown input is a coverage error, never a pass, and under blocking enforcement
 or in strict mode changed files and completed scopes always reject it. While
 enforcement is advisory a coverage error is reported and counted but does not
