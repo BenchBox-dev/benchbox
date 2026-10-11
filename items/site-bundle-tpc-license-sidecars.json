@@ -5,7 +5,7 @@
     "The site builds from the generated bundle and publishes the correct `TPC_EULA.txt` beside both TPC-H and TPC-DS downloads.",
     "The bounded site-inputs tests and bundle verification pass."
   ],
-  "context": "Core fix remains open on PR #2897 at head d6409b068af3661c6c60b7dfa488b456254302a9. Code commit 509a0f014c29b5172f72804044244ade0fceabb8 adds TPC EULA sidecars only when their paths are tracked; the focused audit `_project/audits/site-inputs-tpc-eula-sidecars.md` records valid source/measurement/replay lineage, while the inherited combined audit report remains unchanged. Local `make audit-sha-check` passed. `make pr-preflight` and push hooks passed; the focused test file has 50 passing cases. CI run 38134102105 completed successfully with no failed or pending jobs. Oracle verdict run 38134100025 posted `SHIP` carried from d740 because the code patch was unchanged; no reviewer reran on d640. The pre-verdict `oracle-review` run 38134102051 initially failed; rerunning it after the verdict posted passed. Current-head Oracle check 38134131285 also passed, and a GraphQL read found no unresolved review threads. `make pr-arm PR=2897 HEAD=d6409b068af3661c6c60b7dfa488b456254302a9` enabled squash auto-merge; the latest PR read showed no failed/pending checks but `mergeStateStatus=UNKNOWN`, so merge is not yet confirmed. After merge, fetch the official certified `develop` bundle and rerun the site build/tests; the locally built schema-3 bundle (11 members, 4 pass, 1 skip), 1,846-page build, 336 site tests, byte matches, and HTTP-200 browser smoke remain local-only, not artifact certification. The site replay worktree still has three uncommitted changes and must be preserved.",
+  "context": "Core fix PR #2897 merged on 2026-10-11 as squash commit 07851d5e329f6830c6d58a74b3e41e95a580e8c4 (PR head d6409b068af3661c6c60b7dfa488b456254302a9). Code commit 509a0f014c29b5172f72804044244ade0fceabb8 adds the TPC EULA sidecars only when their paths are tracked; `_project/audits/site-inputs-tpc-eula-sidecars.md` records valid provenance and the inherited combined audit report is unchanged. Local audit check and preflight passed; PR CI run 38134102105 completed successfully. Oracle `SHIP` carried from d740 because the code patch was unchanged; exact-head oracle checks passed, the initial pre-verdict run was rerun successfully, and no review threads remain unresolved. Post-merge Trunk run 38136130332 is pending and Documentation run 38136130353 is in progress. No Site Inputs run for merged SHA 07851 is visible yet; the last successful bundle run 38135286087 is for b4571 and lacks the new sidecars. Core `SITE_BRIDGE_ENABLED=true`; site `SITE_DEPLOY_TARGET=rehearsal`, so a successful new bundle dispatch targets rehearsal, not production. Do not mark this task done until a certified artifact for current `develop` is verified and the site build/tests prove the EULAs are present. Then preserve and finish the existing site replay worktree with its three uncommitted changes; local bundle/build evidence from the old artifact is not certification.",
   "description": "The site replay of the core EULA-download changes requires `_sources/tpc-ds/EULA.txt` and `_sources/tpc-h/EULA.txt` beside downloadable query templates. The certified site bundle currently copies only document-linked files, so the site build fails when it tries to publish these companion licenses. Extend site-inputs download selection to include the matching TPC EULA when a TPC-DS or TPC-H query template is included. Keep the bundle limited to referenced downloads plus their required license sidecars; do not copy unrelated files. Preserve bundle attestations and generated paths.",
   "sessions": [
     {
@@ -63,6 +63,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "a51b25518897495dbaf2a568bd87d97c",
+      "session_id": "8fa717097fcf438d8eac8a356ebf8686"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:34427fd6ff4639228ad9cd98",
+      "at": "2026-10-11T11:42:24Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a3ef2ac242d540099b1b5f6c8f893541",
       "session_id": "8fa717097fcf438d8eac8a356ebf8686"
     }
   ]
