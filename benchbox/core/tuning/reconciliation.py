@@ -166,6 +166,9 @@ def reconcile_requested_intents(
     declared_constraints: frozenset[TuningType] | None = None,
 ) -> None:
     executed_sorts = {_bare_table(table) for table in sorted_tables}
+    optimizations = getattr(config, "platform_optimizations", None)
+    sorted_ingestion_method = getattr(optimizations, "sorted_ingestion_method", "auto")
+    redshift_vacuum_sort = platform.lower() == "redshift" and sorted_ingestion_method == "vacuum_sort"
     for intent in requested_intents(config, declared_constraints):
         capability = get_capability(platform, intent.tuning_type)
         footprints = _footprints(intent.tuning_type, capability)
@@ -198,7 +201,12 @@ def reconcile_requested_intents(
             continue
         if _accounted(intent, footprints, ledger):
             continue
-        if intent.tuning_type is TuningType.SORTING and intent.table and _bare_table(intent.table) in executed_sorts:
+        if (
+            intent.tuning_type is TuningType.SORTING
+            and intent.table
+            and _bare_table(intent.table) in executed_sorts
+            and not redshift_vacuum_sort
+        ):
             continue
         ledger.record_dropped(intent.label, _drop_reason(capability))
 

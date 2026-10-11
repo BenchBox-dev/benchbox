@@ -295,6 +295,21 @@ class TestEvidence:
 
         assert ledger.dropped == []
 
+    def test_redshift_vacuum_sort_is_not_evidence_for_requested_sort_columns(self):
+        config = _sorted_config()
+        config.platform_optimizations = PlatformOptimizationConfiguration(
+            sorted_ingestion_mode="force",
+            sorted_ingestion_method="vacuum_sort",
+        )
+        ledger = AppliedTuningLedger()
+        ledger.record("VACUUM SORT ONLY public.LINEITEM", PHASE_POST_LOAD)
+
+        _reconcile(config, ledger, "redshift", sorted_tables=["lineitem"])
+
+        [dropped] = ledger.dropped
+        assert dropped.intent == "sorting:LINEITEM (L_ORDERKEY, L_LINENUMBER)"
+        assert ledger.satisfied == []
+
     def test_executed_sorted_ingestion_never_stands_in_for_other_types(self):
         ledger = AppliedTuningLedger()
 

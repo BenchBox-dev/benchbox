@@ -235,6 +235,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   DuckDB sorting requires both sorted-ingestion and matching-index evidence.
   Requested columns must match the ordered index prefix; leading, intervening,
   or expression keys do not count as evidence.
+  On Redshift, `VACUUM SORT ONLY` over an existing key no longer counts as
+  applying the requested sort columns.
 
 ### Added
 
