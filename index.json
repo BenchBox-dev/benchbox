@@ -21618,7 +21618,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "Verify throughput stream count against run configuration rather than stream_results length alone"
     },
     "throughput-stream-count-wiring-defect": {
