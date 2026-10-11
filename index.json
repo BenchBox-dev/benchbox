@@ -7895,17 +7895,12 @@
       "title": "Decide whether public-contracts and hosted-results-contract stay published"
     },
     "docs-remediation-full-surface-audit": {
-      "claim": {
-        "expires_at": "2026-10-12T17:55:11Z",
-        "generation": "7bc8c7e2a6df44edb28b723c76073f45",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c5daffc9eae3c5f9ce6578f7"
-      },
+      "claim": null,
       "needs": [
         "docs-remediation-review-followups"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Re-audit every published surface after remediation"
     },
     "docs-remediation-live-site-publish": {
