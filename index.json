@@ -22515,9 +22515,9 @@
     },
     "tpch-refresh-functions-in-power-and-throughput": {
       "claim": {
-        "expires_at": "2026-10-11T21:07:59Z",
-        "generation": "aba6c6c727bc4fe19387418d1e980834",
-        "renewals": 0,
+        "expires_at": "2026-10-12T02:28:46Z",
+        "generation": "ce1355ac9b3f4e0c9bb1cf32de9befe8",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cf29857b7864377c27f69396"
       },
       "needs": [
