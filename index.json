@@ -14432,10 +14432,15 @@
       "title": "Oracle reviews, status and workflow are still named \"oracle-review-shadow\" after it became the required reviewer"
     },
     "oracle-verdict-workflow-not-soundness-path-20261009": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-12T01:43:27Z",
+        "generation": "2a2e4727155c4698b836094620861f83",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0b65b59dfd5ecfabcfde36b0"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Add the oracle verdict workflow to the soundness path list so changes to it need an oracle review"
     },
     "orphan-detector-freeze-branch-residual-20260804": {
