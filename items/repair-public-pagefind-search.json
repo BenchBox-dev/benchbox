@@ -5,7 +5,7 @@
     "Capture the worker metadata request and verify the manifest, metadata, index, and WASM assets load successfully.",
     "Verify the public deployed search UI after the fix lands."
   ],
-  "context": "Confirmed independently on the live production page and on the candidate static build. The exact underlying metadata failure is not yet isolated; this is a confirmed defect with an investigation action.",
+  "context": "Confirmed independently on the live production page and on the candidate static build. The exact underlying metadata failure is not yet isolated; this is a confirmed defect with an investigation action. Candidate full-surface evidence is recorded in `_project/audits/docs-remediation-full-surface-audit-2026-10-11.md`, inventory source `435ff8b884d6af12703238c8850b894a276e882d`. The user authorized continued work on the unmerged PR stack, so this follow-up no longer depends on the audit task reaching its merge/live evidence gate. As of 2026-10-11 the active todo-db did not advertise registered-batch support/schema; verify again, and use serial mode if still absent.",
   "description": "The live site search dialog opens, but a query remains stuck at ‘Searching…’ and Chromium reports `Failed to load Pagefind metadata` from `/pagefind/pagefind.js`/its worker. Reproduced on `https://benchbox.dev/blog/` on 2026-10-11. This is a user-visible search failure, separate from the targeted documentation and Atom-feed fixes. Trace the worker's metadata URL, response, and bundle configuration; fix the root cause and prove a real query returns the expected page.",
   "links": [
     "https://benchbox.dev/blog/",
@@ -19,6 +19,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "00311bde4c254deb8bfeab848aeec99d",
+      "session_id": "f00fbcc194ab47a6a9508e7176243455"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c5daffc9eae3c5f9ce6578f7",
+      "at": "2026-10-11T19:33:00Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ae33e10eb58f40fe8fac7428e35572e4",
       "session_id": "f00fbcc194ab47a6a9508e7176243455"
     }
   ]

@@ -17596,9 +17596,7 @@
     },
     "repair-public-pagefind-search": {
       "claim": null,
-      "needs": [
-        "docs-remediation-full-surface-audit"
-      ],
+      "needs": [],
       "priority": "high",
       "status": "open",
       "title": "Repair Pagefind metadata loading in the public search UI"
