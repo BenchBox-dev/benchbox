@@ -10928,9 +10928,9 @@
     },
     "heavy-tier-merge-group-dead-code-20261009": {
       "claim": {
-        "expires_at": "2026-10-12T13:15:19Z",
+        "expires_at": "2026-10-12T13:25:43Z",
         "generation": "b55d65036d864860aa47c47f2042f718",
-        "renewals": 0,
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0b65b59dfd5ecfabcfde36b0"
       },
       "needs": [],
