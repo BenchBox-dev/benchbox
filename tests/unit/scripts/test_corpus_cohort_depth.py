@@ -67,6 +67,7 @@ def _write_bundle(
     platform: str,
     platform_version: str | None = None,
     execution_version: str | None = None,
+    platform_variant: str | None = None,
     run_timestamp: str = "2026-08-01T12:00:00",
     test_type: str | None = "power",
 ) -> None:
@@ -74,6 +75,8 @@ def _write_bundle(
     platform_payload = {"name": platform}
     if platform_version is not None:
         platform_payload["version"] = platform_version
+    if platform_variant is not None:
+        platform_payload["variant"] = platform_variant
     payload = {
         "benchmark": {"id": benchmark, "scale_factor": scale},
         "platform": platform_payload,
@@ -109,6 +112,113 @@ def test_the_gate_detects_a_one_platform_cohort(tmp_path: Path) -> None:
     shallow = validator.shallow_cohorts(validator.cohort_platforms(validator.discover_bundles(tmp_path)))
 
     assert shallow == {("tpcds", "10.0"): {"DuckDB"}}
+
+
+def test_engine_variants_count_as_distinct_cohort_identities(tmp_path: Path) -> None:
+    validator = _load_validator()
+    _write_bundle(
+        tmp_path,
+        "default.json",
+        benchmark="tpch",
+        scale=1.0,
+        platform="Polars",
+        platform_variant="polars+default",
+    )
+    _write_bundle(
+        tmp_path,
+        "streaming.json",
+        benchmark="tpch",
+        scale=1.0,
+        platform="Polars",
+        platform_variant="polars+streaming",
+    )
+    _write_bundle(tmp_path, "duckdb.json", benchmark="tpch", scale=1.0, platform="DuckDB")
+
+    cohorts = validator.cohort_platforms(validator.discover_bundles(tmp_path))
+
+    assert cohorts == {("tpch", "1.0"): {"polars+default", "polars+streaming", "DuckDB"}}
+    assert validator.shallow_cohorts(cohorts) == {}
+
+
+def test_repeated_variant_bundles_do_not_pad_cohort_depth(tmp_path: Path) -> None:
+    validator = _load_validator()
+    _write_bundle(
+        tmp_path,
+        "a.json",
+        benchmark="tpch",
+        scale=1.0,
+        platform="Polars",
+        platform_variant="polars+streaming",
+    )
+    _write_bundle(
+        tmp_path,
+        "b.json",
+        benchmark="tpch",
+        scale=1.0,
+        platform="Polars",
+        platform_variant="polars+streaming",
+    )
+
+    assert validator.shallow_cohorts(validator.cohort_platforms(validator.discover_bundles(tmp_path))) == {
+        ("tpch", "1.0"): {"polars+streaming"}
+    }
+
+
+def test_gateway_routed_bundles_contribute_no_identity(tmp_path: Path) -> None:
+    validator = _load_validator()
+    payload = {
+        "benchmark": {"id": "tpch", "scale_factor": 1.0, "test_type": "power"},
+        "platform": {
+            "name": "Snowflake",
+            "variant": "snowflake@greybeam",
+            "gateway": {"name": "greybeam", "routed": True},
+        },
+        "run": {"timestamp": "2026-08-01T12:00:00"},
+        **_rankable_body(),
+    }
+    (tmp_path / "gateway.json").write_text(json.dumps(payload), encoding="utf-8")
+
+    assert validator.exclusion_reason(payload) == "gateway_routed"
+    assert validator.cohort_platforms(validator.discover_bundles(tmp_path)) == {("tpch", "1.0"): set()}
+
+
+def test_requested_engine_without_variant_string_matches_pipeline(tmp_path: Path) -> None:
+    validator = _load_validator()
+    payload = {
+        "benchmark": {"id": "tpch", "scale_factor": 1.0, "test_type": "power"},
+        "platform": {"name": "Polars", "execution_engine": {"requested": "streaming"}},
+        "run": {"timestamp": "2026-08-01T12:00:00"},
+        **_rankable_body(),
+    }
+    (tmp_path / "constructed.json").write_text(json.dumps(payload), encoding="utf-8")
+
+    assert validator.cohort_platforms(validator.discover_bundles(tmp_path)) == {("tpch", "1.0"): {"polars+streaming"}}
+
+
+def test_blank_variant_falls_through_to_requested_engine(tmp_path: Path) -> None:
+    validator = _load_validator()
+    payload = {
+        "benchmark": {"id": "tpch", "scale_factor": 1.0, "test_type": "power"},
+        "platform": {"name": "Polars", "variant": "  ", "execution_engine": {"requested": "streaming"}},
+        "run": {"timestamp": "2026-08-01T12:00:00"},
+        **_rankable_body(),
+    }
+    (tmp_path / "blank.json").write_text(json.dumps(payload), encoding="utf-8")
+
+    assert validator.cohort_platforms(validator.discover_bundles(tmp_path)) == {("tpch", "1.0"): {"polars+streaming"}}
+
+
+def test_variant_equal_to_platform_name_matches_pipeline(tmp_path: Path) -> None:
+    validator = _load_validator()
+    payload = {
+        "benchmark": {"id": "tpch", "scale_factor": 1.0, "test_type": "power"},
+        "platform": {"name": "Polars", "variant": "Polars", "execution_engine": {"requested": "streaming"}},
+        "run": {"timestamp": "2026-08-01T12:00:00"},
+        **_rankable_body(),
+    }
+    (tmp_path / "same.json").write_text(json.dumps(payload), encoding="utf-8")
+
+    assert validator.cohort_platforms(validator.discover_bundles(tmp_path)) == {("tpch", "1.0"): {"Polars"}}
 
 
 def _write_phase_bundle(

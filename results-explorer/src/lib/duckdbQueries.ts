@@ -106,6 +106,11 @@ export interface ResultRow extends CostDeploymentFields {
   scale_factor: number;
   platform: string;
   platform_id: string;
+  variant_id?: string | null;
+  variant_label?: string | null;
+  requested_execution_engine?: string | null;
+  gateway_name?: string | null;
+  gateway_routed?: boolean | null;
   driver_version: string | null;
   run_date: string;
   power_score: number | null;
@@ -272,6 +277,8 @@ export interface PlatformIndexRowRow extends CostDeploymentFields {
   phase: string;
   platform: string;
   platform_id: string;
+  variant_id?: string | null;
+  variant_label?: string | null;
   driver_version: string | null;
   platform_version?: string | null;
   run_date: string;
@@ -338,6 +345,8 @@ export interface CohortMetadataRow {
 }
 
 export interface MetaLeaderboardRow {
+  variant_id?: string | null;
+  variant_label?: string | null;
   platform_id: string;
   platform: string;
   avg_rank: number | null;
@@ -366,6 +375,11 @@ const RESULT_COLUMNS = [
   "scale_factor",
   "platform",
   "platform_id",
+  "variant_id",
+  "variant_label",
+  "requested_execution_engine",
+  "gateway_name",
+  "gateway_routed",
   "driver_version",
   "run_date",
   "power_score",
@@ -434,6 +448,11 @@ const RESULT_DETAIL_METRICS_COLUMNS = [
   "scale_factor",
   "platform",
   "platform_id",
+  "variant_id",
+  "variant_label",
+  "requested_execution_engine",
+  "gateway_name",
+  "gateway_routed",
   "driver_version",
   "run_date",
   "power_score",
@@ -524,6 +543,8 @@ const COHORT_METADATA_COLUMNS = [
   "primary_metric",
   "primary_order",
   "platform_id",
+  "variant_id",
+  "variant_label",
   "platform",
   "result_id",
   "short_id",
@@ -548,6 +569,8 @@ const BENCHMARK_RANKING_COLUMNS = [
   "br.phase",
   "br.result_id",
   "br.platform_id",
+  "br.variant_id",
+  "br.variant_label",
   "br.platform",
   "br.short_id",
   "br.trust_label",
@@ -1133,6 +1156,8 @@ function loadPlatformIndexRows(platformId?: string): Promise<PlatformIndexRowRow
     ` CASE WHEN br.phase IS NOT NULL THEN br.phase ELSE ${canonicalPhaseSql("r.test_type")} END AS phase,` +
     " r.platform," +
     " r.platform_id," +
+    " r.variant_id," +
+    " r.variant_label," +
     " r.driver_version," +
     " r.platform_version," +
     " r.run_date," +
@@ -1206,9 +1231,9 @@ export async function getMetaLeaderboard(): Promise<MetaLeaderboardRow[]> {
     "meta-leaderboard",
     () =>
       queryRows<MetaLeaderboardRow>(
-        "SELECT platform_id, platform, avg_rank, n_cohorts" +
+        "SELECT variant_id, variant_label, platform_id, platform, avg_rank, n_cohorts" +
           " FROM bench.meta_leaderboard" +
-          " ORDER BY avg_rank NULLS LAST, platform_id",
+          " ORDER BY avg_rank NULLS LAST, variant_id",
       ),
   );
 }
@@ -1220,9 +1245,9 @@ export async function getMetaLeaderboardData(): Promise<MetaLeaderboard | null> 
 async function loadMetaLeaderboardData(): Promise<MetaLeaderboard | null> {
   const [platformRows, cohortRows] = await Promise.all([
     queryRows<MetaLeaderboardRow>(
-      "SELECT platform_id, platform, avg_rank, n_cohorts" +
+      "SELECT variant_id, variant_label, platform_id, platform, avg_rank, n_cohorts" +
         " FROM bench.meta_leaderboard" +
-        " ORDER BY avg_rank NULLS LAST, platform_id",
+        " ORDER BY avg_rank NULLS LAST, variant_id",
     ),
     queryRows<CohortMetadataRow>(
       `SELECT ${COHORT_METADATA_COLUMNS} FROM bench.cohort_metadata` +

@@ -330,6 +330,11 @@ class DuckDBSnapshotBuilder:
                 scale_factor         DOUBLE   NOT NULL,
                 platform             VARCHAR  NOT NULL,
                 platform_id          VARCHAR  NOT NULL,
+                variant_id           VARCHAR  NOT NULL,
+                variant_label        VARCHAR  NOT NULL,
+                requested_execution_engine VARCHAR NOT NULL,
+                gateway_name         VARCHAR,
+                gateway_routed       BOOLEAN  NOT NULL,
                 driver_version       VARCHAR,
                 run_date             VARCHAR  NOT NULL,
                 power_score          DOUBLE,
@@ -403,6 +408,11 @@ class DuckDBSnapshotBuilder:
                 r.scale_factor,
                 r.platform,
                 r.platform_id,
+                r.variant_id,
+                r.variant_label,
+                r.requested_execution_engine,
+                r.gateway_name,
+                r.gateway_routed,
                 r.driver_version,
                 r.run_date,
                 r.power_score,
@@ -527,6 +537,8 @@ class DuckDBSnapshotBuilder:
                 phase                        VARCHAR  NOT NULL,
                 result_id                    VARCHAR  NOT NULL,
                 platform_id                  VARCHAR  NOT NULL,
+                variant_id                   VARCHAR  NOT NULL,
+                variant_label                VARCHAR  NOT NULL,
                 platform                     VARCHAR  NOT NULL,
                 short_id                     VARCHAR  NOT NULL,
                 trust_label                  VARCHAR  NOT NULL,
@@ -575,6 +587,11 @@ class DuckDBSnapshotBuilder:
                 scale_factor,
                 platform,
                 platform_id,
+                variant_id,
+                variant_label,
+                requested_execution_engine,
+                gateway_name,
+                gateway_routed,
                 driver_version,
                 run_date,
                 power_score,
@@ -629,6 +646,8 @@ class DuckDBSnapshotBuilder:
                 primary_metric   VARCHAR  NOT NULL,
                 primary_order    VARCHAR  NOT NULL,
                 platform_id      VARCHAR  NOT NULL,
+                variant_id       VARCHAR  NOT NULL,
+                variant_label    VARCHAR  NOT NULL,
                 platform         VARCHAR  NOT NULL,
                 result_id        VARCHAR  NOT NULL,
                 short_id         VARCHAR  NOT NULL,
@@ -653,7 +672,9 @@ class DuckDBSnapshotBuilder:
         con.execute("CREATE INDEX idx_cohort_metadata_platform ON cohort_metadata (cohort_key, platform_id)")
         con.execute("""
             CREATE TABLE meta_leaderboard (
-                platform_id  VARCHAR  PRIMARY KEY,
+                variant_id   VARCHAR  PRIMARY KEY,
+                variant_label VARCHAR NOT NULL,
+                platform_id  VARCHAR  NOT NULL,
                 platform     VARCHAR  NOT NULL,
                 avg_rank     DOUBLE,
                 n_cohorts    INTEGER  NOT NULL
@@ -774,6 +795,11 @@ class DuckDBSnapshotBuilder:
                     entry.scale_factor,
                     entry.platform,
                     entry.platform_id,
+                    entry.variant_id,
+                    entry.variant_label,
+                    entry.requested_execution_engine,
+                    entry.gateway_name,
+                    entry.gateway_routed,
                     entry.driver_version,
                     entry.run_date,
                     entry.power_score,
@@ -971,6 +997,8 @@ class DuckDBSnapshotBuilder:
                         phase,
                         platform_row.result_id,
                         platform_row.platform_id,
+                        platform_row.variant_id or platform_row.platform_id,
+                        platform_row.variant_label or platform_row.platform,
                         platform_row.platform,
                         full_to_short.get(platform_row.result_id, ""),
                         platform_row.trust_label,
@@ -1094,6 +1122,8 @@ class DuckDBSnapshotBuilder:
                         primary_metric,
                         primary_order,
                         p["platform_id"],
+                        p.get("variant_id") or p["platform_id"],
+                        p.get("variant_label") or p["platform"],
                         p["platform"],
                         p["result_id"],
                         p["short_id"],
@@ -1123,6 +1153,8 @@ class DuckDBSnapshotBuilder:
         for p in meta.get("platforms", []):
             rows.append(
                 (
+                    p.get("variant_id") or p["platform_id"],
+                    p.get("variant_label") or p["platform"],
                     p["platform_id"],
                     p["platform"],
                     p.get("avg_rank"),
@@ -1130,7 +1162,7 @@ class DuckDBSnapshotBuilder:
                 )
             )
         if rows:
-            con.executemany("INSERT INTO meta_leaderboard VALUES (?, ?, ?, ?)", rows)
+            con.executemany("INSERT INTO meta_leaderboard VALUES (?, ?, ?, ?, ?, ?)", rows)
 
     def _populate_short_ids(self, con: Any, short_id_map: dict[str, str]) -> None:
         rows = list(short_id_map.items())

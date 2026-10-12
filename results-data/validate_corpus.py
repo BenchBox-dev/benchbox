@@ -403,6 +403,11 @@ def exclusion_reason(payload: dict) -> str | None:
         return "validation_not_clean"
     if not _tuning_applied(payload):
         return "tuning_not_applied"
+    platform_section = payload.get("platform")
+    if isinstance(platform_section, dict):
+        gateway = platform_section.get("gateway")
+        if isinstance(gateway, dict) and gateway.get("routed"):
+            return "gateway_routed"
     display = _display_timings(payload)
     timing = _timing_exclusion(display, _logical_query_count(payload, display))
     if timing is not None:
@@ -431,6 +436,21 @@ def _cohort_key(payload: dict) -> CohortKey:
     return (benchmark_id, f"{scale_factor}{cohort_phase_suffix(payload)}")
 
 
+def _variant_aware_identity(platform_section: dict, platform_name: str) -> str:
+    variant = platform_section.get("variant")
+    if isinstance(variant, str) and variant.strip():
+        return variant.strip()
+    engine = platform_section.get("execution_engine")
+    requested = engine.get("requested") if isinstance(engine, dict) else None
+    if requested and str(requested) != "default":
+        pid = _VARIANT_PLATFORM_SUFFIX_RE.sub("", platform_name).strip().lower().replace(" ", "-")
+        return f"{pid}+{requested}"
+    return platform_name
+
+
+_VARIANT_PLATFORM_SUFFIX_RE = re.compile(r"[-_]trust[-_](?:ci|community|local|unknown)", re.IGNORECASE)
+
+
 def _comparison_identity(bundle: pathlib.Path, payload: dict) -> str:
     try:
         platform_section = payload["platform"]
@@ -453,6 +473,7 @@ def _comparison_identity(bundle: pathlib.Path, payload: dict) -> str:
     except Exception as exc:
         raise CorpusReadError(f"ERROR reading platform identity from {bundle}: {exc}") from exc
     identity = str(platform)
+    identity = _variant_aware_identity(platform_section, identity)
     if version and str(version) != "unknown":
         identity = f"{identity} v{str(version)[:120]}"
     return identity

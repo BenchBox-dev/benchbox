@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- The Explorer read model is at version 16 with execution-variant identity:
+  the pipeline records `variant_id`, `variant_label`, the requested execution
+  engine and gateway routing on every result, cohort and leaderboard row.
+  Two bundles that differ only in requested engine rank as separate variants
+  ("Polars (streaming)" beside "Polars"), and gateway-routed runs are
+  excluded from native ranking with `ranking_exclusion_reason=gateway_routed`.
+  Existing corpus values are unchanged: bundles without variant data keep
+  `variant_id` equal to the platform id.
+
 - The Polars version-matrix reproduction instructions now use
   `--execution-engine` for default, in-memory and streaming setups, and identify
   the earlier `engine` option name used by the recorded bundles.

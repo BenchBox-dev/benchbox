@@ -58,6 +58,11 @@ export interface DetailResult extends CostDeploymentFields {
   scale_factor: number;
   platform: string;
   platform_id: string;
+  variant_id?: string | null;
+  variant_label?: string | null;
+  requested_execution_engine?: string | null;
+  gateway_name?: string | null;
+  gateway_routed?: boolean | null;
   driver_version: string | null;
   run_date: string;
   total_duration_s: number;
@@ -182,6 +187,8 @@ export interface MetaRank {
 
 export interface MetaPlatform {
   platform_id: string;
+  variant_id?: string | null;
+  variant_label?: string | null;
   platform: string;
   ranks: Record<string, MetaRank>;
   avg_rank: number | null;
@@ -190,6 +197,8 @@ export interface MetaPlatform {
 
 export interface MetaCohortPlatform {
   platform_id: string;
+  variant_id?: string | null;
+  variant_label?: string | null;
   platform: string;
   result_id: string;
   rank: number | null;

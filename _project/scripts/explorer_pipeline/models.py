@@ -62,6 +62,23 @@ def _platform_id(raw: str) -> str:
     return stripped.lower().replace(" ", "-")
 
 
+def variant_label(
+    platform: str,
+    *,
+    variant_id: str,
+    requested_execution_engine: str = "default",
+    gateway_name: str | None = None,
+    gateway_routed: bool = False,
+) -> str:
+    if gateway_routed and gateway_name:
+        return f"{platform} via {str(gateway_name).capitalize()}"
+    if requested_execution_engine and requested_execution_engine != "default":
+        return f"{platform} ({requested_execution_engine})"
+    if variant_id and variant_id != _platform_id(platform):
+        return f"{platform} ({variant_id})"
+    return platform
+
+
 RANKING_ELIGIBLE_VISIBILITIES: frozenset[str] = frozenset(
     {
         "public-curated",
@@ -95,6 +112,11 @@ class ManifestEntry(BaseModel):
     scale_factor: float
     platform: str
     platform_id: str = ""
+    variant_id: str = ""
+    variant_label: str = ""
+    requested_execution_engine: str = "default"
+    gateway_name: str | None = None
+    gateway_routed: bool = False
     driver_version: str | None
     run_date: str
     power_score: float | None
@@ -146,6 +168,22 @@ class ManifestEntry(BaseModel):
     @field_serializer("normalized_cost")
     def _serialize_normalized_cost(self, cost: NormalizedCost) -> dict[str, Any]:
         return cost.to_dict()
+
+    @model_validator(mode="after")
+    def _default_variant_identity(self) -> ManifestEntry:
+        if not self.variant_id:
+            self.variant_id = self.platform_id
+        if not self.variant_label:
+            self.variant_label = variant_label(
+                self.platform,
+                variant_id=self.variant_id,
+                requested_execution_engine=self.requested_execution_engine,
+                gateway_name=self.gateway_name,
+                gateway_routed=self.gateway_routed,
+            )
+        if not self.requested_execution_engine:
+            self.requested_execution_engine = "default"
+        return self
 
     @model_validator(mode="after")
     def _default_logical_query_count(self) -> ManifestEntry:
@@ -315,6 +353,11 @@ class DetailResult(BaseModel):
     scale_factor: float
     platform: str
     platform_id: str = ""
+    variant_id: str = ""
+    variant_label: str = ""
+    requested_execution_engine: str = "default"
+    gateway_name: str | None = None
+    gateway_routed: bool = False
     driver_version: str | None
     run_date: str
     total_duration_s: float
@@ -365,6 +408,22 @@ class DetailResult(BaseModel):
     physical_rendering_id: str | None = None
     basis_availability: BasisAvailability | None = None
 
+    @model_validator(mode="after")
+    def _default_variant_identity(self) -> DetailResult:
+        if not self.variant_id:
+            self.variant_id = self.platform_id
+        if not self.variant_label:
+            self.variant_label = variant_label(
+                self.platform,
+                variant_id=self.variant_id,
+                requested_execution_engine=self.requested_execution_engine,
+                gateway_name=self.gateway_name,
+                gateway_routed=self.gateway_routed,
+            )
+        if not self.requested_execution_engine:
+            self.requested_execution_engine = "default"
+        return self
+
     @field_serializer("normalized_cost")
     def _serialize_normalized_cost(self, cost: NormalizedCost) -> dict[str, Any]:
         return cost.to_dict()
@@ -408,6 +467,8 @@ def ranking_exclusion_reason(entry: ManifestEntry, primary_metric: str | None = 
         return "tuning_not_applied"
     if entry.comparison_exclusion_reason is not None:
         return entry.comparison_exclusion_reason
+    if entry.gateway_routed:
+        return "gateway_routed"
 
     metric = primary_metric or get_ranking_config(entry.benchmark, canonical_phase(entry.test_type)).primary_metric
     value = primary_metric_value(entry, metric)
@@ -529,6 +590,8 @@ class PlatformRow(BaseModel):
     result_id: str
     short_id: str = ""
     platform_id: str
+    variant_id: str = ""
+    variant_label: str = ""
     platform: str
     platform_version: str | None
     tuning_mode: str | None
@@ -907,4 +970,5 @@ __all__ = [
     "timing_eligibility",
     "timing_exclusion_reason",
     "unavailable_normalized_cost_payload",
+    "variant_label",
 ]

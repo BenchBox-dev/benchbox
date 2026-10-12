@@ -96,7 +96,7 @@ export function MetaLeaderboard({
     for (const cohort of cohorts) {
       const values = platforms
         .map((platform) => {
-          const result = findCohortPlatform(cohort, platform.platform_id);
+          const result = findCohortPlatform(cohort, variantKeyOf(platform));
           const state = metaLeaderboardCellState(platform.ranks[cohort.key], result, cohort);
           return state.kind === "ranked" ? cellShadeMetric(state.rank, mode, cohort) : null;
         })
@@ -121,11 +121,11 @@ export function MetaLeaderboard({
     [cohorts, sortedPlatforms],
   );
   const collapsedPlatformIds = useMemo(
-    () => new Set(collapsedPlatforms.map((platform) => platform.platform_id)),
+    () => new Set(collapsedPlatforms.map((platform) => variantKeyOf(platform))),
     [collapsedPlatforms],
   );
   const defaultPlatforms = useMemo(
-    () => sortedPlatforms.filter((platform) => !collapsedPlatformIds.has(platform.platform_id)),
+    () => sortedPlatforms.filter((platform) => !collapsedPlatformIds.has(variantKeyOf(platform))),
     [collapsedPlatformIds, sortedPlatforms],
   );
   const renderedPlatforms = showUnrankedPlatforms
@@ -194,7 +194,7 @@ export function MetaLeaderboard({
       case " ": {
         event.preventDefault();
         const platform = visiblePlatforms[rowIdx];
-        if (platform) route(platformHref(platform.platform_id));
+        if (platform) route(platformHref(variantKeyOf(platform)));
         return;
       }
       default:
@@ -359,18 +359,18 @@ export function MetaLeaderboard({
             <tbody class="divide-y divide-[var(--bb-data-border)]">
               {visiblePlatforms.map((platform, rowIdx) => (
                 <tr
-                  key={platform.platform_id}
+                  key={variantKeyOf(platform)}
                   class="cursor-pointer hover:bg-[var(--bb-surface-data-muted)]"
-                  onClick={() => route(platformHref(platform.platform_id))}
+                  onClick={() => route(platformHref(variantKeyOf(platform)))}
                 >
                   <td class="table-td sticky left-0 z-10 bg-[var(--bb-surface-data)] py-2 font-medium text-[var(--bb-data-fg-primary)]">
                     <div class="flex flex-wrap items-center gap-2">
                       <a
-                        href={platformHref(platform.platform_id)}
+                        href={platformHref(variantKeyOf(platform))}
                         class="no-underline hover:text-[var(--bb-accent-hover)]"
                         onClick={(event) => event.stopPropagation()}
                       >
-                        {platform.platform}
+                        {variantLabelOf(platform)}
                       </a>
                       <span
                         class="rounded border border-[var(--bb-data-border)] bg-[var(--bb-surface-data-muted)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--bb-data-fg-muted)]"
@@ -382,7 +382,7 @@ export function MetaLeaderboard({
                   </td>
                   {cohorts.map((cohort, colIdx) => {
                     const rank = platform.ranks[cohort.key];
-                    const result = findCohortPlatform(cohort, platform.platform_id);
+                    const result = findCohortPlatform(cohort, variantKeyOf(platform));
                     const cellState = metaLeaderboardCellState(rank, result, cohort);
                     const missing = cellState.kind === "missing";
                     const unranked = cellState.kind === "unranked";
@@ -595,8 +595,16 @@ function exactMetricTitle(rank: MetaRank | undefined, cohort: MetaCohort): strin
   return null;
 }
 
+export function variantKeyOf(row: { variant_id?: string | null; platform_id: string }): string {
+  return row.variant_id || row.platform_id;
+}
+
+export function variantLabelOf(row: { variant_label?: string | null; platform: string }): string {
+  return row.variant_label || row.platform;
+}
+
 function findCohortPlatform(cohort: MetaCohort, platformId: string): MetaCohortPlatform | undefined {
-  const rows = cohort.platforms?.filter((row) => row.platform_id === platformId);
+  const rows = cohort.platforms?.filter((row) => variantKeyOf(row) === platformId);
   if (!rows || rows.length === 0) return undefined;
   return rows.find((row) => row.rank !== null) ?? rows[0];
 }
@@ -748,12 +756,12 @@ function runAgeText(runAge: string | null): string | null {
 }
 
 function hasPublishedEvidence(platform: MetaPlatform, cohorts: MetaCohort[]): boolean {
-  return cohorts.some((cohort) => findCohortPlatform(cohort, platform.platform_id) !== undefined);
+  return cohorts.some((cohort) => findCohortPlatform(cohort, variantKeyOf(platform)) !== undefined);
 }
 
 function hasRankedEvidence(platform: MetaPlatform, cohorts: MetaCohort[]): boolean {
   return cohorts.some((cohort) => {
-    const result = findCohortPlatform(cohort, platform.platform_id);
+    const result = findCohortPlatform(cohort, variantKeyOf(platform));
     return metaLeaderboardCellState(platform.ranks[cohort.key], result, cohort).kind === "ranked";
   });
 }
@@ -761,7 +769,7 @@ function hasRankedEvidence(platform: MetaPlatform, cohorts: MetaCohort[]): boole
 function allExcludedRankingReason(cohort: MetaCohort, platforms: MetaPlatform[]): string | null {
   const results = cohort.platforms ?? [];
   const hasRankedCell = platforms.some((platform) => {
-    const result = findCohortPlatform(cohort, platform.platform_id);
+    const result = findCohortPlatform(cohort, variantKeyOf(platform));
     return metaLeaderboardCellState(platform.ranks[cohort.key], result, cohort).kind === "ranked";
   });
   if (results.length === 0 || hasRankedCell) return null;

@@ -151,6 +151,10 @@ function canonicalPlatformRouteKey(value: string): string {
 
 function platformRowsForRequest(rows: PlatformIndexRowRow[], platform: string): PlatformIndexRowRow[] {
   const requested = canonicalPlatformRouteKey(platform);
+  const variantMatches = rows.filter(
+    (row) => normalizePlatformKey(row.variant_id || row.platform_id) === requested,
+  );
+  if (variantMatches.length > 0) return variantMatches;
   const idMatches = rows.filter((row) => normalizePlatformKey(row.platform_id) === requested);
   if (idMatches.length > 0) return idMatches;
   return rows.filter((row) => normalizePlatformKey(row.platform) === requested);

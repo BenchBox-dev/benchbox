@@ -8,6 +8,7 @@ import logging
 import math
 import re
 from collections import Counter
+from collections.abc import Mapping
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, cast
@@ -32,6 +33,7 @@ from _project.scripts.explorer_pipeline.models import (
     canonical_phase,
     ranking_exclusion_reason,
     timing_eligibility,
+    variant_label,
 )
 from benchbox.core.benchmark_registry import get_benchmark_support_status
 from benchbox.core.cost.models import CostScope, CostStatus, DeploymentMetadata, NormalizedCost
@@ -413,6 +415,36 @@ def _funding(bundle: BundleDocument) -> str:
 def _platform_version(bundle: BundleDocument) -> str | None:
     val = bundle.platform.version
     return str(val) if val and val != "unknown" else None
+
+
+def _variant_info(bundle: BundleDocument) -> tuple[str, str, str, str | None, bool]:
+    platform = bundle.platform
+    platform_name = str(platform.name)
+    pid = _platform_id(platform_name)
+    raw_variant = getattr(platform, "variant", None)
+    engine_raw = getattr(platform, "execution_engine", None)
+    engine = engine_raw if isinstance(engine_raw, Mapping) else {}
+    requested = engine.get("requested") or "default"
+    requested = str(requested)
+    gateway_raw = getattr(platform, "gateway", None)
+    gateway = gateway_raw if isinstance(gateway_raw, Mapping) else {}
+    routed = bool(gateway.get("routed", False))
+    gateway_name = gateway.get("name")
+    gateway_name = str(gateway_name) if gateway_name else None
+    if isinstance(raw_variant, str) and raw_variant.strip():
+        variant_id = raw_variant.strip()
+    elif requested != "default":
+        variant_id = f"{pid}+{requested}"
+    else:
+        variant_id = pid
+    label = variant_label(
+        platform_name,
+        variant_id=variant_id,
+        requested_execution_engine=requested,
+        gateway_name=gateway_name,
+        gateway_routed=routed,
+    )
+    return variant_id, label, requested, gateway_name, routed
 
 
 _EXECUTION_MODES = frozenset({"sql", "dataframe"})
@@ -1202,12 +1234,18 @@ class BundleTransformer:
         )
         override = _override_display(bundle_path)
         test_type = _test_type(bundle)
+        variant = _variant_info(bundle)
         entry = ManifestEntry(
             result_id=rid,
             benchmark=benchmark,
             scale_factor=scale_factor,
             platform=platform,
             platform_id=_platform_id(platform),
+            variant_id=variant[0],
+            variant_label=variant[1],
+            requested_execution_engine=variant[2],
+            gateway_name=variant[3],
+            gateway_routed=variant[4],
             driver_version=_driver_version(bundle),
             run_date=run_date,
             power_score=_power_score(bundle),
@@ -1300,12 +1338,18 @@ class BundleTransformer:
         timing_contract = timing_eligibility(display_timings, logical_query_count)
         normalized_cost = _normalized_cost(bundle)
         test_type = _test_type(bundle)
+        variant = _variant_info(bundle)
         detail = DetailResult(
             result_id=result_id,
             benchmark=benchmark,
             scale_factor=scale_factor,
             platform=platform,
             platform_id=_platform_id(platform),
+            variant_id=variant[0],
+            variant_label=variant[1],
+            requested_execution_engine=variant[2],
+            gateway_name=variant[3],
+            gateway_routed=variant[4],
             driver_version=_driver_version(bundle),
             run_date=run_date,
             total_duration_s=total_duration_s,

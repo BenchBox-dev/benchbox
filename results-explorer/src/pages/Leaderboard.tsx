@@ -15,7 +15,7 @@ import { humanizeBenchmark, errMsg } from "@/utils";
 import { canonicalBenchmarkSlug, formatBenchmarkLabel } from "@/lib/displayLabels";
 import { MetaLeaderboardSkeleton, SkeletonBlock } from "@/components/LoadingSpinner";
 import { ErrorMessage } from "@/components/ErrorMessage";
-import { MetaLeaderboard } from "@/components/MetaLeaderboard";
+import { MetaLeaderboard, variantKeyOf, variantLabelOf } from "@/components/MetaLeaderboard";
 import type { MetaLeaderboardMode } from "@/components/MetaLeaderboard";
 import {
   ALL_FACET_KEYS,
@@ -233,9 +233,9 @@ export function Leaderboard({ notice = null }: LeaderboardProps) {
     for (const cohort of metaLeaderboard.cohorts) {
       const inner = new Map<string, MetaCohortPlatform[]>();
       for (const row of cohort.platforms ?? []) {
-        const rows = inner.get(row.platform_id) ?? [];
+        const rows = inner.get(variantKeyOf(row)) ?? [];
         rows.push(row);
-        inner.set(row.platform_id, rows);
+        inner.set(variantKeyOf(row), rows);
       }
       index.set(cohort.key, inner);
     }
@@ -264,13 +264,13 @@ export function Leaderboard({ notice = null }: LeaderboardProps) {
     });
 
     const visibleEvidencePlatformIds = new Set(
-      visibleCohorts.flatMap((cohort) => (cohort.platforms ?? []).map((row) => row.platform_id)),
+      visibleCohorts.flatMap((cohort) => (cohort.platforms ?? []).map((row) => variantKeyOf(row))),
     );
     const platforms = metaLeaderboard.platforms
       .map((platform) => {
         const ranks = Object.fromEntries(
           visibleCohorts.flatMap((cohort) => {
-            const rows = cohortPlatformIndex.get(cohort.key)?.get(platform.platform_id) ?? [];
+            const rows = cohortPlatformIndex.get(cohort.key)?.get(variantKeyOf(platform)) ?? [];
             const rankedRows = rows
               .filter((row) => {
               const result = resultById.get(row.result_id);
@@ -300,7 +300,7 @@ export function Leaderboard({ notice = null }: LeaderboardProps) {
           n_cohorts: rankValues.length,
         } satisfies MetaPlatform;
       })
-      .filter((platform) => platform.n_cohorts > 0 || visibleEvidencePlatformIds.has(platform.platform_id))
+      .filter((platform) => platform.n_cohorts > 0 || visibleEvidencePlatformIds.has(variantKeyOf(platform)))
       .sort((a, b) => {
         if (a.avg_rank === null && b.avg_rank === null) return 0;
         if (a.avg_rank === null) return 1;
@@ -353,12 +353,12 @@ export function Leaderboard({ notice = null }: LeaderboardProps) {
     modeRaw === "times" || modeRaw === "ranks" ? modeRaw : "speedup";
   const benchmarks = [...new Set(results.map((result) => canonicalBenchmarkSlug(result.benchmark)))].sort();
   const platformIdToName = new Map(
-    (metaLeaderboard?.platforms ?? []).map((platform) => [platform.platform_id, platform.platform]),
+    (metaLeaderboard?.platforms ?? []).map((platform) => [variantKeyOf(platform), variantLabelOf(platform)]),
   );
   for (const result of results) {
-    platformIdToName.set(result.platform_id, result.platform);
+    platformIdToName.set(variantKeyOf(result), variantLabelOf(result));
   }
-  const platformIds = [...new Set(results.map((result) => result.platform_id))].sort();
+  const platformIds = [...new Set(results.map((result) => variantKeyOf(result)))].sort();
   const activeFacetSummaries = summarizeActiveFacets(facets, platformIdToName);
   const benchmarkOptions = metaLeaderboard
     ? [...new Set(metaLeaderboard.cohorts.map((cohort) => cohort.benchmark))].sort()
@@ -390,7 +390,7 @@ export function Leaderboard({ notice = null }: LeaderboardProps) {
   const publicBenchmarksOutsideLeaderboard = benchmarks.filter((benchmark) => !leaderboardBenchmarkSet.has(canonicalBenchmarkSlug(benchmark)));
   const leaderboardEvidencePlatformIds = new Set(
     (metaLeaderboard?.cohorts ?? []).flatMap((cohort) =>
-      (cohort.platforms ?? []).map((platform) => platform.platform_id),
+      (cohort.platforms ?? []).map((platform) => variantKeyOf(platform)),
     ),
   );
   const publicPlatformIdsOutsideLeaderboard = platformIds.filter((platformId) => !leaderboardEvidencePlatformIds.has(platformId));
