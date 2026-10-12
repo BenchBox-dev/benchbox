@@ -2,8 +2,8 @@
 develop_sha: 2eb03f3e67ec8f7f1347738f29696fa39ed5f526
 measured_at_sha: dd20aed2d53a87a4c34ae74c73a187cfa9bf3c5e
 checked_sha: dd20aed2d53a87a4c34ae74c73a187cfa9bf3c5e
-replay_sha: 12acfd365b313374e057d97cb7191f4a98a5dc7d
-replay_scope: PR 2888 workflow and pipeline/publication/full-fast replay at 50183db50c15b46a1dbd474d3bf7cd297f1c2975; PR 2821 D20-D26 scanner fixes, focused and full scanner verification at 12acfd365b313374e057d97cb7191f4a98a5dc7d
+replay_sha: 94b2da915a78d525d8adf8ea1efa554914b28984
+replay_scope: PR 2888 workflow and pipeline/publication/full-fast replay at 50183db50c15b46a1dbd474d3bf7cd297f1c2975; PR 2821 D20-D26 scanner fixes, focused and full scanner verification at 12acfd365b313374e057d97cb7191f4a98a5dc7d; PR 2829 drift-guard remediation, prescribed pipeline/publication replay at 94b2da915a78d525d8adf8ea1efa554914b28984
 ---
 
 # Remediation contract evidence
@@ -111,10 +111,10 @@ uv run -- python -m pytest \
   tests/unit/scripts/publication/test_journal.py -q
 ```
 
-The clean detached-worktree result was `111 passed`. The command and pinned
+The clean detached-worktree result was `112 passed`. The command and pinned
 SHA define the replay; the aggregate count is summary evidence only.
 
-The prescribed pipeline and publication seam replay passed 111 tests after
+The prescribed pipeline and publication seam replay passed 112 tests after
 the end-to-end cohort consumer control was added. Re-run the cited nodes after
 any source or consumer change; a passing aggregate count is not acceptance of
 the collective claim.
