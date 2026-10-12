@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Downloader/verifier disambiguates attempts (latest-wins) or failed-attempt artifacts are namespaced/cleaned automatically; no manual deletion required"
+  ],
+  "context": "Found while landing PR #2913. Stale artifact IDs deleted: 11757022181, 11762606819; kept 11762303564 (exit 0).",
+  "description": "CI run 38267710571 accumulated three same-named t2-medium-shard-0-d05f41116 artifacts (IDs 11757022181 exit 1, 11762606819 exit 1, 11762303564 exit 0). The core aggregator (release_canary_sharding.py verify-medium exact-assignment check) kept failing on the stale exit-1 evidence after the shard reran green. Resolved by manually deleting the two stale artifacts via the API and rerunning core, which passed. Manual artifact deletion is a destructive workaround, not a process.",
+  "sessions": [
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:5b994405d415152299b5a092",
+      "at": "2026-10-12T21:51:44Z",
+      "client": "pi",
+      "op": "create",
+      "op_id": "bdd56e5ba7c141e79dc32566082010de",
+      "session_id": "27b88a720c9f4fc981d9d2b9406e61be"
+    }
+  ]
+}

@@ -2597,6 +2597,13 @@
       "status": "done",
       "title": "CI savings reviews must account for same-event workflow fan-out"
     },
+    "ci-retry-artifact-collision-breaks-canary-gate": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Rerun evidence artifacts collide by name and the canary core aggregator reads stale failure"
+    },
     "ci-soundness-flag-stale-base": {
       "claim": null,
       "needs": [],
