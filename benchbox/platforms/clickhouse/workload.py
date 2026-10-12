@@ -82,6 +82,11 @@ class ClickHouseDeltaHandler:
 
 
 class ClickHouseWorkloadMixin:
+    def _reset_run_scoped_state(self) -> None:
+        super()._reset_run_scoped_state()
+        self._merge_settle_result = None
+        self._merge_settle_timeout_seconds = 0.0
+
     def create_schema(self, benchmark, connection: Any) -> float:
         start_time = mono_time()
 
@@ -661,9 +666,9 @@ class ClickHouseWorkloadMixin:
             handler_factory=clickhouse_handler_factory,
             tuning_config=self.unified_tuning_configuration if self.tuning_enabled else None,
         )
-        table_stats, loading_time = loader.load()
         self._merge_settle_result = None
         self._merge_settle_timeout_seconds = 0.0
+        table_stats, loading_time = loader.load()
         if self.deployment_mode == "server":
             self._settle_background_merges(connection)
         return table_stats, loading_time, None

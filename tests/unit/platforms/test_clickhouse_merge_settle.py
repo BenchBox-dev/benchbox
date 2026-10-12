@@ -315,3 +315,42 @@ def test_failed_settle_phase_exports_null_parts() -> None:
         "active_parts": None,
         "timeout_seconds": 600.0,
     }
+
+
+def test_load_failure_clears_stale_merge_settle_state() -> None:
+    adapter = _Adapter("server")
+    adapter._merge_settle_result = MergeSettleResult(True, 2.5, 84)
+    adapter._merge_settle_timeout_seconds = 600.0
+
+    loader = Mock()
+    loader.load.side_effect = RuntimeError("load denied")
+    with (
+        patch("benchbox.platforms.base.data_loading.DataLoader", return_value=loader),
+        pytest.raises(RuntimeError, match="load denied"),
+    ):
+        adapter.load_data(Mock(), Mock(), Path("/tmp"))
+
+    assert adapter._merge_settle_result is None
+    assert adapter._merge_settle_timeout_seconds == 0.0
+    assert adapter.build_merge_settle_phase() is None
+
+
+class _ResetBase:
+    def _reset_run_scoped_state(self) -> None:
+        self.base_reset_called = True
+
+
+class _ResetAdapter(ClickHouseWorkloadMixin, _ResetBase):
+    pass
+
+
+def test_run_scoped_reset_clears_stale_merge_settle_state() -> None:
+    adapter = _ResetAdapter()
+    adapter._merge_settle_result = MergeSettleResult(True, 2.5, 84)
+    adapter._merge_settle_timeout_seconds = 600.0
+
+    adapter._reset_run_scoped_state()
+
+    assert adapter.base_reset_called is True
+    assert adapter._merge_settle_result is None
+    assert adapter._merge_settle_timeout_seconds == 0.0
