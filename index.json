@@ -20498,15 +20498,10 @@
       "title": "Snowflake clustering: dead pre-ALTER comparison (LINEAR vs bare parens) re-fires ALTER+RESUME RECLUSTER on every reuse; introspector schema filter is case-sensitive raw interpolation"
     },
     "snowflake-trial-exit-gate0-liveness-budget": {
-      "claim": {
-        "expires_at": "2026-10-13T19:13:40Z",
-        "generation": "c739b8ea84484550b81b614fab73bc28",
-        "renewals": 0,
-        "worker": "mcp:tbh:joe@joe-mac-mini.local:28ec00d9b0349e9794467df7"
-      },
+      "claim": null,
       "needs": [],
       "priority": "critical",
-      "status": "active",
+      "status": "done",
       "title": "Lock Snowflake trial liveness, credit balance, and stop-loss before any burn"
     },
     "snowflake-trial-exit-gate1-comparability-lock": {
