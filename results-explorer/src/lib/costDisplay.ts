@@ -21,6 +21,24 @@ export function estimatedCostLabel(row: CostDeploymentFields): string | null {
   return `\u2248 ${formatUsd(value).valueText} (est.)`;
 }
 
+export function hasCostEstimate(row: CostDeploymentFields): boolean {
+  return estimatedCostValue(row) !== null;
+}
+
+export function parseEstimateAssumptions(value: string | null | undefined): string[] {
+  if (value === null || value === undefined) return [];
+  const trimmed = value.trim();
+  if (trimmed === "") return [];
+  try {
+    const parsed: unknown = JSON.parse(trimmed);
+    if (Array.isArray(parsed)) {
+      return parsed.filter((entry): entry is string => typeof entry === "string" && entry.trim() !== "");
+    }
+  } catch {
+  }
+  return [trimmed];
+}
+
 export function normalizedCostLabel(row: CostDeploymentFields): string {
   const value = normalizedCostValue(row);
   if (value !== null) return formatUsd(value).valueText;

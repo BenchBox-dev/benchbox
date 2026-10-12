@@ -5,9 +5,11 @@ import {
   costScopeSummary,
   costStatusLabel,
   estimatedCostValue,
+  hasCostEstimate,
   humanizeBillingFragment,
   normalizedCostLabel,
   normalizedCostValue,
+  parseEstimateAssumptions,
 } from "@/lib/costDisplay";
 
 function makeRow(overrides: Partial<CostDeploymentFields> = {}): CostDeploymentFields {
@@ -114,5 +116,15 @@ describe("costStatusLabel and normalizedCost helpers (unaffected by w1)", () => 
   it("does not expose the internal cost model source", () => {
     expect(costModelSummary(makeRow({ cost_model_version: "v3", cost_model_source: "ondemand" }))).toBe("v3");
     expect(costModelSummary(makeRow({ cost_model_version: "v3" }))).toBe("v3");
+  });
+
+  it("parses estimate assumptions from JSON with a plain-text fallback", () => {
+    expect(parseEstimateAssumptions('["First.", "Second."]')).toEqual(["First.", "Second."]);
+    expect(parseEstimateAssumptions("plain assumption")).toEqual(["plain assumption"]);
+    expect(parseEstimateAssumptions(null)).toEqual([]);
+    expect(parseEstimateAssumptions("  ")).toEqual([]);
+    expect(hasCostEstimate(makeRow({ cost_status: "estimated", estimated_cost_usd: 0.5 }))).toBe(true);
+    expect(hasCostEstimate(makeRow({ cost_status: "estimated", estimated_cost_usd: null }))).toBe(false);
+    expect(hasCostEstimate(makeRow({ cost_status: "unavailable" }))).toBe(false);
   });
 });

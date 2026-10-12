@@ -748,7 +748,7 @@ export function Query({ url }: QueryProps) {
         crumbs={[{ label: "Results", href: "/results/" }, { label: "Find runs" }]}
         eyebrow="Find runs"
         title="Find benchmark runs"
-        subtitle="Filter published runs, open their evidence, or select up to four runs to compare. Your filters stay in the page link."
+        subtitle="Filter published runs, open their evidence, or select up to ten runs to compare. Your filters stay in the page link."
       />
 
       <div class="grid gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
@@ -881,6 +881,17 @@ export function Query({ url }: QueryProps) {
                     MAX_COMPARE_SELECTIONS,
                   );
                   const compareUrl = compareSelectedIds.size >= 2 ? buildCompareUrl(selectedCompareIds) : null;
+                  const wholeFilteredSetVisible = rows.length === resultTotal;
+                  const cohortComparableRows = compareCohortSignature !== null && wholeFilteredSetVisible
+                    ? compareRowPartition.compatible.filter((row) => comparisonExclusionReason(row) === undefined)
+                    : [];
+                  const compareAllQueryUrl =
+                    cohortComparableRows.length >= 2 &&
+                    cohortComparableRows.length <= MAX_COMPARE_SELECTIONS
+                      ? buildCompareUrl(
+                        cohortComparableRows.map((row) => compareIdForRow(row as Parameters<typeof compareIdForRow>[0])),
+                      )
+                      : null;
                   return (
                     <>
                       <div
@@ -923,7 +934,15 @@ export function Query({ url }: QueryProps) {
                                 Clear selection
                               </button>
                             )}
-                            {compareUrl ? (
+                            {compareAllQueryUrl ? (
+                              <a
+                                href={compareAllQueryUrl}
+                                class="btn btn-primary shrink-0 px-3 py-1 text-xs no-underline"
+                                data-testid="query-compare-launch"
+                              >
+                                Compare All Runs
+                              </a>
+                            ) : compareUrl ? (
                               <a
                                 href={compareUrl}
                                 class="btn btn-primary shrink-0 px-3 py-1 text-xs no-underline"

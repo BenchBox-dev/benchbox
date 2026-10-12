@@ -614,7 +614,7 @@ export function BenchmarkIndex({ benchmark = "" }: BenchmarkIndexProps) {
     filteredComparableRows.length >= 2 && filteredComparableRows.length <= MAX_COMPARE_SELECTIONS
       ? buildCompareUrl(filteredComparableRows.map((row) => compareIdForRow(row)))
       : null;
-  const compareGuidance = compareAllUrl && selectedComparableCount < 2
+  const compareGuidance = compareAllUrl
     ? `All ${filteredComparableRows.length} comparable runs in this view can be compared together.`
     : benchmarkCompareGuidanceMessage(selectedComparableCount, title, effectiveSf, effectivePhase);
   const selectionLimitCopy =
@@ -864,13 +864,13 @@ export function BenchmarkIndex({ benchmark = "" }: BenchmarkIndexProps) {
               </p>
             )}
           </div>
-          {compareUrl ? (
-            <a href={compareUrl} class="btn btn-primary shrink-0 text-sm no-underline" data-testid="benchmark-compare-cta">
-              Compare {selectedComparableCount} selected
-            </a>
-          ) : compareAllUrl ? (
+          {compareAllUrl ? (
             <a href={compareAllUrl} class="btn btn-primary shrink-0 text-sm no-underline" data-testid="benchmark-compare-cta">
               Compare All Runs
+            </a>
+          ) : compareUrl ? (
+            <a href={compareUrl} class="btn btn-primary shrink-0 text-sm no-underline" data-testid="benchmark-compare-cta">
+              Compare {selectedComparableCount} selected
             </a>
           ) : (
             <p class="shrink-0 text-sm text-[var(--bb-data-fg-subtle)]" data-testid="benchmark-compare-cta-pending">

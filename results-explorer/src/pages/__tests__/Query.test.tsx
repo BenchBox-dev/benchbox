@@ -323,11 +323,14 @@ describe("Query", () => {
 
     fireEvent.click(screen.getByTestId("query-compare-checkbox-r1"));
     expect(screen.getByTestId("query-compare-tray").textContent).toContain("1 result selected");
-    expect(screen.getByTestId("query-compare-launch-disabled")).toBeTruthy();
+    const allRuns = screen.getByTestId("query-compare-launch") as HTMLAnchorElement;
+    expect(allRuns.textContent).toBe("Compare All Runs");
+    expect(allRuns.href).toContain("/results/compare?ids=");
 
     fireEvent.click(screen.getByTestId("query-compare-checkbox-r2"));
     expect(screen.getByTestId("query-compare-tray").textContent).toContain("2 results selected");
     const launch = screen.getByTestId("query-compare-launch") as HTMLAnchorElement;
+    expect(launch.textContent).toBe("Compare All Runs");
     expect(launch.href).toContain("/results/compare?ids=");
 
     fireEvent.click(screen.getByTestId("query-compare-clear"));

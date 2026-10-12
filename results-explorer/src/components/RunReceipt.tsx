@@ -2,7 +2,7 @@ import { useState } from "preact/hooks";
 import type { ComponentChildren } from "preact";
 import type { DetailResult } from "@/types";
 import { humanizeBenchmark, shortHash } from "@/utils";
-import { costModelSummary, costScopeSummary, normalizedCostLabel } from "@/lib/costDisplay";
+import { costModelSummary, costScopeSummary, hasCostEstimate, normalizedCostLabel, parseEstimateAssumptions } from "@/lib/costDisplay";
 import {
   formatArchitecture,
   formatCpuFamily,
@@ -59,6 +59,27 @@ function rowFromString(
 function rowFromSummary(label: string, value: string): ReceiptRow {
   if (value === MISSING_PLACEHOLDER) return missingRow(label);
   return recordedRow(label, value);
+}
+
+function estimateProvenanceRow(detail: DetailResult): ReceiptRow {
+  const assumptions = parseEstimateAssumptions(detail.cost_estimate_assumptions);
+  return recordedRow(
+    "Estimate basis",
+    <div class="space-y-1 text-xs text-[var(--bb-data-fg-muted)]">
+      <p>This timing-derived estimate is not metered usage, an actual cost, or a bill estimate.</p>
+      {detail.cost_estimate_method && <p>Method: {detail.cost_estimate_method}</p>}
+      {detail.cost_estimate_source && <p>Source: {detail.cost_estimate_source}</p>}
+      {detail.cost_estimate_pricing_date && <p>Pricing date: {detail.cost_estimate_pricing_date}</p>}
+      {assumptions.length > 0 && (
+        <details>
+          <summary class="cursor-pointer font-medium">Assumptions ({assumptions.length})</summary>
+          <ul class="mt-1 list-disc space-y-0.5 pl-4">
+            {assumptions.map((assumption, index) => <li key={index}>{assumption}</li>)}
+          </ul>
+        </details>
+      )}
+    </div>,
+  );
 }
 
 function overrideRows(detail: DetailResult): ReceiptRow[] {
@@ -190,6 +211,7 @@ export function RunReceipt({
       title: "Cost",
       rows: [
         recordedRow("Normalized cost", normalizedCostLabel(detail)),
+        ...(hasCostEstimate(detail) ? [estimateProvenanceRow(detail)] : []),
         rowFromSummary("Cost model", costModelSummary(detail)),
         rowFromSummary("Cost scope", costScopeSummary(detail)),
       ],

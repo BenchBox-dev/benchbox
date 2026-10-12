@@ -124,6 +124,32 @@ describe("RunReceipt", () => {
     expect(within(receipt).getByText("compute only, Billing unit: warehouse hour, Region: us-east-1")).toBeTruthy();
   });
 
+  it("renders estimate provenance for timing-derived costs", () => {
+    render(
+      <RunReceipt
+        detail={makeDetail({
+          normalized_cost_usd: null,
+          cost_status: "estimated",
+          billing_unit: "credit",
+          pricing_region: "us-east-2",
+          estimated_cost_usd: 0.000105,
+          cost_estimate_method: "sum of per-query median runtime hours",
+          cost_estimate_source: "https://www.snowflake.com/legal-files/CreditConsumptionTable.pdf",
+          cost_estimate_pricing_date: "2026-10-09",
+          cost_estimate_assumptions: '["Timing-derived reference scenario."]',
+        })}
+      />,
+    );
+
+    const receipt = screen.getByRole("region", { name: "Run receipt" });
+    expect(within(receipt).getByText(/\u2248 \$0\.0001 \(est\.\)/)).toBeTruthy();
+    expect(within(receipt).getByText("Estimate basis")).toBeTruthy();
+    expect(within(receipt).getByText(/Method: sum of per-query median runtime hours/)).toBeTruthy();
+    expect(within(receipt).getByText(/Pricing date: 2026-10-09/)).toBeTruthy();
+    expect(within(receipt).getByText(/Assumptions \(1\)/)).toBeTruthy();
+    expect(within(receipt).getByText("Timing-derived reference scenario.")).toBeTruthy();
+  });
+
   it("does not leak raw not_applicable enum into the Cost section copy (finding #12)", () => {
     render(
       <RunReceipt
