@@ -336,6 +336,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   message said "using basic constraints" everywhere. It now says "engine
   runtime defaults (streaming)" for Polars and "OLAP session pack" for
   ClickHouse, for example.
+- **Public result publishing fails closed after anonymization.** `benchbox
+  publish` verifies the redacted primary and diagnostic companions before
+  copying them, preserves `.override.json` companions, and submission
+  validation rejects unreadable `.plans.json`, `.tuning.json`, and `.applied.json`
+  companions.
 
 ### Fixed
 

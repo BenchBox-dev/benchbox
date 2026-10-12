@@ -385,14 +385,28 @@ def _export_orchestrated_result(
         mode=mode_label,
     )
 
-    exporter = ResultExporter()
+    exporter = ResultExporter(anonymize=False)
     exporter.output_dir = orchestrator.directory_manager.results_dir
     result.output_filename = result_path.name
 
     formats = export_formats or ["json"]
     with silence_output(enabled=bool(quiet)):
         exported_files = exporter.export_result(result, formats)
+    _print_tuning_verification_summary(result, quiet=bool(quiet))
     return exported_files
+
+
+def _print_tuning_verification_summary(result: Any, *, quiet: bool) -> None:
+    if quiet:
+        return
+    from benchbox.core.results.tuning_summary import format_tuning_verification, summarize_tuning_verification
+
+    summary = summarize_tuning_verification(getattr(result, "applied_tuning_ledger", None))
+    if summary is None:
+        console.print("[dim]Tuning verification: not applicable (no tuning applied)[/dim]")
+        return
+    for line in format_tuning_verification(summary):
+        console.print(line)
 
 
 class PlatformOptionParamType(click.ParamType):

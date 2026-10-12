@@ -387,7 +387,7 @@ def test_run_file_comparison_paths(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
                 "query_comparisons": [],
             }
 
-    monkeypatch.setattr(mod, "ResultExporter", lambda: _Exporter())
+    monkeypatch.setattr(mod, "ResultExporter", lambda *_a, **_k: _Exporter())
 
     t = tmp_path / "x.txt"
     mod._run_file_comparison((str(b), str(c)), None, "text", str(t), True, include_plans=False)

@@ -75,7 +75,7 @@ class ResultExporter:
     def __init__(
         self,
         output_dir: str | Path | None = None,
-        anonymize: bool = True,
+        anonymize: bool = False,
         anonymization_config: AnonymizationConfig | None = None,
         console: Console | None = None,
         plan_history_dir: str | Path | None = None,
@@ -412,6 +412,9 @@ class ResultExporter:
                 if "reason" in entry:
                     entry.pop("reason", None)
                     entry["reason_redacted"] = True
+                if "error" in entry:
+                    entry.pop("error", None)
+                    entry["error_redacted"] = True
                 entry["statement_redacted"] = True
         for obj in receipt.get("observed") or []:
             if isinstance(obj, dict):

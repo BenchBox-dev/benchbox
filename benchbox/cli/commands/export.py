@@ -101,7 +101,7 @@ def export(ctx, result_file, formats, output_dir, last, benchmark, platform, for
         return
 
     try:
-        exporter = ResultExporter(output_dir=output_directory)
+        exporter = ResultExporter(output_dir=output_directory, anonymize=True)
         console.print(f"\n[bold]Exporting to {len(formats)} format(s)...[/bold]")
         exported = exporter.export_result(result, formats=list(formats))
         _print_export_summary(exported, output_directory)

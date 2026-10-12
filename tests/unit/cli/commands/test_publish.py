@@ -39,7 +39,7 @@ def _partial_query_failure_result() -> SimpleNamespace:
 
 def test_publish_run_refuses_unofficial_subscale_without_label(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     src = tmp_path / "tpcds_subscale.json"
-    src.write_text('{"schema_version": "2.0"}', encoding="utf-8")
+    src.write_text('{"schema_version": "2.0", "export": {"anonymized": true}}', encoding="utf-8")
 
     monkeypatch.setattr(
         pub,
@@ -58,7 +58,7 @@ def test_publish_run_refuses_unofficial_nonstandard_without_label(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     src = tmp_path / "tpcds_nonstandard.json"
-    src.write_text('{"schema_version": "2.0"}', encoding="utf-8")
+    src.write_text('{"schema_version": "2.0", "export": {"anonymized": true}}', encoding="utf-8")
 
     monkeypatch.setattr(
         pub,
@@ -74,7 +74,7 @@ def test_publish_run_refuses_unofficial_nonstandard_without_label(
 
 def test_publish_run_allows_unofficial_with_correct_label(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     src = tmp_path / "tpcds_subscale.json"
-    src.write_text('{"schema_version": "2.0"}', encoding="utf-8")
+    src.write_text('{"schema_version": "2.0", "export": {"anonymized": true}}', encoding="utf-8")
 
     monkeypatch.setattr(
         pub,
@@ -86,7 +86,9 @@ def test_publish_run_allows_unofficial_with_correct_label(monkeypatch: pytest.Mo
         pub,
         "BundlePublisher",
         lambda **_kw: SimpleNamespace(
-            publish=lambda _: SimpleNamespace(success=True, errors=[], reference="file:///test/ref", record=None)
+            publish=lambda *_a, **_k: SimpleNamespace(
+                success=True, errors=[], reference="file:///test/ref", record=None
+            )
         ),
     )
     monkeypatch.setattr(pub, "PublicationStore", lambda: SimpleNamespace())
@@ -99,7 +101,7 @@ def test_publish_run_allows_unofficial_with_correct_label(monkeypatch: pytest.Mo
 
 def test_publish_run_label_check_is_case_insensitive(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     src = tmp_path / "tpcds_subscale.json"
-    src.write_text('{"schema_version": "2.0"}', encoding="utf-8")
+    src.write_text('{"schema_version": "2.0", "export": {"anonymized": true}}', encoding="utf-8")
 
     monkeypatch.setattr(
         pub,
@@ -110,7 +112,9 @@ def test_publish_run_label_check_is_case_insensitive(monkeypatch: pytest.MonkeyP
         pub,
         "BundlePublisher",
         lambda **_kw: SimpleNamespace(
-            publish=lambda _: SimpleNamespace(success=True, errors=[], reference="file:///test/ref", record=None)
+            publish=lambda *_a, **_k: SimpleNamespace(
+                success=True, errors=[], reference="file:///test/ref", record=None
+            )
         ),
     )
     monkeypatch.setattr(pub, "PublicationStore", lambda: SimpleNamespace())
@@ -123,7 +127,7 @@ def test_publish_run_label_check_is_case_insensitive(monkeypatch: pytest.MonkeyP
 
 def test_publish_run_refuses_partial_query_failure(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     src = tmp_path / "tpch_partial.json"
-    src.write_text('{"schema_version": "2.0"}', encoding="utf-8")
+    src.write_text('{"schema_version": "2.0", "export": {"anonymized": true}}', encoding="utf-8")
 
     monkeypatch.setattr(pub, "load_result_file", lambda *_a, **_k: (_partial_query_failure_result(), {}))
     monkeypatch.setattr(
@@ -141,7 +145,7 @@ def test_publish_run_refuses_partial_query_failure(monkeypatch: pytest.MonkeyPat
 
 def test_publish_bundle_refuses_unofficial_without_label(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     src = tmp_path / "tpcds_subscale.json"
-    src.write_text('{"schema_version": "2.0"}', encoding="utf-8")
+    src.write_text('{"schema_version": "2.0", "export": {"anonymized": true}}', encoding="utf-8")
 
     monkeypatch.setattr(
         pub,
@@ -158,7 +162,7 @@ def test_publish_bundle_refuses_unofficial_nonstandard_without_label(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     src = tmp_path / "tpcds_nonstandard.json"
-    src.write_text('{"schema_version": "2.0"}', encoding="utf-8")
+    src.write_text('{"schema_version": "2.0", "export": {"anonymized": true}}', encoding="utf-8")
 
     monkeypatch.setattr(
         pub,
@@ -173,7 +177,7 @@ def test_publish_bundle_refuses_unofficial_nonstandard_without_label(
 
 def test_publish_bundle_allows_unofficial_with_correct_label(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     src = tmp_path / "tpcds_subscale.json"
-    src.write_text('{"schema_version": "2.0"}', encoding="utf-8")
+    src.write_text('{"schema_version": "2.0", "export": {"anonymized": true}}', encoding="utf-8")
 
     monkeypatch.setattr(
         pub,
@@ -184,7 +188,7 @@ def test_publish_bundle_allows_unofficial_with_correct_label(monkeypatch: pytest
         pub,
         "BundlePublisher",
         lambda **_kw: SimpleNamespace(
-            publish=lambda _: SimpleNamespace(success=True, errors=[], reference="file:///ref")
+            publish=lambda *_a, **_k: SimpleNamespace(success=True, errors=[], reference="file:///ref")
         ),
     )
     monkeypatch.setattr(pub, "PublicationStore", lambda: SimpleNamespace())
@@ -196,7 +200,7 @@ def test_publish_bundle_allows_unofficial_with_correct_label(monkeypatch: pytest
 
 def test_publish_bundle_official_result_not_blocked(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     src = tmp_path / "tpcds_official.json"
-    src.write_text('{"schema_version": "2.0"}', encoding="utf-8")
+    src.write_text('{"schema_version": "2.0", "export": {"anonymized": true}}', encoding="utf-8")
 
     monkeypatch.setattr(
         pub,
@@ -207,7 +211,7 @@ def test_publish_bundle_official_result_not_blocked(monkeypatch: pytest.MonkeyPa
         pub,
         "BundlePublisher",
         lambda **_kw: SimpleNamespace(
-            publish=lambda _: SimpleNamespace(success=True, errors=[], reference="file:///ref")
+            publish=lambda *_a, **_k: SimpleNamespace(success=True, errors=[], reference="file:///ref")
         ),
     )
     monkeypatch.setattr(pub, "PublicationStore", lambda: SimpleNamespace())
@@ -219,7 +223,7 @@ def test_publish_bundle_official_result_not_blocked(monkeypatch: pytest.MonkeyPa
 
 def test_publish_bundle_refuses_partial_query_failure(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     src = tmp_path / "tpch_partial.json"
-    src.write_text('{"schema_version": "2.0"}', encoding="utf-8")
+    src.write_text('{"schema_version": "2.0", "export": {"anonymized": true}}', encoding="utf-8")
 
     monkeypatch.setattr(pub, "load_result_file", lambda *_a, **_k: (_partial_query_failure_result(), {}))
     monkeypatch.setattr(

@@ -486,12 +486,12 @@ class TestResultExporter:
 
         exporter = ResultExporter(output_dir=Path(self.temp_dir))
         assert exporter.output_dir == Path(self.temp_dir)
-        assert exporter.anonymize is True
-        assert exporter.anonymization_manager is not None
+        assert exporter.anonymize is False
+        assert exporter.anonymization_manager is None
 
-        exporter_no_anon = ResultExporter(output_dir=Path(self.temp_dir), anonymize=False)
-        assert exporter_no_anon.anonymize is False
-        assert exporter_no_anon.anonymization_manager is None
+        exporter_anon = ResultExporter(output_dir=Path(self.temp_dir), anonymize=True)
+        assert exporter_anon.anonymize is True
+        assert exporter_anon.anonymization_manager is not None
 
     @patch("benchbox.cli.output.console")
     def test_export_json_cli_result(self, mock_console):

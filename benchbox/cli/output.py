@@ -510,7 +510,7 @@ class ResultExporter(_CoreResultExporter):
     def __init__(
         self,
         output_dir: Optional[Union[str, Path]] = None,
-        anonymize: bool = True,
+        anonymize: bool = False,
         anonymization_config: Optional[AnonymizationConfig] = None,
     ) -> None:
         super().__init__(
