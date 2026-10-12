@@ -156,6 +156,8 @@ platform-agnostic; the per-platform catalog *reads* live in the
 | `CREATE TABLE ... ORDER BY (cols)`           | ddl/post_load  | `sort_key`    | a catalog `sort_key` fact on `T` whose columns equal `cols`                         | yes                  |
 | `CREATE TABLE ... PARTITION BY (cols)`       | ddl/post_load  | `partition_key` | a catalog `partition_key` fact on `T` whose columns equal `cols`                 | yes                  |
 | `ALTER TABLE T CLUSTER BY (cols)`, `CREATE TABLE ... CLUSTER BY (cols)` | ddl/post_load | `cluster_key` | a catalog `cluster_key` fact on `T` whose columns equal `cols`, in order | yes |
+| `CREATE TABLE T (..., PRIMARY KEY (cols))`, `UNIQUE (cols)`, or column-level `PRIMARY KEY` / `UNIQUE` | ddl/post_load | `constraint` | a catalog `constraint` fact on `T` of the same `constraint_type` whose columns equal `cols`, in order; only when the introspector reads that constraint type | yes |
+| `CREATE TABLE T (..., FOREIGN KEY (cols) REFERENCES R (rcols))`, or column-level `REFERENCES R (rcols)` | ddl/post_load | `constraint` | a catalog `FOREIGN KEY` fact on `T` whose child columns equal `cols`, referenced table equals `R` and referenced columns equal `rcols`, all in order | yes |
 | `SET ...`, `PRAGMA ...`                       | any            | `transient`   | session/config, no persistent catalog footprint -- noted, **non-blocking**         | no                   |
 | `OPTIMIZE TABLE ...` / maintenance           | ddl/post_load  | `maintenance` | merge/compaction op, no distinct catalog footprint -- noted, **non-blocking**      | no                   |
 | `ALTER TABLE T [RESUME/SUSPEND] RECLUSTER`   | ddl/post_load  | `maintenance` | reorganizes existing data; the clustering KEY is the catalog footprint -- **non-blocking** | no          |
@@ -175,6 +177,43 @@ ClickHouse MergeTree shape) classifies as both `sort_key` and `partition_key`
 and emits one receipt entry per clause, so each key must corroborate on its
 own. Corroborating only the first clause would let a run reach
 `applied_verified` while the other configured key never applied.
+
+Constraint clauses are read only from the column list in parentheses that
+follows the table name; a clause outside it, such as a ClickHouse
+`PRIMARY KEY` engine clause, is not a constraint. Each constraint in a
+`CREATE TABLE` gets its own receipt entry with `kind: "constraint"` and a
+`constraint_type` of `PRIMARY KEY`, `UNIQUE` or `FOREIGN KEY`. The statement
+stays blocking `unverifiable` as a whole when the column list holds
+constraint text that is not fully parsed: a `CHECK` constraint, a named
+`CONSTRAINT`, a referential action (`ON DELETE`, `ON UPDATE`, `MATCH`), a
+`REFERENCES` without a column list, trailing clause text, an unbalanced
+list, a second SQL statement in the same ledger entry, or a literal the
+scanner cannot mask exactly: a dollar-quoted string (`$$...$$` or
+`$tag$...$tag$`, where a tag is any run of word characters, so non-ASCII
+tags count), an escape string (`E'...'`), a nested block comment, a
+backslash directly before a single or double quote (some engines read `\'`
+or `\"` as an escaped quote, so the scanner cannot tell where the string
+or quoted identifier ends), or a
+`[` or backtick anywhere in a statement that carries constraint text. DuckDB
+reads `[` as list syntax and a backtick as an operator, not as identifier
+quotes, so the scanner cannot tell which text they enclose.
+Such a statement is `unverifiable` as a whole, including any sort, partition
+or cluster clause in it. A constraint entry is `unverifiable` when the introspector does not read
+that constraint type, which is every platform except DuckDB, and when a
+catalog foreign-key fact with the same child columns lacks its referenced
+table or columns. This applies even when the same statement also carries a
+corroborated sort, partition or cluster key, so a constraint never rides on
+another clause's verdict. Constraint identifiers compare by their physical
+contents, the way DuckDB resolves them: ASCII letters fold to lower case, and
+everything else, including whitespace inside a quoted identifier, is kept, so
+a key on `" a "` never corroborates a key on `a`. The catalog's names are
+compared without the quote and whitespace stripping that index and sort-key
+columns use. A table, column or referenced name that is not one bare
+identifier or one double-quoted identifier, such as a schema-qualified name or
+a backtick- or bracket-quoted one, keeps the statement `unverifiable`.
+A quoted table name binds the statement's
+constraints to that table; sort, partition and cluster clauses of a
+`CREATE TABLE` with a quoted table name stay `unverifiable` as before.
 
 **Verdicts** (per statement): `corroborated`, `absent` (expected object not
 in catalog), `mismatch` (object present, columns differ -- carries a short
@@ -221,7 +260,8 @@ which every attempted ddl/post_load statement failed; that ledger derives
 
 Each platform's `Introspector.introspect(connection, ledger) -> IntrospectedState`
 returns structured catalog facts (`kind`, `table`, `columns`, `name`,
-`evidence`), bounded to the tables the ledger touched and wrapped
+`evidence`, and for constraints `constraint_type`, `referenced_table` and
+`referenced_columns`), bounded to the tables the ledger touched and wrapped
 non-fatal. **No screen-scraping of engine DDL text** where a structured
 catalog exists. ClickHouse and Snowflake keep a hard catalog-row limit,
 then filter the bounded result to table names extracted from every supported
@@ -236,6 +276,23 @@ that itself reaches the cap remains explicitly truncated.
   columns (structured; `expressions` is the indexed-column list). One
   bounded query, filtered to the ledger's tables. Corroborates each
   `CREATE INDEX` ledger entry against its `index` row.
+
+  It also reads `duckdb_constraints()` for `PRIMARY KEY`, `UNIQUE` and
+  `FOREIGN KEY` rows in a second bounded query that filters inside its `WHERE`
+  clause to those types, the current database and schema, and the tables
+  that carry constraint intents. Those table names come from the same parser
+  as the intents, so a quoted name such as `"my t"` or `"q""t"` is looked up
+  by its physical name. Because those names are unqualified, a table name
+  that also exists in another schema or attached database, including a
+  temporary table, degrades the whole state: the catalog cannot show which of
+  them the statement changed, for example after `SET schema` or `USE`.
+  `NOT NULL` and `CHECK` rows are never read, so `CHECK` constraints
+  stay `unverifiable`. Each row becomes a `constraint` fact carrying
+  `constraint_column_names` as its columns and, for foreign keys,
+  `referenced_table` and `referenced_column_names`. A DuckDB build whose
+  `duckdb_constraints()` lacks the referenced columns leaves foreign keys
+  `unverifiable`; a build that lacks the required columns, or a failed read,
+  degrades the whole state, and hitting the row bound marks it truncated.
 
   DuckDB index statements are corroborated against the physical identifiers
   `create_schema` produced. The tuning builder resolves each logical table and
@@ -261,8 +318,11 @@ that itself reaches the cap remains explicitly truncated.
   A corroborated index is evidence of the index, not of row order: an index can
   exist when the data was never sorted. Reaching `applied_verified` also needs
   every other statement in the ledger to corroborate, so a run that also
-  requests constraints, partitioning or CHECK constraints stays
-  `applied_unverified` until those have catalog rules. A sort-only
+  requests partitioning or CHECK constraints stays `applied_unverified`.
+  Primary, unique and foreign keys corroborate against `duckdb_constraints()`;
+  the shipped DuckDB TPC-H template reaching `applied_verified` end to end is
+  pinned by
+  `tests/integration/tuning/test_duckdb_constraint_corroboration_e2e.py`. A sort-only
   configuration built through the real `create_schema` is pinned by
   `tests/unit/platforms/test_physical_identifier_resolution.py::TestDuckDBPhysicalIdentifiers::test_sort_only_config_reaches_applied_verified_without_mismatch`.
 

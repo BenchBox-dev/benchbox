@@ -147,6 +147,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   An enabled primary key that is not a prefix of the tuned sort key now fails
   before any table is created, with a message that says to put the key columns
   first or disable `primary_keys`.
+- **DuckDB `auto` and `tuned-fallback` runs no longer enable CHECK
+  constraints.** CHECK constraints cannot be confirmed from the catalog, so
+  these DuckDB configurations no longer request them, matching the shipped
+  DuckDB templates. No shipped benchmark schema emits a CHECK constraint, so
+  the tables are unchanged, and other platforms are unchanged. These DuckDB
+  runs record a different `requested_config_hash`, and their cached database
+  is rebuilt on the next run (for example `tpch_sf001_custom_pk_fk_uniq_check`
+  becomes `tpch_sf001_custom_pk_fk_uniq`).
 - **Spark, LakeSail and Velox per-query times no longer include `clearCache()`.**
   With `disable_cache` on (the default), these adapters cleared the session
   cache inside each query's timer. They now clear it before the timer starts,
@@ -283,6 +291,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the ledger records it as satisfied by that statement instead of dropped.
   Sorts that no executed statement realized are still dropped. This lets
   ClickHouse tuned runs reach `applied_verified`.
+- **DuckDB constraints are checked against the catalog.** Primary keys,
+  unique constraints and foreign keys in a tuned DuckDB `CREATE TABLE` are
+  compared with `duckdb_constraints()`. Keys must match on the same columns in
+  the same order, and a foreign key must also reference the same table and
+  columns. A tuned DuckDB run with the shipped TPC-H template now reaches
+  `applied_verified`. A `CHECK` clause in a `CREATE TABLE`, and constraints on
+  every other platform, still keep a run at `applied_unverified`. So does a
+  `CREATE TABLE` holding a backslash directly before a single or double
+  quote, which some engines read as an escaped quote the scanner cannot
+  mask, or holding a dollar-quoted string whose tag carries non-ASCII
+  characters; so do a
+  DuckDB `CREATE TABLE` whose constraints sit next to list syntax (`[...]`),
+  and a constrained table whose name also exists in another schema or
+  attached database. On those
+  platforms this now also holds when the same `CREATE TABLE` carries a
+  verified sort, partition or cluster key; before, the constraint was ignored
+  there. Receipt entries for constraints carry `kind: "constraint"` and a
+  `constraint_type`. Quoted non-ASCII table names, such as "É", are now found
+  consistently with DuckDB's `lower(table_name)` catalog filters.
 
 ### Changed
 
