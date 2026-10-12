@@ -1,9 +1,7 @@
 # CI and dev-loop backlog: batch handoff (2026-10-12, revision 4)
 
-**Current status:** See section 10 for the live snapshot of all 75 original items
-and the two logged follow-ups, checked on 2026-10-12 and corrected in
-revisions 3 and 4, at develop tip `045d742d7`. Section 3 is the initial
-2026-10-09 snapshot. The snapshot is cached: re-read each tracker item and PR
+**Current status:** See section 11 for the live snapshot of all 75 original items
+and the two logged follow-ups, checked on 2026-10-12 at develop tip `cfbcae26d`, with the ordered runbook for all remaining work. Sections 3 and 10 are retained as history. The snapshot is cached: re-read each tracker item and PR
 before acting; where this file and the tracker disagree, the tracker plus the
 acceptance text governs, and this file's order and boundaries still bind.
 
@@ -902,3 +900,78 @@ phase 4 post-merge finish gate, the D-C2 ordering warning, the dispatch-blocker
 scope, and the unblockers-first order. Revision 2 added the current tracker states for all 75 original items, the two
 follow-ups, and live PR/blocker evidence. The revision 1 state in section 3 is
 retained as history.
+
+## 11. Current status and runbook (2026-10-12, revision 5)
+
+Live tracker read at develop tip `cfbcae26d`: **7 done, 2 active, 62 open
+(41 ready, 21 not ready), 4 blocked** — 9.3% done. Since revision 4, #2905
+(heavy-tier dead code) merged; no item finished. The two active claims are
+`comment-policy-strict-scope-mismatch` (PR #2915, this session) and
+`oracle-absence-classification-lows-20261008` (PR #2911, another worker).
+
+### Merged-but-open: take, verify, finish (no new code)
+
+In this order: `heavy-tier-merge-group-dead-code-20261009` (#2905, merged
+2026-10-12), `comment-policy-pinned-notice-drift-guard` (#2829, merge
+`65b1443e`), `nightly-windows-pr-visual-approval-20261009` (#2835, merge
+`c660e615`). Each was unblocked from a stale flag in revision 5 with its
+merge evidence on the item; each still needs `take` plus merge-SHA and
+acceptance evidence and `finish`. `nightly-v2-liveness-port-20261008` is
+already done; do not reopen #2835.
+
+### PR #2915 state and binding refinements
+
+PR #2915 (`comment-policy-strict-scope-mismatch`, branch
+`fix/comment-policy-strict-scope`) is at `6e1e4342e`, rebased on
+`cfbcae26d`, `pr-preflight` green. Three oracle rounds answered
+(5 defects, then 2, then 0 new with priors carried); a fourth verdict is
+pending. Binding refinements from implementation (recorded on the item):
+
+- Strict ownership defaults to `merge-base(HEAD, origin/develop)`, not HEAD.
+  This deviates from the acceptance letter and keeps its testable criterion:
+  on a clean develop checkout the merge-base is HEAD, proven by strict
+exiting 0 over 7029 files with 0 violations. The Makefile carries no
+explicit base wiring.
+- A vendored wheel is skipped only when the scanned bytes equal the base
+  revision bytes and the base lockfile pins their hash; any swap fails closed
+  as a coverage-error. A PR that legitimately bumps a wheel flags strict
+  until merge by design; it merges through the comparison gate plus oracle
+  review of the soundness-path registry change.
+- Existence checks read the staged index under `--staged`; baseline scans
+  verify against the base revision.
+- Digest-payload exceptions recount to 70 on current develop (acceptance
+  text says 68); the claiming session for the catch-22 item uses the live
+  number for the docs fix.
+
+### Evidence captured without a claim
+
+- Muse invalid output: 1 of 2 required invalid answers captured via local
+  `muse exec` mirroring the runner (extra-data class, parser-confirmed),
+  retained with provenance and digests at
+  `~/.todo-batch/muse-invalid-20261012/`; 7 valid SHIP controls alongside.
+  Local hunt paused on diminishing returns; the reliable path to the second
+  invalid is the diagnostic CI sidecar in the ledger recommendation.
+  Artifacts expire 2026-10-16.
+- Catch-22 design prepped in the ledger (symbol-scoped digest sketch,
+  D-C2 ordering, fixture regeneration warning).
+
+### Ordered runbook for the remainder
+
+1. Land #2915 (rerun oracle-review serially on success, arm, merge),
+   `finish` the strict-scope item with the merge SHA, releasing the claim.
+2. Take-finish the three merged-but-open items above, then
+   `comment-policy-digest-and-base-exception-catch22-20261008` (needs #2915
+   green; regenerates the digest fixtures it invalidates in the same PR).
+3. Resume phase order from section 4: phase-1 verification dispatch
+   (one combined `nightly-v2` with `run_drift=true` for docker, drift-corpus
+   and perf-floor items), phase-2 Windows (verification dispatch first),
+   phase-3 T3 completion, phase-4 oracle batches with per-item post-merge
+   evidence, phase-6 canary serially, phase-7 release chain.
+4. Calendar-gated items stay parked: canary 05/06 (+14 days), oracle
+   first-line cleanup and merge ceremony (2026-10-23), dlv2-84 metrics
+   (+30 days). Owner-gated items (`pypi` approval, Exasol priority,
+   site-split/tuning programmes) wait untouched.
+5. Stop conditions in section 5 still bind, plus: never rebase a gated PR
+   onto exception-dependent heads; never weaken a required check to satisfy
+   an acceptance letter — record the deviation and its equivalence proof
+   on the item instead.
