@@ -5,7 +5,7 @@
     "The local `make comment-policy-check`, required CI `comment-policy`, and aggregate required `tooling` agree on the same tree and pass after the fix.",
     "No required check is weakened, no blanket exclusion is added, and no self-authorized policy exception bypasses the base-review contract."
   ],
-  "context": "Live CI evidence: run 38167645111, `comment-policy` job 114553522910 on PR #2908, base 9a8548b3a840478e8417260c421ff9257a9e6a69; full test job 114553708368 passed while comment-policy and tooling failed. The ten findings are in unchanged paths and are not a BigQuery-specific failure. Their semantic cause is not yet established. Related existing tasks: `comment-policy-strict-scope-mismatch` and `comment-policy-digest-and-base-exception-catch22-20261008`; original ordered handoff section 4.5 places these before scanner work.\n\nThe user requires high-complexity work to be delegated to native Sol and forbids using external agents instead. Keep this item unclaimable until `native-task-model-tier-selection-20261011` makes a supported explicit native model selector available; do not treat an unspecified native role as proof of Sol dispatch.",
+  "context": "Live CI evidence: run 38167645111, `comment-policy` job 114553522910 on PR #2908, base 9a8548b3a840478e8417260c421ff9257a9e6a69; full test job 114553708368 passed while comment-policy and tooling failed. The ten findings are in unchanged paths and are not a BigQuery-specific failure. Their semantic cause is not yet established. Related existing tasks: `comment-policy-strict-scope-mismatch` and `comment-policy-digest-and-base-exception-catch22-20261008`; original ordered handoff section 4.5 places these before scanner work.\n\nThe user requires high-complexity work to be delegated to native Sol and forbids using external agents instead. Keep this item unclaimable until `native-task-model-tier-selection-20261011` makes a supported explicit native model selector available; do not treat an unspecified native role as proof of Sol dispatch.\n\n2026-10-12 corroboration (no claim, readiness untouched): strict mode on current develop exits 0 with 7029 files and 0 violations, consistent with the #2907 gate-green state; no new shell coverage errors observed in this tree. Verdict on the ten CI-reported paths still needs the item's own regression test before take/finish.",
   "description": "In PR #2908 CI run 38167645111, the required `comment-policy` job (114553522910) reported ten `CP coverage-error: shell command source requires an executable-payload adapter` findings for unchanged shell payloads; required `tooling` job 114554483359 failed as the aggregate. PR #2835 was blocked by the same shared gate. A previous local `make comment-policy-check` result was recorded as passing, so local-versus-trusted-CI behavior also needs reconciliation. The message refers to the command source text, not proven use of the shell `source` builtin. Current `scripts/comment_payloads.py:shell_logical_chunks` raises this exact message at line 1580 when quote/depth/heredoc state remains unresolved, but the exact syntax that reaches that path is not yet isolated. Do not infer root cause before reproducing. Affected locations from CI: `.github/workflows/publication-deploy.yml` lines 209, 357, 826, 1062; `.github/workflows/publication-preview-deploy.yml:303`; `.github/workflows/sync-results-data-to-published.yml:359`; `_project/scripts/concurrency_sweep.sh:1`; `_sources/compilation/scripts/compile-all-platforms.sh:1`; `scripts/make_timing_shell.sh:1`; `scripts/release_cut_abort.sh:1`. Do not weaken the required gate, add broad exceptions, or skip coverage. Resolve the parser/adapter issue or correct any actual source violations with regression coverage. The CI runner uses trusted base-version checker components, so sequence this after the existing comment-policy base/catch-22 work and maintain its soundness rules.",
   "links": [
     ".github/workflows/ci.yml",
@@ -30,6 +30,14 @@
       "op": "update",
       "op_id": "fac1ccff21f6400a9e3099f16c330a08",
       "session_id": "12a278318efc4205bf01aa4132116f81"
+    },
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:91b2532afc70e4866dac844a",
+      "at": "2026-10-12T14:17:05Z",
+      "client": "pi",
+      "op": "update",
+      "op_id": "c61a1dc0e9d240acb385915e7bbf2d89",
+      "session_id": "f4a9420823ef483b96a87b9d072d7839"
     }
   ]
 }
