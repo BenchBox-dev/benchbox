@@ -128,6 +128,7 @@ class ManifestEntry(BaseModel):
     override_approver: str | None = None
     override_expires: str | None = None
     tuning_policy_generation: str | None = None
+    template_evidence: str | None = None
     test_type: str | None = None
     validation_status: str | None = None
     failed_query_count: int = 0
@@ -352,6 +353,7 @@ class DetailResult(BaseModel):
     override_approver: str | None = None
     override_expires: str | None = None
     tuning_policy_generation: str | None = None
+    template_evidence: str | None = None
     test_type: str | None = None
     validation_status: str | None = None
     failed_query_count: int = 0
@@ -628,6 +630,7 @@ class BundleTuningBlock(_BundleBlock):
     applied_ledger_hash: str | None = None
     validation_status: str | None = None
     tuning_policy_generation: str | None = None
+    template_evidence: str | None = None
     requested: Any = None
     applied: BundleAppliedBlock = Field(default_factory=BundleAppliedBlock)
     logical_profile: BundleLogicalProfile | None = None
@@ -644,6 +647,7 @@ class BundleTuningBlock(_BundleBlock):
         "applied_ledger_hash",
         "validation_status",
         "tuning_policy_generation",
+        "template_evidence",
         mode="before",
     )
     @classmethod

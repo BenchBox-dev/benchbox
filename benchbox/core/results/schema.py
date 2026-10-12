@@ -819,7 +819,9 @@ def _collect_engine_version_metadata(result: BenchmarkResults) -> dict[str, Any]
             metadata[key] = value
 
     if not metadata.get("engine_version"):
-        execution_metadata = result.execution_metadata if isinstance(result.execution_metadata, Mapping) else {}
+        execution_metadata = getattr(result, "execution_metadata", None)
+        if not isinstance(execution_metadata, Mapping):
+            execution_metadata = {}
         for key in ENGINE_VERSION_KEYS:
             if key not in metadata:
                 value = execution_metadata.get(key)
@@ -827,7 +829,9 @@ def _collect_engine_version_metadata(result: BenchmarkResults) -> dict[str, Any]
                     metadata[key] = value
 
     if not metadata.get("engine_version"):
-        platform_info = result.platform_info if isinstance(result.platform_info, Mapping) else {}
+        platform_info = getattr(result, "platform_info", None)
+        if not isinstance(platform_info, Mapping):
+            platform_info = {}
         for key in ENGINE_VERSION_KEYS:
             if key not in metadata:
                 value = platform_info.get(key)
@@ -835,6 +839,10 @@ def _collect_engine_version_metadata(result: BenchmarkResults) -> dict[str, Any]
                     metadata[key] = value
 
     return metadata
+
+
+def _tuning_evidence_engine_version(result: BenchmarkResults) -> str | None:
+    return _collect_engine_version_metadata(result).get("engine_version") or None
 
 
 def _inject_driver_metadata(exec_block: dict[str, Any], driver_metadata: dict[str, Any]) -> None:
@@ -1518,8 +1526,22 @@ def _build_tuning_summary(result: BenchmarkResults) -> dict[str, Any]:
         summary["validation_status"] = validation_status
 
     from benchbox.core.tuning.policy_generation import TUNING_POLICY_GENERATION
+    from benchbox.core.tuning.template_evidence import evidence_state_for_run
 
     summary["tuning_policy_generation"] = TUNING_POLICY_GENERATION
+
+    state = evidence_state_for_run(
+        result.tuning_source_file,
+        result.platform,
+        result.benchmark_name,
+        tunings_applied=result.tunings_applied,
+        scale_factor=result.scale_factor,
+        execution_environment=result.execution_environment,
+        system_profile=result.system_profile,
+        engine_version=_tuning_evidence_engine_version(result),
+    )
+    if state:
+        summary["template_evidence"] = state
 
     table_tunings = tuning_applied.get("table_tunings") or {}
     tuning_types = _tuning_types_present(tuning_applied)

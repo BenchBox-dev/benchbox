@@ -23,7 +23,7 @@ const hoisted = vi.hoisted(() => {
     ((sql: string, params: unknown[], attempt: number) => Array<Record<string, unknown>>) | null = null;
 
   function healthyQueryImpl(sql: string): FakeRows {
-    if (/read_model_version/i.test(sql)) return rows([{ read_model_version: 14 }]);
+    if (/read_model_version/i.test(sql)) return rows([{ read_model_version: 15 }]);
     if (/^ATTACH/i.test(sql)) return rows([]);
     if (/^SET /i.test(sql)) return rows([]);
     if (/COUNT\(\*\)/i.test(sql)) return rows([{ n: 1 }]);

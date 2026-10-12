@@ -145,6 +145,7 @@ export function RunReceipt({
               </>,
             )
           : missingRow("Tuning verification"),
+        rowFromString("Template evidence", detail.template_evidence),
       ],
     },
     {

@@ -1,0 +1,42 @@
+clickhouse:
+  tpch:
+    measurements: []
+  tpcds:
+    measurements: []
+  ssb:
+    measurements: []
+databricks:
+  tpch:
+    measurements: []
+  tpcds:
+    measurements: []
+  ssb:
+    measurements: []
+  tpchavoc:
+    measurements: []
+  read_primitives:
+    measurements: []
+duckdb:
+  tpch:
+    measurements: []
+  tpcds:
+    measurements: []
+  ssb:
+    measurements: []
+  tpchavoc:
+    measurements: []
+  amplab:
+    measurements: []
+  h2odb:
+    measurements: []
+  clickbench:
+    measurements: []
+  read_primitives:
+    measurements: []
+  joinorder:
+    measurements: []
+snowflake:
+  tpch:
+    measurements: []
+  tpcds:
+    measurements: []

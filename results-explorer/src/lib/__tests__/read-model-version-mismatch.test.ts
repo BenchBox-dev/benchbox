@@ -180,4 +180,14 @@ describe("read-model version guard", () => {
       _verifyReadModelVersionForTest(conn as unknown as Parameters<typeof _verifyReadModelVersionForTest>[0]),
     ).rejects.toThrow(new RegExp(`read-model v2; UI requires v${_EXPECTED_READ_MODEL_VERSION_FOR_TEST}`));
   });
+
+  it("refuses a v14 snapshot, which lacks the template evidence column the detail view reads", async () => {
+    const conn = makeConn(14);
+    await expect(
+      _verifyReadModelVersionForTest(conn as unknown as Parameters<typeof _verifyReadModelVersionForTest>[0]),
+    ).rejects.toThrow(new RegExp(`read-model v14; UI requires v${_EXPECTED_READ_MODEL_VERSION_FOR_TEST}`));
+    await expect(
+      _verifyReadModelVersionForTest(conn as unknown as Parameters<typeof _verifyReadModelVersionForTest>[0]),
+    ).rejects.toThrow(/npm run dev:snapshot/);
+  });
 });

@@ -322,6 +322,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Spark table definitions now put `USING <format>` before a trailing
   `PARTITIONED BY` or `CLUSTER BY`, which Spark requires.
 
+- **Template benefit evidence is tiered.** Results distinguish `unmeasured`, `measured-benefit`, `measured-neutral`, and `measured-regression`; measured states require matching scale, engine version, and captured memory scope.
+
 ### Changed
 
 - **CI database images no longer depend on repeated anonymous Docker Hub pulls.**

@@ -152,6 +152,7 @@ describe("RunReceipt", () => {
           cost_scope: null,
           billing_unit: null,
           pricing_region: null,
+          template_evidence: "unmeasured",
         })}
         shortId="abc12345"
         isRankingEligible={true}
@@ -265,7 +266,7 @@ describe("RunReceipt", () => {
   it("does not render the missing-metadata disclosure when every field is recorded (w3)", () => {
     render(
       <RunReceipt
-        detail={makeDetail({ plans_published: true })}
+        detail={makeDetail({ plans_published: true, template_evidence: "unmeasured" })}
         shortId="abc12345"
         isRankingEligible={true}
       />,
@@ -503,6 +504,23 @@ describe("RunReceipt applied-tuning receipt drill-down", () => {
     expect(within(receipt).getByText("Checked; not corroborated")).toBeTruthy();
     expect(within(receipt).queryByText("Verified")).toBeNull();
     expect(within(receipt).getByTestId("applied-receipt-drilldown")).toBeTruthy();
+  });
+
+  it("renders the template evidence state as a recorded row", () => {
+    render(<RunReceipt detail={makeDetail({ template_evidence: "unmeasured" })} />);
+
+    const receipt = screen.getByRole("region", { name: "Run receipt" });
+    expect(within(receipt).getByText("Template evidence")).toBeTruthy();
+    expect(within(receipt).getByText("unmeasured")).toBeTruthy();
+  });
+
+  it("hides the template evidence row when no state was recorded", () => {
+    render(<RunReceipt detail={makeDetail({ template_evidence: null })} />);
+
+    const receipt = screen.getByRole("region", { name: "Run receipt" });
+    expect(within(receipt).queryByText("Template evidence")).toBeNull();
+    fireEvent.click(within(receipt).getByRole("button", { name: /Show missing fields/ }));
+    expect(within(receipt).getByText("Template evidence")).toBeTruthy();
   });
 
   it("keeps the legacy not-recorded row unchanged when no verified-state exists", () => {

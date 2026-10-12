@@ -187,6 +187,7 @@ export async function parseLocalResultText(text: string, fileName = "local-resul
     override_approver: null,
     override_expires: null,
     tuning_policy_generation: stringOrNull(tuning.tuning_policy_generation),
+    template_evidence: stringOrNull(tuning.template_evidence),
     test_type: phase,
     validation_status: validationStatus,
     cost_usd: normalizedCost.normalized_cost_usd,

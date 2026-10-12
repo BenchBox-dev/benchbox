@@ -5,7 +5,7 @@ import { _EXPECTED_READ_MODEL_VERSION_FOR_TEST, _verifyReadModelVersionForTest }
 
 const EXPECTED_EXPLORER_BUILD_COMMAND =
   "uv run -- python _project/scripts/explorer_publish.py build";
-const CURRENT_READ_MODEL_VERSION = 14;
+const CURRENT_READ_MODEL_VERSION = 15;
 const NEWER_READ_MODEL_POLICY = "warn-and-continue";
 const repoRoot = resolve(process.cwd(), "..");
 
