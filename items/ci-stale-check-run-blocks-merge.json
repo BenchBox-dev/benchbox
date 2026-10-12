@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Merge-gate evaluation documented for duplicate check runs",
+    "Automated mitigation in place (bot rerun of superseded failures or dev-loop guide note) so authors stop hand-rerunning stale failures"
+  ],
+  "context": "Found while landing PRs #2907 and #2913. Workaround used: gh run rerun <failed-run-id>. See handoff _project/handoffs/core-execution-variants-batch-20261009.md revisions 7 and 13.",
+  "description": "Twice in the execution-variants effort (PR #2907 run 38189396586; PR #2913 runs 38267710604, 38270039090) the merge gate stayed blocked with two newer same-head SUCCESS check runs present for oracle-review. Running gh run rerun on the failed run replaced it in place and unblocked the merge both times. Suspected mechanism: the gate keys on something other than latest-completed (possibly the dispatch event), unverified.",
+  "sessions": [
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:5b994405d415152299b5a092",
+      "at": "2026-10-12T21:51:39Z",
+      "client": "pi",
+      "op": "create",
+      "op_id": "2cc613e7d7e242e6963dc4c2df51cf47",
+      "session_id": "27b88a720c9f4fc981d9d2b9406e61be"
+    }
+  ]
+}
