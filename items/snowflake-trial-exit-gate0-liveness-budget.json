@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Effective warehouse size confirmed from warehouse query history and recorded (expected X-Small; MEDIUM explained as config default)",
+    "Trial credit balance, storage used, stop-loss threshold and reserve recorded in item context",
+    "Go/no-go verdict recorded; no-go blocks every downstream exit item"
+  ],
+  "context": "Related (not prerequisite): capture-metered-cloud-benchmark-costs covers metered receipt capture; this gate only inventories balance. Prior decision: pin --platform-option warehouse_size=X-Small on all reruns. Verification rubric: paste SHOW WAREHOUSES size, balance query output, and the four recorded numbers; verdict is go only with all four present.",
+  "description": "Gate 0 of the Snowflake trial exit. Establish read-only liveness (connection, SHOW WAREHOUSES, trial balance, storage used) and resolve the X-Small vs MEDIUM warehouse ambiguity before any credit-burning run. Prior bundles show platform.compute.warehouse_size=X-Small on all 50 inventoried bundles while platform.config echoes the MEDIUM adapter default (benchbox/platforms/snowflake.py:75 default; observed size via SHOW WAREHOUSES at snowflake.py:286). Cost history is unusable: all sampled bundles report normalized_cost.cost_status=unavailable, cost_usd=null. Decision gate: record effective warehouse size, credit balance, storage used, numeric stop-loss (halt new burns) and reserve (held for large scale). Default if operator gives no override: halt new burns when 70% of remaining credits are consumed, reserve 30% for the large-scale tier. Guardrails: read-only queries only in this item (SHOW WAREHOUSES, ACCOUNT_USAGE metering); no benchmark runs; no --modify-warehouse-settings; no warehouse resize; Snowflake only.",
+  "links": [
+    "benchbox/platforms/snowflake.py",
+    "results-data/corpus-inventory.json"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:e445de97b2fb8410542405fe",
+      "at": "2026-10-12T17:15:31Z",
+      "client": "pi",
+      "op": "create",
+      "op_id": "a8c9ae455b5d40139b76b97b226fe6aa",
+      "session_id": "da0b2a7d64524d7badf1923cfcfd2dda"
+    }
+  ]
+}
