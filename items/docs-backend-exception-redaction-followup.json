@@ -26,6 +26,15 @@
       "op": "update",
       "op_id": "f60da4f04912422e930186a7c5edddda",
       "session_id": "f00fbcc194ab47a6a9508e7176243455"
+    },
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:f0804c5fefb6ba181570047e",
+      "at": "2026-10-12T22:44:42Z",
+      "client": "pi",
+      "generation": "10cf41822fca4d30804f60d2a5de5486",
+      "op": "take",
+      "op_id": "940afa7eb049413c822a901954888b22",
+      "session_id": "7f376b068f894dd0920349056eb0a63a"
     }
   ]
 }

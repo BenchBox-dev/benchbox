@@ -7874,10 +7874,15 @@
       "title": "Fix wrong install extras, options and stale claims in platform guides"
     },
     "docs-backend-exception-redaction-followup": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-13T22:44:42Z",
+        "generation": "10cf41822fca4d30804f60d2a5de5486",
+        "renewals": 0,
+        "worker": "mcp:pi:joe@joe-mac-mini.local:f0804c5fefb6ba181570047e"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Verify backend exception redaction across public result paths"
     },
     "docs-blog-index-broken-html-links": {
