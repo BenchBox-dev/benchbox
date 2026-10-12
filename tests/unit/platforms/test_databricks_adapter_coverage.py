@@ -176,6 +176,16 @@ class TestGetPlatformInfoSdkPath:
         assert info["compute_configuration"]["warehouse_metadata_collection_status"] == "unavailable"
         assert info["compute_configuration"]["warehouse_metadata_error_class"] == "RuntimeError"
 
+    def test_unavailable_warehouse_metadata_excludes_identifiers_from_message(self):
+        from benchbox.platforms.databricks import DatabricksAdapter
+
+        leaked = "Workspace synth-ws-9f31 warehouse SYNTH_WH host db-9f31.priv.example"
+        result = DatabricksAdapter._unavailable_warehouse_metadata("abc123", RuntimeError(leaked))
+
+        assert result["warehouse_metadata_error_class"] == "RuntimeError"
+        for value in ("synth-ws-9f31", "SYNTH_WH", "db-9f31.priv.example"):
+            assert value not in result["warehouse_metadata_error_message"]
+
 
 class TestDetectDatabricksRegion:
     def _mock_sdk_with_region(self, region):

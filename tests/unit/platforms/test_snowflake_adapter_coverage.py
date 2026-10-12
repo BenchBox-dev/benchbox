@@ -65,7 +65,7 @@ class TestGetQueryStatisticsRetry:
             result = adapter._get_query_statistics(mock_conn, "q-err", max_retries=1, initial_delay=0.001)
 
         assert "statistics_error" in result
-        assert "history table unavailable" in result["statistics_error"]
+        assert result["statistics_error"] == "RuntimeError: query statistics retrieval failed"
         assert result["retrieval_attempts"] == 1
         assert mock_cursor.execute.call_count == 1
 
@@ -306,6 +306,16 @@ class TestGetPlatformInfoWithWarehouse:
         assert metadata["platform_compute"]["collection_status"] == "partial"
         assert metadata["platform_compute"]["collection_error_class"] == "ProgrammingError"
         assert metadata["platform_compute"]["collection_error_message"] == "permission denied"
+
+    def test_unavailable_warehouse_metadata_excludes_identifiers_from_message(self):
+        from benchbox.platforms.snowflake import SnowflakeAdapter
+
+        leaked = "Account 'synth-acct-9f31' user SYNTH_ADMIN warehouse SYNTH_WH"
+        result = SnowflakeAdapter._unavailable_warehouse_metadata(RuntimeError(leaked))
+
+        assert result["collection_error_class"] == "RuntimeError"
+        for value in ("synth-acct-9f31", "SYNTH_ADMIN", "SYNTH_WH"):
+            assert value not in result["collection_error_message"]
 
 
 class TestConfigureForBenchmarkCacheControl:
