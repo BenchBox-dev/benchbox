@@ -768,6 +768,50 @@ make platform-manifest
 make platform-manifest-check
 ```
 
+Declare execution engines when the platform offers more than one way to execute a query. Add a manifest
+`capabilities.execution_engines` block where each value carries `class`, `display_name`, `description`,
+`dependencies` and `selectable`. The class comes from the closed core list (`adaptive`, `in-memory`, `streaming`,
+`gpu`, `native-vectorized`, `standard`, `distributed`, `jit`, `delegated`); the vocabulary parity test rejects
+unknown classes and enforces that one engine name maps to one class on every platform. Name each value with
+the platform's own documented term when one exists, otherwise the class name. `default` is a reserved sentinel
+and is never declared. The worked example is `polars-df`:
+
+```python
+{
+    "key": "polars",
+    "capabilities": {
+        "execution_engines": {
+            "auto": {
+                "class": "adaptive",
+                "display_name": "Auto",
+                "description": "Polars chooses the engine for each query",
+                "dependencies": ["polars"],
+                "selectable": True,
+            },
+            "in-memory": {
+                "class": "in-memory",
+                "display_name": "In-memory",
+                "description": "Materializes each query in memory",
+                "dependencies": ["polars"],
+                "selectable": True,
+            },
+            "streaming": {
+                "class": "streaming",
+                "display_name": "Streaming",
+                "description": "Processes each query in batches to bound memory",
+                "dependencies": ["polars"],
+                "selectable": True,
+            },
+        },
+    },
+}
+```
+
+Adapters inherit `resolve_execution_engine` from the adapter base and map the resolved engine into their
+query path; unsupported values fail closed. Never name a canonical option `engine`, `mode`, `backend`,
+`runtime`, `executor` or `warehouse`; a reserved-word spelling survives only as a deprecated alias registered
+in the core `DEPRECATED_OPTION_ALIASES` table with its removal release.
+
 ### Step 2: Add SQL Dialect Support
 
 If your platform has a unique SQL dialect, add SQL compatibility rules or an explicit exemption under the phase-aware SQL compatibility system. Do not hide CREATE TABLE rewrites inside the adapter without registering or exempting them in the DDL governance inventory. Put the rules in `benchbox/sql_compat/rules/ddl_optimize/newdatabase_ddl_rewrites.py`:
