@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "No exception entry with a payload digest matching no file state; gate still green"
+  ],
+  "description": "quality/comment-policy.json carries digest-pinned fixture entries (e.g. payload sha256:297e9756 for tests/unit/test_standardized_test_commands.py) whose digests match no current file state. Policy says to remove unused exceptions during module review.",
+  "sessions": [
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:0e0437f497bd07bcca4ac997",
+      "at": "2026-10-12T19:11:52Z",
+      "client": "pi",
+      "op": "create",
+      "op_id": "40825b96e74344c88041ab537155fc92",
+      "session_id": "8be230d790474fda8edea19668121bf9"
+    }
+  ]
+}

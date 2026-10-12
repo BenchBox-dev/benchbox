@@ -15165,6 +15165,13 @@
       "status": "done",
       "title": "Polars Platform Adapter"
     },
+    "policy-remove-fossil-fixture-digests": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Remove fossilized comment-policy fixture digests that match nothing"
+    },
     "polyglot-benchbox-integration-assessment": {
       "claim": null,
       "needs": [],
