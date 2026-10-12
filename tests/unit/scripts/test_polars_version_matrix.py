@@ -427,3 +427,76 @@ def test_analyzer_refuses_duplicate_or_missing_rounds(tmp_path: Path) -> None:
         _analyze(tmp_path, records[:-1])
     with pytest.raises(ValueError, match="duplicate record"):
         _analyze(tmp_path, [*records, records[0]])
+
+
+def test_polars_entry_points_delegate_to_the_shared_core() -> None:
+    from scripts import analyze_version_matrix as shared_analyzer, run_version_matrix as shared_runner
+    from scripts.version_matrix_specs import POLARS as SHARED_POLARS
+
+    assert POLARS is SHARED_POLARS
+    assert runner.plan_lines is shared_runner.plan_lines
+    assert runner.cell_command is shared_runner.cell_command
+    assert runner.parse_freeze is shared_runner.parse_freeze
+    assert runner.verify_installation is shared_runner.verify_installation
+    assert runner.check_pins is shared_runner.check_pins
+    assert runner.classify_outcome is shared_runner.classify_outcome
+    assert runner.extract_result is shared_runner.extract_result
+    assert runner.run_matrix is shared_runner.run_polars_matrix
+    assert analyzer.analyze is shared_analyzer.analyze_polars
+    assert analyzer.compare is shared_analyzer.compare_cells
+    assert analyzer.write_outputs is shared_analyzer.write_polars_outputs
+    assert analyzer.load_qualification is shared_analyzer.load_qualification
+
+
+def test_shared_runner_serves_the_polars_dry_run(capsys: pytest.CaptureFixture[str]) -> None:
+    from scripts import run_version_matrix as shared_runner
+
+    assert shared_runner.main(["--engine", "polars", "--output-dir", "unused", "--shuffle-seed", "1", "--dry-run"]) == 0
+
+    assert capsys.readouterr().out.splitlines() == GOLDEN_DRY_RUN.read_text(encoding="utf-8").splitlines()
+
+
+def test_shared_analyzer_serves_the_polars_spec(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from scripts import analyze_version_matrix as shared_analyzer
+    from scripts.version_matrix_specs import SPECS
+
+    records = []
+    for cell in POLARS.cells():
+        for index in (1, 2, 3):
+            record = _record(index, cell.version, cell.setup, 100.0)
+            record["benchmark"] = cell.benchmark
+            records.append(record)
+    rows = [
+        {"version": cell.version, "setup": cell.setup, "benchmark": cell.benchmark, "clean": True}
+        for cell in POLARS.cells()
+    ]
+    reference = {benchmark: {"0:1": 4, "0:2": 5} for benchmark in POLARS.benchmark_ids}
+    qualification_path = tmp_path / "qualification.json"
+    qualification_path.write_text(
+        json.dumps({"scale_factor": 10.0, "eligibility": rows, "reference": {"row_counts": reference}}),
+        encoding="utf-8",
+    )
+    spec = replace(POLARS, qualification_sha256=hashlib.sha256(qualification_path.read_bytes()).hexdigest())
+    manifest_path = _write_manifest(tmp_path, spec, records)
+    monkeypatch.setitem(SPECS, "polars", spec)
+    output_dir = tmp_path / "out"
+
+    assert (
+        shared_analyzer.main(
+            [
+                "--engine",
+                "polars",
+                str(manifest_path),
+                "--qualification",
+                str(qualification_path),
+                "--output-dir",
+                str(output_dir),
+            ]
+        )
+        == 0
+    )
+
+    result = json.loads((output_dir / "polars-version-matrix-analysis.json").read_text(encoding="utf-8"))
+    assert result["comparison_count"] == len(result["comparisons"])
+    assert all(cell["qualified"] for cell in result["cells"])
+    assert (output_dir / "polars-version-matrix-comparisons.csv").is_file()
