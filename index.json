@@ -2502,6 +2502,13 @@
       "status": "open",
       "title": "Stop CI jobs from failing on Docker Hub's unauthenticated pull rate limit"
     },
+    "ci-duplicate-dispatch-ghost-runs": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Stop duplicate CI dispatches and ghost pending runs stalling scheduling"
+    },
     "ci-failure-baseline-dev-loop-metrics": {
       "claim": null,
       "needs": [],
