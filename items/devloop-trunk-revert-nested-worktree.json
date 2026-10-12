@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "make trunk-revert PR=<n> succeeds from a linked worktree, or the manual equivalent is documented and tested"
+  ],
+  "description": "make trunk-revert runs preflight (refuses primary clone) then invokes make worktree-create, which refuses inside a managed worktree (new worktree reads the launcher lifecycle ID). No supported invocation context; 2026-10-12 recovery replicated the steps manually.",
+  "sessions": [
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:0e0437f497bd07bcca4ac997",
+      "at": "2026-10-12T19:11:35Z",
+      "client": "pi",
+      "op": "create",
+      "op_id": "d503aed9b6aa4d2a8518d7e0e3ff35d8",
+      "session_id": "8be230d790474fda8edea19668121bf9"
+    }
+  ]
+}

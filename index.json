@@ -6774,6 +6774,13 @@
       "status": "dropped",
       "title": "develop is red: agent instruction bytes 16088 exceed the 16000 budget, blocking all commits"
     },
+    "devloop-trunk-revert-nested-worktree": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "make trunk-revert unusable from inside a managed linked worktree"
+    },
     "df-parity-id-mapping-builders": {
       "claim": null,
       "needs": [],
