@@ -13901,7 +13901,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "blocked",
+      "status": "open",
       "title": "Windows unit suite: read repository text files as UTF-8 in tests and workflow-reading helpers"
     },
     "nightly-windows-verification-run-20261009": {
