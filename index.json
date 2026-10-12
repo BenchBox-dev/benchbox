@@ -17724,7 +17724,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "blocked",
+      "status": "open",
       "title": "Repair shell executable-payload coverage in the comment-policy checker"
     },
     "repair-public-pagefind-search": {
