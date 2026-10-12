@@ -377,11 +377,15 @@ jobs:
           STALE_REASON=""
           if [[ "${CURRENT_PUBLISHED_SHA}" != "${PUBLISHED_BASE_SHA}" ]]; then
             STALE_REASON="published-results advanced after the mirror was built"
-          elif [[ "${PR_STATE}" != "OPEN" || "${PR_BASE_REF}" != "published-results" ]]; then
+          elif [[ "${PR_STATE}" != "OPEN" ]]; then
+            STALE_REASON="the created proposal no longer targets the expected base"
+          elif [[ "${PR_BASE_REF}" != "published-results" ]]; then
             STALE_REASON="the created proposal no longer targets the expected base"
           elif [[ "${PR_BASE_SHA}" != "${PUBLISHED_BASE_SHA}" ]]; then
             STALE_REASON="the proposal base does not match the captured published-results revision"
-          elif [[ "${PR_HEAD_REF}" != "${MIRROR_BRANCH}" || "${PR_HEAD_SHA}" != "${MIRROR_HEAD_SHA}" ]]; then
+          elif [[ "${PR_HEAD_REF}" != "${MIRROR_BRANCH}" ]]; then
+            STALE_REASON="the created proposal head does not match the built mirror revision"
+          elif [[ "${PR_HEAD_SHA}" != "${MIRROR_HEAD_SHA}" ]]; then
             STALE_REASON="the created proposal head does not match the built mirror revision"
           fi
 

@@ -311,8 +311,16 @@ jobs:
             RUN_META=$(gh api "repos/${{ github.repository }}/actions/runs/$RUN_ID" \
               --jq '[.name, .status, .conclusion, .event, .head_branch] | @tsv')
             IFS=$'\t' read -r RUN_NAME RUN_STATUS RUN_CONCLUSION RUN_EVENT RUN_BRANCH <<< "$RUN_META"
-            if [[ "$RUN_NAME" != "Publication Control Plane Deployment" || "$RUN_STATUS" != "completed" || \
-                  "$RUN_EVENT" != "workflow_dispatch" || "$RUN_BRANCH" != "develop" ]]; then
+            if [[ "$RUN_NAME" != "Publication Control Plane Deployment" ]]; then
+              continue
+            fi
+            if [[ "$RUN_STATUS" != "completed" ]]; then
+              continue
+            fi
+            if [[ "$RUN_EVENT" != "workflow_dispatch" ]]; then
+              continue
+            fi
+            if [[ "$RUN_BRANCH" != "develop" ]]; then
               continue
             fi
             rm -rf independent-receipt && mkdir independent-receipt

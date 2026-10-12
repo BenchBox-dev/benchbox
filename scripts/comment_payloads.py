@@ -1201,13 +1201,18 @@ def unwrap_static_command(words: list) -> list:
     return words
 
 
-SHELL_DYNAMIC_PIPED_COMMAND = r"""(?<!\$)\|[ \t]*(?:"[^"\n]*\$|\$\S)"""
+SHELL_PIPE_OPERATOR = r"(?<!\|)\|(?!\|)"
+SHELL_DYNAMIC_PIPED_COMMAND = rf"""(?<!\$){SHELL_PIPE_OPERATOR}[ \t]*(?:"[^"\n]*\$|\$\S)"""
 SHELL_PIPED_INTERPRETER = re.compile(
-    r"\|[^\n]*(?<![\w.-])(?:python[0-9.]*|node|bash|sh|zsh|ksh|dash|fish|perl|ruby|php|lua|pwsh|powershell|deno|bun|tclsh"
+    SHELL_PIPE_OPERATOR
+    + r"[^\n]*(?<![\w.-])(?:python[0-9.]*|node|bash|sh|zsh|ksh|dash|fish|perl|ruby|php|lua|pwsh|powershell|deno|bun|tclsh"
     r"|osascript|Rscript|awk|gawk|mawk|psql|duckdb|sqlite3)(?=[\s;|&)\"']|$)" + "|" + SHELL_DYNAMIC_PIPED_COMMAND
 )
 SHELL_PIPED_MODELED_INTERPRETER = re.compile(
-    r"\|[^\n]*(?<![\w.-])(?:python[0-9.]*|node|bash|sh|zsh)(?=[\s;|&)\"']|$)" + "|" + SHELL_DYNAMIC_PIPED_COMMAND
+    SHELL_PIPE_OPERATOR
+    + r"[^\n]*(?<![\w.-])(?:python[0-9.]*|node|bash|sh|zsh)(?=[\s;|&)\"']|$)"
+    + "|"
+    + SHELL_DYNAMIC_PIPED_COMMAND
 )
 SHELL_INLINE_INTERPRETER = re.compile(
     r"\beval\b|\b(?:python[0-9.]*|node|bash|sh|zsh)\b[^\n]*\s(?:-[A-Za-z]*[ceEp]|--eval|--command|--print)"
@@ -2036,6 +2041,87 @@ def piped_stdin_entries(path: str, source: str, offset: int, unit: str, node: ba
     return [(line, path + "." + resolved, payload, resolved, f"{symbol}:pipe:{producer}")]
 
 
+def shell_case_header_end(chunk: str) -> int | None:
+    start = re.match(r"\s*case\b", chunk)
+    if start is None:
+        return None
+    match = re.search(r"\bin(?=\s*(?:#[^\n]*)?\s*\Z)", chunk[start.end() :], re.S)
+    return None if match is None else start.end() + match.end()
+
+
+def shell_case_pattern(chunk: str, start: int) -> tuple[str, int | None]:
+    characters = list(chunk)
+    quote = None
+    index = start
+    while index < len(chunk):
+        char = chunk[index]
+        if quote == "'":
+            if char == "|":
+                characters[index] = " "
+            if char == "'":
+                quote = None
+        elif quote == '"':
+            if chunk.startswith("$(", index) or char == "`":
+                return chunk, None
+            if char == "\\":
+                if index + 1 < len(chunk) and chunk[index + 1] == "|":
+                    characters[index + 1] = " "
+                index += 1
+            elif char == '"':
+                quote = None
+            elif char == "|":
+                characters[index] = " "
+        elif char == "\\":
+            if index + 1 < len(chunk) and chunk[index + 1] == "|":
+                characters[index + 1] = " "
+            index += 1
+        elif char in "'\"":
+            quote = char
+        elif chunk.startswith("$(", index) or char == "`":
+            return chunk, None
+        elif char == ")":
+            return "".join(characters), index
+        elif char == "|":
+            characters[index] = " "
+        index += 1
+    return chunk, None
+
+
+def shell_case_terminator(chunk: str) -> bool:
+    return re.search(r"(?:;;&|;&|;;)\s*(?:#[^\n]*)?\s*\Z", chunk) is not None
+
+
+def shell_case_pattern_chunks(chunks: list[tuple[int, str]]) -> list[tuple[int, str]]:
+    cases: list[bool] = []
+    result = []
+    for offset, chunk in chunks:
+        header_end = shell_case_header_end(chunk)
+        if header_end is not None:
+            cases.append(True)
+            masked, end = shell_case_pattern(chunk, header_end)
+            if end is not None:
+                cases[-1] = shell_case_terminator(chunk[end + 1 :])
+            result.append((offset, masked))
+            continue
+        if not cases:
+            result.append((offset, chunk))
+            continue
+        if re.match(r"\s*esac(?:\s*(?:;|#[^\n]*|\Z))", chunk):
+            cases.pop()
+            result.append((offset, chunk))
+            continue
+        if cases[-1]:
+            masked, end = shell_case_pattern(chunk, 0)
+            if end is not None:
+                cases[-1] = shell_case_terminator(chunk[end + 1 :])
+            result.append((offset, masked))
+            continue
+        if shell_case_terminator(chunk):
+            cases[-1] = True
+        result.append((offset, chunk))
+    return result
+
+
 def shell_command_payloads(path: str, source: str) -> list[tuple[int, str, str, str, str]]:
     if not SHELL_INLINE_INTERPRETER.search(source):
         return []
@@ -2043,7 +2129,7 @@ def shell_command_payloads(path: str, source: str) -> list[tuple[int, str, str, 
         units = [(0, source, bashlex.parse(source))]
     except BASHLEX_FAILURES as exc:
         units = []
-        for offset, chunk in shell_logical_chunks(source):
+        for offset, chunk in shell_case_pattern_chunks(shell_logical_chunks(source)):
             if not SHELL_INLINE_INTERPRETER.search(chunk):
                 continue
             try:

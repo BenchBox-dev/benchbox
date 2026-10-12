@@ -557,7 +557,11 @@ display_summary() {
 main() {
     local mode="${1:-}"
 
-    if [[ "$mode" == "--native" || "$mode" == "--native-only" ]]; then
+    if [[ "$mode" == "--native" ]]; then
+        mode="--native-only"
+    fi
+
+    if [[ "$mode" == "--native-only" ]]; then
         log_info "Starting native-only TPC binary compilation..."
         cd "$PROJECT_ROOT"
         compile_native_only

@@ -5,10 +5,10 @@ import json
 import os
 import re
 import sys
-import time
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
+from time import sleep
 from typing import Any
 
 from . import attempts as attempt_files, dedup, github, protocol, report, retry, runner, selection
@@ -507,7 +507,7 @@ def _reread_history(plan: Mapping[str, Any]) -> protocol.History:
     error: Exception | None = None
     for attempt in range(GUARD_ATTEMPTS):
         if attempt:
-            time.sleep(GUARD_PAUSE_SECONDS)
+            sleep(GUARD_PAUSE_SECONDS)
         try:
             return protocol.history(github.oracle_reviews(plan["repo"], plan["pr"]), plan["bot_login"])
         except (github.GitHubError, KeyError, TypeError, ValueError) as exc:

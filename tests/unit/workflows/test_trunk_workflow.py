@@ -50,6 +50,20 @@ def test_shard_evidence_is_labelled_with_this_workflow() -> None:
         assert "--workflow ci.yml" not in command
 
 
+def test_medium_shards_install_the_comment_scanner_typescript_dependency() -> None:
+    steps = _workflow()["jobs"]["medium-test"]["steps"]
+    node = next(
+        index for index, step in enumerate(steps) if step.get("name") == "Set up Node.js for comment scanner tests"
+    )
+    install = next(index for index, step in enumerate(steps) if step.get("name") == "Install comment-policy TypeScript")
+    run = next(index for index, step in enumerate(steps) if step.get("name") == "Run medium speed tier")
+    assert steps[node]["uses"].startswith("actions/setup-node@")
+    assert steps[node]["with"]["node-version"] == "20"
+    assert steps[node]["with"]["cache-dependency-path"] == "quality/comment-policy-package-lock.json"
+    assert "COMMENT_POLICY_TYPESCRIPT=" in steps[install]["run"]
+    assert node < install < run
+
+
 def test_required_local_cases_run_after_each_merge() -> None:
     job = _workflow()["jobs"]["required-local-cases"]
     assert job["runs-on"] == "ubuntu-latest"

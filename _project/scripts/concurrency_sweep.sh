@@ -44,11 +44,11 @@ for n in "${LEVELS[@]}"; do
 
     elapsed=$(( $(date +%s) - start ))
 
-    if [[ $rc -eq 143 || $elapsed -ge $TIMEOUT_SECS ]]; then
+    if [[ $rc -ne 143 && $elapsed -lt $TIMEOUT_SECS ]]; then
+        tail -5 "$outfile"
+    else
         echo "TIMED OUT" >> "$outfile"
         echo "  *** TIMED OUT after ${TIMEOUT_SECS}s ***"
-    else
-        tail -5 "$outfile"
     fi
     echo "  Wall time: ${elapsed}s (exit $rc)"
     echo ""
