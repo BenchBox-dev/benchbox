@@ -4,7 +4,7 @@
     "Per-benchmark sf100 proceed and sf1000 admission verdicts recorded with numbers",
     "Primitives above sf10 gated on dry-run row estimates; primitives-sf1000 only with explicit passing estimate"
   ],
-  "context": "Verification rubric: no sf1000 run exists without its benchmark's sf100 pilot evidence and a reserve-affordability check in the item context. Excluded by default at large scale: havoc/skew/obt, datavault, clickbench, amplab, h2odb, coffeeshop, joinorder, tsbs, nyctaxi, flightdata.",
+  "context": "STAGE5 PROGRESS (untuned-only per stage3 KILL redirect; reserve spend, stop-loss 100):\n- tpch-sf100 untuned pilot DONE: bundle tpch_sf100_snowflake_sql_20261012_182140_08cf1211.json (official, --seed 42, 88 queries, LINEITEM 600,037,902 rows, X-Small, cache-disabled, funding free-trial, published). Power query_time 300.6s (~3.4s/query avg vs ~1s at sf1 - sublinear, overhead-dominated); wall ~41min (datagen reused local Aug-17 33GB zst files; ~26min load+setup+power). Credit cost 0.80 (53.532 -> 54.332). VERDICT: tpch-sf100 PROCEED (cheap, in budget).\n- tpch-sf1000: ADMITTED on cost (pilot 0.8; projected single-digit credits, well under stop-loss) but DEFERRED behind tier sf100 coverage + trial-expiry buffer (~Oct 17); run only if reserve allows after tpcds/tpcdi/ssb sf100.\n- Next in tier order: tpcds-sf100 RUNNING (official --seed 42, generate,load,power); then tpcdi-sf100 (no seed, generate,load,power), ssb-sf100 (no seed, iters 2, power-only per family shape - harness loads missing DB as proven by tpch). Primitives above sf10 gated on dry-run row estimates (read ~6M x SF rows); primitives-sf1000 presumed CUT with reason. Excluded by default: havoc/skew/obt, datavault, clickbench, amplab, h2odb, coffeeshop, joinorder, tsbs, nyctaxi, flightdata.\n- Bundle note: sf100 bundle /phases block all NOT_RUN (recording gap on this path); authoritative times in /run (total_duration_ms 1575780, query_time_ms 300555).",
   "description": "Stage 5. Starts only after stage4 resolves (complete or cut) and only from the Gate 0 reserve. Single pilot first: tpch sf100 untuned (observe load time, storage, credits). Expand on pilot evidence: same-benchmark tuned/untuned, then next benchmark in Tier order (tpcds, tpcdi, ssb, then primitives). sf1000 admitted per benchmark only after its sf100 stayed in budget. Primitives above sf10 require a dry-run row estimate first: read primitives scale as ~6M x SF rows on the lineitem base (benchbox/core/read_primitives/benchmark.py:296), so sf100 ~= 600M rows and sf1000 ~= 6B rows — treat primitives-sf1000 as guilty until proven innocent. Seeds: use --official --seed 42 only for tpch/tpcds official scales; otherwise match baseline (no seed). Decision gate: pilot go/no-go per benchmark; sf1000 per-benchmark admission. Guardrails: reserve-only spend; reload-vs-reuse from Gate 2 still applies (large-scale loads dominate cost); same publish/provenance/drop rules as stage4; trial-expiry buffer kept (no new large loads in the final window).",
   "links": [
     "benchbox/core/read_primitives/benchmark.py",
@@ -26,6 +26,14 @@
       "generation": "67065aacb1d345e1997efd20a46c54ff",
       "op": "take",
       "op_id": "3d792df0cbca480b83f62a67f1c90bf1",
+      "session_id": "3d6d32ac7c5e46c58670f9664a7aea41"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:28ec00d9b0349e9794467df7",
+      "at": "2026-10-12T22:27:26Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "fe4b2d7961ec4f20a6997d6aa6944cb8",
       "session_id": "3d6d32ac7c5e46c58670f9664a7aea41"
     }
   ]
