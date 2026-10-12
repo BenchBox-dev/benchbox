@@ -35,6 +35,15 @@
       "op": "take",
       "op_id": "940afa7eb049413c822a901954888b22",
       "session_id": "7f376b068f894dd0920349056eb0a63a"
+    },
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:f0804c5fefb6ba181570047e",
+      "at": "2026-10-12T22:44:57Z",
+      "client": "pi",
+      "generation": "10cf41822fca4d30804f60d2a5de5486",
+      "op": "finish",
+      "op_id": "5959955072b94d85bca7c7bcd58b1400",
+      "session_id": "7f376b068f894dd0920349056eb0a63a"
     }
   ]
 }
