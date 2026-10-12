@@ -1571,7 +1571,7 @@ class TestSubmissionDeterministicGates:
                     }
                 },
                 "queries": [
-                    {"id": qid, "status": "SUCCESS", "run_type": "measurement", "stream": sid}
+                    {"id": qid, "status": "SUCCESS", "run_type": "measurement", "ms": 100, "stream": sid}
                     for sid, qids in queries_by_stream.items()
                     for qid in qids
                 ],
@@ -1651,13 +1651,50 @@ class TestSubmissionDeterministicGates:
             assert any("contiguous 1..2" in error for error in vr.errors)
 
         def test_tpcds_full_canonical_stream_passes(self):
-            data = self._bundle([1], {1: self._tpcds_variant_ids()}, benchmark="tpcds")
+            variant_ids = self._tpcds_variant_ids()
+            data = self._bundle([1, 2], {1: variant_ids, 2: variant_ids}, benchmark="tpcds")
             vr = ValidationResult("test")
             _validate_execution_consistency(data, vr)
             assert vr.ok, vr.errors
 
+        def test_power_stream_zero_queries_ignored(self):
+            full = self._full_tpch()
+            power = [{"id": qid, "status": "SUCCESS", "run_type": "measurement", "ms": 50, "stream": 0} for qid in full]
+            data = self._bundle([1, 2], {1: full, 2: full})
+            data["queries"].extend(power)
+            vr = ValidationResult("test")
+            _validate_execution_consistency(data, vr)
+            assert vr.ok, vr.errors
+
+        def test_query_without_usable_timing_not_counted(self):
+            full = self._full_tpch()
+            data = self._bundle([1, 2], {1: full, 2: full})
+            data["queries"] = [q for q in data["queries"] if not (q["stream"] == 2 and q["id"] == "Q22")]
+            data["queries"].append({"id": "Q22", "status": "SUCCESS", "run_type": "measurement", "stream": 2})
+            vr = ValidationResult("test")
+            _validate_execution_consistency(data, vr)
+            assert not vr.ok
+            assert any("throughput stream 2 covers 21 of 22" in error for error in vr.errors)
+
+        def test_unsuccessful_stream_rejected(self):
+            full = self._full_tpch()
+            data = self._bundle([1, 2], {1: full, 2: full})
+            data["phases"]["throughput_test"]["stream_results"][1]["success"] = False
+            vr = ValidationResult("test")
+            _validate_execution_consistency(data, vr)
+            assert not vr.ok
+            assert any("throughput stream 2 did not succeed" in error for error in vr.errors)
+
+        def test_single_stream_rejected_for_tpch(self):
+            data = self._bundle([1], {1: self._full_tpch()})
+            vr = ValidationResult("test")
+            _validate_execution_consistency(data, vr)
+            assert not vr.ok
+            assert any("at least 2 streams" in error for error in vr.errors)
+
         def test_tpcds_short_stream_rejected(self):
-            data = self._bundle([1], {1: self._tpcds_variant_ids()[:-9]}, benchmark="TPCDS")
+            variant_ids = self._tpcds_variant_ids()
+            data = self._bundle([1, 2], {1: variant_ids, 2: variant_ids[:-9]}, benchmark="TPCDS")
             vr = ValidationResult("test")
             _validate_execution_consistency(data, vr)
             assert not vr.ok

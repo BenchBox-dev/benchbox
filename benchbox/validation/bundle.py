@@ -12,6 +12,8 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
+from benchbox.core.schemas import MIN_THROUGHPUT_STREAMS
+
 
 def _load_schema_policy_helpers():
     try:
@@ -1662,6 +1664,7 @@ def _validate_queries_section(queries: Any, version: Any, vr: ValidationResult) 
 
 
 _THROUGHPUT_STREAM_QUERY_BENCHMARKS = frozenset({"tpch", "tpcds"})
+_POWER_PHASE_STREAM_ID = 0
 
 
 def _canonical_id_sort_key(value: str) -> list[int | str]:
@@ -1703,6 +1706,9 @@ def _validated_throughput_stream_ids(streams: Any, vr: ValidationResult) -> list
         if stream_id is None:
             vr.error(f"throughput stream_id must be an integer, got {raw_id!r}")
             return None
+        if not isinstance(entry, dict) or entry.get("success") is not True:
+            vr.error(f"throughput stream {stream_id} did not succeed")
+            return None
         stream_ids.append(stream_id)
     if sorted(stream_ids) != list(range(1, len(stream_ids) + 1)):
         vr.error(f"throughput stream_ids must be contiguous 1..{len(stream_ids)}, got {sorted(stream_ids)}")
@@ -1719,7 +1725,13 @@ def _throughput_measurement_queries(queries: Any) -> list[dict[str, Any]]:
             continue
         if not isinstance(query.get("status"), str):
             continue
-        if query["status"].upper() not in {"SUCCESS", "PASS"}:
+        if query["status"].upper() not in _PASS_TIMING_STATUSES:
+            continue
+        try:
+            usable_ms = float(query.get("ms"))
+        except (TypeError, ValueError):
+            continue
+        if not math.isfinite(usable_ms) or usable_ms < 1.0:
             continue
         if str(query.get("run_type") or "measurement").strip().lower() != "measurement":
             continue
@@ -1736,6 +1748,8 @@ def _grouped_throughput_observations(queries: list[dict[str, Any]], vr: Validati
         if stream_key is None:
             vr.error(f"throughput query stream must be an integer, got {query.get('stream')!r}")
             return None
+        if stream_key == _POWER_PHASE_STREAM_ID:
+            continue
         normalized_query = _normalize_coverage_query_id(query.get("id"))
         if normalized_query is None:
             continue
@@ -1751,6 +1765,9 @@ def _validate_throughput_stream_coverage(
 ) -> None:
     canonical = CANONICAL_LOGICAL_QUERY_IDS.get(benchmark_id)
     if not canonical:
+        return
+    if len(stream_ids) < MIN_THROUGHPUT_STREAMS:
+        vr.error(f"throughput requires at least {MIN_THROUGHPUT_STREAMS} streams, got {len(stream_ids)}")
         return
     if benchmark_id == "tpcds":
         observed_by_stream = {key: _fold_tpcds_variant_observations(value) for key, value in observed_by_stream.items()}
