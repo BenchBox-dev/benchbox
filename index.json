@@ -15267,6 +15267,13 @@
       "status": "open",
       "title": "#2761 merged while its head carried a hollow oracle success; review it after merge"
     },
+    "pr-arm-stale-remote-race": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "make pr-arm reads stale remote head right after push and refuses"
+    },
     "pr-followup-resumable-ownership": {
       "claim": null,
       "needs": [

@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "pr-arm retries the remote read instead of failing on first stale read, or documents the wait"
+  ],
+  "description": "Repeatedly on 2026-10-12 (#2830, #2878): make pr-arm immediately after git push --force-with-lease refused with stale-head mismatch; a retry ~20s later succeeded.",
+  "sessions": [
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:0e0437f497bd07bcca4ac997",
+      "at": "2026-10-12T19:11:58Z",
+      "client": "pi",
+      "op": "create",
+      "op_id": "ce47a9edd4bf4a108ac03db7d315125f",
+      "session_id": "8be230d790474fda8edea19668121bf9"
+    }
+  ]
+}
