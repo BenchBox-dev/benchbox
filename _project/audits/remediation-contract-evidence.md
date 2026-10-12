@@ -2,8 +2,8 @@
 develop_sha: 2eb03f3e67ec8f7f1347738f29696fa39ed5f526
 measured_at_sha: dd20aed2d53a87a4c34ae74c73a187cfa9bf3c5e
 checked_sha: dd20aed2d53a87a4c34ae74c73a187cfa9bf3c5e
-replay_sha: 8405f5e3c76ecb679e46079c737083d36494ba57
-replay_scope: PR 2888 mirror, parity, throughput contract tests and full fast suite at replay tree 8405f5e3c76ecb679e46079c737083d36494ba57
+replay_sha: ee8839f8e64dc717fa56e0842e2c9426cbc0aaa5
+replay_scope: PR 2888 mirror, parity, throughput contract tests and full fast suite at replay tree ee8839f8e64dc717fa56e0842e2c9426cbc0aaa5
 ---
 
 # Remediation contract evidence
@@ -111,10 +111,10 @@ uv run -- python -m pytest \
   tests/unit/scripts/publication/test_journal.py -q
 ```
 
-The clean detached-worktree result was `111 passed`. The command and pinned
+The clean detached-worktree result was `112 passed`. The command and pinned
 SHA define the replay; the aggregate count is summary evidence only.
 
-The prescribed pipeline and publication seam replay passed 111 tests after
+The prescribed pipeline and publication seam replay passed 112 tests after
 the end-to-end cohort consumer control was added. Re-run the cited nodes after
 any source or consumer change; a passing aggregate count is not acceptance of
 the collective claim.
