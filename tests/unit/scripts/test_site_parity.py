@@ -257,6 +257,20 @@ def test_project_allowance_preserves_legacy_atom_ids_and_allows_canonical_links(
     assert allowed["canonical-atom-entry-links"]["owner_approval"] == "approved"
 
 
+def test_canonical_atom_allowance_rejects_id_loss_and_canonical_link_loss() -> None:
+    rules = site_inventory.load_allowed_differences(site_parity.DEFAULT_ALLOWED)
+    report = {kind: [] for kind in site_inventory.REPORT_KINDS}
+    report["feed regression"] = [
+        "/blog/atom.xml: entry https://benchbox.dev/blog/blog/a.html removed",
+        "/blog/atom.xml: entry https://benchbox.dev/blog/blog/a.html lost link /blog/a.html",
+    ]
+
+    remaining, allowed = site_inventory.apply_allowed_differences(report, rules)
+
+    assert allowed["canonical-atom-entry-links"] == []
+    assert remaining["feed regression"] == report["feed regression"]
+
+
 def test_browser_failures_fail_the_report(tmp_path: Path) -> None:
     baseline = _site(tmp_path / "base", theme=False, feed_link="/blog/a.html")
     candidate = _site(tmp_path / "cand", theme=False, feed_link="/blog/a.html")
