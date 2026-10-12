@@ -2583,6 +2583,13 @@
       "status": "done",
       "title": "Close three local/CI parity gaps beyond WS3/WS5: Make inventory in guards-fix, brittle inventory assertion, local lane-isolation check"
     },
+    "ci-oracle-reviewer-availability-and-head-race": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Oracle reviewers error/absent and review dispatches race PR snapshots"
+    },
     "ci-pipeline-for-docker-based-integration-tests": {
       "claim": null,
       "needs": [],

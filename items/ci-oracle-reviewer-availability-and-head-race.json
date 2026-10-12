@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Connector error rate investigated with its owner",
+    "Dispatch snapshot logic made robust to no-push races (or documented as expected S10 transient)",
+    "Dev-loop guide notes the --ref develop footgun and the threads-before-rerun diagnostic"
+  ],
+  "context": "Found while landing PRs #2907, #2913, #2918. Hard-won diagnostics recorded in handoff _project/handoffs/core-execution-variants-batch-20261009.md revisions 6-7 and 13.",
+  "description": "Across 2026-10-11/12, oracle-verdict repeatedly reported opus/sol absent (error) (e.g. PR #2913 verdicts 00:52, 13:42, 14:37 UTC), forcing the S10 stand-in path; separately oracle-review runs failed ~10 times with 'dispatched PR identity or head changed' despite zero pushes between dispatch and job start (runs 38189396586, 38189696110, 38267710604, 38270039090, 38283247598 on PRs #2907/#2913). A manual workflow_dispatch --ref develop is rejected by the head guard by design; the feature-branch ref is the correct dispatch target. Substantive review still arrived (muse SHIP/SHIP-WITH-FIXES verdicts), so this is reliability, not coverage. The real gate error hides behind the race message: unresolved oracle review threads block with the same exit path — check threads before rerunning.",
+  "sessions": [
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:5b994405d415152299b5a092",
+      "at": "2026-10-12T21:51:50Z",
+      "client": "pi",
+      "op": "create",
+      "op_id": "6dd4071d8128405ea638078a437f8045",
+      "session_id": "27b88a720c9f4fc981d9d2b9406e61be"
+    }
+  ]
+}
