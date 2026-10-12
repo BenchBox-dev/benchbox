@@ -2390,6 +2390,13 @@
       "status": "done",
       "title": "Drop the CI agent-identity guard that cannot fail, keep the commit-range guard"
     },
+    "ci-amplab-generate-data-timeout-flake": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Fix chronic test_generate_data 60s timeout flake in medium shards"
+    },
     "ci-baseline-representative-remeasure-sample": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Root cause identified and addressed (timeout scope, fixture size, split test, or shard parallelism)",
+    "20 consecutive green medium runs without recurrence"
+  ],
+  "description": "tests/test_amplab.py::TestAMPLab::test_generate_data fails intermittently in CI medium-test shards with pytest-timeout (>60s) inside _generate_uservisits_data, then passes on rerun. Observed 4+ times on 2026-10-12 across PRs #2830, #2875, #2917 and others; CI logs show memory pressure on the failing runners. Never root-caused; each occurrence burned a full shard rerun plus diagnosis.",
+  "sessions": [
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:0e0437f497bd07bcca4ac997",
+      "at": "2026-10-12T19:11:11Z",
+      "client": "pi",
+      "op": "create",
+      "op_id": "20e9c0fd823f41ed9d0107e00dd3ccd8",
+      "session_id": "8be230d790474fda8edea19668121bf9"
+    }
+  ]
+}
