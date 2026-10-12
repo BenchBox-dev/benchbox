@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "tpch sf100 untuned pilot recorded with load time, storage, and credit cost",
+    "Per-benchmark sf100 proceed and sf1000 admission verdicts recorded with numbers",
+    "Primitives above sf10 gated on dry-run row estimates; primitives-sf1000 only with explicit passing estimate"
+  ],
+  "context": "Verification rubric: no sf1000 run exists without its benchmark's sf100 pilot evidence and a reserve-affordability check in the item context. Excluded by default at large scale: havoc/skew/obt, datavault, clickbench, amplab, h2odb, coffeeshop, joinorder, tsbs, nyctaxi, flightdata.",
+  "description": "Stage 5. Starts only after stage4 resolves (complete or cut) and only from the Gate 0 reserve. Single pilot first: tpch sf100 untuned (observe load time, storage, credits). Expand on pilot evidence: same-benchmark tuned/untuned, then next benchmark in Tier order (tpcds, tpcdi, ssb, then primitives). sf1000 admitted per benchmark only after its sf100 stayed in budget. Primitives above sf10 require a dry-run row estimate first: read primitives scale as ~6M x SF rows on the lineitem base (benchbox/core/read_primitives/benchmark.py:296), so sf100 ~= 600M rows and sf1000 ~= 6B rows — treat primitives-sf1000 as guilty until proven innocent. Seeds: use --official --seed 42 only for tpch/tpcds official scales; otherwise match baseline (no seed). Decision gate: pilot go/no-go per benchmark; sf1000 per-benchmark admission. Guardrails: reserve-only spend; reload-vs-reuse from Gate 2 still applies (large-scale loads dominate cost); same publish/provenance/drop rules as stage4; trial-expiry buffer kept (no new large loads in the final window).",
+  "links": [
+    "benchbox/core/read_primitives/benchmark.py",
+    "benchmark_runs/published"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:e445de97b2fb8410542405fe",
+      "at": "2026-10-12T17:16:19Z",
+      "client": "pi",
+      "op": "create",
+      "op_id": "7fdd57ef303643849ef23470fc9df0c1",
+      "session_id": "da0b2a7d64524d7badf1923cfcfd2dda"
+    }
+  ]
+}
