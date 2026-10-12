@@ -21517,6 +21517,13 @@
       "status": "done",
       "title": "Stop the test leak guard failing whichever test first imports the Snowflake connector"
     },
+    "test-oracle-guard-global-sleep-patch": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Confirm or fix suspected global time.sleep patch flakiness in test_rounds post-guard test"
+    },
     "test-organization-cleanup": {
       "claim": null,
       "needs": [],
