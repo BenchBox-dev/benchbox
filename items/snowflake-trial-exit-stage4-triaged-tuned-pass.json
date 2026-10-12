@@ -4,7 +4,7 @@
     "Post-Tier-1 credit re-check recorded with proceed/cut verdict for Tier 2",
     "Every published run carries funding free-trial and a new timestamped bundle (no overwrites)"
   ],
-  "context": "Verification rubric: bundle count matches matrix rows attempted; each bundle links its tuning file and Gate 1 row; dropped databases logged. Tuning confirmation is per tier batch.",
+  "context": "STAGE4 TERMINAL OUTCOME: KILLED/SUPERSEDED by stage3 KILL verdict - no tuned pass executed, zero credits burned (correct per gating: this item requires a stage3 proceed verdict; pilot returned KILL with numbers). The 18-file tuned program is closed; scope re-homed to stage5-untuned. Tier 1/2/3 tuned pairs will not run. Untuned coverage of Tier 1-2 benchmarks proceeds under stage5 rules within reserve.",
   "description": "Stage 4. Gated on a proceed verdict from stage3. Tier 1: tpch, tpcds (templates exist). Tier 2: ssb, tpcdi, read/write/transaction/metadata primitives (templates composed in pilot style, batched confirmation per tier, not per file). Tier 3 (joinorder, havoc/skew/obt, industry/real-world sets) only with credits above the Gate 0 reserve. Per-cell command shape from Gate 1 matrix; default reuse (no --force); suspend between tuned/untuned pairs; publish with maintainer-run + free-trial; drop each trial database after its bundle+manifest are safely published. Decision gate: after Tier 1, re-check credits vs stop-loss before Tier 2. Guardrails: stop-loss is a hard stop (no new burns past it); Tier 3 cuts first in fixed order: joinorder, havoc/skew/obt, then industry/real-world; single-cluster sequential execution only.",
   "links": [
     "examples/tunings/snowflake",
@@ -26,6 +26,14 @@
       "generation": "2b89fed8993f4ee38fd4884247d5e477",
       "op": "take",
       "op_id": "5ded60bd777e42ecb5111baf12c0dd1a",
+      "session_id": "3d6d32ac7c5e46c58670f9664a7aea41"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:28ec00d9b0349e9794467df7",
+      "at": "2026-10-12T21:40:20Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "386835bc05ae44ae8944dca1fd7f74d0",
       "session_id": "3d6d32ac7c5e46c58670f9664a7aea41"
     }
   ]
