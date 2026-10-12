@@ -13345,6 +13345,13 @@
       "status": "done",
       "title": "Drain develop merge queue to zero after bulk-enrollment backlog"
     },
+    "merge-stale-failure-rollup-blocks": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Stale failed check instances linger in merge rollup and block auto-merge"
+    },
     "metadata-primitives-benchmark": {
       "claim": null,
       "needs": [],
