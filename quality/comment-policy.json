@@ -37910,19 +37910,6 @@
     },
     {
       "path": "tests/unit/test_standardized_test_commands.py",
-      "symbol": "TestMakefileCommands.test_pr_preflight_fast_tests_creates_classifier_artifacts_when_absent",
-      "text": "unresolved executable source: make",
-      "payload": "sha256:ec98147fe1cc42ba021f5d8b6dc1359df9c93cad0014e20a3a538e0368d2fa6a",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/test_standardized_test_commands.py",
-      "necessity": "Pre-registered for the #2905 cleanup, which removes the obsolete merge_group routing doc test from this file and changes its AST digest. Same fixture as above: the test starts a subprocess whose program (make) is assembled at runtime.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/test_standardized_test_commands.py",
       "symbol": "TestMakefileCommands.test_skill_integrity_preflight_selected_lane_failure_propagates",
       "text": "unresolved executable source: make",
       "payload": "sha256:03360c0e07a3f752ea2b2febd1fc49e90b02ae2a7fb7d10f1ea60f6d82ceda9f",
