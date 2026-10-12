@@ -5107,17 +5107,12 @@
       "title": "Make gateway routing a core manifest capability with shared engine vocabulary and a core comparability guard"
     },
     "core-exec-new-platform-checklist": {
-      "claim": {
-        "expires_at": "2026-10-13T21:55:10Z",
-        "generation": "104304543ceb4586bc6b64545bc50f3d",
-        "renewals": 0,
-        "worker": "mcp:pi:joe@joe-mac-mini.local:5b994405d415152299b5a092"
-      },
+      "claim": null,
       "needs": [
         "core-exec-polars-cli-mcp-adoption"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Require new platforms to declare execution engines, compute, deployment and gateways through the manifest"
     },
     "core-exec-polars-cli-mcp-adoption": {
