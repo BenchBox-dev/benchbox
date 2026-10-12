@@ -4,7 +4,7 @@
     "Per-benchmark sf100 proceed and sf1000 admission verdicts recorded with numbers",
     "Primitives above sf10 gated on dry-run row estimates; primitives-sf1000 only with explicit passing estimate"
   ],
-  "context": "STAGE5 PROGRESS (untuned-only; cumulative 55.284/100 UNDER stop-loss):\n- tpcds-sf100 untuned DONE+ADMITTED: bundle tpcds_sf100_snowflake_sql_20261012_192242_f7cb5531.json (official, seed 42, 412 queries, X-Small, cache-disabled, free-trial, published). Power 843s over 3 iters; wall ~40min. Cost 0.95 credits.\n- tpcdi-sf100: CUT with reason - harness caps tpcdi scales to [0.01,0.1,1,10]; sf100 inadmissible. Max covered scale sf10 already baselined; nothing to add.\n- ssb-sf100: CUT with reason - harness caps ssb scales to [0.01,0.1,1,10]; sf100 inadmissible. Max covered scale sf10 already baselined.\n- Remaining: tpch-sf1000 admission launch; tpcds-sf1000 ruling on tpch-sf1000 evidence; primitives dry-run row estimates then rule (sf1000 presumed CUT).",
+  "context": "STAGE5 PROGRESS (cumulative 55.284/100 UNDER stop-loss):\n- Primitives large-scale: ALL CUT with reason - harness scale caps (read [0.01,0.1], write/txn [0.01,0.1,1], metadata [1.0]); sf100/sf1000 inadmissible. Max covered scales already baselined. No row-estimate math needed.\n- tpch-sf1000: ADMITTED on tpch-sf100 pilot evidence (0.8 credits) and RUNNING (official --seed 42, fresh DB, X-Small, free-trial). tpcds-sf1000 ruling deferred to tpch-sf1000 evidence + reserve re-check.\n- Done+admitted: tpch-sf100 (0.80), tpcds-sf100 (0.95). Cut: tpcdi-sf100, ssb-sf100, all-primitives-large-scale (harness caps).",
   "description": "Stage 5. Starts only after stage4 resolves (complete or cut) and only from the Gate 0 reserve. Single pilot first: tpch sf100 untuned (observe load time, storage, credits). Expand on pilot evidence: same-benchmark tuned/untuned, then next benchmark in Tier order (tpcds, tpcdi, ssb, then primitives). sf1000 admitted per benchmark only after its sf100 stayed in budget. Primitives above sf10 require a dry-run row estimate first: read primitives scale as ~6M x SF rows on the lineitem base (benchbox/core/read_primitives/benchmark.py:296), so sf100 ~= 600M rows and sf1000 ~= 6B rows — treat primitives-sf1000 as guilty until proven innocent. Seeds: use --official --seed 42 only for tpch/tpcds official scales; otherwise match baseline (no seed). Decision gate: pilot go/no-go per benchmark; sf1000 per-benchmark admission. Guardrails: reserve-only spend; reload-vs-reuse from Gate 2 still applies (large-scale loads dominate cost); same publish/provenance/drop rules as stage4; trial-expiry buffer kept (no new large loads in the final window).",
   "links": [
     "benchbox/core/read_primitives/benchmark.py",
@@ -42,6 +42,14 @@
       "client": "tbh",
       "op": "update",
       "op_id": "1ef9f13630374bf8be4260345ee7ee33",
+      "session_id": "3d6d32ac7c5e46c58670f9664a7aea41"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:28ec00d9b0349e9794467df7",
+      "at": "2026-10-12T23:28:57Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "9307873cb088402581887526797ab9b5",
       "session_id": "3d6d32ac7c5e46c58670f9664a7aea41"
     }
   ]
