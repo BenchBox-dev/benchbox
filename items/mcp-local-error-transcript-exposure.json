@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "MCP file-error responses carry no local directory paths, or the exposure is explicitly accepted with a recorded reason"
+  ],
+  "context": "Consideration only, found during the docs-backend-exception-redaction-followup trace that shipped as PR #2916.",
+  "description": "benchbox/mcp/tools/results.py:182,187 and benchbox/mcp/tools/analytics.py:145,151 return str(e) for local file/parse errors to the operator's own MCP client. Nothing reaches published bundles (verified 2026-10-12), but local paths can persist into shared transcripts. Decide whether to trim details to file name plus exception class.",
+  "sessions": [
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:5ab7ac2f6434da24c013257f",
+      "at": "2026-10-12T22:39:09Z",
+      "client": "pi",
+      "op": "create",
+      "op_id": "1f681c1ba70c4079bdeeb823f8ea9d8a",
+      "session_id": "f8e7c8876b5449888edb00c3147c3a96"
+    }
+  ]
+}

@@ -12643,6 +12643,13 @@
       "status": "done",
       "title": "Add live MCP integration coverage for rendered prompts"
     },
+    "mcp-local-error-transcript-exposure": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Scope file-error detail in MCP tools so local paths do not leak into shared transcripts"
+    },
     "mcp-multiworker-acceptance-flaky-under-load-20261004": {
       "claim": null,
       "needs": [],
