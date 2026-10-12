@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Root cause confirmed (runner entropy vs RNG usage) and fixed, or the test is quarantined/retried automatically so a 60 s RNG stall cannot fail a PR gate"
+  ],
+  "context": "Found while landing batch item core-exec-explorer-variant-identity (PR #2913). Workaround used: gh run rerun --failed. Evidence in CI logs of the runs above.",
+  "description": "tests/test_amplab.py::TestAMPLab::test_generate_data failed three times on 2026-10-12 with pytest-timeout (60 s) stuck in random.randint at benchbox/core/amplab/generator.py:297 (_generate_uservisits_data). Suspected OS entropy starvation on the runner, not a code defect; the execution-variants batch touches nothing near amplab data generation. Occurrences: CI run 38247749315/job 114805992370 (12:24 UTC), run 38256770945 (13:47 UTC), run 38267710571/job 114881209767 (15:35 UTC), all medium-test (shard 0). Every occurrence red-flagged its PR and required a manual rerun; the retry passed every time.",
+  "sessions": [
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:5b994405d415152299b5a092",
+      "at": "2026-10-12T21:51:33Z",
+      "client": "pi",
+      "op": "create",
+      "op_id": "d8640458336f44518ddd0afa13e56895",
+      "session_id": "27b88a720c9f4fc981d9d2b9406e61be"
+    }
+  ]
+}

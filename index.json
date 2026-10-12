@@ -2397,6 +2397,13 @@
       "status": "done",
       "title": "Drop the CI agent-identity guard that cannot fail, keep the commit-range guard"
     },
+    "ci-amplab-entropy-timeout-flake": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Medium-shard-0 amplab data-gen test times out inside random.randint (recurring infra flake)"
+    },
     "ci-amplab-generate-data-timeout-flake": {
       "claim": null,
       "needs": [],
