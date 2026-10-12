@@ -20541,12 +20541,17 @@
       "title": "Execute the triaged tuned pass only if the pilot passes"
     },
     "snowflake-trial-exit-stage5-large-scale": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-13T21:40:39Z",
+        "generation": "67065aacb1d345e1997efd20a46c54ff",
+        "renewals": 0,
+        "worker": "mcp:tbh:joe@joe-mac-mini.local:28ec00d9b0349e9794467df7"
+      },
       "needs": [
         "snowflake-trial-exit-stage4-triaged-tuned-pass"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Pilot sf100 then expand tuned/untuned at large scale within reserve"
     },
     "snowflake-tuned-live-certification-20261001": {
