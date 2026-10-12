@@ -45,6 +45,15 @@
       "op": "take",
       "op_id": "b9a5ea42ea5d4e8a917178aea02f914f",
       "session_id": "7f376b068f894dd0920349056eb0a63a"
+    },
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:f0804c5fefb6ba181570047e",
+      "at": "2026-10-12T22:45:44Z",
+      "client": "pi",
+      "generation": "3d11e2506a3f41148ab5158e18741df5",
+      "op": "finish",
+      "op_id": "2f87570540c2405cafd47d51e2f350b5",
+      "session_id": "7f376b068f894dd0920349056eb0a63a"
     }
   ]
 }

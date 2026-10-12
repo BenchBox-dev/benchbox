@@ -17735,15 +17735,10 @@
       "title": "Repair Pagefind metadata loading in the public search UI"
     },
     "repair-results-query-deep-link": {
-      "claim": {
-        "expires_at": "2026-10-13T22:45:31Z",
-        "generation": "3d11e2506a3f41148ab5158e18741df5",
-        "renewals": 0,
-        "worker": "mcp:pi:joe@joe-mac-mini.local:f0804c5fefb6ba181570047e"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Repair Results Explorer cold-start bootstrap"
     },
     "repair-skill-sync-cross-agent-readiness-diagnostics": {
