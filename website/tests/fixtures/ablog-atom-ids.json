@@ -5,7 +5,7 @@
       "href": "https://benchbox.dev/blog/"
     },
     {
-      "href": "https://benchbox.dev/blog/blog/atom.xml",
+      "href": "https://benchbox.dev/blog/atom.xml",
       "rel": "self"
     }
   ],
@@ -14,7 +14,7 @@
       "id": "https://benchbox.dev/blog/blog/2026-10-07-site-redesign.html",
       "links": [
         {
-          "href": "https://benchbox.dev/blog/blog/2026-10-07-site-redesign.html"
+          "href": "https://benchbox.dev/blog/2026-10-07-site-redesign.html"
         }
       ]
     },
@@ -22,7 +22,7 @@
       "id": "https://benchbox.dev/blog/blog/2026-09-15-results-explorer-introduction.html",
       "links": [
         {
-          "href": "https://benchbox.dev/blog/blog/2026-09-15-results-explorer-introduction.html"
+          "href": "https://benchbox.dev/blog/2026-09-15-results-explorer-introduction.html"
         }
       ]
     },
@@ -30,7 +30,7 @@
       "id": "https://benchbox.dev/blog/blog/2026-08-31-v0-4-0-release-overview.html",
       "links": [
         {
-          "href": "https://benchbox.dev/blog/blog/2026-08-31-v0-4-0-release-overview.html"
+          "href": "https://benchbox.dev/blog/2026-08-31-v0-4-0-release-overview.html"
         }
       ]
     },
@@ -38,7 +38,7 @@
       "id": "https://benchbox.dev/blog/blog/2026-05-18-sketch-functions-databricks-response.html",
       "links": [
         {
-          "href": "https://benchbox.dev/blog/blog/2026-05-18-sketch-functions-databricks-response.html"
+          "href": "https://benchbox.dev/blog/2026-05-18-sketch-functions-databricks-response.html"
         }
       ]
     },
@@ -46,7 +46,7 @@
       "id": "https://benchbox.dev/blog/blog/2026-05-18-joinorder-imdb-2013-dataset.html",
       "links": [
         {
-          "href": "https://benchbox.dev/blog/blog/2026-05-18-joinorder-imdb-2013-dataset.html"
+          "href": "https://benchbox.dev/blog/2026-05-18-joinorder-imdb-2013-dataset.html"
         }
       ]
     },
@@ -54,7 +54,7 @@
       "id": "https://benchbox.dev/blog/blog/2026-05-18-v0-3-0-release-overview.html",
       "links": [
         {
-          "href": "https://benchbox.dev/blog/blog/2026-05-18-v0-3-0-release-overview.html"
+          "href": "https://benchbox.dev/blog/2026-05-18-v0-3-0-release-overview.html"
         }
       ]
     },
@@ -62,7 +62,7 @@
       "id": "https://benchbox.dev/blog/blog/2026-04-26-scale-factor-harmonization.html",
       "links": [
         {
-          "href": "https://benchbox.dev/blog/blog/2026-04-26-scale-factor-harmonization.html"
+          "href": "https://benchbox.dev/blog/2026-04-26-scale-factor-harmonization.html"
         }
       ]
     },
@@ -70,7 +70,7 @@
       "id": "https://benchbox.dev/blog/blog/2026-04-26-v0-2-1-release-summary.html",
       "links": [
         {
-          "href": "https://benchbox.dev/blog/blog/2026-04-26-v0-2-1-release-summary.html"
+          "href": "https://benchbox.dev/blog/2026-04-26-v0-2-1-release-summary.html"
         }
       ]
     },
@@ -78,7 +78,7 @@
       "id": "https://benchbox.dev/blog/blog/2026-04-01-v0-2-0-release-summary.html",
       "links": [
         {
-          "href": "https://benchbox.dev/blog/blog/2026-04-01-v0-2-0-release-summary.html"
+          "href": "https://benchbox.dev/blog/2026-04-01-v0-2-0-release-summary.html"
         }
       ]
     },
@@ -86,7 +86,7 @@
       "id": "https://benchbox.dev/blog/blog/2026-03-10-extracting-textcharts.html",
       "links": [
         {
-          "href": "https://benchbox.dev/blog/blog/2026-03-10-extracting-textcharts.html"
+          "href": "https://benchbox.dev/blog/2026-03-10-extracting-textcharts.html"
         }
       ]
     }

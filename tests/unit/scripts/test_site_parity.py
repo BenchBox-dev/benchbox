@@ -13,7 +13,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 ATOM = """<?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
-  <entry><id>https://benchbox.dev/blog/a.html</id><title>First</title><link href="{link}"/></entry>
+  <entry><id>{id}</id><title>First</title><link href="{link}"/></entry>
 </feed>
 """
 
@@ -59,13 +59,19 @@ def _page(root: Path, name: str, body: str, canonical: str | None = "") -> None:
 
 
 def _site(
-    root: Path, *, theme: bool, feed_link: str, tag: bool = True, inventory: tuple[str, ...] = ("a std:doc",)
+    root: Path,
+    *,
+    theme: bool,
+    feed_link: str,
+    feed_id: str = "https://benchbox.dev/blog/a.html",
+    tag: bool = True,
+    inventory: tuple[str, ...] = ("a std:doc",),
 ) -> Path:
     toc = '<div id="__toc"></div><svg id="svg-sun"></svg>' if theme else ""
     _page(root, "index.html", "<h1>Home</h1>")
     _page(root, "docs/api.html", f'<h1 id="api">API</h1><dt id="benchbox.TPCH"></dt>{toc}')
     _page(root, "blog/a.html", "<h1>A</h1>")
-    _write(root, "blog/atom.xml", ATOM.format(link=feed_link))
+    _write(root, "blog/atom.xml", ATOM.format(id=feed_id, link=feed_link))
     if tag:
         _page(root, "blog/tag/duckdb.html", "<h1>duckdb</h1>")
     _write(
@@ -216,7 +222,9 @@ def test_api_anchors_lost_to_a_theme_rule_are_allowed_not_missing(tmp_path: Path
 def test_lost_feed_entry_id_is_reported(tmp_path: Path) -> None:
     baseline = _site(tmp_path / "base", theme=False, feed_link="/blog/a.html")
     candidate = _site(tmp_path / "cand", theme=False, feed_link="/blog/a.html")
-    feed = ATOM.format(link="/blog/a.html").replace("blog/a.html</id>", "blog/z.html</id>")
+    feed = ATOM.format(id="https://benchbox.dev/blog/a.html", link="/blog/a.html").replace(
+        "blog/a.html</id>", "blog/z.html</id>"
+    )
     _write(candidate, "blog/atom.xml", feed)
 
     code, report = _run(tmp_path, baseline, candidate)
@@ -226,6 +234,27 @@ def test_lost_feed_entry_id_is_reported(tmp_path: Path) -> None:
     assert report["real_breakage"]["atom_entry_ids"] == [
         f"{site_parity.SAME_TREE}: /blog/atom.xml: https://benchbox.dev/blog/a.html"
     ]
+
+
+def test_project_allowance_preserves_legacy_atom_ids_and_allows_canonical_links(tmp_path: Path) -> None:
+    legacy_url = "https://benchbox.dev/blog/blog/a.html"
+    baseline = _site(tmp_path / "base", theme=False, feed_link=legacy_url, feed_id=legacy_url)
+    candidate = _site(
+        tmp_path / "cand",
+        theme=False,
+        feed_link="https://benchbox.dev/blog/a.html",
+        feed_id=legacy_url,
+    )
+    rules = site_inventory.load_allowed_differences(site_parity.DEFAULT_ALLOWED)
+
+    code, report = _run(tmp_path, baseline, candidate, rules=rules)
+
+    assert code == 0
+    assert report["comparisons"][0]["feeds"][0]["lost_ids"] == []
+    assert report["real_breakage"]["atom_entry_ids"] == []
+    allowed = {row["id"]: row for row in report["allowed_differences"]}
+    assert allowed["canonical-atom-entry-links"]["count"] == 1
+    assert allowed["canonical-atom-entry-links"]["owner_approval"] == "approved"
 
 
 def test_browser_failures_fail_the_report(tmp_path: Path) -> None:

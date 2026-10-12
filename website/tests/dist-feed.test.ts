@@ -30,7 +30,7 @@ describe.skipIf(dist === undefined)("built dist/blog/atom.xml", () => {
     expect(parsed["@_xmlns"]).toBe("http://www.w3.org/2005/Atom");
   });
 
-  it("has the ids and links of the ablog feed", () => {
+  it("points to canonical public blog routes", () => {
     expect(parsed.id).toBe(reference.id);
     expect(links(parsed)).toEqual(reference.links);
     const entries = Array.isArray(parsed.entry) ? (parsed.entry as Node[]) : [];
