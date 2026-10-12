@@ -211,7 +211,13 @@ def test_post_load_outcome_is_printed_for_a_freshly_loaded_database(postgres_ada
 
     run_until_session_configuration(adapter, config, tmp_path, reused=False)
 
-    assert "Tuning outcome after load: 0 executed, 0 failed, 0 dropped" in printed(console)
+    assert "Tuning outcome after load: 0 executed, 0 failed, 4 dropped" in printed(console)
+    assert [item.intent for item in adapter._applied_tuning_ledger.dropped] == [
+        "primary_keys",
+        "foreign_keys",
+        "unique_constraints",
+        "check_constraints",
+    ]
 
 
 def test_post_load_outcome_is_not_printed_for_a_reused_database(postgres_adapter, console, tmp_path):

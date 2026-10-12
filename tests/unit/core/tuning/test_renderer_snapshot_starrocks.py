@@ -159,6 +159,25 @@ class TestStarRocksAppliedLedgerInstrumentation:
         recorded = [s.statement for s in adapter._applied_tuning_ledger.statements]
         assert recorded == ["PARTITION BY (l_shipdate)"]
 
+    def test_tuned_run_records_the_rendered_primary_key_clause(self):
+        adapter = self._host_with_ledger()
+        statement = "CREATE TABLE nation (\n  n_nationkey INT,\n  n_name VARCHAR(25),\n  PRIMARY KEY (n_nationkey)\n)"
+
+        rendered = adapter._optimize_table_definition(statement, {})
+
+        assert "PRIMARY KEY (n_nationkey)" in rendered
+        [recorded] = adapter._applied_tuning_ledger.statements
+        assert (recorded.statement, recorded.table) == ("PRIMARY KEY (n_nationkey)", "nation")
+
+    def test_untuned_primary_key_clause_is_not_recorded(self):
+        adapter = self._host_with_ledger()
+        statement = "CREATE TABLE nation (\n  n_nationkey INT,\n  n_name VARCHAR(25),\n  PRIMARY KEY (n_nationkey)\n)"
+
+        rendered = adapter._optimize_table_definition(statement, None)
+
+        assert "PRIMARY KEY (n_nationkey)" in rendered
+        assert adapter._applied_tuning_ledger.is_empty()
+
     def test_no_ledger_attribute_is_a_safe_noop(self):
         adapter = _HostAdapter()
         table_tuning = TableTuning(

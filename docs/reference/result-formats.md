@@ -244,10 +244,18 @@ to answer what a run requested and what it applied:
   introspection `receipt` when one was taken. `applied_ledger_hash` stays on
   `platform.tuning` itself.
   - `dropped` lists requested intents that no executed statement realized, each
-    with a `reason`. A dropped intent blocks `applied_verified`.
+    with a `reason`. A dropped intent blocks `applied_verified`. After the data
+    loads on a SQL platform, the run checks every requested intent (each
+    table's partitioning, clustering, distribution and sorting, each enabled
+    constraint type that the benchmark declares, and each enabled platform
+    optimization) against the ledger. An intent with no
+    executed, failed, dropped or satisfied record is added here. Its reason is
+    the capability registry's note when the registry says the platform does not
+    render that tuning type, and `adapter rendered no statement` otherwise.
   - `satisfied` lists intents that an executed statement realized as a side of
     its own DDL, such as a ClickHouse or StarRocks sort expressed as `ORDER BY`
-    in `CREATE TABLE`. Each entry has the `intent`, `satisfied_by` (the index of
+    in `CREATE TABLE`, or a primary key declared inline in `CREATE TABLE`.
+    Each entry has the `intent`, `satisfied_by` (the index of
     that statement in `statements`), and a `reason`. It is omitted when empty,
     is not part of `applied_ledger_hash`, and never counts as corroboration:
     only the referenced statement's own receipt entry does.

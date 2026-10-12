@@ -310,6 +310,12 @@ def statement_order_by_columns(statement: AppliedStatement) -> tuple[str, ...] |
     return normalize_columns(match.group("cols")) if match else None
 
 
+def statement_index_columns(statement: AppliedStatement) -> tuple[str, ...] | None:
+    text = _strip_sql_literals_and_comments(str(statement.statement or ""), keep_double_quoted=True).strip()
+    match = _CREATE_INDEX_RE.match(text)
+    return normalize_columns(match.group("cols")) if match else None
+
+
 def ledger_tables(ledger: AppliedTuningLedger) -> set[str]:
     tables: set[str] = set()
     for stmt in ledger.executed_statements:

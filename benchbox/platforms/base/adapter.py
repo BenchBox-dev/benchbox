@@ -588,6 +588,7 @@ class PlatformAdapter(
             quiet_console.print("✅ Data validation passed")
 
             self._fold_layout_operations_into_ledger()
+            self._reconcile_requested_tuning(effective_tuning_config)
             if self.tuning_enabled and effective_tuning_config and not self.database_was_reused:
                 quiet_console.print(self._applied_tuning_ledger.describe_outcome())
 
@@ -877,6 +878,9 @@ class PlatformAdapter(
 
     def _fold_layout_operations_into_ledger(self) -> None:
         tuning_trust.fold_layout_operations_into_ledger(self)
+
+    def _reconcile_requested_tuning(self, config: Any) -> None:
+        tuning_trust.reconcile_requested_tuning(self, config)
 
     def _setup_fresh_database_phases(self, benchmark, connection: Any, effective_tuning_config) -> tuple:
         data_dir = Path(benchmark.output_dir) if hasattr(benchmark, "output_dir") else Path(".")

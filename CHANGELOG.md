@@ -226,6 +226,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `phases.throughput_test.stream_numbering` holds the basis and the first
   stream id. `run.streams` in a combined run now counts throughput streams
   only.
+- **Tuned results list tuning requests the platform ignored.** After the data
+  loads on a SQL platform, every requested table layout, enabled constraint type
+  that the benchmark declares, and enabled platform optimization with no
+  executed, failed or skipped statement is
+  recorded in `platform.tuning.applied.dropped`. The reason is the capability
+  registry's note, or `adapter rendered no statement`. Before, platforms that
+  render nothing, such as the PostgreSQL family, BigQuery, Trino, the managed
+  Spark platforms and DataFusion, reported `noop` with an empty list. A
+  dropped intent keeps a run from `applied_verified`, and a run whose only
+  outcomes are drops stays `noop`. A constraint type the benchmark does not
+  declare is not a request: no shipped benchmark declares `UNIQUE` or `CHECK`
+  constraints, so enabling them records nothing, while declared primary or
+  foreign keys that the platform does not render are dropped. Intents a
+  `CREATE TABLE` realized, such as an inline primary key or a ClickHouse
+  `PARTITION BY`, are listed in `satisfied`. StarRocks tuned runs with primary
+  keys now record the rendered `PRIMARY KEY` clause, so their applied ledger
+  hash changes and a keys-only tuned run reports `applied_unverified` instead of
+  `noop`.
+  DuckDB sorting requires both sorted-ingestion and matching-index evidence.
+  Requested columns must match the ordered index prefix; leading, intervening,
+  or expression keys do not count as evidence.
+  On Redshift, `VACUUM SORT ONLY` over an existing key no longer counts as
+  applying the requested sort columns.
 
 ### Added
 

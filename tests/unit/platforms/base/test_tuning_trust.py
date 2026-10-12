@@ -65,6 +65,7 @@ EXPECTED_PHASE_PRODUCERS = frozenset(
         ("_attach_applied_ledger_payload", "attach_applied_ledger_payload", ("result", "applied_unverified")),
         ("_build_drift_check_payload", "build_drift_check_payload", ()),
         ("_fold_layout_operations_into_ledger", "fold_layout_operations_into_ledger", ()),
+        ("_reconcile_requested_tuning", "reconcile_requested_tuning", ("config",)),
     ],
 )
 def test_adapter_method_delegates_to_tuning_trust(method: str, function: str, args: tuple) -> None:
@@ -416,3 +417,20 @@ def test_run_enhanced_benchmark_routes_trust_through_tuning_trust() -> None:
     assert "tuning_trust.apply_phase_status(" in body
     assert "_attach_applied_ledger_payload(" in body
     assert "._applied_tuning_ledger.overall_status(" not in body
+
+
+def test_run_enhanced_benchmark_reconciles_once_after_load_and_layout_fold() -> None:
+    body = _run_enhanced_benchmark_source()
+    assert body.count("self._reconcile_requested_tuning(") == 1
+    load = body.index("self._setup_fresh_database_phases(")
+    fold = body.index("self._fold_layout_operations_into_ledger()")
+    reconcile = body.index("self._reconcile_requested_tuning(effective_tuning_config)")
+    read_back = body.index("tuning_trust.read_back_applied_ledger(")
+    assert load < fold < reconcile < read_back
+
+
+def test_apply_step_never_reconciles() -> None:
+    source = ADAPTER_PATH.read_text(encoding="utf-8")
+    start = source.index("    def _setup_fresh_database_phases(")
+    end = source.index("\n    def ", start + 1)
+    assert "reconcile" not in source[start:end]
