@@ -4,7 +4,7 @@
     "Every reload exception named with justification; default remains reuse",
     "Staging validity (native internal stage) confirmed for reload cells"
   ],
-  "context": "Verification rubric: each reload row names the missing database/stage object observed. If trial databases are gone, the tuned-pass cost estimate must be revised before Stage 3.",
+  "context": "GATE2 EVIDENCE (measured live 2026-10-12, SHOW/LIST only; no loads/drops; worktree feat/snowflake-trial-exit):\n- Map artifact: docs/internal/snowflake-trial-exit-gate2-reuse-reload-20261012_192045.json - 41 reuse, 9 reload.\n- Method: expected DB per cell via benchbox.utils.database_naming.generate_database_name; SHOW DATABASES (49 DBs) + SHOW TABLES IN SCHEMA <db>.PUBLIC per present DB, table names vs bundle /tables.\n- REUSE (41): DB present + every bundle table present. Includes tpcds_sf1/tpch_sf01/tpch_sf1 (cohabitant primitives *_OPS tables noted, power reruns unaffected) and metadata_primitives_sf1 (bundle tables={}; DB present).\n- RELOAD (9, each a named justified exception): read_primitives sf001/sf01, write_primitives sf001/sf01/sf1, transaction_primitives sf001/sf01/sf1, tpcds_obt sf1 - expected DBs absent from SHOW DATABASES. Shared-DB evidence: primitives *_OPS tables live inside TPCH_SF01/SF1, TPCDS_SALES_RETURNS_OBT inside TPCDS_SF1. Pre-burn step: resolve true --database mapping via zero-burn ACCOUNT_USAGE.QUERY_HISTORY, never blind --force.\n- Live DBs without matrix cells (bonus, not cells): DATAVAULT_SF001, TPCHAVOC_SF001, TPCH_SF001, TSBSDEVOPS_SF001.\n- Staging: native mode (no staging_root in baselines); SHOW STAGES on TPCH_SF1 empty as expected; implicit table stages cover the 9 reloads.\n- Cost-estimate revision: stage3 pilot cells (tpch, ssb) are both REUSE - no reload cost. Reloads only bite if stage4 reaches Tier 2 primitives/obt.\n- Stop condition armed: any surprise reload mid-pass stops the program.",
   "description": "Gate 2. Against the live trial (SHOW DATABASES, SHOW SCHEMAS, stage LIST — near-zero cost), mark each matrix cell reuse (database+data present) or reload (full datagen+upload+load required). Defaults: force_recreate=False (benchbox/platforms/base/adapter.py:124); baselines ran native mode with no staging_root. Any --force (all|datagen|datagen,upload) is a named per-cell exception requiring recorded justification. Decision gate: reload list is explicit and approved; surprise reloads mid-pass are a stop condition. Guardrails: SHOW/LIST only; no loads; no drops in this item.",
   "links": [
     "benchbox/platforms/snowflake.py",
@@ -26,6 +26,14 @@
       "generation": "43326e91bdad4806b64cee16aaab7c12",
       "op": "take",
       "op_id": "1443ade9859e438a8fe86bc84381e44f",
+      "session_id": "3d6d32ac7c5e46c58670f9664a7aea41"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:28ec00d9b0349e9794467df7",
+      "at": "2026-10-12T19:20:51Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "3c8fb32f0b874b5aa4db9a75a2fb2d7b",
       "session_id": "3d6d32ac7c5e46c58670f9664a7aea41"
     }
   ]
