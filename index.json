@@ -1208,6 +1208,13 @@
       "status": "done",
       "title": "Audit all imported dependencies and eliminate any not strictly required"
     },
+    "audit-sha-stamps-drift-silently": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Audit SHA stamps go stale silently until the next toucher trips audit-sha-check"
+    },
     "auto-compile-tpc-binary-tools-completed": {
       "claim": null,
       "needs": [],

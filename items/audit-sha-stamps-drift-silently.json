@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "Stale stamps caught proactively (e.g. scheduled validation) so no contributor first meets this on an unrelated change"
+  ],
+  "description": "Twice on 2026-10-12 (revert of #2821, #2829) the audit record carried replay_sha values unreachable from develop (feature-branch commits). The check only runs when audit files change, so stale stamps accumulate undetected; each repair needed an honest prescribed-replay re-run.",
+  "sessions": [
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:0e0437f497bd07bcca4ac997",
+      "at": "2026-10-12T19:11:46Z",
+      "client": "pi",
+      "op": "create",
+      "op_id": "0d7c9bdbc8684e7f8d3fcd73dd355bb7",
+      "session_id": "8be230d790474fda8edea19668121bf9"
+    }
+  ]
+}
