@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Snowflake benchmark receipts include metered credits, the billed warehouse window and region, plus pricing provenance.",
+    "Databricks benchmark receipts include metered DBUs, SKU, billable window and region, plus pricing provenance.",
+    "Normalized cost distinguishes measured billed cost from timing-derived estimates in result exports and Results Explorer.",
+    "Documentation defines how shared startup, idle, minimum-billing and concurrent-query costs are allocated across benchmark runs."
+  ],
+  "description": "Persist actual per-run Snowflake credit consumption and Databricks DBU consumption with warehouse/runtime identifiers, billable window, billing region, price basis, and applicable contracted rate when available. Historical Results Explorer estimates derived from observed query timings and public list rates are model outputs, not billed costs; replace or qualify them with metered data when this capture exists.",
+  "links": [
+    "https://benchbox.dev/results/compare?sf=10"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:bb761b75c85feaa4af608b8a",
+      "at": "2026-10-12T12:56:36Z",
+      "client": "codex-mcp-client",
+      "op": "create",
+      "op_id": "eba5b14c2bf04dcf8e63414f5b9f46d3",
+      "session_id": "10feecf2fe1c46c0adbfccf0f2d545c3"
+    }
+  ]
+}

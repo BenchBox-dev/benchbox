@@ -2186,6 +2186,13 @@
       "status": "done",
       "title": "✅ Canonicalize Result Schema"
     },
+    "capture-metered-cloud-benchmark-costs": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Capture metered Snowflake and Databricks usage for benchmark costs"
+    },
     "capture-validate-agent-config-files": {
       "claim": null,
       "needs": [],
