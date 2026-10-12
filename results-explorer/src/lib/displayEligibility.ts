@@ -47,6 +47,7 @@ const EXCLUSION_LABELS: Record<string, string> = {
   non_positive_primary_metric: "Primary metric is not positive.",
   non_positive_timing: "Timing is not positive.",
   partial_query_coverage: "Result has partial query coverage.",
+  stream_count_mismatch: "Recorded throughput stream count does not match the configured count.",
   trust_not_rankable: "Results from this source are not included in rankings.",
   tuning_not_applied: "Custom tuning was requested, but the run recorded no applied settings.",
   validation_not_clean: "Validation status excludes this result from ranking.",

@@ -112,17 +112,77 @@ def test_throughput_bundle_without_stream_results_has_no_stream_count(tmp_path: 
     assert entry.ranking_exclusion_reason == "missing_primary_metric"
 
 
-def _timed_out_stream_bundle() -> dict:
+def test_stream_count_mismatch_from_run_withholds_throughput_score(tmp_path: Path) -> None:
+    payload = throughput_bundle("spark", streams=3, throughput_at_size=3741.26)
+    payload["run"]["streams"] = 4
+    ((entry, detail),) = _pairs(tmp_path, {"spark": payload})
+
+    assert entry.throughput_at_size is None
+    assert entry.ranking_exclusion_reason == "stream_count_mismatch"
+    assert detail.throughput_at_size is None
+    assert detail.ranking_exclusion_reason == "stream_count_mismatch"
+
+
+def test_stream_count_mismatch_from_config_withholds_throughput_score(tmp_path: Path) -> None:
+    payload = throughput_bundle("spark", streams=3, throughput_at_size=3741.26)
+    payload["run"].pop("streams")
+    payload["config"]["streams"] = 4
+    ((entry, _),) = _pairs(tmp_path, {"spark": payload})
+
+    assert entry.throughput_at_size is None
+    assert entry.ranking_exclusion_reason == "stream_count_mismatch"
+
+
+@pytest.mark.parametrize(
+    "benchmark_name", ["ssb", "clickbench", "star_schema", "nyctaxi", "tsbs-devops", "h2odb", "datavault"]
+)
+def test_stream_count_mismatch_excludes_geomean_throughput_from_ranking(tmp_path: Path, benchmark_name: str) -> None:
+    invalid = throughput_bundle("invalid", benchmark=benchmark_name, streams=3)
+    invalid["run"]["streams"] = 4
+    valid = throughput_bundle("valid", benchmark=benchmark_name, streams=3)
+    pairs = _pairs(tmp_path, {"invalid": invalid, "valid": valid})
+    invalid_entry, valid_entry = [entry for entry, _ in pairs]
+    invalid_detail = pairs[0][1]
+    key = (
+        benchmark_name,
+        invalid_entry.scale_factor,
+        canonical_phase(invalid_detail.test_type),
+        invalid_entry.stream_count,
+    )
+    _, summary = _build_benchmark_summaries(
+        {key: pairs},
+        {entry.result_id: entry.result_id[-8:] for entry, _ in pairs},
+    )[0]
+    ranked = {row.row.result_id: row for row in rank_platforms(summary).rows}
+
+    assert invalid_entry.display_geomean_ms is not None
+    assert invalid_entry.ranking_exclusion_reason == "stream_count_mismatch"
+    assert invalid_detail.ranking_exclusion_reason == "stream_count_mismatch"
+    assert ranked[invalid_entry.result_id].rank is None
+    assert ranked[invalid_entry.result_id].ranking_exclusion_reason == "stream_count_mismatch"
+    assert ranked[valid_entry.result_id].rank == 1
+
+
+def test_missing_configured_stream_count_keeps_throughput_score(tmp_path: Path) -> None:
+    payload = throughput_bundle("spark", streams=3, throughput_at_size=3741.26)
+    payload["run"].pop("streams")
+    ((entry, _),) = _pairs(tmp_path, {"spark": payload})
+
+    assert entry.throughput_at_size == pytest.approx(3741.26)
+
+
+def _timed_out_stream_bundle(phase_status: str) -> dict:
     payload = throughput_bundle("spark", streams=3, throughput_at_size=500.0)
     phase = payload["phases"]["throughput_test"]
-    phase["status"] = "FAILED"
+    phase["status"] = phase_status
     phase["stream_results"] = phase["stream_results"][:2]
     phase["errors"] = ["Stream 3 timed out after 600s"]
     return payload
 
 
-def test_timed_out_stream_with_a_score_and_no_failed_queries_is_not_ranked(tmp_path: Path) -> None:
-    payload = _timed_out_stream_bundle()
+@pytest.mark.parametrize("phase_status", ["FAILED", "PARTIAL"])
+def test_timed_out_stream_with_a_score_and_no_failed_queries_is_not_ranked(tmp_path: Path, phase_status: str) -> None:
+    payload = _timed_out_stream_bundle(phase_status)
     assert payload["summary"]["queries"]["failed"] == 0
     ((entry, detail),) = _pairs(tmp_path, {"spark": payload})
 
@@ -135,24 +195,32 @@ def test_timed_out_stream_with_a_score_and_no_failed_queries_is_not_ranked(tmp_p
 
 
 @pytest.mark.parametrize(
-    "phase_changes",
+    ("phase_changes", "expected_reason"),
     [
-        {"status": "FAILED"},
-        {"status": "PARTIAL"},
-        {"stream_results": []},
-        {"stream_results": [{"stream_id": 1, "success": True}, {"stream_id": 2, "success": False}]},
-        {"stream_results": [{"stream_id": 1, "success": "true"}]},
-        {"errors": ["stream 2 reported an error"]},
-        {"outstanding_work": {"stream_ids": [3], "cleanup_state": "outstanding"}},
+        ({"status": "FAILED"}, "missing_primary_metric"),
+        ({"status": "PARTIAL"}, "missing_primary_metric"),
+        ({"stream_results": []}, "stream_count_mismatch"),
+        (
+            {"stream_results": [{"stream_id": 1, "success": True}, {"stream_id": 2, "success": False}]},
+            "stream_count_mismatch",
+        ),
+        ({"stream_results": [{"stream_id": 1, "success": "true"}]}, "stream_count_mismatch"),
+        ({"errors": ["stream 2 reported an error"]}, "missing_primary_metric"),
+        (
+            {"outstanding_work": {"stream_ids": [3], "cleanup_state": "outstanding"}},
+            "missing_primary_metric",
+        ),
     ],
 )
-def test_throughput_score_is_absent_unless_the_phase_completed_cleanly(tmp_path: Path, phase_changes: dict) -> None:
+def test_throughput_score_is_absent_unless_the_phase_completed_cleanly(
+    tmp_path: Path, phase_changes: dict, expected_reason: str
+) -> None:
     payload = throughput_bundle("spark", streams=3, throughput_at_size=500.0)
     payload["phases"]["throughput_test"].update(phase_changes)
     ((entry, _),) = _pairs(tmp_path, {"spark": payload})
 
     assert entry.throughput_at_size is None
-    assert entry.ranking_exclusion_reason == "missing_primary_metric"
+    assert entry.ranking_exclusion_reason == expected_reason
 
 
 def test_completed_phase_with_empty_error_fields_keeps_its_score(tmp_path: Path) -> None:

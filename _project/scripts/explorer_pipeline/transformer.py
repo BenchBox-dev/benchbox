@@ -336,12 +336,33 @@ def _power_score(bundle: BundleDocument) -> float | None:
     return _tpc_metric(bundle.summary.tpc_metrics.power_at_size)
 
 
+def _configured_stream_count(bundle: BundleDocument) -> int | None:
+    for section in (bundle.run, bundle.config):
+        stream_count = getattr(section, "streams", None)
+        if isinstance(stream_count, int) and not isinstance(stream_count, bool):
+            return stream_count
+        if isinstance(stream_count, float) and stream_count.is_integer():
+            return int(stream_count)
+    return None
+
+
+def _throughput_stream_count_mismatch(bundle: BundleDocument) -> bool:
+    block = bundle.phases.get("throughput_test")
+    if block is None or str(block.status or "").upper() != "COMPLETED":
+        return False
+    streams = block.stream_results
+    configured_count = _configured_stream_count(bundle)
+    return configured_count is not None and isinstance(streams, list) and len(streams) != configured_count
+
+
 def _throughput_phase_clean(bundle: BundleDocument) -> bool:
     block = bundle.phases.get("throughput_test")
     if block is None or str(block.status or "").upper() != "COMPLETED":
         return False
     streams = block.stream_results
     if not isinstance(streams, list) or not streams:
+        return False
+    if _throughput_stream_count_mismatch(bundle):
         return False
     if not all(isinstance(stream, dict) and stream.get("success") is True for stream in streams):
         return False
@@ -1235,6 +1256,12 @@ class BundleTransformer:
             basis_availability=_compute_basis_availability(timings),
         )
         reason = ranking_exclusion_reason(entry)
+        if (
+            reason in (None, "missing_primary_metric")
+            and canonical_phase(test_type) == THROUGHPUT_PHASE
+            and _throughput_stream_count_mismatch(bundle)
+        ):
+            reason = "stream_count_mismatch"
         if _sidecar_known_defects(bundle_path):
             reason = KNOWN_DEFECT_RANKING_EXCLUSION
         return entry.model_copy(update={"ranking_exclusion_reason": reason})
@@ -1350,6 +1377,12 @@ class BundleTransformer:
             failed_query_count=detail.failed_query_count,
         )
         reason = ranking_exclusion_reason(manifest_peer)
+        if (
+            reason in (None, "missing_primary_metric")
+            and canonical_phase(test_type) == THROUGHPUT_PHASE
+            and _throughput_stream_count_mismatch(bundle)
+        ):
+            reason = "stream_count_mismatch"
         if _sidecar_known_defects(bundle_path):
             reason = KNOWN_DEFECT_RANKING_EXCLUSION
         return detail.model_copy(update={"ranking_exclusion_reason": reason})

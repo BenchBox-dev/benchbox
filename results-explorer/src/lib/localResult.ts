@@ -119,7 +119,7 @@ export async function parseLocalResultText(text: string, fileName = "local-resul
   const eligibility = timingEligibility(displayTimings, logicalQueryCount);
   const powerScore = firstFiniteNumber(objectValue(summary, "tpc_metrics"), ["power_at_size"]);
   const phase = testType(bundle, benchmark);
-  const throughputScore = throughputPhaseClean(objectValue(bundle, "phases"))
+  const throughputScore = throughputPhaseClean(bundle)
     ? firstFiniteNumber(objectValue(summary, "tpc_metrics"), ["throughput_at_size"])
     : null;
   const streamCount = phase !== null && canonicalPhase(phase) === "throughput"
@@ -475,13 +475,26 @@ function throughputStreamCount(phases: JsonObject): number | null {
   return Array.isArray(streams) && streams.length > 0 ? streams.length : null;
 }
 
-function throughputPhaseClean(phases: JsonObject): boolean {
+function throughputPhaseClean(bundle: JsonObject): boolean {
+  const phases = objectValue(bundle, "phases");
   const throughput = objectValue(phases, "throughput_test");
   if (String(throughput.status ?? "").toUpperCase() !== "COMPLETED") return false;
   const streams = throughput.stream_results;
   if (!Array.isArray(streams) || streams.length === 0) return false;
   if (!streams.every((stream) => isObject(stream) && stream.success === true)) return false;
+  const configuredCount = configuredStreamCount(bundle);
+  if (configuredCount !== null && streams.length !== configuredCount) return false;
   return isEmptyEvidence(throughput.errors) && isEmptyEvidence(throughput.outstanding_work);
+}
+
+function configuredStreamCount(bundle: JsonObject): number | null {
+  const run = objectValue(bundle, "run");
+  const config = objectValue(bundle, "config");
+  for (const section of [run, config]) {
+    const value = section.streams;
+    if (typeof value === "number" && Number.isInteger(value)) return value;
+  }
+  return null;
 }
 
 function isEmptyEvidence(value: unknown): boolean {
