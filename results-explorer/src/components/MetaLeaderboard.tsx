@@ -194,7 +194,7 @@ export function MetaLeaderboard({
       case " ": {
         event.preventDefault();
         const platform = visiblePlatforms[rowIdx];
-        if (platform) route(platformHref(platform.platform_id));
+        if (platform) route(platformHref(variantKeyOf(platform)));
         return;
       }
       default:
@@ -361,12 +361,12 @@ export function MetaLeaderboard({
                 <tr
                   key={variantKeyOf(platform)}
                   class="cursor-pointer hover:bg-[var(--bb-surface-data-muted)]"
-                  onClick={() => route(platformHref(platform.platform_id))}
+                  onClick={() => route(platformHref(variantKeyOf(platform)))}
                 >
                   <td class="table-td sticky left-0 z-10 bg-[var(--bb-surface-data)] py-2 font-medium text-[var(--bb-data-fg-primary)]">
                     <div class="flex flex-wrap items-center gap-2">
                       <a
-                        href={platformHref(platform.platform_id)}
+                        href={platformHref(variantKeyOf(platform))}
                         class="no-underline hover:text-[var(--bb-accent-hover)]"
                         onClick={(event) => event.stopPropagation()}
                       >
@@ -596,11 +596,11 @@ function exactMetricTitle(rank: MetaRank | undefined, cohort: MetaCohort): strin
 }
 
 export function variantKeyOf(row: { variant_id?: string | null; platform_id: string }): string {
-  return row.variant_id ?? row.platform_id;
+  return row.variant_id || row.platform_id;
 }
 
 export function variantLabelOf(row: { variant_label?: string | null; platform: string }): string {
-  return row.variant_label ?? row.platform;
+  return row.variant_label || row.platform;
 }
 
 function findCohortPlatform(cohort: MetaCohort, platformId: string): MetaCohortPlatform | undefined {

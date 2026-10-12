@@ -37,7 +37,7 @@ beforeEach(() => {
   vi.mocked(queryRows).mockImplementation(async (sql: string) => {
     const s = String(sql).replace(/\s+/g, " ").trim();
     if (s.includes("FROM bench.results")) return RESULT_ROWS;
-    if (s.startsWith("SELECT platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
+    if (s.startsWith("SELECT variant_id, variant_label, platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
       return META_LEADERBOARD_ROWS;
     }
     if (s.includes("FROM bench.cohort_metadata")) return COHORT_ROWS;
@@ -51,7 +51,7 @@ describe("Leaderboard", () => {
     vi.mocked(queryRows).mockImplementation(async (sql: string) => {
       const s = String(sql).replace(/\s+/g, " ").trim();
       if (s.includes("FROM bench.results")) return resultRows.promise;
-      if (s.startsWith("SELECT platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) return [];
+      if (s.startsWith("SELECT variant_id, variant_label, platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) return [];
       if (s.includes("FROM bench.cohort_metadata")) return [];
       return [];
     });
@@ -90,7 +90,7 @@ describe("Leaderboard", () => {
         resultCalls += 1;
         return resultCalls === 1 ? [] : retryRows.promise;
       }
-      if (s.startsWith("SELECT platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
+      if (s.startsWith("SELECT variant_id, variant_label, platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
         return metaRows.promise;
       }
       if (s.includes("FROM bench.cohort_metadata")) {
@@ -135,7 +135,7 @@ describe("Leaderboard", () => {
         resultCalls += 1;
         return [];
       }
-      if (s.startsWith("SELECT platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
+      if (s.startsWith("SELECT variant_id, variant_label, platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
         return META_LEADERBOARD_ROWS;
       }
       if (s.includes("FROM bench.cohort_metadata")) {
@@ -165,7 +165,7 @@ describe("Leaderboard", () => {
         if (shouldFail) throw new Error("Network error loading results");
         return RESULT_ROWS;
       }
-      if (s.startsWith("SELECT platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
+      if (s.startsWith("SELECT variant_id, variant_label, platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
         metaCalls += 1;
         if (shouldFail) throw new Error("Network error loading metadata");
         return META_LEADERBOARD_ROWS;
@@ -229,7 +229,7 @@ describe("Leaderboard", () => {
     vi.mocked(queryRows).mockImplementation(async (sql: string) => {
       const s = String(sql).replace(/\s+/g, " ").trim();
       if (s.includes("FROM bench.results")) return unlabelledRows;
-      if (s.startsWith("SELECT platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
+      if (s.startsWith("SELECT variant_id, variant_label, platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
         return META_LEADERBOARD_ROWS;
       }
       if (s.includes("FROM bench.cohort_metadata")) return COHORT_ROWS;
@@ -297,7 +297,7 @@ describe("Leaderboard", () => {
     vi.mocked(queryRows).mockImplementation(async (sql: string) => {
       const s = String(sql).replace(/\s+/g, " ").trim();
       if (s.includes("FROM bench.results")) return resultRows;
-      if (s.startsWith("SELECT platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
+      if (s.startsWith("SELECT variant_id, variant_label, platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
         return META_LEADERBOARD_ROWS;
       }
       if (s.includes("FROM bench.cohort_metadata")) return cohortRows;
@@ -341,7 +341,7 @@ describe("Leaderboard", () => {
     vi.mocked(queryRows).mockImplementation(async (sql: string) => {
       const s = String(sql).replace(/\s+/g, " ").trim();
       if (s.includes("FROM bench.results")) return resultRows.promise;
-      if (s.startsWith("SELECT platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
+      if (s.startsWith("SELECT variant_id, variant_label, platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
         return metaRows.promise;
       }
       if (s.includes("FROM bench.cohort_metadata")) return cohortRows.promise;
@@ -635,7 +635,7 @@ describe("Leaderboard", () => {
     vi.mocked(queryRows).mockImplementation(async (sql: string) => {
       const s = String(sql).replace(/\s+/g, " ").trim();
       if (s.includes("FROM bench.results")) return results;
-      if (s.startsWith("SELECT platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
+      if (s.startsWith("SELECT variant_id, variant_label, platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
         return META_LEADERBOARD_ROWS;
       }
       if (s.includes("FROM bench.cohort_metadata")) return cohorts;
@@ -694,7 +694,7 @@ describe("Leaderboard", () => {
     vi.mocked(queryRows).mockImplementation(async (sql: string) => {
       const s = String(sql).replace(/\s+/g, " ").trim();
       if (s.includes("FROM bench.results")) return results;
-      if (s.startsWith("SELECT platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
+      if (s.startsWith("SELECT variant_id, variant_label, platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
         return META_LEADERBOARD_ROWS;
       }
       if (s.includes("FROM bench.cohort_metadata")) return cohorts;
@@ -719,7 +719,7 @@ describe("Leaderboard", () => {
     vi.mocked(queryRows).mockImplementation(async (sql: string) => {
       const s = String(sql).replace(/\s+/g, " ").trim();
       if (s.includes("FROM bench.results")) return resultRows;
-      if (s.startsWith("SELECT platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
+      if (s.startsWith("SELECT variant_id, variant_label, platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
         return META_LEADERBOARD_ROWS;
       }
       if (s.includes("FROM bench.cohort_metadata")) return cohortRows;
@@ -771,7 +771,7 @@ describe("toggleFacetValue (w13)", () => {
     vi.mocked(queryRows).mockImplementation(async (sql: string) => {
       const s = String(sql).replace(/\s+/g, " ").trim();
       if (s.includes("FROM bench.results")) return versionedRows;
-      if (s.startsWith("SELECT platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
+      if (s.startsWith("SELECT variant_id, variant_label, platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
         return META_LEADERBOARD_ROWS;
       }
       if (s.includes("FROM bench.cohort_metadata")) return COHORT_ROWS;
@@ -798,7 +798,7 @@ describe("toggleFacetValue (w13)", () => {
           ? versionedRows.filter((row) => row.platform_version === "1.4.0")
           : versionedRows;
       }
-      if (s.startsWith("SELECT platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
+      if (s.startsWith("SELECT variant_id, variant_label, platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
         return META_LEADERBOARD_ROWS;
       }
       if (s.includes("FROM bench.cohort_metadata")) return COHORT_ROWS;
@@ -828,7 +828,7 @@ describe("toggleFacetValue (w13)", () => {
     vi.mocked(queryRows).mockImplementation(async (sql: string) => {
       const s = String(sql).replace(/\s+/g, " ").trim();
       if (s.includes("JOIN bench.result_detail_metrics")) return hardwareRows;
-      if (s.startsWith("SELECT platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
+      if (s.startsWith("SELECT variant_id, variant_label, platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
         return META_LEADERBOARD_ROWS;
       }
       if (s.includes("FROM bench.cohort_metadata")) return COHORT_ROWS;

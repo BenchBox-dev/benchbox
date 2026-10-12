@@ -390,7 +390,7 @@ export function Leaderboard({ notice = null }: LeaderboardProps) {
   const publicBenchmarksOutsideLeaderboard = benchmarks.filter((benchmark) => !leaderboardBenchmarkSet.has(canonicalBenchmarkSlug(benchmark)));
   const leaderboardEvidencePlatformIds = new Set(
     (metaLeaderboard?.cohorts ?? []).flatMap((cohort) =>
-      (cohort.platforms ?? []).map((platform) => platform.platform_id),
+      (cohort.platforms ?? []).map((platform) => variantKeyOf(platform)),
     ),
   );
   const publicPlatformIdsOutsideLeaderboard = platformIds.filter((platformId) => !leaderboardEvidencePlatformIds.has(platformId));

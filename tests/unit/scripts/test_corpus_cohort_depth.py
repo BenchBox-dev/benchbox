@@ -164,6 +164,37 @@ def test_repeated_variant_bundles_do_not_pad_cohort_depth(tmp_path: Path) -> Non
     }
 
 
+def test_gateway_routed_bundles_contribute_no_identity(tmp_path: Path) -> None:
+    validator = _load_validator()
+    payload = {
+        "benchmark": {"id": "tpch", "scale_factor": 1.0, "test_type": "power"},
+        "platform": {
+            "name": "Snowflake",
+            "variant": "snowflake@greybeam",
+            "gateway": {"name": "greybeam", "routed": True},
+        },
+        "run": {"timestamp": "2026-08-01T12:00:00"},
+        **_rankable_body(),
+    }
+    (tmp_path / "gateway.json").write_text(json.dumps(payload), encoding="utf-8")
+
+    assert validator.exclusion_reason(payload) == "gateway_routed"
+    assert validator.cohort_platforms(validator.discover_bundles(tmp_path)) == {("tpch", "1.0"): set()}
+
+
+def test_requested_engine_without_variant_string_matches_pipeline(tmp_path: Path) -> None:
+    validator = _load_validator()
+    payload = {
+        "benchmark": {"id": "tpch", "scale_factor": 1.0, "test_type": "power"},
+        "platform": {"name": "Polars", "execution_engine": {"requested": "streaming"}},
+        "run": {"timestamp": "2026-08-01T12:00:00"},
+        **_rankable_body(),
+    }
+    (tmp_path / "constructed.json").write_text(json.dumps(payload), encoding="utf-8")
+
+    assert validator.cohort_platforms(validator.discover_bundles(tmp_path)) == {("tpch", "1.0"): {"polars+streaming"}}
+
+
 def _write_phase_bundle(
     directory: Path,
     name: str,
