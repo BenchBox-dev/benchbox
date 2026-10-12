@@ -23596,6 +23596,13 @@
       "status": "open",
       "title": "Record measured outcomes and vendor limits in the TPC tuning profile, and make the template generator respect them"
     },
+    "tuning-record-genuine-engine-versions": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Record genuine engine_version metadata for local runs so measured template evidence is reachable"
+    },
     "tuning-registry-mixin-honesty-20260717": {
       "claim": null,
       "needs": [],

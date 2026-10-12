@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "Decision recorded: local adapters record genuine engine versions, or measured path formally declared unreachable without engine metadata"
+  ],
+  "description": "Oracle review on #2875 (2026-10-12) required removing driver/platform substitution from _tuning_evidence_engine_version. Consequence: with no platform recording genuine engine_version metadata, measured-benefit states are unreachable for local runs (CLI measured-benefit test reworked to pin unmeasured).",
+  "sessions": [
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:0e0437f497bd07bcca4ac997",
+      "at": "2026-10-12T19:11:40Z",
+      "client": "pi",
+      "op": "create",
+      "op_id": "28161ddef25f4643802d1eca9a5ba62b",
+      "session_id": "8be230d790474fda8edea19668121bf9"
+    }
+  ]
+}
