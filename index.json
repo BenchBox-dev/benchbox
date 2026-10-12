@@ -5078,13 +5078,18 @@
       "title": "Umbrella: core execution-variant settings replace platform-specific engine, mode and compute keys"
     },
     "core-exec-explorer-variant-identity": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-13T21:54:36Z",
+        "generation": "97902be346c0480c819bbbe0506cec2c",
+        "renewals": 0,
+        "worker": "mcp:pi:joe@joe-mac-mini.local:5b994405d415152299b5a092"
+      },
       "needs": [
         "core-exec-result-schema-2-3",
         "core-exec-polars-cli-mcp-adoption"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Make Explorer and corpus identity distinguish execution engine, deployment and gateway variants"
     },
     "core-exec-framework-manifest": {
