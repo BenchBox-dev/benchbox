@@ -12364,6 +12364,13 @@
       "status": "done",
       "title": "Invalidate manifest reuse when untracked directories collide with table names"
     },
+    "matrix-consolidation-published-reanalysis": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Verify consolidated Polars analysis reproduces published outputs byte-for-byte"
+    },
     "mcp-adversarial-review-runtime-remediation-20260813": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Shared analyze_version_matrix.py --engine polars is run against the real qualification file and all 113 published bundles",
+    "Its outputs diff byte-for-byte clean against the published _project/analysis/polars-version-matrix/ outputs, or every difference is explained and recorded"
+  ],
+  "context": "PR #2920 (squash commit 22c4d000d on develop) consolidated the Polars fork onto the engine-neutral core. Unit tests use synthetic tmp_path fixtures and the polars_dry_run.txt golden; they do not exercise the real qualification file or the 113 published bundles, which live outside the checkout. The shared-code analysis path is therefore unverified end-to-end against published results.",
+  "description": "After the matrix-fork consolidation, re-run the Polars analysis through the shared analyze_version_matrix.py --engine polars entry point against the real external qualification file and all 113 published bundles, and confirm the outputs are byte-for-byte identical to the published _project/analysis/polars-version-matrix/ results. Requires operator access to the qualification file and bundles (outside the checkout). Record the exact commands and diff result.",
+  "sessions": [
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:777f03c6f7185295859c9788",
+      "at": "2026-10-12T19:10:39Z",
+      "client": "tbh",
+      "op": "create",
+      "op_id": "a1560468546e437f853099adec540ad6",
+      "session_id": "2d9e5b3180d84eb99cece7fe88d13861"
+    }
+  ]
+}
