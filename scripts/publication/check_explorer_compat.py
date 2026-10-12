@@ -354,6 +354,40 @@ TABLE_COLUMNS_V15: dict[str, dict[str, str]] = {
     "results": _V15_RESULTS_COLUMNS,
 }
 
+_VARIANT_COLUMNS: dict[str, str] = {
+    "variant_id": "VARCHAR",
+    "variant_label": "VARCHAR",
+    "requested_execution_engine": "VARCHAR",
+    "gateway_name": "VARCHAR",
+    "gateway_routed": "BOOLEAN",
+}
+
+TABLE_COLUMNS_V16: dict[str, dict[str, str]] = {
+    **TABLE_COLUMNS_V15,
+    "results": {
+        **TABLE_COLUMNS_V15["results"],
+        **_VARIANT_COLUMNS,
+    },
+    "benchmark_rankings": {
+        **TABLE_COLUMNS_V15["benchmark_rankings"],
+        "variant_id": "VARCHAR",
+        "variant_label": "VARCHAR",
+    },
+    "cohort_metadata": {
+        **TABLE_COLUMNS_V15["cohort_metadata"],
+        "variant_id": "VARCHAR",
+        "variant_label": "VARCHAR",
+    },
+    "meta_leaderboard": {
+        "variant_id": "VARCHAR",
+        "variant_label": "VARCHAR",
+        "platform_id": "VARCHAR",
+        "platform": "VARCHAR",
+        "avg_rank": "DOUBLE",
+        "n_cohorts": "INTEGER",
+    },
+}
+
 
 SCHEMA_REGISTRY: dict[int, dict[str, dict[str, str]]] = {
     9: TABLE_COLUMNS_V9,
@@ -363,6 +397,7 @@ SCHEMA_REGISTRY: dict[int, dict[str, dict[str, str]]] = {
     13: TABLE_COLUMNS_V13,
     14: TABLE_COLUMNS_V14,
     15: TABLE_COLUMNS_V15,
+    16: TABLE_COLUMNS_V16,
 }
 
 REQUIRED_INDEXES_V9: list[tuple[str, str, list[str]]] = [
@@ -419,6 +454,16 @@ REQUIRED_VIEW_COLUMNS_V15: dict[str, list[str]] = {
         "template_evidence",
     ],
 }
+REQUIRED_VIEW_COLUMNS_V16: dict[str, list[str]] = {
+    "result_detail_metrics": [
+        *REQUIRED_VIEW_COLUMNS_V15["result_detail_metrics"],
+        "variant_id",
+        "variant_label",
+        "requested_execution_engine",
+        "gateway_name",
+        "gateway_routed",
+    ],
+}
 
 
 def get_table_columns_for_version(version: int) -> dict[str, dict[str, str]]:
@@ -441,6 +486,12 @@ def get_indexes_for_version(version: int) -> list[tuple[str, str, list[str]]]:
     if version not in SUPPORTED_SCHEMA_VERSIONS:
         raise ValueError(f"Unsupported schema version: {version}")
     return list(REQUIRED_INDEXES_V10)
+
+
+def _meta_leaderboard_pk(columns_map: dict[str, dict[str, str]]) -> str:
+    if "variant_id" in columns_map.get("meta_leaderboard", {}):
+        return "variant_id"
+    return "platform_id"
 
 
 def generate_schema_ddl(version: int) -> list[str]:
@@ -492,9 +543,9 @@ def generate_schema_ddl(version: int) -> list[str]:
     ddl_statements.append("CREATE INDEX idx_cohort_metadata_key ON cohort_metadata (cohort_key);")
     ddl_statements.append("CREATE INDEX idx_cohort_metadata_platform ON cohort_metadata (cohort_key, platform_id);")
 
+    ml_cols = ", ".join(f"{c} {t}" for c, t in columns_map["meta_leaderboard"].items())
     ddl_statements.append(
-        "CREATE TABLE meta_leaderboard (platform_id VARCHAR PRIMARY KEY, platform VARCHAR NOT NULL, "
-        "avg_rank DOUBLE, n_cohorts INTEGER NOT NULL);"
+        f"CREATE TABLE meta_leaderboard ({ml_cols}, PRIMARY KEY ({_meta_leaderboard_pk(columns_map)}));"
     )
 
     ddl_statements.append("CREATE TABLE short_ids (short_id VARCHAR PRIMARY KEY, result_id VARCHAR NOT NULL UNIQUE);")
@@ -557,7 +608,7 @@ CORE_EXPLORER_QUERIES: list[tuple[str, str]] = [
     ),
     (
         "Meta leaderboard summary",
-        "SELECT platform_id, platform, avg_rank, n_cohorts FROM meta_leaderboard",
+        "SELECT variant_id, variant_label, platform_id, platform, avg_rank, n_cohorts FROM meta_leaderboard",
     ),
     (
         "Short ID resolution",
@@ -639,7 +690,9 @@ def validate_database_schema(con: Any, expected_version: int | None = None) -> l
     if missing_views:
         errors.append(f"missing required views for v{version_to_check}: {', '.join(missing_views)}")
 
-    if version_to_check >= 15:
+    if version_to_check >= 16:
+        view_column_requirements = REQUIRED_VIEW_COLUMNS_V16
+    elif version_to_check >= 15:
         view_column_requirements = REQUIRED_VIEW_COLUMNS_V15
     elif version_to_check >= 14:
         view_column_requirements = REQUIRED_VIEW_COLUMNS_V14

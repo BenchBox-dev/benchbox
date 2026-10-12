@@ -67,6 +67,7 @@ def _write_bundle(
     platform: str,
     platform_version: str | None = None,
     execution_version: str | None = None,
+    platform_variant: str | None = None,
     run_timestamp: str = "2026-08-01T12:00:00",
     test_type: str | None = "power",
 ) -> None:
@@ -74,6 +75,8 @@ def _write_bundle(
     platform_payload = {"name": platform}
     if platform_version is not None:
         platform_payload["version"] = platform_version
+    if platform_variant is not None:
+        platform_payload["variant"] = platform_variant
     payload = {
         "benchmark": {"id": benchmark, "scale_factor": scale},
         "platform": platform_payload,
@@ -109,6 +112,56 @@ def test_the_gate_detects_a_one_platform_cohort(tmp_path: Path) -> None:
     shallow = validator.shallow_cohorts(validator.cohort_platforms(validator.discover_bundles(tmp_path)))
 
     assert shallow == {("tpcds", "10.0"): {"DuckDB"}}
+
+
+def test_engine_variants_count_as_distinct_cohort_identities(tmp_path: Path) -> None:
+    validator = _load_validator()
+    _write_bundle(
+        tmp_path,
+        "default.json",
+        benchmark="tpch",
+        scale=1.0,
+        platform="Polars",
+        platform_variant="polars+default",
+    )
+    _write_bundle(
+        tmp_path,
+        "streaming.json",
+        benchmark="tpch",
+        scale=1.0,
+        platform="Polars",
+        platform_variant="polars+streaming",
+    )
+    _write_bundle(tmp_path, "duckdb.json", benchmark="tpch", scale=1.0, platform="DuckDB")
+
+    cohorts = validator.cohort_platforms(validator.discover_bundles(tmp_path))
+
+    assert cohorts == {("tpch", "1.0"): {"polars+default", "polars+streaming", "DuckDB"}}
+    assert validator.shallow_cohorts(cohorts) == {}
+
+
+def test_repeated_variant_bundles_do_not_pad_cohort_depth(tmp_path: Path) -> None:
+    validator = _load_validator()
+    _write_bundle(
+        tmp_path,
+        "a.json",
+        benchmark="tpch",
+        scale=1.0,
+        platform="Polars",
+        platform_variant="polars+streaming",
+    )
+    _write_bundle(
+        tmp_path,
+        "b.json",
+        benchmark="tpch",
+        scale=1.0,
+        platform="Polars",
+        platform_variant="polars+streaming",
+    )
+
+    assert validator.shallow_cohorts(validator.cohort_platforms(validator.discover_bundles(tmp_path))) == {
+        ("tpch", "1.0"): {"polars+streaming"}
+    }
 
 
 def _write_phase_bundle(

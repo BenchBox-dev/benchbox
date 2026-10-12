@@ -98,6 +98,16 @@ export function buildComparabilityFields(results: DetailResult[]): Comparability
     compareValues("Platform version", results, (result) => valueOrMissing(result.platform_version)),
     compareValues("Driver version", results, (result) => valueOrMissing(result.driver_version)),
     compareValues("Execution mode", results, (result) => result.execution_mode ? formatExecutionMode(result.execution_mode) : "Not recorded"),
+    compareValues(
+      "Execution engine",
+      results,
+      (result) => result.requested_execution_engine ?? "Not recorded",
+    ),
+    compareValues(
+      "Gateway",
+      results,
+      (result) => (result.gateway_routed ? `Routed via ${result.gateway_name ?? "unknown"}` : "Native"),
+    ),
     buildTuningField(results),
     compareValues(
       "Validation",

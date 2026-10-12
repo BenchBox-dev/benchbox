@@ -76,6 +76,26 @@ describe("ComparabilityReceipt", () => {
     expect(receipt).not.toHaveTextContent("benchbox.core.cost.pricing");
   });
 
+  it("shows execution engine and gateway routing", () => {
+    const fields = buildComparabilityFields([
+      makeDetail({ requested_execution_engine: "default" }),
+      makeDetail({
+        result_id: "r2",
+        requested_execution_engine: "streaming",
+        gateway_name: "greybeam",
+        gateway_routed: true,
+      }),
+    ]);
+    expect(fields.find((field) => field.label === "Execution engine")).toMatchObject({
+      status: "diff",
+      detail: "DuckDB: default; DuckDB: streaming",
+    });
+    expect(fields.find((field) => field.label === "Gateway")).toMatchObject({
+      status: "diff",
+      detail: "DuckDB: Native; DuckDB: Routed via greybeam",
+    });
+  });
+
   it("flags normalized cost metadata differences", () => {
     const fields = buildComparabilityFields([
       makeDetail({ normalized_cost_usd: 0.42, cost_status: "normalized" }),

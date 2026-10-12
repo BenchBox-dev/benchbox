@@ -426,6 +426,9 @@ def _comparison_identity(bundle: pathlib.Path, payload: dict) -> str:
     except Exception as exc:
         raise CorpusReadError(f"ERROR reading platform identity from {bundle}: {exc}") from exc
     identity = str(platform)
+    variant = platform_section.get("variant")
+    if variant and str(variant) != str(platform):
+        identity = str(variant)
     if version and str(version) != "unknown":
         identity = f"{identity} v{str(version)[:120]}"
     return identity

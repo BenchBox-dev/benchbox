@@ -313,6 +313,8 @@ def _build_benchmark_summaries(
                 result_id=entry.result_id,
                 short_id=full_to_short.get(entry.result_id, ""),
                 platform_id=entry.platform_id,
+                variant_id=entry.variant_id,
+                variant_label=entry.variant_label,
                 platform=entry.platform,
                 platform_version=entry.platform_version,
                 tuning_mode=entry.tuning_mode,
@@ -412,6 +414,8 @@ def _rank_platforms_in_cohort(
         entries.append(
             {
                 "platform_id": row.platform_id,
+                "variant_id": row.variant_id,
+                "variant_label": row.variant_label,
                 "platform": row.platform,
                 "result_id": row.result_id,
                 "short_id": full_to_short.get(row.result_id, ""),
@@ -434,13 +438,15 @@ def _compute_average_ranks(platform_agg: dict[str, dict[str, Any]]) -> list[dict
         records.append(
             {
                 "platform_id": pdata["platform_id"],
+                "variant_id": pdata.get("variant_id") or pdata["platform_id"],
+                "variant_label": pdata.get("variant_label") or pdata["platform"],
                 "platform": pdata["platform"],
                 "ranks": ranks,
                 "avg_rank": avg_rank,
                 "n_cohorts": len(ranks),
             }
         )
-    records.sort(key=lambda p: (p["avg_rank"] is None, p["avg_rank"] or float("inf"), p["platform_id"]))
+    records.sort(key=lambda p: (p["avg_rank"] is None, p["avg_rank"] or float("inf"), p["variant_id"]))
     return records
 
 
@@ -473,9 +479,15 @@ def _build_meta_leaderboard(
             rank = entry["rank"]
             if rank is None:
                 continue
-            pid = entry["platform_id"]
+            pid = entry["variant_id"] or entry["platform_id"]
             if pid not in platform_agg:
-                platform_agg[pid] = {"platform_id": pid, "platform": entry["platform"], "ranks": {}}
+                platform_agg[pid] = {
+                    "platform_id": entry["platform_id"],
+                    "variant_id": entry["variant_id"],
+                    "variant_label": entry["variant_label"],
+                    "platform": entry["platform"],
+                    "ranks": {},
+                }
             existing = platform_agg[pid]["ranks"].get(cohort_key)
             if existing is None or rank < existing["rank"]:
                 platform_agg[pid]["ranks"][cohort_key] = {
