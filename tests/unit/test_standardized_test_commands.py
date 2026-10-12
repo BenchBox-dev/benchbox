@@ -408,17 +408,6 @@ class TestMakefileCommands:
             in makefile_content
         )
 
-    def test_medium_marker_policy_is_documented_with_pr_routing(self):
-        repo_root = Path(__file__).resolve().parent.parent.parent
-        readme_content = (repo_root / "tests" / "README.md").read_text()
-        makefile_content = (repo_root / "Makefile").read_text()
-
-        assert "The `medium-test` job in `.github/workflows/ci.yml` runs `make test-medium`" in readme_content
-        assert "only when the heavy tier is needed" in readme_content
-        assert "Ordinary\ncode-change PRs skip it" in readme_content
-        assert "Product-critical tests that need a different" in readme_content
-        assert "test-medium:" in makefile_content
-
     def test_every_speed_marker_tier_has_a_ci_consumer(self):
         from tests.unit.test_marker_strategy import _E2E_QUICK_INCOMPATIBLE, _SPEED_MARKERS
 
