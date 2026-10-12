@@ -837,20 +837,18 @@ _SNOWFLAKE_ESTIMATE_CREDIT_USD = Decimal("2.00")
 _SNOWFLAKE_ESTIMATE_PRICING_DATE = "2026-10-09"
 
 
-def _median_measured_seconds_per_query(bundle: BundleDocument) -> tuple[Decimal, int] | None:
+def _median_measured_seconds_per_query(bundle: BundleDocument) -> Decimal | None:
     timings = _query_timings(bundle)
     measured = [timing for timing in timings if timing.run_type == "measurement"]
     if not measured and timings and all(timing.run_type is None for timing in timings):
         measured = timings
     if not measured or any(timing.status != "pass" for timing in measured):
         return None
+    if any(timing.duration_ms is None or timing.duration_ms <= 0 for timing in measured):
+        return None
     by_query: dict[str, list[Decimal]] = {}
-    omitted = 0
     for timing in measured:
-        if timing.duration_ms > 0:
-            by_query.setdefault(timing.query_id, []).append(Decimal(str(timing.duration_ms)) / Decimal("1000"))
-        else:
-            omitted += 1
+        by_query.setdefault(timing.query_id, []).append(Decimal(str(timing.duration_ms)) / Decimal("1000"))
     if not by_query:
         return None
     total = Decimal("0")
@@ -861,7 +859,7 @@ def _median_measured_seconds_per_query(bundle: BundleDocument) -> tuple[Decimal,
             total += ordered[midpoint]
         else:
             total += (ordered[midpoint - 1] + ordered[midpoint]) / Decimal("2")
-    return total, omitted
+    return total
 
 
 def _estimated_normalized_cost(bundle: BundleDocument) -> NormalizedCost | None:
@@ -871,7 +869,7 @@ def _estimated_normalized_cost(bundle: BundleDocument) -> NormalizedCost | None:
     runtime = _median_measured_seconds_per_query(bundle)
     if runtime is None:
         return None
-    runtime_seconds, omitted_count = runtime
+    runtime_seconds = runtime
 
     compute = bundle.platform.compute
     cloud_block = bundle.platform.cloud
@@ -904,8 +902,6 @@ def _estimated_normalized_cost(bundle: BundleDocument) -> NormalizedCost | None:
         "Startup, minimum billing, idle/auto-stop time, scaling overhead, discounts, and non-compute charges are excluded.",
         "Historical rates are not reconstructed; the selected reference rate is applied to this run's recorded timings.",
     ]
-    if omitted_count:
-        assumptions.append("Rows with missing or zero query duration are omitted from the runtime sum.")
     if observed_size is None:
         assumptions.append(f"Warehouse size is assumed to be {size} because the bundle does not record it.")
     else:

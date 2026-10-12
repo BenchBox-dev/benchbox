@@ -545,13 +545,6 @@ export function Leaderboard({ notice = null }: LeaderboardProps) {
                 )}
               </div>
 
-              <LeaderboardComparePicker
-                results={results}
-                facets={facets}
-                rankingScope={rankingScope}
-                onRankingScopeChange={setRankingScopeRaw}
-              />
-
               <details
                 class={LEADERBOARD_SHELL_GEOMETRY_CLASSES.scopeDetails}
                 data-testid="leaderboard-scope-summary-mobile"
@@ -606,6 +599,13 @@ export function Leaderboard({ notice = null }: LeaderboardProps) {
               </details>
             </section>
           )}
+          {filteredMetaLeaderboard && (
+            <p class="mt-2 text-sm" data-testid="home-compare-jump">
+              <a href="#leaderboard-compare-picker" class="font-medium text-[var(--bb-accent-hover)] underline">
+                Compare runs in the selected cohort ↓
+              </a>
+            </p>
+          )}
         </div>
       </section>
 
@@ -638,6 +638,15 @@ export function Leaderboard({ notice = null }: LeaderboardProps) {
 
         <ProvenanceLegend />
       </div>
+
+      {filteredMetaLeaderboard && (
+        <LeaderboardComparePicker
+          results={results}
+          facets={facets}
+          rankingScope={rankingScope}
+          onRankingScopeChange={setRankingScopeRaw}
+        />
+      )}
 </div>
   );
 }
@@ -725,6 +734,9 @@ function LeaderboardLoadingSkeleton({
               </div>
             </div>
           </section>
+          <p aria-hidden="true" class="mt-2 text-sm" data-testid="home-loading-compare-jump-reserve">
+            <span class="invisible">Compare runs in the selected cohort ↓</span>
+          </p>
         </div>
       </section>
 
@@ -1202,9 +1214,15 @@ function LeaderboardComparePicker({
     : canCompareSelection
       ? `Compare ${selectedCohortCount} selected`
       : "Select at least 2 runs";
+  const subsetHref = compareAllRuns &&
+    selectedCohortCount >= 2 &&
+    selectedCohortCount < cohort!.results.length
+    ? buildCompareUrl(selectedCohortIds)
+    : null;
   const limitReached = selectedCohortCount >= MAX_COMPARE_SELECTIONS;
   const multipleCohorts = filteredCohorts.length > 1;
   const noSingleCohort = cohort === null;
+  const scopeRunsNoun = rankingScope === "comparable" ? "published comparable" : "ranked comparable";
 
   function togglePicked(id: string) {
     if (picking) {
@@ -1228,6 +1246,7 @@ function LeaderboardComparePicker({
   return (
     <section
       aria-label="Compare runs in the selected cohort"
+      id="leaderboard-compare-picker"
       class="mt-4 rounded-lg border border-[var(--bb-border-default)] bg-[var(--bb-bg-panel)] p-3 sm:p-4"
       data-testid="leaderboard-compare-picker"
     >
@@ -1301,13 +1320,22 @@ function LeaderboardComparePicker({
               {compareLabel}
             </button>
           )}
+          {subsetHref && (
+            <a
+              href={subsetHref}
+              class="btn btn-secondary mt-2 no-underline"
+              data-testid="leaderboard-compare-subset"
+            >
+              Compare {selectedCohortCount} selected
+            </a>
+          )}
           <p id="leaderboard-compare-guidance" class="mt-1 text-xs text-[var(--bb-fg-muted)]" role="status">
             {compareAllRuns
-              ? `Compare All Runs includes all ${cohort.results.length} comparable runs in this cohort.`
+              ? `Compare All Runs includes all ${cohort.results.length} ${scopeRunsNoun} runs in this cohort.`
               : cohort && cohort.results.length > MAX_COMPARE_SELECTIONS
                 ? selectedCohortCount >= 2
                   ? `${selectedCohortCount} runs selected in this cohort; the maximum is ${MAX_COMPARE_SELECTIONS}.`
-                  : `Select at least 2 of the ${cohort.results.length} comparable runs in this cohort, up to ${MAX_COMPARE_SELECTIONS}.`
+                  : `Select at least 2 of the ${cohort.results.length} ${scopeRunsNoun} runs in this cohort, up to ${MAX_COMPARE_SELECTIONS}.`
                 : cohort && cohort.results.length === 0 && rankingScope !== "comparable"
                   ? "No ranked comparable runs are available in this cohort. Choose all published comparable runs to include unranked evidence."
                   : cohort && cohort.results.length === 1
@@ -1328,12 +1356,12 @@ function LeaderboardComparePicker({
             {cohort.phase === "throughput" && cohort.streamCount !== null ? ` · ${cohort.streamCount} streams` : ""}
           </h2>
           <p class="mt-1 text-xs text-[var(--bb-fg-muted)]">
-            {cohort.results.length} {cohort.results.length === 1 ? "published run is" : "published runs are"} comparable in this cohort.
+            {cohort.results.length} {scopeRunsNoun} {cohort.results.length === 1 ? "run is" : "runs are"} available in this cohort.
           </p>
           {cohort.results.length > 0 && <ul class="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
             {cohort.results.map((result) => {
               const selected = selectedCohortIds.includes(result.result_id);
-              const disabled = compareAllRuns || (!selected && limitReached);
+              const disabled = !selected && limitReached;
               const runId = visibleResultIdForRow(result);
               const rankingWarning = result.ranking_exclusion_reason === "known_defective_data"
                 ? "Known defective data; available for comparison, excluded from rankings."

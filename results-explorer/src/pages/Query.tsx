@@ -882,14 +882,23 @@ export function Query({ url }: QueryProps) {
                   );
                   const compareUrl = compareSelectedIds.size >= 2 ? buildCompareUrl(selectedCompareIds) : null;
                   const wholeFilteredSetVisible = rows.length === resultTotal;
-                  const cohortComparableRows = compareCohortSignature !== null && wholeFilteredSetVisible
+                  const visibleComparableRows = wholeFilteredSetVisible
+                    ? rows.filter((row) => comparisonExclusionReason(row) === undefined)
+                    : [];
+                  const visibleCohortKeys = new Set(
+                    visibleComparableRows.map((row) => JSON.stringify(compareCohortSignatureForRow(row))),
+                  );
+                  const lockedComparableRows = compareCohortSignature !== null && wholeFilteredSetVisible
                     ? compareRowPartition.compatible.filter((row) => comparisonExclusionReason(row) === undefined)
                     : [];
+                  const allRunsCandidates = visibleCohortKeys.size === 1
+                    ? visibleComparableRows
+                    : lockedComparableRows;
                   const compareAllQueryUrl =
-                    cohortComparableRows.length >= 2 &&
-                    cohortComparableRows.length <= MAX_COMPARE_SELECTIONS
+                    allRunsCandidates.length >= 2 &&
+                    allRunsCandidates.length <= MAX_COMPARE_SELECTIONS
                       ? buildCompareUrl(
-                        cohortComparableRows.map((row) => compareIdForRow(row as Parameters<typeof compareIdForRow>[0])),
+                        allRunsCandidates.map((row) => compareIdForRow(row as Parameters<typeof compareIdForRow>[0])),
                       )
                       : null;
                   return (
@@ -959,6 +968,15 @@ export function Query({ url }: QueryProps) {
                               >
                                 Compare (need 2+)
                               </button>
+                            )}
+                            {compareAllQueryUrl && compareUrl && compareAllQueryUrl !== compareUrl && (
+                              <a
+                                href={compareUrl}
+                                class="btn btn-secondary shrink-0 px-3 py-1 text-xs no-underline"
+                                data-testid="query-compare-subset"
+                              >
+                                Compare {compareSelectedIds.size} selected →
+                              </a>
                             )}
                           </span>
                         </div>

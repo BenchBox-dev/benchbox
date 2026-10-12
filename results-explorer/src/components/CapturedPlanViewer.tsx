@@ -39,10 +39,7 @@ export function CapturedPlanViewer({ plansUrl }: CapturedPlanViewerProps) {
           throw new Error("Plan sidecar exceeds the viewer limit");
         }
       }
-      const text = await response.text();
-      if (new TextEncoder().encode(text).byteLength > MAX_PLAN_SIDECAR_BYTES) {
-        throw new Error("Plan sidecar exceeds the viewer limit");
-      }
+      const text = await readCappedSidecarText(response);
       const parsed = parseQueryPlanDocument(JSON.parse(text) as unknown);
       if (parsed.plans.length === 0) {
         setStatus("unavailable");
@@ -105,6 +102,37 @@ export function CapturedPlanViewer({ plansUrl }: CapturedPlanViewerProps) {
       )}
     </section>
   );
+}
+
+async function readCappedSidecarText(response: Response): Promise<string> {
+  const body = response.body;
+  if (!body || typeof body.getReader !== "function") {
+    const text = await response.text();
+    if (new TextEncoder().encode(text).byteLength > MAX_PLAN_SIDECAR_BYTES) {
+      throw new Error("Plan sidecar exceeds the viewer limit");
+    }
+    return text;
+  }
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  const chunks: string[] = [];
+  let bytes = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > MAX_PLAN_SIDECAR_BYTES) {
+        await reader.cancel();
+        throw new Error("Plan sidecar exceeds the viewer limit");
+      }
+      chunks.push(decoder.decode(value, { stream: true }));
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  chunks.push(decoder.decode());
+  return chunks.join("");
 }
 
 function PlanDetail({

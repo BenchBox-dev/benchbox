@@ -87,6 +87,7 @@ test.describe("tray accessibility: announcements, focus, escape", () => {
 
     const checkboxes = page.getByRole("checkbox", { name: /Select .* for comparison/i });
     await expect(checkboxes.first()).toBeVisible();
+    await expect(page.getByTestId("list-row-disabled-reason").first()).toBeVisible();
     const n = await checkboxes.count();
     expect(n).toBeGreaterThanOrEqual(11);
 

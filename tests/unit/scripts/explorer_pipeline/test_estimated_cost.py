@@ -40,9 +40,25 @@ def test_runtime_collapses_to_one_median_per_query() -> None:
     runtime = _median_measured_seconds_per_query(_parse_bundle(_snowflake_bundle()))
 
     assert runtime is not None
-    total_seconds, omitted = runtime
-    assert total_seconds == Decimal("0.605")
-    assert omitted == 0
+    assert runtime == Decimal("0.605")
+
+
+def test_incomplete_measured_timing_refuses_estimate() -> None:
+    zero_duration = _snowflake_bundle()
+    zero_duration["queries"] = [
+        {"id": "Q1", "ms": 100.0, "iter": 1, "stream": 0, "run_type": "measurement", "status": "SUCCESS"},
+        {"id": "Q6", "ms": 0.0, "iter": 1, "stream": 0, "run_type": "measurement", "status": "SUCCESS"},
+    ]
+    assert _median_measured_seconds_per_query(_parse_bundle(zero_duration)) is None
+    assert _estimated_normalized_cost(_parse_bundle(zero_duration)) is None
+
+    missing_duration = _snowflake_bundle()
+    missing_duration["queries"] = [
+        {"id": "Q1", "ms": 100.0, "iter": 1, "stream": 0, "run_type": "measurement", "status": "SUCCESS"},
+        {"id": "Q6", "iter": 1, "stream": 0, "run_type": "measurement", "status": "SUCCESS"},
+    ]
+    assert _median_measured_seconds_per_query(_parse_bundle(missing_duration)) is None
+    assert _estimated_normalized_cost(_parse_bundle(missing_duration)) is None
 
 
 def test_estimate_uses_per_query_medians_not_execution_count() -> None:

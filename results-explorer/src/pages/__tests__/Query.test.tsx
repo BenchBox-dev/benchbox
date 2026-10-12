@@ -283,7 +283,7 @@ describe("Query", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Only exact zero timings are available");
     expect(screen.queryByTestId("query-compare-selected-r1")).toBeNull();
-    expect(screen.getByTestId("query-compare-launch-disabled")).toBeTruthy();
+    expect(screen.getByTestId("query-compare-launch").textContent).toBe("Compare All Runs");
   });
 
   it("shows narrowing facets and clears them when no rows match", async () => {
@@ -313,19 +313,58 @@ describe("Query", () => {
     expect(screen.queryByTestId("query-empty-state")).toBeNull();
   });
 
-  it("renders the compare tray and enables launch only after two compatible selections", async () => {
+  it("falls back to picks when filtered rows span multiple cohorts", async () => {
+    resultRows = [
+      BASE_ROWS[0]!,
+      BASE_ROWS[1]!,
+      { ...BASE_ROWS[0]!, result_id: "r5", platform: "DuckDB extra" },
+      { ...BASE_ROWS[0]!, result_id: "r3", benchmark: "tpch", platform: "DuckDB tpch" },
+      { ...BASE_ROWS[1]!, result_id: "r4", benchmark: "tpch", platform: "SQLite tpch" },
+    ];
+
+    render(<Query />);
+    await waitFor(() => expect(screen.getAllByText("DuckDB").length).toBeGreaterThan(0));
+
+    expect(screen.queryByTestId("query-compare-launch")).toBeNull();
+    expect(screen.getByTestId("query-compare-launch-disabled")).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId("query-compare-checkbox-r1"));
+    fireEvent.click(screen.getByTestId("query-compare-checkbox-r2"));
+    const launch = screen.getByTestId("query-compare-launch") as HTMLAnchorElement;
+    expect(launch.textContent).toBe("Compare All Runs");
+    expect(launch.href).toContain("/results/compare?ids=");
+    const subset = screen.getByTestId("query-compare-subset") as HTMLAnchorElement;
+    expect(subset.textContent).toContain("2 selected");
+    expect(subset.href).toContain("/results/compare?ids=");
+  });
+
+  it("falls back to picks when the comparable set exceeds ten runs", async () => {
+    resultRows = Array.from({ length: 12 }, (_, index) => ({
+      ...BASE_ROWS[0]!,
+      result_id: `r-big-${index + 1}`,
+      platform: `Platform ${index + 1}`,
+    }));
+
+    render(<Query />);
+    await waitFor(() => expect(screen.getAllByText("Platform 1").length).toBeGreaterThan(0));
+
+    expect(screen.queryByText("Compare All Runs")).toBeNull();
+    expect(screen.getByTestId("query-compare-launch-disabled")).toBeTruthy();
+  });
+
+  it("renders the compare tray and offers Compare All Runs for a small single-cohort set", async () => {
     render(<Query />);
     await waitFor(() => expect(screen.getAllByText("DuckDB").length).toBeGreaterThan(0));
 
     const tray = screen.getByTestId("query-compare-tray");
     expect(tray.textContent).toContain("Select two or more rows");
-    expect(screen.getByTestId("query-compare-launch-disabled")).toBeTruthy();
+    const initial = screen.getByTestId("query-compare-launch") as HTMLAnchorElement;
+    expect(initial.textContent).toBe("Compare All Runs");
+    expect(initial.href).toContain("/results/compare?ids=");
 
     fireEvent.click(screen.getByTestId("query-compare-checkbox-r1"));
     expect(screen.getByTestId("query-compare-tray").textContent).toContain("1 result selected");
-    const allRuns = screen.getByTestId("query-compare-launch") as HTMLAnchorElement;
-    expect(allRuns.textContent).toBe("Compare All Runs");
-    expect(allRuns.href).toContain("/results/compare?ids=");
+    expect(screen.getByTestId("query-compare-launch").textContent).toBe("Compare All Runs");
 
     fireEvent.click(screen.getByTestId("query-compare-checkbox-r2"));
     expect(screen.getByTestId("query-compare-tray").textContent).toContain("2 results selected");
@@ -335,6 +374,7 @@ describe("Query", () => {
 
     fireEvent.click(screen.getByTestId("query-compare-clear"));
     expect(screen.getByTestId("query-compare-tray").textContent).toContain("Select two or more rows");
+    expect(screen.getByTestId("query-compare-launch").textContent).toBe("Compare All Runs");
   });
 
   it("locks compare selection by hidden phase and primary-metric metadata", async () => {

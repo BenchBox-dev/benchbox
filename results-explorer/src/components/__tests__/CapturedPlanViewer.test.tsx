@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CapturedPlanViewer } from "@/components/CapturedPlanViewer";
+import { MAX_PLAN_SIDECAR_BYTES } from "@/lib/queryPlans";
 
 const DAG_SIDECAR = {
   version: "1.0",
@@ -82,6 +83,36 @@ describe("CapturedPlanViewer", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Published query plans are unavailable.");
     expect(text).not.toHaveBeenCalled();
+  });
+
+  it("stops reading a body that exceeds the viewer limit when Content-Length is absent", async () => {
+    const overflow = new TextEncoder().encode("x".repeat(MAX_PLAN_SIDECAR_BYTES + 1));
+    const chunks: Uint8Array[] = [overflow.subarray(0, 7), overflow.subarray(7)];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        headers: { get: () => null },
+        body: {
+          getReader: () => {
+            let index = 0;
+            return {
+              read: async () =>
+                index < chunks.length
+                  ? { done: false, value: chunks[index++]! }
+                  : { done: true, value: undefined },
+              cancel: async () => undefined,
+              releaseLock: () => undefined,
+            };
+          },
+        },
+      }),
+    );
+    render(<CapturedPlanViewer plansUrl="/results/r1.plans.json" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "View query plans" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Published query plans are unavailable.");
   });
 
   it("states when plans were captured without a published file and does not fetch", () => {
