@@ -163,6 +163,15 @@
       "op": "take",
       "op_id": "1b541f04a177413693682a3f9b0804a0",
       "session_id": "8f6bd2834b07424a9ceb8de7cf059cc0"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:72d252577f78e52e5c8c8188",
+      "at": "2026-10-12T22:41:52Z",
+      "client": "tbh",
+      "generation": "b1445114d007420991ca1c58afd9c8a2",
+      "op": "finish",
+      "op_id": "cb0e95f4ee0f438cbcc5d7070efbe035",
+      "session_id": "8f6bd2834b07424a9ceb8de7cf059cc0"
     }
   ]
 }
