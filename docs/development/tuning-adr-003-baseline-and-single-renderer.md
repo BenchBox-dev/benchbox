@@ -309,12 +309,14 @@ attribution:
   peaks above the 5.25 GiB envelope and fails; the single hash join peaks at
   3.4 GiB. Setting `hash` for the whole session instead raised the geometric
   mean 1.23× and Q13 4.2×, so it is limited to the one query that needs it.
-- Wait for background merges to settle after a tuned server-mode load, so the first
-  timed query does not compete with merges. The wait is bounded and is not
-  counted as load time. The wait runs only after tuned server loads, not after
-  `notuning` loads. A `notuning` cell may therefore time queries while merges
-  still run, which favours the tuned cell. The comparisons below carry this
-  asymmetry until the wait is recorded for every mode.
+- Wait for background merges to settle after every ClickHouse server-mode load, in every
+  tuning mode including `notuning`, so the first timed query does not compete with merges.
+  The wait is bounded and is not counted as load time. Each result records the wait in
+  `phases.merge_settle` (`settled`, `waited_seconds`, `active_parts`, `timeout_seconds`).
+  `active_parts` is null when the settle check itself failed; the phase is still
+  recorded with `settled: false` so a failed check is never silent.
+  The comparisons below were measured when the wait ran only after tuned loads: a `notuning`
+  cell may therefore time queries while merges still run, which favours the tuned cell.
 - A test rejects any ClickHouse tuned template that partitions a table on the
   column that already leads its sort key.
 
@@ -379,10 +381,11 @@ superseded sentence so the original claim stays traceable.
   chosen after the numbers were seen, and the Keep decisions rest on single
   sequential CLI cells at SF1. They are now marked provisional and SF1-only.
 
-The merge-settle wait runs only after tuned server loads, so `notuning` cells
-may time queries while merges still run. This favours the tuned cell and is now
-stated in the decision. The cause of the Q3, Q5 and Q18 slowdowns and the size
-of any effect at larger scales remain open. No decision changed: the template
+The merge-settle wait ran only after tuned server loads when these cells were measured, so
+`notuning` cells may time queries while merges still run. This favours the tuned cell and is now
+stated in the decision. The wait has since been extended to every server-mode load in every mode,
+with each result recording it in `phases.merge_settle`. The cause of the Q3, Q5 and Q18 slowdowns
+and the size of any effect at larger scales remain open. No decision changed: the template
 contents, the session pack contents and the Q21 override stay as decided.
 
 ## Addendum (2026-10-10): benefit rule for tuned-template verdicts

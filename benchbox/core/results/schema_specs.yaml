@@ -90,6 +90,7 @@ phase_key_order:
 - schema_creation
 - data_loading
 - post_load_maintenance
+- merge_settle
 - validation
 - statistics
 - migration

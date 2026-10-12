@@ -1110,6 +1110,7 @@ class ResultCaptureMixin:
             schema_creation=schema_creation_phase,
             validation=validation_phase,
             post_load_maintenance=self.build_post_load_maintenance_phase(),
+            merge_settle=self.build_merge_settle_phase(),
         )
 
         power_test_phase = PowerTestPhase(

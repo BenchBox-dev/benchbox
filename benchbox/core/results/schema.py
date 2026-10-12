@@ -941,6 +941,20 @@ def _post_load_maintenance_phase_payload(setup: Any) -> dict[str, Any]:
     }
 
 
+def _merge_settle_phase_payload(setup: Any) -> dict[str, Any]:
+    settle = getattr(setup, "merge_settle", None)
+    if not settle:
+        return {}
+    return {
+        "merge_settle": {
+            "settled": settle.settled,
+            "waited_seconds": settle.waited_seconds,
+            "active_parts": settle.active_parts,
+            "timeout_seconds": settle.timeout_seconds,
+        }
+    }
+
+
 _VALIDATION_SEVERITY = {"PASSED": 0, "PARTIAL": 1, "FAILED": 2}
 
 
@@ -1001,6 +1015,7 @@ def _build_phases_block(result: BenchmarkResults) -> dict[str, Any]:
                 phases["statistics"]["per_table_ms"] = stats.per_table_ms
 
     phases.update(_post_load_maintenance_phase_payload(setup))
+    phases.update(_merge_settle_phase_payload(setup))
 
     if result.execution_phases and result.execution_phases.power_test:
         power_test = result.execution_phases.power_test

@@ -22,7 +22,7 @@ _SNAPSHOT_SQL = (
 class MergeSettleResult:
     settled: bool
     waited_seconds: float
-    active_parts: int
+    active_parts: int | None
 
 
 def wait_for_merges_to_settle(

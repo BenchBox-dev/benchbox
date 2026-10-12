@@ -104,6 +104,14 @@ class ValidationPhase:
 
 
 @dataclass
+class MergeSettlePhase:
+    settled: bool
+    waited_seconds: float
+    active_parts: int | None
+    timeout_seconds: float
+
+
+@dataclass
 class PostLoadMaintenancePhase:
     duration_ms: int
     status: str = "SUCCESS"
@@ -129,6 +137,7 @@ class SetupPhase:
     validation: ValidationPhase | None = None
     statistics_gathering: StatisticsGatheringPhase | None = None
     post_load_maintenance: PostLoadMaintenancePhase | None = None
+    merge_settle: MergeSettlePhase | None = None
 
 
 @dataclass(init=False)

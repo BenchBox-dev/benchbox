@@ -135,6 +135,9 @@ class TuningHooksMixin:
             tables_processed=len(tables),
         )
 
+    def build_merge_settle_phase(self) -> Any:
+        return None
+
     def get_post_load_maintenance_metadata(self) -> dict[str, Any]:
         return {
             "total_apply_seconds": getattr(self, "_post_load_maintenance_seconds", 0.0),
