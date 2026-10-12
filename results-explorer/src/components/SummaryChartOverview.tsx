@@ -77,6 +77,152 @@ export function additionalAnalysesLabel(count: number): string {
   return `${count} additional ${count === 1 ? "analysis" : "analyses"}`;
 }
 
+export function SummaryMetricTable({
+  summary,
+  scope = "cohort",
+}: {
+  summary: BenchmarkSummary;
+  scope?: "cohort" | "compare";
+}) {
+  const displayRows = summary.platforms.filter(
+    (platform) => isTimingDisplayable(platform) && validPrimaryMetricValue(platform, "display_geomean_ms") !== null,
+  );
+  const scoreMetric = normalizePrimaryMetric(summary.ranking?.primary_metric) === "throughput_at_size"
+    ? "throughput_at_size"
+    : "power_score";
+  const scoreName = scoreMetric === "throughput_at_size" ? "Throughput@Size" : "Power@Size";
+  const powerRows = summary.platforms.filter(
+    (platform) => isRankable(platform) && validPrimaryMetricValue(platform, scoreMetric) !== null,
+  );
+  const displayScale = buildLatencyBarScale(displayRows.map((platform) => platform.display_geomean_ms));
+  const maxPower = Math.max(...powerRows.map((platform) => primaryMetricValue(platform, scoreMetric) ?? 0), 1);
+  const labels = formatRunIdentityLabelsForCohort(
+    summary.platforms.map((platform) => ({ ...platform, scale_factor: summary.scale_factor })),
+  );
+  const displayLabels = preserveUniqueAfterTruncation(
+    labels.map((label) => label.disambiguated),
+    30,
+  );
+  const rows = [...summary.platforms].sort((a, b) => {
+    const av = validPrimaryMetricValue(a, "display_geomean_ms");
+    const bv = validPrimaryMetricValue(b, "display_geomean_ms");
+    if (av !== null && bv !== null) return av - bv;
+    if (av !== null) return -1;
+    if (bv !== null) return 1;
+    return a.platform.localeCompare(b.platform);
+  });
+  const rowIndexByResultId = new Map(summary.platforms.map((platform, index) => [platform.result_id, index]));
+  const displayExclusions = summarizeChartDatasetExclusions(summary.platforms, "display_safe");
+  const powerExclusions = summarizeChartDatasetExclusions(summary.platforms, "rank_safe");
+
+  return (
+    <section class="card">
+      <div class="overflow-x-auto">
+        <table
+          class="summary-metric-table min-w-[38rem] w-full border-collapse"
+          aria-label="Speed and throughput by platform"
+        >
+          <caption class="sr-only">
+            Display geomean latency and {scoreName} for every {scope === "compare" ? "selected run" : "submitted platform"}
+          </caption>
+          <thead>
+            <tr class="border-b border-[var(--bb-data-border-strong)]">
+              <th
+                scope="col"
+                class="w-[14rem] px-2 py-2 text-left text-xs font-medium text-[var(--bb-data-fg-muted)]"
+              >
+                Platform
+              </th>
+              <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-[var(--bb-data-fg-muted)]">
+                <span class="block">Display geomean</span>
+                <span class="font-normal text-[var(--bb-data-fg-subtle)]">lower is better</span>
+              </th>
+              <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-[var(--bb-data-fg-muted)]">
+                <span class="block">{scoreName}</span>
+                <span class="font-normal text-[var(--bb-data-fg-subtle)]">higher is better</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((platform, rowIndex) => {
+              const sourceIndex = rowIndexByResultId.get(platform.result_id) ?? rowIndex;
+              const color = paletteColor(sourceIndex);
+              const displayValue = validPrimaryMetricValue(platform, "display_geomean_ms");
+              const powerValue = isRankable(platform)
+                ? validPrimaryMetricValue(platform, scoreMetric)
+                : null;
+              const displayFraction = displayValue !== null && displayScale
+                ? latencyScaleFraction(displayValue, displayScale)
+                : null;
+              const powerFraction = powerValue !== null ? Math.min(1, powerValue / maxPower) : null;
+              return (
+                <tr key={platform.result_id} class="border-b border-[var(--bb-data-border)] align-middle">
+                  <th scope="row" class="px-2 py-1.5 text-left text-sm font-medium text-[var(--bb-data-fg-primary)]">
+                    <span
+                      class="flex min-w-0 items-center gap-2"
+                      title={labels[sourceIndex]?.full ?? platform.platform}
+                    >
+                      <span
+                        class="h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: color }}
+                        aria-hidden="true"
+                      />
+                      <span class="min-w-0 break-words">{displayLabels[sourceIndex] ?? platform.platform}</span>
+                    </span>
+                  </th>
+                  <InlineMetricCell
+                    value={displayValue}
+                    formatted={displayValue === null ? "—" : fmtGeomean(displayValue)}
+                    fraction={displayFraction}
+                    color={color}
+                    title={
+                      displayValue === null
+                        ? "Display timing unavailable"
+                        : `${fmtGeomean(displayValue)} display geomean`
+                    }
+                  />
+                  <InlineMetricCell
+                    value={powerValue}
+                    formatted={powerValue === null ? "—" : fmtScore(powerValue)}
+                    fraction={powerFraction}
+                    color={color}
+                    title={
+                      powerValue === null
+                        ? `${scoreName} unavailable or not rank-safe`
+                        : `${fmtScore(powerValue)} ${scoreName}`
+                    }
+                  />
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div
+        class="mt-4 grid gap-3 border-t border-[var(--bb-data-border)] pt-4 text-sm
+          text-[var(--bb-data-fg-muted)] sm:grid-cols-2"
+      >
+        <p>
+          <strong class="text-[var(--bb-data-fg-primary)]">Population:</strong> {summary.platforms.length}{" "}
+          {scope === "compare" ? "selected" : "submitted"} runs · {displayRows.length} display-safe rows · {summary.query_ids.length} queries
+        </p>
+        <p>
+          <strong class="text-[var(--bb-data-fg-primary)]">Ranking:</strong> {powerRows.length} rank-safe rows ·
+          {scope === "compare" ? "values follow the active comparison metric" : "values stay tied to the persisted ranking contract"}
+        </p>
+        {(displayExclusions.length > 0 || powerExclusions.length > 0) && (
+          <p class="sm:col-span-2 text-xs text-[var(--bb-data-fg-subtle)]">
+            {formatExclusionCount(displayExclusions, "display chart")}
+            {displayExclusions.length > 0 && powerExclusions.length > 0 ? " · " : ""}
+            {formatExclusionCount(powerExclusions, "ranking chart")}
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export function SummaryChartOverview({
   context,
   excludeChartIds = [],
@@ -115,143 +261,9 @@ export function SummaryChartOverview({
 
   if (summary === null) return null;
 
-  const displayRows = summary.platforms.filter(
-    (platform) => isTimingDisplayable(platform) && validPrimaryMetricValue(platform, "display_geomean_ms") !== null,
-  );
-  const scoreMetric = normalizePrimaryMetric(summary.ranking?.primary_metric) === "throughput_at_size"
-    ? "throughput_at_size"
-    : "power_score";
-  const scoreName = scoreMetric === "throughput_at_size" ? "Throughput@Size" : "Power@Size";
-  const powerRows = summary.platforms.filter(
-    (platform) => isRankable(platform) && validPrimaryMetricValue(platform, scoreMetric) !== null,
-  );
-  const displayScale = buildLatencyBarScale(displayRows.map((platform) => platform.display_geomean_ms));
-  const maxPower = Math.max(...powerRows.map((platform) => primaryMetricValue(platform, scoreMetric) ?? 0), 1);
-  const labels = formatRunIdentityLabelsForCohort(
-    summary.platforms.map((platform) => ({ ...platform, scale_factor: summary.scale_factor })),
-  );
-  const displayLabels = preserveUniqueAfterTruncation(
-    labels.map((label) => label.disambiguated),
-    30,
-  );
-  const rows = [...summary.platforms].sort((a, b) => {
-    const av = validPrimaryMetricValue(a, "display_geomean_ms");
-    const bv = validPrimaryMetricValue(b, "display_geomean_ms");
-    if (av !== null && bv !== null) return av - bv;
-    if (av !== null) return -1;
-    if (bv !== null) return 1;
-    return a.platform.localeCompare(b.platform);
-  });
-  const rowIndexByResultId = new Map(summary.platforms.map((platform, index) => [platform.result_id, index]));
-  const displayExclusions = summarizeChartDatasetExclusions(summary.platforms, "display_safe");
-  const powerExclusions = summarizeChartDatasetExclusions(summary.platforms, "rank_safe");
-
   return (
     <div class="scroll-mt-24 space-y-6" data-testid="summary-chart-overview" id="cohort-charts">
-      <section class="card">
-        <div class="overflow-x-auto">
-          <table
-            class="summary-metric-table min-w-[38rem] w-full border-collapse"
-            aria-label="Speed and throughput by platform"
-          >
-            <caption class="sr-only">
-              Display geomean latency and {scoreName} for every submitted platform in this cohort
-            </caption>
-            <thead>
-              <tr class="border-b border-[var(--bb-data-border-strong)]">
-                <th
-                  scope="col"
-                  class="w-[14rem] px-2 py-2 text-left text-xs font-medium text-[var(--bb-data-fg-muted)]"
-                >
-                  Platform
-                </th>
-                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-[var(--bb-data-fg-muted)]">
-                  <span class="block">Display geomean</span>
-                  <span class="font-normal text-[var(--bb-data-fg-subtle)]">lower is better</span>
-                </th>
-                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-[var(--bb-data-fg-muted)]">
-                  <span class="block">{scoreName}</span>
-                  <span class="font-normal text-[var(--bb-data-fg-subtle)]">higher is better</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((platform, rowIndex) => {
-                const sourceIndex = rowIndexByResultId.get(platform.result_id) ?? rowIndex;
-                const color = paletteColor(sourceIndex);
-                const displayValue = validPrimaryMetricValue(platform, "display_geomean_ms");
-                const powerValue = isRankable(platform)
-                  ? validPrimaryMetricValue(platform, scoreMetric)
-                  : null;
-                const displayFraction = displayValue !== null && displayScale
-                  ? latencyScaleFraction(displayValue, displayScale)
-                  : null;
-                const powerFraction = powerValue !== null ? Math.min(1, powerValue / maxPower) : null;
-                return (
-                  <tr key={platform.result_id} class="border-b border-[var(--bb-data-border)] align-middle">
-                    <th scope="row" class="px-2 py-1.5 text-left text-sm font-medium text-[var(--bb-data-fg-primary)]">
-                      <span
-                        class="flex min-w-0 items-center gap-2"
-                        title={labels[sourceIndex]?.full ?? platform.platform}
-                      >
-                        <span
-                          class="h-2.5 w-2.5 shrink-0 rounded-full"
-                          style={{ backgroundColor: color }}
-                          aria-hidden="true"
-                        />
-                        <span class="min-w-0 break-words">{displayLabels[sourceIndex] ?? platform.platform}</span>
-                      </span>
-                    </th>
-                    <InlineMetricCell
-                      value={displayValue}
-                      formatted={displayValue === null ? "—" : fmtGeomean(displayValue)}
-                      fraction={displayFraction}
-                      color={color}
-                      title={
-                        displayValue === null
-                          ? "Display timing unavailable"
-                          : `${fmtGeomean(displayValue)} display geomean`
-                      }
-                    />
-                    <InlineMetricCell
-                      value={powerValue}
-                      formatted={powerValue === null ? "—" : fmtScore(powerValue)}
-                      fraction={powerFraction}
-                      color={color}
-                      title={
-                        powerValue === null
-                          ? `${scoreName} unavailable or not rank-safe`
-                          : `${fmtScore(powerValue)} ${scoreName}`
-                      }
-                    />
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        <div
-          class="mt-4 grid gap-3 border-t border-[var(--bb-data-border)] pt-4 text-sm
-            text-[var(--bb-data-fg-muted)] sm:grid-cols-2"
-        >
-          <p>
-            <strong class="text-[var(--bb-data-fg-primary)]">Population:</strong> {summary.platforms.length} submitted
-            runs · {displayRows.length} display-safe rows · {summary.query_ids.length} queries
-          </p>
-          <p>
-            <strong class="text-[var(--bb-data-fg-primary)]">Ranking:</strong> {powerRows.length} rank-safe rows ·
-            values stay tied to the persisted ranking contract
-          </p>
-          {(displayExclusions.length > 0 || powerExclusions.length > 0) && (
-            <p class="sm:col-span-2 text-xs text-[var(--bb-data-fg-subtle)]">
-              {formatExclusionCount(displayExclusions, "display chart")}
-              {displayExclusions.length > 0 && powerExclusions.length > 0 ? " · " : ""}
-              {formatExclusionCount(powerExclusions, "ranking chart")}
-            </p>
-          )}
-        </div>
-      </section>
+      <SummaryMetricTable summary={summary} />
 
       <section class="card">
         <div data-chart-container>

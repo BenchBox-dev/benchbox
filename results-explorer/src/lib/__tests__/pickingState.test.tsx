@@ -46,7 +46,35 @@ function PickingHarness({ routeName }: { routeName: string }) {
   );
 }
 
+function CapacityHarness() {
+  const state = usePickingState();
+  return (
+    <div>
+      <span data-testid="capacity-picked">{state.pickedIds.join(",")}</span>
+      <span data-testid="capacity-href">{state.compareHref ?? "none"}</span>
+      <button type="button" onClick={() => state.replace(Array.from({ length: 12 }, (_, index) => `run-${index + 1}`))}>
+        Pick twelve
+      </button>
+    </div>
+  );
+}
+
 describe("PickingStateProvider", () => {
+  it("caps shared picking state at ten unique results", () => {
+    render(
+      <PickingStateProvider>
+        <CapacityHarness />
+      </PickingStateProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Pick twelve" }));
+
+    expect(screen.getByTestId("capacity-picked").textContent?.split(",")).toHaveLength(10);
+    expect(screen.getByTestId("capacity-href")).toHaveTextContent(
+      "/results/compare?ids=run-1,run-2,run-3,run-4,run-5,run-6,run-7,run-8,run-9,run-10",
+    );
+  });
+
   it("keeps picking state across client-side route renders and promotes through the compare URL builder", () => {
     const view = render(
       <PickingStateProvider>

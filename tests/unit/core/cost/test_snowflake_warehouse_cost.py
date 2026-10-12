@@ -350,7 +350,7 @@ class TestSnowflakeEstimatedConcurrencyWarning:
 
         cost = _benchmark_cost(4, True)
         _apply_cost_model_and_warnings(cost, "snowflake", {})
-        assert cost.cost_model == "marginal"
+        assert cost.cost_model == "estimated"
         assert any("concurrent streams" in warning for warning in cost.warnings)
 
     def test_sequential_estimated_run_does_not_warn(self) -> None:

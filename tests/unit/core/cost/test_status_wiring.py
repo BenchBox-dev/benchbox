@@ -40,6 +40,7 @@ def test_fallback_priced_databricks_serverless_run_is_unavailable() -> None:
     assert normalized_cost.cost_status == "unavailable"
     assert normalized_cost.normalized_cost_usd is None
     assert any("databricks_dbu_prices" in warning for warning in warnings)
+    assert normalized_cost.unavailability_reasons == tuple(warnings)
 
 
 def test_fallback_priced_snowflake_run_is_unavailable() -> None:
@@ -56,6 +57,7 @@ def test_fallback_priced_snowflake_run_is_unavailable() -> None:
     assert normalized_cost.cost_status == "unavailable"
     assert normalized_cost.normalized_cost_usd is None
     assert any("snowflake_credit_prices" in warning for warning in warnings)
+    assert normalized_cost.unavailability_reasons == tuple(warnings)
 
 
 def test_stale_pricing_table_is_unavailable(

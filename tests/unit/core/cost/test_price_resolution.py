@@ -9,6 +9,7 @@ from benchbox.core.cost.pricing import (
     resolve_athena_price_per_tb,
     resolve_bigquery_price_per_tb,
     resolve_databricks_dbu_price,
+    resolve_databricks_serverless_sql_dbu_per_hour,
     resolve_databricks_warehouse_dbu_per_hour,
     resolve_fabric_cu_price,
     resolve_fabric_sku_cu_count,
@@ -46,8 +47,10 @@ def test_quantity_lookups_return_price_resolution():
     assert isinstance(resolve_fabric_sku_cu_count("f64"), PriceResolution)
     assert isinstance(resolve_firebolt_fbu_rate("m"), PriceResolution)
     assert isinstance(resolve_databricks_warehouse_dbu_per_hour("Medium"), PriceResolution)
+    assert isinstance(resolve_databricks_serverless_sql_dbu_per_hour("Medium"), PriceResolution)
     assert resolve_fabric_sku_cu_count("f64").value == 64
     assert resolve_databricks_warehouse_dbu_per_hour("Medium").value == 8.0
+    assert resolve_databricks_serverless_sql_dbu_per_hour("Medium").value == 24.0
 
 
 def test_every_lookup_strips_whitespace():
@@ -104,6 +107,8 @@ def test_unknown_keys_are_flagged():
     assert node.fallback_used is True and node.reason
     size = resolve_databricks_warehouse_dbu_per_hour("9X-Large")
     assert size.value == 2.0 and size.fallback_used is True
+    serverless_size = resolve_databricks_serverless_sql_dbu_per_hour("9X-Large")
+    assert serverless_size.value is None and serverless_size.fallback_used is True
     dwu = resolve_synapse_dedicated_price("dw999c", "eastus")
     assert dwu.fallback_used is True and dwu.reason
 

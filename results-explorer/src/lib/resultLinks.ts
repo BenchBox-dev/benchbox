@@ -1,6 +1,6 @@
 import { formatRunDateWithAge } from "@/lib/runAge";
 
-export const MAX_COMPARE_SELECTIONS = 4;
+export const MAX_COMPARE_SELECTIONS = 10;
 
 export interface ResultLinkSource {
   result_id: string;

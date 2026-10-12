@@ -722,28 +722,51 @@ export async function getQueryDisplayTimings(
 
 export async function getQueryExecutions(
   resultIdOrIds: string | readonly string[],
+  queryId?: string,
 ): Promise<QueryExecutionRow[]> {
   if (Array.isArray(resultIdOrIds)) {
     if (resultIdOrIds.length === 0) return [];
     const placeholders = resultIdOrIds.map(() => "?").join(",");
+    if (queryId === undefined) {
+      return queryRows<QueryExecutionRow>(
+        "SELECT result_id, query_id, duration_ms, status, run_type, iter, stream" +
+          " FROM bench.query_executions" +
+          ` WHERE result_id IN (${placeholders})` +
+          " ORDER BY query_id," +
+          " CASE WHEN stream IS NULL THEN 0 ELSE stream END," +
+          " CASE WHEN iter IS NULL THEN 0 ELSE iter END",
+        [...resultIdOrIds],
+      );
+    }
     return queryRows<QueryExecutionRow>(
       "SELECT result_id, query_id, duration_ms, status, run_type, iter, stream" +
         " FROM bench.query_executions" +
-        ` WHERE result_id IN (${placeholders})` +
+        ` WHERE result_id IN (${placeholders}) AND query_id = ?` +
         " ORDER BY query_id," +
         " CASE WHEN stream IS NULL THEN 0 ELSE stream END," +
         " CASE WHEN iter IS NULL THEN 0 ELSE iter END",
-      [...resultIdOrIds],
+      [...resultIdOrIds, queryId],
+    );
+  }
+  if (queryId === undefined) {
+    return queryRows<QueryExecutionRow>(
+      "SELECT result_id, query_id, duration_ms, status, run_type, iter, stream" +
+        " FROM bench.query_executions" +
+        " WHERE result_id = ?" +
+        " ORDER BY query_id," +
+        " CASE WHEN stream IS NULL THEN 0 ELSE stream END," +
+        " CASE WHEN iter IS NULL THEN 0 ELSE iter END",
+      [resultIdOrIds],
     );
   }
   return queryRows<QueryExecutionRow>(
     "SELECT result_id, query_id, duration_ms, status, run_type, iter, stream" +
       " FROM bench.query_executions" +
-      " WHERE result_id = ?" +
+      " WHERE result_id = ? AND query_id = ?" +
       " ORDER BY query_id," +
       " CASE WHEN stream IS NULL THEN 0 ELSE stream END," +
       " CASE WHEN iter IS NULL THEN 0 ELSE iter END",
-    [resultIdOrIds],
+    [resultIdOrIds, queryId],
   );
 }
 

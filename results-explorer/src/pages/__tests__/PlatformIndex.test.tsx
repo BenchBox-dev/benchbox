@@ -364,8 +364,8 @@ describe("PlatformIndex - sortable table headers", () => {
     expect(checkboxClickbench.disabled).toBe(false);
   });
 
-  it("caps Platform compare selections at four runs", async () => {
-    const cohortRows: PlatformIndexRowRow[] = Array.from({ length: 5 }, (_, idx) =>
+  it("caps Platform compare selections at ten runs", async () => {
+    const cohortRows: PlatformIndexRowRow[] = Array.from({ length: 11 }, (_, idx) =>
       makeRow({
         result_id: `r-compatible-${idx}`,
         short_id: `compat${idx}`,
@@ -382,17 +382,17 @@ describe("PlatformIndex - sortable table headers", () => {
     render(<PlatformIndex platform="duckdb" />);
     await waitFor(() => expect(screen.getByText("DuckDB Results")).toBeTruthy());
 
-    for (const idx of [0, 1, 2, 3]) {
+    for (let idx = 0; idx < 10; idx += 1) {
       fireEvent.click(screen.getByTestId(`platform-compare-checkbox-r-compatible-${idx}`));
     }
-    const fifth = screen.getByTestId("platform-compare-checkbox-r-compatible-4") as HTMLInputElement;
-    expect(fifth.disabled).toBe(true);
-    expect(fifth.title).toContain("Up to 4 runs");
+    const eleventh = screen.getByTestId("platform-compare-checkbox-r-compatible-10") as HTMLInputElement;
+    expect(eleventh.disabled).toBe(true);
+    expect(eleventh.title).toContain("Up to 10 runs");
     expect(screen.getByTestId("platform-compare-guidance").textContent).toContain(
-      "4 results selected (maximum)",
+      "10 results selected (maximum)",
     );
     expect(screen.queryByText("Use sticky tray to compare")).toBeNull();
-    expect(screen.getByTestId("platform-run-count").textContent).toBe("5 published runs");
+    expect(screen.getByTestId("platform-run-count").textContent).toBe("11 published runs");
   });
 
   it("disables Platform compare selection for non-comparable rows", async () => {

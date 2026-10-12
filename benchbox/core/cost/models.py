@@ -4,7 +4,7 @@ from decimal import Decimal
 from typing import Any, Literal, Optional
 
 CostScope = Literal["compute_only", "compute_plus_storage"]
-CostStatus = Literal["normalized", "not_applicable_local", "unavailable"]
+CostStatus = Literal["normalized", "not_applicable_local", "unavailable", "estimated"]
 
 
 COST_UNAVAILABLE_WARNING_PREFIX = "normalized cost unavailable"
@@ -87,18 +87,63 @@ class NormalizedCost:
     billing_unit: str
     pricing_region: str
     deployment: DeploymentMetadata = field(default_factory=DeploymentMetadata)
+    unavailability_reasons: tuple[str, ...] = ()
+    estimated_cost_usd: Decimal | None = None
+    cost_estimate_method: str | None = None
+    cost_estimate_source: str | None = None
+    cost_estimate_pricing_date: str | None = None
+    cost_estimate_assumptions: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if self.normalized_cost_usd is not None and not isinstance(self.normalized_cost_usd, Decimal):
             object.__setattr__(self, "normalized_cost_usd", Decimal(str(self.normalized_cost_usd)))
+        if self.estimated_cost_usd is not None and not isinstance(self.estimated_cost_usd, Decimal):
+            object.__setattr__(self, "estimated_cost_usd", Decimal(str(self.estimated_cost_usd)))
         if self.normalized_cost_usd is not None and self.normalized_cost_usd < 0:
             raise ValueError("normalized cost cannot be negative")
+        if self.estimated_cost_usd is not None and self.estimated_cost_usd < 0:
+            raise ValueError("estimated cost cannot be negative")
         if self.cost_status == "normalized" and self.normalized_cost_usd is None:
             raise ValueError("normalized cost requires normalized_cost_usd")
         if self.cost_status == "not_applicable_local" and self.normalized_cost_usd != Decimal("0"):
             raise ValueError("local not-applicable cost must carry explicit zero normalized_cost_usd")
         if self.cost_status == "unavailable" and self.normalized_cost_usd is not None:
             raise ValueError("unavailable cost must not carry normalized_cost_usd")
+        if self.cost_status == "estimated":
+            if self.normalized_cost_usd is not None:
+                raise ValueError("estimated cost must not carry normalized_cost_usd")
+            if self.estimated_cost_usd is None:
+                raise ValueError("estimated cost requires estimated_cost_usd")
+            estimate_metadata = (
+                self.cost_estimate_method,
+                self.cost_estimate_source,
+                self.cost_estimate_pricing_date,
+            )
+            if any(not isinstance(value, str) or not value.strip() for value in estimate_metadata):
+                raise ValueError("estimated cost requires method, source, and pricing date")
+            if not self.cost_estimate_assumptions:
+                raise ValueError("estimated cost requires explicit assumptions")
+        elif (
+            any(
+                value is not None
+                for value in (
+                    self.estimated_cost_usd,
+                    self.cost_estimate_method,
+                    self.cost_estimate_source,
+                    self.cost_estimate_pricing_date,
+                )
+            )
+            or self.cost_estimate_assumptions
+        ):
+            raise ValueError("cost estimate fields require estimated cost status")
+        if any(not isinstance(reason, str) or not reason.strip() for reason in self.unavailability_reasons):
+            raise ValueError("normalized cost unavailability reasons must be non-empty strings")
+        if self.unavailability_reasons and self.cost_status != "unavailable":
+            raise ValueError("normalized cost unavailability reasons require unavailable cost status")
+        if any(
+            not isinstance(assumption, str) or not assumption.strip() for assumption in self.cost_estimate_assumptions
+        ):
+            raise ValueError("cost estimate assumptions must be non-empty strings")
 
     @property
     def cost_usd(self) -> Decimal | None:
@@ -110,7 +155,7 @@ class NormalizedCost:
     def to_dict(self) -> dict[str, Any]:
 
         cost_usd = self.cost_usd
-        return {
+        result: dict[str, Any] = {
             "normalized_cost_usd": str(self.normalized_cost_usd) if self.normalized_cost_usd is not None else None,
             "cost_usd": str(cost_usd) if cost_usd is not None else None,
             "cost_model_version": self.cost_model_version,
@@ -121,6 +166,19 @@ class NormalizedCost:
             "pricing_region": self.pricing_region,
             "deployment": self.deployment.to_dict(),
         }
+        if self.unavailability_reasons:
+            result["unavailability_reasons"] = list(self.unavailability_reasons)
+        if self.cost_status == "estimated":
+            result.update(
+                {
+                    "estimated_cost_usd": str(self.estimated_cost_usd),
+                    "cost_estimate_method": self.cost_estimate_method,
+                    "cost_estimate_source": self.cost_estimate_source,
+                    "cost_estimate_pricing_date": self.cost_estimate_pricing_date,
+                    "cost_estimate_assumptions": list(self.cost_estimate_assumptions),
+                }
+            )
+        return result
 
 
 @dataclass

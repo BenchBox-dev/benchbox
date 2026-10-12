@@ -141,10 +141,9 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "query_histogram",
-    title: "Query Histogram",
-    shortTitle: "Histogram",
-    description:
-      "Vertical bar histogram showing latency per query (auto-splits for >33 queries)",
+    title: "Per-query Latency",
+    shortTitle: "Latency",
+    description: "Horizontal latency plot with one marker per run on each query row",
     questionGroup: "per_query",
     eligibilityClass: "display_safe",
     requires: { requiresSummary: true, requiresQueryTimings: true },
@@ -215,9 +214,10 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "normalized_speedup",
-    title: "Relative to selected baseline",
-    shortTitle: "Relative result",
-    description: "Compare each query with the selected baseline run",
+    title: "Per-query Speedup vs Baseline",
+    shortTitle: "Speedup vs Baseline",
+    description:
+      "For each query, divide baseline latency by candidate latency; values above 1 are faster and values below 1 are slower",
     questionGroup: "per_query",
     eligibilityClass: "compare_safe",
     requires: { requiresTwoResults: true },

@@ -480,7 +480,12 @@ function ChartPanelLong({
     () => selectPanelCharts(context, excludeChartIds, queryFilter),
     [context, excludeChartIds, queryFilter],
   );
-  const chartGroups = useMemo(() => groupChartsByQuestion(charts), [charts]);
+  const chartGroups = useMemo(() => {
+    const groups = groupChartsByQuestion(charts);
+    if (context.kind !== "compare") return groups;
+    const compareOrder = ["overview", "distribution", "per_query", "cost", "trend", "rank"] as const;
+    return [...groups].sort((left, right) => compareOrder.indexOf(left.id) - compareOrder.indexOf(right.id));
+  }, [charts, context.kind]);
   const summary = useMemo(() => buildRenderableSummary(context), [context]);
   const historical = useMemo(
     () =>
@@ -623,11 +628,10 @@ function ChartFigure({
 
   return (
     <div data-chart-container data-chart-id={chart.id} data-testid={`chart-panel-chart-${chart.id}`}>
-      {!datasetEmpty && (
-        <div class="mb-2 flex justify-end">
-          <SaveChartView chartId={chart.id} chartTitle={chart.title ?? chart.shortTitle} />
-        </div>
-      )}
+      <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <h3 class="text-base font-semibold text-[var(--bb-data-fg-primary)]">{chart.title}</h3>
+        {!datasetEmpty && <SaveChartView chartId={chart.id} chartTitle={chart.title ?? chart.shortTitle} />}
+      </div>
       <div class="mt-3">
         {datasetEmpty ? (
           <ChartDatasetEmptyState chart={chart} summary={summary!} />

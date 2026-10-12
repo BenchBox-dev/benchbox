@@ -3,6 +3,12 @@ export const PALETTE = [
   "var(--bb-chart-cat-2)",
   "var(--bb-chart-cat-3)",
   "var(--bb-chart-cat-4)",
+  "var(--bb-chart-cat-5)",
+  "var(--bb-chart-cat-6)",
+  "var(--bb-chart-success)",
+  "var(--bb-chart-danger)",
+  "var(--bb-tone-warning-fg)",
+  "var(--bb-tone-danger-fg)",
 ] as const;
 
 export function paletteColor(index: number): string {
@@ -30,7 +36,7 @@ export const HEAT_MAX_RATIO = 10;
 export const SPEEDUP_LOG2_MIN = Math.log2(0.2);
 export const SPEEDUP_LOG2_MAX = Math.log2(5);
 export const SPEEDUP_LOG2_RANGE = SPEEDUP_LOG2_MAX - SPEEDUP_LOG2_MIN;
-export const SPEEDUP_GRID_STOPS = [0.25, 0.5, 1, 2, 4] as const;
+export const SPEEDUP_GRID_STOPS = [0.2, 0.25, 0.5, 1, 2, 4, 5] as const;
 
 export const DIVERGING_MAX_PCT = 300;
 

@@ -8,6 +8,7 @@ import { PlatformIndex } from "./pages/PlatformIndex";
 import { ResultDetail } from "./pages/ResultDetail";
 import { Compare } from "./pages/Compare";
 import { CompareWithinRun } from "./pages/CompareWithinRun";
+import { QueryRunComparison } from "./pages/QueryRunComparison";
 import { Dashboards } from "./pages/Dashboards";
 import { Query } from "./pages/Query";
 import { NotFound } from "./pages/NotFound";
@@ -21,6 +22,8 @@ export function App() {
         <Layout>
           <Router>
             <Home path="/results/" />
+            <QueryRunComparison path="/results/compare/query/:queryId" />
+            <QueryRunComparison path="/results/compare/query/:queryId/" />
             <Compare path="/results/compare" />
             <Compare path="/results/compare/" />
             <Query path="/results/query" />

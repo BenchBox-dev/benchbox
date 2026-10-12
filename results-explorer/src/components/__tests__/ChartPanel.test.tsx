@@ -545,7 +545,7 @@ describe("ChartPanel", () => {
     );
 
     expect(screen.getByRole("button", { name: "Comparison Bar" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Relative to selected baseline" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Per-query Speedup vs Baseline" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Query Heatmap" })).toBeTruthy();
     expect(screen.getByRole("tab", { name: "Per-query" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.queryByRole("button", { name: "Performance Trend" })).toBeNull();
@@ -620,10 +620,10 @@ describe("ChartPanel", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: "Query Histogram" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Per-query Latency" })).toBeTruthy();
     fireEvent.click(screen.getByRole("tab", { name: "Rank" }));
     expect(screen.getByRole("table", { name: "Per-query platform rankings (1st = fastest)" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Relative to selected baseline" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Per-query Speedup vs Baseline" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Performance Trend" })).toBeNull();
   });
 
@@ -717,7 +717,7 @@ describe("ChartPanel", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Per-query" }));
 
     expect(screen.getByRole("button", { name: "Query Heatmap" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Query Histogram" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Per-query Latency" })).toBeTruthy();
     expect(screen.getByRole("status", { name: "Query Heatmap unavailable" })).toBeTruthy();
     expect(screen.getByText("No valid display timings")).toBeTruthy();
     expect(screen.getByText(/Only exact zero timings are available/)).toBeTruthy();
@@ -1120,14 +1120,25 @@ describe("ChartPanel", () => {
     ).toBeNull();
     expect(container.querySelector("h3.sr-only")).toBeNull();
     expect(screen.getByTestId("chart-panel-group-overview")).toBeTruthy();
+    expect(screen.getByTestId("chart-panel-group-distribution")).toBeTruthy();
     expect(screen.getByTestId("chart-panel-group-per_query")).toBeTruthy();
+    const groupOrder = Array.from(container.querySelectorAll("[data-testid^='chart-panel-group-']"))
+      .map((group) => group.getAttribute("data-testid"));
+    expect(groupOrder.indexOf("chart-panel-group-distribution")).toBeLessThan(
+      groupOrder.indexOf("chart-panel-group-per_query"),
+    );
+    const chartFigures = Array.from(container.querySelectorAll("[data-testid^='chart-panel-chart-']"));
+    expect(chartFigures.length).toBeGreaterThan(1);
+    for (const figure of chartFigures) {
+      expect(figure.querySelector("h3")?.textContent?.trim().length).toBeGreaterThan(0);
+    }
     expect(screen.getByTestId("chart-panel-chart-comparison_bar")).toBeTruthy();
     expect(screen.getByTestId("chart-panel-chart-query_heatmap")).toBeTruthy();
     expect(container.querySelectorAll("[data-chart-container]").length).toBeGreaterThan(1);
     expect(screen.getAllByText("DuckDB").length).toBeGreaterThan(0);
   });
 
-  it("renders summary_box and sparkline_table with no caption, since their own labels already say what they show", () => {
+  it("gives every figure a title without adding internal captions to summary_box or sparklines", () => {
     render(
       <ChartPanel
         summaryLayout="long"
@@ -1141,10 +1152,12 @@ describe("ChartPanel", () => {
     const summaryBox = screen.getByTestId("chart-panel-chart-summary_box");
     expect(summaryBox.querySelector("h4")).toBeNull();
     expect(summaryBox.querySelector("p")).toBeNull();
+    expect(within(summaryBox).getByRole("heading", { level: 3, name: "Summary Box" })).toBeTruthy();
 
     const sparklineTable = screen.getByTestId("chart-panel-chart-sparkline_table");
     expect(sparklineTable.querySelector("h4")).toBeNull();
     expect(sparklineTable.querySelector("p")).toBeNull();
+    expect(within(sparklineTable).getByRole("heading", { level: 3, name: "Sparkline Table" })).toBeTruthy();
   });
 
   it("honors excludeChartIds in the long layout", () => {

@@ -28,6 +28,7 @@ interface RunReceiptProps {
   shortId?: string | null;
   isRankingEligible?: boolean | null;
   reproduceCommand?: string | null;
+  plansUrl?: string | null;
 }
 
 interface ReceiptRow {
@@ -103,8 +104,10 @@ export function RunReceipt({
   shortId = null,
   isRankingEligible = null,
   reproduceCommand = buildReproduceCommand(detail),
+  plansUrl: plansUrlOverride,
 }: RunReceiptProps) {
   const [showMissing, setShowMissing] = useState(false);
+  const plansUrl = plansUrlOverride === undefined ? planDownloadUrl(detail) : plansUrlOverride;
   const queryCount = detail.display_timings.length || new Set(detail.queries.map((query) => query.query_id)).size;
   const sampleCount =
     detail.display_timings.reduce((sum, timing) => sum + timing.sample_count, 0) || detail.queries.length;
@@ -179,7 +182,7 @@ export function RunReceipt({
         recordedRow("Result ID", <code class="font-mono text-xs">{detail.result_id}</code>),
         rowFromString("Short ID", shortId),
         bundleLinkRow(detail.bundle_download_url),
-        plansRow(detail),
+        plansRow(detail, plansUrl),
         reproduceRow(reproduceCommand),
       ],
     },
@@ -423,15 +426,20 @@ function bundleLinkRow(url: string): ReceiptRow {
   );
 }
 
-function plansRow(detail: DetailResult): ReceiptRow {
+function plansRow(detail: DetailResult, plansUrl: string | null): ReceiptRow {
   if (!detail.has_plans) return recordedRow("Plans", "Plans not published");
-  const plansUrl = planDownloadUrl(detail);
   if (plansUrl === null) return recordedRow("Plans", "Plans available");
   return recordedRow(
     "Plans",
-    <a href={plansUrl} class="text-xs font-medium no-underline" download>
-      Download plans
-    </a>,
+    <>
+      <a href="#execution-plans" class="text-xs font-medium no-underline">
+        View plans
+      </a>
+      <span aria-hidden="true"> · </span>
+      <a href={plansUrl} class="text-xs font-medium no-underline" download>
+        Download plans
+      </a>
+    </>,
   );
 }
 
@@ -492,6 +500,14 @@ export function planDownloadUrl(detail: DetailResult) {
   if (!detail.plans_published) return null;
   if (!detail.has_plans || !detail.bundle_download_url) return null;
   if (!detail.bundle_download_url.endsWith(".json")) return null;
+  const trustedOrigin = typeof window === "undefined" ? "https://benchbox.dev" : window.location.origin;
+  try {
+    const bundleUrl = new URL(detail.bundle_download_url, trustedOrigin);
+    if (bundleUrl.origin !== trustedOrigin || !["http:", "https:"].includes(bundleUrl.protocol)) return null;
+    if (bundleUrl.username || bundleUrl.password) return null;
+  } catch {
+    return null;
+  }
   return detail.bundle_download_url.replace(/\.json$/, ".plans.json");
 }
 

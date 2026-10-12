@@ -238,23 +238,25 @@ describe("Compare", () => {
     });
   });
 
-  it("deduplicates IDs and discloses the four-result comparison limit", async () => {
-    setupUrl(["r1", "r1", "r2", "r3", "r4", "r5"]);
-    const r4 = makeResult({ result_id: "r4", platform: "Trino", platform_id: "trino", power_score: 800 });
-    const r5 = makeResult({ result_id: "r5", platform: "Polars", platform_id: "polars", power_score: 700 });
-    const byId: Record<string, DetailResult> = { r1: DUCKDB, r2: SQLITE, r3: POSTGRES, r4, r5 };
+  it("deduplicates IDs and discloses the ten-result comparison limit", async () => {
+    const ids = Array.from({ length: 12 }, (_, index) => `r${index + 1}`);
+    setupUrl(["r1", ...ids]);
+    const byId: Record<string, DetailResult> = Object.fromEntries(ids.map((id, index) => [
+      id,
+      makeResult({ result_id: id, platform: `Platform ${index + 1}`, platform_id: `platform-${index + 1}` }),
+    ]));
     vi.mocked(getDetailResult).mockImplementation((id) => Promise.resolve(byId[id] ?? null));
 
     render(<Compare />);
 
-    await waitFor(() => expect(document.title).toBe("Compare (4) · BenchBox Results"));
+    await waitFor(() => expect(document.title).toBe("Compare (10) · BenchBox Results"));
     const notice = screen.getByTestId("compare-url-notice");
     expect(notice).toHaveTextContent("Ignored duplicate result ID: “r1”.");
-    expect(notice).toHaveTextContent("Ignored 1 additional result ID (“r5”); comparisons are limited to 4 unique results.");
-    expect(screen.getAllByText("Trino").length).toBeGreaterThan(0);
-    expect(screen.queryByText("Polars")).toBeNull();
+    expect(notice).toHaveTextContent("Ignored 2 additional result IDs (“r11”, “r12”); comparisons are limited to 10 unique results.");
+    expect(screen.getAllByText("Platform 10").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Platform 11")).toBeNull();
     await waitFor(() => {
-      expect(new URL(window.location.href).searchParams.get("ids")).toBe("r1,r2,r3,r4");
+      expect(new URL(window.location.href).searchParams.get("ids")).toBe(ids.slice(0, 10).join(","));
     });
   });
 
@@ -279,7 +281,7 @@ describe("Compare", () => {
     expect(screen.getByRole("heading", { name: "Comparison summary" })).toBeTruthy();
   });
 
-  it("resolves aliases before applying the four-result comparison limit", async () => {
+  it("resolves aliases before applying the comparison limit", async () => {
     setupUrl(["r1", "alias-r1", "r2", "r3", "r4"]);
     vi.mocked(resolveShortId).mockImplementation((id) =>
       Promise.resolve(id === "alias-r1" ? "r1" : id),
@@ -298,10 +300,10 @@ describe("Compare", () => {
   });
 
   it("distinguishes unprocessed IDs from resolved overflow", async () => {
-    const ids = Array.from({ length: 12 }, (_, index) => `r${index + 1}`);
+    const ids = Array.from({ length: 25 }, (_, index) => `r${index + 1}`);
     setupUrl(ids);
     const details = Object.fromEntries(
-      ids.slice(0, 8).map((id, index) => [
+      ids.slice(0, 10).map((id, index) => [
         id,
         makeResult({
           result_id: id,
@@ -314,15 +316,15 @@ describe("Compare", () => {
 
     render(<Compare />);
 
-    await waitFor(() => expect(document.title).toBe("Compare (4) · BenchBox Results"));
+    await waitFor(() => expect(document.title).toBe("Compare (10) · BenchBox Results"));
     const notice = screen.getByTestId("compare-url-notice");
     expect(notice).toHaveTextContent(
-      "Ignored 4 additional result IDs (“r5”, “r6”, “r7”, “r8”); comparisons are limited to 4 unique results.",
+      "Ignored 10 additional result IDs (“r11”, “r12”, “r13”, “r14”, “r15”, “r16”, “r17”, “r18”, “r19”, “r20”); comparisons are limited to 10 unique results.",
     );
     expect(notice).toHaveTextContent(
-      "Did not process 4 additional result IDs to keep this page responsive",
+      "Did not process 5 additional result IDs to keep this page responsive",
     );
-    expect(notice).not.toHaveTextContent("Ignored 8 additional result IDs");
+    expect(notice).not.toHaveTextContent("Ignored 15 additional result IDs");
   });
 
   it("preserves requested IDs when a detail lookup rejects", async () => {
@@ -839,6 +841,8 @@ describe("Compare", () => {
     expect(standings?.querySelector("table")).toBeNull();
     expect(screen.getByRole("heading", { name: "Query by run" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Query-level differences" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Compare Q1 iterations across selected runs" }).getAttribute("href"))
+      .toBe("/results/compare/query/Q1?ids=r1%2Cr2%2Cr3");
   });
 
   it("links compare warning counts to the Comparability Receipt and names warning classes", async () => {

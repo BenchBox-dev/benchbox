@@ -451,10 +451,10 @@ describe("Query", () => {
     await waitFor(() => expect(screen.getAllByText("DuckDB compatible").length).toBeGreaterThan(0));
     expect(screen.getByText("Showing 1–24 of 61 matching runs")).toBeTruthy();
 
-    for (const id of ["r1", "page-row-0", "page-row-1", "page-row-2"]) {
+    for (const id of ["r1", ...Array.from({ length: 9 }, (_, index) => `page-row-${index}`)]) {
       fireEvent.click(screen.getByTestId(`query-compare-checkbox-${id}`));
     }
-    expect(screen.getByTestId("query-compare-tray").textContent).toContain("4 results selected (maximum)");
+    expect(screen.getByTestId("query-compare-tray").textContent).toContain("10 results selected (maximum)");
     fireEvent.click(screen.getByRole("button", { name: "Next page" }));
 
     await waitFor(() => expect(screen.getByText("Showing 25–48 of 61 matching runs")).toBeTruthy());
@@ -471,7 +471,7 @@ describe("Query", () => {
 
     fireEvent.click(replacement);
     expect(screen.getByTestId("query-compare-selected-page-row-23")).toBeTruthy();
-    expect(screen.getByTestId("query-compare-tray").textContent).toContain("4 results selected (maximum)");
+    expect(screen.getByTestId("query-compare-tray").textContent).toContain("10 results selected (maximum)");
     expect(new URL(window.location.href).searchParams.get("page")).toBe("2");
     const latestSelect = vi.mocked(queryRows).mock.calls.filter(([sql]) => isDefaultResultSelect(sql)).at(-1);
     expect(latestSelect?.[0]).toContain("LIMIT 24 OFFSET 24");
@@ -508,8 +508,8 @@ describe("Query", () => {
     expect(labelB).toContain("bbbb2222");
   });
 
-  it("caps Query compare selections at four runs", async () => {
-    resultRows = Array.from({ length: 5 }, (_, index) => ({
+  it("caps Query compare selections at ten runs", async () => {
+    resultRows = Array.from({ length: 11 }, (_, index) => ({
       ...BASE_ROWS[0]!,
       result_id: `r${index + 1}`,
       platform: `DuckDB ${index + 1}`,
@@ -519,13 +519,14 @@ describe("Query", () => {
     render(<Query />);
     await waitFor(() => expect(screen.getAllByText("DuckDB 1").length).toBeGreaterThan(0));
 
-    for (const id of ["r1", "r2", "r3", "r4"]) {
+    for (let index = 1; index <= 10; index += 1) {
+      const id = `r${index}`;
       fireEvent.click(screen.getByTestId(`query-compare-checkbox-${id}`));
     }
-    const fifth = screen.getByTestId("query-compare-checkbox-r5") as HTMLInputElement;
-    expect(fifth.disabled).toBe(true);
-    expect(fifth.title).toContain("Up to 4 runs");
-    expect(screen.getByTestId("query-compare-tray").textContent).toContain("4 results selected (maximum)");
+    const eleventh = screen.getByTestId("query-compare-checkbox-r11") as HTMLInputElement;
+    expect(eleventh.disabled).toBe(true);
+    expect(eleventh.title).toContain("Up to 10 runs");
+    expect(screen.getByTestId("query-compare-tray").textContent).toContain("10 results selected (maximum)");
   });
 
   it("loads facet counts and table rows from DuckDB", async () => {

@@ -25,7 +25,7 @@ describe("NormalizedSpeedupChart", () => {
     render(<NormalizedSpeedupChart queries={QUERIES} results={RESULTS} baselineIdx={0} />);
     expect(screen.getByText(/Baseline/)).toBeTruthy();
     expect(screen.getByText("DuckDB")).toBeTruthy();
-    const chart = screen.getByRole("img", { name: "Per-query results relative to the selected baseline" });
+    const chart = screen.getByRole("img", { name: "Per-query speedups relative to DuckDB" });
     expect(chart.getAttribute("aria-describedby")).toBe("normalized-speedup-description");
     expect(screen.getByText(/Values above 1 are faster; values below 1 are slower/)).toBeTruthy();
     expect(screen.getByRole("table", { name: /Per-query speedups relative to DuckDB/ })).toBeTruthy();
@@ -73,14 +73,17 @@ describe("NormalizedSpeedupChart", () => {
     const { container } = render(<NormalizedSpeedupChart queries={equalQueries} results={RESULTS} baselineIdx={0} />);
 
     expect(screen.getByText("No meaningful per-query difference")).toBeTruthy();
-    expect(screen.getByText(/All 2 compared queries are 1.00×/)).toBeTruthy();
+    expect(screen.getByText(/All 2 compared queries \(2 query-run pairs\) are within 1% of 1.00×/)).toBeTruthy();
     expect(container.querySelector("svg")).toBeNull();
   });
 
-  it("null timing entry renders em-dash placeholder", () => {
+  it("null timing entry renders a missing marker and accessible table value", () => {
     const queriesWithNull = [{ queryId: "Q1", timings: [{ ms: 100, status: "pass" }, null] }];
-    render(<NormalizedSpeedupChart queries={queriesWithNull} results={RESULTS} baselineIdx={0} />);
-    expect(screen.getByText("-")).toBeTruthy();
+    const { container } = render(
+      <NormalizedSpeedupChart queries={queriesWithNull} results={RESULTS} baselineIdx={0} />,
+    );
+    expect(container.querySelector("[data-platform-marker='SQLite']")).not.toBeNull();
+    expect(container.querySelector("table")?.textContent).toContain("Not available: comparable timing unavailable");
   });
 
   it("hides queries with missing speedups by default and toggles them back via the comparable-only checkbox", () => {
@@ -136,5 +139,21 @@ describe("NormalizedSpeedupChart", () => {
       (el) => el.textContent === "Q1",
     );
     expect(queryRows.length).toBe(2);
+  });
+
+  it("keeps one query row with a marker for each nonbaseline run", () => {
+    const results = Array.from({ length: 10 }, (_, index) => ({ platform: `Platform ${index}` }));
+    const query = {
+      queryId: "Q1",
+      timings: results.map((_, index) => ({ ms: 100 / (index + 1), status: "pass" })),
+    };
+    const { container } = render(
+      <NormalizedSpeedupChart queries={[query]} results={results} baselineIdx={0} />,
+    );
+
+    const rows = container.querySelectorAll("[data-query-row='Q1']");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.querySelectorAll("[data-platform-marker]")).toHaveLength(9);
+    expect(container.querySelectorAll("table tbody tr")).toHaveLength(9);
   });
 });

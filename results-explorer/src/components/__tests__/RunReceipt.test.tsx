@@ -189,16 +189,25 @@ describe("RunReceipt", () => {
   });
 
   it("renders bundle and reproduce artifacts; only shows a Download plans link when plans are actually published", () => {
-    render(<RunReceipt detail={makeDetail({ has_plans: true, plans_published: true })} />);
+    const bundleUrl = `${window.location.origin}/bundles/abcdef1234567890.json`;
+    render(
+      <RunReceipt
+        detail={makeDetail({ has_plans: true, plans_published: true, bundle_download_url: bundleUrl })}
+      />,
+    );
 
     const receipt = screen.getByRole("region", { name: "Run receipt" });
     expect(within(receipt).getByRole("link", { name: "Download bundle" })).toHaveAttribute(
       "href",
-      "https://example.test/bundles/abcdef1234567890.json",
+      bundleUrl,
     );
     expect(within(receipt).getByRole("link", { name: "Download plans" })).toHaveAttribute(
       "href",
-      "https://example.test/bundles/abcdef1234567890.plans.json",
+      `${window.location.origin}/bundles/abcdef1234567890.plans.json`,
+    );
+    expect(within(receipt).getByRole("link", { name: "View plans" })).toHaveAttribute(
+      "href",
+      "#execution-plans",
     );
     expect(within(receipt).getByText("benchbox run --platform duckdb --benchmark tpch --scale 0.1 --phases power"))
       .toBeTruthy();
@@ -211,6 +220,22 @@ describe("RunReceipt", () => {
     expect(within(receipt).getByRole("link", { name: "Download bundle" })).toBeTruthy();
     expect(within(receipt).queryByRole("link", { name: "Download plans" })).toBeNull();
     expect(within(receipt).getByText("Plans available")).toBeTruthy();
+  });
+
+  it("does not derive a plan link from an unsafe bundle URL", () => {
+    render(
+      <RunReceipt
+        detail={makeDetail({
+          has_plans: true,
+          plans_published: true,
+          bundle_download_url: "javascript:alert(1).json",
+        })}
+      />,
+    );
+
+    const receipt = screen.getByRole("region", { name: "Run receipt" });
+    expect(within(receipt).queryByRole("link", { name: "Download plans" })).toBeNull();
+    expect(within(receipt).queryByRole("link", { name: "View plans" })).toBeNull();
   });
 
   it("hides missing metadata behind the Show missing fields disclosure (w3)", () => {
@@ -278,12 +303,37 @@ describe("RunReceipt", () => {
   });
 
   it("derives the plans companion URL only when publication is signaled (w1 regression)", () => {
-    expect(planDownloadUrl(makeDetail({ has_plans: true, plans_published: true }))).toBe(
-      "https://example.test/bundles/abcdef1234567890.plans.json",
-    );
+    expect(
+      planDownloadUrl(
+        makeDetail({
+          has_plans: true,
+          plans_published: true,
+          bundle_download_url: `${window.location.origin}/bundles/abcdef1234567890.json`,
+        }),
+      ),
+    ).toBe(`${window.location.origin}/bundles/abcdef1234567890.plans.json`);
+    expect(
+      planDownloadUrl(
+        makeDetail({
+          has_plans: true,
+          plans_published: true,
+          bundle_download_url: "/bundles/abcdef1234567890.json",
+        }),
+      ),
+    ).toBe("/bundles/abcdef1234567890.plans.json");
     expect(planDownloadUrl(makeDetail({ has_plans: true }))).toBeNull();
     expect(planDownloadUrl(makeDetail({ has_plans: true, plans_published: false }))).toBeNull();
     expect(planDownloadUrl(makeDetail({ has_plans: false, plans_published: true }))).toBeNull();
+    expect(
+      planDownloadUrl(
+        makeDetail({ has_plans: true, plans_published: true, bundle_download_url: "javascript:alert(1).json" }),
+      ),
+    ).toBeNull();
+    expect(
+      planDownloadUrl(
+        makeDetail({ has_plans: true, plans_published: true, bundle_download_url: "https://attacker.example/run.json" }),
+      ),
+    ).toBeNull();
     expect(
       planDownloadUrl(
         makeDetail({ has_plans: true, plans_published: true, bundle_download_url: "" }),

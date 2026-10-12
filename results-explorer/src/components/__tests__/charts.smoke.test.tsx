@@ -326,10 +326,17 @@ describe("QueryHistogram", () => {
     expect(container.querySelector("svg")).toBeNull();
   });
 
-  it("renders bars for a populated summary", () => {
+  it("renders one horizontal row with a marker for each run on a populated summary", () => {
     const { container } = render(<QueryHistogram summary={makeSummary()} />);
-    expect(container.querySelector("svg")).not.toBeNull();
-    expect(container.querySelectorAll("rect").length).toBeGreaterThan(0);
+    const chart = container.querySelector("svg");
+    expect(chart?.getAttribute("data-orientation")).toBe("horizontal");
+    expect(chart?.getAttribute("aria-describedby")).toBe("query-histogram-description");
+    const rows = Array.from(container.querySelectorAll("[data-query-row]"));
+    expect(rows).toHaveLength(3);
+    expect(rows[0]?.querySelectorAll("[data-platform-marker]")).toHaveLength(2);
+    expect(container.querySelector("table caption")?.textContent).toContain("Per-query latency");
+    expect(container.textContent).toContain("Latency (ms)");
+    expect(container.querySelector("[role='group'][aria-label='Run legend']")).not.toBeNull();
   });
 
   it("uses timing eligibility instead of raw positive timings", () => {
@@ -347,7 +354,8 @@ describe("QueryHistogram", () => {
     const { container } = render(<QueryHistogram summary={summary} />);
 
     expect(container.querySelector("svg")).not.toBeNull();
-    expect(container.querySelectorAll("rect")).toHaveLength(0);
+    expect(container.querySelectorAll("circle")).toHaveLength(0);
+    expect(container.querySelectorAll("[data-platform-marker]")).toHaveLength(1);
     expect(container.textContent).toContain("A zero timing cannot be used in this ranking.");
   });
 
@@ -359,48 +367,19 @@ describe("QueryHistogram", () => {
     expect(Number(svg?.getAttribute("height"))).toBeGreaterThan(100);
   });
 
-  it("splits panels on cohort width, not query count alone", () => {
-    Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
-      configurable: true,
-      get: () => 300,
-    });
-    try {
-      const query_ids = Array.from({ length: 22 }, (_, i) => `Q${i + 1}`);
-      const timings = Object.fromEntries(query_ids.map((qid) => [qid, 10]));
-      const platforms = Array.from({ length: 12 }, (_, i) =>
-        makePlatform({ result_id: `r${i}`, platform_id: `p${i}`, platform: `Platform ${i}`, timings }),
-      );
-      const { container } = render(<QueryHistogram summary={makeSummary({ query_ids, platforms })} />);
+  it("keeps up to 10 run markers in one row per query", () => {
+    const query_ids = ["Q1", "Q2"];
+    const timings = Object.fromEntries(query_ids.map((queryId) => [queryId, 10]));
+    const platforms = Array.from({ length: 10 }, (_, index) =>
+      makePlatform({ result_id: `r${index}`, platform_id: `p${index}`, platform: `Platform ${index}`, timings }),
+    );
+    const { container } = render(<QueryHistogram summary={makeSummary({ query_ids, platforms })} />);
 
-      for (const svg of Array.from(container.querySelectorAll("svg"))) {
-        const extents = Array.from(svg.querySelectorAll("g"))
-          .filter((group) => group.querySelector("[data-query-label]"))
-          .map((group) => {
-            const marks = Array.from(group.querySelectorAll("rect, line"));
-            const starts = marks.map((mark) =>
-              Number(mark.getAttribute("y") ?? mark.getAttribute("y1") ?? NaN),
-            );
-            const ends = marks.map((mark) =>
-              mark.tagName === "rect"
-                ? Number(mark.getAttribute("y") ?? 0) + Number(mark.getAttribute("height") ?? 0)
-                : Number(mark.getAttribute("y2") ?? 0),
-            );
-            return { left: Math.min(...starts), right: Math.max(...ends) };
-          })
-          .filter((extent) => Number.isFinite(extent.left) && Number.isFinite(extent.right))
-          .sort((a, b) => a.left - b.left);
-
-        expect(extents.length).toBeGreaterThan(1);
-        for (let i = 1; i < extents.length; i += 1) {
-          expect(extents[i - 1]!.right).toBeLessThanOrEqual(extents[i]!.left);
-        }
-      }
-    } finally {
-      Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
-        configurable: true,
-        get: () => 0,
-      });
-    }
+    const rows = Array.from(container.querySelectorAll("[data-query-row]"));
+    expect(rows).toHaveLength(2);
+    expect(rows[0]?.querySelectorAll("[data-platform-marker]")).toHaveLength(10);
+    expect(rows[1]?.querySelectorAll("[data-platform-marker]")).toHaveLength(10);
+    expect(container.querySelectorAll("table tbody tr")).toHaveLength(20);
   });
 
   it("auto-splits into multiple panels when query count > 33", () => {

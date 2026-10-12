@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildCompareUrl,
   compareIdForRow,
+  MAX_COMPARE_SELECTIONS,
   publicResultIdToken,
   resultDetailHref,
   resultIdentityAriaLabel,
@@ -21,6 +23,12 @@ describe("result links and public identity", () => {
     expect(visibleResultIdForRow(row)).toBe("a62d0d72");
     expect(publicResultIdToken(row.result_id)).toBe("a62d0d72");
     expect(publicResultIdToken("synthetic-result-id")).toBe("synthetic-result-id");
+  });
+
+  it("supports up to ten exact result IDs in compare URLs", () => {
+    const ids = Array.from({ length: 10 }, (_, index) => `result-${index + 1}`);
+    expect(MAX_COMPARE_SELECTIONS).toBe(10);
+    expect(buildCompareUrl(ids)).toBe(`/results/compare?ids=${ids.join(",")}`);
   });
 
   it("builds canonical result detail and receipt hrefs from result_id", () => {

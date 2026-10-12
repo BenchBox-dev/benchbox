@@ -70,6 +70,7 @@ import {
 } from "@/lib/displayEligibility";
 import { formatWarningClassSummary, formatWarningCount } from "@/lib/copyFormatters";
 import { paletteColor } from "@/lib/chartTheme";
+import { queryRunComparisonHref } from "@/lib/queryRunComparison";
 import { ChartPanel } from "@/components/ChartPanel";
 import { RunDateChip } from "@/components/RunAge";
 import { PageHeader } from "@/components/PageHeader";
@@ -813,6 +814,7 @@ export function Compare({ url }: CompareProps) {
             limiter={queryLimiter}
             orderByDisagreement={queryLimiter === "movement"}
             queryFilter={queryLimiter === "all" ? undefined : limitedQueryIds}
+            queryHref={(queryId) => queryRunComparisonHref(queryId, results.map(visibleResultIdForRow), basis)}
           />
         </>
       )}
@@ -824,6 +826,7 @@ export function Compare({ url }: CompareProps) {
           baselineIndex={normalizedBaselineIndex}
           suppressionReason={decisionSummary.claimSuppressionReason}
           queryFilter={queryLimiter === "all" ? undefined : limitedQueryIds}
+          queryHref={(queryId) => queryRunComparisonHref(queryId, results.map(visibleResultIdForRow), basis)}
         />
       )}
       <ComparabilityReceipt results={results} />

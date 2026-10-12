@@ -2,7 +2,7 @@ import { render, screen, fireEvent, within } from "@testing-library/preact";
 import { describe, it, expect } from "vitest";
 import type { BenchmarkSummary, PlatformRow } from "@/types";
 
-import { SummaryChartOverview } from "@/components/SummaryChartOverview";
+import { SummaryChartOverview, SummaryMetricTable } from "@/components/SummaryChartOverview";
 
 function makePlatform(overrides: Partial<PlatformRow> = {}): PlatformRow {
   const timings = overrides.timings ?? { Q1: 10, Q2: 20, Q3: 30 };
@@ -77,6 +77,16 @@ function renderOverview(summary: BenchmarkSummary = makeSummary()) {
 }
 
 describe("SummaryChartOverview section chrome", () => {
+  it("exports the shared metric table for compare views", () => {
+    const { container } = render(<SummaryMetricTable summary={makeSummary()} />);
+    const table = container.querySelector("table.summary-metric-table") as HTMLElement;
+
+    expect(within(table).getByText("Display geomean")).not.toBeNull();
+    expect(within(table).getByText("Power@Size")).not.toBeNull();
+    expect(within(table).getByText("12 ms")).not.toBeNull();
+    expect(within(table).getByText("3,000")).not.toBeNull();
+  });
+
   it("labels the expanded Percentiles view with cohort-aware identities, not bare platform names", () => {
     const summary = makeSummary({
       platforms: [

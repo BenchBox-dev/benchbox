@@ -46,7 +46,7 @@ export interface WithinRunSeries {
 
 type TwoOrMore<T> = readonly [T, T, ...T[]];
 
-export const MAX_COMPARISON_SERIES = 4;
+export const MAX_COMPARISON_SERIES = 10;
 
 export interface CrossRunComparison {
   readonly kind: "cross_run";

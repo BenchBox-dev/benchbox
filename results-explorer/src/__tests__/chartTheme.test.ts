@@ -18,21 +18,21 @@ import {
 import { lightnessForCell } from "@/lib/chartMath";
 
 describe("chartTheme", () => {
-  it("PALETTE has 4 distinct colors", () => {
-    expect(PALETTE.length).toBe(4);
-    expect(new Set(PALETTE).size).toBe(4);
+  it("PALETTE has 10 distinct colors for run comparisons", () => {
+    expect(PALETTE.length).toBe(10);
+    expect(new Set(PALETTE).size).toBe(10);
   });
 
-  it("paletteColor(i) returns PALETTE[i] for i < 4", () => {
+  it("paletteColor(i) returns PALETTE[i] for each supported run", () => {
     for (let i = 0; i < PALETTE.length; i++) {
       expect(paletteColor(i)).toBe(PALETTE[i]);
     }
   });
 
-  it("paletteColor wraps with modulo for i >= 4", () => {
-    expect(paletteColor(4)).toBe(PALETTE[0]);
-    expect(paletteColor(7)).toBe(PALETTE[3]);
-    expect(paletteColor(8)).toBe(PALETTE[0]);
+  it("paletteColor wraps after 10 runs", () => {
+    expect(paletteColor(10)).toBe(PALETTE[0]);
+    expect(paletteColor(17)).toBe(PALETTE[7]);
+    expect(paletteColor(20)).toBe(PALETTE[0]);
   });
 
   it("paletteColor never returns undefined", () => {

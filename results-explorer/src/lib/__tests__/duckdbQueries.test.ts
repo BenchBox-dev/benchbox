@@ -173,6 +173,14 @@ describe("duckdbQueries - SQL targets and parameters", () => {
     expect(params).toEqual(["r1", "r2"]);
   });
 
+  it("getQueryExecutions limits selected runs to one query when requested", async () => {
+    mockedQueryRows.mockResolvedValueOnce([]);
+    await getQueryExecutions(["r1", "r2"], "Q1");
+    const [sql, params] = mockedQueryRows.mock.calls[0]!;
+    expect(sql).toContain("WHERE result_id IN (?,?) AND query_id = ?");
+    expect(params).toEqual(["r1", "r2", "Q1"]);
+  });
+
   describe("getCohortBasisDetails - bulk cohort executions accessor", () => {
     it("returns empty map immediately without querying when given empty IDs", async () => {
       const result = await getCohortBasisDetails([]);

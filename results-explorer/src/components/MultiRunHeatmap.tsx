@@ -20,6 +20,7 @@ export interface MultiRunHeatmapProps {
   limiter?: QueryDiffLimiter;
   orderByDisagreement?: boolean;
   queryFilter?: readonly string[];
+  queryHref?: (queryId: string) => string;
 }
 
 export interface HeatmapCell {
@@ -197,6 +198,7 @@ export function MultiRunHeatmap({
   limiter,
   orderByDisagreement = false,
   queryFilter,
+  queryHref,
 }: MultiRunHeatmapProps) {
   if (results.length < 3) return null;
   const effectiveLimiter: QueryDiffLimiter = limiter ?? (orderByDisagreement ? "movement" : "all");
@@ -266,7 +268,13 @@ export function MultiRunHeatmap({
           <tbody class="divide-y divide-[var(--bb-data-border)] bg-[var(--bb-surface-data)]">
             {shown.map((row) => (
               <tr key={row.queryId}>
-                <th scope="row" class="table-td font-mono font-medium text-left">{row.queryId}</th>
+                <th scope="row" class="table-td font-mono font-medium text-left">
+                  {queryHref ? (
+                    <a href={queryHref(row.queryId)} class="text-[var(--bb-accent-hover)] underline" aria-label={`Compare ${row.queryId} iterations across selected runs`}>
+                      {row.queryId}
+                    </a>
+                  ) : row.queryId}
+                </th>
                 {row.cells.map((cell, i) => (
                   <td
                     key={i}

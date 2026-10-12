@@ -642,8 +642,8 @@ describe("BenchmarkIndex", () => {
     expect(compareLink.getAttribute("href")).toBe("/results/compare?ids=aaaaaaaa,bbbbbbbb");
   });
 
-  it("blocks a fifth comparison selection and describes the cap outside the accessible name", async () => {
-    const resultRows = Array.from({ length: 5 }, (_, index) => ({
+  it("blocks an eleventh comparison selection and describes the cap outside the accessible name", async () => {
+    const resultRows = Array.from({ length: 11 }, (_, index) => ({
       ...RESULT_ROWS[0]!,
       result_id: `r-cap-${index + 1}`,
       platform: `Platform ${index + 1}`,
@@ -652,7 +652,7 @@ describe("BenchmarkIndex", () => {
       geomean_ms: 10 + index,
       display_geomean_ms: 10 + index,
     }));
-    const rankingRows = Array.from({ length: 5 }, (_, index) => ({
+    const rankingRows = Array.from({ length: 11 }, (_, index) => ({
       ...RANKING_ROWS[0]!,
       result_id: `r-cap-${index + 1}`,
       short_id: `cap0000${index + 1}`,
@@ -661,8 +661,8 @@ describe("BenchmarkIndex", () => {
       power_score: 3000 - index * 100,
       display_geomean_ms: 10 + index,
       rank: index + 1,
-      total_in_cohort: 5,
-      cohort_ranked_count: 5,
+      total_in_cohort: 11,
+      cohort_ranked_count: 11,
     }));
     const cellRows = rankingRows.flatMap((row, index) => [
       {
@@ -683,27 +683,27 @@ describe("BenchmarkIndex", () => {
     const { container } = render(<BenchmarkIndex benchmark="tpch" />);
     await waitFor(() => {
       const boxes = within(listRoot(container) as HTMLElement).getAllByRole("checkbox") as HTMLInputElement[];
-      expect(boxes.filter((box) => !box.disabled)).toHaveLength(5);
+      expect(boxes.filter((box) => !box.disabled)).toHaveLength(11);
     });
     const list = listRoot(container) as HTMLElement;
     const checkboxes = within(list).getAllByRole("checkbox") as HTMLInputElement[];
-    expect(checkboxes).toHaveLength(5);
-    for (const checkbox of checkboxes.slice(0, 4)) fireEvent.click(checkbox);
+    expect(checkboxes).toHaveLength(11);
+    for (const checkbox of checkboxes.slice(0, 10)) fireEvent.click(checkbox);
 
-    const fifth = within(list).getAllByRole("checkbox")[4] as HTMLInputElement;
-    await waitFor(() => expect(fifth.disabled).toBe(true));
-    expect(fifth.checked).toBe(false);
-    expect(fifth.getAttribute("aria-label")).not.toContain("Selection limit");
+    const eleventh = within(list).getAllByRole("checkbox")[10] as HTMLInputElement;
+    await waitFor(() => expect(eleventh.disabled).toBe(true));
+    expect(eleventh.checked).toBe(false);
+    expect(eleventh.getAttribute("aria-label")).not.toContain("Selection limit");
     const selectionLimit = screen.getByTestId("benchmark-selection-limit");
     expect(selectionLimit.id).toBe("benchmark-selection-limit");
-    expect(fifth.getAttribute("aria-describedby")).toBe(selectionLimit.id);
+    expect(eleventh.getAttribute("aria-describedby")).toBe(selectionLimit.id);
     expect(selectionLimit.textContent).toContain("Selection limit reached");
     expect(selectionLimit.textContent).toContain("Clear one selected run before adding another");
     expect(screen.getByTestId("benchmark-compare-guidance").textContent).toContain(
-      "4 results selected (maximum)",
+      "10 results selected (maximum)",
     );
     expect(screen.queryByText("Use sticky tray to compare")).toBeNull();
-    expect(screen.getAllByRole("link", { name: /Compare 4 selected/ }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: /Compare 10 selected/ }).length).toBeGreaterThan(0);
   });
 
   it("excludes no-timing rows from analysis and keeps receipt provenance in Excluded runs", async () => {

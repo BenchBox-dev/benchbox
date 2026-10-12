@@ -145,6 +145,7 @@ interface QueryDiffTableProps {
   limiter?: QueryDiffLimiter;
   topN?: number;
   queryFilter?: readonly string[];
+  queryHref?: (queryId: string) => string;
 }
 
 export function QueryDiffTable({
@@ -154,6 +155,7 @@ export function QueryDiffTable({
   limiter = "all",
   topN = DEFAULT_QUERY_DIFF_LIMIT,
   queryFilter,
+  queryHref,
 }: QueryDiffTableProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   if (results.length < 2) return null;
@@ -236,7 +238,13 @@ export function QueryDiffTable({
           <tbody class="divide-y divide-[var(--bb-data-border)] bg-[var(--bb-surface-data)]">
             {rows.map((row) => (
               <tr key={`${row.queryId}-${row.candidateResultId}`} class="hover:bg-[var(--bb-surface-data-muted)]">
-                <td class="table-td font-mono font-medium">{row.queryId}</td>
+                <td class="table-td font-mono font-medium">
+                  {queryHref ? (
+                    <a href={queryHref(row.queryId)} class="text-[var(--bb-accent-hover)] underline" aria-label={`Compare ${row.queryId} iterations across selected runs`}>
+                      {row.queryId}
+                    </a>
+                  ) : row.queryId}
+                </td>
                 <td class="table-td">{row.candidatePlatform}</td>
                 <td class="table-td font-mono">{formatMsCell(row.baselineMs)}</td>
                 <td class="table-td font-mono">{formatMsCell(row.candidateMs)}</td>

@@ -18,6 +18,7 @@ import { TuningBadge } from "@/components/TuningBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { MethodologyDisclosure } from "@/components/MethodologyDisclosure";
 import { RunReceipt, planDownloadUrl } from "@/components/RunReceipt";
+import { CapturedPlanViewer } from "@/components/CapturedPlanViewer";
 import { ChartPanel } from "@/components/ChartPanel";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
 import {
@@ -258,7 +259,7 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
   const passesCoverAllTimings =
     passSummaries.length > 0 &&
     detail.display_timings.every((timing) => passQueryIds.has(timing.query_id));
-  const plansUrl = planDownloadUrl(detail);
+  const plansUrl = isLocal ? null : planDownloadUrl(detail);
   const hasTimings = detail.display_timings.length > 0 || detail.queries.length > 0;
   const withinRunBases = selectComparableBasisPair(detail.queries, detail.display_timings);
   const primaryMetricRaw = primaryMetricValue(detail, primaryMetric);
@@ -432,12 +433,6 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
             </section>
           )}
 
-          {detail.has_plans && !plansUrl && (
-            <section class="card">
-              <h2 class="mb-2 text-base font-semibold text-[var(--bb-data-fg-primary)]">Execution plans</h2>
-              <p class="text-sm text-[var(--bb-data-fg-muted)]">Execution plans were recorded but are not published for download.</p>
-            </section>
-          )}
         </div>
       </section>
 
@@ -450,10 +445,13 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
             />
           )}
 
+          {detail.has_plans && <CapturedPlanViewer plansUrl={plansUrl} />}
+
           <RunReceipt
             detail={detail}
             isRankingEligible={isLocal ? false : null}
             reproduceCommand={isLocal ? null : undefined}
+            plansUrl={plansUrl}
           />
 
           {hasTimings && (
