@@ -246,6 +246,46 @@ class TestDuckDBSnapshotBuilder:
         assert row[23] == "snowflake_native"
         assert row[24] == "s3-standard"
 
+    def test_estimated_cost_round_trip(self, tmp_path: Path) -> None:
+        entry = _make_entry(
+            normalized_cost=NormalizedCost(
+                normalized_cost_usd=None,
+                cost_model_version=PRICING_VERSION,
+                cost_model_source="benchbox.core.cost.pricing",
+                cost_scope="compute_only",
+                cost_status="estimated",
+                billing_unit="credit",
+                pricing_region="us-east-2",
+                deployment=DeploymentMetadata(
+                    cloud_provider="aws",
+                    cloud_region="us-east-2",
+                    warehouse_size="X-Small",
+                ),
+                estimated_cost_usd="0.000105",
+                cost_estimate_method="sum of per-query median runtime hours",
+                cost_estimate_source="https://www.snowflake.com/legal-files/CreditConsumptionTable.pdf",
+                cost_estimate_pricing_date="2026-10-09",
+                cost_estimate_assumptions=("Timing-derived reference scenario.",),
+            ),
+        )
+        builder = DuckDBSnapshotBuilder()
+        out = tmp_path / "results.duckdb"
+        builder.build([entry], out)
+
+        with duckdb.connect(str(out), read_only=True) as con:
+            row = con.execute(
+                "SELECT cost_status, normalized_cost_usd, estimated_cost_usd, cost_estimate_method,"
+                " cost_estimate_source, cost_estimate_pricing_date, cost_estimate_assumptions FROM results"
+            ).fetchone()
+
+        assert row[0] == "estimated"
+        assert row[1] is None
+        assert row[2] == pytest.approx(0.000105)
+        assert row[3] == "sum of per-query median runtime hours"
+        assert row[4] == "https://www.snowflake.com/legal-files/CreditConsumptionTable.pdf"
+        assert row[5] == "2026-10-09"
+        assert row[6] == '["Timing-derived reference scenario."]'
+
     def test_extended_fields_null_when_absent(self, tmp_path: Path) -> None:
         entry = _make_entry()
         builder = DuckDBSnapshotBuilder()

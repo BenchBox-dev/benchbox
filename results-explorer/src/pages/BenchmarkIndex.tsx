@@ -608,12 +608,19 @@ export function BenchmarkIndex({ benchmark = "" }: BenchmarkIndexProps) {
   );
   const contextNote = benchmarkContextNote(benchmark);
   const selectedComparableCount = selectedCompareRows.length;
-  const compareGuidance = benchmarkCompareGuidanceMessage(selectedComparableCount, title, effectiveSf, effectivePhase);
+  const matrixCompareRows = analysisSummary?.platforms ?? [];
+  const filteredComparableRows = matrixCompareRows.filter(isComparable);
+  const compareAllUrl =
+    filteredComparableRows.length >= 2 && filteredComparableRows.length <= MAX_COMPARE_SELECTIONS
+      ? buildCompareUrl(filteredComparableRows.map((row) => compareIdForRow(row)))
+      : null;
+  const compareGuidance = compareAllUrl && selectedComparableCount < 2
+    ? `All ${filteredComparableRows.length} comparable runs in this view can be compared together.`
+    : benchmarkCompareGuidanceMessage(selectedComparableCount, title, effectiveSf, effectivePhase);
   const selectionLimitCopy =
     selectedIds.size >= MAX_COMPARE_SELECTIONS
       ? describeCompareExclusionReason(`Up to ${MAX_COMPARE_SELECTIONS} runs can be compared.`)
       : null;
-  const matrixCompareRows = analysisSummary?.platforms ?? [];
   const zeroSelectableCompareRows =
     matrixCompareRows.length > 0 && matrixCompareRows.every((row) => !isComparable(row));
   const zeroSelectableReasons = summarizeCompareExclusionReasons(
@@ -860,6 +867,10 @@ export function BenchmarkIndex({ benchmark = "" }: BenchmarkIndexProps) {
           {compareUrl ? (
             <a href={compareUrl} class="btn btn-primary shrink-0 text-sm no-underline" data-testid="benchmark-compare-cta">
               Compare {selectedComparableCount} selected
+            </a>
+          ) : compareAllUrl ? (
+            <a href={compareAllUrl} class="btn btn-primary shrink-0 text-sm no-underline" data-testid="benchmark-compare-cta">
+              Compare All Runs
             </a>
           ) : (
             <p class="shrink-0 text-sm text-[var(--bb-data-fg-subtle)]" data-testid="benchmark-compare-cta-pending">

@@ -926,7 +926,7 @@ export function Query({ url }: QueryProps) {
                             {compareUrl ? (
                               <a
                                 href={compareUrl}
-                                class="rounded-md bg-[var(--bb-accent)] px-3 py-1 text-xs font-medium text-white shadow-sm"
+                                class="btn btn-primary shrink-0 px-3 py-1 text-xs no-underline"
                                 data-testid="query-compare-launch"
                               >
                                 Compare {compareSelectedIds.size} selected →
@@ -935,7 +935,7 @@ export function Query({ url }: QueryProps) {
                               <button
                                 type="button"
                                 disabled
-                                class="rounded-md border border-[var(--bb-data-border)] bg-[var(--bb-surface-data)] px-3 py-1 text-xs font-medium text-[var(--bb-data-fg-subtle)]"
+                                class="btn btn-secondary shrink-0 px-3 py-1 text-xs"
                                 data-testid="query-compare-launch-disabled"
                               >
                                 Compare (need 2+)

@@ -24,6 +24,11 @@ export interface QueryRunExecutionSummary {
   minMs: number | null;
   maxMs: number | null;
   selectedValueMs: number | null;
+  basisActive: boolean;
+  displaySamples: QueryRunSample[];
+  displayValueMs: number | null;
+  displayMinMs: number | null;
+  displayMaxMs: number | null;
   sampleCount: number;
   iterationCount: number;
   measurementRowCount: number;
@@ -128,12 +133,24 @@ export function summarizeQueryRunExecutions(
     : median(basisValues);
   const iterationCount = new Set(samples.flatMap((sample) => sample.iteration === null ? [] : [sample.iteration])).size;
 
+  const basisActive = !isDefaultBasis(basis);
+  const displaySamples = basisActive ? basisSamples : samples;
+  const displayValues = displaySamples.map((sample) => sample.durationMs);
+  const displayValueMs = basisActive ? selectedValueMs : medianMs;
+  const displayMinMs = displayValues.length > 0 ? Math.min(...displayValues) : null;
+  const displayMaxMs = displayValues.length > 0 ? Math.max(...displayValues) : null;
+
   return {
     samples,
     medianMs,
     minMs,
     maxMs,
     selectedValueMs,
+    basisActive,
+    displaySamples,
+    displayValueMs,
+    displayMinMs,
+    displayMaxMs,
     sampleCount: samples.length,
     iterationCount,
     measurementRowCount: measurementRows.length,

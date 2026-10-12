@@ -38,6 +38,11 @@ _NORMALIZED_COST_COLUMNS = [
     ("cost_status", "VARCHAR"),
     ("billing_unit", "VARCHAR"),
     ("pricing_region", "VARCHAR"),
+    ("estimated_cost_usd", "DOUBLE"),
+    ("cost_estimate_method", "VARCHAR"),
+    ("cost_estimate_source", "VARCHAR"),
+    ("cost_estimate_pricing_date", "VARCHAR"),
+    ("cost_estimate_assumptions", "VARCHAR"),
 ]
 
 _ENVIRONMENT_FACET_COLUMNS = [
@@ -57,7 +62,7 @@ _LEGACY_COST_DEPLOYMENT_COLUMNS = [
 ]
 
 _COST_SCOPES = frozenset({"compute_only", "compute_plus_storage"})
-_COST_STATUSES = frozenset({"normalized", "not_applicable_local", "unavailable"})
+_COST_STATUSES = frozenset({"normalized", "not_applicable_local", "unavailable", "estimated"})
 
 
 def _finite_float_or_none(entry: ManifestEntry, key: str, value: Any) -> float | None:
@@ -82,8 +87,15 @@ def _required_cost_choice(entry: ManifestEntry, value: Any, key: str, choices: f
     return checked
 
 
+def _optional_cost_string(value: Any) -> str | None:
+    if not isinstance(value, str) or not value:
+        return None
+    return value
+
+
 def _normalized_cost_column_values(entry: ManifestEntry) -> tuple:
     cost = entry.normalized_cost
+    assumptions = cost.cost_estimate_assumptions
     return (
         _finite_float_or_none(entry, "normalized_cost_usd", cost.normalized_cost_usd),
         _required_cost_string(entry, cost.cost_model_version, "cost_model_version"),
@@ -92,6 +104,11 @@ def _normalized_cost_column_values(entry: ManifestEntry) -> tuple:
         _required_cost_choice(entry, cost.cost_status, "cost_status", _COST_STATUSES),
         _required_cost_string(entry, cost.billing_unit, "billing_unit"),
         _required_cost_string(entry, cost.pricing_region, "pricing_region"),
+        _finite_float_or_none(entry, "estimated_cost_usd", cost.estimated_cost_usd),
+        _optional_cost_string(cost.cost_estimate_method),
+        _optional_cost_string(cost.cost_estimate_source),
+        _optional_cost_string(cost.cost_estimate_pricing_date),
+        json.dumps(list(assumptions)) if assumptions else None,
     )
 
 
@@ -377,6 +394,11 @@ class DuckDBSnapshotBuilder:
                 cost_status          VARCHAR  NOT NULL,
                 billing_unit         VARCHAR,
                 pricing_region       VARCHAR,
+                estimated_cost_usd   DOUBLE,
+                cost_estimate_method VARCHAR,
+                cost_estimate_source VARCHAR,
+                cost_estimate_pricing_date VARCHAR,
+                cost_estimate_assumptions VARCHAR,
                 deployment_class     VARCHAR,
                 cloud_provider       VARCHAR,
                 cloud_region         VARCHAR,
@@ -455,6 +477,11 @@ class DuckDBSnapshotBuilder:
                 r.cost_status,
                 r.billing_unit,
                 r.pricing_region,
+                r.estimated_cost_usd,
+                r.cost_estimate_method,
+                r.cost_estimate_source,
+                r.cost_estimate_pricing_date,
+                r.cost_estimate_assumptions,
                 r.deployment_class,
                 r.cloud_provider,
                 r.cloud_region,
@@ -620,6 +647,11 @@ class DuckDBSnapshotBuilder:
                 cost_status,
                 billing_unit,
                 pricing_region,
+                estimated_cost_usd,
+                cost_estimate_method,
+                cost_estimate_source,
+                cost_estimate_pricing_date,
+                cost_estimate_assumptions,
                 deployment_class,
                 cloud_provider,
                 cloud_region,

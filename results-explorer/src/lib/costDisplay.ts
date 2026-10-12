@@ -8,14 +8,28 @@ export function normalizedCostValue(row: CostDeploymentFields): number | null {
   return Number.isFinite(value) ? value : null;
 }
 
+export function estimatedCostValue(row: CostDeploymentFields): number | null {
+  if (row.cost_status !== "estimated") return null;
+  const value = row.estimated_cost_usd;
+  if (value === null || value === undefined) return null;
+  return Number.isFinite(value) ? value : null;
+}
+
+export function estimatedCostLabel(row: CostDeploymentFields): string | null {
+  const value = estimatedCostValue(row);
+  if (value === null) return null;
+  return `\u2248 ${formatUsd(value).valueText} (est.)`;
+}
+
 export function normalizedCostLabel(row: CostDeploymentFields): string {
   const value = normalizedCostValue(row);
   if (value !== null) return formatUsd(value).valueText;
-  return costStatusLabel(row);
+  return estimatedCostLabel(row) ?? costStatusLabel(row);
 }
 
 export function costStatusLabel(row: CostDeploymentFields): string {
   if (row.cost_status === "not_applicable_local") return "Not applicable to this local run";
+  if (row.cost_status === "estimated") return "Estimated cost (not metered)";
   if (row.cost_status === "unavailable") return "Not recorded";
   return "Not recorded";
 }
@@ -36,7 +50,10 @@ export function costModelDisclosure(rows: readonly CostDeploymentFields[]): stri
       : scopes.length > 1
         ? `mixed scopes: ${scopes.join(", ")}`
         : "scope unavailable";
-  return `Normalized USD, ${scopeText}, ${versionText}`;
+  const estimateNote = rows.some((row) => estimatedCostValue(row) !== null)
+    ? "; includes timing-derived estimates (not metered)"
+    : "";
+  return `Normalized USD, ${scopeText}, ${versionText}${estimateNote}`;
 }
 
 export function costModelSummary(row: CostDeploymentFields): string {

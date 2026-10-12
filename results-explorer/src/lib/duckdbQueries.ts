@@ -420,6 +420,11 @@ const RESULT_COLUMNS = [
   "cost_status",
   "billing_unit",
   "pricing_region",
+  "estimated_cost_usd",
+  "cost_estimate_method",
+  "cost_estimate_source",
+  "cost_estimate_pricing_date",
+  "cost_estimate_assumptions",
   "deployment_class",
   "cloud_provider",
   "cloud_region",
@@ -497,6 +502,11 @@ const RESULT_DETAIL_METRICS_COLUMNS = [
   "cost_status",
   "billing_unit",
   "pricing_region",
+  "estimated_cost_usd",
+  "cost_estimate_method",
+  "cost_estimate_source",
+  "cost_estimate_pricing_date",
+  "cost_estimate_assumptions",
   "deployment_class",
   "cloud_provider",
   "cloud_region",
@@ -931,6 +941,11 @@ function detailResultFromWideRow(
     cost_status: wide.cost_status,
     billing_unit: wide.billing_unit,
     pricing_region: wide.pricing_region,
+    estimated_cost_usd: wide.estimated_cost_usd ?? null,
+    cost_estimate_method: wide.cost_estimate_method ?? null,
+    cost_estimate_source: wide.cost_estimate_source ?? null,
+    cost_estimate_pricing_date: wide.cost_estimate_pricing_date ?? null,
+    cost_estimate_assumptions: wide.cost_estimate_assumptions ?? null,
     cloud_provider: wide.cloud_provider,
     cloud_region: wide.cloud_region,
     instance_type: wide.instance_type,
@@ -1001,6 +1016,8 @@ export async function getBenchmarkRanking(
     `SELECT ${BENCHMARK_RANKING_COLUMNS}, r.platform_version, r.validation_status, r.override_rules,` +
       " r.normalized_cost_usd, r.cost_model_version, r.cost_model_source," +
       " r.cost_scope, r.cost_status, r.billing_unit, r.pricing_region," +
+      " r.estimated_cost_usd, r.cost_estimate_method, r.cost_estimate_source," +
+      " r.cost_estimate_pricing_date, r.cost_estimate_assumptions," +
       " r.deployment_class, r.cloud_provider, r.cloud_region, r.instance_or_warehouse," +
       " r.storage_format" +
       " FROM bench.benchmark_rankings br" +
@@ -1127,6 +1144,11 @@ async function loadBenchmarkSummaryFromDuckDB(
       cost_status: row.cost_status,
       billing_unit: row.billing_unit,
       pricing_region: row.pricing_region,
+      estimated_cost_usd: row.estimated_cost_usd ?? null,
+      cost_estimate_method: row.cost_estimate_method ?? null,
+      cost_estimate_source: row.cost_estimate_source ?? null,
+      cost_estimate_pricing_date: row.cost_estimate_pricing_date ?? null,
+      cost_estimate_assumptions: row.cost_estimate_assumptions ?? null,
       deployment_class: row.deployment_class,
       cloud_provider: row.cloud_provider,
       cloud_region: row.cloud_region,
@@ -1215,6 +1237,11 @@ function loadPlatformIndexRows(platformId?: string): Promise<PlatformIndexRowRow
     " r.cost_status," +
     " r.billing_unit," +
     " r.pricing_region," +
+    " r.estimated_cost_usd," +
+    " r.cost_estimate_method," +
+    " r.cost_estimate_source," +
+    " r.cost_estimate_pricing_date," +
+    " r.cost_estimate_assumptions," +
     " r.deployment_class," +
     " r.cloud_provider," +
     " r.cloud_region," +

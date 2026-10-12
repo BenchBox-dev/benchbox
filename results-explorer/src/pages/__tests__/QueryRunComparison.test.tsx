@@ -163,9 +163,9 @@ describe("QueryRunComparison", () => {
 
     const table = screen.getByRole("table");
     const row = within(table).getByRole("row", { name: /Engine A/ });
-    expect(within(row).getByText("90 ms")).toBeTruthy();
-    expect(within(row).getByText("10 ms – 100 ms")).toBeTruthy();
+    expect(within(row).getByText("95 ms")).toBeTruthy();
+    expect(within(row).getByText("90 ms – 100 ms")).toBeTruthy();
     expect(within(row).getByText("3")).toBeTruthy();
-    expect(within(row).getByText("Selected basis value: 95 ms")).toBeTruthy();
+    expect(within(row).getByText(/All-iteration median: 90 ms/)).toBeTruthy();
   });
 });

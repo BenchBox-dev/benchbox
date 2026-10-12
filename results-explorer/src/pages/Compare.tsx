@@ -652,7 +652,7 @@ export function Compare({ url }: CompareProps) {
             suppressWinnerClaims={decisionSummary.claimSuppressed}
             suppressionReason={decisionSummary.claimSuppressionReason ?? undefined}
             queryFilter={queryLimiter === "all" ? undefined : limitedQueryIds}
-            excludeChartIds={["performance_bar", "power_bar", "comparison_bar", "normalized_speedup"]}
+            excludeChartIds={["performance_bar", "power_bar", "comparison_bar"]}
           />
         </div>
       )}

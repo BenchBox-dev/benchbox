@@ -40,6 +40,11 @@ export interface CostDeploymentFields {
   cost_status?: string | null;
   billing_unit?: string | null;
   pricing_region?: string | null;
+  estimated_cost_usd?: number | null;
+  cost_estimate_method?: string | null;
+  cost_estimate_source?: string | null;
+  cost_estimate_pricing_date?: string | null;
+  cost_estimate_assumptions?: string | null;
   deployment_class?: string | null;
   cloud_provider?: string | null;
   cloud_region?: string | null;

@@ -1447,6 +1447,19 @@ def _validate_estimated_cost_fields(
             or any(not isinstance(assumption, str) or not assumption.strip() for assumption in assumptions)
         ):
             vr.error("normalized_cost.cost_estimate_assumptions must be a non-empty list of strings")
+        billing_unit = raw.get("billing_unit")
+        if billing_unit not in NORMALIZED_COST_BILLING_UNITS:
+            vr.error(
+                "normalized_cost.cost_status 'estimated' requires a concrete billing_unit "
+                f"in {sorted(NORMALIZED_COST_BILLING_UNITS)}; got {billing_unit!r}"
+            )
+        pricing_region = raw.get("pricing_region")
+        if not isinstance(pricing_region, str) or pricing_region in {"unknown", "not_applicable"}:
+            vr.error("normalized_cost.cost_status 'estimated' requires a concrete pricing_region")
+        if not isinstance(raw.get("deployment"), dict):
+            vr.error("normalized_cost.cost_status 'estimated' requires deployment metadata")
+        if raw.get("unavailability_reasons"):
+            vr.error("normalized_cost.cost_status 'estimated' must not include unavailability_reasons")
     elif estimated_value is not None:
         vr.error("normalized_cost.estimated_cost_usd requires cost_status 'estimated'")
 

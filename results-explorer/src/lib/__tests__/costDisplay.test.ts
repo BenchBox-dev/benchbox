@@ -4,6 +4,7 @@ import {
   costModelSummary,
   costScopeSummary,
   costStatusLabel,
+  estimatedCostValue,
   humanizeBillingFragment,
   normalizedCostLabel,
   normalizedCostValue,
@@ -99,6 +100,15 @@ describe("costStatusLabel and normalizedCost helpers (unaffected by w1)", () => 
 
   it("falls back to status label when normalized cost is missing", () => {
     expect(normalizedCostLabel(makeRow({ cost_status: "not_applicable_local" }))).toBe("Not applicable to this local run");
+  });
+
+  it("renders timing-derived estimates with an estimate marker", () => {
+    expect(estimatedCostValue(makeRow({ cost_status: "estimated", estimated_cost_usd: 0.000105 }))).toBe(0.000105);
+    expect(estimatedCostValue(makeRow({ cost_status: "normalized", normalized_cost_usd: 12.5 }))).toBeNull();
+    expect(normalizedCostLabel(makeRow({ cost_status: "estimated", estimated_cost_usd: 0.000105 })))
+      .toBe("\u2248 $0.0001 (est.)");
+    expect(costStatusLabel(makeRow({ cost_status: "estimated" }))).toBe("Estimated cost (not metered)");
+    expect(costStatusLabel(makeRow({ cost_status: "unavailable" }))).toBe("Not recorded");
   });
 
   it("does not expose the internal cost model source", () => {

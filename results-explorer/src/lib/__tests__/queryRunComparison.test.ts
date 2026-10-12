@@ -118,9 +118,28 @@ describe("query execution summaries", () => {
     expect(summary.minMs).toBe(10);
     expect(summary.maxMs).toBe(100);
     expect(summary.selectedValueMs).toBe(95);
+    expect(summary.basisActive).toBe(true);
+    expect(summary.displayValueMs).toBe(95);
+    expect(summary.displayMinMs).toBe(90);
+    expect(summary.displayMaxMs).toBe(100);
+    expect(summary.displaySamples.map((sample) => sample.durationMs)).toEqual([90, 100]);
     expect(summary.sampleCount).toBe(3);
     expect(summary.iterationCount).toBe(2);
     expect(summary.warmupPassCount).toBe(1);
+  });
+
+  it("leads with the all-iteration median when the default basis is active", () => {
+    const summary = summarizeQueryRunExecutions([
+      execution({ duration_ms: 10, iter: 1 }),
+      execution({ duration_ms: 90, iter: 2 }),
+      execution({ duration_ms: 100, iter: 2, stream: 1 }),
+    ], "Q1");
+
+    expect(summary.basisActive).toBe(false);
+    expect(summary.displayValueMs).toBe(summary.medianMs);
+    expect(summary.displayMinMs).toBe(summary.minMs);
+    expect(summary.displayMaxMs).toBe(summary.maxMs);
+    expect(summary.displaySamples).toEqual(summary.samples);
   });
 
   it("keeps invalid durations out of statistics and reports missing query records", () => {

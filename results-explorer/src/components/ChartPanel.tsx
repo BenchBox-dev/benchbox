@@ -26,7 +26,7 @@ import { StackedPhase } from "@/components/StackedPhase";
 import { SparklineTable } from "@/components/SparklineTable";
 import { CDFChart } from "@/components/CDFChart";
 import { RankTable } from "@/components/RankTable";
-import { SummaryChartOverview } from "@/components/SummaryChartOverview";
+import { SummaryChartOverview, SummaryMetricTable } from "@/components/SummaryChartOverview";
 import { fmtGeomean, fmtScore } from "@/utils";
 import { SaveChartView } from "@/components/SaveChartView";
 import { paletteColor } from "@/lib/chartTheme";
@@ -527,6 +527,11 @@ function ChartPanelLong({
 
   return (
     <section class="card" data-testid="chart-panel-long">
+      {context.kind === "compare" && summary && (
+        <div class="mb-8" data-testid="chart-panel-compare-summary-table">
+          <SummaryMetricTable summary={summary} scope="compare" />
+        </div>
+      )}
       <div class="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">
         {showBaseline && summary && summary.platforms.length > 1 && (
           <div class="ml-auto flex items-center gap-2">

@@ -478,6 +478,23 @@ describe("PlatformIndex - sortable table headers", () => {
     expect(screen.getByTestId("platform-detail-filters")).toBeTruthy();
   });
 
+  it("offers Compare All Runs when filtered rows share one small comparable ranking", async () => {
+    vi.mocked(getPlatformIndexRows).mockResolvedValue([
+      makeRow({ result_id: "r-one", short_id: "one00001" }),
+      makeRow({ result_id: "r-two", short_id: "two00002" }),
+      makeRow({ result_id: "r-three", short_id: "three003" }),
+    ]);
+
+    render(<PlatformIndex platform="duckdb" />);
+    await waitFor(() => expect(screen.queryByTestId("platform-compare-cta")?.textContent).toBe("Compare All Runs"));
+
+    const cta = screen.getByTestId("platform-compare-cta");
+    expect(cta.getAttribute("href")).toBe("/results/compare?ids=one00001,two00002,three003");
+    expect(screen.getByTestId("platform-compare-guidance").textContent).toContain(
+      "All 3 filtered runs share one comparable ranking and can be compared together.",
+    );
+  });
+
   it("shows persistent compare guidance and cohort labels before selection", async () => {
     render(<PlatformIndex platform="duckdb" />);
     await waitFor(() => expect(screen.getByText("DuckDB Results")).toBeTruthy());

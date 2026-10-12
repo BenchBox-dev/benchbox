@@ -551,6 +551,37 @@ describe("ChartPanel", () => {
     expect(screen.queryByRole("button", { name: "Performance Trend" })).toBeNull();
   });
 
+  it("renders the shared summary table above compare charts in the long layout", () => {
+    render(
+      <ChartPanel
+        summaryLayout="long"
+        context={{
+          kind: "compare",
+          results: [
+            makeDetail(),
+            makeDetail({
+              result_id: "detail-2",
+              platform: "SQLite",
+              platform_id: "sqlite",
+              display_geomean_ms: 18,
+              geomean_ms: 18,
+              display_timings: [
+                { query_id: "Q1", display_ms: 18, sample_count: 3, is_valid_display_timing: true, timing_exclusion_reason: null },
+                { query_id: "Q2", display_ms: 22, sample_count: 3, is_valid_display_timing: true, timing_exclusion_reason: null },
+              ],
+            }),
+          ],
+          primaryMetric: "display_geomean_ms",
+        }}
+      />,
+    );
+
+    const table = screen.getByTestId("chart-panel-compare-summary-table");
+    expect(table.textContent).toContain("Display geomean");
+    expect(table.textContent).toContain("selected runs");
+    expect(screen.getByTestId("chart-panel-chart-normalized_speedup")).toBeTruthy();
+  });
+
   it("uses a controlled compare baseline without rendering a second selector", () => {
     render(
       <ChartPanel

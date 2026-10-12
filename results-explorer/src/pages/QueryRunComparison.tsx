@@ -75,8 +75,14 @@ function runBasisLabel(basis: MeasurementBasis): string {
 }
 
 function observedRange(summary: QueryRunExecutionSummary): string {
-  if (summary.minMs === null || summary.maxMs === null) return "—";
-  return `${latency(summary.minMs)} – ${latency(summary.maxMs)}`;
+  if (summary.displayMinMs === null || summary.displayMaxMs === null) return "—";
+  return `${latency(summary.displayMinMs)} – ${latency(summary.displayMaxMs)}`;
+}
+
+function basisPrimaryLabel(basis: MeasurementBasis): string {
+  if (basis.passes.kind === "warm_pass") return `Iteration ${basis.passes.pass} value`;
+  if (basis.statistic === "min") return "Selected minimum";
+  return "Median";
 }
 
 function sampleDescription(summary: QueryRunExecutionSummary): string {
@@ -240,7 +246,7 @@ export function QueryRunComparison({ queryId = "", url }: QueryRunComparisonProp
         crumbs={[{ label: "Results", href: "/results/" }, { label: "Compare runs", href: "/results/compare" }, { label: queryTitle }]}
         eyebrow="Single-query comparison"
         title={queryTitle}
-        subtitle={`Successful measurement executions across up to ${MAX_QUERY_COMPARISON_RUNS} selected runs. ${runBasisLabel(selection.basis)}. The chart and observed range include all successful measurement iterations.`}
+        subtitle={`Successful measurement executions across up to ${MAX_QUERY_COMPARISON_RUNS} selected runs. ${runBasisLabel(selection.basis)}. Points show every successful measurement iteration; the highlighted value and observed range follow the selected basis.`}
         meta={<span>{data.runs.length} selected run{data.runs.length === 1 ? "" : "s"}</span>}
       />
 
@@ -266,7 +272,7 @@ export function QueryRunComparison({ queryId = "", url }: QueryRunComparisonProp
                 Recorded execution times
               </h2>
               <p class="mt-1 text-sm text-[var(--bb-data-fg-muted)]">
-                Each point is one successful execution. The median and observed min–max range describe these records; they are not confidence intervals or estimates of future performance. Stream executions remain separate points.
+                Each point is one successful execution. The diamond and observed min–max range follow the selected basis value; they are not confidence intervals or estimates of future performance. Stream executions remain separate points.
               </p>
             </div>
             {chartHasSamples ? (
@@ -288,7 +294,7 @@ export function QueryRunComparison({ queryId = "", url }: QueryRunComparisonProp
                 <thead class="bg-[var(--bb-surface-data-muted)] text-xs uppercase tracking-wide text-[var(--bb-data-fg-muted)]">
                   <tr>
                     <th scope="col" class="px-4 py-3">Run</th>
-                    <th scope="col" class="px-4 py-3">Median</th>
+                    <th scope="col" class="px-4 py-3">{basisPrimaryLabel(selection.basis)}</th>
                     <th scope="col" class="px-4 py-3">Observed range</th>
                     <th scope="col" class="px-4 py-3">Sample n</th>
                     <th scope="col" class="px-4 py-3">Measurement failures</th>
@@ -298,7 +304,7 @@ export function QueryRunComparison({ queryId = "", url }: QueryRunComparisonProp
                 </thead>
                 <tbody class="divide-y divide-[var(--bb-data-border)] bg-[var(--bb-surface-data)] text-[var(--bb-data-fg-primary)]">
                   {data.runs.map((run, index) => (
-                    <QueryRunTableRow key={`${run.requestedId}-${index}`} run={run} index={index} basis={selection.basis} />
+                    <QueryRunTableRow key={`${run.requestedId}-${index}`} run={run} index={index} />
                   ))}
                 </tbody>
               </table>
@@ -318,10 +324,9 @@ export function QueryRunComparison({ queryId = "", url }: QueryRunComparisonProp
 interface QueryRunTableRowProps {
   run: ComparisonRun;
   index: number;
-  basis: MeasurementBasis;
 }
 
-function QueryRunTableRow({ run, index, basis }: QueryRunTableRowProps) {
+function QueryRunTableRow({ run, index }: QueryRunTableRowProps) {
   if (!isLoadedRun(run)) {
     return (
       <tr>
@@ -358,10 +363,12 @@ function QueryRunTableRow({ run, index, basis }: QueryRunTableRowProps) {
         </span>
       </th>
       <td class="whitespace-nowrap px-4 py-3 align-top" title={sampleDescription(summary)}>
-        {latency(summary.medianMs)}
-        {summary.sampleCount > 0 && summary.sampleCount < 2 && <span class="ml-1 text-xs text-[var(--bb-data-fg-muted)]">(n=1)</span>}
-        {(basis.passes.kind !== "all_warm" || basis.statistic !== "median") && (
-          <span class="block text-xs text-[var(--bb-data-fg-muted)]">Selected basis value: {latency(summary.selectedValueMs)}</span>
+        {latency(summary.displayValueMs)}
+        {summary.displaySamples.length > 0 && summary.displaySamples.length < 2 && <span class="ml-1 text-xs text-[var(--bb-data-fg-muted)]">(n=1)</span>}
+        {summary.basisActive && (
+          <span class="block text-xs text-[var(--bb-data-fg-muted)]">
+            All-iteration median: {latency(summary.medianMs)} (n={summary.sampleCount})
+          </span>
         )}
       </td>
       <td class="whitespace-nowrap px-4 py-3 align-top">{observedRange(summary)}</td>
@@ -421,7 +428,7 @@ function QueryExecutionChart({ queryId, runs }: { queryId: string; runs: ChartRu
       >
         <title id="query-run-comparison-chart-title">{queryId} successful measurement execution times</title>
         <desc id="query-run-comparison-chart-description">
-          Each run shows all valid successful executions as points, a vertical observed range, and a diamond at the median. Run numbers match the table below.
+          Each run shows all valid successful executions as points, a vertical observed range for the selected basis, and a diamond at the selected basis value. Run numbers match the table below.
         </desc>
         {Array.from({ length: tickCount + 1 }, (_, index) => {
           const fraction = index / tickCount;
@@ -443,11 +450,11 @@ function QueryExecutionChart({ queryId, runs }: { queryId: string; runs: ChartRu
           const jitterStep = samples.length > 1 ? (maxJitter * 2) / (samples.length - 1) : 0;
           return (
             <g key={run.label}>
-              {samples.length > 1 && run.summary?.minMs !== null && run.summary?.minMs !== undefined && run.summary.maxMs !== null && (
+              {samples.length > 1 && run.summary?.displayMinMs !== null && run.summary?.displayMinMs !== undefined && run.summary.displayMaxMs !== null && (
                 <g aria-hidden="true">
-                  <line x1={centerX} y1={toY(run.summary.minMs)} x2={centerX} y2={toY(run.summary.maxMs)} stroke={run.color} stroke-width="2" opacity="0.55" />
-                  <line x1={centerX - 5} y1={toY(run.summary.minMs)} x2={centerX + 5} y2={toY(run.summary.minMs)} stroke={run.color} stroke-width="2" />
-                  <line x1={centerX - 5} y1={toY(run.summary.maxMs)} x2={centerX + 5} y2={toY(run.summary.maxMs)} stroke={run.color} stroke-width="2" />
+                  <line x1={centerX} y1={toY(run.summary.displayMinMs)} x2={centerX} y2={toY(run.summary.displayMaxMs)} stroke={run.color} stroke-width="2" opacity="0.55" />
+                  <line x1={centerX - 5} y1={toY(run.summary.displayMinMs)} x2={centerX + 5} y2={toY(run.summary.displayMinMs)} stroke={run.color} stroke-width="2" />
+                  <line x1={centerX - 5} y1={toY(run.summary.displayMaxMs)} x2={centerX + 5} y2={toY(run.summary.displayMaxMs)} stroke={run.color} stroke-width="2" />
                 </g>
               )}
               {samples.map((sample, sampleIndex) => {
@@ -461,14 +468,14 @@ function QueryExecutionChart({ queryId, runs }: { queryId: string; runs: ChartRu
                   </circle>
                 );
               })}
-              {run.summary?.medianMs !== null && run.summary?.medianMs !== undefined && (
+              {run.summary?.displayValueMs !== null && run.summary?.displayValueMs !== undefined && (
                 <path
-                  d={`M ${centerX} ${toY(run.summary.medianMs) - 7} L ${centerX + 7} ${toY(run.summary.medianMs)} L ${centerX} ${toY(run.summary.medianMs) + 7} L ${centerX - 7} ${toY(run.summary.medianMs)} Z`}
+                  d={`M ${centerX} ${toY(run.summary.displayValueMs) - 7} L ${centerX + 7} ${toY(run.summary.displayValueMs)} L ${centerX} ${toY(run.summary.displayValueMs) + 7} L ${centerX - 7} ${toY(run.summary.displayValueMs)} Z`}
                   fill="var(--bb-data-fg-primary)"
                   stroke="var(--bb-surface-data)"
                   stroke-width="1"
                 >
-                  <title>{`${run.label} median: ${latency(run.summary.medianMs)}`}</title>
+                  <title>{`${run.label} selected basis value: ${latency(run.summary.displayValueMs)}`}</title>
                 </path>
               )}
               {samples.length === 0 && (

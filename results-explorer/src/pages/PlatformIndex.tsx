@@ -495,7 +495,20 @@ export function PlatformIndex({ platform = "" }: PlatformIndexProps) {
     return row ? compareIdForRow(row) : resultId;
   });
   const compareUrl = !basisLoading && selected.size >= 2 ? `${buildCompareUrl(selectedCompareIds)}${isDefaultBasis(basis) ? "" : `&basis=${encodeBasis(basis)}`}` : null;
-  const compareGuidance = platformCompareGuidanceMessage(selectedRows, selected.size, platformDisplayName);
+  const comparablePlatformRows = platformResultsRaw.filter((row) => !row.comparison_exclusion_reason);
+  const allFilteredCohortKeys = new Set(
+    comparablePlatformRows.map((row) => JSON.stringify(compareCohortSignatureForRow(row))),
+  );
+  const compareAllPlatformUrl =
+    !basisLoading &&
+    allFilteredCohortKeys.size === 1 &&
+    comparablePlatformRows.length >= 2 &&
+    comparablePlatformRows.length <= MAX_COMPARE_SELECTIONS
+      ? `${buildCompareUrl(comparablePlatformRows.map((row) => compareIdForRow(row)))}${isDefaultBasis(basis) ? "" : `&basis=${encodeBasis(basis)}`}`
+      : null;
+  const compareGuidance = compareAllPlatformUrl && selected.size < 2
+    ? `All ${comparablePlatformRows.length} filtered runs share one comparable ranking and can be compared together.`
+    : platformCompareGuidanceMessage(selectedRows, selected.size, platformDisplayName);
 
   const platformResults = [...platformResultsRaw].sort((a, b) => {
     const dir = sort.direction === "asc" ? 1 : -1;
@@ -802,6 +815,14 @@ export function PlatformIndex({ platform = "" }: PlatformIndexProps) {
               data-testid="platform-compare-cta"
             >
               Compare {selected.size} selected
+            </a>
+          ) : compareAllPlatformUrl ? (
+            <a
+              href={compareAllPlatformUrl}
+              class="btn btn-primary shrink-0 text-sm no-underline"
+              data-testid="platform-compare-cta"
+            >
+              Compare All Runs
             </a>
           ) : (
             <p class="shrink-0 text-sm text-[var(--bb-data-fg-subtle)]" data-testid="platform-compare-cta-pending">

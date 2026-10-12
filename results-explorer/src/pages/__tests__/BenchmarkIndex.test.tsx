@@ -615,6 +615,37 @@ describe("BenchmarkIndex", () => {
     expect(screen.getByTestId("benchmark-context-note").textContent).toContain("Star Schema Benchmark (SSB)");
   });
 
+  it("offers Compare All Runs when the filtered view holds a small comparable set", async () => {
+    const resultRows = [0, 1, 2].map((index) => ({
+      ...RESULT_ROWS[0]!,
+      result_id: `r-all-${index + 1}`,
+      platform: `Platform ${index + 1}`,
+      platform_id: `platform-${index + 1}`,
+    }));
+    const rankingRows = [0, 1, 2].map((index) => ({
+      ...RANKING_ROWS[0]!,
+      result_id: `r-all-${index + 1}`,
+      short_id: `all000${index + 1}`,
+      platform: `Platform ${index + 1}`,
+      platform_id: `platform-${index + 1}`,
+    }));
+    const cellRows = rankingRows.flatMap((row) => [
+      { ...CELL_ROWS[0]!, result_id: row.result_id, platform_id: row.platform_id },
+      { ...CELL_ROWS[1]!, result_id: row.result_id, platform_id: row.platform_id },
+    ]);
+    vi.mocked(queryRows).mockImplementation(defaultImpl(resultRows, rankingRows, cellRows));
+
+    render(<BenchmarkIndex benchmark="tpch" />);
+    await waitFor(() => expect(screen.getByTestId("summary-chart-preview-query_heatmap")).toBeTruthy());
+    await waitFor(() => expect(screen.queryByTestId("benchmark-compare-cta")?.textContent).toBe("Compare All Runs"));
+
+    const cta = screen.getByTestId("benchmark-compare-cta");
+    expect(cta.getAttribute("href")).toBe("/results/compare?ids=all0001,all0002,all0003");
+    expect(screen.getByTestId("benchmark-compare-guidance").textContent).toContain(
+      "All 3 comparable runs in this view can be compared together.",
+    );
+  });
+
   it("compare tray shows selected metadata and public IDs while compare URLs keep short aliases", async () => {
     const { container } = render(<BenchmarkIndex benchmark="tpch" />);
     const list = () => listRoot(container) as HTMLElement;
