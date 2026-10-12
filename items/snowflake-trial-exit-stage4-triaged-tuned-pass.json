@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Tier 1 tuned pairs complete with published bundles+manifests and cold-start evidence",
+    "Post-Tier-1 credit re-check recorded with proceed/cut verdict for Tier 2",
+    "Every published run carries funding free-trial and a new timestamped bundle (no overwrites)"
+  ],
+  "context": "Verification rubric: bundle count matches matrix rows attempted; each bundle links its tuning file and Gate 1 row; dropped databases logged. Tuning confirmation is per tier batch.",
+  "description": "Stage 4. Gated on a proceed verdict from stage3. Tier 1: tpch, tpcds (templates exist). Tier 2: ssb, tpcdi, read/write/transaction/metadata primitives (templates composed in pilot style, batched confirmation per tier, not per file). Tier 3 (joinorder, havoc/skew/obt, industry/real-world sets) only with credits above the Gate 0 reserve. Per-cell command shape from Gate 1 matrix; default reuse (no --force); suspend between tuned/untuned pairs; publish with maintainer-run + free-trial; drop each trial database after its bundle+manifest are safely published. Decision gate: after Tier 1, re-check credits vs stop-loss before Tier 2. Guardrails: stop-loss is a hard stop (no new burns past it); Tier 3 cuts first in fixed order: joinorder, havoc/skew/obt, then industry/real-world; single-cluster sequential execution only.",
+  "links": [
+    "examples/tunings/snowflake",
+    "benchmark_runs/published"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:e445de97b2fb8410542405fe",
+      "at": "2026-10-12T17:16:13Z",
+      "client": "pi",
+      "op": "create",
+      "op_id": "25cbf7d2b8314156881493809bca6977",
+      "session_id": "da0b2a7d64524d7badf1923cfcfd2dda"
+    }
+  ]
+}
