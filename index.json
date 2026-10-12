@@ -7999,6 +7999,13 @@
       "status": "open",
       "title": "Fix remaining published-doc remediation review findings"
     },
+    "docs-remediation-review-hardening": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Harden docs-remediation follow-throughs: feed ID construction, doc wording, allowance scope, tuning-linkability sentence, subscriber dedup"
+    },
     "docs-rewrite-architecture-and-structure": {
       "claim": null,
       "needs": [],

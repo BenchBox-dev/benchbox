@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "website/src/lib/atom.ts no longer builds the stable legacy entry ID by concatenating hardcoded 'blog/' onto BLOG_BASE_URL (name LEGACY_FEED_ID_BASE or add ID-stability plus entryId!=url test)",
+    "docs/reference/python-api/result-analysis.md says the machine identifier 'recurs' (not 'may recur') across related output",
+    "canonical-atom-entry-links allowance matches link-only changes with IDs preserved so a genuine future feed regression is not auto-allowed",
+    "tuning-payload 'corresponding identifier values' sentence re-checked for linkability or reworded",
+    "subscriber impact confirmed (no supported reader dedups on <link> rather than <id>); from_public_environ doc snippet covered by an executing test or marked illustrative"
+  ],
+  "context": "Follow-up to merged #2909. Small, non-urgent; batch with nearby docs/site work. Do not confuse with repair-public-pagefind-search or repair-results-query-deep-link.",
+  "description": "Adversarial review of PR #2909 (merged as b1383bb358f7) left five accepted-but-unapplied hardening gaps. Evidence in handoff .todo-batch/docs-remediation-published-surfaces.txt rev 6+ and review report 2026-10-12.",
+  "sessions": [
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:5ab7ac2f6434da24c013257f",
+      "at": "2026-10-12T22:39:00Z",
+      "client": "pi",
+      "op": "create",
+      "op_id": "eccaffc3fc7b4094b475d421bf781aa7",
+      "session_id": "f8e7c8876b5449888edb00c3147c3a96"
+    }
+  ]
+}
