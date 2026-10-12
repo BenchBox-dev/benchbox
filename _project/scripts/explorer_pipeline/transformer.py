@@ -1256,9 +1256,12 @@ class BundleTransformer:
             basis_availability=_compute_basis_availability(timings),
         )
         reason = ranking_exclusion_reason(entry)
-        if reason == "missing_primary_metric" and canonical_phase(test_type) == THROUGHPUT_PHASE:
-            if _throughput_stream_count_mismatch(bundle):
-                reason = "stream_count_mismatch"
+        if (
+            reason in (None, "missing_primary_metric")
+            and canonical_phase(test_type) == THROUGHPUT_PHASE
+            and _throughput_stream_count_mismatch(bundle)
+        ):
+            reason = "stream_count_mismatch"
         if _sidecar_known_defects(bundle_path):
             reason = KNOWN_DEFECT_RANKING_EXCLUSION
         return entry.model_copy(update={"ranking_exclusion_reason": reason})
@@ -1374,9 +1377,12 @@ class BundleTransformer:
             failed_query_count=detail.failed_query_count,
         )
         reason = ranking_exclusion_reason(manifest_peer)
-        if reason == "missing_primary_metric" and canonical_phase(test_type) == THROUGHPUT_PHASE:
-            if _throughput_stream_count_mismatch(bundle):
-                reason = "stream_count_mismatch"
+        if (
+            reason in (None, "missing_primary_metric")
+            and canonical_phase(test_type) == THROUGHPUT_PHASE
+            and _throughput_stream_count_mismatch(bundle)
+        ):
+            reason = "stream_count_mismatch"
         if _sidecar_known_defects(bundle_path):
             reason = KNOWN_DEFECT_RANKING_EXCLUSION
         return detail.model_copy(update={"ranking_exclusion_reason": reason})

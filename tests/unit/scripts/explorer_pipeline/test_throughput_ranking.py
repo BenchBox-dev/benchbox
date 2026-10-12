@@ -133,6 +133,36 @@ def test_stream_count_mismatch_from_config_withholds_throughput_score(tmp_path: 
     assert entry.ranking_exclusion_reason == "stream_count_mismatch"
 
 
+@pytest.mark.parametrize(
+    "benchmark_name", ["ssb", "clickbench", "star_schema", "nyctaxi", "tsbs-devops", "h2odb", "datavault"]
+)
+def test_stream_count_mismatch_excludes_geomean_throughput_from_ranking(tmp_path: Path, benchmark_name: str) -> None:
+    invalid = throughput_bundle("invalid", benchmark=benchmark_name, streams=3)
+    invalid["run"]["streams"] = 4
+    valid = throughput_bundle("valid", benchmark=benchmark_name, streams=3)
+    pairs = _pairs(tmp_path, {"invalid": invalid, "valid": valid})
+    invalid_entry, valid_entry = [entry for entry, _ in pairs]
+    invalid_detail = pairs[0][1]
+    key = (
+        benchmark_name,
+        invalid_entry.scale_factor,
+        canonical_phase(invalid_detail.test_type),
+        invalid_entry.stream_count,
+    )
+    _, summary = _build_benchmark_summaries(
+        {key: pairs},
+        {entry.result_id: entry.result_id[-8:] for entry, _ in pairs},
+    )[0]
+    ranked = {row.row.result_id: row for row in rank_platforms(summary).rows}
+
+    assert invalid_entry.display_geomean_ms is not None
+    assert invalid_entry.ranking_exclusion_reason == "stream_count_mismatch"
+    assert invalid_detail.ranking_exclusion_reason == "stream_count_mismatch"
+    assert ranked[invalid_entry.result_id].rank is None
+    assert ranked[invalid_entry.result_id].ranking_exclusion_reason == "stream_count_mismatch"
+    assert ranked[valid_entry.result_id].rank == 1
+
+
 def test_missing_configured_stream_count_keeps_throughput_score(tmp_path: Path) -> None:
     payload = throughput_bundle("spark", streams=3, throughput_at_size=3741.26)
     payload["run"].pop("streams")
