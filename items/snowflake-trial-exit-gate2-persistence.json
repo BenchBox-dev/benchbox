@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Per-cell reuse/reload classification recorded with live evidence",
+    "Every reload exception named with justification; default remains reuse",
+    "Staging validity (native internal stage) confirmed for reload cells"
+  ],
+  "context": "Verification rubric: each reload row names the missing database/stage object observed. If trial databases are gone, the tuned-pass cost estimate must be revised before Stage 3.",
+  "description": "Gate 2. Against the live trial (SHOW DATABASES, SHOW SCHEMAS, stage LIST — near-zero cost), mark each matrix cell reuse (database+data present) or reload (full datagen+upload+load required). Defaults: force_recreate=False (benchbox/platforms/base/adapter.py:124); baselines ran native mode with no staging_root. Any --force (all|datagen|datagen,upload) is a named per-cell exception requiring recorded justification. Decision gate: reload list is explicit and approved; surprise reloads mid-pass are a stop condition. Guardrails: SHOW/LIST only; no loads; no drops in this item.",
+  "links": [
+    "benchbox/platforms/snowflake.py",
+    "benchbox/platforms/base/adapter.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:e445de97b2fb8410542405fe",
+      "at": "2026-10-12T17:15:42Z",
+      "client": "pi",
+      "op": "create",
+      "op_id": "db3df1f351114bb8a985ffa4b5c19654",
+      "session_id": "da0b2a7d64524d7badf1923cfcfd2dda"
+    }
+  ]
+}

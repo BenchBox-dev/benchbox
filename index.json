@@ -20457,6 +20457,15 @@
       "status": "open",
       "title": "Freeze the per-cell rerun matrix from baseline bundles"
     },
+    "snowflake-trial-exit-gate2-persistence": {
+      "claim": null,
+      "needs": [
+        "snowflake-trial-exit-gate1-comparability-lock"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Classify every cell as reuse or reload from live trial state"
+    },
     "snowflake-tuned-live-certification-20261001": {
       "claim": null,
       "needs": [
