@@ -402,6 +402,8 @@ the same three categories as above.
 | `--client-cloud` | Omitted | not-yet-demanded | Attested client-cloud metadata is a bounded provenance field with no client demand yet. |
 | `--polars-streaming` | Omitted | not-yet-demanded | Deprecated CLI alias for `--execution-engine streaming`; MCP exposes the canonical `execution_engine` parameter. |
 | Compute `compute_resource` / `compute_size` (`--platform-option`) | Omitted | security-scoped | Names or sizes a billable vendor compute object (warehouse, engine, workgroup, cluster, pool, application, service). Server operators select compute through local configuration; MCP requests must not name cloud resources or caller-chosen resource budgets. |
+| `--gateway` | Omitted | security-scoped | Gateway routing names an intermediary endpoint or custom proxy host. Server operators configure gateway connectivity locally; MCP requests must not redirect query endpoints. |
+| Gateway connection options (`--platform-option`) | Omitted | security-scoped | Gateway connection parameters (`gateway_host`, `gateway_port`, `gateway_protocol`, `gateway_ca_bundle`, `gateway_ocsp_fail_open`, `allow_insecure_gateway`) configure network endpoints and TLS trust. Server operators configure endpoints locally; MCP requests must not name arbitrary network hosts or bypass TLS verification. |
 
 The textcharts MCP server remains a separate-client integration, not a bundled or proxied part of `benchbox-mcp`. See `docs/design/textcharts-mcp-boundary.md` for the accepted separate textcharts configuration and the rejected bundle/proxy alternatives.
 

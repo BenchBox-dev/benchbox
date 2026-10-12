@@ -73,9 +73,7 @@ def test_schema_fields_are_ordered_and_round_trip():
         platform_compute={"source": "requested", "size": "small", "resource_kind": "cluster", "resource": "private"},
         platform_deployment={"source": "requested", "selected_class": "self_hosted", "selected": "other"},
         execution_metadata={"run_config": RunConfigInput(execution_engine="streaming").to_dict()},
-        query_results=[
-            QueryExecution(query_id="1", execution_time_ms=10, rows_returned=1, execution_engine="streaming")
-        ],
+        query_results=[QueryExecution(query_id="1", execution_time_ms=10, rows_returned=1, execution_engine="unknown")],
     )
     payload = build_result_payload(result)
     SchemaV2Validator().validate(payload)
@@ -97,11 +95,11 @@ def test_schema_fields_are_ordered_and_round_trip():
     assert platform["variant"] == "polars-df~other+streaming@custom"
     assert payload["config"]["execution_engine"] == "streaming"
     assert list(payload["config"]) == ["mode", "execution_engine"]
-    assert payload["queries"][0]["execution_engine"] == "streaming"
+    assert payload["queries"][0]["execution_engine"] == "unknown"
     assert list(payload["queries"][0]).index("execution_engine") == list(payload["queries"][0]).index("status") + 1
     loaded = reconstruct_benchmark_results(payload)
     assert loaded.execution_engine == platform["execution_engine"]
-    assert build_result_payload(loaded)["queries"][0]["execution_engine"] == "streaming"
+    assert build_result_payload(loaded)["queries"][0]["execution_engine"] == "unknown"
     assert build_result_payload(loaded)["platform"]["execution_engine"] == platform["execution_engine"]
 
 

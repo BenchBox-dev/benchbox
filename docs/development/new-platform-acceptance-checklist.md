@@ -32,6 +32,15 @@ Use this checklist before opening a platform-support PR. It is deliberately conc
   with the native keys as deprecated aliases automatically; never register a canonical key named `engine`,
   `mode`, `backend`, `runtime`, `executor` or `warehouse`. The adapter reads the canonical names first with
   native fallback, and results carry the canonical kind and size alongside legacy fields.
+- Declare gateways when the platform supports query routing through an intermediary: add a manifest
+  `capabilities.gateways` block with `{name: {routes_to: {engine_name: {class}}, requires_host: bool}}`.
+  The core registers the `--gateway` CLI flag and connection options (`gateway_host`, `gateway_port`,
+  `gateway_protocol`, `gateway_ca_bundle`, `gateway_ocsp_fail_open`, `allow_insecure_gateway`) automatically.
+  Gateway `custom` must require a host; `native` is accepted and recorded as no gateway. Result bundles
+  record `platform.gateway` with `name` and `routed: true`, set `tpc_compliant: false` whenever routed,
+  restrict per-query `execution_engine` to `routes_to` targets plus `unknown`, and observe `mixed` when queries
+  differ. Comparisons and regression baseline selection fail closed across different gateway variants unless
+  `--allow-heterogeneous-comparison` is provided.
 - Add `driver_package` and `installation_command`; dependency extras belong in `pyproject.toml`.
 - Add DDL/query compatibility rules or an explicit exemption in the SQL compatibility inventory when the adapter rewrites SQL or DDL.
 - Add unit tests for adapter construction, SQL rendering/loading behavior, registry metadata, optional import failure behavior, and any deployment-mode routing.

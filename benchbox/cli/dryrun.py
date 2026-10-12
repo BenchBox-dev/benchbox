@@ -63,6 +63,7 @@ def generate_cli_command(
     client_region: str | None = None,
     client_cloud: str | None = None,
     no_link_probe: bool = False,
+    gateway: str | None = None,
 ) -> str:
     parts = ["benchbox run"]
     parts.append(f"--platform {platform}")
@@ -89,6 +90,7 @@ def generate_cli_command(
         (compression, "--compression", None),
         (mode, "--mode", None),
         (execution_engine, "--execution-engine", None),
+        (gateway, "--gateway", None),
         (force, "--force", None),
         (validation, "--validation", None),
         (plan_config, "--plan-config", None),
@@ -297,6 +299,7 @@ def display_interactive_preview(
         compression=compression_str,
         mode=getattr(database_config, "execution_mode", None),
         execution_engine=display_engine,
+        gateway=getattr(database_config, "gateway", None),
         force=force,
         official=official,
         capture_plans=capture_plans,

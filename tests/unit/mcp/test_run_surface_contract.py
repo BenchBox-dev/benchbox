@@ -158,6 +158,7 @@ EXPECTED_OMISSION_TIERS = {
     "--tuning": "not-yet-demanded",
     "--validation": "not-yet-demanded",
     "--polars-streaming": "not-yet-demanded",
+    "--gateway": "security-scoped",
 }
 
 _TABLE_SEPARATOR_CELL = re.compile(r"^:?-{3,}:?$")

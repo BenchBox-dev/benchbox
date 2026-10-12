@@ -336,6 +336,7 @@ class DatabaseManager:
         platform_options: dict[str, Any] | None = None,
         runtime_overrides: dict[str, Any] | None = None,
         deployment_selector: str | None = None,
+        gateway_selector: str | None = None,
     ) -> DatabaseConfig:
 
         platform_lower = platform.lower()
@@ -369,6 +370,8 @@ class DatabaseManager:
             config = PlatformHookRegistry.build_database_config(platform_lower, options, overrides)
         except PlatformOptionError as exc:
             raise PlatformOptionError(str(exc)) from exc
+        if gateway_selector is not None:
+            config.gateway = gateway_selector
 
         platform_info = PlatformRegistry.get_platform_info(platform_lower)
         driver_package = config.driver_package or (platform_info.driver_package if platform_info else None)

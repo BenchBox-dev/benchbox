@@ -341,6 +341,11 @@ def _discover_result_files_with_metadata(
     default=0.0,
     help="Only show plan changes with similarity below threshold (0.0-1.0)",
 )
+@click.option(
+    "--allow-heterogeneous-comparison",
+    is_flag=True,
+    help="Allow comparing runs with different execution variants (deployment, engine, gateway)",
+)
 @click.pass_context
 def compare(
     ctx,
@@ -366,6 +371,7 @@ def compare(
     non_interactive,
     include_plans,
     plan_threshold,
+    allow_heterogeneous_comparison: bool = False,
 ):
     if list_platforms:
         _list_available_platforms()
@@ -431,6 +437,7 @@ def compare(
             show_all_queries=show_all_queries,
             include_plans=include_plans,
             plan_threshold=plan_threshold,
+            allow_heterogeneous_comparison=allow_heterogeneous_comparison,
         )
     else:
         if non_interactive:
@@ -1119,6 +1126,7 @@ def _run_file_comparison(
     plan_threshold: float = 0.0,
     min_regression_delta: str | None = None,
     min_aggregate_regression_delta: str | None = None,
+    allow_heterogeneous_comparison: bool = False,
 ):
     if len(result_files) < 2:
         console.print("[red]Error: At least 2 result files required for comparison[/red]")
@@ -1140,6 +1148,15 @@ def _run_file_comparison(
     current_path = Path(result_files[1])
 
     baseline, current = _load_comparison_files(baseline_path, current_path)
+    if not allow_heterogeneous_comparison:
+        from benchbox.core.gateway import variants_comparable
+
+        if not variants_comparable(baseline, current):
+            console.print(
+                "[red]Error: Cannot compare runs with different execution variants (deployment, engine, or gateway). "
+                "Use --allow-heterogeneous-comparison to override.[/red]"
+            )
+            sys.exit(1)
 
     comparison = _perform_comparison(
         baseline, current, baseline_path, current_path, include_plans, plan_threshold, output_format

@@ -1242,6 +1242,7 @@ def _dry_run_build_db_config(s: types.SimpleNamespace, db_manager: DatabaseManag
             dict(s.parsed_platform_options),
             overrides,
             deployment_selector=getattr(s, "deployment_selector", None),
+            gateway_selector=getattr(s, "gateway", None),
         )
     except PlatformOptionError as exc:
         console.print(f"[red]❌ {exc}[/red]")
@@ -1293,6 +1294,7 @@ def _run_direct(s: types.SimpleNamespace) -> None:
             dict(s.parsed_platform_options),
             overrides,
             deployment_selector=getattr(s, "deployment_selector", None),
+            gateway_selector=getattr(s, "gateway", None),
         )
     except PlatformOptionError as exc:
         console.print(f"[red]❌ {exc}[/red]")
@@ -1456,6 +1458,7 @@ def _data_or_load_build_db_config(s: types.SimpleNamespace, db_manager: Database
             dict(s.parsed_platform_options),
             overrides,
             deployment_selector=getattr(s, "deployment_selector", None),
+            gateway_selector=getattr(s, "gateway", None),
         )
     except PlatformOptionError as exc:
         console.print(f"[red]❌ {exc}[/red]")
@@ -1760,6 +1763,7 @@ def _interactive_try_quick_restart(s: types.SimpleNamespace) -> bool:
         dict(s.parsed_platform_options),
         {**s.verbosity_payload, "force_recreate": s.force_regenerate, **_tuning_override_entries(s)},
         deployment_selector=getattr(s, "deployment_selector", None),
+        gateway_selector=getattr(s, "gateway", None),
     )
     promote_tuning_provenance(s.database_config, s.tuning_enabled, s.tuning_source_value, s.tuning_template_ref)
 
@@ -2653,6 +2657,7 @@ def _interactive_handle_result(s: types.SimpleNamespace, result: Any, orchestrat
     hidden=True,
     help="Deprecated alias for --execution-engine streaming on polars-df.",
 )
+@advanced_option("--gateway", default=None, help="Route queries through a gateway (e.g. espresso, greybeam, custom).")
 @advanced_option("--seed", type=int, help="RNG seed for query parameter generation")
 @advanced_option(
     "--streams",
@@ -2770,6 +2775,7 @@ def run(
     benchmark_option_pairs: tuple[tuple[str, str], ...],
     mode: str | None,
     execution_engine: str | None,
+    gateway: str | None,
     seed: int | None,
     concurrency: int | None,
     iterations: int | None,
@@ -2826,6 +2832,7 @@ def run(
         benchmark_option_pairs=benchmark_option_pairs,
         mode=mode,
         execution_engine=execution_engine,
+        gateway=gateway,
         seed=seed,
         concurrency=concurrency,
         iterations=iterations,

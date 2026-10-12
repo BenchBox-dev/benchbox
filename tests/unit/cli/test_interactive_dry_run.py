@@ -354,6 +354,7 @@ class TestDisplayInteractivePreview:
         console = Console(file=output, force_terminal=True, width=120)
 
         db_config = self._create_mock_database_config()
+        db_config.gateway = "espresso"
         bench_config = self._create_mock_benchmark_config(scale_factor=0.5)
 
         display_interactive_preview(
@@ -368,6 +369,7 @@ class TestDisplayInteractivePreview:
         assert "--platform duckdb" in result
         assert "--benchmark tpch" in result
         assert "--scale 0.5" in result
+        assert "--gateway espresso" in result
         assert "--table-mode" not in result
 
     def test_preview_external_table_mode_reflected(self):

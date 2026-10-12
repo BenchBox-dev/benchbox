@@ -4,6 +4,7 @@ canonical_key_order:
 - run
 - benchmark
 - platform
+- tpc_compliant
 - config
 - summary
 - phases

@@ -133,6 +133,30 @@ def _apply_deployment_selector_option(s: types.SimpleNamespace) -> None:
         note_deprecated_alias(base, typed, value)
 
 
+def _apply_gateway_option(s: types.SimpleNamespace) -> None:
+    gateway = getattr(s, "gateway", None)
+    if not gateway and hasattr(s, "parsed_platform_options"):
+        gateway = s.parsed_platform_options.get("gateway")
+    if not gateway:
+        return
+    from benchbox.core.gateway import (
+        GatewayConfigurationError,
+        UnsupportedGatewayError,
+        resolve_requested_gateway,
+    )
+
+    gateway_host = s.parsed_platform_options.get("gateway_host") if hasattr(s, "parsed_platform_options") else None
+    try:
+        if not s.platform_key:
+            raise GatewayConfigurationError("--gateway requires --platform")
+        s.gateway = resolve_requested_gateway(s.platform_key, gateway, gateway_host)
+    except (UnsupportedGatewayError, GatewayConfigurationError) as exc:
+        console.print(f"[red]❌ {exc}[/red]")
+        if s.logger:
+            s.logger.error(f"Gateway option error: {exc}")
+        s.ctx.exit(1)
+
+
 def _parse_plat_bench_options(s: types.SimpleNamespace) -> None:
     s.logger, s.verbosity_settings = setup_verbose_logging(s.verbose, quiet=bool(s.quiet))
     set_quiet_output(s.verbosity_settings.quiet)
@@ -158,6 +182,9 @@ def _parse_plat_bench_options(s: types.SimpleNamespace) -> None:
 
     s.parsed_platform_options = {}
     if s.platform_key:
+        from benchbox.core.gateway import register_gateway_connection_specs
+
+        register_gateway_connection_specs()
         try:
             s.parsed_platform_options = PlatformHookRegistry.parse_options(s.platform_key, s.platform_option_pairs)
         except PlatformOptionError as exc:
@@ -166,6 +193,7 @@ def _parse_plat_bench_options(s: types.SimpleNamespace) -> None:
                 s.logger.error(f"Platform option error: {exc}")
             s.ctx.exit(1)
     _apply_deployment_selector_option(s)
+    _apply_gateway_option(s)
 
     if s.benchmark_option_pairs and not s.benchmark:
         console.print("[red]❌ Benchmark options require a --benchmark selection[/red]")

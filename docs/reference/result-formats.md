@@ -130,6 +130,12 @@ Consumer policy is intentionally split by use case:
 | `version` | string | Compatibility alias emitted with `result_schema_version` during the schema-v2 transition; accepted as a fallback when the new key is absent. If both keys are present, they must match. |
 | `schema_version` | string | Oldest key, accepted as a last-resort fallback for pre-rename bundles. |
 
+#### Run-level Flags
+
+| Field | Type | Description |
+| ------- | ------ | ------------- |
+| `tpc_compliant` | boolean | Optional; false when queries are routed through a gateway. Omitted for native runs. |
+
 #### Benchmark Block
 
 | Field | Type | Description |
