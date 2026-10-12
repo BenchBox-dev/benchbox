@@ -212,6 +212,13 @@ DATAFRAME_ADAPTERS = {
 Before implementation, maintainers can print the expected file plan with the
 platform scaffold script (`--kind dataframe`).
 
+Declare execution engines when the platform offers more than one way to execute a query, following the same
+manifest `capabilities.execution_engines` block, closed class list, value-naming rule and reserved-word ban as
+SQL platforms (see `docs/development/adding-new-platforms.md`). The worked example is `polars-df`, which
+declares `auto` (adaptive), `in-memory` and `streaming` under the platform's own documented names. DataFrame
+adapters inherit `resolve_execution_engine` from the adapter base and map the resolved engine into their
+collect or compute call; unsupported values fail closed.
+
 ## Step 5: Add Tests
 
 ### Unit Tests

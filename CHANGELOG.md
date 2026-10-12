@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   excluded from native ranking with `ranking_exclusion_reason=gateway_routed`.
   Existing corpus values are unchanged: bundles without variant data keep
   `variant_id` equal to the platform id.
+- The new-platform acceptance checklist and both adding-platform guides describe the reserved option words,
+  the deprecated-alias rule and the manifest `execution_engines` declaration with a `polars-df` worked example.
+  A scaffold script (`scripts/new_platform_scaffold.py --kind sql|dataframe`) prints the expected file plan
+  with manifest and adapter stubs; its output carries no reserved canonical keys and resolves the default
+  engine receipt through the inherited adapter hook.
 
 - The Polars version-matrix reproduction instructions now use
   `--execution-engine` for default, in-memory and streaming setups, and identify

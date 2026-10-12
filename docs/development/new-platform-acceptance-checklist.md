@@ -41,6 +41,17 @@ Use this checklist before opening a platform-support PR. It is deliberately conc
   restrict per-query `execution_engine` to `routes_to` targets plus `unknown`, and observe `mixed` when queries
   differ. Comparisons and regression baseline selection fail closed across different gateway variants unless
   `--allow-heterogeneous-comparison` is provided.
+- Declare execution engines when the platform offers more than one way to execute a query: add a manifest
+  `capabilities.execution_engines` block with `{name: {class, display_name, description, dependencies, selectable}}.
+  The class comes from the closed core list (`adaptive`, `in-memory`, `streaming`, `gpu`, `native-vectorized`,
+  `standard`, `distributed`, `jit`, `delegated`). Name each value with the platform's own documented term when one
+  exists, otherwise the class name; the same name must map to the same class on every platform (the vocabulary
+  parity test enforces this). `default` is a reserved sentinel meaning "pass nothing" and is never declared.
+  Platforms without engines omit the block and accept only `default` through the inherited
+  `resolve_execution_engine` hook; override the hook only to map native settings into a receipt, and fail closed
+  on unsupported values. Never name a canonical option `engine`, `mode`, `backend`, `runtime`, `executor` or
+  `warehouse`; a reserved-word spelling survives only as a deprecated alias registered in the core
+  `DEPRECATED_OPTION_ALIASES` table with its removal release.
 - Add `driver_package` and `installation_command`; dependency extras belong in `pyproject.toml`.
 - Add DDL/query compatibility rules or an explicit exemption in the SQL compatibility inventory when the adapter rewrites SQL or DDL.
 - Add unit tests for adapter construction, SQL rendering/loading behavior, registry metadata, optional import failure behavior, and any deployment-mode routing.
@@ -56,6 +67,12 @@ Use this checklist before opening a platform-support PR. It is deliberately conc
   `_build_platform_metadata()` paths are live pass-throughs and should not be treated as independent
   registration authorities.
 - Add the `-df` CLI path or confirm the existing `adapter_factory` mapping routes to the new adapter.
+- Declare execution engines when the platform offers more than one way to execute a query, following the same
+  manifest `capabilities.execution_engines` block, closed class list, value-naming rule and reserved-word ban as
+  SQL platforms above. The worked example is `polars-df`, which declares `auto` (adaptive), `in-memory` and
+  `streaming` under the platform's own documented names. DataFrame adapters inherit `resolve_execution_engine`
+  from the adapter base and map the resolved engine into their collect or compute call; unsupported values fail
+  closed.
 - Add native DataFrame query implementations or document unsupported benchmarks with benchmark-gate rules.
 - Add lazy availability checks and dependency extras; GPU or native-stack dependencies must not load during base import.
 - Add unit tests for family behavior, adapter lifecycle, query execution primitives, and registry capability alignment.
@@ -86,6 +103,13 @@ Target for a straightforward SQL platform is **7-10 files**:
 Target for a straightforward DataFrame platform is **8-12 files** because native query implementations and family tests usually add another surface.
 
 ## Scaffold Helper
+
+Print the expected file plan with manifest and adapter stubs before implementation:
+
+```bash
+uv run -- python scripts/new_platform_scaffold.py --name myengine --kind sql
+uv run -- python scripts/new_platform_scaffold.py --name myengine --kind dataframe
+```
 
 A maintainer scaffold script prints the expected file plan for a new SQL or
 DataFrame platform. The helper emits a checklist and file plan only. It is an architecture health aid, not a framework that owns platform implementation.
