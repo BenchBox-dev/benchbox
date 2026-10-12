@@ -237,7 +237,9 @@ class TuningMetadataManager:
         self, unified_config: UnifiedTuningConfiguration, platform: str, created_at: datetime
     ) -> list["TuningMetadata"]:
         constraints_payload = self._constraints_payload(unified_config)
-        platform_optimizations_payload = unified_config.platform_optimizations.to_dict()
+        platform_optimizations_payload = {
+            key: value for key, value in unified_config.platform_optimizations.to_dict().items() if key != "spark"
+        }
         table_attributes_payload = self._table_attributes_payload(unified_config)
 
         return [
@@ -378,7 +380,9 @@ class TuningMetadataManager:
                 "Legacy tuning metadata schema does not record primary/foreign-key or column-attribute drift"
             )
         expected_constraints_hash = self._hash_section(constraints_payload)
-        expected_platform_opt_hash = self._hash_section(unified_config.platform_optimizations.to_dict())
+        expected_platform_opt_hash = self._hash_section(
+            {key: value for key, value in unified_config.platform_optimizations.to_dict().items() if key != "spark"}
+        )
 
         existing_constraints_hash = existing_markers.get(self._TUNING_TYPE_CONSTRAINTS_HASH)
         existing_platform_opt_hash = existing_markers.get(self._TUNING_TYPE_PLATFORM_OPT_HASH)

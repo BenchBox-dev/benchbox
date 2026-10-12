@@ -1271,7 +1271,8 @@ def _tuning_types_present(tuning_applied: dict[str, Any]) -> list[str]:
         for key, value in platform_optimizations.items():
             if key.endswith("_enabled") and value:
                 types_present.add(key[: -len("_enabled")])
-
+        if platform_optimizations.get("spark"):
+            types_present.add("session_config")
     for table_tuning in (tuning_applied.get("table_tunings") or {}).values():
         if isinstance(table_tuning, dict):
             for clause in ("partitioning", "clustering", "distribution", "sorting"):

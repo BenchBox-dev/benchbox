@@ -321,14 +321,15 @@ class SparkLikeAdapterMixin:
         ledger = getattr(self, "_applied_tuning_ledger", None)
         if hasattr(platform_config, "spark") and platform_config.spark:
             for key, value in platform_config.spark.items():
+                conf_key = key if key.startswith("spark.") else f"spark.{key}"
                 try:
-                    spark.conf.set(f"spark.{key}", str(value))
-                    self.logger.debug(f"Applied {platform} config: spark.{key} = {value}")
+                    spark.conf.set(conf_key, str(value))
+                    self.logger.debug(f"Applied {platform} config: {conf_key} = {value}")
                 except Exception as exc:
-                    self.logger.warning(f"Failed to apply {platform} config spark.{key}: {exc}")
-                    self._record_spark_conf_ledger(ledger, key, value, applied=False, error=exc)
+                    self.logger.warning(f"Failed to apply {platform} config {conf_key}: {exc}")
+                    self._record_spark_conf_ledger(ledger, conf_key, value, applied=False, error=exc)
                     continue
-                self._record_spark_conf_ledger(ledger, key, value, applied=True)
+                self._record_spark_conf_ledger(ledger, conf_key, value, applied=True)
 
         self.logger.info(f"{platform} platform optimizations applied")
 
@@ -349,8 +350,9 @@ class SparkLikeAdapterMixin:
         try:
             from benchbox.core.tuning.applied_ledger import EXECUTED, PHASE_SESSION, STATEMENT_FAILED
 
+            recorded = key if key.startswith("spark.") else f"spark.{key}"
             ledger.record(
-                f"SET spark.{key}={value}",
+                f"SET {recorded}={value}",
                 PHASE_SESSION,
                 status=EXECUTED if applied else STATEMENT_FAILED,
                 mechanism="spark_session_config",
