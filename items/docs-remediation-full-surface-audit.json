@@ -50,6 +50,15 @@
       "op": "take",
       "op_id": "27defc9c5d7a4358b22d7a11086a41f3",
       "session_id": "7f376b068f894dd0920349056eb0a63a"
+    },
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:f0804c5fefb6ba181570047e",
+      "at": "2026-10-12T22:46:05Z",
+      "client": "pi",
+      "generation": "ddead8f776cb40ebb8af2188044e21e2",
+      "op": "finish",
+      "op_id": "f512f7028a2a45b8a792f0af7dcc568a",
+      "session_id": "7f376b068f894dd0920349056eb0a63a"
     }
   ]
 }
