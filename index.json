@@ -20532,12 +20532,17 @@
       "title": "Pilot tuned-vs-untuned on TPC-H and SSB, then decide the 18-file program"
     },
     "snowflake-trial-exit-stage4-triaged-tuned-pass": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-13T21:40:09Z",
+        "generation": "2b89fed8993f4ee38fd4884247d5e477",
+        "renewals": 0,
+        "worker": "mcp:tbh:joe@joe-mac-mini.local:28ec00d9b0349e9794467df7"
+      },
       "needs": [
         "snowflake-trial-exit-stage3-tuning-pilot"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Execute the triaged tuned pass only if the pilot passes"
     },
     "snowflake-trial-exit-stage5-large-scale": {
