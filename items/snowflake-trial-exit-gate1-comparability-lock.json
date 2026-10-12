@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Rerun matrix artifact exists with per-cell phases/streams/iterations/seed/pin status",
+    "55-vs-50 file/inventory gap reconciled and recorded",
+    "Non-comparable cells explicitly listed and demoted to Tier 3 with reason"
+  ],
+  "context": "Verification rubric: reviewer can take any matrix row, open the named bundle, and confirm the four pinned fields match. Command shapes are frozen per family here, not invented later.",
+  "description": "Gate 1. Build the rerun matrix from live reads of results-data/bundles/*snowflake*.json: per cell record phases, streams, iterations, seed, warehouse state. Known families: legacy cells (amplab, clickbench, ssb, h2odb, joinorder) streams=3/iters=2/no seed; current cells streams=4/iters=3; seeds only on tpch sf1/sf10 and tpcds sf1/sf10 (seed=42); tpcdi+tpcds cells ran generate,load,power (6 cells), rest power only. Also reconcile the 55 on-disk Snowflake JSON files vs 50 corpus-inventory rows (5 files carry tuning_source None). Decision gate: each cell marked reproducible-exact or non-comparable (non-comparable falls to Tier 3). Guardrails: no live runs; no bundle overwrites; matrix stored as a new timestamped artifact, never an edit of existing bundles.",
+  "links": [
+    "results-data/bundles",
+    "results-data/corpus-inventory.json"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:e445de97b2fb8410542405fe",
+      "at": "2026-10-12T17:15:37Z",
+      "client": "pi",
+      "op": "create",
+      "op_id": "915bc265a07f4fa481f433971a99c236",
+      "session_id": "da0b2a7d64524d7badf1923cfcfd2dda"
+    }
+  ]
+}

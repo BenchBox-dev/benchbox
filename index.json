@@ -20448,6 +20448,15 @@
       "status": "open",
       "title": "Lock Snowflake trial liveness, credit balance, and stop-loss before any burn"
     },
+    "snowflake-trial-exit-gate1-comparability-lock": {
+      "claim": null,
+      "needs": [
+        "snowflake-trial-exit-gate0-liveness-budget"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Freeze the per-cell rerun matrix from baseline bundles"
+    },
     "snowflake-tuned-live-certification-20261001": {
       "claim": null,
       "needs": [
