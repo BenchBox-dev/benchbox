@@ -51,6 +51,9 @@ CLI_DESCRIPTION = (
     ""
 )
 
+if str(Path(__file__).resolve().parents[2]) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
 try:
     from _project.scripts.explorer_pipeline.contract import (
         EXPLORER_BUILD_CONTRACT_VERSION as _CONTRACT_VERSION,
@@ -61,8 +64,9 @@ try:
     CURRENT_SCHEMA_VERSION: int = _READ_MODEL_VERSION
     CONTRACT_VERSION: str = _CONTRACT_VERSION
 except ImportError:
-    SUPPORTED_SCHEMA_VERSIONS: tuple[int, ...] = (15,)
-    CURRENT_SCHEMA_VERSION: int = 15
+    print("check_explorer_compat: tree contract unimportable; using fallback version pin", file=sys.stderr)
+    SUPPORTED_SCHEMA_VERSIONS: tuple[int, ...] = (16,)
+    CURRENT_SCHEMA_VERSION: int = 16
     CONTRACT_VERSION: str = "6"
 
 _TYPE_ALIASES: dict[str, str] = {
