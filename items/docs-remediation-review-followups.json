@@ -60,6 +60,15 @@
       "op": "take",
       "op_id": "57d57a81baf94a058d49e201f53246dd",
       "session_id": "7f376b068f894dd0920349056eb0a63a"
+    },
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:f0804c5fefb6ba181570047e",
+      "at": "2026-10-12T22:44:30Z",
+      "client": "pi",
+      "generation": "9fac5d1e81ce4ca595f86b989aa27c52",
+      "op": "finish",
+      "op_id": "b0fdfa69278d43eaaed73c1c2dbfd8d1",
+      "session_id": "7f376b068f894dd0920349056eb0a63a"
     }
   ]
 }

@@ -7998,15 +7998,10 @@
       "title": "Publish and verify the approved documentation remediation"
     },
     "docs-remediation-review-followups": {
-      "claim": {
-        "expires_at": "2026-10-13T22:44:12Z",
-        "generation": "9fac5d1e81ce4ca595f86b989aa27c52",
-        "renewals": 0,
-        "worker": "mcp:pi:joe@joe-mac-mini.local:f0804c5fefb6ba181570047e"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Fix remaining published-doc remediation review findings"
     },
     "docs-remediation-review-hardening": {
