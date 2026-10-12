@@ -13,6 +13,7 @@ import pytest
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 ROOT = Path(__file__).resolve().parents[3]
+NOTICE_PATHS = ("LICENSE", "COPYRIGHT.md")
 SPEC = importlib.util.spec_from_file_location("comment_cleanup_scope", ROOT / "scripts/check_comment_cleanup_scope.py")
 assert SPEC and SPEC.loader
 scope = importlib.util.module_from_spec(SPEC)
@@ -1181,3 +1182,118 @@ def test_native_checker_reuses_the_scope_schema_validator() -> None:
     assert native.matches is shared.comment_policy_matches
     assert native.DIRECTIVES is shared.COMMENT_POLICY_DIRECTIVES
     assert native.ENFORCEMENT_MODES is shared.COMMENT_POLICY_ENFORCEMENT_MODES
+
+
+def _drift_notice(path: str, payload: bytes) -> dict:
+    digest = hashlib.sha256(payload).hexdigest()
+    return {
+        "path": path,
+        "blob_sha256": digest,
+        "byte_start": 0,
+        "byte_end": len(payload),
+        "retained_sha256": digest,
+        "governing_requirement": "Fixture pin.",
+        "source_identity": "Fixture source.",
+        "owner": "comment-cleanup-scope-policy",
+        "blocking_disposition": "Fixture disposition.",
+    }
+
+
+def _drift_repo(tmp_path: Path, policy: dict, payload: bytes, path: str = "LICENSE") -> tuple[Path, str]:
+    root = tmp_path / "drift"
+    root.mkdir()
+    setup = (
+        ["init"],
+        ["config", "user.email", "drift@example.com"],
+        ["config", "user.name", "Drift"],
+    )
+    for args in setup:
+        subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True)
+    notice_path = root / path
+    notice_path.parent.mkdir(parents=True, exist_ok=True)
+    notice_path.write_bytes(payload)
+    (root / "quality").mkdir()
+    (root / "quality" / "comment-cleanup-scope.json").write_text(json.dumps(policy), encoding="utf-8")
+    subprocess.run(["git", "-C", str(root), "add", "."], check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(root), "commit", "-m", "base"], check=True, capture_output=True)
+    base = subprocess.check_output(["git", "-C", str(root), "rev-parse", "HEAD"], text=True).strip()
+    return root, base
+
+
+def test_pinned_notice_drift_accepts_an_unmodified_tree(tmp_path: Path, policy: dict) -> None:
+    payload = b"pinned\n"
+    policy["notices"] = [_drift_notice("LICENSE", payload)]
+    root, base = _drift_repo(tmp_path, policy, payload)
+    assert scope.pinned_notice_drift_findings(root, base) == []
+
+
+@pytest.mark.parametrize("path", NOTICE_PATHS, ids=NOTICE_PATHS)
+def test_pinned_notice_drift_rejects_a_modification_without_a_pin_update(
+    tmp_path: Path, policy: dict, path: str
+) -> None:
+    payload = b"pinned\n"
+    policy["notices"] = [_drift_notice(path, payload)]
+    root, base = _drift_repo(tmp_path, policy, payload, path)
+    (root / path).write_bytes(payload + b"more\n")
+    findings = scope.pinned_notice_drift_findings(root, base)
+    assert [finding.code for finding in findings] == ["SCOPE008"]
+    assert findings[0].subject == path
+    assert "quality/comment-cleanup-scope.json" in findings[0].detail
+
+
+@pytest.mark.parametrize("path", NOTICE_PATHS, ids=NOTICE_PATHS)
+def test_pinned_notice_drift_accepts_a_modification_with_a_pin_update(tmp_path: Path, policy: dict, path: str) -> None:
+    payload = b"pinned\n"
+    policy["notices"] = [_drift_notice(path, payload)]
+    root, base = _drift_repo(tmp_path, policy, payload, path)
+    updated = payload + b"more\n"
+    (root / path).write_bytes(updated)
+    policy["notices"] = [_drift_notice(path, updated)]
+    (root / "quality" / "comment-cleanup-scope.json").write_text(json.dumps(policy), encoding="utf-8")
+    assert scope.pinned_notice_drift_findings(root, base) == []
+
+
+def test_pinned_notice_drift_rejects_a_deleted_file(tmp_path: Path, policy: dict) -> None:
+    payload = b"pinned\n"
+    path = "LICENSE"
+    policy["notices"] = [_drift_notice(path, payload)]
+    root, base = _drift_repo(tmp_path, policy, payload, path)
+    (root / path).unlink()
+    findings = scope.pinned_notice_drift_findings(root, base)
+    assert [finding.code for finding in findings] == ["SCOPE008"]
+    assert findings[0].subject == path
+
+
+def test_pinned_notice_drift_rejects_removing_a_notice_entry(tmp_path: Path, policy: dict) -> None:
+    payload = b"pinned\n"
+    path = "COPYRIGHT.md"
+    policy["notices"] = [_drift_notice(path, payload)]
+    root, base = _drift_repo(tmp_path, policy, payload, path)
+    candidate_policy = json.loads((root / scope.POLICY_PATH).read_text())
+    candidate_policy["notices"] = []
+    (root / scope.POLICY_PATH).write_text(json.dumps(candidate_policy))
+    findings = scope.pinned_notice_drift_findings(root, base)
+    assert [finding.code for finding in findings] == ["SCOPE008"]
+    assert "was removed" in findings[0].detail
+
+
+def test_pinned_notice_drift_ignores_external_notice_changes(tmp_path: Path, policy: dict) -> None:
+    payload = b"pinned\n"
+    path = "_sources/tpc-h/PATCHES.md"
+    policy["notices"] = [_drift_notice(path, payload)]
+    root, base = _drift_repo(tmp_path, policy, payload, path)
+    (root / path).write_bytes(payload + b"more\n")
+    assert scope.pinned_notice_drift_findings(root, base) == []
+
+
+def test_check_drift_main_reports_zero_for_a_clean_tree_and_one_for_drift(
+    tmp_path: Path, policy: dict, capsys: pytest.CaptureFixture[str]
+) -> None:
+    payload = b"pinned\n"
+    policy["notices"] = [_drift_notice("LICENSE", payload)]
+    root, base = _drift_repo(tmp_path, policy, payload)
+    assert scope.main(["--check-drift", "--root", str(root), "--base", base]) == 0
+    (root / "LICENSE").write_bytes(payload + b"more\n")
+    assert scope.main(["--check-drift", "--root", str(root), "--base", base]) == 1
+    captured = capsys.readouterr()
+    assert "SCOPE008 LICENSE" in captured.err

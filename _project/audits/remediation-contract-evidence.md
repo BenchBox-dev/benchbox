@@ -2,8 +2,8 @@
 develop_sha: 2eb03f3e67ec8f7f1347738f29696fa39ed5f526
 measured_at_sha: dd20aed2d53a87a4c34ae74c73a187cfa9bf3c5e
 checked_sha: dd20aed2d53a87a4c34ae74c73a187cfa9bf3c5e
-replay_sha: 12acfd365b313374e057d97cb7191f4a98a5dc7d
-replay_scope: PR 2888 workflow and pipeline/publication/full-fast replay at 50183db50c15b46a1dbd474d3bf7cd297f1c2975; PR 2821 D20-D26 scanner fixes, focused and full scanner verification at 12acfd365b313374e057d97cb7191f4a98a5dc7d
+replay_sha: 94b2da915a78d525d8adf8ea1efa554914b28984
+replay_scope: PR 2888 workflow and pipeline/publication/full-fast replay at 50183db50c15b46a1dbd474d3bf7cd297f1c2975; PR 2821 D20-D26 scanner fixes, focused and full scanner verification at 12acfd365b313374e057d97cb7191f4a98a5dc7d; PR 2829 drift-guard remediation, prescribed pipeline/publication replay at 94b2da915a78d525d8adf8ea1efa554914b28984
 ---
 
 # Remediation contract evidence
@@ -111,10 +111,10 @@ uv run -- python -m pytest \
   tests/unit/scripts/publication/test_journal.py -q
 ```
 
-The clean detached-worktree result was `111 passed`. The command and pinned
+The clean detached-worktree result was `112 passed`. The command and pinned
 SHA define the replay; the aggregate count is summary evidence only.
 
-The prescribed pipeline and publication seam replay passed 111 tests after
+The prescribed pipeline and publication seam replay passed 112 tests after
 the end-to-end cohort consumer control was added. Re-run the cited nodes after
 any source or consumer change; a passing aggregate count is not acceptance of
 the collective claim.
@@ -644,3 +644,66 @@ format passed for both changed Python files. Full-project `uv run ty check`
 reported 674 diagnostics with exit status 0. `make comment-policy-check`
 passed 5,779 source files with zero violations, zero enforced failures and all
 19 native syntax tests passing.
+
+## PR #2829 pinned notice drift
+
+`quality/comment-cleanup-scope.json` records 19 whole-file notice pins.
+`LICENSE` and `COPYRIGHT.md` are the two non-external pins in scope; the other
+17 EULA, NOTICE and PATCHES files are already checked by the base-trusted
+comment-policy gate. `PINNED_NOTICE_DRIFT_PATHS` limits SCOPE008 to those two
+paths and avoids duplicating external-notice enforcement.
+
+`pinned_notice_drift_findings` compares each applicable pin with the file bytes
+at the immutable base. It rejects a changed or deleted notice without a
+matching pin update and rejects removal of the corresponding policy entry.
+Required CI checks whether `LICENSE`, `COPYRIGHT.md` or
+`quality/comment-cleanup-scope.json` changed. It skips the drift step when none
+changed; otherwise it runs only `scripts/check_comment_cleanup_scope.py`
+extracted from `BASE_REF`. A missing trusted checker or unsupported
+`--check-drift` option fails closed. The step never executes the PR's candidate
+checker, so this PR can land without executing its new code in the gate.
+
+- Both non-external paths reject changes without a pin update in
+  `test_pinned_notice_drift_rejects_a_modification_without_a_pin_update`.
+- Both paths accept a matching pin update in
+  `test_pinned_notice_drift_accepts_a_modification_with_a_pin_update`.
+- Deletion and policy-entry removal are rejected; external notice changes are
+  left to the existing base-trusted comment-policy gate.
+- `test_check_drift_main_reports_zero_for_a_clean_tree_and_one_for_drift`
+  verifies CLI success and failure.
+- `test_pinned_notice_gate_fails_closed_without_running_candidate_checker`
+  executes the workflow step with a missing or unsupported base checker; both
+  cases fail without executing the candidate checker.
+
+An isolated smoke also confirmed the no-notice-change path skips successfully
+with an older base checker without executing the candidate helper.
+
+The focused drift selection passed 9 tests. The combined scope, CI parity,
+Make timing and hook-ledger selection passed 137 tests:
+
+```bash
+uv run -- python -m pytest tests/unit/scripts/test_comment_cleanup_scope.py \
+  tests/system/test_ci_lint_parity.py \
+  tests/unit/scripts/test_make_timing.py::test_timed_targets_are_prerequisite_free_single_command_recipes \
+  tests/unit/test_ledger_coverage.py::test_ledger_lists_every_pre_commit_hook -q -n0
+```
+
+The direct drift check reported zero findings:
+
+```bash
+uv run -- python scripts/check_comment_cleanup_scope.py --check-drift --base "$(git merge-base origin/develop HEAD)"
+```
+
+Ruff check, Ruff format check and `py_compile` passed for the changed Python
+files. `uv run -- ty check` completed with 674 diagnostics.
+`make comment-policy-check` failed before its drift command: the trusted
+transition scan reported 10 enforced errors with this diagnostic:
+`CP coverage-error: shell command source requires an executable-payload adapter`.
+They occur across seven workflow and script files that this PR does not change.
+The drift check passed independently; the full policy gate remains blocked by
+those coverage errors.
+The final CI parity test file passed a scoped report-only policy scan with
+zero violations.
+
+The checker, tests and workflow are registered soundness paths and require
+independent review.

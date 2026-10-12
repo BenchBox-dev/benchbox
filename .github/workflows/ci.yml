@@ -59,6 +59,22 @@ jobs:
             exit 1
           fi
           python -I "$RUNNER_TEMP/comment-policy-runner.py" --native-tests
+      - name: Enforce pinned notice drift
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          : "${BASE_REF:?BASE_REF is required}"
+          if git diff --quiet "$BASE_REF" HEAD -- LICENSE COPYRIGHT.md quality/comment-cleanup-scope.json; then
+            echo "No pinned notice inputs changed; drift check not needed."
+            exit 0
+          fi
+          if ! git cat-file -e "${BASE_REF}:scripts/check_comment_cleanup_scope.py" 2>/dev/null; then
+            echo "Trusted pinned-notice checker is missing" >&2
+            exit 1
+          fi
+          git show "${BASE_REF}:scripts/check_comment_cleanup_scope.py" > "$RUNNER_TEMP/trusted_check_scope.py"
+          python -I "$RUNNER_TEMP/trusted_check_scope.py" --check-drift --base "$BASE_REF"
 
   base-guard:
     name: PR base branch is an integration branch

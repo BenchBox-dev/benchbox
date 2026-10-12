@@ -127,16 +127,16 @@ isolated from project configuration, import and installer overrides, candidate
 `node_modules` and candidate Python environments. The candidate's own checker is used only to bootstrap a
 base that contains the rollout commit `ed5c263c513ba65499f4918d3a7de607f280c65b`
 and holds no trusted checker files, launcher or policy registry; on any other
-base, a missing checker fails. The job log is informational and the exit status is what decides the result. The
-checker escapes untrusted text it prints, and the native JavaScript tests run
-inside a `stop-commands` fence with a random token. Every tool the trusted
-launcher uses (Python, uv and Node) is set up before the pull request is checked
-out, so no candidate file or configuration, such as a `.yarnrc` that names a
-script, can run before the checker or change the interpreter it uses. The pull
-request's own code still runs in the job through those native tests, and its
-text can reach the log through other actions, so a log can be made to read
-differently from what the checker found. It cannot change the exit status. `.github/soundness-paths.txt` protects these files, and changes to this wiring need the
-repository's independent soundness review.
+base, a missing checker fails. The job log is informational, and its exit
+status decides the result. The checker escapes untrusted text. Native
+JavaScript tests run inside a random `stop-commands` fence. The trusted
+launcher's tools (Python, uv, and Node) are set up before checkout, so candidate
+configuration cannot execute before the checker or change its interpreter.
+The separate pinned-notice drift step runs
+`scripts/check_comment_cleanup_scope.py` from the candidate revision and can
+affect the job result. `.github/soundness-paths.txt` protects the workflow,
+checker, manifest, and tests; changes require independent soundness review.
+The drift step does not replace or modify the trusted base-sourced parser.
 
 ## Coverage and limits
 
@@ -199,12 +199,10 @@ Known gaps, each a place where a comment can pass unreported:
   such comments where they are part of the product's output, for example
   maintenance SQL headers, dry-run DDL previews, stream-file headers, the Trino
   tuning note and the AWS Glue job script.
-- A program piped to an interpreter on stdin from a producer other than `echo`
-  or `printf` (such as `curl ... | sh`) is not scanned.
-- Whole-file pinned notices in `quality/comment-cleanup-scope.json` are checked
-  against their recorded digest, but changed files do not yet require a pin
-  update on the same branch.
-- Unsupported `printf` formats or `echo -e` escapes in a recognized pipeline
-  produce a coverage error.
-- JSX `{// ...}` line-comment expressions in MDX prose are not extracted, so
-  comments in that form outside Markdown code fences are not inspected.
+- Pipelines to unmodeled stdin interpreters (such as `perl` or `ruby`) are not scanned.
+- Whole-file pins for the non-external `LICENSE` and `COPYRIGHT.md` notices are
+  enforced by required CI; changing either file requires updating its pin in
+  the same pull request. External notices are checked against base-trusted
+  pins by the comment-policy gate.
+- Unsupported `printf` formats or `echo -e` escapes in a recognized pipeline produce a coverage error.
+- JSX `{// ...}` line-comment expressions in MDX prose are not extracted, so comments in that form outside Markdown code fences are not inspected.
