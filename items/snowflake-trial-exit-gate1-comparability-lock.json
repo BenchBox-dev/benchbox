@@ -4,7 +4,7 @@
     "55-vs-50 file/inventory gap reconciled and recorded",
     "Non-comparable cells explicitly listed and demoted to Tier 3 with reason"
   ],
-  "context": "Verification rubric: reviewer can take any matrix row, open the named bundle, and confirm the four pinned fields match. Command shapes are frozen per family here, not invented later.",
+  "context": "GATE1 EVIDENCE (measured 2026-10-12, zero live burns; worktree feat/snowflake-trial-exit):\n- Matrix artifact: docs/internal/snowflake-trial-exit-gate1-matrix-20261012_191833.json (sha256 b4feda7b4bcfdf8b56995566bc3350b843e1d7df385e47755b935baaaf0388da), 50 cells, all pinned reproducible-exact, 0 non-comparable.\n- Families: legacy 13 cells (amplab/clickbench/ssb/h2odb/joinorder + others in 3/2 shape) streams=3/iters=2/no-seed; current 37 cells streams=4/iters=3. Seeds ONLY tpch sf1/sf10 + tpcds sf1/sf10 = 42 (sf01 scales unseeded). Load phases ONLY tpcdi sf01/sf1/sf10 + tpcds sf01/sf1/sf10 (6 cells generate,load,power); rest power-only (44).\n- Query convention: stream index == iter index; iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1, benchbox/core/constants.py:14); reruns pin warmup=1, no warmup additions.\n- 55-vs-50 reconciliation: 55 on-disk files = 50 result bundles + 5 .override.json comparison-rule sidecars (scale-invariant rules, not cells, correctly outside inventory). All 50 bundles inventoried AND sha256-matching; all tuning_source=baseline, X-Small. No file carries tuning_source None in this tree (handoff note superseded). Tier 3 empty: no non-comparable cells; Tier 3 admits only later-demoted cells.\n- Caveats pinned per cell: 13 legacy bundles lack cache_control receipts (older schema) -> reruns still run cache-disabled; metadata_primitives power-only SKIPPED-load is config-consistent, not an anomaly.\n- Spot checks: tpcds-sf10 row (phases/streams/iters/seed/wh-size) and ssb-sf1 row both match live bundle reads.\n- Command shapes frozen in matrix.command_shapes; common: --platform-option warehouse_size=X-Small, cache disabled, auto_suspend=300, --funding free-trial --publish-label maintainer-run, suspend between pair members, default reuse.",
   "description": "Gate 1. Build the rerun matrix from live reads of results-data/bundles/*snowflake*.json: per cell record phases, streams, iterations, seed, warehouse state. Known families: legacy cells (amplab, clickbench, ssb, h2odb, joinorder) streams=3/iters=2/no seed; current cells streams=4/iters=3; seeds only on tpch sf1/sf10 and tpcds sf1/sf10 (seed=42); tpcdi+tpcds cells ran generate,load,power (6 cells), rest power only. Also reconcile the 55 on-disk Snowflake JSON files vs 50 corpus-inventory rows (5 files carry tuning_source None). Decision gate: each cell marked reproducible-exact or non-comparable (non-comparable falls to Tier 3). Guardrails: no live runs; no bundle overwrites; matrix stored as a new timestamped artifact, never an edit of existing bundles.",
   "links": [
     "results-data/bundles",
@@ -26,6 +26,14 @@
       "generation": "a60ea25c04e6417fa957ef4876adcf17",
       "op": "take",
       "op_id": "ac193484389342f0a053c3ee7009b7c3",
+      "session_id": "3d6d32ac7c5e46c58670f9664a7aea41"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:28ec00d9b0349e9794467df7",
+      "at": "2026-10-12T19:18:50Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "66bb4200b85143408663fb87604571c5",
       "session_id": "3d6d32ac7c5e46c58670f9664a7aea41"
     }
   ]
