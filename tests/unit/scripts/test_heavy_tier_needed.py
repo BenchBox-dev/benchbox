@@ -34,7 +34,6 @@ def _decision(paths: list[str]) -> dict:
 def _classify(paths: list[str], base: dict[str, str], pr: dict[str, str]) -> dict:
     return heavy.heavy_needed(
         _decision(paths),
-        "pull_request",
         "base",
         REPO_ROOT,
         read_base=lambda *_: base,
@@ -47,7 +46,7 @@ def test_real_base_policy_does_not_expand_an_ordinary_code_change(
 ) -> None:
     repo, base_head, _pr_head = _snapshot_repo(tmp_path, policy_sources)
     assert subprocess.check_output(["git", "-C", str(repo), "remote"], text=True) == ""
-    result = heavy.heavy_needed(_decision(["benchbox/core/platform_registry.py"]), "pull_request", base_head, repo)
+    result = heavy.heavy_needed(_decision(["benchbox/core/platform_registry.py"]), base_head, repo)
     assert result["heavy_needed"] is False, result["reason"]
 
 
@@ -193,7 +192,7 @@ def test_invalid_policy_copies_fail_closed(policy_sources: dict[str, str], bad_c
 
 
 def test_unreadable_base_ref_fails_closed() -> None:
-    result = heavy.heavy_needed(_decision(["ordinary.py"]), "pull_request", "refs/heads/not-present", REPO_ROOT)
+    result = heavy.heavy_needed(_decision(["ordinary.py"]), "refs/heads/not-present", REPO_ROOT)
     assert result["heavy_needed"] is True
     assert "failed closed" in result["reason"]
 
@@ -236,13 +235,7 @@ def test_invalid_cli_decisions_publish_the_safe_direction(tmp_path: Path, raw: s
     assert output.read_text().strip() == "heavy-needed=true"
 
 
-def test_event_and_packaging_carve_outs_preserve_the_full_tier() -> None:
-    assert heavy.heavy_needed(_decision([]), "merge_group", "absent", REPO_ROOT)["heavy_needed"] is True
+def test_packaging_carve_out_and_non_code_routing_preserve_the_expected_tier() -> None:
     decision = {**_decision([]), "packaging_needed": True}
-    assert heavy.heavy_needed(decision, "pull_request", "absent", REPO_ROOT)["heavy_needed"] is True
-    assert (
-        heavy.heavy_needed({**_decision([]), "needs_code_ci": False}, "pull_request", "absent", REPO_ROOT)[
-            "heavy_needed"
-        ]
-        is False
-    )
+    assert heavy.heavy_needed(decision, "absent", REPO_ROOT)["heavy_needed"] is True
+    assert heavy.heavy_needed({**_decision([]), "needs_code_ci": False}, "absent", REPO_ROOT)["heavy_needed"] is False
