@@ -17721,15 +17721,10 @@
       "title": "Rename the release branch main->release (Decision B of the branching-strategy review)"
     },
     "repair-comment-policy-shell-payload-coverage": {
-      "claim": {
-        "expires_at": "2026-10-13T22:46:41Z",
-        "generation": "21d296321a584ddfa2c1823401b996c5",
-        "renewals": 0,
-        "worker": "mcp:pi:joe@joe-mac-mini.local:5ab7ac2f6434da24c013257f"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Repair shell executable-payload coverage in the comment-policy checker"
     },
     "repair-public-pagefind-search": {
