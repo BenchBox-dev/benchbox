@@ -11,6 +11,7 @@ from benchbox.validation.bundle import (
     SUBMISSION_NOTES_MAX_LEN,
     ValidationResult,
     _validate_bundle,
+    _validate_execution_consistency,
     _validate_manifest_hash,
     _validate_manifest_provenance,
     discover_bundles,
@@ -1557,6 +1558,120 @@ class TestSubmissionDeterministicGates:
         vr = ValidationResult("test")
         _validate_bundle(data, vr)
         assert vr.ok, vr.errors
+
+    class TestThroughputStreamCompleteness:
+        def _bundle(self, stream_ids, queries_by_stream, benchmark="tpch", status="COMPLETED"):
+            return {
+                "summary": {"validation": "passed"},
+                "benchmark": {"id": benchmark},
+                "phases": {
+                    "throughput_test": {
+                        "status": status,
+                        "stream_results": [{"stream_id": sid, "success": True} for sid in stream_ids],
+                    }
+                },
+                "queries": [
+                    {"id": qid, "status": "SUCCESS", "run_type": "measurement", "stream": sid}
+                    for sid, qids in queries_by_stream.items()
+                    for qid in qids
+                ],
+            }
+
+        def _full_tpch(self):
+            return [f"Q{i}" for i in range(1, 23)]
+
+        def test_contiguous_streams_with_full_coverage_pass(self):
+            full = self._full_tpch()
+            data = self._bundle([1, 2], {1: full, 2: full})
+            vr = ValidationResult("test")
+            _validate_execution_consistency(data, vr)
+            assert vr.ok, vr.errors
+
+        def test_non_contiguous_stream_ids_rejected(self):
+            full = self._full_tpch()
+            data = self._bundle([1, 3], {1: full, 3: full})
+            vr = ValidationResult("test")
+            _validate_execution_consistency(data, vr)
+            assert not vr.ok
+            assert any("contiguous 1..2" in error for error in vr.errors)
+
+        def test_stream_missing_queries_rejected(self):
+            data = self._bundle([1, 2], {1: self._full_tpch(), 2: self._full_tpch()[:21]})
+            vr = ValidationResult("test")
+            _validate_execution_consistency(data, vr)
+            assert not vr.ok
+            assert any("throughput stream 2 covers 21 of 22" in error for error in vr.errors)
+
+        def test_query_referencing_unknown_stream_rejected(self):
+            full = self._full_tpch()
+            data = self._bundle([1, 2], {1: full, 2: full, 9: full})
+            vr = ValidationResult("test")
+            _validate_execution_consistency(data, vr)
+            assert not vr.ok
+            assert any("unknown stream_id 9" in error for error in vr.errors)
+
+        def test_empty_stream_results_rejected(self):
+            data = self._bundle([], {})
+            vr = ValidationResult("test")
+            _validate_execution_consistency(data, vr)
+            assert not vr.ok
+            assert any("non-empty stream_results" in error for error in vr.errors)
+
+        def test_non_integer_stream_id_rejected(self):
+            data = self._bundle([1, 2], {1: self._full_tpch(), 2: self._full_tpch()})
+            data["phases"]["throughput_test"]["stream_results"][1] = {"success": True}
+            vr = ValidationResult("test")
+            _validate_execution_consistency(data, vr)
+            assert not vr.ok
+            assert any("must be an integer" in error for error in vr.errors)
+
+        def test_non_clean_bundle_skips_stream_checks(self):
+            full = self._full_tpch()
+            data = self._bundle([1, 3], {1: full})
+            data["summary"]["validation"] = "failed"
+            vr = ValidationResult("test")
+            _validate_execution_consistency(data, vr)
+            assert vr.ok, vr.errors
+
+        def test_non_completed_phase_skips_stream_checks(self):
+            data = self._bundle([1, 3], {}, status="FAILED")
+            vr = ValidationResult("test")
+            _validate_execution_consistency(data, vr)
+            assert vr.ok, vr.errors
+
+        def test_other_benchmark_skips_query_counts_but_checks_contiguity(self):
+            data = self._bundle([1, 2], {1: ["Q1"], 2: ["Q1"]}, benchmark="ssb")
+            vr = ValidationResult("test")
+            _validate_execution_consistency(data, vr)
+            assert vr.ok, vr.errors
+            data = self._bundle([1, 3], {1: ["Q1"], 3: ["Q1"]}, benchmark="ssb")
+            vr = ValidationResult("test")
+            _validate_execution_consistency(data, vr)
+            assert not vr.ok
+            assert any("contiguous 1..2" in error for error in vr.errors)
+
+        def test_tpcds_full_canonical_stream_passes(self):
+            data = self._bundle([1], {1: self._tpcds_variant_ids()}, benchmark="tpcds")
+            vr = ValidationResult("test")
+            _validate_execution_consistency(data, vr)
+            assert vr.ok, vr.errors
+
+        def test_tpcds_short_stream_rejected(self):
+            data = self._bundle([1], {1: self._tpcds_variant_ids()[:-9]}, benchmark="TPCDS")
+            vr = ValidationResult("test")
+            _validate_execution_consistency(data, vr)
+            assert not vr.ok
+            assert any("of 99" in error and "canonical queries" in error for error in vr.errors)
+
+        def _tpcds_variant_ids(self):
+            ids: list[str] = []
+            canonical = bundle_module.CANONICAL_LOGICAL_QUERY_IDS["tpcds"]
+            for qid in sorted(canonical, key=int):
+                if qid in ("14", "23", "24", "39"):
+                    ids += [f"{qid}a", f"{qid}b"]
+                else:
+                    ids.append(qid)
+            return ids
 
     def test_tpchavoc_requires_every_declared_variant(self):
         from benchbox.validation.bundle import TPCHAVOC_CANONICAL_VARIANTS
