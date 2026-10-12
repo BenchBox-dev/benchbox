@@ -4,7 +4,7 @@
     "Trial credit balance, storage used, stop-loss threshold and reserve recorded in item context",
     "Go/no-go verdict recorded; no-go blocks every downstream exit item"
   ],
-  "context": "Related (not prerequisite): capture-metered-cloud-benchmark-costs covers metered receipt capture; this gate only inventories balance. Prior decision: pin --platform-option warehouse_size=X-Small on all reruns. Verification rubric: paste SHOW WAREHOUSES size, balance query output, and the four recorded numbers; verdict is go only with all four present.",
+  "context": "GATE0 EVIDENCE (measured live 2026-10-12 UTC, read-only queries only):\n- Liveness: Snowflake 10.36.101, account JF21691, org WJSLFIU, region AWS_US_EAST_2, user JOEHARRIS76, roles ACCOUNTADMIN (+ORGADMIN granted). Connection OK.\n- Warehouse: COMPUTE_WH type STANDARD size X-Small (SHOW WAREHOUSES; state SUSPENDED at rest, auto_suspend=300, auto_resume=true). Other warehouses: SNOWFLAKE_LEARNING_WH X-Small suspended, SYSTEM$STREAMLIT_NOTEBOOK_WH X-Small suspended. MEDIUM ambiguity RESOLVED: MEDIUM is only the adapter code default (benchbox/platforms/snowflake.py:75); live size is X-Small on every warehouse.\n- Consumed credits (SNOWFLAKE.ACCOUNT_USAGE.METERING_HISTORY, measured): compute 48.425 + cloud services 4.711 = 53.136 total since 2026-09-17 (first metering row 2026-09-17; last 2026-10-03; daily peak 11.76 on 09-19). Negligible serverless: query acceleration 0.0246, Snowsight 0.0007.\n- Storage used (STORAGE_USAGE, measured): 39,336,613,888 bytes (~36.6 GiB) on 2026-10-12.\n- Balance remaining: NOT SQL-visible (ORGANIZATION_USAGE views unauthorized even as ORGADMIN; SHOW ORGANIZATION ACCOUNTS returns no rows). Standard trial grant is $400 but $/credit varies by region/edition, so remaining-in-credits is an estimate. Snowsight (Admin -> Usage) confirmation REQUIRED before any stage3+ burn; Snowsight number overrides all estimates below.\n- Trial window: first account activity 2026-09-17 -> standard 30-day trial implies expiry ~2026-10-17 (~5 days). Keep trial-expiry buffer; no new large loads in final window.\n- Stop-loss (numeric): HALT new burns when cumulative consumed credits reach 100 (2x headroom over measured 53.1; safe even under a pessimistic $400/100-credit conversion). Re-check METERING_HISTORY before each burn batch.\n- Reserve (numeric): hold minimum 25 credits of headroom for the stage5 pilot; stages 3-4 combined may consume at most (100 - 53.1 - 25) = ~21.9 credits. Stage5 entry requires its own admission check.\n- VERDICT: CONDITIONAL GO. Zero-burn gates 1-2 proceed. Burns from stage3 onward admitted only after Snowsight remaining-balance confirmation + consumption re-check against the stop-loss.\nPrior context retained: Related (not prerequisite): capture-metered-cloud-benchmark-costs covers metered receipt capture; this gate only inventories balance. Prior decision: pin --platform-option warehouse_size=X-Small on all reruns.",
   "description": "Gate 0 of the Snowflake trial exit. Establish read-only liveness (connection, SHOW WAREHOUSES, trial balance, storage used) and resolve the X-Small vs MEDIUM warehouse ambiguity before any credit-burning run. Prior bundles show platform.compute.warehouse_size=X-Small on all 50 inventoried bundles while platform.config echoes the MEDIUM adapter default (benchbox/platforms/snowflake.py:75 default; observed size via SHOW WAREHOUSES at snowflake.py:286). Cost history is unusable: all sampled bundles report normalized_cost.cost_status=unavailable, cost_usd=null. Decision gate: record effective warehouse size, credit balance, storage used, numeric stop-loss (halt new burns) and reserve (held for large scale). Default if operator gives no override: halt new burns when 70% of remaining credits are consumed, reserve 30% for the large-scale tier. Guardrails: read-only queries only in this item (SHOW WAREHOUSES, ACCOUNT_USAGE metering); no benchmark runs; no --modify-warehouse-settings; no warehouse resize; Snowflake only.",
   "links": [
     "benchbox/platforms/snowflake.py",
@@ -26,6 +26,14 @@
       "generation": "c739b8ea84484550b81b614fab73bc28",
       "op": "take",
       "op_id": "8278ed9bba9b4161b870815a3c478362",
+      "session_id": "3d6d32ac7c5e46c58670f9664a7aea41"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:28ec00d9b0349e9794467df7",
+      "at": "2026-10-12T19:16:22Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "ed48b98093f4404688af6ea83e715010",
       "session_id": "3d6d32ac7c5e46c58670f9664a7aea41"
     }
   ]
