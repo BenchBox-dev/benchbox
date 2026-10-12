@@ -66,6 +66,32 @@ def test_databricks_estimate_is_refused() -> None:
     assert _estimated_normalized_cost(_parse_bundle(data)) is None
 
 
+def test_non_verified_rate_cell_refuses_estimate() -> None:
+    enterprise = _snowflake_bundle()
+    enterprise["platform"] = {
+        "name": "snowflake",
+        "version": "8.0",
+        "config": {"edition": "enterprise"},
+    }
+    assert _estimated_normalized_cost(_parse_bundle(enterprise)) is None
+
+    eu_region = _snowflake_bundle()
+    eu_region["platform"] = {
+        "name": "snowflake",
+        "version": "8.0",
+        "cloud": {"provider": "aws", "region": "eu-west-1"},
+    }
+    assert _estimated_normalized_cost(_parse_bundle(eu_region)) is None
+
+
+def test_pricing_table_drift_refuses_estimate(monkeypatch: pytest.MonkeyPatch) -> None:
+    import benchbox.core.cost.pricing as pricing_module
+
+    monkeypatch.setitem(pricing_module.SNOWFLAKE_CREDIT_PRICES["standard"]["aws"], "us", 2.5)
+
+    assert _estimated_normalized_cost(_parse_bundle(_snowflake_bundle())) is None
+
+
 def test_failed_measurement_yields_no_estimate() -> None:
     data = _snowflake_bundle()
     data["queries"] = [

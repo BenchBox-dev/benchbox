@@ -833,6 +833,10 @@ def _canonical_cost_region(value: Any) -> str | None:
     return normalized
 
 
+_SNOWFLAKE_ESTIMATE_CREDIT_USD = Decimal("2.00")
+_SNOWFLAKE_ESTIMATE_PRICING_DATE = "2026-10-09"
+
+
 def _median_measured_seconds_per_query(bundle: BundleDocument) -> tuple[Decimal, int] | None:
     timings = _query_timings(bundle)
     measured = [timing for timing in timings if timing.run_type == "measurement"]
@@ -919,15 +923,23 @@ def _estimated_normalized_cost(bundle: BundleDocument) -> NormalizedCost | None:
         assumptions.append("Standard edition is assumed because the bundle does not record the contracted edition.")
     size_rate = resolve_snowflake_warehouse_credits_per_hour(size)
     price_rate = resolve_snowflake_credit_price(edition, cloud, region)
-    if size_rate.value is None or size_rate.fallback_used or price_rate.value is None or price_rate.fallback_used:
+    if (
+        size_rate.value is None
+        or size_rate.fallback_used
+        or price_rate.value is None
+        or price_rate.fallback_used
+        or price_rate.resolved_key != ("standard", "aws", "us")
+        or Decimal(str(price_rate.value)) != _SNOWFLAKE_ESTIMATE_CREDIT_USD
+    ):
         return None
     amount = (
-        runtime_seconds * Decimal(str(size_rate.value)) * Decimal(str(price_rate.value)) / Decimal("3600")
+        runtime_seconds * Decimal(str(size_rate.value)) * _SNOWFLAKE_ESTIMATE_CREDIT_USD / Decimal("3600")
     ).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
     assumptions.extend(
         [
-            f"Snowflake {edition} credit rate is ${price_rate.value}/credit from the current Service Consumption Table, effective 2026-10-09.",
+            f"Snowflake standard credit rate is ${price_rate.value}/credit from the current Service Consumption Table, effective {_SNOWFLAKE_ESTIMATE_PRICING_DATE}.",
             f"Snowflake {size} standard warehouse rate is {size_rate.value} credit/hour.",
+            "The estimate is restricted to the verified standard/AWS/US rate cell; any pricing-table drift or other edition, cloud, or region refuses to estimate.",
             "The current list rate is applied retrospectively; the historical edition, negotiated rate, and invoice amount are unknown.",
         ]
     )
@@ -950,7 +962,7 @@ def _estimated_normalized_cost(bundle: BundleDocument) -> NormalizedCost | None:
             "https://www.snowflake.com/legal-files/CreditConsumptionTable.pdf; "
             "https://www.snowflake.com/en/pricing-options/calculator/"
         ),
-        cost_estimate_pricing_date="2026-10-09",
+        cost_estimate_pricing_date=_SNOWFLAKE_ESTIMATE_PRICING_DATE,
         cost_estimate_assumptions=tuple(assumptions),
     )
 

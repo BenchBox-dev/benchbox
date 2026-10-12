@@ -1418,7 +1418,7 @@ def _parse_decimal(value: Any, field_path: str, vr: ValidationResult) -> Decimal
 
 def _validate_required_cost_string(raw: dict[str, Any], key: str, vr: ValidationResult) -> str | None:
     value = raw.get(key)
-    if not isinstance(value, str) or not value:
+    if not isinstance(value, str) or not value.strip():
         vr.error(f"normalized_cost.{key} must be a non-empty string")
         return None
     return value
@@ -1460,8 +1460,17 @@ def _validate_estimated_cost_fields(
             vr.error("normalized_cost.cost_status 'estimated' requires deployment metadata")
         if raw.get("unavailability_reasons"):
             vr.error("normalized_cost.cost_status 'estimated' must not include unavailability_reasons")
-    elif estimated_value is not None:
-        vr.error("normalized_cost.estimated_cost_usd requires cost_status 'estimated'")
+    elif any(
+        value is not None
+        for value in (
+            estimated_value,
+            raw.get("cost_estimate_method"),
+            raw.get("cost_estimate_source"),
+            raw.get("cost_estimate_pricing_date"),
+            raw.get("cost_estimate_assumptions"),
+        )
+    ):
+        vr.error("normalized_cost cost estimate fields require cost_status 'estimated'")
 
 
 def _validate_normalized_cost_block(

@@ -986,6 +986,29 @@ class TestValidateBundle:
         assert not vr.ok
         assert any("must not include unavailability_reasons" in e for e in vr.errors)
 
+    def test_estimate_metadata_without_estimated_status_fails(self):
+        data = _minimal_bundle()
+        data["normalized_cost"] = _estimated_cost_block()
+        data["normalized_cost"]["cost_status"] = "unavailable"
+        del data["normalized_cost"]["estimated_cost_usd"]
+
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr)
+
+        assert not vr.ok
+        assert any("cost estimate fields require cost_status 'estimated'" in e for e in vr.errors)
+
+    def test_whitespace_cost_string_fails(self):
+        data = _minimal_bundle()
+        data["normalized_cost"] = _estimated_cost_block()
+        data["normalized_cost"]["billing_unit"] = "   "
+
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr)
+
+        assert not vr.ok
+        assert any("billing_unit must be a non-empty string" in e for e in vr.errors)
+
 
 def _estimated_cost_block() -> dict:
     return {
