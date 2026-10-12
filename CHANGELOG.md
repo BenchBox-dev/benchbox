@@ -291,6 +291,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   mismatched keys are recorded as failed ledger statements and warned. Result
   metadata reports the live tuned values for shuffle partitions and adaptive
   execution.
+- Tuned load-only runs (`--phases generate,load`) now go through the same
+  apply → load → reconcile → metadata → ledger/receipt → export lifecycle as
+  full runs, so a load-only bundle never carries a tuned mode without
+  `platform.tuning`. Adapters without the full lifecycle refuse tuned load-only
+  runs with an actionable error instead.
 - The Atom feed uses canonical `/blog/` self and entry links while retaining stable entry IDs for existing subscribers.
 - Deprecated option aliases now show their warning. The Polars `streaming`
   option, `--polars-streaming`, Dask `use_distributed`, pg-duckdb
