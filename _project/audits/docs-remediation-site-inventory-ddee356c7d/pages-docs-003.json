@@ -23600,6 +23600,10 @@
    [
     "h3",
     "Correction (2026-10-09)"
+   ],
+   [
+    "h2",
+    "Addendum (2026-10-10): benefit rule for tuned-template verdicts"
    ]
   ],
   "ids": [
@@ -23610,6 +23614,7 @@
    "addendum-2026-10-04-the-local-result-file-is-not-anonymized",
    "addendum-2026-10-04-tuning-in-load-only-runs",
    "addendum-2026-10-07-clickhouse-tpc-h-tuned-run-slower-than-baseline",
+   "addendum-2026-10-10-benefit-rule-for-tuned-template-verdicts",
    "adr-3-baseline-definition-and-the-single-tuning-ddl-renderer",
    "benchbox-site-header-nav",
    "consequences",
@@ -23662,6 +23667,10 @@
    ],
    [
     "h2",
+    "Requested-versus-rendered reconciliation"
+   ],
+   [
+    "h2",
     "Statement classes (per phase x mechanism)"
    ],
    [
@@ -23683,6 +23692,7 @@
    "per-platform-catalog-reads-introspector",
    "post-load-introspection-receipts",
    "problem",
+   "requested-versus-rendered-reconciliation",
    "search-dialog-title",
    "session-sets-are-corroboration-eligible-no-default",
    "site-header-panel",

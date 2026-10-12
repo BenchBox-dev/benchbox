@@ -8254,6 +8254,7 @@
  "/docs/development/tuning-adr-003-baseline-and-single-renderer.html#addendum-2026-10-04-the-local-result-file-is-not-anonymized",
  "/docs/development/tuning-adr-003-baseline-and-single-renderer.html#addendum-2026-10-04-tuning-in-load-only-runs",
  "/docs/development/tuning-adr-003-baseline-and-single-renderer.html#addendum-2026-10-07-clickhouse-tpc-h-tuned-run-slower-than-baseline",
+ "/docs/development/tuning-adr-003-baseline-and-single-renderer.html#addendum-2026-10-10-benefit-rule-for-tuned-template-verdicts",
  "/docs/development/tuning-adr-003-baseline-and-single-renderer.html#consequences",
  "/docs/development/tuning-adr-003-baseline-and-single-renderer.html#context",
  "/docs/development/tuning-adr-003-baseline-and-single-renderer.html#correction-2026-10-09",
@@ -8267,6 +8268,7 @@
  "/docs/development/tuning-introspection-receipts.html#_top",
  "/docs/development/tuning-introspection-receipts.html#per-platform-catalog-reads-introspector",
  "/docs/development/tuning-introspection-receipts.html#problem",
+ "/docs/development/tuning-introspection-receipts.html#requested-versus-rendered-reconciliation",
  "/docs/development/tuning-introspection-receipts.html#session-sets-are-corroboration-eligible-no-default",
  "/docs/development/tuning-introspection-receipts.html#statement-classes-per-phase-x-mechanism",
  "/docs/development/tuning-introspection-receipts.html#trust-rule-soundness",
@@ -10209,10 +10211,5 @@
  "/docs/platforms/platform-selection-guide.html#wrong-platform-choices",
  "/docs/platforms/polars.html",
  "/docs/platforms/polars.html#_top",
- "/docs/platforms/polars.html#basic-benchmark-run",
- "/docs/platforms/polars.html#benchmark-recommendations",
- "/docs/platforms/polars.html#best-for",
- "/docs/platforms/polars.html#cli-options",
- "/docs/platforms/polars.html#compare-sql-vs-dataframe-performance",
- "/docs/platforms/polars.html#comparison-with-duckdb"
+ "/docs/platforms/polars.html#basic-benchmark-run"
 ]
