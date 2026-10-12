@@ -4,7 +4,7 @@
     "The scaffold helper output includes the execution_engines capability stub and a resolve_execution_engine receipt, and passes the parity test unmodified (test added); compute and gateway stubs are added by their own items when those capabilities exist",
     "compat-docs-check passes; PR merged through the normal flow"
   ],
-  "context": "Decision gate: start after core-exec-polars-cli-mcp-adoption so the worked example is real code. Guardrails: shared core-exec guardrails (see core-exec-d0-vocabulary-adr context).",
+  "context": "Decision gate: start after core-exec-polars-cli-mcp-adoption so the worked example is real code. Guardrails: shared core-exec guardrails (see core-exec-d0-vocabulary-adr context).\n\nCloseout (2026-10-12): merged as 2bdcb75fda3c (PR #2918) after CHANGELOG-conflict rebase onto the item-12 merge. Scaffold scripts/new_platform_scaffold.py (--kind sql|dataframe) with manifest/adapter stubs, checklist + both guides carry the reserved-word/alias rule and polars-df worked example. Full CI green + oracle-review SUCCESS (connector reviewed; no stand-in needed).",
   "description": "Planned platforms (GizmoSQL, Altinity, Aiven, DoubleCloud, OVHcloud, Tinybird, Exasol incl. SaaS, SereneDB, SiriusDB, Bodo, Ballista, Databend modes, and the Tier-1 candidates in platform-expansion-evaluation-2026-09) must not reintroduce platform-specific engine, mode or compute keys. Put the rule where new-platform work starts.\n\nWork:\n1. docs/development/new-platform-acceptance-checklist.md, adding-new-platforms.md and adding-dataframe-platform.md: a section stating the reserved bare words (ADR D11), how to declare execution_engines (incl. selectable=false for observed-only), deployment_modes, compute and gateways in the manifest, and how adapters return the ExecutionEngineReceipt. Sections for compute, deployment and gateway are added by their own items; this item adds the engine and reserved-word sections and the cross-references.\n2. The scaffold helper (see the checklist's Scaffold Helper section) emits the manifest capability stubs and a receipt in get_platform_info.\n3. Link the checklist from each planned-platform item (done in the tracker update that accompanies this item).",
   "links": [
     "docs/development/new-platform-acceptance-checklist.md",
@@ -35,6 +35,14 @@
       "generation": "104304543ceb4586bc6b64545bc50f3d",
       "op": "take",
       "op_id": "44f89f3404db4ce693cd15c00802c400",
+      "session_id": "27b88a720c9f4fc981d9d2b9406e61be"
+    },
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:5b994405d415152299b5a092",
+      "at": "2026-10-12T21:55:19Z",
+      "client": "pi",
+      "op": "update",
+      "op_id": "bd8eb88640914cbdb394bfc3914a7cc1",
       "session_id": "27b88a720c9f4fc981d9d2b9406e61be"
     }
   ]
