@@ -5057,7 +5057,12 @@
       "title": "Declare execution engines for existing platforms that already have engine variants (pg_duckdb, Dask, Databricks, Velox)"
     },
     "core-exec-execution-variants": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-13T21:55:34Z",
+        "generation": "a9a10c1314c84622bdfda9c35b0ebb89",
+        "renewals": 0,
+        "worker": "mcp:pi:joe@joe-mac-mini.local:5b994405d415152299b5a092"
+      },
       "needs": [
         "core-exec-d0-vocabulary-adr",
         "core-exec-framework-manifest",
@@ -5074,7 +5079,7 @@
         "cross-surface-gate-no-engine-option"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Umbrella: core execution-variant settings replace platform-specific engine, mode and compute keys"
     },
     "core-exec-explorer-variant-identity": {
