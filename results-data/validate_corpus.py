@@ -411,8 +411,8 @@ def _cohort_key(payload: dict) -> CohortKey:
 
 def _variant_aware_identity(platform_section: dict, platform_name: str) -> str:
     variant = platform_section.get("variant")
-    if variant and str(variant) != platform_name:
-        return str(variant)
+    if isinstance(variant, str) and variant.strip():
+        return variant.strip()
     engine = platform_section.get("execution_engine")
     requested = engine.get("requested") if isinstance(engine, dict) else None
     if requested and str(requested) != "default":

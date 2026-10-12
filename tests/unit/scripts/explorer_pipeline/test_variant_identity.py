@@ -145,6 +145,28 @@ def test_transformer_legacy_bundle_keeps_identity(tmp_path: Path) -> None:
     assert entry.variant_label == "duckdb"
 
 
+def test_transformer_blank_variant_falls_through_to_requested(tmp_path: Path) -> None:
+    transformer = BundleTransformer()
+    bundle = _write_bundle(
+        tmp_path,
+        "blank.json",
+        {"name": "Polars", "variant": "  ", "execution_engine": {"requested": "streaming"}},
+    )
+    entry = transformer.to_manifest_entry(bundle)
+    assert entry.variant_id == "polars+streaming"
+
+
+def test_transformer_variant_equal_to_platform_name_is_kept(tmp_path: Path) -> None:
+    transformer = BundleTransformer()
+    bundle = _write_bundle(
+        tmp_path,
+        "same.json",
+        {"name": "Polars", "variant": "Polars", "execution_engine": {"requested": "streaming"}},
+    )
+    entry = transformer.to_manifest_entry(bundle)
+    assert entry.variant_id == "Polars"
+
+
 def _row(variant_id: str, result_id: str, geomean_ms: float, *, eligible: bool = True) -> PlatformRow:
     return PlatformRow(
         result_id=result_id,
