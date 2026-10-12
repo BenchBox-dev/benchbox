@@ -200,6 +200,9 @@ Known gaps, each a place where a comment can pass unreported:
   maintenance SQL headers, dry-run DDL previews, stream-file headers, the Trino
   tuning note and the AWS Glue job script.
 - Pipelines to unmodeled stdin interpreters (such as `perl` or `ruby`) are not scanned.
-- Whole-file pins for the non-external `LICENSE` and `COPYRIGHT.md` notices are enforced by required CI; changing either file requires updating its pin in the same pull request. External notices are checked against base-trusted pins by the comment-policy gate.
+- Whole-file pins for the non-external `LICENSE` and `COPYRIGHT.md` notices are
+  enforced by required CI; changing either file requires updating its pin in
+  the same pull request. External notices are checked against base-trusted
+  pins by the comment-policy gate.
 - Unsupported `printf` formats or `echo -e` escapes in a recognized pipeline produce a coverage error.
 - JSX `{// ...}` line-comment expressions in MDX prose are not extracted, so comments in that form outside Markdown code fences are not inspected.

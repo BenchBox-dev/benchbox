@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 import re
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -501,6 +503,60 @@ def test_merge_gate_local_equivalents_and_exemptions_are_documented() -> None:
             raise AssertionError(f"{key} local equivalent {target!r} is not discoverable")
 
     assert all(reason.strip() for reason in MERGE_GATE_EXEMPTIONS.values())
+
+
+@pytest.mark.parametrize("base_checker_present", [True, False], ids=["unsupported", "missing"])
+def test_pinned_notice_gate_fails_closed_without_running_candidate_checker(
+    tmp_path: Path, base_checker_present: bool
+) -> None:
+    step = next(
+        step
+        for job_name, step in _workflow_steps(PR_WORKFLOW)
+        if job_name == "comment-policy" and step.get("name") == "Enforce pinned notice drift"
+    )
+
+    def git(*args: str) -> str:
+        result = subprocess.run(["git", "-C", str(tmp_path), *args], check=True, capture_output=True, text=True)
+        return result.stdout.strip()
+
+    git("init")
+    git("config", "user.name", "Workflow smoke")
+    git("config", "user.email", "workflow-smoke@example.invalid")
+    (tmp_path / "LICENSE").write_text("pinned\n", encoding="utf-8")
+    scripts = tmp_path / "scripts"
+    scripts.mkdir()
+    checker = scripts / "check_comment_cleanup_scope.py"
+    if base_checker_present:
+        checker.write_text("import argparse\nargparse.ArgumentParser().parse_args()\n", encoding="utf-8")
+    git("add", ".")
+    git("commit", "-m", "base")
+    base = git("rev-parse", "HEAD")
+
+    marker = tmp_path / "candidate-checker-executed"
+    checker.write_text("from pathlib import Path\nPath('candidate-checker-executed').touch()\n", encoding="utf-8")
+    (tmp_path / "LICENSE").write_text("changed\n", encoding="utf-8")
+    git("add", ".")
+    git("commit", "-m", "candidate")
+
+    environment = os.environ.copy()
+    environment.update({"BASE_REF": base, "RUNNER_TEMP": str(tmp_path)})
+    script_path = tmp_path / "workflow-step.sh"
+    script_path.write_text(step["run"], encoding="utf-8")
+    result = subprocess.run(
+        ["bash", "workflow-step.sh"],
+        cwd=tmp_path,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    if base_checker_present:
+        assert "--check-drift" in result.stderr
+    else:
+        assert "Trusted pinned-notice checker is missing" in result.stderr
+    assert not marker.exists()
 
 
 def test_ci_lint_identity_check_is_gated_rather_than_fed_a_synthetic_identity() -> None:

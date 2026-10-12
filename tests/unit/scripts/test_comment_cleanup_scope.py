@@ -13,10 +13,7 @@ import pytest
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 ROOT = Path(__file__).resolve().parents[3]
-NOTICE_PATHS = tuple(
-    entry["path"]
-    for entry in json.loads((ROOT / "quality/comment-cleanup-scope.json").read_text(encoding="utf-8"))["notices"]
-)
+NOTICE_PATHS = ("LICENSE", "COPYRIGHT.md")
 SPEC = importlib.util.spec_from_file_location("comment_cleanup_scope", ROOT / "scripts/check_comment_cleanup_scope.py")
 assert SPEC and SPEC.loader
 scope = importlib.util.module_from_spec(SPEC)
@@ -1197,12 +1194,12 @@ def _drift_notice(path: str, payload: bytes) -> dict:
         "retained_sha256": digest,
         "governing_requirement": "Fixture pin.",
         "source_identity": "Fixture source.",
-        "owner": "comment-cleanup-external-ownership",
+        "owner": "comment-cleanup-scope-policy",
         "blocking_disposition": "Fixture disposition.",
     }
 
 
-def _drift_repo(tmp_path: Path, policy: dict, payload: bytes, path: str = "PATCHES.md") -> tuple[Path, str]:
+def _drift_repo(tmp_path: Path, policy: dict, payload: bytes, path: str = "LICENSE") -> tuple[Path, str]:
     root = tmp_path / "drift"
     root.mkdir()
     setup = (
@@ -1225,7 +1222,7 @@ def _drift_repo(tmp_path: Path, policy: dict, payload: bytes, path: str = "PATCH
 
 def test_pinned_notice_drift_accepts_an_unmodified_tree(tmp_path: Path, policy: dict) -> None:
     payload = b"pinned\n"
-    policy["notices"] = [_drift_notice("PATCHES.md", payload)]
+    policy["notices"] = [_drift_notice("LICENSE", payload)]
     root, base = _drift_repo(tmp_path, policy, payload)
     assert scope.pinned_notice_drift_findings(root, base) == []
 
@@ -1244,31 +1241,34 @@ def test_pinned_notice_drift_rejects_a_modification_without_a_pin_update(
     assert "quality/comment-cleanup-scope.json" in findings[0].detail
 
 
-def test_pinned_notice_drift_accepts_a_modification_with_a_pin_update(tmp_path: Path, policy: dict) -> None:
+@pytest.mark.parametrize("path", NOTICE_PATHS, ids=NOTICE_PATHS)
+def test_pinned_notice_drift_accepts_a_modification_with_a_pin_update(tmp_path: Path, policy: dict, path: str) -> None:
     payload = b"pinned\n"
-    policy["notices"] = [_drift_notice("PATCHES.md", payload)]
-    root, base = _drift_repo(tmp_path, policy, payload)
+    policy["notices"] = [_drift_notice(path, payload)]
+    root, base = _drift_repo(tmp_path, policy, payload, path)
     updated = payload + b"more\n"
-    (root / "PATCHES.md").write_bytes(updated)
-    policy["notices"] = [_drift_notice("PATCHES.md", updated)]
+    (root / path).write_bytes(updated)
+    policy["notices"] = [_drift_notice(path, updated)]
     (root / "quality" / "comment-cleanup-scope.json").write_text(json.dumps(policy), encoding="utf-8")
     assert scope.pinned_notice_drift_findings(root, base) == []
 
 
 def test_pinned_notice_drift_rejects_a_deleted_file(tmp_path: Path, policy: dict) -> None:
     payload = b"pinned\n"
-    policy["notices"] = [_drift_notice("PATCHES.md", payload)]
-    root, base = _drift_repo(tmp_path, policy, payload)
-    (root / "PATCHES.md").unlink()
+    path = "LICENSE"
+    policy["notices"] = [_drift_notice(path, payload)]
+    root, base = _drift_repo(tmp_path, policy, payload, path)
+    (root / path).unlink()
     findings = scope.pinned_notice_drift_findings(root, base)
     assert [finding.code for finding in findings] == ["SCOPE008"]
-    assert findings[0].subject == "PATCHES.md"
+    assert findings[0].subject == path
 
 
 def test_pinned_notice_drift_rejects_removing_a_notice_entry(tmp_path: Path, policy: dict) -> None:
     payload = b"pinned\n"
-    policy["notices"] = [_drift_notice("PATCHES.md", payload)]
-    root, base = _drift_repo(tmp_path, policy, payload)
+    path = "COPYRIGHT.md"
+    policy["notices"] = [_drift_notice(path, payload)]
+    root, base = _drift_repo(tmp_path, policy, payload, path)
     candidate_policy = json.loads((root / scope.POLICY_PATH).read_text())
     candidate_policy["notices"] = []
     (root / scope.POLICY_PATH).write_text(json.dumps(candidate_policy))
@@ -1277,14 +1277,23 @@ def test_pinned_notice_drift_rejects_removing_a_notice_entry(tmp_path: Path, pol
     assert "was removed" in findings[0].detail
 
 
+def test_pinned_notice_drift_ignores_external_notice_changes(tmp_path: Path, policy: dict) -> None:
+    payload = b"pinned\n"
+    path = "_sources/tpc-h/PATCHES.md"
+    policy["notices"] = [_drift_notice(path, payload)]
+    root, base = _drift_repo(tmp_path, policy, payload, path)
+    (root / path).write_bytes(payload + b"more\n")
+    assert scope.pinned_notice_drift_findings(root, base) == []
+
+
 def test_check_drift_main_reports_zero_for_a_clean_tree_and_one_for_drift(
     tmp_path: Path, policy: dict, capsys: pytest.CaptureFixture[str]
 ) -> None:
     payload = b"pinned\n"
-    policy["notices"] = [_drift_notice("PATCHES.md", payload)]
+    policy["notices"] = [_drift_notice("LICENSE", payload)]
     root, base = _drift_repo(tmp_path, policy, payload)
     assert scope.main(["--check-drift", "--root", str(root), "--base", base]) == 0
-    (root / "PATCHES.md").write_bytes(payload + b"more\n")
+    (root / "LICENSE").write_bytes(payload + b"more\n")
     assert scope.main(["--check-drift", "--root", str(root), "--base", base]) == 1
     captured = capsys.readouterr()
-    assert "SCOPE008 PATCHES.md" in captured.err
+    assert "SCOPE008 LICENSE" in captured.err

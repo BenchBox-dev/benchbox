@@ -18,6 +18,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 POLICY_PATH = "quality/comment-cleanup-scope.json"
+PINNED_NOTICE_DRIFT_PATHS = frozenset({"LICENSE", "COPYRIGHT.md"})
 
 COMMENT_POLICY_ENFORCEMENT_MODES = {"advisory", "blocking"}
 
@@ -1226,9 +1227,17 @@ def pinned_notice_drift_findings(root: Path, base: str) -> list[Finding]:
     except (OSError, UnicodeError, json.JSONDecodeError, PolicyError, subprocess.CalledProcessError) as error:
         return [Finding("SCOPE008", POLICY_PATH, f"cannot load base scope policy for drift check: {error}")]
     findings = []
-    base_notices = {entry.get("path"): entry for entry in base_policy.get("notices", []) if isinstance(entry, dict)}
-    candidate_notices = {entry.get("path"): entry for entry in policy.get("notices", []) if isinstance(entry, dict)}
-    for path, base_entry in base_notices.items():
+    base_notices = {
+        entry.get("path"): entry
+        for entry in base_policy.get("notices", [])
+        if isinstance(entry, dict) and entry.get("path") in PINNED_NOTICE_DRIFT_PATHS
+    }
+    candidate_notices = {
+        entry.get("path"): entry
+        for entry in policy.get("notices", [])
+        if isinstance(entry, dict) and entry.get("path") in PINNED_NOTICE_DRIFT_PATHS
+    }
+    for path in base_notices:
         if path not in candidate_notices:
             findings.append(
                 Finding("SCOPE008", path, "pinned notice was removed from quality/comment-cleanup-scope.json")
@@ -1240,6 +1249,8 @@ def pinned_notice_drift_findings(root: Path, base: str) -> list[Finding]:
         path = entry.get("path")
         if not isinstance(path, str) or not valid_path(path):
             findings.append(Finding("SCOPE008", POLICY_PATH, f"notice has an invalid path: {path!r}"))
+            continue
+        if path not in PINNED_NOTICE_DRIFT_PATHS:
             continue
         try:
             frozen = base_blob(root, base, path)

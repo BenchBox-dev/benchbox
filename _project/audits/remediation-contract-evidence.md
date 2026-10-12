@@ -644,49 +644,66 @@ format passed for both changed Python files. Full-project `uv run ty check`
 reported 674 diagnostics with exit status 0. `make comment-policy-check`
 passed 5,779 source files with zero violations, zero enforced failures and all
 19 native syntax tests passing.
+
 ## PR #2829 pinned notice drift
 
-`quality/comment-cleanup-scope.json` registered these 19 whole-file notice
-paths: `LICENSE`, `COPYRIGHT.md`, `_binaries/tpc-ds/NOTICE.txt`,
-`_binaries/tpc-ds/darwin-arm64/EULA.txt`,
-`_binaries/tpc-ds/darwin-x86_64/EULA.txt`,
-`_binaries/tpc-ds/linux-arm64/EULA.txt`,
-`_binaries/tpc-ds/linux-x86_64/EULA.txt`,
-`_binaries/tpc-ds/windows-arm64/EULA.txt`,
-`_binaries/tpc-ds/windows-x86_64/EULA.txt`, `_sources/tpc-h/EULA.txt`,
-`_sources/tpc-ds/EULA.txt`,
-`_binaries/tpc-ds/darwin-arm64/NOTICE.txt`,
-`_binaries/tpc-ds/darwin-x86_64/NOTICE.txt`,
-`_binaries/tpc-ds/linux-arm64/NOTICE.txt`,
-`_binaries/tpc-ds/linux-x86_64/NOTICE.txt`,
-`_binaries/tpc-ds/windows-arm64/NOTICE.txt`,
-`_binaries/tpc-ds/windows-x86_64/NOTICE.txt`,
-`_sources/tpc-h/PATCHES.md`, and `_sources/tpc-ds/PATCHES.md`. The test
-parameterizes each actual manifest path and changes only that file in a
-temporary Git repository.
+`quality/comment-cleanup-scope.json` records 19 whole-file notice pins.
+`LICENSE` and `COPYRIGHT.md` are the two non-external pins in scope; the other
+17 EULA, NOTICE and PATCHES files are already checked by the base-trusted
+comment-policy gate. `PINNED_NOTICE_DRIFT_PATHS` limits SCOPE008 to those two
+paths and avoids duplicating external-notice enforcement.
 
-The changed file is the producer; its base blob digest and the current
-`quality/comment-cleanup-scope.json` pin are the durable comparison.
-`pinned_notice_drift_findings` consumes the Git diff and rejects drift. Required
-CI keeps the base-sourced comment-policy launcher unchanged and runs the
-candidate drift checker as a separate step. The checker, manifest, test, and
-workflow are registered soundness paths and require independent review.
+`pinned_notice_drift_findings` compares each applicable pin with the file bytes
+at the immutable base. It rejects a changed or deleted notice without a
+matching pin update and rejects removal of the corresponding policy entry.
+Required CI checks whether `LICENSE`, `COPYRIGHT.md` or
+`quality/comment-cleanup-scope.json` changed. It skips the drift step when none
+changed; otherwise it runs only `scripts/check_comment_cleanup_scope.py`
+extracted from `BASE_REF`. A missing trusted checker or unsupported
+`--check-drift` option fails closed. The step never executes the PR's candidate
+checker, so this PR can land without executing its new code in the gate.
 
-- Every manifest path rejects a modification without a matching pin update
-  through `test_pinned_notice_drift_rejects_a_modification_without_a_pin_update`
-  (19 parametrized cases).
-- `test_pinned_notice_drift_accepts_an_unmodified_tree` and
-  `test_pinned_notice_drift_accepts_a_modification_with_a_pin_update` accept
-  the unchanged and correctly updated states.
-- `test_pinned_notice_drift_rejects_a_deleted_file` rejects deletion;
-  `test_check_drift_main_reports_zero_for_a_clean_tree_and_one_for_drift`
+- Both non-external paths reject changes without a pin update in
+  `test_pinned_notice_drift_rejects_a_modification_without_a_pin_update`.
+- Both paths accept a matching pin update in
+  `test_pinned_notice_drift_accepts_a_modification_with_a_pin_update`.
+- Deletion and policy-entry removal are rejected; external notice changes are
+  left to the existing base-trusted comment-policy gate.
+- `test_check_drift_main_reports_zero_for_a_clean_tree_and_one_for_drift`
   verifies CLI success and failure.
+- `test_pinned_notice_gate_fails_closed_without_running_candidate_checker`
+  executes the workflow step with a missing or unsupported base checker; both
+  cases fail without executing the candidate checker.
 
-`tests/unit/scripts/test_comment_cleanup_scope.py` passed 137 tests;
-`tests/system/test_ci_lint_parity.py` and
-`tests/unit/test_ledger_coverage.py` each passed 10 tests. The isolated CI
-command `uv run -- python -I scripts/check_comment_cleanup_scope.py
---check-drift --base 68ba3ff27aa479464d685b17d28da1221136529b` reported
-zero findings. `make comment-policy-check` scanned 5,749 files with zero
-violations, passed all 19 native tests, and reported zero drift; `ci.yml`
-parsed successfully.
+An isolated smoke also confirmed the no-notice-change path skips successfully
+with an older base checker without executing the candidate helper.
+
+The focused drift selection passed 9 tests. The combined scope, CI parity,
+Make timing and hook-ledger selection passed 137 tests:
+
+```bash
+uv run -- python -m pytest tests/unit/scripts/test_comment_cleanup_scope.py \
+  tests/system/test_ci_lint_parity.py \
+  tests/unit/scripts/test_make_timing.py::test_timed_targets_are_prerequisite_free_single_command_recipes \
+  tests/unit/test_ledger_coverage.py::test_ledger_lists_every_pre_commit_hook -q -n0
+```
+
+The direct drift check reported zero findings:
+
+```bash
+uv run -- python scripts/check_comment_cleanup_scope.py --check-drift --base "$(git merge-base origin/develop HEAD)"
+```
+
+Ruff check, Ruff format check and `py_compile` passed for the changed Python
+files. `uv run -- ty check` completed with 674 diagnostics.
+`make comment-policy-check` failed before its drift command: the trusted
+transition scan reported 10 enforced errors with this diagnostic:
+`CP coverage-error: shell command source requires an executable-payload adapter`.
+They occur across seven workflow and script files that this PR does not change.
+The drift check passed independently; the full policy gate remains blocked by
+those coverage errors.
+The final CI parity test file passed a scoped report-only policy scan with
+zero violations.
+
+The checker, tests and workflow are registered soundness paths and require
+independent review.
