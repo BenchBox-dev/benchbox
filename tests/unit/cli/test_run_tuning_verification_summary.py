@@ -30,7 +30,7 @@ def test_duckdb_tuned_run_prints_tuning_verification_summary(tmp_path, monkeypat
     )
 
     assert result.exit_code == 0, result.output
-    assert "Tuning verification: applied_unverified" in result.output
+    assert "Tuning verification: applied_verified" in result.output
     assert "Verdicts:" in result.output
     assert "Top reasons:" in result.output
     assert "Dropped intents" in result.output
