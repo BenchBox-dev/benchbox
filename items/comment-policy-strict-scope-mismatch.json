@@ -48,6 +48,15 @@
       "op": "release",
       "op_id": "e9c71ec63b4042ce80238cf09f27919f",
       "session_id": "2e005b09c5764b37907562dafae0d675"
+    },
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:91b2532afc70e4866dac844a",
+      "at": "2026-10-12T14:13:54Z",
+      "client": "pi",
+      "generation": "b059966b213342dca50f25225dc37c21",
+      "op": "take",
+      "op_id": "3c37f063cb1241b78138d50b00e11acf",
+      "session_id": "f4a9420823ef483b96a87b9d072d7839"
     }
   ]
 }
