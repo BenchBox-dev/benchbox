@@ -662,6 +662,8 @@ class ClickHouseWorkloadMixin:
             tuning_config=self.unified_tuning_configuration if self.tuning_enabled else None,
         )
         table_stats, loading_time = loader.load()
+        self._merge_settle_result = None
+        self._merge_settle_timeout_seconds = 0.0
         if self.deployment_mode == "server":
             self._settle_background_merges(connection)
         return table_stats, loading_time, None
@@ -680,12 +682,15 @@ class ClickHouseWorkloadMixin:
         )
 
     def _settle_background_merges(self, connection: Any) -> None:
-        from benchbox.platforms.clickhouse.merge_settle import MERGE_SETTLE_TIMEOUT_SECONDS
+        from benchbox.platforms.clickhouse.merge_settle import MERGE_SETTLE_TIMEOUT_SECONDS, MergeSettleResult
 
+        started = mono_time()
         try:
             result = wait_for_merges_to_settle(connection)
         except Exception as exc:
             logger.warning("Could not check ClickHouse background merges after load: %s", exc)
+            self._merge_settle_result = MergeSettleResult(False, elapsed_seconds(started), None)
+            self._merge_settle_timeout_seconds = MERGE_SETTLE_TIMEOUT_SECONDS
             return
         self._merge_settle_result = result
         self._merge_settle_timeout_seconds = MERGE_SETTLE_TIMEOUT_SECONDS

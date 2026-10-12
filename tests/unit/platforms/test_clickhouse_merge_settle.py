@@ -219,3 +219,99 @@ def test_merge_settle_phase_is_exported_next_to_data_loading() -> None:
 
 def test_merge_settle_phase_is_omitted_when_no_settle_ran() -> None:
     assert _Adapter("local").build_merge_settle_phase() is None
+
+
+def test_failed_settle_check_is_recorded_not_silent(caplog: pytest.LogCaptureFixture) -> None:
+    from benchbox.platforms.clickhouse.merge_settle import MERGE_SETTLE_TIMEOUT_SECONDS
+
+    adapter = _Adapter("server")
+
+    with (
+        patch("benchbox.platforms.clickhouse.workload.wait_for_merges_to_settle", side_effect=RuntimeError("denied")),
+        caplog.at_level("WARNING"),
+    ):
+        _load(adapter)
+
+    assert "Could not check ClickHouse background merges" in caplog.text
+    phase = adapter.build_merge_settle_phase()
+    assert phase is not None
+    assert phase.settled is False
+    assert phase.active_parts is None
+    assert phase.timeout_seconds == MERGE_SETTLE_TIMEOUT_SECONDS
+
+
+def test_second_run_does_not_republish_stale_settle() -> None:
+    adapter = _Adapter("server")
+
+    with patch(
+        "benchbox.platforms.clickhouse.workload.wait_for_merges_to_settle",
+        return_value=MergeSettleResult(True, 2.5, 84),
+    ):
+        _load(adapter)
+    assert adapter.build_merge_settle_phase() is not None
+
+    with patch(
+        "benchbox.platforms.clickhouse.workload.wait_for_merges_to_settle",
+        side_effect=RuntimeError("denied"),
+    ):
+        _load(adapter)
+
+    phase = adapter.build_merge_settle_phase()
+    assert phase is not None
+    assert (phase.settled, phase.active_parts) == (False, None)
+
+
+def test_failed_settle_phase_exports_null_parts() -> None:
+    from datetime import datetime
+
+    from benchbox.core.results.models import (
+        BenchmarkResults,
+        DataLoadingPhase,
+        ExecutionPhases,
+        MergeSettlePhase,
+        SetupPhase,
+    )
+    from benchbox.core.results.schema import SchemaV2Validator, build_result_payload
+
+    result = BenchmarkResults(
+        benchmark_name="TPC-H",
+        platform="clickhouse",
+        scale_factor=0.01,
+        execution_id="merge-settle-failed",
+        timestamp=datetime(2026, 10, 9, 12, 0, 0),
+        duration_seconds=12.5,
+        total_queries=1,
+        successful_queries=1,
+        failed_queries=0,
+        query_results=[
+            {
+                "query_id": "Q1",
+                "status": "SUCCESS",
+                "execution_time_seconds": 1.25,
+                "rows_returned": 1,
+                "iteration": 1,
+                "stream_id": 0,
+                "run_type": "measurement",
+            }
+        ],
+        execution_phases=ExecutionPhases(
+            setup=SetupPhase(
+                data_loading=DataLoadingPhase(
+                    duration_ms=3500, status="SUCCESS", total_rows_loaded=10, tables_loaded=8, per_table_stats={}
+                ),
+                merge_settle=MergeSettlePhase(
+                    settled=False, waited_seconds=0.4, active_parts=None, timeout_seconds=600.0
+                ),
+            )
+        ),
+    )
+
+    payload = build_result_payload(result)
+
+    SchemaV2Validator().validate(payload)
+    assert payload["phases"]["merge_settle"] == {
+        "settled": False,
+        "waited_seconds": 0.4,
+        "active_parts": None,
+        "timeout_seconds": 600.0,
+    }

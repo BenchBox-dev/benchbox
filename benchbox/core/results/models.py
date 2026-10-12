@@ -107,7 +107,7 @@ class ValidationPhase:
 class MergeSettlePhase:
     settled: bool
     waited_seconds: float
-    active_parts: int
+    active_parts: int | None
     timeout_seconds: float
 
 

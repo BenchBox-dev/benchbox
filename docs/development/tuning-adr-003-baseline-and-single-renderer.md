@@ -313,6 +313,8 @@ attribution:
   tuning mode including `notuning`, so the first timed query does not compete with merges.
   The wait is bounded and is not counted as load time. Each result records the wait in
   `phases.merge_settle` (`settled`, `waited_seconds`, `active_parts`, `timeout_seconds`).
+  `active_parts` is null when the settle check itself failed; the phase is still
+  recorded with `settled: false` so a failed check is never silent.
   The comparisons below were measured when the wait ran only after tuned loads: a `notuning`
   cell may therefore time queries while merges still run, which favours the tuned cell.
 - A test rejects any ClickHouse tuned template that partitions a table on the
