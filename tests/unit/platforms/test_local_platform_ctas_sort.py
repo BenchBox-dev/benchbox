@@ -93,3 +93,43 @@ class TestDataFusionCtasSortIntegration:
         rows = connection.sql("SELECT l_shipdate, l_orderkey FROM lineitem").to_pydict()
         assert rows["l_shipdate"] == ["2024-01-01", "2024-02-01", "2024-03-01"]
         assert rows["l_orderkey"] == [1, 2, 3]
+
+    def test_datafusion_real_ctas_sort_is_recorded_in_ledger(self, tmp_path):
+        from benchbox.core.tuning.applied_ledger import AppliedTuningLedger
+        from benchbox.core.tuning.interface import TuningColumn, TuningType
+
+        adapter = DataFusionAdapter(working_dir=str(tmp_path / "df_workdir"), data_format="csv")
+        adapter._applied_tuning_ledger = AppliedTuningLedger()
+        connection = adapter.create_connection()
+
+        connection.execute(
+            "CREATE TABLE lineitem AS "
+            "SELECT * FROM (VALUES (3, '2024-03-01'), (1, '2024-01-01'), (2, '2024-02-01')) "
+            "AS t(l_orderkey, l_shipdate)"
+        )
+
+        sort_columns = [
+            TuningColumn(name="l_shipdate", type="VARCHAR", order=1),
+            TuningColumn(name="l_orderkey", type="INTEGER", order=2),
+        ]
+        table_tuning = Mock()
+        table_tuning.get_columns_by_type.side_effect = lambda tuning_type: (
+            sort_columns if tuning_type == TuningType.SORTING else []
+        )
+        tuning_config = Mock()
+        tuning_config.table_tunings = {"lineitem": table_tuning}
+
+        ledger = adapter._applied_tuning_ledger
+        assert ledger.overall_status(tuning_enabled=True, has_config=True) == "noop"
+
+        assert adapter.apply_ctas_sort("lineitem", tuning_config, connection) is True
+
+        executed = [s for s in ledger.statements if s.status == "executed"]
+        assert len(executed) == 1
+        assert executed[0].phase == "post_load"
+        assert "ORDER BY l_shipdate, l_orderkey" in executed[0].statement
+        assert ledger.overall_status(tuning_enabled=True, has_config=True) == "applied_unverified"
+
+        rows = connection.sql("SELECT l_shipdate, l_orderkey FROM lineitem").to_pydict()
+        assert rows["l_shipdate"] == ["2024-01-01", "2024-02-01", "2024-03-01"]
+        assert rows["l_orderkey"] == [1, 2, 3]

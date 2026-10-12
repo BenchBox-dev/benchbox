@@ -150,6 +150,53 @@ class TestOptimizeSparkTableDefinition:
         assert "DELTA" not in result.upper()
         assert result.endswith("USING PARQUET")
 
+    @pytest.mark.parametrize("clause", ["PARTITIONED BY (id)", "CLUSTER BY (id)"])
+    def test_using_precedes_trailing_tuning_clause(self, clause: str) -> None:
+        result = optimize_spark_table_definition(
+            f"CREATE TABLE t (id INT, amount DECIMAL(10,2))\n{clause};",
+            table_format="delta",
+        )
+        assert result == f"CREATE TABLE t (id INT, amount DECIMAL(10,2)) USING DELTA\n{clause}"
+
+    @pytest.mark.parametrize(
+        ("columns", "name"),
+        [
+            ("id INT, note STRING DEFAULT ' ) '", "t"),
+            ("id INT, note STRING DEFAULT 'it''s ) here'", "t"),
+            ("id INT, note STRING DEFAULT 'a\\' ) b'", "t"),
+            ("id INT, `we ) ird` STRING", "t"),
+            ("id INT, amount DECIMAL(10,2), tags MAP<STRING, ARRAY<INT>>", "`my table`"),
+        ],
+    )
+    def test_using_stays_outside_column_list_with_quoted_parentheses(self, columns: str, name: str) -> None:
+        result = optimize_spark_table_definition(
+            f"CREATE TABLE {name} ({columns}) PARTITIONED BY (id);",
+            table_format="delta",
+        )
+        assert f"({columns})" in result
+        assert result.count("USING DELTA") == 1
+        assert result.index(f"({columns})") + len(f"({columns})") < result.index("USING DELTA")
+        assert result.index("USING DELTA") < result.index("PARTITIONED BY")
+
+    @pytest.mark.parametrize(
+        "columns",
+        [
+            "id INT /* ) */, amount INT",
+            "id INT /* ( unbalanced */, amount INT",
+            "id INT -- )\n, amount INT",
+            "id INT -- ( unbalanced\n, amount INT",
+        ],
+    )
+    def test_using_stays_outside_column_list_with_comment_parentheses(self, columns: str) -> None:
+        result = optimize_spark_table_definition(
+            f"CREATE TABLE t ({columns}) PARTITIONED BY (id);",
+            table_format="delta",
+        )
+        assert f"({columns})" in result
+        assert result.count("USING DELTA") == 1
+        assert result.index(f"({columns})") + len(f"({columns})") < result.index("USING DELTA")
+        assert result.index("USING DELTA") < result.index("PARTITIONED BY")
+
     def test_non_create_table_unchanged(self) -> None:
         sql = "INSERT INTO t VALUES (1)"
         assert optimize_spark_table_definition(sql, table_format="parquet") == sql

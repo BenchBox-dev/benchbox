@@ -13,7 +13,12 @@ def apply_standard_unified_tuning(adapter: Any, unified_config: UnifiedTuningCon
 
     from benchbox.core.tuning.applied_ledger import PHASE_DDL, recording_connection
 
-    recording = recording_connection(connection, getattr(adapter, "_applied_tuning_ledger", None), PHASE_DDL)
+    recording = recording_connection(
+        connection,
+        getattr(adapter, "_applied_tuning_ledger", None),
+        PHASE_DDL,
+        execute_verbs=getattr(adapter, "ledger_execute_verbs", ()),
+    )
 
     adapter.apply_constraint_configuration(unified_config.primary_keys, unified_config.foreign_keys, recording)
     if unified_config.platform_optimizations:

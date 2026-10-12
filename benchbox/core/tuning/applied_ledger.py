@@ -66,11 +66,26 @@ _SCHEMA_TUNING_STATEMENT_RE = re.compile(
     r"^\s*(?:create\s+index|create\s+(?:or\s+replace\s+)?table|alter\s+table)\b",
     re.IGNORECASE,
 )
-_SCHEMA_TUNING_FOOTPRINT_RE = re.compile(
-    r"\b(?:cluster\s+by|distributed\s+by|foreign\s+key|order\s+by|partition\s+by|primary\s+key|"
-    r"sortkey|unique|check)\b",
+_SCHEMA_TUNING_PHRASE_RE = re.compile(
+    r"\b(?:cluster\s+by|clustered\s+by|distributed\s+by|foreign\s+key|order\s+by|partition\s+by|"
+    r"partitioned\s+by|primary\s+key|primary\s+index|duplicate\s+key)\b"
+    r"|\b(?:distribution|partitioning)\s*=",
     re.IGNORECASE,
 )
+_SCHEMA_TUNING_KEYWORD_RE = re.compile(
+    r"\b(?:sortkey|distkey|diststyle|sorted_by|bucketed_by|unique|check)\b",
+    re.IGNORECASE,
+)
+_UNIQUE_NULLS_DISTINCT_RE = re.compile(r"\s*nulls\s+(?:not\s+distinct|distinct)\s*\(", re.IGNORECASE)
+
+
+def _bare_keyword_is_clause(shape: str, match: re.Match[str]) -> bool:
+    rest = shape[match.end() :]
+    if rest.lstrip()[:1] in ("(", "="):
+        return True
+    if match.group(0).lower() == "unique" and _UNIQUE_NULLS_DISTINCT_RE.match(rest) is not None:
+        return True
+    return not shape[: match.start()].rstrip().endswith(("(", ","))
 
 
 def _sql_shape(statement: Any) -> str:
@@ -85,7 +100,9 @@ def is_schema_tuning_statement(statement: Any) -> bool:
         return False
     if re.match(r"^\s*create\s+index\b", shape, re.IGNORECASE):
         return True
-    return _SCHEMA_TUNING_FOOTPRINT_RE.search(shape) is not None
+    if _SCHEMA_TUNING_PHRASE_RE.search(shape) is not None:
+        return True
+    return any(_bare_keyword_is_clause(shape, match) for match in _SCHEMA_TUNING_KEYWORD_RE.finditer(shape))
 
 
 def _split_sql_script(script: Any) -> list[str]:
@@ -97,16 +114,18 @@ def _split_sql_script(script: Any) -> list[str]:
         import sqlite3
 
         statements: list[str] = []
-        pending: list[str] = []
-        for line in text.splitlines(keepends=True):
-            pending.append(line)
-            candidate = "".join(pending)
+        start = 0
+        for index, char in enumerate(text):
+            if char != ";":
+                continue
+            candidate = text[start : index + 1]
             if sqlite3.complete_statement(candidate):
                 if candidate.strip():
                     statements.append(candidate.strip())
-                pending.clear()
-        if pending and "".join(pending).strip():
-            statements.append("".join(pending).strip())
+                start = index + 1
+        tail = text[start:].strip()
+        if tail:
+            statements.append(tail)
         return statements
     except Exception:  # pragma: no cover
         return [text]
@@ -127,10 +146,13 @@ def normalize_ledger_phase(phase: Any) -> str:
 
 def _is_recordable_statement(statement: Any) -> bool:
     try:
-        text = str(statement).lstrip().lstrip("(").lstrip().lower()
+        text = _SQL_COMMENT_RE.sub(" ", str(statement))
     except Exception:  # pragma: no cover
         return True
-    return not text.startswith(_READBACK_PREFIXES)
+    stripped = text.strip().strip(";").strip()
+    if not stripped:
+        return False
+    return not stripped.lstrip("(").lstrip().lower().startswith(_READBACK_PREFIXES)
 
 
 @dataclass
@@ -322,9 +344,178 @@ class _RecordingProxy:
             logger.debug("applied-ledger statement filter degraded: %s", exc)
             return True
 
+    def _recordable_statements(self, statement: Any) -> list[str]:
+        try:
+            pieces = _split_sql_script(statement)
+            if len(pieces) <= 1:
+                pieces = [statement]
+            return [str(piece) for piece in pieces if self._should_record(piece)]
+        except Exception as exc:
+            logger.debug("applied-ledger statement capture degraded: %s", exc)
+            return []
+
+    def _record_all(self, statements: list[str], status: str, error: Any | None = None) -> None:
+        for statement in statements:
+            self._ledger.record(statement, self._phase, status=status, error=error)
+
+    def _run(self, fn: Any, statement: Any, args: tuple, kwargs: dict) -> Any:
+        statements = self._recordable_statements(statement)
+        try:
+            result = fn(statement, *args, **kwargs)
+        except Exception as exc:
+            self._record_all(statements, STATEMENT_FAILED, exc)
+            raise
+        self._record_all(statements, EXECUTED)
+        return result
+
+    def _run_verb(self, fn: Any, args: tuple, kwargs: dict) -> Any:
+        statements: list[str] = []
+        try:
+            name = _first_parameter_name(fn)
+            if args:
+                statement, rest, rest_kwargs = args[0], args[1:], kwargs
+            elif name in kwargs:
+                statement, rest, rest_kwargs = kwargs[name], args, {k: v for k, v in kwargs.items() if k != name}
+            else:
+                raise LookupError(name)
+            if not _is_dry_run(rest, rest_kwargs):
+                statements = self._recordable_statements(statement)
+        except Exception as exc:
+            logger.debug("applied-ledger statement capture degraded: %s", exc)
+        try:
+            result = fn(*args, **kwargs)
+        except Exception as exc:
+            self._record_all(statements, STATEMENT_FAILED, exc)
+            raise
+        if not statements:
+            return result
+        if callable(getattr(result, "result", None)) and callable(getattr(result, "done", None)):
+            return _RecordingJob(result, self._ledger, self._phase, statements)
+        if _is_lazy_frame(result):
+            return _RecordingFrame(result, self._ledger, self._phase, statements)
+        self._record_all(statements, EXECUTED)
+        return result
+
+
+def _first_parameter_name(fn: Any) -> str | None:
+    import inspect
+
+    for parameter in inspect.signature(fn).parameters.values():
+        if parameter.kind in (parameter.POSITIONAL_OR_KEYWORD, parameter.KEYWORD_ONLY):
+            return parameter.name
+        break
+    return None
+
+
+def _is_dry_run(args: tuple, kwargs: dict) -> bool:
+    config = kwargs.get("job_config") or (args[0] if args else None)
+    return getattr(config, "dry_run", False) is True
+
+
+class _RecordingJob:
+    __slots__ = ("_job", "_ledger", "_phase", "_statements", "_settled")
+
+    def __init__(self, job: Any, ledger: AppliedTuningLedger, phase: str, statements: list[str]) -> None:
+        object.__setattr__(self, "_job", job)
+        object.__setattr__(self, "_ledger", ledger)
+        object.__setattr__(self, "_phase", phase)
+        object.__setattr__(self, "_statements", statements)
+        object.__setattr__(self, "_settled", False)
+
+    def _settle(self, status: str, error: Any | None = None) -> None:
+        if self._settled:
+            return
+        object.__setattr__(self, "_settled", True)
+        for statement in self._statements:
+            self._ledger.record(statement, self._phase, status=status, error=error)
+
+    def result(self, *args: Any, **kwargs: Any) -> Any:
+        from concurrent.futures import TimeoutError as FutureTimeoutError
+
+        try:
+            outcome = self._job.result(*args, **kwargs)
+        except FutureTimeoutError:
+            raise
+        except Exception as exc:
+            self._settle(STATEMENT_FAILED, exc)
+            raise
+        self._settle(EXECUTED)
+        return outcome
+
+    def exception(self, *args: Any, **kwargs: Any) -> Any:
+        error = self._job.exception(*args, **kwargs)
+        if error is not None:
+            self._settle(STATEMENT_FAILED, error)
+        elif self._job.done():
+            self._settle(EXECUTED)
+        return error
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._job, name)
+
+
+_LAZY_FRAME_SUBMISSION_METHODS = frozenset({"collect", "show", "fetchall", "fetch_all"})
+_LAZY_FRAME_ACTION_METHODS = frozenset(
+    {
+        "collect",
+        "show",
+        "fetchall",
+        "fetch_all",
+        "count",
+        "to_pandas",
+        "toPandas",
+        "to_polars",
+        "to_arrow",
+    }
+)
+
+
+def _is_lazy_frame(result: Any) -> bool:
+    try:
+        for name in _LAZY_FRAME_SUBMISSION_METHODS:
+            if callable(getattr(result, name, None)):
+                return True
+    except Exception:
+        return False
+    return False
+
+
+class _RecordingFrame:
+    __slots__ = ("_frame", "_ledger", "_phase", "_statements", "_settled")
+
+    def __init__(self, frame: Any, ledger: AppliedTuningLedger, phase: str, statements: list[str]) -> None:
+        object.__setattr__(self, "_frame", frame)
+        object.__setattr__(self, "_ledger", ledger)
+        object.__setattr__(self, "_phase", phase)
+        object.__setattr__(self, "_statements", statements)
+        object.__setattr__(self, "_settled", False)
+
+    def _settle(self, status: str, error: Any | None = None) -> None:
+        if self._settled:
+            return
+        object.__setattr__(self, "_settled", True)
+        for statement in self._statements:
+            self._ledger.record(statement, self._phase, status=status, error=error)
+
+    def __getattr__(self, name: str) -> Any:
+        attribute = getattr(self._frame, name)
+        if name in _LAZY_FRAME_ACTION_METHODS and callable(attribute):
+
+            def call(*args: Any, **kwargs: Any) -> Any:
+                try:
+                    outcome = attribute(*args, **kwargs)
+                except Exception as exc:
+                    self._settle(STATEMENT_FAILED, exc)
+                    raise
+                self._settle(EXECUTED)
+                return outcome
+
+            return call
+        return attribute
+
 
 class RecordingConnection(_RecordingProxy):
-    __slots__ = ("_conn",)
+    __slots__ = ("_conn", "_verbs")
 
     def __init__(
         self,
@@ -332,9 +523,11 @@ class RecordingConnection(_RecordingProxy):
         ledger: AppliedTuningLedger,
         phase: str,
         statement_filter: Callable[[Any], bool] | None = None,
+        execute_verbs: tuple[str, ...] = (),
     ) -> None:
         super().__init__(ledger, phase, statement_filter)
         object.__setattr__(self, "_conn", connection)
+        object.__setattr__(self, "_verbs", frozenset(execute_verbs))
 
     def execute(self, statement: Any, *args: Any, **kwargs: Any) -> Any:
         return self._run(self._conn.execute, statement, args, kwargs)
@@ -343,26 +536,27 @@ class RecordingConnection(_RecordingProxy):
         return _RecordingCursor(self._conn.cursor(*args, **kwargs), self._ledger, self._phase, self._statement_filter)
 
     def executescript(self, script: Any, *args: Any, **kwargs: Any) -> Any:
-        result = self._conn.executescript(script, *args, **kwargs)
+        try:
+            result = self._conn.executescript(script, *args, **kwargs)
+        except Exception as exc:
+            for statement in _split_sql_script(script):
+                if self._should_record(statement):
+                    self._ledger.record(statement, self._phase, status=STATEMENT_FAILED, error=exc)
+            raise
         for statement in _split_sql_script(script):
             if self._should_record(statement):
                 self._ledger.record(statement, self._phase, status=EXECUTED)
         return result
 
-    def _run(self, fn: Any, statement: Any, args: tuple, kwargs: dict) -> Any:
-        record = self._should_record(statement)
-        try:
-            result = fn(statement, *args, **kwargs)
-        except Exception as exc:
-            if record:
-                self._ledger.record(statement, self._phase, status=STATEMENT_FAILED, error=exc)
-            raise
-        if record:
-            self._ledger.record(statement, self._phase, status=EXECUTED)
-        return result
-
     def __getattr__(self, name: str) -> Any:
-        return getattr(self._conn, name)
+        attribute = getattr(self._conn, name)
+        if name in self._verbs and callable(attribute):
+
+            def call(*args: Any, **kwargs: Any) -> Any:
+                return self._run_verb(attribute, args, kwargs)
+
+            return call
+        return attribute
 
     def __setattr__(self, name: str, value: Any) -> None:
         setattr(self._conn, name, value)
@@ -393,16 +587,7 @@ class _RecordingCursor(_RecordingProxy):
         object.__setattr__(self, "_cur", cursor)
 
     def execute(self, statement: Any, *args: Any, **kwargs: Any) -> Any:
-        record = self._should_record(statement)
-        try:
-            result = self._cur.execute(statement, *args, **kwargs)
-        except Exception as exc:
-            if record:
-                self._ledger.record(statement, self._phase, status=STATEMENT_FAILED, error=exc)
-            raise
-        if record:
-            self._ledger.record(statement, self._phase, status=EXECUTED)
-        return result
+        return self._run(self._cur.execute, statement, args, kwargs)
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._cur, name)
@@ -426,11 +611,12 @@ def recording_connection(
     ledger: AppliedTuningLedger | None,
     phase: str,
     statement_filter: Callable[[Any], bool] | None = None,
+    execute_verbs: tuple[str, ...] = (),
 ) -> Any:
     if ledger is None:
         return connection
     try:
-        return RecordingConnection(connection, ledger, phase, statement_filter)
+        return RecordingConnection(connection, ledger, phase, statement_filter, execute_verbs)
     except Exception as exc:  # pragma: no cover
         logger.debug("applied-ledger connection wrap degraded: %s", exc)
         return connection

@@ -136,6 +136,7 @@ class DataFusionAdapter(NoConstraintEnforcementMixin, PlatformAdapter):
     driver_isolation_capability = DriverIsolationCapability.SUPPORTED
     supports_external_tables = True
     plan_capture_phase_eligible = True
+    ledger_execute_verbs = ("sql",)
 
     _process_working_dir_lock_depth: dict[str, int] = {}
     _process_working_dir_lock_guard = threading.Lock()

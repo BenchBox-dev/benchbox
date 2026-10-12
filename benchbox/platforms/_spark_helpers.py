@@ -157,6 +157,42 @@ _REPEATED_SPACE_RE = re.compile(r"[ \t]{2,}")
 _LEADING_COMMENTS_RE = re.compile(r"\A(?:\s*(?:--[^\n]*(?:\n|$)|/\*.*?\*/))+\s*", re.DOTALL)
 _FIXED_SIZE_ARRAY_TYPE_RE = re.compile(r"\b([A-Za-z]\w*)\s*\[\s*\d+\s*\]")
 _ARRAY_FIXED_SIZE_SUFFIX_RE = re.compile(r"(>)\s*\[\s*\d+\s*\]")
+_CREATE_TABLE_COLUMN_LIST_RE = re.compile(
+    r"\A\s*CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:\"[^\"]*\"|`[^`]*`|[^\s(\"`])+\s*\(",
+    re.IGNORECASE,
+)
+
+
+def _column_list_end(statement: str) -> int:
+    match = _CREATE_TABLE_COLUMN_LIST_RE.match(statement)
+    if not match:
+        return len(statement)
+    depth = 1
+    quote = ""
+    cursor = match.end()
+    while cursor < len(statement):
+        ch = statement[cursor]
+        cursor += 1
+        if quote:
+            if ch == "\\" and quote == "'":
+                cursor += 1
+            elif ch == quote:
+                quote = ""
+        elif ch in "'\"`":
+            quote = ch
+        elif ch == "-" and statement[cursor : cursor + 1] == "-":
+            newline = statement.find("\n", cursor + 1)
+            cursor = len(statement) if newline == -1 else newline + 1
+        elif ch == "/" and statement[cursor : cursor + 1] == "*":
+            close = statement.find("*/", cursor + 1)
+            cursor = len(statement) if close == -1 else close + 2
+        elif ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                return cursor
+    return len(statement)
 
 
 def _strip_balanced_paren_constraints(statement: str) -> str:
@@ -227,7 +263,9 @@ def optimize_spark_table_definition(
 
     if ")" in statement:
         fmt = (table_format or "parquet").upper()
-        statement = statement.rstrip(";").rstrip() + f" USING {fmt}"
+        statement = statement.rstrip(";").rstrip()
+        end = _column_list_end(statement)
+        statement = f"{statement[:end]} USING {fmt}{statement[end:]}"
     return statement
 
 
@@ -255,6 +293,8 @@ def purge_orphaned_warehouse_directory(spark: Any, *, logger: logging.Logger) ->
 
 
 class SparkLikeAdapterMixin:
+    ledger_execute_verbs = ("sql",)
+
     def apply_constraint_configuration(
         self,
         primary_key_config: Any,
@@ -320,6 +360,13 @@ class SparkLikeAdapterMixin:
             pass
 
 
+def _run_schema_statement(spark: Any, statement: str) -> None:
+    result = spark.sql(statement)
+    collect = getattr(result, "collect", None)
+    if callable(collect):
+        collect()
+
+
 def run_spark_schema_creation_loop(
     spark: Any,
     statements: list[str],
@@ -341,7 +388,7 @@ def run_spark_schema_creation_loop(
         if not statement.strip():
             continue
         try:
-            spark.sql(statement)
+            _run_schema_statement(spark, statement)
             logger.debug(f"Executed schema statement: {statement[:100]}...")
         except Exception as exc:
             error_lower = str(exc).lower()
@@ -359,7 +406,7 @@ def run_spark_schema_creation_loop(
                     "drop the conflicting object manually."
                 ) from exc
 
-            spark.sql(f"DROP TABLE IF EXISTS {table_name}")
+            _run_schema_statement(spark, f"DROP TABLE IF EXISTS {table_name}")
             if on_location_collision is not None and "location_already_exists" in error_lower:
                 on_location_collision(spark, table_name)
-            spark.sql(statement)
+            _run_schema_statement(spark, statement)
