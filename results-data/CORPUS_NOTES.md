@@ -64,6 +64,13 @@ Both cohorts meet the >=3-platform depth criterion required for the Compare view
 - `tpch SF=0.01`: DuckDB, DataFusion, Polars
 - `star_schema SF=0.01`: DuckDB, DataFusion, SQLite
 
+## Execution-variant identity (schema 2.3 and later)
+Bundles that record `platform.variant` count toward cohort depth under the variant
+string; every bundle committed here predates that field, so all existing identities
+are unchanged platform names and no cohort gains or loses depth from the rename.
+Gateway-routed bundles are excluded from native ranking with
+`ranking_exclusion_reason=gateway_routed` and contribute no identity.
+
 ## Zero-query DataFrame withdrawal (2026-08-24)
 
 Sixty legacy DataFrame bundles were withdrawn because they reported
