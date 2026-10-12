@@ -13852,7 +13852,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "blocked",
+      "status": "open",
       "title": "Resolve the visual approval gate blocking the nightly-v2 Windows PR"
     },
     "nightly-windows-release-curation-skip-count": {
