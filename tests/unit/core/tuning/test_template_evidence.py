@@ -366,6 +366,23 @@ def test_template_cell_falls_back_to_run_identity_for_bare_refs():
     assert template_cell("my_custom.yaml", "duckdb", "tpch") is None
 
 
+def test_template_cell_rejects_cell_mismatch_with_run_identity():
+    assert template_cell("examples/tunings/duckdb/tpch_tuned.yaml", "databricks", "TPC-H") is None
+    assert template_cell("examples/tunings/duckdb/tpch_tuned.yaml", "DuckDB", "TPC-DS") is None
+
+
+def test_template_cell_rejects_same_named_custom_files():
+    assert template_cell("/tmp/tpch_tuned.yaml", "DuckDB", "TPC-H") is None
+    assert template_cell("mydir/tpch_tuned.yaml", "DuckDB", "TPC-H") is None
+
+
+def test_template_cell_accepts_absolute_shipped_paths():
+    assert template_cell("/repo/benchbox/core/tuning/templates/duckdb/tpch_tuned.yaml", "DuckDB", "TPC-H") == (
+        "duckdb",
+        "tpch",
+    )
+
+
 def test_evidence_state_for_run_matches_scope_and_console_warning_inputs(monkeypatch):
     monkeypatch.setattr(
         template_evidence,

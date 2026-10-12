@@ -10,6 +10,11 @@ from benchbox.core.tuning.capability_registry import resolve_platform_key
 
 REGISTRY_PATH = Path(__file__).resolve().parent / "profiles" / "template_evidence.yaml"
 
+SHIPPED_TEMPLATE_ROOTS = (
+    ("benchbox", "core", "tuning", "templates"),
+    ("examples", "tunings"),
+)
+
 UNMEASURED = "unmeasured"
 EVIDENCE_STATES = (
     "unmeasured",
@@ -134,26 +139,45 @@ def is_tuned_template_ref(source_file: Any) -> bool:
     return base.endswith("_tuned.yaml") and len(base) > len("_tuned.yaml")
 
 
+def _is_shipped_template_ref(parts: list[str], platform_key: str, stem: str) -> bool:
+    for root in SHIPPED_TEMPLATE_ROOTS:
+        tail = (*root, platform_key, stem)
+        if len(parts) >= len(tail) and tuple(parts[-len(tail) :]) == tail:
+            return True
+    return False
+
+
 def template_cell(source_file: Any, platform: Any, benchmark: Any) -> tuple[str, str] | None:
     if not is_tuned_template_ref(source_file):
         return None
-    ref = str(source_file).split(":")[0]
-    head, _, stem = ref.rpartition("/")
-    stem = stem.lower()
+    ref = str(source_file).split(":")[0].replace("\\", "/")
+    parts = [part for part in ref.split("/") if part not in ("", ".")]
+    if not parts:
+        return None
+    stem = parts[-1].lower()
     if stem.endswith("_liquid_tuned.yaml"):
         file_benchmark = stem[: -len("_liquid_tuned.yaml")]
     else:
         file_benchmark = stem[: -len("_tuned.yaml")]
+    run_platform = resolve_platform_key(str(platform)) if platform else None
+    run_benchmark = normalize_benchmark(benchmark) if benchmark else None
+    head = parts[:-1]
+    dir_platform = resolve_platform_key(head[-1]) if head else ""
     registry = load_registry()
-    dir_platform = resolve_platform_key(head.rsplit("/", 1)[-1]) if head else ""
     if dir_platform in registry:
+        if run_platform and dir_platform != run_platform:
+            return None
         platform_key = dir_platform
-    elif platform:
-        platform_key = resolve_platform_key(str(platform))
+    elif run_platform:
+        platform_key = run_platform
     else:
         return None
-    benchmark_key = file_benchmark or normalize_benchmark(benchmark) or ""
+    if run_benchmark and file_benchmark != run_benchmark:
+        return None
+    benchmark_key = file_benchmark or run_benchmark or ""
     if not benchmark_key:
+        return None
+    if head and not _is_shipped_template_ref(parts, platform_key, stem):
         return None
     return platform_key, benchmark_key
 

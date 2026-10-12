@@ -91,7 +91,7 @@ def test_duckdb_notuning_run_has_no_evidence_warning(tmp_path, monkeypatch):
     assert _tuned_run_payload(tmp_path) is None
 
 
-def test_duckdb_tuned_run_with_measured_benefit_has_no_warning(tmp_path, monkeypatch):
+def test_duckdb_tuned_run_without_engine_metadata_stays_unmeasured(tmp_path, monkeypatch):
     profile = SystemProfiler().get_system_profile()
     monkeypatch.setattr(
         template_evidence,
@@ -134,7 +134,7 @@ def test_duckdb_tuned_run_with_measured_benefit_has_no_warning(tmp_path, monkeyp
     )
 
     assert result.exit_code == 0, result.output
-    assert WARNING not in result.output
+    assert WARNING in result.output
     payload = _tuned_run_payload(tmp_path)
     assert payload is not None
-    assert payload["platform"]["tuning"]["template_evidence"] == "measured-benefit"
+    assert payload["platform"]["tuning"]["template_evidence"] == "unmeasured"

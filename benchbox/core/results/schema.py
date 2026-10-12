@@ -842,28 +842,7 @@ def _collect_engine_version_metadata(result: BenchmarkResults) -> dict[str, Any]
 
 
 def _tuning_evidence_engine_version(result: BenchmarkResults) -> str | None:
-    engine_version = _collect_engine_version_metadata(result).get("engine_version")
-    if engine_version:
-        return engine_version
-    execution_environment = getattr(result, "execution_environment", None)
-    if isinstance(execution_environment, Mapping):
-        platform_runtime = execution_environment.get("platform_runtime")
-    else:
-        platform_runtime = getattr(execution_environment, "platform_runtime", None)
-    if isinstance(platform_runtime, Mapping):
-        runtime_type = platform_runtime.get("runtime_type")
-    else:
-        runtime_type = getattr(platform_runtime, "runtime_type", None)
-    if runtime_type not in {"local_process", "dataframe_process"}:
-        return None
-    platform_info = getattr(result, "platform_info", None)
-    if not isinstance(platform_info, Mapping):
-        platform_info = {}
-    return (
-        platform_info.get("platform_version")
-        or platform_info.get("version")
-        or getattr(result, "driver_version_actual", None)
-    )
+    return _collect_engine_version_metadata(result).get("engine_version") or None
 
 
 def _inject_driver_metadata(exec_block: dict[str, Any], driver_metadata: dict[str, Any]) -> None:
