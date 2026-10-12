@@ -20466,6 +20466,15 @@
       "status": "open",
       "title": "Classify every cell as reuse or reload from live trial state"
     },
+    "snowflake-trial-exit-stage3-tuning-pilot": {
+      "claim": null,
+      "needs": [
+        "snowflake-trial-exit-gate2-persistence"
+      ],
+      "priority": "critical",
+      "status": "open",
+      "title": "Pilot tuned-vs-untuned on TPC-H and SSB, then decide the 18-file program"
+    },
     "snowflake-tuned-live-certification-20261001": {
       "claim": null,
       "needs": [

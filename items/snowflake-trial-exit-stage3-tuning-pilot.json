@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "SSB Snowflake tuning file validated, dry-run reviewed, operator-confirmed",
+    "TPC-H + SSB tuned/untuned pairs executed at matched scale with cold-start evidence",
+    "Pilot verdict recorded with numbers: proceed with Tier 1 tuned pass, or kill with reason and redirect"
+  ],
+  "context": "Related open items: snowflake-tuned-live-certification-20261001 (blocked on reconciliation), cloud-tuned-benefit-live-runs-20261008, cloud-tuned-benefit-measurement-20261008. Verification rubric: each pair shows cache-disabled receipt, suspend-between-runs evidence, matched phases/streams/iterations/seed from the Gate 1 matrix, and both bundle paths.",
+  "description": "Stage 3. Compose tuning for exactly two benchmarks (TPC-H reuses examples/tunings/snowflake/tpch_tuned.yaml; SSB is the representative missing template, max 4 clustering cols per table, date/key cols first). Validate (tuning validate/show), dry-run DDL review (--dry-run ./preview, zero credits), operator confirms clustering columns, then run one tuned/untuned pair per benchmark at an already-covered scale with cold-start discipline (suspend warehouse between runs; result cache stays disabled USE_CACHED_RESULT=FALSE; no warmup phase since baselines had none). Snowflake renders only clustering/sorting to CLUSTER BY (benchbox/core/tuning/generators/snowflake.py:30); constraints are informational, so the measured claim is micro-partition pruning on filtered scans. Decision gate: tuned delta vs run-to-run noise. If noise wins, KILL the 18-file program and redirect credits to large-scale untuned coverage (record the kill with reason; narrowed scope re-homes to stage5). Guardrails: X-Small pinned; --funding free-trial; --publish-label maintainer-run; new timestamped bundles only, never overwrite; no --modify-warehouse-settings; suspend between pair members. Provides evidence toward snowflake-tuned-live-certification-20261001 and cloud-tuned-benefit-live-runs-20261008 without claiming them.",
+  "links": [
+    "examples/tunings/snowflake/tpch_tuned.yaml",
+    "benchbox/core/tuning/generators/snowflake.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:e445de97b2fb8410542405fe",
+      "at": "2026-10-12T17:16:06Z",
+      "client": "pi",
+      "op": "create",
+      "op_id": "9ffcbc6577594f40a322dec26f7985bf",
+      "session_id": "da0b2a7d64524d7badf1923cfcfd2dda"
+    }
+  ]
+}
