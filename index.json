@@ -20505,12 +20505,17 @@
       "title": "Lock Snowflake trial liveness, credit balance, and stop-loss before any burn"
     },
     "snowflake-trial-exit-gate1-comparability-lock": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-13T19:16:39Z",
+        "generation": "a60ea25c04e6417fa957ef4876adcf17",
+        "renewals": 0,
+        "worker": "mcp:tbh:joe@joe-mac-mini.local:28ec00d9b0349e9794467df7"
+      },
       "needs": [
         "snowflake-trial-exit-gate0-liveness-budget"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Freeze the per-cell rerun matrix from baseline bundles"
     },
     "snowflake-trial-exit-gate2-persistence": {
