@@ -66,6 +66,15 @@
       "op": "update",
       "op_id": "5d05a1d32232447fa3a87a1a36833d44",
       "session_id": "2e005b09c5764b37907562dafae0d675"
+    },
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:e3504767679efb36f57a860d",
+      "at": "2026-10-12T04:15:04Z",
+      "client": "pi",
+      "generation": "0c6c3bb6db484b12bec5232d33783cef",
+      "op": "renew",
+      "op_id": "24a863d4526b4a25bbc11009b88ab821",
+      "session_id": "2e005b09c5764b37907562dafae0d675"
     }
   ]
 }
