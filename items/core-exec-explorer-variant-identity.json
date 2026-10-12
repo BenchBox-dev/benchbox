@@ -7,7 +7,7 @@
     "validate_corpus.py treats variant_id as part of identity, with SEED_CORPUS_SPEC.md and CORPUS_NOTES.md updated and the corpus depth test adjusted in the same PR",
     "PR merged through the normal flow"
   ],
-  "context": "Decision gates:\n- G1 Start after core-exec-result-schema-2-3 and core-exec-polars-cli-mcp-adoption.\n- G2 If any published result_id, public URL or existing rank would change for bundles that have no engine/gateway data, stop: identity for legacy bundles must equal today's (adr-public-result-id-permanence).\n- G3 If the Explorer change needs a site redeploy or touches the site repository split, stop and plan the rollout with the user.\n\nVerification rubric: pipeline unit tests, results-explorer vitest, check_explorer_compat, results-data validation, before/after read-model diff on the current corpus.\n\nGuardrails: shared core-exec guardrails (see core-exec-d0-vocabulary-adr context); never edit results-data bundles by hand.",
+  "context": "Decision gates:\n- G1 Start after core-exec-result-schema-2-3 and core-exec-polars-cli-mcp-adoption.\n- G2 If any published result_id, public URL or existing rank would change for bundles that have no engine/gateway data, stop: identity for legacy bundles must equal today's (adr-public-result-id-permanence).\n- G3 If the Explorer change needs a site redeploy or touches the site repository split, stop and plan the rollout with the user.\n\nVerification rubric: pipeline unit tests, results-explorer vitest, check_explorer_compat, results-data validation, before/after read-model diff on the current corpus.\n\nGuardrails: shared core-exec guardrails (see core-exec-d0-vocabulary-adr context); never edit results-data bundles by hand.\n\nCloseout (2026-10-12): merged as 57911e7cb14a (PR #2913). Read model v16 with variant identity; corpus before/after diff empty across all 10 tables (413 results, 62 cohorts). Independent oracle review (muse) verified D1-D7 fixed with covering tests; final SHIP verdict for head c33aeae0b; review threads resolved; full CI green.",
   "description": "Today the Explorer and corpus identify a run by platform name, so runs that differ only by execution engine (and later by deployment or gateway) merge into one platform: platform_id is the platform name (_project/scripts/explorer_pipeline/models.py:60), the meta-leaderboard keeps each platform's best rank per cohort, corpus identity is platform name (results-data/validate_corpus.py:407-431), and the read model carries only execution_mode sql/dataframe, tuning_mode and tuning_hash.\n\nWork:\n1. Read-model columns execution_engine (requested), execution_engine_applied, gateway and variant_id, derived through the core derive_variant_label (ADR D8), in _project/scripts/explorer_pipeline/{transformer,models,duckdb_builder}.py, mirrored in results-explorer/src/types.ts; bump the read-model version per scripts/publication/check_explorer_compat.py.\n2. Cohort grouping, ranking and labels use variant_id (\"Polars (streaming)\", \"Snowflake via Greybeam\"); the Comparability receipt shows execution engine requested/applied and gateway.\n3. Gateway runs carry ranking_exclusion_reason=\"gateway_routed\" in native cohorts (ADR D9).\n4. Legacy backfill: existing corpus bundles map through the legacy reader (requested=default unless streaming=true); no re-derive of published bytes.\n5. Corpus identity in results-data/validate_corpus.py includes variant_id, with SEED_CORPUS_SPEC.md and CORPUS_NOTES.md updated in the same change.",
   "links": [
     "_project/scripts/explorer_pipeline/transformer.py",
@@ -35,6 +35,14 @@
       "generation": "97902be346c0480c819bbbe0506cec2c",
       "op": "take",
       "op_id": "897c458babec4c0f94774871aa989854",
+      "session_id": "27b88a720c9f4fc981d9d2b9406e61be"
+    },
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:5b994405d415152299b5a092",
+      "at": "2026-10-12T21:54:44Z",
+      "client": "pi",
+      "op": "update",
+      "op_id": "c6498d5bfb9847e49e9c6cdfc9d17c9d",
       "session_id": "27b88a720c9f4fc981d9d2b9406e61be"
     }
   ]
