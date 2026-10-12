@@ -823,8 +823,20 @@ jobs:
         run: uv run -- python scripts/release_curation_dry_run.py --changed-since "$BASE_SHA"
 
       - name: Run fast tests
+        env:
+          BENCHBOX_MAX_XDIST_WORKERS: "2"
+          BENCHBOX_XDIST_TRACE_DIR: xdist-failure-trace
         run: |
           uv run -- python -m pytest tests -m "fast and not (slow or stress or resource_heavy or live_integration)" --tb=short --timeout=120 -p pytest_cov --cov=benchbox --cov-report=xml --cov-report=term-missing --cov-fail-under=70
+
+      - name: Upload xdist failure trace
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: xdist-failure-trace
+          path: xdist-failure-trace/
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac

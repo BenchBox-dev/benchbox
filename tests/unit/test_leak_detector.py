@@ -116,12 +116,18 @@ def test_clean_state_reports_nothing() -> None:
 def test_unloaded_globals_use_raw_defaults_without_imports(monkeypatch) -> None:
     monkeypatch.delitem(sys.modules, "benchbox.utils.printing", raising=False)
     monkeypatch.delitem(sys.modules, "benchbox.utils.config_interface", raising=False)
+    monkeypatch.delitem(sys.modules, "rich.prompt", raising=False)
+    monkeypatch.delitem(sys.modules, "benchbox.platforms.credentials.bigquery", raising=False)
     assert leak_detector.snapshot()["globals"] == {
         "benchbox.utils.printing._QUIET": False,
         "benchbox.utils.config_interface._config_provider": None,
+        "rich.prompt.Confirm": None,
+        "benchbox.platforms.credentials.bigquery.Confirm": None,
     }
     assert "benchbox.utils.printing" not in sys.modules
     assert "benchbox.utils.config_interface" not in sys.modules
+    assert "rich.prompt" not in sys.modules
+    assert "benchbox.platforms.credentials.bigquery" not in sys.modules
 
 
 @pytest.mark.parametrize(
@@ -133,6 +139,14 @@ def test_unloaded_globals_use_raw_defaults_without_imports(monkeypatch) -> None:
         ('os.chdir("changed")', "cwd"),
         ("printing._QUIET = True", "benchbox.utils.printing._QUIET"),
         ("ci._config_provider = object()", "benchbox.utils.config_interface._config_provider"),
+        ("rich.prompt.Confirm = object()", "rich.prompt.Confirm"),
+        ("bigquery.Confirm = object()", "benchbox.platforms.credentials.bigquery.Confirm"),
+        (
+            'replacement = types.ModuleType("replacement"); '
+            'sys.modules["benchbox.platforms.credentials.bigquery"] = replacement; '
+            "credentials.bigquery = replacement",
+            "sys.modules[benchbox.platforms.credentials.bigquery]",
+        ),
     ],
 )
 def test_leaking_test_fails_at_teardown_and_next_test_is_clean(tmp_path: Path, body: str, surface: str) -> None:
@@ -159,9 +173,17 @@ def _run_probe(
         encoding="utf-8",
     )
     (tmp_path / "test_probe.py").write_text(
-        "import os, pytest\nimport benchbox.utils.printing as printing\n"
-        "import benchbox.utils.config_interface as ci\npytestmark = pytest.mark.unit\n"
+        "import os, pytest, sys, types\n"
+        "import rich.prompt\n"
+        "import benchbox.platforms.credentials as credentials\n"
+        "import benchbox.platforms.credentials.bigquery as bigquery\n"
+        "import benchbox.utils.printing as printing\n"
+        "import benchbox.utils.config_interface as ci\n"
+        "pytestmark = pytest.mark.unit\n"
         "ORIGINAL_CWD = os.getcwd()\n"
+        "ORIGINAL_RICH_CONFIRM = rich.prompt.Confirm\n"
+        "ORIGINAL_BIGQUERY_CONFIRM = bigquery.Confirm\n"
+        "ORIGINAL_BIGQUERY_MODULE = bigquery\n"
         "@pytest.fixture\ndef finalizer():\n    yield\n"
         f"    {teardown or 'pass'}\n"
         f"{mark}\n"
@@ -172,6 +194,10 @@ def _run_probe(
         '    assert os.environ["EXISTING_PROBE"] == "original"\n'
         "    assert printing._QUIET is False\n"
         "    assert ci._config_provider is None\n"
+        "    assert rich.prompt.Confirm is ORIGINAL_RICH_CONFIRM\n"
+        "    assert bigquery.Confirm is ORIGINAL_BIGQUERY_CONFIRM\n"
+        '    assert sys.modules["benchbox.platforms.credentials.bigquery"] is ORIGINAL_BIGQUERY_MODULE\n'
+        "    assert credentials.bigquery is ORIGINAL_BIGQUERY_MODULE\n"
         f"    {clean or 'pass'}\n",
         encoding="utf-8",
     )
@@ -285,6 +311,15 @@ def _run_module_fixture_probe(tmp_path: Path, last_test_body: str) -> subprocess
         text=True,
         timeout=60,
     )
+
+
+@pytest.mark.parametrize(
+    "import_statement",
+    ["import rich.prompt", "import benchbox.platforms.credentials.bigquery"],
+)
+def test_first_import_of_registered_module_is_not_reported_as_a_leak(tmp_path: Path, import_statement: str) -> None:
+    result = _run_module_fixture_probe(tmp_path, import_statement)
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_a_module_fixture_restoring_state_is_not_blamed_on_the_last_test(tmp_path: Path) -> None:
