@@ -180,7 +180,7 @@ def _metadata_hook_failure(exc: Exception) -> dict[str, Any]:
                     collection_status="unavailable",
                     source="unavailable",
                     collection_error_class=type(exc).__name__,
-                    collection_error_message=str(exc),
+                    collection_error_message=f"{type(exc).__name__}: result metadata hook failed",
                 )
             ).to_dict(),
             "platform_deployment": PlatformDeploymentMetadata(

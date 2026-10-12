@@ -348,7 +348,7 @@ class SnowflakeAdapter(PlatformAdapter):
         return {
             "metadata_collection_status": "unavailable",
             "collection_error_class": type(exc).__name__,
-            "collection_error_message": str(exc),
+            "collection_error_message": f"{type(exc).__name__}: warehouse metadata collection failed",
         }
 
     @staticmethod
@@ -1452,7 +1452,10 @@ class SnowflakeAdapter(PlatformAdapter):
 
             except Exception as exc:
                 cursor.close()
-                return {"statistics_error": str(exc), "retrieval_attempts": attempt + 1}
+                return {
+                    "statistics_error": f"{type(exc).__name__}: query statistics retrieval failed",
+                    "retrieval_attempts": attempt + 1,
+                }
 
         cursor.close()
         return {"note": "Query statistics not yet available", "retrieval_attempts": max_retries + 1}

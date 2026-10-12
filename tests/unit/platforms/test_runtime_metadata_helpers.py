@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 
+from benchbox.core.results.anonymization import AnonymizationConfig, AnonymizationManager
 from benchbox.core.results.models import BenchmarkResults
 from benchbox.core.runner.runner import _enrich_normalized_runtime_metadata
 from benchbox.platforms.base.docker_runtime import DockerCommandResult
@@ -265,9 +266,32 @@ def test_adapter_hook_failure_returns_unavailable_metadata() -> None:
     assert runtime["runtime_type"] == "unknown"
     assert runtime["collection_status"] == "unavailable"
     assert runtime["collection_error_class"] == "RuntimeError"
-    assert runtime["collection_error_message"] == "optional metadata API unavailable"
+    assert runtime["collection_error_message"] == "RuntimeError: result metadata hook failed"
     assert deployment["deployment_type"] == "unknown"
     assert deployment["collection_status"] == "unavailable"
+
+
+def test_adapter_hook_failure_excludes_identifiers_from_message() -> None:
+    leaked = "Account 'synth-acct-9f31' user SYNTH_ADMIN warehouse SYNTH_WH host db-9f31.priv.example"
+
+    class HookAdapter:
+        def get_normalized_result_metadata(self, **_: Any) -> dict[str, Any]:
+            raise RuntimeError(leaked)
+
+    metadata = collect_normalized_result_metadata(HookAdapter())
+    runtime = metadata["execution_environment"]["platform_runtime"]
+    message = runtime["collection_error_message"]
+
+    assert runtime["collection_error_class"] == "RuntimeError"
+    for value in ("synth-acct-9f31", "SYNTH_ADMIN", "SYNTH_WH", "db-9f31.priv.example"):
+        assert value not in message
+
+    anonymized = AnonymizationManager(AnonymizationConfig(machine_id_salt="synth-salt")).anonymize_result_payload(
+        metadata
+    )
+    anonymized_message = anonymized["execution_environment"]["platform_runtime"]["collection_error_message"]
+    for value in ("synth-acct-9f31", "SYNTH_ADMIN", "SYNTH_WH", "db-9f31.priv.example"):
+        assert value not in anonymized_message
 
 
 def test_result_merge_replaces_unknown_defaults_but_preserves_explicit_values() -> None:

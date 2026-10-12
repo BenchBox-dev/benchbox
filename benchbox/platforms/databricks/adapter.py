@@ -892,7 +892,7 @@ class DatabricksAdapter(PlatformAdapter):
                 "warehouse_id": warehouse_id,
                 "warehouse_metadata_collection_status": "unavailable",
                 "warehouse_metadata_error_class": type(exc).__name__,
-                "warehouse_metadata_error_message": str(exc),
+                "warehouse_metadata_error_message": f"{type(exc).__name__}: warehouse metadata collection failed",
             }
         )
 
