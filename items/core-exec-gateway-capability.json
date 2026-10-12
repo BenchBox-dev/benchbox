@@ -105,6 +105,15 @@
       "op": "take",
       "op_id": "ae7f537363bd4bdd96807695beec42f1",
       "session_id": "27b88a720c9f4fc981d9d2b9406e61be"
+    },
+    {
+      "actor": "mcp:pi:joe@joe-mac-mini.local:5b994405d415152299b5a092",
+      "at": "2026-10-12T21:54:26Z",
+      "client": "pi",
+      "generation": "9395e5cb7884434c9ae755e79b389abe",
+      "op": "finish",
+      "op_id": "73afc1617905494bbcba94476b308588",
+      "session_id": "27b88a720c9f4fc981d9d2b9406e61be"
     }
   ]
 }
