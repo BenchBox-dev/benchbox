@@ -25519,15 +25519,10 @@
       "title": "Windows fast-test run stalls at about 90-95% on Python 3.11 and 3.12"
     },
     "windows-session-lock-holder-readable-20261009": {
-      "claim": {
-        "expires_at": "2026-10-14T19:29:57Z",
-        "generation": "5304126e52924ec3b969bf9cc1d57300",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:513e77a5e9d7684fd6c76434"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Lock a byte past the holder text so the session-isolation lock is readable on Windows"
     },
     "windows-snowflake-stage-path-object-separators": {
