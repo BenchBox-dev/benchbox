@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Credential-bearing and static keys are rejected with a clear error (unit tests).",
+    "Unknown keys are rejected unless explicitly allowed.",
+    "No spark map values are logged."
+  ],
+  "context": "Found 2026-10-13 by an adversarial review of #2876 at origin/develop 77048bfb9.",
+  "description": "## Problem\nThe `platform_optimizations.spark` map added by 250d92252 (#2876) is checked with a partial denylist, not an allowlist. The parser accepts:\n- typos such as `spark.sql.shuffle.partitoins`;\n- static settings such as `spark.serializer` and `spark.sql.catalogImplementation`;\n- credential keys such as `spark.hadoop.fs.azure.account.key.*`, `fs.azure.sas.*` and `…json.keyfile`.\n\nSpark accepts unknown keys silently, so the ledger reports them as executed.\n\n**Leak risk.**\n- VERIFIED: the public anonymizer redacts the value.\n- PLAUSIBLE: raw local bundles keep it, and `benchbox/platforms/_spark_helpers.py:328` logs it.\n\n**Not in scope here.** Runtime application (the map is skipped on reuse and reset by `configure_for_benchmark`) is covered by `spark-session-config-runtime`.\n\n## Change\n- Reject `spark.hadoop.*` and `fs.*` keys.\n- Broaden the credential patterns.\n- Validate against a known modifiable-key allowlist, with an explicit override flag.\n- Stop logging values.",
+  "links": [
+    "benchbox/platforms/_spark_helpers.py",
+    "benchbox/core/tuning/interface.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
+      "at": "2026-10-13T13:14:03Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "d61714c7507048ccbdc57e17a43f6a56",
+      "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    }
+  ]
+}
