@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Databricks Z-order TPC-H and TPC-DS templates lead each fact table's clustering with its date column.",
+    "Temporal candidates map for Z-order; the parity test asserts full mapping.",
+    "examples and packaged templates match."
+  ],
+  "context": "Found 2026-10-13 by an adversarial review of Databricks tuning changes at origin/develop 77048bfb9.",
+  "description": "## Problem\ncbddc0cb8 (#2867) removed date partitioning (`L_SHIPDATE`, `O_ORDERDATE`, and the fact tables' `*_SOLD_DATE_SK`/`*_RETURNED_DATE_SK`) from the Databricks Z-order templates, but did not move those dates into the per-table clustering keys.\n- The global `z_ordering_columns` list still names O_ORDERDATE and SS_SOLD_DATE_SK. The adapter reads that list only to choose the strategy (`benchbox/platforms/databricks/adapter.py:388`). Z-order columns come from per-table clustering (`:3124-3127`).\n- Temporal candidates were marked UNSUPPORTED for Z-order (`benchbox/core/tuning/platform_capabilities.py:120-131`), although Z-ORDER on a date column is valid and the manual-liquid layout maps the same candidates. The test now freezes `unsupported == temporal`.\n- TPC-DS fact tables therefore lose date pruning, which most TPC-DS queries rely on.\n\n## Change\n- Make the date column the first clustering key on each fact table (at most 4 keys).\n- Map temporal candidates to clustering/Z-order.\n- Restore the `mapped_count == required_count` assertion.\n- Regenerate both template trees. Depends on `databricks-zorder-applied-to-empty-tables-20261013` for the Z-order to take effect.",
+  "links": [
+    "examples/tunings/databricks",
+    "benchbox/core/tuning/templates/databricks",
+    "benchbox/core/tuning/platform_capabilities.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
+      "at": "2026-10-13T13:13:09Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "b4b3198b8e00421cb118a2887b2b85ce",
+      "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    }
+  ]
+}
