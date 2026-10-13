@@ -8,6 +8,7 @@ import pandas as pd
 import pytest
 
 from benchbox.utils.file_format import TRAILING_DUMMY_COLUMN
+from tests.utilities.deprecation_capture import captured_deprecations
 
 mod = importlib.import_module("benchbox.platforms.dataframe.dask_df")
 
@@ -161,9 +162,13 @@ def test_default_execution_engine_resolves_to_distributed():
 
 
 @pytest.mark.parametrize(("legacy", "engine"), [(True, "distributed"), (False, "threaded")])
-def test_legacy_use_distributed_alias_warns_and_maps(legacy, engine):
-    with pytest.warns(DeprecationWarning, match="use_distributed"):
+def test_legacy_use_distributed_alias_warns_and_maps(legacy, engine, caplog):
+    with captured_deprecations(caplog) as seen:
         receipt = _engine_resolver(legacy=legacy).resolve_execution_engine("default")
+
+    assert len(seen) == 1
+    assert "'use_distributed'" in seen[0]
+    assert f"--execution-engine {engine}" in seen[0]
 
     assert receipt.requested == engine
     assert receipt.applied == engine
@@ -171,9 +176,8 @@ def test_legacy_use_distributed_alias_warns_and_maps(legacy, engine):
 
 
 def test_explicit_and_legacy_dask_engines_conflict():
-    with pytest.warns(DeprecationWarning, match="use_distributed"):
-        with pytest.raises(ValueError, match="Conflicting execution engine sources"):
-            _engine_resolver(legacy=False).resolve_execution_engine("distributed")
+    with pytest.raises(ValueError, match="Conflicting execution engine sources"):
+        _engine_resolver(legacy=False).resolve_execution_engine("distributed")
 
 
 def test_threaded_engine_rejects_scheduler_address():
@@ -182,14 +186,14 @@ def test_threaded_engine_rejects_scheduler_address():
 
 
 @pytest.mark.skipif(not mod.DASK_AVAILABLE, reason="Dask not installed")
-def test_saved_platform_option_resolves_legacy_dask_engine(tmp_path):
+def test_saved_platform_option_resolves_legacy_dask_engine(tmp_path, caplog):
     from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
     from benchbox.platforms.adapter_factory import get_adapter
 
     database_config = PlatformHookRegistry.build_database_config("dask", {"use_distributed": False})
     option_names = PlatformHookRegistry.list_option_specs("dask")
     options = {key: value for key, value in database_config.options.items() if key in option_names}
-    with pytest.warns(DeprecationWarning, match="use_distributed"):
+    with captured_deprecations(caplog) as seen:
         adapter = get_adapter(
             "dask",
             mode="dataframe",
@@ -198,6 +202,7 @@ def test_saved_platform_option_resolves_legacy_dask_engine(tmp_path):
             **options,
         )
 
+    assert len(seen) == 1
     receipt = adapter.get_platform_info()["execution_engine"]
     assert receipt["requested"] == "threaded"
     assert receipt["applied"] == "threaded"

@@ -14,6 +14,33 @@ from benchbox.core.constants import (
 TPC_ALLOWED_SCALE_FACTORS: frozenset[int | float] = frozenset({1, 10, 30, 100, 300, 1000, 3000, 10000, 30000, 100000})
 
 
+def begin_run() -> None:
+    from benchbox.core.deprecation_notices import begin_run as reset_deprecation_notices
+
+    reset_deprecation_notices()
+
+
+def apply_polars_streaming_flag(
+    option_pairs: tuple[tuple[str, str], ...], execution_engine: str | None
+) -> tuple[tuple[str, str], ...]:
+    from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
+
+    if execution_engine not in (None, DEFAULT_EXECUTION_ENGINE, "streaming"):
+        raise ValueError(f"--polars-streaming conflicts with --execution-engine {execution_engine}")
+    return (*option_pairs, ("streaming", "true"))
+
+
+def warn_polars_streaming_flag() -> None:
+    from benchbox.core.deprecation_notices import warn_deprecated_alias
+
+    warn_deprecated_alias(
+        "polars",
+        "--polars-streaming",
+        "'--execution-engine streaming' (execution_engine='streaming')",
+        setting="streaming",
+    )
+
+
 def validate_tpc_scale_factor(scale: float) -> None:
     if scale not in TPC_ALLOWED_SCALE_FACTORS:
         raise ValueError(f"Scale factor {scale} is not TPC-compliant. Allowed: {sorted(TPC_ALLOWED_SCALE_FACTORS)}")
@@ -350,6 +377,8 @@ def map_phases_to_execution_type(phases: list[str]) -> str:
 
 __all__ = [
     "AdapterFactory",
+    "apply_polars_streaming_flag",
+    "begin_run",
     "build_databricks_clustering_intent",
     "execute_run",
     "get_execution_mode",
@@ -369,4 +398,5 @@ __all__ = [
     "validate_stream_count",
     "validate_tpc_scale_factor",
     "VerbosityLike",
+    "warn_polars_streaming_flag",
 ]

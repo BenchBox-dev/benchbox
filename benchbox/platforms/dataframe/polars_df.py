@@ -108,10 +108,9 @@ class PolarsDataFrameAdapter(ExpressionFamilyAdapter[PolarsDF, PolarsLazyDF, Pol
         return None
 
     def resolve_execution_engine(self, requested: str) -> ExecutionEngineReceipt:
-        import warnings
-
         from benchbox.core.execution_engine import (
             ExecutionEngineResolution,
+            legacy_option_engine,
             resolve_requested,
             supported_execution_engines,
         )
@@ -119,7 +118,7 @@ class PolarsDataFrameAdapter(ExpressionFamilyAdapter[PolarsDF, PolarsLazyDF, Pol
         resolved = resolve_requested("polars", requested)
         explicit = None if resolved == DEFAULT_EXECUTION_ENGINE else resolved
         tuning = self._tuning_engine()
-        legacy = "streaming" if self.streaming else None
+        legacy = legacy_option_engine("polars", "streaming", bool(self.streaming))
         ordered: tuple[tuple[str, str | None, ExecutionEngineResolution], ...] = (
             ("explicit setting", explicit, "explicit"),
             ("tuning file", tuning, "tuning_profile"),
@@ -143,12 +142,6 @@ class PolarsDataFrameAdapter(ExpressionFamilyAdapter[PolarsDF, PolarsLazyDF, Pol
                 "Tuning [%s]: %s is set; runs with different engines may not be comparable",
                 self.platform_name,
                 ENGINE_AFFINITY_KEY,
-            )
-        if legacy is not None:
-            warnings.warn(
-                "The Polars streaming option is deprecated; use execution_engine='streaming'",
-                DeprecationWarning,
-                stacklevel=3,
             )
         selected: str
         resolution: ExecutionEngineResolution

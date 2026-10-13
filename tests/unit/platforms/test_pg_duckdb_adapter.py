@@ -10,6 +10,7 @@ import benchbox.platforms.pg_duckdb as pg_duckdb_module
 import benchbox.platforms.postgresql as postgresql_module
 from benchbox.platforms.pg_duckdb import PgDuckDBAdapter
 from benchbox.platforms.postgresql import POSTGRES_DIALECT
+from tests.utilities.deprecation_capture import captured_deprecations
 
 pytestmark = [
     pytest.mark.unit,
@@ -91,8 +92,8 @@ class TestPgDuckDBAdapter:
         assert adapter.force_execution is True
         assert adapter.postgres_scan_threads == 8
 
-    def test_saved_config_force_execution_alias_warns_and_maps(self, pg_duckdb_stubs):
-        with pytest.warns(DeprecationWarning, match="force_execution"):
+    def test_saved_config_force_execution_alias_warns_and_maps(self, pg_duckdb_stubs, caplog):
+        with captured_deprecations(caplog) as seen:
             adapter = PgDuckDBAdapter.from_config(
                 {
                     "benchmark": "tpch",
@@ -102,6 +103,8 @@ class TestPgDuckDBAdapter:
                 }
             )
 
+        assert len(seen) == 1
+        assert "'force_execution'" in seen[0]
         receipt = adapter.get_platform_info()["configuration"]["execution_engine"]
         assert adapter.force_execution is False
         assert receipt["requested"] == "postgres"

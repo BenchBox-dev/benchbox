@@ -31,15 +31,25 @@ RESERVED_OPTION_KEYS = frozenset({"engine", "mode", "backend", "runtime", "execu
 class DeprecatedOptionAlias:
     target: str
     removed_in: str
+    engines: tuple[str | None, str] | None = None
 
 
 DEPRECATED_OPTION_ALIASES: Mapping[tuple[str, str], DeprecatedOptionAlias] = MappingProxyType(
     {
         ("athena-spark", "engine_version"): DeprecatedOptionAlias(target="runtime_version", removed_in="0.6.0"),
         ("clickhouse", "mode"): DeprecatedOptionAlias(target="deployment", removed_in="0.6.0"),
+        ("dask", "use_distributed"): DeprecatedOptionAlias(
+            target="execution_engine", removed_in="0.6.0", engines=("threaded", "distributed")
+        ),
         ("databend", "warehouse"): DeprecatedOptionAlias(target="compute_resource", removed_in="0.6.0"),
         ("fabric_dw", "warehouse"): DeprecatedOptionAlias(target="database", removed_in="0.6.0"),
         ("influxdb", "mode"): DeprecatedOptionAlias(target="deployment", removed_in="0.6.0"),
+        ("pg-duckdb", "force_execution"): DeprecatedOptionAlias(
+            target="execution_engine", removed_in="0.6.0", engines=("postgres", "duckdb")
+        ),
+        ("polars", "streaming"): DeprecatedOptionAlias(
+            target="execution_engine", removed_in="0.6.0", engines=(None, "streaming")
+        ),
         ("snowflake", "warehouse"): DeprecatedOptionAlias(target="compute_resource", removed_in="0.6.0"),
         ("snowpark-connect", "warehouse"): DeprecatedOptionAlias(target="compute_resource", removed_in="0.6.0"),
     }
@@ -94,6 +104,18 @@ def resolve_requested(platform: str, value: str) -> str:
     return value
 
 
+def legacy_option_engine(platform: str, option: str, enabled: bool) -> str | None:
+    from benchbox.core.deprecation_notices import warn_deprecated_alias
+
+    entry = DEPRECATED_OPTION_ALIASES.get((_manifest_platform_key(platform), option.lower()))
+    if entry is None or entry.engines is None:
+        return None
+    engine = entry.engines[1] if enabled else entry.engines[0]
+    if engine is not None:
+        warn_deprecated_alias(platform, option, f"'--execution-engine {engine}' (execution_engine='{engine}')")
+    return engine
+
+
 def platform_default_receipt(platform: str, requested: str) -> ExecutionEngineReceipt:
     if requested != DEFAULT_EXECUTION_ENGINE:
         raise _reject(platform, requested, [])
@@ -123,6 +145,7 @@ __all__ = [
     "ExecutionEngineUnavailableError",
     "ObservedSource",
     "UnsupportedExecutionEngineError",
+    "legacy_option_engine",
     "platform_default_receipt",
     "resolve_requested",
     "supported_execution_engines",

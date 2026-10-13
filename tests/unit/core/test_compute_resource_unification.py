@@ -13,20 +13,12 @@ from benchbox.core.compute_resource import (
     resolve_resource_kind,
 )
 from benchbox.core.hooks.platform_hooks import PlatformHookRegistry, PlatformOptionError
+from tests.utilities.deprecation_capture import captured_deprecations
 
 pytestmark = [
     pytest.mark.unit,
     pytest.mark.fast,
 ]
-
-
-@pytest.fixture(autouse=True)
-def _reset_compute_alias_warnings():
-    from benchbox.core import compute_resource
-
-    compute_resource._WARNED_ALIASES.clear()
-    yield
-    compute_resource._WARNED_ALIASES.clear()
 
 
 EXPECTED_DECLARATIONS = {
@@ -86,9 +78,14 @@ def test_spec_registration_is_idempotent() -> None:
         ("fabric_dw", [("warehouse", "WH1")], {"database": "WH1"}),
     ],
 )
-def test_native_alias_parses_to_canonical(platform: str, pairs: list, canonical: dict) -> None:
-    with pytest.warns(DeprecationWarning, match="deprecated"):
+def test_native_alias_parses_to_canonical(
+    platform: str, pairs: list, canonical: dict, caplog: pytest.LogCaptureFixture
+) -> None:
+    with captured_deprecations(caplog) as seen:
         parsed = PlatformHookRegistry.parse_options(platform, pairs)
+    assert len(seen) == 1
+    assert f"'{pairs[0][0]}'" in seen[0]
+    assert "0.6.0" in seen[0]
     for key, value in canonical.items():
         assert parsed[key] == value
 
@@ -101,12 +98,12 @@ def test_native_alias_parses_to_canonical(platform: str, pairs: list, canonical:
         ("clickhouse-cloud", [("compute_size", "M")], {"compute_size": "M"}),
     ],
 )
-def test_canonical_key_parses_without_warning(platform: str, pairs: list, canonical: dict) -> None:
-    import warnings
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
+def test_canonical_key_parses_without_warning(
+    platform: str, pairs: list, canonical: dict, caplog: pytest.LogCaptureFixture
+) -> None:
+    with captured_deprecations(caplog) as seen:
         parsed = PlatformHookRegistry.parse_options(platform, pairs)
+    assert seen == []
     for key, value in canonical.items():
         assert parsed[key] == value
 
@@ -121,17 +118,11 @@ def test_compute_resource_rejected_on_quanton() -> None:
         PlatformHookRegistry.parse_options("quanton", [("compute_resource", "X")])
 
 
-def test_deprecated_alias_warns_once() -> None:
-    import warnings
-
-    from benchbox.core import compute_resource
-
-    compute_resource._WARNED_ALIASES.clear()
-    with warnings.catch_warnings(record=True) as seen:
-        warnings.simplefilter("always")
+def test_deprecated_alias_warns_once(caplog: pytest.LogCaptureFixture) -> None:
+    with captured_deprecations(caplog) as seen:
         normalize_compute_options("databend", {"warehouse": "A"})
         normalize_compute_options("databend", {"warehouse": "A"})
-    assert len([item for item in seen if issubclass(item.category, DeprecationWarning)]) == 1
+    assert len(seen) == 1
 
 
 def test_canonical_native_disagreement_fails() -> None:
@@ -314,13 +305,12 @@ class TestFabricDwDatabaseRename:
         assert adapter.database == "WH1"
         assert adapter.warehouse == "WH1"
 
-    def test_warehouse_alias_warns_and_resolves(self):
-        from benchbox.core import compute_resource
+    def test_warehouse_alias_warns_and_resolves(self, caplog: pytest.LogCaptureFixture):
         from benchbox.platforms.fabric_warehouse import FabricWarehouseAdapter
 
-        compute_resource._WARNED_ALIASES.clear()
-        with pytest.warns(DeprecationWarning, match="deprecated"):
+        with captured_deprecations(caplog) as seen:
             adapter = FabricWarehouseAdapter(server="ws.datawarehouse.fabric.microsoft.com", warehouse="WH1")
+        assert len(seen) == 1
         assert adapter.database == "WH1"
 
 
@@ -444,9 +434,12 @@ class TestComputeAnonymizationGates:
         ("athena", [("workgroup", "primary")], {"compute_resource": "primary"}),
     ],
 )
-def test_remaining_native_aliases_parse_to_canonical(platform: str, pairs: list, canonical: dict) -> None:
-    with pytest.warns(DeprecationWarning, match="deprecated"):
+def test_remaining_native_aliases_parse_to_canonical(
+    platform: str, pairs: list, canonical: dict, caplog: pytest.LogCaptureFixture
+) -> None:
+    with captured_deprecations(caplog) as seen:
         parsed = PlatformHookRegistry.parse_options(platform, pairs)
+    assert len(seen) == 1
     for key, value in canonical.items():
         assert parsed[key] == value
 
@@ -480,15 +473,14 @@ class TestAthenaSparkRuntimeVersion:
         adapter = AthenaSparkAdapter(workgroup="wg", s3_staging_dir="s3://bucket/path")
         assert adapter.runtime_version is None
 
-    def test_deprecated_engine_version_warns_and_resolves(self):
-        from benchbox.core import compute_resource
+    def test_deprecated_engine_version_warns_and_resolves(self, caplog: pytest.LogCaptureFixture):
         from benchbox.platforms.aws.athena_spark_adapter import AthenaSparkAdapter
 
-        compute_resource._WARNED_ALIASES.clear()
-        with pytest.warns(DeprecationWarning, match="deprecated"):
+        with captured_deprecations(caplog) as seen:
             adapter = AthenaSparkAdapter(
                 workgroup="wg", s3_staging_dir="s3://bucket/path", engine_version="PySpark engine version 2"
             )
+        assert len(seen) == 1
         assert adapter.runtime_version == "PySpark engine version 2"
 
     def test_canonical_workgroup_from_config(self):

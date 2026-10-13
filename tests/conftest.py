@@ -361,6 +361,15 @@ def _reset_global_quiet_state(request, _hermetic_state):
 
 
 @pytest.fixture(autouse=True)
+def _reset_deprecation_notices():
+    from benchbox.core.deprecation_notices import begin_run
+
+    begin_run()
+    yield
+    begin_run()
+
+
+@pytest.fixture(autouse=True)
 def _reset_global_config_provider(request, _hermetic_state):
     yield
     restore_global(request.node, "benchbox.utils.config_interface", "_config_provider", None)

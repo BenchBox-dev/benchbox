@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-import warnings
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from benchbox.core.deprecation_notices import ALIAS_REMOVED_IN as COMPUTE_ALIAS_REMOVED_IN, warn_deprecated_alias
+
 COMPUTE_RESOURCE_OPTION = "compute_resource"
 COMPUTE_SIZE_OPTION = "compute_size"
-COMPUTE_ALIAS_REMOVED_IN = "0.6.0"
-
-_WARNED_ALIASES: set[tuple[str, str]] = set()
 
 
 @dataclass(frozen=True)
@@ -60,16 +58,7 @@ def declares_compute(platform: str) -> bool:
 
 
 def warn_deprecated_compute_alias(platform: str, alias: str, target: str) -> None:
-    key = (_manifest_key(platform), alias.lower())
-    if key in _WARNED_ALIASES:
-        return
-    _WARNED_ALIASES.add(key)
-    warnings.warn(
-        f"Platform option '{alias}' for platform '{platform}' is deprecated; "
-        f"use '{target}' instead. The alias is removed in {COMPUTE_ALIAS_REMOVED_IN}.",
-        DeprecationWarning,
-        stacklevel=3,
-    )
+    warn_deprecated_alias(platform, alias, f"'{target}'")
 
 
 def normalize_compute_options(platform: str, options: Mapping[str, Any]) -> dict[str, Any]:

@@ -1,15 +1,12 @@
 from __future__ import annotations
 
-import logging
-import warnings
 from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any
 
+from benchbox.core.deprecation_notices import warn_deprecated_alias
 from benchbox.core.platform_registry import PlatformRegistry
-
-logger = logging.getLogger(__name__)
 
 DEPLOYMENT_ALIAS_KEYS: Mapping[str, tuple[str, ...]] = MappingProxyType(
     {
@@ -29,8 +26,6 @@ DEPLOYMENT_VALUE_SYNONYMS: Mapping[str, Mapping[str, str]] = MappingProxyType(
     }
 )
 
-_warned_aliases: set[tuple[str, str]] = set()
-
 
 @dataclass(frozen=True)
 class DeploymentResolution:
@@ -38,21 +33,12 @@ class DeploymentResolution:
     explicit: bool
 
 
-def reset_deployment_alias_warnings() -> None:
-    _warned_aliases.clear()
-
-
 def note_deprecated_alias(platform: str, key: str, selected: str) -> None:
-    marker = (platform.lower(), key.lower())
-    if marker in _warned_aliases:
-        return
-    _warned_aliases.add(marker)
-    message = (
-        f"Platform option '{key}' for '{platform}' is deprecated; "
-        f"use '--platform {platform}:{selected}' to select the deployment."
-    )
-    logger.warning(message)
-    warnings.warn(message, DeprecationWarning, stacklevel=2)
+    from benchbox.platforms.clickhouse.deployment_mode import CLICKHOUSE_LEGACY_SELECTOR_MAP
+
+    selector = f"{platform}:{selected}".lower()
+    target = CLICKHOUSE_LEGACY_SELECTOR_MAP.get(selector, selector)
+    warn_deprecated_alias(platform, key, f"'--platform {target}'", setting="deployment")
 
 
 def normalize_deployment_value(platform: str, value: Any) -> str:
