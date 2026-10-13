@@ -20447,10 +20447,15 @@
       "title": "Let the site take a newer Explorer read-model: correct the merge order and detect contract drift before deploys fail"
     },
     "site-split-61-parent-lookup-by-sha": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-14T22:47:12Z",
+        "generation": "4655697b9b9d4b22bcdc08b110158cc4",
+        "renewals": 0,
+        "worker": "mcp:tbh:joe@joe-mac-mini.local:2ddfad0386e20e3a0ffba40a"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Resolve the site-inputs bundle parent by SHA in a tested script so chain recovery does not depend on a ten-run window"
     },
     "site-split-62-dispatch-records-trunk-run-id": {
