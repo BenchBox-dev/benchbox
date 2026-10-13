@@ -20563,6 +20563,13 @@
       "status": "open",
       "title": "Snowflake: recreating an incompatible shared database drops tables that belong to other benchmarks"
     },
+    "snowflake-ssb-tuned-template-generator-20261013": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Generate and certify a Snowflake SSB tuned template"
+    },
     "snowflake-trial-exit-gate0-liveness-budget": {
       "claim": null,
       "needs": [],
