@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Loading a tuning YAML with an unknown top-level key fails with an actionable error (unit test with table_tuning typo).",
+    "All shipped templates still load."
+  ],
+  "context": "Found 2026-10-13 by an adversarial review of tuning changes at origin/develop 77048bfb9.",
+  "description": "## Problem\n`UnifiedTuningConfiguration.from_dict` (`benchbox/core/tuning/interface.py` ~L1255) ignores unknown top-level keys. A file with `table_tuning:` (a typo for `table_tunings:`) runs constraints-only and is still labelled `explicit_file`, and reconciliation sees nothing missing. a1458ee66 (#2712) catches only files that consist entirely of DataFrame keys.\n\n## Change\n- Reject unknown top-level keys (and unknown keys inside known sections) with an error naming the key and the nearest valid key.\n- Allow an explicit, documented escape hatch only if a real need exists.\n- Validate all shipped templates under the stricter rule.",
+  "links": [
+    "benchbox/core/tuning/interface.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
+      "at": "2026-10-13T13:13:24Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "53e4d1abe90f4f258715eef552ab1b50",
+      "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    }
+  ]
+}

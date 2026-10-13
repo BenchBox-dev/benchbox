@@ -23999,6 +23999,13 @@
       "status": "open",
       "title": "Tuning wizard discards clustering and distribution choices while printing that they are enabled"
     },
+    "tuning-yaml-unknown-keys-ignored-20261013": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Tuning YAML silently ignores unknown top-level keys, so a typo runs constraints-only under a tuned label"
+    },
     "tutorial-benchmark-verification": {
       "claim": null,
       "needs": [],
