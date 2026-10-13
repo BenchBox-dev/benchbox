@@ -575,64 +575,70 @@ def test_tpcds_c_tools_and_dsqgen_helpers(monkeypatch: pytest.MonkeyPatch, tmp_p
     assert "interval '3 day'" in out_sql.lower()
 
 
-def test_tpch_maintenance_helpers_and_integrity(monkeypatch: pytest.MonkeyPatch):  # noqa: C901
-    class FakeCursor:
-        def __init__(self, rows=None, rowcount=0):
-            self._rows = rows or []
-            self.rowcount = rowcount
+class _FakeMaintenanceCursor:
+    def __init__(self, rows=None, rowcount=0):
+        self._rows = rows or []
+        self.rowcount = rowcount
 
-        def fetchall(self):
-            return self._rows
+    def fetchall(self):
+        return self._rows
 
-        def fetchone(self):
-            return self._rows[0] if self._rows else (0,)
+    def fetchone(self):
+        return self._rows[0] if self._rows else (0,)
 
-    class FakeConn:
-        def __init__(self):
-            self.closed = False
-            self.committed = False
-            self.rolled_back = False
-            self.order_keys = [101, 102]
-            self.fail_delete = False
 
-        def execute(self, sql: str, params=None):
-            q = sql.upper()
-            if "FROM CUSTOMER" in q:
-                return FakeCursor([(1,), (2,)])
-            if "FROM PART" in q:
-                return FakeCursor([(10,), (11,)])
-            if "FROM SUPPLIER" in q:
-                return FakeCursor([(20,), (21,)])
-            if "SELECT O_ORDERKEY" in q and "ORDER BY O_ORDERDATE" in q:
-                return FakeCursor([(k,) for k in self.order_keys])
-            if "DELETE FROM LINEITEM" in q:
-                if self.fail_delete:
-                    raise RuntimeError("delete failed")
-                return FakeCursor(rowcount=3)
-            if "DELETE FROM ORDERS" in q:
-                return FakeCursor(rowcount=2)
-            if "INSERT INTO ORDERS" in q:
-                return FakeCursor(rowcount=1)
-            if "INSERT INTO LINEITEM" in q:
-                return FakeCursor(rowcount=2)
-            if "COUNT(*) AS ORPHAN_COUNT" in q:
-                return FakeCursor([(1,)])
-            if "COUNT(*) AS VIOLATION_COUNT" in q:
-                return FakeCursor([(0,)])
-            if "COUNT(*) AS ORDERLESS_COUNT" in q:
-                return FakeCursor([(2,)])
-            return FakeCursor([(0,)])
+class _FakeMaintenanceConn:
+    def __init__(self):
+        self.closed = False
+        self.committed = False
+        self.rolled_back = False
+        self.order_keys = [101, 102]
+        self.fail_delete = False
 
-        def commit(self):
-            self.committed = True
+    def execute(self, sql: str, params=None):
+        q = sql.upper()
+        if "FROM CUSTOMER" in q:
+            return _FakeMaintenanceCursor([(1,), (2,)])
+        if "FROM PART" in q:
+            return _FakeMaintenanceCursor([(10,), (11,)])
+        if "FROM SUPPLIER" in q:
+            return _FakeMaintenanceCursor([(20,), (21,)])
+        if "SELECT O_ORDERKEY" in q and "ORDER BY O_ORDERDATE" in q:
+            return _FakeMaintenanceCursor([(k,) for k in self.order_keys])
+        if "DELETE FROM LINEITEM" in q:
+            if self.fail_delete:
+                raise RuntimeError("delete failed")
+            return _FakeMaintenanceCursor(rowcount=3)
+        if "DELETE FROM ORDERS" in q:
+            return _FakeMaintenanceCursor(rowcount=2)
+        if "INSERT INTO ORDERS" in q:
+            return _FakeMaintenanceCursor(rowcount=1)
+        if "INSERT INTO LINEITEM" in q:
+            return _FakeMaintenanceCursor(rowcount=2)
+        if "COUNT(*) AS ORPHAN_COUNT" in q:
+            return _FakeMaintenanceCursor([(1,)])
+        if "COUNT(*) AS VIOLATION_COUNT" in q:
+            return _FakeMaintenanceCursor([(0,)])
+        if "COUNT(*) AS ORDERLESS_COUNT" in q:
+            return _FakeMaintenanceCursor([(2,)])
+        return _FakeMaintenanceCursor([(0,)])
 
-        def rollback(self):
-            self.rolled_back = True
+    def commit(self):
+        self.committed = True
 
-        def close(self):
-            self.closed = True
+    def rollback(self):
+        self.rolled_back = True
 
-    conn = FakeConn()
+    def close(self):
+        self.closed = True
+
+
+class _BrokenMaintenanceConn(_FakeMaintenanceConn):
+    def execute(self, sql: str, params=None):
+        raise RuntimeError("cannot execute")
+
+
+def _make_maintenance_test(monkeypatch: pytest.MonkeyPatch, conn: _FakeMaintenanceConn) -> TPCHMaintenanceTest:
     maint = TPCHMaintenanceTest(connection_factory=lambda: conn, scale_factor=1.0, verbose=True)
     monkeypatch.setattr(
         maint,
@@ -646,6 +652,12 @@ def test_tpch_maintenance_helpers_and_integrity(monkeypatch: pytest.MonkeyPatch)
         "_generate_rf1_lineitems_data",
         lambda order_key, num_items: [{"L_ORDERKEY": order_key, "L_PARTKEY": 10, "L_SUPPKEY": 20}] * max(1, num_items),
     )
+    return maint
+
+
+def test_tpch_maintenance_helpers(monkeypatch: pytest.MonkeyPatch):
+    conn = _FakeMaintenanceConn()
+    maint = _make_maintenance_test(monkeypatch, conn)
 
     sql_preview = maint.get_maintenance_operations_sql(pair_id=0, placeholder="?")
     assert "RF1" in sql_preview and "RF2" in sql_preview
@@ -660,6 +672,11 @@ def test_tpch_maintenance_helpers_and_integrity(monkeypatch: pytest.MonkeyPatch)
 
     with pytest.raises(ValueError):
         maint._validate_rf1_data(conn, [{"O_CUSTKEY": 99}], [{"L_PARTKEY": 10, "L_SUPPKEY": 20}])
+
+
+def test_tpch_maintenance_execution(monkeypatch: pytest.MonkeyPatch):
+    conn = _FakeMaintenanceConn()
+    maint = _make_maintenance_test(monkeypatch, conn)
 
     monkeypatch.setattr(maint, "_validate_rf1_data", lambda *_a, **_k: None)
     rf1 = maint._execute_rf1(pair_id=0)
@@ -685,12 +702,13 @@ def test_tpch_maintenance_helpers_and_integrity(monkeypatch: pytest.MonkeyPatch)
     crash_res = maint.run_maintenance_test(maintenance_pairs=1, rf1_interval=0, rf2_interval=0)
     assert crash_res.success is False
 
+
+def test_tpch_maintenance_integrity(monkeypatch: pytest.MonkeyPatch):
+    conn = _FakeMaintenanceConn()
+    maint = _make_maintenance_test(monkeypatch, conn)
+
     assert maint.validate_data_integrity() is False
 
-    class BrokenConn(FakeConn):
-        def execute(self, sql: str, params=None):
-            raise RuntimeError("cannot execute")
-
-    maint_broken = TPCHMaintenanceTest(connection_factory=BrokenConn, scale_factor=1.0, verbose=True)
+    maint_broken = TPCHMaintenanceTest(connection_factory=_BrokenMaintenanceConn, scale_factor=1.0, verbose=True)
 
     assert maint_broken.validate_data_integrity() is True
