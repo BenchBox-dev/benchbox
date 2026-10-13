@@ -14038,15 +14038,10 @@
       "title": "Remove the quarantines from the nightly.yml Windows integration-smoke and scheduled-workflow-liveness legs"
     },
     "nightly-windows-utf8-reads-20261008": {
-      "claim": {
-        "expires_at": "2026-10-14T12:11:43Z",
-        "generation": "26313d13f88e43b89df18802d01cbc1b",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:513e77a5e9d7684fd6c76434"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "Windows unit suite: read repository text files as UTF-8 in tests and workflow-reading helpers"
     },
     "nightly-windows-verification-run-20261009": {
