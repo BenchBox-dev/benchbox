@@ -3,7 +3,7 @@
     "Parity test passes: every adapter/type with rendered_via != none has an executing implementation (call-chain-following), and every no-op implementation is registered none.",
     "Validator tests: partitioning on postgresql errors; distribution on redshift errors (until its renderer lands); Trino/Athena behave per D-5."
   ],
-  "context": "Source: tuning remediation plan rev2 (2026-10-01; adversarial re-review of develop d39166ea plus independent plan review). Plan task P2.6 (R-4, R-5, R-9; plan review F4, F9).",
+  "context": "2026-10-14 orchestrator handoff: item 14 round-5 pushed as 60b122e84 (fast 38043 pass, pr-preflight pass, +R clean); D12-D16 replied; oracle muse gate IN_PROGRESS on 60b122e84, no verdict yet. Releasing claim to drive item 15 (independent worktree); re-take 14 when oracle verdict lands to do fix rounds or advance to soundness+owner merge.",
   "description": "## Problem\nThe validator accepts tuning that execution never applies (partitioning on PostgreSQL/BigQuery/Snowflake/Databricks/DuckDB; distribution and sorting on Redshift), while `capability_registry.py:174` itself records \"render nothing at execution\". Trino and Athena only warn because they are unknown platforms (`interface.py:1595-1604`).\n\n## Change (per gate D-5)\n- `validate_for_platform_detailed` reads the registry: `rendered_via=\"none\"` or `:preview_only` → error \"requested <type> is not applied at execution on <platform>: <notes>\".\n- Treat unknown platforms per D-5.\n- Include the ClickHouse PK-prefix rule.\n- Correct the registry entries for all no-op surfaces: Postgres family, Doris, SingleStore, Databend, Firebolt, Trino/Starburst/Presto/Athena, Synapse, Fabric, BigQuery (partitioning and clustering preview-only), Redshift (distribution and sorting preview-only), managed Spark, MotherDuck table tunings, DataFusion and SQLite constraints.\n- Add a registry↔execution parity test from an MRO sweep that **follows `super()` and helper callees**. The text-only sweep had false negatives (plan review F4).\n\n## Guardrails (must preserve)\n- Only rules named in the D-5 addendum block.\n\n## Process guardrails\n- One PR per item against `develop`, via the AGENTS.md worktree flow (`make worktree-claim BRANCH=...`, `make agent-write-preflight`).\n- Verification ladder: `uv run -- python -m pytest -m fast -q`, `uv run -- ruff check .`, `uv run -- ruff format --check .` and `uv run -- ty check`.\n- Then `make pr-preflight` and `make pr-open`.\n- Stage explicit paths; never `git add -A`.\n- No live cloud runs without explicit user approval stating the command, maximum runtime, log path and stop condition.\n- Re-read every file:line anchor before editing. Anchors are from develop d39166ea.\n- This item touches paths listed in the soundness manifest by `tuning-trust-paths-soundness-manifest-20261001`. The PR needs an external `Soundness review:` section (AGENTS.md) and must not auto-merge.",
   "links": [
     "benchbox/core/tuning/interface.py",
@@ -25,6 +25,14 @@
       "generation": "8d3636b72e2e46cd9936b1643b0f96f3",
       "op": "take",
       "op_id": "2f29eade9cfc49c99d8cb69d42b21799",
+      "session_id": "ce855e02017040e0ae751903346e8f7f"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:0b09cceb849593820a7baad7",
+      "at": "2026-10-13T23:29:59Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "66c2f1c2d7104fbea3b76baefa72c830",
       "session_id": "ce855e02017040e0ae751903346e8f7f"
     }
   ]
