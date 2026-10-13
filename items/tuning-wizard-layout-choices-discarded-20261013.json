@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Wizard clustering/distribution choices persist into table_tunings for platforms that support them (tests for Snowflake and Databricks).",
+    "The console message matches what was written.",
+    "The tests no longer assert the defect."
+  ],
+  "context": "Found 2026-10-13 by an adversarial review of tuning changes at origin/develop 77048bfb9.",
+  "description": "## Problem\n`_read_template_table_tunings` always reads the DuckDB template, which has no clustering or distribution slots. Layout choices made in the wizard are therefore never written to `table_tunings`, yet the console prints \"✓ Clustering keys enabled\". The fix in bf7997e6c (#2419) did not cover this path. `tests/unit/.../test_tuning_wizard.py:82,188,232` assert that clustering is not enabled, so the tests lock in the defect.\n\n## Change\n- Read the template for the selected platform.\n- Persist the chosen layouts to `table_tunings`, or refuse with a clear message when the platform has no such slot.\n- Fix the tests to assert that the choices persist.",
+  "links": [
+    "benchbox/cli"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
+      "at": "2026-10-13T13:13:17Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "df4f235d1aed406996b3993ed24d7eed",
+      "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    }
+  ]
+}

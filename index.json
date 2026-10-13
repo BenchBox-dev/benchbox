@@ -23992,6 +23992,13 @@
       "status": "open",
       "title": "Execute the D-9 verification-reach decision per admitted platform (facts-only reader or introspector)"
     },
+    "tuning-wizard-layout-choices-discarded-20261013": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Tuning wizard discards clustering and distribution choices while printing that they are enabled"
+    },
     "tutorial-benchmark-verification": {
       "claim": null,
       "needs": [],
