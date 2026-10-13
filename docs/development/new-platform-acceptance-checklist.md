@@ -34,13 +34,16 @@ Use this checklist before opening a platform-support PR. It is deliberately conc
   native fallback, and results carry the canonical kind and size alongside legacy fields.
 - Declare gateways when the platform supports query routing through an intermediary: add a manifest
   `capabilities.gateways` block with `{name: {routes_to: {engine_name: {class}}, requires_host: bool}}`.
-  The core registers the `--gateway` CLI flag and connection options (`gateway_host`, `gateway_port`,
-  `gateway_protocol`, `gateway_ca_bundle`, `gateway_ocsp_fail_open`, `allow_insecure_gateway`) automatically.
-  Gateway `custom` must require a host; `native` is accepted and recorded as no gateway. Result bundles
-  record `platform.gateway` with `name` and `routed: true`, set `tpc_compliant: false` whenever routed,
-  restrict per-query `execution_engine` to `routes_to` targets plus `unknown`, and observe `mixed` when queries
-  differ. Comparisons and regression baseline selection fail closed across different gateway variants unless
-  `--allow-heterogeneous-comparison` is provided.
+  The core registers the `--gateway` CLI flag and typed connection options (`gateway_host`, `gateway_port`
+  as an integer port, `gateway_protocol`, `gateway_ca_bundle`, and the booleans `gateway_ocsp_fail_open` and
+  `allow_insecure_gateway`) with the other platform options. Every non-native gateway must require a host;
+  `native` is accepted and recorded as no gateway. Until the adapter routes queries through the gateway, any
+  other `--gateway` value fails before work starts with "gateway routing is not implemented for <platform>
+  yet". A routed result records `platform.gateway` with `name` and `routed: true`, sets the top-level
+  `tpc_compliant: false`, restricts per-query `execution_engine` to `routes_to` targets plus `unknown`, and
+  observes `mixed` when queries differ. `benchbox compare` and MCP `compare_results` refuse runs that differ
+  in deployment, requested engine or gateway (the CLI accepts `--allow-heterogeneous-comparison`), and
+  regression baselines use only runs of the same variant.
 - Declare execution engines when the platform offers more than one way to execute a query: add a manifest
   `capabilities.execution_engines` block with `{name: {class, display_name, description, dependencies, selectable}}.
   The class comes from the closed core list (`adaptive`, `in-memory`, `streaming`, `gpu`, `native-vectorized`,

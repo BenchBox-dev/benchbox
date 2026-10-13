@@ -9,6 +9,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from benchbox.core.results.execution_variant import (
+    IncomparableVariantsError,
+    bundle_variant_differences,
+    read_execution_variant,
+    variants_comparable,
+)
 from benchbox.core.results.metrics import calculate_named_metric, percentile_ms, sample_stdev_ms
 from benchbox.core.results.regression_policy import (
     classify_change,
@@ -125,8 +131,9 @@ def _load_regression_runs(
     platform: str | None,
     benchmark: str | None,
     lookback_runs: int,
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], list[str]]:
     runs: list[dict[str, Any]] = []
+    other_variants: list[str] = []
     for file_path in result_files[: lookback_runs * 2]:
         try:
             with open(file_path, encoding="utf-8") as f:
@@ -137,9 +144,8 @@ def _load_regression_runs(
             if not _matches_filters(run_platform, run_benchmark, platform, benchmark):
                 continue
 
-            from benchbox.core.gateway import variants_comparable
-
             if runs and not variants_comparable(runs[0]["data"], data):
+                other_variants.append(file_path.name)
                 continue
 
             runs.append(
@@ -160,7 +166,7 @@ def _load_regression_runs(
         except Exception as e:
             logger.warning("Could not parse result file %s (%s)", file_path.name, type(e).__name__)
             continue
-    return runs
+    return runs, other_variants
 
 
 def _resolve_timestamp_str(timestamp: Any, file_path: Path) -> str:
@@ -278,6 +284,20 @@ def compare_results(
     from benchbox.utils.printing import get_quiet_console
 
     exporter = ResultExporter(anonymize=anonymize, console=get_quiet_console())
+    baseline = exporter.load_result_from_file(file1)
+    current = exporter.load_result_from_file(file2)
+    if baseline and current:
+        differences = bundle_variant_differences(baseline["data"], current["data"])
+        if differences:
+            return {
+                "error": str(IncomparableVariantsError(differences)),
+                "error_code": "VALIDATION_ERROR",
+                "details": {
+                    "differences": differences,
+                    "baseline_variant": read_execution_variant(baseline["data"]).describe(),
+                    "current_variant": read_execution_variant(current["data"]).describe(),
+                },
+            }
     comparison = exporter.compare_results(file1, file2)
     if "error" in comparison:
         return comparison
@@ -326,13 +346,14 @@ def detect_regressions(
             "regressions": [],
         }
 
-    runs = _load_regression_runs(result_files, platform, benchmark, lookback_runs)
+    runs, other_variants = _load_regression_runs(result_files, platform, benchmark, lookback_runs)
 
     if len(runs) < 2:
         return {
             "status": "insufficient_data",
             "message": f"Need at least 2 comparable runs, found {len(runs)} matching filters",
             "filters_applied": {"platform": platform, "benchmark": benchmark},
+            "excluded_other_variant_runs": other_variants,
             "regressions": [],
         }
 
@@ -373,6 +394,8 @@ def detect_regressions(
             "total_runtime_delta_percent": round(total_delta_pct, 1),
             "threshold_percent": threshold_percent,
         },
+        "variant": read_execution_variant(newer_run["data"]).describe(),
+        "excluded_other_variant_runs": other_variants,
         "regressions": regressions,
         "improvements": improvements[:5],
     }

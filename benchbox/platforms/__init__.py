@@ -731,8 +731,10 @@ velox|lakehouse_jars|Comma-separated connector jars for delta/iceberg/hudi reads
     _register_spec_rows(_OPTION_SPEC_ROWS)
 
     from benchbox.core.compute_resource import register_compute_specs
+    from benchbox.core.gateway import register_gateway_connection_specs
 
     register_compute_specs()
+    register_gateway_connection_specs()
 
     PlatformHookRegistry.register_config_builder(
         "motherduck", _make_lazy_config_builder(".motherduck", "_build_motherduck_config")

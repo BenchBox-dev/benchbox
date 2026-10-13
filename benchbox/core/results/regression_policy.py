@@ -6,8 +6,6 @@ from __future__ import annotations
 
 from typing import Final, Literal
 
-from benchbox.core.gateway import variants_comparable
-
 DEFAULT_REGRESSION_THRESHOLD_PERCENT: Final = 10.0
 
 TREND_SIGNIFICANCE_PERCENT: Final = 5.0
@@ -97,5 +95,4 @@ __all__ = [
     "is_meaningful_improvement",
     "is_regression",
     "percent_change",
-    "variants_comparable",
 ]
