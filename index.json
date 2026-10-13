@@ -5978,6 +5978,13 @@
       "status": "done",
       "title": "Bring the Databricks tuned templates in line with Databricks partitioning and constraint guidance"
     },
+    "databricks-zorder-applied-to-empty-tables-20261013": {
+      "claim": null,
+      "needs": [],
+      "priority": "critical",
+      "status": "open",
+      "title": "Databricks Z-order tuned runs Z-order empty tables; loaded data is only compacted"
+    },
     "dataframe-adapter-ledger-instrumentation-20260724": {
       "claim": null,
       "needs": [],

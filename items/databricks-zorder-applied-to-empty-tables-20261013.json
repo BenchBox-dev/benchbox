@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Databricks z_order runs issue OPTIMIZE ... ZORDER BY after data load, recorded in the ledger as post_load.",
+    "A unit test pins the order (load then ZORDER).",
+    "Affected published Databricks tuned bundles are listed in the item context."
+  ],
+  "context": "Found 2026-10-13 by an adversarial review of Databricks tuning changes at origin/develop 77048bfb9. Predates the reviewed commits but undermines every Z-order template.",
+  "description": "## Problem\nTuning is applied before the load (`benchbox/platforms/base/adapter.py:948`; the load runs at `:971`). For Z-order strategies, the tuning step runs `OPTIMIZE … ZORDER BY` (`benchbox/platforms/databricks/adapter.py:3260,3364`), which acts on empty tables. After the load, `apply_post_load_tunings` runs a plain `OPTIMIZE` (`:3427`), and there is no other ZORDER call site.\n\nEvery Databricks Z-order tuned result therefore measured compaction only, while the ledger records `z_order` as applied. No test runs Z-order after a load.\n\n## Change\n- When the strategy is `z_order`, run `OPTIMIZE <t> ZORDER BY (<cols>)` in the post-load step and record it as a post_load ledger statement.\n- Drop the pre-load `OPTIMIZE`.\n- Add a unit test with a fake driver asserting the ZORDER statement is issued after the load.\n- List published Databricks Z-order tuned bundles that are affected.",
+  "links": [
+    "benchbox/platforms/databricks/adapter.py",
+    "benchbox/platforms/base/adapter.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
+      "at": "2026-10-13T13:12:35Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "23dc4616abd844be8b15e4d2729ec816",
+      "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    }
+  ]
+}
