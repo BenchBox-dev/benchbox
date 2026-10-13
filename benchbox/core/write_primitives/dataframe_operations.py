@@ -16,7 +16,7 @@ from benchbox.core.dataframe.maintenance_interface import (
     MaintenanceResult,
     get_maintenance_operations_for_platform,
 )
-from benchbox.core.dataframe_manager_factory import get_dataframe_manager
+from benchbox.core.dataframe_manager_factory import get_dataframe_manager, get_spark_maintenance_operations
 from benchbox.utils.polars_collection import collect_frame
 
 if TYPE_CHECKING:
@@ -181,24 +181,8 @@ class DataFrameWriteOperationsManager:
         self._capabilities = self._build_capabilities()
 
     def _get_maintenance_ops(self) -> Any:
-        if "pyspark" in self.platform_name or "spark" in self.platform_name:
-            if self.spark_session is not None:
-                try:
-                    from benchbox.platforms.dataframe.pyspark_maintenance import (
-                        get_pyspark_maintenance_operations,
-                    )
-
-                    return get_pyspark_maintenance_operations(
-                        spark_session=self.spark_session,
-                        prefer_delta=True,
-                    )
-                except ImportError:
-                    self.logger.debug("PySpark maintenance module not available")
-                    return None
-            else:
-                self.logger.debug("No SparkSession provided for PySpark platform")
-                return None
-
+        if "spark" in self.platform_name:
+            return get_spark_maintenance_operations(self.spark_session, self.logger)
         return get_maintenance_operations_for_platform(self.platform_name, self.execution_engine)
 
     def _build_capabilities(self) -> DataFrameWriteCapabilities:
