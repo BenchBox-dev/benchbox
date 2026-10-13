@@ -20470,6 +20470,13 @@
       "status": "open",
       "title": "Add a script-entrypoint regression test for the explorer compatibility check and remove its stale fallback pin"
     },
+    "site-split-68-seed-lane-ineligible-cells": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Stop the seed lane producing bundles that are always dropped or fail on the runner"
+    },
     "site-split-99-closeout": {
       "claim": null,
       "needs": [

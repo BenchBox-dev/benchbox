@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Each of tpch/polars-df sf0.01, tpch/polars-df sf0.1 and tpch/datafusion sf1.0 has a recorded decision (fix, remove, or keep with a reason); the datafusion failure cause is confirmed from the job log",
+    "If a cell is removed: a workflow test beside tests/unit/workflows/test_seed_corpus_pr_base.py asserts the matrix no longer lists it",
+    "If a cell is kept as expected-ineligible: a test shows a fixture bundle with summary.validation uncertain is not staged into the seed PR",
+    "The next Seed Corpus run needs no manual bundle drops, or the remaining drops are listed in the PR body by the workflow"
+  ],
+  "context": "Raised by the 2026-10-13 adversarial review (handoff revision 9, blind spots). Evidence: run 38331461283 job list shows tpch / datafusion / sf1.0 failure; PR #2930 commit a341576e3 \"drop run-3093 bundles with mirror-ineligible validation\"; precedent for dropping uncertain bundles is #2494. Low priority; does not block the pipeline fix.",
+  "description": "In Seed Corpus run 38331461283 both tpch/polars-df bundles validated uncertain (structural translation fallback) and were dropped from PR #2930 by hand, and tpch/datafusion/sf1.0 failed on the runner (reported as an out-of-memory failure at Q18; not independently checked). The matrix will keep producing the same output, so each seed PR needs the same manual cleanup.\n\nDecide per cell: fix the cause, mark it expected-ineligible so its bundle is not committed, or remove it from the matrix.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:812b6e01fb0a3c7a08e17bfb",
+      "at": "2026-10-13T13:49:53Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "b94276fc2aaa41a190a575e42f03f82e",
+      "session_id": "092ba024912949d88c4bc8f8c819cdba"
+    }
+  ]
+}
