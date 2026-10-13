@@ -76,7 +76,7 @@ describe("CompareSummary", () => {
     expect(summaryRegion).not.toBeNull();
     expect(summaryRegion).toHaveTextContent("In these selected runs, DuckDB's power score was 10.00x better than the lowest selected run.");
     expect(summaryRegion).toHaveTextContent("Where DuckDB wins");
-    expect(summaryRegion).toHaveTextContent("2 of 2 queries");
+    expect(summaryRegion).toHaveTextContent("2 of 2 shared queries");
     expect(summaryRegion).toHaveTextContent("p50");
     expect(summaryRegion).toHaveTextContent("15 ms");
     expect(summaryRegion).toHaveTextContent("winner cost $0.50");
@@ -194,5 +194,58 @@ describe("CompareSummary", () => {
     render(<CompareSummary summary={summary} />);
     const summaryRegion = screen.getByRole("heading", { name: "Comparison summary" }).closest("section");
     expect(summaryRegion).not.toHaveTextContent("Unvalidated result");
+  });
+});
+
+describe("copy for the summary", () => {
+  it("uses singular grammar for one normalized run", () => {
+    const summary = buildCompareDecisionSummary(
+      [
+        makeResult({ result_id: "duck", ranking_exclusion_reason: "insufficient_common_valid_timings" }),
+        makeResult({
+          result_id: "sqlite",
+          platform: "SQLite",
+          ranking_exclusion_reason: "insufficient_common_valid_timings",
+          normalized_cost_usd: null,
+          cost_status: "not_normalized",
+        }),
+      ],
+      "power_score",
+    );
+    render(<CompareSummary summary={summary} />);
+    expect(screen.getByText(/1 selected run has normalized cost; winner cost is unavailable\./)).toBeTruthy();
+  });
+
+  it("shows the hardware boundary once, beside the leading-run claim", () => {
+    const boundary = "Hardware boundary: architecture differs. This compares recorded runs, not platforms in isolation.";
+    const summary = buildCompareDecisionSummary(
+      [makeResult({ result_id: "duck" }), makeResult({ result_id: "sqlite", platform: "SQLite", power_score: 300 })],
+      "power_score",
+      { comparisonBoundary: boundary },
+    );
+    const { container } = render(<CompareSummary summary={summary} />);
+    expect(container.textContent?.split("not platforms in isolation").length).toBe(2);
+    expect(screen.getByText(/In these selected runs, DuckDB's power score/).textContent).toContain(boundary);
+  });
+
+  it("labels the query record as shared queries and states the fastest-outright definition", () => {
+    const summary = buildCompareDecisionSummary(
+      [
+        makeResult({ result_id: "duck" }),
+        makeResult({
+          result_id: "sqlite",
+          platform: "SQLite",
+          power_score: 300,
+          display_timings: [
+            { query_id: "Q1", display_ms: 100, sample_count: 3, is_valid_display_timing: true, timing_exclusion_reason: null },
+            { query_id: "Q2", display_ms: 200, sample_count: 3, is_valid_display_timing: true, timing_exclusion_reason: null },
+          ],
+        }),
+      ],
+      "power_score",
+    );
+    render(<CompareSummary summary={summary} />);
+    expect(screen.getByText("2 of 2 shared queries")).toBeTruthy();
+    expect(screen.getByText(/Fastest outright on 2 · 0 slower · 0 tied/)).toBeTruthy();
   });
 });

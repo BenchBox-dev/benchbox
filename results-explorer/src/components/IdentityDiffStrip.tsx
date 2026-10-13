@@ -1,5 +1,7 @@
+import { useRef } from "preact/hooks";
 import type { DetailResult } from "@/types";
 import { StatusBadge } from "@/components/StatusBadge";
+import { TableScrollHint } from "@/components/TableScrollHint";
 import { buildComparabilityFields, type ComparabilityField } from "@/components/ComparabilityReceipt";
 import { formatCpuIdentityProvenance } from "@/lib/hardwareProvenance";
 import { formatMemoryGb } from "@/lib/displayLabels";
@@ -61,6 +63,31 @@ export function identityStripDiffCount(results: DetailResult[]): number {
   return identityStripFields(results).filter((field) => field.status === "diff").length;
 }
 
+type MatrixStatus = "baseline" | "missing" | "indeterminate" | "diff" | "match";
+
+interface MatrixCell {
+  value: string;
+  status: MatrixStatus;
+}
+
+function matrixCell(axis: (typeof STRIP_AXES)[number], run: DetailResult, index: number, baseIndex: number, baselineRun: DetailResult | undefined): MatrixCell {
+  const value = axisValueForRun(axis, run);
+  if (index === baseIndex) return { value, status: "baseline" };
+  const baselineValue = baselineRun ? axisValueForRun(axis, baselineRun) : "Not recorded";
+  if (value === "Not recorded") return { value, status: "missing" };
+  if (baselineValue === "Not recorded") return { value, status: "indeterminate" };
+  return { value, status: value !== baselineValue ? "diff" : "match" };
+}
+
+function matrixBadge(status: MatrixStatus, includeSame: boolean): { text: string; tone: "warning" | "success" | "neutral" } | null {
+  if (status === "diff") return { text: "Differs", tone: "warning" };
+  if (status === "indeterminate") return { text: "No baseline", tone: "neutral" };
+  if (status === "match" && includeSame) return { text: "Same", tone: "success" };
+  return null;
+}
+
+const TRANSPOSE_ABOVE_RUNS = 4;
+
 function toneFor(status: ComparabilityField["status"]): "success" | "warning" | "neutral" {
   if (status === "diff") return "warning";
   if (status === "missing") return "neutral";
@@ -74,6 +101,7 @@ function statusWord(status: ComparabilityField["status"]): string {
 }
 
 export function IdentityDiffStrip({ results, baselineIndex = 0, runLabels }: IdentityDiffStripProps) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
   if (results.length < 2) return null;
   const fields = identityStripFields(results);
   if (fields.length === 0) return null;
@@ -82,78 +110,110 @@ export function IdentityDiffStrip({ results, baselineIndex = 0, runLabels }: Ide
   if (results.length > 2) {
     const baseIndex = results[baselineIndex] ? baselineIndex : 0;
     const baselineRun = results[baseIndex];
+    const transposed = results.length > TRANSPOSE_ABOVE_RUNS;
+    const summaryText = diffCount === 0
+      ? `No differences were recorded for these ${fields.length} fields. Other recorded or unrecorded factors may differ.`
+      : `${diffCount} of ${fields.length} ${diffCount === 1 ? "axis varies" : "axes vary"} across the whole selection.`;
+    const runName = (index: number, run: DetailResult) =>
+      `${runLabels?.[index] ?? run.platform}${index === baseIndex ? " (baseline)" : ""}`;
 
     return (
       <section class="panel mb-4 px-3 py-2 shadow-sm" aria-label="Platform and hardware identity">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <h2 class="text-sm font-medium text-[var(--bb-data-fg-primary)]">Platform and hardware</h2>
-          <p class="text-xs text-[var(--bb-data-fg-muted)]">
-            {diffCount === 0
-              ? `No differences were recorded for these ${fields.length} fields. Other recorded or unrecorded factors may differ.`
-              : `${diffCount} of ${fields.length} ${diffCount === 1 ? "axis varies" : "axes vary"} across the whole selection.`}
-          </p>
+          <p class="text-xs text-[var(--bb-data-fg-muted)]">{summaryText}</p>
         </div>
-        <div class="mt-2 overflow-x-auto">
-          <table role="table" class="min-w-full w-max divide-y divide-[var(--bb-data-border)] text-sm">
-            <thead class="bg-[var(--bb-surface-data-muted)]">
-              <tr>
-                <th class="table-th">Axis</th>
-                {results.map((r, i) => (
-                  <th key={r.result_id} class="table-th">
-                    {runLabels?.[i] ?? r.platform}
-                    {i === baseIndex ? " (baseline)" : ""}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-[var(--bb-data-border)] bg-[var(--bb-surface-data)]">
-              {fields.map((field) => {
-                const axis = field.label as (typeof STRIP_AXES)[number];
-                const baseVal = baselineRun ? axisValueForRun(axis, baselineRun) : "Not recorded";
-                return (
-                  <tr key={field.label}>
-                    <td class="table-td font-medium text-[var(--bb-data-fg-primary)]">
-                      {AXIS_DISPLAY_LABEL[axis] ?? field.label}
-                    </td>
-                    {results.map((r, i) => {
-                      const val = axisValueForRun(axis, r);
-                      const isBase = i === baseIndex;
-                      const candidateMissing = val === "Not recorded";
-                      const baselineMissing = baseVal === "Not recorded";
-                      const isDiff = !isBase && !candidateMissing && !baselineMissing && val !== baseVal;
-                      const status = isBase
-                        ? "baseline"
-                        : candidateMissing
-                          ? "missing"
-                          : baselineMissing
-                            ? "indeterminate"
-                            : isDiff
-                              ? "diff"
-                              : "match";
-                      return (
-                        <td key={r.result_id} class="table-td text-xs" data-testid={`matrix-cell-${axis}-${i}`}>
-                          <div class="flex items-center justify-between gap-2">
-                            <span class="break-words font-mono text-[var(--bb-data-fg-primary)]">{val}</span>
-                            <StatusBadge
-                              role="comparison"
-                              tone={status === "diff" ? "warning" : status === "match" ? "success" : "neutral"}
-                            >
-                              {status === "baseline"
-                                ? "Baseline"
-                                : status === "indeterminate"
-                                  ? "No baseline"
-                                  : statusWord(status)}
-                            </StatusBadge>
-                          </div>
-                        </td>
-                      );
-                    })}
+        {transposed ? (
+          <>
+            <div ref={scrollerRef} class="mt-2 overflow-x-auto" data-testid="identity-matrix-scroller">
+              <table class="w-max min-w-full divide-y divide-[var(--bb-data-border)] text-sm">
+                <thead class="bg-[var(--bb-surface-data-muted)]">
+                  <tr>
+                    <th scope="col" class="table-th sticky left-0 z-10 whitespace-nowrap bg-[var(--bb-surface-data-muted)]">
+                      Run
+                    </th>
+                    {fields.map((field) => (
+                      <th key={field.label} scope="col" class="table-th whitespace-nowrap">
+                        {AXIS_DISPLAY_LABEL[field.label as (typeof STRIP_AXES)[number]] ?? field.label}
+                      </th>
+                    ))}
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody class="divide-y divide-[var(--bb-data-border)] bg-[var(--bb-surface-data)]">
+                  {results.map((run, index) => (
+                    <tr key={run.result_id}>
+                      <th
+                        scope="row"
+                        class="table-td sticky left-0 z-10 whitespace-nowrap bg-[var(--bb-surface-data)] text-left font-medium"
+                      >
+                        {runName(index, run)}
+                      </th>
+                      {fields.map((field) => {
+                        const axis = field.label as (typeof STRIP_AXES)[number];
+                        const cell = matrixCell(axis, run, index, baseIndex, baselineRun);
+                        const badge = matrixBadge(cell.status, false);
+                        return (
+                          <td key={axis} class="table-td align-top text-xs" data-testid={`matrix-run-${index}-${axis}`}>
+                            <span class="block break-words font-mono text-[var(--bb-data-fg-primary)]">{cell.value}</span>
+                            {badge && (
+                              <StatusBadge role="comparison" tone={badge.tone} class="mt-1">
+                                {badge.text}
+                              </StatusBadge>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <TableScrollHint scrollerRef={scrollerRef} testId="identity-matrix-scroll-hint" />
+          </>
+        ) : (
+          <div ref={scrollerRef} class="mt-2 overflow-x-auto" data-testid="identity-matrix-scroller">
+            <table role="table" class="min-w-full w-max divide-y divide-[var(--bb-data-border)] text-sm">
+              <thead class="bg-[var(--bb-surface-data-muted)]">
+                <tr>
+                  <th class="table-th">Axis</th>
+                  {results.map((r, i) => (
+                    <th key={r.result_id} class="table-th whitespace-nowrap">
+                      {runName(i, r)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-[var(--bb-data-border)] bg-[var(--bb-surface-data)]">
+                {fields.map((field) => {
+                  const axis = field.label as (typeof STRIP_AXES)[number];
+                  return (
+                    <tr key={field.label}>
+                      <td class="table-td font-medium text-[var(--bb-data-fg-primary)]">
+                        {AXIS_DISPLAY_LABEL[axis] ?? field.label}
+                      </td>
+                      {results.map((r, i) => {
+                        const cell = matrixCell(axis, r, i, baseIndex, baselineRun);
+                        const badge = matrixBadge(cell.status, true);
+                        return (
+                          <td key={r.result_id} class="table-td text-xs" data-testid={`matrix-cell-${axis}-${i}`}>
+                            <div class="flex items-center justify-between gap-2">
+                              <span class="break-words font-mono text-[var(--bb-data-fg-primary)]">{cell.value}</span>
+                              {badge && (
+                                <StatusBadge role="comparison" tone={badge.tone}>
+                                  {badge.text}
+                                </StatusBadge>
+                              )}
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     );
   }

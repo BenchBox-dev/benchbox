@@ -36,7 +36,7 @@ test.describe("compare entrypoints after tray migration (rx-18)", () => {
     await page.goto("/results/tpch/");
     await waitForShell(page);
     await waitForDataLoaded(page, /TPC-H Results/);
-    await expect(page.getByTestId("benchmark-compare-cta-pending")).toHaveText("Select 2 results to compare");
+    await expect(page.getByTestId("benchmark-compare-cta")).toHaveText(/^(Compare All Runs|Select 2–10 runs to compare)$/);
 
     await page.goto(`/results/r/${fixtureIds.ids.duckdb}`);
     await waitForShell(page);
@@ -51,6 +51,6 @@ test.describe("compare entrypoints after tray migration (rx-18)", () => {
     await page.goto("/results/tpch/");
     await waitForShell(page);
     await waitForDataLoaded(page, /TPC-H Results/);
-    await expect(page.getByTestId("benchmark-compare-cta-pending")).toHaveText("Select 2 results to compare");
+    await expect(page.getByTestId("benchmark-compare-cta")).toHaveText(/^(Compare All Runs|Select 2–10 runs to compare)$/);
   });
 });

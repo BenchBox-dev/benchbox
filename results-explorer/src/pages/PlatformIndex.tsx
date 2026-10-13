@@ -66,6 +66,7 @@ import { TimeSeries } from "@/components/TimeSeries";
 import { ProvenanceLegend } from "@/components/ProvenanceLegend";
 import { TableScrollHint } from "@/components/TableScrollHint";
 import { DataTable } from "@/components/DataTable";
+import { CompareCta, isCompareAllAvailable } from "@/components/CompareCta";
 import { CompareTray } from "@/components/CompareTray";
 import { TrayAnnouncer } from "@/components/TrayAnnouncer";
 import { RunDateChip } from "@/components/RunAge";
@@ -494,21 +495,22 @@ export function PlatformIndex({ platform = "" }: PlatformIndexProps) {
     const row = rowsByResultId.get(resultId);
     return row ? compareIdForRow(row) : resultId;
   });
-  const compareUrl = !basisLoading && selected.size >= 2 ? `${buildCompareUrl(selectedCompareIds)}${isDefaultBasis(basis) ? "" : `&basis=${encodeBasis(basis)}`}` : null;
+  const buildPlatformCompareHref = (ids: readonly string[]) =>
+    `${buildCompareUrl(ids)}${isDefaultBasis(basis) ? "" : `&basis=${encodeBasis(basis)}`}`;
+  const ctaSelectedIds = basisLoading ? [] : selectedCompareIds;
   const comparablePlatformRows = platformResultsRaw.filter((row) => !row.comparison_exclusion_reason);
   const allFilteredCohortKeys = new Set(
     comparablePlatformRows.map((row) => JSON.stringify(compareCohortSignatureForRow(row))),
   );
-  const compareAllPlatformUrl =
-    !basisLoading &&
-    allFilteredCohortKeys.size === 1 &&
-    comparablePlatformRows.length >= 2 &&
-    comparablePlatformRows.length <= MAX_COMPARE_SELECTIONS
-      ? `${buildCompareUrl(comparablePlatformRows.map((row) => compareIdForRow(row)))}${isDefaultBasis(basis) ? "" : `&basis=${encodeBasis(basis)}`}`
-      : null;
-  const compareGuidance = compareAllPlatformUrl
-    ? `All ${comparablePlatformRows.length} filtered runs share one comparable ranking and can be compared together.`
-    : platformCompareGuidanceMessage(selectedRows, selected.size, platformDisplayName);
+  const comparableRankingIds = comparablePlatformRows.map((row) => compareIdForRow(row));
+  const compareAllIds =
+    !basisLoading && allFilteredCohortKeys.size === 1 && isCompareAllAvailable(comparableRankingIds)
+      ? comparableRankingIds
+      : [];
+  const compareGuidance =
+    ctaSelectedIds.length < 2 && compareAllIds.length > 0
+      ? `All ${compareAllIds.length} filtered runs share one comparable ranking and can be compared together.`
+      : platformCompareGuidanceMessage(selectedRows, selected.size, platformDisplayName);
 
   const platformResults = [...platformResultsRaw].sort((a, b) => {
     const dir = sort.direction === "asc" ? 1 : -1;
@@ -808,27 +810,12 @@ export function PlatformIndex({ platform = "" }: PlatformIndexProps) {
               {compareGuidance}
             </p>
           </div>
-          {compareAllPlatformUrl ? (
-            <a
-              href={compareAllPlatformUrl}
-              class="btn btn-primary shrink-0 text-sm no-underline"
-              data-testid="platform-compare-cta"
-            >
-              Compare All Runs
-            </a>
-          ) : compareUrl ? (
-            <a
-              href={compareUrl}
-              class="btn btn-primary shrink-0 text-sm no-underline"
-              data-testid="platform-compare-cta"
-            >
-              Compare {selected.size} selected
-            </a>
-          ) : (
-            <p class="shrink-0 text-sm text-[var(--bb-data-fg-subtle)]" data-testid="platform-compare-cta-pending">
-              {selected.size === 1 ? "Select 1 more result" : "Select 2 results to compare"}
-            </p>
-          )}
+          <CompareCta
+            selectedIds={ctaSelectedIds}
+            allIds={compareAllIds}
+            buildHref={buildPlatformCompareHref}
+            testId="platform-compare-cta"
+          />
         </div>
       </section>
 
@@ -1112,7 +1099,7 @@ export function PlatformIndex({ platform = "" }: PlatformIndexProps) {
       </section>
 
       <TrayAnnouncer count={selected.size} />
-      {compareUrl && (
+      {ctaSelectedIds.length >= 2 && (
         <CompareTray
           summary={
             <>
@@ -1130,8 +1117,8 @@ export function PlatformIndex({ platform = "" }: PlatformIndexProps) {
             funding: row.funding,
             visibleResultId: visibleResultIdForRow(row),
           }))}
-          compareHref={compareUrl}
-          compareLabel={`Compare ${selected.size} selected`}
+          allIds={compareAllIds}
+          buildHref={buildPlatformCompareHref}
           onClear={() => setSelected(new Set())}
         />
       )}

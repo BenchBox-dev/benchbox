@@ -325,16 +325,19 @@ describe("Query", () => {
     render(<Query />);
     await waitFor(() => expect(screen.getAllByText("DuckDB").length).toBeGreaterThan(0));
 
-    expect(screen.queryByTestId("query-compare-launch")).toBeNull();
-    expect(screen.getByTestId("query-compare-launch-disabled")).toBeTruthy();
+    const idle = screen.getByTestId("query-compare-launch") as HTMLButtonElement;
+    expect(idle.tagName).toBe("BUTTON");
+    expect(idle.disabled).toBe(true);
+    expect(idle.textContent).toBe("Select 2–10 runs to compare");
 
     fireEvent.click(screen.getByTestId("query-compare-checkbox-r1"));
     fireEvent.click(screen.getByTestId("query-compare-checkbox-r2"));
     const launch = screen.getByTestId("query-compare-launch") as HTMLAnchorElement;
-    expect(launch.textContent).toBe("Compare All Runs");
+    expect(launch.textContent).toBe("Compare 2 selected");
+    expect(launch.className).toContain("btn-primary");
     expect(launch.href).toContain("/results/compare?ids=");
-    const subset = screen.getByTestId("query-compare-subset") as HTMLAnchorElement;
-    expect(subset.textContent).toContain("2 selected");
+    const subset = screen.getByTestId("query-compare-launch-all") as HTMLAnchorElement;
+    expect(subset.textContent).toBe("Compare All Runs");
     expect(subset.href).toContain("/results/compare?ids=");
   });
 
@@ -349,7 +352,9 @@ describe("Query", () => {
     await waitFor(() => expect(screen.getAllByText("Platform 1").length).toBeGreaterThan(0));
 
     expect(screen.queryByText("Compare All Runs")).toBeNull();
-    expect(screen.getByTestId("query-compare-launch-disabled")).toBeTruthy();
+    const control = screen.getByTestId("query-compare-launch") as HTMLButtonElement;
+    expect(control.disabled).toBe(true);
+    expect(control.textContent).toBe("Select 2–10 runs to compare");
   });
 
   it("renders the compare tray and offers Compare All Runs for a small single-cohort set", async () => {
@@ -357,7 +362,7 @@ describe("Query", () => {
     await waitFor(() => expect(screen.getAllByText("DuckDB").length).toBeGreaterThan(0));
 
     const tray = screen.getByTestId("query-compare-tray");
-    expect(tray.textContent).toContain("Select two or more rows");
+    expect(tray.textContent).toContain("All 2 comparable runs in these results can be compared together.");
     const initial = screen.getByTestId("query-compare-launch") as HTMLAnchorElement;
     expect(initial.textContent).toBe("Compare All Runs");
     expect(initial.href).toContain("/results/compare?ids=");
@@ -369,11 +374,11 @@ describe("Query", () => {
     fireEvent.click(screen.getByTestId("query-compare-checkbox-r2"));
     expect(screen.getByTestId("query-compare-tray").textContent).toContain("2 results selected");
     const launch = screen.getByTestId("query-compare-launch") as HTMLAnchorElement;
-    expect(launch.textContent).toBe("Compare All Runs");
+    expect(launch.textContent).toBe("Compare 2 selected");
     expect(launch.href).toContain("/results/compare?ids=");
 
     fireEvent.click(screen.getByTestId("query-compare-clear"));
-    expect(screen.getByTestId("query-compare-tray").textContent).toContain("Select two or more rows");
+    expect(screen.getByTestId("query-compare-tray").textContent).toContain("All 2 comparable runs in these results can be compared together.");
     expect(screen.getByTestId("query-compare-launch").textContent).toBe("Compare All Runs");
   });
 
@@ -424,7 +429,7 @@ describe("Query", () => {
 
     fireEvent.click(blocked);
     expect(screen.getByTestId("query-compare-tray").textContent).toContain("Select two or more rows");
-    expect(screen.getByTestId("query-compare-launch-disabled")).toBeTruthy();
+    expect(screen.getByTestId("query-compare-launch")).toBeDisabled();
   });
 
   it("shows a Query Workbench zero-selectable recovery callout when every visible row is disabled", async () => {

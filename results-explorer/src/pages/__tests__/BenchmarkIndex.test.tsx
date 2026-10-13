@@ -463,9 +463,7 @@ describe("BenchmarkIndex", () => {
     expect(status?.textContent).toContain("0 results selected");
     expect(guidance.textContent).toContain("Select two or more platforms");
     expect(screen.queryByRole("button", { name: /Select 2 / })).toBeNull();
-    expect(screen.getByTestId("benchmark-compare-cta-pending").textContent).toBe(
-      "Select 2 results to compare",
-    );
+    expect(screen.getByTestId("benchmark-compare-cta").textContent).toBe("Select 2–10 runs to compare");
   });
 
   it("renders a Benchmark switcher that routes to a sibling and clears benchmark-specific params", async () => {
@@ -644,6 +642,47 @@ describe("BenchmarkIndex", () => {
     expect(screen.getByTestId("benchmark-compare-guidance").textContent).toContain(
       "All 3 comparable runs in this view can be compared together.",
     );
+  });
+
+  it("makes Compare N selected the primary action when a selection exists in a small comparable set", async () => {
+    const resultRows = [0, 1, 2].map((index) => ({
+      ...RESULT_ROWS[0]!,
+      result_id: `r-all-${index + 1}`,
+      platform: `Platform ${index + 1}`,
+      platform_id: `platform-${index + 1}`,
+    }));
+    const rankingRows = [0, 1, 2].map((index) => ({
+      ...RANKING_ROWS[0]!,
+      result_id: `r-all-${index + 1}`,
+      short_id: `all000${index + 1}`,
+      platform: `Platform ${index + 1}`,
+      platform_id: `platform-${index + 1}`,
+    }));
+    const cellRows = rankingRows.flatMap((row) => [
+      { ...CELL_ROWS[0]!, result_id: row.result_id, platform_id: row.platform_id },
+      { ...CELL_ROWS[1]!, result_id: row.result_id, platform_id: row.platform_id },
+    ]);
+    vi.mocked(queryRows).mockImplementation(defaultImpl(resultRows, rankingRows, cellRows));
+
+    const { container } = render(<BenchmarkIndex benchmark="tpch" />);
+    await waitFor(() => expect(screen.queryByTestId("benchmark-compare-cta")?.textContent).toBe("Compare All Runs"));
+
+    const checkboxes = await waitFor(() => {
+      const boxes = within(listRoot(container) as HTMLElement).getAllByRole("checkbox") as HTMLInputElement[];
+      expect(boxes.filter((box) => !box.disabled)).toHaveLength(3);
+      return boxes;
+    });
+    fireEvent.click(checkboxes[0]!);
+    fireEvent.click(checkboxes[1]!);
+
+    await waitFor(() => expect(screen.getByTestId("benchmark-compare-cta").textContent).toBe("Compare 2 selected"));
+    const primary = screen.getByTestId("benchmark-compare-cta") as HTMLAnchorElement;
+    expect(primary.className).toContain("btn-primary");
+    expect(primary.getAttribute("href")).toMatch(/^\/results\/compare\?ids=all000[12],all000[12]$/);
+    const all = screen.getByTestId("benchmark-compare-cta-all") as HTMLAnchorElement;
+    expect(all.textContent).toBe("Compare All Runs");
+    expect(all.getAttribute("href")).toBe("/results/compare?ids=all0001,all0002,all0003");
+    expect(screen.getByTestId("benchmark-compare-guidance").textContent).toContain("2 results selected");
   });
 
   it("compare tray shows selected metadata and public IDs while compare URLs keep short aliases", async () => {

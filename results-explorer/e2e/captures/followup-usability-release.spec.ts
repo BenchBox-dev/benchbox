@@ -106,8 +106,8 @@ test.describe("@followup-usability release-gate route walk", () => {
     await waitForDataLoaded(page, /matching run/);
 
     const tray = page.getByTestId("query-compare-tray");
-    await expect(tray).toContainText(/Select two or more rows/);
-    await expect(page.getByTestId("query-compare-launch-disabled")).toBeVisible();
+    await expect(tray).toContainText(/Select two or more rows|can be compared together/);
+    await expect(page.getByTestId("query-compare-launch")).toBeVisible();
 
     await maybeCapture(page, "query-compare-tray-default");
 

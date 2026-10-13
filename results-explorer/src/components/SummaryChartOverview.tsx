@@ -46,7 +46,6 @@ import { PercentileLadder } from "@/components/PercentileLadder";
 import { StackedPhase } from "@/components/StackedPhase";
 import { CDFChart } from "@/components/CDFChart";
 import { RankTable } from "@/components/RankTable";
-import { SaveChartView } from "@/components/SaveChartView";
 
 interface Props {
   context: Extract<ChartContext, { kind: "summary" }>;
@@ -381,13 +380,6 @@ export function SummaryChartOverview({
                         />
                       ) : null}
                     </div>
-                    {!isGatedRankCard && !isEmpty ? (
-                      <SaveChartView
-                        chartId={chart.id}
-                        chartTitle={CHART_DISPLAY_TITLES[chart.id] ?? chart.shortTitle}
-                        anchorId={cardAnchors?.[chart.id]}
-                      />
-                    ) : null}
                   </div>
                 }
               />

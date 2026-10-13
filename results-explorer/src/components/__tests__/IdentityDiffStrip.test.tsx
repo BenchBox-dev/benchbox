@@ -163,3 +163,50 @@ describe("rendering guards", () => {
     expect(container.textContent).toBe("");
   });
 });
+
+describe("more than four runs", () => {
+  const labelsFor = (count: number) => Array.from({ length: count }, (_, i) => `DuckDB run ${i + 1}`);
+  const tenRuns = () =>
+    Array.from({ length: 10 }, (_, i) =>
+      run({ result_id: `r${i + 1}`, platform_version: i % 3 === 1 ? "1.5.0" : "1.4.3" }),
+    );
+
+  it("lists every run as its own row so all ten stay reachable", () => {
+    const labels = labelsFor(10);
+    render(<IdentityDiffStrip results={tenRuns()} baselineIndex={0} runLabels={labels} />);
+
+    for (const label of labels.slice(1)) {
+      expect(screen.getByText(label)).toBeTruthy();
+    }
+    expect(screen.getByText("DuckDB run 1 (baseline)")).toBeTruthy();
+    expect(screen.getAllByRole("row")).toHaveLength(11);
+    expect(screen.getByTestId("matrix-run-9-Platform version").textContent).toContain("1.4.3");
+  });
+
+  it("keeps the table scrollable with a sticky run column", () => {
+    const { container } = render(<IdentityDiffStrip results={tenRuns()} baselineIndex={0} runLabels={labelsFor(10)} />);
+    const scroller = container.querySelector('[data-testid="identity-matrix-scroller"]');
+    expect(scroller?.classList.contains("overflow-x-auto")).toBe(true);
+    expect(container.querySelector("tbody th.sticky")).toBeTruthy();
+  });
+
+  it("marks the baseline once in the header rather than on every baseline cell", () => {
+    const { container } = render(<IdentityDiffStrip results={tenRuns()} baselineIndex={0} runLabels={labelsFor(10)} />);
+    expect(screen.queryAllByText("Baseline")).toHaveLength(0);
+    expect(container.textContent?.split("(baseline)").length).toBe(2);
+  });
+
+  it("shows a not-recorded value once, without a second pill", () => {
+    const runs = tenRuns();
+    runs[4] = run({ result_id: "r5", environment: { arch: "arm64" } as any });
+    render(<IdentityDiffStrip results={runs} baselineIndex={0} runLabels={labelsFor(10)} />);
+    const cell = screen.getByTestId("matrix-run-4-CPU family");
+    expect(cell.textContent).toBe("Not recorded");
+  });
+
+  it("flags only the differing values, using the same wording as the column layout", () => {
+    render(<IdentityDiffStrip results={tenRuns()} baselineIndex={0} runLabels={labelsFor(10)} />);
+    expect(screen.getByTestId("matrix-run-1-Platform version").textContent).toContain("Differs");
+    expect(screen.getByTestId("matrix-run-2-Platform version").textContent).not.toContain("Differs");
+  });
+});

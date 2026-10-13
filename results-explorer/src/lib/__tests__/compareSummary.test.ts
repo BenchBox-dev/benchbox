@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DetailResult } from "@/types";
 import { buildCompareDecisionSummary } from "@/lib/compareSummary";
+import { buildStandings } from "@/components/MultiRunStandings";
 
 function makeResult(overrides: Partial<DetailResult> = {}): DetailResult {
   return {
@@ -449,5 +450,103 @@ describe("buildCompareDecisionSummary", () => {
       expect(summary.nonCleanValidation).toHaveLength(1);
       expect(summary.claimSuppressed).toBe(true);
     });
+  });
+});
+
+describe("winner claims when no selected run is rank-safe", () => {
+  const unrankedReason = { ranking_exclusion_reason: "insufficient_common_valid_timings" } as const;
+
+  it("names no winner by the primary metric and says why", () => {
+    const summary = buildCompareDecisionSummary(
+      [
+        makeResult({ result_id: "duck", platform: "DuckDB", power_score: 3000, display_geomean_ms: 10, ...unrankedReason }),
+        makeResult({
+          result_id: "sqlite",
+          platform: "SQLite",
+          platform_id: "sqlite",
+          power_score: 300,
+          display_geomean_ms: 20,
+          ...unrankedReason,
+        }),
+      ],
+      "power_score",
+    );
+
+    expect(summary.winner).toBeNull();
+    expect(summary.claimSuppressed).toBe(true);
+    expect(summary.rankingBlocked).toBe(true);
+    expect(summary.comparisonRatio).toBeNull();
+    expect(summary.headline.startsWith("No ranked winner: no selected run is rank-safe")).toBe(true);
+    expect(summary.headline).not.toContain("power score was");
+    expect(summary.headline).toContain("Only descriptive geomean comparisons are shown.");
+  });
+
+  it("keeps a descriptive geomean spread when ranking is blocked", () => {
+    const summary = buildCompareDecisionSummary(
+      [
+        makeResult({ result_id: "duck", display_geomean_ms: 10, ...unrankedReason }),
+        makeResult({ result_id: "sqlite", platform: "SQLite", display_geomean_ms: 25, ...unrankedReason }),
+      ],
+      "power_score",
+    );
+
+    expect(summary.descriptiveGeomeanSpread).toBeCloseTo(2.5);
+  });
+
+  it("does not block winner claims when at least one run is rank-safe", () => {
+    const summary = buildCompareDecisionSummary(
+      [
+        makeResult({ result_id: "duck", platform: "DuckDB", power_score: 3000 }),
+        makeResult({ result_id: "sqlite", platform: "SQLite", power_score: 300, ...unrankedReason }),
+      ],
+      "power_score",
+    );
+
+    expect(summary.rankingBlocked).toBe(false);
+    expect(summary.winner?.platform).toBe("DuckDB");
+    expect(summary.descriptiveGeomeanSpread).toBeNull();
+  });
+});
+
+describe("query win counts", () => {
+  it("count the same shared-query wins that the standings show for the winner", () => {
+    const results = [
+      makeResult({
+        result_id: "duck",
+        platform: "DuckDB",
+        power_score: 3000,
+        display_timings: [
+          { query_id: "Q1", display_ms: 10, sample_count: 3, is_valid_display_timing: true, timing_exclusion_reason: null },
+          { query_id: "Q2", display_ms: 50, sample_count: 3, is_valid_display_timing: true, timing_exclusion_reason: null },
+          { query_id: "Q3", display_ms: 5, sample_count: 3, is_valid_display_timing: true, timing_exclusion_reason: null },
+        ],
+      }),
+      makeResult({
+        result_id: "sqlite",
+        platform: "SQLite",
+        power_score: 300,
+        display_timings: [
+          { query_id: "Q1", display_ms: 100, sample_count: 3, is_valid_display_timing: true, timing_exclusion_reason: null },
+          { query_id: "Q2", display_ms: 20, sample_count: 3, is_valid_display_timing: true, timing_exclusion_reason: null },
+          { query_id: "Q3", display_ms: 50, sample_count: 3, is_valid_display_timing: true, timing_exclusion_reason: null },
+          { query_id: "Q4", display_ms: 30, sample_count: 3, is_valid_display_timing: true, timing_exclusion_reason: null },
+        ],
+      }),
+    ];
+
+    const summary = buildCompareDecisionSummary(results, "power_score");
+    const standings = buildStandings(results, 0, ["DuckDB", "SQLite"]);
+    const duckStanding = standings.rows.find((row) => row.resultId === "duck");
+
+    expect(summary.queryRecord).toMatchObject({
+      totalQueries: 4,
+      comparableQueries: 3,
+      wins: 2,
+      losses: 1,
+      ties: 0,
+      missing: 1,
+    });
+    expect(duckStanding?.queriesWon).toBe(summary.queryRecord.wins);
+    expect(standings.sharedQueryIds).toEqual(["Q1", "Q2", "Q3"]);
   });
 });

@@ -505,9 +505,11 @@ describe("PlatformIndex - sortable table headers", () => {
     expect(status?.textContent).toContain("0 results selected");
     expect(guidance.textContent).toContain("Select two or more DuckDB results");
     expect(screen.queryByRole("button", { name: /Select 2 / })).toBeNull();
-    expect(screen.getByTestId("platform-compare-cta-pending").textContent).toBe(
-      "Select 2 results to compare",
-    );
+    const cta = screen.getByTestId("platform-compare-cta") as HTMLButtonElement;
+    expect(cta.tagName).toBe("BUTTON");
+    expect(cta.disabled).toBe(true);
+    expect(cta.className).toContain("btn-primary");
+    expect(cta.textContent).toBe("Select 2–10 runs to compare");
     expect(screen.getByTestId("platform-table-scroll-hint").textContent).toContain("Scroll for dates, timings, and source labels");
     expect(screen.getAllByText(/Geomean latency \(lower is better\)/).length).toBeGreaterThan(0);
   });

@@ -13,7 +13,6 @@ const RESERVED_RESULTS_SEGMENTS: ReadonlySet<string> = new Set([
   "p",
   "r",
   "local",
-  "dashboards",
 ]);
 
 function firstSegment(path: string): string | null {

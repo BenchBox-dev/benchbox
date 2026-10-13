@@ -28,7 +28,6 @@ import { CDFChart } from "@/components/CDFChart";
 import { RankTable } from "@/components/RankTable";
 import { SummaryChartOverview, SummaryMetricTable } from "@/components/SummaryChartOverview";
 import { fmtGeomean, fmtScore } from "@/utils";
-import { SaveChartView } from "@/components/SaveChartView";
 import { paletteColor } from "@/lib/chartTheme";
 import { RunDateChip } from "@/components/RunAge";
 import {
@@ -411,11 +410,6 @@ function ChartPanelTabs({
             </select>
           </div>
         )}
-        {!chartDatasetEmpty && (
-          <span class="ml-auto">
-            <SaveChartView chartId={activeChart.id} chartTitle={activeChart.title ?? activeChart.shortTitle} />
-          </span>
-        )}
       </div>
 
       <div
@@ -642,7 +636,6 @@ function ChartFigure({
     <div data-chart-container data-chart-id={chart.id} data-testid={`chart-panel-chart-${chart.id}`}>
       <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
         <h3 class="text-base font-semibold text-[var(--bb-data-fg-primary)]">{chart.title}</h3>
-        {!datasetEmpty && <SaveChartView chartId={chart.id} chartTitle={chart.title ?? chart.shortTitle} />}
       </div>
       <div class="mt-3">
         {datasetEmpty ? (

@@ -159,17 +159,30 @@ export function filterHeatmapRows(
   return [...rows];
 }
 
+const HEAT_LIGHT_MAX_LIGHTNESS = 95;
+const HEAT_LIGHT_LIGHTNESS_SPAN = 25;
+const HEAT_DARK_MIN_LIGHTNESS = 20;
+const HEAT_DARK_LIGHTNESS_SPAN = 10;
+
 export function heatmapCellStyle(position: number | null): string {
   if (position === null) return "";
   const hue = position < 0 ? 150 : 15;
-  const lightness = 95 - Math.abs(position) * 35;
-  const darkLightness = 22 + Math.abs(position) * 18;
+  const lightness = HEAT_LIGHT_MAX_LIGHTNESS - Math.abs(position) * HEAT_LIGHT_LIGHTNESS_SPAN;
+  const darkLightness = HEAT_DARK_MIN_LIGHTNESS + Math.abs(position) * HEAT_DARK_LIGHTNESS_SPAN;
   return `--cell-hue:${hue}; --cell-lightness:${lightness.toFixed(1)}%; --cell-dark-lightness:${darkLightness.toFixed(1)}%;`;
+}
+
+const ratioSignificantDigits = new Intl.NumberFormat("en-US", { maximumSignificantDigits: 2 });
+const ratioWholeNumbers = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+
+export function formatHeatmapRatio(ratio: number): string {
+  const body = Math.abs(ratio) >= 10 ? ratioWholeNumbers.format(ratio) : ratioSignificantDigits.format(ratio);
+  return `${body}×`;
 }
 
 function cellText(cell: HeatmapCell): string {
   if (cell.ratio === null) return "—";
-  return `${cell.ratio.toFixed(2)}x`;
+  return formatHeatmapRatio(cell.ratio);
 }
 
 function unavailableCellDescription(cell: HeatmapCell): string | undefined {
@@ -224,11 +237,11 @@ export function MultiRunHeatmap({
           <p class="mt-1 text-xs text-[var(--bb-data-fg-muted)]" data-testid="heatmap-caption">
             {shown.length === 0 && effectiveLimiter !== "all"
               ? `No queries match ${QUERY_DIFF_LIMITER_LABELS[effectiveLimiter].toLowerCase()} — showing 0 of ${all.length}.`
-              : `Ratio against ${runLabels[baselineIndex] ?? "the baseline"} — below 1.00x is faster. Showing ${shown.length} of ${all.length} ${all.length === 1 ? "query" : "queries"}.`}
+              : `Ratio against ${runLabels[baselineIndex] ?? "the baseline"} — below 1× is faster. Showing ${shown.length} of ${all.length} ${all.length === 1 ? "query" : "queries"}.`}
           </p>
         </div>
         <StatusBadge role="comparison" tone="neutral">
-          {`Scale saturates at ${DIVERGING_RATIO_CLAMP}x`}
+          {`Scale saturates at ${DIVERGING_RATIO_CLAMP}×`}
         </StatusBadge>
       </div>
 
@@ -252,13 +265,13 @@ export function MultiRunHeatmap({
         </div>
       )}
 
-      <div class="overflow-x-auto">
+      <div class="max-h-[32rem] overflow-auto" data-testid="multi-run-heatmap-scroller">
         <table class="min-w-full w-max divide-y divide-[var(--bb-data-border)] text-sm" data-testid="multi-run-heatmap-table">
-          <thead class="bg-[var(--bb-surface-data-muted)]">
+          <thead class="sticky top-0 z-10 bg-[var(--bb-surface-data-muted)] shadow-[inset_0_-1px_0_var(--bb-data-border)]">
             <tr>
               <th scope="col" class="table-th-dense">Query</th>
               {results.map((r, i) => (
-                <th key={r.result_id} scope="col" class="table-th-dense">
+                <th key={r.result_id} scope="col" class="table-th-dense whitespace-nowrap">
                   {runLabels[i] ?? r.platform}
                   {i === baselineIndex ? " (baseline)" : ""}
                 </th>
@@ -281,7 +294,7 @@ export function MultiRunHeatmap({
                     class={`table-td-dense font-mono text-xs${cell.position === null ? "" : " multi-run-heatmap-cell"}`}
                     style={heatmapCellStyle(cell.position)}
                     title={unavailableCellDescription(cell)}
-                    aria-label={cell.ratio !== null ? `${cell.ratio.toFixed(2)} times baseline` : unavailableCellDescription(cell)}
+                    aria-label={cell.ratio !== null ? `${formatHeatmapRatio(cell.ratio)} baseline` : unavailableCellDescription(cell)}
                     data-testid={`cell-${row.queryId}-${i}`}
                   >
                     {cell.missingKind === "baseline_missing" && cell.timingMs !== null ? (

@@ -714,6 +714,26 @@ describe("Compare", () => {
     expect(sqliteCard).not.toHaveTextContent("Tied");
   });
 
+  it("lists the same rows in the same order on every run card and uses one wording for the comparison row", async () => {
+    render(<Compare />);
+    await waitFor(() => expect(screen.getAllByText("SQLite").length).toBeGreaterThan(0));
+
+    const cards = ["Public ID r1", "Public ID r2"].map((text) => screen.getByText(text).closest(".card"));
+    const rowLabels = cards.map((card) => Array.from(card!.querySelectorAll("dt")).map((dt) => dt.textContent));
+    expect(rowLabels[0]).toEqual(rowLabels[1]);
+    expect(rowLabels[0]?.slice(-3)).toEqual(["Compared with lowest selected score", "Mode", "Test type"]);
+    expect(screen.queryByText("Relative position")).toBeNull();
+    expect(screen.getByText("Lowest selected").closest("dd")).toBeTruthy();
+  });
+
+  it("keeps the fastest badge on one line", async () => {
+    render(<Compare />);
+    await waitFor(() => expect(screen.getAllByText("DuckDB").length).toBeGreaterThan(0));
+    const badges = screen.getAllByText("fastest");
+    expect(badges.length).toBeGreaterThan(0);
+    for (const badge of badges) expect(badge.classList.contains("whitespace-nowrap")).toBe(true);
+  });
+
   it("renders a funding chip on the primary compare cards, not just the builder table", async () => {
     vi.mocked(getDetailResult).mockImplementation((id) =>
       id === "r1" ? Promise.resolve(makeResult({ result_id: "r1", platform: "DuckDB", funding: "employer" })) : Promise.resolve(SQLITE),
@@ -741,7 +761,7 @@ describe("Compare", () => {
       "In these selected runs, DuckDB's power score was 10.00x better than the lowest selected run.",
     );
     expect(summary.closest("section")).toHaveTextContent("Where DuckDB wins");
-    expect(summary.closest("section")).toHaveTextContent("2 of 2 queries");
+    expect(summary.closest("section")).toHaveTextContent("2 of 2 shared queries");
     expect(summary.compareDocumentPosition(chartsHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(summary.compareDocumentPosition(queryDiffHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(chartsHeading.compareDocumentPosition(queryDiffHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -1225,8 +1245,8 @@ describe("Compare", () => {
     const queryGrid = screen.getByRole("heading", { name: "Query by run" }).closest("section");
     expect(select.value).toBe("r3");
     expect(queryGrid).toHaveTextContent("Ratio against PostgreSQL");
-    expect(screen.getByTestId("cell-Q1-0")).toHaveTextContent("0.20x");
-    expect(screen.getByTestId("cell-Q1-2")).toHaveTextContent("1.00x");
+    expect(screen.getByTestId("cell-Q1-0")).toHaveTextContent("0.2×");
+    expect(screen.getByTestId("cell-Q1-2")).toHaveTextContent("1×");
     expect(new URL(window.location.href).searchParams.get("ids")).toBe(beforeIds);
     expect(new URL(window.location.href).searchParams.get("baseline")).toBe("r3");
   });

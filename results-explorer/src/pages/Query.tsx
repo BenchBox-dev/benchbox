@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { RoutableProps } from "preact-router";
 import { DUCKDB_USER_QUERY_TIMEOUT_MS, queryRows } from "@/db";
+import { CompareCta, isCompareAllAvailable } from "@/components/CompareCta";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorMessage } from "@/components/ErrorMessage";
 import { FacetDrawer, FacetRail, type ActiveFacetChip, type FacetGroup } from "@/components/FacetRail";
@@ -880,7 +881,6 @@ export function Query({ url }: QueryProps) {
                     "result",
                     MAX_COMPARE_SELECTIONS,
                   );
-                  const compareUrl = compareSelectedIds.size >= 2 ? buildCompareUrl(selectedCompareIds) : null;
                   const wholeFilteredSetVisible = rows.length === resultTotal;
                   const visibleComparableRows = wholeFilteredSetVisible
                     ? rows.filter((row) => comparisonExclusionReason(row) === undefined)
@@ -894,13 +894,9 @@ export function Query({ url }: QueryProps) {
                   const allRunsCandidates = visibleCohortKeys.size === 1
                     ? visibleComparableRows
                     : lockedComparableRows;
-                  const compareAllQueryUrl =
-                    allRunsCandidates.length >= 2 &&
-                    allRunsCandidates.length <= MAX_COMPARE_SELECTIONS
-                      ? buildCompareUrl(
-                        allRunsCandidates.map((row) => compareIdForRow(row as Parameters<typeof compareIdForRow>[0])),
-                      )
-                      : null;
+                  const allRunsCompareIds = allRunsCandidates.map((row) =>
+                    compareIdForRow(row as Parameters<typeof compareIdForRow>[0]),
+                  );
                   return (
                     <>
                       <div
@@ -910,7 +906,9 @@ export function Query({ url }: QueryProps) {
                         <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2">
                           <span>
                             {compareSelectedIds.size === 0
-                              ? `${selectedStatus}. Select two or more rows to compare. The first pick locks the ranking.`
+                              ? isCompareAllAvailable(allRunsCompareIds)
+                                ? `All ${allRunsCompareIds.length} comparable runs in these results can be compared together. Select rows to compare a subset.`
+                                : `${selectedStatus}. Select two or more rows to compare. The first pick locks the ranking.`
                               : compareSelectedIds.size === 1
                                 ? `${selectedStatus} — pick a compatible second row to enable Compare.${hiddenIncompatibleSuffix(compareIncompatibleHiddenCount)}`
                                 : `${selectedStatus}.`}
@@ -943,41 +941,12 @@ export function Query({ url }: QueryProps) {
                                 Clear selection
                               </button>
                             )}
-                            {compareAllQueryUrl ? (
-                              <a
-                                href={compareAllQueryUrl}
-                                class="btn btn-primary shrink-0 px-3 py-1 text-xs no-underline"
-                                data-testid="query-compare-launch"
-                              >
-                                Compare All Runs
-                              </a>
-                            ) : compareUrl ? (
-                              <a
-                                href={compareUrl}
-                                class="btn btn-primary shrink-0 px-3 py-1 text-xs no-underline"
-                                data-testid="query-compare-launch"
-                              >
-                                Compare {compareSelectedIds.size} selected →
-                              </a>
-                            ) : (
-                              <button
-                                type="button"
-                                disabled
-                                class="btn btn-secondary shrink-0 px-3 py-1 text-xs"
-                                data-testid="query-compare-launch-disabled"
-                              >
-                                Compare (need 2+)
-                              </button>
-                            )}
-                            {compareAllQueryUrl && compareUrl && compareAllQueryUrl !== compareUrl && (
-                              <a
-                                href={compareUrl}
-                                class="btn btn-secondary shrink-0 px-3 py-1 text-xs no-underline"
-                                data-testid="query-compare-subset"
-                              >
-                                Compare {compareSelectedIds.size} selected →
-                              </a>
-                            )}
+                            <CompareCta
+                              selectedIds={selectedCompareIds}
+                              allIds={allRunsCompareIds}
+                              buildHref={buildCompareUrl}
+                              testId="query-compare-launch"
+                            />
                           </span>
                         </div>
                         {compareHandoffError && (

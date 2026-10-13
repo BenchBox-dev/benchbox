@@ -1,3 +1,4 @@
+import { CompareCta, isCompareAllAvailable } from "@/components/CompareCta";
 import { PageHeader } from "@/components/PageHeader";
 import { ProvenanceLegend } from "@/components/ProvenanceLegend";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
@@ -601,7 +602,7 @@ export function Leaderboard({ notice = null }: LeaderboardProps) {
           )}
           {filteredMetaLeaderboard && (
             <p class="mt-2 text-sm" data-testid="home-compare-jump">
-              <a href="#leaderboard-compare-picker" class="font-medium text-[var(--bb-accent-hover)] underline">
+              <a href="#leaderboard-compare-picker" class="btn btn-secondary no-underline">
                 Compare runs in the selected cohort ↓
               </a>
             </p>
@@ -735,7 +736,7 @@ function LeaderboardLoadingSkeleton({
             </div>
           </section>
           <p aria-hidden="true" class="mt-2 text-sm" data-testid="home-loading-compare-jump-reserve">
-            <span class="invisible">Compare runs in the selected cohort ↓</span>
+            <span class="btn btn-secondary invisible">Compare runs in the selected cohort ↓</span>
           </p>
         </div>
       </section>
@@ -1202,23 +1203,8 @@ function LeaderboardComparePicker({
   const cohortResultIds = new Set(cohort?.results.map((result) => result.result_id) ?? []);
   const selectedCohortIds = pickedIds.filter((id) => cohortResultIds.has(id));
   const selectedCohortCount = selectedCohortIds.length;
-  const compareAllRuns = cohort !== null && cohort.results.length >= 2 && cohort.results.length <= MAX_COMPARE_SELECTIONS;
-  const canCompareSelection = cohort !== null && cohort.results.length > MAX_COMPARE_SELECTIONS && selectedCohortCount >= 2;
-  const compareHref = compareAllRuns
-    ? buildCompareUrl(cohort.results.map((result) => result.result_id))
-    : canCompareSelection
-      ? buildCompareUrl(selectedCohortIds)
-      : null;
-  const compareLabel = compareAllRuns
-    ? "Compare All Runs"
-    : canCompareSelection
-      ? `Compare ${selectedCohortCount} selected`
-      : "Select at least 2 runs";
-  const subsetHref = compareAllRuns &&
-    selectedCohortCount >= 2 &&
-    selectedCohortCount < cohort!.results.length
-    ? buildCompareUrl(selectedCohortIds)
-    : null;
+  const cohortCompareIds = cohort?.results.map((result) => result.result_id) ?? [];
+  const compareAllRuns = isCompareAllAvailable(cohortCompareIds);
   const limitReached = selectedCohortCount >= MAX_COMPARE_SELECTIONS;
   const multipleCohorts = filteredCohorts.length > 1;
   const noSingleCohort = cohort === null;
@@ -1300,51 +1286,28 @@ function LeaderboardComparePicker({
         </fieldset>
 
         <div class="shrink-0 lg:text-right">
-          {compareHref ? (
-            <a
-              href={compareHref}
-              class="btn btn-primary no-underline"
-              data-testid="leaderboard-compare-cta"
-              aria-label={compareLabel}
-            >
-              {compareLabel}
-            </a>
-          ) : (
-            <button
-              type="button"
-              class="btn btn-primary"
-              data-testid="leaderboard-compare-cta"
-              disabled
-              aria-describedby="leaderboard-compare-guidance"
-            >
-              {compareLabel}
-            </button>
-          )}
-          {subsetHref && (
-            <a
-              href={subsetHref}
-              class="btn btn-secondary mt-2 no-underline"
-              data-testid="leaderboard-compare-subset"
-            >
-              Compare {selectedCohortCount} selected
-            </a>
-          )}
+          <CompareCta
+            selectedIds={selectedCohortIds}
+            allIds={cohortCompareIds}
+            buildHref={leaderboardCompareHref}
+            testId="leaderboard-compare-cta"
+          />
           <p id="leaderboard-compare-guidance" class="mt-1 text-xs text-[var(--bb-fg-muted)]" role="status">
-            {compareAllRuns
-              ? `Compare All Runs includes all ${cohort.results.length} ${scopeRunsNoun} runs in this cohort.`
-              : cohort && cohort.results.length > MAX_COMPARE_SELECTIONS
-                ? selectedCohortCount >= 2
-                  ? `${selectedCohortCount} runs selected in this cohort; the maximum is ${MAX_COMPARE_SELECTIONS}.`
-                  : `Select at least 2 of the ${cohort.results.length} ${scopeRunsNoun} runs in this cohort, up to ${MAX_COMPARE_SELECTIONS}.`
-                : cohort && cohort.results.length === 0 && rankingScope !== "comparable"
-                  ? "No ranked comparable runs are available in this cohort. Choose all published comparable runs to include unranked evidence."
-                  : cohort && cohort.results.length === 1
-                    ? "This cohort has one comparable run. Choose another cohort with at least two runs."
-                    : multipleCohorts
-                      ? "Choose a cohort above to compare its runs."
-                      : noSingleCohort
-                        ? "Filter to one benchmark, scale, phase, and stream count to compare a single cohort."
-                        : "This cohort has fewer than two comparable runs."}
+            {selectedCohortCount >= 2
+              ? `${selectedCohortCount} runs selected in this cohort.`
+              : compareAllRuns
+                ? `All ${cohort!.results.length} ${scopeRunsNoun} runs in this cohort can be compared together.`
+                : cohort && cohort.results.length > MAX_COMPARE_SELECTIONS
+                  ? `Select 2 to ${MAX_COMPARE_SELECTIONS} of the ${cohort.results.length} ${scopeRunsNoun} runs in this cohort.`
+                  : cohort && cohort.results.length === 0 && rankingScope !== "comparable"
+                    ? "No ranked comparable runs are available in this cohort. Choose all published comparable runs to include unranked evidence."
+                    : cohort && cohort.results.length === 1
+                      ? "This cohort has one comparable run. Choose another cohort with at least two runs."
+                      : multipleCohorts
+                        ? "Choose a cohort above to compare its runs."
+                        : noSingleCohort
+                          ? "Filter to one benchmark, scale, phase, and stream count to compare a single cohort."
+                          : "This cohort has fewer than two comparable runs."}
           </p>
         </div>
       </div>
@@ -1413,6 +1376,17 @@ function LeaderboardComparePicker({
       )}
     </section>
   );
+}
+
+function leaderboardCompareHref(ids: readonly string[]): string {
+  const current = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search);
+  const carried = new URLSearchParams();
+  for (const key of ["mode", "basis"]) {
+    const value = current.get(key);
+    if (value !== null) carried.set(key, value);
+  }
+  const query = carried.toString();
+  return query ? `${buildCompareUrl(ids)}&${query}` : buildCompareUrl(ids);
 }
 
 function groupComparisonCohorts(results: readonly ResultRow[]): ComparisonCohort[] {

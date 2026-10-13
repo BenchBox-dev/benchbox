@@ -1,7 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
 import { ChartPanel } from "@/components/ChartPanel";
-import { loadDashboards } from "@/lib/dashboards";
 import { buildRenderableSummary, type ChartHistoricalEntry } from "@/lib/chartRegistry";
 import type {
   BenchmarkSummary,
@@ -108,23 +107,6 @@ function makeSummary(overrides: Partial<BenchmarkSummary> = {}): BenchmarkSummar
     cell_reduction: overrides.cell_reduction ?? "median",
     ranking: overrides.ranking ?? RANKING,
   };
-}
-
-function mockStorage(): void {
-  const storage = new Map<string, string>();
-  Object.defineProperty(window, "localStorage", {
-    configurable: true,
-    value: {
-      getItem: (key: string) => storage.get(key) ?? null,
-      setItem: (key: string, value: string) => {
-        storage.set(key, value);
-      },
-      removeItem: (key: string) => {
-        storage.delete(key);
-      },
-      clear: () => storage.clear(),
-    },
-  });
 }
 
 function makeHistoricalEntry(
@@ -1259,56 +1241,6 @@ describe("ChartPanel", () => {
     expect(screen.queryByRole("tablist")).toBeNull();
   });
 
-  it("renders a save control on every long-layout chart figure", () => {
-    mockStorage();
-    const { container } = render(
-      <ChartPanel
-        summaryLayout="long"
-        context={{
-          kind: "compare",
-          results: [makeDetail(), makeDetail({ result_id: "detail-2" })],
-        }}
-      />,
-    );
-
-    const figures = Array.from(container.querySelectorAll("[data-testid^='chart-panel-chart-']"));
-    expect(figures.length).toBeGreaterThan(1);
-    for (const figure of figures) {
-      expect(within(figure as HTMLElement).getByTestId("save-chart-view")).toBeTruthy();
-    }
-  });
-
-  it("saves a long-layout figure with that figure's chart id", () => {
-    mockStorage();
-    window.history.replaceState(null, "", "/results/compare/?a=1&b=2");
-    const { container } = render(
-      <ChartPanel
-        summaryLayout="long"
-        context={{
-          kind: "compare",
-          results: [makeDetail(), makeDetail({ result_id: "detail-2" })],
-        }}
-      />,
-    );
-
-    const figure = container.querySelector("[data-testid='chart-panel-chart-query_heatmap']") as HTMLElement;
-    const saveControl = within(figure).getByTestId("save-chart-view");
-    fireEvent.change(
-      within(saveControl as HTMLElement).getByLabelText("Dashboard to save this chart view into"),
-      { target: { value: "__new__" } },
-    );
-    fireEvent.input(within(saveControl as HTMLElement).getByLabelText("New dashboard name"), {
-      target: { value: "Compare review" },
-    });
-    fireEvent.click(within(saveControl as HTMLElement).getByRole("button", { name: "Save view" }));
-
-    expect(within(saveControl as HTMLElement).getByRole("button", { name: "Saved ✓" })).toBeTruthy();
-    const dashboards = loadDashboards();
-    expect(dashboards).toHaveLength(1);
-    expect(dashboards[0]?.items).toHaveLength(1);
-    expect(dashboards[0]?.items[0]?.chartId).toBe("query_heatmap");
-    expect(dashboards[0]?.items[0]?.url).toBe("/results/compare/?a=1&b=2");
-  });
 });
 
 describe("buildRenderableSummary cost estimates", () => {

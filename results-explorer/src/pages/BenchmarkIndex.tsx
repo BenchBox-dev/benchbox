@@ -38,6 +38,7 @@ import { ChartPanel } from "@/components/ChartPanel";
 import { ProvenanceLegend } from "@/components/ProvenanceLegend";
 import { RunIdentityLabel } from "@/components/DataTable";
 import { PageHeader } from "@/components/PageHeader";
+import { CompareCta, isCompareAllAvailable } from "@/components/CompareCta";
 import { CompareTray } from "@/components/CompareTray";
 import { TrayAnnouncer } from "@/components/TrayAnnouncer";
 import { RunDateChip } from "@/components/RunAge";
@@ -598,10 +599,7 @@ export function BenchmarkIndex({ benchmark = "" }: BenchmarkIndexProps) {
     .map((id) => selectedCompareRowsById.get(id))
     .filter((row): row is PlatformRow => row !== undefined);
 
-  const compareUrl =
-    selectedCompareRows.length >= 2
-      ? buildCompareUrl(selectedCompareRows.map((row) => compareIdForRow(row)))
-      : null;
+  const selectedCompareIds = selectedCompareRows.map((row) => compareIdForRow(row));
   const benchmarkOptions = uniqueBenchmarkOptions(availableBenchmarks);
   const hasCurrentBenchmarkOption = benchmarkOptions.some(
     (option) => canonicalBenchmarkSlug(option.value) === canonicalBenchmark,
@@ -610,13 +608,11 @@ export function BenchmarkIndex({ benchmark = "" }: BenchmarkIndexProps) {
   const selectedComparableCount = selectedCompareRows.length;
   const matrixCompareRows = analysisSummary?.platforms ?? [];
   const filteredComparableRows = matrixCompareRows.filter(isComparable);
-  const compareAllUrl =
-    filteredComparableRows.length >= 2 && filteredComparableRows.length <= MAX_COMPARE_SELECTIONS
-      ? buildCompareUrl(filteredComparableRows.map((row) => compareIdForRow(row)))
-      : null;
-  const compareGuidance = compareAllUrl
-    ? `All ${filteredComparableRows.length} comparable runs in this view can be compared together.`
-    : benchmarkCompareGuidanceMessage(selectedComparableCount, title, effectiveSf, effectivePhase);
+  const filteredCompareIds = filteredComparableRows.map((row) => compareIdForRow(row));
+  const compareGuidance =
+    selectedComparableCount < 2 && isCompareAllAvailable(filteredCompareIds)
+      ? `All ${filteredCompareIds.length} comparable runs in this view can be compared together.`
+      : benchmarkCompareGuidanceMessage(selectedComparableCount, title, effectiveSf, effectivePhase);
   const selectionLimitCopy =
     selectedIds.size >= MAX_COMPARE_SELECTIONS
       ? describeCompareExclusionReason(`Up to ${MAX_COMPARE_SELECTIONS} runs can be compared.`)
@@ -864,19 +860,12 @@ export function BenchmarkIndex({ benchmark = "" }: BenchmarkIndexProps) {
               </p>
             )}
           </div>
-          {compareAllUrl ? (
-            <a href={compareAllUrl} class="btn btn-primary shrink-0 text-sm no-underline" data-testid="benchmark-compare-cta">
-              Compare All Runs
-            </a>
-          ) : compareUrl ? (
-            <a href={compareUrl} class="btn btn-primary shrink-0 text-sm no-underline" data-testid="benchmark-compare-cta">
-              Compare {selectedComparableCount} selected
-            </a>
-          ) : (
-            <p class="shrink-0 text-sm text-[var(--bb-data-fg-subtle)]" data-testid="benchmark-compare-cta-pending">
-              {selectedIds.size === 1 ? "Select 1 more result" : "Select 2 results to compare"}
-            </p>
-          )}
+          <CompareCta
+            selectedIds={selectedCompareIds}
+            allIds={filteredCompareIds}
+            buildHref={buildCompareUrl}
+            testId="benchmark-compare-cta"
+          />
         </div>
       </section>
 
@@ -960,7 +949,7 @@ export function BenchmarkIndex({ benchmark = "" }: BenchmarkIndexProps) {
       )}
 
       <TrayAnnouncer count={selectedComparableCount} />
-      {compareUrl && (
+      {selectedCompareRows.length >= 2 && (
         <CompareTray
           summary={
             <>
@@ -978,8 +967,8 @@ export function BenchmarkIndex({ benchmark = "" }: BenchmarkIndexProps) {
             funding: row.funding,
             visibleResultId: visibleResultIdForRow(row),
           }))}
-          compareHref={compareUrl}
-          compareLabel={`Compare ${selectedComparableCount} selected`}
+          allIds={filteredCompareIds}
+          buildHref={buildCompareUrl}
           onClear={() => setSelectedIds(new Set())}
         />
       )}

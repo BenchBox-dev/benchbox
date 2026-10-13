@@ -2,9 +2,14 @@ import { describe, expect, it } from "vitest";
 import type { QueryExecutionRow } from "@/lib/duckdbQueries";
 import { DEFAULT_BASIS, warmPass } from "@/lib/measurementBasis";
 import {
+  addRunsHref,
+  benchmarkDisplayLabel,
+  buildValueAxis,
   MAX_QUERY_COMPARISON_RUNS,
   parseQueryRunSelection,
+  queryDisplayTitle,
   queryRunComparisonHref,
+  runScopeDifferences,
   summarizeQueryRunExecutions,
 } from "@/lib/queryRunComparison";
 
@@ -153,5 +158,63 @@ describe("query execution summaries", () => {
     expect(invalid.invalidMeasurementTimingCount).toBe(2);
     expect(invalid.medianMs).toBeNull();
     expect(missing.queryRecordCount).toBe(0);
+  });
+});
+
+describe("single-query chart axis and labels", () => {
+  it("chooses a log axis when the spread exceeds ten times", () => {
+    const axis = buildValueAxis([41, 12300], 500);
+    expect(axis.scale).toBe("log");
+    const labels = axis.ticks.map((tick) => tick.label);
+    expect(new Set(labels).size).toBe(labels.length);
+    expect(labels).toContain("100 ms");
+    expect(labels).toContain("1 s");
+  });
+
+  it("chooses a linear axis with round ticks for a narrow spread", () => {
+    const axis = buildValueAxis([10, 20], 300);
+    expect(axis.scale).toBe("linear");
+    expect(axis.min).toBe(0);
+    expect(axis.ticks.map((tick) => tick.value)).toEqual([0, 5, 10, 15, 20, 25]);
+    const labels = axis.ticks.map((tick) => tick.label);
+    expect(new Set(labels).size).toBe(labels.length);
+  });
+
+  it("never prints duplicate labels when many linear ticks round to the same text", () => {
+    const axis = buildValueAxis([1.0001, 1.0002], 300);
+    const labels = axis.ticks.map((tick) => tick.label);
+    expect(new Set(labels).size).toBe(labels.length);
+  });
+});
+
+describe("single-query titles and scope", () => {
+  it("titles numeric queries with the benchmark and named queries after it", () => {
+    expect(queryDisplayTitle("18", "TPC-H")).toBe("TPC-H Q18");
+    expect(queryDisplayTitle("aggregation_distinct_groupby", "Read Primitives")).toBe(
+      "Read Primitives · aggregation_distinct_groupby",
+    );
+    expect(queryDisplayTitle("18", null)).toBe("Q18");
+  });
+
+  it("names a benchmark only when the selected runs share one", () => {
+    expect(benchmarkDisplayLabel(["tpch", "tpch"])).toBe("TPC-H");
+    expect(benchmarkDisplayLabel(["tpch", "tpcds"])).toBeNull();
+    expect(benchmarkDisplayLabel([undefined])).toBeNull();
+  });
+
+  it("describes scale factor and phase differences across runs", () => {
+    const differences = runScopeDifferences([
+      { benchmark: "tpch", scale_factor: 1, test_type: "throughput" },
+      { benchmark: "tpch", scale_factor: 10, test_type: "power" },
+    ]);
+    expect(differences).toEqual(["scale factor (SF 1, SF 10)", "phase (throughput, power)"]);
+    expect(runScopeDifferences([{ benchmark: "tpch", scale_factor: 10 }, { benchmark: "tpch", scale_factor: 10 }])).toEqual([]);
+  });
+
+  it("builds an add-runs link that keeps every current run ID", () => {
+    const href = addRunsHref(["tpch-snowflake-sf10.0-20261003-f0835929", "tpch-duckdb-sf10.0-20261002-5f5ccaf2"]);
+    const params = new URL(href, "https://benchbox.dev").searchParams;
+    expect(params.get("ids")).toBe("tpch-snowflake-sf10.0-20261003-f0835929,tpch-duckdb-sf10.0-20261002-5f5ccaf2");
+    expect(params.get("pick")).toBe("tpch-snowflake-sf10.0-20261003-f0835929");
   });
 });
