@@ -183,6 +183,9 @@ class TestSnowflakeAdapter:
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_create_admin_connection(self, mock_snowflake):
+        snowflake_connection = pytest.importorskip("snowflake.connector.connection")
+        DEFAULT_CONFIGURATION = snowflake_connection.DEFAULT_CONFIGURATION
+
         mock_connection = Mock()
         mock_snowflake.connector.connect.return_value = mock_connection
 
@@ -199,11 +202,69 @@ class TestSnowflakeAdapter:
         assert admin_conn == mock_connection
         mock_snowflake.connector.connect.assert_called_once()
         call_kwargs = mock_snowflake.connector.connect.call_args[1]
-        assert call_kwargs["account"] == "test_account"
-        assert call_kwargs["username"] == "test_user"
-        assert call_kwargs["password"] == "test_pass"
-        assert call_kwargs["warehouse"] == "TEST_WH"
-        assert call_kwargs["client_session_keep_alive"] is True
+        assert call_kwargs["user"] == "test_user"
+        assert "username" not in call_kwargs
+        extra = {"client_session_keep_alive", "login_timeout", "network_timeout"}
+        assert set(call_kwargs) - extra <= set(DEFAULT_CONFIGURATION)
+
+    @patch("benchbox.platforms.snowflake.snowflake")
+    def test_create_admin_connection_with_key_pair(self, mock_snowflake, tmp_path):
+        pytest.importorskip("cryptography.hazmat.primitives.serialization")
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import rsa
+
+        mock_connection = Mock()
+        mock_snowflake.connector.connect.return_value = mock_connection
+
+        key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        key_path = tmp_path / "key.p8"
+        key_path.write_bytes(
+            key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption(),
+            )
+        )
+
+        adapter = SnowflakeAdapter(
+            account="test_account",
+            username="test_user",
+            password="test_pass",
+            warehouse="TEST_WH",
+            database="TEST_DB",
+            private_key_path=str(key_path),
+        )
+
+        adapter._create_admin_connection()
+
+        call_kwargs = mock_snowflake.connector.connect.call_args[1]
+        assert "private_key" in call_kwargs
+        assert "password" not in call_kwargs
+
+    @patch("benchbox.platforms.snowflake.snowflake")
+    def test_handle_existing_database_reuses_compatible_database(self, mock_snowflake):
+        from types import SimpleNamespace
+
+        mock_connection = Mock()
+        mock_cursor = Mock()
+        mock_connection.cursor.return_value = mock_cursor
+        mock_cursor.fetchall.return_value = [["2026-10-12", "TPCH_SF1_X", "", "", ""]]
+        mock_snowflake.connector.connect.return_value = mock_connection
+
+        adapter = SnowflakeAdapter(
+            account="test_account",
+            username="test_user",
+            password="test_pass",
+            warehouse="TEST_WH",
+            database="TEST_DB",
+        )
+        adapter._validate_database_compatibility = Mock(
+            return_value=SimpleNamespace(is_valid=True, can_reuse=True, issues=[], warnings=[])
+        )
+
+        adapter.handle_existing_database(database="tpch_sf1_x")
+
+        assert adapter.database_was_reused is True
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_check_server_database_exists_true(self, mock_snowflake):

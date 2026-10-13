@@ -460,11 +460,46 @@ class SnowflakeAdapter(PlatformAdapter):
             "role": connection_config.get("role", self.role),
         }
 
-    def _create_admin_connection(self, **connection_config) -> Any:
-        params = self._get_connection_params(**connection_config)
+    def _connect_params(self, connection_config: dict[str, Any], *, include_database: bool) -> dict[str, Any]:
+        conn_params: dict[str, Any] = {
+            "account": connection_config.get("account", self.account),
+            "user": connection_config.get("username", self.username),
+            "password": connection_config.get("password", self.password),
+            "warehouse": connection_config.get("warehouse", self.warehouse),
+            "application": "BenchBox",
+            "timezone": self.timezone,
+            "autocommit": True,
+        }
+        if connection_config.get("role", self.role):
+            conn_params["role"] = connection_config.get("role", self.role)
+        if self.authenticator != "snowflake":
+            conn_params["authenticator"] = self.authenticator
+        if self.private_key_path:
+            from cryptography.hazmat.primitives import serialization
+            from cryptography.hazmat.primitives.serialization import (
+                load_pem_private_key,
+            )
 
+            with open(self.private_key_path, "rb") as key_file:
+                private_key = load_pem_private_key(
+                    key_file.read(),
+                    password=self.private_key_passphrase.encode() if self.private_key_passphrase else None,
+                )
+            pkb = private_key.private_bytes(
+                encoding=serialization.Encoding.DER,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption(),
+            )
+            conn_params["private_key"] = pkb
+            del conn_params["password"]
+        if include_database:
+            conn_params["database"] = connection_config.get("database", self.database)
+            conn_params["schema"] = connection_config.get("schema", self.schema)
+        return conn_params
+
+    def _create_admin_connection(self, **connection_config) -> Any:
         return snowflake.connector.connect(
-            **params,
+            **self._connect_params(connection_config, include_database=False),
             client_session_keep_alive=True,
             login_timeout=30,
             network_timeout=60,
@@ -502,7 +537,8 @@ class SnowflakeAdapter(PlatformAdapter):
 
             return False
 
-        except Exception:
+        except Exception as exc:
+            self.log_verbose(f"Snowflake database existence check failed: {type(exc).__name__}")
             return False
         finally:
             if "connection" in locals() and connection:
@@ -529,56 +565,22 @@ class SnowflakeAdapter(PlatformAdapter):
 
         self.handle_existing_database(**connection_config)
 
-        params = self._get_connection_params(**connection_config)
         self.log_very_verbose(
-            f"Snowflake connection params: account={params.get('account')}, database={connection_config.get('database', self.database)}"
+            f"Snowflake connection params: account={connection_config.get('account', self.account)}, database={connection_config.get('database', self.database)}"
         )
-        database = connection_config.get("database", self.database)
-        schema = connection_config.get("schema", self.schema)
 
         try:
-            self.log_verbose(f"Connecting to Snowflake account: {params['account']}")
-            conn_params = {
-                "account": params["account"],
-                "user": params["username"],
-                "password": params["password"],
-                "warehouse": params["warehouse"],
-                "database": database,
-                "schema": schema,
-                "application": "BenchBox",
-                "timezone": self.timezone,
-                "autocommit": True,
-            }
+            self.log_verbose(f"Connecting to Snowflake account: {connection_config.get('account', self.account)}")
+            conn_params = self._connect_params(connection_config, include_database=True)
 
-            if params["role"]:
-                conn_params["role"] = params["role"]
-                self.log_very_verbose(f"Using role: {params['role']}")
+            if conn_params.get("role"):
+                self.log_very_verbose(f"Using role: {conn_params['role']}")
 
             if self.authenticator != "snowflake":
                 self.log_very_verbose(f"Using authenticator: {self.authenticator}")
-                conn_params["authenticator"] = self.authenticator
 
             if self.private_key_path:
                 self.log_verbose("Using key pair authentication")
-                from cryptography.hazmat.primitives import serialization
-                from cryptography.hazmat.primitives.serialization import (
-                    load_pem_private_key,
-                )
-
-                with open(self.private_key_path, "rb") as key_file:
-                    private_key = load_pem_private_key(
-                        key_file.read(),
-                        password=self.private_key_passphrase.encode() if self.private_key_passphrase else None,
-                    )
-
-                pkb = private_key.private_bytes(
-                    encoding=serialization.Encoding.DER,
-                    format=serialization.PrivateFormat.PKCS8,
-                    encryption_algorithm=serialization.NoEncryption(),
-                )
-
-                conn_params["private_key"] = pkb
-                del conn_params["password"]
 
             connection = snowflake.connector.connect(**conn_params)
 
