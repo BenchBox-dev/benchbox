@@ -2984,6 +2984,13 @@
       "status": "done",
       "title": "Capture and resolve ClickHouse live connection warning in Docker suite"
     },
+    "clickhouse-duckdb-template-settings-review-20261013": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Review unmeasured ClickHouse and DuckDB template choices: lineitem sort, inert or risky settings, latent per-day partitioning"
+    },
     "clickhouse-error-message-capture": {
       "claim": null,
       "needs": [],

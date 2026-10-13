@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Each listed choice is measured and kept with evidence, or removed; the capability registry text matches behaviour; the generator refuses per-day integer partitioning (test)."
+  ],
+  "context": "Found 2026-10-13 by an adversarial review of ClickHouse/DuckDB tuning at origin/develop 77048bfb9.",
+  "description": "## Problem\n- **DuckDB TPC-H sort.** The template sorts `lineitem` by `l_orderkey, l_linenumber`, which is probably dbgen's existing order. That costs load time for no gain; ClickHouse leads with the ship date. Neither choice has been measured.\n- **DuckDB sorting builds an index first.** The sort also creates a multi-column ART index at DDL time, before the load. One noisy test showed it slowed the store_sales reorder 1.4–3× with no query gain. Verification checks the index, not the row order; see `tuning-sort-evidence-attested-20261001`. `benchbox/core/tuning/capability_registry.py:66-71` still describes CTAS.\n- **ClickHouse settings.**\n  - `group_by_two_level_threshold=100000` equals the default.\n  - `max_bytes_in_join` at half the memory limit, with overflow mode `throw`, can fail joins that would otherwise fit.\n- **Latent per-day partitioning.** `benchbox/core/tuning/generators/clickhouse.py:160-165` would partition an integer date key on its raw value, giving one partition per day. No template does this today, and the guard test checks only the leading sort column.\n\n## Change\nMeasure or remove each choice, fix the registry text, and make the generator refuse raw integer date-key partitioning.",
+  "links": [
+    "examples/tunings/duckdb",
+    "examples/tunings/clickhouse",
+    "benchbox/core/tuning/generators/clickhouse.py",
+    "benchbox/core/tuning/capability_registry.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
+      "at": "2026-10-13T13:14:45Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "8dba3918973c47c79fc0edf17638329a",
+      "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    }
+  ]
+}
