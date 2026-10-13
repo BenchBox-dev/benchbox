@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+import types
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
@@ -17,6 +19,7 @@ from benchbox.core.tuning.metadata import (
     MetadataValidationResult,
     TuningMetadata,
     TuningMetadataManager,
+    _insert_value_mark,
     _normalize_platform_key,
 )
 
@@ -218,6 +221,71 @@ def test_batch_insert_records_supports_query_job_connections():
     assert "`my-proj.my_ds.BENCHBOX_TUNING_METADATA`" in sql
     assert "?" not in sql
     assert "'orders'" in sql and "'o_orderkey'" in sql
+
+
+@pytest.mark.parametrize(
+    ("module_name", "paramstyle", "expected"),
+    [
+        ("fake_pyformat_driver.connection", "pyformat", "%s"),
+        ("fake_format_driver.core", "format", "%s"),
+        ("fake_qmark_driver", "qmark", "?"),
+        ("fake_named_driver.client", "named", "?"),
+    ],
+)
+def test_insert_value_mark_follows_driver_module_paramstyle(monkeypatch, module_name, paramstyle, expected):
+    monkeypatch.setitem(sys.modules, module_name.split(".")[0], types.SimpleNamespace(paramstyle=paramstyle))
+    connection_type = type("_DriverConn", (_Conn,), {"__module__": module_name})
+    assert _insert_value_mark(connection_type(_Cursor())) == expected
+
+
+def test_insert_value_mark_prefers_the_connection_paramstyle(monkeypatch):
+    monkeypatch.setitem(sys.modules, "fake_configurable_driver", types.SimpleNamespace(paramstyle="pyformat"))
+    connection_type = type(
+        "_ConfiguredConn", (_Conn,), {"__module__": "fake_configurable_driver.connection", "_paramstyle": "qmark"}
+    )
+    assert _insert_value_mark(connection_type(_Cursor())) == "?"
+
+
+def test_insert_value_mark_unwraps_benchbox_connection_wrappers(monkeypatch):
+    monkeypatch.setitem(sys.modules, "fake_mysql_driver", types.SimpleNamespace(paramstyle="pyformat"))
+    inner = type("_InnerConn", (_Conn,), {"__module__": "fake_mysql_driver.connections"})(_Cursor())
+    wrapper = type("_Wrapper", (), {"__module__": "benchbox.platforms.fake_wrapper"})()
+    wrapper._conn = inner
+    assert _insert_value_mark(wrapper) == "%s"
+
+
+def test_insert_value_mark_defaults_to_qmark_for_unknown_connections():
+    assert _insert_value_mark(_Conn(_Cursor())) == "?"
+
+
+def test_insert_value_mark_matches_installed_drivers():
+    import sqlite3
+
+    snowflake_connection = pytest.importorskip("snowflake.connector.connection")
+    connection = snowflake_connection.SnowflakeConnection.__new__(snowflake_connection.SnowflakeConnection)
+    assert _insert_value_mark(connection) == "%s"
+    assert _insert_value_mark(sqlite3.connect(":memory:")) == "?"
+
+
+def test_batch_insert_records_uses_pyformat_mark_for_pyformat_driver(monkeypatch):
+    monkeypatch.setitem(sys.modules, "fake_pyformat_db", types.SimpleNamespace(paramstyle="pyformat"))
+    connection_type = type("_PyformatConn", (_Conn,), {"__module__": "fake_pyformat_db.connection"})
+    cursor = _Cursor()
+    manager = TuningMetadataManager(_Adapter(platform_name="snowflake"), connection=connection_type(cursor))
+    record = TuningMetadata(
+        table_name="lineorder",
+        tuning_type="run_kind",
+        column_name="run_kind",
+        column_order=0,
+        configuration_hash="tuned",
+        created_at=datetime(2026, 10, 12, 0, 0, 0),
+        platform="snowflake",
+    )
+    manager._batch_insert_records([record])
+    sql, params = cursor.executed[0]
+    assert "?" not in sql
+    assert sql.count("%s") == 7
+    assert params[0] == "lineorder"
 
 
 def test_clear_tunings_uses_where_true_for_bigquery():
