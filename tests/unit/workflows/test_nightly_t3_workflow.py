@@ -34,6 +34,7 @@ DOMAIN_JOBS = {
     "quarantine": "t3:quarantine",
     "linkcheck": "t3:linkcheck",
     "liveness": "t3:liveness",
+    "ruleset-drift": "t3:ruleset-drift",
     "windows": "t3:windows",
     "durations-refresh": "t3:durations",
 }
@@ -736,3 +737,29 @@ def test_windows_domain_timeout_leaves_margin_over_the_measured_run() -> None:
     measured_run_minutes = 38.13
 
     assert _load()["jobs"]["windows"]["timeout-minutes"] >= measured_run_minutes * 1.25
+
+
+RETIRING_WORKFLOWS = {"nightly.yml", "release-canary.yml", "validate-release-pr.yml"}
+
+
+def test_a_kept_scheduled_workflow_runs_the_ruleset_drift_check() -> None:
+    runners = [
+        path.name
+        for path in sorted(WORKFLOWS_DIR.glob("*.yml"))
+        if path.name not in RETIRING_WORKFLOWS
+        and "scripts/ruleset_drift_check.py" in path.read_text(encoding="utf-8")
+        and "schedule" in _triggers(_load(path))
+    ]
+
+    assert runners, "no workflow outside the retiring set runs scripts/ruleset_drift_check.py on a schedule"
+
+
+def test_ruleset_drift_domain_reports_through_the_token_and_uploads_evidence() -> None:
+    job = _load()["jobs"]["ruleset-drift"]
+    text = _run_text(job)
+
+    assert "scripts/ruleset_drift_check.py" in text
+    assert "--require-bypass-actor-visibility" in text
+    assert "continue-on-error" not in job
+    uploads = [step for step in _steps(job) if "upload-artifact" in str(step.get("uses", ""))]
+    assert [step["with"]["name"] for step in uploads] == ["t3-ruleset-drift"]

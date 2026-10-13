@@ -759,6 +759,42 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  ruleset-drift:
+    name: "t3:ruleset-drift | live rulesets match the runbook"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout develop (scheduled runs come from the default branch)
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: develop
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Compare live governance with the runbook
+        shell: bash
+        env:
+          RULESET_DRIFT_TOKEN: ${{ secrets.RULESET_DRIFT_TOKEN }}
+        run: |
+          set -euo pipefail
+          python scripts/ruleset_drift_check.py \
+            --token "${RULESET_DRIFT_TOKEN}" \
+            --require-bypass-actor-visibility \
+            --output ruleset-drift.json
+
+      - name: Upload drift evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: t3-ruleset-drift
+          path: ruleset-drift.json
+          if-no-files-found: warn
+          retention-days: 30
+
   windows:
     name: "t3:windows | fast unit tests (windows-latest, py3.12)"
     runs-on: windows-latest
@@ -885,6 +921,7 @@ jobs:
       - quarantine
       - linkcheck
       - liveness
+      - ruleset-drift
       - windows
       - durations-refresh
     if: ${{ always() && !cancelled() }}
@@ -903,7 +940,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for job in docker cloud perf matrix browser extension install drift quarantine linkcheck liveness windows durations-refresh; do
+          for job in docker cloud perf matrix browser extension install drift quarantine linkcheck liveness ruleset-drift windows durations-refresh; do
             case "$job" in
               durations-refresh) domain=durations ;;
               *) domain="$job" ;;
