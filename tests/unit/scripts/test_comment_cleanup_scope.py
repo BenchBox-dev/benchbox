@@ -737,6 +737,20 @@ def test_directive_token_and_count_must_match_the_base_file(tmp_path: Path, poli
         scope.validate_evidence(policy, root, base, {"src/a.py"})
 
 
+def test_ledger_tokens_must_match_the_committed_tree() -> None:
+    head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    policy = json.loads((ROOT / "quality/comment-cleanup-scope.json").read_text(encoding="utf-8"))
+    for category in ("directives", "obligations"):
+        for index, entry in enumerate(policy[category]):
+            blob = scope.base_blob(ROOT, head, entry["path"])
+            occurrences = blob.count(entry["token"].encode())
+            assert occurrences > 0, f"{category}[{index}] token is not present in {entry['path']} at {head[:9]}"
+            if category == "directives":
+                assert occurrences == entry["count"], (
+                    f"{category}[{index}] counts {entry['count']} but {entry['path']} has {occurrences} at {head[:9]}"
+                )
+
+
 def test_obligation_token_must_be_present_at_the_base(tmp_path: Path, policy: dict) -> None:
     root, base = _git_repo_with(tmp_path, {"src/a.py": "# TODO: follow up\n"})
     entry = {
