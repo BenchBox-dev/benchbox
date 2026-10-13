@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Owner answer quoted in the context of site-split-40; #2930 closed or repackaged accordingly",
+    "The route-class evidence recorded in site-split-40 states the event of the bundle's Site Inputs run (workflow_run for a natural bundle) or cites the quoted owner approval; check: `gh run view <id> --json event`",
+    "If enforcement is chosen: a corpus-validator test fails a results-data/bundles file with export.anonymized=false and passes one with true; the validator is the step CI runs on PRs to develop (identify it in ci.yml or corpus-drift-check.yml); the sync-results-data-to-published path is checked for the same condition",
+    "If enforcement is declined: the reason is recorded in site-split-40 and the closeout lists raw-until-packaged as a known manual step with an owner",
+    "The batch's allowed-actions list names Seed Corpus dispatch explicitly, either allowed with conditions or excluded"
+  ],
+  "context": "Raised by the 2026-10-13 adversarial review (handoff revision 9, finding 4). Evidence: `gh api repos/BenchBox-dev/benchbox/actions/runs/38331461283` actor joeharris76, event workflow_dispatch; PR #2930 commits f4ef44943 (benchbox-bot) and a341576e3 (Joe Harris); `git grep -n anonymized origin/develop -- src scripts .github _project/scripts` matched only check_artifact_privacy.py; 413 bundles on develop have anonymized true, 6 new ones false. A single bundle was inspected: runner paths and the Azure kernel string, no personal data seen; the other five were not scanned. Low sensitivity does not remove the policy question.",
+  "description": "Item site-split-40 step 6 says to wait for natural core merges and not to create artificial core changes; if none arrive, ask the owner. Seed Corpus run 38331461283 was dispatched by hand (actor joeharris76, workflow_dispatch) on 2026-10-13, and seed PR #2930 carries follow-up commit a341576e from the same session. No owner approval is recorded, and manual Seed Corpus dispatch is not on the batch's allowed-actions list. Natural bundles with a changed corpus already existed from 2026-10-12 12:35Z (the deploy gate printed \"corpus changed\"); they could not deploy because of the pipeline defects in items 60-62, not because no natural change existed.\n\nSeparately, the 6 bundles in #2930 have export.anonymized=false. A search of src, scripts, .github and _project/scripts at origin/develop found no check that rejects such bundles (only tuning-diagnostics findings in scripts/publication/check_artifact_privacy.py). Confirm this before building on it; the owner may rely on the manual salt-packaging step.\n\nWork: (1) ask the owner whether to keep #2930 as the vehicle (with salt packaging) or close it and wait for the natural bundle; (2) record the answer in item 40; (3) decide whether to enforce anonymized=true mechanically.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:812b6e01fb0a3c7a08e17bfb",
+      "at": "2026-10-13T13:49:46Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "cf843468c969457b8148d5c5694aef45",
+      "session_id": "092ba024912949d88c4bc8f8c819cdba"
+    }
+  ]
+}

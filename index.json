@@ -20449,6 +20449,13 @@
       "status": "open",
       "title": "Resolve the site-inputs bundle parent by SHA in a tested script so chain recovery does not depend on a ten-run window"
     },
+    "site-split-64-seed-vehicle-authorization": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Get the owner's decision on seed PR #2930 as the item-40 vehicle, and decide whether raw bundles may merge to develop"
+    },
     "site-split-65-replay-completeness-and-fidelity": {
       "claim": null,
       "needs": [],
