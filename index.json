@@ -20589,10 +20589,10 @@
     },
     "snowflake-trial-exit-stage5-large-scale": {
       "claim": {
-        "expires_at": "2026-10-13T21:40:39Z",
-        "generation": "67065aacb1d345e1997efd20a46c54ff",
+        "expires_at": "2026-10-14T01:10:21Z",
+        "generation": "38b3e80a6f4445a59351fb8556f28b58",
         "renewals": 0,
-        "worker": "mcp:tbh:joe@joe-mac-mini.local:28ec00d9b0349e9794467df7"
+        "worker": "mcp:tbh:joe@joe-mac-mini.local:7990f8419a34d09d7b866eb4"
       },
       "needs": [
         "snowflake-trial-exit-stage4-triaged-tuned-pass"
