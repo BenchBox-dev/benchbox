@@ -174,19 +174,20 @@ benchbox run --platform snowflake --benchmark tpch \
   --platform-option warehouse=COMPUTE_WH
 ```
 
-### Athena Spark Engine Version
+### Athena Spark Runtime Version
 
-For Athena Spark only, the Spark engine version can be explicitly selected:
+On Athena Spark, the Spark-enabled workgroup sets the engine version. A session
+cannot choose it, so BenchBox never sends a version when it starts one.
 
 | Key | Description |
 |-----|-------------|
-| `engine_version` | Spark engine version string (e.g. `PySpark engine version 3`). Defaults to the workgroup's configured version. **Athena Spark only** - on other cloud platforms the engine version is auto-detected. |
+| `runtime_version` | Spark engine version you expect the workgroup to run (e.g. `PySpark engine version 3`). Results record it as `runtime_version` with `runtime_version_source: requested`. Change the version on the workgroup itself. `engine_version` is a deprecated alias, removed in 0.6.0. |
 
 ```bash
 benchbox run --platform athena-spark --benchmark tpch \
-  --platform-option workgroup=my-spark-workgroup \
+  --platform-option compute_resource=my-spark-workgroup \
   --platform-option s3_staging_dir=s3://my-bucket/benchbox \
-  --platform-option "engine_version=PySpark engine version 3"
+  --platform-option "runtime_version=PySpark engine version 3"
 ```
 
 ### ClickHouse Options

@@ -35,6 +35,7 @@ class DeprecatedOptionAlias:
 
 DEPRECATED_OPTION_ALIASES: Mapping[tuple[str, str], DeprecatedOptionAlias] = MappingProxyType(
     {
+        ("athena-spark", "engine_version"): DeprecatedOptionAlias(target="runtime_version", removed_in="0.6.0"),
         ("clickhouse", "mode"): DeprecatedOptionAlias(target="deployment", removed_in="0.6.0"),
         ("databend", "warehouse"): DeprecatedOptionAlias(target="compute_resource", removed_in="0.6.0"),
         ("fabric_dw", "warehouse"): DeprecatedOptionAlias(target="database", removed_in="0.6.0"),

@@ -98,7 +98,7 @@ benchbox run [OPTIONS]
 - Universal keys available on all platforms:
   - `driver_version` - pin the Python driver package version (e.g. `1.2.0`)
   - `driver_auto_install` - auto-install the requested driver via uv if missing (`true`/`false`)
-- Athena Spark only: `engine_version` - select Spark engine version (e.g. `PySpark engine version 3`); auto-detected on all other cloud platforms
+- Athena Spark only: `runtime_version` - record the Spark engine version you expect (e.g. `PySpark engine version 3`); the workgroup sets the version and BenchBox records this value as requested
 
 **Benchmark-Specific Configuration:**
 - `--benchmark-option KEY=VALUE`: Benchmark-specific option (can be used multiple times)
@@ -266,9 +266,9 @@ benchbox run --platform duckdb --benchmark tpch \
   --platform-option driver_auto_install=true
 
 benchbox run --platform athena-spark --benchmark tpch --scale 1.0 \
-  --platform-option workgroup=my-spark-workgroup \
+  --platform-option compute_resource=my-spark-workgroup \
   --platform-option s3_staging_dir=s3://my-bucket/benchbox \
-  --platform-option "engine_version=PySpark engine version 3"
+  --platform-option "runtime_version=PySpark engine version 3"
 
 benchbox platforms status clickhouse
 ```
@@ -277,7 +277,7 @@ The examples, in order:
 
 - ClickHouse with local mode and TLS.
 - Pin the driver version, which works on any platform.
-- Athena Spark: select the Spark engine version.
+- Athena Spark: run in a Spark-enabled workgroup and record the engine version it is configured with.
 - The last command shows platform details and capabilities.
 
 ## Table Storage Options

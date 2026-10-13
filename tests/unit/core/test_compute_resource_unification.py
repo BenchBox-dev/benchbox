@@ -474,12 +474,11 @@ class TestDatabricksDfComputeUnification:
 
 
 class TestAthenaSparkRuntimeVersion:
-    def test_default_runtime_version(self):
+    def test_runtime_version_defaults_to_unrequested(self):
         from benchbox.platforms.aws.athena_spark_adapter import AthenaSparkAdapter
 
         adapter = AthenaSparkAdapter(workgroup="wg", s3_staging_dir="s3://bucket/path")
-        assert adapter.runtime_version == "PySpark engine version 3"
-        assert adapter.engine_version == "PySpark engine version 3"
+        assert adapter.runtime_version is None
 
     def test_deprecated_engine_version_warns_and_resolves(self):
         from benchbox.core import compute_resource
@@ -497,21 +496,6 @@ class TestAthenaSparkRuntimeVersion:
 
         adapter = AthenaSparkAdapter.from_config({"compute_resource": "spark-wg", "s3_staging_dir": "s3://bucket/path"})
         assert adapter.workgroup == "spark-wg"
-
-    def test_runtime_version_reaches_start_session(self):
-        from unittest.mock import MagicMock
-
-        from benchbox.platforms.aws.athena_spark_adapter import AthenaSparkAdapter
-
-        adapter = AthenaSparkAdapter(workgroup="wg", s3_staging_dir="s3://bucket/path")
-        client = MagicMock()
-        client.start_session.return_value = {"SessionId": "s-1", "State": "IDLE"}
-        adapter._athena_client = client
-        adapter._wait_for_session_ready = MagicMock()
-        adapter.create_connection()
-        _, kwargs = client.start_session.call_args
-        assert kwargs["WorkGroup"] == "wg"
-        assert kwargs["EngineConfiguration"]["EngineVersion"] == "PySpark engine version 3"
 
 
 class TestSynapseSparkComputeUnification:
