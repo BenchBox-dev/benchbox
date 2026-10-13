@@ -15,7 +15,7 @@ pytestmark = [
     pytest.mark.live_starburst,
     pytest.mark.skipif(
         not os.getenv("STARBURST_HOST"),
-        reason="Requires STARBURST_HOST environment variable. See docstring for setup.",
+        reason="Requires STARBURST_HOST environment variable. See docs/testing/live-integration-tests.md for setup.",
     ),
 ]
 

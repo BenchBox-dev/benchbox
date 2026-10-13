@@ -374,7 +374,7 @@ def main(argv: list[str] | None = None) -> int:
         "--uat-max-age-days",
         type=float,
         default=float(os.environ.get("RELEASE_UAT_MAX_AGE_DAYS", "21")),
-        help="Maximum age of the committed UAT gate evidence (default 21 days; see module docstring).",
+        help="Maximum age of the committed UAT gate evidence (default 21 days; see CLI_DESCRIPTION).",
     )
     parser.add_argument(
         "--uat-evidence-path",

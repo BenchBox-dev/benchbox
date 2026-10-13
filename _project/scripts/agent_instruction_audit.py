@@ -123,7 +123,8 @@ AGENT_COMMENT_POLICY_ANCHORS = {
         "docs/internal/comment-policy.md",
         "no explanatory comments or docstrings",
         "make comment-policy-check",
-        "resolve every finding while enforcement is advisory",
+        "resolve every finding",
+        "enforcement is blocking",
     )
 }
 HANDBACK_TEXT = (

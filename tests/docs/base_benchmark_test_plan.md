@@ -227,13 +227,13 @@ def test_feature_expected_behavior():
     mock_benchmark.cleanup()
 ```
 
-Each test follows four steps: set up the mock benchmark, exercise the method under test, verify the result and state, and clean up if needed beyond the fixture scope. Each test docstring states that a feature behaves in an expected way under given conditions.
+Each test follows four steps: set up the mock benchmark, exercise the method under test, verify the result and state, and clean up if needed beyond the fixture scope. Each test name states that a feature behaves in an expected way under given conditions.
 
 ### Mock Implementation Guidelines
 
 - Keep mock implementations as simple as possible while satisfying the interface
 - Use appropriate mocking tools (MagicMock, patch, etc.) for external dependencies
-- Document any assumptions made in mock implementations
+- Keep assumptions visible in the mock code; record shared assumptions in tests/README.md
 
 ## Test Implementation Priorities
 
@@ -256,10 +256,10 @@ Each test follows four steps: set up the mock benchmark, exercise the method und
 
 ## Test Documentation Standards
 
-- Each test module must have a module-level docstring explaining its purpose
-- Each test function must have a docstring explaining what it tests and why
-- Complex test setups must be documented inline
-- Assumptions must be explicitly stated in comments
+- Do not add module-level or function-level docstrings
+- Use descriptive test names that state what is tested and why
+- Keep complex setups simple; record shared fixture contracts in tests/README.md, not in test docstrings or comments
+- State assumptions through code structure and names, not inline comments
 
 ## Continuous Integration
 

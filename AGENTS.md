@@ -73,7 +73,7 @@ A disposable clone (remote session, CI runner) declares `BENCHBOX_EPHEMERAL_CLON
 
 - Prefer repository `make` targets and existing helpers.
 - Python tooling is `uv` only: `uv run -- ...`, `uv add`, `uv sync`, `uv lock`.
-- `[COMMENT-POLICY-001]` Follow the comment and docstring policy (`docs/internal/comment-policy.md`). Maintained first-party code has no explanatory comments or docstrings: clarify intent with structure, names, and types. Put public contracts in API docs, not source prose. Permitted directives, notices, and fixtures must be registered in `quality/comment-policy.json`. Verify with `make comment-policy-check`; resolve every finding while enforcement is advisory.
+- `[COMMENT-POLICY-001]` Follow the comment and docstring policy (`docs/internal/comment-policy.md`). Maintained first-party code has no explanatory comments or docstrings: clarify intent with structure, names, and types. Put public contracts in API docs, not source prose. Permitted directives, notices, and fixtures must be registered in `quality/comment-policy.json`. Verify with `make comment-policy-check`; resolve every finding. Enforcement is blocking.
 - Research the affected path, make the narrowest coherent change, and preserve compatibility and critical-path performance. Before writing a new helper, search for an existing equivalent (`make duplicate-check-verbose` / `duplicate-check-delta`).
 - Use Python 3.11+, four spaces, 120 columns, Ruff, and public API type hints.
 - No credentials in Git; redact logs and use environment variables.

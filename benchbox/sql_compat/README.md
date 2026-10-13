@@ -99,7 +99,7 @@ Decision rules:
 
    If the adapter must keep a local create/load path instead, set
    `governance_only=True` on the payload and name the local method in the rule
-   docstring/reason.
+   `reason`.
 
 3. **Confirm** `compat_lint` runs clean:
 

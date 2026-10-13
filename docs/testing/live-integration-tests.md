@@ -313,7 +313,7 @@ jobs:
 1. Follow the existing test pattern in `test_databricks_live.py`
 2. Use fixtures from `conftest.py`
 3. Always include cleanup logic
-4. Document expected cost in docstring
+4. Record expected cost in the Cost Considerations section above
 
 ### Testing Without Credentials
 

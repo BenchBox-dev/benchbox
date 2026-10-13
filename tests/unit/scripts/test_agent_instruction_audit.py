@@ -194,7 +194,8 @@ def test_project_write_closeout_exception_drift_fails(tmp_path: Path, phrase: st
         "docs/internal/comment-policy.md",
         "no explanatory comments or docstrings",
         "make comment-policy-check",
-        "resolve every finding while enforcement is advisory",
+        "resolve every finding",
+        "enforcement is blocking",
     ],
 )
 def test_project_comment_policy_drift_fails(tmp_path: Path, phrase: str) -> None:
