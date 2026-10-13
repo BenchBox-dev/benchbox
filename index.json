@@ -14361,9 +14361,9 @@
     },
     "oracle-absence-classification-lows-20261008": {
       "claim": {
-        "expires_at": "2026-10-14T22:22:52Z",
+        "expires_at": "2026-10-14T22:29:10Z",
         "generation": "34913345bc334f7fa4366478e7b05717",
-        "renewals": 0,
+        "renewals": 1,
         "worker": "mcp:tbh:joe@joe-mac-mini.local:ee5a973726de839c8eab56eb"
       },
       "needs": [],
