@@ -6,6 +6,7 @@ from decimal import Decimal
 import pytest
 
 from _project.scripts.explorer_pipeline.transformer import (
+    _environment_facets,
     _estimated_normalized_cost,
     _median_measured_seconds_per_query,
     _normalized_cost,
@@ -116,6 +117,27 @@ def test_failed_measurement_yields_no_estimate() -> None:
     ]
 
     assert _estimated_normalized_cost(_parse_bundle(data)) is None
+
+
+def test_partial_query_set_refuses_estimate() -> None:
+    data = _snowflake_bundle()
+    data["summary"]["queries"]["total"] = 22
+
+    assert _estimated_normalized_cost(_parse_bundle(data)) is None
+
+
+def test_estimated_cost_does_not_publish_assumed_environment_facets() -> None:
+    bundle = _parse_bundle(_snowflake_bundle())
+    cost = _estimated_normalized_cost(bundle)
+
+    assert cost is not None
+    assert cost.cost_status == "estimated"
+    facets = _environment_facets(bundle, normalized_cost=cost)
+
+    assert facets["deployment_class"] is None
+    assert facets["cloud_provider"] is None
+    assert facets["cloud_region"] is None
+    assert facets["instance_or_warehouse"] is None
 
 
 def test_prior_unavailable_reasons_are_preserved_alongside_estimate() -> None:

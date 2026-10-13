@@ -836,6 +836,53 @@ def _canonical_cost_region(value: Any) -> str | None:
 _SNOWFLAKE_ESTIMATE_CREDIT_USD = Decimal("2.00")
 _SNOWFLAKE_ESTIMATE_PRICING_DATE = "2026-10-09"
 
+_DATABRICKS_TIER_EVIDENCE_KEYS = (
+    "tier",
+    "contract_tier",
+    "edition",
+    "pricing_tier",
+    "workload_type",
+    "workload",
+)
+
+
+def _databricks_estimate_refusal_reason(bundle: BundleDocument) -> str | None:
+    platform = (bundle.platform.name or "").strip().lower()
+    if platform != "databricks":
+        return None
+    timings = _query_timings(bundle)
+    measured = [timing for timing in timings if timing.run_type == "measurement"]
+    if not measured and timings and all(timing.run_type is None for timing in timings):
+        measured = timings
+    if not any(timing.status == "pass" for timing in measured):
+        return None
+    compute = bundle.platform.compute
+    deployment_block = bundle.platform.deployment
+    config = bundle.platform.config
+    evidence = _first_string(
+        *[
+            _bundle_value(block, key)
+            for block in (compute, deployment_block, config)
+            for key in _DATABRICKS_TIER_EVIDENCE_KEYS
+        ]
+    )
+    if evidence is not None:
+        return (
+            "No timing-derived Databricks estimate is published: BenchBox only publishes Snowflake "
+            "reference scenarios with a verified rate cell, and no verified Databricks DBU rate cell "
+            "exists for this run."
+        )
+    warehouse = _first_string(
+        _bundle_value(compute, "warehouse_size"),
+        _bundle_value(deployment_block, "warehouse_size"),
+    )
+    detail = f" Recorded warehouse size: {warehouse}." if warehouse else ""
+    return (
+        "No timing-derived Databricks estimate is published: the bundle does not record the contract "
+        "tier (standard/premium/enterprise) or workload class needed to select a defensible DBU price, "
+        "so any dollar value would fall back to a default rate." + detail
+    )
+
 
 def _median_measured_seconds_per_query(bundle: BundleDocument) -> Decimal | None:
     timings = _query_timings(bundle)
@@ -862,9 +909,23 @@ def _median_measured_seconds_per_query(bundle: BundleDocument) -> Decimal | None
     return total
 
 
+def _has_complete_measured_queries(bundle: BundleDocument) -> bool:
+    timings = _query_timings(bundle)
+    display_timings = _build_display_timings(timings)
+    logical_query_count = _logical_query_count(bundle, display_timings)
+    contract = timing_eligibility(display_timings, logical_query_count)
+    return (
+        contract.missing_query_count == 0
+        and contract.zero_timing_count == 0
+        and contract.comparison_exclusion_reason is None
+    )
+
+
 def _estimated_normalized_cost(bundle: BundleDocument) -> NormalizedCost | None:
     platform = (bundle.platform.name or "").strip().lower()
     if platform != "snowflake":
+        return None
+    if not _has_complete_measured_queries(bundle):
         return None
     runtime = _median_measured_seconds_per_query(bundle)
     if runtime is None:
@@ -1105,6 +1166,8 @@ def _environment_facets(
         "storage_format": _string_or_none(storage.table_format),
     }
     if _has_normalized_environment_contract(bundle) or normalized_cost is None:
+        return facets
+    if normalized_cost.cost_status == "estimated":
         return facets
     return _legacy_environment_facets_from_cost(normalized_cost)
 

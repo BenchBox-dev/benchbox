@@ -33,11 +33,6 @@ export function timeSeriesColor(index: number): string {
 export const HEAT_MIN_RATIO = 1;
 export const HEAT_MAX_RATIO = 10;
 
-export const SPEEDUP_LOG2_MIN = Math.log2(0.2);
-export const SPEEDUP_LOG2_MAX = Math.log2(5);
-export const SPEEDUP_LOG2_RANGE = SPEEDUP_LOG2_MAX - SPEEDUP_LOG2_MIN;
-export const SPEEDUP_GRID_STOPS = [0.2, 0.25, 0.5, 1, 2, 4, 5] as const;
-
 export const DIVERGING_MAX_PCT = 300;
 
 export const PHASE_COLORS: Record<string, string> = {

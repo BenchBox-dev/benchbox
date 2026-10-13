@@ -335,8 +335,15 @@ describe("QueryHistogram", () => {
     expect(rows).toHaveLength(3);
     expect(rows[0]?.querySelectorAll("[data-platform-marker]")).toHaveLength(2);
     expect(container.querySelector("table caption")?.textContent).toContain("Per-query latency");
-    expect(container.textContent).toContain("Latency (ms)");
+    expect(container.textContent).toContain("Latency (ms, log scale)");
     expect(container.querySelector("[role='group'][aria-label='Run legend']")).not.toBeNull();
+  });
+
+  it("uses a group role when query labels link out and an image role otherwise", () => {
+    const linked = render(<QueryHistogram summary={makeSummary()} queryHref={(queryId) => `#${queryId}`} />);
+    expect(linked.container.querySelector("svg")?.getAttribute("role")).toBe("group");
+    const { container } = render(<QueryHistogram summary={makeSummary()} />);
+    expect(container.querySelector("svg")?.getAttribute("role")).toBe("img");
   });
 
   it("uses timing eligibility instead of raw positive timings", () => {
@@ -354,7 +361,7 @@ describe("QueryHistogram", () => {
     const { container } = render(<QueryHistogram summary={summary} />);
 
     expect(container.querySelector("svg")).not.toBeNull();
-    expect(container.querySelectorAll("circle")).toHaveLength(0);
+    expect(container.querySelectorAll("path[data-platform-marker]")).toHaveLength(0);
     expect(container.querySelectorAll("[data-platform-marker]")).toHaveLength(1);
     expect(container.textContent).toContain("A zero timing cannot be used in this ranking.");
   });
@@ -402,7 +409,7 @@ describe("QueryHistogram", () => {
     });
     const { container } = render(<QueryHistogram summary={summary} />);
     const labels = Array.from(container.querySelectorAll("text[data-query-label]")).map(
-      (label) => label.textContent,
+      (label) => label.firstChild?.textContent,
     );
     expect(labels).toStrictEqual(["Q1", "Q2", "Q10"]);
   });

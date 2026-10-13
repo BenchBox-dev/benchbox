@@ -652,6 +652,7 @@ export function Compare({ url }: CompareProps) {
             suppressWinnerClaims={decisionSummary.claimSuppressed}
             suppressionReason={decisionSummary.claimSuppressionReason ?? undefined}
             queryFilter={queryLimiter === "all" ? undefined : limitedQueryIds}
+            queryHref={(queryId) => queryRunComparisonHref(queryId, results.map((result) => result.result_id), basis)}
             excludeChartIds={["performance_bar", "power_bar", "comparison_bar"]}
           />
         </div>
@@ -814,7 +815,7 @@ export function Compare({ url }: CompareProps) {
             limiter={queryLimiter}
             orderByDisagreement={queryLimiter === "movement"}
             queryFilter={queryLimiter === "all" ? undefined : limitedQueryIds}
-            queryHref={(queryId) => queryRunComparisonHref(queryId, results.map(visibleResultIdForRow), basis)}
+            queryHref={(queryId) => queryRunComparisonHref(queryId, results.map((result) => result.result_id), basis)}
           />
         </>
       )}
@@ -826,7 +827,7 @@ export function Compare({ url }: CompareProps) {
           baselineIndex={normalizedBaselineIndex}
           suppressionReason={decisionSummary.claimSuppressionReason}
           queryFilter={queryLimiter === "all" ? undefined : limitedQueryIds}
-          queryHref={(queryId) => queryRunComparisonHref(queryId, results.map(visibleResultIdForRow), basis)}
+          queryHref={(queryId) => queryRunComparisonHref(queryId, results.map((result) => result.result_id), basis)}
         />
       )}
       <ComparabilityReceipt results={results} />

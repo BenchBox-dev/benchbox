@@ -796,6 +796,15 @@ describe("resolveShortId", () => {
     mockedQueryRows.mockResolvedValueOnce([]);
     await expect(resolveShortId("deadbeef")).resolves.toBe("deadbeef");
   });
+
+  it("does not resolve an id tail that was never issued as a short id", async () => {
+    mockedQueryRows.mockResolvedValueOnce([]);
+    await expect(resolveShortId("f0835929")).resolves.toBe("f0835929");
+    expect(mockedQueryRows).toHaveBeenCalledWith(
+      expect.stringMatching(/FROM bench\.short_ids WHERE short_id = \?/),
+      ["f0835929"],
+    );
+  });
 });
 
 describe("toShortIds", () => {

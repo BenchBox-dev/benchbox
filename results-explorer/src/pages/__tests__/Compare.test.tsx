@@ -845,6 +845,35 @@ describe("Compare", () => {
       .toBe("/results/compare/query/Q1?ids=r1%2Cr2%2Cr3");
   });
 
+  it("links single-query views with full result IDs so generated short IDs are not required", async () => {
+    const fullIds = [
+      "tpch-duckdb-sf0.01-20260403-f0835929",
+      "tpch-datafusion-sf0.01-20260403-91c44a02",
+      "tpch-clickhouse-sf0.01-20260403-55d0e91b",
+    ];
+    setupUrl(fullIds);
+    const fullResults = Object.fromEntries(
+      fullIds.map((id, index) => [
+        id,
+        makeResult({
+          result_id: id,
+          platform: `Platform ${index + 1}`,
+          platform_id: `platform-${index + 1}`,
+        }),
+      ]),
+    );
+    vi.mocked(getDetailResult).mockImplementation((id) => Promise.resolve(fullResults[id] ?? null));
+
+    render(<Compare />);
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Query by run" })).toBeTruthy());
+
+    const href = screen
+      .getByRole("link", { name: "Compare Q1 iterations across selected runs" })
+      .getAttribute("href")!;
+    const idsParam = new URL(href, "https://benchbox.dev").searchParams.get("ids");
+    expect(idsParam).toBe(fullIds.join(","));
+  });
+
   it("links compare warning counts to the Comparability Receipt and names warning classes", async () => {
     vi.mocked(getDetailResult).mockImplementation((id) =>
       id === "r1"

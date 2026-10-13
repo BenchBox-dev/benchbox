@@ -69,6 +69,7 @@ interface ChartPanelProps {
   queryFilter?: readonly string[];
   cardAnchors?: Readonly<Record<string, string>>;
   forceOpenChartId?: string | null;
+  queryHref?: (queryId: string) => string;
   rankGateReason?: string | null;
   rankGateContext?: { benchmark: string; scaleFactor: string; phase: string };
 }
@@ -193,6 +194,7 @@ function ChartPanelTabs({
   suppressionReason,
   excludeChartIds,
   queryFilter,
+  queryHref,
 }: ChartPanelProps) {
   const charts = useMemo(
     () => selectPanelCharts(context, excludeChartIds, queryFilter),
@@ -447,6 +449,7 @@ function ChartPanelTabs({
                   ? "No winner is named when fewer than two usable queries are selected"
                   : undefined),
               queryFilter,
+              queryHref,
             })}
             {summary && chartSummary && chartSummary.platforms.length > 0 && chartExclusionSummary.length > 0 && (
               <ChartDatasetExclusionSummary
@@ -475,6 +478,7 @@ function ChartPanelLong({
   suppressionReason,
   excludeChartIds,
   queryFilter,
+  queryHref,
 }: ChartPanelProps) {
   const charts = useMemo(
     () => selectPanelCharts(context, excludeChartIds, queryFilter),
@@ -567,6 +571,7 @@ function ChartPanelLong({
                 suppressWinnerClaims={suppressWinnerClaims}
                 suppressionReason={suppressionReason}
                 queryFilter={queryFilter}
+                queryHref={queryHref}
               />
             ))}
           </div>
@@ -585,6 +590,7 @@ function ChartFigure({
   suppressWinnerClaims = false,
   suppressionReason,
   queryFilter,
+  queryHref,
 }: {
   chart: ChartRegistryEntry;
   context: ChartContext;
@@ -594,6 +600,7 @@ function ChartFigure({
   suppressWinnerClaims?: boolean;
   suppressionReason?: string;
   queryFilter?: readonly string[];
+  queryHref?: (queryId: string) => string;
 }) {
   const chartSummary = useMemo(
     () => buildChartSummary(summary, chart.eligibilityClass, queryFilter),
@@ -661,6 +668,7 @@ function ChartFigure({
                   ? "No winner is named when fewer than two usable queries are selected"
                   : undefined),
               queryFilter,
+              queryHref,
             })}
             {summary && chartSummary && chartSummary.platforms.length > 0 && exclusionReasons.length > 0 && (
               <ChartDatasetExclusionSummary
@@ -789,6 +797,7 @@ function renderChart(
     suppressWinnerClaims = false,
     suppressionReason,
     queryFilter,
+    queryHref,
   }: {
     context: ChartContext;
     summary: BenchmarkSummary | null;
@@ -800,6 +809,7 @@ function renderChart(
     suppressWinnerClaims?: boolean;
     suppressionReason?: string;
     queryFilter?: readonly string[];
+    queryHref?: (queryId: string) => string;
   },
 ) {
   switch (chart.id) {
@@ -815,7 +825,7 @@ function renderChart(
       ) : null;
     case "query_histogram":
       return summary ? (
-        <QueryHistogram summary={summary} preserveOrder={Boolean(queryFilter)} />
+        <QueryHistogram summary={summary} preserveOrder={Boolean(queryFilter)} queryHref={queryHref} />
       ) : null;
     case "cost_scatter":
       return summary ? <CostScatter summary={summary} /> : null;
@@ -918,6 +928,7 @@ function renderChart(
             platform: platformLabels[index] ?? platform.platform,
           }))}
           baselineIdx={baselineIdx}
+          queryHref={queryHref}
         />
       ) : null;
     case "stacked_phase":

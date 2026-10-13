@@ -9,10 +9,6 @@ import {
   timeSeriesColor,
   HEAT_MIN_RATIO,
   HEAT_MAX_RATIO,
-  SPEEDUP_LOG2_MIN,
-  SPEEDUP_LOG2_MAX,
-  SPEEDUP_LOG2_RANGE,
-  SPEEDUP_GRID_STOPS,
   PHASE_COLORS,
 } from "@/lib/chartTheme";
 import { lightnessForCell } from "@/lib/chartMath";
@@ -82,24 +78,6 @@ describe("chartTheme", () => {
   it("maps the ranking best to a lighter cell and worse values to darker cells", () => {
     expect(lightnessForCell(HEAT_MIN_RATIO, HEAT_MIN_RATIO)).toBe("95%");
     expect(lightnessForCell(HEAT_MAX_RATIO, HEAT_MIN_RATIO)).toBe("25%");
-  });
-
-  it("SPEEDUP_LOG2_RANGE equals MAX minus MIN", () => {
-    expect(SPEEDUP_LOG2_RANGE).toBeCloseTo(SPEEDUP_LOG2_MAX - SPEEDUP_LOG2_MIN, 10);
-  });
-
-  it("SPEEDUP_LOG2_MIN < 0 (scales below 1× are valid)", () => {
-    expect(SPEEDUP_LOG2_MIN).toBeLessThan(0);
-  });
-
-  it("SPEEDUP_LOG2_MAX > 0 (scales above 1× are valid)", () => {
-    expect(SPEEDUP_LOG2_MAX).toBeGreaterThan(0);
-  });
-
-  it("SPEEDUP_GRID_STOPS are all positive numbers", () => {
-    for (const stop of SPEEDUP_GRID_STOPS) {
-      expect(stop).toBeGreaterThan(0);
-    }
   });
 
   it("PHASE_COLORS covers the 6 canonical phase names", () => {

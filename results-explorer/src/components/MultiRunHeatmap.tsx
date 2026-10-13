@@ -253,12 +253,12 @@ export function MultiRunHeatmap({
       )}
 
       <div class="overflow-x-auto">
-        <table class="min-w-full w-max divide-y divide-[var(--bb-data-border)] text-sm">
+        <table class="min-w-full w-max divide-y divide-[var(--bb-data-border)] text-sm" data-testid="multi-run-heatmap-table">
           <thead class="bg-[var(--bb-surface-data-muted)]">
             <tr>
-              <th scope="col" class="table-th">Query</th>
+              <th scope="col" class="table-th-dense">Query</th>
               {results.map((r, i) => (
-                <th key={r.result_id} scope="col" class="table-th">
+                <th key={r.result_id} scope="col" class="table-th-dense">
                   {runLabels[i] ?? r.platform}
                   {i === baselineIndex ? " (baseline)" : ""}
                 </th>
@@ -268,7 +268,7 @@ export function MultiRunHeatmap({
           <tbody class="divide-y divide-[var(--bb-data-border)] bg-[var(--bb-surface-data)]">
             {shown.map((row) => (
               <tr key={row.queryId}>
-                <th scope="row" class="table-td font-mono font-medium text-left">
+                <th scope="row" class="table-td-dense font-mono font-medium text-left">
                   {queryHref ? (
                     <a href={queryHref(row.queryId)} class="text-[var(--bb-accent-hover)] underline" aria-label={`Compare ${row.queryId} iterations across selected runs`}>
                       {row.queryId}
@@ -278,7 +278,7 @@ export function MultiRunHeatmap({
                 {row.cells.map((cell, i) => (
                   <td
                     key={i}
-                    class={`table-td font-mono text-xs${cell.position === null ? "" : " multi-run-heatmap-cell"}`}
+                    class={`table-td-dense font-mono text-xs${cell.position === null ? "" : " multi-run-heatmap-cell"}`}
                     style={heatmapCellStyle(cell.position)}
                     title={unavailableCellDescription(cell)}
                     aria-label={cell.ratio !== null ? `${cell.ratio.toFixed(2)} times baseline` : unavailableCellDescription(cell)}

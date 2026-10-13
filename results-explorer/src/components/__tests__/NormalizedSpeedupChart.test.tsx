@@ -96,18 +96,18 @@ describe("NormalizedSpeedupChart", () => {
       <NormalizedSpeedupChart queries={sparseQueries} results={RESULTS} baselineIdx={0} />,
     );
 
-    const queryLabelsAfterDefault = Array.from(container.querySelectorAll("text"))
-      .map((el) => el.textContent ?? "")
-      .filter((label) => /^Q[123]$/.test(label));
-    expect(queryLabelsAfterDefault).toEqual(["Q1"]);
+    const rowsAfterDefault = Array.from(container.querySelectorAll("[data-query-row]")).map((el) =>
+      el.getAttribute("data-query-row"),
+    );
+    expect(rowsAfterDefault).toEqual(["Q1"]);
     expect(screen.getByText(/2 hidden/)).toBeTruthy();
 
     const toggle = screen.getByTestId("normalized-speedup-comparable-only-toggle") as HTMLInputElement;
     fireEvent.change(toggle, { target: { checked: false } });
-    const queryLabelsAfterToggle = Array.from(container.querySelectorAll("text"))
-      .map((el) => el.textContent ?? "")
-      .filter((label) => /^Q[123]$/.test(label));
-    expect(new Set(queryLabelsAfterToggle)).toEqual(new Set(["Q1", "Q2", "Q3"]));
+    const rowsAfterToggle = Array.from(container.querySelectorAll("[data-query-row]")).map((el) =>
+      el.getAttribute("data-query-row"),
+    );
+    expect(new Set(rowsAfterToggle)).toEqual(new Set(["Q1", "Q2", "Q3"]));
   });
 
   it("keeps the comparable-only toggle visible when the comparable subset is parity-only", () => {
@@ -121,10 +121,10 @@ describe("NormalizedSpeedupChart", () => {
 
     expect(screen.queryByText("No meaningful per-query difference")).toBeNull();
     expect(screen.getByTestId("normalized-speedup-comparable-only-toggle")).toBeTruthy();
-    const queryLabels = Array.from(container.querySelectorAll("text"))
-      .map((el) => el.textContent ?? "")
-      .filter((label) => /^Q[12]$/.test(label));
-    expect(queryLabels).toEqual(["Q1"]);
+    const queryRows = Array.from(container.querySelectorAll("[data-query-row]")).map((el) =>
+      el.getAttribute("data-query-row"),
+    );
+    expect(queryRows).toEqual(["Q1"]);
   });
 
   it("renders both rows when two queries share the same queryId", () => {
@@ -135,9 +135,7 @@ describe("NormalizedSpeedupChart", () => {
     const { container } = render(
       <NormalizedSpeedupChart queries={queriesWithDuplicate} results={RESULTS} baselineIdx={0} />,
     );
-    const queryRows = Array.from(container.querySelectorAll("text")).filter(
-      (el) => el.textContent === "Q1",
-    );
+    const queryRows = Array.from(container.querySelectorAll("[data-query-row='Q1']"));
     expect(queryRows.length).toBe(2);
   });
 

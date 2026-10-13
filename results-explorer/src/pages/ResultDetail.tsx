@@ -12,6 +12,7 @@ import { FundingChip } from "@/components/FundingChip";
 import { ProvenanceLegend } from "@/components/ProvenanceLegend";
 import { PassStrip, summarizeQueryPasses } from "@/components/PassStrip";
 import { resultDetailHref, withinRunCompareHref } from "@/lib/resultLinks";
+import { queryRunComparisonHref } from "@/lib/queryRunComparison";
 import { encodeBasis, selectComparableBasisPair } from "@/lib/measurementBasis";
 import { TableScrollHint } from "@/components/TableScrollHint";
 import { TuningBadge } from "@/components/TuningBadge";
@@ -497,7 +498,7 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
                 </thead>
                 <tbody class="divide-y divide-[var(--bb-data-border)] bg-[var(--bb-surface-data)]">
                   {sortedMedians.map((q) => (
-                    <MedianRow key={q.query_id} timing={q} />
+                    <MedianRow key={q.query_id} timing={q} resultId={detail.result_id} />
                   ))}
                 </tbody>
               </table>
@@ -563,7 +564,7 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
                     </thead>
                     <tbody class="divide-y divide-[var(--bb-data-border)] bg-[var(--bb-surface-data)]">
                       {sortedRawQueries.map((q, i) => (
-                        <QueryRow key={`${q.query_id}-${i}`} query={q} />
+                        <QueryRow key={`${q.query_id}-${i}`} query={q} resultId={detail.result_id} />
                       ))}
                     </tbody>
                   </table>
@@ -629,10 +630,18 @@ function isPassingValidationStatus(status: string | null | undefined): boolean {
   return normalized === "pass" || normalized === "passed";
 }
 
-function MedianRow({ timing }: { timing: QueryDisplayTiming }) {
+function MedianRow({ timing, resultId }: { timing: QueryDisplayTiming; resultId: string }) {
   return (
     <tr class="hover:bg-[var(--bb-surface-data-muted)]">
-      <td class="table-td font-mono font-medium">{timing.query_id}</td>
+      <td class="table-td font-mono font-medium">
+        <a
+          href={queryRunComparisonHref(timing.query_id, [resultId])}
+          class="text-[var(--bb-accent-hover)] underline"
+          aria-label={`Compare ${timing.query_id} executions across runs`}
+        >
+          {timing.query_id}
+        </a>
+      </td>
       <td class="table-td font-mono">
         {formatLatencyMs(timing.display_ms, { missingText: "-" }).valueText}
       </td>
@@ -641,12 +650,20 @@ function MedianRow({ timing }: { timing: QueryDisplayTiming }) {
   );
 }
 
-function QueryRow({ query }: { query: QueryTiming }) {
+function QueryRow({ query, resultId }: { query: QueryTiming; resultId: string }) {
   const tone = query.status === "pass" ? "success" : query.status === "fail" ? "danger" : "neutral";
 
   return (
     <tr class="hover:bg-[var(--bb-surface-data-muted)]">
-      <td class="table-td font-mono font-medium">{query.query_id}</td>
+      <td class="table-td font-mono font-medium">
+        <a
+          href={queryRunComparisonHref(query.query_id, [resultId])}
+          class="text-[var(--bb-accent-hover)] underline"
+          aria-label={`Compare ${query.query_id} executions across runs`}
+        >
+          {query.query_id}
+        </a>
+      </td>
       <td class="table-td font-mono">{formatLatencyMs(query.duration_ms).valueText}</td>
       <td class="table-td">
         <StatusBadge role="validation" tone={tone}>{query.status}</StatusBadge>

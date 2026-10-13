@@ -115,6 +115,38 @@ describe("CapturedPlanViewer", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Published query plans are unavailable.");
   });
 
+  it("drops the first result's plans and loads the new sidecar when the result changes", async () => {
+    const secondSidecar = {
+      version: "1.0",
+      queries: {
+        Q2: {
+          plan_format: "dag",
+          plan: {
+            query_id: "Q2",
+            platform: "duckdb",
+            logical_root: { operator_type: "Scan", table_name: "orders", children: [] },
+          },
+        },
+      },
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify(DAG_SIDECAR) })
+      .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify(secondSidecar) });
+    vi.stubGlobal("fetch", fetchMock);
+    const { rerender } = render(<CapturedPlanViewer plansUrl="/results/r1.plans.json" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "View query plans" }));
+    expect(await screen.findByRole("region", { name: "Query plan for Q1" })).toBeTruthy();
+
+    rerender(<CapturedPlanViewer plansUrl="/results/r2.plans.json" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "View query plans" }));
+    expect(await screen.findByRole("region", { name: "Query plan for Q2" })).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "Query plan for Q1" })).toBeNull();
+    expect(fetchMock).toHaveBeenLastCalledWith("/results/r2.plans.json", expect.any(Object));
+  });
+
   it("states when plans were captured without a published file and does not fetch", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);

@@ -2,20 +2,43 @@ import { useState } from "preact/hooks";
 import { speedupRatio } from "@/lib/chartMath";
 import { isValidTimingValue } from "@/lib/displayEligibility";
 import { formatSpeedup } from "@/lib/metricFormatters";
-import {
-  FASTER_FILL,
-  SLOWER_FILL,
-  SPEEDUP_GRID_STOPS,
-  SPEEDUP_LOG2_MIN,
-  SPEEDUP_LOG2_RANGE,
-  paletteColor,
-} from "@/lib/chartTheme";
+import { FASTER_FILL, SLOWER_FILL, paletteColor } from "@/lib/chartTheme";
+import { runMarkerPath } from "@/lib/chartMarkers";
+import { RunLegend } from "@/components/RunLegend";
 import { useElementSize } from "@/lib/useElementSize";
 import { chartFrame } from "@/lib/chartFrame";
 
-function toX(speedup: number, width: number): number {
-  const clamped = Math.max(0.2, Math.min(speedup, 5));
-  return ((Math.log2(clamped) - SPEEDUP_LOG2_MIN) / SPEEDUP_LOG2_RANGE) * width;
+export interface SpeedupDomain {
+  lo: number;
+  hi: number;
+}
+
+export function speedupDomainForValues(values: readonly number[]): SpeedupDomain {
+  const measured = values.filter((value) => Number.isFinite(value) && value > 0);
+  if (measured.length === 0) return { lo: 0.5, hi: 2 };
+  const lo = Math.min(1, Math.min(...measured));
+  const hi = Math.max(1, Math.max(...measured));
+  const snappedLo = 2 ** Math.floor(Math.log2(lo));
+  let snappedHi = 2 ** Math.ceil(Math.log2(hi));
+  if (snappedHi <= snappedLo) snappedHi = snappedLo * 2;
+  return { lo: snappedLo, hi: snappedHi };
+}
+
+export function speedupGridStops(domain: SpeedupDomain): number[] {
+  const stops: number[] = [];
+  for (
+    let exponent = Math.round(Math.log2(domain.lo));
+    2 ** exponent <= domain.hi * (1 + 1e-9);
+    exponent += 1
+  ) {
+    stops.push(2 ** exponent);
+  }
+  return stops;
+}
+
+function toX(speedup: number, domain: SpeedupDomain, width: number): number {
+  const logLo = Math.log2(domain.lo);
+  return ((Math.log2(speedup) - logLo) / (Math.log2(domain.hi) - logLo)) * width;
 }
 
 interface SpeedupEntry {
@@ -27,24 +50,17 @@ interface Props {
   queries: { queryId: string; timings: ({ ms: number; status: string } | null)[] }[];
   results: { platform: string }[];
   baselineIdx: number;
+  queryHref?: (queryId: string) => string;
 }
 
 const ROW_H = 30;
 const LABEL_W = 64;
 const AXIS_H = 22;
 const PADDING_RIGHT = 8;
+const MARKER_RADIUS = 4.5;
+const MISSING_MARKER_RADIUS = 3.5;
 
-function markerOffset(index: number, count: number): number {
-  if (count <= 1) return 0;
-  const spacing = Math.min(2.5, (ROW_H - 8) / (count - 1));
-  return (index - (count - 1) / 2) * spacing;
-}
-
-function missingMarkerPath(x: number, y: number): string {
-  return `M${x - 2.5},${y - 2.5} L${x + 2.5},${y + 2.5} M${x + 2.5},${y - 2.5} L${x - 2.5},${y + 2.5}`;
-}
-
-export function NormalizedSpeedupChart({ queries, results, baselineIdx }: Props) {
+export function NormalizedSpeedupChart({ queries, results, baselineIdx, queryHref }: Props) {
   const [containerRef, { width: containerWidth }] = useElementSize();
   const drawWidth = chartFrame(containerWidth, { minWidth: 300 }).width;
   const [showComparableOnly, setShowComparableOnly] = useState(true);
@@ -69,6 +85,8 @@ export function NormalizedSpeedupChart({ queries, results, baselineIdx }: Props)
     : allEntries;
   const hiddenEntryCount = allEntries.length - entries.length;
   const nonBaselineResults = results.filter((_, index) => index !== baselineIndex);
+  const runIndexForCandidate = (candidateIndex: number): number =>
+    candidateIndex < baselineIndex ? candidateIndex : candidateIndex + 1;
   const measuredSpeedups = entries
     .flatMap((entry) => entry.speedups)
     .filter((speedup): speedup is number => speedup !== null);
@@ -77,10 +95,15 @@ export function NormalizedSpeedupChart({ queries, results, baselineIdx }: Props)
     !hasMissingSpeedups &&
     measuredSpeedups.length > 0 &&
     measuredSpeedups.every((speedup) => Math.abs(speedup - 1) <= 0.01);
+  const domain = speedupDomainForValues(measuredSpeedups);
+  const stops = speedupGridStops(domain);
+  const domainText =
+    `${formatSpeedup(domain.lo, { unit: "×" }).valueText} to ${formatSpeedup(domain.hi, { unit: "×" }).valueText}`;
   const chartDescription =
     `For each query, speedup is baseline latency divided by candidate latency relative to ${baselineLabel}. ` +
     "Values above 1 are faster; values below 1 are slower. Queries without valid timing on every run are hidden by default. " +
-    `The horizontal scale runs from 0.2× to 5×; values beyond the edges are clipped, with exact ratios in the tooltip and table. ` +
+    `The horizontal log scale runs from ${domainText} and includes every measured speedup; ` +
+    `exact ratios are in the tooltip and table. ` +
     `${entries.length} queries are shown. An accessible table follows the chart.`;
   const plotWidth = Math.max(1, drawWidth - LABEL_W - PADDING_RIGHT);
   const totalHeight = AXIS_H + entries.length * ROW_H + 4;
@@ -123,13 +146,14 @@ export function NormalizedSpeedupChart({ queries, results, baselineIdx }: Props)
         width="100%"
         height={totalHeight}
         viewBox={`0 0 ${drawWidth} ${totalHeight}`}
-        role="img"
+        role={queryHref === undefined ? "img" : "group"}
         aria-label={`Per-query speedups relative to ${baselineLabel}`}
         aria-describedby="normalized-speedup-description"
         data-row-layout="query"
+        data-speedup-domain={`${domain.lo}:${domain.hi}`}
       >
-        {SPEEDUP_GRID_STOPS.map((stop) => {
-          const x = LABEL_W + toX(stop, plotWidth);
+        {stops.map((stop) => {
+          const x = LABEL_W + toX(stop, domain, plotWidth);
           return (
             <g key={stop}>
               <line
@@ -144,7 +168,7 @@ export function NormalizedSpeedupChart({ queries, results, baselineIdx }: Props)
               <text
                 x={x}
                 y={12}
-                text-anchor={stop === 0.2 ? "start" : stop === 5 ? "end" : "middle"}
+                text-anchor={stop === domain.lo ? "start" : stop === domain.hi ? "end" : "middle"}
                 font-size="9"
                 fill="var(--bb-chart-label-muted)"
               >
@@ -157,18 +181,28 @@ export function NormalizedSpeedupChart({ queries, results, baselineIdx }: Props)
         {entries.map(({ queryId, speedups }, rowIndex) => {
           const rowTop = AXIS_H + rowIndex * ROW_H;
           const rowCenter = rowTop + ROW_H / 2;
+          const queryLabel = (
+            <text
+              x={LABEL_W - 5}
+              y={rowCenter + 3}
+              text-anchor="end"
+              font-size="9"
+              fill="var(--bb-chart-axis)"
+              font-family="monospace"
+            >
+              {queryId}
+              <title>{queryId}</title>
+            </text>
+          );
           return (
             <g key={`${queryId}-${rowIndex}`} data-query-row={queryId}>
-              <text
-                x={LABEL_W - 5}
-                y={rowCenter + 3}
-                text-anchor="end"
-                font-size="9"
-                fill="var(--bb-chart-axis)"
-                font-family="monospace"
-              >
-                {queryId}
-              </text>
+              {queryHref !== undefined
+                ? (
+                  <a href={queryHref(queryId)} aria-label={`Compare ${queryId} across selected runs`}>
+                    {queryLabel}
+                  </a>
+                )
+                : queryLabel}
               <line
                 x1={LABEL_W}
                 x2={drawWidth - PADDING_RIGHT}
@@ -178,32 +212,29 @@ export function NormalizedSpeedupChart({ queries, results, baselineIdx }: Props)
                 stroke-width={1}
               />
               {speedups.map((speedup, candidateIndex) => {
-                const x = speedup === null
-                  ? LABEL_W + toX(1, plotWidth)
-                  : LABEL_W + toX(speedup, plotWidth);
-                const y = rowCenter + markerOffset(candidateIndex, speedups.length);
-                const color = paletteColor(candidateIndex < baselineIndex ? candidateIndex : candidateIndex + 1);
+                const runIndex = runIndexForCandidate(candidateIndex);
+                const color = paletteColor(runIndex);
                 const candidateName = nonBaselineResults[candidateIndex]?.platform ?? "Candidate";
                 if (speedup === null) {
                   return (
-                    <path
+                    <circle
                       key={candidateIndex}
-                      d={missingMarkerPath(x, y)}
+                      cx={LABEL_W + toX(1, domain, plotWidth)}
+                      cy={rowCenter}
+                      r={MISSING_MARKER_RADIUS}
                       fill="none"
                       stroke="var(--bb-chart-label-muted)"
                       stroke-width={1.5}
                       data-platform-marker={candidateName}
                     >
                       <title>{`${candidateName} · ${queryId}: comparable timing unavailable`}</title>
-                    </path>
+                    </circle>
                   );
                 }
                 return (
-                  <circle
+                  <path
                     key={candidateIndex}
-                    cx={x}
-                    cy={y}
-                    r={2.5}
+                    d={runMarkerPath(runIndex, LABEL_W + toX(speedup, domain, plotWidth), rowCenter, MARKER_RADIUS)}
                     fill={color}
                     stroke="var(--bb-surface-data)"
                     stroke-width={0.75}
@@ -215,13 +246,16 @@ export function NormalizedSpeedupChart({ queries, results, baselineIdx }: Props)
                         `${formatSpeedup(speedup, { unit: "×" }).valueText}, ` +
                         `${speedup > 1 ? "faster" : speedup < 1 ? "slower" : "equal"} than baseline`}
                     </title>
-                  </circle>
+                  </path>
                 );
               })}
             </g>
           );
         })}
       </svg>
+      <p class="mt-1 text-xs text-[var(--bb-data-fg-muted)]" data-testid="normalized-speedup-domain">
+        Log scale {domainText}; every measured speedup is shown.
+      </p>
 
       <table class="sr-only">
         <caption>Per-query speedups relative to {baselineLabel}</caption>
@@ -247,16 +281,16 @@ export function NormalizedSpeedupChart({ queries, results, baselineIdx }: Props)
 
       <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--bb-data-fg-muted)]" aria-label="Run legend">
         <span>Baseline: <strong>{baselineLabel}</strong></span>
-        {nonBaselineResults.map((result, index) => {
-          const colorIndex = index < baselineIndex ? index : index + 1;
-          return (
-            <span key={`${result.platform}-${index}`} class="flex items-center gap-1">
-              <span class="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: paletteColor(colorIndex) }} />
-              {result.platform}
-            </span>
-          );
-        })}
-        <span class="ml-1">
+      </div>
+      <RunLegend
+        runs={nonBaselineResults.map((result, index) => ({
+          key: `${result.platform}-${index}`,
+          label: result.platform,
+          runIndex: runIndexForCandidate(index),
+        }))}
+      />
+      <div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--bb-data-fg-muted)]">
+        <span>
           Values to the right of 1× are faster; values to the left are slower.
         </span>
         <span class="flex items-center gap-1">

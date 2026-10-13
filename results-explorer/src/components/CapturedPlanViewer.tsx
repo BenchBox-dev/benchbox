@@ -17,6 +17,14 @@ export function CapturedPlanViewer({ plansUrl }: CapturedPlanViewerProps) {
 
   useEffect(() => () => requestRef.current?.abort(), []);
 
+  useEffect(() => {
+    requestRef.current?.abort();
+    setExpanded(false);
+    setStatus("idle");
+    setDocument(null);
+    setSelectedId("");
+  }, [plansUrl]);
+
   async function loadPlans() {
     if (plansUrl === null || status !== "idle") return;
 

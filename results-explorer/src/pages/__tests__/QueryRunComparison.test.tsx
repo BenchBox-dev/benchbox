@@ -96,6 +96,30 @@ describe("QueryRunComparison", () => {
     expect(within(table).getAllByText("2 successful executions; 2 recorded iterations")).toHaveLength(10);
   });
 
+  it("loads three full-ID runs for one query without generated short IDs", async () => {
+    const ids = [
+      "tpch-duckdb-sf0.01-20260403-f0835929",
+      "tpch-datafusion-sf0.01-20260403-91c44a02",
+      "tpch-clickhouse-sf0.01-20260403-55d0e91b",
+    ];
+    ids.forEach((id, index) => {
+      results.set(id, resultRow(id, `Platform ${index + 1}`));
+      executions.push(execution(id, { query_id: "Q18", duration_ms: 10 + index, iter: 1 }));
+    });
+
+    render(
+      <QueryRunComparison
+        queryId="Q18"
+        url={`/results/compare/query/Q18?ids=${encodeURIComponent(ids.join(","))}`}
+      />,
+    );
+
+    expect(await screen.findByRole("img", { name: /Q18 successful measurement execution times/ })).toBeTruthy();
+    const table = screen.getByRole("table");
+    expect(within(table).getAllByRole("row")).toHaveLength(4);
+    expect(getQueryExecutions).toHaveBeenCalledWith(ids, "Q18");
+  });
+
   it("shows missing query records, failed measurements, and warmups as separate states", async () => {
     results.set("failed-run", resultRow("failed-run", "Engine A"));
     results.set("missing-query-run", resultRow("missing-query-run", "Engine B"));
