@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Untuned and tuned runs record identical harness session statements outside the tuning ledger.",
+    "A ledger with only session statements does not report applied_* status (unit test).",
+    "counts.tuning_types and tables_tuned derive from applied statements.",
+    "Snowflake PK/FK intents are corroborated or explicitly classified."
+  ],
+  "context": "Found 2026-10-13 by adversarial reviews at origin/develop 77048bfb9; evidence bundle tpch_sf1_snowflake_sql_20261012_173334_97f9cfe1 (receipt: constraint unverifiable x17, transient x7).",
+  "description": "## Problem\n- **Harness statements recorded as tuning.** `configure_for_benchmark` runs through an unfiltered recording connection (`benchbox/platforms/base/adapter.py:596`). Ordinary harness statements that baselines also issue are recorded as tuning: on Snowflake, `USE WAREHOUSE`, `TIMEZONE`, `AUTOCOMMIT` and `USE_CACHED_RESULT`.\n- **Session-only ledgers report as applied.** `overall_status` (`benchbox/core/tuning/applied_ledger.py:255-264`) returns `applied_unverified` for a ledger that holds only session statements, so a tuned run whose physical tuning was entirely dropped still reads \"applied\".\n- **Failed requested settings never block verification.** A failed session statement is classified `transient` (`benchbox/core/tuning/introspection.py:744-754`) and does not block verification.\n- **Requested flags counted as applied.** `counts.tuning_types` is built from requested flags (`benchbox/core/results/schema.py:1279-1282`), so Snowflake bundles list check_constraints and unique_constraints although neither is rendered. `tables_tuned` counts table entries that carry no tuning.\n- **Snowflake constraints can never verify.** Snowflake introspection reads no primary or foreign keys, so a Snowflake run that requests constraints can never reach `applied_verified`.\n\n## Change\n- Record only statements derived from the tuning config.\n- Make failed requested settings block verification or record them as dropped.\n- Build counts from the applied ledger.\n- Read Snowflake PK/FK from `SHOW PRIMARY KEYS` / `SHOW IMPORTED KEYS`, or declare them unverifiable by design.\n- Coordinate with `tuning-requested-vs-rendered-reconciliation-20261001` (dropped intents).",
+  "links": [
+    "benchbox/core/tuning/applied_ledger.py",
+    "benchbox/core/tuning/introspection.py",
+    "benchbox/platforms/base/adapter.py",
+    "benchbox/core/results/schema.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
+      "at": "2026-10-13T13:12:53Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "44f29d15e20a48d5b34753748e6ef3d4",
+      "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    }
+  ]
+}

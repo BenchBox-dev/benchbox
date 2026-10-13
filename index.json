@@ -23753,6 +23753,13 @@
       "status": "open",
       "title": "Record measured outcomes and vendor limits in the TPC tuning profile, and make the template generator respect them"
     },
+    "tuning-receipt-overstates-applied-tuning-20261013": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Tuning receipts count harness session statements and unrendered settings as applied tuning"
+    },
     "tuning-record-genuine-engine-versions": {
       "claim": null,
       "needs": [],
