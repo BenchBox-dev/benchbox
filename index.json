@@ -21648,6 +21648,13 @@
       "status": "done",
       "title": "\"Technical Debt & Refactoring - COMPLETED ✅\""
     },
+    "template-evidence-label-matching-20261013": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Template-evidence labels fail open for unregistered templates and match by file name"
+    },
     "test-arrow-memory-pool-env-leak-cloud-extras": {
       "claim": null,
       "needs": [],

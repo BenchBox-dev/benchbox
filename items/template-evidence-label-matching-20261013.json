@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Unregistered shipped templates are labelled unmeasured.",
+    "Labels match by content hash; a renamed copy with edits is not labelled as the shipped template.",
+    "Managed-cloud runs can carry a measured state.",
+    "Warning wording updated."
+  ],
+  "context": "Found 2026-10-13 by an adversarial review of d33acc8f1 (#2875) at origin/develop 77048bfb9.",
+  "description": "## Problem\n- **Fails open.** An unregistered shipped template returns None from `benchbox/core/tuning/template_evidence.py:113-115` instead of \"unmeasured\". The tuned SSB Snowflake bundle from 2026-10-12 has no `template_evidence` for this reason.\n- **Managed-cloud runs can never be measured.** `_memory_scope` (`:73-78`) gives them no measured state.\n- **Matches by file name.** Labels attach by file name, so any user file named `tpch_tuned.yaml` inherits the shipped template's label.\n- **Misleading wording.** \"has no measured benefit\" reads like a measured null result.\n\n## Change\n- Return \"unmeasured\" for unregistered shipped paths.\n- Match on a content hash.\n- Allow a measured state for managed-cloud scopes.\n- Reword the warning to \"benefit not yet measured\".",
+  "links": [
+    "benchbox/core/tuning/template_evidence.py",
+    "benchbox/core/tuning/profiles/template_evidence.yaml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
+      "at": "2026-10-13T13:13:37Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "a5540e5f3fb34cf98260f1f2af50697f",
+      "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    }
+  ]
+}
