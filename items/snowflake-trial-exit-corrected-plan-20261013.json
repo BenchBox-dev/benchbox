@@ -8,7 +8,15 @@
     "Tracker closeout: the program item snowflake-trial-exit-corrected-plan-20261013 is finished with the closeout context; items snowflake-tuned-live-certification-20261001 and cloud-tuned-benefit-live-runs-20261008 carry evidence notes.",
     "Budget: the cumulative credit estimate never went above 85."
   ],
+  "context": "Closeout 2026-10-13. Ledger: /tmp/snowflake-tuned-campaign-ledger.md (local, not committed).\nCAMPAIGN: C0 smoke (TPC-H sf0.01 tuned, tried twice 2026-10-13; logs /tmp/stc-tpch0.01-load-tuned.log and /tmp/stc-tpch0.01-load-tuned-retry.log): both aborted writing the tuned-run marker. Validated root cause: SnowflakeAdapter.execute_query passes the query id where the completion log expects a duration in seconds (benchbox/platforms/snowflake.py lines 1243/1246/1251); under -v the :.2f format raises ValueError after the query itself succeeds, the call reports FAILED, metadata-table creation fails, the marker is never written, and the run refuses to apply tuning. All other call sites in the file use details= correctly. The fix (3 call sites + regression test) is outside this plan's four changes, so no tuned measurement exists. C1 TPC-H sf100, C2 TPC-DS sf100, C3 TPC-H sf10, C4 TPC-DS sf10: skipped with zero spend. Clustering credits used: 0.000. C0 reuse/certification: not achieved (no second run, no statement history, no clustering readout, no validation_status). C0 tuned database dropped; warehouse left suspended.\nSURVIVED: D5 closure consumed nothing; the 2026-10-12 TPC-H sf100 and TPC-DS sf100 untuned bundles are valid; every bundle carries a validated cache-disabled receipt.\nOVERTURNED: F1 (3 TPC-H cells shape-changed, 47 reproducible-exact), F2/F3 (warmup-inflated headline ratios 1.078/0.924; confounded noise comparison), F4 (sf1 kill verdict withdrawn), F5 (9 reload cells ran inside shared databases), F6 (admin connection never authenticated: cause of the reloads), F10 (provenance gaps: untuned tuning_source dropped), F11 (sf100 data regenerated 2026-10-12; sf1000 infeasible on disk), F13 (85-credit cap keeps 15 margin under worst-case grant).\nFIXED: PR-1 https://github.com/BenchBox-dev/benchbox/pull/2943 (paramstyle; OPEN MERGEABLE auto-merge armed; oracle-review check failing, under investigation); PR-2 https://github.com/BenchBox-dev/benchbox/pull/2947 (reuse; OPEN MERGEABLE armed; core+test jobs failing, logs pending run completion, under investigation); PR-3 https://github.com/BenchBox-dev/benchbox/pull/2949 (phases; OPEN MERGEABLE armed, checks pending); PR-4 https://github.com/BenchBox-dev/benchbox/pull/2950 (evidence; OPEN MERGEABLE armed, checks pending).\nLIVE CHECK: WP2 connected 2026-10-13; drops in window only *_CUSTOM_* SF1 plus the two SF100 NOTUNING databases; no shared database dropped; shared tables TPCH sf001/sf01/sf1 = 32 each, TPCDS sf1 = 26; B0 = 55.527 metered through 2026-10-12 19:00 PT (T0 2026-10-13T02:00:00Z); final cumulative estimate 56.166 (0.139 warehouse + 0.5 margin).\nLOCAL: WP3 skipped per guard: files newer than 2026-10-12 20:00 exist in ~/Developer/benchmark_runs/tpch_sf1000 (guards 1-2 passed, no dbgen running); df 926Gi total, 857Gi used, 33Gi avail; dir 199G; nothing deleted.\nFOLLOW-UPS: 29 items filed 2026-10-13 (suffix -20261013); see section 9 of the plan. One more defect needs filing: Snowflake execute_query logging args (query id passed as duration; every call reports FAILED under -v; blocks all tuned runs).\nREDACTED: WP1 done (identifiers removed from Gate 0 context, re-read OK); todo-state history not rewritten.\nUNVERIFIED: trial expiry date (assumed ~2026-10-17, never verified); Snowsight balance (spend capped at cumulative estimate 85, no Snowsight check needed).",
   "description": "Run an interleaved, settled tuned-vs-untuned Snowflake campaign on TPC-H and TPC-DS; fix the tuning-metadata placeholder, Snowflake reuse check and publish phase defects; correct the comparability, reuse and pilot evidence; close the trial program.",
+  "links": [
+    "_project/analysis/snowflake-trial-exit/findings.md",
+    "https://github.com/BenchBox-dev/benchbox/pull/2943",
+    "https://github.com/BenchBox-dev/benchbox/pull/2947",
+    "https://github.com/BenchBox-dev/benchbox/pull/2949",
+    "https://github.com/BenchBox-dev/benchbox/pull/2950"
+  ],
   "sessions": [
     {
       "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
@@ -36,6 +44,14 @@
       "op": "takeover",
       "op_id": "5cfdc6c6695f408e8b8b8b7c8fc06091",
       "reason": "Operator reassigned this plan to the current session with an explicit message to complete it in its entirety; the prior holder has been inactive since the handoff (all ledger work since 20:00 UTC done here) and its live claim blocks the mandated update/finish closeout.",
+      "session_id": "df039dbf86ee48b687da114f08324b05"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:f905a7a39c8793c709ac7c5d",
+      "at": "2026-10-13T21:17:45Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "121e837ccfd04460be1e54d597e0d4c7",
       "session_id": "df039dbf86ee48b687da114f08324b05"
     }
   ]
