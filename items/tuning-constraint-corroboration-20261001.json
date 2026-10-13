@@ -3,7 +3,7 @@
     "Unit tests per constraint kind (positive) and negatives: PK on different columns → mismatch; FK with same child columns but a different referenced table → mismatch.",
     "e2e: the shipped DuckDB TPC-H template (after partitioning removal) produces no constraint 'unverifiable' entries."
   ],
-  "context": "2026-10-11 continuation: current work is in /Users/joe/Developer/BenchBox.wt-constraint-corroboration, branch fix/tuning-constraint-corroboration. Commit d048235e9f49302ee336f38e96a54c01156e9b78 updates both DuckDB catalog filters to normalize lookup parameters with SQL lower(?), matching DuckDB's lower(table_name) behavior while leaving Python physical identifier matching ASCII-only. It fixes a reproduced false-absent result for a quoted table named É; regression: test_quoted_unicode_table_name_constraints_are_read.\n\nVerification on this head: make pr-preflight 214 passed, 3 deselected; uv run -- python -m pytest -m fast -q 36838 passed, 26 skipped, 788 warnings, 4 subtests passed; full Ruff check and format pass; changed-file ty check pass; repository-wide ty check reports 664 diagnostics; make docs-validate pass; make comment-policy-check pass (5753 source files, 0 violations; 19 native tests).\n\nPR #2830 is open at head d048235e9f49302ee336f38e96a54c01156e9b78, not merged or armed. PR description has current test evidence. /oracle-review requested at https://github.com/BenchBox-dev/benchbox/pull/2830#issuecomment-6105063197; current CI run is in progress, and current-head oracle review is pending. make pr-open reported a CHANGELOG overlap with open PR #2855 (fix/tuning-non-dbapi-ledger); coordinate merge order and resolve/rebase before landing. Do not mark complete until merge. Historical parser/oracle review rounds remain in PR #2830 body and review thread; prior context described those in detail.",
+  "context": "2026-10-13 consolidated-batch closeout: PR #2830 MERGED at f58b1e3c8a2d08cc5304ea121ae855361a5b1f21. Verified via gh pr view 2026-10-13. All acceptance preserved from merged rounds; no further work. Ready to finish.",
   "description": "## Problem\nConstraint-bearing `CREATE TABLE` statements are always `unverifiable` (`introspection.py:492-496`), so constraint-enabled runs, including every shipped DuckDB template, can never verify.\n\n## Change (per gate D-2)\n- Add constraint kinds to `introspection.py`. `_classify` extracts `PRIMARY KEY (…)`, `UNIQUE (…)` and `FOREIGN KEY (…) REFERENCES t(…)` after literal stripping.\n- Extend `_Intent` and `IntrospectedObject` with `referenced_table` and `referenced_columns`. For FKs, `_match_object` requires equal child columns, referenced table and referenced columns.\n- The DuckDB introspector adds `duckdb_constraints()` facts, bounded and filtered.\n- Platforms without a rule stay `unverifiable`.\n\n## Guardrails (must preserve)\n- Fail-closed: anything unparsed or without a source blocks.\n- No widening for existing kinds.\n\n## Process guardrails\n- One PR per item against `develop`, via the AGENTS.md worktree flow (`make worktree-claim BRANCH=...`, `make agent-write-preflight`).\n- Verification ladder: `uv run -- python -m pytest -m fast -q`, `uv run -- ruff check .`, `uv run -- ruff format --check .` and `uv run -- ty check`.\n- Then `make pr-preflight` and `make pr-open`.\n- Stage explicit paths; never `git add -A`.\n- No live cloud runs without explicit user approval stating the command, maximum runtime, log path and stop condition.\n- Re-read every file:line anchor before editing. Anchors are from develop d39166ea.\n- This item touches paths listed in the soundness manifest by `tuning-trust-paths-soundness-manifest-20261001`. The PR needs an external `Soundness review:` section (AGENTS.md) and must not auto-merge.",
   "links": [
     "benchbox/core/tuning/introspection.py",
@@ -256,6 +256,14 @@
       "generation": "274b952e6c0f4a13987b34e015808545",
       "op": "take",
       "op_id": "1ef10b13cf094915866c1223548245fe",
+      "session_id": "ce855e02017040e0ae751903346e8f7f"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:0b09cceb849593820a7baad7",
+      "at": "2026-10-13T19:33:51Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "167a7a3fab714ec69fde5678c86c051c",
       "session_id": "ce855e02017040e0ae751903346e8f7f"
     }
   ]
