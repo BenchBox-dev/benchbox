@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "New tests (tests/unit/scripts/test_site_inputs_parent.py): a dispatched parent that is the 11th or older successful run with an unexpired artifact resolves with parent_source=bundle (fails on current code)",
+    "Test: dispatched parent whose artifact expired is refused with a message naming the SHA",
+    "Test: dispatched parent that is not an ancestor of CORE_SHA is refused",
+    "Test: empty pool accepts the dispatched parent with parent_source=dispatch; non-empty pool with a never-bundled parent is refused",
+    "Test: automatic run picks the newest bundled ancestor; with none it fails with the recovery instruction",
+    "Workflow test under tests/unit/workflows: site-inputs.yml invokes the script and contains no inline run-list lookup",
+    "Ledger rows updated in the same change (tests/unit/ledger_cutover_files.txt and docs/development/dev-loop-property-ledger.md) so test_ledger_coverage passes",
+    "No explanatory comments in the script or tests (comment policy)"
+  ],
+  "context": "Raised by the 2026-10-13 adversarial review (handoff revision 9, finding 2). Evidence: `gh run list -R BenchBox-dev/benchbox --workflow site-inputs.yml --branch develop --status success --limit 12` shows 38216829987 (c660e6157) at position 10 of 10 in the window the workflow uses. The recovery message at site Deploy runs 38247176462..38392445519 prescribes `parent_core_sha=c660e61579c1979a4c9ca4417e97d695142689e9`. Time-sensitive: the window closes on the next successful develop Site Inputs run. Related: site-split-62, site-split-63.",
+  "description": ".github/workflows/site-inputs.yml picks parents from the 10 newest successful develop runs (`gh run list ... --limit 10`) inline in YAML with no tests. As of 2026-10-13 the deployed parent c660e615 (run 38216829987) is exactly the 10th entry. The next successful run pushes it out; a dispatch with parent_core_sha=c660e615 then fails with \"no site-inputs bundle attested on parent\", and no bundle can be built whose parity covers the deployed SHA.\n\nWork: move parent resolution into a script with unit tests (precedent: scripts/scheduled_workflow_liveness.py and its tests, #2815), look up the dispatched parent's artifact by SHA rather than from a fixed window, and keep the fail-closed behaviour. site-inputs.yml and scripts/site_inputs.py are soundness paths, so oracle review applies. Item site-split-62 changes the adjacent certification step; deliver in order.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:812b6e01fb0a3c7a08e17bfb",
+      "at": "2026-10-13T13:49:30Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "b44b93da22cf45ccb257bb8d37fe47a9",
+      "session_id": "092ba024912949d88c4bc8f8c819cdba"
+    }
+  ]
+}

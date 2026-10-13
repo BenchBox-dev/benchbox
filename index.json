@@ -20442,6 +20442,13 @@
       "status": "open",
       "title": "Decide whether to tighten the site bundle's bijection and parity checks after cutover"
     },
+    "site-split-61-parent-lookup-by-sha": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Resolve the site-inputs bundle parent by SHA in a tested script so chain recovery does not depend on a ten-run window"
+    },
     "site-split-65-replay-completeness-and-fidelity": {
       "claim": null,
       "needs": [],
