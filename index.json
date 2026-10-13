@@ -22961,12 +22961,17 @@
       "title": "Stop exporting TPC-H QphH@Size as official while refresh functions are missing"
     },
     "tpch-refresh-functions-in-power-and-throughput": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-14T22:20:26Z",
+        "generation": "378e71afa3454f07ae0d269181605e17",
+        "renewals": 0,
+        "worker": "mcp:tbh:joe@joe-mac-mini.local:0945655175d6218b9469168c"
+      },
       "needs": [
         "tpch-qphh-missing-refresh-functions"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Implement TPC-H RF1/RF2 in Power@Size and a concurrent refresh stream in the throughput test"
     },
     "tpch-skew-dataframe-sql-id-mapping": {
