@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "No real account username remains in tests/unit/platforms/credentials/test_snowflake_defaults.py; the test passes."
+  ],
+  "context": "Found 2026-10-13 while checking public exposure of Snowflake trial account identifiers.",
+  "description": "## Problem\n`tests/unit/platforms/credentials/test_snowflake_defaults.py` (lines 35, 47 and 62 on develop) uses the maintainer's real Snowflake login name as fixture data. The repository is public. A username is not a credential, but it identifies a real account and can help target it.\n\n## Change\nReplace it with a neutral placeholder such as `TEST_USER` and keep the test's assertions equivalent.",
+  "links": [
+    "tests/unit/platforms/credentials/test_snowflake_defaults.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
+      "at": "2026-10-13T13:00:42Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "9cc8a2651f4442ec9653d6b7e7c5fd6d",
+      "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    }
+  ]
+}
