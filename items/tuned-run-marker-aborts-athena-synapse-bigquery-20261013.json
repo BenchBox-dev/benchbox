@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Tuned runs on Athena, Synapse and Fabric DW either persist the marker or proceed under a recorded marker-exempt mode; none abort solely because the store is unsupported.",
+    "Metadata DDL parses with sqlglot for every dialect that uses it.",
+    "BigQuery metadata table survives a second manager instance (unit test).",
+    "Marker tests cover at least one pyformat fake driver and one T-SQL dialect."
+  ],
+  "context": "Found 2026-10-13 by an adversarial review of recent tuning commits at origin/develop 77048bfb9 (Athena abort reproduced offline).",
+  "description": "## Problem\nSince bbf073331 (#2701), a failed tuned-run marker write raises and aborts the run (`benchbox/platforms/base/adapter.py:901-905,941-945`). The tuning metadata store (`benchbox/core/tuning/metadata.py`) does not work on several platforms:\n- **Athena:** `_metadata_unsupported_reason` (~L447) makes `create_metadata_table` return False, so `write_tuned_run_marker` returns False and every tuned or `auto` Athena run aborts. The log still says \"Runs continue without persisted tuning metadata\".\n- **Synapse and Fabric DW:** the DDL uses `CREATE TABLE IF NOT EXISTS` (~L491), `TIMESTAMP`, and `LIMIT 1` (~L332, L733). None of these is valid T-SQL, and `azure_synapse.py:903-920` passes SQL through raw. The T-SQL index branch added by #2861 (~L444) is unreachable.\n- **BigQuery:** the metadata table uses plain `CREATE TABLE`, which the adapter rewrites to `CREATE OR REPLACE` (`benchbox/platforms/bigquery.py:1771`). Each new manager wipes the table, marker included.\n- **pyformat and format drivers** (Snowflake, psycopg, pymysql behind Doris/StarRocks, redshift_connector, pyathena) got `?` placeholders. That part is fixed on branch `feat/snowflake-trial-exit` and is out of scope here.\n\n**Why tests missed it:** every marker test uses SQLite. When the marker write failed in the Postgres console-claims fixture, #2701 replaced the manager with `FakeMetadataManager` instead of investigating. The DDL tests only check substrings (`tests/unit/core/tuning/test_tuning_metadata.py:231-245`).\n\n## Change\n- Treat \"no metadata store on this platform\" as an explicit marker-exempt mode with a recorded reason, not an abort, and keep the notuning-reuse refusal sound for those platforms by another means (for example, refusing reuse outright).\n- Generate valid T-SQL for Synapse and Fabric DW.\n- Use `CREATE TABLE IF NOT EXISTS` semantics on BigQuery.\n- Add per-dialect DDL tests that parse the statements with sqlglot, plus tests that a tuned run on Athena and Synapse (with a fake driver) does not abort.",
+  "links": [
+    "benchbox/core/tuning/metadata.py",
+    "benchbox/platforms/base/adapter.py",
+    "benchbox/platforms/azure_synapse.py",
+    "benchbox/platforms/bigquery.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
+      "at": "2026-10-13T13:12:28Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "4ed58fc0dff4429c8e21b85feaefe89d",
+      "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    }
+  ]
+}
