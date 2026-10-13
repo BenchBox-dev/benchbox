@@ -147,6 +147,7 @@ _SINGLE_STATEMENT_SETUP_DIALECTS = frozenset({"sqlite", "databricks"})
 class WritePrimitivesBenchmark(TransactionalBenchmarkBase["OperationResult"]):
     _benchmark_label = "Write Primitives"
     _staging_tables = STAGING_TABLES
+    DATAFRAME_WORKLOAD_USES_PLATFORM_ENGINE = False
 
     def __init__(
         self,

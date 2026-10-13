@@ -1505,6 +1505,7 @@ class ResultCaptureMixin:
                 "table_format_partition_cols": (
                     run_config.get("table_format_partition_cols") if run_config.get("table_format") else None
                 ),
+                "execution_engine": self.requested_execution_engine,
             },
             "sorted_ingestion": self.get_sorted_ingestion_metadata(),
             "post_load_maintenance": self.get_post_load_maintenance_metadata(),

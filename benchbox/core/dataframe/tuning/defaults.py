@@ -156,7 +156,7 @@ def _apply_memory_recommendations(
     if available_gb < 4:
         config.execution.streaming_mode = True
         config.memory.chunk_size = 50_000
-        logger.info("Low memory detected (<4GB), enabling streaming mode")
+        logger.info("Low memory detected (<4GB), using 50,000-row chunks")
 
     elif available_gb < 8:
         config.execution.streaming_mode = True

@@ -185,6 +185,11 @@ benchbox run --platform polars-df --benchmark tpch --scale 1 \
 | `in-memory` | Materialize each query in memory |
 | `streaming` | Process each query in batches to bound memory |
 
+With `default`, BenchBox passes no `engine` argument to `collect()`; the
+result still records the engine Polars applied. The `write_primitives`
+benchmark runs its timed DataFrame operations on DuckDB, so it accepts only
+`default` and fails before any work for another engine.
+
 | Option | Default | Description |
 |--------|---------|-------------|
 | `rechunk` | `true` | Rechunk data for better memory layout |

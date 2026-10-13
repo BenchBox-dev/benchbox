@@ -132,11 +132,7 @@ class DataFrameTuningLoader:
         )
 
         if platform_lower == "polars":
-            config.execution = ExecutionConfiguration(
-                streaming_mode=False,
-                engine_affinity="in-memory",
-                lazy_evaluation=True,
-            )
+            config.execution = ExecutionConfiguration(lazy_evaluation=True)
             config.memory = MemoryConfiguration(
                 rechunk_after_filter=True,
             )
@@ -190,11 +186,7 @@ class DataFrameTuningLoader:
         config.metadata.description = f"Performance-optimized template for {platform_lower}"
 
         if platform_lower == "polars":
-            config.execution = ExecutionConfiguration(
-                streaming_mode=False,
-                engine_affinity="in-memory",
-                lazy_evaluation=True,
-            )
+            config.execution = ExecutionConfiguration(lazy_evaluation=True)
             config.data_types = DataTypeConfiguration(
                 enable_string_cache=True,
             )
@@ -243,11 +235,7 @@ class DataFrameTuningLoader:
         config.metadata.description = f"Memory-constrained template for {platform_lower}"
 
         if platform_lower == "polars":
-            config.execution = ExecutionConfiguration(
-                streaming_mode=True,
-                engine_affinity="streaming",
-                lazy_evaluation=True,
-            )
+            config.execution = ExecutionConfiguration(lazy_evaluation=True)
             config.memory = MemoryConfiguration(
                 chunk_size=100_000,
                 rechunk_after_filter=False,

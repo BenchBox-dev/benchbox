@@ -150,9 +150,10 @@ class DataFrameTransactionResult:
 
 
 class DataFrameTransactionOperationsManager:
-    def __init__(self, platform_name: str, spark_session: Any = None) -> None:
+    def __init__(self, platform_name: str, spark_session: Any = None, execution_engine: str = "default") -> None:
         self.platform_name = platform_name.lower()
         self.spark_session = spark_session
+        self.execution_engine = execution_engine
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self._maintenance_ops = self._get_maintenance_ops()
@@ -178,7 +179,7 @@ class DataFrameTransactionOperationsManager:
                 self.logger.debug("No SparkSession provided for PySpark platform")
                 return None
 
-        return get_maintenance_operations_for_platform(self.platform_name)
+        return get_maintenance_operations_for_platform(self.platform_name, self.execution_engine)
 
     def _build_capabilities(self) -> DataFrameTransactionCapabilities:
         maintenance_caps: DataFrameMaintenanceCapabilities | None = None
@@ -970,6 +971,7 @@ class DataFrameTransactionOperationsManager:
 def get_dataframe_transaction_manager(
     platform_name: str,
     spark_session: Any = None,
+    execution_engine: str = "default",
 ) -> DataFrameTransactionOperationsManager | None:
     return get_dataframe_manager(
         platform_name,
@@ -988,6 +990,7 @@ def get_dataframe_transaction_manager(
         logger=logger,
         manager_label="transaction",
         spark_session=spark_session,
+        execution_engine=execution_engine,
     )
 
 

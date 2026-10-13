@@ -95,11 +95,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   observed engines without exposing selectors. Legacy `force_execution` and
   `use_distributed` options warn and map to their canonical engine values.
 
-- Polars write-primitive bulk loads and DataFrame maintenance now materialize
-  lazy frames with the resolved execution engine. The DataFrame comparison
-  suite, profiling, validation and dataframe-surface equivalence checks use
-  Polars' default engine; these paths do not receive `benchbox run`'s
-  execution-engine selection.
+- Polars DataFrame maintenance operations materialize lazy frames with the
+  execution engine they are given. The TPC-DI DataFrame ETL and the
+  transaction-primitives manager pass the run's engine to them. The
+  `write_primitives` benchmark's timed DataFrame operations run on DuckDB, not
+  on the Polars engine, so that benchmark refuses a non-default engine (see
+  Fixed). The DataFrame comparison suite, profiling, validation and
+  dataframe-surface equivalence checks use Polars' default engine; these paths
+  do not receive `benchbox run`'s execution-engine selection.
 
 ### Fixed
 
@@ -193,12 +196,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `benchbox run --platform quanton` builds its configuration instead of
   failing with a missing config builder, and a saved `cluster_size` is no
   longer overridden by the `compute_size` default.
+- Result bundles from `benchbox run` and MCP `run_benchmark` now record the
+  requested engine as `config.execution_engine`, for SQL and DataFrame runs
+  alike (`default` when none was requested). The field was defined by result
+  schema 2.3 but never written by a real run.
+- A default Polars DataFrame run passes no `engine` argument to `collect()`,
+  as before execution engines were added, so Polars itself chooses. The
+  bundle records `collect_kwargs: {}` and still records the engine Polars
+  uses as `applied` (`auto` on Polars 1.44.2). Explicit, tuning-file and
+  legacy-option engines still pass `engine=<name>`.
+- `benchbox run` and MCP `run_benchmark` refuse a non-default execution
+  engine for a benchmark whose timed DataFrame work does not run on the
+  platform's engine, before generating data, and name the benchmark. The
+  `write_primitives` benchmark is the only such benchmark: on `polars-df` it
+  ran its timed operations on DuckDB while the result was labelled with the
+  requested Polars engine.
+- TPC-DI DataFrame ETL maintenance and the transaction-primitives DataFrame
+  manager now receive the run's execution engine; before, they always used
+  the default.
+- The cross-surface equivalence gate's dtype check collects Polars frames
+  through the adapter, so it uses the requested engine like the row check. An
+  unsupported `--execution-engine` value, or one given without the expression
+  backend, is now a usage error instead of a traceback.
+- The DataFrame tuning templates (`DataFrameTuningLoader.get_template`,
+  `get_optimized_template` and `get_memory_constrained_template`) no longer set
+  `engine_affinity` or `streaming_mode` for Polars.
+- The DataFrame smart-defaults low-memory message no longer says it enables
+  streaming mode, which it has not done since automatic tuning stopped
+  choosing an engine.
 
 ### Before you upgrade
 - `benchbox compare` and MCP `compare_results` now refuse two results whose
   deployment, requested execution engine or gateway differ. Pass
   `--allow-heterogeneous-comparison` to the CLI to compare them anyway.
   `benchbox report regressions` lists each variant separately.
+- Default Polars DataFrame runs record
+  `platform.execution_engine.applied_native.collect_kwargs` as `{}` instead of
+  `{"engine": "auto"}`, because BenchBox no longer passes the engine argument
+  when you request none. `requested`, `applied` and `platform.variant` do not
+  change.
+- `benchbox run --benchmark write_primitives --platform polars-df` with
+  `--execution-engine` other than `default`, a tuning file that selects an
+  engine, or the deprecated Polars `streaming` option now fails before any
+  work. Run that benchmark with the default engine.
+- Polars tuning templates from `DataFrameTuningLoader` no longer select the
+  `in-memory` or `streaming` engine. Pass `--execution-engine` to choose one.
 - Athena Spark `runtime_version` no longer tries to choose the Spark engine
   version. Set the version on the workgroup; BenchBox records the value you
   pass as requested.

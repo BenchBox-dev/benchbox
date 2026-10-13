@@ -63,6 +63,8 @@ class BaseBenchmark(BenchmarkResultValidationMixin, VerbosityMixin, ABC):
 
     SKIP_DATA_LOADING: ClassVar[bool] = False
 
+    DATAFRAME_WORKLOAD_USES_PLATFORM_ENGINE: ClassVar[bool] = True
+
     def __init__(
         self,
         scale_factor: float = 1.0,
