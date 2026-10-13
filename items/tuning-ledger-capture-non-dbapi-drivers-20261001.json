@@ -158,6 +158,15 @@
       "op": "update",
       "op_id": "f8792bb3f85e435da61cb5ad3dc1d59a",
       "session_id": "ce855e02017040e0ae751903346e8f7f"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:0b09cceb849593820a7baad7",
+      "at": "2026-10-13T19:30:30Z",
+      "client": "tbh",
+      "generation": "d45bea05429c4408ab5266e2936fdd05",
+      "op": "finish",
+      "op_id": "6e1d03388936442eaa1831baab4450d5",
+      "session_id": "ce855e02017040e0ae751903346e8f7f"
     }
   ]
 }
