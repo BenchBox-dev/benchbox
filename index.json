@@ -23666,6 +23666,13 @@
       "status": "open",
       "title": "Let users see why their tuning did not verify (local result per D-3 plus a console verification summary)"
     },
+    "tuning-measurement-claims-unreproducible-20261013": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Tuned-template benefit claims in the ADR are not reproducible and contradict the evidence registry"
+    },
     "tuning-metadata-drift-gaps-20260801": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Every tuned/untuned number quoted in ADRs links to a committed or published result bundle and has a matching template_evidence.yaml entry, or is removed."
+  ],
+  "context": "Found 2026-10-13 by an adversarial review of ClickHouse/DuckDB tuning at origin/develop 77048bfb9.",
+  "description": "## Problem\n- The ADR-003 addendum quotes ClickHouse tuned/untuned numbers, yet `benchbox/core/tuning/profiles/template_evidence.yaml` has `measurements: []` for every template, and runs are labelled \"unmeasured\", which contradicts the ADR.\n- No raw result files backing the numbers are in the repository.\n- The measurements are SF1 on a single 16 GB host.\n\n## Change\n- Commit or link the result bundles behind each quoted number.\n- Fill the registry entries (state, scale, memory, engine version, date, evidence link).\n- Either qualify the ADR claims to what the evidence supports, or remove them.",
+  "links": [
+    "benchbox/core/tuning/profiles/template_evidence.yaml",
+    "docs/internal/adr"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
+      "at": "2026-10-13T13:14:30Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "f51fcd8cd98b484eb926086174e5ef58",
+      "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    }
+  ]
+}
