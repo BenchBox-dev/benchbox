@@ -33,12 +33,17 @@ class DeploymentResolution:
     explicit: bool
 
 
-def note_deprecated_alias(platform: str, key: str, selected: str) -> None:
-    from benchbox.platforms.clickhouse.deployment_mode import CLICKHOUSE_LEGACY_SELECTOR_MAP
+def _deployment_selector(platform: str, selected: str) -> str:
+    from benchbox.core.platform_manifest import PLATFORM_MANIFEST_BY_KEY
 
-    selector = f"{platform}:{selected}".lower()
-    target = CLICKHOUSE_LEGACY_SELECTOR_MAP.get(selector, selector)
-    warn_deprecated_alias(platform, key, f"'--platform {target}'", setting="deployment")
+    named = f"{platform}-{selected}".lower()
+    return named if named in PLATFORM_MANIFEST_BY_KEY else f"{platform}:{selected}".lower()
+
+
+def note_deprecated_alias(platform: str, key: str, selected: str) -> None:
+    warn_deprecated_alias(
+        platform, key, f"'--platform {_deployment_selector(platform, selected)}'", setting="deployment"
+    )
 
 
 def normalize_deployment_value(platform: str, value: Any) -> str:
