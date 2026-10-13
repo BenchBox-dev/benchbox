@@ -1,0 +1,12 @@
+{
+  "sessions": [
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:2ddfad0386e20e3a0ffba40a",
+      "at": "2026-10-13T22:57:59Z",
+      "client": "tbh",
+      "op": "create",
+      "op_id": "63463b9b6ada4514bf62e8eb055fdf7f",
+      "session_id": "63fb16e6ece34adb91d17cdd1e1f2310"
+    }
+  ]
+}

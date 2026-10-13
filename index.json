@@ -20513,6 +20513,13 @@
       "status": "open",
       "title": "Stop the seed lane producing bundles that are always dropped or fail on the runner"
     },
+    "site-split-69-deployed-sha-design": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Design how core learns the deployed core SHA from the site side for bundle parents"
+    },
     "site-split-99-closeout": {
       "claim": null,
       "needs": [
