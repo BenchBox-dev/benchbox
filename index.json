@@ -21922,15 +21922,10 @@
       "title": "Throughput runner: hung stream may block process exit; early-failure and timeout accounting edge cases"
     },
     "throughput-stream-count-derived-from-stream-results-length": {
-      "claim": {
-        "expires_at": "2026-10-14T13:48:15Z",
-        "generation": "c21b1a3a9ffa4904bbd7411be8e88c6f",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:43e37730edf1698674978f67"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Verify throughput stream count against run configuration rather than stream_results length alone"
     },
     "throughput-stream-count-wiring-defect": {
