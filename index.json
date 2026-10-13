@@ -20671,6 +20671,13 @@
       "status": "open",
       "title": "Snowflake tuned runs measure queries before automatic clustering has settled"
     },
+    "snowflake-tuned-template-key-selection-20261013": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Snowflake tuned templates: key ranking contradicts its docs, adds high-cardinality keys, and leaves INVENTORY unclustered"
+    },
     "snowflake-tuned-templates-clustering-guidance-20261008": {
       "claim": null,
       "needs": [],

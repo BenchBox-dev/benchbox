@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Snowflake TPC-H/TPC-DS keys are justified by query evidence (documented per table), INVENTORY has a date key or a recorded exclusion, generator docs match behaviour, dead RECLUSTER code removed."
+  ],
+  "context": "Found 2026-10-13 by an adversarial review of Snowflake templates (#2392, #2872) at origin/develop 77048bfb9. Related: tuning-profile-measured-outcomes-20261008.",
+  "description": "## Problem\n- **Ranking contradicts its docs.** `snowflake_cluster_rank` (`scripts/generate_cloud_tpc_templates.py:116-122`) always ranks the date first, contrary to its documented low-to-high cardinality order. TPC-DS date keys (~1,800 values) outrank STORE (12) and SHIP_MODE (20). Date first is still the right call; the docs are wrong.\n- **Query usage is ignored.** SS_PROMO_SK (6 queries) beats SS_ITEM_SK. ORDERS gets the unique O_ORDERKEY as its third key, which Snowflake advises against.\n- **Extra keys add cost without benefit.** On LINEITEM only L_SHIPDATE is ever filtered; L_SUPPKEY and L_PARTKEY are join keys only. At sf10/sf100, keys 2–3 barely aid pruning but add reclustering cost.\n- **INVENTORY is never clustered.** It is listed as a fact table, but the profile has no candidates for it (0 in `tpc.yaml`), and the test loop skips it silently. INVENTORY is ~399M rows at sf100, and Q21, Q22, Q37, Q39, Q72 and Q82 filter it by date.\n- **Smaller defects:**\n  - The generator text says clustering renders \"post-load\" (`:48`); it is DDL before the load.\n  - Dry-run shows `CREATE … CLUSTER BY` while real runs use ALTER.\n  - `analyze_table` uses the deprecated manual `RECLUSTER` (`benchbox/platforms/snowflake.py:1575`) and has no caller.\n  - Baseline candidates show `query_count: 0`.\n\n## Change\n- Rank by query evidence with the date first.\n- Prefer one date key, or date plus one low-cardinality filter key.\n- Add an INV_DATE_SK candidate.\n- Fix the docs and dead code.\n- Use the measured outcomes from the Snowflake trial-exit tuned campaign where available (see `tuning-profile-measured-outcomes-20261008`).",
+  "links": [
+    "scripts/generate_cloud_tpc_templates.py",
+    "benchbox/core/tuning/profiles",
+    "examples/tunings/snowflake"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
+      "at": "2026-10-13T13:13:50Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "ee7c870bce3c4323a2ae6c3803010f33",
+      "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    }
+  ]
+}
