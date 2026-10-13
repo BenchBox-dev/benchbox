@@ -20701,6 +20701,13 @@
       "status": "open",
       "title": "Replace a real Snowflake account username in a public test fixture"
     },
+    "snowflake-trial-exit-corrected-plan-20261013": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Measure tuned Snowflake templates and correct the trial record"
+    },
     "snowflake-trial-exit-gate0-liveness-budget": {
       "claim": null,
       "needs": [],

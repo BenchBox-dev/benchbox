@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Tuned campaign: the tuned campaign ran every cell the budget and time allowed. Each completed cell has an analysis file with a verdict, and every skipped or abandoned cell has a recorded reason.",
+    "Pull requests: PR-1, PR-2, PR-3 and PR-4 are merged, or each one that cannot merge has its blocker recorded in the closeout.",
+    "Redaction: the Gate 0 tracker context no longer holds the Snowflake account locator or organization name.",
+    "Diagnostics: diagnostics are saved, or the reason they could not be collected is recorded.",
+    "Local cleanup: ~/Developer/benchmark_runs/tpch_sf1000 is deleted.",
+    "Tracker closeout: the program item snowflake-trial-exit-corrected-plan-20261013 is finished with the closeout context; items snowflake-tuned-live-certification-20261001 and cloud-tuned-benefit-live-runs-20261008 carry evidence notes.",
+    "Budget: the cumulative credit estimate never went above 85."
+  ],
+  "description": "Run an interleaved, settled tuned-vs-untuned Snowflake campaign on TPC-H and TPC-DS; fix the tuning-metadata placeholder, Snowflake reuse check and publish phase defects; correct the comparability, reuse and pilot evidence; close the trial program.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
+      "at": "2026-10-13T19:23:03Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "bf18cda83e344b31a07160217fb7668e",
+      "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    }
+  ]
+}
