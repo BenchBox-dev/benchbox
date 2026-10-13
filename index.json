@@ -5948,6 +5948,13 @@
       "status": "done",
       "title": "Add first-class Databricks Liquid Clustering support in BenchBox tuning configurations"
     },
+    "databricks-notuning-autooptimize-and-dead-template-keys-20261013": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Databricks notuning baselines get autoOptimize table properties; template auto_optimize keys are dead"
+    },
     "databricks-path-missing-joinpath-skips-manifest-validation": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Notuning Databricks runs set no autoOptimize properties unless recorded as harness settings in both arms (unit test).",
+    "Template auto_optimize/auto_compact keys control the properties.",
+    "Liquid AUTO templates carry no unused column lists or document them."
+  ],
+  "context": "Found 2026-10-13 by an adversarial review of Databricks tuning at origin/develop 77048bfb9.",
+  "description": "## Problem\n- **Baselines are not untuned.** The Databricks adapter ignores the templates' `auto_optimize_enabled`/`auto_compact_enabled`. It uses its own options, which default to True (`benchbox/platforms/databricks/adapter.py:299-304`), so notuning baselines also get autoOptimize TBLPROPERTIES. That is tuning applied to the untuned arm.\n- **Liquid AUTO templates list unused columns.** They list 5–6 clustering columns per table, which `CLUSTER BY AUTO` ignores, and the validator would reject more than 4 if the strategy switched to manual liquid.\n\n## Change\n- Make notuning baselines run with no autoOptimize properties, or record them as harness settings applied in both arms.\n- Drive the properties from the template keys.\n- Trim the liquid AUTO templates or document why they list extra columns.\n- Coordinate with `spark-baseline-no-default-overrides`.",
+  "links": [
+    "benchbox/platforms/databricks/adapter.py",
+    "examples/tunings/databricks"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
+      "at": "2026-10-13T13:14:17Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "466eb75e52644f06a018f5f351fd4ed2",
+      "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    }
+  ]
+}
