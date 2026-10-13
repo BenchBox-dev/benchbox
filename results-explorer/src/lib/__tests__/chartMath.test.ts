@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildLogLatencyScale, logLatencyTicks, logLatencyFraction } from "@/lib/chartMath";
+import { buildLogLatencyScale, logLatencyTicks, logLatencyFraction, spaceTicks } from "@/lib/chartMath";
 import { formatLatencyAxisLabels } from "@/lib/metricFormatters";
 
 describe("logLatencyTicks", () => {
@@ -59,4 +59,15 @@ it("keeps tick coordinates distinct and inside subfloor and narrow domains", () 
     expect(ticks.every((tick) => tick >= scale.floorMs)).toBe(true);
     expect(positions.every((position) => position >= -1e-10 && position <= 1 + 1e-10)).toBe(true);
   }
+});
+
+describe("spaceTicks", () => {
+  it("drops ticks closer than the minimum pixel gap and keeps the last tick", () => {
+    const position = (value: number) => Math.log10(value) * 200;
+    expect(spaceTicks([100, 200, 300, 500, 700, 1000], position)).toEqual([100, 200, 500, 1000]);
+  });
+
+  it("keeps every tick when they are already far apart", () => {
+    expect(spaceTicks([1, 10, 100], (value) => Math.log10(value) * 100)).toEqual([1, 10, 100]);
+  });
 });

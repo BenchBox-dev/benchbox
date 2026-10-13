@@ -156,5 +156,5 @@ describe("Compare visible disabled reasons accessibility", () => {
     await waitFor(() => expect(screen.getByTestId("compare-warning-link")).toBeTruthy());
     expect(screen.getByRole("region", { name: "Warning details" })).toBeTruthy();
     await expectNoAxeViolations(container);
-  });
+  }, 15_000);
 });

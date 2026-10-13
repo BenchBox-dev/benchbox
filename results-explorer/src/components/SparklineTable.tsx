@@ -2,7 +2,7 @@ import type { BenchmarkSummary, PlatformRow } from "@/types";
 import { buildLatencyBarScale, latencyScaleFraction } from "@/lib/chartMath";
 import { paletteColor } from "@/lib/chartTheme";
 import { orderRunsByDisplayGeomean } from "@/lib/chartRunRows";
-import { costModelDisclosure, estimateProvenance, hasCostEstimate, normalizedCostLabel, normalizedCostValue } from "@/lib/costDisplay";
+import { costModelDisclosure, estimateProvenance, hasCostEstimate, normalizedCostLabel, normalizedCostShortLabel, normalizedCostValue } from "@/lib/costDisplay";
 import {
   isRankable,
   isTimingDisplayable,
@@ -98,7 +98,7 @@ export function SparklineTable({ summary, colorIndexFor }: Props) {
         </thead>
         <tbody>
           {orderedRuns.map(({ run: p, sourceIndex: i }) => {
-            const color = paletteColor(colorIndexFor?.(p) ?? i);
+            const color = paletteColor(colorIndexFor?.(p) ?? p.color_slot ?? i);
             const geomeanValue =
               isTimingDisplayable(p) && isValidTimingValue(p.display_geomean_ms) ? p.display_geomean_ms : null;
             const scoreValue = primaryMetricValue(p, scoreMetric);
@@ -142,10 +142,10 @@ export function SparklineTable({ summary, colorIndexFor }: Props) {
                 )}
                 {showCost && (
                   <td
-                    class="px-2 py-1.5 text-right font-mono text-[var(--bb-data-fg-muted)]"
-                    title={estimateProvenance(p) ?? undefined}
+                    class="whitespace-nowrap px-2 py-1.5 text-right font-mono text-[var(--bb-data-fg-muted)]"
+                    title={estimateProvenance(p) ?? normalizedCostLabel(p)}
                   >
-                    {normalizedCostLabel(p)}
+                    {normalizedCostShortLabel(p)}
                   </td>
                 )}
               </tr>

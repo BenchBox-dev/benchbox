@@ -20,7 +20,7 @@ test.describe("Compare guardrails", () => {
     const receipt = main.getByRole("region", { name: "Comparison checks" });
     const summary = main.getByRole("region", { name: "Comparison summary" });
     await expect(receipt).toContainText("Benchmark");
-    await expect(summary).toContainText("Not directly comparable: benchmarks differ");
+    await expect(summary).toContainText("Not directly comparable: runs differ in benchmark");
     await expect(summary).toContainText("No winner named");
     await expect(main.getByRole("heading", { name: "Query-level differences" })).toBeVisible();
     await expect(main.getByRole("heading", { name: /Cannot compare/i })).toHaveCount(0);
@@ -37,7 +37,7 @@ test.describe("Compare guardrails", () => {
     const receipt = main.getByRole("region", { name: "Comparison checks" });
     const summary = main.getByRole("region", { name: "Comparison summary" });
     await expect(receipt).toContainText("Scale factor");
-    await expect(summary).toContainText("Not directly comparable: scale factors differ");
+    await expect(summary).toContainText("Not directly comparable: runs differ in scale factor");
     await expect(summary).toContainText("No winner named");
     await expect(main.getByRole("heading", { name: "Query-level differences" })).toBeVisible();
     await expect(main.getByRole("heading", { name: /Cannot compare/i })).toHaveCount(0);

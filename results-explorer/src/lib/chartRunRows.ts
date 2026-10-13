@@ -1,4 +1,4 @@
-import { fitLabel } from "@/lib/chartLabels";
+import { fitLabel, fitLabelMiddle } from "@/lib/chartLabels";
 import { isValidTimingValue } from "@/lib/displayEligibility";
 
 export interface RunRow<T> {
@@ -27,5 +27,7 @@ export function fitRunLabels(labels: readonly string[], maxWidthPx: number, font
   const fitted = labels.map((label) => fitLabel(label, maxWidthPx, fontSizePx).text);
   const occurrences = new Map<string, number>();
   for (const text of fitted) occurrences.set(text, (occurrences.get(text) ?? 0) + 1);
-  return fitted.map((text, index) => ((occurrences.get(text) ?? 0) > 1 ? labels[index]! : text));
+  return fitted.map((text, index) =>
+    (occurrences.get(text) ?? 0) > 1 ? fitLabelMiddle(labels[index]!, maxWidthPx, fontSizePx).text : text,
+  );
 }

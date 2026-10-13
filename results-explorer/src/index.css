@@ -44,6 +44,10 @@
 }
 
 @layer components {
+    .overflow-x-auto {
+        position: relative;
+    }
+
     .bb-app-shell {
         padding-top: var(--bb-inset-top);
         padding-right: var(--bb-inset-right);
@@ -569,6 +573,12 @@
         padding: 1.25mm !important;
         white-space: normal !important;
         overflow-wrap: anywhere;
+    }
+
+    th *,
+    td * {
+        white-space: normal !important;
+        min-width: 0 !important;
     }
 
     table[role="grid"] {

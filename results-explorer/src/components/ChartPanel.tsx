@@ -31,6 +31,7 @@ import { runColorIndexFor, SummaryChartOverview, SummaryMetricTable } from "@/co
 import { fmtGeomean, fmtScore } from "@/utils";
 import { paletteColor } from "@/lib/chartTheme";
 import { RunDateChip } from "@/components/RunAge";
+import { MISSING_VALUE_GLYPH } from "@/lib/metricFormatters";
 import {
   formatRunIdentitiesForCohort,
   formatRunIdentityLabelsForCohort,
@@ -288,7 +289,7 @@ function ChartPanelTabs({
         return {
           label: chartPlatformLabels[index] ?? platform.platform,
           value: timing ?? null,
-          color: paletteColor(index),
+          color: paletteColor(platform.color_slot ?? index),
         };
       }),
     }));
@@ -673,7 +674,7 @@ function ChartFigure({
         return {
           label: platformLabels[index] ?? platform.platform,
           value: timing ?? null,
-          color: paletteColor(index),
+          color: paletteColor(platform.color_slot ?? index),
         };
       }),
     }));
@@ -902,7 +903,7 @@ function renderChart(
                   <div key={platform.result_id} class="flex items-center gap-1.5 text-sm text-[var(--bb-data-fg-muted)]">
                     <span
                       class="inline-block h-3 w-3 rounded-sm"
-                      style={{ backgroundColor: paletteColor(index) }}
+                      style={{ backgroundColor: paletteColor(platform.color_slot ?? index) }}
                     />
                     {legendLabels[index] ?? platform.platform}
                   </div>
@@ -944,7 +945,7 @@ function renderChart(
                       platform: platform.platform,
                       displayLabel: cohortLabels[index] ?? platform.platform,
                       percentile_stats: platform.percentile_stats,
-                      colorIdx: index,
+                      colorIdx: platform.color_slot ?? index,
                     },
                   ]
                 : [],
@@ -1225,7 +1226,7 @@ function SummaryBoxPanel({
       <div class="grid gap-3 sm:grid-cols-3">
         <SummaryStat label="Runs" value={String(historical.length)} />
         <SummaryStat label="Benchmarks" value={String(benchmarks.size)} />
-        <SummaryStat label="Latest run" value={latest ? <RunDateChip runDate={latest.run_date} /> : "-"} />
+        <SummaryStat label="Latest run" value={latest ? <RunDateChip runDate={latest.run_date} /> : MISSING_VALUE_GLYPH} />
       </div>
     );
   }
@@ -1284,7 +1285,7 @@ function SummaryBoxPanel({
               )}
             </>
           ) : (
-            "-"
+            MISSING_VALUE_GLYPH
           )
         }
         title={suppressWinnerClaims ? suppressionReason : undefined}

@@ -153,7 +153,7 @@ export function CompareTray({ summary, items, allIds, buildHref, onClear, onRemo
               ))}
             </div>
           </div>
-          <div class="flex shrink-0 items-center gap-3">
+          <div class="flex min-w-0 flex-wrap items-center gap-3 sm:justify-end">
             {!collapsed && (
               <button
                 type="button"

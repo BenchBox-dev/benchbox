@@ -1440,7 +1440,7 @@ describe("PlatformIndex table cells", () => {
     const table = screen.getByRole("table", { name: "DuckDB results" });
     expect(within(table).queryByText("Arm64")).toBeNull();
     const clientCells = within(table).getAllByTitle(
-      "Client machine: Arm64, Apple silicon, 16 GB (the warehouse hardware is managed by the provider)",
+      "Client machine: Arm64, Apple silicon, 16 GB (the remote server's hardware is not recorded)",
     );
     expect(clientCells).toHaveLength(3);
     expect(clientCells.every((cell) => cell.textContent === "—")).toBe(true);

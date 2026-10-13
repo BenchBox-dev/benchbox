@@ -18,7 +18,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { TableScrollHint } from "@/components/TableScrollHint";
 import { RunDateChip } from "@/components/RunAge";
 import { formatCount, formatCountWithVerb } from "@/lib/copyFormatters";
-import { normalizedCostLabel, normalizedCostValue } from "@/lib/costDisplay";
+import { normalizedCostShortLabel, normalizedCostValue } from "@/lib/costDisplay";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
 
 const SUPPORTED_BENCHMARK_COUNT = new Set(Object.values(BENCHMARK_LABELS)).size;
@@ -324,7 +324,7 @@ function RecentRow({
         </td>
       )}
       <td class="table-td font-mono">{fmtGeomean(entry.geomean_ms)}</td>
-      {showCost && <td class="table-td font-mono text-[var(--bb-data-fg-muted)]">{normalizedCostLabel(entry)}</td>}
+      {showCost && <td class="table-td font-mono text-[var(--bb-data-fg-muted)]">{normalizedCostShortLabel(entry)}</td>}
       <td class="table-td text-right">
         <a href={`/results/r/${entry.result_id}`} class="text-xs font-medium no-underline">
           View →

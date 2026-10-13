@@ -339,7 +339,7 @@ function formatPasses(row: QueryDiffRow) {
 function formatDelta(deltaMs: number | null) {
   if (deltaMs === null) return MISSING_VALUE_GLYPH;
   if (Math.abs(deltaMs) < 1e-9) return "0 ms";
-  return `${deltaMs > 0 ? "+" : "-"}${fmtMs(Math.abs(deltaMs))}`;
+  return `${deltaMs > 0 ? "+" : "−"}${fmtMs(Math.abs(deltaMs))}`;
 }
 
 function statusLabel(status: QueryDiffStatus) {

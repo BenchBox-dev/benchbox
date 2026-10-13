@@ -9,7 +9,7 @@ import {
   type ChartHistoricalEntry,
   type ChartRegistryEntry,
 } from "@/lib/chartRegistry";
-import { paletteColor, PHASE_COLORS, timeSeriesColor } from "@/lib/chartTheme";
+import { assignRunColorSlots, paletteColor, PHASE_COLORS, timeSeriesColor } from "@/lib/chartTheme";
 import {
   buildLatencyBarScale,
   buildLogLatencyScale,
@@ -96,7 +96,7 @@ export function orderByDisplayGeomean<T extends PlatformRow>(platforms: readonly
 
 export function runColorIndexFor(summary: BenchmarkSummary | null): (platform: PlatformRow) => number {
   const indexByResultId = new Map(summary?.platforms.map((platform, index) => [platform.result_id, index]) ?? []);
-  return (platform) => indexByResultId.get(platform.result_id) ?? 0;
+  return (platform) => platform.color_slot ?? indexByResultId.get(platform.result_id) ?? 0;
 }
 
 function exclusionCauses(
@@ -108,6 +108,22 @@ function exclusionCauses(
   const causes = reasons.map((entry) => entry.reason.replace(/\.$/, ""));
   if (excludedCount > explained) causes.push(unexplainedCause);
   return causes.join("; ");
+}
+
+function populationQueryText(
+  summary: BenchmarkSummary,
+  rows: readonly PlatformRow[],
+  scope: "cohort" | "compare",
+): string {
+  const total = summary.query_ids.length;
+  if (scope !== "compare" || rows.length === 0) return `${total} queries`;
+  const shared = summary.query_ids.filter((queryId) =>
+    rows.every((row) => {
+      const value = row.timings[queryId];
+      return typeof value === "number" && Number.isFinite(value) && value > 0;
+    }),
+  ).length;
+  return shared === total ? `${total} queries` : `${shared} shared of ${total} queries`;
 }
 
 export function SummaryMetricTable({
@@ -192,7 +208,7 @@ export function SummaryMetricTable({
           <tbody>
             {rows.map((platform, rowIndex) => {
               const sourceIndex = rowIndexByResultId.get(platform.result_id) ?? rowIndex;
-              const color = paletteColor(sourceIndex);
+              const color = paletteColor(platform.color_slot ?? sourceIndex);
               const displayValue = validPrimaryMetricValue(platform, "display_geomean_ms");
               const powerValue = isRankable(platform)
                 ? validPrimaryMetricValue(platform, scoreMetric)
@@ -255,7 +271,7 @@ export function SummaryMetricTable({
       >
         <p>
           <strong class="text-[var(--bb-data-fg-primary)]">Population:</strong>{" "}
-          {`${total} ${noun} runs · ${displayRows.length} display-safe rows · ${summary.query_ids.length} queries`}
+          {`${total} ${noun} runs · ${displayRows.length} display-safe rows · ${populationQueryText(summary, displayRows, scope)}`}
         </p>
         {rankingNote !== null && <p>{rankingNote}</p>}
         {displayNote !== null && <p class="sm:col-span-2 text-xs text-[var(--bb-data-fg-subtle)]">{displayNote}</p>}
@@ -566,7 +582,7 @@ function renderExpandedChart(
                     platform: platform.platform,
                     displayLabel: cohortLabels[index] ?? platform.platform,
                     percentile_stats: platform.percentile_stats,
-                    colorIdx: index,
+                    colorIdx: platform.color_slot ?? index,
                   },
                 ]
               : [],
@@ -700,7 +716,7 @@ function MiniPercentiles({ summary }: { summary: BenchmarkSummary }) {
   );
   const rows = summary.platforms.flatMap((platform, index) =>
     isTimingDisplayable(platform) && platform.percentile_stats !== null
-      ? [{ result_id: platform.result_id, label: cohortLabels[index] ?? platform.platform, stats: platform.percentile_stats, colorIdx: index }]
+      ? [{ result_id: platform.result_id, label: cohortLabels[index] ?? platform.platform, stats: platform.percentile_stats, colorIdx: platform.color_slot ?? index }]
       : [],
   ).slice(0, 6);
   if (rows.length === 0) return <MiniUnavailable label="No percentile statistics recorded" />;
@@ -744,7 +760,7 @@ function MiniCDF({
   colorIndexFor?: (platform: PlatformRow) => number;
 }) {
   const series = summary.platforms.slice(0, 6).map((platform, index) => ({
-    color: timeSeriesColor(colorIndexFor?.(platform) ?? index),
+    color: timeSeriesColor(colorIndexFor?.(platform) ?? platform.color_slot ?? index),
     points: computeECDFPoints(summary.query_ids.map((queryId) => platformTimingValue(platform, queryId))),
   })).filter((entry) => entry.points.length > 0);
   const allMs = series.flatMap((entry) => entry.points.map((point) => point.x));
@@ -855,6 +871,9 @@ function MiniTrend({ summary, historical }: { summary: BenchmarkSummary; histori
     )
     .filter((points) => points.length >= 2);
   if (series.length === 0) return <MiniUnavailable label="Not enough history for a trend" />;
+  const slotByPlatformId = assignRunColorSlots(
+    series.map((points) => ({ result_id: points[0]!.platform_id, platform_id: points[0]!.platform_id, platform: points[0]!.platform })),
+  );
   const values = series.flat().map((entry) => trendEntryValue(entry, metric) as number);
   const min = Math.min(...values);
   const max = Math.max(...values);
@@ -876,7 +895,8 @@ function MiniTrend({ summary, historical }: { summary: BenchmarkSummary; histori
             const y = primaryMetricHigherIsBetter(metric) ? 10 + (1 - normalized) * 62 : 10 + normalized * 62;
             return `${pointIndex === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
           }).join(" ");
-          return <path key={index} d={d} fill="none" stroke={timeSeriesColor(index)} stroke-width="1.5" />;
+          const slot = slotByPlatformId.get(points[0]!.platform_id) ?? index;
+          return <path key={index} d={d} fill="none" stroke={timeSeriesColor(slot)} stroke-width="1.5" />;
         })}
       </svg>
     </MiniFrame>
@@ -966,7 +986,7 @@ function MiniCost({ summary }: { summary: BenchmarkSummary }) {
               style={{
                 left: `${8 + x * 90}%`,
                 top: `${8 + y * 84}%`,
-                backgroundColor: paletteColor(index),
+                backgroundColor: paletteColor(point.color_slot ?? index),
               }}
               title={point.platform}
             />

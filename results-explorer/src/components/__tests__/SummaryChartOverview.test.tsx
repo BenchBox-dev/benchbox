@@ -4,7 +4,7 @@ import type { BenchmarkSummary, PlatformRow } from "@/types";
 import type { ChartHistoricalEntry } from "@/lib/chartRegistry";
 
 import { SummaryChartOverview, SummaryMetricTable } from "@/components/SummaryChartOverview";
-import { paletteColor } from "@/lib/chartTheme";
+import { assignRunColorSlots, paletteColor } from "@/lib/chartTheme";
 
 function makePlatform(overrides: Partial<PlatformRow> = {}): PlatformRow {
   const timings = overrides.timings ?? { Q1: 10, Q2: 20, Q3: 30 };
@@ -451,17 +451,19 @@ describe("run colours on the benchmark page", () => {
     ],
   });
 
+  const alphaColor = paletteColor(assignRunColorSlots(rankedSummary.platforms).get("r2")!);
+
   it("gives a run the same colour in the summary table, the box plot and the CDF", () => {
     const { container } = renderOverview(rankedSummary);
     const table = container.querySelector("table.summary-metric-table") as HTMLElement;
     const alphaRow = Array.from(table.querySelectorAll("tbody tr")).find((row) => row.textContent?.includes("Alpha"));
-    expect(alphaRow?.querySelector("span.rounded-full")?.getAttribute("style")).toContain(paletteColor(1));
+    expect(alphaRow?.querySelector("span.rounded-full")?.getAttribute("style")).toContain(alphaColor);
 
     const latencySection = screen.getByRole("heading", { name: "Latency distribution" }).closest("section") as HTMLElement;
     const boxLabel = Array.from(latencySection.querySelectorAll("text")).find((node) =>
       node.textContent?.endsWith("Alpha"),
     );
-    expect(boxLabel?.parentElement?.querySelector("rect")?.getAttribute("fill")).toBe(paletteColor(1));
+    expect(boxLabel?.parentElement?.querySelector("rect")?.getAttribute("fill")).toBe(alphaColor);
 
     const cdfCard = screen.getByTestId("summary-chart-preview-cdf_chart");
     fireEvent.click(within(cdfCard).getByText("Open full chart ↗", { selector: "span" }));
@@ -469,6 +471,30 @@ describe("run colours on the benchmark page", () => {
     const cdfPath = Array.from(container.querySelectorAll("path")).find(
       (path) => path.querySelector("title")?.textContent?.startsWith("Alpha"),
     );
-    expect(cdfPath?.getAttribute("stroke")).toBe(paletteColor(1));
+    expect(cdfPath?.getAttribute("stroke")).toBe(alphaColor);
+  });
+});
+
+describe("SummaryMetricTable population", () => {
+  it("names the shared query count when compared runs do not all answer every query", () => {
+    const summary = makeSummary({
+      platforms: [
+        makePlatform({ result_id: "r1", timings: { Q1: 10, Q2: 20, Q3: 30 } }),
+        makePlatform({ result_id: "r2", platform_id: "sqlite", platform: "SQLite", timings: { Q1: 20, Q2: 40, Q3: null } }),
+      ],
+    });
+    render(<SummaryMetricTable summary={summary} scope="compare" />);
+    expect(screen.getByText(/2 shared of 3 queries/)).toBeTruthy();
+  });
+
+  it("keeps the plain query count on cohort pages", () => {
+    const summary = makeSummary({
+      platforms: [
+        makePlatform({ result_id: "r1", timings: { Q1: 10, Q2: 20, Q3: 30 } }),
+        makePlatform({ result_id: "r2", platform_id: "sqlite", platform: "SQLite", timings: { Q1: 20, Q2: 40, Q3: null } }),
+      ],
+    });
+    render(<SummaryMetricTable summary={summary} />);
+    expect(screen.getByText(/· 3 queries/)).toBeTruthy();
   });
 });

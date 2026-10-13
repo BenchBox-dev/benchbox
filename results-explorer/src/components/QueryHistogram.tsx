@@ -167,7 +167,8 @@ export function QueryHistogram({ summary, preserveOrder = false, queryHref }: Pr
                 : label}
               {platforms.map((platform, platformIndex) => {
                 const ms = platformTimingValue(platform, queryId);
-                const color = paletteColor(platformIndex);
+                const slot = platform.color_slot ?? platformIndex;
+                const color = paletteColor(slot);
                 if (ms === null || ms <= 0) {
                   return (
                     <circle
@@ -187,7 +188,7 @@ export function QueryHistogram({ summary, preserveOrder = false, queryHref }: Pr
                 return (
                   <path
                     key={platform.result_id}
-                    d={runMarkerPath(platformIndex, toX(ms), rowCenter, RUN_MARKER_RADIUS)}
+                    d={runMarkerPath(slot, toX(ms), rowCenter, RUN_MARKER_RADIUS)}
                     fill={color}
                     stroke="var(--bb-surface-data)"
                     stroke-width={0.75}
@@ -210,7 +211,8 @@ export function QueryHistogram({ summary, preserveOrder = false, queryHref }: Pr
           Latency (ms, log scale)
         </text>
       </svg>
-      <table class="sr-only">
+      <div class="sr-only">
+      <table>
         <caption>Per-query latency by run, in milliseconds</caption>
         <thead>
           <tr><th>Query</th><th>Run</th><th>Latency</th></tr>
@@ -231,11 +233,12 @@ export function QueryHistogram({ summary, preserveOrder = false, queryHref }: Pr
           }))}
         </tbody>
       </table>
+      </div>
       <RunLegend
         runs={platforms.map((platform, index) => ({
           key: platform.result_id,
           label: runLabels[index] ?? platform.platform,
-          runIndex: index,
+          runIndex: platform.color_slot ?? index,
         }))}
         showMissing={hasMissing}
       />

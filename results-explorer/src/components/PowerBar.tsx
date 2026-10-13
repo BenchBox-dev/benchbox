@@ -33,7 +33,7 @@ export function PowerBar({ summary, colorIndexFor }: Props) {
   const rows = summary.platforms
     .map((p, i) => ({
       ...p,
-      colorIdx: colorIndexFor?.(p) ?? i,
+      colorIdx: colorIndexFor?.(p) ?? p.color_slot ?? i,
       displayLabel: displayLabels[i] ?? p.platform,
       fullLabel: cohortLabels[i]?.full ?? p.platform,
     }))

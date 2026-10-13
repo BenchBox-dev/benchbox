@@ -3,6 +3,7 @@ import { compareCohortSignatureForRow, type CompareCohortRow } from "@/lib/compa
 import { planCompareIds } from "@/lib/compareRecovery";
 import { canonicalBenchmarkSlug, formatBenchmarkLabel } from "@/lib/displayLabels";
 import { formatTickMs } from "@/lib/chartTicks";
+import { formatScaleFactor } from "@/lib/metricFormatters";
 import {
   DEFAULT_BASIS,
   decodeBasis,
@@ -284,7 +285,7 @@ export function runScopeDifferences(rows: readonly CompareCohortRow[]): string[]
   const signatures = rows.map((row) => compareCohortSignatureForRow(row));
   const dimensions: Array<[string, string[]]> = [
     ["benchmark", signatures.map((signature) => (signature.benchmark === "" ? "" : formatBenchmarkLabel(signature.benchmark)))],
-    ["scale factor", signatures.map((signature) => (signature.scaleFactor === "" ? "" : `SF ${signature.scaleFactor}`))],
+    ["scale factor", signatures.map((signature) => (signature.scaleFactor === "" ? "" : formatScaleFactor(signature.scaleFactor)))],
     ["phase", signatures.map((signature) => signature.phase)],
     ["stream count", signatures.map((signature) => (signature.streamCount === "" ? "" : `${signature.streamCount} streams`))],
   ];

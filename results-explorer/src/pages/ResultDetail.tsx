@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { TuningSettingsDisclosure } from "@/components/TuningSettingsDisclosure";
 import type { RoutableProps } from "preact-router";
 import type { DetailResult, QueryDisplayTiming, QueryTiming, SortState } from "@/types";
 import type { ChartContext } from "@/lib/chartRegistry";
@@ -348,6 +349,9 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
             value={formatDurationSeconds(detail.total_duration_s).valueText}
             helper="Run duration"
           />
+          {detail.has_tuning && detail.bundle_download_url ? (
+            <TuningSettingsDisclosure bundleUrl={detail.bundle_download_url} />
+          ) : null}
         </div>
       </section>
 

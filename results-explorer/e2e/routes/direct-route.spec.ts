@@ -54,7 +54,7 @@ test.describe("direct route parity", () => {
     await waitForShell(page);
     await expect(page).toHaveURL(/\/results\/tpch\//);
     await waitForDataElement(page, page.getByRole("heading", { name: /^TPC-H Results$/ }));
-    await expect(page.getByRole("table", { name: /tpch SF0\.01 power results/i })).toBeVisible();
+    await expect(page.getByRole("table", { name: /tpch SF 0\.01 power results/i })).toBeVisible();
 
     await page.goto("/results/query");
     await waitForDataElement(page, page.getByRole("heading", { name: /^Find benchmark runs$/ }));

@@ -1,4 +1,5 @@
 import type { BenchmarkSummary, DetailResult, PlatformRow } from "@/types";
+import { assignRunColorSlots } from "@/lib/chartTheme";
 import { canonicalPhase } from "@/lib/displayLabels";
 import {
   isTimingDisplayable,
@@ -417,10 +418,19 @@ function detailToPlatformRow(detail: DetailResult): PlatformRow {
   };
 }
 
+function withRunColorSlots(summary: BenchmarkSummary): BenchmarkSummary {
+  const slots = assignRunColorSlots(summary.platforms);
+  return {
+    ...summary,
+    platforms: summary.platforms.map((platform) => ({ ...platform, color_slot: slots.get(platform.result_id) })),
+  };
+}
+
 export function buildRenderableSummary(context: ChartContext): BenchmarkSummary | null {
-  if (context.kind === "summary") return context.summary;
-  if (context.kind === "detail") return buildDetailSummary(context.detail, context.primaryMetric);
-  return buildCompareSummary(context.results, context.primaryMetric);
+  if (context.kind === "summary") return context.summary ? withRunColorSlots(context.summary) : null;
+  if (context.kind === "detail") return withRunColorSlots(buildDetailSummary(context.detail, context.primaryMetric));
+  const summary = buildCompareSummary(context.results, context.primaryMetric);
+  return summary ? withRunColorSlots(summary) : null;
 }
 
 function getChartCapabilities(context: ChartContext): ChartCapabilities {

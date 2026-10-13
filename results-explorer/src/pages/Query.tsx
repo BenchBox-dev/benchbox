@@ -42,7 +42,7 @@ import {
 } from "@/lib/duckdbQueries";
 import { formatQueryCell, formatQueryColumnLabel, formatQueryFacetValue } from "@/lib/queryLabels";
 import { RunDateChip } from "@/components/RunAge";
-import { formatPlainNumber } from "@/lib/metricFormatters";
+import { formatPlainNumber, MISSING_VALUE_GLYPH } from "@/lib/metricFormatters";
 import {
   formatBenchmarkLabel,
   formatCostStatus,
@@ -1385,7 +1385,7 @@ function formatDateWindowLabel(value: string): string {
 }
 
 function formatCell(value: unknown): string {
-  if (value === null || value === undefined || value === "") return "-";
+  if (value === null || value === undefined || value === "") return MISSING_VALUE_GLYPH;
   if (typeof value === "number") return formatPlainNumber(value).valueText;
   return String(value);
 }

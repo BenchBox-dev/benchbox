@@ -2,7 +2,7 @@ import type { BenchmarkSummary, PlatformRow } from "@/types";
 import { useElementSize } from "@/lib/useElementSize";
 import { axisLabelAnchor, chartFrame } from "@/lib/chartFrame";
 import { timeSeriesColor } from "@/lib/chartTheme";
-import { buildLogLatencyScale, computeECDFPoints, logLatencyFraction, logLatencyTicks } from "@/lib/chartMath";
+import { buildLogLatencyScale, computeECDFPoints, logLatencyFraction, logLatencyTicks, spaceTicks } from "@/lib/chartMath";
 import { formatTimingExclusion, isTimingDisplayable, platformTimingValue } from "@/lib/displayEligibility";
 import { formatLatencyAxisLabels } from "@/lib/metricFormatters";
 import { orderRunsByDisplayGeomean, fitRunLabels } from "@/lib/chartRunRows";
@@ -36,7 +36,7 @@ export function CDFChart({ summary, colorIndexFor }: Props) {
     .map(({ run: p, sourceIndex: i }) => ({
       label: rawLabels[i] ?? p.platform,
       fullLabel: cohortLabels[i]?.full ?? p.platform,
-      color: timeSeriesColor(colorIndexFor?.(p) ?? i),
+      color: timeSeriesColor(colorIndexFor?.(p) ?? p.color_slot ?? i),
       isDisplayable: isTimingDisplayable(p),
       points: computeECDFPoints(summary.query_ids.map((queryId) => platformTimingValue(p, queryId))),
     }))
@@ -65,7 +65,7 @@ export function CDFChart({ summary, colorIndexFor }: Props) {
     return PADDING_TOP + PLOT_H * (1 - pct / 100);
   }
 
-  const xTicks = logLatencyTicks(logScale);
+  const xTicks = spaceTicks(logLatencyTicks(logScale), xFor);
   const tickLabels = formatLatencyAxisLabels(xTicks);
 
   return (

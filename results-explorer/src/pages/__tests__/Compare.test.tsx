@@ -1280,17 +1280,17 @@ describe("Compare", () => {
     const summary = screen.getByRole("heading", { name: "Comparison summary" }).closest("section");
     const queryDiff = screen.getByRole("heading", { name: "Query-level differences" }).closest("section");
     expect(guardrails).toHaveTextContent(
-      "The summary does not rank these runs because benchmarks differ and scale factors differ.",
+      "The summary does not rank these runs because runs differ in benchmark and scale factor.",
     );
     expect(receipt).toHaveTextContent("Benchmark");
     expect(receipt).toHaveTextContent("Scale factor");
-    expect(summary).toHaveTextContent("Not directly comparable: benchmarks differ and scale factors differ.");
+    expect(summary).toHaveTextContent("Not directly comparable: runs differ in benchmark and scale factor.");
     expect(summary).toHaveTextContent("No winner named");
     expect(summary).not.toHaveTextContent("DuckDB's power score was");
     expect(summary).not.toHaveTextContent("fastest");
     expect(screen.queryByText("vs worst")).toBeNull();
     expect(queryDiff).toHaveTextContent(
-      "This page does not name a winner because benchmarks differ and scale factors differ",
+      "This page does not name a winner because runs differ in benchmark and scale factor",
     );
   });
 
@@ -1360,14 +1360,14 @@ describe("Compare", () => {
     const receipt = screen.getByRole("region", { name: "Comparison checks" });
     const summary = screen.getByRole("heading", { name: "Comparison summary" }).closest("section");
     const queryDiff = screen.getByRole("heading", { name: "Query-level differences" }).closest("section");
-    expect(guardrails).toHaveTextContent("The summary does not rank these runs because phases differ.");
+    expect(guardrails).toHaveTextContent("The summary does not rank these runs because runs differ in phase.");
     expect(receipt).toHaveTextContent("Test phase");
     expect(receipt).toHaveTextContent("DuckDB: power; SQLite: throughput");
-    expect(summary).toHaveTextContent("Not directly comparable: phases differ.");
+    expect(summary).toHaveTextContent("Not directly comparable: runs differ in phase.");
     expect(summary).toHaveTextContent("No winner named");
     expect(summary).not.toHaveTextContent("DuckDB's power score was");
     expect(screen.queryByText("vs worst")).toBeNull();
-    expect(queryDiff).toHaveTextContent("This page does not name a winner because phases differ");
+    expect(queryDiff).toHaveTextContent("This page does not name a winner because runs differ in phase");
   });
 
   it("suppresses winner claims for direct compare URLs with different throughput stream counts", async () => {
@@ -1397,7 +1397,7 @@ describe("Compare", () => {
     });
 
     const summary = screen.getByRole("heading", { name: "Comparison summary" }).closest("section");
-    expect(summary).toHaveTextContent("Not directly comparable: stream counts differ.");
+    expect(summary).toHaveTextContent("Not directly comparable: runs differ in stream count.");
     expect(summary).toHaveTextContent("No winner named");
     expect(summary).not.toHaveTextContent("DuckDB's power score was");
   });

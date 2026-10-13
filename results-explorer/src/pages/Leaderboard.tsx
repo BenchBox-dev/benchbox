@@ -1310,6 +1310,16 @@ function LeaderboardComparePicker({
                           ? "Filter to one benchmark, scale, phase, and stream count to compare a single cohort."
                           : "This cohort has fewer than two comparable runs."}
           </p>
+          {cohort && cohort.results.length === 0 && rankingScope !== "comparable" && (
+            <button
+              type="button"
+              class="btn btn-secondary mt-2"
+              data-testid="leaderboard-include-unranked"
+              onClick={() => onRankingScopeChange("comparable")}
+            >
+              Include unranked runs
+            </button>
+          )}
         </div>
       </div>
 

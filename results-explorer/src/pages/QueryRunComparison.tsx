@@ -18,7 +18,7 @@ import { recoverCompareResults } from "@/lib/compareRecovery";
 import { formatLatencyMs } from "@/lib/metricFormatters";
 import { formatRunIdentitiesForCohort, preserveUniqueAfterTruncation } from "@/lib/runIdentity";
 import { resultDetailHref, visibleResultIdForRow } from "@/lib/resultLinks";
-import { paletteColor } from "@/lib/chartTheme";
+import { assignRunColorSlots, paletteColor } from "@/lib/chartTheme";
 import { runMarkerPath } from "@/lib/chartMarkers";
 import type { MeasurementBasis } from "@/lib/measurementBasis";
 import {
@@ -268,11 +268,12 @@ export function QueryRunComparison({ queryId = "", url }: QueryRunComparisonProp
 
   const loadedRuns = data.runs.filter(isLoadedRun);
   const scopeDifferences = runScopeDifferences(loadedRuns.map((run) => run.detail));
+  const runSlots = runColorSlotsFor(data.runs);
   const chartRuns: ChartRun[] = data.runs.map((run, index) => ({
     label: isLoadedRun(run) ? run.identityLabel : run.requestedId,
     summary: isLoadedRun(run) ? run.summary : null,
-    color: paletteColor(index),
-    shapeIndex: index,
+    color: paletteColor(runSlots[index] ?? index),
+    shapeIndex: runSlots[index] ?? index,
   }));
   const chartHasSamples = chartRuns.some((run) => (run.summary?.sampleCount ?? 0) > 0);
   const showOtherRecords = loadedRuns.some((run) => otherRecordsFor(run.summary).length > 0);
@@ -371,10 +372,21 @@ export function QueryRunComparison({ queryId = "", url }: QueryRunComparisonProp
   );
 }
 
-function RunMarker({ index }: { index: number }) {
+function runColorSlotsFor(runs: readonly ComparisonRun[]): number[] {
+  const slots = assignRunColorSlots(
+    runs.map((run, index) => ({
+      result_id: String(index),
+      platform_id: isLoadedRun(run) ? run.detail.platform_id : null,
+      platform: isLoadedRun(run) ? run.detail.platform : run.requestedId,
+    })),
+  );
+  return runs.map((_, index) => slots.get(String(index)) ?? index);
+}
+
+function RunMarker({ slot }: { slot: number }) {
   return (
     <svg class="mr-2 inline-block h-3 w-3 align-[-2px]" viewBox="0 0 12 12" aria-hidden="true">
-      <path d={runMarkerPath(index, 6, 6, 5)} fill={paletteColor(index)} />
+      <path d={runMarkerPath(slot, 6, 6, 5)} fill={paletteColor(slot)} />
     </svg>
   );
 }
@@ -389,6 +401,7 @@ interface QueryRunTableProps {
 function QueryRunTable({ runs, basis, queryId, showOtherRecords }: QueryRunTableProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const columnCount = showOtherRecords ? 7 : 6;
+  const runSlots = runColorSlotsFor(runs);
   return (
     <>
       <TableScrollHint scrollerRef={scrollerRef} testId="query-run-table-scroll-hint" />
@@ -411,7 +424,7 @@ function QueryRunTable({ runs, basis, queryId, showOtherRecords }: QueryRunTable
               <QueryRunTableRow
                 key={`${run.requestedId}-${index}`}
                 run={run}
-                index={index}
+                slot={runSlots[index] ?? index}
                 showOtherRecords={showOtherRecords}
                 columnCount={columnCount}
               />
@@ -425,17 +438,17 @@ function QueryRunTable({ runs, basis, queryId, showOtherRecords }: QueryRunTable
 
 interface QueryRunTableRowProps {
   run: ComparisonRun;
-  index: number;
+  slot: number;
   showOtherRecords: boolean;
   columnCount: number;
 }
 
-function QueryRunTableRow({ run, index, showOtherRecords, columnCount }: QueryRunTableRowProps) {
+function QueryRunTableRow({ run, slot, showOtherRecords, columnCount }: QueryRunTableRowProps) {
   if (!isLoadedRun(run)) {
     return (
       <tr>
         <th scope="row" class="sticky left-0 whitespace-nowrap bg-[var(--bb-surface-data)] px-3 py-2 font-medium">
-          <RunMarker index={index} />
+          <RunMarker slot={slot} />
           {run.requestedId}
         </th>
         <td colSpan={columnCount - 1} class="px-3 py-2 text-[var(--bb-data-fg-muted)]">
@@ -451,7 +464,7 @@ function QueryRunTableRow({ run, index, showOtherRecords, columnCount }: QueryRu
   return (
     <tr>
       <th scope="row" class="sticky left-0 whitespace-nowrap bg-[var(--bb-surface-data)] px-3 py-2 text-left font-medium">
-        <RunMarker index={index} />
+        <RunMarker slot={slot} />
         <a
           class="text-[var(--bb-accent-hover)] underline decoration-dotted underline-offset-2"
           href={resultDetailHref(run.detail.result_id)}

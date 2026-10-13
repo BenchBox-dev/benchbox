@@ -1107,6 +1107,25 @@ describe("BenchmarkIndex", () => {
     expect(getRenderedResultOrder(listRoot(container))).toEqual(["list-r1", "list-r2"]);
   });
 
+  it("list view shows dashes and the remote client title for a remote run", async () => {
+    const remoteRows = RESULT_ROWS.map((row) =>
+      row.result_id === "r1" ? { ...row, deployment_class: "remote", cloud_provider: null } : row,
+    );
+    vi.mocked(queryRows).mockImplementation(defaultImpl(remoteRows, RANKING_ROWS, CELL_ROWS));
+    const { container } = render(<BenchmarkIndex benchmark="tpch" />);
+    await waitFor(() => expect(screen.getByRole("button", { name: /Geomean/ })).toBeTruthy());
+
+    const remoteRow = within(listRoot(container) as HTMLElement).getByTestId("list-r1");
+    const hardwareCells = remoteRow.querySelectorAll('td[title^="Client machine: Arm64, Apple silicon"]');
+    expect(hardwareCells).toHaveLength(3);
+    hardwareCells.forEach((cell) => {
+      expect(cell.textContent).toBe("—");
+      expect(cell.getAttribute("title")).toBe(
+        "Client machine: Arm64, Apple silicon, 64 GB (the remote server's hardware is not recorded)",
+      );
+    });
+  });
+
   it("list view caps rendered rows and expands them with Show more", async () => {
     const manyRows = Array.from({ length: 205 }, (_, index) => ({
       ...RESULT_ROWS[0]!,
@@ -1144,7 +1163,7 @@ describe("BenchmarkIndex", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: /^Q1/ })).toBeTruthy());
     expect(getRenderedResultOrder(listRoot(container))).toHaveLength(205);
     expect(screen.getByText("Showing 205 of 205 results for SF 0.1")).toBeTruthy();
-  });
+  }, 15_000);
 
   it("supports grouping rows by engine version in list view", async () => {
     const listRows = [

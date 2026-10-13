@@ -69,7 +69,7 @@ import {
   timingValueForQuery,
 } from "@/lib/displayEligibility";
 import { formatWarningClassSummary, formatWarningCount } from "@/lib/copyFormatters";
-import { paletteColor } from "@/lib/chartTheme";
+import { assignRunColorSlots, paletteColor } from "@/lib/chartTheme";
 import { queryRunComparisonHref } from "@/lib/queryRunComparison";
 import { ChartPanel } from "@/components/ChartPanel";
 import { RunDateChip } from "@/components/RunAge";
@@ -530,6 +530,9 @@ export function Compare({ url }: CompareProps) {
     totalDurationS: r.total_duration_s,
     driverVersion: r.driver_version,
   }));
+  const runColorSlots = assignRunColorSlots(
+    resolvedResults.map((r) => ({ result_id: r.result_id, platform_id: r.platform_id, platform: r.platform })),
+  );
   const isMultiRun = compareLayoutForSelection(results.map((r) => r.result_id)).kind === "multi_run";
 
   return (
@@ -663,7 +666,7 @@ export function Compare({ url }: CompareProps) {
 
       <div class="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {rowData.map((r, i) => {
-          const color = paletteColor(i);
+          const color = paletteColor(runColorSlots.get(r.resultId) ?? i);
           const primary = primaries[i] ?? null;
           const speedup = higherIsBetter
             ? primary !== null && slowestPrimary !== null && slowestPrimary > 0
@@ -929,18 +932,23 @@ function formatPlainList(values: readonly string[]): string {
 }
 
 function severeCohortMismatchReason(results: DetailResult[]) {
-  const reasons: string[] = [];
+  const dimensions: string[] = [];
   if (new Set(results.map((result) => canonicalBenchmarkSlug(result.benchmark))).size > 1) {
-    reasons.push("benchmarks differ");
+    dimensions.push("benchmark");
   }
   if (new Set(results.map((result) => result.scale_factor)).size > 1) {
-    reasons.push("scale factors differ");
+    dimensions.push("scale factor");
   }
   if (new Set(results.map((result) => canonicalPhase(result.test_type))).size > 1) {
-    reasons.push("phases differ");
+    dimensions.push("phase");
   }
   if (new Set(results.map((result) => compareCohortSignatureForRow(result).streamCount)).size > 1) {
-    reasons.push("stream counts differ");
+    dimensions.push("stream count");
   }
-  return reasons.length > 0 ? reasons.join(" and ") : null;
+  if (dimensions.length === 0) return null;
+  const listed =
+    dimensions.length === 1
+      ? dimensions[0]
+      : `${dimensions.slice(0, -1).join(", ")} and ${dimensions[dimensions.length - 1]}`;
+  return `runs differ in ${listed}`;
 }

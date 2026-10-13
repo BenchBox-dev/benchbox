@@ -1,6 +1,6 @@
 import { formatPercentChange } from "@/lib/metricFormatters";
 import { deltaPct, sortByMagnitudeDesc } from "@/lib/chartMath";
-import { DIVERGING_MAX_PCT, paletteColor } from "@/lib/chartTheme";
+import { assignRunColorSlots, DIVERGING_MAX_PCT, paletteColor } from "@/lib/chartTheme";
 import { useElementSize } from "@/lib/useElementSize";
 import { chartFrame } from "@/lib/chartFrame";
 import { fitLabel, labelColumnWidth } from "@/lib/chartLabels";
@@ -17,6 +17,7 @@ interface DivergingEntry {
 
 export interface DivergingRunInput extends Partial<RunIdentitySource> {
   platform: string;
+  platform_id?: string | null;
 }
 
 interface Props {
@@ -47,6 +48,10 @@ export function DivergingBarChart({ queries, results, baselineIdx }: Props) {
     results.map((run, index) => ({ ...run, result_id: run.result_id ?? `run-${index}` })),
     "chart",
   );
+  const colorSlots = assignRunColorSlots(
+    results.map((run, index) => ({ result_id: String(index), platform_id: run.platform_id, platform: run.platform })),
+  );
+  const colorSlotOf = (runIndex: number): number => colorSlots.get(String(runIndex)) ?? runIndex;
   const baselineLabel = runLabels[baselineIdx] ?? "the selected baseline";
 
   const rawEntries: DivergingEntry[] = [];
@@ -174,12 +179,12 @@ export function DivergingBarChart({ queries, results, baselineIdx }: Props) {
                       y={barY}
                       width={length}
                       height={BAR_H}
-                      fill={paletteColor(entry.runIndex)}
+                      fill={paletteColor(colorSlotOf(entry.runIndex))}
                       opacity={0.85}
                     >
                       <title>{`${entry.label} · ${fullLabel}: ${valueText} vs ${baselineLabel}`}</title>
                     </rect>
-                    {overflow ? <polygon points={arrowPoints} fill={paletteColor(entry.runIndex)} /> : null}
+                    {overflow ? <polygon points={arrowPoints} fill={paletteColor(colorSlotOf(entry.runIndex))} /> : null}
                     <text
                       x={valueX}
                       y={rowCenter + 3.5}
@@ -198,7 +203,8 @@ export function DivergingBarChart({ queries, results, baselineIdx }: Props) {
         })}
       </svg>
 
-      <table class="sr-only">
+      <div class="sr-only">
+      <table>
         <caption>Per-query percentage changes relative to {baselineLabel}</caption>
         <thead>
           <tr><th>Query</th><th>Candidate</th><th>Change</th></tr>
@@ -213,6 +219,7 @@ export function DivergingBarChart({ queries, results, baselineIdx }: Props) {
           ))}
         </tbody>
       </table>
+      </div>
 
       <div class="mt-2 text-xs text-[var(--bb-data-fg-muted)]">
         <span>Baseline: <strong>{baselineLabel}</strong></span>
@@ -220,7 +227,7 @@ export function DivergingBarChart({ queries, results, baselineIdx }: Props) {
       </div>
       <RunLegend
         runs={results
-          .map((_, index) => ({ key: `${runLabels[index] ?? "run"}-${index}`, label: runLabels[index] ?? "", runIndex: index }))
+          .map((_, index) => ({ key: `${runLabels[index] ?? "run"}-${index}`, label: runLabels[index] ?? "", runIndex: colorSlotOf(index) }))
           .filter((run) => run.runIndex !== baselineIdx)}
       />
     </div>

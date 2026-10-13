@@ -2,6 +2,8 @@ import type { ComponentChildren } from "preact";
 import type { DetailResult } from "@/types";
 import { PlatformBasisControl } from "@/components/PlatformBasisControl";
 import { platformRowsForBasis } from "@/lib/platformMeasurementBasis";
+import { formatScaleFactor } from "@/lib/metricFormatters";
+import { clientHardwareTitle, isManagedCloudRun } from "@/lib/clientHardware";
 import { BASIS_URL_KEY, DEFAULT_BASIS, basisSerde, encodeBasis, formatBasisLabel, isDefaultBasis, parseAvailableBases } from "@/lib/measurementBasis";
 import { useUrlState } from "@/lib/useUrlState";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
@@ -195,25 +197,6 @@ function queryExecutionTitle(row: { query_count: number; logical_query_count?: n
 
 function sentenceCasePhase(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
-}
-
-function isManagedCloudRun(row: { deployment_class?: string | null; cloud_provider?: string | null }): boolean {
-  if (row.deployment_class) return row.deployment_class === "cloud" || row.deployment_class === "remote";
-  return Boolean(row.cloud_provider);
-}
-
-function clientHardwareTitle(row: {
-  arch?: string | null;
-  cpu_family?: string | null;
-  memory_gb?: number | null;
-}): string | undefined {
-  const parts = [
-    row.arch ? formatArchitecture(row.arch) : null,
-    row.cpu_family ? formatCpuFamily(row.cpu_family) : null,
-    row.memory_gb != null ? formatMemoryGb(row.memory_gb) : null,
-  ].filter((part): part is string => part !== null);
-  if (parts.length === 0) return undefined;
-  return `Client machine: ${parts.join(", ")} (the warehouse hardware is managed by the provider)`;
 }
 
 function primaryMetricRankingValue(row: PlatformIndexRowRow): number | null {
@@ -666,7 +649,7 @@ export function PlatformIndex({ platform = "" }: PlatformIndexProps) {
       testId: "platform-filter-scale",
       label: "Scale",
       value: scaleFilter,
-      options: [{ value: "all", label: "All scales" }, ...scaleOptions.map((value) => ({ value: String(value), label: `SF ${value}` }))],
+      options: [{ value: "all", label: "All scales" }, ...scaleOptions.map((value) => ({ value: String(value), label: formatScaleFactor(value) }))],
       onChange: (value) => setSingleArrayFacet("scale_factor", value),
       disabledReason: singleValueFilterReason(scaleOptions.length, scaleFilter !== "all"),
     },
@@ -1252,7 +1235,7 @@ function buildTrendCohorts(rows: PlatformIndexRowRow[]): TrendCohort[] {
       const metricDescription = trendMetricDescription(primaryMetric);
       cohort = {
         key,
-        label: `${humanizeBenchmark(row.benchmark)} · SF ${row.scale_factor} · ${formatPhaseWithStreams(row.phase, row.stream_count)} · ${metricDescription}`,
+        label: `${humanizeBenchmark(row.benchmark)} · ${formatScaleFactor(row.scale_factor)} · ${formatPhaseWithStreams(row.phase, row.stream_count)} · ${metricDescription}`,
         primaryMetric,
         metricDescription,
         observationCount: 0,
@@ -1452,7 +1435,7 @@ function CoverageTable({ stats }: { stats: CoverageStat[] }) {
                 {humanizeBenchmark(stat.benchmark)}
               </a>
             </th>
-            <td class="table-td text-[var(--bb-data-fg-muted)]">{stat.scales.map((sf) => `SF ${sf}`).join(", ")}</td>
+            <td class="table-td text-[var(--bb-data-fg-muted)]">{stat.scales.map((sf) => formatScaleFactor(sf)).join(", ")}</td>
             <td class="table-td font-mono">{stat.runs}</td>
             <td class="table-td text-[var(--bb-data-fg-muted)]">
               <RunDateChip runDate={stat.latestRunDate} />

@@ -25,3 +25,16 @@ export function labelColumnWidth(labels: readonly string[], fontSizePx: number, 
   const upper = Math.min(LABEL_COLUMN_MAX_PX, LABEL_COLUMN_MAX_SHARE * chartWidthPx);
   return Math.min(Math.max(longest + LABEL_PADDING_PX, LABEL_COLUMN_MIN_PX), Math.max(upper, LABEL_COLUMN_MIN_PX));
 }
+
+export function fitLabelMiddle(
+  text: string,
+  maxWidthPx: number,
+  fontSizePx: number,
+): { text: string; truncated: boolean } {
+  if (estimateTextWidth(text, fontSizePx) <= maxWidthPx) return { text, truncated: false };
+  const chars = Array.from(text);
+  const budget = Math.max(2, Math.floor(maxWidthPx / (MONOSPACE_ADVANCE_EM * fontSizePx)) - 1);
+  const tail = Math.ceil(budget / 2);
+  const head = budget - tail;
+  return { text: `${chars.slice(0, head).join("")}${ELLIPSIS}${chars.slice(chars.length - tail).join("")}`, truncated: true };
+}

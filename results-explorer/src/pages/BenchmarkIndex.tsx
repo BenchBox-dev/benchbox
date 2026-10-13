@@ -55,6 +55,8 @@ import {
   parseOverrideRules,
 } from "@/lib/displayLabels";
 import { formatRunIdentitiesForCohort } from "@/lib/runIdentity";
+import { formatScaleFactor } from "@/lib/metricFormatters";
+import { clientHardwareTitle, isManagedCloudRun } from "@/lib/clientHardware";
 import { platformVersionDisplay } from "@/lib/versionLabel";
 import { RunIdentityLabel } from "@/components/DataTable";
 import { formatSelectedCount } from "@/lib/copyFormatters";
@@ -175,7 +177,7 @@ function benchmarkCompareGuidanceMessage(
   scaleFactor: string,
   phase: string,
 ): string {
-  const ranking = `${title} SF ${scaleFactor} ${phase}`;
+  const ranking = `${title} ${formatScaleFactor(scaleFactor)} ${phase}`;
   const selectedStatus = formatSelectedCount(selectedCount, "result", MAX_COMPARE_SELECTIONS);
   if (selectedCount === 0) {
     return `${selectedStatus}. Select two or more platforms from the same ${ranking} ranking to compare. Benchmark, scale, phase, metric, and unit stay fixed on this page.`;
@@ -638,8 +640,8 @@ export function BenchmarkIndex({ benchmark = "" }: BenchmarkIndexProps) {
       value: effectiveSf,
       options:
         scaleFactors.length > 0
-          ? scaleFactors.map((sf) => ({ value: sf, label: `SF ${sf}` }))
-          : [{ value: effectiveSf, label: `SF ${effectiveSf}` }],
+          ? scaleFactors.map((sf) => ({ value: sf, label: formatScaleFactor(sf) }))
+          : [{ value: effectiveSf, label: formatScaleFactor(effectiveSf) }],
       onChange: (value) => setScaleFilter(value),
       disabledReason: singleValueFilterReason(scaleFactors.length, false),
     },
@@ -1197,7 +1199,7 @@ function ListTable({
       <div class="overflow-x-auto" data-testid="benchmark-list-scroll-container">
       <table
         class="min-w-full divide-y divide-[var(--bb-data-border)]"
-        aria-label={`${canonicalBenchmarkSlug(benchmark)} SF${scaleFactor}${phase ? ` ${phase}` : ""} results`}
+        aria-label={`${canonicalBenchmarkSlug(benchmark)} ${formatScaleFactor(scaleFactor)}${phase ? ` ${phase}` : ""} results`}
       >
         <thead class="bg-[var(--bb-surface-data-muted)]">
           <tr>
@@ -1359,25 +1361,6 @@ function queryExecutionTitle(row: { query_count: number; logical_query_count?: n
 function platformVersionTitle(row: { platform_version?: string | null; driver_version?: string | null }): string {
   const { text, driverTitle } = platformVersionDisplay(row);
   return [text ? `Version ${text}` : null, driverTitle].filter((part): part is string => part !== null).join(" · ");
-}
-
-function isManagedCloudRun(row: { deployment_class?: string | null; cloud_provider?: string | null }): boolean {
-  if (row.deployment_class) return row.deployment_class === "cloud" || row.deployment_class === "remote";
-  return Boolean(row.cloud_provider);
-}
-
-function clientHardwareTitle(row: {
-  arch?: string | null;
-  cpu_family?: string | null;
-  memory_gb?: number | null;
-}): string | undefined {
-  const parts = [
-    row.arch ? formatArchitecture(row.arch) : null,
-    row.cpu_family ? formatCpuFamily(row.cpu_family) : null,
-    row.memory_gb != null ? formatMemoryGb(row.memory_gb) : null,
-  ].filter((part): part is string => part !== null);
-  if (parts.length === 0) return undefined;
-  return `Client machine: ${parts.join(", ")} (the warehouse hardware is managed by the provider)`;
 }
 
 function ListCompareDisabledReason({ id, copy }: { id?: string; copy: ReturnType<typeof describeCompareExclusionReason> }) {

@@ -2,7 +2,7 @@ import { useState } from "preact/hooks";
 import { speedupRatio } from "@/lib/chartMath";
 import { isValidTimingValue } from "@/lib/displayEligibility";
 import { formatSpeedup, formatRatio } from "@/lib/metricFormatters";
-import { paletteColor } from "@/lib/chartTheme";
+import { assignRunColorSlots, paletteColor } from "@/lib/chartTheme";
 import { MISSING_MARKER_RADIUS, RUN_MARKER_RADIUS, runMarkerPath } from "@/lib/chartMarkers";
 import { RunLegend } from "@/components/RunLegend";
 import { useElementSize } from "@/lib/useElementSize";
@@ -79,6 +79,7 @@ interface SpeedupEntry {
 
 export interface SpeedupRunInput extends Partial<RunIdentitySource> {
   platform: string;
+  platform_id?: string | null;
 }
 
 interface Props {
@@ -111,6 +112,10 @@ export function NormalizedSpeedupChart({ queries, results, baselineIdx, queryHre
     results.map((run, index) => ({ ...run, result_id: run.result_id ?? `run-${index}` })),
     "chart",
   );
+  const colorSlots = assignRunColorSlots(
+    results.map((run, index) => ({ result_id: String(index), platform_id: run.platform_id, platform: run.platform })),
+  );
+  const colorSlotOf = (runIndex: number): number => colorSlots.get(String(runIndex)) ?? runIndex;
   const baselineIndex = baselineIdx >= 0 && baselineIdx < results.length ? baselineIdx : 0;
   const baselineLabel = runLabels[baselineIndex] ?? "the selected baseline";
   const allEntries: SpeedupEntry[] = queries.map(({ queryId, timings }) => {
@@ -291,8 +296,8 @@ export function NormalizedSpeedupChart({ queries, results, baselineIdx, queryHre
                 return (
                   <path
                     key={candidateIndex}
-                    d={runMarkerPath(runIndex, toX(speedup), rowCenter, RUN_MARKER_RADIUS)}
-                    fill={paletteColor(runIndex)}
+                    d={runMarkerPath(colorSlotOf(runIndex), toX(speedup), rowCenter, RUN_MARKER_RADIUS)}
+                    fill={paletteColor(colorSlotOf(runIndex))}
                     stroke="var(--bb-surface-data)"
                     stroke-width={0.75}
                     data-platform-marker={runLabel}
@@ -334,7 +339,8 @@ export function NormalizedSpeedupChart({ queries, results, baselineIdx, queryHre
         Log scale {domainText}; every measured speedup is shown.
       </p>
 
-      <table class="sr-only">
+      <div class="sr-only">
+      <table>
         <caption>Per-query speedups relative to {baselineLabel}</caption>
         <thead>
           <tr><th>Query</th><th>Candidate</th><th>Speedup</th></tr>
@@ -355,6 +361,7 @@ export function NormalizedSpeedupChart({ queries, results, baselineIdx, queryHre
           )}
         </tbody>
       </table>
+      </div>
 
       <div class="mt-2 text-xs text-[var(--bb-data-fg-muted)]">
         <span>Baseline: <strong>{baselineLabel}</strong></span>
@@ -364,7 +371,7 @@ export function NormalizedSpeedupChart({ queries, results, baselineIdx, queryHre
         runs={nonBaselineIndices.map((resultIndex) => ({
           key: `${runLabels[resultIndex] ?? "run"}-${resultIndex}`,
           label: runLabels[resultIndex] ?? "Candidate",
-          runIndex: resultIndex,
+          runIndex: colorSlotOf(resultIndex),
         }))}
         showMissing={hasMissingSpeedups}
       />

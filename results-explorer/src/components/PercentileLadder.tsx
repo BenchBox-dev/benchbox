@@ -2,7 +2,7 @@ import type { PercentileStats } from "@/types";
 import { useElementSize } from "@/lib/useElementSize";
 import { axisLabelAnchor, barRowLayout, chartFrame, edgeSafeValueLabel } from "@/lib/chartFrame";
 import { paletteColor } from "@/lib/chartTheme";
-import { buildLogLatencyScale, logLatencyFraction, logLatencyTicks } from "@/lib/chartMath";
+import { buildLogLatencyScale, logLatencyFraction, logLatencyTicks, spaceTicks } from "@/lib/chartMath";
 import { formatLatencyMs, formatLatencyAxisLabels } from "@/lib/metricFormatters";
 import { preserveUniqueAfterTruncation } from "@/lib/runIdentity";
 
@@ -49,7 +49,7 @@ export function PercentileLadder({ rows }: Props) {
 
   const totalHeight = PADDING_TOP + rows.length * layout.rowHeight + AXIS_H;
 
-  const axisTicks = logLatencyTicks(logScale, 0.1);
+  const axisTicks = spaceTicks(logLatencyTicks(logScale, 0.1), xForMs);
   const tickLabels = formatLatencyAxisLabels(axisTicks);
   const displayLabels = preserveUniqueAfterTruncation(
     rows.map((row) => row.displayLabel ?? row.platform),

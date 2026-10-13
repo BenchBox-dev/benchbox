@@ -108,8 +108,8 @@ export function RankTable({ summary, preserveOrder = false }: Props) {
                     aria-hidden="true"
                   >
                     <path
-                      d={runMarkerPath(i, HEADER_MARKER_CENTER, HEADER_MARKER_CENTER, HEADER_MARKER_RADIUS)}
-                      fill={paletteColor(i)}
+                      d={runMarkerPath(p.color_slot ?? i, HEADER_MARKER_CENTER, HEADER_MARKER_CENTER, HEADER_MARKER_RADIUS)}
+                      fill={paletteColor(p.color_slot ?? i)}
                       stroke="var(--bb-surface-data)"
                       stroke-width={0.75}
                     />

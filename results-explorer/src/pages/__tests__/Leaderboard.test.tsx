@@ -325,6 +325,14 @@ describe("Leaderboard", () => {
     const jump = screen.getByTestId("home-compare-jump");
     expect(jump.querySelector("a")?.getAttribute("href")).toBe("#leaderboard-compare-picker");
     expect(within(picker).getByText(/No ranked comparable runs are available/)).toBeTruthy();
+
+    fireEvent.click(within(picker).getByTestId("leaderboard-include-unranked"));
+    await waitFor(() =>
+      expect(within(picker).getByRole("link", { name: "Compare All Runs" }).getAttribute("href")).toBe(
+        "/results/compare?ids=havoc-run-1,havoc-run-2",
+      ),
+    );
+    expect(within(picker).queryByTestId("leaderboard-include-unranked")).toBeNull();
   });
 
   it("names the ranked scope in Compare All Runs guidance", async () => {

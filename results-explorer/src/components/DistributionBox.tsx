@@ -2,7 +2,7 @@ import type { BenchmarkSummary, PlatformRow } from "@/types";
 import { useElementSize } from "@/lib/useElementSize";
 import { axisLabelAnchor, barRowLayout, chartFrame } from "@/lib/chartFrame";
 import { paletteColor } from "@/lib/chartTheme";
-import { buildLogLatencyScale, computeBoxStats, logLatencyFraction, logLatencyTicks } from "@/lib/chartMath";
+import { buildLogLatencyScale, computeBoxStats, logLatencyFraction, logLatencyTicks, spaceTicks } from "@/lib/chartMath";
 import { formatTimingExclusion, isTimingDisplayable, platformTimingValue } from "@/lib/displayEligibility";
 import { formatLatencyAxisLabels } from "@/lib/metricFormatters";
 import { orderRunsByDisplayGeomean, fitRunLabels } from "@/lib/chartRunRows";
@@ -37,7 +37,7 @@ export function DistributionBox({ summary, colorIndexFor }: Props) {
     .map(({ run: p, sourceIndex: i }) => ({
       label: displayLabels[i] ?? p.platform,
       fullLabel: cohortLabels[i]?.full ?? rawLabels[i] ?? p.platform,
-      color: paletteColor(colorIndexFor?.(p) ?? i),
+      color: paletteColor(colorIndexFor?.(p) ?? p.color_slot ?? i),
       isDisplayable: isTimingDisplayable(p),
       stats: computeBoxStats(summary.query_ids.map((queryId) => platformTimingValue(p, queryId))),
     }))
@@ -64,7 +64,7 @@ export function DistributionBox({ summary, colorIndexFor }: Props) {
     return layout.plotX + logLatencyFraction(ms, logScale) * plotW;
   }
 
-  const xTicks = logLatencyTicks(logScale);
+  const xTicks = spaceTicks(logLatencyTicks(logScale), xFor);
   const tickLabels = formatLatencyAxisLabels(xTicks);
 
   return (

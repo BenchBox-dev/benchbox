@@ -7,7 +7,7 @@ test.describe("NotFound", () => {
     await waitForShell(page);
 
     await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
-    const backLink = page.getByRole("link", { name: "Browse leaderboards" });
+    const backLink = page.getByRole("link", { name: "Browse results" });
     await expect(backLink).toHaveAttribute("href", "/results/");
   });
 

@@ -51,7 +51,7 @@ export function CostScatter({ summary }: Props) {
         scope: p.cost_scope,
         provider: p.cloud_provider,
         region: p.cloud_region ?? p.pricing_region,
-        color: paletteColor(i),
+        color: paletteColor(p.color_slot ?? i),
       };
     })
     .filter((p): p is ScatterPoint => p.cost !== null && p.perf !== null) as ScatterPoint[];

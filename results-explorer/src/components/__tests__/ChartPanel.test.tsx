@@ -1,8 +1,9 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
 import { ChartPanel } from "@/components/ChartPanel";
+import { QueryHistogram } from "@/components/QueryHistogram";
 import { buildRenderableSummary, CHART_REGISTRY, type ChartHistoricalEntry } from "@/lib/chartRegistry";
-import { paletteColor } from "@/lib/chartTheme";
+import { assignRunColorSlots, paletteColor } from "@/lib/chartTheme";
 import { formatPowerScore } from "@/lib/metricFormatters";
 import type {
   BenchmarkSummary,
@@ -1422,6 +1423,8 @@ describe("ChartPanel run colours and run summary wording", () => {
     makePlatformRow({ result_id: "mid", platform_id: "mid", platform: "Mid", display_geomean_ms: 30, timings: { Q1: 30, Q2: 33 } }),
   ];
 
+  const runColorSlots = assignRunColorSlots(rankedRuns);
+
   function barFillFor(container: Element, runLabel: string) {
     return Array.from(container.querySelectorAll("rect")).find((rect) =>
       rect.querySelector("title")?.textContent?.startsWith(runLabel),
@@ -1439,15 +1442,16 @@ describe("ChartPanel run colours and run summary wording", () => {
       <ChartPanel context={{ kind: "summary", summary: makeSummary({ platforms: rankedRuns }) }} />,
     );
 
-    expect(barFillFor(container, "Alpha")).toBe(paletteColor(1));
-    expect(barFillFor(container, "Zeta")).toBe(paletteColor(0));
+    const alphaColor = paletteColor(runColorSlots.get("alpha")!);
+    expect(barFillFor(container, "Alpha")).toBe(alphaColor);
+    expect(barFillFor(container, "Zeta")).toBe(paletteColor(runColorSlots.get("zeta")!));
 
     fireEvent.click(screen.getByRole("tab", { name: "Distribution" }));
     fireEvent.click(screen.getByRole("button", { name: "Latency distribution" }));
-    expect(fillForBoxLabel(container, "Alpha")).toBe(paletteColor(1));
+    expect(fillForBoxLabel(container, "Alpha")).toBe(alphaColor);
 
     fireEvent.click(screen.getByRole("button", { name: "Cumulative latency distribution" }));
-    expect(cdfStrokeFor(container, "Alpha")).toBe(paletteColor(1));
+    expect(cdfStrokeFor(container, "Alpha")).toBe(alphaColor);
   });
 
   it("shows Not comparable with the reason instead of naming a highest value when runs differ in phase", () => {
@@ -1482,4 +1486,98 @@ describe("ChartPanel run colours and run summary wording", () => {
 function fillForBoxLabel(scope: Element, runLabel: string) {
   const label = Array.from(scope.querySelectorAll("text")).find((node) => node.textContent?.endsWith(runLabel));
   return label?.parentElement?.querySelector("rect")?.getAttribute("fill") ?? null;
+}
+
+describe("run colours follow the platform across compare pages", () => {
+  function compareTimings(displayMs: number) {
+    return [
+      { query_id: "Q1", display_ms: displayMs, sample_count: 3, is_valid_display_timing: true, timing_exclusion_reason: null },
+      { query_id: "Q2", display_ms: displayMs + 2, sample_count: 3, is_valid_display_timing: true, timing_exclusion_reason: null },
+    ];
+  }
+
+  function snowflakeRun(resultId: string, displayMs: number, platform = "Snowflake", platformId = "snowflake") {
+    return makeDetail({
+      result_id: resultId,
+      platform,
+      platform_id: platformId,
+      display_geomean_ms: displayMs,
+      geomean_ms: displayMs,
+      display_timings: compareTimings(displayMs),
+    });
+  }
+
+  function markFillFor(container: Element, runLabel: string) {
+    return Array.from(container.querySelectorAll("path")).find((path) =>
+      path.querySelector("title")?.textContent?.startsWith(runLabel),
+    )?.getAttribute("fill");
+  }
+
+  function legendFillFor(container: Element, runLabel: string) {
+    const legend = container.querySelector('[aria-label="Run legend"]') as HTMLElement;
+    return Array.from(legend.querySelectorAll("span"))
+      .find((span) => span.textContent?.includes(runLabel))
+      ?.querySelector("path")
+      ?.getAttribute("fill");
+  }
+
+  it("gives Snowflake the same bar colour in two compare selections with different run orders", () => {
+    const first = render(
+      <ChartPanel
+        context={{
+          kind: "compare",
+          results: [
+            makeDetail({ result_id: "duck-a", platform: "DuckDB", platform_id: "duckdb", display_geomean_ms: 8, geomean_ms: 8, display_timings: compareTimings(8) }),
+            snowflakeRun("snow-a", 12),
+            makeDetail({ result_id: "polars-a", platform: "Polars", platform_id: "polars", display_geomean_ms: 20, geomean_ms: 20, display_timings: compareTimings(20) }),
+          ],
+          primaryMetric: "display_geomean_ms",
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Comparison by run" }));
+    const inFirstPage = barFillForRun(first.container, "Snowflake");
+    first.unmount();
+
+    const second = render(
+      <ChartPanel
+        context={{
+          kind: "compare",
+          results: [
+            snowflakeRun("snow-b", 6),
+            makeDetail({ result_id: "databricks-b", platform: "Databricks", platform_id: "databricks", display_geomean_ms: 5, geomean_ms: 5, display_timings: compareTimings(5) }),
+          ],
+          primaryMetric: "display_geomean_ms",
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Comparison by run" }));
+    const inSecondPage = barFillForRun(second.container, "Snowflake");
+
+    expect(inFirstPage).toBeDefined();
+    expect(inSecondPage).toBe(inFirstPage);
+    expect(inFirstPage).toBe(paletteColor(assignRunColorSlots([{ result_id: "snow-a", platform_id: "snowflake", platform: "Snowflake" }]).get("snow-a")!));
+  });
+
+  it("shows each run's legend swatch in the same colour as its marks", () => {
+    const summary = buildRenderableSummary({
+      kind: "compare",
+      results: [
+        snowflakeRun("snow-a", 12),
+        makeDetail({ result_id: "polars-a", platform: "Polars", platform_id: "polars", display_geomean_ms: 20, geomean_ms: 20, display_timings: compareTimings(20) }),
+      ],
+      primaryMetric: "display_geomean_ms",
+    });
+    const { container } = render(<QueryHistogram summary={summary!} />);
+
+    expect(markFillFor(container, "Snowflake")).toBeDefined();
+    expect(legendFillFor(container, "Snowflake")).toBe(markFillFor(container, "Snowflake"));
+    expect(legendFillFor(container, "Polars")).toBe(markFillFor(container, "Polars"));
+  });
+});
+
+function barFillForRun(container: Element, runLabel: string) {
+  return Array.from(container.querySelectorAll("rect")).find((rect) =>
+    rect.querySelector("title")?.textContent?.includes(` - ${runLabel}:`),
+  )?.getAttribute("fill");
 }

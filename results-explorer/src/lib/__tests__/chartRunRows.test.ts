@@ -26,9 +26,15 @@ describe("fitRunLabels", () => {
     expect(estimateTextWidth(fitted!, 12)).toBeLessThanOrEqual(120);
   });
 
-  it("falls back to the full label when truncation would make two labels identical", () => {
+  it("keeps colliding labels distinct with a middle ellipsis that still fits", () => {
     const labels = ["DataFusion v53.0.0 2026-05-06", "DataFusion v53.0.0 2026-05-07"];
     const fitted = fitRunLabels(labels, 60, 12);
-    expect(fitted).toEqual(labels);
+    expect(new Set(fitted).size).toBe(2);
+    for (const label of fitted) {
+      expect(label).toContain("…");
+      expect(estimateTextWidth(label, 12)).toBeLessThanOrEqual(60);
+    }
+    expect(fitted[0]!.endsWith("06")).toBe(true);
+    expect(fitted[1]!.endsWith("07")).toBe(true);
   });
 });

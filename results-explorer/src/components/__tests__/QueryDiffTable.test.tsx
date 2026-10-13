@@ -233,7 +233,7 @@ describe("QueryDiffTable", () => {
     expect(table).toHaveTextContent("+10 ms");
     expect(table).toHaveTextContent("Slower");
     expect(table).toHaveTextContent("0.5×");
-    expect(table).toHaveTextContent("-10 ms");
+    expect(table).toHaveTextContent("−10 ms");
     expect(table).toHaveTextContent("Faster");
     expect(table).toHaveTextContent("Not comparable");
   });

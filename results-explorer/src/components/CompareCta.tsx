@@ -22,8 +22,8 @@ function sameIdSet(left: readonly string[], right: readonly string[]): boolean {
 export function CompareCta({ selectedIds, allIds, buildHref, testId = "compare-cta" }: CompareCtaProps) {
   if (selectedIds.length > MAX_COMPARE_SELECTIONS) {
     return (
-      <div class="flex shrink-0 flex-wrap items-center gap-2" data-testid="compare-cta-group">
-        <button type="button" class="btn btn-primary" disabled aria-disabled="true" data-testid={testId}>
+      <div class="flex min-w-0 max-w-full flex-wrap items-center gap-2" data-testid="compare-cta-group">
+        <button type="button" class="btn btn-primary max-w-full whitespace-normal text-center" disabled aria-disabled="true" data-testid={testId}>
           Select at most {MAX_COMPARE_SELECTIONS} runs
         </button>
       </div>
@@ -33,12 +33,12 @@ export function CompareCta({ selectedIds, allIds, buildHref, testId = "compare-c
   if (selectedIds.length >= MIN_COMPARE_SELECTIONS) {
     const showCompareAll = isCompareAllAvailable(allIds) && !sameIdSet(selectedIds, allIds);
     return (
-      <div class="flex shrink-0 flex-wrap items-center gap-2" data-testid="compare-cta-group">
-        <a href={buildHref(selectedIds)} class="btn btn-primary no-underline" data-testid={testId}>
+      <div class="flex min-w-0 max-w-full flex-wrap items-center gap-2" data-testid="compare-cta-group">
+        <a href={buildHref(selectedIds)} class="btn btn-primary max-w-full whitespace-normal text-center no-underline" data-testid={testId}>
           Compare {selectedIds.length} selected
         </a>
         {showCompareAll && (
-          <a href={buildHref(allIds)} class="btn btn-secondary no-underline" data-testid={`${testId}-all`}>
+          <a href={buildHref(allIds)} class="btn btn-secondary max-w-full whitespace-normal text-center no-underline" data-testid={`${testId}-all`}>
             Compare All Runs
           </a>
         )}
@@ -48,8 +48,8 @@ export function CompareCta({ selectedIds, allIds, buildHref, testId = "compare-c
 
   if (isCompareAllAvailable(allIds)) {
     return (
-      <div class="flex shrink-0 flex-wrap items-center gap-2" data-testid="compare-cta-group">
-        <a href={buildHref(allIds)} class="btn btn-primary no-underline" data-testid={testId}>
+      <div class="flex min-w-0 max-w-full flex-wrap items-center gap-2" data-testid="compare-cta-group">
+        <a href={buildHref(allIds)} class="btn btn-primary max-w-full whitespace-normal text-center no-underline" data-testid={testId}>
           Compare All Runs
         </a>
       </div>
@@ -57,8 +57,8 @@ export function CompareCta({ selectedIds, allIds, buildHref, testId = "compare-c
   }
 
   return (
-    <div class="flex shrink-0 flex-wrap items-center gap-2" data-testid="compare-cta-group">
-      <button type="button" class="btn btn-primary" disabled aria-disabled="true" data-testid={testId}>
+    <div class="flex min-w-0 max-w-full flex-wrap items-center gap-2" data-testid="compare-cta-group">
+      <button type="button" class="btn btn-primary max-w-full whitespace-normal text-center" disabled aria-disabled="true" data-testid={testId}>
         Select 2–{MAX_COMPARE_SELECTIONS} runs to compare
       </button>
     </div>

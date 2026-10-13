@@ -1,6 +1,7 @@
 import { platformVersionDisplay, splitVersion } from "@/lib/versionLabel";
 
 import { formatRunDate, formatRunDateWithAge } from "@/lib/runAge";
+import { formatScaleFactor } from "@/lib/metricFormatters";
 
 export interface RunIdentitySource {
   result_id: string;
@@ -54,7 +55,7 @@ const NATURAL_QUALIFIERS: QualifierDescriptor[] = [
   { key: "run_date", value: (s) => (s.run_date ? formatRunDate(s.run_date) : null) },
   {
     key: "scale_factor",
-    value: (s) => (s.scale_factor !== null && s.scale_factor !== undefined ? `SF ${s.scale_factor}` : null),
+    value: (s) => (s.scale_factor !== null && s.scale_factor !== undefined ? formatScaleFactor(s.scale_factor) : null),
   },
   {
     key: "deployment",
@@ -236,7 +237,7 @@ export function formatRunIdentityFull(source: RunIdentitySource): string {
     version.text,
     version.driverTitle,
     source.run_date ? formatRunDateWithAge(source.run_date) : null,
-    source.scale_factor !== null && source.scale_factor !== undefined ? `SF ${source.scale_factor}` : null,
+    source.scale_factor !== null && source.scale_factor !== undefined ? formatScaleFactor(source.scale_factor) : null,
     NATURAL_QUALIFIERS.find((qualifier) => qualifier.key === "deployment")?.value(source) ?? null,
     source.trust_label ?? null,
     compactIdToken(source),
