@@ -8005,10 +8005,15 @@
       "title": "Fix remaining published-doc remediation review findings"
     },
     "docs-remediation-review-hardening": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-14T01:17:52Z",
+        "generation": "6a941e9d16b0475cb13dd0057f23992c",
+        "renewals": 0,
+        "worker": "mcp:pi:joe@joe-mac-mini.local:e6d19ae87e33974908fa5fe9"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Harden docs-remediation follow-throughs: feed ID construction, doc wording, allowance scope, tuning-linkability sentence, subscriber dedup"
     },
     "docs-rewrite-architecture-and-structure": {
