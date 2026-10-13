@@ -42,6 +42,11 @@ except ImportError:  # pragma: no cover
     FUNDING_SOURCES = ("employer", "personal", "free-trial", "vendor-sponsored", "grant", "unspecified")
     RESULT_SOURCES = ("internal", "community", "vendor")
 
+try:
+    from benchbox.core.schemas import MIN_THROUGHPUT_STREAMS
+except ImportError:
+    MIN_THROUGHPUT_STREAMS = 2
+
 
 def _load_bundle_failed_query_count():
     helper_path = Path(__file__).resolve().parents[1] / "core" / "results" / "query_status.py"
@@ -1036,6 +1041,15 @@ def _validate_compliance_section(
         )
 
 
+def _fold_tpcds_variant_observations(observed: set[str]) -> set[str]:
+    folded = set(observed)
+    for base_id in ("14", "23", "24", "39"):
+        folded.discard(base_id)
+        if {f"{base_id}a", f"{base_id}b"} <= folded:
+            folded.add(base_id)
+    return folded
+
+
 def _validate_query_coverage(
     data: dict[str, Any],
     vr: ValidationResult,
@@ -1066,10 +1080,7 @@ def _validate_query_coverage(
         else:
             observed.add(normalized_qid)
     if normalized_id == "tpcds":
-        for base_id in ("14", "23", "24", "39"):
-            observed.discard(base_id)
-            if {f"{base_id}a", f"{base_id}b"} <= observed:
-                observed.add(base_id)
+        observed = _fold_tpcds_variant_observations(observed)
     variant_hint = ""
     if normalized_id == "tpchavoc":
         platform = data.get("platform")
@@ -1091,10 +1102,7 @@ def _validate_query_coverage(
             if len(missing_variants) > 12:
                 shown += f", … (+{len(missing_variants) - 12} more)"
             variant_hint = f" (missing successful or documented-skip variants: {shown})"
-    missing = sorted(
-        canonical - observed,
-        key=lambda s: [int(part) if part.isdigit() else part for part in re.split(r"(\d+)", s)],
-    )
+    missing = sorted(canonical - observed, key=_canonical_id_sort_key)
     if missing:
         covered = len(observed & canonical)
         shown = ", ".join(missing[:12])
@@ -1658,6 +1666,152 @@ def _validate_queries_section(queries: Any, version: Any, vr: ValidationResult) 
         vr.error("queries must contain at least one positive measurement timing")
 
 
+_THROUGHPUT_STREAM_QUERY_BENCHMARKS = frozenset({"tpch", "tpcds"})
+_POWER_PHASE_STREAM_ID = 0
+
+
+def _canonical_id_sort_key(value: str) -> list[int | str]:
+    return [int(part) if part.isdigit() else part for part in re.split(r"(\d+)", value)]
+
+
+def _coerce_stream_id(raw_id: Any) -> int | None:
+    if isinstance(raw_id, bool):
+        return None
+    if isinstance(raw_id, int):
+        return raw_id
+    if isinstance(raw_id, float) and raw_id.is_integer():
+        return int(raw_id)
+    if isinstance(raw_id, str) and raw_id.strip().isdigit():
+        return int(raw_id.strip())
+    return None
+
+
+def _completed_throughput_block(data: dict[str, Any]) -> dict[str, Any] | None:
+    phases = data.get("phases")
+    if not isinstance(phases, dict):
+        return None
+    block = phases.get("throughput_test")
+    if not isinstance(block, dict):
+        return None
+    if str(block.get("status") or "").upper() != "COMPLETED":
+        return None
+    return block
+
+
+def _validated_throughput_stream_ids(streams: Any, vr: ValidationResult) -> list[int] | None:
+    if not isinstance(streams, list) or not streams:
+        vr.error("phases.throughput_test.status='COMPLETED' requires a non-empty stream_results list")
+        return None
+    stream_ids: list[int] = []
+    for entry in streams:
+        raw_id = entry.get("stream_id") if isinstance(entry, dict) else None
+        stream_id = _coerce_stream_id(raw_id)
+        if stream_id is None:
+            vr.error(f"throughput stream_id must be an integer, got {raw_id!r}")
+            return None
+        if not isinstance(entry, dict) or entry.get("success") is not True:
+            vr.error(f"throughput stream {stream_id} did not succeed")
+            return None
+        stream_ids.append(stream_id)
+    if sorted(stream_ids) != list(range(1, len(stream_ids) + 1)):
+        vr.error(f"throughput stream_ids must be contiguous 1..{len(stream_ids)}, got {sorted(stream_ids)}")
+        return None
+    return stream_ids
+
+
+def _throughput_measurement_queries(queries: Any) -> list[dict[str, Any]]:
+    if not isinstance(queries, list):
+        return []
+    selected: list[dict[str, Any]] = []
+    for query in queries:
+        if not isinstance(query, dict):
+            continue
+        if not isinstance(query.get("status"), str):
+            continue
+        if query["status"].upper() not in _PASS_TIMING_STATUSES:
+            continue
+        try:
+            usable_ms = float(query.get("ms"))
+        except (TypeError, ValueError):
+            continue
+        if not math.isfinite(usable_ms) or usable_ms < 1.0:
+            continue
+        if str(query.get("run_type") or "measurement").strip().lower() != "measurement":
+            continue
+        if _normalize_coverage_query_id(query.get("id")) is None:
+            continue
+        selected.append(query)
+    return selected
+
+
+def _grouped_throughput_observations(queries: list[dict[str, Any]], vr: ValidationResult) -> dict[int, set[str]] | None:
+    observed_by_stream: dict[int, set[str]] = {}
+    for query in queries:
+        stream_key = _coerce_stream_id(query.get("stream", query.get("stream_id", 0)))
+        if stream_key is None:
+            vr.error(f"throughput query stream must be an integer, got {query.get('stream')!r}")
+            return None
+        if stream_key == _POWER_PHASE_STREAM_ID:
+            continue
+        normalized_query = _normalize_coverage_query_id(query.get("id"))
+        if normalized_query is None:
+            continue
+        observed_by_stream.setdefault(stream_key, set()).add(normalized_query)
+    return observed_by_stream
+
+
+def _validate_throughput_stream_coverage(
+    stream_ids: list[int],
+    observed_by_stream: dict[int, set[str]],
+    benchmark_id: str,
+    vr: ValidationResult,
+) -> None:
+    canonical = CANONICAL_LOGICAL_QUERY_IDS.get(benchmark_id)
+    if not canonical:
+        return
+    if len(stream_ids) < MIN_THROUGHPUT_STREAMS:
+        vr.error(f"throughput requires at least {MIN_THROUGHPUT_STREAMS} streams, got {len(stream_ids)}")
+        return
+    if benchmark_id == "tpcds":
+        observed_by_stream = {key: _fold_tpcds_variant_observations(value) for key, value in observed_by_stream.items()}
+    known_ids = set(stream_ids)
+    for stream_key in sorted(observed_by_stream):
+        if stream_key not in known_ids:
+            vr.error(f"throughput query references unknown stream_id {stream_key}")
+    for stream_id in sorted(known_ids):
+        missing = sorted(
+            canonical - observed_by_stream.get(stream_id, set()),
+            key=_canonical_id_sort_key,
+        )
+        if not missing:
+            continue
+        shown = ", ".join(missing[:12])
+        if len(missing) > 12:
+            shown += f", … (+{len(missing) - 12} more)"
+        vr.error(
+            f"throughput stream {stream_id} covers {len(canonical) - len(missing)} of {len(canonical)}"
+            f" canonical queries (missing: {shown})"
+        )
+
+
+def _validate_throughput_stream_completeness(data: dict[str, Any], vr: ValidationResult) -> None:
+    block = _completed_throughput_block(data)
+    if block is None:
+        return
+    stream_ids = _validated_throughput_stream_ids(block.get("stream_results"), vr)
+    if stream_ids is None:
+        return
+    benchmark = data.get("benchmark")
+    benchmark_id = benchmark.get("id") if isinstance(benchmark, dict) else None
+    normalized_benchmark = benchmark_id.strip().casefold() if isinstance(benchmark_id, str) else None
+    if normalized_benchmark not in _THROUGHPUT_STREAM_QUERY_BENCHMARKS:
+        return
+    observed_by_stream = _grouped_throughput_observations(_throughput_measurement_queries(data.get("queries")), vr)
+    if observed_by_stream is None:
+        return
+    _validate_throughput_stream_coverage(stream_ids, observed_by_stream, normalized_benchmark, vr)
+
+
 def _validate_execution_consistency(data: dict[str, Any], vr: ValidationResult) -> None:
     summary = data.get("summary")
     if not isinstance(summary, dict) or _normalize_status(summary.get("validation")) != PUBLIC_CLEAN_VALIDATION_STATUS:
@@ -1680,6 +1834,7 @@ def _validate_execution_consistency(data: dict[str, Any], vr: ValidationResult) 
                     vr.error(
                         f"summary.validation='passed' contradicts queries[{i}].row_count_validation.status={rcv_status!r}"
                     )
+    _validate_throughput_stream_completeness(data, vr)
 
 
 def _validate_validation_phase_consistency(data: dict[str, Any], vr: ValidationResult) -> None:
