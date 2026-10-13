@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "A driver-level or live test proves the tuned-run marker insert and commit succeed on Databricks and Databend, or the code takes the literal-SQL path for them with a unit test."
+  ],
+  "context": "Found 2026-10-13 while reviewing the paramstyle fix for Snowflake tuned runs.",
+  "description": "## Problem\n`TuningMetadataManager._batch_insert_records` runs a parameterized INSERT on cursor-based connections and then calls `conn.commit()` (`benchbox/core/tuning/metadata.py`). A pending change chooses `%s` for format/pyformat drivers and `?` otherwise (branch `feat/snowflake-trial-exit`). Two drivers remain unverified:\n- **Databricks** (`databricks.sql`, paramstyle `named`) keeps `?`. Whether positional `?` binds on the current connector is unverified.\n- **Databend** may hand back `BlockingDatabendClient` itself (`benchbox/platforms/databend/adapter.py:202-206`). That client may lack `commit()`.\n\nSince #2701, a failed tuned-run marker write aborts the run, so either gap would block tuned runs on that platform.\n\n## Change\n- Verify both with driver-level tests or a live run.\n- If either fails, route that connection through the literal-SQL path (`_format_literal`) or bind correctly.",
+  "links": [
+    "benchbox/core/tuning/metadata.py",
+    "benchbox/platforms/databend/adapter.py",
+    "benchbox/platforms/databricks/adapter.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
+      "at": "2026-10-13T13:00:33Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "ec61e7fe1064449d8d2d75f0cc876e1e",
+      "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    }
+  ]
+}

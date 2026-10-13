@@ -23601,6 +23601,13 @@
       "status": "dropped",
       "title": "Drift validation for reused databases passes when it should fail: extra table tunings, PK/FK enablement, sort attributes, and notuning-reuse are all invisible"
     },
+    "tuning-metadata-insert-unverified-drivers-20261013": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Verify tuned metadata inserts on Databricks and Databend"
+    },
     "tuning-mode-explicit-notuning-recording-20260801": {
       "claim": null,
       "needs": [],
