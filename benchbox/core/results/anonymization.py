@@ -2,6 +2,7 @@
 
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
+import functools
 import hashlib
 import logging
 import os
@@ -43,10 +44,20 @@ _PUBLIC_DROP_KEYS = frozenset(_ANONYMIZATION_SPECS["public_drop_keys"])
 _PUBLIC_DROP_CHILD_KEYS = {
     parent: frozenset(children) for parent, children in _ANONYMIZATION_SPECS["public_drop_child_keys"].items()
 }
-_OPTION_MAP_KEYS = frozenset(_ANONYMIZATION_SPECS["option_map_keys"])
-_PUBLIC_OPTION_VALUES = {
-    key: frozenset(values) for key, values in (_ANONYMIZATION_SPECS.get("public_option_values") or {}).items()
-}
+_ENGINE_RECEIPT_NATIVE_PATH = ("execution_engine", "applied_native")
+
+
+@functools.cache
+def _declared_execution_engine_names() -> frozenset[str]:
+    from benchbox.core.platform_manifest import PLATFORM_MANIFEST
+
+    return frozenset(name for entry in PLATFORM_MANIFEST for name in entry.capabilities.get("execution_engines", {}))
+
+
+def _is_engine_receipt_native_path(key_path: tuple[str, ...]) -> bool:
+    return any(key_path[index : index + 2] == _ENGINE_RECEIPT_NATIVE_PATH for index in range(len(key_path) - 1))
+
+
 _OPTION_SOURCE_LABELS = frozenset(
     {
         "registered_default",
@@ -518,22 +529,10 @@ class AnonymizationManager:
 
         if (
             isinstance(value, str)
-            and len(key_path) >= 2
-            and _compact_key(key_path[-2]) in _OPTION_MAP_KEYS
-            and value in _PUBLIC_OPTION_VALUES.get(_compact_key(key_path[-1]), ())
+            and _is_engine_receipt_native_path(key_path)
+            and value in _declared_execution_engine_names()
         ):
             return value
-
-        if isinstance(value, str) and key_path[-4:] == (
-            "execution_engine",
-            "applied_native",
-            "collect_kwargs",
-            "engine",
-        ):
-            from benchbox.core.execution_engine import supported_execution_engines
-
-            if value in supported_execution_engines("polars"):
-                return value
 
         if isinstance(value, str) and self._looks_like_connection_string(value):
             return PUBLIC_REDACTED_VALUE

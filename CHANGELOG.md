@@ -116,6 +116,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The Explorer compatibility checker is tested the way the publication deploy
   workflow runs it, as a script, and its fallback read-model version is tested
   against the Explorer contract version.
+- Public result exports keep every manifest-declared execution engine name
+  readable inside an engine receipt's `applied_native` settings, on every
+  platform. Before, only Polars engine names in `collect_kwargs.engine`
+  stayed readable, and an engine name under another identifier-like key, such
+  as `engine`, was hashed. Engine names elsewhere, and compute names such as a
+  Firebolt engine, are still hashed or dropped as before.
 - Athena Spark can start a session. BenchBox no longer sends an engine
   version in the `StartSession` request; the AWS SDK rejected that field on
   every attempt, because the Spark-enabled workgroup sets the engine version.
