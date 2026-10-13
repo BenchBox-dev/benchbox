@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Non-Databricks tuning configs carry no databricks_* keys after load and in bundles (unit test).",
+    "Snowflake templates carry no Delta-only header keys."
+  ],
+  "context": "Found 2026-10-13 by two adversarial reviews at origin/develop 77048bfb9; visible in tpch_sf1_snowflake_sql_20261012_173334_97f9cfe1 requested.platform_optimizations.",
+  "description": "## Problem\n`UnifiedTuningConfiguration.from_dict` (`benchbox/core/tuning/interface.py:1276-1284`, added in #2177) sets `databricks_clustering_strategy: z_order` for any platform whenever a table has clustering and the key is absent. `to_dict` always writes the key (`:825`), and `_non_default_platform_optimizations` keeps it. Snowflake tuned bundles therefore show the key in `requested.platform_optimizations`. Behaviour is unaffected, but the requested record and the config hash are polluted. The cloud template generator also writes Delta-only header keys into Snowflake templates (`scripts/generate_cloud_tpc_templates.py:151-158`).\n\n## Change\n- Remove the inference; the Databricks adapter already infers the strategy at `benchbox/platforms/databricks/adapter.py:409-415`.\n- Omit `databricks_*` and Delta-only keys for other platforms.\n- Note in the change that config hashes for Snowflake runs change.",
+  "links": [
+    "benchbox/core/tuning/interface.py",
+    "scripts/generate_cloud_tpc_templates.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
+      "at": "2026-10-13T13:14:10Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "2a4409bec66d4bdbaf94d8a44879654b",
+      "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    }
+  ]
+}

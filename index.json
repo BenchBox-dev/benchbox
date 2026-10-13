@@ -5955,6 +5955,13 @@
       "status": "done",
       "title": "DatabricksPath lacks joinpath, so runner silently skips datagen manifest validation for Databricks runs"
     },
+    "databricks-strategy-key-injected-all-platforms-20261013": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Stop injecting databricks_clustering_strategy into every platform's tuning config"
+    },
     "databricks-table-quota-headroom-tooling": {
       "claim": null,
       "needs": [],
