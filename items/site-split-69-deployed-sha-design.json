@@ -1,4 +1,5 @@
 {
+  "description": "Item 63 needs bundle parents to follow the last deployed core SHA, but core has no channel that tells it the deployed SHA from the site side. Until this design lands, items 61 and 62 are the recovery path. Work: specify the source of truth on the site side, how core reads it at bundle build time, authentication and failure behavior, and who owns the value. Owner authorized creating this item on 2026-10-13 and confirmed the merge pause until item 61 lands.",
   "sessions": [
     {
       "actor": "mcp:tbh:joe@joe-mac-mini.local:2ddfad0386e20e3a0ffba40a",
@@ -6,6 +7,14 @@
       "client": "tbh",
       "op": "create",
       "op_id": "63463b9b6ada4514bf62e8eb055fdf7f",
+      "session_id": "63fb16e6ece34adb91d17cdd1e1f2310"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:2ddfad0386e20e3a0ffba40a",
+      "at": "2026-10-13T22:58:29Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "597c82d53d8a42a0acbfcb2ffcc8ae89",
       "session_id": "63fb16e6ece34adb91d17cdd1e1f2310"
     }
   ]
