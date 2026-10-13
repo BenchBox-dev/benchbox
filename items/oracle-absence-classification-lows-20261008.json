@@ -75,6 +75,15 @@
       "op": "renew",
       "op_id": "24a863d4526b4a25bbc11009b88ab821",
       "session_id": "2e005b09c5764b37907562dafae0d675"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:ee5a973726de839c8eab56eb",
+      "at": "2026-10-13T22:22:52Z",
+      "client": "tbh",
+      "generation": "34913345bc334f7fa4366478e7b05717",
+      "op": "take",
+      "op_id": "d41ac6c1a5bd40aeafac58ed91b2ce8c",
+      "session_id": "10b6ed539f7e4998b1290031a09d7b39"
     }
   ]
 }
