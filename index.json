@@ -20549,6 +20549,13 @@
       "status": "done",
       "title": "Snowflake clustering: dead pre-ALTER comparison (LINEAR vs bare parens) re-fires ALTER+RESUME RECLUSTER on every reuse; introspector schema filter is case-sensitive raw interpolation"
     },
+    "snowflake-shared-database-recreate-drops-shared-tables-20261013": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Snowflake: recreating an incompatible shared database drops tables that belong to other benchmarks"
+    },
     "snowflake-trial-exit-gate0-liveness-budget": {
       "claim": null,
       "needs": [],

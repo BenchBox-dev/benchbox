@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "A Snowflake validation mismatch for one benchmark never drops tables that belong to another benchmark sharing the database.",
+    "A unit test with a shared database (TPC-H tables plus primitives staging tables) and a forced validation mismatch proves only the requesting benchmark's tables are recreated.",
+    "Other platforms that share databases via get_data_source_benchmark are checked and either covered or recorded as safe."
+  ],
+  "context": "Found 2026-10-13 during an adversarial review of the Snowflake trial-exit program. Database sharing was proven by matching anonymized database pseudonyms in baseline bundles to sha256('|database|<name>') with an empty salt.",
+  "description": "## Problem\nBenchmarks that declare a data-source benchmark (read, write and transaction primitives; TPC-DS OBT) run inside that benchmark's database (`get_data_source_benchmark`, `benchbox/cli/orchestrator.py:73,149,293`). Snowflake baselines confirm it: the primitives sf001/sf01/sf1 runs used `TPCH_SF001/SF01/SF1_NOTUNING_NOCONSTRAINTS`, and TPC-DS OBT sf1 used `TPCDS_SF1_NOTUNING_NOCONSTRAINTS`.\n\nWhen reuse validation fails, `handle_existing_database` calls `_remove_database` (`benchbox/platforms/base/connection_lifecycle.py:213-243`). On Snowflake that runs `drop_database`, which drops the whole database (`benchbox/platforms/snowflake.py:517`), because Snowflake does not implement `reset_database_in_place` (`connection_lifecycle.py:249`). A primitives run that fails validation would therefore drop the TPC-H data and every other benchmark's tables in it, and vice versa.\n\nToday this is masked by two Snowflake bugs: the existing-database check never authenticates, and the drop quotes a lowercase name that matches nothing. A fix for those bugs (branch `fix/snowflake-existing-database-check`) makes the drop real.\n\n## Change\n- Implement `reset_database_in_place` for Snowflake: drop and recreate, or truncate, only the requesting benchmark's own tables. Alternatively, refuse to drop a database that holds tables outside the requesting benchmark's expected set.\n- Apply the same review to other platforms that share databases through `get_data_source_benchmark`.\n\n## Notes\nExtra tables only produce a validation warning (`benchbox/platforms/base/validation.py:100-103`), so a compatible shared database is reused. The risk is limited to validation mismatches: missing tables, row counts, or tuning state.",
+  "links": [
+    "benchbox/platforms/snowflake.py",
+    "benchbox/platforms/base/connection_lifecycle.py",
+    "benchbox/cli/orchestrator.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
+      "at": "2026-10-13T12:59:29Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "11942600dbcc45758d94f851d10514d2",
+      "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    }
+  ]
+}
