@@ -49,6 +49,7 @@ from benchbox.validation.bundle import (
     COMPANION_SUFFIXES,
     OVERRIDE_SUFFIX,
     accepted_override_rules,
+    throughput_stream_defects,
 )
 
 logger = logging.getLogger(__name__)
@@ -357,6 +358,43 @@ def _throughput_stream_count_mismatch(bundle: BundleDocument) -> bool:
     return configured_count is not None and isinstance(streams, list) and len(streams) != configured_count
 
 
+def _throughput_streams_succeeded(bundle: BundleDocument) -> bool:
+    block = bundle.phases.get("throughput_test")
+    streams = block.stream_results if block is not None else None
+    return (
+        isinstance(streams, list)
+        and bool(streams)
+        and all(isinstance(stream, dict) and stream.get("success") is True for stream in streams)
+    )
+
+
+def _throughput_streams_incomplete(bundle: BundleDocument) -> bool:
+    block = bundle.phases.get("throughput_test")
+    payload = {
+        "benchmark": {"id": bundle.benchmark.id},
+        "phases": {
+            "throughput_test": None
+            if block is None
+            else {"status": block.status, "stream_results": block.stream_results}
+        },
+        "queries": [
+            {"id": row.query_id, "status": row.status, "ms": row.ms, "run_type": row.run_type, "stream": row.stream}
+            for row in bundle.queries
+        ],
+    }
+    return bool(throughput_stream_defects(payload))
+
+
+def _throughput_stream_exclusion(bundle: BundleDocument, test_type: str | None, reason: str | None) -> str | None:
+    if reason not in (None, "missing_primary_metric") or canonical_phase(test_type) != THROUGHPUT_PHASE:
+        return reason
+    if _throughput_stream_count_mismatch(bundle):
+        return "stream_count_mismatch"
+    if _throughput_streams_succeeded(bundle) and _throughput_streams_incomplete(bundle):
+        return "incomplete_throughput_streams"
+    return reason
+
+
 def _throughput_phase_clean(bundle: BundleDocument) -> bool:
     block = bundle.phases.get("throughput_test")
     if block is None or str(block.status or "").upper() != "COMPLETED":
@@ -366,7 +404,9 @@ def _throughput_phase_clean(bundle: BundleDocument) -> bool:
         return False
     if _throughput_stream_count_mismatch(bundle):
         return False
-    if not all(isinstance(stream, dict) and stream.get("success") is True for stream in streams):
+    if _throughput_streams_incomplete(bundle):
+        return False
+    if not _throughput_streams_succeeded(bundle):
         return False
     return not block.errors and not block.outstanding_work
 
@@ -1294,12 +1334,7 @@ class BundleTransformer:
             basis_availability=_compute_basis_availability(timings),
         )
         reason = ranking_exclusion_reason(entry)
-        if (
-            reason in (None, "missing_primary_metric")
-            and canonical_phase(test_type) == THROUGHPUT_PHASE
-            and _throughput_stream_count_mismatch(bundle)
-        ):
-            reason = "stream_count_mismatch"
+        reason = _throughput_stream_exclusion(bundle, test_type, reason)
         if _sidecar_known_defects(bundle_path):
             reason = KNOWN_DEFECT_RANKING_EXCLUSION
         return entry.model_copy(update={"ranking_exclusion_reason": reason})
@@ -1421,12 +1456,7 @@ class BundleTransformer:
             failed_query_count=detail.failed_query_count,
         )
         reason = ranking_exclusion_reason(manifest_peer)
-        if (
-            reason in (None, "missing_primary_metric")
-            and canonical_phase(test_type) == THROUGHPUT_PHASE
-            and _throughput_stream_count_mismatch(bundle)
-        ):
-            reason = "stream_count_mismatch"
+        reason = _throughput_stream_exclusion(bundle, test_type, reason)
         if _sidecar_known_defects(bundle_path):
             reason = KNOWN_DEFECT_RANKING_EXCLUSION
         return detail.model_copy(update={"ranking_exclusion_reason": reason})

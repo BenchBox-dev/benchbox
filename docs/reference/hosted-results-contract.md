@@ -320,6 +320,15 @@ A mismatch excludes the result with `stream_count_mismatch`; corpus validation
 rejects completed phases with the mismatch. Failed or partial phases are
 excluded by phase status and may contain fewer recorded streams than configured.
 
+A completed throughput phase must also record stream IDs that are exactly the
+integers `1..S`, each with `success: true`. For TPC-H and TPC-DS, every stream
+must also record all 22 or 99 canonical queries as usable measurements
+(`SUCCESS` or `PASS`, at least 1 ms, `run_type` `measurement`), TPC-DS `a`/`b`
+variant pairs cover their base query, power-phase queries on stream 0 are
+ignored, and at least two streams are required. A completed phase that fails
+these checks is excluded with `incomplete_throughput_streams` and carries no
+Throughput@Size. Unsuccessful streams keep the phase-status exclusion.
+
 These fields form the ranking cohort key. Raw submitted benchmark and phase
 values are never rewritten; the derived identity is generated centrally by the
 publish pipeline and consumed by the explorer. Results with different

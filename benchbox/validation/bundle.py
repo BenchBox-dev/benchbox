@@ -1681,7 +1681,7 @@ def _coerce_stream_id(raw_id: Any) -> int | None:
         return raw_id
     if isinstance(raw_id, float) and raw_id.is_integer():
         return int(raw_id)
-    if isinstance(raw_id, str) and raw_id.strip().isdigit():
+    if isinstance(raw_id, str) and raw_id.strip().isascii() and raw_id.strip().isdigit():
         return int(raw_id.strip())
     return None
 
@@ -1810,6 +1810,12 @@ def _validate_throughput_stream_completeness(data: dict[str, Any], vr: Validatio
     if observed_by_stream is None:
         return
     _validate_throughput_stream_coverage(stream_ids, observed_by_stream, normalized_benchmark, vr)
+
+
+def throughput_stream_defects(data: dict[str, Any]) -> list[str]:
+    vr = ValidationResult("<in-memory>")
+    _validate_throughput_stream_completeness(data, vr)
+    return vr.errors
 
 
 def _validate_execution_consistency(data: dict[str, Any], vr: ValidationResult) -> None:
