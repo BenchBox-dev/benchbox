@@ -1136,7 +1136,7 @@ _PLATFORM_MANIFEST_JSON = """[
       },
       "gateways": {
         "espresso": {
-          "requires_host": false,
+          "requires_host": true,
           "routes_to": {
             "databricks": {
               "class": "standard"
@@ -1255,7 +1255,7 @@ _PLATFORM_MANIFEST_JSON = """[
       },
       "gateways": {
         "espresso": {
-          "requires_host": false,
+          "requires_host": true,
           "routes_to": {
             "snowflake": {
               "class": "standard"
@@ -1263,7 +1263,7 @@ _PLATFORM_MANIFEST_JSON = """[
           }
         },
         "greybeam": {
-          "requires_host": false,
+          "requires_host": true,
           "routes_to": {
             "snowflake": {
               "class": "standard"

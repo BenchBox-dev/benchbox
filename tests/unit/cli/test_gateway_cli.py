@@ -43,7 +43,42 @@ def _run_cli(args: list[str], database_manager: MagicMock) -> Result:
         return runner.invoke(cli, [*args, "--dry-run", "/tmp/benchbox-gateway-cli-test"])
 
 
-def test_gateway_cli_value_reaches_adapter_config() -> None:
+@pytest.mark.parametrize(
+    ("platform", "gateway", "extra"),
+    [
+        ("snowflake", "espresso", []),
+        ("snowflake", "greybeam", ["--platform-option", "gateway_host=gw.example.com"]),
+        ("databricks", "espresso", ["--platform-option", "gateway_host=gw.example.com"]),
+    ],
+)
+def test_declared_gateway_fails_closed_before_database_work(platform: str, gateway: str, extra: list[str]) -> None:
+    database_manager = MagicMock()
+
+    result = _run_cli(
+        [
+            "run",
+            "--platform",
+            platform,
+            "--benchmark",
+            "tpch",
+            "--scale",
+            "0.01",
+            "--phases",
+            "power",
+            "--non-interactive",
+            "--gateway",
+            gateway,
+            *extra,
+        ],
+        database_manager,
+    )
+
+    assert result.exit_code == 1
+    assert f"gateway routing is not implemented for {platform} yet" in result.output
+    database_manager.create_config.assert_not_called()
+
+
+def test_native_gateway_runs_without_routing() -> None:
     database_manager = MagicMock()
     database_manager.create_config.return_value = DatabaseConfig(type="snowflake", name="Snowflake")
 
@@ -60,13 +95,46 @@ def test_gateway_cli_value_reaches_adapter_config() -> None:
             "power",
             "--non-interactive",
             "--gateway",
-            "espresso",
+            "native",
         ],
         database_manager,
     )
 
     assert result.exit_code == 0, result.output
-    assert database_manager.create_config.call_args.kwargs["gateway_selector"] == "espresso"
+    assert database_manager.create_config.call_args.kwargs["gateway_selector"] == "native"
+
+
+@pytest.mark.parametrize(
+    ("option", "message"),
+    [
+        ("gateway_port=abc", "Invalid port 'abc' for option 'gateway_port'"),
+        ("allow_insecure_gateway=maybe", "Invalid boolean value 'maybe'"),
+    ],
+)
+def test_untyped_gateway_option_values_are_rejected(option: str, message: str) -> None:
+    database_manager = MagicMock()
+
+    result = _run_cli(
+        [
+            "run",
+            "--platform",
+            "snowflake",
+            "--benchmark",
+            "tpch",
+            "--scale",
+            "0.01",
+            "--phases",
+            "power",
+            "--non-interactive",
+            "--platform-option",
+            option,
+        ],
+        database_manager,
+    )
+
+    assert result.exit_code == 1
+    assert message in result.output
+    database_manager.create_config.assert_not_called()
 
 
 def test_gateway_cli_validation_fails_before_database_work() -> None:
@@ -102,32 +170,6 @@ def test_gateway_cli_requires_platform() -> None:
 
     assert result.exit_code == 1
     assert "--gateway requires --platform" in result.output
-    database_manager.create_config.assert_not_called()
-
-
-def test_custom_gateway_without_host_fails_before_database_work() -> None:
-    database_manager = MagicMock()
-
-    result = _run_cli(
-        [
-            "run",
-            "--platform",
-            "snowflake",
-            "--benchmark",
-            "tpch",
-            "--scale",
-            "0.01",
-            "--phases",
-            "power",
-            "--non-interactive",
-            "--gateway",
-            "custom",
-        ],
-        database_manager,
-    )
-
-    assert result.exit_code == 1
-    assert "requires gateway_host" in result.output
     database_manager.create_config.assert_not_called()
 
 

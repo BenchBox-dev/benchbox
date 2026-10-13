@@ -146,11 +146,10 @@ def _apply_gateway_option(s: types.SimpleNamespace) -> None:
         resolve_requested_gateway,
     )
 
-    gateway_host = s.parsed_platform_options.get("gateway_host") if hasattr(s, "parsed_platform_options") else None
     try:
         if not s.platform_key:
             raise GatewayConfigurationError("--gateway requires --platform")
-        s.gateway = resolve_requested_gateway(s.platform_key, gateway, gateway_host)
+        s.gateway = resolve_requested_gateway(s.platform_key, gateway)
     except (UnsupportedGatewayError, GatewayConfigurationError) as exc:
         console.print(f"[red]❌ {exc}[/red]")
         if s.logger:
@@ -185,9 +184,6 @@ def _parse_plat_bench_options(s: types.SimpleNamespace) -> None:
 
     s.parsed_platform_options = {}
     if s.platform_key:
-        from benchbox.core.gateway import register_gateway_connection_specs
-
-        register_gateway_connection_specs()
         try:
             s.parsed_platform_options = PlatformHookRegistry.parse_options(s.platform_key, s.platform_option_pairs)
         except PlatformOptionError as exc:

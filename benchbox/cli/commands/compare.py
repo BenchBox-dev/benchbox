@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 import click
+from rich.markup import escape
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
@@ -1147,13 +1148,14 @@ def _run_file_comparison(
     baseline_path = Path(result_files[0])
     current_path = Path(result_files[1])
 
-    baseline, current = _load_comparison_files(baseline_path, current_path)
+    baseline, baseline_raw, current, current_raw = _load_comparison_files(baseline_path, current_path)
     if not allow_heterogeneous_comparison:
-        from benchbox.core.gateway import variants_comparable
+        from benchbox.core.results.execution_variant import IncomparableVariantsError, bundle_variant_differences
 
-        if not variants_comparable(baseline, current):
+        differences = bundle_variant_differences(baseline_raw, current_raw)
+        if differences:
             console.print(
-                "[red]Error: Cannot compare runs with different execution variants (deployment, engine, or gateway). "
+                f"[red]Error: {escape(str(IncomparableVariantsError(differences)))} "
                 "Use --allow-heterogeneous-comparison to override.[/red]"
             )
             sys.exit(1)
@@ -1193,11 +1195,11 @@ def _validate_regression_threshold(fail_on_regression: str | None) -> float | No
     return regression_threshold
 
 
-def _load_comparison_files(baseline_path: Path, current_path: Path) -> tuple[Any, Any]:
+def _load_comparison_files(baseline_path: Path, current_path: Path) -> tuple[Any, dict[str, Any], Any, dict[str, Any]]:
     try:
-        baseline, _baseline_raw = load_result_file(baseline_path)
-        current, _current_raw = load_result_file(current_path)
-        return baseline, current
+        baseline, baseline_raw = load_result_file(baseline_path)
+        current, current_raw = load_result_file(current_path)
+        return baseline, baseline_raw, current, current_raw
     except FileNotFoundError as e:
         console.print(f"[red]Error: Result file not found: {e}[/red]")
         sys.exit(1)

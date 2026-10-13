@@ -182,6 +182,7 @@ class TestReportThresholdIsNoLongerInert:
         with (
             patch.object(ResultDatabase, "get_platforms", return_value=["duckdb"]),
             patch.object(ResultDatabase, "get_benchmarks", return_value=["tpch"]),
+            patch.object(ResultDatabase, "_distinct_variants", return_value=[None]),
             patch.object(ResultDatabase, "get_performance_trends", return_value=[trend]),
             patch.object(db, "_connection") as connection,
         ):

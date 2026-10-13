@@ -605,8 +605,6 @@ def _add_execution_variant_fields(platform: dict[str, Any], result: BenchmarkRes
     gateway_block = gateway_payload(_platform_info_entry(platform_info, "gateway"))
     if gateway_block:
         platform["gateway"] = order_dict(gateway_block, PLATFORM_GATEWAY_KEY_ORDER)
-        if gateway_block.get("routed") is True:
-            platform["tpc_compliant"] = False
     for key, lead in (("compute", PLATFORM_COMPUTE_LEAD_KEYS), ("deployment", PLATFORM_DEPLOYMENT_LEAD_KEYS)):
         block = platform.get(key)
         if isinstance(block, Mapping):

@@ -390,18 +390,27 @@ one name covers requested and observed values.
 
 - **Manifest capability:**
   `gateways: {name: {routes_to: {engine_name: {class}}, requires_host}}`.
-- **Declarations:**
+- **Declarations:** every declared gateway requires a host.
   - Snowflake: `espresso` (routes to `snowflake`), `greybeam` (routes to
-    `snowflake` and `duckdb`) and `custom` (requires a host; routes to
-    `snowflake`).
-  - Databricks: `espresso` (routes to `databricks`) and `custom` (requires a
-    host; routes to `databricks`).
+    `snowflake` and `duckdb`) and `custom` (routes to `snowflake`).
+  - Databricks: `espresso` (routes to `databricks`) and `custom` (routes to
+    `databricks`).
 - `native` is accepted and means no gateway; the `platform.gateway` block is
   omitted.
-- A routed run always records `tpc_compliant=false`. There is no override.
+- Until a platform's adapter routes queries through a gateway, any other
+  `--gateway` value fails before work starts with "gateway routing is not
+  implemented for <platform> yet". Declaring a gateway in the manifest does
+  not make it runnable; accepting the flag without routing would record a
+  native run as routed.
+- A routed run always records the top-level `tpc_compliant=false`. There is
+  no override.
 - The core owns `variants_comparable(a, b)` over deployment, requested engine
-  and gateway. The compare command, the regression policy and analytics
-  baseline selection all call it.
+  and gateway. A bundle without `platform.deployment.selected` uses the
+  manifest default deployment, so a legacy bundle compares with a new run of
+  the default deployment. `benchbox compare`, the MCP `compare_results` tool,
+  analytics regression detection and `benchbox report` regression baselines
+  all call it. Compare refuses incomparable inputs and names the parts that
+  differ; regression baselines use only runs of the same variant.
 - These gateway rules also hold:
   - connection option names use `gateway_*`, never `proxy_*`;
   - insecure TLS and plain HTTP to a non-loopback host each need an

@@ -1,10 +1,15 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
-from dataclasses import fields, is_dataclass
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, fields, is_dataclass
 from typing import Any
 
-from benchbox.core.execution_variant import append_variant_suffix, resolve_variant_platform_id
+from benchbox.core.execution_variant import (
+    NO_GATEWAY,
+    append_variant_suffix,
+    manifest_default_deployment,
+    resolve_variant_platform_id,
+)
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 
 UNKNOWN = "unknown"
@@ -81,13 +86,105 @@ def read_requested_variant(bundle: Mapping[str, Any]) -> tuple[str | None, str, 
     return (str(selected) if selected else None, str(requested), str(gateway) if gateway else None)
 
 
-def published_variant_id(bundle: Mapping[str, Any], base: str) -> str:
+def _variant_platform_id(bundle: Mapping[str, Any]) -> str | None:
     name = _mapping(bundle.get("platform")).get("name")
     config = _mapping(bundle.get("config"))
-    platform = resolve_variant_platform_id(
+    return resolve_variant_platform_id(
         (str(name) if name else None,), config.get("execution_mode") or config.get("mode")
     )
-    return append_variant_suffix(base, platform, *read_requested_variant(bundle))
+
+
+def published_variant_id(bundle: Mapping[str, Any], base: str) -> str:
+    return append_variant_suffix(base, _variant_platform_id(bundle), *read_requested_variant(bundle))
+
+
+@dataclass(frozen=True)
+class ExecutionVariant:
+    deployment: str | None
+    default_deployment: str | None
+    execution_engine: str
+    gateway: str
+
+    @property
+    def deployment_choice(self) -> str | None:
+        return None if self.deployment == self.default_deployment else self.deployment
+
+    def comparison_key(self) -> tuple[str | None, str, str]:
+        return (self.deployment_choice, self.execution_engine, self.gateway)
+
+    def describe(self) -> str:
+        return (
+            f"deployment={self.deployment or 'default'}, "
+            f"execution engine={self.execution_engine}, gateway={self.gateway}"
+        )
+
+
+class IncomparableVariantsError(ValueError):
+    def __init__(self, differences: Sequence[str]) -> None:
+        self.differences = list(differences)
+        super().__init__(
+            "Runs use different execution variants: "
+            + "; ".join(self.differences)
+            + ". Compare runs of the same deployment, execution engine and gateway."
+        )
+
+
+def read_execution_variant(bundle: Mapping[str, Any]) -> ExecutionVariant:
+    deployment, engine, gateway = read_requested_variant(bundle)
+    default = manifest_default_deployment(_variant_platform_id(bundle))
+    return ExecutionVariant(deployment or default, default, engine, gateway or NO_GATEWAY)
+
+
+def platform_info_bundle(
+    name: str | None,
+    platform_info: Mapping[str, Any] | None,
+    *,
+    deployment: Any = None,
+    execution_engine: Any = None,
+) -> dict[str, Any]:
+    info = _mapping(platform_info)
+    return {
+        "platform": {
+            "name": name,
+            "deployment": _record(deployment) or _record(info.get("deployment")),
+            "execution_engine": _record(execution_engine) or _record(info.get("execution_engine")),
+            "gateway": _record(info.get("gateway")),
+            "config": dict(info),
+        }
+    }
+
+
+def variant_differences(baseline: ExecutionVariant, current: ExecutionVariant) -> list[str]:
+    parts = (
+        (
+            "deployment",
+            baseline.deployment_choice != current.deployment_choice,
+            baseline.deployment or "default",
+            current.deployment or "default",
+        ),
+        (
+            "execution engine",
+            baseline.execution_engine != current.execution_engine,
+            baseline.execution_engine,
+            current.execution_engine,
+        ),
+        ("gateway", baseline.gateway != current.gateway, baseline.gateway, current.gateway),
+    )
+    return [f"{label} differs ({left} vs {right})" for label, differs, left, right in parts if differs]
+
+
+def bundle_variant_differences(baseline: Mapping[str, Any], current: Mapping[str, Any]) -> list[str]:
+    return variant_differences(read_execution_variant(baseline), read_execution_variant(current))
+
+
+def variants_comparable(baseline: Mapping[str, Any], current: Mapping[str, Any]) -> bool:
+    return not bundle_variant_differences(baseline, current)
+
+
+def require_comparable_variants(baseline: Mapping[str, Any], current: Mapping[str, Any]) -> None:
+    differences = bundle_variant_differences(baseline, current)
+    if differences:
+        raise IncomparableVariantsError(differences)
 
 
 def read_platform_compute(platform: Mapping[str, Any]) -> Any:
