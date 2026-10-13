@@ -3,7 +3,7 @@
     "ruleset_drift_check.py runs on a schedule from a workflow that dlv2-53 and dlv2-70 keep.",
     "A workflow test fails if no kept workflow runs ruleset_drift_check.py."
   ],
-  "context": "Found in the 2026-10-09 tracker review. Note for site-split-52: ruleset_drift_check.py APPROVED_MERGE_QUEUE_CONTEXTS (lines 308-316) still lists `landing`.\n\n2026-10-13 checkpoint: implemented as the t3:ruleset-drift domain of nightly-v2.yml (job ruleset-drift, report needs and loop updated, docs/internal/nightly-t3.md row, two tests in tests/unit/workflows/test_nightly_t3_workflow.py). PR #2938 (branch chore/nightly-v2-ruleset-drift, worktree ../BenchBox.wt-nightly-v2-ruleset-drift) is open with auto-merge armed, oracle-review pass and oracle-verdict SHIP on the head, all checks success, mergeStateStatus still BLOCKED at 14:47Z (a superseded oracle-review failure from the first attempt sits beside the pass). NEXT: confirm the merge, record the merge SHA here, then take and finish with that evidence. Acceptance 1 also wants a nightly-v2 dispatch to show the domain green; one dispatch can cover this and the throughput port.",
+  "context": "Found in the 2026-10-09 tracker review. Note for site-split-52: ruleset_drift_check.py APPROVED_MERGE_QUEUE_CONTEXTS (lines 308-316) still lists `landing`.\n\n2026-10-13 closeout: implemented as the t3:ruleset-drift domain of nightly-v2.yml (job ruleset-drift; report needs and loop updated; docs/internal/nightly-t3.md row; tests test_a_kept_scheduled_workflow_runs_the_ruleset_drift_check and test_ruleset_drift_domain_reports_through_the_token_and_uploads_evidence in tests/unit/workflows/test_nightly_t3_workflow.py). PR #2938 squash-merged as c18db8dddfe97d792e9a43e908413fe6fdbd3bc1 with oracle-verdict SHIP on head 192b05306. nightly-v2.yml runs on a daily schedule and is kept by dlv2-53 and dlv2-70; the test treats nightly.yml, release-canary.yml and validate-release-pr.yml as the retiring set. Not yet observed live: the new job has not run in nightly-v2.yml; the same command passed in the nightly.yml ruleset-drift job of dispatch run 38404921532. The next nightly-v2 dispatch or scheduled run should be read for t3:ruleset-drift before nightly.yml is deleted. Merge note: the PR sat BLOCKED for hours with all checks green because an earlier oracle-review run on the same head had failed fast while the verdict was pending; re-running that failed run (38409303912) turned it CLEAN and it merged.",
   "description": "scripts/ruleset_drift_check.py runs only in nightly.yml (ruleset-drift job, nightly.yml:885-907), release-canary.yml (:336) and validate-release-pr.yml (:140). dlv2-70 deletes nightly.yml and dlv2-53 deletes the other two, after which nothing checks the live rulesets against the recorded ones (ADR D7). dlv2-80 and dlv2-83 assume the check still runs.\n\nMove the check into a scheduled job that survives both retirements (for example a nightly-v2 domain) before either deletion lands.",
   "sessions": [
     {
@@ -47,6 +47,14 @@
       "generation": "f9d63e8d476b4a2a9989ef4702200539",
       "op": "take",
       "op_id": "87c2cfeb8e09430286d02fc04edb0a7f",
+      "session_id": "4c6a3e0b7c2c47a6a47c6cc7a35bc932"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:513e77a5e9d7684fd6c76434",
+      "at": "2026-10-13T19:38:50Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "0c54d32a286e432aa8cda13c11951d37",
       "session_id": "4c6a3e0b7c2c47a6a47c6cc7a35bc932"
     }
   ]
