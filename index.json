@@ -20655,6 +20655,13 @@
       "status": "open",
       "title": "Live-certify a tuned Snowflake run (no mid-run DROP, metadata persists, CLUSTERING_KEY shape, applied_verified)"
     },
+    "snowflake-tuned-runs-no-clustering-settle-20261013": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Snowflake tuned runs measure queries before automatic clustering has settled"
+    },
     "snowflake-tuned-templates-clustering-guidance-20261008": {
       "claim": null,
       "needs": [],
