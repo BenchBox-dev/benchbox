@@ -20702,10 +20702,15 @@
       "title": "Replace a real Snowflake account username in a public test fixture"
     },
     "snowflake-trial-exit-corrected-plan-20261013": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-14T19:24:16Z",
+        "generation": "e3e46743126a454cb8f77507179c22fa",
+        "renewals": 0,
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Measure tuned Snowflake templates and correct the trial record"
     },
     "snowflake-trial-exit-gate0-liveness-budget": {
