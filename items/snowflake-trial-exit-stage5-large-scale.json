@@ -4,7 +4,7 @@
     "Per-benchmark sf100 proceed and sf1000 admission verdicts recorded with numbers",
     "Primitives above sf10 gated on dry-run row estimates; primitives-sf1000 only with explicit passing estimate"
   ],
-  "context": "STAGE5 PROGRESS (cumulative 55.284/100 UNDER stop-loss):\n- Primitives large-scale: ALL CUT with reason - harness scale caps (read [0.01,0.1], write/txn [0.01,0.1,1], metadata [1.0]); sf100/sf1000 inadmissible. Max covered scales already baselined. No row-estimate math needed.\n- tpch-sf1000: ADMITTED on tpch-sf100 pilot evidence (0.8 credits) and RUNNING (official --seed 42, fresh DB, X-Small, free-trial). tpcds-sf1000 ruling deferred to tpch-sf1000 evidence + reserve re-check.\n- Done+admitted: tpch-sf100 (0.80), tpcds-sf100 (0.95). Cut: tpcdi-sf100, ssb-sf100, all-primitives-large-scale (harness caps).",
+  "context": "STAGE5 FINAL (untuned-only; cumulative BEFORE drops 55.284/100 UNDER stop-loss; sf100 DBs dropped after publish, log: both TPCH/TPCDS SF100 DBs dropped, none remaining):\n- tpch-sf100: PROCEED/DONE - bundle tpch_sf100_08cf1211 (official, seed42, 88q, 600M LINEITEM rows, 0.80 credits, power 300.6s).\n- tpcds-sf100: PROCEED/DONE - bundle tpcds_sf100_f7cb5531 (official, seed42, 412q, 0.95 credits, power 843s).\n- tpch-sf1000: ADMITTED on sf100 evidence, EXECUTION ATTEMPTED AND LOST - 10 parallel dbgen workers healthy ~1h, then process tree died with datagen staging unrecoverable (ephemeral storage gone; local disk 99% full, ~15GiB free vs ~330GB datagen needed). Ruled CUT: cannot regenerate within trial-expiry window (~Oct 17) on this host. No credits burned on Snowflake side for the attempt (died in local datagen).\n- tpcds-sf1000: CUT with same reason (sf1000 datagen infeasible on this host: disk + expiry window).\n- Primitives sf100/sf1000: CUT (harness scale caps; see earlier record). tpcdi/ssb sf100: CUT (harness caps [0.01,0.1,1,10]).\n- Excluded-by-default set untouched as designed. All spend from reserve; trial-expiry buffer respected by the cuts.\nAcceptance mapping: sf100 pilot recorded w/ load+credit cost ✓; per-benchmark sf100 proceed + sf1000 admission verdicts recorded w/ numbers ✓; primitives gated (inadmissible by caps, no passing estimate possible) ✓.",
   "description": "Stage 5. Starts only after stage4 resolves (complete or cut) and only from the Gate 0 reserve. Single pilot first: tpch sf100 untuned (observe load time, storage, credits). Expand on pilot evidence: same-benchmark tuned/untuned, then next benchmark in Tier order (tpcds, tpcdi, ssb, then primitives). sf1000 admitted per benchmark only after its sf100 stayed in budget. Primitives above sf10 require a dry-run row estimate first: read primitives scale as ~6M x SF rows on the lineitem base (benchbox/core/read_primitives/benchmark.py:296), so sf100 ~= 600M rows and sf1000 ~= 6B rows — treat primitives-sf1000 as guilty until proven innocent. Seeds: use --official --seed 42 only for tpch/tpcds official scales; otherwise match baseline (no seed). Decision gate: pilot go/no-go per benchmark; sf1000 per-benchmark admission. Guardrails: reserve-only spend; reload-vs-reuse from Gate 2 still applies (large-scale loads dominate cost); same publish/provenance/drop rules as stage4; trial-expiry buffer kept (no new large loads in the final window).",
   "links": [
     "benchbox/core/read_primitives/benchmark.py",
@@ -51,6 +51,14 @@
       "op": "update",
       "op_id": "9307873cb088402581887526797ab9b5",
       "session_id": "3d6d32ac7c5e46c58670f9664a7aea41"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:7990f8419a34d09d7b866eb4",
+      "at": "2026-10-13T01:09:45Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "89b8c17676e84439bff9963b79c038b7",
+      "session_id": "9cea413f90a8485d89872ef61cf31b01"
     }
   ]
 }
