@@ -23734,6 +23734,13 @@
       "status": "done",
       "title": "Add one post-load tuning seam and move maintenance ops (OPTIMIZE/ANALYZE/VACUUM/ZORDER/RESUME RECLUSTER) into it"
     },
+    "tuning-profile-certification-inverted-20261013": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Tuned-template certification passes templates its own validator fails; bundles hide the failed validation"
+    },
     "tuning-profile-measured-outcomes-20261008": {
       "claim": null,
       "needs": [
