@@ -115,4 +115,12 @@ uv run -- python scripts/new_platform_scaffold.py --name myengine --kind datafra
 ```
 
 A maintainer scaffold script prints the expected file plan for a new SQL or
-DataFrame platform. The helper emits a checklist and file plan only. It is an architecture health aid, not a framework that owns platform implementation.
+DataFrame platform, a manifest entry for `_PLATFORM_MANIFEST_JSON`, and an
+adapter stub. The manifest entry declares no execution engines and passes the
+same manifest validator the package uses at import; the script exits with an
+error if the key or an alias collides with an existing entry. The
+adapter stub includes a `resolve_execution_engine` hook that returns the
+platform-default receipt. `--output-dir DIR` also writes the entry as
+`manifest-entry.json` and the stub under the file name the plan uses. The
+helper is an architecture health aid, not a framework that owns platform
+implementation.

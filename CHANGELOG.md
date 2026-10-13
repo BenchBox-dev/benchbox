@@ -20,8 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The new-platform acceptance checklist and both adding-platform guides describe the reserved option words,
   the deprecated-alias rule and the manifest `execution_engines` declaration with a `polars-df` worked example.
   A scaffold script (`scripts/new_platform_scaffold.py --kind sql|dataframe`) prints the expected file plan
-  with manifest and adapter stubs; its output carries no reserved canonical keys and resolves the default
-  engine receipt through the inherited adapter hook.
+  with manifest and adapter stubs; its output carries no reserved canonical keys and its adapter stub returns
+  the platform-default engine receipt.
 
 - The Polars version-matrix reproduction instructions now use
   `--execution-engine` for default, in-memory and streaming setups, and identify
@@ -102,6 +102,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The new-platform scaffold emits a manifest entry that passes the manifest
+  validator the package runs at import. The entry sets `default_mode` and the
+  required metadata fields; an SQL entry names the adapter `class_name` and
+  the next registration order, and a DataFrame entry adds the `<key>-df` alias
+  instead of an SQL adapter. The DataFrame stub extends the expression-family
+  adapter rather than the SQL `PlatformAdapter`, at the path the file plan
+  names (`benchbox/platforms/dataframe/<key>_df.py`). Both stubs define a
+  `resolve_execution_engine` hook. `--output-dir` writes the entry as
+  `manifest-entry.json`, and the script exits with an error naming the problem
+  when the entry fails validation, for example a key that already exists.
+- The Explorer compatibility checker is tested the way the publication deploy
+  workflow runs it, as a script, and its fallback read-model version is tested
+  against the Explorer contract version.
 - Athena Spark can start a session. BenchBox no longer sends an engine
   version in the `StartSession` request; the AWS SDK rejected that field on
   every attempt, because the Spark-enabled workgroup sets the engine version.

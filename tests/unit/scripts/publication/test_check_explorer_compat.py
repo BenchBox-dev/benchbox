@@ -3,6 +3,8 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import subprocess
+import sys
 import tarfile
 import zipfile
 from pathlib import Path
@@ -454,3 +456,47 @@ def test_cli_db_path_not_found(capsys: pytest.CaptureFixture[str]) -> None:
     assert exit_code == 2
     captured = capsys.readouterr()
     assert "DuckDB database file not found" in captured.err
+
+
+def _run_script(*args: str, cwd: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, str(SCRIPT_PATH), *args],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=120,
+    )
+
+
+def test_script_runs_as_the_deploy_workflow_invokes_it(mock_artifact_dir: Path, tmp_path: Path) -> None:
+    generated = _run_script("--artifact", str(mock_artifact_dir), "--generate-manifest", cwd=REPO_ROOT)
+    assert generated.returncode == 0, generated.stdout + generated.stderr
+    assert "fallback version pin" not in generated.stderr
+
+    required = _run_script("--artifact", str(mock_artifact_dir), "--require-manifest", cwd=tmp_path)
+    assert required.returncode == 0, required.stdout + required.stderr
+
+    schema = _run_script("--schema-only", "--json", cwd=tmp_path)
+    assert schema.returncode == 0, schema.stdout + schema.stderr
+    assert "fallback version pin" not in schema.stderr
+
+
+def test_fallback_version_pin_matches_the_contract(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from _project.scripts.explorer_pipeline.contract import (
+        EXPLORER_BUILD_CONTRACT_VERSION,
+        EXPLORER_READ_MODEL_VERSION,
+    )
+
+    monkeypatch.setitem(sys.modules, "_project.scripts.explorer_pipeline.contract", None)
+    spec = importlib.util.spec_from_file_location("check_explorer_compat_fallback", SCRIPT_PATH)
+    assert spec and spec.loader
+    fallback = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fallback)
+
+    assert "fallback version pin" in capsys.readouterr().err
+    assert fallback.CURRENT_SCHEMA_VERSION == EXPLORER_READ_MODEL_VERSION
+    assert fallback.SUPPORTED_SCHEMA_VERSIONS == (EXPLORER_READ_MODEL_VERSION,)
+    assert fallback.CONTRACT_VERSION == EXPLORER_BUILD_CONTRACT_VERSION
