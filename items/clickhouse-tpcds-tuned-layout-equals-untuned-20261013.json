@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "The ClickHouse TPC-DS tuned template differs from the untuned layout with measured evidence, or the template/ADR states that only session settings differ."
+  ],
+  "context": "Found 2026-10-13 by an adversarial review of ClickHouse tuning (#2766, #2631) at origin/develop 77048bfb9.",
+  "description": "## Problem\nUntuned ClickHouse builds `ORDER BY` from the primary key, which 951f93a5a (#2631) changed to (item, ticket/order). The tuned TPC-DS template's sort keys are the same columns (`benchbox/platforms/clickhouse/workload.py:207-217`). The ADR \"Keep\" decision (tuned 84.1 ms vs untuned 80.9 ms) therefore compared session settings only, not layout.\n\n## Change\n- Try a date-first sort key for TPC-DS fact tables, measure it, and record the evidence.\n- Otherwise drop the TPC-DS tuned layout and say so in the ADR.",
+  "links": [
+    "benchbox/platforms/clickhouse/workload.py",
+    "examples/tunings/clickhouse"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
+      "at": "2026-10-13T13:14:23Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "5735fdd14ce64e879da331fd8afed221",
+      "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    }
+  ]
+}

@@ -3139,6 +3139,13 @@
       "status": "done",
       "title": "Fix TPC-DS silent empty-query bug - surface FAILED when power test returns 0 queries"
     },
+    "clickhouse-tpcds-tuned-layout-equals-untuned-20261013": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "ClickHouse TPC-DS tuned layout is identical to the untuned layout, so its Keep decision measured session settings only"
+    },
     "clickhouse-tpch-layout-study-sf10-plus": {
       "claim": null,
       "needs": [
