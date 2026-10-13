@@ -4,6 +4,7 @@ import type { BenchmarkSummary, PlatformRow } from "@/types";
 import type { ChartHistoricalEntry } from "@/lib/chartRegistry";
 
 import { SummaryChartOverview, SummaryMetricTable } from "@/components/SummaryChartOverview";
+import { paletteColor } from "@/lib/chartTheme";
 
 function makePlatform(overrides: Partial<PlatformRow> = {}): PlatformRow {
   const timings = overrides.timings ?? { Q1: 10, Q2: 20, Q3: 30 };
@@ -399,5 +400,75 @@ describe("SummaryChartOverview readable layout", () => {
     expect(truncated).toBeDefined();
     expect(truncated!.textContent!.trim().length).toBeLessThan(longName.length);
     expect(truncated!.getAttribute("title")).toContain(longName);
+  });
+});
+
+describe("SummaryMetricTable framing and columns", () => {
+  it("wraps itself in a card by default and drops the card when framed is false", () => {
+    const { container, unmount } = render(<SummaryMetricTable summary={makeSummary()} />);
+    expect(container.querySelector("section.card")).not.toBeNull();
+    unmount();
+
+    const framed = render(<SummaryMetricTable summary={makeSummary()} framed={false} />);
+    expect(framed.container.querySelector(".card")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Geomean and Power@Size" })).not.toBeNull();
+  });
+
+  it("hides the Power@Size column when no run has a value for it", () => {
+    const summary = makeSummary({
+      platforms: [
+        makePlatform({ result_id: "r1", platform_id: "duckdb", platform: "DuckDB", power_score: null }),
+        makePlatform({ result_id: "r2", platform_id: "sqlite", platform: "SQLite", power_score: null }),
+      ],
+    });
+    const { container } = render(<SummaryMetricTable summary={summary} />);
+    const table = container.querySelector("table.summary-metric-table") as HTMLElement;
+
+    expect(within(table).queryByText("Power@Size")).toBeNull();
+    expect(table.querySelectorAll("thead th")).toHaveLength(2);
+    expect(table.querySelectorAll("tbody tr td")).toHaveLength(2);
+    expect(screen.getByRole("heading", { name: "Geomean" })).not.toBeNull();
+    expect(table.querySelector("caption")?.textContent).not.toContain("Power@Size");
+  });
+
+  it("keeps the Throughput@Size column when throughput is the ranking metric", () => {
+    const summary = makeSummary({
+      ranking: { primary_metric: "throughput_at_size", secondary_metric: "display_geomean_ms", primary_order: "desc" },
+      platforms: [makePlatform({ result_id: "r1", throughput_at_size: 297653, power_score: null })],
+    });
+    const { container } = render(<SummaryMetricTable summary={summary} />);
+    const table = container.querySelector("table.summary-metric-table") as HTMLElement;
+    expect(within(table).getByText("Throughput@Size")).not.toBeNull();
+  });
+});
+
+describe("run colours on the benchmark page", () => {
+  const rankedSummary = makeSummary({
+    platforms: [
+      makePlatform({ result_id: "r1", platform_id: "zeta", platform: "Zeta", display_geomean_ms: 50, timings: { Q1: 50, Q2: 60, Q3: 70 } }),
+      makePlatform({ result_id: "r2", platform_id: "alpha", platform: "Alpha", display_geomean_ms: 10, timings: { Q1: 10, Q2: 12, Q3: 14 } }),
+      makePlatform({ result_id: "r3", platform_id: "mid", platform: "Mid", display_geomean_ms: 30, timings: { Q1: 30, Q2: 33, Q3: 36 } }),
+    ],
+  });
+
+  it("gives a run the same colour in the summary table, the box plot and the CDF", () => {
+    const { container } = renderOverview(rankedSummary);
+    const table = container.querySelector("table.summary-metric-table") as HTMLElement;
+    const alphaRow = Array.from(table.querySelectorAll("tbody tr")).find((row) => row.textContent?.includes("Alpha"));
+    expect(alphaRow?.querySelector("span.rounded-full")?.getAttribute("style")).toContain(paletteColor(1));
+
+    const latencySection = screen.getByRole("heading", { name: "Latency distribution" }).closest("section") as HTMLElement;
+    const boxLabel = Array.from(latencySection.querySelectorAll("text")).find((node) =>
+      node.textContent?.endsWith("Alpha"),
+    );
+    expect(boxLabel?.parentElement?.querySelector("rect")?.getAttribute("fill")).toBe(paletteColor(1));
+
+    const cdfCard = screen.getByTestId("summary-chart-preview-cdf_chart");
+    fireEvent.click(within(cdfCard).getByText("Open full chart ↗", { selector: "span" }));
+    fireEvent(cdfCard, new Event("toggle"));
+    const cdfPath = Array.from(container.querySelectorAll("path")).find(
+      (path) => path.querySelector("title")?.textContent?.startsWith("Alpha"),
+    );
+    expect(cdfPath?.getAttribute("stroke")).toBe(paletteColor(1));
   });
 });

@@ -267,8 +267,8 @@ describe("CompareWithinRun page component", () => {
     expect(screen.queryByText("faster")).toBeNull();
     expect(screen.queryByText("slower")).toBeNull();
     expect(screen.queryByText("parity")).toBeNull();
-    expect(screen.queryByText("0.50x")).toBeNull();
-    expect(screen.queryByText("0.50x (-50.0 ms)")).toBeNull();
+    expect(screen.queryByText("0.5×")).toBeNull();
+    expect(screen.queryByText("0.5× (−50 ms)")).toBeNull();
   });
 
   it("does not style tie-band query ratios as faster", async () => {
@@ -290,7 +290,7 @@ describe("CompareWithinRun page component", () => {
     await waitFor(() => {
       expect(screen.getByText("Compare measurements from one DuckDB run")).toBeTruthy();
     });
-    const displayedTieRatios = screen.getAllByText(/^1\.00x \(/);
+    const displayedTieRatios = screen.getAllByText(/^1× \(/);
     expect(displayedTieRatios.length).toBeGreaterThan(0);
     for (const ratio of displayedTieRatios) {
       expect(ratio.className).not.toContain("bb-tone-success-fg");
@@ -316,7 +316,7 @@ describe("CompareWithinRun passes page presentation", () => {
     expect(screen.queryByTestId("one-measured-pass-note")).toBeNull();
   });
 
-  it("states that the median equals the only pass instead of a table of 1.00x", async () => {
+  it("states that the median equals the only pass instead of a table of 1×", async () => {
     (getDetailResult as any).mockResolvedValue(
       {
         ...makeDetail(),
@@ -337,7 +337,7 @@ describe("CompareWithinRun passes page presentation", () => {
       "Only one measured pass: the median equals pass 1.",
     );
     expect(screen.queryByRole("table")).toBeNull();
-    expect(screen.queryByText("1.00x")).toBeNull();
+    expect(screen.queryByText("1×")).toBeNull();
   });
 
   it("links the page header back to the run through a breadcrumb", async () => {

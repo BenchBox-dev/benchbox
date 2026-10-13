@@ -693,14 +693,14 @@ describe("Compare", () => {
     expect(getDetailResult).toHaveBeenCalledWith("r2");
   });
 
-  it("shows a 10.00x ratio to the lowest selected score in the DuckDB summary card (power_score primary)", async () => {
+  it("shows a 10× ratio to the lowest selected score in the DuckDB summary card (power_score primary)", async () => {
     render(<Compare />);
     await waitFor(() => {
       expect(screen.getAllByText("DuckDB").length).toBeGreaterThan(0);
     });
     await waitFor(() => expect(document.title).toBe("Compare (2) · BenchBox Results"));
     expect(screen.getAllByText(/Compared with lowest selected score/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText("10.00x").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("10×").length).toBeGreaterThan(0);
     expect(screen.getAllByText(/2026-04-01.*days ago/).length).toBeGreaterThan(0);
   });
 
@@ -758,7 +758,7 @@ describe("Compare", () => {
     const queryDiffHeading = screen.getByRole("heading", { name: "Query-level differences" });
 
     expect(summary.closest("section")).toHaveTextContent(
-      "In these selected runs, DuckDB's power score was 10.00x better than the lowest selected run.",
+      "In these selected runs, DuckDB's power score was 10× better than the lowest selected run.",
     );
     expect(summary.closest("section")).toHaveTextContent("Where DuckDB wins");
     expect(summary.closest("section")).toHaveTextContent("2 of 2 shared queries");
@@ -805,7 +805,7 @@ describe("Compare", () => {
     const summary = screen.getByRole("heading", { name: "Comparison summary" }).closest("section");
     expect(summary).toHaveTextContent("Cost/performance:");
     expect(summary).toHaveTextContent("winner cost $0.50");
-    expect(summary).toHaveTextContent("30.00x cost/performance");
+    expect(summary).toHaveTextContent("30× cost/performance");
   });
 
   it("suppresses winner claims but keeps missing query evidence visible in the query diff table", async () => {
@@ -1026,7 +1026,7 @@ describe("Compare", () => {
     await waitFor(() => {
       expect(screen.getAllByText("DuckDB").length).toBeGreaterThan(0);
     });
-    const cells = screen.getAllByText("10.00x");
+    const cells = screen.getAllByText("10×");
     expect(cells.length).toBeGreaterThanOrEqual(2);
   });
 
@@ -1143,7 +1143,7 @@ describe("Compare", () => {
     expect(select.value).toBe("r2");
     expect(diffTable).toHaveTextContent("Baseline: SQLite");
     expect(diffTable).toHaveTextContent("DuckDB");
-    expect(diffTable).toHaveTextContent("10.00x");
+    expect(diffTable).toHaveTextContent("10×");
     expect(new URL(window.location.href).searchParams.get("ids")).toBe(beforeIds);
     expect(new URL(window.location.href).searchParams.get("baseline")).toBe("r2");
     expect(screen.getAllByText("SQLite").length).toBeGreaterThan(0);
@@ -1233,7 +1233,7 @@ describe("Compare", () => {
     const options = Array.from(select.options).map((option) => option.text);
     const beforeIds = new URL(window.location.href).searchParams.get("ids");
 
-    expect(summary).toHaveTextContent("In these selected runs, DuckDB's power score was 10.00x better than the lowest selected run.");
+    expect(summary).toHaveTextContent("In these selected runs, DuckDB's power score was 10× better than the lowest selected run.");
     expect(options).toEqual(["DuckDB", "SQLite", "PostgreSQL"]);
     expect(screen.getByRole("heading", { name: "Query by run" }).closest("section")).toHaveTextContent(
       "Showing 2 of 2 queries.",

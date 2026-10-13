@@ -1,3 +1,4 @@
+import { formatRatio } from "@/lib/metricFormatters";
 import type { DetailResult } from "@/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { geomeanMs } from "@/lib/chartMath";
@@ -120,7 +121,7 @@ function ratioText(row: StandingRow): string {
   if (row.isBaseline) return "baseline";
   if (row.ratioToBaseline === null) return "—";
   if (row.tied) return "tied";
-  return `${row.ratioToBaseline.toFixed(2)}x`;
+  return formatRatio(row.ratioToBaseline);
 }
 
 export function MultiRunStandings({ results, baselineIndex, runLabels }: MultiRunStandingsProps) {

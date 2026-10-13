@@ -70,7 +70,7 @@ import { CompareCta, isCompareAllAvailable } from "@/components/CompareCta";
 import { CompareTray } from "@/components/CompareTray";
 import { TrayAnnouncer } from "@/components/TrayAnnouncer";
 import { RunDateChip } from "@/components/RunAge";
-import { identitySourceWithPlatformVersion, platformVersionDisplay } from "@/lib/versionLabel";
+import { platformVersionDisplay } from "@/lib/versionLabel";
 import { PageHeader } from "@/components/PageHeader";
 import type { SortState } from "@/types";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
@@ -198,7 +198,7 @@ function sentenceCasePhase(text: string): string {
 }
 
 function isManagedCloudRun(row: { deployment_class?: string | null; cloud_provider?: string | null }): boolean {
-  if (row.deployment_class) return row.deployment_class === "cloud";
+  if (row.deployment_class) return row.deployment_class === "cloud" || row.deployment_class === "remote";
   return Boolean(row.cloud_provider);
 }
 
@@ -585,7 +585,7 @@ export function PlatformIndex({ platform = "" }: PlatformIndexProps) {
     platformResults,
     visibleLimit,
   );
-  const runIdentityLabels = formatRunIdentitiesForCohort(platformResults.map(identitySourceWithPlatformVersion), "table");
+  const runIdentityLabels = formatRunIdentitiesForCohort(platformResults, "table");
   const versionCellLabels = buildVersionCellLabels(platformResults);
 
   function toggleSort(key: PlatformSortKey) {

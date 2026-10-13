@@ -4,7 +4,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { TableScrollHint } from "@/components/TableScrollHint";
 import { buildComparabilityFields, type ComparabilityField } from "@/components/ComparabilityReceipt";
 import { formatCpuIdentityProvenance } from "@/lib/hardwareProvenance";
-import { formatMemoryGb } from "@/lib/displayLabels";
+import { formatArchitecture, formatCpuFamily, formatMemoryGb } from "@/lib/displayLabels";
 
 export interface IdentityDiffStripProps {
   results: DetailResult[];
@@ -39,9 +39,9 @@ export function axisValueForRun(axis: (typeof STRIP_AXES)[number], result: Detai
     case "Driver version":
       return result.driver_version && result.driver_version !== "" ? result.driver_version : "Not recorded";
     case "Architecture":
-      return result.environment?.arch && result.environment.arch !== "" ? result.environment.arch : "Not recorded";
+      return result.environment?.arch && result.environment.arch !== "" ? formatArchitecture(result.environment.arch) : "Not recorded";
     case "CPU family":
-      return result.environment?.cpu_family && result.environment.cpu_family !== "" ? result.environment.cpu_family : "Not recorded";
+      return result.environment?.cpu_family && result.environment.cpu_family !== "" ? formatCpuFamily(result.environment.cpu_family) : "Not recorded";
     case "CPU model":
       return result.environment?.cpu_model && result.environment.cpu_model !== "" ? result.environment.cpu_model : "Not recorded";
     case "CPU evidence":
@@ -80,10 +80,21 @@ function matrixCell(axis: (typeof STRIP_AXES)[number], run: DetailResult, index:
 }
 
 function matrixBadge(status: MatrixStatus, includeSame: boolean): { text: string; tone: "warning" | "success" | "neutral" } | null {
-  if (status === "diff") return { text: "Differs", tone: "warning" };
   if (status === "indeterminate") return { text: "No baseline", tone: "neutral" };
   if (status === "match" && includeSame) return { text: "Same", tone: "success" };
   return null;
+}
+
+function DifferenceMarker({ axis, runNames }: { axis: string; runNames: readonly string[] }) {
+  if (runNames.length === 0) return null;
+  return (
+    <span class="inline-flex flex-wrap items-center gap-1" data-testid={`differs-marker-${axis}`}>
+      <StatusBadge role="comparison" tone="warning">
+        Differs
+      </StatusBadge>
+      <span class="sr-only">{`in ${runNames.join(", ")}`}</span>
+    </span>
+  );
 }
 
 const TRANSPOSE_ABOVE_RUNS = 4;
@@ -116,6 +127,10 @@ export function IdentityDiffStrip({ results, baselineIndex = 0, runLabels }: Ide
       : `${diffCount} of ${fields.length} ${diffCount === 1 ? "axis varies" : "axes vary"} across the whole selection.`;
     const runName = (index: number, run: DetailResult) =>
       `${runLabels?.[index] ?? run.platform}${index === baseIndex ? " (baseline)" : ""}`;
+    const differingRunNames = (axis: (typeof STRIP_AXES)[number]) =>
+      results.flatMap((run, index) =>
+        matrixCell(axis, run, index, baseIndex, baselineRun).status === "diff" ? [runLabels?.[index] ?? run.platform] : [],
+      );
 
     return (
       <section class="panel mb-4 px-3 py-2 shadow-sm" aria-label="Platform and hardware identity">
@@ -132,11 +147,17 @@ export function IdentityDiffStrip({ results, baselineIndex = 0, runLabels }: Ide
                     <th scope="col" class="table-th sticky left-0 z-10 whitespace-nowrap bg-[var(--bb-surface-data-muted)]">
                       Run
                     </th>
-                    {fields.map((field) => (
-                      <th key={field.label} scope="col" class="table-th whitespace-nowrap">
-                        {AXIS_DISPLAY_LABEL[field.label as (typeof STRIP_AXES)[number]] ?? field.label}
-                      </th>
-                    ))}
+                    {fields.map((field) => {
+                      const axis = field.label as (typeof STRIP_AXES)[number];
+                      return (
+                        <th key={axis} scope="col" class="table-th whitespace-nowrap">
+                          <span class="inline-flex flex-wrap items-center gap-1">
+                            {AXIS_DISPLAY_LABEL[axis] ?? field.label}
+                            <DifferenceMarker axis={axis} runNames={differingRunNames(axis)} />
+                          </span>
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-[var(--bb-data-border)] bg-[var(--bb-surface-data)]">
@@ -153,7 +174,12 @@ export function IdentityDiffStrip({ results, baselineIndex = 0, runLabels }: Ide
                         const cell = matrixCell(axis, run, index, baseIndex, baselineRun);
                         const badge = matrixBadge(cell.status, false);
                         return (
-                          <td key={axis} class="table-td align-top text-xs" data-testid={`matrix-run-${index}-${axis}`}>
+                          <td
+                            key={axis}
+                            class={`table-td align-top text-xs ${cell.status === "diff" ? "bg-[var(--bb-surface-data-muted)]" : ""}`}
+                            data-testid={`matrix-run-${index}-${axis}`}
+                            data-differs={cell.status === "diff" ? "true" : undefined}
+                          >
                             <span class="block break-words font-mono text-[var(--bb-data-fg-primary)]">{cell.value}</span>
                             {badge && (
                               <StatusBadge role="comparison" tone={badge.tone} class="mt-1">
@@ -189,13 +215,21 @@ export function IdentityDiffStrip({ results, baselineIndex = 0, runLabels }: Ide
                   return (
                     <tr key={field.label}>
                       <td class="table-td font-medium text-[var(--bb-data-fg-primary)]">
-                        {AXIS_DISPLAY_LABEL[axis] ?? field.label}
+                        <span class="inline-flex flex-wrap items-center gap-1">
+                          {AXIS_DISPLAY_LABEL[axis] ?? field.label}
+                          <DifferenceMarker axis={axis} runNames={differingRunNames(axis)} />
+                        </span>
                       </td>
                       {results.map((r, i) => {
                         const cell = matrixCell(axis, r, i, baseIndex, baselineRun);
                         const badge = matrixBadge(cell.status, true);
                         return (
-                          <td key={r.result_id} class="table-td text-xs" data-testid={`matrix-cell-${axis}-${i}`}>
+                          <td
+                            key={r.result_id}
+                            class={`table-td text-xs ${cell.status === "diff" ? "bg-[var(--bb-surface-data-muted)]" : ""}`}
+                            data-testid={`matrix-cell-${axis}-${i}`}
+                            data-differs={cell.status === "diff" ? "true" : undefined}
+                          >
                             <div class="flex items-center justify-between gap-2">
                               <span class="break-words font-mono text-[var(--bb-data-fg-primary)]">{cell.value}</span>
                               {badge && (

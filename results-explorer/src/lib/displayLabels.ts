@@ -178,12 +178,15 @@ export function formatArchitecture(raw: string): string {
   return formatEnumLabel(raw);
 }
 
+const CPU_FAMILY_LABELS: Record<string, string> = {
+  amd_epyc: "AMD EPYC",
+  intel_xeon: "Intel Xeon",
+  apple_silicon: "Apple silicon",
+};
+
 export function formatCpuFamily(raw: string): string {
   const normalized = raw.trim().toLowerCase();
-  if (normalized === "amd_epyc") return "AMD EPYC";
-  if (normalized === "intel_xeon") return "Intel Xeon";
-  if (normalized === "apple_silicon") return "Apple silicon";
-  return formatEnumLabel(raw);
+  return CPU_FAMILY_LABELS[normalized] ?? formatEnumLabel(raw);
 }
 
 export function formatExecutionMode(raw: string): string {

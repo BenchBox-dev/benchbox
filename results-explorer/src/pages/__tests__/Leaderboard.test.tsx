@@ -777,7 +777,7 @@ describe("Leaderboard", () => {
     await waitFor(() => expect(screen.getByText("Cross-benchmark rankings")).toBeTruthy());
 
     expect(screen.getByRole("radio", { name: "Relative to best" }).getAttribute("aria-checked")).toBe("true");
-    expect(screen.getByText("0.50x")).toBeTruthy();
+    expect(screen.getByText("0.5×")).toBeTruthy();
     expect(new URL(window.location.href).searchParams.get("mode")).toBeNull();
 
     fireEvent.click(screen.getByRole("radio", { name: "Times" }));
@@ -914,7 +914,7 @@ describe("Leaderboard", () => {
     await waitFor(() => expect(screen.getByText("Cross-benchmark rankings")).toBeTruthy());
 
     const grid = screen.getByRole("grid", { name: "Cross-benchmark leaderboard" });
-    const receiptLink = within(grid).getByRole("link", { name: "1.00x; Native: 10 ms" }) as HTMLAnchorElement;
+    const receiptLink = within(grid).getByRole("link", { name: "1×; Native: 10 ms" }) as HTMLAnchorElement;
 
     expect(receiptLink.getAttribute("href")).toBe("/results/r/r1#run-receipt");
     expect(within(grid).getAllByText("Maintainer").length).toBeGreaterThan(0);

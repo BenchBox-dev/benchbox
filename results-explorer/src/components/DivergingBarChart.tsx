@@ -1,3 +1,4 @@
+import { formatPercentChange } from "@/lib/metricFormatters";
 import { deltaPct, sortByMagnitudeDesc } from "@/lib/chartMath";
 import { DIVERGING_MAX_PCT, paletteColor } from "@/lib/chartTheme";
 import { useElementSize } from "@/lib/useElementSize";
@@ -35,10 +36,6 @@ const PLOT_EDGE_PX = 8;
 const VALUE_RESERVE_PX = 72;
 const OVERFLOW_ARROW_PX = 4;
 const VALUE_GAP_PX = 4;
-
-function signedPercent(value: number): string {
-  return `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
-}
 
 export function DivergingBarChart({ queries, results, baselineIdx }: Props) {
   const [containerRef, { width: containerWidth }] = useElementSize();
@@ -107,7 +104,7 @@ export function DivergingBarChart({ queries, results, baselineIdx }: Props) {
       <p id="diverging-bar-description" class="sr-only">{chartDescription}</p>
       <p class="mb-2 text-xs text-[var(--bb-data-fg-muted)]">
         {faster} quer{faster === 1 ? "y" : "ies"} faster, {slower} quer{slower === 1 ? "y" : "ies"} slower
-        {rawEntries.length > 0 && ` · median delta: ${medianDelta >= 0 ? "+" : ""}${medianDelta.toFixed(1)}%`}
+        {rawEntries.length > 0 && ` · median delta: ${formatPercentChange(medianDelta)}`}
         {" · sorted by magnitude"}
       </p>
       <svg
@@ -169,7 +166,7 @@ export function DivergingBarChart({ queries, results, baselineIdx }: Props) {
                 const arrowPoints = isSlower
                   ? `${tipX},${barY} ${tipX + OVERFLOW_ARROW_PX},${rowCenter} ${tipX},${barY + BAR_H}`
                   : `${tipX},${barY} ${tipX - OVERFLOW_ARROW_PX},${rowCenter} ${tipX},${barY + BAR_H}`;
-                const valueText = signedPercent(entry.deltaPct);
+                const valueText = formatPercentChange(entry.deltaPct);
                 return (
                   <g key={`${entry.runIndex}-${entry.label}`} data-run-index={entry.runIndex}>
                     <rect
@@ -211,7 +208,7 @@ export function DivergingBarChart({ queries, results, baselineIdx }: Props) {
             <tr key={`${index}-${entry.queryId}-${entry.runIndex}`}>
               <td>{entry.queryId}</td>
               <td>{entry.label}</td>
-              <td>{signedPercent(entry.deltaPct)}</td>
+              <td>{formatPercentChange(entry.deltaPct)}</td>
             </tr>
           ))}
         </tbody>

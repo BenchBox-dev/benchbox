@@ -64,6 +64,18 @@ export function costStatusLabel(row: CostDeploymentFields): string {
   return "Not recorded";
 }
 
+export function costStatusShortLabel(row: CostDeploymentFields): string {
+  if (row.cost_status === "not_applicable_local") return "N/A (local run)";
+  if (row.cost_status === "estimated") return "Estimated (not metered)";
+  return "Not recorded";
+}
+
+export function normalizedCostShortLabel(row: CostDeploymentFields): string {
+  const value = normalizedCostValue(row);
+  if (value !== null) return formatUsd(value).valueText;
+  return estimatedCostLabel(row) ?? costStatusShortLabel(row);
+}
+
 export function costModelDisclosure(rows: readonly CostDeploymentFields[]): string {
   const normalized = rows.filter((row) => normalizedCostValue(row) !== null);
   const versions = uniqueNonEmpty(normalized.map((row) => row.cost_model_version));

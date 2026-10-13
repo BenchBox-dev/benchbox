@@ -116,7 +116,7 @@ describe("ResultDetail - median-first contract", () => {
     await waitFor(() => expect(screen.queryByText("Loading result...")).toBeNull());
 
     expect(screen.getByText("Query timings (2)")).toBeTruthy();
-    await waitFor(() => expect(document.title).toBe("TPC-H · DuckDB · SF0.1 · BenchBox Results"));
+    await waitFor(() => expect(document.title).toBe("TPC-H · DuckDB · SF 0.1 · BenchBox Results"));
 
     const passes = screen.getByTestId("detail-passes-scroll-container");
     expect(within(passes).getAllByRole("row")).toHaveLength(4);

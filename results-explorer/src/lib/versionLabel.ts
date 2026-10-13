@@ -37,7 +37,3 @@ export function platformVersionDisplay(row: {
   const driverDiffers = driverRaw !== "" && driverRaw !== platformRaw;
   return { text: parts.full, driverTitle: driverDiffers ? `Driver ${driverRaw}` : null };
 }
-
-export function identitySourceWithPlatformVersion<T extends { driver_version?: string | null }>(row: T): T {
-  return { ...row, driver_version: null };
-}

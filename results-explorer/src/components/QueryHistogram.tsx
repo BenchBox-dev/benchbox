@@ -7,7 +7,7 @@ import { MISSING_MARKER_RADIUS, RUN_MARKER_RADIUS, runMarkerPath } from "@/lib/c
 import { RunLegend } from "@/components/RunLegend";
 import { queryDisplayLabel, sortQueryIds } from "@/lib/queryLabels";
 import { formatTimingExclusion, platformTimingValue } from "@/lib/displayEligibility";
-import { formatLatencyMs } from "@/lib/metricFormatters";
+import { formatCompactLatencyMs } from "@/lib/metricFormatters";
 import { estimateTextWidth, fitLabel, labelColumnWidth } from "@/lib/chartLabels";
 import { formatTickMs, logTicks } from "@/lib/chartTicks";
 
@@ -28,16 +28,12 @@ interface Props {
   queryHref?: (queryId: string) => string;
 }
 
-function fmtMs(ms: number): string {
-  return formatLatencyMs(ms, { subMillisecond: "compact" }).valueText;
-}
-
 function timingLabel(summary: BenchmarkSummary, platformIndex: number, queryId: string, runLabel: string): string {
   const platform = summary.platforms[platformIndex]!;
   const ms = platformTimingValue(platform, queryId);
   const value = ms === null
     ? formatTimingExclusion(platform.timing_eligibility[queryId]?.timing_exclusion_reason ?? "missing_timing")
-    : fmtMs(ms);
+    : formatCompactLatencyMs(ms);
   return `${runLabel} · ${queryDisplayLabel(queryId)}: ${value}`;
 }
 
@@ -89,8 +85,8 @@ export function QueryHistogram({ summary, preserveOrder = false, queryHref }: Pr
     <div ref={containerRef} class="w-full">
       <p id="query-histogram-description" class="sr-only">
         Each row is one query. Every run shares the same query row; marker shape and color identify runs
-        and horizontal position shows latency on a logarithmic millisecond scale from {fmtMs(scale.lo)} to{" "}
-        {fmtMs(scale.hi)}. Tooltips and the accessible table give each run's timing or exclusion reason.
+        and horizontal position shows latency on a logarithmic millisecond scale from {formatCompactLatencyMs(scale.lo)} to{" "}
+        {formatCompactLatencyMs(scale.hi)}. Tooltips and the accessible table give each run's timing or exclusion reason.
         {hasMissing
           ? " A hollow circle left of the scale marks a run with no successful measurement for that query."
           : null}
@@ -224,7 +220,7 @@ export function QueryHistogram({ summary, preserveOrder = false, queryHref }: Pr
             const ms = platformTimingValue(platform, queryId);
             const cell = ms === null
               ? formatTimingExclusion(platform.timing_eligibility[queryId]?.timing_exclusion_reason ?? "missing_timing")
-              : fmtMs(ms);
+              : formatCompactLatencyMs(ms);
             return (
               <tr key={`${queryId}-${platform.result_id}`}>
                 <td>{queryDisplayLabel(queryId)}</td>

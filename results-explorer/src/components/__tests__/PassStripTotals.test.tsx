@@ -84,7 +84,7 @@ describe("PassStrip totals row", () => {
     const totals = screen.getByTestId("pass-strip-totals");
     expect(within(totals).getByText("Overall")).toBeTruthy();
     expect(totals.textContent).toContain("34 ms");
-    expect(within(totals).getByTestId("warmup-ratio-overall").textContent).toBe("2.06x");
+    expect(within(totals).getByTestId("warmup-ratio-overall").textContent).toBe("2.06×");
   });
 
   it("says the totals cover queries the truncated table does not list", () => {

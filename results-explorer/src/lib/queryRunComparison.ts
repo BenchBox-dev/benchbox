@@ -2,7 +2,7 @@ import type { QueryExecutionRow } from "@/lib/duckdbQueries";
 import { compareCohortSignatureForRow, type CompareCohortRow } from "@/lib/compareCohort";
 import { planCompareIds } from "@/lib/compareRecovery";
 import { canonicalBenchmarkSlug, formatBenchmarkLabel } from "@/lib/displayLabels";
-import { formatTickMs, logTicks } from "@/lib/chartTicks";
+import { formatTickMs } from "@/lib/chartTicks";
 import {
   DEFAULT_BASIS,
   decodeBasis,
@@ -188,13 +188,19 @@ export interface ValueAxis {
 const NICE_MANTISSAS = [1, 2, 5] as const;
 const MAX_LINEAR_INTERVALS = 6;
 const LINEAR_HEADROOM = 1.05;
+const MIN_LOG_TICK_GAP_PX = 56;
+const NICE_VALUE_TOLERANCE = 1e-9;
 
 function withoutRepeatedLabels(values: readonly number[]): ValueAxisTick[] {
   const ticks: ValueAxisTick[] = [];
   for (const value of values) {
     const label = formatTickMs(value);
-    if (ticks[ticks.length - 1]?.label === label) continue;
-    ticks.push({ value, label });
+    const previous = ticks[ticks.length - 1];
+    if (previous !== undefined && previous.label === label) {
+      ticks[ticks.length - 1] = { value, label };
+    } else {
+      ticks.push({ value, label });
+    }
   }
   return ticks;
 }
@@ -207,17 +213,55 @@ function linearStep(span: number): number {
   return candidates.find((step) => span / step <= MAX_LINEAR_INTERVALS) ?? span;
 }
 
+function niceLogCandidates(low: number, high: number): number[] {
+  const candidates: number[] = [];
+  const firstExponent = Math.floor(Math.log10(low)) - 1;
+  const lastExponent = Math.ceil(Math.log10(high)) + 1;
+  for (let exponent = firstExponent; exponent <= lastExponent; exponent += 1) {
+    for (const mantissa of NICE_MANTISSAS) {
+      candidates.push(Number((mantissa * 10 ** exponent).toPrecision(12)));
+    }
+  }
+  return candidates;
+}
+
+function isPowerOfTen(value: number): boolean {
+  const exponent = Math.log10(value);
+  return Math.abs(exponent - Math.round(exponent)) < 1e-9;
+}
+
+function buildLogValueAxis(low: number, high: number, plotLengthPx: number): ValueAxis {
+  const candidates = niceLogCandidates(low, high);
+  const lowerCandidates = candidates.filter((candidate) => candidate <= low * (1 + NICE_VALUE_TOLERANCE));
+  const upperCandidates = candidates.filter((candidate) => candidate >= high * (1 - NICE_VALUE_TOLERANCE));
+  const min = lowerCandidates[lowerCandidates.length - 1] ?? low;
+  const max = upperCandidates[0] ?? high;
+  const pxPerDecade = plotLengthPx / Math.log10(max / min);
+  const gapPx = (from: number, to: number) => (Math.log10(to) - Math.log10(from)) * pxPerDecade;
+
+  const kept = [min, max];
+  const canAdd = (candidate: number) => {
+    const upper = kept.find((value) => value > candidate) ?? max;
+    const lower = [...kept].reverse().find((value) => value < candidate) ?? min;
+    return gapPx(lower, candidate) >= MIN_LOG_TICK_GAP_PX && gapPx(candidate, upper) >= MIN_LOG_TICK_GAP_PX;
+  };
+  const interior = candidates.filter((candidate) => candidate > min && candidate < max);
+  const decades = interior.filter(isPowerOfTen);
+  for (const candidate of [...decades, ...interior.filter((candidate) => !isPowerOfTen(candidate))]) {
+    if (kept.includes(candidate) || !canAdd(candidate)) continue;
+    kept.push(candidate);
+    kept.sort((a, b) => a - b);
+  }
+  return { scale: "log", min, max, ticks: withoutRepeatedLabels(kept) };
+}
+
 export function buildValueAxis(values: readonly number[], plotLengthPx: number): ValueAxis {
   const positive = values.filter((value) => Number.isFinite(value) && value > 0);
   if (positive.length === 0) return { scale: "linear", min: 0, max: 1, ticks: [] };
   const low = Math.min(...positive);
   const high = Math.max(...positive);
 
-  if (high / low > LOG_AXIS_SPREAD_RATIO) {
-    const min = low / 1.15;
-    const max = high * 1.15;
-    return { scale: "log", min, max, ticks: withoutRepeatedLabels(logTicks(min, max, plotLengthPx)) };
-  }
+  if (high / low > LOG_AXIS_SPREAD_RATIO) return buildLogValueAxis(low, high, plotLengthPx);
 
   const headroomMax = high * LINEAR_HEADROOM;
   const step = linearStep(headroomMax);

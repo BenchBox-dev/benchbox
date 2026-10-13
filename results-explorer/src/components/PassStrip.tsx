@@ -1,3 +1,4 @@
+import { formatRatio } from "@/lib/metricFormatters";
 import { useRef, useState } from "preact/hooks";
 import type { QueryTiming } from "@/types";
 import { TableScrollHint } from "@/components/TableScrollHint";
@@ -103,8 +104,7 @@ export function hasNoRecordedWarmup(summaries: readonly QueryPassSummary[]): boo
 }
 
 function ratioText(ratio: number | null): string {
-  if (ratio === null) return "—";
-  return `${ratio.toFixed(2)}x`;
+  return formatRatio(ratio);
 }
 
 export function PassStrip({ queries, limit = 25, embedded = false }: PassStripProps) {

@@ -130,7 +130,7 @@ describe("primary metric helpers", () => {
   it("formats Throughput@Size like the other TPC scores", () => {
     expect(formatThroughputScore(3741.26).valueText).toBe("3,741");
     expect(formatThroughputScore(3741.26).accessibleText).toBe("throughput at size 3,741");
-    expect(formatThroughputScore(null).valueText).toBe("-");
+    expect(formatThroughputScore(null).valueText).toBe("—");
     expect(formatScoreMetric("throughput_at_size", 3741.26)).toBe("3,741");
     expect(formatScoreMetric("power_score", 3741.26)).toBe("3,741");
     expect(formatMetricValue({ type: "throughput_score", value: 12.5 }).valueText).toBe("12.5");

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { ComponentChildren, JSX } from "preact";
-import type { BenchmarkSummary, RankingConfig } from "@/types";
+import type { BenchmarkSummary, PlatformRow, RankingConfig } from "@/types";
 import {
   applicableCharts,
   buildRenderableSummary,
@@ -27,7 +27,7 @@ import { StackedPhase } from "@/components/StackedPhase";
 import { SparklineTable } from "@/components/SparklineTable";
 import { CDFChart } from "@/components/CDFChart";
 import { RankTable } from "@/components/RankTable";
-import { SummaryChartOverview, SummaryMetricTable } from "@/components/SummaryChartOverview";
+import { runColorIndexFor, SummaryChartOverview, SummaryMetricTable } from "@/components/SummaryChartOverview";
 import { fmtGeomean, fmtScore } from "@/utils";
 import { paletteColor } from "@/lib/chartTheme";
 import { RunDateChip } from "@/components/RunAge";
@@ -202,6 +202,7 @@ function ChartPanelTabs({
   );
   const chartGroups = useMemo(() => groupChartsByQuestion(charts), [charts]);
   const summary = useMemo(() => buildRenderableSummary(context), [context]);
+  const colorIndexFor = useMemo(() => runColorIndexFor(summary), [summary]);
   const historical = useMemo(
     () =>
       context.kind === "summary"
@@ -431,6 +432,7 @@ function ChartPanelTabs({
             {renderChart(activeChart, {
               context,
               summary: chartSummary,
+              colorIndexFor,
               historical,
               compareRows,
               compareGroups,
@@ -574,56 +576,54 @@ function ChartPanelLong({
     charts.some((chart) => chart.id === "normalized_speedup" || chart.id === "diverging_bar");
 
   return (
-    <>
+    <section class="card" data-testid="chart-panel-long">
       {context.kind === "compare" && summary && (
         <div class="mb-8" data-testid="chart-panel-compare-summary-table">
-          <SummaryMetricTable summary={summary} scope="compare" />
+          <SummaryMetricTable summary={summary} scope="compare" framed={false} />
         </div>
       )}
-      <section class="card" data-testid="chart-panel-long">
-        <div class="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-          {showBaseline && summary && summary.platforms.length > 1 && (
-            <div class="ml-auto flex items-center gap-2">
-              <label class="text-xs text-[var(--bb-data-fg-muted)]" for="chart-panel-long-baseline">
-                Baseline:
-              </label>
-              <select
-                id="chart-panel-long-baseline"
-                class="min-w-0 max-w-full rounded border border-[var(--bb-data-border-strong)] bg-[var(--bb-surface-data)] px-2 py-1 text-xs text-[var(--bb-data-fg-primary)]"
-                value={String(baselineIdx)}
-                onChange={(event) => setBaselineIdx(Number((event.target as HTMLSelectElement).value))}
-              >
-                {summary.platforms.map((platform, index) => (
-                  <option key={platform.result_id} value={String(index)}>
-                    {summaryPlatformSelectLabels[index] ?? platform.platform}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
-        <div class="space-y-8">
-          {chartGroups.map((group) => (
-            <div key={group.id} class="space-y-8" data-testid={`chart-panel-group-${group.id}`}>
-              {group.charts.map((chart) => (
-                <ChartFigure
-                  key={chart.id}
-                  chart={chart}
-                  context={context}
-                  summary={summary}
-                  historical={historical}
-                  baselineIdx={baselineIdx}
-                  suppressWinnerClaims={suppressWinnerClaims}
-                  suppressionReason={suppressionReason}
-                  queryFilter={queryFilter}
-                  queryHref={queryHref}
-                />
+      <div class="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+        {showBaseline && summary && summary.platforms.length > 1 && (
+          <div class="ml-auto flex items-center gap-2">
+            <label class="text-xs text-[var(--bb-data-fg-muted)]" for="chart-panel-long-baseline">
+              Baseline:
+            </label>
+            <select
+              id="chart-panel-long-baseline"
+              class="min-w-0 max-w-full rounded border border-[var(--bb-data-border-strong)] bg-[var(--bb-surface-data)] px-2 py-1 text-xs text-[var(--bb-data-fg-primary)]"
+              value={String(baselineIdx)}
+              onChange={(event) => setBaselineIdx(Number((event.target as HTMLSelectElement).value))}
+            >
+              {summary.platforms.map((platform, index) => (
+                <option key={platform.result_id} value={String(index)}>
+                  {summaryPlatformSelectLabels[index] ?? platform.platform}
+                </option>
               ))}
-            </div>
-          ))}
-        </div>
-      </section>
-    </>
+            </select>
+          </div>
+        )}
+      </div>
+      <div class="space-y-8">
+        {chartGroups.map((group) => (
+          <div key={group.id} class="space-y-8" data-testid={`chart-panel-group-${group.id}`}>
+            {group.charts.map((chart) => (
+              <ChartFigure
+                key={chart.id}
+                chart={chart}
+                context={context}
+                summary={summary}
+                historical={historical}
+                baselineIdx={baselineIdx}
+                suppressWinnerClaims={suppressWinnerClaims}
+                suppressionReason={suppressionReason}
+                queryFilter={queryFilter}
+                queryHref={queryHref}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -652,6 +652,7 @@ function ChartFigure({
     () => buildChartSummary(summary, chart.eligibilityClass, queryFilter),
     [summary, chart.eligibilityClass, queryFilter],
   );
+  const colorIndexFor = useMemo(() => runColorIndexFor(summary), [summary]);
   const platformLabels = useMemo(() => chartSummaryLabelList(chartSummary), [chartSummary]);
   const compareRows = useMemo(() => {
     if (context.kind !== "compare" || !chartSummary) return [];
@@ -701,6 +702,7 @@ function ChartFigure({
             {renderChart(chart, {
               context,
               summary: chartSummary,
+              colorIndexFor,
               historical,
               compareRows,
               compareGroups,
@@ -834,6 +836,7 @@ function renderChart(
   {
     context,
     summary,
+    colorIndexFor,
     historical,
     compareRows,
     compareGroups,
@@ -845,6 +848,7 @@ function renderChart(
   }: {
     context: ChartContext;
     summary: BenchmarkSummary | null;
+    colorIndexFor: (platform: PlatformRow) => number;
     historical: ChartHistoricalEntry[];
     compareRows: CompareQueryRow[];
     compareGroups: { queryId: string; values: { label: string; value: number | null; color: string }[] }[];
@@ -858,11 +862,11 @@ function renderChart(
 ) {
   switch (chart.id) {
     case "performance_bar":
-      return summary ? <PerformanceBar summary={summary} /> : null;
+      return summary ? <PerformanceBar summary={summary} colorIndexFor={colorIndexFor} /> : null;
     case "power_bar":
-      return summary ? <PowerBar summary={summary} /> : null;
+      return summary ? <PowerBar summary={summary} colorIndexFor={colorIndexFor} /> : null;
     case "distribution_box":
-      return summary ? <DistributionBox summary={summary} /> : null;
+      return summary ? <DistributionBox summary={summary} colorIndexFor={colorIndexFor} /> : null;
     case "query_heatmap":
       return summary ? (
         <QueryHeatmap summary={summary} preserveOrder={Boolean(queryFilter)} />
@@ -960,9 +964,9 @@ function renderChart(
     case "stacked_phase":
       return summary ? <StackedPhase summary={summary} /> : null;
     case "sparkline_table":
-      return summary ? <SparklineTable summary={summary} /> : null;
+      return summary ? <SparklineTable summary={summary} colorIndexFor={colorIndexFor} /> : null;
     case "cdf_chart":
-      return summary ? <CDFChart summary={summary} /> : null;
+      return summary ? <CDFChart summary={summary} colorIndexFor={colorIndexFor} /> : null;
     case "rank_table":
       return summary ? (
         <RankTable summary={summary} preserveOrder={Boolean(queryFilter)} />
@@ -972,7 +976,13 @@ function renderChart(
   }
 }
 
-function PerformanceBar({ summary }: { summary: BenchmarkSummary }) {
+function PerformanceBar({
+  summary,
+  colorIndexFor,
+}: {
+  summary: BenchmarkSummary;
+  colorIndexFor: (platform: PlatformRow) => number;
+}) {
   const [containerRef, { width: containerWidth }] = useElementSize();
   const frame = chartFrame(containerWidth);
   const width = frame.width;
@@ -992,9 +1002,9 @@ function PerformanceBar({ summary }: { summary: BenchmarkSummary }) {
   const rows = summary.platforms
     .filter((platform) => isTimingDisplayable(platform) && isValidTimingValue(platform.display_geomean_ms))
     .sort((a, b) => (a.display_geomean_ms ?? Infinity) - (b.display_geomean_ms ?? Infinity))
-    .map((platform, index) => ({
+    .map((platform) => ({
       ...platform,
-      color: paletteColor(index),
+      color: paletteColor(colorIndexFor(platform)),
       displayLabel: labelByResultId.get(platform.result_id) ?? platform.platform,
       fullLabel: fullLabelByResultId.get(platform.result_id) ?? platform.platform,
     }));
@@ -1260,13 +1270,15 @@ function SummaryBoxPanel({
                 : "Best geomean"
         }
         value={
-          best ? (
+          suppressWinnerClaims ? (
+            `Not comparable: ${suppressionReason ?? "selected runs are not from the same comparable ranking"}`
+          ) : best ? (
             <>
               {`${summaryLabelByResultId.get(best.result_id) ?? best.platform} · ${
                 primaryMetric === "display_geomean_ms"
                   ? fmtGeomean(best.display_geomean_ms)
                   : fmtScore(primaryMetricValue(best, primaryMetric))
-              }${suppressWinnerClaims ? " (ranking mismatch — not comparable)" : ""}`}
+              }`}
               {!isRankable(best) && (
                 <span class="ml-2 text-xs font-normal text-[var(--bb-data-fg-subtle)]">not ranked</span>
               )}
@@ -1279,10 +1291,14 @@ function SummaryBoxPanel({
       />
       <SummaryStat
         label={sampleCount !== null ? "Samples" : "Phase"}
-        value={sampleCount !== null ? String(sampleCount) : summary.phase}
+        value={sampleCount !== null ? String(sampleCount) : sentenceCase(summary.phase)}
       />
     </div>
   );
+}
+
+function sentenceCase(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 function SummaryStat({ label, value, title }: { label: string; value: ComponentChildren; title?: string }) {

@@ -45,7 +45,7 @@ describe("compareLayoutForSelection", () => {
 });
 
 describe("the headline tie band", () => {
-  it("treats a ratio that rounds to 1.00x as a tie", () => {
+  it("treats a ratio that rounds to 1× as a tie", () => {
     expect(isWithinTieBand(1.002)).toBe(true);
     expect(isWithinTieBand(0.998)).toBe(true);
     expect(isWithinTieBand(1)).toBe(true);

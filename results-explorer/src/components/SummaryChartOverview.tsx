@@ -94,6 +94,11 @@ export function orderByDisplayGeomean<T extends PlatformRow>(platforms: readonly
   });
 }
 
+export function runColorIndexFor(summary: BenchmarkSummary | null): (platform: PlatformRow) => number {
+  const indexByResultId = new Map(summary?.platforms.map((platform, index) => [platform.result_id, index]) ?? []);
+  return (platform) => indexByResultId.get(platform.result_id) ?? 0;
+}
+
 function exclusionCauses(
   excludedCount: number,
   reasons: readonly { reason: string; count: number }[],
@@ -108,9 +113,11 @@ function exclusionCauses(
 export function SummaryMetricTable({
   summary,
   scope = "cohort",
+  framed = true,
 }: {
   summary: BenchmarkSummary;
   scope?: "cohort" | "compare";
+  framed?: boolean;
 }) {
   const displayRows = summary.platforms.filter(
     (platform) => isTimingDisplayable(platform) && validPrimaryMetricValue(platform, "display_geomean_ms") !== null,
@@ -132,6 +139,8 @@ export function SummaryMetricTable({
   const rowIndexByResultId = new Map(summary.platforms.map((platform, index) => [platform.result_id, index]));
   const total = summary.platforms.length;
   const noun = scope === "compare" ? "selected" : "submitted";
+  const showScoreColumn = powerRows.length > 0;
+  const heading = showScoreColumn ? `Geomean and ${scoreName}` : "Geomean";
   const unrankedCount = total - powerRows.length;
   const undisplayedCount = total - displayRows.length;
   const rankingExclusions = summarizeChartDatasetExclusions(summary.platforms, "rank_safe");
@@ -144,12 +153,12 @@ export function SummaryMetricTable({
     : `Not in the latency chart: ${undisplayedCount} of ${total} runs ${undisplayedCount === 1 ? "is" : "are"} excluded — ${exclusionCauses(undisplayedCount, displayExclusions, "display timing is not recorded")}.`;
 
   return (
-    <section class="card" aria-labelledby="summary-metric-table-title">
+    <section class={framed ? "card" : undefined} aria-labelledby="summary-metric-table-title">
       <h3
         id="summary-metric-table-title"
         class="mb-4 border-b border-[var(--bb-data-border)] pb-3 text-lg font-semibold text-[var(--bb-data-fg-primary)]"
       >
-        Geomean and {scoreName}
+        {heading}
       </h3>
       <div class="overflow-x-auto">
         <table
@@ -157,7 +166,8 @@ export function SummaryMetricTable({
           aria-label="Speed and throughput by platform"
         >
           <caption class="sr-only">
-            Display geomean latency and {scoreName} for every {scope === "compare" ? "selected run" : "submitted platform"}
+            Display geomean latency{showScoreColumn ? ` and ${scoreName}` : ""} for every{" "}
+            {scope === "compare" ? "selected run" : "submitted platform"}
           </caption>
           <thead>
             <tr class="border-b border-[var(--bb-data-border-strong)]">
@@ -171,10 +181,12 @@ export function SummaryMetricTable({
                 <span class="block">Display geomean</span>
                 <span class="font-normal text-[var(--bb-data-fg-subtle)]">lower is better</span>
               </th>
-              <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-[var(--bb-data-fg-muted)]">
-                <span class="block">{scoreName}</span>
-                <span class="font-normal text-[var(--bb-data-fg-subtle)]">higher is better</span>
-              </th>
+              {showScoreColumn && (
+                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-[var(--bb-data-fg-muted)]">
+                  <span class="block">{scoreName}</span>
+                  <span class="font-normal text-[var(--bb-data-fg-subtle)]">higher is better</span>
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -217,17 +229,19 @@ export function SummaryMetricTable({
                         : `${fmtGeomean(displayValue)} display geomean`
                     }
                   />
-                  <InlineMetricCell
-                    value={powerValue}
-                    formatted={powerValue === null ? "—" : fmtScore(powerValue)}
-                    fraction={powerFraction}
-                    color={color}
-                    title={
-                      powerValue === null
-                        ? `${scoreName} unavailable or not rank-safe`
-                        : `${fmtScore(powerValue)} ${scoreName}`
-                    }
-                  />
+                  {showScoreColumn && (
+                    <InlineMetricCell
+                      value={powerValue}
+                      formatted={powerValue === null ? "—" : fmtScore(powerValue)}
+                      fraction={powerFraction}
+                      color={color}
+                      title={
+                        powerValue === null
+                          ? `${scoreName} unavailable or not rank-safe`
+                          : `${fmtScore(powerValue)} ${scoreName}`
+                      }
+                    />
+                  )}
                 </tr>
               );
             })}
@@ -294,6 +308,7 @@ export function SummaryChartOverview({
   }, [context, excludeChartIds]);
 
   if (summary === null) return null;
+  const colorIndexFor = runColorIndexFor(summary);
 
   return (
     <div class="scroll-mt-24 space-y-6" data-testid="summary-chart-overview" id="cohort-charts">
@@ -307,7 +322,10 @@ export function SummaryChartOverview({
           Latency distribution
         </h3>
         <div data-chart-container>
-          <DistributionBox summary={{ ...summary, platforms: orderByDisplayGeomean(summary.platforms) }} />
+          <DistributionBox
+            summary={{ ...summary, platforms: orderByDisplayGeomean(summary.platforms) }}
+            colorIndexFor={runColorIndexFor(summary)}
+          />
         </div>
         <div class="mt-3 border-t border-[var(--bb-data-border)] pt-3 text-sm text-[var(--bb-data-fg-muted)]">
           <p>
@@ -369,7 +387,12 @@ export function SummaryChartOverview({
                   isGatedRankCard ? (
                     <MiniUnavailable label="Ranking unavailable" />
                   ) : (
-                    <ChartThumbnail chartId={chart.id} summary={chartSummary} historical={context.historical ?? []} />
+                    <ChartThumbnail
+                      chartId={chart.id}
+                      summary={chartSummary}
+                      historical={context.historical ?? []}
+                      colorIndexFor={colorIndexFor}
+                    />
                   )
                 }
                 fullHeaderExtra={
@@ -402,7 +425,7 @@ export function SummaryChartOverview({
                   ) : isEmpty ? (
                     <ChartDatasetEmptyState chart={chart} summary={summary} />
                   ) : (
-                    renderExpandedChart(chart, chartSummary, context.historical ?? [], { highContrast }) ?? (
+                    renderExpandedChart(chart, chartSummary, context.historical ?? [], { highContrast, colorIndexFor }) ?? (
                       <p class="text-sm italic text-[var(--bb-data-fg-subtle)]">
                         No chart data is available for this view.
                       </p>
@@ -523,7 +546,7 @@ function renderExpandedChart(
   chart: ChartRegistryEntry,
   summary: BenchmarkSummary,
   historical: ChartHistoricalEntry[],
-  options: { highContrast?: boolean } = {},
+  options: { highContrast?: boolean; colorIndexFor?: (platform: PlatformRow) => number } = {},
 ): ComponentChildren {
   switch (chart.id) {
     case "query_heatmap":
@@ -552,7 +575,7 @@ function renderExpandedChart(
       );
     }
     case "cdf_chart":
-      return <CDFChart summary={summary} />;
+      return <CDFChart summary={summary} colorIndexFor={options.colorIndexFor} />;
     case "query_histogram":
       return <QueryHistogram summary={summary} />;
     case "stacked_phase":
@@ -577,10 +600,12 @@ function ChartThumbnail({
   chartId,
   summary,
   historical,
+  colorIndexFor,
 }: {
   chartId: string;
   summary: BenchmarkSummary;
   historical: ChartHistoricalEntry[];
+  colorIndexFor?: (platform: PlatformRow) => number;
 }) {
   switch (chartId) {
     case "query_heatmap":
@@ -588,7 +613,7 @@ function ChartThumbnail({
     case "percentile_ladder":
       return <MiniPercentiles summary={summary} />;
     case "cdf_chart":
-      return <MiniCDF summary={summary} />;
+      return <MiniCDF summary={summary} colorIndexFor={colorIndexFor} />;
     case "query_histogram":
       return <MiniHistogram summary={summary} />;
     case "stacked_phase":
@@ -711,9 +736,15 @@ function MiniPercentiles({ summary }: { summary: BenchmarkSummary }) {
   );
 }
 
-function MiniCDF({ summary }: { summary: BenchmarkSummary }) {
+function MiniCDF({
+  summary,
+  colorIndexFor,
+}: {
+  summary: BenchmarkSummary;
+  colorIndexFor?: (platform: PlatformRow) => number;
+}) {
   const series = summary.platforms.slice(0, 6).map((platform, index) => ({
-    color: timeSeriesColor(index),
+    color: timeSeriesColor(colorIndexFor?.(platform) ?? index),
     points: computeECDFPoints(summary.query_ids.map((queryId) => platformTimingValue(platform, queryId))),
   })).filter((entry) => entry.points.length > 0);
   const allMs = series.flatMap((entry) => entry.points.map((point) => point.x));

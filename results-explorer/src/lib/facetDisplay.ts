@@ -1,3 +1,4 @@
+import { formatScaleFactor } from "@/lib/metricFormatters";
 import type { FacetKey } from "@/lib/facetModel";
 
 const CLOUD_PROVIDER_LABELS: Record<string, string> = {
@@ -77,7 +78,7 @@ export function formatFacetDisplayValue(
   }
 
   if (key === "scale_factor") {
-    return `SF ${trimmed}`;
+    return formatScaleFactor(trimmed);
   }
 
   return fallbackLabel ?? readableToken(trimmed);

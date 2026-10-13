@@ -73,7 +73,7 @@ describe("NormalizedSpeedupChart", () => {
     const { container } = render(<NormalizedSpeedupChart queries={equalQueries} results={RESULTS} baselineIdx={0} />);
 
     expect(screen.getByText("No meaningful per-query difference")).toBeTruthy();
-    expect(screen.getByText(/All 2 compared queries \(2 query-run pairs\) are within 1% of 1.00×/)).toBeTruthy();
+    expect(screen.getByText(/All 2 compared queries \(2 query-run pairs\) are within 1% of 1×/)).toBeTruthy();
     expect(container.querySelector("svg")).toBeNull();
   });
 

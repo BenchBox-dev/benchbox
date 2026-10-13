@@ -1,7 +1,7 @@
 import type { DetailResult } from "@/types";
 import { queryDisagreementSpread, speedupRatio } from "@/lib/chartMath";
 import { timingValueForQuery } from "@/lib/displayEligibility";
-import { formatSpeedup } from "@/lib/metricFormatters";
+import { formatSpeedup, MISSING_VALUE_GLYPH } from "@/lib/metricFormatters";
 import { formatRunIdentitiesForCohort } from "@/lib/runIdentity";
 import { fmtMs } from "@/utils";
 import { StatusBadge, type StatusTone } from "@/components/StatusBadge";
@@ -249,7 +249,7 @@ export function QueryDiffTable({
                 <td class="table-td font-mono">{formatMsCell(row.baselineMs)}</td>
                 <td class="table-td font-mono">{formatMsCell(row.candidateMs)}</td>
                 <td class="table-td font-mono text-xs">{formatPasses(row)}</td>
-                <td class="table-td font-mono">{row.speedupRatio !== null ? formatSpeedup(row.speedupRatio).valueText : "-"}</td>
+                <td class="table-td font-mono">{row.speedupRatio !== null ? formatSpeedup(row.speedupRatio).valueText : MISSING_VALUE_GLYPH}</td>
                 <td class="table-td font-mono">{formatDelta(row.deltaMs)}</td>
                 <td class="table-td">
                   {row.comparable ? (
@@ -326,18 +326,18 @@ function diffStatus(deltaMs: number | null): QueryDiffStatus {
 }
 
 function formatMsCell(ms: number | null) {
-  return ms !== null ? fmtMs(ms) : <span class="text-[var(--bb-data-fg-subtle)]">-</span>;
+  return ms !== null ? fmtMs(ms) : <span class="text-[var(--bb-data-fg-subtle)]">{MISSING_VALUE_GLYPH}</span>;
 }
 
 function formatPasses(row: QueryDiffRow) {
   const base = row.baselineSamples;
   const cand = row.candidateSamples;
-  if (base === null && cand === null) return "-";
-  return `${base ?? "-"} / ${cand ?? "-"}`;
+  if (base === null && cand === null) return MISSING_VALUE_GLYPH;
+  return `${base ?? MISSING_VALUE_GLYPH} / ${cand ?? MISSING_VALUE_GLYPH}`;
 }
 
 function formatDelta(deltaMs: number | null) {
-  if (deltaMs === null) return "-";
+  if (deltaMs === null) return MISSING_VALUE_GLYPH;
   if (Math.abs(deltaMs) < 1e-9) return "0 ms";
   return `${deltaMs > 0 ? "+" : "-"}${fmtMs(Math.abs(deltaMs))}`;
 }

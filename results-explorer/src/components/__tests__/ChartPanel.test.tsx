@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/pre
 import { describe, expect, it } from "vitest";
 import { ChartPanel } from "@/components/ChartPanel";
 import { buildRenderableSummary, CHART_REGISTRY, type ChartHistoricalEntry } from "@/lib/chartRegistry";
+import { paletteColor } from "@/lib/chartTheme";
 import { formatPowerScore } from "@/lib/metricFormatters";
 import type {
   BenchmarkSummary,
@@ -669,7 +670,8 @@ describe("ChartPanel", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "Overview" }));
     fireEvent.click(screen.getByRole("button", { name: "Run summary" }));
-    expect(screen.getByText("throughput")).toBeTruthy();
+    expect(screen.getByText("Throughput")).toBeTruthy();
+    expect(screen.queryByText("throughput")).toBeNull();
   });
 
   it("renders detail charts without compare-only tabs", () => {
@@ -880,7 +882,9 @@ describe("ChartPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Run summary" }));
     expect(screen.queryByText("Best geomean")).toBeNull();
     expect(screen.getByText("Lowest geomean in ranking")).toBeTruthy();
-    expect(screen.getByText(/ranking mismatch — not comparable/)).toBeTruthy();
+    expect(screen.getByText("Not comparable: benchmarks differ across results")).toBeTruthy();
+    expect(screen.queryByText(/ranking mismatch/)).toBeNull();
+    expect(screen.queryByText(/DuckDB ·/)).toBeNull();
   });
 
   it("filters chartSummary queries and preserves queryFilter ranking order", () => {
@@ -1256,7 +1260,8 @@ describe("ChartPanel", () => {
 
     expect(screen.queryByText("Best geomean")).toBeNull();
     expect(screen.getByText("Lowest geomean in ranking")).toBeTruthy();
-    expect(screen.getByText(/ranking mismatch — not comparable/)).toBeTruthy();
+    expect(screen.getByText("Not comparable: benchmarks differ across results")).toBeTruthy();
+    expect(screen.queryByText(/ranking mismatch/)).toBeNull();
   });
 
   it("uses a controlled compare baseline without rendering a second selector in the long layout", () => {
@@ -1356,10 +1361,12 @@ describe("ChartPanel summary presentation", () => {
       />,
     );
 
+    const longCard = screen.getByTestId("chart-panel-long");
     const table = screen.getByTestId("chart-panel-compare-summary-table");
-    expect(screen.getByTestId("chart-panel-long").contains(table)).toBe(false);
-    expect(table.closest(".card")).toBeNull();
-    expect(table.querySelectorAll(".card")).toHaveLength(1);
+    expect(longCard.contains(table)).toBe(true);
+    expect(table.closest(".card")).toBe(longCard);
+    expect(table.querySelectorAll(".card")).toHaveLength(0);
+    expect(document.querySelectorAll(".card")).toHaveLength(1);
   });
 
   it("labels the sample count in the run summary as Samples", () => {
@@ -1407,3 +1414,72 @@ describe("ChartPanel summary presentation", () => {
     expect(bestCard.textContent).not.toContain("not ranked");
   });
 });
+
+describe("ChartPanel run colours and run summary wording", () => {
+  const rankedRuns = [
+    makePlatformRow({ result_id: "zeta", platform_id: "zeta", platform: "Zeta", display_geomean_ms: 50, timings: { Q1: 50, Q2: 52 } }),
+    makePlatformRow({ result_id: "alpha", platform_id: "alpha", platform: "Alpha", display_geomean_ms: 10, timings: { Q1: 10, Q2: 12 } }),
+    makePlatformRow({ result_id: "mid", platform_id: "mid", platform: "Mid", display_geomean_ms: 30, timings: { Q1: 30, Q2: 33 } }),
+  ];
+
+  function barFillFor(container: Element, runLabel: string) {
+    return Array.from(container.querySelectorAll("rect")).find((rect) =>
+      rect.querySelector("title")?.textContent?.startsWith(runLabel),
+    )?.getAttribute("fill");
+  }
+
+  function cdfStrokeFor(container: Element, runLabel: string) {
+    return Array.from(container.querySelectorAll("path")).find((path) =>
+      path.querySelector("title")?.textContent?.startsWith(runLabel),
+    )?.getAttribute("stroke");
+  }
+
+  it("keeps each run's colour on the ranking bars, box plot and CDF when the bars sort by geomean", () => {
+    const { container } = render(
+      <ChartPanel context={{ kind: "summary", summary: makeSummary({ platforms: rankedRuns }) }} />,
+    );
+
+    expect(barFillFor(container, "Alpha")).toBe(paletteColor(1));
+    expect(barFillFor(container, "Zeta")).toBe(paletteColor(0));
+
+    fireEvent.click(screen.getByRole("tab", { name: "Distribution" }));
+    fireEvent.click(screen.getByRole("button", { name: "Latency distribution" }));
+    expect(fillForBoxLabel(container, "Alpha")).toBe(paletteColor(1));
+
+    fireEvent.click(screen.getByRole("button", { name: "Cumulative latency distribution" }));
+    expect(cdfStrokeFor(container, "Alpha")).toBe(paletteColor(1));
+  });
+
+  it("shows Not comparable with the reason instead of naming a highest value when runs differ in phase", () => {
+    render(
+      <ChartPanel
+        context={{ kind: "summary", summary: makeSummary({ platforms: rankedRuns }) }}
+        suppressWinnerClaims
+        suppressionReason="phases differ"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Run summary" }));
+
+    expect(screen.getByText("Not comparable: phases differ")).toBeTruthy();
+    expect(screen.queryByText(/Zeta ·|Alpha ·|Mid ·/)).toBeNull();
+    expect(screen.queryByText(/ranking mismatch/)).toBeNull();
+  });
+
+  it("sentence-cases the phase in the run summary", () => {
+    render(
+      <ChartPanel
+        context={{ kind: "summary", summary: makeSummary({ phase: "throughput", platforms: rankedRuns }) }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Run summary" }));
+
+    const phaseCard = screen.getByText("Phase").parentElement as HTMLElement;
+    expect(phaseCard.textContent).toContain("Throughput");
+    expect(phaseCard.textContent).not.toContain("throughput");
+  });
+});
+
+function fillForBoxLabel(scope: Element, runLabel: string) {
+  const label = Array.from(scope.querySelectorAll("text")).find((node) => node.textContent?.endsWith(runLabel));
+  return label?.parentElement?.querySelector("rect")?.getAttribute("fill") ?? null;
+}

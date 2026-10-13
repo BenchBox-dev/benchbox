@@ -1,3 +1,4 @@
+import { formatLatencyMs, formatScaleFactor } from "@/lib/metricFormatters";
 import { useState } from "preact/hooks";
 import type { ComponentChildren } from "preact";
 import type { DetailResult } from "@/types";
@@ -172,7 +173,7 @@ export function RunReceipt({
       title: "Workload",
       rows: [
         recordedRow("Benchmark", humanizeBenchmark(detail.benchmark)),
-        recordedRow("Scale factor", `SF ${detail.scale_factor}`),
+        recordedRow("Scale factor", formatScaleFactor(detail.scale_factor)),
         recordedRow("Run date", <RunDateChip runDate={detail.run_date} />),
         formattedRow("Test phase", detail.test_type, formatEnumLabel),
         recordedRow("Query count", String(queryCount)),
@@ -520,10 +521,10 @@ function buildClientLocalityRow(detail: DetailResult): ReceiptRow | null {
   const localityParts = [region, cloud].filter((p): p is string => Boolean(p && String(p).trim()));
   const overheadParts: string[] = [];
   if (minMs != null && Number.isFinite(Number(minMs))) {
-    overheadParts.push(`${Number(minMs).toFixed(2)} ms min`);
+    overheadParts.push(`${formatLatencyMs(Number(minMs)).valueText} min`);
   }
   if (medMs != null && Number.isFinite(Number(medMs))) {
-    overheadParts.push(`${Number(medMs).toFixed(2)} ms median`);
+    overheadParts.push(`${formatLatencyMs(Number(medMs)).valueText} median`);
   }
 
   if (localityParts.length === 0 && overheadParts.length === 0 && !status) {

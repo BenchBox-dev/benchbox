@@ -1,3 +1,4 @@
+import { formatLatencyMs, formatRatio } from "@/lib/metricFormatters";
 import type { DetailResult } from "@/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import {
@@ -172,17 +173,9 @@ export function heatmapCellStyle(position: number | null): string {
   return `--cell-hue:${hue}; --cell-lightness:${lightness.toFixed(1)}%; --cell-dark-lightness:${darkLightness.toFixed(1)}%;`;
 }
 
-const ratioSignificantDigits = new Intl.NumberFormat("en-US", { maximumSignificantDigits: 2 });
-const ratioWholeNumbers = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
-
-export function formatHeatmapRatio(ratio: number): string {
-  const body = Math.abs(ratio) >= 10 ? ratioWholeNumbers.format(ratio) : ratioSignificantDigits.format(ratio);
-  return `${body}×`;
-}
-
 function cellText(cell: HeatmapCell): string {
   if (cell.ratio === null) return "—";
-  return formatHeatmapRatio(cell.ratio);
+  return formatRatio(cell.ratio);
 }
 
 function unavailableCellDescription(cell: HeatmapCell): string | undefined {
@@ -195,7 +188,7 @@ function unavailableCellDescription(cell: HeatmapCell): string | undefined {
     const reason = cell.baselineUnavailableReason
       ? ` — ${formatTimingExclusion(cell.baselineUnavailableReason)}`
       : "";
-    return `Baseline ${baselineState} for this query; recorded candidate timing: ${cell.timingMs?.toFixed(1)} ms${reason}`;
+    return `Baseline ${baselineState} for this query; recorded candidate timing: ${formatLatencyMs(cell.timingMs).valueText}${reason}`;
   }
   if (cell.missingKind !== "run_missing") return undefined;
   return cell.evidenceKind === "unrecorded"
@@ -294,12 +287,12 @@ export function MultiRunHeatmap({
                     class={`table-td-dense font-mono text-xs${cell.position === null ? "" : " multi-run-heatmap-cell"}`}
                     style={heatmapCellStyle(cell.position)}
                     title={unavailableCellDescription(cell)}
-                    aria-label={cell.ratio !== null ? `${formatHeatmapRatio(cell.ratio)} baseline` : unavailableCellDescription(cell)}
+                    aria-label={cell.ratio !== null ? `${formatRatio(cell.ratio)} baseline` : unavailableCellDescription(cell)}
                     data-testid={`cell-${row.queryId}-${i}`}
                   >
                     {cell.missingKind === "baseline_missing" && cell.timingMs !== null ? (
                       <span>
-                        {cell.timingMs.toFixed(1)} ms{" "}
+                        {formatLatencyMs(cell.timingMs).valueText}{" "}
                         <span class="text-[10px] text-[var(--bb-data-fg-subtle)]">(no base)</span>
                       </span>
                     ) : (

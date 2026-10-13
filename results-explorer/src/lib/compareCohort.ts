@@ -1,3 +1,4 @@
+import { formatScaleFactor } from "@/lib/metricFormatters";
 import { canonicalBenchmarkSlug, canonicalPhase, formatBenchmarkLabel } from "@/lib/displayLabels";
 import { formatRunDateWithAge } from "@/lib/runAge";
 import {
@@ -91,7 +92,7 @@ export function compareCohortMismatches(
 
 export function compareCohortSummary(signature: CompareCohortSignature): string {
   const parts = [formatBenchmarkLabel(signature.benchmark)];
-  if (signature.scaleFactor !== "") parts.push(`SF ${signature.scaleFactor}`);
+  if (signature.scaleFactor !== "") parts.push(formatScaleFactor(signature.scaleFactor));
   if (signature.phase !== "") parts.push(signature.phase);
   if (signature.streamCount !== "") parts.push(`${signature.streamCount} streams`);
   if (signature.basis !== null) parts.push(`at ${formatBasisLabel(signature.basis)}`);
@@ -171,7 +172,7 @@ export function compareSelectionLabel(input: CompareSelectionLabelInput): string
 
   if (platform !== "") parts.push(platform);
   if (benchmark !== "") parts.push(formatBenchmarkLabel(benchmark));
-  if (scale !== "") parts.push(`SF ${scale}`);
+  if (scale !== "") parts.push(formatScaleFactor(scale));
   if (phase !== "") parts.push(phase);
   if (runDate !== "") parts.push(runDate);
   if (resultId !== "") parts.push(`(${compareSelectionShortId(resultId)})`);

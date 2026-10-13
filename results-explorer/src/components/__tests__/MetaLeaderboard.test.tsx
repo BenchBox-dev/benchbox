@@ -106,8 +106,8 @@ describe("MetaLeaderboard", () => {
     expect(screen.getByText("1/2")).toBeTruthy();
 
     rerender(<MetaLeaderboard data={DATA} mode="speedup" onModeChange={vi.fn()} />);
-    expect(screen.getByText("1.00x")).toBeTruthy();
-    expect(screen.getByText("0.50x")).toBeTruthy();
+    expect(screen.getByText("1×")).toBeTruthy();
+    expect(screen.getByText("0.5×")).toBeTruthy();
   });
 
   it("describes darker heat cells as worse in every mode", () => {
@@ -119,8 +119,8 @@ describe("MetaLeaderboard", () => {
 
     rerender(<MetaLeaderboard data={DATA} mode="speedup" onModeChange={vi.fn()} />);
     const legend = screen.getByText(/Heat: darker = farther from the best result/);
-    expect(legend.textContent).toContain("best result (1.00×)");
-    expect(legend.textContent).toContain("Values below 1.00× are worse");
+    expect(legend.textContent).toContain("best result (1×)");
+    expect(legend.textContent).toContain("Values below 1× are worse");
     expect(legend.textContent).not.toContain("≥1.00×");
   });
 
@@ -358,7 +358,7 @@ describe("MetaLeaderboard", () => {
     ];
     expect(headers[0]!.textContent).toContain("power · Geomean latency · lower is better");
     expect(headers[1]!.textContent).toContain("power · Power score · higher is better");
-    expect(screen.getByText(/Values below 1\.00× are worse/)).toBeTruthy();
+    expect(screen.getByText(/Values below 1× are worse/)).toBeTruthy();
     expect(screen.getByText("Native: 10 ms")).toBeTruthy();
     expect(screen.getByText("Native: 2,500")).toBeTruthy();
   });
@@ -418,8 +418,8 @@ describe("MetaLeaderboard", () => {
   it("speedup mode visibly explains below-1.00x values", () => {
     render(<MetaLeaderboard data={DATA} mode="speedup" onModeChange={vi.fn()} />);
 
-    expect(screen.getByText(/Values below 1\.00× are worse/)).toBeTruthy();
-    expect(screen.getByText("0.50x")).toBeTruthy();
+    expect(screen.getByText(/Values below 1× are worse/)).toBeTruthy();
+    expect(screen.getByText("0.5×")).toBeTruthy();
   });
 
   it("keeps avg-rank sorting over covered rankings instead of penalizing missing coverage", () => {

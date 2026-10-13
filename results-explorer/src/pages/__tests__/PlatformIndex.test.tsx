@@ -1421,6 +1421,31 @@ describe("PlatformIndex table cells", () => {
     expect(clientCells.every((cell) => cell.textContent === "—")).toBe(true);
   });
 
+  it("shows a dash and a client-machine title for remote server runs", async () => {
+    vi.mocked(getPlatformIndexRows).mockResolvedValue([
+      makeRow({
+        result_id: "r-remote",
+        short_id: "remote01",
+        deployment_class: "remote",
+        cloud_provider: null,
+        arch: "arm64",
+        cpu_family: "apple_silicon",
+        memory_gb: 16,
+      }),
+    ]);
+
+    render(<PlatformIndex platform="duckdb" />);
+    await waitFor(() => expect(screen.getByText("DuckDB Results")).toBeTruthy());
+
+    const table = screen.getByRole("table", { name: "DuckDB results" });
+    expect(within(table).queryByText("Arm64")).toBeNull();
+    const clientCells = within(table).getAllByTitle(
+      "Client machine: Arm64, Apple silicon, 16 GB (the warehouse hardware is managed by the provider)",
+    );
+    expect(clientCells).toHaveLength(3);
+    expect(clientCells.every((cell) => cell.textContent === "—")).toBe(true);
+  });
+
   it("marks a run with no ranking value as Not ranked and sentence-cases the phase", async () => {
     vi.mocked(getPlatformIndexRows).mockResolvedValue([
       makeRow({ result_id: "r-unranked", short_id: "unrk0001", phase: "power", power_score: null, primary_metric: "power_score" }),

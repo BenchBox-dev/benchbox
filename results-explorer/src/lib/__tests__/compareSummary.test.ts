@@ -76,7 +76,7 @@ describe("buildCompareDecisionSummary", () => {
 
     expect(summary.winner?.platform).toBe("DuckDB");
     expect(summary.comparisonRatio).toBe(10);
-    expect(summary.headline).toBe("In these selected runs, DuckDB's power score was 10.00x better than the lowest selected run.");
+    expect(summary.headline).toBe("In these selected runs, DuckDB's power score was 10× better than the lowest selected run.");
     expect(summary.queryRecord).toMatchObject({
       totalQueries: 2,
       comparableQueries: 2,
@@ -129,7 +129,7 @@ describe("buildCompareDecisionSummary", () => {
 
     expect(summary.winner?.platform).toBe("FastDB");
     expect(summary.comparisonRatio).toBe(4);
-    expect(summary.headline).toBe("In these selected runs, FastDB's geomean query time was 4.00x faster than the slowest selected run.");
+    expect(summary.headline).toBe("In these selected runs, FastDB's geomean query time was 4× faster than the slowest selected run.");
     expect(summary.queryRecord).toMatchObject({
       comparableQueries: 3,
       wins: 1,
@@ -353,7 +353,7 @@ describe("buildCompareDecisionSummary", () => {
     );
   });
 
-  it("renders tie copy when same-platform comparison rounds to 1.00x (finding #8)", () => {
+  it("renders tie copy when same-platform comparison rounds to 1× (finding #8)", () => {
     const summary = buildCompareDecisionSummary(
       [
         makeResult({ result_id: "polars-a", platform: "Polars", power_score: 1000 }),

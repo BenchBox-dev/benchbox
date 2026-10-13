@@ -676,7 +676,7 @@ describe("RunReceipt applied-tuning receipt drill-down", () => {
     const receipt = screen.getByRole("region", { name: "Run receipt" });
     expect(within(receipt).getByText("Client locality")).toBeTruthy();
     expect(
-      within(receipt).getByText(/us-east-1 \/ aws \(overhead: 0\.85 ms min, 1\.42 ms median\) \[measured\]/),
+      within(receipt).getByText(/us-east-1 \/ aws \(overhead: 0\.9 ms min, 1\.4 ms median\) \[measured\]/),
     ).toBeTruthy();
   });
 

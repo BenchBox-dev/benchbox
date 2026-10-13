@@ -1,3 +1,4 @@
+import { formatLatencyMs, formatRatio } from "@/lib/metricFormatters";
 import type { RoutableProps } from "preact-router";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
@@ -124,6 +125,11 @@ export const availableBasesForQueries = availableBasesForExecutions;
 export interface WithinRunCell {
   ms: number | null;
   unavailableReason: BasisUnavailableReason | null;
+}
+
+function signedLatencyDeltaText(deltaMs: number): string {
+  const sign = deltaMs > 0 ? "+" : deltaMs < 0 ? "−" : "";
+  return `${sign}${formatLatencyMs(Math.abs(deltaMs)).valueText}`;
 }
 
 export function withinRunUnavailableKind(
@@ -471,13 +477,13 @@ export function CompareWithinRun({ resultId }: CompareWithinRunProps) {
                         <div class="flex justify-between">
                           <dt class="text-[var(--bb-data-fg-muted)]">Ratio vs reference</dt>
                           <dd class="font-mono font-medium">
-                            {ratio !== null ? `${ratio.toFixed(2)}x` : "—"}
+                            {formatRatio(ratio)}
                           </dd>
                         </div>
                         <div class="flex justify-between">
                           <dt class="text-[var(--bb-data-fg-muted)]">Delta vs reference</dt>
                           <dd class="font-mono text-xs">
-                            {deltaMs !== null ? `${deltaMs > 0 ? "+" : ""}${deltaMs.toFixed(1)} ms` : "—"}
+                            {deltaMs !== null ? signedLatencyDeltaText(deltaMs) : "—"}
                           </dd>
                         </div>
                       </>
@@ -546,7 +552,7 @@ export function CompareWithinRun({ resultId }: CompareWithinRunProps) {
                               {cell.ms !== null ? (
                                 <div>
                                   <div class="font-medium text-[var(--bb-data-fg-primary)]">
-                                    {cell.ms.toFixed(1)} ms
+                                    {formatLatencyMs(cell.ms).valueText}
                                   </div>
                                   {!isRef && ratio !== null && deltaMs !== null && (
                                     <div
@@ -558,7 +564,7 @@ export function CompareWithinRun({ resultId }: CompareWithinRunProps) {
                                             : "text-[var(--bb-data-fg-subtle)]"
                                       }`}
                                     >
-                                      {ratio.toFixed(2)}x ({deltaMs > 0 ? "+" : ""}{deltaMs.toFixed(1)} ms)
+                                      {formatRatio(ratio)} ({signedLatencyDeltaText(deltaMs)})
                                     </div>
                                   )}
                                   {!isRef && (ratio === null || deltaMs === null) && (
@@ -603,7 +609,7 @@ export function CompareWithinRun({ resultId }: CompareWithinRunProps) {
                               <div>{fmtMs(g)}</div>
                               {!isRef && ratio !== null && deltaMs !== null && (
                                 <div class="text-xs font-normal text-[var(--bb-data-fg-muted)]">
-                                  {ratio.toFixed(2)}x ({deltaMs > 0 ? "+" : ""}{deltaMs.toFixed(1)} ms)
+                                  {formatRatio(ratio)} ({signedLatencyDeltaText(deltaMs)})
                                 </div>
                               )}
                             </div>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { identitySourceWithPlatformVersion, platformVersionDisplay } from "@/lib/versionLabel";
+import { platformVersionDisplay } from "@/lib/versionLabel";
 
 describe("platformVersionDisplay", () => {
   it("shows the platform version and puts a differing driver version in the title", () => {
@@ -35,13 +35,5 @@ describe("platformVersionDisplay", () => {
       text: null,
       driverTitle: null,
     });
-  });
-});
-
-describe("identitySourceWithPlatformVersion", () => {
-  it("clears the driver version so run labels use the platform version", () => {
-    const source = { result_id: "r1", platform: "Snowflake", platform_version: "10.35.101", driver_version: "4.7.3" };
-    expect(identitySourceWithPlatformVersion(source)).toEqual({ ...source, driver_version: null });
-    expect(source.driver_version).toBe("4.7.3");
   });
 });

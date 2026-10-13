@@ -1,7 +1,7 @@
 import { useState } from "preact/hooks";
 import { speedupRatio } from "@/lib/chartMath";
 import { isValidTimingValue } from "@/lib/displayEligibility";
-import { formatSpeedup } from "@/lib/metricFormatters";
+import { formatSpeedup, formatRatio } from "@/lib/metricFormatters";
 import { paletteColor } from "@/lib/chartTheme";
 import { MISSING_MARKER_RADIUS, RUN_MARKER_RADIUS, runMarkerPath } from "@/lib/chartMarkers";
 import { RunLegend } from "@/components/RunLegend";
@@ -69,8 +69,7 @@ export function ratioTicks(domain: SpeedupDomain, plotWidthPx: number, minGapPx 
 }
 
 export function formatRatioTick(value: number): string {
-  const digits = value >= 1 ? { maximumFractionDigits: 0 } : { maximumSignificantDigits: 1 };
-  return `${value.toLocaleString("en-US", digits)}×`;
+  return formatRatio(value);
 }
 
 interface SpeedupEntry {
@@ -177,7 +176,7 @@ export function NormalizedSpeedupChart({ queries, results, baselineIdx, queryHre
         <div class="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--bb-data-fg-muted)]">
           <span>
             {showComparableOnly
-              ? `Showing ${entries.length} fully comparable queries (${hiddenEntryCount} hidden — at least one run missing data).`
+              ? `Showing ${entries.length} of ${allEntries.length} queries shared by every selected run; ${hiddenEntryCount} hidden because at least one run is missing data.`
               : `Showing all ${entries.length} queries; ${allEntries.length - fullyComparableEntries.length} have missing data.`}
           </span>
           <label class="inline-flex items-center gap-1.5">
@@ -301,7 +300,7 @@ export function NormalizedSpeedupChart({ queries, results, baselineIdx, queryHre
                   >
                     <title>
                       {`${runLabel} compared with ${baselineLabel}, ${fullLabel}: ` +
-                        `${formatSpeedup(speedup, { unit: "×" }).valueText}, ${direction} than baseline`}
+                        `${formatSpeedup(speedup).valueText}, ${direction} than baseline`}
                     </title>
                   </path>
                 );
@@ -349,7 +348,7 @@ export function NormalizedSpeedupChart({ queries, results, baselineIdx, queryHre
                 <td>
                   {speedup === null
                     ? "Not available: comparable timing unavailable"
-                    : formatSpeedup(speedup, { unit: "×" }).accessibleText}
+                    : formatSpeedup(speedup).accessibleText}
                 </td>
               </tr>
             )),
@@ -389,7 +388,7 @@ function SpeedupParityState({
       <p class="font-semibold text-[var(--bb-data-fg-primary)]">No meaningful per-query difference</p>
       <p class="mt-1 text-[var(--bb-data-fg-muted)]">
         All {queryCount.toLocaleString()} compared queries ({speedupCount.toLocaleString()} query-run pairs) are
-        within 1% of 1.00× relative to {baseline}.
+        within 1% of 1× relative to {baseline}.
       </p>
       <p class="mt-2 text-xs text-[var(--bb-data-fg-muted)]">
         Baseline: <strong>{baseline}</strong>

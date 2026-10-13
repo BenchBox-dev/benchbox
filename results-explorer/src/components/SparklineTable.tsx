@@ -10,7 +10,7 @@ import {
   normalizePrimaryMetric,
   primaryMetricValue,
 } from "@/lib/displayEligibility";
-import { formatLatencyMs, formatPowerScore } from "@/lib/metricFormatters";
+import { formatCompactLatencyMs, formatPowerScore } from "@/lib/metricFormatters";
 import { formatRunIdentitiesForCohort } from "@/lib/runIdentity";
 
 interface Props {
@@ -18,12 +18,8 @@ interface Props {
   colorIndexFor?: (platform: PlatformRow) => number;
 }
 
-function fmtMs(ms: number | null): string {
-  return formatLatencyMs(ms, { missingText: "-", subMillisecond: "compact" }).valueText;
-}
-
 function fmtScore(s: number | null): string {
-  return formatPowerScore(s, { missingText: "-" }).valueText;
+  return formatPowerScore(s).valueText;
 }
 
 interface SparkProps {
@@ -124,7 +120,7 @@ export function SparklineTable({ summary, colorIndexFor }: Props) {
                   />
                 </td>
                 <td class="w-px whitespace-nowrap px-2 py-1.5 text-right font-mono text-[var(--bb-data-fg-primary)]">
-                  {fmtMs(geomeanValue)}
+                  {formatCompactLatencyMs(geomeanValue)}
                 </td>
                 {showPower && (
                   <>
@@ -141,7 +137,7 @@ export function SparklineTable({ summary, colorIndexFor }: Props) {
                 )}
                 {showP99 && (
                   <td class="px-2 py-1.5 text-right font-mono text-[var(--bb-data-fg-muted)]">
-                    {fmtMs(p99Value)}
+                    {formatCompactLatencyMs(p99Value)}
                   </td>
                 )}
                 {showCost && (

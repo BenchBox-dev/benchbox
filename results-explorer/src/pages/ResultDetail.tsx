@@ -35,7 +35,7 @@ import {
   primaryMetricValue,
   type PrimaryMetric,
 } from "@/lib/displayEligibility";
-import { formatDurationSeconds, formatLatencyMs } from "@/lib/metricFormatters";
+import { formatDurationSeconds, formatLatencyMs, formatScaleFactor } from "@/lib/metricFormatters";
 import { visibleResultIdForRow } from "@/lib/resultLinks";
 import { RunDateChip } from "@/components/RunAge";
 import { PageHeader } from "@/components/PageHeader";
@@ -76,7 +76,7 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
   const detail = detailState?.detail ?? null;
   const primaryMetric = detailState?.primaryMetric ?? "display_geomean_ms";
   const documentTitle = detail
-    ? `${humanizeBenchmark(detail.benchmark)} · ${detail.platform} · SF${detail.scale_factor} · BenchBox Results`
+    ? `${humanizeBenchmark(detail.benchmark)} · ${detail.platform} · ${formatScaleFactor(detail.scale_factor)} · BenchBox Results`
     : "Result · BenchBox Results";
   useDocumentTitle(documentTitle);
 
@@ -335,7 +335,7 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
           )}
           <ResultMetricCard
             label="Scale factor"
-            value={`SF ${detail.scale_factor}`}
+            value={formatScaleFactor(detail.scale_factor)}
             helper={`Phase: ${detail.test_type ? formatEnumLabel(detail.test_type) : "Standard"}`}
           />
           <ResultMetricCard
@@ -546,7 +546,7 @@ function MedianRow({ timing, resultId }: { timing: QueryDisplayTiming; resultId:
         </a>
       </td>
       <td class="table-td font-mono">
-        {formatLatencyMs(timing.display_ms, { missingText: "-" }).valueText}
+        {formatLatencyMs(timing.display_ms).valueText}
       </td>
       <td class="table-td font-mono">{timing.sample_count}</td>
     </tr>

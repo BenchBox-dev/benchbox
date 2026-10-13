@@ -758,7 +758,7 @@ describe("ComparabilityReceipt", () => {
       const fields = buildComparabilityFields([run]);
       const localityField = fields.find((f) => f.label === "Locality")!;
       expect(localityField.status).toBe("diff");
-      expect(localityField.detail).toContain("client statement floor 88.20 ms");
+      expect(localityField.detail).toContain("client statement floor 88 ms");
     });
   });
 });

@@ -4,11 +4,13 @@ import {
   costModelSummary,
   costScopeSummary,
   costStatusLabel,
+  costStatusShortLabel,
   estimateProvenance,
   estimatedCostValue,
   hasCostEstimate,
   humanizeBillingFragment,
   normalizedCostLabel,
+  normalizedCostShortLabel,
   normalizedCostValue,
   parseEstimateAssumptions,
 } from "@/lib/costDisplay";
@@ -87,6 +89,31 @@ describe("costScopeSummary", () => {
       makeRow({ cost_scope: null, billing_unit: "not_applicable", pricing_region: null }),
     );
     expect(summary).toBe("Not recorded");
+  });
+});
+
+describe("short cost labels for table cells", () => {
+  it("shortens the local-run label so it fits a narrow column", () => {
+    expect(costStatusShortLabel(makeRow({ cost_status: "not_applicable_local" }))).toBe("N/A (local run)");
+    expect(normalizedCostShortLabel(makeRow({ cost_status: "not_applicable_local" }))).toBe("N/A (local run)");
+  });
+
+  it("keeps 'Not recorded' for unavailable cost and sentinel statuses", () => {
+    expect(costStatusShortLabel(makeRow({ cost_status: "unavailable" }))).toBe("Not recorded");
+    expect(normalizedCostShortLabel(makeRow({ cost_status: "unavailable" }))).toBe("Not recorded");
+    expect(normalizedCostShortLabel(makeRow({ cost_status: "not_applicable" }))).toBe("Not recorded");
+  });
+
+  it("keeps the dollar and estimate labels unchanged", () => {
+    expect(normalizedCostShortLabel(makeRow({ cost_status: "normalized", normalized_cost_usd: 12.5 }))).toBe("$12.50");
+    expect(normalizedCostShortLabel(makeRow({ cost_status: "estimated", estimated_cost_usd: 0.004667 }))).toBe(
+      "≈ $0.0047 (est.)",
+    );
+  });
+
+  it("leaves the long receipt label for local runs untouched", () => {
+    expect(normalizedCostLabel(makeRow({ cost_status: "not_applicable_local" }))).toBe("Not applicable to this local run");
+    expect(costStatusLabel(makeRow({ cost_status: "not_applicable_local" }))).toBe("Not applicable to this local run");
   });
 });
 

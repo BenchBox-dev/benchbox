@@ -120,7 +120,8 @@ describe("multi-run identity matrix (N > 2 runs)", () => {
     render(<IdentityDiffStrip results={[r1, r2, r3]} baselineIndex={0} runLabels={["Run 1", "Run 2", "Run 3"]} />);
 
     const cellDiff = screen.getByTestId("matrix-cell-Platform version-1");
-    expect(cellDiff.textContent).toContain("Differs");
+    expect(cellDiff.textContent).not.toContain("Differs");
+    expect(cellDiff).toHaveAttribute("data-differs", "true");
     expect(cellDiff.textContent).toContain("2.0.0");
 
     const cellMatch = screen.getByTestId("matrix-cell-Platform version-2");
@@ -204,9 +205,60 @@ describe("more than four runs", () => {
     expect(cell.textContent).toBe("Not recorded");
   });
 
-  it("flags only the differing values, using the same wording as the column layout", () => {
+  it("marks the differing attribute once and highlights only the differing cells", () => {
     render(<IdentityDiffStrip results={tenRuns()} baselineIndex={0} runLabels={labelsFor(10)} />);
-    expect(screen.getByTestId("matrix-run-1-Platform version").textContent).toContain("Differs");
-    expect(screen.getByTestId("matrix-run-2-Platform version").textContent).not.toContain("Differs");
+    expect(screen.getAllByText("Differs")).toHaveLength(1);
+    expect(screen.getByTestId("differs-marker-Platform version").textContent).toContain("in DuckDB run 2, DuckDB run 5, DuckDB run 8");
+    expect(screen.getByTestId("matrix-run-1-Platform version")).toHaveAttribute("data-differs", "true");
+    expect(screen.getByTestId("matrix-run-2-Platform version")).not.toHaveAttribute("data-differs");
+  });
+});
+
+describe("one differs marker per attribute", () => {
+  it("renders a single marker for each differing attribute in the column layout", () => {
+    const r1 = run({ result_id: "r1" });
+    const r2 = run({ result_id: "r2", platform_version: "1.5.0", driver_version: "9.9.9" });
+    const r3 = run({ result_id: "r3", platform_version: "1.5.0" });
+    render(<IdentityDiffStrip results={[r1, r2, r3]} baselineIndex={0} runLabels={["Run 1", "Run 2", "Run 3"]} />);
+
+    expect(screen.getAllByText("Differs")).toHaveLength(2);
+    expect(screen.getByTestId("differs-marker-Platform version").textContent).toContain("in Run 2, Run 3");
+    expect(screen.getByTestId("differs-marker-Driver version").textContent).toContain("in Run 2");
+    expect(screen.queryByTestId("differs-marker-Architecture")).toBeNull();
+  });
+
+  it("highlights differing cells without a pill in each cell", () => {
+    const r1 = run({ result_id: "r1" });
+    const r2 = run({ result_id: "r2", platform_version: "1.5.0" });
+    const r3 = run({ result_id: "r3", platform_version: "1.5.0" });
+    const { container } = render(<IdentityDiffStrip results={[r1, r2, r3]} baselineIndex={0} runLabels={["Run 1", "Run 2", "Run 3"]} />);
+
+    expect(container.querySelectorAll('[data-differs="true"]')).toHaveLength(2);
+    expect(screen.getByTestId("matrix-cell-Platform version-1").textContent).not.toContain("Differs");
+  });
+});
+
+describe("display labels for hardware values", () => {
+  it("shows CPU family and architecture as readable labels rather than enum values", () => {
+    const apple = run({ result_id: "r1" });
+    const amd = run({ result_id: "r2", environment: { arch: "x86_64", cpu_family: "amd_epyc", cpu_model: "EPYC 9454", cpu_count: 48, memory_gb: 384 } as any });
+    const third = run({ result_id: "r3" });
+    render(<IdentityDiffStrip results={[apple, amd, third]} />);
+
+    expect(screen.getByTestId("matrix-cell-CPU family-0")).toHaveTextContent("Apple silicon");
+    expect(screen.getByTestId("matrix-cell-CPU family-1")).toHaveTextContent("AMD EPYC");
+    expect(screen.getByTestId("matrix-cell-Architecture-1")).toHaveTextContent("x86-64");
+    expect(screen.getByTestId("matrix-cell-Architecture-0")).toHaveTextContent("Arm64");
+    expect(screen.queryByText(/apple_silicon|amd_epyc|x86_64/)).toBeNull();
+  });
+
+  it("uses the same labels in the transposed layout", () => {
+    const runs = Array.from({ length: 5 }, (_, i) =>
+      run({ result_id: `r${i + 1}`, environment: { arch: "x86_64", cpu_family: "intel_xeon", cpu_model: "Xeon 8488C", cpu_count: 8, memory_gb: 32 } as any }),
+    );
+    render(<IdentityDiffStrip results={runs} baselineIndex={0} />);
+
+    expect(screen.getByTestId("matrix-run-3-CPU family")).toHaveTextContent("Intel Xeon");
+    expect(screen.getByTestId("matrix-run-3-Architecture")).toHaveTextContent("x86-64");
   });
 });

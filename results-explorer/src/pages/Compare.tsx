@@ -60,7 +60,7 @@ import {
   resolveResultsForBasis,
   type PassSelection,
 } from "@/lib/measurementBasis";
-import { formatDurationSeconds, formatScoreMetric, formatSpeedup } from "@/lib/metricFormatters";
+import { formatDurationSeconds, formatScoreMetric, formatSpeedup, formatScaleFactor } from "@/lib/metricFormatters";
 import {
   isValidTimingValue,
   primaryMetricHigherIsBetter,
@@ -440,7 +440,7 @@ export function Compare({ url }: CompareProps) {
   const benchmarkLabel = mixedBenchmark ? "Mixed Benchmark" : formatBenchmarkLabel(canonicalBenchmark);
   const scaleFactorLabel = new Set(results.map((result) => result.scale_factor)).size > 1
     ? "Mixed scale factors"
-    : `SF ${scaleFactor}`;
+    : formatScaleFactor(scaleFactor);
   const rowCount = results.length;
 
   const queryCoverage = useMemo(() => {

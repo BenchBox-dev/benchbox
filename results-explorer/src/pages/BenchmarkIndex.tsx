@@ -55,7 +55,8 @@ import {
   parseOverrideRules,
 } from "@/lib/displayLabels";
 import { formatRunIdentitiesForCohort } from "@/lib/runIdentity";
-import { identitySourceWithPlatformVersion, platformVersionDisplay } from "@/lib/versionLabel";
+import { platformVersionDisplay } from "@/lib/versionLabel";
+import { RunIdentityLabel } from "@/components/DataTable";
 import { formatSelectedCount } from "@/lib/copyFormatters";
 import { groupCohortRows, limitCohortGroups, type CohortGroupBy } from "@/lib/queryFilters";
 
@@ -1080,7 +1081,7 @@ function ListTable({
       visibleLimit,
     );
   }, [filtered, groupBy, visibleLimit]);
-  const runIdentityLabels = formatRunIdentitiesForCohort(filtered.map(identitySourceWithPlatformVersion), "table");
+  const runIdentityLabels = formatRunIdentitiesForCohort(filtered, "table");
 
   const skipVisibleLimitResetOnMount = useRef(true);
   useEffect(() => {
@@ -1361,7 +1362,7 @@ function platformVersionTitle(row: { platform_version?: string | null; driver_ve
 }
 
 function isManagedCloudRun(row: { deployment_class?: string | null; cloud_provider?: string | null }): boolean {
-  if (row.deployment_class) return row.deployment_class === "cloud";
+  if (row.deployment_class) return row.deployment_class === "cloud" || row.deployment_class === "remote";
   return Boolean(row.cloud_provider);
 }
 
@@ -1457,14 +1458,12 @@ function BenchmarkRow({
         />
       </td>
       <td class="table-td">
-        <a
+        <RunIdentityLabel
+          label={runIdentityLabel}
           href={`/results/p/${entry.platform_id}/`}
-          class="block max-w-[20rem] truncate font-medium no-underline"
-          data-testid="run-identity-label"
+          class="block max-w-[20rem] truncate no-underline"
           title={platformVersionTitle(entry)}
-        >
-          {runIdentityLabel}
-        </a>
+        />
         {entry.compliance_class && entry.compliance_class !== "official" && (
           <span class="ml-2 text-xs text-[var(--bb-data-fg-subtle)]">{complianceLabel(entry.compliance_class)}</span>
         )}

@@ -11,11 +11,11 @@ import {
   MultiRunHeatmap,
   buildHeatmapRows,
   filterHeatmapRows,
-  formatHeatmapRatio,
   heatmapCellStyle,
   orderRowsByDisagreement,
 } from "@/components/MultiRunHeatmap";
 import { buildStandings, sharedQueryIdsFor } from "@/components/MultiRunStandings";
+import { formatRatio } from "@/lib/metricFormatters";
 import {
   DEFAULT_BASIS,
   WARMUP,
@@ -755,11 +755,11 @@ describe("shared limiter query selection", () => {
 
 describe("query-by-run ratio presentation", () => {
   it("writes extreme ratios with significant digits and a single multiplication sign", () => {
-    expect(formatHeatmapRatio(8892.6)).toBe("8,893×");
-    expect(formatHeatmapRatio(4716)).toBe("4,716×");
-    expect(formatHeatmapRatio(4.5)).toBe("4.5×");
-    expect(formatHeatmapRatio(0.03)).toBe("0.03×");
-    expect(formatHeatmapRatio(0.2)).toBe("0.2×");
+    expect(formatRatio(8892.6)).toBe("8,893×");
+    expect(formatRatio(4716)).toBe("4,716×");
+    expect(formatRatio(4.5)).toBe("4.5×");
+    expect(formatRatio(0.03)).toBe("0.03×");
+    expect(formatRatio(0.2)).toBe("0.2×");
   });
 
   it("renders cells and the caption with the × sign and no x suffix", () => {

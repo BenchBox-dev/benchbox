@@ -1,3 +1,4 @@
+import { MISSING_VALUE_GLYPH } from "@/lib/metricFormatters";
 import type { BenchmarkSummary, PlatformRow } from "@/types";
 import { paletteColor } from "@/lib/chartTheme";
 import { runMarkerPath } from "@/lib/chartMarkers";
@@ -155,7 +156,7 @@ export function RankTable({ summary, preserveOrder = false }: Props) {
                           : "text-[var(--bb-data-fg-muted)]"
                     }`}
                   >
-                    {r === null ? "-" : ordinal(r)}
+                    {r === null ? MISSING_VALUE_GLYPH : ordinal(r)}
                   </td>
                 );
               })}

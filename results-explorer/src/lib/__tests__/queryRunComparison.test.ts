@@ -10,6 +10,7 @@ import {
   queryDisplayTitle,
   queryRunComparisonHref,
   runScopeDifferences,
+  valueAxisFraction,
   summarizeQueryRunExecutions,
 } from "@/lib/queryRunComparison";
 
@@ -178,6 +179,63 @@ describe("single-query chart axis and labels", () => {
     expect(axis.ticks.map((tick) => tick.value)).toEqual([0, 5, 10, 15, 20, 25]);
     const labels = axis.ticks.map((tick) => tick.label);
     expect(new Set(labels).size).toBe(labels.length);
+  });
+
+  it("labels a log-axis tick at or above the largest value and one at or below the smallest", () => {
+    const axis = buildValueAxis([41, 12300], 252);
+    const first = axis.ticks[0]!;
+    const last = axis.ticks[axis.ticks.length - 1]!;
+    expect(first.value).toBeLessThanOrEqual(41);
+    expect(last.value).toBeGreaterThanOrEqual(12300);
+    expect(last.label).toBe("20 s");
+    expect(axis.min).toBe(first.value);
+    expect(axis.max).toBe(last.value);
+  });
+
+  it("keeps the log-axis top tick labelled for Spark-style runs above the highest nice tick", () => {
+    const axis = buildValueAxis([610, 880, 1450, 12300, 9800], 340);
+    expect(axis.scale).toBe("log");
+    expect(axis.ticks.map((tick) => tick.label)).toContain("20 s");
+    expect(axis.max).toBeGreaterThanOrEqual(12300);
+  });
+
+  it("brackets a log axis with nice values on both ends when the data sits on them", () => {
+    const axis = buildValueAxis([100, 2000], 300);
+    expect(axis.scale).toBe("log");
+    expect(axis.min).toBe(100);
+    expect(axis.max).toBe(2000);
+    expect(axis.ticks[0]!.value).toBe(100);
+    expect(axis.ticks[axis.ticks.length - 1]!.value).toBe(2000);
+  });
+
+  it("puts the top linear tick at or above the largest value with a label", () => {
+    const axis = buildValueAxis([1710, 2000], 300);
+    expect(axis.scale).toBe("linear");
+    const last = axis.ticks[axis.ticks.length - 1]!;
+    expect(last.value).toBeGreaterThanOrEqual(2000);
+    expect(last.label).toBe("2.5 s");
+  });
+
+  it("keeps every sample inside the plotted domain on both scales", () => {
+    const datasets = [
+      [41, 12300],
+      [610, 880, 1450, 12300, 9800],
+      [0.3, 4.2, 75, 8100],
+      [1710, 2000],
+      [10, 20],
+      [1.0001, 1.0002],
+      [627, 627],
+    ];
+    for (const values of datasets) {
+      const axis = buildValueAxis(values, 252);
+      for (const value of values) {
+        const fraction = valueAxisFraction(axis, value);
+        expect(fraction).toBeGreaterThanOrEqual(0);
+        expect(fraction).toBeLessThanOrEqual(1);
+      }
+      const labels = axis.ticks.map((tick) => tick.label);
+      expect(new Set(labels).size).toBe(labels.length);
+    }
   });
 
   it("never prints duplicate labels when many linear ticks round to the same text", () => {

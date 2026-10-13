@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatArchitecture,
+  formatCpuFamily,
   formatBenchmarkLabel,
   canonicalBenchmarkSlug,
   canonicalPhase,
@@ -225,5 +227,23 @@ describe("describeOverride", () => {
     const info = describeOverride(["scale-invariant", "timing-plateau"]);
     expect(info!.label).toBe("Scale-invariant, timing-plateau");
     expect(info!.fullLabel).toBe("Overridden: scale-invariant, timing-plateau");
+  });
+});
+
+describe("hardware display labels", () => {
+  it("maps known CPU family enums to vendor labels", () => {
+    expect(formatCpuFamily("apple_silicon")).toBe("Apple silicon");
+    expect(formatCpuFamily("amd_epyc")).toBe("AMD EPYC");
+    expect(formatCpuFamily("intel_xeon")).toBe("Intel Xeon");
+  });
+
+  it("falls back to the shared enum humanizer for unknown CPU families", () => {
+    expect(formatCpuFamily("ampere_altra")).toBe("ampere altra");
+  });
+
+  it("maps architecture enums to readable names", () => {
+    expect(formatArchitecture("x86_64")).toBe("x86-64");
+    expect(formatArchitecture("amd64")).toBe("x86-64");
+    expect(formatArchitecture("arm64")).toBe("Arm64");
   });
 });

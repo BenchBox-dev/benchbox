@@ -1,3 +1,4 @@
+import { formatScaleFactor } from "@/lib/metricFormatters";
 import { CompareCta, isCompareAllAvailable } from "@/components/CompareCta";
 import { PageHeader } from "@/components/PageHeader";
 import { ProvenanceLegend } from "@/components/ProvenanceLegend";
@@ -346,7 +347,7 @@ export function Leaderboard({ notice = null }: LeaderboardProps) {
     return (
       <LeaderboardLoadingSkeleton
         benchmark={summarizeSelection(benchmarkFilters, "All benchmarks", humanizeBenchmark)}
-        scaleFactor={summarizeSelection(scaleFilters, "All scales", (value) => `SF ${value}`)}
+        scaleFactor={summarizeSelection(scaleFilters, "All scales", (value) => formatScaleFactor(value))}
         phase={phaseFilter === "all" ? "All phases" : phaseFilter}
         activeFacets={summarizeActiveFacets(facets, new Map())}
         showActiveSummary={
@@ -481,7 +482,7 @@ export function Leaderboard({ notice = null }: LeaderboardProps) {
               activeFacetSummaries.length > 0) && (
               <ActiveLeaderboardSummary
                 benchmark={summarizeSelection(benchmarkFilters, "All benchmarks", humanizeBenchmark)}
-                scaleFactor={summarizeSelection(scaleFilters, "All scales", (value) => `SF ${value}`)}
+                scaleFactor={summarizeSelection(scaleFilters, "All scales", (value) => formatScaleFactor(value))}
                 phase={phaseFilter === "all" ? "All phases" : phaseFilter}
                 activeFacets={activeFacetSummaries}
               />
@@ -518,7 +519,7 @@ export function Leaderboard({ notice = null }: LeaderboardProps) {
                       value === "all" ? [] : toggleFacetValue(scaleFilters, value),
                     )
                   }
-                  format={(value) => `SF ${value}`}
+                  format={(value) => formatScaleFactor(value)}
                 />
                 <SelectFilter
                   label="Phase"
@@ -1416,7 +1417,7 @@ function groupComparisonCohorts(results: readonly ResultRow[]): ComparisonCohort
 }
 
 function comparisonCohortLabel(cohort: ComparisonCohort): string {
-  return `${formatBenchmarkLabel(cohort.benchmark)} SF ${cohort.scaleFactor} · ${cohort.phase}` +
+  return `${formatBenchmarkLabel(cohort.benchmark)} ${formatScaleFactor(cohort.scaleFactor)} · ${cohort.phase}` +
     (cohort.phase === "throughput" && cohort.streamCount !== null ? ` · ${cohort.streamCount} streams` : "");
 }
 
