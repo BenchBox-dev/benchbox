@@ -5148,7 +5148,7 @@
         "core-exec-engine-declarations-existing"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "blocked",
       "title": "Remove the deprecated execution-variant aliases after the deprecation window"
     },
     "core-exec-result-schema-2-3": {
