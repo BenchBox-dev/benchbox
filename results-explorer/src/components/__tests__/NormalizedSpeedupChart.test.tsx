@@ -155,3 +155,100 @@ describe("NormalizedSpeedupChart", () => {
     expect(container.querySelectorAll("table tbody tr")).toHaveLength(9);
   });
 });
+
+describe("NormalizedSpeedupChart axis and labels", () => {
+  const WIDE_RESULTS = [{ platform: "DuckDB" }, { platform: "SQLite" }];
+  const wideQueries = [
+    { queryId: "aggregation_distinct_groupby", timings: [{ ms: 100, status: "pass" }, { ms: 25000, status: "pass" }] },
+    { queryId: "q18", timings: [{ ms: 100, status: "pass" }, { ms: 0.0667, status: "pass" }] },
+    { queryId: "q7", timings: [{ ms: 100, status: "pass" }, { ms: 0.5, status: "pass" }] },
+  ];
+
+  function tickLabels(container: Element): SVGTextElement[] {
+    return Array.from(container.querySelectorAll("svg text")).filter((node) =>
+      /×$/.test(node.textContent ?? ""),
+    ) as SVGTextElement[];
+  }
+
+  it("draws distinct ratio ticks with significant digits and never 0.00×", () => {
+    const { container } = render(
+      <NormalizedSpeedupChart queries={wideQueries} results={WIDE_RESULTS} baselineIdx={0} />,
+    );
+    const labels = tickLabels(container).map((node) => node.textContent ?? "");
+    expect(labels.length).toBeGreaterThanOrEqual(3);
+    expect(new Set(labels).size).toBe(labels.length);
+    expect(labels.some((label) => label.includes("0.00×"))).toBe(false);
+    expect(labels).toContain("1×");
+    expect(labels.some((label) => label.startsWith("0.0"))).toBe(true);
+    expect(labels.some((label) => label.includes(","))).toBe(true);
+  });
+
+  it("keeps every tick label inside the svg width", () => {
+    const { container } = render(
+      <NormalizedSpeedupChart queries={wideQueries} results={WIDE_RESULTS} baselineIdx={0} />,
+    );
+    const svg = container.querySelector("svg");
+    const width = Number(svg?.getAttribute("viewBox")?.split(/\s+/)[2]);
+    for (const node of tickLabels(container)) {
+      const x = Number(node.getAttribute("x"));
+      const anchor = node.getAttribute("text-anchor");
+      const halfText = (node.textContent ?? "").length * 0.62 * 9 / 2;
+      const left = anchor === "end" ? x - halfText * 2 : anchor === "start" ? x : x - halfText;
+      const right = anchor === "start" ? x + halfText * 2 : anchor === "end" ? x : x + halfText;
+      expect(left).toBeGreaterThanOrEqual(0);
+      expect(right).toBeLessThanOrEqual(width);
+    }
+  });
+
+  it("truncates a long query label with an ellipsis and keeps the full name in the link and a title", () => {
+    const longQuery = {
+      queryId: "aggregation_distinct_groupby_with_a_very_long_descriptive_name",
+      timings: [{ ms: 100, status: "pass" }, { ms: 50, status: "pass" }],
+    };
+    const { container } = render(
+      <NormalizedSpeedupChart
+        queries={[longQuery]}
+        results={WIDE_RESULTS}
+        baselineIdx={0}
+        queryHref={(queryId) => `/compare?query=${queryId}`}
+      />,
+    );
+    const label = container.querySelector("[data-query-label='aggregation_distinct_groupby_with_a_very_long_descriptive_name']");
+    expect(label?.firstChild?.textContent?.startsWith("aggregation_")).toBe(true);
+    expect(label?.firstChild?.textContent?.endsWith("…")).toBe(true);
+    expect(label?.querySelector("title")?.textContent).toBe(longQuery.queryId);
+    expect(
+      container.querySelector(`a[aria-label='Compare ${longQuery.queryId} across selected runs']`),
+    ).not.toBeNull();
+  });
+
+  it("leaves short query labels untruncated and without a title", () => {
+    const { container } = render(
+      <NormalizedSpeedupChart queries={wideQueries} results={WIDE_RESULTS} baselineIdx={0} />,
+    );
+    const label = container.querySelector("[data-query-label='q7']");
+    expect(label?.textContent).toBe("q7");
+    expect(label?.querySelector("title")).toBeNull();
+  });
+
+  it("draws missing values as a hollow marker in a gutter left of the plot and explains them in the legend", () => {
+    const withMissing = [{ queryId: "Q1", timings: [{ ms: 100, status: "pass" }, null] }];
+    const { container } = render(
+      <NormalizedSpeedupChart queries={withMissing} results={RESULTS} baselineIdx={0} />,
+    );
+    const plotStart = Number(container.querySelector("svg")?.getAttribute("data-plot-start"));
+    const missing = container.querySelector("circle[data-platform-marker='SQLite']");
+    expect(Number(missing?.getAttribute("cx"))).toBeLessThan(plotStart);
+    expect(screen.getByText("No successful measurement")).toBeTruthy();
+  });
+
+  it("labels the axis ends with direction text and no longer uses faster or slower colour swatches", () => {
+    const { container } = render(
+      <NormalizedSpeedupChart queries={wideQueries} results={WIDE_RESULTS} baselineIdx={0} />,
+    );
+    expect(container.querySelector("svg")?.textContent).toContain("← slower than baseline");
+    expect(container.querySelector("svg")?.textContent).toContain("faster than baseline →");
+    expect(container.querySelector("[style*='bb-chart-success']")).toBeNull();
+    expect(container.querySelector("[style*='bb-chart-danger']")).toBeNull();
+  });
+});

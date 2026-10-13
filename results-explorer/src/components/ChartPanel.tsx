@@ -19,8 +19,9 @@ import { QueryHistogram } from "@/components/QueryHistogram";
 import { CostScatter } from "@/components/CostScatter";
 import { TimeSeries } from "@/components/TimeSeries";
 import { GroupedQueryChart } from "@/components/QueryTimingChart";
-import { NormalizedSpeedupChart } from "@/components/NormalizedSpeedupChart";
+import { NormalizedSpeedupChart, type SpeedupRunInput } from "@/components/NormalizedSpeedupChart";
 import { DivergingBarChart } from "@/components/DivergingBarChart";
+import { SegmentedControl } from "@/components/SegmentedControl";
 import { PercentileLadder } from "@/components/PercentileLadder";
 import { StackedPhase } from "@/components/StackedPhase";
 import { SparklineTable } from "@/components/SparklineTable";
@@ -114,7 +115,7 @@ function selectPanelCharts(
   excludeChartIds: readonly string[] | undefined,
   queryFilter: readonly string[] | undefined,
 ): ChartRegistryEntry[] {
-  const applicable = applicableCharts(context);
+  const applicable = applicableCharts(context).filter((entry) => entry.foldedInto === undefined);
   const exclude = new Set(excludeChartIds ?? []);
   if (queryFilter) {
     exclude.add("cost_scatter");
@@ -460,6 +461,55 @@ function ChartPanelTabs({
   );
 }
 
+const PER_QUERY_VIEW_URL_KEY = "per_query_view";
+
+function PerQueryComparison({
+  queries,
+  results,
+  baselineIdx,
+  queryHref,
+}: {
+  queries: { queryId: string; timings: ({ ms: number; status: "pass" } | null)[] }[];
+  results: readonly SpeedupRunInput[];
+  baselineIdx: number;
+  queryHref?: (queryId: string) => string;
+}) {
+  const [storedView, setStoredView] = useUrlState<string>(PER_QUERY_VIEW_URL_KEY, "speedup", stringSerde);
+  const view = storedView === "difference" ? "difference" : "speedup";
+
+  if (queries.length === 0) {
+    return (
+      <div class="panel-muted rounded p-6 text-center text-sm text-[var(--bb-data-fg-muted)]">
+        No queries match the selected filter.
+      </div>
+    );
+  }
+
+  return (
+    <div class="space-y-3">
+      <SegmentedControl
+        ariaLabel="Chart view"
+        size="sm"
+        value={view}
+        onChange={(next) => setStoredView(next)}
+        options={[
+          { value: "speedup", label: "Speedup", title: "Baseline latency divided by run latency, on a log scale" },
+          {
+            value: "difference",
+            label: "Difference (%)",
+            title: "Percentage change from the baseline, centred on zero",
+          },
+        ]}
+      />
+      {view === "difference" ? (
+        <DivergingBarChart queries={queries} results={results} baselineIdx={baselineIdx} />
+      ) : (
+        <NormalizedSpeedupChart queries={queries} results={results} baselineIdx={baselineIdx} queryHref={queryHref} />
+      )}
+    </div>
+  );
+}
+
 function chartButtonLabel(chart: ChartRegistryEntry): string {
   return chart.shortTitle;
 }
@@ -786,7 +836,6 @@ function renderChart(
     compareRows,
     compareGroups,
     baselineIdx,
-    platformLabels,
     suppressWinnerClaims = false,
     suppressionReason,
     queryFilter,
@@ -862,22 +911,6 @@ function renderChart(
           No queries match the selected filter.
         </div>
       );
-    case "diverging_bar":
-      return summary ? (
-        compareRows.length > 0 ? (
-          <DivergingBarChart
-            queries={compareRows}
-            results={summary.platforms.map((platform, index) => ({
-              platform: platformLabels[index] ?? platform.platform,
-            }))}
-            baselineIdx={baselineIdx}
-          />
-        ) : (
-          <div class="panel-muted rounded p-6 text-center text-sm text-[var(--bb-data-fg-muted)]">
-            No queries match the selected filter.
-          </div>
-        )
-      ) : null;
     case "summary_box":
       return (
         <SummaryBoxPanel
@@ -915,11 +948,9 @@ function renderChart(
       }
     case "normalized_speedup":
       return summary ? (
-        <NormalizedSpeedupChart
+        <PerQueryComparison
           queries={compareRows}
-          results={summary.platforms.map((platform, index) => ({
-            platform: platformLabels[index] ?? platform.platform,
-          }))}
+          results={summary.platforms.map((platform) => ({ ...platform, scale_factor: summary.scale_factor }))}
           baselineIdx={baselineIdx}
           queryHref={queryHref}
         />

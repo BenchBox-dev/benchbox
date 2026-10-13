@@ -2,43 +2,75 @@ import { useState } from "preact/hooks";
 import { speedupRatio } from "@/lib/chartMath";
 import { isValidTimingValue } from "@/lib/displayEligibility";
 import { formatSpeedup } from "@/lib/metricFormatters";
-import { FASTER_FILL, SLOWER_FILL, paletteColor } from "@/lib/chartTheme";
-import { runMarkerPath } from "@/lib/chartMarkers";
+import { paletteColor } from "@/lib/chartTheme";
+import { MISSING_MARKER_RADIUS, RUN_MARKER_RADIUS, runMarkerPath } from "@/lib/chartMarkers";
 import { RunLegend } from "@/components/RunLegend";
 import { useElementSize } from "@/lib/useElementSize";
 import { chartFrame } from "@/lib/chartFrame";
+import { estimateTextWidth, fitLabel, labelColumnWidth } from "@/lib/chartLabels";
+import { formatRunIdentitiesForCohort, type RunIdentitySource } from "@/lib/runIdentity";
+import { queryDisplayLabel } from "@/lib/queryLabels";
 
 export interface SpeedupDomain {
   lo: number;
   hi: number;
 }
 
+function niceAtOrBelow(value: number): number {
+  const exponent = Math.floor(Math.log10(value));
+  const candidates = [0.5, 1, 2, 5].map((mantissa) => Number((mantissa * 10 ** exponent).toPrecision(12)));
+  return Math.max(...candidates.filter((candidate) => candidate <= value * (1 + 1e-9)));
+}
+
+function niceAtOrAbove(value: number): number {
+  const exponent = Math.floor(Math.log10(value));
+  const candidates = [1, 2, 5, 10].map((mantissa) => Number((mantissa * 10 ** exponent).toPrecision(12)));
+  return candidates.find((candidate) => candidate >= value * (1 - 1e-9)) ?? 10 ** (exponent + 1);
+}
+
 export function speedupDomainForValues(values: readonly number[]): SpeedupDomain {
   const measured = values.filter((value) => Number.isFinite(value) && value > 0);
   if (measured.length === 0) return { lo: 0.5, hi: 2 };
-  const lo = Math.min(1, Math.min(...measured));
-  const hi = Math.max(1, Math.max(...measured));
-  const snappedLo = 2 ** Math.floor(Math.log2(lo));
-  let snappedHi = 2 ** Math.ceil(Math.log2(hi));
-  if (snappedHi <= snappedLo) snappedHi = snappedLo * 2;
-  return { lo: snappedLo, hi: snappedHi };
+  const lo = niceAtOrBelow(Math.min(1, ...measured));
+  let hi = niceAtOrAbove(Math.max(1, ...measured));
+  if (hi <= lo) hi = lo * 10;
+  return { lo, hi };
 }
 
-export function speedupGridStops(domain: SpeedupDomain): number[] {
+function niceRatioStops(domain: SpeedupDomain): number[] {
   const stops: number[] = [];
-  for (
-    let exponent = Math.round(Math.log2(domain.lo));
-    2 ** exponent <= domain.hi * (1 + 1e-9);
-    exponent += 1
-  ) {
-    stops.push(2 ** exponent);
+  for (let exponent = Math.floor(Math.log10(domain.lo)); exponent <= Math.ceil(Math.log10(domain.hi)); exponent += 1) {
+    for (const mantissa of [1, 2, 5]) {
+      const value = Number((mantissa * 10 ** exponent).toPrecision(12));
+      if (value >= domain.lo * (1 - 1e-9) && value <= domain.hi * (1 + 1e-9)) stops.push(value);
+    }
   }
   return stops;
 }
 
-function toX(speedup: number, domain: SpeedupDomain, width: number): number {
-  const logLo = Math.log2(domain.lo);
-  return ((Math.log2(speedup) - logLo) / (Math.log2(domain.hi) - logLo)) * width;
+export function ratioTicks(domain: SpeedupDomain, plotWidthPx: number, minGapPx = 56): number[] {
+  const pxPerDecade = plotWidthPx / (Math.log10(domain.hi) - Math.log10(domain.lo));
+  const thin = (candidates: number[], anchor: number): number[] => {
+    const kept: number[] = [];
+    let last = anchor;
+    for (const candidate of candidates) {
+      if (Math.abs(Math.log10(candidate) - Math.log10(last)) * pxPerDecade >= minGapPx) {
+        kept.push(candidate);
+        last = candidate;
+      }
+    }
+    return kept;
+  };
+  const stops = niceRatioStops(domain);
+  const anchor = stops.includes(1) ? 1 : (stops[0] ?? domain.lo);
+  const above = thin(stops.filter((stop) => stop > anchor), anchor);
+  const below = thin(stops.filter((stop) => stop < anchor).reverse(), anchor).reverse();
+  return [...below, anchor, ...above];
+}
+
+export function formatRatioTick(value: number): string {
+  const digits = value >= 1 ? { maximumFractionDigits: 0 } : { maximumSignificantDigits: 1 };
+  return `${value.toLocaleString("en-US", digits)}×`;
 }
 
 interface SpeedupEntry {
@@ -46,19 +78,28 @@ interface SpeedupEntry {
   speedups: (number | null)[];
 }
 
+export interface SpeedupRunInput extends Partial<RunIdentitySource> {
+  platform: string;
+}
+
 interface Props {
   queries: { queryId: string; timings: ({ ms: number; status: string } | null)[] }[];
-  results: { platform: string }[];
+  results: readonly SpeedupRunInput[];
   baselineIdx: number;
   queryHref?: (queryId: string) => string;
 }
 
-const ROW_H = 30;
-const LABEL_W = 64;
-const AXIS_H = 22;
-const PADDING_RIGHT = 8;
-const MARKER_RADIUS = 4.5;
-const MISSING_MARKER_RADIUS = 3.5;
+const ROW_H = 28;
+const TOP_H = 30;
+const AXIS_H = 26;
+const LABEL_FONT_PX = 10;
+const LABEL_GAP_PX = 8;
+const TICK_FONT_PX = 9;
+const AXIS_TEXT_FONT_PX = 10;
+const MARKER_OVERHANG_PX = 8;
+const MISSING_GUTTER_PX = 24;
+const MISSING_MARKER_CENTER_PX = 8;
+const PLOT_RIGHT_PAD_PX = 12;
 
 export function NormalizedSpeedupChart({ queries, results, baselineIdx, queryHref }: Props) {
   const [containerRef, { width: containerWidth }] = useElementSize();
@@ -67,8 +108,12 @@ export function NormalizedSpeedupChart({ queries, results, baselineIdx, queryHre
 
   if (queries.length === 0 || results.length < 2) return null;
 
+  const runLabels = formatRunIdentitiesForCohort(
+    results.map((run, index) => ({ ...run, result_id: run.result_id ?? `run-${index}` })),
+    "chart",
+  );
   const baselineIndex = baselineIdx >= 0 && baselineIdx < results.length ? baselineIdx : 0;
-  const baselineLabel = results[baselineIndex]?.platform ?? "the selected baseline";
+  const baselineLabel = runLabels[baselineIndex] ?? "the selected baseline";
   const allEntries: SpeedupEntry[] = queries.map(({ queryId, timings }) => {
     const baselineT = timings[baselineIndex];
     const baselineMs = isValidTimingValue(baselineT?.ms) ? baselineT.ms : null;
@@ -84,7 +129,7 @@ export function NormalizedSpeedupChart({ queries, results, baselineIdx, queryHre
     ? fullyComparableEntries
     : allEntries;
   const hiddenEntryCount = allEntries.length - entries.length;
-  const nonBaselineResults = results.filter((_, index) => index !== baselineIndex);
+  const nonBaselineIndices = results.map((_, index) => index).filter((index) => index !== baselineIndex);
   const runIndexForCandidate = (candidateIndex: number): number =>
     candidateIndex < baselineIndex ? candidateIndex : candidateIndex + 1;
   const measuredSpeedups = entries
@@ -96,31 +141,37 @@ export function NormalizedSpeedupChart({ queries, results, baselineIdx, queryHre
     measuredSpeedups.length > 0 &&
     measuredSpeedups.every((speedup) => Math.abs(speedup - 1) <= 0.01);
   const domain = speedupDomainForValues(measuredSpeedups);
-  const stops = speedupGridStops(domain);
-  const domainText =
-    `${formatSpeedup(domain.lo, { unit: "×" }).valueText} to ${formatSpeedup(domain.hi, { unit: "×" }).valueText}`;
+  const domainText = `${formatRatioTick(domain.lo)} to ${formatRatioTick(domain.hi)}`;
   const chartDescription =
     `For each query, speedup is baseline latency divided by candidate latency relative to ${baselineLabel}. ` +
     "Values above 1 are faster; values below 1 are slower. Queries without valid timing on every run are hidden by default. " +
     `The horizontal log scale runs from ${domainText} and includes every measured speedup; ` +
     `exact ratios are in the tooltip and table. ` +
     `${entries.length} queries are shown. An accessible table follows the chart.`;
-  const plotWidth = Math.max(1, drawWidth - LABEL_W - PADDING_RIGHT);
-  const totalHeight = AXIS_H + entries.length * ROW_H + 4;
 
   if (allNearEqual && hiddenEntryCount === 0) {
     return (
       <SpeedupParityState
         baseline={baselineLabel}
-        candidates={nonBaselineResults.map((result) => result.platform)}
+        candidates={nonBaselineIndices.map((index) => runLabels[index] ?? "Candidate")}
         speedupCount={measuredSpeedups.length}
         queryCount={entries.length}
       />
     );
   }
 
+  const labelW = labelColumnWidth(entries.map((entry) => queryDisplayLabel(entry.queryId)), LABEL_FONT_PX, drawWidth);
+  const plotX = labelW + (hasMissingSpeedups ? MISSING_GUTTER_PX : MARKER_OVERHANG_PX);
+  const plotRight = drawWidth - PLOT_RIGHT_PAD_PX;
+  const plotWidth = Math.max(1, plotRight - plotX);
+  const toX = (speedup: number): number =>
+    plotX +
+    ((Math.log10(speedup) - Math.log10(domain.lo)) / (Math.log10(domain.hi) - Math.log10(domain.lo))) * plotWidth;
+  const ticks = ratioTicks(domain, plotWidth);
+  const totalHeight = TOP_H + entries.length * ROW_H + AXIS_H;
+
   return (
-    <div ref={containerRef} class="w-full overflow-x-auto">
+    <div ref={containerRef} class="w-full">
       <p id="normalized-speedup-description" class="sr-only">{chartDescription}</p>
       {(hiddenEntryCount > 0 || (!showComparableOnly && fullyComparableEntries.length < allEntries.length)) && (
         <div class="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--bb-data-fg-muted)]">
@@ -151,99 +202,106 @@ export function NormalizedSpeedupChart({ queries, results, baselineIdx, queryHre
         aria-describedby="normalized-speedup-description"
         data-row-layout="query"
         data-speedup-domain={`${domain.lo}:${domain.hi}`}
+        data-plot-start={plotX}
       >
-        {stops.map((stop) => {
-          const x = LABEL_W + toX(stop, domain, plotWidth);
+        {ticks.map((tick) => {
+          const x = toX(tick);
+          const tickText = formatRatioTick(tick);
+          const halfTextWidth = estimateTextWidth(tickText, TICK_FONT_PX) / 2;
+          const anchor = x - plotX < halfTextWidth ? "start" : plotRight - x < halfTextWidth ? "end" : "middle";
           return (
-            <g key={stop}>
+            <g key={tick}>
               <line
                 x1={x}
-                y1={AXIS_H - 2}
+                y1={TOP_H - 4}
                 x2={x}
-                y2={totalHeight - 3}
-                stroke={stop === 1 ? "var(--bb-chart-axis)" : "var(--bb-chart-grid)"}
-                stroke-width={stop === 1 ? 1.5 : 1}
-                stroke-dasharray={stop === 1 ? "none" : "3 3"}
+                y2={totalHeight - AXIS_H}
+                stroke={tick === 1 ? "var(--bb-chart-axis)" : "var(--bb-chart-grid-muted)"}
+                stroke-width={tick === 1 ? 1.5 : 1}
+                stroke-dasharray={tick === 1 ? "none" : "3 3"}
               />
               <text
                 x={x}
-                y={12}
-                text-anchor={stop === domain.lo ? "start" : stop === domain.hi ? "end" : "middle"}
-                font-size="9"
+                y={TOP_H - 9}
+                text-anchor={anchor}
+                font-size={TICK_FONT_PX}
                 fill="var(--bb-chart-label-muted)"
               >
-                {formatSpeedup(stop, { unit: "×" }).valueText}
+                {tickText}
               </text>
             </g>
           );
         })}
 
-        {entries.map(({ queryId, speedups }, rowIndex) => {
-          const rowTop = AXIS_H + rowIndex * ROW_H;
+        {entries.map(({ queryId, speedups }, queryIndex) => {
+          const rowTop = TOP_H + queryIndex * ROW_H;
           const rowCenter = rowTop + ROW_H / 2;
-          const queryLabel = (
+          const fullLabel = queryDisplayLabel(queryId);
+          const fitted = fitLabel(fullLabel, labelW - LABEL_GAP_PX, LABEL_FONT_PX);
+          const label = (
             <text
-              x={LABEL_W - 5}
+              x={labelW - LABEL_GAP_PX}
               y={rowCenter + 3}
               text-anchor="end"
-              font-size="9"
-              fill="var(--bb-chart-axis)"
+              data-query-label={queryId}
+              font-size={LABEL_FONT_PX}
               font-family="monospace"
+              fill="var(--bb-chart-label-muted)"
             >
-              {queryId}
+              {fitted.text}
+              {fitted.truncated ? <title>{fullLabel}</title> : null}
             </text>
           );
           return (
-            <g key={`${queryId}-${rowIndex}`} data-query-row={queryId}>
-              {queryHref !== undefined
-                ? (
-                  <a href={queryHref(queryId)} aria-label={`Compare ${queryId} across selected runs`}>
-                    {queryLabel}
-                  </a>
-                )
-                : queryLabel}
+            <g key={`${queryIndex}-${queryId}`} data-query-row={queryId}>
               <line
-                x1={LABEL_W}
-                x2={drawWidth - PADDING_RIGHT}
+                x1={plotX}
+                x2={plotRight}
                 y1={rowTop + ROW_H}
                 y2={rowTop + ROW_H}
                 stroke="var(--bb-chart-grid-muted)"
                 stroke-width={1}
               />
+              {queryHref !== undefined
+                ? (
+                  <a href={queryHref(queryId)} aria-label={`Compare ${fullLabel} across selected runs`}>
+                    {label}
+                  </a>
+                )
+                : label}
               {speedups.map((speedup, candidateIndex) => {
                 const runIndex = runIndexForCandidate(candidateIndex);
-                const color = paletteColor(runIndex);
-                const candidateName = nonBaselineResults[candidateIndex]?.platform ?? "Candidate";
+                const runLabel = runLabels[runIndex] ?? "Candidate";
                 if (speedup === null) {
                   return (
                     <circle
                       key={candidateIndex}
-                      cx={LABEL_W + toX(1, domain, plotWidth)}
+                      cx={labelW + MISSING_MARKER_CENTER_PX}
                       cy={rowCenter}
                       r={MISSING_MARKER_RADIUS}
                       fill="none"
                       stroke="var(--bb-chart-label-muted)"
                       stroke-width={1.5}
-                      data-platform-marker={candidateName}
+                      data-platform-marker={runLabel}
                     >
-                      <title>{`${candidateName} · ${queryId}: comparable timing unavailable`}</title>
+                      <title>{`${runLabel} · ${fullLabel}: comparable timing unavailable`}</title>
                     </circle>
                   );
                 }
+                const direction = speedup > 1 ? "faster" : speedup < 1 ? "slower" : "equal";
                 return (
                   <path
                     key={candidateIndex}
-                    d={runMarkerPath(runIndex, LABEL_W + toX(speedup, domain, plotWidth), rowCenter, MARKER_RADIUS)}
-                    fill={color}
+                    d={runMarkerPath(runIndex, toX(speedup), rowCenter, RUN_MARKER_RADIUS)}
+                    fill={paletteColor(runIndex)}
                     stroke="var(--bb-surface-data)"
                     stroke-width={0.75}
-                    data-platform-marker={candidateName}
-                    data-speedup-direction={speedup > 1 ? "faster" : speedup < 1 ? "slower" : "equal"}
+                    data-platform-marker={runLabel}
+                    data-speedup-direction={direction}
                   >
                     <title>
-                      {`${candidateName} compared with ${baselineLabel}, ${queryId}: ` +
-                        `${formatSpeedup(speedup, { unit: "×" }).valueText}, ` +
-                        `${speedup > 1 ? "faster" : speedup < 1 ? "slower" : "equal"} than baseline`}
+                      {`${runLabel} compared with ${baselineLabel}, ${fullLabel}: ` +
+                        `${formatSpeedup(speedup, { unit: "×" }).valueText}, ${direction} than baseline`}
                     </title>
                   </path>
                 );
@@ -251,6 +309,27 @@ export function NormalizedSpeedupChart({ queries, results, baselineIdx, queryHre
             </g>
           );
         })}
+
+        <text
+          x={plotX}
+          y={totalHeight - 8}
+          text-anchor="start"
+          font-size={AXIS_TEXT_FONT_PX}
+          fill="var(--bb-chart-label-muted)"
+          data-axis-direction="slower"
+        >
+          ← slower than baseline
+        </text>
+        <text
+          x={plotRight}
+          y={totalHeight - 8}
+          text-anchor="end"
+          font-size={AXIS_TEXT_FONT_PX}
+          fill="var(--bb-chart-label-muted)"
+          data-axis-direction="faster"
+        >
+          faster than baseline →
+        </text>
       </svg>
       <p class="mt-1 text-xs text-[var(--bb-data-fg-muted)]" data-testid="normalized-speedup-domain">
         Log scale {domainText}; every measured speedup is shown.
@@ -264,9 +343,9 @@ export function NormalizedSpeedupChart({ queries, results, baselineIdx, queryHre
         <tbody>
           {entries.flatMap((entry, entryIndex) =>
             entry.speedups.map((speedup, candidateIndex) => (
-              <tr key={`${entry.queryId}-${entryIndex}-${candidateIndex}`}>
+              <tr key={`${entryIndex}-${entry.queryId}-${candidateIndex}`}>
                 <td>{entry.queryId}</td>
-                <td>{nonBaselineResults[candidateIndex]?.platform ?? "Candidate"}</td>
+                <td>{runLabels[runIndexForCandidate(candidateIndex)] ?? "Candidate"}</td>
                 <td>
                   {speedup === null
                     ? "Not available: comparable timing unavailable"
@@ -278,29 +357,18 @@ export function NormalizedSpeedupChart({ queries, results, baselineIdx, queryHre
         </tbody>
       </table>
 
-      <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--bb-data-fg-muted)]" aria-label="Run legend">
+      <div class="mt-2 text-xs text-[var(--bb-data-fg-muted)]">
         <span>Baseline: <strong>{baselineLabel}</strong></span>
+        <span class="ml-3">Values to the right of 1× are faster; values to the left are slower.</span>
       </div>
       <RunLegend
-        runs={nonBaselineResults.map((result, index) => ({
-          key: `${result.platform}-${index}`,
-          label: result.platform,
-          runIndex: runIndexForCandidate(index),
+        runs={nonBaselineIndices.map((resultIndex) => ({
+          key: `${runLabels[resultIndex] ?? "run"}-${resultIndex}`,
+          label: runLabels[resultIndex] ?? "Candidate",
+          runIndex: resultIndex,
         }))}
+        showMissing={hasMissingSpeedups}
       />
-      <div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--bb-data-fg-muted)]">
-        <span>
-          Values to the right of 1× are faster; values to the left are slower.
-        </span>
-        <span class="flex items-center gap-1">
-          <span class="inline-block h-2 w-3 rounded-sm" style={{ backgroundColor: FASTER_FILL }} />
-          faster than baseline
-        </span>
-        <span class="flex items-center gap-1">
-          <span class="inline-block h-2 w-3 rounded-sm" style={{ backgroundColor: SLOWER_FILL }} />
-          slower than baseline
-        </span>
-      </div>
     </div>
   );
 }

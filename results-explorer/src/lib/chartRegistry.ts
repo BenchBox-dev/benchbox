@@ -53,6 +53,7 @@ export interface ChartRegistryEntry {
   eligibilityClass: ChartDatasetEligibilityClass;
   requires: DataRequirements;
   cli_equivalent: string;
+  foldedInto?: string;
 }
 
 export interface ChartQuestionGroupWithCharts extends ChartQuestionGroup {
@@ -182,14 +183,15 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "diverging_bar",
-    title: "Diverging Bar",
-    shortTitle: "Diverging",
+    title: "Difference (%) vs Baseline",
+    shortTitle: "Difference (%)",
     description:
-      "Centered-zero chart showing regression/improvement distribution sorted by magnitude",
+      "Centered-zero view of each query's percentage change against the baseline, sorted by magnitude; shown through the Difference (%) option of the per-query comparison",
     questionGroup: "per_query",
     eligibilityClass: "compare_safe",
     requires: { requiresTwoResults: true },
     cli_equivalent: "diverging_bar",
+    foldedInto: "normalized_speedup",
   },
   {
     id: "summary_box",
@@ -214,10 +216,10 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "normalized_speedup",
-    title: "Per-query Speedup vs Baseline",
-    shortTitle: "Speedup vs Baseline",
+    title: "Per-query comparison vs baseline",
+    shortTitle: "vs Baseline",
     description:
-      "For each query, divide baseline latency by candidate latency; values above 1 are faster and values below 1 are slower",
+      "For each query, compare every run with the baseline as a speedup (default) or as a percentage difference; speedups above 1 are faster",
     questionGroup: "per_query",
     eligibilityClass: "compare_safe",
     requires: { requiresTwoResults: true },

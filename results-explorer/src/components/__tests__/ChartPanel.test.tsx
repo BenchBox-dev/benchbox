@@ -379,11 +379,59 @@ describe("ChartPanel", () => {
     expect(tooltips.some((text) => text.includes("DataFusion v44"))).toBe(true);
     expect(tooltips.some((text) => text.includes("DataFusion v45"))).toBe(true);
 
-    fireEvent.click(screen.getByRole("button", { name: "Diverging Bar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Per-query comparison vs baseline" }));
+    expect(screen.queryByRole("img", { name: "Diverging bar chart" })).toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: "Difference (%)" }));
     const chart = screen.getByRole("img", { name: "Diverging bar chart" });
     expect(chart.getAttribute("aria-describedby")).toBe("diverging-bar-description");
     expect(screen.getByText(/An accessible table follows the chart/)).toBeTruthy();
     expect(screen.getByRole("table", { name: /Per-query percentage changes relative to DataFusion v44/ })).toBeTruthy();
+  });
+
+  it("shows one per-query figure whose Chart view control swaps speedup and difference", () => {
+    const timings = (first: number, second: number) => [
+      { query_id: "Q1", display_ms: first, sample_count: 3, is_valid_display_timing: true, timing_exclusion_reason: null },
+      { query_id: "Q2", display_ms: second, sample_count: 3, is_valid_display_timing: true, timing_exclusion_reason: null },
+    ];
+    const { container } = render(
+      <ChartPanel
+        summaryLayout="long"
+        context={{
+          kind: "compare",
+          results: [
+            makeDetail({
+              result_id: "duck-1",
+              platform: "DuckDB",
+              platform_id: "duckdb",
+              display_geomean_ms: 10,
+              geomean_ms: 10,
+              display_timings: timings(10, 20),
+            }),
+            makeDetail({
+              result_id: "sqlite-1",
+              platform: "SQLite",
+              platform_id: "sqlite",
+              display_geomean_ms: 18,
+              geomean_ms: 18,
+              display_timings: timings(18, 22),
+            }),
+          ],
+        }}
+      />,
+    );
+
+    const viewControl = screen.getByRole("radiogroup", { name: "Chart view" });
+    expect(viewControl).toBeTruthy();
+    expect(screen.getByRole("radio", { name: "Speedup" }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByRole("img", { name: /Per-query speedups relative to DuckDB/ })).toBeTruthy();
+    expect(screen.queryByRole("img", { name: "Diverging bar chart" })).toBeNull();
+    expect(container.querySelector("[data-chart-id='diverging_bar']")).toBeNull();
+
+    fireEvent.click(screen.getByRole("radio", { name: "Difference (%)" }));
+    expect(screen.getByRole("radio", { name: "Difference (%)" }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByRole("img", { name: "Diverging bar chart" })).toBeTruthy();
+    expect(screen.queryByRole("img", { name: /Per-query speedups relative to/ })).toBeNull();
+    expect(screen.getAllByRole("radiogroup", { name: "Chart view" })).toHaveLength(1);
   });
 
   it("uses responsive segmented chart controls with short visible labels", () => {
@@ -527,7 +575,7 @@ describe("ChartPanel", () => {
     );
 
     expect(screen.getByRole("button", { name: "Comparison Bar" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Per-query Speedup vs Baseline" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Per-query comparison vs baseline" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Query Heatmap" })).toBeTruthy();
     expect(screen.getByRole("tab", { name: "Per-query" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.queryByRole("button", { name: "Performance Trend" })).toBeNull();
@@ -636,7 +684,7 @@ describe("ChartPanel", () => {
     expect(screen.getByRole("button", { name: "Per-query Latency" })).toBeTruthy();
     fireEvent.click(screen.getByRole("tab", { name: "Rank" }));
     expect(screen.getByRole("table", { name: "Per-query platform rankings (1st = fastest)" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Per-query Speedup vs Baseline" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Per-query comparison vs baseline" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Performance Trend" })).toBeNull();
   });
 
