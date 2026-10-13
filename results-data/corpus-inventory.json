@@ -1,6 +1,6 @@
 {
   "schema_version": "2.3",
-  "generated_at": "2026-10-07T21:39:35.849492+00:00",
+  "generated_at": "2026-10-13T01:20:50.117928+00:00",
   "bundles": [
     {
       "file": "amplab_sf01_bigquery_sql_20260920_000055_35490af7.json",
@@ -4077,6 +4077,20 @@
       "bundle_sha256": "9591ee31506e70c1bf0e4295b71a9efa76c92e7fa38037f9ea8b19666bcea884"
     },
     {
+      "file": "tpch/clickhouse-local/sf1.0/tpch_sf1_clickhouse_local_sql_20261013_011942_678507a6.json",
+      "benchmark": "tpch",
+      "benchmark_name": "TPC-H",
+      "platform": "ClickHouse Local",
+      "platform_version": "unknown",
+      "scale_factor": 1.0,
+      "phase": "power",
+      "timestamp": "2026-10-13T01:19:42.046713",
+      "query_count": 66,
+      "trust_label": "maintainer-run",
+      "funding": "unspecified",
+      "bundle_sha256": "de675d798cb951fc50a4be1247b0440c52bcc3e1c3f37dccc8856f6c595ea1b0"
+    },
+    {
       "file": "tpch_sf001_clickhouse_server_sql_20260825_092429_4cd12ac0.json",
       "benchmark": "tpch",
       "benchmark_name": "TPC-H",
@@ -4133,6 +4147,20 @@
       "bundle_sha256": "b5ead6e0598ad34d270a8ecd365e38174e114c57b3cce809e31dffc1b4732ebd"
     },
     {
+      "file": "tpch/datafusion/sf0.01/tpch_sf001_datafusion_sql_20261013_011859_c5cbcc9f.json",
+      "benchmark": "tpch",
+      "benchmark_name": "TPC-H",
+      "platform": "DataFusion",
+      "platform_version": "54.0.0",
+      "scale_factor": 0.01,
+      "phase": "power",
+      "timestamp": "2026-10-13T01:18:59.840431",
+      "query_count": 66,
+      "trust_label": "maintainer-run",
+      "funding": "unspecified",
+      "bundle_sha256": "8d1cf86a17b5643d99f682dac060dcc69d444d3598817903669810a5f5858f05"
+    },
+    {
       "file": "tpch_sf01_datafusion_sql_20260824_082755_adcfb35e.json",
       "benchmark": "tpch",
       "benchmark_name": "TPC-H",
@@ -4173,6 +4201,20 @@
       "trust_label": "maintainer-run",
       "funding": "unspecified",
       "bundle_sha256": "c5aed7dcd0fc62acc20fbd675edc5e89643c73b85adfe49c42282769a26f9d31"
+    },
+    {
+      "file": "tpch/datafusion/sf0.1/tpch_sf01_datafusion_sql_20261013_011903_1965c33f.json",
+      "benchmark": "tpch",
+      "benchmark_name": "TPC-H",
+      "platform": "DataFusion",
+      "platform_version": "54.0.0",
+      "scale_factor": 0.1,
+      "phase": "power",
+      "timestamp": "2026-10-13T01:19:03.090414",
+      "query_count": 66,
+      "trust_label": "maintainer-run",
+      "funding": "unspecified",
+      "bundle_sha256": "2aa8e871e984f0c8d0a88deda82acc8ad60ba1cf8bc628c8278b55c99fb59f95"
     },
     {
       "file": "tpch_sf1_datafusion_sql_20260825_172912_1d62bd4f.json",
@@ -4273,6 +4315,20 @@
       "bundle_sha256": "5a885f28e2b6f3870611f672e0a9d3094b2a9c8e1f54b316cdb3da47500b4330"
     },
     {
+      "file": "tpch/duckdb/sf0.01/tpch_sf001_duckdb_sql_20261013_011855_80365293.json",
+      "benchmark": "tpch",
+      "benchmark_name": "TPC-H",
+      "platform": "DuckDB",
+      "platform_version": "1.5.5",
+      "scale_factor": 0.01,
+      "phase": "power",
+      "timestamp": "2026-10-13T01:18:55.772688",
+      "query_count": 66,
+      "trust_label": "maintainer-run",
+      "funding": "unspecified",
+      "bundle_sha256": "33bbba2d603913c2153caf54f242cb419a127575096273070901e321578a4908"
+    },
+    {
       "file": "tpch_sf01_duckdb_sql_20260826_092426_786dcba6.json",
       "benchmark": "tpch",
       "benchmark_name": "TPC-H",
@@ -4313,6 +4369,20 @@
       "trust_label": "maintainer-run",
       "funding": "unspecified",
       "bundle_sha256": "6a53c6abcd84409488aa33e814935249a8bacab8c92249c97e843996f4c13640"
+    },
+    {
+      "file": "tpch/duckdb/sf0.1/tpch_sf01_duckdb_sql_20261013_011902_d286b8f0.json",
+      "benchmark": "tpch",
+      "benchmark_name": "TPC-H",
+      "platform": "DuckDB",
+      "platform_version": "1.5.5",
+      "scale_factor": 0.1,
+      "phase": "power",
+      "timestamp": "2026-10-13T01:19:02.065029",
+      "query_count": 66,
+      "trust_label": "maintainer-run",
+      "funding": "unspecified",
+      "bundle_sha256": "6242625091c6b21559c1040e8ee7ca2bf190b68e8d732c9abd1fb64e8c7ff42a"
     },
     {
       "file": "tpch_sf1_duckdb_sql_20260826_162117_67e59fb6.json",
@@ -4397,6 +4467,20 @@
       "trust_label": "maintainer-run",
       "funding": "unspecified",
       "bundle_sha256": "83a017071c2c77ea38103d875b9fbd0ffa66f6b1868f9026040440dcaff044d6"
+    },
+    {
+      "file": "tpch/duckdb/sf1.0/tpch_sf1_duckdb_sql_20261013_011919_e122b635.json",
+      "benchmark": "tpch",
+      "benchmark_name": "TPC-H",
+      "platform": "DuckDB",
+      "platform_version": "1.5.5",
+      "scale_factor": 1.0,
+      "phase": "power",
+      "timestamp": "2026-10-13T01:19:19.114200",
+      "query_count": 66,
+      "trust_label": "maintainer-run",
+      "funding": "unspecified",
+      "bundle_sha256": "97c70c99fe7488d27670a39b916e5df1363ccdd59c645f14a41565372d989e02"
     },
     {
       "file": "duckdb-version-matrix/tpch_sf10_duckdb_v1_0_0_median.json",
@@ -4581,6 +4665,20 @@
       "bundle_sha256": "3a00d6605062472bddcd919daa1be6187ed3fd7f2ee6865a4948a617b9c0d85f"
     },
     {
+      "file": "tpch/polars-df/sf0.01/tpch_sf001_polars_df_20261013_011857_511090d0.json",
+      "benchmark": "tpch",
+      "benchmark_name": "TPC-H",
+      "platform": "Polars",
+      "platform_version": "1.44.2",
+      "scale_factor": 0.01,
+      "phase": "power",
+      "timestamp": "2026-10-13T01:18:57.147384",
+      "query_count": 66,
+      "trust_label": "maintainer-run",
+      "funding": "unspecified",
+      "bundle_sha256": "66602e41fafbbec56520560c2295036edb6ffbcf0947b64c6dc9b82115ff14cd"
+    },
+    {
       "file": "tpch_sf01_polars_df_20260826_204211_f659fcbf.json",
       "benchmark": "tpch",
       "benchmark_name": "TPC-H",
@@ -4607,6 +4705,20 @@
       "trust_label": "maintainer-run",
       "funding": "unspecified",
       "bundle_sha256": "1eaa5467e018087972766e7192bb0a5b79b4a09cca9187a7b94042ab96acf811"
+    },
+    {
+      "file": "tpch/polars-df/sf0.1/tpch_sf01_polars_df_20261013_011900_eec9e457.json",
+      "benchmark": "tpch",
+      "benchmark_name": "TPC-H",
+      "platform": "Polars",
+      "platform_version": "1.44.2",
+      "scale_factor": 0.1,
+      "phase": "power",
+      "timestamp": "2026-10-13T01:18:58.585992",
+      "query_count": 66,
+      "trust_label": "maintainer-run",
+      "funding": "unspecified",
+      "bundle_sha256": "1c7aee9105dc573b3c3d51c042250b1bfcef90642802ae3c980023f048c6ca1a"
     },
     {
       "file": "tpch_sf1_polars_df_20260824_193005_54a9e53f.json",
@@ -6142,6 +6254,7 @@
       "LakeSail v4.1.1",
       "Pandas v2.3.3",
       "Polars v1.40.0",
+      "Polars v1.44.2",
       "PySpark v4.1.1",
       "SQLite v3.53.1",
       "Spark v4.1.1",
@@ -6157,6 +6270,7 @@
       "DuckDB v1.5.5",
       "Pandas v2.3.3",
       "Polars v1.40.0",
+      "Polars v1.44.2",
       "SQLite v3.53.1",
       "Snowflake v10.35.101",
       "Spark v4.1.1"
@@ -6297,7 +6411,7 @@
     ]
   },
   "summary": {
-    "total_bundles": 413,
+    "total_bundles": 421,
     "by_benchmark": {
       "amplab": 25,
       "clickbench": 23,
@@ -6313,7 +6427,7 @@
       "tpcdi": 18,
       "tpcds": 34,
       "tpcds_obt": 6,
-      "tpch": 62,
+      "tpch": 70,
       "tpch_skew": 24,
       "tpchavoc": 18,
       "transaction_primitives": 9,
@@ -6324,15 +6438,15 @@
       "Apache Doris": 1,
       "BigQuery": 51,
       "CedarDB": 1,
-      "ClickHouse Local": 40,
+      "ClickHouse Local": 41,
       "ClickHouse Server": 1,
-      "DataFusion": 50,
+      "DataFusion": 52,
       "Databricks": 50,
-      "DuckDB": 87,
+      "DuckDB": 90,
       "DuckLake": 1,
       "LakeSail": 1,
       "Pandas": 17,
-      "Polars": 30,
+      "Polars": 32,
       "PySpark": 2,
       "SQLite": 23,
       "Snowflake": 50,
@@ -6340,13 +6454,13 @@
       "StarRocks": 1
     },
     "by_trust_label": {
-      "maintainer-run": 413
+      "maintainer-run": 421
     },
     "by_funding": {
-      "unspecified": 413
+      "unspecified": 421
     },
     "by_phase": {
-      "power": 410,
+      "power": 418,
       "throughput": 3
     }
   }
