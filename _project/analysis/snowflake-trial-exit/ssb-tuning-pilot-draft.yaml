@@ -1,0 +1,85 @@
+primary_keys:
+  enabled: true
+  enforce_uniqueness: true
+  nullable: false
+
+foreign_keys:
+  enabled: true
+  enforce_referential_integrity: true
+  on_delete_action: CASCADE
+  on_update_action: RESTRICT
+
+unique_constraints:
+  enabled: true
+  ignore_nulls: false
+
+check_constraints:
+  enabled: true
+  enforce_on_insert: true
+  enforce_on_update: true
+
+platform_optimizations:
+  z_ordering_enabled: false
+  z_ordering_columns: []
+  auto_optimize_enabled: false
+  auto_compact_enabled: false
+  bloom_filters_enabled: false
+  bloom_filter_columns: []
+  materialized_views_enabled: false
+
+table_tunings:
+  CUSTOMER:
+    table_name: CUSTOMER
+    clustering:
+    - name: C_CUSTKEY
+      type: INTEGER
+      order: 1
+    - name: C_REGION
+      type: VARCHAR
+      order: 2
+
+  DATE:
+    table_name: DATE
+    clustering:
+    - name: D_DATEKEY
+      type: INTEGER
+      order: 1
+    - name: D_YEAR
+      type: INTEGER
+      order: 2
+
+  LINEORDER:
+    table_name: LINEORDER
+    clustering:
+    - name: LO_ORDERDATE
+      type: INTEGER
+      order: 1
+    - name: LO_CUSTKEY
+      type: INTEGER
+      order: 2
+    - name: LO_PARTKEY
+      type: INTEGER
+      order: 3
+    - name: LO_SUPPKEY
+      type: INTEGER
+      order: 4
+
+  PART:
+    table_name: PART
+    clustering:
+    - name: P_PARTKEY
+      type: INTEGER
+      order: 1
+    - name: P_CATEGORY
+      type: VARCHAR
+      order: 2
+
+  SUPPLIER:
+    table_name: SUPPLIER
+    clustering:
+    - name: S_SUPPKEY
+      type: INTEGER
+      order: 1
+    - name: S_REGION
+      type: VARCHAR
+      order: 2
