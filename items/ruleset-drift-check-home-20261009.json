@@ -3,7 +3,7 @@
     "ruleset_drift_check.py runs on a schedule from a workflow that dlv2-53 and dlv2-70 keep.",
     "A workflow test fails if no kept workflow runs ruleset_drift_check.py."
   ],
-  "context": "Found in the 2026-10-09 tracker review. Note for site-split-52: ruleset_drift_check.py APPROVED_MERGE_QUEUE_CONTEXTS (lines 308-316) still lists `landing`.",
+  "context": "Found in the 2026-10-09 tracker review. Note for site-split-52: ruleset_drift_check.py APPROVED_MERGE_QUEUE_CONTEXTS (lines 308-316) still lists `landing`.\n\n2026-10-13 checkpoint: implemented as the t3:ruleset-drift domain of nightly-v2.yml (job ruleset-drift, report needs and loop updated, docs/internal/nightly-t3.md row, two tests in tests/unit/workflows/test_nightly_t3_workflow.py). PR #2938 (branch chore/nightly-v2-ruleset-drift, worktree ../BenchBox.wt-nightly-v2-ruleset-drift) is open with auto-merge armed, oracle-review pass and oracle-verdict SHIP on the head, all checks success, mergeStateStatus still BLOCKED at 14:47Z (a superseded oracle-review failure from the first attempt sits beside the pass). NEXT: confirm the merge, record the merge SHA here, then take and finish with that evidence. Acceptance 1 also wants a nightly-v2 dispatch to show the domain green; one dispatch can cover this and the throughput port.",
   "description": "scripts/ruleset_drift_check.py runs only in nightly.yml (ruleset-drift job, nightly.yml:885-907), release-canary.yml (:336) and validate-release-pr.yml (:140). dlv2-70 deletes nightly.yml and dlv2-53 deletes the other two, after which nothing checks the live rulesets against the recorded ones (ADR D7). dlv2-80 and dlv2-83 assume the check still runs.\n\nMove the check into a scheduled job that survives both retirements (for example a nightly-v2 domain) before either deletion lands.",
   "sessions": [
     {
@@ -21,6 +21,14 @@
       "generation": "0ef91411bbd445b4b2cd5bdfdfbbadd1",
       "op": "take",
       "op_id": "f30b593b8aaa408b814462a50a6e7690",
+      "session_id": "4c6a3e0b7c2c47a6a47c6cc7a35bc932"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:513e77a5e9d7684fd6c76434",
+      "at": "2026-10-13T14:47:09Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "10539e5e34054ed6aefb35c5b65381da",
       "session_id": "4c6a3e0b7c2c47a6a47c6cc7a35bc932"
     }
   ]
