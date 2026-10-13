@@ -418,6 +418,7 @@ def test_advisory_enforcement_reports_findings_without_failing_the_comparison(
     out = capsys.readouterr().out
     assert "a.py:1: CP comment" in out
     assert "enforcement is advisory" in out
+    subprocess.run(["git", "-C", str(tmp_path), "update-ref", "refs/remotes/origin/develop", "HEAD"], check=True)
     assert main(["--root", str(tmp_path), "--mode", "strict"]) == 1
     assert main(["--root", str(tmp_path), "--mode", "transition", "--base", "f" * 40]) == 2
 
@@ -1230,6 +1231,7 @@ def test_invalid_source_encoding_is_inventory_debt_in_report(tmp_path: Path) -> 
     git_repo(tmp_path, "x=1")
     (tmp_path / "a.py").write_bytes(b"\xff")
     assert main(["--root", str(tmp_path), "--mode", "report"]) == 0
+    subprocess.run(["git", "-C", str(tmp_path), "update-ref", "refs/remotes/origin/develop", "HEAD"], check=True)
     assert main(["--root", str(tmp_path), "--mode", "strict"]) == 1
 
 

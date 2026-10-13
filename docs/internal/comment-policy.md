@@ -27,7 +27,13 @@ must be an ancestor of `HEAD`.
 Other tools:
 
 - `make comment-policy-strict` scans the whole repository using your branch's
-  exceptions. Use it to diagnose; CI does not run it.
+  exceptions and the base-trusted ownership manifest, so vendored and
+  externally owned paths are not reported as first-party findings. The
+  manifest comes from the merge-base with `origin/develop`, which is `HEAD`
+  on a clean develop checkout; strict fails when that merge-base cannot be
+  derived. An explicit `--ownership-base` must be an ancestor of the
+  merge-base, and is rejected when `origin/develop` is unavailable to anchor
+  it. Use it to diagnose; CI does not run it.
 - `make comment-policy-report` lists every violation, including old ones. It
   fails only if configuration or parsing fails.
 - The pre-commit hook checks staged files, with the same result as

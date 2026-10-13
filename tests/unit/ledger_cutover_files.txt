@@ -94,6 +94,7 @@ tests/unit/scripts/test_ci_units.py
 tests/unit/scripts/test_comment_cleanup_scope.py
 tests/unit/scripts/test_comment_parity.py
 tests/unit/scripts/test_comment_policy.py
+tests/unit/scripts/test_comment_policy_strict_ownership.py
 tests/unit/scripts/test_comment_syntax_js.cjs
 tests/unit/scripts/test_compile_all_platforms.py
 tests/unit/scripts/test_compose_joinorder_hero.py

@@ -192,12 +192,37 @@ def native_results(root: Path, requests: dict[str, str]) -> dict[str, list[dict]
     return results
 
 
-def ownership_base(mode: str, comparison: str | None, requested: str | None) -> str | None:
+def develop_merge_base(root: Path) -> str | None:
+    try:
+        return git(root, "merge-base", "HEAD", "origin/develop").decode().strip()
+    except subprocess.CalledProcessError:
+        return None
+
+
+def ownership_base(root: Path, mode: str, comparison: str | None, requested: str | None) -> str | None:
     if mode == "transition":
         if requested and requested != comparison:
             raise ValueError("transition ownership base must match the comparison base")
         return comparison
-    return requested
+    anchor = develop_merge_base(root)
+    if requested:
+        if (
+            anchor is not None
+            and subprocess.run(
+                ["git", "-C", str(root), "merge-base", "--is-ancestor", requested, anchor], capture_output=True
+            ).returncode
+            != 0
+        ):
+            raise ValueError("ownership base must be an ancestor of the merge-base with origin/develop")
+        return requested
+    if mode == "strict":
+        if anchor is None:
+            raise ValueError(
+                "strict mode derives its ownership base from the merge-base with origin/develop, "
+                "which is unavailable; fetch origin/develop or pass --ownership-base"
+            )
+        return anchor
+    return None
 
 
 def ownership_exclusions(root: Path, base: str | None, staged: bool) -> set[str] | None:
@@ -301,14 +326,24 @@ def source_paths(root: Path, staged: bool) -> list[str]:
     return paths
 
 
-def validate_consumers(root: Path, policy: dict) -> None:
+def path_present(root: Path, path: str, staged: bool) -> bool:
+    if staged:
+        return (
+            subprocess.run(["git", "-C", str(root), "cat-file", "-e", f":{path}"], capture_output=True).returncode == 0
+        )
+    return (root / path).is_file()
+
+
+def validate_consumers(root: Path, policy: dict, staged: bool = False) -> None:
     for entry in policy["exceptions"]:
-        if not (root / entry["consumer"]).is_file():
+        if not path_present(root, entry["consumer"], staged):
             raise ValueError(f"exception consumer missing: {entry['consumer']}")
     for entry in policy["external"]:
         validate_path(entry["provenance"])
-        if not (root / entry["provenance"]).is_file():
+        if not path_present(root, entry["provenance"], staged):
             raise ValueError(f"external provenance missing: {entry['provenance']}")
+        if entry["path"].endswith(".whl") and not path_present(root, entry["path"], staged):
+            raise ValueError(f"external wheel missing: {entry['path']}")
 
 
 def plain_text(value: str) -> str:
@@ -364,7 +399,7 @@ def main(argv: list[str] | None = None) -> int:
             raise ValueError("base must be a full commit SHA")
         if args.bootstrap and (args.mode != "transition" or not bootstrap_base_allowed(root, args.base or "")):
             raise ValueError("bootstrap requires a base that contains the initial rollout commit")
-        owner_base = ownership_base(args.mode, args.base, args.ownership_base)
+        owner_base = ownership_base(root, args.mode, args.base, args.ownership_base)
         owned_exclusions = ownership_exclusions(root, owner_base, args.staged)
         baseline_policy = policy
         if args.base and not args.bootstrap:
@@ -405,7 +440,7 @@ def main(argv: list[str] | None = None) -> int:
             for path in paths
             if args.staged or (root / path).is_file()
         }
-        validate_consumers(root, policy)
+        validate_consumers(root, policy, args.staged)
         effective_policy = {
             **policy,
             "exceptions": [e for e in policy["exceptions"] if e in baseline_policy["exceptions"]],
