@@ -183,7 +183,8 @@ class TestSnowflakeAdapter:
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_create_admin_connection(self, mock_snowflake):
-        from snowflake.connector.connection import DEFAULT_CONFIGURATION
+        snowflake_connection = pytest.importorskip("snowflake.connector.connection")
+        DEFAULT_CONFIGURATION = snowflake_connection.DEFAULT_CONFIGURATION
 
         mock_connection = Mock()
         mock_snowflake.connector.connect.return_value = mock_connection
@@ -208,6 +209,7 @@ class TestSnowflakeAdapter:
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_create_admin_connection_with_key_pair(self, mock_snowflake, tmp_path):
+        pytest.importorskip("cryptography.hazmat.primitives.serialization")
         from cryptography.hazmat.primitives import serialization
         from cryptography.hazmat.primitives.asymmetric import rsa
 
