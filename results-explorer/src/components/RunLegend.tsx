@@ -4,7 +4,7 @@ import { MISSING_MARKER_RADIUS, RUN_MARKER_RADIUS, runMarkerPath } from "@/lib/c
 export interface RunLegendEntry {
   key: string;
   label: string;
-  runIndex: number;
+  colorSlot: number;
 }
 
 const ICON_SIZE = 18;
@@ -21,8 +21,8 @@ export function RunLegend({ runs, showMissing = false }: { runs: readonly RunLeg
         <span key={run.key} class="flex items-center gap-1">
           <svg width={ICON_SIZE} height={ICON_SIZE} viewBox={`0 0 ${ICON_SIZE} ${ICON_SIZE}`} aria-hidden="true">
             <path
-              d={runMarkerPath(run.runIndex, ICON_CENTER, ICON_CENTER, RUN_MARKER_RADIUS)}
-              fill={paletteColor(run.runIndex)}
+              d={runMarkerPath(run.colorSlot, ICON_CENTER, ICON_CENTER, RUN_MARKER_RADIUS)}
+              fill={paletteColor(run.colorSlot)}
               stroke="var(--bb-surface-data)"
               stroke-width={0.75}
             />

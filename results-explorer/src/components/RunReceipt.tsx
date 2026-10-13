@@ -484,7 +484,7 @@ function bundleLinkRow(url: string): ReceiptRow {
 
 function plansRow(detail: DetailResult, plansUrl: string | null): ReceiptRow {
   if (!detail.has_plans) return recordedRow("Plans", "Plans not published");
-  if (plansUrl === null) return recordedRow("Plans", "Plans available");
+  if (plansUrl === null) return recordedRow("Plans", "Plans recorded; file not published");
   return recordedRow(
     "Plans",
     <>

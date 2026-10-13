@@ -5,7 +5,6 @@ import {
   SLOWER_FILL,
   DIVERGING_MAX_PCT,
   paletteColor,
-  timeSeriesColor,
   HEAT_MIN_RATIO,
   HEAT_MAX_RATIO,
   PHASE_COLORS,
@@ -57,15 +56,9 @@ describe("chartTheme", () => {
     expect(DIVERGING_MAX_PCT).toBeGreaterThan(0);
   });
 
-  it("timeSeriesColor gives the same colour as paletteColor for every run index", () => {
-    for (let i = 0; i < 25; i++) {
-      expect(timeSeriesColor(i)).toBe(paletteColor(i));
-    }
-  });
-
-  it("run 7 and run 8 keep their category colours in time series", () => {
-    expect(timeSeriesColor(6)).toBe("var(--bb-chart-cat-7)");
-    expect(timeSeriesColor(7)).toBe("var(--bb-chart-cat-8)");
+  it("run 7 and run 8 keep their category colours", () => {
+    expect(paletteColor(6)).toBe("var(--bb-chart-cat-7)");
+    expect(paletteColor(7)).toBe("var(--bb-chart-cat-8)");
   });
 
   it("HEAT_MIN_RATIO is 1 (fastest anchor)", () => {

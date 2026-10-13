@@ -498,3 +498,21 @@ describe("SummaryMetricTable population", () => {
     expect(screen.getByText(/· 3 queries/)).toBeTruthy();
   });
 });
+
+describe("SummaryChartOverview thumbnails", () => {
+  it("exposes the labelled grid thumbnails as images", () => {
+    const { container } = renderOverview();
+    for (const label of ["Heatmap thumbnail", "Rank table thumbnail"]) {
+      const thumbnail = container.querySelector(`[aria-label='${label}']`);
+      expect(thumbnail?.getAttribute("role")).toBe("img");
+    }
+  });
+
+  it("draws first-place rank cells with theme text instead of hard-coded white", () => {
+    const { container } = renderOverview();
+    const cells = Array.from(container.querySelectorAll("[aria-label='Rank table thumbnail'] > span")) as HTMLElement[];
+    expect(cells.length).toBeGreaterThan(0);
+    expect(cells.some((cell) => cell.style.color === "white")).toBe(false);
+    expect(cells.some((cell) => cell.style.color === "var(--bb-surface-data)")).toBe(true);
+  });
+});

@@ -238,7 +238,7 @@ export function QueryHistogram({ summary, preserveOrder = false, queryHref }: Pr
         runs={platforms.map((platform, index) => ({
           key: platform.result_id,
           label: runLabels[index] ?? platform.platform,
-          runIndex: platform.color_slot ?? index,
+          colorSlot: platform.color_slot ?? index,
         }))}
         showMissing={hasMissing}
       />

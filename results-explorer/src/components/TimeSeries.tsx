@@ -1,7 +1,7 @@
 import type { ChartHistoricalEntry } from "@/lib/chartRegistry";
 import { useElementSize } from "@/lib/useElementSize";
 import { axisLabelAnchor, chartFrame } from "@/lib/chartFrame";
-import { assignRunColorSlots, timeSeriesColor } from "@/lib/chartTheme";
+import { assignRunColorSlots, paletteColor } from "@/lib/chartTheme";
 import { primaryMetricHigherIsBetter, type PrimaryMetric } from "@/lib/displayEligibility";
 import { formatLatencyMs, formatScoreMetric, formatLatencyAxisLabels } from "@/lib/metricFormatters";
 import { formatRunDateWithAge } from "@/lib/runAge";
@@ -117,7 +117,7 @@ export function TimeSeries({ entries, primaryMetric }: Props) {
     platformId: descriptor.pid,
     label: cohortLabels[idx]?.disambiguated ?? descriptor.firstEntry.platform,
     fullLabel: cohortLabels[idx]?.full ?? descriptor.firstEntry.platform,
-    color: timeSeriesColor(slotByPlatformId.get(descriptor.pid) ?? idx),
+    color: paletteColor(slotByPlatformId.get(descriptor.pid) ?? idx),
     points: descriptor.points,
   }));
 

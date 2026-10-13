@@ -9,7 +9,7 @@ import {
   type ChartHistoricalEntry,
   type ChartRegistryEntry,
 } from "@/lib/chartRegistry";
-import { assignRunColorSlots, paletteColor, PHASE_COLORS, timeSeriesColor } from "@/lib/chartTheme";
+import { assignRunColorSlots, paletteColor, PHASE_COLORS } from "@/lib/chartTheme";
 import {
   buildLatencyBarScale,
   buildLogLatencyScale,
@@ -686,6 +686,7 @@ function MiniHeatmap({ summary }: { summary: BenchmarkSummary }) {
           gridTemplateColumns: `repeat(${queryIds.length}, minmax(0, 1fr))`,
           gridTemplateRows: `repeat(${platforms.length}, minmax(0, 1fr))`,
         }}
+        role="img"
         aria-label="Heatmap thumbnail"
       >
         {platforms.flatMap((platform) =>
@@ -760,7 +761,7 @@ function MiniCDF({
   colorIndexFor?: (platform: PlatformRow) => number;
 }) {
   const series = summary.platforms.slice(0, 6).map((platform, index) => ({
-    color: timeSeriesColor(colorIndexFor?.(platform) ?? platform.color_slot ?? index),
+    color: paletteColor(colorIndexFor?.(platform) ?? platform.color_slot ?? index),
     points: computeECDFPoints(summary.query_ids.map((queryId) => platformTimingValue(platform, queryId))),
   })).filter((entry) => entry.points.length > 0);
   const allMs = series.flatMap((entry) => entry.points.map((point) => point.x));
@@ -896,7 +897,7 @@ function MiniTrend({ summary, historical }: { summary: BenchmarkSummary; histori
             return `${pointIndex === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
           }).join(" ");
           const slot = slotByPlatformId.get(points[0]!.platform_id) ?? index;
-          return <path key={index} d={d} fill="none" stroke={timeSeriesColor(slot)} stroke-width="1.5" />;
+          return <path key={index} d={d} fill="none" stroke={paletteColor(slot)} stroke-width="1.5" />;
         })}
       </svg>
     </MiniFrame>
@@ -931,6 +932,7 @@ function MiniRanks({ summary }: { summary: BenchmarkSummary }) {
           gridTemplateColumns: `repeat(${summary.platforms.length}, minmax(0, 1fr))`,
           gridTemplateRows: `repeat(${queryIds.length}, minmax(0, 1fr))`,
         }}
+        role="img"
         aria-label="Rank table thumbnail"
       >
         {queryIds.flatMap((queryId) =>
@@ -942,7 +944,7 @@ function MiniRanks({ summary }: { summary: BenchmarkSummary }) {
                 class="flex items-center justify-center rounded-[1px] font-mono text-[10px] leading-none"
                 style={{
                   backgroundColor: rank === 1 ? "var(--bb-chart-cat-1)" : "var(--bb-tone-neutral-bg)",
-                  color: rank === 1 ? "white" : "var(--bb-data-fg-muted)",
+                  color: rank === 1 ? "var(--bb-surface-data)" : "var(--bb-data-fg-muted)",
                 }}
               >
                 {rank ?? "—"}

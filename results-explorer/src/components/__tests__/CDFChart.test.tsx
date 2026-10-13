@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/preact";
 import type { BenchmarkSummary, PlatformRow } from "@/types";
 import { CDFChart } from "@/components/CDFChart";
-import { timeSeriesColor } from "@/lib/chartTheme";
+import { paletteColor } from "@/lib/chartTheme";
 
 function makePlatform(overrides: Partial<PlatformRow>): PlatformRow {
   const timings = overrides.timings ?? { q1: 100, q2: 200, q3: 300 };
@@ -81,7 +81,7 @@ describe("CDFChart", () => {
     const { container } = render(<CDFChart summary={makeSummary([duck, trino])} colorIndexFor={colorIndexFor} />);
     const swatchColor = (name: string) =>
       Array.from(container.querySelectorAll("ul li")).find((item) => item.textContent?.includes(name))?.querySelector("span")?.style.backgroundColor;
-    expect(swatchColor("DuckDB")).toBe(timeSeriesColor(1).toString());
-    expect(swatchColor("Trino")).toBe(timeSeriesColor(0).toString());
+    expect(swatchColor("DuckDB")).toBe(paletteColor(1).toString());
+    expect(swatchColor("Trino")).toBe(paletteColor(0).toString());
   });
 });

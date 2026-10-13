@@ -65,6 +65,23 @@ describe("NormalizedSpeedupChart", () => {
     });
   });
 
+  it.each([
+    [320, "← slower", "faster →"],
+    [1200, "← slower than baseline", "faster than baseline →"],
+  ])("fits the axis direction labels at %spx", async (testWidth, slower, faster) => {
+    Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
+      configurable: true,
+      get: () => testWidth,
+    });
+
+    const { container } = render(<NormalizedSpeedupChart queries={QUERIES} results={RESULTS} baselineIdx={0} />);
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-axis-direction="slower"]')?.textContent).toBe(slower);
+      expect(container.querySelector('[data-axis-direction="faster"]')?.textContent).toBe(faster);
+    });
+  });
+
   it("renders a compact parity state when all query speedups are equal", () => {
     const equalQueries = [
       { queryId: "Q1", timings: [{ ms: 100, status: "pass" }, { ms: 100, status: "pass" }] },

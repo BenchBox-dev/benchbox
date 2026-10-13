@@ -939,7 +939,6 @@ def _estimated_databricks_normalized_cost(bundle: BundleDocument) -> NormalizedC
         _bundle_value(cloud_block, "location"),
         _bundle_value(deployment_block, "cloud_region"),
     )
-    region = _canonical_cost_region(observed_region) or "us-east-2"
     price_rate = resolve_databricks_dbu_price(cloud, "premium", "sql_serverless")
     if (
         size_rate.value is None
@@ -978,10 +977,10 @@ def _estimated_databricks_normalized_cost(bundle: BundleDocument) -> NormalizedC
         cost_scope="compute_only",
         cost_status="estimated",
         billing_unit="dbu",
-        pricing_region=region,
+        pricing_region=_canonical_cost_region(observed_region) or "unknown",
         deployment=DeploymentMetadata(
-            cloud_provider=cloud,
-            cloud_region=region,
+            cloud_provider=observed_cloud.lower() if observed_cloud else None,
+            cloud_region=_canonical_cost_region(observed_region),
             warehouse_size=observed_size,
         ),
         estimated_cost_usd=amount,
@@ -1083,11 +1082,11 @@ def _estimated_normalized_cost(bundle: BundleDocument) -> NormalizedCost | None:
         cost_scope="compute_only",
         cost_status="estimated",
         billing_unit="credit",
-        pricing_region=region,
+        pricing_region=_canonical_cost_region(observed_region) or "unknown",
         deployment=DeploymentMetadata(
-            cloud_provider=cloud,
-            cloud_region=region,
-            warehouse_size=size,
+            cloud_provider=observed_cloud.lower() if observed_cloud else None,
+            cloud_region=_canonical_cost_region(observed_region),
+            warehouse_size=observed_size,
         ),
         estimated_cost_usd=amount,
         cost_estimate_method="sum of per-query median runtime hours × warehouse credits per hour × USD per credit",

@@ -1,3 +1,4 @@
+import { hasCostEstimate } from "@/lib/costDisplay";
 import type { BenchmarkSummary, DetailResult, PlatformRow } from "@/types";
 import { assignRunColorSlots } from "@/lib/chartTheme";
 import { canonicalPhase } from "@/lib/displayLabels";
@@ -447,7 +448,8 @@ function getChartCapabilities(context: ChartContext): ChartCapabilities {
     hasTwoResults: context.kind === "compare" && context.results.length >= 2,
     hasCostData:
       summary?.platforms.some(
-        (platform) => platform.cost_status === "normalized" && platform.normalized_cost_usd != null,
+        (platform) =>
+          (platform.cost_status === "normalized" && platform.normalized_cost_usd != null) || hasCostEstimate(platform),
       ) ?? false,
     hasPowerScore: summary?.platforms.some((platform) => isValidTimingValue(platform.power_score)) ?? false,
     hasPhaseDurations:

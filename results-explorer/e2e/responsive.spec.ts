@@ -20,6 +20,7 @@ const AUDITED_ROUTES = [
   { path: "/results/p/duckdb/", ready: /DuckDB/i },
   { path: `/results/r/${DETAIL_ID}`, ready: /Query timings/i },
   { path: `/results/compare?ids=${SHORT_DUCKDB},${SHORT_DATAFUSION}`, ready: /TPC-H Comparison/i },
+  { path: `/results/compare/query/1?ids=${SHORT_DUCKDB},${SHORT_DATAFUSION}`, ready: /Recorded execution times/i },
   { path: "/results/query", ready: /matching run/ },
 ] as const;
 

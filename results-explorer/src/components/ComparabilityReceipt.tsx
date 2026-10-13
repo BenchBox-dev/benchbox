@@ -367,7 +367,7 @@ function DateWindowChips({ dates }: { dates: NonNullable<ComparabilityField["dat
 
 function ComparabilityFieldRow({ field }: { field: ComparabilityField }) {
   return (
-    <div class="rounded-md border border-[var(--bb-data-border)] bg-[var(--bb-surface-data-muted)] px-3 py-2">
+    <div class="min-w-0 break-words rounded-md border border-[var(--bb-data-border)] bg-[var(--bb-surface-data-muted)] px-3 py-2">
       <div class="mb-1 flex items-center justify-between gap-2">
         <h3 class="text-xs font-semibold uppercase text-[var(--bb-data-fg-subtle)]">{field.label}</h3>
         <StatusBadge role="comparison" tone={statusTone(field.status)}>{statusLabel(field.status)}</StatusBadge>

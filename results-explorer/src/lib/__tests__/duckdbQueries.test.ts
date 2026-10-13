@@ -809,6 +809,14 @@ describe("resolveShortId", () => {
     expect(params).toEqual(["%-abcdef12", "abcdef12"]);
   });
 
+  it.each(["1' OR '1'='1", "%", "f08_5929", "F0835929; DROP", " "])(
+    "passes a non-token id %j through unchanged without querying",
+    async (raw) => {
+      await expect(resolveShortId(raw)).resolves.toBe(raw);
+      expect(mockedQueryRows).not.toHaveBeenCalled();
+    },
+  );
+
   it("returns the input unchanged and in one query when no match is found", async () => {
     mockedQueryRows.mockResolvedValueOnce([noSuffixMatch]);
     await expect(resolveShortId("deadbeef")).resolves.toBe("deadbeef");

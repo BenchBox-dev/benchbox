@@ -136,3 +136,24 @@ describe("DivergingBarChart", () => {
     expect(label?.querySelector("title")?.textContent).toBe(longId);
   });
 });
+
+describe("DivergingBarChart legend", () => {
+  it("leaves out the baseline run even when its colour slot differs from its position", () => {
+    const sqliteBaseline = { ...SQLITE_CANDIDATE, platform_id: "sqlite" };
+    const duckdb = { ...DUCK_CANDIDATE, platform_id: "duckdb" };
+    const snowflake = {
+      result_id: "tpch-snowflake-sf10.0-20261003-f0835929",
+      platform: "Snowflake",
+      platform_id: "snowflake",
+      run_date: "2026-10-03T12:00:00Z",
+      scale_factor: 1,
+    };
+    const { getByRole } = render(
+      <DivergingBarChart queries={QUERIES} results={[sqliteBaseline, duckdb, snowflake]} baselineIdx={0} />,
+    );
+    const legend = getByRole("group", { name: "Run legend" });
+    expect(legend.textContent).toContain("DuckDB");
+    expect(legend.textContent).toContain("Snowflake");
+    expect(legend.textContent).not.toContain("SQLite");
+  });
+});

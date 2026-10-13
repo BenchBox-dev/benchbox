@@ -17,7 +17,7 @@ import { singleValueFilterReason } from "@/lib/cohortFilterReason";
 import { CohortFilterPanel, type CohortFilterFieldSpec } from "@/components/CohortFilterPanel";
 import { ResultsCardToolbar, GroupBySelect, ResultsBasisStatement } from "@/components/ResultsCard";
 import { AnalysisCard, AnalysisCardGrid } from "@/components/AnalysisCardGrid";
-import { paletteColor, timeSeriesColor } from "@/lib/chartTheme";
+import { paletteColor } from "@/lib/chartTheme";
 import {
   canonicalBenchmarkSlug,
   canonicalPhase,
@@ -1326,7 +1326,7 @@ function TrendsThumbnail({ cohorts }: { cohorts: TrendCohort[] }) {
               role="img"
               aria-label={`${label} trend thumbnail`}
             >
-              <polyline points={points} fill="none" stroke={timeSeriesColor(index)} stroke-width="1.5" />
+              <polyline points={points} fill="none" stroke={paletteColor(index)} stroke-width="1.5" />
             </svg>
             <span class="max-w-full truncate text-xs text-[var(--bb-data-fg-subtle)]" title={label}>
               {label}

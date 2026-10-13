@@ -37,6 +37,7 @@ import {
 import { useIsNarrowViewport } from "@/lib/useIsNarrowViewport";
 import { errMsg } from "@/utils";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
+import { axisLabelAnchor } from "@/lib/chartFrame";
 
 interface QueryRunComparisonProps extends RoutableProps {
   queryId?: string;
@@ -672,7 +673,7 @@ function RowChart({ queryId, runs, values }: { queryId: string; runs: ChartRun[]
           return (
             <g key={tick.value} aria-hidden="true">
               <line x1={x} y1={padding.top} x2={x} y2={plotBottom} stroke="var(--bb-chart-grid)" stroke-width="1" />
-              <text x={x} y={plotBottom + 16} text-anchor="middle" font-size="11" fill="var(--bb-chart-axis)">
+              <text x={x} y={plotBottom + 16} text-anchor={axisLabelAnchor(x, width)} font-size="11" fill="var(--bb-chart-axis)">
                 {tick.label}
               </text>
             </g>

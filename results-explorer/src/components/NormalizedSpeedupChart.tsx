@@ -174,6 +174,14 @@ export function NormalizedSpeedupChart({ queries, results, baselineIdx, queryHre
   const ticks = ratioTicks(domain, plotWidth);
   const totalHeight = TOP_H + entries.length * ROW_H + AXIS_H;
 
+  const directionLabels =
+    estimateTextWidth("← slower than baseline", AXIS_TEXT_FONT_PX) +
+      estimateTextWidth("faster than baseline →", AXIS_TEXT_FONT_PX) +
+      16 <=
+    plotRight - plotX
+      ? { slower: "← slower than baseline", faster: "faster than baseline →" }
+      : { slower: "← slower", faster: "faster →" };
+
   return (
     <div ref={containerRef} class="w-full">
       <p id="normalized-speedup-description" class="sr-only">{chartDescription}</p>
@@ -322,7 +330,7 @@ export function NormalizedSpeedupChart({ queries, results, baselineIdx, queryHre
           fill="var(--bb-chart-label-muted)"
           data-axis-direction="slower"
         >
-          ← slower than baseline
+          {directionLabels.slower}
         </text>
         <text
           x={plotRight}
@@ -332,7 +340,7 @@ export function NormalizedSpeedupChart({ queries, results, baselineIdx, queryHre
           fill="var(--bb-chart-label-muted)"
           data-axis-direction="faster"
         >
-          faster than baseline →
+          {directionLabels.faster}
         </text>
       </svg>
       <p class="mt-1 text-xs text-[var(--bb-data-fg-muted)]" data-testid="normalized-speedup-domain">
@@ -371,7 +379,7 @@ export function NormalizedSpeedupChart({ queries, results, baselineIdx, queryHre
         runs={nonBaselineIndices.map((resultIndex) => ({
           key: `${runLabels[resultIndex] ?? "run"}-${resultIndex}`,
           label: runLabels[resultIndex] ?? "Candidate",
-          runIndex: colorSlotOf(resultIndex),
+          colorSlot: colorSlotOf(resultIndex),
         }))}
         showMissing={hasMissingSpeedups}
       />

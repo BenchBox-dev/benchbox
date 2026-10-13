@@ -254,19 +254,24 @@ def _tpchavoc_variant_has_usable_timing(query: dict) -> bool:
     return math.isfinite(ms) and ms > 0
 
 
+_COVERAGE_PREFIX_PATTERNS = (
+    re.compile(r"query_?(?=\d)", re.IGNORECASE),
+    re.compile(r"Q(?=\d|[a-z])"),
+    re.compile(r"q(?=\d)"),
+)
+
+
 def _normalize_coverage_query_id(raw_id: Any) -> str | None:
     if not isinstance(raw_id, str):
         return None
     text = raw_id.strip()
     if not text:
         return None
-    upper = text.upper()
-    if upper.startswith("QUERY_"):
-        text = text[6:]
-    elif upper.startswith("QUERY"):
-        text = text[5:]
-    elif upper.startswith("Q") and len(text) > 1 and (text[1].isdigit() or text[1].islower()):
-        text = text[1:]
+    for pattern in _COVERAGE_PREFIX_PATTERNS:
+        match = pattern.match(text)
+        if match:
+            text = text[match.end() :]
+            break
     text = text.strip()
     if not text:
         return None

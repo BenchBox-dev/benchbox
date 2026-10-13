@@ -3,7 +3,7 @@ import { Breadcrumb, type Crumb } from "@/components/Breadcrumb";
 
 export const PAGE_HEADER_CLASSES = {
   eyebrow: "text-xs font-semibold uppercase tracking-wide text-[var(--bb-data-fg-muted)]",
-  title: "text-3xl font-bold text-[var(--bb-data-fg-primary)]",
+  title: "break-words text-3xl font-bold text-[var(--bb-data-fg-primary)]",
   subtitle: "max-w-3xl text-sm text-[var(--bb-data-fg-muted)]",
 } as const;
 

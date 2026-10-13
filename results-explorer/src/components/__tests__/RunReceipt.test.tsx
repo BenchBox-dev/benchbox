@@ -245,7 +245,7 @@ describe("RunReceipt", () => {
     const receipt = screen.getByRole("region", { name: "Run receipt" });
     expect(within(receipt).getByRole("link", { name: "Download bundle" })).toBeTruthy();
     expect(within(receipt).queryByRole("link", { name: "Download plans" })).toBeNull();
-    expect(within(receipt).getByText("Plans available")).toBeTruthy();
+    expect(within(receipt).getByText("Plans recorded; file not published")).toBeTruthy();
   });
 
   it("does not derive a plan link from an unsafe bundle URL", () => {

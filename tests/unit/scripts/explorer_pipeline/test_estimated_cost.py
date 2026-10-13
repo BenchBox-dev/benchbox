@@ -240,3 +240,32 @@ def test_prior_unavailable_reasons_are_preserved_alongside_estimate() -> None:
     assert cost.cost_status == "estimated"
     assert cost.cost_estimate_assumptions[0].startswith("Recorded normalized-cost verdict was 'unavailable'")
     assert "no metered credits recorded" in cost.cost_estimate_assumptions[0]
+
+
+def test_snowflake_estimate_does_not_publish_assumed_deployment_as_recorded() -> None:
+    cost = _estimated_normalized_cost(_parse_bundle(_snowflake_bundle()))
+
+    assert cost is not None
+    assert cost.pricing_region == "unknown"
+    assert cost.deployment.cloud_provider is None
+    assert cost.deployment.cloud_region is None
+    assert cost.deployment.warehouse_size is None
+    assert any("reference region" in assumption for assumption in cost.cost_estimate_assumptions)
+    assert any("Warehouse size is assumed" in assumption for assumption in cost.cost_estimate_assumptions)
+
+
+def test_databricks_estimate_does_not_publish_an_assumed_cloud_as_recorded() -> None:
+    cost = _estimated_normalized_cost(_parse_bundle(_databricks_bundle(provider=None)))
+
+    assert cost is not None
+    assert cost.deployment.cloud_provider is None
+    assert cost.deployment.cloud_region == cost.pricing_region
+    assert cost.pricing_region != "unknown"
+
+
+def test_databricks_estimate_keeps_recorded_deployment() -> None:
+    cost = _estimated_normalized_cost(_parse_bundle(_databricks_bundle()))
+
+    assert cost is not None
+    assert cost.deployment.cloud_provider == "aws"
+    assert cost.deployment.warehouse_size == "2X-Small"

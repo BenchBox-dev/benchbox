@@ -15,8 +15,6 @@ export function paletteColor(index: number): string {
   return PALETTE[index % PALETTE.length] ?? "var(--bb-chart-cat-1)";
 }
 
-export const timeSeriesColor = paletteColor;
-
 export interface RunColorSlotInput {
   result_id: string;
   platform_id?: string | null;

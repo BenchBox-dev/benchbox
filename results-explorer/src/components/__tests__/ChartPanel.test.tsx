@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/pre
 import { describe, expect, it } from "vitest";
 import { ChartPanel } from "@/components/ChartPanel";
 import { QueryHistogram } from "@/components/QueryHistogram";
-import { buildRenderableSummary, CHART_REGISTRY, type ChartHistoricalEntry } from "@/lib/chartRegistry";
+import { applicableCharts, buildRenderableSummary, CHART_REGISTRY, type ChartHistoricalEntry } from "@/lib/chartRegistry";
 import { assignRunColorSlots, paletteColor } from "@/lib/chartTheme";
 import { formatPowerScore } from "@/lib/metricFormatters";
 import type {
@@ -1581,3 +1581,37 @@ function barFillForRun(container: Element, runLabel: string) {
     rect.querySelector("title")?.textContent?.includes(` - ${runLabel}:`),
   )?.getAttribute("fill");
 }
+
+describe("cost chart applicability", () => {
+  it("offers the cost chart when every compared run has only an estimated cost", () => {
+    const estimate = (resultId: string, amount: number): DetailResult => ({
+      ...makeDetail({ result_id: resultId }),
+      cost_status: "estimated",
+      normalized_cost_usd: null,
+      estimated_cost_usd: amount,
+    });
+    const charts = applicableCharts({
+      kind: "compare",
+      results: [
+        estimate("tpch-snowflake-sf10.0-20261003-f0835929", 0.0156),
+        estimate("tpch-databricks-sf10.0-20261003-5f5ccaf2", 0.0236),
+      ],
+      primaryMetric: "display_geomean_ms",
+    });
+    expect(charts.map((chart) => chart.id)).toContain("cost_scatter");
+  });
+
+  it("does not offer the cost chart when no run has a cost", () => {
+    const charts = applicableCharts({
+      kind: "compare",
+      results: ["r1", "r2"].map((resultId): DetailResult => ({
+        ...makeDetail({ result_id: resultId }),
+        cost_status: "unavailable",
+        normalized_cost_usd: null,
+        estimated_cost_usd: null,
+      })),
+      primaryMetric: "display_geomean_ms",
+    });
+    expect(charts.map((chart) => chart.id)).not.toContain("cost_scatter");
+  });
+});

@@ -226,9 +226,11 @@ export function DivergingBarChart({ queries, results, baselineIdx }: Props) {
         <span class="ml-3">Left of centre is faster than the baseline, right is slower.</span>
       </div>
       <RunLegend
-        runs={results
-          .map((_, index) => ({ key: `${runLabels[index] ?? "run"}-${index}`, label: runLabels[index] ?? "", runIndex: colorSlotOf(index) }))
-          .filter((run) => run.runIndex !== baselineIdx)}
+        runs={results.flatMap((_, index) =>
+          index === baselineIdx
+            ? []
+            : [{ key: `${runLabels[index] ?? "run"}-${index}`, label: runLabels[index] ?? "", colorSlot: colorSlotOf(index) }],
+        )}
       />
     </div>
   );
