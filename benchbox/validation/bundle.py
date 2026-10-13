@@ -12,8 +12,6 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
-from benchbox.core.schemas import MIN_THROUGHPUT_STREAMS
-
 
 def _load_schema_policy_helpers():
     try:
@@ -43,6 +41,11 @@ try:
 except ImportError:  # pragma: no cover
     FUNDING_SOURCES = ("employer", "personal", "free-trial", "vendor-sponsored", "grant", "unspecified")
     RESULT_SOURCES = ("internal", "community", "vendor")
+
+try:
+    from benchbox.core.schemas import MIN_THROUGHPUT_STREAMS
+except ImportError:
+    MIN_THROUGHPUT_STREAMS = 2
 
 
 def _load_bundle_failed_query_count():

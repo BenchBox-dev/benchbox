@@ -1692,6 +1692,15 @@ class TestSubmissionDeterministicGates:
             assert not vr.ok
             assert any("at least 2 streams" in error for error in vr.errors)
 
+        def test_stream_minimum_falls_back_without_schemas_package(self, monkeypatch):
+            import importlib
+            import sys
+
+            monkeypatch.setitem(sys.modules, "benchbox.core.schemas", None)
+            monkeypatch.delitem(sys.modules, "benchbox.validation.bundle")
+            reloaded = importlib.import_module("benchbox.validation.bundle")
+            assert reloaded.MIN_THROUGHPUT_STREAMS == 2
+
         def test_tpcds_short_stream_rejected(self):
             variant_ids = self._tpcds_variant_ids()
             data = self._bundle([1, 2], {1: variant_ids, 2: variant_ids[:-9]}, benchmark="TPCDS")
