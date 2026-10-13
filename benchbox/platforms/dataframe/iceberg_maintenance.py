@@ -428,15 +428,23 @@ class IcebergMaintenanceOperations(BaseDataFrameMaintenanceOperations):
         return cutoff_ms, max(1, min_keep)
 
     @staticmethod
-    def _normalize_file_ref(uri: str) -> str:
-        from urllib.parse import unquote, urlparse
+    def _local_path(location: str) -> Path | None:
+        from urllib.parse import urlparse
+        from urllib.request import url2pathname
 
-        parsed = urlparse(uri)
-        if parsed.scheme == "":
-            return f"path:{Path(uri).resolve()}"
+        parsed = urlparse(location)
+        if len(parsed.scheme) <= 1:
+            return Path(location)
         if parsed.scheme == "file" and parsed.netloc in ("", "localhost"):
-            return f"path:{Path(unquote(parsed.path)).resolve()}"
-        return uri
+            return Path(url2pathname(parsed.path))
+        return None
+
+    @staticmethod
+    def _normalize_file_ref(uri: str) -> str:
+        local = IcebergMaintenanceOperations._local_path(uri)
+        if local is None:
+            return uri
+        return f"path:{local.resolve()}"
 
     def _snapshot_file_refs(self, table: Any, snapshot_ids: set[int]) -> set[str]:
         from pyiceberg.manifest import read_manifest_list
@@ -455,14 +463,8 @@ class IcebergMaintenanceOperations(BaseDataFrameMaintenanceOperations):
 
     @staticmethod
     def _local_table_dir(location: str) -> Path | None:
-        from urllib.parse import unquote, urlparse
-
-        parsed = urlparse(location)
-        if parsed.scheme not in ("", "file"):
-            return None
-        path = unquote(parsed.path) if parsed.scheme == "file" else location
-        directory = Path(path)
-        return directory if directory.is_dir() else None
+        directory = IcebergMaintenanceOperations._local_path(location)
+        return directory if directory is not None and directory.is_dir() else None
 
     def _reclaim_orphan_files(self, table: Any, remaining_ids: set[int]) -> dict[str, Any]:
         table.refresh()
