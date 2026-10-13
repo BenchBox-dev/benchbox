@@ -19310,15 +19310,10 @@
       "title": "Two more tests assume a non-root user, beyond the one already tracked"
     },
     "ruleset-drift-check-home-20261009": {
-      "claim": {
-        "expires_at": "2026-10-14T19:38:00Z",
-        "generation": "f9d63e8d476b4a2a9989ef4702200539",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:513e77a5e9d7684fd6c76434"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Give the ruleset drift check a home before nightly.yml and the release-branch workflows are deleted"
     },
     "ruleset-drift-check-review-rule-coverage": {
