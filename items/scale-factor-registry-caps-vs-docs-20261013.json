@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "Each of SSB, TPC-DI and the read/write/transaction primitives has a recorded decision: relaxed (with generator validation at the new scales) or kept (docs updated).",
+    "tests/unit/core/test_scale_factor_validation.py covers those benchmarks.",
+    "docs/benchmarks/ssb.md and docs/benchmarks/tpc-di.md agree with the registry."
+  ],
+  "context": "Found 2026-10-13 while reviewing why SSB, TPC-DI and primitives were not run at sf100 in the Snowflake trial-exit program.",
+  "description": "## Problem\n`validate_scale_factor` (`benchbox/core/benchmark_registry.py:386-393`, commit 8c1589c4b, #332) rejects any scale not listed in `benchbox/core/benchmark_registry.yaml`. Current lists:\n- TPC-DI and SSB: 0.01, 0.1, 1, 10 (lines 177-181 and 199-203)\n- Read primitives: 0.01, 0.1 (282-284)\n- Write and transaction primitives: 0.01, 0.1, 1 (303-306, 344-347)\n\nThe docs disagree. `docs/benchmarks/ssb.md:500` presents SSB sf100 as large-scale testing, and `docs/benchmarks/tpc-di.md:403-407` lists TPC-DI at 30 and above. `tests/unit/core/test_scale_factor_validation.py` covers only joinorder, TPC-H and ClickBench.\n\nThe lists look like scale menus that became hard limits as a side effect. They blocked SSB, TPC-DI and primitives runs at sf100 on Snowflake.\n\n## Change\nDecide per benchmark. Either relax the cap and validate the generator at the new scales, or keep it and state it in the docs. Pin the decision with tests.",
+  "links": [
+    "benchbox/core/benchmark_registry.yaml",
+    "benchbox/core/benchmark_registry.py",
+    "docs/benchmarks/ssb.md",
+    "docs/benchmarks/tpc-di.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
+      "at": "2026-10-13T13:00:15Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "91b6f858b1eb49168c192953968bc994",
+      "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    }
+  ]
+}

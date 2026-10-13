@@ -19628,6 +19628,13 @@
       "status": "done",
       "title": "Scaffold the results explorer frontend with Vite, TypeScript, and DuckDB-WASM"
     },
+    "scale-factor-registry-caps-vs-docs-20261013": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Decide whether registry scale lists are hard limits, and align code, docs and tests"
+    },
     "scd2-basic-idempotency-and-cleanup-scoping": {
       "claim": null,
       "needs": [
