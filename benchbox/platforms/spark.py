@@ -320,6 +320,16 @@ class SparkAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
                 "hive_enabled": self.enable_hive,
             },
         }
+        tuned_session = getattr(self, "_tuned_session_applied", None) or {}
+        shuffle_live = tuned_session.get("spark.sql.shuffle.partitions")
+        if shuffle_live is not None:
+            try:
+                platform_info["configuration"]["shuffle_partitions"] = int(shuffle_live)
+            except (TypeError, ValueError):
+                platform_info["configuration"]["shuffle_partitions"] = shuffle_live
+        adaptive_live = tuned_session.get("spark.sql.adaptive.enabled")
+        if adaptive_live is not None:
+            platform_info["configuration"]["adaptive_enabled"] = str(adaptive_live).lower() == "true"
 
         if SparkSession:
             try:
@@ -521,6 +531,10 @@ class SparkAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
 
     def configure_for_benchmark(self, connection: Any, benchmark_type: str) -> None:
         self.apply_olap_runtime_conf(connection, benchmark_type, "Spark")
+        if self.tuning_enabled:
+            from benchbox.platforms._spark_helpers import apply_tuned_spark_session_config
+
+            apply_tuned_spark_session_config(self, connection)
 
     def _remove_orphaned_table_location(self, spark: Any, table_name: str) -> None:
         try:

@@ -316,23 +316,6 @@ class SparkLikeAdapterMixin:
         if not platform_config:
             return
 
-        spark = connection
-        platform = self.platform_name
-        ledger = getattr(self, "_applied_tuning_ledger", None)
-        if hasattr(platform_config, "spark") and platform_config.spark:
-            for key, value in platform_config.spark.items():
-                conf_key = key if key.startswith("spark.") else f"spark.{key}"
-                try:
-                    spark.conf.set(conf_key, str(value))
-                    self.logger.debug(f"Applied {platform} config: {conf_key} = {value}")
-                except Exception as exc:
-                    self.logger.warning(f"Failed to apply {platform} config {conf_key}: {exc}")
-                    self._record_spark_conf_ledger(ledger, conf_key, value, applied=False, error=exc)
-                    continue
-                self._record_spark_conf_ledger(ledger, conf_key, value, applied=True)
-
-        self.logger.info(f"{platform} platform optimizations applied")
-
     def apply_olap_runtime_conf(self, connection: Any, benchmark_type: str, platform_label: str) -> None:
         apply_spark_olap_runtime_conf(
             connection,
@@ -360,6 +343,76 @@ class SparkLikeAdapterMixin:
             )
         except Exception:  # pragma: no cover
             pass
+
+
+def apply_tuned_spark_session_config(adapter: Any, connection: Any) -> dict[str, str]:
+    config = (
+        adapter.get_effective_tuning_configuration() if hasattr(adapter, "get_effective_tuning_configuration") else None
+    )
+    spark_map: dict[str, str] = {}
+    if getattr(adapter, "tuning_enabled", False) and config is not None:
+        spark_map = dict(getattr(config.platform_optimizations, "spark", None) or {})
+    if getattr(adapter, "_tuned_session_config_id", None) == id(config) and spark_map:
+        return dict(getattr(adapter, "_tuned_session_applied", {}) or {})
+    adapter._tuned_session_config_id = id(config)
+    adapter._tuned_session_applied = {}
+    if not spark_map:
+        return {}
+    spark = connection
+    conf = spark.conf
+    ledger = getattr(adapter, "_applied_tuning_ledger", None)
+    explicit = _explicit_spark_option_keys(adapter)
+    applied: dict[str, str] = {}
+    for key, value in spark_map.items():
+        conf_key = key if key.startswith("spark.") else f"spark.{key}"
+        text = str(value)
+        if conf_key in explicit and explicit[conf_key].lower() != text.lower():
+            adapter.logger.warning(
+                f"Tuned session config {conf_key}={text} overrides explicit adapter option "
+                f"({explicit[conf_key]}); the tuning file wins"
+            )
+        try:
+            is_modifiable = conf.isModifiable(conf_key) if hasattr(conf, "isModifiable") else True
+        except Exception:
+            is_modifiable = True
+        if not is_modifiable:
+            error = RuntimeError(f"engine refused session key {conf_key} (not modifiable)")
+            adapter.logger.warning(f"Tuned session config {conf_key} was refused by the engine: {error}")
+            SparkLikeAdapterMixin._record_spark_conf_ledger(ledger, conf_key, text, applied=False, error=error)
+            continue
+        try:
+            conf.set(conf_key, text)
+            actual = conf.get(conf_key, None)
+        except Exception as exc:
+            adapter.logger.warning(f"Tuned session config {conf_key} failed to apply: {exc}")
+            SparkLikeAdapterMixin._record_spark_conf_ledger(ledger, conf_key, text, applied=False, error=exc)
+            continue
+        if actual is None or str(actual).lower() != text.lower():
+            error = RuntimeError(f"session key {conf_key} reads back as {actual!r}, expected {text!r}")
+            adapter.logger.warning(f"Tuned session config {conf_key} did not take effect: {error}")
+            SparkLikeAdapterMixin._record_spark_conf_ledger(ledger, conf_key, text, applied=False, error=error)
+            continue
+        SparkLikeAdapterMixin._record_spark_conf_ledger(ledger, conf_key, text, applied=True)
+        applied[conf_key] = text
+    adapter._tuned_session_applied = applied
+    return dict(applied)
+
+
+def _explicit_spark_option_keys(adapter: Any) -> dict[str, str]:
+    explicit: dict[str, str] = {}
+    raw_options = getattr(adapter, "spark_config", None) or {}
+    for key, value in raw_options.items():
+        qualified = key if str(key).startswith("spark.") else f"spark.{key}"
+        explicit[qualified] = str(value)
+    shuffle_partitions = getattr(adapter, "shuffle_partitions", None)
+    if shuffle_partitions is not None:
+        explicit["spark.sql.shuffle.partitions"] = str(shuffle_partitions)
+    adaptive_enabled = getattr(adapter, "adaptive_enabled", None)
+    if adaptive_enabled is not None:
+        adaptive_text = "true" if bool(adaptive_enabled) else "false"
+        for aqe_key in SPARK_AQE_KEYS:
+            explicit[aqe_key] = adaptive_text
+    return explicit
 
 
 def _run_schema_statement(spark: Any, statement: str) -> None:

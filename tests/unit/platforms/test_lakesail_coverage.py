@@ -755,7 +755,7 @@ class TestLakeSailApplyPlatformOptimizations:
 
         adapter.apply_platform_optimizations(mock_config, mock_session)
 
-        mock_session.conf.set.assert_called_with("spark.sql.shuffle.partitions", "400")
+        mock_session.conf.set.assert_not_called()
 
     def test_apply_platform_opts_conf_error_logged(self, mock_pyspark):
         from benchbox.platforms.lakesail import LakeSailAdapter
