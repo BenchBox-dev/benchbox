@@ -76,10 +76,11 @@ def test_explicit_base_must_be_on_origin_develop_history(tmp_path: Path) -> None
         ownership_base(root, "strict", None, feature)
 
 
-def test_explicit_base_is_accepted_when_origin_develop_is_unavailable(tmp_path: Path) -> None:
+def test_explicit_base_is_rejected_when_origin_develop_is_unavailable(tmp_path: Path) -> None:
     root, first = _repo(tmp_path)
 
-    assert ownership_base(root, "strict", None, first) == first
+    with pytest.raises(ValueError, match="needs origin/develop"):
+        ownership_base(root, "strict", None, first)
 
 
 def _policy_with_wheel(root: Path) -> dict:
@@ -127,3 +128,90 @@ def test_staged_validation_rejects_a_missing_exception_consumer_that_the_worktre
     validate_consumers(root, policy)
     with pytest.raises(ValueError, match="exception consumer missing"):
         validate_consumers(root, policy, staged=True)
+
+
+def _wheel_bytes(name: str = "tool", version: str = "2.0") -> bytes:
+    import io
+    import zipfile
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr(
+            f"{name}-{version}.dist-info/METADATA", f"Metadata-Version: 2.1\nName: {name}\nVersion: {version}\n\n"
+        )
+    return buffer.getvalue()
+
+
+def _bump_repo(tmp_path: Path, **overrides: object) -> tuple[Path, dict, dict]:
+    import hashlib
+
+    root, _ = _repo(tmp_path)
+    old = "vendor/tool-1.0-py3-none-any.whl"
+    new = "vendor/tool-2.0-py3-none-any.whl"
+    wheel = overrides.get("wheel", _wheel_bytes())
+    digest = overrides.get("digest", "sha256:" + hashlib.sha256(wheel).hexdigest())
+    binding = overrides.get("binding", '{ path = "tool-2.0-py3-none-any.whl" }')
+    dependency = overrides.get("dependency", "tool[extra]")
+    version = overrides.get("version", "2.0")
+    (root / "vendor").mkdir()
+    (root / "vendor/tool-2.0-py3-none-any.whl").write_bytes(wheel)
+    (root / "vendor/pyproject.toml").write_text(
+        f'[project]\nname = "x"\ndependencies = ["{dependency}"]\n\n[tool.uv.sources]\ntool = {binding}\n',
+        encoding="utf-8",
+    )
+    (root / "vendor/uv.lock").write_text(
+        f'[[package]]\nname = "tool"\nversion = "{version}"\nsource = {binding}\n'
+        f'wheels = [{{ filename = "tool-2.0-py3-none-any.whl", hash = "{digest}" }}]\n',
+        encoding="utf-8",
+    )
+    entry = {"path": new, "owner": "tool", "provenance": "vendor/pyproject.toml"}
+    baseline = {**EMPTY_POLICY, "external": [{**entry, "path": old}]}
+    return root, {**EMPTY_POLICY, "external": [entry]}, baseline
+
+
+def test_a_bound_wheel_bump_is_accepted(tmp_path: Path) -> None:
+    from check_comment_policy import verify_wheel_bumps
+
+    root, policy, baseline = _bump_repo(tmp_path)
+
+    verify_wheel_bumps(root, policy, baseline, staged=False)
+
+
+@pytest.mark.parametrize(
+    "override,message",
+    [
+        ({"digest": "sha256:" + "0" * 64}, "uv.lock does not record this file and hash"),
+        ({"binding": '{ path = "other.whl" }'}, "does not bind tool"),
+        ({"dependency": "unrelated"}, "not a declared dependency"),
+        ({"wheel": _wheel_bytes(name="other")}, "METADATA does not match"),
+        ({"wheel": _wheel_bytes(version="9.9")}, "METADATA does not match"),
+        ({"wheel": b"not a zip"}, "wheel bump is not verified"),
+    ],
+)
+def test_an_unbound_or_mismatched_wheel_bump_is_rejected(tmp_path: Path, override: dict, message: str) -> None:
+    from check_comment_policy import verify_wheel_bumps
+
+    root, policy, baseline = _bump_repo(tmp_path, **override)
+
+    with pytest.raises(ValueError, match=message):
+        verify_wheel_bumps(root, policy, baseline, staged=False)
+
+
+def test_an_unchanged_external_entry_needs_no_bump_verification(tmp_path: Path) -> None:
+    from check_comment_policy import verify_wheel_bumps
+
+    root, policy, _ = _bump_repo(tmp_path)
+
+    verify_wheel_bumps(root, policy, policy, staged=False)
+
+
+def test_staged_bump_verification_reads_the_index(tmp_path: Path) -> None:
+    from check_comment_policy import verify_wheel_bumps
+
+    root, policy, baseline = _bump_repo(tmp_path)
+
+    with pytest.raises(ValueError, match="missing"):
+        verify_wheel_bumps(root, policy, baseline, staged=True)
+
+    _git(root, "add", "vendor")
+    verify_wheel_bumps(root, policy, baseline, staged=True)

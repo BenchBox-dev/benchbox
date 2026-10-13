@@ -2061,6 +2061,7 @@ def ownership_repo(
         ],
         check=True,
     )
+    subprocess.run(["git", "-C", str(tmp_path), "update-ref", "refs/remotes/origin/develop", "HEAD"], check=True)
     base = subprocess.check_output(["git", "-C", str(tmp_path), "rev-parse", "HEAD"], text=True).strip()
     return base, ledger
 
