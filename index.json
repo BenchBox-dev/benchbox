@@ -23967,6 +23967,13 @@
       "status": "done",
       "title": "Ship a ClickHouse tuned template, fix fallback messaging, add SQL `tuning validate`, apply the DataFrame resolution decision"
     },
+    "tuning-template-constraint-headers-overstate-20261013": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Tuned template headers request constraint behaviour the platforms never render (enforce flags, CASCADE, CHECK, UNIQUE, stripped FKs)"
+    },
     "tuning-template-packaging-20260716": {
       "claim": null,
       "needs": [],

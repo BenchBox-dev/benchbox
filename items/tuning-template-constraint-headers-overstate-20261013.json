@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "Each platform's tuned templates request only constraint behaviour the adapter renders, or the unrendered parts are recorded as dropped.",
+    "DuckDB TPC-DS tuned runs can reach applied_verified (test).",
+    "Defaults for unspecified constraint flags are false."
+  ],
+  "context": "Found 2026-10-13 by three adversarial reviews (Snowflake, Databricks, ClickHouse/DuckDB) at origin/develop 77048bfb9.",
+  "description": "## Problem\nThe shared template header requests `enforce_uniqueness: true`, `enforce_referential_integrity: true`, `on_delete_action: CASCADE`, check constraints with `enforce_on_insert`, and unique constraints. Each platform renders something different:\n- **Snowflake.** No CHECK, UNIQUE, CASCADE or RELY is rendered; the flags are read only in `benchbox/cli/dryrun.py:856-862`. PK/FK are informational, and without RELY the optimizer ignores them, so the tuned arm's only effective mechanism is clustering.\n- **Databricks.** PK/FK are informational and RELY is never emitted (`benchbox/core/tuning/capability_registry.py:161`). #2901 disabled UNIQUE/CHECK, but CHECK is supported and enforced on Databricks, so the commit title is wrong for CHECK. `ConstraintConfiguration.from_dict` defaults `enabled` to True (~L559 of interface.py), the trap #2901 fixed for two flags only.\n- **DuckDB TPC-DS.** The template asks for FKs, which `benchbox/platforms/duckdb.py:830` always strips, so every tuned run ends `applied_unverified` with \"foreign_keys — adapter rendered no statement\". It also requests ON DELETE CASCADE, which DuckDB does not support. The SF1 data satisfies the FKs.\n\n## Change\n- Write per-platform template headers that request only what the platform renders, with enforce flags false where enforcement is impossible.\n- Make RELY a deliberate, recorded option on Snowflake and Databricks.\n- Either stop stripping DuckDB TPC-DS FKs or disable them in the template.\n- Record unrendered requests as dropped (coordinate with `tuning-requested-vs-rendered-reconciliation-20261001`).",
+  "links": [
+    "benchbox/core/tuning/interface.py",
+    "benchbox/platforms/duckdb.py",
+    "benchbox/cli/dryrun.py",
+    "examples/tunings"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
+      "at": "2026-10-13T13:13:57Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "37da7399469b4ff5afd58b2125f648df",
+      "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    }
+  ]
+}
