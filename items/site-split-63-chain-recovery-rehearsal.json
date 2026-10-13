@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Rehearsal (target rehearsal): deploy A; make B undeployable; build C with parent B; the parity gate refuses with the recovery instruction; run the documented recovery dispatch; deploy succeeds; run ids recorded",
+    "The same recovery repeated with more than 10 intervening successful Site Inputs runs still works (covers site-split-61)",
+    "Production: a Deploy run on a Trunk-certified bundle at or after core 77048bfb succeeds; all five gates pass; probes 33/33 match; receipt SHA-256 recorded",
+    "Post-deploy content check: GET https://benchbox.dev/blog/2026-09-15-results-explorer-introduction.html contains \"Public submissions require a private salt setting\" and does not contain \"stable salt pseudonymizes\"",
+    "Post-deploy: /sitemap.xml lists no URL containing \"draft\" and /blog/drafts.html still returns 200",
+    "The handoff's known-failure table has a corrected \"Bundle chain broken\" row naming the recovery that worked",
+    "A decision on last-built versus last-deployed parents is recorded with its reason, or re-homed to a named item",
+    "Core issue #2886 and site issue #20 are updated with the resolution and closed"
+  ],
+  "context": "Raised by the 2026-10-13 adversarial review (handoff revision 9, findings 2, 5 and the process-gap blind spot). Evidence: site Deploy runs 38247176462, 38249922555, 38263114999, 38268740690, 38272164975, 38282045923, 38288287683, 38345067466, 38392445519 (all failure, all on site main f8fc668e); production last deployment 7013089615 at site f8fc668e, core c660e615. This item also satisfies the production evidence that item site-split-40 needs once the vehicle question (site-split-64) is answered.",
+  "description": "Items site-split-23 and site-split-30 are done, but the parent-chain recovery path was never exercised: rehearsal covered rollback, forward and wrong-digest only. Nine consecutive production deploys have failed since 2026-10-12 12:08Z (the first on the Explorer contract mismatch, the other eight on the parity gate because the bundle's parent was never deployed). Producer parents chain by \"last built\", not \"last deployed\", so one undeployable bundle breaks every later automatic bundle until a manual recovery.\n\nRehearse the recovery on the rehearsal target, then recover production. Also decide and record whether the parent should be the last deployed generation (read from the site receipt) rather than the last built bundle, or that manual recovery is the intended mechanism.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:812b6e01fb0a3c7a08e17bfb",
+      "at": "2026-10-13T13:50:46Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "8ccf5534c59746ee8e704f6899da6932",
+      "session_id": "092ba024912949d88c4bc8f8c819cdba"
+    }
+  ]
+}
