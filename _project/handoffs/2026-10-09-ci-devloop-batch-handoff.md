@@ -975,3 +975,41 @@ explicit base wiring.
    onto exception-dependent heads; never weaken a required check to satisfy
    an acceptance letter — record the deviation and its equivalence proof
    on the item instead.
+
+## 12. Checkpoint (2026-10-13, revision 6)
+
+Live read on 2026-10-13 at `origin/develop` `2bdcb75fd` (#2918; this
+worktree at `281ef1a0d`). Tracker: **10 done, 3 active, remainder open
+or blocked** — up from 7 done at revision 5. The three merged-but-open
+items from section 11 are now finished with merge evidence and need no
+new code:
+
+- `heavy-tier-merge-group-dead-code-20261009` — done (#2905, merge
+  `cfbcae26d`).
+- `comment-policy-pinned-notice-drift-guard` — done (#2829, merge
+  `65b1443e`).
+- `nightly-windows-pr-visual-approval-20261009` — done (#2835, merge
+  `c660e615`).
+
+Active claims (3, held by other workers; do not take over):
+
+- `comment-policy-strict-scope-mismatch` — PR #2915 open at
+  `6e1e4342e`. All non-oracle checks pass; `oracle-review` fails and the
+  latest `oracle-verdict` (muse, head `6e1e4342e`, 2026-10-12) is SHIP
+  WITH FIXES with carried High D6 (pinned-wheel skip bypasses the
+  base-trusted ownership manifest) plus new Critical D8 (wheel-bump
+  ratchet exemption permits unverified replacement bytes). D2/D3 are
+  verified fixed. The claiming worker must fix D6/D8 before merge; the
+  catch-22 item still waits on #2915 green.
+- `ci-docker-hub-unauthenticated-pulls-20261009` — active (other
+  worker); phase-1 verification dispatch still batches behind it.
+- `oracle-absence-classification-lows-20261008` — PR #2911 open,
+  `oracle-review` failing.
+
+Next action for a new session: re-read the three active items and PRs
+#2915/#2911 before acting; then follow the section 11 runbook in order
+(catch-22 after #2915 merges, combined `nightly-v2` dispatch with
+`run_drift=true` after the Docker/perf fixes merge). Calendar gates
+(canary 05/06, oracle first-line cleanup and merge ceremony on
+2026-10-23, dlv2-84 +30 days) and owner gates (`pypi` approval, Exasol
+priority, site-split/tuning programmes) are unchanged.
