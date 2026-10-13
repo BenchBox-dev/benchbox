@@ -20442,6 +20442,15 @@
       "status": "open",
       "title": "Decide whether to tighten the site bundle's bijection and parity checks after cutover"
     },
+    "site-split-60-explorer-contract-ordering": {
+      "claim": null,
+      "needs": [
+        "site-split-65-replay-completeness-and-fidelity"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Let the site take a newer Explorer read-model: correct the merge order and detect contract drift before deploys fail"
+    },
     "site-split-61-parent-lookup-by-sha": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Local build against the Trunk-certified bundle from core run 38344752905 (core 77048bfb) passes in the site repo: npm run bundle:fetch, bundle:verify, build, check and test",
+    "Unit test (explorer build-contract guard): a bundle contract with read_model_version = pin + 1 fails with the alignment hint; a contract equal to the pin passes; the newer-snapshot policy stays as defined in explorer-build-contract.mjs",
+    "New scripts/*.test.mjs (run by npm test): the drift check compares EXPECTED_READ_MODEL_VERSION with the newest certified bundle's contract; fixtures: equal passes; bundle newer fails naming both numbers",
+    "The drift check runs in the nightly workflow and reports through the existing failure-issue path (no new alert channel)",
+    "The batch handoff no longer says to wait for a deploy before merging the contract refresh"
+  ],
+  "context": "Raised by the 2026-10-13 adversarial review (handoff revision 9, finding 1). Evidence: site `git show origin/main:explorer/scripts/explorer-build-contract.mjs` line 5 = 14; origin/fix/site-replay-pass11 = 15; core origin/develop = 16; site Deploy run 38247176462 log at 12:09:25Z. After this item the remaining blockers to production deploy are items 61 and 62; item 63 covers the end-to-end recovery.",
+  "description": "The site build refuses a bundle whose explorer/contract.json read_model_version differs from EXPECTED_READ_MODEL_VERSION (site main 14, PR #24 15, core develop 16; explorer/scripts/explorer-build-contract.mjs:5 in the site, results-explorer/scripts/explorer-build-contract.mjs:6 in core). The first failed deploy, run 38247176462 at 2026-10-12 12:09Z, stopped on exactly this (\"expected 14, got 15 ... update the Explorer for the new contract before taking this bundle\").\n\nThe batch record said not to merge #24 until a v15+ bundle deploys. That cannot happen: the Explorer must change first. Merging is safe because a failed deploy stops before publish. Work: merge the refreshed replay from item 65, then add a drift check so the next contract bump is caught in the site repo before a deploy fails.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:812b6e01fb0a3c7a08e17bfb",
+      "at": "2026-10-13T13:50:29Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "9c8144d7c6a842f7928cb1e84a4d0003",
+      "session_id": "092ba024912949d88c4bc8f8c819cdba"
+    }
+  ]
+}
