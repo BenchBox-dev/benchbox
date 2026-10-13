@@ -4,7 +4,7 @@
     "Test: requested sort + index corroborated + executed rewrite → applied_verified, and the receipt shows the attested entry.",
     "Explorer drill-down renders the new verdict class (vitest)."
   ],
-  "context": "Source: tuning remediation plan rev2 (2026-10-01; adversarial re-review of develop d39166ea plus independent plan review). Plan task P1.6 (finding A3; plan review F2).",
+  "context": "Source: tuning remediation plan rev2 (2026-10-01; adversarial re-review of develop d39166ea plus independent plan review). Plan task P1.6 (finding A3; plan review F2).\n\n2026-10-13 review note (origin/develop 77048bfb9): still true. DuckDB sorting creates a multi-column index at DDL time, before the load, and reconciliation.py counts CREATE INDEX as sort evidence, so applied_verified confirms the index, not the row order. Rows are reordered by temp table + DELETE + INSERT (store_sales came out ordered by ss_item_sk at SF0.01). One noisy offline test showed the pre-load index slowed the store_sales reorder about 1.4-3x with no range-query gain. capability_registry.py ~L66-71 still describes CREATE OR REPLACE CTAS, which no longer runs.",
   "description": "## Problem\nThe DuckDB verified evidence is the ART index, not the physical order. A successful CTAS or atomic sort rewrite is never recorded (`benchbox/platforms/base/sorted_ingestion.py:211-320`).\n\n## Change (per gate D-1; option A expected)\n- Record a successful rewrite in `_execute_ctas_sort` as an executed `post_load` statement with `mechanism=\"sorted_ingestion\"`.\n- Classify it per the decision (e.g. a non-blocking `attested` verdict), surfaced in the receipt and the Explorer drill-down.\n- \"Sort requested but no executed rewrite\" is enforced by the reconciliation item as a dropped intent. `corroborate()` stays configuration-free (plan review F2).\n- MotherDuck: wire `DuckDBTuningIntrospector` only if D-1 permits attested-only verification. MotherDuck creates no index.\n\n## Guardrails (must preserve)\n- `attested` never counts as corroboration of a catalog-verifiable intent.\n- Skipped or failed sorts still block.\n\n## Process guardrails\n- One PR per item against `develop`, via the AGENTS.md worktree flow (`make worktree-claim BRANCH=...`, `make agent-write-preflight`).\n- Verification ladder: `uv run -- python -m pytest -m fast -q`, `uv run -- ruff check .`, `uv run -- ruff format --check .` and `uv run -- ty check`.\n- Then `make pr-preflight` and `make pr-open`.\n- Stage explicit paths; never `git add -A`.\n- No live cloud runs without explicit user approval stating the command, maximum runtime, log path and stop condition.\n- Re-read every file:line anchor before editing. Anchors are from develop d39166ea.\n- This item touches paths listed in the soundness manifest by `tuning-trust-paths-soundness-manifest-20261001`. The PR needs an external `Soundness review:` section (AGENTS.md) and must not auto-merge.",
   "links": [
     "benchbox/platforms/base/sorted_ingestion.py",
@@ -19,6 +19,14 @@
       "op": "create",
       "op_id": "ebabe24f8e6d4a6dbbd485a28c3cde73",
       "session_id": "953b286e7ca64e218aede0ba11665923"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
+      "at": "2026-10-13T13:15:22Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "bc62657a0f6d4311a5b61cb29aa9253f",
+      "session_id": "3b13441e52334ef899d57ca2e329a7f1"
     }
   ]
 }
