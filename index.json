@@ -4554,10 +4554,10 @@
     },
     "comment-policy-strict-scope-mismatch": {
       "claim": {
-        "expires_at": "2026-10-13T14:13:54Z",
-        "generation": "b059966b213342dca50f25225dc37c21",
+        "expires_at": "2026-10-14T19:40:43Z",
+        "generation": "5fae69c47e23473299eaf96cf274c952",
         "renewals": 0,
-        "worker": "mcp:pi:joe@joe-mac-mini.local:91b2532afc70e4866dac844a"
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:513e77a5e9d7684fd6c76434"
       },
       "needs": [],
       "priority": "medium",
