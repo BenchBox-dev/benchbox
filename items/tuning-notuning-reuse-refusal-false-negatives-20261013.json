@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Missing-table detection uses SQLSTATE/errno; column-not-found and authorization errors are not treated as absence (unit tests).",
+    "has_tuned_run_marker fails closed on errors.",
+    "save_tunings preserves the run-kind marker row."
+  ],
+  "context": "Found 2026-10-13 by an adversarial review of tuning changes at origin/develop 77048bfb9.",
+  "description": "## Problem\n- **Errors misread as \"table missing\".** `_is_missing_metadata_table_error` (`benchbox/core/tuning/metadata.py` ~L170-195) treats any message that names the table and contains a generic phrase (\"not found\", \"does not exist\") as a missing table. That includes a column-not-found error and Snowflake's \"does not exist or not authorized\" (both reproduced offline). The misread clears `last_load_error`, so a notuning run can reuse a tuned database.\n- **Marker probe fails open.** `has_tuned_run_marker` swallows every error (~L336).\n- **Saving deletes the marker.** `save_tunings` clears the whole table, marker row included (~L550, L879). If both the insert and the marker rewrite then fail, the database is tuned with no marker.\n\n## Change\n- Classify missing-table errors by SQLSTATE or errno only.\n- Make the marker probe fail closed.\n- Delete only non-marker rows in `save_tunings`.",
+  "links": [
+    "benchbox/core/tuning/metadata.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
+      "at": "2026-10-13T13:13:30Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "338faa2962784a9581f732e669ddab02",
+      "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    }
+  ]
+}

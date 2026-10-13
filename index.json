@@ -23693,6 +23693,13 @@
       "status": "done",
       "title": "Allow notuning database reuse (one-line gate in _validate_database_tunings)"
     },
+    "tuning-notuning-reuse-refusal-false-negatives-20261013": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Notuning reuse refusal can miss tuned databases: error misclassification, swallowed probe errors, marker deleted by save"
+    },
     "tuning-partition-order-rendered-contract": {
       "claim": null,
       "needs": [
