@@ -6,6 +6,7 @@ import os
 import sys
 import threading
 import time
+import types
 from pathlib import Path
 
 import pytest
@@ -238,3 +239,48 @@ def test_wait_on_fd_windows_propagates_non_contention_error(
         os.close(fd)
     assert error.value.errno == failure_errno
     assert calls == 1
+
+
+class _OffsetRecordingMsvcrt(types.ModuleType):
+    LK_NBLCK = 2
+    LK_UNLCK = 0
+
+    def __init__(self) -> None:
+        super().__init__("msvcrt")
+        self.calls: list[tuple[int, int, int]] = []
+
+    def locking(self, fd: int, mode: int, nbytes: int) -> None:
+        self.calls.append((mode, os.lseek(fd, 0, os.SEEK_CUR), nbytes))
+
+
+@pytest.fixture
+def offset_msvcrt(monkeypatch: pytest.MonkeyPatch) -> _OffsetRecordingMsvcrt:
+    module = _OffsetRecordingMsvcrt()
+    monkeypatch.setitem(sys.modules, "msvcrt", module)
+    monkeypatch.setattr(lv.sys, "platform", "win32")
+    return module
+
+
+def test_the_locked_byte_lies_past_the_holder_payload(tmp_path: Path, offset_msvcrt: _OffsetRecordingMsvcrt) -> None:
+    lock_path = tmp_path / "test.lock"
+    fd = lv.wait_for_lock(lock_path, 0)
+    lv.write_holder(fd, lock_path, phase="test")
+    lv._close_lock(fd)
+
+    assert [(mode, offset) for mode, offset, _ in offset_msvcrt.calls] == [
+        (offset_msvcrt.LK_NBLCK, lv.LOCK_OFFSET),
+        (offset_msvcrt.LK_UNLCK, lv.LOCK_OFFSET),
+    ]
+    assert len(lock_path.read_bytes()) < lv.LOCK_OFFSET
+    assert lv.read_holder(lock_path).startswith(f"pid:{os.getpid()} ")
+
+
+def test_clearing_an_inactive_lock_probes_the_same_byte(tmp_path: Path, offset_msvcrt: _OffsetRecordingMsvcrt) -> None:
+    lock_path = tmp_path / "test.lock"
+
+    assert lv.clear_inactive_lock(lock_path) == 0
+
+    assert [(mode, offset) for mode, offset, _ in offset_msvcrt.calls] == [
+        (offset_msvcrt.LK_NBLCK, lv.LOCK_OFFSET),
+        (offset_msvcrt.LK_UNLCK, lv.LOCK_OFFSET),
+    ]

@@ -169,7 +169,7 @@ def test_no_tuning_builder_derives_a_table_identifier_by_casing_the_logical_name
     offenders = [
         f"{path.relative_to(PLATFORMS_ROOT)}:{number}"
         for path in sorted(PLATFORMS_ROOT.rglob("*.py"))
-        for number, line in enumerate(path.read_text().splitlines(), start=1)
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1)
         if re.search(r"table_tuning\.table_name\.(upper|lower)\(\)", line)
     ]
 

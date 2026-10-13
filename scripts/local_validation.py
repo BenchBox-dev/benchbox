@@ -11,6 +11,11 @@ from pathlib import Path
 
 LOCK_POLL_SECONDS = 0.25
 WAIT_PROGRESS_SECONDS = 5.0
+LOCK_OFFSET = 1 << 30
+
+
+def seek_lock_byte(fd: int) -> None:
+    os.lseek(fd, LOCK_OFFSET, os.SEEK_SET)
 
 
 def read_holder(lock_path: Path) -> str:
@@ -39,7 +44,7 @@ def _close_lock(fd: int) -> None:
     if sys.platform == "win32":
         try:
             try:
-                os.lseek(fd, 0, os.SEEK_SET)
+                seek_lock_byte(fd)
             except OSError:
                 pass
             import msvcrt
@@ -66,7 +71,7 @@ def wait_on_fd(fd: int, lock_path: Path, timeout_seconds: float) -> None:
         while True:
             try:
                 try:
-                    os.lseek(fd, 0, os.SEEK_SET)
+                    seek_lock_byte(fd)
                 except OSError:
                     pass
                 msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
@@ -139,6 +144,7 @@ def clear_inactive_lock(lock_path: Path) -> int:
             if sys.platform == "win32":
                 import msvcrt
 
+                seek_lock_byte(fd)
                 msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
             else:
                 import fcntl

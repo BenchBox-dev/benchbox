@@ -175,6 +175,10 @@ EOF
   fi
 
   hook_interpreter=$(sed -n 's/^INSTALL_PYTHON=//p' "$hook_path" | head -n 1)
+  case "$hook_interpreter" in
+    \'*\') hook_interpreter=${hook_interpreter#\'}; hook_interpreter=${hook_interpreter%\'} ;;
+    \"*\") hook_interpreter=${hook_interpreter#\"}; hook_interpreter=${hook_interpreter%\"} ;;
+  esac
   if [ -n "$hook_interpreter" ] && [ ! -x "$hook_interpreter" ]; then
     cat >&2 <<EOF
 Refusing BenchBox write preflight: the shared $hook_name hook is not usable.

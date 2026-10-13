@@ -242,7 +242,7 @@ def test_passes_through_a_failing_merge() -> None:
 
 
 def test_makefile_exposes_pr_arm_through_the_helper_and_declares_it_phony() -> None:
-    makefile = (ROOT / "Makefile").read_text()
+    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
     assert "\npr-arm:\n" in makefile
     assert "scripts/pr_arm.py" in makefile
     assert ".PHONY: pr-arm" in makefile.splitlines()
@@ -250,7 +250,10 @@ def test_makefile_exposes_pr_arm_through_the_helper_and_declares_it_phony() -> N
 
 def _make_pr_arm(tmp_path: Path, *assignments: str) -> tuple[list[str], dict[str, str]]:
     shim = tmp_path / "uv"
-    shim.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > "$RECORD/argv"\nenv | grep "^PR_ARM_" | sort > "$RECORD/env"\n')
+    shim.write_text(
+        '#!/bin/sh\nprintf "%s\\n" "$@" > "$RECORD/argv"\nenv | grep "^PR_ARM_" | sort > "$RECORD/env"\n',
+        encoding="utf-8",
+    )
     shim.chmod(0o755)
     env = {k: v for k, v in os.environ.items() if k not in {"PR", "HEAD", "REPO"} and not k.startswith("PR_ARM_")}
     env.update({"PATH": f"{tmp_path}{os.pathsep}{env['PATH']}", "RECORD": str(tmp_path)})
@@ -264,8 +267,8 @@ def _make_pr_arm(tmp_path: Path, *assignments: str) -> tuple[list[str], dict[str
         check=False,
     )
     assert result.returncode == 0, result.stderr
-    argv = (tmp_path / "argv").read_text().splitlines()
-    pairs = [line.split("=", 1) for line in (tmp_path / "env").read_text().splitlines()]
+    argv = (tmp_path / "argv").read_text(encoding="utf-8").splitlines()
+    pairs = [line.split("=", 1) for line in (tmp_path / "env").read_text(encoding="utf-8").splitlines()]
     return argv, dict(pairs)
 
 
@@ -305,7 +308,7 @@ def test_the_make_wrapper_does_not_run_shell_metacharacters_in_a_value(tmp_path:
 
 def _make_other_target(tmp_path: Path, target: str, *assignments: str) -> subprocess.CompletedProcess[str]:
     shim = tmp_path / "uv"
-    shim.write_text("#!/bin/sh\nexit 0\n")
+    shim.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     shim.chmod(0o755)
     env = {k: v for k, v in os.environ.items() if k not in {"PR", "HEAD", "REPO"} and not k.startswith("PR_ARM_")}
     env["PATH"] = f"{tmp_path}{os.pathsep}{env['PATH']}"
