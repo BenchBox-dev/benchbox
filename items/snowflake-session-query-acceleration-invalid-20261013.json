@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Snowflake OLAP runs issue no ALTER SESSION statement for QUERY_ACCELERATION_MAX_SCALE_FACTOR.",
+    "A unit test pins the session statement list.",
+    "Any warehouse-level query-acceleration setting is applied only when modify_warehouse_settings is enabled."
+  ],
+  "context": "Found 2026-10-13 in the local bundle tpch_sf1_snowflake_sql_20261012_172155_3067b960 (statement 4 of 7, status failed); the same failed statement appears in every 2026-10-12 Snowflake bundle.",
+  "description": "## Problem\nFor OLAP, TPC-H and TPC-DS runs, `configure_for_benchmark` issues `ALTER SESSION SET QUERY_ACCELERATION_MAX_SCALE_FACTOR = 8` (`benchbox/platforms/snowflake.py:1046`, present since the initial release). That is a warehouse property, not a session parameter. Snowflake rejects it with `001006 (22023): SQL compilation error: invalid parameter 'QUERY_ACCELERATION_MAX_SCALE_FACTOR'`.\n\nEvery Snowflake bundle from 2026-10-12 records it as a failed session statement in `platform.tuning.applied.statements`. That adds noise to the applied-tuning ledger, and readers may mistake it for a tuning failure.\n\n## Change\n- Remove the statement from the session settings.\n- If query acceleration should be configured, do it only under `modify_warehouse_settings` as `ALTER WAREHOUSE ... SET QUERY_ACCELERATION_MAX_SCALE_FACTOR`, which is a warehouse change gated by that flag.\n- Update or add a unit test asserting the session statements.",
+  "links": [
+    "benchbox/platforms/snowflake.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
+      "at": "2026-10-13T12:59:46Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "069a9010211440da80d8823346571b84",
+      "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    }
+  ]
+}

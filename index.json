@@ -20549,6 +20549,13 @@
       "status": "done",
       "title": "Snowflake clustering: dead pre-ALTER comparison (LINEAR vs bare parens) re-fires ALTER+RESUME RECLUSTER on every reuse; introspector schema filter is case-sensitive raw interpolation"
     },
+    "snowflake-session-query-acceleration-invalid-20261013": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Snowflake: stop issuing ALTER SESSION SET QUERY_ACCELERATION_MAX_SCALE_FACTOR, which fails on every OLAP run"
+    },
     "snowflake-shared-database-recreate-drops-shared-tables-20261013": {
       "claim": null,
       "needs": [],
