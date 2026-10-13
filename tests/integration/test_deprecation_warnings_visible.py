@@ -52,6 +52,17 @@ def test_compute_alias_shows_one_warning(tmp_path: Path) -> None:
     assert "'compute_resource'" in lines[0]
 
 
+def test_athena_spark_engine_version_alias_shows_one_warning(tmp_path: Path) -> None:
+    lines = _dry_run(
+        tmp_path, "--platform", "athena-spark", "--platform-option", "engine_version=PySpark engine version 3"
+    )
+
+    assert len(lines) == 1, lines
+    assert "Platform option 'engine_version' for 'athena-spark'" in lines[0]
+    assert "BenchBox 0.6.0" in lines[0]
+    assert "'runtime_version'" in lines[0]
+
+
 def test_clickhouse_mode_alias_names_only_the_supplied_key(tmp_path: Path) -> None:
     lines = _dry_run(tmp_path, "--platform", "clickhouse", "--platform-option", "mode=local")
 
