@@ -1,0 +1,2637 @@
+{
+ "artifact": "gate1-rerun-matrix",
+ "generated_at": "20261012_191833",
+ "source_branch": "feat/snowflake-trial-exit",
+ "gate0_basis": "CONDITIONAL GO 2026-10-12: X-Small pinned, stop-loss cumulative-100-credits, reserve 25",
+ "counts": {
+  "result_files_on_disk": 50,
+  "inventory_snowflake_rows": 50,
+  "reproducible_exact": 50,
+  "non_comparable": 0,
+  "tuning_source_none": 0,
+  "missing_from_inventory": 0,
+  "sha_mismatch": 0
+ },
+ "reconciliation_55_vs_50": {
+  "files_not_in_inventory": [],
+  "tuning_source_none_files": [],
+  "sha_mismatches": [],
+  "note": "On-disk: 55 files match *snowflake*.json excl manifests = 50 result bundles + 5 .override.json comparison-rule sidecars (scale-invariant rules, not result cells; correctly outside the inventory). All 50 result bundles ARE inventoried, sha256-matching, tuning_source=baseline. No file in the current tree carries tuning_source None; the handoff's '5 carry tuning_source None' note does not reproduce against this tree and is superseded by this measurement.",
+  "override_sidecars": [
+   "clickbench_sf01_snowflake_sql_20260920_024607_616ff980.override.json",
+   "clickbench_sf10_snowflake_sql_20260919_213657_c9c32b6f.override.json",
+   "tpcds_sf01_snowflake_sql_20261003_140200_f5fd99c7.override.json",
+   "tpcds_sf10_snowflake_sql_20261003_143203_b8820a1d.override.json",
+   "tpch_sf10_snowflake_sql_20261003_114454_2454b319.override.json"
+  ]
+ },
+ "tier3_noncomparable": [],
+ "cells": [
+  {
+   "file": "amplab_sf01_snowflake_sql_20260920_000319_c0a92e84.json",
+   "sha256": "04408d005074d5393f8bccb98be05341402db8f1f7d507e594ca2302c1fab8f0",
+   "benchmark": "amplab",
+   "scale_factor": 0.1,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 3,
+   "run_iterations": 2,
+   "query_streams_distinct": [
+    0,
+    1,
+    2
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2
+   ],
+   "query_count": 24,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": null,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-09-20T00:03:19.022108",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "no cache_control receipt in bundle (older schema); rerun MUST still run cache-disabled per gate0 discipline",
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "legacy"
+  },
+  {
+   "file": "amplab_sf1_snowflake_sql_20260920_000911_e1dbbcf8.json",
+   "sha256": "49b9b5847a62be690c6bc104234389e74c8b315079ce30c66130c79b5eb95662",
+   "benchmark": "amplab",
+   "scale_factor": 1.0,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 3,
+   "run_iterations": 2,
+   "query_streams_distinct": [
+    0,
+    1,
+    2
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2
+   ],
+   "query_count": 24,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": null,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-09-20T00:09:11.079573",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "no cache_control receipt in bundle (older schema); rerun MUST still run cache-disabled per gate0 discipline",
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "legacy"
+  },
+  {
+   "file": "clickbench_sf01_snowflake_sql_20260920_024607_616ff980.json",
+   "sha256": "60639402194c2d27526612dd8d01ca35193780f742c66d810f7dbdafecfba2fa",
+   "benchmark": "clickbench",
+   "scale_factor": 0.1,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 3,
+   "run_iterations": 2,
+   "query_streams_distinct": [
+    0,
+    1,
+    2
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2
+   ],
+   "query_count": 129,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": null,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-09-20T02:46:07.212109",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "no cache_control receipt in bundle (older schema); rerun MUST still run cache-disabled per gate0 discipline",
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "legacy"
+  },
+  {
+   "file": "clickbench_sf10_snowflake_sql_20260919_213657_c9c32b6f.json",
+   "sha256": "d63b8cac5cb4b12afad4512dba6eccb994c1959157b2e698ae44d06c1826fa69",
+   "benchmark": "clickbench",
+   "scale_factor": 10.0,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 3,
+   "run_iterations": 2,
+   "query_streams_distinct": [
+    0,
+    1,
+    2
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2
+   ],
+   "query_count": 129,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": null,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-09-19T21:36:57.334223",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "no cache_control receipt in bundle (older schema); rerun MUST still run cache-disabled per gate0 discipline",
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "legacy"
+  },
+  {
+   "file": "clickbench_sf1_snowflake_sql_20260920_025738_7ac21810.json",
+   "sha256": "05fc08ce99f436f2ca261a70aad6680582f2664aa2ee67913c673127ce0a3e88",
+   "benchmark": "clickbench",
+   "scale_factor": 1.0,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 3,
+   "run_iterations": 2,
+   "query_streams_distinct": [
+    0,
+    1,
+    2
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2
+   ],
+   "query_count": 129,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": null,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-09-20T02:57:38.220837",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "no cache_control receipt in bundle (older schema); rerun MUST still run cache-disabled per gate0 discipline",
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "legacy"
+  },
+  {
+   "file": "coffeeshop_sf01_snowflake_sql_20260919_220303_a0040982.json",
+   "sha256": "4a2d273914a53da88c8b90935ee5739efb9d5bb14e076ec15030621d3849864a",
+   "benchmark": "coffeeshop",
+   "scale_factor": 0.1,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 3,
+   "run_iterations": 2,
+   "query_streams_distinct": [
+    0,
+    1,
+    2
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2
+   ],
+   "query_count": 33,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": null,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-09-19T22:03:03.665183",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "no cache_control receipt in bundle (older schema); rerun MUST still run cache-disabled per gate0 discipline",
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "coffeeshop_sf1_snowflake_sql_20260919_221140_a33dc417.json",
+   "sha256": "685c4ac4e4d2575950b3a74e61b3ee3cd2f28680fd129b0253418f1b007ffefb",
+   "benchmark": "coffeeshop",
+   "scale_factor": 1.0,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 3,
+   "run_iterations": 2,
+   "query_streams_distinct": [
+    0,
+    1,
+    2
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2
+   ],
+   "query_count": 33,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": null,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-09-19T22:11:39.989596",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "no cache_control receipt in bundle (older schema); rerun MUST still run cache-disabled per gate0 discipline",
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "datavault_sf01_snowflake_sql_20260926_082823_c709896c.json",
+   "sha256": "e7eb6da617adc220522f895a1565b44749f17744d20b0da9460a1d99d731a3e2",
+   "benchmark": "datavault",
+   "scale_factor": 0.1,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 88,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-09-26T08:28:23.587327",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "datavault_sf10_snowflake_sql_20260930_180120_db643832.json",
+   "sha256": "d4918143d89697aa28ef2121557d4d2b247198abf88122ffb62f74e509b53cf4",
+   "benchmark": "datavault",
+   "scale_factor": 10.0,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 88,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-09-30T18:01:20.026381",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "datavault_sf1_snowflake_sql_20260925_224900_77db76a8.json",
+   "sha256": "472f9f847df348bf31d0f1dd9f80fe2af0811e844b3c943f196388a710cb8acf",
+   "benchmark": "datavault",
+   "scale_factor": 1.0,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 88,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-09-25T22:48:59.996214",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "flightdata_sf01_snowflake_sql_20261001_102703_bb18d2c8.json",
+   "sha256": "462cc74227d010ebfb66e34c7a5cc2211f883fb89f188393e2c9a474eb25e327",
+   "benchmark": "flightdata",
+   "scale_factor": 0.1,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 80,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-10-01T10:27:02.852291",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "flightdata_sf10_snowflake_sql_20261001_113621_e22fa5a3.json",
+   "sha256": "2cc3449aedf77ce4a204254902333fe3500f682eea2a6d7d029a272cda30e0fb",
+   "benchmark": "flightdata",
+   "scale_factor": 10.0,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 80,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-10-01T11:36:21.083296",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "flightdata_sf1_snowflake_sql_20261001_111501_3a83168a.json",
+   "sha256": "6bc382ba24ddc1a169d0a853f22175a3c79e0434bd74f953cb18ca77fdd19f8d",
+   "benchmark": "flightdata",
+   "scale_factor": 1.0,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 80,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-10-01T11:15:01.155381",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "h2odb_sf01_snowflake_sql_20260919_222222_58b4e7b0.json",
+   "sha256": "ea7edab28bf856f38d70a3241c5310ef04206d188fa9ee702cc1e6d8d7c42177",
+   "benchmark": "h2odb",
+   "scale_factor": 0.1,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 3,
+   "run_iterations": 2,
+   "query_streams_distinct": [
+    0,
+    1,
+    2
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2
+   ],
+   "query_count": 30,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": null,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-09-19T22:22:22.121248",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "no cache_control receipt in bundle (older schema); rerun MUST still run cache-disabled per gate0 discipline",
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "legacy"
+  },
+  {
+   "file": "h2odb_sf1_snowflake_sql_20260919_223457_01856170.json",
+   "sha256": "96a967a3759135e48ba88fed88471ca3cd2257d55b1adad693c7cfc2e01920b0",
+   "benchmark": "h2odb",
+   "scale_factor": 1.0,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 3,
+   "run_iterations": 2,
+   "query_streams_distinct": [
+    0,
+    1,
+    2
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2
+   ],
+   "query_count": 30,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": null,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-09-19T22:34:57.022220",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "no cache_control receipt in bundle (older schema); rerun MUST still run cache-disabled per gate0 discipline",
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "legacy"
+  },
+  {
+   "file": "joinorder_sf1_snowflake_sql_20260920_012237_b41d3b54.json",
+   "sha256": "a17b086604649af3c0cd0b1a4a7c4d43887177596a3d56275fc2a9d2ace1bebb",
+   "benchmark": "joinorder",
+   "scale_factor": 1.0,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 3,
+   "run_iterations": 2,
+   "query_streams_distinct": [
+    0,
+    1,
+    2
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2
+   ],
+   "query_count": 339,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": null,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-09-20T01:22:37.445258",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "no cache_control receipt in bundle (older schema); rerun MUST still run cache-disabled per gate0 discipline",
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "legacy"
+  },
+  {
+   "file": "metadata_primitives_sf1_snowflake_sql_20261001_111119_1ee8b07d.json",
+   "sha256": "8c19e0c98fb3653f53e055a887c456b9395e29117583558c40d4c6c637b25dc4",
+   "benchmark": "metadata_primitives",
+   "scale_factor": 1.0,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "NOT_RUN",
+    "data_loading": "SKIPPED",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 240,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-10-01T11:11:19.096428",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "nyctaxi_sf01_snowflake_sql_20261001_101251_06190f1d.json",
+   "sha256": "1114ab7d410d47418d34c38eb998659b221dd4418f1102659e1e4c8294c31c70",
+   "benchmark": "nyctaxi",
+   "scale_factor": 0.1,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 100,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-10-01T10:12:50.106201",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "nyctaxi_sf10_snowflake_sql_20261001_102124_4c662b94.json",
+   "sha256": "6a44b05019663363e3960a8f5f61ca9f195a5f76e9256d4d4269bc6a1d997143",
+   "benchmark": "nyctaxi",
+   "scale_factor": 10.0,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 100,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-10-01T10:21:24.241370",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "nyctaxi_sf1_snowflake_sql_20260925_092203_0cd1a463.json",
+   "sha256": "f9b3d2c11adda623e5a12e4d2ca0e4b4884570260205a6fe71b42ec36d8444aa",
+   "benchmark": "nyctaxi",
+   "scale_factor": 1.0,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 100,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-09-25T09:22:03.595460",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "read_primitives_sf001_snowflake_sql_20261001_103832_16df8896.json",
+   "sha256": "aa2194b5036763273d63b29e352780add83eb30bacc2943b340f5581be1cb350",
+   "benchmark": "read_primitives",
+   "scale_factor": 0.01,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 592,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-10-01T10:38:32.753285",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "read_primitives_sf01_snowflake_sql_20261001_105057_79bd90a5.json",
+   "sha256": "3512a43789ee8952c50d633e0afc17d671a0fce93e729f2714b360aee5f00d10",
+   "benchmark": "read_primitives",
+   "scale_factor": 0.1,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 592,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-10-01T10:50:57.592311",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "ssb_sf01_snowflake_sql_20260919_224858_fb7ff357.json",
+   "sha256": "bbd567397a9037cf93d67502b27b898b0325f7668ab058b89480d752bac8fa1e",
+   "benchmark": "ssb",
+   "scale_factor": 0.1,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 3,
+   "run_iterations": 2,
+   "query_streams_distinct": [
+    0,
+    1,
+    2
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2
+   ],
+   "query_count": 39,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": null,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-09-19T22:48:58.129622",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "no cache_control receipt in bundle (older schema); rerun MUST still run cache-disabled per gate0 discipline",
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "legacy"
+  },
+  {
+   "file": "ssb_sf10_snowflake_sql_20260919_233632_2df658e9.json",
+   "sha256": "4d1b6561de9794f04ce646103fdc56cfabd5a4df00a2467b981f39f2cf1e2b55",
+   "benchmark": "ssb",
+   "scale_factor": 10.0,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 3,
+   "run_iterations": 2,
+   "query_streams_distinct": [
+    0,
+    1,
+    2
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2
+   ],
+   "query_count": 39,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": null,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-09-19T23:36:32.776212",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "no cache_control receipt in bundle (older schema); rerun MUST still run cache-disabled per gate0 discipline",
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "legacy"
+  },
+  {
+   "file": "ssb_sf1_snowflake_sql_20260919_225814_ec4b3865.json",
+   "sha256": "b048e5c0c16c7d9c07bbbf5ad308bf8c82e7278456c87994f5480da891076659",
+   "benchmark": "ssb",
+   "scale_factor": 1.0,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 3,
+   "run_iterations": 2,
+   "query_streams_distinct": [
+    0,
+    1,
+    2
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2
+   ],
+   "query_count": 39,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": null,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-09-19T22:58:14.164163",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "no cache_control receipt in bundle (older schema); rerun MUST still run cache-disabled per gate0 discipline",
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "legacy"
+  },
+  {
+   "file": "tpcdi_sf01_snowflake_sql_20261003_134247_5dd95d51.json",
+   "sha256": "854d12e007b3a4f8c200a72c4625f632f927120afe5aae6ea792813f7259be96",
+   "benchmark": "tpcdi",
+   "scale_factor": 0.1,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "generate",
+    "load",
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 152,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-10-03T13:42:47.823232",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "tpcdi_sf10_snowflake_sql_20261003_135304_9ec08998.json",
+   "sha256": "cc1ce7fabfa70999252ef93fd6beab91fd0f4b5553da4f2d01fc565a7ce300a8",
+   "benchmark": "tpcdi",
+   "scale_factor": 10.0,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "generate",
+    "load",
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 152,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-10-03T13:53:04.155679",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "tpcdi_sf1_snowflake_sql_20261003_134837_b45dfad3.json",
+   "sha256": "e4c90b92b6343b8924d21723dd612adec6b4a50fd4f3a5375a49203c4abb1548",
+   "benchmark": "tpcdi",
+   "scale_factor": 1.0,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "generate",
+    "load",
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 152,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-10-03T13:48:37.609541",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "tpcds_obt_sf1_snowflake_sql_20261001_173028_d35974f6.json",
+   "sha256": "1fd9a95b990a5f2369317bfb2704aeb6ef7055d00d8acc68d9c3554a9d7361c5",
+   "benchmark": "tpcds_obt",
+   "scale_factor": 1.0,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 356,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-10-01T17:30:28.122374",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "tpcds_sf01_snowflake_sql_20261003_140200_f5fd99c7.json",
+   "sha256": "983b0faeea922cd94cf575ece02702e1c019f0db5f6cb46c7bf9d3451631b841",
+   "benchmark": "tpcds",
+   "scale_factor": 0.1,
+   "test_type": "power",
+   "compliance_class": "unofficial_subscale",
+   "config_phases": [
+    "generate",
+    "load",
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 412,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-10-03T14:02:00.679551",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "tpcds_sf10_snowflake_sql_20261003_143203_b8820a1d.json",
+   "sha256": "facf01d338c0d9b442f06a31134f715f117dfe167eeb4bf7cac4259c1da8aff7",
+   "benchmark": "tpcds",
+   "scale_factor": 10.0,
+   "test_type": "power",
+   "compliance_class": "official",
+   "config_phases": [
+    "generate",
+    "load",
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 412,
+   "seed_config": 42,
+   "seed_execution": 42,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-10-03T14:32:03.578863",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "tpcds_sf1_snowflake_sql_20261003_141435_27bd9f9c.json",
+   "sha256": "53173c73c8f353863be04488c6f974cf773739f479a4553e20c8d4a6bf595a41",
+   "benchmark": "tpcds",
+   "scale_factor": 1.0,
+   "test_type": "power",
+   "compliance_class": "official",
+   "config_phases": [
+    "generate",
+    "load",
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 412,
+   "seed_config": 42,
+   "seed_execution": 42,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-10-03T14:14:35.579495",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "tpch_sf01_snowflake_sql_20261003_113557_241439cc.json",
+   "sha256": "9ee2da7b50282ebaa35d1cc0985acd5ab51e7b93c083b892a83bd564d46f5fd0",
+   "benchmark": "tpch",
+   "scale_factor": 0.1,
+   "test_type": "power",
+   "compliance_class": "unofficial_subscale",
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 88,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-10-03T11:35:57.310822",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "tpch_sf10_snowflake_sql_20261003_114454_2454b319.json",
+   "sha256": "f08359294dceba6a3faff6178363a876b0d2b2de7beb67935012b77753329b84",
+   "benchmark": "tpch",
+   "scale_factor": 10.0,
+   "test_type": "power",
+   "compliance_class": "official",
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 88,
+   "seed_config": 42,
+   "seed_execution": 42,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-10-03T11:44:54.177249",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "tpch_sf1_snowflake_sql_20261003_113923_e545c1c5.json",
+   "sha256": "c30a01782e7bd5329a14c4fff54cb2de443026a2f89435486c40c4f66bec2eb2",
+   "benchmark": "tpch",
+   "scale_factor": 1.0,
+   "test_type": "power",
+   "compliance_class": "official",
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 88,
+   "seed_config": 42,
+   "seed_execution": 42,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-10-03T11:39:23.834339",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "tpch_skew_sf01_snowflake_sql_20260925_220834_4a9526c3.json",
+   "sha256": "09cc0b677ebfd5edb3792542c2c4e75e72003ddcf3357edef29c579993c17183",
+   "benchmark": "tpch_skew",
+   "scale_factor": 0.1,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 88,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-09-25T22:08:34.733739",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "tpch_skew_sf10_snowflake_sql_20260929_124322_e9d6506c.json",
+   "sha256": "9d6269b898213625e690b7cd08fd95be40dab2d058acdd4790e52b6a806143c6",
+   "benchmark": "tpch_skew",
+   "scale_factor": 10.0,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 88,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-09-29T12:43:21.882436",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "tpch_skew_sf1_snowflake_sql_20260925_221217_97d77ab8.json",
+   "sha256": "60bc23cba50824c2f68fe086b73d0da1f5d450864e7a2639dbe3393fbeb6c065",
+   "benchmark": "tpch_skew",
+   "scale_factor": 1.0,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 88,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-09-25T22:12:17.380165",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "tpchavoc_sf01_snowflake_sql_20260930_194734_9da55014.json",
+   "sha256": "42e1be186f55a297552b69e6f82a5c47c341a87d9dd5e6d597ca1f9d8bafbc82",
+   "benchmark": "tpchavoc",
+   "scale_factor": 0.1,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 872,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-09-30T19:47:34.800530",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "tpchavoc_sf10_snowflake_sql_20260930_193124_48bb07c7.json",
+   "sha256": "b4ed07e5a9419a3c2269a8d2a831fbeb68111fae7b0fadc34df1edf1670d63a9",
+   "benchmark": "tpchavoc",
+   "scale_factor": 10.0,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 872,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-09-30T19:31:24.567595",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "tpchavoc_sf1_snowflake_sql_20260930_200344_2761bdbc.json",
+   "sha256": "60bec6fed54c01bb216de24f4035e52aa13a56dca2d5263449863fbb7bac1762",
+   "benchmark": "tpchavoc",
+   "scale_factor": 1.0,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 872,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-09-30T20:03:43.674957",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "transaction_primitives_sf001_snowflake_sql_20261001_084848_c3e017eb.json",
+   "sha256": "acc10702b195fa4016b961cb58825c031bf6631f0008a2338d83cfb532f6feb2",
+   "benchmark": "transaction_primitives",
+   "scale_factor": 0.01,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 92,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-10-01T08:48:47.794781",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "transaction_primitives_sf01_snowflake_sql_20261001_090534_90566a67.json",
+   "sha256": "e2ea21fcaf0baf3e6df6da9372e089a22b6b0f24ac84925a306144ec7122cecd",
+   "benchmark": "transaction_primitives",
+   "scale_factor": 0.1,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 92,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-10-01T09:05:33.928681",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "transaction_primitives_sf1_snowflake_sql_20261001_092311_b4c0d6da.json",
+   "sha256": "f17a2c358bfeaecfb67e5abbbd4ca383341da4693f631c08ee0f8da166de9361",
+   "benchmark": "transaction_primitives",
+   "scale_factor": 1.0,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 92,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-10-01T09:23:10.048525",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "tsbs_devops_sf01_snowflake_sql_20260929_192425_ba04d0d6.json",
+   "sha256": "93cea4edec566fd66bc3eb7285d5713755c1e84ce66dc2db42d7b8db2c17c8d5",
+   "benchmark": "tsbs_devops",
+   "scale_factor": 0.1,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 72,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-09-29T19:24:25.570081",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "tsbs_devops_sf10_snowflake_sql_20260929_224733_a340c633.json",
+   "sha256": "aa90aa054b21ae9bf7f1db54c4e7f846a668d6975767eb7170ba7d9e6b455636",
+   "benchmark": "tsbs_devops",
+   "scale_factor": 10.0,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 72,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-09-29T22:47:33.031481",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "tsbs_devops_sf1_snowflake_sql_20260929_192925_18bb194f.json",
+   "sha256": "60f4d13e6231dac9b1d321b475cb214721dadf6050ad595bd9021268adc0df46",
+   "benchmark": "tsbs_devops",
+   "scale_factor": 1.0,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 72,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-09-29T19:29:25.681418",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "write_primitives_sf001_snowflake_sql_20260930_212005_0fab9883.json",
+   "sha256": "1e61b5de9cb402b0a5699df54bb3fa237ade3c1c9662cc99a24f69739b2e5f63",
+   "benchmark": "write_primitives",
+   "scale_factor": 0.01,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 448,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-09-30T21:20:04.888609",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "write_primitives_sf01_snowflake_sql_20260930_222159_5d085279.json",
+   "sha256": "f397a57ee7c560854cc90fc3d1dd8af0d67df6c3cb9a67277defe12387c3c1fd",
+   "benchmark": "write_primitives",
+   "scale_factor": 0.1,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 448,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-09-30T22:21:59.737180",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  },
+  {
+   "file": "write_primitives_sf1_snowflake_sql_20261001_083039_3c313d6f.json",
+   "sha256": "405e56dc4da5053f78daeb54e11b196ba0a6edb6cd95a84e6b665debf0cff914",
+   "benchmark": "write_primitives",
+   "scale_factor": 1.0,
+   "test_type": "power",
+   "compliance_class": null,
+   "config_phases": [
+    "power"
+   ],
+   "executed_phases": {
+    "data_generation": "SUCCESS",
+    "data_loading": "SUCCESS",
+    "power_test": "COMPLETED",
+    "schema_creation": "SUCCESS",
+    "throughput_test": "NOT_RUN",
+    "validation": "PASSED"
+   },
+   "run_streams": 4,
+   "run_iterations": 3,
+   "query_streams_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_iters_distinct": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "query_count": 448,
+   "seed_config": null,
+   "seed_execution": null,
+   "tuning_source": "baseline",
+   "warehouse_size": "X-Small",
+   "warehouse_state": "STARTED",
+   "cache_disabled": true,
+   "cost_status": "unavailable",
+   "run_timestamp": "2026-10-01T08:30:39.365740",
+   "in_inventory": true,
+   "inventory_sha_match": true,
+   "inventory_trust": "maintainer-run",
+   "inventory_funding": "unspecified",
+   "noncomparable_reasons": [],
+   "pin_notes": [
+    "iter 0 = warmup (GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS=1); pin warmup=1, do not add warmup phases"
+   ],
+   "pin": "reproducible-exact",
+   "family": "current"
+  }
+ ],
+ "command_shapes": {
+  "legacy": "phases=power streams=3 iters=2 no-seed (amplab/clickbench/ssb/h2odb/joinorder); rerun: --streams 3 --iterations 2, no --seed",
+  "current": "phases as pinned per cell streams=4 iters=3; rerun: --streams 4 --iterations 3",
+  "seeded": "tpch/tpcds sf1+sf10 add --seed 42",
+  "load_phases": "tpcdi+tpcds cells include generate,load,power; rest power only",
+  "common": "--platform-option warehouse_size=X-Small, result cache disabled, auto_suspend=300, --funding free-trial --publish-label maintainer-run, suspend between pair members, default reuse (no --force)"
+ }
+}

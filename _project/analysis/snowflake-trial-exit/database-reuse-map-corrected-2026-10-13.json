@@ -1,0 +1,336 @@
+{
+  "artifact": "gate2-reuse-reload-map",
+  "generated_at": "20261013_120000",
+  "method": "SHOW DATABASES + SHOW TABLES IN SCHEMA <db>.PUBLIC per cell (metadata-only, near-zero cost); expected names via benchbox.utils.database_naming.generate_database_name; no loads, no drops",
+  "counts": {
+    "reuse": 41,
+    "reuse_shared_database": 9,
+    "reload": 0
+  },
+  "reload_cells": [],
+  "live_db_without_matrix_cell": [
+    "DATAVAULT_SF001_NOTUNING_NOCONSTRAINTS",
+    "TPCHAVOC_SF001_NOTUNING_NOCONSTRAINTS",
+    "TPCH_SF001_NOTUNING_NOCONSTRAINTS",
+    "TSBSDEVOPS_SF001_NOTUNING_NOCONSTRAINTS"
+  ],
+  "staging_validity": {
+    "mode": "native (baselines ran with no staging_root)",
+    "sample_show_stages_tpch_sf1": [],
+    "conclusion": "No named stages (consistent with native mode); implicit table stages (@%TABLE) available by default for the 9 reload cells. No external stage needed."
+  },
+  "force_policy": "Default reuse (force_recreate=False). The 9 reloads are named per-cell exceptions with justification above; surprise reloads mid-pass remain a stop condition.",
+  "rows": [
+    {
+      "file": "amplab_sf01_snowflake_sql_20260920_000319_c0a92e84.json",
+      "expected_db": "AMPLAB_SF01_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "amplab_sf1_snowflake_sql_20260920_000911_e1dbbcf8.json",
+      "expected_db": "AMPLAB_SF1_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "clickbench_sf01_snowflake_sql_20260920_024607_616ff980.json",
+      "expected_db": "CLICKBENCH_SF01_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "clickbench_sf10_snowflake_sql_20260919_213657_c9c32b6f.json",
+      "expected_db": "CLICKBENCH_SF10_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "clickbench_sf1_snowflake_sql_20260920_025738_7ac21810.json",
+      "expected_db": "CLICKBENCH_SF1_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "coffeeshop_sf01_snowflake_sql_20260919_220303_a0040982.json",
+      "expected_db": "COFFEESHOP_SF01_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "coffeeshop_sf1_snowflake_sql_20260919_221140_a33dc417.json",
+      "expected_db": "COFFEESHOP_SF1_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "datavault_sf01_snowflake_sql_20260926_082823_c709896c.json",
+      "expected_db": "DATAVAULT_SF01_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "datavault_sf10_snowflake_sql_20260930_180120_db643832.json",
+      "expected_db": "DATAVAULT_SF10_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "datavault_sf1_snowflake_sql_20260925_224900_77db76a8.json",
+      "expected_db": "DATAVAULT_SF1_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "flightdata_sf01_snowflake_sql_20261001_102703_bb18d2c8.json",
+      "expected_db": "FLIGHTDATA_SF01_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "flightdata_sf10_snowflake_sql_20261001_113621_e22fa5a3.json",
+      "expected_db": "FLIGHTDATA_SF10_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "flightdata_sf1_snowflake_sql_20261001_111501_3a83168a.json",
+      "expected_db": "FLIGHTDATA_SF1_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "h2odb_sf01_snowflake_sql_20260919_222222_58b4e7b0.json",
+      "expected_db": "H2ODB_SF01_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "h2odb_sf1_snowflake_sql_20260919_223457_01856170.json",
+      "expected_db": "H2ODB_SF1_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "joinorder_sf1_snowflake_sql_20260920_012237_b41d3b54.json",
+      "expected_db": "JOINORDER_SF1_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "metadata_primitives_sf1_snowflake_sql_20261001_111119_1ee8b07d.json",
+      "expected_db": "METADATAPRIMITIVES_SF1_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB METADATAPRIMITIVES_SF1 present; bundle tables={} (metadata queries need no tables); cohabitant TPC-H tables harmless"
+    },
+    {
+      "file": "nyctaxi_sf01_snowflake_sql_20261001_101251_06190f1d.json",
+      "expected_db": "NYCTAXI_SF01_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "nyctaxi_sf10_snowflake_sql_20261001_102124_4c662b94.json",
+      "expected_db": "NYCTAXI_SF10_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "nyctaxi_sf1_snowflake_sql_20260925_092203_0cd1a463.json",
+      "expected_db": "NYCTAXI_SF1_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "read_primitives_sf001_snowflake_sql_20261001_103832_16df8896.json",
+      "expected_db": "READPRIMITIVES_SF001_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse-shared-database",
+      "evidence": "Baseline bundle platform.config.database pseudonym equals the pseudonym of TPCH_SF001_NOTUNING_NOCONSTRAINTS (sha256 of '|database|<name>' with an empty salt).",
+      "actual_database": "TPCH_SF001_NOTUNING_NOCONSTRAINTS"
+    },
+    {
+      "file": "read_primitives_sf01_snowflake_sql_20261001_105057_79bd90a5.json",
+      "expected_db": "READPRIMITIVES_SF01_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse-shared-database",
+      "evidence": "Baseline bundle platform.config.database pseudonym equals the pseudonym of TPCH_SF01_NOTUNING_NOCONSTRAINTS (sha256 of '|database|<name>' with an empty salt).",
+      "actual_database": "TPCH_SF01_NOTUNING_NOCONSTRAINTS"
+    },
+    {
+      "file": "ssb_sf01_snowflake_sql_20260919_224858_fb7ff357.json",
+      "expected_db": "SSB_SF01_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "ssb_sf10_snowflake_sql_20260919_233632_2df658e9.json",
+      "expected_db": "SSB_SF10_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "ssb_sf1_snowflake_sql_20260919_225814_ec4b3865.json",
+      "expected_db": "SSB_SF1_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "tpcdi_sf01_snowflake_sql_20261003_134247_5dd95d51.json",
+      "expected_db": "TPCDI_SF01_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "tpcdi_sf10_snowflake_sql_20261003_135304_9ec08998.json",
+      "expected_db": "TPCDI_SF10_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "tpcdi_sf1_snowflake_sql_20261003_134837_b45dfad3.json",
+      "expected_db": "TPCDI_SF1_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "tpcds_obt_sf1_snowflake_sql_20261001_173028_d35974f6.json",
+      "expected_db": "TPCDSOBT_SF1_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse-shared-database",
+      "evidence": "Baseline bundle platform.config.database pseudonym equals the pseudonym of TPCDS_SF1_NOTUNING_NOCONSTRAINTS (sha256 of '|database|<name>' with an empty salt).",
+      "actual_database": "TPCDS_SF1_NOTUNING_NOCONSTRAINTS"
+    },
+    {
+      "file": "tpcds_sf01_snowflake_sql_20261003_140200_f5fd99c7.json",
+      "expected_db": "TPCDS_SF01_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "tpcds_sf10_snowflake_sql_20261003_143203_b8820a1d.json",
+      "expected_db": "TPCDS_SF10_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "tpcds_sf1_snowflake_sql_20261003_141435_27bd9f9c.json",
+      "expected_db": "TPCDS_SF1_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present + 1 cohabitant tables from shared-DB primitives runs: ['TPCDS_SALES_RETURNS_OBT']..."
+    },
+    {
+      "file": "tpch_sf01_snowflake_sql_20261003_113557_241439cc.json",
+      "expected_db": "TPCH_SF01_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present + 24 cohabitant tables from shared-DB primitives runs: ['BATCH_METADATA', 'BENCHBOX_STAGING_MANIFEST_V3', 'BULK_LOAD_OPS_TARGET', 'DDL_TRUNCATE_TARGET', 'DELETE_OPS_LINEITEM', 'DELETE_OPS_ORDERS']..."
+    },
+    {
+      "file": "tpch_sf10_snowflake_sql_20261003_114454_2454b319.json",
+      "expected_db": "TPCH_SF10_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "tpch_sf1_snowflake_sql_20261003_113923_e545c1c5.json",
+      "expected_db": "TPCH_SF1_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present + 24 cohabitant tables from shared-DB primitives runs: ['BATCH_METADATA', 'BENCHBOX_STAGING_MANIFEST_V3', 'BULK_LOAD_OPS_TARGET', 'DDL_TRUNCATE_TARGET', 'DELETE_OPS_LINEITEM', 'DELETE_OPS_ORDERS']..."
+    },
+    {
+      "file": "tpch_skew_sf01_snowflake_sql_20260925_220834_4a9526c3.json",
+      "expected_db": "TPCHSKEW_SF01_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "tpch_skew_sf10_snowflake_sql_20260929_124322_e9d6506c.json",
+      "expected_db": "TPCHSKEW_SF10_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "tpch_skew_sf1_snowflake_sql_20260925_221217_97d77ab8.json",
+      "expected_db": "TPCHSKEW_SF1_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "tpchavoc_sf01_snowflake_sql_20260930_194734_9da55014.json",
+      "expected_db": "TPCHAVOC_SF01_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "tpchavoc_sf10_snowflake_sql_20260930_193124_48bb07c7.json",
+      "expected_db": "TPCHAVOC_SF10_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "tpchavoc_sf1_snowflake_sql_20260930_200344_2761bdbc.json",
+      "expected_db": "TPCHAVOC_SF1_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "transaction_primitives_sf001_snowflake_sql_20261001_084848_c3e017eb.json",
+      "expected_db": "TRANSACTIONPRIMITIVES_SF001_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse-shared-database",
+      "evidence": "Baseline bundle platform.config.database pseudonym equals the pseudonym of TPCH_SF001_NOTUNING_NOCONSTRAINTS (sha256 of '|database|<name>' with an empty salt).",
+      "actual_database": "TPCH_SF001_NOTUNING_NOCONSTRAINTS"
+    },
+    {
+      "file": "transaction_primitives_sf01_snowflake_sql_20261001_090534_90566a67.json",
+      "expected_db": "TRANSACTIONPRIMITIVES_SF01_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse-shared-database",
+      "evidence": "Baseline bundle platform.config.database pseudonym equals the pseudonym of TPCH_SF01_NOTUNING_NOCONSTRAINTS (sha256 of '|database|<name>' with an empty salt).",
+      "actual_database": "TPCH_SF01_NOTUNING_NOCONSTRAINTS"
+    },
+    {
+      "file": "transaction_primitives_sf1_snowflake_sql_20261001_092311_b4c0d6da.json",
+      "expected_db": "TRANSACTIONPRIMITIVES_SF1_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse-shared-database",
+      "evidence": "Baseline bundle platform.config.database pseudonym equals the pseudonym of TPCH_SF1_NOTUNING_NOCONSTRAINTS (sha256 of '|database|<name>' with an empty salt).",
+      "actual_database": "TPCH_SF1_NOTUNING_NOCONSTRAINTS"
+    },
+    {
+      "file": "tsbs_devops_sf01_snowflake_sql_20260929_192425_ba04d0d6.json",
+      "expected_db": "TSBSDEVOPS_SF01_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "tsbs_devops_sf10_snowflake_sql_20260929_224733_a340c633.json",
+      "expected_db": "TSBSDEVOPS_SF10_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "tsbs_devops_sf1_snowflake_sql_20260929_192925_18bb194f.json",
+      "expected_db": "TSBSDEVOPS_SF1_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse",
+      "evidence": "DB present; all bundle tables present"
+    },
+    {
+      "file": "write_primitives_sf001_snowflake_sql_20260930_212005_0fab9883.json",
+      "expected_db": "WRITEPRIMITIVES_SF001_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse-shared-database",
+      "evidence": "Baseline bundle platform.config.database pseudonym equals the pseudonym of TPCH_SF001_NOTUNING_NOCONSTRAINTS (sha256 of '|database|<name>' with an empty salt).",
+      "actual_database": "TPCH_SF001_NOTUNING_NOCONSTRAINTS"
+    },
+    {
+      "file": "write_primitives_sf01_snowflake_sql_20260930_222159_5d085279.json",
+      "expected_db": "WRITEPRIMITIVES_SF01_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse-shared-database",
+      "evidence": "Baseline bundle platform.config.database pseudonym equals the pseudonym of TPCH_SF01_NOTUNING_NOCONSTRAINTS (sha256 of '|database|<name>' with an empty salt).",
+      "actual_database": "TPCH_SF01_NOTUNING_NOCONSTRAINTS"
+    },
+    {
+      "file": "write_primitives_sf1_snowflake_sql_20261001_083039_3c313d6f.json",
+      "expected_db": "WRITEPRIMITIVES_SF1_NOTUNING_NOCONSTRAINTS",
+      "verdict": "reuse-shared-database",
+      "evidence": "Baseline bundle platform.config.database pseudonym equals the pseudonym of TPCH_SF1_NOTUNING_NOCONSTRAINTS (sha256 of '|database|<name>' with an empty salt).",
+      "actual_database": "TPCH_SF1_NOTUNING_NOCONSTRAINTS"
+    }
+  ],
+  "supersedes": "gate2-reuse-reload-map 20261012_192045",
+  "reuse_caveat": "On Snowflake the existing-database check never authenticated (admin connection passed username= instead of user=), so every run took the fresh-database path: CREATE DATABASE IF NOT EXISTS, then TRUNCATE and COPY INTO each benchmark table. Reuse classifications predict real reuse only once that defect is fixed."
+}
