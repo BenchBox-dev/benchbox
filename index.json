@@ -20703,10 +20703,10 @@
     },
     "snowflake-trial-exit-corrected-plan-20261013": {
       "claim": {
-        "expires_at": "2026-10-14T19:24:16Z",
-        "generation": "e3e46743126a454cb8f77507179c22fa",
+        "expires_at": "2026-10-14T21:17:18Z",
+        "generation": "46b845322e794e068b6fe2f77cb2ff14",
         "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042"
+        "worker": "mcp:tbh:joe@joe-mac-mini.local:f905a7a39c8793c709ac7c5d"
       },
       "needs": [],
       "priority": "high",

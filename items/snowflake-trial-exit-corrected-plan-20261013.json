@@ -26,6 +26,17 @@
       "op": "take",
       "op_id": "997de4f71b094d07aa8328a54dbcf505",
       "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:f905a7a39c8793c709ac7c5d",
+      "at": "2026-10-13T21:17:18Z",
+      "client": "tbh",
+      "displaced": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
+      "generation": "46b845322e794e068b6fe2f77cb2ff14",
+      "op": "takeover",
+      "op_id": "5cfdc6c6695f408e8b8b8b7c8fc06091",
+      "reason": "Operator reassigned this plan to the current session with an explicit message to complete it in its entirety; the prior holder has been inactive since the handoff (all ledger work since 20:00 UTC done here) and its live claim blocks the mandated update/finish closeout.",
+      "session_id": "df039dbf86ee48b687da114f08324b05"
     }
   ]
 }
