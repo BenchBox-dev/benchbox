@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[3]
 
 
 def _jobs(filename: str) -> dict:
-    return yaml.safe_load((ROOT / ".github/workflows" / filename).read_text())["jobs"]
+    return yaml.safe_load((ROOT / ".github/workflows" / filename).read_text(encoding="utf-8"))["jobs"]
 
 
 def test_correctness_partitions_preserve_each_gate_once() -> None:

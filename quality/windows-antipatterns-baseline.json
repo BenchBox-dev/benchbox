@@ -1,0 +1,412 @@
+{
+  "files": {
+    "scripts/check_api_contract_symbols.py": {
+      "WA001": 1
+    },
+    "scripts/compare_pg_duckdb.py": {
+      "WA003": 1
+    },
+    "scripts/generate_changelog_entry.py": {
+      "WA002": 1,
+      "WA003": 1
+    },
+    "scripts/publication/capture_baseline.py": {
+      "WA003": 1
+    },
+    "scripts/publication/check_plan_reconciliation.py": {
+      "WA003": 1
+    },
+    "scripts/release_artifact_consumer.py": {
+      "WA002": 1
+    },
+    "scripts/release_flow.py": {
+      "WA003": 1
+    },
+    "scripts/run_version_matrix.py": {
+      "WA002": 1
+    },
+    "scripts/update_version.py": {
+      "WA003": 5
+    },
+    "scripts/validate_example_references.py": {
+      "WA003": 1
+    },
+    "tests/integration/test_compression_integration.py": {
+      "WA003": 2
+    },
+    "tests/integration/test_datavault_duckdb.py": {
+      "WA003": 1
+    },
+    "tests/integration/test_export_cli.py": {
+      "WA003": 2
+    },
+    "tests/integration/test_tpcds_official_benchmark.py": {
+      "WA003": 1
+    },
+    "tests/integration/test_tpch_official_benchmark.py": {
+      "WA003": 1
+    },
+    "tests/integration/test_tpchavoc_duckdb.py": {
+      "WA003": 1
+    },
+    "tests/performance/test_compression_performance.py": {
+      "WA003": 2
+    },
+    "tests/performance/test_dataframe_comparison.py": {
+      "WA003": 2
+    },
+    "tests/performance/test_tpcds_regression.py": {
+      "WA003": 1
+    },
+    "tests/uat/orchestrator.py": {
+      "WA002": 2
+    },
+    "tests/uat/test_docker_assets.py": {
+      "WA003": 3
+    },
+    "tests/uat/test_e2e_integration.py": {
+      "WA003": 2
+    },
+    "tests/uat/test_orchestrator.py": {
+      "WA003": 6
+    },
+    "tests/uat/test_report.py": {
+      "WA003": 1
+    },
+    "tests/uat/test_runner.py": {
+      "WA003": 8
+    },
+    "tests/uat/test_runner_timeout_process_group.py": {
+      "WA002": 2
+    },
+    "tests/uat/test_sweep_durability.py": {
+      "WA002": 7
+    },
+    "tests/uat/timeouts.py": {
+      "WA002": 2
+    },
+    "tests/unit/benchmarks/test_write_primitives_generator.py": {
+      "WA003": 1
+    },
+    "tests/unit/cli/test_cli_output.py": {
+      "WA003": 1
+    },
+    "tests/unit/cli/test_tuning_resolution.py": {
+      "WA003": 2
+    },
+    "tests/unit/core/aiml_functions/test_data.py": {
+      "WA003": 2
+    },
+    "tests/unit/core/data_fetch/test_manifest.py": {
+      "WA003": 5
+    },
+    "tests/unit/core/dataframe/test_benchmark_suite_lifecycle.py": {
+      "WA003": 3
+    },
+    "tests/unit/core/dataframe/test_data_loader_atomic_cache.py": {
+      "WA003": 2
+    },
+    "tests/unit/core/datavault/test_datavault_benchmark_extended.py": {
+      "WA003": 1
+    },
+    "tests/unit/core/datavault/test_transformer.py": {
+      "WA003": 3
+    },
+    "tests/unit/core/equivalence/test_cross_surface_baseline_update.py": {
+      "WA003": 3
+    },
+    "tests/unit/core/flightdata/test_flightdata_benchmark_resource_heavy.py": {
+      "WA003": 3
+    },
+    "tests/unit/core/joinorder_synthetic/test_joinorder_generator.py": {
+      "WA003": 4
+    },
+    "tests/unit/core/nyctaxi/test_multi_type.py": {
+      "WA003": 1
+    },
+    "tests/unit/core/primitives/test_generator_base.py": {
+      "WA003": 4
+    },
+    "tests/unit/core/publishing/test_publish_store.py": {
+      "WA003": 1
+    },
+    "tests/unit/core/ssb/test_ssb_generator.py": {
+      "WA003": 1
+    },
+    "tests/unit/core/test_benchmark_api_contract.py": {
+      "WA003": 5
+    },
+    "tests/unit/core/test_comparison.py": {
+      "WA003": 3
+    },
+    "tests/unit/core/test_concurrency_executor_and_joinorder.py": {
+      "WA003": 1
+    },
+    "tests/unit/core/test_datagen_version.py": {
+      "WA003": 4
+    },
+    "tests/unit/core/test_dryrun.py": {
+      "WA003": 6
+    },
+    "tests/unit/core/test_dryrun_behavioral.py": {
+      "WA003": 2
+    },
+    "tests/unit/core/test_unified_comparison_suite.py": {
+      "WA003": 3
+    },
+    "tests/unit/core/throughput/test_throughput_query_correctness.py": {
+      "WA003": 1
+    },
+    "tests/unit/core/tpcdi/etl/test_error_recovery.py": {
+      "WA003": 2
+    },
+    "tests/unit/core/tpcdi/test_error_recovery_coverage.py": {
+      "WA003": 2
+    },
+    "tests/unit/core/tpcds/generator/test_manager.py": {
+      "WA003": 3
+    },
+    "tests/unit/core/tpcds/test_q51_q53_q63_template_fidelity.py": {
+      "WA003": 1
+    },
+    "tests/unit/core/tpcds/test_qualification_parameter_choices.py": {
+      "WA003": 1
+    },
+    "tests/unit/core/tpcds/test_qualification_runner.py": {
+      "WA003": 1
+    },
+    "tests/unit/core/tpcds/test_tpcds_stdout_datagen.py": {
+      "WA003": 2
+    },
+    "tests/unit/core/tpch/test_official_benchmark_coverage.py": {
+      "WA003": 1
+    },
+    "tests/unit/core/tpch/test_tpch_stdout_datagen.py": {
+      "WA003": 1
+    },
+    "tests/unit/core/tpch/test_tpch_streams.py": {
+      "WA003": 1
+    },
+    "tests/unit/core/tpchavoc/test_tpchavoc_validation_coverage.py": {
+      "WA003": 1
+    },
+    "tests/unit/core/tuning/test_clickhouse_pk_prefix.py": {
+      "WA003": 1
+    },
+    "tests/unit/core/tuning/test_template_evidence.py": {
+      "WA003": 1
+    },
+    "tests/unit/core/vector_search/test_vector_benchmark.py": {
+      "WA003": 4
+    },
+    "tests/unit/core/write_primitives/test_dataframe_aggregate_state_ops.py": {
+      "WA003": 1
+    },
+    "tests/unit/generators/test_clickbench_generator.py": {
+      "WA003": 1
+    },
+    "tests/unit/generators/test_scale_factor_harmonization.py": {
+      "WA003": 1
+    },
+    "tests/unit/generators/test_scale_factor_harmonization_resource_heavy.py": {
+      "WA003": 2
+    },
+    "tests/unit/generators/test_sf1_measurement.py": {
+      "WA003": 1
+    },
+    "tests/unit/generators/test_ssb_manifest.py": {
+      "WA003": 1
+    },
+    "tests/unit/generators/test_tpch_generator.py": {
+      "WA003": 1
+    },
+    "tests/unit/platforms/base/cloud_spark/test_staging.py": {
+      "WA003": 2
+    },
+    "tests/unit/platforms/credentials/test_credential_files.py": {
+      "WA003": 1
+    },
+    "tests/unit/platforms/test_clickhouse_deployment_mode.py": {
+      "WA003": 1
+    },
+    "tests/unit/platforms/test_cloud_saas_plan_capture.py": {
+      "WA003": 1
+    },
+    "tests/unit/platforms/test_compression_support.py": {
+      "WA003": 3
+    },
+    "tests/unit/platforms/test_ducklake_adapter.py": {
+      "WA003": 1
+    },
+    "tests/unit/platforms/test_physical_identifier_resolution_snowflake_redshift.py": {
+      "WA003": 1
+    },
+    "tests/unit/platforms/test_physical_identifier_resolution_synapse_clickhouse.py": {
+      "WA003": 1
+    },
+    "tests/unit/platforms/test_plan_row_shape_hardening.py": {
+      "WA003": 3
+    },
+    "tests/unit/platforms/test_presto_trino_plan_capture.py": {
+      "WA003": 1
+    },
+    "tests/unit/platforms/test_spark_plan_capture.py": {
+      "WA003": 1
+    },
+    "tests/unit/platforms/test_throughput_session_capability_sweep.py": {
+      "WA003": 2
+    },
+    "tests/unit/query_plans/test_azure_synapse_parser.py": {
+      "WA003": 1
+    },
+    "tests/unit/query_plans/test_bigquery_parser.py": {
+      "WA003": 1
+    },
+    "tests/unit/query_plans/test_clickhouse_parser.py": {
+      "WA003": 1
+    },
+    "tests/unit/query_plans/test_fabric_warehouse_parser.py": {
+      "WA003": 1
+    },
+    "tests/unit/query_plans/test_fingerprint_hygiene.py": {
+      "WA003": 1
+    },
+    "tests/unit/query_plans/test_firebolt_parser.py": {
+      "WA003": 1
+    },
+    "tests/unit/query_plans/test_presto_trino_parser.py": {
+      "WA003": 1
+    },
+    "tests/unit/query_plans/test_snowflake_parser.py": {
+      "WA003": 1
+    },
+    "tests/unit/query_plans/test_spark_parser.py": {
+      "WA003": 1
+    },
+    "tests/unit/release/test_ruleset_drift_review_coverage.py": {
+      "WA003": 2
+    },
+    "tests/unit/scripts/publication/test_plan_reconciliation.py": {
+      "WA003": 2
+    },
+    "tests/unit/scripts/test_check_release_curation.py": {
+      "WA003": 1
+    },
+    "tests/unit/scripts/test_comment_cleanup_scope.py": {
+      "WA003": 2
+    },
+    "tests/unit/scripts/test_comment_policy.py": {
+      "WA003": 4
+    },
+    "tests/unit/scripts/test_dev_loop_pr_metrics.py": {
+      "WA003": 15
+    },
+    "tests/unit/scripts/test_duckdb_version_matrix.py": {
+      "WA003": 1
+    },
+    "tests/unit/scripts/test_heavy_tier_needed.py": {
+      "WA003": 1
+    },
+    "tests/unit/scripts/test_make_timing.py": {
+      "WA001": 1,
+      "WA002": 2
+    },
+    "tests/unit/scripts/test_new_platform_scaffold.py": {
+      "WA003": 1
+    },
+    "tests/unit/scripts/test_pr_ready_make.py": {
+      "WA003": 2
+    },
+    "tests/unit/scripts/test_pytest_shard_evidence.py": {
+      "WA003": 4
+    },
+    "tests/unit/scripts/test_regenerate_correctness_gate_digests.py": {
+      "WA003": 1
+    },
+    "tests/unit/scripts/test_release_admitted_dist.py": {
+      "WA003": 7
+    },
+    "tests/unit/scripts/test_release_artifact_consumer.py": {
+      "WA003": 4
+    },
+    "tests/unit/scripts/test_release_artifact_execution.py": {
+      "WA002": 1,
+      "WA003": 8
+    },
+    "tests/unit/scripts/test_release_flow.py": {
+      "WA003": 11
+    },
+    "tests/unit/scripts/test_todo_state_workflow.py": {
+      "WA003": 1
+    },
+    "tests/unit/test_cli_documentation.py": {
+      "WA003": 1
+    },
+    "tests/unit/test_coffeeshop.py": {
+      "WA003": 1
+    },
+    "tests/unit/test_generate_query_docs.py": {
+      "WA003": 1
+    },
+    "tests/unit/test_makefile_docker_data_dir_guard.py": {
+      "WA003": 5
+    },
+    "tests/unit/test_mocker_compose_parity_data_dir.py": {
+      "WA003": 3
+    },
+    "tests/unit/test_reference_seed.py": {
+      "WA003": 1
+    },
+    "tests/unit/test_release_canary_sharding.py": {
+      "WA003": 2
+    },
+    "tests/unit/test_release_infrastructure.py": {
+      "WA003": 2
+    },
+    "tests/unit/test_ruleset_drift.py": {
+      "WA003": 10
+    },
+    "tests/unit/test_standardized_test_commands.py": {
+      "WA003": 25
+    },
+    "tests/unit/test_tpcds_streams.py": {
+      "WA003": 2
+    },
+    "tests/unit/utils/test_compression.py": {
+      "WA003": 3
+    },
+    "tests/unit/utils/test_compression_mixin.py": {
+      "WA003": 1
+    },
+    "tests/unit/utils/test_config_helpers.py": {
+      "WA003": 1
+    },
+    "tests/unit/utils/test_manifest_validation.py": {
+      "WA003": 1
+    },
+    "tests/unit/utils/test_tpc_compilation.py": {
+      "WA003": 8
+    },
+    "tests/unit/utils/test_utils_dependency_validation.py": {
+      "WA003": 2
+    },
+    "tests/unit/workflows/test_corpus_cutover.py": {
+      "WA003": 1
+    },
+    "tests/unit/workflows/test_corpus_trust_boundary.py": {
+      "WA003": 2
+    },
+    "tests/unit/workflows/test_oracle_review_workflow.py": {
+      "WA003": 5
+    },
+    "tests/unit/workflows/test_public_site_visual_workflow.py": {
+      "WA003": 4
+    },
+    "tests/validation/test_dsqgen_integration_light.py": {
+      "WA001": 1
+    },
+    "tests/validation/test_qgen_integration.py": {
+      "WA001": 1
+    }
+  }
+}

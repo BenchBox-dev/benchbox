@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import argparse
 import ast
+import json
 import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 CLI_DESCRIPTION = (
-    "Check for Windows anti-patterns in the benchbox codebase.\n"
+    "Check for Windows anti-patterns in benchbox/, tests/ and scripts/.\n"
     "\n"
     "Uses AST analysis to find patterns that compile and run on Linux/macOS\n"
     "but silently misbehave or fail on Windows:\n"
@@ -22,15 +23,27 @@ CLI_DESCRIPTION = (
     "     `if hasattr(signal, ...)`.\n"
     "  3. pathlib-style read_text() calls without an explicit encoding - these use\n"
     "     the locale encoding and can fail on non-UTF-8 Windows installations.\n"
+    "     Builtin open() without an encoding is covered by ruff PLW1514.\n"
+    "\n"
+    "Existing violations are recorded per file and code in\n"
+    "quality/windows-antipatterns-baseline.json. A file fails when it holds more\n"
+    "violations of a code than its baseline entry, and when it holds fewer, so the\n"
+    "baseline can only shrink. After fixing violations, lower the baseline with\n"
+    "--write-baseline.\n"
     "\n"
     "Usage:\n"
     "    uv run -- python scripts/check_windows_antipatterns.py\n"
     "    uv run -- python scripts/check_windows_antipatterns.py --path benchbox/\n"
+    "    uv run -- python scripts/check_windows_antipatterns.py --write-baseline\n"
 )
 
 _UNIX_SIGNALS = {"SIGTERM", "SIGKILL", "SIGHUP", "SIGUSR1", "SIGUSR2", "SIGCHLD", "SIGPIPE"}
 
-_DEFAULT_ROOTS = ["benchbox"]
+_DEFAULT_ROOTS = ["benchbox", "tests", "scripts"]
+
+_DEFAULT_BASELINE = "quality/windows-antipatterns-baseline.json"
+
+Baseline = dict[str, dict[str, int]]
 
 
 @dataclass(frozen=True)
@@ -379,6 +392,85 @@ def check_tree(roots: list[Path]) -> tuple[list[Violation], int]:
     return violations, file_count
 
 
+@dataclass(frozen=True)
+class RatchetResult:
+    regressions: list[Violation]
+    stale: list[str]
+
+    @property
+    def clean(self) -> bool:
+        return not self.regressions and not self.stale
+
+
+def _file_key(path: Path, repo_root: Path) -> str:
+    try:
+        return path.relative_to(repo_root).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
+def load_baseline(path: Path) -> Baseline:
+    if not path.exists():
+        return {}
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    return {file: {code: int(count) for code, count in codes.items()} for file, codes in raw["files"].items()}
+
+
+def count_violations(violations: list[Violation], repo_root: Path) -> Baseline:
+    counts: Baseline = {}
+    for v in violations:
+        codes = counts.setdefault(_file_key(v.file, repo_root), {})
+        codes[v.code] = codes.get(v.code, 0) + 1
+    return counts
+
+
+def apply_baseline(
+    violations: list[Violation], baseline: Baseline, repo_root: Path, roots: list[Path]
+) -> RatchetResult:
+    current = count_violations(violations, repo_root)
+    regressions = [
+        v
+        for v in violations
+        if current[_file_key(v.file, repo_root)][v.code] > baseline.get(_file_key(v.file, repo_root), {}).get(v.code, 0)
+    ]
+    stale: list[str] = []
+    for key, codes in baseline.items():
+        if not (repo_root / key).is_file() or not any((repo_root / key).is_relative_to(root) for root in roots):
+            continue
+        for code, allowed in codes.items():
+            found = current.get(key, {}).get(code, 0)
+            if found < allowed:
+                stale.append(f"{key}: {code} baseline allows {allowed}, found {found}")
+    return RatchetResult(regressions=regressions, stale=sorted(stale))
+
+
+def write_baseline(path: Path, violations: list[Violation], repo_root: Path, roots: list[Path]) -> int:
+    existing = load_baseline(path)
+    current = count_violations(violations, repo_root)
+    grown = sorted(
+        f"{key}: {code} baseline allows {existing.get(key, {}).get(code, 0)}, found {count}"
+        for key, codes in current.items()
+        for code, count in codes.items()
+        if path.exists() and count > existing.get(key, {}).get(code, 0)
+    )
+    if grown:
+        print("error: refusing to raise the baseline; fix or suppress these violations instead:", file=sys.stderr)
+        for line in grown:
+            print(f"  {line}", file=sys.stderr)
+        return 1
+    merged = {
+        key: codes for key, codes in existing.items() if not any((repo_root / key).is_relative_to(r) for r in roots)
+    }
+    merged.update(current)
+    payload = {"files": {key: dict(sorted(codes.items())) for key, codes in sorted(merged.items())}}
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    print(
+        f"Wrote {sum(sum(c.values()) for c in merged.values())} baselined violation(s) in {len(merged)} file(s) to {path}"
+    )
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=CLI_DESCRIPTION, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
@@ -386,7 +478,13 @@ def main() -> int:
         metavar="DIR",
         action="append",
         dest="paths",
-        help="Directory to scan (repeatable; default: benchbox/)",
+        help="Directory to scan (repeatable; default: benchbox/, tests/ and scripts/)",
+    )
+    parser.add_argument("--baseline", metavar="FILE", default=_DEFAULT_BASELINE, help="Ratchet baseline file")
+    parser.add_argument(
+        "--write-baseline",
+        action="store_true",
+        help="Rewrite the baseline for the scanned paths from current counts; refuses to raise any count",
     )
     args = parser.parse_args()
 
@@ -399,16 +497,31 @@ def main() -> int:
         return 2
 
     violations, file_count = check_tree(roots)
+    baseline_path = repo_root / args.baseline
 
-    if violations:
-        print(f"Found {len(violations)} Windows anti-pattern violation(s):\n")
-        for v in violations:
-            print(f"  {v}")
-        print()
+    if args.write_baseline:
+        return write_baseline(baseline_path, violations, repo_root, roots)
+
+    result = apply_baseline(violations, load_baseline(baseline_path), repo_root, roots)
+
+    if not result.clean:
+        if result.regressions:
+            print(f"Found {len(result.regressions)} Windows anti-pattern violation(s) above the baseline:\n")
+            for v in result.regressions:
+                print(f"  {v}")
+            print()
+        if result.stale:
+            print(
+                f"Baseline entries above the current count ({len(result.stale)}); lower them with --write-baseline:\n"
+            )
+            for line in result.stale:
+                print(f"  {line}")
+            print()
         print("See scripts/check_windows_antipatterns.py for remediation guidance.")
         return 1
 
-    print(f"No Windows anti-pattern violations found ({file_count} files checked).")
+    baselined = len(violations)
+    print(f"No new Windows anti-pattern violations found ({file_count} files checked, {baselined} baselined).")
     return 0
 
 

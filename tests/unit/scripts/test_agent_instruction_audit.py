@@ -23,7 +23,7 @@ def _isolate_git_identity_env(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 ROOT = Path(__file__).resolve().parents[3]
-CORPUS = json.loads((ROOT / "_project/evals/agent-instructions/scenarios.json").read_text())
+CORPUS = json.loads((ROOT / "_project/evals/agent-instructions/scenarios.json").read_text(encoding="utf-8"))
 
 
 def _load_audit():
@@ -112,7 +112,9 @@ def test_governed_paths_route_to_a_required_instruction_lane(path: str) -> None:
 def test_imposed_identity_fails(tmp_path: Path) -> None:
     project = _candidate(tmp_path)
     command = project / ".claude/commands/pr.md"
-    command.write_text(command.read_text() + "\nCo-Authored-By: Claude <noreply@example.com>\n")
+    command.write_text(
+        command.read_text(encoding="utf-8") + "\nCo-Authored-By: Claude <noreply@example.com>\n", encoding="utf-8"
+    )
     _, errors = audit(project, CORPUS)
     assert any("imposed Claude co-author" in error for error in errors)
 
@@ -120,7 +122,9 @@ def test_imposed_identity_fails(tmp_path: Path) -> None:
 def test_canonical_commit_coauthor_consent_drift_fails(tmp_path: Path) -> None:
     project = _candidate(tmp_path)
     canonical = project / CANONICAL_COMMIT_SKILL
-    canonical.write_text(canonical.read_text().replace("Stale requests", "earlier context"))
+    canonical.write_text(
+        canonical.read_text(encoding="utf-8").replace("Stale requests", "earlier context"), encoding="utf-8"
+    )
     _, errors = audit(project, CORPUS)
     assert any("canonical COMMIT-IDENTITY-001 semantics drifted" in error for error in errors)
 
@@ -128,7 +132,9 @@ def test_canonical_commit_coauthor_consent_drift_fails(tmp_path: Path) -> None:
 def test_project_commit_coauthor_consent_drift_fails(tmp_path: Path) -> None:
     project = _candidate(tmp_path)
     agents = project / "AGENTS.md"
-    agents.write_text(agents.read_text().replace("not authorization", "may be sufficient"))
+    agents.write_text(
+        agents.read_text(encoding="utf-8").replace("not authorization", "may be sufficient"), encoding="utf-8"
+    )
     _, errors = audit(project, CORPUS)
     assert any("project COMMIT-IDENTITY-001 semantics drifted" in error for error in errors)
 
@@ -140,9 +146,11 @@ def test_project_write_closeout_drift_fails(tmp_path: Path) -> None:
         r"close-out\s+steps\s+are\s+part\s+of\s+write\s+authorization,\s+not\s+separate\s+permissions",
         re.IGNORECASE,
     )
-    content, count = pattern.subn("optional suggestions that require separate user approval", agents.read_text())
+    content, count = pattern.subn(
+        "optional suggestions that require separate user approval", agents.read_text(encoding="utf-8")
+    )
     assert count == 1
-    agents.write_text(content)
+    agents.write_text(content, encoding="utf-8")
     _, errors = audit(project, CORPUS)
     assert any("AGENTS.md WRITE-CLOSEOUT-001 semantics drifted" in error for error in errors)
 
@@ -171,11 +179,11 @@ def test_project_write_closeout_drift_fails(tmp_path: Path) -> None:
 def test_project_write_closeout_exception_drift_fails(tmp_path: Path, phrase: str) -> None:
     project = _candidate(tmp_path)
     agents = project / "AGENTS.md"
-    content = agents.read_text()
+    content = agents.read_text(encoding="utf-8")
     pattern = re.compile(r"\s+".join(re.escape(w) for w in phrase.split()), re.IGNORECASE)
     new_content, count = pattern.subn("deleted constraint", content)
     assert count > 0, f"Pattern {phrase} was not found in AGENTS.md"
-    agents.write_text(new_content)
+    agents.write_text(new_content, encoding="utf-8")
     _, errors = audit(project, CORPUS)
     assert any("AGENTS.md WRITE-CLOSEOUT-001 semantics drifted" in error for error in errors)
 
@@ -192,11 +200,11 @@ def test_project_write_closeout_exception_drift_fails(tmp_path: Path, phrase: st
 def test_project_comment_policy_drift_fails(tmp_path: Path, phrase: str) -> None:
     project = _candidate(tmp_path)
     agents = project / "AGENTS.md"
-    content = agents.read_text()
+    content = agents.read_text(encoding="utf-8")
     pattern = re.compile(r"\s+".join(re.escape(w) for w in phrase.split()), re.IGNORECASE)
     new_content, count = pattern.subn("deleted constraint", content)
     assert count > 0, f"Pattern {phrase} was not found in AGENTS.md"
-    agents.write_text(new_content)
+    agents.write_text(new_content, encoding="utf-8")
     _, errors = audit(project, CORPUS)
     assert any("AGENTS.md COMMENT-POLICY-001 semantics drifted" in error for error in errors)
 
@@ -230,7 +238,7 @@ HANDBACK_LINES = [
 def test_handback_wording_fails_in_every_scanned_location(tmp_path: Path, line: str, target: str) -> None:
     project = _candidate(tmp_path)
     path = _with_repo_file(project, target)
-    path.write_text(path.read_text() + "\n" + line + "\n")
+    path.write_text(path.read_text(encoding="utf-8") + "\n" + line + "\n", encoding="utf-8")
     _, errors = audit(project, CORPUS)
     assert any(error.startswith("handback:") and target in error for error in errors), errors
 
@@ -238,7 +246,9 @@ def test_handback_wording_fails_in_every_scanned_location(tmp_path: Path, line: 
 def test_an_owner_only_marker_does_not_exempt_a_handback_line(tmp_path: Path) -> None:
     project = _candidate(tmp_path)
     command = project / ".claude/commands/pr.md"
-    command.write_text(command.read_text() + "\nMark PR 12 ready when CI is green. owner-only\n")
+    command.write_text(
+        command.read_text(encoding="utf-8") + "\nMark PR 12 ready when CI is green. owner-only\n", encoding="utf-8"
+    )
     assert any("mark a PR ready" in error for error in agent_instruction_audit.audit_handback_wording(project))
 
 
@@ -261,7 +271,7 @@ def test_an_owner_only_marker_does_not_exempt_a_handback_line(tmp_path: Path) ->
 def test_handback_wording_survives_reflow_and_formatting(tmp_path: Path, text: str) -> None:
     project = _candidate(tmp_path)
     command = project / ".claude/commands/pr.md"
-    command.write_text(command.read_text() + "\n\n" + text + "\n")
+    command.write_text(command.read_text(encoding="utf-8") + "\n\n" + text + "\n", encoding="utf-8")
     assert agent_instruction_audit.audit_handback_wording(project) != []
 
 
@@ -284,7 +294,7 @@ def test_handback_wording_survives_reflow_and_formatting(tmp_path: Path, text: s
 def test_handback_guard_allows_safety_wording_and_separate_list_items(tmp_path: Path, text: str) -> None:
     project = _candidate(tmp_path)
     command = project / ".claude/commands/pr.md"
-    command.write_text(command.read_text() + "\n\n" + text + "\n")
+    command.write_text(command.read_text(encoding="utf-8") + "\n\n" + text + "\n", encoding="utf-8")
     assert agent_instruction_audit.audit_handback_wording(project) == []
 
 
@@ -296,7 +306,10 @@ def test_handback_guard_covers_the_scripts_and_docs_that_print_guidance(tmp_path
     project = _candidate(tmp_path)
     assert agent_instruction_audit.audit_handback_wording(project) == []
     target = _with_repo_file(project, relative)
-    target.write_text(target.read_text() + "\n\nAuto-merge withheld. Run make pr-ready when the branch is final.\n")
+    target.write_text(
+        target.read_text(encoding="utf-8") + "\n\nAuto-merge withheld. Run make pr-ready when the branch is final.\n",
+        encoding="utf-8",
+    )
     errors = agent_instruction_audit.audit_handback_wording(project)
     assert any(error.startswith(f"{relative}:") for error in errors), errors
 
@@ -304,10 +317,10 @@ def test_handback_guard_covers_the_scripts_and_docs_that_print_guidance(tmp_path
 def test_project_commit_anchor_reflow_passes(tmp_path: Path) -> None:
     project = _candidate(tmp_path)
     agents = project / "AGENTS.md"
-    original = agents.read_text()
+    original = agents.read_text(encoding="utf-8")
     reflowed = original.replace("not authorization", "not\nauthorization", 1)
     assert reflowed != original, "the reflow fixture text is no longer in AGENTS.md; the test would mutate nothing"
-    agents.write_text(reflowed)
+    agents.write_text(reflowed, encoding="utf-8")
     _, errors = audit(project, CORPUS)
     assert errors == []
 
@@ -325,7 +338,7 @@ def test_project_commit_anchor_reflow_passes(tmp_path: Path) -> None:
 def test_code_review_identity_noise_guard_drift_fails(tmp_path: Path, anchor: str) -> None:
     project = _candidate(tmp_path)
     agents = project / "AGENTS.md"
-    agents.write_text(agents.read_text().replace(anchor, "removed review guard", 1))
+    agents.write_text(agents.read_text(encoding="utf-8").replace(anchor, "removed review guard", 1), encoding="utf-8")
     _, errors = audit(project, CORPUS)
     assert any("Code Review Rules" in error for error in errors)
 
@@ -333,9 +346,9 @@ def test_code_review_identity_noise_guard_drift_fails(tmp_path: Path, anchor: st
 def test_executable_hook_fails(tmp_path: Path) -> None:
     project = _candidate(tmp_path)
     settings = project / ".claude/settings.json"
-    data = json.loads(settings.read_text())
+    data = json.loads(settings.read_text(encoding="utf-8"))
     data["hooks"] = {"PostToolUse": [{"command": "uv run ruff --fix"}]}
-    settings.write_text(json.dumps(data))
+    settings.write_text(json.dumps(data), encoding="utf-8")
     _, errors = audit(project, CORPUS)
     assert any("contains executable hooks" in error for error in errors)
 
@@ -397,7 +410,8 @@ def test_superseded_review_doc_claiming_authority_fails(tmp_path: Path) -> None:
     project = _candidate(tmp_path)
     legacy = project / "docs/agent/review-protocol-legacy.md"
     legacy.write_text(
-        "# Review Protocol\n\n> Canonical, unabridged form.\n\nIf a wrapper conflicts with this file, this file wins.\n"
+        "# Review Protocol\n\n> Canonical, unabridged form.\n\nIf a wrapper conflicts with this file, this file wins.\n",
+        encoding="utf-8",
     )
     _, errors = audit(project, CORPUS)
     assert any("lacks a leading non-authoritative banner" in error for error in errors)
@@ -411,7 +425,8 @@ def test_superseded_review_doc_with_banner_passes(tmp_path: Path) -> None:
     legacy.write_text(
         "# Review Protocol (historical)\n\n"
         "> Historical, non-authoritative. The active behavioral authority is\n"
-        "> docs/agent/review-protocol.md.\n\nRetained rationale.\n"
+        "> docs/agent/review-protocol.md.\n\nRetained rationale.\n",
+        encoding="utf-8",
     )
     _, errors = audit(project, CORPUS)
     assert errors == []
@@ -420,7 +435,10 @@ def test_superseded_review_doc_with_banner_passes(tmp_path: Path) -> None:
 def test_command_bound_to_superseded_review_doc_fails(tmp_path: Path) -> None:
     project = _candidate(tmp_path)
     command = project / ".claude/commands/pr.md"
-    command.write_text(command.read_text() + "\nFollow docs/development/review-protocol.md exactly.\n")
+    command.write_text(
+        command.read_text(encoding="utf-8") + "\nFollow docs/development/review-protocol.md exactly.\n",
+        encoding="utf-8",
+    )
     _, errors = audit(project, CORPUS)
     assert any("binds to the superseded docs/development/review-protocol.md" in error for error in errors)
 
@@ -428,7 +446,9 @@ def test_command_bound_to_superseded_review_doc_fails(tmp_path: Path) -> None:
 def test_canonical_review_policy_semantic_drift_fails(tmp_path: Path) -> None:
     project = _candidate(tmp_path)
     canonical = project / CANONICAL_REVIEW_SKILL
-    canonical.write_text(canonical.read_text().replace("review-only", "may modify reviewed code"))
+    canonical.write_text(
+        canonical.read_text(encoding="utf-8").replace("review-only", "may modify reviewed code"), encoding="utf-8"
+    )
     _, errors = audit(project, CORPUS)
     assert any("canonical REVIEW-AUTH-001 semantics drifted" in error for error in errors)
 
@@ -436,7 +456,7 @@ def test_canonical_review_policy_semantic_drift_fails(tmp_path: Path) -> None:
 def test_canonical_review_legacy_wording_passes(tmp_path: Path) -> None:
     project = _candidate(tmp_path)
     canonical = project / CANONICAL_REVIEW_SKILL
-    content = canonical.read_text()
+    content = canonical.read_text(encoding="utf-8")
     content = content.replace(
         "Review-shaped actions are read-only except for local capture. They may inspect\nartifacts, run analyses, report findings, and write only to designated TODO,\nblind-spot, audit, decision, or handoff locations.",
         "Review-shaped actions are read-only except for local capture.",
@@ -445,7 +465,7 @@ def test_canonical_review_legacy_wording_passes(tmp_path: Path) -> None:
         "A user request that combines review with fixing or remediation\nremains review-only. Report the findings and stop without changing tracked\nworktree content. Remediation requires a later user message, sent after the\nfindings, that explicitly authorizes it.",
         "A user request that combines review and remediation remains review-only.\nReport the findings and stop without changing tracked worktree content.\nRemediation requires authorization in a later turn.",
     )
-    canonical.write_text(content)
+    canonical.write_text(content, encoding="utf-8")
     _, errors = audit(project, CORPUS)
     assert errors == []
 
@@ -453,7 +473,10 @@ def test_canonical_review_legacy_wording_passes(tmp_path: Path) -> None:
 def test_agents_bundled_review_zero_mutation_drift_fails(tmp_path: Path) -> None:
     project = _candidate(tmp_path)
     agents = project / "AGENTS.md"
-    agents.write_text(agents.read_text().replace("zero tracked worktree-content changes", "some local changes"))
+    agents.write_text(
+        agents.read_text(encoding="utf-8").replace("zero tracked worktree-content changes", "some local changes"),
+        encoding="utf-8",
+    )
     _, errors = audit(project, CORPUS)
     assert any("AGENTS.md REVIEW-AUTH-001 semantics drifted" in error for error in errors)
 
@@ -461,7 +484,9 @@ def test_agents_bundled_review_zero_mutation_drift_fails(tmp_path: Path) -> None
 def test_project_review_policy_id_missing_fails(tmp_path: Path) -> None:
     project = _candidate(tmp_path)
     protocol = project / "docs/agent/review-protocol.md"
-    protocol.write_text(protocol.read_text().replace("[REVIEW-CAPTURE-001]", "[REMOVED-CAPTURE-ID]"))
+    protocol.write_text(
+        protocol.read_text(encoding="utf-8").replace("[REVIEW-CAPTURE-001]", "[REMOVED-CAPTURE-ID]"), encoding="utf-8"
+    )
     _, errors = audit(project, CORPUS)
     assert any("project review binding misses policy ID: REVIEW-CAPTURE-001" in error for error in errors)
 
@@ -470,7 +495,9 @@ def test_project_review_policy_id_missing_fails(tmp_path: Path) -> None:
 def test_missing_canonical_review_policy_id_fails(tmp_path: Path, policy_id: str) -> None:
     project = _candidate(tmp_path)
     canonical = project / CANONICAL_REVIEW_SKILL
-    canonical.write_text(canonical.read_text().replace(f"[{policy_id}]", "[REMOVED-REVIEW-ID]"))
+    canonical.write_text(
+        canonical.read_text(encoding="utf-8").replace(f"[{policy_id}]", "[REMOVED-REVIEW-ID]"), encoding="utf-8"
+    )
     _, errors = audit(project, CORPUS)
     assert any(f"canonical review skill misses policy IDs: {policy_id}" in error for error in errors)
 
@@ -478,7 +505,10 @@ def test_missing_canonical_review_policy_id_fails(tmp_path: Path, policy_id: str
 def test_canonical_plan_reconciliation_policy_drift_fails(tmp_path: Path) -> None:
     project = _candidate(tmp_path)
     canonical = project / CANONICAL_REVIEW_SKILL
-    canonical.write_text(canonical.read_text().replace("Claim-against-code checking", "Casual code checking"))
+    canonical.write_text(
+        canonical.read_text(encoding="utf-8").replace("Claim-against-code checking", "Casual code checking"),
+        encoding="utf-8",
+    )
     _, errors = audit(project, CORPUS)
     assert any("canonical REVIEW-PLAN-RECON-001 semantics drifted" in error for error in errors)
 
@@ -486,7 +516,9 @@ def test_canonical_plan_reconciliation_policy_drift_fails(tmp_path: Path) -> Non
 def test_project_plan_reconciliation_policy_drift_fails(tmp_path: Path) -> None:
     project = _candidate(tmp_path)
     protocol = project / "docs/agent/review-protocol.md"
-    protocol.write_text(protocol.read_text().replace("future-state index/tiers", "future plans"))
+    protocol.write_text(
+        protocol.read_text(encoding="utf-8").replace("future-state index/tiers", "future plans"), encoding="utf-8"
+    )
     _, errors = audit(project, CORPUS)
     assert any("project REVIEW-PLAN-RECON-001 semantics drifted" in error for error in errors)
 
@@ -495,7 +527,7 @@ def test_development_agent_doc_fails(tmp_path: Path) -> None:
     project = _candidate(tmp_path)
     leaked = project / "docs/development/agent-extra.md"
     leaked.parent.mkdir(parents=True, exist_ok=True)
-    leaked.write_text("# stray agent note\n")
+    leaked.write_text("# stray agent note\n", encoding="utf-8")
     _, errors = audit(project, CORPUS)
     assert any("must live under docs/agent/" in error for error in errors)
     assert any("docs/development/agent-extra.md" in error for error in errors)
@@ -505,7 +537,7 @@ def test_missing_agent_publish_exclusion_fails(tmp_path: Path) -> None:
     project = _candidate(tmp_path)
     exclusions = project / "docs/publish-exclusions.txt"
     exclusions.parent.mkdir(parents=True, exist_ok=True)
-    exclusions.write_text("# comment\ninternal/\n")
+    exclusions.write_text("# comment\ninternal/\n", encoding="utf-8")
     _, errors = audit(project, CORPUS)
     assert any("must exclude the docs/agent/ tree from the published site" in error for error in errors)
 
@@ -784,7 +816,7 @@ def test_audit_entry_point_imports_without_third_party_packages() -> None:
 def test_missing_review_depth_binding_fails_the_parity_audit(tmp_path: Path) -> None:
     project = _candidate(tmp_path)
     protocol = project / "docs/agent/review-protocol.md"
-    protocol.write_text(protocol.read_text().replace("`[REVIEW-DEPTH-001]`", ""))
+    protocol.write_text(protocol.read_text(encoding="utf-8").replace("`[REVIEW-DEPTH-001]`", ""), encoding="utf-8")
     _, errors = audit(project, CORPUS)
     assert any("REVIEW-DEPTH-001" in error for error in errors)
 
@@ -792,7 +824,7 @@ def test_missing_review_depth_binding_fails_the_parity_audit(tmp_path: Path) -> 
 def test_restating_a_dependency_cap_in_agents_md_fails(tmp_path: Path) -> None:
     project = _candidate(tmp_path)
     agents = project / "AGENTS.md"
-    agents.write_text(agents.read_text() + "\n- Caps: `pyarrow<25`.\n")
+    agents.write_text(agents.read_text(encoding="utf-8") + "\n- Caps: `pyarrow<25`.\n", encoding="utf-8")
     _, errors = audit(project, CORPUS)
     assert any("restates dependency caps" in error and "pyarrow<25" in error for error in errors)
 
@@ -801,7 +833,9 @@ def test_the_cap_guard_is_not_defeated_by_same_line_placement(tmp_path: Path) ->
     project = _candidate(tmp_path)
     agents = project / "AGENTS.md"
     agents.write_text(
-        agents.read_text() + "\n- See `docs/development/dependency-compatibility.md`; caps: `duckdb<2`.\n"
+        agents.read_text(encoding="utf-8")
+        + "\n- See `docs/development/dependency-compatibility.md`; caps: `duckdb<2`.\n",
+        encoding="utf-8",
     )
     _, errors = audit(project, CORPUS)
     assert any("restates dependency caps" in error and "duckdb<2" in error for error in errors)

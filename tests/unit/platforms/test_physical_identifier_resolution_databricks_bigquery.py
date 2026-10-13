@@ -219,4 +219,4 @@ class TestNoCasingHacksInTuningBuilders:
     @pytest.mark.parametrize("relative", ["benchbox/platforms/databricks/adapter.py", "benchbox/platforms/bigquery.py"])
     @pytest.mark.parametrize("hack", ["table_tuning.table_name.upper()", "table_tuning.table_name.lower()"])
     def test_builders_do_not_fold_the_logical_table_name(self, relative, hack):
-        assert hack not in (REPO_ROOT / relative).read_text()
+        assert hack not in (REPO_ROOT / relative).read_text(encoding="utf-8")

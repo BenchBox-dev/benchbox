@@ -1,9 +1,19 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
-from check_windows_antipatterns import check_file, check_tree
+from check_windows_antipatterns import (
+    _DEFAULT_BASELINE,
+    _DEFAULT_ROOTS,
+    Violation,
+    apply_baseline,
+    check_file,
+    check_tree,
+    load_baseline,
+    write_baseline,
+)
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -175,3 +185,104 @@ def test_check_tree_empty_directory(tmp_path: Path) -> None:
     violations, file_count = check_tree([tmp_path])
     assert violations == []
     assert file_count == 0
+
+
+def _violation(root: Path, relative: str, code: str = "WA003") -> Violation:
+    return Violation(file=root / relative, line=1, col=0, code=code, message="m")
+
+
+def test_default_roots_cover_tests_and_scripts() -> None:
+    assert {"benchbox", "tests", "scripts"} <= set(_DEFAULT_ROOTS)
+
+
+def test_baseline_allows_the_recorded_count(tmp_path: Path) -> None:
+    violations = [_violation(tmp_path, "tests/a.py"), _violation(tmp_path, "tests/a.py")]
+
+    result = apply_baseline(violations, {"tests/a.py": {"WA003": 2}}, tmp_path, [tmp_path / "tests"])
+
+    assert result.clean
+
+
+def test_baseline_rejects_a_new_violation_in_a_baselined_file(tmp_path: Path) -> None:
+    violations = [_violation(tmp_path, "tests/a.py"), _violation(tmp_path, "tests/a.py")]
+
+    result = apply_baseline(violations, {"tests/a.py": {"WA003": 1}}, tmp_path, [tmp_path / "tests"])
+
+    assert len(result.regressions) == 2
+    assert not result.clean
+
+
+def test_baseline_rejects_a_violation_in_an_unlisted_file(tmp_path: Path) -> None:
+    result = apply_baseline([_violation(tmp_path, "scripts/new.py")], {}, tmp_path, [tmp_path / "scripts"])
+
+    assert [v.file.name for v in result.regressions] == ["new.py"]
+
+
+def test_baseline_counts_each_code_separately(tmp_path: Path) -> None:
+    violations = [_violation(tmp_path, "tests/a.py", "WA003"), _violation(tmp_path, "tests/a.py", "WA002")]
+
+    result = apply_baseline(violations, {"tests/a.py": {"WA003": 1}}, tmp_path, [tmp_path / "tests"])
+
+    assert [v.code for v in result.regressions] == ["WA002"]
+
+
+def test_baseline_entry_above_the_current_count_is_stale(tmp_path: Path) -> None:
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "a.py").write_text("x = 1\n", encoding="utf-8")
+
+    result = apply_baseline([], {"tests/a.py": {"WA003": 2}}, tmp_path, [tmp_path / "tests"])
+
+    assert result.stale == ["tests/a.py: WA003 baseline allows 2, found 0"]
+    assert not result.clean
+
+
+def test_baseline_entry_for_a_file_absent_from_the_tree_is_ignored(tmp_path: Path) -> None:
+    result = apply_baseline([], {"tests/gone.py": {"WA003": 2}}, tmp_path, [tmp_path / "tests"])
+
+    assert result.clean
+
+
+def test_stale_check_ignores_paths_outside_the_scanned_roots(tmp_path: Path) -> None:
+    result = apply_baseline([], {"tests/a.py": {"WA003": 2}}, tmp_path, [tmp_path / "scripts"])
+
+    assert result.clean
+
+
+def test_write_baseline_refuses_to_raise_a_count(tmp_path: Path) -> None:
+    path = tmp_path / "baseline.json"
+    path.write_text(json.dumps({"files": {"tests/a.py": {"WA003": 1}}}), encoding="utf-8")
+    violations = [_violation(tmp_path, "tests/a.py"), _violation(tmp_path, "tests/a.py")]
+
+    assert write_baseline(path, violations, tmp_path, [tmp_path / "tests"]) == 1
+    assert load_baseline(path) == {"tests/a.py": {"WA003": 1}}
+
+
+def test_write_baseline_lowers_counts_and_keeps_unscanned_entries(tmp_path: Path) -> None:
+    path = tmp_path / "baseline.json"
+    path.write_text(
+        json.dumps(
+            {"files": {"tests/a.py": {"WA003": 3}, "tests/gone.py": {"WA003": 1}, "scripts/b.py": {"WA003": 2}}}
+        ),
+        encoding="utf-8",
+    )
+
+    assert write_baseline(path, [_violation(tmp_path, "tests/a.py")], tmp_path, [tmp_path / "tests"]) == 0
+
+    assert load_baseline(path) == {"tests/a.py": {"WA003": 1}, "scripts/b.py": {"WA003": 2}}
+
+
+def test_write_baseline_creates_a_missing_file(tmp_path: Path) -> None:
+    path = tmp_path / "quality" / "baseline.json"
+
+    assert write_baseline(path, [_violation(tmp_path, "tests/a.py")], tmp_path, [tmp_path / "tests"]) == 0
+    assert load_baseline(path) == {"tests/a.py": {"WA003": 1}}
+
+
+def test_repository_baseline_is_current() -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    roots = [repo_root / name for name in _DEFAULT_ROOTS]
+    violations, _ = check_tree(roots)
+
+    result = apply_baseline(violations, load_baseline(repo_root / _DEFAULT_BASELINE), repo_root, roots)
+
+    assert result.clean, [str(v) for v in result.regressions] + result.stale
