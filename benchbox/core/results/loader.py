@@ -188,6 +188,9 @@ def reconstruct_benchmark_results(
             **execution_metadata.get("run_config", {}),
             "execution_engine": config_section["execution_engine"],
         }
+    recorded_phases = _recorded_phase_status(data.get("phases", {}))
+    if recorded_phases:
+        execution_metadata = {**(execution_metadata or {}), "phase_status": recorded_phases}
     tuning = _extract_tuning_info(platform_section, tuning_data)
     environment_section = data.get("environment", {})
     system_profile = _extract_system_profile(environment_section)
@@ -606,6 +609,21 @@ def _lookup_plan_entry(
 
 def iter_query_results(results: Any) -> list[dict[str, Any]]:
     return list(getattr(results, "query_results", None) or [])
+
+
+_RECONSTRUCTED_PHASES = frozenset({"throughput_test", "migration"})
+
+
+def _recorded_phase_status(phases_section: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    recorded: dict[str, dict[str, Any]] = {}
+    for name, entry in (phases_section or {}).items():
+        if name in _RECONSTRUCTED_PHASES or not isinstance(entry, dict):
+            continue
+        status = entry.get("status")
+        if not status or status == "NOT_RUN":
+            continue
+        recorded[name] = {key: entry[key] for key in ("status", "duration_ms") if key in entry}
+    return recorded
 
 
 def _reconstruct_execution_phases(phases_section: dict[str, Any]) -> ExecutionPhases | None:

@@ -947,6 +947,63 @@ class TestExportLoadReexportRoundtrip:
         assert re_plans_payload is not None
         assert canonical_json_text(plans_payload) == canonical_json_text(re_plans_payload)
 
+    def test_recorded_phases_survive_reload_and_anonymized_reexport(self, tmp_path):
+        from benchbox.core.results.exporter import ResultExporter
+
+        original = make_benchmark_results(
+            benchmark_id="tpch",
+            benchmark_name="tpch",
+            platform="duckdb",
+            scale_factor=1.0,
+            execution_id="phases-roundtrip-001",
+            timestamp=datetime(2026, 1, 1, 12, 0, 0),
+            duration_seconds=10.0,
+            total_queries=1,
+            successful_queries=1,
+            failed_queries=0,
+            query_results=[
+                {
+                    "query_id": "1",
+                    "status": "SUCCESS",
+                    "execution_time_ms": 100.0,
+                    "rows_returned": 4,
+                    "iteration": 1,
+                    "stream_id": 0,
+                    "run_type": "measurement",
+                }
+            ],
+        )
+
+        exported = ResultExporter(output_dir=tmp_path, anonymize=False).export_result(original, formats=["json"])
+        payload_path = exported["json"]
+        payload = json.loads(payload_path.read_text(encoding="utf-8"))
+        payload["phases"] = {
+            "data_generation": {"status": "SUCCESS", "duration_ms": 0},
+            "schema_creation": {"status": "SUCCESS", "duration_ms": 3248},
+            "data_loading": {"status": "SUCCESS", "duration_ms": 49488},
+            "validation": {"status": "PASSED", "duration_ms": 2489},
+            "power_test": {"status": "COMPLETED", "duration_ms": 96817},
+            "throughput_test": {"status": "NOT_RUN"},
+        }
+        payload_path.write_text(json.dumps(payload), encoding="utf-8")
+
+        reloaded, _raw = load_result_file(payload_path)
+        re_exported = ResultExporter(output_dir=tmp_path / "public", anonymize=True).export_result(
+            reloaded, formats=["json"]
+        )
+        reexported = json.loads(re_exported["json"].read_text(encoding="utf-8"))
+
+        for name, duration in (
+            ("data_generation", 0),
+            ("schema_creation", 3248),
+            ("data_loading", 49488),
+            ("validation", 2489),
+            ("power_test", 96817),
+        ):
+            assert reexported["phases"][name]["status"] == payload["phases"][name]["status"]
+            assert reexported["phases"][name]["duration_ms"] == duration
+        assert reexported["phases"]["throughput_test"] == {"status": "NOT_RUN"}
+
 
 class TestTuningProvenanceLoaderFidelity:
     def test_legacy_summary_only_bundle_reconstructs_yaml_sentinel(self):
