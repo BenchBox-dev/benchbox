@@ -2827,11 +2827,14 @@ def run(
     no_link_probe: bool = False,
     polars_streaming: bool = False,
 ) -> None:
+    from benchbox.core.run_service import apply_polars_streaming_flag, begin_run
+
+    begin_run()
     if polars_streaming:
-        console.print("[yellow]--polars-streaming is deprecated; use --execution-engine streaming.[/yellow]")
-        if execution_engine not in (None, "default", "streaming"):
-            raise click.UsageError(f"--polars-streaming conflicts with --execution-engine {execution_engine}")
-        execution_engine = "streaming"
+        try:
+            platform_option_pairs = apply_polars_streaming_flag(platform_option_pairs, execution_engine)
+        except ValueError as exc:
+            raise click.UsageError(str(exc)) from exc
     s = types.SimpleNamespace(
         ctx=ctx,
         platform=platform,
@@ -2882,6 +2885,7 @@ def run(
         client_region=client_region,
         client_cloud=client_cloud,
         no_link_probe=no_link_probe,
+        polars_streaming=polars_streaming,
     )
     _prepare_run_state(s)
 

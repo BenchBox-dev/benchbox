@@ -4,6 +4,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
+from benchbox.core.execution_engine import legacy_option_engine
 from benchbox.core.platform_registry import PlatformInfo, PlatformRegistry
 from benchbox.core.schemas import DatabaseConfig
 
@@ -32,9 +33,12 @@ def _warn_deprecated_compute_alias(platform: str, alias: str, canonical: str) ->
         get_compute_declaration,
         warn_deprecated_compute_alias,
     )
+    from benchbox.core.deployment import DEPLOYMENT_ALIAS_KEYS
     from benchbox.core.execution_engine import DEPRECATED_OPTION_ALIASES
 
     key = alias.lower()
+    if key in DEPLOYMENT_ALIAS_KEYS.get(platform.lower(), ()):
+        return
     declaration = get_compute_declaration(platform) if declares_compute(platform) else None
     known = declaration is not None and (key in declaration.resource_aliases or key in declaration.size_aliases)
     if not known and (platform.lower(), key) not in DEPRECATED_OPTION_ALIASES:
@@ -125,6 +129,8 @@ class PlatformHookRegistry:
                 _warn_deprecated_compute_alias(platform, key, canonical)
             spec = specs[canonical]
             value = spec.parse(raw)
+            if isinstance(value, bool):
+                legacy_option_engine(platform, canonical, value)
             if canonical in seen:
                 first_key, first_value = seen[canonical]
                 if value != first_value:

@@ -119,11 +119,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the workgroup never reached the adapter.
 
 - The Atom feed uses canonical `/blog/` self and entry links while retaining stable entry IDs for existing subscribers.
+- Deprecated option aliases now show their warning. The Polars `streaming`
+  option, `--polars-streaming`, Dask `use_distributed`, pg-duckdb
+  `force_execution`, vendor compute names (including Athena Spark
+  `engine_version`) and native deployment keys each log one warning per run,
+  on the CLI (including `--dry-run`) and in the MCP server log. The warning names the spelling you supplied, its replacement
+  and the release that removes it (0.6.0). Most of these were Python
+  `DeprecationWarning`s, which Python hides by default, and a long-running MCP
+  server warned only once per process. ClickHouse `mode=local` now prints one
+  warning instead of two and no longer names `deployment_mode`.
+- `--polars-streaming` now records `resolution: legacy_option`, like the
+  Polars `streaming` option and the MCP `streaming` key, instead of
+  `explicit`.
 
 ### Before you upgrade
 - Athena Spark `runtime_version` no longer tries to choose the Spark engine
   version. Set the version on the workgroup; BenchBox records the value you
   pass as requested.
+- Deprecated-alias warnings are now WARNING log records from the
+  `benchbox.core.deprecation_notices` logger instead of `DeprecationWarning`s.
+  Code that filtered or asserted on `DeprecationWarning` for these aliases
+  must read the log instead. `--quiet` still hides them.
+- Runs that pass `--polars-streaming` record
+  `platform.execution_engine.resolution` as `legacy_option` instead of
+  `explicit`. The requested and applied engines and `platform.variant` do not
+  change.
 - Vendor compute names now warn once per run; move saved configurations and
   credential profiles to `compute_resource` and `compute_size` (Fabric Data
   Warehouse: `database`; Athena Spark: `runtime_version`). The old names stop

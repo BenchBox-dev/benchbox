@@ -292,6 +292,7 @@ def _execute_mcp_run_via_core(
 ) -> dict[str, Any]:
     from benchbox.core.run_service import (
         SilentVerbosity,
+        begin_run,
         execute_run,
         map_phases_to_execution_type,
         translate_platform_options_for_adapter,
@@ -299,6 +300,7 @@ def _execute_mcp_run_via_core(
     from benchbox.core.schemas import BenchmarkConfig, DatabaseConfig, ExecutionContext
     from benchbox.core.system import SystemProfiler
 
+    begin_run()
     try:
         resolved_execution_engine = validate_execution_engine(platform, execution_engine)
     except MCPValidationError as exc:

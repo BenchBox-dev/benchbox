@@ -22,6 +22,7 @@ from benchbox.core.benchmark_registry import get_benchmark_default_scale
 from benchbox.core.execution_engine import UnsupportedExecutionEngineError, resolve_requested
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 from benchbox.core.platform_registry import PlatformRegistry
+from benchbox.core.run_service import warn_polars_streaming_flag
 from benchbox.platforms import is_dataframe_platform, list_available_dataframe_platforms
 from benchbox.platforms.adapter_factory import _reject_removed_platform
 
@@ -162,6 +163,8 @@ def _parse_plat_bench_options(s: types.SimpleNamespace) -> None:
     set_quiet_output(s.verbosity_settings.quiet)
     s.ctx.obj["verbosity"] = s.verbosity_settings
     s.verbosity_payload = s.verbosity_settings.to_config()
+    if getattr(s, "polars_streaming", False):
+        warn_polars_streaming_flag()
 
     _apply_dataframe_suffix_mode(s)
     s.platform_key, s.deployment_selector = _split_deployment_selector(s.platform)

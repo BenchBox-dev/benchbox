@@ -19,6 +19,7 @@ from benchbox.platforms import get_dataframe_adapter, polars_compat
 from benchbox.platforms.dataframe import expression_family, polars_df, unified_frame
 from benchbox.platforms.dataframe.polars_df import PolarsDataFrameAdapter
 from benchbox.platforms.dataframe.unified_frame import UnifiedLazyFrame
+from tests.utilities.deprecation_capture import captured_deprecations
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -342,8 +343,9 @@ class TestEngineReachesEveryCollect:
 
         assert collect_calls == [{}]
 
-    def test_streaming_flag_selects_the_streaming_engine(self, collect_calls, recwarn):
-        adapter = PolarsDataFrameAdapter(streaming=True)
+    def test_streaming_flag_selects_the_streaming_engine(self, collect_calls, caplog):
+        with captured_deprecations(caplog) as seen:
+            adapter = PolarsDataFrameAdapter(streaming=True)
         collect_calls.clear()
 
         adapter.collect(pl.LazyFrame({"a": [1]}))
@@ -351,7 +353,9 @@ class TestEngineReachesEveryCollect:
         assert adapter.collect_engine == "streaming"
         assert adapter.get_platform_info()["execution_engine"]["resolution"] == "legacy_option"
         assert collect_calls == [{"engine": "streaming"}]
-        assert any(issubclass(warning.category, DeprecationWarning) for warning in recwarn.list)
+        assert len(seen) == 1
+        assert "'streaming'" in seen[0]
+        assert "0.6.0" in seen[0]
 
     def test_default_on_a_version_without_an_engine_parameter_resolves_in_memory(self, monkeypatch):
         monkeypatch.setattr(polars_df, "collect_accepts_engine", lambda: False)
@@ -527,7 +531,7 @@ class TestEngineMetadata:
         ],
     )
     def test_requested_engine_is_distinct_from_the_applied_collect_argument(
-        self, kwargs, requested, resolution, argument, recwarn
+        self, kwargs, requested, resolution, argument
     ):
         info = PolarsDataFrameAdapter(**kwargs).get_platform_info()
 

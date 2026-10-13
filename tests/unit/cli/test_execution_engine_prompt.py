@@ -94,7 +94,7 @@ class TestInteractiveEngineResolution:
         assert s.database_config.execution_engine == "streaming"
 
 
-def test_polars_streaming_cli_alias_sets_execution_engine_without_platform_option():
+def test_polars_streaming_cli_alias_adds_the_legacy_streaming_option():
     import importlib
 
     from click.testing import CliRunner
@@ -118,9 +118,8 @@ def test_polars_streaming_cli_alias_sets_execution_engine_without_platform_optio
         )
 
     assert result.exit_code == 0, result.output
-    assert "deprecated" in result.output
-    assert captured["execution_engine"] == "streaming"
-    assert ("streaming", "true") not in captured["platform_option_pairs"]
+    assert captured["execution_engine"] is None
+    assert ("streaming", "true") in captured["platform_option_pairs"]
 
 
 def test_polars_streaming_cli_alias_rejects_conflicting_execution_engine():
