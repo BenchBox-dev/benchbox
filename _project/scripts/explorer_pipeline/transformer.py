@@ -368,34 +368,23 @@ def _throughput_streams_succeeded(bundle: BundleDocument) -> bool:
     )
 
 
-def _throughput_streams_incomplete(bundle: BundleDocument) -> bool:
-    block = bundle.phases.get("throughput_test")
-    payload = {
-        "benchmark": {"id": bundle.benchmark.id},
-        "phases": {
-            "throughput_test": None
-            if block is None
-            else {"status": block.status, "stream_results": block.stream_results}
-        },
-        "queries": [
-            {"id": row.query_id, "status": row.status, "ms": row.ms, "run_type": row.run_type, "stream": row.stream}
-            for row in bundle.queries
-        ],
-    }
-    return bool(throughput_stream_defects(payload))
+def _throughput_streams_incomplete(bundle_data: Mapping[str, Any]) -> bool:
+    return bool(throughput_stream_defects(cast(dict[str, Any], bundle_data)))
 
 
-def _throughput_stream_exclusion(bundle: BundleDocument, test_type: str | None, reason: str | None) -> str | None:
+def _throughput_stream_exclusion(
+    bundle: BundleDocument, bundle_data: Mapping[str, Any], test_type: str | None, reason: str | None
+) -> str | None:
     if reason not in (None, "missing_primary_metric") or canonical_phase(test_type) != THROUGHPUT_PHASE:
         return reason
     if _throughput_stream_count_mismatch(bundle):
         return "stream_count_mismatch"
-    if _throughput_streams_succeeded(bundle) and _throughput_streams_incomplete(bundle):
+    if _throughput_streams_succeeded(bundle) and _throughput_streams_incomplete(bundle_data):
         return "incomplete_throughput_streams"
     return reason
 
 
-def _throughput_phase_clean(bundle: BundleDocument) -> bool:
+def _throughput_phase_clean(bundle: BundleDocument, bundle_data: Mapping[str, Any]) -> bool:
     block = bundle.phases.get("throughput_test")
     if block is None or str(block.status or "").upper() != "COMPLETED":
         return False
@@ -404,15 +393,15 @@ def _throughput_phase_clean(bundle: BundleDocument) -> bool:
         return False
     if _throughput_stream_count_mismatch(bundle):
         return False
-    if _throughput_streams_incomplete(bundle):
+    if _throughput_streams_incomplete(bundle_data):
         return False
     if not _throughput_streams_succeeded(bundle):
         return False
     return not block.errors and not block.outstanding_work
 
 
-def _throughput_at_size(bundle: BundleDocument) -> float | None:
-    if not _throughput_phase_clean(bundle):
+def _throughput_at_size(bundle: BundleDocument, bundle_data: Mapping[str, Any]) -> float | None:
+    if not _throughput_phase_clean(bundle, bundle_data):
         return None
     return _tpc_metric(bundle.summary.tpc_metrics.throughput_at_size)
 
@@ -1289,7 +1278,7 @@ class BundleTransformer:
             driver_version=_driver_version(bundle),
             run_date=run_date,
             power_score=_power_score(bundle),
-            throughput_at_size=_throughput_at_size(bundle),
+            throughput_at_size=_throughput_at_size(bundle, bundle_data),
             stream_count=_stream_count(bundle, test_type),
             total_duration_s=total_duration_s,
             geomean_ms=_geomean_ms(bundle),
@@ -1334,7 +1323,7 @@ class BundleTransformer:
             basis_availability=_compute_basis_availability(timings),
         )
         reason = ranking_exclusion_reason(entry)
-        reason = _throughput_stream_exclusion(bundle, test_type, reason)
+        reason = _throughput_stream_exclusion(bundle, bundle_data, test_type, reason)
         if _sidecar_known_defects(bundle_path):
             reason = KNOWN_DEFECT_RANKING_EXCLUSION
         return entry.model_copy(update={"ranking_exclusion_reason": reason})
@@ -1391,7 +1380,7 @@ class BundleTransformer:
             geomean_ms=_geomean_ms(bundle),
             display_geomean_ms=_display_geomean_ms(display_timings),
             power_score=_power_score(bundle),
-            throughput_at_size=_throughput_at_size(bundle),
+            throughput_at_size=_throughput_at_size(bundle, bundle_data),
             stream_count=_stream_count(bundle, test_type),
             has_display_timing=timing_contract.has_display_timing,
             logical_query_count=logical_query_count,
@@ -1456,7 +1445,7 @@ class BundleTransformer:
             failed_query_count=detail.failed_query_count,
         )
         reason = ranking_exclusion_reason(manifest_peer)
-        reason = _throughput_stream_exclusion(bundle, test_type, reason)
+        reason = _throughput_stream_exclusion(bundle, bundle_data, test_type, reason)
         if _sidecar_known_defects(bundle_path):
             reason = KNOWN_DEFECT_RANKING_EXCLUSION
         return detail.model_copy(update={"ranking_exclusion_reason": reason})

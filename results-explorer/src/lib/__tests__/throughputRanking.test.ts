@@ -386,6 +386,16 @@ describe("local throughput import", () => {
     expect(await localScore(throughputBundle({ queries }))).toBeNull();
   });
 
+  it("reads a per-query stream_id and ignores rows without a string id or status", async () => {
+    const renamed = streamQueries(3, tpchQueryIds).map(({ stream, ...query }) => ({ ...query, stream_id: stream }));
+    const numericIds = streamQueries(3, tpchQueryIds).map((query) => ({ ...query, id: Number(query.id) }));
+    const noStatus = streamQueries(3, tpchQueryIds).map(({ status, ...query }) => query);
+
+    expect(await localScore(throughputBundle({ queries: renamed }))).toBe(3741.26);
+    expect(await localScore(throughputBundle({ queries: numericIds }))).toBeNull();
+    expect(await localScore(throughputBundle({ queries: noStatus }))).toBeNull();
+  });
+
   it("withholds the score for a single recorded stream", async () => {
     const bundle = throughputBundle({
       run: { id: "run", timestamp: "2026-10-03T18:42:47Z", total_duration_ms: 119000, streams: 1 },

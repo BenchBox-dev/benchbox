@@ -522,8 +522,31 @@ def test_incomplete_throughput_streams_are_not_clean_and_are_named(tmp_path: Pat
     assert validator.exclusion_reason(payload) == "incomplete_throughput_streams"
 
 
+def _rename_stream_key(payload: dict) -> None:
+    for query in payload["queries"]:
+        query["stream_id"] = query.pop("stream")
+
+
+def _numeric_query_ids(payload: dict) -> None:
+    for query in payload["queries"]:
+        if query["id"].isdigit():
+            query["id"] = int(query["id"])
+
+
+def _drop_query_status(payload: dict) -> None:
+    for query in payload["queries"]:
+        query.pop("status")
+
+
+PARITY_ONLY_MUTATIONS = {
+    "stream-id-key": _rename_stream_key,
+    "numeric-query-ids": _numeric_query_ids,
+    "missing-query-status": _drop_query_status,
+}
+
+
 @pytest.mark.parametrize("benchmark_id", ["tpch", "tpcds", "ssb"])
-@pytest.mark.parametrize("mutation", [None, *INCOMPLETE_STREAM_MUTATIONS])
+@pytest.mark.parametrize("mutation", [None, *INCOMPLETE_STREAM_MUTATIONS, *PARITY_ONLY_MUTATIONS])
 def test_corpus_and_submission_validators_agree_on_stream_completeness(
     tmp_path: Path, benchmark_id: str, mutation: str | None
 ) -> None:
@@ -532,7 +555,7 @@ def test_corpus_and_submission_validators_agree_on_stream_completeness(
     validator = _load_validator()
     payload = _complete_throughput_payload(tmp_path, benchmark_id)
     if mutation is not None:
-        INCOMPLETE_STREAM_MUTATIONS[mutation](payload)
+        {**INCOMPLETE_STREAM_MUTATIONS, **PARITY_ONLY_MUTATIONS}[mutation](payload)
 
     assert validator._throughput_streams_incomplete(payload) == bool(throughput_stream_defects(payload))
 

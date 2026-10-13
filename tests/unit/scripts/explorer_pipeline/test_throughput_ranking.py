@@ -214,6 +214,29 @@ def test_zero_based_stream_ids_exclude_geomean_throughput_from_ranking(tmp_path:
     assert valid_entry.ranking_exclusion_reason is None
 
 
+def test_transformer_judges_stream_completeness_on_the_raw_bundle(tmp_path: Path) -> None:
+    from benchbox.validation.bundle import throughput_stream_defects
+
+    numeric_ids = throughput_bundle("numeric", streams=3)
+    for query in numeric_ids["queries"]:
+        query["id"] = int(query["id"])
+    no_status = throughput_bundle("no_status", streams=3)
+    for query in no_status["queries"]:
+        query.pop("status")
+    stream_id_key = throughput_bundle("stream_id_key", streams=3)
+    for query in stream_id_key["queries"]:
+        query["stream_id"] = query.pop("stream")
+    bundles = {"numeric": numeric_ids, "no_status": no_status, "stream_id_key": stream_id_key}
+    entries = {name: entry for name, (entry, _) in zip(bundles, _pairs(tmp_path, bundles), strict=True)}
+
+    for name, payload in bundles.items():
+        expected = None if throughput_stream_defects(payload) else pytest.approx(3741.26)
+        assert entries[name].throughput_at_size == expected
+    assert entries["numeric"].ranking_exclusion_reason == "incomplete_throughput_streams"
+    assert entries["no_status"].ranking_exclusion_reason == "incomplete_throughput_streams"
+    assert entries["stream_id_key"].ranking_exclusion_reason is None
+
+
 def test_unsuccessful_stream_keeps_its_phase_exclusion_reason(tmp_path: Path) -> None:
     payload = throughput_bundle("spark", streams=3)
     payload["phases"]["throughput_test"]["stream_results"][1]["success"] = False
