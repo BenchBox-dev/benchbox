@@ -24,6 +24,7 @@ from benchbox.platforms.base.cloud_spark import (
     SparkTuningMixin,
 )
 from benchbox.platforms.base.cloud_spark.config import CloudPlatform
+from benchbox.platforms.base.config_utils import make_platform_config_builder
 from benchbox.platforms.base.phase_tracking import _resolve_benchmark_table_names
 from benchbox.utils.dependencies import (
     check_platform_dependencies,
@@ -32,12 +33,13 @@ from benchbox.utils.dependencies import (
 
 try:
     import boto3
-    from botocore.exceptions import ClientError
+    from botocore.exceptions import ClientError, ParamValidationError
 
     BOTO3_AVAILABLE = True
 except ImportError:
     boto3 = None
     ClientError = Exception
+    ParamValidationError = Exception
     BOTO3_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
@@ -102,10 +104,15 @@ class AthenaSparkAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkExternalT
             if not deps_satisfied:
                 raise ConfigurationError(get_dependency_error_message("athena-spark", missing))
 
-        if engine_version is not None and runtime_version is None:
+        if engine_version is not None:
             from benchbox.core.compute_resource import warn_deprecated_compute_alias
 
             warn_deprecated_compute_alias("athena-spark", "engine_version", "runtime_version")
+            if runtime_version is not None and runtime_version != engine_version:
+                raise ConfigurationError(
+                    f"Conflicting Athena Spark runtime versions: runtime_version='{runtime_version}' "
+                    f"disagrees with engine_version='{engine_version}'. Keep only runtime_version."
+                )
             runtime_version = engine_version
         if not workgroup:
             raise ConfigurationError("workgroup is required for Athena Spark. Must be a Spark-enabled workgroup.")
@@ -124,8 +131,7 @@ class AthenaSparkAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkExternalT
         self.s3_staging_dir = s3_staging_dir.rstrip("/")
         self.region = region
         self.database = database or "benchbox"
-        self.runtime_version = runtime_version or "PySpark engine version 3"
-        self.engine_version = self.runtime_version
+        self.runtime_version = runtime_version
         self.session_idle_timeout_minutes = session_idle_timeout_minutes
         self.coordinator_dpu_size = coordinator_dpu_size
         self.max_concurrent_dpus = max_concurrent_dpus
@@ -180,7 +186,7 @@ class AthenaSparkAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkExternalT
             "region": self.region,
             "workgroup": self.workgroup,
             "runtime_version": self.runtime_version,
-            "engine_version": self.engine_version,
+            "runtime_version_source": "requested" if self.runtime_version else None,
             "supports_sql": True,
             "supports_dataframe": True,
             "billing_model": "DPU-hour",
@@ -203,21 +209,19 @@ class AthenaSparkAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkExternalT
 
             logger.info(f"Starting Athena Spark session in workgroup: {self.workgroup}")
 
-            session_config = {
-                "CoordinatorDpuSize": self.coordinator_dpu_size,
-                "MaxConcurrentDpus": self.max_concurrent_dpus,
-                "DefaultExecutorDpuSize": self.default_executor_dpu_size,
-                "EngineVersion": self.runtime_version,
+            request: dict[str, Any] = {
+                "WorkGroup": self.workgroup,
+                "EngineConfiguration": {
+                    "CoordinatorDpuSize": self.coordinator_dpu_size,
+                    "MaxConcurrentDpus": self.max_concurrent_dpus,
+                    "DefaultExecutorDpuSize": self.default_executor_dpu_size,
+                },
+                "SessionIdleTimeoutInMinutes": self.session_idle_timeout_minutes,
             }
-
             if self.notebook_version:
-                session_config["NotebookVersion"] = self.notebook_version
+                request["NotebookVersion"] = self.notebook_version
 
-            response = client.start_session(
-                WorkGroup=self.workgroup,
-                EngineConfiguration=session_config,
-                SessionIdleTimeoutInMinutes=self.session_idle_timeout_minutes,
-            )
+            response = client.start_session(**request)
 
             self._session_id = response["SessionId"]
             session_state = response["State"]
@@ -232,6 +236,10 @@ class AthenaSparkAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkExternalT
                 "workgroup": self.workgroup,
             }
 
+        except ParamValidationError as e:
+            raise ConfigurationError(
+                f"Invalid Athena Spark session request for workgroup '{self.workgroup}': {e}"
+            ) from e
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             error_message = e.response.get("Error", {}).get("Message", str(e))
@@ -550,13 +558,15 @@ result.show(100, truncate=False)
     def from_config(cls, config: dict[str, Any]) -> AthenaSparkAdapter:
         from benchbox.core.compute_resource import normalize_compute_options
 
-        config = normalize_compute_options("athena-spark", config)
+        normalized = normalize_compute_options("athena-spark", config)
+        config = {key: value for key, value in normalized.items() if value is not None}
         params = {
             "workgroup": config.get("compute_resource") or config.get("workgroup"),
             "s3_staging_dir": config.get("s3_staging_dir"),
             "region": config.get("region", "us-east-1"),
             "database": config.get("database", "benchbox"),
-            "runtime_version": config.get("runtime_version") or config.get("engine_version"),
+            "runtime_version": config.get("runtime_version"),
+            "engine_version": config.get("engine_version"),
             "session_idle_timeout_minutes": config.get("session_idle_timeout_minutes", 15),
             "coordinator_dpu_size": config.get("coordinator_dpu_size", 1),
             "max_concurrent_dpus": config.get("max_concurrent_dpus", 20),
@@ -579,3 +589,24 @@ result.show(100, truncate=False)
 
     def get_target_dialect(self) -> str:
         return "spark"
+
+
+_build_athena_spark_config = make_platform_config_builder(
+    "athena-spark",
+    __name__,
+    "Amazon Athena for Apache Spark",
+    "boto3",
+    [
+        "compute_resource",
+        "s3_staging_dir",
+        "region",
+        "database",
+        "runtime_version",
+        "engine_version",
+        "session_idle_timeout_minutes",
+        "coordinator_dpu_size",
+        "max_concurrent_dpus",
+        "default_executor_dpu_size",
+        "timeout_minutes",
+    ],
+)

@@ -85,7 +85,11 @@ changes the endpoint, it is a gateway.
 
 **Not core settings:**
 
-- runtime version (recorded only);
+- runtime version (recorded only). Athena Spark's `runtime_version` is never
+  sent to `StartSession`: the session `EngineConfiguration` has no engine
+  version, because the Spark-enabled workgroup sets it. BenchBox does not read
+  the workgroup, so results record the value with
+  `runtime_version_source: requested`;
 - table format and storage engine (for example MergeTree);
 - optimizer flags such as Spark adaptive query execution (tuning);
 - the dtype backend.

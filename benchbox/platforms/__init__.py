@@ -685,6 +685,15 @@ athena|aws_profile|Named AWS CLI profile to authenticate with|{}
 athena|s3_bucket|S3 bucket for query results and data staging|{}
 athena|s3_staging_dir|S3 URI Athena writes query results to (e.g., s3://bucket/path)|{}
 athena|staging_root|S3 path for staging data (alternative to s3_bucket)|{}
+athena-spark|s3_staging_dir|S3 path for data staging (e.g., s3://bucket/path)|{}
+athena-spark|region|AWS region (default: us-east-1)|{}
+athena-spark|database|Glue Data Catalog database (default: benchbox)|{}
+athena-spark|runtime_version|Spark engine version expected on the workgroup, recorded in results as requested; the workgroup sets the engine version|{'aliases': ('engine_version',)}
+athena-spark|coordinator_dpu_size|Coordinator DPU size (default: 1)|{'parser': 'int'}
+athena-spark|max_concurrent_dpus|Maximum concurrent DPUs (default: 20)|{'parser': 'int'}
+athena-spark|default_executor_dpu_size|Default executor DPU size (default: 1)|{'parser': 'int'}
+athena-spark|session_idle_timeout_minutes|Session idle timeout in minutes (default: 15)|{'parser': 'int'}
+athena-spark|timeout_minutes|Calculation timeout in minutes (default: 60)|{'parser': 'int'}
 motherduck|database|MotherDuck database name|{}
 redshift|iam_role|IAM role ARN Redshift COPY assumes to read from S3|{}
 redshift|s3_bucket|S3 bucket for data staging|{}
@@ -774,6 +783,10 @@ velox|lakehouse_jars|Comma-separated connector jars for delta/iceberg/hudi reads
 
     PlatformHookRegistry.register_config_builder(
         "quanton", _make_lazy_config_builder(".onehouse", "_build_quanton_config")
+    )
+
+    PlatformHookRegistry.register_config_builder(
+        "athena-spark", _make_lazy_config_builder(".aws.athena_spark_adapter", "_build_athena_spark_config")
     )
 
     PlatformHookRegistry.register_config_builder(

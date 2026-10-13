@@ -105,9 +105,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Athena Spark can start a session. BenchBox no longer sends an engine
+  version in the `StartSession` request; the AWS SDK rejected that field on
+  every attempt, because the Spark-enabled workgroup sets the engine version.
+  `runtime_version` (and its deprecated alias `engine_version`) is now
+  recorded in results as requested, with `runtime_version_source: requested`,
+  and is not recorded when you do not set it. A rejected session request now
+  fails as a configuration error naming the workgroup.
+- `benchbox run --platform athena-spark` accepts the documented platform
+  options (`s3_staging_dir`, `region`, `database`, `runtime_version`, DPU
+  sizes and timeouts) and passes them, with `compute_resource`, to the
+  adapter. Before, every option except `compute_resource` was rejected and
+  the workgroup never reached the adapter.
+
 - The Atom feed uses canonical `/blog/` self and entry links while retaining stable entry IDs for existing subscribers.
 
 ### Before you upgrade
+- Athena Spark `runtime_version` no longer tries to choose the Spark engine
+  version. Set the version on the workgroup; BenchBox records the value you
+  pass as requested.
 - Vendor compute names now warn once per run; move saved configurations and
   credential profiles to `compute_resource` and `compute_size` (Fabric Data
   Warehouse: `database`; Athena Spark: `runtime_version`). The old names stop
