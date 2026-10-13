@@ -3,7 +3,7 @@
     "Both session-isolation tests pass on windows-latest 3.12, or carry a Windows skip with a stated reason",
     "Linux and macOS locking is unchanged"
   ],
-  "context": "Found by triage of the 2026-10-08 Windows 3.12 log. Developer tooling only; not release-blocking.\n\n2026-10-09 tracker review: this item is a need of nightly-v2-windows-unit-leg-20261009 (the Windows 3.12 fast tier must pass before the nightly-v2 Windows domain can start green). Both tests/unit/test_session_isolation.py failures still appeared in run 37967682464; a skip on Windows with a reason is an acceptable fallback.",
+  "context": "Found by triage of the 2026-10-08 Windows 3.12 log. Developer tooling only; not release-blocking.\n\n2026-10-09 tracker review: this item is a need of nightly-v2-windows-unit-leg-20261009 (the Windows 3.12 fast tier must pass before the nightly-v2 Windows domain can start green). Both tests/unit/test_session_isolation.py failures still appeared in run 37967682464; a skip on Windows with a reason is an acceptable fallback.\n\n2026-10-13: both tests still fail on both Windows legs in nightly.yml run 38318801976 (develop 2bdcb75fd): test_contended_lock_prevents_home_setup (PermissionError [Errno 13]) and test_session_finish_restores_caller_environment (TimeoutError from wait_on_fd in scripts/local_validation.py:94, 'holder: (could not read lock file)').",
   "description": "On Windows the session-isolation lock is msvcrt.locking(fd, LK_NBLCK, 1) on byte 0, and the holder text is also written at byte 0. A Windows byte-range lock is mandatory, so no other handle can read byte 0, even in the same process. Effects: tests/unit/test_session_isolation.py test_contended_lock_prevents_home_setup fails with PermissionError, and test_session_finish_restores_caller_environment waits to timeout because the child cannot read the holder pid and does not see the inherited lock. Fix: lock one byte far past the payload (for example os.lseek(fd, 1 << 30, os.SEEK_SET) before every msvcrt.locking call, with the same offset on unlock). Call sites: scripts/local_validation.py (the _close_lock unlock, wait_on_fd, clear_inactive_lock) and tests/utilities/session_isolation.py (two sites); replace the existing lseek(0) calls. write_holder is unaffected. Confirm on Windows that locking past EOF succeeds. Fallback if not worth fixing: Windows-skip both tests with a stated reason.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/issues/2568"
@@ -24,6 +24,14 @@
       "op": "update",
       "op_id": "66b4e267431b4ddebf1cacfe377dacdb",
       "session_id": "05afd70780334fa0b0e411a688cf8f7a"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:513e77a5e9d7684fd6c76434",
+      "at": "2026-10-13T12:10:58Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "c08192e304ea4d1cbb17b4ac26379f49",
+      "session_id": "4c6a3e0b7c2c47a6a47c6cc7a35bc932"
     }
   ]
 }
