@@ -4,7 +4,7 @@
     "Windows 3.11 and 3.12 step results are read once",
     "The remaining batch items and issues #2568, #2569 and #2570 are updated from those results"
   ],
-  "context": "Created while closing the nightly-red handoff; dispatch remains authorized by the handoff but is blocked until the shared PR merges.",
+  "context": "Created while closing the nightly-red handoff; dispatch remains authorized by the handoff but is blocked until the shared PR merges.\n\n2026-10-13 evidence: #2835 merged 2026-10-12T07:00:31Z. The develop-headed nightly.yml dispatch is run 38318801976 (workflow_dispatch, head 2bdcb75fd, 2026-10-12T22:49Z); no second dispatch was made. Windows 3.12 (job 115041714173): 19 failed, 37137 passed, 800 skipped in 3036.94s. Windows 3.11 (job 115041714264): 20 failed, 37136 passed, 800 skipped in 2605.87s. Both failed only at 'Run fast tests'; neither stalled. Other Windows jobs (integration-smoke 3.12, test-package 3.12, TPC-H binary framing) passed. Failures by cause: 12 UTF-8 reads (nightly-windows-utf8-reads-20261008), 1 quoted INSTALL_PYTHON (agent-write-preflight-quoted-interpreter-20261009), 2 lock holder (windows-session-lock-holder-readable-20261009), 2 Iceberg vacuum (windows-iceberg-vacuum-local-paths-20261009), plus unowned: test_tpch_streams qgen FileNotFoundError, chDB ImportError in test_tuning_reconciliation_adapters, and 3.11-only test_tpcds_runner_coverage 0.0 > 0.0. Result comments posted on #2568, #2569, #2570; the three affected sibling items and the xdist item context were updated. Both Windows test legs still fail, so the quarantine stays (D-W8).",
   "description": "After PR #2835 merges, dispatch the authorized nightly.yml run from develop, read the Windows 3.11 and 3.12 jobs by step result, and use the evidence to finish the UTF-8, path, teardown, Windows unit-domain and unquarantine decisions.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/pull/2835",
@@ -28,6 +28,14 @@
       "generation": "7c7c9f84f497493fa89fc5dae081b4d0",
       "op": "take",
       "op_id": "2cb00328faa449b89c430e3e23d8136a",
+      "session_id": "4c6a3e0b7c2c47a6a47c6cc7a35bc932"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:513e77a5e9d7684fd6c76434",
+      "at": "2026-10-13T12:11:22Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "de2197d6860b47179ddabc21c21a539b",
       "session_id": "4c6a3e0b7c2c47a6a47c6cc7a35bc932"
     }
   ]
