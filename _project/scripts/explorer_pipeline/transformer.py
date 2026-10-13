@@ -40,6 +40,7 @@ from benchbox.core.cost.models import CostScope, CostStatus, DeploymentMetadata,
 from benchbox.core.cost.pricing import PRICING_VERSION
 from benchbox.core.results.anonymization import AnonymizationManager, find_public_path_leaks
 from benchbox.core.results.canonical_json import canonical_json_bytes
+from benchbox.core.results.execution_variant import published_variant_id, read_requested_variant
 from benchbox.core.results.schema_policy import EXPLORER_INPUT_SCHEMA_POLICY, result_schema_version_value
 from benchbox.core.results.status import bundle_failed_query_count, bundle_non_clean_reason, normalize_validation_status
 from benchbox.core.tuning.modes import is_canonical_mode
@@ -417,26 +418,16 @@ def _platform_version(bundle: BundleDocument) -> str | None:
     return str(val) if val and val != "unknown" else None
 
 
-def _variant_info(bundle: BundleDocument) -> tuple[str, str, str, str | None, bool]:
+def _variant_info(bundle: BundleDocument, bundle_data: Mapping[str, Any]) -> tuple[str, str, str, str | None, bool]:
     platform = bundle.platform
     platform_name = str(platform.name)
-    pid = _platform_id(platform_name)
-    raw_variant = getattr(platform, "variant", None)
-    engine_raw = getattr(platform, "execution_engine", None)
-    engine = engine_raw if isinstance(engine_raw, Mapping) else {}
-    requested = engine.get("requested") or "default"
-    requested = str(requested)
+    variant_id = published_variant_id(bundle_data, _platform_id(platform_name))
+    requested = read_requested_variant(bundle_data)[1]
     gateway_raw = getattr(platform, "gateway", None)
     gateway = gateway_raw if isinstance(gateway_raw, Mapping) else {}
     routed = bool(gateway.get("routed", False))
     gateway_name = gateway.get("name")
     gateway_name = str(gateway_name) if gateway_name else None
-    if isinstance(raw_variant, str) and raw_variant.strip():
-        variant_id = raw_variant.strip()
-    elif requested != "default":
-        variant_id = f"{pid}+{requested}"
-    else:
-        variant_id = pid
     label = variant_label(
         platform_name,
         variant_id=variant_id,
@@ -1234,7 +1225,7 @@ class BundleTransformer:
         )
         override = _override_display(bundle_path)
         test_type = _test_type(bundle)
-        variant = _variant_info(bundle)
+        variant = _variant_info(bundle, bundle_data)
         entry = ManifestEntry(
             result_id=rid,
             benchmark=benchmark,
@@ -1338,7 +1329,7 @@ class BundleTransformer:
         timing_contract = timing_eligibility(display_timings, logical_query_count)
         normalized_cost = _normalized_cost(bundle)
         test_type = _test_type(bundle)
-        variant = _variant_info(bundle)
+        variant = _variant_info(bundle, bundle_data)
         detail = DetailResult(
             result_id=result_id,
             benchmark=benchmark,

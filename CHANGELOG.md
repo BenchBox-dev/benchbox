@@ -117,7 +117,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   sizes and timeouts) and passes them, with `compute_resource`, to the
   adapter. Before, every option except `compute_resource` was rejected and
   the workgroup never reached the adapter.
-
+- A new result bundle now joins the Explorer row and the corpus depth identity
+  of earlier bundles of the same platform. A default Polars run is `polars`
+  ("Polars"), not a separate `polars-df` row labelled "Polars (polars-df)", and
+  a DuckDB rerun no longer counts as a second identity in its cohort. The
+  Explorer and `results-data/validate_corpus.py` build the variant from the
+  display-name platform ID plus the suffix from the same core function the
+  result writer uses, and read the requested engine through the legacy reader,
+  so a streaming run is `polars+streaming` ("Polars (streaming)") in both. The
+  stored `platform.variant` value is unchanged (`polars-df+streaming`). The
+  depth report now lists platform IDs (`duckdb`) instead of display names.
 - The Atom feed uses canonical `/blog/` self and entry links while retaining stable entry IDs for existing subscribers.
 
 ### Before you upgrade

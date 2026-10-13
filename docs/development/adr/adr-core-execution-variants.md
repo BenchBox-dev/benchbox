@@ -359,6 +359,14 @@ one name covers requested and observed values.
   cohorts.
 - The separators `~`, `+` and `@` cannot appear in a platform ID, so the
   string parses without ambiguity.
+- The result writer records `platform.variant` with the manifest key as its
+  base (`polars-df+streaming`). Published identity, in the Explorer and the
+  corpus depth gate, uses the legacy base instead: the platform ID derived
+  from the display name (`polars+streaming`, `apache-doris`). New runs then
+  join the rows of earlier bundles of the same platform. Both consumers build
+  the suffix with the core `append_variant_suffix` function and read the
+  requested engine through the schema 2.3 legacy reader. Neither reads the
+  stored `platform.variant` base.
 
 **Rejected alternatives:**
 
@@ -371,6 +379,10 @@ one name covers requested and observed values.
   need one key to group and join runs.
 - *Always printing every part, including defaults.* Every existing published
   identity would change.
+- *Publishing the manifest-key base.* A default run would form its own row
+  (`polars-df` beside `polars`), and moving legacy rows to the manifest key
+  would change every published identity whose key differs from its display
+  name.
 
 ## D9. Gateway
 
