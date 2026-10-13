@@ -23718,12 +23718,17 @@
       "title": "Fold skipped layout ops as dropped intents (not failures) and enforce the ledger phase vocabulary"
     },
     "tuning-ledger-capture-non-dbapi-drivers-20261001": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-14T19:27:51Z",
+        "generation": "d45bea05429c4408ab5266e2936fdd05",
+        "renewals": 0,
+        "worker": "mcp:tbh:joe@joe-mac-mini.local:0b09cceb849593820a7baad7"
+      },
       "needs": [
         "tuning-trust-paths-soundness-manifest-20261001"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Record tuning statements issued through non-DB-API drivers (.sql / .query) and extend the schema-capture footprint"
     },
     "tuning-liveness-e2e-gates-20261001": {
