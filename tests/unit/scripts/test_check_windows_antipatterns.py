@@ -227,10 +227,19 @@ def test_baseline_counts_each_code_separately(tmp_path: Path) -> None:
 
 
 def test_baseline_entry_above_the_current_count_is_stale(tmp_path: Path) -> None:
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "a.py").write_text("x = 1\n", encoding="utf-8")
+
     result = apply_baseline([], {"tests/a.py": {"WA003": 2}}, tmp_path, [tmp_path / "tests"])
 
     assert result.stale == ["tests/a.py: WA003 baseline allows 2, found 0"]
     assert not result.clean
+
+
+def test_baseline_entry_for_a_file_absent_from_the_tree_is_ignored(tmp_path: Path) -> None:
+    result = apply_baseline([], {"tests/gone.py": {"WA003": 2}}, tmp_path, [tmp_path / "tests"])
+
+    assert result.clean
 
 
 def test_stale_check_ignores_paths_outside_the_scanned_roots(tmp_path: Path) -> None:

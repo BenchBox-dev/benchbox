@@ -435,7 +435,7 @@ def apply_baseline(
     ]
     stale: list[str] = []
     for key, codes in baseline.items():
-        if not any((repo_root / key).is_relative_to(root) for root in roots):
+        if not (repo_root / key).is_file() or not any((repo_root / key).is_relative_to(root) for root in roots):
             continue
         for code, allowed in codes.items():
             found = current.get(key, {}).get(code, 0)
