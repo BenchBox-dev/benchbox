@@ -5,7 +5,7 @@
     "Each template has a benefit-rule verdict, and its evidence state is updated in a merged PR.",
     "Any template change the verdict calls for is filed, or made through the profile and generator."
   ],
-  "context": "Source: tuning-evidence plan (2026-10-08), plan step 9. Split from cloud-tuned-benefit-measurement-20261008 so the code can land without live spend. Deliberately outside the 2026-10-08 tuning-evidence batch: live-cloud spend is an owner-only stop under AGENTS.md WRITE-CLOSEOUT-001, and snowflake-tuned-live-certification-20261001 still has unmet needs.",
+  "context": "Source: tuning-evidence plan (2026-10-08), plan step 9. Split from cloud-tuned-benefit-measurement-20261008 so the code can land without live spend. Deliberately outside the 2026-10-08 tuning-evidence batch: live-cloud spend is an owner-only stop under AGENTS.md WRITE-CLOSEOUT-001, and snowflake-tuned-live-certification-20261001 still has unmet needs.\n\nNote 2026-10-13: no tuned-vs-untuned cell completed. Cells C1 (TPC-H sf100), C2 (TPC-DS sf100), C3 (TPC-H sf10), C4 (TPC-DS sf10) were all skipped without spending their budgets: the C0 smoke test (TPC-H sf0.01 tuned, tried twice) aborted while writing the tuned-run marker because every Snowflake execute_query call reports FAILED after the query itself succeeds (query id passed where the completion log expects a duration in seconds), so no tuned measurement run is possible on this build. Verdict/ratio/CI, settle state and depth, and clustering credits: none exist. The runs used plain benchbox run with an external settle helper design (helper at _project/analysis/snowflake-trial-exit/snowflake_campaign.py in PR-4 https://github.com/BenchBox-dev/benchbox/pull/2950), not the harness; the analysis script is campaign_analysis.py beside it. Corrected pilot/reuse evidence from the same PR: tuning-pilot-recompute.json, comparability-matrix-corrected-2026-10-13.json, database-reuse-map-corrected-2026-10-13.json. Campaign ledger: /tmp/snowflake-tuned-campaign-ledger.md (local, not committed). Final cumulative credit estimate 56.166, under the 85 cap.",
   "description": "## Problem\nThe Databricks and Snowflake tuned templates have no benefit evidence. The harness gains cloud support in `cloud-tuned-benefit-measurement-20261008`; this item runs it.\n\n## Change\n- Once both live certifications have passed, run the harness for TPC-H on Databricks and Snowflake, and TPC-DS if the approved budget allows. Use arms `notuning` and tuned, with both arms settled.\n- Record clustering state, settle condition, load and maintenance time, cost and CIs.\n- Apply the benefit rule, record a verdict per template and tier, and update the evidence states in `benchbox/core/tuning/profiles/template_evidence.yaml`.\n\n## Decision gates\n- Each live run needs explicit owner approval naming the command, maximum runtime, maximum cost (the harness `--max-cost`), log path and stop condition. Without it, do not start.\n- The owner picks the scale factor(s). The evidence records that they are far below the vendors' 1 TB / multi-TB guidance.\n\n## Guardrails (must preserve)\n- Use dedicated database names; never shared ones.\n- Never relax a certification assertion.\n- Stop at the approved cost cap.\n\n## Process guardrails\n- One PR per item against `develop`, via the AGENTS.md worktree flow (`make worktree-claim BRANCH=...`, `make agent-write-preflight`).\n- Stage explicit paths; never `git add -A`.\n- No live cloud runs without explicit owner approval stating the command, maximum runtime, log path and stop condition.",
   "links": [
     "https://docs.snowflake.com/en/user-guide/tables-clustering-keys",
@@ -19,6 +19,14 @@
       "op": "create",
       "op_id": "6547d6db171a494695450cd02d4d59c7",
       "session_id": "11344d8456c14298801d7c917bc4b4db"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:f905a7a39c8793c709ac7c5d",
+      "at": "2026-10-13T21:13:49Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "6ccf1c4909154f7c98c04dded9f8995e",
+      "session_id": "df039dbf86ee48b687da114f08324b05"
     }
   ]
 }
