@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "The datagen reuse path refuses or warns on TPC-H caches generated before the canonical-address fix, with a unit test.",
+    "Known stale caches are regenerated or removed.",
+    "Published results loaded from pre-fix TPC-H data are listed in the item context."
+  ],
+  "context": "Found 2026-10-13 by comparing _datagen_manifest.json and the first customer row across local caches (datagen/tpch_sf001, sf01, sf1 and the 2026-10-12 tpch_sf1/tpch_sf100 regenerations are canonical).",
+  "description": "## Problem\nTPC-H data generated before commit e23ba66c9 (#2622, 2026-10-04) has non-canonical `c_address` and `s_address` values. For example, customer 1 has `j5JsirBM9PsCy0O1m` instead of the canonical `IVhzIApeRb ot,c,E`. Known local caches on the maintainer host:\n- `~/Developer/benchmark_runs/datagen/tpch_sf10`: generator 0.4.1, created 2026-09-30\n- `~/Developer/benchmark_runs/datagen/tpch_sf100`: generator 0.3.1, created 2026-08-18; the customer and supplier files differ from a 2026-10-12 regeneration, and lineitem, orders, part, partsupp, nation and region are byte-identical\n\nCloud databases loaded from such data, such as Snowflake TPC-H baselines before 2026-10-04, carry the same content. Timing impact is likely negligible, but answer content for queries returning addresses (Q10, Q15, Q20) differs.\n\n## Change\n- Determine whether the datagen reuse path refuses manifests that lack `data_generation_version`/`generator_binary_sha256` or predate the fix.\n- If it does not, make it refuse or warn.\n- Regenerate or delete the stale caches, and list any published results loaded from pre-fix data.",
+  "links": [
+    "benchbox/core/tpch"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
+      "at": "2026-10-13T13:00:24Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "65efb004bb7d4a438c815e24b65f98ca",
+      "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    }
+  ]
+}

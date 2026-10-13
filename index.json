@@ -22766,6 +22766,13 @@
       "status": "done",
       "title": "Unseeded TPC-H DataFrame runs use the SF=1 Q11 fraction at every scale"
     },
+    "tpch-datagen-cache-noncanonical-addresses-20261013": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Find and regenerate TPC-H data generated before canonical addresses"
+    },
     "tpch-dbgen-source-tree-hygiene": {
       "claim": null,
       "needs": [],
