@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "--tuning tuned resolves to the shipped template unless the config default explicitly targets that platform/benchmark (unit test).",
+    "--official --tuning auto on SQL is refused.",
+    "A shipped template passed by path is labelled tuned.",
+    "tuning show honours mode."
+  ],
+  "context": "Found 2026-10-13 by an adversarial review of tuning resolution at origin/develop 77048bfb9.",
+  "description": "## Problem\n- **Config default overrides `--tuning tuned`.** `tuning.default_config_file` in benchbox.yaml overrides `--tuning tuned` for every platform and benchmark (`benchbox/cli/tuning_resolver.py:310-321`).\n- **`--official --tuning auto` slips through.** On SQL it gets past the fallback refusal (`benchbox/cli/commands/run.py:114`).\n- **Shipped template passed by path is labelled `custom`,** not `tuned`.\n- **`tuning show` ignores mode.** It does not pass `mode` (`benchbox/cli/commands/tuning_group.py:546`), so it can display a DataFrame profile as an empty SQL config.\n\n## Change\n- Scope the config default to the platform and benchmark it names, or let an explicit `--tuning tuned` win.\n- Refuse `--official` with `auto` on SQL.\n- Label a shipped template by content identity.\n- Pass `mode` in `tuning show`.",
+  "links": [
+    "benchbox/cli/tuning_resolver.py",
+    "benchbox/cli/commands/run.py",
+    "benchbox/cli/commands/tuning_group.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
+      "at": "2026-10-13T13:13:43Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "f2ad3ec0e41e47cbb30f15fb0d21cad1",
+      "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    }
+  ]
+}

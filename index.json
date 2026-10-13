@@ -23891,6 +23891,13 @@
       "status": "done",
       "title": "Tuning batch residual cleanups: display-name path, dead CH optimizations code, guardrail headroom, blind-spot bookkeeping"
     },
+    "tuning-resolver-precedence-and-provenance-20261013": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Tuning resolver: config default overrides --tuning tuned everywhere; --official --tuning auto slips through; provenance and CLI gaps"
+    },
     "tuning-snowpark-session-ledger-capture-20260723": {
       "claim": null,
       "needs": [],
