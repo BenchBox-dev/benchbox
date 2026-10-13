@@ -4,7 +4,7 @@
     "A test shows a vacuum on a Windows-style location deletes only unreferenced files and keeps every referenced one",
     "Linux and macOS vacuum behaviour is unchanged"
   ],
-  "context": "Found by triage of the 2026-10-08 Windows 3.12 log (run 37776283388) during the nightly-red-issues batch. Split out of nightly-windows-teardown-and-singles-20261008 because a wrong fix could delete live data.\n\n2026-10-09 tracker review: this item is a need of nightly-v2-windows-unit-leg-20261009 (the Windows 3.12 fast tier must pass before the nightly-v2 Windows domain can start green). Both TestIcebergVacuum tests still failed in run 37967682464.",
+  "context": "Found by triage of the 2026-10-08 Windows 3.12 log (run 37776283388) during the nightly-red-issues batch. Split out of nightly-windows-teardown-and-singles-20261008 because a wrong fix could delete live data.\n\n2026-10-09 tracker review: this item is a need of nightly-v2-windows-unit-leg-20261009 (the Windows 3.12 fast tier must pass before the nightly-v2 Windows domain can start green). Both TestIcebergVacuum tests still failed in run 37967682464.\n\n2026-10-13: both tests still fail on both Windows legs in nightly.yml run 38318801976 (develop 2bdcb75fd): test_vacuum_dry_run_reports_without_expiring (assert 0 >= 1) and test_vacuum_expires_old_snapshots ('metadata-only' == 'full').",
   "description": "benchbox/platforms/dataframe/iceberg_maintenance.py: _local_table_dir (about line 457) calls urlparse on a plain Windows warehouse path such as C:\\...\\warehouse/default.db/probe and gets scheme 'c', so it returns None and vacuum reports metadata-only with 0 reclaimable files (tests/unit/platforms/dataframe/test_lakehouse_optimization.py TestIcebergVacuum, 2 tests, fail on windows-latest). _normalize_file_ref (about line 431) has the same drive-letter problem. Add one helper mapping a table or file location to a Path (single-letter scheme or no scheme -> Path(uri); file scheme -> Path(url2pathname(parsed.path)); anything else -> None) and use it in BOTH places. Fixing only _local_table_dir would make _reclaim_orphan_files treat live files as unreferenced and delete them, so both must change together. This path deletes files: confirm on a Windows run before merging.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/issues/2568"
@@ -25,6 +25,14 @@
       "op": "update",
       "op_id": "e888aae0e0e74b619fdb255b988aa62d",
       "session_id": "05afd70780334fa0b0e411a688cf8f7a"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:513e77a5e9d7684fd6c76434",
+      "at": "2026-10-13T12:11:04Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "d034b5544b6140efb36e6a03f8c97844",
+      "session_id": "4c6a3e0b7c2c47a6a47c6cc7a35bc932"
     }
   ]
 }
