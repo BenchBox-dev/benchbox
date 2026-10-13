@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Range check `git log <last replayed>..origin/develop -- website results-explorer landing docs/blog _blog _project/design/site-inventory` lists only commits that have been replayed (b1383bb35, c02c3ed92, d33acc8f1, 57911e7cb, 06b65fa78 at the time of writing); command and output pasted into site-split-26",
+    "Fidelity check: after applying the seed renames (results-explorer to explorer, docs/blog to blog, _blog to drafts, _project/design/site-inventory to inventory), every seeded file in the site branch is byte-identical to core develop except entries in a written allowlist (for example the siteOrigin import in website/src/lib/atom.ts); zero unexplained differences; the drafts/16 file is not in the diff",
+    "Site test: website/tests/dist-feed.test.ts against website/tests/fixtures/ablog-atom-ids.json proves legacy feed entry IDs are unchanged after the #2926 rename; add a case if the existing test does not cover the ID base",
+    "Site Explorer suite passes with the v16 pin and includes the #2913 tests (ComparabilityReceipt, Leaderboard, Overview): npm test -w explorer",
+    "PR body has no phase or pass labels and lists every file not mirrored from core"
+  ],
+  "context": "Raised by the 2026-10-13 adversarial review of the site-split handoff (handoff revision 9, section \"Adversarial review findings\"). Evidence: `git log --format='%h %s' 78f51c3cb..origin/develop -- website results-explorer landing docs/blog _blog _project/design/site-inventory` returned d33acc8f1, b1383bb35, c02c3ed92, 57911e7cb, 06b65fa78; `git diff origin/main origin/fix/site-replay-pass11` lists 20 files including the drafts/16 file; core drafts copy at b1383bb35 equals site main's copy and differs from site #24's. Related: site-split-26 (this item feeds its passes), site-split-60 (needs this item before the contract refresh can merge).",
+  "description": "Site PR #24 replays core #2909, #2894 and #2875 only. Core #2913 (57911e7cb, 13 results-explorer files) and #2926 (06b65fa78, website/src/lib/atom.ts) are not replayed, and #2926 is not in the batch record. PR #24 also edits drafts/building-benchbox/drafts/16-results-explorer-introduction.md, which core #2909 did not change; before #24 that file was byte-identical to core's copy. Its body carries a session label (\"Pass-11\").\n\nWork: (1) replay #2913 and #2926 by refreshing #24 to the v16 contract or stacking a follow-up; (2) revert the unmirrored drafts edit, or justify it in the PR body and mirror it to core; (3) remove phase or pass labels from the PR body; (4) run the fidelity check below and attach its output to site-split-26 after each pass.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:812b6e01fb0a3c7a08e17bfb",
+      "at": "2026-10-13T13:49:22Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "edc1bac49bd14d3e970e0b5123b9c4d0",
+      "session_id": "092ba024912949d88c4bc8f8c819cdba"
+    }
+  ]
+}

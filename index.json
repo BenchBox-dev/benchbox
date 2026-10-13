@@ -20442,6 +20442,13 @@
       "status": "open",
       "title": "Decide whether to tighten the site bundle's bijection and parity checks after cutover"
     },
+    "site-split-65-replay-completeness-and-fidelity": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Complete the seeded-path replay (add core #2913 and #2926) and add a replay-fidelity check so site PRs match core"
+    },
     "site-split-99-closeout": {
       "claim": null,
       "needs": [
