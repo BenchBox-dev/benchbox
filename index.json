@@ -25375,15 +25375,10 @@
       "title": "Decide how Iceberg table locations are written on Windows (file:///C:/ is not openable)"
     },
     "windows-iceberg-vacuum-local-paths-20261009": {
-      "claim": {
-        "expires_at": "2026-10-14T19:32:16Z",
-        "generation": "178e9593bf2c4010b15a9225846b5ae7",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:513e77a5e9d7684fd6c76434"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Make Iceberg vacuum recognize Windows local table locations before it deletes files"
     },
     "windows-nightly-bash-resolves-to-wsl-stub": {
