@@ -700,6 +700,13 @@ redshift|s3_bucket|S3 bucket for data staging|{}
 redshift|staging_root|S3 path for staging data (e.g., s3://bucket/path)|{}
 snowflake|staging_root|Cloud storage path for staging data|{}
 snowflake|iceberg_external_volume|Snowflake EXTERNAL VOLUME name for Iceberg tables|{}
+influxdb|deployment_mode|Deprecated alias of the platform selector: 'core' for self-hosted OSS, 'cloud' for the managed service|{'choices': ('core', 'cloud'), 'default': 'cloud', 'aliases': ('mode',)}
+influxdb|host|InfluxDB server hostname|{'default': 'localhost'}
+influxdb|port|InfluxDB server port|{'default': '8086'}
+influxdb|token|InfluxDB authentication token (or set INFLUXDB_TOKEN env var)|{}
+influxdb|org|InfluxDB organization name|{}
+influxdb|database|InfluxDB database (bucket) name|{'default': 'benchbox'}
+influxdb|ssl|Use SSL/TLS connection (true/false)|{'default': 'true'}
 lakesail|endpoint|Spark Connect server endpoint (for example, sc://localhost:50051)|{'default': 'sc://localhost:50051'}
 lakesail|adaptive_enabled|Enable or disable LakeSail Adaptive Query Execution (AQE)|{'parser': 'parse_bool', 'default': 'true'}
 lakesail|deployment_mode|Deprecated alias of the platform selector: 'local' for single-node, 'distributed' for a Rust worker cluster|{'choices': ('local', 'distributed'), 'aliases': ('sail_mode',)}

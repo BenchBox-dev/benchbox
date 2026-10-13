@@ -47,6 +47,12 @@ def _warn_deprecated_compute_alias(platform: str, alias: str, canonical: str) ->
     warn_deprecated_compute_alias(platform, alias, canonical)
 
 
+def _selects_resource_kind(platform: str, key: str) -> bool:
+    from benchbox.core.compute_resource import is_kind_selecting_key
+
+    return is_kind_selecting_key(platform, key)
+
+
 @dataclass(frozen=True)
 class PlatformOptionSpec:
     name: str
@@ -141,6 +147,8 @@ class PlatformHookRegistry:
             else:
                 seen[canonical] = (key, value)
             resolved[canonical] = value
+            if key.lower() != canonical and _selects_resource_kind(platform, key):
+                resolved[key.lower()] = value
 
         defaults = cls.get_default_options(platform)
         defaults.update(resolved)

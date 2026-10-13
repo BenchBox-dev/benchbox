@@ -174,6 +174,30 @@ benchbox run --platform snowflake --benchmark tpch \
   --platform-option warehouse=COMPUTE_WH
 ```
 
+### Compute Settings
+
+On platforms that run on a named compute resource, `compute_resource` names
+it and `compute_size` sets its size. BenchBox takes each setting from the first
+place that has it:
+
+1. `--platform-option` on the command line;
+2. the saved credential profile written by `benchbox setup`;
+3. the option's default.
+
+A value on the command line overrides the saved profile. Two spellings that
+disagree in the same place, such as `warehouse=A` and `compute_resource=B`
+on one command line, stop the run before any work and name both values.
+
+On Redshift, `compute_resource` names the workgroup when the host is a
+Serverless endpoint (`*.redshift-serverless.amazonaws.com`) and the cluster
+when it is a provisioned endpoint (`*.redshift.amazonaws.com`). With any other
+host, use `workgroup_name` or `cluster_identifier`. On Databricks,
+`compute_resource` names the SQL warehouse and sets the HTTP path to
+`/sql/1.0/warehouses/<id>`.
+
+The `--platform name:mode` deployment selector follows the same rule: it
+overrides a deployment key, such as LakeSail `sail_mode`, in the saved profile.
+
 ### Athena Spark Runtime Version
 
 On Athena Spark, the Spark-enabled workgroup sets the engine version. A session

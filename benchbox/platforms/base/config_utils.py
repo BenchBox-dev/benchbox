@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from typing import Any
 
 POSTGRES_FAMILY_BASE_OPTIONS: dict[str, Any] = {
@@ -34,6 +34,9 @@ POSTGRES_TUNING_PLATFORM_FIELDS = (
 POSTGRES_FAMILY_PLATFORM_FIELDS = POSTGRES_CONNECTION_PLATFORM_FIELDS + POSTGRES_TUNING_PLATFORM_FIELDS
 
 
+ResourceKeyResolver = Callable[[Mapping[str, Any]], "str | None"]
+
+
 def build_platform_config(
     platform_type: str,
     credential_key: str,
@@ -46,6 +49,8 @@ def build_platform_config(
     base_options: dict[str, Any] | None = None,
     field_defaults: dict[str, Any] | None = None,
     consume_explicit_options: bool = False,
+    resource_key: ResourceKeyResolver | None = None,
+    linked_resource_keys: tuple[str, ...] = (),
 ) -> Any:
     from benchbox.core.schemas import DatabaseConfig
     from benchbox.security.credentials import CredentialManager
@@ -62,8 +67,17 @@ def build_platform_config(
 
     from benchbox.core.deployment import DEPLOYMENT_ALIAS_KEYS
 
-    if isinstance(explicit_options, MutableMapping):
-        for key in DEPLOYMENT_ALIAS_KEYS.get(platform_type.lower(), ()):
+    explicit_layer = dict(explicit_options) if isinstance(explicit_options, Mapping) else {}
+    alias_keys = DEPLOYMENT_ALIAS_KEYS.get(platform_type.lower(), ())
+    deployment_keys = tuple(dict.fromkeys(("deployment_mode", *alias_keys))) if alias_keys else ()
+    cli_selects_deployment = bool(deployment_keys) and (
+        overrides.get("_deployment_selector") is not None
+        or any(explicit_layer.get(key) is not None for key in deployment_keys)
+    )
+    if cli_selects_deployment:
+        saved_creds = {key: value for key, value in saved_creds.items() if key not in deployment_keys}
+    elif isinstance(explicit_options, MutableMapping):
+        for key in alias_keys:
             if saved_creds.get(key) is not None:
                 explicit_options.setdefault(key, saved_creds[key])
 
@@ -73,9 +87,26 @@ def build_platform_config(
     merged_options.update(explicit_options)
     merged_options.update(overrides)
 
-    from benchbox.core.compute_resource import normalize_compute_options
+    from benchbox.core.compute_resource import is_kind_selecting_key, resolve_compute_sources
 
-    merged_options = normalize_compute_options(platform_type, merged_options)
+    parsed_native = {key: value for key, value in options.items() if is_kind_selecting_key(platform_type, key)}
+    command_layer = {
+        **parsed_native,
+        **explicit_layer,
+        **{key: value for key, value in overrides.items() if not key.startswith("_")},
+    }
+    default_layer = {key: value for key, value in options.items() if key not in command_layer}
+    merged_options = resolve_compute_sources(
+        platform_type,
+        merged_options,
+        [
+            ("the command-line options", command_layer),
+            (f"the saved {credential_key} credentials", saved_creds),
+            ("the defaults", {**(base_options or {}), **default_layer}),
+        ],
+        resource_key=resource_key(merged_options) if resource_key else None,
+        linked_resource_keys=linked_resource_keys,
+    )
 
     name = info.display_name if info else default_display_name
     driver_package = info.driver_package if info else default_driver_package
@@ -120,6 +151,8 @@ def make_platform_config_builder(
     field_defaults: dict[str, Any] | None = None,
     consume_explicit_options: bool = False,
     postprocess: PlatformConfigPostprocess | None = None,
+    resource_key: ResourceKeyResolver | None = None,
+    linked_resource_keys: tuple[str, ...] = (),
 ) -> PlatformConfigBuilder:
     fields = tuple(platform_fields)
     name = function_name or f"_build_{platform_type.replace('-', '_')}_config"
@@ -138,6 +171,8 @@ def make_platform_config_builder(
             base_options=dict(base_options) if base_options is not None else None,
             field_defaults=field_defaults,
             consume_explicit_options=consume_explicit_options,
+            resource_key=resource_key,
+            linked_resource_keys=linked_resource_keys,
         )
         if postprocess is not None:
             postprocess(config)
@@ -202,10 +237,11 @@ def build_adapter_config(
     generated_key: str | None = "database",
     fields: Iterable[str] = (),
     include_none: bool = True,
+    resource_key: str | None = None,
 ) -> dict[str, Any]:
     from benchbox.core.compute_resource import normalize_compute_options
 
-    config = normalize_compute_options(platform, config)
+    config = normalize_compute_options(platform, config, resource_key=resource_key)
     adapter_config: dict[str, Any] = {}
     if generated_key:
         if config.get(generated_key):
