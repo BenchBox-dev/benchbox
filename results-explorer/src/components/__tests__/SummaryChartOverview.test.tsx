@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, within } from "@testing-library/preact";
 import { describe, it, expect } from "vitest";
 import type { BenchmarkSummary, PlatformRow } from "@/types";
+import type { ChartHistoricalEntry } from "@/lib/chartRegistry";
 
 import { SummaryChartOverview, SummaryMetricTable } from "@/components/SummaryChartOverview";
 
@@ -219,5 +220,184 @@ describe("SummaryChartOverview section chrome", () => {
     expect(additionalAnalysesLabel(1)).toBe("1 additional analysis");
     expect(additionalAnalysesLabel(7)).toBe("7 additional analyses");
   });
+});
 
+function historyEntry(overrides: Partial<ChartHistoricalEntry>): ChartHistoricalEntry {
+  return {
+    result_id: "h1",
+    benchmark: "tpch",
+    scale_factor: 10,
+    platform: "DuckDB",
+    platform_id: "duckdb",
+    run_date: "2026-04-01",
+    power_score: 3000,
+    display_geomean_ms: 12,
+    ...overrides,
+  };
+}
+
+describe("SummaryChartOverview readable layout", () => {
+  it("gives the metric table and the latency box plot visible headings", () => {
+    renderOverview();
+    expect(screen.getByRole("heading", { name: "Geomean and Power@Size" })).not.toBeNull();
+    expect(screen.getByRole("heading", { name: "Latency distribution" })).not.toBeNull();
+  });
+
+  it("uses the same metric-table heading on the compare page", () => {
+    render(<SummaryMetricTable summary={makeSummary()} scope="compare" />);
+    expect(screen.getByRole("heading", { name: "Geomean and Power@Size" })).not.toBeNull();
+  });
+
+  it("orders the latency box plot by geomean, fastest first, like the summary table", () => {
+    const summary = makeSummary({
+      platforms: [
+        makePlatform({ result_id: "r1", platform: "Zeta", display_geomean_ms: 50, timings: { Q1: 50, Q2: 60, Q3: 70 } }),
+        makePlatform({ result_id: "r2", platform: "Alpha", display_geomean_ms: 10, timings: { Q1: 10, Q2: 12, Q3: 14 } }),
+        makePlatform({ result_id: "r3", platform: "Mid", display_geomean_ms: 30, timings: { Q1: 30, Q2: 33, Q3: 36 } }),
+      ],
+    });
+    const { container } = renderOverview(summary);
+
+    const boxText = container.querySelector("svg[aria-label='Distribution box plots of per-query latency']")!.textContent!;
+    expect(boxText.indexOf("Alpha")).toBeGreaterThan(-1);
+    expect(boxText.indexOf("Alpha")).toBeLessThan(boxText.indexOf("Mid"));
+    expect(boxText.indexOf("Mid")).toBeLessThan(boxText.indexOf("Zeta"));
+
+    const tableRows = Array.from(container.querySelectorAll("table.summary-metric-table tbody th")).map((th) =>
+      th.textContent?.trim(),
+    );
+    expect(tableRows).toEqual(["Alpha", "Mid", "Zeta"]);
+  });
+
+  it("states the population with normal spacing", () => {
+    renderOverview();
+    expect(screen.getByText(/2 submitted runs · 2 display-safe rows · 3 queries/)).not.toBeNull();
+  });
+
+  it("says nothing about ranking when every run is ranked", () => {
+    renderOverview();
+    expect(screen.queryByText(/Not ranked/)).toBeNull();
+    expect(screen.queryByText(/rank-safe rows/)).toBeNull();
+    expect(screen.queryByText(/persisted ranking contract/)).toBeNull();
+  });
+
+  it("names a ranking exclusion in plain words with the count", () => {
+    const summary = makeSummary({
+      platforms: [
+        makePlatform({ result_id: "r1", platform: "DuckDB", ranking_exclusion_reason: "known_defective_data" }),
+        makePlatform({ result_id: "r2", platform_id: "sqlite", platform: "SQLite", power_score: 1500 }),
+      ],
+    });
+    renderOverview(summary);
+    expect(screen.getByText("Not ranked: 1 of 2 runs is excluded from ranking — Known defective data.")).not.toBeNull();
+    expect(screen.queryByText(/Not in the latency chart/)).toBeNull();
+    expect(screen.queryByText(/excluded from the ranking chart dataset/)).toBeNull();
+  });
+
+  it("explains a missing ranking score when the export records no exclusion reason", () => {
+    const summary = makeSummary({
+      platforms: [
+        makePlatform({ result_id: "r1", platform: "DuckDB" }),
+        makePlatform({ result_id: "r2", platform_id: "sqlite", platform: "SQLite", power_score: null }),
+      ],
+    });
+    renderOverview(summary);
+    expect(
+      screen.getByText("Not ranked: 1 of 2 runs is excluded from ranking — Power@Size is not recorded."),
+    ).not.toBeNull();
+  });
+
+  it("draws the query-matrix thumbnail on the main heatmap's sequential scale, not a hue ramp", () => {
+    const { container } = renderOverview();
+    const thumbnail = container.querySelector("[aria-label='Heatmap thumbnail']") as HTMLElement;
+    const cells = Array.from(thumbnail.children) as HTMLElement[];
+    expect(cells.length).toBe(6);
+    expect(cells.every((cell) => cell.classList.contains("heatmap-cell"))).toBe(true);
+    expect(cells.every((cell) => cell.style.getPropertyValue("--cell-lightness") !== "")).toBe(true);
+    expect(container.innerHTML).not.toContain("hsl(");
+  });
+
+  it("keeps every thumbnail the same height so sibling cards align", () => {
+    const { container } = renderOverview();
+    const thumbnails = Array.from(container.querySelectorAll(".summary-chart-thumbnail"));
+    expect(thumbnails.length).toBeGreaterThan(1);
+    expect(thumbnails.every((thumbnail) => thumbnail.classList.contains("h-[7.5rem]"))).toBe(true);
+  });
+
+  it("does not render thumbnail text below 10px", () => {
+    const { container } = renderOverview();
+    expect(container.innerHTML).not.toContain("text-[8px]");
+  });
+
+  it("shows one trend empty message when no series has two points to plot", () => {
+    const { container } = render(
+      <SummaryChartOverview
+        context={{
+          kind: "summary",
+          summary: makeSummary(),
+          historical: [
+            historyEntry({ result_id: "h1", platform_id: "duckdb", platform: "DuckDB" }),
+            historyEntry({ result_id: "h2", platform_id: "sqlite", platform: "SQLite" }),
+          ],
+        }}
+      />,
+    );
+    const trendThumbnail = container.querySelector("[data-testid='summary-chart-preview-time_series']") as HTMLElement;
+    expect(trendThumbnail.textContent).toContain("Not enough history for a trend");
+    expect(trendThumbnail.querySelector("svg")).toBeNull();
+  });
+
+  it("shows the cost empty message instead of a lone dot when only one run has a normalized cost", () => {
+    const summary = makeSummary({
+      platforms: [
+        makePlatform({ result_id: "r1", platform: "DuckDB", cost_status: "normalized", normalized_cost_usd: 1.25 }),
+        makePlatform({ result_id: "r2", platform_id: "sqlite", platform: "SQLite", power_score: 1500 }),
+      ],
+    });
+    const { container } = renderOverview(summary);
+    const costThumbnail = container.querySelector("[data-testid='summary-chart-preview-cost_scatter']") as HTMLElement;
+    expect(costThumbnail.textContent).toContain("No normalized cost recorded");
+    expect(costThumbnail.querySelector(".rounded-full")).toBeNull();
+  });
+
+  it("labels each percentile row with its run identity instead of repeating the platform name", () => {
+    const summary = makeSummary({
+      platforms: [
+        makePlatform({
+          result_id: "r1",
+          platform: "DuckDB",
+          platform_version: "1.4.3",
+          percentile_stats: { p50: 10, p90: 20, p95: 25, p99: 30 },
+        }),
+        makePlatform({
+          result_id: "r2",
+          platform: "DuckDB",
+          platform_version: "1.5.0",
+          percentile_stats: { p50: 12, p90: 22, p95: 27, p99: 32 },
+        }),
+      ],
+    });
+    const { container } = renderOverview(summary);
+    const thumbnail = container.querySelector("[data-testid='summary-chart-preview-percentile_ladder']") as HTMLElement;
+    const labels = Array.from(thumbnail.querySelectorAll("span[title]")).map((span) => span.getAttribute("title"));
+    expect(labels).toEqual(expect.arrayContaining(["DuckDB v1.4.3", "DuckDB v1.5.0"]));
+    expect(new Set(labels).size).toBe(labels.length);
+  });
+
+  it("truncates a long platform name to the available width and keeps the full name in a title", () => {
+    const longName = "Apache Spark Declarative Pipelines Experimental Preview Build";
+    const summary = makeSummary({
+      platforms: [
+        makePlatform({ result_id: "r1", platform: longName }),
+        makePlatform({ result_id: "r2", platform_id: "sqlite", platform: "SQLite", power_score: 1500 }),
+      ],
+    });
+    const { container } = renderOverview(summary);
+    const truncated = Array.from(container.querySelectorAll("[title]")).find(
+      (el) => el.textContent?.includes("…") && (el.getAttribute("title") ?? "").startsWith(longName.slice(0, 12)),
+    );
+    expect(truncated).toBeDefined();
+    expect(truncated!.textContent!.trim().length).toBeLessThan(longName.length);
+    expect(truncated!.getAttribute("title")).toContain(longName);
+  });
 });

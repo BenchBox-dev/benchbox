@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { CapturedQueryPlan, QueryPlanDocument, QueryPlanNode } from "@/lib/queryPlans";
-import { MAX_PLAN_SIDECAR_BYTES, parseQueryPlanDocument } from "@/lib/queryPlans";
+import { MAX_PLAN_SIDECAR_BYTES, parseQueryPlanDocument, plansForQuery } from "@/lib/queryPlans";
 
 interface CapturedPlanViewerProps {
   plansUrl: string | null;
+  queryId?: string;
 }
 
 type LoadStatus = "idle" | "loading" | "ready" | "unavailable";
 
-export function CapturedPlanViewer({ plansUrl }: CapturedPlanViewerProps) {
+export function CapturedPlanViewer({ plansUrl, queryId }: CapturedPlanViewerProps) {
   const [expanded, setExpanded] = useState(false);
   const [status, setStatus] = useState<LoadStatus>("idle");
   const [document, setDocument] = useState<QueryPlanDocument | null>(null);
@@ -70,7 +71,8 @@ export function CapturedPlanViewer({ plansUrl }: CapturedPlanViewerProps) {
     if (status === "idle") void loadPlans();
   }
 
-  const selectedPlan = document?.plans.find((plan) => plan.id === selectedId) ?? document?.plans[0] ?? null;
+  const visiblePlans = document === null ? [] : queryId === undefined ? document.plans : plansForQuery(document.plans, queryId);
+  const selectedPlan = visiblePlans.find((plan) => plan.id === selectedId) ?? visiblePlans[0] ?? null;
 
   return (
     <section id="execution-plans" class="card" aria-label="Execution plans">
@@ -102,7 +104,12 @@ export function CapturedPlanViewer({ plansUrl }: CapturedPlanViewerProps) {
                 </p>
               )}
               {status === "ready" && document && selectedPlan && (
-                <PlanDetail document={document} plan={selectedPlan} onSelect={setSelectedId} />
+                <PlanDetail document={document} plans={visiblePlans} plan={selectedPlan} onSelect={setSelectedId} />
+              )}
+              {status === "ready" && queryId !== undefined && selectedPlan === null && (
+                <p role="status" class="text-sm text-[var(--bb-data-fg-muted)]">
+                  {`No captured plan for query ${queryId.trim()} in this run.`}
+                </p>
               )}
             </div>
           )}
@@ -145,16 +152,18 @@ async function readCappedSidecarText(response: Response): Promise<string> {
 
 function PlanDetail({
   document,
+  plans,
   plan,
   onSelect,
 }: {
   document: QueryPlanDocument;
+  plans: CapturedQueryPlan[];
   plan: CapturedQueryPlan;
   onSelect: (id: string) => void;
 }) {
   return (
     <div>
-      {document.plans.length > 1 && (
+      {plans.length > 1 && (
         <label class="mb-3 block text-sm font-medium text-[var(--bb-data-fg-primary)]">
           Query
           <select
@@ -162,7 +171,7 @@ function PlanDetail({
             value={plan.id}
             onChange={(event) => onSelect((event.currentTarget as HTMLSelectElement).value)}
           >
-            {document.plans.map((queryPlan) => (
+            {plans.map((queryPlan) => (
               <option key={queryPlan.id} value={queryPlan.id}>
                 {queryPlan.label}
               </option>
@@ -184,7 +193,10 @@ function PlanDetail({
         {plan.estimatedCost && <span>Estimated cost: {plan.estimatedCost}</span>}
         {plan.fingerprint && <span>Plan fingerprint: {plan.fingerprint}</span>}
       </div>
-      <section aria-label={`Query plan for ${plan.label}`} class="rounded-lg border border-[var(--bb-data-border)] p-3">
+      <section
+        aria-label={`Query plan for ${plan.label}`}
+        class="max-w-full overflow-x-auto rounded-lg border border-[var(--bb-data-border)] p-3"
+      >
         {plan.root ? (
           <ul class="space-y-2" aria-label="Operator tree">
             <PlanNodeView node={plan.root} path="root" />
@@ -212,11 +224,13 @@ function PlanDetail({
 function PlanNodeView({ node, path }: { node: QueryPlanNode; path: string }) {
   return (
     <li class="border-l border-[var(--bb-data-border-strong)] pl-3" data-testid="captured-plan-node">
-      <div class="font-medium text-[var(--bb-data-fg-primary)]">{node.operator}</div>
+      <div class="font-medium break-words text-[var(--bb-data-fg-primary)]">{node.operator}</div>
       {node.details.length > 0 && (
         <ul class="mt-1 space-y-1 text-xs text-[var(--bb-data-fg-muted)]">
           {node.details.map((detail, index) => (
-            <li key={`${path}-detail-${index}`}>{detail}</li>
+            <li key={`${path}-detail-${index}`} class="break-words">
+              {detail}
+            </li>
           ))}
         </ul>
       )}

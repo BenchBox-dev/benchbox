@@ -551,7 +551,7 @@ function rankingEligibilityRow(value: boolean | null | undefined): ReceiptRow {
   return recordedRow("Ranking eligibility", value ? "Eligible" : "Not eligible");
 }
 
-export function planDownloadUrl(detail: DetailResult) {
+export function planDownloadUrl(detail: Pick<DetailResult, "plans_published" | "has_plans" | "bundle_download_url">) {
   if (!detail.plans_published) return null;
   if (!detail.has_plans || !detail.bundle_download_url) return null;
   if (!detail.bundle_download_url.endsWith(".json")) return null;

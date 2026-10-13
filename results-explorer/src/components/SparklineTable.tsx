@@ -1,5 +1,7 @@
-import type { BenchmarkSummary } from "@/types";
+import type { BenchmarkSummary, PlatformRow } from "@/types";
+import { buildLatencyBarScale, latencyScaleFraction } from "@/lib/chartMath";
 import { paletteColor } from "@/lib/chartTheme";
+import { orderRunsByDisplayGeomean } from "@/lib/chartRunRows";
 import { costModelDisclosure, estimateProvenance, hasCostEstimate, normalizedCostLabel, normalizedCostValue } from "@/lib/costDisplay";
 import {
   isRankable,
@@ -13,6 +15,7 @@ import { formatRunIdentitiesForCohort } from "@/lib/runIdentity";
 
 interface Props {
   summary: BenchmarkSummary;
+  colorIndexFor?: (platform: PlatformRow) => number;
 }
 
 function fmtMs(ms: number | null): string {
@@ -23,31 +26,25 @@ function fmtScore(s: number | null): string {
   return formatPowerScore(s, { missingText: "-" }).valueText;
 }
 
-const MIN_FRAC = 0.08;
-
 interface SparkProps {
-  value: number | null;
-  max: number;
+  fraction: number | null;
   color: string;
-  higherIsBetter?: boolean;
 }
 
-function SparkBar({ value, max, color, higherIsBetter = false }: SparkProps) {
-  if (value === null || max <= 0) return <span class="text-[var(--bb-data-fg-subtle)]">-</span>;
-  const ratio = value / max;
-  const scaled = higherIsBetter ? ratio : 1 - ratio;
-  const barFraction = MIN_FRAC + Math.max(0, Math.min(1, scaled)) * (1 - MIN_FRAC);
+function SparkBar({ fraction, color }: SparkProps) {
+  if (fraction === null) return <span class="text-[var(--bb-data-fg-subtle)]">-</span>;
+  const clamped = Math.max(0, Math.min(1, fraction));
   return (
     <span class="block w-full min-w-[3rem]">
       <span
         class="block h-2 rounded-sm"
-        style={{ width: `${(barFraction * 100).toFixed(1)}%`, backgroundColor: color, opacity: 0.75 }}
+        style={{ width: `${(clamped * 100).toFixed(1)}%`, backgroundColor: color, opacity: 0.75 }}
       />
     </span>
   );
 }
 
-export function SparklineTable({ summary }: Props) {
+export function SparklineTable({ summary, colorIndexFor }: Props) {
   const { platforms } = summary;
   if (platforms.length === 0) return null;
 
@@ -59,9 +56,8 @@ export function SparklineTable({ summary }: Props) {
   const showP99 = platforms.some((p) => isTimingDisplayable(p) && p.percentile_stats !== null);
   const showCost = platforms.some((p) => normalizedCostValue(p) !== null || hasCostEstimate(p));
 
-  const maxGeomean = Math.max(
-    ...platforms.map((p) => (isTimingDisplayable(p) && isValidTimingValue(p.display_geomean_ms) ? p.display_geomean_ms : 0)),
-    1,
+  const geomeanScale = buildLatencyBarScale(
+    platforms.map((p) => (isTimingDisplayable(p) ? p.display_geomean_ms : null)),
   );
   const maxPower = Math.max(
     ...platforms.map((p) => {
@@ -70,6 +66,7 @@ export function SparklineTable({ summary }: Props) {
     }),
     1,
   );
+  const orderedRuns = orderRunsByDisplayGeomean(platforms);
   const cohortLabels = formatRunIdentitiesForCohort(
     platforms.map((platform) => ({ ...platform, scale_factor: summary.scale_factor })),
     "table",
@@ -104,8 +101,8 @@ export function SparklineTable({ summary }: Props) {
           </tr>
         </thead>
         <tbody>
-          {platforms.map((p, i) => {
-            const color = paletteColor(i);
+          {orderedRuns.map(({ run: p, sourceIndex: i }) => {
+            const color = paletteColor(colorIndexFor?.(p) ?? i);
             const geomeanValue =
               isTimingDisplayable(p) && isValidTimingValue(p.display_geomean_ms) ? p.display_geomean_ms : null;
             const scoreValue = primaryMetricValue(p, scoreMetric);
@@ -121,7 +118,10 @@ export function SparklineTable({ summary }: Props) {
                   {cohortLabels[i] ?? p.platform}
                 </td>
                 <td class="w-2/5 px-1 py-1.5">
-                  <SparkBar value={geomeanValue} max={maxGeomean} color={color} />
+                  <SparkBar
+                    fraction={geomeanScale && geomeanValue !== null ? latencyScaleFraction(geomeanValue, geomeanScale) : null}
+                    color={color}
+                  />
                 </td>
                 <td class="w-px whitespace-nowrap px-2 py-1.5 text-right font-mono text-[var(--bb-data-fg-primary)]">
                   {fmtMs(geomeanValue)}
@@ -130,10 +130,8 @@ export function SparklineTable({ summary }: Props) {
                   <>
                     <td class="w-2/5 px-1 py-1.5">
                       <SparkBar
-                        value={powerValue}
-                        max={maxPower}
+                        fraction={powerValue === null ? null : powerValue / maxPower}
                         color={color}
-                        higherIsBetter
                       />
                     </td>
                     <td class="w-px whitespace-nowrap px-2 py-1.5 text-right font-mono text-[var(--bb-data-fg-primary)]">

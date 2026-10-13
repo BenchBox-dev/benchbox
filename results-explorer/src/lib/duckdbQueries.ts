@@ -1407,55 +1407,62 @@ export async function getPrimaryMetricForBenchmark(benchmark: string, phase?: st
 
 const SHORT_ID_PATTERN = /^[0-9a-f]{8,}$/i;
 
+const SNAPSHOT_COUNT_CTE = `snapshot AS (
+  SELECT (SELECT count(*)::INTEGER FROM bench.results) AS results_count,
+         (SELECT count(DISTINCT result_id)::INTEGER FROM bench.result_detail_metrics) AS metrics_count
+)`;
+const SNAPSHOT_WARM_CONDITION = "snapshot.results_count > 0 AND snapshot.metrics_count = snapshot.results_count";
+
 export async function getExistingResultIds(
   resultIds: string[],
   onInitialExistingIds?: (existingIds: ReadonlySet<string>) => void,
 ): Promise<ReadonlySet<string>> {
   if (resultIds.length === 0) return new Set();
-  const placeholders = resultIds.map(() => "?").join(", ");
-  const batchRows = await queryRows<{ result_id: string }>(
-    `SELECT result_id FROM bench.result_detail_metrics WHERE result_id IN (${placeholders})`,
+  const placeholders = resultIds.map(() => "(?)").join(", ");
+  const rows = await queryRows<{ result_id: string; found: boolean }>(
+    `WITH requested(result_id) AS (VALUES ${placeholders}),
+          ${SNAPSHOT_COUNT_CTE}
+     SELECT requested.result_id,
+            EXISTS (
+              SELECT 1 FROM bench.result_detail_metrics m WHERE m.result_id = requested.result_id
+            ) AS found
+     FROM requested CROSS JOIN snapshot
+     WHERE ${SNAPSHOT_WARM_CONDITION}`,
     resultIds,
   );
-  const existing = new Set(batchRows.map((row) => row.result_id));
+  const existing = new Set(rows.filter((row) => row.found).map((row) => row.result_id));
   onInitialExistingIds?.(existing);
-  const confirmedRows = await Promise.all(
-    resultIds.filter((resultId) => !existing.has(resultId)).map((resultId) =>
-      queryRows<{ result_id: string | null }>(
-        `SELECT MAX(CASE WHEN result_id = ? THEN result_id END) AS result_id
-         FROM bench.result_detail_metrics
-         HAVING COUNT(DISTINCT result_id) = (SELECT COUNT(*) FROM bench.results)`,
-        [resultId],
-      ),
-    ),
-  );
-  for (const rows of confirmedRows) {
-    for (const row of rows) {
-      if (row.result_id !== null) existing.add(row.result_id);
-    }
-  }
   return existing;
 }
 
 export async function resolveShortId(id: string): Promise<string> {
   if (!SHORT_ID_PATTERN.test(id)) return id;
-  const shortIdRows = await queryRows<{ result_id: string }>(
-    "SELECT result_id FROM bench.short_ids WHERE short_id = ?",
-    [id],
+  const rows = await queryRows<{ short_match: string | null; suffix_count: number; suffix_match: string | null }>(
+    `WITH ${SNAPSHOT_COUNT_CTE},
+          suffix_matches AS (SELECT result_id FROM bench.results WHERE result_id LIKE ? LIMIT 2)
+     SELECT (SELECT min(result_id) FROM bench.short_ids WHERE short_id = ?) AS short_match,
+            (SELECT count(*)::INTEGER FROM suffix_matches) AS suffix_count,
+            (SELECT min(result_id) FROM suffix_matches) AS suffix_match
+     FROM snapshot
+     WHERE ${SNAPSHOT_WARM_CONDITION}`,
+    [`%-${id}`, id],
   );
-  if (shortIdRows[0]) return shortIdRows[0].result_id;
-  const publicIdRows = await queryRows<{ result_id: string }>(
-    "SELECT result_id FROM bench.results WHERE result_id LIKE ? LIMIT 2",
-    [`%-${id}`],
-  );
-  return publicIdRows.length === 1 ? publicIdRows[0]!.result_id : id;
+  const row = rows[0];
+  if (!row) return id;
+  if (row.short_match) return row.short_match;
+  return row.suffix_count === 1 && row.suffix_match ? row.suffix_match : id;
 }
 
 export async function toShortIds(fullIds: string[]): Promise<string[]> {
   if (fullIds.length === 0) return [];
-  const placeholders = fullIds.map(() => "?").join(", ");
-  const rows = await queryRows<{ short_id: string; result_id: string }>(
-    `SELECT short_id, result_id FROM bench.short_ids WHERE result_id IN (${placeholders})`,
+  const placeholders = fullIds.map(() => "(?)").join(", ");
+  const rows = await queryRows<{ result_id: string; short_id: string | null }>(
+    `WITH requested(result_id) AS (VALUES ${placeholders}),
+          ${SNAPSHOT_COUNT_CTE}
+     SELECT requested.result_id,
+            (SELECT min(si.short_id) FROM bench.short_ids si WHERE si.result_id = requested.result_id) AS short_id
+     FROM requested CROSS JOIN snapshot
+     WHERE ${SNAPSHOT_WARM_CONDITION}`,
     fullIds,
   );
   const byFull = new Map(rows.map((r) => [r.result_id, r.short_id]));

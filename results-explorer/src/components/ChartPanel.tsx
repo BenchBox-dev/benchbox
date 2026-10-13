@@ -574,54 +574,56 @@ function ChartPanelLong({
     charts.some((chart) => chart.id === "normalized_speedup" || chart.id === "diverging_bar");
 
   return (
-    <section class="card" data-testid="chart-panel-long">
+    <>
       {context.kind === "compare" && summary && (
         <div class="mb-8" data-testid="chart-panel-compare-summary-table">
           <SummaryMetricTable summary={summary} scope="compare" />
         </div>
       )}
-      <div class="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-        {showBaseline && summary && summary.platforms.length > 1 && (
-          <div class="ml-auto flex items-center gap-2">
-            <label class="text-xs text-[var(--bb-data-fg-muted)]" for="chart-panel-long-baseline">
-              Baseline:
-            </label>
-            <select
-              id="chart-panel-long-baseline"
-              class="min-w-0 max-w-full rounded border border-[var(--bb-data-border-strong)] bg-[var(--bb-surface-data)] px-2 py-1 text-xs text-[var(--bb-data-fg-primary)]"
-              value={String(baselineIdx)}
-              onChange={(event) => setBaselineIdx(Number((event.target as HTMLSelectElement).value))}
-            >
-              {summary.platforms.map((platform, index) => (
-                <option key={platform.result_id} value={String(index)}>
-                  {summaryPlatformSelectLabels[index] ?? platform.platform}
-                </option>
+      <section class="card" data-testid="chart-panel-long">
+        <div class="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+          {showBaseline && summary && summary.platforms.length > 1 && (
+            <div class="ml-auto flex items-center gap-2">
+              <label class="text-xs text-[var(--bb-data-fg-muted)]" for="chart-panel-long-baseline">
+                Baseline:
+              </label>
+              <select
+                id="chart-panel-long-baseline"
+                class="min-w-0 max-w-full rounded border border-[var(--bb-data-border-strong)] bg-[var(--bb-surface-data)] px-2 py-1 text-xs text-[var(--bb-data-fg-primary)]"
+                value={String(baselineIdx)}
+                onChange={(event) => setBaselineIdx(Number((event.target as HTMLSelectElement).value))}
+              >
+                {summary.platforms.map((platform, index) => (
+                  <option key={platform.result_id} value={String(index)}>
+                    {summaryPlatformSelectLabels[index] ?? platform.platform}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+        <div class="space-y-8">
+          {chartGroups.map((group) => (
+            <div key={group.id} class="space-y-8" data-testid={`chart-panel-group-${group.id}`}>
+              {group.charts.map((chart) => (
+                <ChartFigure
+                  key={chart.id}
+                  chart={chart}
+                  context={context}
+                  summary={summary}
+                  historical={historical}
+                  baselineIdx={baselineIdx}
+                  suppressWinnerClaims={suppressWinnerClaims}
+                  suppressionReason={suppressionReason}
+                  queryFilter={queryFilter}
+                  queryHref={queryHref}
+                />
               ))}
-            </select>
-          </div>
-        )}
-      </div>
-      <div class="space-y-8">
-        {chartGroups.map((group) => (
-          <div key={group.id} class="space-y-8" data-testid={`chart-panel-group-${group.id}`}>
-            {group.charts.map((chart) => (
-              <ChartFigure
-                key={chart.id}
-                chart={chart}
-                context={context}
-                summary={summary}
-                historical={historical}
-                baselineIdx={baselineIdx}
-                suppressWinnerClaims={suppressWinnerClaims}
-                suppressionReason={suppressionReason}
-                queryFilter={queryFilter}
-                queryHref={queryHref}
-              />
-            ))}
-          </div>
-        ))}
-      </div>
-    </section>
+            </div>
+          ))}
+        </div>
+      </section>
+    </>
   );
 }
 
@@ -1223,9 +1225,7 @@ function SummaryBoxPanel({
   const primaryMetric = normalizePrimaryMetric(summary.ranking?.primary_metric);
   const higherIsBetter = summary.ranking?.primary_order === "desc";
   const best = [...summary.platforms]
-    .filter((platform) => {
-      return isRankable(platform) && validPrimaryMetricValue(platform, primaryMetric) !== null;
-    })
+    .filter((platform) => validPrimaryMetricValue(platform, primaryMetric) !== null)
     .sort((a, b) => {
       const av = validPrimaryMetricValue(a, primaryMetric) ?? (higherIsBetter ? -Infinity : Infinity);
       const bv = validPrimaryMetricValue(b, primaryMetric) ?? (higherIsBetter ? -Infinity : Infinity);
@@ -1260,18 +1260,25 @@ function SummaryBoxPanel({
                 : "Best geomean"
         }
         value={
-          best
-            ? `${summaryLabelByResultId.get(best.result_id) ?? best.platform} · ${
+          best ? (
+            <>
+              {`${summaryLabelByResultId.get(best.result_id) ?? best.platform} · ${
                 primaryMetric === "display_geomean_ms"
                   ? fmtGeomean(best.display_geomean_ms)
                   : fmtScore(primaryMetricValue(best, primaryMetric))
-              }${suppressWinnerClaims ? " (ranking mismatch — not comparable)" : ""}`
-            : "-"
+              }${suppressWinnerClaims ? " (ranking mismatch — not comparable)" : ""}`}
+              {!isRankable(best) && (
+                <span class="ml-2 text-xs font-normal text-[var(--bb-data-fg-subtle)]">not ranked</span>
+              )}
+            </>
+          ) : (
+            "-"
+          )
         }
         title={suppressWinnerClaims ? suppressionReason : undefined}
       />
       <SummaryStat
-        label={sampleCount !== null ? "Median samples" : "Phase"}
+        label={sampleCount !== null ? "Samples" : "Phase"}
         value={sampleCount !== null ? String(sampleCount) : summary.phase}
       />
     </div>

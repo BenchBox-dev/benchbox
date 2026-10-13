@@ -367,6 +367,15 @@ describe("RunReceipt", () => {
     ).toBeNull();
   });
 
+  it("accepts a row carrying only the plan fields, without a cast", () => {
+    const row: Pick<DetailResult, "plans_published" | "has_plans" | "bundle_download_url"> = {
+      has_plans: true,
+      plans_published: true,
+      bundle_download_url: "/bundles/abcdef1234567890.json",
+    };
+    expect(planDownloadUrl(row)).toBe("/bundles/abcdef1234567890.plans.json");
+  });
+
   it("humanizes a disclosed funding source on the receipt", () => {
     render(<RunReceipt detail={makeDetail({ funding: "vendor-sponsored" })} />);
     expect(screen.getByText("vendor sponsored")).toBeTruthy();

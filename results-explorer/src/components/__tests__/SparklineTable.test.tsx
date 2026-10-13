@@ -90,4 +90,50 @@ describe("SparklineTable", () => {
     expect(rows[1]!.textContent).toContain("SQLite");
     expect(rows[1]!.textContent).toContain("900 ms");
   });
+
+  it("lists runs fastest first by display geomean with runs lacking a timing last", () => {
+    const summary = makeSummary({
+      platforms: [
+        makePlatform({ result_id: "r-119", platform: "Trino", display_geomean_ms: 119 }),
+        makePlatform({ result_id: "r-missing", platform: "Presto", display_geomean_ms: null }),
+        makePlatform({ result_id: "r-29", platform: "DuckDB", display_geomean_ms: 29 }),
+        makePlatform({ result_id: "r-47", platform: "Snowflake", display_geomean_ms: 47 }),
+      ],
+    });
+    const { container } = render(<SparklineTable summary={summary} />);
+    const platformNames = Array.from(container.querySelectorAll("tbody tr")).map(
+      (row) => row.querySelector("td")?.textContent?.trim() ?? "",
+    );
+    expect(platformNames).toEqual(["DuckDB", "Snowflake", "Trino", "Presto"]);
+  });
+
+  it("draws geomean bars proportional to latency with the slowest run longest", () => {
+    const summary = makeSummary({
+      platforms: [
+        makePlatform({ result_id: "r-119", platform: "Trino", display_geomean_ms: 119 }),
+        makePlatform({ result_id: "r-29", platform: "DuckDB", display_geomean_ms: 29 }),
+        makePlatform({ result_id: "r-37", platform: "ClickHouse", display_geomean_ms: 37 }),
+        makePlatform({ result_id: "r-47", platform: "Snowflake", display_geomean_ms: 47 }),
+      ],
+    });
+    const { container } = render(<SparklineTable summary={summary} />);
+    const widthByPlatform = new Map(
+      Array.from(container.querySelectorAll("tbody tr")).map((row) => {
+        const bar = row.querySelectorAll("td")[1]!.querySelector("span > span") as HTMLElement;
+        return [row.querySelector("td")!.textContent!.trim(), parseFloat(bar.style.width)] as const;
+      }),
+    );
+    expect(widthByPlatform.get("Trino")).toBe(100);
+    expect(widthByPlatform.get("DuckDB")!).toBeLessThan(widthByPlatform.get("ClickHouse")!);
+    expect(widthByPlatform.get("ClickHouse")!).toBeLessThan(widthByPlatform.get("Snowflake")!);
+    expect(widthByPlatform.get("Snowflake")!).toBeLessThan(widthByPlatform.get("Trino")!);
+    expect(widthByPlatform.get("DuckDB")!).toBeLessThan(50);
+  });
+
+  it("omits the Power@Size column when no rank-safe run has a score", () => {
+    const { container } = render(<SparklineTable summary={makeSummary()} />);
+    const headers = Array.from(container.querySelectorAll("thead th")).map((th) => th.textContent?.trim());
+    expect(headers).not.toContain("Power@Size");
+    expect(container.querySelector("tbody tr")!.textContent).not.toContain("Power");
+  });
 });

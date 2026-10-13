@@ -102,7 +102,7 @@ export const CHART_QUESTION_GROUP_BY_ID: Readonly<Record<ChartQuestionGroupId, C
 export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   {
     id: "performance_bar",
-    title: "Performance Bar",
+    title: "Geomean latency by run",
     shortTitle: "Performance",
     description: "Bar chart comparing total runtime across platforms",
     questionGroup: "overview",
@@ -112,7 +112,7 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "power_bar",
-    title: "Power@Size Bar",
+    title: "Power@Size by run",
     shortTitle: "Power",
     description: "Bar chart comparing TPC Power@Size metric across platforms (higher is better)",
     questionGroup: "overview",
@@ -122,7 +122,7 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "distribution_box",
-    title: "Distribution Box Plot",
+    title: "Latency distribution",
     shortTitle: "Box Plot",
     description: "Box plot showing query execution time distribution",
     questionGroup: "distribution",
@@ -132,7 +132,7 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "query_heatmap",
-    title: "Query Heatmap",
+    title: "Per-query latency heatmap",
     shortTitle: "Heatmap",
     description: "Heatmap comparing per-query execution times across platforms",
     questionGroup: "per_query",
@@ -152,7 +152,7 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "cost_scatter",
-    title: "Cost vs Performance Scatter",
+    title: "Cost vs performance",
     shortTitle: "Cost",
     description: "Scatter plot of normalized cost vs performance with cost-status empty states",
     questionGroup: "cost",
@@ -162,7 +162,7 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "time_series",
-    title: "Performance Trend",
+    title: "Performance over time",
     shortTitle: "Trend",
     description: "Line chart showing performance trends over time",
     questionGroup: "trend",
@@ -172,7 +172,7 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "comparison_bar",
-    title: "Comparison Bar",
+    title: "Comparison by run",
     shortTitle: "Compare",
     description:
       "Paired side-by-side bars comparing two runs per query with % change annotations",
@@ -195,7 +195,7 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "summary_box",
-    title: "Summary Box",
+    title: "Run summary",
     shortTitle: "Summary",
     description:
       "Bordered panel with aggregate stats (geo mean, total time, improved/regressed counts)",
@@ -206,7 +206,7 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "percentile_ladder",
-    title: "Percentile Ladder",
+    title: "Latency percentiles",
     shortTitle: "Percentiles",
     description: "Percentile ladder chart (P50/P90/P95/P99) across platforms",
     questionGroup: "distribution",
@@ -227,7 +227,7 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "stacked_phase",
-    title: "Stacked Phase Breakdown",
+    title: "Time by phase",
     shortTitle: "Phases",
     description: "Stacked phase breakdown chart across benchmark execution phases",
     questionGroup: "overview",
@@ -237,7 +237,7 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "sparkline_table",
-    title: "Sparkline Table",
+    title: "Geomean and cost by run",
     shortTitle: "Sparklines",
     description: "Compact sparkline table of key metrics across platforms",
     questionGroup: "overview",
@@ -247,7 +247,7 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "cdf_chart",
-    title: "CDF Chart",
+    title: "Cumulative latency distribution",
     shortTitle: "CDF",
     description: "Cumulative distribution chart of per-query execution latency",
     questionGroup: "distribution",
@@ -257,7 +257,7 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "rank_table",
-    title: "Rank Table",
+    title: "Query rank summary",
     shortTitle: "Ranks",
     description: "Per-query platform ranking table (1st=fastest)",
     questionGroup: "rank",

@@ -1362,3 +1362,78 @@ describe("PlatformIndex - accepted-override validation badges", () => {
     expect(within(row).getAllByText("Timing-plateau")).toHaveLength(2);
   });
 });
+
+describe("PlatformIndex table cells", () => {
+  it("shows the platform version, keeps the driver version in the title, and hides it when the platform version is missing", async () => {
+    vi.mocked(getPlatformIndexRows).mockResolvedValue([
+      makeRow({ result_id: "r-sf", short_id: "sf000001", platform_version: "10.35.101", driver_version: "4.7.3" }),
+      makeRow({ result_id: "r-bq", short_id: "bq000001", run_date: "2026-04-02", platform_version: null, driver_version: "2.1.0" }),
+    ]);
+
+    render(<PlatformIndex platform="duckdb" />);
+    await waitFor(() => expect(screen.getByText("DuckDB Results")).toBeTruthy());
+
+    const table = screen.getByRole("table", { name: "DuckDB results" });
+    expect(within(table).getByText("v10.35.101")).toBeTruthy();
+    expect(within(table).queryByText("v4.7.3")).toBeNull();
+    expect(within(table).queryByText("v2.1.0")).toBeNull();
+    expect(within(table).getByTitle(/Driver 4\.7\.3/)).toBeTruthy();
+    expect(within(table).getByText("bq000001")).toBeTruthy();
+  });
+
+  it("shows distinct logical queries and keeps executions in the cell title", async () => {
+    vi.mocked(getPlatformIndexRows).mockResolvedValue([
+      makeRow({ result_id: "r-tpch", short_id: "tpch0001", query_count: 66, logical_query_count: 22 }),
+    ]);
+
+    render(<PlatformIndex platform="duckdb" />);
+    await waitFor(() => expect(screen.getByText("DuckDB Results")).toBeTruthy());
+
+    const table = screen.getByRole("table", { name: "DuckDB results" });
+    const queryCell = within(table).getByTitle("66 query executions");
+    expect(queryCell.textContent).toBe("22");
+  });
+
+  it("shows a dash and a client-machine title for managed cloud runs", async () => {
+    vi.mocked(getPlatformIndexRows).mockResolvedValue([
+      makeRow({
+        result_id: "r-cloud",
+        short_id: "cloud001",
+        deployment_class: "cloud",
+        cloud_provider: "snowflake",
+        arch: "arm64",
+        cpu_family: "apple_silicon",
+        memory_gb: 16,
+      }),
+    ]);
+
+    render(<PlatformIndex platform="duckdb" />);
+    await waitFor(() => expect(screen.getByText("DuckDB Results")).toBeTruthy());
+
+    const table = screen.getByRole("table", { name: "DuckDB results" });
+    expect(within(table).queryByText("Arm64")).toBeNull();
+    expect(within(table).queryByText("Apple silicon")).toBeNull();
+    expect(within(table).queryByText("16 GB")).toBeNull();
+    const clientCells = within(table).getAllByTitle(
+      "Client machine: Arm64, Apple silicon, 16 GB (the warehouse hardware is managed by the provider)",
+    );
+    expect(clientCells).toHaveLength(3);
+    expect(clientCells.every((cell) => cell.textContent === "—")).toBe(true);
+  });
+
+  it("marks a run with no ranking value as Not ranked and sentence-cases the phase", async () => {
+    vi.mocked(getPlatformIndexRows).mockResolvedValue([
+      makeRow({ result_id: "r-unranked", short_id: "unrk0001", phase: "power", power_score: null, primary_metric: "power_score" }),
+      makeRow({ result_id: "r-ranked", short_id: "rnkd0001", run_date: "2026-04-02", phase: "power", power_score: 3000, primary_metric: "display_geomean_ms" }),
+    ]);
+
+    render(<PlatformIndex platform="duckdb" />);
+    await waitFor(() => expect(screen.getByText("DuckDB Results")).toBeTruthy());
+
+    const table = screen.getByRole("table", { name: "DuckDB results" });
+    expect(within(table).getByText("Not ranked")).toBeTruthy();
+    expect(within(table).queryByText("Power score ↑")).toBeNull();
+    expect(within(table).getAllByText("Power").length).toBeGreaterThan(0);
+    expect(within(table).queryByText("power")).toBeNull();
+  });
+});

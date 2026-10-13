@@ -598,7 +598,12 @@ describe("Query", () => {
     expect(within(resultsTable).getByRole("columnheader", { name: /^Run date/ })).toBeTruthy();
     expect(within(resultsTable).getByRole("columnheader", { name: /^Geomean latency/ })).toBeTruthy();
     expect(within(resultsTable).getAllByText("SF 0.1").length).toBeGreaterThan(0);
-    expect(within(resultsTable).getAllByText(/2026-04-17.*days ago/).length).toBeGreaterThan(0);
+    expect(within(resultsTable).getAllByText("2026-04-17").length).toBeGreaterThan(0);
+    expect(
+      within(resultsTable)
+        .getAllByTestId("run-date-chip")
+        .some((chip) => /2026-04-17 \(.*days ago\)/.test(chip.getAttribute("title") ?? "")),
+    ).toBe(true);
     expect(within(resultsTable).getByText("10 ms")).toBeTruthy();
 
     fireEvent.click(screen.getByText("Configure visible columns"));
@@ -1052,6 +1057,33 @@ describe("Query", () => {
     expect(parsed).toHaveLength(61);
     expect(parsed[0]).toHaveProperty("benchmark");
     expect(parsed[0]).not.toHaveProperty("result_id");
+  });
+
+  it("preselects every run listed in the ids parameter and keeps pick as the pinned run", async () => {
+    vi.mocked(getDetailResult).mockImplementation(async (id: string) =>
+      (BASE_ROWS.find((row) => row.result_id === id) ?? null) as never,
+    );
+
+    render(<Query url="/results/query?pick=r2&ids=r2,r1" />);
+
+    await waitFor(() => expect(screen.getByTestId("query-compare-selected-r1")).toBeTruthy());
+    expect(screen.getByTestId("query-compare-selected-r2")).toBeTruthy();
+    expect(screen.getByTestId("query-compare-tray")).toHaveTextContent("2 results selected");
+    expect(resolveShortId).toHaveBeenCalledWith("r1");
+  });
+
+  it("keeps the results header and cells in the same column count on the Find runs table", async () => {
+    render(<Query />);
+    await waitFor(() => expect(screen.getAllByText("DuckDB").length).toBeGreaterThan(0));
+    const resultsTable = screen.getAllByRole("table")[0]!;
+
+    const headerCount = resultsTable.querySelectorAll("thead tr th").length;
+    const firstRow = resultsTable.querySelector("tbody tr");
+    expect(firstRow).not.toBeNull();
+    expect(firstRow!.querySelectorAll("td").length).toBe(headerCount);
+    expect(resultsTable.textContent).not.toContain("Compare state");
+    expect(resultsTable.textContent).not.toContain("Selectable");
+    expect(within(resultsTable).getByRole("columnheader", { name: /^Power score$/ })).toBeTruthy();
   });
 
   it("runs read-only SQL and surfaces DDL errors", async () => {

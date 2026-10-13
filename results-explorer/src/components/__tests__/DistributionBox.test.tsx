@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/preact";
 import type { BenchmarkSummary, PlatformRow } from "@/types";
 import { DistributionBox } from "@/components/DistributionBox";
+import { paletteColor } from "@/lib/chartTheme";
 
 function makePlatform(overrides: Partial<PlatformRow> = {}): PlatformRow {
   const timings = overrides.timings ?? { q1: 100, q2: 200, q3: 300 };
@@ -68,6 +69,7 @@ function makeSummary(): BenchmarkSummary {
     benchmark: "tpch",
     scale_factor: 1,
     phase: "power",
+    cell_reduction: "median",
     query_ids: ["q1", "q2", "q3"],
     platforms: [
       makePlatform({
@@ -128,5 +130,60 @@ describe("DistributionBox label disambiguation (finding #7)", () => {
       .filter((text) => text.includes("DataFusion"));
     expect(titles.length).toBeGreaterThanOrEqual(4);
     expect(titles.some((title) => title.includes("2026-05-06"))).toBe(true);
+  });
+
+  it("lists runs fastest first by display geomean regardless of selection order", () => {
+    const summary: BenchmarkSummary = {
+      benchmark: "tpch",
+      scale_factor: 1,
+      phase: "power",
+      cell_reduction: "median",
+      query_ids: ["q1", "q2", "q3"],
+      platforms: [
+        makePlatform({
+          result_id: "tpch-trino-sf1-20260506-aaaa1111",
+          platform: "Trino",
+          platform_version: "v470",
+          timings: { q1: 300, q2: 400, q3: 500 },
+          display_geomean_ms: 390,
+        }),
+        makePlatform({
+          result_id: "tpch-duckdb-sf1-20260506-bbbb2222",
+          platform: "DuckDB",
+          platform_version: "v1.4.3",
+          timings: { q1: 20, q2: 30, q3: 40 },
+          display_geomean_ms: 29,
+        }),
+      ],
+      ranking: { primary_metric: "display_geomean_ms", secondary_metric: "platform", primary_order: "asc" },
+    };
+    const { container } = render(<DistributionBox summary={summary} />);
+    const rowLabels = Array.from(container.querySelectorAll("svg text"))
+      .map((node) => node.textContent ?? "")
+      .filter((text) => text.includes("DuckDB") || text.includes("Trino"));
+    expect(rowLabels[0]).toContain("DuckDB");
+    expect(rowLabels[1]).toContain("Trino");
+  });
+
+  it("keeps each run's original colour when rows arrive pre-sorted", () => {
+    const trino = makePlatform({ result_id: "tpch-trino-sf1-20260506-aaaa1111", platform: "Trino", timings: { q1: 300, q2: 400, q3: 500 }, display_geomean_ms: 390 });
+    const duckdb = makePlatform({ result_id: "tpch-duckdb-sf1-20260506-bbbb2222", platform: "DuckDB", timings: { q1: 20, q2: 30, q3: 40 }, display_geomean_ms: 29 });
+    const summary: BenchmarkSummary = {
+      benchmark: "tpch",
+      scale_factor: 1,
+      phase: "power",
+      cell_reduction: "median",
+      query_ids: ["q1", "q2", "q3"],
+      platforms: [duckdb, trino],
+      ranking: { primary_metric: "display_geomean_ms", secondary_metric: "platform", primary_order: "asc" },
+    };
+    const colorIndexFor = (platform: PlatformRow) => (platform.platform === "Trino" ? 0 : 1);
+    const { container } = render(<DistributionBox summary={summary} colorIndexFor={colorIndexFor} />);
+    const strokeFor = (name: string) => {
+      const label = Array.from(container.querySelectorAll("svg text")).find((node) => node.textContent?.includes(name));
+      return label!.closest("g")!.querySelector("line")!.getAttribute("stroke");
+    };
+    expect(strokeFor("DuckDB")).toBe(paletteColor(1));
+    expect(strokeFor("Trino")).toBe(paletteColor(0));
   });
 });

@@ -206,6 +206,11 @@ import {
 } from "@/db";
 import { getExistingResultIds } from "@/lib/duckdbQueries";
 
+function coldThenWarmMembership(_sql: string, params: unknown[], attempt: number) {
+  if (attempt === 1) return [];
+  return params.map((result_id) => ({ result_id, found: String(result_id).startsWith("real-") }));
+}
+
 class FakeWorker {
   addEventListener(): void {}
   removeEventListener(): void {}
@@ -244,11 +249,13 @@ describe("Initialization with a stale worker memory view", () => {
   it("uses the supported single-threaded bundle after persistent COI buffer errors", async () => {
     vi.useFakeTimers();
     hoisted.nextInstanceBehaviors.push("coi-buffer-errors", "coi-buffer-errors", "coi-buffer-errors");
-    hoisted.setMembershipQuery((_sql, params) => params.map((result_id) => ({ result_id })));
-    const pending = Promise.all([getExistingResultIds(["real-a"]), getExistingResultIds(["real-b"])])
+    hoisted.setMembershipQuery(coldThenWarmMembership);
+    const pending = Promise.all([getExistingResultIds(["real-a", "missing-a"]), getExistingResultIds(["real-b", "missing-b"])])
       .catch((error: unknown) => error);
     await vi.advanceTimersByTimeAsync(1000);
     expect(await pending).toEqual([new Set(["real-a"]), new Set(["real-b"])]);
+    expect(hoisted.membershipAttempts.get("real-a,missing-a")).toBe(2);
+    expect(hoisted.membershipAttempts.get("real-b,missing-b")).toBe(2);
     expect(hoisted.bundleSelections).toEqual([hoisted.bundles.coi.mainModule, hoisted.bundles.eh.mainModule]);
     expect(hoisted.instances[0]?.terminate).toHaveBeenCalledOnce();
     expect(hoisted.instances[1]?.terminated).toBe(false);
@@ -272,8 +279,8 @@ describe("Initialization with a stale worker memory view", () => {
     async (behavior) => {
       vi.useFakeTimers();
       hoisted.nextInstanceBehaviors.push(behavior, "healthy");
-      hoisted.setMembershipQuery((_sql, params) => params.map((result_id) => ({ result_id })));
-      const pending = Promise.all([getExistingResultIds(["real-a"]), getExistingResultIds(["real-b"])]);
+      hoisted.setMembershipQuery(coldThenWarmMembership);
+      const pending = Promise.all([getExistingResultIds(["real-a", "missing-a"]), getExistingResultIds(["real-b", "missing-b"])]);
       await vi.advanceTimersByTimeAsync(0);
       expect(hoisted.instances[0]?.terminate).toHaveBeenCalledOnce();
       const failingSql = behavior === "buffer-error-on-metadata"
@@ -282,6 +289,8 @@ describe("Initialization with a stale worker memory view", () => {
       expect(hoisted.instances[0]?.queryCalls.filter((sql) => failingSql.test(sql))).toHaveLength(1);
       await vi.advanceTimersByTimeAsync(1000);
       expect(await pending).toEqual([new Set(["real-a"]), new Set(["real-b"])]);
+    expect(hoisted.membershipAttempts.get("real-a,missing-a")).toBe(2);
+    expect(hoisted.membershipAttempts.get("real-b,missing-b")).toBe(2);
       expect(hoisted.instances).toHaveLength(2);
       expect(hoisted.instances[1]?.terminated).toBe(false);
       expect(_getInitFailuresForTest()).toBe(0);
@@ -308,43 +317,41 @@ describe("Initialization with a stale worker memory view", () => {
 });
 
 describe("Compare membership with cold reads", () => {
-  it("confirms a missing ID once after a complete scan", async () => {
+  it("reports a missing ID absent from one warm snapshot query", async () => {
     vi.useFakeTimers();
-    hoisted.setMembershipQuery((sql, params) => {
-      if (params.length === 2) return [{ result_id: "known-a" }];
-      return /HAVING COUNT\(DISTINCT result_id\)/i.test(sql) ? [{ result_id: null }] : [];
-    });
+    hoisted.setMembershipQuery((_sql, params) =>
+      params.map((result_id) => ({ result_id, found: result_id === "known-a" })),
+    );
     const initialMatches = vi.fn();
     const pending = getExistingResultIds(["known-a", "missing-b"], initialMatches);
     await vi.runAllTimersAsync();
     expect(await pending).toEqual(new Set(["known-a"]));
     expect(initialMatches).toHaveBeenCalledWith(new Set(["known-a"]));
-    expect(hoisted.membershipAttempts.get("missing-b")).toBe(1);
+    expect(hoisted.membershipAttempts.get("known-a,missing-b")).toBe(1);
   });
 
-  it("retries an incomplete confirmation and keeps the recovered real ID", async () => {
+  it("retries a cold or lagging snapshot read and keeps the real IDs it then finds", async () => {
     vi.useFakeTimers();
     hoisted.setMembershipQuery((_sql, params, attempt) => {
-      if (params.length === 2) return [{ result_id: "known-a" }];
-      return attempt === 1 ? [] : [{ result_id: "cold-b" }];
+      if (attempt === 1) return [];
+      return params.map((result_id) => ({ result_id, found: true }));
     });
     const pending = getExistingResultIds(["known-a", "cold-b"]);
     await vi.runAllTimersAsync();
     expect(await pending).toEqual(new Set(["known-a", "cold-b"]));
-    expect(hoisted.membershipAttempts.get("cold-b")).toBe(2);
+    expect(hoisted.membershipAttempts.get("known-a,cold-b")).toBe(2);
   });
 
-  it("recovers from a transient confirmation error before reporting absence", async () => {
+  it("recovers from a transient query error before reporting absence", async () => {
     vi.useFakeTimers();
     hoisted.setMembershipQuery((_sql, params, attempt) => {
-      if (params.length === 2) return [{ result_id: "known-a" }];
       if (attempt === 1) throw new RangeError("offset is out of bounds");
-      return [{ result_id: null }];
+      return params.map((result_id) => ({ result_id, found: result_id === "known-a" }));
     });
     const pending = getExistingResultIds(["known-a", "missing-b"]);
     await vi.runAllTimersAsync();
     expect(await pending).toEqual(new Set(["known-a"]));
-    expect(hoisted.membershipAttempts.get("missing-b")).toBe(2);
+    expect(hoisted.membershipAttempts.get("known-a,missing-b")).toBe(2);
   });
 });
 

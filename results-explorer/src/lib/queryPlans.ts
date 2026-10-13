@@ -9,6 +9,7 @@ export interface QueryPlanNode {
 export interface CapturedQueryPlan {
   id: string;
   label: string;
+  queryId: string;
   platform: string | null;
   estimatedCost: string | null;
   estimatedRows: string | null;
@@ -170,6 +171,7 @@ function parseEntry(id: string, value: unknown): CapturedQueryPlan | null {
   return {
     id,
     label,
+    queryId,
     platform: displayValue(planRecord?.platform),
     estimatedCost: displayValue(planRecord?.estimated_cost),
     estimatedRows: displayValue(planRecord?.estimated_rows),
@@ -178,6 +180,17 @@ function parseEntry(id: string, value: unknown): CapturedQueryPlan | null {
     textualPlan: text.text,
     textualPlanTruncated: text.truncated,
   };
+}
+
+export function normalizeQueryIdForMatch(queryId: string): string {
+  const base = queryId.trim().split("#")[0]?.trim() ?? "";
+  const numeric = /^q?0*(\d+)$/i.exec(base);
+  return numeric ? numeric[1]! : base.toLowerCase();
+}
+
+export function plansForQuery(plans: readonly CapturedQueryPlan[], queryId: string): CapturedQueryPlan[] {
+  const wanted = normalizeQueryIdForMatch(queryId);
+  return plans.filter((plan) => normalizeQueryIdForMatch(plan.queryId) === wanted);
 }
 
 export function parseQueryPlanDocument(payload: unknown): QueryPlanDocument {

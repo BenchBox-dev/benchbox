@@ -41,6 +41,7 @@ import {
   resolveShortId,
 } from "@/lib/duckdbQueries";
 import { formatQueryCell, formatQueryColumnLabel, formatQueryFacetValue } from "@/lib/queryLabels";
+import { RunDateChip } from "@/components/RunAge";
 import { formatPlainNumber } from "@/lib/metricFormatters";
 import {
   formatBenchmarkLabel,
@@ -105,6 +106,12 @@ export function Query({ url }: QueryProps) {
     const activeUrl = url ?? (typeof window === "undefined" ? "/results/query" : `${window.location.pathname}${window.location.search}`);
     return new URL(activeUrl, "https://benchbox.dev").searchParams.get("pick");
   }, [url]);
+  const preselectedCompareIds = useMemo(() => {
+    const activeUrl = url ?? (typeof window === "undefined" ? "/results/query" : `${window.location.pathname}${window.location.search}`);
+    const raw = new URL(activeUrl, "https://benchbox.dev").searchParams.get("ids") ?? "";
+    return [...new Set(raw.split(",").map((id) => id.trim()).filter((id) => id !== ""))].slice(0, MAX_COMPARE_SELECTIONS);
+  }, [url]);
+  const preselectedCompareKey = preselectedCompareIds.join(",");
   const resultsScrollerRef = useRef<HTMLDivElement>(null);
   const sqlScrollerRef = useRef<HTMLDivElement>(null);
   const [benchmarks, setBenchmarks] = useFacetField("benchmark");
@@ -206,7 +213,13 @@ export function Query({ url }: QueryProps) {
           return;
         }
         setPinnedCompareResultId(detail.result_id);
-        setCompareSelectedRows(new Map([[detail.result_id, detail as unknown as ResultRow]]));
+        setCompareSelectedRows((prev) => {
+          const next = new Map<string, ResultRow>([[detail.result_id, detail as unknown as ResultRow]]);
+          for (const [id, row] of prev) {
+            if (id !== detail.result_id) next.set(id, row);
+          }
+          return next;
+        });
       })
       .catch(() => {
         if (!cancelled) {
@@ -217,6 +230,35 @@ export function Query({ url }: QueryProps) {
       cancelled = true;
     };
   }, [pinnedCompareId]);
+
+  useEffect(() => {
+    if (preselectedCompareIds.length === 0) return;
+    let cancelled = false;
+    Promise.all(
+      preselectedCompareIds.map((id) =>
+        resolveShortId(id)
+          .then((resolvedId) => getDetailResult(resolvedId))
+          .catch(() => null),
+      ),
+    ).then((details) => {
+      if (cancelled) return;
+      const eligible = details.filter(
+        (detail) => detail !== null && comparisonExclusionReason(detail as unknown as ResultRow) === undefined,
+      );
+      if (eligible.length === 0) return;
+      setCompareSelectedRows((prev) => {
+        const next = new Map(prev);
+        for (const detail of eligible) {
+          if (next.size >= MAX_COMPARE_SELECTIONS) break;
+          next.set(detail!.result_id, detail as unknown as ResultRow);
+        }
+        return next;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [preselectedCompareKey]);
 
   const rowLimitMode = rowLimitRaw === "all" ? "all" : "default";
   const rowLimit = rowLimitMode === "all" ? UNLIMITED_ROW_LIMIT : DEFAULT_ROW_LIMIT;
@@ -1022,10 +1064,10 @@ export function Query({ url }: QueryProps) {
                               >
                                 <span class="sr-only">Compare</span>
                               </th>
-                              <th class="table-th hidden sm:table-cell">Compare state</th>
                               {visibleColumns.map((column) => {
                                 const isActive = sort.column === column;
                                 const arrow = isActive ? (sort.direction === "asc" ? " ↑" : " ↓") : "";
+                                const headerLabel = column === "power_score" ? "Power score" : formatQueryColumnLabel(column);
                                 const ariaSort = isActive
                                   ? sort.direction === "asc"
                                     ? "ascending"
@@ -1038,12 +1080,14 @@ export function Query({ url }: QueryProps) {
                                       class="table-th block w-full cursor-pointer select-none border-0 bg-transparent text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--bb-accent)]"
                                       onClick={() => toggleSort(column)}
                                     >
-                                      {formatQueryColumnLabel(column)}{arrow}
+                                      <span title={column === "power_score" ? "Higher is better" : undefined}>{headerLabel}{arrow}</span>
                                     </button>
                                   </th>
                                 );
                               })}
-                              <th class="table-th" />
+                              <th class="table-th">
+                                <span class="sr-only">Open</span>
+                              </th>
                             </tr>
                           </thead>
                           <tbody class="divide-y divide-[var(--bb-data-border)] bg-[var(--bb-surface-data)]">
@@ -1064,7 +1108,7 @@ export function Query({ url }: QueryProps) {
                                   class="hover:bg-[var(--bb-surface-data-muted)]"
                                   data-testid={`query-result-row-${id}`}
                                 >
-                                  <td class="table-td sticky left-0 z-10 bg-[var(--bb-surface-data)]">
+                                  <td class="table-td sticky left-0 z-10 max-w-[16rem] bg-[var(--bb-surface-data)]">
                                     <input
                                       type="checkbox"
                                       checked={isSelected}
@@ -1083,13 +1127,15 @@ export function Query({ url }: QueryProps) {
                                       })}
                                       data-testid={`query-compare-checkbox-${id}`}
                                     />
-                                  </td>
-                                  <td class="table-td max-w-[16rem]">
-                                    <QueryCompareReasonStatus id={reasonId} copy={disabledCopy} selected={isSelected} />
+                                    <QueryCompareReasonStatus id={reasonId} copy={disabledCopy} />
                                   </td>
                                   {visibleColumns.map((column) => (
                                     <td key={column} class={`table-td ${queryColumnResponsiveClass(column)}`}>
-                                      {formatQueryRowCell(column, row[column])}
+                                      {column === "run_date" ? (
+                                        <RunDateChip runDate={typeof row.run_date === "string" ? row.run_date : null} />
+                                      ) : (
+                                        formatQueryRowCell(column, row[column])
+                                      )}
                                     </td>
                                   ))}
                                   <td class="table-td text-right">
@@ -1260,7 +1306,7 @@ export function Query({ url }: QueryProps) {
                       onChange={() => toggleColumn(column)}
                     />
                     <span>{formatQueryColumnLabel(column)}</span>
-                    <code class="rounded bg-[var(--bb-surface-app)] px-1 font-mono text-[10px] text-[var(--bb-data-fg-subtle)]">{column}</code>
+                    <code class="rounded bg-[var(--bb-surface-app)] px-1 font-mono text-xs text-[var(--bb-data-fg-subtle)]">{column}</code>
                   </label>
                 ))}
               </div>
@@ -1383,15 +1429,11 @@ function queryColumnResponsiveClass(column: string): string {
 function QueryCompareReasonStatus({
   id,
   copy,
-  selected,
 }: {
   id?: string;
   copy: CompareExclusionReasonCopy | null;
-  selected: boolean;
 }) {
-  if (copy === null) {
-    return <span class="text-xs text-[var(--bb-data-fg-muted)]">{selected ? "Selected" : "Selectable"}</span>;
-  }
+  if (copy === null) return null;
   return (
     <div id={id} class="text-xs text-[var(--bb-data-fg-muted)]" data-testid="query-disabled-reason">
       <span class="font-medium text-[var(--bb-tone-warning-fg)]">Why unavailable: {copy.shortText}</span>

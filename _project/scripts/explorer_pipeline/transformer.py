@@ -263,8 +263,39 @@ def _load_bundle(bundle_path: Path) -> tuple[dict[str, Any], bytes]:
     return data, raw
 
 
+_DAMAGED_READ_PRIMITIVE_QUERY_IDS = frozenset(
+    {
+        "ualify_row_number",
+        "ualify_dense_rank",
+        "ualify_percentile",
+        "ualify_ntile",
+        "ualify_cume_dist",
+        "ualify_lag_lead",
+    }
+)
+
+
+def _repair_damaged_query_ids(data: dict[str, Any]) -> dict[str, Any]:
+    benchmark = data.get("benchmark")
+    queries = data.get("queries")
+    if not isinstance(benchmark, dict) or not isinstance(queries, list):
+        return data
+    if canonical_benchmark_slug(str(benchmark.get("id", ""))) != "read_primitives":
+        return data
+
+    repaired_queries = []
+    for row in queries:
+        if isinstance(row, dict):
+            row = {
+                key: f"q{value}" if key in ("id", "query_id") and value in _DAMAGED_READ_PRIMITIVE_QUERY_IDS else value
+                for key, value in row.items()
+            }
+        repaired_queries.append(row)
+    return {**data, "queries": repaired_queries}
+
+
 def _parse_bundle(data: dict[str, Any]) -> BundleDocument:
-    return BundleDocument.model_validate(data)
+    return BundleDocument.model_validate(_repair_damaged_query_ids(data))
 
 
 def _ensure_explorer_input_schema(data: dict[str, Any]) -> None:

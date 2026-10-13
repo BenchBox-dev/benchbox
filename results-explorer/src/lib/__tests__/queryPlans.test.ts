@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseQueryPlanDocument } from "@/lib/queryPlans";
+import { normalizeQueryIdForMatch, parseQueryPlanDocument, plansForQuery } from "@/lib/queryPlans";
 
 describe("parseQueryPlanDocument", () => {
   it("reads the exported QueryPlanDAG shape as an operator tree", () => {
@@ -88,5 +88,36 @@ describe("parseQueryPlanDocument", () => {
     expect(parsed.plans[0]).toMatchObject({ textualPlan: '{"unexpected":true}' });
     expect(parsed.plans[1]?.root?.children).toHaveLength(499);
     expect(parsed.plans[1]?.root?.omittedChildren).toBe(51);
+  });
+});
+
+describe("normalizeQueryIdForMatch", () => {
+  it("treats Q-prefixed and bare numeric query ids as the same query", () => {
+    expect(normalizeQueryIdForMatch("Q18")).toBe(normalizeQueryIdForMatch("18"));
+    expect(normalizeQueryIdForMatch("q18")).toBe("18");
+    expect(normalizeQueryIdForMatch("Q018")).toBe("18");
+    expect(normalizeQueryIdForMatch(" 18 ")).toBe("18");
+  });
+
+  it("drops an iteration or stream suffix and keeps named query ids", () => {
+    expect(normalizeQueryIdForMatch("Q18#2")).toBe("18");
+    expect(normalizeQueryIdForMatch("Aggregation_Distinct_GroupBy")).toBe("aggregation_distinct_groupby");
+  });
+});
+
+describe("plansForQuery", () => {
+  it("returns only the plans whose query id matches, in either id style", () => {
+    const document = parseQueryPlanDocument({
+      queries: {
+        "Q18#1": { plan: { query_id: "Q18", logical_root: { operator_type: "Aggregate", children: [] } } },
+        "19": { plan: { query_id: "19", logical_root: { operator_type: "Filter", children: [] } } },
+        Q2: { plan: { query_id: "Q2", logical_root: { operator_type: "Scan", children: [] } } },
+      },
+    });
+
+    expect(document.plans.map((plan) => plan.queryId)).toEqual(["19", "Q18", "Q2"]);
+    expect(plansForQuery(document.plans, "18").map((plan) => plan.id)).toEqual(["Q18#1"]);
+    expect(plansForQuery(document.plans, "Q19").map((plan) => plan.id)).toEqual(["19"]);
+    expect(plansForQuery(document.plans, "7")).toEqual([]);
   });
 });

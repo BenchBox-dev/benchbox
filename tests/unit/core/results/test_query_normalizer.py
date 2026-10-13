@@ -90,11 +90,36 @@ class TestNormalizeQueryId:
         assert normalize_query_id("Q14A") == "14a"
         assert normalize_query_id("query_39b") == "39b"
 
-    def test_normalize_strips_q_from_named_queries(self) -> None:
+    def test_normalize_strips_legacy_uppercase_q_from_named_queries(self) -> None:
         assert normalize_query_id("Qfilter_decimal_selective") == "filter_decimal_selective"
         assert normalize_query_id("Qaggregation_groupby_large") == "aggregation_groupby_large"
         assert normalize_query_id("Qempty_build_join") == "empty_build_join"
         assert normalize_query_id("Qtopn") == "topn"
+        assert normalize_query_id("Qqualify_cume_dist") == "qualify_cume_dist"
+
+    def test_normalize_preserves_lowercase_q_named_queries(self) -> None:
+        assert normalize_query_id("qualify_cume_dist") == "qualify_cume_dist"
+        assert normalize_query_id("qualify_dense_rank") == "qualify_dense_rank"
+        assert normalize_query_id("qualify_lag_lead") == "qualify_lag_lead"
+        assert normalize_query_id("qualify_ntile") == "qualify_ntile"
+        assert normalize_query_id("qualify_percentile") == "qualify_percentile"
+        assert normalize_query_id("qualify_row_number") == "qualify_row_number"
+        assert normalize_query_id("quantile_cont") == "quantile_cont"
+        assert normalize_query_id("queue_depth") == "queue_depth"
+
+    def test_normalize_preserves_named_ids_starting_with_query(self) -> None:
+        assert normalize_query_id("query_cache_probe") == "query_cache_probe"
+        assert normalize_query_id("QUERY_CACHE_PROBE") == "QUERY_CACHE_PROBE"
+        assert normalize_query_id("query_") == "query_"
+
+    def test_normalize_strips_query_and_q_before_digits_only(self) -> None:
+        assert normalize_query_id("query22") == "22"
+        assert normalize_query_id("QUERY18") == "18"
+        assert normalize_query_id("QUERY_1") == "1"
+        assert normalize_query_id("query_22") == "22"
+        assert normalize_query_id("Q18.sql") == "18"
+        assert normalize_query_id("q14a") == "14a"
+        assert normalize_query_id("Q14A") == "14a"
 
     def test_normalize_preserves_bare_names_without_q(self) -> None:
         assert normalize_query_id("filter_decimal_selective") == "filter_decimal_selective"
@@ -117,6 +142,18 @@ class TestFormatQueryId:
 
         assert format_query_id(1) == "Q1"
         assert format_query_id(21) == "Q21"
+
+    def test_format_numeric_variant_and_dotted_ids(self) -> None:
+        assert format_query_id("14a") == "Q14a"
+        assert format_query_id("Q1.1") == "Q1.1"
+
+    def test_format_prefixes_named_ids_and_normalize_round_trips(self) -> None:
+        assert format_query_id("qualify_cume_dist") == "Qqualify_cume_dist"
+        assert format_query_id("qualify_cume_dist", with_prefix=False) == "qualify_cume_dist"
+
+    @pytest.mark.parametrize("query_id", ["qualify_cume_dist", "filter_decimal_selective", "14a", "1"])
+    def test_format_then_normalize_round_trips(self, query_id: str) -> None:
+        assert normalize_query_id(format_query_id(query_id)) == normalize_query_id(query_id)
 
 
 class TestNormalizeQueryResult:

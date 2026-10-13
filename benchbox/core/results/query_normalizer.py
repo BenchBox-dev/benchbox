@@ -13,21 +13,29 @@ from benchbox.core.results.models import (
 )
 from benchbox.core.results.query_execution import query_execution_from_legacy_dict
 
+_QUERY_WORD_PREFIX_PATTERN = re.compile(r"query_?(?=\d)", re.IGNORECASE)
+_LEGACY_UPPER_Q_PREFIX_PATTERN = re.compile(r"Q(?=\d|[a-z])")
+_LOWER_Q_PREFIX_PATTERN = re.compile(r"q(?=\d)")
+_LEADING_PREFIX_PATTERNS = (
+    _QUERY_WORD_PREFIX_PATTERN,
+    _LEGACY_UPPER_Q_PREFIX_PATTERN,
+    _LOWER_Q_PREFIX_PATTERN,
+)
+
+
+def _strip_leading_prefix(query_id: str) -> str:
+    for pattern in _LEADING_PREFIX_PATTERNS:
+        match = pattern.match(query_id)
+        if match:
+            return query_id[match.end() :]
+    return query_id
+
 
 def normalize_query_id(query_id: str | int) -> str:
     if isinstance(query_id, int):
         return str(query_id)
 
-    normalized = str(query_id).strip()
-
-    upper = normalized.upper()
-    if upper.startswith("QUERY_"):
-        normalized = normalized[6:]
-    elif upper.startswith("QUERY"):
-        normalized = normalized[5:]
-    elif upper.startswith("Q") and len(normalized) > 1 and (normalized[1].isdigit() or normalized[1].islower()):
-        normalized = normalized[1:]
-
+    normalized = _strip_leading_prefix(str(query_id).strip())
     normalized = normalized.strip()
 
     if "." in normalized:

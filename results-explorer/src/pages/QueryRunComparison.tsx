@@ -6,7 +6,6 @@ import { PageHeader } from "@/components/PageHeader";
 import { CompareSummarySkeleton } from "@/components/LoadingSpinner";
 import { planDownloadUrl } from "@/components/RunReceipt";
 import { TableScrollHint } from "@/components/TableScrollHint";
-import type { DetailResult } from "@/types";
 import {
   getExistingResultIds,
   getQueryExecutions,
@@ -278,7 +277,7 @@ export function QueryRunComparison({ queryId = "", url }: QueryRunComparisonProp
   const chartHasSamples = chartRuns.some((run) => (run.summary?.sampleCount ?? 0) > 0);
   const showOtherRecords = loadedRuns.some((run) => otherRecordsFor(run.summary).length > 0);
   const plannedRuns = loadedRuns.flatMap((run) => {
-    const plansUrl = run.detail.has_plans ? planDownloadUrl(run.detail as unknown as DetailResult) : null;
+    const plansUrl = run.detail.has_plans ? planDownloadUrl(run.detail) : null;
     return plansUrl === null ? [] : [{ run, plansUrl }];
   });
 
@@ -360,7 +359,7 @@ export function QueryRunComparison({ queryId = "", url }: QueryRunComparisonProp
                 {plannedRuns.map(({ run, plansUrl }) => (
                   <div key={run.resolvedId}>
                     <p class="mb-2 text-sm font-medium text-[var(--bb-data-fg-primary)]">{run.identityLabel}</p>
-                    <CapturedPlanViewer plansUrl={plansUrl} />
+                    <CapturedPlanViewer plansUrl={plansUrl} queryId={selection.queryId} />
                   </div>
                 ))}
               </div>

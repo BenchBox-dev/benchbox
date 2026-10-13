@@ -70,7 +70,7 @@ import { CompareCta, isCompareAllAvailable } from "@/components/CompareCta";
 import { CompareTray } from "@/components/CompareTray";
 import { TrayAnnouncer } from "@/components/TrayAnnouncer";
 import { RunDateChip } from "@/components/RunAge";
-import { splitVersion } from "@/lib/versionLabel";
+import { identitySourceWithPlatformVersion, platformVersionDisplay } from "@/lib/versionLabel";
 import { PageHeader } from "@/components/PageHeader";
 import type { SortState } from "@/types";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
@@ -167,13 +167,8 @@ function trendMetricDescription(metric: TrendMetric): string {
   return "Geomean latency (lower is better)";
 }
 
-function versionText(entry: { driver_version: string | null; platform_version?: string | null }): string | null {
-  const parts = splitVersion(entry.driver_version ?? entry.platform_version ?? null);
-  return parts ? (parts.suffix ? `${parts.core}…` : parts.core) : null;
-}
-
 function buildVersionCellLabels(rows: readonly PlatformIndexRowRow[]): string[] {
-  const base = rows.map((row) => versionText(row) ?? row.short_id);
+  const base = rows.map((row) => platformVersionDisplay(row).text ?? row.short_id);
   const displayedKey = (row: PlatformIndexRowRow, index: number) =>
     [base[index], row.benchmark, row.scale_factor, row.phase, row.run_date].join("\u0000");
   const counts = new Map<string, number>();
@@ -188,6 +183,41 @@ function buildVersionCellLabels(rows: readonly PlatformIndexRowRow[]): string[] 
 
 function primaryMetricContract(metric: string): string {
   return trendMetricDescription(normalizeTrendMetric(metric));
+}
+
+function distinctQueryCount(row: { query_count: number; logical_query_count?: number }): number {
+  return row.logical_query_count && row.logical_query_count > 0 ? row.logical_query_count : row.query_count;
+}
+
+function queryExecutionTitle(row: { query_count: number; logical_query_count?: number }): string | undefined {
+  return row.query_count !== distinctQueryCount(row) ? `${row.query_count} query executions` : undefined;
+}
+
+function sentenceCasePhase(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function isManagedCloudRun(row: { deployment_class?: string | null; cloud_provider?: string | null }): boolean {
+  if (row.deployment_class) return row.deployment_class === "cloud";
+  return Boolean(row.cloud_provider);
+}
+
+function clientHardwareTitle(row: {
+  arch?: string | null;
+  cpu_family?: string | null;
+  memory_gb?: number | null;
+}): string | undefined {
+  const parts = [
+    row.arch ? formatArchitecture(row.arch) : null,
+    row.cpu_family ? formatCpuFamily(row.cpu_family) : null,
+    row.memory_gb != null ? formatMemoryGb(row.memory_gb) : null,
+  ].filter((part): part is string => part !== null);
+  if (parts.length === 0) return undefined;
+  return `Client machine: ${parts.join(", ")} (the warehouse hardware is managed by the provider)`;
+}
+
+function primaryMetricRankingValue(row: PlatformIndexRowRow): number | null {
+  return trendValue(row, normalizeTrendMetric(row.primary_metric));
 }
 
 function primaryMetricShort(metric: string): string {
@@ -555,7 +585,7 @@ export function PlatformIndex({ platform = "" }: PlatformIndexProps) {
     platformResults,
     visibleLimit,
   );
-  const runIdentityLabels = formatRunIdentitiesForCohort(platformResults, "table");
+  const runIdentityLabels = formatRunIdentitiesForCohort(platformResults.map(identitySourceWithPlatformVersion), "table");
   const versionCellLabels = buildVersionCellLabels(platformResults);
 
   function toggleSort(key: PlatformSortKey) {
@@ -905,7 +935,7 @@ export function PlatformIndex({ platform = "" }: PlatformIndexProps) {
           >
             <thead class="bg-[var(--bb-surface-data-muted)]">
               <tr>
-                <th class="table-th w-8" aria-colindex={platformTableColumnIndex("compare", showMetricContract)}>
+                <th class="table-th sticky left-0 z-10 w-8 bg-[var(--bb-surface-data-muted)]" aria-colindex={platformTableColumnIndex("compare", showMetricContract)}>
                   <span class="sr-only">Compare</span>
                 </th>
                 <th class="table-th" aria-colindex={platformTableColumnIndex("version", showMetricContract)}>Version</th>
@@ -1289,7 +1319,7 @@ function TrendsThumbnail({ cohorts }: { cohorts: TrendCohort[] }) {
         if (values.length === 0) {
           return (
             <div key={cohort.key} class="flex flex-col items-center gap-1">
-              <span class="text-[9px] text-[var(--bb-data-fg-subtle)]">No data</span>
+              <span class="text-xs text-[var(--bb-data-fg-subtle)]">No data</span>
             </div>
           );
         }
@@ -1315,7 +1345,7 @@ function TrendsThumbnail({ cohorts }: { cohorts: TrendCohort[] }) {
             >
               <polyline points={points} fill="none" stroke={timeSeriesColor(index)} stroke-width="1.5" />
             </svg>
-            <span class="max-w-full truncate text-[9px] text-[var(--bb-data-fg-subtle)]" title={label}>
+            <span class="max-w-full truncate text-xs text-[var(--bb-data-fg-subtle)]" title={label}>
               {label}
             </span>
           </div>
@@ -1376,7 +1406,7 @@ function CoverageThumbnail({ stats }: { stats: CoverageStat[] }) {
     <div class="summary-chart-thumbnail mt-4 w-full space-y-1.5 rounded-md bg-[var(--bb-surface-data-muted)] p-2">
       {bars.map((bar, index) => (
         <div key={bar.label} class="flex items-center gap-1.5">
-          <span class="w-16 shrink-0 truncate text-[9px] text-[var(--bb-data-fg-subtle)]" title={bar.label}>
+          <span class="w-16 shrink-0 truncate text-xs text-[var(--bb-data-fg-subtle)]" title={bar.label}>
             {bar.label}
           </span>
           <span class="relative h-2 flex-1 rounded-sm bg-[var(--bb-data-border)]">
@@ -1385,7 +1415,7 @@ function CoverageThumbnail({ stats }: { stats: CoverageStat[] }) {
               style={{ width: `${Math.max(4, (bar.runs / max) * 100)}%`, backgroundColor: paletteColor(index) }}
             />
           </span>
-          <span class="w-6 shrink-0 text-right font-mono text-[9px] text-[var(--bb-data-fg-subtle)]">{bar.runs}</span>
+          <span class="w-6 shrink-0 text-right font-mono text-xs text-[var(--bb-data-fg-subtle)]">{bar.runs}</span>
         </div>
       ))}
     </div>
@@ -1448,9 +1478,11 @@ function PlatformRow({ entry, runIdentityLabel, versionLabel, checked, onToggle,
   const disabledCopy = describeCompareExclusionReason(disabledReason);
   const entryOverrideRules = parseOverrideRules(entry.override_rules);
   const reasonId = disabledCopy ? `platform-compare-reason-${entry.result_id}` : undefined;
+  const managedCloud = isManagedCloudRun(entry);
+  const clientTitle = clientHardwareTitle(entry);
   return (
     <tr class="hover:bg-[var(--bb-surface-data-muted)]" data-testid={entry.result_id}>
-      <td class="table-td" aria-colindex={platformTableColumnIndex("compare", showMetricContract)}>
+      <td class="table-td sticky left-0 z-10 bg-[var(--bb-surface-data)]" aria-colindex={platformTableColumnIndex("compare", showMetricContract)}>
         <input
           type="checkbox"
           checked={checked}
@@ -1474,7 +1506,7 @@ function PlatformRow({ entry, runIdentityLabel, versionLabel, checked, onToggle,
         <a
           href={resultReceiptHref(entry)}
           aria-label={resultIdentityAriaLabel(entry, "receipt")}
-          title={`${runIdentityLabel} · ${splitVersion(entry.driver_version ?? entry.platform_version)?.full ?? "Version not recorded"}`}
+          title={[runIdentityLabel, platformVersionDisplay(entry).driverTitle].filter(Boolean).join(" · ")}
           class="font-medium no-underline hover:underline"
           data-testid="run-identity-label"
         >
@@ -1493,14 +1525,14 @@ function PlatformRow({ entry, runIdentityLabel, versionLabel, checked, onToggle,
       </td>
       <td class="table-td font-medium" aria-colindex={platformTableColumnIndex("benchmark", showMetricContract)}>{humanizeBenchmark(entry.benchmark)}</td>
       <td class="table-td" aria-colindex={platformTableColumnIndex("scale", showMetricContract)}>SF {entry.scale_factor}</td>
-      <td class="table-td text-[var(--bb-data-fg-muted)]" aria-colindex={platformTableColumnIndex("phase", showMetricContract)}>{formatPhaseWithStreams(entry.phase, entry.stream_count)}</td>
+      <td class="table-td text-[var(--bb-data-fg-muted)]" aria-colindex={platformTableColumnIndex("phase", showMetricContract)}>{sentenceCasePhase(formatPhaseWithStreams(entry.phase, entry.stream_count))}</td>
       {showMetricContract && (
         <td
           class="table-td whitespace-nowrap text-xs text-[var(--bb-data-fg-muted)]"
           aria-colindex={platformTableColumnIndex("metric_contract", true)}
-          title={primaryMetricContract(entry.primary_metric)}
+          title={primaryMetricRankingValue(entry) === null ? "This run has no value for its ranking metric." : primaryMetricContract(entry.primary_metric)}
         >
-          {primaryMetricShort(entry.primary_metric)}
+          {primaryMetricRankingValue(entry) === null ? "Not ranked" : primaryMetricShort(entry.primary_metric)}
         </td>
       )}
       <td class="table-td text-[var(--bb-data-fg-muted)]" aria-colindex={platformTableColumnIndex("date", showMetricContract)}><RunDateChip runDate={entry.run_date} /></td>
@@ -1512,7 +1544,13 @@ function PlatformRow({ entry, runIdentityLabel, versionLabel, checked, onToggle,
         {fmtScore(phaseScoreValue(entry))}
       </td>
       <td class="table-td font-mono" aria-colindex={platformTableColumnIndex("geomean", showMetricContract)}>{fmtGeomean(entry.geomean_ms)}</td>
-      <td class="table-td text-[var(--bb-data-fg-muted)]" aria-colindex={platformTableColumnIndex("queries", showMetricContract)}>{entry.query_count}</td>
+      <td
+        class="table-td text-[var(--bb-data-fg-muted)]"
+        aria-colindex={platformTableColumnIndex("queries", showMetricContract)}
+        title={queryExecutionTitle(entry)}
+      >
+        {distinctQueryCount(entry)}
+      </td>
       <td class="table-td" aria-colindex={platformTableColumnIndex("source", showMetricContract)}>
         <div class="flex flex-wrap gap-1">
           <TrustBadge trustLabel={entry.trust_label} compact />
@@ -1530,14 +1568,14 @@ function PlatformRow({ entry, runIdentityLabel, versionLabel, checked, onToggle,
           )}
         </div>
       </td>
-      <td class="table-td text-[var(--bb-data-fg-muted)]" aria-colindex={platformTableColumnIndex("arch", showMetricContract)}>
-        {entry.arch ? formatArchitecture(entry.arch) : "—"}
+      <td class="table-td text-[var(--bb-data-fg-muted)]" aria-colindex={platformTableColumnIndex("arch", showMetricContract)} title={managedCloud ? clientTitle : undefined}>
+        {!managedCloud && entry.arch ? formatArchitecture(entry.arch) : "—"}
       </td>
-      <td class="table-td text-[var(--bb-data-fg-muted)]" aria-colindex={platformTableColumnIndex("cpu_family", showMetricContract)}>
-        {entry.cpu_family ? formatCpuFamily(entry.cpu_family) : "—"}
+      <td class="table-td text-[var(--bb-data-fg-muted)]" aria-colindex={platformTableColumnIndex("cpu_family", showMetricContract)} title={managedCloud ? clientTitle : undefined}>
+        {!managedCloud && entry.cpu_family ? formatCpuFamily(entry.cpu_family) : "—"}
       </td>
-      <td class="table-td text-[var(--bb-data-fg-muted)]" aria-colindex={platformTableColumnIndex("memory_gb", showMetricContract)}>
-        {entry.memory_gb != null ? formatMemoryGb(entry.memory_gb) : "—"}
+      <td class="table-td text-[var(--bb-data-fg-muted)]" aria-colindex={platformTableColumnIndex("memory_gb", showMetricContract)} title={managedCloud ? clientTitle : undefined}>
+        {!managedCloud && entry.memory_gb != null ? formatMemoryGb(entry.memory_gb) : "—"}
       </td>
       <td class="table-td text-right" aria-colindex={platformTableColumnIndex("receipt", showMetricContract)}>
         <a

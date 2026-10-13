@@ -36,7 +36,6 @@ import { FundingChip } from "@/components/FundingChip";
 import { TuningBadge, tuningLabel } from "@/components/TuningBadge";
 import { ChartPanel } from "@/components/ChartPanel";
 import { ProvenanceLegend } from "@/components/ProvenanceLegend";
-import { RunIdentityLabel } from "@/components/DataTable";
 import { PageHeader } from "@/components/PageHeader";
 import { CompareCta, isCompareAllAvailable } from "@/components/CompareCta";
 import { CompareTray } from "@/components/CompareTray";
@@ -56,6 +55,7 @@ import {
   parseOverrideRules,
 } from "@/lib/displayLabels";
 import { formatRunIdentitiesForCohort } from "@/lib/runIdentity";
+import { identitySourceWithPlatformVersion, platformVersionDisplay } from "@/lib/versionLabel";
 import { formatSelectedCount } from "@/lib/copyFormatters";
 import { groupCohortRows, limitCohortGroups, type CohortGroupBy } from "@/lib/queryFilters";
 
@@ -1080,7 +1080,7 @@ function ListTable({
       visibleLimit,
     );
   }, [filtered, groupBy, visibleLimit]);
-  const runIdentityLabels = formatRunIdentitiesForCohort(filtered, "table");
+  const runIdentityLabels = formatRunIdentitiesForCohort(filtered.map(identitySourceWithPlatformVersion), "table");
 
   const skipVisibleLimitResetOnMount = useRef(true);
   useEffect(() => {
@@ -1249,7 +1249,7 @@ function ListTable({
               sortAnnouncement={sortAnnouncement}
               onSort={toggleSort}
             />
-            <th class="table-th text-left">Badges</th>
+            <th class="table-th text-left whitespace-nowrap">Badges</th>
             <ListSortHeader
               label="Arch"
               sortKey="arch"
@@ -1274,7 +1274,7 @@ function ListTable({
               sortAnnouncement={sortAnnouncement}
               onSort={toggleSort}
             />
-            <th class="table-th text-right">Receipt</th>
+            <th class="table-th whitespace-nowrap text-right">Receipt</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-[var(--bb-data-border)] bg-[var(--bb-surface-data)]">
@@ -1347,6 +1347,38 @@ function listRowDisabledReasonCode(compareRow: PlatformRow | undefined): string 
   return null;
 }
 
+function distinctQueryCount(row: { query_count: number; logical_query_count?: number }): number {
+  return row.logical_query_count && row.logical_query_count > 0 ? row.logical_query_count : row.query_count;
+}
+
+function queryExecutionTitle(row: { query_count: number; logical_query_count?: number }): string | undefined {
+  return row.query_count !== distinctQueryCount(row) ? `${row.query_count} query executions` : undefined;
+}
+
+function platformVersionTitle(row: { platform_version?: string | null; driver_version?: string | null }): string {
+  const { text, driverTitle } = platformVersionDisplay(row);
+  return [text ? `Version ${text}` : null, driverTitle].filter((part): part is string => part !== null).join(" · ");
+}
+
+function isManagedCloudRun(row: { deployment_class?: string | null; cloud_provider?: string | null }): boolean {
+  if (row.deployment_class) return row.deployment_class === "cloud";
+  return Boolean(row.cloud_provider);
+}
+
+function clientHardwareTitle(row: {
+  arch?: string | null;
+  cpu_family?: string | null;
+  memory_gb?: number | null;
+}): string | undefined {
+  const parts = [
+    row.arch ? formatArchitecture(row.arch) : null,
+    row.cpu_family ? formatCpuFamily(row.cpu_family) : null,
+    row.memory_gb != null ? formatMemoryGb(row.memory_gb) : null,
+  ].filter((part): part is string => part !== null);
+  if (parts.length === 0) return undefined;
+  return `Client machine: ${parts.join(", ")} (the warehouse hardware is managed by the provider)`;
+}
+
 function ListCompareDisabledReason({ id, copy }: { id?: string; copy: ReturnType<typeof describeCompareExclusionReason> }) {
   if (copy === null) return null;
   return (
@@ -1380,6 +1412,8 @@ function BenchmarkRow({
 }) {
   const compareId = compareRow ? compareIdForRow(compareRow) : null;
   const isSelected = compareId !== null && selectedIds.has(compareId);
+  const managedCloud = isManagedCloudRun(entry);
+  const clientTitle = clientHardwareTitle(entry);
   const disabledReasonCode = compareEligibilityReady ? listRowDisabledReasonCode(compareRow) : null;
   const disabledCopy = describeCompareExclusionReason(disabledReasonCode);
   const capDisabled = selectionAtCap && !isSelected;
@@ -1423,7 +1457,14 @@ function BenchmarkRow({
         />
       </td>
       <td class="table-td">
-        <RunIdentityLabel label={runIdentityLabel} href={`/results/p/${entry.platform_id}/`} />
+        <a
+          href={`/results/p/${entry.platform_id}/`}
+          class="block max-w-[20rem] truncate font-medium no-underline"
+          data-testid="run-identity-label"
+          title={platformVersionTitle(entry)}
+        >
+          {runIdentityLabel}
+        </a>
         {entry.compliance_class && entry.compliance_class !== "official" && (
           <span class="ml-2 text-xs text-[var(--bb-data-fg-subtle)]">{complianceLabel(entry.compliance_class)}</span>
         )}
@@ -1433,9 +1474,9 @@ function BenchmarkRow({
       <td class="table-td text-[var(--bb-data-fg-muted)]"><RunDateChip runDate={entry.run_date} /></td>
       <td class="table-td font-mono">{fmtScore(phaseScoreValue(entry))}</td>
       <td class="table-td font-mono">{fmtGeomean(entry.display_geomean_ms ?? entry.geomean_ms)}</td>
-      <td class="table-td text-[var(--bb-data-fg-muted)]">{entry.query_count}</td>
-      <td class="table-td">
-        <div class="flex flex-wrap gap-1">
+      <td class="table-td text-[var(--bb-data-fg-muted)]" title={queryExecutionTitle(entry)}>{distinctQueryCount(entry)}</td>
+      <td class="table-td min-w-[12rem]">
+        <div class="flex flex-wrap items-center gap-1">
           <TrustBadge trustLabel={entry.trust_label} compact />
           <FundingChip funding={entry.funding} compact />
           <ValidationBadge
@@ -1451,14 +1492,20 @@ function BenchmarkRow({
           )}
         </div>
       </td>
-      <td class="table-td text-[var(--bb-data-fg-muted)]">{entry.arch ? formatArchitecture(entry.arch) : "—"}</td>
-      <td class="table-td text-[var(--bb-data-fg-muted)]">{entry.cpu_family ? formatCpuFamily(entry.cpu_family) : "—"}</td>
-      <td class="table-td text-[var(--bb-data-fg-muted)]">{entry.memory_gb != null ? formatMemoryGb(entry.memory_gb) : "—"}</td>
+      <td class="table-td whitespace-nowrap text-[var(--bb-data-fg-muted)]" title={managedCloud ? clientTitle : undefined}>
+        {!managedCloud && entry.arch ? formatArchitecture(entry.arch) : "—"}
+      </td>
+      <td class="table-td whitespace-nowrap text-[var(--bb-data-fg-muted)]" title={managedCloud ? clientTitle : undefined}>
+        {!managedCloud && entry.cpu_family ? formatCpuFamily(entry.cpu_family) : "—"}
+      </td>
+      <td class="table-td whitespace-nowrap text-[var(--bb-data-fg-muted)]" title={managedCloud ? clientTitle : undefined}>
+        {!managedCloud && entry.memory_gb != null ? formatMemoryGb(entry.memory_gb) : "—"}
+      </td>
       <td class="table-td text-right">
         <a
           href={resultReceiptHref(entry)}
           aria-label={resultIdentityAriaLabel(entry, "receipt")}
-          class="text-xs font-medium no-underline"
+          class="whitespace-nowrap text-xs font-medium no-underline"
         >
           Receipt →
         </a>
@@ -1483,10 +1530,10 @@ function ListSortHeader({
   onSort: (key: BenchmarkListSortKey) => void;
 }) {
   return (
-    <th class="p-0" scope="col" aria-sort={ariaSort(sortKey)}>
+    <th class="p-0 whitespace-nowrap" scope="col" aria-sort={ariaSort(sortKey)}>
       <button
         type="button"
-        class="table-th relative block w-full cursor-pointer select-none border-0 bg-transparent text-left"
+        class="table-th relative block w-full cursor-pointer select-none whitespace-nowrap border-0 bg-transparent text-left"
         onClick={() => onSort(sortKey)}
       >
         {label}{sortArrow(sortKey)}

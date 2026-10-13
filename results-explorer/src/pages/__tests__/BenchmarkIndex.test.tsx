@@ -1088,8 +1088,9 @@ describe("BenchmarkIndex", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: /Geomean/ })).toBeTruthy());
 
     const list = listRoot(container) as HTMLElement;
-    expect(within(list).getByText("Arm64")).toBeTruthy();
-    expect(within(list).getByText("Apple silicon")).toBeTruthy();
+    expect(within(list).queryByText("Arm64")).toBeNull();
+    expect(within(list).queryByText("Apple silicon")).toBeNull();
+    expect(list.querySelector('[title^="Client machine: Arm64, Apple silicon"]')).not.toBeNull();
     expect(within(list).getByText("x86-64")).toBeTruthy();
     expect(within(list).getByText("AMD EPYC")).toBeTruthy();
 
@@ -1158,6 +1159,34 @@ describe("BenchmarkIndex", () => {
     fireEvent.change(screen.getByTestId("benchmark-list-group-by"), { target: { value: "engine_version" } });
     expect(screen.getByText(/1.4.0 \(2 results\)/)).toBeTruthy();
     expect(screen.getByText(/1.3.2 \(1 result\)/)).toBeTruthy();
+  });
+
+  it("shows the platform version in the run label, the driver version only in its title, and distinct query counts", async () => {
+    window.history.replaceState(null, "", "/results/tpch/?view=list");
+    const listRows = [
+      {
+        ...RESULT_ROWS[0]!,
+        result_id: "r1",
+        platform_version: "2.0.0-alpha38615",
+        driver_version: "1.6.0.dev365",
+        query_count: 66,
+        logical_query_count: 22,
+      },
+      { ...RESULT_ROWS[0]!, result_id: "r2", platform_version: "1.4.0", driver_version: "1.6.0.dev365" },
+    ];
+    vi.mocked(queryRows).mockImplementation(defaultImpl(listRows, RANKING_ROWS, CELL_ROWS));
+
+    const { container } = render(<BenchmarkIndex benchmark="tpch" />);
+    await waitFor(() => expect(getRenderedResultOrder(listRoot(container))).toEqual(["list-r1", "list-r2"]));
+
+    const list = listRoot(container) as HTMLElement;
+    const label = within(list).getAllByTestId("run-identity-label")[0]!;
+    expect(label.textContent).toContain("v2.0.0");
+    expect(label.textContent).not.toContain("1.6.0.dev365");
+    expect(label.getAttribute("title")).toContain("Version v2.0.0-alpha38615");
+    expect(label.getAttribute("title")).toContain("Driver 1.6.0.dev365");
+    const queryCell = within(list).getByTitle("66 query executions");
+    expect(queryCell.textContent).toBe("22");
   });
 
   it("honors a version facet carried into the benchmark drill-down", async () => {

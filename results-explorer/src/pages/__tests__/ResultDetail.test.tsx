@@ -153,7 +153,7 @@ describe("ResultDetail - median-first contract", () => {
     render(<ResultDetail resultId="r1" />);
     await waitFor(() => expect(screen.queryByText("Loading result...")).toBeNull());
 
-    expect(screen.getByText(/^Samples/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Samples/ })).toBeTruthy();
     const sampleCells = screen.getAllByText("3");
     expect(sampleCells.length).toBeGreaterThanOrEqual(2);
   });

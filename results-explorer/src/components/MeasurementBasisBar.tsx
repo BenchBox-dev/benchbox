@@ -45,6 +45,12 @@ function passLabel(passes: PassSelection): string {
   }
 }
 
+function sharedQueryCopy(sharedCount: number, totalCount: number, hiddenCount: number): string {
+  if (hiddenCount <= 0) return `All ${totalCount} queries are shared, with data for every selected run.`;
+  const noun = hiddenCount === 1 ? "query is" : "queries are";
+  return `${sharedCount} of ${totalCount} queries are shared, with data for every selected run; ${hiddenCount} ${noun} hidden because at least one run is missing data.`;
+}
+
 function decodePassToken(token: string): PassSelection {
   if (token === "warmup") return WARMUP;
   const match = /^warm_pass_(\d+)$/.exec(token);
@@ -86,10 +92,7 @@ export function MeasurementBasisBar({
           </StatusBadge>
         </div>
         <p class="mt-1 text-xs text-[var(--bb-data-fg-muted)]">
-          {`Query-derived latency figures use ${measuring}, over ${comparableQueryCount} of ${totalQueryCount} queries every selected run can answer.`}
-          {excluded > 0
-            ? ` ${excluded} ${excluded === 1 ? "query is" : "queries are"} excluded from every run so the geomeans compare like with like.`
-            : ""}
+          {`Latency figures use ${measuring}. ${sharedQueryCopy(comparableQueryCount, totalQueryCount, excluded)}`}
         </p>
         <p class="mt-1 text-xs text-[var(--bb-data-fg-subtle)]">
           Whole-run wall-clock totals and phase durations remain run-wide context.

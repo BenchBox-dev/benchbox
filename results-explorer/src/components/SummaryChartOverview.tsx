@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "preact/hooks";
-import type { ComponentChildren } from "preact";
-import type { BenchmarkSummary } from "@/types";
+import type { ComponentChildren, JSX } from "preact";
+import type { BenchmarkSummary, PlatformRow } from "@/types";
 import {
   applicableCharts,
   buildRenderableSummary,
@@ -13,12 +13,13 @@ import { paletteColor, PHASE_COLORS, timeSeriesColor } from "@/lib/chartTheme";
 import {
   buildLatencyBarScale,
   buildLogLatencyScale,
-  colorForCell,
   computeECDFPoints,
   computeRankTable,
   latencyScaleFraction,
+  lightnessForCell,
   logLatencyFraction,
 } from "@/lib/chartMath";
+import { fitLabel } from "@/lib/chartLabels";
 import {
   chartDatasetClassLabel,
   chartDatasetEmptyTitle,
@@ -33,7 +34,7 @@ import {
   summarizeChartDatasetExclusions,
   validPrimaryMetricValue,
 } from "@/lib/displayEligibility";
-import { formatRunIdentitiesForCohort, formatRunIdentityLabelsForCohort, preserveUniqueAfterTruncation } from "@/lib/runIdentity";
+import { formatRunIdentitiesForCohort, formatRunIdentityLabelsForCohort } from "@/lib/runIdentity";
 import { fmtGeomean, fmtScore } from "@/utils";
 import { AnalysisCard, AnalysisCardGrid } from "@/components/AnalysisCardGrid";
 import { DistributionBox } from "@/components/DistributionBox";
@@ -46,6 +47,7 @@ import { PercentileLadder } from "@/components/PercentileLadder";
 import { StackedPhase } from "@/components/StackedPhase";
 import { CDFChart } from "@/components/CDFChart";
 import { RankTable } from "@/components/RankTable";
+import { EmptyState } from "@/components/EmptyState";
 
 interface Props {
   context: Extract<ChartContext, { kind: "summary" }>;
@@ -72,8 +74,35 @@ const CHART_DISPLAY_TITLES: Record<string, string> = {
   rank_table: "Query ranks",
 };
 
+const PLATFORM_LABEL_FONT_PX = 14;
+const PLATFORM_LABEL_WIDTH_PX = 190;
+const THUMBNAIL_FONT_PX = 10;
+const THUMBNAIL_LABEL_WIDTH_PX = 88;
+
 export function additionalAnalysesLabel(count: number): string {
   return `${count} additional ${count === 1 ? "analysis" : "analyses"}`;
+}
+
+export function orderByDisplayGeomean<T extends PlatformRow>(platforms: readonly T[]): T[] {
+  return [...platforms].sort((a, b) => {
+    const av = validPrimaryMetricValue(a, "display_geomean_ms");
+    const bv = validPrimaryMetricValue(b, "display_geomean_ms");
+    if (av !== null && bv !== null) return av - bv;
+    if (av !== null) return -1;
+    if (bv !== null) return 1;
+    return a.platform.localeCompare(b.platform);
+  });
+}
+
+function exclusionCauses(
+  excludedCount: number,
+  reasons: readonly { reason: string; count: number }[],
+  unexplainedCause: string,
+): string {
+  const explained = reasons.reduce((total, entry) => total + entry.count, 0);
+  const causes = reasons.map((entry) => entry.reason.replace(/\.$/, ""));
+  if (excludedCount > explained) causes.push(unexplainedCause);
+  return causes.join("; ");
 }
 
 export function SummaryMetricTable({
@@ -98,24 +127,30 @@ export function SummaryMetricTable({
   const labels = formatRunIdentityLabelsForCohort(
     summary.platforms.map((platform) => ({ ...platform, scale_factor: summary.scale_factor })),
   );
-  const displayLabels = preserveUniqueAfterTruncation(
-    labels.map((label) => label.disambiguated),
-    30,
-  );
-  const rows = [...summary.platforms].sort((a, b) => {
-    const av = validPrimaryMetricValue(a, "display_geomean_ms");
-    const bv = validPrimaryMetricValue(b, "display_geomean_ms");
-    if (av !== null && bv !== null) return av - bv;
-    if (av !== null) return -1;
-    if (bv !== null) return 1;
-    return a.platform.localeCompare(b.platform);
-  });
+  const displayLabels = fitPlatformLabels(labels.map((label) => label.disambiguated));
+  const rows = orderByDisplayGeomean(summary.platforms);
   const rowIndexByResultId = new Map(summary.platforms.map((platform, index) => [platform.result_id, index]));
+  const total = summary.platforms.length;
+  const noun = scope === "compare" ? "selected" : "submitted";
+  const unrankedCount = total - powerRows.length;
+  const undisplayedCount = total - displayRows.length;
+  const rankingExclusions = summarizeChartDatasetExclusions(summary.platforms, "rank_safe");
   const displayExclusions = summarizeChartDatasetExclusions(summary.platforms, "display_safe");
-  const powerExclusions = summarizeChartDatasetExclusions(summary.platforms, "rank_safe");
+  const rankingNote = unrankedCount === 0
+    ? null
+    : `Not ranked: ${unrankedCount} of ${total} runs ${unrankedCount === 1 ? "is" : "are"} excluded from ranking — ${exclusionCauses(unrankedCount, rankingExclusions, `${scoreName} is not recorded`)}.`;
+  const displayNote = undisplayedCount === 0
+    ? null
+    : `Not in the latency chart: ${undisplayedCount} of ${total} runs ${undisplayedCount === 1 ? "is" : "are"} excluded — ${exclusionCauses(undisplayedCount, displayExclusions, "display timing is not recorded")}.`;
 
   return (
-    <section class="card">
+    <section class="card" aria-labelledby="summary-metric-table-title">
+      <h3
+        id="summary-metric-table-title"
+        class="mb-4 border-b border-[var(--bb-data-border)] pb-3 text-lg font-semibold text-[var(--bb-data-fg-primary)]"
+      >
+        Geomean and {scoreName}
+      </h3>
       <div class="overflow-x-auto">
         <table
           class="summary-metric-table min-w-[38rem] w-full border-collapse"
@@ -166,7 +201,9 @@ export function SummaryMetricTable({
                         style={{ backgroundColor: color }}
                         aria-hidden="true"
                       />
-                      <span class="min-w-0 break-words">{displayLabels[sourceIndex] ?? platform.platform}</span>
+                      <span class="min-w-0 truncate" title={labels[sourceIndex]?.full ?? platform.platform}>
+                        {displayLabels[sourceIndex] ?? platform.platform}
+                      </span>
                     </span>
                   </th>
                   <InlineMetricCell
@@ -203,23 +240,21 @@ export function SummaryMetricTable({
           text-[var(--bb-data-fg-muted)] sm:grid-cols-2"
       >
         <p>
-          <strong class="text-[var(--bb-data-fg-primary)]">Population:</strong> {summary.platforms.length}{" "}
-          {scope === "compare" ? "selected" : "submitted"} runs · {displayRows.length} display-safe rows · {summary.query_ids.length} queries
+          <strong class="text-[var(--bb-data-fg-primary)]">Population:</strong>{" "}
+          {`${total} ${noun} runs · ${displayRows.length} display-safe rows · ${summary.query_ids.length} queries`}
         </p>
-        <p>
-          <strong class="text-[var(--bb-data-fg-primary)]">Ranking:</strong> {powerRows.length} rank-safe rows ·
-          {scope === "compare" ? "values follow the active comparison metric" : "values stay tied to the persisted ranking contract"}
-        </p>
-        {(displayExclusions.length > 0 || powerExclusions.length > 0) && (
-          <p class="sm:col-span-2 text-xs text-[var(--bb-data-fg-subtle)]">
-            {formatExclusionCount(displayExclusions, "display chart")}
-            {displayExclusions.length > 0 && powerExclusions.length > 0 ? " · " : ""}
-            {formatExclusionCount(powerExclusions, "ranking chart")}
-          </p>
-        )}
+        {rankingNote !== null && <p>{rankingNote}</p>}
+        {displayNote !== null && <p class="sm:col-span-2 text-xs text-[var(--bb-data-fg-subtle)]">{displayNote}</p>}
       </div>
     </section>
   );
+}
+
+function fitPlatformLabels(labels: readonly string[]): string[] {
+  const fitted = labels.map((label) => fitLabel(label, PLATFORM_LABEL_WIDTH_PX, PLATFORM_LABEL_FONT_PX).text);
+  const counts = new Map<string, number>();
+  for (const text of fitted) counts.set(text, (counts.get(text) ?? 0) + 1);
+  return fitted.map((text, index) => ((counts.get(text) ?? 0) > 1 ? labels[index]! : text));
 }
 
 export function SummaryChartOverview({
@@ -264,9 +299,15 @@ export function SummaryChartOverview({
     <div class="scroll-mt-24 space-y-6" data-testid="summary-chart-overview" id="cohort-charts">
       <SummaryMetricTable summary={summary} />
 
-      <section class="card">
+      <section class="card" aria-labelledby="latency-distribution-title">
+        <h3
+          id="latency-distribution-title"
+          class="mb-4 border-b border-[var(--bb-data-border)] pb-3 text-lg font-semibold text-[var(--bb-data-fg-primary)]"
+        >
+          Latency distribution
+        </h3>
         <div data-chart-container>
-          <DistributionBox summary={summary} />
+          <DistributionBox summary={{ ...summary, platforms: orderByDisplayGeomean(summary.platforms) }} />
         </div>
         <div class="mt-3 border-t border-[var(--bb-data-border)] pt-3 text-sm text-[var(--bb-data-fg-muted)]">
           <p>
@@ -431,13 +472,6 @@ function shouldShowEmptyState(
   return summary.platforms.length > 0 && chartSummary.platforms.length === 0;
 }
 
-function formatExclusionCount(reasons: { reason: string; count: number }[], label: string): string {
-  const count = reasons.reduce((total, reason) => total + reason.count, 0);
-  if (count === 0) return "";
-  const reason = reasons[0]?.reason ?? "eligibility policy";
-  return `${count} ${count === 1 ? "row" : "rows"} excluded from the ${label} dataset (${reason})`;
-}
-
 function ChartDatasetEmptyState({ chart, summary }: { chart: ChartRegistryEntry; summary: BenchmarkSummary }) {
   const reasons = summarizeChartDatasetExclusions(summary.platforms, chart.eligibilityClass);
   return (
@@ -570,11 +604,12 @@ function ChartThumbnail({
   }
 }
 
+const THUMBNAIL_FRAME_HEIGHT_CLASS = "h-[7.5rem]";
+
 function MiniFrame({ children }: { children: ComponentChildren }) {
   return (
     <div
-      class="summary-chart-thumbnail mt-4 flex items-center justify-center rounded-md bg-[var(--bb-surface-data-muted)]
-        p-2"
+      class={`summary-chart-thumbnail mt-4 flex ${THUMBNAIL_FRAME_HEIGHT_CLASS} items-center justify-center overflow-hidden rounded-md bg-[var(--bb-surface-data-muted)] p-2`}
     >
       {children}
     </div>
@@ -584,7 +619,7 @@ function MiniFrame({ children }: { children: ComponentChildren }) {
 function MiniUnavailable({ label }: { label: string }) {
   return (
     <MiniFrame>
-      <p class="px-3 text-center text-xs text-[var(--bb-data-fg-subtle)]">{label}</p>
+      <EmptyState compact title={label} class="w-full text-xs" />
     </MiniFrame>
   );
 }
@@ -592,7 +627,10 @@ function MiniUnavailable({ label }: { label: string }) {
 function MiniHeatmap({ summary }: { summary: BenchmarkSummary }) {
   const queryIds = summary.query_ids.slice(0, 14);
   const platforms = summary.platforms.slice(0, 5);
-  if (queryIds.length === 0 || platforms.length === 0) return <MiniUnavailable label="No query timings recorded" />;
+  const hasTiming = platforms.some((platform) =>
+    queryIds.some((queryId) => isValidTimingValue(platformTimingValue(platform, queryId))),
+  );
+  if (!hasTiming) return <MiniUnavailable label="No query timings recorded" />;
   const minima = new Map(
     queryIds.map((queryId) => {
       const values = platforms.map((platform) => platformTimingValue(platform, queryId)).filter(isValidTimingValue);
@@ -602,19 +640,24 @@ function MiniHeatmap({ summary }: { summary: BenchmarkSummary }) {
   return (
     <MiniFrame>
       <div
-        class="summary-mini-heatmap grid w-full gap-px"
-        style={{ gridTemplateColumns: `repeat(${queryIds.length}, minmax(0, 1fr))` }}
+        class="summary-mini-heatmap grid h-full w-full gap-px"
+        style={{
+          gridTemplateColumns: `repeat(${queryIds.length}, minmax(0, 1fr))`,
+          gridTemplateRows: `repeat(${platforms.length}, minmax(0, 1fr))`,
+        }}
         aria-label="Heatmap thumbnail"
       >
         {platforms.flatMap((platform) =>
           queryIds.map((queryId) => {
-            const value = platformTimingValue(platform, queryId);
-            const hue = colorForCell(value, minima.get(queryId) ?? null);
+            const lightness = lightnessForCell(platformTimingValue(platform, queryId), minima.get(queryId) ?? null);
+            const cellStyle = lightness === null
+              ? undefined
+              : ({ "--cell-lightness": lightness } as JSX.CSSProperties);
             return (
               <span
                 key={`${platform.result_id}-${queryId}`}
-                class="aspect-square rounded-[1px]"
-                style={{ backgroundColor: hue === null ? "var(--bb-data-border)" : `hsl(${hue} 68% 56%)` }}
+                class={`rounded-[1px] ${lightness === null ? "bg-[var(--bb-surface-data-muted)]" : "heatmap-cell"}`}
+                style={cellStyle}
                 title={`${platform.platform} · ${queryId}`}
               />
             );
@@ -626,35 +669,43 @@ function MiniHeatmap({ summary }: { summary: BenchmarkSummary }) {
 }
 
 function MiniPercentiles({ summary }: { summary: BenchmarkSummary }) {
-  const rows = summary.platforms
-    .filter((platform) => isTimingDisplayable(platform) && platform.percentile_stats !== null)
-    .slice(0, 6);
+  const cohortLabels = formatRunIdentitiesForCohort(
+    summary.platforms.map((platform) => ({ ...platform, scale_factor: summary.scale_factor })),
+    "chart",
+  );
+  const rows = summary.platforms.flatMap((platform, index) =>
+    isTimingDisplayable(platform) && platform.percentile_stats !== null
+      ? [{ result_id: platform.result_id, label: cohortLabels[index] ?? platform.platform, stats: platform.percentile_stats, colorIdx: index }]
+      : [],
+  ).slice(0, 6);
   if (rows.length === 0) return <MiniUnavailable label="No percentile statistics recorded" />;
-  const max = Math.max(...rows.map((row) => row.percentile_stats!.p99), 1);
+  const max = Math.max(...rows.map((row) => row.stats.p99), 1);
   return (
     <MiniFrame>
       <div class="summary-mini-stack w-full space-y-1.5">
-        {rows.map((row, index) => (
-          <div key={row.result_id} class="flex items-center gap-1">
-            <span class="w-10 truncate text-[8px] text-[var(--bb-data-fg-subtle)]">{row.platform}</span>
-            <span class="relative h-2 flex-1 rounded-sm bg-[var(--bb-data-border)]">
+        {rows.map((row) => {
+          const fitted = fitLabel(row.label, THUMBNAIL_LABEL_WIDTH_PX, THUMBNAIL_FONT_PX);
+          return (
+            <div key={row.result_id} class="flex items-center gap-1.5">
               <span
-                class="absolute inset-y-0 left-0 rounded-sm opacity-40"
-                style={{
-                  width: `${(row.percentile_stats!.p99 / max) * 100}%`,
-                  backgroundColor: paletteColor(index),
-                }}
-              />
-              <span
-                class="absolute inset-y-0 left-0 rounded-sm"
-                style={{
-                  width: `${(row.percentile_stats!.p50 / max) * 100}%`,
-                  backgroundColor: paletteColor(index),
-                }}
-              />
-            </span>
-          </div>
-        ))}
+                class="w-24 shrink-0 truncate text-[10px] leading-none text-[var(--bb-data-fg-subtle)]"
+                title={row.label}
+              >
+                {fitted.text}
+              </span>
+              <span class="relative h-2 flex-1 rounded-sm bg-[var(--bb-data-border)]">
+                <span
+                  class="absolute inset-y-0 left-0 rounded-sm opacity-40"
+                  style={{ width: `${(row.stats.p99 / max) * 100}%`, backgroundColor: paletteColor(row.colorIdx) }}
+                />
+                <span
+                  class="absolute inset-y-0 left-0 rounded-sm"
+                  style={{ width: `${(row.stats.p50 / max) * 100}%`, backgroundColor: paletteColor(row.colorIdx) }}
+                />
+              </span>
+            </div>
+          );
+        })}
       </div>
     </MiniFrame>
   );
@@ -758,17 +809,25 @@ function MiniPhases({ summary }: { summary: BenchmarkSummary }) {
 
 function MiniTrend({ summary, historical }: { summary: BenchmarkSummary; historical: ChartHistoricalEntry[] }) {
   const metric = normalizePrimaryMetric(summary.ranking?.primary_metric);
-  const values = historical.map((entry) => trendEntryValue(entry, metric)).filter(isValidTimingValue);
-  if (values.length < 2) return <MiniUnavailable label="Not enough history for a trend" />;
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const span = max - min || 1;
   const byPlatform = new Map<string, ChartHistoricalEntry[]>();
   historical.forEach((entry) => {
     const group = byPlatform.get(entry.platform_id) ?? [];
     group.push(entry);
     byPlatform.set(entry.platform_id, group);
   });
+  const series = Array.from(byPlatform.values())
+    .slice(0, 6)
+    .map((entries) =>
+      entries
+        .filter((entry) => isValidTimingValue(trendEntryValue(entry, metric)))
+        .sort((a, b) => a.run_date.localeCompare(b.run_date)),
+    )
+    .filter((points) => points.length >= 2);
+  if (series.length === 0) return <MiniUnavailable label="Not enough history for a trend" />;
+  const values = series.flat().map((entry) => trendEntryValue(entry, metric) as number);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min || 1;
   return (
     <MiniFrame>
       <svg
@@ -779,11 +838,7 @@ function MiniTrend({ summary, historical }: { summary: BenchmarkSummary; histori
         aria-label="Trend thumbnail"
       >
         <line x1="8" y1="76" x2="232" y2="76" stroke="var(--bb-chart-grid)" />
-        {Array.from(byPlatform.values()).slice(0, 6).map((entries, index) => {
-          const points = entries
-            .filter((entry) => isValidTimingValue(trendEntryValue(entry, metric)))
-            .sort((a, b) => a.run_date.localeCompare(b.run_date));
-          if (points.length < 2) return null;
+        {series.map((points, index) => {
           const d = points.map((entry, pointIndex) => {
             const x = 12 + (pointIndex / Math.max(points.length - 1, 1)) * 216;
             const normalized = ((trendEntryValue(entry, metric) as number) - min) / span;
@@ -805,20 +860,26 @@ function trendEntryValue(entry: ChartHistoricalEntry, metric: ReturnType<typeof 
 
 function MiniRanks({ summary }: { summary: BenchmarkSummary }) {
   const queryIds = summary.query_ids.slice(0, 8);
+  const hasTiming = summary.platforms.some((platform) =>
+    queryIds.some((queryId) => isValidTimingValue(platformTimingValue(platform, queryId))),
+  );
+  if (!hasTiming) {
+    return <MiniUnavailable label="No rank-safe query timings" />;
+  }
   const ranks = computeRankTable(
     queryIds,
     summary.platforms.map((platform) =>
       Object.fromEntries(queryIds.map((queryId) => [queryId, platformTimingValue(platform, queryId)])),
     ),
   );
-  if (queryIds.length === 0 || summary.platforms.length === 0) {
-    return <MiniUnavailable label="No rank-safe query timings" />;
-  }
   return (
     <MiniFrame>
       <div
-        class="summary-mini-grid grid w-full gap-px"
-        style={{ gridTemplateColumns: `repeat(${summary.platforms.length}, minmax(0, 1fr))` }}
+        class="summary-mini-grid grid h-full w-full gap-px"
+        style={{
+          gridTemplateColumns: `repeat(${summary.platforms.length}, minmax(0, 1fr))`,
+          gridTemplateRows: `repeat(${queryIds.length}, minmax(0, 1fr))`,
+        }}
         aria-label="Rank table thumbnail"
       >
         {queryIds.flatMap((queryId) =>
@@ -827,7 +888,7 @@ function MiniRanks({ summary }: { summary: BenchmarkSummary }) {
             return (
               <span
                 key={`${queryId}-${platform.result_id}`}
-                class="flex aspect-[1.8] items-center justify-center rounded-[1px] font-mono text-[8px]"
+                class="flex items-center justify-center rounded-[1px] font-mono text-[10px] leading-none"
                 style={{
                   backgroundColor: rank === 1 ? "var(--bb-chart-cat-1)" : "var(--bb-tone-neutral-bg)",
                   color: rank === 1 ? "white" : "var(--bb-data-fg-muted)",
@@ -851,7 +912,7 @@ function MiniCost({ summary }: { summary: BenchmarkSummary }) {
       platform.normalized_cost_usd !== null &&
       validPrimaryMetricValue(platform, metric) !== null,
   );
-  if (points.length === 0) return <MiniUnavailable label="No normalized cost recorded" />;
+  if (points.length < 2) return <MiniUnavailable label="No normalized cost recorded" />;
   const costs = points.map((point) => point.normalized_cost_usd as number);
   const metricValues = points.map((point) => validPrimaryMetricValue(point, metric) as number);
   const minCost = Math.min(...costs);

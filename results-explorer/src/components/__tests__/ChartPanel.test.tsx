@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
 import { ChartPanel } from "@/components/ChartPanel";
-import { buildRenderableSummary, type ChartHistoricalEntry } from "@/lib/chartRegistry";
+import { buildRenderableSummary, CHART_REGISTRY, type ChartHistoricalEntry } from "@/lib/chartRegistry";
+import { formatPowerScore } from "@/lib/metricFormatters";
 import type {
   BenchmarkSummary,
   DetailResult,
@@ -230,15 +231,15 @@ describe("ChartPanel", () => {
       "Trend",
       "Rank",
     ]);
-    expect(screen.getByRole("button", { name: "Sparkline Table" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Query Heatmap" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Comparison Bar" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Geomean and cost by run" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Per-query latency heatmap" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Comparison by run" })).toBeNull();
 
     fireEvent.click(screen.getByRole("tab", { name: "Trend" }));
 
     expect(screen.getByRole("tab", { name: "Trend" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.getByRole("img", { name: "Geomean latency trend over time" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Sparkline Table" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Geomean and cost by run" })).toBeNull();
   });
 
   it("moves through chart question tabs with arrows, Home, and End", () => {
@@ -274,7 +275,7 @@ describe("ChartPanel", () => {
     render(<ChartPanel context={{ kind: "summary", summary: makeSummary() }} />);
 
     expect(screen.getByRole("img", { name: /performance comparison/i })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Performance Bar" }).getAttribute("aria-pressed")).toBe(
+    expect(screen.getByRole("button", { name: "Geomean latency by run" }).getAttribute("aria-pressed")).toBe(
       "true",
     );
   });
@@ -282,7 +283,7 @@ describe("ChartPanel", () => {
   it("records the open chart in the URL so the view can be shared", () => {
     render(<ChartPanel context={{ kind: "summary", summary: makeSummary() }} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Sparkline Table" }));
+    fireEvent.click(screen.getByRole("button", { name: "Geomean and cost by run" }));
 
     expect(new URLSearchParams(window.location.search).get("chart")).toBe("sparkline_table");
   });
@@ -292,7 +293,7 @@ describe("ChartPanel", () => {
 
     render(<ChartPanel context={{ kind: "summary", summary: makeSummary() }} />);
 
-    expect(screen.getByRole("button", { name: "Stacked Phase Breakdown" }).getAttribute("aria-pressed")).toBe(
+    expect(screen.getByRole("button", { name: "Time by phase" }).getAttribute("aria-pressed")).toBe(
       "true",
     );
   });
@@ -303,7 +304,7 @@ describe("ChartPanel", () => {
     render(<ChartPanel context={{ kind: "summary", summary: makeSummary() }} />);
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Performance Bar" }).getAttribute("aria-pressed")).toBe(
+      expect(screen.getByRole("button", { name: "Geomean latency by run" }).getAttribute("aria-pressed")).toBe(
         "true",
       );
     });
@@ -314,7 +315,7 @@ describe("ChartPanel", () => {
     window.history.replaceState(null, "", "/results/tpch/?sf=1&phase=power");
 
     render(<ChartPanel context={{ kind: "summary", summary: makeSummary() }} />);
-    fireEvent.click(screen.getByRole("button", { name: "Sparkline Table" }));
+    fireEvent.click(screen.getByRole("button", { name: "Geomean and cost by run" }));
 
     const params = new URLSearchParams(window.location.search);
     expect(params.get("sf")).toBe("1");
@@ -338,9 +339,9 @@ describe("ChartPanel", () => {
     );
 
     expect(screen.getByRole("tab", { name: "Per-query" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Query Heatmap" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Per-query latency heatmap" })).toBeNull();
     fireEvent.click(screen.getByRole("tab", { name: "Per-query" }));
-    expect(screen.queryByRole("button", { name: "Query Heatmap" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Per-query latency heatmap" })).toBeNull();
     expect(screen.getByRole("tabpanel", { name: "Per-query" })).toBeTruthy();
   });
 
@@ -374,7 +375,7 @@ describe("ChartPanel", () => {
     expect(screen.getAllByText("DataFusion v44").length).toBeGreaterThan(0);
     expect(screen.getAllByText("DataFusion v45").length).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getByRole("button", { name: "Comparison Bar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Comparison by run" }));
     const tooltips = Array.from(container.querySelectorAll("rect title")).map((title) => title.textContent ?? "");
     expect(tooltips.some((text) => text.includes("DataFusion v44"))).toBe(true);
     expect(tooltips.some((text) => text.includes("DataFusion v45"))).toBe(true);
@@ -457,15 +458,15 @@ describe("ChartPanel", () => {
     expect(chartControls.className).toContain("flex");
     expect(chartControls.className).toContain("flex-wrap");
 
-    const sparkline = screen.getByRole("button", { name: "Sparkline Table" });
-    const stacked = screen.getByRole("button", { name: "Stacked Phase Breakdown" });
+    const sparkline = screen.getByRole("button", { name: "Geomean and cost by run" });
+    const stacked = screen.getByRole("button", { name: "Time by phase" });
     expect(sparkline.textContent).toBe("Sparklines");
     expect(stacked.textContent).toBe("Phases");
     expect(sparkline.className).toContain("min-h-9");
     expect(stacked.className).toContain("min-h-9");
 
-    fireEvent.click(screen.getByRole("button", { name: "Performance Bar" }));
-    expect(screen.getByRole("button", { name: "Performance Bar" }).className).toContain("min-h-9");
+    fireEvent.click(screen.getByRole("button", { name: "Geomean latency by run" }));
+    expect(screen.getByRole("button", { name: "Geomean latency by run" }).className).toContain("min-h-9");
   });
 
   it("uses log scale for performance bars when latency spans an order of magnitude", () => {
@@ -484,7 +485,7 @@ describe("ChartPanel", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Performance Bar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Geomean latency by run" }));
 
     expect(screen.getByRole("img", { name: "Geomean performance comparison (log scale)" })).toBeTruthy();
     expect(screen.getByText("Geomean query time (log scale) - lower is better")).toBeTruthy();
@@ -513,7 +514,7 @@ describe("ChartPanel", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Performance Bar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Geomean latency by run" }));
 
     const valueLabels = Array.from(container.querySelectorAll("text[data-value-placement]"));
     expect(valueLabels.map((label) => label.getAttribute("data-value-placement"))).toContain("outside");
@@ -574,11 +575,11 @@ describe("ChartPanel", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: "Comparison Bar" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Comparison by run" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Per-query comparison vs baseline" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Query Heatmap" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Per-query latency heatmap" })).toBeTruthy();
     expect(screen.getByRole("tab", { name: "Per-query" }).getAttribute("aria-selected")).toBe("true");
-    expect(screen.queryByRole("button", { name: "Performance Trend" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Performance over time" })).toBeNull();
   });
 
   it("renders the shared summary table above compare charts in the long layout", () => {
@@ -667,7 +668,7 @@ describe("ChartPanel", () => {
     );
 
     fireEvent.click(screen.getByRole("tab", { name: "Overview" }));
-    fireEvent.click(screen.getByRole("button", { name: "Summary Box" }));
+    fireEvent.click(screen.getByRole("button", { name: "Run summary" }));
     expect(screen.getByText("throughput")).toBeTruthy();
   });
 
@@ -685,7 +686,7 @@ describe("ChartPanel", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Rank" }));
     expect(screen.getByRole("table", { name: "Per-query platform rankings (1st = fastest)" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Per-query comparison vs baseline" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Performance Trend" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Performance over time" })).toBeNull();
   });
 
   it("activates the Rank tab from the default Overview state on a fresh render (finding #5)", () => {
@@ -705,7 +706,7 @@ describe("ChartPanel", () => {
     expect(screen.getByRole("tab", { name: "Rank" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.getByRole("tab", { name: "Overview" }).getAttribute("aria-selected")).toBe("false");
     expect(screen.getByRole("table", { name: "Per-query platform rankings (1st = fastest)" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Sparkline Table" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Geomean and cost by run" })).toBeNull();
   });
 
   it("shows a rank-chart empty state when every submitted row is unrankable", () => {
@@ -733,7 +734,7 @@ describe("ChartPanel", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "Rank" }));
 
-    expect(screen.getByRole("status", { name: "Rank Table unavailable" })).toBeTruthy();
+    expect(screen.getByRole("status", { name: "Query rank summary unavailable" })).toBeTruthy();
     expect(screen.queryByRole("table", { name: "Per-query platform rankings (1st = fastest)" })).toBeNull();
     expect(screen.getByText("No ranked runs")).toBeTruthy();
     expect(screen.getByText(/Results from this source are not included in rankings/)).toBeTruthy();
@@ -777,9 +778,9 @@ describe("ChartPanel", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "Per-query" }));
 
-    expect(screen.getByRole("button", { name: "Query Heatmap" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Per-query latency heatmap" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Per-query Latency" })).toBeTruthy();
-    expect(screen.getByRole("status", { name: "Query Heatmap unavailable" })).toBeTruthy();
+    expect(screen.getByRole("status", { name: "Per-query latency heatmap unavailable" })).toBeTruthy();
     expect(screen.getByText("No valid display timings")).toBeTruthy();
     expect(screen.getByText(/Only exact zero timings are available/)).toBeTruthy();
   });
@@ -810,9 +811,9 @@ describe("ChartPanel", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Power@Size Bar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Power@Size by run" }));
 
-    expect(screen.getByRole("status", { name: "Power@Size Bar unavailable" })).toBeTruthy();
+    expect(screen.getByRole("status", { name: "Power@Size by run unavailable" })).toBeTruthy();
     expect(screen.getByText("No ranked runs")).toBeTruthy();
     expect(screen.getByText(/Results from this source are not included in rankings/)).toBeTruthy();
     expect(screen.getByText(/Validation status excludes this result from ranking/)).toBeTruthy();
@@ -843,7 +844,7 @@ describe("ChartPanel", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Power@Size Bar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Power@Size by run" }));
 
     expect(screen.getByText("Rankable Low")).toBeTruthy();
     expect(screen.queryByText("Community High")).toBeNull();
@@ -859,7 +860,7 @@ describe("ChartPanel", () => {
         }}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Summary Box" }));
+    fireEvent.click(screen.getByRole("button", { name: "Run summary" }));
     expect(screen.getByText("Best geomean")).toBeTruthy();
     expect(screen.queryByText(/Lowest geomean in ranking/)).toBeNull();
     expect(screen.queryByText(/ranking mismatch/)).toBeNull();
@@ -876,7 +877,7 @@ describe("ChartPanel", () => {
         suppressionReason="benchmarks differ across results"
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Summary Box" }));
+    fireEvent.click(screen.getByRole("button", { name: "Run summary" }));
     expect(screen.queryByText("Best geomean")).toBeNull();
     expect(screen.getByText("Lowest geomean in ranking")).toBeTruthy();
     expect(screen.getByText(/ranking mismatch — not comparable/)).toBeTruthy();
@@ -944,7 +945,7 @@ describe("ChartPanel", () => {
     expect(titles.some((title) => title.includes("B") && title.includes("20 ms"))).toBe(true);
     expect(titles.some((title) => title.includes("C") && title.includes("40 ms"))).toBe(true);
     expect(titles.every((title) => !title.includes("999 ms"))).toBe(true);
-    expect(screen.queryByRole("button", { name: "Percentile Ladder" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Latency percentiles" })).toBeNull();
   });
 
   it("renders an explicit no-matching-queries message when queryFilter has no matches", () => {
@@ -1213,12 +1214,12 @@ describe("ChartPanel", () => {
     const summaryBox = screen.getByTestId("chart-panel-chart-summary_box");
     expect(summaryBox.querySelector("h4")).toBeNull();
     expect(summaryBox.querySelector("p")).toBeNull();
-    expect(within(summaryBox).getByRole("heading", { level: 3, name: "Summary Box" })).toBeTruthy();
+    expect(within(summaryBox).getByRole("heading", { level: 3, name: "Run summary" })).toBeTruthy();
 
     const sparklineTable = screen.getByTestId("chart-panel-chart-sparkline_table");
     expect(sparklineTable.querySelector("h4")).toBeNull();
     expect(sparklineTable.querySelector("p")).toBeNull();
-    expect(within(sparklineTable).getByRole("heading", { level: 3, name: "Sparkline Table" })).toBeTruthy();
+    expect(within(sparklineTable).getByRole("heading", { level: 3, name: "Geomean and cost by run" })).toBeTruthy();
   });
 
   it("honors excludeChartIds in the long layout", () => {
@@ -1311,5 +1312,98 @@ describe("buildRenderableSummary cost estimates", () => {
     expect(row?.cost_status).toBe("estimated");
     expect(row?.estimated_cost_usd).toBe(0.015589);
     expect(row?.cost_estimate_pricing_date).toBe("2026-10-09");
+  });
+});
+
+describe("ChartPanel summary presentation", () => {
+  it("gives each summary chart a reader-facing title", () => {
+    const titles = Object.fromEntries(CHART_REGISTRY.map((entry) => [entry.id, entry.title]));
+    expect(titles).toMatchObject({
+      summary_box: "Run summary",
+      sparkline_table: "Geomean and cost by run",
+      cdf_chart: "Cumulative latency distribution",
+      distribution_box: "Latency distribution",
+      rank_table: "Query rank summary",
+      query_heatmap: "Per-query latency heatmap",
+      performance_bar: "Geomean latency by run",
+      power_bar: "Power@Size by run",
+      percentile_ladder: "Latency percentiles",
+      stacked_phase: "Time by phase",
+      cost_scatter: "Cost vs performance",
+      time_series: "Performance over time",
+      comparison_bar: "Comparison by run",
+    });
+  });
+
+  it("renders the compare summary table outside the chart card so it is not nested in a second card", () => {
+    render(
+      <ChartPanel
+        summaryLayout="long"
+        context={{
+          kind: "compare",
+          results: [
+            makeDetail(),
+            makeDetail({
+              result_id: "detail-2",
+              platform: "SQLite",
+              platform_id: "sqlite",
+              display_geomean_ms: 18,
+              geomean_ms: 18,
+            }),
+          ],
+          primaryMetric: "display_geomean_ms",
+        }}
+      />,
+    );
+
+    const table = screen.getByTestId("chart-panel-compare-summary-table");
+    expect(screen.getByTestId("chart-panel-long").contains(table)).toBe(false);
+    expect(table.closest(".card")).toBeNull();
+    expect(table.querySelectorAll(".card")).toHaveLength(1);
+  });
+
+  it("labels the sample count in the run summary as Samples", () => {
+    render(<ChartPanel summaryLayout="long" context={{ kind: "detail", detail: makeDetail() }} />);
+    const summaryFigure = screen.getByTestId("chart-panel-chart-summary_box");
+
+    expect(within(summaryFigure).getByText("Samples")).toBeTruthy();
+    expect(screen.queryByText("Median samples")).toBeNull();
+  });
+
+  it("shows the best power value even when the best run is not rank-safe, with a not ranked note", () => {
+    const summary = makeSummary({
+      ranking: { ...RANKING, primary_metric: "power_score", primary_order: "desc" },
+      platforms: [
+        makePlatformRow({ power_score: 1000 }),
+        makePlatformRow({
+          result_id: "row-snowflake",
+          short_id: "row-snowflake",
+          platform_id: "snowflake",
+          platform: "Snowflake",
+          power_score: 29876,
+          ranking_exclusion_reason: "trust_not_rankable",
+        }),
+      ],
+    });
+    render(<ChartPanel context={{ kind: "summary", summary }} />);
+    fireEvent.click(screen.getByRole("button", { name: "Run summary" }));
+
+    const bestCard = screen.getByText("Best power").parentElement as HTMLElement;
+    expect(bestCard.textContent).toContain("Snowflake");
+    expect(bestCard.textContent).toContain(formatPowerScore(29876).valueText);
+    expect(bestCard.textContent).toContain("not ranked");
+    expect(bestCard.textContent).not.toContain("-");
+  });
+
+  it("keeps the best card free of a not ranked note when the best run is rank-safe", () => {
+    const summary = makeSummary({
+      ranking: { ...RANKING, primary_metric: "power_score", primary_order: "desc" },
+      platforms: [makePlatformRow({ power_score: 1000 })],
+    });
+    render(<ChartPanel context={{ kind: "summary", summary }} />);
+    fireEvent.click(screen.getByRole("button", { name: "Run summary" }));
+
+    const bestCard = screen.getByText("Best power").parentElement as HTMLElement;
+    expect(bestCard.textContent).not.toContain("not ranked");
   });
 });
