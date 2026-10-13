@@ -20634,6 +20634,13 @@
       "status": "done",
       "title": "Generate Snowflake tuned templates that cluster fact tables only, with keys ordered by cardinality"
     },
+    "snowflake-warehouse-metadata-positional-columns-20261013": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Snowflake: read SHOW WAREHOUSES by column name; positional indexes record wrong warehouse metadata"
+    },
     "snowpark-connect-platform": {
       "claim": null,
       "needs": [],

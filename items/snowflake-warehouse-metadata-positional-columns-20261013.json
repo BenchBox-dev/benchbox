@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Warehouse metadata fields are read by column name, not index.",
+    "Unit tests cover the current column layout and a layout with an inserted column.",
+    "A bundle produced afterwards records a numeric query_acceleration_max_scale_factor (or null) and a boolean-like enable_query_acceleration."
+  ],
+  "context": "Found 2026-10-13 in tpch_sf1_snowflake_sql_20261012_172155_3067b960 platform.raw_metadata.compute_configuration.",
+  "description": "## Problem\n`SnowflakeAdapter` reads `SHOW WAREHOUSES LIKE ...` by fixed column positions (`benchbox/platforms/snowflake.py:283-295`): auto_suspend 11, auto_resume 12, enable_query_acceleration 21, query_acceleration_max_scale_factor 22, scaling_policy 27. The column layout does not match the current Snowflake release (10.36.101). Published bundles record wrong values:\n- `query_acceleration_max_scale_factor: \"true\"`\n- `enable_query_acceleration: \"\"`\n- `scaling_policy: 0`\n\nThese go into `platform.compute` and `platform.raw_metadata.compute_configuration`. The warehouse size, state and auto_suspend values appear correct, but every positional field is at risk whenever Snowflake adds a column.\n\n## Change\n- Map the columns by name from `cursor.description`, lowercased.\n- Record null for any column that is absent.\n- Add a unit test with a SHOW WAREHOUSES row in the current column order and one with an extra column inserted.",
+  "links": [
+    "benchbox/platforms/snowflake.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
+      "at": "2026-10-13T12:59:55Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "859945f7a4644778b45cbf381647771d",
+      "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    }
+  ]
+}
