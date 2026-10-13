@@ -70,6 +70,15 @@
       "op_id": "1897a291750d44ef875e8c03fbbd9c33",
       "reason": "Prior process image in this session chain; its generation went stale across session cycling (finish returned E_CLAIM_STALE), so it cannot resume. Same operator, same worktree; taking over to record the already-written final verdict and finish.",
       "session_id": "9cea413f90a8485d89872ef61cf31b01"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:7990f8419a34d09d7b866eb4",
+      "at": "2026-10-13T01:10:33Z",
+      "client": "tbh",
+      "generation": "38b3e80a6f4445a59351fb8556f28b58",
+      "op": "finish",
+      "op_id": "7b77c52d496146078fcc75ad23107ba6",
+      "session_id": "9cea413f90a8485d89872ef61cf31b01"
     }
   ]
 }
