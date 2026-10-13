@@ -20933,10 +20933,15 @@
       "title": "Spark session-config map accepts typos, static settings and credential keys, and logs values"
     },
     "spark-session-config-model": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-14T19:39:57Z",
+        "generation": "268ba8bb06ec4c68bd64970ab11fe19b",
+        "renewals": 0,
+        "worker": "mcp:tbh:joe@joe-mac-mini.local:0b09cceb849593820a7baad7"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Add validated spark session-config map to PlatformOptimizationConfiguration"
     },
     "spark-session-config-runtime": {
