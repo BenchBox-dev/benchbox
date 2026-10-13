@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "show_item site-split-26 context contains f8fc668e, a44f41a, 06b65fa78, 57911e7cb, the range command with its output, and a corrected statement about the range through 873533e",
+    "show_item site-split-40 context contains 38247176462, 38392445519, 38331461283, #2930 and the owner decision from site-split-64",
+    "A second copy of the handoff, the plan (_project/handoffs/site-repo-split-handoff-20261006.md) and .todo-batch/site-repo-split.txt exists outside the C1 worktree (the next batch worktree); `shasum -a 256` of each pair is equal; both paths recorded in site-split-99",
+    "Evidence files cited by the handoff under /tmp/site-split-* are copied to a durable location named in site-split-99, or marked regenerable with the command that recreates them",
+    "Handoff section 9 has revision 9; the status section names the tracker revision it was checked against"
+  ],
+  "context": "Raised by the 2026-10-13 adversarial review (handoff revision 9, findings 5, 9 and 10). Evidence: show_item for items 26 and 40 at tracker rev b0baded2 (last session writes 2026-10-11T13:31Z and 22:05Z); `git status -sb` in /Users/joe/Developer/BenchBox.wt-site-split-c1 reports the upstream as [gone]; .git/info/exclude hides _project/handoffs/*. A pre-revision-9 copy of the handoff was saved to the review session's scratchpad.",
+  "description": "Review findings about the batch record itself. (a) Items site-split-26 and site-split-40 were last written 2026-10-11 and lack pass 10, pass 11, site #23/#24, core #2926, seed PR #2930 and the nine failed deploys; item 26 still says the range through 873533e is empty although #2899 (78f51c3) precedes it. (b) The master handoff exists only as an ignored file in the C1 worktree, whose branch upstream is gone; a gone-branch cleanup would delete it, together with the plan and .todo-batch ledger. (c) Cited evidence lives under /tmp. (d) The handoff said production was \"two bundles behind\" and cited one failed run; revision 9 corrects this.\n\nUpdate the existing items by reading the field, appending, and writing it back (update_item replaces the whole field).",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:812b6e01fb0a3c7a08e17bfb",
+      "at": "2026-10-13T13:50:01Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "b64b90d3e94d4a1986dc6b38a30551c9",
+      "session_id": "092ba024912949d88c4bc8f8c819cdba"
+    }
+  ]
+}
