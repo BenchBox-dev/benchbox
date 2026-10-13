@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Core test (tests/unit/scripts/test_site_inputs.py or the item-61 test file): a dispatch build with a successful Trunk push run on CORE_SHA writes certified_by equal to that run's numeric id, matching ^\\d+$",
+    "Core test: no successful Trunk push run for CORE_SHA, build refused",
+    "Core test: a Trunk run for a different SHA, a non-push event, or a non-develop branch is refused",
+    "Core test: two successful Trunk runs for one SHA record the newest id deterministically",
+    "Site test (scripts/bundle-lib.test.mjs plus a new bundle-verify test, since bundle-verify.mjs:34-35 has none): certified_by \"dispatch\" is still refused with \"is not a run id\"",
+    "Site test: a numeric id whose run is trunk.yml, push, develop, success and head_sha == core_sha is accepted; one whose head_sha differs from core_sha is refused",
+    "Evidence: a fresh dispatch bundle with parent_core_sha=c660e61579c1979a4c9ca4417e97d695142689e9 passes `npm run bundle:fetch` and `npm run bundle:verify` in the site repo (run ids recorded)",
+    "No change to the site's certification predicate; the diff to scripts/bundle-verify.mjs, if any, only adds tests or moves code without behaviour change"
+  ],
+  "context": "Raised by the 2026-10-13 adversarial review (handoff revision 9, finding 3). The handoff's earlier \"Next in order (2)\" proposed a site-gate fix that accepts dispatch-certified bundles; this item replaces it. Evidence: .github/workflows/site-inputs.yml at origin/develop (CERTIFIED lookup lines 108-111, certified_by line 114); site scripts/bundle-verify.mjs lines 23-27 and 34-35; site Deploy run 38392445519 log \"certified_by dispatch is not a run id\". Time-sensitive together with site-split-61.",
+  "description": "A dispatch build of core site-inputs.yml already requires a successful trunk.yml push run on CORE_SHA (site-inputs.yml lines 108-111) and then writes certified_by=dispatch (line 114). The site refuses that value (\"certified_by dispatch is not a run id\", scripts/bundle-verify.mjs:34-35), so the one documented recovery produces an undeployable bundle (core run 38392104307, site Deploy 38392445519).\n\nFix at the producer: record the numeric id of the Trunk run it already found. Do not relax the site gate. The site's check (bundle-verify.mjs:23-27) verifies the run path, event, branch, conclusion and head_sha independently; accepting an unverifiable \"dispatch\" value would weaken it, reopen D-O1/D-O2 and the item site-split-55 tightening decision, and needs an owner decision. site-inputs.yml and scripts/site_inputs.py are soundness paths: oracle review applies.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:812b6e01fb0a3c7a08e17bfb",
+      "at": "2026-10-13T13:50:17Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "5c7968220cff4475bdc007ecf23eec62",
+      "session_id": "092ba024912949d88c4bc8f8c819cdba"
+    }
+  ]
+}
