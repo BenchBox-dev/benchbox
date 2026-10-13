@@ -24,6 +24,7 @@ red domain does not hide the others, and each domain uploads its own artifacts.
 | `t3:quarantine` | `quarantine` | Runs tests marked `quarantine`. It passes with a notice until the marker is registered in `pytest.ini`. |
 | `t3:linkcheck` | `linkcheck` | Checks external documentation links with Sphinx and uploads the linkcheck report. |
 | `t3:liveness` | `liveness` | Fails when a workflow with a `schedule:` trigger has no scheduled run inside its cadence window, and prints the newest ten scheduled runs of any workflow it flags. Runs `scripts/scheduled_workflow_liveness.py`. |
+| `t3:ruleset-drift` | `ruleset-drift` | Compares the live GitHub rulesets, merge-queue contexts and `pypi` environment with the recorded runbook through `scripts/ruleset_drift_check.py`, using the `RULESET_DRIFT_TOKEN` secret. It stays in this workflow when the release-branch workflows are retired, so a changed ruleset still opens a `t3:ruleset-drift` issue. |
 | `t3:windows` | `windows` | The fast unit tier on `windows-latest` with Python 3.12 (no coverage gate). The matrix domain only builds and smoke-tests on Windows; this is the Windows unit suite. |
 | `t3:durations` | `durations-refresh` | Records pytest `--durations` and JUnit reports for the fast and slow tiers in the `t3-durations` artifact. It also regenerates the duration file there when the tooling is present. Failed sampled tests retain their artifacts and fail the domain; missing verdicts fail closed. |
 
