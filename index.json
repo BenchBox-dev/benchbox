@@ -472,10 +472,15 @@
       "title": "agent-write-preflight gates pr-open but not git commit in the primary clone"
     },
     "agent-write-preflight-quoted-interpreter-20261009": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-14T19:27:09Z",
+        "generation": "42d9a786f51945ea995e8be0801faafa",
+        "renewals": 0,
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:513e77a5e9d7684fd6c76434"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Make agent_write_preflight.sh accept a quoted interpreter path from the pre-commit hook"
     },
     "agentbox-gate0-go-no-go-decision": {
