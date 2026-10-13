@@ -13,6 +13,12 @@ export const RUN_MARKER_SHAPE_NAMES = [
 
 export const RUN_MARKER_SHAPE_COUNT = RUN_MARKER_SHAPE_NAMES.length;
 
+export const RUN_MARKER_RADIUS = 7.5;
+
+export const MISSING_MARKER_RADIUS = 4.5;
+
+const PLUS_THICKNESS_TO_ARM_RATIO = 0.4;
+
 function polygonPath(points: Array<readonly [number, number]>): string {
   return `M${points.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(" L")} Z`;
 }
@@ -44,8 +50,8 @@ function starPath(cx: number, cy: number, r: number): string {
 }
 
 function plusPath(cx: number, cy: number, r: number, rotationRadians: number): string {
-  const arm = r / Math.hypot(1, 0.34);
-  const w = arm * 0.34;
+  const arm = r / Math.hypot(1, PLUS_THICKNESS_TO_ARM_RATIO);
+  const w = arm * PLUS_THICKNESS_TO_ARM_RATIO;
   const corners: Array<readonly [number, number]> = [
     [-w, -arm],
     [w, -arm],
@@ -64,6 +70,17 @@ function plusPath(cx: number, cy: number, r: number, rotationRadians: number): s
   const sin = Math.sin(rotationRadians);
   return polygonPath(
     corners.map(([x, y]) => [cx + x * cos - y * sin, cy + x * sin + y * cos] as const),
+  );
+}
+
+function circlePath(cx: number, cy: number, r: number): string {
+  const f = (value: number): string => value.toFixed(2);
+  return (
+    `M${f(cx + r)},${f(cy)} ` +
+    `A${f(r)},${f(r)} 0 0,1 ${f(cx)},${f(cy + r)} ` +
+    `A${f(r)},${f(r)} 0 0,1 ${f(cx - r)},${f(cy)} ` +
+    `A${f(r)},${f(r)} 0 0,1 ${f(cx)},${f(cy - r)} ` +
+    `A${f(r)},${f(r)} 0 0,1 ${f(cx + r)},${f(cy)} Z`
   );
 }
 
@@ -90,10 +107,6 @@ export function runMarkerPath(shapeIndex: number, cx: number, cy: number, r: num
       return plusPath(cx, cy, r, Math.PI / 4);
     case "circle":
     default:
-      return (
-        `M${(cx + r).toFixed(2)},${cy.toFixed(2)} ` +
-        `A${r.toFixed(2)},${r.toFixed(2)} 0 1,1 ${(cx - r).toFixed(2)},${cy.toFixed(2)} ` +
-        `A${r.toFixed(2)},${r.toFixed(2)} 0 1,1 ${(cx + r).toFixed(2)},${cy.toFixed(2)} Z`
-      );
+      return circlePath(cx, cy, r);
   }
 }

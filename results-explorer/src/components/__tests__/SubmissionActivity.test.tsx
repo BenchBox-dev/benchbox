@@ -187,4 +187,51 @@ describe("SubmissionActivity", () => {
     grid = screen.getByTestId("submission-activity-grid");
     expect(within(grid).getAllByRole("row")[0]!.children).toHaveLength(12);
   });
+
+  it("gives every week column the same width, so a single run does not stretch into a bar", () => {
+    stubViewport(false);
+    const rows = [
+      { id: "doris", label: "Apache Doris", href: "/results/p/doris/", dates: ["2026-09-01"] },
+      { id: "duck", label: "DuckDB", href: "/results/p/duckdb/", dates: ["2026-09-01", "2026-08-20", "2026-08-13"] },
+    ];
+    render(<SubmissionActivity rows={rows} subject="platform" reference={REFERENCE} />);
+
+    const grid = screen.getByTestId("submission-activity-grid");
+    const weekColumns = Array.from(grid.querySelectorAll("colgroup col")).slice(1, -1);
+    expect(weekColumns).toHaveLength(26);
+    expect(new Set(weekColumns.map((col) => col.getAttribute("class") ?? ""))).toEqual(new Set([""]));
+
+    for (const row of Array.from(grid.querySelectorAll("tbody tr")).slice(0, 2)) {
+      const weekCells = Array.from(row.children).slice(1, -1);
+      expect(weekCells).toHaveLength(26);
+      expect(new Set(weekCells.map((cell) => cell.getAttribute("class")))).toEqual(new Set(["p-0"]));
+    }
+  });
+
+  it("explains the heatmap intensity with a legend from fewer to more runs", () => {
+    render(
+      <SubmissionActivity
+        rows={[{ id: "tpch", label: "TPC-H", href: "/results/tpch/", dates: ["2026-09-01", "2026-08-20"] }]}
+        subject="benchmark"
+        reference={REFERENCE}
+      />,
+    );
+
+    const legend = screen.getByTestId("submission-activity-legend");
+    expect(legend).toHaveTextContent("fewer → more runs");
+    expect(legend.querySelectorAll("[aria-hidden='true'] > span")).toHaveLength(5);
+  });
+
+  it("gives each activity label a title with its full name, even when it wraps", () => {
+    stubViewport(true);
+    const rows = [
+      { id: "ch-local", label: "ClickHouse Local", href: "/results/p/clickhouse-local/", dates: ["2026-09-01"] },
+      { id: "ch-server", label: "ClickHouse Server", href: "/results/p/clickhouse-server/", dates: ["2026-09-01"] },
+    ];
+    render(<SubmissionActivity rows={rows} subject="platform" reference={REFERENCE} />);
+
+    const headers = Array.from(screen.getByTestId("submission-activity-grid").querySelectorAll("th[scope='row']"));
+    expect(headers.map((header) => header.getAttribute("title"))).toEqual(["ClickHouse Local", "ClickHouse Server"]);
+    expect(headers[0]!.className).toContain("break-words");
+  });
 });

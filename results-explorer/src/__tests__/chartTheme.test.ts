@@ -5,7 +5,6 @@ import {
   SLOWER_FILL,
   DIVERGING_MAX_PCT,
   paletteColor,
-  TIME_SERIES_PALETTE,
   timeSeriesColor,
   HEAT_MIN_RATIO,
   HEAT_MAX_RATIO,
@@ -17,6 +16,18 @@ describe("chartTheme", () => {
   it("PALETTE has 10 distinct colors for run comparisons", () => {
     expect(PALETTE.length).toBe(10);
     expect(new Set(PALETTE).size).toBe(10);
+  });
+
+  it("PALETTE is the ten categorical chart tokens in order", () => {
+    PALETTE.forEach((color, index) => {
+      expect(color).toBe(`var(--bb-chart-cat-${index + 1})`);
+    });
+  });
+
+  it("PALETTE uses no semantic or tone tokens, so run colours never read as success or danger", () => {
+    for (const color of PALETTE) {
+      expect(color).not.toMatch(/bb-chart-(success|danger|warning)|bb-tone-/);
+    }
   });
 
   it("paletteColor(i) returns PALETTE[i] for each supported run", () => {
@@ -45,22 +56,15 @@ describe("chartTheme", () => {
     expect(DIVERGING_MAX_PCT).toBeGreaterThan(0);
   });
 
-  it("TIME_SERIES_PALETTE has 8 distinct colors", () => {
-    expect(TIME_SERIES_PALETTE.length).toBe(8);
-    expect(new Set(TIME_SERIES_PALETTE).size).toBe(8);
+  it("timeSeriesColor gives the same colour as paletteColor for every run index", () => {
+    for (let i = 0; i < 25; i++) {
+      expect(timeSeriesColor(i)).toBe(paletteColor(i));
+    }
   });
 
-  it("timeSeriesColor wraps with modulo", () => {
-    for (let i = 0; i < TIME_SERIES_PALETTE.length; i++) {
-      expect(timeSeriesColor(i)).toBe(TIME_SERIES_PALETTE[i]);
-    }
-    expect(timeSeriesColor(TIME_SERIES_PALETTE.length)).toBe(TIME_SERIES_PALETTE[0]);
-  });
-
-  it("timeSeriesColor never returns undefined", () => {
-    for (let i = 0; i < 20; i++) {
-      expect(timeSeriesColor(i)).toBeTruthy();
-    }
+  it("run 7 and run 8 keep their category colours in time series", () => {
+    expect(timeSeriesColor(6)).toBe("var(--bb-chart-cat-7)");
+    expect(timeSeriesColor(7)).toBe("var(--bb-chart-cat-8)");
   });
 
   it("HEAT_MIN_RATIO is 1 (fastest anchor)", () => {
@@ -92,6 +96,13 @@ describe("chartTheme", () => {
     expect(new Set(values).size).toBe(values.length);
     for (const v of values) {
       expect(v).toMatch(/^var\(--bb-chart-[a-z0-9-]+\)$/);
+    }
+  });
+
+  it("PHASE_COLORS never reuse a run colour", () => {
+    const runColors = new Set<string>(PALETTE);
+    for (const v of Object.values(PHASE_COLORS)) {
+      expect(runColors.has(v)).toBe(false);
     }
   });
 });

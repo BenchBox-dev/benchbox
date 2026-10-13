@@ -39,6 +39,18 @@ export function parseEstimateAssumptions(value: string | null | undefined): stri
   return [trimmed];
 }
 
+export function estimateProvenance(row: CostDeploymentFields): string | null {
+  if (!hasCostEstimate(row)) return null;
+  const lines = [
+    "Timing-derived estimate, not metered.",
+    row.cost_estimate_method ? `Method: ${row.cost_estimate_method}` : null,
+    row.cost_estimate_pricing_date ? `Pricing date: ${row.cost_estimate_pricing_date}` : null,
+    row.cost_estimate_source ? `Source: ${row.cost_estimate_source}` : null,
+    ...parseEstimateAssumptions(row.cost_estimate_assumptions).map((assumption) => `- ${assumption}`),
+  ];
+  return lines.filter((line): line is string => line !== null).join("\n");
+}
+
 export function normalizedCostLabel(row: CostDeploymentFields): string {
   const value = normalizedCostValue(row);
   if (value !== null) return formatUsd(value).valueText;

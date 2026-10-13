@@ -95,7 +95,7 @@ describe("RunReceipt", () => {
     expect(within(receipt).getByText("Trust")).toBeTruthy();
     expect(within(receipt).getByText("Maintainer run")).toBeTruthy();
     expect(within(receipt).getByText("Published, maintainer reviewed")).toBeTruthy();
-    expect(within(receipt).getByText("exact")).toBeTruthy();
+    expect(within(receipt).getByText("Exact")).toBeTruthy();
     expect(within(receipt).getByText("Funding")).toBeTruthy();
     expect(within(receipt).getByText("No funding information provided")).toBeTruthy();
     expect(within(receipt).getByText("Eligible")).toBeTruthy();
@@ -685,15 +685,49 @@ describe("RunReceipt applied-tuning receipt drill-down", () => {
     );
 
     const receipt = screen.getByRole("region", { name: "Run receipt" });
-    const badges = within(receipt).getAllByText("Overridden: timing-plateau");
-    expect(badges).toHaveLength(2);
-    for (const badge of badges) {
-      expect(badge.getAttribute("data-tone")).toBe("warning");
-    }
+    const badge = within(receipt).getByText("Timing-plateau");
+    expect(badge.getAttribute("data-tone")).toBe("warning");
     expect(within(receipt).getByText("Override")).toBeTruthy();
     expect(within(receipt).getByText("by reviewer")).toBeTruthy();
-    expect(within(receipt).getByText("https://example.test/pr/1")).toBeTruthy();
     expect(within(receipt).getByText("expires 2099-01-01")).toBeTruthy();
+  });
+
+  it("shows a long override evidence URL as a short link with the full URL in href and title", () => {
+    const evidence = "https://github.com/BenchBox-dev/BenchBox/blob/6b1013f0a9c2d4e8/docs/corpus/tpch-sf10-corpus-note.md";
+    render(
+      <RunReceipt
+        detail={makeDetail({
+          result_id: "tpch-snowflake-sf10.0-20261003-f0835929",
+          validation_status: "failed",
+          override_rules: '["scale-invariant"]',
+          override_evidence: evidence,
+          override_approver: "joeharris76",
+        })}
+      />,
+    );
+
+    const receipt = screen.getByRole("region", { name: "Run receipt" });
+    const link = within(receipt).getByRole("link", { name: "tpch-sf10-corpus-note.md" });
+    expect(link.getAttribute("href")).toBe(evidence);
+    expect(link.getAttribute("title")).toBe(evidence);
+    expect(within(receipt).queryByText(evidence)).toBeNull();
+    expect(within(receipt).getByText("by joeharris76")).toBeTruthy();
+  });
+
+  it("does not link evidence that is not an http or https URL", () => {
+    render(
+      <RunReceipt
+        detail={makeDetail({
+          validation_status: "passed",
+          override_rules: '["scale-invariant"]',
+          override_evidence: "javascript:alert(1)",
+        })}
+      />,
+    );
+
+    const receipt = screen.getByRole("region", { name: "Run receipt" });
+    expect(within(receipt).queryByRole("link", { name: /alert/ })).toBeNull();
+    expect(within(receipt).getByText("javascript:alert(1)")).toBeTruthy();
   });
 
   it("omits the Override row when no override was accepted", () => {
@@ -701,6 +735,6 @@ describe("RunReceipt applied-tuning receipt drill-down", () => {
 
     const receipt = screen.getByRole("region", { name: "Run receipt" });
     expect(within(receipt).queryByText("Override")).toBeNull();
-    expect(within(receipt).getByText("passed")).toBeTruthy();
+    expect(within(receipt).getByText("Passed")).toBeTruthy();
   });
 });

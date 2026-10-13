@@ -845,7 +845,7 @@ describe("PlatformIndex - sortable table headers", () => {
       name: /Open receipt for DuckDB public ID/,
     }) as HTMLAnchorElement[];
     expect(receiptLinks[0]?.getAttribute("href")).toBe("/results/r/r-null-geo#run-receipt");
-    expect(screen.getAllByText("exact").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Exact").length).toBeGreaterThan(0);
   });
 
   it("compare tray shows public IDs while the compare URL keeps short aliases", async () => {
@@ -1082,7 +1082,7 @@ describe("PlatformIndex - sortable table headers", () => {
     const notRunFlag = screen.getByTestId("platform-validation-flag-r-not-run");
     const runCell = notRunFlag.closest("td");
     expect(runCell?.querySelector('[data-testid="run-identity-label"]')).not.toBeNull();
-    expect(within(notRunFlag).getByText("no validation")).toBeTruthy();
+    expect(within(notRunFlag).getByText("No validation")).toBeTruthy();
 
     expect(container.querySelector('[data-testid="platform-validation-flag-r-clean"]')).toBeNull();
   });
@@ -1357,6 +1357,6 @@ describe("PlatformIndex - accepted-override validation badges", () => {
     expect(screen.queryByTestId("platform-validation-flag-r-clean")).toBeNull();
 
     const row = screen.getByTestId("r-over");
-    expect(within(row).getAllByText("Overridden: timing-plateau")).toHaveLength(2);
+    expect(within(row).getAllByText("Timing-plateau")).toHaveLength(2);
   });
 });

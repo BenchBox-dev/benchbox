@@ -299,6 +299,24 @@ describe("Compare", () => {
     );
   });
 
+  it("loads public run tokens as their full result_ids", async () => {
+    const snowflakeId = "tpch-snowflake-sf10.0-20261003-f0835929";
+    const duckdbId = "tpch-duckdb-sf10.0-20261002-5f5ccaf2";
+    setupUrl(["f0835929", "5f5ccaf2"]);
+    const publicToFull: Record<string, string> = { f0835929: snowflakeId, "5f5ccaf2": duckdbId };
+    vi.mocked(resolveShortId).mockImplementation((id) => Promise.resolve(publicToFull[id] ?? id));
+    vi.mocked(getDetailResult).mockImplementation((id) =>
+      Promise.resolve(id === snowflakeId ? { ...SQLITE, result_id: snowflakeId } : { ...DUCKDB, result_id: duckdbId }),
+    );
+
+    render(<Compare />);
+
+    await waitFor(() => expect(getDetailResult).toHaveBeenCalledWith(snowflakeId));
+    expect(getDetailResult).toHaveBeenCalledWith(duckdbId);
+    expect(getDetailResult).not.toHaveBeenCalledWith("f0835929");
+    expect(getDetailResult).not.toHaveBeenCalledWith("5f5ccaf2");
+  });
+
   it("distinguishes unprocessed IDs from resolved overflow", async () => {
     const ids = Array.from({ length: 25 }, (_, index) => `r${index + 1}`);
     setupUrl(ids);

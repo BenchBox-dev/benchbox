@@ -160,7 +160,7 @@ function buildNonCleanValidation(results: DetailResult[]): CompareValidationCave
 
 function buildValidationCaveat(nonCleanValidation: CompareValidationCaveat[]): string | null {
   if (nonCleanValidation.length === 0) return null;
-  const parts = nonCleanValidation.map((entry) => `${entry.platform} is ${entry.label}`);
+  const parts = nonCleanValidation.map((entry) => `${entry.platform}: ${entry.label}`);
   return `Validation caution: ${parts.join("; ")}. This comparison rests on at least one unvalidated or non-clean result - treat the leading-run claim as provisional.`;
 }
 

@@ -40,6 +40,8 @@ from benchbox.core.benchmark_registry import get_benchmark_support_status
 from benchbox.core.cost.models import CostScope, CostStatus, DeploymentMetadata, NormalizedCost
 from benchbox.core.cost.pricing import (
     PRICING_VERSION,
+    resolve_databricks_dbu_price,
+    resolve_databricks_serverless_sql_dbu_per_hour,
     resolve_snowflake_credit_price,
     resolve_snowflake_warehouse_credits_per_hour,
 )
@@ -835,53 +837,8 @@ def _canonical_cost_region(value: Any) -> str | None:
 
 _SNOWFLAKE_ESTIMATE_CREDIT_USD = Decimal("2.00")
 _SNOWFLAKE_ESTIMATE_PRICING_DATE = "2026-10-09"
-
-_DATABRICKS_TIER_EVIDENCE_KEYS = (
-    "tier",
-    "contract_tier",
-    "edition",
-    "pricing_tier",
-    "workload_type",
-    "workload",
-)
-
-
-def _databricks_estimate_refusal_reason(bundle: BundleDocument) -> str | None:
-    platform = (bundle.platform.name or "").strip().lower()
-    if platform != "databricks":
-        return None
-    timings = _query_timings(bundle)
-    measured = [timing for timing in timings if timing.run_type == "measurement"]
-    if not measured and timings and all(timing.run_type is None for timing in timings):
-        measured = timings
-    if not any(timing.status == "pass" for timing in measured):
-        return None
-    compute = bundle.platform.compute
-    deployment_block = bundle.platform.deployment
-    config = bundle.platform.config
-    evidence = _first_string(
-        *[
-            _bundle_value(block, key)
-            for block in (compute, deployment_block, config)
-            for key in _DATABRICKS_TIER_EVIDENCE_KEYS
-        ]
-    )
-    if evidence is not None:
-        return (
-            "No timing-derived Databricks estimate is published: BenchBox only publishes Snowflake "
-            "reference scenarios with a verified rate cell, and no verified Databricks DBU rate cell "
-            "exists for this run."
-        )
-    warehouse = _first_string(
-        _bundle_value(compute, "warehouse_size"),
-        _bundle_value(deployment_block, "warehouse_size"),
-    )
-    detail = f" Recorded warehouse size: {warehouse}." if warehouse else ""
-    return (
-        "No timing-derived Databricks estimate is published: the bundle does not record the contract "
-        "tier (standard/premium/enterprise) or workload class needed to select a defensible DBU price, "
-        "so any dollar value would fall back to a default rate." + detail
-    )
+_DATABRICKS_ESTIMATE_DBU_USD = Decimal("0.70")
+_DATABRICKS_ESTIMATE_PRICING_DATE = "2026-10-13"
 
 
 def _median_measured_seconds_per_query(bundle: BundleDocument) -> Decimal | None:
@@ -921,8 +878,96 @@ def _has_complete_measured_queries(bundle: BundleDocument) -> bool:
     )
 
 
+def _estimated_databricks_normalized_cost(bundle: BundleDocument) -> NormalizedCost | None:
+    if not _has_complete_measured_queries(bundle):
+        return None
+    runtime = _median_measured_seconds_per_query(bundle)
+    if runtime is None:
+        return None
+
+    compute = bundle.platform.compute
+    cloud_block = bundle.platform.cloud
+    deployment_block = bundle.platform.deployment
+    warehouse_type = _string_or_none(_bundle_value(compute, "warehouse_type"))
+    if warehouse_type is None or warehouse_type.lower() != "serverless":
+        return None
+    observed_size = _first_string(
+        _bundle_value(compute, "warehouse_size"),
+        _bundle_value(deployment_block, "warehouse_size"),
+    )
+    if observed_size is None:
+        return None
+    size_rate = resolve_databricks_serverless_sql_dbu_per_hour(observed_size)
+    observed_cloud = _first_string(
+        _bundle_value(cloud_block, "provider"),
+        _bundle_value(deployment_block, "cloud_provider"),
+    )
+    cloud = observed_cloud.lower() if observed_cloud else "aws"
+    observed_region = _first_string(
+        _bundle_value(cloud_block, "region"),
+        _bundle_value(cloud_block, "location"),
+        _bundle_value(deployment_block, "cloud_region"),
+    )
+    region = _canonical_cost_region(observed_region) or "us-east-2"
+    price_rate = resolve_databricks_dbu_price(cloud, "premium", "sql_serverless")
+    if (
+        size_rate.value is None
+        or size_rate.fallback_used
+        or price_rate.value is None
+        or price_rate.fallback_used
+        or price_rate.resolved_key != ("aws", "premium", "sql_serverless")
+        or Decimal(str(price_rate.value)) != _DATABRICKS_ESTIMATE_DBU_USD
+    ):
+        return None
+    amount = (runtime * Decimal(str(size_rate.value)) * _DATABRICKS_ESTIMATE_DBU_USD / Decimal("3600")).quantize(
+        Decimal("0.000001"), rounding=ROUND_HALF_UP
+    )
+    assumptions = [
+        "This timing-derived reference scenario is not metered usage, an actual cost, or a bill estimate.",
+        "One median runtime per query is summed, so iteration and stream multiplicity does not scale the estimate.",
+        "Concurrent query runtimes are summed independently, so overlap can overstate single-warehouse wall-clock consumption.",
+        "Startup, minimum billing, idle/auto-stop time, scaling overhead, discounts, and non-compute charges are excluded.",
+        "Historical rates are not reconstructed; the selected reference rate is applied to this run's recorded timings.",
+        f"Warehouse size {observed_size} comes from bundle metadata.",
+        f"Databricks SQL Serverless {observed_size} rate is {size_rate.value} DBU/hour.",
+        f"Databricks SQL Serverless list rate is ${price_rate.value}/DBU, effective {_DATABRICKS_ESTIMATE_PRICING_DATE}.",
+        "The estimate is restricted to the verified AWS SQL Serverless rate cell; other clouds, warehouse types, or unknown sizes refuse to estimate.",
+        "The current list rate is applied retrospectively; the historical plan, negotiated rate, and invoice amount are unknown.",
+        "AWS SQL Serverless list rate is $0.70/DBU for every plan tier, so the unrecorded contract tier does not change the estimate.",
+        "Photon and Serverless compute are included in the SQL Serverless DBU rate; no separate cloud instance charge applies.",
+    ]
+    if observed_cloud is None:
+        assumptions.append("AWS is used as the reference cloud because the bundle does not record a cloud provider.")
+    if observed_region is None:
+        assumptions.append("AWS us-east-2 is used as the reference region because the bundle does not record a region.")
+    return NormalizedCost(
+        normalized_cost_usd=None,
+        cost_model_version=PRICING_VERSION,
+        cost_model_source=_COST_MODEL_SOURCE,
+        cost_scope="compute_only",
+        cost_status="estimated",
+        billing_unit="dbu",
+        pricing_region=region,
+        deployment=DeploymentMetadata(
+            cloud_provider=cloud,
+            cloud_region=region,
+            warehouse_size=observed_size,
+        ),
+        estimated_cost_usd=amount,
+        cost_estimate_method="sum of per-query median runtime hours × warehouse DBU per hour × USD per DBU",
+        cost_estimate_source=(
+            "https://www.databricks.com/product/pricing/databricks-sql; "
+            "https://docs.databricks.com/aws/en/resources/pricing (SQL Serverless SKU DBU/hour)"
+        ),
+        cost_estimate_pricing_date=_DATABRICKS_ESTIMATE_PRICING_DATE,
+        cost_estimate_assumptions=tuple(assumptions),
+    )
+
+
 def _estimated_normalized_cost(bundle: BundleDocument) -> NormalizedCost | None:
     platform = (bundle.platform.name or "").strip().lower()
+    if platform == "databricks":
+        return _estimated_databricks_normalized_cost(bundle)
     if platform != "snowflake":
         return None
     if not _has_complete_measured_queries(bundle):

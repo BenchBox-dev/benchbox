@@ -205,8 +205,8 @@ describe("MetaLeaderboard", () => {
     expect(receiptLink.getAttribute("href")).toBe("/results/r/r1#run-receipt");
     expect(screen.getByText("Maintainer")).toBeTruthy();
     expect(screen.getByText("Community")).toBeTruthy();
-    expect(screen.getByText("exact")).toBeTruthy();
-    expect(screen.getByText("loose")).toBeTruthy();
+    expect(screen.getByText("Exact")).toBeTruthy();
+    expect(screen.getByText("Loose")).toBeTruthy();
     expect(screen.getAllByRole("gridcell", { name: /Run age:/ })).toHaveLength(2);
     expect(screen.getByRole("button", { name: /Run date .*ago/ })).toBeTruthy();
     const dateControl = screen.getByRole("button", { name: /Run date .*ago/ });
@@ -748,7 +748,7 @@ describe("MetaLeaderboard", () => {
 
     const failedCell = screen.getByRole("gridcell", { name: /DuckDB times for ClickBench SF0\.1: 10 ms/ });
     const failedBadge = failedCell.querySelector('[data-role="validation"]');
-    expect(failedBadge?.textContent).toBe("failed");
+    expect(failedBadge?.textContent).toBe("Failed");
     expect(failedBadge?.getAttribute("data-tone")).toBe("danger");
     expect(failedCell.textContent).toContain("Not recorded");
 
@@ -814,7 +814,7 @@ describe("MetaLeaderboard", () => {
     const cell = screen.getByRole("gridcell", { name: /Polars has published evidence for TPC-H SF0\.1/ });
     expect(cell.querySelector('[data-role="trust"]')).toBeNull();
     const badge = cell.querySelector('[data-role="validation"]');
-    expect(badge?.textContent).toBe("no validation");
+    expect(badge?.textContent).toBe("No validation");
     expect(badge?.getAttribute("data-tone")).toBe("warning");
   });
 

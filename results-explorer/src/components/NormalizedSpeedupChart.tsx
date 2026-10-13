@@ -191,7 +191,6 @@ export function NormalizedSpeedupChart({ queries, results, baselineIdx, queryHre
               font-family="monospace"
             >
               {queryId}
-              <title>{queryId}</title>
             </text>
           );
           return (

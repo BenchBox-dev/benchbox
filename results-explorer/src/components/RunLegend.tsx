@@ -1,5 +1,5 @@
 import { paletteColor } from "@/lib/chartTheme";
-import { runMarkerPath } from "@/lib/chartMarkers";
+import { MISSING_MARKER_RADIUS, RUN_MARKER_RADIUS, runMarkerPath } from "@/lib/chartMarkers";
 
 export interface RunLegendEntry {
   key: string;
@@ -7,7 +7,10 @@ export interface RunLegendEntry {
   runIndex: number;
 }
 
-export function RunLegend({ runs }: { runs: readonly RunLegendEntry[] }) {
+const ICON_SIZE = 18;
+const ICON_CENTER = ICON_SIZE / 2;
+
+export function RunLegend({ runs, showMissing = false }: { runs: readonly RunLegendEntry[]; showMissing?: boolean }) {
   return (
     <div
       class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--bb-data-fg-muted)]"
@@ -16,9 +19,9 @@ export function RunLegend({ runs }: { runs: readonly RunLegendEntry[] }) {
     >
       {runs.map((run) => (
         <span key={run.key} class="flex items-center gap-1">
-          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+          <svg width={ICON_SIZE} height={ICON_SIZE} viewBox={`0 0 ${ICON_SIZE} ${ICON_SIZE}`} aria-hidden="true">
             <path
-              d={runMarkerPath(run.runIndex, 7, 7, 5)}
+              d={runMarkerPath(run.runIndex, ICON_CENTER, ICON_CENTER, RUN_MARKER_RADIUS)}
               fill={paletteColor(run.runIndex)}
               stroke="var(--bb-surface-data)"
               stroke-width={0.75}
@@ -27,6 +30,23 @@ export function RunLegend({ runs }: { runs: readonly RunLegendEntry[] }) {
           {run.label}
         </span>
       ))}
+      {showMissing
+        ? (
+          <span class="flex items-center gap-1">
+            <svg width={ICON_SIZE} height={ICON_SIZE} viewBox={`0 0 ${ICON_SIZE} ${ICON_SIZE}`} aria-hidden="true">
+              <circle
+                cx={ICON_CENTER}
+                cy={ICON_CENTER}
+                r={MISSING_MARKER_RADIUS}
+                fill="none"
+                stroke="var(--bb-chart-label-muted)"
+                stroke-width={1.5}
+              />
+            </svg>
+            No successful measurement
+          </span>
+        )
+        : null}
     </div>
   );
 }

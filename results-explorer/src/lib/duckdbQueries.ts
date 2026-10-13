@@ -1439,8 +1439,16 @@ export async function getExistingResultIds(
 
 export async function resolveShortId(id: string): Promise<string> {
   if (!SHORT_ID_PATTERN.test(id)) return id;
-  const rows = await queryRows<{ result_id: string }>("SELECT result_id FROM bench.short_ids WHERE short_id = ?", [id]);
-  return rows[0]?.result_id ?? id;
+  const shortIdRows = await queryRows<{ result_id: string }>(
+    "SELECT result_id FROM bench.short_ids WHERE short_id = ?",
+    [id],
+  );
+  if (shortIdRows[0]) return shortIdRows[0].result_id;
+  const publicIdRows = await queryRows<{ result_id: string }>(
+    "SELECT result_id FROM bench.results WHERE result_id LIKE ? LIMIT 2",
+    [`%-${id}`],
+  );
+  return publicIdRows.length === 1 ? publicIdRows[0]!.result_id : id;
 }
 
 export async function toShortIds(fullIds: string[]): Promise<string[]> {

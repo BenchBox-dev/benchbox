@@ -13,6 +13,9 @@ from _project.scripts.explorer_pipeline.transformer import (
     _parse_bundle,
 )
 from benchbox.core.cost.pricing import (
+    DATABRICKS_DBU_PRICES,
+    resolve_databricks_dbu_price,
+    resolve_databricks_serverless_sql_dbu_per_hour,
     resolve_snowflake_credit_price,
     resolve_snowflake_warehouse_credits_per_hour,
 )
@@ -76,11 +79,90 @@ def test_estimate_uses_per_query_medians_not_execution_count() -> None:
     assert any("multiplicity does not scale" in assumption for assumption in cost.cost_estimate_assumptions)
 
 
+def _databricks_bundle(
+    *,
+    warehouse_type: str | None = "SERVERLESS",
+    warehouse_size: str | None = "2X-Small",
+    provider: str | None = "aws",
+) -> dict:
+    data = _snowflake_bundle()
+    compute: dict[str, str] = {}
+    if warehouse_type is not None:
+        compute["warehouse_type"] = warehouse_type
+    if warehouse_size is not None:
+        compute["warehouse_size"] = warehouse_size
+    cloud: dict[str, str] = {"region": "us-east-2"}
+    if provider is not None:
+        cloud["provider"] = provider
+    data["platform"] = {"name": "databricks", "version": "4.5.0", "compute": compute, "cloud": cloud}
+    return data
+
+
 def test_databricks_estimate_is_refused() -> None:
     data = _snowflake_bundle()
     data["platform"] = {"name": "databricks", "version": "1.0"}
 
     assert _estimated_normalized_cost(_parse_bundle(data)) is None
+
+
+def test_serverless_databricks_estimate_uses_sql_serverless_dbu_rate() -> None:
+    cost = _estimated_normalized_cost(_parse_bundle(_databricks_bundle()))
+
+    assert cost is not None
+    assert cost.cost_status == "estimated"
+    assert cost.billing_unit == "dbu"
+    dbu_per_hour = resolve_databricks_serverless_sql_dbu_per_hour("2X-Small")
+    expected = (Decimal("0.605") * Decimal(str(dbu_per_hour.value)) * Decimal("0.70") / Decimal("3600")).quantize(
+        Decimal("0.000001")
+    )
+    assert cost.estimated_cost_usd == expected
+    assert cost.normalized_cost_usd is None
+    assert cost.cost_estimate_method == "sum of per-query median runtime hours × warehouse DBU per hour × USD per DBU"
+    assert cost.cost_estimate_source == (
+        "https://www.databricks.com/product/pricing/databricks-sql; "
+        "https://docs.databricks.com/aws/en/resources/pricing (SQL Serverless SKU DBU/hour)"
+    )
+    assert cost.cost_estimate_pricing_date == "2026-10-13"
+    assert any("$0.70/DBU for every plan tier" in assumption for assumption in cost.cost_estimate_assumptions)
+    assert any("no separate cloud instance charge" in assumption for assumption in cost.cost_estimate_assumptions)
+
+
+def test_databricks_estimate_assumes_aws_when_cloud_is_unrecorded() -> None:
+    cost = _estimated_normalized_cost(_parse_bundle(_databricks_bundle(provider=None)))
+
+    assert cost is not None
+    assert any("AWS is used as the reference cloud" in assumption for assumption in cost.cost_estimate_assumptions)
+
+
+@pytest.mark.parametrize("warehouse_type", ["PRO", "CLASSIC"])
+def test_classic_or_pro_databricks_warehouse_has_no_estimate(warehouse_type: str) -> None:
+    assert _estimated_normalized_cost(_parse_bundle(_databricks_bundle(warehouse_type=warehouse_type))) is None
+
+
+def test_databricks_warehouse_type_unrecorded_has_no_estimate() -> None:
+    assert _estimated_normalized_cost(_parse_bundle(_databricks_bundle(warehouse_type=None))) is None
+
+
+def test_databricks_non_aws_cloud_has_no_estimate() -> None:
+    assert _estimated_normalized_cost(_parse_bundle(_databricks_bundle(provider="azure"))) is None
+
+
+def test_databricks_unknown_warehouse_size_has_no_estimate() -> None:
+    assert _estimated_normalized_cost(_parse_bundle(_databricks_bundle(warehouse_size="Gigantic"))) is None
+    assert _estimated_normalized_cost(_parse_bundle(_databricks_bundle(warehouse_size=None))) is None
+
+
+def test_databricks_incomplete_measured_queries_have_no_estimate() -> None:
+    data = _databricks_bundle()
+    data["summary"]["queries"]["total"] = 22
+
+    assert _estimated_normalized_cost(_parse_bundle(data)) is None
+
+
+def test_databricks_pricing_table_drift_refuses_estimate(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(DATABRICKS_DBU_PRICES["aws"]["premium"], "sql_serverless", 0.9)
+
+    assert _estimated_normalized_cost(_parse_bundle(_databricks_bundle())) is None
 
 
 def test_non_verified_rate_cell_refuses_estimate() -> None:

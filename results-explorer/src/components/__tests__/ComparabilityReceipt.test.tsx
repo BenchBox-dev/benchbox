@@ -184,7 +184,7 @@ describe("ComparabilityReceipt", () => {
       ?.closest("div")?.parentElement;
     expect(validationCard).toBeTruthy();
     expect(validationCard).toHaveTextContent("2 values differ");
-    expect(validationCard).toHaveTextContent("DuckDB: passed; Pandas: no validation (not_run)");
+    expect(validationCard).toHaveTextContent("DuckDB: Passed (passed); Pandas: No validation (not_run)");
   });
 
   describe("orderWarningLabelsForSummary", () => {

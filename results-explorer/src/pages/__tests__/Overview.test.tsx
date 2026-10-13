@@ -26,6 +26,13 @@ beforeEach(() => {
   });
 });
 
+function browseLabels(heading: string): string[] {
+  const section = screen.getByRole("heading", { name: heading }).closest("section");
+  return within(section as HTMLElement)
+    .getAllByRole("link")
+    .map((link) => link.textContent ?? "");
+}
+
 describe("Overview", () => {
   it("leads with the overview identity and sends ranking work to the compare page", async () => {
     render(<Home />);
@@ -101,6 +108,59 @@ describe("Overview", () => {
     const summary = screen.getByRole("region", { name: "Corpus summary" });
     expect(within(summary).getByText("rankings")).toBeTruthy();
     expect(within(summary).queryByText(/^ranking$/)).toBeNull();
+  });
+
+  it("orders the browse lists by display name rather than by platform or benchmark id", async () => {
+    const extraBenchmarks = ["coffeeshop", "datavault", "flightdata"].map((benchmark) => ({
+      ...RESULT_ROWS[0]!,
+      result_id: `${benchmark}-1`,
+      benchmark,
+    }));
+    const dorisRow = { ...RESULT_ROWS[0]!, result_id: "doris-1", platform_id: "zz-doris", platform: "Apache Doris" };
+    const rows = [...RESULT_ROWS, ...extraBenchmarks, dorisRow];
+    vi.mocked(queryRows).mockImplementation(async (sql: string) => {
+      const s = String(sql).replace(/\s+/g, " ").trim();
+      if (s.includes("FROM bench.results")) return rows;
+      if (s.startsWith("SELECT variant_id, variant_label, platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
+        return META_LEADERBOARD_ROWS;
+      }
+      if (s.includes("FROM bench.cohort_metadata")) return COHORT_ROWS;
+      return [];
+    });
+
+    render(<Home />);
+    await waitFor(() => expect(screen.getByText("Recent results")).toBeTruthy());
+
+    expect(browseLabels("Browse public benchmark results")).toEqual([
+      "ClickBench",
+      "CoffeeShop",
+      "Flight Data",
+      "SSB",
+      "TPC-H",
+      "TPC-H Data Vault",
+    ]);
+    expect(browseLabels("Browse public platform results")).toEqual(["Apache Doris", "DuckDB", "Postgres", "SQLite"]);
+  });
+
+  it("explains a ranking as one benchmark at one scale and phase, with the ranked platform count", async () => {
+    render(<Home />);
+    await waitFor(() => expect(screen.getByText("Recent results")).toBeTruthy());
+
+    const summary = screen.getByRole("region", { name: "Corpus summary" });
+    expect(within(summary).getByText(/Each ranking is one benchmark at one scale and phase\./)).toBeTruthy();
+    expect(within(summary).getByText(/2 platforms appear in at least one ranking/)).toBeTruthy();
+    expect(screen.getByText("3 platforms with public results, whether or not a ranking includes it.")).toBeTruthy();
+  });
+
+  it("hides the scale and date columns from the recent results header on phones", async () => {
+    render(<Home />);
+    await waitFor(() => expect(screen.getByText("Recent results")).toBeTruthy());
+
+    const headerClass = (name: string) =>
+      screen.getAllByRole("columnheader").find((th) => th.textContent === name)?.className ?? "";
+    expect(headerClass("Scale")).toContain("hidden sm:table-cell");
+    expect(headerClass("Date")).toContain("hidden sm:table-cell");
+    expect(headerClass("Geomean")).not.toContain("hidden");
   });
 
   it("shows normalized cost in recent results only when normalized cost metadata is present", async () => {

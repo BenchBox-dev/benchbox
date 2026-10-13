@@ -1,6 +1,6 @@
 import type { BenchmarkSummary } from "@/types";
 import { paletteColor } from "@/lib/chartTheme";
-import { costModelDisclosure, costStatusLabel, normalizedCostValue } from "@/lib/costDisplay";
+import { costModelDisclosure, estimateProvenance, hasCostEstimate, normalizedCostLabel, normalizedCostValue } from "@/lib/costDisplay";
 import {
   isRankable,
   isTimingDisplayable,
@@ -8,7 +8,7 @@ import {
   normalizePrimaryMetric,
   primaryMetricValue,
 } from "@/lib/displayEligibility";
-import { formatLatencyMs, formatPowerScore, formatUsd } from "@/lib/metricFormatters";
+import { formatLatencyMs, formatPowerScore } from "@/lib/metricFormatters";
 import { formatRunIdentitiesForCohort } from "@/lib/runIdentity";
 
 interface Props {
@@ -57,7 +57,7 @@ export function SparklineTable({ summary }: Props) {
   const showPower =
     metric !== "display_geomean_ms" && platforms.some((p) => isRankable(p) && primaryMetricValue(p, scoreMetric) !== null);
   const showP99 = platforms.some((p) => isTimingDisplayable(p) && p.percentile_stats !== null);
-  const showCost = platforms.some((p) => normalizedCostValue(p) !== null);
+  const showCost = platforms.some((p) => normalizedCostValue(p) !== null || hasCostEstimate(p));
 
   const maxGeomean = Math.max(
     ...platforms.map((p) => (isTimingDisplayable(p) && isValidTimingValue(p.display_geomean_ms) ? p.display_geomean_ms : 0)),
@@ -147,8 +147,11 @@ export function SparklineTable({ summary }: Props) {
                   </td>
                 )}
                 {showCost && (
-                  <td class="px-2 py-1.5 text-right font-mono text-[var(--bb-data-fg-muted)]">
-                    {normalizedCostValue(p) !== null ? formatUsd(normalizedCostValue(p)).valueText : costStatusLabel(p)}
+                  <td
+                    class="px-2 py-1.5 text-right font-mono text-[var(--bb-data-fg-muted)]"
+                    title={estimateProvenance(p) ?? undefined}
+                  >
+                    {normalizedCostLabel(p)}
                   </td>
                 )}
               </tr>

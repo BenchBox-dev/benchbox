@@ -243,7 +243,7 @@ test.describe("responsive explorer assertions", () => {
           const offenders = await page.evaluate(() => {
             const problems: string[] = [];
             for (const svg of Array.from(
-              document.querySelectorAll("[data-chart-container] svg[role='img']"),
+              document.querySelectorAll("[data-chart-container] svg[role='img'], [data-chart-container] svg[role='group']"),
             )) {
               const box = svg.getBoundingClientRect();
               if (box.width === 0) continue;

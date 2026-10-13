@@ -793,17 +793,35 @@ describe("resolveShortId", () => {
   });
 
   it("returns the input unchanged when no match is found", async () => {
-    mockedQueryRows.mockResolvedValueOnce([]);
+    mockedQueryRows.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
     await expect(resolveShortId("deadbeef")).resolves.toBe("deadbeef");
   });
 
-  it("does not resolve an id tail that was never issued as a short id", async () => {
-    mockedQueryRows.mockResolvedValueOnce([]);
+  it("resolves a public run token to the full result_id that ends with it", async () => {
+    mockedQueryRows
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ result_id: "tpch-snowflake-sf10.0-20261003-f0835929" }]);
+    await expect(resolveShortId("f0835929")).resolves.toBe("tpch-snowflake-sf10.0-20261003-f0835929");
+    expect(mockedQueryRows).toHaveBeenCalledTimes(2);
+    const [sql, params] = mockedQueryRows.mock.calls[1]!;
+    expect(sql).toMatch(/FROM bench\.results WHERE result_id LIKE \?/);
+    expect(params).toEqual(["%-f0835929"]);
+  });
+
+  it("returns the input unchanged when a public token matches more than one result_id", async () => {
+    mockedQueryRows
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        { result_id: "tpch-snowflake-sf10.0-20261003-f0835929" },
+        { result_id: "tpcds-snowflake-sf1.0-20261004-f0835929" },
+      ]);
     await expect(resolveShortId("f0835929")).resolves.toBe("f0835929");
-    expect(mockedQueryRows).toHaveBeenCalledWith(
-      expect.stringMatching(/FROM bench\.short_ids WHERE short_id = \?/),
-      ["f0835929"],
-    );
+  });
+
+  it("passes a full result_id through without querying", async () => {
+    const fullId = "tpch-snowflake-sf10.0-20261003-f0835929";
+    await expect(resolveShortId(fullId)).resolves.toBe(fullId);
+    expect(mockedQueryRows).not.toHaveBeenCalled();
   });
 });
 

@@ -142,6 +142,68 @@ describe("QueryRunComparison", () => {
     await waitFor(() => expect(document.title).toBe("Q1 across runs · BenchBox Results"));
   });
 
+  it("resolves public run tokens to full result_ids before loading the runs", async () => {
+    const snowflake = "tpch-snowflake-sf10.0-20261003-f0835929";
+    const duckdb = "tpch-duckdb-sf10.0-20261002-5f5ccaf2";
+    const publicToFull: Record<string, string> = { f0835929: snowflake, "5f5ccaf2": duckdb };
+    vi.mocked(resolveShortId).mockImplementation(async (id) => publicToFull[id] ?? id);
+    vi.mocked(getExistingResultIds).mockImplementation(async (ids) => new Set(ids.filter((id) => results.has(id))));
+    results.set(snowflake, resultRow(snowflake, "Snowflake"));
+    results.set(duckdb, resultRow(duckdb, "DuckDB"));
+    executions = [
+      execution(snowflake, { query_id: "18", duration_ms: 120, iter: 1 }),
+      execution(duckdb, { query_id: "18", duration_ms: 90, iter: 1 }),
+    ];
+
+    render(
+      <QueryRunComparison
+        queryId="18"
+        url="/results/compare/query/18?ids=f0835929%2C5f5ccaf2"
+      />,
+    );
+
+    const table = await screen.findByRole("table");
+    expect(within(table).getAllByRole("row")).toHaveLength(3);
+    expect(getQueryExecutions).toHaveBeenCalledWith([snowflake, duckdb], "18");
+    expect(screen.queryByText(/Loading 18 executions/)).toBeNull();
+  });
+
+  it("leaves the loading state and marks an unresolvable run as unavailable", async () => {
+    const known = "tpch-duckdb-sf10.0-20261002-5f5ccaf2";
+    results.set(known, resultRow(known, "DuckDB"));
+    executions = [execution(known, { query_id: "18", duration_ms: 90, iter: 1 })];
+    vi.mocked(getExistingResultIds).mockImplementation(async (ids) => new Set(ids.filter((id) => results.has(id))));
+
+    render(
+      <QueryRunComparison
+        queryId="18"
+        url={`/results/compare/query/18?ids=f0835929%2C${encodeURIComponent(known)}`}
+      />,
+    );
+
+    expect(await screen.findByText(/This run is no longer published/)).toBeTruthy();
+    expect(screen.queryByText(/Loading 18 executions/)).toBeNull();
+    const table = screen.getByRole("table");
+    expect(within(table).getAllByRole("row")).toHaveLength(3);
+  });
+
+  it("shows the error state when loading the query executions throws", async () => {
+    const known = "tpch-duckdb-sf10.0-20261002-5f5ccaf2";
+    results.set(known, resultRow(known, "DuckDB"));
+    vi.mocked(getQueryExecutions).mockRejectedValueOnce(new Error("database unavailable"));
+
+    render(
+      <QueryRunComparison
+        queryId="18"
+        url={`/results/compare/query/18?ids=${encodeURIComponent(known)}`}
+      />,
+    );
+
+    expect(await screen.findByText("Cannot compare query executions")).toBeTruthy();
+    expect(screen.getByText("database unavailable")).toBeTruthy();
+    expect(screen.queryByText(/Loading 18 executions/)).toBeNull();
+  });
+
   it("uses legacy unlabelled executions only as a per-run fallback", async () => {
     results.set("legacy-run", resultRow("legacy-run", "Engine A"));
     results.set("mixed-run", resultRow("mixed-run", "Engine B"));

@@ -404,9 +404,9 @@ describe("buildCompareDecisionSummary", () => {
       );
 
       expect(summary.nonCleanValidation).toEqual([
-        { resultId: "pandas", platform: "Pandas", status: "not_run", label: "no validation" },
+        { resultId: "pandas", platform: "Pandas", status: "not_run", label: "No validation" },
       ]);
-      expect(summary.validationCaveat).toContain("Pandas is no validation");
+      expect(summary.validationCaveat).toContain("Pandas: No validation");
       expect(summary.headline.endsWith(summary.validationCaveat!)).toBe(true);
     });
 

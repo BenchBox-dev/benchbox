@@ -133,13 +133,13 @@ describe("CompareSummary", () => {
     expect(summary.winner?.platform).toBe("DuckDB");
     expect(summary.headline).toContain("DuckDB's power score was");
     expect(summary.headline).toContain("Validation caution");
-    expect(summary.headline).toContain("Pandas is no validation");
+    expect(summary.headline).toContain("Pandas: No validation");
 
     render(<CompareSummary summary={summary} />);
     const summaryRegion = screen.getByRole("heading", { name: "Comparison summary" }).closest("section");
     expect(summaryRegion).toHaveTextContent("Unvalidated result");
     expect(summaryRegion).toHaveTextContent("Validation caution:");
-    expect(summaryRegion).toHaveTextContent("Pandas is no validation");
+    expect(summaryRegion).toHaveTextContent("Pandas: No validation");
     expect(screen.getByTestId("compare-validation-caveat")).toBeTruthy();
   });
 

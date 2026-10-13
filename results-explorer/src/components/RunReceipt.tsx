@@ -17,7 +17,7 @@ import {
 } from "@/lib/displayLabels";
 import { visibleResultIdForRow } from "@/lib/resultLinks";
 import { StatusBadge } from "@/components/StatusBadge";
-import { OverrideBadge, ValidationBadge } from "@/components/TrustBadge";
+import { ValidationBadge } from "@/components/TrustBadge";
 import { TuningVerificationBadge } from "@/components/TuningVerificationBadge";
 import { formatCpuIdentityProvenance } from "@/lib/hardwareProvenance";
 import { RunDateChip } from "@/components/RunAge";
@@ -90,18 +90,51 @@ function overrideRows(detail: DetailResult): ReceiptRow[] {
     return [recordedRow("Validation", <ValidationBadge validationStatus={status} showMissing />)];
   }
   const validation = <ValidationBadge validationStatus={status} overrideRules={rules} showMissing />;
+  const details = overrideDetails(detail);
   return [
     recordedRow("Validation", validation),
-    recordedRow(
-      "Override",
-      <OverrideBadge
-        rules={rules}
-        approver={detail.override_approver}
-        evidence={detail.override_evidence}
-        expires={detail.override_expires}
-      />,
-    ),
+    ...(details.length > 0 ? [recordedRow("Override", <span class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">{details}</span>)] : []),
   ];
+}
+
+function overrideDetails(detail: DetailResult): ComponentChildren[] {
+  const parts: ComponentChildren[] = [];
+  if (detail.override_approver?.trim()) {
+    parts.push(<span key="approver" class="min-w-0 break-words">by {detail.override_approver.trim()}</span>);
+  }
+  if (detail.override_evidence?.trim()) {
+    parts.push(<OverrideEvidenceLink key="evidence" evidence={detail.override_evidence.trim()} />);
+  }
+  if (detail.override_expires?.trim()) {
+    parts.push(<span key="expires" class="min-w-0 break-words">expires {detail.override_expires.trim()}</span>);
+  }
+  return parts;
+}
+
+function OverrideEvidenceLink({ evidence }: { evidence: string }) {
+  const url = httpUrlOrNull(evidence);
+  if (url === null) {
+    return <span class="min-w-0 break-all font-mono">{evidence}</span>;
+  }
+  return (
+    <a href={url.href} title={url.href} class="min-w-0 break-words text-xs font-medium no-underline" rel="noopener noreferrer">
+      {evidenceLinkLabel(url)}
+    </a>
+  );
+}
+
+function httpUrlOrNull(value: string): URL | null {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url : null;
+  } catch {
+    return null;
+  }
+}
+
+function evidenceLinkLabel(url: URL): string {
+  const fileName = url.pathname.split("/").filter(Boolean).pop() ?? "";
+  return fileName.includes(".") ? fileName : "Evidence link";
 }
 
 function formattedRow(label: string, raw: string | null | undefined, format: (raw: string) => string): ReceiptRow {
@@ -200,7 +233,7 @@ export function RunReceipt({
     {
       title: "Artifacts",
       rows: [
-        recordedRow("Result ID", <code class="font-mono text-xs">{detail.result_id}</code>),
+        recordedRow("Result ID", <code class="min-w-0 break-all font-mono text-xs">{detail.result_id}</code>),
         rowFromString("Short ID", shortId),
         bundleLinkRow(detail.bundle_download_url),
         plansRow(detail, plansUrl),
@@ -467,7 +500,7 @@ function plansRow(detail: DetailResult, plansUrl: string | null): ReceiptRow {
 
 function reproduceRow(reproduceCommand: string | null): ReceiptRow {
   if (!reproduceCommand) return missingRow("Reproduce");
-  return recordedRow("Reproduce", <code class="font-mono text-xs">{reproduceCommand}</code>);
+  return recordedRow("Reproduce", <code class="min-w-0 break-words font-mono text-xs">{reproduceCommand}</code>);
 }
 
 function memoryRow(value: number | null | undefined): ReceiptRow {

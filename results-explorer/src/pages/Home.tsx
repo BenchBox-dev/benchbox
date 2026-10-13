@@ -17,7 +17,7 @@ import { ErrorMessage } from "@/components/ErrorMessage";
 import { PageHeader } from "@/components/PageHeader";
 import { TableScrollHint } from "@/components/TableScrollHint";
 import { RunDateChip } from "@/components/RunAge";
-import { formatCount } from "@/lib/copyFormatters";
+import { formatCount, formatCountWithVerb } from "@/lib/copyFormatters";
 import { loadDashboards } from "@/lib/dashboards";
 import { normalizedCostLabel, normalizedCostValue } from "@/lib/costDisplay";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
@@ -65,14 +65,18 @@ export function Home(_: RoutableProps) {
   if (error) return <ErrorMessage title="Could not load results" message={error} onRetry={() => setResultsRetryToken((t) => t + 1)} />;
   if (!results) return <OverviewSkeleton />;
 
-  const benchmarks = [...new Set(results.map((result) => canonicalBenchmarkSlug(result.benchmark)))].sort();
+  const benchmarks = sortByDisplayName(
+    [...new Set(results.map((result) => canonicalBenchmarkSlug(result.benchmark)))],
+    formatBenchmarkLabel,
+  );
   const platformIdToName = new Map(
     (metaLeaderboard?.platforms ?? []).map((platform) => [platform.platform_id, platform.platform]),
   );
   for (const result of results) {
     platformIdToName.set(result.platform_id, result.platform);
   }
-  const platformIds = [...new Set(results.map((result) => result.platform_id))].sort();
+  const platformLabel = (platformId: string) => platformIdToName.get(platformId) ?? platformId;
+  const platformIds = sortByDisplayName([...new Set(results.map((result) => result.platform_id))], platformLabel);
   const recent = [...results]
     .sort((a, b) => b.run_date.localeCompare(a.run_date))
     .slice(0, RECENT_RESULT_COUNT);
@@ -116,12 +120,21 @@ export function Home(_: RoutableProps) {
             singular: "platform with public results",
             plural: "platforms with public results",
           }}
-          detail="published platform IDs"
+          detail="Counted by platform, whether or not a ranking includes it"
         />
         <StatCard
           value={metaLeaderboard === null ? "—" : leaderboardCohortCount}
           label={{ singular: "ranking", plural: "rankings" }}
-          detail={metaLeaderboard === null ? "Ranking data unavailable" : formatCount(rankedPlatformCount, "ranked platform")}
+          detail={
+            metaLeaderboard === null
+              ? "Ranking data unavailable"
+              : `Each ranking is one benchmark at one scale and phase. ${formatCountWithVerb(
+                  rankedPlatformCount,
+                  "platform",
+                  "appears in at least one ranking",
+                  "appear in at least one ranking",
+                )}.`
+          }
         />
       </section>
 
@@ -141,8 +154,8 @@ export function Home(_: RoutableProps) {
                 <tr>
                   <th class="table-th">Benchmark</th>
                   <th class="table-th">Platform</th>
-                  <th class="table-th">Scale</th>
-                  <th class="table-th">Date</th>
+                  <th class="table-th hidden sm:table-cell">Scale</th>
+                  <th class="table-th hidden sm:table-cell">Date</th>
                   {showRecentPower && <th class="table-th">Power score</th>}
                   <th
                     class="table-th"
@@ -179,20 +192,26 @@ export function Home(_: RoutableProps) {
       <div class="grid grid-cols-1 gap-8 sm:grid-cols-2">
         <BrowseSection
           title="Browse public benchmark results"
-          description={`${formatCount(benchmarks.length, "public benchmark set")}, covered by ${formatCount(leaderboardCohortCount, "ranking")}.`}
+          description={`${formatCount(benchmarks.length, "benchmark")} with public results, covered by ${formatCount(leaderboardCohortCount, "ranking")}. Each ranking is one benchmark at one scale and phase.`}
           items={benchmarks}
           hrefFn={(benchmark) => `/results/${benchmark}/`}
           labelFn={formatBenchmarkLabel}
         />
         <BrowseSection
           title="Browse public platform results"
-          description={`${formatCount(platformIds.length, "published platform ID")} in the public corpus, independent of ranking coverage.`}
+          description={`${formatCount(platformIds.length, "platform")} with public results, whether or not a ranking includes it.`}
           items={platformIds}
           hrefFn={(platformId) => `/results/p/${platformId}/`}
-          labelFn={(platformId) => platformIdToName.get(platformId) ?? platformId}
+          labelFn={platformLabel}
         />
       </div>
     </div>
+  );
+}
+
+function sortByDisplayName(items: string[], labelOf: (item: string) => string): string[] {
+  return [...items].sort((left, right) =>
+    labelOf(left).localeCompare(labelOf(right), undefined, { sensitivity: "base" }),
   );
 }
 
@@ -314,12 +333,17 @@ function RecentRow({
 }) {
   return (
     <tr class="hover:bg-[var(--bb-surface-data-muted)]">
-      <td class="table-td font-medium">{humanizeBenchmark(entry.benchmark)}</td>
+      <td class="table-td font-medium">
+        {humanizeBenchmark(entry.benchmark)}
+        <div class="mt-0.5 text-xs font-normal text-[var(--bb-data-fg-muted)] sm:hidden">
+          SF {entry.scale_factor} · <RunDateChip runDate={entry.run_date} />
+        </div>
+      </td>
       <td class="table-td">
         <span class="badge badge-blue">{entry.platform}</span>
       </td>
-      <td class="table-td">SF {entry.scale_factor}</td>
-      <td class="table-td text-[var(--bb-data-fg-muted)]"><RunDateChip runDate={entry.run_date} /></td>
+      <td class="table-td hidden sm:table-cell">SF {entry.scale_factor}</td>
+      <td class="table-td hidden text-[var(--bb-data-fg-muted)] sm:table-cell"><RunDateChip runDate={entry.run_date} /></td>
       {showPower && (
         <td
           class="table-td font-mono"

@@ -16,6 +16,7 @@ interface StatusBadgeProps {
   role?: StatusRole;
   tone?: StatusTone;
   title?: string;
+  ariaLabel?: string;
   leading?: ComponentChildren;
   class?: string;
   children: ComponentChildren;
@@ -33,6 +34,7 @@ export function StatusBadge({
   role = "generic",
   tone = "neutral",
   title,
+  ariaLabel,
   leading,
   class: extraClass = "",
   children,
@@ -43,6 +45,7 @@ export function StatusBadge({
       data-role={role}
       data-tone={tone}
       title={title}
+      aria-label={ariaLabel}
     >
       {leading ? <span class="mr-1">{leading}</span> : null}
       {children}

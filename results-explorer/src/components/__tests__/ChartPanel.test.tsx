@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/pre
 import { describe, expect, it } from "vitest";
 import { ChartPanel } from "@/components/ChartPanel";
 import { loadDashboards } from "@/lib/dashboards";
-import type { ChartHistoricalEntry } from "@/lib/chartRegistry";
+import { buildRenderableSummary, type ChartHistoricalEntry } from "@/lib/chartRegistry";
 import type {
   BenchmarkSummary,
   DetailResult,
@@ -1308,5 +1308,28 @@ describe("ChartPanel", () => {
     expect(dashboards[0]?.items).toHaveLength(1);
     expect(dashboards[0]?.items[0]?.chartId).toBe("query_heatmap");
     expect(dashboards[0]?.items[0]?.url).toBe("/results/compare/?a=1&b=2");
+  });
+});
+
+describe("buildRenderableSummary cost estimates", () => {
+  it("keeps timing-derived cost estimates on compared runs", () => {
+    const estimated: DetailResult = {
+      ...makeDetail({ result_id: "tpch-snowflake-sf10.0-20261003-f0835929" }),
+      cost_status: "estimated",
+      normalized_cost_usd: null,
+      estimated_cost_usd: 0.015589,
+      cost_estimate_method: "sum of per-query median runtime hours × warehouse credits per hour × USD per credit",
+      cost_estimate_pricing_date: "2026-10-09",
+    };
+    const metered = makeDetail({ result_id: "tpch-bigquery-sf10.0-20261003-d3495b28" });
+    const summary = buildRenderableSummary({
+      kind: "compare",
+      results: [estimated, metered],
+      primaryMetric: "display_geomean_ms",
+    });
+    const row = summary?.platforms.find((platform) => platform.result_id === estimated.result_id);
+    expect(row?.cost_status).toBe("estimated");
+    expect(row?.estimated_cost_usd).toBe(0.015589);
+    expect(row?.cost_estimate_pricing_date).toBe("2026-10-09");
   });
 });

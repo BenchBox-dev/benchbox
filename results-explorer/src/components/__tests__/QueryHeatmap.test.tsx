@@ -232,8 +232,8 @@ describe("QueryHeatmap rendering", () => {
 
     expect(receiptLinks[0]?.getAttribute("href")).toBe("/results/r/r1#run-receipt");
     expect(receiptLinks[1]?.getAttribute("href")).toBe("/results/r/r2#run-receipt");
-    expect(screen.getAllByText("exact").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("loose").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Exact").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Loose").length).toBeGreaterThan(0);
   });
 
   it("uses the short ID when platform, version, and date still do not identify a row", () => {
@@ -266,13 +266,13 @@ describe("QueryHeatmap rendering", () => {
     render(<QueryHeatmap summary={summary} />);
 
     const flag = screen.getByTestId("heatmap-labels-platform-not-run");
-    const badge = within(flag).getByText("no validation");
+    const badge = within(flag).getByText("No validation");
     expect(badge.closest("details")).toBeNull();
     expect(badge.getAttribute("data-role")).toBe("validation");
 
     const row = flag.closest("tr");
     expect(row).not.toBeNull();
-    expect(within(row as HTMLElement).getAllByText("no validation")).toHaveLength(1);
+    expect(within(row as HTMLElement).getAllByText("No validation")).toHaveLength(1);
   });
 
   it("states a clean validation status once, in the labels column", () => {
@@ -287,9 +287,9 @@ describe("QueryHeatmap rendering", () => {
     });
     const { container } = render(<QueryHeatmap summary={summary} />);
     const labels = screen.getByTestId("heatmap-labels-platform-passed");
-    expect(within(labels).getByText("passed")).toBeTruthy();
+    expect(within(labels).getByText("Passed")).toBeTruthy();
     const row = container.querySelector('tbody tr[data-testid="platform-passed"]')!;
-    expect(within(row as HTMLElement).getAllByText("passed")).toHaveLength(1);
+    expect(within(row as HTMLElement).getAllByText("Passed")).toHaveLength(1);
   });
 
   it("clicking a query header sorts rows by that query", () => {

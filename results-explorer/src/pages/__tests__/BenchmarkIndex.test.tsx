@@ -438,8 +438,8 @@ describe("BenchmarkIndex", () => {
     expect(screen.queryByText("Run details")).toBeNull();
     const receiptLinks = screen.getAllByRole("link", { name: /Open receipt for/ }) as HTMLAnchorElement[];
     expect(receiptLinks[0]?.getAttribute("href")).toBe("/results/r/r1#run-receipt");
-    expect(screen.getAllByText("exact").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("loose").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Exact").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Loose").length).toBeGreaterThan(0);
   });
 
   it("reaches each run's receipt from its row, without a separate link list", async () => {

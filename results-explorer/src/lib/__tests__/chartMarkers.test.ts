@@ -1,9 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
+  RUN_MARKER_RADIUS,
   RUN_MARKER_SHAPE_COUNT,
   RUN_MARKER_SHAPE_NAMES,
   runMarkerPath,
 } from "@/lib/chartMarkers";
+
+const MIN_RENDERED_EXTENT_PX = 10;
+const MIN_PLUS_ARM_THICKNESS_PX = 3.5;
+
+function extentOf(points: ReadonlyArray<readonly [number, number]>): { width: number; height: number } {
+  const xs = points.map(([x]) => x);
+  const ys = points.map(([, y]) => y);
+  return { width: Math.max(...xs) - Math.min(...xs), height: Math.max(...ys) - Math.min(...ys) };
+}
 
 function pathPoints(d: string): Array<readonly [number, number]> {
   const points: Array<readonly [number, number]> = [];
@@ -39,6 +49,31 @@ describe("chartMarkers", () => {
       for (const [x, y] of points) {
         expect(Math.hypot(x - 50, y - 60)).toBeLessThanOrEqual(8.02);
       }
+    }
+  });
+
+  it("renders every shape at least 10 px across at the query histogram radius", () => {
+    for (let shape = 0; shape < RUN_MARKER_SHAPE_COUNT; shape += 1) {
+      const { width, height } = extentOf(pathPoints(runMarkerPath(shape, 0, 0, RUN_MARKER_RADIUS)));
+      expect(Math.min(width, height), RUN_MARKER_SHAPE_NAMES[shape]).toBeGreaterThanOrEqual(MIN_RENDERED_EXTENT_PX);
+    }
+  });
+
+  it("keeps plus and cross arms at least 3.5 px thick at the query histogram radius", () => {
+    const armAngles: Record<"plus" | "cross", number> = { plus: 0, cross: Math.PI / 4 };
+    for (const shape of ["plus", "cross"] as const) {
+      const index = RUN_MARKER_SHAPE_NAMES.indexOf(shape);
+      const angle = armAngles[shape];
+      const projections = [
+        ...new Set(
+          pathPoints(runMarkerPath(index, 0, 0, RUN_MARKER_RADIUS)).map(([x, y]) =>
+            (x * Math.cos(angle) + y * Math.sin(angle)).toFixed(4),
+          ),
+        ),
+      ]
+        .map(Number)
+        .sort((a, b) => a - b);
+      expect(projections[2]! - projections[1]!, shape).toBeGreaterThanOrEqual(MIN_PLUS_ARM_THICKNESS_PX);
     }
   });
 

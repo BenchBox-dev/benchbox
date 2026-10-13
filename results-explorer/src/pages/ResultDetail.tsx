@@ -71,11 +71,6 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
     key: "query_id",
     direction: "asc",
   });
-  const [tuningExpanded, setTuningExpanded] = useState(false);
-  const [tuningData, setTuningData] = useState<Record<string, unknown> | null>(null);
-  const [tuningLoading, setTuningLoading] = useState(false);
-  const [tuningError, setTuningError] = useState<string | null>(null);
-  const tuningAbortRef = useRef<AbortController | null>(null);
   const localResultState = useLocalResultState();
   const isLocal = source === "local";
   const detail = detailState?.detail ?? null;
@@ -92,11 +87,6 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
     }
     setDetailState(null);
     setError(null);
-    setTuningExpanded(false);
-    setTuningData(null);
-    setTuningError(null);
-    tuningAbortRef.current?.abort();
-    tuningAbortRef.current = null;
     let cancelled = false;
     if (isLocal) {
       const preview = localResultState.preview;
@@ -107,8 +97,6 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
       }
       return () => {
         cancelled = true;
-        tuningAbortRef.current?.abort();
-        tuningAbortRef.current = null;
       };
     }
     resolveShortId(resultId)
@@ -132,8 +120,6 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
       .catch((err: unknown) => { if (!cancelled) setError(errMsg(err)); });
     return () => {
       cancelled = true;
-      tuningAbortRef.current?.abort();
-      tuningAbortRef.current = null;
     };
   }, [isLocal, localResultState.preview, resultId, detailRetryToken]);
 
@@ -230,31 +216,6 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
     return rawSort.direction === "asc" ? "ascending" : "descending";
   }
 
-  const tuningUrl = detail.has_tuning ? detail.bundle_download_url : null;
-
-  function handleTuningExpand() {
-    const willExpand = !tuningExpanded;
-    setTuningExpanded(willExpand);
-    if (willExpand && tuningData === null && !tuningLoading && tuningUrl) {
-      setTuningLoading(true);
-      const controller = new AbortController();
-      tuningAbortRef.current = controller;
-      fetch(tuningUrl, { signal: controller.signal })
-        .then((r) => r.json() as Promise<Record<string, unknown>>)
-        .then((bundle) => {
-          if (controller.signal.aborted) return;
-          setTuningData(extractTuningBlock(bundle));
-          setTuningLoading(false);
-        })
-        .catch((err: unknown) => {
-          if (err instanceof DOMException && err.name === "AbortError") return;
-          setTuningError("Could not load tuning settings.");
-          setTuningLoading(false);
-        });
-    }
-  }
-
-  const showTuningSection = true;
   const passSummaries = summarizeQueryPasses(detail.queries);
   const passQueryIds = new Set(passSummaries.map((summary) => summary.queryId));
   const passesCoverAllTimings =
@@ -387,53 +348,6 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
             value={formatDurationSeconds(detail.total_duration_s).valueText}
             helper="Run duration"
           />
-          {showTuningSection && (
-            <section class="card">
-              <h2 class="mb-3 text-base font-semibold text-[var(--bb-data-fg-primary)]">Tuning</h2>
-              <div class="space-y-2 text-sm">
-                {detail.tuning_mode ? (
-                  <div class="flex items-center gap-2">
-                    <span class="text-[var(--bb-data-fg-muted)]">Mode:</span>
-                    <TuningBadge
-                      tuningMode={detail.tuning_mode}
-                      tuningValidationStatus={detail.tuning_validation_status}
-                    />
-                  </div>
-                ) : (
-                  <p class="text-[var(--bb-data-fg-muted)]">Tuning status was not recorded.</p>
-                )}
-                {tuningUrl ? (
-                  <div>
-                    <button
-                      type="button"
-                      class="mt-1 cursor-pointer border-0 bg-transparent p-0 text-xs text-[var(--bb-accent-hover)] underline hover:text-[var(--bb-accent)]"
-                      onClick={handleTuningExpand}
-                      aria-expanded={tuningExpanded}
-                      aria-controls="tuning-settings-region"
-                    >
-                      {tuningExpanded ? "Hide settings ↑" : "Show settings ↓"}
-                    </button>
-                    {tuningExpanded && (
-                      <div id="tuning-settings-region" class="mt-2" role="region" aria-label="Tuning settings">
-                        {tuningLoading && <p role="status" aria-live="polite" class="text-xs text-[var(--bb-data-fg-subtle)]">Loading tuning settings...</p>}
-                        {tuningError && <p role="alert" class="text-xs text-[var(--bb-tone-danger-fg)]">{tuningError}</p>}
-                        {tuningData && (
-                          <pre class="overflow-x-auto rounded panel-muted p-2 text-xs text-[var(--bb-data-fg-primary)]">
-                            {JSON.stringify(tuningData, null, 2)}
-                          </pre>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <p class="text-xs text-[var(--bb-data-fg-subtle)]">
-                    {detail.tuning_mode === "notuning" ? "No tuning settings were applied." : "Tuning details were not published."}
-                  </p>
-                )}
-              </div>
-            </section>
-          )}
-
         </div>
       </section>
 
@@ -507,7 +421,7 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
             )}
             {detail.queries.length > 0 && (
               <>
-              <PassStrip queries={detail.queries} limit={PASS_STRIP_DETAIL_LIMIT} />
+              <PassStrip queries={detail.queries} limit={PASS_STRIP_DETAIL_LIMIT} embedded />
               {!isLocal && withinRunBases !== null && (
                 <p class="mb-6 text-sm">
                   <a
@@ -581,17 +495,6 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
       </div>
     </div>
   );
-}
-
-function extractTuningBlock(bundle: Record<string, unknown>): Record<string, unknown> {
-  const platform = bundle?.platform;
-  if (platform && typeof platform === "object" && !Array.isArray(platform)) {
-    const tuning = (platform as Record<string, unknown>).tuning;
-    if (tuning && typeof tuning === "object" && !Array.isArray(tuning)) {
-      return tuning as Record<string, unknown>;
-    }
-  }
-  return {};
 }
 
 function ResultMetricCard({

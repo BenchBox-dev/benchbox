@@ -145,7 +145,12 @@ export function QueryRunComparison({ queryId = "", url }: QueryRunComparisonProp
       isCancelled: () => cancelled,
     })
       .then(async (recovery) => {
-        if (cancelled || recovery === null) return;
+        if (cancelled) return;
+        if (recovery === null) {
+          setError("The selected runs could not be loaded. Retry to try again.");
+          setLoading(false);
+          return;
+        }
         if (recovery.aliases.length > 0) {
           notices.push(
             `Ignored ${recovery.aliases.length} run ID${recovery.aliases.length === 1 ? "" : "s"} that resolve to a run already selected.`,

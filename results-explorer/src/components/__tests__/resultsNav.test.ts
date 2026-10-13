@@ -36,6 +36,8 @@ describe("activeResultsNavSection", () => {
     "/results/local/",
     "/results/local/abc123",
     "/results/unknown-multi/segment",
+    "/results/dashboards",
+    "/results/dashboards/",
     "/unrelated",
   ])("leaves %s without an owning section", (path) => {
     expect(activeResultsNavSection(path)).toBeNull();
@@ -55,6 +57,7 @@ describe("activeResultsNavSection", () => {
       p: "platforms",
       r: null,
       local: null,
+      dashboards: null,
     };
     for (const [segment, ownerId] of Object.entries(expected)) {
       expect(activeResultsNavSection(`/results/${segment}/`)?.id ?? null, segment).toBe(ownerId);

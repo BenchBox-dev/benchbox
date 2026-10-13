@@ -12,8 +12,8 @@ export function NotFound({ message }: NotFoundProps = {}) {
       <h1 class="text-4xl font-bold text-[var(--bb-data-fg-primary)]">Page not found</h1>
       <p class="mt-4 text-lg text-[var(--bb-data-fg-muted)]">{message ?? "We could not find that results page."}</p>
       <div class="mt-6 flex flex-wrap justify-center gap-2">
-        <a href="/results/query" class="btn btn-primary no-underline">Find runs</a>
-        <a href="/results/" class="btn btn-secondary no-underline">Browse leaderboards</a>
+        <a href="/results/" class="btn btn-primary no-underline">Browse results</a>
+        <a href="/results/compare" class="btn btn-secondary no-underline">Compare</a>
       </div>
     </div>
   );

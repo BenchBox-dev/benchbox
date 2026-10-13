@@ -4,6 +4,7 @@ import {
   costModelSummary,
   costScopeSummary,
   costStatusLabel,
+  estimateProvenance,
   estimatedCostValue,
   hasCostEstimate,
   humanizeBillingFragment,
@@ -126,5 +127,38 @@ describe("costStatusLabel and normalizedCost helpers (unaffected by w1)", () => 
     expect(hasCostEstimate(makeRow({ cost_status: "estimated", estimated_cost_usd: 0.5 }))).toBe(true);
     expect(hasCostEstimate(makeRow({ cost_status: "estimated", estimated_cost_usd: null }))).toBe(false);
     expect(hasCostEstimate(makeRow({ cost_status: "unavailable" }))).toBe(false);
+  });
+});
+
+describe("estimateProvenance", () => {
+  it("lists method, pricing date, source and assumptions for an estimated run", () => {
+    const provenance = estimateProvenance(
+      makeRow({
+        cost_status: "estimated",
+        estimated_cost_usd: 0.0047,
+        cost_estimate_method: "sum of per-query median runtime hours × warehouse DBU per hour × USD per DBU",
+        cost_estimate_source: "https://www.databricks.com/product/pricing/databricks-sql",
+        cost_estimate_pricing_date: "2026-10-13",
+        cost_estimate_assumptions: '["AWS SQL Serverless list rate is $0.70/DBU.", "Photon is included."]',
+      }),
+    );
+
+    expect(provenance).toContain("Timing-derived estimate, not metered.");
+    expect(provenance).toContain("Method: sum of per-query median runtime hours");
+    expect(provenance).toContain("Pricing date: 2026-10-13");
+    expect(provenance).toContain("Source: https://www.databricks.com/product/pricing/databricks-sql");
+    expect(provenance).toContain("- AWS SQL Serverless list rate is $0.70/DBU.");
+    expect(provenance).toContain("- Photon is included.");
+  });
+
+  it("returns null when the run has no estimate", () => {
+    expect(estimateProvenance(makeRow({ cost_status: "normalized", normalized_cost_usd: 1 }))).toBeNull();
+    expect(estimateProvenance(makeRow({ cost_status: "estimated", estimated_cost_usd: null }))).toBeNull();
+  });
+
+  it("labels a Databricks serverless estimate with the approximate dollar value", () => {
+    expect(normalizedCostLabel(makeRow({ cost_status: "estimated", estimated_cost_usd: 0.004667 }))).toBe(
+      "\u2248 $0.0047 (est.)",
+    );
   });
 });

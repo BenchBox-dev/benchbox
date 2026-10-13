@@ -402,6 +402,95 @@ describe("QueryHistogram", () => {
     expect(svgs.length).toBeGreaterThan(1);
   });
 
+  it("truncates a long label at the end and keeps its full name in the link label and a title", () => {
+    const longQuery = "aggregation_distinct_groupby";
+    const summary = makeSummary({
+      query_ids: [longQuery, "Q1"],
+      platforms: [makePlatform({ timings: { [longQuery]: 10, Q1: 20 } })],
+    });
+    const { container } = render(<QueryHistogram summary={summary} queryHref={(queryId) => `#${queryId}`} />);
+    const label = container.querySelector(`text[data-query-label='${longQuery}']`);
+    expect(label?.firstChild?.textContent?.endsWith("…")).toBe(true);
+    expect(label?.firstChild?.textContent).not.toBe(longQuery);
+    expect(label?.querySelector("title")?.textContent).toBe(longQuery);
+    expect(container.querySelector(`a[aria-label='Compare ${longQuery} across selected runs']`)).not.toBeNull();
+  });
+
+  it("adds a title only to truncated labels", () => {
+    const longQuery = "broadcast_join_three_tables_with_extra_words";
+    const summary = makeSummary({
+      query_ids: [longQuery, "Q1"],
+      platforms: [makePlatform({ timings: { [longQuery]: 10, Q1: 20 } })],
+    });
+    const { container } = render(<QueryHistogram summary={summary} />);
+    expect(container.querySelector("text[data-query-label='Q1'] title")).toBeNull();
+    expect(container.querySelector(`text[data-query-label='${longQuery}'] title`)).not.toBeNull();
+    expect(container.querySelector("text[data-query-label='Q1']")?.textContent).toBe("Q1");
+  });
+
+  it("keeps every axis tick label inside the svg width", () => {
+    const summary = makeSummary({
+      query_ids: ["Q1", "Q2", "Q3"],
+      platforms: [
+        makePlatform({ result_id: "r1", timings: { Q1: 0.4, Q2: 627, Q3: 6840 } }),
+        makePlatform({ result_id: "r2", platform_id: "sqlite", platform: "SQLite", timings: { Q1: 0.9, Q2: 127, Q3: 5100 } }),
+      ],
+    });
+    const { container } = render(<QueryHistogram summary={summary} />);
+    const svg = container.querySelector("svg");
+    const width = Number(svg?.getAttribute("viewBox")?.split(/\s+/)[2]);
+    const tickTexts = Array.from(svg?.querySelectorAll("text") ?? []).filter(
+      (node) => /ms|s$/.test(node.textContent ?? "") && !node.hasAttribute("data-query-label"),
+    );
+    expect(tickTexts.length).toBeGreaterThanOrEqual(2);
+    for (const node of tickTexts) {
+      const x = Number(node.getAttribute("x"));
+      const textWidth = (node.textContent ?? "").length * 0.62 * 9;
+      const anchor = node.getAttribute("text-anchor");
+      const left = anchor === "start" ? x : anchor === "end" ? x - textWidth : x - textWidth / 2;
+      const right = left + textWidth;
+      expect(left, node.textContent ?? "").toBeGreaterThanOrEqual(0);
+      expect(right, node.textContent ?? "").toBeLessThanOrEqual(width);
+    }
+    const tickLabels = tickTexts.map((node) => node.textContent);
+    expect(new Set(tickLabels).size).toBe(tickLabels.length);
+  });
+
+  it("draws missing values in a gutter left of the plot start", () => {
+    const summary = makeSummary({
+      query_ids: ["Q1", "Q2"],
+      platforms: [
+        makePlatform({ result_id: "r1", timings: { Q1: 10, Q2: 300 } }),
+        makePlatform({ result_id: "r2", platform_id: "sqlite", platform: "SQLite", timings: { Q1: null, Q2: 40 } }),
+      ],
+    });
+    const { container } = render(<QueryHistogram summary={summary} />);
+    const plotStart = Number(container.querySelector("svg")?.getAttribute("data-plot-start"));
+    const missing = container.querySelector("circle[data-platform-marker='r2']");
+    expect(missing).not.toBeNull();
+    expect(Number(missing?.getAttribute("cx"))).toBeLessThan(plotStart - 8);
+    for (const marker of Array.from(container.querySelectorAll("path[data-platform-marker]"))) {
+      expect(Number(marker.getAttribute("d")?.match(/M([\d.]+)/)?.[1])).toBeGreaterThan(plotStart - 8);
+    }
+  });
+
+  it("explains missing values in the legend only when the chart has some", () => {
+    const withMissing = render(
+      <QueryHistogram
+        summary={makeSummary({
+          platforms: [makePlatform({ result_id: "r1", timings: { Q1: 10, Q2: null, Q3: 30 } })],
+        })}
+      />,
+    );
+    expect(withMissing.container.querySelector("[aria-label='Run legend']")?.textContent).toContain(
+      "No successful measurement",
+    );
+    const complete = render(<QueryHistogram summary={makeSummary()} />);
+    expect(complete.container.querySelector("[aria-label='Run legend']")?.textContent).not.toContain(
+      "No successful measurement",
+    );
+  });
+
   it("sorts query labels naturally and does not strip prefixes", () => {
     const summary = makeSummary({
       query_ids: ["Q10", "Q2", "Q1"],
@@ -719,6 +808,41 @@ describe("CostScatter", () => {
     expect(circles.length).toBe(2);
     expect(container.textContent).toContain("model 2026.05.0");
   });
+
+  it("plots estimated runs as hollow markers next to normalized runs", () => {
+    const summary = makeSummary({
+      platforms: [
+        makePlatform({
+          result_id: "tpch-snowflake-sf10.0-20261003-f0835929",
+          platform: "Snowflake",
+          cost_usd: 0.5,
+          normalized_cost_usd: 0.5,
+          cost_status: "normalized",
+          cost_scope: "compute_only",
+          cost_model_version: "2026.05.0",
+        }),
+        makePlatform({
+          result_id: "amplab-sf01-databricks-sql-20261003-214137-2a7a0cdb",
+          platform: "Databricks",
+          cost_status: "estimated",
+          normalized_cost_usd: null,
+          estimated_cost_usd: 0.0156,
+          cost_scope: "compute_only",
+          cost_model_version: "2026.09",
+        }),
+      ],
+    });
+    const { container } = render(<CostScatter summary={summary} />);
+    const circles = Array.from(container.querySelectorAll("circle"));
+
+    expect(circles).toHaveLength(2);
+    const estimated = circles.find((circle) => circle.querySelector("title")?.textContent?.includes("Databricks"));
+    expect(estimated?.getAttribute("fill")).toBe("none");
+    expect(estimated?.querySelector("title")?.textContent).toContain("estimated ≈ $0.0156");
+    const metered = circles.find((circle) => circle.querySelector("title")?.textContent?.includes("Snowflake"));
+    expect(metered?.getAttribute("fill")).not.toBe("none");
+    expect(container.textContent).toContain("hollow = estimated");
+  });
 });
 
 describe("SparklineTable", () => {
@@ -753,6 +877,38 @@ describe("SparklineTable", () => {
     });
     const { container } = render(<SparklineTable summary={summary} />);
     expect(container.textContent).toContain("Normalized cost");
+    expect(container.textContent).toContain("Not recorded");
+  });
+
+  it("shows the estimated dollar value with provenance for estimated runs", () => {
+    const summary = makeSummary({
+      platforms: [
+        makePlatform({
+          result_id: "tpch-snowflake-sf10.0-20261003-f0835929",
+          platform: "Snowflake",
+          cost_status: "estimated",
+          normalized_cost_usd: null,
+          estimated_cost_usd: 0.0156,
+          cost_estimate_method: "sum of per-query median runtime hours × warehouse credits per hour × USD per credit",
+          cost_estimate_pricing_date: "2026-10-09",
+          cost_estimate_assumptions: '["Standard edition is assumed."]',
+        }),
+        makePlatform({
+          result_id: "amplab-sf01-databricks-sql-20261003-214137-2a7a0cdb",
+          platform: "Databricks",
+          cost_status: "unavailable",
+          normalized_cost_usd: null,
+        }),
+      ],
+    });
+    const { container } = render(<SparklineTable summary={summary} />);
+    const snowflakeCell = Array.from(container.querySelectorAll("tbody tr")[0]!.querySelectorAll("td")).at(-1)!;
+
+    expect(snowflakeCell.textContent).toBe("≈ $0.0156 (est.)");
+    expect(snowflakeCell.getAttribute("title")).toContain("Timing-derived estimate, not metered.");
+    expect(snowflakeCell.getAttribute("title")).toContain("Pricing date: 2026-10-09");
+    expect(snowflakeCell.getAttribute("title")).toContain("- Standard edition is assumed.");
+    expect(container.textContent).not.toContain("Estimated cost (not metered)");
     expect(container.textContent).toContain("Not recorded");
   });
 });

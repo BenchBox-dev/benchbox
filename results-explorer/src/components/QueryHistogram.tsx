@@ -3,18 +3,24 @@ import type { BenchmarkSummary } from "@/types";
 import { useElementSize } from "@/lib/useElementSize";
 import { chartFrame } from "@/lib/chartFrame";
 import { paletteColor } from "@/lib/chartTheme";
-import { runMarkerPath } from "@/lib/chartMarkers";
+import { MISSING_MARKER_RADIUS, RUN_MARKER_RADIUS, runMarkerPath } from "@/lib/chartMarkers";
 import { RunLegend } from "@/components/RunLegend";
 import { queryDisplayLabel, sortQueryIds } from "@/lib/queryLabels";
 import { formatTimingExclusion, platformTimingValue } from "@/lib/displayEligibility";
 import { formatLatencyMs } from "@/lib/metricFormatters";
+import { estimateTextWidth, fitLabel, labelColumnWidth } from "@/lib/chartLabels";
+import { formatTickMs, logTicks } from "@/lib/chartTicks";
 
-const LABEL_W = 132;
 const ROW_H = 28;
 const TOP_H = 30;
 const AXIS_H = 26;
-const MARKER_RADIUS = 4.5;
-const MISSING_MARKER_RADIUS = 3.5;
+const LABEL_FONT_PX = 10;
+const LABEL_GAP_PX = 8;
+const TICK_FONT_PX = 9;
+const MARKER_OVERHANG_PX = 8;
+const MISSING_GUTTER_PX = 24;
+const MISSING_MARKER_CENTER_PX = 8;
+const PLOT_RIGHT_PAD_PX = 12;
 
 interface Props {
   summary: BenchmarkSummary;
@@ -51,25 +57,6 @@ function latencyScale(values: readonly number[]): LogScale {
   return { lo, hi, logLo: Math.log10(lo), logHi: Math.log10(hi) };
 }
 
-function scaleTicks(scale: LogScale, plotWidth: number): number[] {
-  const candidates = [scale.lo, scale.hi];
-  for (let exponent = Math.ceil(scale.logLo); exponent <= Math.floor(scale.logHi); exponent += 1) {
-    candidates.push(10 ** exponent);
-  }
-  const ordered = [...new Set(candidates)].sort((a, b) => a - b);
-  const kept: number[] = [];
-  for (const tick of ordered) {
-    const position = (Math.log10(tick) - scale.logLo) / (scale.logHi - scale.logLo);
-    if (kept.every((keptTick) => {
-      const keptPosition = (Math.log10(keptTick) - scale.logLo) / (scale.logHi - scale.logLo);
-      return Math.abs(position - keptPosition) * plotWidth >= 44;
-    })) {
-      kept.push(tick);
-    }
-  }
-  return kept;
-}
-
 export function QueryHistogram({ summary, preserveOrder = false, queryHref }: Props) {
   const [containerRef, { width: containerWidth }] = useElementSize(300);
   const width = chartFrame(containerWidth, { minWidth: 300 }).width;
@@ -84,8 +71,16 @@ export function QueryHistogram({ summary, preserveOrder = false, queryHref }: Pr
       sortedQueryIds.map((queryId) => platformTimingValue(platform, queryId) ?? Number.NaN),
     ),
   );
-  const plotX = LABEL_W;
-  const plotWidth = Math.max(1, width - plotX - 12);
+  const hasMissing = platforms.some((platform) =>
+    sortedQueryIds.some((queryId) => {
+      const ms = platformTimingValue(platform, queryId);
+      return ms === null || ms <= 0;
+    }),
+  );
+  const labelW = labelColumnWidth(sortedQueryIds.map(queryDisplayLabel), LABEL_FONT_PX, width);
+  const plotX = labelW + (hasMissing ? MISSING_GUTTER_PX : MARKER_OVERHANG_PX);
+  const plotWidth = Math.max(1, width - plotX - PLOT_RIGHT_PAD_PX);
+  const plotRight = plotX + plotWidth;
   const toX = (ms: number): number =>
     plotX + ((Math.log10(ms) - scale.logLo) / (scale.logHi - scale.logLo)) * plotWidth;
   const height = TOP_H + sortedQueryIds.length * ROW_H + AXIS_H;
@@ -96,6 +91,9 @@ export function QueryHistogram({ summary, preserveOrder = false, queryHref }: Pr
         Each row is one query. Every run shares the same query row; marker shape and color identify runs
         and horizontal position shows latency on a logarithmic millisecond scale from {fmtMs(scale.lo)} to{" "}
         {fmtMs(scale.hi)}. Tooltips and the accessible table give each run's timing or exclusion reason.
+        {hasMissing
+          ? " A hollow circle left of the scale marks a run with no successful measurement for that query."
+          : null}
       </p>
       <svg
         class="bb-chart-svg"
@@ -106,9 +104,13 @@ export function QueryHistogram({ summary, preserveOrder = false, queryHref }: Pr
         aria-label="Horizontal query latency chart"
         aria-describedby="query-histogram-description"
         data-orientation="horizontal"
+        data-plot-start={plotX}
       >
-        {scaleTicks(scale, plotWidth).map((tick) => {
+        {logTicks(scale.lo, scale.hi, plotWidth).map((tick) => {
           const x = toX(tick);
+          const tickText = formatTickMs(tick);
+          const halfTextWidth = estimateTextWidth(tickText, TICK_FONT_PX) / 2;
+          const anchor = x - plotX < halfTextWidth ? "start" : plotRight - x < halfTextWidth ? "end" : "middle";
           return (
             <g key={tick}>
               <line
@@ -122,11 +124,11 @@ export function QueryHistogram({ summary, preserveOrder = false, queryHref }: Pr
               <text
                 x={x}
                 y={TOP_H - 9}
-                text-anchor="middle"
-                font-size="9"
+                text-anchor={anchor}
+                font-size={TICK_FONT_PX}
                 fill="var(--bb-chart-label-muted)"
               >
-                {fmtMs(tick)}
+                {tickText}
               </text>
             </g>
           );
@@ -134,25 +136,27 @@ export function QueryHistogram({ summary, preserveOrder = false, queryHref }: Pr
         {sortedQueryIds.map((queryId, queryIndex) => {
           const rowTop = TOP_H + queryIndex * ROW_H;
           const rowCenter = rowTop + ROW_H / 2;
+          const fullLabel = queryDisplayLabel(queryId);
+          const fitted = fitLabel(fullLabel, labelW - LABEL_GAP_PX, LABEL_FONT_PX);
           const label = (
             <text
-              x={plotX - 8}
+              x={labelW - LABEL_GAP_PX}
               y={rowCenter + 3}
               text-anchor="end"
               data-query-label={queryId}
-              font-size="10"
+              font-size={LABEL_FONT_PX}
               font-family="monospace"
               fill="var(--bb-chart-label-muted)"
             >
-              {queryDisplayLabel(queryId)}
-              <title>{queryDisplayLabel(queryId)}</title>
+              {fitted.text}
+              {fitted.truncated ? <title>{fullLabel}</title> : null}
             </text>
           );
           return (
             <g key={queryId} data-query-row={queryId}>
               <line
                 x1={plotX}
-                x2={plotX + plotWidth}
+                x2={plotRight}
                 y1={rowTop + ROW_H}
                 y2={rowTop + ROW_H}
                 stroke="var(--bb-chart-grid-muted)"
@@ -160,7 +164,7 @@ export function QueryHistogram({ summary, preserveOrder = false, queryHref }: Pr
               />
               {queryHref !== undefined
                 ? (
-                  <a href={queryHref(queryId)} aria-label={`Compare ${queryDisplayLabel(queryId)} across selected runs`}>
+                  <a href={queryHref(queryId)} aria-label={`Compare ${fullLabel} across selected runs`}>
                     {label}
                   </a>
                 )
@@ -172,7 +176,7 @@ export function QueryHistogram({ summary, preserveOrder = false, queryHref }: Pr
                   return (
                     <circle
                       key={platform.result_id}
-                      cx={plotX}
+                      cx={labelW + MISSING_MARKER_CENTER_PX}
                       cy={rowCenter}
                       r={MISSING_MARKER_RADIUS}
                       fill="none"
@@ -187,7 +191,7 @@ export function QueryHistogram({ summary, preserveOrder = false, queryHref }: Pr
                 return (
                   <path
                     key={platform.result_id}
-                    d={runMarkerPath(platformIndex, toX(ms), rowCenter, MARKER_RADIUS)}
+                    d={runMarkerPath(platformIndex, toX(ms), rowCenter, RUN_MARKER_RADIUS)}
                     fill={color}
                     stroke="var(--bb-surface-data)"
                     stroke-width={0.75}
@@ -237,6 +241,7 @@ export function QueryHistogram({ summary, preserveOrder = false, queryHref }: Pr
           label: runLabels[index] ?? platform.platform,
           runIndex: index,
         }))}
+        showMissing={hasMissing}
       />
     </div>
   );
