@@ -8266,6 +8266,13 @@
       "status": "done",
       "title": "DuckDB from_config drops max_temp_directory_size and progress_bar"
     },
+    "duckdb-h2o-template-targets-missing-tables-20261013": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "DuckDB H2O tuned template tunes tables the schema does not have; no test checks template tables exist"
+    },
     "duckdb-index-identifier-binding-20261001": {
       "claim": null,
       "needs": [

@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "The H2O DuckDB template targets real tables or is removed.",
+    "A test verifies table and column existence for all shipped tuned templates."
+  ],
+  "context": "Found 2026-10-13 by an adversarial review of DuckDB tuning templates at origin/develop 77048bfb9.",
+  "description": "## Problem\nThe DuckDB H2O tuned template tunes `G1_1e6_*` tables, but the H2O schema has only `trips`, so the template does nothing. No test checks that tuned-template tables exist in the benchmark schema.\n\n## Change\n- Fix the template to target `trips`, or remove it.\n- Add a parametrized test asserting every table (and column) named in every shipped tuned template exists in that benchmark's schema.",
+  "links": [
+    "examples/tunings/duckdb",
+    "benchbox/core/tuning/templates/duckdb"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
+      "at": "2026-10-13T13:14:37Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "1b82b9898222427ba48540238150c242",
+      "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    }
+  ]
+}
