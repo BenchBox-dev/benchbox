@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime as dt
 import importlib.util
 import json
+import sys
 from pathlib import Path
 from types import ModuleType
 
@@ -67,7 +68,8 @@ def _write_bundle(
     platform: str,
     platform_version: str | None = None,
     execution_version: str | None = None,
-    platform_variant: str | None = None,
+    requested_engine: str | None = None,
+    stored_variant: str | None = None,
     run_timestamp: str = "2026-08-01T12:00:00",
     test_type: str | None = "power",
 ) -> None:
@@ -75,8 +77,10 @@ def _write_bundle(
     platform_payload = {"name": platform}
     if platform_version is not None:
         platform_payload["version"] = platform_version
-    if platform_variant is not None:
-        platform_payload["variant"] = platform_variant
+    if requested_engine is not None:
+        platform_payload["execution_engine"] = {"requested": requested_engine}
+    if stored_variant is not None:
+        platform_payload["variant"] = stored_variant
     payload = {
         "benchmark": {"id": benchmark, "scale_factor": scale},
         "platform": platform_payload,
@@ -111,7 +115,7 @@ def test_the_gate_detects_a_one_platform_cohort(tmp_path: Path) -> None:
 
     shallow = validator.shallow_cohorts(validator.cohort_platforms(validator.discover_bundles(tmp_path)))
 
-    assert shallow == {("tpcds", "10.0"): {"DuckDB"}}
+    assert shallow == {("tpcds", "10.0"): {"duckdb"}}
 
 
 def test_engine_variants_count_as_distinct_cohort_identities(tmp_path: Path) -> None:
@@ -122,7 +126,8 @@ def test_engine_variants_count_as_distinct_cohort_identities(tmp_path: Path) -> 
         benchmark="tpch",
         scale=1.0,
         platform="Polars",
-        platform_variant="polars+default",
+        requested_engine="default",
+        stored_variant="polars-df",
     )
     _write_bundle(
         tmp_path,
@@ -130,14 +135,41 @@ def test_engine_variants_count_as_distinct_cohort_identities(tmp_path: Path) -> 
         benchmark="tpch",
         scale=1.0,
         platform="Polars",
-        platform_variant="polars+streaming",
+        requested_engine="streaming",
+        stored_variant="polars-df+streaming",
     )
     _write_bundle(tmp_path, "duckdb.json", benchmark="tpch", scale=1.0, platform="DuckDB")
 
     cohorts = validator.cohort_platforms(validator.discover_bundles(tmp_path))
 
-    assert cohorts == {("tpch", "1.0"): {"polars+default", "polars+streaming", "DuckDB"}}
+    assert cohorts == {("tpch", "1.0"): {"polars", "polars+streaming", "duckdb"}}
     assert validator.shallow_cohorts(cohorts) == {}
+
+
+def test_reruns_with_a_stored_variant_join_the_legacy_identity(tmp_path: Path) -> None:
+    validator = _load_validator()
+    _write_bundle(tmp_path, "legacy.json", benchmark="tpch", scale=1.0, platform="DuckDB")
+    _write_bundle(tmp_path, "rerun.json", benchmark="tpch", scale=1.0, platform="DuckDB", stored_variant="duckdb")
+    _write_bundle(
+        tmp_path,
+        "polars-legacy.json",
+        benchmark="tpch",
+        scale=1.0,
+        platform="Polars",
+    )
+    _write_bundle(
+        tmp_path,
+        "polars-rerun.json",
+        benchmark="tpch",
+        scale=1.0,
+        platform="Polars",
+        requested_engine="default",
+        stored_variant="polars-df",
+    )
+
+    assert validator.shallow_cohorts(validator.cohort_platforms(validator.discover_bundles(tmp_path))) == {
+        ("tpch", "1.0"): {"duckdb", "polars"}
+    }
 
 
 def test_repeated_variant_bundles_do_not_pad_cohort_depth(tmp_path: Path) -> None:
@@ -148,7 +180,8 @@ def test_repeated_variant_bundles_do_not_pad_cohort_depth(tmp_path: Path) -> Non
         benchmark="tpch",
         scale=1.0,
         platform="Polars",
-        platform_variant="polars+streaming",
+        requested_engine="streaming",
+        stored_variant="polars-df+streaming",
     )
     _write_bundle(
         tmp_path,
@@ -156,7 +189,7 @@ def test_repeated_variant_bundles_do_not_pad_cohort_depth(tmp_path: Path) -> Non
         benchmark="tpch",
         scale=1.0,
         platform="Polars",
-        platform_variant="polars+streaming",
+        requested_engine="streaming",
     )
 
     assert validator.shallow_cohorts(validator.cohort_platforms(validator.discover_bundles(tmp_path))) == {
@@ -208,7 +241,7 @@ def test_blank_variant_falls_through_to_requested_engine(tmp_path: Path) -> None
     assert validator.cohort_platforms(validator.discover_bundles(tmp_path)) == {("tpch", "1.0"): {"polars+streaming"}}
 
 
-def test_variant_equal_to_platform_name_matches_pipeline(tmp_path: Path) -> None:
+def test_stored_variant_string_never_sets_identity(tmp_path: Path) -> None:
     validator = _load_validator()
     payload = {
         "benchmark": {"id": "tpch", "scale_factor": 1.0, "test_type": "power"},
@@ -218,7 +251,37 @@ def test_variant_equal_to_platform_name_matches_pipeline(tmp_path: Path) -> None
     }
     (tmp_path / "same.json").write_text(json.dumps(payload), encoding="utf-8")
 
-    assert validator.cohort_platforms(validator.discover_bundles(tmp_path)) == {("tpch", "1.0"): {"Polars"}}
+    assert validator.cohort_platforms(validator.discover_bundles(tmp_path)) == {("tpch", "1.0"): {"polars+streaming"}}
+
+
+def test_legacy_streaming_option_reads_through_the_core_legacy_reader(tmp_path: Path) -> None:
+    validator = _load_validator()
+    _write_bundle(tmp_path, "matrix.json", benchmark="tpch", scale=1.0, platform="Polars")
+    payload = json.loads((tmp_path / "matrix.json").read_text(encoding="utf-8"))
+    payload["platform"]["config"] = {"engine_requested": "streaming"}
+    (tmp_path / "matrix.json").write_text(json.dumps(payload), encoding="utf-8")
+    _write_bundle(tmp_path, "option.json", benchmark="tpch", scale=1.0, platform="Polars")
+    payload = json.loads((tmp_path / "option.json").read_text(encoding="utf-8"))
+    payload["config"] = {"platform_options": {"streaming": True}}
+    (tmp_path / "option.json").write_text(json.dumps(payload), encoding="utf-8")
+
+    assert validator.cohort_platforms(validator.discover_bundles(tmp_path)) == {("tpch", "1.0"): {"polars+streaming"}}
+
+
+def test_validator_runs_without_the_benchbox_package_until_an_identity_is_needed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _write_bundle(tmp_path, "unranked.json", benchmark="tpch", scale=1.0, platform="DuckDB")
+    payload = json.loads((tmp_path / "unranked.json").read_text(encoding="utf-8"))
+    payload["summary"]["validation"] = "not_run"
+    (tmp_path / "unranked.json").write_text(json.dumps(payload), encoding="utf-8")
+    for name in [name for name in sys.modules if name == "benchbox" or name.startswith("benchbox.")]:
+        monkeypatch.setitem(sys.modules, name, None)
+
+    validator = _load_validator()
+
+    assert validator.main(tmp_path) == 0
+    assert "tpch SF=1.0: 0 identities ([]) [UNRANKED" in capsys.readouterr().out
 
 
 def _write_phase_bundle(
@@ -285,7 +348,7 @@ def test_throughput_bundles_form_their_own_cohort(tmp_path: Path, test_type: str
 
     shallow = validator.shallow_cohorts(validator.cohort_platforms(validator.discover_bundles(tmp_path)))
 
-    assert shallow == {("tpch", "1.0#throughput#3streams"): {"DuckDB"}}
+    assert shallow == {("tpch", "1.0#throughput#3streams"): {"duckdb"}}
     assert validator.main(tmp_path) == 1
 
 
@@ -296,7 +359,7 @@ def test_a_one_engine_throughput_cohort_fails_without_any_power_bundles(tmp_path
     )
 
     assert validator.shallow_cohorts(validator.cohort_platforms(validator.discover_bundles(tmp_path))) == {
-        ("tpch", "1.0#throughput#3streams"): {"DuckDB"}
+        ("tpch", "1.0#throughput#3streams"): {"duckdb"}
     }
     assert validator.main(tmp_path) == 1
 
@@ -332,8 +395,8 @@ def test_throughput_stream_counts_do_not_pad_each_other(tmp_path: Path) -> None:
         )
 
     assert _throughput_cohort(validator, tmp_path) == {
-        ("tpch", "1.0#throughput#2streams"): {"DuckDB"},
-        ("tpch", "1.0#throughput#3streams"): {"Spark", "Doris"},
+        ("tpch", "1.0#throughput#2streams"): {"duckdb"},
+        ("tpch", "1.0#throughput#3streams"): {"spark", "doris"},
     }
 
 
@@ -433,9 +496,9 @@ def test_phase_names_are_case_normalized_and_standard_is_power(tmp_path: Path) -
     _write_bundle(tmp_path, "none.json", benchmark="tpch", scale=1.0, platform="Polars", test_type=None)
 
     assert validator.cohort_platforms(validator.discover_bundles(tmp_path)) == {
-        ("tpch", "1.0"): {"DuckDB", "Spark"},
-        ("tpch", "1.0#combined"): {"Doris"},
-        ("tpch", "1.0#unknown"): {"Polars"},
+        ("tpch", "1.0"): {"duckdb", "spark"},
+        ("tpch", "1.0#combined"): {"doris"},
+        ("tpch", "1.0#unknown"): {"polars"},
     }
 
 
@@ -479,7 +542,7 @@ def test_an_unrankable_bundle_does_not_count_toward_depth(tmp_path: Path, reason
 
     cohorts = validator.cohort_platforms(validator.discover_bundles(tmp_path))
 
-    assert cohorts == {("tpch", "1.0"): {"DuckDB", "DataFusion"}}
+    assert cohorts == {("tpch", "1.0"): {"duckdb", "datafusion"}}
     assert validator.shallow_cohorts(cohorts) == cohorts
     assert validator.main(tmp_path) == 1
 
@@ -520,7 +583,7 @@ def test_throughput_bundles_on_a_geomean_benchmark_are_rankable(tmp_path: Path) 
 
     assert validator.main(tmp_path) == 0
     assert validator.cohort_platforms(validator.discover_bundles(tmp_path)) == {
-        ("ssb", "1.0#throughput#3streams"): {"DuckDB", "Spark", "Doris"}
+        ("ssb", "1.0#throughput#3streams"): {"duckdb", "spark", "doris"}
     }
 
 
@@ -541,7 +604,7 @@ def test_a_failed_throughput_bundle_cannot_complete_a_throughput_cohort(tmp_path
     sqlite["summary"] = {"queries": {"total": 66, "passed": 21, "failed": 45}, "validation": "partial"}
     (tmp_path / "SQLite.json").write_text(json.dumps(sqlite), encoding="utf-8")
 
-    assert _throughput_cohort(validator, tmp_path) == {("tpch", "1.0#throughput#3streams"): {"DuckDB", "Spark"}}
+    assert _throughput_cohort(validator, tmp_path) == {("tpch", "1.0#throughput#3streams"): {"duckdb", "spark"}}
     assert validator.main(tmp_path) == 1
 
 
@@ -617,7 +680,7 @@ def test_versions_do_not_pad_an_ordinary_cross_platform_cohort(tmp_path: Path) -
         )
 
     cohorts = validator.cohort_platforms(validator.discover_bundles(tmp_path))
-    assert cohorts == {("tpch", "10.0"): {"DataFusion"}}
+    assert cohorts == {("tpch", "10.0"): {"datafusion"}}
     assert validator.shallow_cohorts(cohorts) == cohorts
 
 
@@ -635,7 +698,7 @@ def test_same_platform_version_does_not_pad_a_cohort(tmp_path: Path) -> None:
         )
 
     cohorts = validator.cohort_platforms(validator.discover_bundles(tmp_path))
-    assert cohorts == {("tpch", "10.0"): {"DuckDB v1.5.5"}}
+    assert cohorts == {("tpch", "10.0"): {"duckdb v1.5.5"}}
     assert validator.shallow_cohorts(cohorts) == cohorts
 
 
@@ -653,7 +716,7 @@ def test_duckdb_package_version_overrides_internal_engine_version(tmp_path: Path
     )
 
     assert validator.cohort_platforms(validator.discover_bundles(tmp_path)) == {
-        ("tpch", "10.0"): {"DuckDB v1.6.0.dev365"}
+        ("tpch", "10.0"): {"duckdb v1.6.0.dev365"}
     }
 
 
@@ -1224,6 +1287,6 @@ def test_a_timed_out_stream_cannot_form_a_throughput_identity(tmp_path: Path) ->
 
     cohorts = validator.cohort_platforms(validator.discover_bundles(tmp_path))
 
-    assert cohorts[("tpch", "1.0#throughput#3streams")] == {"DuckDB", "Spark"}
+    assert cohorts[("tpch", "1.0#throughput#3streams")] == {"duckdb", "spark"}
     assert cohorts[("tpch", "1.0#throughput#2streams")] == set()
     assert validator.main(tmp_path) == 1

@@ -98,25 +98,47 @@ def _write_bundle(tmp_path: Path, name: str, platform_block: dict) -> Path:
     return path
 
 
-def test_transformer_carries_recorded_variant(tmp_path: Path) -> None:
+def test_transformer_builds_variant_from_legacy_base_and_requested_engine(tmp_path: Path) -> None:
     transformer = BundleTransformer()
     bundle = _write_bundle(
         tmp_path,
         "variant.json",
         {
-            "name": "polars-df",
+            "name": "Polars",
             "variant": "polars-df+streaming",
             "execution_engine": {"requested": "streaming", "resolution": "explicit"},
         },
     )
     entry = transformer.to_manifest_entry(bundle)
-    assert entry.variant_id == "polars-df+streaming"
-    assert entry.variant_label == "polars-df (streaming)"
+    assert entry.platform_id == "polars"
+    assert entry.variant_id == "polars+streaming"
+    assert entry.variant_label == "Polars (streaming)"
     assert entry.requested_execution_engine == "streaming"
     assert entry.gateway_routed is False
     detail = transformer.to_detail_result(bundle, "variant-result")
-    assert detail.variant_id == "polars-df+streaming"
-    assert detail.variant_label == "polars-df (streaming)"
+    assert detail.variant_id == "polars+streaming"
+    assert detail.variant_label == "Polars (streaming)"
+
+
+def test_transformer_default_run_joins_the_legacy_platform_row(tmp_path: Path) -> None:
+    transformer = BundleTransformer()
+    bundle = _write_bundle(
+        tmp_path,
+        "default.json",
+        {"name": "Polars", "variant": "polars-df", "execution_engine": {"requested": "default"}},
+    )
+    entry = transformer.to_manifest_entry(bundle)
+    assert entry.variant_id == entry.platform_id == "polars"
+    assert entry.variant_label == "Polars"
+
+
+def test_transformer_reads_legacy_engine_request_through_core_reader(tmp_path: Path) -> None:
+    transformer = BundleTransformer()
+    bundle = _write_bundle(tmp_path, "matrix.json", {"name": "Polars", "config": {"engine_requested": "streaming"}})
+    entry = transformer.to_manifest_entry(bundle)
+    assert entry.variant_id == "polars+streaming"
+    assert entry.requested_execution_engine == "streaming"
+    assert entry.variant_label == "Polars (streaming)"
 
 
 def test_transformer_carries_gateway_routing(tmp_path: Path) -> None:
@@ -125,15 +147,16 @@ def test_transformer_carries_gateway_routing(tmp_path: Path) -> None:
         tmp_path,
         "gateway.json",
         {
-            "name": "snowflake",
+            "name": "Snowflake",
             "variant": "snowflake@greybeam",
             "gateway": {"name": "greybeam", "routed": True},
         },
     )
     entry = transformer.to_manifest_entry(bundle)
+    assert entry.variant_id == "snowflake@greybeam"
     assert entry.gateway_routed is True
     assert entry.gateway_name == "greybeam"
-    assert entry.variant_label == "snowflake via Greybeam"
+    assert entry.variant_label == "Snowflake via Greybeam"
     assert ranking_exclusion_reason(entry) == "gateway_routed"
 
 
@@ -156,7 +179,7 @@ def test_transformer_blank_variant_falls_through_to_requested(tmp_path: Path) ->
     assert entry.variant_id == "polars+streaming"
 
 
-def test_transformer_variant_equal_to_platform_name_is_kept(tmp_path: Path) -> None:
+def test_transformer_ignores_the_stored_variant_string(tmp_path: Path) -> None:
     transformer = BundleTransformer()
     bundle = _write_bundle(
         tmp_path,
@@ -164,7 +187,7 @@ def test_transformer_variant_equal_to_platform_name_is_kept(tmp_path: Path) -> N
         {"name": "Polars", "variant": "Polars", "execution_engine": {"requested": "streaming"}},
     )
     entry = transformer.to_manifest_entry(bundle)
-    assert entry.variant_id == "Polars"
+    assert entry.variant_id == "polars+streaming"
 
 
 def _row(variant_id: str, result_id: str, geomean_ms: float, *, eligible: bool = True) -> PlatformRow:

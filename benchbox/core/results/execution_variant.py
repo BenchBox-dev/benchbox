@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from dataclasses import fields, is_dataclass
 from typing import Any
 
+from benchbox.core.execution_variant import append_variant_suffix, resolve_variant_platform_id
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 
 UNKNOWN = "unknown"
@@ -70,6 +71,23 @@ def read_execution_engine(bundle: Mapping[str, Any]) -> dict[str, Any]:
         if isinstance(requested, str) and requested:
             reading.update(requested=requested)
     return reading
+
+
+def read_requested_variant(bundle: Mapping[str, Any]) -> tuple[str | None, str, str | None]:
+    platform = _mapping(bundle.get("platform"))
+    selected = _mapping(platform.get("deployment")).get("selected")
+    gateway = gateway_payload(platform.get("gateway")).get("name")
+    requested = read_execution_engine(bundle).get("requested") or DEFAULT_EXECUTION_ENGINE
+    return (str(selected) if selected else None, str(requested), str(gateway) if gateway else None)
+
+
+def published_variant_id(bundle: Mapping[str, Any], base: str) -> str:
+    name = _mapping(bundle.get("platform")).get("name")
+    config = _mapping(bundle.get("config"))
+    platform = resolve_variant_platform_id(
+        (str(name) if name else None,), config.get("execution_mode") or config.get("mode")
+    )
+    return append_variant_suffix(base, platform, *read_requested_variant(bundle))
 
 
 def read_platform_compute(platform: Mapping[str, Any]) -> Any:
