@@ -4,7 +4,7 @@
     "A test in a new test file (not tests/unit/test_agent_write_preflight.py) covers a single-quoted interpreter path containing a space on Linux, and an unquoted path",
     "The preflight still refuses a missing or non-executable interpreter"
   ],
-  "context": "Found by triage of the 2026-10-08 Windows 3.12 log. Split out because the script gates all agent writes.\n\n2026-10-09 tracker review: Impact corrected. shlex.quote quotes only paths with characters outside [\\w@%+=:,./-], so this affects Windows paths and POSIX interpreter paths with spaces or special characters, not normal macOS/Linux agent writes. The failing test is the Windows run 37967682464 case at tests/unit/test_agent_write_preflight.py:195. Priority stays low.",
+  "context": "Found by triage of the 2026-10-08 Windows 3.12 log. Split out because the script gates all agent writes.\n\n2026-10-09 tracker review: Impact corrected. shlex.quote quotes only paths with characters outside [\\w@%+=:,./-], so this affects Windows paths and POSIX interpreter paths with spaces or special characters, not normal macOS/Linux agent writes. The failing test is the Windows run 37967682464 case at tests/unit/test_agent_write_preflight.py:195. Priority stays low.\n\n2026-10-13: still failing on both Windows legs in nightly.yml run 38318801976 (develop 2bdcb75fd): test_configured_hook_allows_linked_worktree_commit, with INSTALL_PYTHON reported as 'D:\\a\\benchbox\\benchbox\\.venv\\Scripts\\python.exe' (quotes retained) and the hook judged unusable.",
   "description": "pre-commit writes INSTALL_PYTHON into the hook with shlex.quote. shlex.quote adds quotes only when the value has a character outside [\\w@%+=:,./-]. So the quoting affects Windows interpreter paths (backslash, for example INSTALL_PYTHON='D:\\a\\BenchBox\\...\\python.exe') and POSIX interpreter paths with spaces or shell-special characters. It does not affect normal macOS or Linux agent writes.\n\nscripts/agent_write_preflight.sh (about lines 175-179) takes the raw text after '=', quotes included, and tests it with [ ! -x ... ], so it reports 'shared pre-commit hook is not usable' for a quoted path. This is the Windows failure of tests/unit/test_agent_write_preflight.py::test_configured_hook_allows_linked_worktree_commit (line 195) in run 37967682464. Strip one pair of surrounding single quotes after reading the value (hook_interpreter=${hook_interpreter#\\'}; hook_interpreter=${hook_interpreter%\\'}), or unquote it with a shell-safe parse. This script gates every agent write on every platform, so test it with a quoted and an unquoted path and confirm on a Windows run that [ -x \"D:\\a\\...\\python.exe\" ] passes under Git Bash. Later steps of that test may reveal more failures.\n\nPut the new Linux quoted-path test in a new test file, not in tests/unit/test_agent_write_preflight.py. The existing file carries whole-file-digest comment-policy exceptions, and editing it triggers the two-PR flow described in comment-policy-digest-and-base-exception-catch22-20261008.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/issues/2568"
@@ -25,6 +25,14 @@
       "op": "update",
       "op_id": "a5f911ef40fd4329904fb9e2849d633f",
       "session_id": "05afd70780334fa0b0e411a688cf8f7a"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:513e77a5e9d7684fd6c76434",
+      "at": "2026-10-13T12:10:52Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "88b5dfec8ad741108ed402720a502f14",
+      "session_id": "4c6a3e0b7c2c47a6a47c6cc7a35bc932"
     }
   ]
 }
