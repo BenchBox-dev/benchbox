@@ -4,7 +4,7 @@
     "Cloud and self-hosted runs of the same platform get distinct variant ids",
     "Deployment alias keys derive from the manifest; no hand-written parallel list"
   ],
-  "context": "Found by the 2026-10-13 adversarial review of the core execution-variants batch (compute O1/O6). Not covered by its remediation; verified on develop 9400b62c4. ADR: docs/development/adr/adr-core-execution-variants.md (deployment and identity decisions).\nBatch: _project/handoffs/execution-variant-general-followups-batch-20261014.md, started 2026-10-14",
+  "context": "Found by the 2026-10-13 adversarial review of the core execution-variants batch (compute O1/O6). Not covered by its remediation; verified on develop 9400b62c4. ADR: docs/development/adr/adr-core-execution-variants.md (deployment and identity decisions).\nBatch: _project/handoffs/execution-variant-general-followups-batch-20261014.md, started 2026-10-14\nClose-out: PR #2974, merge d16a0761bfc79dbfdaa253bf121d194c2b8c7bd7. Not a soundness path. Outcome: TimescaleDB cloud selectable and recorded (variants timescaledb / timescaledb~cloud; from_config passes deployment_mode); Databend self-hosted selectable and recorded (plain HTTP :8000 default; databend / databend~self-hosted); SingleStore cloud removed from manifest and docs (no adapter behaviour; CHANGELOG Before you upgrade). DEPLOYMENT_ALIAS_KEYS derived from DEPRECATED_OPTION_ALIASES entries targeting deployment; missing native keys added with removed_in 0.6.0. ADR amendment: one bullet added to D12 stating the single-alias-table rule.\nVerified: tests/unit/platforms/test_deployment_modes_recorded.py (20 tests via get_adapter, CliRunner dry-run, real result metadata builder, published_variant_id; 18 fail on pre-change source); tests/unit/core/test_deployment_selection.py derivation tests; published-corpus guard test (no timescaledb/singlestore/databend bundles among 699).\nFollow-ups (not fixed): make pr-preflight does not run scripts/generate_landing_quickstarts.py --check (a manifest edit broke site-build/site-parity until regenerated); TimescaleDB from_config still drops service_url; single-mode platforms do not accept a name:mode selector.",
   "description": "## Problem\n- **Modes are declared but never recorded.** TimescaleDB, SingleStore and Databend declare cloud and self-hosted deployment modes in the manifest, but never set `deployment_selected` (base None at `platforms/base/adapter.py:119-120`, read at `runtime_metadata.py:85`).\n  - Their cloud and self-hosted runs therefore share one variant id.\n  - TimescaleDB `from_config` drops `deployment_mode` (`platforms/timescaledb.py:90-95,98-99`), and `timescaledb:cloud` is rejected.\n- **Deployment aliases live in a second registry.** `DEPLOYMENT_ALIAS_KEYS` (`core/deployment.py:11-21`) is a hand-written list beside the manifest, which is why TimescaleDB is missing from it.\n  - It overlaps `DEPRECATED_OPTION_ALIASES` (`core/execution_engine.py:37-40`) for clickhouse/mode and influxdb/mode.\n  - The manifest compute native keys (`core/compute_resource.py:61`) are a third place.\n\n## Change\n- Pass `deployment_mode` through `TimescaleDBAdapter.from_config`.\n- Register the three platforms with the selector and set `deployment_selected` and `deployment_selected_class`, or remove modes that cannot be selected from the manifest.\n- Derive the deployment alias keys from the manifest `deployment_modes`, keep one alias table, and replace the literal-set test with a manifest check.",
   "links": [
     "benchbox/core/deployment.py",
@@ -36,6 +36,14 @@
       "generation": "610ee25cbe73424192e136db529fea13",
       "op": "take",
       "op_id": "258fd709802640c1b3795b123430d4d3",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-14T17:31:26Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "e54fea411c29464087d73d6ec621e3ac",
       "session_id": "18469f668aeb45d59c8d4c94d2f79433"
     }
   ]
