@@ -18,7 +18,7 @@ SingleStore is deployed as both a fully managed cloud service (Helios) and as a 
 - **Reference tables** - Fully replicated small dimension tables (nation, region) to eliminate broadcast joins
 - **Full TPC-H support** - All 22 queries with row count validation
 - **Full TPC-DS support** - All 99 queries with row count validation
-- **Helios + self-managed** - Works with both SingleStore Helios (cloud) and on-premises deployments
+- **Helios + self-managed** - Connects to SingleStore Helios or an on-premises cluster by host. BenchBox does not select or record the deployment, so Helios and self-managed runs share one identity
 
 ## Quick Start
 

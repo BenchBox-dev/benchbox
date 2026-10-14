@@ -40,16 +40,14 @@ benchbox run --platform databend --benchmark tpch --scale 0.01
 
 ### Self-Hosted Quick Start
 
-The Docker image needs MinIO or S3-compatible storage. Configure the self-hosted host and port, and disable SSL for local development:
+The Docker image needs MinIO or S3-compatible storage. Select the self-hosted deployment with `databend:self-hosted`. It connects over plain HTTP on port 8000 unless you set `ssl` or `port`, and the result is recorded as the self-hosted deployment, separate from Databend Cloud runs:
 
 ```bash
 docker run -p 8000:8000 datafuselabs/databend:latest
 
 export DATABEND_HOST=localhost
-export DATABEND_PORT=8000
 
-benchbox run --platform databend --benchmark tpch --scale 0.01 \
-    --platform-option ssl=false
+benchbox run --platform databend:self-hosted --benchmark tpch --scale 0.01
 ```
 
 ### DSN-Based Connection
@@ -70,7 +68,7 @@ benchbox run --platform databend --benchmark tpch --scale 0.01 \
 | `database` | `DATABEND_DATABASE` | `benchbox` | Target database name |
 | `dsn` | `DATABEND_DSN` | - | Full DSN string (overrides individual params) |
 | `warehouse` | `DATABEND_WAREHOUSE` | - | Databend Cloud warehouse name |
-| `ssl` | - | `true` | SSL/TLS for connections (set `ssl=false` to disable) |
+| `ssl` | - | `true` for `databend` and `databend:cloud`, `false` for `databend:self-hosted` | SSL/TLS for connections |
 | `disable_result_cache` | - | `true` | Disable query result cache for benchmarking |
 
 ### DSN Format
@@ -143,15 +141,15 @@ benchbox run --platform databend --benchmark tpch --scale 10.0
 
 ### Self-Hosted Configuration
 
-Disable SSL for a local Databend:
+Select the self-hosted deployment. SSL is off and the port is 8000 by default:
 
 ```bash
 export DATABEND_HOST=localhost
-export DATABEND_PORT=8000
 
-benchbox run --platform databend --benchmark tpch --scale 1.0 \
-    --platform-option ssl=false
+benchbox run --platform databend:self-hosted --benchmark tpch --scale 1.0
 ```
+
+Add `--platform-option ssl=true` to a self-hosted run that terminates TLS.
 
 ### Custom Database Name
 

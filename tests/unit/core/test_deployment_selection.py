@@ -11,6 +11,9 @@ from benchbox.core.deployment import (
     resolve_deployment,
     select_adapter_deployment,
 )
+from benchbox.core.deprecation_notices import alias_removal_release
+from benchbox.core.execution_engine import DEPRECATED_OPTION_ALIASES
+from benchbox.core.platform_manifest import PLATFORM_MANIFEST
 
 pytestmark = [
     pytest.mark.unit,
@@ -77,16 +80,25 @@ class TestResolveDeployment:
         warnings = [record for record in caplog.records if "deprecated" in record.message]
         assert len(warnings) == 1
 
-    def test_all_families_declare_alias_keys(self) -> None:
-        assert set(DEPLOYMENT_ALIAS_KEYS) == {
-            "velox",
-            "lakesail",
-            "influxdb",
-            "clickhouse",
-            "firebolt",
-            "ducklake",
-            "pg-duckdb",
+    def test_alias_keys_derive_from_the_deprecated_alias_table(self) -> None:
+        derived: dict[str, set[str]] = {}
+        for (platform, key), entry in DEPRECATED_OPTION_ALIASES.items():
+            if entry.target == "deployment":
+                derived.setdefault(platform, set()).add(key)
+        assert {platform: set(keys) for platform, keys in DEPLOYMENT_ALIAS_KEYS.items()} == derived
+        assert all(len(keys) == len(set(keys)) for keys in DEPLOYMENT_ALIAS_KEYS.values())
+
+    def test_every_platform_with_several_manifest_modes_has_alias_keys(self) -> None:
+        multi_mode = {
+            entry.key for entry in PLATFORM_MANIFEST if len(entry.capabilities.get("deployment_modes") or {}) > 1
         }
+        assert multi_mode == set(DEPLOYMENT_ALIAS_KEYS)
+
+    def test_deployment_aliases_are_removed_with_the_other_native_keys(self) -> None:
+        for (platform, key), entry in DEPRECATED_OPTION_ALIASES.items():
+            if entry.target == "deployment":
+                assert entry.removed_in == "0.6.0", (platform, key)
+                assert alias_removal_release(platform, key) == "0.6.0"
 
 
 class TestDeploymentClass:

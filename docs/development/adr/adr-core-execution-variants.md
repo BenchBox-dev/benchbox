@@ -526,6 +526,13 @@ alias removal change (D13).
 - The parity test checks canonical names strictly and checks aliases against
   that table.
 - Each deprecated alias warns once per run.
+- The table is the only alias registry. The platform options that select a
+  deployment (`deployment_mode`, `mode`, `deployment`, `sail_mode`,
+  `firebolt_mode`) are entries whose target is `deployment`, each removed in
+  0.6.0, and the set of platforms that accept the `name:mode` selector is
+  derived from those entries. A platform declares more than one deployment
+  mode in the manifest only if its adapter honours the choice and records it
+  as `platform.deployment.selected`.
 
 **Rejected alternatives:**
 

@@ -173,6 +173,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   embedding application keeps control of its own logging. The stdio transport
   still writes nothing to stdout. Covered by `TestServerLoggingScope` in
   `tests/unit/mcp/test_mcp_stdout_isolation.py`.
+- TimescaleDB and Databend deployment modes can now be selected and are
+  recorded. `--platform timescaledb:cloud` was refused, and
+  `TimescaleDBAdapter.from_config` dropped `deployment_mode`. Both platforms now
+  accept `name:mode` for each mode the manifest declares, and record the choice
+  as `platform.deployment.selected`, so Timescale Cloud and self-hosted runs, and
+  Databend Cloud and self-hosted runs, get separate variant ids (for example
+  `timescaledb~cloud`, `databend~self-hosted`). Runs that select no mode keep
+  the platform id they had. `databend:self-hosted` connects over HTTP on port
+  8000 unless you set `ssl` or `port`.
+- The deployment option aliases (`deployment_mode`, `mode`, `deployment`,
+  `sail_mode`, `firebolt_mode`) now come from the one deprecated-alias table.
+  Before, a second hand-written list beside it decided which platforms accept
+  the `name:mode` selector. TimescaleDB and Databend `deployment_mode` are
+  deprecated aliases of the selector and are removed in 0.6.0, like the others.
 - Dry-run previews no longer write saved credentials or connection secrets in
   clear. The JSON and YAML preview files written by `benchbox run --dry-run`
   apply the same redaction as result bundles to the benchmark, database and
@@ -325,6 +339,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that already pass them now change the thread count, spill directory, database
   file and connection timeout of the run. Remove an option you do not want
   applied.
+- SingleStore no longer declares a `cloud` deployment mode. The adapter connects
+  by host and never behaved differently for Helios, so recording the mode would
+  have been false evidence. Use `--platform singlestore` for both Helios and
+  self-managed clusters; both record the same deployment.
+- `databend:self-hosted` connects over plain HTTP (port 8000) by default, where
+  `databend` and `databend:cloud` keep HTTPS on port 443. Runs that use
+  `--platform databend` with `ssl=false` are unchanged.
 - `benchbox compare` and MCP `compare_results` now refuse two results whose
   deployment, requested execution engine or gateway differ. Pass
   `--allow-heterogeneous-comparison` to the CLI to compare them anyway.
