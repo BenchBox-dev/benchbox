@@ -5992,15 +5992,10 @@
       "title": "DatabricksPath lacks joinpath, so runner silently skips datagen manifest validation for Databricks runs"
     },
     "databricks-photon-observed-source-20261014": {
-      "claim": {
-        "expires_at": "2026-10-15T18:41:59Z",
-        "generation": "8caa899633a944ee96510d1993f0b551",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Databricks labels the warehouse `enable_photon` setting as observed from a vendor log"
     },
     "databricks-strategy-key-injected-all-platforms-20261013": {
