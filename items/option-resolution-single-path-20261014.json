@@ -4,7 +4,7 @@
     "Every registry alias accepts the same --platform-option set as its canonical name",
     "Option specs for every platform are visible after importing benchbox.platforms alone (fresh-process test)"
   ],
-  "context": "Found 2026-10-14 during the core execution-variants remediation (#2946 follow-ups); verified on develop 9400b62c4. Related: platform-options-reach-adapters-20261014.",
+  "context": "Found 2026-10-14 during the core execution-variants remediation (#2946 follow-ups); verified on develop 9400b62c4. Related: platform-options-reach-adapters-20261014.\nBatch: _project/handoffs/execution-variant-general-followups-batch-20261014.md, started 2026-10-14",
   "description": "## Problem\n- **Default-valued CLI options lose to saved profiles.** `create_config` leaves a CLI value equal to the spec default out of the explicit layer (`benchbox/cli/database.py:364`; `platforms/base/config_utils.py:84-87`; `base/mysql_wire.py:536-539`).\n  - A saved credential then wins. Probe: `--platform-option host=localhost` with a saved `prod.example.com` connects to `prod.example.com`, so DDL and loads hit the remote host.\n  - Affected: postgres-family, Trino/Presto and mysql-wire.\n- **Registry aliases are not resolved before option parsing** (`cli/platform.py:42-48`, `cli/run_platform_resolution.py:75,188`, `core/platform_registry.py:139-141`). `sqlite3`, `azure_synapse`, `pg_duckdb` and `fabric_lakehouse` with any `--platform-option` fail with \"does not accept platform-specific options\".\n- **Some option specs register only on CLI import.** ClickHouse, DuckDB, SQLite and the well-known option specs live in `cli/platform_defaults.py:41-310,352`, imported only by `cli/app.py` and `cli/database.py`.\n  - So `list_option_specs(\"clickhouse\")` returns [] from the Python API or MCP.\n  - The MCP dataframe filter (`mcp/tools/benchmark.py:394`) then falls back to all options.\n\n## Change\n- Build the explicit layer from the keys the user actually supplied.\n- Apply `PlatformRegistry.resolve_platform_name` before `parse_options`.\n- Move the CLI-only spec registrations into `benchbox/platforms/__init__.py`.",
   "links": [
     "benchbox/cli/database.py",
@@ -19,6 +19,14 @@
       "client": "claude-code",
       "op": "create",
       "op_id": "5ca7b3bf04e94cce83a8f539aebaa9fb",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-14T13:45:57Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "e4199d89a1b54d8cba24e777ccced6f7",
       "session_id": "18469f668aeb45d59c8d4c94d2f79433"
     }
   ]
