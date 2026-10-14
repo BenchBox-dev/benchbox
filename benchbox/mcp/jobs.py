@@ -1602,7 +1602,7 @@ def register_durable_job_tools(mcp: MCPServer, runtime: DurableJobRuntime) -> No
             raise MCPError(JOB_NOT_READY, "Benchmark artifact is unavailable") from exc
         if not isinstance(payload, dict):
             raise MCPError(JOB_NOT_READY, "Benchmark artifact is invalid")
-        return {**payload, "outcome": _public_outcome(job)}
+        return {"deprecations": request_deprecations(job.request), **payload, "outcome": _public_outcome(job)}
 
     @mcp.tool(
         description="Cancel queued work, request cancellation at the next safe boundary, or report it is too late.",

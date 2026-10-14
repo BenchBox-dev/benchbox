@@ -324,6 +324,13 @@ def test_start_and_status_report_deprecations_and_accept_deployment_selectors(tm
             assert deprecated["deprecations"] == expected
             observed = await status(client, str(deprecated["execution_id"]))
             assert observed["deprecations"] == expected
+            for _ in range(200):
+                if (await status(client, str(deprecated["execution_id"])))["status"] == "completed":
+                    break
+                await anyio.sleep(0.01)
+            result = await client.call_tool("get_benchmark_result", {"execution_id": deprecated["execution_id"]})
+            assert isinstance(result.content[0], TextContent)
+            assert json.loads(result.content[0].text)["deprecations"] == expected
 
             plain = await start(client, platform="duckdb")
             assert plain["deprecations"] == []
