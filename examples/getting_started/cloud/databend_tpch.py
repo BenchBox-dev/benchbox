@@ -51,7 +51,7 @@ def _build_configs(scale_factor: float) -> tuple[BenchmarkConfig, DatabaseConfig
 
     warehouse = os.getenv("DATABEND_WAREHOUSE")
     if warehouse:
-        options["warehouse"] = warehouse
+        options["compute_resource"] = warehouse
 
     database_config = DatabaseConfig(
         type="databend",

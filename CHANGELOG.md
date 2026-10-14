@@ -149,6 +149,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   platforms, and the run records the sort as not applied with the reason.
   Redshift `vacuum_sort` is unchanged.
 
+- The Dask error for `use_distributed=false` with `scheduler_address` now tells
+  you to use the `distributed` engine, instead of first suggesting `threaded`,
+  which cannot connect to a scheduler.
+
+- The Velox Docker entrypoint and the Velox guides select the deployment with
+  `--platform velox:local` or `velox:remote` instead of the deprecated
+  `deployment` option, so container runs no longer log a deprecation warning.
+  `check_explorer_compat.py --help` shows examples for the current Explorer
+  read-model version and every example runs. The pg_duckdb option table lists
+  the `schema` option again. Guides, examples, the landing quickstarts and the
+  `benchbox run --help` text no longer use deprecated spellings: LakeSail
+  `sail_mode`, ClickHouse and InfluxDB `mode`, Snowflake and Databend
+  `warehouse`, and Polars `streaming=True`. The Firebolt and Fabric Warehouse
+  error messages no longer recommend deprecated options.
+
 - Options that have no effect now log one warning per run and are left out of
   the platform information a result records, instead of being recorded as if
   they had been applied. Under the Dask `threaded` execution engine this covers
@@ -399,6 +414,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   never a valid profile key.
 
 ### Before you upgrade
+- Dask `use_distributed=false` together with `scheduler_address` now fails with
+  an error. In 0.4.2 it connected to the scheduler. To connect to an existing
+  scheduler, use the `distributed` engine:
+  `--execution-engine distributed --platform-option scheduler_address=tcp://host:8786`.
 - Result metadata for Dask runs on the `threaded` engine no longer contains
   `n_workers`, `threads_per_worker`, `memory_limit`, `spill_to_disk` or
   `spill_directory`, and LakeSail metadata no longer contains `sail_workers`.

@@ -2653,7 +2653,7 @@ def _interactive_handle_result(s: types.SimpleNamespace, result: Any, orchestrat
         "driver_auto_install (auto-install driver via uv if missing, true/false). "
         "Athena Spark only: runtime_version (Spark engine version the workgroup runs, "
         "e.g. 'PySpark engine version 3'; recorded as requested, never sent). "
-        "Platform-specific keys are also accepted (e.g. warehouse=MY_WH for Snowflake). "
+        "Platform-specific keys are also accepted (e.g. compute_resource=MY_WH for Snowflake). "
         "Run --help-topic examples for the full driver versioning workflow."
     ),
 )

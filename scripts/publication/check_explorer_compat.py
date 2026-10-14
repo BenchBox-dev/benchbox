@@ -14,7 +14,19 @@ import zipfile
 from pathlib import Path
 from typing import Any, Sequence
 
-CLI_DESCRIPTION = (
+if str(Path(__file__).resolve().parents[2]) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from _project.scripts.explorer_pipeline.contract import (
+    EXPLORER_BUILD_CONTRACT_VERSION as _CONTRACT_VERSION,
+    EXPLORER_READ_MODEL_VERSION as _READ_MODEL_VERSION,
+)
+
+SUPPORTED_SCHEMA_VERSIONS: tuple[int, ...] = (_READ_MODEL_VERSION,)
+CURRENT_SCHEMA_VERSION: int = _READ_MODEL_VERSION
+CONTRACT_VERSION: str = _CONTRACT_VERSION
+
+_CLI_DESCRIPTION_TEMPLATE = (
     "Validate Results Explorer compatibility against the current read model.\n"
     "\n"
     "This CLI tool verifies that the Results Explorer SPA and its artifacts\n"
@@ -38,8 +50,8 @@ CLI_DESCRIPTION = (
     "    # Validate a specific DuckDB database snapshot file:\n"
     "    uv run -- python scripts/publication/check_explorer_compat.py --db-path results-explorer/public/data/results.duckdb\n"
     "\n"
-    "    # Check a specific schema version:\n"
-    "    uv run -- python scripts/publication/check_explorer_compat.py --schema-only --schema-versions <version>\n"
+    "    # Check the current schema version:\n"
+    "    uv run -- python scripts/publication/check_explorer_compat.py --schema-only --schema-versions {version}\n"
     "\n"
     "    # Output machine-readable JSON:\n"
     "    uv run -- python scripts/publication/check_explorer_compat.py --schema-only --json\n"
@@ -51,17 +63,7 @@ CLI_DESCRIPTION = (
     ""
 )
 
-if str(Path(__file__).resolve().parents[2]) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-
-from _project.scripts.explorer_pipeline.contract import (
-    EXPLORER_BUILD_CONTRACT_VERSION as _CONTRACT_VERSION,
-    EXPLORER_READ_MODEL_VERSION as _READ_MODEL_VERSION,
-)
-
-SUPPORTED_SCHEMA_VERSIONS: tuple[int, ...] = (_READ_MODEL_VERSION,)
-CURRENT_SCHEMA_VERSION: int = _READ_MODEL_VERSION
-CONTRACT_VERSION: str = _CONTRACT_VERSION
+CLI_DESCRIPTION: str = _CLI_DESCRIPTION_TEMPLATE.format(version=CURRENT_SCHEMA_VERSION)
 
 _TYPE_ALIASES: dict[str, str] = {
     "varchar": "VARCHAR",

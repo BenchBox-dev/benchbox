@@ -1149,8 +1149,7 @@ window.__BENCHBOX_PROMPT_CATALOG__ = {
       ],
       "label": "Apache Gluten + Velox",
       "platform_option_hints": [
-        "--platform-option deployment=remote",
-        "--platform-option endpoint=sc://host:50051  # Spark Connect"
+        "--platform-option endpoint=sc://host:50051  # Spark Connect; select with --platform velox:remote"
       ]
     }
   ],

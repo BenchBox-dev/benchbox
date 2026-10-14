@@ -186,6 +186,35 @@ def test_threaded_engine_rejects_scheduler_address():
 
 
 @pytest.mark.skipif(not mod.DASK_AVAILABLE, reason="Dask not installed")
+def test_factory_points_legacy_use_distributed_false_with_scheduler_address_at_distributed(tmp_path, caplog):
+    from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
+    from benchbox.platforms.adapter_factory import get_adapter
+
+    database_config = PlatformHookRegistry.build_database_config(
+        "dask", {"use_distributed": False, "scheduler_address": "tcp://scheduler:8786"}
+    )
+    option_names = PlatformHookRegistry.list_option_specs("dask")
+    options = {key: value for key, value in database_config.options.items() if key in option_names}
+    assert options["scheduler_address"] == "tcp://scheduler:8786"
+
+    with captured_deprecations(caplog) as seen:
+        with pytest.raises(
+            ValueError, match="use_distributed=false cannot be combined with scheduler_address"
+        ) as raised:
+            get_adapter(
+                "dask",
+                mode="dataframe",
+                working_dir=tmp_path,
+                execution_engine=database_config.execution_engine,
+                **options,
+            )
+
+    assert "execution_engine='distributed'" in str(raised.value)
+    assert "threaded" not in str(raised.value)
+    assert seen == []
+
+
+@pytest.mark.skipif(not mod.DASK_AVAILABLE, reason="Dask not installed")
 def test_saved_platform_option_resolves_legacy_dask_engine(tmp_path, caplog):
     from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
     from benchbox.platforms.adapter_factory import get_adapter

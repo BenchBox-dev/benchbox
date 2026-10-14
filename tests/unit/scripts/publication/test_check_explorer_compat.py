@@ -497,3 +497,41 @@ def test_script_without_tree_contract_exits_nonzero(tmp_path: Path, monkeypatch:
     monkeypatch.setattr(sys.modules[__name__], "SCRIPT_PATH", scripts / "check_explorer_compat.py")
     alone = _run_script("--schema-only", "--json", cwd=tmp_path)
     assert alone.returncode != 0
+
+
+HELP_EXAMPLE_PREFIX = "uv run -- python scripts/publication/check_explorer_compat.py "
+
+
+def test_script_help_examples_name_the_current_version_and_all_run(mock_artifact_dir: Path, tmp_path: Path) -> None:
+    import shlex
+
+    import duckdb
+
+    from _project.scripts.explorer_pipeline.contract import EXPLORER_READ_MODEL_VERSION
+
+    helped = _run_script("--help", cwd=tmp_path)
+    assert helped.returncode == 0, helped.stderr
+    examples = [
+        shlex.split(line.strip().removeprefix(HELP_EXAMPLE_PREFIX))
+        for line in helped.stdout.splitlines()
+        if line.strip().startswith(HELP_EXAMPLE_PREFIX)
+    ]
+    assert len(examples) >= 6
+    assert ["--schema-only", "--schema-versions", str(EXPLORER_READ_MODEL_VERSION)] in examples
+
+    workdir = tmp_path / "workdir"
+    dist = workdir / "results-explorer" / "dist"
+    dist.parent.mkdir(parents=True)
+    mock_artifact_dir.rename(dist)
+    database = workdir / "results-explorer" / "public" / "data" / "results.duckdb"
+    database.parent.mkdir(parents=True)
+    with duckdb.connect(str(database)) as con:
+        for statement in checker.generate_schema_ddl(EXPLORER_READ_MODEL_VERSION):
+            con.execute(statement)
+        con.execute(f"INSERT INTO metadata VALUES ({EXPLORER_READ_MODEL_VERSION})")
+    seeded = _run_script("--artifact", "results-explorer/dist", "--generate-manifest", cwd=workdir)
+    assert seeded.returncode == 0, seeded.stdout + seeded.stderr
+
+    for example in examples:
+        completed = _run_script(*example, cwd=workdir)
+        assert completed.returncode == 0, f"{example}\n{completed.stdout}\n{completed.stderr}"
