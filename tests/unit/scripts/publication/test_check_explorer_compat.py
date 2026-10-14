@@ -354,13 +354,15 @@ def test_cli_default_schema_checks(capsys: pytest.CaptureFixture[str]) -> None:
 
 
 def test_cli_json_mode(capsys: pytest.CaptureFixture[str]) -> None:
+    from _project.scripts.explorer_pipeline.contract import EXPLORER_READ_MODEL_VERSION
+
     exit_code = checker.main(["--schema-only", "--json"])
     assert exit_code == 0
     captured = capsys.readouterr()
     data = json.loads(captured.out)
     assert data["status"] == "passed"
-    assert data["current_version"] == 16
-    assert "v16" in data["schema_checks"]
+    assert data["current_version"] == EXPLORER_READ_MODEL_VERSION
+    assert f"v{EXPLORER_READ_MODEL_VERSION}" in data["schema_checks"]
     assert "v12" not in data["schema_checks"]
     assert "v11" not in data["schema_checks"]
     assert "v10" not in data["schema_checks"]
