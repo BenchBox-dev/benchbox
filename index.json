@@ -15188,10 +15188,15 @@
       "title": "sanitize_platform_options() lets *_key_id credential material into exported results"
     },
     "platform-options-reach-adapters-20261014": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-15T16:22:16Z",
+        "generation": "78076366a54c418e868188e49d0601fc",
+        "renewals": 0,
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Platform options set on the CLI never reach adapters that use the default config builder, and some DuckDB/SQLite options are ignored"
     },
     "platform-options-redact-credential-aliases": {
