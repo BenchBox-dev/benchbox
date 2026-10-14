@@ -2,7 +2,7 @@
   "acceptance": [
     "e2e: load-only tuned DuckDB run → the bundle carries platform.tuning whose ddl/post_load statements equal those of the corresponding full run (or the run is refused with the decided message)."
   ],
-  "context": "Source: tuning remediation plan rev2 (2026-10-01; adversarial re-review of develop d39166ea plus independent plan review). Plan task P3.3 (R-3).\n\nAdded 2026-10-05 after PR #2677 (post-load seam, merge 4cfa94006b6d563946aacb68f64cb15be0c4a98b): `_execute_load_only_mode` (benchbox/core/runner/runner.py) calls load_data directly, so the per-table post-load hooks run (ClickHouse optimize_after_load, Redshift ANALYZE when auto_analyze is off, Databricks OPTIMIZE/ANALYZE, Snowflake RESUME RECLUSTER), but their time is not subtracted from the load time and no phases.post_load_maintenance phase is written. Redshift's isolated VACUUM/ANALYZE pass (configure_for_benchmark) does not run in load-only mode, so tuned Redshift tables are no longer vacuumed at load time there; a later benchmark run restores it. Parity (or refusal) should cover these too, and the CHANGELOG already notes the Redshift effect.",
+  "context": "2026-10-14 orchestrator: CI lint+core failures root-caused to pre-existing ty possibly-unresolved-reference errors at run.py:1338/1502 (database_config), untouched by item diff (only CHANGELOG/runner.py/test) and unchanged on origin/develop — environmental (newer CI ty escalated warnings to errors). Needs rebase onto current develop + minimal init fix. BLOCKED behind same commit-hook scope drift as item 46 (new commits on current develop fail). Releasing; resume after scope fix with rebase then fix.",
   "description": "## Problem\n`--phases generate,load` goes through `_execute_load_only_mode` (`benchbox/core/runner/runner.py:528-585`). It applies a different subset of tuning from a full run (the CTAS sort runs, `apply_unified_tuning` does not), saves no metadata, and exports `platform.tuning: null` under a tuned `tuning_mode`.\n\n## Change (per gate D-4)\n- **Parity (expected):** route through the same apply → load → post-load → reconcile → metadata → ledger/receipt → export path as `_setup_fresh_database_phases`.\n- **Or refusal:** an actionable error for tuned load-only runs.\n\n## Guardrails (must preserve)\n- A load-only bundle never carries a tuned mode without `platform.tuning`.\n\n## Process guardrails\n- One PR per item against `develop`, via the AGENTS.md worktree flow (`make worktree-claim BRANCH=...`, `make agent-write-preflight`).\n- Verification ladder: `uv run -- python -m pytest -m fast -q`, `uv run -- ruff check .`, `uv run -- ruff format --check .` and `uv run -- ty check`.\n- Then `make pr-preflight` and `make pr-open`.\n- Stage explicit paths; never `git add -A`.\n- No live cloud runs without explicit user approval stating the command, maximum runtime, log path and stop condition.\n- Re-read every file:line anchor before editing. Anchors are from develop d39166ea.",
   "links": [
     "benchbox/core/runner/runner.py",
@@ -32,6 +32,14 @@
       "generation": "8dfe4ba789c24adc84e6a6eb3c07a2aa",
       "op": "take",
       "op_id": "cbf2e0fd74014a24bb17b2605ec9f012",
+      "session_id": "ce855e02017040e0ae751903346e8f7f"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:0b09cceb849593820a7baad7",
+      "at": "2026-10-14T04:55:26Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "0890d562b239448c986c0635dc0907ee",
       "session_id": "ce855e02017040e0ae751903346e8f7f"
     }
   ]
