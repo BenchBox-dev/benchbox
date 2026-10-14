@@ -3,7 +3,7 @@
     "`tuning init` profiles do not set a Polars engine; a run with the generated file records requested=default unless the user edits it",
     "SQL PolarsAdapter(streaming=True) follows ADR D13 (warn and continue) or the break is documented under Before you upgrade with an ADR amendment"
   ],
-  "context": "Found by the 2026-10-13 adversarial review of the core execution-variants batch (Polars O5 and O10). The remediation fixed only the DataFrameTuningLoader templates (#2945). Verified on develop 9400b62c4.\nBatch: _project/handoffs/polars-engine-followups-batch-20261014.md, started 2026-10-14",
+  "context": "Found by the 2026-10-13 adversarial review of the core execution-variants batch (Polars O5 and O10). The remediation fixed only the DataFrameTuningLoader templates (#2945). Verified on develop 9400b62c4.\nBatch: _project/handoffs/polars-engine-followups-batch-20261014.md, started 2026-10-14\nClose-out 2026-10-14: PR #2977, merge commit 0ff3a4a8920320b2ac26381a5b727d5a04ca19de. tuning init profiles set no engine (streaming_mode gated on the manifest declaring a streaming engine, so Dask keeps its settings), hint line printed; SQL PolarsAdapter(streaming=True) warns once per run through warn_deprecated_alias and records the default receipt. Verified by tests/integration/test_execution_engine_recording.py::test_cli_tuning_init_profile_then_run_records_the_default_engine (CLI tuning init then run), tests/unit/cli/commands/test_tuning_group_cli.py, tests/unit/cli/test_onboarding_df_tuning_behavioral.py, tests/unit/platforms/test_polars_adapter.py (including factory plus bundle builder). ADR: D5 lists the tuning init profiles with the other defaults that no longer choose an engine (clarification, no decision change).",
   "description": "## Problem\n- **Tuning profiles still choose an engine.** `benchbox tuning init --platform polars --profile optimized|streaming|memory-constrained` writes Polars `engine_affinity` or `streaming_mode` (`core/dataframe/tuning/profiles.py:28-31,40-44,46-48`; `cli/commands/tuning_group.py:98,195`).\n  - A later `run --tuning <file>` records the variant `polars+in-memory` (or `+streaming`) instead of the default row (`platforms/dataframe/polars_df.py:94-107`).\n  - This contradicts the CHANGELOG statement that shipped tunings stop choosing an engine (CHANGELOG.md:292-293). A warning is logged, so it is not fully silent.\n  - The behaviour is pinned by `tests/unit/cli/test_onboarding_df_tuning_behavioral.py:212-217`.\n- **SQL `streaming=True` raises instead of warning.** `PolarsAdapter(streaming=True)` raises `UnsupportedExecutionEngineError` (`platforms/polars_platform.py:143-151,163-164`; `tests/unit/platforms/test_polars_adapter.py:56-62`).\n  - In v0.4.2 it was a no-op.\n  - ADR D13 says aliases keep working, with a warning, until 0.6.0.\n  - There is no \"Before you upgrade\" entry. The path is API-only.\n\n## Change\n- Stop the Polars profiles setting `engine_affinity`, gate `streaming_mode` by platform, and update the pinned tests.\n- Treat SQL `streaming=True` as a deprecated alias: warn through the core legacy-option path and record `default`. Or add a \"Before you upgrade\" entry and an ADR note.",
   "links": [
     "benchbox/core/dataframe/tuning/profiles.py",
@@ -34,6 +34,14 @@
       "generation": "ea7d64e9b0344276bfdfb2addfdd60b9",
       "op": "take",
       "op_id": "64cdd94fd0414d0d8bc6b673e33d1790",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-14T17:51:27Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "4abc9b61beae4a1fb9a462655991e4a5",
       "session_id": "18469f668aeb45d59c8d4c94d2f79433"
     }
   ]
