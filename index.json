@@ -21917,15 +21917,10 @@
       "title": "Stop the test leak guard failing whichever test first imports the Snowflake connector"
     },
     "test-logging-and-session-isolation-leaks-20261014": {
-      "claim": {
-        "expires_at": "2026-10-15T16:42:17Z",
-        "generation": "03efc82ce6b84740ac6624c0e24e12ca",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Unit tests leak root logger levels, and `make test-pytest` turns off session isolation, so tests run against the real ~/.benchbox"
     },
     "test-oracle-guard-global-sleep-patch": {
