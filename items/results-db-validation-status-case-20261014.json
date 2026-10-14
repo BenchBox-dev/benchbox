@@ -4,7 +4,7 @@
     "All validation-status filters in database.py are case-insensitive or read normalized values; existing databases are migrated",
     "CHANGELOG Fixed entry"
   ],
-  "context": "Found 2026-10-14 during the core execution-variants remediation, while making trend and regression rows accept lowercase status in #2944. That PR fixed trends and regressions only.\nBatch: _project/handoffs/execution-variant-general-followups-batch-20261014.md, started 2026-10-14",
+  "context": "Found 2026-10-14 during the core execution-variants remediation, while making trend and regression rows accept lowercase status in #2944.\nBatch: _project/handoffs/execution-variant-general-followups-batch-20261014.md, started 2026-10-14\nClose-out: PR #2965, merge a671a32a5b330cdabd9e618930c0debf2ff8fc9d. Verified by tests/unit/cli/commands/test_cli_report.py::TestReportRankingsAfterImport (export, report import, report rankings lists runs) and tests/unit/core/results/test_database.py::test_open_upgrades_lowercase_validation_status_rows (schema v2->v3 migration, idempotent) and ::test_store_result_normalizes_status_and_filters_ignore_case. Bundle summary unchanged. No ADR amendment.\nFollow-up (not fixed): case-sensitive 'PASSED' comparisons remain at cli/output.py:129,139,483, platforms/base/execution.py:1008, cli/commands/report.py:434; harmless now that stored values are uppercase.",
   "description": "## Problem\n- The result summary lowercases the validation status (`benchbox/core/results/schema.py:396`). `benchbox report import` is the only way rows enter the results database, so the stored status is always `passed`.\n- The ranking filter is case-sensitive: `AND validation_status = 'PASSED'` (`benchbox/core/results/database.py:656`). The same mismatch is at `:512-514`, while `:774` already uses `UPPER()`.\n- Result: `benchbox report import ./results` then `benchbox report rankings` prints nothing (`cli/commands/report.py:106`). A probe showed only an uppercase row ranked.\n\n## Change\n- Normalize `validation_status` when storing, and migrate existing rows.\n- Make the filters at `:512` and `:656` case-insensitive, matching `:774`.",
   "links": [
     "benchbox/core/results/database.py",
@@ -35,6 +35,14 @@
       "generation": "e409b1ae485b42ea80e1a8677cfe9b6f",
       "op": "take",
       "op_id": "343114a5105748ecb5056799cecad731",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-14T14:54:26Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "e79fa92ba53344dba3266e3f328d788d",
       "session_id": "18469f668aeb45d59c8d4c94d2f79433"
     }
   ]
