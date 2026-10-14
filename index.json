@@ -21128,13 +21128,18 @@
       "title": "Add validated spark session-config map to PlatformOptimizationConfiguration"
     },
     "spark-session-config-runtime": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-15T23:27:17Z",
+        "generation": "18fc492f22a340fa904d9ccfde713f4e",
+        "renewals": 0,
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:dfba218995515e0b05338829"
+      },
       "needs": [
         "spark-session-config-model",
         "tuning-ledger-capture-non-dbapi-drivers-20261001"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Apply tuning spark map to the Spark session once, with ledger evidence"
     },
     "spark-sql-tpchavoc-scalar-subquery-and-dual-rewrites": {
