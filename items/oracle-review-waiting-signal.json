@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Agreed behavior (code or documented reading) so a waiting verdict is never misread as a refusal."
+  ],
+  "context": "Found during the 2026-10-13 session: the waiting state was twice misread as a verdict refusal across PRs #2948 and #2915, delaying merges while the oracle was simply still working.",
+  "description": "The oracle-review CI check exits failure while merely awaiting a verdict for the head, which reads identically to a refusal. Consider reporting pending/neutral until a verdict exists for the head, failing only on refusal, expiry, or SHIP-with-unresolved-threads; or document the reading so the next session does not chase a non-defect.",
+  "sessions": [
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:dd4e0e92aef34af3608f45c5",
+      "at": "2026-10-14T18:02:40Z",
+      "client": "tbh",
+      "op": "create",
+      "op_id": "1538bc12ff994319b1734f59539e43ce",
+      "session_id": "be2b066e755a4a4bb3ff24b1b46fe0b7"
+    }
+  ]
+}

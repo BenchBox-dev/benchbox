@@ -14665,6 +14665,13 @@
       "status": "dropped",
       "title": "oracle-review starts a run for every review-thread reply"
     },
+    "oracle-review-waiting-signal": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Distinguish oracle-review waiting state from verdict failure"
+    },
     "oracle-reviewer-checkout-has-no-base-commit-20261009": {
       "claim": null,
       "needs": [],
