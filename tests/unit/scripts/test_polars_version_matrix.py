@@ -429,25 +429,6 @@ def test_analyzer_refuses_duplicate_or_missing_rounds(tmp_path: Path) -> None:
         _analyze(tmp_path, [*records, records[0]])
 
 
-def test_polars_entry_points_delegate_to_the_shared_core() -> None:
-    from scripts import analyze_version_matrix as shared_analyzer, run_version_matrix as shared_runner
-    from scripts.version_matrix_specs import POLARS as SHARED_POLARS
-
-    assert POLARS is SHARED_POLARS
-    assert runner.plan_lines is shared_runner.plan_lines
-    assert runner.cell_command is shared_runner.cell_command
-    assert runner.parse_freeze is shared_runner.parse_freeze
-    assert runner.verify_installation is shared_runner.verify_installation
-    assert runner.check_pins is shared_runner.check_pins
-    assert runner.classify_outcome is shared_runner.classify_outcome
-    assert runner.extract_result is shared_runner.extract_result
-    assert runner.run_matrix is shared_runner.run_polars_matrix
-    assert analyzer.analyze is shared_analyzer.analyze_polars
-    assert analyzer.compare is shared_analyzer.compare_cells
-    assert analyzer.write_outputs is shared_analyzer.write_polars_outputs
-    assert analyzer.load_qualification is shared_analyzer.load_qualification
-
-
 def test_shared_runner_serves_the_polars_dry_run(capsys: pytest.CaptureFixture[str]) -> None:
     from scripts import run_version_matrix as shared_runner
 

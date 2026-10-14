@@ -34,6 +34,24 @@ class TestExecutionEngineConfig:
         config = PlatformHookRegistry.build_database_config("duckdb", {"execution_engine": "default"}, {})
         assert config.execution_engine == "default"
 
+    @pytest.mark.parametrize(
+        ("options", "overrides", "expected"),
+        [
+            ({"execution_engine": "in-memory"}, {"execution_engine": "streaming"}, "streaming"),
+            ({"execution_engine": "in-memory"}, {}, "in-memory"),
+            ({}, {"execution_engine": "streaming"}, "streaming"),
+            ({"execution_engine": "streaming"}, {"execution_engine": "in-memory"}, "in-memory"),
+        ],
+    )
+    def test_builder_gives_overrides_precedence_over_options_for_non_default_engines(
+        self, options: dict, overrides: dict, expected: str
+    ):
+        from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
+
+        config = PlatformHookRegistry.build_database_config("polars-df", options, overrides)
+
+        assert config.execution_engine == expected
+
     def test_platform_config_carries_engine_to_sql_adapters(self):
         from benchbox.core.platform_config import get_platform_config
 

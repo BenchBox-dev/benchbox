@@ -34,6 +34,8 @@ POSTGRES_TUNING_PLATFORM_FIELDS = (
 POSTGRES_FAMILY_PLATFORM_FIELDS = POSTGRES_CONNECTION_PLATFORM_FIELDS + POSTGRES_TUNING_PLATFORM_FIELDS
 
 
+EXECUTION_ENGINE_OPTION = "execution_engine"
+
 ResourceKeyResolver = Callable[[Mapping[str, Any]], "str | None"]
 
 
@@ -57,6 +59,13 @@ def build_platform_config(
 
     cred_manager = CredentialManager()
     saved_creds = cred_manager.get_platform_credentials(credential_key) or {}
+    if EXECUTION_ENGINE_OPTION in saved_creds:
+        from benchbox.core.hooks.platform_hooks import PlatformOptionError
+
+        raise PlatformOptionError(
+            f"The saved {credential_key} credentials set '{EXECUTION_ENGINE_OPTION}', which a saved profile "
+            "cannot carry. Remove it from the profile and pass --execution-engine to choose the engine."
+        )
 
     explicit_options = (
         overrides.pop("_explicit_platform_options", {})
