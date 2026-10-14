@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "when a verdict is submitted on the current head, the failed synchronize-suite `oracle-review` run for that head is rerun (or superseded) automatically, so the required check turns green with no manual rerun. Include a workflow test of the trigger and permission shape, and one real PR that shows it."
+  ],
+  "context": "Re-verify evidence: #2960 run 38572771918; #2962 run 38562179375. Source: site-repo-split-batch-review-20261014.md F4. Owner decision context: remediation handoff 20261014 section 4.",
+  "description": "A PR whose oracle verdict arrives after its `pull_request` (synchronize) `oracle-review` run is left BLOCKED. That run failed with \"waiting for the oracle's review\", and only the `pull_request_review` run reruns. Evidence: #2960 run 38572771918; #2962 run 38562179375.",
+  "sessions": [
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:2ff26e731ddb7b681f9dacbc",
+      "at": "2026-10-14T17:53:29Z",
+      "client": "tbh",
+      "op": "create",
+      "op_id": "3707698de1f445dd9bd5012d476642c6",
+      "session_id": "8250681ba4eb464e88a8d9c11374e76e"
+    }
+  ]
+}

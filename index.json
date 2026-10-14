@@ -20619,6 +20619,13 @@
       "status": "open",
       "title": "Design how core learns the deployed core SHA from the site side for bundle parents"
     },
+    "site-split-70-oracle-check-stale-suite": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Fix stale oracle-review suite blocking PRs after late verdicts"
+    },
     "site-split-99-closeout": {
       "claim": null,
       "needs": [
