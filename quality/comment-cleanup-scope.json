@@ -4030,26 +4030,6 @@
       "alternative": "Split the function into one validator per semantic surface.",
       "owner": "comment-cleanup-project-tooling",
       "removal_trigger": "The function is split below the complexity limit."
-    },
-    {
-      "path": "tests/unit/core/test_tpc_reporting_execution.py",
-      "consumer": "pyproject.toml",
-      "necessity": "Ruff measures this maintenance and integrity test at complexity 22 against the configured ceiling 18; its fake connection and maintenance operations exercise one existing scenario.",
-      "alternative": "Split the scenario into smaller tests while preserving fake-connection assertions; do not disable C901 for the file.",
-      "owner": "comment-cleanup-unit-tests-core",
-      "token": "# noqa: C901",
-      "count": 1,
-      "removal_trigger": "Remove when the test is split or its measured complexity is at most 18."
-    },
-    {
-      "path": "tests/unit/core/dataframe/test_protocols.py",
-      "consumer": "pyproject.toml",
-      "necessity": "Ruff measures this protocol implementation test at complexity 20 against the configured ceiling 18; the nested fake implements the runtime protocol in one scenario.",
-      "alternative": "Split the fake protocol implementation into a named fixture while preserving assertions; do not disable C901 for the file.",
-      "owner": "comment-cleanup-core-dataframe",
-      "count": 1,
-      "token": "# noqa: C901",
-      "removal_trigger": "Remove when the test is split or its measured complexity is at most 18."
     }
   ],
   "notices": [
