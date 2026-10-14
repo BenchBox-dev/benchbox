@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Corpus CI (results-data-check) fails any results-data bundle with export.anonymized != true",
+    "The sync-results-data-to-published mirror path enforces the same condition",
+    "Tests: a false fixture fails, a true fixture passes, a missing flag fails",
+    "#2930 stays owner-held with an explanatory comment quoting D5",
+    "Item-40 successor context corrected with the new flag check cited"
+  ],
+  "context": "Successor of handoff item 64 (2026-10-14 remediation handoff Step 9, finding F6). Owner decision D5 implements the 2026-10-13 decision to enforce anonymized:true mechanically; #2930 stays owner-held for manual salt packaging and rebase. Validators read: results-data/validate_corpus.py, tests/unit/scripts/test_corpus_privacy_invariant.py, scripts/validate_submission.py.",
+  "description": "Mechanical enforcement that every results-data corpus bundle carries export.anonymized=true, in both the CI results-data-check step and the sync-results-data-to-published mirror path, with fail-first tests for false/true/missing flags.",
+  "sessions": [
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:2ff26e731ddb7b681f9dacbc",
+      "at": "2026-10-14T20:52:56Z",
+      "client": "tbh",
+      "op": "create",
+      "op_id": "41c55d2d79284437af8cc562d5322074",
+      "session_id": "8250681ba4eb464e88a8d9c11374e76e"
+    }
+  ]
+}
