@@ -249,6 +249,69 @@ def test_notice_digest_must_match_immutable_base_bytes(tmp_path: Path, policy: d
         scope.validate_evidence(policy, tmp_path, base, {"src/a.py"})
 
 
+def _scope_repo(tmp_path: Path, policy: dict, files: dict[str, bytes]) -> str:
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "config", "user.name", "Test"], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "config", "user.email", "test@example.com"], check=True)
+    (tmp_path / "quality").mkdir()
+    (tmp_path / "quality" / "comment-cleanup-scope.json").write_text(json.dumps(policy), encoding="utf-8")
+    for name, content in files.items():
+        (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / name).write_bytes(content)
+    subprocess.run(["git", "-C", str(tmp_path), "add", "."], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "commit", "-qm", "fixture"], check=True)
+    return subprocess.check_output(["git", "-C", str(tmp_path), "rev-parse", "HEAD"], text=True).strip()
+
+
+def _notice_entry(path: str, content: bytes) -> dict:
+    digest = hashlib.sha256(content).hexdigest()
+    return {
+        "path": path,
+        "blob_sha256": digest,
+        "byte_start": 0,
+        "byte_end": len(content),
+        "retained_sha256": digest,
+        "governing_requirement": "fixture requirement",
+        "source_identity": "fixture source",
+        "owner": "comment-cleanup-core-bootstrap",
+        "blocking_disposition": "Retain required notice.",
+    }
+
+
+def test_validate_candidate_notices_accepts_matching_head_pin(tmp_path: Path, policy: dict) -> None:
+    content = b"required notice\n"
+    _scope_repo(tmp_path, policy, {"src/a.py": content})
+    assert scope.validate_candidate_notices([_notice_entry("src/a.py", content)], tmp_path, False)
+
+
+def test_validate_candidate_notices_rejects_digest_mismatch(tmp_path: Path, policy: dict) -> None:
+    content = b"required notice\n"
+    _scope_repo(tmp_path, policy, {"src/a.py": content})
+    entry = _notice_entry("src/a.py", content)
+    entry["retained_sha256"] = "0" * 64
+    with pytest.raises(scope.PolicyError, match="retained-byte digest"):
+        scope.validate_candidate_notices([entry], tmp_path, False)
+
+
+def test_validate_candidate_notices_rejects_missing_file(tmp_path: Path, policy: dict) -> None:
+    _scope_repo(tmp_path, policy, {})
+    with pytest.raises(scope.PolicyError, match="missing at the head"):
+        scope.validate_candidate_notices([_notice_entry("src/a.py", b"required notice\n")], tmp_path, False)
+
+
+def test_candidate_notice_for_unpinned_path_cannot_expand_exclusions(tmp_path: Path, policy: dict) -> None:
+    content = b"required notice\n"
+    _scope_repo(tmp_path, policy, {"src/a.py": content})
+    with pytest.raises(scope.PolicyError, match="already pinned"):
+        scope.immutable_external_ownership(
+            tmp_path,
+            subprocess.check_output(["git", "-C", str(tmp_path), "rev-parse", "HEAD"], text=True).strip(),
+            [],
+            False,
+            [_notice_entry("src/a.py", content)],
+        )
+
+
 def test_obligation_requires_exactly_one_destination_reference(tmp_path: Path, policy: dict) -> None:
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     subprocess.run(["git", "-C", str(tmp_path), "config", "user.name", "Test"], check=True)

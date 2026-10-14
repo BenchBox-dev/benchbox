@@ -479,7 +479,8 @@ def python_scoped_digest(tree: ast.AST, symbol: str, lineno: int, bindings: Pyth
     else:
         builtin_names = set(dir(__builtins__))
     seen: set[int] = {id(scope)}
-    parts: list[object] = [_canonical_node(scope)]
+    consumer = _canonical_node(scope)
+    bound: list[tuple[int, object]] = []
     queue: list[ast.AST] = [scope]
     while queue:
         current = queue.pop()
@@ -488,18 +489,16 @@ def python_scoped_digest(tree: ast.AST, symbol: str, lineno: int, bindings: Pyth
             if isinstance(child, ast.Name) and isinstance(child.ctx, ast.Load):
                 load_nodes.setdefault(child.id, child)
         for name, node in load_nodes.items():
-            if name in builtin_names:
-                continue
-            matches = [match for match in index.get(name, []) if id(match) not in seen]
-            if not matches:
-                if _locally_bound(bindings, tree, node):
-                    continue
-                return python_consumer_digest(tree)
-            for match in matches:
-                seen.add(id(match))
-                parts.append(_canonical_node(match))
-                queue.append(match)
-    return _digest_canonical((_canonical_node(scope), tuple(sorted(repr(part) for part in parts[1:]))))
+            if not _locally_bound(bindings, tree, node):
+                matches = [match for match in index.get(name, []) if id(match) not in seen]
+                if not matches and name not in builtin_names:
+                    return python_consumer_digest(tree)
+                for match in matches:
+                    seen.add(id(match))
+                    bound.append((match.lineno, _canonical_node(match)))
+                    queue.append(match)
+    bound.sort(key=lambda item: (item[0], repr(item[1])))
+    return _digest_canonical((consumer, tuple(part for _, part in bound)))
 
 
 def python_executable_findings(path: str, tree: ast.AST, scopes: list[tuple[int, int, str]]) -> list[Finding]:

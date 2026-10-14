@@ -1184,11 +1184,13 @@ def immutable_dependency_artifacts(
 
 
 ORACLE_REVIEW_CHECK = "oracle-review"
+ORACLE_REVIEW_WORKFLOW = ".github/workflows/oracle-review.yml"
+ORACLE_ACTIONS_APP = "github-actions"
 
 
-def _github_check_runs(token: str, repo: str, head: str) -> Any:
+def _github_api(token: str, path: str) -> Any:
     request = urllib.request.Request(
-        f"https://api.github.com/repos/{repo}/commits/{head}/check-runs?check_name={ORACLE_REVIEW_CHECK}",
+        f"https://api.github.com{path}",
         headers={
             "Accept": "application/vnd.github+json",
             "Authorization": f"Bearer {token}",
@@ -1197,6 +1199,25 @@ def _github_check_runs(token: str, repo: str, head: str) -> Any:
     )
     with urllib.request.urlopen(request, timeout=30) as response:
         return json.load(response)
+
+
+def _oracle_run_covers(token: str, repo: str, head: str, run: Any) -> bool:
+    if not isinstance(run, dict):
+        return False
+    if run.get("name") != ORACLE_REVIEW_CHECK or run.get("status") != "completed" or run.get("conclusion") != "success":
+        return False
+    if not isinstance(run.get("app"), dict) or run["app"].get("slug") != ORACLE_ACTIONS_APP:
+        return False
+    match = re.search(r"/actions/runs/(\d+)/job/\d+", run.get("html_url") or "")
+    if not match:
+        return False
+    workflow = _github_api(token, f"/repos/{repo}/actions/runs/{match.group(1)}")
+    return (
+        isinstance(workflow, dict)
+        and workflow.get("path") == ORACLE_REVIEW_WORKFLOW
+        and workflow.get("head_sha") == head
+        and workflow.get("conclusion") == "success"
+    )
 
 
 def oracle_review_covers() -> bool:
@@ -1211,14 +1232,61 @@ def oracle_review_covers() -> bool:
         head = (pull.get("head") or {}).get("sha") or ""
         if not re.fullmatch(r"[a-f0-9]{40}", head) or not pull.get("number"):
             return False
-        runs = _github_check_runs(token, repo, head)
-        completed = [run for run in runs.get("check_runs", []) if run.get("status") == "completed"]
+        page = 1
+        completed: list[Any] = []
+        while True:
+            runs = _github_api(token, f"/repos/{repo}/commits/{head}/check-runs?per_page=100&page={page}")
+            if not isinstance(runs, dict):
+                return False
+            for run in runs.get("check_runs", []):
+                if (
+                    isinstance(run, dict)
+                    and run.get("name") == ORACLE_REVIEW_CHECK
+                    and run.get("status") == "completed"
+                ):
+                    completed.append(run)
+            if page * 100 >= runs.get("total_count", 0) or page >= 10:
+                break
+            page += 1
         if not completed:
             return False
         latest = max(completed, key=lambda run: run.get("completed_at") or "")
-        return latest.get("conclusion") == "success"
+        return _oracle_run_covers(token, repo, head, latest)
     except (OSError, ValueError, KeyError, TypeError, AttributeError):
         return False
+
+
+def validate_candidate_notices(notices: Any, root: Path, staged: bool) -> list[dict[str, Any]]:
+    if not isinstance(notices, list):
+        raise PolicyError("candidate notices must be a list")
+    validated: list[dict[str, Any]] = []
+    for entry in notices:
+        if not isinstance(entry, dict):
+            raise PolicyError("candidate notice entry must be an object")
+        for field in ("path", "byte_start", "byte_end", "retained_sha256", "blob_sha256"):
+            if field not in entry:
+                raise PolicyError(f"candidate notice entry is missing {field}")
+        if not isinstance(entry["path"], str) or not valid_path(entry["path"]):
+            raise PolicyError("candidate notice path is invalid")
+        for field in ("byte_start", "byte_end"):
+            if type(entry[field]) is not int:
+                raise PolicyError(f"candidate notice {entry['path']} has a non-integer {field}")
+        for field in ("retained_sha256", "blob_sha256"):
+            digest = entry[field]
+            if len(digest) != 64 or any(char not in "0123456789abcdef" for char in digest):
+                raise PolicyError(f"candidate notice {entry['path']} must use a lowercase SHA-256 {field}")
+        raw = head_blob(root, entry["path"], staged)
+        if raw is None:
+            raise PolicyError(f"candidate notice {entry['path']} is missing at the head")
+        start, end = entry["byte_start"], entry["byte_end"]
+        if start < 0 or end <= start or end > len(raw):
+            raise PolicyError(f"candidate notice {entry['path']} has an invalid retained byte range")
+        if hashlib.sha256(raw[start:end]).hexdigest() != entry["retained_sha256"]:
+            raise PolicyError(f"candidate notice {entry['path']} retained-byte digest does not match the head")
+        if hashlib.sha256(raw).hexdigest() != entry["blob_sha256"]:
+            raise PolicyError(f"candidate notice {entry['path']} blob digest does not match the head")
+        validated.append(entry)
+    return validated
 
 
 def immutable_external_ownership(
@@ -1237,10 +1305,7 @@ def immutable_external_ownership(
         validate_head_token_evidence(head, root, staged)
         policy = without_retired_token_evidence(policy, head, root, staged)
     if candidate_notices is not None:
-        for entry in candidate_notices:
-            if not isinstance(entry, dict) or not isinstance(entry.get("path"), str):
-                raise PolicyError("candidate notice entry must be an object with a path")
-        effective_notices = candidate_notices
+        effective_notices = validate_candidate_notices(candidate_notices, root, staged)
     else:
         effective_notices = policy["notices"]
     roots = validate_roots(policy)
@@ -1275,22 +1340,26 @@ def immutable_external_ownership(
         )
     )
     excluded.update(immutable_dependency_artifacts(root, base, resolved, rules, legacy_external, staged))
+    base_notices = [
+        {
+            **notice,
+            "whole_file": notice["byte_start"] == 0
+            and notice["byte_end"] == len(base_blob(root, base, notice["path"])),
+        }
+        for notice in policy["notices"]
+        if any(matches(notice["path"], entry["selector"]) for entry in external)
+    ]
     if candidate_notices is None:
-        notices = [
-            {
-                **notice,
-                "whole_file": notice["byte_start"] == 0
-                and notice["byte_end"] == len(base_blob(root, base, notice["path"])),
-            }
-            for notice in effective_notices
-            if any(matches(notice["path"], entry["selector"]) for entry in external)
-        ]
-    else:
-        notices = [
-            {**notice, "whole_file": None}
-            for notice in effective_notices
-            if any(matches(notice["path"], entry["selector"]) for entry in external)
-        ]
+        return excluded, base_notices
+    base_paths = {notice["path"] for notice in policy["notices"] if isinstance(notice, dict)}
+    fresh = sorted({entry["path"] for entry in effective_notices if entry["path"] not in base_paths})
+    if fresh:
+        raise PolicyError("candidate notices must update paths already pinned at the base: " + ", ".join(fresh))
+    notices = [
+        {**notice, "whole_file": None}
+        for notice in effective_notices
+        if any(matches(notice["path"], entry["selector"]) for entry in external)
+    ]
     return excluded, notices
 
 
