@@ -16,8 +16,10 @@ TPC_ALLOWED_SCALE_FACTORS: frozenset[int | float] = frozenset({1, 10, 30, 100, 3
 
 def begin_run() -> None:
     from benchbox.core.deprecation_notices import begin_run as reset_deprecation_notices
+    from benchbox.core.option_notices import begin_run as reset_option_notices
 
     reset_deprecation_notices()
+    reset_option_notices()
 
 
 def apply_polars_streaming_flag(

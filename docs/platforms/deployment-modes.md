@@ -470,14 +470,13 @@ The extra installs the Spark Connect-capable PySpark client, `pysail` installs t
 
 ### Distributed Mode
 
-Cluster of Sail Rust workers. Same client, different deployment.
+Connects to an external Sail server and never starts a local one. The recorded mode says only that the server was external, not how many nodes it has.
 
 ```python
 from benchbox.platforms.lakesail import LakeSailAdapter
 
 adapter = LakeSailAdapter(
     sail_mode="distributed",
-    sail_workers=4,
     endpoint="sc://my-sail-cluster:50051",
 )
 ```
@@ -488,7 +487,7 @@ adapter = LakeSailAdapter(
 |-----------|---------|-------|
 | `endpoint` | `sc://localhost:50051` | Spark Connect URL |
 | `sail_mode` | `local` | `local` or `distributed` |
-| `sail_workers` | - | Worker count (distributed mode) |
+| `sail_workers` | - | Has no effect; BenchBox logs a warning and does not record it |
 | `driver_memory` | `4g` | Driver memory allocation |
 | `shuffle_partitions` | `200` | Shuffle partition count |
 | `table_format` | `parquet` | `parquet` or `orc` |

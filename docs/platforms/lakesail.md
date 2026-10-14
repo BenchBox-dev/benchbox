@@ -13,7 +13,7 @@ LakeSail Sail is a Rust-based, drop-in replacement for Apache Spark built on Dat
 - **Zero-rewrite migration** - Uses standard PySpark client via Spark Connect protocol
 - **Dual execution modes** - SQL benchmarking (`lakesail`) and DataFrame benchmarking (`lakesail-df`)
 - **Spark SQL dialect** - SQLGlot `spark` dialect for query translation
-- **Local and distributed** - Multi-threaded single-host or distributed cluster deployment
+- **Local and external server** - Multi-threaded single-host execution, or a connection to a Sail server that you run yourself
 - **Parquet and ORC** - Native support for columnar table formats
 - **Adaptive Query Execution** - AQE support for runtime query optimization
 - **Full PySpark API** - DataFrame, Column expression, and Window function compatibility
@@ -72,7 +72,6 @@ from benchbox.platforms.lakesail import LakeSailAdapter
 adapter = LakeSailAdapter(
     endpoint="sc://my-sail-server:50051",
     sail_mode="distributed",
-    sail_workers=4,
     driver_memory="8g",
     shuffle_partitions=16,
 )
@@ -84,7 +83,7 @@ adapter = LakeSailAdapter(
 |--------|---------|-------------|
 | `endpoint` | `sc://localhost:50051` | Sail server Spark Connect URL |
 | `deployment_mode` | `local` | Deprecated alias of `--platform lakesail:local\|distributed`; `sail_mode` is an alias of this option |
-| `sail_workers` | - | Worker count for distributed mode |
+| `sail_workers` | - | Has no effect: BenchBox logs a warning and does not record it, because Sail takes no worker count from BenchBox |
 | `app_name` | `BenchBox-LakeSail` | Application name for the session |
 | `driver_memory` | `4g` | Driver memory allocation (e.g., `4g`, `8g`) |
 | `shuffle_partitions` | `200` | Number of shuffle partitions |
@@ -225,15 +224,15 @@ benchbox run --platform lakesail --benchmark tpch --scale 1.0
 
 ### Distributed Mode
 
-Multi-node cluster execution for large-scale benchmarks. Select it with the platform selector:
+Connects to an external Sail server and never starts a local one. Select it with the platform selector:
 
 ```bash
 benchbox run --platform lakesail:distributed --benchmark tpch --scale 100.0
 ```
 
-- Multiple Rust worker nodes coordinated by a Sail server
-- Horizontal scaling for large datasets
-- Requires cluster infrastructure setup (see LakeSail documentation)
+- The endpoint (`sc://localhost:50051` by default) must already be reachable; BenchBox fails instead of starting a server
+- The server's size and topology are whatever you deployed; BenchBox neither creates nor changes a multi-node run, and the recorded mode does not show how many nodes served it
+- Set the server up as described in the LakeSail documentation
 
 ## Comparison: LakeSail vs Apache Spark
 
@@ -247,7 +246,7 @@ benchbox run --platform lakesail:distributed --benchmark tpch --scale 100.0
 | Connection Protocol | Spark Connect | Native / Spark Connect |
 | Migration Effort | Zero rewrites | N/A |
 | Local Mode | Multi-threaded Rust | JVM-based |
-| Distributed Mode | Rust workers | JVM executors |
+| Distributed Mode | External Sail server, deployed separately | JVM executors |
 | DataFrame API | Full PySpark compatibility | Native |
 | Table Formats | Parquet, ORC | Parquet, ORC, Delta, Iceberg |
 | Maturity | Newer | Battle-tested |
@@ -311,7 +310,7 @@ Query execution timed out
 **Solutions:**
 1. Increase driver memory: `driver_memory="16g"`
 2. Adjust shuffle partitions: `shuffle_partitions=32`
-3. For large-scale benchmarks, use distributed mode: `--platform lakesail:distributed`
+3. For large-scale benchmarks, point BenchBox at a larger Sail server that you run: `--platform lakesail:distributed`
 4. Check Sail server resource availability
 
 ### Table Already Exists

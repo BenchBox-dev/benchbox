@@ -140,6 +140,26 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
         if self.use_distributed:
             self._setup_distributed()
             self._record_distributed_tuning()
+        else:
+            self._warn_cluster_only_options()
+
+    def _warn_cluster_only_options(self) -> None:
+        from benchbox.core.option_notices import warn_option_not_applied
+
+        supplied = {
+            "n_workers": self._n_workers_configured,
+            "threads_per_worker": self._threads_per_worker_configured,
+            "memory_limit": self._memory_limit_configured,
+            "spill_directory": self._configured_spill_directory is not None,
+            "spill_to_disk": self._spill_to_disk,
+        }
+        for option, is_supplied in supplied.items():
+            if is_supplied:
+                warn_option_not_applied(
+                    "dask",
+                    option,
+                    "it configures the local cluster that only the 'distributed' execution engine starts",
+                )
 
     def resolve_execution_engine(self, requested: str) -> ExecutionEngineReceipt:
         resolved = resolve_requested("dask", requested)
@@ -466,14 +486,19 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
         info = {
             "platform": self.platform_name,
             "family": self.family,
-            "n_workers": self.n_workers,
-            "threads_per_worker": self.threads_per_worker,
             "use_distributed": self.use_distributed,
-            "memory_limit": getattr(self, "_memory_limit", None),
-            "spill_to_disk": getattr(self, "_spill_to_disk", False),
-            "spill_directory": str(self._spill_directory) if getattr(self, "_spill_directory", None) else None,
             "working_dir": str(self.working_dir),
         }
+        if self.use_distributed:
+            info.update(
+                {
+                    "n_workers": self.n_workers,
+                    "threads_per_worker": self.threads_per_worker,
+                    "memory_limit": getattr(self, "_memory_limit", None),
+                    "spill_to_disk": getattr(self, "_spill_to_disk", False),
+                    "spill_directory": str(self._spill_directory) if getattr(self, "_spill_directory", None) else None,
+                }
+            )
         info["execution_engine"] = asdict(self._engine_receipt)
 
         if DASK_AVAILABLE:

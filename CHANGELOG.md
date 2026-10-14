@@ -135,6 +135,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Options that have no effect now log one warning per run and are left out of
+  the platform information a result records, instead of being recorded as if
+  they had been applied. Under the Dask `threaded` execution engine this covers
+  `n_workers`, `threads_per_worker`, `memory_limit` and `spill_directory`, and
+  the spill setting from a tuning file, which only the `distributed` engine's
+  local cluster uses. LakeSail `sail_workers` always warns, because the Sail
+  server takes no worker count from BenchBox. The Dask documentation example now
+  sets `threads_per_worker` with `--execution-engine distributed`. The LakeSail
+  documentation, deployment modes page and manifest now say that `distributed`
+  connects to an external Sail server without starting a local one, and does not
+  create a multi-node run.
+
 - `--platform-option` values now reach the platforms that build their
   configuration through the default path. EMR Serverless, Dataproc, Synapse
   Spark, Fabric Spark and Snowpark Connect receive `compute_resource` (and
@@ -338,6 +350,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   accepted silently, and the bundle records the default engine receipt.
 
 ### Before you upgrade
+- Result metadata for Dask runs on the `threaded` engine no longer contains
+  `n_workers`, `threads_per_worker`, `memory_limit`, `spill_to_disk` or
+  `spill_directory`, and LakeSail metadata no longer contains `sail_workers`.
+  Those settings never changed the run. Use `--execution-engine distributed`
+  to size a Dask local cluster. The options stay accepted, and each one now
+  logs a warning.
 - DuckDB `--platform-option threads=N` and `temp_directory=<path>`, and SQLite
   `--platform-option database_path=<path>` and `timeout=<seconds>`, were
   accepted but ignored in earlier releases. Commands and saved configurations

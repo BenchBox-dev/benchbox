@@ -3194,7 +3194,7 @@ _PLATFORM_MANIFEST_JSON = """[
         "distributed": {
           "mode": "self-hosted",
           "display_name": "LakeSail Distributed",
-          "description": "Distributed cluster of Rust workers",
+          "description": "External Sail server that BenchBox connects to without starting one",
           "requires_credentials": false,
           "requires_cloud_storage": false,
           "requires_network": true,
