@@ -135,6 +135,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `benchbox report rankings` lists imported runs. The results database stored
+  the lowercase `passed` that result bundles carry, while the ranking and
+  status filters matched `PASSED`, so rankings were always empty after
+  `benchbox report import`. The database now stores the status in uppercase,
+  every status filter ignores case, and opening an existing database upgrades
+  it to schema version 3, which uppercases the stored statuses. Result
+  bundles and their identifiers are unchanged.
 - Dry-run previews no longer write saved credentials or connection secrets in
   clear. The JSON and YAML preview files written by `benchbox run --dry-run`
   apply the same redaction as result bundles to the benchmark, database and

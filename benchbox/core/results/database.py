@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_DB_PATH = Path.home() / ".benchbox" / "results.db"
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 _RANKING_METRIC_CONFIG = {
     "geometric_mean": ("geometric_mean_ms", "ASC"),
     "power_at_size": ("power_at_size", "DESC"),
@@ -225,6 +225,8 @@ class ResultDatabase:
                 else:
                     if current_version < 2:
                         self._migrate_to_v2(cursor)
+                    if current_version < 3:
+                        self._migrate_to_v3(cursor)
                 cursor.execute("DELETE FROM schema_version")
                 cursor.execute(
                     "INSERT INTO schema_version (version) VALUES (?)",
@@ -309,6 +311,13 @@ class ResultDatabase:
             logger.info("Schema v2: added compliance_class column to results table")
         except sqlite3.OperationalError:
             pass
+
+    def _migrate_to_v3(self, cursor: sqlite3.Cursor) -> None:
+        cursor.execute(
+            "UPDATE results SET validation_status = UPPER(validation_status) "
+            "WHERE validation_status <> UPPER(validation_status)"
+        )
+        logger.info("Schema v3: normalized validation_status to uppercase")
 
     def _compute_config_hash(self, result: BenchmarkResults) -> str:
         config_data = {
@@ -404,7 +413,7 @@ class ResultDatabase:
                     result.throughput_at_size,
                     result.qph_at_size,
                     total_cost,
-                    result.validation_status,
+                    result.validation_status.upper(),
                     config_hash,
                     compliance_class,
                     json.dumps(metadata),
@@ -510,8 +519,8 @@ class ResultDatabase:
             conditions.append("timestamp <= ?")
             params.append(end_date.isoformat())
         if validation_status:
-            conditions.append("validation_status = ?")
-            params.append(validation_status)
+            conditions.append("UPPER(validation_status) = ?")
+            params.append(validation_status.upper())
 
         where_clause = " AND ".join(conditions) if conditions else "1=1"
         params.extend([limit, offset])
@@ -653,7 +662,7 @@ class ResultDatabase:
 
             validation_filter = ""
             if config.require_success:
-                validation_filter = "AND validation_status = 'PASSED'"
+                validation_filter = "AND UPPER(validation_status) = 'PASSED'"
 
             unofficial_filter = (
                 "" if include_unofficial else "AND (compliance_class = 'official' OR compliance_class IS NULL)"

@@ -172,6 +172,64 @@ class TestReportRankings:
         assert "Snowflake" in result.output
 
 
+class TestReportRankingsAfterImport:
+    def test_rankings_list_runs_imported_from_exported_bundles(self, tmp_path):
+        from benchbox.core.results.exporter import ResultExporter
+
+        bundles_dir = tmp_path / "bundles"
+        now = datetime.now(timezone.utc)
+        exporter = ResultExporter(output_dir=bundles_dir)
+        for execution_id, platform, geometric_mean_ms in (
+            ("bundle-duckdb", "DuckDB", 100.0),
+            ("bundle-snowflake", "Snowflake", 200.0),
+        ):
+            exporter.export_result(
+                make_benchmark_results(
+                    benchmark_name="TPC-H",
+                    platform=platform,
+                    scale_factor=1.0,
+                    execution_id=execution_id,
+                    timestamp=now,
+                    duration_seconds=10.0,
+                    total_queries=2,
+                    successful_queries=2,
+                    validation_status="PASSED",
+                    query_results=[
+                        {
+                            "query_id": str(query_number),
+                            "execution_time_ms": geometric_mean_ms,
+                            "status": "SUCCESS",
+                            "iteration": 1,
+                            "stream_id": 0,
+                        }
+                        for query_number in (1, 2)
+                    ],
+                ),
+                formats=["json"],
+            )
+        assert len(list(bundles_dir.glob("*.json"))) == 2
+
+        db_path = tmp_path / "imported.db"
+        runner = CliRunner()
+        imported = runner.invoke(cli, ["report", "import", str(bundles_dir), "--db-path", str(db_path)])
+        assert imported.exit_code == 0, imported.output
+        assert "Imported: 2" in imported.output
+
+        ranked = runner.invoke(
+            cli,
+            ["report", "rankings", "--benchmark", "TPC-H", "--scale-factor", "1", "--db-path", str(db_path)],
+        )
+
+        assert ranked.exit_code == 0, ranked.output
+        assert "No results found" not in ranked.output
+        assert "DuckDB" in ranked.output
+        assert "Snowflake" in ranked.output
+
+        listed = runner.invoke(cli, ["report", "list", "--db-path", str(db_path)])
+        assert listed.exit_code == 0, listed.output
+        assert "PASSED" in listed.output
+
+
 class TestReportTrends:
     def test_trends_no_data(self, tmp_path):
         runner = CliRunner()
