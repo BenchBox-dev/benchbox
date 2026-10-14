@@ -9,7 +9,7 @@
     "Evidence: a fresh dispatch bundle with parent_core_sha=c660e61579c1979a4c9ca4417e97d695142689e9 passes `npm run bundle:fetch` and `npm run bundle:verify` in the site repo (run ids recorded)",
     "No change to the site's certification predicate; the diff to scripts/bundle-verify.mjs, if any, only adds tests or moves code without behaviour change"
   ],
-  "context": "Raised by the 2026-10-13 adversarial review (handoff revision 9, finding 3). The handoff's earlier \"Next in order (2)\" proposed a site-gate fix that accepts dispatch-certified bundles; this item replaces it. Evidence: .github/workflows/site-inputs.yml at origin/develop (CERTIFIED lookup lines 108-111, certified_by line 114); site scripts/bundle-verify.mjs lines 23-27 and 34-35; site Deploy run 38392445519 log \"certified_by dispatch is not a run id\". Time-sensitive together with site-split-61. Implementation: core PR #2957 merged as 504a48fe (script resolves numeric trunk run id, inline trunk lookup removed); site PR #26 (branch fix/bundle-verify-certification-tests) adds scripts/bundle-verify.test.mjs, green except the pre-existing pin failure owned by items 65/60. Live evidence 2026-10-14: dispatch run 38521589047 (parent c660e61579c1979a4c9ca4417e97d695142689e9, first attempt fail-closed on missing Trunk run, second built after Trunk 38519475119 went green) produced manifest core 9400b62c, parent_source bundle, certified_by 38519475119 (numeric); site bundle:fetch retrieved that exact run and bundle:verify printed bundle OK. DONE 2026-10-14: site PR #26 merged as d0d86c6a (ci SUCCESS, only advisory visual FAILURE); item finished.",
+  "context": "Raised by the 2026-10-13 adversarial review (handoff revision 9, finding 3). The handoff's earlier \"Next in order (2)\" proposed a site-gate fix that accepts dispatch-certified bundles; this item replaces it. Evidence: .github/workflows/site-inputs.yml at origin/develop (CERTIFIED lookup lines 108-111, certified_by line 114); site scripts/bundle-verify.mjs lines 23-27 and 34-35; site Deploy run 38392445519 log \"certified_by dispatch is not a run id\". Time-sensitive together with site-split-61. Implementation: core PR #2957 merged as 504a48fe (script resolves numeric trunk run id, inline trunk lookup removed); site PR #26 (branch fix/bundle-verify-certification-tests) adds scripts/bundle-verify.test.mjs, green except the pre-existing pin failure owned by items 65/60. Live evidence 2026-10-14: dispatch run 38521589047 (parent c660e61579c1979a4c9ca4417e97d695142689e9, first attempt fail-closed on missing Trunk run, second built after Trunk 38519475119 went green) produced manifest core 9400b62c, parent_source bundle, certified_by 38519475119 (numeric); site bundle:fetch retrieved that exact run and bundle:verify printed bundle OK. DONE 2026-10-14: site PR #26 merged as d0d86c6a (ci SUCCESS, only advisory visual FAILURE); item finished. REMEDIATION 20261014 (F13): branch and conclusion were enforced only by gh list filters; now checked in code (headBranch == develop, conclusion == success) with non-develop-refused and non-success-refused tests (failed first on old code); fixture carries recorded live fields. Shares PR #2987, own commit c1cbdaa57. bundle-verify.mjs unchanged per owner decision D6. Note: done items cannot be retaken in todo-db, so evidence is appended without reopening.",
   "description": "A dispatch build of core site-inputs.yml already requires a successful trunk.yml push run on CORE_SHA (site-inputs.yml lines 108-111) and then writes certified_by=dispatch (line 114). The site refuses that value (\"certified_by dispatch is not a run id\", scripts/bundle-verify.mjs:34-35), so the one documented recovery produces an undeployable bundle (core run 38392104307, site Deploy 38392445519).\n\nFix at the producer: record the numeric id of the Trunk run it already found. Do not relax the site gate. The site's check (bundle-verify.mjs:23-27) verifies the run path, event, branch, conclusion and head_sha independently; accepting an unverifiable \"dispatch\" value would weaken it, reopen D-O1/D-O2 and the item site-split-55 tightening decision, and needs an owner decision. site-inputs.yml and scripts/site_inputs.py are soundness paths: oracle review applies.",
   "sessions": [
     {
@@ -87,6 +87,14 @@
       "op": "update",
       "op_id": "0619d56ccf8046e680ca611d65cd9280",
       "session_id": "63fb16e6ece34adb91d17cdd1e1f2310"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:2ff26e731ddb7b681f9dacbc",
+      "at": "2026-10-14T20:05:24Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "6f55d222232042fca74f7c94fd1a2bcf",
+      "session_id": "8250681ba4eb464e88a8d9c11374e76e"
     }
   ]
 }
