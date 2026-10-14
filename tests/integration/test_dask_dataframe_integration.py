@@ -150,7 +150,8 @@ class TestDaskDataFrameIntegration:
 
         assert info["platform"] == "Dask"
         assert info["family"] == "pandas"
-        assert info["n_workers"] == 2
+        assert info["use_distributed"] is False
+        assert {"n_workers", "threads_per_worker"}.isdisjoint(info)
         assert "version" in info
 
     def test_read_parquet(self, dask_adapter, sample_parquet_data):
