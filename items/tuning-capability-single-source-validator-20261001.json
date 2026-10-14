@@ -120,6 +120,17 @@
       "op": "update",
       "op_id": "041e92d96d1f4f2592bd7b187d6ddc46",
       "session_id": "7c6ceccf81f14d0a962150f0c09d7242"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:fc0d1ff3e89d9d705763452b",
+      "at": "2026-10-14T19:27:17Z",
+      "client": "claude-code",
+      "displaced": "mcp:tbh:joe@joe-mac-mini.local:0b09cceb849593820a7baad7",
+      "generation": "01c17655002b4af58a5bf2950f2a3f50",
+      "op": "takeover",
+      "op_id": "10effc3cc6c14e06ba65de5b146ecf75",
+      "reason": "Holder session ended (batch record handoff 2026-10-14); release from a new session returned E_CLAIM_STALE. Owner directed the batch to continue; the oracle fix round for PR #2919 is pushed as 7d734a42d.",
+      "session_id": "7c6ceccf81f14d0a962150f0c09d7242"
     }
   ]
 }

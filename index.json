@@ -23539,10 +23539,10 @@
     },
     "tuning-capability-single-source-validator-20261001": {
       "claim": {
-        "expires_at": "2026-10-15T12:04:44Z",
-        "generation": "f40b50eb4182415f82b9327d573625bf",
+        "expires_at": "2026-10-15T19:27:17Z",
+        "generation": "01c17655002b4af58a5bf2950f2a3f50",
         "renewals": 0,
-        "worker": "mcp:tbh:joe@joe-mac-mini.local:0b09cceb849593820a7baad7"
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:fc0d1ff3e89d9d705763452b"
       },
       "needs": [
         "tuning-gate-adr003-unrendered-intents-block-20261001",
