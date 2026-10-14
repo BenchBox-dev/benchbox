@@ -42,6 +42,11 @@ except ImportError:  # pragma: no cover
     FUNDING_SOURCES = ("employer", "personal", "free-trial", "vendor-sponsored", "grant", "unspecified")
     RESULT_SOURCES = ("internal", "community", "vendor")
 
+try:
+    from benchbox.core.schemas import MIN_THROUGHPUT_STREAMS
+except ImportError:
+    MIN_THROUGHPUT_STREAMS = 2
+
 
 def _load_bundle_failed_query_count():
     helper_path = Path(__file__).resolve().parents[1] / "core" / "results" / "query_status.py"
@@ -254,19 +259,24 @@ def _tpchavoc_variant_has_usable_timing(query: dict) -> bool:
     return math.isfinite(ms) and ms > 0
 
 
+_COVERAGE_PREFIX_PATTERNS = (
+    re.compile(r"query_?(?=\d)", re.IGNORECASE),
+    re.compile(r"Q(?=\d|[a-z])"),
+    re.compile(r"q(?=\d)"),
+)
+
+
 def _normalize_coverage_query_id(raw_id: Any) -> str | None:
     if not isinstance(raw_id, str):
         return None
     text = raw_id.strip()
     if not text:
         return None
-    upper = text.upper()
-    if upper.startswith("QUERY_"):
-        text = text[6:]
-    elif upper.startswith("QUERY"):
-        text = text[5:]
-    elif upper.startswith("Q") and len(text) > 1 and (text[1].isdigit() or text[1].islower()):
-        text = text[1:]
+    for pattern in _COVERAGE_PREFIX_PATTERNS:
+        match = pattern.match(text)
+        if match:
+            text = text[match.end() :]
+            break
     text = text.strip()
     if not text:
         return None
@@ -367,7 +377,7 @@ NORMALIZED_COST_REQUIRED_KEYS = {
     "pricing_region",
 }
 NORMALIZED_COST_SCOPES = {"compute_only", "compute_plus_storage"}
-NORMALIZED_COST_STATUSES = {"normalized", "not_applicable_local", "unavailable"}
+NORMALIZED_COST_STATUSES = {"normalized", "not_applicable_local", "unavailable", "estimated"}
 
 NORMALIZED_COST_BILLING_UNITS = frozenset(
     {
@@ -1036,6 +1046,15 @@ def _validate_compliance_section(
         )
 
 
+def _fold_tpcds_variant_observations(observed: set[str]) -> set[str]:
+    folded = set(observed)
+    for base_id in ("14", "23", "24", "39"):
+        folded.discard(base_id)
+        if {f"{base_id}a", f"{base_id}b"} <= folded:
+            folded.add(base_id)
+    return folded
+
+
 def _validate_query_coverage(
     data: dict[str, Any],
     vr: ValidationResult,
@@ -1066,10 +1085,7 @@ def _validate_query_coverage(
         else:
             observed.add(normalized_qid)
     if normalized_id == "tpcds":
-        for base_id in ("14", "23", "24", "39"):
-            observed.discard(base_id)
-            if {f"{base_id}a", f"{base_id}b"} <= observed:
-                observed.add(base_id)
+        observed = _fold_tpcds_variant_observations(observed)
     variant_hint = ""
     if normalized_id == "tpchavoc":
         platform = data.get("platform")
@@ -1091,10 +1107,7 @@ def _validate_query_coverage(
             if len(missing_variants) > 12:
                 shown += f", … (+{len(missing_variants) - 12} more)"
             variant_hint = f" (missing successful or documented-skip variants: {shown})"
-    missing = sorted(
-        canonical - observed,
-        key=lambda s: [int(part) if part.isdigit() else part for part in re.split(r"(\d+)", s)],
-    )
+    missing = sorted(canonical - observed, key=_canonical_id_sort_key)
     if missing:
         covered = len(observed & canonical)
         shown = ", ".join(missing[:12])
@@ -1132,6 +1145,8 @@ def _validate_inline_applied_ledger(platform: dict, vr: ValidationResult) -> Non
     applied = tuning.get("applied")
     if not isinstance(applied, dict):
         return
+    for finding in unanonymized_tuning_findings({"platform": platform}):
+        vr.error(f"Public privacy contract rejects unanonymized tuning diagnostics: {finding}")
 
     for label, count in _oversized_applied_ledger_arrays(applied):
         vr.error(
@@ -1416,10 +1431,59 @@ def _parse_decimal(value: Any, field_path: str, vr: ValidationResult) -> Decimal
 
 def _validate_required_cost_string(raw: dict[str, Any], key: str, vr: ValidationResult) -> str | None:
     value = raw.get(key)
-    if not isinstance(value, str) or not value:
+    if not isinstance(value, str) or not value.strip():
         vr.error(f"normalized_cost.{key} must be a non-empty string")
         return None
     return value
+
+
+def _validate_estimated_cost_fields(
+    raw: dict[str, Any],
+    cost_value: Decimal | None,
+    estimated_value: Decimal | None,
+    cost_status: str | None,
+    vr: ValidationResult,
+) -> None:
+    if estimated_value is not None and estimated_value < 0:
+        vr.error(f"normalized_cost.estimated_cost_usd cannot be negative: {estimated_value}")
+    if cost_status == "estimated":
+        if cost_value is not None:
+            vr.error("normalized_cost.cost_status 'estimated' must not include normalized_cost_usd")
+        if estimated_value is None:
+            vr.error("normalized_cost.cost_status 'estimated' requires estimated_cost_usd")
+        for key in ("cost_estimate_method", "cost_estimate_source", "cost_estimate_pricing_date"):
+            _validate_required_cost_string(raw, key, vr)
+        assumptions = raw.get("cost_estimate_assumptions")
+        if (
+            not isinstance(assumptions, list)
+            or not assumptions
+            or any(not isinstance(assumption, str) or not assumption.strip() for assumption in assumptions)
+        ):
+            vr.error("normalized_cost.cost_estimate_assumptions must be a non-empty list of strings")
+        billing_unit = raw.get("billing_unit")
+        if billing_unit not in NORMALIZED_COST_BILLING_UNITS:
+            vr.error(
+                "normalized_cost.cost_status 'estimated' requires a concrete billing_unit "
+                f"in {sorted(NORMALIZED_COST_BILLING_UNITS)}; got {billing_unit!r}"
+            )
+        pricing_region = raw.get("pricing_region")
+        if not isinstance(pricing_region, str) or pricing_region in {"unknown", "not_applicable"}:
+            vr.error("normalized_cost.cost_status 'estimated' requires a concrete pricing_region")
+        if not isinstance(raw.get("deployment"), dict):
+            vr.error("normalized_cost.cost_status 'estimated' requires deployment metadata")
+        if raw.get("unavailability_reasons"):
+            vr.error("normalized_cost.cost_status 'estimated' must not include unavailability_reasons")
+    elif any(
+        value is not None
+        for value in (
+            estimated_value,
+            raw.get("cost_estimate_method"),
+            raw.get("cost_estimate_source"),
+            raw.get("cost_estimate_pricing_date"),
+            raw.get("cost_estimate_assumptions"),
+        )
+    ):
+        vr.error("normalized_cost cost estimate fields require cost_status 'estimated'")
 
 
 def _validate_normalized_cost_block(
@@ -1431,6 +1495,7 @@ def _validate_normalized_cost_block(
         vr.error(f"normalized_cost missing required provenance fields: {sorted(missing)}")
 
     cost_value = _parse_decimal(raw.get("normalized_cost_usd"), "normalized_cost.normalized_cost_usd", vr)
+    estimated_value = _parse_decimal(raw.get("estimated_cost_usd"), "normalized_cost.estimated_cost_usd", vr)
     _validate_required_cost_string(raw, "cost_model_version", vr)
     model_source = _validate_required_cost_string(raw, "cost_model_source", vr)
     cost_scope = _validate_required_cost_string(raw, "cost_scope", vr)
@@ -1453,6 +1518,7 @@ def _validate_normalized_cost_block(
         vr.error("normalized_cost.cost_status 'not_applicable_local' requires normalized_cost_usd of 0")
     if cost_status == "unavailable" and cost_value is not None:
         vr.error("normalized_cost.cost_status 'unavailable' must not include normalized_cost_usd")
+    _validate_estimated_cost_fields(raw, cost_value, estimated_value, cost_status, vr)
     if cost_status == "normalized" and billing_unit not in NORMALIZED_COST_BILLING_UNITS:
         vr.error(
             "normalized_cost.cost_status 'normalized' requires a concrete billing_unit "
@@ -1656,6 +1722,152 @@ def _validate_queries_section(queries: Any, version: Any, vr: ValidationResult) 
         vr.error("queries must contain at least one positive measurement timing")
 
 
+_THROUGHPUT_STREAM_QUERY_BENCHMARKS = frozenset({"tpch", "tpcds"})
+_POWER_PHASE_STREAM_ID = 0
+
+
+def _canonical_id_sort_key(value: str) -> list[int | str]:
+    return [int(part) if part.isdigit() else part for part in re.split(r"(\d+)", value)]
+
+
+def _coerce_stream_id(raw_id: Any) -> int | None:
+    if isinstance(raw_id, bool):
+        return None
+    if isinstance(raw_id, int):
+        return raw_id
+    if isinstance(raw_id, float) and raw_id.is_integer():
+        return int(raw_id)
+    if isinstance(raw_id, str) and raw_id.strip().isdigit():
+        return int(raw_id.strip())
+    return None
+
+
+def _completed_throughput_block(data: dict[str, Any]) -> dict[str, Any] | None:
+    phases = data.get("phases")
+    if not isinstance(phases, dict):
+        return None
+    block = phases.get("throughput_test")
+    if not isinstance(block, dict):
+        return None
+    if str(block.get("status") or "").upper() != "COMPLETED":
+        return None
+    return block
+
+
+def _validated_throughput_stream_ids(streams: Any, vr: ValidationResult) -> list[int] | None:
+    if not isinstance(streams, list) or not streams:
+        vr.error("phases.throughput_test.status='COMPLETED' requires a non-empty stream_results list")
+        return None
+    stream_ids: list[int] = []
+    for entry in streams:
+        raw_id = entry.get("stream_id") if isinstance(entry, dict) else None
+        stream_id = _coerce_stream_id(raw_id)
+        if stream_id is None:
+            vr.error(f"throughput stream_id must be an integer, got {raw_id!r}")
+            return None
+        if not isinstance(entry, dict) or entry.get("success") is not True:
+            vr.error(f"throughput stream {stream_id} did not succeed")
+            return None
+        stream_ids.append(stream_id)
+    if sorted(stream_ids) != list(range(1, len(stream_ids) + 1)):
+        vr.error(f"throughput stream_ids must be contiguous 1..{len(stream_ids)}, got {sorted(stream_ids)}")
+        return None
+    return stream_ids
+
+
+def _throughput_measurement_queries(queries: Any) -> list[dict[str, Any]]:
+    if not isinstance(queries, list):
+        return []
+    selected: list[dict[str, Any]] = []
+    for query in queries:
+        if not isinstance(query, dict):
+            continue
+        if not isinstance(query.get("status"), str):
+            continue
+        if query["status"].upper() not in _PASS_TIMING_STATUSES:
+            continue
+        try:
+            usable_ms = float(query.get("ms"))
+        except (TypeError, ValueError):
+            continue
+        if not math.isfinite(usable_ms) or usable_ms < 1.0:
+            continue
+        if str(query.get("run_type") or "measurement").strip().lower() != "measurement":
+            continue
+        if _normalize_coverage_query_id(query.get("id")) is None:
+            continue
+        selected.append(query)
+    return selected
+
+
+def _grouped_throughput_observations(queries: list[dict[str, Any]], vr: ValidationResult) -> dict[int, set[str]] | None:
+    observed_by_stream: dict[int, set[str]] = {}
+    for query in queries:
+        stream_key = _coerce_stream_id(query.get("stream", query.get("stream_id", 0)))
+        if stream_key is None:
+            vr.error(f"throughput query stream must be an integer, got {query.get('stream')!r}")
+            return None
+        if stream_key == _POWER_PHASE_STREAM_ID:
+            continue
+        normalized_query = _normalize_coverage_query_id(query.get("id"))
+        if normalized_query is None:
+            continue
+        observed_by_stream.setdefault(stream_key, set()).add(normalized_query)
+    return observed_by_stream
+
+
+def _validate_throughput_stream_coverage(
+    stream_ids: list[int],
+    observed_by_stream: dict[int, set[str]],
+    benchmark_id: str,
+    vr: ValidationResult,
+) -> None:
+    canonical = CANONICAL_LOGICAL_QUERY_IDS.get(benchmark_id)
+    if not canonical:
+        return
+    if len(stream_ids) < MIN_THROUGHPUT_STREAMS:
+        vr.error(f"throughput requires at least {MIN_THROUGHPUT_STREAMS} streams, got {len(stream_ids)}")
+        return
+    if benchmark_id == "tpcds":
+        observed_by_stream = {key: _fold_tpcds_variant_observations(value) for key, value in observed_by_stream.items()}
+    known_ids = set(stream_ids)
+    for stream_key in sorted(observed_by_stream):
+        if stream_key not in known_ids:
+            vr.error(f"throughput query references unknown stream_id {stream_key}")
+    for stream_id in sorted(known_ids):
+        missing = sorted(
+            canonical - observed_by_stream.get(stream_id, set()),
+            key=_canonical_id_sort_key,
+        )
+        if not missing:
+            continue
+        shown = ", ".join(missing[:12])
+        if len(missing) > 12:
+            shown += f", … (+{len(missing) - 12} more)"
+        vr.error(
+            f"throughput stream {stream_id} covers {len(canonical) - len(missing)} of {len(canonical)}"
+            f" canonical queries (missing: {shown})"
+        )
+
+
+def _validate_throughput_stream_completeness(data: dict[str, Any], vr: ValidationResult) -> None:
+    block = _completed_throughput_block(data)
+    if block is None:
+        return
+    stream_ids = _validated_throughput_stream_ids(block.get("stream_results"), vr)
+    if stream_ids is None:
+        return
+    benchmark = data.get("benchmark")
+    benchmark_id = benchmark.get("id") if isinstance(benchmark, dict) else None
+    normalized_benchmark = benchmark_id.strip().casefold() if isinstance(benchmark_id, str) else None
+    if normalized_benchmark not in _THROUGHPUT_STREAM_QUERY_BENCHMARKS:
+        return
+    observed_by_stream = _grouped_throughput_observations(_throughput_measurement_queries(data.get("queries")), vr)
+    if observed_by_stream is None:
+        return
+    _validate_throughput_stream_coverage(stream_ids, observed_by_stream, normalized_benchmark, vr)
+
+
 def _validate_execution_consistency(data: dict[str, Any], vr: ValidationResult) -> None:
     summary = data.get("summary")
     if not isinstance(summary, dict) or _normalize_status(summary.get("validation")) != PUBLIC_CLEAN_VALIDATION_STATUS:
@@ -1678,6 +1890,7 @@ def _validate_execution_consistency(data: dict[str, Any], vr: ValidationResult) 
                     vr.error(
                         f"summary.validation='passed' contradicts queries[{i}].row_count_validation.status={rcv_status!r}"
                     )
+    _validate_throughput_stream_completeness(data, vr)
 
 
 def _validate_validation_phase_consistency(data: dict[str, Any], vr: ValidationResult) -> None:
@@ -1866,7 +2079,8 @@ def _validate_manifest_companion(
 
 
 def _validate_applied_companion_limits(companion: Path, vr: ValidationResult) -> bool:
-    if not companion.name.lower().endswith(".applied.json"):
+    comp_lower = companion.name.lower()
+    if not (comp_lower.endswith(".applied.json") or comp_lower.endswith(".tuning.json")):
         return True
     try:
         size = companion.stat().st_size
@@ -1880,17 +2094,22 @@ def _validate_applied_companion_limits(companion: Path, vr: ValidationResult) ->
         return False
     try:
         payload = json.loads(companion.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return True
+    except (OSError, ValueError) as exc:
+        vr.error(f"Diagnostic companion {companion.name} is unreadable: {exc}")
+        return False
     if not isinstance(payload, dict):
-        return True
+        vr.error(f"Diagnostic companion {companion.name} must contain a JSON object")
+        return False
     oversized = _oversized_applied_ledger_arrays(payload)
     for label, count in oversized:
         vr.error(
             f"Applied receipt {companion.name} exceeds the {APPLIED_RECEIPT_MAX_ENTRIES}-entry limit "
             f"at {label} ({count} entries)"
         )
-    return not oversized
+    unanonymized = unanonymized_tuning_findings(payload)
+    for finding in unanonymized:
+        vr.error(f"Public privacy contract rejects unanonymized tuning diagnostics in {companion.name}: {finding}")
+    return not oversized and not unanonymized
 
 
 def _oversized_applied_ledger_arrays(applied: dict) -> list[tuple[str, int]]:
@@ -1914,6 +2133,136 @@ def _oversized_applied_ledger_arrays(applied: dict) -> list[tuple[str, int]]:
         for label, value in candidates
         if isinstance(value, list) and len(value) > APPLIED_RECEIPT_MAX_ENTRIES
     ]
+
+
+_UNANONYMIZED_STATEMENT_KEYS = ("statement", "error", "table")
+_UNANONYMIZED_RECEIPT_ENTRY_KEYS = (
+    "statement",
+    "reason",
+    "error",
+    "diff",
+    "detail",
+    "evidence",
+    "table",
+    "name",
+    "expected_columns",
+    "observed_columns",
+)
+_UNANONYMIZED_OBSERVED_KEYS = ("table", "name", "columns", "evidence")
+_UNANONYMIZED_DRIFT_KEYS = (
+    "errors",
+    "warnings",
+    "configuration_mismatches",
+    "missing_tables",
+    "extra_tables",
+)
+
+
+def _applied_payload_for_privacy_scan(data: Any) -> tuple[dict[str, Any] | None, str]:
+    if not isinstance(data, dict):
+        return None, "applied"
+    platform = data.get("platform")
+    tuning = platform.get("tuning") if isinstance(platform, dict) else None
+    candidate = tuning.get("applied") if isinstance(tuning, dict) else None
+    if isinstance(candidate, dict):
+        return candidate, "platform.tuning.applied"
+    if "platform" not in data and (isinstance(data.get("receipt"), dict) or isinstance(data.get("statements"), list)):
+        return data, "applied"
+    return None, "applied"
+
+
+def _unanonymized_key_findings(entries: Any, keys: tuple[str, ...], where: str) -> list[str]:
+    findings: list[str] = []
+    if not isinstance(entries, list):
+        return findings
+    for index, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            continue
+        for key in keys:
+            if key in entry:
+                findings.append(f"{where}[{index}] exposes unanonymized tuning {key}")
+    return findings
+
+
+def _unanonymized_intent_findings(items: Any, where: str) -> list[str]:
+    if not isinstance(items, list):
+        return []
+    return [
+        f"{where}[{index}] exposes unanonymized tuning intent detail"
+        for index, item in enumerate(items)
+        if isinstance(item, dict) and ("intent" in item or "reason" in item)
+    ]
+
+
+def _unanonymized_receipt_findings(receipt: Any, prefix: str) -> list[str]:
+    if not isinstance(receipt, dict):
+        return []
+    findings: list[str] = []
+    if "error" in receipt:
+        findings.append(f"{prefix}.receipt exposes an unanonymized tuning error")
+    findings.extend(
+        _unanonymized_key_findings(
+            receipt.get("entries"), _UNANONYMIZED_RECEIPT_ENTRY_KEYS, f"{prefix}.receipt.entries"
+        )
+    )
+    findings.extend(
+        _unanonymized_key_findings(receipt.get("observed"), _UNANONYMIZED_OBSERVED_KEYS, f"{prefix}.receipt.observed")
+    )
+    findings.extend(_unanonymized_intent_findings(receipt.get("dropped"), f"{prefix}.receipt.dropped"))
+    return findings
+
+
+def unanonymized_tuning_findings(data: Any) -> list[str]:
+    applied, prefix = _applied_payload_for_privacy_scan(data)
+    if applied is None:
+        return []
+    findings = _unanonymized_key_findings(
+        applied.get("statements"), _UNANONYMIZED_STATEMENT_KEYS, f"{prefix}.statements"
+    )
+    for section in ("dropped", "satisfied"):
+        findings.extend(_unanonymized_intent_findings(applied.get(section), f"{prefix}.{section}"))
+    findings.extend(_unanonymized_receipt_findings(applied.get("receipt"), prefix))
+    drift = applied.get("drift_check")
+    if isinstance(drift, dict):
+        for key in _UNANONYMIZED_DRIFT_KEYS:
+            if key in drift:
+                findings.append(f"{prefix}.drift_check exposes unanonymized tuning {key}")
+    return findings
+
+
+def _unanonymized_operator_metadata_findings(node: Any, where: str) -> list[str]:
+    if not isinstance(node, dict):
+        return []
+    findings: list[str] = []
+    physical = node.get("physical_operator")
+    if isinstance(physical, dict) and physical.get("platform_metadata"):
+        findings.append(f"{where} exposes unanonymized operator platform_metadata")
+    children = node.get("children")
+    if isinstance(children, list):
+        for child in children:
+            findings.extend(_unanonymized_operator_metadata_findings(child, where))
+    return findings
+
+
+def unanonymized_plans_findings(data: Any) -> list[str]:
+    if not isinstance(data, dict):
+        return []
+    queries = data.get("queries")
+    if not isinstance(queries, dict):
+        return []
+    findings: list[str] = []
+    for query_id, entry in queries.items():
+        if not isinstance(entry, dict):
+            continue
+        plan = entry.get("plan")
+        if not isinstance(plan, dict):
+            continue
+        if plan.get("raw_explain_output") is not None:
+            findings.append(f"plans.queries[{query_id}].plan exposes unanonymized raw_explain_output")
+        findings.extend(
+            _unanonymized_operator_metadata_findings(plan.get("logical_root"), f"plans.queries[{query_id}].plan")
+        )
+    return findings
 
 
 def _validate_manifest_provenance(manifest: dict[str, Any], primary_path: Path, vr: ValidationResult) -> None:
@@ -2014,14 +2363,30 @@ def validate_bundles(
         parsed.append((data, vr))
 
         applied_name = f"{bundle_path.stem}.applied.json".lower()
+        tuning_name = f"{bundle_path.stem}.tuning.json".lower()
+        plans_name = f"{bundle_path.stem}.plans.json".lower()
         for companion in bundle_path.parent.iterdir():
-            if companion.name.lower() != applied_name:
+            comp_lower = companion.name.lower()
+            if comp_lower not in (applied_name, tuning_name, plans_name):
                 continue
             if companion.is_symlink():
                 vr.error(f"Companion file is a symlink, not a regular file: {companion.name} (symlinks not allowed)")
             elif companion.is_file():
-                _validate_applied_companion_limits(companion, vr)
-
+                if comp_lower in (applied_name, tuning_name):
+                    _validate_applied_companion_limits(companion, vr)
+                elif comp_lower == plans_name:
+                    try:
+                        plans_payload = json.loads(companion.read_text(encoding="utf-8"))
+                    except (OSError, ValueError) as exc:
+                        vr.error(f"Plans companion {companion.name} is unreadable: {exc}")
+                        continue
+                    if not isinstance(plans_payload, dict):
+                        vr.error(f"Plans companion {companion.name} must contain a JSON object")
+                        continue
+                    for finding in unanonymized_plans_findings(plans_payload):
+                        vr.error(
+                            f"Public privacy contract rejects unanonymized plans diagnostics in {companion.name}: {finding}"
+                        )
         per_bundle_manifest = bundle_path.parent / f"{bundle_path.stem}{SUBMISSION_MANIFEST_SUFFIX}"
         legacy_manifest = bundle_path.parent / SUBMISSION_MANIFEST_FILENAME
         manifest_path = (
