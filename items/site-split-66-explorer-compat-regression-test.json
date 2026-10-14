@@ -7,7 +7,7 @@
     "Existing tests in the file still pass; command and result recorded in the PR body",
     "Tests carry no explanatory comments; ledger rows updated if files are added"
   ],
-  "context": "Raised by the 2026-10-13 adversarial review (handoff revision 9, finding 8). Evidence: `git show 77048bfb9 --stat` shows one file changed (scripts/publication/check_explorer_compat.py, 6 insertions, 2 deletions) and no test; the fallback block now reads SUPPORTED_SCHEMA_VERSIONS=(16,), CURRENT_SCHEMA_VERSION=16, CONTRACT_VERSION=\"6\". Core runs 38294623553 (head 2bdcb75fd, #2918) and 38332679389 (head 06b65fa78, #2926) failed with attestations failed: explorer_compat before #2927 merged.",
+  "context": "Claim released 2026-10-14 to unblock item 67 while the merge block is diagnosed. State: branch fix/explorer-compat-direct-contract at 7f671cb600edd4c0846abe5af975f2be90a85b54, PR BenchBox#2960 open, all 7 required checks SUCCESS-latest on current head, oracle SHIP (carried) for current head, auto-merge armed, yet mergeStateStatus BLOCKED and manual merge refused as policy-prohibited. Ruled out: stale check rows (age out; #2955 merged with same shape), draft, threads, approvals (0 required), authorship (identical to merged PRs), ruleset drift (restored byte-identical), auto-merge wedging (reset), close/reopen. Sibling PR #2961 is CLEAN with single-row checks; #2962 shares the all-green-BLOCKED shape. Resume by re-taking and merging once unblocked.",
   "description": "Core #2927 fixed scripts/publication/check_explorer_compat.py by putting the repo root on sys.path, but added no test. The existing tests import the module under pytest, where the root is already importable, so they passed throughout the incident that broke the bundle pipeline (core run 38294623553 and 38332679389). The fallback pin remains (now 16) and duplicates _project/scripts/explorer_pipeline/contract.py:4; tests/unit/scripts/publication/test_check_explorer_compat.py:50 hardcodes 16; the fallback warning is one stderr line that does not change the exit code; CLI_DESCRIPTION still names v13.\n\nSmallest fix: import the contract directly with no fallback, and add one subprocess test that runs the script by path.",
   "sessions": [
     {
@@ -34,6 +34,14 @@
       "generation": "2645b7397001426086171c5ae56f1bf1",
       "op": "release",
       "op_id": "9db4a74671ca417392d9ede9e816bc9f",
+      "session_id": "63fb16e6ece34adb91d17cdd1e1f2310"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:2ddfad0386e20e3a0ffba40a",
+      "at": "2026-10-14T14:08:26Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "2197fd29c1cd4751a638036304038611",
       "session_id": "63fb16e6ece34adb91d17cdd1e1f2310"
     }
   ]
