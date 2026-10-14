@@ -40,9 +40,9 @@ committed snapshot without refreshing it.
 > Superseded note: the migration freeze closed on 2026-09-04
 > (`publication-freeze-closure-2026-09-04.json` records passing evidence for archive
 > preservation, dual publication, rollback, incident response, and reconciliation).
-> The section below is historical. Current production writes use the transaction writer in
-> `publication-deployer-soak-and-retirement.md`; incident recovery uses the protected rollback
-> path there, not a release-branch re-run.
+> The section below is historical. Production deploys now come from `BenchBox-dev/benchbox-site`
+> (see `publication-deployer-soak-and-retirement.md`); incident recovery uses the `rollback` mode
+> of its deploy workflow, not a release-branch re-run.
 
 The controlling decision is
 `_project/decisions/independent-publication-a0-freeze-2026-08-31.md`. While the

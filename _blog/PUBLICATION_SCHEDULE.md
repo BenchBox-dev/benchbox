@@ -54,4 +54,4 @@
 
 ## Notes
 
-- **Publication path**: `_blog/{series}/drafts/` → critique → `_blog/{series}/published/` → `docs/blog/` → publication transaction (see `PUBLISHING.md`)
+- **Publication path**: `_blog/{series}/drafts/` → critique → `_blog/{series}/published/` → `docs/blog/` → replay into `BenchBox-dev/benchbox-site` (see `PUBLISHING.md`)

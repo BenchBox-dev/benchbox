@@ -3,6 +3,11 @@
 **Audience:** Contributors changing `results-explorer/` who need to know what
 browser coverage exists, how to run it, and how to add tests.
 
+The site repository, `BenchBox-dev/benchbox-site`, keeps a copy of
+`results-explorer/` as `explorer/` and runs this suite against it in its own
+CI. A change made here reaches benchbox.dev only when it is replayed into that
+repository by pull request.
+
 The suite follows four design choices. It tests the built app (`dist/`), not
 the dev server. Each run generates its own fixture corpus and leaves the
 curated public corpus untouched. Chromium runs the full suite and blocks;

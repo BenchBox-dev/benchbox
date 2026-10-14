@@ -1,15 +1,19 @@
-# Site deploy runbook
+# Site deploy runbook (retired)
 
-`.github/workflows/site-deploy.yml` is the single writer for `benchbox.dev`.
-It runs only on `workflow_dispatch` and publishes through the `github-pages`
-environment, whose required reviewer approves each deployment. `deploy` and
-`rollback` runs hold the `pages-deploy` concurrency group for the whole run with
-`cancel-in-progress: false`, the same group the legacy Pages writers use.
-`preview` runs hold a private `site-preview-<run id>` group, so a rehearsal never
-queues behind, or blocks, a production run. GitHub keeps one pending run per
-concurrency group: a `deploy` or `rollback` waiting on the group (for example for
-the environment approval) is cancelled when a later `deploy` or `rollback` is
-dispatched. Re-dispatch the one you want after the newer run finishes.
+> **Retired.** `.github/workflows/site-deploy.yml` ("Site Deploy") has been
+> disabled in GitHub since 2026-10-11. benchbox.dev is deployed by
+> `.github/workflows/deploy.yml` in `BenchBox-dev/benchbox-site`. For deploys, rollback and the deploy
+> target variable, see the "Deploys" section of that repository's `AGENTS.md`.
+> Core feeds the deploy through the `site-inputs-<sha>` bundle that
+> `site-inputs.yml` builds and sends as a `core-bundle` dispatch. Changes to
+> `results-explorer/`, `website/`, `landing/`, `docs/blog/`, `_blog/` and
+> `_project/design/site-inventory/` reach the site only when replayed there by
+> pull request; see "Replaying core changes" in the same `AGENTS.md`.
+>
+> The sections below describe the retired Python deploy plane. Core's workflow
+> tests still read this page, so it stays until the workflow,
+> `scripts/site_deploy/` and those tests are deleted together. Do not follow
+> it to deploy.
 
 ## Routes
 
