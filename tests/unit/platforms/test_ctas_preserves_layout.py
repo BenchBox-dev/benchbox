@@ -37,7 +37,7 @@ def _sorted_config(mode: str = "force", method: str = "ctas") -> UnifiedTuningCo
 
 
 def _adapter(adapter_cls: type, config: UnifiedTuningConfiguration):
-    adapter = adapter_cls.__new__(adapter_cls)
+    adapter = object.__new__(adapter_cls)
     adapter.logger = logging.getLogger("test-ctas-preserves-layout")
     adapter.dry_run_mode = False
     adapter.capture_sql = Mock()
