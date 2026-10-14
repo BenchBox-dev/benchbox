@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
+import subprocess
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -121,13 +124,19 @@ class TestResultDatabase:
         ResultDatabase(db_path)
         assert db_path.exists()
 
-    def test_init_default_path(self):
+    def test_init_default_path(self, tmp_path):
+        from tests.utilities.session_isolation import active, session_home
 
-        db = ResultDatabase.__new__(ResultDatabase)
-        db.db_path = None
-        from tests.utilities.session_isolation import session_home
+        if active():
+            assert session_home() / ".benchbox" / "results.db" == DEFAULT_DB_PATH
+            return
 
-        assert session_home() / ".benchbox" / "results.db" == DEFAULT_DB_PATH
+        env = {**os.environ, "HOME": str(tmp_path), "USERPROFILE": str(tmp_path)}
+        probe = "from benchbox.core.results.database import DEFAULT_DB_PATH; print(DEFAULT_DB_PATH)"
+        output = subprocess.run(
+            [sys.executable, "-c", probe], env=env, capture_output=True, text=True, check=True
+        ).stdout.strip()
+        assert Path(output) == tmp_path / ".benchbox" / "results.db"
 
     def test_schema_version_stored(self, tmp_path):
 

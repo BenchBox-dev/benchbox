@@ -102,21 +102,24 @@ def _wants_parallel_lock(args: list[str]) -> bool:
     return value in {"auto", "logical"} or bool(_requested_numprocesses(value))
 
 
-def _selects_live_tests(args: list[str]) -> bool:
+def _selects_only_live_tests(args: list[str]) -> bool:
     expression = _last_option_value(args, "--markers-expression", "-m")
     if not expression:
         return False
     try:
         from _pytest.mark.expression import Expression
 
-        return bool(Expression.compile(expression).evaluate(lambda name, **_: name == "live_integration"))
+        compiled = Expression.compile(expression)
+        selects_live_only = bool(compiled.evaluate(lambda name, **_: name == "live_integration"))
+        selects_unmarked = bool(compiled.evaluate(lambda name, **_: False))
     except Exception:
         return False
+    return selects_live_only and not selects_unmarked
 
 
 @pytest.hookimpl(wrapper=True, tryfirst=True)
 def pytest_load_initial_conftests(early_config, parser, args: list[str]):
-    if not _selects_live_tests(args) and session_isolation.start(acquire_lock=_wants_parallel_lock(args)):
+    if not _selects_only_live_tests(args) and session_isolation.start(acquire_lock=_wants_parallel_lock(args)):
         early_config.add_cleanup(session_isolation.finish)
     safe = _safe_worker_count()
     requested = _rewrite_numprocesses_args(args, safe)

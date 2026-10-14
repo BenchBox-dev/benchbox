@@ -245,6 +245,41 @@ def test_a_run_that_deselects_live_tests_is_isolated(tmp_path: Path) -> None:
     assert "1 passed" in result.stdout
 
 
+ISOLATED_PROBE = (
+    "import os\nimport pytest\nfrom pathlib import Path\n"
+    "@pytest.mark.live_integration\n"
+    "def test_live_is_isolated():\n"
+    '    assert str(Path.home()) != os.environ["PROBE_CALLER_HOME"]\n'
+    "def test_other_is_isolated():\n"
+    '    assert str(Path.home()) != os.environ["PROBE_CALLER_HOME"]\n'
+)
+
+
+def test_a_run_that_also_selects_unmarked_tests_stays_isolated(tmp_path: Path) -> None:
+    result = _run_session_probe(tmp_path, ISOLATED_PROBE, "-n", "0", "-m", "not stress")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "2 passed" in result.stdout
+
+
+@pytest.mark.parametrize(
+    ("expression", "expected"),
+    [
+        ("live_integration", True),
+        ("live_integration and not stress", True),
+        ("not stress", False),
+        ("not live_integration", False),
+        ("live_integration or fast", True),
+        ("not (slow or stress)", False),
+        ("", False),
+    ],
+)
+def test_isolation_is_dropped_only_for_runs_selecting_nothing_but_live_tests(expression: str, expected: bool) -> None:
+    import _benchbox_pytest_xdist_safety as plugin
+
+    assert plugin._selects_only_live_tests(["-m", expression]) is expected
+    assert plugin._selects_only_live_tests([]) is False
+
+
 class _EarlyConfig:
     def __init__(self) -> None:
         self.cleanups: list[object] = []

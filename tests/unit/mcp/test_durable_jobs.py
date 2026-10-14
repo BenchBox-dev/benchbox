@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import sqlite3
 import threading
@@ -1262,6 +1263,7 @@ def test_quiescence_attestation_is_retried_and_logged_when_the_store_fails(tmp_p
         return real_attest(execution_id, worker_id)
 
     monkeypatch.setattr(repository, "attest_quiescence", flaky)
+    caplog.set_level(logging.WARNING, logger="benchbox.mcp.jobs")
     worker._attest_when_leaked_work_ends(submitted.execution_id, tmp_path / "staging", [leaked])
 
     assert _wait_until(lambda: (repository.get(submitted.execution_id) or submitted).quiesced_at is not None)

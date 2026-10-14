@@ -29,12 +29,6 @@ from benchbox.mcp.tools.discovery import register_discovery_tools
 from benchbox.mcp.tools.results import register_results_tools
 from benchbox.mcp.tools.visualization import register_visualization_tools
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    stream=sys.stderr,
-)
-
 logger = logging.getLogger(__name__)
 
 MCP_CACHE_HINTS = {
@@ -94,6 +88,15 @@ def _resolve_log_level(
     return logging.INFO
 
 
+def _configure_benchbox_logging(level: int) -> None:
+    benchbox_logger = logging.getLogger("benchbox")
+    benchbox_logger.setLevel(level)
+    if not benchbox_logger.handlers:
+        handler = logging.StreamHandler(sys.stderr)
+        handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+        benchbox_logger.addHandler(handler)
+
+
 def create_benchbox_server(
     *,
     results_dir: str | Path | None = None,
@@ -105,7 +108,7 @@ def create_benchbox_server(
     from benchbox.utils.printing import set_quiet
 
     set_quiet(True)
-    logging.getLogger().setLevel(_resolve_log_level(log_level, env=env))
+    _configure_benchbox_logging(_resolve_log_level(log_level, env=env))
 
     if results_dir is not None and charts_dir is not None:
         resolved_results_dir = Path(results_dir)

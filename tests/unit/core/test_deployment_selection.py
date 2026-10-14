@@ -71,7 +71,7 @@ class TestResolveDeployment:
         assert (resolution.selected, resolution.explicit) == (None, False)
 
     def test_alias_warns_once_per_run(self, caplog: pytest.LogCaptureFixture) -> None:
-        with caplog.at_level("WARNING", logger="benchbox.core.deployment"):
+        with caplog.at_level("WARNING", logger="benchbox.core.deprecation_notices"):
             resolve_deployment("firebolt", None, {"deployment_mode": "cloud"}, None)
             resolve_deployment("firebolt", None, {"deployment_mode": "cloud"}, None)
         warnings = [record for record in caplog.records if "deprecated" in record.message]
@@ -107,12 +107,12 @@ class TestDeploymentClass:
 
 class TestSelectAdapterDeployment:
     def test_canonical_value_wins_without_warning(self, caplog: pytest.LogCaptureFixture) -> None:
-        with caplog.at_level("WARNING", logger="benchbox.core.deployment"):
+        with caplog.at_level("WARNING", logger="benchbox.core.deprecation_notices"):
             assert select_adapter_deployment("firebolt", {"deployment_mode": "cloud"}, None) == "cloud"
         assert [record for record in caplog.records if "deprecated" in record.message] == []
 
     def test_legacy_fallback_warns(self, caplog: pytest.LogCaptureFixture) -> None:
-        with caplog.at_level("WARNING", logger="benchbox.core.deployment"):
+        with caplog.at_level("WARNING", logger="benchbox.core.deprecation_notices"):
             assert select_adapter_deployment("firebolt", {"firebolt_mode": "cloud"}, None) == "cloud"
         assert len([record for record in caplog.records if "deprecated" in record.message]) == 1
 
@@ -348,7 +348,7 @@ class TestSelectorSplitting:
             platform_option_pairs=(("sail_mode", "distributed"),),
             parsed_platform_options={"deployment_mode": "distributed"},
         )
-        with caplog.at_level("WARNING", logger="benchbox.core.deployment"):
+        with caplog.at_level("WARNING", logger="benchbox.core.deprecation_notices"):
             _apply_deployment_selector_option(namespace)
         assert [record for record in caplog.records if "deprecated" in record.message]
         assert namespace.deployment_selector == "distributed"
@@ -378,7 +378,7 @@ class TestSavedConfigAndCredentialCompat:
 
         with (
             patch.object(CredentialManager, "get_platform_credentials", return_value={"sail_mode": "distributed"}),
-            caplog.at_level("WARNING", logger="benchbox.core.deployment"),
+            caplog.at_level("WARNING", logger="benchbox.core.deprecation_notices"),
         ):
             config = DatabaseManager().create_config("lakesail", {})
             assert config.options["sail_mode"] == "distributed"

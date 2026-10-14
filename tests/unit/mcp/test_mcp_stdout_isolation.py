@@ -1,4 +1,6 @@
 import io
+import logging
+import subprocess
 import sys
 from unittest.mock import MagicMock, patch
 
@@ -94,3 +96,35 @@ class TestNoStdoutLeakage:
         from benchbox.utils.printing import set_quiet
 
         set_quiet(False)
+
+
+class TestServerLoggingScope:
+    def test_create_server_configures_only_the_benchbox_logger(self, tmp_path, capsys):
+        from benchbox.mcp import create_server
+
+        root = logging.getLogger()
+        benchbox_logger = logging.getLogger("benchbox")
+        benchbox_logger.handlers[:] = []
+        root_before = (root.level, list(root.handlers))
+
+        create_server(results_dir=tmp_path, charts_dir=tmp_path / "charts", log_level="ERROR")
+        create_server(results_dir=tmp_path, charts_dir=tmp_path / "charts", log_level="ERROR")
+
+        assert (root.level, list(root.handlers)) == root_before
+        assert benchbox_logger.level == logging.ERROR
+        assert len(benchbox_logger.handlers) == 1
+
+        logging.getLogger("benchbox.mcp.server").error("server-log-line")
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert "server-log-line" in captured.err
+
+    def test_importing_the_server_module_leaves_the_root_logger_alone(self):
+        probe = (
+            "import logging\n"
+            "before = (logging.getLogger().level, list(logging.getLogger().handlers))\n"
+            "import benchbox.mcp.server\n"
+            "after = (logging.getLogger().level, list(logging.getLogger().handlers))\n"
+            "assert before == after, (before, after)\n"
+        )
+        subprocess.run([sys.executable, "-c", probe], check=True, capture_output=True, text=True)

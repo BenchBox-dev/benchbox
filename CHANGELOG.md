@@ -167,6 +167,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `resource` from that block as it already did from `platform.compute`.
   `resource_kind`, `size` and the observed execution engine stay readable.
   Published bundles are unchanged.
+- The MCP server no longer reconfigures Python's root logger. Importing
+  `benchbox.mcp.server` leaves logging untouched, and `create_server` sets the
+  level and a single stderr handler on the `benchbox` logger only, so an
+  embedding application keeps control of its own logging. The stdio transport
+  still writes nothing to stdout. Covered by `TestServerLoggingScope` in
+  `tests/unit/mcp/test_mcp_stdout_isolation.py`.
 - Dry-run previews no longer write saved credentials or connection secrets in
   clear. The JSON and YAML preview files written by `benchbox run --dry-run`
   apply the same redaction as result bundles to the benchmark, database and
