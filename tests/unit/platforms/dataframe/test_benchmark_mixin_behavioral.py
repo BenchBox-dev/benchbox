@@ -579,3 +579,42 @@ class TestMultipleIterations:
         assert all(w["stream_id"] == 0 for w in warmup)
         meas_stream_ids = sorted(set(m["stream_id"] for m in measurement))
         assert meas_stream_ids == [1, 2]
+
+
+class _RecordingBuilder:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, tuple, dict]] = []
+
+    def __getattr__(self, name: str):
+        def _record(*args: Any, **kwargs: Any) -> None:
+            self.calls.append((name, args, kwargs))
+
+        return _record
+
+
+class TuningSpyAdapter(StubAdapter):
+    def __init__(self) -> None:
+        super().__init__()
+        self.writer_calls: list[Any] = []
+
+    def _write_applied_tuning_ledger(self, builder: Any) -> None:
+        self.writer_calls.append(builder)
+
+
+class TestAppliedTuningLedgerAttach:
+    def test_attach_without_tuning_mixin_leaves_builder_untouched(self):
+        adapter = StubAdapter()
+        assert not hasattr(adapter, "_write_applied_tuning_ledger")
+        builder = _RecordingBuilder()
+
+        adapter._attach_applied_tuning_ledger(builder)
+
+        assert builder.calls == []
+
+    def test_attach_dispatches_configured_writer_once(self):
+        adapter = TuningSpyAdapter()
+        builder = _RecordingBuilder()
+
+        adapter._attach_applied_tuning_ledger(builder)
+
+        assert adapter.writer_calls == [builder]
