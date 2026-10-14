@@ -20474,10 +20474,15 @@
       "title": "Rehearse parent-chain recovery end to end, then deploy the stalled bundles to production and confirm the content"
     },
     "site-split-64-seed-vehicle-authorization": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-15T07:41:52Z",
+        "generation": "93c7278e0b144be0acb427679875d2f0",
+        "renewals": 0,
+        "worker": "mcp:tbh:joe@joe-mac-mini.local:2ddfad0386e20e3a0ffba40a"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Get the owner's decision on seed PR #2930 as the item-40 vehicle, and decide whether raw bundles may merge to develop"
     },
     "site-split-65-replay-completeness-and-fidelity": {
