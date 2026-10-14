@@ -139,6 +139,15 @@
       "op": "update",
       "op_id": "2b66404d6f2a40298675e21fb22b3842",
       "session_id": "7c6ceccf81f14d0a962150f0c09d7242"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:fc0d1ff3e89d9d705763452b",
+      "at": "2026-10-14T19:27:36Z",
+      "client": "claude-code",
+      "generation": "01c17655002b4af58a5bf2950f2a3f50",
+      "op": "release",
+      "op_id": "151cba6c1a224097a2d07e8eb8ca24d3",
+      "session_id": "7c6ceccf81f14d0a962150f0c09d7242"
     }
   ]
 }
