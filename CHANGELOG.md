@@ -135,6 +135,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Dry-run previews no longer write saved credentials or connection secrets in
+  clear. The JSON and YAML preview files written by `benchbox run --dry-run`
+  apply the same redaction as result bundles to the benchmark, database and
+  platform configuration: secret options such as a Quanton `api_key` or a
+  Snowflake or Redshift `password`, and user names, become `<redacted>`; the
+  user and password in a URI, such as `gateway_host=https://user:pass@host`,
+  become `****`.
+  Other options, such as `compute_size` and hosts, stay readable. The real run
+  still receives the credentials.
 - The new-platform scaffold emits a manifest entry that passes the manifest
   validator the package runs at import. The entry sets `default_mode` and the
   required metadata fields; an SQL entry names the adapter `class_name` and
