@@ -2,6 +2,7 @@
   "acceptance": [
     "Decision recorded: local adapters record genuine engine versions, or measured path formally declared unreachable without engine metadata"
   ],
+  "context": "2026-10-14: decision taken — local adapters record a genuine engine version, only from a live SQL query on the run's connection (DuckDB SELECT version(), DataFusion SELECT version(), SQLite SELECT sqlite_version()), with engine_version_source=\"sql_query\"; never from the Python package/driver version. Uncommitted work in worktree /Users/joe/Developer/BenchBox.wt-local-engine-version-metadata (branch fix/local-engine-version-metadata, 5 behind develop): 6 files, +27 lines (duckdb.py, datafusion.py, sqlite.py and their tests). Focused tests passed (41). Not yet done: review the broad `except Exception: pass` around the DataFusion/SQLite queries (prefer the narrow tuple unless a real exception type escapes), CHANGELOG entry, full ladder, commit, pr-preflight, pr-open, oracle, arm per owner D1. Resume per ~/Developer/benchmark_runs/HANDOFF-tuning-local-fix-batch-20261014.md §11.",
   "description": "Oracle review on #2875 (2026-10-12) required removing driver/platform substitution from _tuning_evidence_engine_version. Consequence: with no platform recording genuine engine_version metadata, measured-benefit states are unreachable for local runs (CLI measured-benefit test reworked to pin unmeasured).",
   "sessions": [
     {
@@ -30,6 +31,14 @@
       "op": "takeover",
       "op_id": "5be3de5d7f7747bf9d334e7d1403186a",
       "reason": "Holder was Codex session 01a13c10 (takeover of the tuning-local batch), which stopped at 16:29; no live writer on its worktree. Recording resume notes so the next agent can continue.",
+      "session_id": "83dc3ac2f62946068c406a843bde427a"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:dfba218995515e0b05338829",
+      "at": "2026-10-14T23:28:06Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "b1c50b2f6d43449b903bb33834acbddb",
       "session_id": "83dc3ac2f62946068c406a843bde427a"
     }
   ]
