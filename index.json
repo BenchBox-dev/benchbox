@@ -20594,10 +20594,15 @@
       "title": "Add a script-entrypoint regression test for the explorer compatibility check and remove its stale fallback pin"
     },
     "site-split-67-batch-records-and-handoff-hygiene": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-15T14:08:38Z",
+        "generation": "acddddbc447640089e3419e61f2ff078",
+        "renewals": 0,
+        "worker": "mcp:tbh:joe@joe-mac-mini.local:2ddfad0386e20e3a0ffba40a"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Bring the batch records up to date and give the handoff, plan, ledger and evidence a durable second location"
     },
     "site-split-68-seed-lane-ineligible-cells": {
