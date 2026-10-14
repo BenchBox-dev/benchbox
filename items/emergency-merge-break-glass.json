@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "A reviewed, documented emergency procedure exists; the develop ruleset shows zero bypass actors again with enforcement active."
+  ],
+  "context": "Incident 2026-10-14: a stale scope-ledger entry failed every PR's comment gate. Repair PR #2953 could not merge normally (gate pins the base copy) and the develop-squash-only ruleset listed zero bypass actors, so even admin API merge was refused. Resolved with owner approval via temporary org-admin pull_request bypass, immediate merge, and verified restore.",
+  "description": "There is no standing break-glass path for base-pinned gate breakage: with zero bypass actors, the next all-PR-blocking outage requires improvising repo security changes under pressure again. Record the emergency procedure (temporary org-admin pull_request bypass, merge, immediate verified restore) or pre-approve a standing break-glass actor, with the exact commands and verification checks, and get it reviewed before the next incident.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/2953"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:dd4e0e92aef34af3608f45c5",
+      "at": "2026-10-14T18:02:33Z",
+      "client": "tbh",
+      "op": "create",
+      "op_id": "379cc90cb6e446029790b8b9b61945af",
+      "session_id": "be2b066e755a4a4bb3ff24b1b46fe0b7"
+    }
+  ]
+}
