@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Test filename uses durable domain terms; PR #2919 green after the rename."
+  ],
+  "context": "Found during the 2026-10-13 session while fixing the same violation class in PR #2919's description. Coordinate with the owning #2919 session; do not rename under them without warning because test discovery and their review head are affected.",
+  "description": "tests/unit/core/tuning/test_capability_validator_d5.py carries the D-5 session plan label in a tracked filename, the same durable-artifacts violation class already fixed in PR #2919's description. No durable D-5 definition exists anywhere in the repo, so a reader cannot resolve it. Rename to domain terms.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/2919"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:dd4e0e92aef34af3608f45c5",
+      "at": "2026-10-14T18:02:46Z",
+      "client": "tbh",
+      "op": "create",
+      "op_id": "3ae1304c6bf24f17b80ec191b8939f66",
+      "session_id": "be2b066e755a4a4bb3ff24b1b46fe0b7"
+    }
+  ]
+}
