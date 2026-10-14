@@ -276,12 +276,37 @@ _DAMAGED_READ_PRIMITIVE_QUERY_IDS = frozenset(
 )
 
 
-def _repair_damaged_query_ids(data: dict[str, Any]) -> dict[str, Any]:
+def _repairable_queries(data: dict[str, Any]) -> list[Any] | None:
     benchmark = data.get("benchmark")
     queries = data.get("queries")
     if not isinstance(benchmark, dict) or not isinstance(queries, list):
-        return data
+        return None
     if canonical_benchmark_slug(str(benchmark.get("id", ""))) != "read_primitives":
+        return None
+    return queries
+
+
+def _query_id_repairs(data: dict[str, Any]) -> tuple[str, ...]:
+    queries = _repairable_queries(data)
+    if queries is None:
+        return ()
+    damaged = {
+        value
+        for row in queries
+        if isinstance(row, dict)
+        for key, value in row.items()
+        if key in ("id", "query_id") and value in _DAMAGED_READ_PRIMITIVE_QUERY_IDS
+    }
+    return tuple(f"{value}→q{value}" for value in sorted(damaged))
+
+
+def _query_id_repairs_display(data: dict[str, Any]) -> str | None:
+    return "; ".join(_query_id_repairs(data)) or None
+
+
+def _repair_damaged_query_ids(data: dict[str, Any]) -> dict[str, Any]:
+    queries = _repairable_queries(data)
+    if queries is None:
         return data
 
     repaired_queries = []
@@ -968,7 +993,7 @@ def _estimated_databricks_normalized_cost(bundle: BundleDocument) -> NormalizedC
         cost_scope="compute_only",
         cost_status="estimated",
         billing_unit="dbu",
-        pricing_region=_canonical_cost_region(observed_region) or "unknown",
+        pricing_region=_canonical_cost_region(observed_region) or "us-east-2",
         deployment=DeploymentMetadata(
             cloud_provider=observed_cloud.lower() if observed_cloud else None,
             cloud_region=_canonical_cost_region(observed_region),
@@ -1073,7 +1098,7 @@ def _estimated_normalized_cost(bundle: BundleDocument) -> NormalizedCost | None:
         cost_scope="compute_only",
         cost_status="estimated",
         billing_unit="credit",
-        pricing_region=_canonical_cost_region(observed_region) or "unknown",
+        pricing_region=region,
         deployment=DeploymentMetadata(
             cloud_provider=observed_cloud.lower() if observed_cloud else None,
             cloud_region=_canonical_cost_region(observed_region),
@@ -1603,6 +1628,7 @@ class BundleTransformer:
             override_evidence=override["override_evidence"],
             override_approver=override["override_approver"],
             override_expires=override["override_expires"],
+            query_id_repairs=_query_id_repairs_display(bundle_data),
             tuning_policy_generation=_tuning_policy_generation(bundle),
             template_evidence=_template_evidence(bundle),
             test_type=test_type,
@@ -1711,6 +1737,7 @@ class BundleTransformer:
             override_evidence=override["override_evidence"],
             override_approver=override["override_approver"],
             override_expires=override["override_expires"],
+            query_id_repairs=_query_id_repairs_display(bundle_data),
             tuning_policy_generation=_tuning_policy_generation(bundle),
             template_evidence=_template_evidence(bundle),
             test_type=test_type,

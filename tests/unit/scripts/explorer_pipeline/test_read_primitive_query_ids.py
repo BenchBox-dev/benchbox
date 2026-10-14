@@ -70,3 +70,50 @@ class TestDamagedReadPrimitiveQueryIds:
         detail = transformer.to_detail_result(bundle, rid)
 
         assert detail.queries[0].query_id == "ualify_cume_dist"
+
+
+ALL_REPAIRS = (
+    "ualify_cume_dist→qualify_cume_dist; "
+    "ualify_dense_rank→qualify_dense_rank; "
+    "ualify_lag_lead→qualify_lag_lead; "
+    "ualify_ntile→qualify_ntile; "
+    "ualify_percentile→qualify_percentile; "
+    "ualify_row_number→qualify_row_number"
+)
+
+
+class TestQueryIdRepairsAreRecorded:
+    def test_damaged_bundle_records_every_mapping_on_entry_and_detail(self, tmp_path: Path) -> None:
+        bundle = _write_bundle(tmp_path, "read_primitives", [*DAMAGED_IDS, "ualify_ntile", "scan_full"])
+
+        transformer = BundleTransformer()
+        rid = transformer.result_id_from_bundle(bundle)
+        entry = transformer.to_manifest_entry(bundle, result_id=rid)
+        detail = transformer.to_detail_result(bundle, rid)
+
+        assert entry.query_id_repairs == ALL_REPAIRS
+        assert detail.query_id_repairs == ALL_REPAIRS
+
+    def test_partially_damaged_bundle_records_only_the_ids_it_repaired(self, tmp_path: Path) -> None:
+        bundle = _write_bundle(tmp_path, "read_primitives", ["ualify_ntile", "qualify_cume_dist"])
+
+        transformer = BundleTransformer()
+        rid = transformer.result_id_from_bundle(bundle)
+
+        assert transformer.to_detail_result(bundle, rid).query_id_repairs == "ualify_ntile→qualify_ntile"
+
+    @pytest.mark.parametrize(
+        ("benchmark_id", "query_ids"),
+        [
+            ("read_primitives", ["qualify_cume_dist", "scan_full"]),
+            ("tpch", ["ualify_cume_dist"]),
+        ],
+    )
+    def test_undamaged_bundle_records_no_repairs(self, tmp_path: Path, benchmark_id: str, query_ids: list[str]) -> None:
+        bundle = _write_bundle(tmp_path, benchmark_id, query_ids)
+
+        transformer = BundleTransformer()
+        rid = transformer.result_id_from_bundle(bundle)
+
+        assert transformer.to_manifest_entry(bundle, result_id=rid).query_id_repairs is None
+        assert transformer.to_detail_result(bundle, rid).query_id_repairs is None

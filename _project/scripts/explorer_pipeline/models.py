@@ -149,6 +149,7 @@ class ManifestEntry(BaseModel):
     override_evidence: str | None = None
     override_approver: str | None = None
     override_expires: str | None = None
+    query_id_repairs: str | None = None
     tuning_policy_generation: str | None = None
     template_evidence: str | None = None
     test_type: str | None = None
@@ -395,6 +396,7 @@ class DetailResult(BaseModel):
     override_evidence: str | None = None
     override_approver: str | None = None
     override_expires: str | None = None
+    query_id_repairs: str | None = None
     tuning_policy_generation: str | None = None
     template_evidence: str | None = None
     test_type: str | None = None

@@ -98,6 +98,27 @@ function overrideRows(detail: DetailResult): ReceiptRow[] {
   ];
 }
 
+function queryIdRepairRows(detail: DetailResult): ReceiptRow[] {
+  const repairs = (detail.query_id_repairs ?? "")
+    .split(";")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  if (repairs.length === 0) return [];
+  return [
+    recordedRow(
+      "Query ID repairs",
+      <div class="space-y-1">
+        <p class="min-w-0 break-words">
+          {repairs.length} query {repairs.length === 1 ? "ID" : "IDs"} repaired for display: {repairs.join("; ")}
+        </p>
+        <p class="text-xs text-[var(--bb-data-fg-muted)]">
+          The published bundle stores these IDs without their leading q; the original bundle is unchanged.
+        </p>
+      </div>,
+    ),
+  ];
+}
+
 function overrideDetails(detail: DetailResult): ComponentChildren[] {
   const parts: ComponentChildren[] = [];
   if (detail.override_approver?.trim()) {
@@ -227,6 +248,7 @@ export function RunReceipt({
         rowFromString("Funding", detail.funding, formatFunding),
         rowFromString("Visibility", detail.visibility, formatVisibility),
         ...overrideRows(detail),
+        ...queryIdRepairRows(detail),
         rowFromString("Compliance", detail.compliance_class),
         rankingEligibilityRow(isRankingEligible),
       ],

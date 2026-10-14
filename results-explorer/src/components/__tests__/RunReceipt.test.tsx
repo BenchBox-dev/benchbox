@@ -746,4 +746,31 @@ describe("RunReceipt applied-tuning receipt drill-down", () => {
     expect(within(receipt).queryByText("Override")).toBeNull();
     expect(within(receipt).getByText("Passed")).toBeTruthy();
   });
+
+  it("shows the query ID repairs recorded for a damaged bundle", () => {
+    render(
+      <RunReceipt
+        detail={makeDetail({
+          benchmark: "read_primitives",
+          query_id_repairs: "ualify_cume_dist→qualify_cume_dist; ualify_ntile→qualify_ntile",
+        })}
+      />,
+    );
+
+    const receipt = screen.getByRole("region", { name: "Run receipt" });
+    expect(within(receipt).getByText("Query ID repairs")).toBeTruthy();
+    expect(
+      within(receipt).getByText(
+        "2 query IDs repaired for display: ualify_cume_dist→qualify_cume_dist; ualify_ntile→qualify_ntile",
+      ),
+    ).toBeTruthy();
+    expect(within(receipt).getByText(/original bundle is unchanged/)).toBeTruthy();
+  });
+
+  it("omits the Query ID repairs row when no IDs were repaired", () => {
+    render(<RunReceipt detail={makeDetail({ query_id_repairs: null })} />);
+
+    const receipt = screen.getByRole("region", { name: "Run receipt" });
+    expect(within(receipt).queryByText("Query ID repairs")).toBeNull();
+  });
 });

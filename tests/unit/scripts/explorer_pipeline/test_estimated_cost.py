@@ -19,6 +19,7 @@ from benchbox.core.cost.pricing import (
     resolve_snowflake_credit_price,
     resolve_snowflake_warehouse_credits_per_hour,
 )
+from benchbox.validation.bundle import ValidationResult, _validate_normalized_cost_block
 from tests.unit.scripts.explorer_pipeline.conftest import MINIMAL_BUNDLE
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -242,11 +243,11 @@ def test_prior_unavailable_reasons_are_preserved_alongside_estimate() -> None:
     assert "no metered credits recorded" in cost.cost_estimate_assumptions[0]
 
 
-def test_snowflake_estimate_does_not_publish_assumed_deployment_as_recorded() -> None:
+def test_snowflake_estimate_prices_a_concrete_reference_region_without_recording_it_as_deployment() -> None:
     cost = _estimated_normalized_cost(_parse_bundle(_snowflake_bundle()))
 
     assert cost is not None
-    assert cost.pricing_region == "unknown"
+    assert cost.pricing_region == "us-east-2"
     assert cost.deployment.cloud_provider is None
     assert cost.deployment.cloud_region is None
     assert cost.deployment.warehouse_size is None
@@ -260,7 +261,7 @@ def test_databricks_estimate_does_not_publish_an_assumed_cloud_as_recorded() -> 
     assert cost is not None
     assert cost.deployment.cloud_provider is None
     assert cost.deployment.cloud_region == cost.pricing_region
-    assert cost.pricing_region != "unknown"
+    assert cost.pricing_region == "us-east-2"
 
 
 def test_databricks_estimate_keeps_recorded_deployment() -> None:
@@ -269,3 +270,17 @@ def test_databricks_estimate_keeps_recorded_deployment() -> None:
     assert cost is not None
     assert cost.deployment.cloud_provider == "aws"
     assert cost.deployment.warehouse_size == "2X-Small"
+
+
+@pytest.mark.parametrize(
+    "bundle",
+    [_snowflake_bundle(), _databricks_bundle(), _databricks_bundle(provider=None)],
+    ids=["snowflake-unrecorded-region", "databricks-recorded", "databricks-unrecorded-cloud"],
+)
+def test_published_estimate_satisfies_the_submission_validator(bundle: dict) -> None:
+    cost = _estimated_normalized_cost(_parse_bundle(bundle))
+    assert cost is not None
+
+    result = ValidationResult("estimate")
+    _validate_normalized_cost_block(cost.to_dict(), result)
+    assert result.errors == []

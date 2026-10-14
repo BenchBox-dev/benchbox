@@ -179,6 +179,7 @@ export interface ResultDetailMetricsRow extends Omit<ResultRow, "is_ranking_elig
   override_evidence?: string | null;
   override_approver?: string | null;
   override_expires?: string | null;
+  query_id_repairs?: string | null;
 }
 
 export interface QueryDisplayTimingRow {
@@ -490,6 +491,7 @@ const RESULT_DETAIL_METRICS_COLUMNS = [
   "override_evidence",
   "override_approver",
   "override_expires",
+  "query_id_repairs",
   "tuning_policy_generation",
   "template_evidence",
   "test_type",
@@ -929,6 +931,7 @@ function detailResultFromWideRow(
     override_evidence: wide.override_evidence ?? null,
     override_approver: wide.override_approver ?? null,
     override_expires: wide.override_expires ?? null,
+    query_id_repairs: wide.query_id_repairs ?? null,
     tuning_policy_generation: wide.tuning_policy_generation ?? null,
     template_evidence: wide.template_evidence ?? null,
     test_type: wide.test_type,

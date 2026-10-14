@@ -400,3 +400,46 @@ class TestDuckDBSnapshotBuilder:
             count = con.execute("SELECT COUNT(*) FROM results").fetchone()[0]
 
         assert count == 2
+
+
+class TestQueryIdRepairsColumn:
+    REPAIRS = "ualify_cume_dist→qualify_cume_dist; ualify_ntile→qualify_ntile"
+
+    def _published(self, entry: ManifestEntry, sql: str) -> tuple | None:
+        builder = DuckDBSnapshotBuilder()
+        con = duckdb.connect(":memory:")
+        try:
+            builder._create_schema(con)
+            builder._populate_results(con, [entry], {}, "https://example.test/bundles", {})
+            return con.execute(sql, [entry.result_id]).fetchone()
+        finally:
+            con.close()
+
+    def test_results_table_has_nullable_query_id_repairs_column(self) -> None:
+        con = duckdb.connect(":memory:")
+        try:
+            DuckDBSnapshotBuilder()._create_schema(con)
+            row = con.execute(
+                "SELECT data_type, is_nullable FROM information_schema.columns"
+                " WHERE table_name = 'results' AND column_name = 'query_id_repairs'"
+            ).fetchone()
+        finally:
+            con.close()
+
+        assert row == ("VARCHAR", "YES")
+
+    def test_results_row_and_detail_view_store_query_id_repairs(self) -> None:
+        entry = _make_entry(benchmark="read_primitives", query_id_repairs=self.REPAIRS)
+
+        row = self._published(
+            entry,
+            "SELECT r.query_id_repairs, d.query_id_repairs FROM results r"
+            " JOIN result_detail_metrics d USING (result_id) WHERE r.result_id = ?",
+        )
+
+        assert row == (self.REPAIRS, self.REPAIRS)
+
+    def test_query_id_repairs_is_null_when_nothing_was_repaired(self) -> None:
+        row = self._published(_make_entry(), "SELECT query_id_repairs FROM results WHERE result_id = ?")
+
+        assert row == (None,)
