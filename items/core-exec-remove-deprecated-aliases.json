@@ -6,7 +6,7 @@
     "The ClickHouse mode/embedded removal item is closed as superseded or done in the same change",
     "PR merged through the normal flow"
   ],
-  "context": "Decision gates:\n- G1 Start only after a published release contains the deprecations and the window set by ADR D13 has elapsed; record the release version and date here.\n- G2 If usage evidence (issues, MCP client reports) shows an alias is still in active use, ask the user before removing it.\nGuardrails: shared core-exec guardrails (see core-exec-d0-vocabulary-adr context).",
+  "context": "Decision gates:\n- G1 Start only after a published release contains the deprecations and the window set by ADR D13 has elapsed; record the release version and date here.\n- G2 If usage evidence (issues, MCP client reports) shows an alias is still in active use, ask the user before removing it.\nGuardrails: shared core-exec guardrails (see core-exec-d0-vocabulary-adr context).\n\nNote 2026-10-14: the repository still uses a deprecated alias of its own. The Velox Docker entrypoint, README and docs pass `deployment=`. Migrating them is in execution-variant-docs-leftovers-20261014, which must land before this item.",
   "description": "The core execution-variant work keeps old spellings working as deprecated aliases for one deprecation window (ADR docs/development/adr/adr-core-execution-variants.md D12/D13): Polars `streaming` option, --polars-streaming and MCP `streaming`; deployment keys (velox deployment, lakesail sail_mode, influxdb mode, clickhouse deployment_mode/mode, firebolt deployment_mode/firebolt_mode, ducklake and pg-duckdb deployment_mode); native compute keys (warehouse, engine_name, engine_size, workgroup, workgroup_name, cluster_identifier, cluster_id, cluster_name, spark_pool_name, application_id, service_id, service_name, cluster_size and the others aliased by the compute item); engine keys (pg-duckdb force_execution, dask use_distributed); Athena Spark engine_version. After the window, remove them so each concept has one spelling, and empty the parity test's alias allowance.",
   "links": [
     "docs/development/adr/adr-core-execution-variants.md",
@@ -27,6 +27,14 @@
       "client": "claude-code",
       "op": "update",
       "op_id": "3aa2c2869ad84102b199982b1e3f9726",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-14T11:42:55Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "64c4787b65ac482eb7769c5ffacb9b7c",
       "session_id": "18469f668aeb45d59c8d4c94d2f79433"
     }
   ]
