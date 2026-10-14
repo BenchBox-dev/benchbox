@@ -348,6 +348,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `UnsupportedExecutionEngineError`. The option has no effect on this adapter
   and is rejected from 0.6.0, as it was a no-op in 0.4.2. `streaming=False` is
   accepted silently, and the bundle records the default engine receipt.
+- Databricks result bundles no longer present the warehouse `enable_photon`
+  setting as an observed engine. `platform.execution_engine` records `photon`
+  or `standard` as `applied`, with `applied_class` and
+  `applied_native.enable_photon`, and leaves `applied` empty when the setting
+  cannot be read. `observed` stays `not_captured` with `observed_source` `none`,
+  because the setting does not show which engine ran a query.
 
 ### Before you upgrade
 - Result metadata for Dask runs on the `threaded` engine no longer contains

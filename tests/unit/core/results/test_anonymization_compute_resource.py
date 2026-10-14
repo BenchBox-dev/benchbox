@@ -235,7 +235,7 @@ def test_public_export_drops_the_compute_resource_name(
     assert READABLE_COMPUTE_FIELDS[platform].items() <= compute.items()
 
 
-def test_public_export_keeps_observed_execution_engine_readable(tmp_path: Path, vendor_sdks: None) -> None:
+def test_public_export_keeps_applied_execution_engine_readable(tmp_path: Path, vendor_sdks: None) -> None:
     built, _ = _databricks()
     result = _result_with_normalized_metadata("databricks", built)
 
@@ -243,7 +243,12 @@ def test_public_export_keeps_observed_execution_engine_readable(tmp_path: Path, 
     payload = json.loads(exported["json"].read_text(encoding="utf-8"))
 
     assert SECRET not in json.dumps(payload)
-    assert payload["platform"]["execution_engine"]["observed"] == "photon"
+    receipt = payload["platform"]["execution_engine"]
+    assert receipt["applied"] == "photon"
+    assert receipt["applied_class"] == "native-vectorized"
+    assert receipt["applied_native"] == {"enable_photon": True}
+    assert receipt["observed"] == "not_captured"
+    assert receipt["observed_source"] == "none"
 
 
 def _paths_containing(node: Any, needle: str, path: str = "$") -> list[str]:

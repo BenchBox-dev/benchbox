@@ -17,12 +17,14 @@ Databricks provides a unified lakehouse platform combining data lakes with wareh
 
 ## Execution Engine
 
-Databricks SQL declares `photon` and `standard` as observed engines, not
-selectable settings. The default lets the warehouse decide. When the SDK
-captures `warehouse.enable_photon`, result bundles record `photon` or
-`standard` in `platform.execution_engine.observed` with
-`observed_source="vendor_log"`; unavailable metadata is recorded as
-`not_captured`.
+Databricks SQL declares `photon` and `standard` as engines that cannot be
+selected. The requested engine is always `default`, and the warehouse decides.
+When the SDK reads `warehouse.enable_photon`, result bundles record Photon from
+that warehouse setting as the applied engine: `applied="photon"` when it is
+on and `applied="standard"` when it is off, with the setting in
+`applied_native.enable_photon`. If the setting cannot be read, `applied` is
+`null`. The setting is configuration, not evidence of what ran, so
+`observed` stays `not_captured` with `observed_source="none"`.
 
 ## Prerequisites
 
@@ -255,8 +257,8 @@ runs); see `docs/reference/result-formats.md`.
 
 ### Photon Acceleration
 
-Photon is automatically enabled on SQL Warehouses. BenchBox records whether
-it was on in `platform.execution_engine.observed` (see Execution Engine
+Photon is automatically enabled on SQL Warehouses. BenchBox records the
+warehouse setting in `platform.execution_engine.applied` (see Execution Engine
 above); no option is needed.
 
 ### Query Caching
