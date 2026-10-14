@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Databricks receipts distinguish configured Photon from observed Photon",
+    "Vocabulary parity test, docs and anonymizer agree on the observed_source values"
+  ],
+  "context": "Found by the 2026-10-13 adversarial review of the core execution-variants batch (gateway O5); verified on develop 9400b62c4.",
+  "description": "## Problem\n- The Databricks engine receipt sets `observed=photon` with `observed_source=\"vendor_log\"`, taken from the warehouse `enable_photon` configuration (`platforms/databricks/adapter.py:789,821-831`; vocabulary in `core/execution_engine.py:24`; docs `docs/platforms/databricks.md:24`).\n- That value is a configured setting, not a query log. The receipt reads as proof that Photon ran the queries.\n\n## Change\nDo one of the following:\n- Add `vendor_config` to the closed `observed_source` vocabulary, with the docs, anonymizer and parity tests updated, and use it here.\n- Or record `observed=not_captured` and keep the setting under `applied_native`.\n\nThe vocabulary is part of the ADR, so record the change there.",
+  "links": [
+    "benchbox/platforms/databricks/adapter.py",
+    "benchbox/core/execution_engine.py",
+    "docs/development/adr/adr-core-execution-variants.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-14T11:41:59Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "25bf66e7b9fa462e8198b59de3b41d57",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    }
+  ]
+}
