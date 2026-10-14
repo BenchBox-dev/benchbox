@@ -12,14 +12,13 @@ from benchbox.cli.commands.compare import compare
 from benchbox.core.gateway import (
     DEFAULT_GATEWAY,
     GATEWAY_CONNECTION_OPTIONS,
-    GatewayConfigurationError,
+    GatewayNotImplementedError,
     UnsupportedGatewayError,
     register_gateway_connection_specs,
     resolve_requested_gateway,
     supported_gateways,
-    variants_comparable,
 )
-from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
+from benchbox.core.hooks.platform_hooks import PlatformHookRegistry, PlatformOptionError
 from benchbox.core.platform_manifest import (
     PLATFORM_MANIFEST,
     _validate_capabilities,
@@ -29,6 +28,7 @@ from benchbox.core.platform_manifest import (
 )
 from benchbox.core.platform_registry import PlatformRegistry
 from benchbox.core.results.analytics import _load_regression_runs
+from benchbox.core.results.execution_variant import variants_comparable
 from benchbox.core.results.models import BenchmarkResults, QueryExecution
 from benchbox.core.results.schema import SchemaV2Validator, build_result_payload
 
@@ -40,9 +40,9 @@ def test_manifest_declares_snowflake_and_databricks_gateways() -> None:
     assert snowflake is not None
     sf_gateways = snowflake.capabilities.get("gateways", {})
     assert set(sf_gateways.keys()) == {"espresso", "greybeam", "custom"}
-    assert sf_gateways["espresso"]["requires_host"] is False
+    assert sf_gateways["espresso"]["requires_host"] is True
     assert sf_gateways["espresso"]["routes_to"] == {"snowflake": {"class": "standard"}}
-    assert sf_gateways["greybeam"]["requires_host"] is False
+    assert sf_gateways["greybeam"]["requires_host"] is True
     assert sf_gateways["greybeam"]["routes_to"] == {
         "snowflake": {"class": "standard"},
         "duckdb": {"class": "delegated"},
@@ -54,7 +54,7 @@ def test_manifest_declares_snowflake_and_databricks_gateways() -> None:
     assert databricks is not None
     dbx_gateways = databricks.capabilities.get("gateways", {})
     assert set(dbx_gateways.keys()) == {"espresso", "custom"}
-    assert dbx_gateways["espresso"]["requires_host"] is False
+    assert dbx_gateways["espresso"]["requires_host"] is True
     assert dbx_gateways["espresso"]["routes_to"] == {"databricks": {"class": "standard"}}
     assert dbx_gateways["custom"]["requires_host"] is True
     assert dbx_gateways["custom"]["routes_to"] == {"databricks": {"class": "standard"}}
@@ -138,13 +138,12 @@ def test_resolve_requested_gateway_unsupported_value_lists_allowed() -> None:
         resolve_requested_gateway("snowflake", "unknown_gw")
 
 
-def test_resolve_requested_gateway_custom_requires_host() -> None:
-    with pytest.raises(
-        GatewayConfigurationError, match="Gateway 'custom' on platform 'snowflake' requires gateway_host"
-    ):
-        resolve_requested_gateway("snowflake", "custom")
-
-    assert resolve_requested_gateway("snowflake", "custom", gateway_host="gw.example.com") == "custom"
+@pytest.mark.parametrize(
+    ("platform", "gateway"), [("snowflake", "espresso"), ("snowflake", "custom"), ("databricks", "espresso")]
+)
+def test_resolve_requested_gateway_fails_closed_for_declared_gateways(platform: str, gateway: str) -> None:
+    with pytest.raises(GatewayNotImplementedError, match=f"gateway routing is not implemented for {platform} yet"):
+        resolve_requested_gateway(platform, gateway)
 
 
 def test_register_gateway_connection_specs() -> None:
@@ -154,56 +153,30 @@ def test_register_gateway_connection_specs() -> None:
         assert opt in specs
 
 
-def test_variants_comparable() -> None:
-    run_native = {
-        "platform": {
-            "deployment": {"selected": "managed"},
-            "execution_engine": {"requested": "default"},
-        }
-    }
-    run_espresso = {
-        "platform": {
-            "deployment": {"selected": "managed"},
-            "execution_engine": {"requested": "default"},
-            "gateway": {"name": "espresso", "routed": True},
-        }
-    }
-    run_greybeam = {
-        "platform": {
-            "deployment": {"selected": "managed"},
-            "execution_engine": {"requested": "default"},
-            "gateway": {"name": "greybeam", "routed": True},
-        }
-    }
-    run_diff_engine = {
-        "platform": {
-            "deployment": {"selected": "managed"},
-            "execution_engine": {"requested": "streaming"},
-        }
-    }
-    run_legacy_streaming = {
-        "config": {"platform_options": {"streaming": True}},
-        "platform": {"deployment": {"selected": "managed"}},
-    }
-    run_legacy_engine_requested = {
-        "platform": {
-            "deployment": {"selected": "managed"},
-            "config": {"engine_requested": "streaming"},
-        }
-    }
-    loaded_legacy_result = BenchmarkResults(
-        benchmark_name="TPC-H",
-        platform="snowflake",
-        scale_factor=0.01,
-        execution_id="run-3",
-        timestamp=datetime.now(),
-        duration_seconds=1.0,
-        total_queries=0,
-        successful_queries=0,
-        failed_queries=0,
-        platform_info={"deployment": {"selected": "managed"}},
-        execution_engine={"requested": "streaming"},
+def test_gateway_connection_options_are_typed() -> None:
+    register_gateway_connection_specs()
+    parsed = PlatformHookRegistry.parse_options(
+        "snowflake",
+        [("gateway_port", "8443"), ("allow_insecure_gateway", "false"), ("gateway_ocsp_fail_open", "yes")],
     )
+    assert parsed["gateway_port"] == 8443
+    assert parsed["allow_insecure_gateway"] is False
+    assert parsed["gateway_ocsp_fail_open"] is True
+    for pair in [("gateway_port", "abc"), ("gateway_port", "70000"), ("allow_insecure_gateway", "maybe")]:
+        with pytest.raises(PlatformOptionError):
+            PlatformHookRegistry.parse_options("snowflake", [pair])
+
+
+def test_variants_comparable() -> None:
+    def bundle(platform: dict, config: dict | None = None) -> dict:
+        return {"platform": {"name": "Snowflake", **platform}, "config": config or {}}
+
+    run_native = bundle({"execution_engine": {"requested": "default"}})
+    run_espresso = bundle({"gateway": {"name": "espresso", "routed": True}})
+    run_greybeam = bundle({"gateway": {"name": "greybeam", "routed": True}})
+    run_diff_engine = bundle({"execution_engine": {"requested": "streaming"}})
+    run_legacy_streaming = bundle({}, {"platform_options": {"streaming": True}})
+    run_legacy_engine_requested = bundle({"config": {"engine_requested": "streaming"}})
 
     assert variants_comparable(run_native, run_native) is True
     assert variants_comparable(run_native, run_espresso) is False
@@ -212,7 +185,6 @@ def test_variants_comparable() -> None:
     assert variants_comparable(run_native, run_legacy_streaming) is False
     assert variants_comparable(run_native, run_legacy_engine_requested) is False
     assert variants_comparable(run_legacy_streaming, run_legacy_engine_requested) is True
-    assert variants_comparable(run_native, loaded_legacy_result) is False
 
 
 def test_analytics_regression_baseline_excludes_heterogeneous_runs(tmp_path: Path) -> None:
@@ -233,9 +205,12 @@ def test_analytics_regression_baseline_excludes_heterogeneous_runs(tmp_path: Pat
     file1.write_text(json.dumps(run1))
     file2.write_text(json.dumps(run2))
 
-    runs = _load_regression_runs([file1, file2], platform="snowflake", benchmark="tpch", lookback_runs=5)
+    runs, other_variants = _load_regression_runs(
+        [file1, file2], platform="snowflake", benchmark="tpch", lookback_runs=5
+    )
     assert len(runs) == 1
     assert runs[0]["file"] == "run1.json"
+    assert other_variants == ["run2.json"]
 
 
 def test_compare_cli_guards_heterogeneous_runs(tmp_path: Path) -> None:
@@ -263,7 +238,7 @@ def test_compare_cli_guards_heterogeneous_runs(tmp_path: Path) -> None:
 
     res_blocked = runner.invoke(compare, [str(file_native), str(file_gateway)])
     assert res_blocked.exit_code != 0
-    assert "Cannot compare runs with different execution variants" in res_blocked.output
+    assert "gateway differs (native vs espresso)" in " ".join(res_blocked.output.split())
 
     res_allowed = runner.invoke(compare, [str(file_native), str(file_gateway), "--allow-heterogeneous-comparison"])
     assert res_allowed.exit_code == 0
@@ -296,7 +271,7 @@ def test_build_result_payload_records_gateway_and_enforces_compliance() -> None:
     SchemaV2Validator().validate(payload)
 
     assert payload["platform"]["gateway"] == {"name": "greybeam", "routed": True}
-    assert payload["platform"]["tpc_compliant"] is False
+    assert "tpc_compliant" not in payload["platform"]
     assert payload["tpc_compliant"] is False
     assert payload["platform"]["variant"] == "snowflake@greybeam"
 
@@ -328,3 +303,44 @@ def test_unknown_gateway_does_not_preserve_query_engine() -> None:
     payload = build_result_payload(result)
 
     assert payload["queries"][0]["execution_engine"] == "unknown"
+
+
+def test_platform_option_registration_includes_gateway_options_without_the_cli() -> None:
+    import subprocess
+    import sys
+
+    script = (
+        "import benchbox.platforms\n"
+        "from benchbox.core.hooks.platform_hooks import PlatformHookRegistry\n"
+        "print(sorted(name for name in PlatformHookRegistry.list_option_specs('snowflake') if 'gateway' in name))\n"
+        "print(PlatformHookRegistry.parse_options('databricks', [('allow_insecure_gateway', 'false')]))\n"
+    )
+    completed = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, check=True)
+
+    lines = completed.stdout.strip().splitlines()
+    assert lines[0] == str(sorted(GATEWAY_CONNECTION_OPTIONS))
+    assert "'allow_insecure_gateway': False" in lines[1]
+
+
+def test_mcp_run_benchmark_rejects_gateway_connection_options(tmp_path: Path) -> None:
+    from mcp.server.mcpserver import MCPServer
+
+    from benchbox.mcp.tools.benchmark import register_benchmark_tools
+    from tests.unit.mcp.public_api import get_tool
+
+    register_gateway_connection_specs()
+    server = MCPServer("test", version="test")
+    register_benchmark_tools(server, results_dir=tmp_path)
+    run_benchmark = get_tool(server, "run_benchmark")
+
+    with patch("benchbox.mcp.tools.benchmark._get_platform_adapter") as get_adapter:
+        response = run_benchmark.fn(
+            platform="snowflake",
+            benchmark="tpch",
+            scale_factor=0.01,
+            platform_options={"gateway_host": "gw.example.com"},
+        )
+
+    assert response["status"] == "failed"
+    assert "Platform option 'gateway_host' is not authorized for MCP" in response["message"]
+    get_adapter.assert_not_called()

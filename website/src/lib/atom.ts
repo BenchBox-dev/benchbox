@@ -2,6 +2,7 @@ import { atomTimestamp, BLOG_BASE_URL, BLOG_TITLE, feedCategory, FEED_LENGTH, ne
 
 const SITE_ORIGIN = "https://benchbox.dev";
 const GENERATOR = { uri: "https://astro.build/", name: "Astro" };
+const LEGACY_FEED_ID_BASE = `${BLOG_BASE_URL}blog/`;
 
 export function feedEntryUrl(post: Pick<BlogPost, "slug">): string {
   return `${BLOG_BASE_URL}${post.slug}.html`;
@@ -59,7 +60,7 @@ function summaryOf(post: BlogPost): string {
 
 function entry(post: BlogPost): string {
   const stamp = atomTimestamp(post.date);
-  const entryId = `${BLOG_BASE_URL}blog/${post.slug}.html`;
+  const entryId = `${LEGACY_FEED_ID_BASE}${post.slug}.html`;
   const url = feedEntryUrl(post);
   const lines = [
     "  <entry>",

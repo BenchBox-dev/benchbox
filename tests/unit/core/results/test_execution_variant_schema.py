@@ -7,11 +7,17 @@ from pathlib import Path
 import pytest
 
 from benchbox.core.execution_engine import ExecutionEngineReceipt
-from benchbox.core.execution_variant import VariantIdError, derive_variant_id, resolve_variant_platform_id
+from benchbox.core.execution_variant import (
+    VariantIdError,
+    append_variant_suffix,
+    derive_variant_id,
+    resolve_variant_platform_id,
+)
 from benchbox.core.platform_registry import PlatformRegistry
 from benchbox.core.results.anonymization import AnonymizationManager
 from benchbox.core.results.builder import RunConfigInput
 from benchbox.core.results.environment import PlatformComputeMetadata, PlatformDeploymentMetadata
+from benchbox.core.results.execution_variant import published_variant_id
 from benchbox.core.results.loader import load_result_file, reconstruct_benchmark_results
 from benchbox.core.results.models import QueryExecution
 from benchbox.core.results.schema import SchemaV2Validator, build_result_payload
@@ -42,6 +48,38 @@ def test_manifest_default_and_native_gateway_do_not_change_identity():
     assert default is not None
     assert derive_variant_id("clickhouse", default, "default", "native") == "clickhouse"
     assert resolve_variant_platform_id(["Polars (DataFrame)"], "dataframe") == "polars-df"
+
+
+def test_suffix_helper_keeps_the_caller_base_and_manifest_default_deployment():
+    default = PlatformRegistry.get_default_deployment("clickhouse")
+    assert append_variant_suffix("clickhouse-local", "clickhouse", default, "default", "native") == "clickhouse-local"
+    assert append_variant_suffix("polars", "polars-df", None, "streaming") == "polars+streaming"
+    assert append_variant_suffix("snowflake", None, "other", "photon", "greybeam") == "snowflake~other+photon@greybeam"
+
+
+@pytest.mark.parametrize(
+    ("platform", "config", "expected"),
+    [
+        ({"name": "Polars", "variant": "polars-df"}, {"mode": "dataframe"}, "polars"),
+        (
+            {"name": "Polars", "variant": "polars-df+streaming", "execution_engine": {"requested": "streaming"}},
+            {"mode": "dataframe"},
+            "polars+streaming",
+        ),
+        ({"name": "Polars", "config": {"engine_requested": "streaming"}}, {}, "polars+streaming"),
+        ({"name": "Polars"}, {"platform_options": {"streaming": True}}, "polars+streaming"),
+        ({"name": "Apache Doris", "variant": "doris"}, {"mode": "sql"}, "apache-doris"),
+        (
+            {"name": "Snowflake", "gateway": {"name": "greybeam", "routed": True}, "deployment": {"selected": "x"}},
+            {"mode": "sql"},
+            "snowflake~x@greybeam",
+        ),
+        ({"name": "Snowflake", "gateway": {"name": "greybeam", "routed": False}}, {}, "snowflake"),
+    ],
+)
+def test_published_variant_id_uses_the_given_base_and_the_legacy_reader(platform, config, expected):
+    base = platform["name"].lower().replace(" ", "-")
+    assert published_variant_id({"platform": platform, "config": config}, base) == expected
 
 
 @pytest.mark.parametrize("field", ["platform", "deployment", "requested_engine", "gateway"])

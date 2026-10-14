@@ -544,6 +544,20 @@ class TestStatusDerivationIgnoresInternalSentinelsAndSparseResults:
 
         assert _untuned_tuning_summary(result) == {}
 
+    def test_baseline_source_with_derived_status_yields_both_keys(self) -> None:
+        from benchbox.core.results.schema import _untuned_tuning_summary
+
+        result = SimpleNamespace(
+            tuning_validation_status="not_applicable",
+            tuning_source="baseline",
+            applied_tuning_ledger=None,
+        )
+
+        summary = _untuned_tuning_summary(result)
+
+        assert summary["tuning_source"] == "baseline"
+        assert summary["validation_status"] == "not_applicable"
+
     def test_tuning_companion_payload_omits_the_sentinel_status(self) -> None:
         from benchbox.core.results.schema import build_tuning_payload
 

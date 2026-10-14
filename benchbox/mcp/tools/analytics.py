@@ -335,6 +335,8 @@ def _compare_results_impl(
         )
 
     comparison = _core_compare(path1, path2, threshold_percent, anonymize=anonymize)
+    if comparison.get("error_code") == "VALIDATION_ERROR":
+        return make_error(ErrorCode.VALIDATION_ERROR, comparison["error"], details=comparison.get("details", {}))
     if "error" in comparison:
         return make_error(
             ErrorCode.INTERNAL_ERROR,

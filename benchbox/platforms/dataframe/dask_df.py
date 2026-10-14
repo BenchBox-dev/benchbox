@@ -8,7 +8,6 @@ import logging
 import re
 import shutil
 import tempfile
-import warnings
 from dataclasses import asdict
 from datetime import timedelta
 from pathlib import Path
@@ -34,7 +33,12 @@ except ImportError:
     PANDAS_AVAILABLE = False
 
 from benchbox.core.dataframe.tuning import DataFrameTuningConfiguration
-from benchbox.core.execution_engine import ExecutionEngineReceipt, resolve_requested, supported_execution_engines
+from benchbox.core.execution_engine import (
+    ExecutionEngineReceipt,
+    legacy_option_engine,
+    resolve_requested,
+    supported_execution_engines,
+)
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 from benchbox.platforms.dataframe.pandas_df import _pandas_string_columns
 from benchbox.platforms.dataframe.pandas_family import (
@@ -144,12 +148,7 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
         if self._legacy_use_distributed is not None:
             if not isinstance(self._legacy_use_distributed, bool):
                 raise ValueError("Dask use_distributed must be a boolean")
-            legacy = "distributed" if self._legacy_use_distributed else "threaded"
-            warnings.warn(
-                "The Dask use_distributed option is deprecated; use execution_engine='distributed' or 'threaded'.",
-                DeprecationWarning,
-                stacklevel=3,
-            )
+            legacy = legacy_option_engine("dask", "use_distributed", self._legacy_use_distributed)
         if explicit is not None and legacy is not None and explicit != legacy:
             raise ValueError(
                 "Conflicting execution engine sources: "

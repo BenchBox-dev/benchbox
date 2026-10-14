@@ -2651,8 +2651,8 @@ def _interactive_handle_result(s: types.SimpleNamespace, result: Any, orchestrat
         "Well-known keys available on all platforms: "
         "driver_version (pin Python driver package version, e.g. '1.2.0'), "
         "driver_auto_install (auto-install driver via uv if missing, true/false). "
-        "Athena Spark only: engine_version (Spark engine version, "
-        "e.g. 'PySpark engine version 3'). "
+        "Athena Spark only: runtime_version (Spark engine version the workgroup runs, "
+        "e.g. 'PySpark engine version 3'; recorded as requested, never sent). "
         "Platform-specific keys are also accepted (e.g. warehouse=MY_WH for Snowflake). "
         "Run --help-topic examples for the full driver versioning workflow."
     ),
@@ -2691,7 +2691,11 @@ def _interactive_handle_result(s: types.SimpleNamespace, result: Any, orchestrat
     hidden=True,
     help="Deprecated alias for --execution-engine streaming on polars-df.",
 )
-@advanced_option("--gateway", default=None, help="Route queries through a gateway (e.g. espresso, greybeam, custom).")
+@advanced_option(
+    "--gateway",
+    default=None,
+    help="Gateway for query routing. Only 'native' (no gateway) runs today; declared gateways fail closed.",
+)
 @advanced_option("--seed", type=int, help="RNG seed for query parameter generation")
 @advanced_option(
     "--streams",
@@ -2827,11 +2831,14 @@ def run(
     no_link_probe: bool = False,
     polars_streaming: bool = False,
 ) -> None:
+    from benchbox.core.run_service import apply_polars_streaming_flag, begin_run
+
+    begin_run()
     if polars_streaming:
-        console.print("[yellow]--polars-streaming is deprecated; use --execution-engine streaming.[/yellow]")
-        if execution_engine not in (None, "default", "streaming"):
-            raise click.UsageError(f"--polars-streaming conflicts with --execution-engine {execution_engine}")
-        execution_engine = "streaming"
+        try:
+            platform_option_pairs = apply_polars_streaming_flag(platform_option_pairs, execution_engine)
+        except ValueError as exc:
+            raise click.UsageError(str(exc)) from exc
     s = types.SimpleNamespace(
         ctx=ctx,
         platform=platform,
@@ -2882,6 +2889,7 @@ def run(
         client_region=client_region,
         client_cloud=client_cloud,
         no_link_probe=no_link_probe,
+        polars_streaming=polars_streaming,
     )
     _prepare_run_state(s)
 

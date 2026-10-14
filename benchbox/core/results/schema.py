@@ -605,8 +605,6 @@ def _add_execution_variant_fields(platform: dict[str, Any], result: BenchmarkRes
     gateway_block = gateway_payload(_platform_info_entry(platform_info, "gateway"))
     if gateway_block:
         platform["gateway"] = order_dict(gateway_block, PLATFORM_GATEWAY_KEY_ORDER)
-        if gateway_block.get("routed") is True:
-            platform["tpc_compliant"] = False
     for key, lead in (("compute", PLATFORM_COMPUTE_LEAD_KEYS), ("deployment", PLATFORM_DEPLOYMENT_LEAD_KEYS)):
         block = platform.get(key)
         if isinstance(block, Mapping):
@@ -1493,12 +1491,6 @@ def _derived_validation_status(result: BenchmarkResults) -> str | None:
 def _untuned_tuning_summary(result: BenchmarkResults) -> dict[str, Any]:
     from benchbox.core.tuning.applied_ledger import NOT_APPLICABLE
 
-    status = _derived_validation_status(result)
-    if status:
-        return {"validation_status": status}
-    if getattr(result, "tuning_validation_status", None) is not None:
-        return {"validation_status": NOT_APPLICABLE}
-
     summary: dict[str, Any] = {}
     tuning_source = getattr(result, "tuning_source", None)
     if tuning_source:
@@ -1514,6 +1506,11 @@ def _untuned_tuning_summary(result: BenchmarkResults) -> dict[str, Any]:
     if config_hash:
         summary["requested_config_hash"] = config_hash
         summary["hash"] = config_hash
+    status = _derived_validation_status(result)
+    if status:
+        summary["validation_status"] = status
+    elif getattr(result, "tuning_validation_status", None) is not None:
+        summary["validation_status"] = NOT_APPLICABLE
     return summary
 
 

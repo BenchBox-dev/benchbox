@@ -113,8 +113,8 @@ The policy is:
 
 ## Deprecation Strategy
 
-1. **Announcement**: Deprecations are announced in the changelog and inline
-   docstrings one release ahead of removal.
+1. **Announcement**: Deprecations are announced in the changelog one release
+   ahead of removal.
 2. **Runtime Warnings**: Deprecated APIs issue `DeprecationWarning` with
    guidance, including the target removal version.
 3. **Tracking**: The compatibility helpers document the supported ranges so

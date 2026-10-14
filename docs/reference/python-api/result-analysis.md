@@ -609,7 +609,7 @@ Removes or replaces identifying data in results so they can be shared.
 <span id="benchbox.core.results.anonymization.AnonymizationManager.get_anonymous_machine_id"></span>
 <span id="get_anonymous_machine_id"></span>
 
-**Returns:** `str`, an identifier used in anonymized results. The value may recur across related output and should not be treated as an anonymity or trust signal.
+**Returns:** `str`, an identifier used in anonymized results. The value recurs across related output and should not be treated as an anonymity or trust signal.
 
 ```python
 from benchbox.core.results.anonymization import AnonymizationManager
@@ -660,7 +660,7 @@ True
 <span id="benchbox.core.results.anonymization.AnonymizationManager.anonymize_tuning_payload"></span>
 <span id="anonymize_tuning_payload"></span>
 
-Anonymizes a tuning companion payload while preserving the corresponding identifier values used in the related result payload.
+Anonymizes a tuning companion payload with identifier values consistent with the related result payload.
 
 | Name | Type | Default | Meaning |
 | --- | --- | --- | --- |

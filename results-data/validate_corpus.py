@@ -436,19 +436,14 @@ def _cohort_key(payload: dict) -> CohortKey:
     return (benchmark_id, f"{scale_factor}{cohort_phase_suffix(payload)}")
 
 
-def _variant_aware_identity(platform_section: dict, platform_name: str) -> str:
-    variant = platform_section.get("variant")
-    if isinstance(variant, str) and variant.strip():
-        return variant.strip()
-    engine = platform_section.get("execution_engine")
-    requested = engine.get("requested") if isinstance(engine, dict) else None
-    if requested and str(requested) != "default":
-        pid = _VARIANT_PLATFORM_SUFFIX_RE.sub("", platform_name).strip().lower().replace(" ", "-")
-        return f"{pid}+{requested}"
-    return platform_name
-
-
 _VARIANT_PLATFORM_SUFFIX_RE = re.compile(r"[-_]trust[-_](?:ci|community|local|unknown)", re.IGNORECASE)
+
+
+def _variant_aware_identity(payload: dict, platform_name: str) -> str:
+    from benchbox.core.results.execution_variant import published_variant_id
+
+    base = _VARIANT_PLATFORM_SUFFIX_RE.sub("", platform_name).strip().lower().replace(" ", "-")
+    return published_variant_id(payload, base)
 
 
 def _comparison_identity(bundle: pathlib.Path, payload: dict) -> str:
@@ -470,10 +465,9 @@ def _comparison_identity(bundle: pathlib.Path, payload: dict) -> str:
                     if candidate and str(candidate) != "unknown":
                         version = candidate
                         break
+        identity = _variant_aware_identity(payload, str(platform))
     except Exception as exc:
         raise CorpusReadError(f"ERROR reading platform identity from {bundle}: {exc}") from exc
-    identity = str(platform)
-    identity = _variant_aware_identity(platform_section, identity)
     if version and str(version) != "unknown":
         identity = f"{identity} v{str(version)[:120]}"
     return identity

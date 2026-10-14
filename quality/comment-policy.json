@@ -73,7 +73,7 @@
       "provenance": "_sources/README.md"
     },
     {
-      "path": "_project/scripts/vendor/todo_db-0.8.1-py3-none-any.whl",
+      "path": "_project/scripts/vendor/todo_db-0.9.1-py3-none-any.whl",
       "owner": "todo-db",
       "provenance": "_project/scripts/pyproject.toml"
     }
@@ -156,8 +156,11 @@
     "_project/scripts/migrate_joinorder_bundles.py",
     "_project/scripts/mocker_compose_parity.sh",
     "_project/scripts/oneoff_rewrite_review_followup_marker.py",
+    "_project/scripts/oracle_review_check.py",
+    "_project/scripts/oracle_reviewers/",
     "_project/scripts/platform_manifest.py",
     "_project/scripts/platform_scaffold.py",
+    "_project/scripts/preflight_targets.py",
     "_project/scripts/pr_review_followups.py",
     "_project/scripts/pylint_duplicate_code_warn.py",
     "_project/scripts/pyproject.toml",
@@ -174,6 +177,7 @@
     "_project/scripts/scan_explorer_tokens.py",
     "_project/scripts/shrink_rollup.py",
     "_project/scripts/soundness_drain_report.py",
+    "_project/scripts/soundness_merge_digest.py",
     "_project/scripts/soundness_paths.py",
     "_project/scripts/sweep_blind_spots.py",
     "_project/scripts/timing_audit.py",
@@ -232,6 +236,7 @@
     "benchbox/vector_search.py",
     "benchbox/write_primitives.py",
     "codecov.yml",
+    "deploy/routes.yml",
     "docker/",
     "docs/",
     "examples/",
@@ -1067,19 +1072,6 @@
       "alternative": "Removing or replacing this payload would lose existing notice wording. A runtime docstring is unnecessary; an exact source comment retains the notice without carrying explanatory prose.",
       "owner": "comment-cleanup-ssb",
       "removal": "Remove or change only after the owner records the governing notice requirement and confirms that the exact existing notice may be changed.",
-      "count": 1
-    },
-    {
-      "path": "tests/unit/core/test_tpc_reporting_execution.py",
-      "symbol": "test_tpch_maintenance_helpers_and_integrity",
-      "text": "# noqa: C901",
-      "kind": "directive",
-      "consumer": "pyproject.toml",
-      "necessity": "Ruff measures this maintenance and integrity test at complexity 22 against the configured ceiling 18; its fake connection and maintenance operations exercise one existing scenario.",
-      "alternative": "Split the scenario into smaller tests while preserving fake-connection assertions; do not disable C901 for the file.",
-      "owner": "comment-cleanup-unit-tests-core",
-      "removal": "Remove when the test is split or its measured complexity is at most 18.",
-      "expires": "2026-11-02",
       "count": 1
     },
     {
@@ -3012,19 +3004,6 @@
       "alternative": "Removing or replacing this payload would lose existing notice wording. A runtime docstring is unnecessary; an exact source comment retains the notice without carrying explanatory prose.",
       "owner": "comment-cleanup-utilities",
       "removal": "Remove or change only after the owner records the governing notice requirement and confirms that the exact existing notice may be changed.",
-      "count": 1
-    },
-    {
-      "path": "tests/unit/core/dataframe/test_protocols.py",
-      "symbol": "TestDataFrameOpsProtocol.test_mock_implementation_satisfies_protocol",
-      "text": "# noqa: C901",
-      "kind": "directive",
-      "consumer": "pyproject.toml",
-      "necessity": "Ruff measures this protocol implementation test at complexity 20 against the configured ceiling 18; the nested fake implements the runtime protocol in one scenario.",
-      "alternative": "Split the fake protocol implementation into a named fixture while preserving assertions; do not disable C901 for the file.",
-      "owner": "comment-cleanup-core-dataframe",
-      "removal": "Remove when the test is split or its measured complexity is at most 18.",
-      "expires": "2026-11-02",
       "count": 1
     },
     {

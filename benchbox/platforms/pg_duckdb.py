@@ -8,7 +8,6 @@ import argparse
 import logging
 import os
 import time
-import warnings
 from dataclasses import asdict
 from datetime import datetime, timezone
 from typing import Any
@@ -16,6 +15,7 @@ from typing import Any
 from benchbox.core.deployment import deployment_class, select_adapter_deployment
 from benchbox.core.execution_engine import (
     ExecutionEngineReceipt,
+    legacy_option_engine,
     resolve_requested,
     supported_execution_engines,
 )
@@ -165,12 +165,7 @@ class PgDuckDBAdapter(PostgreSQLAdapter):
         if self._legacy_force_execution is not None:
             if not isinstance(self._legacy_force_execution, bool):
                 raise ValueError("pg-duckdb force_execution must be a boolean")
-            legacy = "duckdb" if self._legacy_force_execution else "postgres"
-            warnings.warn(
-                "The pg-duckdb force_execution option is deprecated; use execution_engine='duckdb' or 'postgres'.",
-                DeprecationWarning,
-                stacklevel=3,
-            )
+            legacy = legacy_option_engine("pg-duckdb", "force_execution", self._legacy_force_execution)
         if explicit is not None and legacy is not None and explicit != legacy:
             raise ValueError(
                 "Conflicting execution engine sources: "

@@ -47,8 +47,8 @@ export AWS_REGION=us-east-1
 
 ### CLI Usage
 
-The commands cover, in order: basic usage, a custom region, a specific Spark engine version, a custom DPU
-configuration, and a dry run that previews queries.
+The commands cover, in order: basic usage, a custom region, recording the Spark engine version the workgroup
+runs, a custom DPU configuration, and a dry run that previews queries.
 
 ```bash
 benchbox run --platform athena-spark --benchmark tpch --scale 1.0 \
@@ -80,11 +80,11 @@ benchbox run --platform athena-spark --benchmark tpch --dry-run ./preview \
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `workgroup` | *required* | Spark-enabled Athena workgroup name |
+| `compute_resource` | *required* | Spark-enabled Athena workgroup name (`workgroup` is a deprecated alias) |
 | `s3_staging_dir` | *required* | S3 path for data staging |
 | `region` | us-east-1 | AWS region |
 | `database` | benchbox | Glue Data Catalog database |
-| `engine_version` | (workgroup default) | Spark engine version (e.g. `PySpark engine version 3`) |
+| `runtime_version` | (not recorded) | Spark engine version you expect the workgroup to run (e.g. `PySpark engine version 3`), recorded in results as requested. The workgroup sets the engine version; BenchBox never sends it when starting a session. `engine_version` is a deprecated alias |
 | `coordinator_dpu_size` | 1 | Coordinator DPU size |
 | `max_concurrent_dpus` | 20 | Maximum concurrent DPUs |
 | `default_executor_dpu_size` | 1 | Default executor DPU size |

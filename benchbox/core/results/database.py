@@ -9,15 +9,16 @@ import json
 import logging
 import re
 import sqlite3
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from benchbox.core.cost.models import cost_status_of, published_total_cost
 from benchbox.core.results.environment import build_platform_metadata_payload
+from benchbox.core.results.execution_variant import ExecutionVariant, platform_info_bundle, read_execution_variant
 from benchbox.core.results.models import BenchmarkResults
 from benchbox.core.results.platform_options import sanitize_platform_options
 from benchbox.core.results.regression_policy import is_regression
@@ -147,6 +148,35 @@ class PerformanceTrend:
     sample_count: int
     change_pct: float | None
     is_regression: bool
+    variant: str | None = None
+
+
+def _result_variant(result: BenchmarkResults) -> ExecutionVariant:
+    run_config = (result.execution_metadata or {}).get("run_config")
+    bundle = platform_info_bundle(
+        result.platform,
+        result.platform_info,
+        deployment=result.platform_deployment,
+        execution_engine=result.execution_engine,
+    )
+    if isinstance(run_config, Mapping):
+        bundle["config"] = dict(run_config)
+    return read_execution_variant(bundle)
+
+
+def _stored_variant(platform: str, metadata: Mapping[str, Any]) -> ExecutionVariant:
+    stored = metadata.get("execution_variant")
+    if isinstance(stored, Mapping):
+        try:
+            return ExecutionVariant(**stored)
+        except TypeError:
+            pass
+    platform_block = metadata.get("platform")
+    deployment = platform_block.get("deployment") if isinstance(platform_block, Mapping) else None
+    info = metadata.get("platform_info")
+    return read_execution_variant(
+        platform_info_bundle(platform, info if isinstance(info, Mapping) else None, deployment=deployment)
+    )
 
 
 @dataclass
@@ -305,6 +335,7 @@ class ResultDatabase:
             "platform_info": sanitize_platform_options(result.platform_info or {}),
             "tunings_applied": result.tunings_applied,
             "test_execution_type": result.test_execution_type,
+            "execution_variant": asdict(_result_variant(result)),
         }
         has_explicit_platform_meta = any(
             getattr(result, name, None) is not None
@@ -727,6 +758,39 @@ class ResultDatabase:
             return "down", change_pct
         return "stable", change_pct
 
+    def _variant_rows(
+        self, platform: str, benchmark: str, scale_factor: float
+    ) -> list[tuple[str, float, ExecutionVariant]]:
+        with self._connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT timestamp, geometric_mean_ms, metadata_json
+                FROM results
+                WHERE platform = ?
+                    AND benchmark = ?
+                    AND scale_factor = ?
+                    AND geometric_mean_ms IS NOT NULL
+                    AND UPPER(validation_status) = 'PASSED'
+                ORDER BY timestamp DESC
+            """,
+                (platform, benchmark, scale_factor),
+            )
+            return [
+                (
+                    row["timestamp"],
+                    row["geometric_mean_ms"],
+                    _stored_variant(platform, json.loads(row["metadata_json"]) if row["metadata_json"] else {}),
+                )
+                for row in cursor.fetchall()
+            ]
+
+    def _distinct_variants(self, platform: str, benchmark: str, scale_factor: float) -> list[ExecutionVariant]:
+        variants: dict[tuple[str | None, str, str], ExecutionVariant] = {}
+        for _, _, variant in self._variant_rows(platform, benchmark, scale_factor):
+            variants.setdefault(variant.comparison_key(), variant)
+        return list(variants.values())
+
     def get_performance_trends(
         self,
         platform: str,
@@ -734,64 +798,55 @@ class ResultDatabase:
         scale_factor: float,
         periods: int = 6,
         period_days: int = 30,
+        variant: ExecutionVariant | None = None,
+    ) -> list[PerformanceTrend]:
+        rows = self._variant_rows(platform, benchmark, scale_factor)
+        if variant is None and rows:
+            variant = rows[0][2]
+        return self._period_trends(platform, benchmark, scale_factor, rows, variant, periods, period_days)
+
+    @staticmethod
+    def _period_trends(
+        platform: str,
+        benchmark: str,
+        scale_factor: float,
+        rows: list[tuple[str, float, ExecutionVariant]],
+        variant: ExecutionVariant | None,
+        periods: int,
+        period_days: int,
     ) -> list[PerformanceTrend]:
         from datetime import timedelta
 
+        if variant is None:
+            return []
+        key = variant.comparison_key()
+        values = [(timestamp, value) for timestamp, value, row_variant in rows if row_variant.comparison_key() == key]
         now = datetime.now(timezone.utc)
-        trends = []
+        trends: list[PerformanceTrend] = []
 
-        with self._connection() as conn:
-            cursor = conn.cursor()
-
-            for i in range(periods):
-                period_end = now - timedelta(days=i * period_days)
-                period_start = period_end - timedelta(days=period_days)
-
-                cursor.execute(
-                    """
-                    SELECT
-                        AVG(geometric_mean_ms) as avg_gm,
-                        MIN(geometric_mean_ms) as min_gm,
-                        MAX(geometric_mean_ms) as max_gm,
-                        COUNT(*) as sample_count
-                    FROM results
-                    WHERE platform = ?
-                        AND benchmark = ?
-                        AND scale_factor = ?
-                        AND timestamp >= ?
-                        AND timestamp < ?
-                        AND geometric_mean_ms IS NOT NULL
-                        AND validation_status = 'PASSED'
-                """,
-                    (
-                        platform,
-                        benchmark,
-                        scale_factor,
-                        period_start.isoformat(),
-                        period_end.isoformat(),
-                    ),
+        for i in range(periods):
+            period_end = now - timedelta(days=i * period_days)
+            period_start = period_end - timedelta(days=period_days)
+            start_text, end_text = period_start.isoformat(), period_end.isoformat()
+            window = [value for timestamp, value in values if start_text <= timestamp < end_text]
+            if not window:
+                continue
+            trends.append(
+                PerformanceTrend(
+                    platform=platform,
+                    benchmark=benchmark,
+                    scale_factor=scale_factor,
+                    period_start=period_start,
+                    period_end=period_end,
+                    avg_geometric_mean_ms=sum(window) / len(window),
+                    min_geometric_mean_ms=min(window),
+                    max_geometric_mean_ms=max(window),
+                    sample_count=len(window),
+                    change_pct=None,
+                    is_regression=False,
+                    variant=variant.describe(),
                 )
-
-                row = cursor.fetchone()
-
-                if row["sample_count"] == 0:
-                    continue
-
-                trends.append(
-                    PerformanceTrend(
-                        platform=platform,
-                        benchmark=benchmark,
-                        scale_factor=scale_factor,
-                        period_start=period_start,
-                        period_end=period_end,
-                        avg_geometric_mean_ms=row["avg_gm"],
-                        min_geometric_mean_ms=row["min_gm"],
-                        max_geometric_mean_ms=row["max_gm"],
-                        sample_count=row["sample_count"],
-                        change_pct=None,
-                        is_regression=False,
-                    )
-                )
+            )
 
         for i in range(len(trends) - 1):
             current = trends[i]
@@ -800,19 +855,7 @@ class ResultDatabase:
                 change = (
                     (current.avg_geometric_mean_ms - previous.avg_geometric_mean_ms) / previous.avg_geometric_mean_ms
                 ) * 100
-                trends[i] = PerformanceTrend(
-                    platform=current.platform,
-                    benchmark=current.benchmark,
-                    scale_factor=current.scale_factor,
-                    period_start=current.period_start,
-                    period_end=current.period_end,
-                    avg_geometric_mean_ms=current.avg_geometric_mean_ms,
-                    min_geometric_mean_ms=current.min_geometric_mean_ms,
-                    max_geometric_mean_ms=current.max_geometric_mean_ms,
-                    sample_count=current.sample_count,
-                    change_pct=change,
-                    is_regression=is_regression(change),
-                )
+                trends[i] = replace(current, change_pct=change, is_regression=is_regression(change))
 
         return trends
 
@@ -841,11 +884,15 @@ class ResultDatabase:
                     scale_factors = [row[0] for row in cursor.fetchall()]
 
                 for sf in scale_factors:
-                    trends = self.get_performance_trends(platform, benchmark, sf, periods=2, period_days=lookback_days)
-
-                    for trend in trends:
-                        if is_regression(trend.change_pct, threshold_pct):
-                            regressions.append(replace(trend, is_regression=True))
+                    for variant in self._distinct_variants(platform, benchmark, sf):
+                        trends = self.get_performance_trends(
+                            platform, benchmark, sf, periods=2, period_days=lookback_days, variant=variant
+                        )
+                        regressions.extend(
+                            replace(trend, is_regression=True)
+                            for trend in trends
+                            if is_regression(trend.change_pct, threshold_pct)
+                        )
 
         return regressions
 

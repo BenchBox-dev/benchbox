@@ -7,6 +7,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import click
+from rich.markup import escape
 from rich.table import Table
 
 from benchbox.cli.shared import console
@@ -184,7 +185,10 @@ def trends(
         console.print(f"[yellow]No trend data found for {platform}/{benchmark} SF={scale_factor}[/yellow]")
         return
 
-    table = Table(title=f"Performance Trends: {platform} / {benchmark} (SF={scale_factor})")
+    table = Table(
+        title=f"Performance Trends: {platform} / {benchmark} (SF={scale_factor})",
+        caption=escape(f"Variant: {trends_list[0].variant}") if trends_list[0].variant else None,
+    )
     table.add_column("Period", style="cyan")
     table.add_column("Avg (ms)", justify="right")
     table.add_column("Min (ms)", justify="right")
@@ -254,6 +258,7 @@ def regressions(
     table.add_column("Platform", style="yellow")
     table.add_column("Benchmark")
     table.add_column("Scale Factor", justify="right")
+    table.add_column("Variant")
     table.add_column("Current (ms)", justify="right")
     table.add_column("Change", justify="right", style="red")
     table.add_column("Period")
@@ -266,6 +271,7 @@ def regressions(
             r.platform,
             r.benchmark,
             str(r.scale_factor),
+            escape(r.variant or "-"),
             f"{r.avg_geometric_mean_ms:.1f}",
             change_str,
             period_str,

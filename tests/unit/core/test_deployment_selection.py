@@ -8,7 +8,6 @@ from benchbox.core.deployment import (
     DEPLOYMENT_ALIAS_KEYS,
     deployment_class,
     normalize_deployment_value,
-    reset_deployment_alias_warnings,
     resolve_deployment,
     select_adapter_deployment,
 )
@@ -17,13 +16,6 @@ pytestmark = [
     pytest.mark.unit,
     pytest.mark.fast,
 ]
-
-
-@pytest.fixture(autouse=True)
-def _reset_warnings():
-    reset_deployment_alias_warnings()
-    yield
-    reset_deployment_alias_warnings()
 
 
 class TestNormalizeDeploymentValue:

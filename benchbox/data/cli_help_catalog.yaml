@@ -136,15 +136,14 @@ command_examples:
     - '  --platform-option database=benchbox_tpch  # Use existing database'
     - benchbox run --platform athena --benchmark tpch --table-mode external \
     - '  --platform-option staging_root=s3://my-bucket/benchbox/  # Skip CTAS materialization'
-    - '# Athena Spark: select Spark engine version'
+    - '# Athena Spark: the workgroup sets the engine version; runtime_version records it'
     - benchbox run --platform athena-spark --benchmark tpch \
-    - '  --platform-option workgroup=my-spark-workgroup \'
+    - '  --platform-option compute_resource=my-spark-workgroup \'
     - '  --platform-option s3_staging_dir=s3://my-bucket/staging/ \'
-    - '  --platform-option "engine_version=PySpark engine version 3"'
+    - '  --platform-option "runtime_version=PySpark engine version 3"'
     - benchbox run --platform athena-spark --benchmark tpch --table-mode external \
-    - '  --platform-option workgroup=my-spark-workgroup \'
-    - '  --platform-option s3_staging_dir=s3://my-bucket/staging/ \'
-    - '  --platform-option "engine_version=PySpark engine version 3"  # External tables over staged Parquet'
+    - '  --platform-option compute_resource=my-spark-workgroup \'
+    - '  --platform-option s3_staging_dir=s3://my-bucket/staging/  # External tables over staged Parquet'
     Azure Synapse:
     - benchbox run --platform azure_synapse --benchmark tpch \
     - '  --platform-option server=myworkspace.sql.azuresynapse.net \'

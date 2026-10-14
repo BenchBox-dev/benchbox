@@ -31,17 +31,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   public submissions require a private salt.
 
 ### Added
-- Manifest capability `gateways` defines intermediary query routers (`espresso`, `greybeam`, `custom`)
-  with route targets, engine classes and host requirements. Snowflake and Databricks declare supported gateways.
-  The core registers the `--gateway` CLI flag and gateway connection options (`gateway_host`, `gateway_port`,
-  `gateway_protocol`, `gateway_ca_bundle`, `gateway_ocsp_fail_open`, `allow_insecure_gateway`). Result bundles
-  record `platform.gateway` with `name` and `routed: true`, set `tpc_compliant: false` whenever routed,
-  restrict per-query `execution_engine` to `routes_to` targets plus `unknown`, and observe `mixed` when queries
-  differ. The core `variants_comparable` guard protects `benchbox compare` and regression baseline selection
-  against comparing different gateway, deployment, or engine variants unless `--allow-heterogeneous-comparison`
-  is provided.
-  Interactive previews preserve the selected gateway in the equivalent
-  `benchbox run` command.
+- Manifest capability `gateways` declares intermediary query routers (`espresso`, `greybeam`, `custom`)
+  with route targets and engine classes; each requires a host. Snowflake and Databricks declare gateways.
+  No adapter routes queries through a gateway yet, so `benchbox run --gateway` accepts only `native`;
+  any declared gateway fails before work starts with "gateway routing is not implemented for <platform> yet".
+  The gateway connection options (`gateway_host`, `gateway_port`, `gateway_protocol`, `gateway_ca_bundle`,
+  `gateway_ocsp_fail_open`, `allow_insecure_gateway`) are typed: the port must be an integer from 1 to 65535
+  and the two flags must be booleans. MCP rejects them. A result bundle with a routed gateway records
+  `platform.gateway` with `name` and `routed: true` and the top-level `tpc_compliant: false`.
 
 
 - Result schema 2.3 supports execution-engine receipts, query engine observations,
@@ -105,9 +102,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Athena Spark can start a session. BenchBox no longer sends an engine
+  version in the `StartSession` request; the AWS SDK rejected that field on
+  every attempt, because the Spark-enabled workgroup sets the engine version.
+  `runtime_version` (and its deprecated alias `engine_version`) is now
+  recorded in results as requested, with `runtime_version_source: requested`,
+  and is not recorded when you do not set it. A rejected session request now
+  fails as a configuration error naming the workgroup.
+- `benchbox run --platform athena-spark` accepts the documented platform
+  options (`s3_staging_dir`, `region`, `database`, `runtime_version`, DPU
+  sizes and timeouts) and passes them, with `compute_resource`, to the
+  adapter. Before, every option except `compute_resource` was rejected and
+  the workgroup never reached the adapter.
+- A new result bundle now joins the Explorer row and the corpus depth identity
+  of earlier bundles of the same platform. A default Polars run is `polars`
+  ("Polars"), not a separate `polars-df` row labelled "Polars (polars-df)", and
+  a DuckDB rerun no longer counts as a second identity in its cohort. The
+  Explorer and `results-data/validate_corpus.py` build the variant from the
+  display-name platform ID plus the suffix from the same core function the
+  result writer uses, and read the requested engine through the legacy reader,
+  so a streaming run is `polars+streaming` ("Polars (streaming)") in both. The
+  stored `platform.variant` value is unchanged (`polars-df+streaming`). The
+  depth report now lists platform IDs (`duckdb`) instead of display names.
 - The Atom feed uses canonical `/blog/` self and entry links while retaining stable entry IDs for existing subscribers.
+- Deprecated option aliases now show their warning. The Polars `streaming`
+  option, `--polars-streaming`, Dask `use_distributed`, pg-duckdb
+  `force_execution`, vendor compute names (including Athena Spark
+  `engine_version`) and native deployment keys each log one warning per run,
+  on the CLI (including `--dry-run`) and in the MCP server log. The warning names the spelling you supplied, its replacement
+  and the release that removes it (0.6.0). Most of these were Python
+  `DeprecationWarning`s, which Python hides by default, and a long-running MCP
+  server warned only once per process. ClickHouse `mode=local` now prints one
+  warning instead of two and no longer names `deployment_mode`.
+- `--polars-streaming` now records `resolution: legacy_option`, like the
+  Polars `streaming` option and the MCP `streaming` key, instead of
+  `explicit`.
+- `benchbox compare`, the MCP `compare_results` tool and `benchbox report`
+  no longer mix execution variants. `benchbox compare` treated every bundle
+  as the `local` deployment, so a self-hosted run and a cloud run compared as
+  one variant; MCP `compare_results` did not check variants at all; and the
+  report database averaged every run of a platform, benchmark and scale
+  together. Compare and MCP `compare_results` now refuse and name the part
+  that differs, for example `deployment differs (self-hosted vs cloud)`; the
+  CLI still accepts `--allow-heterogeneous-comparison`. A bundle without a
+  selected deployment uses the platform's default deployment, so earlier
+  bundles still compare with new default runs. `benchbox report regressions`
+  and `benchbox report trends` compare each run only with runs of the same
+  deployment, requested engine and gateway, and show that variant. Results
+  added with `benchbox report import` now count in trends and regressions;
+  their lowercase `passed` validation status excluded them before.
 
 ### Before you upgrade
+- `benchbox compare` and MCP `compare_results` now refuse two results whose
+  deployment, requested execution engine or gateway differ. Pass
+  `--allow-heterogeneous-comparison` to the CLI to compare them anyway.
+  `benchbox report regressions` lists each variant separately.
+- Athena Spark `runtime_version` no longer tries to choose the Spark engine
+  version. Set the version on the workgroup; BenchBox records the value you
+  pass as requested.
+- Deprecated-alias warnings are now WARNING log records from the
+  `benchbox.core.deprecation_notices` logger instead of `DeprecationWarning`s.
+  Code that filtered or asserted on `DeprecationWarning` for these aliases
+  must read the log instead. `--quiet` still hides them.
+- Runs that pass `--polars-streaming` record
+  `platform.execution_engine.resolution` as `legacy_option` instead of
+  `explicit`. The requested and applied engines and `platform.variant` do not
+  change.
 - Vendor compute names now warn once per run; move saved configurations and
   credential profiles to `compute_resource` and `compute_size` (Fabric Data
   Warehouse: `database`; Athena Spark: `runtime_version`). The old names stop

@@ -212,6 +212,87 @@ class TestIcebergVacuum:
             ops.optimize_table(identifier)
 
 
+@pytest.mark.skipif(not ICEBERG_AVAILABLE, reason="pyiceberg not installed")
+class TestIcebergLocalPaths:
+    @pytest.mark.parametrize(
+        "location",
+        [
+            "C:\\data\\warehouse/default.db/probe",
+            "D:/data/warehouse/default.db/probe",
+            "/srv/warehouse/default.db/probe",
+            "relative/warehouse/default.db/probe",
+        ],
+    )
+    def test_plain_locations_map_to_the_same_path(self, location: str) -> None:
+        assert IcebergMaintenanceOperations._local_path(location) == Path(location)
+
+    @pytest.mark.parametrize(
+        "location",
+        [
+            "s3://bucket/warehouse/probe",
+            "gs://bucket/probe",
+            "abfss://c@a.dfs.core.windows.net/probe",
+            "file://host/probe",
+        ],
+    )
+    def test_remote_locations_have_no_local_path(self, location: str) -> None:
+        assert IcebergMaintenanceOperations._local_path(location) is None
+        assert IcebergMaintenanceOperations._normalize_file_ref(location) == location
+
+    def test_file_uri_maps_to_its_path(self, tmp_path: Path) -> None:
+        target = tmp_path / "with space" / "probe"
+
+        assert IcebergMaintenanceOperations._local_path(target.as_uri()) == target
+
+    def test_a_drive_letter_location_is_not_treated_as_remote(self) -> None:
+        assert IcebergMaintenanceOperations._local_table_dir("C:\\no\\such\\dir") is None
+        assert IcebergMaintenanceOperations._local_path("C:\\no\\such\\dir") is not None
+
+    @pytest.mark.parametrize("spelling", ["plain", "file-uri"])
+    @pytest.mark.parametrize("dry_run", [True, False])
+    def test_cleanup_keeps_referenced_files_for_every_location_spelling(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, spelling: str, dry_run: bool
+    ) -> None:
+        directory = tmp_path / "warehouse" / "default.db" / "probe"
+        (directory / "data").mkdir(parents=True)
+        (directory / "metadata").mkdir()
+        metadata = directory / "metadata" / "v2.metadata.json"
+        kept_plain = directory / "data" / "kept-plain.parquet"
+        kept_uri = directory / "data" / "kept-uri.parquet"
+        orphan = directory / "data" / "orphan.parquet"
+        for path in (metadata, kept_plain, kept_uri, orphan):
+            path.write_bytes(b"x" * 8)
+
+        def spell(path: Path) -> str:
+            return str(path) if spelling == "plain" else path.as_uri()
+
+        ops = IcebergMaintenanceOperations.__new__(IcebergMaintenanceOperations)
+        ops.logger = MagicMock()
+        table = MagicMock()
+        table.location.return_value = spell(directory)
+        table.metadata_location = spell(metadata)
+        monkeypatch.setattr(
+            IcebergMaintenanceOperations,
+            "_snapshot_file_refs",
+            lambda self, _table, _ids: {
+                IcebergMaintenanceOperations._normalize_file_ref(str(kept_plain)),
+                IcebergMaintenanceOperations._normalize_file_ref(kept_uri.as_uri()),
+            },
+        )
+
+        if dry_run:
+            files, total_bytes = ops._reclaimable_files(table, {1})
+            assert (files, total_bytes) == (1, 8)
+        else:
+            result = ops._reclaim_orphan_files(table, {1})
+            assert result == {"file_cleanup": "full", "reclaimed_files": 1, "reclaimed_bytes": 8}
+
+        assert kept_plain.exists()
+        assert kept_uri.exists()
+        assert metadata.exists()
+        assert orphan.exists() is dry_run
+
+
 class TestHudiProcedures:
     def _ops(self) -> tuple[Any, MagicMock]:
         from benchbox.platforms.dataframe.hudi_maintenance import HudiMaintenanceOperations

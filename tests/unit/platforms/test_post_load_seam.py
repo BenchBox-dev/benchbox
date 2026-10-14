@@ -242,7 +242,7 @@ class TestEveryLoadPathRunsTheSeam:
         offenders = []
         checked = 0
         for path in sorted(PLATFORMS_ROOT.rglob("*.py")):
-            lines = path.read_text().splitlines()
+            lines = path.read_text(encoding="utf-8").splitlines()
             for number, line in enumerate(lines):
                 match = re.match(r"^\s*(?:self|self\.adapter)\.apply_ctas_sort\((?P<args>.*)\)\s*$", line)
                 if not match:

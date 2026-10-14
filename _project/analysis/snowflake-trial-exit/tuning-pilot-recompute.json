@@ -1,0 +1,253 @@
+{
+  "artifact": "stage3-recompute",
+  "inputs": {
+    "tpch_baseline": "tpch_sf1_snowflake_sql_20261003_113923_e545c1c5.json",
+    "tpch_untuned_a": "tpch_sf1_snowflake_sql_20261012_171902_44735cac.json",
+    "tpch_untuned_b": "tpch_sf1_snowflake_sql_20261012_172155_3067b960.json",
+    "tpch_tuned": "tpch_sf1_snowflake_sql_20261012_173334_97f9cfe1.json",
+    "ssb_baseline": "ssb_sf1_snowflake_sql_20260919_225814_ec4b3865.json",
+    "ssb_untuned": "ssb_sf1_snowflake_sql_20261012_173619_910313da.json",
+    "ssb_tuned": "ssb_sf1_snowflake_sql_20261012_173845_5dff7fb3.json"
+  },
+  "method": "Measured iterations only (run_type == measurement) unless labelled otherwise. Paired ratios take one statistic per query per run, then the geometric mean of after/before across queries; the 95% interval is a percentile bootstrap over queries (4000 resamples, seed 1).",
+  "comparisons": [
+    {
+      "after_over_before": "tpch_untuned_a/tpch_baseline",
+      "pooled_geomean_ratio_measured_only": 0.99,
+      "pooled_geomean_ratio_including_warmup": 1.01,
+      "paired_per_query": {
+        "mean": {
+          "ratio": 0.986,
+          "ci95_low": 0.94,
+          "ci95_high": 1.031,
+          "queries_slower": 11,
+          "queries": 22,
+          "per_query_min": 0.78,
+          "per_query_max": 1.15
+        },
+        "median": {
+          "ratio": 0.997,
+          "ci95_low": 0.967,
+          "ci95_high": 1.031,
+          "queries_slower": 11,
+          "queries": 22,
+          "per_query_min": 0.88,
+          "per_query_max": 1.25
+        },
+        "min": {
+          "ratio": 1.007,
+          "ci95_low": 0.975,
+          "ci95_high": 1.042,
+          "queries_slower": 13,
+          "queries": 22,
+          "per_query_min": 0.89,
+          "per_query_max": 1.19
+        }
+      }
+    },
+    {
+      "after_over_before": "tpch_untuned_b/tpch_baseline",
+      "pooled_geomean_ratio_measured_only": 1.041,
+      "pooled_geomean_ratio_including_warmup": 1.022,
+      "paired_per_query": {
+        "mean": {
+          "ratio": 1.041,
+          "ci95_low": 0.963,
+          "ci95_high": 1.128,
+          "queries_slower": 14,
+          "queries": 22,
+          "per_query_min": 0.77,
+          "per_query_max": 1.45
+        },
+        "median": {
+          "ratio": 1.075,
+          "ci95_low": 1.022,
+          "ci95_high": 1.136,
+          "queries_slower": 17,
+          "queries": 22,
+          "per_query_min": 0.89,
+          "per_query_max": 1.41
+        },
+        "min": {
+          "ratio": 1.029,
+          "ci95_low": 1.001,
+          "ci95_high": 1.058,
+          "queries_slower": 15,
+          "queries": 22,
+          "per_query_min": 0.91,
+          "per_query_max": 1.17
+        }
+      }
+    },
+    {
+      "after_over_before": "tpch_untuned_b/tpch_untuned_a",
+      "pooled_geomean_ratio_measured_only": 1.052,
+      "pooled_geomean_ratio_including_warmup": 1.012,
+      "paired_per_query": {
+        "mean": {
+          "ratio": 1.056,
+          "ci95_low": 0.984,
+          "ci95_high": 1.135,
+          "queries_slower": 12,
+          "queries": 22,
+          "per_query_min": 0.79,
+          "per_query_max": 1.44
+        },
+        "median": {
+          "ratio": 1.078,
+          "ci95_low": 1.019,
+          "ci95_high": 1.149,
+          "queries_slower": 15,
+          "queries": 22,
+          "per_query_min": 0.84,
+          "per_query_max": 1.52
+        },
+        "min": {
+          "ratio": 1.022,
+          "ci95_low": 0.99,
+          "ci95_high": 1.056,
+          "queries_slower": 12,
+          "queries": 22,
+          "per_query_min": 0.84,
+          "per_query_max": 1.25
+        }
+      }
+    },
+    {
+      "after_over_before": "tpch_tuned/tpch_untuned_b",
+      "pooled_geomean_ratio_measured_only": 1.079,
+      "pooled_geomean_ratio_including_warmup": 1.078,
+      "paired_per_query": {
+        "mean": {
+          "ratio": 1.086,
+          "ci95_low": 0.989,
+          "ci95_high": 1.187,
+          "queries_slower": 15,
+          "queries": 22,
+          "per_query_min": 0.65,
+          "per_query_max": 1.69
+        },
+        "median": {
+          "ratio": 1.084,
+          "ci95_low": 0.993,
+          "ci95_high": 1.196,
+          "queries_slower": 15,
+          "queries": 22,
+          "per_query_min": 0.73,
+          "per_query_max": 1.84
+        },
+        "min": {
+          "ratio": 1.023,
+          "ci95_low": 0.988,
+          "ci95_high": 1.063,
+          "queries_slower": 11,
+          "queries": 22,
+          "per_query_min": 0.85,
+          "per_query_max": 1.3
+        }
+      }
+    },
+    {
+      "after_over_before": "tpch_tuned/tpch_untuned_a",
+      "pooled_geomean_ratio_measured_only": 1.135,
+      "pooled_geomean_ratio_including_warmup": 1.09,
+      "paired_per_query": {
+        "mean": {
+          "ratio": 1.146,
+          "ci95_low": 1.064,
+          "ci95_high": 1.237,
+          "queries_slower": 16,
+          "queries": 22,
+          "per_query_min": 0.82,
+          "per_query_max": 1.65
+        },
+        "median": {
+          "ratio": 1.169,
+          "ci95_low": 1.074,
+          "ci95_high": 1.283,
+          "queries_slower": 19,
+          "queries": 22,
+          "per_query_min": 0.74,
+          "per_query_max": 1.93
+        },
+        "min": {
+          "ratio": 1.045,
+          "ci95_low": 1.004,
+          "ci95_high": 1.092,
+          "queries_slower": 13,
+          "queries": 22,
+          "per_query_min": 0.88,
+          "per_query_max": 1.34
+        }
+      }
+    },
+    {
+      "after_over_before": "ssb_untuned/ssb_baseline",
+      "pooled_geomean_ratio_measured_only": 1.078,
+      "pooled_geomean_ratio_including_warmup": 1.162,
+      "paired_per_query": {
+        "mean": {
+          "ratio": 1.101,
+          "ci95_low": 0.924,
+          "ci95_high": 1.305,
+          "queries_slower": 10,
+          "queries": 13,
+          "per_query_min": 0.54,
+          "per_query_max": 2.01
+        },
+        "median": {
+          "ratio": 1.101,
+          "ci95_low": 0.927,
+          "ci95_high": 1.299,
+          "queries_slower": 10,
+          "queries": 13,
+          "per_query_min": 0.54,
+          "per_query_max": 2.01
+        },
+        "min": {
+          "ratio": 0.991,
+          "ci95_low": 0.914,
+          "ci95_high": 1.068,
+          "queries_slower": 9,
+          "queries": 13,
+          "per_query_min": 0.73,
+          "per_query_max": 1.2
+        }
+      }
+    },
+    {
+      "after_over_before": "ssb_tuned/ssb_untuned",
+      "pooled_geomean_ratio_measured_only": 0.965,
+      "pooled_geomean_ratio_including_warmup": 0.924,
+      "paired_per_query": {
+        "mean": {
+          "ratio": 0.937,
+          "ci95_low": 0.771,
+          "ci95_high": 1.134,
+          "queries_slower": 6,
+          "queries": 13,
+          "per_query_min": 0.52,
+          "per_query_max": 1.72
+        },
+        "median": {
+          "ratio": 0.937,
+          "ci95_low": 0.764,
+          "ci95_high": 1.13,
+          "queries_slower": 6,
+          "queries": 13,
+          "per_query_min": 0.52,
+          "per_query_max": 1.72
+        },
+        "min": {
+          "ratio": 1.072,
+          "ci95_low": 0.979,
+          "ci95_high": 1.208,
+          "queries_slower": 7,
+          "queries": 13,
+          "per_query_min": 0.89,
+          "per_query_max": 1.84
+        }
+      }
+    }
+  ]
+}

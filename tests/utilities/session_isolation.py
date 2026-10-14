@@ -10,7 +10,7 @@ from typing import Any
 
 import pytest
 
-from scripts.local_validation import _close_lock, read_holder, wait_for_lock, write_holder
+from scripts.local_validation import _close_lock, read_holder, seek_lock_byte, wait_for_lock, write_holder
 
 _OWNER = "BENCHBOX_TEST_SESSION_OWNER"
 _ENV_KEYS = ("HOME", "USERPROFILE", "BENCHBOX_TEST_LOCK_DIR", _OWNER)
@@ -34,12 +34,14 @@ def _ancestor_holds_lock(lock_path: Path) -> bool:
             if sys.platform == "win32":
                 import msvcrt
 
+                seek_lock_byte(fd)
                 try:
                     msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
                 except OSError as exc:
                     if exc.errno == errno.EACCES:
                         return True
                     raise
+                seek_lock_byte(fd)
                 msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
             else:
                 import fcntl

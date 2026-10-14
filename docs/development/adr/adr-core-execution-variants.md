@@ -85,7 +85,11 @@ changes the endpoint, it is a gateway.
 
 **Not core settings:**
 
-- runtime version (recorded only);
+- runtime version (recorded only). Athena Spark's `runtime_version` is never
+  sent to `StartSession`: the session `EngineConfiguration` has no engine
+  version, because the Spark-enabled workgroup sets it. BenchBox does not read
+  the workgroup, so results record the value with
+  `runtime_version_source: requested`;
 - table format and storage engine (for example MergeTree);
 - optimizer flags such as Spark adaptive query execution (tuning);
 - the dtype backend.
@@ -355,6 +359,14 @@ one name covers requested and observed values.
   cohorts.
 - The separators `~`, `+` and `@` cannot appear in a platform ID, so the
   string parses without ambiguity.
+- The result writer records `platform.variant` with the manifest key as its
+  base (`polars-df+streaming`). Published identity, in the Explorer and the
+  corpus depth gate, uses the legacy base instead: the platform ID derived
+  from the display name (`polars+streaming`, `apache-doris`). New runs then
+  join the rows of earlier bundles of the same platform. Both consumers build
+  the suffix with the core `append_variant_suffix` function and read the
+  requested engine through the schema 2.3 legacy reader. Neither reads the
+  stored `platform.variant` base.
 
 **Rejected alternatives:**
 
@@ -367,6 +379,10 @@ one name covers requested and observed values.
   need one key to group and join runs.
 - *Always printing every part, including defaults.* Every existing published
   identity would change.
+- *Publishing the manifest-key base.* A default run would form its own row
+  (`polars-df` beside `polars`), and moving legacy rows to the manifest key
+  would change every published identity whose key differs from its display
+  name.
 
 ## D9. Gateway
 
@@ -374,18 +390,27 @@ one name covers requested and observed values.
 
 - **Manifest capability:**
   `gateways: {name: {routes_to: {engine_name: {class}}, requires_host}}`.
-- **Declarations:**
+- **Declarations:** every declared gateway requires a host.
   - Snowflake: `espresso` (routes to `snowflake`), `greybeam` (routes to
-    `snowflake` and `duckdb`) and `custom` (requires a host; routes to
-    `snowflake`).
-  - Databricks: `espresso` (routes to `databricks`) and `custom` (requires a
-    host; routes to `databricks`).
+    `snowflake` and `duckdb`) and `custom` (routes to `snowflake`).
+  - Databricks: `espresso` (routes to `databricks`) and `custom` (routes to
+    `databricks`).
 - `native` is accepted and means no gateway; the `platform.gateway` block is
   omitted.
-- A routed run always records `tpc_compliant=false`. There is no override.
+- Until a platform's adapter routes queries through a gateway, any other
+  `--gateway` value fails before work starts with "gateway routing is not
+  implemented for <platform> yet". Declaring a gateway in the manifest does
+  not make it runnable; accepting the flag without routing would record a
+  native run as routed.
+- A routed run always records the top-level `tpc_compliant=false`. There is
+  no override.
 - The core owns `variants_comparable(a, b)` over deployment, requested engine
-  and gateway. The compare command, the regression policy and analytics
-  baseline selection all call it.
+  and gateway. A bundle without `platform.deployment.selected` uses the
+  manifest default deployment, so a legacy bundle compares with a new run of
+  the default deployment. `benchbox compare`, the MCP `compare_results` tool,
+  analytics regression detection and `benchbox report` regression baselines
+  all call it. Compare refuses incomparable inputs and names the parts that
+  differ; regression baselines use only runs of the same variant.
 - These gateway rules also hold:
   - connection option names use `gateway_*`, never `proxy_*`;
   - insecure TLS and plain HTTP to a non-loopback host each need an

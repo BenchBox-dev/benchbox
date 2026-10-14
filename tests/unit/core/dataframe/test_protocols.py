@@ -113,95 +113,102 @@ class TestSortOrder:
         assert SortOrder.DESC.ascending is False
 
 
+class _MockProtocolDataFrame:
+    def select(self, *columns: str) -> _MockProtocolDataFrame:
+        return self
+
+    def filter(self, condition: Any) -> _MockProtocolDataFrame:
+        return self
+
+    def group_by(self, *columns: str) -> _MockProtocolGroupBy:
+        return _MockProtocolGroupBy()
+
+    def join(
+        self,
+        other: _MockProtocolDataFrame,
+        on: str | Sequence[str] | None = None,
+        left_on: str | Sequence[str] | None = None,
+        right_on: str | Sequence[str] | None = None,
+        how: JoinType | str = JoinType.INNER,
+    ) -> _MockProtocolDataFrame:
+        return self
+
+    def sort(
+        self,
+        *columns: str,
+        ascending: bool | Sequence[bool] = True,
+    ) -> _MockProtocolDataFrame:
+        return self
+
+    def with_column(self, name: str, expr: Any) -> _MockProtocolDataFrame:
+        return self
+
+    def distinct(self) -> _MockProtocolDataFrame:
+        return self
+
+    def limit(self, n: int) -> _MockProtocolDataFrame:
+        return self
+
+    def collect(self) -> Any:
+        return []
+
+    def count(self) -> int:
+        return 0
+
+    @property
+    def columns(self) -> list[str]:
+        return []
+
+    @property
+    def shape(self) -> tuple[int, int]:
+        return (0, 0)
+
+
+class _MockProtocolGroupBy:
+    def agg(self, *aggregations: Any, **named_aggregations: Any) -> _MockProtocolDataFrame:
+        return _MockProtocolDataFrame()
+
+    def sum(self, *columns: str) -> _MockProtocolDataFrame:
+        return _MockProtocolDataFrame()
+
+    def mean(self, *columns: str) -> _MockProtocolDataFrame:
+        return _MockProtocolDataFrame()
+
+    def count(self) -> _MockProtocolDataFrame:
+        return _MockProtocolDataFrame()
+
+    def min(self, *columns: str) -> _MockProtocolDataFrame:
+        return _MockProtocolDataFrame()
+
+    def max(self, *columns: str) -> _MockProtocolDataFrame:
+        return _MockProtocolDataFrame()
+
+    def first(self, *columns: str) -> _MockProtocolDataFrame:
+        return _MockProtocolDataFrame()
+
+
+@pytest.fixture
+def mock_protocol_dataframe() -> _MockProtocolDataFrame:
+    return _MockProtocolDataFrame()
+
+
 class TestDataFrameOpsProtocol:
     def test_protocol_is_runtime_checkable(self):
 
         assert isinstance(DataFrameOps, type), "DataFrameOps should be a type (protocol class)"
 
-    def test_mock_implementation_satisfies_protocol(self):  # noqa: C901
+    def test_mock_implementation_satisfies_protocol(self, mock_protocol_dataframe: _MockProtocolDataFrame):
 
-        class MockDataFrame:
-            def select(self, *columns: str) -> MockDataFrame:
-                return self
+        mock_df = mock_protocol_dataframe
 
-            def filter(self, condition: Any) -> MockDataFrame:
-                return self
-
-            def group_by(self, *columns: str) -> MockGroupBy:
-                return MockGroupBy()
-
-            def join(
-                self,
-                other: MockDataFrame,
-                on: str | Sequence[str] | None = None,
-                left_on: str | Sequence[str] | None = None,
-                right_on: str | Sequence[str] | None = None,
-                how: JoinType | str = JoinType.INNER,
-            ) -> MockDataFrame:
-                return self
-
-            def sort(
-                self,
-                *columns: str,
-                ascending: bool | Sequence[bool] = True,
-            ) -> MockDataFrame:
-                return self
-
-            def with_column(self, name: str, expr: Any) -> MockDataFrame:
-                return self
-
-            def distinct(self) -> MockDataFrame:
-                return self
-
-            def limit(self, n: int) -> MockDataFrame:
-                return self
-
-            def collect(self) -> Any:
-                return []
-
-            def count(self) -> int:
-                return 0
-
-            @property
-            def columns(self) -> list[str]:
-                return []
-
-            @property
-            def shape(self) -> tuple[int, int]:
-                return (0, 0)
-
-        class MockGroupBy:
-            def agg(self, *aggregations: Any, **named_aggregations: Any) -> MockDataFrame:
-                return MockDataFrame()
-
-            def sum(self, *columns: str) -> MockDataFrame:
-                return MockDataFrame()
-
-            def mean(self, *columns: str) -> MockDataFrame:
-                return MockDataFrame()
-
-            def count(self) -> MockDataFrame:
-                return MockDataFrame()
-
-            def min(self, *columns: str) -> MockDataFrame:
-                return MockDataFrame()
-
-            def max(self, *columns: str) -> MockDataFrame:
-                return MockDataFrame()
-
-            def first(self, *columns: str) -> MockDataFrame:
-                return MockDataFrame()
-
-        mock_df = MockDataFrame()
-
-        assert isinstance(mock_df.select("a", "b"), MockDataFrame)
-        assert isinstance(mock_df.filter(True), MockDataFrame)
-        assert isinstance(mock_df.group_by("a"), MockGroupBy)
-        assert isinstance(mock_df.join(MockDataFrame()), MockDataFrame)
-        assert isinstance(mock_df.sort("a"), MockDataFrame)
-        assert isinstance(mock_df.with_column("x", 1), MockDataFrame)
-        assert isinstance(mock_df.distinct(), MockDataFrame)
-        assert isinstance(mock_df.limit(10), MockDataFrame)
+        assert isinstance(mock_df.select("a", "b"), _MockProtocolDataFrame)
+        assert isinstance(mock_df.filter(True), _MockProtocolDataFrame)
+        assert isinstance(mock_df.group_by("a"), _MockProtocolGroupBy)
+        assert isinstance(mock_df.join(_MockProtocolDataFrame()), _MockProtocolDataFrame)
+        assert isinstance(mock_df.sort("a"), _MockProtocolDataFrame)
+        assert isinstance(mock_df.with_column("x", 1), _MockProtocolDataFrame)
+        assert isinstance(mock_df.distinct(), _MockProtocolDataFrame)
+        assert isinstance(mock_df.limit(10), _MockProtocolDataFrame)
 
 
 class TestDataFrameGroupByProtocol:

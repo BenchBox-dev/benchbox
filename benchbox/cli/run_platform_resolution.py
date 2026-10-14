@@ -22,6 +22,7 @@ from benchbox.core.benchmark_registry import get_benchmark_default_scale
 from benchbox.core.execution_engine import UnsupportedExecutionEngineError, resolve_requested
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 from benchbox.core.platform_registry import PlatformRegistry
+from benchbox.core.run_service import warn_polars_streaming_flag
 from benchbox.platforms import is_dataframe_platform, list_available_dataframe_platforms
 from benchbox.platforms.adapter_factory import _reject_removed_platform
 
@@ -145,11 +146,10 @@ def _apply_gateway_option(s: types.SimpleNamespace) -> None:
         resolve_requested_gateway,
     )
 
-    gateway_host = s.parsed_platform_options.get("gateway_host") if hasattr(s, "parsed_platform_options") else None
     try:
         if not s.platform_key:
             raise GatewayConfigurationError("--gateway requires --platform")
-        s.gateway = resolve_requested_gateway(s.platform_key, gateway, gateway_host)
+        s.gateway = resolve_requested_gateway(s.platform_key, gateway)
     except (UnsupportedGatewayError, GatewayConfigurationError) as exc:
         console.print(f"[red]❌ {exc}[/red]")
         if s.logger:
@@ -162,6 +162,8 @@ def _parse_plat_bench_options(s: types.SimpleNamespace) -> None:
     set_quiet_output(s.verbosity_settings.quiet)
     s.ctx.obj["verbosity"] = s.verbosity_settings
     s.verbosity_payload = s.verbosity_settings.to_config()
+    if getattr(s, "polars_streaming", False):
+        warn_polars_streaming_flag()
 
     _apply_dataframe_suffix_mode(s)
     s.platform_key, s.deployment_selector = _split_deployment_selector(s.platform)
@@ -182,9 +184,6 @@ def _parse_plat_bench_options(s: types.SimpleNamespace) -> None:
 
     s.parsed_platform_options = {}
     if s.platform_key:
-        from benchbox.core.gateway import register_gateway_connection_specs
-
-        register_gateway_connection_specs()
         try:
             s.parsed_platform_options = PlatformHookRegistry.parse_options(s.platform_key, s.platform_option_pairs)
         except PlatformOptionError as exc:
