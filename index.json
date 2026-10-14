@@ -12592,10 +12592,15 @@
       "title": "Refine the Dask MCP resource envelope: host-derived budget and inert-field over-strictness"
     },
     "mcp-deprecations-and-deployment-selector-20261014": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-15T21:02:16Z",
+        "generation": "95065553c6074c878846b2cd92749c0a",
+        "renewals": 0,
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "MCP: deprecation notices never reach clients, `name:mode` platform names and the ClickHouse `mode` alias are rejected, and dry runs ignore options"
     },
     "mcp-df-policy-key-single-resolver": {
