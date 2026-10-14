@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Scope ledger retired or re-scoped with an accurate doc; CI drift wiring updated; no finished work left in blocked state."
+  ],
+  "context": "Found during the 2026-10-13 comment-cleanup re-evaluation session. A stale ledger entry blocked every PR's comment gate (repaired via PR #2953); the ledger itself is untouched technical debt.",
+  "description": "quality/comment-cleanup-scope.json still marks all 110 ownership rules blocked, including slices the merged cleanup demonstrably finished, and docs/internal/comment-cleanup-scope.md still presents the frozen pre-cleanup state. The file feeds the CI pinned-notice drift job and its checker sits beside soundness-protected wiring, so the closeout needs an owner decision (mark terminal states and retire as a unit, delete as superseded by quality/comment-policy.json, or keep as a pinned-notice guard with a re-scoped doc) plus oracle review for any checker change.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/2953"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:dd4e0e92aef34af3608f45c5",
+      "at": "2026-10-14T18:02:19Z",
+      "client": "tbh",
+      "op": "create",
+      "op_id": "0ec76d0aaab34899afc5a347fdb4b175",
+      "session_id": "be2b066e755a4a4bb3ff24b1b46fe0b7"
+    }
+  ]
+}

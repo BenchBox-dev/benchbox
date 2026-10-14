@@ -19287,6 +19287,13 @@
       "status": "done",
       "title": "Close the empty-salt confirmation oracle on retained published identifiers"
     },
+    "retire-comment-cleanup-scope-ledger": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Retire quality/comment-cleanup-scope.json after the comment cleanup"
+    },
     "retire-dead-checker-and-fix-curated-release-targets-20260811": {
       "claim": null,
       "needs": [],
