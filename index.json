@@ -14373,6 +14373,13 @@
       "status": "done",
       "title": "Optimize Benchmark Results JSON Output Format"
     },
+    "option-resolution-single-path-20261014": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Option resolution: a CLI value equal to the default loses to a saved profile, registry aliases fail with options, and some specs register only through the CLI"
+    },
     "oracle-absence-classification-lows-20261008": {
       "claim": null,
       "needs": [],
