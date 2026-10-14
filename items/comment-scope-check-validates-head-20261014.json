@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "A PR that removes a suppression but keeps its evidence fails comment-policy on that PR",
+    "A PR that only removes stale evidence passes comment-policy on a broken base",
+    "Three-commit regression test in tests/unit/scripts",
+    "No weakening: entries whose token still exists at head are still required"
+  ],
+  "context": "Found 2026-10-13/14: develop broke after #2948 and was repaired by #2954 with an owner merge. Mechanism verified on develop 9400b62c4. Owner: comment-policy tooling.",
+  "description": "## Problem\n- `scripts/check_comment_cleanup_scope.py` (`check_token_evidence` `:300-307`, `:1130,1136`) checks scope evidence only against blobs at the base commit. `scripts/check_comment_policy.py:210-211` also loads that policy from the base.\n- A PR that removes a suppression but keeps its evidence entry passes its own check. Once merged, it breaks every later PR, and a repair PR fails too, because the policy is read from the base.\n- This happened: #2948 (`d73788211`) broke `comment-policy`/`tooling` for every PR. The repair #2954 (`c14ecdb9c`) had to skip the hook and be owner-merged with comment-policy failing.\n- It was reproduced in a three-commit temp clone: the stale removal passes (rc 0), a later unrelated PR fails (rc 2), and the repair fails.\n\n## Change\n- Also validate the head policy against the head blobs, so a stale entry fails the PR that creates it.\n- Accept a head policy that only removes entries whose token count at the head is 0, so a repair can land through the normal flow.\n- Add a three-commit regression test.",
+  "links": [
+    "scripts/check_comment_cleanup_scope.py",
+    "scripts/check_comment_policy.py",
+    "quality/comment-cleanup-scope.json",
+    ".github/workflows/ci.yml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-14T11:40:15Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "9ce78722fb1f4a06b4e0afaf22f1f99d",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    }
+  ]
+}

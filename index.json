@@ -4594,6 +4594,13 @@
       "status": "done",
       "title": "Decompose single-string runner arguments (ssh, watch, xargs) in comment execution scanner"
     },
+    "comment-scope-check-validates-head-20261014": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Comment-scope evidence is checked only at the base, so one stale entry breaks every later PR and blocks its own repair"
+    },
     "commit-identity-canonical-skill-source-sync": {
       "claim": null,
       "needs": [],
