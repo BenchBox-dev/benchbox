@@ -307,32 +307,93 @@ def check_token_evidence(category: str, index: int, entry: dict[str, Any], root:
         )
 
 
+EVIDENCE_FIELDS = {
+    "directives": {"path", "token", "count", "consumer", "necessity", "alternative", "owner", "removal_trigger"},
+    "notices": {
+        "path",
+        "blob_sha256",
+        "byte_start",
+        "byte_end",
+        "retained_sha256",
+        "governing_requirement",
+        "source_identity",
+        "owner",
+        "blocking_disposition",
+    },
+    "obligations": {
+        "path",
+        "token",
+        "destination",
+        "tracker_reference",
+        "approved_destination",
+        "owner",
+        "blocking_disposition",
+    },
+}
+
+
+def head_blob(root: Path, path: str, staged: bool) -> bytes | None:
+    try:
+        return git(root, "show", f":{path}") if staged else (root / path).read_bytes()
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
+def head_token_count(root: Path, entry: dict[str, Any], staged: bool) -> int:
+    blob = head_blob(root, entry["path"], staged)
+    return 0 if blob is None else blob.count(entry["token"].encode())
+
+
+def head_policy(root: Path, staged: bool) -> dict[str, Any] | None:
+    raw = head_blob(root, POLICY_PATH, staged)
+    return None if raw is None else load_policy_bytes(raw)
+
+
+def validate_head_token_evidence(policy: dict[str, Any], root: Path, staged: bool) -> None:
+    for category in ("directives", "obligations"):
+        for index, entry in enumerate(policy[category]):
+            if not isinstance(entry, dict):
+                raise PolicyError(f"{category}[{index}] must be an object")
+            require_fields(entry, EVIDENCE_FIELDS[category], f"{category}[{index}]")
+            for field, value in entry.items():
+                check_evidence_field(category, index, field, value)
+            if not valid_path(entry["path"]):
+                raise PolicyError(f"{category}[{index}] path is invalid")
+            occurrences = head_token_count(root, entry, staged)
+            if occurrences == 0:
+                raise PolicyError(f"{category}[{index}] token is not present in {entry['path']} at the head")
+            if category == "directives" and occurrences != entry["count"]:
+                raise PolicyError(
+                    f"directives[{index}] counts {entry['count']} but {entry['path']} has {occurrences} at the head"
+                )
+
+
+def retired_token_evidence(entry: Any, kept: set[tuple[str, str]], root: Path, staged: bool) -> bool:
+    return (
+        isinstance(entry, dict)
+        and valid_path(entry.get("path"))
+        and isinstance(entry.get("token"), str)
+        and (entry["path"], entry["token"]) not in kept
+        and head_token_count(root, entry, staged) == 0
+    )
+
+
+def without_retired_token_evidence(
+    policy: dict[str, Any], head: dict[str, Any], root: Path, staged: bool
+) -> dict[str, Any]:
+    retained = dict(policy)
+    for category in ("directives", "obligations"):
+        kept = {(entry["path"], entry["token"]) for entry in head[category]}
+        retained[category] = [
+            entry for entry in policy[category] if not retired_token_evidence(entry, kept, root, staged)
+        ]
+    return retained
+
+
 def validate_evidence(
     policy: dict[str, Any], root: Path, base: str, paths: set[str], task_ids: set[str] | None = None
 ) -> None:
-    for category, fields in {
-        "directives": {"path", "token", "count", "consumer", "necessity", "alternative", "owner", "removal_trigger"},
-        "notices": {
-            "path",
-            "blob_sha256",
-            "byte_start",
-            "byte_end",
-            "retained_sha256",
-            "governing_requirement",
-            "source_identity",
-            "owner",
-            "blocking_disposition",
-        },
-        "obligations": {
-            "path",
-            "token",
-            "destination",
-            "tracker_reference",
-            "approved_destination",
-            "owner",
-            "blocking_disposition",
-        },
-    }.items():
+    for category, fields in EVIDENCE_FIELDS.items():
         for index, entry in enumerate(policy[category]):
             if not isinstance(entry, dict):
                 raise PolicyError(f"{category}[{index}] must be an object")
@@ -1128,6 +1189,10 @@ def immutable_external_ownership(
     if POLICY_PATH not in paths:
         return None
     policy = load_policy_bytes(base_blob(root, base, POLICY_PATH))
+    head = head_policy(root, staged)
+    if head is not None:
+        validate_head_token_evidence(head, root, staged)
+        policy = without_retired_token_evidence(policy, head, root, staged)
     roots = validate_roots(policy)
     rules = validate_rules(policy)
     derived = validate_derived_rules(policy)
@@ -1333,6 +1398,7 @@ def main(argv: list[str] | None = None) -> int:
         external = validate_external_entries(policy, path_set, task_ids)
         format_classes = validate_format_classes(policy, task_ids)
         validate_evidence(policy, root, args.base, path_set, task_ids)
+        validate_head_token_evidence(policy, root, False)
         validate_payloads_and_edges(policy, path_set, task_ids)
         validate_dispositions(policy, task_ids)
         priorities: dict[str, int] = {}
