@@ -60,6 +60,27 @@ def _load_bundle_failed_query_count():
 
 bundle_failed_query_count = _load_bundle_failed_query_count()
 
+
+def _load_anonymization_leak_helper():
+    try:
+        from benchbox.core.results.anonymization import find_public_path_leaks
+
+        return find_public_path_leaks
+    except ImportError:
+        pass
+    helper_path = Path(__file__).resolve().parents[1] / "core" / "results" / "anonymization.py"
+    if helper_path.is_file():
+        spec = importlib.util.spec_from_file_location("_benchbox_anonymization", helper_path)
+        if spec is not None and spec.loader is not None:
+            module = importlib.util.module_from_spec(spec)
+            sys.modules[spec.name] = module
+            spec.loader.exec_module(module)
+            return getattr(module, "find_public_path_leaks", lambda value, key_path=(): [])
+    return lambda value, key_path=(): []
+
+
+find_public_path_leaks = _load_anonymization_leak_helper()
+
 SUBMISSION_NOTES_MAX_LEN = 500
 
 KNOWN_DEFECT_IDS = frozenset(
@@ -2254,6 +2275,8 @@ def unanonymized_plans_findings(data: Any) -> list[str]:
     if not isinstance(data, dict):
         return []
     queries = data.get("queries")
+    if queries is None and isinstance(data.get("plans"), dict):
+        queries = data["plans"].get("queries")
     if not isinstance(queries, dict):
         return []
     findings: list[str] = []
@@ -2268,6 +2291,24 @@ def unanonymized_plans_findings(data: Any) -> list[str]:
         findings.extend(
             _unanonymized_operator_metadata_findings(plan.get("logical_root"), f"plans.queries[{query_id}].plan")
         )
+    return findings
+
+
+def export_anonymized_errors(payload: Any) -> list[str]:
+    if not isinstance(payload, dict):
+        return ["Corpus bundles must carry an export section with anonymized set"]
+    export = payload.get("export")
+    if not isinstance(export, dict):
+        return ["Corpus bundles must carry an export section with anonymized set"]
+    if export.get("anonymized") is not True:
+        return ["Corpus bundles must be anonymized before they merge"]
+    findings: list[str] = []
+    for leak in sorted(set(find_public_path_leaks(payload))):
+        findings.append(f"Corpus bundle contains unanonymized private path leak at {leak}")
+    for finding in unanonymized_plans_findings(payload):
+        findings.append(f"Corpus bundle contains unanonymized plans diagnostics: {finding}")
+    for finding in unanonymized_tuning_findings(payload):
+        findings.append(f"Corpus bundle contains unanonymized tuning diagnostics: {finding}")
     return findings
 
 

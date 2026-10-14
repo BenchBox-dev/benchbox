@@ -11,6 +11,8 @@ import re
 import sys
 from typing import NamedTuple
 
+from benchbox.validation.bundle import export_anonymized_errors
+
 COMPANION_SUFFIXES = (".manifest.json", ".plans.json", ".tuning.json", ".applied.json", ".override.json")
 LEGACY_MANIFEST_NAME = "submission-manifest.json"
 
@@ -77,6 +79,13 @@ def _load_bundle(bundle: pathlib.Path) -> dict:
             return json.load(handle)
     except Exception as exc:
         raise CorpusReadError(f"ERROR reading {bundle}: {exc}") from exc
+
+
+def _try_load_bundle(bundle: pathlib.Path) -> dict:
+    try:
+        return _load_bundle(bundle)
+    except CorpusReadError:
+        return {}
 
 
 def _phase_executed(phase: object) -> bool:
@@ -738,6 +747,13 @@ def main(bundles_dir: pathlib.Path | None = None, *, as_of: _dt.date | None = No
     as_of = as_of or utc_today()
     bundles = discover_bundles(bundles_dir)
     print(f"Found {len(bundles)} bundles")
+
+    raw = sorted(str(bundle) for bundle in bundles for _ in export_anonymized_errors(_try_load_bundle(bundle)))
+    if raw:
+        print(f"ERROR: {len(raw)} bundle(s) are not anonymized and cannot merge:")
+        for name in raw:
+            print(f"  {name}")
+        return 1
 
     try:
         cohorts = cohort_platforms(bundles)

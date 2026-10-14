@@ -4,12 +4,14 @@ import hashlib
 import json
 import subprocess
 from pathlib import Path
+from types import ModuleType
 
 import pytest
 
 from benchbox.core.results.anonymization import AnonymizationManager, find_public_path_leaks
 from benchbox.core.results.canonical_json import canonical_json_bytes
-from benchbox.validation.bundle import is_primary_bundle_file
+from benchbox.validation.bundle import ValidationResult, export_anonymized_errors, is_primary_bundle_file
+from scripts.validate_submission import _append_corpus_anonymized_errors
 
 pytestmark = [
     pytest.mark.unit,
@@ -241,3 +243,113 @@ def test_detector_still_flags_a_leak_encoded_as_an_object_key() -> None:
     leaks = find_public_path_leaks(planted)
     assert leaks, "detector no longer flags a private path encoded as an object key"
     assert "someone" not in " ".join(leaks), "key leaks must stay redacted in the report"
+
+
+def test_anonymized_bundle_passes_the_export_flag() -> None:
+    assert export_anonymized_errors({"export": {"anonymized": True}}) == []
+
+
+def test_unanonymized_bundle_fails_the_export_flag() -> None:
+    assert export_anonymized_errors({"export": {"anonymized": False}}), "raw bundle passed the flag"
+
+
+def test_bundle_without_export_section_fails_the_flag() -> None:
+    assert export_anonymized_errors({}), "bundle without an export section passed the flag"
+
+
+def test_spoofed_anonymized_flag_fails_on_private_path_leak() -> None:
+    payload = {
+        "export": {"anonymized": True},
+        "system": {"user": "/Users/someone/secret"},
+    }
+    assert export_anonymized_errors(payload), "spoofed flag with private path leak passed validation"
+
+
+def test_spoofed_anonymized_flag_fails_on_raw_explain_in_plan() -> None:
+    payload = {
+        "export": {"anonymized": True},
+        "plans": {
+            "queries": {
+                "q1": {
+                    "plan": {
+                        "raw_explain_output": "Seq Scan on table",
+                    }
+                }
+            }
+        },
+    }
+    assert export_anonymized_errors(payload), "spoofed flag with raw explain output passed validation"
+
+
+def test_spoofed_anonymized_flag_fails_on_unanonymized_tuning_diagnostics() -> None:
+    payload = {
+        "export": {"anonymized": True},
+        "platform": {
+            "tuning": {
+                "applied": {
+                    "statements": [{"statement": "ALTER TABLE x", "action": "applied"}],
+                }
+            }
+        },
+    }
+    assert export_anonymized_errors(payload), "spoofed flag with tuning diagnostics passed validation"
+
+
+def test_mirror_path_flags_a_raw_corpus_bundle(tmp_path: Path) -> None:
+    root = tmp_path / "results-data" / "bundles"
+    root.mkdir(parents=True)
+    raw = root / "seed_raw.json"
+    raw.write_text(json.dumps({"export": {"anonymized": False}}), encoding="utf-8")
+    results = [ValidationResult(str(raw))]
+    _append_corpus_anonymized_errors([raw], results)
+    assert results[0].errors, "mirror path passed a raw corpus bundle"
+
+
+def test_mirror_path_flags_a_nested_raw_corpus_bundle(tmp_path: Path) -> None:
+    root = tmp_path / "results-data" / "bundles" / "nested" / "deep"
+    root.mkdir(parents=True)
+    raw = root / "seed_nested_raw.json"
+    raw.write_text(json.dumps({"export": {"anonymized": False}}), encoding="utf-8")
+    results = [ValidationResult(str(raw))]
+    _append_corpus_anonymized_errors([raw], results)
+    assert results[0].errors, "mirror path passed a nested raw corpus bundle"
+
+
+def test_mirror_path_passes_an_anonymized_corpus_bundle(tmp_path: Path) -> None:
+    root = tmp_path / "results-data" / "bundles"
+    root.mkdir(parents=True)
+    clean = root / "seed_clean.json"
+    clean.write_text(json.dumps({"export": {"anonymized": True}}), encoding="utf-8")
+    results = [ValidationResult(str(clean))]
+    _append_corpus_anonymized_errors([clean], results)
+    assert results[0].errors == []
+
+
+def test_mirror_path_passes_a_nested_anonymized_corpus_bundle(tmp_path: Path) -> None:
+    root = tmp_path / "results-data" / "bundles" / "nested" / "deep"
+    root.mkdir(parents=True)
+    clean = root / "seed_nested_clean.json"
+    clean.write_text(json.dumps({"export": {"anonymized": True}}), encoding="utf-8")
+    results = [ValidationResult(str(clean))]
+    _append_corpus_anonymized_errors([clean], results)
+    assert results[0].errors == []
+
+
+def _load_corpus_validator() -> ModuleType:
+    import importlib.util
+
+    path = REPO_ROOT / "results-data" / "validate_corpus.py"
+    spec = importlib.util.spec_from_file_location("benchbox_corpus_validator", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_corpus_gate_rejects_a_raw_bundle(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    validator = _load_corpus_validator()
+    bundles = tmp_path / "bundles"
+    bundles.mkdir()
+    (bundles / "seed_raw.json").write_text(json.dumps({"export": {"anonymized": False}}), encoding="utf-8")
+    assert validator.main(bundles_dir=bundles) == 1
+    assert "not anonymized" in capsys.readouterr().out
