@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 
-from benchbox.core.platform_manifest import PLATFORM_MANIFEST
 from benchbox.core.results.anonymization import AnonymizationManager
 from benchbox.core.results.exporter import ResultExporter
 from benchbox.platforms import get_platform_adapter
@@ -15,14 +14,29 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 PRIVATE_HOST = "db.internal.example.com"
 
-DECLARED_ENGINES = sorted(
-    {(entry.key, name) for entry in PLATFORM_MANIFEST for name in entry.capabilities.get("execution_engines", {})}
-)
+DECLARED_ENGINE_NAMES = [
+    "auto",
+    "in-memory",
+    "streaming",
+    "duckdb",
+    "postgres",
+    "threaded",
+    "distributed",
+    "photon",
+    "velox",
+    "standard",
+]
+GATEWAY_ROUTE_NAMES = ["databricks", "snowflake"]
+UNDECLARED_NAMES = ["analytics-prod", "warp", "LARGE_WH"]
 
 
 def _export(tmp_path: Path, result) -> dict:
     exported = ResultExporter(output_dir=tmp_path, anonymize=True).export_result(result, formats=["json"])
     return json.loads(exported["json"].read_text(encoding="utf-8"))
+
+
+def _anonymize(payload: dict) -> dict:
+    return AnonymizationManager().anonymize_result_payload(payload)
 
 
 @pytest.mark.parametrize("engine", ["duckdb", "postgres"])
@@ -51,31 +65,59 @@ def test_polars_collect_engine_stays_readable_in_the_public_export(tmp_path: Pat
     assert receipt["applied_native"]["collect_kwargs"]["engine"] == "streaming"
 
 
-@pytest.mark.parametrize(("platform", "engine"), DECLARED_ENGINES)
-def test_every_declared_engine_name_survives_inside_a_native_receipt(platform: str, engine: str) -> None:
+@pytest.mark.parametrize("engine", [*DECLARED_ENGINE_NAMES, *GATEWAY_ROUTE_NAMES, "default"])
+def test_declared_engine_names_stay_readable_under_engine_keys_in_receipts(engine: str) -> None:
     payload = {
         "platform": {
-            "name": platform,
-            "execution_engine": {"requested": engine, "applied_native": {"engine": engine}},
-        },
-        "config": {"platform_options": {"engine": engine, "compute_resource": "analytics-prod"}},
-    }
-
-    anonymized = AnonymizationManager().anonymize_result_payload(payload)
-
-    assert anonymized["platform"]["execution_engine"]["applied_native"]["engine"] == engine
-    assert anonymized["config"]["platform_options"]["engine"].startswith("engine_")
-    assert "analytics-prod" not in json.dumps(anonymized)
-
-
-def test_compute_names_inside_a_native_receipt_stay_hashed() -> None:
-    payload = {
-        "platform": {
-            "execution_engine": {"applied_native": {"engine": "analytics-prod", "engine_name": "prod-cluster"}},
+            "execution_engine": {"applied_native": {"engine": engine, "session": {"engine": engine}}},
+            "raw_config": {"execution_engine": {"applied_native": {"collect_kwargs": {"engine": engine}}}},
         }
     }
 
-    native = AnonymizationManager().anonymize_result_payload(payload)["platform"]["execution_engine"]["applied_native"]
+    platform = _anonymize(payload)["platform"]
+
+    assert platform["execution_engine"]["applied_native"]["engine"] == engine
+    assert platform["execution_engine"]["applied_native"]["session"]["engine"] == engine
+    assert platform["raw_config"]["execution_engine"]["applied_native"]["collect_kwargs"]["engine"] == engine
+
+
+@pytest.mark.parametrize("value", UNDECLARED_NAMES)
+def test_undeclared_values_in_receipts_stay_hashed(value: str) -> None:
+    payload = {"platform": {"execution_engine": {"applied_native": {"engine": value}}}}
+
+    native = _anonymize(payload)["platform"]["execution_engine"]["applied_native"]
 
     assert native["engine"].startswith("engine_")
-    assert native["engine_name"].startswith("engine_")
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"config": {"platform_options": {"engine": "duckdb"}}},
+        {"config": {"execution_engine": {"applied_native": {"engine": "duckdb"}}}},
+        {"platform": {"options": {"execution_engine": {"applied_native": {"engine": "duckdb"}}}}},
+        {"platform": {"execution_engine": {"applied_native": {"engine_name": "duckdb"}}}},
+    ],
+    ids=["platform-option", "config-receipt", "nested-copy", "engine-name-key"],
+)
+def test_engine_names_outside_receipt_engine_keys_stay_hashed(payload: dict) -> None:
+    anonymized = json.dumps(_anonymize(payload))
+
+    assert '"duckdb"' not in anonymized
+    assert "engine_" in anonymized
+
+
+def test_identifiers_inside_a_receipt_are_still_redacted() -> None:
+    payload = {
+        "platform": {
+            "execution_engine": {
+                "applied_native": {"database": "postgres", "host": PRIVATE_HOST, "password": "SENTINEL"},
+            }
+        }
+    }
+
+    native = _anonymize(payload)["platform"]["execution_engine"]["applied_native"]
+
+    assert native["database"].startswith("database_")
+    assert native["host"].startswith("host_")
+    assert "SENTINEL" not in json.dumps(native)
