@@ -15333,10 +15333,15 @@
       "title": "Decide whether to move the Polars lock to 2.0 and raise the supported floor"
     },
     "polars-engine-selection-compat-20261014": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-15T17:51:15Z",
+        "generation": "ea7d64e9b0344276bfdfb2addfdd60b9",
+        "renewals": 0,
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "`tuning init` Polars profiles still choose an execution engine, and SQL `PolarsAdapter(streaming=True)` now raises instead of warning"
     },
     "polars-maintenance-collect-bypasses-engine-option": {
