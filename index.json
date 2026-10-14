@@ -20463,19 +20463,14 @@
       "title": "Record the certifying Trunk run id in dispatch-built bundles so the site's strict certification gate accepts chain recovery"
     },
     "site-split-63-chain-recovery-rehearsal": {
-      "claim": {
-        "expires_at": "2026-10-15T10:57:19Z",
-        "generation": "eacbe5cd24a545d6b0b432eb2da770a3",
-        "renewals": 0,
-        "worker": "mcp:tbh:joe@joe-mac-mini.local:2ddfad0386e20e3a0ffba40a"
-      },
+      "claim": null,
       "needs": [
         "site-split-60-explorer-contract-ordering",
         "site-split-61-parent-lookup-by-sha",
         "site-split-62-dispatch-records-trunk-run-id"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Rehearse parent-chain recovery end to end, then deploy the stalled bundles to production and confirm the content"
     },
     "site-split-64-seed-vehicle-authorization": {
