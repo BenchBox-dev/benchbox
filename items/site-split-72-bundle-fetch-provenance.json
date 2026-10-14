@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "`bundle-fetch` refuses a bundle unless its producing run meets all of these: repo `BenchBox-dev/benchbox`, workflow path `.github/workflows/site-inputs.yml`, `head_branch == develop`, event `workflow_run` or `workflow_dispatch`, and conclusion `success`. Tests cover each refusal with recorded run fixtures. `bundle-verify.mjs` is unchanged (D6). The environment-gate option is recorded in item 55's context."
+  ],
+  "context": "F8. Site scripts/bundle-fetch.mjs:15-19 accepts any SITE_INPUTS_RUN_ID without checking the producing run. Owner decision D6 (2026-10-14 review session): bundle-verify.mjs stays unchanged.",
+  "description": "F8. Site `scripts/bundle-fetch.mjs:15-19` accepts any `SITE_INPUTS_RUN_ID` without checking the producing run.",
+  "sessions": [
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:2ff26e731ddb7b681f9dacbc",
+      "at": "2026-10-14T17:53:49Z",
+      "client": "tbh",
+      "op": "create",
+      "op_id": "ad81dbc6449e497aa571c7b91778eb2f",
+      "session_id": "8250681ba4eb464e88a8d9c11374e76e"
+    }
+  ]
+}
