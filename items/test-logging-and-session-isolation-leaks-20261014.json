@@ -4,7 +4,7 @@
     "`make test-pytest` runs with session isolation on; no unit test touches the real ~/.benchbox",
     "create_server no longer changes the root logger level"
   ],
-  "context": "Found 2026-10-13/14: workers on the core execution-variants remediation saw these as order-dependent flakes. Verified and reproduced on develop 9400b62c4.",
+  "context": "Found 2026-10-13/14: workers on the core execution-variants remediation saw these as order-dependent flakes. Verified and reproduced on develop 9400b62c4.\nBatch: _project/handoffs/execution-variant-general-followups-batch-20261014.md, started 2026-10-14",
   "description": "## Problem\n- **Logger levels leak between tests.**\n  - `create_server(log_level=\"ERROR\")` sets the root logger to ERROR (`benchbox/mcp/server.py:108`; `basicConfig` at import, `:32`).\n  - `TestSetupVerboseLogging::test_quiet_mode` and `test_verbosity_settings_quiet_override` (`tests/unit/cli/test_run_command_branches.py:456,495`) leave it at CRITICAL (`cli/verbose_logging.py:38-51`).\n  - Later `caplog` tests then capture nothing. With `-n 0`, running test_run_phase_validation.py before `tests/unit/core/test_deployment_selection.py` gives 4 \"warns once\" failures (`assert 0 == 1`).\n  - The MCP test `test_quiescence_attestation_is_retried_and_logged_when_the_store_fails` (`tests/unit/mcp/test_durable_jobs.py:1269`) fails the same way.\n  - Under `-n 8`, 2 of 8 runs failed. A probe counted 3,201 tests running at CRITICAL and 180 at ERROR.\n- **`make test-pytest` turns off session isolation.** Any `-m` expression that would select a `live_integration`-only test turns off session isolation for the whole run (`_benchbox_pytest_xdist_safety.py:105-114,119`). That includes `make test-pytest`, which uses `-m \"not stress\"` (`Makefile:85-87`).\n  - `session_home()` then raises (`tests/utilities/session_isolation.py:103-106`), and `test_init_default_path` fails (`tests/unit/core/results/test_database.py:124-129`).\n  - The rest of the unit suite runs against the real HOME and ~/.benchbox.\n\n## Change\n- Add an autouse fixture that snapshots and restores logging config around each test, and point `caplog` at the emitting logger.\n- Stop `create_server` changing the root level and calling `basicConfig` at import.\n- Keep isolation on unless the marker expression excludes every non-live test, and make `test_init_default_path` robust.",
   "links": [
     "benchbox/mcp/server.py",
@@ -19,6 +19,14 @@
       "client": "claude-code",
       "op": "create",
       "op_id": "7e9d42b995864cb585b02fcf3e47803a",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-14T13:45:44Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "e280c39ce6fc4bcdbc2bba8e255f2701",
       "session_id": "18469f668aeb45d59c8d4c94d2f79433"
     }
   ]
