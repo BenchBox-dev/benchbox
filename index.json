@@ -8610,6 +8610,13 @@
       "status": "done",
       "title": "Ensure read_primitives query variants are meaningfully comparable"
     },
+    "env-var-credential-sources-20261014": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Error messages tell users to set SYNAPSE_*, FABRIC_* and DATABRICKS_HTTP_PATH variables that BenchBox never reads"
+    },
     "equivalence-comparator-value-widening-opt-in": {
       "claim": null,
       "needs": [],
