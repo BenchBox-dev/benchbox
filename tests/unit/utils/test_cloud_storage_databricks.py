@@ -182,7 +182,7 @@ class TestDatabricksCredentialValidation:
         assert result["provider"] == "dbfs"
         assert result["error"] is None
         assert "DATABRICKS_HOST" in result["env_vars"]
-        assert "DATABRICKS_HTTP_PATH" in result["env_vars"]
+        assert "DATABRICKS_HTTP_PATH" not in result["env_vars"]
         assert "DATABRICKS_TOKEN" in result["env_vars"]
 
 
@@ -229,7 +229,7 @@ class TestDatabricksUsageGuide:
 
         assert "Databricks DBFS" in guide or "Unity Catalog Volumes" in guide
         assert "DATABRICKS_HOST" in guide
-        assert "DATABRICKS_HTTP_PATH" in guide
+        assert "DATABRICKS_HTTP_PATH" not in guide
         assert "DATABRICKS_TOKEN" in guide
         assert "dbfs:/Volumes/" in guide
         assert "databricks-sdk" in guide

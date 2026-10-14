@@ -112,19 +112,21 @@ class AzureSynapseAdapter(PlatformAdapter):
         if self.auth_method == "sql" and not all([self.server, self.username, self.password]):
             missing = []
             if not self.server:
-                missing.append("server (or SYNAPSE_SERVER)")
+                missing.append("server")
             if not self.username:
-                missing.append("username (or SYNAPSE_USER)")
+                missing.append("username")
             if not self.password:
-                missing.append("password (or SYNAPSE_PASSWORD)")
+                missing.append("password")
 
             from benchbox.core.exceptions import ConfigurationError
 
             raise ConfigurationError(
                 f"Azure Synapse SQL authentication is incomplete. Missing: {', '.join(missing)}\n"
-                "Configure with:\n"
-                "  1. Environment variables: SYNAPSE_SERVER, SYNAPSE_USER, SYNAPSE_PASSWORD\n"
-                "  2. CLI options: --platform-option server=<server>.sql.azuresynapse.net\n"
+                "Set them with either of:\n"
+                "  1. ~/.benchbox/credentials.yaml, under 'synapse:' "
+                "(values may reference environment variables as ${VAR})\n"
+                "  2. --platform-option server=<server>.sql.azuresynapse.net "
+                "--platform-option username=<user> --platform-option password=<password>\n"
                 "\n"
                 "For Azure AD authentication, use --platform-option auth_method=aad_msi"
             )
@@ -133,9 +135,10 @@ class AzureSynapseAdapter(PlatformAdapter):
 
             raise ConfigurationError(
                 "Azure Synapse AAD authentication requires a server endpoint.\n"
-                "Configure with:\n"
-                "  1. Environment variable: SYNAPSE_SERVER\n"
-                "  2. CLI option: --platform-option server=<workspace>.sql.azuresynapse.net"
+                "Set it with either of:\n"
+                "  1. ~/.benchbox/credentials.yaml, under 'synapse:' "
+                "(values may reference environment variables as ${VAR})\n"
+                "  2. --platform-option server=<workspace>.sql.azuresynapse.net"
             )
 
     physical_identifier_case = "lower"

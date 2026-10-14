@@ -109,19 +109,19 @@ class FabricWarehouseAdapter(PlatformAdapter):
         if self.auth_method == "service_principal" and not all([self.client_id, self.client_secret, self.tenant_id]):
             missing = []
             if not self.client_id:
-                missing.append("client_id (or FABRIC_CLIENT_ID)")
+                missing.append("client_id")
             if not self.client_secret:
-                missing.append("client_secret (or FABRIC_CLIENT_SECRET)")
+                missing.append("client_secret")
             if not self.tenant_id:
-                missing.append("tenant_id (or FABRIC_TENANT_ID)")
+                missing.append("tenant_id")
 
             from benchbox.core.exceptions import ConfigurationError
 
             raise ConfigurationError(
                 f"Fabric service principal authentication is incomplete. Missing: {', '.join(missing)}\n"
-                "Configure with:\n"
-                "  1. Environment variables: FABRIC_CLIENT_ID, FABRIC_CLIENT_SECRET, FABRIC_TENANT_ID\n"
-                "  2. CLI options: --platform-option client_id=<id> --platform-option tenant_id=<tenant>\n"
+                "Set them with:\n"
+                "  --platform-option client_id=<id> --platform-option client_secret=<secret> "
+                "--platform-option tenant_id=<tenant>\n"
                 "\n"
                 "Alternative: Use --platform-option auth_method=default_credential for Azure CLI/managed identity."
             )
