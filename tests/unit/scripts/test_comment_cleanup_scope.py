@@ -1297,3 +1297,83 @@ def test_check_drift_main_reports_zero_for_a_clean_tree_and_one_for_drift(
     assert scope.main(["--check-drift", "--root", str(root), "--base", base]) == 1
     captured = capsys.readouterr()
     assert "SCOPE008 LICENSE" in captured.err
+
+
+def _commit_all(root: Path, message: str) -> str:
+    subprocess.run(["git", "-C", str(root), "add", "-A"], check=True)
+    subprocess.run(
+        ["git", "-C", str(root), "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-qm", message],
+        check=True,
+    )
+    return subprocess.check_output(["git", "-C", str(root), "rev-parse", "HEAD"], text=True).strip()
+
+
+def _write_scope_policy(root: Path, policy: dict) -> None:
+    (root / scope.POLICY_PATH).parent.mkdir(exist_ok=True)
+    (root / scope.POLICY_PATH).write_text(json.dumps(policy), encoding="utf-8")
+
+
+def test_stale_directive_evidence_fails_its_own_change_and_a_repair_lands_on_a_broken_base(
+    tmp_path: Path, policy: dict
+) -> None:
+    directive = {
+        "path": "src/a.py",
+        "token": "noqa",
+        "count": 1,
+        "consumer": "ruff",
+        "necessity": "Fixture suppression.",
+        "alternative": "None.",
+        "owner": "comment-cleanup-core-bootstrap",
+        "removal_trigger": "Fixture removal.",
+    }
+    policy["directives"] = [directive]
+    root, _ = _git_repo_with(tmp_path, {"src/a.py": "x = 1  # noqa\n"})
+    _write_scope_policy(root, policy)
+    registered = _commit_all(root, "register suppression")
+    assert scope.immutable_external_ownership(root, registered, []) is not None
+
+    (root / "src/a.py").write_text("x = 1\n", encoding="utf-8")
+    with pytest.raises(scope.PolicyError, match=r"directives\[0\] token is not present in src/a.py at the head"):
+        scope.immutable_external_ownership(root, registered, [])
+    subprocess.run(["git", "-C", str(root), "add", "src/a.py"], check=True)
+    with pytest.raises(scope.PolicyError, match="at the head"):
+        scope.immutable_external_ownership(root, registered, [], staged=True)
+
+    broken = _commit_all(root, "remove suppression but keep its evidence")
+    (root / "src/b.py").write_text("y = 2\n", encoding="utf-8")
+    with pytest.raises(scope.PolicyError, match="token is not present"):
+        scope.immutable_external_ownership(root, broken, [])
+
+    policy["directives"] = []
+    _write_scope_policy(root, policy)
+    assert scope.immutable_external_ownership(root, broken, []) is not None
+    subprocess.run(["git", "-C", str(root), "add", "src/b.py", scope.POLICY_PATH], check=True)
+    assert scope.immutable_external_ownership(root, broken, [], staged=True) is not None
+
+    (root / "src/a.py").write_text("x = 1  # noqa\n", encoding="utf-8")
+    with pytest.raises(scope.PolicyError, match="at the base"):
+        scope.immutable_external_ownership(root, broken, [])
+
+
+def test_head_directive_count_must_match_the_head_source(tmp_path: Path, policy: dict) -> None:
+    policy["directives"] = [
+        {
+            "path": "src/a.py",
+            "token": "noqa",
+            "count": 1,
+            "consumer": "ruff",
+            "necessity": "Fixture suppression.",
+            "alternative": "None.",
+            "owner": "comment-cleanup-core-bootstrap",
+            "removal_trigger": "Fixture removal.",
+        }
+    ]
+    root, _ = _git_repo_with(tmp_path, {"src/a.py": "x = 1  # noqa\n"})
+    _write_scope_policy(root, policy)
+    base = _commit_all(root, "register suppression")
+    (root / "src/a.py").write_text("x = 1  # noqa\ny = 2  # noqa\n", encoding="utf-8")
+    with pytest.raises(scope.PolicyError, match="counts 1 but src/a.py has 2 at the head"):
+        scope.immutable_external_ownership(root, base, [])
+    policy["directives"][0]["count"] = 2
+    _write_scope_policy(root, policy)
+    assert scope.immutable_external_ownership(root, base, []) is not None
