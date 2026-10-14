@@ -23369,13 +23369,18 @@
       "title": "Extend the tuning capability registry to the remaining platforms (trino/athena/firebolt/presto/synapse/timescaledb...)"
     },
     "tuning-capability-single-source-validator-20261001": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-15T00:03:52Z",
+        "generation": "e96eec452b8242a0b2bc8d7c89a295e3",
+        "renewals": 0,
+        "worker": "mcp:tbh:joe@joe-mac-mini.local:0b09cceb849593820a7baad7"
+      },
       "needs": [
         "tuning-gate-adr003-unrendered-intents-block-20261001",
         "tuning-requested-vs-rendered-reconciliation-20261001"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Make the capability registry the single source for validator severity, with an MRO-following parity test"
     },
     "tuning-companion-constraint-shapes-v1": {
