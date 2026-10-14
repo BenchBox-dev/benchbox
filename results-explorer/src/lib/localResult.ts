@@ -8,6 +8,13 @@ const SUPPORTED_SCHEMA_VERSIONS = new Set(["2.0", "2.1", "2.2", "2.3"]);
 const PASS_STATUSES = new Set(["SUCCESS", "PASS", "pass", "success"]);
 const NON_FAILED_QUERY_ROW_STATUSES = new Set(["SUCCESS", "SKIPPED"]);
 const EXECUTION_RUN_TYPES = new Set(["measurement", "warmup"]);
+const MINIMUM_THROUGHPUT_STREAMS = 2;
+const THROUGHPUT_STREAM_QUERY_COUNTS = new Map<string, number>([
+  ["tpch", 22],
+  ["tpcds", 99],
+]);
+const TPCDS_VARIANT_BASES = ["14", "23", "24", "39"];
+const THROUGHPUT_USABLE_STATUSES = new Set(["SUCCESS", "PASS"]);
 const EXECUTION_MODES = new Set(["sql", "dataframe"]);
 const TUNING_MODES = new Set(["tuned", "tuned-fallback", "notuning", "auto", "custom"]);
 const FUNDING_SOURCES = new Set(["employer", "personal", "free-trial", "vendor-sponsored", "grant", "unspecified"]);
@@ -485,7 +492,91 @@ function throughputPhaseClean(bundle: JsonObject): boolean {
   if (!streams.every((stream) => isObject(stream) && stream.success === true)) return false;
   const configuredCount = configuredStreamCount(bundle);
   if (configuredCount !== null && streams.length !== configuredCount) return false;
+  if (throughputStreamsIncomplete(bundle, streams)) return false;
   return isEmptyEvidence(throughput.errors) && isEmptyEvidence(throughput.outstanding_work);
+}
+
+function throughputStreamId(raw: unknown): number | null {
+  if (typeof raw === "boolean") return null;
+  if (typeof raw === "number") return Number.isInteger(raw) ? raw : null;
+  if (typeof raw === "string" && /^[0-9]+$/.test(raw.trim())) return Number(raw.trim());
+  return null;
+}
+
+function logicalQueryId(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  let text = raw.trim();
+  const upper = text.toUpperCase();
+  if (upper.startsWith("QUERY_")) text = text.slice(6);
+  else if (upper.startsWith("QUERY")) text = text.slice(5);
+  else if (upper.startsWith("Q") && text.length > 1) {
+    const next = text.charAt(1);
+    if (/[0-9]/.test(next) || (next === next.toLowerCase() && next !== next.toUpperCase())) text = text.slice(1);
+  }
+  text = text.trim();
+  const dot = text.lastIndexOf(".");
+  if (dot >= 0 && /^[A-Za-z]+$/.test(text.slice(dot + 1))) text = text.slice(0, dot).trim();
+  if (text === "") return null;
+  const match = /^(\d+)([A-Za-z]+)?$/.exec(text);
+  return match ? `${match[1]}${match[2] ? match[2].toLowerCase() : ""}` : text;
+}
+
+function foldTpcdsVariants(observed: Set<string>): Set<string> {
+  const folded = new Set(observed);
+  for (const base of TPCDS_VARIANT_BASES) {
+    folded.delete(base);
+    if (folded.has(`${base}a`) && folded.has(`${base}b`)) folded.add(base);
+  }
+  return folded;
+}
+
+function usableQueriesByStream(bundle: JsonObject): Map<number, Set<string>> | null {
+  const observed = new Map<number, Set<string>>();
+  const rows = Array.isArray(bundle.queries) ? bundle.queries : [];
+  for (const row of rows) {
+    if (!isObject(row)) continue;
+    if (typeof row.status !== "string" || !THROUGHPUT_USABLE_STATUSES.has(row.status.toUpperCase())) continue;
+    const duration = finiteNumberOrNull(row.ms);
+    if (duration === null || duration < 1) continue;
+    const runType = row.run_type ? String(row.run_type).trim().toLowerCase() : "measurement";
+    if (runType !== "measurement") continue;
+    const queryId = logicalQueryId(row.id);
+    if (queryId === null) continue;
+    const rawStream = "stream" in row ? row.stream : "stream_id" in row ? row.stream_id : 0;
+    const streamId = throughputStreamId(rawStream);
+    if (streamId === null) return null;
+    if (streamId === 0) continue;
+    const ids = observed.get(streamId) ?? new Set<string>();
+    ids.add(queryId);
+    observed.set(streamId, ids);
+  }
+  return observed;
+}
+
+function throughputStreamsIncomplete(bundle: JsonObject, streams: unknown[]): boolean {
+  const streamIds: number[] = [];
+  for (const entry of streams) {
+    const streamId = isObject(entry) ? throughputStreamId(entry.stream_id) : null;
+    if (streamId === null || !isObject(entry) || entry.success !== true) return true;
+    streamIds.push(streamId);
+  }
+  const ordered = [...streamIds].sort((left, right) => left - right);
+  if (!ordered.every((streamId, index) => streamId === index + 1)) return true;
+  const rawBenchmark = objectValue(bundle, "benchmark").id;
+  const benchmark = typeof rawBenchmark === "string" ? rawBenchmark.trim().toLowerCase() : null;
+  const queryCount = benchmark === null ? undefined : THROUGHPUT_STREAM_QUERY_COUNTS.get(benchmark);
+  if (queryCount === undefined) return false;
+  const observed = usableQueriesByStream(bundle);
+  if (observed === null || streamIds.length < MINIMUM_THROUGHPUT_STREAMS) return true;
+  const known = new Set(streamIds);
+  for (const [streamId, ids] of observed) {
+    if (!known.has(streamId)) return true;
+    const covered = benchmark === "tpcds" ? foldTpcdsVariants(ids) : ids;
+    for (let number = 1; number <= queryCount; number += 1) {
+      if (!covered.has(String(number))) return true;
+    }
+  }
+  return streamIds.some((streamId) => !observed.has(streamId));
 }
 
 function configuredStreamCount(bundle: JsonObject): number | null {

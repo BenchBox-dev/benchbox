@@ -44,6 +44,7 @@ const EXCLUSION_LABELS: Record<string, string> = {
   no_display_timing: "Display timing is unavailable.",
   no_rankable_results: "No results meet the requirements for ranking.",
   no_valid_display_timing: "No valid display timing is available.",
+  incomplete_throughput_streams: "Throughput streams are not numbered 1..S or do not cover every query.",
   non_positive_primary_metric: "Primary metric is not positive.",
   non_positive_timing: "Timing is not positive.",
   partial_query_coverage: "Result has partial query coverage.",

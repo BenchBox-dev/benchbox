@@ -163,6 +163,89 @@ def test_stream_count_mismatch_excludes_geomean_throughput_from_ranking(tmp_path
     assert ranked[valid_entry.result_id].rank == 1
 
 
+def _zero_base_stream_ids(payload: dict) -> None:
+    for entry in payload["phases"]["throughput_test"]["stream_results"]:
+        entry["stream_id"] -= 1
+    for query in payload["queries"]:
+        query["stream"] -= 1
+
+
+def _truncate_second_stream(payload: dict) -> None:
+    payload["queries"] = [query for query in payload["queries"] if not (query["stream"] == 2 and int(query["id"]) <= 3)]
+
+
+def _add_query_from_unknown_stream(payload: dict) -> None:
+    payload["queries"].append({**payload["queries"][0], "stream": 7})
+
+
+INCOMPLETE_STREAMS = {
+    "zero-based-ids": _zero_base_stream_ids,
+    "truncated-stream": _truncate_second_stream,
+    "unknown-stream": _add_query_from_unknown_stream,
+}
+
+
+@pytest.mark.parametrize("defect", INCOMPLETE_STREAMS)
+def test_incomplete_throughput_streams_withhold_score_and_rank(tmp_path: Path, defect: str) -> None:
+    invalid = throughput_bundle("invalid", streams=3)
+    INCOMPLETE_STREAMS[defect](invalid)
+    valid = throughput_bundle("valid", streams=3)
+    pairs = _pairs(tmp_path, {"invalid": invalid, "valid": valid})
+    (invalid_entry, invalid_detail), (valid_entry, _) = pairs
+
+    assert invalid_entry.throughput_at_size is None
+    assert invalid_entry.ranking_exclusion_reason == "incomplete_throughput_streams"
+    assert invalid_detail.throughput_at_size is None
+    assert invalid_detail.ranking_exclusion_reason == "incomplete_throughput_streams"
+    assert valid_entry.throughput_at_size == pytest.approx(3741.26)
+    assert valid_entry.ranking_exclusion_reason is None
+
+
+@pytest.mark.parametrize("benchmark_name", ["ssb", "clickbench", "nyctaxi"])
+def test_zero_based_stream_ids_exclude_geomean_throughput_from_ranking(tmp_path: Path, benchmark_name: str) -> None:
+    invalid = throughput_bundle("invalid", benchmark=benchmark_name, streams=3)
+    _zero_base_stream_ids(invalid)
+    valid = throughput_bundle("valid", benchmark=benchmark_name, streams=3)
+    pairs = _pairs(tmp_path, {"invalid": invalid, "valid": valid})
+    invalid_entry, valid_entry = [entry for entry, _ in pairs]
+
+    assert invalid_entry.display_geomean_ms is not None
+    assert invalid_entry.ranking_exclusion_reason == "incomplete_throughput_streams"
+    assert valid_entry.ranking_exclusion_reason is None
+
+
+def test_transformer_judges_stream_completeness_on_the_raw_bundle(tmp_path: Path) -> None:
+    from benchbox.validation.bundle import throughput_stream_defects
+
+    numeric_ids = throughput_bundle("numeric", streams=3)
+    for query in numeric_ids["queries"]:
+        query["id"] = int(query["id"])
+    no_status = throughput_bundle("no_status", streams=3)
+    for query in no_status["queries"]:
+        query.pop("status")
+    stream_id_key = throughput_bundle("stream_id_key", streams=3)
+    for query in stream_id_key["queries"]:
+        query["stream_id"] = query.pop("stream")
+    bundles = {"numeric": numeric_ids, "no_status": no_status, "stream_id_key": stream_id_key}
+    entries = {name: entry for name, (entry, _) in zip(bundles, _pairs(tmp_path, bundles), strict=True)}
+
+    for name, payload in bundles.items():
+        expected = None if throughput_stream_defects(payload) else pytest.approx(3741.26)
+        assert entries[name].throughput_at_size == expected
+    assert entries["numeric"].ranking_exclusion_reason == "incomplete_throughput_streams"
+    assert entries["no_status"].ranking_exclusion_reason == "incomplete_throughput_streams"
+    assert entries["stream_id_key"].ranking_exclusion_reason is None
+
+
+def test_unsuccessful_stream_keeps_its_phase_exclusion_reason(tmp_path: Path) -> None:
+    payload = throughput_bundle("spark", streams=3)
+    payload["phases"]["throughput_test"]["stream_results"][1]["success"] = False
+    ((entry, _),) = _pairs(tmp_path, {"spark": payload})
+
+    assert entry.throughput_at_size is None
+    assert entry.ranking_exclusion_reason == "missing_primary_metric"
+
+
 def test_missing_configured_stream_count_keeps_throughput_score(tmp_path: Path) -> None:
     payload = throughput_bundle("spark", streams=3, throughput_at_size=3741.26)
     payload["run"].pop("streams")

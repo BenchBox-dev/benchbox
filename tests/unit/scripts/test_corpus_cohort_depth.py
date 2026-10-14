@@ -284,6 +284,9 @@ def test_validator_runs_without_the_benchbox_package_until_an_identity_is_needed
     assert "tpch SF=1.0: 0 identities ([]) [UNRANKED" in capsys.readouterr().out
 
 
+_FULL_QUERY_COUNTS = {"tpch": 22, "tpcds": 99}
+
+
 def _write_phase_bundle(
     directory: Path,
     name: str,
@@ -302,26 +305,48 @@ def _write_phase_bundle(
         benchmark["test_type"] = test_type
     throughput_phase: dict = {"status": throughput}
     if throughput != "NOT_RUN":
-        throughput_phase["stream_results"] = [{"stream_id": index, "success": True} for index in range(streams)]
+        throughput_phase["stream_results"] = [{"stream_id": index, "success": True} for index in range(1, streams + 1)]
     tpc_metrics = {}
     if power_score is not None:
         tpc_metrics["power_at_size"] = power_score
     if throughput_score is not None and throughput != "NOT_RUN":
         tpc_metrics["throughput_at_size"] = throughput_score
+    query_count = _FULL_QUERY_COUNTS.get(benchmark_id) if throughput != "NOT_RUN" else None
+    if query_count is None:
+        queries = [
+            {"id": "Q1", "ms": 10.0, "run_type": "measurement", "status": "SUCCESS"},
+            {"id": "Q2", "ms": 12.0, "run_type": "measurement", "status": "SUCCESS"},
+        ]
+    else:
+        variant_bases = {14, 23, 24, 39} if benchmark_id == "tpcds" else set()
+        query_ids = [
+            f"{number}{suffix}"
+            for number in range(1, query_count + 1)
+            for suffix in (("a", "b") if number in variant_bases else ("",))
+        ]
+        queries = [
+            {
+                "id": query_id,
+                "ms": 10.0 + index,
+                "run_type": "measurement",
+                "status": "SUCCESS",
+                "stream": stream,
+                "test_type": "throughput",
+            }
+            for stream in range(1, streams + 1)
+            for index, query_id in enumerate(query_ids)
+        ]
     payload = {
         "benchmark": benchmark,
         "platform": {"name": platform},
         "run": {"timestamp": "2026-08-01T12:00:00", "streams": streams},
         "phases": {"power_test": {"status": power}, "throughput_test": throughput_phase},
         "summary": {
-            "queries": {"total": 2, "passed": 2, "failed": 0},
+            "queries": {"total": len(queries), "passed": len(queries), "failed": 0},
             "validation": "passed",
             "tpc_metrics": tpc_metrics,
         },
-        "queries": [
-            {"id": "Q1", "ms": 10.0, "run_type": "measurement", "status": "SUCCESS"},
-            {"id": "Q2", "ms": 12.0, "run_type": "measurement", "status": "SUCCESS"},
-        ],
+        "queries": queries,
     }
     directory.mkdir(parents=True, exist_ok=True)
     (directory / name).write_text(json.dumps(payload), encoding="utf-8")
@@ -477,6 +502,156 @@ def test_corpus_validator_skips_stream_count_check_without_a_configured_count(tm
 
     assert validator._throughput_stream_count_mismatch(payload) is None
     validator.cohort_platforms([path])
+
+
+def _complete_throughput_payload(directory: Path, benchmark_id: str = "tpch", streams: int = 3) -> dict:
+    _write_phase_bundle(
+        directory,
+        "complete.json",
+        platform="DuckDB",
+        power="NOT_RUN",
+        throughput="COMPLETED",
+        test_type="throughput",
+        benchmark_id=benchmark_id if benchmark_id in _FULL_QUERY_COUNTS else "tpch",
+        streams=streams,
+    )
+    payload = json.loads((directory / "complete.json").read_text(encoding="utf-8"))
+    payload["benchmark"]["id"] = benchmark_id
+    return payload
+
+
+def _shift_stream_ids(payload: dict, offset: int) -> None:
+    for entry in payload["phases"]["throughput_test"]["stream_results"]:
+        entry["stream_id"] += offset
+    for query in payload["queries"]:
+        query["stream"] += offset
+
+
+def _duplicate_stream_id(payload: dict) -> None:
+    payload["phases"]["throughput_test"]["stream_results"][1]["stream_id"] = 1
+
+
+def _query_number(query: dict) -> int:
+    return int("".join(character for character in query["id"] if character.isdigit()))
+
+
+def _drop_first_queries_of_stream_one(payload: dict) -> None:
+    payload["queries"] = [
+        query for query in payload["queries"] if not (query["stream"] == 1 and _query_number(query) <= 5)
+    ]
+
+
+def _drop_every_query_of_last_stream(payload: dict) -> None:
+    payload["queries"] = [query for query in payload["queries"] if query["stream"] != 3]
+
+
+def _add_query_from_unknown_stream(payload: dict) -> None:
+    payload["queries"].append({**payload["queries"][0], "stream": 9})
+
+
+def _keep_one_stream(payload: dict) -> None:
+    phase = payload["phases"]["throughput_test"]
+    phase["stream_results"] = phase["stream_results"][:1]
+    payload["run"]["streams"] = 1
+    payload["queries"] = [query for query in payload["queries"] if query["stream"] == 1]
+
+
+def _make_one_query_untimed(payload: dict) -> None:
+    payload["queries"][0]["ms"] = 0.5
+
+
+INCOMPLETE_STREAM_MUTATIONS = {
+    "zero-based-ids": lambda payload: _shift_stream_ids(payload, -1),
+    "ids-start-at-five": lambda payload: _shift_stream_ids(payload, 4),
+    "duplicate-id": _duplicate_stream_id,
+    "five-queries-missing": _drop_first_queries_of_stream_one,
+    "last-stream-has-no-queries": _drop_every_query_of_last_stream,
+    "query-from-unknown-stream": _add_query_from_unknown_stream,
+    "single-stream": _keep_one_stream,
+    "usable-timing-missing": _make_one_query_untimed,
+}
+
+
+@pytest.mark.parametrize("mutation", INCOMPLETE_STREAM_MUTATIONS)
+def test_incomplete_throughput_streams_are_not_clean_and_are_named(tmp_path: Path, mutation: str) -> None:
+    validator = _load_validator()
+    payload = _complete_throughput_payload(tmp_path)
+    assert validator._throughput_phase_clean(payload) is True
+    assert validator.exclusion_reason(payload) is None
+
+    INCOMPLETE_STREAM_MUTATIONS[mutation](payload)
+
+    assert validator._throughput_phase_clean(payload) is False
+    assert validator.exclusion_reason(payload) == "incomplete_throughput_streams"
+
+
+def _rename_stream_key(payload: dict) -> None:
+    for query in payload["queries"]:
+        query["stream_id"] = query.pop("stream")
+
+
+def _numeric_query_ids(payload: dict) -> None:
+    for query in payload["queries"]:
+        if query["id"].isdigit():
+            query["id"] = int(query["id"])
+
+
+def _drop_query_status(payload: dict) -> None:
+    for query in payload["queries"]:
+        query.pop("status")
+
+
+PARITY_ONLY_MUTATIONS = {
+    "stream-id-key": _rename_stream_key,
+    "numeric-query-ids": _numeric_query_ids,
+    "missing-query-status": _drop_query_status,
+}
+
+
+@pytest.mark.parametrize("benchmark_id", ["tpch", "tpcds", "ssb"])
+@pytest.mark.parametrize("mutation", [None, *INCOMPLETE_STREAM_MUTATIONS, *PARITY_ONLY_MUTATIONS])
+def test_corpus_and_submission_validators_agree_on_stream_completeness(
+    tmp_path: Path, benchmark_id: str, mutation: str | None
+) -> None:
+    from benchbox.validation.bundle import throughput_stream_defects
+
+    validator = _load_validator()
+    payload = _complete_throughput_payload(tmp_path, benchmark_id)
+    if mutation is not None:
+        {**INCOMPLETE_STREAM_MUTATIONS, **PARITY_ONLY_MUTATIONS}[mutation](payload)
+
+    assert validator._throughput_streams_incomplete(payload) == bool(throughput_stream_defects(payload))
+
+
+def test_non_tpc_throughput_streams_need_contiguous_ids_but_not_a_fixed_query_set(tmp_path: Path) -> None:
+    validator = _load_validator()
+    payload = _complete_throughput_payload(tmp_path, "ssb")
+    payload["queries"] = payload["queries"][:4]
+    assert validator._throughput_streams_incomplete(payload) is False
+
+    _shift_stream_ids(payload, -1)
+
+    assert validator._throughput_streams_incomplete(payload) is True
+
+
+def test_tpcds_variant_pairs_cover_their_base_query(tmp_path: Path) -> None:
+    validator = _load_validator()
+    payload = _complete_throughput_payload(tmp_path, "tpcds")
+    assert {query["id"] for query in payload["queries"]} >= {"14a", "14b", "23a", "39b"}
+    assert validator._throughput_streams_incomplete(payload) is False
+
+    payload["queries"] = [query for query in payload["queries"] if query["id"] != "14b"]
+
+    assert validator._throughput_streams_incomplete(payload) is True
+
+
+def test_query_identifiers_are_normalized_like_the_submission_validator(tmp_path: Path) -> None:
+    validator = _load_validator()
+    payload = _complete_throughput_payload(tmp_path)
+    for query in payload["queries"]:
+        query["id"] = f"Q{query['id']}.sql"
+
+    assert validator._throughput_streams_incomplete(payload) is False
 
 
 def test_not_run_power_phase_does_not_make_a_throughput_bundle_power(tmp_path: Path) -> None:

@@ -37,6 +37,13 @@ APPLIED_TUNING_STATUSES = frozenset({"applied_unverified", "applied_verified"})
 POWER_SCORE_BENCHMARKS = frozenset({"tpch", "tpcds"})
 THROUGHPUT_SCORE_BENCHMARKS = frozenset({"tpch", "tpcds"})
 THROUGHPUT_PHASE = "throughput"
+MINIMUM_THROUGHPUT_STREAMS = 2
+THROUGHPUT_STREAM_QUERY_IDS = {
+    "tpch": frozenset(str(number) for number in range(1, 23)),
+    "tpcds": frozenset(str(number) for number in range(1, 100)),
+}
+TPCDS_VARIANT_BASES = ("14", "23", "24", "39")
+THROUGHPUT_USABLE_STATUSES = frozenset({"SUCCESS", "PASS"})
 UTC = _dt.timezone.utc
 DATE_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")
 TIMESTAMP_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-]\d{2}:\d{2})?$")
@@ -115,6 +122,124 @@ def _throughput_stream_count_mismatch(payload: dict) -> tuple[int, int] | None:
     if len(stream_results) == configured_count:
         return None
     return configured_count, len(stream_results)
+
+
+def _stream_id(raw: object) -> int | None:
+    if isinstance(raw, bool):
+        return None
+    if isinstance(raw, int):
+        return raw
+    if isinstance(raw, float) and raw.is_integer():
+        return int(raw)
+    if isinstance(raw, str) and raw.strip().isascii() and raw.strip().isdigit():
+        return int(raw.strip())
+    return None
+
+
+def _logical_query_id(raw: object) -> str | None:
+    if not isinstance(raw, str):
+        return None
+    text = raw.strip()
+    upper = text.upper()
+    if upper.startswith("QUERY_"):
+        text = text[6:]
+    elif upper.startswith("QUERY"):
+        text = text[5:]
+    elif upper.startswith("Q") and len(text) > 1 and (text[1].isdigit() or text[1].islower()):
+        text = text[1:]
+    text = text.strip()
+    if "." in text:
+        base, _, extension = text.rpartition(".")
+        if extension.isalpha():
+            text = base.strip()
+    if not text:
+        return None
+    match = re.fullmatch(r"(\d+)([A-Za-z]+)?", text)
+    if match:
+        digits, suffix = match.groups()
+        return f"{digits}{suffix.lower() if suffix else ''}"
+    return text
+
+
+def _fold_tpcds_variants(observed: set[str]) -> set[str]:
+    folded = set(observed)
+    for base in TPCDS_VARIANT_BASES:
+        folded.discard(base)
+        if {f"{base}a", f"{base}b"} <= folded:
+            folded.add(base)
+    return folded
+
+
+def _throughput_stream_ids(streams: list) -> list[int] | None:
+    stream_ids: list[int] = []
+    for entry in streams:
+        stream_id = _stream_id(entry.get("stream_id")) if isinstance(entry, dict) else None
+        if stream_id is None or entry.get("success") is not True:
+            return None
+        stream_ids.append(stream_id)
+    return stream_ids if sorted(stream_ids) == list(range(1, len(stream_ids) + 1)) else None
+
+
+def _usable_queries_by_stream(payload: dict) -> dict[int, set[str]] | None:
+    rows = payload.get("queries")
+    observed: dict[int, set[str]] = {}
+    for row in rows if isinstance(rows, list) else []:
+        data = _mapping(row)
+        status = data.get("status")
+        if not isinstance(status, str) or status.upper() not in THROUGHPUT_USABLE_STATUSES:
+            continue
+        try:
+            duration = float(data.get("ms"))
+        except (TypeError, ValueError):
+            continue
+        if not math.isfinite(duration) or duration < 1.0:
+            continue
+        if str(data.get("run_type") or "measurement").strip().lower() != "measurement":
+            continue
+        query_id = _logical_query_id(data.get("id"))
+        if query_id is None:
+            continue
+        stream_id = _stream_id(data.get("stream", data.get("stream_id", 0)))
+        if stream_id is None:
+            return None
+        if stream_id != 0:
+            observed.setdefault(stream_id, set()).add(query_id)
+    return observed
+
+
+def _throughput_streams_incomplete(payload: dict) -> bool:
+    block = _mapping(_mapping(payload.get("phases")).get("throughput_test"))
+    if str(block.get("status") or "").upper() != "COMPLETED":
+        return False
+    streams = block.get("stream_results")
+    if not isinstance(streams, list) or not streams:
+        return True
+    stream_ids = _throughput_stream_ids(streams)
+    if stream_ids is None:
+        return True
+    raw_benchmark = _mapping(payload.get("benchmark")).get("id")
+    benchmark = raw_benchmark.strip().casefold() if isinstance(raw_benchmark, str) else None
+    canonical = THROUGHPUT_STREAM_QUERY_IDS.get(benchmark)
+    if canonical is None:
+        return False
+    observed = _usable_queries_by_stream(payload)
+    if observed is None or len(stream_ids) < MINIMUM_THROUGHPUT_STREAMS:
+        return True
+    if benchmark == "tpcds":
+        observed = {stream_id: _fold_tpcds_variants(ids) for stream_id, ids in observed.items()}
+    if not set(observed) <= set(stream_ids):
+        return True
+    return any(not canonical <= observed.get(stream_id, set()) for stream_id in stream_ids)
+
+
+def _throughput_streams_succeeded(payload: dict) -> bool:
+    block = _mapping(_mapping(payload.get("phases")).get("throughput_test"))
+    streams = block.get("stream_results")
+    return (
+        isinstance(streams, list)
+        and bool(streams)
+        and all(isinstance(stream, dict) and stream.get("success") is True for stream in streams)
+    )
 
 
 def _stream_count(payload: dict) -> int | None:
@@ -360,7 +485,9 @@ def _throughput_phase_clean(payload: dict) -> bool:
         return False
     if _throughput_stream_count_mismatch(payload) is not None:
         return False
-    if not all(isinstance(stream, dict) and stream.get("success") is True for stream in streams):
+    if _throughput_streams_incomplete(payload):
+        return False
+    if not _throughput_streams_succeeded(payload):
         return False
     return not block.get("errors") and not block.get("outstanding_work")
 
@@ -399,6 +526,12 @@ def exclusion_reason(payload: dict) -> str | None:
         return "failed_queries"
     if bundle_phase(payload) == THROUGHPUT_PHASE and _throughput_stream_count_mismatch(payload) is not None:
         return "stream_count_mismatch"
+    if (
+        bundle_phase(payload) == THROUGHPUT_PHASE
+        and _throughput_streams_succeeded(payload)
+        and _throughput_streams_incomplete(payload)
+    ):
+        return "incomplete_throughput_streams"
     if bundle_validation_status(payload) in NON_CLEAN_VALIDATION_STATUSES:
         return "validation_not_clean"
     if not _tuning_applied(payload):

@@ -241,7 +241,7 @@ describe("local throughput import", () => {
       platform: { name: "Spark", version: "4.2.0" },
       config: { mode: "sql" },
       summary: {
-        queries: { total: 4, passed: 4, failed: 0 },
+        queries: { total: 66, passed: 66, failed: 0 },
         validation: "passed",
         tpc_metrics: { throughput_at_size: 3741.26 },
       },
@@ -257,12 +257,32 @@ describe("local throughput import", () => {
         },
       },
       environment: {},
-      queries: [
-        { id: "1", ms: 10, iter: 1, run_type: "measurement", status: "SUCCESS", stream: 1 },
-        { id: "2", ms: 20, iter: 1, run_type: "measurement", status: "SUCCESS", stream: 1 },
-      ],
+      queries: streamQueries(3, tpchQueryIds),
       ...overrides,
     };
+  }
+
+  const tpchQueryIds = Array.from({ length: 22 }, (_, index) => String(index + 1));
+  const tpcdsQueryIds = Array.from({ length: 99 }, (_, index) => String(index + 1)).flatMap((id) =>
+    ["14", "23", "24", "39"].includes(id) ? [`${id}a`, `${id}b`] : [id],
+  );
+
+  function streamQueries(streams: number, ids: string[]) {
+    return Array.from({ length: streams }, (_, stream) =>
+      ids.map((id, index) => ({
+        id,
+        ms: 10 + index,
+        iter: 1,
+        run_type: "measurement",
+        status: "SUCCESS",
+        stream: stream + 1,
+      })),
+    ).flat();
+  }
+
+  async function localScore(bundle: Record<string, unknown>) {
+    const preview = await parseLocalResultText(JSON.stringify(bundle), "tp.json");
+    return preview.detail.throughput_at_size;
   }
 
   it("withholds the local throughput score when run.streams disagrees with stream_results", async () => {
@@ -337,6 +357,89 @@ describe("local throughput import", () => {
     const preview = await parseLocalResultText(JSON.stringify(base), "tp.json");
 
     expect(preview.detail.throughput_at_size).toBeNull();
+  });
+
+  it("withholds the score when stream ids are zero-based", async () => {
+    const bundle = throughputBundle({
+      phases: {
+        power_test: { status: "NOT_RUN" },
+        throughput_test: {
+          status: "COMPLETED",
+          stream_results: [0, 1, 2].map((stream_id) => ({ stream_id, success: true })),
+        },
+      },
+      queries: streamQueries(3, tpchQueryIds).map((query) => ({ ...query, stream: query.stream - 1 })),
+    });
+
+    expect(await localScore(bundle)).toBeNull();
+  });
+
+  it("withholds the score when a stream is missing queries", async () => {
+    const queries = streamQueries(3, tpchQueryIds).filter((query) => !(query.stream === 2 && Number(query.id) <= 3));
+
+    expect(await localScore(throughputBundle({ queries }))).toBeNull();
+  });
+
+  it("withholds the score when a query names a stream that has no result", async () => {
+    const queries = [...streamQueries(3, tpchQueryIds), { ...streamQueries(1, ["1"])[0], stream: 9 }];
+
+    expect(await localScore(throughputBundle({ queries }))).toBeNull();
+  });
+
+  it("reads a per-query stream_id and ignores rows without a string id or status", async () => {
+    const renamed = streamQueries(3, tpchQueryIds).map(({ stream, ...query }) => ({ ...query, stream_id: stream }));
+    const numericIds = streamQueries(3, tpchQueryIds).map((query) => ({ ...query, id: Number(query.id) }));
+    const noStatus = streamQueries(3, tpchQueryIds).map(({ status, ...query }) => query);
+
+    expect(await localScore(throughputBundle({ queries: renamed }))).toBe(3741.26);
+    expect(await localScore(throughputBundle({ queries: numericIds }))).toBeNull();
+    expect(await localScore(throughputBundle({ queries: noStatus }))).toBeNull();
+  });
+
+  it("withholds the score for a single recorded stream", async () => {
+    const bundle = throughputBundle({
+      run: { id: "run", timestamp: "2026-10-03T18:42:47Z", total_duration_ms: 119000, streams: 1 },
+      phases: {
+        power_test: { status: "NOT_RUN" },
+        throughput_test: { status: "COMPLETED", stream_results: [{ stream_id: 1, success: true }] },
+      },
+      queries: streamQueries(1, tpchQueryIds),
+    });
+
+    expect(await localScore(bundle)).toBeNull();
+  });
+
+  it("covers a TPC-DS base query with its a and b variants", async () => {
+    const complete = throughputBundle({
+      benchmark: { id: "tpcds", name: "TPC-DS", scale_factor: 1, test_type: "throughput" },
+      queries: streamQueries(3, tpcdsQueryIds),
+    });
+    const missingVariant = throughputBundle({
+      benchmark: { id: "tpcds", name: "TPC-DS", scale_factor: 1, test_type: "throughput" },
+      queries: streamQueries(3, tpcdsQueryIds).filter((query) => query.id !== "14b"),
+    });
+
+    expect(await localScore(complete)).toBe(3741.26);
+    expect(await localScore(missingVariant)).toBeNull();
+  });
+
+  it("requires contiguous ids but no fixed query set outside TPC-H and TPC-DS", async () => {
+    const benchmark = { id: "ssb", name: "SSB", scale_factor: 1, test_type: "throughput" };
+    const sparse = throughputBundle({ benchmark, queries: streamQueries(3, ["1.1", "1.2"]) });
+    const zeroBased = throughputBundle({
+      benchmark,
+      queries: streamQueries(3, ["1.1", "1.2"]),
+      phases: {
+        power_test: { status: "NOT_RUN" },
+        throughput_test: {
+          status: "COMPLETED",
+          stream_results: [0, 1, 2].map((stream_id) => ({ stream_id, success: true })),
+        },
+      },
+    });
+
+    expect(await localScore(sparse)).toBe(3741.26);
+    expect(await localScore(zeroBased)).toBeNull();
   });
 
   it("keeps the score when the error fields are present but empty", async () => {
