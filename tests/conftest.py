@@ -2,6 +2,7 @@
 
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
+import logging
 import os
 import shutil
 from types import FrameType
@@ -358,6 +359,38 @@ def pytest_collection_finish(session) -> None:
 def _reset_global_quiet_state(request, _hermetic_state):
     yield
     restore_global(request.node, "benchbox.utils.printing", "_QUIET", False)
+
+
+def _benchbox_loggers() -> dict[str, logging.Logger]:
+    return {
+        name: logger
+        for name, logger in list(logging.root.manager.loggerDict.items())
+        if isinstance(logger, logging.Logger) and (name == "benchbox" or name.startswith("benchbox."))
+    }
+
+
+def _snapshot_logger(logger: logging.Logger) -> tuple[int, list[logging.Handler], bool, bool]:
+    return logger.level, list(logger.handlers), logger.propagate, logger.disabled
+
+
+def _restore_logger(logger: logging.Logger, state: tuple[int, list[logging.Handler], bool, bool]) -> None:
+    logger.setLevel(state[0])
+    logger.handlers[:] = state[1]
+    logger.propagate = state[2]
+    logger.disabled = state[3]
+
+
+@pytest.fixture(autouse=True)
+def _restore_logging_state():
+    root_state = _snapshot_logger(logging.getLogger())
+    known = {name: (logger, _snapshot_logger(logger)) for name, logger in _benchbox_loggers().items()}
+    yield
+    _restore_logger(logging.getLogger(), root_state)
+    for name, logger in _benchbox_loggers().items():
+        if name in known:
+            _restore_logger(logger, known[name][1])
+        else:
+            _restore_logger(logger, (logging.NOTSET, [], True, False))
 
 
 @pytest.fixture(autouse=True)
