@@ -5,6 +5,7 @@
 import hashlib
 import json
 import logging
+import sys
 from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -32,6 +33,26 @@ _PLATFORM_KEY_ALIASES = {
     "azure_synapse": "synapse",
     "fabric_warehouse": "fabric_dw",
 }
+
+
+def _driver_paramstyle(connection: Any) -> str | None:
+    for candidate in (connection, getattr(connection, "_conn", None), getattr(connection, "_connection", None)):
+        if candidate is None:
+            continue
+        for attribute in ("paramstyle", "_paramstyle"):
+            style = getattr(candidate, attribute, None)
+            if isinstance(style, str):
+                return style
+        parts = (type(candidate).__module__ or "").split(".")
+        for end in range(len(parts), 0, -1):
+            style = getattr(sys.modules.get(".".join(parts[:end])), "paramstyle", None)
+            if isinstance(style, str):
+                return style
+    return None
+
+
+def _insert_value_mark(connection: Any) -> str:
+    return "%s" if _driver_paramstyle(connection) in {"format", "pyformat"} else "?"
 
 
 def _normalize_platform_key(raw: object) -> str:
@@ -659,30 +680,18 @@ class TuningMetadataManager:
         if not records:
             return
 
-        insert_sql = f"""
-        INSERT INTO {self._metadata_table_name}
-        (table_name, tuning_type, column_name, column_order,
-         configuration_hash, created_at, platform)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        """
-
-        param_lists = []
-        for record in records:
-            param_lists.append(
-                [
-                    record.table_name,
-                    record.tuning_type,
-                    record.column_name,
-                    record.column_order,
-                    record.configuration_hash,
-                    record.created_at,
-                    record.platform,
-                ]
-            )
-
         with self._managed_connection() as conn:
             if not hasattr(conn, "cursor"):
-                for params in param_lists:
+                for record in records:
+                    params = [
+                        record.table_name,
+                        record.tuning_type,
+                        record.column_name,
+                        record.column_order,
+                        record.configuration_hash,
+                        record.created_at,
+                        record.platform,
+                    ]
                     values = ", ".join(self._format_literal(value) for value in params)
                     insert_sql = f"""
         INSERT INTO {self._metadata_table_name}
@@ -692,6 +701,28 @@ class TuningMetadataManager:
         """
                     self._execute_sql(conn, insert_sql)
                 return
+            mark = _insert_value_mark(conn)
+            insert_sql = f"""
+        INSERT INTO {self._metadata_table_name}
+        (table_name, tuning_type, column_name, column_order,
+         configuration_hash, created_at, platform)
+        VALUES ({", ".join([mark] * 7)})
+        """
+
+            param_lists = []
+            for record in records:
+                param_lists.append(
+                    [
+                        record.table_name,
+                        record.tuning_type,
+                        record.column_name,
+                        record.column_order,
+                        record.configuration_hash,
+                        record.created_at,
+                        record.platform,
+                    ]
+                )
+
             cursor = conn.cursor()
             for params in param_lists:
                 res = cursor.execute(insert_sql, params)
