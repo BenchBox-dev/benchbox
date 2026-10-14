@@ -3,7 +3,7 @@
     "Parity test passes: every adapter/type with rendered_via != none has an executing implementation (call-chain-following), and every no-op implementation is registered none.",
     "Validator tests: partitioning on postgresql errors; distribution on redshift errors (until its renderer lands); Trino/Athena behave per D-5."
   ],
-  "context": "2026-10-14 orchestrator: oracle-verdict SUCCESS/SHIP on 2724459d2 (04:23:57Z, muse): \"Can merge. D21 colon-variant normalization is fixed and tested.\" Verified fixed D21. Full fast effectively green (38066 pass + proven-transient flake), preflight 659 pass, +R clean. Now waits on external soundness review + owner merge (owner-only). Releasing claim; re-take after merge to finish.",
+  "context": "2026-10-14 orchestrator: adopted rebased head 5754fdc35 (worktree reset, clean). All 4 gate-blocking threads proven stale (entries already _none, tuning code byte-identical across rebase) — replied with evidence and resolved all 4. Reran both failed oracle-review runs. Awaiting rerun green, then soundness + owner merge.",
   "description": "## Problem\nThe validator accepts tuning that execution never applies (partitioning on PostgreSQL/BigQuery/Snowflake/Databricks/DuckDB; distribution and sorting on Redshift), while `capability_registry.py:174` itself records \"render nothing at execution\". Trino and Athena only warn because they are unknown platforms (`interface.py:1595-1604`).\n\n## Change (per gate D-5)\n- `validate_for_platform_detailed` reads the registry: `rendered_via=\"none\"` or `:preview_only` → error \"requested <type> is not applied at execution on <platform>: <notes>\".\n- Treat unknown platforms per D-5.\n- Include the ClickHouse PK-prefix rule.\n- Correct the registry entries for all no-op surfaces: Postgres family, Doris, SingleStore, Databend, Firebolt, Trino/Starburst/Presto/Athena, Synapse, Fabric, BigQuery (partitioning and clustering preview-only), Redshift (distribution and sorting preview-only), managed Spark, MotherDuck table tunings, DataFusion and SQLite constraints.\n- Add a registry↔execution parity test from an MRO sweep that **follows `super()` and helper callees**. The text-only sweep had false negatives (plan review F4).\n\n## Guardrails (must preserve)\n- Only rules named in the D-5 addendum block.\n\n## Process guardrails\n- One PR per item against `develop`, via the AGENTS.md worktree flow (`make worktree-claim BRANCH=...`, `make agent-write-preflight`).\n- Verification ladder: `uv run -- python -m pytest -m fast -q`, `uv run -- ruff check .`, `uv run -- ruff format --check .` and `uv run -- ty check`.\n- Then `make pr-preflight` and `make pr-open`.\n- Stage explicit paths; never `git add -A`.\n- No live cloud runs without explicit user approval stating the command, maximum runtime, log path and stop condition.\n- Re-read every file:line anchor before editing. Anchors are from develop d39166ea.\n- This item touches paths listed in the soundness manifest by `tuning-trust-paths-soundness-manifest-20261001`. The PR needs an external `Soundness review:` section (AGENTS.md) and must not auto-merge.",
   "links": [
     "benchbox/core/tuning/interface.py",
@@ -103,6 +103,14 @@
       "generation": "f40b50eb4182415f82b9327d573625bf",
       "op": "take",
       "op_id": "2a27b284f57e4f5abae39f8b260e0663",
+      "session_id": "ce855e02017040e0ae751903346e8f7f"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:0b09cceb849593820a7baad7",
+      "at": "2026-10-14T12:06:20Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "69c28b3225294735bf7d531587c7848d",
       "session_id": "ce855e02017040e0ae751903346e8f7f"
     }
   ]
