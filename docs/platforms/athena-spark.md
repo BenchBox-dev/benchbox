@@ -34,16 +34,9 @@ uv add benchbox --extra cloud-spark-aws
 
 ## Configuration
 
-### Environment Variables
-
-`ATHENA_SPARK_WORKGROUP` and `ATHENA_S3_STAGING_DIR` are required. `AWS_REGION` is optional.
-
-```bash
-export ATHENA_SPARK_WORKGROUP=my-spark-workgroup
-export ATHENA_S3_STAGING_DIR=s3://my-bucket/benchbox
-
-export AWS_REGION=us-east-1
-```
+Athena Spark needs a Spark-enabled workgroup (`compute_resource`) and an S3 staging location (`s3_staging_dir`).
+Pass both as platform options, as in the examples below. BenchBox does not read them from environment variables.
+AWS credentials come from the standard AWS sources listed in the Authentication section below.
 
 ### CLI Usage
 
@@ -110,16 +103,19 @@ revert a manually-installed version and how to work around it.
 
 ## Python API
 
-The example initializes the adapter with a workgroup and staging location, starts a session, creates the schema, loads
+The example builds the adapter from the same settings the CLI uses, starts a session, creates the schema, loads
 data to S3 and creates tables, executes a query via the session, and finally terminates the session.
+`from_config` accepts `compute_resource`; the constructor takes the workgroup as `workgroup=`.
 
 ```python
 from benchbox.platforms.aws import AthenaSparkAdapter
 
-adapter = AthenaSparkAdapter(
-    compute_resource="my-spark-workgroup",
-    s3_staging_dir="s3://my-bucket/benchbox",
-    region="us-east-1",
+adapter = AthenaSparkAdapter.from_config(
+    {
+        "compute_resource": "my-spark-workgroup",
+        "s3_staging_dir": "s3://my-bucket/benchbox",
+        "region": "us-east-1",
+    }
 )
 
 adapter.create_connection()

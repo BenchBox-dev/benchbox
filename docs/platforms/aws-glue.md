@@ -35,44 +35,18 @@ uv add benchbox --extra cloud-spark-aws
 
 ## Configuration
 
-### Environment Variables
-
-`GLUE_S3_STAGING_DIR` and `GLUE_JOB_ROLE` are required. `AWS_REGION`, `AWS_PROFILE`, `GLUE_DATABASE` and
-`GLUE_VERSION` are optional.
-
-```bash
-export GLUE_S3_STAGING_DIR=s3://your-bucket/benchbox/
-export GLUE_JOB_ROLE=arn:aws:iam::123456789012:role/GlueBenchmarkRole
-
-export AWS_REGION=us-east-1
-export AWS_PROFILE=default
-export GLUE_DATABASE=benchbox
-export GLUE_WORKER_TYPE=G.1X
-export GLUE_NUM_WORKERS=2
-export GLUE_VERSION=4.0
-```
-
 ### CLI Usage
 
-The first command is basic usage. The second uses custom workers. The third is a dry run that previews queries.
+The BenchBox CLI does not accept the Glue job role or worker settings, so run Glue benchmarks through the Python API
+described below. The CLI can still preview the generated queries without connecting to AWS:
 
 ```bash
-benchbox run --platform glue --benchmark tpch --scale 1.0 \
-  --platform-option s3_staging_dir=s3://bucket/benchbox/ \
-  --platform-option job_role=arn:aws:iam::123456789012:role/GlueRole
-
-benchbox run --platform glue --benchmark tpch --scale 10.0 \
-  --platform-option s3_staging_dir=s3://bucket/benchbox/ \
-  --platform-option job_role=arn:aws:iam::123456789012:role/GlueRole \
-  --platform-option worker_type=G.2X \
-  --platform-option number_of_workers=10
-
-benchbox run --platform glue --benchmark tpch --dry-run ./preview \
-  --platform-option s3_staging_dir=s3://bucket/benchbox/ \
-  --platform-option job_role=arn:aws:iam::123456789012:role/GlueRole
+benchbox run --platform glue --benchmark tpch --dry-run ./preview
 ```
 
-### Platform Options
+### Adapter Options
+
+These are `AWSGlueAdapter` keyword arguments.
 
 | Option | Default | Description |
 |--------|---------|-------------|
@@ -83,7 +57,7 @@ benchbox run --platform glue --benchmark tpch --dry-run ./preview \
 | `worker_type` | G.1X | Worker type (G.025X, G.1X, G.2X, Z.2X) |
 | `number_of_workers` | 2 | Number of workers (min 2 for standard) |
 | `glue_version` | 4.0 | Glue version (3.0 or 4.0) |
-| `timeout_minutes` | 60 | Job timeout in minutes |
+| `job_timeout` | 60 | Job timeout in minutes |
 
 ### Worker Types
 
@@ -221,7 +195,7 @@ Minimum required IAM policy for the Glue job role:
 - Use G.1X or larger for production
 
 **Query timeout:**
-- Increase `timeout_minutes` for large scale factors
+- Increase `job_timeout` for large scale factors
 - Add more workers for parallel execution
 - Check Glue console for detailed job metrics
 

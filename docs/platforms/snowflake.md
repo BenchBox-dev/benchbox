@@ -32,50 +32,63 @@ pip install "benchbox[snowflake]"
 
 ## Configuration
 
-### Environment Variables (Recommended)
+### Interactive Setup (Recommended)
+
+```bash
+benchbox setup --platform snowflake
+```
+
+This saves the account, username, password, warehouse, database, schema, and
+role. `benchbox run` reads them from the saved credentials; account, user, and
+password are not `--platform-option` keys.
+
+### Environment Variables
+
+`benchbox setup --platform snowflake` can fill in the values from these
+variables. `benchbox run` does not read them.
 
 ```bash
 export SNOWFLAKE_ACCOUNT=your_account_identifier
-export SNOWFLAKE_USER=your_username
+export SNOWFLAKE_USERNAME=your_username
 export SNOWFLAKE_PASSWORD=your_password
 export SNOWFLAKE_WAREHOUSE=your_warehouse
 export SNOWFLAKE_DATABASE=BENCHBOX
 export SNOWFLAKE_SCHEMA=PUBLIC
 ```
 
-### Interactive Setup
-
-```bash
-benchbox setup --platform snowflake
-```
-
 ### CLI Options
 
 ```bash
 benchbox run --platform snowflake --benchmark tpch --scale 1.0 \
-  --platform-option account=your_account \
-  --platform-option user=your_user \
-  --platform-option password=your_password \
-  --platform-option compute_resource=COMPUTE_WH \
-  --platform-option database=BENCHBOX
+  --platform-option compute_resource=COMPUTE_WH
 ```
+
+`compute_resource` names the warehouse. A value on the command line overrides
+the warehouse saved by `benchbox setup`.
 
 ## Platform Options
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `account` | (env) | Snowflake account identifier |
-| `user` | (env) | Username for authentication |
-| `password` | (env) | Password for authentication |
-| `compute_resource` | (env) | Named compute resource (Snowflake warehouse). Deprecated alias: `warehouse` (removed in 0.6.0) |
-| `database` | (auto) | Database name |
-| `schema` | PUBLIC | Schema name |
-| `role` | (default) | Snowflake role |
-| `edition` | (unset) | Account edition for cost modeling: `standard`, `enterprise`, `business_critical`, or `vps`. Not queryable from the service, so normalized cost stays `unavailable` until the operator sets it. |
-| `stage_name` | (auto) | Stage for data loading |
-| `stage_type` | user | Stage type: user, table, external |
-| `driver_version` | (latest) | Pin the Snowflake Python connector version (e.g. `3.12.0`) |
-| `driver_auto_install` | false | Auto-install the requested driver version via uv if missing |
+The **Set with** column shows where each setting comes from: the saved
+credentials (`benchbox setup`), a `--platform-option` key on `benchbox run`,
+or a `SnowflakeAdapter` argument in the Python API.
+
+| Option | Set with | Default | Description |
+|--------|----------|---------|-------------|
+| `account` | setup | (none) | Snowflake account identifier |
+| `username` | setup | (none) | Username for authentication |
+| `password` | setup | (none) | Password for authentication |
+| `compute_resource` | `--platform-option` | `COMPUTE_WH` | Named compute resource (Snowflake warehouse). Setup saves it as `warehouse`, a deprecated alias removed in 0.6.0 |
+| `compute_size` | `--platform-option` | `MEDIUM` | Warehouse size. Deprecated alias: `warehouse_size` |
+| `database` | setup | `BENCHBOX` | Database name |
+| `schema` | setup | `PUBLIC` | Schema name |
+| `role` | setup | (default) | Snowflake role |
+| `staging_root` | `--platform-option` | (none) | Cloud storage path for external staging |
+| `iceberg_external_volume` | `--platform-option` | (none) | EXTERNAL VOLUME name for Iceberg tables |
+| `edition` | Python API | (unset) | Account edition for cost modeling: `standard`, `enterprise`, `business_critical`, or `vps`. Not queryable from the service, so normalized cost stays `unavailable` until the operator sets it. |
+| `private_key_path` | Python API | (none) | Private key file for key pair authentication |
+| `authenticator` | Python API | `snowflake` | Connector authenticator, such as `externalbrowser` |
+| `driver_version` | `--platform-option` | (latest) | Pin the Snowflake Python connector version (e.g. `3.12.0`) |
+| `driver_auto_install` | `--platform-option` | false | Auto-install the requested driver version via uv if missing |
 
 ### Testing a Specific Snowflake Connector Version
 
@@ -83,7 +96,6 @@ benchbox run --platform snowflake --benchmark tpch --scale 1.0 \
 benchbox run --platform snowflake --benchmark tpch \
   --platform-option driver_version=3.12.0 \
   --platform-option driver_auto_install=true \
-  --platform-option account=xy12345.us-east-1 \
   --platform-option compute_resource=COMPUTE_WH
 ```
 
@@ -96,56 +108,76 @@ revert a manually-installed version and how to work around it.
 
 ### Password Authentication
 
+`benchbox setup --platform snowflake` saves the account, username, and
+password. `benchbox run` then uses them:
+
 ```bash
-benchbox run --platform snowflake --benchmark tpch \
-  --platform-option account=xy12345.us-east-1 \
-  --platform-option user=benchbox_user \
-  --platform-option password=secure_password
+benchbox setup --platform snowflake
+
+benchbox run --platform snowflake --benchmark tpch
 ```
 
 ### Key Pair Authentication
 
-Generate a key pair, upload the public key to Snowflake with `ALTER USER benchbox_user SET RSA_PUBLIC_KEY='MII...';`, then run BenchBox with the private key.
+Generate a key pair, upload the public key to Snowflake with `ALTER USER benchbox_user SET RSA_PUBLIC_KEY='MII...';`, then pass the private key to `SnowflakeAdapter`.
 
 ```bash
 openssl genrsa 2048 | openssl pkcs8 -topk8 -inform PEM -out rsa_key.p8 -nocrypt
 openssl rsa -in rsa_key.p8 -pubout -out rsa_key.pub
-
-benchbox run --platform snowflake --benchmark tpch \
-  --platform-option account=xy12345.us-east-1 \
-  --platform-option user=benchbox_user \
-  --platform-option private_key_path=/path/to/rsa_key.p8
 ```
+
+```python
+from benchbox.platforms.snowflake import SnowflakeAdapter
+
+adapter = SnowflakeAdapter(
+    account="xy12345.us-east-1",
+    username="benchbox_user",
+    password="unused",
+    private_key_path="/path/to/rsa_key.p8",
+)
+```
+
+`private_key_path` and `authenticator` are Python API arguments, not
+`--platform-option` keys, and `benchbox setup` saves password credentials
+only. The adapter currently requires a `password` value even with a private
+key; it does not send the password when `private_key_path` is set.
 
 ### SSO/Browser Authentication
 
-```bash
-benchbox run --platform snowflake --benchmark tpch \
-  --platform-option account=xy12345.us-east-1 \
-  --platform-option user=user@company.com \
-  --platform-option authenticator=externalbrowser
+```python
+from benchbox.platforms.snowflake import SnowflakeAdapter
+
+adapter = SnowflakeAdapter(
+    account="xy12345.us-east-1",
+    username="user@company.com",
+    password="unused",
+    authenticator="externalbrowser",
+)
 ```
 
 ## Usage Examples
 
 ### Basic Benchmark
 
-This runs TPC-H at scale factor 1. The warehouse comes from stored credentials or `SNOWFLAKE_WAREHOUSE`.
+This runs TPC-H at scale factor 1. The warehouse comes from the saved
+credentials.
 
 ```bash
 benchbox run --platform snowflake --benchmark tpch --scale 1.0
 ```
 
-The warehouse is not a `benchbox run` option. Set it once with
-`benchbox setup --platform snowflake`, or export `SNOWFLAKE_WAREHOUSE`.
+To change the warehouse, run `benchbox setup --platform snowflake` again, or
+pass `--platform-option compute_resource=<warehouse>` when no warehouse is
+saved.
 
 ### With Tuning
 
-This applies clustering and optimizations. Export `SNOWFLAKE_WAREHOUSE=LARGE_WH` first.
+This applies clustering and optimizations on a larger warehouse:
 
 ```bash
 benchbox run --platform snowflake --benchmark tpch --scale 10.0 \
-  --tuning tuned
+  --tuning tuned \
+  --platform-option compute_resource=LARGE_WH
 ```
 
 ### Python API
@@ -156,7 +188,7 @@ from benchbox.platforms.snowflake import SnowflakeAdapter
 
 adapter = SnowflakeAdapter(
     account="xy12345.us-east-1",
-    user="benchbox_user",
+    username="benchbox_user",
     password="secure_password",
     compute_resource="COMPUTE_WH",
     database="BENCHBOX",
@@ -243,13 +275,18 @@ ALTER WAREHOUSE BENCHMARK_WH SET AUTO_SUSPEND = 60;
 
 ### Multi-Cluster Control
 
-For throughput tests:
+For throughput tests, set the cluster count and scaling policy on the
+warehouse itself. BenchBox has no option for them; it records the warehouse's
+`max_cluster_count` and `scaling_policy` in the result metadata.
+
+```sql
+ALTER WAREHOUSE BENCHMARK_WH SET MAX_CLUSTER_COUNT = 4 SCALING_POLICY = 'STANDARD';
+```
 
 ```bash
 benchbox run --platform snowflake --benchmark tpch --scale 1.0 \
   --phases throughput \
-  --platform-option max_cluster_count=4 \
-  --platform-option scaling_policy=standard
+  --platform-option compute_resource=BENCHMARK_WH
 ```
 
 ## Troubleshooting
@@ -282,7 +319,7 @@ GRANT CREATE SCHEMA ON DATABASE benchbox TO ROLE benchbox_role;
 
 ### Data Loading Timeout
 
-Use a larger warehouse (`SNOWFLAKE_WAREHOUSE`) or external staging for big datasets:
+Use a larger warehouse (`compute_resource`) or external staging for big datasets:
 
 ```bash
 benchbox run --platform snowflake --benchmark tpch --scale 100.0 \

@@ -168,7 +168,7 @@ for comp in comparisons:
 
 **Optimization Tips:**
 - Use `.lazy()` for query optimization
-- Enable streaming for very large datasets: `--platform-option streaming=true`
+- Enable streaming for very large datasets: `--execution-engine streaming`
 - Minimize `.collect()` calls
 - Filter early to reduce data volume
 

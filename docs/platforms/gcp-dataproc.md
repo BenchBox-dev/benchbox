@@ -34,53 +34,19 @@ This installs the Dataproc dependencies, including `google-cloud-dataproc` and `
 
 ## Configuration
 
-### Environment Variables
-
-```bash
-export DATAPROC_PROJECT_ID=my-project-id
-export DATAPROC_GCS_STAGING_DIR=gs://your-bucket/benchbox/
-
-export DATAPROC_REGION=us-central1
-export DATAPROC_CLUSTER_NAME=my-cluster
-export DATAPROC_DATABASE=benchbox
-export DATAPROC_MASTER_TYPE=n2-standard-4
-export DATAPROC_WORKER_TYPE=n2-standard-4
-export DATAPROC_NUM_WORKERS=2
-export DATAPROC_USE_PREEMPTIBLE=false
-export DATAPROC_EPHEMERAL=false
-```
-
-`DATAPROC_PROJECT_ID` and `DATAPROC_GCS_STAGING_DIR` are required. The other variables are optional.
-
 ### CLI Usage
 
+The BenchBox CLI does not accept the Dataproc project, staging, or cluster settings, so run Dataproc benchmarks
+through the Python API described below. The CLI can still preview the generated queries without connecting to Google
+Cloud:
+
 ```bash
-benchbox run --platform dataproc --benchmark tpch --scale 1.0 \
-  --platform-option project_id=my-project \
-  --platform-option cluster_name=my-cluster \
-  --platform-option gcs_staging_dir=gs://bucket/benchbox/
-
-benchbox run --platform dataproc --benchmark tpch --scale 10.0 \
-  --platform-option project_id=my-project \
-  --platform-option cluster_name=my-cluster \
-  --platform-option gcs_staging_dir=gs://bucket/benchbox/ \
-  --platform-option worker_machine_type=n2-highmem-8 \
-  --platform-option num_workers=4
-
-benchbox run --platform dataproc --benchmark tpch --scale 10.0 \
-  --platform-option project_id=my-project \
-  --platform-option cluster_name=my-cluster \
-  --platform-option gcs_staging_dir=gs://bucket/benchbox/ \
-  --platform-option use_preemptible=true
-
-benchbox run --platform dataproc --benchmark tpch --dry-run ./preview \
-  --platform-option project_id=my-project \
-  --platform-option gcs_staging_dir=gs://bucket/benchbox/
+benchbox run --platform dataproc --benchmark tpch --dry-run ./preview
 ```
 
-The four commands are, in order: basic usage with an existing cluster, custom machine types, preemptible workers, and a dry run to preview queries.
+### Adapter Options
 
-### Platform Options
+These are `DataprocAdapter` keyword arguments.
 
 | Option | Default | Description |
 |--------|---------|-------------|
@@ -92,8 +58,8 @@ The four commands are, in order: basic usage with an existing cluster, custom ma
 | `master_machine_type` | n2-standard-4 | Master VM type |
 | `worker_machine_type` | n2-standard-4 | Worker VM type |
 | `num_workers` | 2 | Number of worker nodes |
-| `use_preemptible` | false | Use preemptible workers |
-| `ephemeral_cluster` | false | Create/delete cluster per job |
+| `use_preemptible_workers` | false | Use preemptible workers |
+| `create_ephemeral_cluster` | false | Create/delete cluster per job |
 | `timeout_minutes` | 60 | Job timeout in minutes |
 
 ### Machine Types

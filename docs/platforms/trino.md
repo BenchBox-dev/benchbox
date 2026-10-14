@@ -37,40 +37,44 @@ The first command installs the Trino Python driver. The second adds authenticati
 
 ## Configuration
 
-### Environment Variables
+### Connection Settings
 
-```bash
-export TRINO_HOST=localhost
-export TRINO_PORT=8080
-export TRINO_USER=trino
-export TRINO_CATALOG=memory
-export TRINO_SCHEMA=default
+The CLI reads connection settings from the `trino` section of `~/.benchbox/credentials.yaml`. Values written as `${VAR}` are read from the environment:
+
+```yaml
+trino:
+  host: trino-coordinator.example.com
+  port: 8080
+  username: analyst
+  password: ${TRINO_PASSWORD}
+  schema: benchmark
 ```
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `host` | localhost | Trino coordinator hostname |
+| `port` | 8080 | Trino coordinator port |
+| `username` | trino | Trino user for query attribution |
+| `password` | (none) | Password for LDAP/basic auth |
+| `schema` | (from benchmark and scale) | Schema for benchmark tables |
+| `http_scheme` | http, or https when a password is set | Connection scheme |
+| `verify_ssl` | true | Verify SSL certificates |
 
 ### CLI Options
 
 ```bash
 benchbox run --platform trino --benchmark tpch --scale 1.0 \
-  --platform-option host=trino-coordinator.example.com \
-  --platform-option port=8080 \
-  --platform-option catalog=hive \
-  --platform-option schema=benchmark
+  --platform-option catalog=hive
 ```
 
 ### Platform Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `host` | localhost | Trino coordinator hostname |
-| `port` | 8080 | Trino coordinator port |
-| `catalog` | memory | Default catalog (hive, iceberg, delta, memory) |
-| `schema` | default | Default schema |
-| `username` | trino | Trino user for query attribution |
-| `password` | (none) | Password for LDAP/basic auth |
-| `http_scheme` | http/https | Auto-detected based on auth |
-| `verify_ssl` | true | Verify SSL certificates |
+| `catalog` | (auto-discovered) | Default catalog (hive, iceberg, delta, memory) |
 | `staging_root` | (none) | S3/GCS path for data staging |
-| `table_format` | hive | Table format (hive, iceberg, delta) |
+| `table_format` | memory | Table format (memory, hive, iceberg, delta) |
+| `source_catalog` | (none) | Source catalog for external data loading |
 | `driver_version` | (latest) | Pin the trino package version (e.g. `0.336.0`) |
 | `driver_auto_install` | false | Auto-install the requested driver version via uv if missing |
 
@@ -80,7 +84,6 @@ benchbox run --platform trino --benchmark tpch --scale 1.0 \
 benchbox run --platform trino --benchmark tpch \
   --platform-option driver_version=0.336.0 \
   --platform-option driver_auto_install=true \
-  --platform-option host=trino.example.com \
   --platform-option catalog=hive
 ```
 
@@ -93,11 +96,11 @@ revert a manually-installed version and how to work around it.
 
 ### Basic Benchmark Run
 
+With `host` set in the credentials file:
+
 ```bash
 benchbox run --platform trino --benchmark tpch --scale 1.0 \
-  --platform-option host=trino.example.com \
-  --platform-option catalog=hive \
-  --platform-option schema=tpch_sf1
+  --platform-option catalog=hive
 ```
 
 ### Iceberg Tables
@@ -154,27 +157,31 @@ Use either `brew services start trino` or `trino-server run` to start it manuall
 BenchBox automatically detects when `localhost:8080` refuses connections and
 emits a friendly error explaining that Trino needs to be started (including the
 `brew services start trino` reminder) or that you should point BenchBox at a
-remote Trino cluster via `--platform-option host=<host> --platform-option port=<port>`.
+remote Trino cluster by setting `host` and `port` in the credentials file.
 
 ### Production (Hive/Iceberg)
 
 ```bash
 benchbox run --platform trino --benchmark tpch --scale 10.0 \
-  --platform-option host=trino.example.com \
   --platform-option catalog=hive \
   --platform-option staging_root=s3://data-lake/staging/
 ```
 
 ### Starburst Enterprise
 
-The Trino adapter is fully compatible with Starburst Enterprise:
+The Trino adapter is fully compatible with Starburst Enterprise. Point the credentials file at the cluster:
 
-```bash
-benchbox run --platform trino --benchmark tpch \
-  --platform-option host=starburst.example.com \
-  --platform-option http_scheme=https \
-  --platform-option verify_ssl=true
+```yaml
+trino:
+  host: starburst.example.com
+  port: 443
+  username: analyst
+  password: ${STARBURST_PASSWORD}
+  http_scheme: https
+  verify_ssl: true
 ```
+
+Then run `benchbox run --platform trino` as usual.
 
 ## Performance Tuning
 

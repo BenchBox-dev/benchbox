@@ -11,7 +11,7 @@ BenchBox supports Microsoft Fabric Warehouse for read/write SQL benchmarking, pl
 
 | Property | Value |
 |----------|-------|
-| **Platform Name** | `fabric` |
+| **Platform Name** | `fabric-dw` (or legacy `fabric_dw`) |
 | **SQL Dialect** | T-SQL (SQL Server subset) |
 | **Authentication** | Entra ID only (service principal, default credential, interactive) |
 | **Data Loading** | COPY INTO via OneLake staging |
@@ -70,11 +70,11 @@ Download from [Microsoft Download Center](https://learn.microsoft.com/en-us/sql/
 ### CLI Usage
 
 ```bash
-benchbox run --platform fabric --benchmark tpch --scale 0.1 \
+benchbox run --platform fabric-dw --benchmark tpch --scale 0.1 \
   --platform-option workspace=your-workspace-guid \
   --platform-option database=your_warehouse_name
 
-benchbox run --platform fabric --benchmark tpch --scale 1 \
+benchbox run --platform fabric-dw --benchmark tpch --scale 1 \
   --platform-option workspace=your-workspace-guid \
   --platform-option database=your_warehouse_name \
   --platform-option auth_method=service_principal \

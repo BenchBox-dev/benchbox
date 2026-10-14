@@ -161,44 +161,31 @@ Iceberg supports several partition transforms:
 
 ## Catalog Configuration
 
-### REST Catalog
+With `table_format="iceberg"`, the BenchBox Spark adapter registers Iceberg on Spark's session catalog with
+`spark.sql.catalog.spark_catalog.type=hive`. BenchBox has no catalog option of its own. To use a different catalog,
+such as a REST catalog, AWS Glue, or Nessie, pass the Iceberg catalog properties through `spark_config` in the Python
+API. These settings are applied after the defaults, so they override them:
 
-The REST catalog is the most portable option, working across engines:
+```python
+from benchbox.platforms.spark import SparkAdapter
 
-```bash
-benchbox run --platform spark --table-format iceberg --platform-option catalog=rest
+adapter = SparkAdapter(
+    table_format="iceberg",
+    spark_config={
+        "spark.sql.catalog.spark_catalog.type": "rest",
+        "spark.sql.catalog.spark_catalog.uri": "http://localhost:8181",
+    },
+)
 ```
 
-### AWS Glue
+See the Apache Iceberg Spark configuration documentation for the properties each catalog type needs.
 
-For AWS-native workflows with Athena, EMR:
-
-```bash
-benchbox run --platform spark --table-format iceberg --platform-option catalog=glue
-```
-
-### Hive Metastore
-
-For Spark/Hadoop ecosystems:
-
-```bash
-benchbox run --platform spark --table-format iceberg --platform-option catalog=hive
-```
-
-### Nessie
-
-For git-like versioning (experimental):
-
-```bash
-benchbox run --platform spark --table-format iceberg --platform-option catalog=nessie
-```
-
-| Catalog | Use Case | BenchBox Support |
-|---------|----------|------------------|
-| REST Catalog | Standard, portable | Default |
-| Hive Metastore | Spark/Hadoop ecosystems | Supported |
-| AWS Glue | AWS-native (Athena, EMR) | Supported |
-| Nessie | Git-like versioning | Experimental |
+| Catalog | Use Case |
+|---------|----------|
+| Hive Metastore | Spark/Hadoop ecosystems; the BenchBox Spark default |
+| REST Catalog | Standard, portable across engines |
+| AWS Glue | AWS-native (Athena, EMR) |
+| Nessie | Git-like versioning |
 
 ## Multi-Engine Workflows
 

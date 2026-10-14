@@ -35,47 +35,18 @@ uv add benchbox --extra cloud-spark-azure
 
 ## Configuration
 
-### Environment Variables
-
-`SYNAPSE_WORKSPACE_NAME`, `SYNAPSE_SPARK_POOL`, `SYNAPSE_STORAGE_ACCOUNT` and `SYNAPSE_STORAGE_CONTAINER` are
-required. `AZURE_TENANT_ID` and `SYNAPSE_STORAGE_PATH` are optional.
-
-```bash
-export SYNAPSE_WORKSPACE_NAME=my-synapse-workspace
-export SYNAPSE_SPARK_POOL=sparkpool1
-export SYNAPSE_STORAGE_ACCOUNT=mystorageaccount
-export SYNAPSE_STORAGE_CONTAINER=benchbox
-
-export AZURE_TENANT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-export SYNAPSE_STORAGE_PATH=data/benchbox
-```
-
 ### CLI Usage
 
-The commands cover basic usage, usage with a storage path, and a dry run that previews queries.
+The BenchBox CLI does not accept the Synapse workspace or storage settings, so run Synapse Spark benchmarks through
+the Python API described below. The CLI can still preview the generated queries without connecting to Azure:
 
 ```bash
-benchbox run --platform synapse-spark --benchmark tpch --scale 1.0 \
-  --platform-option workspace_name=my-synapse-workspace \
-  --platform-option compute_resource=sparkpool1 \
-  --platform-option storage_account=mystorageaccount \
-  --platform-option storage_container=benchbox
-
-benchbox run --platform synapse-spark --benchmark tpch --scale 1.0 \
-  --platform-option workspace_name=my-synapse-workspace \
-  --platform-option compute_resource=sparkpool1 \
-  --platform-option storage_account=mystorageaccount \
-  --platform-option storage_container=benchbox \
-  --platform-option storage_path=data/benchbox
-
-benchbox run --platform synapse-spark --benchmark tpch --dry-run ./preview \
-  --platform-option workspace_name=my-synapse-workspace \
-  --platform-option compute_resource=sparkpool1 \
-  --platform-option storage_account=mystorageaccount \
-  --platform-option storage_container=benchbox
+benchbox run --platform synapse-spark --benchmark tpch --dry-run ./preview
 ```
 
-### Platform Options
+### Adapter Options
+
+These are `SynapseSparkAdapter` keyword arguments.
 
 | Option | Default | Description |
 |--------|---------|-------------|
@@ -98,7 +69,7 @@ from benchbox.platforms.azure import SynapseSparkAdapter
 
 adapter = SynapseSparkAdapter(
     workspace_name="my-synapse-workspace",
-    compute_resource="sparkpool1",
+    spark_pool_name="sparkpool1",
     storage_account="mystorageaccount",
     storage_container="benchbox",
     tenant_id="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",

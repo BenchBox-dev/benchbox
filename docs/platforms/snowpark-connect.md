@@ -45,56 +45,42 @@ This installs `snowflake-snowpark-python` and PySpark.
 
 ## Configuration
 
-### Environment Variables
+### Credentials
 
-```bash
-export SNOWFLAKE_ACCOUNT=xy12345.us-east-1
-export SNOWFLAKE_USER=my_user
-export SNOWFLAKE_PASSWORD=my_password
-
-export SNOWFLAKE_WAREHOUSE=COMPUTE_WH
-export SNOWFLAKE_DATABASE=BENCHBOX
-export SNOWFLAKE_ROLE=SYSADMIN
-```
-
-The account, user and password variables are required. The warehouse, database and role variables are optional.
+Pass credentials to `SnowparkConnectAdapter` in the Python API (see below).
+`benchbox run` has no way to supply them for this platform: account, user,
+and password are not `--platform-option` keys, and the adapter does not read
+`SNOWFLAKE_*` environment variables or the credentials saved by
+`benchbox setup --platform snowflake`.
 
 ### CLI Usage
 
+Without credentials, the CLI is limited to dry runs that preview the queries:
+
 ```bash
-benchbox run --platform snowpark-connect --benchmark tpch --scale 1.0 \
-  --platform-option account=xy12345.us-east-1 \
-  --platform-option user=my_user \
-  --platform-option password=my_password
-
-benchbox run --platform snowpark-connect --benchmark tpch --scale 1.0 \
-  --platform-option account=xy12345.us-east-1 \
-  --platform-option user=my_user \
-  --platform-option password=my_password \
-  --platform-option compute_resource=BENCHMARK_WH
-
 benchbox run --platform snowpark-connect --benchmark tpch --dry-run ./preview \
-  --platform-option account=xy12345.us-east-1 \
-  --platform-option user=my_user \
-  --platform-option password=my_password
+  --platform-option compute_resource=BENCHMARK_WH
 ```
-
-The first command is basic usage, the second uses a custom warehouse, and the third is a dry run that previews the queries.
 
 ### Platform Options
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `account` | *required* | Snowflake account identifier |
-| `user` | *required* | Snowflake username |
-| `password` | - | Password (required unless using key auth) |
-| `compute_resource` | COMPUTE_WH | Named compute resource (Snowflake warehouse; deprecated alias: `warehouse`, removed in 0.6.0) |
-| `database` | BENCHBOX | Database name |
-| `schema` | PUBLIC | Schema name |
-| `role` | - | Role to use for session |
-| `authenticator` | - | Auth method (snowflake, externalbrowser, oauth) |
-| `private_key_path` | - | Path to private key for key-pair auth |
-| `compute_size` | MEDIUM | Compute size for scaling (deprecated alias: `warehouse_size`, removed in 0.6.0) |
+The **Set with** column shows how to set each option: a `--platform-option`
+key on `benchbox run`, or a `SnowparkConnectAdapter` argument in the Python
+API. In the Python API, the warehouse arguments are named `warehouse` and
+`warehouse_size`.
+
+| Option | Set with | Default | Description |
+|--------|----------|---------|-------------|
+| `account` | Python API | *required* | Snowflake account identifier |
+| `user` | Python API | *required* | Snowflake username |
+| `password` | Python API | - | Password (required unless using key auth) |
+| `compute_resource` | `--platform-option` | COMPUTE_WH | Named compute resource (Snowflake warehouse; deprecated alias: `warehouse`, removed in 0.6.0) |
+| `database` | Python API | BENCHBOX | Database name |
+| `schema` | Python API | PUBLIC | Schema name |
+| `role` | Python API | - | Role to use for session |
+| `authenticator` | Python API | - | Auth method (snowflake, externalbrowser, oauth) |
+| `private_key_path` | Python API | - | Path to private key for key-pair auth |
+| `compute_size` | `--platform-option` | MEDIUM | Compute size for scaling (deprecated alias: `warehouse_size`, removed in 0.6.0) |
 
 ## Python API
 
@@ -105,7 +91,7 @@ adapter = SnowparkConnectAdapter(
     account="xy12345.us-east-1",
     user="my_user",
     password="my_password",
-    compute_resource="COMPUTE_WH",
+    warehouse="COMPUTE_WH",
     database="BENCHBOX",
 )
 

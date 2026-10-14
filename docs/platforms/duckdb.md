@@ -47,14 +47,16 @@ No configuration needed - DuckDB works immediately:
 benchbox run --platform duckdb --benchmark tpch --scale 0.01
 ```
 
-### Persistent Database
+### Database File
 
-By default, BenchBox uses in-memory databases. For persistence:
+The CLI stores the database file under the runs root, in `databases/<benchmark>_sf<scale>/`, and names it from the benchmark, scale factor, and tuning settings. Set `BENCHBOX_OUTPUT_DIR` to move the runs root:
 
 ```bash
-benchbox run --platform duckdb --benchmark tpch --scale 1.0 \
-  --platform-option database=/path/to/benchmark.duckdb
+BENCHBOX_OUTPUT_DIR=/data/benchbox \
+  benchbox run --platform duckdb --benchmark tpch --scale 1.0
 ```
+
+To choose the exact file, or to use an in-memory database, pass `database_path` to `DuckDBAdapter` in the [Python API](#python-api).
 
 ### CLI Options
 
@@ -68,7 +70,6 @@ benchbox run --platform duckdb --benchmark tpch --scale 1.0 \
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `database` | :memory: | Database path or :memory: |
 | `threads` | (auto) | Number of threads |
 | `memory_limit` | (auto) | Maximum memory usage |
 | `temp_directory` | (auto) | Temp file location |
@@ -127,7 +128,7 @@ from benchbox.platforms.duckdb import DuckDBAdapter
 
 adapter = DuckDBAdapter()
 
-adapter = DuckDBAdapter(database="./benchmarks.duckdb")
+adapter = DuckDBAdapter(database_path="./benchmarks.duckdb")
 
 benchmark = TPCH(scale_factor=0.1)
 benchmark.generate_data()
@@ -232,27 +233,27 @@ benchbox run --platform duckdb --benchmark tpch --scale 0.01
 
 ### 2. Use In-Memory for Speed
 
-For benchmarks, in-memory is fastest:
+An in-memory database avoids disk I/O. The CLI always writes a database file, so use the Python API for in-memory runs:
 
-```bash
-benchbox run --platform duckdb --benchmark tpch --scale 1.0
+```python
+from benchbox.platforms.duckdb import DuckDBAdapter
+
+adapter = DuckDBAdapter(database_path=":memory:")
 ```
 
 ### 3. Persist for Development
 
-When iterating on queries, persist the database:
+When iterating on queries, load the data once and reuse the database file:
 
 ```bash
 benchbox run --platform duckdb --benchmark tpch --scale 1.0 \
-  --phases generate,load \
-  --platform-option database=./dev.duckdb
+  --phases generate,load
 
 benchbox run --platform duckdb --benchmark tpch --scale 1.0 \
-  --phases power \
-  --platform-option database=./dev.duckdb
+  --phases power
 ```
 
-The first command loads the data once. The second runs the queries as many times as you need against the persisted database.
+The first command loads the data once. The second runs the queries as many times as you need. Both use the same database file because the CLI names it from the benchmark, scale factor, and tuning settings.
 
 ### 4. Match Production Scale
 
@@ -278,9 +279,12 @@ Increase the memory limit or set a temp directory so DuckDB can spill to disk.
 
 ### Slow Queries
 
-```bash
-benchbox run --platform duckdb --benchmark tpch \
-  --platform-option threads=$(nproc)
+```python
+import os
+
+from benchbox.platforms.duckdb import DuckDBAdapter
+
+adapter = DuckDBAdapter(thread_limit=os.cpu_count())
 ```
 
 This sets the thread count to the number of available cores.
@@ -296,11 +300,11 @@ adapter = DuckDBAdapter(database_path=":memory:", progress_bar=True)
 ### Database Locked
 
 ```bash
-benchbox run --platform duckdb --benchmark tpch \
-  --platform-option database=./new_benchmark.duckdb
+BENCHBOX_OUTPUT_DIR=./benchbox_runs_2 \
+  benchbox run --platform duckdb --benchmark tpch
 ```
 
-DuckDB allows only one connection for write operations. Close other DuckDB connections or use a new database path.
+DuckDB allows only one connection for write operations. Close other DuckDB connections, or point `BENCHBOX_OUTPUT_DIR` at a different runs root so the run uses a new database file. The new root also holds its own generated data and results.
 
 ### Disk Space for Temp Files
 

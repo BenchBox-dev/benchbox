@@ -55,10 +55,11 @@ benchbox run --platform quanton --benchmark tpch --scale 1.0 \
 | `region` | us-east-1 | AWS region for cluster deployment |
 | `database` | benchbox | Database name for benchmarks |
 | `table_format` | iceberg | Table format: iceberg, hudi, or delta |
-| `cluster_size` | small | Cluster size: small, medium, large, xlarge |
-| `record_key` | (auto) | Hudi record key field (required for hudi format) |
-| `precombine_field` | (optional) | Hudi precombine field for ordering during updates |
-| `hudi_table_type` | COPY_ON_WRITE | Hudi table type: COPY_ON_WRITE or MERGE_ON_READ |
+| `compute_size` | small | Cluster size: small, medium, large, xlarge |
+
+The Hudi settings `record_key`, `precombine_field`, and `hudi_table_type`, and the job `timeout_minutes`, are
+`QuantonAdapter` keyword arguments in the Python API. The CLI does not accept them. In the Python API, the cluster
+size argument is `cluster_size`.
 
 ## Table Format Selection
 
@@ -80,15 +81,19 @@ benchbox run --platform quanton --benchmark tpch --scale 1.0 \
 
 ### Hudi
 
-```bash
-benchbox run --platform quanton --benchmark tpch --scale 1.0 \
-  --platform-option s3_staging_dir=s3://bucket/data \
-  --platform-option table_format=hudi \
-  --platform-option record_key=l_orderkey \
-  --platform-option precombine_field=l_shipdate
+```python
+from benchbox.platforms.onehouse import QuantonAdapter
+
+adapter = QuantonAdapter(
+    s3_staging_dir="s3://bucket/data",
+    table_format="hudi",
+    record_key="l_orderkey",
+    precombine_field="l_shipdate",
+)
 ```
 
-Hudi requires `record_key` for write operations.
+Hudi requires `record_key` for write operations, and the CLI cannot set it, so run Hudi benchmarks through the Python
+API.
 
 ### Delta Lake
 
@@ -112,7 +117,7 @@ benchbox run --platform quanton --benchmark tpch --scale 1.0 \
 ```bash
 benchbox run --platform quanton --benchmark tpch --scale 10.0 \
   --platform-option s3_staging_dir=s3://my-bucket/benchbox \
-  --platform-option cluster_size=medium \
+  --platform-option compute_size=medium \
   --platform-option table_format=iceberg
 ```
 
@@ -123,20 +128,16 @@ iceberg_result=$(benchbox run --platform quanton --benchmark tpch --scale 1.0 \
   --platform-option s3_staging_dir=s3://my-bucket/benchbox \
   --platform-option table_format=iceberg \
   --output ./quanton-iceberg-run --quiet)
-hudi_result=$(benchbox run --platform quanton --benchmark tpch --scale 1.0 \
-  --platform-option s3_staging_dir=s3://my-bucket/benchbox \
-  --platform-option table_format=hudi \
-  --output ./quanton-hudi-run --quiet)
 delta_result=$(benchbox run --platform quanton --benchmark tpch --scale 1.0 \
   --platform-option s3_staging_dir=s3://my-bucket/benchbox \
   --platform-option table_format=delta \
   --output ./quanton-delta-run --quiet)
 
-benchbox compare "$iceberg_result" "$hudi_result"
 benchbox compare "$iceberg_result" "$delta_result"
 ```
 
-Each comparison uses the Iceberg run as the baseline and compares one result file pair.
+The comparison uses the Iceberg run as the baseline. Hudi runs need a `record_key`, which only the Python API can
+set.
 
 ### Python API
 
@@ -169,26 +170,25 @@ results = adapter.run_benchmark(benchmark)
 
 ## Hudi-Specific Configuration
 
-When using Hudi table format, additional configuration is required:
+When using Hudi table format, additional configuration is required. Set it through `QuantonAdapter` keyword arguments
+in the Python API.
 
 ### Record Key
 
-The record key uniquely identifies each record for ACID operations:
+The record key uniquely identifies each record for ACID operations. Pass one column or a comma-separated composite key:
 
-```bash
---platform-option record_key=l_orderkey,l_linenumber
-
---platform-option record_key=o_orderkey
+```python
+QuantonAdapter(s3_staging_dir="s3://bucket/data", table_format="hudi", record_key="l_orderkey,l_linenumber")
 ```
 
-For the TPC-H `lineitem` table use a composite key, and for `orders` use its primary key.
+The adapter applies the same record key to every table it creates.
 
 ### Precombine Field
 
 The precombine field orders records during deduplication:
 
-```bash
---platform-option precombine_field=l_shipdate
+```python
+QuantonAdapter(s3_staging_dir="s3://bucket/data", table_format="hudi", record_key="l_orderkey", precombine_field="l_shipdate")
 ```
 
 This example uses a date field for ordering.
@@ -197,10 +197,8 @@ This example uses a date field for ordering.
 
 Choose between COPY_ON_WRITE (faster reads) or MERGE_ON_READ (faster writes):
 
-```bash
---platform-option hudi_table_type=COPY_ON_WRITE
-
---platform-option hudi_table_type=MERGE_ON_READ
+```python
+QuantonAdapter(s3_staging_dir="s3://bucket/data", table_format="hudi", record_key="l_orderkey", hudi_table_type="MERGE_ON_READ")
 ```
 
 `COPY_ON_WRITE` is the default and suits analytics workloads. `MERGE_ON_READ` suits write-heavy workloads.
@@ -252,19 +250,20 @@ aws s3 ls s3://your-bucket/benchbox-data/
 
 ### Job Timeout
 
-For large-scale benchmarks, increase the timeout:
+For large-scale benchmarks, increase the per-query timeout (default 60 minutes) in the Python API:
 
-```bash
-benchbox run --platform quanton --benchmark tpch --scale 100.0 \
-  --platform-option timeout_minutes=120
+```python
+QuantonAdapter(s3_staging_dir="s3://bucket/data", timeout_minutes=120)
 ```
 
 ### Hudi Write Failures
 
-Ensure record_key is specified for Hudi format. Without it, the run fails with a "No record_key configured" error. Fix it by adding the `record_key` parameter:
+Ensure `record_key` is specified for Hudi format. Without it, BenchBox logs a "No record_key configured" warning and
+uses a placeholder key column named `<table>_key`, which the benchmark tables do not have. Fix it by passing the
+`record_key` argument:
 
-```bash
---platform-option record_key=primary_key_column
+```python
+QuantonAdapter(s3_staging_dir="s3://bucket/data", table_format="hudi", record_key="primary_key_column")
 ```
 
 ## Related Documentation

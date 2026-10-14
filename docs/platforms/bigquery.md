@@ -32,56 +32,72 @@ pip install "benchbox[bigquery]"
 
 ## Configuration
 
-### Service Account (Recommended)
-
-```bash
-export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
-export BIGQUERY_PROJECT=your-project-id
-```
-
-### Application Default Credentials
-
-```bash
-gcloud auth application-default login
-
-export BIGQUERY_PROJECT=your-project-id
-```
-
-### Interactive Setup
+### Interactive Setup (Recommended)
 
 ```bash
 benchbox setup --platform bigquery
 ```
 
+This saves the project ID, service account key path, location, and optional
+Cloud Storage bucket. `benchbox setup` can fill these in from
+`GOOGLE_APPLICATION_CREDENTIALS`, `BIGQUERY_PROJECT`, `BIGQUERY_LOCATION`, and
+`BIGQUERY_STORAGE_BUCKET`; `benchbox run` does not read the `BIGQUERY_*`
+variables.
+
+### Service Account
+
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+export BIGQUERY_PROJECT=your-project-id
+
+benchbox setup --platform bigquery
+```
+
+### Application Default Credentials
+
+Without saved credentials, BenchBox uses Application Default Credentials and
+their project:
+
+```bash
+gcloud auth application-default login
+gcloud config set project your-project-id
+```
+
 ### CLI Options
+
+The project and location are not `--platform-option` keys. BenchBox names the
+dataset after the benchmark and scale factor.
 
 ```bash
 benchbox run --platform bigquery --benchmark tpch --scale 1.0 \
-  --platform-option project_id=your-project-id \
-  --platform-option dataset=benchbox \
-  --platform-option location=US
+  --platform-option staging_root=gs://your-bucket/benchbox
 ```
 
 ## Platform Options
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `project_id` | (env) | GCP project ID |
-| `dataset` | (auto) | BigQuery dataset name |
-| `location` | US | Data location (US, EU, etc.) |
-| `credentials_path` | (env) | Service account JSON path |
-| `staging_bucket` | (none) | GCS bucket for staging |
-| `maximum_bytes_billed` | (none) | Query cost limit |
-| `driver_version` | (latest) | Pin the google-cloud-bigquery package version (e.g. `3.0.0`) |
-| `driver_auto_install` | false | Auto-install the requested driver version via uv if missing |
+The **Set with** column shows where each setting comes from: the saved
+credentials (`benchbox setup`), a `--platform-option` key on `benchbox run`,
+or a `BigQueryAdapter` argument in the Python API.
+
+| Option | Set with | Default | Description |
+|--------|----------|---------|-------------|
+| `project_id` | setup | (ADC project) | GCP project ID |
+| `location` | setup | US | Data location (US, EU, etc.) |
+| `credentials_path` | setup | (ADC) | Service account JSON path |
+| `staging_root` | `--platform-option` | (none) | GCS staging path (`gs://bucket/path`) |
+| `storage_bucket` | `--platform-option` | (none) | GCS bucket for staging (alternative to `staging_root`) |
+| `storage_prefix` | `--platform-option` | `benchbox-data` | Path prefix within `storage_bucket` |
+| `biglake_connection` | `--platform-option` | (none) | BigLake connection for external tables, as `project.region.name` |
+| `maximum_bytes_billed` | Python API | (none) | Per-query bytes-billed limit |
+| `driver_version` | `--platform-option` | (latest) | Pin the google-cloud-bigquery package version (e.g. `3.0.0`) |
+| `driver_auto_install` | `--platform-option` | false | Auto-install the requested driver version via uv if missing |
 
 ### Testing a Specific BigQuery Connector Version
 
 ```bash
 benchbox run --platform bigquery --benchmark tpch \
   --platform-option driver_version=3.0.0 \
-  --platform-option driver_auto_install=true \
-  --platform-option project_id=your-gcp-project
+  --platform-option driver_auto_install=true
 ```
 
 The driver package for BigQuery is `google-cloud-bigquery`.
@@ -117,11 +133,12 @@ gcloud config set project your-project-id
 
 ### Workload Identity (GKE)
 
-Use Workload Identity Federation:
+Use Workload Identity Federation. When no service account key path is saved,
+BenchBox uses Application Default Credentials, which pick up the workload
+identity. No BenchBox option is needed:
 
 ```bash
-benchbox run --platform bigquery --benchmark tpch \
-  --platform-option use_workload_identity=true
+benchbox run --platform bigquery --benchmark tpch
 ```
 
 ## Usage Examples
@@ -129,8 +146,7 @@ benchbox run --platform bigquery --benchmark tpch \
 ### Basic Benchmark
 
 ```bash
-benchbox run --platform bigquery --benchmark tpch --scale 1.0 \
-  --platform-option project_id=your-project-id
+benchbox run --platform bigquery --benchmark tpch --scale 1.0
 ```
 
 ### With Cloud Storage Staging
@@ -142,11 +158,17 @@ benchbox run --platform bigquery --benchmark tpch --scale 100.0 \
 
 ### With Cost Controls
 
-Limit query costs. `maximum_bytes_billed=10000000000` sets a 10 GB limit:
+Limit query costs with the `maximum_bytes_billed` argument of
+`BigQueryAdapter`. It is not a `--platform-option` key. `10000000000` sets a
+10 GB limit:
 
-```bash
-benchbox run --platform bigquery --benchmark tpch --scale 10.0 \
-  --platform-option maximum_bytes_billed=10000000000
+```python
+from benchbox.platforms.bigquery import BigQueryAdapter
+
+adapter = BigQueryAdapter(
+    project_id="your-project-id",
+    maximum_bytes_billed=10000000000,
+)
 ```
 
 ### Python API
@@ -157,7 +179,7 @@ from benchbox.platforms.bigquery import BigQueryAdapter
 
 adapter = BigQueryAdapter(
     project_id="your-project-id",
-    dataset="benchbox",
+    dataset_id="benchbox",
     location="US",
 )
 
@@ -179,12 +201,9 @@ results = adapter.run_benchmark(benchmark)
 
 ### Slot Reservations
 
-For predictable costs, use slot reservations:
-
-```bash
-benchbox run --platform bigquery --benchmark tpch \
-  --platform-option reservation_id=projects/proj/locations/US/reservations/benchbox
-```
+For predictable costs, assign the project to a slot reservation in BigQuery.
+BenchBox has no reservation option; it reads the project's reservation
+assignment and records it in the result metadata when it has permission.
 
 ## Performance Features
 
@@ -238,24 +257,13 @@ benchbox run --platform bigquery --benchmark tpch --scale 100.0 \
   --output gs://your-bucket/benchbox/
 ```
 
-### Load Job Configuration
-
-```bash
-benchbox run --platform bigquery --benchmark tpch \
-  --platform-option write_disposition=WRITE_TRUNCATE \
-  --platform-option create_disposition=CREATE_IF_NEEDED
-```
-
 ## Cost Optimization
 
 ### Query Cost Limits
 
-Prevent runaway queries with a per-query limit. `maximum_bytes_billed=1000000000` sets a 1 GB limit:
-
-```bash
-benchbox run --platform bigquery --benchmark tpch \
-  --platform-option maximum_bytes_billed=1000000000
-```
+Prevent runaway queries with a per-query limit. Pass
+`maximum_bytes_billed=1000000000` to `BigQueryAdapter` for a 1 GB limit, as
+shown in With Cost Controls above.
 
 ### Dry Run Estimates
 
@@ -263,15 +271,6 @@ Preview query costs:
 
 ```bash
 benchbox run --platform bigquery --benchmark tpch --dry-run ./estimate
-```
-
-### Dataset Expiration
-
-Auto-delete test datasets:
-
-```bash
-benchbox run --platform bigquery --benchmark tpch \
-  --platform-option dataset_expires_days=7
 ```
 
 ## Troubleshooting
@@ -303,11 +302,12 @@ gcloud compute project-info describe --project your-project-id
 
 ### Dataset Location Mismatch
 
-Datasets must be in the same location as the jobs that query them. Specify the location explicitly:
+Datasets must be in the same location as the jobs that query them. The
+location is not a `--platform-option` key; save it with `benchbox setup`
+(the "Data location" prompt), or pass `location=` to `BigQueryAdapter`:
 
 ```bash
-benchbox run --platform bigquery --benchmark tpch \
-  --platform-option location=us-east1
+benchbox setup --platform bigquery
 ```
 
 ### Permission Denied

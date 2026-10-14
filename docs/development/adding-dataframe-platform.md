@@ -212,6 +212,9 @@ DATAFRAME_ADAPTERS = {
 Before implementation, maintainers can print the expected file plan with the
 platform scaffold script (`--kind dataframe`).
 
+Declare compute and gateway support with the compute and gateway items of the
+{ref}`SQL platform checklist <new-platform-checklist-sql>`.
+
 Declare execution engines when the platform offers more than one way to execute a query, following the same
 manifest `capabilities.execution_engines` block, closed class list, value-naming rule and reserved-word ban as
 SQL platforms (see `docs/development/adding-new-platforms.md`). The worked example is `polars-df`, which

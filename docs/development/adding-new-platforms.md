@@ -761,6 +761,9 @@ identity and their keys must resolve through the manifest drift gate.
 Before implementation, maintainers can print the expected file plan with the
 platform scaffold script (`--kind sql`).
 
+Declare compute and gateway support with the compute and gateway items of the
+{ref}`SQL platform checklist <new-platform-checklist-sql>`.
+
 Regenerate the inventory and run the drift gate after editing the manifest:
 
 ```bash

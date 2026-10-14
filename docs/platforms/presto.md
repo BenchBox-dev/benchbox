@@ -62,17 +62,30 @@ The adapter also accepts an optional `password` for basic auth.
 
 ### CLI Usage
 
+The CLI reads connection settings from the `presto` section of `~/.benchbox/credentials.yaml`. Values written as `${VAR}` are read from the environment:
+
+```yaml
+presto:
+  host: presto-coordinator.example.com
+  port: 8080
+  username: presto
+  password: ${PRESTO_PASSWORD}
+  schema: default
+```
+
+Then choose the catalog on the command line:
+
 ```bash
 benchbox run --platform presto --benchmark tpch --scale 1.0 \
-  --platform-option host=presto-coordinator.example.com \
-  --platform-option catalog=hive \
-  --platform-option schema=default
+  --platform-option catalog=hive
 ```
+
+The `catalog`, `table_format`, `staging_root`, and `source_catalog` settings are platform options. When `schema` is not set, BenchBox generates a schema name from the benchmark and scale factor.
 
 ## Configuration Highlights
 
 - **Connection**: `host`, `port` (default `8080`), `catalog`, `schema`
-- **Authentication**: Basic auth via `presto-python-client` (`--username/--password`); Kerberos can be layered later if needed
+- **Authentication**: Basic auth via `presto-python-client`, using `username` and `password` from the credentials file; Kerberos is not supported
 - **Protocol**: `http_scheme` auto-selects `https` when a password is provided; SSL verification is configurable via `verify_ssl` or `ssl_cert_path`
 - **Dialect**: Hard-coded to `"presto"` to avoid Trino behavior
 - **Session Properties**: Can be set via `session_properties` mapping (applied after connect with `SET SESSION`)

@@ -34,38 +34,18 @@ This installs Azure cloud-Spark dependencies, including `azure-identity`, `azure
 
 ## Configuration
 
-### Environment Variables
-
-`FABRIC_WORKSPACE_ID` and `FABRIC_LAKEHOUSE_ID` are required. `AZURE_TENANT_ID` and `FABRIC_SPARK_POOL` are optional.
-
-```bash
-export FABRIC_WORKSPACE_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-export FABRIC_LAKEHOUSE_ID=yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy
-
-export AZURE_TENANT_ID=zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz
-export FABRIC_SPARK_POOL=my-spark-pool
-```
-
 ### CLI Usage
 
-The first command is basic usage. The second adds the tenant ID for service principal authentication. The third is a dry run that previews queries.
+The BenchBox CLI does not accept the Fabric workspace or lakehouse IDs, so run Fabric Spark benchmarks through the
+Python API described below. The CLI can still preview the generated queries without connecting to Fabric:
 
 ```bash
-benchbox run --platform fabric-spark --benchmark tpch --scale 1.0 \
-  --platform-option workspace_id=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx \
-  --platform-option lakehouse_id=yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy
-
-benchbox run --platform fabric-spark --benchmark tpch --scale 1.0 \
-  --platform-option workspace_id=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx \
-  --platform-option lakehouse_id=yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy \
-  --platform-option tenant_id=zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz
-
-benchbox run --platform fabric-spark --benchmark tpch --dry-run ./preview \
-  --platform-option workspace_id=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx \
-  --platform-option lakehouse_id=yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy
+benchbox run --platform fabric-spark --benchmark tpch --dry-run ./preview
 ```
 
-### Platform Options
+### Adapter Options
+
+These are `FabricSparkAdapter` keyword arguments.
 
 | Option | Default | Description |
 |--------|---------|-------------|
@@ -74,7 +54,7 @@ benchbox run --platform fabric-spark --benchmark tpch --dry-run ./preview \
 | `tenant_id` | - | Azure tenant ID (for service principal) |
 | `livy_endpoint` | auto-derived | Custom Livy API endpoint URL |
 | `onelake_path` | auto-derived | OneLake path for data staging |
-| `compute_resource` | - | Named Spark pool (deprecated alias: `spark_pool_name`, removed in 0.6.0) |
+| `spark_pool_name` | - | Named Spark pool |
 | `timeout_minutes` | 60 | Statement timeout in minutes |
 
 ## Python API

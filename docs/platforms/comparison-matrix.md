@@ -77,7 +77,7 @@ BenchBox supports multiple deployment modes for platforms, enabling the same ben
 | **TimescaleDB** | `self-hosted` | `self-hosted`, `cloud`                       | `timescaledb`, `timescaledb:cloud`              |
 | **PySpark**     | `local`       | `local`                                      | `pyspark`                                       |
 | **LakeSail**    | `local`       | `local`, `distributed`                       | `lakesail` (+ `lakesail-df` for DataFrame mode) |
-| **Velox**       | `local`       | `local`, `remote`                            | `velox` with `--platform-option deployment=local\|remote` |
+| **Velox**       | `local`       | `local`, `remote`                            | `velox:local`, `velox:remote`                   |
 | **DuckLake**    | `local`       | `local`, `postgres_catalog`, `cloud_storage` | `ducklake` with `--platform-option catalog=...` |
 
 ### First-Class Cloud Platforms (Dialect Inheritance)

@@ -72,13 +72,17 @@ benchbox run --platform clickhouse-cloud --benchmark tpch --scale 1.0 \
 | `password` | `CLICKHOUSE_CLOUD_PASSWORD` | - | Authentication password (required) |
 | `username` | `CLICKHOUSE_CLOUD_USER` | `default` | Username |
 | `database` | - | `default` | Target database |
-| `max_memory_usage` | - | - | Max memory per query (bytes) |
-| `max_execution_time` | - | - | Query timeout (seconds) |
+| `max_memory_usage` | - | `0` | Max memory per query (bytes) |
+| `max_execution_time` | - | `600` | Query timeout (seconds) |
 | `disable_result_cache` | - | `true` | Disable result cache for benchmarking |
 | `compression` | - | `true` | Enable network compression |
 | `optimize_after_load` | - | `false` | Run `OPTIMIZE TABLE ... FINAL` on each table after it loads, on tuned runs only |
 | `driver_version` | - | (latest) | Pin the clickhouse-connect package version (e.g. `0.10.0`) |
 | `driver_auto_install` | - | false | Auto-install the requested driver version via uv if missing |
+
+`max_memory_usage`, `max_execution_time`, `disable_result_cache`, and
+`compression` are `ClickHouseCloudAdapter` arguments in the Python API.
+`benchbox run` does not accept them as `--platform-option` keys.
 
 ### Testing a Specific clickhouse-connect Version
 
@@ -119,15 +123,21 @@ benchbox run --platform clickhouse-cloud --benchmark tpch --scale 1.0 \
 
 ### Performance Tuning
 
-```bash
-benchbox run --platform clickhouse-cloud --benchmark tpcds --scale 100 \
-    --platform-option max_memory_usage=16000000000
+The per-query memory limit and timeout are Python API arguments:
 
-benchbox run --platform clickhouse-cloud --benchmark tpch --scale 10 \
-    --platform-option max_execution_time=300
+```python
+from benchbox.platforms.clickhouse_cloud import ClickHouseCloudAdapter
+
+adapter = ClickHouseCloudAdapter(
+    host="abc123.us-east-2.aws.clickhouse.cloud",
+    password="your-password",
+    max_memory_usage=16000000000,
+    max_execution_time=300,
+)
 ```
 
-The first command raises the memory limit for complex queries. The second sets a query timeout.
+`max_memory_usage` raises the memory limit for complex queries, and
+`max_execution_time` sets a query timeout in seconds.
 
 ### Tuned Runs
 
