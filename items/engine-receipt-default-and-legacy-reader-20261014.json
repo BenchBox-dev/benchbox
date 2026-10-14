@@ -4,7 +4,7 @@
     "A legacy non-Polars bundle with streaming=true keeps its plain variant id",
     "Published results-data bytes and result_ids unchanged"
   ],
-  "context": "Found by the 2026-10-13 adversarial review of the core execution-variants batch (Polars blind spot, results O2). Not covered by the remediation; verified on develop 9400b62c4.\nBatch: _project/handoffs/polars-engine-followups-batch-20261014.md, started 2026-10-14",
+  "context": "Found by the 2026-10-13 adversarial review of the core execution-variants batch (Polars blind spot, results O2). Not covered by the remediation; verified on develop 9400b62c4.\nBatch: _project/handoffs/polars-engine-followups-batch-20261014.md, started 2026-10-14\nClose-out 2026-10-14: PR #2967, merge commit 60bb31f185ae13517a5e4d280aa1fc25fe3929ed. Runner attaches the adapter-hook default receipt (runtime_metadata.attach_execution_engine_receipt, called from runner._enrich_normalized_runtime_metadata); result writer keeps applied/applied_class nulls; legacy streaming reader limited to Polars DataFrame and platform_options.streaming. Verified by tests/integration/test_execution_engine_recording.py::test_cli_run_on_a_platform_without_engines_records_the_default_receipt (duckdb, pandas-df CLI runs) and tests/unit/core/results/test_execution_variant_schema.py (legacy reader, null receipt through writer/validator/anonymizer/loader). Explorer pipeline over results-data before/after: all snapshot tables and 413 published bundle digests identical. ADR amendment: D6 now limits the legacy streaming mapping to Polars DataFrame bundles from platform_options.streaming (no published row used platform.config.streaming=true).",
   "description": "## Problem\n- **No receipt on platforms without declared engines.** DuckDB and other 2.3 bundles from such platforms have no `platform.execution_engine` block (`core/results/schema.py:598-604`). Only pg-duckdb, Polars, Dask, Databricks and Velox build receipts (`polars_platform.py:162`, `pg_duckdb.py:149`, `dask_df.py:123`, `polars_df.py:90`).\n  - ADR D2-D4 call for a `platform_default` receipt (D3 at `adr-core-execution-variants.md:190-193`).\n  - Without one, a new DuckDB bundle cannot be told apart from a pre-2.3 bundle.\n- **The legacy streaming fallback is too broad.** `read_execution_engine` (`core/results/execution_variant.py:54-56,59-79`) applies it to any platform. Probe: a DuckDB bundle gives `duckdb+streaming`.\n  - It also reads `platform.config.streaming`, which ADR D6 (`:311-315`) does not list.\n  - So a legacy non-Polars bundle, or a 0.4.2 SQL-Polars bundle where streaming was a no-op, would get a `+streaming` identity. No committed results-data is affected today.\n\n## Change\n- Emit a default receipt from the base adapter or the schema writer.\n- Limit the legacy fallback to Polars DataFrame bundles and to `platform_options.streaming`. Drop the `config.streaming` source, or record it in D6.",
   "links": [
     "benchbox/core/results/execution_variant.py",
@@ -35,6 +35,14 @@
       "generation": "1133b78b3b994e86ac82723d8e7f4d26",
       "op": "take",
       "op_id": "4716b0751c8143eb9e84639a24b340a6",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-14T16:48:51Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "7219c595d34c4d21a56c9a0df7c68dd7",
       "session_id": "18469f668aeb45d59c8d4c94d2f79433"
     }
   ]
