@@ -221,7 +221,7 @@ modes remain available because they do not hold the request for execution.
 
 | Name | Type | Required | Default | Description |
 |---|---|---:|---|---|
-| `platform` | string | Yes | - | Target platform, for example `duckdb`, `snowflake`, or `polars-df`. |
+| `platform` | string | Yes | - | Target platform, for example `duckdb`, `snowflake`, or `polars-df`. A platform whose manifest declares deployment modes also accepts `<platform>:<mode>`, for example `clickhouse:server` or `timescaledb:cloud`; an undeclared mode is rejected. |
 | `benchmark` | string | Yes | - | Benchmark identifier, for example `tpch`, `tpcds`, or `joinorder`. |
 | `scale_factor` | number | No | `0.01` | Data scale factor; benchmark-specific defaults and constraints may still apply. |
 | `queries` | string or null | No | `null` | Comma-separated query IDs, for example `1,3,6`. |
@@ -241,6 +241,24 @@ modes remain available because they do not hold the request for execution.
 - `dry_run=true` uses the core dry-run executor and returns the plan/resources
   preview the MCP subset can model; it currently reports the default
   load/power plan rather than applying the `phases` parameter.
+- `dry_run=true` and `validate_only=true` apply `execution_engine`,
+  `platform_options` and the `<platform>:<mode>` selector through the same
+  core validation as a real run. A conflicting or unsupported combination is
+  rejected, and a valid one is echoed back as `execution_engine`, `deployment`
+  and `platform_options` in the response.
+- Every response from `run_benchmark`, `start_benchmark`,
+  `get_benchmark_status`, `cancel_benchmark` and `get_benchmark_result`
+  carries a `deprecations` list, empty when nothing deprecated was used. Each
+  entry is `{option, replacement, removed_in, message}`. `replacement` names
+  the MCP form to use instead, either an MCP parameter such as
+  `execution_engine='streaming'` or a platform name such as `clickhouse-server`,
+  and `removed_in` is the BenchBox release that drops the old spelling. The
+  list covers the request being answered, so a status call reports the
+  deprecations of the job it describes. `deprecations` is added to the
+  response next to the existing fields; no other field changes.
+- Under a remote security policy, `allowed_platforms` is matched against the
+  platform string exactly as sent. Listing `clickhouse` does not admit
+  `clickhouse:server`; list the selector form you want to allow.
 - `mode=data_only` generates benchmark data without running queries. MCP
   accepts this value but `benchbox run --mode` does not: on the CLI, use
   `--phases generate` for the same result. `sql` and `dataframe` select how
@@ -282,7 +300,14 @@ modes remain available because they do not hold the request for execution.
   `BENCHBOX_MCP_CLICKHOUSE_PROFILES` (see
   [MCP remote security](../operations/mcp-remote-security.md)). Requests carry
   and persist only the profile name; the port and TLS policy are resolved from
-  server configuration at execution time.
+  server configuration at execution time. `connection_profile` is accepted when
+  the request resolves to the server deployment: platform `clickhouse:server` or
+  `clickhouse-server`. It does not need `deployment_mode`.
+- ClickHouse `deployment_mode` is a deprecated spelling of the
+  `clickhouse:local` and `clickhouse:server` platform names and is answered
+  with a `deprecations` entry. The `mode` spelling is not accepted over MCP.
+  Velox `velox:remote` is rejected for the same reason as the Velox
+  `deployment` option below.
 - The authoritative option-to-consumer, security-class, alias, and rejection
   matrix is maintained in
   `docs/development/mcp-platform-option-contract.md`. Every allow-listed key

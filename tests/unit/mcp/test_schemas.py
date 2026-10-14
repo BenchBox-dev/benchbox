@@ -102,6 +102,14 @@ class TestValidatePlatformName:
     def test_invalid_characters_rejected(self):
         with pytest.raises(MCPValidationError, match="invalid characters"):
             validate_platform_name("platform@test")
+
+    def test_a_single_deployment_selector_is_allowed(self):
+        assert validate_platform_name("ClickHouse:Server") == "clickhouse:server"
+
+    @pytest.mark.parametrize("name", ["a:b:c", ":server", "clickhouse:", "clickhouse::server", "click house:server"])
+    def test_malformed_selectors_are_rejected(self, name):
+        with pytest.raises(MCPValidationError, match="invalid characters"):
+            validate_platform_name(name)
         with pytest.raises(MCPValidationError, match="invalid characters"):
             validate_platform_name("../platform")
 
@@ -193,6 +201,12 @@ class TestPlatformOptionAdmission:
                 assert contract.consumer
                 assert contract.security_class in {"execution", "resource", "device", "layout", "connection"}
                 assert all(alias != option_name for alias in contract.aliases)
+
+    def test_clickhouse_mode_alias_is_neither_advertised_nor_accepted(self):
+        assert MCP_PLATFORM_OPTION_CONTRACT["clickhouse"]["deployment_mode"].aliases == ()
+        for platform in ("clickhouse", "clickhouse-server"):
+            with pytest.raises(MCPValidationError, match="not authorized"):
+                validate_platform_options(platform, {"mode": "server"})
 
     def test_option_without_contract_is_rejected_fail_closed(self, monkeypatch):
         monkeypatch.delitem(MCP_PLATFORM_OPTION_CONTRACT["duckdb"], "threads")
@@ -452,9 +466,9 @@ class TestClickHouseConnectionBoundary:
 
     def test_local_deployment_cannot_acquire_a_network_path(self, monkeypatch):
         monkeypatch.setenv(MCP_CLICKHOUSE_PROFILE_ENV, json.dumps({"analytics": {"port": 9440, "secure": True}}))
-        with pytest.raises(MCPValidationError, match="deployment_mode='server'"):
+        with pytest.raises(MCPValidationError, match="requires the server deployment"):
             validate_platform_options("clickhouse", {"connection_profile": "analytics"})
-        with pytest.raises(MCPValidationError, match="deployment_mode='server'"):
+        with pytest.raises(MCPValidationError, match="requires the server deployment"):
             validate_platform_options("clickhouse", {"connection_profile": "analytics", "deployment_mode": "local"})
         assert validate_platform_options(
             "clickhouse", {"connection_profile": "analytics", "deployment_mode": "server"}
@@ -490,7 +504,7 @@ class TestClickHouseConnectionBoundary:
         monkeypatch.setenv(MCP_CLICKHOUSE_PROFILE_ENV, json.dumps({"analytics": {"port": 9440, "secure": True}}))
         with pytest.raises(MCPValidationError, match="not authorized"):
             validate_platform_options("clickhouse-df", {"port": 9001})
-        with pytest.raises(MCPValidationError, match="deployment_mode='server'"):
+        with pytest.raises(MCPValidationError, match="requires the server deployment"):
             validate_platform_options("clickhouse-df", {"connection_profile": "analytics"})
 
     def test_resolution_returns_the_server_owned_tuple(self, monkeypatch):
