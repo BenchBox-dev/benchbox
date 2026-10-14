@@ -25,9 +25,9 @@ two release Make targets handle the cut and finalization. Wheel install,
 release canary, and correctness remain the blocking gates; UAT is a
 non-blocking matrix campaign.
 
-This flow releases the Python package. It does not publish `benchbox.dev`: production Pages is
-deployed by `.github/workflows/site-deploy.yml`. `docs.yml` no longer deploys Pages; it builds the
-site and captures the protected-develop visual baseline only.
+This flow releases the Python package. It does not publish `benchbox.dev`: the site is built and
+deployed from `BenchBox-dev/benchbox-site` by its `.github/workflows/deploy.yml`. `docs.yml` does not
+deploy Pages; it builds the site and captures the protected-develop visual baseline only.
 
 ## Pre-merge release-required contract
 
@@ -288,13 +288,13 @@ raw commit subjects, which step 3 requires you to curate anyway.
    design (per A3 in `_project/decisions/single-repo-migration.md`); the
    release squash on `release` does not need to be replayed onto develop.
 
-**Deploying the site.** `docs.yml` no longer deploys on release. After
-`release-finalize` succeeds, dispatch `.github/workflows/site-deploy.yml` with
-`mode=deploy` from `develop`, for example
-`gh workflow run site-deploy.yml --ref develop -f mode=deploy`, and have the
-owner approve the `github-pages` deployment. `publication-deploy.yml` remains
-the manual fallback until `site-deploy.yml` records its first receipted
-production deploy.
+**The site.** A release needs no site deploy step. `docs.yml` does not deploy on release, and
+`release-finalize` sends nothing to the site. The site's `/docs/` and `/docs/dev/` pages build from
+the newest certified `develop` bundle, which `site-inputs.yml` builds and sends to
+`BenchBox-dev/benchbox-site` as a `core-bundle` dispatch after each successful push to `develop`.
+The release version on the landing page and the release blog posts come from `landing/` and
+`docs/blog/`, which reach the site only when replayed into `BenchBox-dev/benchbox-site` by pull
+request; see "Replaying core changes" in that repository's `AGENTS.md`.
 
 **Resuming finalization.** Run `make release-finalize VERSION=X.Y.Z` again after
 an interrupted merge, tag creation, or tag push. If the PR is still open, its
@@ -317,6 +317,8 @@ then PR back to `develop`. This realigns all six version sources
 (`benchbox/__init__.py`, `pyproject.toml`, the three `Current release:` doc
 markers, and the `landing/index.html` badge) with the latest published release,
 so `develop` no longer trails PyPI.
+The `landing/index.html` badge change reaches benchbox.dev only when replayed into
+`BenchBox-dev/benchbox-site`.
 
 The fast guard
 `tests/unit/release/test_changelog_tag_guard.py::test_repo_release_accounting_matches_*`

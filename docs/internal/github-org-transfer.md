@@ -106,8 +106,8 @@ Order:
    `https://www.benchbox.dev/` HTTP 200.
    `gh api repos/BenchBox-dev/BenchBox/pages` still has
    `cname=benchbox.dev`. This is **not** publish-path proof.
-   Production Pages is deployed by `.github/workflows/site-deploy.yml`;
-   `docs.yml` no longer deploys.
+   Production Pages is deployed from `BenchBox-dev/benchbox-site`;
+   `docs.yml` does not deploy.
 7. **After G4 and those 200s**, org-verify `benchbox.dev` (now click
    Verify). If GitHub says the domain is already verified by the user,
    remove user-account Pages verification **only after** the repo is in
@@ -138,6 +138,6 @@ GitHub Pages with 200).
 G7b: first post-transfer `push` to `release` proves Pages publish.
 Serving-only success at G5 does not close G7b.
 
-> Historical note: this transfer predates independent publication. Current production writes use
-> the `develop`-dispatched transaction writer in `publication-deployer-soak-and-retirement.md`;
-> production Pages is now deployed by `.github/workflows/site-deploy.yml`.
+> Historical note: this transfer predates independent publication and the site split. Production
+> Pages is now deployed from `BenchBox-dev/benchbox-site`; see
+> `publication-deployer-soak-and-retirement.md`.

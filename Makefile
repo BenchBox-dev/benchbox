@@ -51,11 +51,10 @@ $(DEVELOPMENT_TREE_ONLY_TARGETS): .development-tree-required
 .PHONY: publication-help
 publication-help:
 	@echo "Publication flow:"
-	@echo "  1. gh workflow run publication-deploy.yml --ref develop -f candidate_only=true"
-	@echo "  2. Select the numeric artifact ID from that run."
-	@echo "  3. gh workflow run publication-transaction.yml --ref develop -f kind=promotion -f candidate_artifact_id=<id>"
-	@echo "  4. Approve the github-pages environment once; the workflow validates and records the result."
-	@echo "  Retry with a new transaction run against the same artifact after a pre-write failure."
+	@echo "  benchbox.dev is built and deployed from BenchBox-dev/benchbox-site, not from this repository."
+	@echo "  Data and pipeline changes reach it through the site-inputs bundle (site-inputs.yml)."
+	@echo "  Changes under results-explorer/, website/, landing/, docs/blog/, _blog/ and"
+	@echo "  _project/design/site-inventory/ must be replayed there by pull request; see CONTRIBUTING.md."
 
 .PHONY: test-all
 test-all:

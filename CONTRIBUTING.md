@@ -258,6 +258,36 @@ We use ruff for fast Python linting and formatting with a 120-character line len
 
 Please update documentation when adding or modifying features. We use Sphinx for generating documentation.
 
+## Site and Explorer changes
+
+benchbox.dev, including the Results Explorer, is built and deployed from
+[`BenchBox-dev/benchbox-site`](https://github.com/BenchBox-dev/benchbox-site),
+not from this repository.
+
+Data and pipeline changes reach the site automatically. After each successful
+push to `develop`, `.github/workflows/site-inputs.yml` builds the certified
+`site-inputs-<sha>` bundle and sends a `core-bundle` dispatch to the site
+repository, whose deploy fetches and verifies that bundle.
+A failed bundle build, or a site deploy that cannot use the bundle, opens or
+updates a `site-bundle-failed` issue in this repository.
+
+Changes to the site source kept here do not deploy. They reach production only
+when they are replayed into `benchbox-site` by pull request:
+
+| Path here | Path in `benchbox-site` |
+| --- | --- |
+| `results-explorer/` | `explorer/` |
+| `docs/blog/` | `blog/` |
+| `_blog/` | `drafts/` |
+| `_project/design/site-inventory/` | `inventory/` |
+| `website/` | `website/` |
+| `landing/` | `landing/` |
+
+If your pull request touches one of these paths, say in its description that
+it needs a replay. The steps are in the "Replaying core changes" section of
+the `AGENTS.md` in `benchbox-site`. `make site-build` and `make site-check`
+build and test the site locally from this tree; they do not publish anything.
+
 ## Releasing
 
 External contributions land via PR against `develop` (squash-merge). Releases

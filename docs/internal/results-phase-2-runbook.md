@@ -4,9 +4,9 @@ Phase 2 is the PR-based community submission flow for the BenchBox public result
 corpus. The product boundary and launch rationale live in
 [`docs/internal/benchbox-results-platform-strategy.md`](benchbox-results-platform-strategy.md).
 This runbook documents the current operating model only: contributor PRs target
-`published-results`, CI validates them, maintainers review them, and the protected
-publication transaction is the normal path that rebuilds and deploys the static Explorer;
-no hosted API is involved.
+`published-results`, CI validates them, maintainers review them, and the
+`BenchBox-dev/benchbox-site` deploy, fed by the core bundle, is the normal path that
+rebuilds and deploys the static Explorer; no hosted API is involved.
 
 Authority is split by surface: `develop` owns code, validators, generators,
 Explorer admission and presentation policy, the recurring maintainer seed, and the
@@ -225,10 +225,12 @@ reads more protection into a green badge than is there:
 
 ### 1.3 Explorer publish path
 
-The static Explorer at `benchbox.dev/results/` publishes through the independent publication
-transaction from `develop` (candidate build plus `github-pages`-approved promotion in
-`publication-deployer-soak-and-retirement.md`). Production Pages is now deployed by
-`.github/workflows/site-deploy.yml`; `docs.yml` no longer deploys.
+The static Explorer at `benchbox.dev/results/` is built and deployed from
+`BenchBox-dev/benchbox-site` by its `.github/workflows/deploy.yml`. The site takes the snapshot and
+corpus from the certified core bundle (`site-inputs-<sha>`, built by `site-inputs.yml`) and builds the
+UI from its own `explorer/` copy of `results-explorer/`. A change to `results-explorer/` in this
+repository reaches production only when it is replayed into that repository by pull request; see
+"Replaying core changes" in its `AGENTS.md`. `docs.yml` does not deploy.
 `published-results` is **not** the Explorer's build source — it is the
 corpus-archive branch that contributor PRs target and that mirrors develop's
 `results-data/`.
@@ -239,12 +241,12 @@ corpus-archive branch that contributor PRs target and that mirrors develop's
 > The `docs.yml` build still gates Explorer steps on
 > `hashFiles('results-explorer/package.json')`, but a release that includes the
 > application now fails closed when the corpus, helper set, or generated
-> snapshot is missing. Production Pages is deployed by
-> `.github/workflows/site-deploy.yml`.
+> snapshot is missing. Production Pages is deployed from
+> `BenchBox-dev/benchbox-site`.
 >
 > This is a curated preview, not a broad leaderboard or full-cohort claim.
 > Completion evidence must pin the release SHA, artifact digest, deployment
-> ID, prior rollback target, environment approval, route/header checks, range
+> ID, prior rollback target, deploy receipt, route/header checks, range
 > reads, bundle privacy scan, and live custom-domain behavior. A develop
 > checkout, manual workflow build, or local static server is not deployed-site
 > evidence.

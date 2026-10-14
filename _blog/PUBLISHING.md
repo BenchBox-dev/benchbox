@@ -6,8 +6,7 @@
 
 Blog content is developed under `_blog/` in the single `BenchBox-dev/BenchBox` repository. When a post is ready, archive the final source under `_blog/{series}/published/` and place its ABlog copy under `docs/blog/` in the same change.
 
-The release branch excludes `_blog/` but retains `docs/blog/` for versioned artifacts. A pull request to `develop` validates the post and assembled public site. The public site publishes through the independent publication transaction from `develop` (candidate build plus `github-pages`-approved promotion), not through the release flow. The release flow publishes the Python package; its Pages deploy is a legacy fallback that is skipped while a recent
-independent publication owns Pages. See `docs/operations/publication-deployer-soak-and-retirement.md` for the promotion procedure.
+The release branch excludes `_blog/` but retains `docs/blog/` for versioned artifacts. A pull request to `develop` validates the post and the docs build. Merging to `develop` does not publish the post. benchbox.dev is built and deployed from `BenchBox-dev/benchbox-site`, which keeps copies of `docs/blog/` as `blog/` and of `_blog/` as `drafts/`. The post goes live when the change is replayed into that repository by pull request and merged to its `main` branch. The release flow publishes the Python package, not the site.
 
 ## Directory Structure
 
@@ -152,26 +151,9 @@ git add _blog/{series}/published/{post}.md \
 git commit -m "docs(blog): publish {title}"
 ```
 
-### 8. Publish through the publication transaction
+### 8. Replay the post into benchbox-site
 
-After the development PR merges to `develop`, publish with the normal production writer in
-`docs/operations/publication-deployer-soak-and-retirement.md`. Do not use `make release-cut` /
-`make release-finalize` for site publishing; that flow releases the Python package.
-
-```bash
-gh workflow run publication-deploy.yml --ref develop -f candidate_only=true
-# wait for success, then select the immutable numeric candidate artifact ID from that run
-gh workflow run publication-transaction.yml --ref develop -f kind=promotion -f candidate_artifact_id=<id>
-# approve the protected `github-pages` environment once in the GitHub Actions UI,
-# then watch the run to completion and verify the signed live receipt
-```
-
-The candidate builder resolves the current `develop` and `published-results` commits and the next
-journal generation, builds the site (landing page at `/`, docs at `/docs/`, blog at `/blog/`,
-Explorer at `/results/`), validates privacy and lane inputs, and uploads one retained candidate
-bundle. The transaction workflow validates that exact artifact before and after approval, writes it
-to Pages, probes the required public routes, signs the live receipt, and advances the durable
-journal head only after verification.
+After the development PR merges to `develop`, replay the change into `BenchBox-dev/benchbox-site` by pull request, following "Replaying core changes" in that repository's `AGENTS.md`. The replay copies `docs/blog/` to `blog/` and `_blog/` to `drafts/`, and `node scripts/replay-fidelity.mjs` must report 0 blocking. Squash-merging the replay pull request to `main` deploys the site. Do not use `make release-cut` / `make release-finalize` for site publishing; that flow releases the Python package.
 
 The post will appear at `https://benchbox.dev/blog/YYYY-MM-DD-{slug}/` and will automatically be included in:
 
@@ -192,5 +174,5 @@ The post will appear at `https://benchbox.dev/blog/YYYY-MM-DD-{slug}/` and will 
 - [ ] Post copied to `docs/blog/` in the same repository
 - [ ] Post added to `docs/blog/index.md` toctree
 - [ ] Development PR checks pass against `develop`
-- [ ] Site published via candidate build plus `github-pages`-approved transaction
-- [ ] Signed live receipt verified; post checked live at `https://benchbox.dev/blog/`
+- [ ] Change replayed into `BenchBox-dev/benchbox-site` and its pull request merged to `main`
+- [ ] Deploy run succeeded; post checked live at `https://benchbox.dev/blog/`
