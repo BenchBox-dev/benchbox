@@ -63,13 +63,14 @@ def test_supported_matrix_platforms_per_cohort() -> None:
         cohorts.setdefault((entry["benchmark"], entry["scale_factor"]), set()).add(entry["platform"])
 
     assert cohorts == {
-        ("tpch", "0.01"): {"duckdb", "datafusion"},
-        ("tpch", "0.1"): {"duckdb", "datafusion"},
-        ("tpch", "1.0"): {"duckdb", "clickhouse-local"},
+        ("tpch", "0.01"): {"duckdb", "datafusion", "clickhouse-local"},
+        ("tpch", "0.1"): {"duckdb", "datafusion", "clickhouse-local"},
+        ("tpch", "1.0"): {"duckdb", "clickhouse-local", "polars-df"},
         ("tpcds", "1"): {"duckdb", "datafusion", "clickhouse-local"},
         ("ssb", "0.01"): {"duckdb", "datafusion", "polars-df"},
         ("ssb", "0.1"): {"duckdb", "datafusion", "polars-df"},
     }
+    assert all(len(platforms) == 3 for platforms in cohorts.values())
 
 
 def test_ineligible_seed_cells_are_absent_from_the_matrix() -> None:

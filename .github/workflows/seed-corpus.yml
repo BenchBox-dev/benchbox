@@ -29,6 +29,10 @@ jobs:
             platform: datafusion
             scale_factor: "0.01"
             extras: datafusion
+          - benchmark: tpch
+            platform: clickhouse-local
+            scale_factor: "0.01"
+            extras: clickhouse-local
 
           - benchmark: tpch
             platform: duckdb
@@ -38,6 +42,10 @@ jobs:
             platform: datafusion
             scale_factor: "0.1"
             extras: datafusion
+          - benchmark: tpch
+            platform: clickhouse-local
+            scale_factor: "0.1"
+            extras: clickhouse-local
 
           - benchmark: tpch
             platform: duckdb
@@ -47,6 +55,10 @@ jobs:
             platform: clickhouse-local
             scale_factor: "1.0"
             extras: clickhouse-local
+          - benchmark: tpch
+            platform: polars-df
+            scale_factor: "1.0"
+            extras: polars
 
           - benchmark: tpcds
             platform: duckdb
