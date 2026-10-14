@@ -311,9 +311,6 @@
       "WA001": 1,
       "WA002": 2
     },
-    "tests/unit/scripts/test_new_platform_scaffold.py": {
-      "WA003": 1
-    },
     "tests/unit/scripts/test_pr_ready_make.py": {
       "WA003": 2
     },
