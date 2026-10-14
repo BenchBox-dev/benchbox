@@ -370,13 +370,20 @@ class SortedIngestionMixin:
         capability = get_capability(platform_key, TuningType.SORTING)
         return capability is not None and capability.rendered_via == "ddl"
 
+    def _ctas_sort_unsupported_reason(self, method: str) -> str | None:
+        return None
+
     def _unrealized_sorted_ingestion_reason(self) -> str:
         try:
-            mode, _method = self.resolve_sorted_ingestion_strategy()
+            mode, method = self.resolve_sorted_ingestion_strategy()
         except ValueError:
-            mode = None
+            mode, method = None, None
         if mode == "off":
             return "sorted_ingestion_mode=off"
+        if method is not None:
+            reason = self._ctas_sort_unsupported_reason(method)
+            if reason:
+                return reason
         return f"{self.platform_name} does not support CTAS sort"
 
     def _record_unrealized_sorted_ingestion(self, table: str, sorted_columns: list) -> None:

@@ -2536,7 +2536,7 @@ class TestCtasSortSql:
 
         assert result == "VACUUM SORT ONLY analytics.orders"
 
-    def test_ctas_method_generates_three_statements(self):
+    def test_ctas_method_is_disabled(self):
         adapter = _make_adapter(schema="public")
         col1 = Mock()
         col1.name = "l_orderkey"
@@ -2546,13 +2546,7 @@ class TestCtasSortSql:
         with patch.object(adapter, "resolve_sorted_ingestion_strategy", return_value=("on", "ctas")):
             result = adapter._build_ctas_sort_sql("lineitem", [col1, col2])
 
-        assert isinstance(result, list)
-        assert len(result) == 3
-        assert result[0] == (
-            "CREATE TABLE public.lineitem__ctas_sort AS SELECT * FROM public.lineitem ORDER BY l_orderkey, l_linenumber"
-        )
-        assert result[1] == "DROP TABLE public.lineitem"
-        assert result[2] == "ALTER TABLE public.lineitem__ctas_sort RENAME TO lineitem"
+        assert result is None
 
     def test_off_mode_returns_none(self):
         adapter = _make_adapter()

@@ -111,8 +111,13 @@ class AthenaAdapter(PlatformAdapter):
         if method != "ctas":
             raise ValueError(f"Sorted ingestion method '{method}' is not supported for Athena.")
 
-        order_by = ", ".join(column.name for column in sort_columns)
-        return f"CREATE TABLE {table_name} AS SELECT * FROM {table_name} ORDER BY {order_by}"
+        return None
+
+    def _ctas_sort_unsupported_reason(self, method: str) -> str | None:
+        return (
+            "Athena CTAS sort is disabled: a CTAS cannot target its own source table, and a sorted copy "
+            "needs its own external_location plus a catalog swap that BenchBox does not implement"
+        )
 
     def _validate_configuration(self) -> None:
         import os

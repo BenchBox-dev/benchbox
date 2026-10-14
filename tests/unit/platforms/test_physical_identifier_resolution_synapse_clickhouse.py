@@ -252,7 +252,7 @@ class TestSynapsePhysicalIdentifiers:
             "CLUSTERED COLUMNSTORE INDEX)"
         )
 
-    def test_ctas_sort_uses_physical_table_and_columns(self, synapse_adapter):
+    def test_ctas_sort_is_disabled(self, synapse_adapter):
         columns = [
             TuningColumn(name="L_SHIPDATE", type="DATE", order=1),
             TuningColumn(name="L_ORDERKEY", type="INTEGER", order=2),
@@ -261,10 +261,7 @@ class TestSynapsePhysicalIdentifiers:
         with patch.object(synapse_adapter, "resolve_sorted_ingestion_strategy", return_value=("on", "ctas")):
             sql = synapse_adapter._build_ctas_sort_sql("LINEITEM", columns)
 
-        assert sql == (
-            "CREATE TABLE [dbo].[lineitem__ctas_sort] WITH (DISTRIBUTION = ROUND_ROBIN, HEAP) AS "
-            "SELECT * FROM [dbo].[lineitem] ORDER BY l_shipdate, l_orderkey"
-        )
+        assert sql is None
 
 
 class TestTuningBuildersDoNotFoldCaseByHand:

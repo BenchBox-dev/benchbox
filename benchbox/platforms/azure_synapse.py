@@ -155,12 +155,12 @@ class AzureSynapseAdapter(PlatformAdapter):
         if method != "ctas":
             raise ValueError(f"Sorted ingestion method '{method}' is not supported for Azure Synapse.")
 
-        physical_table = self.resolve_physical_table(table_name)
-        order_by = ", ".join(self.resolve_physical_column(table_name, column.name) for column in sort_columns)
-        temp_table = f"{physical_table}__ctas_sort"
+        return None
+
+    def _ctas_sort_unsupported_reason(self, method: str) -> str | None:
         return (
-            f"CREATE TABLE [{self.schema}].[{temp_table}] WITH (DISTRIBUTION = ROUND_ROBIN, HEAP) AS "
-            f"SELECT * FROM [{self.schema}].[{physical_table}] ORDER BY {order_by}"
+            "Azure Synapse CTAS sort is disabled: a sorted copy must keep the original distribution and "
+            "columnstore index and be swapped in with RENAME OBJECT, which BenchBox does not implement"
         )
 
     def get_target_dialect(self) -> str:

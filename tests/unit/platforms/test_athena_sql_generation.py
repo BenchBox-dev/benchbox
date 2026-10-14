@@ -37,22 +37,14 @@ def _make_adapter(**kwargs):
 
 
 class TestAthenaBuildCtasSortSql:
-    def test_ctas_mode_returns_correct_sql(self):
+    def test_ctas_mode_is_disabled_with_reason(self):
         adapter = _make_adapter()
         col = Mock()
         col.name = "l_orderkey"
         with patch.object(adapter, "resolve_sorted_ingestion_strategy", return_value=("on", "ctas")):
             result = adapter._build_ctas_sort_sql("lineitem", [col])
-        assert result == "CREATE TABLE lineitem AS SELECT * FROM lineitem ORDER BY l_orderkey"
-
-    def test_ctas_multi_column_order_by(self):
-        adapter = _make_adapter()
-        col1, col2 = Mock(), Mock()
-        col1.name = "l_orderkey"
-        col2.name = "l_linenumber"
-        with patch.object(adapter, "resolve_sorted_ingestion_strategy", return_value=("on", "ctas")):
-            result = adapter._build_ctas_sort_sql("lineitem", [col1, col2])
-        assert "ORDER BY l_orderkey, l_linenumber" in result
+        assert result is None
+        assert "own source table" in adapter._ctas_sort_unsupported_reason("ctas")
 
     def test_off_mode_returns_none(self):
         adapter = _make_adapter()
