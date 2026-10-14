@@ -1,43 +1,84 @@
 # Merge and trunk governance
 
-This document defines how a change reaches `refs/heads/develop` and how `develop` is kept green afterwards: the required checks, the review requirement for result-affecting changes, auto-merge, the post-merge `trunk.yml` run, the revert-first policy and the nightly run. The repository does not use a GitHub merge queue or the strict up-to-date rule; the file keeps its original name so existing links work. The decision and its evidence are in `_project/decisions/merge-queue-retirement-2026-10-03.md`.
+This document defines how a change reaches `refs/heads/develop` and how
+`develop` stays green afterwards: required checks, review of result-affecting
+changes, auto-merge, the post-merge `trunk.yml` run, the revert-first policy
+and the nightly run. The repository uses no GitHub merge queue and no strict
+up-to-date rule; the file keeps its original name so existing links work.
+Decision and evidence:
+`_project/decisions/merge-queue-retirement-2026-10-03.md`.
 
 ---
 
 ## 1. Governance Invariants
 
-1. **Squash Integration Only:** All pull requests targeting `develop` must be integrated via squash merge. Merge commits and rebase-and-merge remain forbidden.
-2. **Zero Bypass Actors:** The `develop-squash-only` ruleset enforces `bypass_actors: []`. No user, bot, or organization admin may bypass status checks, linear history or required thread resolution through that ruleset. Code-owner review is disabled.
-3. **Soundness Review Boundary:** A result-affecting pull request (a path in `.github/soundness-paths.txt`) needs a completed external adversarial review of its current head. The required `oracle-review` check passes only when the `benchbox-oracle` app's latest review of that head reports success, or a listed attester has posted the stand-in approval for that head after an independent review. The reviewer's Critical and High findings are posted as PR review threads, and required thread resolution makes them binding. A scheduled digest lists the soundness-path commits that merged and the review signal each had, and opens a tracker item for any with none. There is no attestation in the PR body: the author of a change can write that text, so it cannot bind, and the `soundness-flag` check that tested for it is deleted.
-4. **Fail-Closed Execution:** A required check that cannot establish its result must report failure, not success.
+1. **Squash Integration Only:** Every pull request into `develop` must be
+   squash-merged. Merge commits and rebase-and-merge remain forbidden.
+2. **Zero Bypass Actors:** The `develop-squash-only` ruleset sets
+   `bypass_actors: []`: no user, bot or organization admin may bypass its
+   status checks, linear history or required thread resolution. Code-owner
+   review is disabled.
+3. **Soundness Review Boundary:** A result-affecting pull request (one that
+   changes a path in `.github/soundness-paths.txt`) needs a completed external
+   adversarial review of its current head. The required `oracle-review` check
+   passes only on the `benchbox-oracle` app's successful latest review of that
+   head, or on a listed attester's stand-in approval for that head after an
+   independent review. The reviewer posts Critical and High findings as PR
+   review threads, and required thread resolution makes them binding. A
+   scheduled digest lists merged soundness-path commits with each one's review
+   signal, and opens a tracker item for any with none. There is no PR-body
+   attestation: the author can write that text, so it cannot bind, and the
+   `soundness-flag` check that tested for it is deleted.
+4. **Fail-Closed Execution:** A required check that cannot establish its
+   result must report failure, not success.
 
 ---
 
 ## 2. Required Status Checks Contract
 
-Seven status checks are required on `develop`: six always-reporting unit jobs in `.github/workflows/ci.yml`, and `oracle-review`. `.github/ci-units.yml` maps changed paths to units, an untouched unit reports success, and a touched unit succeeds only when every job it requires succeeded (a skipped required job fails the unit). The checks run on the pull request head. The strict up-to-date rule is off, so a pull request does not need to be current with `develop` to merge.
+`develop` requires seven status checks: six always-reporting unit jobs in
+`.github/workflows/ci.yml`, plus `oracle-review`. `.github/ci-units.yml` maps
+changed paths to units. An untouched unit reports success; a touched unit
+succeeds only if every job it requires succeeded, so a skipped required job
+fails it. Checks run on the pull request head, which need not be current with
+`develop` to merge.
 
 | Required Context | Workflow Path | Contract |
 | --- | --- | --- |
-| `core` | `.github/workflows/ci.yml` | Lint, type checks, fast tests, and parity gates for the pull request head. The heavy tier (medium-test, correctness-gate, required-local-cases, plan-capture-gate, DataFusion integration, and the macOS and Windows TPC-H binary-framing matrix) is skipped on `pull_request` unless a carve-out applies (soundness paths, packaging paths); `trunk.yml` runs the medium tier, the correctness gate and `required-local-cases` on `develop` after each merge. |
+| `core` | `.github/workflows/ci.yml` | Lint, type checks, fast tests and parity gates on the PR head. On `pull_request`, the heavy tier (medium-test, correctness-gate, required-local-cases, plan-capture-gate, DataFusion integration, and the macOS and Windows TPC-H binary-framing matrix) is skipped unless a carve-out applies (soundness paths, packaging paths); `trunk.yml` runs the medium tier, the correctness gate and `required-local-cases` on `develop` after each merge. |
 | `explorer` | `.github/workflows/ci.yml` | Token scan, Vitest, CLI-versus-explorer parity, and the blocking Chromium suite on explorer changes. Reports success on unaffected paths. |
 | `results-data` | `.github/workflows/ci.yml` | Corpus inventory and validation, submission validator sync, and corpus contract tests on results-data changes. |
 | `docs` | `.github/workflows/ci.yml` | Sphinx build with warnings as errors, example validation, and spell check on docs changes. |
 | `landing` | `.github/workflows/ci.yml` | Site theme token scan on landing changes. |
 | `tooling` | `.github/workflows/ci.yml` | Every event. Base-branch guard, comment policy, content guard, skill integrity, and audit checks by path. |
-| `oracle-review` | `.github/workflows/oracle-review.yml` (job and check name `oracle-review`) | Passes when no soundness path changes, or when the `benchbox-oracle` app's latest review of the current head, submitted after any retarget, reports success and none of the app's threads is unresolved. Each new head gets its own oracle result (`.github/workflows/oracle-verdict.yml`; rerun with a `/oracle-review` comment): a full review, a follow-up on the files whose patch changed, or the earlier decision carried when the patch is unchanged after a rebase or a prose-only push (Rounds in `docs/internal/oracle-review-v2.md`). When the oracle cannot review or its verdict is overruled, an independent stand-in review of the exact head followed by a `Stand-in oracle review: APPROVE <full head SHA>` comment from an account in `STANDIN_ATTESTERS`, posted after the oracle's latest review of that head, satisfies the check (dev-loop ADR, D4; `docs/internal/soundness-drain.md`). A plain owner comment does not. |
+| `oracle-review` | `.github/workflows/oracle-review.yml` (job and check name `oracle-review`) | Passes when no soundness path changes, or when the `benchbox-oracle` app's latest review of the current head, submitted after any retarget, reports success and none of the app's threads is unresolved. Each new head gets its own oracle result (`.github/workflows/oracle-verdict.yml`; rerun with a `/oracle-review` comment): a full review, a follow-up on files whose patch changed, or the earlier decision carried over when a rebase or prose-only push leaves the patch unchanged (Rounds in `docs/internal/oracle-review-v2.md`). If the oracle cannot review or its verdict is overruled, the check also passes on an independent stand-in review of the exact head followed by a `Stand-in oracle review: APPROVE <full head SHA>` comment from an account in `STANDIN_ATTESTERS`, posted after the oracle's latest review of that head (dev-loop ADR, D4; `docs/internal/soundness-drain.md`). A plain owner comment does not. |
 
-The public-site visual comparison runs only when a render input changed. It compares against the exact protected base SHA, captured by `.github/workflows/docs.yml` on every push to `develop`. The comparison is advisory until the public site is in production: the job still runs and uploads its report, but a difference or a missing baseline does not block a merge. It becomes a required check again when the site is in production.
+The public-site visual comparison runs only when a render input changed, and
+compares against the exact protected base SHA that `.github/workflows/docs.yml`
+captures on every push to `develop`. It is advisory until the public site is
+in production: the job runs and uploads its report, but a difference or a
+missing baseline does not block a merge. Once the site is in production it
+becomes a required check again.
 
-The pull request that switches the public-site renderer from Sphinx to Astro needs an exact-head approval for its PR head, and the baseline producer must publish an Astro-rendered baseline for its merge commit. The steps are in the Renderer-switch pull request section of [Public-site visual baseline](../internal/public-site-visual-baseline.md).
+The pull request that switches the public-site renderer from Sphinx to Astro
+needs an exact-head approval for its PR head, and the baseline producer must
+publish an Astro-rendered baseline for its merge commit. See the
+Renderer-switch pull request section of
+[Public-site visual baseline](../internal/public-site-visual-baseline.md).
 
 ---
 
 ## 3. Merge Path
 
-A pull request is armed with `make pr-arm`, which enables auto-merge for the exact head. GitHub merges the pull request with a squash commit once every required check is green on that head and all review threads are resolved. There is no queue and no combined-tree build before the merge. Because the strict up-to-date rule is off, a branch behind `develop` merges without a refresh unless it conflicts. A changed head needs fresh CI and a fresh oracle review or stand-in approval before re-arming.
+A pull request is armed with `make pr-arm`, which enables auto-merge for the
+exact head. GitHub squash-merges the pull request once every required check is
+green on that head and all review threads are resolved. No queue or
+combined-tree build runs first. A branch behind `develop` merges without a
+refresh unless it conflicts. A changed head needs fresh CI and a fresh oracle
+review or stand-in approval before re-arming.
 
-Slow-marked reproducer jobs remain required PR CI through the `core` unit, because the post-merge run has no slow-signature lane.
+Slow-marked reproducer jobs stay required in PR CI through the `core` unit,
+because the post-merge run has no slow-signature lane.
 
 ---
 
@@ -45,76 +86,171 @@ Slow-marked reproducer jobs remain required PR CI through the `core` unit, becau
 
 ### A. Submitting & Arming a PR
 
-Developers submit and arm PRs through repository standard Makefile targets. `make pr-open` opens the PR against `develop` with a currency check. When the PR is ready for merge, `make pr-ready` runs the exact readiness transaction and arms it:
+Use the standard Makefile targets:
 
 ```bash
 make pr-open
 make pr-ready PR=<number> HEAD=$(git rev-parse HEAD) EVIDENCE=<readiness.json>
 ```
 
-- `make pr-open` opens or reuses the pull request. It refuses a branch that is not a revert when the newest `trunk.yml` run on `develop` finished red more than 30 minutes ago (see section 5).
-- `make pr-ready` verifies the exact checkout, live PR identity, review state, required checks, holds, and readiness evidence before arming auto-merge.
-- Once the required checks are green on the head, GitHub merges the pull request.
+1. `make pr-open` opens or reuses the pull request against `develop`, with a
+   currency check. It refuses a non-revert branch once the newest
+   `trunk.yml` run on `develop` has been red for more than 30 minutes (see
+   section 5).
+2. When the PR is ready to merge, `make pr-ready` runs the exact readiness
+   transaction: it verifies the exact checkout, live PR identity, review
+   state, required checks, holds and readiness evidence, then arms
+   auto-merge.
+3. GitHub merges the PR once the required checks are green on the head.
 
 ### B. Soundness Path Withholding
 
-If a PR modifies any soundness path (e.g. `benchbox/core/equivalence/`, `benchbox/core/expected_results/`, `soundness_paths.py`):
+If a PR changes any soundness path (for example `benchbox/core/equivalence/`,
+`benchbox/core/expected_results/` or `soundness_paths.py`):
 
-1. Withdraw readiness before editing an armed PR (`make pr-landing-withdraw PR=<n> HEAD=<sha>`). After the last push, obtain CI and the oracle's success review (or the stand-in approval) on that exact head before arming with `make pr-arm`. The `no-auto-merge` label blocks arming only; to hold an armed PR, disable auto-merge (`gh pr merge <n> --disable-auto`) or withdraw it as above, then add the label.
-2. The required `oracle-review` check must pass on the current head before the pull request can merge.
-3. A soundness-path pull request that sits green and unarmed is reported by the soundness-drain digest (`make soundness-drain-report`, see `docs/internal/soundness-drain.md`), not by the nightly green-unmerged sweep, which skips soundness-gated pull requests.
+1. Withdraw readiness before editing an armed PR
+   (`make pr-landing-withdraw PR=<n> HEAD=<sha>`). After the last push, get
+   CI and the oracle's success review (or the stand-in approval) on that exact
+   head, then arm with `make pr-arm`. The `no-auto-merge` label blocks arming
+   only; to hold an armed PR, disable auto-merge
+   (`gh pr merge <n> --disable-auto`) or withdraw it as above, then add the
+   label.
+2. The required `oracle-review` check must pass on the current head before the
+   PR can merge.
+3. A soundness-path PR that sits green and unarmed is reported by the
+   soundness-drain digest (`make soundness-drain-report`, see
+   `docs/internal/soundness-drain.md`), not by the nightly green-unmerged
+   sweep, which skips soundness-gated PRs.
 
 ---
 
 ## 5. Trunk Run and Revert
 
-`.github/workflows/trunk.yml` runs on pushes to `develop`: the fast lane, the four-shard medium tier, the correctness gate, and the `required-local-cases` job (`make test-required-local-cases`, which fails the run if a required local-engine case skips). The `dist-artifact` job builds and verifies the release wheel and sdist. The test-count ceiling is retired; marker and forbidden-path guards remain. This workflow tests `develop` in its merged state and is not a required PR check.
+`.github/workflows/trunk.yml` runs on pushes to `develop` and tests it in its
+merged state; it is not a required PR check. It runs the fast lane, the
+four-shard medium tier, the correctness gate, and the `required-local-cases`
+job (`make test-required-local-cases`, which fails the run if a required
+local-engine case skips). The `dist-artifact` job builds and verifies the
+release wheel and sdist. Marker and forbidden-path guards remain; the
+test-count ceiling is retired.
 
-Runs use `concurrency.queue: max` with running work retained, so later pushes do not replace earlier pending runs. Results can lag during a burst of merges. This protects queued runs for delivered events, not push-event delivery itself. Release admission requires the latest exact-commit trunk `push` run on `develop` to succeed and have a matching artifact attempt; it never falls back to an older success. See [the release artifact contract](release-artifacts.md).
+Runs use `concurrency.queue: max` with running work retained, so later pushes
+do not replace earlier pending runs; results can lag during a burst of merges.
+This protects queued runs for delivered events, not push-event delivery itself.
+Release admission requires the latest exact-commit trunk `push` run on `develop`
+to succeed and have a matching artifact attempt; it never falls back to an
+older success. See [the release artifact contract](release-artifacts.md).
 
-When a trunk run fails, the culprit is reverted first and fixed afterwards:
+When a trunk run fails, revert the culprit first and fix it afterwards:
 
 ```bash
 make trunk-revert PR=<number>
 ```
 
-`make pr-open` refuses a branch that is not a revert when the newest `trunk.yml` run on `develop` finished red more than 30 minutes ago (`scripts/trunk_revert.py gate`), so nothing new stacks on a broken tip. It does not block while a newer run is still in progress, or when `gh` cannot read the runs; it warns instead. A trunk that stays red for more than two hours with no revert pull request open is a risk signal for the owner, who should revert the culprit; nothing enforces the two-hour figure.
+So nothing new stacks on a broken tip, `make pr-open` refuses a non-revert
+branch when the newest `trunk.yml` run on `develop` finished red more than 30
+minutes ago (`scripts/trunk_revert.py gate`). It warns instead of blocking
+while a newer run is in progress or when `gh` cannot read the runs. If trunk
+stays red over two hours with no revert pull request open, that is a risk
+signal for the owner, who should revert the culprit; nothing enforces the
+two-hour figure.
 
-More than one medium-tier shard kill a day means the shard's memory sampler output should be read for the test that is growing a worker.
+If more than one medium-tier shard is killed in a day, someone should read
+that shard's memory sampler output for the test that is growing a worker.
 
-If a trunk failure is traced to a pull request that was green on an older base more than about once a week, the owner should consider reinstating the strict up-to-date rule and its refresh cost.
+If a trunk failure traces to a pull request that was green on an older base
+more than about once a week, the owner should consider reinstating the strict
+up-to-date rule and its refresh cost.
 
 ---
 
 ## 6. Post-Merge Soundness Digest
 
-`.github/workflows/soundness-merge-digest.yml` runs daily and on demand. It runs `_project/scripts/soundness_merge_digest.py`, which reads the first-parent commits on `develop` since a stored checkpoint and keeps those that change a path on `.github/soundness-paths.txt`, counting both sides of a rename. Each commit is judged by the manifest and predicate (`_project/scripts/soundness_paths.py`) as they stood at its first parent, so a later commit that removes a rule cannot hide an earlier change, and a commit that removes a rule cannot hide its own. The manifest, the predicate, the digest script and the digest workflow are always kept, whatever the manifest says. The digest script and workflow are also listed in the manifest. For each one it finds the pull request that merged into `develop` as that commit and records which review signal the pull request had at merge, for its final content:
+`.github/workflows/soundness-merge-digest.yml` runs daily and on demand. It
+runs `_project/scripts/soundness_merge_digest.py`, which reads the
+first-parent commits on `develop` since a stored checkpoint and keeps those
+that change a path in `.github/soundness-paths.txt`, counting both sides of a
+rename. Each commit
+is judged by the manifest and predicate (`_project/scripts/soundness_paths.py`)
+as they stood at its first parent, so a commit that removes a rule cannot hide
+its own change or an earlier one. The manifest, predicate, digest script and
+digest workflow are always kept, whatever the manifest says; the script and
+workflow are also listed in it.
 
-- the `benchbox-oracle` app's latest review of the last content commit, or of a merge that only refreshed the base after it, submitted after any retarget, when that review reports success;
-- a stand-in approval of the merged head, posted after any retarget and after the oracle's latest review of that head;
-- for merges before the cut-over (2026-10-09 00:16 UTC), the Codex connector's submitted review of the last content commit, or of a merge that only refreshed the base after it, or its thumbs-up reaction, or
-- an external review posted as a PR comment that names its reviewer (`Reviewer: codex`, `muse` or `agy`).
+For each kept commit, the digest finds the pull request that merged into
+`develop` as that commit and records which review signal it had at merge for
+its final content:
 
-The reaction and the comment must come after the last content commit and before the merge. The digest dates that commit by when GitHub first ran this pull request's workflows for it, because commit dates are set by the author. When that commit has no run (for example it was pushed with `[skip ci]`, or its runs expired), the digest uses the first run of a later commit, and when there is none, the merge time. Each fallback makes the date later, so it can report a gap that was not one and cannot hide a real gap. A review submitted after the merge, or still pending, does not count.
+- the `benchbox-oracle` app's latest review, submitted after any retarget,
+  of the last content commit or of a later merge that only refreshed the
+  base, when that review reports success;
+- a stand-in approval of the merged head, posted after any retarget and after
+  the oracle's latest review of that head;
+- for merges before the cut-over (2026-10-09 00:16 UTC), the Codex
+  connector's submitted review of the last content commit (or of a later
+  base-only refresh merge), or its thumbs-up reaction; or
+- an external review posted as a PR comment naming its reviewer
+  (`Reviewer: codex`, `muse` or `agy`).
 
-A merge of `develop` into the branch is a refresh, not content, when it has two parents, one of them already on `develop`, and its tree equals what merging the parents mechanically produces. A merge that needed conflict resolution, carries any other change, merges two branches that are not on `develop`, or has more than two parents counts as content. An "eyes" reaction is not a signal.
+The reaction and comment must come after the last content commit and before
+the merge. A review submitted after the merge, or still pending, does not
+count. An "eyes" reaction is not a signal.
 
-An oracle or connector review names a commit, so it cannot be backdated. A posted review is text the author can write, so it shows that a review was recorded, not what it examined. A run that lists no pull request is matched to one by repository and branch name, so an author who reuses a branch name across pull requests, shares a commit between them and pushes the final content with `[skip ci]` can make the date earlier than it was. That needs deliberate set-up of the same kind as posting a review comment that was never written, and the digest does not defend against it.
+Because authors set commit dates, the digest dates the last content commit by
+GitHub's first run of this PR's workflows for it. With no such run (for
+example, pushed with `[skip ci]` or runs expired), it uses the first run of a
+later commit, then the merge time. Each fallback moves the date later, so it
+can report a false gap but cannot hide a real one.
 
-A commit gets an issue labelled `soundness-review-gap` when it has no signal, no merged pull request, or a reviewer thread that was resolved with no commit after it. An agent runs the external review and either records a clean result on the issue or opens a fix or revert pull request.
+A merge of `develop` into the branch is a refresh, not content, when it has
+two parents, one already on `develop`, and its tree equals the mechanical
+merge of the parents. A merge is content if it needed conflict resolution,
+carries any other change, merges two branches not on `develop`, or has more
+than two parents.
 
-The checkpoint is stored in the body of the one issue labelled `soundness-merge-digest`, and it must be on the first-parent history of `develop`. A missing issue, a second issue with the label, a body without the checkpoint marker, or a checkpoint off that history fails the run, so a damaged checkpoint cannot silently skip commits. Record the first checkpoint by dispatching the workflow with `bootstrap` set; the run reports nothing and later runs report the commits after it. Restore a damaged checkpoint with `--since <sha> --apply`. A read that fails or comes back incomplete also fails the run and leaves the checkpoint where it was.
+A commit gets an issue labelled `soundness-review-gap` when it has no signal,
+no merged pull request, or a reviewer thread resolved with no later commit. An
+agent runs the external review and either records a clean result on the issue
+or opens a fix or revert pull request.
 
-Run it locally without changing anything: `uv run -- python _project/scripts/soundness_merge_digest.py --since <sha>`.
+The checkpoint lives in the body of the one issue labelled
+`soundness-merge-digest` and must be on the first-parent history of
+`develop`. The run fails on a missing issue, a second labelled issue, a body
+without the checkpoint marker, or a checkpoint off that history, so a damaged
+checkpoint cannot silently skip commits. A failed or incomplete read also
+fails the run and leaves the checkpoint unchanged. To record the first
+checkpoint, dispatch the workflow with `bootstrap` set; that run reports
+nothing, and later runs report the commits after it. Restore a damaged
+checkpoint with `--since <sha> --apply`. Run it locally without changing
+anything:
+`uv run -- python _project/scripts/soundness_merge_digest.py --since <sha>`.
+
+An oracle or connector review names a commit, so it cannot be backdated.
+Known limits: a posted review is text the author can write, so it shows a
+review was recorded, not what it examined. A run that lists no pull request is
+matched to one by repository and branch name, so an author who reuses a branch
+name across PRs, shares a commit between them and pushes the final content with
+`[skip ci]` can make the date earlier than it was. That needs deliberate
+set-up, like posting a review comment that was never written, and the digest
+does not defend against it.
 
 ---
 
 ## 7. Nightly Run
 
-`.github/workflows/nightly.yml` runs once a day (06:00 UTC) and on dispatch. It runs the slow and scheduled checks that no required check covers, plus the advisory ruleset drift check, which no longer runs in `ci.yml` (it ran only in merge groups) and is also run by hand after a settings change. A nightly failure never blocks a merge.
+`.github/workflows/nightly.yml` runs daily at 06:00 UTC and on dispatch. It
+runs the slow and scheduled checks no required check covers, plus the advisory
+ruleset drift check, which is also run by hand after a settings change and no
+longer runs in `ci.yml` (it ran only in merge groups). A nightly failure never
+blocks a merge.
 
 ---
 
 ## 8. Historical: the Merge Queue
 
-Until 2026-10-03 the repository ran a GitHub merge queue on `develop` with the strict up-to-date rule. The queue's configuration, the follower visual baseline policy and the queue canary rehearsal are kept in `_project/decisions/native-merge-queue-activation-20260822.md`, `_project/decisions/visual-baseline-site-equivalent-ancestor-2026-09-27.md` and `docs/internal/merge-queue-canary-runbook.md`. They no longer apply.
+Until 2026-10-03 the repository ran a GitHub merge queue on `develop` with the
+strict up-to-date rule. The queue configuration, follower visual baseline
+policy and queue canary rehearsal are in
+`_project/decisions/native-merge-queue-activation-20260822.md`,
+`_project/decisions/visual-baseline-site-equivalent-ancestor-2026-09-27.md`
+and `docs/internal/merge-queue-canary-runbook.md`. They no longer apply.
