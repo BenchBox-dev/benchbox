@@ -6,7 +6,7 @@
     "If enforcement is declined: the reason is recorded in site-split-40 and the closeout lists raw-until-packaged as a known manual step with an owner",
     "The batch's allowed-actions list names Seed Corpus dispatch explicitly, either allowed with conditions or excluded"
   ],
-  "context": "Raised by the 2026-10-13 adversarial review (handoff revision 9, finding 4). Evidence: `gh api repos/BenchBox-dev/benchbox/actions/runs/38331461283` actor joeharris76, event workflow_dispatch; PR #2930 commits f4ef44943 (benchbox-bot) and a341576e3 (Joe Harris); `git grep -n anonymized origin/develop -- src scripts .github _project/scripts` matched only check_artifact_privacy.py; 413 bundles on develop have anonymized true, 6 new ones false. A single bundle was inspected: runner paths and the Azure kernel string, no personal data seen; the other five were not scanned. Low sensitivity does not remove the policy question.",
+  "context": "Raised by the 2026-10-13 adversarial review (handoff revision 9, finding 4). Evidence: `gh api repos/BenchBox-dev/benchbox/actions/runs/38331461283` actor joeharris76, event workflow_dispatch; PR #2930 commits f4ef44943 (benchbox-bot) and a341576e3 (Joe Harris); `git grep -n anonymized origin/develop -- src scripts .github _project/scripts` matched only check_artifact_privacy.py; 413 bundles on develop have anonymized true, 6 new ones false. A single bundle was inspected: runner paths and the Azure kernel string, no personal data seen; the other five were not scanned. Low sensitivity does not remove the policy question. Correction 2026-10-14 (Step 9): raw bundles do not pass CI. #2930 run 38342732441 failed `results-data-check` (plus `test`, `site-build`, `docs-build`, `results-data`, `landing`, `docs`, `core`) on the raw content. Mechanical enforcement has now landed as PR BenchBox-dev/benchbox#2993: `export_anonymized_errors` in benchbox/validation/bundle.py, enforced in results-data/validate_corpus.py (CI results-data-check) and scripts/validate_submission.py (sync mirror path). #2930 stays owner-held for manual salt packaging and rebase; follow-up tracked in site-split-64-enforce-anonymized-flag.",
   "description": "Item site-split-40 step 6 says to wait for natural core merges and not to create artificial core changes; if none arrive, ask the owner. Seed Corpus run 38331461283 was dispatched by hand (actor joeharris76, workflow_dispatch) on 2026-10-13, and seed PR #2930 carries follow-up commit a341576e from the same session. No owner approval is recorded, and manual Seed Corpus dispatch is not on the batch's allowed-actions list. Natural bundles with a changed corpus already existed from 2026-10-12 12:35Z (the deploy gate printed \"corpus changed\"); they could not deploy because of the pipeline defects in items 60-62, not because no natural change existed.\n\nSeparately, the 6 bundles in #2930 have export.anonymized=false. A search of src, scripts, .github and _project/scripts at origin/develop found no check that rejects such bundles (only tuning-diagnostics findings in scripts/publication/check_artifact_privacy.py). Confirm this before building on it; the owner may rely on the manual salt-packaging step.\n\nWork: (1) ask the owner whether to keep #2930 as the vehicle (with salt packaging) or close it and wait for the natural bundle; (2) record the answer in item 40; (3) decide whether to enforce anonymized=true mechanically.",
   "sessions": [
     {
@@ -34,6 +34,14 @@
       "op": "finish",
       "op_id": "97edbf3e62ca464f96c65a566ed0391d",
       "session_id": "63fb16e6ece34adb91d17cdd1e1f2310"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:2ff26e731ddb7b681f9dacbc",
+      "at": "2026-10-14T20:56:12Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "5ab287d0f8c64c678f09cd13dc4840d6",
+      "session_id": "8250681ba4eb464e88a8d9c11374e76e"
     }
   ]
 }
