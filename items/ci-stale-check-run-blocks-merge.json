@@ -3,7 +3,7 @@
     "Merge-gate evaluation documented for duplicate check runs",
     "Automated mitigation in place (bot rerun of superseded failures or dev-loop guide note) so authors stop hand-rerunning stale failures"
   ],
-  "context": "Found while landing PRs #2907 and #2913. Workaround used: gh run rerun <failed-run-id>. See handoff _project/handoffs/core-execution-variants-batch-20261009.md revisions 7 and 13.",
+  "context": "Found while landing PRs #2907 and #2913. Workaround used: gh run rerun <failed-run-id>. See handoff _project/handoffs/core-execution-variants-batch-20261009.md revisions 7 and 13.\n\nUpdate 2026-10-14: the mechanism is now confirmed. The required context `oracle-review` runs on both `pull_request` and `pull_request_review` (.github/workflows/oracle-review.yml:5-10,24-26,30-31), and each run is its own check suite. The `pull_request` run fails by design until a review exists (_project/scripts/oracle_review_check.py:137-146). A later passing `pull_request_review` run does not replace it, and the ruleset requires `oracle-review` without an app pin.\n- Seen again on #2940, #2945, #2952 and #2954. On the #2954 head b28d4d95b: failed at 02:42, the review run passed at 02:45, and the PR stayed blocked until a manual rerun at 03:13.\n- Fix options:\n  - have the trusted review or verdict path rerun the latest failed `pull_request` oracle-review run for the head SHA (needs `actions: write`);\n  - or publish `oracle-review` as a commit status from one trusted writer, so the latest result wins, and have the `pull_request` event report pending instead of failure.",
   "description": "Twice in the execution-variants effort (PR #2907 run 38189396586; PR #2913 runs 38267710604, 38270039090) the merge gate stayed blocked with two newer same-head SUCCESS check runs present for oracle-review. Running gh run rerun on the failed run replaced it in place and unblocked the merge both times. Suspected mechanism: the gate keys on something other than latest-completed (possibly the dispatch event), unverified.",
   "sessions": [
     {
@@ -13,6 +13,14 @@
       "op": "create",
       "op_id": "2cc613e7d7e242e6963dc4c2df51cf47",
       "session_id": "27b88a720c9f4fc981d9d2b9406e61be"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-14T11:42:42Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "f3085ebcf4274701b9a432e84f7b2c58",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
     }
   ]
 }
