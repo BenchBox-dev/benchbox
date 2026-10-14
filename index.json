@@ -14360,15 +14360,10 @@
       "title": "Optimize Benchmark Results JSON Output Format"
     },
     "oracle-absence-classification-lows-20261008": {
-      "claim": {
-        "expires_at": "2026-10-15T03:03:22Z",
-        "generation": "34913345bc334f7fa4366478e7b05717",
-        "renewals": 2,
-        "worker": "mcp:tbh:joe@joe-mac-mini.local:ee5a973726de839c8eab56eb"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Oracle absence details are not redacted, newer quota messages get no reset time, and the muse quota table is empty"
     },
     "oracle-agy-reviewer-calibration-20261008": {
