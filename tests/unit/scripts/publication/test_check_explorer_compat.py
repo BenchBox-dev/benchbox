@@ -48,8 +48,6 @@ def test_normalize_type() -> None:
 
 
 def test_schema_versions_definitions() -> None:
-    assert checker.SUPPORTED_SCHEMA_VERSIONS == (16,)
-    assert checker.CURRENT_SCHEMA_VERSION == 16
     from _project.scripts.explorer_pipeline.contract import EXPLORER_READ_MODEL_VERSION
 
     assert checker.CURRENT_SCHEMA_VERSION == EXPLORER_READ_MODEL_VERSION
@@ -356,13 +354,15 @@ def test_cli_default_schema_checks(capsys: pytest.CaptureFixture[str]) -> None:
 
 
 def test_cli_json_mode(capsys: pytest.CaptureFixture[str]) -> None:
+    from _project.scripts.explorer_pipeline.contract import EXPLORER_READ_MODEL_VERSION
+
     exit_code = checker.main(["--schema-only", "--json"])
     assert exit_code == 0
     captured = capsys.readouterr()
     data = json.loads(captured.out)
     assert data["status"] == "passed"
-    assert data["current_version"] == 16
-    assert "v16" in data["schema_checks"]
+    assert data["current_version"] == EXPLORER_READ_MODEL_VERSION
+    assert f"v{EXPLORER_READ_MODEL_VERSION}" in data["schema_checks"]
     assert "v12" not in data["schema_checks"]
     assert "v11" not in data["schema_checks"]
     assert "v10" not in data["schema_checks"]
@@ -458,10 +458,15 @@ def test_cli_db_path_not_found(capsys: pytest.CaptureFixture[str]) -> None:
     assert "DuckDB database file not found" in captured.err
 
 
+def _script_env() -> dict[str, str]:
+    return {key: value for key, value in os.environ.items() if key != "PYTHONPATH"}
+
+
 def _run_script(*args: str, cwd: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, str(SCRIPT_PATH), *args],
         cwd=cwd,
+        env=_script_env(),
         capture_output=True,
         text=True,
         check=False,
@@ -470,6 +475,8 @@ def _run_script(*args: str, cwd: Path) -> subprocess.CompletedProcess[str]:
 
 
 def test_script_runs_as_the_deploy_workflow_invokes_it(mock_artifact_dir: Path, tmp_path: Path) -> None:
+    from _project.scripts.explorer_pipeline.contract import EXPLORER_READ_MODEL_VERSION
+
     generated = _run_script("--artifact", str(mock_artifact_dir), "--generate-manifest", cwd=REPO_ROOT)
     assert generated.returncode == 0, generated.stdout + generated.stderr
     assert "fallback version pin" not in generated.stderr
@@ -480,23 +487,13 @@ def test_script_runs_as_the_deploy_workflow_invokes_it(mock_artifact_dir: Path, 
     schema = _run_script("--schema-only", "--json", cwd=tmp_path)
     assert schema.returncode == 0, schema.stdout + schema.stderr
     assert "fallback version pin" not in schema.stderr
+    assert json.loads(schema.stdout)["current_version"] == EXPLORER_READ_MODEL_VERSION
 
 
-def test_fallback_version_pin_matches_the_contract(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    from _project.scripts.explorer_pipeline.contract import (
-        EXPLORER_BUILD_CONTRACT_VERSION,
-        EXPLORER_READ_MODEL_VERSION,
-    )
-
-    monkeypatch.setitem(sys.modules, "_project.scripts.explorer_pipeline.contract", None)
-    spec = importlib.util.spec_from_file_location("check_explorer_compat_fallback", SCRIPT_PATH)
-    assert spec and spec.loader
-    fallback = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(fallback)
-
-    assert "fallback version pin" in capsys.readouterr().err
-    assert fallback.CURRENT_SCHEMA_VERSION == EXPLORER_READ_MODEL_VERSION
-    assert fallback.SUPPORTED_SCHEMA_VERSIONS == (EXPLORER_READ_MODEL_VERSION,)
-    assert fallback.CONTRACT_VERSION == EXPLORER_BUILD_CONTRACT_VERSION
+def test_script_without_tree_contract_exits_nonzero(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    scripts = tmp_path / "scripts" / "publication"
+    scripts.mkdir(parents=True)
+    (scripts / "check_explorer_compat.py").write_bytes(SCRIPT_PATH.read_bytes())
+    monkeypatch.setattr(sys.modules[__name__], "SCRIPT_PATH", scripts / "check_explorer_compat.py")
+    alone = _run_script("--schema-only", "--json", cwd=tmp_path)
+    assert alone.returncode != 0
