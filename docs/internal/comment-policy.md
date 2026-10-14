@@ -1,208 +1,230 @@
 # Comments and docstrings
 
-Maintained first-party code has no explanatory comments or docstrings. When the
-check fails, delete the text and clarify the code: simplify it, or improve names
-and types. A useful public contract goes in the canonical API reference. Keep
-design rationale outside source only when future work needs the reason. Do not
-move removed prose into inert strings, fake metadata or runtime `__doc__`
-assignments. A help string or protocol record needs an actual reader.
+## The rule
 
-## Commands
+Do not write explanatory comments or docstrings in maintained first-party code.
+When the checker flags one:
 
-- `make comment-policy-check` compares against `origin/develop`, then runs the
-  native parser regressions. While enforcement is advisory it lists new
-  violations without failing; once enforcement is blocking it rejects them. Set `BASE_REF` to an immutable
-  commit SHA to reproduce a CI comparison.
-- `make comment-policy-strict` checks the whole inventory. It applies the
-  candidate's own exceptions, so it is a diagnostic, not a gate; CI runs the
-  comparison mode, which honours only exceptions already on the base.
-- `make comment-policy-report` lists remaining violations without rejecting
-  legacy debt. Configuration and parser setup failures still fail.
-- The pre-commit hook checks staged content, with the same advisory or blocking
-  result as the check target.
-- `scripts/check_comment_policy.py --path` checks one file or directory prefix.
-- `scripts/comment_parity.py --base <revision> [--head <revision>] [--path <prefix>]`
-  shows that a change only removed comments and leading docstrings. For each
-  changed Python file it compares the syntax trees after leading docstrings are
-  removed, so any other change is drift. A body left empty by a removed docstring
-  may become `pass`. Comments or docstrings that the base did not have also
-  count as drift, so a removal cannot pay for an addition. A retained comment
-  must keep its place: it is matched by its text, whether it trails code, and
-  the code tokens around it, so moving it to another statement is drift (moving
-  it across blank lines only is not). Added or deleted files, a changed file
-  mode or type, unparseable source, a changed shebang or encoding declaration,
-  and files in a language it cannot compare fail unless `--unverified-ok <suffix>`
-  names that suffix. A directive such as `# noqa` is not syntax-tree content, so
-  removing one counts as a removed comment here; the checker's comparison of
-  registered directives protects those. It is an evidence tool, not a CI gate,
-  and without `--head` it reads the working tree.
+1. Delete it.
+2. Make the code explain itself with simpler logic or clearer names and types.
+3. If it described a public contract, add the contract to the API reference.
+4. If future work needs the design reason, record it outside the source.
 
-The check target and hook need Python, `uv`, Node and npm. Without `BASE_REF`,
-if `origin/develop` is not an ancestor of `HEAD`, a local run uses their merge
-base; an explicit or CI base must be an ancestor. Native tests run only after
-the source check passes, so they cannot replace the checker, but they can still
-fail the command.
+Do not hide removed text in an unused string, fake metadata, or a `__doc__`
+assignment. Keep a help string or protocol record only if something reads it.
+
+## Check your work
+
+Run `make comment-policy-check` before you open a pull request. It compares
+your branch with `origin/develop`, then runs the parser's own tests, which can
+also fail it. To reproduce a CI result, set `BASE_REF` to the commit SHA CI
+used. You need Python, `uv`, Node, and npm.
+
+If you do not set `BASE_REF` and `origin/develop` is not an ancestor of
+`HEAD`, a local run compares against their merge base. A `BASE_REF` or CI base
+must be an ancestor of `HEAD`.
+
+Other tools:
+
+- `make comment-policy-strict` scans the whole repository using your branch's
+  exceptions. Use it to diagnose; CI does not run it.
+- `make comment-policy-report` lists every violation, including old ones. It
+  fails only if configuration or parsing fails.
+- The pre-commit hook checks staged files, with the same result as
+  `make comment-policy-check`.
+- `scripts/check_comment_policy.py --path <prefix>` checks one file or
+  directory.
+
+### Prove a cleanup changed nothing else
+
+```bash
+scripts/comment_parity.py --base <rev> [--head <rev>] [--path <prefix>]
+```
+
+This shows reviewers that a change only removed comments and leading
+docstrings. Without `--head`, it reads your working tree. CI does not run it.
+
+It strips leading docstrings from both versions of each changed Python file and
+compares the syntax trees. Any other difference fails.
+
+- You may replace a body left empty by a removed docstring with `pass`.
+- Adding a comment or docstring fails, even if you removed another.
+- A kept comment must stay with the same code. The tool matches it by text, by
+  whether it ends a code line, and by the code around it. Moving it across
+  blank lines is fine; moving it to another statement fails.
+- Added or deleted files, changed file modes or types, unparseable source,
+  changed shebang or encoding lines, and unsupported languages fail unless you
+  pass `--unverified-ok <suffix>` for that suffix.
+- Directives such as `# noqa` are not in the syntax tree, so removing one
+  counts as removing a comment. The main checker protects registered
+  directives.
 
 ## Enforcement
 
-`quality/comment-policy.json` sets `enforcement` to `advisory` or `blocking`. A
-comparison against a base (the check target, the hook and CI) reads the mode
-from the base policy. While it is `advisory`, the check prints new violations,
-up to 100 of them, and in CI marks each as a warning on the changed line, but
-exits successfully, so a pull request is never blocked for a comment. Findings
-about input the checker could not analyze are reported the same way and do not
-fail either, and the summary line counts them, so the gaps are visible before
-the switch to blocking. Parser and configuration failures, which stop the check
-before it has findings, still fail in both modes. The enforced gate is the CI
-comparison (`scripts/run_comment_policy.py`) at 0 violations against the base commit.
-Strict mode (`make comment-policy-strict`) is a diagnostic tool that scans the whole
-inventory applying the candidate's own exceptions, rather than the baseline intersection,
-and is not an enforced CI gate. `comment-policy-report` provides raw inventory counts. Paths and
-comment text in the output come from the pull request, so control characters are
-escaped and a line is never left starting with `::`.
+Enforcement is blocking. `quality/comment-policy.json` sets
+`"enforcement": "blocking"`, and the checker rejects any change back to
+`advisory`. The check, the hook, and CI read this setting from the base
+commit, not your branch.
 
-Moving from `advisory` to `blocking` is a one-line change to the policy. It is
-checked against the base policy, so that change is not blocked by itself, and
-the next pull request is. The pull request that flips the mode is therefore
-exempt by construction: its findings are reported but cannot fail it, so check
-it with `make comment-policy-strict` before merging. A policy cannot be moved back from `blocking` to
-`advisory`. Flip it after the open pull requests have merged or been cleaned,
-so that no one meets the new rule on a branch that was started before it
-existed.
+CI runs `scripts/run_comment_policy.py` against the base commit and passes only
+at zero violations. It fails if a changed file or completed scope gains a
+violation or contains input the checker cannot analyze (a coverage error), or
+if configuration or parsing fails.
+
+The check prints up to 100 failures. It escapes control characters in paths and
+text from the pull request and never starts a line with `::`, so a pull request
+cannot inject CI commands.
 
 ## Exceptions
 
-`quality/comment-policy.json` lists exceptions. Each names the file, qualified
-symbol or payload, complete text, actual consumer, necessity, smaller
-alternative considered, owner and removal condition; suppressions need an
-unexpired `expires` date. Line numbers are not identities. An entry permits one
-occurrence unless an approved positive `count` says otherwise. Three kinds:
+Register each comment that must stay in `quality/comment-policy.json`, as one
+of three kinds:
 
-- **Directive:** a whole registered token, such as `# noqa: E501`, with no
-  explanatory text.
-- **Notice:** exact required text, with its governing source as consumer.
-- **Fixture:** exact parser input that a named test consumes.
+- **Directive:** a complete registered token with no explanation, such as
+  `# noqa: E501`.
+- **Notice:** exact required text. Its consumer is the source that requires it.
+- **Fixture:** exact parser input that a named test reads.
 
-A first-line shebang needs no entry; an encoding cookie is accepted only in the
-first two lines for a non-UTF-8 Python encoding. The check target, hook and CI
-use the base policy, so add an exception in an earlier change than the source
-it permits. Review its real need and reader first; syntax checks cannot. Remove
-unused exceptions during module review. The one current fixture lets a test run
-Makefile-derived conditions to prove a broken gate still runs the guard. It
-grants no comment text, and changing its consumer code invalidates it (the AST
-digest ignores only empty type-parameter lists, so Python versions agree).
+Each entry records the file, qualified symbol or payload, full text, consumer
+(what reads it), why it is needed, the smaller alternative you considered, the
+owner, and when to remove it. A suppression also needs an unexpired `expires`
+date. Entries do not use line numbers. Each entry allows one occurrence unless
+it has an approved positive `count`.
 
-## Scopes and comparison
+A first-line shebang needs no entry. An encoding declaration is allowed only in
+the first two lines of a Python file, and only for a non-UTF-8 encoding.
 
-The checker compares a multiset of exact file, kind, symbol and text
-identities. Deleting an unrelated comment does not pay for a new one; adding a
-copy, changing text or moving prose to another symbol fails. No archive of
-removed prose is kept. Base comparisons inspect changed files and completed
-scopes; report and strict modes inspect everything.
+To add an exception, first confirm the text has a real reader and need; the
+checker cannot judge that. Then merge the exception before the code that uses
+it, because CI reads exceptions from the base commit. Remove unused exceptions
+when you review a module.
 
-- Add a cleaned file or directory prefix to `completed`. Every violation there
-  then fails, including inherited ones. Completed scopes cannot be removed.
-- External exclusions name upstream owners and provenance files. A candidate
-  policy cannot expand them or overlap them with completed scopes, and new
-  files under them are not exempt in a base comparison.
-- Generated first-party code and `_sources/compilation` scripts are included;
-  TPC templates and catalog-owned skill mirrors have separate provenance.
-- The 90% docstring-coverage gate is retired. It required public docstrings for
-  the `docs` check to pass, and a percentage cannot tell a useful contract from
-  filler. Useful API contracts move to reference pages before their source
-  docstrings are removed. Existing module docstrings are transition debt, not
-  an endorsement.
+The one current fixture lets a test run conditions taken from the Makefile, to
+prove a broken gate still runs its guard. It allows no comment text. Changing
+the code that reads it breaks the match. Its syntax-tree digest ignores only
+empty type-parameter lists, so all Python versions agree.
 
-## CI trust model
+## What the checker compares
+
+The checker identifies each comment by file, kind, symbol, and exact text, and
+counts every copy. Deleting an unrelated comment does not pay for a new one.
+Copying a comment, editing it, or moving it to another symbol fails. No archive
+of removed text is kept.
+
+A base comparison checks changed files and completed scopes. Report and strict
+modes check everything.
+
+- **Completed scopes:** after you clean a file or directory, add its path to
+  `completed`. Every violation there then fails, including old ones. You cannot
+  remove a completed scope.
+- **External exclusions:** each names its upstream owner and a provenance file.
+  A pull request cannot widen one or overlap it with a completed scope. New
+  files under an exclusion are still checked in a base comparison.
+- Generated first-party code and `_sources/compilation` scripts are in scope.
+  TPC templates and catalog-owned skill mirrors are not; they have their own
+  provenance.
+
+The old 90% docstring-coverage gate is retired, because a percentage cannot
+tell a useful contract from filler. Before you remove a docstring that
+documents an API contract, move the contract to a reference page. Existing
+module docstrings are transition debt, not an example.
+
+## How CI protects the check
 
 The `comment-policy` job runs on every pull request and merge group and feeds
-the required tooling result. While enforcement is advisory its only failures
-are parser and configuration failures. Its base SHA comes from the platform event and
-cannot be overridden. The launcher, checker, adapters and hash-pinned parser
-dependency specifications come from that immutable base. For a pull request,
-the comparison is against the first parent of the merge commit CI checks out,
-which is the target branch tip, so changes that reached the target after the
-event are not charged to the pull request. A merge group keeps the event base. The checker runs
-isolated from project configuration, import and installer overrides, candidate
-`node_modules` and candidate Python environments. The candidate's own checker is used only to bootstrap a
-base that contains the rollout commit `ed5c263c513ba65499f4918d3a7de607f280c65b`
-and holds no trusted checker files, launcher or policy registry; on any other
-base, a missing checker fails. The job log is informational, and its exit
-status decides the result. The checker escapes untrusted text. Native
-JavaScript tests run inside a random `stop-commands` fence. The trusted
-launcher's tools (Python, uv, and Node) are set up before checkout, so candidate
-configuration cannot execute before the checker or change its interpreter.
-The separate pinned-notice drift step runs
-`scripts/check_comment_cleanup_scope.py` from the candidate revision and can
-affect the job result. `.github/soundness-paths.txt` protects the workflow,
-checker, manifest, and tests; changes require independent soundness review.
-The drift step does not replace or modify the trusted base-sourced parser.
+the required tooling result. Its exit status decides the result; the log is
+for information only. The job stops a pull request from weakening the check
+that judges it:
 
-## Coverage and limits
+- **Fixed base.** The base SHA comes from the GitHub event and cannot be
+  overridden. A pull request compares against the first parent of the merge
+  commit CI checks out: the target branch tip. Later changes to the target are
+  not charged to it. A merge group uses the event's base.
+- **Trusted code.** The launcher, checker, adapters, and hash-pinned parser
+  dependency lists come from the base. CI uses the pull request's checker only
+  when the base contains rollout commit
+  `ed5c263c513ba65499f4918d3a7de607f280c65b` but has no trusted checker files,
+  launcher, or policy registry. On any other base, a missing checker fails.
+- **Isolation.** The checker ignores project configuration, import and
+  installer overrides, and the pull request's `node_modules` and Python
+  environments. CI installs Python, uv, and Node before checkout, so no pull
+  request file can run first or change the interpreter.
+- **Safe output.** The checker escapes untrusted text. Native JavaScript tests
+  run inside a `stop-commands` block with a random token.
+- **Pinned notices.** A separate drift step runs
+  `scripts/check_comment_cleanup_scope.py` from the pull request. It can fail
+  the job but does not replace or change the trusted parser.
 
-Python is read with its AST and tokenizer, including standalone strings and
-runtime docstring assignments; JavaScript and TypeScript with the isolated
-TypeScript parser; SQL-valued strings and execution-sink arguments as SQL; other
-formats with Pygments lexers; embedded code with its own language check.
-Shell heredocs and literal `echo`/`printf` pipelines through plain `cat` stages
-or supported `sudo`, `env` and `nohup` wrappers into supported stdin
-interpreters are scanned. Static `sudo`/`env` producer wrappers and static SSH
-pipelines into supported remote stdin interpreters are also scanned. SQL-client
-stdin for `psql`, `duckdb` and `sqlite3` is scanned when the command reads from
-stdin; explicit query/file inputs and `sqlite3 -no-stdin` are not treated as
-piped input. `watch` and `xargs` pipelines to stdin interpreters fail closed
-when input routing is ambiguous. MDX top-level ESM imports and exports,
-including TypeScript `type`, `interface`, `enum`, `namespace`, `declare` and
-`abstract` exports, and JSX block comments outside Markdown code spans and
-fences are extracted. Executable paths are matched by basename; consumer
-output redirects preserve piped input, while redirected stdin fails closed.
-Unknown input is a coverage error, never a pass, and under blocking enforcement
-or in strict mode changed files and completed scopes always reject it. While
-enforcement is advisory a coverage error is reported and counted but does not
-fail the comparison. Parsers are used because text search would
-confuse strings with comments, and Ruff has no cross-language ban.
+`.github/soundness-paths.txt` protects the workflow, checker, manifest, and
+tests. Changes to them need an independent soundness review.
 
-This syntax rule cannot prove a string has a reader or that code is simple.
-Dynamic SQL, notebook magics, custom template languages and unusual shell or
-Make constructs need review and adapter work. Details are in
-`scripts/comment_syntax.py`, `comment_payloads.py` and `comment_execution.py`;
-add a regression fixture to `tests/unit/scripts/test_comment_policy.py` when
-extending an adapter.
+## What the checker reads
 
-Known gaps, each a place where a comment can pass unreported:
+The checker uses parsers, because a text search would confuse strings with
+comments and Ruff cannot enforce this rule across languages.
 
-- TOML values and YAML or JSON keys other than the recognized command keys
-  (`run`, `command`, `entrypoint`, `entry`, `script`, SQL keys, and
-  `package.json` scripts) are not extracted as code.
-- A Python `open()` whose path cannot be resolved is not treated as an HTML
-  sink, so text written through it is not scanned.
-- A JavaScript wrapper that only passes its argument to a reviewed SQL wrapper
-  is accepted without checking its call sites.
-- A shell chunk that the parser cannot read is skipped when it holds no
-  comment marker for the interpreter it names; a program assembled from
-  variables at run time is not inspected in that case.
-- Unknown programs that take `-c` or `-e` as data are listed in
-  `DATA_FLAG_PROGRAMS` in `scripts/comment_execution.py`; any other program
+- **Python:** AST and tokenizer, including standalone strings and runtime
+  `__doc__` assignments.
+- **JavaScript and TypeScript:** the isolated TypeScript parser.
+- **SQL:** strings that hold SQL and arguments to SQL execution calls.
+- **Other formats:** Pygments lexers. Embedded code gets its language's check.
+- **MDX:** top-level ESM imports and exports (including TypeScript `type`,
+  `interface`, `enum`, `namespace`, `declare`, and `abstract`), and JSX block
+  comments outside Markdown code spans and fences.
+- **Piped text:** heredocs, and literal `echo` or `printf` text piped into a
+  supported interpreter, through plain `cat` stages and static `sudo`, `env`,
+  or `nohup` wrappers, nested or not. Static SSH pipelines into a supported
+  remote interpreter count too.
+- **SQL clients:** text piped to `psql`, `duckdb`, or `sqlite3` when the
+  command reads standard input. A query or file on the command line, or
+  `sqlite3 -no-stdin`, is not piped input.
+- **Runners:** a static shell command passed as one argument to `ssh`, `watch`,
+  or `xargs`.
+- **License pins:** required CI pins `LICENSE` and `COPYRIGHT.md`. If you
+  change either, update its pin in the same pull request. External notices are
+  checked against pins from the base.
+
+Programs match by file name, not path. Redirecting output keeps piped input in
+scope. Anything the checker cannot analyze is a coverage error, never a pass:
+for example redirected standard input, ambiguous `watch` or `xargs` input,
+dynamic or unsupported wrapper options, and unsupported `printf` formats or
+`echo -e` escapes.
+
+### Limits
+
+The checker only checks syntax. Reviewers must judge whether a string has a
+reader and whether code is simple. Dynamic SQL, notebook magics, custom
+template languages, and unusual shell or Make constructs need review and may
+need new adapter code. The adapters are `scripts/comment_syntax.py`,
+`scripts/comment_payloads.py`, and `scripts/comment_execution.py`. When you
+extend one, add a regression fixture to
+`tests/unit/scripts/test_comment_policy.py`.
+
+### Known gaps
+
+The checker does not see comments in:
+
+- TOML values, and YAML or JSON keys other than `run`, `command`, `entrypoint`,
+  `entry`, `script`, SQL keys, and `package.json` scripts.
+- Text written by a Python `open()` call whose path cannot be resolved; it is
+  not treated as HTML output.
+- Call sites of a JavaScript wrapper that only forwards to a reviewed SQL
+  wrapper.
+- An unreadable shell chunk with no comment marker for the interpreter it
+  names, including programs built from variables at run time.
+- The `-c` or `-e` argument of programs listed in `DATA_FLAG_PROGRAMS` in
+  `scripts/comment_execution.py`, which treat it as data. Any other program
   given such a flag is reported.
-- Static `sudo`, `env` and `nohup` interpreter wrappers and `sudo`/`env`
-  literal-producer wrappers with supported options are scanned, including
-  nested static wrapper chains; dynamic or unsupported wrapper options fail
-  closed. Static inner shell commands passed as one argument to runners such as
-  `ssh`, `watch` or `xargs` are followed; dynamically assembled commands are
-  not.
-- HTML comments and MyST `%` lines in Markdown prose are not scanned. In the
-  maintained docs they are copyright headers, generator start and end markers,
-  `<!-- content-ok -->` markers read by `scripts/blog_content_validation.py`,
-  and two `%` lines in `docs/blog/index.md` that keep a heading id stable.
-- Comments inside Python string values are not scanned unless the string
-  reaches a recognized SQL, shell or HTML sink. Generated SQL and scripts keep
-  such comments where they are part of the product's output, for example
+- Commands built at run time and passed to `ssh`, `watch`, `xargs`, or similar
+  runners.
+- Text piped to interpreters the checker does not model, such as `perl` or
+  `ruby`.
+- HTML comments and MyST `%` lines in Markdown prose. In maintained docs these
+  are copyright headers, generator start and end markers, `<!-- content-ok -->`
+  markers read by `scripts/blog_content_validation.py`, and two `%` lines in
+  `docs/blog/index.md` that keep a heading ID stable.
+- Python strings that never reach recognized SQL, shell, or HTML output.
+  Generated output keeps such comments where the product needs them:
   maintenance SQL headers, dry-run DDL previews, stream-file headers, the Trino
-  tuning note and the AWS Glue job script.
-- Pipelines to unmodeled stdin interpreters (such as `perl` or `ruby`) are not scanned.
-- Whole-file pins for the non-external `LICENSE` and `COPYRIGHT.md` notices are
-  enforced by required CI; changing either file requires updating its pin in
-  the same pull request. External notices are checked against base-trusted
-  pins by the comment-policy gate.
-- Unsupported `printf` formats or `echo -e` escapes in a recognized pipeline produce a coverage error.
-- JSX `{// ...}` line-comment expressions in MDX prose are not extracted, so comments in that form outside Markdown code fences are not inspected.
+  tuning note, and the AWS Glue job script.
+- JSX `{// ...}` line comments in MDX prose outside Markdown code fences.
