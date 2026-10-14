@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "MCP run_benchmark/start_benchmark with a deprecated alias returns a deprecations entry naming the replacement MCP parameter",
+    "MCP accepts `clickhouse:server` and every manifest `name:mode`, matching the CLI",
+    "dry_run reflects the requested execution_engine and platform options",
+    "MCP stays fail-closed: allowlist and security-class contract unchanged except the reconciled alias"
+  ],
+  "context": "Found by the 2026-10-13 adversarial review of the core execution-variants batch (compute O3, gateway blind spots) and its remediation follow-ups; verified on develop 9400b62c4.",
+  "description": "## Problem\n- **Deprecation notices never reach MCP clients.** They go only to the server log (`core/deprecation_notices.py:43`), worded as CLI flags. MCP responses have no deprecations field, and there is no \"deprecat\" anywhere in `benchbox/mcp/`.\n  - Example: `run_benchmark(polars-df, platform_options={\"streaming\": True})` returns no notice.\n- **`dry_run` and `validate_only` drop settings.** They validate, then discard, `platform_options` and `execution_engine` (`mcp/tools/benchmark.py:130-134`).\n- **ClickHouse deployment selection is inconsistent** (`mcp/schemas.py:95-98,183-187,326-327`).\n  - The contract lists the alias `mode`, but the allowlist rejects it.\n  - Every `name:mode` platform name (e.g. `clickhouse:server`) is rejected as \"invalid characters\", though the core selector accepts them.\n  - `connection_profile` on clickhouse requires the deprecated `deployment_mode='server'`. The workaround is `clickhouse-server`.\n\n## Change\n- Record notices in run-scoped state (`begin_run` already resets per run) and return `deprecations[]` in run, dry-run and start/status responses, in MCP wording.\n- Apply `platform_options` and `execution_engine` in `dry_run` and `validate_only`.\n- Accept `name:mode` through the core selector, reconcile `mode` between the contract and the allowlist, and check `connection_profile` against the resolved deployment.",
+  "links": [
+    "benchbox/mcp/schemas.py",
+    "benchbox/mcp/tools/benchmark.py",
+    "benchbox/core/deprecation_notices.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-14T11:40:39Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "b0bf30cd70b542fd83b0ec3d554f03be",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    }
+  ]
+}
