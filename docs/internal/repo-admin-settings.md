@@ -335,14 +335,13 @@ requires both contexts.
 
 ## Tag creation and release-environment protections
 
-Tracked by the `release-tag-publish-hardening` TODO. In
-`.github/workflows/release.yml`, the `verify-tag-on-release` job asserts that
+In `.github/workflows/release.yml`, the `verify-tag-on-release` job asserts that
 the triggering ref (tag push or `workflow_dispatch`) is `release` or an ancestor
 of it before build and publish run, and the real-PyPI `Publish to PyPI` step
 also requires `startsWith(github.ref, 'refs/tags/v')`. Those are workflow-level
-(tooling) controls. The two sections below are the remaining repo-admin half of
-the fix: who can create a `v*` tag at all, and whether the `pypi` environment
-requires human approval. The develop-PR `GITHUB_TOKEN` cannot read or write
+(tooling) controls. The two sections below are the repo-admin half of the fix:
+who can create a `v*` tag at all, and whether the `pypi` environment requires
+human approval. The develop-PR `GITHUB_TOKEN` cannot read or write
 either (no `administration` scope); only an admin PAT can.
 
 ### Tag creation restricted to release flow (enforced)
@@ -435,8 +434,7 @@ CI wiring (added with the fnmatch and empty-bypass hardening above):
 that `release-canary.yml`'s `ruleset-drift` job already fetches with
 `RULESET_DRIFT_TOKEN` for the `develop-squash-only` and `release-only` checks,
 so no second API call is needed. The daily canary run reports tag-ruleset drift
-as a blocking finding, depending on `release-canary-scheduled-activation` only
-in that the canary must run at all.
+as a blocking finding, so it depends only on the canary running at all.
 
 Live-state note:
 

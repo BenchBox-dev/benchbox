@@ -54,7 +54,7 @@ inventory such cases by hand before deleting a docstring.
 The directive and TODO/FIXME registers are incomplete. An unregistered directive
 or TODO/FIXME keeps its text until it is registered with its consumer,
 necessity, and owner, or an existing tracker item. The validator prints counts
-of unregistered Python comments. The base has about 1,100 directive comments,
+of unregistered Python comments. The base has about 380 directive comments,
 and every TODO/FIXME marker is registered. A TODO/FIXME marker is a comment that
 starts with the word, or has it after `#`, `;`, or two spaces, followed by a
 colon, such as `# TODO: link the issue` or `# noqa: E501  TODO: later`. A

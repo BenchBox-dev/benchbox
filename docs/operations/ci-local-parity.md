@@ -39,7 +39,7 @@ To add a guard step to the `lint` job in `ci.yml`:
 
 ## Report-all: one CI cycle, every guard's result
 
-The `lint` job runs around fifteen independent guards. Each sets
+The `lint` job runs about twenty-five independent guards. Each sets
 `continue-on-error: true`, so every guard runs and shows as its own Actions UI
 step with its own log and timing. A PR that trips two unrelated guards learns
 of both in one run.

@@ -131,8 +131,8 @@ merged state; it is not a required PR check. It runs the fast lane, the
 four-shard medium tier, the correctness gate, and the `required-local-cases`
 job (`make test-required-local-cases`, which fails the run if a required
 local-engine case skips). The `dist-artifact` job builds and verifies the
-release wheel and sdist. Marker and forbidden-path guards remain; the
-test-count ceiling is retired.
+release wheel and sdist. The marker and forbidden-path guards run in the PR
+`lint` job (`guard-fast-lane-markers`); the test-count ceiling is retired.
 
 Runs use `concurrency.queue: max` with running work retained, so later pushes
 do not replace earlier pending runs; results can lag during a burst of merges.
