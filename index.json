@@ -20454,17 +20454,12 @@
       "title": "Resolve the site-inputs bundle parent by SHA in a tested script so chain recovery does not depend on a ten-run window"
     },
     "site-split-62-dispatch-records-trunk-run-id": {
-      "claim": {
-        "expires_at": "2026-10-15T05:01:54Z",
-        "generation": "6ca0d0ef98b04dccae1265a3725dac99",
-        "renewals": 0,
-        "worker": "mcp:tbh:joe@joe-mac-mini.local:2ddfad0386e20e3a0ffba40a"
-      },
+      "claim": null,
       "needs": [
         "site-split-61-parent-lookup-by-sha"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Record the certifying Trunk run id in dispatch-built bundles so the site's strict certification gate accepts chain recovery"
     },
     "site-split-63-chain-recovery-rehearsal": {
