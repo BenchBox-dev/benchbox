@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import logging
 from pathlib import Path
 from typing import Any
@@ -248,6 +249,8 @@ class TestGuards:
         assert receipt is not None and receipt["corroborated"] is True
 
     def test_chdb_custom_config_gains_no_drops_and_still_verifies(self, tmp_path):
+        if importlib.util.find_spec("chdb") is None:
+            pytest.skip("chDB not installed")
         with patch("benchbox.platforms.clickhouse.adapter.check_platform_dependencies", return_value=(True, [])):
             adapter = _tuned(ClickHouseLocalAdapter(type="chdb"))
         adapter.unified_tuning_configuration = ConfigManager().load_unified_tuning_config(

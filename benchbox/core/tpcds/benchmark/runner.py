@@ -1151,7 +1151,6 @@ class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         validation: bool = True,
     ) -> dict[str, Any]:
         import logging
-        import time
         from datetime import datetime
 
         if verbose is None:

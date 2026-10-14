@@ -375,6 +375,8 @@ class TestGenerateStreamQueriesQgen:
         qgen = get_tpc_compiler(auto_compile=False).get_binary_path("qgen")
         if qgen is None:
             pytest.skip("bundled qgen binary is unavailable")
+        if shutil.which("qgen", path=str(qgen.parent)) is None:
+            pytest.skip("bundled qgen binary is not runnable on this platform")
 
         templates = get_tpc_templates_dir("tpc-h")
         query_dir = templates / "queries" if (templates / "queries").is_dir() else templates
