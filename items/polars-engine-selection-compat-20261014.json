@@ -3,7 +3,7 @@
     "`tuning init` profiles do not set a Polars engine; a run with the generated file records requested=default unless the user edits it",
     "SQL PolarsAdapter(streaming=True) follows ADR D13 (warn and continue) or the break is documented under Before you upgrade with an ADR amendment"
   ],
-  "context": "Found by the 2026-10-13 adversarial review of the core execution-variants batch (Polars O5 and O10). The remediation fixed only the DataFrameTuningLoader templates (#2945). Verified on develop 9400b62c4.",
+  "context": "Found by the 2026-10-13 adversarial review of the core execution-variants batch (Polars O5 and O10). The remediation fixed only the DataFrameTuningLoader templates (#2945). Verified on develop 9400b62c4.\nBatch: _project/handoffs/polars-engine-followups-batch-20261014.md, started 2026-10-14",
   "description": "## Problem\n- **Tuning profiles still choose an engine.** `benchbox tuning init --platform polars --profile optimized|streaming|memory-constrained` writes Polars `engine_affinity` or `streaming_mode` (`core/dataframe/tuning/profiles.py:28-31,40-44,46-48`; `cli/commands/tuning_group.py:98,195`).\n  - A later `run --tuning <file>` records the variant `polars+in-memory` (or `+streaming`) instead of the default row (`platforms/dataframe/polars_df.py:94-107`).\n  - This contradicts the CHANGELOG statement that shipped tunings stop choosing an engine (CHANGELOG.md:292-293). A warning is logged, so it is not fully silent.\n  - The behaviour is pinned by `tests/unit/cli/test_onboarding_df_tuning_behavioral.py:212-217`.\n- **SQL `streaming=True` raises instead of warning.** `PolarsAdapter(streaming=True)` raises `UnsupportedExecutionEngineError` (`platforms/polars_platform.py:143-151,163-164`; `tests/unit/platforms/test_polars_adapter.py:56-62`).\n  - In v0.4.2 it was a no-op.\n  - ADR D13 says aliases keep working, with a warning, until 0.6.0.\n  - There is no \"Before you upgrade\" entry. The path is API-only.\n\n## Change\n- Stop the Polars profiles setting `engine_affinity`, gate `streaming_mode` by platform, and update the pinned tests.\n- Treat SQL `streaming=True` as a deprecated alias: warn through the core legacy-option path and record `default`. Or add a \"Before you upgrade\" entry and an ADR note.",
   "links": [
     "benchbox/core/dataframe/tuning/profiles.py",
@@ -17,6 +17,14 @@
       "client": "claude-code",
       "op": "create",
       "op_id": "853f6c3436b84ed88f0fd57590b756f3",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-14T13:44:30Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "0d671941fa5a41c3be90f3a468f18326",
       "session_id": "18469f668aeb45d59c8d4c94d2f79433"
     }
   ]
