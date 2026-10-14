@@ -20481,10 +20481,15 @@
       "title": "Get the owner's decision on seed PR #2930 as the item-40 vehicle, and decide whether raw bundles may merge to develop"
     },
     "site-split-65-replay-completeness-and-fidelity": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-15T06:29:06Z",
+        "generation": "f38a5cd80af5488385041a7c7dd566b8",
+        "renewals": 0,
+        "worker": "mcp:tbh:joe@joe-mac-mini.local:2ddfad0386e20e3a0ffba40a"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Complete the seeded-path replay (add core #2913 and #2926) and add a replay-fidelity check so site PRs match core"
     },
     "site-split-66-explorer-compat-regression-test": {
