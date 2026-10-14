@@ -165,6 +165,15 @@
       "op": "update",
       "op_id": "d5e4f5b2c7504344acc6a668b0164c4d",
       "session_id": "865d81279f334e3c811692586b3ce2d2"
+    },
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:b99da209e67e8c2428b594b0",
+      "at": "2026-10-14T23:58:10Z",
+      "client": "antigravity-client",
+      "generation": "498cfe82948942e898e58cb6fe758e51",
+      "op": "release",
+      "op_id": "54750b722d5d4387a050b781b225e916",
+      "session_id": "865d81279f334e3c811692586b3ce2d2"
     }
   ]
 }
