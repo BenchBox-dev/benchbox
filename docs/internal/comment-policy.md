@@ -101,14 +101,22 @@ A first-line shebang needs no entry. An encoding declaration is allowed only in
 the first two lines of a Python file, and only for a non-UTF-8 encoding.
 
 To add an exception, first confirm the text has a real reader and need; the
-checker cannot judge that. Then merge the exception before the code that uses
-it, because CI reads exceptions from the base commit. Remove unused exceptions
-when you review a module.
+checker cannot judge that. You may register the exception and the code that
+uses it in the same pull request: the entries count once the required oracle
+review covers the registry change. Without that review the base policy still
+applies and the new entries do not count, so a change never authorizes its own
+exception without that review. The local check and CI fail on the new entries
+until the review succeeds; push, obtain the success review, rerun the
+comment-policy check, then merge. Remove unused exceptions when you review a
+module.
 
-One fixture lets a test run conditions taken from the Makefile, to prove a
-broken gate still runs its guard. It allows no comment text. Changing
-the code that reads it breaks the match. Its syntax-tree digest ignores only
-empty type-parameter lists, so all Python versions agree.
+The 55 current fixtures let named tests read exact parser input the checker
+cannot parse on its own. A fixture allows no comment text. Its digest covers
+the reading symbol plus the module-level bindings that symbol resolves
+through, so editing unrelated code in the file keeps the entry valid, while
+editing the reader or a binding it resolves through breaks the match. Its
+syntax-tree digest ignores only empty type-parameter lists, so all Python
+versions agree.
 
 ## What the checker compares
 

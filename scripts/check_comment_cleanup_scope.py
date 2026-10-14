@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tokenize
 import tomllib
+import urllib.request
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -1182,8 +1183,50 @@ def immutable_dependency_artifacts(
     return excluded
 
 
+ORACLE_REVIEW_CHECK = "oracle-review"
+
+
+def _github_check_runs(token: str, repo: str, head: str) -> Any:
+    request = urllib.request.Request(
+        f"https://api.github.com/repos/{repo}/commits/{head}/check-runs?check_name={ORACLE_REVIEW_CHECK}",
+        headers={
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {token}",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        return json.load(response)
+
+
+def oracle_review_covers() -> bool:
+    try:
+        event_path = os.environ.get("GITHUB_EVENT_PATH")
+        repo = os.environ.get("GITHUB_REPOSITORY")
+        token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+        if not event_path or not repo or not token:
+            return False
+        event = json.loads(Path(event_path).read_text(encoding="utf-8"))
+        pull = event.get("pull_request") or {}
+        head = (pull.get("head") or {}).get("sha") or ""
+        if not re.fullmatch(r"[a-f0-9]{40}", head) or not pull.get("number"):
+            return False
+        runs = _github_check_runs(token, repo, head)
+        completed = [run for run in runs.get("check_runs", []) if run.get("status") == "completed"]
+        if not completed:
+            return False
+        latest = max(completed, key=lambda run: run.get("completed_at") or "")
+        return latest.get("conclusion") == "success"
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return False
+
+
 def immutable_external_ownership(
-    root: Path, base: str, legacy_external: list[dict[str, str]], staged: bool = False
+    root: Path,
+    base: str,
+    legacy_external: list[dict[str, str]],
+    staged: bool = False,
+    candidate_notices: list[dict[str, Any]] | None = None,
 ) -> tuple[set[str], list[dict[str, Any]]] | None:
     paths = tracked_paths(root, base)
     if POLICY_PATH not in paths:
@@ -1193,6 +1236,13 @@ def immutable_external_ownership(
     if head is not None:
         validate_head_token_evidence(head, root, staged)
         policy = without_retired_token_evidence(policy, head, root, staged)
+    if candidate_notices is not None:
+        for entry in candidate_notices:
+            if not isinstance(entry, dict) or not isinstance(entry.get("path"), str):
+                raise PolicyError("candidate notice entry must be an object with a path")
+        effective_notices = candidate_notices
+    else:
+        effective_notices = policy["notices"]
     roots = validate_roots(policy)
     rules = validate_rules(policy)
     derived = validate_derived_rules(policy)
@@ -1202,7 +1252,7 @@ def immutable_external_ownership(
     priorities: dict[str, int] = {}
     resolved, _ = owned_paths(paths, roots, rules, priorities)
     apply_derived_rules(resolved, derived, root, base, priorities)
-    notice_findings = apply_notice_owners(resolved, policy["notices"])
+    notice_findings = apply_notice_owners(resolved, effective_notices)
     apply_external_entries(resolved, external)
     if notice_findings or any(isinstance(record["rule"], list) for record in resolved):
         raise PolicyError("immutable ownership contains conflicting owners")
@@ -1225,15 +1275,22 @@ def immutable_external_ownership(
         )
     )
     excluded.update(immutable_dependency_artifacts(root, base, resolved, rules, legacy_external, staged))
-    notices = [
-        {
-            **notice,
-            "whole_file": notice["byte_start"] == 0
-            and notice["byte_end"] == len(base_blob(root, base, notice["path"])),
-        }
-        for notice in policy["notices"]
-        if any(matches(notice["path"], entry["selector"]) for entry in external)
-    ]
+    if candidate_notices is None:
+        notices = [
+            {
+                **notice,
+                "whole_file": notice["byte_start"] == 0
+                and notice["byte_end"] == len(base_blob(root, base, notice["path"])),
+            }
+            for notice in effective_notices
+            if any(matches(notice["path"], entry["selector"]) for entry in external)
+        ]
+    else:
+        notices = [
+            {**notice, "whole_file": None}
+            for notice in effective_notices
+            if any(matches(notice["path"], entry["selector"]) for entry in external)
+        ]
     return excluded, notices
 
 
@@ -1413,7 +1470,13 @@ def main(argv: list[str] | None = None) -> int:
                 ]
             except (ValueError, TypeError, KeyError, AttributeError) as error:
                 raise PolicyError(f"invalid trusted comment-policy: {error}") from error
-            snapshot = immutable_external_ownership(root, args.base, trusted_legacy)
+            reviewed = oracle_review_covers()
+            snapshot = immutable_external_ownership(
+                root,
+                args.base,
+                trusted_legacy,
+                candidate_notices=policy["notices"] if reviewed else None,
+            )
             if snapshot is not None:
                 frozen_excluded, _ = snapshot
                 immutable_dependency_artifacts(

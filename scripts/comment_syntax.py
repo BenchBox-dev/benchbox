@@ -370,7 +370,12 @@ def python_findings(path: str, source: str, js_results: dict[str, list[dict]] | 
         if text is None:
             result.append(
                 Finding(
-                    path, line, "payload-error", "unresolved HTML output source", symbol, python_consumer_digest(tree)
+                    path,
+                    line,
+                    "payload-error",
+                    "unresolved HTML output source",
+                    symbol,
+                    python_scoped_digest(tree, symbol, line, PythonBindings(tree)),
                 )
             )
         else:
@@ -388,19 +393,113 @@ def python_findings(path: str, source: str, js_results: dict[str, list[dict]] | 
     return result
 
 
-def python_consumer_digest(tree: ast.AST) -> str:
-    def canonical(value: object) -> object:
-        if isinstance(value, ast.AST):
-            return type(value).__name__, tuple(
-                (name, canonical(child))
-                for name, child in ast.iter_fields(value)
-                if not (name == "type_params" and child == [])
-            )
-        if isinstance(value, list):
-            return tuple(canonical(child) for child in value)
-        return value
+def _canonical_node(value: object) -> object:
+    if isinstance(value, ast.AST):
+        return type(value).__name__, tuple(
+            (name, _canonical_node(child))
+            for name, child in ast.iter_fields(value)
+            if not (name == "type_params" and child == [])
+        )
+    if isinstance(value, list):
+        return tuple(_canonical_node(child) for child in value)
+    return value
 
-    return "sha256:" + hashlib.sha256(repr(canonical(tree)).encode()).hexdigest()
+
+def _digest_canonical(part: object) -> str:
+    return "sha256:" + hashlib.sha256(repr(part).encode()).hexdigest()
+
+
+def python_consumer_digest(tree: ast.AST) -> str:
+    return _digest_canonical(_canonical_node(tree))
+
+
+_SCOPE_NODES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+
+
+def _consumer_scope_node(tree: ast.AST, symbol: str, lineno: int) -> ast.AST | None:
+    best: ast.AST | None = None
+    best_depth = -1
+    named: ast.AST | None = None
+    stack: list[tuple[ast.AST, int, str]] = [(tree, -1, "")]
+    while stack:
+        node, depth, dotted = stack.pop()
+        for child in ast.iter_child_nodes(node):
+            if isinstance(child, _SCOPE_NODES):
+                child_dotted = f"{dotted}.{child.name}".strip(".")
+                if child_dotted == symbol:
+                    named = child
+                    if child.lineno <= lineno <= (child.end_lineno or child.lineno) and depth + 1 > best_depth:
+                        best = child
+                        best_depth = depth + 1
+                stack.append((child, depth + 1, child_dotted))
+            else:
+                stack.append((child, depth, dotted))
+    return best if best is not None else named
+
+
+def _module_binding_names(statement: ast.AST) -> set[str]:
+    if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+        return {statement.name}
+    if isinstance(statement, ast.Import):
+        return {alias.asname or alias.name.split(".")[0] for alias in statement.names}
+    if isinstance(statement, ast.ImportFrom):
+        return {alias.asname or alias.name for alias in statement.names}
+    names: set[str] = set()
+    targets: list[ast.AST] = []
+    if isinstance(statement, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+        targets = list(statement.targets) if isinstance(statement, ast.Assign) else [statement.target]
+    for target in targets:
+        for child in ast.walk(target):
+            if isinstance(child, ast.Name) and isinstance(child.ctx, ast.Store):
+                names.add(child.id)
+    return names
+
+
+def _locally_bound(bindings: PythonBindings, module: ast.AST, node: ast.Name) -> bool:
+    scope: ast.AST | None = bindings.scope(node)
+    while scope is not None and scope is not module:
+        if bindings.bindings.get((scope, node.id)):
+            return True
+        scope = bindings.scope(scope)
+    return False
+
+
+def python_scoped_digest(tree: ast.AST, symbol: str, lineno: int, bindings: PythonBindings) -> str:
+    scope = _consumer_scope_node(tree, symbol, lineno)
+    if scope is None or not isinstance(tree, ast.Module):
+        return python_consumer_digest(tree)
+    index: dict[str, list[ast.AST]] = {}
+    for statement in tree.body:
+        if statement is scope or not isinstance(statement, ast.stmt):
+            continue
+        for name in _module_binding_names(statement):
+            index.setdefault(name, []).append(statement)
+    if isinstance(__builtins__, dict):
+        builtin_names = set(__builtins__)
+    else:
+        builtin_names = set(dir(__builtins__))
+    seen: set[int] = {id(scope)}
+    parts: list[object] = [_canonical_node(scope)]
+    queue: list[ast.AST] = [scope]
+    while queue:
+        current = queue.pop()
+        load_nodes: dict[str, ast.Name] = {}
+        for child in ast.walk(current):
+            if isinstance(child, ast.Name) and isinstance(child.ctx, ast.Load):
+                load_nodes.setdefault(child.id, child)
+        for name, node in load_nodes.items():
+            if name in builtin_names:
+                continue
+            matches = [match for match in index.get(name, []) if id(match) not in seen]
+            if not matches:
+                if _locally_bound(bindings, tree, node):
+                    continue
+                return python_consumer_digest(tree)
+            for match in matches:
+                seen.add(id(match))
+                parts.append(_canonical_node(match))
+                queue.append(match)
+    return _digest_canonical((_canonical_node(scope), tuple(sorted(repr(part) for part in parts[1:]))))
 
 
 def python_executable_findings(path: str, tree: ast.AST, scopes: list[tuple[int, int, str]]) -> list[Finding]:
@@ -422,7 +521,7 @@ def python_executable_findings(path: str, tree: ast.AST, scopes: list[tuple[int,
                     "payload-error",
                     "unresolved executable source: " + ast.unparse(expression),
                     symbol,
-                    python_consumer_digest(tree),
+                    python_scoped_digest(tree, symbol, node.lineno, bindings),
                 )
             )
         elif lang == "javascript":

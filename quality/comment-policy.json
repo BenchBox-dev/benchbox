@@ -258,19 +258,6 @@
   ],
   "exceptions": [
     {
-      "path": "tests/unit/scripts/test_ci_lint_environment_boundary.py",
-      "symbol": "TestGateFailsClosed.test_ci_lint_environment_boundary_runs_the_guard_when_the_gate_is_broken",
-      "text": "unresolved executable source: f'{broken} echo RAN; else echo SKIPPED; fi'",
-      "payload": "sha256:d9de6a27a46433d6062e9d8855e24de88d975bb64e9e6fdcceb7a53842c74b60",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/scripts/test_ci_lint_environment_boundary.py",
-      "necessity": "The test executes conditions extracted from the checked Makefile against a deliberately broken gate to prove the guard still runs. Its executable argument is derived test input, bound to the complete consumer AST digest.",
-      "alternative": "Replacing execution with a text assertion would miss a condition that silently skips the guard. Literal duplication would stop testing the actual recipe.",
-      "owner": "BenchBox maintainers",
-      "removal": "Remove when the Make recipe extraction can be reconstructed by the executable-payload adapter without granting arbitrary input."
-    },
-    {
       "path": "benchbox/core/amplab/benchmark.py",
       "symbol": "",
       "text": "# Copyright 2026 Joe Harris / BenchBox Project",
@@ -933,7 +920,7 @@
     {
       "path": "benchbox/core/ssb/benchmark.py",
       "symbol": "",
-      "text": "# This implementation is derived from TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# This implementation is derived from TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC-H copyright and trademark attribution exactly. EULA sections 6, 7 and 9(c) require retention of applicable notices; individual-file applicability remains unresolved.",
@@ -1017,7 +1004,7 @@
     {
       "path": "benchbox/core/ssb/family.py",
       "symbol": "",
-      "text": "# This implementation is derived from TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# This implementation is derived from TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC-H copyright and trademark attribution exactly. EULA sections 6, 7 and 9(c) require retention of applicable notices; individual-file applicability remains unresolved.",
@@ -1053,7 +1040,7 @@
     {
       "path": "benchbox/core/ssb/generator.py",
       "symbol": "",
-      "text": "# This implementation is derived from TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# This implementation is derived from TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC-H copyright and trademark attribution exactly. EULA sections 6, 7 and 9(c) require retention of applicable notices; individual-file applicability remains unresolved.",
@@ -1329,7 +1316,7 @@
     {
       "path": "tests/integration/test_tpch_duckdb.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -4509,7 +4496,7 @@
     {
       "path": "benchbox/core/tpch/__init__.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -4557,7 +4544,7 @@
     {
       "path": "benchbox/core/tpch/benchmark.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -4605,7 +4592,7 @@
     {
       "path": "benchbox/core/tpch/generator.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -4653,7 +4640,7 @@
     {
       "path": "benchbox/core/tpch/maintenance_test.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -4701,7 +4688,7 @@
     {
       "path": "benchbox/core/tpch/official_benchmark.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -4785,7 +4772,7 @@
     {
       "path": "benchbox/core/tpch/power_test.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -4833,7 +4820,7 @@
     {
       "path": "benchbox/core/tpch/queries.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -4881,7 +4868,7 @@
     {
       "path": "benchbox/core/tpch/reporting.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -4929,7 +4916,7 @@
     {
       "path": "benchbox/core/tpch/streams.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -4977,7 +4964,7 @@
     {
       "path": "benchbox/core/tpch/throughput_test.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -8169,7 +8156,7 @@
     {
       "path": "benchbox/core/read_primitives/__init__.py",
       "symbol": "",
-      "text": "# This implementation is derived from TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# This implementation is derived from TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -8205,7 +8192,7 @@
     {
       "path": "benchbox/core/read_primitives/benchmark.py",
       "symbol": "",
-      "text": "# This implementation is derived from TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# This implementation is derived from TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -8241,7 +8228,7 @@
     {
       "path": "benchbox/core/read_primitives/generator.py",
       "symbol": "",
-      "text": "# This implementation is derived from TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# This implementation is derived from TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -8277,7 +8264,7 @@
     {
       "path": "benchbox/core/read_primitives/schema.py",
       "symbol": "",
-      "text": "# This implementation is derived from TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# This implementation is derived from TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -8745,7 +8732,7 @@
     {
       "path": "benchbox/core/ssb/__init__.py",
       "symbol": "",
-      "text": "# This implementation is derived from TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# This implementation is derived from TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -8781,7 +8768,7 @@
     {
       "path": "benchbox/core/ssb/queries.py",
       "symbol": "",
-      "text": "# This implementation is derived from TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# This implementation is derived from TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -8889,7 +8876,7 @@
     {
       "path": "benchbox/core/tpcdi/__init__.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DI (TPC-DI) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "COPYRIGHT.md",
       "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
@@ -8937,7 +8924,7 @@
     {
       "path": "benchbox/core/tpcdi/benchmark.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DI (TPC-DI) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "COPYRIGHT.md",
       "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
@@ -8985,7 +8972,7 @@
     {
       "path": "benchbox/core/tpcdi/config.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DI (TPC-DI) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "COPYRIGHT.md",
       "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
@@ -9033,7 +9020,7 @@
     {
       "path": "benchbox/core/tpcdi/etl/customer_mgmt_processor.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DI (TPC-DI) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "COPYRIGHT.md",
       "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
@@ -9081,7 +9068,7 @@
     {
       "path": "benchbox/core/tpcdi/etl/data_quality_monitor.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DI (TPC-DI) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "COPYRIGHT.md",
       "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
@@ -9129,7 +9116,7 @@
     {
       "path": "benchbox/core/tpcdi/etl/error_recovery.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DI (TPC-DI) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "COPYRIGHT.md",
       "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
@@ -9177,7 +9164,7 @@
     {
       "path": "benchbox/core/tpcdi/etl/finwire_processor.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DI (TPC-DI) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "COPYRIGHT.md",
       "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
@@ -9225,7 +9212,7 @@
     {
       "path": "benchbox/core/tpcdi/etl/incremental_loader.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DI (TPC-DI) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "COPYRIGHT.md",
       "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
@@ -9273,7 +9260,7 @@
     {
       "path": "benchbox/core/tpcdi/etl/scd_processor.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DI (TPC-DI) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "COPYRIGHT.md",
       "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
@@ -9321,7 +9308,7 @@
     {
       "path": "benchbox/core/tpcdi/etl/sources.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DI (TPC-DI) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "COPYRIGHT.md",
       "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
@@ -9369,7 +9356,7 @@
     {
       "path": "benchbox/core/tpcdi/financial_data.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DI (TPC-DI) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "COPYRIGHT.md",
       "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
@@ -9417,7 +9404,7 @@
     {
       "path": "benchbox/core/tpcdi/loader.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DI (TPC-DI) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "COPYRIGHT.md",
       "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
@@ -9465,7 +9452,7 @@
     {
       "path": "benchbox/core/tpcdi/metrics.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DI (TPC-DI) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "COPYRIGHT.md",
       "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
@@ -9513,7 +9500,7 @@
     {
       "path": "benchbox/core/tpcdi/queries.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DI (TPC-DI) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "COPYRIGHT.md",
       "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
@@ -9561,7 +9548,7 @@
     {
       "path": "benchbox/core/tpcdi/query_analytics.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DI (TPC-DI) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "COPYRIGHT.md",
       "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
@@ -9609,7 +9596,7 @@
     {
       "path": "benchbox/core/tpcdi/query_etl.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DI (TPC-DI) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "COPYRIGHT.md",
       "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
@@ -9657,7 +9644,7 @@
     {
       "path": "benchbox/core/tpcdi/query_validation.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DI (TPC-DI) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "COPYRIGHT.md",
       "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
@@ -9705,7 +9692,7 @@
     {
       "path": "benchbox/core/tpcdi/source_generators.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DI (TPC-DI) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "COPYRIGHT.md",
       "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
@@ -9753,7 +9740,7 @@
     {
       "path": "benchbox/core/tpcdi/validation.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DI (TPC-DI) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "COPYRIGHT.md",
       "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
@@ -9801,7 +9788,7 @@
     {
       "path": "benchbox/core/tpcds/__init__.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -9849,7 +9836,7 @@
     {
       "path": "benchbox/core/tpcds/c_tools.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -9921,7 +9908,7 @@
     {
       "path": "benchbox/core/tpcds/dataframe_queries/__init__.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -10017,7 +10004,7 @@
     {
       "path": "benchbox/core/tpcds/maintenance_operations.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -10065,7 +10052,7 @@
     {
       "path": "benchbox/core/tpcds/maintenance_test.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -10113,7 +10100,7 @@
     {
       "path": "benchbox/core/tpcds/official_benchmark.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -10233,7 +10220,7 @@
     {
       "path": "benchbox/core/tpcds/power_test.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -10281,7 +10268,7 @@
     {
       "path": "benchbox/core/tpcds/queries.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -10329,7 +10316,7 @@
     {
       "path": "benchbox/core/tpcds/reporting.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -10377,7 +10364,7 @@
     {
       "path": "benchbox/core/tpcds/streams.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -10425,7 +10412,7 @@
     {
       "path": "benchbox/core/tpcds/throughput_test.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -10473,7 +10460,7 @@
     {
       "path": "benchbox/core/tpch_skew/benchmark.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -10629,7 +10616,7 @@
     {
       "path": "benchbox/core/tpchavoc/__init__.py",
       "symbol": "",
-      "text": "# This implementation is derived from TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# This implementation is derived from TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -10665,7 +10652,7 @@
     {
       "path": "benchbox/core/tpchavoc/benchmark.py",
       "symbol": "",
-      "text": "# This implementation is derived from TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# This implementation is derived from TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -10797,7 +10784,7 @@
     {
       "path": "benchbox/core/tpchavoc/queries.py",
       "symbol": "",
-      "text": "# This implementation is derived from TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# This implementation is derived from TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -10857,7 +10844,7 @@
     {
       "path": "benchbox/core/tpchavoc/validation.py",
       "symbol": "",
-      "text": "# This implementation is derived from TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# This implementation is derived from TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -10917,7 +10904,7 @@
     {
       "path": "benchbox/core/transaction_primitives/benchmark.py",
       "symbol": "",
-      "text": "# This implementation is derived from TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# This implementation is derived from TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -12201,7 +12188,7 @@
     {
       "path": "benchbox/core/write_primitives/benchmark.py",
       "symbol": "",
-      "text": "# This implementation is derived from TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# This implementation is derived from TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -16125,7 +16112,7 @@
     {
       "path": "benchbox/ssb.py",
       "symbol": "",
-      "text": "# This implementation is derived from TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# This implementation is derived from TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -16161,7 +16148,7 @@
     {
       "path": "benchbox/tpcdi.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DI (TPC-DI) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "COPYRIGHT.md",
       "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
@@ -16209,7 +16196,7 @@
     {
       "path": "benchbox/tpcds.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -16257,7 +16244,7 @@
     {
       "path": "benchbox/tpch.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -16305,7 +16292,7 @@
     {
       "path": "benchbox/tpchavoc.py",
       "symbol": "",
-      "text": "# This implementation is derived from TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# This implementation is derived from TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -17733,7 +17720,7 @@
     {
       "path": "tests/fixtures/tpcds_test_data.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -18861,7 +18848,7 @@
     {
       "path": "tests/integration/test_read_primitives_integration.py",
       "symbol": "",
-      "text": "# This implementation is derived from TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# This implementation is derived from TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -18945,7 +18932,7 @@
     {
       "path": "tests/integration/test_tpcdi_end_to_end.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DI (TPC-DI) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "COPYRIGHT.md",
       "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
@@ -19017,7 +19004,7 @@
     {
       "path": "tests/integration/test_tpcds_duckdb_dialect.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -19065,7 +19052,7 @@
     {
       "path": "tests/integration/test_tpcds_maintenance_test.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -19113,7 +19100,7 @@
     {
       "path": "tests/integration/test_tpcds_official_benchmark.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -19185,7 +19172,7 @@
     {
       "path": "tests/integration/test_tpcds_power_test.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -19233,7 +19220,7 @@
     {
       "path": "tests/integration/test_tpcds_query_generation.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -19281,7 +19268,7 @@
     {
       "path": "tests/integration/test_tpcds_throughput_test.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -19329,7 +19316,7 @@
     {
       "path": "tests/integration/test_tpch_maintenance_test.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -19377,7 +19364,7 @@
     {
       "path": "tests/integration/test_tpch_official_benchmark.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -19425,7 +19412,7 @@
     {
       "path": "tests/integration/test_tpch_skew_duckdb.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -19521,7 +19508,7 @@
     {
       "path": "tests/integration/test_tpchavoc_duckdb.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -19809,7 +19796,7 @@
     {
       "path": "tests/integration/tpch/__init__.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -19857,7 +19844,7 @@
     {
       "path": "tests/integration/tpch/test_tpch_benchmark.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -19905,7 +19892,7 @@
     {
       "path": "tests/integration/tpch/test_tpch_examples.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -20241,7 +20228,7 @@
     {
       "path": "tests/performance/test_tpcds_performance.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -20289,7 +20276,7 @@
     {
       "path": "tests/performance/test_tpcds_regression.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -20385,7 +20372,7 @@
     {
       "path": "tests/run_tpcds_tests.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -20433,7 +20420,7 @@
     {
       "path": "tests/run_tpch_tests.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -20649,7 +20636,7 @@
     {
       "path": "tests/test_root_tpcds_streams.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -20697,7 +20684,7 @@
     {
       "path": "tests/test_ssb.py",
       "symbol": "",
-      "text": "# This implementation is derived from TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# This implementation is derived from TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -20733,7 +20720,7 @@
     {
       "path": "tests/test_tpcdi.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DI (TPC-DI) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "COPYRIGHT.md",
       "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
@@ -20781,7 +20768,7 @@
     {
       "path": "tests/test_tpcds_direct.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -20829,7 +20816,7 @@
     {
       "path": "tests/test_tpch_official.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -20925,7 +20912,7 @@
     {
       "path": "tests/unit/benchmarks/test_read_primitives_core.py",
       "symbol": "",
-      "text": "# This implementation is derived from TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# This implementation is derived from TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -21033,7 +21020,7 @@
     {
       "path": "tests/unit/benchmarks/test_tpcds_core.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -21081,7 +21068,7 @@
     {
       "path": "tests/unit/benchmarks/test_tpch_core.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -25977,7 +25964,7 @@
     {
       "path": "tests/unit/generators/test_tpcds_generator.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -26025,7 +26012,7 @@
     {
       "path": "tests/unit/generators/test_tpch_generator.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -28881,7 +28868,7 @@
     {
       "path": "tests/unit/test_reference_seed.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -29037,7 +29024,7 @@
     {
       "path": "tests/unit/test_tpcds_enhanced.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -29085,7 +29072,7 @@
     {
       "path": "tests/unit/test_tpcds_file_format_fix.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -29133,7 +29120,7 @@
     {
       "path": "tests/unit/test_tpcds_streams.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -29181,7 +29168,7 @@
     {
       "path": "tests/unit/test_tpch_enhanced.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -29277,7 +29264,7 @@
     {
       "path": "tests/unit/tpcdi/test_config_simplified.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DI (TPC-DI) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "COPYRIGHT.md",
       "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
@@ -29325,7 +29312,7 @@
     {
       "path": "tests/unit/tpcds/__init__.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -29373,7 +29360,7 @@
     {
       "path": "tests/unit/tpcds/test_dsqgen_streams.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -29421,7 +29408,7 @@
     {
       "path": "tests/unit/tpcds/test_minimal_queries.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -29469,7 +29456,7 @@
     {
       "path": "tests/unit/tpcds/test_streams.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -29517,7 +29504,7 @@
     {
       "path": "tests/unit/tpch/__init__.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -29565,7 +29552,7 @@
     {
       "path": "tests/unit/tpch/test_api_compatibility.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -29637,7 +29624,7 @@
     {
       "path": "tests/unit/tpch/test_qgen_binary.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -29685,7 +29672,7 @@
     {
       "path": "tests/unit/tpch/test_streams_permutation.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -29757,7 +29744,7 @@
     {
       "path": "tests/unit/tpch/test_tpch_queries.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -30669,7 +30656,7 @@
     {
       "path": "tests/utilities/tpcds_debug_utility.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -30885,7 +30872,7 @@
     {
       "path": "tests/validation/validate_tpcds_performance_fix.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -31197,7 +31184,7 @@
     {
       "path": "benchbox/core/tpcds/dataframe_queries/queries.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -31233,7 +31220,7 @@
     {
       "path": "benchbox/core/tpcds/dataframe_queries/registry.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 DS (TPC-DS) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-ds/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -31269,7 +31256,7 @@
     {
       "path": "benchbox/core/tpch/dataframe_queries.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -31761,7 +31748,7 @@
     {
       "path": "benchbox/core/tpch_skew/__init__.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -31929,7 +31916,7 @@
     {
       "path": "benchbox/tpch_skew.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ H (TPC-H) - Copyright © Transaction Processing Performance Council",
+      "text": "# TPC Benchmark\u2122 H (TPC-H) - Copyright \u00a9 Transaction Processing Performance Council",
       "kind": "notice",
       "consumer": "_sources/tpc-h/EULA.txt",
       "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
@@ -37325,84 +37312,6 @@
       "count": 1
     },
     {
-      "path": "tests/conftest.py",
-      "symbol": "_create_test_databases",
-      "text": "unresolved executable source: sys.executable",
-      "payload": "sha256:e6627d7d06ea719650955c7cc78580815cf9b22080dfb25afe117178146e7c3d",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/conftest.py",
-      "necessity": "In `_create_test_databases` the test starts a subprocess whose program or inline source (sys.executable) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-test-support",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/fixtures/database_fixtures.py",
-      "symbol": "_ensure_test_databases_exist",
-      "text": "unresolved executable source: sys.executable",
-      "payload": "sha256:c49748e3e20c1d40336613e0d6c9e2d0aa58801ac1291620eecd9b4091933172",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/fixtures/database_fixtures.py",
-      "necessity": "In `_ensure_test_databases_exist` the test starts a subprocess whose program or inline source (sys.executable) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-test-support",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/core/test_registry_lazy_load.py",
-      "symbol": "_run",
-      "text": "unresolved executable source: code",
-      "payload": "sha256:470a0bd77a82c70c8bf40069f30bc6555d6ce69c8cb39fa74c0741e70a859959",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/core/test_registry_lazy_load.py",
-      "necessity": "In `_run` the test starts a subprocess whose program or inline source (code) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-core",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/core/tpcds/test_tpcds_stdout_datagen.py",
-      "symbol": "TestDsdgenFilterFlag.test_filter_does_not_create_file",
-      "text": "unresolved executable source: str(dsdgen_path)",
-      "payload": "sha256:52d05dd2c531f1a93cc2791d7db6b8e7b969040f08ea7b9ed430134dd852713c",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/core/tpcds/test_tpcds_stdout_datagen.py",
-      "necessity": "In `TestDsdgenFilterFlag.test_filter_does_not_create_file` the test starts a subprocess whose program or inline source (str(dsdgen_path)) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-core",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/core/tpcds/test_tpcds_stdout_datagen.py",
-      "symbol": "TestDsdgenFilterFlag.test_without_filter_creates_file",
-      "text": "unresolved executable source: str(dsdgen_path)",
-      "payload": "sha256:52d05dd2c531f1a93cc2791d7db6b8e7b969040f08ea7b9ed430134dd852713c",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/core/tpcds/test_tpcds_stdout_datagen.py",
-      "necessity": "In `TestDsdgenFilterFlag.test_without_filter_creates_file` the test starts a subprocess whose program or inline source (str(dsdgen_path)) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-core",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/core/tpcds/test_tpcds_stdout_datagen.py",
-      "symbol": "TestStdoutDataEquivalence.test_stdout_matches_file_output",
-      "text": "unresolved executable source: str(dsdgen_path)",
-      "payload": "sha256:52d05dd2c531f1a93cc2791d7db6b8e7b969040f08ea7b9ed430134dd852713c",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/core/tpcds/test_tpcds_stdout_datagen.py",
-      "necessity": "In `TestStdoutDataEquivalence.test_stdout_matches_file_output` the test starts a subprocess whose program or inline source (str(dsdgen_path)) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-core",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
       "path": "tests/unit/core/tpch/test_tpch_stdout_datagen.py",
       "symbol": "TestDbgenStdoutSupport.test_dbgen_z_flag_all_tables",
       "text": "unresolved executable source: str(dbgen_exe)",
@@ -37413,32 +37322,6 @@
       "necessity": "In `TestDbgenStdoutSupport.test_dbgen_z_flag_all_tables` the test starts a subprocess whose program or inline source (str(dbgen_exe)) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
       "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
       "owner": "comment-cleanup-tpch",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/examples/test_examples_unified_runner.py",
-      "symbol": "TestUnifiedRunnerIntegration.test_unified_runner_help",
-      "text": "unresolved executable source: sys.executable",
-      "payload": "sha256:7275c85369831b7dd4dfae16a5b8296f4eaa8b9522b5f346918b6f3075b7bab5",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/examples/test_examples_unified_runner.py",
-      "necessity": "In `TestUnifiedRunnerIntegration.test_unified_runner_help` the test starts a subprocess whose program or inline source (sys.executable) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-core",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/examples/test_examples_unified_runner.py",
-      "symbol": "TestUnifiedRunnerIntegration.test_unified_runner_list_platforms",
-      "text": "unresolved executable source: sys.executable",
-      "payload": "sha256:7275c85369831b7dd4dfae16a5b8296f4eaa8b9522b5f346918b6f3075b7bab5",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/examples/test_examples_unified_runner.py",
-      "necessity": "In `TestUnifiedRunnerIntegration.test_unified_runner_list_platforms` the test starts a subprocess whose program or inline source (sys.executable) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-core",
       "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
     },
     {
@@ -37463,19 +37346,6 @@
       "kind": "fixture",
       "consumer": "tests/unit/platforms/aws/test_emr_serverless_coverage.py",
       "necessity": "In `TestEMRServerlessCoverage.test_submit_job_run_escapes_quote_bearing_query` the test starts a subprocess whose program or inline source (payload) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-platforms",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/platforms/test_snowflake_adapter_resource_heavy.py",
-      "symbol": "_parse_snowflake_cli_args",
-      "text": "unresolved executable source: script.replace('ARGV', repr(argv))",
-      "payload": "sha256:ebc4adf1c4b54619a3650a3b666b7e18134aeb51e6bf6370c6d0e62a9df1e1a7",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/platforms/test_snowflake_adapter_resource_heavy.py",
-      "necessity": "In `_parse_snowflake_cli_args` the test starts a subprocess whose program or inline source (script.replace('ARGV', repr(argv))) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
       "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
       "owner": "comment-cleanup-unit-tests-platforms",
       "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
@@ -37547,19 +37417,6 @@
       "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
     },
     {
-      "path": "tests/unit/scripts/publication/test_check_explorer_compat.py",
-      "symbol": "html-output:dist / 'index.html'",
-      "text": "unresolved HTML output source",
-      "payload": "sha256:e0c78bb1b1278d14e0c5fa7a71c68ac48c326d33608e68ce20b0067fb02e67b7",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/scripts/publication/test_check_explorer_compat.py",
-      "necessity": "In `html-output:dist / 'index.html'` the test starts a subprocess whose program or inline source (unresolved HTML output source) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
       "path": "tests/unit/scripts/publication/test_reconciliation.py",
       "symbol": "html-output:pages / 'index.html'",
       "text": "unresolved HTML output source",
@@ -37614,19 +37471,6 @@
     },
     {
       "path": "tests/unit/scripts/test_release_artifact_execution.py",
-      "symbol": "test_inherited_pipe_writer_cannot_hold_download_cleanup",
-      "text": "unresolved executable source: sys.executable",
-      "payload": "sha256:14d282a6401edbe60749da114c7a2af8e8a742636de7ada81fd41cd73377e16c",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/scripts/test_release_artifact_execution.py",
-      "necessity": "In `test_inherited_pipe_writer_cannot_hold_download_cleanup` the test starts a subprocess whose program or inline source (sys.executable) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-utilities",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/scripts/test_release_artifact_execution.py",
       "symbol": "test_producer_command_uses_real_isolated_process_and_attempt_api",
       "text": "unresolved executable source: sys.executable",
       "payload": "sha256:14d282a6401edbe60749da114c7a2af8e8a742636de7ada81fd41cd73377e16c",
@@ -37636,32 +37480,6 @@
       "necessity": "In `test_producer_command_uses_real_isolated_process_and_attempt_api` the test starts a subprocess whose program or inline source (sys.executable) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
       "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
       "owner": "comment-cleanup-utilities",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/scripts/test_release_flow.py",
-      "symbol": "html-output:root / 'landing' / 'index.html'",
-      "text": "unresolved HTML output source",
-      "payload": "sha256:fed7c49bc9da238eb778a5f96fba6293adca816635cd73b83f14d13663e3544c",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/scripts/test_release_flow.py",
-      "necessity": "The test writes the LANDING test template, formatted with a version string, into a temporary candidate tree; the template is a string literal in the same file and holds no comment.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/scripts/test_release_flow.py",
-      "symbol": "test_candidate_selection_cli_is_stdlib_only_and_preserves_lock",
-      "text": "unresolved executable source: sys.executable",
-      "payload": "sha256:fed7c49bc9da238eb778a5f96fba6293adca816635cd73b83f14d13663e3544c",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "scripts/release_flow.py",
-      "necessity": "The test runs the tracked scripts/release_flow.py, copied into a temporary candidate tree, under sys.executable -I -S; the script is scanned in place.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
       "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
     },
     {
@@ -37744,71 +37562,6 @@
       "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
     },
     {
-      "path": "tests/unit/test_agent_write_preflight.py",
-      "symbol": "_run_in_clone",
-      "text": "unresolved executable source: 'sh'",
-      "payload": "sha256:c443b3fae5e8e01a891377fa3d36c0571f7c9e88ddcc219e5e3abfdcc2a09bf9",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/test_agent_write_preflight.py",
-      "necessity": "In `_run_in_clone` the test starts a subprocess whose program or inline source ('sh') is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/test_agent_write_preflight.py",
-      "symbol": "_run_preflight",
-      "text": "unresolved executable source: 'sh'",
-      "payload": "sha256:c443b3fae5e8e01a891377fa3d36c0571f7c9e88ddcc219e5e3abfdcc2a09bf9",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/test_agent_write_preflight.py",
-      "necessity": "In `_run_preflight` the test starts a subprocess whose program or inline source ('sh') is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/test_agent_write_preflight.py",
-      "symbol": "test_preflight_allows_non_primary_worktree",
-      "text": "unresolved executable source: 'sh'",
-      "payload": "sha256:c443b3fae5e8e01a891377fa3d36c0571f7c9e88ddcc219e5e3abfdcc2a09bf9",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/test_agent_write_preflight.py",
-      "necessity": "In `test_preflight_allows_non_primary_worktree` the test starts a subprocess whose program or inline source ('sh') is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/test_import_isolation.py",
-      "symbol": "_run_entrypoint",
-      "text": "unresolved executable source: code",
-      "payload": "sha256:6cf5a6b14af8847af382b53695456ca08e321849514be1f9a8b6f86976e27e6a",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/test_import_isolation.py",
-      "necessity": "In `_run_entrypoint` the test starts a subprocess whose program or inline source (code) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-nyctaxi",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/test_optional_engines_helpers.py",
-      "symbol": "test_importing_optional_helpers_does_not_load_engines_or_change_environment",
-      "text": "unresolved executable source: code",
-      "payload": "sha256:cb6742db4921f2fe20cc77114962a811356bed4dec6f13cb5aa9db47543fb3f5",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/test_optional_engines_helpers.py",
-      "necessity": "In `test_importing_optional_helpers_does_not_load_engines_or_change_environment` the test starts a subprocess whose program or inline source (code) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
       "path": "tests/unit/test_posix_shell_resolver.py",
       "symbol": "test_stub_first_on_path_is_rejected_and_real_bash_is_found",
       "text": "unresolved executable source: 'set -euo pipefail\\nread -r v <<< \"ok\"\\nprintf \"%s\" \"$v\"'",
@@ -37817,98 +37570,6 @@
       "kind": "fixture",
       "consumer": "tests/unit/test_posix_shell_resolver.py",
       "necessity": "In `test_stub_first_on_path_is_rejected_and_real_bash_is_found` the test starts a subprocess whose program or inline source ('set -euo pipefail\\nread -r v <<< \"ok\"\\nprintf \"%s\" \"$v\"') is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/test_release_infrastructure.py",
-      "symbol": "TestReleaseInfrastructure.test_pre_push_focused_hook_skips_or_runs_its_actual_entry",
-      "text": "unresolved executable source: entry",
-      "payload": "sha256:c2378748f1ea778af899c83a30713a7a1a7bf67258188df39300f04ba7cfc999",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/test_release_infrastructure.py",
-      "necessity": "In `TestReleaseInfrastructure.test_pre_push_focused_hook_skips_or_runs_its_actual_entry` the test starts a subprocess whose program or inline source (entry) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-shared-infrastructure",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it.",
-      "count": 2
-    },
-    {
-      "path": "tests/unit/test_repo_root_paths.py",
-      "symbol": "test_normal_paths_import_does_not_load_native_helpers",
-      "text": "unresolved executable source: script",
-      "payload": "sha256:098a646623054e800db952bca820ea5dd4974e5d2e3d44c67ed26e9f489c084e",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/test_repo_root_paths.py",
-      "necessity": "In `test_normal_paths_import_does_not_load_native_helpers` the test starts a subprocess whose program or inline source (script) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/test_repo_root_paths.py",
-      "symbol": "test_paths_module_is_cwd_independent_and_import_free",
-      "text": "unresolved executable source: script",
-      "payload": "sha256:098a646623054e800db952bca820ea5dd4974e5d2e3d44c67ed26e9f489c084e",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/test_repo_root_paths.py",
-      "necessity": "In `test_paths_module_is_cwd_independent_and_import_free` the test starts a subprocess whose program or inline source (script) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/test_standardized_test_commands.py",
-      "symbol": "TestMakefileCommands.test_pr_preflight_fast_tests_creates_classifier_artifacts_when_absent",
-      "text": "unresolved executable source: make",
-      "payload": "sha256:297e9756101a67c5a9d092f95fa8934570fc537d6fa0fe7c78083603afad3770",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/test_standardized_test_commands.py",
-      "necessity": "In `TestMakefileCommands.test_pr_preflight_fast_tests_creates_classifier_artifacts_when_absent` the test starts a subprocess whose program or inline source (make) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/test_standardized_test_commands.py",
-      "symbol": "TestMakefileCommands.test_pr_preflight_fast_tests_creates_classifier_artifacts_when_absent",
-      "text": "unresolved executable source: make",
-      "payload": "sha256:02d3deac4da2a1279150150134bceb77256d6d6f2bd2d5c104e6c351e54b7ecc",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/test_standardized_test_commands.py",
-      "necessity": "In `TestMakefileCommands.test_pr_preflight_fast_tests_creates_classifier_artifacts_when_absent` the test starts a subprocess whose program or inline source (make) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/test_standardized_test_commands.py",
-      "symbol": "TestMakefileCommands.test_skill_integrity_preflight_selected_lane_failure_propagates",
-      "text": "unresolved executable source: make",
-      "payload": "sha256:03360c0e07a3f752ea2b2febd1fc49e90b02ae2a7fb7d10f1ea60f6d82ceda9f",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/test_standardized_test_commands.py",
-      "necessity": "In `TestMakefileCommands.test_skill_integrity_preflight_selected_lane_failure_propagates` the test starts a subprocess whose program or inline source (make) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/workflows/test_nightly_t3_workflow.py",
-      "symbol": "_run_workflow_script",
-      "text": "unresolved executable source: '-o'",
-      "payload": "sha256:4c3f8b9f26b9233ab41b6f88cea3af524e7d2362e0da33eb1999dbc8a642a62f",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/workflows/test_nightly_t3_workflow.py",
-      "necessity": "In `_run_workflow_script` the test starts a subprocess whose program or inline source ('-o') is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
       "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
       "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
       "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
@@ -37927,58 +37588,6 @@
       "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
     },
     {
-      "path": "tests/unit/workflows/test_public_site_visual_workflow.py",
-      "symbol": "test_baseline_candidates_stop_at_the_first_site_input_change",
-      "text": "unresolved executable source: classifier",
-      "payload": "sha256:019a37ec2709fe3a91c3e50e83bf8b3ee356daf28b8fd1b9bdfeca7312326be3",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/workflows/test_public_site_visual_workflow.py",
-      "necessity": "In `test_baseline_candidates_stop_at_the_first_site_input_change` the test starts a subprocess whose program or inline source (classifier) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/workflows/test_public_site_visual_workflow.py",
-      "symbol": "test_input_classifier_uses_exact_base_diff",
-      "text": "unresolved executable source: classifier",
-      "payload": "sha256:019a37ec2709fe3a91c3e50e83bf8b3ee356daf28b8fd1b9bdfeca7312326be3",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/workflows/test_public_site_visual_workflow.py",
-      "necessity": "In `test_input_classifier_uses_exact_base_diff` the test starts a subprocess whose program or inline source (classifier) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/workflows/test_public_site_visual_workflow.py",
-      "symbol": "test_required_gate_fails_closed_for_changed_inputs",
-      "text": "unresolved executable source: step['run']",
-      "payload": "sha256:019a37ec2709fe3a91c3e50e83bf8b3ee356daf28b8fd1b9bdfeca7312326be3",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/workflows/test_public_site_visual_workflow.py",
-      "necessity": "In `test_required_gate_fails_closed_for_changed_inputs` the test starts a subprocess whose program or inline source (step['run']) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/workflows/test_public_site_visual_workflow.py",
-      "symbol": "test_required_gate_rejects_failed_input_classification",
-      "text": "unresolved executable source: step['run']",
-      "payload": "sha256:019a37ec2709fe3a91c3e50e83bf8b3ee356daf28b8fd1b9bdfeca7312326be3",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/workflows/test_public_site_visual_workflow.py",
-      "necessity": "In `test_required_gate_rejects_failed_input_classification` the test starts a subprocess whose program or inline source (step['run']) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
       "path": "tests/unit/workflows/test_publication_canaries.py",
       "symbol": "test_publication_canaries_scripts_fail_closed_without_evidence",
       "text": "unresolved executable source: sys.executable",
@@ -37987,45 +37596,6 @@
       "kind": "fixture",
       "consumer": "tests/unit/workflows/test_publication_canaries.py",
       "necessity": "In `test_publication_canaries_scripts_fail_closed_without_evidence` the test starts a subprocess whose program or inline source (sys.executable) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/workflows/test_release_canary_shard_evidence.py",
-      "symbol": "_run_under_errexit",
-      "text": "unresolved executable source: '-c'",
-      "payload": "sha256:99ba8583c507d7bd6fab70a150c906e8ee06646985088e82634ae7bc0c6c151d",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/workflows/test_release_canary_shard_evidence.py",
-      "necessity": "In `_run_under_errexit` the test starts a subprocess whose program or inline source ('-c') is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/workflows/test_release_canary_shard_evidence.py",
-      "symbol": "_shell_has_mapfile",
-      "text": "unresolved executable source: 'mapfile -t probe <<< \"a b c\"'",
-      "payload": "sha256:99ba8583c507d7bd6fab70a150c906e8ee06646985088e82634ae7bc0c6c151d",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/workflows/test_release_canary_shard_evidence.py",
-      "necessity": "In `_shell_has_mapfile` the test starts a subprocess whose program or inline source ('mapfile -t probe <<< \"a b c\"') is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/workflows/test_validate_submission_override_approval.py",
-      "symbol": "_run_review_program",
-      "text": "unresolved executable source: program",
-      "payload": "sha256:028c7bd68dcb0d303e8bccc7b38b912d2b0cadc20f2f85c4442853ec3f47c815",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/workflows/test_validate_submission_override_approval.py",
-      "necessity": "In `_run_review_program` the test starts a subprocess whose program or inline source (program) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
       "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
       "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
       "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
@@ -38084,7 +37654,7 @@
     {
       "path": "tests/uat/configs/release-gate-01-native-dataframe.yaml",
       "symbol": "",
-      "text": "# TEMPLATE — canonical, repeatedly-run release-gate stage config; edited in",
+      "text": "# TEMPLATE \u2014 canonical, repeatedly-run release-gate stage config; edited in",
       "kind": "notice",
       "consumer": "tests/uat/test_config.py",
       "necessity": "The UAT config lifecycle header classifies the file as an editable template or an immutable historical record. tests/uat/test_config.py requires the first line to start with a recognized marker, and _project/specs/uat-framework.md Section 9 defines the header and its edit protocol.",
@@ -38095,7 +37665,7 @@
     {
       "path": "tests/uat/configs/uat-throughput-cedardb-nightly.yaml",
       "symbol": "",
-      "text": "# TEMPLATE — canonical nightly-CI CedarDB throughput config; edited in",
+      "text": "# TEMPLATE \u2014 canonical nightly-CI CedarDB throughput config; edited in",
       "kind": "notice",
       "consumer": "tests/uat/test_config.py",
       "necessity": "The UAT config lifecycle header classifies the file as an editable template or an immutable historical record. tests/uat/test_config.py requires the first line to start with a recognized marker, and _project/specs/uat-framework.md Section 9 defines the header and its edit protocol.",
@@ -38128,7 +37698,7 @@
     {
       "path": "tests/uat/configs/release-gate-02-docker-nonoltp.yaml",
       "symbol": "",
-      "text": "# TEMPLATE — canonical, repeatedly-run release-gate stage config; edited in",
+      "text": "# TEMPLATE \u2014 canonical, repeatedly-run release-gate stage config; edited in",
       "kind": "notice",
       "consumer": "tests/uat/test_config.py",
       "necessity": "The UAT config lifecycle header classifies the file as an editable template or an immutable historical record. tests/uat/test_config.py requires the first line to start with a recognized marker, and _project/specs/uat-framework.md Section 9 defines the header and its edit protocol.",
@@ -38161,7 +37731,7 @@
     {
       "path": "tests/uat/configs/release-gate-03-docker-oltp.yaml",
       "symbol": "",
-      "text": "# TEMPLATE — canonical, repeatedly-run release-gate stage config; edited in",
+      "text": "# TEMPLATE \u2014 canonical, repeatedly-run release-gate stage config; edited in",
       "kind": "notice",
       "consumer": "tests/uat/test_config.py",
       "necessity": "The UAT config lifecycle header classifies the file as an editable template or an immutable historical record. tests/uat/test_config.py requires the first line to start with a recognized marker, and _project/specs/uat-framework.md Section 9 defines the header and its edit protocol.",
@@ -38194,7 +37764,7 @@
     {
       "path": "tests/uat/configs/stress-default.yaml",
       "symbol": "",
-      "text": "# TEMPLATE — copy and edit for sweep-specific runs.",
+      "text": "# TEMPLATE \u2014 copy and edit for sweep-specific runs.",
       "kind": "notice",
       "consumer": "tests/uat/test_config.py",
       "necessity": "The UAT config lifecycle header classifies the file as an editable template or an immutable historical record. tests/uat/test_config.py requires the first line to start with a recognized marker, and _project/specs/uat-framework.md Section 9 defines the header and its edit protocol.",
@@ -38205,7 +37775,7 @@
     {
       "path": "tests/uat/configs/stress-docker-managed.yaml",
       "symbol": "",
-      "text": "# TEMPLATE — copy and edit for storage-constrained Docker UAT sweeps.",
+      "text": "# TEMPLATE \u2014 copy and edit for storage-constrained Docker UAT sweeps.",
       "kind": "notice",
       "consumer": "tests/uat/test_config.py",
       "necessity": "The UAT config lifecycle header classifies the file as an editable template or an immutable historical record. tests/uat/test_config.py requires the first line to start with a recognized marker, and _project/specs/uat-framework.md Section 9 defines the header and its edit protocol.",
@@ -38216,7 +37786,7 @@
     {
       "path": "tests/uat/configs/uat-2026-05-02.yaml",
       "symbol": "",
-      "text": "# HISTORICAL — record of the 2026-05-02 sweep. Do not edit; if behaviour",
+      "text": "# HISTORICAL \u2014 record of the 2026-05-02 sweep. Do not edit; if behaviour",
       "kind": "notice",
       "consumer": "tests/uat/test_config.py",
       "necessity": "The UAT config lifecycle header classifies the file as an editable template or an immutable historical record. tests/uat/test_config.py requires the first line to start with a recognized marker, and _project/specs/uat-framework.md Section 9 defines the header and its edit protocol.",
@@ -38238,7 +37808,7 @@
     {
       "path": "tests/uat/configs/uat-enabled-platforms-enumeration.yaml",
       "symbol": "",
-      "text": "# TEMPLATE — reusable enablement/compatibility-accounting sweep; edited in",
+      "text": "# TEMPLATE \u2014 reusable enablement/compatibility-accounting sweep; edited in",
       "kind": "notice",
       "consumer": "tests/uat/test_config.py",
       "necessity": "The UAT config lifecycle header classifies the file as an editable template or an immutable historical record. tests/uat/test_config.py requires the first line to start with a recognized marker, and _project/specs/uat-framework.md Section 9 defines the header and its edit protocol.",
@@ -38271,7 +37841,7 @@
     {
       "path": "tests/uat/configs/uat-enabled-platforms-full.yaml",
       "symbol": "",
-      "text": "# TEMPLATE — reusable enablement release-gate sweep; edited in place as the",
+      "text": "# TEMPLATE \u2014 reusable enablement release-gate sweep; edited in place as the",
       "kind": "notice",
       "consumer": "tests/uat/test_config.py",
       "necessity": "The UAT config lifecycle header classifies the file as an editable template or an immutable historical record. tests/uat/test_config.py requires the first line to start with a recognized marker, and _project/specs/uat-framework.md Section 9 defines the header and its edit protocol.",
@@ -38293,7 +37863,7 @@
     {
       "path": "tests/uat/configs/uat-explorer-external-corpus-smoke.yaml",
       "symbol": "",
-      "text": "# TEMPLATE — reusable small smoke sweep for Explorer external-corpus route",
+      "text": "# TEMPLATE \u2014 reusable small smoke sweep for Explorer external-corpus route",
       "kind": "notice",
       "consumer": "tests/uat/test_config.py",
       "necessity": "The UAT config lifecycle header classifies the file as an editable template or an immutable historical record. tests/uat/test_config.py requires the first line to start with a recognized marker, and _project/specs/uat-framework.md Section 9 defines the header and its edit protocol.",
@@ -38326,7 +37896,7 @@
     {
       "path": "tests/uat/configs/uat-lakesail-failing-benchmarks.yaml",
       "symbol": "",
-      "text": "# TEMPLATE — reusable focused-rerun shape for LakeSail failure-cluster",
+      "text": "# TEMPLATE \u2014 reusable focused-rerun shape for LakeSail failure-cluster",
       "kind": "notice",
       "consumer": "tests/uat/test_config.py",
       "necessity": "The UAT config lifecycle header classifies the file as an editable template or an immutable historical record. tests/uat/test_config.py requires the first line to start with a recognized marker, and _project/specs/uat-framework.md Section 9 defines the header and its edit protocol.",
@@ -38359,7 +37929,7 @@
     {
       "path": "tests/uat/configs/uat-pg-extension-auth-smoke.yaml",
       "symbol": "",
-      "text": "# TEMPLATE — reusable managed-Docker smoke for PostgreSQL-extension",
+      "text": "# TEMPLATE \u2014 reusable managed-Docker smoke for PostgreSQL-extension",
       "kind": "notice",
       "consumer": "tests/uat/test_config.py",
       "necessity": "The UAT config lifecycle header classifies the file as an editable template or an immutable historical record. tests/uat/test_config.py requires the first line to start with a recognized marker, and _project/specs/uat-framework.md Section 9 defines the header and its edit protocol.",
@@ -38381,7 +37951,7 @@
     {
       "path": "tests/uat/configs/uat-smoke.yaml",
       "symbol": "",
-      "text": "# TEMPLATE — bounded native-only UAT matrix loop for routine operator feedback.",
+      "text": "# TEMPLATE \u2014 bounded native-only UAT matrix loop for routine operator feedback.",
       "kind": "notice",
       "consumer": "tests/uat/test_config.py",
       "necessity": "The UAT config lifecycle header classifies the file as an editable template or an immutable historical record. tests/uat/test_config.py requires the first line to start with a recognized marker, and _project/specs/uat-framework.md Section 9 defines the header and its edit protocol.",
@@ -38392,7 +37962,7 @@
     {
       "path": "tests/uat/configs/uat-synthetic-timeout-smoke.yaml",
       "symbol": "",
-      "text": "# TEMPLATE — reusable synthetic fixture exercising per-cell timeout handling.",
+      "text": "# TEMPLATE \u2014 reusable synthetic fixture exercising per-cell timeout handling.",
       "kind": "notice",
       "consumer": "tests/uat/test_config.py",
       "necessity": "The UAT config lifecycle header classifies the file as an editable template or an immutable historical record. tests/uat/test_config.py requires the first line to start with a recognized marker, and _project/specs/uat-framework.md Section 9 defines the header and its edit protocol.",
@@ -38403,7 +37973,7 @@
     {
       "path": "tests/uat/configs/uat-throughput-duckdb-nightly.yaml",
       "symbol": "",
-      "text": "# TEMPLATE — canonical nightly-CI throughput config (.github/workflows/nightly.yml);",
+      "text": "# TEMPLATE \u2014 canonical nightly-CI throughput config (.github/workflows/nightly.yml);",
       "kind": "notice",
       "consumer": "tests/uat/test_config.py",
       "necessity": "The UAT config lifecycle header classifies the file as an editable template or an immutable historical record. tests/uat/test_config.py requires the first line to start with a recognized marker, and _project/specs/uat-framework.md Section 9 defines the header and its edit protocol.",
@@ -38436,7 +38006,7 @@
     {
       "path": "tests/uat/configs/uat-throughput-explorer-smoke.yaml",
       "symbol": "",
-      "text": "# TEMPLATE — small throughput-phase explorer coverage sweep. See",
+      "text": "# TEMPLATE \u2014 small throughput-phase explorer coverage sweep. See",
       "kind": "notice",
       "consumer": "tests/uat/test_config.py",
       "necessity": "The UAT config lifecycle header classifies the file as an editable template or an immutable historical record. tests/uat/test_config.py requires the first line to start with a recognized marker, and _project/specs/uat-framework.md Section 9 defines the header and its edit protocol.",
@@ -38458,7 +38028,7 @@
     {
       "path": "tests/uat/configs/uat-throughput-postgresql-nightly.yaml",
       "symbol": "",
-      "text": "# TEMPLATE — canonical nightly-CI PostgreSQL throughput config; edited in",
+      "text": "# TEMPLATE \u2014 canonical nightly-CI PostgreSQL throughput config; edited in",
       "kind": "notice",
       "consumer": "tests/uat/test_config.py",
       "necessity": "The UAT config lifecycle header classifies the file as an editable template or an immutable historical record. tests/uat/test_config.py requires the first line to start with a recognized marker, and _project/specs/uat-framework.md Section 9 defines the header and its edit protocol.",
@@ -38480,7 +38050,7 @@
     {
       "path": "tests/uat/configs/uat-tuned-followup-20260505.yaml",
       "symbol": "",
-      "text": "# TEMPLATE — editable tuned follow-up UAT sweep config.",
+      "text": "# TEMPLATE \u2014 editable tuned follow-up UAT sweep config.",
       "kind": "notice",
       "consumer": "tests/uat/test_config.py",
       "necessity": "The UAT config lifecycle header classifies the file as an editable template or an immutable historical record. tests/uat/test_config.py requires the first line to start with a recognized marker, and _project/specs/uat-framework.md Section 9 defines the header and its edit protocol.",
@@ -38614,19 +38184,6 @@
       "kind": "fixture",
       "consumer": "tests/unit/scripts/site_deploy/test_site_deploy_publish.py",
       "necessity": "The test writes fixed placeholder text into a temporary site tree under tmp_path to prove that changed or tampered output is detected; the written text holds no comment.",
-      "alternative": "Inlining the executed or written text as a literal would stop the test from exercising the checked source it targets.",
-      "owner": "BenchBox maintainers",
-      "removal": "Remove when the executable-payload adapter can resolve this source statically."
-    },
-    {
-      "path": "tests/unit/scripts/test_path_filter_decision.py",
-      "symbol": "test_visual_inputs_classify_website_as_a_render_input",
-      "text": "unresolved executable source: 'bash'",
-      "payload": "sha256:abbccaefe2e96861786ff7a2287bd591d5d1a43c04f6f5adb2857f921b5f1b81",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": ".github/workflows/ci.yml",
-      "necessity": "The test executes the run script that it extracts from the checked .github/workflows/ci.yml visual-inputs workflow. The checker scans that script in place in the workflow, so the extracted copy carries no comment the policy has not seen.",
       "alternative": "Inlining the executed or written text as a literal would stop the test from exercising the checked source it targets.",
       "owner": "BenchBox maintainers",
       "removal": "Remove when the executable-payload adapter can resolve this source statically."
@@ -38789,32 +38346,6 @@
       "expires": "2027-01-04"
     },
     {
-      "path": "tests/unit/workflows/test_oracle_review_workflow.py",
-      "symbol": "_run_step",
-      "text": "unresolved executable source: 'bash'",
-      "payload": "sha256:3be3946ff868dcedd4bbafee00dc133519d0054d484eff9aea16ce681e458c1c",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": ".github/workflows/oracle-review.yml",
-      "necessity": "The test executes the run script that it extracts from the checked oracle-review workflow. The checker scans that script in place in the workflow, so the extracted copy carries no comment the policy has not seen.",
-      "alternative": "Inlining the script as a literal would stop the test from exercising the checked workflow it targets.",
-      "owner": "BenchBox maintainers",
-      "removal": "Remove when the executable-payload adapter can resolve this source statically."
-    },
-    {
-      "path": "tests/unit/workflows/test_stacked_pr_base_guard.py",
-      "symbol": "_run_guard",
-      "text": "unresolved executable source: 'bash'",
-      "payload": "sha256:17f255063a92544e9dcccb09c4ef6512ade5f4fafdc74d13b45e0d1aaf268552",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": ".github/workflows/ci.yml",
-      "necessity": "The test executes the run script that it extracts from the base-guard job in the checked CI workflow. The checker scans that script in place in the workflow, so the extracted copy carries no comment the policy has not seen.",
-      "alternative": "Inlining the script as a literal would stop the test from exercising the checked workflow it targets.",
-      "owner": "BenchBox maintainers",
-      "removal": "Remove when the executable-payload adapter can resolve this source statically."
-    },
-    {
       "path": "tests/unit/core/tpcds/generator/test_dsdgen_platform_options.py",
       "symbol": "",
       "text": "# Copyright 2026 Joe Harris / BenchBox Project",
@@ -38837,19 +38368,6 @@
       "removal": "Remove or change only after the owner records the governing notice requirement and confirms that the exact existing notice may be changed."
     },
     {
-      "path": "tests/unit/core/tpch/test_tpch_dbgen_framing_binaries.py",
-      "symbol": "_generate_rows",
-      "text": "unresolved executable source: str(dbgen_exe)",
-      "payload": "sha256:e2ef3fff57b6bad0143719556a410df3d20f4da5757e07978313df74b2b8f555",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/core/tpch/test_tpch_dbgen_framing_binaries.py",
-      "necessity": "The test runs the bundled TPC-H dbgen binary, resolved at run time for the host platform, to check its row framing; the arguments are fixed generator options.",
-      "alternative": "A literal binary path would stop the test from exercising the binary the package ships for the host.",
-      "owner": "BenchBox maintainers",
-      "removal": "Remove when the executable-payload adapter can resolve the bundled binary path statically."
-    },
-    {
       "path": "results-explorer/src/__tests__/linkColourScoping.test.ts",
       "symbol": "",
       "text": "// @vitest-environment node",
@@ -38860,19 +38378,6 @@
       "owner": "comment-cleanup-explorer-build",
       "removal": "Remove when the setting moves to configuration.",
       "expires": "2027-01-04"
-    },
-    {
-      "path": "tests/unit/scripts/site_deploy/test_site_deploy_gates.py",
-      "symbol": "html-output:inputs.site_dir / 'docs' / 'old.html'",
-      "text": "unresolved HTML output source",
-      "payload": "sha256:33739fc48952d882ad236167e0af539e83537a6c0fa4a6cc419e89b6d9c29f72",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/scripts/site_deploy/test_site_deploy_gates.py",
-      "owner": "BenchBox maintainers",
-      "necessity": "The test writes fixed placeholder HTML into a temporary site tree under tmp_path to exercise the deploy gates; the written text holds no comment.",
-      "alternative": "A literal output path would stop the test from exercising the gate's own site-directory handling.",
-      "removal": "Remove when the executable-payload adapter can resolve this source statically."
     },
     {
       "path": "tests/unit/scripts/test_browser_fixtures_port.py",
@@ -38900,10 +38405,166 @@
       "expires": "2027-01-04"
     },
     {
+      "path": "tests/unit/core/test_registry_lazy_load.py",
+      "symbol": "_run",
+      "text": "unresolved executable source: code",
+      "payload": "sha256:9803b9dce00b75d46596ddc68e234baab64576579d3263b26125af106a28b7a2",
+      "finding_kind": "payload-error",
+      "kind": "fixture",
+      "consumer": "tests/unit/core/test_registry_lazy_load.py",
+      "necessity": "In `_run` the test starts a subprocess whose program or inline source (code) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
+      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
+      "owner": "comment-cleanup-unit-tests-core",
+      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
+    },
+    {
+      "path": "tests/unit/core/tpcds/test_tpcds_stdout_datagen.py",
+      "symbol": "TestDsdgenFilterFlag.test_filter_does_not_create_file",
+      "text": "unresolved executable source: str(dsdgen_path)",
+      "payload": "sha256:ff8e8cccd128c9c8349d25d30ef06669bd0815bcef15e447b8e8c83722893b05",
+      "finding_kind": "payload-error",
+      "kind": "fixture",
+      "consumer": "tests/unit/core/tpcds/test_tpcds_stdout_datagen.py",
+      "necessity": "In `TestDsdgenFilterFlag.test_filter_does_not_create_file` the test starts a subprocess whose program or inline source (str(dsdgen_path)) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
+      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
+      "owner": "comment-cleanup-unit-tests-core",
+      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
+    },
+    {
+      "path": "tests/unit/core/tpcds/test_tpcds_stdout_datagen.py",
+      "symbol": "TestDsdgenFilterFlag.test_without_filter_creates_file",
+      "text": "unresolved executable source: str(dsdgen_path)",
+      "payload": "sha256:c4898e3c7fe37c85507400081122b0d2e03b2893f73443415db6e22a012e3744",
+      "finding_kind": "payload-error",
+      "kind": "fixture",
+      "consumer": "tests/unit/core/tpcds/test_tpcds_stdout_datagen.py",
+      "necessity": "In `TestDsdgenFilterFlag.test_without_filter_creates_file` the test starts a subprocess whose program or inline source (str(dsdgen_path)) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
+      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
+      "owner": "comment-cleanup-unit-tests-core",
+      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
+    },
+    {
+      "path": "tests/unit/core/tpcds/test_tpcds_stdout_datagen.py",
+      "symbol": "TestStdoutDataEquivalence.test_stdout_matches_file_output",
+      "text": "unresolved executable source: str(dsdgen_path)",
+      "payload": "sha256:62332c7760cd8c62c61e81c0217ccd6ac7c9c8a41dfd861d0ab602d98acae759",
+      "finding_kind": "payload-error",
+      "kind": "fixture",
+      "consumer": "tests/unit/core/tpcds/test_tpcds_stdout_datagen.py",
+      "necessity": "In `TestStdoutDataEquivalence.test_stdout_matches_file_output` the test starts a subprocess whose program or inline source (str(dsdgen_path)) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
+      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
+      "owner": "comment-cleanup-unit-tests-core",
+      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
+    },
+    {
+      "path": "tests/unit/platforms/test_snowflake_adapter_resource_heavy.py",
+      "symbol": "_parse_snowflake_cli_args",
+      "text": "unresolved executable source: script.replace('ARGV', repr(argv))",
+      "payload": "sha256:1def697b824400d21b0a992274ca003e10fa18500f2a54d3855a66acb1cb90fe",
+      "finding_kind": "payload-error",
+      "kind": "fixture",
+      "consumer": "tests/unit/platforms/test_snowflake_adapter_resource_heavy.py",
+      "necessity": "In `_parse_snowflake_cli_args` the test starts a subprocess whose program or inline source (script.replace('ARGV', repr(argv))) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
+      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
+      "owner": "comment-cleanup-unit-tests-platforms",
+      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
+    },
+    {
+      "path": "tests/unit/scripts/test_release_artifact_execution.py",
+      "symbol": "test_inherited_pipe_writer_cannot_hold_download_cleanup",
+      "text": "unresolved executable source: sys.executable",
+      "payload": "sha256:94d02354c820ac7d5777ddd631de2ec5949c524052c42b33605e942d5e7c9c63",
+      "finding_kind": "payload-error",
+      "kind": "fixture",
+      "consumer": "tests/unit/scripts/test_release_artifact_execution.py",
+      "necessity": "In `test_inherited_pipe_writer_cannot_hold_download_cleanup` the test starts a subprocess whose program or inline source (sys.executable) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
+      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
+      "owner": "comment-cleanup-utilities",
+      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
+    },
+    {
+      "path": "tests/unit/test_import_isolation.py",
+      "symbol": "_run_entrypoint",
+      "text": "unresolved executable source: code",
+      "payload": "sha256:0e83e0d7c9daf256024a9e99ca6a0f54a6e61abea66532210c7d2ea90d75f260",
+      "finding_kind": "payload-error",
+      "kind": "fixture",
+      "consumer": "tests/unit/test_import_isolation.py",
+      "necessity": "In `_run_entrypoint` the test starts a subprocess whose program or inline source (code) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
+      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
+      "owner": "comment-cleanup-nyctaxi",
+      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
+    },
+    {
+      "path": "tests/unit/test_repo_root_paths.py",
+      "symbol": "test_normal_paths_import_does_not_load_native_helpers",
+      "text": "unresolved executable source: script",
+      "payload": "sha256:126f825497bed49ba8e15f4d3db196001796c65a5d865cdcd6e48d05dcff3b85",
+      "finding_kind": "payload-error",
+      "kind": "fixture",
+      "consumer": "tests/unit/test_repo_root_paths.py",
+      "necessity": "In `test_normal_paths_import_does_not_load_native_helpers` the test starts a subprocess whose program or inline source (script) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
+      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
+      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
+      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
+    },
+    {
+      "path": "tests/unit/test_repo_root_paths.py",
+      "symbol": "test_paths_module_is_cwd_independent_and_import_free",
+      "text": "unresolved executable source: script",
+      "payload": "sha256:efa60d8dd11d085f415f31f9cc01a6c31daacd6b98da28093d290a273d5df3a8",
+      "finding_kind": "payload-error",
+      "kind": "fixture",
+      "consumer": "tests/unit/test_repo_root_paths.py",
+      "necessity": "In `test_paths_module_is_cwd_independent_and_import_free` the test starts a subprocess whose program or inline source (script) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
+      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
+      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
+      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
+    },
+    {
+      "path": "tests/unit/test_standardized_test_commands.py",
+      "symbol": "TestMakefileCommands.test_pr_preflight_fast_tests_creates_classifier_artifacts_when_absent",
+      "text": "unresolved executable source: make",
+      "payload": "sha256:ee686f88fabe4dcbe6a17690d2b5d76d18db5d9d83f059db55e9982ee712cebd",
+      "finding_kind": "payload-error",
+      "kind": "fixture",
+      "consumer": "tests/unit/test_standardized_test_commands.py",
+      "necessity": "In `TestMakefileCommands.test_pr_preflight_fast_tests_creates_classifier_artifacts_when_absent` the test starts a subprocess whose program or inline source (make) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
+      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
+      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
+      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
+    },
+    {
+      "path": "tests/unit/workflows/test_validate_submission_override_approval.py",
+      "symbol": "_run_review_program",
+      "text": "unresolved executable source: program",
+      "payload": "sha256:3b51f58a0b34d223f70f555f019c1064cec913007b203f11043c34297e4684f1",
+      "finding_kind": "payload-error",
+      "kind": "fixture",
+      "consumer": "tests/unit/workflows/test_validate_submission_override_approval.py",
+      "necessity": "In `_run_review_program` the test starts a subprocess whose program or inline source (program) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
+      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
+      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
+      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
+    },
+    {
+      "path": "tests/unit/core/tpch/test_tpch_dbgen_framing_binaries.py",
+      "symbol": "_generate_rows",
+      "text": "unresolved executable source: str(dbgen_exe)",
+      "payload": "sha256:89f4d5952efafa5a304133111481e1a93f6c5bc567dc5d034f11a6ba71004e60",
+      "finding_kind": "payload-error",
+      "kind": "fixture",
+      "consumer": "tests/unit/core/tpch/test_tpch_dbgen_framing_binaries.py",
+      "necessity": "The test runs the bundled TPC-H dbgen binary, resolved at run time for the host platform, to check its row framing; the arguments are fixed generator options.",
+      "alternative": "A literal binary path would stop the test from exercising the binary the package ships for the host.",
+      "owner": "BenchBox maintainers",
+      "removal": "Remove when the executable-payload adapter can resolve the bundled binary path statically."
+    },
+    {
       "path": "tests/unit/core/throughput/test_stream_numbering.py",
       "symbol": "_qgen_stream_order.run",
       "text": "unresolved executable source: qgen.qgen_path",
-      "payload": "sha256:b175bd1d59f47515afa75a70d125aa1b004a5f76d0585dd9376279f973b6a657",
+      "payload": "sha256:fcba046f93f3dd98a22646014158bd45c655758d77d59c5349b1c5244c4838b0",
       "finding_kind": "payload-error",
       "kind": "fixture",
       "consumer": "tests/unit/core/throughput/test_stream_numbering.py",
@@ -38911,19 +38572,6 @@
       "alternative": "A literal binary path would stop the test from exercising the binary the package ships for the host.",
       "owner": "BenchBox maintainers",
       "removal": "Remove when the executable-payload adapter can resolve the bundled binary path statically."
-    },
-    {
-      "path": "benchbox/core/tpch/streams.py",
-      "symbol": "TPCHStreams._generate_stream_queries_qgen",
-      "text": "unresolved executable source: str(qgen_exe)",
-      "payload": "sha256:b5d8dcf930f26fe39448d8a43f321620e011f54372256f44906a9d11deabdd63",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "benchbox/core/tpch/streams.py",
-      "necessity": "The platform-selected qgen path is resolved at runtime. This exact module-AST fixture is for the modulo-indexed invocation; the code is constrained by a reviewed argv entry and a bundled-binary integration test.",
-      "alternative": "Use a statically resolved executable path; that would stop this code from using the platform-specific qgen binary returned by the compiler.",
-      "owner": "BenchBox maintainers",
-      "removal": "Remove when the immutable-base scanner recognizes the modulo-indexed qgen argv entry."
     }
   ]
 }

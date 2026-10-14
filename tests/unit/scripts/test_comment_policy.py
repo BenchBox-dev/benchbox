@@ -1863,6 +1863,209 @@ def test_consumer_digest_has_stable_python_version_encoding() -> None:
     assert python_consumer_digest(tree) == "sha256:c6aaea25c78f8f6fdbf83d97c11fe1be21e859156b678d34cfbcc79f8c261c69"
 
 
+SCOPED_DIGEST_MODULE = (
+    "import subprocess\n\nSCALE = 3\nUNUSED = 9\n\n\ndef consume(command):\n"
+    "    return subprocess.run([command, SCALE])\n\n\ndef unrelated():\n    return UNUSED + 1\n"
+)
+
+
+def _scoped_digest(source: str, symbol: str = "consume", lineno: int = 8) -> str:
+    from comment_execution import PythonBindings
+    from comment_syntax import python_scoped_digest
+
+    tree = ast.parse(source)
+    return python_scoped_digest(tree, symbol, lineno, PythonBindings(tree))
+
+
+def test_scoped_digest_survives_unrelated_edit_elsewhere_in_file() -> None:
+    before = _scoped_digest(SCOPED_DIGEST_MODULE)
+    edited = SCOPED_DIGEST_MODULE.replace("return UNUSED + 1", "return UNUSED + 2")
+    assert _scoped_digest(edited) == before
+
+
+def test_scoped_digest_survives_unused_module_binding_edit() -> None:
+    before = _scoped_digest(SCOPED_DIGEST_MODULE)
+    edited = SCOPED_DIGEST_MODULE.replace("UNUSED = 9", "UNUSED = 10")
+    assert _scoped_digest(edited) == before
+
+
+def test_scoped_digest_invalidates_consumer_edit() -> None:
+    before = _scoped_digest(SCOPED_DIGEST_MODULE)
+    edited = SCOPED_DIGEST_MODULE.replace("[command, SCALE]", "[command, SCALE, 0]")
+    assert _scoped_digest(edited) != before
+
+
+def test_scoped_digest_invalidates_resolved_binding_edit() -> None:
+    before = _scoped_digest(SCOPED_DIGEST_MODULE)
+    edited = SCOPED_DIGEST_MODULE.replace("SCALE = 3", "SCALE = 4")
+    assert _scoped_digest(edited) != before
+
+
+def test_scoped_digest_falls_back_to_whole_tree_without_scope() -> None:
+    from comment_syntax import python_consumer_digest
+
+    tree = ast.parse(SCOPED_DIGEST_MODULE)
+    assert _scoped_digest(SCOPED_DIGEST_MODULE, symbol="", lineno=1) == python_consumer_digest(tree)
+
+
+REVIEW_GATED_POLICY = {"version": 1, "external": [], "completed": [], "exceptions": []}
+
+REVIEW_GATED_SCOPE_POLICY = {
+    "version": 1,
+    "maintained_roots": [],
+    "ownership_rules": [],
+    "external_entries": [],
+    "format_classes": [],
+    "payloads": [],
+    "derived_rules": [],
+    "consumer_edges": [],
+    "directives": [],
+    "notices": [],
+    "obligations": [],
+    "review_dispositions": [],
+}
+
+REVIEW_GATED_ENTRY = {
+    "path": "a.py",
+    "symbol": "",
+    "text": "# explanation",
+    "kind": "notice",
+    "consumer": "a.py",
+    "necessity": "Keep the fixture prose.",
+    "alternative": "No prose needed.",
+    "owner": "comment-cleanup-test",
+    "removal": "Remove with the fixture.",
+}
+
+
+def _review_gated_repo(tmp_path: Path) -> str:
+    (tmp_path / "quality").mkdir()
+    (tmp_path / "quality" / "comment-policy.json").write_text(json.dumps(REVIEW_GATED_POLICY), encoding="utf-8")
+    (tmp_path / "quality" / "comment-cleanup-scope.json").write_text(
+        json.dumps(REVIEW_GATED_SCOPE_POLICY), encoding="utf-8"
+    )
+    git_run(tmp_path, "init", "-q")
+    git_run(tmp_path, "add", ".")
+    git_run(tmp_path, "commit", "-qm", "base")
+    base = git_run(tmp_path, "rev-parse", "HEAD")
+    (tmp_path / "a.py").write_text("x = 1  # explanation\n", encoding="utf-8")
+    candidate = dict(REVIEW_GATED_POLICY, exceptions=[dict(REVIEW_GATED_ENTRY)])
+    (tmp_path / "quality" / "comment-policy.json").write_text(json.dumps(candidate), encoding="utf-8")
+    git_run(tmp_path, "add", ".")
+    git_run(tmp_path, "commit", "-qm", "head")
+    return base
+
+
+def test_transition_self_registered_exception_fails_without_review(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base = _review_gated_repo(tmp_path)
+    monkeypatch.setattr(check_comment_policy, "oracle_review_covers", lambda: False)
+    assert check_comment_policy.main(["--root", str(tmp_path), "--mode", "transition", "--base", base]) == 1
+
+
+def test_transition_self_registered_exception_counts_with_review(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base = _review_gated_repo(tmp_path)
+    monkeypatch.setattr(check_comment_policy, "oracle_review_covers", lambda: True)
+    assert check_comment_policy.main(["--root", str(tmp_path), "--mode", "transition", "--base", base]) == 0
+
+
+def _check_runs_payload(*runs: dict) -> bytes:
+    import json as json_module
+
+    return json_module.dumps({"check_runs": list(runs)}).encode()
+
+
+class _FakeResponse:
+    def __init__(self, payload: bytes) -> None:
+        self._payload = payload
+
+    def __enter__(self) -> _FakeResponse:
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        return None
+
+    def read(self) -> bytes:
+        return self._payload
+
+
+def _review_event(tmp_path: Path, head: str = "a" * 40) -> None:
+    import json as json_module
+
+    (tmp_path / "event.json").write_text(
+        json_module.dumps({"pull_request": {"number": 1, "head": {"sha": head}}}), encoding="utf-8"
+    )
+
+
+def test_oracle_review_covers_needs_event_token_and_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    monkeypatch.delenv("GITHUB_EVENT_PATH", raising=False)
+    monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
+    monkeypatch.setenv("GITHUB_TOKEN", "t")
+    assert scope.oracle_review_covers() is False
+
+
+def test_oracle_review_covers_success_check_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_event(tmp_path)
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(tmp_path / "event.json"))
+    monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
+    monkeypatch.setenv("GITHUB_TOKEN", "t")
+    run = {
+        "name": "oracle-review",
+        "status": "completed",
+        "conclusion": "success",
+        "completed_at": "2026-10-14T00:00:00Z",
+    }
+    monkeypatch.setattr("urllib.request.urlopen", lambda request, timeout=30: _FakeResponse(_check_runs_payload(run)))
+    assert scope.oracle_review_covers() is True
+
+
+def test_oracle_review_covers_latest_completed_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_event(tmp_path)
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(tmp_path / "event.json"))
+    monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
+    monkeypatch.setenv("GITHUB_TOKEN", "t")
+    old = {
+        "name": "oracle-review",
+        "status": "completed",
+        "conclusion": "success",
+        "completed_at": "2026-10-13T00:00:00Z",
+    }
+    new = {
+        "name": "oracle-review",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-10-14T00:00:00Z",
+    }
+    monkeypatch.setattr(
+        "urllib.request.urlopen", lambda request, timeout=30: _FakeResponse(_check_runs_payload(old, new))
+    )
+    assert scope.oracle_review_covers() is False
+
+
+def test_oracle_review_covers_fails_closed_on_api_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_event(tmp_path)
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(tmp_path / "event.json"))
+    monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
+    monkeypatch.setenv("GITHUB_TOKEN", "t")
+
+    def fail(request: object, timeout: int = 30) -> _FakeResponse:
+        raise OSError("network down")
+
+    monkeypatch.setattr("urllib.request.urlopen", fail)
+    assert scope.oracle_review_covers() is False
+
+
 @pytest.mark.parametrize("prefix", [["python3"], ["env", "python3"], ["uv", "run", "python3"]])
 def test_sys_executable_inline_source_is_not_literal_program_name(prefix: list[str]) -> None:
     prefix_expression = ", ".join(repr(word) for word in prefix)
