@@ -19,7 +19,7 @@ if TYPE_CHECKING:
         UnifiedTuningConfiguration,
     )
 
-from benchbox.core.execution_engine import ExecutionEngineReceipt, ObservedSource
+from benchbox.core.execution_engine import ExecutionEngineReceipt, supported_execution_engines
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 from benchbox.core.upload_validation import UploadValidationEngine
 from benchbox.platforms.base import DriverIsolationCapability, PlatformAdapter
@@ -818,20 +818,22 @@ class DatabricksAdapter(PlatformAdapter):
                 if isinstance(configuration, dict):
                     configuration["region"] = detected_region
 
-        photon_enabled = platform_info.get("compute_configuration", {}).get("enable_photon")
-        observed = "photon" if photon_enabled is True else "standard" if photon_enabled is False else "not_captured"
-        observed_source: ObservedSource = "vendor_log" if photon_enabled is not None else "none"
         platform_info["configuration"]["execution_engine"] = asdict(
-            ExecutionEngineReceipt(
-                requested=DEFAULT_EXECUTION_ENGINE,
-                applied=None,
-                applied_class=None,
-                resolution="platform_default",
-                observed=observed,
-                observed_source=observed_source,
-            )
+            self._photon_receipt(platform_info.get("compute_configuration", {}).get("enable_photon"))
         )
         return platform_info
+
+    @staticmethod
+    def _photon_receipt(photon_enabled: Any) -> ExecutionEngineReceipt:
+        applied = "photon" if photon_enabled is True else "standard" if photon_enabled is False else None
+        engines = supported_execution_engines("databricks")
+        return ExecutionEngineReceipt(
+            requested=DEFAULT_EXECUTION_ENGINE,
+            applied=applied,
+            applied_class=engines[applied].engine_class if applied in engines else None,
+            applied_native={} if applied is None else {"enable_photon": photon_enabled},
+            resolution="platform_default",
+        )
 
     def get_normalized_result_metadata(
         self,

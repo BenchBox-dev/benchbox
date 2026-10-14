@@ -97,8 +97,11 @@ class TestAutoDetectDatabricksConfig:
 
 
 class TestGetPlatformInfoSdkPath:
-    @pytest.mark.parametrize(("enable_photon", "observed"), [(True, "photon"), (False, "standard")])
-    def test_captures_compute_configuration_from_sdk(self, enable_photon, observed):
+    @pytest.mark.parametrize(
+        ("enable_photon", "applied", "applied_class"),
+        [(True, "photon", "native-vectorized"), (False, "standard", "standard")],
+    )
+    def test_captures_compute_configuration_from_sdk(self, enable_photon, applied, applied_class):
         adapter = _make_adapter(http_path="/sql/1.0/warehouses/abc123")
 
         mock_warehouse = MagicMock()
@@ -136,11 +139,15 @@ class TestGetPlatformInfoSdkPath:
         assert cc["warehouse_size"] == "Medium"
         assert cc["enable_photon"] is enable_photon
         assert cc["warehouse_metadata_collection_status"] == "available"
-        receipt = info["configuration"]["execution_engine"]
-        assert receipt["requested"] == "default"
-        assert receipt["applied"] is None
-        assert receipt["observed"] == observed
-        assert receipt["observed_source"] == "vendor_log"
+        assert info["configuration"]["execution_engine"] == {
+            "requested": "default",
+            "applied": applied,
+            "applied_class": applied_class,
+            "applied_native": {"enable_photon": enable_photon},
+            "resolution": "platform_default",
+            "observed": "not_captured",
+            "observed_source": "none",
+        }
 
     def test_platform_info_sdk_import_error_silenced(self):
         adapter = _make_adapter()
@@ -156,6 +163,9 @@ class TestGetPlatformInfoSdkPath:
         assert info["compute_configuration"]["warehouse_metadata_collection_status"] == "unavailable"
         assert info["compute_configuration"]["warehouse_metadata_error_class"] in {"ImportError", "ModuleNotFoundError"}
         receipt = info["configuration"]["execution_engine"]
+        assert receipt["applied"] is None
+        assert receipt["applied_class"] is None
+        assert receipt["applied_native"] == {}
         assert receipt["observed"] == "not_captured"
         assert receipt["observed_source"] == "none"
 
