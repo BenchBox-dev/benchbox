@@ -20676,10 +20676,15 @@
       "title": "Reproduce datafusion SF1 Q18 memory exhaustion and disposition cell"
     },
     "site-split-72-bundle-fetch-provenance": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-15T20:22:46Z",
+        "generation": "98d1d8c1564c4e12bf58a26dc5f37b9b",
+        "renewals": 0,
+        "worker": "mcp:tbh:joe@joe-mac-mini.local:2ff26e731ddb7b681f9dacbc"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Tighten bundle-fetch producing-run provenance check"
     },
     "site-split-99-closeout": {
