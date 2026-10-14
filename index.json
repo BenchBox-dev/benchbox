@@ -23647,10 +23647,10 @@
     },
     "tuning-ctas-rewrite-safety-20261001": {
       "claim": {
-        "expires_at": "2026-10-15T19:28:01Z",
-        "generation": "56b317a63d9c4b989be5044f7a57ce4d",
+        "expires_at": "2026-10-15T20:20:19Z",
+        "generation": "3dd0ebfd5cd1477da59a7000319e49cf",
         "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:fc0d1ff3e89d9d705763452b"
+        "worker": "mcp:codex-mcp-client:joe@joe-mac-mini.local:8c48d410c864b9ee396035f0"
       },
       "needs": [
         "tuning-post-load-seam-20261001"

@@ -30,6 +30,17 @@
       "op": "take",
       "op_id": "e8668a7180eb4bd289394b0455d64b91",
       "session_id": "7c6ceccf81f14d0a962150f0c09d7242"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:8c48d410c864b9ee396035f0",
+      "at": "2026-10-14T20:20:19Z",
+      "client": "codex-mcp-client",
+      "displaced": "mcp:claude-code:joe@joe-mac-mini.local:fc0d1ff3e89d9d705763452b",
+      "generation": "3dd0ebfd5cd1477da59a7000319e49cf",
+      "op": "takeover",
+      "op_id": "58d2c56f53504e8c8256f17778432ea9",
+      "reason": "The interrupted Claude session 61109ec5-ec32-436a-bc34-1f7f34c9911f reached its usage limit and ended; I am continuing its item 42 work at the user's request.",
+      "session_id": "eca77f45c1ef44d39b159b926261486e"
     }
   ]
 }
