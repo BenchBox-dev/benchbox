@@ -8582,6 +8582,13 @@
       "status": "done",
       "title": "Enforce separate-turn authorization for review remediation"
     },
+    "engine-receipt-default-and-legacy-reader-20261014": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Bundles from platforms without declared engines carry no execution-engine receipt, and the legacy streaming fallback applies to any platform"
+    },
     "enhance-ascii-charting": {
       "claim": null,
       "needs": [],
