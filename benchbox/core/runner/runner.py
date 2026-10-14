@@ -510,39 +510,6 @@ def _resolve_load_only_tuning(adapter: object) -> tuple[bool, Any, bool]:
     return full_lifecycle, effective_tuning_config, tuned_run
 
 
-def _export_load_only_tuning(
-    adapter: object,
-    connection: Any,
-    benchmark_config: BenchmarkConfig,
-    effective_tuning_config: Any,
-    tuned_run: bool,
-) -> tuple[Any, Any, Any, Any, Any]:
-    from benchbox.core.tuning.applied_ledger import PHASE_SESSION, recording_connection
-    from benchbox.platforms.base import tuning_trust
-
-    tunings_applied_dict = None
-    requested_config_hash = None
-    if tuned_run:
-        tunings_applied_dict = effective_tuning_config.to_dict()
-        requested_config_hash = effective_tuning_config.get_configuration_hash()
-    adapter._fold_layout_operations_into_ledger()
-    adapter._reconcile_requested_tuning(effective_tuning_config)
-    adapter.configure_for_benchmark(
-        recording_connection(
-            connection,
-            getattr(adapter, "_applied_tuning_ledger", None),
-            PHASE_SESSION,
-            execute_verbs=tuple(getattr(adapter, "ledger_execute_verbs", ())),
-        ),
-        getattr(benchmark_config, "benchmark_type", "olap"),
-    )
-    apply_status = tuning_trust.apply_phase_status(adapter, bool(effective_tuning_config))
-    final_status, ledger_payload, ledger_hash, _receipt_payload = tuning_trust.read_back_applied_ledger(
-        adapter, connection, apply_status, bool(effective_tuning_config)
-    )
-    return (tunings_applied_dict, requested_config_hash, final_status, ledger_payload, ledger_hash)
-
-
 def _run_load_only_table_phase(
     adapter: object,
     benchmark: Any,
@@ -701,7 +668,12 @@ def _execute_load_only_mode(
                 tuning_validation_status,
                 applied_ledger_payload,
                 applied_ledger_hash,
-            ) = _export_load_only_tuning(adapter, connection, benchmark_config, effective_tuning_config, tuned_run)
+            ) = adapter._export_load_only_tuning(
+                connection,
+                getattr(benchmark_config, "benchmark_type", "olap"),
+                effective_tuning_config,
+                tuned_run,
+            )
         phases = {
             "data_generation": {"status": "COMPLETED"},
             "schema_creation": schema_phase,

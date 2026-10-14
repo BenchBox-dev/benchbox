@@ -879,6 +879,35 @@ class PlatformAdapter(
     def _attach_applied_ledger_payload(self, result: Any, status: str) -> None:
         tuning_trust.attach_applied_ledger_payload(self, result, status)
 
+    def _export_load_only_tuning(
+        self,
+        connection: Any,
+        benchmark_type: str,
+        effective_tuning_config: Any,
+        tuned_run: bool,
+    ) -> tuple[Any, Any, Any, Any, Any]:
+        tunings_applied_dict = None
+        requested_config_hash = None
+        if tuned_run:
+            tunings_applied_dict = effective_tuning_config.to_dict()
+            requested_config_hash = effective_tuning_config.get_configuration_hash()
+        self._fold_layout_operations_into_ledger()
+        self._reconcile_requested_tuning(effective_tuning_config)
+        self.configure_for_benchmark(
+            recording_connection(
+                connection,
+                self._applied_tuning_ledger,
+                PHASE_SESSION,
+                execute_verbs=self.ledger_execute_verbs,
+            ),
+            benchmark_type,
+        )
+        apply_status = tuning_trust.apply_phase_status(self, bool(effective_tuning_config))
+        final_status, ledger_payload, ledger_hash, _receipt_payload = tuning_trust.read_back_applied_ledger(
+            self, connection, apply_status, bool(effective_tuning_config)
+        )
+        return tunings_applied_dict, requested_config_hash, final_status, ledger_payload, ledger_hash
+
     def _build_drift_check_payload(self) -> dict[str, Any] | None:
         return tuning_trust.build_drift_check_payload(self)
 
