@@ -185,6 +185,11 @@ benchbox run --platform polars-df --benchmark tpch --scale 1 \
 | `in-memory` | Materialize each query in memory |
 | `streaming` | Process each query in batches to bound memory |
 
+With `default`, BenchBox passes no `engine` argument to `collect()`; the
+result still records the engine Polars applied. The `write_primitives`
+benchmark runs its timed DataFrame operations on DuckDB, so it accepts only
+`default` and fails before any work for another engine.
+
 | Option | Default | Description |
 |--------|---------|-------------|
 | `rechunk` | `true` | Rechunk data for better memory layout |
@@ -432,7 +437,7 @@ DataFrame tuning is organized into configuration categories:
 | Setting | Type | Default | Applicable Platforms | Description |
 |---------|------|---------|---------------------|-------------|
 | `streaming_mode` | bool | false | Polars | Enable streaming execution for memory efficiency |
-| `engine_affinity` | str | None | Polars | Preferred execution engine: `"streaming"` or `"in-memory"` |
+| `engine_affinity` | str | None | Polars | Preferred execution engine: `"streaming"` or `"in-memory"`. To let Polars choose the engine for each query, use `--execution-engine auto` instead |
 | `lazy_evaluation` | bool | true | Polars, Dask | Enable lazy evaluation where supported |
 | `collect_timeout` | int | None | All lazy platforms | Maximum seconds for collect/compute operations |
 

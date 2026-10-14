@@ -36,43 +36,19 @@ This installs the AWS client dependency, `boto3`, via the `cloud-spark-aws` extr
 
 ## Configuration
 
-### Environment Variables
-
-```bash
-export EMR_S3_STAGING_DIR=s3://your-bucket/benchbox/
-export EMR_EXECUTION_ROLE_ARN=arn:aws:iam::123456789012:role/EMRServerlessRole
-
-export EMR_APPLICATION_ID=00f12345abc67890
-export EMR_CREATE_APPLICATION=true
-
-export AWS_REGION=us-east-1
-export EMR_DATABASE=benchbox
-export EMR_RELEASE_LABEL=emr-7.0.0
-```
-
-`EMR_S3_STAGING_DIR` and `EMR_EXECUTION_ROLE_ARN` are required. You must also set one of `EMR_APPLICATION_ID` (use an existing application) or `EMR_CREATE_APPLICATION=true` (create a new application), not both. `AWS_REGION`, `EMR_DATABASE`, and `EMR_RELEASE_LABEL` are optional.
-
 ### CLI Usage
 
+The BenchBox CLI does not accept the EMR Serverless staging, role, or application settings, so run benchmarks
+through the Python API described below. The CLI can still preview the generated queries without connecting to AWS:
+
 ```bash
-benchbox run --platform emr-serverless --benchmark tpch --scale 1.0 \
-  --platform-option compute_resource=00f12345abc67890 \
-  --platform-option s3_staging_dir=s3://bucket/benchbox/ \
-  --platform-option execution_role_arn=arn:aws:iam::123456789012:role/EMRRole
-
-benchbox run --platform emr-serverless --benchmark tpch --scale 1.0 \
-  --platform-option s3_staging_dir=s3://bucket/benchbox/ \
-  --platform-option execution_role_arn=arn:aws:iam::123456789012:role/EMRRole \
-  --platform-option create_application=true
-
-benchbox run --platform emr-serverless --benchmark tpch --dry-run ./preview \
-  --platform-option s3_staging_dir=s3://bucket/benchbox/ \
-  --platform-option execution_role_arn=arn:aws:iam::123456789012:role/EMRRole
+benchbox run --platform emr-serverless --benchmark tpch --dry-run ./preview
 ```
 
-The first command runs against an existing application, the second creates a new application, and the third runs a dry run that previews queries.
+### Adapter Options
 
-### Platform Options
+These are `EMRServerlessAdapter` keyword arguments. Set `application_id` to use an existing application, or set
+`create_application=True` to create one.
 
 | Option | Default | Description |
 |--------|---------|-------------|
@@ -80,6 +56,7 @@ The first command runs against an existing application, the second creates a new
 | `execution_role_arn` | *required* | IAM role ARN for job execution |
 | `application_id` | - | Existing EMR Serverless application ID |
 | `create_application` | false | Create new application if ID not provided |
+| `application_name` | - | Name for a new application |
 | `region` | us-east-1 | AWS region |
 | `database` | benchbox | Glue Data Catalog database |
 | `release_label` | emr-7.0.0 | EMR release label |
@@ -91,7 +68,7 @@ The first command runs against an existing application, the second creates a new
 from benchbox.platforms.aws import EMRServerlessAdapter
 
 adapter = EMRServerlessAdapter(
-    compute_resource="00f12345abc67890",
+    application_id="00f12345abc67890",
     s3_staging_dir="s3://my-bucket/benchbox/",
     execution_role_arn="arn:aws:iam::123456789012:role/EMRRole",
     region="us-east-1",
@@ -135,7 +112,7 @@ For sub-second startup, configure pre-initialized workers:
 
 ```python
 adapter = EMRServerlessAdapter(
-    compute_resource="00f12345abc67890",
+    application_id="00f12345abc67890",
     s3_staging_dir="s3://bucket/benchbox/",
     execution_role_arn="arn:aws:iam::123456789012:role/EMRRole",
     initial_capacity={

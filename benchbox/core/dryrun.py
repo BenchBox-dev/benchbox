@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 import yaml
 
 from benchbox.core.results.builder import normalize_benchmark_id
+from benchbox.core.results.platform_options import sanitize_platform_options
 from benchbox.core.schemas import (
     BenchmarkConfig,
     DatabaseConfig,
@@ -70,6 +71,9 @@ def _build_table_ddl_entry(tuning_clauses: Any) -> dict[str, Any]:
         "ddl_clauses": "\n".join(inline_clauses) if inline_clauses else None,
         "tuning_summary": tuning_summary,
     }
+
+
+_REDACTED_CONFIG_FIELDS = ("benchmark_config", "database_config", "platform_config")
 
 
 class DryRunQueryExtractionError(RuntimeError):
@@ -211,16 +215,18 @@ class DryRunExecutor:
     def _save_json_and_yaml(
         self, result: DryRunResult, prefix: str, timestamp: str, saved_files: dict[str, Path]
     ) -> None:
+        result_dict = result.model_dump()
+        for field in _REDACTED_CONFIG_FIELDS:
+            result_dict[field] = sanitize_platform_options(result_dict[field])
+
         json_path = self.output_dir / f"{prefix}_{timestamp}.json"
         with open(json_path, "w", encoding="utf-8") as f:
-            json.dump(result.model_dump(), f, indent=2, default=str)
+            json.dump(result_dict, f, indent=2, default=str)
         saved_files["json"] = json_path
 
         yaml_path = self.output_dir / f"{prefix}_{timestamp}.yaml"
-        result_dict = result.model_dump()
-        result_dict["timestamp"] = str(result_dict["timestamp"])
         with open(yaml_path, "w", encoding="utf-8") as f:
-            yaml.dump(result_dict, f, default_flow_style=False)
+            yaml.dump({**result_dict, "timestamp": str(result_dict["timestamp"])}, f, default_flow_style=False)
         saved_files["yaml"] = yaml_path
 
     def _save_queries(self, result: DryRunResult, prefix: str, timestamp: str, saved_files: dict[str, Path]) -> None:

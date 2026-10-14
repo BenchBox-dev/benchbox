@@ -2,6 +2,7 @@
 
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
+import functools
 import hashlib
 import logging
 import os
@@ -43,10 +44,28 @@ _PUBLIC_DROP_KEYS = frozenset(_ANONYMIZATION_SPECS["public_drop_keys"])
 _PUBLIC_DROP_CHILD_KEYS = {
     parent: frozenset(children) for parent, children in _ANONYMIZATION_SPECS["public_drop_child_keys"].items()
 }
-_OPTION_MAP_KEYS = frozenset(_ANONYMIZATION_SPECS["option_map_keys"])
-_PUBLIC_OPTION_VALUES = {
-    key: frozenset(values) for key, values in (_ANONYMIZATION_SPECS.get("public_option_values") or {}).items()
-}
+_ENGINE_RECEIPT_NATIVE_PATHS = (
+    ("platform", "execution_engine", "applied_native"),
+    ("platform", "raw_config", "execution_engine", "applied_native"),
+)
+
+
+@functools.cache
+def _declared_execution_engine_names() -> frozenset[str]:
+    from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE, PLATFORM_MANIFEST
+
+    names = {DEFAULT_EXECUTION_ENGINE}
+    for entry in PLATFORM_MANIFEST:
+        names.update(entry.capabilities.get("execution_engines", {}))
+        for gateway in entry.capabilities.get("gateways", {}).values():
+            names.update(gateway["routes_to"])
+    return frozenset(names)
+
+
+def _is_engine_receipt_native_path(key_path: tuple[str, ...]) -> bool:
+    return any(key_path[: len(anchor)] == anchor for anchor in _ENGINE_RECEIPT_NATIVE_PATHS)
+
+
 _OPTION_SOURCE_LABELS = frozenset(
     {
         "registered_default",
@@ -516,25 +535,6 @@ class AnonymizationManager:
         ):
             return value
 
-        if (
-            isinstance(value, str)
-            and len(key_path) >= 2
-            and _compact_key(key_path[-2]) in _OPTION_MAP_KEYS
-            and value in _PUBLIC_OPTION_VALUES.get(_compact_key(key_path[-1]), ())
-        ):
-            return value
-
-        if isinstance(value, str) and key_path[-4:] == (
-            "execution_engine",
-            "applied_native",
-            "collect_kwargs",
-            "engine",
-        ):
-            from benchbox.core.execution_engine import supported_execution_engines
-
-            if value in supported_execution_engines("polars"):
-                return value
-
         if isinstance(value, str) and self._looks_like_connection_string(value):
             return PUBLIC_REDACTED_VALUE
 
@@ -551,12 +551,22 @@ class AnonymizationManager:
         if prefix is not None:
             if prefix == "host" and isinstance(value, str) and self._is_local_endpoint_value(value):
                 return value
+            if prefix == "engine" and self._is_declared_engine_in_receipt(value, key_path):
+                return value
             return self._hash_public_identifier(str(value), prefix)
 
         if isinstance(value, str):
             return self.remove_pii(value)
 
         return value
+
+    def _is_declared_engine_in_receipt(self, value: Any, key_path: tuple[str, ...]) -> bool:
+        return (
+            isinstance(value, str)
+            and _compact_key(key_path[-1]) == "engine"
+            and _is_engine_receipt_native_path(key_path)
+            and value in _declared_execution_engine_names()
+        )
 
     def _is_secret_metadata_key(self, key_path: tuple[str, ...]) -> bool:
         return bool(key_path) and is_secret_option_key(key_path[-1])

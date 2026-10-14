@@ -153,6 +153,3 @@ message_keys:
 - message
 - stderr
 - stdout
-option_map_keys:
-- options
-- platformoptions

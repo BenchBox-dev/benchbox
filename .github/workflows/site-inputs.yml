@@ -58,60 +58,12 @@ jobs:
         env:
           DISPATCH_PARENT: ${{ inputs.parent_core_sha }}
           RUN_ID: ${{ github.event.workflow_run.id }}
-          IS_DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
           REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
         run: |
           CORE_SHA="$(git rev-parse HEAD)"
           echo "core_sha=${CORE_SHA}" >> "$GITHUB_OUTPUT"
-          RUN_IDS="$(gh run list --workflow site-inputs.yml --branch develop --status success --json databaseId --limit 10 -q '.[].databaseId')"
-          BUNDLED_SHAS=""
-          for RUN in $RUN_IDS; do
-            NAMES="$(gh api "repos/${REPO}/actions/runs/${RUN}/artifacts" -q '.artifacts[] | select(.expired == false and (.name | startswith("site-inputs-"))) | .name | ltrimstr("site-inputs-")')"
-            BUNDLED_SHAS="$(printf '%s\n%s' "$BUNDLED_SHAS" "$NAMES")"
-          done
-          if [ -n "$DISPATCH_PARENT" ]; then
-            if ! DISPATCH_PARENT="$(git rev-parse --verify --end-of-options "${DISPATCH_PARENT}^{commit}")" || ! [[ "$DISPATCH_PARENT" =~ ^[0-9a-f]{40}$ ]]; then
-              echo "parent_core_sha does not name a commit" >&2
-              exit 1
-            fi
-            if ! git merge-base --is-ancestor "$DISPATCH_PARENT" "$CORE_SHA"; then
-              echo "parent_core_sha ${DISPATCH_PARENT} is not an ancestor of ${CORE_SHA}" >&2
-              exit 1
-            fi
-            if printf '%s\n' "$BUNDLED_SHAS" | grep -qxF "$DISPATCH_PARENT"; then
-              echo "parent_source=bundle" >> "$GITHUB_OUTPUT"
-            elif [ -z "$(printf '%s' "$BUNDLED_SHAS" | tr -d '[:space:]')" ]; then
-              echo "No unexpired develop bundle exists; using the dispatched parent ${DISPATCH_PARENT}." >> "$GITHUB_STEP_SUMMARY"
-              echo "parent_source=dispatch" >> "$GITHUB_OUTPUT"
-            else
-              echo "no site-inputs bundle attested on parent ${DISPATCH_PARENT}" >&2
-              exit 1
-            fi
-            echo "parent_sha=${DISPATCH_PARENT}" >> "$GITHUB_OUTPUT"
-          else
-            PREV=""
-            for CANDIDATE in $BUNDLED_SHAS; do
-              if [ "$CANDIDATE" != "$CORE_SHA" ] && git merge-base --is-ancestor "$CANDIDATE" "$CORE_SHA" 2>/dev/null; then
-                PREV="$CANDIDATE"
-                break
-              fi
-            done
-            if [ -z "$PREV" ]; then
-              echo "no unexpired develop bundle is an ancestor of ${CORE_SHA}; dispatch site-inputs.yml with parent_core_sha set to the last deployed core_sha" >&2
-              exit 1
-            fi
-            echo "parent_sha=${PREV}" >> "$GITHUB_OUTPUT"
-            echo "parent_source=bundle" >> "$GITHUB_OUTPUT"
-          fi
-          if [ "$IS_DISPATCH" = "true" ]; then
-            CERTIFIED="$(gh run list --workflow trunk.yml --branch develop --status success --json headSha,event --limit 20 -q '[.[] | select(.event == "push") | .headSha] | .[]')"
-            if ! printf '%s\n' "$CERTIFIED" | grep -qx "$CORE_SHA"; then
-              echo "no successful trunk.yml push run on ${CORE_SHA}" >&2
-              exit 1
-            fi
-          fi
-          echo "certified_by=${RUN_ID:-dispatch}" >> "$GITHUB_OUTPUT"
+          uv run -- python scripts/site_inputs_parent.py --core-sha "$CORE_SHA" --dispatch-parent "$DISPATCH_PARENT" --repo "$REPO" --limit 100 --run-id "${RUN_ID:-}"
 
       - name: Build and verify bundle
         env:

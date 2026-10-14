@@ -624,7 +624,9 @@ class TransactionPrimitivesBenchmark(TransactionalBenchmarkBase["OperationResult
         is_valid, _ = validate_transaction_primitives_platform(platform_name)
         return is_valid
 
-    def get_dataframe_operations(self, platform_name: str, spark_session: Any = None) -> Any:
+    def get_dataframe_operations(
+        self, platform_name: str, spark_session: Any = None, *, execution_engine: str = "default"
+    ) -> Any:
         from benchbox.core.transaction_primitives.dataframe_operations import (
             get_dataframe_transaction_manager,
             validate_transaction_primitives_platform,
@@ -634,7 +636,9 @@ class TransactionPrimitivesBenchmark(TransactionalBenchmarkBase["OperationResult
         if not is_valid:
             raise ValueError(error_msg)
 
-        manager = get_dataframe_transaction_manager(platform_name, spark_session=spark_session)
+        manager = get_dataframe_transaction_manager(
+            platform_name, spark_session=spark_session, execution_engine=execution_engine
+        )
 
         if manager is None:
             raise ValueError(f"Could not create DataFrame transaction manager for {platform_name}")
@@ -746,7 +750,9 @@ class TransactionPrimitivesBenchmark(TransactionalBenchmarkBase["OperationResult
         config_options = getattr(benchmark_config, "options", {}) or {}
         iterations = int(config_options.get("power_iterations", 1) or 1)
 
-        manager = self.get_dataframe_operations(platform_name, spark_session)
+        manager = self.get_dataframe_operations(
+            platform_name, spark_session, execution_engine=getattr(adapter, "collect_engine", "default")
+        )
 
         output: list[dict[str, Any]] = []
         op_iteration_counts: dict[str, int] = {}

@@ -40,27 +40,42 @@ export AWS_PROFILE=your-profile
 
 Set the access key variables, or use an AWS profile instead.
 
+### Interactive Setup
+
+```bash
+benchbox setup --platform athena
+```
+
+This saves the region, workgroup, S3 locations, and AWS authentication.
+The region is not a `--platform-option` key; BenchBox uses the saved region,
+or `us-east-1` when none is saved.
+
 ### CLI Options
 
 ```bash
 benchbox run --platform athena --benchmark tpch --scale 1.0 \
-  --platform-option region=us-east-1 \
   --platform-option compute_resource=primary \
-  --platform-option database=benchbox \
   --platform-option s3_staging_dir=s3://your-bucket/athena-results/
 ```
 
+BenchBox names the Glue database after the benchmark and scale factor.
+
 ### Platform Options
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `region` | us-east-1 | AWS region |
-| `workgroup` | primary | Athena workgroup for cost tracking |
-| `database` | default | Glue Data Catalog database |
-| `s3_staging_dir` | (required) | S3 path for query results |
-| `s3_data_dir` | (none) | S3 path for benchmark data |
-| `catalog` | AwsDataCatalog | Data catalog name |
-| `aws_profile` | (none) | AWS credentials profile |
+The **Set with** column shows where each setting comes from: the saved
+credentials (`benchbox setup`), a `--platform-option` key on `benchbox run`,
+or an `AthenaAdapter` argument in the Python API.
+
+| Option | Set with | Default | Description |
+|--------|----------|---------|-------------|
+| `region` | setup | us-east-1 | AWS region |
+| `compute_resource` | `--platform-option` | primary | Athena workgroup. Deprecated alias: `workgroup` |
+| `s3_staging_dir` | `--platform-option` | (none) | S3 path for staging data. Unless setup saved an output location, query results go to `s3://<bucket>/athena-results/` |
+| `s3_bucket` | `--platform-option` | (none) | S3 bucket for query results and data staging |
+| `staging_root` | `--platform-option` | (none) | Same as `s3_staging_dir` |
+| `aws_profile` | `--platform-option` | (none) | AWS credentials profile |
+| `database` | Python API | (auto) | Glue Data Catalog database |
+| `catalog` | Python API | AwsDataCatalog | Data catalog name |
 
 ## Usage Examples
 
@@ -68,8 +83,7 @@ benchbox run --platform athena --benchmark tpch --scale 1.0 \
 
 ```bash
 benchbox run --platform athena --benchmark tpch --scale 1.0 \
-  --platform-option s3_staging_dir=s3://my-bucket/athena-results/ \
-  --platform-option database=benchmarks
+  --platform-option s3_staging_dir=s3://my-bucket/athena-results/
 ```
 
 ### Python API
@@ -83,7 +97,6 @@ adapter = AthenaAdapter(
     compute_resource="primary",
     database="benchmarks",
     s3_staging_dir="s3://my-bucket/athena-results/",
-    s3_data_dir="s3://my-bucket/benchmark-data/",
 )
 
 benchmark = TPCH(scale_factor=1.0)
@@ -171,13 +184,6 @@ STORED AS PARQUET
 LOCATION 's3://bucket/lineitem/'
 ```
 
-### Enable Query Result Reuse
-
-```bash
-benchbox run --platform athena --benchmark tpch \
-  --platform-option result_reuse_enabled=true
-```
-
 ### Optimize File Sizes
 
 - **Minimum**: 128 MB per file
@@ -209,12 +215,9 @@ The command verifies S3 permissions. The IAM policy must include:
 
 ### Query Timeout
 
-```bash
-benchbox run --platform athena --benchmark tpcds \
-  --platform-option query_timeout=1800
-```
-
-The timeout is in seconds, so 1800 is 30 minutes. Increase it for long-running queries.
+Athena enforces its own query timeout (see Limitations). BenchBox has no
+setting to change it; raise the DML query timeout through an AWS service
+quota increase.
 
 ### Data Not Found
 

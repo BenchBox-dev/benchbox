@@ -36,6 +36,7 @@ from benchbox.core.equivalence.dataframe_surface import (
     materialize_rows,
 )
 from benchbox.core.execution_engine import resolve_requested
+from benchbox.utils.polars_collection import collect_frame
 from benchbox.utils.printing import quiet_console as console
 
 _BACKEND_FAMILIES = {"expression": "expression", "pandas": "pandas", "datafusion": "expression"}
@@ -553,7 +554,7 @@ def _dtype_categories_equivalent(reference: str, candidate: str) -> bool:
 def _frame_polars_categories(result: Any) -> list[str] | None:
     native = getattr(result, "native", result)
     if hasattr(native, "collect"):
-        native = native.collect()
+        native = collect_frame(native) if result is native else result.collect()
     schema = getattr(native, "schema", None)
     if schema is None:
         return None
@@ -1815,6 +1816,10 @@ def main(argv: list[str] | None = None) -> int:
     gate = get_gate(args.benchmark)
     if args.backend is not None:
         gate = replace(gate, backends=tuple(args.backend))
+    try:
+        _validate_execution_engine(gate.backends, args.execution_engine)
+    except ValueError as exc:
+        parser.error(f"--execution-engine: {exc}")
     if args.benchmark == "tpcds":
         gate = replace(gate, build=partial(build_tpcds_duckdb, seed=args.seed, stream_id=args.power_stream or 0))
         if args.seed is not None or args.power_stream:

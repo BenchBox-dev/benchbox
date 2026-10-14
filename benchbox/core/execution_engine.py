@@ -131,6 +131,25 @@ class ExecutionEngineHook:
     def resolve_execution_engine(self, requested: str) -> ExecutionEngineReceipt:
         return platform_default_receipt(str(getattr(self, "platform_name", type(self).__name__)), requested)
 
+    @property
+    def requested_execution_engine(self) -> str:
+        receipt = getattr(self, "_engine_receipt", None)
+        return receipt.requested if isinstance(receipt, ExecutionEngineReceipt) else DEFAULT_EXECUTION_ENGINE
+
+
+class EngineBypassedByBenchmarkError(ValueError):
+    pass
+
+
+def reject_engine_bypassing_benchmark(benchmark: object, benchmark_name: str, platform: str, requested: str) -> None:
+    if requested == DEFAULT_EXECUTION_ENGINE or getattr(benchmark, "DATAFRAME_WORKLOAD_USES_PLATFORM_ENGINE", True):
+        return
+    raise EngineBypassedByBenchmarkError(
+        f"The {benchmark_name} benchmark does not run its timed DataFrame operations on the {platform} "
+        f"execution engine, so execution engine {requested!r} cannot apply. "
+        "Run it with the default execution engine."
+    )
+
 
 __all__ = [
     "DEFAULT_EXECUTION_ENGINE",
@@ -139,6 +158,7 @@ __all__ = [
     "NOT_CAPTURED",
     "RESERVED_OPTION_KEYS",
     "DeprecatedOptionAlias",
+    "EngineBypassedByBenchmarkError",
     "ExecutionEngineHook",
     "ExecutionEngineReceipt",
     "ExecutionEngineResolution",
@@ -147,6 +167,7 @@ __all__ = [
     "UnsupportedExecutionEngineError",
     "legacy_option_engine",
     "platform_default_receipt",
+    "reject_engine_bypassing_benchmark",
     "resolve_requested",
     "supported_execution_engines",
 ]

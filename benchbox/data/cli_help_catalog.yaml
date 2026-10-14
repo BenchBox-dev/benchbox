@@ -66,7 +66,7 @@ command_examples:
     Snowflake:
     - benchbox run --platform snowflake --benchmark tpch --output s3://bucket/benchbox/
     - benchbox run --platform snowflake --benchmark tpcds --scale 100 \
-    - '  --platform-option warehouse=BENCHBOX_XL --output s3://my-bucket/results/'
+    - '  --platform-option compute_resource=BENCHBOX_XL --output s3://my-bucket/results/'
     - benchbox run --platform snowflake --benchmark tpch --tuning tuned \
     - '  --output s3://bucket/benchbox/  # Uses clustering, result caching'
     - benchbox run --platform snowflake --benchmark tpch --table-mode external \
@@ -80,8 +80,9 @@ command_examples:
     - '  --output dbfs:/Volumes/main/default/benchbox/  # Uses Photon, Delta optimization'
     BigQuery:
     - benchbox run --platform bigquery --benchmark tpch --output gs://bucket/benchbox/
+    - '# Project and credentials come from: benchbox setup --platform bigquery'
     - benchbox run --platform bigquery --benchmark tpcds --scale 100 \
-    - '  --platform-option project_id=my-project --output gs://my-bucket/results/'
+    - '  --output gs://my-bucket/results/'
     - benchbox run --platform snowflake --benchmark tpch --tuning tuned \
     - '  --output s3://bucket/benchbox/  # Uses clustering (packaged template)'
     - benchbox run --platform bigquery --benchmark tpch --table-mode external \
@@ -98,42 +99,36 @@ command_examples:
     - '  --platform-option url=http://localhost:3473 \'
     - '  --platform-option database=tpch_sf1'
     Firebolt Cloud:
-    - benchbox run --platform firebolt --benchmark tpch \
+    - benchbox run --platform firebolt:cloud --benchmark tpch \
     - '  --platform-option client_id=YOUR_CLIENT_ID \'
     - '  --platform-option client_secret=YOUR_SECRET \'
-    - '  --platform-option account=my-account --platform-option engine=benchmark_engine'
-    - benchbox run --platform firebolt --benchmark tpcds --scale 100 \
+    - '  --platform-option account_name=my-account --platform-option compute_resource=benchmark_engine'
+    - benchbox run --platform firebolt:cloud --benchmark tpcds --scale 100 \
     - '  --platform-option client_id=$FIREBOLT_CLIENT_ID \'
     - '  --platform-option client_secret=$FIREBOLT_CLIENT_SECRET \'
-    - '  --platform-option account=production --platform-option engine=large_engine'
+    - '  --platform-option account_name=production --platform-option compute_resource=large_engine'
     Presto:
-    - benchbox run --platform presto --benchmark tpch \
-    - '  --platform-option host=presto-coordinator.example.com \'
-    - '  --platform-option catalog=hive'
+    - '# Host, port and username come from the presto entry in ~/.benchbox/credentials.yaml'
+    - '# (host defaults to localhost).'
+    - benchbox run --platform presto --benchmark tpch --platform-option catalog=hive
     - benchbox run --platform presto --benchmark tpcds --scale 100 \
-    - '  --platform-option host=localhost --platform-option port=8080 \'
-    - '  --platform-option catalog=iceberg --platform-option schema=tpcds_sf100'
+    - '  --platform-option catalog=iceberg'
     - benchbox run --platform presto --benchmark tpch \
     - '  --platform-option catalog=memory  # In-memory catalog for testing'
     Trino:
-    - benchbox run --platform trino --benchmark tpch \
-    - '  --platform-option host=trino-coordinator.example.com \'
-    - '  --platform-option catalog=hive'
+    - '# Host, port and username come from the trino entry in ~/.benchbox/credentials.yaml'
+    - '# (host defaults to localhost).'
+    - benchbox run --platform trino --benchmark tpch --platform-option catalog=hive
     - benchbox run --platform trino --benchmark tpcds --scale 100 \
-    - '  --platform-option host=localhost --platform-option port=8080 \'
-    - '  --platform-option catalog=iceberg --platform-option schema=tpcds_sf100'
-    - benchbox run --platform trino --benchmark tpch \
-    - '  --platform-option user=benchbox  # Specify Trino user'
+    - '  --platform-option catalog=iceberg --platform-option table_format=iceberg'
     Athena:
     - benchbox run --platform athena --benchmark tpch \
     - '  --platform-option s3_staging_dir=s3://my-bucket/athena-results/ \'
-    - '  --platform-option workgroup=primary'
+    - '  --platform-option compute_resource=primary  # Athena workgroup'
     - benchbox run --platform athena --benchmark tpcds --scale 100 \
-    - '  --platform-option region=us-west-2 \'
+    - '  --platform-option aws_profile=benchbox \'
     - '  --platform-option s3_staging_dir=s3://athena-staging/results/ \'
-    - '  --platform-option workgroup=benchbox-workgroup'
-    - benchbox run --platform athena --benchmark tpch \
-    - '  --platform-option database=benchbox_tpch  # Use existing database'
+    - '  --platform-option compute_resource=benchbox-workgroup'
     - benchbox run --platform athena --benchmark tpch --table-mode external \
     - '  --platform-option staging_root=s3://my-bucket/benchbox/  # Skip CTAS materialization'
     - '# Athena Spark: the workgroup sets the engine version; runtime_version records it'
@@ -145,27 +140,27 @@ command_examples:
     - '  --platform-option compute_resource=my-spark-workgroup \'
     - '  --platform-option s3_staging_dir=s3://my-bucket/staging/  # External tables over staged Parquet'
     Azure Synapse:
-    - benchbox run --platform azure_synapse --benchmark tpch \
+    - benchbox run --platform synapse --benchmark tpch \
     - '  --platform-option server=myworkspace.sql.azuresynapse.net \'
     - '  --platform-option database=benchbox'
-    - benchbox run --platform azure_synapse --benchmark tpcds --scale 100 \
+    - benchbox run --platform synapse --benchmark tpcds --scale 100 \
     - '  --platform-option server=myworkspace.sql.azuresynapse.net \'
-    - '  --platform-option database=tpcds_sf100 --platform-option authentication=ActiveDirectoryInteractive'
+    - '  --platform-option database=tpcds_sf100 --platform-option auth_method=aad_msi'
     - '# Dedicated SQL pool with specific resource class'
-    - benchbox run --platform azure_synapse --benchmark tpch \
+    - benchbox run --platform synapse --benchmark tpch \
     - '  --platform-option server=myworkspace.sql.azuresynapse.net \'
     - '  --platform-option resource_class=staticrc60'
     Fabric Warehouse:
-    - benchbox run --platform fabric_warehouse --benchmark tpch \
+    - benchbox run --platform fabric_dw --benchmark tpch \
     - '  --platform-option server=workspace-guid.datawarehouse.fabric.microsoft.com \'
-    - '  --platform-option warehouse=BenchmarkWarehouse'
-    - benchbox run --platform fabric_warehouse --benchmark tpcds --scale 100 \
+    - '  --platform-option database=BenchmarkWarehouse'
+    - benchbox run --platform fabric_dw --benchmark tpcds --scale 100 \
     - '  --platform-option workspace=my-workspace \'
-    - '  --platform-option warehouse=TPC_DS_Benchmark'
+    - '  --platform-option database=TPC_DS_Benchmark'
     - '# Using Azure AD authentication (default)'
-    - benchbox run --platform fabric_warehouse --benchmark tpch \
+    - benchbox run --platform fabric_dw --benchmark tpch \
     - '  --platform-option workspace=analytics-workspace \'
-    - '  --platform-option warehouse=PerformanceTests'
+    - '  --platform-option database=PerformanceTests'
     PostgreSQL:
     - 'benchbox run --platform postgresql --benchmark tpch  # localhost:5432 default'
     - benchbox run --platform postgresql --benchmark tpch \
@@ -174,8 +169,6 @@ command_examples:
     - benchbox run --platform postgresql --benchmark tpcds --scale 10 \
     - '  --platform-option database=tpcds_benchmark \'
     - '  --platform-option schema=tpcds_sf10'
-    - benchbox run --platform postgresql --benchmark tpch \
-    - '  --platform-option sslmode=require  # Secure connection'
     Local Platforms:
     - 'benchbox run --platform duckdb --benchmark tpch  # Fastest local option'
     - 'benchbox run --platform sqlite --benchmark ssb --scale 1  # Baseline comparison'

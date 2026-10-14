@@ -15,6 +15,8 @@ Use this checklist before opening a platform-support PR. It is deliberately conc
 | What dependency group enables it? | Add or reuse an optional extra; do not make base import require a platform SDK. |
 | What is the blast radius? | List adapter files, registry metadata, docs, tests, SQL compatibility, and UAT/live scope. |
 
+(new-platform-checklist-sql)=
+
 ## SQL Platform Checklist
 
 - Add the adapter under `benchbox/platforms/` or an existing platform family package.
@@ -45,7 +47,7 @@ Use this checklist before opening a platform-support PR. It is deliberately conc
   in deployment, requested engine or gateway (the CLI accepts `--allow-heterogeneous-comparison`), and
   regression baselines use only runs of the same variant.
 - Declare execution engines when the platform offers more than one way to execute a query: add a manifest
-  `capabilities.execution_engines` block with `{name: {class, display_name, description, dependencies, selectable}}.
+  `capabilities.execution_engines` block with `{name: {class, display_name, description, dependencies, selectable}}`.
   The class comes from the closed core list (`adaptive`, `in-memory`, `streaming`, `gpu`, `native-vectorized`,
   `standard`, `distributed`, `jit`, `delegated`). Name each value with the platform's own documented term when one
   exists, otherwise the class name; the same name must map to the same class on every platform (the vocabulary
@@ -115,4 +117,12 @@ uv run -- python scripts/new_platform_scaffold.py --name myengine --kind datafra
 ```
 
 A maintainer scaffold script prints the expected file plan for a new SQL or
-DataFrame platform. The helper emits a checklist and file plan only. It is an architecture health aid, not a framework that owns platform implementation.
+DataFrame platform, a manifest entry for `_PLATFORM_MANIFEST_JSON`, and an
+adapter stub. The manifest entry declares no execution engines and passes the
+same manifest validator the package uses at import; the script exits with an
+error if the key or an alias collides with an existing entry. The
+adapter stub includes a `resolve_execution_engine` hook that returns the
+platform-default receipt. `--output-dir DIR` also writes the entry as
+`manifest-entry.json` and the stub under the file name the plan uses. The
+helper is an architecture health aid, not a framework that owns platform
+implementation.

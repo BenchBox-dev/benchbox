@@ -42,31 +42,28 @@ pip install benchbox
 benchbox run --platform sqlite --benchmark tpch --scale 0.01
 ```
 
-### Persistent Database
+### Database File
+
+The CLI stores the database file under the runs root, in `databases/<benchmark>_sf<scale>/`, and names it from the benchmark, scale factor, and tuning settings. Set `BENCHBOX_OUTPUT_DIR` to move the runs root:
 
 ```bash
-benchbox run --platform sqlite --benchmark tpch --scale 0.1 \
-  --platform-option database=/path/to/benchmark.db
+BENCHBOX_OUTPUT_DIR=/data/benchbox \
+  benchbox run --platform sqlite --benchmark tpch --scale 0.1
 ```
 
-### CLI Options
+## Adapter Options
 
-```bash
-benchbox run --platform sqlite --benchmark tpch --scale 0.1 \
-  --platform-option database=./benchmark.db \
-  --platform-option journal_mode=WAL \
-  --platform-option cache_size=-64000
-```
-
-## Platform Options
+Set these through the [Python API](#python-api):
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `database` | :memory: | Database path or :memory: |
-| `journal_mode` | WAL | WAL, DELETE, TRUNCATE, etc. |
-| `cache_size` | -2000 | Page cache size (negative = KB) |
-| `synchronous` | NORMAL | OFF, NORMAL, FULL |
-| `temp_store` | MEMORY | DEFAULT, FILE, MEMORY |
+| `database_path` | `:memory:` | Path to the SQLite database file |
+| `timeout` | 30.0 | Seconds to wait for a locked database before failing |
+| `check_same_thread` | false | Only allow a connection on the thread that created it |
+
+### Connection Settings
+
+BenchBox applies fixed PRAGMA settings to every connection: `journal_mode = WAL`, `synchronous = NORMAL`, `cache_size = 10000` (pages), `temp_store = MEMORY`, and `foreign_keys = ON`. They are fixed and cannot be changed from the CLI or the Python API.
 
 ## Usage Examples
 
@@ -76,17 +73,6 @@ benchbox run --platform sqlite --benchmark tpch --scale 0.1 \
 benchbox run --platform sqlite --benchmark tpch --scale 0.01
 ```
 
-### With Optimizations
-
-This configuration is optimized for read performance (`cache_size=-64000` is a 64 MB cache):
-
-```bash
-benchbox run --platform sqlite --benchmark tpch --scale 0.1 \
-  --platform-option journal_mode=WAL \
-  --platform-option cache_size=-64000 \
-  --platform-option synchronous=NORMAL
-```
-
 ### Python API
 
 ```python
@@ -94,9 +80,8 @@ from benchbox import TPCH
 from benchbox.platforms.sqlite import SQLiteAdapter
 
 adapter = SQLiteAdapter(
-    database="./benchmark.db",
-    journal_mode="WAL",
-    cache_size=-64000,
+    database_path="./benchmark.db",
+    timeout=60.0,
 )
 
 benchmark = TPCH(scale_factor=0.01)
@@ -119,32 +104,9 @@ and they preserve query results and status classification. Generated `.tbl` data
 is still reusable across TPC-H-derived workloads; only loaded SQLite database
 files need cleanup when disk space is constrained.
 
-### WAL Mode
+### Connection PRAGMAs
 
-Write-Ahead Logging improves read performance:
-
-```bash
-benchbox run --platform sqlite --benchmark tpch \
-  --platform-option journal_mode=WAL
-```
-
-### Cache Size
-
-Increase cache to reduce disk I/O. A negative `cache_size` is in KiB, so `-64000` is a 64 MB cache:
-
-```bash
-benchbox run --platform sqlite --benchmark tpch \
-  --platform-option cache_size=-64000
-```
-
-### Memory-Mapped I/O
-
-For large databases. `268435456` bytes is 256 MB:
-
-```bash
-benchbox run --platform sqlite --benchmark tpch \
-  --platform-option mmap_size=268435456
-```
+Write-ahead logging, the page cache size, and in-memory temp storage are already set on every connection (see [Connection Settings](#connection-settings)). BenchBox does not expose other PRAGMAs, such as `mmap_size`.
 
 ## Limitations
 
@@ -185,32 +147,21 @@ benchbox run --platform duckdb --benchmark tpch --scale 0.1
 
 ### Database Locked
 
-Wait for the lock by setting a busy timeout (`30000` ms is 30 seconds):
+Close other connections to the database file. To wait longer for the lock, raise the connection timeout, in seconds, through the Python API:
 
-```bash
-benchbox run --platform sqlite --benchmark tpch \
-  --platform-option busy_timeout=30000
+```python
+from benchbox.platforms.sqlite import SQLiteAdapter
+
+adapter = SQLiteAdapter(database_path="./benchmark.db", timeout=60.0)
 ```
 
 ### Out of Memory
 
-Use file-based temp storage:
-
-```bash
-benchbox run --platform sqlite --benchmark tpch \
-  --platform-option temp_store=FILE
-```
+BenchBox keeps SQLite temp storage in memory (`temp_store = MEMORY`), and this cannot be changed. Use a smaller scale factor.
 
 ### Slow Queries
 
-Increase the cache and use WAL:
-
-```bash
-benchbox run --platform sqlite --benchmark tpch \
-  --platform-option cache_size=-128000 \
-  --platform-option journal_mode=WAL \
-  --platform-option synchronous=OFF
-```
+SQLite is a row store with limited parallelism, so analytical queries slow down quickly as data grows. Use a smaller scale factor, or compare against [DuckDB](duckdb.md) for larger runs.
 
 ## Related Documentation
 

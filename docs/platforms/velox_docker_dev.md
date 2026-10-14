@@ -76,8 +76,7 @@ docker compose up -d velox-connect
 docker compose ps velox-connect
 docker compose logs -f velox-connect
 
-benchbox run --platform velox \
-  --platform-option deployment=remote \
+benchbox run --platform velox:remote \
   --platform-option endpoint=sc://localhost:50051 \
   --benchmark tpch --scale 1.0
 
@@ -130,11 +129,10 @@ docker compose run --rm velox-runner \
 
 The first command is a TPC-H SF 0.01 smoke test. The second runs TPC-H SF 1 with specific queries. The third runs TPC-DS SF 10 and raises the memory settings; see the sizing guidance below.
 
-The entrypoint translates `run [args]` into:
+The entrypoint translates `run [args]` into the equivalent of:
 
 ```bash
-benchbox run --platform velox \
-  --platform-option deployment=local \
+benchbox run --platform velox:local \
   --platform-option gluten_jar_path=/opt/gluten.jar \
   --platform-option offheap_size=${VELOX_OFFHEAP} \
   [args]

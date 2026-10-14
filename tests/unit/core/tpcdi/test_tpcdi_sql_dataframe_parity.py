@@ -32,7 +32,9 @@ def test_sql_and_dataframe_share_stage_execution_outputs(tmp_path: Path, monkeyp
         update_rows=lambda *args, **kwargs: SimpleNamespace(success=True, rows_affected=1, error_message=None),
         merge_rows=lambda *args, **kwargs: SimpleNamespace(success=True, rows_affected=1, error_message=None),
     )
-    monkeypatch.setattr("benchbox.core.tpcdi.benchmark.get_maintenance_operations_for_platform", lambda _p: fake_ops)
+    monkeypatch.setattr(
+        "benchbox.core.tpcdi.benchmark.get_maintenance_operations_for_platform", lambda _p, _engine: fake_ops
+    )
 
     def fake_run_etl_pipeline(
         *,

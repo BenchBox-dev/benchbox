@@ -9,10 +9,11 @@ from benchbox.platforms.onehouse.onehouse_client import (
     OnehouseClient,
     TableFormat,
 )
-from benchbox.platforms.onehouse.quanton_adapter import QuantonAdapter
+from benchbox.platforms.onehouse.quanton_adapter import QuantonAdapter, _build_quanton_config
 
 __all__ = [
     "QuantonAdapter",
+    "_build_quanton_config",
     "OnehouseClient",
     "ClusterConfig",
     "JobResult",

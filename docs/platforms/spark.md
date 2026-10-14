@@ -35,53 +35,57 @@ The first command installs PySpark. The second installs a specific version. The 
 ```bash
 export SPARK_HOME=/path/to/spark
 export PYSPARK_PYTHON=python3
-
-export SPARK_MASTER=spark://master:7077
 ```
 
-The first two variables configure Spark. `SPARK_MASTER` is needed only for distributed mode.
+These variables configure the Spark installation that PySpark uses.
 
 ### CLI Options
 
 ```bash
 benchbox run --platform spark --benchmark tpch --scale 1.0 \
-  --platform-option master=local[*] \
   --platform-option driver_memory=4g \
-  --platform-option executor_memory=8g
+  --platform-option adaptive_enabled=true
 ```
 
-### Platform Options
+The CLI accepts `driver_memory` and `adaptive_enabled` for Spark and runs with the default `local[*]` master. To set
+the master URL, executor resources, or other Spark settings, use the Python API.
+
+### Adapter Options
+
+These are `SparkAdapter` keyword arguments for the Python API.
 
 | Option | Default | Description |
 |--------|---------|-------------|
 | `master` | local[*] | Spark master URL |
 | `app_name` | BenchBox | Spark application name |
 | `driver_memory` | 4g | Driver memory allocation |
-| `executor_memory` | 8g | Executor memory allocation |
-| `executor_cores` | 4 | Cores per executor |
+| `executor_memory` | 4g | Executor memory allocation |
+| `executor_cores` | 2 | Cores per executor |
 | `num_executors` | auto | Number of executors |
-| `warehouse_dir` | /tmp/spark-warehouse | Hive warehouse location |
-| `catalog` | spark_catalog | Catalog name |
+| `warehouse_dir` | Spark default | Hive warehouse location |
 | `table_format` | parquet | Default table format |
+| `spark_config` | none | Extra Spark settings, applied last |
 
 ## Usage Examples
 
 ### Local Mode
 
 ```bash
-benchbox run --platform spark --benchmark tpch --scale 0.1 \
-  --platform-option master="local[*]"
+benchbox run --platform spark --benchmark tpch --scale 0.1
 ```
 
 This runs locally with all cores.
 
 ### Cluster Mode
 
-```bash
-benchbox run --platform spark --benchmark tpch --scale 10.0 \
-  --platform-option master=spark://master:7077 \
-  --platform-option num_executors=10 \
-  --platform-option executor_memory=16g
+```python
+from benchbox.platforms.spark import SparkAdapter
+
+adapter = SparkAdapter(
+    master="spark://master:7077",
+    num_executors=10,
+    executor_memory="16g",
+)
 ```
 
 This runs on a Spark cluster.
@@ -129,9 +133,8 @@ This initializes the adapter with Delta Lake.
 
 Best for development and small datasets:
 
-```bash
-benchbox run --platform spark --benchmark tpch --scale 0.1 \
-  --platform-option master="local[4]"
+```python
+adapter = SparkAdapter(master="local[4]")
 ```
 
 `local[4]` uses 4 cores.
@@ -142,20 +145,21 @@ benchbox run --platform spark --benchmark tpch --scale 0.1 \
 $SPARK_HOME/sbin/start-master.sh
 
 $SPARK_HOME/sbin/start-worker.sh spark://master:7077
-
-benchbox run --platform spark --benchmark tpch --scale 10.0 \
-  --platform-option master=spark://master:7077
 ```
 
-The commands start the master, start a worker, and run the benchmark.
+The commands start the master and a worker. Then point the adapter at the master:
+
+```python
+adapter = SparkAdapter(master="spark://master:7077")
+```
 
 ### Kubernetes
 
-```bash
-benchbox run --platform spark --benchmark tpch --scale 10.0 \
-  --platform-option master=k8s://https://kubernetes:443 \
-  --platform-option deploy_mode=cluster
+```python
+adapter = SparkAdapter(master="k8s://https://kubernetes:443")
 ```
+
+The driver runs in client mode, in the BenchBox process.
 
 ## Performance Tuning
 

@@ -21,7 +21,9 @@ How does Polars 2.0.0 perform against earlier 1.x releases on the four BenchBox 
 | Code | BenchBox commit `ecd08a9f0`, same for every run |
 | Host | Apple M4, 10 cores, 16 GiB, on mains power, `caffeinate -dims` |
 
-The default engine differs by version: 1.x collects in memory; 2.0.0 collects with the streaming engine. Setup B on 2.0.0 is therefore compared with 1.44.2 setup A (both in-memory). 1.35.2 is not in setup C because its streaming engine diverged on TPC-DS in a preliminary probe. Versions 1.0.0, 1.12.0 and 1.22.0 were dropped after the probe: 1.0.0 has no `engine` argument and panicked, 1.12.0 returned a mismatching TPC-DS query 51, and 1.22.0 failed TPC-DS queries 51 and 87. Polars 1.35 and later load their native code from a separate runtime package; the package and its version are recorded in each result bundle.
+The default engine differs by version: 1.x collects in memory; 2.0.0 collects with the streaming engine. Setup B on 2.0.0 is therefore compared with 1.44.2 setup A (both in-memory). 1.35.2 is not in setup C. In the preliminary probe, the TPC-DS cross-surface check at scale factor 0.01 (BenchBox's Polars DataFrame queries against DuckDB SQL) failed for 1.35.2 on the streaming engine, in the first run and in a repeat: queries 5, 14 and 27 returned NULL in an ORDER BY key column near the end of the result, and query 67 returned NULL in four columns of its first row, where the SQL result has values. The probe did not determine whether Polars or the BenchBox DataFrame query code causes this. The same version passed the check with the default and in-memory engines. Versions 1.0.0, 1.12.0 and 1.22.0 were dropped after the probe: 1.0.0 has no `engine` argument and panicked, 1.12.0 returned a mismatching TPC-DS query 51, and 1.22.0 failed TPC-DS queries 51 and 87. Polars 1.35 and later load their native code from a separate runtime package; the package and its version are recorded in each result bundle.
+
+The committed 2026-10-09 bundles were recorded under the earlier Polars `engine` option name and map to the same requested values (`default`, `in-memory`, and `streaming`).
 
 ## Timing
 

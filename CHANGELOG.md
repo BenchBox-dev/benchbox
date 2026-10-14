@@ -20,12 +20,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The new-platform acceptance checklist and both adding-platform guides describe the reserved option words,
   the deprecated-alias rule and the manifest `execution_engines` declaration with a `polars-df` worked example.
   A scaffold script (`scripts/new_platform_scaffold.py --kind sql|dataframe`) prints the expected file plan
-  with manifest and adapter stubs; its output carries no reserved canonical keys and resolves the default
-  engine receipt through the inherited adapter hook.
+  with manifest and adapter stubs; its output carries no reserved canonical keys and its adapter stub returns
+  the platform-default engine receipt.
 
 - The Polars version-matrix reproduction instructions now use
   `--execution-engine` for default, in-memory and streaming setups, and identify
   the earlier `engine` option name used by the recorded bundles.
+- Every `--platform-option` example in the documentation and in
+  `benchbox run --help` examples now uses a key the CLI accepts without a
+  deprecation warning, and a test runs each example through the CLI option
+  parser. Examples that used rejected keys (connection settings such as
+  `host`, `account` or `project_id`, Databricks `http_path`, Spark `master`)
+  now show the saved credentials, environment variable, Python API argument
+  or platform selector that does set them, or were removed where BenchBox
+  has no way to set the value. Deprecated spellings are replaced: Snowflake
+  `warehouse` and Firebolt `engine`/`engine_name` by `compute_resource`,
+  ClickHouse `mode=local` by `--platform clickhouse-server` or
+  `--platform clickhouse-local`, Velox `deployment=` by
+  `--platform velox:local|remote`, and Polars `streaming=true` by
+  `--execution-engine streaming`. The Polars Python API reference no longer
+  lists the removed `--polars-streaming` argparse flag, and the Athena Spark
+  page no longer documents environment variables BenchBox does not read.
+- The Polars version-matrix methodology and findings state what the
+  preliminary probe observed for Polars 1.35.2 on the streaming engine: the
+  TPC-DS cross-surface check at scale factor 0.01 failed on queries 5, 14, 27
+  and 67, and the probe did not determine whether Polars or the BenchBox
+  DataFrame query code caused it. The methodology also notes that the
+  committed bundles were recorded under the earlier `engine` option name.
 - Public result-analysis and submission guidance no longer exposes concrete
   identifier-pseudonymization recipes or cross-submission salt reuse details;
   public submissions require a private salt.
@@ -63,6 +84,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   as the canonical name with `warehouse` as a deprecated alias, and Athena
   Spark uses `runtime_version` with `engine_version` as a deprecated alias.
 
+- Adapters read `compute_resource` and `compute_size` before their vendor
+  keys when built through the adapter factory or `from_config`: Athena Spark
+  (workgroup), EMR Serverless (application), Dataproc (cluster), Synapse Spark
+  and Fabric Spark (Spark pool), Databricks DataFrame (cluster), Athena
+  (workgroup), Firebolt (engine and engine size), ClickHouse Cloud (service)
+  and Quanton (cluster size). The vendor keys still work as deprecated
+  aliases.
+
 - Result bundles now record the factory-resolved deployment as
   `platform.deployment.selected` with `selected_class`, and non-default
   deployments appear in `platform.variant` (for example `firebolt~cloud`).
@@ -77,7 +106,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   retained and resolves the same way), Firebolt `deployment_mode` and
   `firebolt_mode`, DuckLake `deployment_mode`, pg-duckdb `deployment_mode`.
   Saved configurations and credential profiles holding these keys keep
-  working. The aliases are removed in 0.6.0.
+  working, and a selector on the command line overrides them. The aliases
+  are removed in 0.6.0.
 - The core `execution_engine` setting selects which execution machinery runs a
   query. `benchbox run --execution-engine` sits next to `--mode`, and MCP
   `run_benchmark`/`start_benchmark` accept `execution_engine`; both validate
@@ -94,14 +124,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   observed engines without exposing selectors. Legacy `force_execution` and
   `use_distributed` options warn and map to their canonical engine values.
 
-- Polars write-primitive bulk loads and DataFrame maintenance now materialize
-  lazy frames with the resolved execution engine. The DataFrame comparison
-  suite, profiling, validation and dataframe-surface equivalence checks use
-  Polars' default engine; these paths do not receive `benchbox run`'s
-  execution-engine selection.
+- Polars DataFrame maintenance operations materialize lazy frames with the
+  execution engine they are given. The TPC-DI DataFrame ETL and the
+  transaction-primitives manager pass the run's engine to them. The
+  `write_primitives` benchmark's timed DataFrame operations run on DuckDB, not
+  on the Polars engine, so that benchmark refuses a non-default engine (see
+  Fixed). The DataFrame comparison suite, profiling, validation and
+  dataframe-surface equivalence checks use Polars' default engine; these paths
+  do not receive `benchbox run`'s execution-engine selection.
 
 ### Fixed
 
+- Dry-run previews no longer write saved credentials or connection secrets in
+  clear. The JSON and YAML preview files written by `benchbox run --dry-run`
+  apply the same redaction as result bundles to the benchmark, database and
+  platform configuration: secret options such as a Quanton `api_key` or a
+  Snowflake or Redshift `password`, and user names, become `<redacted>`; the
+  user and password in a URI, such as `gateway_host=https://user:pass@host`,
+  become `****`.
+  Other options, such as `compute_size` and hosts, stay readable. The real run
+  still receives the credentials.
+- The new-platform scaffold emits a manifest entry that passes the manifest
+  validator the package runs at import. The entry sets `default_mode` and the
+  required metadata fields; an SQL entry names the adapter `class_name` and
+  the next registration order, and a DataFrame entry adds the `<key>-df` alias
+  instead of an SQL adapter. The DataFrame stub extends the expression-family
+  adapter rather than the SQL `PlatformAdapter`, at the path the file plan
+  names (`benchbox/platforms/dataframe/<key>_df.py`). Both stubs define a
+  `resolve_execution_engine` hook. `--output-dir` writes the entry as
+  `manifest-entry.json`, and the script exits with an error naming the problem
+  when the entry fails validation, for example a key that already exists.
+- The Explorer compatibility checker is tested the way the publication deploy
+  workflow runs it, as a script, and its fallback read-model version is tested
+  against the Explorer contract version.
+- Public result exports keep an execution engine name readable under an
+  `engine` key inside an engine receipt's native settings
+  (`platform.execution_engine.applied_native` and its copy under
+  `platform.raw_config`) for every platform, when the value is `default`, an
+  engine a platform declares in the manifest, or a gateway route target.
+  Before, only Polars engine names in `collect_kwargs.engine` stayed readable
+  and other platforms' engine names were hashed there. Engine names under any
+  other key or path, undeclared values, and identifiers such as hosts or
+  databases inside the receipt are still hashed or redacted.
 - Athena Spark can start a session. BenchBox no longer sends an engine
   version in the `StartSession` request; the AWS SDK rejected that field on
   every attempt, because the Spark-enabled workgroup sets the engine version.
@@ -151,12 +215,79 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   deployment, requested engine and gateway, and show that variant. Results
   added with `benchbox report import` now count in trends and regressions;
   their lowercase `passed` validation status excluded them before.
+- Redshift accepts `--platform-option workgroup_name=…`,
+  `cluster_identifier=…` and `compute_resource=…`. Each failed before with
+  "Ambiguous compute resource". A native key selects its kind, and a bare
+  `compute_resource` names the workgroup on a Serverless host and the cluster
+  on a provisioned host. A `cluster_identifier` is no longer also used as the
+  workgroup name.
+- A saved credential profile no longer blocks command-line compute and
+  deployment settings. Before, a Snowflake `warehouse`, Firebolt
+  `engine_name` or `engine_size`, ClickHouse Cloud `service_id` or Redshift
+  `workgroup_name` saved by `benchbox setup` made the same setting on the
+  command line fail as a conflict, and a saved LakeSail `sail_mode` blocked
+  `--platform lakesail:distributed`. The command line now wins, and errors
+  name the values you supplied.
+- Result bundles from Snowflake, Firebolt, ClickHouse Cloud and Databricks
+  now record `platform.compute.resource`, `resource_kind` and `size`. Before,
+  only Redshift and platforms using the default metadata builder recorded
+  them. Databricks records the warehouse size it observes.
+- Databricks `compute_resource` now sets the HTTP path
+  `/sql/1.0/warehouses/<id>`, so a run no longer needs `http_path` from
+  `benchbox setup` or the environment, and it overrides an auto-detected
+  path. The conflict check accepts the `/warehouses/` and `/endpoints/` forms
+  and ignores a query string such as `?o=123`.
+- `--platform-option mode=…` and `deployment_mode=…` work for InfluxDB.
+  Before, the CLI rejected them as unknown options, because they were
+  registered only when the InfluxDB adapter package was imported.
+- `benchbox run --platform quanton` builds its configuration instead of
+  failing with a missing config builder, and a saved `cluster_size` is no
+  longer overridden by the `compute_size` default.
+- Result bundles from `benchbox run` and MCP `run_benchmark` now record the
+  requested engine as `config.execution_engine`, for SQL and DataFrame runs
+  alike (`default` when none was requested). The field was defined by result
+  schema 2.3 but never written by a real run.
+- A default Polars DataFrame run passes no `engine` argument to `collect()`,
+  as before execution engines were added, so Polars itself chooses. The
+  bundle records `collect_kwargs: {}` and still records the engine Polars
+  uses as `applied` (`auto` on Polars 1.44.2). Explicit, tuning-file and
+  legacy-option engines still pass `engine=<name>`.
+- `benchbox run` and MCP `run_benchmark` refuse a non-default execution
+  engine for a benchmark whose timed DataFrame work does not run on the
+  platform's engine, before generating data, and name the benchmark. The
+  `write_primitives` benchmark is the only such benchmark: on `polars-df` it
+  ran its timed operations on DuckDB while the result was labelled with the
+  requested Polars engine.
+- TPC-DI DataFrame ETL maintenance and the transaction-primitives DataFrame
+  manager now receive the run's execution engine; before, they always used
+  the default.
+- The cross-surface equivalence gate's dtype check collects Polars frames
+  through the adapter, so it uses the requested engine like the row check. An
+  unsupported `--execution-engine` value, or one given without the expression
+  backend, is now a usage error instead of a traceback.
+- The DataFrame tuning templates (`DataFrameTuningLoader.get_template`,
+  `get_optimized_template` and `get_memory_constrained_template`) no longer set
+  `engine_affinity` or `streaming_mode` for Polars.
+- The DataFrame smart-defaults low-memory message no longer says it enables
+  streaming mode, which it has not done since automatic tuning stopped
+  choosing an engine.
 
 ### Before you upgrade
 - `benchbox compare` and MCP `compare_results` now refuse two results whose
   deployment, requested execution engine or gateway differ. Pass
   `--allow-heterogeneous-comparison` to the CLI to compare them anyway.
   `benchbox report regressions` lists each variant separately.
+- Default Polars DataFrame runs record
+  `platform.execution_engine.applied_native.collect_kwargs` as `{}` instead of
+  `{"engine": "auto"}`, because BenchBox no longer passes the engine argument
+  when you request none. `requested`, `applied` and `platform.variant` do not
+  change.
+- `benchbox run --benchmark write_primitives --platform polars-df` with
+  `--execution-engine` other than `default`, a tuning file that selects an
+  engine, or the deprecated Polars `streaming` option now fails before any
+  work. Run that benchmark with the default engine.
+- Polars tuning templates from `DataFrameTuningLoader` no longer select the
+  `in-memory` or `streaming` engine. Pass `--execution-engine` to choose one.
 - Athena Spark `runtime_version` no longer tries to choose the Spark engine
   version. Set the version on the workgroup; BenchBox records the value you
   pass as requested.
@@ -171,9 +302,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Vendor compute names now warn once per run; move saved configurations and
   credential profiles to `compute_resource` and `compute_size` (Fabric Data
   Warehouse: `database`; Athena Spark: `runtime_version`). The old names stop
-  working in 0.6.0. When both spellings disagree, the canonical name wins,
-  except Databricks, where a `compute_resource` that disagrees with the
-  warehouse implied by `http_path` fails the run naming both values.
+  working in 0.6.0. A compute value on the command line overrides the saved
+  credential profile, and the saved profile overrides a default. Two
+  spellings that disagree in the same place (for example `warehouse` and
+  `compute_resource` both on the command line, or both in one saved profile)
+  stop the run before any work and name both values. On Databricks a
+  `compute_resource` sets the HTTP path to `/sql/1.0/warehouses/<id>`; an
+  `http_path` from the same place that names a different warehouse stops the
+  run naming both values.
+- `benchbox setup --platform snowflake` now saves the warehouse as
+  `compute_resource`. Profiles saved earlier with `warehouse` keep working
+  until 0.6.0.
 
 - Result bundles now use additive schema 2.3. Readers must accept this version.
   Older bundles remain readable and published bundles and IDs are unchanged.

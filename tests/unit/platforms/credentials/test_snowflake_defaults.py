@@ -443,7 +443,8 @@ class TestSnowflakeCredentialDefaults:
         saved_creds = mock_manager.set_platform_credentials.call_args[0][1]
         assert saved_creds["account"] == "auto-account"
         assert saved_creds["username"] == "auto-user"
-        assert saved_creds["warehouse"] == "AUTO_WH"
+        assert saved_creds["compute_resource"] == "AUTO_WH"
+        assert "warehouse" not in saved_creds
         assert saved_creds["database"] == "AUTO_DB"
 
         console_output = " ".join(str(call) for call in console.print.call_args_list)

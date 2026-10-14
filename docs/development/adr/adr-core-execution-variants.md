@@ -263,6 +263,17 @@ one name covers requested and observed values.
   They shipped in releases, so they keep working through the deprecation
   window (D13). `streaming=false` does nothing, because it never selected an
   engine.
+- **Compute and deployment sources.** `compute_resource`, `compute_size` and
+  the deployment selection take their value from the first source that has
+  one: the CLI or MCP request, then the saved credential profile, then the
+  option default. Each setting resolves on its own, so a size on the command
+  line does not discard a saved resource. A conflict fails only within one
+  source, naming both values; a value from a higher source replaces a lower
+  one without a warning, because the user asked for it on this run. On
+  platforms whose compute keys name different kinds of object (Redshift
+  `workgroup_name` and `cluster_identifier`), a native key selects its kind
+  and a bare `compute_resource` takes the kind the deployment implies;
+  Databricks `compute_resource` sets the warehouse HTTP path.
 - **Tuning keys** `execution.engine_affinity` and `execution.streaming_mode`
   become the tuning-file spelling of the requested engine, with
   `resolution=tuning_profile`. This makes `engine_affinity: in-memory` take

@@ -63,6 +63,8 @@ benchbox run --platform starrocks --benchmark tpch --scale 1.0
 | `strict_validation` | - | `true` | Enable strict data validation |
 | `deployment_mode` | - | `self-hosted` | Deployment mode identifier |
 
+The first six options are also `--platform-option` names. `max_execution_time`, `disable_result_cache`, `strict_validation`, and `deployment_mode` are not; pass them to `StarRocksAdapter` in Python.
+
 ## Data Loading
 
 BenchBox loads data into StarRocks using batch INSERT statements via the MySQL protocol. The adapter handles both TPC pipe-delimited (`.tbl`) and standard CSV formats automatically.
@@ -271,7 +273,7 @@ Error: Query execution exceeded timeout
 ```
 
 **Solutions:**
-1. Increase the timeout: `--platform-option max_execution_time=600`
+1. Increase the timeout through the Python API: `StarRocksAdapter(max_execution_time=600)`
 2. Check StarRocks resource utilization (CPU, memory, disk I/O)
 3. Verify data distribution is balanced across BE nodes
 4. Review the query plan for performance bottlenecks

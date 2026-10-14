@@ -370,7 +370,7 @@ benchbox run --platform velox --benchmark tpch --scale 0.1 \
     --platform-option gluten_jar_path=/opt/gluten-velox-bundle-spark4.0_2.13-linux_amd64-1.6.0.jar \
     --platform-option offheap_size=8g
 
-benchbox run --platform velox --platform-option deployment=remote \
+benchbox run --platform velox:remote \
     --platform-option endpoint=sc://localhost:50051 \
     --benchmark tpch --scale 0.1
 ```

@@ -31,6 +31,7 @@ ignore_imports =
     benchbox.core.dataframe.maintenance_interface -> benchbox.platforms.dataframe.ducklake_maintenance
     benchbox.core.dataframe.maintenance_interface -> benchbox.platforms.dataframe.iceberg_maintenance
     benchbox.core.dataframe.maintenance_interface -> benchbox.platforms.dataframe.polars_maintenance
+    benchbox.core.dataframe_manager_factory -> benchbox.platforms.dataframe.pyspark_maintenance
     benchbox.core.dryrun -> benchbox.platforms
     benchbox.core.dryrun -> benchbox.platforms.adapter_factory
     benchbox.core.dryrun -> benchbox.platforms.dataframe.platform_checker
@@ -51,10 +52,8 @@ ignore_imports =
     benchbox.core.tpchavoc.equivalence -> benchbox.platforms.datafusion_query_transformer
     benchbox.core.tpchavoc.equivalence -> benchbox.platforms.duckdb
     benchbox.core.tpchavoc.equivalence -> benchbox.platforms.postgresql
-    benchbox.core.transaction_primitives.dataframe_operations -> benchbox.platforms.dataframe.pyspark_maintenance
     benchbox.core.write_primitives.benchmark -> benchbox.platforms.base.data_loading
     benchbox.core.write_primitives.benchmark -> benchbox.platforms.duckdb
-    benchbox.core.write_primitives.dataframe_operations -> benchbox.platforms.dataframe.pyspark_maintenance
 
 [importlinter:contract:experimental-isolated]
 name = benchbox.experimental is not imported by core/platforms/cli/utils

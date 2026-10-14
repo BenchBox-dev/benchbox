@@ -58,7 +58,7 @@ def setup_snowflake_credentials(cred_manager: CredentialManager, console: Union[
         current_account = existing_creds.get("account") if existing_creds else None
         current_username = existing_creds.get("username") if existing_creds else None
         current_password = existing_creds.get("password") if existing_creds else None
-        current_warehouse = existing_creds.get("warehouse") if existing_creds else None
+        current_warehouse = _saved_warehouse(existing_creds) if existing_creds else None
         current_database = existing_creds.get("database") if existing_creds else None
         current_schema = existing_creds.get("schema") if existing_creds else None
         current_role = existing_creds.get("role") if existing_creds else None
@@ -108,7 +108,7 @@ def setup_snowflake_credentials(cred_manager: CredentialManager, console: Union[
         "account": account,
         "username": username,
         "password": password,
-        "warehouse": warehouse,
+        "compute_resource": warehouse,
         "database": database,
     }
 
@@ -210,8 +210,9 @@ def validate_snowflake_credentials(cred_manager: CredentialManager) -> tuple[boo
     if not creds:
         return False, "No credentials found"
 
-    required_fields = ["account", "username", "password", "warehouse", "database"]
-    missing = [field for field in required_fields if not creds.get(field)]
+    required_fields = ["account", "username", "password", "compute_resource", "database"]
+    values = {**creds, "compute_resource": _saved_warehouse(creds)}
+    missing = [field for field in required_fields if not values.get(field)]
 
     if missing:
         return False, f"Missing required fields: {', '.join(missing)}"
@@ -226,7 +227,7 @@ def validate_snowflake_credentials(cred_manager: CredentialManager) -> tuple[boo
             account=creds["account"],
             user=creds["username"],
             password=creds["password"],
-            warehouse=creds["warehouse"],
+            warehouse=values["compute_resource"],
             database=creds["database"],
             schema=creds.get("schema", "PUBLIC"),
             role=creds.get("role") if creds.get("role") else None,
@@ -256,13 +257,17 @@ def validate_snowflake_credentials(cred_manager: CredentialManager) -> tuple[boo
         elif "account" in error_msg.lower() and "does not exist" in error_msg.lower():
             return False, "Account identifier is invalid. Check your account name."
         elif "warehouse" in error_msg.lower():
-            return False, f"Warehouse '{creds.get('warehouse')}' not found or not accessible."
+            return False, f"Warehouse '{values['compute_resource']}' not found or not accessible."
         elif "database" in error_msg.lower() and "does not exist" in error_msg.lower():
             return False, f"Database '{creds.get('database')}' not found. It will be created during benchmark setup."
         elif "role" in error_msg.lower():
             return False, f"Role '{creds.get('role')}' not found or not accessible."
         else:
             return False, f"Connection failed: {error_msg}"
+
+
+def _saved_warehouse(creds: dict) -> Optional[str]:
+    return creds.get("compute_resource") or creds.get("warehouse")
 
 
 def _auto_detect_snowflake(console: Union[Console, QuietConsoleProxy]) -> Optional[dict]:

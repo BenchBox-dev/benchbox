@@ -238,11 +238,15 @@ in committed command files.
 
 ```bash
 uv run -- benchbox run \
-  --platform clickhouse \
+  --platform clickhouse-server \
   --benchmark tpch \
-  --platform-option mode=local \
-  --platform-option secure=true
+  --platform-option secure=true \
+  --platform-option port=9440
 ```
+
+The platform name picks the ClickHouse deployment: `clickhouse-server` (or
+`clickhouse:server`) for a server, `clickhouse-local` (or `clickhouse:local`)
+for embedded chDB.
 
 See [platform-specific configuration](../reference/cli/configuration.md#platform-specific-options)
 for the supported keys.

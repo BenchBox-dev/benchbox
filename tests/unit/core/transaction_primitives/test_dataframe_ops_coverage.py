@@ -47,7 +47,7 @@ def test_build_capabilities_from_maintenance(monkeypatch):
     )
     monkeypatch.setattr(
         "benchbox.core.transaction_primitives.dataframe_operations.get_maintenance_operations_for_platform",
-        lambda _name: FakeMaintenanceOps(caps),
+        lambda _name, _engine: FakeMaintenanceOps(caps),
     )
 
     manager = DataFrameTransactionOperationsManager("custom-df")
@@ -253,7 +253,7 @@ def test_transaction_result_failure_with_start_time():
 def test_build_capabilities_pyspark_without_delta(monkeypatch):
     monkeypatch.setattr(
         "benchbox.core.transaction_primitives.dataframe_operations.get_maintenance_operations_for_platform",
-        lambda _: None,
+        lambda _, _engine: None,
     )
     manager = DataFrameTransactionOperationsManager("pyspark-df")
     assert manager.get_capabilities().supports_transactions is False
@@ -262,7 +262,7 @@ def test_build_capabilities_pyspark_without_delta(monkeypatch):
 def test_build_capabilities_iceberg(monkeypatch):
     monkeypatch.setattr(
         "benchbox.core.transaction_primitives.dataframe_operations.get_maintenance_operations_for_platform",
-        lambda _: None,
+        lambda _, _engine: None,
     )
     manager = DataFrameTransactionOperationsManager("iceberg")
     assert manager.get_capabilities().table_format == "iceberg"
@@ -271,7 +271,7 @@ def test_build_capabilities_iceberg(monkeypatch):
 def test_build_capabilities_polars(monkeypatch):
     monkeypatch.setattr(
         "benchbox.core.transaction_primitives.dataframe_operations.get_maintenance_operations_for_platform",
-        lambda _: None,
+        lambda _, _engine: None,
     )
     manager = DataFrameTransactionOperationsManager("polars-df")
     assert manager.get_capabilities().supports_transactions is False
@@ -280,7 +280,7 @@ def test_build_capabilities_polars(monkeypatch):
 def test_build_capabilities_pandas(monkeypatch):
     monkeypatch.setattr(
         "benchbox.core.transaction_primitives.dataframe_operations.get_maintenance_operations_for_platform",
-        lambda _: None,
+        lambda _, _engine: None,
     )
     manager = DataFrameTransactionOperationsManager("pandas-df")
     assert manager.get_capabilities().supports_transactions is False
@@ -289,7 +289,7 @@ def test_build_capabilities_pandas(monkeypatch):
 def test_build_capabilities_unknown_no_maintenance(monkeypatch):
     monkeypatch.setattr(
         "benchbox.core.transaction_primitives.dataframe_operations.get_maintenance_operations_for_platform",
-        lambda _: None,
+        lambda _, _engine: None,
     )
     manager = DataFrameTransactionOperationsManager("some-unknown-df")
     assert manager.get_capabilities().supports_transactions is False
@@ -301,7 +301,7 @@ def test_manager_supports_transactions(monkeypatch):
     )
     monkeypatch.setattr(
         "benchbox.core.transaction_primitives.dataframe_operations.get_maintenance_operations_for_platform",
-        lambda _: FakeMaintenanceOps(caps),
+        lambda _, _engine: FakeMaintenanceOps(caps),
     )
     manager = DataFrameTransactionOperationsManager("custom-df")
     assert manager.supports_transactions() is True
@@ -310,7 +310,7 @@ def test_manager_supports_transactions(monkeypatch):
 def test_manager_get_unsupported_message(monkeypatch):
     monkeypatch.setattr(
         "benchbox.core.transaction_primitives.dataframe_operations.get_maintenance_operations_for_platform",
-        lambda _: None,
+        lambda _, _engine: None,
     )
     manager = DataFrameTransactionOperationsManager("polars-df")
     msg = manager.get_unsupported_message()
@@ -653,3 +653,13 @@ def test_execute_version_compare_exception_returns_failure(monkeypatch, tmp_path
         result = manager.execute_version_compare(table_path=table, version1=1, version2=2)
 
     assert result.success is False
+
+
+def test_transaction_manager_passes_the_execution_engine_to_polars_maintenance():
+    pytest.importorskip("polars")
+    from benchbox.core.transaction_primitives.dataframe_operations import get_dataframe_transaction_manager
+
+    manager = get_dataframe_transaction_manager("polars-df", execution_engine="streaming")
+
+    assert manager is not None
+    assert manager._maintenance_ops.execution_engine == "streaming"
