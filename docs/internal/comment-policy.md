@@ -114,7 +114,9 @@ The 55 current fixtures let named tests read exact parser input the checker
 cannot parse on its own. A fixture allows no comment text. Its digest covers
 the reading symbol plus the module-level bindings that symbol resolves
 through, so editing unrelated code in the file keeps the entry valid, while
-editing the reader or a binding it resolves through breaks the match. Its
+editing the reader or a binding it resolves through breaks the match. Entries
+registered before the scoped scheme carry the whole-file syntax-tree digest
+instead, and the checker still honors those during the transition. Either
 syntax-tree digest ignores only empty type-parameter lists, so all Python
 versions agree.
 

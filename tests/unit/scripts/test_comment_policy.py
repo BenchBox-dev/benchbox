@@ -1815,10 +1815,37 @@ def test_opaque_fixture_permission_changes_with_contributing_consumer_code() -> 
         exceptions=[exception(finding.text, kind="fixture", payload=finding.payload, finding_kind="payload-error")]
     )
     assert allowed(finding, registered, source)
-    changed = python_findings("a.py", source + '\ncode_input = "# new explanation"')[0]
+    changed_source = source + '\ncode_input = "# new explanation"'
+    changed = python_findings("a.py", changed_source)[0]
     assert changed.text == finding.text
     assert changed.payload != finding.payload
-    assert not allowed(changed, registered, source)
+    assert not allowed(changed, registered, changed_source)
+
+
+def test_fixture_accepts_legacy_whole_tree_digest() -> None:
+    from comment_syntax import python_consumer_digest
+
+    source = "def run():\n    code = input()\n    exec(code)\n"
+    finding = python_findings("a.py", source)[0]
+    assert finding.kind == "payload-error"
+    legacy = python_consumer_digest(ast.parse(source))
+    assert legacy != finding.payload
+    registered = policy(
+        exceptions=[exception(finding.text, kind="fixture", payload=legacy, finding_kind="payload-error", symbol="run")]
+    )
+    assert allowed(finding, registered, source)
+    bogus = policy(
+        exceptions=[
+            exception(
+                finding.text,
+                kind="fixture",
+                payload="sha256:" + "0" * 64,
+                finding_kind="payload-error",
+                symbol="run",
+            )
+        ]
+    )
+    assert not allowed(finding, bogus, source)
 
 
 def test_native_payload_batches_include_nested_shell_javascript(monkeypatch: pytest.MonkeyPatch) -> None:

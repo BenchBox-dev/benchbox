@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import codecs
 import hashlib
 import io
@@ -29,7 +30,7 @@ from check_comment_cleanup_scope import (
     oracle_review_covers,
     validate_comment_policy_path as validate_path,
 )
-from comment_syntax import Finding, javascript_requests, language, scan, source_language
+from comment_syntax import Finding, javascript_requests, language, python_consumer_digest, scan, source_language
 
 DIRECTIVES = COMMENT_POLICY_DIRECTIVES
 ENFORCEMENT_MODES = COMMENT_POLICY_ENFORCEMENT_MODES
@@ -201,6 +202,16 @@ def bootstrap_base_allowed(root: Path, base: str) -> bool:
     return contains_rollout and not installed
 
 
+def _fixture_payload_matches(finding: Finding, source: str, expected: str) -> bool:
+    if finding.payload == expected:
+        return True
+    try:
+        tree = ast.parse(source)
+    except (SyntaxError, ValueError):
+        return False
+    return python_consumer_digest(tree) == expected
+
+
 def allowed(
     finding: Finding,
     policy: dict,
@@ -235,7 +246,7 @@ def allowed(
             and finding.symbol == entry["symbol"]
             and text == entry["text"]
             and finding.kind == entry.get("finding_kind", "comment")
-            and (entry["kind"] != "fixture" or finding.payload == entry["payload"])
+            and (entry["kind"] != "fixture" or _fixture_payload_matches(finding, source, entry["payload"]))
             and (budget is None or budget[index] > 0)
         ):
             if budget is not None:
