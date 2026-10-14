@@ -3,7 +3,7 @@
     "Options that do not apply in the selected engine or deployment warn or fail and are not recorded as applied",
     "Dask and LakeSail docs describe what the settings actually do"
   ],
-  "context": "Found by the 2026-10-13 adversarial review of the core execution-variants batch (gateway O5, compute O7); verified on develop 9400b62c4. Related: platform-options-reach-adapters-20261014.\nBatch: _project/handoffs/execution-variant-general-followups-batch-20261014.md, started 2026-10-14",
+  "context": "Found by the 2026-10-13 adversarial review of the core execution-variants batch (gateway O5, compute O7); verified on develop 9400b62c4. Related: platform-options-reach-adapters-20261014.\nBatch: _project/handoffs/execution-variant-general-followups-batch-20261014.md, started 2026-10-14\nClose-out: PR #2975, merge 71c38dc8b0676e9fc082b9f893aec4b0d917bf1c. Not a soundness path. New benchbox/core/option_notices.py (warn once per run per platform/option; reset in begin_run). Dask threaded warns for n_workers/threads_per_worker/memory_limit/spill_directory/spill_to_disk and omits them from get_platform_info; LakeSail sail_workers always warns and is not recorded (pysail server has no worker-count option: only --ip, --port, --directory); docs reworded (dask-dataframe, lakesail, deployment-modes). Verified by tests/unit/platforms/test_options_not_applied.py (9 tests via get_adapter), updated test_lakesail_adapter.py and tests/integration/test_dask_dataframe_integration.py::test_platform_info; a real dask-df threaded dry-run at SF 0.01 printed the warning once. No ADR amendment. CHANGELOG Fixed + Before you upgrade.\nFollow-ups (not fixed): raw_config/options in bundles still carry requested values (by design); Dask distributed with scheduler_address ignores n_workers/threads_per_worker/memory_limit but records them (belongs to scheduler_address handling); docs say LakeSail registers no --platform-option keys although endpoint/adaptive_enabled/deployment_mode are registered (lakesail.md, deployment-modes.md, quick-reference.md:349); lakesail:distributed against a single-node server is still labelled distributed in connection_mode metadata (needs a vocabulary decision).",
   "description": "## Problem\n- **Dask.** The documented example `--execution-engine threaded --platform-option threads_per_worker=4` (`docs/platforms/dask-dataframe.md:82-84,106`) has no effect. `threads_per_worker` is used only by `LocalCluster`, yet `get_platform_info` records 4, with no warning (`platforms/dataframe/dask_df.py:120,139-141,202,466-470`).\n- **LakeSail.** The docs call `lakesail:distributed` multi-node execution (`docs/platforms/lakesail.md:16,74-75,87,226-235`). It only skips the local server auto-start (`platforms/lakesail.py:354-368`). `sail_workers` is only recorded in metadata (`:91-94,199`).\n- **Effect on results:** both record settings that never ran. A `lakesail:distributed` run against a single-node server is labelled distributed.\n\n## Change\n- Use one pattern for options that have no effect in the chosen mode: warn or reject, and stop recording them as applied.\n- Fix the Dask example.\n- Reword the LakeSail `distributed` docs (it means connecting to an external server), and apply `sail_workers` or mark it as record-only.",
   "links": [
     "benchbox/platforms/dataframe/dask_df.py",
@@ -35,6 +35,14 @@
       "generation": "26d49beb4af94dbf97ad8464faa6dc25",
       "op": "take",
       "op_id": "24ba9a7213cc4ddab1bc2d3d103a9150",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-14T18:11:12Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "d9a8065fc479449da2f339ab4d54e944",
       "session_id": "18469f668aeb45d59c8d4c94d2f79433"
     }
   ]
