@@ -257,9 +257,9 @@ The examples, in order:
 ### Platform-Specific Options
 
 ```bash
-benchbox run --platform clickhouse-local --benchmark tpch \
-  --platform-option mode=local \
-  --platform-option secure=true
+benchbox run --platform clickhouse-server --benchmark tpch \
+  --platform-option secure=true \
+  --platform-option port=9440
 
 benchbox run --platform duckdb --benchmark tpch \
   --platform-option driver_version=1.2.0 \
@@ -275,7 +275,7 @@ benchbox platforms status clickhouse
 
 The examples, in order:
 
-- ClickHouse with local mode and TLS.
+- ClickHouse server over TLS on port 9440. The platform name picks the deployment (`clickhouse-local` for embedded chDB); the `mode` option is a deprecated alias.
 - Pin the driver version, which works on any platform.
 - Athena Spark: run in a Spark-enabled workgroup and record the engine version it is configured with.
 - The last command shows platform details and capabilities.

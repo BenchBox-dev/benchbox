@@ -59,17 +59,21 @@ export STARBURST_CATALOG=tpch_sf1
 benchbox run --platform starburst --benchmark tpch --scale 1.0
 ```
 
-**CLI Options:**
+**Credentials file:** the CLI also reads these settings from the `starburst` section of `~/.benchbox/credentials.yaml`. Values written as `${VAR}` are read from the environment. Environment variables apply only to settings the file leaves unset.
 
-```bash
-benchbox run --platform starburst --benchmark tpch --scale 1.0 \
-    --platform-option host=my-cluster.trino.galaxy.starburst.io \
-    --platform-option username=joe@example.com/accountadmin \
-    --platform-option password=your-password \
-    --platform-option catalog=tpch_sf1
+```yaml
+starburst:
+  host: my-cluster.trino.galaxy.starburst.io
+  username: joe@example.com/accountadmin
+  password: ${STARBURST_PASSWORD}
+  catalog: tpch_sf1
 ```
 
+Starburst has no `--platform-option` settings for connection details, catalog, schema, or table format.
+
 ## Configuration Options
+
+Set each option in the credentials file, or through its environment variable where one exists.
 
 | Option | Environment Variable | Required | Default | Description |
 |--------|---------------------|----------|---------|-------------|
@@ -79,8 +83,8 @@ benchbox run --platform starburst --benchmark tpch --scale 1.0 \
 | `role` | `STARBURST_ROLE` | No | - | Role (appended to username if not included) |
 | `catalog` | `STARBURST_CATALOG` | No | - | Default catalog |
 | `port` | `STARBURST_PORT` | No | `443` | HTTPS port |
-| `schema` | - | No | `default` | Default schema |
-| `table_format` | - | No | `iceberg` | Table format: `memory`, `hive`, `iceberg`, `delta` |
+| `schema` | - | No | from benchmark and scale | Schema for benchmark tables |
+| `table_format` | - | No | `memory` | Table format: `memory`, `hive`, `iceberg`, `delta` |
 | `verify_ssl` | - | No | `true` | SSL certificate verification |
 
 ## Usage Examples
@@ -98,22 +102,23 @@ benchbox run --platform starburst --benchmark tpcds --scale 10.0
 ### With Specific Catalog
 
 ```bash
-benchbox run --platform starburst --benchmark tpch --scale 1.0 \
-    --platform-option catalog=my_catalog \
-    --platform-option schema=benchmark_data
+export STARBURST_CATALOG=my_catalog
+
+benchbox run --platform starburst --benchmark tpch --scale 1.0
 ```
+
+To set the schema as well, add `schema: benchmark_data` to the `starburst` section of the credentials file.
 
 ### With Table Format
 
-Iceberg tables are the default. The second command uses Delta Lake tables.
+Tables use the `memory` format unless the credentials file sets `table_format`. For Iceberg tables:
 
-```bash
-benchbox run --platform starburst --benchmark tpch --scale 1.0 \
-    --platform-option table_format=iceberg
-
-benchbox run --platform starburst --benchmark tpch --scale 1.0 \
-    --platform-option table_format=delta
+```yaml
+starburst:
+  table_format: iceberg
 ```
+
+Use `delta` for Delta Lake tables.
 
 ## Python API
 
@@ -165,12 +170,7 @@ Starburst Galaxy supports multiple table formats:
 | `iceberg` | Apache Iceberg | Production analytics, ACID transactions |
 | `delta` | Delta Lake | Databricks ecosystem integration |
 
-Iceberg is recommended for analytics.
-
-```bash
-benchbox run --platform starburst --benchmark tpch --scale 1.0 \
-    --platform-option table_format=iceberg
-```
+Iceberg is recommended for analytics. Set `table_format: iceberg` in the `starburst` section of the credentials file.
 
 ## Comparison: Starburst vs Trino
 
@@ -231,7 +231,7 @@ SSL certificate error connecting to Starburst Galaxy.
 **Solutions:**
 1. Check network proxy settings
 2. Verify SSL certificate chain
-3. Use `--platform-option verify_ssl=false` (not recommended for production)
+3. Set `verify_ssl: false` in the `starburst` section of `~/.benchbox/credentials.yaml` (not recommended for production)
 
 ### Catalog Not Found
 
@@ -242,7 +242,7 @@ Catalog 'my_catalog' does not exist
 **Solutions:**
 1. Create the catalog in Starburst Galaxy console
 2. Use an existing catalog: check available catalogs in the console
-3. Omit catalog option to use the default
+3. Leave the catalog unset to use the default
 
 ## Related Documentation
 

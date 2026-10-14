@@ -68,16 +68,15 @@ scripts/with_supported_java.sh benchbox run --platform pyspark-df --benchmark tp
 
 ### SQL Mode
 
-The first command runs the TPC-H power phase via Spark SQL. The second creates a warehouse directory and Delta tables:
+This command runs the TPC-H power phase via Spark SQL:
 
 ```bash
 scripts/with_supported_java.sh benchbox run --platform pyspark --mode sql --benchmark tpch --scale 0.01 \
   --phases power --non-interactive
-
-scripts/with_supported_java.sh benchbox run --platform pyspark --mode sql --benchmark tpch --scale 1 \
-  --platform-option warehouse_dir=./spark_warehouse \
-  --platform-option table_format=delta
 ```
+
+To set a warehouse directory or create Delta tables, use the Python API, as shown under SQL Mode Configuration
+Highlights below.
 
 ## Configuration Options (DataFrame Mode)
 
@@ -90,18 +89,21 @@ scripts/with_supported_java.sh benchbox run --platform pyspark --mode sql --benc
 | `shuffle_partitions` | CPU count | Partitions for shuffle operations |
 | `enable_aqe` | `true` | Enable Adaptive Query Execution |
 
+The CLI accepts `driver_memory` and `shuffle_partitions` through `--platform-option`. Set the other options as
+`PySparkDataFrameAdapter` keyword arguments in the Python API.
+
 ### master
 
 Specifies the Spark cluster to connect to. In order, the examples below select local mode with all cores, local mode with 4 cores, a standalone cluster, and a YARN cluster:
 
-```bash
---platform-option master="local[*]"
+```python
+PySparkDataFrameAdapter(master="local[*]")
 
---platform-option master="local[4]"
+PySparkDataFrameAdapter(master="local[4]")
 
---platform-option master="spark://hostname:7077"
+PySparkDataFrameAdapter(master="spark://hostname:7077")
 
---platform-option master="yarn"
+PySparkDataFrameAdapter(master="yarn")
 ```
 
 ### driver_memory
@@ -128,30 +130,33 @@ benchbox run --platform pyspark-df --benchmark tpch --scale 1 \
 
 Adaptive Query Execution optimizes queries at runtime. Disable it for deterministic benchmarking:
 
-```bash
-benchbox run --platform pyspark-df --benchmark tpch --scale 1 \
-  --platform-option enable_aqe=false
+```python
+PySparkDataFrameAdapter(enable_aqe=False)
 ```
 
 ## SQL Mode Configuration Highlights
 
-PySpark SQL mode reuses most of the DataFrame configuration flags and adds SQL-specific tuning:
+`PySparkSQLAdapter` accepts the Spark adapter keyword arguments (`master`, `app_name`, `driver_memory`,
+`executor_memory`, `shuffle_partitions`, and `adaptive_enabled` for AQE) and adds SQL-specific settings:
 
 | Option | Default | Description |
 |--------|---------|-------------|
 | `warehouse_dir` | Spark default | Catalog warehouse directory used for managed tables. |
-| `database` | `benchbox_benchmark` | Spark database/schema name. Shared across SQL/DataFrame adapters through the session manager. |
+| `database` | `default` | Spark database/schema name. Shared across SQL/DataFrame adapters through the session manager. |
 | `table_format` | `parquet` | File format for managed tables (`parquet` or `delta`). |
-| `partitioning` | None | Optional `table=col1,col2` CLI entries to inject `PARTITIONED BY` clauses. |
 
-Example CLI overrides:
+`PARTITIONED BY` clauses come from the tuning configuration, not from adapter options.
 
-```bash
-benchbox run --platform pyspark --mode sql --benchmark tpcds --scale 0.1 \
-  --platform-option database=benchbox_pyspark_tpcds \
-  --platform-option warehouse_dir=./spark_warehouse \
-  --platform-option table_format=delta \
-  --platform-option partition=lineitem:l_shipdate
+Example Python API overrides:
+
+```python
+from benchbox.platforms.pyspark import PySparkSQLAdapter
+
+adapter = PySparkSQLAdapter(
+    database="benchbox_pyspark_tpcds",
+    warehouse_dir="./spark_warehouse",
+    table_format="delta",
+)
 ```
 
 ## Java Requirements
@@ -206,10 +211,8 @@ PySpark can handle very large datasets due to distributed execution:
    --platform-option shuffle_partitions=8
    ```
 
-2. **Enable AQE** for adaptive optimization (default):
-   ```bash
-   --platform-option enable_aqe=true
-   ```
+2. **Keep AQE enabled** for adaptive optimization. It is on by default; the Python API can turn it off with
+   `enable_aqe=False`.
 
 3. **Allocate sufficient driver memory**:
    ```bash
@@ -301,7 +304,7 @@ adapter = PySparkDataFrameAdapter(
 | `Detected Java 24...` | Install Temurin/OpenJDK 17 or 21 and export `JAVA_HOME` before running BenchBox. |
 | `SparkSession already created with a different configuration` | Ensure SQL/DataFrame adapters share identical Spark options (master, memory, shuffle partitions). |
 | `PySpark not installed` | Run `uv add benchbox --extra pyspark` or `pip install pyspark pyarrow`. |
-| Cloud storage read errors | Include required Spark packages via `--platform-option spark.hadoop.fs.s3a.impl=...` and supply credentials through environment variables. |
+| Cloud storage read errors | Pass the required Spark settings, such as `spark.hadoop.fs.s3a.impl`, as extra `PySparkDataFrameAdapter` keyword arguments in the Python API, and supply credentials through environment variables. |
 
 ## Query Implementation
 

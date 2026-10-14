@@ -26,6 +26,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The Polars version-matrix reproduction instructions now use
   `--execution-engine` for default, in-memory and streaming setups, and identify
   the earlier `engine` option name used by the recorded bundles.
+- Every `--platform-option` example in the documentation and in
+  `benchbox run --help` examples now uses a key the CLI accepts without a
+  deprecation warning, and a test runs each example through the CLI option
+  parser. Examples that used rejected keys (connection settings such as
+  `host`, `account` or `project_id`, Databricks `http_path`, Spark `master`)
+  now show the saved credentials, environment variable, Python API argument
+  or platform selector that does set them, or were removed where BenchBox
+  has no way to set the value. Deprecated spellings are replaced: Snowflake
+  `warehouse` and Firebolt `engine`/`engine_name` by `compute_resource`,
+  ClickHouse `mode=local` by `--platform clickhouse-server` or
+  `--platform clickhouse-local`, Velox `deployment=` by
+  `--platform velox:local|remote`, and Polars `streaming=true` by
+  `--execution-engine streaming`. The Polars Python API reference no longer
+  lists the removed `--polars-streaming` argparse flag, and the Athena Spark
+  page no longer documents environment variables BenchBox does not read.
+- The Polars version-matrix methodology and findings state what the
+  preliminary probe observed for Polars 1.35.2 on the streaming engine: the
+  TPC-DS cross-surface check at scale factor 0.01 failed on queries 5, 14, 27
+  and 67, and the probe did not determine whether Polars or the BenchBox
+  DataFrame query code caused it. The methodology also notes that the
+  committed bundles were recorded under the earlier `engine` option name.
 - Public result-analysis and submission guidance no longer exposes concrete
   identifier-pseudonymization recipes or cross-submission salt reuse details;
   public submissions require a private salt.
@@ -62,6 +83,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   publication drops the resource name. Fabric Data Warehouse uses `database`
   as the canonical name with `warehouse` as a deprecated alias, and Athena
   Spark uses `runtime_version` with `engine_version` as a deprecated alias.
+
+- Adapters read `compute_resource` and `compute_size` before their vendor
+  keys when built through the adapter factory or `from_config`: Athena Spark
+  (workgroup), EMR Serverless (application), Dataproc (cluster), Synapse Spark
+  and Fabric Spark (Spark pool), Databricks DataFrame (cluster), Athena
+  (workgroup), Firebolt (engine and engine size), ClickHouse Cloud (service)
+  and Quanton (cluster size). The vendor keys still work as deprecated
+  aliases.
 
 - Result bundles now record the factory-resolved deployment as
   `platform.deployment.selected` with `selected_class`, and non-default

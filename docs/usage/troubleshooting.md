@@ -128,10 +128,13 @@ The first `curl` checks Firebolt Core on port 3473. The second checks Trino or P
    The `lsof` command shows whether the port is already in use.
 
 3. **Verify host/port in config:**
-   ```bash
-   benchbox run --platform trino --benchmark tpch \
-     --platform-option host=localhost \
-     --platform-option port=8080
+   Trino and Presto do not accept `host` or `port` as `--platform-option`
+   keys. BenchBox reads them from the platform's section of
+   `~/.benchbox/credentials.yaml`, and defaults to `localhost:8080`:
+   ```yaml
+   trino:
+     host: localhost
+     port: 8080
    ```
 
 ### Network Timeout
@@ -149,12 +152,6 @@ socket.timeout: timed out
    aws ec2 describe-security-groups --group-ids sg-xxx
 
    nc -zv your-cluster.redshift.amazonaws.com 5439
-   ```
-
-2. **Increase connection timeout:**
-   ```bash
-   benchbox run --platform snowflake --benchmark tpch \
-     --platform-option connect_timeout=60
    ```
 
 ## Authentication Failures
@@ -306,22 +303,30 @@ Statement timeout
 **Solutions:**
 
 1. **Increase query timeout:**
-   ```bash
-   benchbox run --platform snowflake --benchmark tpch \
-     --platform-option query_timeout=3600
-
-   benchbox run --platform redshift --benchmark tpch \
-     --platform-option statement_timeout=3600000
-   ```
-   The Snowflake `query_timeout` is in seconds, so 3600 is one hour. The Redshift `statement_timeout` is in milliseconds.
+   - Snowflake: BenchBox sets `STATEMENT_TIMEOUT_IN_SECONDS = 1800` for
+     OLAP benchmarks such as TPC-H and TPC-DS, and has no setting to change
+     it.
+   - Redshift: `statement_timeout` (milliseconds) is not a `--platform-option`
+     key. Set it in the `redshift` section of `~/.benchbox/credentials.yaml`,
+     or pass it to `RedshiftAdapter` in the Python API:
+     ```yaml
+     redshift:
+       statement_timeout: 3600000
+     ```
 
 2. **Use larger compute resources:**
    ```bash
    benchbox run --platform snowflake --benchmark tpch --scale 10 \
-     --platform-option warehouse=LARGE_WH
+     --platform-option compute_resource=LARGE_WH
+   ```
+   A `compute_resource` on the command line overrides the warehouse saved by
+   `benchbox setup`.
 
+   On Databricks, `compute_resource` names the SQL warehouse and replaces the
+   saved `http_path` with `/sql/1.0/warehouses/<warehouse_id>`:
+   ```bash
    benchbox run --platform databricks --benchmark tpch --scale 10 \
-     --platform-option http_path=/sql/1.0/warehouses/large_wh_id
+     --platform-option compute_resource=large_wh_id
    ```
 
 3. **Reduce scale factor for testing:**
@@ -354,22 +359,24 @@ The memory limit caps usage, and the temp directory is where DuckDB spills to di
 #### Polars
 ```bash
 benchbox run --platform polars-df --benchmark tpch --scale 10 \
-  --platform-option streaming=true
+  --execution-engine streaming
 ```
 
-Streaming mode lets Polars process large datasets without holding them all in memory.
+The streaming engine lets Polars process large datasets without holding them all in memory.
 
 #### Spark
 ```bash
 benchbox run --platform spark --benchmark tpch --scale 10 \
-  --platform-option executor_memory=8g \
-  --platform-option driver_memory=4g
+  --platform-option driver_memory=8g
 ```
+
+`driver_memory` is the only Spark memory setting `benchbox run` accepts.
+`executor_memory` is a `SparkAdapter` argument in the Python API.
 
 #### Cloud Platforms
 ```bash
 benchbox run --platform snowflake --benchmark tpch --scale 100 \
-  --platform-option warehouse=X_LARGE_WH
+  --platform-option compute_resource=X_LARGE_WH
 ```
 
 ### Scale Factor Recommendations

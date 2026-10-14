@@ -15,6 +15,8 @@ Use this checklist before opening a platform-support PR. It is deliberately conc
 | What dependency group enables it? | Add or reuse an optional extra; do not make base import require a platform SDK. |
 | What is the blast radius? | List adapter files, registry metadata, docs, tests, SQL compatibility, and UAT/live scope. |
 
+(new-platform-checklist-sql)=
+
 ## SQL Platform Checklist
 
 - Add the adapter under `benchbox/platforms/` or an existing platform family package.
@@ -45,7 +47,7 @@ Use this checklist before opening a platform-support PR. It is deliberately conc
   in deployment, requested engine or gateway (the CLI accepts `--allow-heterogeneous-comparison`), and
   regression baselines use only runs of the same variant.
 - Declare execution engines when the platform offers more than one way to execute a query: add a manifest
-  `capabilities.execution_engines` block with `{name: {class, display_name, description, dependencies, selectable}}.
+  `capabilities.execution_engines` block with `{name: {class, display_name, description, dependencies, selectable}}`.
   The class comes from the closed core list (`adaptive`, `in-memory`, `streaming`, `gpu`, `native-vectorized`,
   `standard`, `distributed`, `jit`, `delegated`). Name each value with the platform's own documented term when one
   exists, otherwise the class name; the same name must map to the same class on every platform (the vocabulary

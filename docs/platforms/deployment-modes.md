@@ -279,7 +279,7 @@ benchbox run --platform firebolt:cloud --benchmark tpch --scale 1.0 \
     --platform-option client_id=your-client-id \
     --platform-option client_secret=your-client-secret \
     --platform-option account_name=your-account \
-    --platform-option engine_name=your-engine
+    --platform-option compute_resource=your-engine
 ```
 
 The `SERVICE_ACCOUNT_ID` and `SERVICE_ACCOUNT_SECRET` variables are alternative names for the client ID and secret, and are also supported. The second run passes the settings inline as platform options.
@@ -291,7 +291,7 @@ The `SERVICE_ACCOUNT_ID` and `SERVICE_ACCOUNT_SECRET` variables are alternative 
 | `client_id` | `FIREBOLT_CLIENT_ID` / `SERVICE_ACCOUNT_ID` | Yes | OAuth client ID |
 | `client_secret` | `FIREBOLT_CLIENT_SECRET` / `SERVICE_ACCOUNT_SECRET` | Yes | OAuth client secret |
 | `account_name` | `FIREBOLT_ACCOUNT_NAME` | Yes | Firebolt account name |
-| `engine_name` | `FIREBOLT_ENGINE_NAME` | Yes | Engine to use for queries |
+| `compute_resource` | `FIREBOLT_ENGINE_NAME` | Yes | Engine to use for queries |
 | `database` | `FIREBOLT_DATABASE` | No | Database name (default: `benchbox`) |
 | `api_endpoint` | `FIREBOLT_API_ENDPOINT` | No | API endpoint (default: `api.app.firebolt.io`) |
 
@@ -379,12 +379,9 @@ uv add duckdb
 export MOTHERDUCK_TOKEN=your-token
 
 benchbox run --platform motherduck --benchmark tpch --scale 1.0
-
-benchbox run --platform motherduck --benchmark tpch --scale 1.0 \
-    --platform-option token=your-token
 ```
 
-The DuckDB package includes MotherDuck support. The first run reads the token from the environment; the second passes it inline.
+The DuckDB package includes MotherDuck support. BenchBox reads the token from `MOTHERDUCK_TOKEN`; there is no platform option for it.
 
 **Configuration:**
 
@@ -416,12 +413,9 @@ export STARBURST_USER=joe@example.com/accountadmin
 export STARBURST_PASSWORD=your-password
 
 benchbox run --platform starburst --benchmark tpch --scale 1.0
-
-benchbox run --platform starburst --benchmark tpch --scale 1.0 \
-    --platform-option host=my-cluster.trino.galaxy.starburst.io \
-    --platform-option username=joe@example.com/accountadmin \
-    --platform-option password=your-password
 ```
+
+Starburst has no platform options for these settings; set them in the environment as shown.
 
 **Connection Parameters:**
 
@@ -548,7 +542,7 @@ Connect to a pre-started Gluten-enabled Spark Connect server (including the `ben
 ```bash
 docker compose up -d velox-connect
 
-benchbox run --platform velox --platform-option deployment=remote \
+benchbox run --platform velox:remote \
     --platform-option endpoint=sc://localhost:50051 \
     --benchmark tpch --scale 0.1
 ```
@@ -561,7 +555,7 @@ Options marked "yes" are passed as `--platform-option KEY=VALUE`.
 
 | Parameter | CLI | Default | Notes |
 |-----------|-----|---------|-------|
-| `deployment` | yes | `local` | `local` (in-process, Linux-only) or `remote` (Spark Connect) |
+| `deployment` | deprecated alias; use `--platform velox:local` or `--platform velox:remote` | `local` | `local` (in-process, Linux-only) or `remote` (Spark Connect) |
 | `endpoint` | yes | `sc://localhost:50051` | Spark Connect URL for `remote` mode |
 | `gluten_jar_path` | yes (alias: `jar`) | - | Absolute path to the Gluten bundle jar (required for `local` mode) |
 | `offheap_size` | yes | `8g` | `spark.memory.offHeap.size` for Velox |

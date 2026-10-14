@@ -33,43 +33,18 @@ This installs `google-cloud-dataproc` and `google-cloud-storage`.
 
 ## Configuration
 
-### Environment Variables
-
-```bash
-export GOOGLE_CLOUD_PROJECT=my-project
-export GCS_STAGING_DIR=gs://my-bucket/benchbox
-
-export DATAPROC_REGION=us-central1
-export DATAPROC_RUNTIME_VERSION=2.1
-```
-
-`GOOGLE_CLOUD_PROJECT` and `GCS_STAGING_DIR` are required. `DATAPROC_REGION` and `DATAPROC_RUNTIME_VERSION` are optional.
-
 ### CLI Usage
 
+The BenchBox CLI does not accept the Dataproc Serverless project or staging settings, so run benchmarks through the
+Python API described below. The CLI can still preview the generated queries without connecting to Google Cloud:
+
 ```bash
-benchbox run --platform dataproc-serverless --benchmark tpch --scale 1.0 \
-  --platform-option project_id=my-project \
-  --platform-option gcs_staging_dir=gs://my-bucket/benchbox
-
-benchbox run --platform dataproc-serverless --benchmark tpch --scale 1.0 \
-  --platform-option project_id=my-project \
-  --platform-option gcs_staging_dir=gs://my-bucket/benchbox \
-  --platform-option region=europe-west1
-
-benchbox run --platform dataproc-serverless --benchmark tpch --scale 1.0 \
-  --platform-option project_id=my-project \
-  --platform-option gcs_staging_dir=gs://my-bucket/benchbox \
-  --platform-option service_account=my-sa@my-project.iam.gserviceaccount.com
-
-benchbox run --platform dataproc-serverless --benchmark tpch --dry-run ./preview \
-  --platform-option project_id=my-project \
-  --platform-option gcs_staging_dir=gs://my-bucket/benchbox
+benchbox run --platform dataproc-serverless --benchmark tpch --dry-run ./preview
 ```
 
-The four commands show basic usage, a custom region, a service account, and a dry run that previews queries.
+### Adapter Options
 
-### Platform Options
+These are `DataprocServerlessAdapter` keyword arguments.
 
 | Option | Default | Description |
 |--------|---------|-------------|
@@ -208,12 +183,13 @@ The first command grants Dataproc permissions. The second grants storage permiss
 
 For private networking, specify VPC and subnet:
 
-```bash
-benchbox run --platform dataproc-serverless --benchmark tpch \
-  --platform-option project_id=my-project \
-  --platform-option gcs_staging_dir=gs://my-bucket/benchbox \
-  --platform-option network_uri=projects/my-project/global/networks/my-vpc \
-  --platform-option subnetwork_uri=projects/my-project/regions/us-central1/subnetworks/my-subnet
+```python
+adapter = DataprocServerlessAdapter(
+    project_id="my-project",
+    gcs_staging_dir="gs://my-bucket/benchbox",
+    network_uri="projects/my-project/global/networks/my-vpc",
+    subnetwork_uri="projects/my-project/regions/us-central1/subnetworks/my-subnet",
+)
 ```
 
 ## Troubleshooting

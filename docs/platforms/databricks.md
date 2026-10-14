@@ -43,54 +43,79 @@ pip install "benchbox[databricks]"
 
 ## Configuration
 
-### Environment Variables (Recommended)
-
-```bash
-export DATABRICKS_HOST=https://your-workspace.cloud.databricks.com
-export DATABRICKS_HTTP_PATH=/sql/1.0/warehouses/abc123def456
-export DATABRICKS_TOKEN=dapi1234567890abcdef
-```
-
-### Interactive Setup
+### Interactive Setup (Recommended)
 
 ```bash
 benchbox setup --platform databricks
 ```
 
-### CLI Options
+This saves the workspace hostname, the SQL warehouse HTTP path, the access
+token, and a default catalog and schema.
+
+### Environment Variables
+
+When the saved credentials are incomplete, BenchBox asks the Databricks SDK
+for the workspace host and token. The SDK reads `DATABRICKS_HOST` and
+`DATABRICKS_TOKEN` (or `~/.databrickscfg`). BenchBox then uses the first
+running SQL warehouse, or the first available one if none is running.
 
 ```bash
-benchbox run --platform databricks --benchmark tpch --scale 1.0 \
-  --platform-option server_hostname=your-workspace.cloud.databricks.com \
-  --platform-option http_path=/sql/1.0/warehouses/abc123def456 \
-  --platform-option access_token=dapi1234...
+export DATABRICKS_HOST=https://your-workspace.cloud.databricks.com
+export DATABRICKS_TOKEN=dapi1234567890abcdef
+```
+
+### Choosing the SQL Warehouse
+
+BenchBox connects to the warehouse named by `http_path`
+(`/sql/1.0/warehouses/<warehouse_id>`), which setup saves. `http_path` is not
+a `--platform-option` key. To use a different warehouse for one run, pass its
+ID as `compute_resource`; BenchBox sets the HTTP path to
+`/sql/1.0/warehouses/<warehouse_id>` in place of the saved one:
+
+```bash
+benchbox run --platform databricks --benchmark tpch \
+  --platform-option compute_resource=abc123def456
 ```
 
 ## Platform Options
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `server_hostname` | (env) | Workspace URL |
-| `http_path` | (env) | SQL Warehouse or cluster path |
-| `access_token` | (env) | Personal Access Token |
-| `catalog` | (default) | Unity Catalog name |
-| `schema` | (auto) | Schema name |
-| `use_volumes` | true | Use UC Volumes for staging |
-| `volume_path` | (auto) | Path within volume |
-| `driver_version` | (latest) | Pin the Databricks SQL connector version (e.g. `3.3.0`) |
-| `driver_auto_install` | false | Auto-install the requested driver version via uv if missing |
-| `table_format` | `delta` | Table format: `delta` or `hudi` (Hudi emits `USING HUDI` DDL) |
-| `hudi_primary_key` | (none) | Hudi record key column (recommended; required at write time) |
-| `hudi_precombine_field` | (none) | Hudi precombine (ordering) field |
-| `hudi_table_type` | `cow` | Hudi table type: `cow` (copy-on-write) or `mor` (merge-on-read) |
+The **Set with** column shows where each setting comes from: the saved
+credentials (`benchbox setup`), a `--platform-option` key on `benchbox run`,
+or a `DatabricksAdapter` argument in the Python API.
+
+| Option | Set with | Default | Description |
+|--------|----------|---------|-------------|
+| `server_hostname` | setup | (none) | Workspace hostname |
+| `http_path` | setup | (auto-detected) | SQL warehouse HTTP path |
+| `access_token` | setup | (none) | Personal access token |
+| `catalog` | setup | `workspace` | Unity Catalog name |
+| `schema` | setup | (auto) | Schema name; generated from the benchmark and scale factor when left at `benchbox` |
+| `compute_resource` | `--platform-option` | (none) | SQL warehouse ID; sets `http_path` to `/sql/1.0/warehouses/<id>` |
+| `uc_catalog`, `uc_schema`, `uc_volume` | `--platform-option` | (none) | Unity Catalog volume for staging uploads |
+| `staging_root` | `--platform-option` | (none) | Staging path (`dbfs:/Volumes/...`, `s3://...`, `abfss://...`) |
+| `driver_version` | `--platform-option` | (latest) | Pin the Databricks SQL connector version (e.g. `3.3.0`) |
+| `driver_auto_install` | `--platform-option` | false | Auto-install the requested driver version via uv if missing |
+| `table_format` | Python API | `delta` | Table format: `delta` or `hudi` (Hudi emits `USING HUDI` DDL) |
+| `hudi_primary_key` | Python API | (none) | Hudi record key column (recommended; required at write time) |
+| `hudi_precombine_field` | Python API | (none) | Hudi precombine (ordering) field |
+| `hudi_table_type` | Python API | `cow` | Hudi table type: `cow` (copy-on-write) or `mor` (merge-on-read) |
 
 ### Apache Hudi Tables
 
-```bash
-benchbox run --platform databricks --benchmark tpch \
-  --platform-option table_format=hudi \
-  --platform-option hudi_primary_key=l_orderkey \
-  --platform-option hudi_precombine_field=l_commitdate
+`table_format` and the Hudi keys are `DatabricksAdapter` arguments.
+`benchbox run` does not accept them as `--platform-option` keys.
+
+```python
+from benchbox.platforms.databricks import DatabricksAdapter
+
+adapter = DatabricksAdapter(
+    server_hostname="your-workspace.cloud.databricks.com",
+    http_path="/sql/1.0/warehouses/abc123def456",
+    access_token="dapi1234567890abcdef",
+    table_format="hudi",
+    hudi_primary_key="l_orderkey",
+    hudi_precombine_field="l_commitdate",
+)
 ```
 
 Hudi support is DDL-level and validated by unit tests only (no live-warehouse
@@ -119,8 +144,7 @@ validation yet). Requirements and limits:
 ```bash
 benchbox run --platform databricks --benchmark tpch \
   --platform-option driver_version=3.3.0 \
-  --platform-option driver_auto_install=true \
-  --platform-option compute_resource=abc123xyz
+  --platform-option driver_auto_install=true
 ```
 
 The driver package for Databricks is `databricks-sql-connector`.
@@ -132,7 +156,8 @@ revert a manually-installed version and how to work around it.
 
 ### Personal Access Token
 
-Generate the token under User Settings > Developer > Access Tokens.
+BenchBox authenticates with a personal access token. Generate the token under
+User Settings > Developer > Access Tokens.
 
 ```bash
 export DATABRICKS_TOKEN=dapi1234567890abcdef
@@ -140,30 +165,7 @@ export DATABRICKS_TOKEN=dapi1234567890abcdef
 benchbox run --platform databricks --benchmark tpch --scale 1.0
 ```
 
-### OAuth (M2M)
-
-This uses service principal authentication.
-
-```bash
-export DATABRICKS_CLIENT_ID=your_client_id
-export DATABRICKS_CLIENT_SECRET=your_client_secret
-
-benchbox run --platform databricks --benchmark tpch \
-  --platform-option auth_type=oauth-m2m
-```
-
-### Azure AD (Azure Databricks)
-
-This uses an Azure Active Directory token.
-
-```bash
-export ARM_CLIENT_ID=your_client_id
-export ARM_CLIENT_SECRET=your_client_secret
-export ARM_TENANT_ID=your_tenant_id
-
-benchbox run --platform databricks --benchmark tpch \
-  --platform-option auth_type=azure-ad
-```
+BenchBox has no setting for OAuth machine-to-machine or Azure AD sign-in.
 
 ## Usage Examples
 
@@ -177,12 +179,14 @@ benchbox run --platform databricks --benchmark tpch --scale 1.0
 
 ### With Unity Catalog
 
-Specify the catalog and schema:
+`benchbox setup --platform databricks` asks for a default catalog and schema
+and saves them. `catalog` and `schema` are not `--platform-option` keys. In
+the Python API, pass them to `DatabricksAdapter`.
 
 ```bash
-benchbox run --platform databricks --benchmark tpch --scale 10.0 \
-  --platform-option catalog=benchmarks \
-  --platform-option schema=tpch_sf10
+benchbox setup --platform databricks
+
+benchbox run --platform databricks --benchmark tpch --scale 10.0
 ```
 
 ### With Tuning
@@ -251,12 +255,9 @@ runs); see `docs/reference/result-formats.md`.
 
 ### Photon Acceleration
 
-Photon is automatically enabled on SQL Warehouses. This command verifies that it is enabled:
-
-```bash
-benchbox run --platform databricks --benchmark tpch --scale 1.0 \
-  --platform-option check_photon=true
-```
+Photon is automatically enabled on SQL Warehouses. BenchBox records whether
+it was on in `platform.execution_engine.observed` (see Execution Engine
+above); no option is needed.
 
 ### Query Caching
 
@@ -264,12 +265,18 @@ BenchBox disables caching for accurate benchmarks by using unique query tags.
 
 ## Data Loading
 
-### Unity Catalog Volumes (Default)
+### Unity Catalog Volumes
 
-Data uploaded to managed volumes, then loaded via COPY INTO. This is automatic when Unity Catalog is enabled:
+BenchBox uploads local data to a Unity Catalog volume, then loads it with
+COPY INTO. Name the volume with `uc_catalog`, `uc_schema`, and `uc_volume`, or
+pass a `dbfs:/Volumes/<catalog>/<schema>/<volume>` path as `--output` or
+`staging_root`:
 
 ```bash
-benchbox run --platform databricks --benchmark tpch --scale 1.0
+benchbox run --platform databricks --benchmark tpch --scale 1.0 \
+  --platform-option uc_catalog=benchmarks \
+  --platform-option uc_schema=staging \
+  --platform-option uc_volume=uploads
 ```
 
 ### External Location (S3/ADLS/GCS)
@@ -281,15 +288,8 @@ benchbox run --platform databricks --benchmark tpch --scale 100.0 \
   --output s3://bucket/benchbox/
 ```
 
-### DBFS (Legacy)
-
-For workspaces without Unity Catalog:
-
-```bash
-benchbox run --platform databricks --benchmark tpch --scale 1.0 \
-  --platform-option use_volumes=false \
-  --platform-option dbfs_path=/tmp/benchbox/
-```
+BenchBox uploads local data only to Unity Catalog volumes. Workspaces without
+Unity Catalog must stage the data in external cloud storage, as shown above.
 
 ## Cost Optimization
 
@@ -300,11 +300,14 @@ Configure warehouses to auto-stop. Set this in the UI or API, under Warehouse Se
 
 ### Serverless Warehouses
 
-For variable workloads:
+For variable workloads, save the serverless warehouse's HTTP path with
+`benchbox setup --platform databricks`, then run as usual. BenchBox records
+whether the warehouse is serverless in the result metadata.
 
 ```bash
-benchbox run --platform databricks --benchmark tpch \
-  --platform-option http_path=/sql/1.0/warehouses/serverless_wh
+benchbox setup --platform databricks
+
+benchbox run --platform databricks --benchmark tpch
 ```
 
 ## Troubleshooting
@@ -324,6 +327,7 @@ curl -H "Authorization: Bearer $DATABRICKS_TOKEN" \
 
 List the warehouses via the API, and verify the `http_path` format. For a SQL Warehouse it is
 `/sql/1.0/warehouses/<warehouse_id>`. For a cluster it is `/sql/protocolv1/o/<org_id>/<cluster_id>`.
+Save the corrected path with `benchbox setup --platform databricks`.
 
 ```bash
 curl -H "Authorization: Bearer $DATABRICKS_TOKEN" \

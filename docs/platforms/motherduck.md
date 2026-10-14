@@ -37,7 +37,8 @@ The first command installs DuckDB, which includes MotherDuck support. The second
 
 ### Configuration
 
-**Environment Variable (recommended):**
+`benchbox run` reads the token from the `MOTHERDUCK_TOKEN` environment
+variable. The token is not a `--platform-option` key.
 
 ```bash
 export MOTHERDUCK_TOKEN=your-motherduck-token
@@ -45,22 +46,18 @@ export MOTHERDUCK_TOKEN=your-motherduck-token
 benchbox run --platform motherduck --benchmark tpch --scale 0.1
 ```
 
-**CLI Option:**
-
-```bash
-benchbox run --platform motherduck --benchmark tpch --scale 0.1 \
-    --platform-option token=your-motherduck-token
-```
-
 ## Configuration Options
 
-| Option | Environment Variable | Default | Description |
-|--------|---------------------|---------|-------------|
-| `token` | `MOTHERDUCK_TOKEN` | - | Authentication token (required) |
-| `database` | - | `benchbox` | MotherDuck database name |
-| `memory_limit` | - | `4GB` | Local memory limit for hybrid queries |
-| `driver_version` | - | (latest) | Pin the duckdb package version (e.g. `1.4.3`) |
-| `driver_auto_install` | - | false | Auto-install the requested driver version via uv if missing |
+The **Set with** column shows how to set each option: a `--platform-option`
+key on `benchbox run`, or a `MotherDuckAdapter` argument in the Python API.
+
+| Option | Set with | Environment Variable | Default | Description |
+|--------|----------|---------------------|---------|-------------|
+| `token` | Python API | `MOTHERDUCK_TOKEN` | - | Authentication token (required) |
+| `database` | `--platform-option` | - | `benchbox` | MotherDuck database name |
+| `memory_limit` | Python API | - | `4GB` | Local memory limit for hybrid queries |
+| `driver_version` | `--platform-option` | - | (latest) | Pin the duckdb package version (e.g. `1.4.3`) |
+| `driver_auto_install` | `--platform-option` | - | false | Auto-install the requested driver version via uv if missing |
 
 ### Testing a Specific DuckDB Version with MotherDuck
 
@@ -69,8 +66,7 @@ MotherDuck uses the `duckdb` package as its driver. To pin a specific version:
 ```bash
 benchbox run --platform motherduck --benchmark tpch \
   --platform-option driver_version=1.4.3 \
-  --platform-option driver_auto_install=true \
-  --platform-option token=your-motherduck-token
+  --platform-option driver_auto_install=true
 ```
 
 See {ref}`driver-version-management` for the full guide, including why `uv run` may
@@ -97,12 +93,9 @@ benchbox run --platform motherduck --benchmark tpch --scale 1.0 \
 
 ### With Memory Limit
 
-```bash
-benchbox run --platform motherduck --benchmark tpch --scale 10.0 \
-    --platform-option memory_limit=8GB
-```
-
-This increases local memory for hybrid queries.
+`memory_limit` sets local memory for hybrid queries. It is a
+`MotherDuckAdapter` argument, not a `--platform-option` key; see the Python
+API example below.
 
 ## Python API
 
@@ -179,7 +172,7 @@ MotherDuck supports hybrid queries that access both local and cloud data. The ad
 ValueError: MotherDuck requires authentication token.
 ```
 
-**Solution:** Ensure `MOTHERDUCK_TOKEN` is set or pass `--platform-option token=...`
+**Solution:** Ensure `MOTHERDUCK_TOKEN` is set, or pass `token=` to `MotherDuckAdapter` in the Python API.
 
 ### Connection Failed
 

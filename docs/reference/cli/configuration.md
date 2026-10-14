@@ -170,9 +170,11 @@ Example: pin Snowflake connector version:
 benchbox run --platform snowflake --benchmark tpch \
   --platform-option driver_version=3.12.0 \
   --platform-option driver_auto_install=true \
-  --platform-option account=xy12345.us-east-1 \
-  --platform-option warehouse=COMPUTE_WH
+  --platform-option compute_resource=COMPUTE_WH
 ```
+
+The Snowflake account, user, and password come from
+`benchbox setup --platform snowflake`; they are not `--platform-option` keys.
 
 ### Compute Settings
 
@@ -216,15 +218,30 @@ benchbox run --platform athena-spark --benchmark tpch \
 
 ### ClickHouse Options
 
-- `mode=local`: Use local ClickHouse instance
-- `secure=true`: Enable TLS encryption
-- `port=9000`: Custom port number
-- `database=default`: Target database name
+Choose the deployment with the platform name, not an option:
+`--platform clickhouse-local` (or `clickhouse:local`) runs embedded chDB, and
+`--platform clickhouse-server` (or `clickhouse:server`) connects to a server.
+The `mode` option is a deprecated alias for this choice.
 
-Example:
+`clickhouse-local` accepts:
+
+- `data_path=/path/to/dir`: Directory for persistent chDB storage
+- `optimize_after_load=true`: Run `OPTIMIZE TABLE ... FINAL` after each table loads (tuned runs only)
+
+`clickhouse-server` accepts:
+
+- `host=localhost`: Server hostname
+- `port=9000`: Native protocol port
+- `secure=true`: Enable TLS encryption
+- `username=default` and `password=...`: Authentication
+- `optimize_after_load=true`: As above
+
+Examples:
 ```bash
 benchbox run --platform clickhouse-local --benchmark tpch \
-  --platform-option mode=local \
+  --platform-option data_path=./chdb-data
+
+benchbox run --platform clickhouse-server --benchmark tpch \
   --platform-option secure=true \
   --platform-option port=9440
 ```

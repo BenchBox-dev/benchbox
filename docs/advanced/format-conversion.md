@@ -272,12 +272,17 @@ pip install pyspark
 ```
 
 **Usage:**
-Hudi operations require PySpark SQL. For direct Hudi support, use the Quanton platform (recommended):
+Hudi operations require PySpark SQL. For direct Hudi support, use the Quanton platform (recommended). Hudi tables need a
+record key, which the Quanton adapter takes as a Python API argument:
 
-```bash
-benchbox run --platform quanton --benchmark tpch --scale 1.0 \
-  --platform-option table_format=hudi \
-  --platform-option record_key=l_orderkey
+```python
+from benchbox.platforms.onehouse import QuantonAdapter
+
+adapter = QuantonAdapter(
+    s3_staging_dir="s3://my-bucket/benchbox",
+    table_format="hudi",
+    record_key="l_orderkey",
+)
 ```
 
 **Reading Hudi:** the first query is a full read. The second is an incremental query that returns changes since the given commit time.
@@ -515,7 +520,8 @@ df = spark.read.format("hudi").load('/mnt/data/customer')
 ### Onehouse Quanton
 
 Quanton supports all three table formats (Delta Lake, Iceberg and Hudi) via Spark SQL. Use the BenchBox CLI for
-streamlined access, for example `benchbox run --platform quanton --benchmark tpch --platform-option table_format=hudi`.
+Delta Lake and Iceberg, for example `benchbox run --platform quanton --benchmark tpch --platform-option table_format=delta`.
+Hudi needs a record key, which only the Python API can set.
 
 ## Best Practices
 
