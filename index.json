@@ -8887,15 +8887,10 @@
       "title": "Docs and CHANGELOG leftovers: Velox still uses the deprecated `deployment=`, the explorer-compat help says v13, the pg_duckdb `schema` row is missing, and the Dask break has no upgrade note"
     },
     "execution-variant-test-gaps-20261014": {
-      "claim": {
-        "expires_at": "2026-10-15T23:57:16Z",
-        "generation": "009dd1421f3747e8a2fcad7bb705d683",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Execution-variant test gaps: the parity test passes with an empty registry, the async MCP engine path is untested, and one test checks function identity"
     },
     "expand-mcp-tool-surface": {
