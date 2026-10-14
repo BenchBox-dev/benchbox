@@ -1186,6 +1186,8 @@ def immutable_dependency_artifacts(
 ORACLE_REVIEW_CHECK = "oracle-review"
 ORACLE_REVIEW_WORKFLOW = ".github/workflows/oracle-review.yml"
 ORACLE_ACTIONS_APP = "github-actions"
+ORACLE_LOGIN = "benchbox-oracle"
+_ORACLE_VERDICT = re.compile(r"### (?:oracle-verdict|oracle-review-shadow): ([a-z]+) for `([0-9a-f]{40})`")
 
 
 def _github_api(token: str, path: str) -> Any:
@@ -1220,6 +1222,35 @@ def _oracle_run_covers(token: str, repo: str, head: str, run: Any) -> bool:
     )
 
 
+def _oracle_verdict_covers(token: str, repo: str, number: Any, head: str) -> bool:
+    page = 1
+    verdicts: list[tuple[str, str]] = []
+    while True:
+        reviews = _github_api(token, f"/repos/{repo}/pulls/{number}/reviews?per_page=100&page={page}")
+        if not isinstance(reviews, list):
+            return False
+        for review in reviews:
+            if not isinstance(review, dict):
+                continue
+            user = review.get("user") or {}
+            login = user.get("login") or ""
+            login = login[:-5] if login.endswith("[bot]") else login
+            if login != ORACLE_LOGIN or user.get("type") != "Bot":
+                continue
+            if review.get("commit_id") != head or review.get("state") in {"PENDING", "DISMISSED"}:
+                continue
+            match = _ORACLE_VERDICT.match(review.get("body") or "")
+            if match and match.group(2) == head:
+                verdicts.append((review.get("submitted_at") or "", match.group(1)))
+        if len(reviews) < 100 or page >= 10:
+            break
+        page += 1
+    if not verdicts:
+        return False
+    verdicts.sort()
+    return verdicts[-1][1] == "success"
+
+
 def oracle_review_covers() -> bool:
     try:
         event_path = os.environ.get("GITHUB_EVENT_PATH")
@@ -1230,7 +1261,8 @@ def oracle_review_covers() -> bool:
         event = json.loads(Path(event_path).read_text(encoding="utf-8"))
         pull = event.get("pull_request") or {}
         head = (pull.get("head") or {}).get("sha") or ""
-        if not re.fullmatch(r"[a-f0-9]{40}", head) or not pull.get("number"):
+        number = pull.get("number")
+        if not re.fullmatch(r"[a-f0-9]{40}", head) or not number:
             return False
         page = 1
         completed: list[Any] = []
@@ -1251,7 +1283,9 @@ def oracle_review_covers() -> bool:
         if not completed:
             return False
         latest = max(completed, key=lambda run: run.get("completed_at") or "")
-        return _oracle_run_covers(token, repo, head, latest)
+        if not _oracle_run_covers(token, repo, head, latest):
+            return False
+        return _oracle_verdict_covers(token, repo, number, head)
     except (OSError, ValueError, KeyError, TypeError, AttributeError):
         return False
 
@@ -1287,6 +1321,38 @@ def validate_candidate_notices(notices: Any, root: Path, staged: bool) -> list[d
             raise PolicyError(f"candidate notice {entry['path']} blob digest does not match the head")
         validated.append(entry)
     return validated
+
+
+def _check_candidate_ranges(
+    candidates: list[dict[str, Any]], base_notices: Any, root: Path, base: str, staged: bool
+) -> None:
+    pinned: dict[str, list[tuple[int, int, bool]]] = {}
+    if isinstance(base_notices, list):
+        for notice in base_notices:
+            if (
+                not isinstance(notice, dict)
+                or not isinstance(notice.get("path"), str)
+                or type(notice.get("byte_start")) is not int
+                or type(notice.get("byte_end")) is not int
+            ):
+                continue
+            try:
+                raw = base_blob(root, base, notice["path"])
+            except (OSError, subprocess.CalledProcessError):
+                continue
+            whole = notice["byte_start"] == 0 and notice["byte_end"] == len(raw)
+            pinned.setdefault(notice["path"], []).append((notice["byte_start"], notice["byte_end"], whole))
+    for entry in candidates:
+        ranges = pinned.get(entry["path"], [])
+        if not ranges:
+            raise PolicyError(f"candidate notice {entry['path']} has no pinned base range")
+        raw = head_blob(root, entry["path"], staged) or b""
+        candidate_whole = entry["byte_start"] == 0 and entry["byte_end"] == len(raw)
+        if not any(
+            start <= entry["byte_start"] and entry["byte_end"] <= end and (not candidate_whole or whole)
+            for start, end, whole in ranges
+        ):
+            raise PolicyError(f"candidate notice {entry['path']} expands the pinned base range")
 
 
 def immutable_external_ownership(
@@ -1355,6 +1421,7 @@ def immutable_external_ownership(
     fresh = sorted({entry["path"] for entry in effective_notices if entry["path"] not in base_paths})
     if fresh:
         raise PolicyError("candidate notices must update paths already pinned at the base: " + ", ".join(fresh))
+    _check_candidate_ranges(effective_notices, policy["notices"], root, base, staged)
     notices = [
         {**notice, "whole_file": None}
         for notice in effective_notices

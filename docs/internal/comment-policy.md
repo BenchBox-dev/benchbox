@@ -102,13 +102,16 @@ the first two lines of a Python file, and only for a non-UTF-8 encoding.
 
 To add an exception, first confirm the text has a real reader and need; the
 checker cannot judge that. You may register the exception and the code that
-uses it in the same pull request: the entries count once the required oracle
-review covers the registry change. Without that review the base policy still
-applies and the new entries do not count, so a change never authorizes its own
-exception without that review. The local check and CI fail on the new entries
-until the review succeeds; push, obtain the success review, rerun the
-comment-policy check, then merge. Remove unused exceptions when you review a
-module.
+uses it in the same pull request: the entries count once an actual successful
+oracle verdict review covers the registry head. A merely successful
+oracle-review check is not enough, since that check also passes for changes
+that need no review. Without that verdict the base policy still applies and
+the new entries do not count, so a change never authorizes its own exception
+without that review. The local check and CI fail on the new entries until the
+verdict succeeds; push, obtain the success verdict, rerun the comment-policy
+check, then merge. Remove unused exceptions when you review a module. A
+candidate scope notice must stay inside the byte range already pinned at the
+base and must not escalate a partial pin into a whole-file exclusion.
 
 The 55 current fixtures let named tests read exact parser input the checker
 cannot parse on its own. A fixture allows no comment text. Its digest covers

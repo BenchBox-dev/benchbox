@@ -312,6 +312,41 @@ def test_candidate_notice_for_unpinned_path_cannot_expand_exclusions(tmp_path: P
         )
 
 
+def _partial_notice_entry(path: str, content: bytes, start: int, end: int) -> dict:
+    return {
+        **_notice_entry(path, content),
+        "byte_start": start,
+        "byte_end": end,
+        "retained_sha256": hashlib.sha256(content[start:end]).hexdigest(),
+    }
+
+
+def test_candidate_notice_subset_of_base_range_is_accepted(tmp_path: Path, policy: dict) -> None:
+    content = b"0123456789abcdef"
+    policy["notices"] = [_partial_notice_entry("src/a.py", content, 4, 12)]
+    base = _scope_repo(tmp_path, policy, {"src/a.py": content})
+    candidate = _partial_notice_entry("src/a.py", content, 6, 10)
+    assert scope.immutable_external_ownership(tmp_path, base, [], False, [candidate]) is not None
+
+
+def test_candidate_notice_range_expansion_is_rejected(tmp_path: Path, policy: dict) -> None:
+    content = b"0123456789abcdef"
+    policy["notices"] = [_partial_notice_entry("src/a.py", content, 4, 12)]
+    base = _scope_repo(tmp_path, policy, {"src/a.py": content})
+    candidate = _partial_notice_entry("src/a.py", content, 2, 14)
+    with pytest.raises(scope.PolicyError, match="expands the pinned base range"):
+        scope.immutable_external_ownership(tmp_path, base, [], False, [candidate])
+
+
+def test_candidate_notice_partial_to_whole_escalation_is_rejected(tmp_path: Path, policy: dict) -> None:
+    content = b"0123456789abcdef"
+    policy["notices"] = [_partial_notice_entry("src/a.py", content, 4, 12)]
+    base = _scope_repo(tmp_path, policy, {"src/a.py": content})
+    candidate = _notice_entry("src/a.py", content)
+    with pytest.raises(scope.PolicyError, match="expands the pinned base range"):
+        scope.immutable_external_ownership(tmp_path, base, [], False, [candidate])
+
+
 def test_obligation_requires_exactly_one_destination_reference(tmp_path: Path, policy: dict) -> None:
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     subprocess.run(["git", "-C", str(tmp_path), "config", "user.name", "Test"], check=True)
