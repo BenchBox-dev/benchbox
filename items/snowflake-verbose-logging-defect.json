@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Snowflake execute_query passes measured duration (not query_id) at all three log_operation_complete sites",
+    "Azure Synapse execute_query fixed at its one site",
+    "Regression test calling execute_query at verbosity >= 1 asserts SUCCESS and passes",
+    "Fix merged to develop"
+  ],
+  "context": "Adversarial review finding R1/F1: SnowflakeAdapter.execute_query passes query_id positionally as duration to log_operation_complete; under -v the :.2f format raises ValueError after the query succeeds. Same pattern at azure_synapse.py:948. Evidence: /tmp/stc-tpch0.01-load-tuned.log retry pair, report finding #1/#5.",
+  "sessions": [
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:531762f2d41eb1082dfef080",
+      "at": "2026-10-14T20:17:42Z",
+      "client": "tbh",
+      "op": "create",
+      "op_id": "bf886e59d39c4ebe989607cfeced2d2e",
+      "session_id": "6141851ecce64cbcac1c0da9a9380208"
+    }
+  ]
+}
