@@ -5,7 +5,7 @@
     "If a cell is kept as expected-ineligible: a test shows a fixture bundle with summary.validation uncertain is not staged into the seed PR",
     "The next Seed Corpus run needs no manual bundle drops, or the remaining drops are listed in the PR body by the workflow"
   ],
-  "context": "Raised by the 2026-10-13 adversarial review (handoff revision 9, blind spots). Evidence: run 38331461283 job list shows tpch / datafusion / sf1.0 failure; PR #2930 commit a341576e3 \"drop run-3093 bundles with mirror-ineligible validation\"; precedent for dropping uncertain bundles is #2494. Low priority; does not block the pipeline fix.",
+  "context": "Raised by the 2026-10-13 adversarial review (handoff revision 9, blind spots). Evidence: run 38331461283 job list shows tpch / datafusion / sf1.0 failure; PR #2930 commit a341576e3 \"drop run-3093 bundles with mirror-ineligible validation\"; precedent for dropping uncertain bundles is #2494. Low priority; does not block the pipeline fix. DECISIONS 2026-10-14 (all three cells removed from the seed-corpus.yml matrix, 18 to 15 cells; nothing committable lost since none ever produced a committable bundle): (1) tpch/polars-df sf0.01 — remove: structural SQL-translation fallback keeps validation permanently uncertain, so bundles are always mirror-ineligible and hand-dropped. (2) tpch/polars-df sf0.1 — remove, same cause. (3) tpch/datafusion sf1.0 — remove: deterministic engine failure confirmed from the job log (TPC-H Q18 exhausts DataFusion's 12 GB fair memory pool in ~0.1s on warm-up and all 3 measurement runs: \"Failed to allocate additional 44.3 MB ... with 2.9 GB already allocated ... 26.3 MB remain available\"); raising the pool is platform work for a follow-up, re-add the cell with it if wanted. Tests: rewrote test_supported_matrix_has_three_local_identities_per_cohort as test_supported_matrix_platforms_per_cohort with exact per-cohort platform sets, and added test_ineligible_seed_cells_are_absent_from_the_matrix asserting the three cells are gone. No verification Seed run dispatched: run 3093 showed every remaining cell succeeding with committable-or-identical bundles, so the next scheduled run needs no manual drops by construction.",
   "description": "In Seed Corpus run 38331461283 both tpch/polars-df bundles validated uncertain (structural translation fallback) and were dropped from PR #2930 by hand, and tpch/datafusion/sf1.0 failed on the runner (reported as an out-of-memory failure at Q18; not independently checked). The matrix will keep producing the same output, so each seed PR needs the same manual cleanup.\n\nDecide per cell: fix the cause, mark it expected-ineligible so its bundle is not committed, or remove it from the matrix.",
   "sessions": [
     {
@@ -23,6 +23,14 @@
       "generation": "1ffc9fd4113e47e0a422c4397a3f68b7",
       "op": "take",
       "op_id": "ee4c8f20a74f44939f7f09b9f69f5295",
+      "session_id": "63fb16e6ece34adb91d17cdd1e1f2310"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:2ddfad0386e20e3a0ffba40a",
+      "at": "2026-10-14T14:22:21Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "1545c46599974694a83783296c50f99c",
       "session_id": "63fb16e6ece34adb91d17cdd1e1f2310"
     }
   ]
