@@ -4,7 +4,7 @@
     "Readable core vocabulary (resource_kind, size, engine names) is unchanged",
     "Published results-data bytes and result_ids unchanged"
   ],
-  "context": "Found 2026-10-14 by a review probe while verifying the core execution-variants remediation on develop 9400b62c4. It became reachable when compute metadata started carrying resource, kind and size in every bundle (#2946).",
+  "context": "Found 2026-10-14 by a review probe while verifying the core execution-variants remediation on develop 9400b62c4. It became reachable when compute metadata started carrying resource, kind and size in every bundle (#2946).\nBatch: _project/handoffs/execution-variant-general-followups-batch-20261014.md, started 2026-10-14",
   "description": "## Problem\n- The anonymizer drops `resource` only as a child of `compute` (`public_drop_child_keys`, `benchbox/core/results/anonymization_specs.yaml:27-29`; `anonymization.py:497-500`).\n- Compute metadata also lands at `platform.raw_metadata.platform_compute.resource` (`environment.py:333-335`, `schema.py:500-504`, Redshift `redshift.py:473,563`). There it survives in clear text, while its sibling `workgroup` is hashed.\n- A bare `resource` key anywhere else survives too.\n- Affected: Redshift, Databricks, Snowflake, Firebolt and ClickHouse Cloud bundles exported with `anonymize=True`.\n- Published data is not affected today: none of the 782 `results-data` JSON files on develop 9400b62c4 contains `platform_compute.resource`. The next public bundle from those platforms would leak the name.\n\n## Change\n- Drop or hash `resource` wherever compute metadata appears, at least under `platformcompute`, and add it to `identifier_keys`.\n- Add an exporter-level test that uses real adapter `platform_metadata` (not a hand-built dict).",
   "links": [
     "benchbox/core/results/anonymization_specs.yaml",
@@ -18,6 +18,14 @@
       "client": "claude-code",
       "op": "create",
       "op_id": "b3fbfe29f2384296b83389dee576eed3",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-14T13:44:43Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "2b57e2ebf89647b3af0bd64a888fd503",
       "session_id": "18469f668aeb45d59c8d4c94d2f79433"
     }
   ]
