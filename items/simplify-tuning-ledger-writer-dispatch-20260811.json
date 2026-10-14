@@ -138,5 +138,16 @@
         "wid": "w1"
       }
     ]
-  }
+  },
+  "sessions": [
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:0b09cceb849593820a7baad7",
+      "at": "2026-10-14T02:50:37Z",
+      "client": "tbh",
+      "generation": "645dbc04ecd542129a9504123bb1175e",
+      "op": "take",
+      "op_id": "f101762e77be488d91575f4ebd0e4e0c",
+      "session_id": "ce855e02017040e0ae751903346e8f7f"
+    }
+  ]
 }
