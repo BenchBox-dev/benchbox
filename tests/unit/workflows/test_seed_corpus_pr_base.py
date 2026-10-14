@@ -54,7 +54,7 @@ def test_schedule_runs_the_full_matrix() -> None:
     assert "github.event_name == 'schedule'" in selected
 
 
-def test_supported_matrix_has_three_local_identities_per_cohort() -> None:
+def test_supported_matrix_platforms_per_cohort() -> None:
     entries = _workflow()["jobs"]["generate-seed-corpus"]["strategy"]["matrix"]["include"]
     cohorts: dict[tuple[str, str], set[str]] = {}
     for entry in entries:
@@ -62,15 +62,23 @@ def test_supported_matrix_has_three_local_identities_per_cohort() -> None:
         assert entry["extras"] in {"duckdb", "datafusion", "polars", "clickhouse-local"}
         cohorts.setdefault((entry["benchmark"], entry["scale_factor"]), set()).add(entry["platform"])
 
-    assert set(cohorts) == {
-        ("tpch", "0.01"),
-        ("tpch", "0.1"),
-        ("tpch", "1.0"),
-        ("tpcds", "1"),
-        ("ssb", "0.01"),
-        ("ssb", "0.1"),
+    assert cohorts == {
+        ("tpch", "0.01"): {"duckdb", "datafusion"},
+        ("tpch", "0.1"): {"duckdb", "datafusion"},
+        ("tpch", "1.0"): {"duckdb", "clickhouse-local"},
+        ("tpcds", "1"): {"duckdb", "datafusion", "clickhouse-local"},
+        ("ssb", "0.01"): {"duckdb", "datafusion", "polars-df"},
+        ("ssb", "0.1"): {"duckdb", "datafusion", "polars-df"},
     }
-    assert all(len(platforms) == 3 for platforms in cohorts.values())
+
+
+def test_ineligible_seed_cells_are_absent_from_the_matrix() -> None:
+    entries = _workflow()["jobs"]["generate-seed-corpus"]["strategy"]["matrix"]["include"]
+    cells = {(entry["benchmark"], entry["platform"], entry["scale_factor"]) for entry in entries}
+
+    assert ("tpch", "polars-df", "0.01") not in cells
+    assert ("tpch", "polars-df", "0.1") not in cells
+    assert ("tpch", "datafusion", "1.0") not in cells
 
 
 def test_seed_corpus_local_jobs_do_not_reference_cloud_credentials() -> None:
