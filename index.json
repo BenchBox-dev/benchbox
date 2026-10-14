@@ -5168,7 +5168,8 @@
         "core-exec-polars-cli-mcp-adoption",
         "core-exec-deployment-selection-recorded",
         "core-exec-compute-resource-unification",
-        "core-exec-engine-declarations-existing"
+        "core-exec-engine-declarations-existing",
+        "execution-variant-docs-leftovers-20261014"
       ],
       "priority": "low",
       "status": "blocked",
