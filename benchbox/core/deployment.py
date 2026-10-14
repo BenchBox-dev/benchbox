@@ -42,12 +42,9 @@ class PlatformSelector:
 
 
 def parse_platform_selector(selector: str) -> PlatformSelector:
-    from benchbox.core.platform_manifest import get_all_platform_aliases
-    from benchbox.platforms.clickhouse.deployment_mode import CLICKHOUSE_LEGACY_SELECTOR_MAP
+    from benchbox.core.platform_manifest import PLATFORM_MANIFEST_BY_KEY, get_all_platform_aliases
 
     key = selector.strip().lower()
-    if key in CLICKHOUSE_LEGACY_SELECTOR_MAP:
-        return PlatformSelector(CLICKHOUSE_LEGACY_SELECTOR_MAP[key], None)
     base, separator, mode = key.partition(":")
     if not separator:
         return PlatformSelector(key, None)
@@ -59,6 +56,9 @@ def parse_platform_selector(selector: str) -> PlatformSelector:
         raise ValueError(
             f"Platform '{base}' does not support deployment mode '{mode}'. Available: {', '.join(available)}"
         )
+    named = f"{base}-{mode}"
+    if named in PLATFORM_MANIFEST_BY_KEY:
+        return PlatformSelector(named, None)
     if base not in DEPLOYMENT_ALIAS_KEYS and mode != PlatformRegistry.get_default_deployment(base):
         raise ValueError(f"Platform '{base}' cannot select deployment mode '{mode}' by name.")
     return PlatformSelector(base, mode)
