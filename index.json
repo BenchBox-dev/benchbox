@@ -18269,10 +18269,15 @@
       "title": "Make bundle JSON emission byte-stable so manifest hashes survive normalizers"
     },
     "results-db-validation-status-case-20261014": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-15T14:54:16Z",
+        "generation": "e409b1ae485b42ea80e1a8677cfe9b6f",
+        "renewals": 0,
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "`benchbox report rankings` is always empty because imported rows store lowercase `passed` and the filter matches `'PASSED'`"
     },
     "results-explorer-accessibility-copy-and-facet-cleanup": {
