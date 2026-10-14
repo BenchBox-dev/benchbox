@@ -454,15 +454,6 @@ class SnowflakeAdapter(PlatformAdapter):
     def get_target_dialect(self) -> str:
         return "snowflake"
 
-    def _get_connection_params(self, **connection_config) -> dict[str, Any]:
-        return {
-            "account": connection_config.get("account", self.account),
-            "username": connection_config.get("username", self.username),
-            "password": connection_config.get("password", self.password),
-            "warehouse": connection_config.get("warehouse", self.warehouse),
-            "role": connection_config.get("role", self.role),
-        }
-
     def _connect_params(self, connection_config: dict[str, Any], *, include_database: bool) -> dict[str, Any]:
         conn_params: dict[str, Any] = {
             "account": connection_config.get("account", self.account),

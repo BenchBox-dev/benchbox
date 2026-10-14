@@ -213,13 +213,13 @@ class TestSnowflakeCreateLoadFileFormats:
 class TestSnowflakeConnectionParams:
     def test_connection_params_include_account(self):
         adapter = _make_adapter(account="myaccount", warehouse="MY_WH", role="SYSADMIN")
-        params = adapter._get_connection_params()
+        params = adapter._connect_params({}, include_database=False)
         assert params.get("account") == "myaccount"
 
     def test_warehouse_in_params(self):
         adapter = _make_adapter(warehouse="COMPUTE_WH")
-        params = adapter._get_connection_params()
-        assert "warehouse" in params or adapter.warehouse == "COMPUTE_WH"
+        params = adapter._connect_params({}, include_database=False)
+        assert params["warehouse"] == "COMPUTE_WH"
 
 
 class TestSnowflakeGetTargetDialect:
