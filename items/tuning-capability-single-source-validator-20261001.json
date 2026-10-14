@@ -3,7 +3,7 @@
     "Parity test passes: every adapter/type with rendered_via != none has an executing implementation (call-chain-following), and every no-op implementation is registered none.",
     "Validator tests: partitioning on postgresql errors; distribution on redshift errors (until its renderer lands); Trino/Athena behave per D-5."
   ],
-  "context": "2026-10-14 review: PR #2919 head 71cddb8f2, CI green except oracle. Oracle verdict SHIP WITH FIXES: 2 open High threads — PRRT_kwDOQ7J64c6sY03Y (vacuity discovery skips benchbox/core benchmarks) and PRRT_kwDOQ7J64c6sY03h (partitioning evidence tokens include cluster by). Owner 2026-10-14: arm auto-merge once the oracle approves the current head (overrides 'must not auto-merge'). Round-6 follow-ups go in a separate PR after merge. Resume per ~/Developer/benchmark_runs/HANDOFF-tuning-local-fix-batch-20261014.md §5 step 3.",
+  "context": "2026-10-14 fix batch: took over the ended session's claim. Fixed oracle D22 (discovery now walks benchbox.core; finds ai_primitives, joinorder_synthetic) and D23 (cluster tokens no longer evidence partitioning; Snowflake partitioning attested by explicit justification) in 7d734a42d on #2919. Local: validator 151 pass, fast 38,297 pass, ruff clean, ty baseline, lint-imports kept. Both threads replied and resolved. PR body updated to the owner's 2026-10-14 merge rule. Next: wait for the oracle on 7d734a42d, fix any new threads, make pr-arm PR=2919, then the round-6 follow-up PR, then finish after MERGED.",
   "description": "## Problem\nThe validator accepts tuning that execution never applies (partitioning on PostgreSQL/BigQuery/Snowflake/Databricks/DuckDB; distribution and sorting on Redshift), while `capability_registry.py:174` itself records \"render nothing at execution\". Trino and Athena only warn because they are unknown platforms (`interface.py:1595-1604`).\n\n## Change (per gate D-5)\n- `validate_for_platform_detailed` reads the registry: `rendered_via=\"none\"` or `:preview_only` → error \"requested <type> is not applied at execution on <platform>: <notes>\".\n- Treat unknown platforms per D-5.\n- Include the ClickHouse PK-prefix rule.\n- Correct the registry entries for all no-op surfaces: Postgres family, Doris, SingleStore, Databend, Firebolt, Trino/Starburst/Presto/Athena, Synapse, Fabric, BigQuery (partitioning and clustering preview-only), Redshift (distribution and sorting preview-only), managed Spark, MotherDuck table tunings, DataFusion and SQLite constraints.\n- Add a registry↔execution parity test from an MRO sweep that **follows `super()` and helper callees**. The text-only sweep had false negatives (plan review F4).\n\n## Guardrails (must preserve)\n- Only rules named in the D-5 addendum block.\n\n## Process guardrails\n- One PR per item against `develop`, via the AGENTS.md worktree flow (`make worktree-claim BRANCH=...`, `make agent-write-preflight`).\n- Verification ladder: `uv run -- python -m pytest -m fast -q`, `uv run -- ruff check .`, `uv run -- ruff format --check .` and `uv run -- ty check`.\n- Then `make pr-preflight` and `make pr-open`.\n- Stage explicit paths; never `git add -A`.\n- No live cloud runs without explicit user approval stating the command, maximum runtime, log path and stop condition.\n- Re-read every file:line anchor before editing. Anchors are from develop d39166ea.\n- This item touches paths listed in the soundness manifest by `tuning-trust-paths-soundness-manifest-20261001`. The PR needs an external `Soundness review:` section (AGENTS.md) and must not auto-merge.",
   "links": [
     "benchbox/core/tuning/interface.py",
@@ -130,6 +130,14 @@
       "op": "takeover",
       "op_id": "10effc3cc6c14e06ba65de5b146ecf75",
       "reason": "Holder session ended (batch record handoff 2026-10-14); release from a new session returned E_CLAIM_STALE. Owner directed the batch to continue; the oracle fix round for PR #2919 is pushed as 7d734a42d.",
+      "session_id": "7c6ceccf81f14d0a962150f0c09d7242"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:fc0d1ff3e89d9d705763452b",
+      "at": "2026-10-14T19:27:29Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "2b66404d6f2a40298675e21fb22b3842",
       "session_id": "7c6ceccf81f14d0a962150f0c09d7242"
     }
   ]
