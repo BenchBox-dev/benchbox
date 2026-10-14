@@ -393,6 +393,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `applied_native.enable_photon`, and leaves `applied` empty when the setting
   cannot be read. `observed` stays `not_captured` with `observed_source` `none`,
   because the setting does not show which engine ran a query.
+- A saved credential profile that contains `execution_engine` is no longer
+  ignored without a message. The run fails before any work starts and the
+  error names `--execution-engine` as the way to choose the engine. The key was
+  never a valid profile key.
 
 ### Before you upgrade
 - Result metadata for Dask runs on the `threaded` engine no longer contains

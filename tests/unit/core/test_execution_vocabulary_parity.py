@@ -17,12 +17,13 @@ from benchbox.core.execution_engine import (
     supported_execution_engines,
 )
 from benchbox.core.hooks.platform_hooks import PlatformHookRegistry, PlatformOptionSpec
-from benchbox.core.platform_manifest import PLATFORM_MANIFEST
+from benchbox.core.platform_manifest import PLATFORM_MANIFEST, get_all_platform_aliases
 from benchbox.mcp.schemas import MCP_PLATFORM_OPTION_ALLOWLIST, MCP_PLATFORM_OPTION_CONTRACT
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 GRANDFATHERED_KEYS: frozenset[tuple[str, str]] = frozenset()
+REGISTERED_PLATFORM_SENTINELS = ("polars-df", "snowflake", "databricks", "redshift", "firebolt", "influxdb")
 CORE_VOCABULARY_KEYS = ("execution_engine", "compute_resource", "compute_size", "gateway")
 
 
@@ -34,13 +35,11 @@ class Registration(NamedTuple):
 
 
 def _import_adapter_modules() -> None:
-    modules = ["benchbox.platforms", "benchbox.cli.platform_defaults"]
-    modules.extend(entry.adapter.module for entry in PLATFORM_MANIFEST if entry.adapter is not None)
-    for module in modules:
-        try:
-            importlib.import_module(module)
-        except ImportError:
-            continue
+    for module in ("benchbox.platforms", "benchbox.cli.platform_defaults"):
+        importlib.import_module(module)
+    for entry in PLATFORM_MANIFEST:
+        if entry.adapter is not None:
+            pytest.importorskip(entry.adapter.module)
 
 
 def _registrations() -> list[Registration]:
@@ -56,6 +55,11 @@ def _registrations() -> list[Registration]:
         for contract in contracts.values():
             found.extend(Registration("MCP contract", platform, alias, True) for alias in contract.aliases)
     return found
+
+
+def _platforms_without_option_specs(platforms: tuple[str, ...]) -> list[str]:
+    aliases = get_all_platform_aliases()
+    return [name for name in platforms if not PlatformHookRegistry._option_specs.get(aliases.get(name, name))]
 
 
 def _violations(registrations: list[Registration]) -> list[Registration]:
@@ -104,8 +108,20 @@ def test_platform_guides_list_declared_execution_engines(platform: str, document
     assert all(f"`{name}`" in contents for name in supported_execution_engines(platform))
 
 
+def test_option_registry_holds_the_sentinel_platforms() -> None:
+    _import_adapter_modules()
+    assert _platforms_without_option_specs(REGISTERED_PLATFORM_SENTINELS) == []
+
+
+def test_sentinel_check_fails_when_the_option_registry_is_empty(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(PlatformHookRegistry, "_option_specs", {})
+    assert _platforms_without_option_specs(REGISTERED_PLATFORM_SENTINELS) == list(REGISTERED_PLATFORM_SENTINELS)
+
+
 def test_no_unlisted_reserved_option_keys() -> None:
-    assert _violations(_registrations()) == []
+    registrations = _registrations()
+    assert registrations
+    assert _violations(registrations) == []
 
 
 def test_grandfather_list_matches_live_registrations() -> None:
