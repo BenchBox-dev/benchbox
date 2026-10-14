@@ -5,7 +5,7 @@
     "ADR. Amend the site-repo split ADR, which records the attestation producer, with the decision: parents follow the production-deployed SHA; the source is the site deployments API; it fails closed. List the rejected options (well-known URL, push from the site, last-built parent) with one line each.",
     "Live proof. After both merge, the next natural develop Site Inputs run records parent_core_sha equal to production's deployed core_sha, and its Deploy is green. Record the run ids."
   ],
-  "context": "Re-homed from item 63 (2026-10-14): the last-built vs last-deployed parent decision lives here. Production evidence: the chain healed through manual recovery (dispatch 38521589047 parented on last-deployed c660e615 after 24 intervening runs; deploy 38529975983 green), which says manual recovery works but does not settle the steady-state rule. Design must also account for a live finding from item 63: the site's deployed generation is global to the github-pages environment (deploy/lib/github.ts recordedReceipts reads all deployments for the environment with no target filter), so a rehearsal deploy moves production's parity baseline; the steady-state rule and any per-target scoping belong in this design.",
+  "context": "Owner decision D2 (2026-10-14 review session): core reads site deployments API (option A) plus per-target baseline scoping on site. Site PR: per-target recordedReceipts with pagination (BenchBox-dev/benchbox-site#33). Core PR: parent from site deployments API with digest verification and fail-closed behavior (BenchBox-dev/benchbox#2988, commit e502c1b80). Live proof: site_deployed_core_sha returns 60bb31f185ae13517a5e4d280aa1fc25fe3929ed (production deployed); canonical-sha algorithm proven byte-equal to recorded digest dcde139c on live receipt run 38609264325. ADR D21 records decision plus rejected options. Live proof of next natural Site Inputs run pending both merges.",
   "description": "Item 63 needs bundle parents to follow the last deployed core SHA, but core has no channel that tells it the deployed SHA from the site side. Until this design lands, items 61 and 62 are the recovery path. Work: specify the source of truth on the site side, how core reads it at bundle build time, authentication and failure behavior, and who owns the value. Owner authorized creating this item on 2026-10-13 and confirmed the merge pause until item 61 lands.",
   "sessions": [
     {
@@ -47,6 +47,14 @@
       "client": "tbh",
       "op": "update",
       "op_id": "81729efa32db4d2780a8cf02aec01c23",
+      "session_id": "8250681ba4eb464e88a8d9c11374e76e"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:2ff26e731ddb7b681f9dacbc",
+      "at": "2026-10-14T20:22:15Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "0d42a3e61c11470d9fb47f793b4dbe12",
       "session_id": "8250681ba4eb464e88a8d9c11374e76e"
     }
   ]
