@@ -683,10 +683,15 @@
       "title": "Decide whether the public anonymizer belongs on the auto-merge soundness path"
     },
     "anonymizer-platform-compute-resource-leak-20261014": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-15T15:52:47Z",
+        "generation": "e947b5ea99a54c83a58420a35d2cd3b5",
+        "renewals": 0,
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Public bundles keep the real warehouse or workgroup name in `raw_metadata.platform_compute.resource`"
     },
     "answer-parity-macos-blind-spot-20261006": {
