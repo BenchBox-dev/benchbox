@@ -20062,15 +20062,10 @@
       "title": "✅ Simplify Pytest Marker Strategy"
     },
     "simplify-tuning-ledger-writer-dispatch-20260811": {
-      "claim": {
-        "expires_at": "2026-10-15T02:50:37Z",
-        "generation": "645dbc04ecd542129a9504123bb1175e",
-        "renewals": 0,
-        "worker": "mcp:tbh:joe@joe-mac-mini.local:0b09cceb849593820a7baad7"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "open",
       "title": "Collapse the double dispatch on the tuning-ledger writer capability"
     },
     "single-repo-migration-decisions-gate": {
