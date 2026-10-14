@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "CLI test: `report import` of real bundles, then `report rankings`, lists the passing runs",
+    "All validation-status filters in database.py are case-insensitive or read normalized values; existing databases are migrated",
+    "CHANGELOG Fixed entry"
+  ],
+  "context": "Found 2026-10-14 during the core execution-variants remediation, while making trend and regression rows accept lowercase status in #2944. That PR fixed trends and regressions only.",
+  "description": "## Problem\n- The result summary lowercases the validation status (`benchbox/core/results/schema.py:396`). `benchbox report import` is the only way rows enter the results database, so the stored status is always `passed`.\n- The ranking filter is case-sensitive: `AND validation_status = 'PASSED'` (`benchbox/core/results/database.py:656`). The same mismatch is at `:512-514`, while `:774` already uses `UPPER()`.\n- Result: `benchbox report import ./results` then `benchbox report rankings` prints nothing (`cli/commands/report.py:106`). A probe showed only an uppercase row ranked.\n\n## Change\n- Normalize `validation_status` when storing, and migrate existing rows.\n- Make the filters at `:512` and `:656` case-insensitive, matching `:774`.",
+  "links": [
+    "benchbox/core/results/database.py",
+    "benchbox/core/results/schema.py",
+    "benchbox/cli/commands/report.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-14T11:40:02Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "165092e45c2549e683739df752c7a3c9",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    }
+  ]
+}

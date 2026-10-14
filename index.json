@@ -18178,6 +18178,13 @@
       "status": "done",
       "title": "Make bundle JSON emission byte-stable so manifest hashes survive normalizers"
     },
+    "results-db-validation-status-case-20261014": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "`benchbox report rankings` is always empty because imported rows store lowercase `passed` and the filter matches `'PASSED'`"
+    },
     "results-explorer-accessibility-copy-and-facet-cleanup": {
       "claim": null,
       "needs": [],
