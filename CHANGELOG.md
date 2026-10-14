@@ -142,6 +142,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   every status filter ignores case, and opening an existing database upgrades
   it to schema version 3, which uppercases the stored statuses. Result
   bundles and their identifiers are unchanged.
+- Public result bundles no longer carry the compute resource name in raw
+  platform metadata. When a bundle held the platform's compute block under
+  `platform.raw_metadata.platform_compute`, a Snowflake warehouse, Redshift
+  workgroup or cluster, Databricks warehouse, Firebolt engine or ClickHouse
+  Cloud service name stayed in clear text there; anonymization now drops
+  `resource` from that block as it already did from `platform.compute`.
+  `resource_kind`, `size` and the observed execution engine stay readable.
+  Published bundles are unchanged.
 - Dry-run previews no longer write saved credentials or connection secrets in
   clear. The JSON and YAML preview files written by `benchbox run --dry-run`
   apply the same redaction as result bundles to the benchmark, database and

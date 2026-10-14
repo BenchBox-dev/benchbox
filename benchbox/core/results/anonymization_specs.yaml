@@ -27,6 +27,8 @@ public_drop_keys:
 public_drop_child_keys:
   compute:
   - resource
+  platformcompute:
+  - resource
 identifier_keys:
   account: account
   accountid: account
