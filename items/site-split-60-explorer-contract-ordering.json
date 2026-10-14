@@ -6,7 +6,7 @@
     "The drift check runs in the nightly workflow and reports through the existing failure-issue path (no new alert channel)",
     "The batch handoff no longer says to wait for a deploy before merging the contract refresh"
   ],
-  "context": "Raised by the 2026-10-13 adversarial review (handoff revision 9, finding 1). Evidence: site `git show origin/main:explorer/scripts/explorer-build-contract.mjs` line 5 = 14; origin/fix/site-replay-pass11 = 15; core origin/develop = 16; site Deploy run 38247176462 log at 12:09:25Z. After this item the remaining blockers to production deploy are items 61 and 62; item 63 covers the end-to-end recovery. NOTE: items 61, 62, 65 are now done; site main pin is 16. Implementation 2026-10-14: site branch fix/explorer-contract-drift-check in worktree benchbox-site.wt-contract-drift adds scripts/check-contract-drift.mjs (+ .test.mjs: equal/newer/older/missing cases), explorer/scripts/explorer-build-contract.test.mjs (pin equal passes, pin+1 fails with alignment hint, newer-policy stays warn-and-continue), and a contract-drift job in nightly.yml reporting through the open-or-update-issue path with label contract-drift. Local evidence: drift check passes live (site 16, newest certified bundle 16 from run 38521589047); SITE_INPUTS_RUN_ID=38344752905 bundle:fetch + bundle:verify OK (schema 3, core 77048bfb, certified_by 38343445399); npm run build, check (0 errors), test all pass. Site PR #27 opened to main; handoff wait-to-merge sentence struck through as rescinded with #24 merged as f17e7b48.",
+  "context": "Raised by the 2026-10-13 adversarial review (handoff revision 9, finding 1). DONE 2026-10-14: site PR #27 merged as 4eb62286 (ci SUCCESS, only advisory visual FAILURE). Drift check (scripts/check-contract-drift.mjs + nightly contract-drift job with contract-drift issue label) live on site main; guard tests in explorer vitest. Local evidence: drift check passes (site 16 vs bundle 16 from run 38521589047); build/check/test pass against Trunk-certified bundle from core run 38344752905 (core 77048bfb, certified_by 38343445399). Handoff wait-to-merge sentence struck as rescinded.",
   "description": "The site build refuses a bundle whose explorer/contract.json read_model_version differs from EXPECTED_READ_MODEL_VERSION (site main 14, PR #24 15, core develop 16; explorer/scripts/explorer-build-contract.mjs:5 in the site, results-explorer/scripts/explorer-build-contract.mjs:6 in core). The first failed deploy, run 38247176462 at 2026-10-12 12:09Z, stopped on exactly this (\"expected 14, got 15 ... update the Explorer for the new contract before taking this bundle\").\n\nThe batch record said not to merge #24 until a v15+ bundle deploys. That cannot happen: the Explorer must change first. Merging is safe because a failed deploy stops before publish. Work: merge the refreshed replay from item 65, then add a drift check so the next contract bump is caught in the site repo before a deploy fails.",
   "sessions": [
     {
@@ -41,6 +41,14 @@
       "generation": "4ea71ec8f6424787aea125db9fdfd99c",
       "op": "finish",
       "op_id": "e9046941a19c4ba2aba61fe04f0cfda5",
+      "session_id": "63fb16e6ece34adb91d17cdd1e1f2310"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:2ddfad0386e20e3a0ffba40a",
+      "at": "2026-10-14T07:41:43Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "82624f0b40ef46369e973758216f5ee0",
       "session_id": "63fb16e6ece34adb91d17cdd1e1f2310"
     }
   ]
