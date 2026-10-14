@@ -140,12 +140,12 @@ export function CorpusSectionIndex({ kind }: { kind: SectionKind }) {
                     {group.heading}
                   </h2>
                 ) : null}
-                <ul class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <ul class="grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4">
                   {group.entries.map((entry) => {
                     return (
                       <li key={entry.id}>
-                        <div class="group block h-full rounded-lg border border-[var(--bb-data-border)] bg-[var(--bb-surface-data)] p-4 no-underline shadow-sm transition-colors hover:border-[var(--bb-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--bb-focus-ring)]">
-                          <h3 class="text-base font-semibold text-[var(--bb-data-fg-primary)] group-hover:text-[var(--bb-accent)]">
+                        <div class="group block h-full rounded-lg border border-[var(--bb-data-border)] bg-[var(--bb-surface-data)] p-3 no-underline shadow-sm transition-colors hover:border-[var(--bb-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--bb-focus-ring)] sm:p-4">
+                          <h3 class="break-words text-sm font-semibold text-[var(--bb-data-fg-primary)] group-hover:text-[var(--bb-accent)] sm:text-base">
                             <a href={entry.href}>{entry.label}</a>
                           </h3>
                           {isBenchmarks && entry.supportStatus !== null ? (
@@ -153,11 +153,11 @@ export function CorpusSectionIndex({ kind }: { kind: SectionKind }) {
                               <BenchmarkSupportBadge status={entry.supportStatus} />
                             </div>
                           ) : null}
-                          <p class="mt-1.5 text-sm text-[var(--bb-data-fg-muted)]">
+                          <p class="mt-1 text-xs text-[var(--bb-data-fg-muted)] sm:mt-1.5 sm:text-sm">
                             {formatCount(entry.resultCount, "run")} ·{" "}
                             {formatCount(entry.coverageCount, isBenchmarks ? "platform" : "benchmark")}
                           </p>
-                          <p class="mt-2.5 text-xs text-[var(--bb-data-fg-muted)]">
+                          <p class="mt-2 text-xs text-[var(--bb-data-fg-muted)] sm:mt-2.5">
                             Latest <RunDateChip runDate={entry.latestRun} />
                           </p>
                         </div>

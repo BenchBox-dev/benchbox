@@ -1,3 +1,4 @@
+import { formatLatencyMs, formatRatio } from "@/lib/metricFormatters";
 import type { DetailResult } from "@/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import {
@@ -20,6 +21,7 @@ export interface MultiRunHeatmapProps {
   limiter?: QueryDiffLimiter;
   orderByDisagreement?: boolean;
   queryFilter?: readonly string[];
+  queryHref?: (queryId: string) => string;
 }
 
 export interface HeatmapCell {
@@ -158,17 +160,22 @@ export function filterHeatmapRows(
   return [...rows];
 }
 
+const HEAT_LIGHT_MAX_LIGHTNESS = 95;
+const HEAT_LIGHT_LIGHTNESS_SPAN = 25;
+const HEAT_DARK_MIN_LIGHTNESS = 20;
+const HEAT_DARK_LIGHTNESS_SPAN = 10;
+
 export function heatmapCellStyle(position: number | null): string {
   if (position === null) return "";
   const hue = position < 0 ? 150 : 15;
-  const lightness = 95 - Math.abs(position) * 35;
-  const darkLightness = 22 + Math.abs(position) * 18;
+  const lightness = HEAT_LIGHT_MAX_LIGHTNESS - Math.abs(position) * HEAT_LIGHT_LIGHTNESS_SPAN;
+  const darkLightness = HEAT_DARK_MIN_LIGHTNESS + Math.abs(position) * HEAT_DARK_LIGHTNESS_SPAN;
   return `--cell-hue:${hue}; --cell-lightness:${lightness.toFixed(1)}%; --cell-dark-lightness:${darkLightness.toFixed(1)}%;`;
 }
 
 function cellText(cell: HeatmapCell): string {
   if (cell.ratio === null) return "—";
-  return `${cell.ratio.toFixed(2)}x`;
+  return formatRatio(cell.ratio);
 }
 
 function unavailableCellDescription(cell: HeatmapCell): string | undefined {
@@ -181,7 +188,7 @@ function unavailableCellDescription(cell: HeatmapCell): string | undefined {
     const reason = cell.baselineUnavailableReason
       ? ` — ${formatTimingExclusion(cell.baselineUnavailableReason)}`
       : "";
-    return `Baseline ${baselineState} for this query; recorded candidate timing: ${cell.timingMs?.toFixed(1)} ms${reason}`;
+    return `Baseline ${baselineState} for this query; recorded candidate timing: ${formatLatencyMs(cell.timingMs).valueText}${reason}`;
   }
   if (cell.missingKind !== "run_missing") return undefined;
   return cell.evidenceKind === "unrecorded"
@@ -197,6 +204,7 @@ export function MultiRunHeatmap({
   limiter,
   orderByDisagreement = false,
   queryFilter,
+  queryHref,
 }: MultiRunHeatmapProps) {
   if (results.length < 3) return null;
   const effectiveLimiter: QueryDiffLimiter = limiter ?? (orderByDisagreement ? "movement" : "all");
@@ -222,11 +230,11 @@ export function MultiRunHeatmap({
           <p class="mt-1 text-xs text-[var(--bb-data-fg-muted)]" data-testid="heatmap-caption">
             {shown.length === 0 && effectiveLimiter !== "all"
               ? `No queries match ${QUERY_DIFF_LIMITER_LABELS[effectiveLimiter].toLowerCase()} — showing 0 of ${all.length}.`
-              : `Ratio against ${runLabels[baselineIndex] ?? "the baseline"} — below 1.00x is faster. Showing ${shown.length} of ${all.length} ${all.length === 1 ? "query" : "queries"}.`}
+              : `Ratio against ${runLabels[baselineIndex] ?? "the baseline"} — below 1× is faster. Showing ${shown.length} of ${all.length} ${all.length === 1 ? "query" : "queries"}.`}
           </p>
         </div>
         <StatusBadge role="comparison" tone="neutral">
-          {`Scale saturates at ${DIVERGING_RATIO_CLAMP}x`}
+          {`Scale saturates at ${DIVERGING_RATIO_CLAMP}×`}
         </StatusBadge>
       </div>
 
@@ -250,13 +258,13 @@ export function MultiRunHeatmap({
         </div>
       )}
 
-      <div class="overflow-x-auto">
-        <table class="min-w-full w-max divide-y divide-[var(--bb-data-border)] text-sm">
-          <thead class="bg-[var(--bb-surface-data-muted)]">
+      <div class="max-h-[32rem] overflow-auto" data-testid="multi-run-heatmap-scroller">
+        <table class="min-w-full w-max divide-y divide-[var(--bb-data-border)] text-sm" data-testid="multi-run-heatmap-table">
+          <thead class="sticky top-0 z-10 bg-[var(--bb-surface-data-muted)] shadow-[inset_0_-1px_0_var(--bb-data-border)]">
             <tr>
-              <th scope="col" class="table-th">Query</th>
+              <th scope="col" class="table-th-dense">Query</th>
               {results.map((r, i) => (
-                <th key={r.result_id} scope="col" class="table-th">
+                <th key={r.result_id} scope="col" class="table-th-dense whitespace-nowrap">
                   {runLabels[i] ?? r.platform}
                   {i === baselineIndex ? " (baseline)" : ""}
                 </th>
@@ -266,19 +274,25 @@ export function MultiRunHeatmap({
           <tbody class="divide-y divide-[var(--bb-data-border)] bg-[var(--bb-surface-data)]">
             {shown.map((row) => (
               <tr key={row.queryId}>
-                <th scope="row" class="table-td font-mono font-medium text-left">{row.queryId}</th>
+                <th scope="row" class="table-td-dense font-mono font-medium text-left">
+                  {queryHref ? (
+                    <a href={queryHref(row.queryId)} class="text-[var(--bb-accent-hover)] underline" aria-label={`Compare ${row.queryId} iterations across selected runs`}>
+                      {row.queryId}
+                    </a>
+                  ) : row.queryId}
+                </th>
                 {row.cells.map((cell, i) => (
                   <td
                     key={i}
-                    class={`table-td font-mono text-xs${cell.position === null ? "" : " multi-run-heatmap-cell"}`}
+                    class={`table-td-dense font-mono text-xs${cell.position === null ? "" : " multi-run-heatmap-cell"}`}
                     style={heatmapCellStyle(cell.position)}
                     title={unavailableCellDescription(cell)}
-                    aria-label={cell.ratio !== null ? `${cell.ratio.toFixed(2)} times baseline` : unavailableCellDescription(cell)}
+                    aria-label={cell.ratio !== null ? `${formatRatio(cell.ratio)} baseline` : unavailableCellDescription(cell)}
                     data-testid={`cell-${row.queryId}-${i}`}
                   >
                     {cell.missingKind === "baseline_missing" && cell.timingMs !== null ? (
                       <span>
-                        {cell.timingMs.toFixed(1)} ms{" "}
+                        {formatLatencyMs(cell.timingMs).valueText}{" "}
                         <span class="text-[10px] text-[var(--bb-data-fg-subtle)]">(no base)</span>
                       </span>
                     ) : (

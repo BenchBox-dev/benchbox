@@ -14,6 +14,7 @@ import {
   clearExplorerPerformanceEntriesForTests,
 } from "@/lib/performanceMarks";
 import { toggleFacetValue } from "@/lib/facetMatching";
+import { PickingStateProvider } from "@/lib/pickingState";
 import { LEADERBOARD_SHELL_GEOMETRY_CLASSES, Leaderboard } from "@/pages/Leaderboard";
 import { COHORT_ROWS, META_LEADERBOARD_ROWS, RESULT_ROWS } from "./fixtures/corpus";
 
@@ -27,6 +28,23 @@ function deferred<T>() {
 
 function expectDocumentOrder(first: Element, second: Element) {
   expect(Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+}
+
+function makeHavocResult(index: number, overrides: Record<string, unknown> = {}) {
+  return {
+    ...RESULT_ROWS[2]!,
+    result_id: `havoc-run-${index}`,
+    benchmark: "tpchavoc",
+    scale_factor: 10,
+    platform: `Havoc platform ${index}`,
+    platform_id: `havoc-platform-${index}`,
+    run_date: `2026-10-${String(index).padStart(2, "0")}T12:00:00Z`,
+    test_type: "power",
+    comparison_exclusion_reason: null,
+    ranking_exclusion_reason: "known_defective_data",
+    is_ranking_eligible: false,
+    ...overrides,
+  };
 }
 
 beforeEach(() => {
@@ -203,8 +221,8 @@ describe("Leaderboard", () => {
     expect(within(selector).getByLabelText("Benchmark")).toBeTruthy();
     expect(within(selector).getByLabelText("Scale")).toBeTruthy();
     expect(within(selector).getByLabelText("Phase")).toBeTruthy();
-    expect(within(selector).getByText("Ranking scope")).toBeTruthy();
-    expect(within(selector).getByText("Ranked results only")).toBeTruthy();
+    expect(screen.getByText("Ranking scope")).toBeTruthy();
+    expect(screen.getByText("Ranked results only")).toBeTruthy();
 
     fireEvent.click(screen.getByText("Advanced filters"));
     expect(within(selector).getByRole("button", { name: "All tuning labels" })).toBeTruthy();
@@ -257,6 +275,348 @@ describe("Leaderboard", () => {
     expect(screen.getAllByText(/SSB/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/1 published platform is not represented in the rankings/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/1 of 4 public results is not recorded for tuning/).length).toBeGreaterThan(0);
+  });
+
+  it("offers comparable unranked TPC-Havoc SF10 runs with an explicit defect warning", async () => {
+    const havocRows = [makeHavocResult(1), makeHavocResult(2), makeHavocResult(3)];
+    vi.mocked(queryRows).mockImplementation(async (sql: string) => {
+      const s = String(sql).replace(/\s+/g, " ").trim();
+      if (s.includes("FROM bench.results")) return havocRows;
+      if (s.startsWith("SELECT platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
+        return META_LEADERBOARD_ROWS;
+      }
+      if (s.includes("FROM bench.cohort_metadata")) return COHORT_ROWS;
+      return [];
+    });
+    window.history.replaceState(null, "", "/results/?benchmark=tpchavoc&sf=10&phase=power");
+
+    render(<Leaderboard />);
+    await waitFor(() => expect(screen.getByTestId("leaderboard-compare-picker")).toBeTruthy());
+
+    const benchmarkFilter = screen.getByLabelText("Benchmark") as HTMLSelectElement;
+    expect([...benchmarkFilter.options].map((option) => option.value)).toContain("tpchavoc");
+    const picker = screen.getByTestId("leaderboard-compare-picker");
+    expect(within(picker).getByText(/No ranked comparable runs are available/)).toBeTruthy();
+    fireEvent.click(within(picker).getByRole("radio", { name: "All published comparable runs" }));
+
+    await waitFor(() => expect(within(picker).getAllByRole("checkbox", { name: /Select .* run .* for comparison/ })).toHaveLength(3));
+    expect(within(picker).getAllByText("Known defective data; available for comparison, excluded from rankings.")).toHaveLength(3);
+    const compareLink = within(picker).getByRole("link", { name: "Compare All Runs" }) as HTMLAnchorElement;
+    expect(compareLink.getAttribute("href")).toBe("/results/compare?ids=havoc-run-1,havoc-run-2,havoc-run-3");
+    expect(within(picker).getByText("All 3 published comparable runs in this cohort can be compared together.")).toBeTruthy();
+  });
+
+  it("keeps a compact compare entry point near the filters and scopes guidance to ranked runs", async () => {
+    const havocRows = [makeHavocResult(1), makeHavocResult(2)];
+    vi.mocked(queryRows).mockImplementation(async (sql: string) => {
+      const s = String(sql).replace(/\s+/g, " ").trim();
+      if (s.includes("FROM bench.results")) return havocRows;
+      if (s.startsWith("SELECT platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
+        return META_LEADERBOARD_ROWS;
+      }
+      if (s.includes("FROM bench.cohort_metadata")) return COHORT_ROWS;
+      return [];
+    });
+    window.history.replaceState(null, "", "/results/?benchmark=tpchavoc&sf=10&phase=power");
+
+    render(<Leaderboard />);
+    const picker = await screen.findByTestId("leaderboard-compare-picker");
+
+    const jump = screen.getByTestId("home-compare-jump");
+    expect(jump.querySelector("a")?.getAttribute("href")).toBe("#leaderboard-compare-picker");
+    expect(within(picker).getByText(/No ranked comparable runs are available/)).toBeTruthy();
+
+    fireEvent.click(within(picker).getByTestId("leaderboard-include-unranked"));
+    await waitFor(() =>
+      expect(within(picker).getByRole("link", { name: "Compare All Runs" }).getAttribute("href")).toBe(
+        "/results/compare?ids=havoc-run-1,havoc-run-2",
+      ),
+    );
+    expect(within(picker).queryByTestId("leaderboard-include-unranked")).toBeNull();
+  });
+
+  it("names the ranked scope in Compare All Runs guidance", async () => {
+    const rankedRows = [
+      makeHavocResult(1, { ranking_exclusion_reason: null, is_ranking_eligible: true }),
+      makeHavocResult(2, { ranking_exclusion_reason: null, is_ranking_eligible: true }),
+    ];
+    vi.mocked(queryRows).mockImplementation(async (sql: string) => {
+      const s = String(sql).replace(/\s+/g, " ").trim();
+      if (s.includes("FROM bench.results")) return rankedRows;
+      if (s.startsWith("SELECT platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
+        return META_LEADERBOARD_ROWS;
+      }
+      if (s.includes("FROM bench.cohort_metadata")) return COHORT_ROWS;
+      return [];
+    });
+    window.history.replaceState(null, "", "/results/?benchmark=tpchavoc&sf=10&phase=power");
+
+    render(<Leaderboard />);
+    const picker = await screen.findByTestId("leaderboard-compare-picker");
+
+    expect(within(picker).getByRole("link", { name: "Compare All Runs" })).toBeTruthy();
+    expect(within(picker).getByText("All 2 ranked comparable runs in this cohort can be compared together.")).toBeTruthy();
+  });
+
+  it("ignores picks from another view so a 2-10 run cohort still offers Compare All Runs", async () => {
+    const havocRows = [makeHavocResult(1), makeHavocResult(2)];
+    vi.mocked(queryRows).mockImplementation(async (sql: string) => {
+      const s = String(sql).replace(/\s+/g, " ").trim();
+      if (s.includes("FROM bench.results")) return havocRows;
+      if (s.startsWith("SELECT platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
+        return META_LEADERBOARD_ROWS;
+      }
+      if (s.includes("FROM bench.cohort_metadata")) return COHORT_ROWS;
+      return [];
+    });
+    window.history.replaceState(null, "", "/results/?benchmark=tpchavoc&sf=10&phase=power&compare_scope=comparable");
+
+    render(
+      <PickingStateProvider
+        initialRestoreIds={["other-run-1", "other-run-2"]}
+        recoveryDependencies={{
+          resolveId: async (id) => id,
+          findExistingIds: async (ids) => new Set(ids),
+          loadResult: async (id) => ({ result_id: id }),
+        }}
+      >
+        <Leaderboard />
+      </PickingStateProvider>,
+    );
+
+    const picker = await screen.findByTestId("leaderboard-compare-picker");
+    const compareLink = await within(picker).findByRole("link", { name: "Compare All Runs" }) as HTMLAnchorElement;
+    expect(compareLink.getAttribute("href")).toBe("/results/compare?ids=havoc-run-1,havoc-run-2");
+    for (const checkbox of within(picker).getAllByRole("checkbox", { name: /Select .* run .* for comparison/ })) {
+      expect(checkbox).toBeEnabled();
+    }
+    expect(within(picker).queryByTestId("leaderboard-compare-cta-all")).toBeNull();
+  });
+
+  it("keeps an explicit subset comparison available alongside Compare All Runs", async () => {
+    const havocRows = [makeHavocResult(1), makeHavocResult(2), makeHavocResult(3)];
+    vi.mocked(queryRows).mockImplementation(async (sql: string) => {
+      const s = String(sql).replace(/\s+/g, " ").trim();
+      if (s.includes("FROM bench.results")) return havocRows;
+      if (s.startsWith("SELECT platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
+        return META_LEADERBOARD_ROWS;
+      }
+      if (s.includes("FROM bench.cohort_metadata")) return COHORT_ROWS;
+      return [];
+    });
+    window.history.replaceState(null, "", "/results/?benchmark=tpchavoc&sf=10&phase=power&compare_scope=comparable");
+
+    render(<Leaderboard />);
+
+    const picker = await screen.findByTestId("leaderboard-compare-picker");
+    await within(picker).findByRole("link", { name: "Compare All Runs" });
+    const boxes = within(picker).getAllByRole("checkbox", { name: /Select .* run .* for comparison/ });
+    fireEvent.click(boxes[0]!);
+    fireEvent.click(boxes[1]!);
+    const primary = await within(picker).findByTestId("leaderboard-compare-cta") as HTMLAnchorElement;
+    expect(primary.textContent).toBe("Compare 2 selected");
+    expect(primary.className).toContain("btn-primary");
+    expect(primary.getAttribute("href")).toBe("/results/compare?ids=havoc-run-1,havoc-run-2");
+    const all = within(picker).getByTestId("leaderboard-compare-cta-all") as HTMLAnchorElement;
+    expect(all.textContent).toBe("Compare All Runs");
+    expect(all.className).toContain("btn-secondary");
+    expect(all.getAttribute("href")).toBe("/results/compare?ids=havoc-run-1,havoc-run-2,havoc-run-3");
+  });
+
+  it("carries the page mode and basis into the compare links", async () => {
+    const havocRows = [makeHavocResult(1), makeHavocResult(2), makeHavocResult(3)];
+    vi.mocked(queryRows).mockImplementation(async (sql: string) => {
+      const s = String(sql).replace(/\s+/g, " ").trim();
+      if (s.includes("FROM bench.results")) return havocRows;
+      if (s.startsWith("SELECT platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
+        return META_LEADERBOARD_ROWS;
+      }
+      if (s.includes("FROM bench.cohort_metadata")) return COHORT_ROWS;
+      return [];
+    });
+    window.history.replaceState(
+      null,
+      "",
+      "/results/?benchmark=tpchavoc&sf=10&phase=power&compare_scope=comparable&mode=times&basis=all_warm",
+    );
+
+    render(<Leaderboard />);
+
+    const picker = await screen.findByTestId("leaderboard-compare-picker");
+    const boxes = within(picker).getAllByRole("checkbox", { name: /Select .* run .* for comparison/ });
+    fireEvent.click(boxes[0]!);
+    fireEvent.click(boxes[1]!);
+
+    const selected = within(picker).getByTestId("leaderboard-compare-cta") as HTMLAnchorElement;
+    expect(selected.getAttribute("href")).toBe(
+      "/results/compare?ids=havoc-run-1,havoc-run-2&mode=times&basis=all_warm",
+    );
+    const all = within(picker).getByTestId("leaderboard-compare-cta-all") as HTMLAnchorElement;
+    expect(all.getAttribute("href")).toBe(
+      "/results/compare?ids=havoc-run-1,havoc-run-2,havoc-run-3&mode=times&basis=all_warm",
+    );
+  });
+
+  it("shows the cohort compare entry point as a secondary button linking to the picker", async () => {
+    const havocRows = [makeHavocResult(1), makeHavocResult(2)];
+    vi.mocked(queryRows).mockImplementation(async (sql: string) => {
+      const s = String(sql).replace(/\s+/g, " ").trim();
+      if (s.includes("FROM bench.results")) return havocRows;
+      if (s.startsWith("SELECT platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
+        return META_LEADERBOARD_ROWS;
+      }
+      if (s.includes("FROM bench.cohort_metadata")) return COHORT_ROWS;
+      return [];
+    });
+    window.history.replaceState(null, "", "/results/?benchmark=tpchavoc&sf=10&phase=power");
+
+    render(<Leaderboard />);
+    await screen.findByTestId("leaderboard-compare-picker");
+
+    const jump = screen.getByTestId("home-compare-jump").querySelector("a") as HTMLAnchorElement;
+    expect(jump.className).toContain("btn-secondary");
+    expect(jump.classList.contains("underline")).toBe(false);
+  });
+
+  it("chooses one cohort from a multi-benchmark filter before comparing", async () => {
+    const comparisonRows = [
+      makeHavocResult(1, { result_id: "tpch-run-1", benchmark: "tpch", ranking_exclusion_reason: null }),
+      makeHavocResult(2, { result_id: "tpch-run-2", benchmark: "tpch", ranking_exclusion_reason: null }),
+      makeHavocResult(3, { result_id: "tpcds-run-1", benchmark: "tpcds", ranking_exclusion_reason: null }),
+      makeHavocResult(4, { result_id: "tpcds-run-2", benchmark: "tpcds", ranking_exclusion_reason: null }),
+    ];
+    vi.mocked(queryRows).mockImplementation(async (sql: string) => {
+      const s = String(sql).replace(/\s+/g, " ").trim();
+      if (s.includes("FROM bench.results")) return comparisonRows;
+      if (s.startsWith("SELECT platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
+        return META_LEADERBOARD_ROWS;
+      }
+      if (s.includes("FROM bench.cohort_metadata")) return COHORT_ROWS;
+      return [];
+    });
+    window.history.replaceState(null, "", "/results/?benchmark=tpch,tpcds&sf=10&phase=power");
+
+    render(<Leaderboard />);
+
+    const picker = await screen.findByTestId("leaderboard-compare-picker");
+    const cohortSelect = within(picker).getByRole("combobox", { name: "Comparison cohort" }) as HTMLSelectElement;
+    expect(cohortSelect.options).toHaveLength(3);
+    expect(within(picker).getByRole("button", { name: "Select 2–10 runs to compare" })).toBeDisabled();
+    const tpchOption = [...cohortSelect.options].find((option) => option.textContent?.startsWith("TPC-H"));
+    expect(tpchOption).toBeTruthy();
+    fireEvent.change(cohortSelect, { target: { value: tpchOption!.value } });
+
+    const compareLink = await within(picker).findByRole("link", { name: "Compare All Runs" }) as HTMLAnchorElement;
+    expect(compareLink.getAttribute("href")).toBe("/results/compare?ids=tpch-run-1,tpch-run-2");
+  });
+
+  it("requires an explicit selection for cohorts with more than ten comparable runs", async () => {
+    const havocRows = Array.from({ length: 12 }, (_, index) => makeHavocResult(index + 1));
+    vi.mocked(queryRows).mockImplementation(async (sql: string) => {
+      const s = String(sql).replace(/\s+/g, " ").trim();
+      if (s.includes("FROM bench.results")) return havocRows;
+      if (s.startsWith("SELECT platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
+        return META_LEADERBOARD_ROWS;
+      }
+      if (s.includes("FROM bench.cohort_metadata")) return COHORT_ROWS;
+      return [];
+    });
+    window.history.replaceState(null, "", "/results/?benchmark=tpchavoc&sf=10&phase=power");
+
+    render(<Leaderboard />);
+    await waitFor(() => expect(screen.getByTestId("leaderboard-compare-picker")).toBeTruthy());
+    const picker = screen.getByTestId("leaderboard-compare-picker");
+    fireEvent.click(within(picker).getByRole("radio", { name: "All published comparable runs" }));
+
+    const checkboxes = await waitFor(() => {
+      const rows = within(picker).getAllByRole("checkbox", { name: /Select .* run .* for comparison/ }) as HTMLInputElement[];
+      expect(rows).toHaveLength(12);
+      return rows;
+    });
+    expect(within(picker).getByTestId("leaderboard-compare-cta")).toBeDisabled();
+    expect(within(picker).getByText("Select 2 to 10 of the 12 published comparable runs in this cohort.")).toBeTruthy();
+
+    fireEvent.click(checkboxes[0]!);
+    fireEvent.click(checkboxes[1]!);
+    const compareLink = within(picker).getByRole("link", { name: "Compare 2 selected" }) as HTMLAnchorElement;
+    expect(compareLink.getAttribute("href")).toBe("/results/compare?ids=havoc-run-1,havoc-run-2");
+
+    for (const checkbox of checkboxes.slice(2, 10)) fireEvent.click(checkbox);
+    expect(within(picker).getByTestId("leaderboard-selection-limit")).toBeTruthy();
+    expect(checkboxes[10]).toBeDisabled();
+    expect(within(picker).getByRole("link", { name: "Compare 10 selected" })).toBeTruthy();
+  });
+
+  it("ignores global picks outside an oversized cohort and compares only cohort selections", async () => {
+    const havocRows = Array.from({ length: 12 }, (_, index) => makeHavocResult(index + 1));
+    vi.mocked(queryRows).mockImplementation(async (sql: string) => {
+      const s = String(sql).replace(/\s+/g, " ").trim();
+      if (s.includes("FROM bench.results")) return havocRows;
+      if (s.startsWith("SELECT platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
+        return META_LEADERBOARD_ROWS;
+      }
+      if (s.includes("FROM bench.cohort_metadata")) return COHORT_ROWS;
+      return [];
+    });
+    window.history.replaceState(null, "", "/results/?benchmark=tpchavoc&sf=10&phase=power&compare_scope=comparable");
+
+    render(
+      <PickingStateProvider
+        initialRestoreIds={["other-run-1", "other-run-2"]}
+        recoveryDependencies={{
+          resolveId: async (id) => id,
+          findExistingIds: async (ids) => new Set(ids),
+          loadResult: async (id) => ({ result_id: id }),
+        }}
+      >
+        <Leaderboard />
+      </PickingStateProvider>,
+    );
+
+    const picker = await screen.findByTestId("leaderboard-compare-picker");
+    const checkboxes = await waitFor(() => {
+      const rows = within(picker).getAllByRole("checkbox", { name: /Select .* run .* for comparison/ }) as HTMLInputElement[];
+      expect(rows).toHaveLength(12);
+      return rows;
+    });
+    expect(within(picker).getByTestId("leaderboard-compare-cta")).toBeDisabled();
+    expect(within(picker).getByText(/selected runs are from another results view and will be ignored/)).toBeTruthy();
+
+    fireEvent.click(checkboxes[0]!);
+    fireEvent.click(checkboxes[1]!);
+
+    const compareLink = within(picker).getByRole("link", { name: "Compare 2 selected" }) as HTMLAnchorElement;
+    expect(compareLink.getAttribute("href")).toBe("/results/compare?ids=havoc-run-1,havoc-run-2");
+  });
+
+  it("does not link to Compare for zero or one comparable run", async () => {
+    for (const [rows, count] of [
+      [[makeHavocResult(1)], 1],
+      [[makeHavocResult(1, { comparison_exclusion_reason: "insufficient_valid_timings" })], 0],
+    ] as const) {
+      vi.mocked(queryRows).mockImplementation(async (sql: string) => {
+        const s = String(sql).replace(/\s+/g, " ").trim();
+        if (s.includes("FROM bench.results")) return [...rows];
+        if (s.startsWith("SELECT platform_id, platform, avg_rank, n_cohorts FROM bench.meta_leaderboard")) {
+          return META_LEADERBOARD_ROWS;
+        }
+        if (s.includes("FROM bench.cohort_metadata")) return COHORT_ROWS;
+        return [];
+      });
+      window.history.replaceState(null, "", "/results/?benchmark=tpchavoc&sf=10&phase=power&compare_scope=comparable");
+      clearDuckdbQueryCachesForTests();
+
+      const { unmount } = render(<Leaderboard />);
+      await waitFor(() => expect(screen.getByTestId("leaderboard-compare-picker")).toBeTruthy());
+      const picker = screen.getByTestId("leaderboard-compare-picker");
+      await waitFor(() => expect(within(picker).queryAllByRole("checkbox", { name: /Select .* run .* for comparison/ })).toHaveLength(count));
+      const cta = within(picker).getByTestId("leaderboard-compare-cta");
+      expect(cta.tagName).toBe("BUTTON");
+      expect(cta).toBeDisabled();
+      expect(within(picker).queryByRole("link", { name: /Compare/ })).toBeNull();
+      expect(within(picker).queryAllByRole("checkbox", { name: /Select .* run .* for comparison/ })).toHaveLength(count);
+      unmount();
+    }
   });
 
   it("does not describe mixed ranked and unranked leaderboard evidence totals as ranked", async () => {
@@ -425,7 +785,7 @@ describe("Leaderboard", () => {
     await waitFor(() => expect(screen.getByText("Cross-benchmark rankings")).toBeTruthy());
 
     expect(screen.getByRole("radio", { name: "Relative to best" }).getAttribute("aria-checked")).toBe("true");
-    expect(screen.getByText("0.50x")).toBeTruthy();
+    expect(screen.getByText("0.5×")).toBeTruthy();
     expect(new URL(window.location.href).searchParams.get("mode")).toBeNull();
 
     fireEvent.click(screen.getByRole("radio", { name: "Times" }));
@@ -439,14 +799,19 @@ describe("Leaderboard", () => {
     await waitFor(() => expect(new URL(window.location.href).searchParams.get("mode")).toBe("ranks"));
   });
 
-  it("renders a Compare entrypoint inside the leaderboard ranking selector", async () => {
+  it("renders the comparison picker below the leaderboard data surface", async () => {
     render(<Leaderboard />);
     await waitFor(() => expect(screen.getByText("Cross-benchmark rankings")).toBeTruthy());
 
-    const entrypoint = screen.getByTestId("home-compare-entrypoint");
-    expect(entrypoint).toHaveAttribute("href", "/results/compare/");
     const selector = screen.getByRole("region", { name: "Leaderboard ranking selector" });
-    expect(selector.contains(entrypoint)).toBe(true);
+    expect(within(selector).queryByTestId("leaderboard-compare-picker")).toBeNull();
+    const dataSurface = screen.getByTestId("home-data-surface");
+    const picker = screen.getByTestId("leaderboard-compare-picker");
+    expect(dataSurface.compareDocumentPosition(picker) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(picker).getByRole("radio", { name: "Ranked results only" })).toBeTruthy();
+    expect(within(picker).getByRole("radio", { name: "All published comparable runs" })).toBeTruthy();
+    expect(within(picker).getByRole("combobox", { name: "Comparison cohort" })).toBeTruthy();
+    expect(within(picker).getByRole("button", { name: "Select 2–10 runs to compare" })).toBeDisabled();
   });
 
 
@@ -557,12 +922,12 @@ describe("Leaderboard", () => {
     await waitFor(() => expect(screen.getByText("Cross-benchmark rankings")).toBeTruthy());
 
     const grid = screen.getByRole("grid", { name: "Cross-benchmark leaderboard" });
-    const receiptLink = within(grid).getByRole("link", { name: "1.00x; Native: 10 ms" }) as HTMLAnchorElement;
+    const receiptLink = within(grid).getByRole("link", { name: "1×; Native: 10 ms" }) as HTMLAnchorElement;
 
     expect(receiptLink.getAttribute("href")).toBe("/results/r/r1#run-receipt");
     expect(within(grid).getAllByText("Maintainer").length).toBeGreaterThan(0);
     expect(within(grid).getAllByText("Community").length).toBeGreaterThan(0);
-    expect(within(grid).getAllByText("exact").length).toBeGreaterThan(0);
+    expect(within(grid).getAllByText("Exact").length).toBeGreaterThan(0);
     expect(within(grid).getAllByRole("gridcell", { name: /Run age:/ }).length).toBeGreaterThan(0);
   });
 

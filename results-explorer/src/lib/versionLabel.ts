@@ -20,3 +20,20 @@ export function splitVersion(raw: string | null | undefined): VersionParts | nul
   if (!match) return { core: full, suffix: null, full };
   return { core: match[1]!, suffix: match[2]!, full };
 }
+
+export interface PlatformVersionDisplay {
+  text: string | null;
+  driverTitle: string | null;
+}
+
+export function platformVersionDisplay(row: {
+  platform_version?: string | null;
+  driver_version?: string | null;
+}): PlatformVersionDisplay {
+  const parts = splitVersion(row.platform_version ?? null);
+  if (parts === null) return { text: null, driverTitle: null };
+  const platformRaw = (row.platform_version ?? "").trim();
+  const driverRaw = (row.driver_version ?? "").trim();
+  const driverDiffers = driverRaw !== "" && driverRaw !== platformRaw;
+  return { text: parts.full, driverTitle: driverDiffers ? `Driver ${driverRaw}` : null };
+}

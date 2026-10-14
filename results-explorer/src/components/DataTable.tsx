@@ -15,19 +15,20 @@ interface RunIdentityLabelProps {
   label: string;
   href?: string;
   class?: string;
+  title?: string;
 }
 
-export function RunIdentityLabel({ label, href, class: extraClass = "" }: RunIdentityLabelProps) {
+export function RunIdentityLabel({ label, href, class: extraClass = "", title = label }: RunIdentityLabelProps) {
   const className = `font-medium ${extraClass}`;
   if (href) {
     return (
-      <a href={href} class={`${className} no-underline`} data-testid="run-identity-label" title={label}>
+      <a href={href} class={`${className} no-underline`} data-testid="run-identity-label" title={title}>
         {label}
       </a>
     );
   }
   return (
-    <span class={className} data-testid="run-identity-label" title={label}>
+    <span class={className} data-testid="run-identity-label" title={title}>
       {label}
     </span>
   );

@@ -62,7 +62,7 @@ test("platform measurement basis changes latency evidence and preserves its comp
   const compare = page.getByTestId("compare-tray-compare-link");
   await expect(compare).toHaveAttribute("href", /basis=all_warm:min/);
   const row = page.getByTestId(fixtureIds.ids.duckdb);
-  await expect(row.locator('td[aria-colindex="7"]')).toHaveText("-");
+  await expect(row.locator('td[aria-colindex="7"]')).toHaveText("—");
   await expect(row.locator('td[aria-colindex="8"]')).toHaveText(/\d.*(?:ms|s)/);
   await compare.click();
   await waitForDataLoaded(page, /TPC-H Comparison/);

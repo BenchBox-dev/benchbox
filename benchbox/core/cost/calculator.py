@@ -215,6 +215,7 @@ class CostCalculator:
                     billing_unit=billing_unit or "unknown",
                     pricing_region=pricing_region or "unknown",
                     deployment=deployment,
+                    unavailability_reasons=tuple(warnings),
                 ),
                 warnings,
             )

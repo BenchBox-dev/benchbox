@@ -1,5 +1,7 @@
+import { MISSING_VALUE_GLYPH } from "@/lib/metricFormatters";
 import type { BenchmarkSummary, PlatformRow } from "@/types";
 import { paletteColor } from "@/lib/chartTheme";
+import { runMarkerPath } from "@/lib/chartMarkers";
 import { computeRankTable } from "@/lib/chartMath";
 import { formatTimingExclusion, isRankable, platformTimingValue } from "@/lib/displayEligibility";
 import { queryDisplayLabel, sortQueryIds } from "@/lib/queryLabels";
@@ -23,6 +25,24 @@ function ordinal(n: number): string {
   return `${n}${suffixes[(v - 20) % 10] ?? suffixes[v] ?? suffixes[0]}`;
 }
 
+const HEADER_MARKER_SIZE = 14;
+const HEADER_MARKER_CENTER = HEADER_MARKER_SIZE / 2;
+const HEADER_MARKER_RADIUS = 5.5;
+const HEADER_LABEL_MAX_LENGTH = 16;
+
+function uniqueFastestCounts(
+  platformCount: number,
+  sharedQueryIds: readonly string[],
+  ranks: Record<string, (number | null)[]>,
+): number[] {
+  const counts = new Array<number>(platformCount).fill(0);
+  for (const queryId of sharedQueryIds) {
+    const firsts = (ranks[queryId] ?? []).flatMap((rank, index) => (rank === 1 ? [index] : []));
+    if (firsts.length === 1) counts[firsts[0]!]! += 1;
+  }
+  return counts;
+}
+
 export function RankTable({ summary, preserveOrder = false }: Props) {
   const { platforms, query_ids } = summary;
   if (platforms.length === 0 || query_ids.length === 0) return null;
@@ -33,21 +53,15 @@ export function RankTable({ summary, preserveOrder = false }: Props) {
     return <RankTableEmptyState summary={summary} queryIds={sortedQueryIds} />;
   }
 
-  const ranks = computeRankTable(
-    sortedQueryIds,
-    platforms.map((platform) =>
-      Object.fromEntries(
-        sortedQueryIds.map((queryId) => [
-          queryId,
-          isRankable(platform) ? platformTimingValue(platform, queryId) : null,
-        ]),
-      ),
+  const rankingTimings = platforms.map((platform) =>
+    Object.fromEntries(
+      sortedQueryIds.map((queryId) => [queryId, isRankable(platform) ? platformTimingValue(platform, queryId) : null]),
     ),
   );
-
-  const winCounts = platforms.map((_, i) =>
-    sortedQueryIds.filter((qid) => ranks[qid]?.[i] === 1).length,
-  );
+  const ranks = computeRankTable(sortedQueryIds, rankingTimings);
+  const rankedTimings = rankingTimings.filter((_, i) => isRankable(platforms[i]!));
+  const sharedQueryIds = sortedQueryIds.filter((queryId) => rankedTimings.every((timings) => timings[queryId] !== null));
+  const winCounts = uniqueFastestCounts(platforms.length, sharedQueryIds, ranks);
   const maxWins = Math.max(...winCounts);
 
   const headerIdentitySources: RunIdentitySource[] = platforms.map((p) => ({
@@ -61,7 +75,7 @@ export function RankTable({ summary, preserveOrder = false }: Props) {
   }));
   const headerIdentities = formatRunIdentitiesForCohort(headerIdentitySources, "compact");
   const headerTooltips = formatRunIdentitiesForCohort(headerIdentitySources, "tooltip");
-  const displayedHeaders = preserveUniqueAfterTruncation(headerIdentities, 16);
+  const displayedHeaders = preserveUniqueAfterTruncation(headerIdentities, HEADER_LABEL_MAX_LENGTH);
   const excludedPlatformCount = platforms.filter((platform) => !isRankable(platform)).length;
 
   return (
@@ -86,13 +100,24 @@ export function RankTable({ summary, preserveOrder = false }: Props) {
                   class="px-2 py-1.5 border-b border-[var(--bb-data-border)] text-[var(--bb-data-fg-primary)] font-semibold whitespace-nowrap text-center"
                   title={exclusion ? `${tooltip} - ${exclusion}` : tooltip}
                 >
-                  <span
-                    class="inline-block w-2 h-2 rounded-full mr-1 align-middle"
-                    style={{ backgroundColor: paletteColor(i) }}
-                  />
+                  <svg
+                    class="inline-block mr-1 align-middle"
+                    width={HEADER_MARKER_SIZE}
+                    height={HEADER_MARKER_SIZE}
+                    viewBox={`0 0 ${HEADER_MARKER_SIZE} ${HEADER_MARKER_SIZE}`}
+                    aria-hidden="true"
+                  >
+                    <path
+                      d={runMarkerPath(p.color_slot ?? i, HEADER_MARKER_CENTER, HEADER_MARKER_CENTER, HEADER_MARKER_RADIUS)}
+                      fill={paletteColor(p.color_slot ?? i)}
+                      stroke="var(--bb-surface-data)"
+                      stroke-width={0.75}
+                    />
+                  </svg>
                   <a
                     href={resultReceiptHref(p)}
                     aria-label={resultIdentityAriaLabel(p, "receipt")}
+                    title={tooltip}
                     class="text-[var(--bb-data-fg-primary)] no-underline hover:text-[var(--bb-accent-hover)] hover:underline"
                   >
                     {truncated}
@@ -131,7 +156,7 @@ export function RankTable({ summary, preserveOrder = false }: Props) {
                           : "text-[var(--bb-data-fg-muted)]"
                     }`}
                   >
-                    {r === null ? "-" : ordinal(r)}
+                    {r === null ? MISSING_VALUE_GLYPH : ordinal(r)}
                   </td>
                 );
               })}
@@ -140,7 +165,9 @@ export function RankTable({ summary, preserveOrder = false }: Props) {
         </tbody>
         <tfoot>
           <tr class="bg-[var(--bb-surface-data-muted)] border-t border-[var(--bb-data-border)]">
-            <td class="px-2 py-1.5 text-[var(--bb-data-fg-muted)] sticky left-0 bg-[var(--bb-surface-data-muted)]">1st wins</td>
+            <td class="px-2 py-1.5 text-[var(--bb-data-fg-muted)] sticky left-0 bg-[var(--bb-surface-data-muted)]">
+              Fastest on (shared queries)
+            </td>
             {winCounts.map((w, i) => (
               <td
                 key={i}
@@ -155,6 +182,10 @@ export function RankTable({ summary, preserveOrder = false }: Props) {
         </tfoot>
         </table>
       </div>
+      <p class="mt-2 text-[11px] text-[var(--bb-data-fg-subtle)]">
+        Fastest on counts the {sharedQueryIds.length} of {sortedQueryIds.length} queries that every ranked run has a
+        timing for. A tie for first place is not counted.
+      </p>
       {excludedPlatformCount > 0 && (
         <p class="mt-2 text-[11px] text-[var(--bb-data-fg-subtle)]">
           Columns marked with * are shown for reference but are not included in the ranking.

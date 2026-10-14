@@ -934,6 +934,104 @@ class TestValidateBundle:
         assert not vr.ok
         assert any("concrete billing_unit" in e for e in vr.errors)
 
+    def test_estimated_cost_with_concrete_provenance_passes(self):
+        data = _minimal_bundle()
+        data["normalized_cost"] = _estimated_cost_block()
+
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr)
+
+        assert vr.ok, vr.errors
+
+    def test_estimated_cost_rejects_unknown_billing_unit(self):
+        data = _minimal_bundle()
+        data["normalized_cost"] = _estimated_cost_block()
+        data["normalized_cost"]["billing_unit"] = "unknown"
+
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr)
+
+        assert not vr.ok
+        assert any("concrete billing_unit" in e for e in vr.errors)
+
+    def test_estimated_cost_rejects_unknown_region(self):
+        data = _minimal_bundle()
+        data["normalized_cost"] = _estimated_cost_block()
+        data["normalized_cost"]["pricing_region"] = "unknown"
+
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr)
+
+        assert not vr.ok
+        assert any("concrete pricing_region" in e for e in vr.errors)
+
+    def test_estimated_cost_requires_deployment_metadata(self):
+        data = _minimal_bundle()
+        data["normalized_cost"] = _estimated_cost_block()
+        del data["normalized_cost"]["deployment"]
+
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr)
+
+        assert not vr.ok
+        assert any("requires deployment metadata" in e for e in vr.errors)
+
+    def test_estimated_cost_rejects_unavailability_reasons(self):
+        data = _minimal_bundle()
+        data["normalized_cost"] = _estimated_cost_block()
+        data["normalized_cost"]["unavailability_reasons"] = ["normalized cost unavailable: x"]
+
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr)
+
+        assert not vr.ok
+        assert any("must not include unavailability_reasons" in e for e in vr.errors)
+
+    def test_estimate_metadata_without_estimated_status_fails(self):
+        data = _minimal_bundle()
+        data["normalized_cost"] = _estimated_cost_block()
+        data["normalized_cost"]["cost_status"] = "unavailable"
+        del data["normalized_cost"]["estimated_cost_usd"]
+
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr)
+
+        assert not vr.ok
+        assert any("cost estimate fields require cost_status 'estimated'" in e for e in vr.errors)
+
+    def test_whitespace_cost_string_fails(self):
+        data = _minimal_bundle()
+        data["normalized_cost"] = _estimated_cost_block()
+        data["normalized_cost"]["billing_unit"] = "   "
+
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr)
+
+        assert not vr.ok
+        assert any("billing_unit must be a non-empty string" in e for e in vr.errors)
+
+
+def _estimated_cost_block() -> dict:
+    return {
+        "normalized_cost_usd": None,
+        "cost_model_version": "2026.09",
+        "cost_model_source": "benchbox.core.cost.pricing",
+        "cost_scope": "compute_only",
+        "cost_status": "estimated",
+        "billing_unit": "credit",
+        "pricing_region": "us-east-2",
+        "deployment": {
+            "cloud_provider": "aws",
+            "cloud_region": "us-east-2",
+            "warehouse_size": "X-Small",
+        },
+        "estimated_cost_usd": "0.000105",
+        "cost_estimate_method": "sum of per-query median runtime hours × warehouse credits per hour × USD per credit",
+        "cost_estimate_source": "https://www.snowflake.com/legal-files/CreditConsumptionTable.pdf",
+        "cost_estimate_pricing_date": "2026-10-09",
+        "cost_estimate_assumptions": ["Timing-derived reference scenario; not metered usage."],
+    }
+
 
 def _bundle_with_cache_control(receipt, platform_name="Snowflake", **compute_fields):
     data = _minimal_bundle()

@@ -29,20 +29,25 @@ describe("the shared basis lock", () => {
     expect(screen.getByText("Shared across 2 runs")).toBeTruthy();
   });
 
-  it("names what is measured and over how many comparable queries", () => {
+  it("names what is measured and states the shared-query basis", () => {
     renderBar({ comparableQueryCount: 22, totalQueryCount: 22 });
-    expect(screen.getByText(/over 22 of 22 queries every selected run can answer/)).toBeTruthy();
+    expect(screen.getByText(/Latency figures use the published median over all warm passes/)).toBeTruthy();
+    expect(screen.getByText(/All 22 queries are shared, with data for every selected run/)).toBeTruthy();
     expect(screen.getByText(/wall-clock totals and phase durations remain run-wide context/)).toBeTruthy();
   });
 
-  it("says why queries were excluded when the shared set is smaller", () => {
-    renderBar({ comparableQueryCount: 102, totalQueryCount: 103 });
-    expect(screen.getByText(/1 query is excluded from every run/)).toBeTruthy();
+  it("says how many queries are shared and why the rest are hidden", () => {
+    renderBar({ comparableQueryCount: 108, totalQueryCount: 157 });
+    expect(
+      screen.getByText(
+        "Latency figures use the published median over all warm passes. 108 of 157 queries are shared, with data for every selected run; 49 queries are hidden because at least one run is missing data.",
+      ),
+    ).toBeTruthy();
   });
 
-  it("pluralises the exclusion sentence", () => {
-    renderBar({ comparableQueryCount: 100, totalQueryCount: 103 });
-    expect(screen.getByText(/3 queries are excluded from every run/)).toBeTruthy();
+  it("pluralises the hidden-query sentence", () => {
+    renderBar({ comparableQueryCount: 102, totalQueryCount: 103 });
+    expect(screen.getByText(/102 of 103 queries are shared.*1 query is hidden/)).toBeTruthy();
   });
 });
 

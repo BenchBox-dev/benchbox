@@ -32,6 +32,17 @@ function parseDay(raw: string): number | null {
   return Number.isNaN(parsed) ? null : parsed;
 }
 
+const EMPTY_WEEK_FILL = "var(--bb-surface-data-muted)";
+const LEGEND_FRACTIONS = [0.25, 0.5, 0.75, 1] as const;
+
+function intensityFill(fraction: number): string {
+  return `color-mix(in srgb, var(--bb-accent) ${Math.round(25 + fraction * 75)}%, transparent)`;
+}
+
+function weekFill(count: number, peak: number): string {
+  return count === 0 ? EMPTY_WEEK_FILL : intensityFill(count / peak);
+}
+
 export function SubmissionActivity({ rows, subject, reference, maxRows = 20 }: Props) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsNarrowViewport(MOBILE_QUERY);
@@ -104,7 +115,7 @@ export function SubmissionActivity({ rows, subject, reference, maxRows = 20 }: P
       />
       <div ref={scrollerRef} class="overflow-x-auto px-4 py-3" data-testid="submission-activity-scroll-container">
         <table
-          class="w-full min-w-[18rem] sm:min-w-[36rem] border-separate border-spacing-0"
+          class="w-full min-w-[18rem] table-fixed border-separate border-spacing-0 sm:min-w-[36rem]"
           data-testid="submission-activity-grid"
         >
           <caption class="sr-only">
@@ -113,6 +124,13 @@ export function SubmissionActivity({ rows, subject, reference, maxRows = 20 }: P
               ? ` Showing the trailing ${WEEKS_MOBILE} of ${WEEKS_DESKTOP} weeks on this screen; totals cover all ${WEEKS_DESKTOP} weeks.`
               : ""}
           </caption>
+          <colgroup>
+            <col class="w-24 sm:w-[11rem]" />
+            {visibleWeeks.map((week) => (
+              <col key={week} />
+            ))}
+            <col class="w-8 sm:w-10" />
+          </colgroup>
           <tbody>
             {shown.map((row) => {
               const visibleCounts = row.counts.slice(row.counts.length - weekCount);
@@ -120,25 +138,22 @@ export function SubmissionActivity({ rows, subject, reference, maxRows = 20 }: P
                 <tr key={row.id}>
                   <th
                     scope="row"
-                    class="w-20 max-w-20 truncate py-0.5 pr-2 text-left text-xs font-medium sm:w-[11rem] sm:max-w-[11rem] sm:pr-3"
+                    title={row.label}
+                    class="whitespace-normal break-words py-0.5 pr-2 text-left align-middle text-xs font-medium leading-tight sm:truncate sm:pr-3"
                   >
                     <a href={row.href} class="no-underline hover:underline" title={row.label}>
                       {row.label}
                     </a>
                   </th>
                   {visibleCounts.map((count, index) => (
-                    <td key={visibleWeeks[index]} class="w-4 p-0 sm:w-auto"
-                      aria-label={`${row.label}: ${count} ${count === 1 ? "run" : "runs"} in the week of ${new Date(visibleWeeks[index]!).toISOString().slice(0, 10)}`}>
+                    <td
+                      key={visibleWeeks[index]}
+                      class="p-0"
+                      aria-label={`${row.label}: ${count} ${count === 1 ? "run" : "runs"} in the week of ${new Date(visibleWeeks[index]!).toISOString().slice(0, 10)}`}
+                    >
                       <div
                         class="mx-px my-px h-3.5 rounded-sm"
-                        style={{
-                          backgroundColor:
-                            count === 0
-                              ? "var(--bb-surface-data-muted)"
-                              : `color-mix(in srgb, var(--bb-accent) ${Math.round(
-                                  25 + (count / model.peak) * 75,
-                                )}%, transparent)`,
-                        }}
+                        style={{ backgroundColor: weekFill(count, model.peak) }}
                         title={`${row.label}: ${count} ${count === 1 ? "run" : "runs"} in the week of ${new Date(
                           visibleWeeks[index]!,
                         )
@@ -147,7 +162,7 @@ export function SubmissionActivity({ rows, subject, reference, maxRows = 20 }: P
                       />
                     </td>
                   ))}
-                  <td class="w-8 py-0.5 pl-2 text-right font-mono text-xs text-[var(--bb-data-fg-muted)] sm:w-10 sm:pl-3">
+                  <td class="py-0.5 pl-2 text-right font-mono text-xs text-[var(--bb-data-fg-muted)] sm:pl-3">
                     {row.inWindow}
                   </td>
                 </tr>
@@ -168,6 +183,21 @@ export function SubmissionActivity({ rows, subject, reference, maxRows = 20 }: P
             </tr>
           </tbody>
         </table>
+      </div>
+      <div
+        class="flex flex-wrap items-center justify-end gap-2 border-t border-[var(--bb-data-border)] px-4 py-2 text-xs text-[var(--bb-data-fg-muted)]"
+        data-testid="submission-activity-legend"
+      >
+        <span aria-hidden="true" class="flex items-center gap-px">
+          {[0, ...LEGEND_FRACTIONS].map((fraction) => (
+            <span
+              key={fraction}
+              class="h-3 w-3 rounded-sm"
+              style={{ backgroundColor: fraction === 0 ? EMPTY_WEEK_FILL : intensityFill(fraction) }}
+            />
+          ))}
+        </span>
+        <span>fewer → more runs</span>
       </div>
       {hidden > 0 && (
         <p class="border-t border-[var(--bb-data-border)] px-4 py-2 text-xs text-[var(--bb-data-fg-muted)]">

@@ -40,6 +40,11 @@ export interface CostDeploymentFields {
   cost_status?: string | null;
   billing_unit?: string | null;
   pricing_region?: string | null;
+  estimated_cost_usd?: number | null;
+  cost_estimate_method?: string | null;
+  cost_estimate_source?: string | null;
+  cost_estimate_pricing_date?: string | null;
+  cost_estimate_assumptions?: string | null;
   deployment_class?: string | null;
   cloud_provider?: string | null;
   cloud_region?: string | null;
@@ -101,6 +106,7 @@ export interface DetailResult extends CostDeploymentFields {
   override_evidence?: string | null;
   override_approver?: string | null;
   override_expires?: string | null;
+  query_id_repairs?: string | null;
   tuning_policy_generation?: string | null;
   template_evidence?: string | null;
   test_type: string | null;
@@ -162,6 +168,7 @@ export interface PlatformRow extends CostDeploymentFields {
   phase_durations: Record<string, number> | null;
   timings: Record<string, number | null>;
   timing_eligibility: Record<string, Pick<QueryDisplayTiming, "is_valid_display_timing" | "timing_exclusion_reason">>;
+  color_slot?: number;
   arch?: string | null;
   cpu_family?: string | null;
   memory_gb?: number | null;

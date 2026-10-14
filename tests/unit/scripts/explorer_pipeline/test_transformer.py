@@ -935,6 +935,7 @@ class TestExtendedManifestFields:
                     cost_status="unavailable",
                     billing_unit="unknown",
                     pricing_region="unknown",
+                    unavailability_reasons=("normalized cost unavailable: pricing provenance is unknown",),
                 ),
                 None,
             ),
@@ -960,6 +961,24 @@ class TestExtendedManifestFields:
         assert detail.cost_usd == expected_cost_usd
         assert entry.normalized_cost == normalized_cost
         assert detail.normalized_cost == normalized_cost
+
+    def test_malformed_normalized_cost_unavailability_reasons_rejected(self, tmp_path: Path) -> None:
+        data = copy.deepcopy(MINIMAL_BUNDLE)
+        data["normalized_cost"] = NormalizedCost(
+            normalized_cost_usd=None,
+            cost_model_version="2026.05.0",
+            cost_model_source="benchbox.core.cost.pricing",
+            cost_scope="compute_only",
+            cost_status="unavailable",
+            billing_unit="unknown",
+            pricing_region="unknown",
+        ).to_dict()
+        data["normalized_cost"]["unavailability_reasons"] = ["valid reason", 7]
+        bundle = tmp_path / "malformed_normalized_cost_reasons.json"
+        bundle.write_text(json.dumps(data), encoding="utf-8")
+
+        with pytest.raises(ValueError, match="unavailability_reasons.*list of non-empty strings"):
+            BundleTransformer().to_manifest_entry(bundle)
 
     def test_environment_facets_extracted_from_normalized_contract(self, tmp_path: Path) -> None:
         data = copy.deepcopy(MINIMAL_BUNDLE)

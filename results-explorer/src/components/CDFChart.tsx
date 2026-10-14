@@ -1,11 +1,12 @@
-import type { BenchmarkSummary } from "@/types";
+import type { BenchmarkSummary, PlatformRow } from "@/types";
 import { useElementSize } from "@/lib/useElementSize";
 import { axisLabelAnchor, chartFrame } from "@/lib/chartFrame";
-import { timeSeriesColor } from "@/lib/chartTheme";
-import { buildLogLatencyScale, computeECDFPoints, logLatencyFraction, logLatencyTicks } from "@/lib/chartMath";
+import { paletteColor } from "@/lib/chartTheme";
+import { buildLogLatencyScale, computeECDFPoints, logLatencyFraction, logLatencyTicks, spaceTicks } from "@/lib/chartMath";
 import { formatTimingExclusion, isTimingDisplayable, platformTimingValue } from "@/lib/displayEligibility";
 import { formatLatencyAxisLabels } from "@/lib/metricFormatters";
-import { formatRunIdentityLabelsForCohort, preserveUniqueAfterTruncation } from "@/lib/runIdentity";
+import { orderRunsByDisplayGeomean, fitRunLabels } from "@/lib/chartRunRows";
+import { formatRunIdentityLabelsForCohort } from "@/lib/runIdentity";
 
 const Y_TICKS_PCT = [0, 25, 50, 75, 100];
 
@@ -14,12 +15,15 @@ const AXIS_H = 40;
 const PADDING_TOP = 8;
 const PADDING_RIGHT = 12;
 const PLOT_H = 180;
+const LEGEND_FONT_PX = 12;
+const LEGEND_SWATCH_PX = 24;
 
 interface Props {
   summary: BenchmarkSummary;
+  colorIndexFor?: (platform: PlatformRow) => number;
 }
 
-export function CDFChart({ summary }: Props) {
+export function CDFChart({ summary, colorIndexFor }: Props) {
   const [containerRef, { width: containerWidth }] = useElementSize();
   const frame = chartFrame(containerWidth);
   const w = frame.width;
@@ -27,19 +31,21 @@ export function CDFChart({ summary }: Props) {
   const cohortLabels = formatRunIdentityLabelsForCohort(
     summary.platforms.map((platform) => ({ ...platform, scale_factor: summary.scale_factor })),
   );
-  const displayLabels = preserveUniqueAfterTruncation(
-    cohortLabels.map((label) => label.disambiguated),
-    15,
-  );
-  const series = summary.platforms
-    .map((p, i) => ({
-      label: displayLabels[i] ?? p.platform,
+  const rawLabels = cohortLabels.map((label) => label.disambiguated);
+  const series = orderRunsByDisplayGeomean(summary.platforms)
+    .map(({ run: p, sourceIndex: i }) => ({
+      label: rawLabels[i] ?? p.platform,
       fullLabel: cohortLabels[i]?.full ?? p.platform,
-      color: timeSeriesColor(i),
+      color: paletteColor(colorIndexFor?.(p) ?? p.color_slot ?? i),
       isDisplayable: isTimingDisplayable(p),
       points: computeECDFPoints(summary.query_ids.map((queryId) => platformTimingValue(p, queryId))),
     }))
     .filter((s) => s.isDisplayable && s.points.length > 0);
+  const legendLabels = fitRunLabels(
+    series.map((s) => s.label),
+    Math.max(w - LEGEND_SWATCH_PX, LEGEND_SWATCH_PX),
+    LEGEND_FONT_PX,
+  );
 
   if (series.length === 0) return null;
   const excludedRows = summary.platforms.filter((platform) => !isTimingDisplayable(platform));
@@ -59,7 +65,7 @@ export function CDFChart({ summary }: Props) {
     return PADDING_TOP + PLOT_H * (1 - pct / 100);
   }
 
-  const xTicks = logLatencyTicks(logScale);
+  const xTicks = spaceTicks(logLatencyTicks(logScale), xFor);
   const tickLabels = formatLatencyAxisLabels(xTicks);
 
   return (
@@ -94,7 +100,7 @@ export function CDFChart({ summary }: Props) {
             })
             .join(" ");
           return (
-            <path key={s.label} d={d} stroke={s.color} stroke-width={2} fill="none">
+            <path key={s.fullLabel} d={d} stroke={s.color} stroke-width={2} fill="none">
               <title>{s.fullLabel}</title>
             </path>
           );
@@ -124,19 +130,19 @@ export function CDFChart({ summary }: Props) {
             text-anchor="middle"
             style={{ fontSize: "10px", fill: "var(--bb-chart-label-muted)" }}
           >
-            Latency (ms, log scale)
+            Latency (log scale)
           </text>
         </g>
       </svg>
 
       <ul class="mt-1.5 flex list-none flex-wrap gap-x-3 gap-y-1 p-0 text-xs text-[var(--bb-data-fg-muted)]">
-        {series.map((s) => (
-          <li key={s.label} class="flex items-center gap-1.5" title={s.fullLabel}>
+        {series.map((s, index) => (
+          <li key={s.fullLabel} class="flex items-center gap-1.5" title={s.fullLabel}>
             <span
               class="inline-block h-0.5 w-4 flex-shrink-0 rounded-sm"
               style={{ backgroundColor: s.color }}
             />
-            {s.label}
+            {legendLabels[index] ?? s.label}
           </li>
         ))}
       </ul>

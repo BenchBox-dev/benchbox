@@ -258,6 +258,62 @@ describe("corpus section indexes", () => {
     expect(within(list).queryByTestId(/support-badge-/)).toBeNull();
   });
 
+  it.each(SECTION_CASES)(
+    "$title uses a two-column compact grid below sm and lets long names wrap",
+    async ({ kind, listId }) => {
+      const longPlatform = "Apache DataFusion Comet Accelerated Vectorized Engine Preview Build";
+      vi.mocked(listResults).mockResolvedValue([
+        ...ROWS,
+        resultRow({
+          result_id: "long-platform",
+          benchmark: "tpch",
+          platform: longPlatform,
+          platform_id: "datafusion-comet-preview",
+          run_date: "2026-08-22T12:00:00Z",
+        }),
+      ]);
+
+      renderIndex(kind);
+
+      const list = await screen.findByTestId(listId);
+      const links = within(list).getAllByRole("link");
+      expect(links).toHaveLength(kind === "benchmarks" ? 2 : 3);
+
+      const [first] = links;
+      if (first === undefined) throw new Error(`${kind} index rendered no entries`);
+
+      const grid = first.closest("ul");
+      expect(grid).toHaveClass("grid", "grid-cols-2", "gap-2", "sm:grid-cols-2", "sm:gap-3");
+
+      const card = first.closest("li")?.firstElementChild;
+      expect(card).toHaveClass("p-3", "sm:p-4");
+
+      const heading = first.closest("h3");
+      expect(heading).toHaveClass("break-words", "text-sm", "sm:text-base");
+    },
+  );
+
+  it("platforms wrap a long platform name instead of truncating it", async () => {
+    const longPlatform = "Apache DataFusion Comet Accelerated Vectorized Engine Preview Build";
+    vi.mocked(listResults).mockResolvedValue([
+      resultRow({
+        result_id: "long-platform",
+        benchmark: "tpch",
+        platform: longPlatform,
+        platform_id: "datafusion-comet-preview",
+        run_date: "2026-08-22T12:00:00Z",
+      }),
+    ]);
+
+    render(<PlatformsIndex />);
+
+    const list = await screen.findByTestId("platforms-index-list");
+    const link = within(list).getByRole("link", { name: longPlatform });
+    expect(link).toHaveAttribute("href", "/results/p/datafusion-comet-preview/");
+    expect(link.closest("h3")).toHaveClass("break-words");
+    expect(link.closest("h3")).not.toHaveClass("truncate");
+  });
+
   it("platforms render one ungrouped list without badges", async () => {
     vi.mocked(listResults).mockResolvedValue(ROWS);
 

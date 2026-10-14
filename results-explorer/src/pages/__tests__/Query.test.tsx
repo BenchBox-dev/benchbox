@@ -283,7 +283,7 @@ describe("Query", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Only exact zero timings are available");
     expect(screen.queryByTestId("query-compare-selected-r1")).toBeNull();
-    expect(screen.getByTestId("query-compare-launch-disabled")).toBeTruthy();
+    expect(screen.getByTestId("query-compare-launch").textContent).toBe("Compare All Runs");
   });
 
   it("shows narrowing facets and clears them when no rows match", async () => {
@@ -313,25 +313,73 @@ describe("Query", () => {
     expect(screen.queryByTestId("query-empty-state")).toBeNull();
   });
 
-  it("renders the compare tray and enables launch only after two compatible selections", async () => {
+  it("falls back to picks when filtered rows span multiple cohorts", async () => {
+    resultRows = [
+      BASE_ROWS[0]!,
+      BASE_ROWS[1]!,
+      { ...BASE_ROWS[0]!, result_id: "r5", platform: "DuckDB extra" },
+      { ...BASE_ROWS[0]!, result_id: "r3", benchmark: "tpch", platform: "DuckDB tpch" },
+      { ...BASE_ROWS[1]!, result_id: "r4", benchmark: "tpch", platform: "SQLite tpch" },
+    ];
+
+    render(<Query />);
+    await waitFor(() => expect(screen.getAllByText("DuckDB").length).toBeGreaterThan(0));
+
+    const idle = screen.getByTestId("query-compare-launch") as HTMLButtonElement;
+    expect(idle.tagName).toBe("BUTTON");
+    expect(idle.disabled).toBe(true);
+    expect(idle.textContent).toBe("Select 2–10 runs to compare");
+
+    fireEvent.click(screen.getByTestId("query-compare-checkbox-r1"));
+    fireEvent.click(screen.getByTestId("query-compare-checkbox-r2"));
+    const launch = screen.getByTestId("query-compare-launch") as HTMLAnchorElement;
+    expect(launch.textContent).toBe("Compare 2 selected");
+    expect(launch.className).toContain("btn-primary");
+    expect(launch.href).toContain("/results/compare?ids=");
+    const subset = screen.getByTestId("query-compare-launch-all") as HTMLAnchorElement;
+    expect(subset.textContent).toBe("Compare All Runs");
+    expect(subset.href).toContain("/results/compare?ids=");
+  });
+
+  it("falls back to picks when the comparable set exceeds ten runs", async () => {
+    resultRows = Array.from({ length: 12 }, (_, index) => ({
+      ...BASE_ROWS[0]!,
+      result_id: `r-big-${index + 1}`,
+      platform: `Platform ${index + 1}`,
+    }));
+
+    render(<Query />);
+    await waitFor(() => expect(screen.getAllByText("Platform 1").length).toBeGreaterThan(0));
+
+    expect(screen.queryByText("Compare All Runs")).toBeNull();
+    const control = screen.getByTestId("query-compare-launch") as HTMLButtonElement;
+    expect(control.disabled).toBe(true);
+    expect(control.textContent).toBe("Select 2–10 runs to compare");
+  });
+
+  it("renders the compare tray and offers Compare All Runs for a small single-cohort set", async () => {
     render(<Query />);
     await waitFor(() => expect(screen.getAllByText("DuckDB").length).toBeGreaterThan(0));
 
     const tray = screen.getByTestId("query-compare-tray");
-    expect(tray.textContent).toContain("Select two or more rows");
-    expect(screen.getByTestId("query-compare-launch-disabled")).toBeTruthy();
+    expect(tray.textContent).toContain("All 2 comparable runs in these results can be compared together.");
+    const initial = screen.getByTestId("query-compare-launch") as HTMLAnchorElement;
+    expect(initial.textContent).toBe("Compare All Runs");
+    expect(initial.href).toContain("/results/compare?ids=");
 
     fireEvent.click(screen.getByTestId("query-compare-checkbox-r1"));
     expect(screen.getByTestId("query-compare-tray").textContent).toContain("1 result selected");
-    expect(screen.getByTestId("query-compare-launch-disabled")).toBeTruthy();
+    expect(screen.getByTestId("query-compare-launch").textContent).toBe("Compare All Runs");
 
     fireEvent.click(screen.getByTestId("query-compare-checkbox-r2"));
     expect(screen.getByTestId("query-compare-tray").textContent).toContain("2 results selected");
     const launch = screen.getByTestId("query-compare-launch") as HTMLAnchorElement;
+    expect(launch.textContent).toBe("Compare 2 selected");
     expect(launch.href).toContain("/results/compare?ids=");
 
     fireEvent.click(screen.getByTestId("query-compare-clear"));
-    expect(screen.getByTestId("query-compare-tray").textContent).toContain("Select two or more rows");
+    expect(screen.getByTestId("query-compare-tray").textContent).toContain("All 2 comparable runs in these results can be compared together.");
+    expect(screen.getByTestId("query-compare-launch").textContent).toBe("Compare All Runs");
   });
 
   it("locks compare selection by hidden phase and primary-metric metadata", async () => {
@@ -381,7 +429,7 @@ describe("Query", () => {
 
     fireEvent.click(blocked);
     expect(screen.getByTestId("query-compare-tray").textContent).toContain("Select two or more rows");
-    expect(screen.getByTestId("query-compare-launch-disabled")).toBeTruthy();
+    expect(screen.getByTestId("query-compare-launch")).toBeDisabled();
   });
 
   it("shows a Query Workbench zero-selectable recovery callout when every visible row is disabled", async () => {
@@ -451,10 +499,10 @@ describe("Query", () => {
     await waitFor(() => expect(screen.getAllByText("DuckDB compatible").length).toBeGreaterThan(0));
     expect(screen.getByText("Showing 1–24 of 61 matching runs")).toBeTruthy();
 
-    for (const id of ["r1", "page-row-0", "page-row-1", "page-row-2"]) {
+    for (const id of ["r1", ...Array.from({ length: 9 }, (_, index) => `page-row-${index}`)]) {
       fireEvent.click(screen.getByTestId(`query-compare-checkbox-${id}`));
     }
-    expect(screen.getByTestId("query-compare-tray").textContent).toContain("4 results selected (maximum)");
+    expect(screen.getByTestId("query-compare-tray").textContent).toContain("10 results selected (maximum)");
     fireEvent.click(screen.getByRole("button", { name: "Next page" }));
 
     await waitFor(() => expect(screen.getByText("Showing 25–48 of 61 matching runs")).toBeTruthy());
@@ -471,7 +519,7 @@ describe("Query", () => {
 
     fireEvent.click(replacement);
     expect(screen.getByTestId("query-compare-selected-page-row-23")).toBeTruthy();
-    expect(screen.getByTestId("query-compare-tray").textContent).toContain("4 results selected (maximum)");
+    expect(screen.getByTestId("query-compare-tray").textContent).toContain("10 results selected (maximum)");
     expect(new URL(window.location.href).searchParams.get("page")).toBe("2");
     const latestSelect = vi.mocked(queryRows).mock.calls.filter(([sql]) => isDefaultResultSelect(sql)).at(-1);
     expect(latestSelect?.[0]).toContain("LIMIT 24 OFFSET 24");
@@ -508,8 +556,8 @@ describe("Query", () => {
     expect(labelB).toContain("bbbb2222");
   });
 
-  it("caps Query compare selections at four runs", async () => {
-    resultRows = Array.from({ length: 5 }, (_, index) => ({
+  it("caps Query compare selections at ten runs", async () => {
+    resultRows = Array.from({ length: 11 }, (_, index) => ({
       ...BASE_ROWS[0]!,
       result_id: `r${index + 1}`,
       platform: `DuckDB ${index + 1}`,
@@ -519,13 +567,14 @@ describe("Query", () => {
     render(<Query />);
     await waitFor(() => expect(screen.getAllByText("DuckDB 1").length).toBeGreaterThan(0));
 
-    for (const id of ["r1", "r2", "r3", "r4"]) {
+    for (let index = 1; index <= 10; index += 1) {
+      const id = `r${index}`;
       fireEvent.click(screen.getByTestId(`query-compare-checkbox-${id}`));
     }
-    const fifth = screen.getByTestId("query-compare-checkbox-r5") as HTMLInputElement;
-    expect(fifth.disabled).toBe(true);
-    expect(fifth.title).toContain("Up to 4 runs");
-    expect(screen.getByTestId("query-compare-tray").textContent).toContain("4 results selected (maximum)");
+    const eleventh = screen.getByTestId("query-compare-checkbox-r11") as HTMLInputElement;
+    expect(eleventh.disabled).toBe(true);
+    expect(eleventh.title).toContain("Up to 10 runs");
+    expect(screen.getByTestId("query-compare-tray").textContent).toContain("10 results selected (maximum)");
   });
 
   it("loads facet counts and table rows from DuckDB", async () => {
@@ -549,7 +598,12 @@ describe("Query", () => {
     expect(within(resultsTable).getByRole("columnheader", { name: /^Run date/ })).toBeTruthy();
     expect(within(resultsTable).getByRole("columnheader", { name: /^Geomean latency/ })).toBeTruthy();
     expect(within(resultsTable).getAllByText("SF 0.1").length).toBeGreaterThan(0);
-    expect(within(resultsTable).getAllByText(/2026-04-17.*days ago/).length).toBeGreaterThan(0);
+    expect(within(resultsTable).getAllByText("2026-04-17").length).toBeGreaterThan(0);
+    expect(
+      within(resultsTable)
+        .getAllByTestId("run-date-chip")
+        .some((chip) => /2026-04-17 \(.*days ago\)/.test(chip.getAttribute("title") ?? "")),
+    ).toBe(true);
     expect(within(resultsTable).getByText("10 ms")).toBeTruthy();
 
     fireEvent.click(screen.getByText("Configure visible columns"));
@@ -1003,6 +1057,33 @@ describe("Query", () => {
     expect(parsed).toHaveLength(61);
     expect(parsed[0]).toHaveProperty("benchmark");
     expect(parsed[0]).not.toHaveProperty("result_id");
+  });
+
+  it("preselects every run listed in the ids parameter and keeps pick as the pinned run", async () => {
+    vi.mocked(getDetailResult).mockImplementation(async (id: string) =>
+      (BASE_ROWS.find((row) => row.result_id === id) ?? null) as never,
+    );
+
+    render(<Query url="/results/query?pick=r2&ids=r2,r1" />);
+
+    await waitFor(() => expect(screen.getByTestId("query-compare-selected-r1")).toBeTruthy());
+    expect(screen.getByTestId("query-compare-selected-r2")).toBeTruthy();
+    expect(screen.getByTestId("query-compare-tray")).toHaveTextContent("2 results selected");
+    expect(resolveShortId).toHaveBeenCalledWith("r1");
+  });
+
+  it("keeps the results header and cells in the same column count on the Find runs table", async () => {
+    render(<Query />);
+    await waitFor(() => expect(screen.getAllByText("DuckDB").length).toBeGreaterThan(0));
+    const resultsTable = screen.getAllByRole("table")[0]!;
+
+    const headerCount = resultsTable.querySelectorAll("thead tr th").length;
+    const firstRow = resultsTable.querySelector("tbody tr");
+    expect(firstRow).not.toBeNull();
+    expect(firstRow!.querySelectorAll("td").length).toBe(headerCount);
+    expect(resultsTable.textContent).not.toContain("Compare state");
+    expect(resultsTable.textContent).not.toContain("Selectable");
+    expect(within(resultsTable).getByRole("columnheader", { name: /^Power score$/ })).toBeTruthy();
   });
 
   it("runs read-only SQL and surfaces DDL errors", async () => {

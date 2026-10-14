@@ -90,21 +90,14 @@ describe("ResultDetail - median-first contract", () => {
     expect(window.location.hash).toBe("#run-receipt");
   });
 
-  it("exposes tuning disclosure state and its controlled region", async () => {
+  it("shows tuning once in the header and not as a separate summary card", async () => {
     vi.mocked(getDetailResult).mockResolvedValue(makeDetail({ has_tuning: true, tuning_mode: "tuned" }));
-    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => undefined)));
 
     render(<ResultDetail resultId="r1" />);
-    const toggle = await screen.findByRole("button", { name: "Show settings ↓" });
-    expect(toggle).toHaveAttribute("aria-expanded", "false");
-    expect(toggle).toHaveAttribute("aria-controls", "tuning-settings-region");
+    await waitFor(() => expect(screen.queryByText("Loading result...")).toBeNull());
 
-    fireEvent.click(toggle);
-    expect(toggle).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByRole("region", { name: "Tuning settings" })).toHaveAttribute(
-      "id",
-      "tuning-settings-region",
-    );
+    expect(screen.queryByRole("heading", { name: "Tuning" })).toBeNull();
+    expect(within(screen.getByTestId("page-header-meta")).getByText(/tuned/i)).toBeTruthy();
   });
 
   it("gives an invalid result ID a recovery link", async () => {
@@ -123,11 +116,13 @@ describe("ResultDetail - median-first contract", () => {
     await waitFor(() => expect(screen.queryByText("Loading result...")).toBeNull());
 
     expect(screen.getByText("Query timings (2)")).toBeTruthy();
-    await waitFor(() => expect(document.title).toBe("TPC-H · DuckDB · SF0.1 · BenchBox Results"));
+    await waitFor(() => expect(document.title).toBe("TPC-H · DuckDB · SF 0.1 · BenchBox Results"));
 
-    const passes = screen.getByRole("region", { name: "Passes within this run" });
-    expect(within(passes).getAllByText(/Warm median/i).length).toBeGreaterThan(0);
+    const passes = screen.getByTestId("detail-passes-scroll-container");
     expect(within(passes).getAllByRole("row")).toHaveLength(4);
+    expect(screen.queryByRole("heading", { name: "Passes within this run" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Passes within this run" })).toBeNull();
+    expect(screen.getByText(/Warm median is the median/i)).toBeTruthy();
     expect(screen.queryByTestId("detail-timings-scroll-container")).toBeNull();
   });
 
@@ -136,7 +131,7 @@ describe("ResultDetail - median-first contract", () => {
     render(<ResultDetail resultId="r1" />);
     await waitFor(() => expect(screen.queryByText("Loading result...")).toBeNull());
 
-    expect(screen.queryByRole("region", { name: "Passes within this run" })).toBeNull();
+    expect(screen.queryByTestId("detail-passes-scroll-container")).toBeNull();
     expect(screen.getByTestId("detail-timings-scroll-container")).toBeTruthy();
     expect(screen.getAllByText(/Median latency/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Q1").length).toBeGreaterThanOrEqual(1);
@@ -158,7 +153,7 @@ describe("ResultDetail - median-first contract", () => {
     render(<ResultDetail resultId="r1" />);
     await waitFor(() => expect(screen.queryByText("Loading result...")).toBeNull());
 
-    expect(screen.getByText(/^Samples/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Samples/ })).toBeTruthy();
     const sampleCells = screen.getAllByText("3");
     expect(sampleCells.length).toBeGreaterThanOrEqual(2);
   });
@@ -340,7 +335,7 @@ describe("ResultDetail - median-first contract", () => {
     render(<ResultDetail resultId="r1" />);
     await waitFor(() => expect(screen.queryByText("Loading result...")).toBeNull());
     expect(screen.getByTestId("page-header").querySelector('[data-role="validation"]')).toHaveTextContent(
-      "failed",
+      "Failed",
     );
   });
 
@@ -362,7 +357,11 @@ describe("ResultDetail - median-first contract", () => {
 
   it("links captured execution plans only when plans_published is true", async () => {
     vi.mocked(getDetailResult).mockResolvedValue(
-      makeDetail({ has_plans: true, plans_published: true }),
+      makeDetail({
+        has_plans: true,
+        plans_published: true,
+        bundle_download_url: `${window.location.origin}/download/r1.json`,
+      }),
     );
 
     render(<ResultDetail resultId="r1" />);
@@ -370,7 +369,30 @@ describe("ResultDetail - median-first contract", () => {
 
     const planLinks = screen.getAllByRole("link", { name: "Download plans" }) as HTMLAnchorElement[];
     expect(planLinks.length).toBeGreaterThanOrEqual(1);
-    expect(planLinks[0]?.getAttribute("href")).toBe("https://example.test/download/r1.plans.json");
+    expect(planLinks[0]?.getAttribute("href")).toBe(`${window.location.origin}/download/r1.plans.json`);
+    expect(screen.getByRole("button", { name: "View query plans" })).toBeTruthy();
+  });
+
+  it.each([
+    ["javascript URL", "javascript:alert(1).json"],
+    ["cross-origin URL", "https://attacker.example/run.json"],
+  ])("does not expose or fetch plans from an untrusted %s", async (_label, bundleUrl) => {
+    vi.mocked(getDetailResult).mockResolvedValue(
+      makeDetail({
+        has_plans: true,
+        plans_published: true,
+        bundle_download_url: bundleUrl,
+      }),
+    );
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ResultDetail resultId="r1" />);
+    await waitFor(() => expect(screen.queryByText("Loading result...")).toBeNull());
+
+    expect(screen.queryByRole("button", { name: "View query plans" })).toBeNull();
+    expect(screen.queryAllByRole("link", { name: "Download plans" })).toHaveLength(0);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("does not render a Download plans link when plans were not actually published (w1 regression)", async () => {
@@ -380,6 +402,8 @@ describe("ResultDetail - median-first contract", () => {
     await waitFor(() => expect(screen.queryByText("Loading result...")).toBeNull());
 
     expect(screen.queryAllByRole("link", { name: "Download plans" })).toHaveLength(0);
+    expect(screen.getByText("Execution plans were recorded, but no published plan file is available for this result."))
+      .toBeTruthy();
   });
 
   it("renders the funding chip alongside the trust badge when funding is disclosed", async () => {
@@ -420,7 +444,7 @@ describe("ResultDetail - median-first contract", () => {
     await waitFor(() => expect(screen.queryByText("Loading result...")).toBeNull());
 
     const headerMeta = within(screen.getByTestId("page-header-meta"));
-    const badge = headerMeta.getByText("Overridden: timing-plateau");
+    const badge = headerMeta.getByText("Timing-plateau");
     expect(badge.getAttribute("data-tone")).toBe("warning");
   });
 

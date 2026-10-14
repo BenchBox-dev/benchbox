@@ -144,3 +144,23 @@ it("makes every summary reachable beyond the initial 200-query page", () => {
   expect(screen.getByText(/Showing 220 of 220 queries/)).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Show more query summaries" })).toBeNull();
 });
+
+describe("PassStrip embedded mode", () => {
+  const queries = [exec("Q1", 10, "measurement", 1), exec("Q1", 12, "measurement", 2)];
+
+  it("renders the standalone card with its own heading by default", () => {
+    render(<PassStrip queries={queries} />);
+    expect(screen.getByRole("heading", { name: "Passes within this run" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Passes within this run" })).toBeTruthy();
+  });
+
+  it("renders without its own card, heading, or region when embedded", () => {
+    const { container } = render(<PassStrip queries={queries} embedded />);
+    expect(screen.queryByRole("heading", { name: "Passes within this run" })).toBeNull();
+    expect(screen.queryByRole("region")).toBeNull();
+    expect(screen.queryByRole("heading")).toBeNull();
+    expect(container.querySelector(".card")).toBeNull();
+    expect(screen.getByTestId("detail-passes-scroll-container")).toBeTruthy();
+    expect(screen.getByTestId("pass-strip-totals")).toBeTruthy();
+  });
+});

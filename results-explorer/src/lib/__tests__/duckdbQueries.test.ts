@@ -173,6 +173,14 @@ describe("duckdbQueries - SQL targets and parameters", () => {
     expect(params).toEqual(["r1", "r2"]);
   });
 
+  it("getQueryExecutions limits selected runs to one query when requested", async () => {
+    mockedQueryRows.mockResolvedValueOnce([]);
+    await getQueryExecutions(["r1", "r2"], "Q1");
+    const [sql, params] = mockedQueryRows.mock.calls[0]!;
+    expect(sql).toContain("WHERE result_id IN (?,?) AND query_id = ?");
+    expect(params).toEqual(["r1", "r2", "Q1"]);
+  });
+
   describe("getCohortBasisDetails - bulk cohort executions accessor", () => {
     it("returns empty map immediately without querying when given empty IDs", async () => {
       const result = await getCohortBasisDetails([]);
@@ -732,36 +740,42 @@ describe("getMetaLeaderboardData", () => {
 });
 
 describe("resolveShortId", () => {
-  it("individually confirms IDs omitted from the batch probe", async () => {
+  const noSuffixMatch = { short_match: null, suffix_count: 0, suffix_match: null };
+
+  it("reports omitted IDs as absent from one snapshot-guarded query", async () => {
     const onInitialExistingIds = vi.fn();
-    mockedQueryRows
-      .mockResolvedValueOnce([{ result_id: "known-a" }])
-      .mockResolvedValueOnce([{ result_id: null }]);
+    mockedQueryRows.mockResolvedValueOnce([
+      { result_id: "known-a", found: true },
+      { result_id: "missing-b", found: false },
+    ]);
 
     await expect(
       getExistingResultIds(["known-a", "missing-b"], onInitialExistingIds),
     ).resolves.toEqual(new Set(["known-a"]));
     expect(onInitialExistingIds).toHaveBeenCalledWith(new Set(["known-a"]));
-    expect(mockedQueryRows).toHaveBeenCalledTimes(2);
-    expect(mockedQueryRows.mock.calls).toEqual([
-      ["SELECT result_id FROM bench.result_detail_metrics WHERE result_id IN (?, ?)", ["known-a", "missing-b"]],
-      [expect.stringMatching(/HAVING COUNT\(DISTINCT result_id\) = \(SELECT COUNT\(\*\) FROM bench\.results\)/), ["missing-b"]],
-    ]);
+    expect(mockedQueryRows).toHaveBeenCalledTimes(1);
+    const [sql, params] = mockedQueryRows.mock.calls[0]!;
+    expect(sql).toMatch(/VALUES \(\?\), \(\?\)/);
+    expect(sql).toMatch(/WHERE snapshot\.results_count > 0 AND snapshot\.metrics_count = snapshot\.results_count/);
+    expect(sql).toMatch(/FROM bench\.result_detail_metrics m WHERE m\.result_id = requested\.result_id/);
+    expect(params).toEqual(["known-a", "missing-b"]);
   });
 
-  it("retains a real ID recovered by an individual confirmation after a partial batch read", async () => {
-    mockedQueryRows
-      .mockResolvedValueOnce([{ result_id: "known-a" }])
-      .mockResolvedValueOnce([{ result_id: "cold-b" }]);
-
-    await expect(getExistingResultIds(["known-a", "cold-b"])).resolves.toEqual(
-      new Set(["known-a", "cold-b"]),
-    );
-    expect(mockedQueryRows).toHaveBeenCalledTimes(2);
-    expect(mockedQueryRows.mock.calls[1]).toEqual([
-      expect.stringMatching(/MAX\(CASE WHEN result_id = \? THEN result_id END\)/),
-      ["cold-b"],
+  it("returns only the requested IDs that exist when several are missing", async () => {
+    mockedQueryRows.mockResolvedValueOnce([
+      { result_id: "tpch-snowflake-sf10.0-20261003-f0835929", found: true },
+      { result_id: "deadbeef", found: false },
+      { result_id: "f0835930", found: false },
     ]);
+    await expect(
+      getExistingResultIds(["tpch-snowflake-sf10.0-20261003-f0835929", "deadbeef", "f0835930"]),
+    ).resolves.toEqual(new Set(["tpch-snowflake-sf10.0-20261003-f0835929"]));
+    expect(mockedQueryRows).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns an empty set when the snapshot guard yields no row (cold read)", async () => {
+    mockedQueryRows.mockResolvedValueOnce([]);
+    await expect(getExistingResultIds(["known-a"])).resolves.toEqual(new Set());
   });
 
   it("does not query existing detail IDs for an empty input", async () => {
@@ -775,18 +789,75 @@ describe("resolveShortId", () => {
     expect(mockedQueryRows).not.toHaveBeenCalled();
   });
 
-  it("queries short_ids when input looks like a short id", async () => {
-    mockedQueryRows.mockResolvedValueOnce([{ result_id: "full-result-id" }]);
-    const out = await resolveShortId("abcdef12");
-    expect(out).toBe("full-result-id");
-    const [sql, params] = mockedQueryRows.mock.calls[0]!;
-    expect(sql).toMatch(/FROM bench\.short_ids WHERE short_id = \?/);
-    expect(params).toEqual(["abcdef12"]);
+  it("guards the short-id lookup on both snapshot counts so lagging detail metrics read as cold", async () => {
+    mockedQueryRows.mockResolvedValueOnce([{ short_match: "full-result-id", suffix_count: 0, suffix_match: null }]);
+    await resolveShortId("abcdef12");
+    const [sql] = mockedQueryRows.mock.calls[0]!;
+    expect(sql).toMatch(/FROM bench\.result_detail_metrics/);
+    expect(sql).toMatch(/metrics_count = snapshot\.results_count/);
   });
 
-  it("returns the input unchanged when no match is found", async () => {
+  it("resolves a short id from short_ids in one query", async () => {
+    mockedQueryRows.mockResolvedValueOnce([
+      { short_match: "full-result-id", suffix_count: 0, suffix_match: null },
+    ]);
+    const out = await resolveShortId("abcdef12");
+    expect(out).toBe("full-result-id");
+    expect(mockedQueryRows).toHaveBeenCalledTimes(1);
+    const [sql, params] = mockedQueryRows.mock.calls[0]!;
+    expect(sql).toMatch(/FROM bench\.short_ids WHERE short_id = \?/);
+    expect(params).toEqual(["%-abcdef12", "abcdef12"]);
+  });
+
+  it.each(["1' OR '1'='1", "%", "f08_5929", "F0835929; DROP", " "])(
+    "passes a non-token id %j through unchanged without querying",
+    async (raw) => {
+      await expect(resolveShortId(raw)).resolves.toBe(raw);
+      expect(mockedQueryRows).not.toHaveBeenCalled();
+    },
+  );
+
+  it("returns the input unchanged and in one query when no match is found", async () => {
+    mockedQueryRows.mockResolvedValueOnce([noSuffixMatch]);
+    await expect(resolveShortId("deadbeef")).resolves.toBe("deadbeef");
+    expect(mockedQueryRows).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns the input unchanged when the snapshot guard yields no row (cold read)", async () => {
     mockedQueryRows.mockResolvedValueOnce([]);
     await expect(resolveShortId("deadbeef")).resolves.toBe("deadbeef");
+  });
+
+  it("resolves a public run token to the full result_id that ends with it", async () => {
+    mockedQueryRows.mockResolvedValueOnce([
+      { short_match: null, suffix_count: 1, suffix_match: "tpch-snowflake-sf10.0-20261003-f0835929" },
+    ]);
+    await expect(resolveShortId("f0835929")).resolves.toBe("tpch-snowflake-sf10.0-20261003-f0835929");
+    expect(mockedQueryRows).toHaveBeenCalledTimes(1);
+    const [sql, params] = mockedQueryRows.mock.calls[0]!;
+    expect(sql).toMatch(/FROM bench\.results WHERE result_id LIKE \?/);
+    expect(params).toEqual(["%-f0835929", "f0835929"]);
+  });
+
+  it("returns the input unchanged when a public token matches more than one result_id", async () => {
+    mockedQueryRows.mockResolvedValueOnce([
+      { short_match: null, suffix_count: 2, suffix_match: "tpch-snowflake-sf10.0-20261003-f0835929" },
+    ]);
+    await expect(resolveShortId("f0835929")).resolves.toBe("f0835929");
+    expect(mockedQueryRows).toHaveBeenCalledTimes(1);
+  });
+
+  it("prefers a short_ids match over a public suffix match", async () => {
+    mockedQueryRows.mockResolvedValueOnce([
+      { short_match: "tpch-snowflake-sf10.0-20261003-aaaa1111", suffix_count: 1, suffix_match: "other-run-aaaa1111" },
+    ]);
+    await expect(resolveShortId("aaaa1111")).resolves.toBe("tpch-snowflake-sf10.0-20261003-aaaa1111");
+  });
+
+  it("passes a full result_id through without querying", async () => {
+    const fullId = "tpch-snowflake-sf10.0-20261003-f0835929";
+    await expect(resolveShortId(fullId)).resolves.toBe(fullId);
+    expect(mockedQueryRows).not.toHaveBeenCalled();
   });
 });
 
@@ -799,13 +870,21 @@ describe("toShortIds", () => {
   it("maps each full id to its short id, falling back to the full id on misses", async () => {
     mockedQueryRows.mockResolvedValueOnce([
       { result_id: "id-a", short_id: "aaaaaaaa" },
+      { result_id: "id-b", short_id: null },
       { result_id: "id-c", short_id: "cccccccc" },
     ]);
     const out = await toShortIds(["id-a", "id-b", "id-c"]);
     expect(out).toEqual(["aaaaaaaa", "id-b", "cccccccc"]);
+    expect(mockedQueryRows).toHaveBeenCalledTimes(1);
     const [sql, params] = mockedQueryRows.mock.calls[0]!;
-    expect(sql).toMatch(/IN \(\?, \?, \?\)/);
+    expect(sql).toMatch(/VALUES \(\?\), \(\?\), \(\?\)/);
+    expect(sql).toMatch(/WHERE snapshot\.results_count > 0 AND snapshot\.metrics_count = snapshot\.results_count/);
     expect(params).toEqual(["id-a", "id-b", "id-c"]);
+  });
+
+  it("falls back to the full ids when the snapshot guard yields no row", async () => {
+    mockedQueryRows.mockResolvedValueOnce([]);
+    await expect(toShortIds(["id-a", "id-b"])).resolves.toEqual(["id-a", "id-b"]);
   });
 });
 

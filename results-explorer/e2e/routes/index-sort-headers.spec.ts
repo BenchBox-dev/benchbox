@@ -82,7 +82,7 @@ test.describe("Index sortable headers", () => {
     await waitForDataLoaded(page, /TPC-H Results/);
 
     await openAnalysisCard(page, "query_heatmap");
-    const table = page.getByRole("table", { name: /tpch SF0\.01 power results/i });
+    const table = page.getByRole("table", { name: /tpch SF 0\.01 power results/i });
     await waitForResultRows(page, table, 3);
     const rows = table.locator("tbody tr[data-testid]");
     await expect.poll(() => rows.count()).toBeGreaterThanOrEqual(3);

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import dataclasses
 import datetime as _dt
 import hashlib
 import json
@@ -9,7 +10,7 @@ import math
 import re
 from collections import Counter
 from collections.abc import Mapping
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, cast
 
@@ -37,7 +38,13 @@ from _project.scripts.explorer_pipeline.models import (
 )
 from benchbox.core.benchmark_registry import get_benchmark_support_status
 from benchbox.core.cost.models import CostScope, CostStatus, DeploymentMetadata, NormalizedCost
-from benchbox.core.cost.pricing import PRICING_VERSION
+from benchbox.core.cost.pricing import (
+    PRICING_VERSION,
+    resolve_databricks_dbu_price,
+    resolve_databricks_serverless_sql_dbu_per_hour,
+    resolve_snowflake_credit_price,
+    resolve_snowflake_warehouse_credits_per_hour,
+)
 from benchbox.core.results.anonymization import AnonymizationManager, find_public_path_leaks
 from benchbox.core.results.canonical_json import canonical_json_bytes
 from benchbox.core.results.execution_variant import published_variant_id, read_requested_variant
@@ -238,7 +245,7 @@ _PASS_STATUSES = {"SUCCESS", "PASS", "pass", "success"}
 _ALLOWED_EXECUTION_RUN_TYPES: frozenset[str] = frozenset({"measurement", "warmup"})
 _COST_MODEL_SOURCE = "benchbox.core.cost.pricing"
 _COST_SCOPES: frozenset[str] = frozenset({"compute_only", "compute_plus_storage"})
-_COST_STATUSES: frozenset[str] = frozenset({"normalized", "not_applicable_local", "unavailable"})
+_COST_STATUSES: frozenset[str] = frozenset({"normalized", "not_applicable_local", "unavailable", "estimated"})
 _KNOWN_LOGICAL_QUERY_COUNTS: dict[str, int] = {
     "tpch": 22,
     "tpch_skew": 22,
@@ -257,8 +264,64 @@ def _load_bundle(bundle_path: Path) -> tuple[dict[str, Any], bytes]:
     return data, raw
 
 
+_DAMAGED_READ_PRIMITIVE_QUERY_IDS = frozenset(
+    {
+        "ualify_row_number",
+        "ualify_dense_rank",
+        "ualify_percentile",
+        "ualify_ntile",
+        "ualify_cume_dist",
+        "ualify_lag_lead",
+    }
+)
+
+
+def _repairable_queries(data: dict[str, Any]) -> list[Any] | None:
+    benchmark = data.get("benchmark")
+    queries = data.get("queries")
+    if not isinstance(benchmark, dict) or not isinstance(queries, list):
+        return None
+    if canonical_benchmark_slug(str(benchmark.get("id", ""))) != "read_primitives":
+        return None
+    return queries
+
+
+def _query_id_repairs(data: dict[str, Any]) -> tuple[str, ...]:
+    queries = _repairable_queries(data)
+    if queries is None:
+        return ()
+    damaged = {
+        value
+        for row in queries
+        if isinstance(row, dict)
+        for key, value in row.items()
+        if key in ("id", "query_id") and value in _DAMAGED_READ_PRIMITIVE_QUERY_IDS
+    }
+    return tuple(f"{value}→q{value}" for value in sorted(damaged))
+
+
+def _query_id_repairs_display(data: dict[str, Any]) -> str | None:
+    return "; ".join(_query_id_repairs(data)) or None
+
+
+def _repair_damaged_query_ids(data: dict[str, Any]) -> dict[str, Any]:
+    queries = _repairable_queries(data)
+    if queries is None:
+        return data
+
+    repaired_queries = []
+    for row in queries:
+        if isinstance(row, dict):
+            row = {
+                key: f"q{value}" if key in ("id", "query_id") and value in _DAMAGED_READ_PRIMITIVE_QUERY_IDS else value
+                for key, value in row.items()
+            }
+        repaired_queries.append(row)
+    return {**data, "queries": repaired_queries}
+
+
 def _parse_bundle(data: dict[str, Any]) -> BundleDocument:
-    return BundleDocument.model_validate(data)
+    return BundleDocument.model_validate(_repair_damaged_query_ids(data))
 
 
 def _ensure_explorer_input_schema(data: dict[str, Any]) -> None:
@@ -759,6 +822,29 @@ def _require_cost_string(raw: dict[str, Any], key: str) -> str:
     return value
 
 
+def _cost_unavailability_reasons(raw: dict[str, Any]) -> tuple[str, ...]:
+    value = raw.get("unavailability_reasons", [])
+    if not isinstance(value, list) or any(not isinstance(reason, str) or not reason.strip() for reason in value):
+        raise ValueError("Normalized cost field 'unavailability_reasons' must be a list of non-empty strings")
+    return tuple(value)
+
+
+def _cost_estimate_assumptions(raw: dict[str, Any]) -> tuple[str, ...]:
+    value = raw.get("cost_estimate_assumptions", [])
+    if not isinstance(value, list) or any(not isinstance(item, str) or not item.strip() for item in value):
+        raise ValueError("Normalized cost field 'cost_estimate_assumptions' must be a list of non-empty strings")
+    return tuple(value)
+
+
+def _optional_cost_string(raw: dict[str, Any], key: str) -> str | None:
+    value = raw.get(key)
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"Normalized cost field {key!r} must be a non-empty string when present")
+    return value
+
+
 def _normalized_cost_from_block(raw: dict[str, Any]) -> NormalizedCost:
     return NormalizedCost(
         normalized_cost_usd=_decimal_or_none(raw.get("normalized_cost_usd")),
@@ -769,14 +855,286 @@ def _normalized_cost_from_block(raw: dict[str, Any]) -> NormalizedCost:
         billing_unit=_require_cost_string(raw, "billing_unit"),
         pricing_region=_require_cost_string(raw, "pricing_region"),
         deployment=_deployment_metadata(raw.get("deployment")),
+        unavailability_reasons=_cost_unavailability_reasons(raw),
+        estimated_cost_usd=_decimal_or_none(raw.get("estimated_cost_usd")),
+        cost_estimate_method=_optional_cost_string(raw, "cost_estimate_method"),
+        cost_estimate_source=_optional_cost_string(raw, "cost_estimate_source"),
+        cost_estimate_pricing_date=_optional_cost_string(raw, "cost_estimate_pricing_date"),
+        cost_estimate_assumptions=_cost_estimate_assumptions(raw),
+    )
+
+
+def _bundle_value(block: Any, key: str) -> Any:
+    value = getattr(block, key, None)
+    if value is not None:
+        return value
+    extra = getattr(block, "model_extra", None)
+    return extra.get(key) if isinstance(extra, dict) else None
+
+
+def _canonical_cost_region(value: Any) -> str | None:
+    region = _string_or_none(value)
+    if region is None:
+        return None
+    normalized = region.strip().lower().replace("_", "-")
+    if normalized.startswith("aws-"):
+        return normalized.removeprefix("aws-")
+    return normalized
+
+
+_SNOWFLAKE_ESTIMATE_CREDIT_USD = Decimal("2.00")
+_SNOWFLAKE_ESTIMATE_PRICING_DATE = "2026-10-09"
+_DATABRICKS_ESTIMATE_DBU_USD = Decimal("0.70")
+_DATABRICKS_ESTIMATE_PRICING_DATE = "2026-10-13"
+
+
+def _median_measured_seconds_per_query(bundle: BundleDocument) -> Decimal | None:
+    timings = _query_timings(bundle)
+    measured = [timing for timing in timings if timing.run_type == "measurement"]
+    if not measured and timings and all(timing.run_type is None for timing in timings):
+        measured = timings
+    if not measured or any(timing.status != "pass" for timing in measured):
+        return None
+    if any(timing.duration_ms is None or timing.duration_ms <= 0 for timing in measured):
+        return None
+    by_query: dict[str, list[Decimal]] = {}
+    for timing in measured:
+        by_query.setdefault(timing.query_id, []).append(Decimal(str(timing.duration_ms)) / Decimal("1000"))
+    if not by_query:
+        return None
+    total = Decimal("0")
+    for durations in by_query.values():
+        ordered = sorted(durations)
+        midpoint = len(ordered) // 2
+        if len(ordered) % 2 == 1:
+            total += ordered[midpoint]
+        else:
+            total += (ordered[midpoint - 1] + ordered[midpoint]) / Decimal("2")
+    return total
+
+
+def _has_complete_measured_queries(bundle: BundleDocument) -> bool:
+    timings = _query_timings(bundle)
+    display_timings = _build_display_timings(timings)
+    logical_query_count = _logical_query_count(bundle, display_timings)
+    contract = timing_eligibility(display_timings, logical_query_count)
+    return (
+        contract.missing_query_count == 0
+        and contract.zero_timing_count == 0
+        and contract.comparison_exclusion_reason is None
+    )
+
+
+def _estimated_databricks_normalized_cost(bundle: BundleDocument) -> NormalizedCost | None:
+    if not _has_complete_measured_queries(bundle):
+        return None
+    runtime = _median_measured_seconds_per_query(bundle)
+    if runtime is None:
+        return None
+
+    compute = bundle.platform.compute
+    cloud_block = bundle.platform.cloud
+    deployment_block = bundle.platform.deployment
+    warehouse_type = _string_or_none(_bundle_value(compute, "warehouse_type"))
+    if warehouse_type is None or warehouse_type.lower() != "serverless":
+        return None
+    observed_size = _first_string(
+        _bundle_value(compute, "warehouse_size"),
+        _bundle_value(deployment_block, "warehouse_size"),
+    )
+    if observed_size is None:
+        return None
+    size_rate = resolve_databricks_serverless_sql_dbu_per_hour(observed_size)
+    observed_cloud = _first_string(
+        _bundle_value(cloud_block, "provider"),
+        _bundle_value(deployment_block, "cloud_provider"),
+    )
+    cloud = observed_cloud.lower() if observed_cloud else "aws"
+    observed_region = _first_string(
+        _bundle_value(cloud_block, "region"),
+        _bundle_value(cloud_block, "location"),
+        _bundle_value(deployment_block, "cloud_region"),
+    )
+    price_rate = resolve_databricks_dbu_price(cloud, "premium", "sql_serverless")
+    if (
+        size_rate.value is None
+        or size_rate.fallback_used
+        or price_rate.value is None
+        or price_rate.fallback_used
+        or price_rate.resolved_key != ("aws", "premium", "sql_serverless")
+        or Decimal(str(price_rate.value)) != _DATABRICKS_ESTIMATE_DBU_USD
+    ):
+        return None
+    amount = (runtime * Decimal(str(size_rate.value)) * _DATABRICKS_ESTIMATE_DBU_USD / Decimal("3600")).quantize(
+        Decimal("0.000001"), rounding=ROUND_HALF_UP
+    )
+    assumptions = [
+        "This timing-derived reference scenario is not metered usage, an actual cost, or a bill estimate.",
+        "One median runtime per query is summed, so iteration and stream multiplicity does not scale the estimate.",
+        "Concurrent query runtimes are summed independently, so overlap can overstate single-warehouse wall-clock consumption.",
+        "Startup, minimum billing, idle/auto-stop time, scaling overhead, discounts, and non-compute charges are excluded.",
+        "Historical rates are not reconstructed; the selected reference rate is applied to this run's recorded timings.",
+        f"Warehouse size {observed_size} comes from bundle metadata.",
+        f"Databricks SQL Serverless {observed_size} rate is {size_rate.value} DBU/hour.",
+        f"Databricks SQL Serverless list rate is ${price_rate.value}/DBU, effective {_DATABRICKS_ESTIMATE_PRICING_DATE}.",
+        "The estimate is restricted to the verified AWS SQL Serverless rate cell; other clouds, warehouse types, or unknown sizes refuse to estimate.",
+        "The current list rate is applied retrospectively; the historical plan, negotiated rate, and invoice amount are unknown.",
+        "AWS SQL Serverless list rate is $0.70/DBU for every plan tier, so the unrecorded contract tier does not change the estimate.",
+        "Photon and Serverless compute are included in the SQL Serverless DBU rate; no separate cloud instance charge applies.",
+    ]
+    if observed_cloud is None:
+        assumptions.append("AWS is used as the reference cloud because the bundle does not record a cloud provider.")
+    if observed_region is None:
+        assumptions.append("AWS us-east-2 is used as the reference region because the bundle does not record a region.")
+    return NormalizedCost(
+        normalized_cost_usd=None,
+        cost_model_version=PRICING_VERSION,
+        cost_model_source=_COST_MODEL_SOURCE,
+        cost_scope="compute_only",
+        cost_status="estimated",
+        billing_unit="dbu",
+        pricing_region=_canonical_cost_region(observed_region) or "us-east-2",
+        deployment=DeploymentMetadata(
+            cloud_provider=observed_cloud.lower() if observed_cloud else None,
+            cloud_region=_canonical_cost_region(observed_region),
+            warehouse_size=observed_size,
+        ),
+        estimated_cost_usd=amount,
+        cost_estimate_method="sum of per-query median runtime hours × warehouse DBU per hour × USD per DBU",
+        cost_estimate_source=(
+            "https://www.databricks.com/product/pricing/databricks-sql; "
+            "https://docs.databricks.com/aws/en/resources/pricing (SQL Serverless SKU DBU/hour)"
+        ),
+        cost_estimate_pricing_date=_DATABRICKS_ESTIMATE_PRICING_DATE,
+        cost_estimate_assumptions=tuple(assumptions),
+    )
+
+
+def _estimated_normalized_cost(bundle: BundleDocument) -> NormalizedCost | None:
+    platform = (bundle.platform.name or "").strip().lower()
+    if platform == "databricks":
+        return _estimated_databricks_normalized_cost(bundle)
+    if platform != "snowflake":
+        return None
+    if not _has_complete_measured_queries(bundle):
+        return None
+    runtime = _median_measured_seconds_per_query(bundle)
+    if runtime is None:
+        return None
+    runtime_seconds = runtime
+
+    compute = bundle.platform.compute
+    cloud_block = bundle.platform.cloud
+    deployment_block = bundle.platform.deployment
+    compute_type = _string_or_none(_bundle_value(compute, "warehouse_type"))
+    configured_type = _string_or_none(_bundle_value(bundle.platform.config, "warehouse_type"))
+    warehouse_type = (compute_type or configured_type or "").strip().lower().replace("_", "-")
+    if warehouse_type and warehouse_type not in {"standard", "standard-warehouse"}:
+        return None
+    observed_size = _first_string(
+        _bundle_value(compute, "warehouse_size"),
+        _bundle_value(deployment_block, "warehouse_size"),
+    )
+    observed_cloud = _first_string(
+        _bundle_value(cloud_block, "provider"),
+        _bundle_value(deployment_block, "cloud_provider"),
+    )
+    cloud = observed_cloud.lower() if observed_cloud else "aws"
+    observed_region = _first_string(
+        _bundle_value(cloud_block, "region"),
+        _bundle_value(cloud_block, "location"),
+        _bundle_value(deployment_block, "cloud_region"),
+    )
+    region = _canonical_cost_region(observed_region) or "us-east-2"
+    size = observed_size or "X-Small"
+    assumptions = [
+        "This timing-derived reference scenario is not metered usage, an actual cost, or a bill estimate.",
+        "One median runtime per query is summed, so iteration and stream multiplicity does not scale the estimate.",
+        "Concurrent query runtimes are summed independently, so overlap can overstate single-warehouse wall-clock consumption.",
+        "Startup, minimum billing, idle/auto-stop time, scaling overhead, discounts, and non-compute charges are excluded.",
+        "Historical rates are not reconstructed; the selected reference rate is applied to this run's recorded timings.",
+    ]
+    if observed_size is None:
+        assumptions.append(f"Warehouse size is assumed to be {size} because the bundle does not record it.")
+    else:
+        assumptions.append(f"Warehouse size {size} comes from bundle metadata.")
+    if observed_cloud is None:
+        assumptions.append("AWS is used as the reference cloud because the bundle does not record a cloud provider.")
+    if observed_region is None:
+        assumptions.append("AWS us-east-2 is used as the reference region because the bundle does not record a region.")
+    config_extra = getattr(bundle.platform.config, "model_extra", None)
+    observed_edition = _bundle_value(bundle.platform.config, "edition") or (
+        config_extra.get("edition") if isinstance(config_extra, dict) else None
+    )
+    edition = _string_or_none(observed_edition) or "standard"
+    if observed_edition is None:
+        assumptions.append("Standard edition is assumed because the bundle does not record the contracted edition.")
+    size_rate = resolve_snowflake_warehouse_credits_per_hour(size)
+    price_rate = resolve_snowflake_credit_price(edition, cloud, region)
+    if (
+        size_rate.value is None
+        or size_rate.fallback_used
+        or price_rate.value is None
+        or price_rate.fallback_used
+        or price_rate.resolved_key != ("standard", "aws", "us")
+        or Decimal(str(price_rate.value)) != _SNOWFLAKE_ESTIMATE_CREDIT_USD
+    ):
+        return None
+    amount = (
+        runtime_seconds * Decimal(str(size_rate.value)) * _SNOWFLAKE_ESTIMATE_CREDIT_USD / Decimal("3600")
+    ).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+    assumptions.extend(
+        [
+            f"Snowflake standard credit rate is ${price_rate.value}/credit from the current Service Consumption Table, effective {_SNOWFLAKE_ESTIMATE_PRICING_DATE}.",
+            f"Snowflake {size} standard warehouse rate is {size_rate.value} credit/hour.",
+            "The estimate is restricted to the verified standard/AWS/US rate cell; any pricing-table drift or other edition, cloud, or region refuses to estimate.",
+            "The current list rate is applied retrospectively; the historical edition, negotiated rate, and invoice amount are unknown.",
+        ]
+    )
+    return NormalizedCost(
+        normalized_cost_usd=None,
+        cost_model_version=PRICING_VERSION,
+        cost_model_source=_COST_MODEL_SOURCE,
+        cost_scope="compute_only",
+        cost_status="estimated",
+        billing_unit="credit",
+        pricing_region=region,
+        deployment=DeploymentMetadata(
+            cloud_provider=observed_cloud.lower() if observed_cloud else None,
+            cloud_region=_canonical_cost_region(observed_region),
+            warehouse_size=observed_size,
+        ),
+        estimated_cost_usd=amount,
+        cost_estimate_method="sum of per-query median runtime hours × warehouse credits per hour × USD per credit",
+        cost_estimate_source=(
+            "https://www.snowflake.com/legal-files/CreditConsumptionTable.pdf; "
+            "https://www.snowflake.com/en/pricing-options/calculator/"
+        ),
+        cost_estimate_pricing_date=_SNOWFLAKE_ESTIMATE_PRICING_DATE,
+        cost_estimate_assumptions=tuple(assumptions),
     )
 
 
 def _normalized_cost(bundle: BundleDocument) -> NormalizedCost:
     raw = _raw_normalized_cost_block(bundle)
-    if raw is None:
-        return _unavailable_normalized_cost()
-    return _normalized_cost_from_block(raw)
+    prior_reasons: tuple[str, ...] = ()
+    if raw is not None:
+        normalized = _normalized_cost_from_block(raw)
+        if normalized.cost_status != "unavailable":
+            return normalized
+        prior_reasons = normalized.unavailability_reasons
+    estimate = _estimated_normalized_cost(bundle)
+    if estimate is not None:
+        if prior_reasons:
+            provenance = (
+                "Recorded normalized-cost verdict was 'unavailable' "
+                f"({'; '.join(prior_reasons)}); this timing-derived estimate does not replace that verdict."
+            )
+            return dataclasses.replace(
+                estimate, cost_estimate_assumptions=(provenance, *estimate.cost_estimate_assumptions)
+            )
+        return estimate
+    return _normalized_cost_from_block(raw) if raw is not None else _unavailable_normalized_cost()
 
 
 def _cost_usd_alias(cost: NormalizedCost) -> float | None:
@@ -899,6 +1257,8 @@ def _environment_facets(
         "storage_format": _string_or_none(storage.table_format),
     }
     if _has_normalized_environment_contract(bundle) or normalized_cost is None:
+        return facets
+    if normalized_cost.cost_status == "estimated":
         return facets
     return _legacy_environment_facets_from_cost(normalized_cost)
 
@@ -1268,6 +1628,7 @@ class BundleTransformer:
             override_evidence=override["override_evidence"],
             override_approver=override["override_approver"],
             override_expires=override["override_expires"],
+            query_id_repairs=_query_id_repairs_display(bundle_data),
             tuning_policy_generation=_tuning_policy_generation(bundle),
             template_evidence=_template_evidence(bundle),
             test_type=test_type,
@@ -1376,6 +1737,7 @@ class BundleTransformer:
             override_evidence=override["override_evidence"],
             override_approver=override["override_approver"],
             override_expires=override["override_expires"],
+            query_id_repairs=_query_id_repairs_display(bundle_data),
             tuning_policy_generation=_tuning_policy_generation(bundle),
             template_evidence=_template_evidence(bundle),
             test_type=test_type,

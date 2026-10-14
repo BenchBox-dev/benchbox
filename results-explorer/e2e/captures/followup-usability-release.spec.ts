@@ -106,8 +106,8 @@ test.describe("@followup-usability release-gate route walk", () => {
     await waitForDataLoaded(page, /matching run/);
 
     const tray = page.getByTestId("query-compare-tray");
-    await expect(tray).toContainText(/Select two or more rows/);
-    await expect(page.getByTestId("query-compare-launch-disabled")).toBeVisible();
+    await expect(tray).toContainText(/Select two or more rows|can be compared together/);
+    await expect(page.getByTestId("query-compare-launch")).toBeVisible();
 
     await maybeCapture(page, "query-compare-tray-default");
 
@@ -139,7 +139,17 @@ test.describe("@followup-usability release-gate route walk", () => {
       expect(selectorBox.y).toBeLessThan(matrixBox.y);
     }
 
-    await expect(page.getByTestId("home-compare-entrypoint")).toHaveAttribute("href", "/results/compare/");
+    const entrypoint = page.getByTestId("leaderboard-compare-cta");
+    await expect(entrypoint).toBeVisible();
+    await expect(entrypoint).toBeDisabled();
+
+    await page.getByLabel("Comparison cohort").selectOption({ label: "TPC-H SF 0.01 · power" });
+    const runs = page.getByTestId("leaderboard-comparable-runs");
+    await expect(runs).toBeVisible();
+    const boxes = runs.getByRole("checkbox");
+    await boxes.first().check();
+    await boxes.nth(1).check();
+    await expect(entrypoint).toHaveAttribute("href", /\/results\/compare\?ids=[^,]+,[^,]+/);
 
     await maybeCapture(page, "home-ranking-selector-and-compare-cta");
   });

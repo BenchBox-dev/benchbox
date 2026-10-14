@@ -30,7 +30,7 @@ describe("formatRunIdentity", () => {
   });
 
   it("includes the version qualifier in compact and chart variants", () => {
-    const s = source({ platform: "DuckDB", driver_version: "1.3.2" });
+    const s = source({ platform: "DuckDB", platform_version: "1.3.2" });
     expect(formatRunIdentity(s, "compact")).toBe("DuckDB v1.3.2");
     expect(formatRunIdentity(s, "chart")).toBe("DuckDB v1.3.2");
   });
@@ -38,7 +38,7 @@ describe("formatRunIdentity", () => {
   it("table variant uses bullet separators and the top-2 qualifiers", () => {
     const s = source({
       platform: "DuckDB",
-      driver_version: "1.3.2",
+      platform_version: "1.3.2",
       run_date: "2026-04-17",
     });
     expect(formatRunIdentity(s, "table")).toMatch(/^DuckDB · v1\.3\.2 · 2026-04-17$/);
@@ -47,7 +47,7 @@ describe("formatRunIdentity", () => {
   it("tooltip variant lists every qualifier on its own line", () => {
     const s = source({
       platform: "DuckDB",
-      driver_version: "1.3.2",
+      platform_version: "1.3.2",
       run_date: "2026-04-17",
       scale_factor: 0.1,
     });
@@ -75,8 +75,8 @@ describe("formatRunIdentitiesForCohort", () => {
 
   it("appends version qualifiers when two same-platform runs share the cohort", () => {
     const cohort = [
-      source({ result_id: "r1", platform: "DataFusion", driver_version: "44" }),
-      source({ result_id: "r2", platform: "DataFusion", driver_version: "53" }),
+      source({ result_id: "r1", platform: "DataFusion", platform_version: "44" }),
+      source({ result_id: "r2", platform: "DataFusion", platform_version: "53" }),
       source({ result_id: "r3", platform: "DuckDB" }),
     ];
     const labels = formatRunIdentitiesForCohort(cohort, "chart");
@@ -91,13 +91,13 @@ describe("formatRunIdentitiesForCohort", () => {
       source({
         result_id: "r1",
         platform: "Polars",
-        driver_version: "1.40.0",
+        platform_version: "1.40.0",
         run_date: "2026-04-01",
       }),
       source({
         result_id: "r2",
         platform: "Polars",
-        driver_version: "1.40.0",
+        platform_version: "1.40.0",
         run_date: "2026-05-01",
       }),
     ];
@@ -114,14 +114,14 @@ describe("formatRunIdentitiesForCohort", () => {
       source({
         result_id: "amplab-datafusion-sf0.01-20260501-a276dae0",
         platform: "DataFusion",
-        driver_version: "53.0.0",
+        platform_version: "53.0.0",
         run_date: "2026-05-01",
         scale_factor: 0.01,
       }),
       source({
         result_id: "amplab-datafusion-sf0.01-20260502-bb1d4f90",
         platform: "DataFusion",
-        driver_version: "53.0.0",
+        platform_version: "53.0.0",
         run_date: "2026-05-02",
         scale_factor: 0.01,
       }),
@@ -140,7 +140,7 @@ describe("formatRunIdentitiesForCohort", () => {
       source({
         result_id: "tpch-spark-sf0.01-20260501-1111aaaa",
         platform: "Spark",
-        driver_version: "3.5.0",
+        platform_version: "3.5.0",
         run_date: "2026-05-01",
         scale_factor: 0.01,
       }),
@@ -217,8 +217,8 @@ describe("formatRunIdentitiesForCohort", () => {
     const cohort = [
       source({ result_id: "r1", platform: "Spark" }),
       source({ result_id: "r2", platform: "Spark" }),
-      source({ result_id: "r3", platform: "Spark", driver_version: "3.5" }),
-      source({ result_id: "r4", platform: "Spark", driver_version: "3.5", run_date: "2026-04-17" }),
+      source({ result_id: "r3", platform: "Spark", platform_version: "3.5" }),
+      source({ result_id: "r4", platform: "Spark", platform_version: "3.5", run_date: "2026-04-17" }),
     ];
     const labels = formatRunIdentitiesForCohort(cohort, "chart");
     expect(new Set(labels).size).toBe(labels.length);
@@ -229,13 +229,13 @@ describe("formatRunIdentitiesForCohort", () => {
       source({
         result_id: "tpch-duckdb-sf0.01-20260403-c138f960",
         platform: "DuckDB",
-        driver_version: "1.4.3",
+        platform_version: "1.4.3",
         run_date: "2026-04-03",
       }),
       source({
         result_id: "tpch-duckdb-sf0.01-20260403-d9e88a11",
         platform: "DuckDB",
-        driver_version: "1.4.3",
+        platform_version: "1.4.3",
         run_date: "2026-04-03",
       }),
     ];
@@ -247,8 +247,8 @@ describe("formatRunIdentitiesForCohort", () => {
 
   it("table variant uses bullet separators when disambiguating", () => {
     const cohort = [
-      source({ result_id: "r1", platform: "PySpark", driver_version: "3.5" }),
-      source({ result_id: "r2", platform: "PySpark", driver_version: "4.1" }),
+      source({ result_id: "r1", platform: "PySpark", platform_version: "3.5" }),
+      source({ result_id: "r2", platform: "PySpark", platform_version: "4.1" }),
     ];
     const labels = formatRunIdentitiesForCohort(cohort, "table");
     expect(labels[0]).toContain("·");
@@ -261,7 +261,7 @@ describe("formatRunIdentitiesForCohort", () => {
         result_id: "tpch-datafusion-sf0.01-20260506-3b8bbc42",
         short_id: "3b8bbc42",
         platform: "DataFusion",
-        driver_version: "53.0.0",
+        platform_version: "53.0.0",
         run_date: "2026-05-06T12:00:00Z",
         scale_factor: 0.01,
         trust_label: "maintainer-run",
@@ -270,7 +270,7 @@ describe("formatRunIdentitiesForCohort", () => {
         result_id: "tpch-datafusion-sf0.01-20260507-deadbeef",
         short_id: "deadbeef",
         platform: "DataFusion",
-        driver_version: "53.0.0",
+        platform_version: "53.0.0",
         run_date: "2026-05-07T12:00:00Z",
         scale_factor: 0.01,
         trust_label: "maintainer-run",
@@ -315,5 +315,72 @@ describe("formatRunIdentitiesForCohort", () => {
       "DataFusion… cafefeed",
       "DataFusion… feedface",
     ]);
+  });
+});
+
+describe("driver version handling", () => {
+  it("shows no version for a run that records only a driver version", () => {
+    const s = source({ platform: "DuckDB", driver_version: "1.6.0.dev365" });
+    expect(formatRunIdentity(s, "compact")).toBe("DuckDB");
+    expect(formatRunIdentity(s, "table")).toBe("DuckDB");
+    expect(formatRunIdentitiesForCohort([s], "chart")).toEqual(["DuckDB"]);
+    expect(formatRunIdentityLabelsForCohort([s])[0]?.full).not.toContain("1.6.0");
+  });
+
+  it("uses the platform version for the qualifier and the driver only in the full identity", () => {
+    const s = source({
+      platform: "DuckDB",
+      platform_version: "2.0.0-alpha38615",
+      driver_version: "1.6.0.dev365",
+    });
+    expect(formatRunIdentity(s, "compact")).toBe("DuckDB v2.0.0…");
+    expect(formatRunIdentity(s, "table")).toBe("DuckDB · v2.0.0…");
+    expect(formatRunIdentity(s, "chart")).toBe("DuckDB v2.0.0…");
+    const labels = formatRunIdentityLabelsForCohort([s]);
+    expect(labels[0]?.full).toBe("DuckDB · v2.0.0-alpha38615 · Driver 1.6.0.dev365 · 7fe93365");
+  });
+
+  it("adds the driver to the tooltip only when it differs from the platform version", () => {
+    const differs = source({
+      platform: "Snowflake",
+      platform_version: "10.35.101",
+      driver_version: "4.7.3",
+    });
+    expect(formatRunIdentity(differs, "tooltip").split("\n").at(-1)).toBe("Driver 4.7.3");
+    expect(formatRunIdentitiesForCohort([differs], "tooltip")[0]!.split("\n").at(-1)).toBe("Driver 4.7.3");
+
+    const matches = source({
+      platform: "Snowflake",
+      platform_version: "10.35.101",
+      driver_version: "10.35.101",
+    });
+    expect(formatRunIdentity(matches, "tooltip")).not.toContain("Driver");
+    expect(formatRunIdentityLabelsForCohort([matches])[0]?.full).not.toContain("Driver");
+  });
+
+  it("keeps labels distinct when runs share platform and platform version but differ only by driver", () => {
+    const cohort = [
+      source({
+        result_id: "tpch-snowflake-sf10.0-20261003-f0835929",
+        platform: "Snowflake",
+        platform_version: "10.35.101",
+        driver_version: "4.7.3",
+        scale_factor: 10,
+      }),
+      source({
+        result_id: "tpch-snowflake-sf10.0-20261004-a1b2c3d4",
+        platform: "Snowflake",
+        platform_version: "10.35.101",
+        driver_version: "4.8.0",
+        scale_factor: 10,
+      }),
+    ];
+    const labels = formatRunIdentitiesForCohort(cohort, "chart");
+    expect(labels).toEqual(["Snowflake v10.35.101 SF 10 f0835929", "Snowflake v10.35.101 SF 10 a1b2c3d4"]);
+    expect(labels.join(" ")).not.toContain("4.7.3");
+
+    const full = formatRunIdentityLabelsForCohort(cohort).map((label) => label.full);
+    expect(full[0]).toContain("Driver 4.7.3");
+    expect(full[1]).toContain("Driver 4.8.0");
   });
 });

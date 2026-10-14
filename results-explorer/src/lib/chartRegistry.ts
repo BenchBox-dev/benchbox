@@ -1,4 +1,6 @@
+import { hasCostEstimate } from "@/lib/costDisplay";
 import type { BenchmarkSummary, DetailResult, PlatformRow } from "@/types";
+import { assignRunColorSlots } from "@/lib/chartTheme";
 import { canonicalPhase } from "@/lib/displayLabels";
 import {
   isTimingDisplayable,
@@ -53,6 +55,7 @@ export interface ChartRegistryEntry {
   eligibilityClass: ChartDatasetEligibilityClass;
   requires: DataRequirements;
   cli_equivalent: string;
+  foldedInto?: string;
 }
 
 export interface ChartQuestionGroupWithCharts extends ChartQuestionGroup {
@@ -101,7 +104,7 @@ export const CHART_QUESTION_GROUP_BY_ID: Readonly<Record<ChartQuestionGroupId, C
 export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   {
     id: "performance_bar",
-    title: "Performance Bar",
+    title: "Geomean latency by run",
     shortTitle: "Performance",
     description: "Bar chart comparing total runtime across platforms",
     questionGroup: "overview",
@@ -111,7 +114,7 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "power_bar",
-    title: "Power@Size Bar",
+    title: "Power@Size by run",
     shortTitle: "Power",
     description: "Bar chart comparing TPC Power@Size metric across platforms (higher is better)",
     questionGroup: "overview",
@@ -121,7 +124,7 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "distribution_box",
-    title: "Distribution Box Plot",
+    title: "Latency distribution",
     shortTitle: "Box Plot",
     description: "Box plot showing query execution time distribution",
     questionGroup: "distribution",
@@ -131,7 +134,7 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "query_heatmap",
-    title: "Query Heatmap",
+    title: "Per-query latency heatmap",
     shortTitle: "Heatmap",
     description: "Heatmap comparing per-query execution times across platforms",
     questionGroup: "per_query",
@@ -141,10 +144,9 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "query_histogram",
-    title: "Query Histogram",
-    shortTitle: "Histogram",
-    description:
-      "Vertical bar histogram showing latency per query (auto-splits for >33 queries)",
+    title: "Per-query Latency",
+    shortTitle: "Latency",
+    description: "Horizontal latency plot with one marker per run on each query row",
     questionGroup: "per_query",
     eligibilityClass: "display_safe",
     requires: { requiresSummary: true, requiresQueryTimings: true },
@@ -152,7 +154,7 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "cost_scatter",
-    title: "Cost vs Performance Scatter",
+    title: "Cost vs performance",
     shortTitle: "Cost",
     description: "Scatter plot of normalized cost vs performance with cost-status empty states",
     questionGroup: "cost",
@@ -162,7 +164,7 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "time_series",
-    title: "Performance Trend",
+    title: "Performance over time",
     shortTitle: "Trend",
     description: "Line chart showing performance trends over time",
     questionGroup: "trend",
@@ -172,7 +174,7 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "comparison_bar",
-    title: "Comparison Bar",
+    title: "Comparison by run",
     shortTitle: "Compare",
     description:
       "Paired side-by-side bars comparing two runs per query with % change annotations",
@@ -183,18 +185,19 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "diverging_bar",
-    title: "Diverging Bar",
-    shortTitle: "Diverging",
+    title: "Difference (%) vs Baseline",
+    shortTitle: "Difference (%)",
     description:
-      "Centered-zero chart showing regression/improvement distribution sorted by magnitude",
+      "Centered-zero view of each query's percentage change against the baseline, sorted by magnitude; shown through the Difference (%) option of the per-query comparison",
     questionGroup: "per_query",
     eligibilityClass: "compare_safe",
     requires: { requiresTwoResults: true },
     cli_equivalent: "diverging_bar",
+    foldedInto: "normalized_speedup",
   },
   {
     id: "summary_box",
-    title: "Summary Box",
+    title: "Run summary",
     shortTitle: "Summary",
     description:
       "Bordered panel with aggregate stats (geo mean, total time, improved/regressed counts)",
@@ -205,7 +208,7 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "percentile_ladder",
-    title: "Percentile Ladder",
+    title: "Latency percentiles",
     shortTitle: "Percentiles",
     description: "Percentile ladder chart (P50/P90/P95/P99) across platforms",
     questionGroup: "distribution",
@@ -215,9 +218,10 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "normalized_speedup",
-    title: "Relative to selected baseline",
-    shortTitle: "Relative result",
-    description: "Compare each query with the selected baseline run",
+    title: "Per-query comparison vs baseline",
+    shortTitle: "vs Baseline",
+    description:
+      "For each query, compare every run with the baseline as a speedup (default) or as a percentage difference; speedups above 1 are faster",
     questionGroup: "per_query",
     eligibilityClass: "compare_safe",
     requires: { requiresTwoResults: true },
@@ -225,7 +229,7 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "stacked_phase",
-    title: "Stacked Phase Breakdown",
+    title: "Time by phase",
     shortTitle: "Phases",
     description: "Stacked phase breakdown chart across benchmark execution phases",
     questionGroup: "overview",
@@ -235,7 +239,7 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "sparkline_table",
-    title: "Sparkline Table",
+    title: "Geomean and cost by run",
     shortTitle: "Sparklines",
     description: "Compact sparkline table of key metrics across platforms",
     questionGroup: "overview",
@@ -245,7 +249,7 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "cdf_chart",
-    title: "CDF Chart",
+    title: "Cumulative latency distribution",
     shortTitle: "CDF",
     description: "Cumulative distribution chart of per-query execution latency",
     questionGroup: "distribution",
@@ -255,7 +259,7 @@ export const CHART_REGISTRY: readonly ChartRegistryEntry[] = [
   },
   {
     id: "rank_table",
-    title: "Rank Table",
+    title: "Query rank summary",
     shortTitle: "Ranks",
     description: "Per-query platform ranking table (1st=fastest)",
     questionGroup: "rank",
@@ -382,6 +386,11 @@ function detailToPlatformRow(detail: DetailResult): PlatformRow {
     cost_model_source: detail.cost_model_source,
     cost_scope: detail.cost_scope,
     cost_status: detail.cost_status,
+    estimated_cost_usd: detail.estimated_cost_usd ?? null,
+    cost_estimate_method: detail.cost_estimate_method ?? null,
+    cost_estimate_source: detail.cost_estimate_source ?? null,
+    cost_estimate_pricing_date: detail.cost_estimate_pricing_date ?? null,
+    cost_estimate_assumptions: detail.cost_estimate_assumptions ?? null,
     billing_unit: detail.billing_unit,
     pricing_region: detail.pricing_region,
     deployment_class: detail.deployment_class,
@@ -410,10 +419,19 @@ function detailToPlatformRow(detail: DetailResult): PlatformRow {
   };
 }
 
+function withRunColorSlots(summary: BenchmarkSummary): BenchmarkSummary {
+  const slots = assignRunColorSlots(summary.platforms);
+  return {
+    ...summary,
+    platforms: summary.platforms.map((platform) => ({ ...platform, color_slot: slots.get(platform.result_id) })),
+  };
+}
+
 export function buildRenderableSummary(context: ChartContext): BenchmarkSummary | null {
-  if (context.kind === "summary") return context.summary;
-  if (context.kind === "detail") return buildDetailSummary(context.detail, context.primaryMetric);
-  return buildCompareSummary(context.results, context.primaryMetric);
+  if (context.kind === "summary") return context.summary ? withRunColorSlots(context.summary) : null;
+  if (context.kind === "detail") return withRunColorSlots(buildDetailSummary(context.detail, context.primaryMetric));
+  const summary = buildCompareSummary(context.results, context.primaryMetric);
+  return summary ? withRunColorSlots(summary) : null;
 }
 
 function getChartCapabilities(context: ChartContext): ChartCapabilities {
@@ -430,7 +448,8 @@ function getChartCapabilities(context: ChartContext): ChartCapabilities {
     hasTwoResults: context.kind === "compare" && context.results.length >= 2,
     hasCostData:
       summary?.platforms.some(
-        (platform) => platform.cost_status === "normalized" && platform.normalized_cost_usd != null,
+        (platform) =>
+          (platform.cost_status === "normalized" && platform.normalized_cost_usd != null) || hasCostEstimate(platform),
       ) ?? false,
     hasPowerScore: summary?.platforms.some((platform) => isValidTimingValue(platform.power_score)) ?? false,
     hasPhaseDurations:

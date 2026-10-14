@@ -1,3 +1,4 @@
+import { MISSING_VALUE_GLYPH } from "@/lib/metricFormatters";
 import { formatLatencyMs, formatPowerScore, formatPowerScoreExact } from "./lib/metricFormatters";
 
 export const BENCHMARK_LABELS: Record<string, string> = {
@@ -52,7 +53,7 @@ export function fmtMs(ms: number): string {
 }
 
 export function fmtGeomean(ms: number | null | undefined): string {
-  return ms != null ? fmtMs(ms) : "N/A";
+  return ms != null ? fmtMs(ms) : MISSING_VALUE_GLYPH;
 }
 
 export function errMsg(err: unknown): string {

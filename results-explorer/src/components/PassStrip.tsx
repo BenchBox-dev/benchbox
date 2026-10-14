@@ -1,3 +1,4 @@
+import { formatRatio } from "@/lib/metricFormatters";
 import { useRef, useState } from "preact/hooks";
 import type { QueryTiming } from "@/types";
 import { TableScrollHint } from "@/components/TableScrollHint";
@@ -7,6 +8,7 @@ import { fmtMs } from "@/utils";
 export interface PassStripProps {
   queries: QueryTiming[];
   limit?: number;
+  embedded?: boolean;
 }
 
 export interface QueryPassSummary {
@@ -102,11 +104,10 @@ export function hasNoRecordedWarmup(summaries: readonly QueryPassSummary[]): boo
 }
 
 function ratioText(ratio: number | null): string {
-  if (ratio === null) return "—";
-  return `${ratio.toFixed(2)}x`;
+  return formatRatio(ratio);
 }
 
-export function PassStrip({ queries, limit = 25 }: PassStripProps) {
+export function PassStrip({ queries, limit = 25, embedded = false }: PassStripProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [visibleLimit, setVisibleLimit] = useState(limit);
   const summaries = summarizeQueryPasses(queries);
@@ -119,13 +120,22 @@ export function PassStrip({ queries, limit = 25 }: PassStripProps) {
       ? `Totals across all ${summaries.length} ${summaries.length === 1 ? "query" : "queries"}.`
       : `Totals across all ${summaries.length} queries, including the ${summaries.length - shown.length} not listed above.`;
 
+  const Container = embedded ? "div" : "section";
+  const containerClass = embedded ? "mb-6" : "card mb-8";
+  const containerProps = embedded ? {} : { "aria-labelledby": "pass-view-title" };
+  const introClass = embedded ? "text-xs text-[var(--bb-data-fg-muted)]" : "mt-1 text-xs text-[var(--bb-data-fg-muted)]";
+
+  const heading = embedded ? null : (
+    <h2 id="pass-view-title" class="text-base font-semibold text-[var(--bb-data-fg-primary)]">
+      Passes within this run
+    </h2>
+  );
+
   return (
-    <section class="card mb-8" aria-labelledby="pass-view-title">
+    <Container class={containerClass} {...containerProps}>
       <div class="mb-3">
-        <h2 id="pass-view-title" class="text-base font-semibold text-[var(--bb-data-fg-primary)]">
-          Passes within this run
-        </h2>
-        <p class="mt-1 text-xs text-[var(--bb-data-fg-muted)]">
+        {heading}
+        <p class={introClass}>
           {`Warm median is the median of this run's passing measurement passes, per query — the same reduction the published figure uses. Warmup median includes all passing warmup streams and iterations and is excluded from the warm median. Showing ${shown.length} of ${summaries.length} ${summaries.length === 1 ? "query" : "queries"}.`}
         </p>
         {noWarmup ? (
@@ -199,6 +209,6 @@ export function PassStrip({ queries, limit = 25 }: PassStripProps) {
         {totalsScope} Warmup overall is the total of all passing warmup executions.
         The overall ratio compares summed warmup medians with summed warm medians for queries with both.
       </p>
-    </section>
+    </Container>
   );
 }

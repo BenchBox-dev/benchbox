@@ -120,7 +120,8 @@ describe("multi-run identity matrix (N > 2 runs)", () => {
     render(<IdentityDiffStrip results={[r1, r2, r3]} baselineIndex={0} runLabels={["Run 1", "Run 2", "Run 3"]} />);
 
     const cellDiff = screen.getByTestId("matrix-cell-Platform version-1");
-    expect(cellDiff.textContent).toContain("Differs");
+    expect(cellDiff.textContent).not.toContain("Differs");
+    expect(cellDiff).toHaveAttribute("data-differs", "true");
     expect(cellDiff.textContent).toContain("2.0.0");
 
     const cellMatch = screen.getByTestId("matrix-cell-Platform version-2");
@@ -161,5 +162,103 @@ describe("rendering guards", () => {
   it("renders nothing for an empty selection", () => {
     const { container } = render(<IdentityDiffStrip results={[]} />);
     expect(container.textContent).toBe("");
+  });
+});
+
+describe("more than four runs", () => {
+  const labelsFor = (count: number) => Array.from({ length: count }, (_, i) => `DuckDB run ${i + 1}`);
+  const tenRuns = () =>
+    Array.from({ length: 10 }, (_, i) =>
+      run({ result_id: `r${i + 1}`, platform_version: i % 3 === 1 ? "1.5.0" : "1.4.3" }),
+    );
+
+  it("lists every run as its own row so all ten stay reachable", () => {
+    const labels = labelsFor(10);
+    render(<IdentityDiffStrip results={tenRuns()} baselineIndex={0} runLabels={labels} />);
+
+    for (const label of labels.slice(1)) {
+      expect(screen.getByText(label)).toBeTruthy();
+    }
+    expect(screen.getByText("DuckDB run 1 (baseline)")).toBeTruthy();
+    expect(screen.getAllByRole("row")).toHaveLength(11);
+    expect(screen.getByTestId("matrix-run-9-Platform version").textContent).toContain("1.4.3");
+  });
+
+  it("keeps the table scrollable with a sticky run column", () => {
+    const { container } = render(<IdentityDiffStrip results={tenRuns()} baselineIndex={0} runLabels={labelsFor(10)} />);
+    const scroller = container.querySelector('[data-testid="identity-matrix-scroller"]');
+    expect(scroller?.classList.contains("overflow-x-auto")).toBe(true);
+    expect(container.querySelector("tbody th.sticky")).toBeTruthy();
+  });
+
+  it("marks the baseline once in the header rather than on every baseline cell", () => {
+    const { container } = render(<IdentityDiffStrip results={tenRuns()} baselineIndex={0} runLabels={labelsFor(10)} />);
+    expect(screen.queryAllByText("Baseline")).toHaveLength(0);
+    expect(container.textContent?.split("(baseline)").length).toBe(2);
+  });
+
+  it("shows a not-recorded value once, without a second pill", () => {
+    const runs = tenRuns();
+    runs[4] = run({ result_id: "r5", environment: { arch: "arm64" } as any });
+    render(<IdentityDiffStrip results={runs} baselineIndex={0} runLabels={labelsFor(10)} />);
+    const cell = screen.getByTestId("matrix-run-4-CPU family");
+    expect(cell.textContent).toBe("Not recorded");
+  });
+
+  it("marks the differing attribute once and highlights only the differing cells", () => {
+    render(<IdentityDiffStrip results={tenRuns()} baselineIndex={0} runLabels={labelsFor(10)} />);
+    expect(screen.getAllByText("Differs")).toHaveLength(1);
+    expect(screen.getByTestId("differs-marker-Platform version").textContent).toContain("in DuckDB run 2, DuckDB run 5, DuckDB run 8");
+    expect(screen.getByTestId("matrix-run-1-Platform version")).toHaveAttribute("data-differs", "true");
+    expect(screen.getByTestId("matrix-run-2-Platform version")).not.toHaveAttribute("data-differs");
+  });
+});
+
+describe("one differs marker per attribute", () => {
+  it("renders a single marker for each differing attribute in the column layout", () => {
+    const r1 = run({ result_id: "r1" });
+    const r2 = run({ result_id: "r2", platform_version: "1.5.0", driver_version: "9.9.9" });
+    const r3 = run({ result_id: "r3", platform_version: "1.5.0" });
+    render(<IdentityDiffStrip results={[r1, r2, r3]} baselineIndex={0} runLabels={["Run 1", "Run 2", "Run 3"]} />);
+
+    expect(screen.getAllByText("Differs")).toHaveLength(2);
+    expect(screen.getByTestId("differs-marker-Platform version").textContent).toContain("in Run 2, Run 3");
+    expect(screen.getByTestId("differs-marker-Driver version").textContent).toContain("in Run 2");
+    expect(screen.queryByTestId("differs-marker-Architecture")).toBeNull();
+  });
+
+  it("highlights differing cells without a pill in each cell", () => {
+    const r1 = run({ result_id: "r1" });
+    const r2 = run({ result_id: "r2", platform_version: "1.5.0" });
+    const r3 = run({ result_id: "r3", platform_version: "1.5.0" });
+    const { container } = render(<IdentityDiffStrip results={[r1, r2, r3]} baselineIndex={0} runLabels={["Run 1", "Run 2", "Run 3"]} />);
+
+    expect(container.querySelectorAll('[data-differs="true"]')).toHaveLength(2);
+    expect(screen.getByTestId("matrix-cell-Platform version-1").textContent).not.toContain("Differs");
+  });
+});
+
+describe("display labels for hardware values", () => {
+  it("shows CPU family and architecture as readable labels rather than enum values", () => {
+    const apple = run({ result_id: "r1" });
+    const amd = run({ result_id: "r2", environment: { arch: "x86_64", cpu_family: "amd_epyc", cpu_model: "EPYC 9454", cpu_count: 48, memory_gb: 384 } as any });
+    const third = run({ result_id: "r3" });
+    render(<IdentityDiffStrip results={[apple, amd, third]} />);
+
+    expect(screen.getByTestId("matrix-cell-CPU family-0")).toHaveTextContent("Apple silicon");
+    expect(screen.getByTestId("matrix-cell-CPU family-1")).toHaveTextContent("AMD EPYC");
+    expect(screen.getByTestId("matrix-cell-Architecture-1")).toHaveTextContent("x86-64");
+    expect(screen.getByTestId("matrix-cell-Architecture-0")).toHaveTextContent("Arm64");
+    expect(screen.queryByText(/apple_silicon|amd_epyc|x86_64/)).toBeNull();
+  });
+
+  it("uses the same labels in the transposed layout", () => {
+    const runs = Array.from({ length: 5 }, (_, i) =>
+      run({ result_id: `r${i + 1}`, environment: { arch: "x86_64", cpu_family: "intel_xeon", cpu_model: "Xeon 8488C", cpu_count: 8, memory_gb: 32 } as any }),
+    );
+    render(<IdentityDiffStrip results={runs} baselineIndex={0} />);
+
+    expect(screen.getByTestId("matrix-run-3-CPU family")).toHaveTextContent("Intel Xeon");
+    expect(screen.getByTestId("matrix-run-3-Architecture")).toHaveTextContent("x86-64");
   });
 });

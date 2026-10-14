@@ -1,21 +1,25 @@
+import { formatLatencyMs, formatRatio } from "@/lib/metricFormatters";
 import type { RoutableProps } from "preact-router";
-import { useEffect, useMemo, useState } from "preact/hooks";
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import type { DetailResult } from "@/types";
 import { getDetailResult, resolveShortId } from "@/lib/duckdbQueries";
-import { errMsg, fmtMs } from "@/utils";
+import { errMsg, fmtMs, humanizeBenchmark } from "@/utils";
 import { ErrorMessage } from "@/components/ErrorMessage";
 import { CompareSummarySkeleton } from "@/components/LoadingSpinner";
+import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Select } from "@/components/Select";
+import { TableScrollHint } from "@/components/TableScrollHint";
 import { summarizeQueryPasses } from "@/components/PassStrip";
-import { clampReferenceIndex, withinRunCompareHref, MAX_WITHIN_RUN_BASES, MIN_WITHIN_RUN_BASES } from "@/lib/resultLinks";
+import { clampReferenceIndex, resultDetailHref, withinRunCompareHref, MAX_WITHIN_RUN_BASES, MIN_WITHIN_RUN_BASES } from "@/lib/resultLinks";
 import { paletteColor } from "@/lib/chartTheme";
 import { geomeanMs } from "@/lib/chartMath";
 import { COMPARE_TIE_THRESHOLD } from "@/lib/compareSummary";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
 import {
   DEFAULT_BASIS,
+  WARMUP,
   availableBasesForExecutions,
   basisUnavailableLabel,
   basesEqual,
@@ -26,7 +30,6 @@ import {
   passSelectionsEqual,
   resolveQueryValue,
   selectComparableBasisPair,
-  warmPass,
   type BasisUnavailableReason,
   type BasisExecution,
   type MeasurementBasis,
@@ -60,7 +63,7 @@ export function parseBasesParam(search: string): {
   const bases =
     unique.length >= MIN_WITHIN_RUN_BASES
       ? unique.slice(0, MAX_WITHIN_RUN_BASES)
-      : [DEFAULT_BASIS, { passes: warmPass(1), statistic: "median" as const }];
+      : [DEFAULT_BASIS, { passes: WARMUP, statistic: "median" as const }];
   const refRaw = Number(params.get("ref") ?? "0");
   const referencedBasis = decoded?.[clampReferenceIndex(refRaw, decoded.length)];
   const deduplicatedReferenceIndex = referencedBasis
@@ -74,6 +77,20 @@ export function parseBasesParam(search: string): {
         ? deduplicatedReferenceIndex
         : clampReferenceIndex(refRaw, bases.length),
   };
+}
+
+export function basesProduceOneMeasuredPass(
+  executions: readonly BasisExecution[],
+  displayMsByQuery: ReadonlyMap<string, number | null>,
+  bases: readonly MeasurementBasis[],
+): boolean {
+  if (bases.length < 2) return false;
+  const { rows } = buildWithinRunRows(executions, displayMsByQuery, bases);
+  const hasFullyMeasuredRow = rows.some((row) => row.cells.every((cell) => cell.ms !== null));
+  return hasFullyMeasuredRow && rows.every((row) => {
+    const values = row.cells.map((cell) => cell.ms).filter((ms): ms is number => ms !== null);
+    return values.every((ms) => ms === values[0]);
+  });
 }
 
 export function withinRunComparisonStatus(ratio: number | null): "faster" | "slower" | "parity" | null {
@@ -108,6 +125,11 @@ export const availableBasesForQueries = availableBasesForExecutions;
 export interface WithinRunCell {
   ms: number | null;
   unavailableReason: BasisUnavailableReason | null;
+}
+
+function signedLatencyDeltaText(deltaMs: number): string {
+  const sign = deltaMs > 0 ? "+" : deltaMs < 0 ? "−" : "";
+  return `${sign}${formatLatencyMs(Math.abs(deltaMs)).valueText}`;
 }
 
 export function withinRunUnavailableKind(
@@ -195,6 +217,7 @@ export function CompareWithinRun({ resultId }: CompareWithinRunProps) {
   const parsed = useMemo(() => parseBasesParam(search), [search]);
   const [bases, setBases] = useState<MeasurementBasis[]>(parsed.bases);
   const [referenceIndex, setReferenceIndex] = useState<number>(parsed.referenceIndex);
+  const tableScrollerRef = useRef<HTMLDivElement>(null);
   useDocumentTitle(detail ? `Compare measurements · ${detail.platform} · BenchBox Results` : "Compare measurements · BenchBox Results");
 
   useEffect(() => {
@@ -333,267 +356,276 @@ export function CompareWithinRun({ resultId }: CompareWithinRunProps) {
 
   const passSummaries = summarizeQueryPasses(detail.queries);
   const reference = bases[referenceIndex] ?? bases[0]!;
+  const displayMsByQuery = new Map<string, number | null>(
+    detail.display_timings.map((t) => [t.query_id, t.is_valid_display_timing ? t.display_ms : null]),
+  );
+  const onlyOneMeasuredPass = basesProduceOneMeasuredPass(detail.queries, displayMsByQuery, availableBases);
+  const onlyMeasuredPassNumber = availableBases.flatMap((basis) =>
+    basis.passes.kind === "warm_pass" ? [basis.passes.pass] : [],
+  )[0];
+  const runHref = resultDetailHref(detail.result_id);
 
   return (
-    <div class="mx-auto max-w-7xl px-4 py-6">
-      <section class="mb-6 panel-elevated p-5" aria-label="Within-run comparison">
-        <p class="text-xs font-semibold uppercase tracking-wide text-[var(--bb-data-fg-subtle)]">
-          Within one run
+    <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <PageHeader
+        crumbs={[
+          { label: "Results", href: "/results/" },
+          { label: humanizeBenchmark(detail.benchmark), href: `/results/${detail.benchmark}/` },
+          { label: detail.platform, href: runHref },
+          { label: "Passes" },
+        ]}
+        eyebrow="Within one run"
+        title={`Compare measurements from one ${detail.platform} run`}
+        subtitle={
+          <>
+            Each column reads the same run in a different way. The platform, hardware, and queries stay fixed, so any
+            difference comes from the selected passes or summary method.
+          </>
+        }
+        meta={
+          <>
+            <StatusBadge role="comparison" tone="neutral">
+              {`${grid.sharedQueryIds.length} of ${grid.rows.length} queries comparable`}
+            </StatusBadge>
+            <StatusBadge role="comparison" tone="neutral">
+              {`Reference: ${formatWithinRunBasisLabel(reference, bases)}`}
+            </StatusBadge>
+            <StatusBadge role="comparison" tone="neutral">
+              {`${passSummaries.length} queries in this run`}
+            </StatusBadge>
+          </>
+        }
+      />
+      <p class="mb-6 text-xs text-[var(--bb-data-fg-subtle)]" data-testid="not-a-platform-result">
+        These figures explain how the measurement method changes the result. They do not compare platforms and are not included in rankings.
+      </p>
+
+      {onlyOneMeasuredPass ? (
+        <p class="panel mb-6 px-4 py-3 text-sm text-[var(--bb-data-fg-primary)]" data-testid="one-measured-pass-note">
+          {onlyMeasuredPassNumber !== undefined
+            ? `Only one measured pass: the median equals pass ${onlyMeasuredPassNumber}.`
+            : "Only one measured pass: the median equals that pass."}
         </p>
-        <h1 class="mt-1 text-2xl font-bold text-[var(--bb-data-fg-primary)]">
-          Compare measurements from one {detail.platform} run
-        </h1>
-        <p class="mt-2 text-sm text-[var(--bb-data-fg-muted)]">
-          Each column reads the same run in a different way. The platform, hardware, and queries stay fixed, so any difference comes from the selected passes or summary method.
-        </p>
-        <p class="mt-1 text-xs text-[var(--bb-data-fg-subtle)]" data-testid="not-a-platform-result">
-          These figures explain how the measurement method changes the result. They do not compare platforms and are not included in rankings.
-        </p>
-        <div class="mt-3 flex flex-wrap items-center gap-2">
-          <StatusBadge role="comparison" tone="neutral">
-            {`${grid.sharedQueryIds.length} of ${grid.rows.length} queries comparable`}
-          </StatusBadge>
-          <StatusBadge role="comparison" tone="neutral">
-            {`Reference: ${formatWithinRunBasisLabel(reference, bases)}`}
-          </StatusBadge>
-          <StatusBadge role="comparison" tone="neutral">
-            {`${passSummaries.length} queries in this run`}
-          </StatusBadge>
-        </div>
-      </section>
+      ) : (
+        <>
+          <div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {bases.map((basis, i) => {
+              const color = paletteColor(i);
+              const isRef = i === referenceIndex;
+              const geomean = columnGeomeans[i] ?? null;
+              const ratio =
+                hasSufficientAggregateEvidence && refGeomean !== null && geomean !== null && refGeomean > 0
+                  ? geomean / refGeomean
+                  : null;
+              const deltaMs =
+                hasSufficientAggregateEvidence && refGeomean !== null && geomean !== null
+                  ? geomean - refGeomean
+                  : null;
+              const comparisonStatus = withinRunComparisonStatus(ratio);
+              const canRemove = bases.length > MIN_WITHIN_RUN_BASES;
 
-      <div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {bases.map((basis, i) => {
-          const color = paletteColor(i);
-          const isRef = i === referenceIndex;
-          const geomean = columnGeomeans[i] ?? null;
-          const ratio =
-            hasSufficientAggregateEvidence && refGeomean !== null && geomean !== null && refGeomean > 0
-              ? geomean / refGeomean
-              : null;
-          const deltaMs =
-            hasSufficientAggregateEvidence && refGeomean !== null && geomean !== null
-              ? geomean - refGeomean
-              : null;
-          const comparisonStatus = withinRunComparisonStatus(ratio);
-          const canRemove = bases.length > MIN_WITHIN_RUN_BASES;
-
-          return (
-            <div
-              key={encodeBasis(basis)}
-              class="card relative overflow-hidden"
-              style={{ borderTopColor: color, borderTopWidth: "3px" }}
-            >
-              <div class="mb-2 flex items-center justify-between">
-                <label class="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-[var(--bb-data-fg-primary)]">
-                  <input
-                    type="radio"
-                    name="within-run-reference-radio"
-                    checked={isRef}
-                    onChange={() => handleSetReference(i)}
-                    aria-label={`Set ${formatWithinRunBasisLabel(basis, bases)} as reference`}
-                    data-testid={`reference-radio-${encodeBasis(basis)}`}
-                  />
-                  <span>{formatWithinRunBasisLabel(basis, bases)}</span>
-                </label>
-                <div class="flex items-center gap-1">
-                  {isRef ? (
-                    <StatusBadge role="ranking" tone="info">reference</StatusBadge>
-                  ) : comparisonStatus !== null ? (
-                    <StatusBadge
-                      role="ranking"
-                      tone={comparisonStatus === "faster" ? "success" : "neutral"}
-                    >
-                      {comparisonStatus}
-                    </StatusBadge>
-                  ) : null}
-                  {canRemove && (
-                    <button
-                      type="button"
-                      class="text-xs text-[var(--bb-data-fg-subtle)] hover:text-[var(--bb-tone-danger-fg)] px-1 rounded"
-                      onClick={() => handleRemoveBasis(i)}
-                      aria-label={`Remove ${formatWithinRunBasisLabel(basis, bases)}`}
-                      title="Remove column"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <dl class="space-y-1 text-sm mt-3">
-                <div class="flex justify-between">
-                  <dt class="text-[var(--bb-data-fg-muted)]">Geomean query time</dt>
-                  <dd class="font-mono font-medium">
-                    {geomean !== null ? fmtMs(geomean) : "—"}
-                  </dd>
-                </div>
-                {!isRef && (
-                  <>
-                    <div class="flex justify-between">
-                      <dt class="text-[var(--bb-data-fg-muted)]">Ratio vs reference</dt>
-                      <dd class="font-mono font-medium">
-                        {ratio !== null ? `${ratio.toFixed(2)}x` : "—"}
-                      </dd>
-                    </div>
-                    <div class="flex justify-between">
-                      <dt class="text-[var(--bb-data-fg-muted)]">Delta vs reference</dt>
-                      <dd class="font-mono text-xs">
-                        {deltaMs !== null ? `${deltaMs > 0 ? "+" : ""}${deltaMs.toFixed(1)} ms` : "—"}
-                      </dd>
-                    </div>
-                  </>
-                )}
-              </dl>
-            </div>
-          );
-        })}
-      </div>
-
-      {bases.length < MAX_WITHIN_RUN_BASES && addableBases.length > 0 && (
-        <div class="panel mb-6 flex flex-wrap items-center justify-between gap-3 px-4 py-3 shadow-sm">
-          <div>
-            <label class="text-sm font-medium text-[var(--bb-data-fg-primary)]" for="add-basis-select">
-              Add measurement basis
-            </label>
-            <p class="text-xs text-[var(--bb-data-fg-muted)]">
-              Compare another pass or reduction from this run (up to {MAX_WITHIN_RUN_BASES} columns).
-            </p>
-          </div>
-          <div class="flex items-center gap-2">
-            <Select
-              id="add-basis-select"
-              ariaLabel="Available measurement bases"
-              size="sm"
-              value={effectiveAddKey}
-              onChange={setSelectedAddKey}
-              options={addableBases.map((b) => ({
-                value: encodeBasis(b),
-                label: formatWithinRunBasisLabel(b, availableBases),
-              }))}
-            />
-            <button
-              type="button"
-              class="rounded bg-[var(--bb-accent)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--bb-accent-hover)] transition-colors"
-              onClick={handleAddBasis}
-            >
-              + Add basis
-            </button>
-          </div>
-        </div>
-      )}
-
-      <section class="card" aria-label="Per-query values by basis">
-        <div class="overflow-x-auto">
-          <table class="min-w-full w-max divide-y divide-[var(--bb-data-border)] text-sm">
-            <thead class="bg-[var(--bb-surface-data-muted)]">
-              <tr>
-                <th scope="col" class="table-th text-left">Query</th>
-                {bases.map((basis, i) => (
-                  <th key={encodeBasis(basis)} scope="col" class="table-th text-right">
-                    <div class="flex items-center justify-end gap-1.5">
+              return (
+                <div
+                  key={encodeBasis(basis)}
+                  class="card relative overflow-hidden"
+                  style={{ borderTopColor: color, borderTopWidth: "3px" }}
+                >
+                  <div class="mb-2 flex items-center justify-between">
+                    <label class="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-[var(--bb-data-fg-primary)]">
+                      <input
+                        type="radio"
+                        name="within-run-reference-radio"
+                        checked={isRef}
+                        onChange={() => handleSetReference(i)}
+                        aria-label={`Set ${formatWithinRunBasisLabel(basis, bases)} as reference`}
+                        data-testid={`reference-radio-${encodeBasis(basis)}`}
+                      />
                       <span>{formatWithinRunBasisLabel(basis, bases)}</span>
-                      {i === referenceIndex && (
-                        <StatusBadge role="ranking" tone="info">ref</StatusBadge>
+                    </label>
+                    <div class="flex items-center gap-1">
+                      {!isRef && comparisonStatus !== null ? (
+                        <StatusBadge
+                          role="ranking"
+                          tone={comparisonStatus === "faster" ? "success" : "neutral"}
+                        >
+                          {comparisonStatus}
+                        </StatusBadge>
+                      ) : null}
+                      {canRemove && (
+                        <button
+                          type="button"
+                          class="text-xs text-[var(--bb-data-fg-subtle)] hover:text-[var(--bb-tone-danger-fg)] px-1 rounded"
+                          onClick={() => handleRemoveBasis(i)}
+                          aria-label={`Remove ${formatWithinRunBasisLabel(basis, bases)}`}
+                          title="Remove column"
+                        >
+                          ✕
+                        </button>
                       )}
                     </div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-[var(--bb-data-border)] bg-[var(--bb-surface-data)]">
-              {grid.rows.map((row) => {
-                const refCell = row.cells[referenceIndex];
-                return (
-                  <tr key={row.queryId} class="hover:bg-[var(--bb-surface-data-muted)]">
-                    <td class="table-td font-mono font-medium text-left">{row.queryId}</td>
-                    {row.cells.map((cell, i) => {
-                      const isRef = i === referenceIndex;
-                      const { ratio, deltaMs } = calculateCellDelta(cell.ms, refCell?.ms ?? null);
-                      const comparisonStatus = withinRunComparisonStatus(ratio);
-                      return (
-                        <td key={i} class="table-td font-mono text-right">
-                          {cell.ms !== null ? (
-                            <div>
-                              <div class="font-medium text-[var(--bb-data-fg-primary)]">
-                                {cell.ms.toFixed(1)} ms
-                              </div>
-                              {!isRef && ratio !== null && deltaMs !== null && (
-                                <div
-                                  class={`text-xs ${
-                                    comparisonStatus === "faster"
-                                      ? "text-[var(--bb-tone-success-fg)] font-medium"
-                                      : comparisonStatus === "slower"
-                                        ? "text-[var(--bb-data-fg-muted)]"
-                                        : "text-[var(--bb-data-fg-subtle)]"
-                                  }`}
-                                >
-                                  {ratio.toFixed(2)}x ({deltaMs > 0 ? "+" : ""}{deltaMs.toFixed(1)} ms)
+                  </div>
+
+                  <dl class="space-y-1 text-sm mt-3">
+                    <div class="flex justify-between">
+                      <dt class="text-[var(--bb-data-fg-muted)]">Geomean query time</dt>
+                      <dd class="font-mono font-medium">
+                        {geomean !== null ? fmtMs(geomean) : "—"}
+                      </dd>
+                    </div>
+                    {!isRef && (
+                      <>
+                        <div class="flex justify-between">
+                          <dt class="text-[var(--bb-data-fg-muted)]">Ratio vs reference</dt>
+                          <dd class="font-mono font-medium">
+                            {formatRatio(ratio)}
+                          </dd>
+                        </div>
+                        <div class="flex justify-between">
+                          <dt class="text-[var(--bb-data-fg-muted)]">Delta vs reference</dt>
+                          <dd class="font-mono text-xs">
+                            {deltaMs !== null ? signedLatencyDeltaText(deltaMs) : "—"}
+                          </dd>
+                        </div>
+                      </>
+                    )}
+                  </dl>
+                </div>
+              );
+            })}
+          </div>
+
+          {bases.length < MAX_WITHIN_RUN_BASES && addableBases.length > 0 && (
+            <div class="panel mb-6 flex flex-wrap items-center justify-between gap-3 px-4 py-3 shadow-sm">
+              <div>
+                <label class="text-sm font-medium text-[var(--bb-data-fg-primary)]" for="add-basis-select">
+                  Add measurement basis
+                </label>
+                <p class="text-xs text-[var(--bb-data-fg-muted)]">
+                  Compare another pass or reduction from this run (up to {MAX_WITHIN_RUN_BASES} columns).
+                </p>
+              </div>
+              <div class="flex items-center gap-2">
+                <Select
+                  id="add-basis-select"
+                  ariaLabel="Available measurement bases"
+                  size="sm"
+                  value={effectiveAddKey}
+                  onChange={setSelectedAddKey}
+                  options={addableBases.map((b) => ({
+                    value: encodeBasis(b),
+                    label: formatWithinRunBasisLabel(b, availableBases),
+                  }))}
+                />
+                <button type="button" class="btn btn-primary" onClick={handleAddBasis}>
+                  + Add basis
+                </button>
+              </div>
+            </div>
+          )}
+
+          <TableScrollHint scrollerRef={tableScrollerRef} testId="within-run-scroll-hint" />
+          <section class="card" aria-label="Per-query values by basis">
+            <div ref={tableScrollerRef} class="overflow-x-auto" data-testid="within-run-scroll-container">
+              <table class="min-w-full w-max divide-y divide-[var(--bb-data-border)] text-sm">
+                <thead class="bg-[var(--bb-surface-data-muted)]">
+                  <tr>
+                    <th scope="col" class="table-th sticky left-0 z-10 bg-[var(--bb-surface-data-muted)] text-left">Query</th>
+                    {bases.map((basis) => (
+                      <th key={encodeBasis(basis)} scope="col" class="table-th whitespace-nowrap text-right">
+                        {formatWithinRunBasisLabel(basis, bases)}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-[var(--bb-data-border)] bg-[var(--bb-surface-data)]">
+                  {grid.rows.map((row) => {
+                    const refCell = row.cells[referenceIndex];
+                    return (
+                      <tr key={row.queryId} class="hover:bg-[var(--bb-surface-data-muted)]">
+                        <td class="table-td sticky left-0 z-10 bg-[var(--bb-surface-data)] font-mono font-medium text-left">{row.queryId}</td>
+                        {row.cells.map((cell, i) => {
+                          const isRef = i === referenceIndex;
+                          const { ratio, deltaMs } = calculateCellDelta(cell.ms, refCell?.ms ?? null);
+                          const comparisonStatus = withinRunComparisonStatus(ratio);
+                          return (
+                            <td key={i} class="table-td font-mono text-right whitespace-nowrap">
+                              {cell.ms !== null ? (
+                                <div>
+                                  <div class="font-medium text-[var(--bb-data-fg-primary)]">
+                                    {formatLatencyMs(cell.ms).valueText}
+                                  </div>
+                                  {!isRef && ratio !== null && deltaMs !== null && (
+                                    <div
+                                      class={`text-xs ${
+                                        comparisonStatus === "faster"
+                                          ? "text-[var(--bb-tone-success-fg)] font-medium"
+                                          : comparisonStatus === "slower"
+                                            ? "text-[var(--bb-data-fg-muted)]"
+                                            : "text-[var(--bb-data-fg-subtle)]"
+                                      }`}
+                                    >
+                                      {formatRatio(ratio)} ({signedLatencyDeltaText(deltaMs)})
+                                    </div>
+                                  )}
+                                  {!isRef && (ratio === null || deltaMs === null) && (
+                                    <div class="text-xs text-[var(--bb-data-fg-subtle)]">no ref</div>
+                                  )}
                                 </div>
+                              ) : (
+                                <span
+                                  class="text-[var(--bb-data-fg-subtle)]"
+                                  data-testid={`${withinRunUnavailableKind(cell.unavailableReason)}-cell`}
+                                  title={cell.unavailableReason ? basisUnavailableLabel(cell.unavailableReason) : undefined}
+                                >
+                                  {withinRunUnavailableKind(cell.unavailableReason)}
+                                </span>
                               )}
-                              {!isRef && (ratio === null || deltaMs === null) && (
-                                <div class="text-xs text-[var(--bb-data-fg-subtle)]">no ref</div>
-                              )}
-                              {isRef && (
-                                <div class="text-xs text-[var(--bb-data-fg-subtle)]">reference</div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot class="border-t-2 border-[var(--bb-data-border)] bg-[var(--bb-surface-data-muted)] font-semibold">
+                  <tr>
+                    <td class="table-td sticky left-0 z-10 bg-[var(--bb-surface-data-muted)] font-mono text-left whitespace-nowrap">
+                      Geomean ({grid.sharedQueryIds.length} shared)
+                    </td>
+                    {columnGeomeans.map((g, i) => {
+                      const isRef = i === referenceIndex;
+                      const ratio =
+                        hasSufficientAggregateEvidence && refGeomean !== null && g !== null && refGeomean > 0
+                          ? g / refGeomean
+                          : null;
+                      const deltaMs =
+                        hasSufficientAggregateEvidence && refGeomean !== null && g !== null
+                          ? g - refGeomean
+                          : null;
+                      return (
+                        <td key={i} class="table-td font-mono text-right whitespace-nowrap">
+                          {g !== null ? (
+                            <div>
+                              <div>{fmtMs(g)}</div>
+                              {!isRef && ratio !== null && deltaMs !== null && (
+                                <div class="text-xs font-normal text-[var(--bb-data-fg-muted)]">
+                                  {formatRatio(ratio)} ({signedLatencyDeltaText(deltaMs)})
+                                </div>
                               )}
                             </div>
                           ) : (
-                            <span
-                              class="text-[var(--bb-data-fg-subtle)]"
-                              data-testid={`${withinRunUnavailableKind(cell.unavailableReason)}-cell`}
-                              title={cell.unavailableReason ? basisUnavailableLabel(cell.unavailableReason) : undefined}
-                            >
-                              {withinRunUnavailableKind(cell.unavailableReason)}
-                            </span>
+                            "—"
                           )}
                         </td>
                       );
                     })}
                   </tr>
-                );
-              })}
-            </tbody>
-            <tfoot class="border-t-2 border-[var(--bb-data-border)] bg-[var(--bb-surface-data-muted)] font-semibold">
-              <tr>
-                <td class="table-td font-mono text-left">
-                  Geomean ({grid.sharedQueryIds.length} shared)
-                </td>
-                {columnGeomeans.map((g, i) => {
-                  const isRef = i === referenceIndex;
-                  const ratio =
-                    hasSufficientAggregateEvidence && refGeomean !== null && g !== null && refGeomean > 0
-                      ? g / refGeomean
-                      : null;
-                  const deltaMs =
-                    hasSufficientAggregateEvidence && refGeomean !== null && g !== null
-                      ? g - refGeomean
-                      : null;
-                  return (
-                    <td key={i} class="table-td font-mono text-right">
-                      {g !== null ? (
-                        <div>
-                          <div>{fmtMs(g)}</div>
-                          {!isRef && ratio !== null && deltaMs !== null && (
-                            <div class="text-xs font-normal text-[var(--bb-data-fg-muted)]">
-                              {ratio.toFixed(2)}x ({deltaMs > 0 ? "+" : ""}{deltaMs.toFixed(1)} ms)
-                            </div>
-                          )}
-                          {isRef && (
-                            <div class="text-xs font-normal text-[var(--bb-data-fg-subtle)]">reference</div>
-                          )}
-                        </div>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      </section>
+                </tfoot>
+              </table>
+            </div>
+        </section>
+        </>
+      )}
     </div>
   );
 }

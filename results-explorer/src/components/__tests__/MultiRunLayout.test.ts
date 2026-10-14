@@ -5,13 +5,17 @@ import {
   divergingRatioPosition,
   queryDisagreementSpread,
 } from "@/lib/chartMath";
+import { h } from "preact";
+import { render, screen } from "@testing-library/preact";
 import {
+  MultiRunHeatmap,
   buildHeatmapRows,
   filterHeatmapRows,
   heatmapCellStyle,
   orderRowsByDisagreement,
 } from "@/components/MultiRunHeatmap";
 import { buildStandings, sharedQueryIdsFor } from "@/components/MultiRunStandings";
+import { formatRatio } from "@/lib/metricFormatters";
 import {
   DEFAULT_BASIS,
   WARMUP,
@@ -746,5 +750,98 @@ describe("shared limiter query selection", () => {
     const effectiveLimiter = "all";
     const shown = effectiveLimiter === "all" ? all : all.slice(0, 10);
     expect(shown.length).toBe(15);
+  });
+});
+
+describe("query-by-run ratio presentation", () => {
+  it("writes extreme ratios with significant digits and a single multiplication sign", () => {
+    expect(formatRatio(8892.6)).toBe("8,893×");
+    expect(formatRatio(4716)).toBe("4,716×");
+    expect(formatRatio(4.5)).toBe("4.5×");
+    expect(formatRatio(0.03)).toBe("0.03×");
+    expect(formatRatio(0.2)).toBe("0.2×");
+  });
+
+  it("renders cells and the caption with the × sign and no x suffix", () => {
+    const results = [
+      run("duck", [["Q18", 0.1], ["Q1", 10]]),
+      run("sqlite", [["Q18", 889.26], ["Q1", 10]]),
+      run("postgres", [["Q18", 0.2], ["Q1", 10]]),
+    ];
+    const { container } = render(
+      h(MultiRunHeatmap, { results, baselineIndex: 0, runLabels: ["DuckDB", "SQLite", "Postgres"] }),
+    );
+    expect(screen.getByTestId("cell-Q18-1").textContent).toBe("8,893×");
+    expect(screen.getByTestId("cell-Q18-2").textContent).toBe("2×");
+    expect(screen.getByTestId("cell-Q1-1").textContent).toBe("1×");
+    expect(screen.getByTestId("heatmap-caption").textContent).toContain("below 1× is faster");
+    expect(container.textContent).not.toMatch(/\dx\b/);
+  });
+
+  it("keeps the header row sticky at the top of the scrolling grid", () => {
+    const results = [run("duck", [["Q1", 10]]), run("sqlite", [["Q1", 20]]), run("postgres", [["Q1", 30]])];
+    const { container } = render(
+      h(MultiRunHeatmap, { results, baselineIndex: 0, runLabels: ["DuckDB", "SQLite", "Postgres"] }),
+    );
+    const scroller = container.querySelector('[data-testid="multi-run-heatmap-scroller"]');
+    expect(scroller?.classList.contains("overflow-auto")).toBe(true);
+    expect(container.querySelector("thead")?.classList.contains("sticky")).toBe(true);
+    expect(container.querySelector("thead")?.classList.contains("top-0")).toBe(true);
+  });
+});
+
+function relativeLuminance([red, green, blue]: number[]): number {
+  const channel = (value: number) => {
+    const unit = value / 255;
+    return unit <= 0.03928 ? unit / 12.92 : ((unit + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(red!) + 0.7152 * channel(green!) + 0.0722 * channel(blue!);
+}
+
+function contrastRatio(first: number[], second: number[]): number {
+  const [brighter, darker] = [relativeLuminance(first), relativeLuminance(second)].sort((a, b) => b - a) as [number, number];
+  return (brighter + 0.05) / (darker + 0.05);
+}
+
+function hslToRgb(hue: number, saturation: number, lightness: number): number[] {
+  const s = saturation / 100;
+  const l = lightness / 100;
+  const a = s * Math.min(l, 1 - l);
+  const channel = (n: number) => {
+    const k = (n + hue / 30) % 12;
+    return (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))) * 255;
+  };
+  return [channel(0), channel(8), channel(4)];
+}
+
+function hexToRgb(hex: string): number[] {
+  const value = Number.parseInt(hex.slice(1), 16);
+  return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
+}
+
+describe("query-by-run cell contrast", () => {
+  const LIGHT_TEXT_ON_SURFACE = hexToRgb("#4b2c3a");
+  const DARK_TEXT_ON_SURFACE = hexToRgb("#f2e1d4");
+  const WCAG_AA_TEXT = 4.5;
+
+  function cellColours(position: number) {
+    const style = heatmapCellStyle(position);
+    const read = (name: string) => Number(style.match(new RegExp(`${name}:([\\d.]+)`))![1]);
+    return {
+      hue: read("--cell-hue"),
+      lightness: read("--cell-lightness"),
+      darkLightness: read("--cell-dark-lightness"),
+    };
+  }
+
+  it("keeps cell text at 4.5:1 or better in light and dark themes across the whole scale", () => {
+    for (let step = -10; step <= 10; step += 1) {
+      const position = step / 10;
+      const { hue, lightness, darkLightness } = cellColours(position);
+      const lightCell = hslToRgb(hue, 60, lightness);
+      const darkCell = hslToRgb(hue, 45, darkLightness);
+      expect(contrastRatio(LIGHT_TEXT_ON_SURFACE, lightCell)).toBeGreaterThanOrEqual(WCAG_AA_TEXT);
+      expect(contrastRatio(DARK_TEXT_ON_SURFACE, darkCell)).toBeGreaterThanOrEqual(WCAG_AA_TEXT);
+    }
   });
 });

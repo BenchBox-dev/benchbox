@@ -229,11 +229,11 @@ describe("QueryDiffTable", () => {
     expect(table).toHaveTextContent("Showing 3 of 3 queries.");
     expect(table).toHaveTextContent("Q1");
     expect(table).toHaveTextContent("SQLite");
-    expect(table).toHaveTextContent("2.00x");
+    expect(table).toHaveTextContent("2×");
     expect(table).toHaveTextContent("+10 ms");
     expect(table).toHaveTextContent("Slower");
-    expect(table).toHaveTextContent("0.50x");
-    expect(table).toHaveTextContent("-10 ms");
+    expect(table).toHaveTextContent("0.5×");
+    expect(table).toHaveTextContent("−10 ms");
     expect(table).toHaveTextContent("Faster");
     expect(table).toHaveTextContent("Not comparable");
   });

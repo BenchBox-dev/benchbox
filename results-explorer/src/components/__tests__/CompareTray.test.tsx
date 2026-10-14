@@ -19,8 +19,8 @@ function renderTray(onRemove?: (item: CompareTrayItem) => void) {
     <CompareTray
       summary="1 result selected"
       items={[ITEM]}
-      compareHref="/results/compare?ids=result-1"
-      compareLabel="Compare selected"
+      allIds={["result-1"]}
+      buildHref={(ids) => `/results/compare?ids=${ids.join(",")}`}
       onClear={() => undefined}
       onRemove={onRemove}
     />,

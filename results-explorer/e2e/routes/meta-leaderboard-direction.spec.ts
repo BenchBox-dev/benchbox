@@ -15,8 +15,8 @@ test("matrix direction uses one reading rule across every visible column", async
   expect(headerCount).toBeGreaterThan(0);
 
   const sharedLegend = page.locator("#meta-leaderboard-legend");
-  await expect(sharedLegend).toContainText("farther from the best result (1.00×)");
-  await expect(sharedLegend).toContainText("Values below 1.00× are worse");
+  await expect(sharedLegend).toContainText("farther from the best result (1×)");
+  await expect(sharedLegend).toContainText("Values below 1× are worse");
 
   for (let index = 0; index < headerCount; index += 1) {
     const header = rankingHeaders.nth(index);
@@ -25,5 +25,5 @@ test("matrix direction uses one reading rule across every visible column", async
 
   const rankedCells = grid.locator('tbody [role="gridcell"]:has-text("Native:")');
   expect(await rankedCells.count()).toBeGreaterThan(0);
-  await expect(rankedCells.first()).toContainText(/1\.00x|0\.\d+x/);
+  await expect(rankedCells.first()).toContainText(/1×|0\.\d+×/);
 });

@@ -104,7 +104,12 @@ export function ValidationBadge({ validationStatus, showMissing = false, overrid
   if (!validationStatus) {
     if (override) {
       return (
-        <StatusBadge role="validation" tone="warning" title={override.title}>
+        <StatusBadge
+          role="validation"
+          tone="warning"
+          title={override.title}
+          ariaLabel={`${override.fullLabel}. ${override.title}`}
+        >
           {override.label}
         </StatusBadge>
       );
@@ -117,12 +122,9 @@ export function ValidationBadge({ validationStatus, showMissing = false, overrid
   }
   const info = describeValidationStatus(validationStatus);
   if (override) {
+    const fullTitle = `${info.description} Recorded status: ${info.status}. ${override.title}`;
     return (
-      <StatusBadge
-        role="validation"
-        tone="warning"
-        title={`${info.description} Recorded status: ${info.status}. ${override.title}`}
-      >
+      <StatusBadge role="validation" tone="warning" title={fullTitle} ariaLabel={`${override.fullLabel}. ${fullTitle}`}>
         {override.label}
       </StatusBadge>
     );
@@ -140,7 +142,12 @@ export function OverrideBadge({ rules, approver, evidence, expires, compact = fa
   const text = compact ? "Overridden" : override.label;
   return (
     <span className="inline-flex flex-wrap items-center gap-1">
-      <StatusBadge role="override" tone="warning" title={override.title}>
+      <StatusBadge
+        role="override"
+        tone="warning"
+        title={override.title}
+        ariaLabel={`${override.fullLabel}. ${override.title}`}
+      >
         {text}
       </StatusBadge>
       {!compact && approver ? (

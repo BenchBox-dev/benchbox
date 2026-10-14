@@ -327,3 +327,16 @@ export function queryDisagreementSpread(ratios: readonly (number | null | undefi
   const logs = usable.map((r) => Math.log2(r));
   return Math.max(...logs) - Math.min(...logs);
 }
+
+export function spaceTicks(ticks: readonly number[], positionPx: (value: number) => number, minGapPx = 48): number[] {
+  const kept: number[] = [];
+  for (const tick of ticks) {
+    const previous = kept[kept.length - 1];
+    if (previous === undefined || Math.abs(positionPx(tick) - positionPx(previous)) >= minGapPx) kept.push(tick);
+  }
+  const last = ticks[ticks.length - 1];
+  if (last !== undefined && kept[kept.length - 1] !== last && kept.length > 1) {
+    if (Math.abs(positionPx(last) - positionPx(kept[kept.length - 2]!)) >= minGapPx) kept[kept.length - 1] = last;
+  }
+  return kept;
+}

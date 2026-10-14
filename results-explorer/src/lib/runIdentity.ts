@@ -1,6 +1,7 @@
-import { splitVersion } from "@/lib/versionLabel";
+import { platformVersionDisplay, splitVersion } from "@/lib/versionLabel";
 
 import { formatRunDate, formatRunDateWithAge } from "@/lib/runAge";
+import { formatScaleFactor } from "@/lib/metricFormatters";
 
 export interface RunIdentitySource {
   result_id: string;
@@ -47,14 +48,14 @@ const NATURAL_QUALIFIERS: QualifierDescriptor[] = [
   {
     key: "version",
     value: (s) => {
-      const parts = splitVersion(s.driver_version ?? s.platform_version ?? null);
+      const parts = splitVersion(s.platform_version ?? null);
       return parts ? `${parts.core}${parts.suffix ? "…" : ""}` : null;
     },
   },
   { key: "run_date", value: (s) => (s.run_date ? formatRunDate(s.run_date) : null) },
   {
     key: "scale_factor",
-    value: (s) => (s.scale_factor !== null && s.scale_factor !== undefined ? `SF ${s.scale_factor}` : null),
+    value: (s) => (s.scale_factor !== null && s.scale_factor !== undefined ? formatScaleFactor(s.scale_factor) : null),
   },
   {
     key: "deployment",
@@ -83,11 +84,6 @@ function describeNaturalQualifiers(source: RunIdentitySource): string[] {
     if (value !== null && value !== "") out.push(value);
   }
   return out;
-}
-
-function versionLabel(version: string | null | undefined): string | null {
-  if (!version) return null;
-  return version.startsWith("v") || version.startsWith("V") ? version : `v${version}`;
 }
 
 function shortResultIdToken(resultId: string): string {
@@ -190,8 +186,14 @@ function joinForVariant(base: string, qualifiers: string[], variant: RunIdentity
   }
 }
 
+function withTooltipDriver(label: string, source: RunIdentitySource, variant: RunIdentityVariant): string {
+  if (variant !== "tooltip") return label;
+  const driver = platformVersionDisplay(source).driverTitle;
+  return driver ? `${label}\n${driver}` : label;
+}
+
 export function formatRunIdentity(source: RunIdentitySource, variant: RunIdentityVariant): string {
-  return joinForVariant(source.platform, describeNaturalQualifiers(source), variant);
+  return withTooltipDriver(joinForVariant(source.platform, describeNaturalQualifiers(source), variant), source, variant);
 }
 
 export function formatRunIdentitiesForCohort(
@@ -224,16 +226,18 @@ export function formatRunIdentitiesForCohort(
   }
 
   return sources.map((source, i) => {
-    return joinForVariant(source.platform, usedQualifiers[i]!, variant);
+    return withTooltipDriver(joinForVariant(source.platform, usedQualifiers[i]!, variant), source, variant);
   });
 }
 
 export function formatRunIdentityFull(source: RunIdentitySource): string {
+  const version = platformVersionDisplay(source);
   const parts = [
     source.platform,
-    versionLabel(source.driver_version ?? source.platform_version ?? null),
+    version.text,
+    version.driverTitle,
     source.run_date ? formatRunDateWithAge(source.run_date) : null,
-    source.scale_factor !== null && source.scale_factor !== undefined ? `SF ${source.scale_factor}` : null,
+    source.scale_factor !== null && source.scale_factor !== undefined ? formatScaleFactor(source.scale_factor) : null,
     NATURAL_QUALIFIERS.find((qualifier) => qualifier.key === "deployment")?.value(source) ?? null,
     source.trust_label ?? null,
     compactIdToken(source),

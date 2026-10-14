@@ -1,5 +1,6 @@
 import type { ComponentChildren } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
+import { CompareCta } from "@/components/CompareCta";
 import { FundingChip } from "@/components/FundingChip";
 import { RunDateWithAge } from "@/components/RunAge";
 import { TrustBadge } from "@/components/TrustBadge";
@@ -20,13 +21,13 @@ export interface CompareTrayItem {
 interface CompareTrayProps {
   summary: ComponentChildren;
   items: CompareTrayItem[];
-  compareHref: string;
-  compareLabel: string;
+  allIds: readonly string[];
+  buildHref: (ids: readonly string[]) => string;
   onClear: () => void;
   onRemove?: (item: CompareTrayItem) => void;
 }
 
-export function CompareTray({ summary, items, compareHref, compareLabel, onClear, onRemove }: CompareTrayProps) {
+export function CompareTray({ summary, items, allIds, buildHref, onClear, onRemove }: CompareTrayProps) {
   const trayRef = useRef<HTMLDivElement>(null);
   const [trayHeight, setTrayHeight] = useState(0);
   const [expanded, setExpanded] = useState(false);
@@ -152,7 +153,7 @@ export function CompareTray({ summary, items, compareHref, compareLabel, onClear
               ))}
             </div>
           </div>
-          <div class="flex shrink-0 items-center gap-3">
+          <div class="flex min-w-0 flex-wrap items-center gap-3 sm:justify-end">
             {!collapsed && (
               <button
                 type="button"
@@ -174,9 +175,12 @@ export function CompareTray({ summary, items, compareHref, compareLabel, onClear
                 Dismiss
               </button>
             )}
-            <a href={compareHref} class="btn btn-primary text-sm no-underline" data-testid="compare-tray-compare-link">
-              {compareLabel} →
-            </a>
+            <CompareCta
+              selectedIds={items.map((item) => item.id)}
+              allIds={allIds}
+              buildHref={buildHref}
+              testId="compare-tray-compare-link"
+            />
           </div>
         </div>
       </div>

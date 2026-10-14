@@ -169,6 +169,14 @@ def _snowflake_phase_has_estimated_concurrent_cost(benchmark_cost: Any) -> bool:
     return False
 
 
+def _has_estimated_query_cost(benchmark_cost: Any, estimate_flag: str) -> bool:
+    return any(
+        query_cost.pricing_details.get(estimate_flag)
+        for phase in benchmark_cost.phase_costs or []
+        for query_cost in phase.query_costs or []
+    )
+
+
 def _apply_cost_model_and_warnings(benchmark_cost: Any, platform: str, platform_config: dict[str, Any]) -> None:
 
     from benchbox.core.cost.pricing import (
@@ -197,23 +205,39 @@ def _apply_cost_model_and_warnings(benchmark_cost: Any, platform: str, platform_
     elif platform_lower == "databricks":
         workload_type = platform_config.get("workload_type", "")
         if workload_type == "all_purpose":
-            benchmark_cost.cost_model = "marginal"
+            if _has_estimated_query_cost(benchmark_cost, "is_estimated"):
+                benchmark_cost.cost_model = "estimated"
+                benchmark_cost.warnings.append(
+                    "Databricks all-purpose costs are timing-derived marginal estimates; cluster idle time is excluded."
+                )
+            else:
+                benchmark_cost.cost_model = "marginal"
+                benchmark_cost.warnings.append(
+                    "Databricks all-purpose cluster costs show marginal per-query costs. Cluster idle time is excluded."
+                )
+        elif _has_estimated_query_cost(benchmark_cost, "is_estimated"):
+            benchmark_cost.cost_model = "estimated"
             benchmark_cost.warnings.append(
-                "Databricks all-purpose cluster costs show marginal per-query costs. "
-                "Cluster idle time is excluded. For SQL warehouses, costs represent actual usage."
+                "Databricks SQL warehouse costs are timing-derived estimates; warehouse idle time, startup, and scaling "
+                "overhead are excluded."
             )
         else:
             benchmark_cost.cost_model = "actual"
     elif platform_lower == "snowflake":
+        has_estimated_cost = _has_estimated_query_cost(benchmark_cost, "credits_used_estimated")
+        if has_estimated_cost:
+            benchmark_cost.cost_model = "estimated"
+            benchmark_cost.warnings.append(
+                "Snowflake costs are timing-derived estimates; warehouse startup minimums and idle time are excluded."
+            )
         if _snowflake_phase_has_estimated_concurrent_cost(benchmark_cost):
-            benchmark_cost.cost_model = "marginal"
             benchmark_cost.warnings.append(
                 "Snowflake costs include runtime-estimated query costs sharing a warehouse "
                 "across concurrent streams. Each estimate prices exclusive warehouse use, "
                 "so the summed total may exceed the warehouse's wall-clock spend; metered "
                 "credits_used attributes shared cost exactly."
             )
-        else:
+        if not has_estimated_cost:
             benchmark_cost.cost_model = "actual"
     elif platform_lower in ("bigquery", "duckdb", "clickhouse"):
         benchmark_cost.cost_model = "actual"

@@ -1,4 +1,4 @@
-import type { BenchmarkSummary } from "@/types";
+import type { BenchmarkSummary, PlatformRow } from "@/types";
 import { useElementSize } from "@/lib/useElementSize";
 import { axisLabelAnchor, barRowLayout, chartFrame } from "@/lib/chartFrame";
 import { paletteColor } from "@/lib/chartTheme";
@@ -14,9 +14,10 @@ const VALUE_TRAIL = 72;
 
 interface Props {
   summary: BenchmarkSummary;
+  colorIndexFor?: (platform: PlatformRow) => number;
 }
 
-export function PowerBar({ summary }: Props) {
+export function PowerBar({ summary, colorIndexFor }: Props) {
   const [containerRef, { width: containerWidth }] = useElementSize();
   const frame = chartFrame(containerWidth);
   const w = frame.width;
@@ -32,7 +33,7 @@ export function PowerBar({ summary }: Props) {
   const rows = summary.platforms
     .map((p, i) => ({
       ...p,
-      colorIdx: i,
+      colorIdx: colorIndexFor?.(p) ?? p.color_slot ?? i,
       displayLabel: displayLabels[i] ?? p.platform,
       fullLabel: cohortLabels[i]?.full ?? p.platform,
     }))

@@ -224,9 +224,13 @@ export function PickingStateProvider({
 }
 
 export function usePickingState(): PickingStateValue {
-  const state = useContext(PickingStateContext);
+  const state = useOptionalPickingState();
   if (state === null) {
     throw new Error("usePickingState must be used within PickingStateProvider");
   }
   return state;
+}
+
+export function useOptionalPickingState(): PickingStateValue | null {
+  return useContext(PickingStateContext);
 }

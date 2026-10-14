@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/preact";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/preact";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { CompareWithinRun } from "@/pages/CompareWithinRun";
 import type { DetailResult } from "@/types";
@@ -267,8 +267,8 @@ describe("CompareWithinRun page component", () => {
     expect(screen.queryByText("faster")).toBeNull();
     expect(screen.queryByText("slower")).toBeNull();
     expect(screen.queryByText("parity")).toBeNull();
-    expect(screen.queryByText("0.50x")).toBeNull();
-    expect(screen.queryByText("0.50x (-50.0 ms)")).toBeNull();
+    expect(screen.queryByText("0.5×")).toBeNull();
+    expect(screen.queryByText("0.5× (−50 ms)")).toBeNull();
   });
 
   it("does not style tie-band query ratios as faster", async () => {
@@ -290,11 +290,94 @@ describe("CompareWithinRun page component", () => {
     await waitFor(() => {
       expect(screen.getByText("Compare measurements from one DuckDB run")).toBeTruthy();
     });
-    const displayedTieRatios = screen.getAllByText(/^1\.00x \(/);
+    const displayedTieRatios = screen.getAllByText(/^1× \(/);
     expect(displayedTieRatios.length).toBeGreaterThan(0);
     for (const ratio of displayedTieRatios) {
       expect(ratio.className).not.toContain("bb-tone-success-fg");
       expect(ratio.className).not.toContain("font-medium");
     }
+  });
+});
+
+describe("CompareWithinRun passes page presentation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(resolveShortId).mockImplementation((id) => Promise.resolve(id));
+    window.history.replaceState(null, "", "/results/r/res-123/passes");
+  });
+
+  it("defaults to the published median against the warmup pass when a warmup was recorded", async () => {
+    (getDetailResult as any).mockResolvedValue(makeDetail());
+    render(<CompareWithinRun resultId="res-123" />);
+
+    await waitFor(() => expect(screen.getByText("Compare measurements from one DuckDB run")).toBeTruthy());
+    expect(screen.getAllByText("published median").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("warmup pass").length).toBeGreaterThan(0);
+    expect(screen.queryByTestId("one-measured-pass-note")).toBeNull();
+  });
+
+  it("states that the median equals the only pass instead of a table of 1×", async () => {
+    (getDetailResult as any).mockResolvedValue(
+      {
+        ...makeDetail(),
+        queries: [
+          { query_id: "Q1", duration_ms: 20, status: "pass", run_type: "measurement", iter: 1, stream: 0 },
+          { query_id: "Q2", duration_ms: 40, status: "pass", run_type: "measurement", iter: 1, stream: 0 },
+        ],
+        display_timings: [
+          { query_id: "Q1", display_ms: 20, is_valid_display_timing: true, timing_exclusion_reason: null, sample_count: 1 },
+          { query_id: "Q2", display_ms: 40, is_valid_display_timing: true, timing_exclusion_reason: null, sample_count: 1 },
+        ],
+      },
+    );
+    render(<CompareWithinRun resultId="res-123" />);
+
+    await waitFor(() => expect(screen.getByTestId("one-measured-pass-note")).toBeTruthy());
+    expect(screen.getByTestId("one-measured-pass-note").textContent).toBe(
+      "Only one measured pass: the median equals pass 1.",
+    );
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.queryByText("1×")).toBeNull();
+  });
+
+  it("links the page header back to the run through a breadcrumb", async () => {
+    (getDetailResult as any).mockResolvedValue(makeDetail());
+    render(<CompareWithinRun resultId="res-123" />);
+
+    await waitFor(() => expect(screen.getByText("Compare measurements from one DuckDB run")).toBeTruthy());
+    const breadcrumb = within(screen.getByRole("navigation", { name: "Breadcrumb" }));
+    expect(breadcrumb.getByRole("link", { name: "DuckDB" }).getAttribute("href")).toBe("/results/r/res-123");
+    expect(breadcrumb.getByRole("link", { name: "Results" }).getAttribute("href")).toBe("/results/");
+  });
+
+  it("shows the reference label once in the header, not on every column", async () => {
+    (getDetailResult as any).mockResolvedValue(makeDetail());
+    render(<CompareWithinRun resultId="res-123" />);
+
+    await waitFor(() => expect(screen.getByText("Compare measurements from one DuckDB run")).toBeTruthy());
+    expect(screen.getAllByText(/^Reference:/)).toHaveLength(1);
+    const table = within(screen.getByRole("table"));
+    expect(table.queryAllByText("reference")).toHaveLength(0);
+    expect(table.queryAllByText("ref")).toHaveLength(0);
+  });
+
+  it("uses the shared primary button style for adding a basis", async () => {
+    (getDetailResult as any).mockResolvedValue(makeDetail());
+    render(<CompareWithinRun resultId="res-123" />);
+
+    await waitFor(() => expect(screen.getByText("Compare measurements from one DuckDB run")).toBeTruthy());
+    const addButton = screen.getByRole("button", { name: "+ Add basis" });
+    expect(addButton.className).toContain("btn-primary");
+    expect(addButton.className).not.toContain("bg-[var(--bb-accent)]");
+  });
+
+  it("keeps the query column pinned while the value columns scroll on a phone", async () => {
+    (getDetailResult as any).mockResolvedValue(makeDetail());
+    render(<CompareWithinRun resultId="res-123" />);
+
+    await waitFor(() => expect(screen.getByText("Compare measurements from one DuckDB run")).toBeTruthy());
+    expect(screen.getByTestId("within-run-scroll-container")).toBeTruthy();
+    expect(screen.getByText("Q1").className).toContain("sticky left-0");
+    expect(screen.getByRole("columnheader", { name: "Query" }).className).toContain("sticky left-0");
   });
 });

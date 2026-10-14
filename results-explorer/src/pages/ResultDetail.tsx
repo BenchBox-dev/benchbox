@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { TuningSettingsDisclosure } from "@/components/TuningSettingsDisclosure";
 import type { RoutableProps } from "preact-router";
 import type { DetailResult, QueryDisplayTiming, QueryTiming, SortState } from "@/types";
 import type { ChartContext } from "@/lib/chartRegistry";
@@ -12,12 +13,14 @@ import { FundingChip } from "@/components/FundingChip";
 import { ProvenanceLegend } from "@/components/ProvenanceLegend";
 import { PassStrip, summarizeQueryPasses } from "@/components/PassStrip";
 import { resultDetailHref, withinRunCompareHref } from "@/lib/resultLinks";
+import { queryRunComparisonHref } from "@/lib/queryRunComparison";
 import { encodeBasis, selectComparableBasisPair } from "@/lib/measurementBasis";
 import { TableScrollHint } from "@/components/TableScrollHint";
 import { TuningBadge } from "@/components/TuningBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { MethodologyDisclosure } from "@/components/MethodologyDisclosure";
 import { RunReceipt, planDownloadUrl } from "@/components/RunReceipt";
+import { CapturedPlanViewer } from "@/components/CapturedPlanViewer";
 import { ChartPanel } from "@/components/ChartPanel";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
 import {
@@ -33,7 +36,7 @@ import {
   primaryMetricValue,
   type PrimaryMetric,
 } from "@/lib/displayEligibility";
-import { formatDurationSeconds, formatLatencyMs } from "@/lib/metricFormatters";
+import { formatDurationSeconds, formatLatencyMs, formatScaleFactor } from "@/lib/metricFormatters";
 import { visibleResultIdForRow } from "@/lib/resultLinks";
 import { RunDateChip } from "@/components/RunAge";
 import { PageHeader } from "@/components/PageHeader";
@@ -69,17 +72,12 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
     key: "query_id",
     direction: "asc",
   });
-  const [tuningExpanded, setTuningExpanded] = useState(false);
-  const [tuningData, setTuningData] = useState<Record<string, unknown> | null>(null);
-  const [tuningLoading, setTuningLoading] = useState(false);
-  const [tuningError, setTuningError] = useState<string | null>(null);
-  const tuningAbortRef = useRef<AbortController | null>(null);
   const localResultState = useLocalResultState();
   const isLocal = source === "local";
   const detail = detailState?.detail ?? null;
   const primaryMetric = detailState?.primaryMetric ?? "display_geomean_ms";
   const documentTitle = detail
-    ? `${humanizeBenchmark(detail.benchmark)} · ${detail.platform} · SF${detail.scale_factor} · BenchBox Results`
+    ? `${humanizeBenchmark(detail.benchmark)} · ${detail.platform} · ${formatScaleFactor(detail.scale_factor)} · BenchBox Results`
     : "Result · BenchBox Results";
   useDocumentTitle(documentTitle);
 
@@ -90,11 +88,6 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
     }
     setDetailState(null);
     setError(null);
-    setTuningExpanded(false);
-    setTuningData(null);
-    setTuningError(null);
-    tuningAbortRef.current?.abort();
-    tuningAbortRef.current = null;
     let cancelled = false;
     if (isLocal) {
       const preview = localResultState.preview;
@@ -105,8 +98,6 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
       }
       return () => {
         cancelled = true;
-        tuningAbortRef.current?.abort();
-        tuningAbortRef.current = null;
       };
     }
     resolveShortId(resultId)
@@ -130,8 +121,6 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
       .catch((err: unknown) => { if (!cancelled) setError(errMsg(err)); });
     return () => {
       cancelled = true;
-      tuningAbortRef.current?.abort();
-      tuningAbortRef.current = null;
     };
   }, [isLocal, localResultState.preview, resultId, detailRetryToken]);
 
@@ -228,37 +217,12 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
     return rawSort.direction === "asc" ? "ascending" : "descending";
   }
 
-  const tuningUrl = detail.has_tuning ? detail.bundle_download_url : null;
-
-  function handleTuningExpand() {
-    const willExpand = !tuningExpanded;
-    setTuningExpanded(willExpand);
-    if (willExpand && tuningData === null && !tuningLoading && tuningUrl) {
-      setTuningLoading(true);
-      const controller = new AbortController();
-      tuningAbortRef.current = controller;
-      fetch(tuningUrl, { signal: controller.signal })
-        .then((r) => r.json() as Promise<Record<string, unknown>>)
-        .then((bundle) => {
-          if (controller.signal.aborted) return;
-          setTuningData(extractTuningBlock(bundle));
-          setTuningLoading(false);
-        })
-        .catch((err: unknown) => {
-          if (err instanceof DOMException && err.name === "AbortError") return;
-          setTuningError("Could not load tuning settings.");
-          setTuningLoading(false);
-        });
-    }
-  }
-
-  const showTuningSection = true;
   const passSummaries = summarizeQueryPasses(detail.queries);
   const passQueryIds = new Set(passSummaries.map((summary) => summary.queryId));
   const passesCoverAllTimings =
     passSummaries.length > 0 &&
     detail.display_timings.every((timing) => passQueryIds.has(timing.query_id));
-  const plansUrl = planDownloadUrl(detail);
+  const plansUrl = isLocal ? null : planDownloadUrl(detail);
   const hasTimings = detail.display_timings.length > 0 || detail.queries.length > 0;
   const withinRunBases = selectComparableBasisPair(detail.queries, detail.display_timings);
   const primaryMetricRaw = primaryMetricValue(detail, primaryMetric);
@@ -372,7 +336,7 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
           )}
           <ResultMetricCard
             label="Scale factor"
-            value={`SF ${detail.scale_factor}`}
+            value={formatScaleFactor(detail.scale_factor)}
             helper={`Phase: ${detail.test_type ? formatEnumLabel(detail.test_type) : "Standard"}`}
           />
           <ResultMetricCard
@@ -385,59 +349,9 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
             value={formatDurationSeconds(detail.total_duration_s).valueText}
             helper="Run duration"
           />
-          {showTuningSection && (
-            <section class="card">
-              <h2 class="mb-3 text-base font-semibold text-[var(--bb-data-fg-primary)]">Tuning</h2>
-              <div class="space-y-2 text-sm">
-                {detail.tuning_mode ? (
-                  <div class="flex items-center gap-2">
-                    <span class="text-[var(--bb-data-fg-muted)]">Mode:</span>
-                    <TuningBadge
-                      tuningMode={detail.tuning_mode}
-                      tuningValidationStatus={detail.tuning_validation_status}
-                    />
-                  </div>
-                ) : (
-                  <p class="text-[var(--bb-data-fg-muted)]">Tuning status was not recorded.</p>
-                )}
-                {tuningUrl ? (
-                  <div>
-                    <button
-                      type="button"
-                      class="mt-1 cursor-pointer border-0 bg-transparent p-0 text-xs text-[var(--bb-accent-hover)] underline hover:text-[var(--bb-accent)]"
-                      onClick={handleTuningExpand}
-                      aria-expanded={tuningExpanded}
-                      aria-controls="tuning-settings-region"
-                    >
-                      {tuningExpanded ? "Hide settings ↑" : "Show settings ↓"}
-                    </button>
-                    {tuningExpanded && (
-                      <div id="tuning-settings-region" class="mt-2" role="region" aria-label="Tuning settings">
-                        {tuningLoading && <p role="status" aria-live="polite" class="text-xs text-[var(--bb-data-fg-subtle)]">Loading tuning settings...</p>}
-                        {tuningError && <p role="alert" class="text-xs text-[var(--bb-tone-danger-fg)]">{tuningError}</p>}
-                        {tuningData && (
-                          <pre class="overflow-x-auto rounded panel-muted p-2 text-xs text-[var(--bb-data-fg-primary)]">
-                            {JSON.stringify(tuningData, null, 2)}
-                          </pre>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <p class="text-xs text-[var(--bb-data-fg-subtle)]">
-                    {detail.tuning_mode === "notuning" ? "No tuning settings were applied." : "Tuning details were not published."}
-                  </p>
-                )}
-              </div>
-            </section>
-          )}
-
-          {detail.has_plans && !plansUrl && (
-            <section class="card">
-              <h2 class="mb-2 text-base font-semibold text-[var(--bb-data-fg-primary)]">Execution plans</h2>
-              <p class="text-sm text-[var(--bb-data-fg-muted)]">Execution plans were recorded but are not published for download.</p>
-            </section>
-          )}
+          {detail.has_tuning && detail.bundle_download_url ? (
+            <TuningSettingsDisclosure bundleUrl={detail.bundle_download_url} />
+          ) : null}
         </div>
       </section>
 
@@ -450,10 +364,13 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
             />
           )}
 
+          {detail.has_plans && <CapturedPlanViewer plansUrl={plansUrl} />}
+
           <RunReceipt
             detail={detail}
             isRankingEligible={isLocal ? false : null}
             reproduceCommand={isLocal ? null : undefined}
+            plansUrl={plansUrl}
           />
 
           {hasTimings && (
@@ -499,7 +416,7 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
                 </thead>
                 <tbody class="divide-y divide-[var(--bb-data-border)] bg-[var(--bb-surface-data)]">
                   {sortedMedians.map((q) => (
-                    <MedianRow key={q.query_id} timing={q} />
+                    <MedianRow key={q.query_id} timing={q} resultId={detail.result_id} />
                   ))}
                 </tbody>
               </table>
@@ -508,7 +425,7 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
             )}
             {detail.queries.length > 0 && (
               <>
-              <PassStrip queries={detail.queries} limit={PASS_STRIP_DETAIL_LIMIT} />
+              <PassStrip queries={detail.queries} limit={PASS_STRIP_DETAIL_LIMIT} embedded />
               {!isLocal && withinRunBases !== null && (
                 <p class="mb-6 text-sm">
                   <a
@@ -565,7 +482,7 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
                     </thead>
                     <tbody class="divide-y divide-[var(--bb-data-border)] bg-[var(--bb-surface-data)]">
                       {sortedRawQueries.map((q, i) => (
-                        <QueryRow key={`${q.query_id}-${i}`} query={q} />
+                        <QueryRow key={`${q.query_id}-${i}`} query={q} resultId={detail.result_id} />
                       ))}
                     </tbody>
                   </table>
@@ -582,17 +499,6 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
       </div>
     </div>
   );
-}
-
-function extractTuningBlock(bundle: Record<string, unknown>): Record<string, unknown> {
-  const platform = bundle?.platform;
-  if (platform && typeof platform === "object" && !Array.isArray(platform)) {
-    const tuning = (platform as Record<string, unknown>).tuning;
-    if (tuning && typeof tuning === "object" && !Array.isArray(tuning)) {
-      return tuning as Record<string, unknown>;
-    }
-  }
-  return {};
 }
 
 function ResultMetricCard({
@@ -631,24 +537,40 @@ function isPassingValidationStatus(status: string | null | undefined): boolean {
   return normalized === "pass" || normalized === "passed";
 }
 
-function MedianRow({ timing }: { timing: QueryDisplayTiming }) {
+function MedianRow({ timing, resultId }: { timing: QueryDisplayTiming; resultId: string }) {
   return (
     <tr class="hover:bg-[var(--bb-surface-data-muted)]">
-      <td class="table-td font-mono font-medium">{timing.query_id}</td>
+      <td class="table-td font-mono font-medium">
+        <a
+          href={queryRunComparisonHref(timing.query_id, [resultId])}
+          class="text-[var(--bb-accent-hover)] underline"
+          aria-label={`Compare ${timing.query_id} executions across runs`}
+        >
+          {timing.query_id}
+        </a>
+      </td>
       <td class="table-td font-mono">
-        {formatLatencyMs(timing.display_ms, { missingText: "-" }).valueText}
+        {formatLatencyMs(timing.display_ms).valueText}
       </td>
       <td class="table-td font-mono">{timing.sample_count}</td>
     </tr>
   );
 }
 
-function QueryRow({ query }: { query: QueryTiming }) {
+function QueryRow({ query, resultId }: { query: QueryTiming; resultId: string }) {
   const tone = query.status === "pass" ? "success" : query.status === "fail" ? "danger" : "neutral";
 
   return (
     <tr class="hover:bg-[var(--bb-surface-data-muted)]">
-      <td class="table-td font-mono font-medium">{query.query_id}</td>
+      <td class="table-td font-mono font-medium">
+        <a
+          href={queryRunComparisonHref(query.query_id, [resultId])}
+          class="text-[var(--bb-accent-hover)] underline"
+          aria-label={`Compare ${query.query_id} executions across runs`}
+        >
+          {query.query_id}
+        </a>
+      </td>
       <td class="table-td font-mono">{formatLatencyMs(query.duration_ms).valueText}</td>
       <td class="table-td">
         <StatusBadge role="validation" tone={tone}>{query.status}</StatusBadge>

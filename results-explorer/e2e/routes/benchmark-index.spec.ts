@@ -21,7 +21,7 @@ test.describe("BenchmarkIndex", () => {
     await waitForShell(page);
     await expect(page.getByRole("heading", { name: /TPC-H Results/ })).toBeVisible();
 
-    const table = page.getByRole("table", { name: /tpch SF0\.01 power results/i });
+    const table = page.getByRole("table", { name: /tpch SF 0\.01 power results/i });
     await waitForDataElement(page, table.locator("tbody tr").first());
     for (const platform of ["DuckDB", "DataFusion", "Polars"]) {
       await expect(table.getByText(platform, { exact: false }).first()).toBeVisible({

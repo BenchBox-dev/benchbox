@@ -11,7 +11,7 @@ import type {
 } from "@/types";
 import { colorForCell, lightnessForCell } from "@/lib/chartMath";
 import { formatTimingExclusion } from "@/lib/displayEligibility";
-import { formatAverageRank, formatCoverage, formatRank, formatSpeedup } from "@/lib/metricFormatters";
+import { formatAverageRank, formatCoverage, formatRank, formatSpeedup, MISSING_VALUE_GLYPH } from "@/lib/metricFormatters";
 import { fmtGeomean, fmtScoreCompact, fmtScoreExact } from "@/utils";
 import { TrustBadge, ValidationBadge } from "@/components/TrustBadge";
 import { FundingChip } from "@/components/FundingChip";
@@ -265,7 +265,7 @@ export function MetaLeaderboard({
                   title: "Measured values for each ranking. Lower latency is better; a higher power score is better.",
                 },
                 { value: "ranks", label: "Ranks", title: "Rank within each ranking (1 is best)" },
-                { value: "speedup", label: "Relative to best", title: "1.00× is the best result in each ranking. Lower values are worse." },
+                { value: "speedup", label: "Relative to best", title: "1× is the best result in each ranking. Lower values are worse." },
               ]}
             />
           </div>
@@ -284,7 +284,7 @@ export function MetaLeaderboard({
           {mode === "times" && "Heat: darker = worse within each ranking. "}
           {mode === "ranks" && "Heat: darker = a worse rank within each ranking. "}
           {mode === "speedup" &&
-            "Heat: darker = farther from the best result (1.00×). Values below 1.00× are worse. "}
+            "Heat: darker = farther from the best result (1×). Values below 1× are worse. "}
           <span class="italic">No run</span> means no result is published. <span class="font-medium">Excluded</span> or{" "}
           <span class="font-medium">Unranked</span> means the result is published but not scored.
         </p>
@@ -544,7 +544,7 @@ export function MetaLeaderboard({
             ranking. {COVERAGE_POLICY_COPY}
           </p>
           <p>
-            <strong>Relative to best</strong> shows every result against the best result in its ranking. 1.00× is best; lower values are worse.
+            <strong>Relative to best</strong> shows every result against the best result in its ranking. 1× is best; lower values are worse.
           </p>
         </div>
       </details>
@@ -572,9 +572,9 @@ function cellText(rank: MetaRank, cohort: MetaCohort, mode: MetaLeaderboardMode)
   if (mode === "speedup") {
     return rank.speedup_vs_best !== null && rank.speedup_vs_best !== undefined
       ? formatSpeedup(rank.speedup_vs_best).valueText
-      : "-";
+      : MISSING_VALUE_GLYPH;
   }
-  if (rank.metric_value === null || rank.metric_value === undefined) return "-";
+  if (rank.metric_value === null || rank.metric_value === undefined) return MISSING_VALUE_GLYPH;
   return cohort.primary_order === "desc" ? fmtScoreCompact(rank.metric_value) : fmtGeomean(rank.metric_value);
 }
 

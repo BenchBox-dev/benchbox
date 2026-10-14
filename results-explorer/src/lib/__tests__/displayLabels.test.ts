@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatArchitecture,
+  formatCpuFamily,
   formatBenchmarkLabel,
   canonicalBenchmarkSlug,
   canonicalPhase,
@@ -56,23 +58,29 @@ describe("formatFunding", () => {
 
 describe("formatValidationStatus", () => {
   it("humanizes known statuses including not_applicable", () => {
-    expect(formatValidationStatus("passed")).toBe("passed");
-    expect(formatValidationStatus("not_applicable")).toBe("not applicable");
+    expect(formatValidationStatus("passed")).toBe("Passed");
+    expect(formatValidationStatus("not_applicable")).toBe("Not applicable");
   });
 
-  it("returns 'unknown' for missing values", () => {
-    expect(formatValidationStatus(null)).toBe("unknown");
+  it("returns 'Unknown' for missing values", () => {
+    expect(formatValidationStatus(null)).toBe("Unknown");
   });
 
   it("humanizes every NON_CLEAN_VALIDATION_STATUSES value", () => {
-    expect(formatValidationStatus("failed")).toBe("failed");
-    expect(formatValidationStatus("interrupted")).toBe("interrupted");
-    expect(formatValidationStatus("partial")).toBe("partial pass");
-    expect(formatValidationStatus("error")).toBe("validation error");
-    expect(formatValidationStatus("not_run")).toBe("no validation");
-    expect(formatValidationStatus("not_validated")).toBe("not validated");
-    expect(formatValidationStatus("uncertain")).toBe("uncertain");
-    expect(formatValidationStatus("unknown")).toBe("unknown");
+    expect(formatValidationStatus("failed")).toBe("Failed");
+    expect(formatValidationStatus("interrupted")).toBe("Interrupted");
+    expect(formatValidationStatus("partial")).toBe("Partial pass");
+    expect(formatValidationStatus("error")).toBe("Validation error");
+    expect(formatValidationStatus("not_run")).toBe("No validation");
+    expect(formatValidationStatus("not_validated")).toBe("Not validated");
+    expect(formatValidationStatus("uncertain")).toBe("Uncertain");
+    expect(formatValidationStatus("unknown")).toBe("Unknown");
+  });
+
+  it("sentence-cases the label without changing the raw status it describes", () => {
+    const info = describeValidationStatus("some_future_status");
+    expect(info.label).toBe("Some future status");
+    expect(info.status).toBe("some_future_status");
   });
 });
 
@@ -80,7 +88,7 @@ describe("describeValidationStatus", () => {
   it("returns the raw status alongside the reader-facing label", () => {
     const info = describeValidationStatus("not_run");
     expect(info.status).toBe("not_run");
-    expect(info.label).toBe("no validation");
+    expect(info.label).toBe("No validation");
     expect(info.description.length).toBeGreaterThan(0);
     expect(info.isClean).toBe(false);
   });
@@ -109,12 +117,13 @@ describe("describeValidationStatus", () => {
   });
 
   it("normalizes case and whitespace before matching", () => {
-    expect(describeValidationStatus("  Not_Run ").label).toBe("no validation");
+    expect(describeValidationStatus("  Not_Run ").label).toBe("No validation");
   });
 
   it("handles a missing status without throwing", () => {
     const info = describeValidationStatus(null);
     expect(info.status).toBeNull();
+    expect(info.label).toBe("Not recorded");
     expect(info.isClean).toBe(false);
     expect(info.tone).toBe("neutral");
   });
@@ -206,10 +215,35 @@ describe("describeOverride", () => {
       expires: "2099-01-01",
     });
     expect(info).not.toBeNull();
-    expect(info!.label).toBe("Overridden: timing-plateau");
+    expect(info!.label).toBe("Timing-plateau");
+    expect(info!.fullLabel).toBe("Overridden: timing-plateau");
     expect(info!.title).toContain("timing-plateau");
     expect(info!.title).toContain("Approved by reviewer.");
     expect(info!.title).toContain("Override expires 2099-01-01.");
     expect(info!.title).toContain("not a clean pass");
+  });
+
+  it("shows a short sentence-case label and keeps the full label for multiple rules", () => {
+    const info = describeOverride(["scale-invariant", "timing-plateau"]);
+    expect(info!.label).toBe("Scale-invariant, timing-plateau");
+    expect(info!.fullLabel).toBe("Overridden: scale-invariant, timing-plateau");
+  });
+});
+
+describe("hardware display labels", () => {
+  it("maps known CPU family enums to vendor labels", () => {
+    expect(formatCpuFamily("apple_silicon")).toBe("Apple silicon");
+    expect(formatCpuFamily("amd_epyc")).toBe("AMD EPYC");
+    expect(formatCpuFamily("intel_xeon")).toBe("Intel Xeon");
+  });
+
+  it("falls back to the shared enum humanizer for unknown CPU families", () => {
+    expect(formatCpuFamily("ampere_altra")).toBe("ampere altra");
+  });
+
+  it("maps architecture enums to readable names", () => {
+    expect(formatArchitecture("x86_64")).toBe("x86-64");
+    expect(formatArchitecture("amd64")).toBe("x86-64");
+    expect(formatArchitecture("arm64")).toBe("Arm64");
   });
 });

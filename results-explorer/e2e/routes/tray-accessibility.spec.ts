@@ -87,17 +87,18 @@ test.describe("tray accessibility: announcements, focus, escape", () => {
 
     const checkboxes = page.getByRole("checkbox", { name: /Select .* for comparison/i });
     await expect(checkboxes.first()).toBeVisible();
+    await expect(page.getByTestId("list-row-disabled-reason").first()).toBeVisible();
     const n = await checkboxes.count();
-    expect(n).toBeGreaterThanOrEqual(5);
+    expect(n).toBeGreaterThanOrEqual(11);
 
     const handles = await checkboxes.all();
     const comparable: typeof handles = [];
     for (const cb of handles) {
       if (await cb.isEnabled()) comparable.push(cb);
-      if (comparable.length >= 5) break;
+      if (comparable.length >= 11) break;
     }
-    expect(comparable.length).toBeGreaterThanOrEqual(5);
-    for (let i = 0; i < 4; i++) {
+    expect(comparable.length).toBeGreaterThanOrEqual(11);
+    for (let i = 0; i < 10; i++) {
       const cb = comparable[i];
       if (!cb) throw new Error(`expected comparable checkbox at index ${i}`);
       await expect(cb).toBeEnabled();
@@ -106,14 +107,14 @@ test.describe("tray accessibility: announcements, focus, escape", () => {
       await expect(cb).toBeChecked();
     }
 
-    const fifth = comparable[4];
-    if (!fifth) throw new Error("expected fifth comparable checkbox for cap assertion");
-    await expect(fifth).toBeDisabled();
-    const describedBy = await fifth.getAttribute("aria-describedby");
+    const eleventh = comparable[10];
+    if (!eleventh) throw new Error("expected eleventh comparable checkbox for cap assertion");
+    await expect(eleventh).toBeDisabled();
+    const describedBy = await eleventh.getAttribute("aria-describedby");
     expect(describedBy).toBeTruthy();
     const reason = page.locator(`#${describedBy}`);
     await expect(reason).toBeVisible();
-    expect(await reason.textContent()).toMatch(/Up to 4|compare|selection/i);
+    expect(await reason.textContent()).toMatch(/Up to 10|compare|selection/i);
 
     await expect(page.getByTestId("compare-tray")).toHaveAttribute("role", "region");
     await expect(page.getByTestId("compare-tray-announcer")).toHaveAttribute("aria-live", "polite");

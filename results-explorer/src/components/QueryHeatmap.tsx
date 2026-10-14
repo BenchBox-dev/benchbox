@@ -6,7 +6,7 @@ import { FundingChip } from "@/components/FundingChip";
 import { parseOverrideRules } from "@/lib/displayLabels";
 import { TableScrollHint } from "@/components/TableScrollHint";
 import { fmtMs as formatDurationMs, fmtGeomean } from "@/utils";
-import { formatLatencyMs, formatScoreMetric, formatSpeedup } from "@/lib/metricFormatters";
+import { formatCompactLatencyMs, formatScoreMetric, formatSpeedup, MISSING_VALUE_GLYPH, formatScaleFactor } from "@/lib/metricFormatters";
 import { queryDisplayLabel, sortQueryIds } from "@/lib/queryLabels";
 import { compareSelectionLabel } from "@/lib/compareCohort";
 import { MAX_COMPARE_SELECTIONS, resultIdentityAriaLabel, resultReceiptHref } from "@/lib/resultLinks";
@@ -89,10 +89,6 @@ interface QueryHeatmapProps {
 
 const MOBILE_OUTLIER_LIMIT = 3;
 
-function fmtQueryMs(ms: number): string {
-  return formatLatencyMs(ms, { subMillisecond: "compact" }).valueText;
-}
-
 function CompareDisabledReason({ id, copy }: { id?: string; copy: CompareExclusionReasonCopy }) {
   return (
     <div id={id} class="mt-1 text-xs text-[var(--bb-data-fg-muted)]" data-testid="query-heatmap-disabled-reason">
@@ -151,7 +147,7 @@ export function QueryHeatmap({
   }
 
   function fmtPrimary(val: number | null): string {
-    if (val === null) return "-";
+    if (val === null) return MISSING_VALUE_GLYPH;
     return primaryMetric === "display_geomean_ms" ? fmtGeomean(val) : formatScoreMetric(primaryMetric, val);
   }
 
@@ -621,7 +617,7 @@ export function QueryHeatmap({
                           <div class="text-xs text-[var(--bb-data-fg-muted)]">{outlier.ratioLabel}</div>
                         </div>
                         <div class="font-mono text-xs font-semibold text-[var(--bb-data-fg-primary)]">
-                          {fmtQueryMs(outlier.ms)}
+                          {formatCompactLatencyMs(outlier.ms)}
                         </div>
                       </div>
                     ))}
@@ -675,7 +671,7 @@ export function QueryHeatmap({
           <table
             ref={gridRef}
             role="grid"
-            aria-label={`${summary.benchmark} SF${summary.scale_factor} ${summary.phase} results`}
+            aria-label={`${summary.benchmark} ${formatScaleFactor(summary.scale_factor)} ${summary.phase} results`}
             class="min-w-max text-sm"
           >
             <thead class="bg-[var(--bb-surface-data-muted)]">{renderHeaderRow()}</thead>
@@ -837,10 +833,10 @@ export function QueryHeatmap({
                       ms !== null
                         ? ratio !== null
                           ? ratio <= 1.005
-                            ? `${fmtQueryMs(ms)}, fastest in column`
+                            ? `${formatCompactLatencyMs(ms)}, fastest in column`
                             :
-                              `${fmtQueryMs(ms)}, ${formatSpeedup(ratio, { unit: "×" }).valueText} slower than fastest in column`
-                          : fmtQueryMs(ms)
+                              `${formatCompactLatencyMs(ms)}, ${formatSpeedup(ratio).valueText} slower than fastest in column`
+                          : formatCompactLatencyMs(ms)
                         : isExcludedTiming
                           ? `${formatDurationMs(rawMs)}, excluded: ${excludedReason}`
                           : `No published query run for ${row.platform} ${qid}`;
@@ -876,7 +872,7 @@ export function QueryHeatmap({
                         onKeyDown={(e) => handleCellKey(e as KeyboardEvent, rowIdx, colIdx)}
                         onFocus={() => setAnnouncement(`${queryDisplayLabel(qid)}: ${ariaLabel}`)}
                       >
-                        {ms !== null ? fmtQueryMs(ms) : isExcludedTiming ? "Excluded" : "No run"}
+                        {ms !== null ? formatCompactLatencyMs(ms) : isExcludedTiming ? "Excluded" : "No run"}
                       </td>
                     );
                   })}
@@ -924,5 +920,5 @@ function queryOutliers(
 function queryRatioLabel(ratio: number | null): string {
   if (ratio === null) return "No ranking baseline";
   if (ratio <= 1.005) return "Fastest in ranking";
-  return `${formatSpeedup(ratio, { unit: "×" }).valueText} slower than fastest`;
+  return `${formatSpeedup(ratio).valueText} slower than fastest`;
 }

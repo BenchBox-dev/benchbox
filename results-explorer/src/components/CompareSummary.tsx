@@ -75,6 +75,14 @@ export function CompareSummary({ summary }: CompareSummaryProps) {
           )}
         </SummaryCard>
 
+        {summary.rankingBlocked && summary.descriptiveGeomeanSpread !== null ? (
+          <SummaryCard label="Geomean query time spread (not ranked)">
+            <p class="font-mono text-sm font-semibold text-[var(--bb-data-fg-primary)]">
+              {formatRatio(summary.descriptiveGeomeanSpread)}
+            </p>
+            <p class="mt-1 text-xs text-[var(--bb-data-fg-muted)]">slowest comparable run vs fastest, descriptive only</p>
+          </SummaryCard>
+        ) : (
         <SummaryCard label={summary.primaryMetricLabel}>
           {summary.comparisonRatio !== null ? (
             <>
@@ -87,6 +95,7 @@ export function CompareSummary({ summary }: CompareSummaryProps) {
             <p class="text-sm text-[var(--bb-data-fg-muted)]">No comparable primary values</p>
           )}
         </SummaryCard>
+        )}
 
         <SummaryCard label={summary.winnerLabel ? `Where ${summary.winnerLabel} wins` : "Query comparison"}>
           {summary.claimSuppressed ? (
@@ -97,10 +106,10 @@ export function CompareSummary({ summary }: CompareSummaryProps) {
           ) : (
             <>
               <p class="font-mono text-sm font-semibold text-[var(--bb-data-fg-primary)]">
-                {summary.queryRecord.wins} of {summary.queryRecord.comparableQueries} queries
+                {summary.queryRecord.wins} of {summary.queryRecord.comparableQueries} shared queries
               </p>
               <p class="mt-1 text-xs text-[var(--bb-data-fg-muted)]">
-                {summary.queryRecord.losses} slower · {summary.queryRecord.ties} tied
+                Fastest outright on {summary.queryRecord.wins} · {summary.queryRecord.losses} slower · {summary.queryRecord.ties} tied
                 {summary.queryRecord.missing > 0 ? (
                   <>
                     {" · "}
@@ -173,7 +182,8 @@ function formatPrimaryValue(value: number | null, primaryMetric: CompareDecision
 
 function formatCostSummary(cost: NonNullable<CompareDecisionSummary["cost"]>) {
   if (cost.winnerCostUsd === null || cost.winnerCostPerformanceRatioVsWorst === null) {
-    return `${cost.normalizedResultCount} selected run(s) have normalized cost; winner cost is unavailable.`;
+    const runPhrase = cost.normalizedResultCount === 1 ? "selected run has" : "selected runs have";
+    return `${cost.normalizedResultCount} ${runPhrase} normalized cost; winner cost is unavailable.`;
   }
   const bestText = cost.winnerIsBestCostPerformance ? "best" : "not best";
   return `winner cost ${formatUsd(cost.winnerCostUsd).valueText}; ${formatRatio(

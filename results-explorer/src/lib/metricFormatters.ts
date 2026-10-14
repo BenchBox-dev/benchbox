@@ -1,5 +1,12 @@
+export const MISSING_VALUE_GLYPH = "—";
+const RATIO_UNIT = "×";
+const MINUS_SIGN = "−";
+
+const ratioWholeNumbers = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+const ratioTwoDecimals = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
+const ratioSignificantDigits = new Intl.NumberFormat("en-US", { maximumSignificantDigits: 2 });
+
 export type MetricDisplayContext = "table" | "chart" | "axis" | "tooltip" | "receipt" | "export";
-export type SpeedupUnit = "x" | "×";
 
 export interface MetricFormatResult {
   valueText: string;
@@ -28,10 +35,6 @@ interface LatencyOptions extends ScalarMetricOptions {
   maximumSignificantDigits?: number;
 }
 
-interface SpeedupOptions extends ScalarMetricOptions {
-  unit?: SpeedupUnit;
-}
-
 interface CoverageOptions {
   covered: number | null | undefined;
   total: number | null | undefined;
@@ -49,7 +52,7 @@ export type MetricFormatInput =
   | ({ type: "throughput_score" } & ScalarMetricInput & PowerScoreOptions)
   | ({ type: "latency_ms" } & ScalarMetricInput & LatencyOptions)
   | ({ type: "duration_s" } & ScalarMetricInput)
-  | ({ type: "speedup" } & ScalarMetricInput & SpeedupOptions)
+  | ({ type: "speedup" } & ScalarMetricInput)
   | ({ type: "rank"; rank: number | null | undefined; total?: number | null | undefined; missingText?: string })
   | ({ type: "average_rank" } & ScalarMetricInput)
   | ({ type: "coverage" } & CoverageOptions)
@@ -83,7 +86,7 @@ export function formatMetricValue(input: MetricFormatInput): MetricFormatResult 
 
 export function formatPowerScore(value: number | null | undefined, options: PowerScoreOptions = {}): MetricFormatResult {
   const numeric = finiteNumber(value);
-  if (numeric === null) return missing(options.missingText ?? "-", "power score");
+  if (numeric === null) return missing(options.missingText ?? MISSING_VALUE_GLYPH, "power score");
 
   const text = options.exact ? formatNumber(numeric, { maximumFractionDigits: 12 }) : compactScore(numeric);
   return result(text, null, numeric, options.exact ? `exact power score ${text}` : `power score ${text}`);
@@ -91,7 +94,7 @@ export function formatPowerScore(value: number | null | undefined, options: Powe
 
 export function formatThroughputScore(value: number | null | undefined, options: PowerScoreOptions = {}): MetricFormatResult {
   const numeric = finiteNumber(value);
-  if (numeric === null) return missing(options.missingText ?? "-", "throughput score");
+  if (numeric === null) return missing(options.missingText ?? MISSING_VALUE_GLYPH, "throughput score");
 
   const text = options.exact ? formatNumber(numeric, { maximumFractionDigits: 12 }) : compactScore(numeric);
   return result(
@@ -106,13 +109,13 @@ export function formatScoreMetric(metric: string, value: number | null | undefin
   return (metric === "throughput_at_size" ? formatThroughputScore(value) : formatPowerScore(value)).valueText;
 }
 
-export function formatPowerScoreExact(value: number | null | undefined, missingText = "-"): MetricFormatResult {
+export function formatPowerScoreExact(value: number | null | undefined, missingText = MISSING_VALUE_GLYPH): MetricFormatResult {
   return formatPowerScore(value, { exact: true, missingText });
 }
 
 export function formatLatencyMs(value: number | null | undefined, options: LatencyOptions = {}): MetricFormatResult {
   const numeric = finiteNumber(value);
-  if (numeric === null) return missing(options.missingText ?? "N/A", "latency");
+  if (numeric === null) return missing(options.missingText ?? MISSING_VALUE_GLYPH, "latency");
 
   const abs = Math.abs(numeric);
   if (options.context === "axis") {
@@ -159,15 +162,40 @@ export function formatDurationSeconds(value: number | null | undefined, options:
   return result(text, "s", numeric, `${text} duration`);
 }
 
-export function formatSpeedup(value: number | null | undefined, options: SpeedupOptions = {}): MetricFormatResult {
+export function formatSpeedup(value: number | null | undefined, options: ScalarMetricOptions = {}): MetricFormatResult {
   const numeric = finiteNumber(value);
-  if (numeric === null) return missing(options.missingText ?? "-", "speedup");
-  const unit = options.unit ?? "x";
-  const text = `${formatNumber(numeric, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}${unit}`;
-  return result(text, unit, numeric, `${text} speedup`);
+  if (numeric === null) return missing(options.missingText ?? MISSING_VALUE_GLYPH, "speedup");
+  const text = formatRatio(numeric);
+  return result(text, RATIO_UNIT, numeric, `${text} speedup`);
+}
+
+export function formatRatio(value: number | null | undefined, options: { missingText?: string } = {}): string {
+  const numeric = finiteNumber(value);
+  if (numeric === null) return options.missingText ?? MISSING_VALUE_GLYPH;
+  const magnitude = Math.abs(numeric);
+  const formatter = magnitude >= 10 ? ratioWholeNumbers : magnitude >= 1 ? ratioTwoDecimals : ratioSignificantDigits;
+  return `${formatter.format(numeric)}${RATIO_UNIT}`;
+}
+
+export function formatCompactLatencyMs(value: number | null | undefined): string {
+  return formatLatencyMs(value, { missingText: MISSING_VALUE_GLYPH, subMillisecond: "compact" }).valueText;
+}
+
+export function formatPercentChange(value: number | null | undefined, options: { missingText?: string } = {}): string {
+  const numeric = finiteNumber(value);
+  if (numeric === null) return options.missingText ?? MISSING_VALUE_GLYPH;
+  const roundedMagnitude = Math.round(Math.abs(numeric) * 10) / 10;
+  if (roundedMagnitude === 0) return `${formatNumber(0, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+  const sign = numeric > 0 ? "+" : MINUS_SIGN;
+  return `${sign}${formatNumber(roundedMagnitude, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+}
+
+export function formatScaleFactor(value: string | number | null | undefined): string {
+  if (value === null || value === undefined) return MISSING_VALUE_GLYPH;
+  const text = String(value).trim();
+  if (text === "") return MISSING_VALUE_GLYPH;
+  const numeric = Number(text);
+  return `SF ${Number.isFinite(numeric) ? String(numeric) : text}`;
 }
 
 export function formatRank(
@@ -220,7 +248,7 @@ export function formatUsd(value: number | null | undefined, options: ScalarMetri
 
 export function formatPlainNumber(value: number | null | undefined, options: ScalarMetricOptions = {}): MetricFormatResult {
   const numeric = finiteNumber(value);
-  if (numeric === null) return missing(options.missingText ?? "-", "number");
+  if (numeric === null) return missing(options.missingText ?? MISSING_VALUE_GLYPH, "number");
   const text = formatNumber(numeric, {
     maximumFractionDigits: Number.isInteger(numeric) ? 0 : 2,
   });

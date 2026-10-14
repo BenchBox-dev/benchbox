@@ -52,6 +52,37 @@ def test_normalized_cost_contract_covers_all_statuses() -> None:
     assert cases[1].to_dict()["normalized_cost_usd"] == "0"
     assert cases[2].to_dict()["normalized_cost_usd"] is None
     assert cases[0].to_dict()["deployment"]["cloud_provider"] == "aws"
+    assert "unavailability_reasons" not in cases[0].to_dict()
+
+
+def test_normalized_cost_serializes_unavailability_reasons_only_when_present() -> None:
+    reason = "normalized cost unavailable: pricing provenance is unknown for snowflake_credit_prices"
+    cost = NormalizedCost(
+        normalized_cost_usd=None,
+        cost_model_version="2026.05.0",
+        cost_model_source="benchbox.core.cost.pricing",
+        cost_scope="compute_only",
+        cost_status="unavailable",
+        billing_unit="credit",
+        pricing_region="us-east-1",
+        unavailability_reasons=(reason,),
+    )
+
+    assert cost.to_dict()["unavailability_reasons"] == [reason]
+
+
+def test_normalized_cost_rejects_unavailability_reasons_for_available_cost() -> None:
+    with pytest.raises(ValueError, match="require unavailable cost status"):
+        NormalizedCost(
+            normalized_cost_usd=Decimal("1"),
+            cost_model_version="2026.05.0",
+            cost_model_source="benchbox.core.cost.pricing",
+            cost_scope="compute_only",
+            cost_status="normalized",
+            billing_unit="credit",
+            pricing_region="us-east-1",
+            unavailability_reasons=("pricing provenance is unknown",),
+        )
 
 
 def test_normalized_cost_rejects_ambiguous_missing_or_fake_values() -> None:

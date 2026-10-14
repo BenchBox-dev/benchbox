@@ -1,7 +1,7 @@
 import type { ChartHistoricalEntry } from "@/lib/chartRegistry";
 import { useElementSize } from "@/lib/useElementSize";
 import { axisLabelAnchor, chartFrame } from "@/lib/chartFrame";
-import { timeSeriesColor } from "@/lib/chartTheme";
+import { assignRunColorSlots, paletteColor } from "@/lib/chartTheme";
 import { primaryMetricHigherIsBetter, type PrimaryMetric } from "@/lib/displayEligibility";
 import { formatLatencyMs, formatScoreMetric, formatLatencyAxisLabels } from "@/lib/metricFormatters";
 import { formatRunDateWithAge } from "@/lib/runAge";
@@ -69,7 +69,6 @@ export function TimeSeries({ entries, primaryMetric }: Props) {
     byPlatform.set(e.platform_id, arr);
   }
 
-  let colorIdx = 0;
   const seriesDescriptors: { pid: string; firstEntry: ChartHistoricalEntry; points: SeriesPoint[] }[] = [];
   for (const [pid, platformEntries] of byPlatform) {
     if (duplicateDayPlatformIds.has(pid)) continue;
@@ -107,11 +106,18 @@ export function TimeSeries({ entries, primaryMetric }: Props) {
       scale_factor: descriptor.firstEntry.scale_factor,
     })),
   );
+  const slotByPlatformId = assignRunColorSlots(
+    seriesDescriptors.map((descriptor) => ({
+      result_id: descriptor.pid,
+      platform_id: descriptor.pid,
+      platform: descriptor.firstEntry.platform,
+    })),
+  );
   const allSeries: Series[] = seriesDescriptors.map((descriptor, idx) => ({
     platformId: descriptor.pid,
     label: cohortLabels[idx]?.disambiguated ?? descriptor.firstEntry.platform,
     fullLabel: cohortLabels[idx]?.full ?? descriptor.firstEntry.platform,
-    color: timeSeriesColor(colorIdx++),
+    color: paletteColor(slotByPlatformId.get(descriptor.pid) ?? idx),
     points: descriptor.points,
   }));
 

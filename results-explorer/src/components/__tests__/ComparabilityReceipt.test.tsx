@@ -184,7 +184,7 @@ describe("ComparabilityReceipt", () => {
       ?.closest("div")?.parentElement;
     expect(validationCard).toBeTruthy();
     expect(validationCard).toHaveTextContent("2 values differ");
-    expect(validationCard).toHaveTextContent("DuckDB: passed; Pandas: no validation (not_run)");
+    expect(validationCard).toHaveTextContent("DuckDB: Passed (passed); Pandas: No validation (not_run)");
   });
 
   describe("orderWarningLabelsForSummary", () => {
@@ -758,7 +758,7 @@ describe("ComparabilityReceipt", () => {
       const fields = buildComparabilityFields([run]);
       const localityField = fields.find((f) => f.label === "Locality")!;
       expect(localityField.status).toBe("diff");
-      expect(localityField.detail).toContain("client statement floor 88.20 ms");
+      expect(localityField.detail).toContain("client statement floor 88 ms");
     });
   });
 });

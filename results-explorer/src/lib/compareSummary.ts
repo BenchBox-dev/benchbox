@@ -4,6 +4,8 @@ import { describeValidationStatus } from "@/lib/displayLabels";
 import {
   compareEvidenceSummary,
   isComparable,
+  isRankable,
+  formatTimingExclusion,
   isValidTimingValue,
   primaryMetricHigherIsBetter,
   primaryMetricLabel as labelForPrimaryMetric,
@@ -60,6 +62,8 @@ export interface CompareDecisionSummary {
   higherIsBetter: boolean;
   claimSuppressed: boolean;
   claimSuppressionReason: string | null;
+  rankingBlocked: boolean;
+  descriptiveGeomeanSpread: number | null;
   winner: CompareResultMetric | null;
   winnerLabel: string | null;
   comparison: CompareResultMetric | null;
@@ -82,6 +86,50 @@ interface CompareDecisionSummaryOptions {
   comparisonBoundary?: string;
 }
 
+interface HeadlineOptions extends CompareDecisionSummaryOptions {
+  rankingBlocked?: boolean;
+}
+
+export function sharedQueryIdsFor(results: readonly DetailResult[]): string[] {
+  const all = new Set<string>();
+  for (const result of results) for (const timing of result.display_timings) all.add(timing.query_id);
+  return [...all]
+    .filter((queryId) => results.every((result) => timingValueForQuery(result, queryId) !== null))
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+}
+
+function fastestRunIndexesForQuery(results: readonly DetailResult[], queryId: string): number[] {
+  const values = results.map((result) => timingValueForQuery(result, queryId) ?? Infinity);
+  const fastest = Math.min(...values);
+  return values.flatMap((value, index) => (value === fastest ? [index] : []));
+}
+
+export function countUniqueFastestQueries(results: readonly DetailResult[], sharedQueryIds: readonly string[]): number[] {
+  const counts = new Array<number>(results.length).fill(0);
+  for (const queryId of sharedQueryIds) {
+    const fastest = fastestRunIndexesForQuery(results, queryId);
+    if (fastest.length === 1) counts[fastest[0]!]! += 1;
+  }
+  return counts;
+}
+
+function rankingBlockReason(results: readonly DetailResult[]): string {
+  const blocked = results.find((result) => isComparable(result) && !isRankable(result));
+  const detail = blocked ? formatTimingExclusion(blocked.ranking_exclusion_reason, "") : "";
+  return detail
+    ? `no selected run is rank-safe; ${detail.charAt(0).toLowerCase()}${detail.slice(1)}`
+    : "no selected run is rank-safe";
+}
+
+function geomeanSpread(results: readonly DetailResult[]): number | null {
+  const values = results
+    .filter(isComparable)
+    .map((result) => result.display_geomean_ms)
+    .filter(isValidTimingValue);
+  if (values.length < 2) return null;
+  return Math.max(...values) / Math.min(...values);
+}
+
 export function buildCompareDecisionSummary(
   results: DetailResult[],
   primaryMetric: ComparePrimaryMetric,
@@ -90,25 +138,31 @@ export function buildCompareDecisionSummary(
   const higherIsBetter = primaryMetricHigherIsBetter(primaryMetric);
   const primaryMetricLabel = labelForPrimaryMetric(primaryMetric);
   const evidence = compareEvidenceSummary(results);
-  const suppressWinnerClaims = options.suppressWinnerClaims === true || !evidence.comparable;
-  const suppressionReason = options.suppressionReason ?? evidence.reason ?? null;
   const metrics = results.map((result) => ({
     resultId: result.result_id,
     platform: result.platform,
     value: primaryMetricValue(result, primaryMetric),
     comparable: isComparable(result),
+    rankable: isRankable(result),
   }));
-  const sortedMetrics = metrics
-    .filter(
-      (metric): metric is CompareResultMetric & { value: number; comparable: boolean } =>
-        metric.comparable && isValidTimingValue(metric.value),
-    )
+  const comparableMetrics = metrics.filter(
+    (metric): metric is CompareResultMetric & { value: number; comparable: boolean; rankable: boolean } =>
+      metric.comparable && isValidTimingValue(metric.value),
+  );
+  const sortedMetrics = comparableMetrics
+    .filter((metric) => metric.rankable)
     .sort((a, b) => (higherIsBetter ? b.value - a.value : a.value - b.value));
+  const blockedByRanking =
+    options.suppressWinnerClaims !== true && evidence.comparable && comparableMetrics.length > 0 && sortedMetrics.length === 0;
+  const suppressWinnerClaims = options.suppressWinnerClaims === true || !evidence.comparable || blockedByRanking;
+  const suppressionReason =
+    options.suppressionReason ?? evidence.reason ?? (blockedByRanking ? rankingBlockReason(results) : null);
 
   const metricWinner = sortedMetrics[0] ?? null;
   const winner = suppressWinnerClaims ? null : metricWinner;
   const comparison = sortedMetrics.length > 1 ? sortedMetrics[sortedMetrics.length - 1]! : null;
   const comparisonRatio = winner && comparison ? metricRatio(winner.value, comparison.value, higherIsBetter) : null;
+  const descriptiveGeomeanSpread = blockedByRanking ? geomeanSpread(results) : null;
   const comparisonLabel = higherIsBetter
     ? "better than the lowest selected run"
     : "faster than the slowest selected run";
@@ -126,6 +180,8 @@ export function buildCompareDecisionSummary(
     higherIsBetter,
     claimSuppressed: suppressWinnerClaims,
     claimSuppressionReason: suppressionReason,
+    rankingBlocked: blockedByRanking,
+    descriptiveGeomeanSpread,
     winner,
     winnerLabel,
     comparison,
@@ -136,6 +192,7 @@ export function buildCompareDecisionSummary(
       ...options,
       suppressWinnerClaims,
       suppressionReason: suppressionReason ?? undefined,
+      rankingBlocked: blockedByRanking,
     }, validationCaveat),
     queryRecord,
     percentiles,
@@ -160,7 +217,7 @@ function buildNonCleanValidation(results: DetailResult[]): CompareValidationCave
 
 function buildValidationCaveat(nonCleanValidation: CompareValidationCaveat[]): string | null {
   if (nonCleanValidation.length === 0) return null;
-  const parts = nonCleanValidation.map((entry) => `${entry.platform} is ${entry.label}`);
+  const parts = nonCleanValidation.map((entry) => `${entry.platform}: ${entry.label}`);
   return `Validation caution: ${parts.join("; ")}. This comparison rests on at least one unvalidated or non-clean result - treat the leading-run claim as provisional.`;
 }
 
@@ -173,31 +230,43 @@ function buildHeadline(
   winner: CompareDecisionSummary["winner"],
   comparisonRatio: number | null,
   primaryMetric: ComparePrimaryMetric,
-  options: CompareDecisionSummaryOptions,
+  options: HeadlineOptions,
   validationCaveat: string | null,
 ): string {
+  const caveatSuffix = validationCaveat ? ` ${validationCaveat}` : "";
   const boundarySuffix = options.comparisonBoundary ? ` ${options.comparisonBoundary}` : "";
+  return `${buildHeadlineCore(winner, comparisonRatio, primaryMetric, options)}${caveatSuffix}${boundarySuffix}`;
+}
+
+function buildHeadlineCore(
+  winner: CompareDecisionSummary["winner"],
+  comparisonRatio: number | null,
+  primaryMetric: ComparePrimaryMetric,
+  options: HeadlineOptions,
+): string {
+  if (options.rankingBlocked) {
+    return `No ranked winner: ${options.suppressionReason}. Only descriptive geomean comparisons are shown.`;
+  }
   if (options.suppressWinnerClaims) {
     const reason = options.suppressionReason ?? "selected runs are not from the same comparable ranking";
     if (isQueryEvidenceSuppressionReason(reason)) {
-      return `Insufficient comparable query evidence: ${reason}. Winner language is suppressed; raw query evidence remains available.${boundarySuffix}`;
+      return `Insufficient comparable query evidence: ${reason}. Winner language is suppressed; raw query evidence remains available.`;
     }
-    return `Not directly comparable: ${reason}. Winner language is suppressed; raw query evidence remains available.${boundarySuffix}`;
+    return `Not directly comparable: ${reason}. Winner language is suppressed; raw query evidence remains available.`;
   }
-  if (!winner) return `The selected runs do not have enough primary-metric data for a comparison.${boundarySuffix}`;
+  if (!winner) return "The selected runs do not have enough primary-metric data for a comparison.";
   const winnerLabel = options.runLabels?.[winner.resultId] ?? winner.platform;
-  const caveatSuffix = `${validationCaveat ? ` ${validationCaveat}` : ""}${boundarySuffix}`;
-  if (comparisonRatio === null) return `${winnerLabel} leads on the selected primary metric.${caveatSuffix}`;
+  if (comparisonRatio === null) return `${winnerLabel} leads on the selected primary metric.`;
   if (Math.abs(comparisonRatio - 1) < COMPARE_TIE_THRESHOLD) {
-    return `The selected runs are within the tie threshold (${formatRatio(comparisonRatio)}) on the primary metric.${caveatSuffix}`;
+    return `The selected runs are within the tie threshold (${formatRatio(comparisonRatio)}) on the primary metric.`;
   }
   if (primaryMetric === "power_score") {
-    return `In these selected runs, ${winnerLabel}'s power score was ${formatRatio(comparisonRatio)} better than the lowest selected run.${caveatSuffix}`;
+    return `In these selected runs, ${winnerLabel}'s power score was ${formatRatio(comparisonRatio)} better than the lowest selected run.`;
   }
   if (primaryMetric === "throughput_at_size") {
-    return `In these selected runs, ${winnerLabel}'s Throughput@Size was ${formatRatio(comparisonRatio)} better than the lowest selected run.${caveatSuffix}`;
+    return `In these selected runs, ${winnerLabel}'s Throughput@Size was ${formatRatio(comparisonRatio)} better than the lowest selected run.`;
   }
-  return `In these selected runs, ${winnerLabel}'s geomean query time was ${formatRatio(comparisonRatio)} faster than the slowest selected run.${caveatSuffix}`;
+  return `In these selected runs, ${winnerLabel}'s geomean query time was ${formatRatio(comparisonRatio)} faster than the slowest selected run.`;
 }
 
 function isQueryEvidenceSuppressionReason(reason: string): boolean {
@@ -206,56 +275,32 @@ function isQueryEvidenceSuppressionReason(reason: string): boolean {
 }
 
 function buildWinnerQueryRecord(results: DetailResult[], winnerResultId: string | null): WinnerQueryRecord {
-  const queryIds = [...new Set(results.flatMap((result) => result.display_timings.map((timing) => timing.query_id)))];
-  if (!winnerResultId) {
-    return {
-      totalQueries: queryIds.length,
-      comparableQueries: 0,
-      wins: 0,
-      losses: 0,
-      ties: 0,
-      missing: queryIds.length,
-    };
+  const allQueryIds = new Set<string>();
+  for (const result of results) for (const timing of result.display_timings) allQueryIds.add(timing.query_id);
+  const totalQueries = allQueryIds.size;
+  const sharedQueryIds = sharedQueryIdsFor(results);
+  const winnerIndex = winnerResultId === null ? -1 : results.findIndex((result) => result.result_id === winnerResultId);
+  if (winnerIndex < 0) {
+    return { totalQueries, comparableQueries: 0, wins: 0, losses: 0, ties: 0, missing: totalQueries };
   }
 
-  let comparableQueries = 0;
   let wins = 0;
   let losses = 0;
   let ties = 0;
-  let missing = 0;
-
-  for (const queryId of queryIds) {
-    const entries = results
-      .map((result) => ({
-        resultId: result.result_id,
-        value: timingValueForQuery(result, queryId),
-      }))
-      .filter((entry): entry is { resultId: string; value: number } => isValidTimingValue(entry.value));
-    const winnerEntry = entries.find((entry) => entry.resultId === winnerResultId);
-    const competitorCount = entries.filter((entry) => entry.resultId !== winnerResultId).length;
-    if (!winnerEntry || competitorCount === 0) {
-      missing += 1;
-      continue;
-    }
-    comparableQueries += 1;
-    const fastest = Math.min(...entries.map((entry) => entry.value));
-    const fastestCount = entries.filter((entry) => entry.value === fastest).length;
-    if (winnerEntry.value === fastest && fastestCount > 1) {
-      ties += 1;
-    } else if (winnerEntry.value === fastest) {
-      wins += 1;
-    } else {
-      losses += 1;
-    }
+  for (const queryId of sharedQueryIds) {
+    const fastest = fastestRunIndexesForQuery(results, queryId);
+    if (!fastest.includes(winnerIndex)) losses += 1;
+    else if (fastest.length > 1) ties += 1;
+    else wins += 1;
   }
 
   return {
-    totalQueries: queryIds.length,
-    comparableQueries,
+    totalQueries,
+    comparableQueries: sharedQueryIds.length,
     wins,
     losses,
     ties,
-    missing,
+    missing: totalQueries - sharedQueryIds.length,
   };
 }
 

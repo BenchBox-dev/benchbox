@@ -1,8 +1,9 @@
+import { formatLatencyMs, formatScaleFactor } from "@/lib/metricFormatters";
 import { useState } from "preact/hooks";
 import type { ComponentChildren } from "preact";
 import type { DetailResult } from "@/types";
 import { humanizeBenchmark, shortHash } from "@/utils";
-import { costModelSummary, costScopeSummary, normalizedCostLabel } from "@/lib/costDisplay";
+import { costModelSummary, costScopeSummary, hasCostEstimate, normalizedCostLabel, parseEstimateAssumptions } from "@/lib/costDisplay";
 import {
   formatArchitecture,
   formatCpuFamily,
@@ -17,7 +18,7 @@ import {
 } from "@/lib/displayLabels";
 import { visibleResultIdForRow } from "@/lib/resultLinks";
 import { StatusBadge } from "@/components/StatusBadge";
-import { OverrideBadge, ValidationBadge } from "@/components/TrustBadge";
+import { ValidationBadge } from "@/components/TrustBadge";
 import { TuningVerificationBadge } from "@/components/TuningVerificationBadge";
 import { formatCpuIdentityProvenance } from "@/lib/hardwareProvenance";
 import { RunDateChip } from "@/components/RunAge";
@@ -28,6 +29,7 @@ interface RunReceiptProps {
   shortId?: string | null;
   isRankingEligible?: boolean | null;
   reproduceCommand?: string | null;
+  plansUrl?: string | null;
 }
 
 interface ReceiptRow {
@@ -60,6 +62,27 @@ function rowFromSummary(label: string, value: string): ReceiptRow {
   return recordedRow(label, value);
 }
 
+function estimateProvenanceRow(detail: DetailResult): ReceiptRow {
+  const assumptions = parseEstimateAssumptions(detail.cost_estimate_assumptions);
+  return recordedRow(
+    "Estimate basis",
+    <div class="space-y-1 text-xs text-[var(--bb-data-fg-muted)]">
+      <p>This timing-derived estimate is not metered usage, an actual cost, or a bill estimate.</p>
+      {detail.cost_estimate_method && <p>Method: {detail.cost_estimate_method}</p>}
+      {detail.cost_estimate_source && <p>Source: {detail.cost_estimate_source}</p>}
+      {detail.cost_estimate_pricing_date && <p>Pricing date: {detail.cost_estimate_pricing_date}</p>}
+      {assumptions.length > 0 && (
+        <details>
+          <summary class="cursor-pointer font-medium">Assumptions ({assumptions.length})</summary>
+          <ul class="mt-1 list-disc space-y-0.5 pl-4">
+            {assumptions.map((assumption, index) => <li key={index}>{assumption}</li>)}
+          </ul>
+        </details>
+      )}
+    </div>,
+  );
+}
+
 function overrideRows(detail: DetailResult): ReceiptRow[] {
   const rules = parseOverrideRules(detail.override_rules);
   const status = detail.validation_status;
@@ -68,18 +91,72 @@ function overrideRows(detail: DetailResult): ReceiptRow[] {
     return [recordedRow("Validation", <ValidationBadge validationStatus={status} showMissing />)];
   }
   const validation = <ValidationBadge validationStatus={status} overrideRules={rules} showMissing />;
+  const details = overrideDetails(detail);
   return [
     recordedRow("Validation", validation),
+    ...(details.length > 0 ? [recordedRow("Override", <span class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">{details}</span>)] : []),
+  ];
+}
+
+function queryIdRepairRows(detail: DetailResult): ReceiptRow[] {
+  const repairs = (detail.query_id_repairs ?? "")
+    .split(";")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  if (repairs.length === 0) return [];
+  return [
     recordedRow(
-      "Override",
-      <OverrideBadge
-        rules={rules}
-        approver={detail.override_approver}
-        evidence={detail.override_evidence}
-        expires={detail.override_expires}
-      />,
+      "Query ID repairs",
+      <div class="space-y-1">
+        <p class="min-w-0 break-words">
+          {repairs.length} query {repairs.length === 1 ? "ID" : "IDs"} repaired for display: {repairs.join("; ")}
+        </p>
+        <p class="text-xs text-[var(--bb-data-fg-muted)]">
+          The published bundle stores these IDs without their leading q; the original bundle is unchanged.
+        </p>
+      </div>,
     ),
   ];
+}
+
+function overrideDetails(detail: DetailResult): ComponentChildren[] {
+  const parts: ComponentChildren[] = [];
+  if (detail.override_approver?.trim()) {
+    parts.push(<span key="approver" class="min-w-0 break-words">by {detail.override_approver.trim()}</span>);
+  }
+  if (detail.override_evidence?.trim()) {
+    parts.push(<OverrideEvidenceLink key="evidence" evidence={detail.override_evidence.trim()} />);
+  }
+  if (detail.override_expires?.trim()) {
+    parts.push(<span key="expires" class="min-w-0 break-words">expires {detail.override_expires.trim()}</span>);
+  }
+  return parts;
+}
+
+function OverrideEvidenceLink({ evidence }: { evidence: string }) {
+  const url = httpUrlOrNull(evidence);
+  if (url === null) {
+    return <span class="min-w-0 break-all font-mono">{evidence}</span>;
+  }
+  return (
+    <a href={url.href} title={url.href} class="min-w-0 break-words text-xs font-medium no-underline" rel="noopener noreferrer">
+      {evidenceLinkLabel(url)}
+    </a>
+  );
+}
+
+function httpUrlOrNull(value: string): URL | null {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url : null;
+  } catch {
+    return null;
+  }
+}
+
+function evidenceLinkLabel(url: URL): string {
+  const fileName = url.pathname.split("/").filter(Boolean).pop() ?? "";
+  return fileName.includes(".") ? fileName : "Evidence link";
 }
 
 function formattedRow(label: string, raw: string | null | undefined, format: (raw: string) => string): ReceiptRow {
@@ -103,8 +180,10 @@ export function RunReceipt({
   shortId = null,
   isRankingEligible = null,
   reproduceCommand = buildReproduceCommand(detail),
+  plansUrl: plansUrlOverride,
 }: RunReceiptProps) {
   const [showMissing, setShowMissing] = useState(false);
+  const plansUrl = plansUrlOverride === undefined ? planDownloadUrl(detail) : plansUrlOverride;
   const queryCount = detail.display_timings.length || new Set(detail.queries.map((query) => query.query_id)).size;
   const sampleCount =
     detail.display_timings.reduce((sum, timing) => sum + timing.sample_count, 0) || detail.queries.length;
@@ -115,7 +194,7 @@ export function RunReceipt({
       title: "Workload",
       rows: [
         recordedRow("Benchmark", humanizeBenchmark(detail.benchmark)),
-        recordedRow("Scale factor", `SF ${detail.scale_factor}`),
+        recordedRow("Scale factor", formatScaleFactor(detail.scale_factor)),
         recordedRow("Run date", <RunDateChip runDate={detail.run_date} />),
         formattedRow("Test phase", detail.test_type, formatEnumLabel),
         recordedRow("Query count", String(queryCount)),
@@ -169,6 +248,7 @@ export function RunReceipt({
         rowFromString("Funding", detail.funding, formatFunding),
         rowFromString("Visibility", detail.visibility, formatVisibility),
         ...overrideRows(detail),
+        ...queryIdRepairRows(detail),
         rowFromString("Compliance", detail.compliance_class),
         rankingEligibilityRow(isRankingEligible),
       ],
@@ -176,10 +256,10 @@ export function RunReceipt({
     {
       title: "Artifacts",
       rows: [
-        recordedRow("Result ID", <code class="font-mono text-xs">{detail.result_id}</code>),
+        recordedRow("Result ID", <code class="min-w-0 break-all font-mono text-xs">{detail.result_id}</code>),
         rowFromString("Short ID", shortId),
         bundleLinkRow(detail.bundle_download_url),
-        plansRow(detail),
+        plansRow(detail, plansUrl),
         reproduceRow(reproduceCommand),
       ],
     },
@@ -187,6 +267,7 @@ export function RunReceipt({
       title: "Cost",
       rows: [
         recordedRow("Normalized cost", normalizedCostLabel(detail)),
+        ...(hasCostEstimate(detail) ? [estimateProvenanceRow(detail)] : []),
         rowFromSummary("Cost model", costModelSummary(detail)),
         rowFromSummary("Cost scope", costScopeSummary(detail)),
       ],
@@ -423,21 +504,26 @@ function bundleLinkRow(url: string): ReceiptRow {
   );
 }
 
-function plansRow(detail: DetailResult): ReceiptRow {
+function plansRow(detail: DetailResult, plansUrl: string | null): ReceiptRow {
   if (!detail.has_plans) return recordedRow("Plans", "Plans not published");
-  const plansUrl = planDownloadUrl(detail);
-  if (plansUrl === null) return recordedRow("Plans", "Plans available");
+  if (plansUrl === null) return recordedRow("Plans", "Plans recorded; file not published");
   return recordedRow(
     "Plans",
-    <a href={plansUrl} class="text-xs font-medium no-underline" download>
-      Download plans
-    </a>,
+    <>
+      <a href="#execution-plans" class="text-xs font-medium no-underline">
+        View plans
+      </a>
+      <span aria-hidden="true"> · </span>
+      <a href={plansUrl} class="text-xs font-medium no-underline" download>
+        Download plans
+      </a>
+    </>,
   );
 }
 
 function reproduceRow(reproduceCommand: string | null): ReceiptRow {
   if (!reproduceCommand) return missingRow("Reproduce");
-  return recordedRow("Reproduce", <code class="font-mono text-xs">{reproduceCommand}</code>);
+  return recordedRow("Reproduce", <code class="min-w-0 break-words font-mono text-xs">{reproduceCommand}</code>);
 }
 
 function memoryRow(value: number | null | undefined): ReceiptRow {
@@ -457,10 +543,10 @@ function buildClientLocalityRow(detail: DetailResult): ReceiptRow | null {
   const localityParts = [region, cloud].filter((p): p is string => Boolean(p && String(p).trim()));
   const overheadParts: string[] = [];
   if (minMs != null && Number.isFinite(Number(minMs))) {
-    overheadParts.push(`${Number(minMs).toFixed(2)} ms min`);
+    overheadParts.push(`${formatLatencyMs(Number(minMs)).valueText} min`);
   }
   if (medMs != null && Number.isFinite(Number(medMs))) {
-    overheadParts.push(`${Number(medMs).toFixed(2)} ms median`);
+    overheadParts.push(`${formatLatencyMs(Number(medMs)).valueText} median`);
   }
 
   if (localityParts.length === 0 && overheadParts.length === 0 && !status) {
@@ -488,10 +574,18 @@ function rankingEligibilityRow(value: boolean | null | undefined): ReceiptRow {
   return recordedRow("Ranking eligibility", value ? "Eligible" : "Not eligible");
 }
 
-export function planDownloadUrl(detail: DetailResult) {
+export function planDownloadUrl(detail: Pick<DetailResult, "plans_published" | "has_plans" | "bundle_download_url">) {
   if (!detail.plans_published) return null;
   if (!detail.has_plans || !detail.bundle_download_url) return null;
   if (!detail.bundle_download_url.endsWith(".json")) return null;
+  const trustedOrigin = typeof window === "undefined" ? "https://benchbox.dev" : window.location.origin;
+  try {
+    const bundleUrl = new URL(detail.bundle_download_url, trustedOrigin);
+    if (bundleUrl.origin !== trustedOrigin || !["http:", "https:"].includes(bundleUrl.protocol)) return null;
+    if (bundleUrl.username || bundleUrl.password) return null;
+  } catch {
+    return null;
+  }
   return detail.bundle_download_url.replace(/\.json$/, ".plans.json");
 }
 

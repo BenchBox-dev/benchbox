@@ -8,18 +8,18 @@ const TRUST_LABEL_LABELS: Record<string, string> = {
 };
 
 const VALIDATION_STATUS_LABELS: Record<string, string> = {
-  passed: "passed",
-  failed: "failed",
-  warning: "warning",
-  not_applicable: "not applicable",
-  pending: "pending",
-  interrupted: "interrupted",
-  partial: "partial pass",
-  error: "validation error",
-  not_run: "no validation",
-  not_validated: "not validated",
-  uncertain: "uncertain",
-  unknown: "unknown",
+  passed: "Passed",
+  failed: "Failed",
+  warning: "Warning",
+  not_applicable: "Not applicable",
+  pending: "Pending",
+  interrupted: "Interrupted",
+  partial: "Partial pass",
+  error: "Validation error",
+  not_run: "No validation",
+  not_validated: "Not validated",
+  uncertain: "Uncertain",
+  unknown: "Unknown",
 };
 
 const VALIDATION_STATUS_DESCRIPTIONS: Record<string, string> = {
@@ -54,13 +54,13 @@ export function describeValidationStatus(raw: string | null | undefined): Valida
   if (status === null) {
     return {
       status: null,
-      label: "not recorded",
+      label: "Not recorded",
       description: "No validation status was recorded for this result.",
       tone: "neutral",
       isClean: false,
     };
   }
-  const label = VALIDATION_STATUS_LABELS[status] ?? formatEnumLabel(status);
+  const label = VALIDATION_STATUS_LABELS[status] ?? sentenceCase(formatEnumLabel(status));
   const description = VALIDATION_STATUS_DESCRIPTIONS[status] ?? "No further detail is defined for this status.";
   const isClean = VALIDATION_CLEAN_STATUSES.has(status);
   let tone: StatusTone;
@@ -110,7 +110,7 @@ export function formatFunding(raw: string | null | undefined): string {
 }
 
 export function formatValidationStatus(raw: string | null | undefined): string {
-  if (raw === null || raw === undefined || raw === "") return "unknown";
+  if (raw === null || raw === undefined || raw === "") return "Unknown";
   return describeValidationStatus(raw).label;
 }
 
@@ -128,6 +128,7 @@ export function parseOverrideRules(raw: string | null | undefined): string[] {
 export interface OverrideBadgeInfo {
   rules: string[];
   label: string;
+  fullLabel: string;
   title: string;
 }
 
@@ -140,7 +141,8 @@ export function describeOverride(
   const expires = opts?.expires?.trim() ? ` Override expires ${opts.expires!.trim()}.` : "";
   return {
     rules,
-    label: `Overridden: ${rules.join(", ")}`,
+    label: sentenceCase(rules.join(", ")),
+    fullLabel: `Overridden: ${rules.join(", ")}`,
     title:
       `This result was accepted under a committed plausibility override covering ${rules.join(", ")}.` +
       `${approver}${expires} It is not a clean pass.`,
@@ -165,6 +167,10 @@ export function formatEnumLabel(raw: string): string {
   return raw.replace(/[_-]+/g, " ").trim();
 }
 
+function sentenceCase(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 export function formatArchitecture(raw: string): string {
   const normalized = raw.trim().toLowerCase();
   if (normalized === "x86_64" || normalized === "amd64") return "x86-64";
@@ -172,12 +178,15 @@ export function formatArchitecture(raw: string): string {
   return formatEnumLabel(raw);
 }
 
+const CPU_FAMILY_LABELS: Record<string, string> = {
+  amd_epyc: "AMD EPYC",
+  intel_xeon: "Intel Xeon",
+  apple_silicon: "Apple silicon",
+};
+
 export function formatCpuFamily(raw: string): string {
   const normalized = raw.trim().toLowerCase();
-  if (normalized === "amd_epyc") return "AMD EPYC";
-  if (normalized === "intel_xeon") return "Intel Xeon";
-  if (normalized === "apple_silicon") return "Apple silicon";
-  return formatEnumLabel(raw);
+  return CPU_FAMILY_LABELS[normalized] ?? formatEnumLabel(raw);
 }
 
 export function formatExecutionMode(raw: string): string {

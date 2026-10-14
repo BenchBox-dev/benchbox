@@ -1,20 +1,42 @@
+import { formatPercentChange } from "@/lib/metricFormatters";
 import { deltaPct, sortByMagnitudeDesc } from "@/lib/chartMath";
-import { DIVERGING_MAX_PCT, paletteColor } from "@/lib/chartTheme";
+import { assignRunColorSlots, DIVERGING_MAX_PCT, paletteColor } from "@/lib/chartTheme";
 import { useElementSize } from "@/lib/useElementSize";
-import { chartFrame, edgeSafeValueLabel } from "@/lib/chartFrame";
+import { chartFrame } from "@/lib/chartFrame";
+import { fitLabel, labelColumnWidth } from "@/lib/chartLabels";
+import { formatRunIdentitiesForCohort, type RunIdentitySource } from "@/lib/runIdentity";
+import { queryDisplayLabel } from "@/lib/queryLabels";
+import { RunLegend } from "@/components/RunLegend";
 
 interface DivergingEntry {
   queryId: string;
-  platform: string;
+  runIndex: number;
+  label: string;
   deltaPct: number;
-  color: string;
+}
+
+export interface DivergingRunInput extends Partial<RunIdentitySource> {
+  platform: string;
+  platform_id?: string | null;
 }
 
 interface Props {
   queries: { queryId: string; timings: ({ ms: number; status: string } | null)[] }[];
-  results: { platform: string }[];
+  results: readonly DivergingRunInput[];
   baselineIdx: number;
 }
+
+const TEXT_FONT_PX = 10;
+const LABEL_GAP_PX = 8;
+const ROW_H = 10;
+const BAR_H = 8;
+const GROUP_PADDING_PX = 6;
+const HEADER_H = 18;
+const FOOTER_PAD_PX = 4;
+const PLOT_EDGE_PX = 8;
+const VALUE_RESERVE_PX = 72;
+const OVERFLOW_ARROW_PX = 4;
+const VALUE_GAP_PX = 4;
 
 export function DivergingBarChart({ queries, results, baselineIdx }: Props) {
   const [containerRef, { width: containerWidth }] = useElementSize();
@@ -22,11 +44,15 @@ export function DivergingBarChart({ queries, results, baselineIdx }: Props) {
 
   if (queries.length === 0 || results.length < 2) return null;
 
-  const BAR_H = 16;
-  const BAR_GAP = 3;
-  const LABEL_W = 72;
-  const AXIS_H = 20;
-  const PADDING = 8;
+  const runLabels = formatRunIdentitiesForCohort(
+    results.map((run, index) => ({ ...run, result_id: run.result_id ?? `run-${index}` })),
+    "chart",
+  );
+  const colorSlots = assignRunColorSlots(
+    results.map((run, index) => ({ result_id: String(index), platform_id: run.platform_id, platform: run.platform })),
+  );
+  const colorSlotOf = (runIndex: number): number => colorSlots.get(String(runIndex)) ?? runIndex;
+  const baselineLabel = runLabels[baselineIdx] ?? "the selected baseline";
 
   const rawEntries: DivergingEntry[] = [];
   for (const { queryId, timings } of queries) {
@@ -35,30 +61,35 @@ export function DivergingBarChart({ queries, results, baselineIdx }: Props) {
     if (!baselineMs) continue;
     timings.forEach((t, i) => {
       if (i === baselineIdx || !t || t.ms <= 0) return;
-      const color = paletteColor(i);
       const dp = deltaPct(t.ms, baselineMs);
       if (dp === null) return;
-      rawEntries.push({
-        queryId,
-        platform: results[i]?.platform ?? "",
-        deltaPct: dp,
-        color,
-      });
+      rawEntries.push({ queryId, runIndex: i, label: runLabels[i] ?? "Candidate", deltaPct: dp });
     });
   }
 
   const grouped = new Map<string, DivergingEntry[]>();
-  for (const e of rawEntries) {
-    const g = grouped.get(e.queryId) ?? [];
-    g.push(e);
-    grouped.set(e.queryId, g);
+  for (const entry of rawEntries) {
+    const group = grouped.get(entry.queryId) ?? [];
+    group.push(entry);
+    grouped.set(entry.queryId, group);
   }
-
   const sortedGroups = sortByMagnitudeDesc([...grouped.entries()]);
 
-  const nonBaselineCount = results.length - 1;
-  const rowHeight = BAR_H * nonBaselineCount + BAR_GAP * (nonBaselineCount + 1);
-  const totalHeight = AXIS_H + sortedGroups.length * rowHeight + PADDING;
+  const candidateCount = results.length - 1;
+  const groupHeight = candidateCount * ROW_H + GROUP_PADDING_PX;
+  const totalHeight = HEADER_H + sortedGroups.length * groupHeight + FOOTER_PAD_PX;
+  const labelW = labelColumnWidth(
+    sortedGroups.map(([queryId]) => queryDisplayLabel(queryId)),
+    TEXT_FONT_PX,
+    drawWidth,
+  );
+  const plotX = labelW + PLOT_EDGE_PX;
+  const plotRight = drawWidth - PLOT_EDGE_PX;
+  const centerX = (plotX + plotRight) / 2;
+  const halfWidth = Math.max(1, (plotRight - plotX) / 2 - VALUE_RESERVE_PX);
+  const largestMagnitude = rawEntries.reduce((max, entry) => Math.max(max, Math.abs(entry.deltaPct)), 0);
+  const scaleMax = largestMagnitude > 0 ? Math.min(DIVERGING_MAX_PCT, largestMagnitude) : 1;
+  const overflowCount = rawEntries.filter((entry) => Math.abs(entry.deltaPct) > scaleMax).length;
 
   const faster = rawEntries.filter((e) => e.deltaPct < 0).length;
   const slower = rawEntries.filter((e) => e.deltaPct > 0).length;
@@ -66,14 +97,19 @@ export function DivergingBarChart({ queries, results, baselineIdx }: Props) {
   const medianDelta = sorted.length > 0
     ? sorted[Math.floor(sorted.length / 2)]?.deltaPct ?? 0
     : 0;
-  const chartDescription = `Per-query percentage change relative to ${results[baselineIdx]?.platform ?? "the selected baseline"}. Negative values are faster; positive values are slower. ${faster} entries are faster and ${slower} are slower. An accessible table follows the chart.`;
+  const chartDescription =
+    `Per-query percentage change relative to ${baselineLabel}. Negative values are faster; positive values are slower. ` +
+    `Bars are scaled to the largest change, capped at ${DIVERGING_MAX_PCT}%; ` +
+    `larger changes end in an arrow and show their true value. ` +
+    `${faster} entries are faster and ${slower} are slower. An accessible table follows the chart.`;
+  const slotOf = (runIndex: number): number => (runIndex < baselineIdx ? runIndex : runIndex - 1);
 
   return (
-    <div ref={containerRef} class="w-full overflow-x-auto">
+    <div ref={containerRef} class="w-full">
       <p id="diverging-bar-description" class="sr-only">{chartDescription}</p>
       <p class="mb-2 text-xs text-[var(--bb-data-fg-muted)]">
         {faster} quer{faster === 1 ? "y" : "ies"} faster, {slower} quer{slower === 1 ? "y" : "ies"} slower
-        {rawEntries.length > 0 && ` · median delta: ${medianDelta >= 0 ? "+" : ""}${medianDelta.toFixed(1)}%`}
+        {rawEntries.length > 0 && ` · median delta: ${formatPercentChange(medianDelta)}`}
         {" · sorted by magnitude"}
       </p>
       <svg
@@ -84,79 +120,80 @@ export function DivergingBarChart({ queries, results, baselineIdx }: Props) {
         role="img"
         aria-label="Diverging bar chart"
         aria-describedby="diverging-bar-description"
+        data-scale-max={scaleMax}
+        data-overflow-count={overflowCount}
       >
         <line
-          x1={LABEL_W + (drawWidth - LABEL_W - PADDING) / 2}
-          y1={0}
-          x2={LABEL_W + (drawWidth - LABEL_W - PADDING) / 2}
-          y2={totalHeight - AXIS_H}
+          x1={centerX}
+          y1={HEADER_H - 2}
+          x2={centerX}
+          y2={totalHeight - FOOTER_PAD_PX}
           stroke="var(--bb-chart-axis)"
           stroke-width={1}
         />
-        <text
-          x={LABEL_W + (drawWidth - LABEL_W - PADDING) / 2}
-          y={totalHeight - 4}
-          text-anchor="middle"
-          font-size="9"
-          fill="var(--bb-chart-label-muted)"
-        >
-          baseline
+        <text x={plotX} y={12} text-anchor="start" font-size={TEXT_FONT_PX} fill="var(--bb-chart-label-muted)">
+          ← faster than baseline
+        </text>
+        <text x={plotRight} y={12} text-anchor="end" font-size={TEXT_FONT_PX} fill="var(--bb-chart-label-muted)">
+          slower than baseline →
         </text>
 
-        {sortedGroups.map(([queryId, entries], rowIdx) => {
-          const y0 = rowIdx * rowHeight;
-          const barAreaW = drawWidth - LABEL_W - PADDING;
-          const centerX = LABEL_W + barAreaW / 2;
-          const halfW = barAreaW / 2;
-
+        {sortedGroups.map(([queryId, entries], groupIndex) => {
+          const groupTop = HEADER_H + groupIndex * groupHeight;
+          const fullLabel = queryDisplayLabel(queryId);
+          const fitted = fitLabel(fullLabel, labelW - LABEL_GAP_PX, TEXT_FONT_PX);
           return (
-            <g key={queryId} transform={`translate(0, ${y0})`}>
+            <g key={`${groupIndex}-${queryId}`} data-query-row={queryId}>
               <text
-                x={LABEL_W - 4}
-                y={rowHeight / 2 + 4}
+                x={labelW - LABEL_GAP_PX}
+                y={groupTop + groupHeight / 2 + 3.5}
                 text-anchor="end"
-                font-size="9"
-                fill="var(--bb-chart-axis)"
+                data-query-label={queryId}
+                font-size={TEXT_FONT_PX}
                 font-family="monospace"
+                fill="var(--bb-chart-label-muted)"
               >
-                {queryId}
+                {fitted.text}
+                {fitted.truncated ? <title>{fullLabel}</title> : null}
               </text>
-              {entries.map((entry, si) => {
-                const barY = BAR_GAP + si * (BAR_H + BAR_GAP);
-                const clampedPct = Math.max(-DIVERGING_MAX_PCT, Math.min(entry.deltaPct, DIVERGING_MAX_PCT));
-                const barW = (Math.abs(clampedPct) / DIVERGING_MAX_PCT) * halfW;
-                const isRegression = entry.deltaPct > 0;
-                const barX = isRegression ? centerX : centerX - barW;
+              {entries.map((entry) => {
+                const rowTop = groupTop + GROUP_PADDING_PX / 2 + slotOf(entry.runIndex) * ROW_H;
+                const barY = rowTop + (ROW_H - BAR_H) / 2;
+                const rowCenter = rowTop + ROW_H / 2;
+                const magnitude = Math.abs(entry.deltaPct);
+                const overflow = magnitude > scaleMax;
+                const length = Math.max(1, (Math.min(magnitude, scaleMax) / scaleMax) * halfWidth);
+                const isSlower = entry.deltaPct > 0;
+                const tipX = isSlower ? centerX + length : centerX - length;
+                const valueX = isSlower
+                  ? tipX + (overflow ? OVERFLOW_ARROW_PX + VALUE_GAP_PX : VALUE_GAP_PX)
+                  : tipX - (overflow ? OVERFLOW_ARROW_PX + VALUE_GAP_PX : VALUE_GAP_PX);
+                const arrowPoints = isSlower
+                  ? `${tipX},${barY} ${tipX + OVERFLOW_ARROW_PX},${rowCenter} ${tipX},${barY + BAR_H}`
+                  : `${tipX},${barY} ${tipX - OVERFLOW_ARROW_PX},${rowCenter} ${tipX},${barY + BAR_H}`;
+                const valueText = formatPercentChange(entry.deltaPct);
                 return (
-                  <g key={`${entry.platform}-${si}`}>
+                  <g key={`${entry.runIndex}-${entry.label}`} data-run-index={entry.runIndex}>
                     <rect
-                      x={barX}
+                      x={isSlower ? centerX : tipX}
                       y={barY}
-                      width={Math.max(barW, 1)}
+                      width={length}
                       height={BAR_H}
-                      fill={entry.color}
+                      fill={paletteColor(colorSlotOf(entry.runIndex))}
                       opacity={0.85}
-                    />
-                    <text
-                      x={
-                        edgeSafeValueLabel(
-                          isRegression ? barX + barW : barX,
-                          drawWidth,
-                          isRegression ? "right" : "left",
-                        ).x
-                      }
-                      y={barY + BAR_H / 2 + 3}
-                      font-size="8"
-                      fill={entry.color}
-                      text-anchor={
-                        edgeSafeValueLabel(
-                          isRegression ? barX + barW : barX,
-                          drawWidth,
-                          isRegression ? "right" : "left",
-                        ).textAnchor
-                      }
                     >
-                      {entry.deltaPct >= 0 ? "+" : ""}{entry.deltaPct.toFixed(1)}%
+                      <title>{`${entry.label} · ${fullLabel}: ${valueText} vs ${baselineLabel}`}</title>
+                    </rect>
+                    {overflow ? <polygon points={arrowPoints} fill={paletteColor(colorSlotOf(entry.runIndex))} /> : null}
+                    <text
+                      x={valueX}
+                      y={rowCenter + 3.5}
+                      text-anchor={isSlower ? "start" : "end"}
+                      font-size={TEXT_FONT_PX}
+                      fill="var(--bb-data-fg-primary)"
+                      data-value-label={entry.label}
+                    >
+                      {valueText}
                     </text>
                   </g>
                 );
@@ -166,39 +203,35 @@ export function DivergingBarChart({ queries, results, baselineIdx }: Props) {
         })}
       </svg>
 
-      <table class="sr-only">
-        <caption>Per-query percentage changes relative to {results[baselineIdx]?.platform ?? "the selected baseline"}</caption>
+      <div class="sr-only">
+      <table>
+        <caption>Per-query percentage changes relative to {baselineLabel}</caption>
         <thead>
           <tr><th>Query</th><th>Candidate</th><th>Change</th></tr>
         </thead>
         <tbody>
           {rawEntries.map((entry, index) => (
-            <tr key={`${entry.queryId}-${entry.platform}-${index}`}>
+            <tr key={`${index}-${entry.queryId}-${entry.runIndex}`}>
               <td>{entry.queryId}</td>
-              <td>{entry.platform}</td>
-              <td>{entry.deltaPct >= 0 ? "+" : ""}{entry.deltaPct.toFixed(1)}%</td>
+              <td>{entry.label}</td>
+              <td>{formatPercentChange(entry.deltaPct)}</td>
             </tr>
           ))}
         </tbody>
       </table>
-
-      <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--bb-data-fg-muted)]">
-        <span>
-          Baseline: <strong>{results[baselineIdx]?.platform}</strong>
-        </span>
-        {results.map((result, index) =>
-          index === baselineIdx ? null : (
-            <span key={result.platform} class="flex items-center gap-1">
-              <span
-                class="inline-block h-2 w-3 rounded-sm"
-                style={{ backgroundColor: paletteColor(index) }}
-              />
-              {result.platform}
-            </span>
-          ),
-        )}
-        <span>Left of centre is faster than the baseline, right is slower.</span>
       </div>
+
+      <div class="mt-2 text-xs text-[var(--bb-data-fg-muted)]">
+        <span>Baseline: <strong>{baselineLabel}</strong></span>
+        <span class="ml-3">Left of centre is faster than the baseline, right is slower.</span>
+      </div>
+      <RunLegend
+        runs={results.flatMap((_, index) =>
+          index === baselineIdx
+            ? []
+            : [{ key: `${runLabels[index] ?? "run"}-${index}`, label: runLabels[index] ?? "", colorSlot: colorSlotOf(index) }],
+        )}
+      />
     </div>
   );
 }

@@ -232,8 +232,8 @@ describe("QueryHeatmap rendering", () => {
 
     expect(receiptLinks[0]?.getAttribute("href")).toBe("/results/r/r1#run-receipt");
     expect(receiptLinks[1]?.getAttribute("href")).toBe("/results/r/r2#run-receipt");
-    expect(screen.getAllByText("exact").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("loose").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Exact").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Loose").length).toBeGreaterThan(0);
   });
 
   it("uses the short ID when platform, version, and date still do not identify a row", () => {
@@ -266,13 +266,13 @@ describe("QueryHeatmap rendering", () => {
     render(<QueryHeatmap summary={summary} />);
 
     const flag = screen.getByTestId("heatmap-labels-platform-not-run");
-    const badge = within(flag).getByText("no validation");
+    const badge = within(flag).getByText("No validation");
     expect(badge.closest("details")).toBeNull();
     expect(badge.getAttribute("data-role")).toBe("validation");
 
     const row = flag.closest("tr");
     expect(row).not.toBeNull();
-    expect(within(row as HTMLElement).getAllByText("no validation")).toHaveLength(1);
+    expect(within(row as HTMLElement).getAllByText("No validation")).toHaveLength(1);
   });
 
   it("states a clean validation status once, in the labels column", () => {
@@ -287,9 +287,9 @@ describe("QueryHeatmap rendering", () => {
     });
     const { container } = render(<QueryHeatmap summary={summary} />);
     const labels = screen.getByTestId("heatmap-labels-platform-passed");
-    expect(within(labels).getByText("passed")).toBeTruthy();
+    expect(within(labels).getByText("Passed")).toBeTruthy();
     const row = container.querySelector('tbody tr[data-testid="platform-passed"]')!;
-    expect(within(row as HTMLElement).getAllByText("passed")).toHaveLength(1);
+    expect(within(row as HTMLElement).getAllByText("Passed")).toHaveLength(1);
   });
 
   it("clicking a query header sorts rows by that query", () => {
@@ -325,7 +325,7 @@ describe("QueryHeatmap rendering", () => {
     expect(fastest?.textContent).toBe("10 ms");
     expect(fastest?.getAttribute("aria-label")).toBe("10 ms, fastest in column");
     expect(slowest?.textContent).toBe("100 ms");
-    expect(slowest?.getAttribute("aria-label")).toBe("100 ms, 10.00× slower than fastest in column");
+    expect(slowest?.getAttribute("aria-label")).toBe("100 ms, 10× slower than fastest in column");
   });
 
   it("shows the metric/heatmap legend, excludes exact zeroes, and formats positive sub-millisecond timings", () => {
@@ -410,7 +410,7 @@ describe("QueryHeatmap rendering", () => {
     expect(sqliteCard.textContent).toContain("Query outliers");
     expect(sqliteCard.textContent).toContain("Q2");
     expect(sqliteCard.textContent).toContain("200 ms");
-    expect(sqliteCard.textContent).toContain("10.00× slower than fastest");
+    expect(sqliteCard.textContent).toContain("10× slower than fastest");
   });
 
   it("gives the mobile card a linked platform name, a date chip, and a unit-only geomean label", () => {
@@ -477,11 +477,11 @@ describe("QueryHeatmap rendering", () => {
     expect(selected).toBeNull();
   });
 
-  it("refuses a fifth comparison selection independently of row eligibility", () => {
+  it("refuses an eleventh comparison selection independently of row eligibility", () => {
     let selected: Set<string> | null = null;
     const baseRow = makeSummary().platforms[0]!;
     const summary = makeSummary({
-      platforms: Array.from({ length: 5 }, (_, index) => ({
+      platforms: Array.from({ length: 11 }, (_, index) => ({
         ...baseRow,
         result_id: `r${index + 1}`,
         short_id: "",
@@ -492,7 +492,7 @@ describe("QueryHeatmap rendering", () => {
     render(
       <QueryHeatmap
         summary={summary}
-        selectedIds={new Set(["r1", "r2", "r3", "r4"])}
+        selectedIds={new Set(Array.from({ length: 10 }, (_, index) => `r${index + 1}`))}
         selectionLimitReasonId="selection-limit-reason"
         onSelectionChange={(ids) => {
           selected = ids;
@@ -501,15 +501,15 @@ describe("QueryHeatmap rendering", () => {
     );
 
     const grid = screen.getByRole("grid");
-    const fifth = within(grid).getAllByRole("checkbox")[4] as HTMLInputElement;
-    expect(fifth.disabled).toBe(true);
-    expect(fifth.getAttribute("aria-describedby")).toBe("selection-limit-reason");
-    const fifthMobileCard = screen.getByTestId("query-heatmap-mobile-card-r5");
-    const fifthMobile = within(fifthMobileCard).getByRole("checkbox") as HTMLInputElement;
-    expect(fifthMobile.disabled).toBe(true);
-    expect(fifthMobile.getAttribute("aria-describedby")).toBe("selection-limit-reason");
-    fifth.disabled = false;
-    fireEvent.click(fifth);
+    const eleventh = within(grid).getAllByRole("checkbox")[10] as HTMLInputElement;
+    expect(eleventh.disabled).toBe(true);
+    expect(eleventh.getAttribute("aria-describedby")).toBe("selection-limit-reason");
+    const eleventhMobileCard = screen.getByTestId("query-heatmap-mobile-card-r11");
+    const eleventhMobile = within(eleventhMobileCard).getByRole("checkbox") as HTMLInputElement;
+    expect(eleventhMobile.disabled).toBe(true);
+    expect(eleventhMobile.getAttribute("aria-describedby")).toBe("selection-limit-reason");
+    eleventh.disabled = false;
+    fireEvent.click(eleventh);
 
     expect(selected).toBeNull();
   });

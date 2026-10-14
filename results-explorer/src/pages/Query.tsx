@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { RoutableProps } from "preact-router";
 import { DUCKDB_USER_QUERY_TIMEOUT_MS, queryRows } from "@/db";
+import { CompareCta, isCompareAllAvailable } from "@/components/CompareCta";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorMessage } from "@/components/ErrorMessage";
 import { FacetDrawer, FacetRail, type ActiveFacetChip, type FacetGroup } from "@/components/FacetRail";
@@ -40,7 +41,8 @@ import {
   resolveShortId,
 } from "@/lib/duckdbQueries";
 import { formatQueryCell, formatQueryColumnLabel, formatQueryFacetValue } from "@/lib/queryLabels";
-import { formatPlainNumber } from "@/lib/metricFormatters";
+import { RunDateChip } from "@/components/RunAge";
+import { formatPlainNumber, MISSING_VALUE_GLYPH } from "@/lib/metricFormatters";
 import {
   formatBenchmarkLabel,
   formatCostStatus,
@@ -104,6 +106,12 @@ export function Query({ url }: QueryProps) {
     const activeUrl = url ?? (typeof window === "undefined" ? "/results/query" : `${window.location.pathname}${window.location.search}`);
     return new URL(activeUrl, "https://benchbox.dev").searchParams.get("pick");
   }, [url]);
+  const preselectedCompareIds = useMemo(() => {
+    const activeUrl = url ?? (typeof window === "undefined" ? "/results/query" : `${window.location.pathname}${window.location.search}`);
+    const raw = new URL(activeUrl, "https://benchbox.dev").searchParams.get("ids") ?? "";
+    return [...new Set(raw.split(",").map((id) => id.trim()).filter((id) => id !== ""))].slice(0, MAX_COMPARE_SELECTIONS);
+  }, [url]);
+  const preselectedCompareKey = preselectedCompareIds.join(",");
   const resultsScrollerRef = useRef<HTMLDivElement>(null);
   const sqlScrollerRef = useRef<HTMLDivElement>(null);
   const [benchmarks, setBenchmarks] = useFacetField("benchmark");
@@ -205,7 +213,13 @@ export function Query({ url }: QueryProps) {
           return;
         }
         setPinnedCompareResultId(detail.result_id);
-        setCompareSelectedRows(new Map([[detail.result_id, detail as unknown as ResultRow]]));
+        setCompareSelectedRows((prev) => {
+          const next = new Map<string, ResultRow>([[detail.result_id, detail as unknown as ResultRow]]);
+          for (const [id, row] of prev) {
+            if (id !== detail.result_id) next.set(id, row);
+          }
+          return next;
+        });
       })
       .catch(() => {
         if (!cancelled) {
@@ -216,6 +230,35 @@ export function Query({ url }: QueryProps) {
       cancelled = true;
     };
   }, [pinnedCompareId]);
+
+  useEffect(() => {
+    if (preselectedCompareIds.length === 0) return;
+    let cancelled = false;
+    Promise.all(
+      preselectedCompareIds.map((id) =>
+        resolveShortId(id)
+          .then((resolvedId) => getDetailResult(resolvedId))
+          .catch(() => null),
+      ),
+    ).then((details) => {
+      if (cancelled) return;
+      const eligible = details.filter(
+        (detail) => detail !== null && comparisonExclusionReason(detail as unknown as ResultRow) === undefined,
+      );
+      if (eligible.length === 0) return;
+      setCompareSelectedRows((prev) => {
+        const next = new Map(prev);
+        for (const detail of eligible) {
+          if (next.size >= MAX_COMPARE_SELECTIONS) break;
+          next.set(detail!.result_id, detail as unknown as ResultRow);
+        }
+        return next;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [preselectedCompareKey]);
 
   const rowLimitMode = rowLimitRaw === "all" ? "all" : "default";
   const rowLimit = rowLimitMode === "all" ? UNLIMITED_ROW_LIMIT : DEFAULT_ROW_LIMIT;
@@ -748,7 +791,7 @@ export function Query({ url }: QueryProps) {
         crumbs={[{ label: "Results", href: "/results/" }, { label: "Find runs" }]}
         eyebrow="Find runs"
         title="Find benchmark runs"
-        subtitle="Filter published runs, open their evidence, or select up to four runs to compare. Your filters stay in the page link."
+        subtitle="Filter published runs, open their evidence, or select up to ten runs to compare. Your filters stay in the page link."
       />
 
       <div class="grid gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
@@ -880,7 +923,22 @@ export function Query({ url }: QueryProps) {
                     "result",
                     MAX_COMPARE_SELECTIONS,
                   );
-                  const compareUrl = compareSelectedIds.size >= 2 ? buildCompareUrl(selectedCompareIds) : null;
+                  const wholeFilteredSetVisible = rows.length === resultTotal;
+                  const visibleComparableRows = wholeFilteredSetVisible
+                    ? rows.filter((row) => comparisonExclusionReason(row) === undefined)
+                    : [];
+                  const visibleCohortKeys = new Set(
+                    visibleComparableRows.map((row) => JSON.stringify(compareCohortSignatureForRow(row))),
+                  );
+                  const lockedComparableRows = compareCohortSignature !== null && wholeFilteredSetVisible
+                    ? compareRowPartition.compatible.filter((row) => comparisonExclusionReason(row) === undefined)
+                    : [];
+                  const allRunsCandidates = visibleCohortKeys.size === 1
+                    ? visibleComparableRows
+                    : lockedComparableRows;
+                  const allRunsCompareIds = allRunsCandidates.map((row) =>
+                    compareIdForRow(row as Parameters<typeof compareIdForRow>[0]),
+                  );
                   return (
                     <>
                       <div
@@ -890,7 +948,9 @@ export function Query({ url }: QueryProps) {
                         <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2">
                           <span>
                             {compareSelectedIds.size === 0
-                              ? `${selectedStatus}. Select two or more rows to compare. The first pick locks the ranking.`
+                              ? isCompareAllAvailable(allRunsCompareIds)
+                                ? `All ${allRunsCompareIds.length} comparable runs in these results can be compared together. Select rows to compare a subset.`
+                                : `${selectedStatus}. Select two or more rows to compare. The first pick locks the ranking.`
                               : compareSelectedIds.size === 1
                                 ? `${selectedStatus} — pick a compatible second row to enable Compare.${hiddenIncompatibleSuffix(compareIncompatibleHiddenCount)}`
                                 : `${selectedStatus}.`}
@@ -923,24 +983,12 @@ export function Query({ url }: QueryProps) {
                                 Clear selection
                               </button>
                             )}
-                            {compareUrl ? (
-                              <a
-                                href={compareUrl}
-                                class="rounded-md bg-[var(--bb-accent)] px-3 py-1 text-xs font-medium text-white shadow-sm"
-                                data-testid="query-compare-launch"
-                              >
-                                Compare {compareSelectedIds.size} selected →
-                              </a>
-                            ) : (
-                              <button
-                                type="button"
-                                disabled
-                                class="rounded-md border border-[var(--bb-data-border)] bg-[var(--bb-surface-data)] px-3 py-1 text-xs font-medium text-[var(--bb-data-fg-subtle)]"
-                                data-testid="query-compare-launch-disabled"
-                              >
-                                Compare (need 2+)
-                              </button>
-                            )}
+                            <CompareCta
+                              selectedIds={selectedCompareIds}
+                              allIds={allRunsCompareIds}
+                              buildHref={buildCompareUrl}
+                              testId="query-compare-launch"
+                            />
                           </span>
                         </div>
                         {compareHandoffError && (
@@ -1016,10 +1064,10 @@ export function Query({ url }: QueryProps) {
                               >
                                 <span class="sr-only">Compare</span>
                               </th>
-                              <th class="table-th hidden sm:table-cell">Compare state</th>
                               {visibleColumns.map((column) => {
                                 const isActive = sort.column === column;
                                 const arrow = isActive ? (sort.direction === "asc" ? " ↑" : " ↓") : "";
+                                const headerLabel = column === "power_score" ? "Power score" : formatQueryColumnLabel(column);
                                 const ariaSort = isActive
                                   ? sort.direction === "asc"
                                     ? "ascending"
@@ -1032,12 +1080,14 @@ export function Query({ url }: QueryProps) {
                                       class="table-th block w-full cursor-pointer select-none border-0 bg-transparent text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--bb-accent)]"
                                       onClick={() => toggleSort(column)}
                                     >
-                                      {formatQueryColumnLabel(column)}{arrow}
+                                      <span title={column === "power_score" ? "Higher is better" : undefined}>{headerLabel}{arrow}</span>
                                     </button>
                                   </th>
                                 );
                               })}
-                              <th class="table-th" />
+                              <th class="table-th">
+                                <span class="sr-only">Open</span>
+                              </th>
                             </tr>
                           </thead>
                           <tbody class="divide-y divide-[var(--bb-data-border)] bg-[var(--bb-surface-data)]">
@@ -1058,7 +1108,7 @@ export function Query({ url }: QueryProps) {
                                   class="hover:bg-[var(--bb-surface-data-muted)]"
                                   data-testid={`query-result-row-${id}`}
                                 >
-                                  <td class="table-td sticky left-0 z-10 bg-[var(--bb-surface-data)]">
+                                  <td class="table-td sticky left-0 z-10 max-w-[16rem] bg-[var(--bb-surface-data)]">
                                     <input
                                       type="checkbox"
                                       checked={isSelected}
@@ -1077,13 +1127,15 @@ export function Query({ url }: QueryProps) {
                                       })}
                                       data-testid={`query-compare-checkbox-${id}`}
                                     />
-                                  </td>
-                                  <td class="table-td max-w-[16rem]">
-                                    <QueryCompareReasonStatus id={reasonId} copy={disabledCopy} selected={isSelected} />
+                                    <QueryCompareReasonStatus id={reasonId} copy={disabledCopy} />
                                   </td>
                                   {visibleColumns.map((column) => (
                                     <td key={column} class={`table-td ${queryColumnResponsiveClass(column)}`}>
-                                      {formatQueryRowCell(column, row[column])}
+                                      {column === "run_date" ? (
+                                        <RunDateChip runDate={typeof row.run_date === "string" ? row.run_date : null} />
+                                      ) : (
+                                        formatQueryRowCell(column, row[column])
+                                      )}
                                     </td>
                                   ))}
                                   <td class="table-td text-right">
@@ -1254,7 +1306,7 @@ export function Query({ url }: QueryProps) {
                       onChange={() => toggleColumn(column)}
                     />
                     <span>{formatQueryColumnLabel(column)}</span>
-                    <code class="rounded bg-[var(--bb-surface-app)] px-1 font-mono text-[10px] text-[var(--bb-data-fg-subtle)]">{column}</code>
+                    <code class="rounded bg-[var(--bb-surface-app)] px-1 font-mono text-xs text-[var(--bb-data-fg-subtle)]">{column}</code>
                   </label>
                 ))}
               </div>
@@ -1333,7 +1385,7 @@ function formatDateWindowLabel(value: string): string {
 }
 
 function formatCell(value: unknown): string {
-  if (value === null || value === undefined || value === "") return "-";
+  if (value === null || value === undefined || value === "") return MISSING_VALUE_GLYPH;
   if (typeof value === "number") return formatPlainNumber(value).valueText;
   return String(value);
 }
@@ -1377,15 +1429,11 @@ function queryColumnResponsiveClass(column: string): string {
 function QueryCompareReasonStatus({
   id,
   copy,
-  selected,
 }: {
   id?: string;
   copy: CompareExclusionReasonCopy | null;
-  selected: boolean;
 }) {
-  if (copy === null) {
-    return <span class="text-xs text-[var(--bb-data-fg-muted)]">{selected ? "Selected" : "Selectable"}</span>;
-  }
+  if (copy === null) return null;
   return (
     <div id={id} class="text-xs text-[var(--bb-data-fg-muted)]" data-testid="query-disabled-reason">
       <span class="font-medium text-[var(--bb-tone-warning-fg)]">Why unavailable: {copy.shortText}</span>

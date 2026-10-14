@@ -111,6 +111,18 @@ DATABRICKS_WAREHOUSE_DBU_PER_HOUR: dict[str, float] = {
     "4X-Large": 256.0,
 }
 
+DATABRICKS_SERVERLESS_SQL_DBU_PER_HOUR: dict[str, float] = {
+    "2X-Small": 4.0,
+    "X-Small": 6.0,
+    "Small": 12.0,
+    "Medium": 24.0,
+    "Large": 40.0,
+    "X-Large": 80.0,
+    "2X-Large": 144.0,
+    "3X-Large": 272.0,
+    "4X-Large": 528.0,
+}
+
 
 SNOWFLAKE_WAREHOUSE_CREDITS_PER_HOUR: dict[str, float] = {
     "X-Small": 1.0,
@@ -451,6 +463,29 @@ def resolve_databricks_warehouse_dbu_per_hour(warehouse_size: str) -> PriceResol
         fallback_used=True,
         unit="DBU/hour",
         reason=f"databricks warehouse size '{normalized}' not in size map",
+    )
+
+
+def resolve_databricks_serverless_sql_dbu_per_hour(warehouse_size: str) -> PriceResolution:
+
+    table = "databricks_serverless_sql_dbu_per_hour"
+    normalized = warehouse_size.strip()
+    for size, dbu in DATABRICKS_SERVERLESS_SQL_DBU_PER_HOUR.items():
+        if size.lower() == normalized.lower():
+            return PriceResolution(
+                value=dbu,
+                table=table,
+                resolved_key=(size,),
+                fallback_used=False,
+                unit="DBU/hour",
+            )
+    return PriceResolution(
+        value=None,
+        table=table,
+        resolved_key=(normalized,),
+        fallback_used=True,
+        unit="DBU/hour",
+        reason=f"Databricks serverless SQL warehouse size '{normalized}' not in size map",
     )
 
 

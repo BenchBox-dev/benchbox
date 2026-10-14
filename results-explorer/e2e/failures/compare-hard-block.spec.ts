@@ -20,7 +20,7 @@ test.describe("Compare guardrails", () => {
     const receipt = main.getByRole("region", { name: "Comparison checks" });
     const summary = main.getByRole("region", { name: "Comparison summary" });
     await expect(receipt).toContainText("Benchmark");
-    await expect(summary).toContainText("Not directly comparable: benchmarks differ");
+    await expect(summary).toContainText("Not directly comparable: runs differ in benchmark");
     await expect(summary).toContainText("No winner named");
     await expect(main.getByRole("heading", { name: "Query-level differences" })).toBeVisible();
     await expect(main.getByRole("heading", { name: /Cannot compare/i })).toHaveCount(0);
@@ -37,7 +37,7 @@ test.describe("Compare guardrails", () => {
     const receipt = main.getByRole("region", { name: "Comparison checks" });
     const summary = main.getByRole("region", { name: "Comparison summary" });
     await expect(receipt).toContainText("Scale factor");
-    await expect(summary).toContainText("Not directly comparable: scale factors differ");
+    await expect(summary).toContainText("Not directly comparable: runs differ in scale factor");
     await expect(summary).toContainText("No winner named");
     await expect(main.getByRole("heading", { name: "Query-level differences" })).toBeVisible();
     await expect(main.getByRole("heading", { name: /Cannot compare/i })).toHaveCount(0);
@@ -66,7 +66,7 @@ test.describe("Compare guardrails", () => {
     await expect(page.getByText(/No result found for/i)).toBeVisible({ timeout: 20_000 });
   });
 
-  test("duplicate and excess IDs are disclosed while the first four unique entries are retained", async ({ page }) => {
+  test("duplicate and stale IDs are disclosed while valid entries are retained", async ({ page }) => {
     const ids = [TPCH_SHORT, TPCH_SHORT, STAR_SCHEMA_SHORT, TPCH_SF01_SHORT, "stale-one", "stale-two"].join(",");
     await page.goto(`/results/compare?ids=${ids}`);
     await waitForShell(page);
@@ -74,8 +74,31 @@ test.describe("Compare guardrails", () => {
 
     const notice = page.getByTestId("compare-url-notice");
     await expect(notice).toContainText("Ignored duplicate result ID");
-    await expect(notice).toContainText("comparisons are limited to 4 unique results");
     await expect(notice).toContainText("Ignored unavailable result ID");
+    await expect(notice).not.toContainText("comparisons are limited to");
+    await expect(page.getByRole("heading", { name: "Comparison summary" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Cannot compare/i })).toHaveCount(0);
+  });
+
+  test("excess IDs beyond ten are disclosed while the first ten unique entries are retained", async ({ page }) => {
+    const extra = [
+      fixtureIds.shortIds.datafusion,
+      fixtureIds.shortIds.polars,
+      fixtureIds.shortIds.spark,
+      fixtureIds.shortIds.pandas,
+      fixtureIds.shortIds.cedardb,
+      fixtureIds.shortIds.pandasTuned,
+      fixtureIds.shortIds.polarsTuned,
+      fixtureIds.shortIds.awsCloud,
+    ];
+    const ids = [TPCH_SHORT, TPCH_SHORT, STAR_SCHEMA_SHORT, TPCH_SF01_SHORT, ...extra, "stale-one", "stale-two"].join(",");
+    await page.goto(`/results/compare?ids=${ids}`);
+    await waitForShell(page);
+    await waitForDataLoaded(page, /Comparison/);
+
+    const notice = page.getByTestId("compare-url-notice");
+    await expect(notice).toContainText("Ignored duplicate result ID");
+    await expect(notice).toContainText("comparisons are limited to 10 unique results");
     await expect(page.getByRole("heading", { name: "Comparison summary" })).toBeVisible();
     await expect(page.getByRole("heading", { name: /Cannot compare/i })).toHaveCount(0);
   });

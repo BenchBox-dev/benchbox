@@ -1,7 +1,7 @@
 import type { DetailResult } from "@/types";
 import { queryDisagreementSpread, speedupRatio } from "@/lib/chartMath";
 import { timingValueForQuery } from "@/lib/displayEligibility";
-import { formatSpeedup } from "@/lib/metricFormatters";
+import { formatSpeedup, MISSING_VALUE_GLYPH } from "@/lib/metricFormatters";
 import { formatRunIdentitiesForCohort } from "@/lib/runIdentity";
 import { fmtMs } from "@/utils";
 import { StatusBadge, type StatusTone } from "@/components/StatusBadge";
@@ -145,6 +145,7 @@ interface QueryDiffTableProps {
   limiter?: QueryDiffLimiter;
   topN?: number;
   queryFilter?: readonly string[];
+  queryHref?: (queryId: string) => string;
 }
 
 export function QueryDiffTable({
@@ -154,6 +155,7 @@ export function QueryDiffTable({
   limiter = "all",
   topN = DEFAULT_QUERY_DIFF_LIMIT,
   queryFilter,
+  queryHref,
 }: QueryDiffTableProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   if (results.length < 2) return null;
@@ -236,12 +238,18 @@ export function QueryDiffTable({
           <tbody class="divide-y divide-[var(--bb-data-border)] bg-[var(--bb-surface-data)]">
             {rows.map((row) => (
               <tr key={`${row.queryId}-${row.candidateResultId}`} class="hover:bg-[var(--bb-surface-data-muted)]">
-                <td class="table-td font-mono font-medium">{row.queryId}</td>
+                <td class="table-td font-mono font-medium">
+                  {queryHref ? (
+                    <a href={queryHref(row.queryId)} class="text-[var(--bb-accent-hover)] underline" aria-label={`Compare ${row.queryId} iterations across selected runs`}>
+                      {row.queryId}
+                    </a>
+                  ) : row.queryId}
+                </td>
                 <td class="table-td">{row.candidatePlatform}</td>
                 <td class="table-td font-mono">{formatMsCell(row.baselineMs)}</td>
                 <td class="table-td font-mono">{formatMsCell(row.candidateMs)}</td>
                 <td class="table-td font-mono text-xs">{formatPasses(row)}</td>
-                <td class="table-td font-mono">{row.speedupRatio !== null ? formatSpeedup(row.speedupRatio).valueText : "-"}</td>
+                <td class="table-td font-mono">{row.speedupRatio !== null ? formatSpeedup(row.speedupRatio).valueText : MISSING_VALUE_GLYPH}</td>
                 <td class="table-td font-mono">{formatDelta(row.deltaMs)}</td>
                 <td class="table-td">
                   {row.comparable ? (
@@ -318,20 +326,20 @@ function diffStatus(deltaMs: number | null): QueryDiffStatus {
 }
 
 function formatMsCell(ms: number | null) {
-  return ms !== null ? fmtMs(ms) : <span class="text-[var(--bb-data-fg-subtle)]">-</span>;
+  return ms !== null ? fmtMs(ms) : <span class="text-[var(--bb-data-fg-subtle)]">{MISSING_VALUE_GLYPH}</span>;
 }
 
 function formatPasses(row: QueryDiffRow) {
   const base = row.baselineSamples;
   const cand = row.candidateSamples;
-  if (base === null && cand === null) return "-";
-  return `${base ?? "-"} / ${cand ?? "-"}`;
+  if (base === null && cand === null) return MISSING_VALUE_GLYPH;
+  return `${base ?? MISSING_VALUE_GLYPH} / ${cand ?? MISSING_VALUE_GLYPH}`;
 }
 
 function formatDelta(deltaMs: number | null) {
-  if (deltaMs === null) return "-";
+  if (deltaMs === null) return MISSING_VALUE_GLYPH;
   if (Math.abs(deltaMs) < 1e-9) return "0 ms";
-  return `${deltaMs > 0 ? "+" : "-"}${fmtMs(Math.abs(deltaMs))}`;
+  return `${deltaMs > 0 ? "+" : "−"}${fmtMs(Math.abs(deltaMs))}`;
 }
 
 function statusLabel(status: QueryDiffStatus) {

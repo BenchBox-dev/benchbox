@@ -1,12 +1,5 @@
 import { formatFacetDisplayValue } from "@/lib/facetDisplay";
-import {
-  formatDurationSeconds,
-  formatLatencyMs,
-  formatPlainNumber,
-  formatPowerScore,
-  formatThroughputScore,
-  formatUsd,
-} from "@/lib/metricFormatters";
+import { formatDurationSeconds, formatLatencyMs, formatPlainNumber, formatPowerScore, formatThroughputScore, formatUsd, formatScaleFactor, MISSING_VALUE_GLYPH } from "@/lib/metricFormatters";
 import { humanizeBenchmark } from "@/utils";
 import { formatRunDateWithAge } from "@/lib/runAge";
 import {
@@ -85,7 +78,7 @@ export function formatQueryFacetValue(key: string, value: string): string {
   const trimmed = value.trim();
   if (trimmed === "") return "unknown";
   if (key === "benchmark") return humanizeBenchmark(trimmed);
-  if (key === "scale_factor") return `SF ${trimmed}`;
+  if (key === "scale_factor") return formatScaleFactor(trimmed);
   if (key === "execution_mode") return formatExecutionMode(trimmed);
   if (key === "tuning_mode") return formatTuningMode(trimmed);
   if (key === "trust_label") return formatTrustLabel(trimmed);
@@ -121,12 +114,12 @@ export function formatQueryCell(column: string, value: unknown): string {
     return typeof value === "number" ? formatUsd(value).valueText : String(value);
   }
   if (typeof value === "string") return formatQueryFacetValue(column, value);
-  if (column === "scale_factor") return `SF ${value}`;
+  if (column === "scale_factor") return formatScaleFactor(String(value));
   return formatPlainCell(value);
 }
 
 function formatPlainCell(value: unknown): string {
-  if (value === null || value === undefined || value === "") return "-";
+  if (value === null || value === undefined || value === "") return MISSING_VALUE_GLYPH;
   if (typeof value === "number") return formatPlainNumber(value).valueText;
   return String(value);
 }

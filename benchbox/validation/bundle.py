@@ -259,19 +259,24 @@ def _tpchavoc_variant_has_usable_timing(query: dict) -> bool:
     return math.isfinite(ms) and ms > 0
 
 
+_COVERAGE_PREFIX_PATTERNS = (
+    re.compile(r"query_?(?=\d)", re.IGNORECASE),
+    re.compile(r"Q(?=\d|[a-z])"),
+    re.compile(r"q(?=\d)"),
+)
+
+
 def _normalize_coverage_query_id(raw_id: Any) -> str | None:
     if not isinstance(raw_id, str):
         return None
     text = raw_id.strip()
     if not text:
         return None
-    upper = text.upper()
-    if upper.startswith("QUERY_"):
-        text = text[6:]
-    elif upper.startswith("QUERY"):
-        text = text[5:]
-    elif upper.startswith("Q") and len(text) > 1 and (text[1].isdigit() or text[1].islower()):
-        text = text[1:]
+    for pattern in _COVERAGE_PREFIX_PATTERNS:
+        match = pattern.match(text)
+        if match:
+            text = text[match.end() :]
+            break
     text = text.strip()
     if not text:
         return None
@@ -372,7 +377,7 @@ NORMALIZED_COST_REQUIRED_KEYS = {
     "pricing_region",
 }
 NORMALIZED_COST_SCOPES = {"compute_only", "compute_plus_storage"}
-NORMALIZED_COST_STATUSES = {"normalized", "not_applicable_local", "unavailable"}
+NORMALIZED_COST_STATUSES = {"normalized", "not_applicable_local", "unavailable", "estimated"}
 
 NORMALIZED_COST_BILLING_UNITS = frozenset(
     {
@@ -1426,10 +1431,59 @@ def _parse_decimal(value: Any, field_path: str, vr: ValidationResult) -> Decimal
 
 def _validate_required_cost_string(raw: dict[str, Any], key: str, vr: ValidationResult) -> str | None:
     value = raw.get(key)
-    if not isinstance(value, str) or not value:
+    if not isinstance(value, str) or not value.strip():
         vr.error(f"normalized_cost.{key} must be a non-empty string")
         return None
     return value
+
+
+def _validate_estimated_cost_fields(
+    raw: dict[str, Any],
+    cost_value: Decimal | None,
+    estimated_value: Decimal | None,
+    cost_status: str | None,
+    vr: ValidationResult,
+) -> None:
+    if estimated_value is not None and estimated_value < 0:
+        vr.error(f"normalized_cost.estimated_cost_usd cannot be negative: {estimated_value}")
+    if cost_status == "estimated":
+        if cost_value is not None:
+            vr.error("normalized_cost.cost_status 'estimated' must not include normalized_cost_usd")
+        if estimated_value is None:
+            vr.error("normalized_cost.cost_status 'estimated' requires estimated_cost_usd")
+        for key in ("cost_estimate_method", "cost_estimate_source", "cost_estimate_pricing_date"):
+            _validate_required_cost_string(raw, key, vr)
+        assumptions = raw.get("cost_estimate_assumptions")
+        if (
+            not isinstance(assumptions, list)
+            or not assumptions
+            or any(not isinstance(assumption, str) or not assumption.strip() for assumption in assumptions)
+        ):
+            vr.error("normalized_cost.cost_estimate_assumptions must be a non-empty list of strings")
+        billing_unit = raw.get("billing_unit")
+        if billing_unit not in NORMALIZED_COST_BILLING_UNITS:
+            vr.error(
+                "normalized_cost.cost_status 'estimated' requires a concrete billing_unit "
+                f"in {sorted(NORMALIZED_COST_BILLING_UNITS)}; got {billing_unit!r}"
+            )
+        pricing_region = raw.get("pricing_region")
+        if not isinstance(pricing_region, str) or pricing_region in {"unknown", "not_applicable"}:
+            vr.error("normalized_cost.cost_status 'estimated' requires a concrete pricing_region")
+        if not isinstance(raw.get("deployment"), dict):
+            vr.error("normalized_cost.cost_status 'estimated' requires deployment metadata")
+        if raw.get("unavailability_reasons"):
+            vr.error("normalized_cost.cost_status 'estimated' must not include unavailability_reasons")
+    elif any(
+        value is not None
+        for value in (
+            estimated_value,
+            raw.get("cost_estimate_method"),
+            raw.get("cost_estimate_source"),
+            raw.get("cost_estimate_pricing_date"),
+            raw.get("cost_estimate_assumptions"),
+        )
+    ):
+        vr.error("normalized_cost cost estimate fields require cost_status 'estimated'")
 
 
 def _validate_normalized_cost_block(
@@ -1441,6 +1495,7 @@ def _validate_normalized_cost_block(
         vr.error(f"normalized_cost missing required provenance fields: {sorted(missing)}")
 
     cost_value = _parse_decimal(raw.get("normalized_cost_usd"), "normalized_cost.normalized_cost_usd", vr)
+    estimated_value = _parse_decimal(raw.get("estimated_cost_usd"), "normalized_cost.estimated_cost_usd", vr)
     _validate_required_cost_string(raw, "cost_model_version", vr)
     model_source = _validate_required_cost_string(raw, "cost_model_source", vr)
     cost_scope = _validate_required_cost_string(raw, "cost_scope", vr)
@@ -1463,6 +1518,7 @@ def _validate_normalized_cost_block(
         vr.error("normalized_cost.cost_status 'not_applicable_local' requires normalized_cost_usd of 0")
     if cost_status == "unavailable" and cost_value is not None:
         vr.error("normalized_cost.cost_status 'unavailable' must not include normalized_cost_usd")
+    _validate_estimated_cost_fields(raw, cost_value, estimated_value, cost_status, vr)
     if cost_status == "normalized" and billing_unit not in NORMALIZED_COST_BILLING_UNITS:
         vr.error(
             "normalized_cost.cost_status 'normalized' requires a concrete billing_unit "

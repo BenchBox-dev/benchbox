@@ -60,7 +60,7 @@ import {
   resolveResultsForBasis,
   type PassSelection,
 } from "@/lib/measurementBasis";
-import { formatDurationSeconds, formatScoreMetric, formatSpeedup } from "@/lib/metricFormatters";
+import { formatDurationSeconds, formatScoreMetric, formatSpeedup, formatScaleFactor } from "@/lib/metricFormatters";
 import {
   isValidTimingValue,
   primaryMetricHigherIsBetter,
@@ -69,7 +69,8 @@ import {
   timingValueForQuery,
 } from "@/lib/displayEligibility";
 import { formatWarningClassSummary, formatWarningCount } from "@/lib/copyFormatters";
-import { paletteColor } from "@/lib/chartTheme";
+import { assignRunColorSlots, paletteColor } from "@/lib/chartTheme";
+import { queryRunComparisonHref } from "@/lib/queryRunComparison";
 import { ChartPanel } from "@/components/ChartPanel";
 import { RunDateChip } from "@/components/RunAge";
 import { PageHeader } from "@/components/PageHeader";
@@ -110,6 +111,10 @@ function currentCompareUrl(url: string | undefined): string {
 
 function searchParamsFromUrl(url: string): URLSearchParams {
   return new URL(url, "https://benchbox.dev").searchParams;
+}
+
+function sentenceCasePhaseWords(label: string): string {
+  return label.replace(/\b(power|throughput)\b/g, (word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`);
 }
 
 function formatIdList(ids: string[]): string {
@@ -435,7 +440,7 @@ export function Compare({ url }: CompareProps) {
   const benchmarkLabel = mixedBenchmark ? "Mixed Benchmark" : formatBenchmarkLabel(canonicalBenchmark);
   const scaleFactorLabel = new Set(results.map((result) => result.scale_factor)).size > 1
     ? "Mixed scale factors"
-    : `SF ${scaleFactor}`;
+    : formatScaleFactor(scaleFactor);
   const rowCount = results.length;
 
   const queryCoverage = useMemo(() => {
@@ -473,7 +478,7 @@ export function Compare({ url }: CompareProps) {
     );
     const out: Record<string, string> = {};
     results.forEach((r, i) => {
-      out[r.result_id] = labels[i] ?? r.platform;
+      out[r.result_id] = sentenceCasePhaseWords(labels[i] ?? r.platform);
     });
     return out;
   })();
@@ -506,8 +511,8 @@ export function Compare({ url }: CompareProps) {
     scale_factor: r.scale_factor,
     trust_label: r.trust_label,
   }));
-  const cohortIdentities = formatRunIdentitiesForCohort(identitySources, "table");
-  const cohortIdentitiesCompact = formatRunIdentitiesForCohort(identitySources, "compact");
+  const cohortIdentities = formatRunIdentitiesForCohort(identitySources, "table").map(sentenceCasePhaseWords);
+  const cohortIdentitiesCompact = formatRunIdentitiesForCohort(identitySources, "compact").map(sentenceCasePhaseWords);
 
   const rowData = resolvedResults.map((r, idx) => ({
     resultId: r.result_id,
@@ -525,6 +530,9 @@ export function Compare({ url }: CompareProps) {
     totalDurationS: r.total_duration_s,
     driverVersion: r.driver_version,
   }));
+  const runColorSlots = assignRunColorSlots(
+    resolvedResults.map((r) => ({ result_id: r.result_id, platform_id: r.platform_id, platform: r.platform })),
+  );
   const isMultiRun = compareLayoutForSelection(results.map((r) => r.result_id)).kind === "multi_run";
 
   return (
@@ -571,7 +579,6 @@ export function Compare({ url }: CompareProps) {
         warningLabels={comparabilityWarningLabels}
         claimSuppressed={decisionSummary.claimSuppressed}
         suppressionReason={decisionSummary.claimSuppressionReason}
-        comparisonBoundary={decisionSummary.comparisonBoundary}
       />
       <CompareSummary summary={decisionSummary} />
       <IdentityDiffStrip
@@ -651,26 +658,35 @@ export function Compare({ url }: CompareProps) {
             suppressWinnerClaims={decisionSummary.claimSuppressed}
             suppressionReason={decisionSummary.claimSuppressionReason ?? undefined}
             queryFilter={queryLimiter === "all" ? undefined : limitedQueryIds}
-            excludeChartIds={["performance_bar", "power_bar", "comparison_bar", "normalized_speedup"]}
+            queryHref={(queryId) => queryRunComparisonHref(queryId, results.map((result) => result.result_id), basis)}
+            excludeChartIds={["performance_bar", "power_bar", "comparison_bar"]}
           />
         </div>
       )}
 
       <div class="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {rowData.map((r, i) => {
-          const color = paletteColor(i);
+          const color = paletteColor(runColorSlots.get(r.resultId) ?? i);
           const primary = primaries[i] ?? null;
           const speedup = higherIsBetter
             ? primary !== null && slowestPrimary !== null && slowestPrimary > 0
               ? primary / slowestPrimary
               : null
             : vsSlowestRatio(primary, slowestPrimary);
-          const vsLabel = higherIsBetter ? "Compared with lowest selected score" : "Compared with slowest selected run";
           const showPrimaryClaims = !decisionSummary.claimSuppressed;
           const isComparisonBaseline =
             showPrimaryClaims && !selectionIsTie && primary !== null && primary === slowestPrimary;
           const isFastest =
             showPrimaryClaims && primary !== null && fastestPrimary !== null && primary === fastestPrimary;
+          const vsLabel = higherIsBetter ? "Compared with lowest selected score" : "Compared with slowest selected run";
+          const versusRatio = showPrimaryClaims && !isComparisonBaseline && speedup !== null && !isWithinTieBand(speedup);
+          const vsValue = (() => {
+            if (!showPrimaryClaims) return "—";
+            if (isComparisonBaseline) return higherIsBetter ? "Lowest selected" : "Slowest selected";
+            if (speedup === null) return "—";
+            if (isWithinTieBand(speedup)) return "Tied";
+            return formatSpeedup(speedup).valueText;
+          })();
 
           return (
             <div
@@ -703,7 +719,11 @@ export function Compare({ url }: CompareProps) {
                       tuningValidationStatus={r.tuningValidationStatus}
                     />
                   )}
-                  {isFastest && <StatusBadge role="ranking" tone="success">fastest</StatusBadge>}
+                  {isFastest && (
+                    <StatusBadge role="ranking" tone="success" class="whitespace-nowrap">
+                      fastest
+                    </StatusBadge>
+                  )}
                 </div>
               </div>
               <p class="mb-3 text-xs text-[var(--bb-data-fg-muted)]">
@@ -712,7 +732,7 @@ export function Compare({ url }: CompareProps) {
               </p>
               <p class="mb-3 font-mono text-xs text-[var(--bb-data-fg-muted)]">Public ID {r.publicId}</p>
               <dl class="space-y-1 text-sm">
-                <div class="flex justify-between">
+                <div class="flex justify-between gap-3">
                   <dt class="text-[var(--bb-data-fg-muted)]">
                     {primaryMetricLabel(effectivePrimaryMetric)}
                   </dt>
@@ -720,54 +740,37 @@ export function Compare({ url }: CompareProps) {
                     {effectivePrimaryMetric !== "display_geomean_ms"
                       ? r.primaryScore !== null
                         ? formatScoreMetric(effectivePrimaryMetric, r.primaryScore)
-                        : "-"
+                        : "—"
                       : fmtGeomean(r.displayGeomeanMs)}
                   </dd>
                 </div>
-                {effectivePrimaryMetric !== "display_geomean_ms" && (
-                  <div class="flex justify-between">
-                    <dt class="text-xs text-[var(--bb-data-fg-muted)]">Geomean</dt>
-                    <dd class="font-mono text-xs text-[var(--bb-data-fg-muted)]">{fmtGeomean(r.displayGeomeanMs)}</dd>
-                  </div>
-                )}
-                {r.totalDurationS !== null && (
-                  <div class="flex justify-between">
-                    <dt class="text-[var(--bb-data-fg-muted)]">Wall-clock total</dt>
-                    <dd class="font-mono text-[var(--bb-data-fg-primary)]">
-                      {formatDurationSeconds(r.totalDurationS).valueText}
-                    </dd>
-                  </div>
-                )}
-                {showPrimaryClaims && speedup !== null && (
-                  <div class="flex justify-between">
-                    <dt class="text-[var(--bb-data-fg-muted)]">
-                      {isComparisonBaseline ? "Relative position" : vsLabel}
-                    </dt>
-                    {isComparisonBaseline ? (
-                      <dd class="text-[var(--bb-data-fg-muted)]">
-                        {higherIsBetter ? "Lowest selected" : "Slowest selected"}
-                      </dd>
-                    ) : isWithinTieBand(speedup) ? (
-                      <dd class="text-[var(--bb-data-fg-muted)]" data-testid="headline-tie">
-                        Tied
-                      </dd>
-                    ) : (
-                      <dd class="font-mono">{formatSpeedup(speedup).valueText}</dd>
-                    )}
-                  </div>
-                )}
-                {r.executionMode && (
-                  <div class="flex justify-between">
-                    <dt class="text-[var(--bb-data-fg-muted)]">Mode</dt>
-                    <dd class="text-[var(--bb-data-fg-primary)]">{modeLabel(r.executionMode)}</dd>
-                  </div>
-                )}
-                {r.testType && (
-                  <div class="flex justify-between">
-                    <dt class="text-[var(--bb-data-fg-muted)]">Test type</dt>
-                    <dd class="text-[var(--bb-data-fg-primary)]">{testTypeLabel(r.testType)}</dd>
-                  </div>
-                )}
+                <div class="flex justify-between gap-3">
+                  <dt class="text-xs text-[var(--bb-data-fg-muted)]">Geomean</dt>
+                  <dd class="font-mono text-xs text-[var(--bb-data-fg-muted)]">{fmtGeomean(r.displayGeomeanMs)}</dd>
+                </div>
+                <div class="flex justify-between gap-3">
+                  <dt class="text-[var(--bb-data-fg-muted)]">Wall-clock total</dt>
+                  <dd class="font-mono text-[var(--bb-data-fg-primary)]">
+                    {r.totalDurationS !== null ? formatDurationSeconds(r.totalDurationS).valueText : "—"}
+                  </dd>
+                </div>
+                <div class="flex justify-between gap-3">
+                  <dt class="text-[var(--bb-data-fg-muted)]">{vsLabel}</dt>
+                  <dd
+                    class={versusRatio ? "font-mono" : "text-[var(--bb-data-fg-muted)]"}
+                    data-testid={vsValue === "Tied" ? "headline-tie" : undefined}
+                  >
+                    {vsValue}
+                  </dd>
+                </div>
+                <div class="flex justify-between gap-3">
+                  <dt class="text-[var(--bb-data-fg-muted)]">Mode</dt>
+                  <dd class="text-[var(--bb-data-fg-primary)]">{r.executionMode ? modeLabel(r.executionMode) : "Not recorded"}</dd>
+                </div>
+                <div class="flex justify-between gap-3">
+                  <dt class="text-[var(--bb-data-fg-muted)]">Test type</dt>
+                  <dd class="text-[var(--bb-data-fg-primary)]">{testTypeLabel(r.testType)}</dd>
+                </div>
               </dl>
               <a
                 href={resultDetailHref(r.resultId)}
@@ -813,6 +816,7 @@ export function Compare({ url }: CompareProps) {
             limiter={queryLimiter}
             orderByDisagreement={queryLimiter === "movement"}
             queryFilter={queryLimiter === "all" ? undefined : limitedQueryIds}
+            queryHref={(queryId) => queryRunComparisonHref(queryId, results.map((result) => result.result_id), basis)}
           />
         </>
       )}
@@ -824,6 +828,7 @@ export function Compare({ url }: CompareProps) {
           baselineIndex={normalizedBaselineIndex}
           suppressionReason={decisionSummary.claimSuppressionReason}
           queryFilter={queryLimiter === "all" ? undefined : limitedQueryIds}
+          queryHref={(queryId) => queryRunComparisonHref(queryId, results.map((result) => result.result_id), basis)}
         />
       )}
       <ComparabilityReceipt results={results} />
@@ -837,13 +842,11 @@ function CompareGuardrailSummary({
   warningLabels,
   claimSuppressed,
   suppressionReason,
-  comparisonBoundary,
 }: {
   warningCount: number;
   warningLabels: string[];
   claimSuppressed: boolean;
   suppressionReason: string | null;
-  comparisonBoundary: string | null;
 }) {
   const warningText = warningCount > 0 ? formatWarningClassSummary(warningCount, warningLabels) : null;
   function focusWarningTarget(event: JSX.TargetedMouseEvent<HTMLAnchorElement>) {
@@ -865,11 +868,6 @@ function CompareGuardrailSummary({
               ? `The summary does not rank these runs because ${suppressionReason ?? "they are not comparable"}.`
               : "These runs share the same benchmark, scale, and test phase. Review the differences below before drawing conclusions."}
           </p>
-          {comparisonBoundary && (
-            <p class="mt-1 text-xs text-[var(--bb-data-fg-muted)]" data-testid="comparison-boundary">
-              {comparisonBoundary}
-            </p>
-          )}
           {warningText && (
             <p class="mt-1 text-xs text-[var(--bb-data-fg-muted)]">
               {warningText}{" "}
@@ -934,18 +932,23 @@ function formatPlainList(values: readonly string[]): string {
 }
 
 function severeCohortMismatchReason(results: DetailResult[]) {
-  const reasons: string[] = [];
+  const dimensions: string[] = [];
   if (new Set(results.map((result) => canonicalBenchmarkSlug(result.benchmark))).size > 1) {
-    reasons.push("benchmarks differ");
+    dimensions.push("benchmark");
   }
   if (new Set(results.map((result) => result.scale_factor)).size > 1) {
-    reasons.push("scale factors differ");
+    dimensions.push("scale factor");
   }
   if (new Set(results.map((result) => canonicalPhase(result.test_type))).size > 1) {
-    reasons.push("phases differ");
+    dimensions.push("phase");
   }
   if (new Set(results.map((result) => compareCohortSignatureForRow(result).streamCount)).size > 1) {
-    reasons.push("stream counts differ");
+    dimensions.push("stream count");
   }
-  return reasons.length > 0 ? reasons.join(" and ") : null;
+  if (dimensions.length === 0) return null;
+  const listed =
+    dimensions.length === 1
+      ? dimensions[0]
+      : `${dimensions.slice(0, -1).join(", ")} and ${dimensions[dimensions.length - 1]}`;
+  return `runs differ in ${listed}`;
 }

@@ -246,6 +246,46 @@ class TestDuckDBSnapshotBuilder:
         assert row[23] == "snowflake_native"
         assert row[24] == "s3-standard"
 
+    def test_estimated_cost_round_trip(self, tmp_path: Path) -> None:
+        entry = _make_entry(
+            normalized_cost=NormalizedCost(
+                normalized_cost_usd=None,
+                cost_model_version=PRICING_VERSION,
+                cost_model_source="benchbox.core.cost.pricing",
+                cost_scope="compute_only",
+                cost_status="estimated",
+                billing_unit="credit",
+                pricing_region="us-east-2",
+                deployment=DeploymentMetadata(
+                    cloud_provider="aws",
+                    cloud_region="us-east-2",
+                    warehouse_size="X-Small",
+                ),
+                estimated_cost_usd="0.000105",
+                cost_estimate_method="sum of per-query median runtime hours",
+                cost_estimate_source="https://www.snowflake.com/legal-files/CreditConsumptionTable.pdf",
+                cost_estimate_pricing_date="2026-10-09",
+                cost_estimate_assumptions=("Timing-derived reference scenario.",),
+            ),
+        )
+        builder = DuckDBSnapshotBuilder()
+        out = tmp_path / "results.duckdb"
+        builder.build([entry], out)
+
+        with duckdb.connect(str(out), read_only=True) as con:
+            row = con.execute(
+                "SELECT cost_status, normalized_cost_usd, estimated_cost_usd, cost_estimate_method,"
+                " cost_estimate_source, cost_estimate_pricing_date, cost_estimate_assumptions FROM results"
+            ).fetchone()
+
+        assert row[0] == "estimated"
+        assert row[1] is None
+        assert row[2] == pytest.approx(0.000105)
+        assert row[3] == "sum of per-query median runtime hours"
+        assert row[4] == "https://www.snowflake.com/legal-files/CreditConsumptionTable.pdf"
+        assert row[5] == "2026-10-09"
+        assert row[6] == '["Timing-derived reference scenario."]'
+
     def test_extended_fields_null_when_absent(self, tmp_path: Path) -> None:
         entry = _make_entry()
         builder = DuckDBSnapshotBuilder()
@@ -360,3 +400,46 @@ class TestDuckDBSnapshotBuilder:
             count = con.execute("SELECT COUNT(*) FROM results").fetchone()[0]
 
         assert count == 2
+
+
+class TestQueryIdRepairsColumn:
+    REPAIRS = "ualify_cume_dist→qualify_cume_dist; ualify_ntile→qualify_ntile"
+
+    def _published(self, entry: ManifestEntry, sql: str) -> tuple | None:
+        builder = DuckDBSnapshotBuilder()
+        con = duckdb.connect(":memory:")
+        try:
+            builder._create_schema(con)
+            builder._populate_results(con, [entry], {}, "https://example.test/bundles", {})
+            return con.execute(sql, [entry.result_id]).fetchone()
+        finally:
+            con.close()
+
+    def test_results_table_has_nullable_query_id_repairs_column(self) -> None:
+        con = duckdb.connect(":memory:")
+        try:
+            DuckDBSnapshotBuilder()._create_schema(con)
+            row = con.execute(
+                "SELECT data_type, is_nullable FROM information_schema.columns"
+                " WHERE table_name = 'results' AND column_name = 'query_id_repairs'"
+            ).fetchone()
+        finally:
+            con.close()
+
+        assert row == ("VARCHAR", "YES")
+
+    def test_results_row_and_detail_view_store_query_id_repairs(self) -> None:
+        entry = _make_entry(benchmark="read_primitives", query_id_repairs=self.REPAIRS)
+
+        row = self._published(
+            entry,
+            "SELECT r.query_id_repairs, d.query_id_repairs FROM results r"
+            " JOIN result_detail_metrics d USING (result_id) WHERE r.result_id = ?",
+        )
+
+        assert row == (self.REPAIRS, self.REPAIRS)
+
+    def test_query_id_repairs_is_null_when_nothing_was_repaired(self) -> None:
+        row = self._published(_make_entry(), "SELECT query_id_repairs FROM results WHERE result_id = ?")
+
+        assert row == (None,)

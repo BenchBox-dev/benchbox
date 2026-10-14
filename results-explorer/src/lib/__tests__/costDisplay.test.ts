@@ -4,9 +4,15 @@ import {
   costModelSummary,
   costScopeSummary,
   costStatusLabel,
+  costStatusShortLabel,
+  estimateProvenance,
+  estimatedCostValue,
+  hasCostEstimate,
   humanizeBillingFragment,
   normalizedCostLabel,
+  normalizedCostShortLabel,
   normalizedCostValue,
+  parseEstimateAssumptions,
 } from "@/lib/costDisplay";
 
 function makeRow(overrides: Partial<CostDeploymentFields> = {}): CostDeploymentFields {
@@ -86,6 +92,31 @@ describe("costScopeSummary", () => {
   });
 });
 
+describe("short cost labels for table cells", () => {
+  it("shortens the local-run label so it fits a narrow column", () => {
+    expect(costStatusShortLabel(makeRow({ cost_status: "not_applicable_local" }))).toBe("N/A (local run)");
+    expect(normalizedCostShortLabel(makeRow({ cost_status: "not_applicable_local" }))).toBe("N/A (local run)");
+  });
+
+  it("keeps 'Not recorded' for unavailable cost and sentinel statuses", () => {
+    expect(costStatusShortLabel(makeRow({ cost_status: "unavailable" }))).toBe("Not recorded");
+    expect(normalizedCostShortLabel(makeRow({ cost_status: "unavailable" }))).toBe("Not recorded");
+    expect(normalizedCostShortLabel(makeRow({ cost_status: "not_applicable" }))).toBe("Not recorded");
+  });
+
+  it("keeps the dollar and estimate labels unchanged", () => {
+    expect(normalizedCostShortLabel(makeRow({ cost_status: "normalized", normalized_cost_usd: 12.5 }))).toBe("$12.50");
+    expect(normalizedCostShortLabel(makeRow({ cost_status: "estimated", estimated_cost_usd: 0.004667 }))).toBe(
+      "≈ $0.0047 (est.)",
+    );
+  });
+
+  it("leaves the long receipt label for local runs untouched", () => {
+    expect(normalizedCostLabel(makeRow({ cost_status: "not_applicable_local" }))).toBe("Not applicable to this local run");
+    expect(costStatusLabel(makeRow({ cost_status: "not_applicable_local" }))).toBe("Not applicable to this local run");
+  });
+});
+
 describe("costStatusLabel and normalizedCost helpers (unaffected by w1)", () => {
   it("explains that cloud cost does not apply to a local run", () => {
     expect(costStatusLabel(makeRow({ cost_status: "not_applicable_local" }))).toBe("Not applicable to this local run");
@@ -101,8 +132,60 @@ describe("costStatusLabel and normalizedCost helpers (unaffected by w1)", () => 
     expect(normalizedCostLabel(makeRow({ cost_status: "not_applicable_local" }))).toBe("Not applicable to this local run");
   });
 
+  it("renders timing-derived estimates with an estimate marker", () => {
+    expect(estimatedCostValue(makeRow({ cost_status: "estimated", estimated_cost_usd: 0.000105 }))).toBe(0.000105);
+    expect(estimatedCostValue(makeRow({ cost_status: "normalized", normalized_cost_usd: 12.5 }))).toBeNull();
+    expect(normalizedCostLabel(makeRow({ cost_status: "estimated", estimated_cost_usd: 0.000105 })))
+      .toBe("\u2248 $0.0001 (est.)");
+    expect(costStatusLabel(makeRow({ cost_status: "estimated" }))).toBe("Estimated cost (not metered)");
+    expect(costStatusLabel(makeRow({ cost_status: "unavailable" }))).toBe("Not recorded");
+  });
+
   it("does not expose the internal cost model source", () => {
     expect(costModelSummary(makeRow({ cost_model_version: "v3", cost_model_source: "ondemand" }))).toBe("v3");
     expect(costModelSummary(makeRow({ cost_model_version: "v3" }))).toBe("v3");
+  });
+
+  it("parses estimate assumptions from JSON with a plain-text fallback", () => {
+    expect(parseEstimateAssumptions('["First.", "Second."]')).toEqual(["First.", "Second."]);
+    expect(parseEstimateAssumptions("plain assumption")).toEqual(["plain assumption"]);
+    expect(parseEstimateAssumptions(null)).toEqual([]);
+    expect(parseEstimateAssumptions("  ")).toEqual([]);
+    expect(hasCostEstimate(makeRow({ cost_status: "estimated", estimated_cost_usd: 0.5 }))).toBe(true);
+    expect(hasCostEstimate(makeRow({ cost_status: "estimated", estimated_cost_usd: null }))).toBe(false);
+    expect(hasCostEstimate(makeRow({ cost_status: "unavailable" }))).toBe(false);
+  });
+});
+
+describe("estimateProvenance", () => {
+  it("lists method, pricing date, source and assumptions for an estimated run", () => {
+    const provenance = estimateProvenance(
+      makeRow({
+        cost_status: "estimated",
+        estimated_cost_usd: 0.0047,
+        cost_estimate_method: "sum of per-query median runtime hours × warehouse DBU per hour × USD per DBU",
+        cost_estimate_source: "https://www.databricks.com/product/pricing/databricks-sql",
+        cost_estimate_pricing_date: "2026-10-13",
+        cost_estimate_assumptions: '["AWS SQL Serverless list rate is $0.70/DBU.", "Photon is included."]',
+      }),
+    );
+
+    expect(provenance).toContain("Timing-derived estimate, not metered.");
+    expect(provenance).toContain("Method: sum of per-query median runtime hours");
+    expect(provenance).toContain("Pricing date: 2026-10-13");
+    expect(provenance).toContain("Source: https://www.databricks.com/product/pricing/databricks-sql");
+    expect(provenance).toContain("- AWS SQL Serverless list rate is $0.70/DBU.");
+    expect(provenance).toContain("- Photon is included.");
+  });
+
+  it("returns null when the run has no estimate", () => {
+    expect(estimateProvenance(makeRow({ cost_status: "normalized", normalized_cost_usd: 1 }))).toBeNull();
+    expect(estimateProvenance(makeRow({ cost_status: "estimated", estimated_cost_usd: null }))).toBeNull();
+  });
+
+  it("labels a Databricks serverless estimate with the approximate dollar value", () => {
+    expect(normalizedCostLabel(makeRow({ cost_status: "estimated", estimated_cost_usd: 0.004667 }))).toBe(
+      "\u2248 $0.0047 (est.)",
+    );
   });
 });

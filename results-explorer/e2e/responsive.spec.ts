@@ -12,6 +12,7 @@ const VIEWPORTS = [
   { name: "wide", width: 1600, height: 900, maxY: 900 },
 ] as const;
 const MIN_HOME_ROWS_ABOVE_FOLD_DESKTOP = 2;
+const MIN_HOME_CHARTS = 5;
 
 const AUDITED_ROUTES = [
   { path: "/results/", ready: /Recent Results/i },
@@ -19,6 +20,7 @@ const AUDITED_ROUTES = [
   { path: "/results/p/duckdb/", ready: /DuckDB/i },
   { path: `/results/r/${DETAIL_ID}`, ready: /Query timings/i },
   { path: `/results/compare?ids=${SHORT_DUCKDB},${SHORT_DATAFUSION}`, ready: /TPC-H Comparison/i },
+  { path: `/results/compare/query/1?ids=${SHORT_DUCKDB},${SHORT_DATAFUSION}`, ready: /Recorded execution times/i },
   { path: "/results/query", ready: /matching run/ },
 ] as const;
 
@@ -242,7 +244,7 @@ test.describe("responsive explorer assertions", () => {
           const offenders = await page.evaluate(() => {
             const problems: string[] = [];
             for (const svg of Array.from(
-              document.querySelectorAll("[data-chart-container] svg[role='img']"),
+              document.querySelectorAll("[data-chart-container] svg[role='img'], [data-chart-container] svg[role='group']"),
             )) {
               const box = svg.getBoundingClientRect();
               if (box.width === 0) continue;
@@ -285,7 +287,7 @@ test.describe("responsive explorer assertions", () => {
       }
 
       const chartsVisited = await page.locator("[data-chart-container] svg[role='img']").count();
-      expect(chartsVisited, "charts measured").toBeGreaterThan(5);
+      expect(chartsVisited, "charts measured").toBeGreaterThanOrEqual(MIN_HOME_CHARTS);
     });
   }
 

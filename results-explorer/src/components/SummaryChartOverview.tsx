@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "preact/hooks";
-import type { ComponentChildren } from "preact";
-import type { BenchmarkSummary } from "@/types";
+import type { ComponentChildren, JSX } from "preact";
+import type { BenchmarkSummary, PlatformRow } from "@/types";
 import {
   applicableCharts,
   buildRenderableSummary,
@@ -9,16 +9,17 @@ import {
   type ChartHistoricalEntry,
   type ChartRegistryEntry,
 } from "@/lib/chartRegistry";
-import { paletteColor, PHASE_COLORS, timeSeriesColor } from "@/lib/chartTheme";
+import { assignRunColorSlots, paletteColor, PHASE_COLORS } from "@/lib/chartTheme";
 import {
   buildLatencyBarScale,
   buildLogLatencyScale,
-  colorForCell,
   computeECDFPoints,
   computeRankTable,
   latencyScaleFraction,
+  lightnessForCell,
   logLatencyFraction,
 } from "@/lib/chartMath";
+import { fitLabel } from "@/lib/chartLabels";
 import {
   chartDatasetClassLabel,
   chartDatasetEmptyTitle,
@@ -33,7 +34,7 @@ import {
   summarizeChartDatasetExclusions,
   validPrimaryMetricValue,
 } from "@/lib/displayEligibility";
-import { formatRunIdentitiesForCohort, formatRunIdentityLabelsForCohort, preserveUniqueAfterTruncation } from "@/lib/runIdentity";
+import { formatRunIdentitiesForCohort, formatRunIdentityLabelsForCohort } from "@/lib/runIdentity";
 import { fmtGeomean, fmtScore } from "@/utils";
 import { AnalysisCard, AnalysisCardGrid } from "@/components/AnalysisCardGrid";
 import { DistributionBox } from "@/components/DistributionBox";
@@ -46,7 +47,7 @@ import { PercentileLadder } from "@/components/PercentileLadder";
 import { StackedPhase } from "@/components/StackedPhase";
 import { CDFChart } from "@/components/CDFChart";
 import { RankTable } from "@/components/RankTable";
-import { SaveChartView } from "@/components/SaveChartView";
+import { EmptyState } from "@/components/EmptyState";
 
 interface Props {
   context: Extract<ChartContext, { kind: "summary" }>;
@@ -73,8 +74,217 @@ const CHART_DISPLAY_TITLES: Record<string, string> = {
   rank_table: "Query ranks",
 };
 
+const PLATFORM_LABEL_FONT_PX = 14;
+const PLATFORM_LABEL_WIDTH_PX = 190;
+const THUMBNAIL_FONT_PX = 10;
+const THUMBNAIL_LABEL_WIDTH_PX = 88;
+
 export function additionalAnalysesLabel(count: number): string {
   return `${count} additional ${count === 1 ? "analysis" : "analyses"}`;
+}
+
+export function orderByDisplayGeomean<T extends PlatformRow>(platforms: readonly T[]): T[] {
+  return [...platforms].sort((a, b) => {
+    const av = validPrimaryMetricValue(a, "display_geomean_ms");
+    const bv = validPrimaryMetricValue(b, "display_geomean_ms");
+    if (av !== null && bv !== null) return av - bv;
+    if (av !== null) return -1;
+    if (bv !== null) return 1;
+    return a.platform.localeCompare(b.platform);
+  });
+}
+
+export function runColorIndexFor(summary: BenchmarkSummary | null): (platform: PlatformRow) => number {
+  const indexByResultId = new Map(summary?.platforms.map((platform, index) => [platform.result_id, index]) ?? []);
+  return (platform) => platform.color_slot ?? indexByResultId.get(platform.result_id) ?? 0;
+}
+
+function exclusionCauses(
+  excludedCount: number,
+  reasons: readonly { reason: string; count: number }[],
+  unexplainedCause: string,
+): string {
+  const explained = reasons.reduce((total, entry) => total + entry.count, 0);
+  const causes = reasons.map((entry) => entry.reason.replace(/\.$/, ""));
+  if (excludedCount > explained) causes.push(unexplainedCause);
+  return causes.join("; ");
+}
+
+function populationQueryText(
+  summary: BenchmarkSummary,
+  rows: readonly PlatformRow[],
+  scope: "cohort" | "compare",
+): string {
+  const total = summary.query_ids.length;
+  if (scope !== "compare" || rows.length === 0) return `${total} queries`;
+  const shared = summary.query_ids.filter((queryId) =>
+    rows.every((row) => {
+      const value = row.timings[queryId];
+      return typeof value === "number" && Number.isFinite(value) && value > 0;
+    }),
+  ).length;
+  return shared === total ? `${total} queries` : `${shared} shared of ${total} queries`;
+}
+
+export function SummaryMetricTable({
+  summary,
+  scope = "cohort",
+  framed = true,
+}: {
+  summary: BenchmarkSummary;
+  scope?: "cohort" | "compare";
+  framed?: boolean;
+}) {
+  const displayRows = summary.platforms.filter(
+    (platform) => isTimingDisplayable(platform) && validPrimaryMetricValue(platform, "display_geomean_ms") !== null,
+  );
+  const scoreMetric = normalizePrimaryMetric(summary.ranking?.primary_metric) === "throughput_at_size"
+    ? "throughput_at_size"
+    : "power_score";
+  const scoreName = scoreMetric === "throughput_at_size" ? "Throughput@Size" : "Power@Size";
+  const powerRows = summary.platforms.filter(
+    (platform) => isRankable(platform) && validPrimaryMetricValue(platform, scoreMetric) !== null,
+  );
+  const displayScale = buildLatencyBarScale(displayRows.map((platform) => platform.display_geomean_ms));
+  const maxPower = Math.max(...powerRows.map((platform) => primaryMetricValue(platform, scoreMetric) ?? 0), 1);
+  const labels = formatRunIdentityLabelsForCohort(
+    summary.platforms.map((platform) => ({ ...platform, scale_factor: summary.scale_factor })),
+  );
+  const displayLabels = fitPlatformLabels(labels.map((label) => label.disambiguated));
+  const rows = orderByDisplayGeomean(summary.platforms);
+  const rowIndexByResultId = new Map(summary.platforms.map((platform, index) => [platform.result_id, index]));
+  const total = summary.platforms.length;
+  const noun = scope === "compare" ? "selected" : "submitted";
+  const showScoreColumn = powerRows.length > 0;
+  const heading = showScoreColumn ? `Geomean and ${scoreName}` : "Geomean";
+  const unrankedCount = total - powerRows.length;
+  const undisplayedCount = total - displayRows.length;
+  const rankingExclusions = summarizeChartDatasetExclusions(summary.platforms, "rank_safe");
+  const displayExclusions = summarizeChartDatasetExclusions(summary.platforms, "display_safe");
+  const rankingNote = unrankedCount === 0
+    ? null
+    : `Not ranked: ${unrankedCount} of ${total} runs ${unrankedCount === 1 ? "is" : "are"} excluded from ranking — ${exclusionCauses(unrankedCount, rankingExclusions, `${scoreName} is not recorded`)}.`;
+  const displayNote = undisplayedCount === 0
+    ? null
+    : `Not in the latency chart: ${undisplayedCount} of ${total} runs ${undisplayedCount === 1 ? "is" : "are"} excluded — ${exclusionCauses(undisplayedCount, displayExclusions, "display timing is not recorded")}.`;
+
+  return (
+    <section class={framed ? "card" : undefined} aria-labelledby="summary-metric-table-title">
+      <h3
+        id="summary-metric-table-title"
+        class="mb-4 border-b border-[var(--bb-data-border)] pb-3 text-lg font-semibold text-[var(--bb-data-fg-primary)]"
+      >
+        {heading}
+      </h3>
+      <div class="overflow-x-auto">
+        <table
+          class="summary-metric-table min-w-[38rem] w-full border-collapse"
+          aria-label="Speed and throughput by platform"
+        >
+          <caption class="sr-only">
+            Display geomean latency{showScoreColumn ? ` and ${scoreName}` : ""} for every{" "}
+            {scope === "compare" ? "selected run" : "submitted platform"}
+          </caption>
+          <thead>
+            <tr class="border-b border-[var(--bb-data-border-strong)]">
+              <th
+                scope="col"
+                class="w-[14rem] px-2 py-2 text-left text-xs font-medium text-[var(--bb-data-fg-muted)]"
+              >
+                Platform
+              </th>
+              <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-[var(--bb-data-fg-muted)]">
+                <span class="block">Display geomean</span>
+                <span class="font-normal text-[var(--bb-data-fg-subtle)]">lower is better</span>
+              </th>
+              {showScoreColumn && (
+                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-[var(--bb-data-fg-muted)]">
+                  <span class="block">{scoreName}</span>
+                  <span class="font-normal text-[var(--bb-data-fg-subtle)]">higher is better</span>
+                </th>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((platform, rowIndex) => {
+              const sourceIndex = rowIndexByResultId.get(platform.result_id) ?? rowIndex;
+              const color = paletteColor(platform.color_slot ?? sourceIndex);
+              const displayValue = validPrimaryMetricValue(platform, "display_geomean_ms");
+              const powerValue = isRankable(platform)
+                ? validPrimaryMetricValue(platform, scoreMetric)
+                : null;
+              const displayFraction = displayValue !== null && displayScale
+                ? latencyScaleFraction(displayValue, displayScale)
+                : null;
+              const powerFraction = powerValue !== null ? Math.min(1, powerValue / maxPower) : null;
+              return (
+                <tr key={platform.result_id} class="border-b border-[var(--bb-data-border)] align-middle">
+                  <th scope="row" class="px-2 py-1.5 text-left text-sm font-medium text-[var(--bb-data-fg-primary)]">
+                    <span
+                      class="flex min-w-0 items-center gap-2"
+                      title={labels[sourceIndex]?.full ?? platform.platform}
+                    >
+                      <span
+                        class="h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: color }}
+                        aria-hidden="true"
+                      />
+                      <span class="min-w-0 truncate" title={labels[sourceIndex]?.full ?? platform.platform}>
+                        {displayLabels[sourceIndex] ?? platform.platform}
+                      </span>
+                    </span>
+                  </th>
+                  <InlineMetricCell
+                    value={displayValue}
+                    formatted={displayValue === null ? "—" : fmtGeomean(displayValue)}
+                    fraction={displayFraction}
+                    color={color}
+                    title={
+                      displayValue === null
+                        ? "Display timing unavailable"
+                        : `${fmtGeomean(displayValue)} display geomean`
+                    }
+                  />
+                  {showScoreColumn && (
+                    <InlineMetricCell
+                      value={powerValue}
+                      formatted={powerValue === null ? "—" : fmtScore(powerValue)}
+                      fraction={powerFraction}
+                      color={color}
+                      title={
+                        powerValue === null
+                          ? `${scoreName} unavailable or not rank-safe`
+                          : `${fmtScore(powerValue)} ${scoreName}`
+                      }
+                    />
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div
+        class="mt-4 grid gap-3 border-t border-[var(--bb-data-border)] pt-4 text-sm
+          text-[var(--bb-data-fg-muted)] sm:grid-cols-2"
+      >
+        <p>
+          <strong class="text-[var(--bb-data-fg-primary)]">Population:</strong>{" "}
+          {`${total} ${noun} runs · ${displayRows.length} display-safe rows · ${populationQueryText(summary, displayRows, scope)}`}
+        </p>
+        {rankingNote !== null && <p>{rankingNote}</p>}
+        {displayNote !== null && <p class="sm:col-span-2 text-xs text-[var(--bb-data-fg-subtle)]">{displayNote}</p>}
+      </div>
+    </section>
+  );
+}
+
+function fitPlatformLabels(labels: readonly string[]): string[] {
+  const fitted = labels.map((label) => fitLabel(label, PLATFORM_LABEL_WIDTH_PX, PLATFORM_LABEL_FONT_PX).text);
+  const counts = new Map<string, number>();
+  for (const text of fitted) counts.set(text, (counts.get(text) ?? 0) + 1);
+  return fitted.map((text, index) => ((counts.get(text) ?? 0) > 1 ? labels[index]! : text));
 }
 
 export function SummaryChartOverview({
@@ -114,148 +324,24 @@ export function SummaryChartOverview({
   }, [context, excludeChartIds]);
 
   if (summary === null) return null;
-
-  const displayRows = summary.platforms.filter(
-    (platform) => isTimingDisplayable(platform) && validPrimaryMetricValue(platform, "display_geomean_ms") !== null,
-  );
-  const scoreMetric = normalizePrimaryMetric(summary.ranking?.primary_metric) === "throughput_at_size"
-    ? "throughput_at_size"
-    : "power_score";
-  const scoreName = scoreMetric === "throughput_at_size" ? "Throughput@Size" : "Power@Size";
-  const powerRows = summary.platforms.filter(
-    (platform) => isRankable(platform) && validPrimaryMetricValue(platform, scoreMetric) !== null,
-  );
-  const displayScale = buildLatencyBarScale(displayRows.map((platform) => platform.display_geomean_ms));
-  const maxPower = Math.max(...powerRows.map((platform) => primaryMetricValue(platform, scoreMetric) ?? 0), 1);
-  const labels = formatRunIdentityLabelsForCohort(
-    summary.platforms.map((platform) => ({ ...platform, scale_factor: summary.scale_factor })),
-  );
-  const displayLabels = preserveUniqueAfterTruncation(
-    labels.map((label) => label.disambiguated),
-    30,
-  );
-  const rows = [...summary.platforms].sort((a, b) => {
-    const av = validPrimaryMetricValue(a, "display_geomean_ms");
-    const bv = validPrimaryMetricValue(b, "display_geomean_ms");
-    if (av !== null && bv !== null) return av - bv;
-    if (av !== null) return -1;
-    if (bv !== null) return 1;
-    return a.platform.localeCompare(b.platform);
-  });
-  const rowIndexByResultId = new Map(summary.platforms.map((platform, index) => [platform.result_id, index]));
-  const displayExclusions = summarizeChartDatasetExclusions(summary.platforms, "display_safe");
-  const powerExclusions = summarizeChartDatasetExclusions(summary.platforms, "rank_safe");
+  const colorIndexFor = runColorIndexFor(summary);
 
   return (
     <div class="scroll-mt-24 space-y-6" data-testid="summary-chart-overview" id="cohort-charts">
-      <section class="card">
-        <div class="overflow-x-auto">
-          <table
-            class="summary-metric-table min-w-[38rem] w-full border-collapse"
-            aria-label="Speed and throughput by platform"
-          >
-            <caption class="sr-only">
-              Display geomean latency and {scoreName} for every submitted platform in this cohort
-            </caption>
-            <thead>
-              <tr class="border-b border-[var(--bb-data-border-strong)]">
-                <th
-                  scope="col"
-                  class="w-[14rem] px-2 py-2 text-left text-xs font-medium text-[var(--bb-data-fg-muted)]"
-                >
-                  Platform
-                </th>
-                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-[var(--bb-data-fg-muted)]">
-                  <span class="block">Display geomean</span>
-                  <span class="font-normal text-[var(--bb-data-fg-subtle)]">lower is better</span>
-                </th>
-                <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-[var(--bb-data-fg-muted)]">
-                  <span class="block">{scoreName}</span>
-                  <span class="font-normal text-[var(--bb-data-fg-subtle)]">higher is better</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((platform, rowIndex) => {
-                const sourceIndex = rowIndexByResultId.get(platform.result_id) ?? rowIndex;
-                const color = paletteColor(sourceIndex);
-                const displayValue = validPrimaryMetricValue(platform, "display_geomean_ms");
-                const powerValue = isRankable(platform)
-                  ? validPrimaryMetricValue(platform, scoreMetric)
-                  : null;
-                const displayFraction = displayValue !== null && displayScale
-                  ? latencyScaleFraction(displayValue, displayScale)
-                  : null;
-                const powerFraction = powerValue !== null ? Math.min(1, powerValue / maxPower) : null;
-                return (
-                  <tr key={platform.result_id} class="border-b border-[var(--bb-data-border)] align-middle">
-                    <th scope="row" class="px-2 py-1.5 text-left text-sm font-medium text-[var(--bb-data-fg-primary)]">
-                      <span
-                        class="flex min-w-0 items-center gap-2"
-                        title={labels[sourceIndex]?.full ?? platform.platform}
-                      >
-                        <span
-                          class="h-2.5 w-2.5 shrink-0 rounded-full"
-                          style={{ backgroundColor: color }}
-                          aria-hidden="true"
-                        />
-                        <span class="min-w-0 break-words">{displayLabels[sourceIndex] ?? platform.platform}</span>
-                      </span>
-                    </th>
-                    <InlineMetricCell
-                      value={displayValue}
-                      formatted={displayValue === null ? "—" : fmtGeomean(displayValue)}
-                      fraction={displayFraction}
-                      color={color}
-                      title={
-                        displayValue === null
-                          ? "Display timing unavailable"
-                          : `${fmtGeomean(displayValue)} display geomean`
-                      }
-                    />
-                    <InlineMetricCell
-                      value={powerValue}
-                      formatted={powerValue === null ? "—" : fmtScore(powerValue)}
-                      fraction={powerFraction}
-                      color={color}
-                      title={
-                        powerValue === null
-                          ? `${scoreName} unavailable or not rank-safe`
-                          : `${fmtScore(powerValue)} ${scoreName}`
-                      }
-                    />
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+      <SummaryMetricTable summary={summary} />
 
-        <div
-          class="mt-4 grid gap-3 border-t border-[var(--bb-data-border)] pt-4 text-sm
-            text-[var(--bb-data-fg-muted)] sm:grid-cols-2"
+      <section class="card" aria-labelledby="latency-distribution-title">
+        <h3
+          id="latency-distribution-title"
+          class="mb-4 border-b border-[var(--bb-data-border)] pb-3 text-lg font-semibold text-[var(--bb-data-fg-primary)]"
         >
-          <p>
-            <strong class="text-[var(--bb-data-fg-primary)]">Population:</strong> {summary.platforms.length} submitted
-            runs · {displayRows.length} display-safe rows · {summary.query_ids.length} queries
-          </p>
-          <p>
-            <strong class="text-[var(--bb-data-fg-primary)]">Ranking:</strong> {powerRows.length} rank-safe rows ·
-            values stay tied to the persisted ranking contract
-          </p>
-          {(displayExclusions.length > 0 || powerExclusions.length > 0) && (
-            <p class="sm:col-span-2 text-xs text-[var(--bb-data-fg-subtle)]">
-              {formatExclusionCount(displayExclusions, "display chart")}
-              {displayExclusions.length > 0 && powerExclusions.length > 0 ? " · " : ""}
-              {formatExclusionCount(powerExclusions, "ranking chart")}
-            </p>
-          )}
-        </div>
-      </section>
-
-      <section class="card">
+          Latency distribution
+        </h3>
         <div data-chart-container>
-          <DistributionBox summary={summary} />
+          <DistributionBox
+            summary={{ ...summary, platforms: orderByDisplayGeomean(summary.platforms) }}
+            colorIndexFor={runColorIndexFor(summary)}
+          />
         </div>
         <div class="mt-3 border-t border-[var(--bb-data-border)] pt-3 text-sm text-[var(--bb-data-fg-muted)]">
           <p>
@@ -317,7 +403,12 @@ export function SummaryChartOverview({
                   isGatedRankCard ? (
                     <MiniUnavailable label="Ranking unavailable" />
                   ) : (
-                    <ChartThumbnail chartId={chart.id} summary={chartSummary} historical={context.historical ?? []} />
+                    <ChartThumbnail
+                      chartId={chart.id}
+                      summary={chartSummary}
+                      historical={context.historical ?? []}
+                      colorIndexFor={colorIndexFor}
+                    />
                   )
                 }
                 fullHeaderExtra={
@@ -350,7 +441,7 @@ export function SummaryChartOverview({
                   ) : isEmpty ? (
                     <ChartDatasetEmptyState chart={chart} summary={summary} />
                   ) : (
-                    renderExpandedChart(chart, chartSummary, context.historical ?? [], { highContrast }) ?? (
+                    renderExpandedChart(chart, chartSummary, context.historical ?? [], { highContrast, colorIndexFor }) ?? (
                       <p class="text-sm italic text-[var(--bb-data-fg-subtle)]">
                         No chart data is available for this view.
                       </p>
@@ -369,13 +460,6 @@ export function SummaryChartOverview({
                         />
                       ) : null}
                     </div>
-                    {!isGatedRankCard && !isEmpty ? (
-                      <SaveChartView
-                        chartId={chart.id}
-                        chartTitle={CHART_DISPLAY_TITLES[chart.id] ?? chart.shortTitle}
-                        anchorId={cardAnchors?.[chart.id]}
-                      />
-                    ) : null}
                   </div>
                 }
               />
@@ -425,13 +509,6 @@ function shouldShowEmptyState(
 ): boolean {
   if (chart.eligibilityClass === "provenance_only" || chart.eligibilityClass === "trend_safe") return false;
   return summary.platforms.length > 0 && chartSummary.platforms.length === 0;
-}
-
-function formatExclusionCount(reasons: { reason: string; count: number }[], label: string): string {
-  const count = reasons.reduce((total, reason) => total + reason.count, 0);
-  if (count === 0) return "";
-  const reason = reasons[0]?.reason ?? "eligibility policy";
-  return `${count} ${count === 1 ? "row" : "rows"} excluded from the ${label} dataset (${reason})`;
 }
 
 function ChartDatasetEmptyState({ chart, summary }: { chart: ChartRegistryEntry; summary: BenchmarkSummary }) {
@@ -485,7 +562,7 @@ function renderExpandedChart(
   chart: ChartRegistryEntry,
   summary: BenchmarkSummary,
   historical: ChartHistoricalEntry[],
-  options: { highContrast?: boolean } = {},
+  options: { highContrast?: boolean; colorIndexFor?: (platform: PlatformRow) => number } = {},
 ): ComponentChildren {
   switch (chart.id) {
     case "query_heatmap":
@@ -505,7 +582,7 @@ function renderExpandedChart(
                     platform: platform.platform,
                     displayLabel: cohortLabels[index] ?? platform.platform,
                     percentile_stats: platform.percentile_stats,
-                    colorIdx: index,
+                    colorIdx: platform.color_slot ?? index,
                   },
                 ]
               : [],
@@ -514,7 +591,7 @@ function renderExpandedChart(
       );
     }
     case "cdf_chart":
-      return <CDFChart summary={summary} />;
+      return <CDFChart summary={summary} colorIndexFor={options.colorIndexFor} />;
     case "query_histogram":
       return <QueryHistogram summary={summary} />;
     case "stacked_phase":
@@ -539,10 +616,12 @@ function ChartThumbnail({
   chartId,
   summary,
   historical,
+  colorIndexFor,
 }: {
   chartId: string;
   summary: BenchmarkSummary;
   historical: ChartHistoricalEntry[];
+  colorIndexFor?: (platform: PlatformRow) => number;
 }) {
   switch (chartId) {
     case "query_heatmap":
@@ -550,7 +629,7 @@ function ChartThumbnail({
     case "percentile_ladder":
       return <MiniPercentiles summary={summary} />;
     case "cdf_chart":
-      return <MiniCDF summary={summary} />;
+      return <MiniCDF summary={summary} colorIndexFor={colorIndexFor} />;
     case "query_histogram":
       return <MiniHistogram summary={summary} />;
     case "stacked_phase":
@@ -566,11 +645,12 @@ function ChartThumbnail({
   }
 }
 
+const THUMBNAIL_FRAME_HEIGHT_CLASS = "h-[7.5rem]";
+
 function MiniFrame({ children }: { children: ComponentChildren }) {
   return (
     <div
-      class="summary-chart-thumbnail mt-4 flex items-center justify-center rounded-md bg-[var(--bb-surface-data-muted)]
-        p-2"
+      class={`summary-chart-thumbnail mt-4 flex ${THUMBNAIL_FRAME_HEIGHT_CLASS} items-center justify-center overflow-hidden rounded-md bg-[var(--bb-surface-data-muted)] p-2`}
     >
       {children}
     </div>
@@ -580,7 +660,7 @@ function MiniFrame({ children }: { children: ComponentChildren }) {
 function MiniUnavailable({ label }: { label: string }) {
   return (
     <MiniFrame>
-      <p class="px-3 text-center text-xs text-[var(--bb-data-fg-subtle)]">{label}</p>
+      <EmptyState compact title={label} class="w-full text-xs" />
     </MiniFrame>
   );
 }
@@ -588,7 +668,10 @@ function MiniUnavailable({ label }: { label: string }) {
 function MiniHeatmap({ summary }: { summary: BenchmarkSummary }) {
   const queryIds = summary.query_ids.slice(0, 14);
   const platforms = summary.platforms.slice(0, 5);
-  if (queryIds.length === 0 || platforms.length === 0) return <MiniUnavailable label="No query timings recorded" />;
+  const hasTiming = platforms.some((platform) =>
+    queryIds.some((queryId) => isValidTimingValue(platformTimingValue(platform, queryId))),
+  );
+  if (!hasTiming) return <MiniUnavailable label="No query timings recorded" />;
   const minima = new Map(
     queryIds.map((queryId) => {
       const values = platforms.map((platform) => platformTimingValue(platform, queryId)).filter(isValidTimingValue);
@@ -598,19 +681,25 @@ function MiniHeatmap({ summary }: { summary: BenchmarkSummary }) {
   return (
     <MiniFrame>
       <div
-        class="summary-mini-heatmap grid w-full gap-px"
-        style={{ gridTemplateColumns: `repeat(${queryIds.length}, minmax(0, 1fr))` }}
+        class="summary-mini-heatmap grid h-full w-full gap-px"
+        style={{
+          gridTemplateColumns: `repeat(${queryIds.length}, minmax(0, 1fr))`,
+          gridTemplateRows: `repeat(${platforms.length}, minmax(0, 1fr))`,
+        }}
+        role="img"
         aria-label="Heatmap thumbnail"
       >
         {platforms.flatMap((platform) =>
           queryIds.map((queryId) => {
-            const value = platformTimingValue(platform, queryId);
-            const hue = colorForCell(value, minima.get(queryId) ?? null);
+            const lightness = lightnessForCell(platformTimingValue(platform, queryId), minima.get(queryId) ?? null);
+            const cellStyle = lightness === null
+              ? undefined
+              : ({ "--cell-lightness": lightness } as JSX.CSSProperties);
             return (
               <span
                 key={`${platform.result_id}-${queryId}`}
-                class="aspect-square rounded-[1px]"
-                style={{ backgroundColor: hue === null ? "var(--bb-data-border)" : `hsl(${hue} 68% 56%)` }}
+                class={`rounded-[1px] ${lightness === null ? "bg-[var(--bb-surface-data-muted)]" : "heatmap-cell"}`}
+                style={cellStyle}
                 title={`${platform.platform} · ${queryId}`}
               />
             );
@@ -622,43 +711,57 @@ function MiniHeatmap({ summary }: { summary: BenchmarkSummary }) {
 }
 
 function MiniPercentiles({ summary }: { summary: BenchmarkSummary }) {
-  const rows = summary.platforms
-    .filter((platform) => isTimingDisplayable(platform) && platform.percentile_stats !== null)
-    .slice(0, 6);
+  const cohortLabels = formatRunIdentitiesForCohort(
+    summary.platforms.map((platform) => ({ ...platform, scale_factor: summary.scale_factor })),
+    "chart",
+  );
+  const rows = summary.platforms.flatMap((platform, index) =>
+    isTimingDisplayable(platform) && platform.percentile_stats !== null
+      ? [{ result_id: platform.result_id, label: cohortLabels[index] ?? platform.platform, stats: platform.percentile_stats, colorIdx: platform.color_slot ?? index }]
+      : [],
+  ).slice(0, 6);
   if (rows.length === 0) return <MiniUnavailable label="No percentile statistics recorded" />;
-  const max = Math.max(...rows.map((row) => row.percentile_stats!.p99), 1);
+  const max = Math.max(...rows.map((row) => row.stats.p99), 1);
   return (
     <MiniFrame>
       <div class="summary-mini-stack w-full space-y-1.5">
-        {rows.map((row, index) => (
-          <div key={row.result_id} class="flex items-center gap-1">
-            <span class="w-10 truncate text-[8px] text-[var(--bb-data-fg-subtle)]">{row.platform}</span>
-            <span class="relative h-2 flex-1 rounded-sm bg-[var(--bb-data-border)]">
+        {rows.map((row) => {
+          const fitted = fitLabel(row.label, THUMBNAIL_LABEL_WIDTH_PX, THUMBNAIL_FONT_PX);
+          return (
+            <div key={row.result_id} class="flex items-center gap-1.5">
               <span
-                class="absolute inset-y-0 left-0 rounded-sm opacity-40"
-                style={{
-                  width: `${(row.percentile_stats!.p99 / max) * 100}%`,
-                  backgroundColor: paletteColor(index),
-                }}
-              />
-              <span
-                class="absolute inset-y-0 left-0 rounded-sm"
-                style={{
-                  width: `${(row.percentile_stats!.p50 / max) * 100}%`,
-                  backgroundColor: paletteColor(index),
-                }}
-              />
-            </span>
-          </div>
-        ))}
+                class="w-24 shrink-0 truncate text-[10px] leading-none text-[var(--bb-data-fg-subtle)]"
+                title={row.label}
+              >
+                {fitted.text}
+              </span>
+              <span class="relative h-2 flex-1 rounded-sm bg-[var(--bb-data-border)]">
+                <span
+                  class="absolute inset-y-0 left-0 rounded-sm opacity-40"
+                  style={{ width: `${(row.stats.p99 / max) * 100}%`, backgroundColor: paletteColor(row.colorIdx) }}
+                />
+                <span
+                  class="absolute inset-y-0 left-0 rounded-sm"
+                  style={{ width: `${(row.stats.p50 / max) * 100}%`, backgroundColor: paletteColor(row.colorIdx) }}
+                />
+              </span>
+            </div>
+          );
+        })}
       </div>
     </MiniFrame>
   );
 }
 
-function MiniCDF({ summary }: { summary: BenchmarkSummary }) {
+function MiniCDF({
+  summary,
+  colorIndexFor,
+}: {
+  summary: BenchmarkSummary;
+  colorIndexFor?: (platform: PlatformRow) => number;
+}) {
   const series = summary.platforms.slice(0, 6).map((platform, index) => ({
-    color: timeSeriesColor(index),
+    color: paletteColor(colorIndexFor?.(platform) ?? platform.color_slot ?? index),
     points: computeECDFPoints(summary.query_ids.map((queryId) => platformTimingValue(platform, queryId))),
   })).filter((entry) => entry.points.length > 0);
   const allMs = series.flatMap((entry) => entry.points.map((point) => point.x));
@@ -754,17 +857,28 @@ function MiniPhases({ summary }: { summary: BenchmarkSummary }) {
 
 function MiniTrend({ summary, historical }: { summary: BenchmarkSummary; historical: ChartHistoricalEntry[] }) {
   const metric = normalizePrimaryMetric(summary.ranking?.primary_metric);
-  const values = historical.map((entry) => trendEntryValue(entry, metric)).filter(isValidTimingValue);
-  if (values.length < 2) return <MiniUnavailable label="Not enough history for a trend" />;
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const span = max - min || 1;
   const byPlatform = new Map<string, ChartHistoricalEntry[]>();
   historical.forEach((entry) => {
     const group = byPlatform.get(entry.platform_id) ?? [];
     group.push(entry);
     byPlatform.set(entry.platform_id, group);
   });
+  const series = Array.from(byPlatform.values())
+    .slice(0, 6)
+    .map((entries) =>
+      entries
+        .filter((entry) => isValidTimingValue(trendEntryValue(entry, metric)))
+        .sort((a, b) => a.run_date.localeCompare(b.run_date)),
+    )
+    .filter((points) => points.length >= 2);
+  if (series.length === 0) return <MiniUnavailable label="Not enough history for a trend" />;
+  const slotByPlatformId = assignRunColorSlots(
+    series.map((points) => ({ result_id: points[0]!.platform_id, platform_id: points[0]!.platform_id, platform: points[0]!.platform })),
+  );
+  const values = series.flat().map((entry) => trendEntryValue(entry, metric) as number);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min || 1;
   return (
     <MiniFrame>
       <svg
@@ -775,18 +889,15 @@ function MiniTrend({ summary, historical }: { summary: BenchmarkSummary; histori
         aria-label="Trend thumbnail"
       >
         <line x1="8" y1="76" x2="232" y2="76" stroke="var(--bb-chart-grid)" />
-        {Array.from(byPlatform.values()).slice(0, 6).map((entries, index) => {
-          const points = entries
-            .filter((entry) => isValidTimingValue(trendEntryValue(entry, metric)))
-            .sort((a, b) => a.run_date.localeCompare(b.run_date));
-          if (points.length < 2) return null;
+        {series.map((points, index) => {
           const d = points.map((entry, pointIndex) => {
             const x = 12 + (pointIndex / Math.max(points.length - 1, 1)) * 216;
             const normalized = ((trendEntryValue(entry, metric) as number) - min) / span;
             const y = primaryMetricHigherIsBetter(metric) ? 10 + (1 - normalized) * 62 : 10 + normalized * 62;
             return `${pointIndex === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
           }).join(" ");
-          return <path key={index} d={d} fill="none" stroke={timeSeriesColor(index)} stroke-width="1.5" />;
+          const slot = slotByPlatformId.get(points[0]!.platform_id) ?? index;
+          return <path key={index} d={d} fill="none" stroke={paletteColor(slot)} stroke-width="1.5" />;
         })}
       </svg>
     </MiniFrame>
@@ -801,20 +912,27 @@ function trendEntryValue(entry: ChartHistoricalEntry, metric: ReturnType<typeof 
 
 function MiniRanks({ summary }: { summary: BenchmarkSummary }) {
   const queryIds = summary.query_ids.slice(0, 8);
+  const hasTiming = summary.platforms.some((platform) =>
+    queryIds.some((queryId) => isValidTimingValue(platformTimingValue(platform, queryId))),
+  );
+  if (!hasTiming) {
+    return <MiniUnavailable label="No rank-safe query timings" />;
+  }
   const ranks = computeRankTable(
     queryIds,
     summary.platforms.map((platform) =>
       Object.fromEntries(queryIds.map((queryId) => [queryId, platformTimingValue(platform, queryId)])),
     ),
   );
-  if (queryIds.length === 0 || summary.platforms.length === 0) {
-    return <MiniUnavailable label="No rank-safe query timings" />;
-  }
   return (
     <MiniFrame>
       <div
-        class="summary-mini-grid grid w-full gap-px"
-        style={{ gridTemplateColumns: `repeat(${summary.platforms.length}, minmax(0, 1fr))` }}
+        class="summary-mini-grid grid h-full w-full gap-px"
+        style={{
+          gridTemplateColumns: `repeat(${summary.platforms.length}, minmax(0, 1fr))`,
+          gridTemplateRows: `repeat(${queryIds.length}, minmax(0, 1fr))`,
+        }}
+        role="img"
         aria-label="Rank table thumbnail"
       >
         {queryIds.flatMap((queryId) =>
@@ -823,10 +941,10 @@ function MiniRanks({ summary }: { summary: BenchmarkSummary }) {
             return (
               <span
                 key={`${queryId}-${platform.result_id}`}
-                class="flex aspect-[1.8] items-center justify-center rounded-[1px] font-mono text-[8px]"
+                class="flex items-center justify-center rounded-[1px] font-mono text-[10px] leading-none"
                 style={{
                   backgroundColor: rank === 1 ? "var(--bb-chart-cat-1)" : "var(--bb-tone-neutral-bg)",
-                  color: rank === 1 ? "white" : "var(--bb-data-fg-muted)",
+                  color: rank === 1 ? "var(--bb-surface-data)" : "var(--bb-data-fg-muted)",
                 }}
               >
                 {rank ?? "—"}
@@ -847,7 +965,7 @@ function MiniCost({ summary }: { summary: BenchmarkSummary }) {
       platform.normalized_cost_usd !== null &&
       validPrimaryMetricValue(platform, metric) !== null,
   );
-  if (points.length === 0) return <MiniUnavailable label="No normalized cost recorded" />;
+  if (points.length < 2) return <MiniUnavailable label="No normalized cost recorded" />;
   const costs = points.map((point) => point.normalized_cost_usd as number);
   const metricValues = points.map((point) => validPrimaryMetricValue(point, metric) as number);
   const minCost = Math.min(...costs);
@@ -870,7 +988,7 @@ function MiniCost({ summary }: { summary: BenchmarkSummary }) {
               style={{
                 left: `${8 + x * 90}%`,
                 top: `${8 + y * 84}%`,
-                backgroundColor: paletteColor(index),
+                backgroundColor: paletteColor(point.color_slot ?? index),
               }}
               title={point.platform}
             />

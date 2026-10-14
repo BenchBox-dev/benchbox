@@ -1,3 +1,5 @@
+import { formatScaleFactor } from "@/lib/metricFormatters";
+import { CompareCta, isCompareAllAvailable } from "@/components/CompareCta";
 import { PageHeader } from "@/components/PageHeader";
 import { ProvenanceLegend } from "@/components/ProvenanceLegend";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
@@ -12,7 +14,7 @@ import type {
 import type { ResultRow } from "@/lib/duckdbQueries";
 import { getMetaLeaderboardData, listResults } from "@/lib/duckdbQueries";
 import { humanizeBenchmark, errMsg } from "@/utils";
-import { canonicalBenchmarkSlug, formatBenchmarkLabel } from "@/lib/displayLabels";
+import { canonicalBenchmarkSlug, canonicalPhase, formatBenchmarkLabel } from "@/lib/displayLabels";
 import { MetaLeaderboardSkeleton, SkeletonBlock } from "@/components/LoadingSpinner";
 import { ErrorMessage } from "@/components/ErrorMessage";
 import { MetaLeaderboard, variantKeyOf, variantLabelOf } from "@/components/MetaLeaderboard";
@@ -36,7 +38,14 @@ import { formatCountWithVerb } from "@/lib/copyFormatters";
 import { formatFacetDisplayValue } from "@/lib/facetDisplay";
 import { stringSerde, useUrlState } from "@/lib/useUrlState";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
-import { usePickingState } from "@/lib/pickingState";
+import { useOptionalPickingState } from "@/lib/pickingState";
+import { formatTimingExclusion } from "@/lib/displayEligibility";
+import {
+  buildCompareUrl,
+  MAX_COMPARE_SELECTIONS,
+  resultReceiptHref,
+  visibleResultIdForRow,
+} from "@/lib/resultLinks";
 import {
   EXPLORER_PERFORMANCE_MARKS,
   EXPLORER_PERFORMANCE_MEASURES,
@@ -97,6 +106,8 @@ export function Leaderboard({ notice = null }: LeaderboardProps) {
   const [resultsRetryToken, setResultsRetryToken] = useState(0);
   const { facets, where: facetWhere, setFacet, resetFacets } = useFacetState();
   const [modeRaw, setModeRaw] = useUrlState<string>("mode", "speedup", stringSerde);
+  const [rankingScopeRaw, setRankingScopeRaw] = useUrlState<string>("compare_scope", "ranked", stringSerde);
+  const rankingScope = rankingScopeRaw === "comparable" ? "comparable" : "ranked";
   const benchmarkFilters = facets.benchmark;
   const scaleFilters = facets.scale_factor;
   const phaseFilter = singleFacetValue(facets.phase, "all");
@@ -336,7 +347,7 @@ export function Leaderboard({ notice = null }: LeaderboardProps) {
     return (
       <LeaderboardLoadingSkeleton
         benchmark={summarizeSelection(benchmarkFilters, "All benchmarks", humanizeBenchmark)}
-        scaleFactor={summarizeSelection(scaleFilters, "All scales", (value) => `SF ${value}`)}
+        scaleFactor={summarizeSelection(scaleFilters, "All scales", (value) => formatScaleFactor(value))}
         phase={phaseFilter === "all" ? "All phases" : phaseFilter}
         activeFacets={summarizeActiveFacets(facets, new Map())}
         showActiveSummary={
@@ -360,17 +371,21 @@ export function Leaderboard({ notice = null }: LeaderboardProps) {
   }
   const platformIds = [...new Set(results.map((result) => variantKeyOf(result)))].sort();
   const activeFacetSummaries = summarizeActiveFacets(facets, platformIdToName);
-  const benchmarkOptions = metaLeaderboard
-    ? [...new Set(metaLeaderboard.cohorts.map((cohort) => cohort.benchmark))].sort()
+  const leaderboardBenchmarkOptions = metaLeaderboard
+    ? [...new Set(metaLeaderboard.cohorts.map((cohort) => canonicalBenchmarkSlug(cohort.benchmark)))].sort()
     : [];
-  const scaleOptions = metaLeaderboard
-    ? [...new Set(metaLeaderboard.cohorts.map((cohort) => String(cohort.scale_factor)))].sort(
-        (a, b) => Number(a) - Number(b),
-      )
-    : [];
-  const phaseOptions = metaLeaderboard
-    ? [...new Set(metaLeaderboard.cohorts.map((cohort) => cohort.phase))].sort()
-    : [];
+  const benchmarkOptions = [...new Set([
+    ...leaderboardBenchmarkOptions,
+    ...results.map((result) => canonicalBenchmarkSlug(result.benchmark)),
+  ])].sort();
+  const scaleOptions = [...new Set([
+    ...(metaLeaderboard?.cohorts ?? []).map((cohort) => String(cohort.scale_factor)),
+    ...results.map((result) => String(result.scale_factor)),
+  ])].sort((a, b) => Number(a) - Number(b));
+  const phaseOptions = [...new Set([
+    ...(metaLeaderboard?.cohorts ?? []).map((cohort) => canonicalPhase(cohort.phase)),
+    ...results.map((result) => canonicalPhase(result.test_type)),
+  ])].sort();
   const trustOptions = ["all", ...[...new Set(results.map((result) => result.trust_label))].sort()];
   const platformVersionOptions = (() => {
     const versions = new Set<string>();
@@ -386,7 +401,7 @@ export function Leaderboard({ notice = null }: LeaderboardProps) {
   const rankedLeaderboardPlatformCount =
     metaLeaderboard?.platforms.filter((platform) => platform.n_cohorts > 0).length ?? 0;
   const visibleLeaderboardPlatformCount = filteredMetaLeaderboard?.platforms.length ?? 0;
-  const leaderboardBenchmarkSet = new Set(benchmarkOptions);
+  const leaderboardBenchmarkSet = new Set(leaderboardBenchmarkOptions);
   const publicBenchmarksOutsideLeaderboard = benchmarks.filter((benchmark) => !leaderboardBenchmarkSet.has(canonicalBenchmarkSlug(benchmark)));
   const leaderboardEvidencePlatformIds = new Set(
     (metaLeaderboard?.cohorts ?? []).flatMap((cohort) =>
@@ -427,7 +442,7 @@ export function Leaderboard({ notice = null }: LeaderboardProps) {
 
   const leaderboardScopeSummaryProps = {
     publicBenchmarkCount: benchmarks.length,
-    leaderboardBenchmarkCount: benchmarkOptions.length,
+    leaderboardBenchmarkCount: leaderboardBenchmarkOptions.length,
     publicBenchmarksOutsideLeaderboard,
     publicPlatformCount: platformIds.length,
     leaderboardEvidencePlatformCount,
@@ -467,7 +482,7 @@ export function Leaderboard({ notice = null }: LeaderboardProps) {
               activeFacetSummaries.length > 0) && (
               <ActiveLeaderboardSummary
                 benchmark={summarizeSelection(benchmarkFilters, "All benchmarks", humanizeBenchmark)}
-                scaleFactor={summarizeSelection(scaleFilters, "All scales", (value) => `SF ${value}`)}
+                scaleFactor={summarizeSelection(scaleFilters, "All scales", (value) => formatScaleFactor(value))}
                 phase={phaseFilter === "all" ? "All phases" : phaseFilter}
                 activeFacets={activeFacetSummaries}
               />
@@ -504,7 +519,7 @@ export function Leaderboard({ notice = null }: LeaderboardProps) {
                       value === "all" ? [] : toggleFacetValue(scaleFilters, value),
                     )
                   }
-                  format={(value) => `SF ${value}`}
+                  format={(value) => formatScaleFactor(value)}
                 />
                 <SelectFilter
                   label="Phase"
@@ -530,7 +545,6 @@ export function Leaderboard({ notice = null }: LeaderboardProps) {
                 ) : (
                   <div aria-hidden="true" data-testid="home-engine-version-unavailable" />
                 )}
-                <CoverageSummary />
               </div>
 
               <details
@@ -587,6 +601,13 @@ export function Leaderboard({ notice = null }: LeaderboardProps) {
               </details>
             </section>
           )}
+          {filteredMetaLeaderboard && (
+            <p class="mt-2 text-sm" data-testid="home-compare-jump">
+              <a href="#leaderboard-compare-picker" class="btn btn-secondary no-underline">
+                Compare runs in the selected cohort ↓
+              </a>
+            </p>
+          )}
         </div>
       </section>
 
@@ -619,6 +640,15 @@ export function Leaderboard({ notice = null }: LeaderboardProps) {
 
         <ProvenanceLegend />
       </div>
+
+      {filteredMetaLeaderboard && (
+        <LeaderboardComparePicker
+          results={results}
+          facets={facets}
+          rankingScope={rankingScope}
+          onRankingScopeChange={setRankingScopeRaw}
+        />
+      )}
 </div>
   );
 }
@@ -690,7 +720,6 @@ function LeaderboardLoadingSkeleton({
               <SkeletonSelect label="Scale" />
               <SkeletonSelect label="Phase" />
               <SkeletonSelect label="Platform version" />
-              <CoverageSummary />
             </div>
             <div aria-hidden="true" class="sm:hidden">
               <div
@@ -707,6 +736,9 @@ function LeaderboardLoadingSkeleton({
               </div>
             </div>
           </section>
+          <p aria-hidden="true" class="mt-2 text-sm" data-testid="home-loading-compare-jump-reserve">
+            <span class="btn btn-secondary invisible">Compare runs in the selected cohort ↓</span>
+          </p>
         </div>
       </section>
 
@@ -1129,39 +1161,274 @@ function SelectFilter({
   );
 }
 
-function CoverageSummary() {
-  let pickedCount = 0;
-  let compareHref: string | null = null;
-  let pickedIds: readonly string[] = [];
-  try {
-    const picking = usePickingState();
-    pickedCount = picking.pickedIds.length;
-    pickedIds = picking.pickedIds;
-    compareHref = picking.compareHref;
-  } catch {
-  }
-  const pickingLabel =
-    pickedCount === 0 ? "Compare →" : pickedCount === 1 ? "Compare 1 selected →" : `Compare ${pickedCount} selected →`;
-  if (!compareHref && pickedIds.length === 1) {
-    compareHref = `/results/compare?ids=${encodeURIComponent(pickedIds[0]!)}`;
-  }
-  return (
-    <div>
-      <div class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--bb-fg-muted)]">Ranking scope</div>
-      <div class="flex flex-wrap gap-2">
-        <span class="rounded-full bg-[var(--bb-bg-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--bb-fg-muted)]">
-          Ranked results only
-        </span>
-        <a
-          href={compareHref ?? "/results/compare/"}
-          data-testid="home-compare-entrypoint"
-          class="rounded-full border border-[var(--bb-border-default)] bg-[var(--bb-bg-primary)] px-3 py-1.5 text-xs font-medium text-[var(--bb-fg-primary)] no-underline shadow-sm hover:bg-[var(--bb-bg-elevated)]"
-        >
-          {pickingLabel}
-        </a>
-      </div>
-    </div>
+type ComparisonCohort = {
+  key: string;
+  benchmark: string;
+  scaleFactor: number;
+  phase: string;
+  streamCount: number | null;
+  results: ResultRow[];
+};
+
+function LeaderboardComparePicker({
+  results,
+  facets,
+  rankingScope,
+  onRankingScopeChange,
+}: {
+  results: readonly ResultRow[];
+  facets: FacetState;
+  rankingScope: string;
+  onRankingScopeChange: (scope: string) => void;
+}) {
+  const picking = useOptionalPickingState();
+  const [localPickedIds, setLocalPickedIds] = useState<string[]>([]);
+  const [selectedCohortKey, setSelectedCohortKey] = useState("");
+  const pickedIds = picking?.pickedIds ?? localPickedIds;
+  const filteredComparableResults = results.filter(
+    (result) => result.comparison_exclusion_reason === null && matchesFacetRow(result, facets),
   );
+  const filteredCohorts = groupComparisonCohorts(filteredComparableResults);
+  const selectedCohort = filteredCohorts.length === 1
+    ? filteredCohorts[0]!
+    : filteredCohorts.find((candidate) => candidate.key === selectedCohortKey) ?? null;
+  const cohort = selectedCohort
+    ? {
+        ...selectedCohort,
+        results:
+          rankingScope === "comparable"
+            ? selectedCohort.results
+            : selectedCohort.results.filter((result) => result.ranking_exclusion_reason === null),
+      }
+    : null;
+  const cohortResultIds = new Set(cohort?.results.map((result) => result.result_id) ?? []);
+  const selectedCohortIds = pickedIds.filter((id) => cohortResultIds.has(id));
+  const selectedCohortCount = selectedCohortIds.length;
+  const cohortCompareIds = cohort?.results.map((result) => result.result_id) ?? [];
+  const compareAllRuns = isCompareAllAvailable(cohortCompareIds);
+  const limitReached = selectedCohortCount >= MAX_COMPARE_SELECTIONS;
+  const multipleCohorts = filteredCohorts.length > 1;
+  const noSingleCohort = cohort === null;
+  const scopeRunsNoun = rankingScope === "comparable" ? "published comparable" : "ranked comparable";
+
+  function togglePicked(id: string) {
+    if (picking) {
+      const currentCohortIds = pickedIds.filter((pickedId) => cohortResultIds.has(pickedId));
+      const nextIds = currentCohortIds.includes(id)
+        ? currentCohortIds.filter((pickedId) => pickedId !== id)
+        : currentCohortIds.length >= MAX_COMPARE_SELECTIONS
+          ? currentCohortIds
+          : [...currentCohortIds, id];
+      picking.replace(nextIds);
+      return;
+    }
+    setLocalPickedIds((current) => {
+      const currentCohortIds = current.filter((pickedId) => cohortResultIds.has(pickedId));
+      if (currentCohortIds.includes(id)) return currentCohortIds.filter((pickedId) => pickedId !== id);
+      if (currentCohortIds.length >= MAX_COMPARE_SELECTIONS) return currentCohortIds;
+      return [...currentCohortIds, id];
+    });
+  }
+
+  return (
+    <section
+      aria-label="Compare runs in the selected cohort"
+      id="leaderboard-compare-picker"
+      class="mt-4 rounded-lg border border-[var(--bb-border-default)] bg-[var(--bb-bg-panel)] p-3 sm:p-4"
+      data-testid="leaderboard-compare-picker"
+    >
+      <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        {multipleCohorts && (
+          <label class="block min-w-0 lg:max-w-sm">
+            <span class="mb-2 block text-xs font-semibold uppercase tracking-wide text-[var(--bb-fg-muted)]">Comparison cohort</span>
+            <select
+              aria-label="Comparison cohort"
+              class="h-9 w-full rounded-md border border-[var(--bb-border-default)] bg-[var(--bb-bg-primary)] px-3 text-sm font-medium text-[var(--bb-fg-primary)]"
+              value={cohort?.key ?? ""}
+              onChange={(event) => setSelectedCohortKey((event.currentTarget as HTMLSelectElement).value)}
+            >
+              <option value="">Choose a cohort to compare</option>
+              {filteredCohorts.map((candidate) => (
+                <option key={candidate.key} value={candidate.key}>
+                  {comparisonCohortLabel(candidate)}
+                </option>
+              ))}
+            </select>
+            <span class="mt-1 block text-xs text-[var(--bb-fg-muted)]">Choose one benchmark, scale, phase, and stream count before comparing runs.</span>
+          </label>
+        )}
+        <fieldset class="min-w-0">
+          <legend class="text-xs font-semibold uppercase tracking-wide text-[var(--bb-fg-muted)]">Ranking scope</legend>
+          <div class="mt-2 flex flex-wrap gap-x-4 gap-y-2">
+            <label class="inline-flex items-center gap-2 text-sm text-[var(--bb-fg-primary)]">
+              <input
+                type="radio"
+                name="leaderboard-compare-scope"
+                value="ranked"
+                checked={rankingScope !== "comparable"}
+                onChange={() => onRankingScopeChange("ranked")}
+              />
+              Ranked results only
+            </label>
+            <label class="inline-flex items-center gap-2 text-sm text-[var(--bb-fg-primary)]">
+              <input
+                type="radio"
+                name="leaderboard-compare-scope"
+                value="comparable"
+                checked={rankingScope === "comparable"}
+                onChange={() => onRankingScopeChange("comparable")}
+              />
+              All published comparable runs
+            </label>
+          </div>
+          <p class="mt-2 max-w-2xl text-xs leading-relaxed text-[var(--bb-fg-muted)]">
+            This scope changes which runs can be selected for comparison. Unranked runs remain unranked and do not change leaderboard scores.
+          </p>
+        </fieldset>
+
+        <div class="shrink-0 lg:text-right">
+          <CompareCta
+            selectedIds={selectedCohortIds}
+            allIds={cohortCompareIds}
+            buildHref={leaderboardCompareHref}
+            testId="leaderboard-compare-cta"
+          />
+          <p id="leaderboard-compare-guidance" class="mt-1 text-xs text-[var(--bb-fg-muted)]" role="status">
+            {selectedCohortCount >= 2
+              ? `${selectedCohortCount} runs selected in this cohort.`
+              : compareAllRuns
+                ? `All ${cohort!.results.length} ${scopeRunsNoun} runs in this cohort can be compared together.`
+                : cohort && cohort.results.length > MAX_COMPARE_SELECTIONS
+                  ? `Select 2 to ${MAX_COMPARE_SELECTIONS} of the ${cohort.results.length} ${scopeRunsNoun} runs in this cohort.`
+                  : cohort && cohort.results.length === 0 && rankingScope !== "comparable"
+                    ? "No ranked comparable runs are available in this cohort. Choose all published comparable runs to include unranked evidence."
+                    : cohort && cohort.results.length === 1
+                      ? "This cohort has one comparable run. Choose another cohort with at least two runs."
+                      : multipleCohorts
+                        ? "Choose a cohort above to compare its runs."
+                        : noSingleCohort
+                          ? "Filter to one benchmark, scale, phase, and stream count to compare a single cohort."
+                          : "This cohort has fewer than two comparable runs."}
+          </p>
+          {cohort && cohort.results.length === 0 && rankingScope !== "comparable" && (
+            <button
+              type="button"
+              class="btn btn-secondary mt-2"
+              data-testid="leaderboard-include-unranked"
+              onClick={() => onRankingScopeChange("comparable")}
+            >
+              Include unranked runs
+            </button>
+          )}
+        </div>
+      </div>
+
+      {cohort && (
+        <div class="mt-4 border-t border-[var(--bb-border-default)] pt-3" data-testid="leaderboard-comparable-runs">
+          <h2 class="text-sm font-semibold text-[var(--bb-fg-primary)]">
+            {formatBenchmarkLabel(cohort.benchmark)} SF {cohort.scaleFactor} · {cohort.phase}
+            {cohort.phase === "throughput" && cohort.streamCount !== null ? ` · ${cohort.streamCount} streams` : ""}
+          </h2>
+          <p class="mt-1 text-xs text-[var(--bb-fg-muted)]">
+            {cohort.results.length} {scopeRunsNoun} {cohort.results.length === 1 ? "run is" : "runs are"} available in this cohort.
+          </p>
+          {cohort.results.length > 0 && <ul class="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            {cohort.results.map((result) => {
+              const selected = selectedCohortIds.includes(result.result_id);
+              const disabled = !selected && limitReached;
+              const runId = visibleResultIdForRow(result);
+              const rankingWarning = result.ranking_exclusion_reason === "known_defective_data"
+                ? "Known defective data; available for comparison, excluded from rankings."
+                : result.ranking_exclusion_reason === null
+                  ? "Ranked result."
+                  : `Not ranked: ${formatTimingExclusion(result.ranking_exclusion_reason, "Published evidence is not rankable.")}`;
+              return (
+                <li key={result.result_id} class="min-w-0 rounded-md border border-[var(--bb-border-subtle)] bg-[var(--bb-bg-primary)] px-3 py-2">
+                  <label class="flex min-w-0 items-start gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      class="mt-0.5 shrink-0"
+                      checked={selected}
+                      disabled={disabled}
+                      onChange={() => togglePicked(result.result_id)}
+                      aria-label={`Select ${result.platform} run ${runId} for comparison`}
+                      title={disabled ? `Select up to ${MAX_COMPARE_SELECTIONS} runs.` : undefined}
+                    />
+                    <span class="min-w-0">
+                      <span class="block truncate font-medium text-[var(--bb-fg-primary)]">{result.platform}</span>
+                      <span class="block truncate text-xs text-[var(--bb-fg-muted)]">{runId} · {result.run_date.slice(0, 10)}</span>
+                    </span>
+                  </label>
+                  <p class="mt-2 text-xs leading-snug text-[var(--bb-fg-muted)]" role="note">
+                    {rankingWarning}{" "}
+                    <a
+                      href={resultReceiptHref(result)}
+                      class="font-medium text-[var(--bb-accent-hover)] underline"
+                      aria-label={`Open receipt for ${result.platform} run ${runId}`}
+                    >
+                      View receipt
+                    </a>
+                  </p>
+                </li>
+              );
+            })}
+          </ul>}
+          {limitReached && cohort.results.length > MAX_COMPARE_SELECTIONS && (
+            <p class="mt-3 text-xs text-[var(--bb-fg-muted)]" data-testid="leaderboard-selection-limit">
+              Selection limit reached. Clear one selected run before adding another.
+            </p>
+          )}
+          {!compareAllRuns && cohort.results.length > MAX_COMPARE_SELECTIONS && pickedIds.length > selectedCohortCount && (
+            <p class="mt-3 text-xs text-[var(--bb-fg-muted)]">
+              {pickedIds.length - selectedCohortCount} selected {pickedIds.length - selectedCohortCount === 1 ? "run is" : "runs are"} from another results view and will be ignored. Selecting runs here replaces them.
+            </p>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function leaderboardCompareHref(ids: readonly string[]): string {
+  const current = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search);
+  const carried = new URLSearchParams();
+  for (const key of ["mode", "basis"]) {
+    const value = current.get(key);
+    if (value !== null) carried.set(key, value);
+  }
+  const query = carried.toString();
+  return query ? `${buildCompareUrl(ids)}&${query}` : buildCompareUrl(ids);
+}
+
+function groupComparisonCohorts(results: readonly ResultRow[]): ComparisonCohort[] {
+  const cohorts = new Map<string, ComparisonCohort>();
+  for (const result of results) {
+    const benchmark = canonicalBenchmarkSlug(result.benchmark);
+    const phase = canonicalPhase(result.test_type);
+    const streamCount = phase === "throughput" ? result.stream_count ?? null : null;
+    const key = JSON.stringify([benchmark, result.scale_factor, phase, streamCount]);
+    const cohort = cohorts.get(key) ?? {
+      key,
+      benchmark,
+      scaleFactor: result.scale_factor,
+      phase,
+      streamCount,
+      results: [],
+    };
+    cohort.results.push(result);
+    cohorts.set(key, cohort);
+  }
+  return [...cohorts.values()].sort((a, b) =>
+    a.benchmark.localeCompare(b.benchmark) ||
+    a.scaleFactor - b.scaleFactor ||
+    a.phase.localeCompare(b.phase) ||
+    (a.streamCount ?? 0) - (b.streamCount ?? 0),
+  );
+}
+
+function comparisonCohortLabel(cohort: ComparisonCohort): string {
+  return `${formatBenchmarkLabel(cohort.benchmark)} ${formatScaleFactor(cohort.scaleFactor)} · ${cohort.phase}` +
+    (cohort.phase === "throughput" && cohort.streamCount !== null ? ` · ${cohort.streamCount} streams` : "");
 }
 
 function SingleFilterGroup({

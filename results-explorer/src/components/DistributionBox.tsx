@@ -1,23 +1,27 @@
-import type { BenchmarkSummary } from "@/types";
+import type { BenchmarkSummary, PlatformRow } from "@/types";
 import { useElementSize } from "@/lib/useElementSize";
 import { axisLabelAnchor, barRowLayout, chartFrame } from "@/lib/chartFrame";
 import { paletteColor } from "@/lib/chartTheme";
-import { buildLogLatencyScale, computeBoxStats, logLatencyFraction, logLatencyTicks } from "@/lib/chartMath";
+import { buildLogLatencyScale, computeBoxStats, logLatencyFraction, logLatencyTicks, spaceTicks } from "@/lib/chartMath";
 import { formatTimingExclusion, isTimingDisplayable, platformTimingValue } from "@/lib/displayEligibility";
 import { formatLatencyAxisLabels } from "@/lib/metricFormatters";
-import { formatRunIdentityLabelsForCohort, preserveUniqueAfterTruncation } from "@/lib/runIdentity";
+import { orderRunsByDisplayGeomean, fitRunLabels } from "@/lib/chartRunRows";
+import { formatRunIdentityLabelsForCohort } from "@/lib/runIdentity";
 
 const LABEL_W = 200;
 const ROW_H = 48;
 const AXIS_H = 36;
 const PADDING_TOP = 12;
 const PADDING_RIGHT = 12;
+const LABEL_FONT_PX = 13;
+const LABEL_GUTTER_PX = 6;
 
 interface Props {
   summary: BenchmarkSummary;
+  colorIndexFor?: (platform: PlatformRow) => number;
 }
 
-export function DistributionBox({ summary }: Props) {
+export function DistributionBox({ summary, colorIndexFor }: Props) {
   const [containerRef, { width: containerWidth }] = useElementSize();
   const frame = chartFrame(containerWidth);
   const w = frame.width;
@@ -27,12 +31,13 @@ export function DistributionBox({ summary }: Props) {
     summary.platforms.map((platform) => ({ ...platform, scale_factor: summary.scale_factor })),
   );
   const rawLabels = summary.platforms.map((p, i) => cohortLabels[i]?.disambiguated ?? p.platform);
-  const displayLabels = preserveUniqueAfterTruncation(rawLabels, 26);
-  const rows = summary.platforms
-    .map((p, i) => ({
+  const labelMaxWidthPx = layout.labelAbove ? w : LABEL_W - LABEL_GUTTER_PX;
+  const displayLabels = fitRunLabels(rawLabels, labelMaxWidthPx, LABEL_FONT_PX);
+  const rows = orderRunsByDisplayGeomean(summary.platforms)
+    .map(({ run: p, sourceIndex: i }) => ({
       label: displayLabels[i] ?? p.platform,
       fullLabel: cohortLabels[i]?.full ?? rawLabels[i] ?? p.platform,
-      color: paletteColor(i),
+      color: paletteColor(colorIndexFor?.(p) ?? p.color_slot ?? i),
       isDisplayable: isTimingDisplayable(p),
       stats: computeBoxStats(summary.query_ids.map((queryId) => platformTimingValue(p, queryId))),
     }))
@@ -59,7 +64,7 @@ export function DistributionBox({ summary }: Props) {
     return layout.plotX + logLatencyFraction(ms, logScale) * plotW;
   }
 
-  const xTicks = logLatencyTicks(logScale);
+  const xTicks = spaceTicks(logLatencyTicks(logScale), xFor);
   const tickLabels = formatLatencyAxisLabels(xTicks);
 
   return (
@@ -84,7 +89,7 @@ export function DistributionBox({ summary }: Props) {
                 x={layout.labelAbove ? 0 : LABEL_W - 6}
                 y={y + layout.labelBaseline}
                 text-anchor={layout.labelAbove ? "start" : "end"}
-                style={{ fontSize: "13px", fill: "var(--bb-chart-label)" }}
+                style={{ fontSize: `${LABEL_FONT_PX}px`, fill: "var(--bb-chart-label)" }}
               >
                 <title>{row.fullLabel}</title>
                 {row.label}
@@ -161,7 +166,7 @@ export function DistributionBox({ summary }: Props) {
             text-anchor="middle"
             style={{ fontSize: "10px", fill: "var(--bb-chart-label-muted)" }}
           >
-            Latency (ms, log scale)
+            Latency (log scale)
           </text>
         </g>
       </svg>

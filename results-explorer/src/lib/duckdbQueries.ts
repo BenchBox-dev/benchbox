@@ -179,6 +179,7 @@ export interface ResultDetailMetricsRow extends Omit<ResultRow, "is_ranking_elig
   override_evidence?: string | null;
   override_approver?: string | null;
   override_expires?: string | null;
+  query_id_repairs?: string | null;
 }
 
 export interface QueryDisplayTimingRow {
@@ -420,6 +421,11 @@ const RESULT_COLUMNS = [
   "cost_status",
   "billing_unit",
   "pricing_region",
+  "estimated_cost_usd",
+  "cost_estimate_method",
+  "cost_estimate_source",
+  "cost_estimate_pricing_date",
+  "cost_estimate_assumptions",
   "deployment_class",
   "cloud_provider",
   "cloud_region",
@@ -485,6 +491,7 @@ const RESULT_DETAIL_METRICS_COLUMNS = [
   "override_evidence",
   "override_approver",
   "override_expires",
+  "query_id_repairs",
   "tuning_policy_generation",
   "template_evidence",
   "test_type",
@@ -497,6 +504,11 @@ const RESULT_DETAIL_METRICS_COLUMNS = [
   "cost_status",
   "billing_unit",
   "pricing_region",
+  "estimated_cost_usd",
+  "cost_estimate_method",
+  "cost_estimate_source",
+  "cost_estimate_pricing_date",
+  "cost_estimate_assumptions",
   "deployment_class",
   "cloud_provider",
   "cloud_region",
@@ -722,28 +734,51 @@ export async function getQueryDisplayTimings(
 
 export async function getQueryExecutions(
   resultIdOrIds: string | readonly string[],
+  queryId?: string,
 ): Promise<QueryExecutionRow[]> {
   if (Array.isArray(resultIdOrIds)) {
     if (resultIdOrIds.length === 0) return [];
     const placeholders = resultIdOrIds.map(() => "?").join(",");
+    if (queryId === undefined) {
+      return queryRows<QueryExecutionRow>(
+        "SELECT result_id, query_id, duration_ms, status, run_type, iter, stream" +
+          " FROM bench.query_executions" +
+          ` WHERE result_id IN (${placeholders})` +
+          " ORDER BY query_id," +
+          " CASE WHEN stream IS NULL THEN 0 ELSE stream END," +
+          " CASE WHEN iter IS NULL THEN 0 ELSE iter END",
+        [...resultIdOrIds],
+      );
+    }
     return queryRows<QueryExecutionRow>(
       "SELECT result_id, query_id, duration_ms, status, run_type, iter, stream" +
         " FROM bench.query_executions" +
-        ` WHERE result_id IN (${placeholders})` +
+        ` WHERE result_id IN (${placeholders}) AND query_id = ?` +
         " ORDER BY query_id," +
         " CASE WHEN stream IS NULL THEN 0 ELSE stream END," +
         " CASE WHEN iter IS NULL THEN 0 ELSE iter END",
-      [...resultIdOrIds],
+      [...resultIdOrIds, queryId],
+    );
+  }
+  if (queryId === undefined) {
+    return queryRows<QueryExecutionRow>(
+      "SELECT result_id, query_id, duration_ms, status, run_type, iter, stream" +
+        " FROM bench.query_executions" +
+        " WHERE result_id = ?" +
+        " ORDER BY query_id," +
+        " CASE WHEN stream IS NULL THEN 0 ELSE stream END," +
+        " CASE WHEN iter IS NULL THEN 0 ELSE iter END",
+      [resultIdOrIds],
     );
   }
   return queryRows<QueryExecutionRow>(
     "SELECT result_id, query_id, duration_ms, status, run_type, iter, stream" +
       " FROM bench.query_executions" +
-      " WHERE result_id = ?" +
+      " WHERE result_id = ? AND query_id = ?" +
       " ORDER BY query_id," +
       " CASE WHEN stream IS NULL THEN 0 ELSE stream END," +
       " CASE WHEN iter IS NULL THEN 0 ELSE iter END",
-    [resultIdOrIds],
+    [resultIdOrIds, queryId],
   );
 }
 
@@ -896,6 +931,7 @@ function detailResultFromWideRow(
     override_evidence: wide.override_evidence ?? null,
     override_approver: wide.override_approver ?? null,
     override_expires: wide.override_expires ?? null,
+    query_id_repairs: wide.query_id_repairs ?? null,
     tuning_policy_generation: wide.tuning_policy_generation ?? null,
     template_evidence: wide.template_evidence ?? null,
     test_type: wide.test_type,
@@ -908,6 +944,11 @@ function detailResultFromWideRow(
     cost_status: wide.cost_status,
     billing_unit: wide.billing_unit,
     pricing_region: wide.pricing_region,
+    estimated_cost_usd: wide.estimated_cost_usd ?? null,
+    cost_estimate_method: wide.cost_estimate_method ?? null,
+    cost_estimate_source: wide.cost_estimate_source ?? null,
+    cost_estimate_pricing_date: wide.cost_estimate_pricing_date ?? null,
+    cost_estimate_assumptions: wide.cost_estimate_assumptions ?? null,
     cloud_provider: wide.cloud_provider,
     cloud_region: wide.cloud_region,
     instance_type: wide.instance_type,
@@ -978,6 +1019,8 @@ export async function getBenchmarkRanking(
     `SELECT ${BENCHMARK_RANKING_COLUMNS}, r.platform_version, r.validation_status, r.override_rules,` +
       " r.normalized_cost_usd, r.cost_model_version, r.cost_model_source," +
       " r.cost_scope, r.cost_status, r.billing_unit, r.pricing_region," +
+      " r.estimated_cost_usd, r.cost_estimate_method, r.cost_estimate_source," +
+      " r.cost_estimate_pricing_date, r.cost_estimate_assumptions," +
       " r.deployment_class, r.cloud_provider, r.cloud_region, r.instance_or_warehouse," +
       " r.storage_format" +
       " FROM bench.benchmark_rankings br" +
@@ -1104,6 +1147,11 @@ async function loadBenchmarkSummaryFromDuckDB(
       cost_status: row.cost_status,
       billing_unit: row.billing_unit,
       pricing_region: row.pricing_region,
+      estimated_cost_usd: row.estimated_cost_usd ?? null,
+      cost_estimate_method: row.cost_estimate_method ?? null,
+      cost_estimate_source: row.cost_estimate_source ?? null,
+      cost_estimate_pricing_date: row.cost_estimate_pricing_date ?? null,
+      cost_estimate_assumptions: row.cost_estimate_assumptions ?? null,
       deployment_class: row.deployment_class,
       cloud_provider: row.cloud_provider,
       cloud_region: row.cloud_region,
@@ -1192,6 +1240,11 @@ function loadPlatformIndexRows(platformId?: string): Promise<PlatformIndexRowRow
     " r.cost_status," +
     " r.billing_unit," +
     " r.pricing_region," +
+    " r.estimated_cost_usd," +
+    " r.cost_estimate_method," +
+    " r.cost_estimate_source," +
+    " r.cost_estimate_pricing_date," +
+    " r.cost_estimate_assumptions," +
     " r.deployment_class," +
     " r.cloud_provider," +
     " r.cloud_region," +
@@ -1357,47 +1410,62 @@ export async function getPrimaryMetricForBenchmark(benchmark: string, phase?: st
 
 const SHORT_ID_PATTERN = /^[0-9a-f]{8,}$/i;
 
+const SNAPSHOT_COUNT_CTE = `snapshot AS (
+  SELECT (SELECT count(*)::INTEGER FROM bench.results) AS results_count,
+         (SELECT count(DISTINCT result_id)::INTEGER FROM bench.result_detail_metrics) AS metrics_count
+)`;
+const SNAPSHOT_WARM_CONDITION = "snapshot.results_count > 0 AND snapshot.metrics_count = snapshot.results_count";
+
 export async function getExistingResultIds(
   resultIds: string[],
   onInitialExistingIds?: (existingIds: ReadonlySet<string>) => void,
 ): Promise<ReadonlySet<string>> {
   if (resultIds.length === 0) return new Set();
-  const placeholders = resultIds.map(() => "?").join(", ");
-  const batchRows = await queryRows<{ result_id: string }>(
-    `SELECT result_id FROM bench.result_detail_metrics WHERE result_id IN (${placeholders})`,
+  const placeholders = resultIds.map(() => "(?)").join(", ");
+  const rows = await queryRows<{ result_id: string; found: boolean }>(
+    `WITH requested(result_id) AS (VALUES ${placeholders}),
+          ${SNAPSHOT_COUNT_CTE}
+     SELECT requested.result_id,
+            EXISTS (
+              SELECT 1 FROM bench.result_detail_metrics m WHERE m.result_id = requested.result_id
+            ) AS found
+     FROM requested CROSS JOIN snapshot
+     WHERE ${SNAPSHOT_WARM_CONDITION}`,
     resultIds,
   );
-  const existing = new Set(batchRows.map((row) => row.result_id));
+  const existing = new Set(rows.filter((row) => row.found).map((row) => row.result_id));
   onInitialExistingIds?.(existing);
-  const confirmedRows = await Promise.all(
-    resultIds.filter((resultId) => !existing.has(resultId)).map((resultId) =>
-      queryRows<{ result_id: string | null }>(
-        `SELECT MAX(CASE WHEN result_id = ? THEN result_id END) AS result_id
-         FROM bench.result_detail_metrics
-         HAVING COUNT(DISTINCT result_id) = (SELECT COUNT(*) FROM bench.results)`,
-        [resultId],
-      ),
-    ),
-  );
-  for (const rows of confirmedRows) {
-    for (const row of rows) {
-      if (row.result_id !== null) existing.add(row.result_id);
-    }
-  }
   return existing;
 }
 
 export async function resolveShortId(id: string): Promise<string> {
   if (!SHORT_ID_PATTERN.test(id)) return id;
-  const rows = await queryRows<{ result_id: string }>("SELECT result_id FROM bench.short_ids WHERE short_id = ?", [id]);
-  return rows[0]?.result_id ?? id;
+  const rows = await queryRows<{ short_match: string | null; suffix_count: number; suffix_match: string | null }>(
+    `WITH ${SNAPSHOT_COUNT_CTE},
+          suffix_matches AS (SELECT result_id FROM bench.results WHERE result_id LIKE ? LIMIT 2)
+     SELECT (SELECT min(result_id) FROM bench.short_ids WHERE short_id = ?) AS short_match,
+            (SELECT count(*)::INTEGER FROM suffix_matches) AS suffix_count,
+            (SELECT min(result_id) FROM suffix_matches) AS suffix_match
+     FROM snapshot
+     WHERE ${SNAPSHOT_WARM_CONDITION}`,
+    [`%-${id}`, id],
+  );
+  const row = rows[0];
+  if (!row) return id;
+  if (row.short_match) return row.short_match;
+  return row.suffix_count === 1 && row.suffix_match ? row.suffix_match : id;
 }
 
 export async function toShortIds(fullIds: string[]): Promise<string[]> {
   if (fullIds.length === 0) return [];
-  const placeholders = fullIds.map(() => "?").join(", ");
-  const rows = await queryRows<{ short_id: string; result_id: string }>(
-    `SELECT short_id, result_id FROM bench.short_ids WHERE result_id IN (${placeholders})`,
+  const placeholders = fullIds.map(() => "(?)").join(", ");
+  const rows = await queryRows<{ result_id: string; short_id: string | null }>(
+    `WITH requested(result_id) AS (VALUES ${placeholders}),
+          ${SNAPSHOT_COUNT_CTE}
+     SELECT requested.result_id,
+            (SELECT min(si.short_id) FROM bench.short_ids si WHERE si.result_id = requested.result_id) AS short_id
+     FROM requested CROSS JOIN snapshot
+     WHERE ${SNAPSHOT_WARM_CONDITION}`,
     fullIds,
   );
   const byFull = new Map(rows.map((r) => [r.result_id, r.short_id]));

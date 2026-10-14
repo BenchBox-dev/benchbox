@@ -1,8 +1,13 @@
+import { formatRatio } from "@/lib/metricFormatters";
 import type { DetailResult } from "@/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { geomeanMs } from "@/lib/chartMath";
 import { timingValueForQuery } from "@/lib/displayEligibility";
-import { COMPARE_TIE_THRESHOLD } from "@/lib/compareSummary";
+import {
+  COMPARE_TIE_THRESHOLD,
+  countUniqueFastestQueries,
+  sharedQueryIdsFor,
+} from "@/lib/compareSummary";
 import { fmtGeomean } from "@/utils";
 import { formatCpuIdentityProvenance } from "@/lib/hardwareProvenance";
 import { formatMemoryGb } from "@/lib/displayLabels";
@@ -28,36 +33,7 @@ export interface StandingRow {
   rank: string;
 }
 
-export function sharedQueryIdsFor(results: readonly DetailResult[]): string[] {
-  const all = new Set<string>();
-  for (const r of results) for (const t of r.display_timings) all.add(t.query_id);
-  return [...all]
-    .filter((q) => results.every((r) => timingValueForQuery(r, q) !== null))
-    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-}
-
-function countWinsPerPlatform(results: readonly DetailResult[], shared: string[]): number[] {
-  const wins = new Array(results.length).fill(0) as number[];
-  shared.forEach((q) => {
-    let best: number | null = null;
-    let bestRuns: number[] = [];
-    results.forEach((r, ri) => {
-      const v = timingValueForQuery(r, q);
-      if (v === null) return;
-      if (best === null || v < best) {
-        best = v;
-        bestRuns = [ri];
-      } else if (v === best) {
-        bestRuns.push(ri);
-      }
-    });
-    if (bestRuns.length === 1) {
-      const winner = bestRuns[0]!;
-      wins[winner] = (wins[winner] ?? 0) + 1;
-    }
-  });
-  return wins;
-}
+export { sharedQueryIdsFor };
 
 export function buildStandings(
   results: readonly DetailResult[],
@@ -67,7 +43,7 @@ export function buildStandings(
   const shared = sharedQueryIdsFor(results);
   const geomeans = results.map((r) => geomeanMs(shared.map((q) => timingValueForQuery(r, q)!)));
   const baselineGeomean = geomeans[baselineIndex] ?? null;
-  const wins = countWinsPerPlatform(results, shared);
+  const wins = countUniqueFastestQueries(results, shared);
 
   const all = new Set<string>();
   for (const r of results) for (const t of r.display_timings) all.add(t.query_id);
@@ -145,7 +121,7 @@ function ratioText(row: StandingRow): string {
   if (row.isBaseline) return "baseline";
   if (row.ratioToBaseline === null) return "—";
   if (row.tied) return "tied";
-  return `${row.ratioToBaseline.toFixed(2)}x`;
+  return formatRatio(row.ratioToBaseline);
 }
 
 export function MultiRunStandings({ results, baselineIndex, runLabels }: MultiRunStandingsProps) {
@@ -164,6 +140,7 @@ export function MultiRunStandings({ results, baselineIndex, runLabels }: MultiRu
           {excluded > 0
             ? ` ${excluded} ${excluded === 1 ? "query is" : "queries are"} excluded from every run so the geomeans compare like with like.`
             : ""}
+          {" Fastest on counts shared queries where that run alone is the fastest."}
         </p>
       </div>
       <div class="overflow-x-auto">
@@ -176,7 +153,7 @@ export function MultiRunStandings({ results, baselineIndex, runLabels }: MultiRu
               <th scope="col" class="table-th">CPU evidence</th>
               <th scope="col" class="table-th">Geomean</th>
               <th scope="col" class="table-th">vs baseline</th>
-              <th scope="col" class="table-th">Queries won</th>
+              <th scope="col" class="table-th">Fastest on</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-[var(--bb-data-border)] bg-[var(--bb-surface-data)]">

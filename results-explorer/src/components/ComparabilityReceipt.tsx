@@ -1,3 +1,4 @@
+import { formatLatencyMs, formatScaleFactor } from "@/lib/metricFormatters";
 import { RunDateChip } from "@/components/RunAge";
 import type { DetailResult, Environment } from "@/types";
 import { humanizeBenchmark, shortHash } from "@/utils";
@@ -91,7 +92,7 @@ export function buildComparabilityFields(results: DetailResult[]): Comparability
 
   const fields: ComparabilityField[] = [
     compareValues("Benchmark", results, (result) => humanizeBenchmark(result.benchmark)),
-    compareValues("Scale factor", results, (result) => `SF ${result.scale_factor}`),
+    compareValues("Scale factor", results, (result) => formatScaleFactor(result.scale_factor)),
     compareValues("Test phase", results, (result) => result.test_type ? formatEnumLabel(result.test_type) : "Not recorded"),
     compareValues("Query scope", results, (result) => formatCount(queryCount(result), "query", "queries")),
     buildDateWindowField(results),
@@ -293,7 +294,7 @@ function buildLocalityField(results: DetailResult[]): ComparabilityField {
       if (canonicalRegion(clientReg) !== canonicalRegion(platformReg)) {
         const overhead = getOverheadMedian(result);
         const overheadCtx =
-          overhead != null ? ` (client statement floor ${overhead.toFixed(2)} ms)` : "";
+          overhead != null ? ` (client statement floor ${formatLatencyMs(overhead).valueText})` : "";
         return {
           platform: result.platform,
           value: `Cross-region: client in ${clientReg}, platform in ${platformReg}${overheadCtx}`,
@@ -366,7 +367,7 @@ function DateWindowChips({ dates }: { dates: NonNullable<ComparabilityField["dat
 
 function ComparabilityFieldRow({ field }: { field: ComparabilityField }) {
   return (
-    <div class="rounded-md border border-[var(--bb-data-border)] bg-[var(--bb-surface-data-muted)] px-3 py-2">
+    <div class="min-w-0 break-words rounded-md border border-[var(--bb-data-border)] bg-[var(--bb-surface-data-muted)] px-3 py-2">
       <div class="mb-1 flex items-center justify-between gap-2">
         <h3 class="text-xs font-semibold uppercase text-[var(--bb-data-fg-subtle)]">{field.label}</h3>
         <StatusBadge role="comparison" tone={statusTone(field.status)}>{statusLabel(field.status)}</StatusBadge>

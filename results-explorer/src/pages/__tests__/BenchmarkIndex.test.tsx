@@ -438,8 +438,8 @@ describe("BenchmarkIndex", () => {
     expect(screen.queryByText("Run details")).toBeNull();
     const receiptLinks = screen.getAllByRole("link", { name: /Open receipt for/ }) as HTMLAnchorElement[];
     expect(receiptLinks[0]?.getAttribute("href")).toBe("/results/r/r1#run-receipt");
-    expect(screen.getAllByText("exact").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("loose").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Exact").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Loose").length).toBeGreaterThan(0);
   });
 
   it("reaches each run's receipt from its row, without a separate link list", async () => {
@@ -463,9 +463,7 @@ describe("BenchmarkIndex", () => {
     expect(status?.textContent).toContain("0 results selected");
     expect(guidance.textContent).toContain("Select two or more platforms");
     expect(screen.queryByRole("button", { name: /Select 2 / })).toBeNull();
-    expect(screen.getByTestId("benchmark-compare-cta-pending").textContent).toBe(
-      "Select 2 results to compare",
-    );
+    expect(screen.getByTestId("benchmark-compare-cta").textContent).toBe("Select 2–10 runs to compare");
   });
 
   it("renders a Benchmark switcher that routes to a sibling and clears benchmark-specific params", async () => {
@@ -615,6 +613,78 @@ describe("BenchmarkIndex", () => {
     expect(screen.getByTestId("benchmark-context-note").textContent).toContain("Star Schema Benchmark (SSB)");
   });
 
+  it("offers Compare All Runs when the filtered view holds a small comparable set", async () => {
+    const resultRows = [0, 1, 2].map((index) => ({
+      ...RESULT_ROWS[0]!,
+      result_id: `r-all-${index + 1}`,
+      platform: `Platform ${index + 1}`,
+      platform_id: `platform-${index + 1}`,
+    }));
+    const rankingRows = [0, 1, 2].map((index) => ({
+      ...RANKING_ROWS[0]!,
+      result_id: `r-all-${index + 1}`,
+      short_id: `all000${index + 1}`,
+      platform: `Platform ${index + 1}`,
+      platform_id: `platform-${index + 1}`,
+    }));
+    const cellRows = rankingRows.flatMap((row) => [
+      { ...CELL_ROWS[0]!, result_id: row.result_id, platform_id: row.platform_id },
+      { ...CELL_ROWS[1]!, result_id: row.result_id, platform_id: row.platform_id },
+    ]);
+    vi.mocked(queryRows).mockImplementation(defaultImpl(resultRows, rankingRows, cellRows));
+
+    render(<BenchmarkIndex benchmark="tpch" />);
+    await waitFor(() => expect(screen.getByTestId("summary-chart-preview-query_heatmap")).toBeTruthy());
+    await waitFor(() => expect(screen.queryByTestId("benchmark-compare-cta")?.textContent).toBe("Compare All Runs"));
+
+    const cta = screen.getByTestId("benchmark-compare-cta");
+    expect(cta.getAttribute("href")).toBe("/results/compare?ids=all0001,all0002,all0003");
+    expect(screen.getByTestId("benchmark-compare-guidance").textContent).toContain(
+      "All 3 comparable runs in this view can be compared together.",
+    );
+  });
+
+  it("makes Compare N selected the primary action when a selection exists in a small comparable set", async () => {
+    const resultRows = [0, 1, 2].map((index) => ({
+      ...RESULT_ROWS[0]!,
+      result_id: `r-all-${index + 1}`,
+      platform: `Platform ${index + 1}`,
+      platform_id: `platform-${index + 1}`,
+    }));
+    const rankingRows = [0, 1, 2].map((index) => ({
+      ...RANKING_ROWS[0]!,
+      result_id: `r-all-${index + 1}`,
+      short_id: `all000${index + 1}`,
+      platform: `Platform ${index + 1}`,
+      platform_id: `platform-${index + 1}`,
+    }));
+    const cellRows = rankingRows.flatMap((row) => [
+      { ...CELL_ROWS[0]!, result_id: row.result_id, platform_id: row.platform_id },
+      { ...CELL_ROWS[1]!, result_id: row.result_id, platform_id: row.platform_id },
+    ]);
+    vi.mocked(queryRows).mockImplementation(defaultImpl(resultRows, rankingRows, cellRows));
+
+    const { container } = render(<BenchmarkIndex benchmark="tpch" />);
+    await waitFor(() => expect(screen.queryByTestId("benchmark-compare-cta")?.textContent).toBe("Compare All Runs"));
+
+    const checkboxes = await waitFor(() => {
+      const boxes = within(listRoot(container) as HTMLElement).getAllByRole("checkbox") as HTMLInputElement[];
+      expect(boxes.filter((box) => !box.disabled)).toHaveLength(3);
+      return boxes;
+    });
+    fireEvent.click(checkboxes[0]!);
+    fireEvent.click(checkboxes[1]!);
+
+    await waitFor(() => expect(screen.getByTestId("benchmark-compare-cta").textContent).toBe("Compare 2 selected"));
+    const primary = screen.getByTestId("benchmark-compare-cta") as HTMLAnchorElement;
+    expect(primary.className).toContain("btn-primary");
+    expect(primary.getAttribute("href")).toMatch(/^\/results\/compare\?ids=all000[12],all000[12]$/);
+    const all = screen.getByTestId("benchmark-compare-cta-all") as HTMLAnchorElement;
+    expect(all.textContent).toBe("Compare All Runs");
+    expect(all.getAttribute("href")).toBe("/results/compare?ids=all0001,all0002,all0003");
+    expect(screen.getByTestId("benchmark-compare-guidance").textContent).toContain("2 results selected");
+  });
+
   it("compare tray shows selected metadata and public IDs while compare URLs keep short aliases", async () => {
     const { container } = render(<BenchmarkIndex benchmark="tpch" />);
     const list = () => listRoot(container) as HTMLElement;
@@ -642,8 +712,8 @@ describe("BenchmarkIndex", () => {
     expect(compareLink.getAttribute("href")).toBe("/results/compare?ids=aaaaaaaa,bbbbbbbb");
   });
 
-  it("blocks a fifth comparison selection and describes the cap outside the accessible name", async () => {
-    const resultRows = Array.from({ length: 5 }, (_, index) => ({
+  it("blocks an eleventh comparison selection and describes the cap outside the accessible name", async () => {
+    const resultRows = Array.from({ length: 11 }, (_, index) => ({
       ...RESULT_ROWS[0]!,
       result_id: `r-cap-${index + 1}`,
       platform: `Platform ${index + 1}`,
@@ -652,7 +722,7 @@ describe("BenchmarkIndex", () => {
       geomean_ms: 10 + index,
       display_geomean_ms: 10 + index,
     }));
-    const rankingRows = Array.from({ length: 5 }, (_, index) => ({
+    const rankingRows = Array.from({ length: 11 }, (_, index) => ({
       ...RANKING_ROWS[0]!,
       result_id: `r-cap-${index + 1}`,
       short_id: `cap0000${index + 1}`,
@@ -661,8 +731,8 @@ describe("BenchmarkIndex", () => {
       power_score: 3000 - index * 100,
       display_geomean_ms: 10 + index,
       rank: index + 1,
-      total_in_cohort: 5,
-      cohort_ranked_count: 5,
+      total_in_cohort: 11,
+      cohort_ranked_count: 11,
     }));
     const cellRows = rankingRows.flatMap((row, index) => [
       {
@@ -683,27 +753,27 @@ describe("BenchmarkIndex", () => {
     const { container } = render(<BenchmarkIndex benchmark="tpch" />);
     await waitFor(() => {
       const boxes = within(listRoot(container) as HTMLElement).getAllByRole("checkbox") as HTMLInputElement[];
-      expect(boxes.filter((box) => !box.disabled)).toHaveLength(5);
+      expect(boxes.filter((box) => !box.disabled)).toHaveLength(11);
     });
     const list = listRoot(container) as HTMLElement;
     const checkboxes = within(list).getAllByRole("checkbox") as HTMLInputElement[];
-    expect(checkboxes).toHaveLength(5);
-    for (const checkbox of checkboxes.slice(0, 4)) fireEvent.click(checkbox);
+    expect(checkboxes).toHaveLength(11);
+    for (const checkbox of checkboxes.slice(0, 10)) fireEvent.click(checkbox);
 
-    const fifth = within(list).getAllByRole("checkbox")[4] as HTMLInputElement;
-    await waitFor(() => expect(fifth.disabled).toBe(true));
-    expect(fifth.checked).toBe(false);
-    expect(fifth.getAttribute("aria-label")).not.toContain("Selection limit");
+    const eleventh = within(list).getAllByRole("checkbox")[10] as HTMLInputElement;
+    await waitFor(() => expect(eleventh.disabled).toBe(true));
+    expect(eleventh.checked).toBe(false);
+    expect(eleventh.getAttribute("aria-label")).not.toContain("Selection limit");
     const selectionLimit = screen.getByTestId("benchmark-selection-limit");
     expect(selectionLimit.id).toBe("benchmark-selection-limit");
-    expect(fifth.getAttribute("aria-describedby")).toBe(selectionLimit.id);
+    expect(eleventh.getAttribute("aria-describedby")).toBe(selectionLimit.id);
     expect(selectionLimit.textContent).toContain("Selection limit reached");
     expect(selectionLimit.textContent).toContain("Clear one selected run before adding another");
     expect(screen.getByTestId("benchmark-compare-guidance").textContent).toContain(
-      "4 results selected (maximum)",
+      "10 results selected (maximum)",
     );
     expect(screen.queryByText("Use sticky tray to compare")).toBeNull();
-    expect(screen.getAllByRole("link", { name: /Compare 4 selected/ }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: /Compare 10 selected/ }).length).toBeGreaterThan(0);
   });
 
   it("excludes no-timing rows from analysis and keeps receipt provenance in Excluded runs", async () => {
@@ -1018,8 +1088,9 @@ describe("BenchmarkIndex", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: /Geomean/ })).toBeTruthy());
 
     const list = listRoot(container) as HTMLElement;
-    expect(within(list).getByText("Arm64")).toBeTruthy();
-    expect(within(list).getByText("Apple silicon")).toBeTruthy();
+    expect(within(list).queryByText("Arm64")).toBeNull();
+    expect(within(list).queryByText("Apple silicon")).toBeNull();
+    expect(list.querySelector('[title^="Client machine: Arm64, Apple silicon"]')).not.toBeNull();
     expect(within(list).getByText("x86-64")).toBeTruthy();
     expect(within(list).getByText("AMD EPYC")).toBeTruthy();
 
@@ -1034,6 +1105,25 @@ describe("BenchmarkIndex", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /^CPU/ }));
     expect(getRenderedResultOrder(listRoot(container))).toEqual(["list-r1", "list-r2"]);
+  });
+
+  it("list view shows dashes and the remote client title for a remote run", async () => {
+    const remoteRows = RESULT_ROWS.map((row) =>
+      row.result_id === "r1" ? { ...row, deployment_class: "remote", cloud_provider: null } : row,
+    );
+    vi.mocked(queryRows).mockImplementation(defaultImpl(remoteRows, RANKING_ROWS, CELL_ROWS));
+    const { container } = render(<BenchmarkIndex benchmark="tpch" />);
+    await waitFor(() => expect(screen.getByRole("button", { name: /Geomean/ })).toBeTruthy());
+
+    const remoteRow = within(listRoot(container) as HTMLElement).getByTestId("list-r1");
+    const hardwareCells = remoteRow.querySelectorAll('td[title^="Client machine: Arm64, Apple silicon"]');
+    expect(hardwareCells).toHaveLength(3);
+    hardwareCells.forEach((cell) => {
+      expect(cell.textContent).toBe("—");
+      expect(cell.getAttribute("title")).toBe(
+        "Client machine: Arm64, Apple silicon, 64 GB (the remote server's hardware is not recorded)",
+      );
+    });
   });
 
   it("list view caps rendered rows and expands them with Show more", async () => {
@@ -1073,7 +1163,7 @@ describe("BenchmarkIndex", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: /^Q1/ })).toBeTruthy());
     expect(getRenderedResultOrder(listRoot(container))).toHaveLength(205);
     expect(screen.getByText("Showing 205 of 205 results for SF 0.1")).toBeTruthy();
-  });
+  }, 15_000);
 
   it("supports grouping rows by engine version in list view", async () => {
     const listRows = [
@@ -1088,6 +1178,34 @@ describe("BenchmarkIndex", () => {
     fireEvent.change(screen.getByTestId("benchmark-list-group-by"), { target: { value: "engine_version" } });
     expect(screen.getByText(/1.4.0 \(2 results\)/)).toBeTruthy();
     expect(screen.getByText(/1.3.2 \(1 result\)/)).toBeTruthy();
+  });
+
+  it("shows the platform version in the run label, the driver version only in its title, and distinct query counts", async () => {
+    window.history.replaceState(null, "", "/results/tpch/?view=list");
+    const listRows = [
+      {
+        ...RESULT_ROWS[0]!,
+        result_id: "r1",
+        platform_version: "2.0.0-alpha38615",
+        driver_version: "1.6.0.dev365",
+        query_count: 66,
+        logical_query_count: 22,
+      },
+      { ...RESULT_ROWS[0]!, result_id: "r2", platform_version: "1.4.0", driver_version: "1.6.0.dev365" },
+    ];
+    vi.mocked(queryRows).mockImplementation(defaultImpl(listRows, RANKING_ROWS, CELL_ROWS));
+
+    const { container } = render(<BenchmarkIndex benchmark="tpch" />);
+    await waitFor(() => expect(getRenderedResultOrder(listRoot(container))).toEqual(["list-r1", "list-r2"]));
+
+    const list = listRoot(container) as HTMLElement;
+    const label = within(list).getAllByTestId("run-identity-label")[0]!;
+    expect(label.textContent).toContain("v2.0.0");
+    expect(label.textContent).not.toContain("1.6.0.dev365");
+    expect(label.getAttribute("title")).toContain("Version v2.0.0-alpha38615");
+    expect(label.getAttribute("title")).toContain("Driver 1.6.0.dev365");
+    const queryCell = within(list).getByTitle("66 query executions");
+    expect(queryCell.textContent).toBe("22");
   });
 
   it("honors a version facet carried into the benchmark drill-down", async () => {

@@ -364,8 +364,8 @@ describe("PlatformIndex - sortable table headers", () => {
     expect(checkboxClickbench.disabled).toBe(false);
   });
 
-  it("caps Platform compare selections at four runs", async () => {
-    const cohortRows: PlatformIndexRowRow[] = Array.from({ length: 5 }, (_, idx) =>
+  it("caps Platform compare selections at ten runs", async () => {
+    const cohortRows: PlatformIndexRowRow[] = Array.from({ length: 11 }, (_, idx) =>
       makeRow({
         result_id: `r-compatible-${idx}`,
         short_id: `compat${idx}`,
@@ -382,17 +382,17 @@ describe("PlatformIndex - sortable table headers", () => {
     render(<PlatformIndex platform="duckdb" />);
     await waitFor(() => expect(screen.getByText("DuckDB Results")).toBeTruthy());
 
-    for (const idx of [0, 1, 2, 3]) {
+    for (let idx = 0; idx < 10; idx += 1) {
       fireEvent.click(screen.getByTestId(`platform-compare-checkbox-r-compatible-${idx}`));
     }
-    const fifth = screen.getByTestId("platform-compare-checkbox-r-compatible-4") as HTMLInputElement;
-    expect(fifth.disabled).toBe(true);
-    expect(fifth.title).toContain("Up to 4 runs");
+    const eleventh = screen.getByTestId("platform-compare-checkbox-r-compatible-10") as HTMLInputElement;
+    expect(eleventh.disabled).toBe(true);
+    expect(eleventh.title).toContain("Up to 10 runs");
     expect(screen.getByTestId("platform-compare-guidance").textContent).toContain(
-      "4 results selected (maximum)",
+      "10 results selected (maximum)",
     );
     expect(screen.queryByText("Use sticky tray to compare")).toBeNull();
-    expect(screen.getByTestId("platform-run-count").textContent).toBe("5 published runs");
+    expect(screen.getByTestId("platform-run-count").textContent).toBe("11 published runs");
   });
 
   it("disables Platform compare selection for non-comparable rows", async () => {
@@ -478,6 +478,23 @@ describe("PlatformIndex - sortable table headers", () => {
     expect(screen.getByTestId("platform-detail-filters")).toBeTruthy();
   });
 
+  it("offers Compare All Runs when filtered rows share one small comparable ranking", async () => {
+    vi.mocked(getPlatformIndexRows).mockResolvedValue([
+      makeRow({ result_id: "r-one", short_id: "one00001" }),
+      makeRow({ result_id: "r-two", short_id: "two00002" }),
+      makeRow({ result_id: "r-three", short_id: "three003" }),
+    ]);
+
+    render(<PlatformIndex platform="duckdb" />);
+    await waitFor(() => expect(screen.queryByTestId("platform-compare-cta")?.textContent).toBe("Compare All Runs"));
+
+    const cta = screen.getByTestId("platform-compare-cta");
+    expect(cta.getAttribute("href")).toBe("/results/compare?ids=one00001,two00002,three003");
+    expect(screen.getByTestId("platform-compare-guidance").textContent).toContain(
+      "All 3 filtered runs share one comparable ranking and can be compared together.",
+    );
+  });
+
   it("shows persistent compare guidance and cohort labels before selection", async () => {
     render(<PlatformIndex platform="duckdb" />);
     await waitFor(() => expect(screen.getByText("DuckDB Results")).toBeTruthy());
@@ -488,9 +505,11 @@ describe("PlatformIndex - sortable table headers", () => {
     expect(status?.textContent).toContain("0 results selected");
     expect(guidance.textContent).toContain("Select two or more DuckDB results");
     expect(screen.queryByRole("button", { name: /Select 2 / })).toBeNull();
-    expect(screen.getByTestId("platform-compare-cta-pending").textContent).toBe(
-      "Select 2 results to compare",
-    );
+    const cta = screen.getByTestId("platform-compare-cta") as HTMLButtonElement;
+    expect(cta.tagName).toBe("BUTTON");
+    expect(cta.disabled).toBe(true);
+    expect(cta.className).toContain("btn-primary");
+    expect(cta.textContent).toBe("Select 2–10 runs to compare");
     expect(screen.getByTestId("platform-table-scroll-hint").textContent).toContain("Scroll for dates, timings, and source labels");
     expect(screen.getAllByText(/Geomean latency \(lower is better\)/).length).toBeGreaterThan(0);
   });
@@ -828,7 +847,7 @@ describe("PlatformIndex - sortable table headers", () => {
       name: /Open receipt for DuckDB public ID/,
     }) as HTMLAnchorElement[];
     expect(receiptLinks[0]?.getAttribute("href")).toBe("/results/r/r-null-geo#run-receipt");
-    expect(screen.getAllByText("exact").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Exact").length).toBeGreaterThan(0);
   });
 
   it("compare tray shows public IDs while the compare URL keeps short aliases", async () => {
@@ -1065,7 +1084,7 @@ describe("PlatformIndex - sortable table headers", () => {
     const notRunFlag = screen.getByTestId("platform-validation-flag-r-not-run");
     const runCell = notRunFlag.closest("td");
     expect(runCell?.querySelector('[data-testid="run-identity-label"]')).not.toBeNull();
-    expect(within(notRunFlag).getByText("no validation")).toBeTruthy();
+    expect(within(notRunFlag).getByText("No validation")).toBeTruthy();
 
     expect(container.querySelector('[data-testid="platform-validation-flag-r-clean"]')).toBeNull();
   });
@@ -1340,6 +1359,106 @@ describe("PlatformIndex - accepted-override validation badges", () => {
     expect(screen.queryByTestId("platform-validation-flag-r-clean")).toBeNull();
 
     const row = screen.getByTestId("r-over");
-    expect(within(row).getAllByText("Overridden: timing-plateau")).toHaveLength(2);
+    expect(within(row).getAllByText("Timing-plateau")).toHaveLength(2);
+  });
+});
+
+describe("PlatformIndex table cells", () => {
+  it("shows the platform version, keeps the driver version in the title, and hides it when the platform version is missing", async () => {
+    vi.mocked(getPlatformIndexRows).mockResolvedValue([
+      makeRow({ result_id: "r-sf", short_id: "sf000001", platform_version: "10.35.101", driver_version: "4.7.3" }),
+      makeRow({ result_id: "r-bq", short_id: "bq000001", run_date: "2026-04-02", platform_version: null, driver_version: "2.1.0" }),
+    ]);
+
+    render(<PlatformIndex platform="duckdb" />);
+    await waitFor(() => expect(screen.getByText("DuckDB Results")).toBeTruthy());
+
+    const table = screen.getByRole("table", { name: "DuckDB results" });
+    expect(within(table).getByText("v10.35.101")).toBeTruthy();
+    expect(within(table).queryByText("v4.7.3")).toBeNull();
+    expect(within(table).queryByText("v2.1.0")).toBeNull();
+    expect(within(table).getByTitle(/Driver 4\.7\.3/)).toBeTruthy();
+    expect(within(table).getByText("bq000001")).toBeTruthy();
+  });
+
+  it("shows distinct logical queries and keeps executions in the cell title", async () => {
+    vi.mocked(getPlatformIndexRows).mockResolvedValue([
+      makeRow({ result_id: "r-tpch", short_id: "tpch0001", query_count: 66, logical_query_count: 22 }),
+    ]);
+
+    render(<PlatformIndex platform="duckdb" />);
+    await waitFor(() => expect(screen.getByText("DuckDB Results")).toBeTruthy());
+
+    const table = screen.getByRole("table", { name: "DuckDB results" });
+    const queryCell = within(table).getByTitle("66 query executions");
+    expect(queryCell.textContent).toBe("22");
+  });
+
+  it("shows a dash and a client-machine title for managed cloud runs", async () => {
+    vi.mocked(getPlatformIndexRows).mockResolvedValue([
+      makeRow({
+        result_id: "r-cloud",
+        short_id: "cloud001",
+        deployment_class: "cloud",
+        cloud_provider: "snowflake",
+        arch: "arm64",
+        cpu_family: "apple_silicon",
+        memory_gb: 16,
+      }),
+    ]);
+
+    render(<PlatformIndex platform="duckdb" />);
+    await waitFor(() => expect(screen.getByText("DuckDB Results")).toBeTruthy());
+
+    const table = screen.getByRole("table", { name: "DuckDB results" });
+    expect(within(table).queryByText("Arm64")).toBeNull();
+    expect(within(table).queryByText("Apple silicon")).toBeNull();
+    expect(within(table).queryByText("16 GB")).toBeNull();
+    const clientCells = within(table).getAllByTitle(
+      "Client machine: Arm64, Apple silicon, 16 GB (the warehouse hardware is managed by the provider)",
+    );
+    expect(clientCells).toHaveLength(3);
+    expect(clientCells.every((cell) => cell.textContent === "—")).toBe(true);
+  });
+
+  it("shows a dash and a client-machine title for remote server runs", async () => {
+    vi.mocked(getPlatformIndexRows).mockResolvedValue([
+      makeRow({
+        result_id: "r-remote",
+        short_id: "remote01",
+        deployment_class: "remote",
+        cloud_provider: null,
+        arch: "arm64",
+        cpu_family: "apple_silicon",
+        memory_gb: 16,
+      }),
+    ]);
+
+    render(<PlatformIndex platform="duckdb" />);
+    await waitFor(() => expect(screen.getByText("DuckDB Results")).toBeTruthy());
+
+    const table = screen.getByRole("table", { name: "DuckDB results" });
+    expect(within(table).queryByText("Arm64")).toBeNull();
+    const clientCells = within(table).getAllByTitle(
+      "Client machine: Arm64, Apple silicon, 16 GB (the remote server's hardware is not recorded)",
+    );
+    expect(clientCells).toHaveLength(3);
+    expect(clientCells.every((cell) => cell.textContent === "—")).toBe(true);
+  });
+
+  it("marks a run with no ranking value as Not ranked and sentence-cases the phase", async () => {
+    vi.mocked(getPlatformIndexRows).mockResolvedValue([
+      makeRow({ result_id: "r-unranked", short_id: "unrk0001", phase: "power", power_score: null, primary_metric: "power_score" }),
+      makeRow({ result_id: "r-ranked", short_id: "rnkd0001", run_date: "2026-04-02", phase: "power", power_score: 3000, primary_metric: "display_geomean_ms" }),
+    ]);
+
+    render(<PlatformIndex platform="duckdb" />);
+    await waitFor(() => expect(screen.getByText("DuckDB Results")).toBeTruthy());
+
+    const table = screen.getByRole("table", { name: "DuckDB results" });
+    expect(within(table).getByText("Not ranked")).toBeTruthy();
+    expect(within(table).queryByText("Power score ↑")).toBeNull();
+    expect(within(table).getAllByText("Power").length).toBeGreaterThan(0);
+    expect(within(table).queryByText("power")).toBeNull();
   });
 });

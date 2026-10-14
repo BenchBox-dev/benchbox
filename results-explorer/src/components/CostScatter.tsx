@@ -2,7 +2,7 @@ import type { BenchmarkSummary, PlatformRow } from "@/types";
 import { useElementSize } from "@/lib/useElementSize";
 import { axisLabelAnchor, chartFrame } from "@/lib/chartFrame";
 import { paletteColor } from "@/lib/chartTheme";
-import { costModelDisclosure, normalizedCostValue } from "@/lib/costDisplay";
+import { costModelDisclosure, estimatedCostValue, normalizedCostValue } from "@/lib/costDisplay";
 import { normalizePrimaryMetric, primaryMetricHigherIsBetter, primaryMetricLabel, primaryMetricValue } from "@/lib/displayEligibility";
 import { formatLatencyMs, formatScoreMetric, formatUsd } from "@/lib/metricFormatters";
 
@@ -20,6 +20,7 @@ type ScatterPoint = {
   result_id: string;
   platform: string;
   cost: number;
+  estimated: boolean;
   perf: number;
   modelVersion: string | null | undefined;
   scope: string | null | undefined;
@@ -38,17 +39,19 @@ export function CostScatter({ summary }: Props) {
 
   const pts: ScatterPoint[] = summary.platforms
     .map((p, i) => {
-      const cost = normalizedCostValue(p);
+      const metered = normalizedCostValue(p);
+      const cost = metered ?? estimatedCostValue(p);
       return {
         result_id: p.result_id,
         platform: p.platform,
         cost,
+        estimated: metered === null && cost !== null,
         perf: primaryMetricValue(p, metric),
         modelVersion: p.cost_model_version,
         scope: p.cost_scope,
         provider: p.cloud_provider,
         region: p.cloud_region ?? p.pricing_region,
-        color: paletteColor(i),
+        color: paletteColor(p.color_slot ?? i),
       };
     })
     .filter((p): p is ScatterPoint => p.cost !== null && p.perf !== null) as ScatterPoint[];
@@ -141,9 +144,17 @@ export function CostScatter({ summary }: Props) {
           const regionLabel = [p.provider, p.region].filter(Boolean).join(" ");
           return (
             <g key={p.result_id}>
-              <circle cx={cx} cy={cy} r={7} fill={p.color} fill-opacity={0.85}>
+              <circle
+                cx={cx}
+                cy={cy}
+                r={7}
+                fill={p.estimated ? "none" : p.color}
+                fill-opacity={p.estimated ? undefined : 0.85}
+                stroke={p.color}
+                stroke-width={p.estimated ? 2 : undefined}
+              >
                 <title>
-                  {`${p.platform}: normalized ${formatUsd(p.cost).valueText} / ${
+                  {`${p.platform}: ${p.estimated ? "estimated ≈" : "normalized"} ${formatUsd(p.cost).valueText} / ${
                     higherIsBetter ? formatScoreMetric(metric, p.perf) : formatLatencyMs(p.perf).valueText
                   } (${p.modelVersion ?? "model unknown"}${regionLabel ? `, ${regionLabel}` : ""})`}
                 </title>
@@ -221,8 +232,9 @@ export function CostScatter({ summary }: Props) {
         </text>
       </svg>
       <p class="mt-1 text-xs text-[var(--bb-data-fg-subtle)]">
-        {modelDisclosure}. Only rows with <code class="rounded bg-[var(--bb-surface-data-muted)] px-1">cost_status=normalized</code> are
-        plotted; local and unavailable cost rows are omitted.
+        {modelDisclosure}. Rows with <code class="rounded bg-[var(--bb-surface-data-muted)] px-1">cost_status=normalized</code> or{" "}
+        <code class="rounded bg-[var(--bb-surface-data-muted)] px-1">cost_status=estimated</code> are plotted; local and unavailable
+        cost rows are omitted. Solid markers are normalized; hollow = estimated.
       </p>
     </div>
   );

@@ -36,8 +36,8 @@ import { FundingChip } from "@/components/FundingChip";
 import { TuningBadge, tuningLabel } from "@/components/TuningBadge";
 import { ChartPanel } from "@/components/ChartPanel";
 import { ProvenanceLegend } from "@/components/ProvenanceLegend";
-import { RunIdentityLabel } from "@/components/DataTable";
 import { PageHeader } from "@/components/PageHeader";
+import { CompareCta, isCompareAllAvailable } from "@/components/CompareCta";
 import { CompareTray } from "@/components/CompareTray";
 import { TrayAnnouncer } from "@/components/TrayAnnouncer";
 import { RunDateChip } from "@/components/RunAge";
@@ -55,6 +55,10 @@ import {
   parseOverrideRules,
 } from "@/lib/displayLabels";
 import { formatRunIdentitiesForCohort } from "@/lib/runIdentity";
+import { formatScaleFactor } from "@/lib/metricFormatters";
+import { clientHardwareTitle, isManagedCloudRun } from "@/lib/clientHardware";
+import { platformVersionDisplay } from "@/lib/versionLabel";
+import { RunIdentityLabel } from "@/components/DataTable";
 import { formatSelectedCount } from "@/lib/copyFormatters";
 import { groupCohortRows, limitCohortGroups, type CohortGroupBy } from "@/lib/queryFilters";
 
@@ -173,7 +177,7 @@ function benchmarkCompareGuidanceMessage(
   scaleFactor: string,
   phase: string,
 ): string {
-  const ranking = `${title} SF ${scaleFactor} ${phase}`;
+  const ranking = `${title} ${formatScaleFactor(scaleFactor)} ${phase}`;
   const selectedStatus = formatSelectedCount(selectedCount, "result", MAX_COMPARE_SELECTIONS);
   if (selectedCount === 0) {
     return `${selectedStatus}. Select two or more platforms from the same ${ranking} ranking to compare. Benchmark, scale, phase, metric, and unit stay fixed on this page.`;
@@ -598,22 +602,24 @@ export function BenchmarkIndex({ benchmark = "" }: BenchmarkIndexProps) {
     .map((id) => selectedCompareRowsById.get(id))
     .filter((row): row is PlatformRow => row !== undefined);
 
-  const compareUrl =
-    selectedCompareRows.length >= 2
-      ? buildCompareUrl(selectedCompareRows.map((row) => compareIdForRow(row)))
-      : null;
+  const selectedCompareIds = selectedCompareRows.map((row) => compareIdForRow(row));
   const benchmarkOptions = uniqueBenchmarkOptions(availableBenchmarks);
   const hasCurrentBenchmarkOption = benchmarkOptions.some(
     (option) => canonicalBenchmarkSlug(option.value) === canonicalBenchmark,
   );
   const contextNote = benchmarkContextNote(benchmark);
   const selectedComparableCount = selectedCompareRows.length;
-  const compareGuidance = benchmarkCompareGuidanceMessage(selectedComparableCount, title, effectiveSf, effectivePhase);
+  const matrixCompareRows = analysisSummary?.platforms ?? [];
+  const filteredComparableRows = matrixCompareRows.filter(isComparable);
+  const filteredCompareIds = filteredComparableRows.map((row) => compareIdForRow(row));
+  const compareGuidance =
+    selectedComparableCount < 2 && isCompareAllAvailable(filteredCompareIds)
+      ? `All ${filteredCompareIds.length} comparable runs in this view can be compared together.`
+      : benchmarkCompareGuidanceMessage(selectedComparableCount, title, effectiveSf, effectivePhase);
   const selectionLimitCopy =
     selectedIds.size >= MAX_COMPARE_SELECTIONS
       ? describeCompareExclusionReason(`Up to ${MAX_COMPARE_SELECTIONS} runs can be compared.`)
       : null;
-  const matrixCompareRows = analysisSummary?.platforms ?? [];
   const zeroSelectableCompareRows =
     matrixCompareRows.length > 0 && matrixCompareRows.every((row) => !isComparable(row));
   const zeroSelectableReasons = summarizeCompareExclusionReasons(
@@ -634,8 +640,8 @@ export function BenchmarkIndex({ benchmark = "" }: BenchmarkIndexProps) {
       value: effectiveSf,
       options:
         scaleFactors.length > 0
-          ? scaleFactors.map((sf) => ({ value: sf, label: `SF ${sf}` }))
-          : [{ value: effectiveSf, label: `SF ${effectiveSf}` }],
+          ? scaleFactors.map((sf) => ({ value: sf, label: formatScaleFactor(sf) }))
+          : [{ value: effectiveSf, label: formatScaleFactor(effectiveSf) }],
       onChange: (value) => setScaleFilter(value),
       disabledReason: singleValueFilterReason(scaleFactors.length, false),
     },
@@ -857,15 +863,12 @@ export function BenchmarkIndex({ benchmark = "" }: BenchmarkIndexProps) {
               </p>
             )}
           </div>
-          {compareUrl ? (
-            <a href={compareUrl} class="btn btn-primary shrink-0 text-sm no-underline" data-testid="benchmark-compare-cta">
-              Compare {selectedComparableCount} selected
-            </a>
-          ) : (
-            <p class="shrink-0 text-sm text-[var(--bb-data-fg-subtle)]" data-testid="benchmark-compare-cta-pending">
-              {selectedIds.size === 1 ? "Select 1 more result" : "Select 2 results to compare"}
-            </p>
-          )}
+          <CompareCta
+            selectedIds={selectedCompareIds}
+            allIds={filteredCompareIds}
+            buildHref={buildCompareUrl}
+            testId="benchmark-compare-cta"
+          />
         </div>
       </section>
 
@@ -949,7 +952,7 @@ export function BenchmarkIndex({ benchmark = "" }: BenchmarkIndexProps) {
       )}
 
       <TrayAnnouncer count={selectedComparableCount} />
-      {compareUrl && (
+      {selectedCompareRows.length >= 2 && (
         <CompareTray
           summary={
             <>
@@ -967,8 +970,8 @@ export function BenchmarkIndex({ benchmark = "" }: BenchmarkIndexProps) {
             funding: row.funding,
             visibleResultId: visibleResultIdForRow(row),
           }))}
-          compareHref={compareUrl}
-          compareLabel={`Compare ${selectedComparableCount} selected`}
+          allIds={filteredCompareIds}
+          buildHref={buildCompareUrl}
           onClear={() => setSelectedIds(new Set())}
         />
       )}
@@ -1196,7 +1199,7 @@ function ListTable({
       <div class="overflow-x-auto" data-testid="benchmark-list-scroll-container">
       <table
         class="min-w-full divide-y divide-[var(--bb-data-border)]"
-        aria-label={`${canonicalBenchmarkSlug(benchmark)} SF${scaleFactor}${phase ? ` ${phase}` : ""} results`}
+        aria-label={`${canonicalBenchmarkSlug(benchmark)} ${formatScaleFactor(scaleFactor)}${phase ? ` ${phase}` : ""} results`}
       >
         <thead class="bg-[var(--bb-surface-data-muted)]">
           <tr>
@@ -1249,7 +1252,7 @@ function ListTable({
               sortAnnouncement={sortAnnouncement}
               onSort={toggleSort}
             />
-            <th class="table-th text-left">Badges</th>
+            <th class="table-th text-left whitespace-nowrap">Badges</th>
             <ListSortHeader
               label="Arch"
               sortKey="arch"
@@ -1274,7 +1277,7 @@ function ListTable({
               sortAnnouncement={sortAnnouncement}
               onSort={toggleSort}
             />
-            <th class="table-th text-right">Receipt</th>
+            <th class="table-th whitespace-nowrap text-right">Receipt</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-[var(--bb-data-border)] bg-[var(--bb-surface-data)]">
@@ -1347,6 +1350,19 @@ function listRowDisabledReasonCode(compareRow: PlatformRow | undefined): string 
   return null;
 }
 
+function distinctQueryCount(row: { query_count: number; logical_query_count?: number }): number {
+  return row.logical_query_count && row.logical_query_count > 0 ? row.logical_query_count : row.query_count;
+}
+
+function queryExecutionTitle(row: { query_count: number; logical_query_count?: number }): string | undefined {
+  return row.query_count !== distinctQueryCount(row) ? `${row.query_count} query executions` : undefined;
+}
+
+function platformVersionTitle(row: { platform_version?: string | null; driver_version?: string | null }): string {
+  const { text, driverTitle } = platformVersionDisplay(row);
+  return [text ? `Version ${text}` : null, driverTitle].filter((part): part is string => part !== null).join(" · ");
+}
+
 function ListCompareDisabledReason({ id, copy }: { id?: string; copy: ReturnType<typeof describeCompareExclusionReason> }) {
   if (copy === null) return null;
   return (
@@ -1380,6 +1396,8 @@ function BenchmarkRow({
 }) {
   const compareId = compareRow ? compareIdForRow(compareRow) : null;
   const isSelected = compareId !== null && selectedIds.has(compareId);
+  const managedCloud = isManagedCloudRun(entry);
+  const clientTitle = clientHardwareTitle(entry);
   const disabledReasonCode = compareEligibilityReady ? listRowDisabledReasonCode(compareRow) : null;
   const disabledCopy = describeCompareExclusionReason(disabledReasonCode);
   const capDisabled = selectionAtCap && !isSelected;
@@ -1423,7 +1441,12 @@ function BenchmarkRow({
         />
       </td>
       <td class="table-td">
-        <RunIdentityLabel label={runIdentityLabel} href={`/results/p/${entry.platform_id}/`} />
+        <RunIdentityLabel
+          label={runIdentityLabel}
+          href={`/results/p/${entry.platform_id}/`}
+          class="block max-w-[20rem] truncate no-underline"
+          title={platformVersionTitle(entry)}
+        />
         {entry.compliance_class && entry.compliance_class !== "official" && (
           <span class="ml-2 text-xs text-[var(--bb-data-fg-subtle)]">{complianceLabel(entry.compliance_class)}</span>
         )}
@@ -1433,9 +1456,9 @@ function BenchmarkRow({
       <td class="table-td text-[var(--bb-data-fg-muted)]"><RunDateChip runDate={entry.run_date} /></td>
       <td class="table-td font-mono">{fmtScore(phaseScoreValue(entry))}</td>
       <td class="table-td font-mono">{fmtGeomean(entry.display_geomean_ms ?? entry.geomean_ms)}</td>
-      <td class="table-td text-[var(--bb-data-fg-muted)]">{entry.query_count}</td>
-      <td class="table-td">
-        <div class="flex flex-wrap gap-1">
+      <td class="table-td text-[var(--bb-data-fg-muted)]" title={queryExecutionTitle(entry)}>{distinctQueryCount(entry)}</td>
+      <td class="table-td min-w-[12rem]">
+        <div class="flex flex-wrap items-center gap-1">
           <TrustBadge trustLabel={entry.trust_label} compact />
           <FundingChip funding={entry.funding} compact />
           <ValidationBadge
@@ -1451,14 +1474,20 @@ function BenchmarkRow({
           )}
         </div>
       </td>
-      <td class="table-td text-[var(--bb-data-fg-muted)]">{entry.arch ? formatArchitecture(entry.arch) : "—"}</td>
-      <td class="table-td text-[var(--bb-data-fg-muted)]">{entry.cpu_family ? formatCpuFamily(entry.cpu_family) : "—"}</td>
-      <td class="table-td text-[var(--bb-data-fg-muted)]">{entry.memory_gb != null ? formatMemoryGb(entry.memory_gb) : "—"}</td>
+      <td class="table-td whitespace-nowrap text-[var(--bb-data-fg-muted)]" title={managedCloud ? clientTitle : undefined}>
+        {!managedCloud && entry.arch ? formatArchitecture(entry.arch) : "—"}
+      </td>
+      <td class="table-td whitespace-nowrap text-[var(--bb-data-fg-muted)]" title={managedCloud ? clientTitle : undefined}>
+        {!managedCloud && entry.cpu_family ? formatCpuFamily(entry.cpu_family) : "—"}
+      </td>
+      <td class="table-td whitespace-nowrap text-[var(--bb-data-fg-muted)]" title={managedCloud ? clientTitle : undefined}>
+        {!managedCloud && entry.memory_gb != null ? formatMemoryGb(entry.memory_gb) : "—"}
+      </td>
       <td class="table-td text-right">
         <a
           href={resultReceiptHref(entry)}
           aria-label={resultIdentityAriaLabel(entry, "receipt")}
-          class="text-xs font-medium no-underline"
+          class="whitespace-nowrap text-xs font-medium no-underline"
         >
           Receipt →
         </a>
@@ -1483,10 +1512,10 @@ function ListSortHeader({
   onSort: (key: BenchmarkListSortKey) => void;
 }) {
   return (
-    <th class="p-0" scope="col" aria-sort={ariaSort(sortKey)}>
+    <th class="p-0 whitespace-nowrap" scope="col" aria-sort={ariaSort(sortKey)}>
       <button
         type="button"
-        class="table-th relative block w-full cursor-pointer select-none border-0 bg-transparent text-left"
+        class="table-th relative block w-full cursor-pointer select-none whitespace-nowrap border-0 bg-transparent text-left"
         onClick={() => onSort(sortKey)}
       >
         {label}{sortArrow(sortKey)}

@@ -72,7 +72,7 @@ describe("cross-run comparison construction", () => {
     }));
     expect(crossRunComparison(tooMany, DEFAULT_BASIS)).toEqual({
       ok: false,
-      error: { kind: "too_many_series", count: 5, max: MAX_COMPARISON_SERIES },
+      error: { kind: "too_many_series", count: MAX_COMPARISON_SERIES + 1, max: MAX_COMPARISON_SERIES },
     });
   });
 });
