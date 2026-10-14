@@ -317,6 +317,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   applies only to Polars DataFrame bundles and reads only
   `config.platform_options.streaming`, so an older DuckDB or SQL Polars bundle
   with that option no longer reads as a streaming variant.
+- SQL `PolarsAdapter(streaming=True)` logs a deprecation warning once per run
+  and runs on the default engine, instead of raising
+  `UnsupportedExecutionEngineError`. The option has no effect on this adapter
+  and is rejected from 0.6.0, as it was a no-op in 0.4.2. `streaming=False` is
+  accepted silently, and the bundle records the default engine receipt.
 
 ### Before you upgrade
 - DuckDB `--platform-option threads=N` and `temp_directory=<path>`, and SQLite
@@ -529,6 +534,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   or expression keys do not count as evidence.
   On Redshift, `VACUUM SORT ONLY` over an existing key no longer counts as
   applying the requested sort columns.
+- `benchbox tuning init --platform polars` profiles (`optimized`, `streaming`
+  and `memory-constrained`) no longer set `engine_affinity` or `streaming_mode`,
+  so a run with a generated file uses the default engine. The command prints
+  how to choose the engine at run time; pass `--execution-engine` (for example
+  `--execution-engine streaming`). Tuning files that already set
+  `engine_affinity` keep working and record `resolution` `tuning_profile`.
 
 ### Added
 

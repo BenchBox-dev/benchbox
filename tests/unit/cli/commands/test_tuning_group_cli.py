@@ -171,6 +171,52 @@ class TestTuningInitDataframeMode:
             )
         assert result.exit_code == 0
 
+    @pytest.mark.parametrize(
+        ("profile", "hint"),
+        [
+            ("streaming", "Select the engine at run time with --execution-engine streaming"),
+            ("memory-constrained", "Select the engine at run time with --execution-engine streaming"),
+            ("optimized", "Select the engine at run time with --execution-engine"),
+            ("default", None),
+        ],
+    )
+    def test_init_polars_profiles_write_no_engine_and_print_the_hint(self, tmp_path, profile, hint):
+        import yaml
+
+        output = tmp_path / "polars_tuning.yaml"
+        runner = CliRunner()
+        with patch.object(_tuning_group_module, "console") as mock_console:
+            result = runner.invoke(
+                tuning_group,
+                ["init", "--platform", "polars", "--profile", profile, "--output", str(output)],
+                obj=_obj(),
+            )
+
+        assert result.exit_code == 0
+        written = yaml.safe_load(output.read_text(encoding="utf-8"))
+        execution = written.get("execution", {})
+        assert "engine_affinity" not in execution
+        assert not execution.get("streaming_mode")
+        printed = [str(call.args[0]) for call in mock_console.print.call_args_list if call.args]
+        hints = [line for line in printed if "--execution-engine" in line]
+        assert hints == ([hint] if hint else [])
+
+    def test_init_dask_streaming_profile_keeps_its_settings_and_prints_no_hint(self, tmp_path):
+        import yaml
+
+        output = tmp_path / "dask_tuning.yaml"
+        runner = CliRunner()
+        with patch.object(_tuning_group_module, "console") as mock_console:
+            result = runner.invoke(
+                tuning_group,
+                ["init", "--platform", "dask", "--profile", "streaming", "--output", str(output)],
+                obj=_obj(),
+            )
+
+        assert result.exit_code == 0
+        assert yaml.safe_load(output.read_text(encoding="utf-8"))["execution"]["streaming_mode"] is True
+        assert not any("--execution-engine" in str(call) for call in mock_console.print.call_args_list)
+
     def test_init_polars_smart_defaults_prints_profile(self):
         runner = CliRunner()
         mock_profile = MagicMock()

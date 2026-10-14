@@ -95,6 +95,30 @@ def test_cli_run_on_a_platform_without_engines_records_the_default_receipt(
     assert bundle["platform"]["variant"] == variant
 
 
+@pytest.mark.parametrize("profile", ["optimized", "streaming", "memory-constrained"])
+def test_cli_tuning_init_profile_then_run_records_the_default_engine(tmp_path: Path, profile: str) -> None:
+    tuning_file = tmp_path / f"{profile}.yaml"
+    init = run_cli_command(
+        ["tuning", "init", "--platform", "polars", "--profile", profile, "--output", str(tuning_file)],
+        env={"BENCHBOX_OUTPUT_DIR": str(tmp_path)},
+        timeout=120,
+    )
+    assert init.returncode == 0, init.stdout + init.stderr
+    assert "--execution-engine" in init.stdout
+    assert "engine_affinity" not in tuning_file.read_text(encoding="utf-8")
+
+    result = _cli_run(
+        tmp_path, "polars-df", "--tuning", str(tuning_file), "--queries", "6", "--phases", "generate,load,power"
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+    bundle = _only_bundle(tmp_path / "results")
+    assert bundle["config"]["execution_engine"] == "default"
+    assert bundle["platform"]["execution_engine"]["requested"] == "default"
+    assert bundle["platform"]["execution_engine"]["resolution"] == "version_default"
+    assert bundle["platform"]["variant"] == "polars-df"
+
+
 @contextmanager
 def _collect_calls() -> Iterator[list[dict[str, Any]]]:
     calls: list[dict[str, Any]] = []
