@@ -17458,6 +17458,13 @@
       "status": "done",
       "title": "✅ Register Platform Management CLI Commands"
     },
+    "register-strict-mode-external-trees": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Resolve strict comment-policy inventory for upstream and binary trees"
+    },
     "registry-owned-benchmark-metadata-cleanup": {
       "claim": null,
       "needs": [],
