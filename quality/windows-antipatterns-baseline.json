@@ -361,7 +361,7 @@
       "WA003": 2
     },
     "tests/unit/test_ruleset_drift.py": {
-      "WA003": 10
+      "WA003": 7
     },
     "tests/unit/test_standardized_test_commands.py": {
       "WA003": 25

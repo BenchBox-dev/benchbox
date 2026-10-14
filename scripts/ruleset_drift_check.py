@@ -305,37 +305,10 @@ def _fetch_environment(repo: str, token: str, name: str = PYPI_ENVIRONMENT) -> d
     return _api_json(f"https://api.github.com/repos/{repo}/environments/{name}", token)
 
 
-APPROVED_MERGE_QUEUE_CONTEXTS: tuple[str, ...] = (
-    "core",
-    "explorer",
-    "results-data",
-    "docs",
-    "landing",
-    "tooling",
-    "oracle-review",
-)
-
-
 def merge_queue_findings(live: dict[str, Any], name: str) -> list[str]:
     if _rule_by_type(live, "merge_queue") is None:
         return []
     return [f"{name}: a merge_queue rule is present; the approved develop policy has no merge queue"]
-
-
-def queue_policy_findings(expected: ExpectedRuleset, live: dict[str, Any] | None) -> list[str]:
-    if live is None:
-        return [f"{expected.name}: live ruleset is missing; develop policy is unverified"]
-    findings = compare_ruleset(
-        expected,
-        live,
-        require_bypass_actor_visibility=True,
-    )
-    findings.extend(merge_queue_findings(live, expected.name))
-    return findings
-
-
-def queue_policy_verified(expected: ExpectedRuleset, live: dict[str, Any] | None) -> bool:
-    return not queue_policy_findings(expected, live)
 
 
 def blocking_findings(findings: list[str]) -> list[str]:
@@ -369,11 +342,6 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--output", type=Path)
     parser.add_argument(
-        "--queue-policy",
-        action="store_true",
-        help="Compatibility mode: check only the approved develop ruleset and its required protections.",
-    )
-    parser.add_argument(
         "--require-bypass-actor-visibility",
         action="store_true",
         help="Fail if the GitHub API response does not expose bypass_actors.",
@@ -389,61 +357,27 @@ def main(argv: list[str] | None = None) -> int:
     if override:
         payload = {
             "status": "override",
-            "queue_verified": False,
             "reason": reason,
             "rulesets": sorted(expected),
         }
         if args.output:
             args.output.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
         print(f"Ruleset drift override active: {reason}")
-        return 1 if args.queue_policy else 0
+        return 0
     token = args.token
     if args.token_stdin:
         token = sys.stdin.read().strip()
     if not token:
-        if args.queue_policy and args.output:
-            args.output.write_text(
-                json.dumps(
-                    {
-                        "status": "error",
-                        "queue_verified": False,
-                        "error": "ruleset drift check requires RULESET_DRIFT_TOKEN, --token, or --token-stdin",
-                    },
-                    indent=2,
-                )
-                + "\n",
-                encoding="utf-8",
-            )
         print("ERROR: ruleset drift check requires RULESET_DRIFT_TOKEN, --token, or --token-stdin.", file=sys.stderr)
         return 1
 
     try:
         live_by_name = _fetch_live_rulesets(args.repo, token)
-        if args.queue_policy:
-            queue_findings = queue_policy_findings(
-                expected["develop-squash-only"], live_by_name.get("develop-squash-only")
-            )
-            verified = not queue_findings
-            payload = {
-                "status": "ok" if verified else "failed",
-                "queue_verified": verified,
-                "findings": queue_findings,
-                "blocking_findings": blocking_findings(queue_findings),
-            }
-            if args.output:
-                args.output.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-            if verified:
-                print("# Develop ruleset policy - VERIFIED")
-                return 0
-            print("# Develop ruleset policy - UNVERIFIED", file=sys.stderr)
-            for finding in queue_findings:
-                print(f"- {finding}", file=sys.stderr)
-            return 1
         live_pypi_environment = _fetch_environment(args.repo, token)
     except Exception as exc:
         if args.output:
             args.output.write_text(
-                json.dumps({"status": "error", "queue_verified": False, "error": str(exc)}, indent=2) + "\n",
+                json.dumps({"status": "error", "error": str(exc)}, indent=2) + "\n",
                 encoding="utf-8",
             )
         print(f"ERROR: governance drift check failed while querying GitHub: {exc}", file=sys.stderr)
@@ -475,13 +409,11 @@ def main(argv: list[str] | None = None) -> int:
 
     blocking = blocking_findings(findings)
     summary = render_summary(findings, expected)
-    queue_verified = queue_policy_verified(expected["develop-squash-only"], develop_live)
     if args.output:
         args.output.write_text(
             json.dumps(
                 {
                     "status": "failed" if blocking else "ok",
-                    "queue_verified": queue_verified,
                     "findings": findings,
                     "blocking_findings": blocking,
                 },

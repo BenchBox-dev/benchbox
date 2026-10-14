@@ -3,8 +3,8 @@
 This runbook is the single source of truth for the GitHub admin settings that
 the dev-loop workflows depend on. CI workflows, branch protection, and
 auto-revert rely on settings outside the repository tree. They are recorded
-here so you can re-apply them after a transfer, restore them after accidental drift, or
-review them during incident triage.
+here so you can re-apply them after a transfer, restore them after accidental
+drift, or review them during incident triage.
 
 This document states the required configuration. Verify live settings before
 claiming they are applied. Each change also gets a dated audit record under
@@ -93,8 +93,8 @@ settings change; the nightly workflow also runs it as an advisory check.
 
 To change the required contexts:
 
-1. In the PR that changes the workflow, update this list and
-   `APPROVED_MERGE_QUEUE_CONTEXTS` in `scripts/ruleset_drift_check.py`.
+1. In the PR that changes the workflow, update the list above. The drift
+   check reads its expected contexts from this list.
 2. Update the hosted ruleset immediately after that PR merges.
 3. Read the live ruleset back and run the drift check before claiming the
    change.
@@ -158,6 +158,18 @@ gh api repos/BenchBox-dev/BenchBox/rulesets/15611785 --jq '
   }'
 ```
 
+History of the required contexts:
+
+- 2026-04-30: the required status check changed from
+  `["lint", "test (ubuntu-latest, 3.12)"]` to `["ci-required-result"]`.
+  Recorded with full before and after JSON in
+  `_project/decisions/dev-loop-path-filter-smoke-test-2026-04-30.md`.
+- 2026-09-29: `ci-required-result` was replaced by the six unit contexts
+  reported from `ci.yml`, as mapped in `.github/ci-units.yml`.
+- 2026-10-03 and 2026-10-04: the merge queue and the strict up-to-date rule
+  were removed, and `oracle-review` became required. Recorded in
+  `_project/decisions/merge-queue-retirement-2026-10-03.md`.
+
 ### No merge queue
 
 `develop-squash-only` (ruleset id `15611785`) has had no `merge_queue` rule
@@ -195,7 +207,8 @@ The soundness gate, as operated:
   current head, or the stand-in approval, with every oracle thread resolved.
 - **Residual risk:** `oracle-review` runs the workflow file from the pull
   request, so a PR that edits `.github/workflows/` can change how its own check
-  runs; checking out the base commit protects only the checker and manifest. The daily soundness merge digest runs from `develop` and flags a
+  runs; checking out the base commit protects only the checker and manifest.
+  The daily soundness merge digest runs from `develop` and flags a
   soundness-path commit that merged without an oracle success review or another
   review signal. It is a weak backstop: the same PR can edit the digest script,
   and the digest also accepts a review recorded as text in the PR.
@@ -248,13 +261,6 @@ received current-head review, or merged.
 `tests/unit/release/test_ruleset_review_enforcement.py` and
 `tests/unit/release/test_ruleset_drift_review_coverage.py` cover the review
 predicate and its blocking default with explicit override.
-
-History:
-
-- 2026-04-30: the required status check changed from
-  `["lint", "test (ubuntu-latest, 3.12)"]` to `["ci-required-result"]`.
-  Recorded with full before and after JSON in
-  `_project/decisions/dev-loop-path-filter-smoke-test-2026-04-30.md`.
 
 ## Branch ruleset — `release`
 
@@ -331,25 +337,24 @@ requires both contexts.
 
 Tracked by the `release-tag-publish-hardening` TODO. In
 `.github/workflows/release.yml`, the `verify-tag-on-release` job asserts that
-the triggering ref (tag push or `workflow_dispatch`) is `release` or an
-ancestor of it before build and publish run, and the real-PyPI
-`Publish to PyPI` step also requires `startsWith(github.ref, 'refs/tags/v')`.
-Those are workflow-level (tooling) controls. The two sections below are the
-remaining repo-admin half of the fix: who can create a `v*` tag at all, and whether the
-`pypi` environment requires human approval. The develop-PR `GITHUB_TOKEN`
-cannot read or write either (no `administration` scope); only an admin PAT
-can.
+the triggering ref (tag push or `workflow_dispatch`) is `release` or an ancestor
+of it before build and publish run, and the real-PyPI `Publish to PyPI` step
+also requires `startsWith(github.ref, 'refs/tags/v')`. Those are workflow-level
+(tooling) controls. The two sections below are the remaining repo-admin half of
+the fix: who can create a `v*` tag at all, and whether the `pypi` environment
+requires human approval. The develop-PR `GITHUB_TOKEN` cannot read or write
+either (no `administration` scope); only an admin PAT can.
 
 ### Tag creation restricted to release flow (enforced)
 
-Current control: a tag-protection ruleset targeting `refs/tags/v*` restricts
-tag *creation* to the release automation identity or specific maintainer
-actors, as `develop-squash-only` restricts pushes to `refs/heads/develop`.
-`verify-tag-on-release` stops a stray tag from reaching build and publish only if the tagged commit is not on
-`release`. It cannot stop someone with push access from creating a `v*` tag
-*on* a release commit out of band, such as re-tagging an old release commit or
-tagging a version out of sequence. The ruleset closes that gap by restricting
-who may create the tag at all.
+Current control: a tag-protection ruleset targeting `refs/tags/v*` restricts tag
+*creation* to the release automation identity or specific maintainer actors, as
+`develop-squash-only` restricts pushes to `refs/heads/develop`.
+`verify-tag-on-release` stops a stray tag from reaching build and publish only
+if the tagged commit is not on `release`. It cannot stop someone with push
+access from creating a `v*` tag *on* a release commit out of band, such as
+re-tagging an old release commit or tagging a version out of sequence. The
+ruleset closes that gap by restricting who may create the tag at all.
 
 Verify by listing rulesets and finding one whose `conditions.ref_name.include`
 targets `refs/tags/v*` with `target: "tag"`:
@@ -377,19 +382,20 @@ gh api -X POST repos/BenchBox-dev/BenchBox/rulesets \
   -f 'rules[][type]=creation'
 ```
 
-This is a starting point, not the final payload. Narrowing the actors further
-(for example, to a release-bot identity) needs a `bypass_actors` and `rules`
-payload tailored to who keeps the ability to tag. Draft it with the admin
-before applying. A write task's own PR cannot apply it, for the same reason as
-the soundness-path section above: the develop-PR `GITHUB_TOKEN` has no
-`administration` scope to read or write repository rulesets.
+The live ruleset differs from this command: it also has the
+release-finalize bypass actor (`User:57046`). To narrow the actors further,
+for example to a release-bot identity, draft a new `bypass_actors` and
+`rules` payload with the admin first. A write task's own PR cannot apply
+it, because the develop-PR `GITHUB_TOKEN` has no `administration` scope to
+read or write repository rulesets.
 
 Drift detection (added 2026-07-05 under the
-`tag-and-pypi-environment-admin-hardening` TODO): `_project/scripts/ruleset_review_enforcement.py`
-has a `tag_protection_findings()` predicate and an enforced
-`TAG_RULESET_ENFORCED` flag. Feed it the live tag rulesets, fetching each one
-in full. The list endpoint omits conditions and rules, which the predicate
-correctly treats as "not protected".
+`tag-and-pypi-environment-admin-hardening` TODO):
+`_project/scripts/ruleset_review_enforcement.py` has a
+`tag_protection_findings()` predicate and an enforced `TAG_RULESET_ENFORCED`
+flag. Feed it the live tag rulesets, fetching each one in full. The list
+endpoint omits conditions and rules, which the predicate correctly treats as
+"not protected".
 
 ```bash
 ids=$(gh api repos/BenchBox-dev/BenchBox/rulesets --jq '.[].id')
@@ -398,9 +404,10 @@ for id in $ids; do gh api repos/BenchBox-dev/BenchBox/rulesets/$id; done \
   | uv run -- python _project/scripts/ruleset_review_enforcement.py --rulesets-file -
 ```
 
-While `TAG_RULESET_ENFORCED` is `False` (until the POST above lands), a missing
-or incomplete `v*`-tag ruleset prints as `WARNING (non-blocking):` and exits 0,
-so the check ships before the admin acts without going red.
+`TAG_RULESET_ENFORCED` is `True`, so a missing or incomplete `v*`-tag
+ruleset is a blocking finding and the check exits non-zero. Before the
+ruleset was applied, the flag was `False` and such a ruleset printed only
+a `WARNING (non-blocking):` line.
 
 The predicate flags a ruleset that:
 
@@ -424,8 +431,8 @@ default is blocking.
 
 CI wiring (added with the fnmatch and empty-bypass hardening above):
 `scripts/ruleset_drift_check.py`'s `tag_creation_findings()` calls
-`tag_protection_findings()` and `tag_bypass_advisory()` on every full ruleset that
-`release-canary.yml`'s `ruleset-drift` job already fetches with
+`tag_protection_findings()` and `tag_bypass_advisory()` on every full ruleset
+that `release-canary.yml`'s `ruleset-drift` job already fetches with
 `RULESET_DRIFT_TOKEN` for the `develop-squash-only` and `release-only` checks,
 so no second API call is needed. The daily canary run reports tag-ruleset drift
 as a blocking finding, depending on `release-canary-scheduled-activation` only
@@ -442,11 +449,12 @@ Live-state note:
 
 Applied 2026-07-10: `v-tag-restricted` (id 18774756) is live and active. Its
 bypass list is a single `User` actor (57046), confirmed to be the
-release-finalize identity only, not a broad Write or Admin role; `release-finalize`'s
-`git push origin v$(VERSION)` needs it. With this confirmed,
-`TAG_RULESET_ENFORCED` in `_project/scripts/ruleset_review_enforcement.py` is
-`True`, so a regression (ruleset deleted, made inactive, ref narrowed, creation
-rule dropped, or bypass emptied) is a blocking drift finding, not a warning.
+release-finalize identity only, not a broad Write or Admin role;
+`release-finalize`'s `git push origin v$(VERSION)` needs it. With this
+confirmed, `TAG_RULESET_ENFORCED` in
+`_project/scripts/ruleset_review_enforcement.py` is `True`, so a regression
+(ruleset deleted, made inactive, ref narrowed, creation rule dropped, or bypass
+emptied) is a blocking drift finding, not a warning.
 
 ### `pypi` environment required-reviewers gate (configured; observed 2026-08-10)
 
@@ -479,12 +487,12 @@ Live verification on 2026-08-10 (command above) shows the gate is configured:
 # can_admins_bypass: true  prevent_self_review: false  wait_timer: null  deployment_branch_policy: null
 ```
 
-No admin change is needed. `can_admins_bypass: true` with
-`prevent_self_review: false` is the accepted single-admin, self-review posture: one
-maintainer is both the required reviewer and an admin who can approve or bypass
-their own deployment. The release canary continuously detects a removed rule,
-an emptied or replaced reviewer set, a deleted environment, or a changed bypass
-or self-review flag. When it reports drift, re-run the verify command above to
+No admin change is needed. `can_admins_bypass: true` with `prevent_self_review:
+false` is the accepted single-admin, self-review posture: one maintainer is both
+the required reviewer and an admin who can approve or bypass their own
+deployment. The release canary continuously detects a removed rule, an emptied
+or replaced reviewer set, a deleted environment, or a changed bypass or
+self-review flag. When it reports drift, re-run the verify command above to
 diagnose.
 
 `test-pypi` intentionally has no protection rules, to keep dry-run publish
@@ -552,19 +560,19 @@ The hosted checks use the repository secret `RULESET_DRIFT_TOKEN`, which has
 enough ruleset write or admin visibility for the API to expose `bypass_actors`.
 The default `GITHUB_TOKEN` is intentionally not used. If GitHub API access
 fails, the canary is red, and release PRs then fail on stale or red canary
-evidence instead of silently trusting comments. `validate-release-pr.yml`'s
-bootstrap invocation (~line 115) runs the same script with the same token, so
-both CI call sites get the same review-rule coverage without a separate code
-path.
+evidence instead of silently trusting comments. The "Bootstrap ruleset
+drift evidence" step in `validate-release-pr.yml` runs the same script with
+the same token, so both CI call sites get the same review-rule coverage
+without a separate code path.
 
 ### Scheduled activation of `release-canary.yml` (RESOLVED 2026-07-08)
 
 > **RESOLVED 2026-07-08 by the default-branch switch (Decision A,
 > `branch-default-switch-to-develop`).** The GitHub default branch is now
 > `develop` (`gh api repos/BenchBox-dev/BenchBox --jq .default_branch` →
-> `develop`). GitHub runs `on.schedule` workflows only from the **default** branch's
-> copy, so every scheduled workflow authored on `develop` now registers and
-> fires directly; the "land it on `main`" problem below no longer exists.
+> `develop`). GitHub runs `on.schedule` workflows only from the **default**
+> branch's copy, so every scheduled workflow authored on `develop` now registers
+> and fires directly; the "land it on `main`" problem below no longer exists.
 > Verified 2026-07-08 with the Actions list-workflows API: `release-canary.yml`
 > (id 309070628) and two other scheduled workflows (since retired) are
 > registered (26 workflows, up from 19). Options (a), (b) and (c) and the admin
@@ -622,13 +630,13 @@ Admin steps (maintainer action, never an agent push):
    `release-recovery-v0-3-1` as live pressure for the recovery release. Do not
    weaken the canary to get a green first run.
 
-Once the canary is live, the `scheduled-workflow-liveness` job in `nightly.yml`
-(added 2026-07-05; it runs once its copy reaches `main`) checks daily that every
-workflow in the `develop` tree declaring `on.schedule` has an `event=schedule`
-run within a cadence-derived window (3 days for daily crons, up to 100 days for
-quarterly ones), so dead scheduled workflows cannot recur silently. As a
-deliberate consequence, a scheduled workflow newly authored on `develop` reads
-red in that guard until its file lands on `main`.
+Once the canary is live, the `scheduled-workflow-liveness` job in
+`nightly.yml` (added 2026-07-05) checks daily that every workflow in the
+`develop` tree that declares `on.schedule` has an `event=schedule` run
+within a window set by its cron: 3 days for daily, 9 for weekly, 35 for
+monthly, and 100 when the cron names a month. A newly registered workflow
+gets one window of grace before its first scheduled run, so a dead
+scheduled workflow cannot go unnoticed.
 
 The emergency override is intentionally explicit and SHA-scoped. Admins may set
 both repository variables below, then remove them after the release:
@@ -683,7 +691,9 @@ of owner. Re-apply in this order:
 
 ## Out-of-scope
 
-This runbook covers only the GitHub admin settings that the dev-loop workflows
-depend on. Other GitHub settings (collaborators, secrets, webhooks, Pages,
-environments, deploy keys) are out of scope. If they become load-bearing, give
-them their own runbook.
+This runbook covers only the GitHub admin settings that the dev-loop and
+release workflows depend on, including the `pypi` and `test-pypi`
+environments and the `RULESET_DRIFT_TOKEN` secret. Other settings are out
+of scope: collaborators, other secrets, webhooks, Pages, other
+environments, and deploy keys. If one becomes load-bearing, give it its
+own runbook.
