@@ -72,7 +72,6 @@
     "os": "Linux 6.17.0-1022-azure",
     "platform_runtime": {
       "collection_status": "partial",
-      "engine_host": "DuckDB",
       "runtime_type": "local_process",
       "source": "inferred"
     },
@@ -84,7 +83,6 @@
       "type": "zstd"
     },
     "driver_package": "duckdb",
-    "driver_runtime_python_executable": "/home/runner/work/benchbox/benchbox/.venv/bin/python",
     "driver_runtime_strategy": "current-process",
     "driver_version_actual": "1.5.5",
     "driver_version_resolved": "1.5.5",
@@ -213,9 +211,7 @@
     },
     "config": {
       "connection_mode": "file",
-      "database_path": "/home/runner/work/benchbox/benchbox/benchmark_runs/databases/tpch_sf1/tpch_sf1_notuning_noconstraints.duckdb",
       "driver_package": "duckdb",
-      "driver_runtime_python_executable": "/home/runner/work/benchbox/benchbox/.venv/bin/python",
       "driver_runtime_strategy": "current-process",
       "driver_version_actual": "1.5.5",
       "driver_version_resolved": "1.5.5",
@@ -238,7 +234,6 @@
     "driver_runtime_strategy": "current-process",
     "name": "DuckDB",
     "raw_config": {
-      "database_path": "/home/runner/work/benchbox/benchbox/benchmark_runs/databases/tpch_sf1/tpch_sf1_notuning_noconstraints.duckdb",
       "enable_progress_bar": false,
       "force_recreate": false,
       "memory_limit": "8GB",

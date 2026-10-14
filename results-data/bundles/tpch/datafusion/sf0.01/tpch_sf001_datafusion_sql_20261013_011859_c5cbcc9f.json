@@ -73,7 +73,6 @@
     "os": "Linux 6.17.0-1022-azure",
     "platform_runtime": {
       "collection_status": "partial",
-      "engine_host": "DataFusion",
       "runtime_type": "local_process",
       "source": "inferred"
     },
@@ -85,7 +84,6 @@
       "type": "zstd"
     },
     "driver_package": "datafusion",
-    "driver_runtime_python_executable": "/home/runner/work/benchbox/benchbox/.venv/bin/python",
     "driver_runtime_strategy": "current-process",
     "driver_version_actual": "54.0.0",
     "driver_version_resolved": "54.0.0",
@@ -201,15 +199,13 @@
       "connection_mode": "in-memory",
       "data_format": "parquet",
       "driver_package": "datafusion",
-      "driver_runtime_python_executable": "/home/runner/work/benchbox/benchbox/.venv/bin/python",
       "driver_runtime_strategy": "current-process",
       "driver_version_actual": "54.0.0",
       "driver_version_resolved": "54.0.0",
       "execution_mode": "sql",
       "memory_limit": "12GB",
       "result_cache_enabled": false,
-      "target_partitions": 4,
-      "working_dir": "/home/runner/work/benchbox/benchbox/benchmark_runs/databases/tpch_sf001/tpch_sf001_notuning_noconstraints.datafusion"
+      "target_partitions": 4
     },
     "deployment": {
       "collection_status": "partial",
@@ -235,8 +231,7 @@
       "show_query_plans": false,
       "target_partitions": 4,
       "tuning_source": "baseline",
-      "type": "datafusion",
-      "working_dir": "/home/runner/work/benchbox/benchbox/benchmark_runs/databases/tpch_sf001/tpch_sf001_notuning_noconstraints.datafusion"
+      "type": "datafusion"
     },
     "storage": {
       "collection_status": "unavailable",

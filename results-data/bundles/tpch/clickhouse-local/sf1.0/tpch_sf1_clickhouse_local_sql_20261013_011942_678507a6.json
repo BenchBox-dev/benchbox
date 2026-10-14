@@ -20,7 +20,6 @@
       "power"
     ],
     "platform_option_sources": {
-      "data_path": "saved_config",
       "force_recreate": "saved_config",
       "force_upload": "saved_config",
       "normalize_plan_literals": "saved_config",
@@ -29,7 +28,6 @@
       "tuning_source": "saved_config"
     },
     "platform_options": {
-      "data_path": "/home/runner/work/benchbox/benchbox/benchmark_runs/databases/clickhouse_local.chdb",
       "force_recreate": false,
       "force_upload": false,
       "normalize_plan_literals": false,
@@ -71,7 +69,6 @@
     "os": "Linux 6.17.0-1022-azure",
     "platform_runtime": {
       "collection_status": "partial",
-      "engine_host": "ClickHouse (Local)",
       "runtime_type": "local_process",
       "source": "inferred"
     },
@@ -83,7 +80,6 @@
       "type": "zstd"
     },
     "driver_package": "chdb",
-    "driver_runtime_python_executable": "/home/runner/work/benchbox/benchbox/.venv/bin/python",
     "driver_runtime_strategy": "current-process",
     "driver_version_actual": "4.1.6",
     "driver_version_resolved": "4.1.6",
@@ -196,10 +192,8 @@
     },
     "config": {
       "connection_mode": "local",
-      "data_path": "/home/runner/work/benchbox/benchbox/benchmark_runs/databases/clickhouse_local.chdb",
       "deployment_mode": "local",
       "driver_package": "chdb",
-      "driver_runtime_python_executable": "/home/runner/work/benchbox/benchbox/.venv/bin/python",
       "driver_runtime_strategy": "current-process",
       "driver_version_actual": "4.1.6",
       "driver_version_resolved": "4.1.6",
@@ -220,8 +214,6 @@
     "driver_runtime_strategy": "current-process",
     "name": "ClickHouse Local",
     "raw_config": {
-      "data_path": "/home/runner/work/benchbox/benchbox/benchmark_runs/databases/clickhouse_local.chdb",
-      "database_path": "/home/runner/work/benchbox/benchbox/benchmark_runs/databases/tpch_sf1/tpch_sf1_notuning_noconstraints.chdb",
       "deployment_mode": "local",
       "mode": "local",
       "optimize_after_load": false,
