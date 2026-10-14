@@ -80,7 +80,10 @@ python -c "import dask.dataframe as dd; print('Dask DataFrame ready')"
 benchbox run --platform dask-df --benchmark tpch --scale 0.1
 
 benchbox run --platform dask-df --benchmark tpch --scale 1 \
-  --execution-engine threaded \
+  --execution-engine threaded
+
+benchbox run --platform dask-df --benchmark tpch --scale 1 \
+  --execution-engine distributed \
   --platform-option threads_per_worker=4
 
 benchbox run --platform dask-df --benchmark tpch --scale 10 \
@@ -102,8 +105,10 @@ distributed engine to an existing cluster.
 | Option | Default | Description |
 |--------|---------|-------------|
 | `execution_engine` | `default` (`distributed`) | Choose `threaded` or `distributed` |
-| `n_workers` | auto | Number of workers in the local distributed cluster |
-| `threads_per_worker` | 1 | Threads per worker |
+| `n_workers` | auto | Number of workers in the local distributed cluster; `distributed` only |
+| `threads_per_worker` | 1 | Threads per worker in the local distributed cluster; `distributed` only |
+| `memory_limit` | auto | Memory limit per worker in the local distributed cluster; `distributed` only |
+| `spill_directory` | - | Spill directory for the local distributed cluster; `distributed` only |
 | `scheduler_address` | - | Existing Dask scheduler; requires `distributed` |
 | `use_distributed` | - | Deprecated alias: `true` selects `distributed`; `false` selects `threaded` |
 
@@ -112,6 +117,7 @@ distributed engine to an existing cluster.
 **Threaded** (`threaded`):
 - Runs tasks with local worker threads
 - Does not start a Dask Distributed cluster
+- Ignores `n_workers`, `threads_per_worker`, `memory_limit` and `spill_directory`: BenchBox logs a warning for each one you set and leaves it out of the recorded platform information
 
 **Distributed** (`distributed`, the default):
 - Uses Dask Distributed with a local cluster or a remote scheduler

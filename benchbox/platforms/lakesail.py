@@ -91,7 +91,7 @@ class LakeSailAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecu
         self.sail_mode = select_adapter_deployment("lakesail", config, config.get("sail_mode") or "local")
         self.deployment_selected = self.sail_mode
         self.deployment_selected_class = deployment_class("lakesail", self.sail_mode)
-        self.sail_workers = config.get("sail_workers")
+        self._warn_unapplied_workers(config.get("sail_workers"))
         self.table_format = config.get("table_format") or "parquet"
 
         self.spark_config = config.get("spark_config") or {}
@@ -101,6 +101,17 @@ class LakeSailAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecu
         self._spark_session = None
 
         self._managed_server_process = None
+
+    def _warn_unapplied_workers(self, sail_workers: Any) -> None:
+        if sail_workers is None:
+            return
+        from benchbox.core.option_notices import warn_option_not_applied
+
+        if self.sail_mode == "local":
+            reason = "the local Sail server that BenchBox starts has no worker-count setting"
+        else:
+            reason = "BenchBox connects to an existing Sail server and cannot change its workers"
+        warn_option_not_applied("lakesail", "sail_workers", reason)
 
     @property
     def platform_name(self) -> str:
@@ -120,12 +131,12 @@ class LakeSailAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecu
             type=str,
             choices=["local", "distributed"],
             default="local",
-            help="LakeSail deployment mode (local or distributed)",
+            help="LakeSail deployment mode (local may start a server; distributed connects to an external one)",
         )
         lakesail_group.add_argument(
             "--lakesail-workers",
             type=int,
-            help="Number of workers for distributed mode",
+            help="Accepted for compatibility; has no effect because Sail takes no worker count from BenchBox",
         )
         lakesail_group.add_argument(
             "--app-name",
@@ -196,7 +207,6 @@ class LakeSailAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecu
                 "shuffle_partitions": self.shuffle_partitions,
                 "adaptive_enabled": self.adaptive_enabled,
                 "sail_mode": self.sail_mode,
-                "sail_workers": self.sail_workers,
             },
         }
 

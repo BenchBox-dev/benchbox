@@ -711,7 +711,7 @@ influxdb|database|InfluxDB database (bucket) name|{'default': 'benchbox'}
 influxdb|ssl|Use SSL/TLS connection (true/false)|{'default': 'true'}
 lakesail|endpoint|Spark Connect server endpoint (for example, sc://localhost:50051)|{'default': 'sc://localhost:50051'}
 lakesail|adaptive_enabled|Enable or disable LakeSail Adaptive Query Execution (AQE)|{'parser': 'parse_bool', 'default': 'true'}
-lakesail|deployment_mode|Deprecated alias of the platform selector: 'local' for single-node, 'distributed' for a Rust worker cluster|{'choices': ('local', 'distributed'), 'aliases': ('sail_mode',)}
+lakesail|deployment_mode|Deprecated alias of the platform selector: 'local' for single-node, 'distributed' to connect to an external Sail server without starting one|{'choices': ('local', 'distributed'), 'aliases': ('sail_mode',)}
 velox|deployment|Deprecated alias of the platform selector: 'local' (in-process SparkSession, Linux only) or 'remote' (Spark-Connect server)|{'choices': ('local', 'remote'), 'default': 'local'}
 velox|endpoint|Spark-Connect endpoint for remote mode (e.g., sc://localhost:50051)|{'default': 'sc://localhost:50051'}
 velox|gluten_jar_path|Absolute path to the Gluten Velox bundle jar (required for local mode)|{'aliases': ('jar',)}

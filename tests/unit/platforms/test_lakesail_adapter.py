@@ -88,7 +88,7 @@ class TestLakeSailAdapter:
         assert adapter.adaptive_enabled is True
         assert adapter.table_format == "parquet"
         assert adapter.sail_mode == "local"
-        assert adapter.sail_workers is None
+        assert not hasattr(adapter, "sail_workers")
         assert adapter.disable_cache is True
 
     def test_initialization_with_distributed_mode(self, mock_pyspark):
@@ -105,7 +105,7 @@ class TestLakeSailAdapter:
 
         assert adapter.endpoint == "sc://cluster-master:50051"
         assert adapter.sail_mode == "distributed"
-        assert adapter.sail_workers == 8
+        assert not hasattr(adapter, "sail_workers")
 
     def test_get_target_dialect(self, mock_pyspark):
 
@@ -163,7 +163,7 @@ class TestLakeSailAdapter:
         assert info["configuration"]["database"] == "benchmark"
         assert info["configuration"]["driver_memory"] == "16g"
         assert info["configuration"]["sail_mode"] == "distributed"
-        assert info["configuration"]["sail_workers"] == 4
+        assert "sail_workers" not in info["configuration"]
 
     def test_platform_info_local_mode(self, mock_pyspark):
 
