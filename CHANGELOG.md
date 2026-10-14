@@ -141,6 +141,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Sorted ingestion no longer runs unsafe CTAS rewrites on Athena, Azure Synapse
+  and Redshift. Athena's rewrite read from the table it was replacing and always
+  failed; Synapse left an unsorted original plus an orphan `__ctas_sort` copy
+  while reporting the table as sorted; Redshift's copy lost its distribution,
+  encodings and constraints. The `ctas` method now runs no SQL on these
+  platforms, and the run records the sort as not applied with the reason.
+  Redshift `vacuum_sort` is unchanged.
+
 - Options that have no effect now log one warning per run and are left out of
   the platform information a result records, instead of being recorded as if
   they had been applied. Under the Dask `threaded` execution engine this covers

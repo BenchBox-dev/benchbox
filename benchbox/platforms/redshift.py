@@ -210,15 +210,17 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
             return f"VACUUM SORT ONLY {self.schema}.{table_name}"
 
         if method == "ctas":
-            ordered_cols = ", ".join(column.name for column in sort_columns)
-            temp_table = f"{table_name}__ctas_sort"
-            return [
-                f"CREATE TABLE {self.schema}.{temp_table} AS SELECT * FROM {self.schema}.{table_name} ORDER BY {ordered_cols}",
-                f"DROP TABLE {self.schema}.{table_name}",
-                f"ALTER TABLE {self.schema}.{temp_table} RENAME TO {table_name}",
-            ]
+            return None
 
         raise ValueError(f"Sorted ingestion method '{method}' is not supported for Redshift.")
+
+    def _ctas_sort_unsupported_reason(self, method: str) -> str | None:
+        if method != "ctas":
+            return None
+        return (
+            "Redshift CTAS sort is disabled: CTAS plus DROP and RENAME loses DISTSTYLE, DISTKEY, column "
+            "encodings and constraints, and ORDER BY on a CTAS does not declare a SORTKEY"
+        )
 
     @staticmethod
     def add_cli_arguments(parser) -> None:

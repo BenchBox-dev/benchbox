@@ -826,7 +826,7 @@ class TestSynapseUncoveredMethods:
             result = adapter._build_ctas_sort_sql("orders", [])
         assert result is None
 
-    def test_build_ctas_sort_sql_ctas_mode(self, synapse_stubs):
+    def test_build_ctas_sort_sql_ctas_mode_is_disabled(self, synapse_stubs):
         adapter = AzureSynapseAdapter(
             server="test.sql.azuresynapse.net",
             username="admin",
@@ -840,10 +840,8 @@ class TestSynapseUncoveredMethods:
         with patch.object(adapter, "resolve_sorted_ingestion_strategy", return_value=("on", "ctas")):
             result = adapter._build_ctas_sort_sql("lineitem", [col])
 
-        assert result is not None
-        assert "CREATE TABLE" in result
-        assert "lineitem__ctas_sort" in result
-        assert "ORDER BY l_shipdate" in result
+        assert result is None
+        assert "RENAME OBJECT" in adapter._ctas_sort_unsupported_reason("ctas")
 
     def test_analyze_table_updates_statistics(self, synapse_stubs):
         adapter = AzureSynapseAdapter(

@@ -150,7 +150,7 @@ def test_redshift_force_mode_supports_vacuum_sort():
     assert sql == "VACUUM SORT ONLY public.lineitem"
 
 
-def test_redshift_force_mode_supports_ctas_rewrite_sequence():
+def test_redshift_force_mode_disables_ctas_rewrite():
     adapter = RedshiftAdapter.__new__(RedshiftAdapter)
     adapter.schema = "public"
     _force_sorted_ingestion(adapter, method="ctas")
@@ -158,12 +158,8 @@ def test_redshift_force_mode_supports_ctas_rewrite_sequence():
     sql = adapter._build_ctas_sort_sql(
         "lineitem", [_make_sort_column("l_shipdate", 1), _make_sort_column("l_orderkey", 2)]
     )
-    assert isinstance(sql, list)
-    assert sql[0] == (
-        "CREATE TABLE public.lineitem__ctas_sort AS SELECT * FROM public.lineitem ORDER BY l_shipdate, l_orderkey"
-    )
-    assert sql[1] == "DROP TABLE public.lineitem"
-    assert sql[2] == "ALTER TABLE public.lineitem__ctas_sort RENAME TO lineitem"
+    assert sql is None
+    assert "SORTKEY" in adapter._ctas_sort_unsupported_reason("ctas")
 
 
 def test_bigquery_force_mode_raises_actionable_error():
@@ -174,24 +170,21 @@ def test_bigquery_force_mode_raises_actionable_error():
         adapter._build_ctas_sort_sql("lineitem", [_make_sort_column("l_shipdate", 1)])
 
 
-def test_athena_force_mode_builds_ctas_sql():
+def test_athena_force_mode_disables_ctas_sql():
     adapter = AthenaAdapter.__new__(AthenaAdapter)
     _force_sorted_ingestion(adapter, method="ctas")
 
     sql = adapter._build_ctas_sort_sql("lineitem", [_make_sort_column("l_shipdate", 1)])
-    assert sql == "CREATE TABLE lineitem AS SELECT * FROM lineitem ORDER BY l_shipdate"
+    assert sql is None
 
 
-def test_synapse_force_mode_builds_ctas_sql():
+def test_synapse_force_mode_disables_ctas_sql():
     adapter = AzureSynapseAdapter.__new__(AzureSynapseAdapter)
     adapter.schema = "dbo"
     _force_sorted_ingestion(adapter, method="ctas")
 
     sql = adapter._build_ctas_sort_sql("lineitem", [_make_sort_column("l_shipdate", 1)])
-    assert sql == (
-        "CREATE TABLE [dbo].[lineitem__ctas_sort] WITH (DISTRIBUTION = ROUND_ROBIN, HEAP) AS "
-        "SELECT * FROM [dbo].[lineitem] ORDER BY l_shipdate"
-    )
+    assert sql is None
 
 
 def test_clickhouse_cloud_force_mode_raises_actionable_error():

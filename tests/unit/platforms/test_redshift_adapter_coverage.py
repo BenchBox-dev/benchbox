@@ -2227,17 +2227,14 @@ class TestBuildCtasSortSql:
             result = adapter._build_ctas_sort_sql("lineitem", [])
         assert result == "VACUUM SORT ONLY public.lineitem"
 
-    def test_ctas_returns_list_of_three_statements(self):
+    def test_ctas_is_disabled(self):
         adapter = _make_adapter()
         mock_col = MagicMock()
         mock_col.name = "orderkey"
         with patch.object(adapter, "resolve_sorted_ingestion_strategy", return_value=("on", "ctas")):
             result = adapter._build_ctas_sort_sql("orders", [mock_col])
-        assert isinstance(result, list)
-        assert len(result) == 3
-        assert "CREATE TABLE" in result[0]
-        assert "DROP TABLE" in result[1]
-        assert "ALTER TABLE" in result[2]
+        assert result is None
+        assert adapter._ctas_sort_unsupported_reason("vacuum_sort") is None
 
     def test_unsupported_method_raises(self):
         adapter = _make_adapter()
