@@ -6679,15 +6679,10 @@
       "title": "Platform Deployment Factory Integration"
     },
     "deployment-modes-unrecorded-20261014": {
-      "claim": {
-        "expires_at": "2026-10-15T17:31:14Z",
-        "generation": "610ee25cbe73424192e136db529fea13",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "TimescaleDB, SingleStore and Databend declare cloud modes they never select or record, and deployment aliases sit in a hand-written second registry"
     },
     "deployment-registry-extensions": {
