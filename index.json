@@ -8638,15 +8638,10 @@
       "title": "Ensure read_primitives query variants are meaningfully comparable"
     },
     "env-var-credential-sources-20261014": {
-      "claim": {
-        "expires_at": "2026-10-15T19:00:26Z",
-        "generation": "1799f8534bb74ffa86b3a9fab446dc36",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Error messages tell users to set SYNAPSE_*, FABRIC_* and DATABRICKS_HTTP_PATH variables that BenchBox never reads"
     },
     "equivalence-comparator-value-widening-opt-in": {
