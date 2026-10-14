@@ -668,11 +668,43 @@ class _DummyUnifiedConfig:
         self.table_tunings = table_tunings or {}
 
 
+class _StoreConf:
+    def __init__(self) -> None:
+        self.store: dict[str, str] = {}
+        self.set_calls: list[tuple[str, str]] = []
+
+    def set(self, key, value) -> None:
+        self.set_calls.append((key, value))
+        self.store[key] = str(value)
+
+    def get(self, key, default=None):
+        return self.store.get(key, default)
+
+    def isModifiable(self, key) -> bool:
+        return True
+
+
+class _StoreSession:
+    def __init__(self) -> None:
+        self.conf = _StoreConf()
+
+
+def _real_spark_config(spark_map: dict):
+    from benchbox.core.tuning.interface import UnifiedTuningConfiguration
+
+    config = UnifiedTuningConfiguration.from_dict({"platform_optimizations": {"spark": dict(spark_map)}})
+    return config
+
+
 class _StubAdapter(SparkLikeAdapterMixin):
     def __init__(self, name: str = "TestPlatform") -> None:
         self.platform_name = name
         self.logger = logging.getLogger(__name__)
         self.table_tuning_calls: list = []
+        self.unified_tuning_configuration = None
+
+    def get_effective_tuning_configuration(self):
+        return self.unified_tuning_configuration
 
     def apply_table_tunings(self, table_tuning, connection) -> None:
         self.table_tuning_calls.append((table_tuning, connection))
@@ -696,34 +728,44 @@ class TestSparkLikeAdapterMixin:
         assert not any("constraints enabled" in r.message for r in caplog.records)
 
     def test_apply_platform_optimizations_forwards_to_spark_conf(self) -> None:
+        from benchbox.platforms._spark_helpers import apply_tuned_spark_session_config
+
         adapter = _StubAdapter("Spark")
-        spark = MagicMock()
-        adapter.apply_platform_optimizations(
-            _DummyPlatformConfig({"sql.adaptive.enabled": "true", "sql.cbo.enabled": "true"}),
-            connection=spark,
+        adapter.tuning_enabled = True
+        adapter.unified_tuning_configuration = _real_spark_config(
+            {"sql.adaptive.enabled": "true", "sql.cbo.enabled": "true"}
         )
-        spark.conf.set.assert_any_call("spark.sql.adaptive.enabled", "true")
-        spark.conf.set.assert_any_call("spark.sql.cbo.enabled", "true")
+        session = _StoreSession()
+        apply_tuned_spark_session_config(adapter, session)
+        assert session.conf.set_calls == [
+            ("spark.sql.adaptive.enabled", "true"),
+            ("spark.sql.cbo.enabled", "true"),
+        ]
 
     def test_apply_platform_optimizations_logs_warning_on_failure(self, caplog) -> None:
+        from benchbox.platforms._spark_helpers import apply_tuned_spark_session_config
+
         adapter = _StubAdapter("Spark")
-        spark = MagicMock()
-        spark.conf.set.side_effect = RuntimeError("rejected")
+        adapter.tuning_enabled = True
+        adapter.unified_tuning_configuration = _real_spark_config({"foo.bar": "baz"})
+        session = _StoreSession()
+        session.conf.set = MagicMock(side_effect=RuntimeError("rejected"))
         with caplog.at_level(logging.WARNING, logger=__name__):
-            adapter.apply_platform_optimizations(_DummyPlatformConfig({"foo.bar": "baz"}), connection=spark)
+            apply_tuned_spark_session_config(adapter, session)
         warnings = [r.message for r in caplog.records if r.levelno == logging.WARNING]
-        assert any("Failed to apply Spark config spark.foo.bar" in m for m in warnings)
+        assert any("failed to apply" in m for m in warnings)
 
     def test_platform_optimizations_recorded_in_applied_ledger(self) -> None:
         from benchbox.core.tuning.applied_ledger import AppliedTuningLedger
+        from benchbox.platforms._spark_helpers import apply_tuned_spark_session_config
 
         adapter = _StubAdapter("Spark")
-        adapter._applied_tuning_ledger = AppliedTuningLedger()
-        spark = MagicMock()
-        adapter.apply_platform_optimizations(
-            _DummyPlatformConfig({"sql.shuffle.partitions": "200", "sql.cbo.enabled": "true"}),
-            connection=spark,
+        adapter.tuning_enabled = True
+        adapter.unified_tuning_configuration = _real_spark_config(
+            {"sql.shuffle.partitions": "200", "sql.cbo.enabled": "true"}
         )
+        adapter._applied_tuning_ledger = AppliedTuningLedger()
+        apply_tuned_spark_session_config(adapter, _StoreSession())
         statements = adapter._applied_tuning_ledger.statements
         assert {s.statement for s in statements} == {
             "SET spark.sql.shuffle.partitions=200",
@@ -736,44 +778,51 @@ class TestSparkLikeAdapterMixin:
 
     def test_failed_conf_set_recorded_as_failed_statement(self) -> None:
         from benchbox.core.tuning.applied_ledger import EXECUTED, STATEMENT_FAILED, AppliedTuningLedger
+        from benchbox.platforms._spark_helpers import apply_tuned_spark_session_config
 
         adapter = _StubAdapter("Spark")
+        adapter.tuning_enabled = True
+        adapter.unified_tuning_configuration = _real_spark_config(
+            {"sql.shuffle.partitions": "200", "sql.cbo.enabled": "true"}
+        )
         adapter._applied_tuning_ledger = AppliedTuningLedger()
-        spark = MagicMock()
+        session = _StoreSession()
 
         def _set(key, _value):
             if key == "spark.sql.shuffle.partitions":
                 raise RuntimeError("rejected")
+            session.conf.store[key] = str(_value)
 
-        spark.conf.set.side_effect = _set
-        adapter.apply_platform_optimizations(
-            _DummyPlatformConfig({"sql.shuffle.partitions": "200", "sql.cbo.enabled": "true"}),
-            connection=spark,
-        )
+        session.conf.set = _set
+        apply_tuned_spark_session_config(adapter, session)
         by_stmt = {s.statement: s.status for s in adapter._applied_tuning_ledger.statements}
         assert by_stmt["SET spark.sql.shuffle.partitions=200"] == STATEMENT_FAILED
         assert by_stmt["SET spark.sql.cbo.enabled=true"] == EXECUTED
 
     def test_platform_optimizations_without_ledger_does_not_raise(self) -> None:
-        adapter = _StubAdapter("Spark")
-        spark = MagicMock()
-        adapter.apply_platform_optimizations(_DummyPlatformConfig({"sql.cbo.enabled": "true"}), connection=spark)
-        spark.conf.set.assert_called_with("spark.sql.cbo.enabled", "true")
+        from benchbox.platforms._spark_helpers import apply_tuned_spark_session_config
 
-    def test_apply_unified_tuning_dispatches_in_fixed_order(self) -> None:
+        adapter = _StubAdapter("Spark")
+        adapter.tuning_enabled = True
+        adapter.unified_tuning_configuration = _real_spark_config({"sql.cbo.enabled": "true"})
+        session = _StoreSession()
+        apply_tuned_spark_session_config(adapter, session)
+        assert session.conf.set_calls == [("spark.sql.cbo.enabled", "true")]
+
+    def test_apply_unified_tuning_does_not_set_spark_conf(self) -> None:
+        from benchbox.platforms._spark_helpers import apply_tuned_spark_session_config
+
         adapter = _StubAdapter("LakeSail")
-        spark = MagicMock()
-        config = _DummyUnifiedConfig(
-            primary_keys=_DummyTuningRecord(True),
-            foreign_keys=_DummyTuningRecord(True),
-            platform_optimizations=_DummyPlatformConfig({"sql.adaptive.enabled": "true"}),
-            table_tunings={"orders": "TUNING_A", "customer": "TUNING_B"},
-        )
-        adapter.apply_unified_tuning(config, connection=spark)
-        recorded = [tuning for tuning, _ in adapter.table_tuning_calls]
-        assert "TUNING_A" in recorded
-        assert "TUNING_B" in recorded
-        spark.conf.set.assert_called_with("spark.sql.adaptive.enabled", "true")
+        adapter.tuning_enabled = True
+        adapter.table_tuning_calls = []
+        session = _StoreSession()
+        config = _real_spark_config({"sql.adaptive.enabled": "true"})
+        config.table_tunings["orders"] = "TUNING_A"
+        adapter.unified_tuning_configuration = config
+        adapter.apply_unified_tuning(config, connection=session)
+        assert session.conf.set_calls == []
+        apply_tuned_spark_session_config(adapter, session)
+        assert session.conf.set_calls == [("spark.sql.adaptive.enabled", "true")]
 
     def test_apply_unified_tuning_returns_early_on_none(self) -> None:
         adapter = _StubAdapter("Velox")

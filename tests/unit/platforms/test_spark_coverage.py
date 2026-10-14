@@ -927,15 +927,22 @@ class TestApplyPlatformOptimizations:
         mock_session.conf.set.assert_not_called()
 
     def test_spark_config_applied(self, mock_pyspark):
+        from benchbox.core.tuning.interface import UnifiedTuningConfiguration
+        from benchbox.platforms._spark_helpers import apply_tuned_spark_session_config
+
         _, mock_session = mock_pyspark
         from benchbox.platforms.spark import SparkAdapter
 
         a = SparkAdapter()
+        a.tuning_enabled = True
+        a.unified_tuning_configuration = UnifiedTuningConfiguration.from_dict(
+            {"platform_optimizations": {"spark": {"sql.shuffle.partitions": "400"}}}
+        )
+        store: dict[str, str] = {}
+        mock_session.conf.set.side_effect = lambda key, value: store.__setitem__(key, str(value))
+        mock_session.conf.get.side_effect = lambda key, default=None: store.get(key, default)
 
-        mock_platform_cfg = MagicMock()
-        mock_platform_cfg.spark = {"sql.shuffle.partitions": "400"}
-
-        a.apply_platform_optimizations(mock_platform_cfg, mock_session)
+        apply_tuned_spark_session_config(a, mock_session)
 
         mock_session.conf.set.assert_called_with("spark.sql.shuffle.partitions", "400")
 
@@ -950,17 +957,26 @@ class TestApplyPlatformOptimizations:
         mock_session.conf.set.assert_not_called()
 
     def test_conf_set_error_continues(self, mock_pyspark):
+        from benchbox.core.tuning.applied_ledger import STATEMENT_FAILED, AppliedTuningLedger
+        from benchbox.core.tuning.interface import UnifiedTuningConfiguration
+        from benchbox.platforms._spark_helpers import apply_tuned_spark_session_config
+
         _, mock_session = mock_pyspark
         from benchbox.platforms.spark import SparkAdapter
 
         a = SparkAdapter()
-
-        mock_platform_cfg = MagicMock()
-        mock_platform_cfg.spark = {"bad.key": "value"}
+        a.tuning_enabled = True
+        a.unified_tuning_configuration = UnifiedTuningConfiguration.from_dict(
+            {"platform_optimizations": {"spark": {"bad.key": "value"}}}
+        )
+        a._applied_tuning_ledger = AppliedTuningLedger()
         mock_session.conf.set.side_effect = Exception("read-only")
 
-        a.apply_platform_optimizations(mock_platform_cfg, mock_session)
+        apply_tuned_spark_session_config(a, mock_session)
+
         mock_session.conf.set.assert_called_with("spark.bad.key", "value")
+        failed = [s for s in a._applied_tuning_ledger.statements if s.status == STATEMENT_FAILED]
+        assert [s.statement for s in failed] == ["SET spark.bad.key=value"]
 
 
 class TestApplyConstraintConfiguration:

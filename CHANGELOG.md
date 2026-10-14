@@ -276,6 +276,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   so a streaming run is `polars+streaming` ("Polars (streaming)") in both. The
   stored `platform.variant` value is unchanged (`polars-df+streaming`). The
   depth report now lists platform IDs (`duckdb`) instead of display names.
+- Spark `tuned` session configuration (`platform_optimizations.spark`) is now
+  applied once per run in `SparkAdapter.configure_for_benchmark`, after the OLAP
+  defaults, so tuned values survive. The tuning file wins over BenchBox defaults
+  and adapter options (reported when it shadows one); engine-refused or
+  mismatched keys are recorded as failed ledger statements and warned. Result
+  metadata reports the live tuned values for shuffle partitions and adaptive
+  execution.
 - The Atom feed uses canonical `/blog/` self and entry links while retaining stable entry IDs for existing subscribers.
 - Deprecated option aliases now show their warning. The Polars `streaming`
   option, `--polars-streaming`, Dask `use_distributed`, pg-duckdb
