@@ -342,19 +342,21 @@ class DatabricksAdapter(PlatformAdapter):
         if not self.server_hostname or not self.http_path or not self.access_token:
             missing = []
             if not self.server_hostname:
-                missing.append("server_hostname (or DATABRICKS_HOST)")
+                missing.append("server_hostname")
             if not self.http_path:
-                missing.append("http_path (or DATABRICKS_HTTP_PATH)")
+                missing.append("http_path")
             if not self.access_token:
-                missing.append("access_token (or DATABRICKS_TOKEN)")
+                missing.append("access_token")
 
             from benchbox.core.exceptions import ConfigurationError
 
             raise ConfigurationError(
                 f"Databricks configuration is incomplete. Missing: {', '.join(missing)}\n"
-                "Configure with one of:\n"
-                "  1. CLI: benchbox setup --platform databricks\n"
-                "  2. Environment variables: DATABRICKS_HOST, DATABRICKS_HTTP_PATH, DATABRICKS_TOKEN"
+                "Set them with any of:\n"
+                "  1. benchbox setup --platform databricks\n"
+                "  2. ~/.benchbox/credentials.yaml, under 'databricks:' "
+                "(values may reference environment variables as ${VAR})\n"
+                "  3. --platform-option compute_resource=<SQL warehouse ID or HTTP path> (sets http_path only)"
             )
 
     @property

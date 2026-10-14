@@ -114,7 +114,7 @@ Tables and maintenance:
 | `disable_result_cache` | `bool` | `True` | Runs `SET use_cached_result = false` in `configure_for_benchmark`. |
 | `force_recreate` | `bool` | `False` | Drop an existing schema when a connection is created. |
 
-The adapter also accepts the keys every BenchBox adapter takes: see [Constructor Parameters](#constructor-parameters). Keys it does not recognise are accepted and ignored. The constructor reads no environment variables: `DATABRICKS_HOST`, `DATABRICKS_HTTP_PATH` and `DATABRICKS_TOKEN` are mentioned in its error message but not consulted, so pass the values yourself. `from_config` can fill missing connection values from the Databricks SDK instead.
+The adapter also accepts the keys every BenchBox adapter takes: see [Constructor Parameters](#constructor-parameters). Keys it does not recognise are accepted and ignored. The constructor reads no environment variables, so pass the values yourself. Its error message names the supported ways to set them from the CLI: `benchbox setup --platform databricks`, the `databricks` section of `~/.benchbox/credentials.yaml` (values may reference environment variables as `${VAR}`), and `--platform-option compute_resource=...` for the HTTP path. `from_config` can fill missing connection values from the Databricks SDK instead.
 
 #### Returns
 
@@ -164,7 +164,7 @@ Output on 0.4.1 with `databricks-sql-connector` 4.6.0, run without a network con
 ```text
 main benchbox delta None True
 Databricks databricks cow
-ConfigurationError Databricks configuration is incomplete. Missing: server_hostname (or DATABRICKS_HOST), http_path (or DATABRICKS_HTTP_PATH), access_token (or DATABRICKS_TOKEN)
+ConfigurationError Databricks configuration is incomplete. Missing: server_hostname, http_path, access_token
 ValueError Unsupported Databricks table_format 'iceberg'. Use 'delta' or 'hudi'.
 ValueError Unsupported hudi_table_type 'x'. Use 'cow' or 'mor'.
 workspace tpch_sf001_notuning_noconstraints

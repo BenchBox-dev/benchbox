@@ -147,6 +147,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   connects to an external Sail server without starting a local one, and does not
   create a multi-node run.
 
+- Error messages for incomplete Azure Synapse, Fabric Warehouse and Databricks
+  configuration no longer tell you to set `SYNAPSE_*`, `FABRIC_*` or
+  `DATABRICKS_HTTP_PATH` environment variables, which BenchBox never read.
+  They now name the supported ways to configure credentials: `benchbox setup`
+  where the platform has it, the platform section of
+  `~/.benchbox/credentials.yaml` (values may reference environment variables as
+  `${VAR}`), and `--platform-option`. The Databricks DBFS credential check no
+  longer lists `DATABRICKS_HTTP_PATH`, and the unused
+  `build_fabric_spark_config_from_env` helper is removed. Tests:
+  `tests/unit/platforms/test_credential_error_messages.py`.
 - `--platform-option` values now reach the platforms that build their
   configuration through the default path. EMR Serverless, Dataproc, Synapse
   Spark, Fabric Spark and Snowpark Connect receive `compute_resource` (and

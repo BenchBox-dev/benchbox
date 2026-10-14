@@ -380,7 +380,7 @@ Checks whether the credentials for a path look usable and reports what is missin
 By path:
 
 - **Local path:** `valid` is `True`, `provider` is `local`.
-- **`dbfs:`:** `valid` is `True` without a check, and `env_vars` lists `DATABRICKS_HOST`, `DATABRICKS_HTTP_PATH` and `DATABRICKS_TOKEN`.
+- **`dbfs:`:** `valid` is `True` without a check, and `env_vars` lists `DATABRICKS_HOST` and `DATABRICKS_TOKEN`, which the Databricks SDK reads.
 - **Snowflake stage:** `valid` is `True` without a check, and `provider` is `snowflake_stage`.
 - **`abfss:`, `abfs:`:** `valid` is `True` when `AZURE_STORAGE_ACCOUNT_NAME` and `AZURE_STORAGE_ACCOUNT_KEY` are both set. Otherwise `error` is `Missing environment variables: ...`. `cloudpathlib` is not needed.
 - **`s3:`, `gs:`, `gcs:`, `az:`, `azure:`:** without `cloudpathlib`, `valid` is `False`, `provider` is `unknown` and `error` is `cloudpathlib not installed`. With it, the variables in the Supported Providers table are checked first (for S3, any one of the four credential sources). When they are missing, `error` names them. When they are present, the function builds the cloud path and calls `exists()` on it, which contacts the provider; a failure there sets `error` to `Credential validation failed: ...` or `Cloud path validation failed: ...`.
@@ -403,7 +403,7 @@ With neither `AZURE_STORAGE_ACCOUNT_NAME` nor `AZURE_STORAGE_ACCOUNT_KEY` set:
 
 ```text
 {'valid': True, 'provider': 'local', 'error': None, 'env_vars': []}
-{'valid': True, 'provider': 'dbfs', 'error': None, 'env_vars': ['DATABRICKS_HOST', 'DATABRICKS_HTTP_PATH', 'DATABRICKS_TOKEN']}
+{'valid': True, 'provider': 'dbfs', 'error': None, 'env_vars': ['DATABRICKS_HOST', 'DATABRICKS_TOKEN']}
 {'valid': True, 'provider': 'snowflake_stage', 'error': None, 'env_vars': []}
 {'valid': False, 'provider': 'abfss', 'error': 'Missing environment variables: AZURE_STORAGE_ACCOUNT_NAME, AZURE_STORAGE_ACCOUNT_KEY', 'env_vars': ['AZURE_STORAGE_ACCOUNT_NAME', 'AZURE_STORAGE_ACCOUNT_KEY']}
 ```

@@ -44,18 +44,20 @@ valid install target). See
 
 ## Authentication
 
-Same credentials as the `databricks` SQL platform - set via environment
-variables or `--platform-option`:
+Same credentials as the `databricks` SQL platform. Set them with
+`benchbox setup --platform databricks`, or in the `databricks` section of
+`~/.benchbox/credentials.yaml`, where values may reference environment
+variables as `${VAR}`:
 
-| Variable                | Purpose                                              |
-| ----------------------- | ---------------------------------------------------- |
-| `DATABRICKS_HOST`       | Workspace URL (`xxx.cloud.databricks.com`)           |
-| `DATABRICKS_TOKEN`      | Personal access token                                |
-| `DATABRICKS_HTTP_PATH`  | SQL Warehouse HTTP path (used for the load phase)    |
+| Key                | Purpose                                           |
+| ------------------ | ------------------------------------------------- |
+| `server_hostname`  | Workspace URL (`xxx.cloud.databricks.com`)        |
+| `access_token`     | Personal access token                             |
+| `http_path`        | SQL Warehouse HTTP path (used for the load phase) |
 
 The DataFrame adapter selects its cluster through `compute_resource`
 (`--platform-option compute_resource=<cluster-id>`, deprecated alias
-`cluster_id`). `DATABRICKS_HTTP_PATH` remains required for the load phase,
+`cluster_id`). `http_path` remains required for the load phase,
 which uses the SQL connector regardless of execution mode.
 
 ## Usage

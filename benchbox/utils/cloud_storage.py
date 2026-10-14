@@ -534,7 +534,7 @@ def validate_cloud_credentials(path: Union[str, Path]) -> dict[str, Any]:
             "valid": True,
             "provider": "dbfs",
             "error": None,
-            "env_vars": ["DATABRICKS_HOST", "DATABRICKS_HTTP_PATH", "DATABRICKS_TOKEN"],
+            "env_vars": ["DATABRICKS_HOST", "DATABRICKS_TOKEN"],
         }
 
     if is_snowflake_stage_path(path):
@@ -770,10 +770,10 @@ def format_cloud_usage_guide(provider: str) -> str:
     guides = {
         "dbfs": """
 Databricks DBFS / Unity Catalog Volumes Setup:
-1. Set environment variables:
+1. Set environment variables for the Databricks SDK:
    export DATABRICKS_HOST=adb-123456789.azuredatabricks.net
-   export DATABRICKS_HTTP_PATH=/sql/1.0/warehouses/abc123
    export DATABRICKS_TOKEN=your_personal_access_token
+   Warehouse connection settings come from `benchbox setup --platform databricks`.
 
 2. Create UC Volume (Unity Catalog):
    CREATE VOLUME IF NOT EXISTS workspace.benchbox.data;
