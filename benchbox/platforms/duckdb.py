@@ -565,6 +565,7 @@ class DuckDBAdapter(PlatformAdapter):
 
         for key in [
             "thread_limit",
+            "temp_directory",
             "max_temp_directory_size",
             "progress_bar",
         ]:
@@ -617,6 +618,8 @@ class DuckDBAdapter(PlatformAdapter):
                 "result_cache_enabled": False,
             },
         }
+        if self.temp_directory:
+            platform_info["configuration"]["temp_directory"] = self.temp_directory
 
         module_version = None
         if self._duckdb_module is not None:
@@ -664,6 +667,8 @@ class DuckDBAdapter(PlatformAdapter):
                     "max_temp_directory_size must use a DuckDB size (e.g., '4GB' or '90% of available disk space')"
                 )
         self.max_temp_directory_size = raw_temp
+        raw_temp_directory = config.get("temp_directory")
+        self.temp_directory = str(raw_temp_directory) if raw_temp_directory else None
         raw_threads = config.get("thread_limit")
         if raw_threads is not None:
             try:
@@ -779,6 +784,12 @@ class DuckDBAdapter(PlatformAdapter):
             conn.execute(f"SET memory_limit = '{memory_limit}'")
             config_applied.append(f"memory_limit={self.memory_limit}")
             self.log_very_verbose(f"DuckDB memory limit set to: {self.memory_limit}")
+
+        if self.temp_directory:
+            temp_directory = escape_sql_string_literal(self.temp_directory)
+            conn.execute(f"SET temp_directory = '{temp_directory}'")
+            config_applied.append(f"temp_directory={self.temp_directory}")
+            self.log_very_verbose(f"DuckDB temp directory set to: {self.temp_directory}")
 
         if self.max_temp_directory_size:
             max_temp_directory_size = escape_sql_string_literal(str(self.max_temp_directory_size))

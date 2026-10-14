@@ -271,6 +271,7 @@ class SparkAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
                 "adaptive_enabled",
                 "table_format",
                 "enable_hive",
+                "java_home",
                 "spark_config",
                 "staging_root",
                 "disable_cache",

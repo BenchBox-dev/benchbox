@@ -135,6 +135,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `--platform-option` values now reach the platforms that build their
+  configuration through the default path. EMR Serverless, Dataproc, Synapse
+  Spark, Fabric Spark and Snowpark Connect receive `compute_resource` (and
+  Snowpark Connect `compute_size`), Fabric Warehouse receives `server`, `workspace`, `database`,
+  `auth_method`, `tenant_id`, `client_id`, `client_secret` and `staging_path`,
+  and PySpark receives `driver_memory` and `shuffle_partitions`. Previously the
+  values were parsed and recorded but the adapter fell back to its own
+  defaults. Spark also forwards `java_home`. The recorded `platform_options`
+  keep their shape.
+- The DuckDB `threads` option now sets the thread limit, ahead of the value
+  derived from the system profile, and `temp_directory` now sets the spill
+  directory when the connection opens. The SQLite `database_path` and `timeout`
+  options now take effect, so the "database path configuration" error points
+  at an option that works. The plan options `plan_max_depth` and
+  `plan_capture_timeout_seconds` also reach the DuckDB and SQLite adapters.
+  Without these options the DuckDB connection runs the same statements as
+  before. Tests: `tests/unit/cli/test_platform_options_reach_adapters.py`.
 - `benchbox report rankings` lists imported runs. The results database stored
   the lowercase `passed` that result bundles carry, while the ranking and
   status filters matched `PASSED`, so rankings were always empty after
@@ -288,6 +305,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   choosing an engine.
 
 ### Before you upgrade
+- DuckDB `--platform-option threads=N` and `temp_directory=<path>`, and SQLite
+  `--platform-option database_path=<path>` and `timeout=<seconds>`, were
+  accepted but ignored in earlier releases. Commands and saved configurations
+  that already pass them now change the thread count, spill directory, database
+  file and connection timeout of the run. Remove an option you do not want
+  applied.
 - `benchbox compare` and MCP `compare_results` now refuse two results whose
   deployment, requested execution engine or gateway differ. Pass
   `--allow-heterogeneous-comparison` to the CLI to compare them anyway.
