@@ -2,7 +2,7 @@
   "acceptance": [
     "when a verdict is submitted on the current head, the failed synchronize-suite `oracle-review` run for that head is rerun (or superseded) automatically, so the required check turns green with no manual rerun. Include a workflow test of the trigger and permission shape, and one real PR that shows it."
   ],
-  "context": "Fix: oracle-verdict.yml post job gains actions:write plus a final step that lists failed pull_request-event oracle-review runs for the reviewed head and reruns their failed jobs (gh run rerun --failed). Proven live: filter selects exactly stale run 38612765438 for head e5711447d. Branch fix/oracle-verdict-rerun-stale-suite commit 9ded4fb7e, PR BenchBox-dev/benchbox#2981 (draft). Confirmation of auto-rerun on a real PR pending (this PR's own verdict runs pre-merge code; confirm on next batch PR after merge). Evidence: #2960 run 38572771918; #2962 run 38562179375. Worktree: ~/Developer/BenchBox.wt-oracle-stale-suite.",
+  "context": "Fix: oracle-verdict.yml post job gains actions:write plus a final step that lists failed pull_request-event oracle-review runs for the reviewed head and reruns their failed jobs (gh run rerun --failed). Proven live: filter selects exactly stale run 38612765438 for head e5711447d. Branch fix/oracle-verdict-rerun-stale-suite commit 9ded4fb7e, PR BenchBox-dev/benchbox#2981 (draft). Confirmation of auto-rerun on a real PR pending (this PR's own verdict runs pre-merge code; confirm on next batch PR after merge). Evidence: #2960 run 38572771918; #2962 run 38562179375. Worktree: ~/Developer/BenchBox.wt-oracle-stale-suite. Claim released 2026-10-14 to work item 60; re-take to finish at merge.",
   "description": "A PR whose oracle verdict arrives after its `pull_request` (synchronize) `oracle-review` run is left BLOCKED. That run failed with \"waiting for the oracle's review\", and only the `pull_request_review` run reruns. Evidence: #2960 run 38572771918; #2962 run 38562179375.",
   "sessions": [
     {
@@ -37,6 +37,14 @@
       "generation": "c2dec914f46243658649f80b1f5ae073",
       "op": "release",
       "op_id": "bb70db28c658418ebe726c11f9eba568",
+      "session_id": "8250681ba4eb464e88a8d9c11374e76e"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:2ff26e731ddb7b681f9dacbc",
+      "at": "2026-10-14T18:39:54Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "9596607020314a1ab22911b3aa6c4ada",
       "session_id": "8250681ba4eb464e88a8d9c11374e76e"
     }
   ]
