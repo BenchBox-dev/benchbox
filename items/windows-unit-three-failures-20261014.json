@@ -5,7 +5,7 @@
     "The chDB tuning test skips instead of ImportError on Windows where chDB is not installed",
     "A nightly.yml Windows leg shows all three green"
   ],
-  "context": "Root causes diagnosed 2026-10-13/14 from nightly.yml run 38404921532 evidence (handoff section 0.5): (1) run_power_test did a function-local `import time`, defeating the test's runner.time monkeypatch; Windows time.time() granularity puts 99 instant mock queries inside one tick, so total_time is exactly 0.0 and power stays 0.0. Proven with a frozen-clock probe in /tmp. (2) get_binary_path returns an existing-but-extensionless qgen on Windows and the test execs bare `qgen`, which Windows cannot resolve (WinError 2). (3) ClickHouseLocalAdapter raises ImportError when chdb is absent; the test only patched the server-mode dep check. Branch fix/windows-unit-failures in ../BenchBox.wt-windows-unit-failures, commit be0d64b22, implements all three narrowly with local tests green. Serves nightly-v2-windows-unit-leg-20261009.",
+  "context": "Root causes diagnosed 2026-10-13/14 from nightly.yml run 38404921532 evidence (handoff section 0.5): (1) run_power_test did a function-local `import time`, defeating the test's runner.time monkeypatch; Windows time.time() granularity puts 99 instant mock queries inside one tick, so total_time is exactly 0.0 and power stays 0.0. Proven with a frozen-clock probe in /tmp. (2) get_binary_path returns an existing-but-extensionless qgen on Windows and the test execs bare `qgen`, which Windows cannot resolve (WinError 2). (3) ClickHouseLocalAdapter raises ImportError when chdb is absent; the test only patched the server-mode dep check. Branch fix/windows-unit-failures in ../BenchBox.wt-windows-unit-failures implemented all three narrowly with local tests green (62 + 41 + 26 passed; ruff clean; pr-preflight 199 passed).\n\n2026-10-14 closeout: oracle verdict \"no soundness path changed\" (run 38557921062), oracle-review pass, full CI green (run 38557921012, CLEAN); merged via PR #2959 as 790a5065f6b64ae4ddf4595c70642a716871bdf3 at 2026-10-14T12:11:56Z. Acceptance 4 (nightly Windows leg green) still needs a post-merge nightly run; closing the code item now, leg evidence follows on nightly-v2-windows-unit-leg-20261009.",
   "description": "Three Windows-only unit failures (TPC-DS power clock, bundled qgen lookup, chDB import) fail the nightly Windows legs with no owning item. Fix narrowly: drop the shadowing local import, skip when the binary is not runnable, skip when chDB is absent.",
   "sessions": [
     {
@@ -23,6 +23,14 @@
       "generation": "5fb59fc0c213401681e2b50eb5f65eff",
       "op": "take",
       "op_id": "e4f4b98a01d4430c96822848ded36f1e",
+      "session_id": "10b6ed539f7e4998b1290031a09d7b39"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:ee5a973726de839c8eab56eb",
+      "at": "2026-10-14T12:12:38Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "a91a8dd42c814263a4cd249c18588747",
       "session_id": "10b6ed539f7e4998b1290031a09d7b39"
     }
   ]
