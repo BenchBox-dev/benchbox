@@ -23646,17 +23646,12 @@
       "title": "Tuning coverage matrix drift check only flags downgrades; make it exact and fix stale docs"
     },
     "tuning-ctas-rewrite-safety-20261001": {
-      "claim": {
-        "expires_at": "2026-10-15T20:20:19Z",
-        "generation": "3dd0ebfd5cd1477da59a7000319e49cf",
-        "renewals": 0,
-        "worker": "mcp:codex-mcp-client:joe@joe-mac-mini.local:8c48d410c864b9ee396035f0"
-      },
+      "claim": null,
       "needs": [
         "tuning-post-load-seam-20261001"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "Make CTAS sort rewrites safe: Athena self-targeting CTAS, Synapse orphan copy, Redshift layout loss, Snowflake/Databricks guards"
     },
     "tuning-df-ledger-parity-20260716": {
