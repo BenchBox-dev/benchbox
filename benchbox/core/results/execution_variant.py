@@ -14,8 +14,10 @@ from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 
 UNKNOWN = "unknown"
 LEGACY_STREAMING_ENGINE = "streaming"
+_POLARS_DATAFRAME_PLATFORM_ID = "polars-df"
 _TRUE_STRINGS = frozenset({"true", "1", "yes", "on"})
 _ATHENA_PLATFORM_NAME = "athena"
+_NULLABLE_RECEIPT_KEYS = frozenset({"applied", "applied_class"})
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:
@@ -32,7 +34,11 @@ def execution_engine_payload(receipt: Any) -> dict[str, Any]:
     record = _record(receipt)
     if not record.get("requested"):
         return {}
-    payload = {key: value for key, value in record.items() if value is not None and value != {}}
+    payload = {
+        key: value
+        for key, value in record.items()
+        if key in _NULLABLE_RECEIPT_KEYS or (value is not None and value != {})
+    }
     if isinstance(payload.get("applied_native"), Mapping):
         payload["applied_native"] = dict(payload["applied_native"])
     return payload
@@ -51,9 +57,11 @@ def _is_true(value: Any) -> bool:
     return isinstance(value, str) and value.strip().lower() in _TRUE_STRINGS
 
 
-def _legacy_streaming_requested(bundle: Mapping[str, Any], platform_config: Mapping[str, Any]) -> bool:
+def _legacy_streaming_requested(bundle: Mapping[str, Any]) -> bool:
+    if _variant_platform_id(bundle) != _POLARS_DATAFRAME_PLATFORM_ID:
+        return False
     platform_options = _mapping(_mapping(bundle.get("config")).get("platform_options"))
-    return _is_true(platform_options.get("streaming")) or _is_true(platform_config.get("streaming"))
+    return _is_true(platform_options.get("streaming"))
 
 
 def read_execution_engine(bundle: Mapping[str, Any]) -> dict[str, Any]:
@@ -69,7 +77,7 @@ def read_execution_engine(bundle: Mapping[str, Any]) -> dict[str, Any]:
         reading.update(requested=engine_requested, resolution="explicit")
     elif engine_requested == DEFAULT_EXECUTION_ENGINE:
         reading["resolution"] = "version_default"
-    elif _legacy_streaming_requested(bundle, platform_config):
+    elif _legacy_streaming_requested(bundle):
         reading.update(requested=LEGACY_STREAMING_ENGINE, resolution="legacy_option")
     else:
         requested = _mapping(bundle.get("config")).get("execution_engine")

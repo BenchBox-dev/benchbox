@@ -17,7 +17,7 @@ from benchbox.core.platform_registry import PlatformRegistry
 from benchbox.core.results.anonymization import AnonymizationManager
 from benchbox.core.results.builder import RunConfigInput
 from benchbox.core.results.environment import PlatformComputeMetadata, PlatformDeploymentMetadata
-from benchbox.core.results.execution_variant import published_variant_id
+from benchbox.core.results.execution_variant import published_variant_id, read_execution_engine
 from benchbox.core.results.loader import load_result_file, reconstruct_benchmark_results
 from benchbox.core.results.models import QueryExecution
 from benchbox.core.results.schema import SchemaV2Validator, build_result_payload
@@ -67,7 +67,20 @@ def test_suffix_helper_keeps_the_caller_base_and_manifest_default_deployment():
             "polars+streaming",
         ),
         ({"name": "Polars", "config": {"engine_requested": "streaming"}}, {}, "polars+streaming"),
-        ({"name": "Polars"}, {"platform_options": {"streaming": True}}, "polars+streaming"),
+        (
+            {"name": "Polars"},
+            {"mode": "dataframe", "platform_options": {"streaming": True}},
+            "polars+streaming",
+        ),
+        ({"name": "Polars"}, {"mode": "dataframe", "platform_options": {"streaming": False}}, "polars"),
+        ({"name": "Polars"}, {"mode": "sql", "platform_options": {"streaming": True}}, "polars"),
+        (
+            {"name": "Polars", "config": {"streaming": True}},
+            {"mode": "dataframe"},
+            "polars",
+        ),
+        ({"name": "DuckDB"}, {"mode": "sql", "platform_options": {"streaming": True}}, "duckdb"),
+        ({"name": "Pandas"}, {"mode": "dataframe", "platform_options": {"streaming": True}}, "pandas"),
         ({"name": "Apache Doris", "variant": "doris"}, {"mode": "sql"}, "apache-doris"),
         (
             {"name": "Snowflake", "gateway": {"name": "greybeam", "routed": True}, "deployment": {"selected": "x"}},
@@ -223,7 +236,8 @@ def test_native_receipt_cannot_leak_credentials_at_producer_boundary():
     ],
 )
 def test_legacy_requested_mapping_does_not_invent_execution(platform_config, options, requested, resolution):
-    bundle = make_v2_result_dict(version="2.2", config={"platform_options": options})
+    bundle = make_v2_result_dict(version="2.2", config={"mode": "dataframe", "platform_options": options})
+    bundle["platform"]["name"] = "Polars"
     bundle["platform"]["config"] = platform_config
     original = copy.deepcopy(bundle)
     loaded = reconstruct_benchmark_results(bundle)
@@ -296,3 +310,70 @@ def test_public_vocabulary_privacy_and_fixed_point():
     assert published["platform"]["compute"] == {"resource_kind": "warehouse", "size": "small"}
     assert all(value.startswith("engine_") for value in published["platform"]["config"].values())
     assert manager.anonymize_result_payload(published) == published
+
+
+@pytest.mark.parametrize(
+    ("platform", "config", "requested", "resolution"),
+    [
+        ("Polars", {"mode": "dataframe", "platform_options": {"streaming": "true"}}, "streaming", "legacy_option"),
+        ("Polars", {"mode": "dataframe", "platform_options": {"streaming": False}}, "default", None),
+        ("Polars", {"mode": "sql", "platform_options": {"streaming": True}}, "default", None),
+        ("DuckDB", {"mode": "sql", "platform_options": {"streaming": True}}, "default", None),
+        ("Pandas", {"mode": "dataframe", "platform_options": {"streaming": True}}, "default", None),
+    ],
+)
+def test_legacy_streaming_option_is_read_only_for_polars_dataframe(platform, config, requested, resolution):
+    reading = read_execution_engine({"platform": {"name": platform}, "config": config})
+    assert reading["requested"] == requested
+    assert reading.get("resolution") == resolution
+
+
+def test_legacy_streaming_reads_only_the_recorded_platform_option():
+    bundle = {
+        "platform": {"name": "Polars", "config": {"streaming": True}},
+        "config": {"mode": "dataframe", "platform_options": {}},
+    }
+    assert read_execution_engine(bundle)["requested"] == "default"
+
+
+def test_recorded_default_receipt_wins_over_the_legacy_option():
+    recorded = {
+        "requested": "default",
+        "applied": None,
+        "applied_class": None,
+        "resolution": "platform_default",
+        "observed": "not_captured",
+        "observed_source": "none",
+    }
+    bundle = {
+        "platform": {"name": "Polars", "execution_engine": recorded},
+        "config": {"mode": "dataframe", "platform_options": {"streaming": True}},
+    }
+    assert read_execution_engine(bundle) == recorded
+
+
+def test_default_receipt_keeps_its_null_applied_fields_in_the_bundle():
+    result = make_benchmark_results(
+        platform="duckdb",
+        platform_info={
+            "execution_mode": "sql",
+            "execution_engine": ExecutionEngineReceipt(
+                requested="default", applied=None, applied_class=None, resolution="platform_default"
+            ),
+        },
+    )
+    payload = build_result_payload(result)
+    SchemaV2Validator().validate(payload)
+    assert payload["platform"]["execution_engine"] == {
+        "requested": "default",
+        "applied": None,
+        "applied_class": None,
+        "resolution": "platform_default",
+        "observed": "not_captured",
+        "observed_source": "none",
+    }
+    assert payload["platform"]["variant"] == "duckdb"
+    anonymized = AnonymizationManager().anonymize_result_payload(payload)
+    assert anonymized["platform"]["execution_engine"] == payload["platform"]["execution_engine"]
+    loaded = reconstruct_benchmark_results(payload)
+    assert loaded.execution_engine == payload["platform"]["execution_engine"]

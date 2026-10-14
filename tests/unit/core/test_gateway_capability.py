@@ -169,7 +169,7 @@ def test_gateway_connection_options_are_typed() -> None:
 
 def test_variants_comparable() -> None:
     def bundle(platform: dict, config: dict | None = None) -> dict:
-        return {"platform": {"name": "Snowflake", **platform}, "config": config or {}}
+        return {"platform": {"name": "Polars", **platform}, "config": {"mode": "dataframe", **(config or {})}}
 
     run_native = bundle({"execution_engine": {"requested": "default"}})
     run_espresso = bundle({"gateway": {"name": "espresso", "routed": True}})

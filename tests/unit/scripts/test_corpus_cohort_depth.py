@@ -262,7 +262,7 @@ def test_legacy_streaming_option_reads_through_the_core_legacy_reader(tmp_path: 
     (tmp_path / "matrix.json").write_text(json.dumps(payload), encoding="utf-8")
     _write_bundle(tmp_path, "option.json", benchmark="tpch", scale=1.0, platform="Polars")
     payload = json.loads((tmp_path / "option.json").read_text(encoding="utf-8"))
-    payload["config"] = {"platform_options": {"streaming": True}}
+    payload["config"] = {"mode": "dataframe", "platform_options": {"streaming": True}}
     (tmp_path / "option.json").write_text(json.dumps(payload), encoding="utf-8")
 
     assert validator.cohort_platforms(validator.discover_bundles(tmp_path)) == {("tpch", "1.0"): {"polars+streaming"}}
