@@ -1243,15 +1243,17 @@ class SnowflakeAdapter(PlatformAdapter):
             result_dict["resource_usage"] = query_stats
 
             if result_dict["status"] == "FAILED":
-                self.log_operation_complete("Snowflake query execution", query_id, "FAILED: validation error")
+                self.log_operation_complete("Snowflake query execution", execution_time, "FAILED: validation error")
             else:
                 self.log_verbose(f"Query {query_id} completed: {actual_row_count} rows in {execution_time:.3f}s")
-                self.log_operation_complete("Snowflake query execution", query_id, f"returned {actual_row_count} rows")
+                self.log_operation_complete(
+                    "Snowflake query execution", execution_time, f"returned {actual_row_count} rows"
+                )
 
         except Exception as e:
             execution_time = elapsed_seconds(start_time)
             self.log_verbose(f"Query {query_id} failed after {execution_time:.3f}s: {e}")
-            self.log_operation_complete("Snowflake query execution", query_id, f"FAILED: {e}")
+            self.log_operation_complete("Snowflake query execution", execution_time, f"FAILED: {e}")
 
             return {
                 "query_id": query_id,
