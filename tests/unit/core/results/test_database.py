@@ -140,6 +140,65 @@ class TestResultDatabase:
             version = cursor.fetchone()[0]
             assert version == SCHEMA_VERSION
 
+    def test_open_upgrades_lowercase_validation_status_rows(self, tmp_path):
+        db_path = tmp_path / "legacy.db"
+        db = ResultDatabase(db_path)
+        now = datetime.now(timezone.utc)
+        for execution_id, geometric_mean in (("legacy-a", 0.1), ("legacy-b", 0.2), ("legacy-c", 0.3)):
+            db.store_result(
+                make_benchmark_results(
+                    benchmark_name="TPC-H",
+                    platform=f"Platform-{execution_id}",
+                    execution_id=execution_id,
+                    scale_factor=1.0,
+                    timestamp=now,
+                    total_queries=22,
+                    successful_queries=22,
+                    validation_status="PASSED",
+                    geometric_mean_execution_time=geometric_mean,
+                )
+            )
+        with sqlite3.connect(db_path) as conn:
+            conn.execute(
+                "UPDATE results SET validation_status = 'passed' WHERE execution_id IN ('legacy-a', 'legacy-b')"
+            )
+            conn.execute("UPDATE results SET validation_status = 'Failed' WHERE execution_id = 'legacy-c'")
+            conn.execute("UPDATE schema_version SET version = 2")
+            conn.commit()
+
+        reopened = ResultDatabase(db_path)
+        with sqlite3.connect(db_path) as conn:
+            statuses = dict(conn.execute("SELECT execution_id, validation_status FROM results").fetchall())
+            version = conn.execute("SELECT version FROM schema_version").fetchone()[0]
+        assert statuses == {"legacy-a": "PASSED", "legacy-b": "PASSED", "legacy-c": "FAILED"}
+        assert version == SCHEMA_VERSION
+        ranked = {entry.platform for entry in reopened.calculate_rankings("TPC-H", 1.0)}
+        assert ranked == {"Platform-legacy-a", "Platform-legacy-b"}
+
+        ResultDatabase(db_path)
+        with sqlite3.connect(db_path) as conn:
+            assert dict(conn.execute("SELECT execution_id, validation_status FROM results").fetchall()) == statuses
+
+    def test_store_result_normalizes_status_and_filters_ignore_case(self, tmp_path):
+        db = ResultDatabase(tmp_path / "status.db")
+        db.store_result(
+            make_benchmark_results(
+                benchmark_name="TPC-H",
+                platform="DuckDB",
+                execution_id="lower",
+                scale_factor=1.0,
+                total_queries=1,
+                successful_queries=1,
+                validation_status="passed",
+                geometric_mean_execution_time=0.1,
+            )
+        )
+
+        assert [r.validation_status for r in db.query_results()] == ["PASSED"]
+        assert len(db.query_results(validation_status="passed")) == 1
+        assert len(db.query_results(validation_status="PASSED")) == 1
+        assert [r.platform for r in db.calculate_rankings("TPC-H", 1.0)] == ["DuckDB"]
+
     def test_foreign_keys_enabled_on_every_connection(self, tmp_path):
         db = ResultDatabase(tmp_path / "test.db")
 
