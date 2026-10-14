@@ -1281,6 +1281,7 @@ def _dry_run_build_db_config(s: types.SimpleNamespace, db_manager: DatabaseManag
             overrides,
             deployment_selector=getattr(s, "deployment_selector", None),
             gateway_selector=getattr(s, "gateway", None),
+            explicit_option_keys=getattr(s, "explicit_platform_option_keys", ()),
         )
     except PlatformOptionError as exc:
         console.print(f"[red]❌ {exc}[/red]")
@@ -1333,6 +1334,7 @@ def _run_direct(s: types.SimpleNamespace) -> None:
             overrides,
             deployment_selector=getattr(s, "deployment_selector", None),
             gateway_selector=getattr(s, "gateway", None),
+            explicit_option_keys=getattr(s, "explicit_platform_option_keys", ()),
         )
     except PlatformOptionError as exc:
         console.print(f"[red]❌ {exc}[/red]")
@@ -1497,6 +1499,7 @@ def _data_or_load_build_db_config(s: types.SimpleNamespace, db_manager: Database
             overrides,
             deployment_selector=getattr(s, "deployment_selector", None),
             gateway_selector=getattr(s, "gateway", None),
+            explicit_option_keys=getattr(s, "explicit_platform_option_keys", ()),
         )
     except PlatformOptionError as exc:
         console.print(f"[red]❌ {exc}[/red]")
@@ -1802,6 +1805,7 @@ def _interactive_try_quick_restart(s: types.SimpleNamespace) -> bool:
         {**s.verbosity_payload, "force_recreate": _force_recreate_requested(s), **_tuning_override_entries(s)},
         deployment_selector=getattr(s, "deployment_selector", None),
         gateway_selector=getattr(s, "gateway", None),
+        explicit_option_keys=getattr(s, "explicit_platform_option_keys", ()),
     )
     promote_tuning_provenance(s.database_config, s.tuning_enabled, s.tuning_source_value, s.tuning_template_ref)
 

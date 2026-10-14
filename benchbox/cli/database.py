@@ -5,13 +5,13 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any, Literal
 
 from rich.prompt import Prompt
 from rich.table import Table
 
-import benchbox.cli.platform_defaults as _platform_defaults  # noqa: F401
 from benchbox.core.databases.manager import check_connection as core_check_connection
 from benchbox.core.platform_registry import PlatformRegistry
 from benchbox.core.results.platform_options import sanitize_platform_options
@@ -337,6 +337,7 @@ class DatabaseManager:
         runtime_overrides: dict[str, Any] | None = None,
         deployment_selector: str | None = None,
         gateway_selector: str | None = None,
+        explicit_option_keys: Iterable[str] = (),
     ) -> DatabaseConfig:
 
         platform_lower = platform.lower()
@@ -361,8 +362,9 @@ class DatabaseManager:
         overrides = self.verbosity.to_config()
         if runtime_overrides:
             overrides.update(runtime_overrides)
-        explicit_only = {k: v for k, v in platform_options.items() if defaults.get(k) != v} if platform_options else {}
-        overrides["_explicit_platform_options"] = explicit_only
+        overrides["_explicit_platform_options"] = PlatformHookRegistry.explicit_option_layer(
+            platform_options, explicit_option_keys
+        )
         if deployment_selector is not None:
             overrides["_deployment_selector"] = deployment_selector
 

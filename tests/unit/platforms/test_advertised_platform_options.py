@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-import benchbox.cli.platform_defaults
+import benchbox.platforms
 from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
 from benchbox.platforms.manifest import PLATFORM_MANIFEST
 

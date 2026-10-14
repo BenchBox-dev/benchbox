@@ -207,33 +207,8 @@ def test_cloud_adapter_get_platform_info_emits_cloud_deployment() -> None:
 
 
 def test_platform_hook_registry_default_matches_normalizer_default() -> None:
+    from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
 
-    import ast
-    from pathlib import Path
+    spec = PlatformHookRegistry.list_option_specs("clickhouse")["deployment_mode"]
 
-    defaults_path = Path(__file__).resolve().parents[3] / "benchbox" / "cli" / "platform_defaults.py"
-    source = defaults_path.read_text()
-
-    tree = ast.parse(source)
-    found_default = None
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Call) and any(
-            isinstance(kw.value, ast.Constant) and kw.value.value == "deployment_mode"
-            for kw in node.keywords
-            if kw.arg == "name"
-        ):
-            for kw in node.keywords:
-                if kw.arg == "default" and isinstance(kw.value, ast.Constant):
-                    found_default = kw.value.value
-                    break
-            if found_default is not None:
-                break
-
-    assert found_default is not None, (
-        "Could not find PlatformOptionSpec(name='deployment_mode') in platform_defaults.py. "
-        "The clickhouse platform option registration must be in benchbox/cli/platform_defaults.py."
-    )
-
-    assert found_default in ("server", "local"), (
-        f"Unexpected deployment_mode default '{found_default}' in platform_defaults.py"
-    )
+    assert spec.default in ("server", "local")

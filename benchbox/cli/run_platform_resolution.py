@@ -3,7 +3,6 @@ from __future__ import annotations
 import importlib.util
 import logging
 import types
-from collections.abc import Iterable
 from typing import Any
 
 import click
@@ -183,9 +182,13 @@ def _parse_plat_bench_options(s: types.SimpleNamespace) -> None:
         s.ctx.exit(1)
 
     s.parsed_platform_options = {}
+    s.explicit_platform_option_keys = frozenset()
     if s.platform_key:
         try:
             s.parsed_platform_options = PlatformHookRegistry.parse_options(s.platform_key, s.platform_option_pairs)
+            s.explicit_platform_option_keys = PlatformHookRegistry.supplied_option_keys(
+                s.platform_key, s.platform_option_pairs
+            )
         except PlatformOptionError as exc:
             console.print(f"[red]❌ {exc}[/red]")
             if s.logger:
@@ -245,7 +248,7 @@ def _platform_option_sources_for_state(s: types.SimpleNamespace) -> dict[str, st
     if not s.platform_key or not s.parsed_platform_options:
         return {}
 
-    explicit_keys = _explicit_platform_option_keys(s.platform_key, s.platform_option_pairs or ())
+    explicit_keys = PlatformHookRegistry.supplied_option_keys(s.platform_key, s.platform_option_pairs or ())
     defaults = PlatformHookRegistry.get_default_options(s.platform_key)
     sources: dict[str, str] = {}
     for key in s.parsed_platform_options:
@@ -256,16 +259,6 @@ def _platform_option_sources_for_state(s: types.SimpleNamespace) -> dict[str, st
         else:
             sources[key] = "requested"
     return sources
-
-
-def _explicit_platform_option_keys(platform_key: str, pairs: Iterable[tuple[str, str]]) -> set[str]:
-    specs = PlatformHookRegistry.list_option_specs(platform_key)
-    alias_index = {alias.lower(): name for name, spec in specs.items() for alias in spec.aliases}
-    explicit: set[str] = set()
-    for key, _value in pairs:
-        normalized = key.lower()
-        explicit.add(normalized if normalized in specs else alias_index.get(normalized, normalized))
-    return explicit
 
 
 def _platform_option_config_entries(s: types.SimpleNamespace) -> dict[str, Any]:

@@ -804,9 +804,6 @@
           "path": "benchbox/cli/platform_checks.py"
         },
         {
-          "path": "benchbox/cli/platform_defaults.py"
-        },
-        {
           "path": "benchbox/cli/platform_hooks.py"
         },
         {
@@ -4001,16 +3998,6 @@
     }
   ],
   "directives": [
-    {
-      "path": "benchbox/cli/app.py",
-      "token": "# noqa: F401",
-      "count": 1,
-      "consumer": "Ruff rule F401",
-      "necessity": "The import runs benchbox.cli.platform_defaults only for its module-level platform hook registrations; the imported name is otherwise unused.",
-      "alternative": "Have the entrypoint call an explicit registration function; platform_defaults has none today, so that is an executable change.",
-      "owner": "comment-cleanup-cli-foundation",
-      "removal_trigger": "Default platform hooks register through an explicit function that the CLI entrypoint calls."
-    },
     {
       "path": "_project/scripts/platform_manifest.py",
       "token": "# noqa: N815",

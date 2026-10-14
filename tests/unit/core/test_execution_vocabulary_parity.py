@@ -35,7 +35,7 @@ class Registration(NamedTuple):
 
 
 def _import_adapter_modules() -> None:
-    for module in ("benchbox.platforms", "benchbox.cli.platform_defaults"):
+    for module in ("benchbox.platforms",):
         importlib.import_module(module)
     for entry in PLATFORM_MANIFEST:
         if entry.adapter is not None:
