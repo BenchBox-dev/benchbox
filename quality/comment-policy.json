@@ -37914,6 +37914,19 @@
       "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
     },
     {
+      "path": "tests/unit/workflows/test_nightly_t3_workflow.py",
+      "symbol": "_run_workflow_script",
+      "text": "unresolved executable source: '-o'",
+      "payload": "sha256:a8a0913d4e8c0eda6ebc45115a41844cfed2984d4e55b3dc19979f742c0e84cb",
+      "finding_kind": "payload-error",
+      "kind": "fixture",
+      "consumer": "tests/unit/workflows/test_nightly_t3_workflow.py",
+      "necessity": "Pre-registered for the mirror skopeo tag fix, which updates the copy-source assertion and adds a tag-drop regression test in this file and changes its AST digest. Same fixture as above: the test starts a subprocess whose program or inline source ('-o') is assembled at runtime.",
+      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
+      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
+      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
+    },
+    {
       "path": "tests/unit/workflows/test_public_site_visual_workflow.py",
       "symbol": "test_baseline_candidates_stop_at_the_first_site_input_change",
       "text": "unresolved executable source: classifier",
