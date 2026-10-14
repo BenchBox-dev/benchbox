@@ -4,7 +4,7 @@
     "A legacy non-Polars bundle with streaming=true keeps its plain variant id",
     "Published results-data bytes and result_ids unchanged"
   ],
-  "context": "Found by the 2026-10-13 adversarial review of the core execution-variants batch (Polars blind spot, results O2). Not covered by the remediation; verified on develop 9400b62c4.",
+  "context": "Found by the 2026-10-13 adversarial review of the core execution-variants batch (Polars blind spot, results O2). Not covered by the remediation; verified on develop 9400b62c4.\nBatch: _project/handoffs/polars-engine-followups-batch-20261014.md, started 2026-10-14",
   "description": "## Problem\n- **No receipt on platforms without declared engines.** DuckDB and other 2.3 bundles from such platforms have no `platform.execution_engine` block (`core/results/schema.py:598-604`). Only pg-duckdb, Polars, Dask, Databricks and Velox build receipts (`polars_platform.py:162`, `pg_duckdb.py:149`, `dask_df.py:123`, `polars_df.py:90`).\n  - ADR D2-D4 call for a `platform_default` receipt (D3 at `adr-core-execution-variants.md:190-193`).\n  - Without one, a new DuckDB bundle cannot be told apart from a pre-2.3 bundle.\n- **The legacy streaming fallback is too broad.** `read_execution_engine` (`core/results/execution_variant.py:54-56,59-79`) applies it to any platform. Probe: a DuckDB bundle gives `duckdb+streaming`.\n  - It also reads `platform.config.streaming`, which ADR D6 (`:311-315`) does not list.\n  - So a legacy non-Polars bundle, or a 0.4.2 SQL-Polars bundle where streaming was a no-op, would get a `+streaming` identity. No committed results-data is affected today.\n\n## Change\n- Emit a default receipt from the base adapter or the schema writer.\n- Limit the legacy fallback to Polars DataFrame bundles and to `platform_options.streaming`. Drop the `config.streaming` source, or record it in D6.",
   "links": [
     "benchbox/core/results/execution_variant.py",
@@ -18,6 +18,14 @@
       "client": "claude-code",
       "op": "create",
       "op_id": "870a79b445d04f6caaf9c66094814138",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-14T13:44:18Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "934a880e832c41a9b565206e9c0f04be",
       "session_id": "18469f668aeb45d59c8d4c94d2f79433"
     }
   ]
