@@ -146,6 +146,7 @@ tests/unit/scripts/test_scan_explorer_tokens.py
 tests/unit/scripts/test_scheduled_workflow_liveness.py
 tests/unit/scripts/test_shrink_rollup.py
 tests/unit/scripts/test_site_inputs.py
+tests/unit/scripts/test_site_inputs_parent.py
 tests/unit/scripts/test_site_inventory.py
 tests/unit/scripts/test_skill_sync_ci_policy.py
 tests/unit/scripts/test_soundness_merge_digest.py
@@ -195,6 +196,7 @@ tests/unit/workflows/test_results_explorer_dependency_audit.py
 tests/unit/workflows/test_results_explorer_publication.py
 tests/unit/workflows/test_seed_corpus_pr_base.py
 tests/unit/workflows/test_site_deploy.py
+tests/unit/workflows/test_site_inputs_workflow.py
 tests/unit/workflows/test_stacked_pr_base_guard.py
 tests/unit/workflows/test_t2_partition_workflow.py
 tests/unit/workflows/test_trunk_workflow.py

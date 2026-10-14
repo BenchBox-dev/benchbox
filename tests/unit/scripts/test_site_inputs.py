@@ -377,22 +377,34 @@ def _site_inputs_workflow() -> str:
     return (ROOT / ".github/workflows/site-inputs.yml").read_text(encoding="utf-8")
 
 
+def _site_inputs_parent_script() -> str:
+    return (ROOT / "scripts/site_inputs_parent.py").read_text(encoding="utf-8")
+
+
 def test_parent_candidates_come_only_from_develop_runs() -> None:
-    assert "gh run list --workflow site-inputs.yml --branch develop --status success" in _site_inputs_workflow()
+    assert "scripts/site_inputs_parent.py" in _site_inputs_workflow()
+    assert "gh run list --workflow site-inputs.yml" not in _site_inputs_workflow()
+    script = _site_inputs_parent_script()
+    assert "--branch" in script and "develop" in script
+    assert "branch=develop" in script
 
 
 def test_parent_selection_fails_closed_without_a_bundled_ancestor() -> None:
     workflow = _site_inputs_workflow()
     assert "~1" not in workflow
-    assert "parent_source=dispatch" in workflow
-    assert workflow.count("parent_source=bundle") == 2
+    script = _site_inputs_parent_script()
+    assert '"dispatch"' in script
+    assert script.count('"bundle"') >= 2
+    assert "dispatch site-inputs.yml with parent_core_sha" in script
 
 
 def test_dispatched_parent_is_resolved_to_a_full_commit_sha() -> None:
-    workflow = _site_inputs_workflow()
-    assert 'git rev-parse --verify --end-of-options "${DISPATCH_PARENT}^{commit}"' in workflow
-    assert "^[0-9a-f]{40}$" in workflow
-    assert 'grep -qxF "$DISPATCH_PARENT"' in workflow
+    script = _site_inputs_parent_script()
+    assert "rev-parse" in script
+    assert "--verify" in script
+    assert "--end-of-options" in script
+    assert "^[0-9a-f]{40}$" in script
+    assert "does not name a commit" in script
 
 
 def test_parent_ref_resolves_to_a_full_commit_sha() -> None:

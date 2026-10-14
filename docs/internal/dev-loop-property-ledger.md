@@ -140,6 +140,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_results_explorer_publication.py` | product-safety | Explorer publication |
 | `test_seed_corpus_pr_base.py` | product-safety | Corpus seeding |
 | `test_site_deploy.py` | product-safety | Site-deploy workflow contract |
+| `test_site_inputs_workflow.py` | product-safety | Site-inputs parent resolution by SHA |
 | `test_stacked_pr_base_guard.py` | pure-process | Stacked-PR base mechanics |
 | `test_validate_submission_changed_bundles.py` | product-safety | Submission validation |
 | `test_validate_submission_comment_security.py` | product-safety | Submission comment security |
@@ -251,6 +252,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_scheduled_workflow_liveness.py` | tooling |
 | `test_shrink_rollup.py` | pure-process |
 | `test_site_inputs.py` | product-safety | Site-inputs bundle manifest, digests and verify |
+| `test_site_inputs_parent.py` | product-safety | Site-inputs parent resolution by SHA |
 | `test_site_inventory.py` | product-safety |
 | `test_skill_sync_ci_policy.py` | tooling |
 | `test_soundness_merge_digest.py` | product-safety | Post-merge soundness review digest |
@@ -352,6 +354,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `assemble_public_site.py` | product-safety | Public-site assembly and privacy scan |
 | `generate_landing_quickstarts.py` | product-safety | Landing quickstart generation |
 | `site_inputs.py` | product-safety | Site-inputs bundle build and verify |
+| `site_inputs_parent.py` | product-safety | Site-inputs parent resolution by SHA |
 | `check_doc_relative_links.py` | tooling | Docs hygiene |
 | `check_duplicate_code.py` | tooling | Hygiene |
 | `check_windows_antipatterns.py` | tooling | Hygiene |
