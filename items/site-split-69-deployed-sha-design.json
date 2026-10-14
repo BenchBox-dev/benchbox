@@ -1,4 +1,5 @@
 {
+  "context": "Re-homed from item 63 (2026-10-14): the last-built vs last-deployed parent decision lives here. Production evidence: the chain healed through manual recovery (dispatch 38521589047 parented on last-deployed c660e615 after 24 intervening runs; deploy 38529975983 green), which says manual recovery works but does not settle the steady-state rule. Design must also account for a live finding from item 63: the site's deployed generation is global to the github-pages environment (deploy/lib/github.ts recordedReceipts reads all deployments for the environment with no target filter), so a rehearsal deploy moves production's parity baseline; the steady-state rule and any per-target scoping belong in this design.",
   "description": "Item 63 needs bundle parents to follow the last deployed core SHA, but core has no channel that tells it the deployed SHA from the site side. Until this design lands, items 61 and 62 are the recovery path. Work: specify the source of truth on the site side, how core reads it at bundle build time, authentication and failure behavior, and who owns the value. Owner authorized creating this item on 2026-10-13 and confirmed the merge pause until item 61 lands.",
   "sessions": [
     {
@@ -15,6 +16,14 @@
       "client": "tbh",
       "op": "update",
       "op_id": "597c82d53d8a42a0acbfcb2ffcc8ae89",
+      "session_id": "63fb16e6ece34adb91d17cdd1e1f2310"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:2ddfad0386e20e3a0ffba40a",
+      "at": "2026-10-14T11:00:53Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "d5aec5649a51483fb9e2c5350e5cf149",
       "session_id": "63fb16e6ece34adb91d17cdd1e1f2310"
     }
   ]
