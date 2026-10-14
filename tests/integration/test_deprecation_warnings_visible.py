@@ -126,12 +126,18 @@ def test_mcp_server_warns_once_per_run(
     }
 
     per_run: list[list[str]] = []
+    responses: list[dict] = []
     for _ in range(2):
         with captured_deprecations(caplog) as seen:
             response = call_tool(server, "run_benchmark", **request)
         assert response["mcp_metadata"]["status"] == "completed", response
         assert response["platform"]["execution_engine"]["resolution"] == "legacy_option"
         per_run.append(seen)
+        responses.append(response)
 
     assert [len(seen) for seen in per_run] == [1, 1], per_run
     assert "Platform option 'streaming' for 'polars'" in per_run[1][0]
+    for response in responses:
+        assert [entry["option"] for entry in response["deprecations"]] == ["streaming"]
+        assert response["deprecations"][0]["replacement"] == "execution_engine='streaming'"
+        assert response["deprecations"][0]["removed_in"] == "0.6.0"

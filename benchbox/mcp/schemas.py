@@ -11,16 +11,19 @@ import os
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from benchbox.core.constants import MCP_DATA_ONLY_ALIASES, MCP_MODE_CHOICES, VALID_PHASES
+
+if TYPE_CHECKING:
+    from benchbox.core.deployment import PlatformSelector
 
 logger = logging.getLogger(__name__)
 
 MAX_QUERY_IDS = 100
 MAX_QUERY_ID_LENGTH = 64
 QUERY_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
-PLATFORM_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
+PLATFORM_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+(?::[a-zA-Z0-9_-]+)?$")
 BENCHMARK_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
 FILENAME_PATTERN = re.compile(r"^[a-zA-Z0-9_.-]+$")
 PLATFORM_OPTION_NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
@@ -29,6 +32,10 @@ IDENTIFIER_LIST_PATTERN = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*(?:,[a-zA-Z_][a-zA
 CLICKHOUSE_PROFILE_NAME_PATTERN = PLATFORM_OPTION_NAME_PATTERN
 
 MCP_CLICKHOUSE_PROFILE_ENV = "BENCHBOX_MCP_CLICKHOUSE_PROFILES"
+
+MCP_REJECTED_DEPLOYMENT_SELECTORS: dict[str, frozenset[str]] = {
+    "velox": frozenset({"remote"}),
+}
 
 MAX_PLATFORM_OPTIONS = 16
 MAX_PLATFORM_OPTION_VALUE_LENGTH = 256
@@ -181,9 +188,8 @@ MCP_PLATFORM_OPTION_CONTRACT: dict[str, dict[str, MCPPlatformOptionContract]] = 
     "clickhouse": {
         "connection_profile": _CLICKHOUSE_PROFILE_CONTRACT,
         "deployment_mode": _contract(
-            "Deprecated alias of --platform clickhouse:local|server, resolved through the core deployment selector",
+            "Deprecated alias of the clickhouse:local|server platform name, resolved through the core deployment selector",
             "connection",
-            aliases=("mode",),
         ),
     },
     "clickhouse-server": {
@@ -317,14 +323,27 @@ def resolve_clickhouse_connection_profile(name: str) -> dict[str, object]:
     return dict(profile)
 
 
+def _resolved_clickhouse_deployment(normalized: Mapping[str, object]) -> str | None:
+    from benchbox.core.deployment import normalize_deployment_value
+    from benchbox.core.platform_registry import PlatformRegistry
+
+    requested = normalized.get("deployment_mode")
+    if requested is None:
+        return PlatformRegistry.get_default_deployment("clickhouse")
+    return normalize_deployment_value("clickhouse", requested)
+
+
 def _validate_clickhouse_options(platform: str, normalized: Mapping[str, object]) -> None:
     profile = normalized.get("connection_profile")
     if profile is None:
         return
     if not CLICKHOUSE_PROFILE_NAME_PATTERN.fullmatch(str(profile)):
         raise MCPValidationError("Platform option 'connection_profile' must be a lowercase snake_case profile name")
-    if platform == "clickhouse" and normalized.get("deployment_mode") != "server":
-        raise MCPValidationError("Platform option 'connection_profile' requires deployment_mode='server'")
+    if platform == "clickhouse" and _resolved_clickhouse_deployment(normalized) != "server":
+        raise MCPValidationError(
+            "Platform option 'connection_profile' requires the server deployment: "
+            "use platform 'clickhouse:server' or 'clickhouse-server'"
+        )
     resolve_clickhouse_connection_profile(str(profile))
 
 
@@ -430,7 +449,7 @@ def _validate_dask_options(normalized: Mapping[str, object]) -> None:
 
 
 def resolve_platform_policy_key(platform: str) -> str:
-    name = validate_platform_name(platform)
+    name = validate_platform_selector(platform).platform
     if name not in MCP_PLATFORM_OPTION_ALLOWLIST and name.endswith("-df"):
         return name[:-3]
     return name
@@ -480,7 +499,7 @@ def validate_execution_engine(platform: str, value: object | None) -> str:
     if not isinstance(value, str) or not value.strip():
         raise MCPValidationError("execution_engine must be a non-empty string")
     try:
-        return resolve_requested(platform, value.strip())
+        return resolve_requested(validate_platform_selector(platform).platform, value.strip())
     except UnsupportedExecutionEngineError as exc:
         raise MCPValidationError(str(exc)) from exc
 
@@ -546,6 +565,21 @@ def validate_platform_name(platform: str) -> str:
         raise MCPValidationError(f"Platform name contains invalid characters: {platform}")
 
     return platform
+
+
+def validate_platform_selector(platform: str) -> PlatformSelector:
+    from benchbox.core.deployment import parse_platform_selector
+
+    name = validate_platform_name(platform)
+    try:
+        selector = parse_platform_selector(name)
+    except ValueError as exc:
+        raise MCPValidationError(str(exc)) from exc
+    if selector.deployment in MCP_REJECTED_DEPLOYMENT_SELECTORS.get(selector.platform, frozenset()):
+        raise MCPValidationError(
+            f"Deployment '{selector.deployment}' for platform '{selector.platform}' is not authorized for MCP"
+        )
+    return selector
 
 
 def validate_benchmark_name(benchmark: str) -> str:

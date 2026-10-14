@@ -6,6 +6,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import anyio
@@ -285,6 +286,81 @@ def test_tenant_job_tools_are_remote_only_and_cross_tenant_fail_closed(tmp_path:
                     await client_b.call_tool(tool_name, {"execution_id": execution_id})
 
     anyio.run(exercise)
+
+
+def test_start_and_status_report_deprecations_and_accept_deployment_selectors(tmp_path: Path, monkeypatch) -> None:
+    token = "tenant-deprecation-token"
+    config = write_security_config(tmp_path, tokens={token: ("tenant-a", ("benchbox:read", "benchbox:execute"))})
+    policy = json.loads(config.read_text(encoding="utf-8"))
+    policy["allowed_platforms"] = ["duckdb", "polars-df", "clickhouse:server"]
+    config.write_text(json.dumps(policy), encoding="utf-8")
+    monkeypatch.setattr(DurableJobWorker, "_execute_benchmark", staticmethod(_executor))
+
+    async def start(client, **arguments) -> dict[str, object]:
+        result = await client.call_tool("start_benchmark", {"benchmark": "tpch", "scale_factor": 0.01, **arguments})
+        assert not result.is_error
+        assert isinstance(result.content[0], TextContent)
+        return json.loads(result.content[0].text)
+
+    async def status(client, execution_id: str) -> dict[str, object]:
+        result = await client.call_tool("get_benchmark_status", {"execution_id": execution_id})
+        assert isinstance(result.content[0], TextContent)
+        return json.loads(result.content[0].text)
+
+    async def exercise() -> None:
+        async with authenticated_http_client(config, token) as (client, _):
+            deprecated = await start(client, platform="polars-df", platform_options={"streaming": True})
+            expected = [
+                {
+                    "option": "streaming",
+                    "replacement": "execution_engine='streaming'",
+                    "removed_in": "0.6.0",
+                    "message": (
+                        "Platform option 'streaming' for 'polars' is deprecated and will be removed in "
+                        "BenchBox 0.6.0; use execution_engine='streaming' instead."
+                    ),
+                }
+            ]
+            assert deprecated["deprecations"] == expected
+            observed = await status(client, str(deprecated["execution_id"]))
+            assert observed["deprecations"] == expected
+            for _ in range(200):
+                if (await status(client, str(deprecated["execution_id"])))["status"] == "completed":
+                    break
+                await anyio.sleep(0.01)
+            result = await client.call_tool("get_benchmark_result", {"execution_id": deprecated["execution_id"]})
+            assert isinstance(result.content[0], TextContent)
+            assert json.loads(result.content[0].text)["deprecations"] == expected
+
+            plain = await start(client, platform="duckdb")
+            assert plain["deprecations"] == []
+            assert (await status(client, str(plain["execution_id"])))["deprecations"] == []
+
+            selected = await start(client, platform="clickhouse:server")
+            assert selected["deprecations"] == []
+            persisted = DurableJobRepository(tmp_path / "security.sqlite3", JobLimits()).get(
+                str(selected["execution_id"])
+            )
+            assert persisted is not None and persisted.request["platform"] == "clickhouse:server"
+
+            with pytest.raises(MCPError, match="not authorized"):
+                await start(client, platform="duckdb", platform_options={"mode": "server"})
+
+    anyio.run(exercise)
+
+
+def test_worker_response_carries_the_deprecations_of_the_run(monkeypatch) -> None:
+    from benchbox.core.deprecation_notices import warn_deprecated_alias
+
+    def request_run(job, staging: Path) -> dict[str, object]:
+        warn_deprecated_alias("polars", "streaming", "'--execution-engine streaming' (execution_engine='streaming')")
+        return {"mcp_metadata": {}}
+
+    monkeypatch.setattr(DurableJobWorker, "_execute_benchmark_request", staticmethod(request_run))
+
+    response = DurableJobWorker._execute_benchmark(SimpleNamespace(), Path("."))
+
+    assert [entry["replacement"] for entry in response["deprecations"]] == ["execution_engine='streaming'"]
 
 
 def test_no_overadmission_after_lease_loss_until_confirmed_termination(tmp_path: Path, monkeypatch) -> None:

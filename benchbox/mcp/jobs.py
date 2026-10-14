@@ -21,9 +21,11 @@ from mcp.shared.exceptions import MCPError
 from mcp.types import ToolAnnotations
 
 from benchbox.core.benchmark_registry import get_all_benchmarks
+from benchbox.core.deprecation_notices import begin_run, run_scope
+from benchbox.core.run_selection import resolve_run_selection
 from benchbox.core.throughput.containment import await_quiescence, track_outstanding_results, tracked_stream_ids
+from benchbox.mcp.deprecations import attach_deprecations, request_deprecations
 from benchbox.mcp.schemas import (
-    MCPValidationError,
     validate_execution_engine,
     validate_phases,
     validate_platform_options,
@@ -1060,6 +1062,11 @@ class DurableJobWorker:
 
     @staticmethod
     def _execute_benchmark(job: JobRecord, staging: Path) -> dict[str, Any]:
+        begin_run()
+        return attach_deprecations(DurableJobWorker._execute_benchmark_request(job, staging))
+
+    @staticmethod
+    def _execute_benchmark_request(job: JobRecord, staging: Path) -> dict[str, Any]:
         from benchbox.mcp.errors import ErrorCode, make_error, make_not_found_error
 
         request = job.request
@@ -1092,6 +1099,7 @@ class DurableJobWorker:
 
         try:
             resolved_execution_engine = validate_execution_engine(platform, execution_engine)
+            selection = resolve_run_selection(platform, resolved_execution_engine, normalized_platform_options)
         except Exception as exc:
             resp = make_error(ErrorCode.VALIDATION_ERROR, str(exc), details={"platform": platform})
             resp["execution_id"] = execution_id
@@ -1113,7 +1121,7 @@ class DurableJobWorker:
             resp["status"] = "failed"
             return resp
 
-        resolved_mode, mode_error = _resolve_mcp_mode_with_registry(platform, mode)
+        resolved_mode, mode_error = _resolve_mcp_mode_with_registry(selection.platform, mode)
         if mode_error:
             mode_error["execution_id"] = execution_id
             mode_error["status"] = "failed"
@@ -1489,6 +1497,7 @@ def _public_status(job: JobRecord) -> dict[str, Any]:
         "error_code": job.error_code,
     }
     status["outcome"] = _public_outcome(job)
+    status["deprecations"] = request_deprecations(job.request)
     if job.state == "unknown":
         status["outcome_note"] = (
             "A prior attempt lost its lease and may still have executed database work. "
@@ -1520,8 +1529,10 @@ def register_durable_job_tools(mcp: MCPServer, runtime: DurableJobRuntime) -> No
         try:
             normalized_platform_options = validate_platform_options(platform, platform_options)
             resolved_execution_engine = validate_execution_engine(platform, execution_engine)
+            with run_scope(log=False):
+                resolve_run_selection(platform, resolved_execution_engine, normalized_platform_options)
             phases = validate_phases(phases)
-        except MCPValidationError as exc:
+        except ValueError as exc:
             raise MCPError(-32602, str(exc)) from exc
         request = {
             "platform": platform,
@@ -1591,7 +1602,7 @@ def register_durable_job_tools(mcp: MCPServer, runtime: DurableJobRuntime) -> No
             raise MCPError(JOB_NOT_READY, "Benchmark artifact is unavailable") from exc
         if not isinstance(payload, dict):
             raise MCPError(JOB_NOT_READY, "Benchmark artifact is invalid")
-        return {**payload, "outcome": _public_outcome(job)}
+        return {"deprecations": request_deprecations(job.request), **payload, "outcome": _public_outcome(job)}
 
     @mcp.tool(
         description="Cancel queued work, request cancellation at the next safe boundary, or report it is too late.",

@@ -20,9 +20,12 @@ from benchbox.core.benchmark_registry import (
     get_public_benchmark_class,
 )
 from benchbox.core.constants import VALID_PHASES
+from benchbox.core.deprecation_notices import begin_run
 from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
 from benchbox.core.results.exporter import ResultExporter
 from benchbox.core.results.schema import build_result_payload
+from benchbox.core.run_selection import RunSelection, resolve_run_selection
+from benchbox.mcp.deprecations import attach_deprecations
 from benchbox.mcp.errors import (
     ErrorCode,
     make_error,
@@ -110,13 +113,15 @@ def register_benchmark_tools(
         link_probe: bool = True,
         platform_options: dict[str, object] | None = None,
     ) -> dict[str, Any]:
+        begin_run()
         try:
             normalized_platform_options = validate_platform_options(platform, platform_options)
             resolved_execution_engine = validate_execution_engine(platform, execution_engine)
-        except MCPValidationError as exc:
+            selection = resolve_run_selection(platform, resolved_execution_engine, normalized_platform_options)
+        except ValueError as exc:
             response = make_error(ErrorCode.VALIDATION_ERROR, str(exc), details={"platform": platform})
             response["status"] = "failed"
-            return response
+            return attach_deprecations(response)
 
         try:
             phases = validate_phases(phases)
@@ -125,13 +130,17 @@ def register_benchmark_tools(
                 ErrorCode.VALIDATION_INVALID_PHASE, str(exc), details={"valid_phases": list(VALID_PHASES)}
             )
             response["status"] = "failed"
-            return response
+            return attach_deprecations(response)
 
         if validate_only:
-            return _validate_config_impl(platform, benchmark, scale_factor, mode)
+            return attach_deprecations(
+                _validate_config_impl(selection, benchmark, scale_factor, mode, normalized_platform_options)
+            )
 
         if dry_run:
-            return _dry_run_impl(platform, benchmark, scale_factor, queries, mode)
+            return attach_deprecations(
+                _dry_run_impl(selection, benchmark, scale_factor, queries, mode, normalized_platform_options)
+            )
 
         if not allow_synchronous_execution:
             response = make_error(
@@ -140,21 +149,23 @@ def register_benchmark_tools(
                 details={"replacement_tool": "start_benchmark"},
             )
             response["status"] = "failed"
-            return response
+            return attach_deprecations(response)
 
-        return _run_benchmark_impl(
-            platform,
-            benchmark,
-            scale_factor,
-            queries,
-            phases,
-            mode,
-            capture_plans,
-            link_probe=link_probe,
-            execution_engine=resolved_execution_engine,
-            platform_options=normalized_platform_options,
-            results_dir=resolve_path_provider(results_dir),
-            anonymize=anonymize_results,
+        return attach_deprecations(
+            _run_benchmark_impl(
+                platform,
+                benchmark,
+                scale_factor,
+                queries,
+                phases,
+                mode,
+                capture_plans,
+                link_probe=link_probe,
+                execution_engine=resolved_execution_engine,
+                platform_options=normalized_platform_options,
+                results_dir=resolve_path_provider(results_dir),
+                anonymize=anonymize_results,
+            )
         )
 
     @mcp.tool(
@@ -292,7 +303,6 @@ def _execute_mcp_run_via_core(
 ) -> dict[str, Any]:
     from benchbox.core.run_service import (
         SilentVerbosity,
-        begin_run,
         execute_run,
         map_phases_to_execution_type,
         translate_platform_options_for_adapter,
@@ -300,14 +310,15 @@ def _execute_mcp_run_via_core(
     from benchbox.core.schemas import BenchmarkConfig, DatabaseConfig, ExecutionContext
     from benchbox.core.system import SystemProfiler
 
-    begin_run()
     try:
-        resolved_execution_engine = validate_execution_engine(platform, execution_engine)
-    except MCPValidationError as exc:
+        selection = resolve_run_selection(platform, execution_engine, normalized_platform_options)
+    except ValueError as exc:
         return _make_failed_response(
             make_error(ErrorCode.VALIDATION_ERROR, str(exc), details={"platform": platform}),
             execution_id,
         )
+    resolved_execution_engine = selection.execution_engine
+    platform_key = selection.platform
 
     data_only = resolved_mode == "data_only"
     data_dir = get_benchmark_runs_datagen_path(benchmark, scale_factor, results_dir / "datagen") if data_only else None
@@ -321,7 +332,7 @@ def _execute_mcp_run_via_core(
     if not data_only:
         try:
             adapter_input = dict(normalized_platform_options)
-            platform_name = platform.lower().removesuffix("-df")
+            platform_name = platform_key.removesuffix("-df")
             if (
                 platform_name in {"clickhouse", "clickhouse-server"}
                 and "connection_profile" in normalized_platform_options
@@ -330,7 +341,9 @@ def _execute_mcp_run_via_core(
                 adapter_input["port"] = profile["port"]
                 adapter_input["secure"] = profile["secure"]
                 adapter_input.pop("connection_profile", None)
-            adapter_options = translate_platform_options_for_adapter(platform, adapter_input)
+            adapter_options = translate_platform_options_for_adapter(platform_key, adapter_input)
+            if selection.selector_deployment is not None:
+                adapter_options["_deployment_selector"] = selection.selector_deployment
         except MCPValidationError as exc:
             return _make_failed_response(
                 make_error(ErrorCode.VALIDATION_ERROR, str(exc), details={"platform": platform}),
@@ -363,8 +376,8 @@ def _execute_mcp_run_via_core(
     database_config = None
     if not data_only:
         database_config = DatabaseConfig(
-            type=platform.lower(),
-            name=f"mcp_{platform.lower()}",
+            type=platform_key,
+            name=f"mcp_{platform_key}",
             execution_mode=resolved_mode,
             execution_engine=resolved_execution_engine,
             options=dict(adapter_options),
@@ -529,6 +542,7 @@ def _run_benchmark_impl(
     try:
         normalized_platform_options = validate_platform_options(platform, platform_options)
         resolved_execution_engine = validate_execution_engine(platform, execution_engine)
+        selection = resolve_run_selection(platform, resolved_execution_engine, normalized_platform_options)
         benchmark_lower = benchmark.lower()
         all_benchmarks = get_all_benchmarks()
 
@@ -548,7 +562,7 @@ def _run_benchmark_impl(
                 execution_id,
             )
 
-        resolved_mode, mode_error = _resolve_mcp_mode_with_registry(platform, mode)
+        resolved_mode, mode_error = _resolve_mcp_mode_with_registry(selection.platform, mode)
         if mode_error:
             return _make_failed_response(mode_error, execution_id)
 
@@ -626,7 +640,29 @@ def _build_data_only_response(
     }
 
 
+def _selection_preview(selection: RunSelection, platform_options: Mapping[str, object]) -> dict[str, Any]:
+    return {
+        "execution_engine": selection.effective_execution_engine,
+        "deployment": selection.deployment,
+        "platform_options": dict(platform_options),
+    }
+
+
 def _dry_run_impl(
+    selection: RunSelection,
+    benchmark: str,
+    scale_factor: float,
+    queries: str | None,
+    mode: str | None,
+    platform_options: Mapping[str, object],
+) -> dict[str, Any]:
+    result = _preview_dry_run(selection.platform, benchmark, scale_factor, queries, mode)
+    if result.get("status") == "dry_run":
+        result.update(_selection_preview(selection, platform_options))
+    return result
+
+
+def _preview_dry_run(
     platform: str,
     benchmark: str,
     scale_factor: float,
@@ -669,14 +705,17 @@ def _dry_run_impl(
 
 
 def _validate_config_impl(
-    platform: str,
+    selection: RunSelection,
     benchmark: str,
     scale_factor: float,
     mode: str | None,
+    platform_options: Mapping[str, object],
 ) -> dict[str, Any]:
     from benchbox.core.validation.config import validate_config as _core_validate
 
-    return _core_validate(platform, benchmark, scale_factor, mode)
+    result = _core_validate(selection.platform, benchmark, scale_factor, mode)
+    result.update(_selection_preview(selection, platform_options))
+    return result
 
 
 def _resolve_query_details_mode(platform: str | None, mode: str | None) -> str:

@@ -52,6 +52,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   public submissions require a private salt.
 
 ### Added
+
+- MCP responses from `run_benchmark`, `start_benchmark`, `get_benchmark_status`, `cancel_benchmark` and
+  `get_benchmark_result` carry a `deprecations` list of `{option, replacement, removed_in, message}`. It is empty
+  when nothing deprecated was used. `replacement` names the MCP parameter or platform name to use, never a CLI
+  flag. Dry runs and validate-only calls report it too.
+
 - Manifest capability `gateways` declares intermediary query routers (`espresso`, `greybeam`, `custom`)
   with route targets and engine classes; each requires a host. Snowflake and Databricks declare gateways.
   No adapter routes queries through a gateway yet, so `benchbox run --gateway` accepts only `native`;
@@ -157,6 +163,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer lists `DATABRICKS_HTTP_PATH`, and the unused
   `build_fabric_spark_config_from_env` helper is removed. Tests:
   `tests/unit/platforms/test_credential_error_messages.py`.
+
+- MCP accepts `<platform>:<mode>` platform names when the manifest declares the mode, for example
+  `clickhouse:server`, and `connection_profile` on ClickHouse is checked against the resolved deployment
+  instead of requiring the deprecated `deployment_mode`. `velox:remote` stays rejected.
+  `dry_run` and `validate_only` now apply `execution_engine`, `platform_options` and the platform selector through the
+  same validation as a real run and show them in the response. The contract no longer lists the `mode` alias
+  that the allowlist always rejected.
+
 - `--platform-option` values now reach the platforms that build their
   configuration through the default path. EMR Serverless, Dataproc, Synapse
   Spark, Fabric Spark and Snowpark Connect receive `compute_resource` (and
