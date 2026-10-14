@@ -1,4 +1,10 @@
 {
+  "acceptance": [
+    "Site, first PR: per-target baseline. recordedReceipts (deploy/lib/github.ts:34-52) returns only receipts for the target being deployed. Write the target into the deployment status description from now on. For older descriptions without a target, read target from the verified receipt (deploy/lib/receipt.ts:12). Paginate past 100 deployments. Tests: a newer rehearsal receipt does not change production's deployed.core_sha, and rollback lookup finds a receipt beyond the first page.",
+    "Core, second PR: parent from the site. At bundle build, site_inputs_parent.py reads the newest successful production deployment receipt from BenchBox-dev/benchbox-site, using the public API and the job's GITHUB_TOKEN; it needs no new secret. It verifies the receipt sha256 against the status description, as the site does, and uses its core_sha as the parent. If that SHA's bundle is expired or missing, or the site cannot be read, the build fails closed with the recovery instruction. A manual parent_core_sha dispatch still overrides. Tests use recorded fixtures for the site API, for a production versus rehearsal mix, and for each failure. Oracle review.",
+    "ADR. Amend the site-repo split ADR, which records the attestation producer, with the decision: parents follow the production-deployed SHA; the source is the site deployments API; it fails closed. List the rejected options (well-known URL, push from the site, last-built parent) with one line each.",
+    "Live proof. After both merge, the next natural develop Site Inputs run records parent_core_sha equal to production's deployed core_sha, and its Deploy is green. Record the run ids."
+  ],
   "context": "Re-homed from item 63 (2026-10-14): the last-built vs last-deployed parent decision lives here. Production evidence: the chain healed through manual recovery (dispatch 38521589047 parented on last-deployed c660e615 after 24 intervening runs; deploy 38529975983 green), which says manual recovery works but does not settle the steady-state rule. Design must also account for a live finding from item 63: the site's deployed generation is global to the github-pages environment (deploy/lib/github.ts recordedReceipts reads all deployments for the environment with no target filter), so a rehearsal deploy moves production's parity baseline; the steady-state rule and any per-target scoping belong in this design.",
   "description": "Item 63 needs bundle parents to follow the last deployed core SHA, but core has no channel that tells it the deployed SHA from the site side. Until this design lands, items 61 and 62 are the recovery path. Work: specify the source of truth on the site side, how core reads it at bundle build time, authentication and failure behavior, and who owns the value. Owner authorized creating this item on 2026-10-13 and confirmed the merge pause until item 61 lands.",
   "sessions": [
@@ -33,6 +39,14 @@
       "generation": "038940ff2f7f44cea68a6ea626593bfd",
       "op": "take",
       "op_id": "fb555aa6652540ed99e6730d0fed0145",
+      "session_id": "8250681ba4eb464e88a8d9c11374e76e"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:2ff26e731ddb7b681f9dacbc",
+      "at": "2026-10-14T20:06:37Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "81729efa32db4d2780a8cf02aec01c23",
       "session_id": "8250681ba4eb464e88a8d9c11374e76e"
     }
   ]
