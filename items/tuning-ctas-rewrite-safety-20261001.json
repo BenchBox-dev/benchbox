@@ -3,7 +3,7 @@
     "tests/unit/platforms/test_ctas_preserves_layout.py: for each adapter with a CTAS builder, generated SQL never targets its own source, swaps completely, and preserves declared layout, or the adapter records a drop.",
     "Synapse fake-driver test: the final table keeps its distribution and CCI; no __ctas_sort table remains."
   ],
-  "context": "Source: tuning remediation plan rev2 (2026-10-01; adversarial re-review of develop d39166ea plus independent plan review). Plan task P2.7 (A1.8). Live confirmation on these platforms requires separate approval.",
+  "context": "Source: tuning remediation plan rev2 (2026-10-01; adversarial re-review of develop d39166ea plus independent plan review). Plan task P2.7 (A1.8). Live confirmation on these platforms requires separate approval.\n2026-10-14 takeover: Disabled unsafe CTAS sort on Athena, Azure Synapse, and Redshift with explicit dropped reasons; kept Redshift VACUUM SORT ONLY. PR #2989 at 5490d4cdbc5d42a09c5814a3266c5c27462f61f6. Focused acceptance 9 passed, changed-file preflight 529 passed, ty at existing 676 diagnostics. Await CI and review, arm after required checks; finish only after live MERGED and record merge commit.",
   "description": "## Problem (static)\n- **Athena:** `_build_ctas_sort_sql` returns `CREATE TABLE {t} AS SELECT * FROM {t} …` (`athena.py:~157`). It targets its own source, so it always fails, and the non-atomic path re-raises.\n- **Synapse:** creates `{t}__ctas_sort WITH (DISTRIBUTION = ROUND_ROBIN, HEAP)` and never swaps it in (`azure_synapse.py:181` is the only reference). The original stays unsorted, an orphan copy remains, and the sorted-ingestion summary lists the table as applied.\n- **Redshift:** CTAS to temp + DROP + RENAME loses constraints and encodings, and ORDER BY on a CTAS is not a SORTKEY.\n- **Snowflake / Databricks:** `CREATE OR REPLACE TABLE … AS SELECT … ORDER BY` would discard clustering, properties and constraints. It is unreachable only because the validator rejects sorting there.\n\nAll of these are opt-in via `sorted_ingestion_mode`.\n\n## Change\n- **Athena:** return `None` with an explicit reason until a correct implementation exists (CTAS to `{t}__sorted` with `external_location`, then a catalog swap).\n- **Synapse:** CTAS with the original distribution (from `sys.pdw_table_distribution_properties`) and ordered CCI, `RENAME OBJECT` swap, drop old, executed atomically with each statement recorded. Or disable it with a recorded drop.\n- **Redshift:** re-declare DISTSTYLE/DISTKEY/SORTKEY and constraints from `PG_TABLE_DEF`/`SVV_TABLE_INFO`, or disable with a recorded drop.\n- **Snowflake / Databricks:** add a guard test that their CTAS builders stay unreachable while the validator rejects sorting.\n\n## Guardrails (must preserve)\n- Never leave an orphan or unswapped table.\n- Never report a table as sorted unless the swap committed.\n\n## Process guardrails\n- One PR per item against `develop`, via the AGENTS.md worktree flow (`make worktree-claim BRANCH=...`, `make agent-write-preflight`).\n- Verification ladder: `uv run -- python -m pytest -m fast -q`, `uv run -- ruff check .`, `uv run -- ruff format --check .` and `uv run -- ty check`.\n- Then `make pr-preflight` and `make pr-open`.\n- Stage explicit paths; never `git add -A`.\n- No live cloud runs without explicit user approval stating the command, maximum runtime, log path and stop condition.\n- Re-read every file:line anchor before editing. Anchors are from develop d39166ea.",
   "links": [
     "benchbox/platforms/athena.py",
@@ -40,6 +40,14 @@
       "op": "takeover",
       "op_id": "58d2c56f53504e8c8256f17778432ea9",
       "reason": "The interrupted Claude session 61109ec5-ec32-436a-bc34-1f7f34c9911f reached its usage limit and ended; I am continuing its item 42 work at the user's request.",
+      "session_id": "eca77f45c1ef44d39b159b926261486e"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:8c48d410c864b9ee396035f0",
+      "at": "2026-10-14T20:27:28Z",
+      "client": "codex-mcp-client",
+      "op": "update",
+      "op_id": "f122186530754059ba14c7264ec86679",
       "session_id": "eca77f45c1ef44d39b159b926261486e"
     }
   ]
