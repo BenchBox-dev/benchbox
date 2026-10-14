@@ -279,8 +279,10 @@ one name covers requested and observed values.
   `resolution=tuning_profile`. This makes `engine_affinity: in-memory` take
   effect.
 - **Smart defaults stop choosing an engine.** The automatic DataFrame tuning
-  defaults no longer pick a Polars engine from host memory, and the shipped
-  example tuning files no longer set `engine_affinity` or `streaming_mode`.
+  defaults no longer pick a Polars engine from host memory, the `tuning init`
+  profiles set no Polars engine and print how to select one at run time, and
+  the shipped example tuning files no longer set `engine_affinity` or
+  `streaming_mode`.
   Tuning files that users write may still set them. `--tuning auto` and
   `--tuning tuned` on Polars therefore no longer switch to the streaming
   engine on hosts with less than 16 GB of memory; use

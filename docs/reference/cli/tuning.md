@@ -145,7 +145,7 @@ The first command creates a sample Polars tuning configuration and auto-detects 
 
 - `--platform TEXT`: Target platform (`polars`, `pandas`, `dask`, `cudf`)
 - `--mode [sql|dataframe|auto]`: Tuning mode (default: auto)
-- `--profile [default|optimized|streaming|memory-constrained|gpu]`: Configuration profile
+- `--profile [default|optimized|streaming|memory-constrained|gpu]`: Configuration profile. On a platform that lets you select an execution engine (Polars), the profiles do not set `engine_affinity` or `streaming_mode`, and the command prints how to choose the engine at run time, for example `--execution-engine streaming`
 - `--output TEXT`: Output file path
 - `--smart-defaults`: Use auto-detected system-optimal settings
 

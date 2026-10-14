@@ -214,7 +214,19 @@ class TestCreateProfileConfigHelper:
 
         assert isinstance(config, DataFrameTuningConfiguration)
         assert config.execution.lazy_evaluation is True
-        assert config.execution.engine_affinity == "in-memory"
+        assert config.execution.engine_affinity is None
+        assert config.execution.streaming_mode is False
+
+    @pytest.mark.parametrize("profile", ["optimized", "streaming", "memory-constrained"])
+    def test_create_profile_config_never_chooses_a_polars_engine(self, profile):
+        config = _create_profile_config("polars", profile)
+
+        assert config.execution.engine_affinity is None
+        assert config.execution.streaming_mode is False
+
+    @pytest.mark.parametrize("platform", ["dask", "pandas", "cudf"])
+    def test_create_profile_config_streaming_profile_is_unchanged_for_other_platforms(self, platform):
+        assert _create_profile_config(platform, "streaming").execution.streaming_mode is True
 
     def test_create_profile_config_memory_constrained_dask(self):
         config = _create_profile_config("dask", "memory-constrained")

@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, cast
 if TYPE_CHECKING:
     from benchbox.core.execution_engine import ExecutionEngineReceipt
 
+from benchbox.core.deprecation_notices import warn_deprecated_alias
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 try:
@@ -161,7 +162,9 @@ class PolarsAdapter(NoConstraintEnforcementMixin, PlatformAdapter):
         self.rechunk = config.get("rechunk", True)
         self._engine_receipt = self.resolve_execution_engine(config.get("execution_engine") or "default")
         if config.get("streaming", False):
-            self._engine_receipt = self.resolve_execution_engine("streaming")
+            warn_deprecated_alias(
+                "polars", "streaming", "no value ('streaming' has no effect on the SQL Polars adapter)"
+            )
 
         self._table_schemas: dict[str, dict] = {}
 

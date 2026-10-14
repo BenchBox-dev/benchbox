@@ -33,6 +33,7 @@ from benchbox.core.dataframe.tuning import (
 from benchbox.core.dataframe.tuning.profiles import (
     DATAFRAME_CAPABILITY_ROWS,
     DATAFRAME_PLATFORMS,
+    profile_engine_hint,
 )
 from benchbox.core.platform_manifest import get_platform_aliases
 from benchbox.core.tuning.capability_registry import (
@@ -201,6 +202,9 @@ def _init_dataframe_tuning(
         console.print(f"Platform: [yellow]{platform}[/yellow]")
         console.print("Mode: [yellow]DataFrame[/yellow]")
         console.print(f"Profile: [yellow]{profile}[/yellow]")
+        engine_hint = None if smart_defaults else profile_engine_hint(platform, profile)
+        if engine_hint:
+            console.print(engine_hint)
 
         enabled = config.get_enabled_settings()
         if enabled:

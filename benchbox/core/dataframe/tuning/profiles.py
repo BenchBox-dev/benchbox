@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from benchbox.core.dataframe.tuning.interface import DataFrameTuningConfiguration
+from benchbox.core.execution_engine import supported_execution_engines
 
 DATAFRAME_PLATFORMS = frozenset({"datafusion", "polars", "pandas", "dask", "cudf"})
 
@@ -17,6 +18,25 @@ DATAFRAME_CAPABILITY_ROWS: list[tuple[str, str, str, str]] = [
 ]
 
 
+STREAMING_ENGINE = "streaming"
+RUN_TIME_ENGINE_HINT = "Select the engine at run time with --execution-engine"
+_STREAMING_PROFILES = frozenset({"streaming", "memory-constrained"})
+
+
+def _declares_streaming_engine(platform: str) -> bool:
+    return STREAMING_ENGINE in supported_execution_engines(platform)
+
+
+def profile_engine_hint(platform: str, profile: str) -> str | None:
+    if not _declares_streaming_engine(platform):
+        return None
+    if profile in _STREAMING_PROFILES:
+        return f"{RUN_TIME_ENGINE_HINT} {STREAMING_ENGINE}"
+    if profile == "optimized":
+        return RUN_TIME_ENGINE_HINT
+    return None
+
+
 def create_profile_config(platform: str, profile: str) -> DataFrameTuningConfiguration:
 
     if platform == "datafusion" and profile not in {"default", "optimized"}:
@@ -26,9 +46,7 @@ def create_profile_config(platform: str, profile: str) -> DataFrameTuningConfigu
 
     if profile == "optimized":
         config.execution.lazy_evaluation = True
-        if platform == "polars":
-            config.execution.engine_affinity = "in-memory"
-        elif platform == "datafusion":
+        if platform == "datafusion":
             config.parallelism.thread_count = 4
         elif platform == "dask":
             config.parallelism.worker_count = 4
@@ -38,13 +56,11 @@ def create_profile_config(platform: str, profile: str) -> DataFrameTuningConfigu
             config.gpu.pool_type = "pool"
 
     elif profile == "streaming":
-        config.execution.streaming_mode = True
+        config.execution.streaming_mode = not _declares_streaming_engine(platform)
         config.memory.chunk_size = 100_000
-        if platform == "polars":
-            config.execution.engine_affinity = "streaming"
 
     elif profile == "memory-constrained":
-        config.execution.streaming_mode = True
+        config.execution.streaming_mode = not _declares_streaming_engine(platform)
         config.memory.chunk_size = 50_000
         config.memory.spill_to_disk = True
         if platform == "dask":
