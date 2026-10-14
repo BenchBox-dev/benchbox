@@ -7,7 +7,7 @@
     "A dispatched nightly-v2 run on develop shows the domain passing",
     "Issue #2568 is closed with a link to the green t3:windows run"
   ],
-  "context": "PR #2835 contains the Windows unit domain and current-head oracle checks pass, but its visual comparison reports four changed getting-started captures. Follow-up nightly-windows-pr-visual-approval-20261009 owns the merge gate; after merge, nightly-windows-verification-run-20261009 owns the remaining nightly-v2 dispatch and acceptance evidence.\n\n2026-10-09 tracker review: PR #2835 adds t3:windows (Python 3.12, 50-minute timeout, no coverage). Run 37967682464 spent 47.7 minutes in the Windows 3.12 fast-test step with coverage. Needs changed: nightly-windows-path-quoting-20261008 is being closed (its remaining test_nightly_t3_workflow work moved here); added windows-iceberg-vacuum-local-paths-20261009, windows-session-lock-holder-readable-20261009, windows-pytest-xdist-teardown-hang-20261009 and agent-write-preflight-quoted-interpreter-20261009. Closing issue #2568 moved here from nightly-windows-unquarantine-20261008. The \"dlv2-70 lists this item\" criterion is already met and was removed.",
+  "context": "PR #2835 contains the Windows unit domain and current-head oracle checks pass, but its visual comparison reports four changed getting-started captures. Follow-up nightly-windows-pr-visual-approval-20261009 owns the merge gate; after merge, nightly-windows-verification-run-20261009 owns the remaining nightly-v2 dispatch and acceptance evidence.\n\n2026-10-09 tracker review: PR #2835 adds t3:windows (Python 3.12, 50-minute timeout, no coverage). Run 37967682464 spent 47.7 minutes in the Windows 3.12 fast-test step with coverage. Needs changed: nightly-windows-path-quoting-20261008 is being closed (its remaining test_nightly_t3_workflow work moved here); added windows-iceberg-vacuum-local-paths-20261009, windows-session-lock-holder-readable-20261009, windows-pytest-xdist-teardown-hang-20261009 and agent-write-preflight-quoted-interpreter-20261009. Closing issue #2568 moved here from nightly-windows-unquarantine-20261008. The \"dlv2-70 lists this item\" criterion is already met and was removed.\n\n2026-10-14: the three ownerless Windows failures from nightly.yml run 38404921532 are fixed and merged via PR #2959 (merge 790a5065f6b64ae4ddf4595c70642a716871bdf3): power-clock monkeypatch, qgen runnable check, chDB find_spec skip (item windows-unit-three-failures-20261014, done). Leg proof still owed: the next scheduled nightly.yml Windows legs must show all three green, plus the timeout sizing and three stall-free runs, before this item can finish.",
   "description": "Decision recorded by nightly-windows-unit-coverage-decision-20261008: nightly-v2 keeps Windows unit coverage. Add a T3 domain that runs the fast unit tier on windows-latest with Python 3.12 only (3.11 duplicates it), with its own issue label like the other domains and no continue-on-error, and add it to the report job and the domain loop. dlv2-70 must not delete nightly.yml until this domain has run green in a dispatched nightly-v2 run.\n\nPR #2835 implements the domain: t3:windows, Python 3.12, timeout 50 minutes, no coverage. The 50-minute timeout was sized from a 38-minute run. The latest Windows 3.12 fast-test step took 47.7 minutes (run 37967682464, with coverage), so 50 minutes leaves almost no margin. Re-size the timeout from a no-coverage run before merging.\n\nDo this after the Windows fixes pass, so the new domain does not start red. The Windows fast tier also stalls at 90-95% on Python 3.11 and 3.12 (windows-pytest-xdist-teardown-hang-20261009); that must be fixed first.\n\nThis item also takes over two parts of nightly-windows-path-quoting-20261008, which is being closed: the test_nightly_t3_workflow failure on Windows, and the close of issue #2568 (moved from nightly-windows-unquarantine-20261008).",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/issues/2568",
@@ -45,6 +45,14 @@
       "op": "update",
       "op_id": "86268eba90a047ab9709624a77ae9cb2",
       "session_id": "05afd70780334fa0b0e411a688cf8f7a"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:ee5a973726de839c8eab56eb",
+      "at": "2026-10-14T12:13:54Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "88a136f0ecce433dbd0df99c06f4f3df",
+      "session_id": "10b6ed539f7e4998b1290031a09d7b39"
     }
   ]
 }
