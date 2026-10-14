@@ -102,3 +102,36 @@ def test_automatic_run_with_empty_pool_fails_with_recovery_instruction() -> None
 def test_resolve_commit_rejects_unknown_ref() -> None:
     with pytest.raises(RuntimeError, match="does not name a commit"):
         parent_mod.resolve_commit("no-such-ref-for-site-inputs-parent")
+
+
+TRUNK_RUN = {"databaseId": 38216829987, "headSha": CORE, "event": "push"}
+
+
+def test_dispatch_build_records_numeric_trunk_run_id() -> None:
+    import re
+
+    certified = parent_mod.decide_certified_by(CORE, "", [TRUNK_RUN])
+    assert re.fullmatch(r"\d+", certified)
+    assert certified == str(TRUNK_RUN["databaseId"])
+
+
+def test_dispatch_build_without_trunk_run_is_refused() -> None:
+    with pytest.raises(RuntimeError, match="no successful trunk.yml push run"):
+        parent_mod.decide_certified_by(CORE, "", [])
+
+
+def test_dispatch_build_refuses_unmatched_trunk_runs() -> None:
+    other_sha = dict(TRUNK_RUN, headSha=PARENT)
+    scheduled = dict(TRUNK_RUN, event="workflow_dispatch")
+    with pytest.raises(RuntimeError, match="no successful trunk.yml push run"):
+        parent_mod.decide_certified_by(CORE, "", [other_sha, scheduled])
+
+
+def test_dispatch_build_records_newest_trunk_run_id() -> None:
+    older = dict(TRUNK_RUN, databaseId=111)
+    newer = dict(TRUNK_RUN, databaseId=222)
+    assert parent_mod.decide_certified_by(CORE, "", [newer, older]) == "222"
+
+
+def test_automatic_build_keeps_triggering_run_id() -> None:
+    assert parent_mod.decide_certified_by(CORE, "38344752905", []) == "38344752905"

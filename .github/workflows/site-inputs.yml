@@ -58,21 +58,12 @@ jobs:
         env:
           DISPATCH_PARENT: ${{ inputs.parent_core_sha }}
           RUN_ID: ${{ github.event.workflow_run.id }}
-          IS_DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
           REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
         run: |
           CORE_SHA="$(git rev-parse HEAD)"
           echo "core_sha=${CORE_SHA}" >> "$GITHUB_OUTPUT"
-          uv run -- python scripts/site_inputs_parent.py --core-sha "$CORE_SHA" --dispatch-parent "$DISPATCH_PARENT" --repo "$REPO" --limit 100
-          if [ "$IS_DISPATCH" = "true" ]; then
-            CERTIFIED="$(gh run list --workflow trunk.yml --branch develop --status success --json headSha,event --limit 20 -q '[.[] | select(.event == "push") | .headSha] | .[]')"
-            if ! printf '%s\n' "$CERTIFIED" | grep -qx "$CORE_SHA"; then
-              echo "no successful trunk.yml push run on ${CORE_SHA}" >&2
-              exit 1
-            fi
-          fi
-          echo "certified_by=${RUN_ID:-dispatch}" >> "$GITHUB_OUTPUT"
+          uv run -- python scripts/site_inputs_parent.py --core-sha "$CORE_SHA" --dispatch-parent "$DISPATCH_PARENT" --repo "$REPO" --limit 100 --run-id "${RUN_ID:-}"
 
       - name: Build and verify bundle
         env:
