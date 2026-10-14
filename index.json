@@ -24121,10 +24121,10 @@
     },
     "tuning-record-genuine-engine-versions": {
       "claim": {
-        "expires_at": "2026-10-15T20:28:02Z",
-        "generation": "8c09fb7dc2924318b16384652da004c3",
+        "expires_at": "2026-10-15T23:27:51Z",
+        "generation": "e5adaf6cd75f4189b22d170f0bc91bb5",
         "renewals": 0,
-        "worker": "mcp:codex-mcp-client:joe@joe-mac-mini.local:8c48d410c864b9ee396035f0"
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:dfba218995515e0b05338829"
       },
       "needs": [],
       "priority": "medium",

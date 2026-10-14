@@ -20,6 +20,17 @@
       "op": "take",
       "op_id": "12acd74be2f2437a81a81755fdb233bd",
       "session_id": "eca77f45c1ef44d39b159b926261486e"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:dfba218995515e0b05338829",
+      "at": "2026-10-14T23:27:51Z",
+      "client": "claude-code",
+      "displaced": "mcp:codex-mcp-client:joe@joe-mac-mini.local:8c48d410c864b9ee396035f0",
+      "generation": "e5adaf6cd75f4189b22d170f0bc91bb5",
+      "op": "takeover",
+      "op_id": "5be3de5d7f7747bf9d334e7d1403186a",
+      "reason": "Holder was Codex session 01a13c10 (takeover of the tuning-local batch), which stopped at 16:29; no live writer on its worktree. Recording resume notes so the next agent can continue.",
+      "session_id": "83dc3ac2f62946068c406a843bde427a"
     }
   ]
 }
