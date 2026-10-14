@@ -2409,7 +2409,7 @@ _PLATFORM_MANIFEST_JSON = """[
       "mysql-compatible"
     ],
     "driver_package": "singlestoredb",
-    "notes": "SingleStore 8.0+ with columnstore analytics. MySQL wire protocol on port 3306. SQLGlot 'mysql' dialect. Supports both Helios (cloud) and self-managed deployments.",
+    "notes": "SingleStore 8.0+ with columnstore analytics. MySQL wire protocol on port 3306. SQLGlot 'mysql' dialect. Connects to self-managed clusters and to Helios endpoints by host; the deployment is not selected or recorded.",
     "capabilities": {
       "supports_sql": true,
       "supports_dataframe": false,
@@ -2426,21 +2426,6 @@ _PLATFORM_MANIFEST_JSON = """[
           "requires_cloud_storage": false,
           "requires_network": true,
           "default_for_platform": true,
-          "dependencies": [
-            "singlestoredb"
-          ],
-          "auth_methods": [
-            "password"
-          ]
-        },
-        "cloud": {
-          "mode": "managed",
-          "display_name": "SingleStore Helios",
-          "description": "SingleStore Helios managed cloud service",
-          "requires_credentials": true,
-          "requires_cloud_storage": false,
-          "requires_network": true,
-          "default_for_platform": false,
           "dependencies": [
             "singlestoredb"
           ],

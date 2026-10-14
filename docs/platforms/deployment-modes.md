@@ -37,7 +37,7 @@ benchbox run --platform clickhouse-cloud --benchmark tpch --scale 0.1
 
 ### Platform-Specific Examples
 
-ClickHouse runs locally (chDB), on a self-hosted server, or in ClickHouse Cloud, each as its own platform. Firebolt has a local Docker mode (`core`) and a cloud mode (`cloud`). InfluxDB has a self-hosted mode (`core`) and a managed service (`cloud`). pg-duckdb runs self-hosted by default, or with MotherDuck cloud offload as `pg-duckdb:motherduck`. TimescaleDB runs self-hosted by default, or in Timescale Cloud with `timescaledb:cloud`. MotherDuck and Starburst are standalone cloud platforms that support managed mode only.
+ClickHouse runs locally (chDB), on a self-hosted server, or in ClickHouse Cloud, each as its own platform. Firebolt has a local Docker mode (`core`) and a cloud mode (`cloud`). InfluxDB has a self-hosted mode (`core`) and a managed service (`cloud`). pg-duckdb runs self-hosted by default, or with MotherDuck cloud offload as `pg-duckdb:motherduck`. TimescaleDB runs self-hosted by default, or in Timescale Cloud with `timescaledb:cloud`. Databend runs in Databend Cloud by default, or on a user-managed cluster with `databend:self-hosted`. MotherDuck and Starburst are standalone cloud platforms that support managed mode only.
 
 ```bash
 benchbox run --platform clickhouse-local --benchmark tpch --scale 0.1
@@ -57,6 +57,9 @@ benchbox run --platform pg-duckdb:motherduck --benchmark tpch --scale 0.1
 benchbox run --platform timescaledb --benchmark tpch --scale 0.1
 benchbox run --platform timescaledb:cloud --benchmark tpch --scale 0.1
 
+benchbox run --platform databend --benchmark tpch --scale 0.1
+benchbox run --platform databend:self-hosted --benchmark tpch --scale 0.1
+
 benchbox run --platform motherduck --benchmark tpch --scale 0.1
 benchbox run --platform starburst --benchmark tpch --scale 0.1
 ```
@@ -70,6 +73,7 @@ benchbox run --platform starburst --benchmark tpch --scale 0.1
 | **ClickHouse** | `local` | `local`, `server` | Prefer first-class names: `clickhouse-local`, `clickhouse-server` |
 | **Firebolt** | `core` | `core`, `cloud` | Core is free local Docker deployment |
 | **TimescaleDB** | `self-hosted` | `self-hosted`, `cloud` | Cloud mode for Timescale Cloud |
+| **Databend** | `cloud` | `cloud`, `self-hosted` | `self-hosted` connects over HTTP on port 8000 unless `ssl` or `port` is set |
 | **PySpark** | `local` | `local` | Local single-node Spark |
 | **LakeSail** | `local` | `local`, `distributed` | Sail Rust engine; SQL (`lakesail`) and DataFrame (`lakesail-df`) share modes |
 | **Velox** | `local` | `local`, `remote` | Gluten + Velox on Spark; `local` is Linux-only (use Docker on macOS/Windows) |
@@ -79,7 +83,7 @@ benchbox run --platform starburst --benchmark tpch --scale 0.1
 
 ### Deprecated deployment aliases
 
-The platform options below are deprecated aliases of the `--platform name:mode` selector. They keep working through the 0.6.0 removal window, warn once per run, and resolve to the same deployment as the selector: Velox `deployment`, LakeSail `sail_mode`, InfluxDB `mode`, ClickHouse `deployment_mode` and `mode`, Firebolt `deployment_mode` and `firebolt_mode`, DuckLake `deployment_mode`, pg-duckdb `deployment_mode`. If the selector and an alias disagree, the run fails before any work starts.
+The platform options below are deprecated aliases of the `--platform name:mode` selector. They keep working through the 0.6.0 removal window, warn once per run, and resolve to the same deployment as the selector: Velox `deployment`, LakeSail `sail_mode`, InfluxDB `mode`, ClickHouse `deployment_mode` and `mode`, Firebolt `deployment_mode` and `firebolt_mode`, DuckLake `deployment_mode`, pg-duckdb `deployment_mode`, TimescaleDB `deployment_mode`, Databend `deployment_mode`. If the selector and an alias disagree, the run fails before any work starts.
 
 ### First-Class Cloud Platforms
 

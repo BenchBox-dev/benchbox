@@ -10,6 +10,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from benchbox.core.deployment import deployment_class, select_adapter_deployment
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 from .base import DriverIsolationCapability
@@ -34,6 +35,8 @@ except ImportError:
     psycopg = None
     psql = None
 
+
+DEFAULT_DEPLOYMENT = "self-hosted"
 
 _INTERVAL_PATTERN = re.compile(
     r"^\s*\d+\s+"
@@ -92,18 +95,18 @@ class TimescaleDBAdapter(PostgreSQLAdapter):
         adapter_config["chunk_interval"] = config.get("chunk_interval", "1 day")
         adapter_config["compression_enabled"] = config.get("compression_enabled", False)
         adapter_config["compression_after"] = config.get("compression_after", "7 days")
+        nested = config.get("options")
+        deployment_mode = config.get("deployment_mode") or (
+            nested.get("deployment_mode") if isinstance(nested, dict) else None
+        )
+        if deployment_mode is not None:
+            adapter_config["deployment_mode"] = deployment_mode
         return cls(**adapter_config)
 
     def __init__(self, **config):
-        deployment_mode = config.get("deployment_mode", "self-hosted")
-        self.deployment_mode = deployment_mode.lower()
-
-        valid_modes = {"self-hosted", "cloud"}
-        if self.deployment_mode not in valid_modes:
-            raise ValueError(
-                f"Invalid TimescaleDB deployment mode '{self.deployment_mode}'. "
-                f"Valid modes: {', '.join(sorted(valid_modes))}"
-            )
+        self.deployment_mode = select_adapter_deployment("timescaledb", config, DEFAULT_DEPLOYMENT)
+        self.deployment_selected = self.deployment_mode
+        self.deployment_selected_class = deployment_class("timescaledb", self.deployment_mode)
 
         if self.deployment_mode == "cloud":
             self._configure_cloud_mode(config)

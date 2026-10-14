@@ -488,6 +488,7 @@ postgresql|schema|PostgreSQL schema name|{'default': 'public'}
 postgresql|work_mem|PostgreSQL work_mem setting for queries|{'default': '256MB'}
 postgresql|statement_timeout|PostgreSQL per-statement timeout in milliseconds (0 disables)|{'parser': 'int'}
 postgresql|enable_timescale|Enable TimescaleDB extensions if available|{'default': 'false'}
+timescaledb|deployment_mode|Deprecated alias of the platform selector: 'self-hosted' for a user-managed server, 'cloud' for managed TigerData|{'choices': ('self-hosted', 'cloud')}
 timescaledb|host|TimescaleDB server hostname|{'default': 'localhost'}
 timescaledb|port|TimescaleDB server port|{'parser': 'int', 'default': 5432}
 timescaledb|database|TimescaleDB database name (auto-generated if not specified)|{}
@@ -633,13 +634,14 @@ starrocks|username|StarRocks username|{'default': 'root'}
 starrocks|password|StarRocks password|{}
 starrocks|database|StarRocks database name (auto-generated if not specified)|{}
 starrocks|http_port|StarRocks BE HTTP port for Stream Load|{'default': '8040'}
+databend|deployment_mode|Deprecated alias of the platform selector: 'cloud' for Databend Cloud, 'self-hosted' for a user-managed cluster|{'choices': ('cloud', 'self-hosted')}
 databend|host|Databend host (or set DATABEND_HOST env var)|{}
 databend|port|Databend port (default: 443 for cloud, 8000 for self-hosted)|{}
 databend|username|Databend username (default: benchbox)|{'default': 'benchbox'}
 databend|password|Databend password (or set DATABEND_PASSWORD env var)|{}
 databend|database|Database name (default: benchbox)|{'default': 'benchbox'}
 databend|dsn|Full Databend DSN (overrides individual connection params)|{}
-databend|ssl|Enable SSL/TLS for Databend connections|{'parser': 'parse_bool', 'default': True}
+databend|ssl|Enable SSL/TLS for Databend connections (default: enabled for cloud, disabled for self-hosted)|{'parser': 'parse_bool'}
 databend|disable_result_cache|Disable Databend query result cache during benchmark execution|{'parser': 'parse_bool', 'default': True}
 doris|host|Doris FE node hostname|{'default': 'localhost'}
 doris|port|Doris MySQL protocol port|{'parser': 'int', 'default': 9030}

@@ -22,6 +22,7 @@ if TYPE_CHECKING:
         UnifiedTuningConfiguration,
     )
 
+from benchbox.core.deployment import deployment_class, select_adapter_deployment
 from benchbox.core.exceptions import ConfigurationError
 from benchbox.platforms.base import DriverIsolationCapability, PlatformAdapter
 from benchbox.platforms.base.data_loading import FileFormatRegistry, resolve_adapter_data_source
@@ -38,6 +39,9 @@ try:
 except ImportError:
     DATABEND_AVAILABLE = False
     databend_driver = None
+
+
+DEFAULT_DEPLOYMENT = "cloud"
 
 
 class DatabendAdapter(PlatformAdapter):
@@ -65,7 +69,10 @@ class DatabendAdapter(PlatformAdapter):
         self.password = config.get("password") or os.environ.get("DATABEND_PASSWORD")
         self.database = config.get("database") or os.environ.get("DATABEND_DATABASE") or "benchbox"
         self.dsn = config.get("dsn") or os.environ.get("DATABEND_DSN")
-        self.ssl = self._coerce_bool(config.get("ssl"), True)
+        self.deployment_mode = select_adapter_deployment("databend", config, DEFAULT_DEPLOYMENT)
+        self.deployment_selected = self.deployment_mode
+        self.deployment_selected_class = deployment_class("databend", self.deployment_mode)
+        self.ssl = self._coerce_bool(config.get("ssl"), self.deployment_mode == DEFAULT_DEPLOYMENT)
 
         self.warehouse = (
             config.get("compute_resource") or config.get("warehouse") or os.environ.get("DATABEND_WAREHOUSE")
@@ -141,8 +148,8 @@ class DatabendAdapter(PlatformAdapter):
             "--databend-no-ssl",
             dest="ssl",
             action="store_false",
-            default=True,
-            help="Disable SSL for self-hosted Databend (default: SSL enabled)",
+            default=None,
+            help="Disable SSL (default: SSL enabled for cloud, disabled for self-hosted)",
         )
 
     @classmethod
@@ -160,6 +167,7 @@ class DatabendAdapter(PlatformAdapter):
                     "password",
                     "dsn",
                     "ssl",
+                    "deployment_mode",
                     "compute_resource",
                     "warehouse",
                     "disable_result_cache",

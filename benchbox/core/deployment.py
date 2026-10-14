@@ -6,19 +6,21 @@ from types import MappingProxyType
 from typing import Any
 
 from benchbox.core.deprecation_notices import warn_deprecated_alias
+from benchbox.core.execution_engine import DEPRECATED_OPTION_ALIASES
 from benchbox.core.platform_registry import PlatformRegistry
 
-DEPLOYMENT_ALIAS_KEYS: Mapping[str, tuple[str, ...]] = MappingProxyType(
-    {
-        "velox": ("deployment",),
-        "lakesail": ("sail_mode",),
-        "influxdb": ("mode",),
-        "clickhouse": ("deployment_mode", "mode"),
-        "firebolt": ("deployment_mode", "firebolt_mode"),
-        "ducklake": ("deployment_mode",),
-        "pg-duckdb": ("deployment_mode",),
-    }
-)
+DEPLOYMENT_ALIAS_TARGET = "deployment"
+
+
+def _derive_deployment_alias_keys() -> Mapping[str, tuple[str, ...]]:
+    grouped: dict[str, list[str]] = {}
+    for (platform, key), entry in sorted(DEPRECATED_OPTION_ALIASES.items()):
+        if entry.target == DEPLOYMENT_ALIAS_TARGET:
+            grouped.setdefault(platform, []).append(key)
+    return MappingProxyType({platform: tuple(keys) for platform, keys in grouped.items()})
+
+
+DEPLOYMENT_ALIAS_KEYS: Mapping[str, tuple[str, ...]] = _derive_deployment_alias_keys()
 
 DEPLOYMENT_VALUE_SYNONYMS: Mapping[str, Mapping[str, str]] = MappingProxyType(
     {

@@ -96,7 +96,7 @@ BenchBox supports multiple deployment modes for platforms, enabling the same ben
 | --------------- | ----------- | ------- | ------------- | ---------------------------------------------- |
 | **local**       | No          | No      | No            | DuckDB, chDB, Firebolt Core                    |
 | **self-hosted** | Yes         | Yes     | No            | ClickHouse Server, Trino, TimescaleDB, SingleStore |
-| **managed**     | Yes         | Yes     | Sometimes     | MotherDuck, ClickHouse Cloud, Starburst Galaxy, SingleStore Helios |
+| **managed**     | Yes         | Yes     | Sometimes     | MotherDuck, ClickHouse Cloud, Starburst Galaxy |
 
 ```{note}
 For detailed deployment mode configuration, see [Deployment Modes Guide](deployment-modes.md).

@@ -34,16 +34,17 @@ class DeprecatedOptionAlias:
     engines: tuple[str | None, str] | None = None
 
 
+_DEPLOYMENT_ALIAS = DeprecatedOptionAlias(target="deployment", removed_in="0.6.0")
+
+
 DEPRECATED_OPTION_ALIASES: Mapping[tuple[str, str], DeprecatedOptionAlias] = MappingProxyType(
     {
         ("athena-spark", "engine_version"): DeprecatedOptionAlias(target="runtime_version", removed_in="0.6.0"),
-        ("clickhouse", "mode"): DeprecatedOptionAlias(target="deployment", removed_in="0.6.0"),
         ("dask", "use_distributed"): DeprecatedOptionAlias(
             target="execution_engine", removed_in="0.6.0", engines=("threaded", "distributed")
         ),
         ("databend", "warehouse"): DeprecatedOptionAlias(target="compute_resource", removed_in="0.6.0"),
         ("fabric_dw", "warehouse"): DeprecatedOptionAlias(target="database", removed_in="0.6.0"),
-        ("influxdb", "mode"): DeprecatedOptionAlias(target="deployment", removed_in="0.6.0"),
         ("pg-duckdb", "force_execution"): DeprecatedOptionAlias(
             target="execution_engine", removed_in="0.6.0", engines=("postgres", "duckdb")
         ),
@@ -52,6 +53,17 @@ DEPRECATED_OPTION_ALIASES: Mapping[tuple[str, str], DeprecatedOptionAlias] = Map
         ),
         ("snowflake", "warehouse"): DeprecatedOptionAlias(target="compute_resource", removed_in="0.6.0"),
         ("snowpark-connect", "warehouse"): DeprecatedOptionAlias(target="compute_resource", removed_in="0.6.0"),
+        ("clickhouse", "deployment_mode"): _DEPLOYMENT_ALIAS,
+        ("clickhouse", "mode"): _DEPLOYMENT_ALIAS,
+        ("databend", "deployment_mode"): _DEPLOYMENT_ALIAS,
+        ("ducklake", "deployment_mode"): _DEPLOYMENT_ALIAS,
+        ("firebolt", "deployment_mode"): _DEPLOYMENT_ALIAS,
+        ("firebolt", "firebolt_mode"): _DEPLOYMENT_ALIAS,
+        ("influxdb", "mode"): _DEPLOYMENT_ALIAS,
+        ("lakesail", "sail_mode"): _DEPLOYMENT_ALIAS,
+        ("pg-duckdb", "deployment_mode"): _DEPLOYMENT_ALIAS,
+        ("timescaledb", "deployment_mode"): _DEPLOYMENT_ALIAS,
+        ("velox", "deployment"): _DEPLOYMENT_ALIAS,
     }
 )
 
