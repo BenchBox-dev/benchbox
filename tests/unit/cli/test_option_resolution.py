@@ -12,6 +12,7 @@ from click.testing import CliRunner
 
 from benchbox.cli.commands.run import run
 from benchbox.cli.config import ConfigManager
+from benchbox.cli.database import DatabaseManager
 from benchbox.cli.platform import normalize_platform_name
 from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
 from benchbox.core.platform_registry import PlatformRegistry
@@ -107,6 +108,26 @@ def test_cli_value_that_differs_from_the_default_still_overrides_the_saved_profi
     kwargs = _constructor_kwargs(monkeypatch, tmp_path, "postgresql", "postgresql", "host=staging.example.com")
 
     assert kwargs["host"] == "staging.example.com"
+
+
+def test_programmatic_option_without_explicit_keys_overrides_the_saved_profile(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _save_credentials(monkeypatch, "postgresql", {"host": "prod.example.com"})
+
+    config = DatabaseManager().create_config("postgresql", {"host": "staging.example.com"})
+
+    assert config.options["host"] == "staging.example.com"
+
+
+def test_programmatic_option_equal_to_the_default_keeps_the_saved_profile(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _save_credentials(monkeypatch, "postgresql", {"host": "prod.example.com"})
+
+    config = DatabaseManager().create_config("postgresql", {"host": "localhost"})
+
+    assert config.options["host"] == "prod.example.com"
 
 
 ALIAS_CASES = [
