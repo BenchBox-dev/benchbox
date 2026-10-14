@@ -20634,15 +20634,10 @@
       "title": "Complete the seeded-path replay (add core #2913 and #2926) and add a replay-fidelity check so site PRs match core"
     },
     "site-split-66-explorer-compat-regression-test": {
-      "claim": {
-        "expires_at": "2026-10-15T17:57:28Z",
-        "generation": "589c2b3d097340e9aebeca7907a03e7d",
-        "renewals": 0,
-        "worker": "mcp:tbh:joe@joe-mac-mini.local:2ff26e731ddb7b681f9dacbc"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Add a script-entrypoint regression test for the explorer compatibility check and remove its stale fallback pin"
     },
     "site-split-67-batch-records-and-handoff-hygiene": {
