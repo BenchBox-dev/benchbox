@@ -10,9 +10,8 @@ from scripts import ruleset_drift_check
 from scripts.ruleset_drift_check import (
     compare_ruleset,
     environment_protection_findings,
+    merge_queue_findings,
     parse_expected_rulesets,
-    queue_policy_findings,
-    queue_policy_verified,
 )
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -203,7 +202,7 @@ def test_github_api_failure_is_reported_without_traceback(
     rc = ruleset_drift_check.main(["--token", "token", "--output", str(output)])
 
     assert rc == 1
-    assert json.loads(output.read_text()) == {"status": "error", "queue_verified": False, "error": "api unavailable"}
+    assert json.loads(output.read_text()) == {"status": "error", "error": "api unavailable"}
 
 
 def _live_with_queue(params: dict | None) -> dict:
@@ -226,7 +225,7 @@ def test_merge_queue_present_is_blocking() -> None:
     assert ruleset_drift_check.blocking_findings(findings) == findings
 
 
-def _verified_develop_queue() -> dict:
+def _verified_develop_ruleset() -> dict:
     live = _live_ruleset(
         "refs/heads/develop",
         ["core", "explorer", "results-data", "docs", "landing", "tooling", "oracle-review"],
@@ -245,14 +244,16 @@ def _verified_develop_queue() -> dict:
     return live
 
 
-def test_queue_policy_requires_all_develop_protections() -> None:
+def _develop_findings(live: dict) -> list[str]:
     expected = parse_expected_rulesets((REPO_ROOT / "docs" / "internal" / "repo-admin-settings.md").read_text())[
         "develop-squash-only"
     ]
-    live = _verified_develop_queue()
+    findings = compare_ruleset(expected, live, require_bypass_actor_visibility=True)
+    return findings + merge_queue_findings(live, expected.name)
 
-    assert queue_policy_findings(expected, live) == []
-    assert queue_policy_verified(expected, live) is True
+
+def test_develop_ruleset_matching_runbook_has_no_findings() -> None:
+    assert _develop_findings(_verified_develop_ruleset()) == []
 
 
 @pytest.mark.parametrize(
@@ -263,52 +264,11 @@ def test_queue_policy_requires_all_develop_protections() -> None:
         (lambda live: live.pop("bypass_actors"), "bypass actors are not visible"),
     ],
 )
-def test_queue_policy_fails_closed_on_missing_or_drifted_protection(mutate, expected_text: str) -> None:
-    expected = parse_expected_rulesets((REPO_ROOT / "docs" / "internal" / "repo-admin-settings.md").read_text())[
-        "develop-squash-only"
-    ]
-    live = _verified_develop_queue()
+def test_develop_ruleset_drift_is_blocking(mutate, expected_text: str) -> None:
+    live = _verified_develop_ruleset()
     mutate(live)
 
-    findings = queue_policy_findings(expected, live)
+    findings = _develop_findings(live)
 
     assert any(expected_text in finding for finding in findings)
-    assert queue_policy_verified(expected, live) is False
-
-
-def test_queue_policy_cli_emits_machine_readable_verified_result(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    monkeypatch.setattr(
-        ruleset_drift_check,
-        "_fetch_live_rulesets",
-        lambda _repo, _token: {"develop-squash-only": _verified_develop_queue()},
-    )
-    output = tmp_path / "queue-policy.json"
-
-    rc = ruleset_drift_check.main(["--queue-policy", "--token", "token", "--output", str(output)])
-
-    assert rc == 0
-    payload = json.loads(output.read_text())
-    assert payload["status"] == "ok"
-    assert payload["queue_verified"] is True
-    assert payload["findings"] == []
-
-
-def test_queue_policy_cli_treats_api_failure_as_unverified(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    monkeypatch.setattr(
-        ruleset_drift_check,
-        "_fetch_live_rulesets",
-        lambda _repo, _token: (_ for _ in ()).throw(RuntimeError("api unavailable")),
-    )
-    output = tmp_path / "queue-policy.json"
-
-    rc = ruleset_drift_check.main(["--queue-policy", "--token", "token", "--output", str(output)])
-
-    assert rc == 1
-    payload = json.loads(output.read_text())
-    assert payload == {"status": "error", "queue_verified": False, "error": "api unavailable"}
+    assert ruleset_drift_check.blocking_findings(findings)
