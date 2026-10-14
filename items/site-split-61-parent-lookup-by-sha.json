@@ -9,7 +9,7 @@
     "Ledger rows updated in the same change (tests/unit/ledger_cutover_files.txt and docs/development/dev-loop-property-ledger.md) so test_ledger_coverage passes",
     "No explanatory comments in the script or tests (comment policy)"
   ],
-  "context": "Raised by the 2026-10-13 adversarial review (handoff revision 9, finding 2). Evidence: `gh run list -R BenchBox-dev/benchbox --workflow site-inputs.yml --branch develop --status success --limit 12` shows 38216829987 (c660e6157) at position 10 of 10 in the window the workflow uses. The recovery message at site Deploy runs 38247176462..38392445519 prescribes `parent_core_sha=c660e61579c1979a4c9ca4417e97d695142689e9`. Time-sensitive: the window closes on the next successful develop Site Inputs run. Related: site-split-62, site-split-63.",
+  "context": "Raised by the 2026-10-13 adversarial review (handoff revision 9, finding 2). Evidence: `gh run list -R BenchBox-dev/benchbox --workflow site-inputs.yml --branch develop --status success --limit 12` shows 38216829987 (c660e6157) at position 10 of 10 in the window the workflow uses. The recovery message at site Deploy runs 38247176462..38392445519 prescribes `parent_core_sha=c660e61579c1979a4c9ca4417e97d695142689e9`. Time-sensitive: the window closes on the next successful develop Site Inputs run. Related: site-split-62, site-split-63. Implementation: PR #2955 (branch fix/site-inputs-parent-by-sha, commit 4b69cfb38) moves parent resolution into scripts/site_inputs_parent.py with tests/unit/scripts/test_site_inputs_parent.py and tests/unit/workflows/test_site_inputs_workflow.py; rebased onto develop c14ecdb9c after PR #2954 unblocked commits. Owner confirmed the develop merge pause until this item merges and authorized creating site-split-69 for the deployed-SHA design.",
   "description": ".github/workflows/site-inputs.yml picks parents from the 10 newest successful develop runs (`gh run list ... --limit 10`) inline in YAML with no tests. As of 2026-10-13 the deployed parent c660e615 (run 38216829987) is exactly the 10th entry. The next successful run pushes it out; a dispatch with parent_core_sha=c660e615 then fails with \"no site-inputs bundle attested on parent\", and no bundle can be built whose parity covers the deployed SHA.\n\nWork: move parent resolution into a script with unit tests (precedent: scripts/scheduled_workflow_liveness.py and its tests, #2815), look up the dispatched parent's artifact by SHA rather than from a fixed window, and keep the fail-closed behaviour. site-inputs.yml and scripts/site_inputs.py are soundness paths, so oracle review applies. Item site-split-62 changes the adjacent certification step; deliver in order.",
   "sessions": [
     {
@@ -27,6 +27,14 @@
       "generation": "4655697b9b9d4b22bcdc08b110158cc4",
       "op": "take",
       "op_id": "c24c75978d95403c90bef06defe416e3",
+      "session_id": "63fb16e6ece34adb91d17cdd1e1f2310"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:2ddfad0386e20e3a0ffba40a",
+      "at": "2026-10-14T03:23:01Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "54c43f709f744726a973725db9096a51",
       "session_id": "63fb16e6ece34adb91d17cdd1e1f2310"
     }
   ]
