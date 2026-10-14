@@ -101,6 +101,15 @@
       "op": "renew",
       "op_id": "134a6c604ca6459aa2efd0a871803cde",
       "session_id": "10b6ed539f7e4998b1290031a09d7b39"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:ee5a973726de839c8eab56eb",
+      "at": "2026-10-14T03:03:22Z",
+      "client": "tbh",
+      "generation": "34913345bc334f7fa4366478e7b05717",
+      "op": "renew",
+      "op_id": "811eaf1f911042a69991be38900dbb4a",
+      "session_id": "10b6ed539f7e4998b1290031a09d7b39"
     }
   ]
 }
