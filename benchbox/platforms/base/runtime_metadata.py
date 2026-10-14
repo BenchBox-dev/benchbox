@@ -330,6 +330,25 @@ def _canonical_compute_fields(platform_key: str, merged: Mapping[str, Any]) -> d
     return {"resource": resource, "resource_kind": kind, "size": size}
 
 
+CANONICAL_COMPUTE_KEYS = ("resource", "resource_kind", "size")
+
+
+def with_canonical_compute(
+    default_compute: Any,
+    platform_compute: Mapping[str, Any],
+    *,
+    size: Any = None,
+) -> dict[str, Any]:
+    canonical: dict[str, Any] = {}
+    if isinstance(default_compute, Mapping):
+        canonical = {
+            key: default_compute[key] for key in CANONICAL_COMPUTE_KEYS if default_compute.get(key) is not None
+        }
+    if canonical.get("size") is None and size is not None:
+        canonical["size"] = size
+    return {**canonical, **{key: value for key, value in platform_compute.items() if key not in canonical}}
+
+
 def _compute_metadata(platform_key: str, info: Mapping[str, Any], config: Mapping[str, Any]) -> dict[str, Any]:
     compute = _mapping_value(info.get("compute_configuration")) or {}
     merged = {**config, **compute}

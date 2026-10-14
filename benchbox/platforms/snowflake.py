@@ -26,7 +26,7 @@ from .base.data_loading import (
     resolve_csv_dialect,
     run_staged_table_loads,
 )
-from .base.runtime_metadata import build_default_normalized_result_metadata
+from .base.runtime_metadata import build_default_normalized_result_metadata, with_canonical_compute
 from .base.tuning import make_informational_constraint_applier
 from .presto_trino_utils import normalize_existing_files
 
@@ -337,8 +337,11 @@ class SnowflakeAdapter(PlatformAdapter):
 
         metadata["platform_deployment"] = self._snowflake_deployment_metadata(config)
         metadata["platform_cloud"] = self._snowflake_cloud_metadata(info, config)
-        metadata["platform_compute"] = self._snowflake_compute_metadata(
-            config, compute, cache_control=getattr(self, "_cache_control_receipt", None)
+        metadata["platform_compute"] = with_canonical_compute(
+            metadata.get("platform_compute"),
+            self._snowflake_compute_metadata(
+                config, compute, cache_control=getattr(self, "_cache_control_receipt", None)
+            ),
         )
         metadata["platform_storage"] = self._snowflake_storage_metadata(config)
         return metadata

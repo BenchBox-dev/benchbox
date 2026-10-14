@@ -14,7 +14,7 @@ from urllib.parse import urlparse
 
 from benchbox.platforms.base.adapter import DriverIsolationCapability
 from benchbox.platforms.base.config_utils import make_registered_platform_config_builder
-from benchbox.platforms.base.runtime_metadata import build_default_normalized_result_metadata
+from benchbox.platforms.base.runtime_metadata import build_default_normalized_result_metadata, with_canonical_compute
 from benchbox.platforms.clickhouse import ClickHouseAdapter
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
@@ -247,7 +247,10 @@ class ClickHouseCloudAdapter(ClickHouseAdapter):
 
         metadata["platform_deployment"] = self._clickhouse_cloud_deployment_metadata(config)
         metadata["platform_cloud"] = self._clickhouse_cloud_cloud_metadata(config, host_metadata)
-        metadata["platform_compute"] = self._clickhouse_cloud_compute_metadata(config, compute, host_metadata)
+        metadata["platform_compute"] = with_canonical_compute(
+            metadata.get("platform_compute"),
+            self._clickhouse_cloud_compute_metadata(config, compute, host_metadata),
+        )
         metadata["platform_storage"] = self._clickhouse_cloud_storage_metadata(config)
         return metadata
 

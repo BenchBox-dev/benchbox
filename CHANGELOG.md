@@ -77,7 +77,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   retained and resolves the same way), Firebolt `deployment_mode` and
   `firebolt_mode`, DuckLake `deployment_mode`, pg-duckdb `deployment_mode`.
   Saved configurations and credential profiles holding these keys keep
-  working. The aliases are removed in 0.6.0.
+  working, and a selector on the command line overrides them. The aliases
+  are removed in 0.6.0.
 - The core `execution_engine` setting selects which execution machinery runs a
   query. `benchbox run --execution-engine` sits next to `--mode`, and MCP
   `run_benchmark`/`start_benchmark` accept `execution_engine`; both validate
@@ -151,6 +152,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   deployment, requested engine and gateway, and show that variant. Results
   added with `benchbox report import` now count in trends and regressions;
   their lowercase `passed` validation status excluded them before.
+- Redshift accepts `--platform-option workgroup_name=…`,
+  `cluster_identifier=…` and `compute_resource=…`. Each failed before with
+  "Ambiguous compute resource". A native key selects its kind, and a bare
+  `compute_resource` names the workgroup on a Serverless host and the cluster
+  on a provisioned host. A `cluster_identifier` is no longer also used as the
+  workgroup name.
+- A saved credential profile no longer blocks command-line compute and
+  deployment settings. Before, a Snowflake `warehouse`, Firebolt
+  `engine_name` or `engine_size`, ClickHouse Cloud `service_id` or Redshift
+  `workgroup_name` saved by `benchbox setup` made the same setting on the
+  command line fail as a conflict, and a saved LakeSail `sail_mode` blocked
+  `--platform lakesail:distributed`. The command line now wins, and errors
+  name the values you supplied.
+- Result bundles from Snowflake, Firebolt, ClickHouse Cloud and Databricks
+  now record `platform.compute.resource`, `resource_kind` and `size`. Before,
+  only Redshift and platforms using the default metadata builder recorded
+  them. Databricks records the warehouse size it observes.
+- Databricks `compute_resource` now sets the HTTP path
+  `/sql/1.0/warehouses/<id>`, so a run no longer needs `http_path` from
+  `benchbox setup` or the environment, and it overrides an auto-detected
+  path. The conflict check accepts the `/warehouses/` and `/endpoints/` forms
+  and ignores a query string such as `?o=123`.
+- `--platform-option mode=…` and `deployment_mode=…` work for InfluxDB.
+  Before, the CLI rejected them as unknown options, because they were
+  registered only when the InfluxDB adapter package was imported.
+- `benchbox run --platform quanton` builds its configuration instead of
+  failing with a missing config builder, and a saved `cluster_size` is no
+  longer overridden by the `compute_size` default.
 
 ### Before you upgrade
 - `benchbox compare` and MCP `compare_results` now refuse two results whose
@@ -171,9 +200,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Vendor compute names now warn once per run; move saved configurations and
   credential profiles to `compute_resource` and `compute_size` (Fabric Data
   Warehouse: `database`; Athena Spark: `runtime_version`). The old names stop
-  working in 0.6.0. When both spellings disagree, the canonical name wins,
-  except Databricks, where a `compute_resource` that disagrees with the
-  warehouse implied by `http_path` fails the run naming both values.
+  working in 0.6.0. A compute value on the command line overrides the saved
+  credential profile, and the saved profile overrides a default. Two
+  spellings that disagree in the same place (for example `warehouse` and
+  `compute_resource` both on the command line, or both in one saved profile)
+  stop the run before any work and name both values. On Databricks a
+  `compute_resource` sets the HTTP path to `/sql/1.0/warehouses/<id>`; an
+  `http_path` from the same place that names a different warehouse stops the
+  run naming both values.
+- `benchbox setup --platform snowflake` now saves the warehouse as
+  `compute_resource`. Profiles saved earlier with `warehouse` keep working
+  until 0.6.0.
 
 - Result bundles now use additive schema 2.3. Readers must accept this version.
   Older bundles remain readable and published bundles and IDs are unchanged.

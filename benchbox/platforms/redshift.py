@@ -65,6 +65,22 @@ def _compact_metadata(payload: Mapping[str, Any]) -> dict[str, Any]:
     return {str(key): value for key, value in payload.items() if value not in (None, "", {}, [], ())}
 
 
+def redshift_deployment_type(hostname: str | None) -> str:
+    host = hostname or ""
+    if ".redshift-serverless.amazonaws.com" in host:
+        return "serverless"
+    if ".redshift.amazonaws.com" in host:
+        return "provisioned"
+    return "unknown"
+
+
+_RESOURCE_KEY_BY_DEPLOYMENT = {"serverless": "workgroup_name", "provisioned": "cluster_identifier"}
+
+
+def redshift_resource_key(config: Mapping[str, Any]) -> str | None:
+    return _RESOURCE_KEY_BY_DEPLOYMENT.get(redshift_deployment_type(config.get("host")))
+
+
 class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
     driver_isolation_capability = DriverIsolationCapability.FEASIBLE_CLIENT_ONLY
     supports_external_tables = True
@@ -96,9 +112,11 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
         self.database = config.get("database") or "dev"
         self.username = config.get("username")
         self.password = config.get("password")
-        self.cluster_identifier = config.get("cluster_identifier")
-        self.workgroup_name = config.get("compute_resource") or config.get("workgroup_name")
-        self.compute_resource = config.get("compute_resource")
+        from benchbox.core.compute_resource import bind_resource_key
+
+        compute = bind_resource_key("redshift", config, redshift_resource_key(config))
+        self.cluster_identifier = compute.get("cluster_identifier")
+        self.compute_resource = compute.get("compute_resource")
 
         self.admin_database = config.get("admin_database") or "dev"
 
@@ -159,7 +177,7 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
         self.strict_validation = config.get("strict_validation", True)
 
         self.deployment_type = self._detect_deployment_type(self.host or "")
-        self.workgroup_name = config.get("workgroup_name") or config.get("compute_resource")
+        self.workgroup_name = compute.get("workgroup_name")
         if self.workgroup_name is None and self.deployment_type == "serverless" and self.cluster_identifier is None:
             self.workgroup_name = self._extract_identifier_from_hostname(self.host or "", self.deployment_type)
 
@@ -223,6 +241,7 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
             **build_adapter_config(
                 config,
                 platform="redshift",
+                resource_key=redshift_resource_key(config),
                 fields=[
                     "host",
                     "port",
@@ -594,15 +613,7 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
         return "redshift"
 
     def _detect_deployment_type(self, hostname: str) -> str:
-        if not hostname:
-            return "unknown"
-
-        if ".redshift-serverless.amazonaws.com" in hostname:
-            return "serverless"
-        elif ".redshift.amazonaws.com" in hostname:
-            return "provisioned"
-        else:
-            return "unknown"
+        return redshift_deployment_type(hostname)
 
     def _extract_region_from_hostname(self, hostname: str, deployment_type: str) -> str | None:
         if not hostname:
@@ -2318,4 +2329,5 @@ _build_redshift_config = make_registered_platform_config_builder(
         "strict_validation",
     ],
     base_options={"admin_database": "dev"},
+    resource_key=redshift_resource_key,
 )

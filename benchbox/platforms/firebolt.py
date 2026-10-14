@@ -12,7 +12,7 @@ from benchbox.core.benchmark_mixins import CursorValidationQueryExecutionMixin
 from benchbox.core.deployment import deployment_class, select_adapter_deployment
 from benchbox.core.sql_utils import normalize_table_name_in_sql
 from benchbox.platforms.base.config_utils import make_registered_platform_config_builder
-from benchbox.platforms.base.runtime_metadata import build_default_normalized_result_metadata
+from benchbox.platforms.base.runtime_metadata import build_default_normalized_result_metadata, with_canonical_compute
 from benchbox.platforms.base.tuning import make_informational_constraint_applier
 from benchbox.platforms.presto_trino_utils import normalize_existing_files, show_tables_lower
 from benchbox.utils.clock import elapsed_seconds, mono_time
@@ -409,7 +409,9 @@ class FireboltAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
         metadata["execution_environment"] = exec_env
         metadata["platform_deployment"] = self._firebolt_deployment_metadata(info, config)
         metadata["platform_cloud"] = self._firebolt_cloud_metadata(config)
-        metadata["platform_compute"] = self._firebolt_compute_metadata(config, compute)
+        metadata["platform_compute"] = with_canonical_compute(
+            metadata.get("platform_compute"), self._firebolt_compute_metadata(config, compute)
+        )
         metadata["platform_storage"] = self._firebolt_storage_metadata(config)
         return metadata
 

@@ -23,7 +23,7 @@ from benchbox.core.execution_engine import ExecutionEngineReceipt, ObservedSourc
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 from benchbox.core.upload_validation import UploadValidationEngine
 from benchbox.platforms.base import DriverIsolationCapability, PlatformAdapter
-from benchbox.platforms.base.runtime_metadata import build_default_normalized_result_metadata
+from benchbox.platforms.base.runtime_metadata import build_default_normalized_result_metadata, with_canonical_compute
 from benchbox.platforms.base.tuning import make_informational_constraint_applier
 from benchbox.utils.datagen_manifest import MANIFEST_FILENAME
 from benchbox.utils.dependencies import (
@@ -97,6 +97,8 @@ def _split_top_level_commas(body: str) -> list[str]:
 
 
 _COMMIT_HASH_RE = re.compile(r"^[0-9a-fA-F]{7,40}$")
+
+WAREHOUSE_HTTP_PATH_PREFIX = "/sql/1.0/warehouses/"
 
 _CURRENT_VERSION_KEYS = ("dbr_version", "dbsql_version", "u_build_hash", "r_build_hash")
 
@@ -277,14 +279,8 @@ class DatabricksAdapter(PlatformAdapter):
         self._dialect = "databricks"
 
         self.server_hostname = config.get("server_hostname") or config.get("host")
-        self.http_path = config.get("http_path")
         self.compute_resource = config.get("compute_resource") or config.get("warehouse_id")
-        implied_warehouse_id = self._warehouse_id_from_http_path(self.http_path)
-        if self.compute_resource and implied_warehouse_id and self.compute_resource != implied_warehouse_id:
-            raise ValueError(
-                f"Conflicting Databricks compute settings: compute_resource='{self.compute_resource}' "
-                f"disagrees with the warehouse implied by http_path='{self.http_path}'. Keep only one."
-            )
+        self.http_path = self._resolve_http_path(self.compute_resource, config.get("http_path"))
         self.access_token = config.get("access_token") or config.get("token")
         self.catalog = config.get("catalog") or "main"
         self.schema = config.get("schema") or "benchbox"
@@ -496,23 +492,25 @@ class DatabricksAdapter(PlatformAdapter):
                 or "example" in str_val.lower()
             )
 
+        compute_resource = config.get("compute_resource")
         if not all(
             [
                 config.get("server_hostname") and not is_placeholder(config.get("server_hostname")),
-                config.get("http_path") and not is_placeholder(config.get("http_path")),
+                compute_resource or (config.get("http_path") and not is_placeholder(config.get("http_path"))),
                 config.get("access_token") and not is_placeholder(config.get("access_token")),
             ]
         ):
             auto_config = cls._auto_detect_databricks_config(very_verbose=very_verbose)
             if auto_config:
                 adapter_config.update(auto_config)
+                if compute_resource:
+                    adapter_config.pop("http_path", None)
 
         for key in ["server_hostname", "http_path", "access_token"]:
             if config.get(key) and not is_placeholder(config.get(key)):
                 adapter_config[key] = config[key]
-        for key in ["compute_resource", "warehouse_id"]:
-            if config.get(key):
-                adapter_config[key] = config[key]
+        if compute_resource:
+            adapter_config["compute_resource"] = compute_resource
 
         adapter_config["catalog"] = config.get("catalog", "workspace")
 
@@ -854,7 +852,10 @@ class DatabricksAdapter(PlatformAdapter):
 
         metadata["platform_deployment"] = self._databricks_deployment_metadata(config, compute)
         metadata["platform_cloud"] = self._databricks_cloud_metadata(config)
-        metadata["platform_compute"] = self._databricks_compute_metadata(config, compute)
+        databricks_compute = self._databricks_compute_metadata(config, compute)
+        metadata["platform_compute"] = with_canonical_compute(
+            metadata.get("platform_compute"), databricks_compute, size=databricks_compute.get("warehouse_size")
+        )
         if receipt is not None:
             metadata["platform_compute"]["cache_control"] = receipt
         metadata["platform_storage"] = self._databricks_storage_metadata(config)
@@ -862,9 +863,29 @@ class DatabricksAdapter(PlatformAdapter):
 
     @staticmethod
     def _warehouse_id_from_http_path(http_path: str | None) -> str | None:
-        if not http_path or "/warehouses/" not in http_path:
+        if not http_path:
             return None
-        return http_path.split("/warehouses/")[-1].strip("/") or None
+        segments = [segment for segment in str(http_path).split("?", 1)[0].split("/") if segment]
+        for kind in ("warehouses", "endpoints"):
+            if kind in segments:
+                index = segments.index(kind)
+                return segments[index + 1] if index + 1 < len(segments) else None
+        return None
+
+    @classmethod
+    def _resolve_http_path(cls, compute_resource: str | None, http_path: str | None) -> str | None:
+        if not compute_resource:
+            return http_path
+        if not http_path:
+            return f"{WAREHOUSE_HTTP_PATH_PREFIX}{compute_resource}"
+        implied = cls._warehouse_id_from_http_path(http_path)
+        if implied is not None and implied != compute_resource:
+            raise ValueError(
+                f"Conflicting Databricks compute settings: compute_resource='{compute_resource}' "
+                f"names a different warehouse than http_path='{http_path}' (warehouse '{implied}'). "
+                "Keep only one."
+            )
+        return http_path
 
     def _detect_databricks_region(self) -> str | None:
         try:

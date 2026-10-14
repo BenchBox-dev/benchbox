@@ -49,4 +49,5 @@ _build_databricks_config = make_platform_config_builder(
         "create_catalog",
         "disable_result_cache",
     ],
+    linked_resource_keys=("http_path",),
 )

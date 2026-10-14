@@ -118,6 +118,11 @@ benchbox run --platform redshift --benchmark tpch \
   --platform-option database=dev
 ```
 
+`compute_resource` names the workgroup when the host is a Serverless endpoint
+(`*.redshift-serverless.amazonaws.com`) and the cluster when it is a
+provisioned endpoint (`*.redshift.amazonaws.com`). With any other host, pass
+`workgroup_name` or `cluster_identifier` instead.
+
 ## Usage Examples
 
 ### Basic Benchmark

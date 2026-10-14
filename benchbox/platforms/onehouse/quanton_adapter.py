@@ -25,6 +25,7 @@ from benchbox.platforms.base.cloud_spark import (
     SparkTuningMixin,
 )
 from benchbox.platforms.base.cloud_spark.config import CloudPlatform
+from benchbox.platforms.base.config_utils import make_platform_config_builder
 from benchbox.platforms.base.phase_tracking import _resolve_benchmark_table_names
 from benchbox.platforms.onehouse.onehouse_client import (
     ClusterConfig,
@@ -473,3 +474,12 @@ class QuantonAdapter(
 
     def get_target_dialect(self) -> str:
         return "spark"
+
+
+_build_quanton_config = make_platform_config_builder(
+    "quanton",
+    __name__,
+    "Onehouse Quanton",
+    "requests",
+    ["api_key", "s3_staging_dir", "region", "database", "table_format"],
+)
