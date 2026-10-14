@@ -7,6 +7,7 @@ from dataclasses import asdict
 from typing import Any
 from urllib.parse import urlparse
 
+from benchbox.core.execution_engine import ExecutionEngineReceipt
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 from benchbox.core.results.environment import (
     NormalizedExecutionEnvironment,
@@ -168,9 +169,12 @@ def attach_execution_engine_receipt(result: Any, adapter: Any | None) -> Any:
     )
     if recorded:
         return result
-    receipt = asdict(resolve(getattr(adapter, "requested_execution_engine", DEFAULT_EXECUTION_ENGINE)))
-    receipt["applied_native"] = dict(receipt.get("applied_native") or {})
-    result.platform_info = {**platform_info, "execution_engine": receipt}
+    receipt = resolve(getattr(adapter, "requested_execution_engine", DEFAULT_EXECUTION_ENGINE))
+    if not isinstance(receipt, ExecutionEngineReceipt):
+        return result
+    payload = asdict(receipt)
+    payload["applied_native"] = dict(payload["applied_native"])
+    result.platform_info = {**platform_info, "execution_engine": payload}
     return result
 
 
