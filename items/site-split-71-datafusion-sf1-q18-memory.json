@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "reproduce it locally or on the runner image. Record the cause: pool or partition configuration, or real memory need. Then either fix the configuration so the cell passes, or record the cell as expected runner-failure, with a test that a failed cell stages nothing."
+  ],
+  "context": "Re-homed from item 68 (owner decision D1, 2026-10-14 review session). Seed cell tpch/datafusion SF1.0 fails Q18 with \"Resources exhausted … fair(pool_size: 12.0 GB)\" (runs 38331461283 and 36875524717). Never reproduced.",
+  "description": "Re-homed from item 68 (D1). The seed cell `tpch/datafusion` SF1.0 fails Q18 with \"Resources exhausted … fair(pool_size: 12.0 GB)\" (runs 38331461283 and 36875524717). It has never been reproduced.",
+  "sessions": [
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:2ff26e731ddb7b681f9dacbc",
+      "at": "2026-10-14T17:53:39Z",
+      "client": "tbh",
+      "op": "create",
+      "op_id": "85f344f9cd504d67959f014f2c3cf7fe",
+      "session_id": "8250681ba4eb464e88a8d9c11374e76e"
+    }
+  ]
+}

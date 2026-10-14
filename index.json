@@ -20626,6 +20626,13 @@
       "status": "open",
       "title": "Fix stale oracle-review suite blocking PRs after late verdicts"
     },
+    "site-split-71-datafusion-sf1-q18-memory": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Reproduce datafusion SF1 Q18 memory exhaustion and disposition cell"
+    },
     "site-split-99-closeout": {
       "claim": null,
       "needs": [
