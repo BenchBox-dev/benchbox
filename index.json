@@ -4560,10 +4560,15 @@
       "title": "Triage and reconcile remaining 530 strict-mode findings across full repository inventory"
     },
     "comment-policy-strict-scope-mismatch": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-15T12:14:10Z",
+        "generation": "6af7636f5ce348ba9b7b070aa9b78edd",
+        "renewals": 0,
+        "worker": "mcp:tbh:joe@joe-mac-mini.local:ee5a973726de839c8eab56eb"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "make comment-policy-strict fails on a clean develop checkout because it ignores the ownership manifest and a wheel entry is stale"
     },
     "comment-policy-transition-mode-exception-ratchet": {
