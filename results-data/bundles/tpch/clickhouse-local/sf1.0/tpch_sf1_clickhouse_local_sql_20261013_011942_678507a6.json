@@ -239,52 +239,52 @@
         "statements": [
           {
             "phase": "session",
-            "statement": "SET max_memory_usage = 8589934592",
+            "statement_redacted": true,
             "status": "executed"
           },
           {
             "phase": "session",
-            "statement": "SET max_execution_time = 300",
+            "statement_redacted": true,
             "status": "executed"
           },
           {
             "phase": "session",
-            "statement": "SET max_threads = 4",
+            "statement_redacted": true,
             "status": "executed"
           },
           {
             "phase": "session",
-            "statement": "SET use_uncompressed_cache = 0",
+            "statement_redacted": true,
             "status": "executed"
           },
           {
             "phase": "session",
-            "statement": "SET enable_optimize_predicate_expression = 1",
+            "statement_redacted": true,
             "status": "executed"
           },
           {
             "phase": "session",
-            "statement": "SET allow_experimental_correlated_subqueries = 1",
+            "statement_redacted": true,
             "status": "executed"
           },
           {
             "phase": "session",
-            "statement": "SET join_use_nulls = 1",
+            "statement_redacted": true,
             "status": "executed"
           },
           {
             "phase": "session",
-            "statement": "SET use_query_cache = 0",
+            "statement_redacted": true,
             "status": "executed"
           },
           {
             "phase": "session",
-            "statement": "SET enable_writes_to_query_cache = 0",
+            "statement_redacted": true,
             "status": "executed"
           },
           {
             "phase": "session",
-            "statement": "SET enable_reads_from_query_cache = 0",
+            "statement_redacted": true,
             "status": "executed"
           }
         ],
