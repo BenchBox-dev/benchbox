@@ -58,20 +58,20 @@ from the cloud harness's own instructions and may not follow this setting; the
 ## The trade-off accepted
 
 Suppressing the footer removes the only standing signal that separates an
-agent-authored comment from a human one on an OWNER-attributed post. That cost
-is accepted deliberately, for two reasons. A footer on every post is noise
-that readers stop seeing. A blanket machine marker under the maintainer's
-account also misleads about who is speaking. So instead of an unconditional
-footer, the rule asks for disclosure **in the text, where it changes what a
-reader would do**. For example, when a comment reports what an agent
-verified, or when a reviewer would act differently knowing the analysis was
-automated.
+agent-authored comment from a human one on a post under the maintainer's
+account. That cost is accepted deliberately, for two reasons. A footer on every
+post is noise that readers stop seeing. A blanket machine marker under the
+maintainer's account also misleads about who is speaking. So instead of an
+unconditional footer, the rule asks for disclosure **in the text, where it
+changes what a reader would do**. For example, when a comment reports what an
+agent verified, or when a reviewer would act differently knowing the analysis
+was automated.
 
 Two alternatives were considered and not chosen:
 
 - **Unify the two footers into one shorter string.** Keeps a disclosure signal
   and fixes the inconsistency between surfaces, but keeps a standing marker
-  under the owner's account.
+  under the maintainer's account.
 - **Post agent comments from a bot identity.** The strongest option, because
   the account itself carries attribution instead of a line in the body. It
   needs a bot account and token provisioning, so it is out of scope here. If

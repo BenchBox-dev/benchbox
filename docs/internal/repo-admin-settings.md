@@ -106,6 +106,7 @@ strict_required_status_checks_policy: false
 required_linear_history: true
 non_fast_forward: true
 required_pull_request_reviews:    squash-only PRs
+require_extra_approval_for_unattributed_changes: true
 deletion: blocked
 bypass_actors: (none)
 ```
@@ -299,6 +300,7 @@ Other ruleset properties to preserve:
 strict_required_status_checks_policy: false
 required_linear_history: true
 non_fast_forward: true
+require_extra_approval_for_unattributed_changes: true
 deletion: blocked
 bypass_actors: (none)
 ```
