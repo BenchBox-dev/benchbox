@@ -165,7 +165,9 @@ keys require a public-contract update and consumer tests.
 ##### Execution variants (schema 2.3)
 
 These fields are optional and omitted until a producer supplies them. Missing
-values are not filled with nulls. Display labels are separate from identity.
+values are not filled with nulls, except in the `platform.execution_engine`
+receipt: a platform with no declared engines records `applied` and
+`applied_class` as `null`. Display labels are separate from identity.
 
 | Field | Meaning |
 |-------|---------|
@@ -186,7 +188,8 @@ are represented as endpoint pseudonyms.
 
 The loader reads older bundles as requested `default`, with applied and
 observed `unknown`. Legacy `config.platform_options.streaming=true` maps to
-requested `streaming` and resolution `legacy_option`.
+requested `streaming` and resolution `legacy_option` for Polars DataFrame
+bundles only.
 `platform.config.engine_requested` maps to its recorded value and resolution
 `explicit`, except `default`, which uses `version_default`. Athena's legacy
 `platform.compute.engine` reads as `product`. These mappings happen in memory;

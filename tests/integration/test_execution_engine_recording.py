@@ -71,11 +71,28 @@ def test_cli_polars_run_records_requested_engine_and_collect_kwargs(
     assert bundle["platform"]["variant"] == variant
 
 
-def test_cli_sql_run_records_default_engine(tmp_path: Path) -> None:
-    result = _cli_run(tmp_path, "duckdb", "--queries", "6", "--phases", "generate,load,power")
+_DEFAULT_RECEIPT = {
+    "requested": "default",
+    "applied": None,
+    "applied_class": None,
+    "resolution": "platform_default",
+    "observed": "not_captured",
+    "observed_source": "none",
+}
+
+
+@pytest.mark.parametrize(("platform", "variant"), [("duckdb", "duckdb"), ("pandas-df", "pandas-df")])
+def test_cli_run_on_a_platform_without_engines_records_the_default_receipt(
+    tmp_path: Path, platform: str, variant: str
+) -> None:
+    pytest.importorskip("pandas")
+    result = _cli_run(tmp_path, platform, "--queries", "6", "--phases", "generate,load,power")
     assert result.returncode == 0, result.stdout + result.stderr
 
-    assert _only_bundle(tmp_path / "results")["config"]["execution_engine"] == "default"
+    bundle = _only_bundle(tmp_path / "results")
+    assert bundle["config"]["execution_engine"] == "default"
+    assert bundle["platform"]["execution_engine"] == _DEFAULT_RECEIPT
+    assert bundle["platform"]["variant"] == variant
 
 
 @contextmanager

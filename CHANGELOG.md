@@ -286,6 +286,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The DataFrame smart-defaults low-memory message no longer says it enables
   streaming mode, which it has not done since automatic tuning stopped
   choosing an engine.
+- Bundles from platforms without selectable execution engines, such as DuckDB
+  and pandas, now record the default engine receipt in
+  `platform.execution_engine`: requested `default`, applied `null`,
+  resolution `platform_default` and observed `not_captured`. The platform
+  variant stays `duckdb` or `pandas-df`. The legacy `streaming` mapping now
+  applies only to Polars DataFrame bundles and reads only
+  `config.platform_options.streaming`, so an older DuckDB or SQL Polars bundle
+  with that option no longer reads as a streaming variant.
 
 ### Before you upgrade
 - `benchbox compare` and MCP `compare_results` now refuse two results whose

@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import asdict
 from typing import Any
 from urllib.parse import urlparse
 
+from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 from benchbox.core.results.environment import (
     NormalizedExecutionEnvironment,
     PlatformCloudMetadata,
@@ -153,6 +155,23 @@ def collect_normalized_result_metadata(
         platform_config=platform_config,
         execution_mode=execution_mode,
     )
+
+
+def attach_execution_engine_receipt(result: Any, adapter: Any | None) -> Any:
+    resolve = getattr(adapter, "resolve_execution_engine", None)
+    if not callable(resolve):
+        return result
+    platform_info = result.platform_info if isinstance(result.platform_info, Mapping) else {}
+    configuration = platform_info.get("configuration")
+    recorded = platform_info.get("execution_engine") or (
+        configuration.get("execution_engine") if isinstance(configuration, Mapping) else None
+    )
+    if recorded:
+        return result
+    receipt = asdict(resolve(getattr(adapter, "requested_execution_engine", DEFAULT_EXECUTION_ENGINE)))
+    receipt["applied_native"] = dict(receipt.get("applied_native") or {})
+    result.platform_info = {**platform_info, "execution_engine": receipt}
+    return result
 
 
 def _merge_adapter_client_link(metadata: dict[str, Any], adapter: Any | None) -> None:
@@ -682,6 +701,7 @@ def _should_replace_metadata_value(key: str, existing: Any, incoming: Any) -> bo
 
 __all__ = [
     "apply_normalized_result_metadata",
+    "attach_execution_engine_receipt",
     "build_default_normalized_result_metadata",
     "collect_normalized_result_metadata",
 ]

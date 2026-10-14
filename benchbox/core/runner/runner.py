@@ -61,6 +61,7 @@ except ImportError:
 from benchbox.platforms import get_platform_adapter
 from benchbox.platforms.base.runtime_metadata import (
     apply_normalized_result_metadata,
+    attach_execution_engine_receipt,
     collect_normalized_result_metadata,
 )
 from benchbox.platforms.dataframe.benchmark_mixin import DataFramePhases, DataFrameRunOptions
@@ -456,18 +457,17 @@ def _enrich_normalized_runtime_metadata(
 ) -> BenchmarkResults:
     if adapter is None:
         return result
-    if _has_adapter_runtime_metadata(result):
-        return result
-
-    platform_info = result.platform_info if isinstance(result.platform_info, Mapping) else None
-    execution_metadata = result.execution_metadata if isinstance(result.execution_metadata, Mapping) else {}
-    metadata = collect_normalized_result_metadata(
-        adapter,
-        platform_info=platform_info,
-        platform_config=platform_config,
-        execution_mode=str(execution_metadata.get("mode") or execution_metadata.get("execution_mode") or ""),
-    )
-    return apply_normalized_result_metadata(result, metadata)
+    if not _has_adapter_runtime_metadata(result):
+        platform_info = result.platform_info if isinstance(result.platform_info, Mapping) else None
+        execution_metadata = result.execution_metadata if isinstance(result.execution_metadata, Mapping) else {}
+        metadata = collect_normalized_result_metadata(
+            adapter,
+            platform_info=platform_info,
+            platform_config=platform_config,
+            execution_mode=str(execution_metadata.get("mode") or execution_metadata.get("execution_mode") or ""),
+        )
+        apply_normalized_result_metadata(result, metadata)
+    return attach_execution_engine_receipt(result, adapter)
 
 
 def _has_adapter_runtime_metadata(result: BenchmarkResults) -> bool:

@@ -310,7 +310,9 @@ one name covers requested and observed values.
 - Bundles at schema 2.2 or earlier read as `requested=default`, with applied
   and observed unknown.
 - `platform_options.streaming=true` maps to `requested=streaming` with
-  `resolution=legacy_option`.
+  `resolution=legacy_option` for Polars DataFrame bundles only, and only from
+  `platform_options.streaming`. Other platforms, and the SQL Polars adapter
+  where the option had no effect, keep `requested=default`.
 - `platform.config.engine_requested`, recorded by the Polars version-matrix
   bundles, maps to that value with `resolution=explicit`, except `default`,
   which maps to `resolution=version_default`.
