@@ -6,7 +6,7 @@
     "The drift check runs in the nightly workflow and reports through the existing failure-issue path (no new alert channel)",
     "The batch handoff no longer says to wait for a deploy before merging the contract refresh"
   ],
-  "context": "Raised by the 2026-10-13 adversarial review (handoff revision 9, finding 1). DONE 2026-10-14: site PR #27 merged as 4eb62286 (ci SUCCESS, only advisory visual FAILURE). Drift check (scripts/check-contract-drift.mjs + nightly contract-drift job with contract-drift issue label) live on site main; guard tests in explorer vitest. Local evidence: drift check passes (site 16 vs bundle 16 from run 38521589047); build/check/test pass against Trunk-certified bundle from core run 38344752905 (core 77048bfb, certified_by 38343445399). Handoff wait-to-merge sentence struck as rescinded.",
+  "context": "Raised by the 2026-10-13 adversarial review (handoff revision 9, finding 1). DONE 2026-10-14: site PR #27 merged as 4eb62286 (ci SUCCESS, only advisory visual FAILURE). Drift check (scripts/check-contract-drift.mjs + nightly contract-drift job with contract-drift issue label) live on site main; guard tests in explorer vitest. Local evidence: drift check passes (site 16 vs bundle 16 from run 38521589047); build/check/test pass against Trunk-certified bundle from core run 38344752905 (core 77048bfb, certified_by 38343445399). Handoff wait-to-merge sentence struck as rescinded. REMEDIATION 20261014 (F3): drift step could not fail (missing pipefail, stderr uncaptured). Site PR #30 merged as 30b80007: nightly drift step sets pipefail and captures stderr, plus a workflow test parsing nightly.yml pinning both. Scripts suite 34 pass; explorer vitest failures proven pre-existing on untouched tree. Failure path exercised live: throwaway branch bumped pin to 17, nightly run 38620181526 failed the drift job, issue #31 opened naming both versions (expects 17, bundle 16); issue closed as deliberate test; branch deleted. Note: done items cannot be retaken in todo-db, so this evidence is appended without reopening.",
   "description": "The site build refuses a bundle whose explorer/contract.json read_model_version differs from EXPECTED_READ_MODEL_VERSION (site main 14, PR #24 15, core develop 16; explorer/scripts/explorer-build-contract.mjs:5 in the site, results-explorer/scripts/explorer-build-contract.mjs:6 in core). The first failed deploy, run 38247176462 at 2026-10-12 12:09Z, stopped on exactly this (\"expected 14, got 15 ... update the Explorer for the new contract before taking this bundle\").\n\nThe batch record said not to merge #24 until a v15+ bundle deploys. That cannot happen: the Explorer must change first. Merging is safe because a failed deploy stops before publish. Work: merge the refreshed replay from item 65, then add a drift check so the next contract bump is caught in the site repo before a deploy fails.",
   "sessions": [
     {
@@ -50,6 +50,14 @@
       "op": "update",
       "op_id": "82624f0b40ef46369e973758216f5ee0",
       "session_id": "63fb16e6ece34adb91d17cdd1e1f2310"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:2ff26e731ddb7b681f9dacbc",
+      "at": "2026-10-14T19:30:35Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "3a7922fa8d104a6fbdbbf977b65dbbc6",
+      "session_id": "8250681ba4eb464e88a8d9c11374e76e"
     }
   ]
 }
