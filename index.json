@@ -17766,6 +17766,13 @@
       "status": "done",
       "title": "Remove conflicting personal agent hooks, permissions, trust, and MCP state"
     },
+    "remove-dead-napoleon-config": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Remove dead napoleon settings from docs/conf.py"
+    },
     "remove-describe-platform-options-dead-code": {
       "claim": null,
       "needs": [],

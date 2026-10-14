@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Dead settings removed with the extensions they served; docs build green."
+  ],
+  "context": "Found during the 2026-10-13 comment-cleanup re-evaluation session; deliberately deferred there because removal is a docs-build behavior change, not a prose fix.",
+  "description": "docs/conf.py still loads autodoc, napoleon, and viewcode with napoleon_* settings, but the maintained tree carries no docstrings for them to render. Remove the dead configuration together (settings plus the extensions they served) and verify with the docs build, since partial removal would leave a different inconsistency.",
+  "sessions": [
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:dd4e0e92aef34af3608f45c5",
+      "at": "2026-10-14T18:02:52Z",
+      "client": "tbh",
+      "op": "create",
+      "op_id": "15e3a8c8b74946f68afb883d465f67bc",
+      "session_id": "be2b066e755a4a4bb3ff24b1b46fe0b7"
+    }
+  ]
+}
