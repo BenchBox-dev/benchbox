@@ -20973,10 +20973,15 @@
       "title": "Generate Snowflake tuned templates that cluster fact tables only, with keys ordered by cardinality"
     },
     "snowflake-verbose-logging-defect": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-15T20:17:56Z",
+        "generation": "dfdd6a7c25f74972ad5581a9d950760f",
+        "renewals": 0,
+        "worker": "mcp:tbh:joe@joe-mac-mini.local:531762f2d41eb1082dfef080"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Fix execute_query verbose-logging defect in Snowflake and Azure Synapse adapters"
     },
     "snowflake-warehouse-metadata-positional-columns-20261013": {
