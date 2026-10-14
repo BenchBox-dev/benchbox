@@ -3,7 +3,7 @@
     "Databricks receipts distinguish configured Photon from observed Photon",
     "Vocabulary parity test, docs and anonymizer agree on the observed_source values"
   ],
-  "context": "Found by the 2026-10-13 adversarial review of the core execution-variants batch (gateway O5); verified on develop 9400b62c4.\nBatch: _project/handoffs/polars-engine-followups-batch-20261014.md, started 2026-10-14",
+  "context": "Found by the 2026-10-13 adversarial review of the core execution-variants batch (gateway O5); verified on develop 9400b62c4.\nBatch: _project/handoffs/polars-engine-followups-batch-20261014.md, started 2026-10-14\nClose-out 2026-10-14: PR #2968, merge commit 75c3ad27ead6b4340a2a4dc6d81e231777c23ee1. The warehouse enable_photon setting is recorded as applied (photon/native-vectorized, standard/standard, null when unreadable) with applied_native.enable_photon; observed stays not_captured with observed_source none. Verified by tests/unit/platforms/test_databricks_photon_receipt.py (real adapter factory, fake SDK workspace client, runner metadata step, real bundle builder, validator and anonymizer: Photon on, off, empty, unreadable), tests/unit/platforms/test_databricks_adapter_coverage.py and tests/unit/core/results/test_anonymization_compute_resource.py. No ADR amendment: no vocabulary value added; D4 already reserves observed for what ran. Docs: docs/platforms/databricks.md.",
   "description": "## Problem\n- The Databricks engine receipt sets `observed=photon` with `observed_source=\"vendor_log\"`, taken from the warehouse `enable_photon` configuration (`platforms/databricks/adapter.py:789,821-831`; vocabulary in `core/execution_engine.py:24`; docs `docs/platforms/databricks.md:24`).\n- That value is a configured setting, not a query log. The receipt reads as proof that Photon ran the queries.\n\n## Change\nDo one of the following:\n- Add `vendor_config` to the closed `observed_source` vocabulary, with the docs, anonymizer and parity tests updated, and use it here.\n- Or record `observed=not_captured` and keep the setting under `applied_native`.\n\nThe vocabulary is part of the ADR, so record the change there.",
   "links": [
     "benchbox/platforms/databricks/adapter.py",
@@ -34,6 +34,14 @@
       "generation": "8caa899633a944ee96510d1993f0b551",
       "op": "take",
       "op_id": "4164fd6a483642b5986bda23b8aa1289",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-14T18:42:20Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "5158448943eb4d3282cfcab4f424db17",
       "session_id": "18469f668aeb45d59c8d4c94d2f79433"
     }
   ]
