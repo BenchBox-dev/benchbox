@@ -4,7 +4,7 @@
     "start_benchmark with execution_engine=streaming produces a bundle with requested/applied streaming",
     "Precedence tests cover non-default values from every source"
   ],
-  "context": "Found by the 2026-10-13 adversarial review of the core execution-variants batch (blind spots, Polars O9); verified on develop 9400b62c4.",
+  "context": "Found by the 2026-10-13 adversarial review of the core execution-variants batch (blind spots, Polars O9); verified on develop 9400b62c4.\nBatch: _project/handoffs/polars-engine-followups-batch-20261014.md, started 2026-10-14",
   "description": "## Problem\n- **The parity test can pass on an empty registry.** In `tests/unit/core/test_execution_vocabulary_parity.py:25,36-43,106-112`, `except ImportError: continue` also covers core modules. If `benchbox.platforms` fails to import, the registry is empty and the reserved-word tests still pass, because `GRANDFATHERED_KEYS` is empty.\n- **The async MCP engine path is untested.** MCP `start_benchmark` with `execution_engine` has only a schema test. A regression that drops the engine between `mcp/jobs.py:1534` and `:1159` would ship.\n- **Precedence is barely tested.** Builder precedence is tested only with the value `default`, and saved-YAML `execution_engine` precedence is untested (`tests/unit/core/test_execution_engine_config.py:25-35`).\n- **One test checks identity, not behaviour.** `tests/unit/scripts/test_polars_version_matrix.py:432-449` asserts that 12 functions are the same objects (`is`) as the shared core's, so a harmless wrapper fails it.\n\n## Change\n- Import core modules without try/except, make adapter import failures explicit skips, and assert the registry is not empty.\n- Add a durable-job test: polars-df with `execution_engine=streaming`, checking the receipt.\n- Add precedence tests where options, overrides and saved YAML carry different non-default values.\n- Delete the identity test, or reduce it to a module check.",
   "links": [
     "tests/unit/core/test_execution_vocabulary_parity.py",
@@ -18,6 +18,14 @@
       "client": "claude-code",
       "op": "create",
       "op_id": "416a56339a2449ba8e7e3b960e6e0080",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-14T13:44:37Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "cc6b785efdfc42b4a5d119e2477ab817",
       "session_id": "18469f668aeb45d59c8d4c94d2f79433"
     }
   ]
