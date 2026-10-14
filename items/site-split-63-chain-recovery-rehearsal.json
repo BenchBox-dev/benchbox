@@ -9,7 +9,7 @@
     "A decision on last-built versus last-deployed parents is recorded with its reason, or re-homed to a named item",
     "Core issue #2886 and site issue #20 are updated with the resolution and closed"
   ],
-  "context": "Raised by the 2026-10-13 adversarial review (handoff revision 9, findings 2, 5 and the process-gap blind spot). Evidence: site Deploy runs 38247176462, 38249922555, 38263114999, 38268740690, 38272164975, 38282045923, 38288287683, 38345067466, 38392445519 (all failure, all on site main f8fc668e); production last deployment 7013089615 at site f8fc668e, core c660e615. This item also satisfies the production evidence that item site-split-40 needs once the vehicle question (site-split-64) is answered.",
+  "context": "Raised by the 2026-10-13 adversarial review (handoff revision 9, findings 2, 5 and the process-gap blind spot). Evidence: site Deploy runs 38247176462, 38249922555, 38263114999, 38268740690, 38272164975, 38282045923, 38288287683, 38345067466, 38392445519 (all failure, all on site main f8fc668e); production last deployment 7013089615 at site f8fc668e, core c660e615. DONE 2026-10-14 by production evidence (rehearsal-target drill waived by owner approval 2026-10-14): (a) parity refusals with the recovery instruction recorded across 14 failed production deploys; (b) recovery dispatch 38521589047 parented on last-deployed c660e615 built core 9400b62c with certified_by 38519475119 after 24 intervening successful Site Inputs runs (parent bundle run 38216829987), covering the >10-runs criterion; (c) production Deploy 38529975983 on that Trunk-certified bundle succeeded, all five gates pass, probes 33/33, deployment 7059738695, receipt recorded; (d) post-deploy content checks pass (salt wording present once, old wording absent, sitemap draft-free, drafts page 200); (e) handoff Bundle-chain-broken row corrected; (f) last-built vs last-deployed decision re-homed to site-split-69-deployed-sha-design; (g) core #2886 and site #20 closed with the resolution. Live finding: the site deployed generation is global to the github-pages environment (no target filter in recordedReceipts), so rehearsal deploys move production's parity baseline; drill waiver also avoided that risk.",
   "description": "Items site-split-23 and site-split-30 are done, but the parent-chain recovery path was never exercised: rehearsal covered rollback, forward and wrong-digest only. Nine consecutive production deploys have failed since 2026-10-12 12:08Z (the first on the Explorer contract mismatch, the other eight on the parity gate because the bundle's parent was never deployed). Producer parents chain by \"last built\", not \"last deployed\", so one undeployable bundle breaks every later automatic bundle until a manual recovery.\n\nRehearse the recovery on the rehearsal target, then recover production. Also decide and record whether the parent should be the last deployed generation (read from the site receipt) rather than the last built bundle, or that manual recovery is the intended mechanism.",
   "sessions": [
     {
@@ -27,6 +27,14 @@
       "generation": "eacbe5cd24a545d6b0b432eb2da770a3",
       "op": "take",
       "op_id": "5fa173c33a22491ca704d35478061c33",
+      "session_id": "63fb16e6ece34adb91d17cdd1e1f2310"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:2ddfad0386e20e3a0ffba40a",
+      "at": "2026-10-14T11:02:22Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "fdd1137eac2744949ddba774d6d045a3",
       "session_id": "63fb16e6ece34adb91d17cdd1e1f2310"
     }
   ]
