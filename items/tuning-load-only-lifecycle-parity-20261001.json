@@ -2,7 +2,7 @@
   "acceptance": [
     "e2e: load-only tuned DuckDB run → the bundle carries platform.tuning whose ddl/post_load statements equal those of the corresponding full run (or the run is refused with the decided message)."
   ],
-  "context": "2026-10-14 fix batch: prior lint diagnosis was wrong — CI failed on import layering (core.runner -> platforms.base.tuning_trust). Rebased onto develop (CHANGELOG resolved), moved the load-only export onto PlatformAdapter._export_load_only_tuning, pushed 93b67b12f to #2925. Local: fast 38,322 pass, ruff clean, ty at 676-warning baseline, lint-imports 3 kept. PR body updated to the owner's 2026-10-14 merge rule (arm once the oracle approves the current head). Next: wait for oracle on 93b67b12f, fix threads if any, make pr-arm PR=2925, finish after MERGED.",
+  "context": "Rebased cleanly onto develop (a9c80901a), resolved CHANGELOG conflict keeping develop Spark bullet and load-only bullet, ladder + lint-imports passed (all 3 contracts kept, 38,462 tests passed, 0 ty errors), pushed head f7c1c09aec14878276c8514cb13ed85d7051afa3. PR #2925 mergeable and armed; awaiting CI and oracle review.",
   "description": "## Problem\n`--phases generate,load` goes through `_execute_load_only_mode` (`benchbox/core/runner/runner.py:528-585`). It applies a different subset of tuning from a full run (the CTAS sort runs, `apply_unified_tuning` does not), saves no metadata, and exports `platform.tuning: null` under a tuned `tuning_mode`.\n\n## Change (per gate D-4)\n- **Parity (expected):** route through the same apply → load → post-load → reconcile → metadata → ledger/receipt → export path as `_setup_fresh_database_phases`.\n- **Or refusal:** an actionable error for tuned load-only runs.\n\n## Guardrails (must preserve)\n- A load-only bundle never carries a tuned mode without `platform.tuning`.\n\n## Process guardrails\n- One PR per item against `develop`, via the AGENTS.md worktree flow (`make worktree-claim BRANCH=...`, `make agent-write-preflight`).\n- Verification ladder: `uv run -- python -m pytest -m fast -q`, `uv run -- ruff check .`, `uv run -- ruff format --check .` and `uv run -- ty check`.\n- Then `make pr-preflight` and `make pr-open`.\n- Stage explicit paths; never `git add -A`.\n- No live cloud runs without explicit user approval stating the command, maximum runtime, log path and stop condition.\n- Re-read every file:line anchor before editing. Anchors are from develop d39166ea.",
   "links": [
     "benchbox/core/runner/runner.py",
@@ -84,6 +84,14 @@
       "generation": "64f3ce7e416b4f3e95e35661b9c456ff",
       "op": "take",
       "op_id": "38e47adfbf7140ccbdc8f5e6e042f2ee",
+      "session_id": "865d81279f334e3c811692586b3ce2d2"
+    },
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:b99da209e67e8c2428b594b0",
+      "at": "2026-10-14T23:45:08Z",
+      "client": "antigravity-client",
+      "op": "update",
+      "op_id": "f2ca40b3fe0642bca3c7b11abbb7bc01",
       "session_id": "865d81279f334e3c811692586b3ce2d2"
     }
   ]
