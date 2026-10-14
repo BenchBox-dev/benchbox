@@ -25578,6 +25578,13 @@
       "status": "done",
       "title": "Windows Nightly: exercise killpg branch with a portable SIGKILL sentinel"
     },
+    "windows-unit-three-failures-20261014": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Fix three Windows-only unit failures blocking the nightly-v2 Windows leg"
+    },
     "wire-plan-capture-for-dataframe-execution-path-in-benchbox-c": {
       "claim": null,
       "needs": [],

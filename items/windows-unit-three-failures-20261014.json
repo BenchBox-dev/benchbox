@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "The TPC-DS power-withhold test passes on both Windows legs because run_power_test honors the module clock",
+    "The bundled-qgen stream test skips instead of FileNotFoundError on Windows where the binary is not runnable",
+    "The chDB tuning test skips instead of ImportError on Windows where chDB is not installed",
+    "A nightly.yml Windows leg shows all three green"
+  ],
+  "context": "Root causes diagnosed 2026-10-13/14 from nightly.yml run 38404921532 evidence (handoff section 0.5): (1) run_power_test did a function-local `import time`, defeating the test's runner.time monkeypatch; Windows time.time() granularity puts 99 instant mock queries inside one tick, so total_time is exactly 0.0 and power stays 0.0. Proven with a frozen-clock probe in /tmp. (2) get_binary_path returns an existing-but-extensionless qgen on Windows and the test execs bare `qgen`, which Windows cannot resolve (WinError 2). (3) ClickHouseLocalAdapter raises ImportError when chdb is absent; the test only patched the server-mode dep check. Branch fix/windows-unit-failures in ../BenchBox.wt-windows-unit-failures, commit be0d64b22, implements all three narrowly with local tests green. Serves nightly-v2-windows-unit-leg-20261009.",
+  "description": "Three Windows-only unit failures (TPC-DS power clock, bundled qgen lookup, chDB import) fail the nightly Windows legs with no owning item. Fix narrowly: drop the shadowing local import, skip when the binary is not runnable, skip when chDB is absent.",
+  "sessions": [
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:ee5a973726de839c8eab56eb",
+      "at": "2026-10-14T11:36:21Z",
+      "client": "tbh",
+      "op": "create",
+      "op_id": "98ff5c8b68114fb6be14537ab75ecba5",
+      "session_id": "10b6ed539f7e4998b1290031a09d7b39"
+    }
+  ]
+}
