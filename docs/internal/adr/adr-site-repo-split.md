@@ -38,6 +38,7 @@ and rollback throughout.
 | D18 | Publication clean-up | Push the archive tag, record the before-state, then delete the `publication` branch, the `publication-attestation` environment and its secrets, and `PUBLICATION_APP_ID`/`PUBLICATION_APP_PRIVATE_KEY`. Uninstall the publication App if the API allows; otherwise the owner does. |
 | D19 | First production deploy | The owner approves it live in chat during the production cutover pause. Later deploys are automatic. |
 | D20 | Second external review | `agy` was out of quota. The owner first deferred it to the batch, then skipped it on 2026-10-07 after a second 429 (codex substitute declined). |
+| D21 | Bundle parent source | Bundle parents follow the production-deployed core SHA. Core reads the newest successful production deployment receipt from the site deployments API with the job token, verifies its digest against the status description, and fails closed when the receipt is missing, mismatched, unreadable, or its bundle expired. Rejected: well-known served URL (trust rests on TLS alone with no digest binding); push from the site (needs a new cross-repo write credential); last-built parent (drifts from what is actually serving after any failed deploy). |
 
 ## Language rule
 
