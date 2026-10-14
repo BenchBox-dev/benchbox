@@ -4,7 +4,7 @@
     "Cloud and self-hosted runs of the same platform get distinct variant ids",
     "Deployment alias keys derive from the manifest; no hand-written parallel list"
   ],
-  "context": "Found by the 2026-10-13 adversarial review of the core execution-variants batch (compute O1/O6). Not covered by its remediation; verified on develop 9400b62c4. ADR: docs/development/adr/adr-core-execution-variants.md (deployment and identity decisions).",
+  "context": "Found by the 2026-10-13 adversarial review of the core execution-variants batch (compute O1/O6). Not covered by its remediation; verified on develop 9400b62c4. ADR: docs/development/adr/adr-core-execution-variants.md (deployment and identity decisions).\nBatch: _project/handoffs/execution-variant-general-followups-batch-20261014.md, started 2026-10-14",
   "description": "## Problem\n- **Modes are declared but never recorded.** TimescaleDB, SingleStore and Databend declare cloud and self-hosted deployment modes in the manifest, but never set `deployment_selected` (base None at `platforms/base/adapter.py:119-120`, read at `runtime_metadata.py:85`).\n  - Their cloud and self-hosted runs therefore share one variant id.\n  - TimescaleDB `from_config` drops `deployment_mode` (`platforms/timescaledb.py:90-95,98-99`), and `timescaledb:cloud` is rejected.\n- **Deployment aliases live in a second registry.** `DEPLOYMENT_ALIAS_KEYS` (`core/deployment.py:11-21`) is a hand-written list beside the manifest, which is why TimescaleDB is missing from it.\n  - It overlaps `DEPRECATED_OPTION_ALIASES` (`core/execution_engine.py:37-40`) for clickhouse/mode and influxdb/mode.\n  - The manifest compute native keys (`core/compute_resource.py:61`) are a third place.\n\n## Change\n- Pass `deployment_mode` through `TimescaleDBAdapter.from_config`.\n- Register the three platforms with the selector and set `deployment_selected` and `deployment_selected_class`, or remove modes that cannot be selected from the manifest.\n- Derive the deployment alias keys from the manifest `deployment_modes`, keep one alias table, and replace the literal-set test with a manifest check.",
   "links": [
     "benchbox/core/deployment.py",
@@ -19,6 +19,14 @@
       "client": "claude-code",
       "op": "create",
       "op_id": "b2a366ab4b6c4fc28ec119c6a124cf86",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-14T13:46:03Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "a48e9ee441744f858a045daeec9699a9",
       "session_id": "18469f668aeb45d59c8d4c94d2f79433"
     }
   ]
