@@ -1188,6 +1188,29 @@ benchbox-fixture-key-material
         mock_cursor.close.assert_called_once()
 
     @patch("benchbox.platforms.snowflake.snowflake")
+    def test_execute_query_success_under_verbose_logging(self, mock_snowflake):
+        mock_connection = Mock()
+        mock_cursor = Mock()
+        mock_connection.cursor.return_value = mock_cursor
+        mock_cursor.fetchall.return_value = [(1,)]
+
+        adapter = SnowflakeAdapter(
+            account="test_account",
+            username="test_user",
+            password="test_pass",
+            warehouse="TEST_WH",
+            database="TEST_DB",
+            verbose_level=1,
+        )
+
+        with patch.object(adapter, "_get_query_statistics") as mock_stats:
+            mock_stats.return_value = {}
+            result = adapter.execute_query(mock_connection, "SELECT 1", "q1")
+
+        assert result["query_id"] == "q1"
+        assert result["status"] == "SUCCESS"
+
+    @patch("benchbox.platforms.snowflake.snowflake")
     def test_execute_query_accepts_stream_cursor(self, mock_snowflake):
         mock_cursor = Mock(spec=["execute", "fetchall", "fetchone", "close"])
         mock_cursor.fetchall.return_value = [(1,)]

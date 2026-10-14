@@ -227,6 +227,24 @@ class TestAzureSynapseAdapter:
         assert result["first_row"] == (1, "test")
         assert isinstance(result["execution_time_seconds"], float)
 
+    def test_execute_query_success_under_verbose_logging(self, synapse_stubs):
+        mock_conn = Mock()
+        mock_cursor = Mock()
+        mock_cursor.fetchall.return_value = [(1,)]
+        mock_conn.cursor.return_value = mock_cursor
+
+        adapter = AzureSynapseAdapter(
+            server="test.sql.azuresynapse.net",
+            username="admin",
+            password="secret",
+            verbose_level=1,
+        )
+
+        result = adapter.execute_query(mock_conn, "SELECT 1", "q1")
+
+        assert result["query_id"] == "q1"
+        assert result["status"] == "SUCCESS"
+
     def test_execute_query_failure(self, synapse_stubs):
         mock_conn = Mock()
         mock_cursor = Mock()

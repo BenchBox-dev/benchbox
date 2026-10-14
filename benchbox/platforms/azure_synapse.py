@@ -948,7 +948,9 @@ class AzureSynapseAdapter(PlatformAdapter):
             )
 
             self.log_verbose(f"Query {query_id} completed: {actual_row_count} rows in {execution_time:.3f}s")
-            self.log_operation_complete("Azure Synapse query execution", query_id, f"returned {actual_row_count} rows")
+            self.log_operation_complete(
+                "Azure Synapse query execution", execution_time, f"returned {actual_row_count} rows"
+            )
 
         except Exception as e:
             execution_time = elapsed_seconds(start_time)
