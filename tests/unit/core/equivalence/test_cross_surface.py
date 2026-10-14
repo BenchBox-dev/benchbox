@@ -131,6 +131,75 @@ def test_cli_runs_polars_with_requested_engine(monkeypatch, tmp_path):
     assert engines == ["streaming"]
 
 
+@pytest.mark.parametrize(
+    ("argv", "message"),
+    [
+        (["--execution-engine", "bogus"], "does not support execution engine 'bogus'"),
+        (["--execution-engine", "streaming", "--backend", "pandas"], "requires the expression"),
+    ],
+)
+def test_cli_reports_invalid_execution_engine_as_a_usage_error(monkeypatch, capsys, argv, message):
+    import benchbox.core.equivalence.cross_surface as cross_surface
+
+    monkeypatch.setattr(cross_surface, "run_gate", lambda *a, **k: pytest.fail("ran the gate"))
+
+    with pytest.raises(SystemExit) as excinfo:
+        cross_surface.main(argv)
+
+    assert excinfo.value.code == 2
+    stderr = capsys.readouterr().err
+    assert "usage:" in stderr
+    assert message in stderr
+    assert "Traceback" not in stderr
+
+
+def test_dtype_cell_collects_with_the_requested_engine(monkeypatch, tmp_path):
+    pl = pytest.importorskip("polars")
+
+    import benchbox.core.equivalence.cross_surface as cross_surface
+    import benchbox.platforms.dataframe.polars_df as polars_df
+
+    engines = []
+    collect_frame = polars_df.collect_frame
+
+    def spy_collect_frame(frame, engine):
+        engines.append(engine)
+        return collect_frame(frame, engine)
+
+    def load_frame(adapter, benchmark, data_dir, *, scale_factor):
+        ctx = adapter.create_context()
+        ctx.register_table("t", pl.LazyFrame({"value": [1]}))
+        return ctx
+
+    monkeypatch.setattr(polars_df, "collect_frame", spy_collect_frame)
+    monkeypatch.setattr(polars_df.PolarsDataFrameAdapter, "load_benchmark_into_context", load_frame)
+    contexts = cross_surface.build_production_contexts(
+        object(), tmp_path, backends=("expression",), execution_engine="streaming"
+    )
+
+    class _Query:
+        def get_impl_for_family(self, family):
+            return lambda ctx: ctx.get_table("t")
+
+    class _Connection:
+        def execute(self, sql):
+            import pyarrow as pa
+
+            return type("R", (), {"fetch_arrow_table": lambda self: pa.table({"value": [1]})})()
+
+    divergences, compared = cross_surface.find_cross_surface_dtype_divergences(
+        _Connection(),
+        query_ids=["Q1"],
+        reference_sql=lambda query_id: "SELECT 1",
+        dataframe_query=lambda query_id: _Query(),
+        contexts=contexts,
+    )
+
+    assert divergences == []
+    assert compared == {"expression": 1}
+    assert engines == ["streaming"]
+
+
 def test_run_gate_rejects_baseline_update_with_explicit_engine():
     import benchbox.core.equivalence.cross_surface as cross_surface
 

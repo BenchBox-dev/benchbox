@@ -70,6 +70,8 @@ def reject_unsupported_dataframe_phases(execution_mode: str | None, phases_to_ru
         raise ValueError(_DATAFRAME_THROUGHPUT_UNSUPPORTED)
 
 
+from benchbox.core.execution_engine import reject_engine_bypassing_benchmark
+from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 from benchbox.core.platform_registry import PlatformRegistry
 from benchbox.core.results.driver_metadata import apply_driver_metadata
 from benchbox.core.runner.runner import (
@@ -261,6 +263,13 @@ def execute_run(
     reject_unsupported_dataframe_phases(execution_mode, phases_to_run)
 
     adapter = adapter_factory(execution_mode=execution_mode, output_root=output_root, phases=phases)
+    if execution_mode == "dataframe" and adapter is not None:
+        reject_engine_bypassing_benchmark(
+            benchmark_instance,
+            config.name,
+            database_config.type,
+            getattr(adapter, "requested_execution_engine", DEFAULT_EXECUTION_ENGINE),
+        )
 
     result = run_benchmark_lifecycle(
         benchmark_config=config,

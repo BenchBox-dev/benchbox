@@ -130,12 +130,6 @@ def _context_for(adapter: PolarsDataFrameAdapter):
     return ctx
 
 
-def _expected_collect_kwargs() -> dict:
-    if not polars_compat.collect_accepts_engine():
-        return {}
-    return {"engine": polars_compat.default_collect_engine()}
-
-
 def _tuning_config(**execution: object):
     from benchbox.core.dataframe.tuning import DataFrameTuningConfiguration
 
@@ -306,10 +300,7 @@ class TestEngineReachesEveryCollect:
         adapter._get_first_row(frame)
         adapter.collect(frame)
 
-        if expected is None:
-            expected_kwargs = _expected_collect_kwargs()
-        else:
-            expected_kwargs = {"engine": expected}
+        expected_kwargs = {} if expected is None else {"engine": expected}
         assert len(collect_calls) >= 4
         assert all(call == expected_kwargs for call in collect_calls)
 
@@ -367,15 +358,16 @@ class TestEngineReachesEveryCollect:
         assert adapter.get_platform_info()["execution_engine"]["applied"] == "in-memory"
         assert adapter.collect_engine == "default"
 
-    def test_default_engine_resolves_to_the_installed_default(self, collect_calls):
+    def test_default_engine_passes_no_engine_and_records_the_installed_default(self, collect_calls):
         adapter = PolarsDataFrameAdapter()
         collect_calls.clear()
 
         adapter.collect(pl.LazyFrame({"a": [1]}))
         adapter.get_row_count(pl.LazyFrame({"a": [1]}))
 
-        assert adapter.collect_engine == polars_compat.default_collect_engine()
-        assert collect_calls == [_expected_collect_kwargs(), _expected_collect_kwargs()]
+        assert adapter.collect_engine == "default"
+        assert adapter.get_platform_info()["execution_engine"]["applied"] == polars_compat.default_collect_engine()
+        assert collect_calls == [{}, {}]
 
 
 class TestExecutionEngineResolution:
@@ -523,23 +515,21 @@ class TestEngineMetadata:
             assert (package, version) == ("absent", "absent")
 
     @pytest.mark.parametrize(
-        ("kwargs", "requested", "resolution", "argument"),
+        ("kwargs", "requested", "resolution", "collect_kwargs"),
         [
-            ({}, "default", "version_default", "installed_default"),
-            ({"streaming": True}, "streaming", "legacy_option", "streaming"),
-            ({"execution_engine": "streaming"}, "streaming", "explicit", "streaming"),
+            ({}, "default", "version_default", {}),
+            ({"streaming": True}, "streaming", "legacy_option", {"engine": "streaming"}),
+            ({"execution_engine": "streaming"}, "streaming", "explicit", {"engine": "streaming"}),
         ],
     )
     def test_requested_engine_is_distinct_from_the_applied_collect_argument(
-        self, kwargs, requested, resolution, argument
+        self, kwargs, requested, resolution, collect_kwargs
     ):
         info = PolarsDataFrameAdapter(**kwargs).get_platform_info()
 
-        if argument == "installed_default":
-            argument = polars_compat.default_collect_engine()
         assert info["execution_engine"]["requested"] == requested
         assert info["execution_engine"]["resolution"] == resolution
-        assert info["execution_engine"]["applied_native"]["collect_kwargs"] == {"engine": argument}
+        assert info["execution_engine"]["applied_native"]["collect_kwargs"] == collect_kwargs
         assert "collect_engine_argument" not in info
 
     def test_result_bundle_config_carries_the_engine_fields(self):

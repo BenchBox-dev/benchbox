@@ -121,6 +121,13 @@ class TestGetSmartDefaults:
         assert config.execution.streaming_mode is False
         assert config.memory.chunk_size is not None
 
+    def test_low_memory_log_does_not_claim_streaming(self, caplog):
+        with caplog.at_level("INFO", logger="benchbox.core.dataframe.tuning.defaults"):
+            get_smart_defaults("polars", SystemProfile(cpu_cores=4, available_memory_gb=2.0))
+
+        assert "Low memory detected" in caplog.text
+        assert "streaming" not in caplog.text
+
     def test_polars_high_memory_defaults(self):
 
         profile = SystemProfile(cpu_cores=32, available_memory_gb=128.0)

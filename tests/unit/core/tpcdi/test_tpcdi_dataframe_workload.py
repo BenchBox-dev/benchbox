@@ -83,7 +83,9 @@ def test_execute_dataframe_workload_runs_all_stages(tmp_path: Path, monkeypatch:
         }
 
     monkeypatch.setattr(benchmark, "run_etl_pipeline", fake_run_etl_pipeline)
-    monkeypatch.setattr("benchbox.core.tpcdi.benchmark.get_maintenance_operations_for_platform", lambda _p: fake_ops)
+    monkeypatch.setattr(
+        "benchbox.core.tpcdi.benchmark.get_maintenance_operations_for_platform", lambda _p, _engine: fake_ops
+    )
 
     results = benchmark.execute_dataframe_workload(
         ctx=None,
@@ -116,7 +118,9 @@ def test_execute_dataframe_workload_respects_query_filter(tmp_path: Path, monkey
         return {"success": True, "total_duration": 0.01, "phases": {}, "validation_results": {}}
 
     monkeypatch.setattr(benchmark, "run_etl_pipeline", fake_run_etl_pipeline)
-    monkeypatch.setattr("benchbox.core.tpcdi.benchmark.get_maintenance_operations_for_platform", lambda _p: fake_ops)
+    monkeypatch.setattr(
+        "benchbox.core.tpcdi.benchmark.get_maintenance_operations_for_platform", lambda _p, _engine: fake_ops
+    )
 
     results = benchmark.execute_dataframe_workload(
         ctx=None,
@@ -163,7 +167,9 @@ def test_execute_dataframe_workload_never_uses_sql_connection(tmp_path: Path, mo
         def get_sql_connection(self) -> Any:
             raise AssertionError("execute_dataframe_workload must not call get_sql_connection()")
 
-    monkeypatch.setattr("benchbox.core.tpcdi.benchmark.get_maintenance_operations_for_platform", lambda _p: fake_ops)
+    monkeypatch.setattr(
+        "benchbox.core.tpcdi.benchmark.get_maintenance_operations_for_platform", lambda _p, _engine: fake_ops
+    )
     monkeypatch.setattr(
         benchmark,
         "run_etl_pipeline",
@@ -200,7 +206,8 @@ def test_execute_dataframe_workload_fails_transactional_contract(
             )
 
     monkeypatch.setattr(
-        "benchbox.core.tpcdi.benchmark.get_maintenance_operations_for_platform", lambda _p: _NonTransactionalOps()
+        "benchbox.core.tpcdi.benchmark.get_maintenance_operations_for_platform",
+        lambda _p, _engine: _NonTransactionalOps(),
     )
 
     results = benchmark.execute_dataframe_workload(
@@ -250,7 +257,9 @@ def test_execute_dataframe_workload_stage_parity_and_metrics(tmp_path: Path, mon
         }
 
     monkeypatch.setattr(benchmark, "run_etl_pipeline", fake_run_etl_pipeline)
-    monkeypatch.setattr("benchbox.core.tpcdi.benchmark.get_maintenance_operations_for_platform", lambda _p: fake_ops)
+    monkeypatch.setattr(
+        "benchbox.core.tpcdi.benchmark.get_maintenance_operations_for_platform", lambda _p, _engine: fake_ops
+    )
 
     results = benchmark.execute_dataframe_workload(
         ctx=None,
@@ -276,7 +285,9 @@ def test_execute_dataframe_workload_fails_without_maintenance_ops(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     benchmark = _make_benchmark(tmp_path)
-    monkeypatch.setattr("benchbox.core.tpcdi.benchmark.get_maintenance_operations_for_platform", lambda _p: None)
+    monkeypatch.setattr(
+        "benchbox.core.tpcdi.benchmark.get_maintenance_operations_for_platform", lambda _p, _engine: None
+    )
 
     results = benchmark.execute_dataframe_workload(
         ctx=None,
@@ -297,7 +308,9 @@ def test_get_dataframe_etl_capabilities_reports_missing_interface(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     benchmark = _make_benchmark(tmp_path)
-    monkeypatch.setattr("benchbox.core.tpcdi.benchmark.get_maintenance_operations_for_platform", lambda _platform: None)
+    monkeypatch.setattr(
+        "benchbox.core.tpcdi.benchmark.get_maintenance_operations_for_platform", lambda _platform, _engine: None
+    )
 
     caps = benchmark.get_dataframe_etl_capabilities("pandas-df")
 
@@ -313,7 +326,7 @@ def test_execute_dataframe_workload_resolves_maintenance_ops_once(
     fake_ops = _FakeMaintenanceOps()
     calls = {"count": 0}
 
-    def _resolve(_platform: str) -> Any:
+    def _resolve(_platform: str, _engine: str) -> Any:
         calls["count"] += 1
         return fake_ops
 

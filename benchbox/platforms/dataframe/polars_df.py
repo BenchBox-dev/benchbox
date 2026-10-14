@@ -25,7 +25,6 @@ from benchbox.platforms.dataframe.expression_family import (
 from benchbox.platforms.dataframe.shared_loading import dialect_preserves_empty_strings
 from benchbox.platforms.polars_compat import (
     ENGINE_AFFINITY_KEY,
-    IN_MEMORY_ENGINE,
     active_runtime,
     collect_accepts_engine,
     collect_affinity,
@@ -154,7 +153,7 @@ class PolarsDataFrameAdapter(ExpressionFamilyAdapter[PolarsDF, PolarsLazyDF, Pol
         else:
             selected, resolution = default_collect_engine(), "version_default"
         engines = supported_execution_engines("polars")
-        collect_kwargs = collect_engine_option(selected) if collect_accepts_engine() else {}
+        collect_kwargs = collect_engine_option(selected) if present and collect_accepts_engine() else {}
         applied_native: dict[str, Any] = {"collect_kwargs": collect_kwargs}
         applied_native[ENGINE_AFFINITY_KEY] = affinity
         return ExecutionEngineReceipt(
@@ -193,9 +192,7 @@ class PolarsDataFrameAdapter(ExpressionFamilyAdapter[PolarsDF, PolarsLazyDF, Pol
 
     @property
     def collect_engine(self) -> str:
-        receipt = self._engine_receipt
-        applied = receipt.applied if receipt.applied is not None else IN_MEMORY_ENGINE
-        return applied if collect_accepts_engine() else DEFAULT_EXECUTION_ENGINE
+        return self._engine_receipt.applied_native["collect_kwargs"].get("engine", DEFAULT_EXECUTION_ENGINE)
 
     def materialize(self, df: PolarsLazyDF) -> PolarsDF:
         return collect_frame(df, self.collect_engine)

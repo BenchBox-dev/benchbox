@@ -395,7 +395,7 @@ def test_transaction_primitives_execute_operation_and_dataframe_paths(monkeypatc
     monkeypatch.setattr(
         _df_ops_mod,
         "get_dataframe_transaction_manager",
-        lambda p, spark_session=None: None if p == "none" else {"platform": p},
+        lambda p, spark_session=None, execution_engine="default": None if p == "none" else {"platform": p},
     )
     assert bench.supports_dataframe_mode("delta-lake") is True
     assert bench.supports_dataframe_mode("duckdb") is False

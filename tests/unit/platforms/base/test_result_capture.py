@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from benchbox.core.execution_engine import ExecutionEngineHook
 from benchbox.platforms.base.result_capture import ResultCaptureMixin
 
 pytestmark = [
@@ -172,7 +173,7 @@ class TestExecuteQueryWithPlanCapture:
         assert host.capture_calls == []
 
 
-class _MetadataHost(ResultCaptureMixin):
+class _MetadataHost(ExecutionEngineHook, ResultCaptureMixin):
     table_mode = "native"
     external_format = None
 

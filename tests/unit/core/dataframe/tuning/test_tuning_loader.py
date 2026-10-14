@@ -116,6 +116,13 @@ class TestDataFrameTuningLoader:
 
         assert not config.is_default() or config.metadata is not None
 
+    @pytest.mark.parametrize("template", ["get_template", "get_optimized_template", "get_memory_constrained_template"])
+    def test_polars_templates_do_not_choose_an_execution_engine(self, template):
+        config = getattr(DataFrameTuningLoader(), template)("polars")
+
+        assert config.execution.engine_affinity is None
+        assert config.execution.streaming_mode is False
+
     def test_merge_configs(self):
         loader = DataFrameTuningLoader()
 

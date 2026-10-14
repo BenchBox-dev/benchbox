@@ -18,6 +18,8 @@ class WritePrimitives(
     BaseBenchmark,
     OperationExecutor,
 ):
+    DATAFRAME_WORKLOAD_USES_PLATFORM_ENGINE = WritePrimitivesBenchmark.DATAFRAME_WORKLOAD_USES_PLATFORM_ENGINE
+
     def __init__(
         self,
         scale_factor: float = 1.0,

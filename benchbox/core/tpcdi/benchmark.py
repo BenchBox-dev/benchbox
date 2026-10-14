@@ -28,6 +28,7 @@ import pandas as pd
 
 from benchbox.base import BaseBenchmark, GeneratorOutputDirMixin
 from benchbox.core.dataframe.maintenance_interface import get_maintenance_operations_for_platform
+from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 from benchbox.core.tpcdi.config import TPCDIConfig
 from benchbox.core.tpcdi.etl import (
     DataFrameETLBackend,
@@ -651,9 +652,10 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         self,
         platform_name: str,
         maintenance_ops: Any | None = None,
+        execution_engine: str = DEFAULT_EXECUTION_ENGINE,
     ) -> dict[str, Any]:
         if maintenance_ops is None:
-            maintenance_ops = get_maintenance_operations_for_platform(platform_name)
+            maintenance_ops = get_maintenance_operations_for_platform(platform_name, execution_engine)
         return self._build_dataframe_etl_capabilities(platform_name, maintenance_ops)
 
     def _build_dataframe_etl_capabilities(self, platform_name: str, maintenance_ops: Any | None) -> dict[str, Any]:
@@ -698,7 +700,8 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         require_transactional_capabilities = bool(options.get("tpcdi_require_transactional_capabilities", True))
 
         platform_name = str(getattr(adapter, "platform_name", "unknown"))
-        maintenance_ops = get_maintenance_operations_for_platform(platform_name)
+        execution_engine = getattr(adapter, "collect_engine", DEFAULT_EXECUTION_ENGINE)
+        maintenance_ops = get_maintenance_operations_for_platform(platform_name, execution_engine)
         etl_caps = self.get_dataframe_etl_capabilities(platform_name, maintenance_ops=maintenance_ops)
 
         legacy_override_keys = sorted(str(key) for key in options if str(key).startswith("tpcdi_dataframe_"))

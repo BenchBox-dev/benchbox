@@ -34,7 +34,7 @@ from benchbox.core.dataframe.query_resolution import (
 from benchbox.core.dataframe.query_validation import validate_dataframe_query_results
 from benchbox.core.dataframe.schema_utils import get_benchmark_schema_columns
 from benchbox.core.exceptions import ConfigurationError, InsufficientMemoryError
-from benchbox.core.execution_engine import ExecutionEngineHook
+from benchbox.core.execution_engine import DEFAULT_EXECUTION_ENGINE, ExecutionEngineHook
 from benchbox.core.results import (
     BenchmarkInfoInput,
     ResultBuilder,
@@ -265,6 +265,10 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
     def get_platform_info(self) -> dict[str, Any]:
         return {"platform": self.platform_name, "family": self.family}
 
+    @property
+    def collect_engine(self) -> str:
+        return DEFAULT_EXECUTION_ENGINE
+
     def _enrich_with_driver_metadata(self, info: dict[str, Any]) -> None:
         for attr in (
             "driver_version_requested",
@@ -334,6 +338,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
                 tuning_mode=options_map.get("tuning_mode"),
                 tuning_config=options_map.get("df_tuning_config"),
                 query_parameters=_describe_query_parameters(benchmark_config),
+                execution_engine=self.requested_execution_engine,
             )
         )
 
