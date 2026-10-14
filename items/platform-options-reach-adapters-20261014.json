@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "For every platform that uses the default config builder, an end-to-end test sends each registered option from `benchbox run --platform-option` (CliRunner dry run or adapter-factory build) to the adapter's constructor kwargs",
+    "emr-serverless `compute_resource` sets `application_id`; pyspark `driver_memory` reaches the session",
+    "DuckDB `threads` and `temp_directory` and SQLite `database_path` and `timeout` take effect or are removed from the specs and docs; the SQLite error message names an option that works",
+    "CHANGELOG Fixed entry"
+  ],
+  "context": "Found 2026-10-14 while verifying the core execution-variants remediation on develop 9400b62c4 (first reported by the docs-example sweep in #2956). Related: option-resolution-single-path-20261014.",
+  "description": "## Problem\n- **Options are lost.** The default config builder nests every `--platform-option` value under `config.options` (`benchbox/core/hooks/platform_hooks.py:189-191,197-220`, `benchbox/core/platform_config.py:34-40`), but `from_config` on these adapters reads only top-level keys.\n  - Affected: emr-serverless, dataproc, dataproc-serverless, synapse-spark, fabric-spark, glue, snowpark-connect, fabric_dw and pyspark.\n  - Examples: `aws/emr_serverless_adapter.py:562-571`, `gcp/dataproc_adapter.py:532`, `azure/synapse_spark_adapter.py:552`, `azure/fabric_spark_adapter.py:560`, `spark.py:180`.\n  - Probe: `--platform emr-serverless --platform-option compute_resource=app-123` gives `application_id=None`, and pyspark `driver_memory=12g` falls back to 4g. The other platforms were checked by reading code, because their drivers are not installed.\n- **Options parse but are ignored.**\n  - DuckDB `threads` and `temp_directory`: `thread_limit` stays at the system-profile value (`duckdb.py:562-570,660-673`, `core/platform_config.py:75`).\n  - SQLite `database_path` and `timeout` (`sqlite.py:227-260`): the timeout stays 30. The SQLite error text at `sqlite.py:256` tells users to pass the very option that is ignored.\n  - Specs are at `cli/platform_defaults.py:227-238` and `platforms/__init__.py:674-676`.\n\n## Change\n- Have the default builder (or `get_platform_config`) lift `config.options` to the top level, so `from_config` sees them.\n- Map DuckDB `threads` to `thread_limit`, with an explicit value beating the system profile. Wire `temp_directory` to `SET temp_directory`, or remove the spec.\n- Let SQLite read its options.\n- Add a parity test that, for every default-builder platform, goes from a CLI option to the `from_config` kwargs.",
+  "links": [
+    "benchbox/core/hooks/platform_hooks.py",
+    "benchbox/core/platform_config.py",
+    "benchbox/platforms/duckdb.py",
+    "benchbox/platforms/sqlite.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-14T11:39:55Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "df2142926f5f4719868241478afdee66",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    }
+  ]
+}

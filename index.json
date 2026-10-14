@@ -15104,6 +15104,13 @@
       "status": "done",
       "title": "sanitize_platform_options() lets *_key_id credential material into exported results"
     },
+    "platform-options-reach-adapters-20261014": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Platform options set on the CLI never reach adapters that use the default config builder, and some DuckDB/SQLite options are ignored"
+    },
     "platform-options-redact-credential-aliases": {
       "claim": null,
       "needs": [],
