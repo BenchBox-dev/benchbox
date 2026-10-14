@@ -120,12 +120,20 @@ def test_programmatic_option_without_explicit_keys_overrides_the_saved_profile(
     assert config.options["host"] == "staging.example.com"
 
 
-def test_programmatic_option_equal_to_the_default_keeps_the_saved_profile(
+def test_programmatic_option_equal_to_the_default_overrides_the_saved_profile(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _save_credentials(monkeypatch, "postgresql", {"host": "prod.example.com"})
 
     config = DatabaseManager().create_config("postgresql", {"host": "localhost"})
+
+    assert config.options["host"] == "localhost"
+
+
+def test_empty_supplied_keys_leave_the_saved_profile_in_charge(monkeypatch: pytest.MonkeyPatch) -> None:
+    _save_credentials(monkeypatch, "postgresql", {"host": "prod.example.com"})
+
+    config = DatabaseManager().create_config("postgresql", {"host": "localhost"}, explicit_option_keys=())
 
     assert config.options["host"] == "prod.example.com"
 
@@ -213,4 +221,5 @@ def test_explicit_layer_keeps_only_supplied_keys() -> None:
     layer = PlatformHookRegistry.explicit_option_layer({"host": "localhost", "port": 9000}, {"host"})
 
     assert layer == {"host": "localhost"}
-    assert PlatformHookRegistry.explicit_option_layer({"host": "localhost"}) == {}
+    assert PlatformHookRegistry.explicit_option_layer({"host": "localhost"}, ()) == {}
+    assert PlatformHookRegistry.explicit_option_layer({"host": "localhost"}) == {"host": "localhost"}

@@ -35,8 +35,7 @@ class Registration(NamedTuple):
 
 
 def _import_adapter_modules() -> None:
-    for module in ("benchbox.platforms",):
-        importlib.import_module(module)
+    importlib.import_module("benchbox.platforms")
     for entry in PLATFORM_MANIFEST:
         if entry.adapter is not None:
             pytest.importorskip(entry.adapter.module)

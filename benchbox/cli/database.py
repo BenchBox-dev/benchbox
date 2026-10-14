@@ -337,7 +337,7 @@ class DatabaseManager:
         runtime_overrides: dict[str, Any] | None = None,
         deployment_selector: str | None = None,
         gateway_selector: str | None = None,
-        explicit_option_keys: Iterable[str] = (),
+        explicit_option_keys: Iterable[str] | None = None,
     ) -> DatabaseConfig:
 
         platform_lower = platform.lower()
@@ -362,11 +362,8 @@ class DatabaseManager:
         overrides = self.verbosity.to_config()
         if runtime_overrides:
             overrides.update(runtime_overrides)
-        explicit_keys = set(explicit_option_keys)
-        if platform_options and not explicit_keys:
-            explicit_keys = {key for key, value in platform_options.items() if defaults.get(key) != value}
         overrides["_explicit_platform_options"] = PlatformHookRegistry.explicit_option_layer(
-            platform_options, explicit_keys
+            platform_options, explicit_option_keys
         )
         if deployment_selector is not None:
             overrides["_deployment_selector"] = deployment_selector

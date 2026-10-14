@@ -165,10 +165,13 @@ class PlatformHookRegistry:
 
     @classmethod
     def explicit_option_layer(
-        cls, options: Mapping[str, Any] | None, supplied_keys: Iterable[str] = ()
+        cls, options: Mapping[str, Any] | None, supplied_keys: Iterable[str] | None = None
     ) -> dict[str, Any]:
+        layer = dict(options or {})
+        if supplied_keys is None:
+            return layer
         supplied = set(supplied_keys)
-        return {key: value for key, value in (options or {}).items() if key in supplied}
+        return {key: value for key, value in layer.items() if key in supplied}
 
     @classmethod
     def describe_options(cls, platform: str) -> list[str]:
