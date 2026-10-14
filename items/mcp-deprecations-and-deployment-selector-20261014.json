@@ -5,7 +5,7 @@
     "dry_run reflects the requested execution_engine and platform options",
     "MCP stays fail-closed: allowlist and security-class contract unchanged except the reconciled alias"
   ],
-  "context": "Found by the 2026-10-13 adversarial review of the core execution-variants batch (compute O3, gateway blind spots) and its remediation follow-ups; verified on develop 9400b62c4.\nBatch: _project/handoffs/execution-variant-general-followups-batch-20261014.md, started 2026-10-14",
+  "context": "Found by the 2026-10-13 adversarial review of the core execution-variants batch (compute O3, gateway blind spots) and its remediation follow-ups; verified on develop 9400b62c4.\nBatch: _project/handoffs/execution-variant-general-followups-batch-20261014.md, started 2026-10-14\nClose-out: PR #2980, merge 5d88d1e372c0b5bd57b8132a8c7336dd376155f8 (merged with oracle-review and CI green; no stand-in posted). Run-scoped notices in core/deprecation_notices.py; MCP responses (run, start, status, cancel, result, dry-run, validate-only) always carry deprecations [{option, replacement, removed_in, message}] in MCP wording; dry_run/validate_only resolve selector, engine and options through core selection (core/run_selection.py) and echo them; name:mode accepted when the manifest declares the mode (clickhouse:server); mode alias removed from the MCP contract and still rejected by the allowlist; connection_profile on ClickHouse checked against the resolved deployment; velox:remote stays rejected. docs/reference/mcp.md and docs/development/mcp-platform-option-contract.md updated. No ADR amendment.\nVerified: tests/unit/mcp/test_mcp_deprecations.py (TestDeprecationsField, TestDryRunAppliesSettings, TestDeploymentSelector, TestReplacementWording; real tools through the server factory), tests/unit/core/test_deprecation_notices.py, tests/unit/core/test_run_selection.py, tests/unit/mcp/test_schemas.py, tests/integration/mcp/test_durable_jobs.py, tests/integration/test_deprecation_warnings_visible.py.\nFollow-ups: none reported by the worker (its final report was lost to a usage limit).",
   "description": "## Problem\n- **Deprecation notices never reach MCP clients.** They go only to the server log (`core/deprecation_notices.py:43`), worded as CLI flags. MCP responses have no deprecations field, and there is no \"deprecat\" anywhere in `benchbox/mcp/`.\n  - Example: `run_benchmark(polars-df, platform_options={\"streaming\": True})` returns no notice.\n- **`dry_run` and `validate_only` drop settings.** They validate, then discard, `platform_options` and `execution_engine` (`mcp/tools/benchmark.py:130-134`).\n- **ClickHouse deployment selection is inconsistent** (`mcp/schemas.py:95-98,183-187,326-327`).\n  - The contract lists the alias `mode`, but the allowlist rejects it.\n  - Every `name:mode` platform name (e.g. `clickhouse:server`) is rejected as \"invalid characters\", though the core selector accepts them.\n  - `connection_profile` on clickhouse requires the deprecated `deployment_mode='server'`. The workaround is `clickhouse-server`.\n\n## Change\n- Record notices in run-scoped state (`begin_run` already resets per run) and return `deprecations[]` in run, dry-run and start/status responses, in MCP wording.\n- Apply `platform_options` and `execution_engine` in `dry_run` and `validate_only`.\n- Accept `name:mode` through the core selector, reconcile `mode` between the contract and the allowlist, and check `connection_profile` against the resolved deployment.",
   "links": [
     "benchbox/mcp/schemas.py",
@@ -36,6 +36,14 @@
       "generation": "95065553c6074c878846b2cd92749c0a",
       "op": "take",
       "op_id": "75558323f6b44b8186ea7ce5a9cdc19a",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-14T21:02:33Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "f3129959f8a64974a19b39190c6d8b58",
       "session_id": "18469f668aeb45d59c8d4c94d2f79433"
     }
   ]
