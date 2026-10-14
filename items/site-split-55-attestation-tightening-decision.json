@@ -3,7 +3,7 @@
     "Owner decision recorded for each gap (tighten, with the design, or keep, with the reason)",
     "If tightened: an implementation item filed, or the change merged with oracle review"
   ],
-  "context": "Owner decisions D-O1 and D-O2 (2026-10-08) matched the live gate and said tightening could be its own decision after cutover. Two oracle shadow threads on PR #2751 record the gaps (validator change skipped; bijection self-comparison); the agent rebutted them and left them for the owner to resolve.",
+  "context": "Owner decisions D-O1 and D-O2 (2026-10-08) matched the live gate and said tightening could be its own decision after cutover. Two oracle shadow threads on PR #2751 record the gaps (validator change skipped; bijection self-comparison); the agent rebutted them and left them for the owner to resolve. Bridge-secret environment option (item 72, 2026-10-14): a develop-only environment for SITE_BRIDGE_* was not done here because repository-settings changes are forbidden by owner decision D3 (2026-10-14 review session); item 72 instead tightens bundle-fetch producing-run provenance in code. Core bridge secrets in a develop-only environment remain an option recorded here.",
   "description": "The bundle attestations deliberately match the deploy gate they replace. Two accepted gaps remain:\n\n1. **Bijection self-reference.** `corpus_bijection` runs with `--accepted-ref`, `--expect-source` and `--bundles-dir` all at the bundle commit, as `scripts/site_deploy/gates.py:117-131` does. It proves snapshot-to-tree consistency, not that the published bundles were accepted. Comparing against `published-results` instead failed every bundle while a results mirror PR was open.\n2. **Validator-only changes.** `validator_parity` runs only when the results-data tree changed. A change to validator code alone is not re-checked against the existing corpus until the next corpus change. `validator_parity.py` compares only bundles that changed in range, so it cannot cover this without a new full-corpus mode.\n\nDecide, with the owner, whether either should be tightened once the site repo is the production writer. Options include a full-corpus parity mode, or a bijection against the accepted corpus that tolerates an open mirror PR.",
   "sessions": [
     {
@@ -13,6 +13,14 @@
       "op": "create",
       "op_id": "3d8161cab03d4b698a6efebca27ce253",
       "session_id": "33bd3c37f6654182bd23ec8ba6d6c4d1"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:2ff26e731ddb7b681f9dacbc",
+      "at": "2026-10-14T20:23:56Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "8097f4871a874c4b9b4f978e0c629890",
+      "session_id": "8250681ba4eb464e88a8d9c11374e76e"
     }
   ]
 }
