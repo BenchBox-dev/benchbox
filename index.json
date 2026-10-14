@@ -14408,6 +14408,13 @@
       "status": "open",
       "title": "Option resolution: a CLI value equal to the default loses to a saved profile, registry aliases fail with options, and some specs register only through the CLI"
     },
+    "options-recorded-not-applied-20261014": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Dask `threads_per_worker` under `threaded` and LakeSail `sail_workers` are recorded but have no effect; LakeSail `distributed` is overstated in the docs"
+    },
     "oracle-absence-classification-lows-20261008": {
       "claim": null,
       "needs": [],

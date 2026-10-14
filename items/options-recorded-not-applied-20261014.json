@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Options that do not apply in the selected engine or deployment warn or fail and are not recorded as applied",
+    "Dask and LakeSail docs describe what the settings actually do"
+  ],
+  "context": "Found by the 2026-10-13 adversarial review of the core execution-variants batch (gateway O5, compute O7); verified on develop 9400b62c4. Related: platform-options-reach-adapters-20261014.",
+  "description": "## Problem\n- **Dask.** The documented example `--execution-engine threaded --platform-option threads_per_worker=4` (`docs/platforms/dask-dataframe.md:82-84,106`) has no effect. `threads_per_worker` is used only by `LocalCluster`, yet `get_platform_info` records 4, with no warning (`platforms/dataframe/dask_df.py:120,139-141,202,466-470`).\n- **LakeSail.** The docs call `lakesail:distributed` multi-node execution (`docs/platforms/lakesail.md:16,74-75,87,226-235`). It only skips the local server auto-start (`platforms/lakesail.py:354-368`). `sail_workers` is only recorded in metadata (`:91-94,199`).\n- **Effect on results:** both record settings that never ran. A `lakesail:distributed` run against a single-node server is labelled distributed.\n\n## Change\n- Use one pattern for options that have no effect in the chosen mode: warn or reject, and stop recording them as applied.\n- Fix the Dask example.\n- Reword the LakeSail `distributed` docs (it means connecting to an external server), and apply `sail_workers` or mark it as record-only.",
+  "links": [
+    "benchbox/platforms/dataframe/dask_df.py",
+    "benchbox/platforms/lakesail.py",
+    "docs/platforms/dask-dataframe.md",
+    "docs/platforms/lakesail.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-14T11:41:52Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "5d298fa6686643c79d20bea5679a6159",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    }
+  ]
+}
