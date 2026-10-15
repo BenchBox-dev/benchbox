@@ -6,7 +6,7 @@
     "The ClickHouse mode/embedded removal item is closed as superseded or done in the same change",
     "PR merged through the normal flow"
   ],
-  "context": "Decision gates:\n- G1 Start only after a published release contains the deprecations and the window set by ADR D13 has elapsed; record the release version and date here.\n- G2 If usage evidence (issues, MCP client reports) shows an alias is still in active use, ask the user before removing it.\nGuardrails: shared core-exec guardrails (see core-exec-d0-vocabulary-adr context).\n\nNote 2026-10-14: the repository still uses a deprecated alias of its own. The Velox Docker entrypoint, README and docs pass `deployment=`. Migrating them is in execution-variant-docs-leftovers-20261014, which must land before this item.",
+  "context": "Decision gates:\n- G1 Start only after a published release contains the deprecations and the window set by ADR D13 has elapsed; record the release version and date here.\n- G2 If usage evidence (issues, MCP client reports) shows an alias is still in active use, ask the user before removing it.\nGuardrails: shared core-exec guardrails (see core-exec-d0-vocabulary-adr context).\n\nNote 2026-10-14: the repository still uses a deprecated alias of its own. The Velox Docker entrypoint, README and docs pass `deployment=`. Migrating them is in execution-variant-docs-leftovers-20261014, which must land before this item.\n\nNote 2026-10-15: PR #2995 merged as bc0c866bd1a6ab1a86ef90c78d278aaa8c933785 and migrated deprecated alias uses in docs, scripts, landing, and examples. Before alias removal, decide how to handle Python adapter-constructor `deployment_mode` and `warehouse` kwargs, `DatabaseConfig` passthrough, the Snowflake credential setup writer that persists `warehouse`, and `examples/config/snowflake*.yaml`. Documentation that explains the deprecated aliases remains intentionally. The release and elapsed-window gate above still applies.",
   "description": "The core execution-variant work keeps old spellings working as deprecated aliases for one deprecation window (ADR docs/development/adr/adr-core-execution-variants.md D12/D13): Polars `streaming` option, --polars-streaming and MCP `streaming`; deployment keys (velox deployment, lakesail sail_mode, influxdb mode, clickhouse deployment_mode/mode, firebolt deployment_mode/firebolt_mode, ducklake and pg-duckdb deployment_mode); native compute keys (warehouse, engine_name, engine_size, workgroup, workgroup_name, cluster_identifier, cluster_id, cluster_name, spark_pool_name, application_id, service_id, service_name, cluster_size and the others aliased by the compute item); engine keys (pg-duckdb force_execution, dask use_distributed); Athena Spark engine_version. After the window, remove them so each concept has one spelling, and empty the parity test's alias allowance.",
   "links": [
     "docs/development/adr/adr-core-execution-variants.md",
@@ -44,6 +44,14 @@
       "op": "update",
       "op_id": "382f50ac56994a268b935619df0518dc",
       "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:28f4d356809e247ffe5c4b92",
+      "at": "2026-10-15T11:37:40Z",
+      "client": "codex-mcp-client",
+      "op": "update",
+      "op_id": "6b511c88b84a4ec89a422f21115a96f7",
+      "session_id": "e00a82d9ed604651bf534df74d6af4f3"
     }
   ]
 }
