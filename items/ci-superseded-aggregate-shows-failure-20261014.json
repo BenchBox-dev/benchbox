@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "In a superseded run, the aggregate jobs conclude cancelled, not failure, in the PR check list.",
+    "A real upstream failure still makes the aggregate fail.",
+    "A run that was not superseded, but had an upstream job cancelled for another reason such as a timeout, still fails, and does not pass as cancelled."
+  ],
+  "context": "See `scripts/ci_unit_result.py` (SUPERSEDED_EXIT_CODE), and the aggregate steps plus \"Cancel superseded run so the aggregate concludes cancelled\" in `.github/workflows/ci.yml` (around lines 2170-2230).",
+  "description": "When an upstream job is cancelled, `scripts/ci_unit_result.py` exits 3. The workflow then cancels its own run, so the run concludes \"cancelled\". The aggregate jobs themselves still conclude \"failure\", because they exited non-zero. On #2983 (run 38621020255) and #2995, the PR check list showed `core`, `docs`, `tooling`, `explorer`, `landing` and `results-data` as FAILURE, although each log says \"CANCELLED (not failed)\". Anyone reading PR status, people or agents, has to open every log to tell a real failure from a superseded run.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/38621020255"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-15T00:27:39Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "68152ebb5d8e4209bcbe13180ae42c73",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    }
+  ]
+}

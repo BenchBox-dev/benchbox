@@ -2651,6 +2651,13 @@
       "status": "open",
       "title": "Required oracle-review gate honors a stale failed run despite newer same-head successes"
     },
+    "ci-superseded-aggregate-shows-failure-20261014": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Superseded CI runs show their aggregate checks as failed in the PR check list"
+    },
     "ci-superseded-run-aggregates-and-oracle-review-script-version-20261004": {
       "claim": null,
       "needs": [],
