@@ -5904,10 +5904,10 @@
     },
     "database-naming-nested-key-order": {
       "claim": {
-        "expires_at": "2026-10-16T00:50:22Z",
-        "generation": "0231d7c3044b4b1b9f95e402de3d9802",
+        "expires_at": "2026-10-16T02:21:29Z",
+        "generation": "59770a66adf34c65a30f92721c57829a",
         "renewals": 0,
-        "worker": "mcp:antigravity-client:joe@joe-mac-mini.local:b99da209e67e8c2428b594b0"
+        "worker": "mcp:codex-mcp-client:joe@joe-mac-mini.local:bee9f454654b0d0ee4fa97f5"
       },
       "needs": [],
       "priority": "low",
