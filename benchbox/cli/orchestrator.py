@@ -74,6 +74,9 @@ def _local_datagen_name(benchmark: Any, benchmark_name: str) -> str:
     return (data_source or benchmark_name).lower()
 
 
+_DATABASE_ONLY_OPTIONS = frozenset({"force_recreate"})
+
+
 class BenchmarkOrchestrator:
     def __init__(self, base_dir: Optional[str] = None):
         self.console = quiet_console
@@ -328,7 +331,9 @@ class BenchmarkOrchestrator:
             self.console.print("[cyan]Using DataFrame execution mode[/cyan]")
             registered_option_names = PlatformHookRegistry.list_option_specs(database_config.type)
             dataframe_options = {
-                key: value for key, value in (database_config.options or {}).items() if key in registered_option_names
+                key: value
+                for key, value in (database_config.options or {}).items()
+                if key in registered_option_names and key not in _DATABASE_ONLY_OPTIONS
             }
             return get_adapter(
                 database_config.type,
