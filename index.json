@@ -4629,6 +4629,13 @@
       "status": "done",
       "title": "Comment-scope evidence is checked only at the base, so one stale entry breaks every later PR and blocks its own repair"
     },
+    "comment-scope-unowned-modules-20261015": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Check whether 15 modules lack a comment-cleanup ownership rule (SCOPE001)"
+    },
     "commit-identity-canonical-skill-source-sync": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "The validator run with the canonical task set is recorded",
+    "Each confirmed SCOPE001 module gets an ownership rule, or the finding is explained as a false positive"
+  ],
+  "context": "Run the validator against the canonical task set, as described in `docs/internal/comment-cleanup-scope.md` (\"Freeze it before parallel work\"). Related: `comment-cleanup-external-ownership` covers external tools and skill mirrors, not these `benchbox/` modules.",
+  "description": "`scripts/check_comment_cleanup_scope.py` reported 15 `SCOPE001` \"no ownership rule\" findings when run with an improvised task set containing every owner in `quality/comment-cleanup-scope.json`. Examples include `benchbox/core/deployment.py`, `benchbox/core/gateway.py`, `benchbox/core/execution_engine.py`, `benchbox/core/tpcds/qualification/*`, `benchbox/platforms/dataframe/tuning_trust.py` and `polars_compat.py`.\n\nThe improvised task set may not match the real one, so these findings are unconfirmed. If they are real, comment cleanup in those modules has no owner and the scope validator would block dispatch.",
+  "links": [
+    "scripts/check_comment_cleanup_scope.py",
+    "quality/comment-cleanup-scope.json",
+    "docs/internal/comment-cleanup-scope.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:00516a6384fc19784260646d",
+      "at": "2026-10-15T12:22:15Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "7a5f56474c2343e1b5586835a217a813",
+      "session_id": "1bbb7e6116f84849933bd91a3804c2c6"
+    }
+  ]
+}
