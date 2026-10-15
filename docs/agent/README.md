@@ -33,6 +33,7 @@ requires a human audience that belongs on benchbox.dev. A new
 | `audit-evidence-provenance.md` | SHA-field convention for `_project/audits/` |
 | `handoffs.md` | Where agent handoffs live and why they are never committed |
 | `cloud-builder.md` | How a cloud session builds, verifies, and hands off one change |
+| `merge-authority.md` | Owner holds, stand-in approvals, and bypassing required checks |
 
 The eval runbook is `docs/internal/agent-instruction-evaluation.md`. The
 scenario corpus is `_project/evals/agent-instructions/`.

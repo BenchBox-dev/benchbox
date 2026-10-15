@@ -85,6 +85,11 @@ is required in the live ruleset. The `auto-merge-on-open.yml` workflow is delete
 the `no-auto-merge` label is enforced only when arming, and nothing disarms a PR
 that is already armed.
 
+Amended 2026-10-15: `no-auto-merge` stays as the durable owner hold. Refusal at
+arming time did not stop agent sessions that un-drafted and merged held PRs with
+raw `gh` commands, so the required `hold` check (`.github/workflows/pr-hold.yml`)
+now fails while the label is present. A held PR cannot merge, armed or not.
+
 Amended 2026-10-02, updated 2026-10-03: the external review stays, but a PR-body
 attestation checked by CI no longer binds it. The author writes its own attestation, so the check
 can only test that the text is present; it never tests the review. The review is bound
@@ -210,7 +215,7 @@ once corresponding preconditions and backups (per Guardrail G5) are satisfied:
 
 3. **Labels and environments:**
    - Delete legacy incident labels (`incident:develop-red`, `incident:develop-red-revert-conflict`,
-     `incident:release-canary-red`) and `no-auto-merge`.
+     `incident:release-canary-red`). Keep `no-auto-merge` (amendment of 2026-10-15).
    - Create `quarantine` and `t3:*` labels.
    - Delete the `publication-attestation` environment after site deployment cutover.
 

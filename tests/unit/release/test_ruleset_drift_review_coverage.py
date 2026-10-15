@@ -75,6 +75,7 @@ def _live_develop_ruleset(*, review_count: int = 0, thread_resolution: bool = Tr
                         {"context": "landing"},
                         {"context": "tooling"},
                         {"context": "oracle-review"},
+                        {"context": "hold"},
                     ],
                 },
             },
