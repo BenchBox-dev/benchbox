@@ -33,6 +33,15 @@
       "op": "take",
       "op_id": "93fcae942de74b21a40488522e95181a",
       "session_id": "a4547e3a2da34101955f1470631f44f0"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:122820e0d0649bb1515cedf7",
+      "at": "2026-10-15T01:54:37Z",
+      "client": "codex-mcp-client",
+      "generation": "b2a8b605b70f4a538e3e2a30290310fd",
+      "op": "take",
+      "op_id": "82bc643103904cb3be6798717a505168",
+      "session_id": "a4547e3a2da34101955f1470631f44f0"
     }
   ]
 }

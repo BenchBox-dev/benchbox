@@ -25664,9 +25664,9 @@
     },
     "windows-iceberg-file-uri-locations-20261009": {
       "claim": {
-        "expires_at": "2026-10-16T01:37:32Z",
-        "generation": "dc04be18f5f74b47bc42f556bb14d4ab",
-        "renewals": 0,
+        "expires_at": "2026-10-16T01:54:37Z",
+        "generation": "b2a8b605b70f4a538e3e2a30290310fd",
+        "renewals": 1,
         "worker": "mcp:codex-mcp-client:joe@joe-mac-mini.local:122820e0d0649bb1515cedf7"
       },
       "needs": [],
