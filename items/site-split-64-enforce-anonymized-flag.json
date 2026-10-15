@@ -6,7 +6,7 @@
     "#2930 stays owner-held with an explanatory comment quoting D5",
     "Item-40 successor context corrected with the new flag check cited"
   ],
-  "context": "Successor of handoff item 64 (2026-10-14 remediation handoff Step 9, finding F6). Owner decision D5 implements the 2026-10-13 decision to enforce anonymized:true mechanically; #2930 stays owner-held for manual salt packaging and rebase. Validators read: results-data/validate_corpus.py, tests/unit/scripts/test_corpus_privacy_invariant.py, scripts/validate_submission.py.",
+  "context": "Successor of handoff item 64 (2026-10-14 remediation handoff Step 9, finding F6). Owner decision D5 implements the 2026-10-13 decision to enforce anonymized:true mechanically; #2930 stays owner-held for manual salt packaging and rebase. Validators read: results-data/validate_corpus.py, tests/unit/scripts/test_corpus_privacy_invariant.py, scripts/validate_submission.py.\n\nTAKEOVER 2026-10-15: live develop now contains PR #2930 squash merge b14349cf05b9886a9cb5b7c24a80dcf324526d05 (merged by joeharris76 at 00:54Z). The six run-3093 bundles still have export.anonymized=false. After merging origin/develop locally into #2993 branch (local HEAD 8e1b021c53214374695a9df907aab2243e6c3faf), uv run -- python results-data/validate_corpus.py found 419 bundles and rejected those six. An in-memory scan with the marker set true found no additional path, plan, or tuning findings. Existing #2993 CI data-check pass is on stale merge base b1fb45c and does not cover #2930. Auto-merge was withdrawn through pr-landing; local merge commit is unpushed. Await owner direction on whether to prepare a follow-up package PR or wait for manual packaging.",
   "description": "Mechanical enforcement that every results-data corpus bundle carries export.anonymized=true, in both the CI results-data-check step and the sync-results-data-to-published mirror path, with fail-first tests for false/true/missing flags.",
   "sessions": [
     {
@@ -46,6 +46,14 @@
       "op": "takeover",
       "op_id": "c9e0305131e74cd5baa0ced09051a69f",
       "reason": "Taking over after exact Agy conversation 30b8c155-e529-4da0-8045-b4dde79b66d6 ended at transcript step 465 (00:57Z). No process or writer belongs to it; the only live agy process uses another brain id.",
+      "session_id": "22bf838e3a6d4061858731420b5ff0f7"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:1f8c5d7706213cbfec63db59",
+      "at": "2026-10-15T01:16:32Z",
+      "client": "codex-mcp-client",
+      "op": "update",
+      "op_id": "2fbb0d234f384c3f913b3ca48778dabd",
       "session_id": "22bf838e3a6d4061858731420b5ff0f7"
     }
   ]
