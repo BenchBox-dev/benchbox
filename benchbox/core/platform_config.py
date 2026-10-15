@@ -23,6 +23,8 @@ REQUIRED_FROM_CONFIG_KEYS: frozenset[str] = frozenset(
 )
 
 
+DATABASE_ONLY_PLATFORM_OPTIONS: frozenset[str] = frozenset({"force_recreate"})
+
 OPTION_CONFIG_KEYS: dict[str, dict[str, str]] = {"duckdb": {"threads": "thread_limit"}}
 
 _DATABASE_CONFIG_FIELDS: frozenset[str] = frozenset(DatabaseConfig.model_fields)

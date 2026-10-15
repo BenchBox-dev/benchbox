@@ -1224,7 +1224,9 @@ def prompt_platform_options(platform: str) -> dict[str, Any]:
     specs = PlatformHookRegistry.list_option_specs(platform.lower())
 
     configurable_specs = {
-        name: spec for name, spec in specs.items() if name not in {"driver_version", "driver_auto_install"}
+        name: spec
+        for name, spec in specs.items()
+        if name not in {"driver_version", "driver_auto_install", "force_recreate"}
     }
 
     if not configurable_specs:

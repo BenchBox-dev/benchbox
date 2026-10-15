@@ -18,7 +18,10 @@ from benchbox.core.benchmark_loader import (
 )
 from benchbox.core.config import BenchmarkConfig, RunConfig
 from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
-from benchbox.core.platform_config import get_platform_config as _core_get_platform_config
+from benchbox.core.platform_config import (
+    DATABASE_ONLY_PLATFORM_OPTIONS,
+    get_platform_config as _core_get_platform_config,
+)
 from benchbox.core.platform_registry import PlatformRegistry
 from benchbox.core.results.models import BenchmarkResults
 from benchbox.core.run_service import execute_run, resolve_lifecycle_phases, resolve_run_config
@@ -72,9 +75,6 @@ def _local_datagen_name(benchmark: Any, benchmark_name: str) -> str:
         return benchmark_name.lower()
     data_source = getattr(benchmark, "get_data_source_benchmark", lambda: None)()
     return (data_source or benchmark_name).lower()
-
-
-_DATABASE_ONLY_OPTIONS = frozenset({"force_recreate"})
 
 
 class BenchmarkOrchestrator:
@@ -333,7 +333,7 @@ class BenchmarkOrchestrator:
             dataframe_options = {
                 key: value
                 for key, value in (database_config.options or {}).items()
-                if key in registered_option_names and key not in _DATABASE_ONLY_OPTIONS
+                if key in registered_option_names and key not in DATABASE_ONLY_PLATFORM_OPTIONS
             }
             return get_adapter(
                 database_config.type,
