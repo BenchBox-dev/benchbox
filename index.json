@@ -8938,10 +8938,15 @@
       "title": "Execution/results hardening: retire legacy TPC metrics and normalize power-result conversion"
     },
     "execution-variant-docs-leftovers-20261014": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-16T11:36:49Z",
+        "generation": "ee44d7946f3f4beb862d30c4dfc10a4f",
+        "renewals": 0,
+        "worker": "mcp:codex-mcp-client:joe@joe-mac-mini.local:28f4d356809e247ffe5c4b92"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Docs and CHANGELOG leftovers: Velox still uses the deprecated `deployment=`, the explorer-compat help says v13, the pg_duckdb `schema` row is missing, and the Dask break has no upgrade note"
     },
     "execution-variant-test-gaps-20261014": {
