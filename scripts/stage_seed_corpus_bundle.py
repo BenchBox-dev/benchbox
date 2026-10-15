@@ -10,7 +10,7 @@ from typing import Any
 
 RESULTS_DATA = Path(__file__).resolve().parents[1] / "results-data"
 sys.path.insert(0, str(RESULTS_DATA))
-bundle_validation_status = importlib.import_module("validate_corpus").bundle_validation_status
+exclusion_reason = importlib.import_module("validate_corpus").exclusion_reason
 
 
 def _write_output(eligible: bool) -> None:
@@ -18,11 +18,20 @@ def _write_output(eligible: bool) -> None:
         output.write(f"eligible={str(eligible).lower()}\n")
 
 
+def _write_status(reason: str | None) -> None:
+    status_file = os.environ.get("SEED_STATUS_FILE")
+    if status_file:
+        path = Path(status_file)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"{os.environ['SEED_CELL']}\t{reason or 'eligible'}\n", encoding="utf-8")
+
+
 def stage_seed_bundle(result_file: Path, destination: Path) -> bool:
     payload: Any = json.loads(result_file.read_text(encoding="utf-8"))
-    validation_status = bundle_validation_status(payload)
-    if validation_status == "uncertain":
-        print(f"Skipping uncertain bundle: {result_file}")
+    reason = exclusion_reason(payload)
+    _write_status(reason)
+    if reason is not None:
+        print(f"Skipping ineligible bundle ({reason}): {result_file}")
         _write_output(False)
         return False
 

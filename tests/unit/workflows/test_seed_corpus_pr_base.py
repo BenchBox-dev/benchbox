@@ -92,7 +92,12 @@ def _stage_bundle(
         Path(f"{result_file.with_suffix('')}{suffix}").write_text("{}", encoding="utf-8")
     destination = tmp_path / "staged"
     output_file = tmp_path / "github-output"
-    environment = {**os.environ, "GITHUB_OUTPUT": str(output_file)}
+    environment = {
+        **os.environ,
+        "GITHUB_OUTPUT": str(output_file),
+        "SEED_CELL": "ssb / duckdb / sf0.01",
+        "SEED_STATUS_FILE": str(tmp_path / "seed-status.txt"),
+    }
     process = subprocess.run(
         [
             sys.executable,
@@ -117,6 +122,7 @@ def test_seed_workflow_never_stages_uncertain_bundles(tmp_path: Path) -> None:
         process, destination = _stage_bundle(tmp_path / str(index), payload)
         assert process.returncode == 0, process.stderr
         assert "eligible=false" in (tmp_path / str(index) / "github-output").read_text(encoding="utf-8")
+        assert "validation_not_clean" in (tmp_path / str(index) / "seed-status.txt").read_text(encoding="utf-8")
         assert not destination.exists()
 
     workflow = _workflow()
@@ -128,14 +134,37 @@ def test_seed_workflow_never_stages_uncertain_bundles(tmp_path: Path) -> None:
 
 
 def test_seed_workflow_stages_clean_bundles(tmp_path: Path) -> None:
-    payload = {"summary": {"validation": "passed"}, "execution": {"translation": "success"}, "queries": []}
+    payload = {
+        "benchmark": {"id": "ssb"},
+        "summary": {"validation": "passed", "queries": {"total": 2}},
+        "execution": {"translation": "success"},
+        "queries": [{"id": "1", "ms": 12.0}, {"id": "2", "ms": 15.0}],
+    }
     process, destination = _stage_bundle(tmp_path, payload, (".plans.json", ".tuning.json"))
 
     assert process.returncode == 0, process.stderr
     assert "eligible=true" in (tmp_path / "github-output").read_text(encoding="utf-8")
+    assert "eligible" in (tmp_path / "seed-status.txt").read_text(encoding="utf-8")
     assert (destination / "bundle.json").is_file()
     assert (destination / "bundle.plans.json").is_file()
     assert (destination / "bundle.tuning.json").is_file()
+
+
+@pytest.mark.parametrize(
+    "payload, reason",
+    [
+        ({"summary": {"validation": "failed"}}, "validation_not_clean"),
+        ({"summary": {"validation": "passed"}, "queries": []}, "no_queries"),
+        ({"summary": {"validation": "passed"}, "queries": [{"id": "1", "ms": 1.0}]}, "insufficient_valid_queries"),
+    ],
+)
+def test_seed_workflow_skips_unrankable_bundles(tmp_path: Path, payload: dict[str, Any], reason: str) -> None:
+    process, destination = _stage_bundle(tmp_path, payload)
+
+    assert process.returncode == 0, process.stderr
+    assert "eligible=false" in (tmp_path / "github-output").read_text(encoding="utf-8")
+    assert reason in (tmp_path / "seed-status.txt").read_text(encoding="utf-8")
+    assert not destination.exists()
 
 
 def test_seed_corpus_local_jobs_do_not_reference_cloud_credentials() -> None:
@@ -199,6 +228,8 @@ def test_seed_corpus_pr_body_does_not_escape_backticks() -> None:
 
     assert "`" in body, "sanity: the body is expected to contain backticks"
     assert "\\`" not in body
+    assert "--body-file" in run
+    assert "seed-status" in run
 
 
 def test_release_head_regex_matches_real_release_branches() -> None:
