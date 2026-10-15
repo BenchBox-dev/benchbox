@@ -36,6 +36,17 @@
       "op_id": "4a377e9ebf2b4d669cfde55ee51b4ac7",
       "reason": "previous session ended and handed off in 20261014 remediation handoff section 8",
       "session_id": "711af2aaf02d4886ac50956ef5db4c4a"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:1f8c5d7706213cbfec63db59",
+      "at": "2026-10-15T01:15:57Z",
+      "client": "codex-mcp-client",
+      "displaced": "mcp:antigravity-client:joe@joe-mac-mini.local:cd8c618ea962a360e046a1de",
+      "generation": "3d9a1ec851cf4d919f6851cf413df940",
+      "op": "takeover",
+      "op_id": "c9e0305131e74cd5baa0ced09051a69f",
+      "reason": "Taking over after exact Agy conversation 30b8c155-e529-4da0-8045-b4dde79b66d6 ended at transcript step 465 (00:57Z). No process or writer belongs to it; the only live agy process uses another brain id.",
+      "session_id": "22bf838e3a6d4061858731420b5ff0f7"
     }
   ]
 }

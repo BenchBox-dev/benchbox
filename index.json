@@ -20712,10 +20712,10 @@
     },
     "site-split-64-enforce-anonymized-flag": {
       "claim": {
-        "expires_at": "2026-10-16T00:07:53Z",
-        "generation": "d495e64cd3ee4d658a55850edec34fe3",
+        "expires_at": "2026-10-16T01:15:57Z",
+        "generation": "3d9a1ec851cf4d919f6851cf413df940",
         "renewals": 0,
-        "worker": "mcp:antigravity-client:joe@joe-mac-mini.local:cd8c618ea962a360e046a1de"
+        "worker": "mcp:codex-mcp-client:joe@joe-mac-mini.local:1f8c5d7706213cbfec63db59"
       },
       "needs": [],
       "priority": "medium",
