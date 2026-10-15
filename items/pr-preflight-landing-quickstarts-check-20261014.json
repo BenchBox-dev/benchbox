@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "`make pr-preflight` runs the landing quickstarts check whenever the inputs that CI's check depends on have changed.",
+    "A stale quickstart fails preflight locally, with the regeneration command in the message."
+  ],
+  "description": "`make pr-preflight` does not run `scripts/generate_landing_quickstarts.py --check`. A PR that changes platform manifests or deployment modes can pass local preflight and then fail in CI, which costs one CI round. This happened during the deployment-modes work (#2974).",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/2974"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-15T00:34:33Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "b3cc6335093e4653996e7f2e7385c593",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    }
+  ]
+}

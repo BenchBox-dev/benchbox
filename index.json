@@ -15603,6 +15603,13 @@
       "status": "done",
       "title": "Back-port nightly's anti-skip guard to pr.yml's non-blocking postgres-integration sample"
     },
+    "pr-preflight-landing-quickstarts-check-20261014": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "`make pr-preflight` does not run the landing quickstarts check, so stale quickstarts surface only in CI"
+    },
     "pr-process-low-drama-acceptance": {
       "claim": null,
       "needs": [
