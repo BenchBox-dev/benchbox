@@ -4,7 +4,7 @@
 
 Every rule registered in `benchbox.sql_compat` is listed below. The registry is the authoritative source of compatibility policy; this document is regenerated from it. See [adr-sql-compat-phase-aware-pipeline.md](../development/adr/adr-sql-compat-phase-aware-pipeline.md) for the design.
 
-**Total registered rules:** 557
+**Total registered rules:** 566
 
 **Platforms covered:** 35
 
@@ -33,7 +33,7 @@ Every rule registered in `benchbox.sql_compat` is listed below. The registry is 
 | pg_mooncake | - | - | - | - | - | 1 | - | 1 |
 | postgres | - | - | - | - | 1 | - | 67 | 68 |
 | postgresql | - | 6 | - | - | 1 | 1 | - | 8 |
-| presto | - | - | - | - | 2 | 1 | - | 3 |
+| presto | - | - | - | 9 | 2 | 1 | - | 12 |
 | questdb | 1 | - | - | - | - | 1 | - | 2 |
 | redshift | - | - | - | - | 2 | 1 | - | 3 |
 | singlestore | - | - | - | - | - | 4 | - | 4 |
@@ -601,6 +601,15 @@ Every rule registered in `benchbox.sql_compat` is listed below. The registry is 
 
 | phase | scope | action | support | failure mode | rule_id |
 |---|---|---|---|---|---|
+| query_adapter | benchmark=tpchavoc, query=10_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.presto.tpchavoc.10_v7.inline_select_alias` |
+| query_adapter | benchmark=tpchavoc, query=11_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.presto.tpchavoc.11_v7.inline_select_alias` |
+| query_adapter | benchmark=tpchavoc, query=1_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.presto.tpchavoc.1_v7.array_aggregation` |
+| query_adapter | benchmark=tpchavoc, query=2_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.presto.tpchavoc.2_v7.window_filter_to_if` |
+| query_adapter | benchmark=tpchavoc, query=3_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.presto.tpchavoc.3_v7.inline_select_alias` |
+| query_adapter | benchmark=tpchavoc, query=4_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.presto.tpchavoc.4_v7.inline_select_alias` |
+| query_adapter | benchmark=tpchavoc, query=5_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.presto.tpchavoc.5_v7.inline_select_alias` |
+| query_adapter | benchmark=tpchavoc, query=7_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.presto.tpchavoc.7_v7.inline_select_alias` |
+| query_adapter | benchmark=tpchavoc, query=9_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.presto.tpchavoc.9_v7.inline_select_alias` |
 | schema_emit | benchmark=transaction_primitives | rewrite_ddl | INFORMATIONAL | SILENT_CORRUPTION | `schema_emit.presto.transaction_primitives.pk_not_enforced` |
 | schema_emit | benchmark=write_primitives | rewrite_ddl | INFORMATIONAL | SILENT_CORRUPTION | `schema_emit.presto.write_primitives.pk_not_enforced` |
 | ddl_optimize | platform-wide | rewrite_ddl | REWRITTEN | SYNTAX_ERROR | `ddl_optimize.presto.all.optimize_table_definition` |
