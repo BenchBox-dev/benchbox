@@ -30,6 +30,8 @@ DOMAIN_JOBS = {
     "browser": "t3:browser",
     "extension": "t3:extension",
     "install": "t3:install",
+    "throughput": "t3:throughput",
+    "throughput-cedardb": "t3:throughput-cedardb",
     "drift": "t3:drift",
     "quarantine": "t3:quarantine",
     "linkcheck": "t3:linkcheck",
@@ -763,3 +765,47 @@ def test_ruleset_drift_domain_reports_through_the_token_and_uploads_evidence() -
     assert "continue-on-error" not in job
     uploads = [step for step in _steps(job) if "upload-artifact" in str(step.get("uses", ""))]
     assert [step["with"]["name"] for step in uploads] == ["t3-ruleset-drift"]
+
+
+def test_throughput_domain_runs_the_duckdb_cell_and_reads_history_from_both_nightlies() -> None:
+    jobs = _load()["jobs"]
+    text = _run_text(jobs["throughput"])
+
+    assert "tests/uat/configs/uat-throughput-duckdb-nightly.yaml" in text
+    assert "--platform duckdb --benchmark tpch --scale 1 --streams 3" in text
+    assert "--evaluate-floor" in text
+    assert "for workflow in nightly-v2.yml nightly.yml; do" in text
+    assert '--workflow "$workflow" --branch develop --event schedule' in text
+    assert "throughput-baseline-duckdb-tpch-sf1-*" in text
+    uploads = {
+        step["with"]["name"].split("-${{", 1)[0]
+        for step in _steps(jobs["throughput"])
+        if str(step.get("uses", "")).startswith("actions/upload-artifact@")
+    }
+    assert "throughput-baseline-duckdb-tpch-sf1" in uploads
+
+
+def test_throughput_cedardb_domain_runs_the_cell_from_the_mirrored_image() -> None:
+    jobs = _load()["jobs"]
+    job = jobs["throughput-cedardb"]
+    text = _run_text(job)
+
+    assert "mirror-images" in ([job["needs"]] if isinstance(job["needs"], str) else job["needs"])
+    assert "cedardb" in jobs["mirror-images"]["with"]["images"]
+    assert job["permissions"] == {"contents": "read", "packages": "read"}
+    assert job["env"]["CEDARDB_IMAGE"].startswith("ghcr.io/benchbox-dev/cedardb@sha256:")
+    assert "tests/uat/configs/uat-throughput-cedardb-nightly.yaml" in text
+    assert "--platform cedardb --benchmark tpch --scale 1 --streams 3" in text
+
+
+def test_throughput_signal_publishes_the_commit_status_the_retiring_workflow_published() -> None:
+    job = _load()["jobs"]["throughput-signal"]
+    text = _run_text(job)
+
+    assert set(job["needs"]) == {"throughput", "throughput-cedardb"}
+    assert str(job["if"]).replace(" ", "") == "${{always()}}"
+    assert job["permissions"] == {"statuses": "write"}
+    assert 'context="nightly/throughput-uat"' in text
+    assert "success:success) state=success" in text
+    assert "cancelled:*|*:cancelled) state=error" in text
+    assert "throughput-signal" not in _load()["jobs"]["report"]["needs"]
