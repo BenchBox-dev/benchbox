@@ -143,6 +143,17 @@
       "op": "update",
       "op_id": "612717d80dca4dcdb8513cf0402870f8",
       "session_id": "285b770cc65649b79de585983b85d97b"
+    },
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:38090526d44e11fea63a46e1",
+      "at": "2026-10-15T11:50:09Z",
+      "client": "antigravity-client",
+      "displaced": "mcp:codex-mcp-client:joe@joe-mac-mini.local:ea0be403a8b96a2da6b4bc02",
+      "generation": "fa19364607b64206a804fe273d888244",
+      "op": "takeover",
+      "op_id": "5e7c0a64ca6c45a6957e58a6f9d7955c",
+      "reason": "Taking over interrupted codex session 01a13d13-ba0a-72b2-b53b-d91d84667a44 per user instruction",
+      "session_id": "f3b75812d14a4c5abc0b9d387e281ec4"
     }
   ]
 }
