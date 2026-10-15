@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "`git grep merge_group -- scripts .github` finds no live handling, or each remaining hit has a stated reason",
+    "Tests that only pin merge_group behaviour are deleted or rewritten",
+    "Fast suite and lint pass"
+  ],
+  "context": "Confirm each path is unreachable before deleting it. Run `git grep -n merge_group origin/develop -- scripts .github tests`, and check whether any release or publication workflow still calls `queue_certification.py` or `sweep_coverage.py`. `run_comment_policy.py` and the publication scripts may be soundness paths, so check `.github/soundness-paths.txt`.",
+  "description": "`ci.yml` now triggers only on `pull_request`, and the merge queue is retired. Several scripts still handle `merge_group` events, which can no longer happen:\n\n- `scripts/run_comment_policy.py:97-98` reads `merge_group.base_sha` when `GITHUB_EVENT_NAME == \"merge_group\"`.\n- `scripts/queue_certification.py` certifies a SHA from a successful `merge_group` run of `pr.yml`. No workflow calls it. Only `scripts/publication/verify_lane_isolation.py:91` lists it.\n- `scripts/sweep_coverage.py:179` reports a tip as \"queue-certified by merge_group run\".\n- Tests that pin this behaviour, including `tests/unit/workflows/test_queue_certification.py` and `tests/unit/workflows/test_merge_group_triggers.py`.\n\nThe drift check's merge-queue leftovers (`APPROVED_MERGE_QUEUE_CONTEXTS` and `--queue-policy`) and the heavy-tier branch were already removed.",
+  "links": [
+    "scripts/run_comment_policy.py",
+    "scripts/queue_certification.py",
+    "scripts/sweep_coverage.py",
+    "scripts/publication/verify_lane_isolation.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:00516a6384fc19784260646d",
+      "at": "2026-10-15T12:22:08Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "0d6e7dbc84f842c19b929f199a78f599",
+      "session_id": "1bbb7e6116f84849933bd91a3804c2c6"
+    }
+  ]
+}

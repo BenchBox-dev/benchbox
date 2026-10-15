@@ -13586,6 +13586,13 @@
       "status": "done",
       "title": "Activate native merge queue on develop ruleset and verify live operations"
     },
+    "merge-queue-dead-code-leftovers-20261015": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Remove remaining merge_group code paths left from the merge-queue retirement"
+    },
     "merge-queue-drain-20260926": {
       "claim": null,
       "needs": [],
