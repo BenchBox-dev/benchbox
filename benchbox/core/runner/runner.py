@@ -487,6 +487,102 @@ def _has_adapter_runtime_metadata(result: BenchmarkResults) -> bool:
     return has_runtime and has_deployment
 
 
+def _resolve_load_only_tuning(adapter: object) -> tuple[bool, Any, bool]:
+    full_lifecycle = callable(getattr(adapter, "_setup_fresh_database_phases", None))
+    get_effective_tuning = getattr(adapter, "get_effective_tuning_configuration", None)
+    effective_tuning_config = get_effective_tuning() if callable(get_effective_tuning) else None
+    tuned_run = bool(getattr(adapter, "tuning_enabled", False) and effective_tuning_config)
+    if tuned_run:
+        if not full_lifecycle:
+            raise RuntimeError(
+                f"Load-only mode cannot run a tuned configuration on platform "
+                f"'{getattr(adapter, 'platform_name', type(adapter).__name__)}': the adapter does not "
+                "implement the full apply → load → reconcile → export lifecycle. "
+                "Run the full lifecycle or use --tuning notuning."
+            )
+        tuning_errors, tuning_warnings = effective_tuning_config.validate_for_platform_detailed(
+            getattr(adapter, "canonical_platform_type", getattr(adapter, "platform_name", ""))
+        )
+        for tuning_warning in tuning_warnings:
+            logger.warning("Tuning configuration warning: %s", tuning_warning)
+        if tuning_errors:
+            raise ValueError(f"Invalid tuning configuration: {'; '.join(tuning_errors)}")
+    return full_lifecycle, effective_tuning_config, tuned_run
+
+
+def _run_load_only_table_phase(
+    adapter: object,
+    benchmark: Any,
+    connection: Any,
+    data_dir: Any,
+    table_mode: str,
+    full_lifecycle: bool,
+    effective_tuning_config: Any,
+) -> tuple[dict[str, int], float, Any, float, dict[str, Any], str, str | None, bool]:
+    table_stats: dict[str, int] = {}
+    load_time = 0.0
+    schema_time = 0.0
+    per_table_timings = None
+    tuning_metadata_saved = False
+    if table_mode == "external":
+        table_stats, load_time, per_table_timings = as_external_table_loader(adapter).create_external_tables(
+            benchmark, connection, data_dir
+        )
+        schema_phase = {
+            "status": "SKIPPED",
+            "duration_ms": 0,
+            "reason": "External table mode bypasses native schema+load materialization",
+        }
+        return table_stats, load_time, per_table_timings, schema_time, schema_phase, "COMPLETED", None, False
+    if _adapter_reused_database(adapter):
+        logger.info("Database being reused - skipping schema creation and data loading (load-only mode)")
+        table_stats = _collect_reused_table_stats(adapter, benchmark, connection)
+        schema_phase = {
+            "status": "SKIPPED",
+            "duration_ms": 0,
+            "reason": "Reusing compatible existing database - schema creation skipped",
+        }
+        return (
+            table_stats,
+            load_time,
+            per_table_timings,
+            schema_time,
+            schema_phase,
+            "SKIPPED",
+            "Reusing compatible existing database - data loading skipped",
+            False,
+        )
+    if full_lifecycle:
+        (
+            schema_time,
+            _schema_creation_phase,
+            load_time,
+            table_stats,
+            _data_loading_phase,
+            tuning_metadata_saved,
+        ) = adapter._setup_fresh_database_phases(benchmark, connection, effective_tuning_config)
+        per_table_timings = getattr(adapter, "_last_per_table_timings", None)
+    else:
+        native_loader = as_native_table_loader(adapter)
+        schema_time = native_loader.create_schema(benchmark, connection)
+        table_stats, load_time, per_table_timings = native_loader.load_data(benchmark, connection, data_dir)
+    require_loaded_tables(benchmark, table_stats)
+    schema_phase = {
+        "status": "COMPLETED",
+        "duration_ms": int(schema_time * 1000),
+    }
+    return (
+        table_stats,
+        load_time,
+        per_table_timings,
+        schema_time,
+        schema_phase,
+        "COMPLETED",
+        None,
+        tuning_metadata_saved,
+    )
+
+
 def _execute_load_only_mode(
     *,
     benchmark: Any,
@@ -506,6 +602,7 @@ def _execute_load_only_mode(
 
     connection_lifecycle = as_connection_lifecycle(adapter)
     setattr(adapter, "_existing_db_decided", False)  # noqa: B010
+    full_lifecycle, effective_tuning_config, tuned_run = _resolve_load_only_tuning(adapter)
     try:
         connection = connection_lifecycle.create_connection(**(platform_config or {}))
 
@@ -524,41 +621,20 @@ def _execute_load_only_mode(
             data_dir = _resolve_output_dir_handler(benchmark, None)
         if data_dir is None:
             raise RuntimeError("Benchmark output directory not configured; cannot perform load-only operations")
+        tuning_metadata_saved = False
 
-        if table_mode == "external":
-            table_stats, load_time, per_table_timings = as_external_table_loader(adapter).create_external_tables(
-                benchmark, connection, data_dir
-            )
-            schema_phase = {
-                "status": "SKIPPED",
-                "duration_ms": 0,
-                "reason": "External table mode bypasses native schema+load materialization",
-            }
-            data_loading_phase_status = "COMPLETED"
-            data_loading_phase_reason: str | None = None
-        elif _adapter_reused_database(adapter):
-            logger.info("Database being reused - skipping schema creation and data loading (load-only mode)")
-            table_stats = _collect_reused_table_stats(adapter, benchmark, connection)
-            load_time = 0.0
-            per_table_timings = None
-            schema_phase = {
-                "status": "SKIPPED",
-                "duration_ms": 0,
-                "reason": "Reusing compatible existing database - schema creation skipped",
-            }
-            data_loading_phase_status = "SKIPPED"
-            data_loading_phase_reason = "Reusing compatible existing database - data loading skipped"
-        else:
-            native_loader = as_native_table_loader(adapter)
-            schema_time = native_loader.create_schema(benchmark, connection)
-            table_stats, load_time, per_table_timings = native_loader.load_data(benchmark, connection, data_dir)
-            require_loaded_tables(benchmark, table_stats)
-            schema_phase = {
-                "status": "COMPLETED",
-                "duration_ms": int(schema_time * 1000),
-            }
-            data_loading_phase_status = "COMPLETED"
-            data_loading_phase_reason = None
+        (
+            table_stats,
+            load_time,
+            per_table_timings,
+            schema_time,
+            schema_phase,
+            data_loading_phase_status,
+            data_loading_phase_reason,
+            tuning_metadata_saved,
+        ) = _run_load_only_table_phase(
+            adapter, benchmark, connection, data_dir, table_mode, full_lifecycle, effective_tuning_config
+        )
 
         if validation_opts.enable_postload_validation:
             if hasattr(benchmark, "validate_loaded_data"):
@@ -579,6 +655,25 @@ def _execute_load_only_mode(
         }
         if data_loading_phase_reason is not None:
             data_loading_phase["reason"] = data_loading_phase_reason
+
+        tunings_applied_dict = None
+        requested_config_hash = None
+        tuning_validation_status = None
+        applied_ledger_payload = None
+        applied_ledger_hash = None
+        if full_lifecycle:
+            (
+                tunings_applied_dict,
+                requested_config_hash,
+                tuning_validation_status,
+                applied_ledger_payload,
+                applied_ledger_hash,
+            ) = adapter._export_load_only_tuning(
+                connection,
+                getattr(benchmark_config, "benchmark_type", "olap"),
+                effective_tuning_config,
+                tuned_run,
+            )
         phases = {
             "data_generation": {"status": "COMPLETED"},
             "schema_creation": schema_phase,
@@ -629,6 +724,14 @@ def _execute_load_only_mode(
             per_table_timings=per_table_timings,
             total_rows_loaded=total_rows,
             data_size_mb=data_size_mb,
+            tunings_applied=tunings_applied_dict,
+            tuning_validation_status=tuning_validation_status,
+            tuning_metadata_saved=tuning_metadata_saved,
+            tuning_config_hash=requested_config_hash,
+            applied_tuning_ledger=applied_ledger_payload,
+            applied_ledger_hash=applied_ledger_hash,
+            tuning_source_file=getattr(adapter, "tuning_source_file", None),
+            tuning_source=getattr(adapter, "tuning_source", None),
         )
         return result_obj, postload_result
     finally:
