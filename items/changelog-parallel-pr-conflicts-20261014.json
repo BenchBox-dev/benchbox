@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Two PRs that each add a CHANGELOG entry can both merge without a manual conflict resolution.",
+    "The released CHANGELOG keeps its current format and ordering.",
+    "The PR-time check that requires a CHANGELOG entry still works."
+  ],
+  "context": "Both batch agents reported this; it happened on most of #2965 to #2985. Options:\n- per-PR changelog fragments assembled at release time;\n- a git `merge=union` attribute for CHANGELOG.md;\n- keeping the single file but letting a bot apply CHANGELOG-only rebases.\n\nCheck the release tooling and the CHANGELOG checks in `make pr-preflight` before choosing.",
+  "description": "During the two concurrent execution-variant batches on 2026-10-14, every PR conflicted on `CHANGELOG.md` more than once. Each one added an entry to the same Unreleased Fixed list, so whenever another PR merged first, the rest needed a rebase and a manual resolution. Each rebase restarted CI, at about 90 minutes per PR, so the conflicts added hours to the batch.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-15T00:27:33Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "19cf029cfd73411c9305b40566c164aa",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    }
+  ]
+}

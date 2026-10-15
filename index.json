@@ -2362,6 +2362,13 @@
       "status": "done",
       "title": "Keep release notes user-focused and in line with earlier entries"
     },
+    "changelog-parallel-pr-conflicts-20261014": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Parallel PRs conflict on CHANGELOG.md every time, because all of them append to the same Fixed list"
+    },
     "chdb-4x-engine-load-verification-20261006": {
       "claim": null,
       "needs": [],
