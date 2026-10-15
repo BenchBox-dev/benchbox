@@ -58,8 +58,7 @@ case "${MODE}" in
     echo "[velox-entrypoint] Gluten jar: ${GLUTEN_JAR}"
 
     exec benchbox run \
-        --platform velox \
-        --platform-option deployment=local \
+        --platform velox:local \
         --platform-option "gluten_jar_path=${GLUTEN_JAR}" \
         --platform-option "offheap_size=${VELOX_OFFHEAP}" \
         "$@"

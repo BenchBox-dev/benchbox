@@ -37,8 +37,7 @@ docker compose up -d velox-connect
 
 docker compose ps velox-connect
 
-benchbox run --platform velox \
-  --platform-option deployment=remote \
+benchbox run --platform velox:remote \
   --platform-option endpoint=sc://localhost:50051 \
   --benchmark tpch --scale 1.0
 ```
@@ -115,7 +114,7 @@ The entrypoint dispatches on its first argument:
 | Argument | Behavior |
 |---|---|
 | `connect` (default) | Start a Gluten-enabled Spark-Connect server in the foreground |
-| `run [args]` | Run `benchbox run --platform velox --platform-option deployment=local ...` |
+| `run [args]` | Run `benchbox run --platform velox:local ...` |
 | `shell` | Drop into bash for debugging |
 | `<anything else>` | `exec` the argument directly |
 

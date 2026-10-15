@@ -476,7 +476,7 @@ Connects to an external Sail server and never starts a local one. The recorded m
 from benchbox.platforms.lakesail import LakeSailAdapter
 
 adapter = LakeSailAdapter(
-    sail_mode="distributed",
+    deployment_mode="distributed",
     endpoint="sc://my-sail-cluster:50051",
 )
 ```
@@ -486,7 +486,7 @@ adapter = LakeSailAdapter(
 | Parameter | Default | Notes |
 |-----------|---------|-------|
 | `endpoint` | `sc://localhost:50051` | Spark Connect URL |
-| `sail_mode` | `local` | `local` or `distributed` |
+| `deployment_mode` | `local` | `local` or `distributed` |
 | `sail_workers` | - | Has no effect; BenchBox logs a warning and does not record it |
 | `driver_memory` | `4g` | Driver memory allocation |
 | `shuffle_partitions` | `200` | Shuffle partition count |

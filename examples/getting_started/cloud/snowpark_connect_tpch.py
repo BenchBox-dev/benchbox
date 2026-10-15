@@ -42,7 +42,7 @@ def _build_configs(scale_factor: float) -> tuple[BenchmarkConfig, DatabaseConfig
             "account": account,
             "user": user,
             "password": password,
-            "warehouse": os.getenv("SNOWFLAKE_WAREHOUSE", "COMPUTE_WH"),
+            "compute_resource": os.getenv("SNOWFLAKE_WAREHOUSE", "COMPUTE_WH"),
             "database": os.getenv("SNOWFLAKE_DATABASE", "BENCHBOX"),
             "role": os.getenv("SNOWFLAKE_ROLE"),
         },

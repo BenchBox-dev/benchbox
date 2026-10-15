@@ -129,6 +129,7 @@ benchmark that configures parallel scan threads with `postgres_scan_threads`.
 | `database` | auto-generated | Database name |
 | `username` | `postgres` | PostgreSQL username |
 | `password` | (none) | PostgreSQL password |
+| `schema` | `public` | PostgreSQL schema that holds the benchmark tables |
 | `execution_engine` | `default` (`duckdb`) | Choose `duckdb` or PostgreSQL's normal query routing with `postgres` |
 | `force_execution` | - | Deprecated alias: `true` selects `duckdb`; `false` selects `postgres` |
 | `postgres_scan_threads` | `0` (auto) | Threads for parallel PostgreSQL table scanning |

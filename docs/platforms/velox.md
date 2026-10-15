@@ -110,7 +110,7 @@ a class-not-found error). In `remote` mode the server owns its classpath.
 
 ### Mandatory Gluten Configuration (Local Mode)
 
-The adapter sets these automatically when `deployment="local"`:
+The adapter sets these automatically for the `local` deployment (`--platform velox:local`):
 
 - `spark.plugins = org.apache.gluten.GlutenPlugin`
 - `spark.memory.offHeap.enabled = true`
@@ -180,7 +180,7 @@ from benchbox import TPCH
 from benchbox.platforms.velox import VeloxAdapter
 
 adapter = VeloxAdapter(
-    deployment="local",
+    deployment_mode="local",
     gluten_jar_path="/opt/gluten-velox-bundle-spark4.0_2.13-linux_amd64-1.6.0.jar",
     offheap_size="16g",
     driver_memory="8g",

@@ -38,7 +38,7 @@ def _build_configs(scale_factor: float) -> tuple[BenchmarkConfig, DatabaseConfig
         options={
             "endpoint": endpoint,
             "app_name": "BenchBox-LakeSail-DF-Example",
-            "sail_mode": sail_mode,
+            "deployment_mode": sail_mode,
             "sail_workers": int(sail_workers) if sail_workers else None,
             "execution_mode": "dataframe",
             "table_format": "parquet",
@@ -69,7 +69,7 @@ def run_example(scale_factor: float = 0.01, *, dry_run: bool = False) -> None:
         print(f"  Benchmark: {benchmark_config.name}")
         print(f"  Scale Factor: {benchmark_config.scale_factor}")
         print(f"  Endpoint: {database_config.options.get('endpoint')}")
-        print(f"  Sail Mode: {database_config.options.get('sail_mode')}")
+        print(f"  Sail Mode: {database_config.options.get('deployment_mode')}")
         print()
         print("[OK] Configuration valid")
         print()
@@ -83,7 +83,7 @@ def run_example(scale_factor: float = 0.01, *, dry_run: bool = False) -> None:
 
     print("Configuration:")
     print(f"  Endpoint: {database_config.options.get('endpoint')}")
-    print(f"  Sail Mode: {database_config.options.get('sail_mode')}")
+    print(f"  Sail Mode: {database_config.options.get('deployment_mode')}")
     print("  Execution Mode: DataFrame")
     print(f"  Scale Factor: {scale_factor}")
     print()

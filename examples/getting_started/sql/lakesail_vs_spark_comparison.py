@@ -34,7 +34,7 @@ def _build_lakesail_config() -> DatabaseConfig:
         options={
             "endpoint": endpoint,
             "app_name": "BenchBox-Comparison-LakeSail",
-            "sail_mode": "local",
+            "deployment_mode": "local",
             "table_format": "parquet",
             "driver_memory": "4g",
             "shuffle_partitions": 200,

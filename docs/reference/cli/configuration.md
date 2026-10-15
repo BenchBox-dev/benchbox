@@ -67,7 +67,7 @@ platforms:
 platforms:
   snowflake:
     account: "account-name"
-    warehouse: "COMPUTE_WH"
+    compute_resource: "COMPUTE_WH"
     database: "BENCHBOX"
     schema: "PUBLIC"
 ```
