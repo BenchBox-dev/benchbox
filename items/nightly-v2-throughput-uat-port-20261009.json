@@ -94,6 +94,15 @@
       "op": "renew",
       "op_id": "8cd5e5eadb8c4a808bcfc733575591e1",
       "session_id": "a4547e3a2da34101955f1470631f44f0"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:122820e0d0649bb1515cedf7",
+      "at": "2026-10-15T11:34:29Z",
+      "client": "codex-mcp-client",
+      "generation": "1090a1d9b6d345bd814dfb0de1142777",
+      "op": "renew",
+      "op_id": "6ab0a459dbe1492a96c8fa9be873820f",
+      "session_id": "a4547e3a2da34101955f1470631f44f0"
     }
   ]
 }

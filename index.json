@@ -14070,9 +14070,9 @@
     },
     "nightly-v2-throughput-uat-port-20261009": {
       "claim": {
-        "expires_at": "2026-10-16T03:14:05Z",
+        "expires_at": "2026-10-16T11:34:29Z",
         "generation": "1090a1d9b6d345bd814dfb0de1142777",
-        "renewals": 6,
+        "renewals": 7,
         "worker": "mcp:codex-mcp-client:joe@joe-mac-mini.local:122820e0d0649bb1515cedf7"
       },
       "needs": [],
