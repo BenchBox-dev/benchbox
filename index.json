@@ -22119,6 +22119,13 @@
       "status": "done",
       "title": "Harden the testing correctness gate and close review follow-ups"
     },
+    "tests-load-real-saved-credentials-20261014": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "PlatformHookRegistry.build_database_config loads the user's real saved credentials when called from tests and probes"
+    },
     "throughput-adapter-session-capability-contract": {
       "claim": null,
       "needs": [
