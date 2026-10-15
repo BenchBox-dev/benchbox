@@ -15243,6 +15243,13 @@
       "status": "open",
       "title": "Fix docs advertising --platform-option keys the platform rejects"
     },
+    "platform-options-forwarding-gaps-20261014": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Some adapters drop supplied platform options: plan-capture options on six Spark-family platforms, SQLite database_name, TimescaleDB service_url"
+    },
     "platform-options-key-id-not-redacted": {
       "claim": null,
       "needs": [],
