@@ -7,7 +7,7 @@
     "The generation-seam decision (bump or not) is recorded with the user's agreement, and results docs state which Spark baselines are comparable.",
     "uv run -- pytest tests/unit/platforms tests/unit/core/tuning -q -k spark passes."
   ],
-  "context": "Origin: user decision 2026-09-30, from Opus review finding C1 (verified in source: the OLAP helper is called regardless of tuning_enabled). Sequence: runs after spark-session-config-runtime because both edit apply_spark_olap_runtime_conf / configure_for_benchmark in _spark_helpers.py and spark.py; serial delivery (one PR per item) avoids helper conflicts, so rebase on the runtime change before starting. Must be settled before spark-tuned-template-measured, because curated values can only be chosen once the effective baseline is known. Delivery model: serial items, not a registered batch.",
+  "context": "Origin: user decision 2026-09-30, from Opus review finding C1 (verified in source: the OLAP helper is called regardless of tuning_enabled). Sequence: runs after spark-session-config-runtime because both edit apply_spark_olap_runtime_conf / configure_for_benchmark in _spark_helpers.py and spark.py; serial delivery (one PR per item) avoids helper conflicts, so rebase on the runtime change before starting. Must be settled before spark-tuned-template-measured, because curated values can only be chosen once the effective baseline is known. Delivery model: serial items, not a registered batch.\n\nTakeover progress 2026-10-15: implementation and tests completed in linked worktree /Users/joe/Developer/BenchBox.wt-spark-baseline-no-default-overrides. Commit 392b73bc24675ada759807c7b834bb573900460a; PR #3007 https://github.com/BenchBox-dev/benchbox/pull/3007 is open on develop and armed with make pr-arm. make pr-preflight passed (547 passed, 1 skipped); comment policy, Ruff, formatting and hooks passed. Exact-head CI and oracle review are queued. No generation bump; ADR and changelog record pending owner agreement and Spark baseline comparability break. Keep claim until PR merges and closeout evidence is captured.",
   "description": "User decision 2026-09-30: a `notuning` run must not override Spark's default configuration. Today `configure_for_benchmark` (spark.py ~L659, lakesail.py ~L526) always calls `apply_spark_olap_runtime_conf` (_spark_helpers.py ~L70-101), which sets five AQE/CBO keys in every mode; Spark's defaults for spark.sql.cbo.enabled and spark.sql.cbo.joinReorder.enabled are false. That is a curated optimisation pack running in the baseline, the same inversion ADR-003 (docs/development/tuning-adr-003-baseline-and-single-renderer.md) fixed for ClickHouse (see benchbox/platforms/clickhouse/tuning.py ~L44-99: harness settings in every mode, optimisation pack gated on self.tuning_enabled). Velox's configure_for_benchmark (velox.py ~L563-576) sets the CBO keys inline, records nothing and does not use the shared helper.\n\nScope:\n- Gate the CBO pack (and any AQE/shuffle values that differ from the engine default on the supported Spark versions) on tuning_enabled, for spark, velox and lakesail.\n- Review other BenchBox-originated session values set in every mode: `adaptive_enabled` default at session build (spark.py ~L453-459), `shuffle_partitions` default 200, and the joinorder-only `broadcast_threshold = -1` (spark.py ~L349-356). Keep only engine-mandatory settings (warehouse dir, table-format extensions/catalogs, the Gluten plugin and off-heap settings) and record them in the ledger as harness-required so they are visible and not mistaken for tuning.\n- Route Velox through the shared helper so its session settings are recorded.\n- Baseline Spark and LakeSail bundles will gain a ledger payload; keep `overall_status` meaningful (Opus suggested a `harness_default` mechanism excluded from overall_status) - decide and document.\n- This changes baseline numbers. ADR-003 reconciliation: decide whether TUNING_POLICY_GENERATION (benchbox/core/tuning/policy_generation.py) needs a new generation, and ask the user before bumping it. Document the comparability break for old Spark baselines.",
   "links": [
     "item:spark-session-config-runtime",
@@ -39,6 +39,14 @@
       "generation": "b1bd20bd74364077b54a707b2394fc9c",
       "op": "take",
       "op_id": "af76e88a43da4219b1a4b08fc9ace9ee",
+      "session_id": "6f643d8692e8442884de4af547f77a25"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:bee9f454654b0d0ee4fa97f5",
+      "at": "2026-10-15T03:42:10Z",
+      "client": "codex-mcp-client",
+      "op": "update",
+      "op_id": "2339dd51ad68454f960546e0201c08a5",
       "session_id": "6f643d8692e8442884de4af547f77a25"
     }
   ]
