@@ -58,10 +58,10 @@ class JavaVersionError(SparkSessionError):
 class SparkSessionConfig:
     master: str
     app_name: str
-    driver_memory: str
+    driver_memory: str | None
     executor_memory: str | None
-    shuffle_partitions: int
-    enable_aqe: bool
+    shuffle_partitions: int | None
+    enable_aqe: bool | None
     extra_configs: tuple[tuple[str, str], ...]
     verbose: bool = False
 
@@ -218,10 +218,10 @@ class SparkSessionManager:
         *,
         master: str,
         app_name: str,
-        driver_memory: str,
+        driver_memory: str | None,
         executor_memory: str | None,
-        shuffle_partitions: int,
-        enable_aqe: bool,
+        shuffle_partitions: int | None,
+        enable_aqe: bool | None,
         extra_configs: Mapping[str, Any] | None = None,
         verbose: bool = False,
     ) -> SparkSession:
@@ -298,17 +298,19 @@ class SparkSessionManager:
         builder = (
             SparkSession.builder.master(config.master)
             .appName(config.app_name)
-            .config("spark.driver.memory", config.driver_memory)
             .config("spark.driver.extraJavaOptions", log4j_opts)
-            .config("spark.sql.shuffle.partitions", str(config.shuffle_partitions))
-            .config("spark.sql.inMemoryColumnarStorage.enabled", "false")
         )
 
+        if config.driver_memory:
+            builder = builder.config("spark.driver.memory", config.driver_memory)
         if config.executor_memory:
             builder = builder.config("spark.executor.memory", config.executor_memory)
+        if config.shuffle_partitions is not None:
+            builder = builder.config("spark.sql.shuffle.partitions", str(config.shuffle_partitions))
 
-        for aqe_key, aqe_value in spark_aqe_conf_entries(config.enable_aqe).items():
-            builder = builder.config(aqe_key, aqe_value)
+        if config.enable_aqe is not None:
+            for aqe_key, aqe_value in spark_aqe_conf_entries(config.enable_aqe).items():
+                builder = builder.config(aqe_key, aqe_value)
 
         for key, value in config.extra_configs:
             if key != "spark.driver.extraJavaOptions":
