@@ -5908,10 +5908,15 @@
       "title": "✅ Database Management Boundaries"
     },
     "database-naming-nested-key-order": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-16T00:50:22Z",
+        "generation": "0231d7c3044b4b1b9f95e402de3d9802",
+        "renewals": 0,
+        "worker": "mcp:antigravity-client:joe@joe-mac-mini.local:b99da209e67e8c2428b594b0"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Make database-name tuning hash independent of nested key order"
     },
     "database-reuse-optimization-for-primitives-and-tpchavoc-benchmarks": {
