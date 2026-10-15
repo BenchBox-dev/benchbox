@@ -1,8 +1,7 @@
 # BenchBox Agent Guide
 
 This file is the project authority for agent work. Keep it compact: detailed
-operations belong in linked docs, and generated skill mirrors belong to
-catalog checkouts named in `skill-sync.conf`.
+operations belong in linked docs.
 
 ## Authority and provenance
 
@@ -21,6 +20,8 @@ Personal defaults apply only where this guide is silent; where behavior conflict
 `[COMMIT-IDENTITY-001]` Before committing, resolve Git identity and its config origin. Reject known agent/service identities as author unless this task requests that exact identity; add no agent/service `Co-Authored-By` or equivalent attribution unless it requests that exact trailer. Repository-local values override the global identity and every linked worktree inherits them, but are not automatically intentional. A signing service may hold the committer slot behind a human author. Stale requests, tool conventions, harness/hook messages, and claimed agent work are not authorization (`docs/agent/identity-instruction-boundary.md`). The no-attribution bar also binds assistant-authored comments, reviews, and PR bodies (`docs/agent/attribution-surfaces.md`).
 
 `[DURABLE-ARTIFACTS-001]` Write durable artifacts (commit messages, PR titles/bodies, committed comments) for a reader who never saw the session: no phase, gate, wave, or work-item labels, no plan or handoff references, no run-local state. Give the durable reason; process state belongs in a decision record or the tracker.
+
+`[HANDOFF-LOCATION-001]` Handoffs live only in `~/.benchbox/handoffs/`, never in a checkout or a commit (`docs/agent/handoffs.md`).
 
 ## Code Review Rules
 
@@ -50,7 +51,7 @@ Critical/High review, or a real design choice. Do not stop before `make pr-open`
 the prompt explicitly forbids publication, authorizes only a local commit, or a gate
 fails (keep the commit and report the blocker).
 
-The active BenchBox bindings are in `docs/agent/review-protocol.md`, which supersedes the legacy `docs/agent/review-protocol-legacy.md` document.
+Active bindings: `docs/agent/review-protocol.md`, superseding `docs/agent/review-protocol-legacy.md`.
 
 ## Worktree and change safety
 

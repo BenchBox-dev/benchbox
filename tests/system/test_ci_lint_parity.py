@@ -85,6 +85,7 @@ MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "skill-integrity", "Validate skill config, receipt, and tool pin"): "skill-integrity-check",
     ("ci.yml", "skill-integrity", "Validate tracked artifact hygiene"): "skill-integrity-check",
     ("ci.yml", "skill-integrity", "Enforce untracked mirror boundary"): "ci-lint",
+    ("ci.yml", "base-guard", "Enforce untracked handoff boundary"): "ci-lint",
     ("ci.yml", "code-lint", "Lint and format check with ruff"): "ci-lint",
     ("ci.yml", "code-lint", "Type check with ty"): "ci-lint",
     ("ci.yml", "code-lint", "Validate test marker annotations"): "ci-lint",
