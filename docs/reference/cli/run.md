@@ -98,6 +98,7 @@ benchbox run [OPTIONS]
 - Universal keys available on all platforms:
   - `driver_version` - pin the Python driver package version (e.g. `1.2.0`)
   - `driver_auto_install` - auto-install the requested driver via uv if missing (`true`/`false`)
+  - `force_recreate` - drop and recreate the benchmark database before loading, reusing the existing data files (`true`/`false`); DataFrame runs ignore it
 - Athena Spark only: `runtime_version` - record the Spark engine version you expect (e.g. `PySpark engine version 3`); the workgroup sets the version and BenchBox records this value as requested
 
 **Benchmark-Specific Configuration:**

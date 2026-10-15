@@ -18,7 +18,10 @@ from benchbox.core.benchmark_loader import (
 )
 from benchbox.core.config import BenchmarkConfig, RunConfig
 from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
-from benchbox.core.platform_config import get_platform_config as _core_get_platform_config
+from benchbox.core.platform_config import (
+    DATABASE_ONLY_PLATFORM_OPTIONS,
+    get_platform_config as _core_get_platform_config,
+)
 from benchbox.core.platform_registry import PlatformRegistry
 from benchbox.core.results.models import BenchmarkResults
 from benchbox.core.run_service import execute_run, resolve_lifecycle_phases, resolve_run_config
@@ -328,7 +331,9 @@ class BenchmarkOrchestrator:
             self.console.print("[cyan]Using DataFrame execution mode[/cyan]")
             registered_option_names = PlatformHookRegistry.list_option_specs(database_config.type)
             dataframe_options = {
-                key: value for key, value in (database_config.options or {}).items() if key in registered_option_names
+                key: value
+                for key, value in (database_config.options or {}).items()
+                if key in registered_option_names and key not in DATABASE_ONLY_PLATFORM_OPTIONS
             }
             return get_adapter(
                 database_config.type,

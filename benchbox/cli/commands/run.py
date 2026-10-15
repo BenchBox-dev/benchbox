@@ -536,6 +536,10 @@ def _derive_execution_type(phases: list[str]) -> str:
 from benchbox.cli.verbose_logging import setup_verbose_logging as setup_verbose_logging
 
 
+def _force_recreate_requested(s: types.SimpleNamespace) -> bool:
+    return bool(s.force_regenerate or s.parsed_platform_options.get("force_recreate"))
+
+
 def _apply_cli_adapter(s: types.SimpleNamespace) -> None:
     force_config = s.force or ForceConfig()
     s.force_config = force_config
@@ -1318,7 +1322,7 @@ def _run_direct(s: types.SimpleNamespace) -> None:
     assert s.platform_key is not None
     overrides = {
         **s.verbosity_payload,
-        "force_recreate": s.force_regenerate,
+        "force_recreate": _force_recreate_requested(s),
         "show_query_plans": s.show_query_plans,
         **_tuning_override_entries(s),
     }
@@ -1483,7 +1487,7 @@ def _data_or_load_build_db_config(s: types.SimpleNamespace, db_manager: Database
     assert s.platform_key is not None
     overrides = {
         **s.verbosity_payload,
-        "force_recreate": s.force_regenerate,
+        "force_recreate": _force_recreate_requested(s),
         **_tuning_override_entries(s),
     }
     try:
@@ -1795,7 +1799,7 @@ def _interactive_try_quick_restart(s: types.SimpleNamespace) -> bool:
     s.database_config = db_manager.create_config(
         plan.platform_key,
         dict(s.parsed_platform_options),
-        {**s.verbosity_payload, "force_recreate": s.force_regenerate, **_tuning_override_entries(s)},
+        {**s.verbosity_payload, "force_recreate": _force_recreate_requested(s), **_tuning_override_entries(s)},
         deployment_selector=getattr(s, "deployment_selector", None),
         gateway_selector=getattr(s, "gateway", None),
     )

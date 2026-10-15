@@ -23,6 +23,8 @@ REQUIRED_FROM_CONFIG_KEYS: frozenset[str] = frozenset(
 )
 
 
+DATABASE_ONLY_PLATFORM_OPTIONS: frozenset[str] = frozenset({"force_recreate"})
+
 OPTION_CONFIG_KEYS: dict[str, dict[str, str]] = {"duckdb": {"threads": "thread_limit"}}
 
 _DATABASE_CONFIG_FIELDS: frozenset[str] = frozenset(DatabaseConfig.model_fields)
@@ -59,6 +61,8 @@ def get_platform_config(
     platform_config.update(db_config_dict)
     options = database_config.options if isinstance(database_config.options, dict) else {}
     lift_explicit_options(database_config.type, options, platform_config)
+    if platform_config.get("force_recreate"):
+        platform_config["force"] = True
 
     if benchmark_name:
         platform_config["benchmark"] = benchmark_name
