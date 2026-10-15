@@ -1,8 +1,8 @@
 # Snowflake trial: tuned-template measurements and corrected evidence
 
 Runs on a Snowflake trial account (X-Small warehouse, result cache disabled)
-between 2026-09-17 and 2026-10-13. Total metered spend:
-cumulative estimate 56.166 (55.527 metered through 2026-10-12 19:00 PT,
+between 2026-09-17 and 2026-10-13. Estimated total spend:
+56.166 (55.527 metered through 2026-10-12 19:00 PT,
 plus 0.139 warehouse use on 2026-10-13 and a 0.5 safety margin; no
 Snowsight balance check was needed under the 85-credit cap).
 
@@ -25,15 +25,18 @@ otherwise no detectable effect.
 No measurement cell ran. The smoke test (TPC-H sf0.01 tuned load, tried
 twice on 2026-10-13) aborted while writing the tuned-run marker, so the
 reuse check, settle step and interleaved runs never started, and cells
-C1–C4 were skipped without spending their budgets. The tuned arm cannot
-run on this build: every Snowflake `execute_query` call reports FAILED
-after the query itself succeeds, because it passes the query id where the
-completion log expects a duration in seconds, and formatting the id with
-`:.2f` raises. The metadata-table creation therefore fails, the tuned-run
-marker is never written, and the run refuses to apply tuning. The fix is
-three call sites in `benchbox/platforms/snowflake.py`, passing the
-measured duration instead of the query id; it needs its own change with a
-regression test before any tuned campaign can run.
+C1–C4 were skipped without spending their budgets. Under verbose logging
+(`-v`, which the campaign command template used), every Snowflake
+`execute_query` call raises `ValueError` after the query itself succeeds,
+because it passes the query id where the completion log expects a duration
+in seconds, and formatting the id with `:.2f` raises. The exception escapes
+`execute_query`, so the metadata-table creation fails, the tuned-run
+marker is never written, and the run aborts. Quiet runs are unaffected.
+The defect is fixed by
+[benchbox#2990](https://github.com/BenchBox-dev/benchbox/pull/2990),
+which passes the measured duration at the three call sites (plus the same
+one-line defect in the Azure Synapse adapter) with regression tests that run
+`execute_query` at verbosity level 1; omitting `-v` also avoids it.
 
 | Benchmark | Scale | Settled | Average depth (tuned tables) | Clustering credits | Tuned/untuned | 95% CI | Verdict |
 |---|---|---|---|---|---|---|---|
@@ -113,8 +116,8 @@ published bundles were left unchanged. Untuned bundles also lost
 
 | File | Content |
 |---|---|
-| `tuned-vs-untuned-<benchmark>-sf<scale>.json` | Per-cell analysis output |
-| `snowflake_campaign.py` | Settle, clustering-state, budget and history helper used for the runs |
+| `tuned-vs-untuned-<benchmark>-sf<scale>.json` | Not produced: no measurement cell ran, so there is no per-cell output |
+| `snowflake_campaign.py` | Settle, clustering-state, budget and history helper prepared for the runs; it ran no measurement cell |
 | `campaign_analysis.py` | Produces the per-cell analysis files from local result bundles |
 | `comparability-matrix-2026-10-12.json` / `-corrected-2026-10-13.json` | Original and corrected comparability matrix |
 | `database-reuse-map-2026-10-12.json` / `-corrected-2026-10-13.json` | Original and corrected reuse map |
