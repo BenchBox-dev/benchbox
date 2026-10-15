@@ -2,7 +2,7 @@
   "acceptance": [
     "Item context lists the platforms admitted by D-9; each admitted platform has a bounded, non-raising reader with recorded-fixture tests; ClickHouse truncation measured on raw rows."
   ],
-  "context": "2026-10-14: Decision gate D-9 outcome recorded: platforms admitted by D-9: {} (none in this cycle; existing DuckDB, ClickHouse, and Snowflake introspectors stay as they are; facts-only presentation layer deferred). ClickHouse introspector bounded: table query in SQL WHERE clause filtered by ledger tables (lower(name) IN (...)), and snapshot truncation measured directly on raw query result rows (len(rows) >= _MAX_TABLE_ROWS) before filtering. Tests updated and verified in tests/unit/platforms/test_clickhouse_introspection.py (22 passed). PR #2998 opened (head 907e55e7aca8e46eedafac1d3a6bb1f265a72418) and armed for auto-merge per owner D1.",
+  "context": "Rebased PR #2998 onto origin/develop and kept both changelog entries. New head 672546db2bdf4657afb7ce1306ee7cffbb6d1a36. Local ladder: fast suite 38,491 passed, 28 skipped, 849 warnings, 4 subtests; ruff/format passed; ty 678 diagnostics; lint-imports 3 kept, 0 broken; preflight 75 passed. PR remains open and auto-merge armed. New exact-head CI, oracle-verdict, and oracle-review runs are queued. The prior medium shard failure is an unrelated assertion in tests/integration/test_execution_engine_sources.py; verified locally on this head with the test and core paths identical to origin/develop, and this PR changes only ClickHouse introspection plus CHANGELOG. No review threads are open. Resume by checking exact-head CI and verdict on schedule; keep the unrelated base failure as a blocker if it recurs, do not change unrelated execution-engine tests, and follow the handoff's no-stand-in rule.",
   "description": "## Problem\nVerification reach beyond DuckDB, ClickHouse and Snowflake is undecided. The corpus shows zero tuned runs on other platforms.\n\n## Change\nImplement exactly what gate D-9 decides. If facts-only is chosen, build a generic per-platform catalog-facts reader with no verdicts. Otherwise, build introspectors only for the platforms the gate admits, each only after that platform's render-at-execution item lands.\n\nPer-platform structured sources:\n- Databricks `DESCRIBE DETAIL` (`clusteringColumns`, `partitionColumns`);\n- BigQuery `INFORMATION_SCHEMA.COLUMNS`;\n- Redshift `SVV_TABLE_INFO` / `PG_TABLE_DEF`;\n- PostgreSQL `pg_index` / `pg_partitioned_table`;\n- StarRocks `information_schema.tables_config`;\n- Trino / Iceberg `$properties` / `$partitions`;\n- Firebolt `information_schema.indexes`;\n- Synapse `sys.pdw_*`;\n- MotherDuck `duckdb_indexes()`.\n\n## Guardrails (must preserve)\n- Bounded: the ledger-table filter goes inside the SQL `WHERE` and truncation is measured on the raw result. Fix the ClickHouse introspector, which computes `truncated` after filtering (`clickhouse/introspection.py:73,81`).\n- Non-raising, structured catalogs only (never DDL text).\n- Recorded-fixture unit tests, plus a separately approved live confirmation per platform.\n\n## Process guardrails\n- One PR per item against `develop`, via the AGENTS.md worktree flow (`make worktree-claim BRANCH=...`, `make agent-write-preflight`).\n- Verification ladder: `uv run -- python -m pytest -m fast -q`, `uv run -- ruff check .`, `uv run -- ruff format --check .` and `uv run -- ty check`.\n- Then `make pr-preflight` and `make pr-open`.\n- Stage explicit paths; never `git add -A`.\n- No live cloud runs without explicit user approval stating the command, maximum runtime, log path and stop condition.\n- Re-read every file:line anchor before editing. Anchors are from develop d39166ea.",
   "links": [
     "benchbox/core/tuning/introspection.py",
@@ -50,6 +50,14 @@
       "generation": "8e71c4e960204ab8a9b42210d8ceb378",
       "op": "take",
       "op_id": "703b8b79b58c4c4182fa3d824318ca2c",
+      "session_id": "6f643d8692e8442884de4af547f77a25"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:bee9f454654b0d0ee4fa97f5",
+      "at": "2026-10-15T03:04:12Z",
+      "client": "codex-mcp-client",
+      "op": "update",
+      "op_id": "1fb3540fef2e49989105a3c46e747340",
       "session_id": "6f643d8692e8442884de4af547f77a25"
     }
   ]
