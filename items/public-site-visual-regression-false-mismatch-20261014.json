@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "The baseline SHA that run 38612765430 compared against is identified, along with why the /results/ captures differed: results data, the merge ref, or the choice of ancestor.",
+    "If baseline selection can pick a baseline whose results data differs from the PR's merge base, it is fixed so the comparison uses a baseline that matches the base's results data, or fails with a message naming the stale baseline SHA instead of reporting page changes.",
+    "A test covers the stale-baseline case.",
+    "No visual tolerance is loosened, and no capture is excluded."
+  ],
+  "context": "The diagnostics artifact `public-site-visual-diagnostics-38612765430` (artifact IDs 11921847821 and 11920436721) holds the current captures and the Playwright error context. It expires about 3 days after 2026-10-14, so download it first.\n\nRelevant code:\n- `.github/workflows/ci.yml`: the `visual-inputs` outputs `render_changed`, `base_sha` and `baseline_candidates` (around line 1451), and the job `public-site-visual-regression` (around line 1646);\n- `results-explorer/scripts/download-public-site-visual-baseline.mjs`;\n- `results-explorer/e2e/captures/public-site-pages.spec.ts`.\n\nNote that `check_explorer_compat.py` is listed as a site input in `scripts/site_inputs.py:303`, which is why render_changed was true before the rebase.",
+  "description": "PR #2960 changed only `scripts/publication/check_explorer_compat.py` and its unit test. The \"Public-site visual regression\" job still failed twice (run 38612765430, attempts 1 and 2, job 116045844509). It reported \"visual baseline mismatch\" for all 12 /results/, /results/benchmarks/ and /results/platforms/ captures at 390, 768, 1280 and 1600 px. The landing, getting-started and release-overview pages matched.\n\nAfter the branch was rebased onto develop 6296e0a2d, the job was skipped (render_changed=false) and the PR merged as 478e946de. The rebase removed the symptom, but the cause was never confirmed. The likely cause is that the baseline came from an older site-equivalent ancestor, whose results data differed from the PR's merge ref, rather than from the exact base.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/2960",
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/38612765430/job/116045844509"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-15T00:27:10Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "cde76ef0a3454e259d8c4b7e7f030171",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    }
+  ]
+}

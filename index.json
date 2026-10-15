@@ -16109,6 +16109,13 @@
       "status": "done",
       "title": "The non-required public-site visual regression check fails when no baseline has been built for the PR's base commit"
     },
+    "public-site-visual-regression-false-mismatch-20261014": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Public-site visual regression reported every /results/ page changed for a PR that cannot affect rendering"
+    },
     "publication-candidate-freshness-decouple-develop-tip": {
       "claim": null,
       "needs": [],
