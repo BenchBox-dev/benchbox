@@ -18,7 +18,11 @@ Phase 3 hosted service.
 
 The hard requirement today is still the validator gate in `results-data/validate_corpus.py`:
 every committed cohort must have at least 3 distinct comparison identities. Ordinary
-cohorts count platform names, preserving the historical three-platform floor. Bundles in
+cohorts count platform names, preserving the historical three-platform floor. A bundle
+that records `platform.variant` counts under that variant string instead of the bare
+platform name, so two execution variants of one platform (for example
+`polars-df+streaming` alongside `polars-df`) are distinct identities while repeated
+runs of one variant do not pad the floor. Bundles in
 the explicitly segregated `duckdb-version-matrix/` corpus count platform plus version;
 repeated runs of one platform/version do not pad that matrix.
 
@@ -103,9 +107,11 @@ The authoritative cell list lives in `.github/workflows/seed-corpus.yml`
 source of truth; the workflow drifts as admitted coverage changes.
 
 The supported matrix contains six local, merge-ready cohorts. TPC-H SF 0.01
-and SF 0.1 plus SSB use DuckDB, DataFusion, and Polars DataFrame. TPC-H SF 1
-and TPC-DS SF 1 use DuckDB, DataFusion, and ClickHouse Local. Every cohort has
-three local comparison identities and no cloud dependency.
+and SF 0.1 use DuckDB, DataFusion, and ClickHouse Local; SSB uses DuckDB,
+DataFusion, and Polars DataFrame. TPC-H SF 1 uses DuckDB, ClickHouse Local,
+and Polars DataFrame; TPC-DS SF 1 uses DuckDB, DataFusion, and ClickHouse
+Local. Every cohort has three local comparison identities and no cloud
+dependency.
 
 | Benchmark | Scale factors |
 |-----------|---------------|
@@ -144,9 +150,16 @@ are promoted.
 
 ### Local identity coverage
 
-The workflow includes `polars-df` for TPC-H SF 0.01/0.1 and SSB. TPC-H SF 1
-and TPC-DS use `clickhouse-local` as their local third identity because the
-admitted matrix does not rely on Polars DataFrame support there.
+The workflow includes `polars-df` for TPC-H SF 1.0 and SSB, and
+`clickhouse-local` for TPC-H SF 0.01/0.1/1.0 and TPC-DS. Three cells are
+excluded as ineligible because they never produce rankable bundles:
+`tpch/polars-df` at SF 0.01/0.1 always validates `validation_not_clean`
+through the structural SQL-translation fallback (seed run 3093 bundles were
+dropped as mirror-ineligible in `f4ef4494`), and `tpch/datafusion` at SF 1.0
+fails deterministically when TPC-H Q18 exhausts the engine memory pool
+(seed run 38331461283). Their replacements each have a rankable committed
+bundle: `clickhouse-local` at TPC-H SF 0.01/0.1 and `polars-df` at
+TPC-H SF 1.0.
 
 TPC-DS SF 1 jobs also run with `--official --seed 42`. This benchmark-specific
 command is required for the scheduled output to be compliance-admissible; all
