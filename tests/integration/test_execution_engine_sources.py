@@ -111,7 +111,7 @@ def test_mcp_explicit_engine_conflicting_with_the_legacy_streaming_key_fails_bef
     assert response["error"] is True, response
     assert response["status"] == "failed"
     assert "explicit setting requests 'in-memory'" in response["message"]
-    assert "legacy option requests 'streaming'" in response["message"]
+    assert "legacy option streaming requests 'streaming'" in response["message"]
     assert _bundles(tmp_path / "results") == []
 
 
