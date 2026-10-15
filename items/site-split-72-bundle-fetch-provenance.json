@@ -2,7 +2,7 @@
   "acceptance": [
     "`bundle-fetch` refuses a bundle unless its producing run meets all of these: repo `BenchBox-dev/benchbox`, workflow path `.github/workflows/site-inputs.yml`, `head_branch == develop`, event `workflow_run` or `workflow_dispatch`, and conclusion `success`. Tests cover each refusal with recorded run fixtures. `bundle-verify.mjs` is unchanged (D6). The environment-gate option is recorded in item 55's context."
   ],
-  "context": "F8. Site scripts/bundle-fetch.mjs:15-19 accepts any SITE_INPUTS_RUN_ID without checking the producing run. Owner decision D6 (2026-10-14 review session): bundle-verify.mjs stays unchanged.",
+  "context": "F8. Site scripts/bundle-fetch.mjs:15-19 accepts any SITE_INPUTS_RUN_ID without checking the producing run. Owner decision D6 (2026-10-14 review session): bundle-verify.mjs stays unchanged.\n\nTAKEOVER 2026-10-15: PR #35 branch fix/bundle-fetch-provenance updated to head 9a8ec8916b18f49a534dd34c2c845736c2ab7c9f. Tightened workflow path check to require exact .github/workflows/site-inputs.yml; added nested-path refusal test. Local 11 targeted tests, full npm test (after npm run bundle:fetch), npm run check and npm run lint:guard pass. Changes pushed; exact-head CI run 38673574456 still had Explorer browser pending at last check; other required jobs passed. Item55 already records the develop-only SITE_BRIDGE_* environment option was not used under D3.",
   "description": "F8. Site `scripts/bundle-fetch.mjs:15-19` accepts any `SITE_INPUTS_RUN_ID` without checking the producing run.",
   "sessions": [
     {
@@ -47,6 +47,14 @@
       "generation": "a3d6178fedf546be84b5a83b914bf60e",
       "op": "take",
       "op_id": "001860d441424b9780e93ba063165fb5",
+      "session_id": "22bf838e3a6d4061858731420b5ff0f7"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:1f8c5d7706213cbfec63db59",
+      "at": "2026-10-15T03:01:37Z",
+      "client": "codex-mcp-client",
+      "op": "update",
+      "op_id": "99b9954bed3e4e5097834114a0e31bdb",
       "session_id": "22bf838e3a6d4061858731420b5ff0f7"
     }
   ]
