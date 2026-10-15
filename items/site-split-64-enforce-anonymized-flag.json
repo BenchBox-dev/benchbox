@@ -6,7 +6,7 @@
     "#2930 stays owner-held with an explanatory comment quoting D5",
     "Item-40 successor context corrected with the new flag check cited"
   ],
-  "context": "Successor of handoff item 64 (2026-10-14 remediation handoff Step 9, finding F6). Owner decision D5 implements the 2026-10-13 decision to enforce anonymized:true mechanically; #2930 stays owner-held for manual salt packaging and rebase. Validators read: results-data/validate_corpus.py, tests/unit/scripts/test_corpus_privacy_invariant.py, scripts/validate_submission.py.\n\nTAKEOVER 2026-10-15: live develop now contains PR #2930 squash merge b14349cf05b9886a9cb5b7c24a80dcf324526d05 (merged by joeharris76 at 00:54Z). The six run-3093 bundles still have export.anonymized=false. After merging origin/develop locally into #2993 branch (local HEAD 8e1b021c53214374695a9df907aab2243e6c3faf), uv run -- python results-data/validate_corpus.py found 419 bundles and rejected those six. An in-memory scan with the marker set true found no additional path, plan, or tuning findings. Existing #2993 CI data-check pass is on stale merge base b1fb45c and does not cover #2930. Auto-merge was withdrawn through pr-landing; local merge commit is unpushed. Await owner direction on whether to prepare a follow-up package PR or wait for manual packaging.",
+  "context": "Successor of handoff item 64 (2026-10-14 remediation handoff Step 9, finding F6). Owner decision D5 implements the 2026-10-13 decision to enforce anonymized:true mechanically; #2930 stays owner-held for manual salt packaging and rebase. Validators read: results-data/validate_corpus.py, tests/unit/scripts/test_corpus_privacy_invariant.py, scripts/validate_submission.py.\n\nTAKEOVER 2026-10-15: live develop contains PR #2930 squash merge b14349cf05b9886a9cb5b7c24a80dcf324526d05 (merged by joeharris76 at 00:54Z). Six run-3093 bundles still have export.anonymized=false. After merging origin/develop locally into #2993 branch (local HEAD 8e1b021c53214374695a9df907aab2243e6c3faf), uv run -- python results-data/validate_corpus.py found 419 bundles and rejected those six. An in-memory scan with the marker set true found no additional path, plan, or tuning findings. Existing #2993 CI data-check pass is on stale merge base b1fb45c and does not cover #2930. Auto-merge was withdrawn. Local merge commit is unpushed.\n\nLIVE 2026-10-15: #2993 remains OPEN at b45e166773cdda319bcd761029a100a068d37091, base b1fb45c5d8d2604787daaebde7b7176cab0f1165, auto-merge disabled. Results-data-check passed only on stale merge ref 7713a49. CI medium-test shard 2 failed an unrelated expected-message assertion in test_execution_engine_sources.py; core aggregate failed because that shard did not execute its exact assignment. The oracle verdict was SHIP WITH FIXES (run 38658150823); the automatic stale synchronize-run check failed on the old workflow implementation. The new anonymized gate cannot be proven or merged until the six raw bundles receive the owner-held salt packaging. User confirmed they are the owner and authorized benchbox-site writes, but did not change D5 or direct packaging. Claim released while other batch work proceeds.",
   "description": "Mechanical enforcement that every results-data corpus bundle carries export.anonymized=true, in both the CI results-data-check step and the sync-results-data-to-published mirror path, with fail-first tests for false/true/missing flags.",
   "sessions": [
     {
@@ -54,6 +54,14 @@
       "client": "codex-mcp-client",
       "op": "update",
       "op_id": "2fbb0d234f384c3f913b3ca48778dabd",
+      "session_id": "22bf838e3a6d4061858731420b5ff0f7"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:1f8c5d7706213cbfec63db59",
+      "at": "2026-10-15T03:00:21Z",
+      "client": "codex-mcp-client",
+      "op": "update",
+      "op_id": "55fb7633fd2d4755aa9e5901730f2bc9",
       "session_id": "22bf838e3a6d4061858731420b5ff0f7"
     }
   ]
