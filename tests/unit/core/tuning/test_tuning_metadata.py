@@ -741,7 +741,7 @@ def _tunings_with_constraint_only_tables(*column_tuned: TableTuning) -> Benchmar
 @pytest.mark.parametrize("template", ["tpch_tuned.yaml", "tpcds_tuned.yaml"])
 def test_validate_tunings_accepts_saved_template_with_constraint_only_tables(template):
     path = Path(__file__).resolve().parents[4] / "examples" / "tunings" / "snowflake" / template
-    config = UnifiedTuningConfiguration.from_dict(yaml.safe_load(path.read_text()))
+    config = UnifiedTuningConfiguration.from_dict(yaml.safe_load(path.read_text(encoding="utf-8")))
     assert any(not table.has_any_tuning() for table in config.table_tunings.values())
     manager = TuningMetadataManager(_Adapter("snowflake"), connection=_StatefulConn())
     assert manager.save_tunings(manager._as_benchmark_tunings(config)) is True
