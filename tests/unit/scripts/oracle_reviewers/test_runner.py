@@ -571,12 +571,13 @@ def test_agy_without_its_api_key_is_an_auth_absence_before_running(
 
 
 @skip_on_windows
-def test_agy_with_its_api_key_reads_the_result_envelope(
+def test_agy_runs_outside_the_pull_request_checkout(
     policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     workspace, head = _workspace(tmp_path)
     envelope = json.dumps({"status": "SUCCESS", "response": json.dumps(VERDICT), "num_turns": 2})
-    _fake_muse(tmp_path, monkeypatch, f"print({json.dumps(envelope)})", name="agy")
+    body = f"import os\nassert not os.path.exists('a.txt'), os.getcwd()\nprint({json.dumps(envelope)})"
+    _fake_muse(tmp_path, monkeypatch, body, name="agy")
     monkeypatch.setenv("GEMINI_API_KEY", "test-key-value")
     outcome = _review(policy, tmp_path, workspace, head, reviewer="agy")
     assert outcome.missing is None

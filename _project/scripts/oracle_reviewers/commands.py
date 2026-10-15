@@ -108,5 +108,7 @@ def build(reviewer: Reviewer, workspace: Path, prompt: str, scratch: Path) -> In
             schema_text(),
             f"--print={prompt}",
         )
-        return Invocation(argv, workspace, None)
+        neutral = scratch / "agy-cwd"
+        neutral.mkdir(parents=True, exist_ok=True)
+        return Invocation(argv, neutral, None)
     raise ValueError(f"unknown harness {reviewer.harness!r}")

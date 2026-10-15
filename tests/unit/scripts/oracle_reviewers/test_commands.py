@@ -82,7 +82,9 @@ def test_muse_reviewer_disables_write_and_shell(policy: Policy, tmp_path: Path) 
 def test_agy_reviewer_uses_plan_mode_and_never_effort(policy: Policy, tmp_path: Path) -> None:
     invocation = build(policy.reviewers["agy"], WS, PROMPT, tmp_path)
     argv = invocation.argv
-    assert invocation.cwd == WS
+    assert invocation.cwd == tmp_path / "agy-cwd"
+    assert invocation.cwd.is_dir() and not any(invocation.cwd.iterdir())
+    assert str(WS) not in " ".join(argv)
     assert argv[:5] == ("agy", "--model", "gemini-3.8-flash-medium", "--mode", "plan")
     assert "--effort" not in argv
     assert argv[argv.index("--output-format") + 1] == "json"
