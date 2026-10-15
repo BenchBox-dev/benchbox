@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Each failure is reproduced on a fresh develop checkout, with the failing assertion recorded.",
+    "Each one is fixed at its cause, or bisected to the commit that broke it and fixed there. No test is skipped, marked xfail or weakened.",
+    "`make test-pytest` passes on a fresh develop checkout."
+  ],
+  "context": "Reported in the takeover handoff for the general follow-ups batch (2026-10-15, step 4 of the final verification). Not yet bisected. Check whether `root-privilege-assumptions-beyond-the-exporter-test` covers the export failure, and whether the logging and isolation fixture from #2970 changed what these tests see.",
+  "description": "The general batch agent found three failures under `make test-pytest`. They also fail on unmodified develop, so they come from earlier work, not from that batch:\n- `tests/integration/test_database_integration.py::test_database_resource_management`\n- `tests/integration/test_export_cli.py::test_export_preserves_content`\n- `tests/integration/tuning/test_post_load_reconciliation_e2e.py::test_duckdb_inline_keys_are_satisfied_and_undeclared_unique_constraints_not_dropped`\n\nUntil they are fixed, no batch can pass a final verification that requires a clean `make test-pytest`.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-15T00:34:08Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "5f2a674735c8447e9dc68597da26de15",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    }
+  ]
+}

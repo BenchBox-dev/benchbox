@@ -6876,6 +6876,13 @@
       "status": "dropped",
       "title": "Dev-loop simplification — Step 6: queue implementation gate (re-homed to hosted tracker; gated on Step 5 + WS9 baseline)"
     },
+    "develop-integration-failures-20261014": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Three integration tests fail on unmodified develop under `make test-pytest`"
+    },
     "develop-post-merge-lint-red-since-1494": {
       "claim": null,
       "needs": [],
