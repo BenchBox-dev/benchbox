@@ -20945,6 +20945,13 @@
       "status": "dropped",
       "title": "Widen the migration snapshot to carry findings once todo-db can accept them"
     },
+    "snowflake-campaign-statement-history-timestamp-type-20261015": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Snowflake campaign helper statement-history fails with a TIMESTAMP_TZ parameter type error"
+    },
     "snowflake-clickhouse-open-table-format-loading": {
       "claim": null,
       "needs": [],

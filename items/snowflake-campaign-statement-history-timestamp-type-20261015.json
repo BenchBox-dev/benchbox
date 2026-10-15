@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "statement-history casts its start time to TIMESTAMP_LTZ",
+    "budget's metering-history casts are checked and left alone or fixed with a stated reason"
+  ],
+  "context": "Observed 2026-10-15 in the C0 reuse check of the Snowflake trial-exit campaign.",
+  "description": "`_project/analysis/snowflake-trial-exit/snowflake_campaign.py statement-history` calls `INFORMATION_SCHEMA.QUERY_HISTORY(END_TIME_RANGE_START => '<since>'::TIMESTAMP_TZ, ...)`. Snowflake rejects it: \"invalid type [TIMESTAMP_TZ(9)] for parameter 'END_TIME_RANGE_START'\". The function takes TIMESTAMP_LTZ. A scratch copy using `::TIMESTAMP_LTZ` ran correctly on 2026-10-15.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:9e002f45bd6cb1f33b959f2c",
+      "at": "2026-10-15T20:45:04Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "68d383389cff4301947051a4d2a796bb",
+      "session_id": "70accbe5849d4e1da05dfca7c4ffe8da"
+    }
+  ]
+}
