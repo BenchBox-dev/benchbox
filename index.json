@@ -6713,6 +6713,13 @@
       "status": "done",
       "title": "Platform Deployment Registry Extensions"
     },
+    "deployment-selector-single-mode-and-docs-alias-rows-20261014": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Single-mode platforms reject a `name:mode` selector, and InfluxDB and LakeSail docs name an alias the alias table lacks"
+    },
     "deprecation-helper-no-effect-notice-20261014": {
       "claim": null,
       "needs": [],

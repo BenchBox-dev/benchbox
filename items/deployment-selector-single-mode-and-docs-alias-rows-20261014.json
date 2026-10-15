@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "A single-mode platform accepts `name:<its only mode>` and records it, and rejects any other mode. CLI and MCP tests cover this.",
+    "The InfluxDB and LakeSail docs match the alias table.",
+    "A parity test asserts that every option or alias named in `docs/platforms/*.md` option tables exists in the registry or the alias table."
+  ],
+  "context": "Follow-ups from #2974, #2980 and #2995. The alias table is `DEPRECATED_OPTION_ALIASES`, and the deployment alias keys are derived from it (ADR D12).",
+  "description": "Two related gaps:\n- Platforms that declare a single deployment mode do not accept the `name:mode` selector, even with their own mode. Scripts that pass the selector for every platform fail.\n- `docs/platforms/influxdb.md:86` and `docs/platforms/lakesail.md` call `deployment_mode` a deprecated alias, but `DEPRECATED_OPTION_ALIASES` has no such entry for those platforms. Either the docs are wrong, or an alias is missing.\n\nThere is also no general parity test between registered option specs and the platform docs.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/2974",
+    "https://github.com/BenchBox-dev/benchbox/pull/2995"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-15T00:34:41Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "4d960a880eb94ee1ab86b35ba09af0a7",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    }
+  ]
+}
