@@ -62,12 +62,12 @@ def test_missing_or_unknown_author_label_means_claude(policy: Policy) -> None:
 
 
 def test_low_medium_for_a_claude_author_skips_claude_and_never_reaches_opus(policy: Policy) -> None:
-    assert _walk(_input(policy, "low-medium"), {}) == ["luna", "muse", "sol"]
+    assert _walk(_input(policy, "low-medium"), {}) == ["luna", "muse", "agy", "sol"]
     assert "opus" not in [reviewer.name for reviewer in policy.chain("low-medium")]
 
 
 def test_low_medium_for_a_codex_author_falls_back_to_sonnet(policy: Policy) -> None:
-    assert _walk(_input(policy, "low-medium", ("author-family:codex",)), {}) == ["muse", "sonnet"]
+    assert _walk(_input(policy, "low-medium", ("author-family:codex",)), {}) == ["muse", "agy", "sonnet"]
 
 
 def test_medium_high_falls_back_to_low_medium_reviewers_in_order(policy: Policy) -> None:
@@ -90,7 +90,7 @@ def test_very_high_keeps_opus_for_a_claude_author_but_drops_sol_for_a_codex_auth
 
 def test_quota_absence_skips_the_whole_pool(policy: Policy) -> None:
     selection_input = _input(policy, "medium-high", ("author-family:muse",))
-    attempts = [_absent(1, "sonnet"), _absent(2, "sol", "quota")]
+    attempts = [_absent(1, "sonnet"), _absent(2, "sol", "quota"), _absent(3, "agy")]
     step = next_step(selection_input, attempts)
     assert step.kind == selection.PENDING
     assert "luna: skipped: codex pool out of quota in this run" in step.reasons
@@ -154,9 +154,14 @@ def test_oversize_brief_leaves_everyone_absent(policy: Policy) -> None:
 
 
 def test_disabled_reviewer_is_named_with_its_reason(policy: Policy) -> None:
-    step = next_step(_input(policy, "low-medium"), [_absent(1, "muse"), _absent(2, "luna"), _absent(3, "sol")])
+    selection_input = _input(policy, "low-medium")
+    chain = [
+        replace(reviewer, enabled=False, disabled_reason="off") if reviewer.name == "agy" else reviewer
+        for reviewer in selection_input.chain
+    ]
+    step = next_step(replace(selection_input, chain=chain), [_absent(1, "muse"), _absent(2, "luna"), _absent(3, "sol")])
     assert step.kind == selection.PENDING
-    assert any(reason.startswith("agy: disabled (") for reason in step.reasons)
+    assert "agy: disabled (off)" in step.reasons
     assert "sonnet: skipped: same family as the author (claude)" in step.reasons
 
 

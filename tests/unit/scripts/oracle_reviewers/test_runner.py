@@ -531,6 +531,59 @@ def test_codex_quota_reported_in_the_event_stream_is_quota(
 
 
 @skip_on_windows
+def test_an_unclassified_codex_failure_names_its_error_event(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _workspace(tmp_path)
+    error = {"type": "error", "message": "Quota exceeded. Check your plan and billing details."}
+    body = (
+        f"print(__import__('json').dumps({error!r}))\n"
+        "sys.stderr.write('Reading additional input from stdin...\\n')\nraise SystemExit(1)"
+    )
+    _fake_muse(tmp_path, monkeypatch, body, name="codex")
+    outcome = _review(policy, tmp_path, workspace, head, reviewer="sol")
+    assert outcome.missing is not None and outcome.missing.detail == "exit code 1"
+    assert outcome.diagnostic == "ERROR: Quota exceeded. Check your plan and billing details."
+
+
+@skip_on_windows
+def test_repeated_muse_verdicts_are_recorded_once(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _workspace(tmp_path)
+    text = json.dumps(VERDICT)
+    _fake_muse(tmp_path, monkeypatch, f"print({json.dumps(text)})\nprint({json.dumps(text)})")
+    outcome = _review(policy, tmp_path, workspace, head)
+    assert outcome.missing is None
+    assert outcome.verdict == {**VERDICT, "defect_count": 0}
+
+
+@skip_on_windows
+def test_agy_without_its_api_key_is_an_auth_absence_before_running(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _workspace(tmp_path)
+    _fake_muse(tmp_path, monkeypatch, "raise SystemExit('must not run')", name="agy")
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    outcome = _review(policy, tmp_path, workspace, head, reviewer="agy")
+    assert outcome.missing is not None and outcome.missing.kind == absence.AUTH
+    assert outcome.missing.detail == "GEMINI_API_KEY is not set"
+
+
+@skip_on_windows
+def test_agy_with_its_api_key_reads_the_result_envelope(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _workspace(tmp_path)
+    envelope = json.dumps({"status": "SUCCESS", "response": json.dumps(VERDICT), "num_turns": 2})
+    _fake_muse(tmp_path, monkeypatch, f"print({json.dumps(envelope)})", name="agy")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key-value")
+    outcome = _review(policy, tmp_path, workspace, head, reviewer="agy")
+    assert outcome.missing is None
+    assert outcome.verdict == {**VERDICT, "defect_count": 0}
+
+
+@skip_on_windows
 def test_the_review_fills_the_read_rule_for_the_reviewers_harness(
     policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

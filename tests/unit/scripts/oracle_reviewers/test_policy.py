@@ -55,27 +55,27 @@ def test_quota_pools_are_claude_codex_muse_and_agy(policy: Policy) -> None:
     assert policy.reviewers["sol"].pool == policy.reviewers["luna"].pool
 
 
-def test_agy_is_disabled_until_calibrated(policy: Policy) -> None:
+def test_agy_is_enabled(policy: Policy) -> None:
     agy = policy.reviewers["agy"]
-    assert agy.enabled is False
-    assert "calibrated" in agy.disabled_reason
+    assert agy.enabled is True
+    assert agy.disabled_reason == ""
 
 
 def test_muse_is_enabled_second_in_low_medium(policy: Policy) -> None:
     assert policy.reviewers["muse"].enabled is True
     assert policy.tiers["low-medium"].order[:2] == ("luna", "muse")
     enabled = {name for name, reviewer in policy.reviewers.items() if reviewer.enabled}
-    assert enabled == {"opus", "sonnet", "sol", "luna", "muse"}
+    assert enabled == {"opus", "sonnet", "sol", "luna", "muse", "agy"}
 
 
 def test_max_attempts_must_cover_the_longest_enabled_chain() -> None:
     raw = _raw()
-    raw["max_attempts"] = 3
-    with pytest.raises(PolicyError, match=r"longest enabled chain \(4\)"):
-        parse_policy(raw)
-    raw["reviewers"]["agy"].update(enabled=True)
     raw["max_attempts"] = 4
     with pytest.raises(PolicyError, match=r"longest enabled chain \(5\)"):
+        parse_policy(raw)
+    raw["reviewers"]["agy"].update(enabled=False, disabled_reason="off")
+    raw["max_attempts"] = 3
+    with pytest.raises(PolicyError, match=r"longest enabled chain \(4\)"):
         parse_policy(raw)
 
 
@@ -122,7 +122,7 @@ def test_brief_cap_fits_one_argument(policy: Policy) -> None:
 @pytest.mark.parametrize(
     ("mutate", "message"),
     [
-        (lambda raw: raw["reviewers"]["agy"].pop("disabled_reason"), "needs a disabled_reason"),
+        (lambda raw: raw["reviewers"]["agy"].update(enabled=False), "needs a disabled_reason"),
         (lambda raw: raw["reviewers"]["sol"].update(pool="openai"), "unknown pool"),
         (lambda raw: raw["reviewers"]["sol"].update(harness="gemini"), "unknown harness"),
         (lambda raw: raw["tiers"]["very-high"].update(blocking=["Critical"]), "never gates"),

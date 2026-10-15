@@ -22,11 +22,16 @@ def schema_text() -> str:
     return json.dumps(VERDICT_SCHEMA, sort_keys=True, separators=(",", ":"))
 
 
+def _schema_file(scratch: Path) -> Path:
+    schema_file = scratch / "verdict-schema.json"
+    schema_file.write_text(schema_text(), encoding="utf-8")
+    return schema_file
+
+
 def build(reviewer: Reviewer, workspace: Path, prompt: str, scratch: Path) -> Invocation:
     if reviewer.harness == "codex":
-        schema_file = scratch / "verdict-schema.json"
+        schema_file = _schema_file(scratch)
         output_file = scratch / "codex-last-message.json"
-        schema_file.write_text(schema_text(), encoding="utf-8")
         argv = (
             "codex",
             "exec",
@@ -85,6 +90,8 @@ def build(reviewer: Reviewer, workspace: Path, prompt: str, scratch: Path) -> In
             "--reasoning-effort",
             reviewer.effort,
             *(("--max-model-steps", str(reviewer.turn_cap)) if reviewer.turn_cap else ()),
+            "--output-schema",
+            str(_schema_file(scratch)),
             prompt,
         )
         return Invocation(argv, workspace, None)

@@ -89,7 +89,16 @@ def test_calibration_tables_cover_every_harness() -> None:
     ):
         assert set(table) == {"agy", "claude", "codex", "muse"}
     assert absence.CALIBRATED_QUOTA_PATTERNS["muse"] == ()
-    assert absence.CALIBRATED_AUTH_PATTERNS["agy"] == ()
+
+
+def test_agy_rejected_api_key_is_auth() -> None:
+    stderr = (
+        'AGY_ERROR: {"short_error":"agent executor error: generating and executing: Error 400, '
+        'Message: API key not valid. Please pass a valid API key., Status: INVALID_ARGUMENT"}'
+    )
+    result = _classify("agy", 3, stderr=stderr)
+    assert result.kind == absence.AUTH
+    assert result.detail == "API key not valid. Please pass a valid API key."
 
 
 CLAUDE_SESSION_LIMIT = "You've hit your session limit \u00b7 resets 7:50pm (America/New_York)"

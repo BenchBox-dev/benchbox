@@ -232,6 +232,19 @@ def test_parse_plain_and_fenced_output() -> None:
         parse_output("muse", "Here is my review: " + json.dumps(_verdict()))
 
 
+def test_repeated_identical_output_is_one_verdict() -> None:
+    text = json.dumps(_verdict())
+    assert parse_output("muse", f"{text}\n{text}\n") == _verdict()
+    assert parse_output("text", f"{text} {text}") == _verdict()
+    other = json.dumps(_verdict(summary="different"))
+    with pytest.raises(VerdictError, match=r"Extra data \(2 different values\)"):
+        parse_output("muse", f"{text}\n{other}")
+    with pytest.raises(VerdictError, match="not JSON: Extra data"):
+        parse_output("muse", f"{text}\nDone.")
+    with pytest.raises(VerdictError, match="not JSON: Extra data"):
+        parse_output("codex", f"{text}\n{text}")
+
+
 def test_commentable_lines_follow_the_right_side_of_hunks() -> None:
     lines = commentable_lines(DIFF)
     assert lines["benchbox/core/equivalence/checker.py"] == {10, 11, 12, 13, 42, 43}

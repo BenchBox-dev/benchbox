@@ -73,6 +73,9 @@ def test_muse_reviewer_disables_write_and_shell(policy: Policy, tmp_path: Path) 
     )
     assert argv[argv.index("--reasoning-effort") + 1] == "medium"
     assert argv[argv.index("--max-model-steps") + 1] == "80"
+    schema_file = argv[argv.index("--output-schema") + 1]
+    assert schema_file == str(tmp_path / "verdict-schema.json")
+    assert json.loads(Path(schema_file).read_text(encoding="utf-8")) == VERDICT_SCHEMA
     assert argv[-1] == PROMPT
 
 
