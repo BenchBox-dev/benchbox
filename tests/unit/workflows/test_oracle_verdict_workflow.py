@@ -83,7 +83,7 @@ def test_workflow_permissions_are_empty_and_jobs_are_minimal() -> None:
     jobs = _jobs()
     assert jobs["plan"]["permissions"] == {"actions": "read", "contents": "read", "pull-requests": "read"}
     assert jobs["sweep"]["permissions"] == {"actions": "write", "contents": "read", "pull-requests": "read"}
-    assert jobs["post"]["permissions"] == {"contents": "read"}
+    assert jobs["post"]["permissions"] == {"actions": "write", "contents": "read"}
     for name, job in jobs.items():
         if name.startswith(("select-", "attempt-")):
             assert job["permissions"] == {"contents": "read"}, name
@@ -255,8 +255,12 @@ def test_post_job_mints_the_app_token_and_tolerates_missing_secrets() -> None:
     assert absent["if"] == "env.HAS_APP != 'true'"
     for step in post["steps"]:
         if "GH_TOKEN" in step.get("env", {}):
-            assert step["env"]["GH_TOKEN"] == "${{ steps.app.outputs.token }}"
-            assert step["if"].startswith("env.HAS_APP == 'true'")
+            if step["name"] == "Rerun the failed synchronize suite for this head":
+                assert step["env"]["GH_TOKEN"] == "${{ github.token }}"
+                assert step["if"] == "env.HAS_APP == 'true'"
+            else:
+                assert step["env"]["GH_TOKEN"] == "${{ steps.app.outputs.token }}"
+                assert step["if"].startswith("env.HAS_APP == 'true'")
     finalize = _run(post, "Validate this run's artifacts and decide")
     assert "cli finalize" in finalize
     downloads = [step for step in post["steps"] if str(step.get("uses", "")).startswith("actions/download-artifact@")]
@@ -316,6 +320,21 @@ def test_the_post_job_rechecks_the_review_list_before_posting() -> None:
     for name in ("Post the commit status", "Post the findings comment", "Post the findings review"):
         step = next(item for item in post["steps"] if item["name"] == name)
         assert "steps.guard.outputs.skip != 'true'" in step["if"], name
+
+
+def test_post_job_reruns_the_failed_synchronize_suite_for_the_head() -> None:
+    post = _jobs()["post"]
+    names = [step["name"] for step in post["steps"]]
+    step = next(item for item in post["steps"] if item["name"] == "Rerun the failed synchronize suite for this head")
+    assert names.index("Post the findings review") < names.index(step["name"])
+    assert step["if"] == "env.HAS_APP == 'true'"
+    assert "gh run list" in step["run"]
+    assert "--workflow oracle-review.yml" in step["run"]
+    assert '.event == "pull_request"' in step["run"]
+    assert '.conclusion == "failure"' in step["run"]
+    assert "env.HEAD_SHA" in step["run"]
+    assert 'gh run rerun "$id" --failed --repo "$REPO"' in step["run"]
+    assert "set -euo pipefail" in step["run"]
 
 
 def test_only_codex_jobs_let_the_sandbox_create_user_namespaces() -> None:
