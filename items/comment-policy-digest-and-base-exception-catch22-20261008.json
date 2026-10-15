@@ -38,6 +38,17 @@
       "op": "take",
       "op_id": "ce397bd1f46947b4a86814cea17f6eb3",
       "session_id": "10b6ed539f7e4998b1290031a09d7b39"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:122820e0d0649bb1515cedf7",
+      "at": "2026-10-15T01:09:25Z",
+      "client": "codex-mcp-client",
+      "displaced": "mcp:tbh:joe@joe-mac-mini.local:ee5a973726de839c8eab56eb",
+      "generation": "8df0dcb514e04aaf8cba0cc7aadea5d6",
+      "op": "takeover",
+      "op_id": "f8f4da2ba3e24b0c88bd04eb4ed6870d",
+      "reason": "The holder took this claim during interrupted Muse session 01a1375a-37e2-7b11-ad14-55328c9f21c8; its transcript records clean exit at 2026-10-15T00:05:09Z. No live repository writer remains.",
+      "session_id": "a4547e3a2da34101955f1470631f44f0"
     }
   ]
 }
