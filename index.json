@@ -25807,10 +25807,15 @@
       "title": "Keep PR-followups mock-runner tests independent of installed Codex"
     },
     "windows-pytest-xdist-teardown-hang-20261009": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-16T02:46:37Z",
+        "generation": "9b6c8c6e50fa447cb2bbd877cb4dc2ce",
+        "renewals": 0,
+        "worker": "mcp:codex-mcp-client:joe@joe-mac-mini.local:122820e0d0649bb1515cedf7"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Windows fast-test run stalls at about 90-95% on Python 3.11 and 3.12"
     },
     "windows-session-lock-holder-readable-20261009": {
