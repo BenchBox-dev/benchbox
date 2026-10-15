@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Validation of a freshly saved configuration that includes tables without column tuning passes and the database is reused",
+    "A table whose column tuning is expected but absent from the persisted metadata is still reported as missing",
+    "Persisted column tuning for a table the expected configuration has no column tuning for is still reported as unexpected",
+    "Constraint drift stays detected through the section-hash markers",
+    "Regression tests run without a live cloud connection"
+  ],
+  "context": "Found 2026-10-15 during the Snowflake trial-exit C0 smoke test: the reuse run found the tuned database (existence check works) but tuning validation failed with four errors (CUSTOMER, PART, PARTSUPP, SUPPLIER) and the run issued DROP DATABASE, 8 TRUNCATE and 8 COPY INTO. Blocks the tuned-vs-untuned campaign cells C1-C4. Fix branch: fix/tuning-reuse-validation.",
+  "description": "`examples/tunings/snowflake/tpch_tuned.yaml` (and the packaged template) lists CUSTOMER, PART, PARTSUPP and SUPPLIER with no partitioning, clustering, distribution or sorting columns; their only tuning is the benchmark-wide constraint sections. `TuningMetadataManager.save_tunings` writes no rows for such tables, and `_rebuild_tunings_from_records` keeps only tables with `has_any_tuning()`, but the expected configuration passed to `validate_tunings` still contains them. `_compare_tuning_configurations` (`benchbox/core/tuning/metadata.py`) therefore always reports \"Expected tuning for table '<T>' not found in database\" for each of them, validation fails, and the run drops and reloads the tuned database. A tuned Snowflake database is never reused, so automatic clustering never settles between runs.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:9e002f45bd6cb1f33b959f2c",
+      "at": "2026-10-15T20:44:57Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "23cdd2037c494687a292c47a7db0e00a",
+      "session_id": "70accbe5849d4e1da05dfca7c4ffe8da"
+    }
+  ]
+}
