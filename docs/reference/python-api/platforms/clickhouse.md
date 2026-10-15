@@ -35,14 +35,14 @@ Common use cases:
 
 ### Server Mode (Default)
 
-In 0.4.1 `ClickHouseAdapter()` starts in local mode. Server mode is selected with `mode="server"`; without it the `host`, `port` and credentials below are ignored.
+In 0.4.1 `ClickHouseAdapter()` starts in local mode. Server mode is selected with `deployment_mode="server"`; without it the `host`, `port` and credentials below are ignored.
 
 ```python
 from benchbox.tpch import TPCH
 from benchbox.platforms.clickhouse import ClickHouseAdapter
 
 adapter = ClickHouseAdapter(
-    mode="server",
+    deployment_mode="server",
     host="localhost",
     port=9000,
     database="benchmark",
@@ -64,7 +64,7 @@ from benchbox.tpch import TPCH
 from benchbox.platforms.clickhouse import ClickHouseAdapter
 
 adapter = ClickHouseAdapter(
-    mode="local",
+    deployment_mode="local",
     database_path="./benchmark.chdb"
 )
 
@@ -155,10 +155,10 @@ print(result["status"], result["rows_returned"], result["first_row"])
 print(repr(adapter.get_query_plan(connection, "SELECT 1")))
 print(ClickHouseAdapter.KNOWN_INCOMPATIBLE_QUERIES)
 
-server = ClickHouseAdapter(mode="server", host="db.example.com", port=9440, secure=True)
+server = ClickHouseAdapter(deployment_mode="server", host="db.example.com", port=9440, secure=True)
 print(server.deployment_mode, server.host, server.port, server.database, server.max_threads)
 
-for kwargs in ({"mode": "bogus"}, {"deployment_mode": "cloud"}, {"mode": "server", "insert_block_size": 1000}):
+for kwargs in ({"deployment_mode": "bogus"}, {"deployment_mode": "cloud"}, {"deployment_mode": "server", "insert_block_size": 1000}):
     try:
         ClickHouseAdapter(**kwargs)
     except ValueError as exc:
@@ -344,14 +344,14 @@ The first adapter connects to the default local server. The second adds authenti
 from benchbox.platforms.clickhouse import ClickHouseAdapter
 
 adapter = ClickHouseAdapter(
-    mode="server",
+    deployment_mode="server",
     host="localhost",
     port=9000,
     database="benchmark"
 )
 
 adapter = ClickHouseAdapter(
-    mode="server",
+    deployment_mode="server",
     host="localhost",
     port=9000,
     database="benchmark",
@@ -366,7 +366,7 @@ This example connects to a production server with TLS. Port 9440 is the secure n
 
 ```python
 adapter = ClickHouseAdapter(
-    mode="server",
+    deployment_mode="server",
     host="clickhouse.example.com",
     port=9440,
     database="production_benchmarks",
@@ -383,10 +383,10 @@ adapter = ClickHouseAdapter(
 The first adapter runs in memory, which is fast but keeps no data. The second uses persistent storage, so the data survives restarts.
 
 ```python
-adapter = ClickHouseAdapter(mode="local")
+adapter = ClickHouseAdapter(deployment_mode="local")
 
 adapter = ClickHouseAdapter(
-    mode="local",
+    deployment_mode="local",
     database_path="./benchmarks/clickhouse_local.chdb"
 )
 ```
@@ -397,7 +397,7 @@ Raise `max_memory_usage` for large datasets. `max_execution_time` is in seconds,
 
 ```python
 adapter = ClickHouseAdapter(
-    mode="server",
+    deployment_mode="server",
     host="localhost",
     database="benchmark",
     max_memory_usage="64GB",
@@ -416,7 +416,7 @@ The example creates the table, then bulk-inserts from a CSV file.
 ```python
 from benchbox.platforms.clickhouse import ClickHouseAdapter
 
-adapter = ClickHouseAdapter(mode="server", host="localhost", database="benchmark")
+adapter = ClickHouseAdapter(deployment_mode="server", host="localhost", database="benchmark")
 conn = adapter.create_connection()
 
 conn.execute("""
@@ -481,7 +481,7 @@ conn.execute("""
 ```python
 from benchbox.platforms.clickhouse import ClickHouseAdapter
 
-adapter = ClickHouseAdapter(mode="server", host="localhost", database="benchmark")
+adapter = ClickHouseAdapter(deployment_mode="server", host="localhost", database="benchmark")
 conn = adapter.create_connection()
 
 result = conn.execute("SELECT COUNT(*) FROM lineitem")
@@ -591,7 +591,7 @@ result = conn.execute("""
 
    ```python
    adapter = ClickHouseAdapter(
-       mode="server",
+       deployment_mode="server",
        host="localhost",
        max_memory_usage="16GB"
    )
@@ -648,7 +648,7 @@ result = conn.execute("""
 1. **Reuse connections** for multiple queries, and close the connection when you are done:
 
    ```python
-   adapter = ClickHouseAdapter(mode="server", host="localhost")
+   adapter = ClickHouseAdapter(deployment_mode="server", host="localhost")
    conn = adapter.create_connection()
 
    for query_id in range(1, 23):
@@ -661,7 +661,7 @@ result = conn.execute("""
 
    ```python
    adapter = ClickHouseAdapter(
-       mode="server",
+       deployment_mode="server",
        host="localhost",
        max_execution_time=600
    )
@@ -712,7 +712,7 @@ else:
 
 ```python
 adapter = ClickHouseAdapter(
-    mode="server",
+    deployment_mode="server",
     host="localhost",
     max_memory_usage="32GB"
 )
@@ -737,7 +737,7 @@ pip install "benchbox[clickhouse-local]"
 Or switch to server mode, which needs the `clickhouse` extra:
 
 ```python
-adapter = ClickHouseAdapter(mode="server", host="localhost")
+adapter = ClickHouseAdapter(deployment_mode="server", host="localhost")
 ```
 
 ### Slow Query Performance
@@ -752,7 +752,7 @@ adapter = ClickHouseAdapter(mode="server", host="localhost")
 
 ```python
 adapter = ClickHouseAdapter(
-    mode="server",
+    deployment_mode="server",
     host="localhost",
     max_threads=16
 )

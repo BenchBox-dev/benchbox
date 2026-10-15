@@ -187,7 +187,7 @@ publish-only workflow labels through `benchbox publish run --label`. These label
 are not derived from `result_source` and are not part of the canonical Explorer
 trust-label vocabulary above.
 
-Community submissions are labeled "Community submission" in the explorer to
+Community submissions are labeled "Community Submission" in the explorer to
 distinguish them from maintainer-curated results, and are currently excluded
 from ranked tables. We will re-evaluate their inclusion over the coming months.
 **Vendor Supplied** (`vendor-supplied`) results appear in ranked tables but

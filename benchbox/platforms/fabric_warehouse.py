@@ -139,8 +139,7 @@ class FabricWarehouseAdapter(PlatformAdapter):
             raise ConfigurationError(
                 "Fabric Warehouse requires a database/warehouse name.\n"
                 "Configure with:\n"
-                "  1. CLI option: --platform-option database=<warehouse_name>\n"
-                "  2. CLI option: --platform-option warehouse=<warehouse_name> (deprecated alias)\n"
+                "  CLI option: --platform-option database=<warehouse_name>\n"
                 "\n"
                 "Find your warehouse name in the Fabric portal under your workspace."
             )

@@ -36,7 +36,7 @@ def _build_configs(scale_factor: float) -> tuple[BenchmarkConfig, DatabaseConfig
         options={
             "endpoint": endpoint,
             "app_name": "BenchBox-LakeSail-Example",
-            "sail_mode": sail_mode,
+            "deployment_mode": sail_mode,
             "sail_workers": int(sail_workers) if sail_workers else None,
             "table_format": "parquet",
             "driver_memory": "4g",

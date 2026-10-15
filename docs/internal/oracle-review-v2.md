@@ -40,8 +40,12 @@ its own.
      compromised download would run with this key and a read-only checkout of
      this public repository, and nothing else. The owner accepted that on
      2026-10-05 and confirmed it on 2026-10-09.
-
-   agy is disabled and has no job, so it needs no secret yet.
+   - `GEMINI_API_KEY`, a Gemini API key from Google AI Studio, used only by
+     the agy jobs. Each agy job installs a pinned Antigravity CLI release
+     from Google's public bucket, checks its SHA-256, and sets
+     `modelProvider: "gemini"` so the CLI reads the key from the
+     environment. Until the secret exists, each agy attempt is recorded as
+     `auth: GEMINI_API_KEY is not set` without running the CLI.
 4. Remove `CLAUDE_CODE_OAUTH_TOKEN` from the repository secrets, because
    same-repository pull request workflows can read those.
 
@@ -279,8 +283,9 @@ These checks must pass before the cut-over that makes the context required.
   enters the `oracle` environment; a `pull_request` run from the pull request
   branch cannot.
 - **P3:** each reviewer authenticates in CI. A reviewer that cannot is set to
-  `enabled: false` with a `disabled_reason`. agy stays disabled until it
-  passes; enabling it needs an agy job and a fifth reviewer slot.
+  `enabled: false` with a `disabled_reason`. agy is enabled with its own
+  job in every slot, and the workflow has five slots so the longest enabled
+  chain fits.
 - **P4:** capture each reviewer's quota, authentication and outage output from
   real runs. The attempt artifact's `diagnostic` field holds one redacted line
   of the output, at most 300 characters, with credentials and long tokens

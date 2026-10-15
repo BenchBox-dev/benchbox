@@ -60,8 +60,7 @@ def _resolve_firebolt_deployment_mode(
         if url:
             raise ValueError(
                 "Firebolt configuration is ambiguous: both Core URL and Cloud credentials provided. "
-                "Specify --platform firebolt:core or firebolt:cloud explicitly, "
-                "or use --platform-option deployment_mode=core|cloud."
+                "Specify --platform firebolt:core or firebolt:cloud explicitly."
             )
         return "cloud"
 

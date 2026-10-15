@@ -42,11 +42,11 @@ calm (an empty check list), not broken. The change reached `develop` only
 when the parent merged, never validated on its own and attributed to the
 parent's PR.
 
-`.github/workflows/ci.yml` has **no** `branches:` filter on `pull_request`, so
-a PR against any base now gets the six unit results. Units run against a
-parent branch validate the child on top of its parent, not the tree that lands
-on `develop`. So the rebase onto `develop` and the CI rerun after it are what
-gate the merge.
+`.github/workflows/ci.yml` filters `pull_request` only with
+`branches-ignore: [release]`, so a PR against any other base now gets the six
+unit results. Units run against a parent branch validate the child on top of its
+parent, not the tree that lands on `develop`. So the rebase onto `develop` and
+the CI rerun after it are what gate the merge.
 
 ## Loud failure: the `base-guard` job
 

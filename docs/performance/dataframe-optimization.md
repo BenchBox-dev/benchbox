@@ -28,12 +28,12 @@ Polars is the default expression-family adapter and excels at single-node perfor
 from benchbox.platforms.dataframe.polars_df import PolarsDataFrameAdapter
 
 adapter = PolarsDataFrameAdapter(
-    streaming=True,
+    execution_engine="streaming",
     rechunk=True,
 )
 ```
 
-`streaming=True` enables streaming for large datasets. `rechunk=True` rechunks data for a better memory layout.
+`execution_engine="streaming"` selects the streaming engine for large datasets (`--execution-engine streaming` on the command line). `rechunk=True` rechunks data for a better memory layout.
 
 **Best Practices:**
 - Use `ctx.scalar()` instead of `.collect()[0, 0]` for single-value extraction
@@ -170,7 +170,7 @@ result = lineitem.join(orders, ...).select("l_orderkey", "l_quantity", ...)
 
 For datasets larger than available memory:
 
-1. **Polars streaming**: `streaming=True` processes data in chunks
+1. **Polars streaming**: `execution_engine="streaming"` processes data in chunks
 2. **Dask**: Automatically partitions data across workers
 3. **PySpark**: Distributed processing with memory spill to disk
 

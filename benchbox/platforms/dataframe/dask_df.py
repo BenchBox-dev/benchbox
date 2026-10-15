@@ -168,6 +168,11 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
         if self._legacy_use_distributed is not None:
             if not isinstance(self._legacy_use_distributed, bool):
                 raise ValueError("Dask use_distributed must be a boolean")
+            if self.scheduler_address and not self._legacy_use_distributed:
+                raise ValueError(
+                    "Dask use_distributed=false cannot be combined with scheduler_address; "
+                    "use execution_engine='distributed' (--execution-engine distributed) to connect to a scheduler"
+                )
             legacy = legacy_option_engine("dask", "use_distributed", self._legacy_use_distributed)
         if explicit is not None and legacy is not None and explicit != legacy:
             raise ValueError(

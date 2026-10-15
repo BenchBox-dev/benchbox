@@ -54,7 +54,7 @@ inventory such cases by hand before deleting a docstring.
 The directive and TODO/FIXME registers are incomplete. An unregistered directive
 or TODO/FIXME keeps its text until it is registered with its consumer,
 necessity, and owner, or an existing tracker item. The validator prints counts
-of unregistered Python comments. The base has about 1,100 directive comments,
+of unregistered Python comments. The base has about 380 directive comments,
 and every TODO/FIXME marker is registered. A TODO/FIXME marker is a comment that
 starts with the word, or has it after `#`, `;`, or two spaces, followed by a
 colon, such as `# TODO: link the issue` or `# noqa: E501  TODO: later`. A
@@ -75,10 +75,10 @@ uv run -- python scripts/check_comment_cleanup_scope.py \
 The output lists every classified maintained path with its owner, state, rule,
 and blocking disposition, plus a digest. Freeze it before parallel work; after
 integration, rerun it and allow only authorized path or dependency changes. The
-policy, validator, focused test, dispatch page, and index link form a standalone
-scope-policy change. The pre-change base proves the starting tree; after that
-change is committed, validate a second immutable snapshot so those files get the
-same ownership check before dispatch.
+policy, validator, focused test, and this page form a standalone scope-policy
+change. The pre-change base proves the starting tree; after that change is
+committed, validate a second immutable snapshot so those files get the same
+ownership check before dispatch.
 
 ## Evidence rules
 
@@ -159,14 +159,11 @@ production readers (`benchbox/core/query_catalog.py`, `benchbox/core/dryrun.py`,
 and `benchbox/mcp/tools/benchmark.py`) return `inspect.getsource` of the
 registered DataFrame implementations, so each of the 38 files that define them
 (resolved from the live registry) is a producer for all three. Three tests
-assert that specific docstring text is present. Sphinx autodoc renders the
-docstring of every object named by an `auto*` directive in `docs/`, so each
-defining file, found by importing the object and calling
-`inspect.getsourcefile`, is a producer for the page that names it. A test that
-only asserts absence or a code token is not an edge, since deleting a comment
-cannot break it. The list is not exhaustive: Click and FastMCP help read a
-docstring in the same file, which an edge cannot express, and owners must still
-inventory readers reached through dynamic names.
+assert that specific docstring text is present. A test that only asserts absence
+or a code token is not an edge, since deleting a comment cannot break it. The
+list is not exhaustive: Click and FastMCP help read a docstring in the same
+file, which an edge cannot express, and owners must still inventory readers
+reached through dynamic names.
 
 Scope validation covers only ownership, evidence, and dependency data. The
 checker owns deletion comparison, syntax and parser coverage, directive grammar,

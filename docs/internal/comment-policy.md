@@ -27,7 +27,13 @@ must be an ancestor of `HEAD`.
 Other tools:
 
 - `make comment-policy-strict` scans the whole repository using your branch's
-  exceptions. Use it to diagnose; CI does not run it.
+  exceptions and the base-trusted ownership manifest, so vendored and
+  externally owned paths are not reported as first-party findings. The
+  manifest comes from the merge-base with `origin/develop`, which is `HEAD`
+  on a clean develop checkout; strict fails when that merge-base cannot be
+  derived. An explicit `--ownership-base` must be an ancestor of the
+  merge-base, and is rejected when `origin/develop` is unavailable to anchor
+  it. Use it to diagnose; CI does not run it.
 - `make comment-policy-report` lists every violation, including old ones. It
   fails only if configuration or parsing fails.
 - The pre-commit hook checks staged files, with the same result as
@@ -99,8 +105,8 @@ checker cannot judge that. Then merge the exception before the code that uses
 it, because CI reads exceptions from the base commit. Remove unused exceptions
 when you review a module.
 
-The one current fixture lets a test run conditions taken from the Makefile, to
-prove a broken gate still runs its guard. It allows no comment text. Changing
+One fixture lets a test run conditions taken from the Makefile, to prove a
+broken gate still runs its guard. It allows no comment text. Changing
 the code that reads it breaks the match. Its syntax-tree digest ignores only
 empty type-parameter lists, so all Python versions agree.
 
@@ -131,15 +137,15 @@ module docstrings are transition debt, not an example.
 
 ## How CI protects the check
 
-The `comment-policy` job runs on every pull request and merge group and feeds
-the required tooling result. Its exit status decides the result; the log is
-for information only. The job stops a pull request from weakening the check
+The `comment-policy` job runs on every pull request and feeds the required
+tooling result. Its exit status decides the result; the log is for information
+only. The job stops a pull request from weakening the check
 that judges it:
 
 - **Fixed base.** The base SHA comes from the GitHub event and cannot be
   overridden. A pull request compares against the first parent of the merge
   commit CI checks out: the target branch tip. Later changes to the target are
-  not charged to it. A merge group uses the event's base.
+  not charged to it.
 - **Trusted code.** The launcher, checker, adapters, and hash-pinned parser
   dependency lists come from the base. CI uses the pull request's checker only
   when the base contains rollout commit

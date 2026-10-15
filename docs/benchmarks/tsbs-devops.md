@@ -291,7 +291,7 @@ tsbs = TSBSDevOps(scale_factor=0.1, output_dir="tsbs_influx")
 data_files = tsbs.generate_data()
 
 adapter = InfluxDBAdapter(
-    mode="core",
+    deployment_mode="core",
     host="localhost",
     port=8086,
     token="your-influxdb-token",
@@ -320,7 +320,7 @@ The following adapter targets InfluxDB Cloud (Serverless, Dedicated or Clustered
 
 ```python
 adapter = InfluxDBAdapter(
-    mode="cloud",
+    deployment_mode="cloud",
     host="us-east-1-1.aws.cloud2.influxdata.com",
     token="your-cloud-token",
     org="your-org",

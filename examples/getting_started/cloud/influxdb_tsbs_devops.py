@@ -130,7 +130,7 @@ def main() -> None:
                 "token": "***",
                 "org": org or "(not set)",
                 "database": database,
-                "mode": args.mode,
+                "deployment_mode": args.mode,
                 "ssl": ssl,
             },
         )
@@ -151,7 +151,7 @@ def main() -> None:
         token=token,
         org=org,
         database=database,
-        mode=args.mode,
+        deployment_mode=args.mode,
         ssl=ssl,
     )
 

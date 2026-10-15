@@ -64,14 +64,14 @@ The CLI runs LakeSail with its defaults:
 ```bash
 benchbox run --platform lakesail --benchmark tpch --scale 1.0
 ```
-Settings below can also be set by constructing the adapter directly (here `sail_mode` still works as a deprecated alias of the selector):
+Settings below can also be set by constructing the adapter directly:
 
 ```python
 from benchbox.platforms.lakesail import LakeSailAdapter
 
 adapter = LakeSailAdapter(
     endpoint="sc://my-sail-server:50051",
-    sail_mode="distributed",
+    deployment_mode="distributed",
     driver_memory="8g",
     shuffle_partitions=16,
 )
@@ -82,7 +82,7 @@ adapter = LakeSailAdapter(
 | Option | Default | Description |
 |--------|---------|-------------|
 | `endpoint` | `sc://localhost:50051` | Sail server Spark Connect URL |
-| `deployment_mode` | `local` | Deprecated alias of `--platform lakesail:local\|distributed`; `sail_mode` is an alias of this option |
+| `deployment_mode` | `local` | Adapter constructor form of `--platform lakesail:local\|distributed` |
 | `sail_workers` | - | Has no effect: BenchBox logs a warning and does not record it, because Sail takes no worker count from BenchBox |
 | `app_name` | `BenchBox-LakeSail` | Application name for the session |
 | `driver_memory` | `4g` | Driver memory allocation (e.g., `4g`, `8g`) |
@@ -138,7 +138,7 @@ from benchbox.platforms.lakesail import LakeSailAdapter
 
 adapter = LakeSailAdapter(
     endpoint="sc://localhost:50051",
-    sail_mode="local",
+    deployment_mode="local",
     driver_memory="8g",
     shuffle_partitions=16,
     table_format="parquet",
