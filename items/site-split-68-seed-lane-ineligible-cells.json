@@ -43,6 +43,15 @@
       "op_id": "77f2b328a0de440bbe0c396faf9b5dd8",
       "reason": "Inspected the holder session 63fb16e6ece34adb91d17cdd1e1f2310; it ended 2026-10-14 23:26Z, while its claim remained live. The interrupted batch assigns this item to the current takeover.",
       "session_id": "22bf838e3a6d4061858731420b5ff0f7"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:1f8c5d7706213cbfec63db59",
+      "at": "2026-10-15T03:27:01Z",
+      "client": "codex-mcp-client",
+      "generation": "91431c5e757548c692a9a575da8e79f9",
+      "op": "take",
+      "op_id": "f8e78ba0d87743d6804a6b5d0b845c3b",
+      "session_id": "22bf838e3a6d4061858731420b5ff0f7"
     }
   ]
 }
