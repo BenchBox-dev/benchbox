@@ -24240,18 +24240,13 @@
       "title": "Applied-ledger capture for Snowpark session tuning"
     },
     "tuning-sort-evidence-attested-20261001": {
-      "claim": {
-        "expires_at": "2026-10-15T23:58:42Z",
-        "generation": "625b2098eb9f4e2dacfd187f1633c31f",
-        "renewals": 0,
-        "worker": "mcp:antigravity-client:joe@joe-mac-mini.local:b99da209e67e8c2428b594b0"
-      },
+      "claim": null,
       "needs": [
         "tuning-gate-sort-evidence-model-20261001",
         "tuning-requested-vs-rendered-reconciliation-20261001"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Implement the decided sort-evidence model (record successful sort rewrites; requested-but-unexecuted sorts block)"
     },
     "tuning-sort-realized-by-ddl-no-drop-20261001": {
