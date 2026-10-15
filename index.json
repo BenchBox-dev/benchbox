@@ -2542,6 +2542,13 @@
       "status": "dropped",
       "title": "Baseline CI-failure metrics in dev-loop-metrics before landing the reduction workstreams"
     },
+    "ci-fast-test-ubuntu-timeout-20261014": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "CI `test (ubuntu-latest, 3.12)` hits its 45-minute timeout while the same suite takes about 6.5 minutes locally"
+    },
     "ci-lint-local-parity-pin": {
       "claim": null,
       "needs": [

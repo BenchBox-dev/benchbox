@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "The cause is identified from CI evidence: a named hanging or slow test, a worker stall, or runner capacity. The evidence is cited by run and job ID.",
+    "The fix makes the job finish well inside its timeout across at least 5 consecutive PR runs, without raising the timeout or skipping tests.",
+    "If a test hangs, a per-test timeout or a regression test makes the hang fail fast with the test's name, instead of consuming the job timeout."
+  ],
+  "context": "Found while driving the execution-variant follow-up batches on 2026-10-14. Evidence:\n- #2968 and #2985: timeout, then pass on `gh run rerun --failed`;\n- #2960: run 38612765430, job 116045837618, in progress from 19:03 UTC for more than 30 minutes.\n\nNot yet known: whether one test hangs (an xdist worker stall at the tail, like the open Windows item `windows-pytest-xdist-teardown-hang-20261009`), whether runner contention is to blame, or whether the suite has grown. The job uploads an xdist failure trace on failure; start there.",
+  "description": "The fast-test job on ubuntu-latest / Python 3.12 timed out at 45 minutes on PRs #2968 and #2985. Each time, rerunning the failed jobs passed. On #2960 (run 38612765430, attempt 2), the same job was still in \"Run fast tests\" more than 30 minutes after it started. The suite runs in about 6.5 minutes locally. This adds one to two hours of latency to every affected PR and forces manual reruns.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/2968",
+    "https://github.com/BenchBox-dev/benchbox/pull/2985",
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/38612765430/job/116045837618"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-15T00:27:03Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "5519794447534aff8a208213f25fa7a9",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    }
+  ]
+}
