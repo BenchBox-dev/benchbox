@@ -15,7 +15,6 @@ from ..utils.dependencies import (
     get_dependency_error_message,
 )
 from ._spark_helpers import (
-    SPARK_CBO_KEYS,
     SparkLikeAdapterMixin,
     analyze_spark_table,
     is_spark_connect_reachable,
@@ -130,10 +129,8 @@ class VeloxAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
         self.app_name = config.get("app_name") or "BenchBox-Velox"
         self.database = config.get("database") or "default"
         self.driver_memory = config.get("driver_memory") or "4g"
-        self.shuffle_partitions = (
-            config.get("shuffle_partitions") if config.get("shuffle_partitions") is not None else 200
-        )
-        self.adaptive_enabled = config.get("adaptive_enabled") if config.get("adaptive_enabled") is not None else True
+        self.shuffle_partitions = config.get("shuffle_partitions")
+        self.adaptive_enabled = config.get("adaptive_enabled")
         table_format = (config.get("table_format") or "parquet").lower()
         if table_format not in _SUPPORTED_TABLE_FORMATS:
             raise ValueError(
@@ -143,7 +140,7 @@ class VeloxAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
         self.table_format = table_format
         self.lakehouse_jars = self._parse_jar_list(config.get("lakehouse_jars"))
         self.spark_config = config.get("spark_config") or {}
-        self.disable_cache = config.get("disable_cache") if config.get("disable_cache") is not None else True
+        self.disable_cache = config.get("disable_cache") if config.get("disable_cache") is not None else False
 
         self._spark_session = None
 
@@ -291,10 +288,18 @@ class VeloxAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
     def _get_spark_conf(self) -> dict[str, str]:
         conf: dict[str, str] = {
             "spark.app.name": self.app_name,
-            "spark.sql.shuffle.partitions": str(self.shuffle_partitions),
         }
 
-        conf.update(spark_aqe_conf_entries(self.adaptive_enabled))
+        shuffle_partitions = self.shuffle_partitions
+        if shuffle_partitions is None and self.tuning_enabled:
+            shuffle_partitions = 200
+        if shuffle_partitions is not None:
+            conf["spark.sql.shuffle.partitions"] = str(shuffle_partitions)
+        adaptive_enabled = self.adaptive_enabled
+        if adaptive_enabled is None and self.tuning_enabled:
+            adaptive_enabled = True
+        if adaptive_enabled is not None:
+            conf.update(spark_aqe_conf_entries(adaptive_enabled))
 
         if self.disable_cache:
             conf["spark.sql.inMemoryColumnarStorage.enabled"] = "false"
@@ -438,14 +443,22 @@ class VeloxAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
             return False
 
     def configure_for_benchmark(self, connection: Any, benchmark_type: str) -> None:
-        spark = connection
-        try:
-            if benchmark_type.lower() in ["olap", "analytics", "tpch", "tpcds"]:
-                for cbo_key in SPARK_CBO_KEYS:
-                    spark.conf.set(cbo_key, self.spark_config.get(cbo_key, "true"))
-                self.logger.debug("Applied OLAP optimisations for Velox")
-        except Exception as e:
-            self.logger.warning(f"Failed to apply benchmark configuration: {e}")
+        keys = ["spark.app.name"]
+        if self.deployment == "local":
+            keys.extend(
+                (
+                    "spark.plugins",
+                    "spark.memory.offHeap.enabled",
+                    "spark.memory.offHeap.size",
+                    "spark.shuffle.manager",
+                    "spark.jars",
+                    "spark.driver.extraClassPath",
+                    "spark.executor.extraClassPath",
+                )
+            )
+        self.record_harness_spark_conf(connection, tuple(keys))
+        if self.tuning_enabled:
+            self.apply_olap_runtime_conf(connection, benchmark_type, "Velox")
 
     def create_schema(self, benchmark, connection: Any) -> float:
         start_time = mono_time()

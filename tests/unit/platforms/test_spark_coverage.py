@@ -672,46 +672,41 @@ class TestGetPlatformInfo:
 
 
 class TestConfigureForBenchmark:
-    def test_olap_sets_aqe(self, mock_pyspark):
+    def test_olap_leaves_aqe_engine_defaults(self, mock_pyspark):
         _, mock_session = mock_pyspark
         from benchbox.platforms.spark import SparkAdapter
 
         a = SparkAdapter()
         a.configure_for_benchmark(mock_session, "tpch")
 
-        conf_calls = [str(c) for c in mock_session.conf.set.call_args_list]
-        assert any("adaptive.enabled" in c for c in conf_calls)
+        mock_session.conf.set.assert_not_called()
 
-    def test_olap_respects_adaptive_disabled(self, mock_pyspark):
+    def test_explicit_adaptive_option_is_not_applied_after_session_creation(self, mock_pyspark):
         _, mock_session = mock_pyspark
         from benchbox.platforms.spark import SparkAdapter
 
         a = SparkAdapter(adaptive_enabled=False)
         a.configure_for_benchmark(mock_session, "tpch")
 
-        mock_session.conf.set.assert_any_call("spark.sql.adaptive.enabled", "false")
-        mock_session.conf.set.assert_any_call("spark.sql.adaptive.coalescePartitions.enabled", "false")
-        mock_session.conf.set.assert_any_call("spark.sql.adaptive.skewJoin.enabled", "false")
+        assert a._get_spark_conf()["spark.sql.adaptive.enabled"] == "false"
 
-    def test_olap_respects_spark_config_aqe_override(self, mock_pyspark):
+    def test_explicit_spark_config_keeps_aqe_override(self, mock_pyspark):
         _, mock_session = mock_pyspark
         from benchbox.platforms.spark import SparkAdapter
 
         a = SparkAdapter(spark_config={"spark.sql.adaptive.enabled": "false"})
         a.configure_for_benchmark(mock_session, "olap")
 
-        mock_session.conf.set.assert_any_call("spark.sql.adaptive.enabled", "false")
-        mock_session.conf.set.assert_any_call("spark.sql.adaptive.skewJoin.enabled", "true")
+        assert a._get_spark_conf()["spark.sql.adaptive.enabled"] == "false"
 
-    def test_tpcds_sets_cbo(self, mock_pyspark):
+    def test_tpcds_leaves_cbo_engine_defaults(self, mock_pyspark):
         _, mock_session = mock_pyspark
         from benchbox.platforms.spark import SparkAdapter
 
         a = SparkAdapter()
         a.configure_for_benchmark(mock_session, "tpcds")
 
-        conf_calls = [str(c) for c in mock_session.conf.set.call_args_list]
-        assert any("cbo.enabled" in c for c in conf_calls)
+        mock_session.conf.set.assert_not_called()
 
     def test_unknown_benchmark_noop(self, mock_pyspark):
         _, mock_session = mock_pyspark
@@ -721,14 +716,13 @@ class TestConfigureForBenchmark:
         a.configure_for_benchmark(mock_session, "unknown")
         mock_session.conf.set.assert_not_called()
 
-    def test_conf_set_exception_warning(self, mock_pyspark):
+    def test_conf_set_is_not_called(self, mock_pyspark):
         _, mock_session = mock_pyspark
         from benchbox.platforms.spark import SparkAdapter
 
         a = SparkAdapter()
-        mock_session.conf.set.side_effect = Exception("read-only conf")
         a.configure_for_benchmark(mock_session, "olap")
-        mock_session.conf.set.assert_called()
+        mock_session.conf.set.assert_not_called()
 
 
 class TestGenerateTuningClause:

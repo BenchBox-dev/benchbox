@@ -8,9 +8,7 @@ import pytest
 
 from benchbox.platforms._spark_helpers import (
     SPARK_AQE_KEYS,
-    SPARK_CBO_KEYS,
     SparkLikeAdapterMixin,
-    apply_spark_olap_runtime_conf,
     get_spark_query_plan,
     optimize_spark_table_definition,
     purge_orphaned_warehouse_directory,
@@ -838,12 +836,6 @@ class TestSparkAqeSharedKeys:
             "spark.sql.adaptive.skewJoin.enabled",
         }
 
-    def test_cbo_keys_cover_both_toggles(self) -> None:
-        assert set(SPARK_CBO_KEYS) == {
-            "spark.sql.cbo.enabled",
-            "spark.sql.cbo.joinReorder.enabled",
-        }
-
     def test_entries_enabled_sets_all_true(self) -> None:
         entries = spark_aqe_conf_entries(True)
         assert entries == dict.fromkeys(SPARK_AQE_KEYS, "true")
@@ -851,54 +843,6 @@ class TestSparkAqeSharedKeys:
     def test_entries_disabled_sets_all_false(self) -> None:
         entries = spark_aqe_conf_entries(False)
         assert entries == dict.fromkeys(SPARK_AQE_KEYS, "false")
-
-
-class TestApplySparkOlapRuntimeConf:
-    def test_disabled_sets_all_aqe_keys_false(self) -> None:
-        spark = MagicMock()
-        apply_spark_olap_runtime_conf(spark, "tpch", adaptive_enabled=False)
-
-        for key in SPARK_AQE_KEYS:
-            spark.conf.set.assert_any_call(key, "false")
-
-    def test_enabled_sets_all_aqe_keys_true(self) -> None:
-        spark = MagicMock()
-        apply_spark_olap_runtime_conf(spark, "olap", adaptive_enabled=True)
-
-        for key in SPARK_AQE_KEYS:
-            spark.conf.set.assert_any_call(key, "true")
-
-    def test_non_olap_type_sets_nothing(self) -> None:
-        spark = MagicMock()
-        apply_spark_olap_runtime_conf(spark, "ssb", adaptive_enabled=True)
-
-        spark.conf.set.assert_not_called()
-
-    def test_custom_benchmark_types_are_honored(self) -> None:
-        spark = MagicMock()
-        apply_spark_olap_runtime_conf(spark, "joinorder", ("joinorder",), adaptive_enabled=True)
-
-        spark.conf.set.assert_any_call("spark.sql.adaptive.enabled", "true")
-
-    def test_spark_config_override_wins(self) -> None:
-        spark = MagicMock()
-        apply_spark_olap_runtime_conf(
-            spark,
-            "tpch",
-            adaptive_enabled=True,
-            spark_config={"spark.sql.adaptive.enabled": "false", "spark.sql.cbo.enabled": "false"},
-        )
-
-        spark.conf.set.assert_any_call("spark.sql.adaptive.enabled", "false")
-        spark.conf.set.assert_any_call("spark.sql.adaptive.skewJoin.enabled", "true")
-        spark.conf.set.assert_any_call("spark.sql.cbo.enabled", "false")
-        spark.conf.set.assert_any_call("spark.sql.cbo.joinReorder.enabled", "true")
-
-    def test_conf_failure_is_logged_not_raised(self) -> None:
-        spark = MagicMock()
-        spark.conf.set.side_effect = RuntimeError("conf error")
-
-        apply_spark_olap_runtime_conf(spark, "tpch", adaptive_enabled=True)
 
 
 class TestAdaptiveEnabledFromConfig:

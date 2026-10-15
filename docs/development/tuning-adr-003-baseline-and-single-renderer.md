@@ -100,6 +100,19 @@ block a run outright, versus warn and proceed? See Consequences.
    Databricks liquid-clustering questions: compatibility checks warn first; a run is blocked only for explicit,
    named unsafe combinations, not by default.
 
+   **Spark session defaults.** Spark, LakeSail and Velox leave AQE, CBO,
+   shuffle-partition and broadcast-threshold settings at engine defaults when
+   no tuning profile or explicit adapter option supplies them. Spark applies
+   supported tuning-file settings only on tuned runs; LakeSail and Velox keep
+   warning and dropping session keys until their honored-key sets are verified.
+   Harness-required session
+   settings are recorded with `status=harness_default` and
+   `mechanism=harness_required`; they remain visible in the ledger payload but
+   do not change tuning outcome or applied-ledger hash. This behavior does not
+   bump `TUNING_POLICY_GENERATION` in this change. Spark baselines recorded
+   before and after this change are not comparable until the owner agrees on a
+   policy-generation update.
+
 2. **Single renderer.** `core/tuning/generators/*` becomes the single
    tuning-DDL renderer. Adapter mixins are migrated to consume the
    generators rather than maintaining independent `generate_tuning_clause`

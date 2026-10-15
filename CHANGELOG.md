@@ -153,6 +153,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Generated database names now stay the same when nested tuning configuration keys are reordered.
 
+- Spark, LakeSail and Velox now use engine defaults for AQE, CBO, shuffle
+  partitions and broadcast thresholds unless a tuning profile or explicit
+  adapter option sets them. Harness-required session configuration is recorded
+  separately from applied tuning, with sensitive values redacted.
+
 - Sorted ingestion no longer runs unsafe CTAS rewrites on Athena, Azure Synapse
   and Redshift. Athena's rewrite read from the table it was replacing and always
   failed; Synapse left an unsorted original plus an orphan `__ctas_sort` copy

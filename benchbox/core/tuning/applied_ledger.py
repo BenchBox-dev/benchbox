@@ -38,6 +38,7 @@ LEGACY_STATUS_MAP = {
 
 EXECUTED = "executed"
 STATEMENT_FAILED = "failed"
+HARNESS_DEFAULT = "harness_default"
 
 PHASE_DDL = "ddl"
 PHASE_POST_LOAD = "post_load"
@@ -260,6 +261,8 @@ class AppliedTuningLedger:
             return FAILED
         if any(s.status == EXECUTED for s in self.statements):
             return APPLIED_UNVERIFIED
+        if self.statements and all(s.status == HARNESS_DEFAULT for s in self.statements):
+            return NOOP
         if self.statements:
             return FAILED
         return NOOP

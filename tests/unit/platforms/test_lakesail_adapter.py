@@ -84,12 +84,12 @@ class TestLakeSailAdapter:
         assert adapter.app_name == "BenchBox-LakeSail"
         assert adapter.database == "default"
         assert adapter.driver_memory == "4g"
-        assert adapter.shuffle_partitions == 200
-        assert adapter.adaptive_enabled is True
+        assert adapter.shuffle_partitions is None
+        assert adapter.adaptive_enabled is None
         assert adapter.table_format == "parquet"
         assert adapter.sail_mode == "local"
         assert not hasattr(adapter, "sail_workers")
-        assert adapter.disable_cache is True
+        assert adapter.disable_cache is False
 
     def test_initialization_with_distributed_mode(self, mock_pyspark):
 
@@ -215,7 +215,7 @@ class TestLakeSailAdapter:
         assert conf["spark.app.name"] == "TestApp"
         assert conf["spark.sql.shuffle.partitions"] == "500"
         assert conf["spark.sql.adaptive.enabled"] == "true"
-        assert conf["spark.sql.inMemoryColumnarStorage.enabled"] == "false"
+        assert "spark.sql.inMemoryColumnarStorage.enabled" not in conf
 
     def test_get_spark_conf_no_adaptive(self, mock_pyspark):
 
@@ -252,7 +252,7 @@ class TestLakeSailAdapter:
         default_args = parser.parse_args([])
         disabled_args = parser.parse_args(["--no-adaptive-enabled"])
 
-        assert default_args.adaptive_enabled is True
+        assert default_args.adaptive_enabled is None
         assert disabled_args.adaptive_enabled is False
 
     def test_normalize_table_name(self, mock_pyspark):
@@ -453,7 +453,7 @@ class TestLakeSailAdapterExecution:
 
         adapter.configure_for_benchmark(mock_spark_session, "olap")
 
-    def test_configure_for_benchmark_olap_respects_adaptive_disabled(self, mock_pyspark):
+    def test_configure_for_benchmark_leaves_engine_defaults(self, mock_pyspark):
 
         from benchbox.platforms.lakesail import LakeSailAdapter
 
@@ -462,22 +462,29 @@ class TestLakeSailAdapterExecution:
         adapter = LakeSailAdapter(adaptive_enabled=False)
         adapter.configure_for_benchmark(mock_spark_session, "tpch")
 
-        mock_spark_session.conf.set.assert_any_call("spark.sql.adaptive.enabled", "false")
-        mock_spark_session.conf.set.assert_any_call("spark.sql.adaptive.coalescePartitions.enabled", "false")
-        mock_spark_session.conf.set.assert_any_call("spark.sql.adaptive.skewJoin.enabled", "false")
+        mock_spark_session.conf.set.assert_not_called()
 
-    def test_configure_for_benchmark_olap_respects_spark_config_override(self, mock_pyspark):
+    def test_tuned_run_applies_olap_session_defaults(self, mock_pyspark):
+        from benchbox.platforms.lakesail import LakeSailAdapter
+
+        _, mock_spark_session = mock_pyspark
+        adapter = LakeSailAdapter(tuning_enabled=True)
+
+        conf = adapter._get_spark_conf()
+        adapter.configure_for_benchmark(mock_spark_session, "tpch")
+
+        assert conf["spark.sql.shuffle.partitions"] == "200"
+        assert conf["spark.sql.adaptive.enabled"] == "true"
+        mock_spark_session.conf.set.assert_any_call("spark.sql.cbo.enabled", "true")
+
+    def test_spark_config_keeps_explicit_session_override(self, mock_pyspark):
 
         from benchbox.platforms.lakesail import LakeSailAdapter
 
         _, mock_spark_session = mock_pyspark
 
         adapter = LakeSailAdapter(spark_config={"spark.sql.adaptive.enabled": "false"})
-        adapter.configure_for_benchmark(mock_spark_session, "olap")
-
-        mock_spark_session.conf.set.assert_any_call("spark.sql.adaptive.enabled", "false")
-
-        mock_spark_session.conf.set.assert_any_call("spark.sql.adaptive.skewJoin.enabled", "true")
+        assert adapter._get_spark_conf()["spark.sql.adaptive.enabled"] == "false"
 
     def test_get_query_plan(self, mock_pyspark):
 

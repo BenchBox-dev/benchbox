@@ -67,7 +67,7 @@ def test_parse_options_unknown_key_raises():
 
 def test_spark_platform_options_adaptive_enabled():
     parsed = PlatformHookRegistry.parse_options("spark", [])
-    assert parsed["adaptive_enabled"] is True
+    assert "adaptive_enabled" not in parsed
 
     parsed = PlatformHookRegistry.parse_options("spark", [("adaptive_enabled", "false")])
     assert parsed["adaptive_enabled"] is False
@@ -75,7 +75,7 @@ def test_spark_platform_options_adaptive_enabled():
 
 def test_lakesail_platform_options_adaptive_enabled():
     parsed = PlatformHookRegistry.parse_options("lakesail", [])
-    assert parsed["adaptive_enabled"] is True
+    assert "adaptive_enabled" not in parsed
 
     parsed = PlatformHookRegistry.parse_options("lakesail", [("adaptive_enabled", "false")])
     assert parsed["adaptive_enabled"] is False
@@ -90,7 +90,6 @@ def test_lakesail_platform_options_adaptive_enabled():
         ("datafusion", "batch_size", 8192),
         ("sqlite", "timeout", 30.0),
         ("cudf", "device_id", 0),
-        ("velox", "shuffle_partitions", 200),
     ],
 )
 def test_spec_row_string_defaults_are_parser_typed(platform, option, expected):

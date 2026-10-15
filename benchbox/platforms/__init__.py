@@ -698,7 +698,7 @@ sqlite|database_name|Base filename for SQLite database files.|{'default': 'bench
 sqlite|database_path|Path to the SQLite database file (auto-generated from --benchmark/--scale when omitted)|{}
 sqlite|timeout|SQLite connection timeout in seconds|{'parser': 'float', 'default': '30.0'}
 sqlite|check_same_thread|Enforce that connections are used on the creating thread only|{'parser': 'parse_bool', 'default': 'false'}
-spark|adaptive_enabled|Enable or disable Spark Adaptive Query Execution (AQE)|{'parser': 'parse_bool', 'default': 'true'}
+spark|adaptive_enabled|Enable or disable Spark Adaptive Query Execution (AQE)|{'parser': 'parse_bool'}
 synapse-spark|adaptive_enabled|Enable or disable Synapse Spark Adaptive Query Execution (AQE)|{'parser': 'parse_bool', 'default': 'true'}
 fabric-spark|adaptive_enabled|Enable or disable Fabric Spark Adaptive Query Execution (AQE)|{'parser': 'parse_bool', 'default': 'true'}
 spark|java_home|Path to the JDK Spark should run under|{}
@@ -732,15 +732,15 @@ influxdb|org|InfluxDB organization name|{}
 influxdb|database|InfluxDB database (bucket) name|{'default': 'benchbox'}
 influxdb|ssl|Use SSL/TLS connection (true/false)|{'default': 'true'}
 lakesail|endpoint|Spark Connect server endpoint (for example, sc://localhost:50051)|{'default': 'sc://localhost:50051'}
-lakesail|adaptive_enabled|Enable or disable LakeSail Adaptive Query Execution (AQE)|{'parser': 'parse_bool', 'default': 'true'}
+lakesail|adaptive_enabled|Enable or disable LakeSail Adaptive Query Execution (AQE)|{'parser': 'parse_bool'}
 lakesail|deployment_mode|Deprecated alias of the platform selector: 'local' for single-node, 'distributed' to connect to an external Sail server without starting one|{'choices': ('local', 'distributed'), 'aliases': ('sail_mode',)}
 velox|deployment|Deprecated alias of the platform selector: 'local' (in-process SparkSession, Linux only) or 'remote' (Spark-Connect server)|{'choices': ('local', 'remote'), 'default': 'local'}
 velox|endpoint|Spark-Connect endpoint for remote mode (e.g., sc://localhost:50051)|{'default': 'sc://localhost:50051'}
 velox|gluten_jar_path|Absolute path to the Gluten Velox bundle jar (required for local mode)|{'aliases': ('jar',)}
 velox|offheap_size|Off-heap memory for Velox native engine (e.g., '8g', '16g')|{'default': '8g'}
 velox|driver_memory|Spark driver JVM heap memory (e.g., '4g')|{'default': '4g'}
-velox|shuffle_partitions|Number of shuffle partitions|{'parser': 'int', 'default': '200'}
-velox|adaptive_enabled|Enable Spark Adaptive Query Execution|{'parser': 'parse_bool', 'default': 'true'}
+velox|shuffle_partitions|Number of shuffle partitions|{'parser': 'int'}
+velox|adaptive_enabled|Enable Spark Adaptive Query Execution|{'parser': 'parse_bool'}
 velox|table_format|Lakehouse table format for accelerated reads (parquet, orc, delta, iceberg, hudi)|{'choices': ('parquet', 'orc', 'delta', 'iceberg', 'hudi'), 'default': 'parquet'}
 velox|lakehouse_jars|Comma-separated connector jars for delta/iceberg/hudi reads (local paths, URIs, or Maven coordinates; required for lakehouse formats in local mode)|{}
 """

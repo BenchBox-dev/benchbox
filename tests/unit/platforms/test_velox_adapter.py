@@ -64,10 +64,10 @@ class TestVeloxAdapterInit:
         assert adapter.app_name == "BenchBox-Velox"
         assert adapter.database == "default"
         assert adapter.driver_memory == "4g"
-        assert adapter.shuffle_partitions == 200
-        assert adapter.adaptive_enabled is True
+        assert adapter.shuffle_partitions is None
+        assert adapter.adaptive_enabled is None
         assert adapter.table_format == "parquet"
-        assert adapter.disable_cache is True
+        assert adapter.disable_cache is False
 
     def test_custom_config(self, mock_pyspark):
         from benchbox.platforms.velox import VeloxAdapter
@@ -175,12 +175,12 @@ class TestVeloxSparkConf:
         assert "spark.memory.offHeap.enabled" not in conf
         assert "spark.shuffle.manager" not in conf
 
-    def test_aqe_enabled_by_default(self, mock_pyspark):
+    def test_aqe_uses_engine_default(self, mock_pyspark):
         from benchbox.platforms.velox import VeloxAdapter
 
         conf = VeloxAdapter()._get_spark_conf()
-        assert conf["spark.sql.adaptive.enabled"] == "true"
-        assert conf["spark.sql.adaptive.coalescePartitions.enabled"] == "true"
+        assert "spark.sql.adaptive.enabled" not in conf
+        assert "spark.sql.adaptive.coalescePartitions.enabled" not in conf
 
     def test_aqe_disabled(self, mock_pyspark):
         from benchbox.platforms.velox import VeloxAdapter
@@ -198,11 +198,11 @@ class TestVeloxSparkConf:
         conf = adapter._get_spark_conf()
         assert conf["spark.sql.adaptive.enabled"] == "true"
 
-    def test_cache_disabled_by_default(self, mock_pyspark):
+    def test_cache_setting_uses_engine_default(self, mock_pyspark):
         from benchbox.platforms.velox import VeloxAdapter
 
         conf = VeloxAdapter()._get_spark_conf()
-        assert conf["spark.sql.inMemoryColumnarStorage.enabled"] == "false"
+        assert "spark.sql.inMemoryColumnarStorage.enabled" not in conf
 
     def test_spark_config_overrides_merged(self, mock_pyspark):
         from benchbox.platforms.velox import VeloxAdapter
@@ -363,25 +363,32 @@ class TestVeloxConfigureForBenchmark:
         ):
             yield MagicMock()
 
-    def test_olap_sets_cbo_by_default(self, mock_pyspark):
+    def test_olap_leaves_engine_cbo_defaults(self, mock_pyspark):
         from benchbox.platforms.velox import VeloxAdapter
 
         mock_session = MagicMock()
         VeloxAdapter().configure_for_benchmark(mock_session, "tpch")
 
-        mock_session.conf.set.assert_any_call("spark.sql.cbo.enabled", "true")
-        mock_session.conf.set.assert_any_call("spark.sql.cbo.joinReorder.enabled", "true")
+        mock_session.conf.set.assert_not_called()
 
-    def test_olap_respects_spark_config_cbo_override(self, mock_pyspark):
+    def test_tuned_run_applies_olap_session_defaults(self, mock_pyspark):
         from benchbox.platforms.velox import VeloxAdapter
 
         mock_session = MagicMock()
+        adapter = VeloxAdapter(tuning_enabled=True)
+
+        conf = adapter._get_spark_conf()
+        adapter.configure_for_benchmark(mock_session, "tpch")
+
+        assert conf["spark.sql.shuffle.partitions"] == "200"
+        assert conf["spark.sql.adaptive.enabled"] == "true"
+        mock_session.conf.set.assert_any_call("spark.sql.cbo.enabled", "true")
+
+    def test_explicit_spark_config_keeps_cbo_override(self, mock_pyspark):
+        from benchbox.platforms.velox import VeloxAdapter
+
         adapter = VeloxAdapter(spark_config={"spark.sql.cbo.enabled": "false"})
-        adapter.configure_for_benchmark(mock_session, "olap")
-
-        mock_session.conf.set.assert_any_call("spark.sql.cbo.enabled", "false")
-
-        mock_session.conf.set.assert_any_call("spark.sql.cbo.joinReorder.enabled", "true")
+        assert adapter._get_spark_conf()["spark.sql.cbo.enabled"] == "false"
 
 
 class TestVeloxLocalModeValidation:
