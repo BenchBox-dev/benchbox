@@ -1062,6 +1062,8 @@ def _power_phase_payload(power_test: Any) -> dict[str, Any]:
         "status": "COMPLETED" if queries_succeeded and refresh_success else "FAILED",
         "duration_ms": power_test.duration_ms,
         "query_count": query_count,
+        "geometric_mean_time": power_test.geometric_mean_time,
+        "power_at_size": power_test.power_at_size,
     }
     if power_test.refresh_first_set is not None:
         payload["refresh_first_set"] = power_test.refresh_first_set
@@ -1074,6 +1076,7 @@ def _throughput_phase_payload(throughput: Any) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "status": "COMPLETED" if throughput.success else "FAILED",
         "duration_ms": throughput.duration_ms,
+        "num_streams": throughput.num_streams,
         "stream_results": [
             {
                 "stream_id": stream.stream_id,

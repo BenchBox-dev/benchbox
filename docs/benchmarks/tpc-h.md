@@ -128,11 +128,10 @@ plus RF1 and RF2 (24 terms). With the option disabled, it uses the 22 query
 times.
 
 The throughput phase starts one refresh stream alongside its S query streams.
-It runs S serial RF1/RF2 pairs on sets F+1 through F+S. Refresh precondition
-checks run before the measured refresh work, and RF2 post-checks run after it.
-The measured interval includes the earliest query or RF apply start and the
-latest query or RF apply end. A refresh failure records function evidence and
-withholds Throughput@Size.
+It runs S serial RF1/RF2 pairs on sets F+1 through F+S. The measured interval
+includes the earliest query or refresh stream start and the latest query or
+refresh stream end, including refresh precondition and postcondition checks. A
+refresh failure records function evidence and withholds Throughput@Size.
 
 Refresh functions permanently change the database. No set cursor is saved.
 After a run using Power set F and throughput sets F+1..F+S, pass

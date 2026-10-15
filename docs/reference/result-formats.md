@@ -309,10 +309,32 @@ duration, counts, and stage-specific metadata.
   },
   "power_test": {
     "duration_ms": 39800,
-    "status": "SUCCESS"
+    "status": "SUCCESS",
+    "query_count": 22,
+    "geometric_mean_time": 0.482,
+    "power_at_size": 82.4,
+    "refresh_first_set": 1,
+    "refresh_functions": [
+      {"function": "RF1", "update_set": 1, "duration_ms": 48, "rows": 100, "status": "SUCCESS", "error": null},
+      {"function": "RF2", "update_set": 1, "duration_ms": 55, "rows": 100, "status": "SUCCESS", "error": null}
+    ]
+  },
+  "throughput_test": {
+    "duration_ms": 19700,
+    "status": "SUCCESS",
+    "num_streams": 2,
+    "stream_results": []
   }
 }
 ```
+
+When refresh is enabled for TPC-H, `power_test` records the refresh set and
+function evidence alongside its query count, geometric mean time, and
+Power@Size. `throughput_test.num_streams` records the configured stream count,
+including when individual stream results are unavailable. These phase fields
+are retained when a result file is loaded and exported again.
+Refresh function durations use whole milliseconds; a successful function has
+at least 1 ms of recorded duration.
 
 `post_load_maintenance` is an optional phase, present only when a platform ran
 tuning operations after a table loaded (ClickHouse `OPTIMIZE` when

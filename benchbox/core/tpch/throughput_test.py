@@ -56,10 +56,6 @@ class TPCHRefreshStreamResult:
     end_time: str | None = None
     start_monotonic: float | None = None
     end_monotonic: float | None = None
-    measurement_start_time: str | None = None
-    measurement_end_time: str | None = None
-    measurement_start_monotonic: float | None = None
-    measurement_end_monotonic: float | None = None
     status: str = "PENDING"
     error: str | None = None
 
@@ -74,8 +70,6 @@ class TPCHRefreshStreamResult:
             "pairs": self.pairs,
             "start_time": self.start_time,
             "end_time": self.end_time,
-            "measurement_start_time": self.measurement_start_time,
-            "measurement_end_time": self.measurement_end_time,
             "status": self.status,
             "error": self.error,
         }
@@ -296,8 +290,6 @@ class TPCHThroughputTest:
                     self._record_refresh_precondition_failure(refresh_stream, pair, "RF2", update_set, exc)
                     return refresh_stream
 
-            refresh_stream.measurement_start_monotonic = mono_time()
-            refresh_stream.measurement_start_time = datetime.now().isoformat()
             for offset in range(num_streams):
                 update_set_id = refresh_stream.first_set + offset
                 update_set = update_sets[update_set_id]
@@ -322,8 +314,6 @@ class TPCHThroughputTest:
 
                 pair["status"] = "SUCCESS"
 
-            refresh_stream.measurement_end_monotonic = mono_time()
-            refresh_stream.measurement_end_time = datetime.now().isoformat()
             for offset in range(num_streams):
                 update_set_id = refresh_stream.first_set + offset
                 try:
@@ -347,12 +337,6 @@ class TPCHThroughputTest:
             refresh_stream.error = str(exc)
             return refresh_stream
         finally:
-            if (
-                refresh_stream.measurement_start_monotonic is not None
-                and refresh_stream.measurement_end_monotonic is None
-            ):
-                refresh_stream.measurement_end_monotonic = mono_time()
-                refresh_stream.measurement_end_time = datetime.now().isoformat()
             refresh_stream.end_monotonic = mono_time()
             refresh_stream.end_time = datetime.now().isoformat()
             if connection is not None:
@@ -411,7 +395,7 @@ class TPCHThroughputTest:
                     deleted_lineitems = check_rf2_preconditions(connection, update_set)
                 start_time = mono_time()
                 rows = apply_rf2(connection, update_set, deleted_lineitems)
-            duration_ms = max(0, round(elapsed_seconds(start_time) * 1000))
+            duration_ms = max(1, round(elapsed_seconds(start_time) * 1000))
             if function == "RF2" and not prevalidated:
                 check_rf2_applied(connection, update_set)
             status = "SUCCESS"

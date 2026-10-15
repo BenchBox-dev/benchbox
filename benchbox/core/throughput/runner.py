@@ -206,22 +206,12 @@ class StreamRunner:
         ]
         refresh_stream = getattr(result, "refresh_stream", None)
         if refresh_stream is not None and refresh_stream.start_monotonic is not None:
-            refresh_start = getattr(refresh_stream, "measurement_start_monotonic", None)
-            refresh_end = getattr(refresh_stream, "measurement_end_monotonic", None)
-            refresh_start_wall = getattr(refresh_stream, "measurement_start_time", None)
-            refresh_end_wall = getattr(refresh_stream, "measurement_end_time", None)
-            if refresh_start is None:
-                refresh_start = refresh_stream.start_monotonic
-                refresh_start_wall = refresh_stream.start_time
-            if refresh_end is None:
-                refresh_end = refresh_stream.end_monotonic or mono_time()
-                refresh_end_wall = refresh_stream.end_time or result.end_time
             intervals.append(
                 (
-                    refresh_start,
-                    refresh_end,
-                    refresh_start_wall,
-                    refresh_end_wall,
+                    refresh_stream.start_monotonic,
+                    refresh_stream.end_monotonic or mono_time(),
+                    refresh_stream.start_time,
+                    refresh_stream.end_time or result.end_time,
                 )
             )
 

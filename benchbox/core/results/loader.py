@@ -206,7 +206,7 @@ def reconstruct_benchmark_results(
         for name, stats in tables_section.items()
     }
 
-    execution_phases = _reconstruct_execution_phases(data.get("phases", {}))
+    execution_phases = _reconstruct_execution_phases(data.get("phases", {}), summary_section)
     native_comparison = _reconstruct_native_comparison(data.get("comparisons", {}))
 
     return BenchmarkResults(
@@ -631,20 +631,27 @@ def _recorded_phase_status(phases_section: dict[str, Any]) -> dict[str, dict[str
     return recorded
 
 
-def _reconstruct_execution_phases(phases_section: dict[str, Any]) -> ExecutionPhases | None:
+def _reconstruct_execution_phases(
+    phases_section: dict[str, Any], summary_section: dict[str, Any] | None = None
+) -> ExecutionPhases | None:
     if not phases_section:
         return None
 
     power = None
     power_data = phases_section.get("power_test")
     if power_data and power_data.get("status") != "NOT_RUN":
+        summary_section = summary_section or {}
+        tpc_metrics = summary_section.get("tpc_metrics", {})
+        timing = summary_section.get("timing", {})
+        power_at_size = power_data.get("power_at_size", tpc_metrics.get("power_at_size"))
+        geometric_mean_ms = timing.get("geometric_mean_ms", 0.0)
         power = PowerTestPhase(
             start_time="",
             end_time="",
             duration_ms=power_data.get("duration_ms", 0),
             query_executions=[],
-            geometric_mean_time=0.0,
-            power_at_size=0.0,
+            geometric_mean_time=power_data.get("geometric_mean_time", (geometric_mean_ms or 0.0) / 1000.0),
+            power_at_size=power_at_size or 0.0,
             refresh_first_set=power_data.get("refresh_first_set"),
             refresh_functions=power_data.get("refresh_functions"),
             query_count=power_data.get("query_count"),

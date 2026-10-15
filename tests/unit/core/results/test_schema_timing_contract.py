@@ -137,6 +137,7 @@ def test_build_result_payload_accepts_consistent_duration_aliases() -> None:
     assert payload["phases"]["throughput_test"] == {
         "status": "FAILED",
         "duration_ms": 1000,
+        "num_streams": 1,
         "stream_results": [
             {"stream_id": 5, "success": False, "error": "worker died"},
         ],
@@ -197,12 +198,36 @@ def test_refresh_evidence_is_serialized_as_phase_data_not_query_rows() -> None:
             refresh_stream=refresh_stream,
         ),
     )
+    result.power_at_size = 1.0
+    result.throughput_at_size = 2.0
+    result.qph_at_size = 1.5
+    result.refresh_included = True
 
     payload = build_result_payload(result)
 
     assert len(payload["queries"]) == 1
     assert payload["phases"]["power_test"]["refresh_functions"] == power_functions
+    assert payload["phases"]["power_test"]["geometric_mean_time"] == 1.0
+    assert payload["phases"]["power_test"]["power_at_size"] == 1.0
     assert payload["phases"]["throughput_test"]["refresh_stream"] == refresh_stream
+    assert payload["phases"]["throughput_test"]["num_streams"] == 2
+
+    reload_payload = {
+        **payload,
+        "phases": {name: dict(phase) for name, phase in payload["phases"].items()},
+    }
+    reload_payload["phases"]["power_test"].pop("geometric_mean_time")
+    reload_payload["phases"]["power_test"].pop("power_at_size")
+    reloaded = reconstruct_benchmark_results(reload_payload)
+    reloaded_payload = build_result_payload(reloaded)
+
+    assert reloaded.execution_phases.power_test.geometric_mean_time == 1.0
+    assert reloaded.execution_phases.power_test.power_at_size == 1.0
+    assert reloaded.execution_phases.throughput_test.num_streams == 2
+    assert reloaded.qph_at_size == 1.5
+    assert reloaded_payload["phases"]["power_test"]["power_at_size"] == 1.0
+    assert reloaded_payload["phases"]["throughput_test"]["num_streams"] == 2
+    assert reloaded_payload["summary"]["tpc_metrics"]["qphh_at_size"] == 1.5
 
 
 def test_throughput_outstanding_work_survives_schema_round_trip_without_query_rows() -> None:

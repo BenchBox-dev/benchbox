@@ -296,6 +296,6 @@ def test_throughput_runs_all_safety_checks_outside_the_refresh_measurement(monke
         ("postcheck-rf2", 3),
         ("postcheck-rf2", 4),
     ]
-    assert result.start_monotonic <= result.measurement_start_monotonic
-    assert result.measurement_start_monotonic <= result.measurement_end_monotonic
-    assert result.measurement_end_monotonic <= result.end_monotonic
+    assert result.start_monotonic is not None
+    assert result.end_monotonic is not None
+    assert result.start_monotonic <= result.end_monotonic

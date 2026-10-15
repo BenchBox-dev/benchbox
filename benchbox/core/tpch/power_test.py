@@ -442,7 +442,7 @@ class TPCHPowerTest:
                 deleted_lineitems = check_rf2_preconditions(connection, self.refresh_update_set)
                 start_time = mono_time()
                 rows = apply_rf2(connection, self.refresh_update_set, deleted_lineitems)
-            duration_ms = max(0, round(elapsed_seconds(start_time) * 1000))
+            duration_ms = max(1, round(elapsed_seconds(start_time) * 1000))
             if function == "RF2":
                 check_rf2_applied(connection, self.refresh_update_set)
             status = "SUCCESS"
