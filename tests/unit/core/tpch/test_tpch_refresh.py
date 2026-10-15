@@ -218,7 +218,7 @@ def test_throughput_assigns_consecutive_update_sets_after_the_power_set(monkeypa
     def execute(stream_fn, config, result, logger, auxiliary_fn=None):
         auxiliary_fn()
 
-    def execute_refresh(update_sets, num_streams, refresh_stream):
+    def execute_refresh(update_sets, num_streams, refresh_stream, cancel_event=None):
         executed_sets.extend(sorted(update_sets))
         refresh_stream.start_time = "refresh-start"
         refresh_stream.end_time = "refresh-end"
@@ -236,6 +236,35 @@ def test_throughput_assigns_consecutive_update_sets_after_the_power_set(monkeypa
     assert generated == [(0.01, 9, 2)]
     assert executed_sets == [9, 10]
     assert result.refresh_stream.first_set == 9
+
+
+def test_throughput_reports_refresh_worker_that_never_started(monkeypatch: pytest.MonkeyPatch) -> None:
+    from types import SimpleNamespace
+
+    from benchbox.core.tpch import throughput_test
+    from benchbox.core.tpch.throughput_test import TPCHThroughputTest
+
+    test = TPCHThroughputTest(
+        benchmark=object(),
+        connection_factory=lambda: None,
+        refresh_enabled=True,
+        refresh_connection_factory=lambda: None,
+    )
+    test._pregenerate_stream_queries = lambda config: {}
+    monkeypatch.setattr(
+        throughput_test,
+        "generate_refresh_update_sets",
+        lambda scale_factor, first_set, count, output_dir: {
+            set_id: SimpleNamespace(set_id=set_id) for set_id in range(first_set, first_set + count)
+        },
+    )
+    monkeypatch.setattr(throughput_test.StreamRunner, "execute", staticmethod(lambda *_args, **_kwargs: None))
+
+    result = test.run()
+
+    assert result.success is False
+    assert result.refresh_stream.status == "FAILED"
+    assert "did not start" in result.errors[0]
 
 
 def test_throughput_runs_all_safety_checks_outside_the_refresh_measurement(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -299,3 +328,43 @@ def test_throughput_runs_all_safety_checks_outside_the_refresh_measurement(monke
     assert result.start_monotonic is not None
     assert result.end_monotonic is not None
     assert result.start_monotonic <= result.end_monotonic
+
+
+def test_refresh_stream_stops_before_next_update_set_after_cancellation(monkeypatch: pytest.MonkeyPatch) -> None:
+    import threading
+    from types import SimpleNamespace
+
+    from benchbox.core.tpch import throughput_test
+    from benchbox.core.tpch.throughput_test import TPCHRefreshStreamResult, TPCHThroughputTest
+
+    cancel_event = threading.Event()
+    applied = []
+    connection = SimpleNamespace(close=lambda: None)
+    test = TPCHThroughputTest(
+        benchmark=object(),
+        connection_factory=lambda: None,
+        refresh_enabled=True,
+        refresh_connection_factory=lambda: connection,
+    )
+    update_sets = {set_id: SimpleNamespace(set_id=set_id) for set_id in (3, 4)}
+    monkeypatch.setattr(throughput_test, "check_rf1_preconditions", lambda *_args: None)
+    monkeypatch.setattr(throughput_test, "check_rf2_preconditions", lambda *_args: 1)
+    monkeypatch.setattr(throughput_test, "check_rf2_applied", lambda *_args: None)
+
+    def apply_rf1(_connection, update_set):
+        applied.append(("RF1", update_set.set_id))
+        cancel_event.set()
+        return 1
+
+    def apply_rf2(_connection, update_set, _deleted):
+        applied.append(("RF2", update_set.set_id))
+        return 1
+
+    monkeypatch.setattr(throughput_test, "apply_rf1", apply_rf1)
+    monkeypatch.setattr(throughput_test, "apply_rf2", apply_rf2)
+
+    result = test._execute_refresh_stream(update_sets, 2, TPCHRefreshStreamResult(first_set=3), cancel_event)
+
+    assert applied == [("RF1", 3), ("RF2", 3)]
+    assert result.status == "FAILED"
+    assert "cancelled" in result.error

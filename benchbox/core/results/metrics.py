@@ -159,7 +159,7 @@ class TPCMetricsCalculator:
                 or isinstance(duration_ms, bool)
                 or not isinstance(duration_ms, (int, float))
                 or not math.isfinite(duration_ms)
-                or duration_ms <= 0
+                or duration_ms < 0
             ):
                 return False, first_set
         return True, first_set
@@ -228,7 +228,7 @@ class TPCMetricsCalculator:
                     or isinstance(duration_ms, bool)
                     or not isinstance(duration_ms, (int, float))
                     or not math.isfinite(duration_ms)
-                    or duration_ms <= 0
+                    or duration_ms < 0
                 ):
                     valid = False
         return valid, first_set, stream_count
@@ -315,7 +315,7 @@ class TPCMetricsCalculator:
         power_phase = (power_data.get("phases") or {}).get("power_test")
         power_refresh_valid, _power_first_set = TPCMetricsCalculator._power_refresh_evidence(power_phase)
         refresh_times = (
-            [function["duration_ms"] / 1000.0 for function in power_phase["refresh_functions"]]
+            [max(0.001, function["duration_ms"] / 1000.0) for function in power_phase["refresh_functions"]]
             if power_refresh_valid
             else []
         )

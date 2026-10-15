@@ -258,7 +258,7 @@ def test_official_22_query_power_and_consecutive_refresh_pairs_qualify_qphh() ->
             "successful RF1 and RF2",
         ),
         (
-            lambda power, throughput: power["phases"]["power_test"]["refresh_functions"][0].update(duration_ms=0),
+            lambda power, throughput: power["phases"]["power_test"]["refresh_functions"][0].update(duration_ms=-1),
             "successful RF1 and RF2",
         ),
         (
@@ -322,7 +322,7 @@ def test_official_22_query_power_and_consecutive_refresh_pairs_qualify_qphh() ->
         "power-refresh-pair-required",
         "power-refresh-functions-must-succeed",
         "power-refresh-functions-must-use-power-set",
-        "power-refresh-durations-must-be-positive",
+        "power-refresh-durations-must-be-non-negative",
         "power-queries-must-not-fail",
         "throughput-queries-must-not-fail",
         "two-stream-minimum",
@@ -345,3 +345,20 @@ def test_qphh_refuses_unqualified_results(mutate, expected_reason: str) -> None:
     reasons = TPCMetricsCalculator.qphh_unavailable_reasons(power, throughput)
 
     assert any(expected_reason in reason for reason in reasons)
+
+
+def test_qphh_accepts_zero_duration_successful_refresh() -> None:
+    power, throughput = _eligible_results()
+    power = deepcopy(power)
+    throughput = deepcopy(throughput)
+    power["summary"]["tpc_metrics"] = {"power_at_size": 100.0}
+    throughput["summary"]["tpc_metrics"] = {"throughput_at_size": 200.0}
+    power["phases"]["power_test"]["refresh_functions"][0]["duration_ms"] = 0
+    throughput["phases"]["throughput_test"]["refresh_stream"]["pairs"][0]["functions"][0]["duration_ms"] = 0
+
+    reasons = TPCMetricsCalculator.qphh_unavailable_reasons(power, throughput)
+
+    assert reasons == []
+    result = TPCMetricsCalculator.compute_qphh_result(power, throughput, scale_factor=1.0)
+    assert result["qphh_at_size"] == 141.4
+    assert result["refresh_included"] is True

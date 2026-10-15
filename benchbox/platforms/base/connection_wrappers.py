@@ -214,12 +214,18 @@ class PlatformAdapterConnection:
         return PlatformAdapterCursor(result)
 
     def commit(self):
-        if hasattr(self.connection, "commit"):
-            self.connection.commit()
+        transaction_connection = self.connection
+        if not hasattr(transaction_connection, "commit"):
+            transaction_connection = getattr(transaction_connection, "connection", transaction_connection)
+        if hasattr(transaction_connection, "commit"):
+            transaction_connection.commit()
 
     def rollback(self):
-        if hasattr(self.connection, "rollback"):
-            self.connection.rollback()
+        transaction_connection = self.connection
+        if not hasattr(transaction_connection, "rollback"):
+            transaction_connection = getattr(transaction_connection, "connection", transaction_connection)
+        if hasattr(transaction_connection, "rollback"):
+            transaction_connection.rollback()
 
     def close(self):
         if hasattr(self.connection, "close"):

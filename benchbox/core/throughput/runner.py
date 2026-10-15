@@ -107,6 +107,8 @@ class StreamRunner:
             if cooperative_cancel
             else {}
         )
+        if cooperative_cancel and auxiliary_fn is not None:
+            cancel_events[0] = threading.Event()
         config._stream_cancel_events = cancel_events
 
         future_to_stream_id: dict[concurrent.futures.Future[Any], int] = {}

@@ -180,6 +180,7 @@ class TPCHThroughputTest:
                     update_sets,
                     config.num_streams,
                     result.refresh_stream,
+                    getattr(config, "_stream_cancel_events", {}).get(0),
                 )
 
             StreamRunner.execute(self._execute_stream, config, result, self.logger, auxiliary_fn=auxiliary_fn)
@@ -188,6 +189,7 @@ class TPCHThroughputTest:
                 result.refresh_stream.status = "FAILED"
                 result.refresh_stream.error = "refresh stream did not start"
                 result.refresh_stream.end_time = datetime.now().isoformat()
+                result.errors.append("Refresh stream failed: refresh stream did not start")
 
             result.success = StreamRunner.compute_metrics(result, config, start_time)
 
@@ -261,6 +263,7 @@ class TPCHThroughputTest:
         update_sets: dict[int, TPCHRefreshUpdateSet],
         num_streams: int,
         refresh_stream: TPCHRefreshStreamResult | None,
+        cancel_event: threading.Event | None = None,
     ) -> TPCHRefreshStreamResult:
         if refresh_stream is None:
             raise RuntimeError("TPC-H refresh stream result was not initialized")
@@ -275,6 +278,10 @@ class TPCHThroughputTest:
             connection = self.refresh_connection_factory()
             deleted_lineitems = {}
             for offset in range(num_streams):
+                if cancel_event is not None and cancel_event.is_set():
+                    refresh_stream.status = "FAILED"
+                    refresh_stream.error = "refresh stream cancelled after timeout"
+                    return refresh_stream
                 update_set_id = refresh_stream.first_set + offset
                 update_set = update_sets[update_set_id]
                 pair = {"update_set": update_set_id, "functions": [], "status": "RUNNING", "error": None}
@@ -291,6 +298,10 @@ class TPCHThroughputTest:
                     return refresh_stream
 
             for offset in range(num_streams):
+                if cancel_event is not None and cancel_event.is_set():
+                    refresh_stream.status = "FAILED"
+                    refresh_stream.error = "refresh stream cancelled after timeout"
+                    return refresh_stream
                 update_set_id = refresh_stream.first_set + offset
                 update_set = update_sets[update_set_id]
                 pair = refresh_stream.pairs[offset]

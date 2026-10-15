@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 
 from benchbox.core.throughput.entrypoints import (
@@ -54,6 +56,15 @@ class TestStreamMinimum:
 
 
 class TestFinalizeMetrics:
+    def test_failed_refresh_stream_withholds_the_metric(self):
+        result = _result([_stream(0), _stream(1)])
+        result.refresh_stream = SimpleNamespace(success=False)
+
+        finalize_throughput_metrics(result, 2, None)
+
+        assert result.success is False
+        assert result.throughput_at_size is None
+
     def test_all_streams_successful_keeps_the_metric(self):
         result = _result([_stream(0), _stream(1)])
 

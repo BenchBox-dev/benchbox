@@ -283,11 +283,11 @@ class TPCHPowerTest:
                 and result.refresh_functions is not None
                 and len(result.refresh_functions) == 2
                 and all(
-                    function["status"] == "SUCCESS" and function["duration_ms"] > 0
+                    function["status"] == "SUCCESS" and function["duration_ms"] >= 0
                     for function in result.refresh_functions
                 )
             ):
-                refresh_times = [function["duration_ms"] / 1000.0 for function in result.refresh_functions]
+                refresh_times = [max(0.001, function["duration_ms"] / 1000.0) for function in result.refresh_functions]
                 result.power_at_size = TPCMetricsCalculator.calculate_power_at_size(
                     [refresh_times[0], *exec_times, refresh_times[1]],
                     self.config.scale_factor,
