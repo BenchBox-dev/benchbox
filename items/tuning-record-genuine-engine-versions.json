@@ -2,7 +2,7 @@
   "acceptance": [
     "Decision recorded: local adapters record genuine engine versions, or measured path formally declared unreachable without engine metadata"
   ],
-  "context": "2026-10-14: decision taken — local adapters record a genuine engine version, only from a live SQL query on the run's connection (DuckDB SELECT version(), DataFusion SELECT version(), SQLite SELECT sqlite_version()), with engine_version_source=\"sql_query\"; never from the Python package/driver version. Uncommitted work in worktree /Users/joe/Developer/BenchBox.wt-local-engine-version-metadata (branch fix/local-engine-version-metadata, 5 behind develop): 6 files, +27 lines (duckdb.py, datafusion.py, sqlite.py and their tests). Focused tests passed (41). Not yet done: review the broad `except Exception: pass` around the DataFusion/SQLite queries (prefer the narrow tuple unless a real exception type escapes), CHANGELOG entry, full ladder, commit, pr-preflight, pr-open, oracle, arm per owner D1. Resume per ~/Developer/benchmark_runs/HANDOFF-tuning-local-fix-batch-20261014.md §11.",
+  "context": "2026-10-14: Decision implemented: local adapters record genuine engine versions (engine_version and engine_version_source='sql_query') from live queries on active connection (DuckDB SELECT version(), SQLite SELECT sqlite_version(), DataFusion SELECT version()). Staged and committed (bd02782a68b6153b93fb7123ed011f0c35ec7827). Rebased cleanly onto origin/develop. Ladder verified: fast tests passed, ruff check/format passed, ty check clean (baseline warnings only), make lint-imports (3 kept, 0 broken), comment-policy-check clean, make pr-preflight passed. PR #2996 opened, non-soundness paths only, armed for auto-merge with squash per owner D1. Waiting on CI to merge before finishing item.",
   "description": "Oracle review on #2875 (2026-10-12) required removing driver/platform substitution from _tuning_evidence_engine_version. Consequence: with no platform recording genuine engine_version metadata, measured-benefit states are unreachable for local runs (CLI measured-benefit test reworked to pin unmeasured).",
   "sessions": [
     {
@@ -68,6 +68,14 @@
       "op": "takeover",
       "op_id": "5f7ea74e022a42f8bcc66d95fb721ea3",
       "reason": "Previous session ended; resuming item 43 per handoff §10-§11.",
+      "session_id": "865d81279f334e3c811692586b3ce2d2"
+    },
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:b99da209e67e8c2428b594b0",
+      "at": "2026-10-15T00:23:13Z",
+      "client": "antigravity-client",
+      "op": "update",
+      "op_id": "bb5d3c9e2ca24e31b659054d41fbb8e5",
       "session_id": "865d81279f334e3c811692586b3ce2d2"
     }
   ]
