@@ -141,6 +141,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Generated database names now stay the same when nested tuning configuration keys are reordered.
+
 - Sorted ingestion no longer runs unsafe CTAS rewrites on Athena, Azure Synapse
   and Redshift. Athena's rewrite read from the table it was replacing and always
   failed; Synapse left an unsorted original plus an orphan `__ctas_sort` copy
