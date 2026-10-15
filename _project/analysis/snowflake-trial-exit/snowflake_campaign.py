@@ -147,7 +147,7 @@ def budget(cursor: Any, warehouse: str, since: str, baseline: float, margin: flo
 def statement_history(cursor: Any, database: str, since: str) -> dict[str, Any]:
     cursor.execute(
         f"SELECT query_text, start_time, execution_status FROM TABLE({CONTEXT_DATABASE}.INFORMATION_SCHEMA."
-        f"QUERY_HISTORY(END_TIME_RANGE_START => '{since}'::TIMESTAMP_TZ, RESULT_LIMIT => 10000)) "
+        f"QUERY_HISTORY(END_TIME_RANGE_START => '{since}'::TIMESTAMP_LTZ, RESULT_LIMIT => 10000)) "
         "ORDER BY start_time"
     )
     counts: dict[str, int] = {}
