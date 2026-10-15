@@ -69,6 +69,7 @@ class TestClickHouseIntrospector:
         assert conn.queries, "introspector must issue a catalog query"
         q = conn.queries[0].lower()
         assert "system.tables" in q and "show create" not in q
+        assert "lower(name) in ('lineitem')" in q
 
     def test_bounded_to_ledger_tables(self):
         rows = [
@@ -79,14 +80,15 @@ class TestClickHouseIntrospector:
         tables = {obj.table for obj in state.objects}
         assert tables == {"lineitem"}
 
-    def test_unrelated_rows_at_catalog_cap_do_not_mark_relevant_snapshot_truncated(self):
-        rows = [(f"other_{index}", "id", "") for index in range(999)]
-        rows.append(("lineitem", "l_orderkey", ""))
-
+    def test_raw_rows_at_catalog_cap_mark_snapshot_truncated(self):
+        rows = [("lineitem", f"l_orderkey_{index}", "") for index in range(1000)]
         state = ClickHouseTuningIntrospector().introspect(_FakeCHConnection(rows), _optimize_ledger())
+        assert state.truncated is True
 
+    def test_raw_rows_under_catalog_cap_do_not_mark_truncated(self):
+        rows = [("lineitem", f"l_orderkey_{index}", "") for index in range(999)]
+        state = ClickHouseTuningIntrospector().introspect(_FakeCHConnection(rows), _optimize_ledger())
         assert state.truncated is False
-        assert {obj.table for obj in state.objects} == {"lineitem"}
 
     def test_non_fatal_on_query_failure(self):
         state = ClickHouseTuningIntrospector().introspect(_FakeCHConnection([], fail=True), _optimize_ledger())

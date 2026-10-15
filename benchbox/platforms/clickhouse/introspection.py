@@ -28,18 +28,24 @@ class ClickHouseTuningIntrospector:
 
     def introspect(self, connection: Any, ledger: AppliedTuningLedger) -> IntrospectedState:
         tables = ledger_tables(ledger)
+        table_filter = ""
+        if tables:
+            escaped_tables = ", ".join(
+                f"'{clean_name}'" for clean_name in (normalize_identifier(t).replace("'", "''") for t in sorted(tables))
+            )
+            table_filter = f" AND lower(name) IN ({escaped_tables})"
         try:
             result = connection.execute(
                 "SELECT name, sorting_key, partition_key FROM system.tables "
-                f"WHERE database = currentDatabase() LIMIT {_MAX_TABLE_ROWS}"
+                f"WHERE database = currentDatabase(){table_filter} LIMIT {_MAX_TABLE_ROWS}"
             )
             rows = list(result) if result is not None else []
         except Exception as exc:
             logger.debug("clickhouse table introspection degraded: %s", exc)
             return IntrospectedState(platform=self.platform, error=f"system.tables read failed: {exc}")
 
+        truncated = len(rows) >= _MAX_TABLE_ROWS
         relevant_rows = [row for row in rows if not tables or (row and normalize_identifier(row[0] or "") in tables)]
-        truncated = len(relevant_rows) >= _MAX_TABLE_ROWS
         objects: list[IntrospectedObject] = []
         for row in relevant_rows:
             try:
