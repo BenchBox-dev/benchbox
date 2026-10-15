@@ -3,7 +3,6 @@
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
 import json
-import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, call, patch
@@ -11,6 +10,7 @@ from unittest.mock import Mock, call, patch
 import pytest
 
 from benchbox.platforms.redshift import RedshiftAdapter
+from benchbox.utils.iceberg_layout import local_iceberg_location
 
 pytestmark = [
     pytest.mark.unit,
@@ -31,7 +31,7 @@ def _make_real_iceberg_table(table_dir: Path) -> None:
     table = catalog.create_table(
         "ns.t",
         schema=Schema(NestedField(1, "o_orderkey", LongType())),
-        location=table_dir.as_uri(),
+        location=local_iceberg_location(table_dir),
         properties={"format-version": "2"},
     )
     table.overwrite(pa.table({"o_orderkey": [1]}))
@@ -979,10 +979,6 @@ class TestRedshiftAdapter:
         execute_calls = [str(call) for call in mock_cursor.execute.call_args_list]
         assert any("TABLE PROPERTIES ('table_type'='DELTA')" in call for call in execute_calls)
 
-    @pytest.mark.skipif(
-        sys.platform == "win32",
-        reason="pyiceberg PyArrowFileIO cannot open file:///C:/ table locations on Windows (WinError 123)",
-    )
     def test_external_table_mode_registers_iceberg_in_glue(self):
         try:
             adapter = RedshiftAdapter(

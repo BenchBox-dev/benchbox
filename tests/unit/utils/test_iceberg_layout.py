@@ -4,12 +4,11 @@
 
 from __future__ import annotations
 
-import sys
-
 import pytest
 
 from benchbox.utils.iceberg_layout import (
     is_iceberg_directory,
+    local_iceberg_location,
     relocate_iceberg_table,
     resolve_iceberg_metadata_file,
 )
@@ -73,10 +72,6 @@ def test_resolve_returns_none_without_metadata_files(tmp_path):
     assert resolve_iceberg_metadata_file(table) is None
 
 
-@pytest.mark.skipif(
-    sys.platform == "win32",
-    reason="pyiceberg PyArrowFileIO cannot open file:///C:/ table locations on Windows (WinError 123)",
-)
 def test_relocate_rewrites_graph_for_new_location(tmp_path):
 
     pytest.importorskip("pyiceberg", reason="relocation needs pyiceberg")
@@ -92,14 +87,14 @@ def test_relocate_rewrites_graph_for_new_location(tmp_path):
     table = catalog.create_table(
         "ns.t",
         schema=Schema(NestedField(1, "id", LongType()), NestedField(2, "name", StringType())),
-        location=(src / "t").as_uri(),
+        location=local_iceberg_location(src / "t"),
         properties={"format-version": "2"},
     )
     table.overwrite(pa.table({"id": [1, 2], "name": ["a", "b"]}))
 
     staging = tmp_path / "staging"
     dest = tmp_path / "dest" / "t"
-    relocated = relocate_iceberg_table(src / "t", dest.as_uri(), staging)
+    relocated = relocate_iceberg_table(src / "t", local_iceberg_location(dest), staging)
 
     dest.mkdir(parents=True)
     for rel in relocated.data_files:
@@ -112,14 +107,14 @@ def test_relocate_rewrites_graph_for_new_location(tmp_path):
         target.write_bytes(staged.read_bytes())
 
     reloaded = StaticTable.from_metadata(relocated.metadata_location)
-    assert reloaded.location() == dest.as_uri()
+    assert reloaded.location() == local_iceberg_location(dest)
     result = reloaded.scan().to_arrow()
     assert result.num_rows == 2
     assert sorted(result.column("id").to_pylist()) == [1, 2]
 
     for staged in relocated.graph_files.values():
         if staged.suffix == ".json":
-            assert (src / "t").as_uri() not in staged.read_text(encoding="utf-8")
+            assert local_iceberg_location(src / "t") not in staged.read_text(encoding="utf-8")
 
 
 def test_relocate_rejects_non_table(tmp_path):
