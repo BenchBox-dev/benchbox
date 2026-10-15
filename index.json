@@ -14477,6 +14477,13 @@
       "status": "done",
       "title": "Optimize Benchmark Results JSON Output Format"
     },
+    "option-resolution-remaining-paths-20261014": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Interactive platform options bypass the explicit option layer, and some platforms lack option specs"
+    },
     "option-resolution-single-path-20261014": {
       "claim": null,
       "needs": [],

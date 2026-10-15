@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Options chosen interactively go through the same explicit layer as `--platform-option`, with alias resolution and conflict errors. A test covers this.",
+    "MCP config construction either shares the CLI resolution function, or a parity test asserts that both give the same `DatabaseConfig` for the same inputs.",
+    "fabric-lakehouse and Trino register specs for the options their adapters read, and the per-platform parity test covers them."
+  ],
+  "context": "These are follow-ups from the option-resolution PR (#2983); start them only after it merges. The precedence order is ADR D5: explicit > tuning > legacy > default, and conflicting explicit values raise. The tests to extend are `tests/unit/cli/test_option_resolution.py` and `tests/unit/cli/test_platform_options_reach_adapters.py`.",
+  "description": "These are gaps left by the single option-resolution path in #2983:\n- Interactive-mode platform options (`_interactive_platform_options`, near `benchbox/cli/commands/run.py:1857`) are applied after `create_config` and skip the explicit layer. So they get no precedence check and no alias resolution.\n- MCP builds `DatabaseConfig` directly instead of through `create_config`. That is correct today, because MCP has no saved-profile layer, but it is a second path that can drift.\n- fabric-lakehouse registers only the shared driver and plan specs.\n- Trino has no `host` spec.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/2983"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-15T00:34:21Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "2405bcbfb1864d2ba513cfc303178d8a",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    }
+  ]
+}
