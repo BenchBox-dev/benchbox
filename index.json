@@ -15633,6 +15633,13 @@
       "status": "done",
       "title": "Stop make pr-open enabling auto-merge before the work is finished"
     },
+    "pr-open-stacked-draft-support-20261015": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "`make pr-open` cannot open the stacked draft that the PR base-branch policy requires"
+    },
     "pr-postgres-sample-antiskip-guard": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "`make pr-open PR_BASE=<parent>` opens a draft PR against the parent branch",
+    "The conflict check and existing-PR lookup use the parent, not develop",
+    "Without PR_BASE the behaviour is unchanged",
+    "A unit test covers both paths"
+  ],
+  "context": "Add an option such as `PR_BASE=<branch>` that opens a draft against that branch and runs the same checks against the parent instead of `develop`. Reject a parent that is not an open PR's head branch. `tests/unit/workflows/test_stacked_pr_base_guard.py` covers the CI side of the policy.",
+  "description": "`docs/internal/pr-base-branch-policy.md` says a PR stacked on another open PR must be a draft that targets its parent's branch. The `pr-open` recipe in the root `Makefile` always targets `develop`: it fetches `origin/develop`, checks for conflicts against it, and looks up existing PRs with `--base develop`. It has no base or draft option.\n\nSo the stacked case has to be done by hand with `gh pr create --draft --base <parent>`. That skips the recipe's preflight, conflict scan and trunk-revert gate.",
+  "links": [
+    "Makefile",
+    "docs/internal/pr-base-branch-policy.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:00516a6384fc19784260646d",
+      "at": "2026-10-15T12:22:27Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "e115ee7567104bc0b21f6166e351e23c",
+      "session_id": "1bbb7e6116f84849933bd91a3804c2c6"
+    }
+  ]
+}
