@@ -317,6 +317,16 @@ class DataFusionAdapter(NoConstraintEnforcementMixin, PlatformAdapter):
             platform_info["client_library_version"] = None
             platform_info["platform_version"] = None
 
+        if connection is not None:
+            try:
+                batches = connection.sql("SELECT version() AS engine_version").collect()
+                version_text = batches[0].column(0)[0].as_py()
+                if isinstance(version_text, str) and version_text.startswith("Apache DataFusion "):
+                    platform_info["engine_version"] = version_text.removeprefix("Apache DataFusion ").split(",", 1)[0]
+                    platform_info["engine_version_source"] = "sql_query"
+            except (ValueError, RuntimeError, AttributeError, IndexError, TypeError):
+                pass
+
         if self.driver_runtime_strategy:
             platform_info["driver_runtime_strategy"] = self.driver_runtime_strategy
         if self.driver_version_requested:

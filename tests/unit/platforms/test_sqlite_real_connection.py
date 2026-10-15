@@ -73,6 +73,8 @@ class TestSQLiteRealConnection:
         assert "platform_version" in info
 
         assert "." in info["platform_version"]
+        assert info["engine_version"] == info["platform_version"]
+        assert info["engine_version_source"] == "sql_query"
 
     def test_wal_mode_applied_for_file_database(self, adapter, tmp_path):
 

@@ -298,6 +298,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   full runs, so a load-only bundle never carries a tuned mode without
   `platform.tuning`. Adapters without the full lifecycle refuse tuned load-only
   runs with an actionable error instead.
+
+- Result metadata records genuine engine versions (`engine_version`, `engine_version_source: sql_query`) for DuckDB, SQLite and DataFusion queried directly from the active connection rather than package versions.
 - The Atom feed uses canonical `/blog/` self and entry links while retaining stable entry IDs for existing subscribers.
 - Deprecated option aliases now show their warning. The Polars `streaming`
   option, `--polars-streaming`, Dask `use_distributed`, pg-duckdb

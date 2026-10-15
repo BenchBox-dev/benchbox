@@ -30,6 +30,12 @@ try:
 except ImportError:
     sqlite3 = None
 
+_SQLITE_VERSION_ERRORS: tuple[type[Exception], ...]
+if sqlite3 is not None:
+    _SQLITE_VERSION_ERRORS = (sqlite3.Error, AttributeError, IndexError, TypeError)
+else:
+    _SQLITE_VERSION_ERRORS = (AttributeError, IndexError, TypeError)
+
 _TPCH_TABLES: frozenset[str] = frozenset(
     {"customer", "lineitem", "nation", "orders", "part", "partsupp", "region", "supplier"}
 )
@@ -303,6 +309,15 @@ class SQLiteAdapter(PlatformAdapter):
         except (ImportError, AttributeError):
             platform_info["client_library_version"] = None
             platform_info["platform_version"] = None
+
+        if connection is not None:
+            try:
+                engine_version = connection.execute("SELECT sqlite_version()").fetchone()[0]
+                if isinstance(engine_version, str) and engine_version:
+                    platform_info["engine_version"] = engine_version
+                    platform_info["engine_version_source"] = "sql_query"
+            except _SQLITE_VERSION_ERRORS:
+                pass
 
         return platform_info
 

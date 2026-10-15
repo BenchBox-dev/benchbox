@@ -959,6 +959,8 @@ class TestDuckDBAdapter:
 
         assert info["client_library_version"] == "1.4.3"
         assert info["platform_version"] == "0.9.2"
+        assert info["engine_version"] == "0.9.2"
+        assert info["engine_version_source"] == "sql_query"
         assert info["driver_version_actual"] == "0.9.2"
 
     @patch("benchbox.platforms.duckdb.duckdb")
