@@ -25362,6 +25362,13 @@
       "status": "done",
       "title": "✅ Validation Presentation vs Engines"
     },
+    "validation-status-case-and-hook-payload-audit-20261014": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Leftover case-sensitive 'PASSED' comparisons, and platform hook payloads not audited for vendor names"
+    },
     "validator-override-required-output-when-satisfied": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Validation-status comparisons use one shared normalising helper or enum, and a test feeds a lowercase status through each path.",
+    "Every platform's hook metadata payload is listed, with any vendor resource name stored under a key that is not an identifier key. Each one found is dropped or hashed, with a published-bytes invariant test."
+  ],
+  "description": "Two small follow-ups:\n- Case-sensitive `'PASSED'` comparisons remain at `benchbox/cli/output.py:129,139,483`, `benchbox/platforms/base/execution.py:1008` and `benchbox/cli/commands/report.py:434`. They are harmless now that stored values are uppercase (#2965), but they will break again if a lowercase value enters.\n- After the anonymizer fix (#2966), other platforms' hook payloads were not audited for vendor resource names under keys that are not identifier keys.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/2965",
+    "https://github.com/BenchBox-dev/benchbox/pull/2966"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-15T00:35:00Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "8dd8f4266ad94ee081401351ce6ff41b",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    }
+  ]
+}
