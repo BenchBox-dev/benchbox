@@ -88,9 +88,9 @@ def execute(invocation: Invocation, timeout_seconds: int) -> RunResult:
     return RunResult(process.returncode, stdout or "", stderr or "", False)
 
 
-def _diagnostic(result: RunResult) -> str:
+def _diagnostic(result: RunResult, events: str) -> str:
     credentials = [os.environ.get(name, "") for name in absence.CREDENTIAL_ENV]
-    return absence.excerpt(result.stdout, result.stderr, credentials)
+    return absence.excerpt(result.stdout, f"{result.stderr}\n{events}", credentials)
 
 
 def review(
@@ -109,6 +109,9 @@ def review(
         return ReviewOutcome(None, absence.Absence(absence.INVALID, "the brief is empty or truncated"), "")
     if shutil.which(reviewer.harness) is None:
         return ReviewOutcome(None, absence.Absence(absence.ERROR, f"{reviewer.harness} is not installed"), "")
+    credential = absence.REQUIRED_CREDENTIAL.get(reviewer.harness)
+    if credential is not None and not os.environ.get(credential):
+        return ReviewOutcome(None, absence.Absence(absence.AUTH, f"{credential} is not set"), "")
     scratch.mkdir(parents=True, exist_ok=True)
     invocation = build(reviewer, workspace, prompt, scratch)
     staged_before = _digest(workspace / STAGED_DIFF_NAME)
@@ -116,8 +119,8 @@ def review(
     output = result.stdout
     if invocation.output_file is not None:
         output = invocation.output_file.read_text(encoding="utf-8") if invocation.output_file.is_file() else ""
-    diagnostic = _diagnostic(result)
     events = evidence.codex_errors(result.stdout) if reviewer.harness == "codex" else ""
+    diagnostic = _diagnostic(result, events)
     missing = absence.classify(
         reviewer.harness,
         result.exit_code,
