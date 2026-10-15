@@ -3,7 +3,7 @@
     "The converter's Windows behaviour is decided and covered by a test or documented as unsupported",
     "The three Windows skips are removed or each keeps a reason that names the decision"
   ],
-  "context": "Found by triage of the 2026-10-08 Windows 3.12 log; interim Windows skips added in the nightly-windows-teardown-and-singles change.\n\n2026-10-09 tracker review: corrected the converter path to benchbox/utils/format_converters/iceberg_converter.py:122 (verified on origin/develop 0a3c27f53). The earlier text pointed at benchbox/core/dataframe. Do not add a store.py location: it only mentions the string and does not set a table location.",
+  "context": "Found by triage of the 2026-10-08 Windows 3.12 log; interim Windows skips added in the nightly-windows-teardown-and-singles change.\n\n2026-10-09 tracker review: corrected the converter path to benchbox/utils/format_converters/iceberg_converter.py:122 (verified on origin/develop 0a3c27f53). The earlier text pointed at benchbox/core/dataframe. Do not add a store.py location: it only mentions the string and does not set a table location.\n\n2026-10-15 takeover: implementation committed as aa8f37bcd125840d72a65a7ebaa79ce3e3e3f5f4 and published in PR #3000. Local pr-preflight and focused tests passed in the predecessor session; exact-head hosted checks are in progress. The first CI run hit the 10-minute comment-policy job limit (annotation: maximum execution time exceeded), so tooling failed from the cancelled required gate; Linux fast tests and docs-build are still running. Retry failed jobs once after the run completes. The standard PR CI has no Windows unit job; acceptance still needs the planned nightly-v2 Windows leg. Do not finish before that evidence.",
   "description": "pyiceberg's PyArrowFileIO cannot open file:///C:/... table locations on Windows (WinError 123 'Failed querying information for path /C:/...'). Tests that build real Iceberg tables with location=table_dir.as_uri() fail on windows-latest: tests/unit/platforms/test_bigquery_adapter.py test_prepare_iceberg_uris_points_at_metadata_file, tests/unit/platforms/test_redshift_adapter.py test_external_table_mode_registers_iceberg_in_glue, tests/unit/utils/test_iceberg_layout.py test_relocate_rewrites_graph_for_new_location (a PermissionError on cat.db is a teardown cascade from the open SQLite catalog). The product has probable exposure: benchbox/utils/format_converters/iceberg_converter.py:122 passes iceberg_table_path.as_uri() as the table location. Decide Windows location handling for the converter, the test helpers and relocate_iceberg_table; a plain str(path) location may work but would change POSIX metadata unless gated on win32, so it needs a Windows run. The three tests are Windows-skipped with this reason until then.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/issues/2568"
@@ -41,6 +41,14 @@
       "generation": "b2a8b605b70f4a538e3e2a30290310fd",
       "op": "take",
       "op_id": "82bc643103904cb3be6798717a505168",
+      "session_id": "a4547e3a2da34101955f1470631f44f0"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:122820e0d0649bb1515cedf7",
+      "at": "2026-10-15T02:05:47Z",
+      "client": "codex-mcp-client",
+      "op": "update",
+      "op_id": "6e95b1f3a3db44c9b91d97ad53fb7baf",
       "session_id": "a4547e3a2da34101955f1470631f44f0"
     }
   ]
