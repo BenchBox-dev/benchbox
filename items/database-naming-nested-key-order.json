@@ -4,7 +4,7 @@
     "Names for configs without nested dicts are unchanged (golden test) or a documented migration is provided.",
     "Callers listed in the description are covered by tests."
   ],
-  "context": "Defect found during the Spark tuning review (2026-09-30), requested as its own item by the user. Not a prerequisite for the Spark tuning items.",
+  "context": "Implemented recursive key-order independence while preserving legacy hashes for flat configs. Local evidence: full fast suite 38,495 passed, 28 skipped, 849 warnings, 4 subtests; make pr-preflight 394 passed, 4 skipped; comment-policy and import contracts passed; ty reported 678 diagnostics. Commit 95deffc9df75a7b534fc46973220a1a451cb733b is published as PR #3002 on develop, exact head verified, auto-merge armed. Checks are pending; resume by checking PR #3002 on a 10-minute cadence, fix any real failures, and finish tracker only after gh shows MERGED.",
   "description": "benchbox/utils/database_naming.py ~L206 builds the tuning hash from str(sorted(config_copy.items())), which sorts only top-level keys, so reordering a nested dict (e.g. a platform_optimizations map) changes the generated database name. The hash is md5 truncated to 6 characters. Production callers exist: build_adapter_config (benchbox/platforms/base/config_utils.py ~L239) when no database name is given, plus bigquery.py ~L198 and databricks/adapter.py ~L497. An earlier note that \"Spark does not use hash naming\" was not established; check which Spark-family adapters reach it through build_adapter_config. Fix with canonical JSON (recursive sort_keys) and decide, with the user, how to handle existing names: changing the digest renames databases for configs that contain nested dicts, so either keep the old digest for configs without nested dicts or provide a migration note. Until fixed, new nested maps (such as the spark tuning map) should be sorted when parsed, which spark-session-config-model already requires.",
   "links": [
     "item:spark-session-config-model",
@@ -45,6 +45,14 @@
       "op": "takeover",
       "op_id": "bcf0f83776d848229d6d896126780db6",
       "reason": "User explicitly asked me to take over interrupted conversation fef0b282-45ab-49a9-b5df-44c5bb6dfc26. Its claim session 865d81279f334e3c811692586b3ce2d2 is not running; the separate Agy PID 80181 uses another brain and has no files open in this item's worktree.",
+      "session_id": "6f643d8692e8442884de4af547f77a25"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:bee9f454654b0d0ee4fa97f5",
+      "at": "2026-10-15T02:45:14Z",
+      "client": "codex-mcp-client",
+      "op": "update",
+      "op_id": "729b13bf8f584659889d2cf29d40671e",
       "session_id": "6f643d8692e8442884de4af547f77a25"
     }
   ]
