@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Dask with `scheduler_address` warns about, and does not record as applied, the worker options it ignores. A test covers this.",
+    "The LakeSail docs list the registered options.",
+    "`connection_mode` reflects the observed server topology, or the label is documented as the requested mode. A test covers this."
+  ],
+  "context": "Follow-up from #2975. Its rule is: warn and don't record options that have no effect. `raw_config` and `options` in bundles carry requested values by design, so leave those alone.",
+  "description": "Gaps left by #2975:\n- Dask `distributed` with `scheduler_address` records `n_workers`, `threads_per_worker` and `memory_limit`, which it ignores, because the external cluster owns them.\n- The docs say LakeSail registers no `--platform-option` keys, but it registers `endpoint`, `adaptive_enabled` and `deployment_mode` (`docs/platforms/lakesail.md`, `deployment-modes.md`, `quick-reference.md:349`).\n- `lakesail:distributed` against a single-node server is still labelled distributed in `connection_mode`.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/2975"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-15T00:34:54Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "adf50da0e0684345b16946749376fa17",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    }
+  ]
+}
