@@ -129,7 +129,7 @@
     "tuning_mode": "notuning"
   },
   "export": {
-    "anonymized": false,
+    "anonymized": true,
     "benchbox_version": "0.4.2",
     "timestamp": "2026-10-13T01:19:42.060467",
     "tool": "benchbox-exporter"

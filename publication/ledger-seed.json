@@ -1,11 +1,11 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-10-14T23:30:37.449513+00:00",
+  "generated_at": "2026-10-15T12:13:12.986485+00:00",
   "source": "50a3221e628e1a498a5dc5e820e4a9a1e4240904",
   "source_ref": "origin/published-results",
-  "source_resolved_at": "2026-10-14T23:30:37.449513+00:00",
+  "source_resolved_at": "2026-10-15T12:13:12.986485+00:00",
   "source_resolved_from": "origin/published-results",
-  "main_source": "working-tree",
+  "main_source": "4819ec257d206fe43806201f50c421315bc9490f",
   "bidirectional": false,
   "union": [
     "results-data/bundles/amplab_sf001_clickhouse_local_sql_20260825_175441_e89a4de7.json",
