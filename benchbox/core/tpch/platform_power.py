@@ -13,6 +13,7 @@ from benchbox.core.plan_capture_phase import propagate_query_execution_metadata
 
 TPCH_BENCHMARK_ID = "tpch"
 PowerConnectionAdapterFactory = Callable[[Any, str, float], Any]
+PowerRefreshConnectionAdapterFactory = Callable[[Any, float], Any]
 
 
 def _power_query_result(
@@ -69,6 +70,7 @@ def execute_tpch_power_test(
     run_config: dict[str, Any],
     *,
     make_connection_adapter: PowerConnectionAdapterFactory,
+    make_refresh_connection_adapter: PowerRefreshConnectionAdapterFactory | None = None,
     console: Any,
 ) -> list[dict[str, Any]]:
     from benchbox.core.tpch.power_test import TPCHPowerTest
@@ -93,9 +95,10 @@ def execute_tpch_power_test(
         )
         if refresh_enabled:
             from benchbox.core.tpch.refresh import generate_refresh_update_sets, require_refresh_support
-            from benchbox.platforms.base.connection_wrappers import PlatformAdapterConnection, open_stream_connection
 
             require_refresh_support(adapter)
+            if make_refresh_connection_adapter is None:
+                raise RuntimeError("TPC-H refresh functions require a platform refresh connection adapter")
             first_set = run_config.get("tpch_refresh_first_set", getattr(benchmark, "tpch_refresh_first_set", 1))
             refresh_temp_directory = tempfile.TemporaryDirectory(prefix="benchbox-tpch-refresh-")
             refresh_update_set = generate_refresh_update_sets(
@@ -106,13 +109,7 @@ def execute_tpch_power_test(
             )[first_set]
 
             def refresh_connection_factory():
-                stream_connection = open_stream_connection(adapter, connection, "olap")
-                if stream_connection is connection:
-                    raise RuntimeError("TPC-H refresh functions require a separate database session")
-                connection_wrapper = PlatformAdapterConnection(stream_connection, adapter, maintenance_mode=True)
-                connection_wrapper.benchmark_type = "tpch"
-                connection_wrapper.scale_factor = scale_factor
-                return connection_wrapper
+                return make_refresh_connection_adapter(connection, scale_factor)
 
         console.print(f"[green]Running TPC-H Power Test (Scale Factor: {scale_factor}, Stream ID: {stream_id})[/green]")
         console.print(f"[green]Warm-up runs: {warm_up_iterations}, Measurement runs: {iterations}[/green]")

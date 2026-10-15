@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
@@ -56,11 +57,12 @@ def _normalized(text: str) -> str:
 def _qgen_stream_order(stream: int) -> list[int]:
     qgen = QGenBinary()
     env = {**os.environ, "DSS_QUERY": str(qgen.templates_dir / "queries")}
+    env["PATH"] = os.pathsep.join((str(Path(qgen.qgen_path).parent), env.get("PATH", "")))
     cwd = qgen._ensure_work_dir()
 
     def run(*arguments: str) -> str:
         completed = subprocess.run(
-            [qgen.qgen_path, "-a", "-d", *arguments], cwd=cwd, env=env, capture_output=True, text=True, check=True
+            ["qgen", "-a", "-d", *arguments], cwd=cwd, env=env, capture_output=True, text=True, check=True
         )
         return _normalized(completed.stdout.replace("-- using default substitutions", ""))
 
@@ -231,3 +233,62 @@ class TestTPCHPowerStreamSemantics:
         results, _ = self._run({"iterations": 2, "warm_up_iterations": 1, "stream_id": 2})
 
         assert {row["stream_id"] for row in results} == {2}
+
+
+def test_tpch_power_uses_platform_refresh_connection_factory_only_for_final_measurement(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from benchbox.core.tpch import power_test as power_test_module, refresh
+
+    update_set = SimpleNamespace(set_id=1)
+    monkeypatch.setattr(refresh, "generate_refresh_update_sets", lambda *_args: {1: update_set})
+    monkeypatch.setattr(refresh, "require_refresh_support", lambda _adapter: None)
+    calls = []
+
+    class PowerTest:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            self.config = SimpleNamespace(validation=True)
+            calls.append(self)
+
+        def run(self):
+            factory = self.kwargs["refresh_connection_factory"]
+            if factory is not None:
+                assert factory() is refresh_connection
+            return SimpleNamespace(
+                query_results=[],
+                success=True,
+                power_at_size=1.0,
+                queries_successful=22,
+                queries_executed=22,
+                total_time=1.0,
+                errors=[],
+            )
+
+    monkeypatch.setattr(power_test_module, "TPCHPowerTest", PowerTest)
+    adapter = SimpleNamespace(supports_refresh_functions=True, get_target_dialect=lambda: "duckdb")
+    connection = object()
+    refresh_connection = object()
+    connection_adapter = SimpleNamespace(_validate_row_count=True)
+
+    execute_tpch_power_test(
+        adapter,
+        _RecordingBenchmark(),
+        connection,
+        {
+            "scale_factor": 0.01,
+            "tpch_refresh_functions": True,
+            "iterations": 2,
+            "warm_up_iterations": 0,
+        },
+        make_connection_adapter=lambda *_args: connection_adapter,
+        make_refresh_connection_adapter=lambda given_connection, scale: (
+            calls.append((given_connection, scale)) or refresh_connection
+        ),
+        console=SimpleNamespace(print=lambda *args, **kwargs: None),
+    )
+
+    power_tests = [call for call in calls if isinstance(call, PowerTest)]
+    assert [test.kwargs["refresh_update_set"] for test in power_tests] == [None, update_set]
+    assert [test.kwargs["refresh_connection_factory"] is not None for test in power_tests] == [False, True]
+    assert (connection, 0.01) in calls

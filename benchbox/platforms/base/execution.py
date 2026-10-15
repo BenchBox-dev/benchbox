@@ -127,6 +127,15 @@ class TestDriversMixin:
         connection_adapter.scale_factor = scale_factor
         return connection_adapter
 
+    def _make_tpch_refresh_connection_adapter(self, connection: Any, scale_factor: float):
+        stream_connection = open_stream_connection(self, connection, "olap")
+        if stream_connection is connection:
+            raise RuntimeError("TPC-H refresh functions require a separate database session")
+        connection_adapter = PlatformAdapterConnection(stream_connection, self, maintenance_mode=True)
+        connection_adapter.benchmark_type = "tpch"
+        connection_adapter.scale_factor = scale_factor
+        return connection_adapter
+
     def _execute_tpch_power_test(self, benchmark, connection: Any, run_config: dict) -> list[dict[str, Any]]:
         from benchbox.core.tpch.platform_power import execute_tpch_power_test
 
@@ -136,6 +145,7 @@ class TestDriversMixin:
             connection,
             run_config,
             make_connection_adapter=self._make_direct_power_connection_adapter,
+            make_refresh_connection_adapter=self._make_tpch_refresh_connection_adapter,
             console=quiet_console,
         )
 

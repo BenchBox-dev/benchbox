@@ -3822,6 +3822,32 @@ class TestDeferredConnectionClose:
             release.set()
             pool.shutdown(wait=True)
 
+
+class TestTPCHRefreshPowerConnectionAdapter:
+    def test_wraps_a_separate_session_for_maintenance_statements(self):
+        adapter = MockPlatformAdapter()
+        connection = object()
+        stream_connection = object()
+
+        with patch(
+            "benchbox.platforms.base.execution.open_stream_connection", return_value=stream_connection
+        ) as open_connection:
+            refresh_connection = adapter._make_tpch_refresh_connection_adapter(connection, 0.01)
+
+        open_connection.assert_called_once_with(adapter, connection, "olap")
+        assert refresh_connection.connection is stream_connection
+        assert refresh_connection._maintenance_mode is True
+        assert refresh_connection.benchmark_type == "tpch"
+        assert refresh_connection.scale_factor == 0.01
+
+    def test_rejects_a_shared_session_for_refresh_statements(self):
+        adapter = MockPlatformAdapter()
+        connection = object()
+
+        with patch("benchbox.platforms.base.execution.open_stream_connection", return_value=connection):
+            with pytest.raises(RuntimeError, match="require a separate database session"):
+                adapter._make_tpch_refresh_connection_adapter(connection, 0.01)
+
     def test_unquiesced_work_blocks_post_measurement_probes_on_the_shared_connection(self):
         release = threading.Event()
         pool = ThreadPoolExecutor(max_workers=1)
