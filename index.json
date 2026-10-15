@@ -20765,9 +20765,9 @@
     },
     "site-split-72-bundle-fetch-provenance": {
       "claim": {
-        "expires_at": "2026-10-16T03:39:17Z",
-        "generation": "d71121d47f9e45a280dc71f66acf1dd5",
-        "renewals": 0,
+        "expires_at": "2026-10-16T03:39:46Z",
+        "generation": "1592ccbd7ad54f16af7e2428798c942b",
+        "renewals": 1,
         "worker": "mcp:codex-mcp-client:joe@joe-mac-mini.local:1f8c5d7706213cbfec63db59"
       },
       "needs": [],
