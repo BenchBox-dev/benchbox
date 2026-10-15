@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "`--platform-option force_recreate=true` is accepted and recreates the database without regenerating data",
+    "`--force datagen` keeps recreating the database as today",
+    "Unit tests cover option parsing and the CLI override merge"
+  ],
+  "context": "The Snowflake trial-exit campaign plan's untuned loads pass this option; found by dry run on 2026-10-15.",
+  "description": "`benchbox run --platform snowflake ... --platform-option force_recreate=true` fails with \"Unknown platform option 'force_recreate' for platform 'snowflake'\". Adapters read `force_recreate` from config, but the CLI sets it only from `--force datagen` (`benchbox/cli/commands/run.py`, `\"force_recreate\": s.force_regenerate`), which also regenerates local data. Recreating a database from existing data (for example an untuned load that must replace an old database at sf100) is therefore impossible without a full datagen.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:9e002f45bd6cb1f33b959f2c",
+      "at": "2026-10-15T20:45:11Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "49843c47bd524870bd103b73167061f3",
+      "session_id": "70accbe5849d4e1da05dfca7c4ffe8da"
+    }
+  ]
+}
