@@ -28,7 +28,15 @@ jobs:
       contents: read
       packages: write
     with:
-      images: '["clickhouse", "trino", "cedardb"]'
+      images: '["clickhouse", "trino"]'
+
+  mirror-cedardb:
+    uses: ./.github/workflows/mirror-ci-images.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      images: '["cedardb"]'
 
   docker:
     name: "t3:docker | ${{ matrix.service }}"
@@ -534,8 +542,7 @@ jobs:
 
   throughput-cedardb:
     name: "t3:throughput-cedardb | cedardb tpch sf1 streams 3"
-    needs: mirror-images
-    if: ${{ !cancelled() }}
+    needs: mirror-cedardb
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
@@ -1080,6 +1087,7 @@ jobs:
     needs:
       - docker
       - mirror-images
+      - mirror-cedardb
       - cloud
       - perf
       - matrix
@@ -1121,6 +1129,10 @@ jobs:
             failure_detail="Domain job result: ${result}."
             if [ "$job" = docker ] && [ "$(printf '%s' "$NEEDS_JSON" | jq -r '.["mirror-images"].result')" = failure ]; then
               failure_detail="Image mirror infrastructure failed; database test job result: ${result}."
+              result=failure
+            fi
+            if [ "$job" = throughput-cedardb ] && [ "$(printf '%s' "$NEEDS_JSON" | jq -r '.["mirror-cedardb"].result')" = failure ]; then
+              failure_detail="CedarDB image mirror infrastructure failed; throughput cell result: ${result}."
               result=failure
             fi
             echo "${label}: ${result}"
