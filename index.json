@@ -15281,15 +15281,10 @@
       "title": "Fix docs advertising --platform-option keys the platform rejects"
     },
     "platform-option-force-recreate-rejected-20261015": {
-      "claim": {
-        "expires_at": "2026-10-16T23:24:53Z",
-        "generation": "21a405e63b344356814d3783a5aef871",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:9e002f45bd6cb1f33b959f2c"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "`--platform-option force_recreate=true` is rejected; the only way to recreate a database also regenerates data"
     },
     "platform-options-forwarding-gaps-20261014": {
