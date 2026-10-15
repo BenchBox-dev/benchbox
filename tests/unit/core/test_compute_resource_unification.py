@@ -181,7 +181,7 @@ class TestSnowflakeComputeUnification:
             )
         assert adapter.warehouse == "ANALYTICS_WH"
         assert adapter.warehouse_size == "XLARGE"
-        params = adapter._get_connection_params()
+        params = adapter._connect_params({}, include_database=False)
         assert params["warehouse"] == "ANALYTICS_WH"
 
     def test_preserved_defaults(self):

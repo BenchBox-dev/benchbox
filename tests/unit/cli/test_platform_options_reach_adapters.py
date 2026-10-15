@@ -23,7 +23,7 @@ from benchbox.utils.runtime_env import DriverResolution
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 CROSS_CUTTING_OPTIONS = frozenset(
-    {"driver_version", "driver_auto_install", "plan_max_depth", "plan_capture_timeout_seconds"}
+    {"driver_version", "driver_auto_install", "plan_max_depth", "plan_capture_timeout_seconds", "force_recreate"}
 )
 KNOWN_UNAPPLIED_OPTIONS = {"sqlite": frozenset({"database_name"})}
 
@@ -170,6 +170,16 @@ def test_adapter_is_constructed_without_platform_options(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, platform: str
 ) -> None:
     assert _constructor_kwargs(monkeypatch, tmp_path, platform)
+
+
+@pytest.mark.parametrize("platform", ["duckdb", "postgresql", "datafusion", "sqlite", "snowflake"])
+@pytest.mark.parametrize(("options", "expected"), [((), False), (("force_recreate=true",), True)])
+def test_force_recreate_option_reaches_the_adapter_without_force_datagen(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, platform: str, options: tuple[str, ...], expected: bool
+) -> None:
+    kwargs = _constructor_kwargs(monkeypatch, tmp_path, platform, *options)
+
+    assert bool(kwargs.get("force_recreate")) is expected
 
 
 def test_duckdb_threads_beat_the_system_profile_value() -> None:

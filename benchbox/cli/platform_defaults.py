@@ -346,6 +346,13 @@ def _register_well_known_options() -> None:
             default=None,
             help="Timeout in seconds for EXPLAIN plan-capture queries.",
         ),
+        PlatformOptionSpec(
+            name="force_recreate",
+            parser=parse_bool,
+            default=None,
+            help="Drop and recreate the benchmark database before loading, reusing the existing data files "
+            "(true or false).",
+        ),
     )
 
 

@@ -17,7 +17,7 @@ READ_RULES = {
     ),
     "claude": "Read files with the Read, Grep and Glob tools.",
     "muse": "Read files with your workspace file tools; shell commands are disabled.",
-    "agy": "Read files with your read-only planning tools.",
+    "agy": "Your working directory is empty, not the checkout: review the diff in this brief and do not read files.",
 }
 BRIEF_TEMPLATE = """You are an independent, adversarial reviewer of pull request {pr} in {repo}, a SQL benchmarking
 framework whose published results must be correct. Review the change from base {base} to head {head}.

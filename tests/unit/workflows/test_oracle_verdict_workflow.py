@@ -20,7 +20,9 @@ HARNESS_SECRETS = {
     "claude": {"CLAUDE_CODE_OAUTH_TOKEN"},
     "codex": {"OPENAI_API_KEY"},
     "muse": {"META_API_KEY"},
+    "agy": {"GEMINI_API_KEY"},
 }
+AGY_TARBALL = "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.3.3-5524738307653632/linux-x64/cli_linux_x64.tar.gz"
 APP_SECRETS = {"ORACLE_APP_ID", "ORACLE_APP_PRIVATE_KEY"}
 SHA_PIN = re.compile(r"^[\w.-]+/[\w.-]+@[0-9a-f]{40}$")
 SECRET_REF = re.compile(r"secrets\.([A-Z0-9_]+)")
@@ -83,7 +85,7 @@ def test_workflow_permissions_are_empty_and_jobs_are_minimal() -> None:
     jobs = _jobs()
     assert jobs["plan"]["permissions"] == {"actions": "read", "contents": "read", "pull-requests": "read"}
     assert jobs["sweep"]["permissions"] == {"actions": "write", "contents": "read", "pull-requests": "read"}
-    assert jobs["post"]["permissions"] == {"contents": "read"}
+    assert jobs["post"]["permissions"] == {"actions": "write", "contents": "read"}
     for name, job in jobs.items():
         if name.startswith(("select-", "attempt-")):
             assert job["permissions"] == {"contents": "read"}, name
@@ -156,11 +158,10 @@ def test_reviewer_slots_cover_the_policy_and_run_sequentially() -> None:
         assert job["if"] == f"${{{{ !cancelled() && needs.select-{slot}.outputs.harness == '{_harness(name)}' }}}}"
 
 
-def test_only_enabled_harnesses_have_jobs() -> None:
+def test_every_enabled_harness_has_jobs() -> None:
     enabled = {reviewer.harness for reviewer in POLICY.reviewers.values() if reviewer.enabled}
     assert enabled == set(HARNESS_SECRETS)
-    assert not POLICY.reviewers["agy"].enabled
-    assert not any(_harness(name) == "agy" for name in _attempt_jobs())
+    assert {_harness(name) for name in _attempt_jobs()} == enabled
 
 
 def test_each_reviewer_job_loads_only_its_own_secret() -> None:
@@ -210,7 +211,10 @@ def test_cli_installs_come_from_official_sources_with_pins() -> None:
     assert "npm install --global @anthropic-ai/claude-code@2.1.289" in text
     assert "npm install --global @openai/codex@0.160.0" in text
     assert text.count("https://dev.meta.ai/install.sh") == POLICY.max_attempts
-    assert "curl " not in text.replace("curl -fsSL --proto '=https' --tlsv1.2 https://dev.meta.ai/install.sh", "")
+    assert text.count(f"AGY_URL: {AGY_TARBALL}") == POLICY.max_attempts
+    muse_curl = "curl -fsSL --proto '=https' --tlsv1.2 https://dev.meta.ai/install.sh"
+    agy_curl = "curl -fsSL --proto '=https' --tlsv1.2 \"$AGY_URL\""
+    assert "curl " not in text.replace(muse_curl, "").replace(agy_curl, "")
     for name, job in _jobs().items():
         job_text = _text(job)
         if name.startswith("attempt-") and _harness(name) == "muse":
@@ -224,12 +228,30 @@ def test_cli_installs_come_from_official_sources_with_pins() -> None:
             assert job["permissions"] == {"contents": "read"}
             assert _secrets(job) == {"META_API_KEY"}
             assert "--harness muse" in _run(job, "Run the reviewer")
+            for pinned in ("MUSE_INSTALLER_SHA256", "MUSE_NO_AUTO_UPDATE", "MUSE_CHANNEL", "sha256sum"):
+                assert pinned not in job_text, name
         else:
             assert "dev.meta.ai" not in job_text and "META_API_KEY" not in job_text, name
     assert "printenv OPENAI_API_KEY | codex login --with-api-key" in text
     assert "--dangerously" not in text and "--yolo" not in text
-    for pinned in ("MUSE_INSTALLER_SHA256", "MUSE_NO_AUTO_UPDATE", "MUSE_CHANNEL", "sha256sum"):
-        assert pinned not in text
+
+
+def test_agy_installs_a_pinned_checksummed_release_with_api_key_auth() -> None:
+    for name, job in _attempt_jobs().items():
+        if _harness(name) != "agy":
+            assert "GEMINI_API_KEY" not in _text(job) and "antigravity" not in _text(job), name
+            continue
+        install = next(step for step in job["steps"] if step["name"] == "Install agy")
+        assert install["env"]["AGY_URL"] == AGY_TARBALL
+        assert re.fullmatch(r"[0-9a-f]{64}", install["env"]["AGY_SHA256"])
+        lines = install["run"].splitlines()
+        check = 'echo "$AGY_SHA256  $RUNNER_TEMP/agy.tar.gz" | sha256sum --check --strict'
+        assert lines.index(check) < next(index for index, line in enumerate(lines) if line.startswith("tar "))
+        settings = 'echo \'{"modelProvider": "gemini"}\' > "$HOME/.gemini/antigravity-cli/settings.json"'
+        assert settings in lines
+        run = next(step for step in job["steps"] if step["name"] == "Run the reviewer")
+        assert run["env"]["GEMINI_API_KEY"] == "${{ secrets.GEMINI_API_KEY }}"
+        assert run["env"]["AGY_CLI_DISABLE_AUTO_UPDATE"] == "1"
 
 
 def test_reviewer_attempts_always_leave_an_artifact() -> None:
@@ -255,8 +277,12 @@ def test_post_job_mints_the_app_token_and_tolerates_missing_secrets() -> None:
     assert absent["if"] == "env.HAS_APP != 'true'"
     for step in post["steps"]:
         if "GH_TOKEN" in step.get("env", {}):
-            assert step["env"]["GH_TOKEN"] == "${{ steps.app.outputs.token }}"
-            assert step["if"].startswith("env.HAS_APP == 'true'")
+            if step["name"] == "Rerun the failed synchronize suite for this head":
+                assert step["env"]["GH_TOKEN"] == "${{ github.token }}"
+                assert step["if"] == "env.HAS_APP == 'true'"
+            else:
+                assert step["env"]["GH_TOKEN"] == "${{ steps.app.outputs.token }}"
+                assert step["if"].startswith("env.HAS_APP == 'true'")
     finalize = _run(post, "Validate this run's artifacts and decide")
     assert "cli finalize" in finalize
     downloads = [step for step in post["steps"] if str(step.get("uses", "")).startswith("actions/download-artifact@")]
@@ -316,6 +342,21 @@ def test_the_post_job_rechecks_the_review_list_before_posting() -> None:
     for name in ("Post the commit status", "Post the findings comment", "Post the findings review"):
         step = next(item for item in post["steps"] if item["name"] == name)
         assert "steps.guard.outputs.skip != 'true'" in step["if"], name
+
+
+def test_post_job_reruns_the_failed_synchronize_suite_for_the_head() -> None:
+    post = _jobs()["post"]
+    names = [step["name"] for step in post["steps"]]
+    step = next(item for item in post["steps"] if item["name"] == "Rerun the failed synchronize suite for this head")
+    assert names.index("Post the findings review") < names.index(step["name"])
+    assert step["if"] == "env.HAS_APP == 'true'"
+    assert "gh run list" in step["run"]
+    assert "--workflow oracle-review.yml" in step["run"]
+    assert '.event == "pull_request"' in step["run"]
+    assert '.conclusion == "failure"' in step["run"]
+    assert "env.HEAD_SHA" in step["run"]
+    assert 'gh run rerun "$id" --failed --repo "$REPO"' in step["run"]
+    assert "set -euo pipefail" in step["run"]
 
 
 def test_only_codex_jobs_let_the_sandbox_create_user_namespaces() -> None:

@@ -102,7 +102,7 @@ class TestSnowflakeAdapter:
                 SnowflakeAdapter()
 
     @patch("benchbox.platforms.snowflake.snowflake")
-    def test_get_connection_params(self, mock_snowflake):
+    def test_connect_params(self, mock_snowflake):
         adapter = SnowflakeAdapter(
             account="test_account",
             username="test_user",
@@ -112,17 +112,20 @@ class TestSnowflakeAdapter:
             role="TEST_ROLE",
         )
 
-        params = adapter._get_connection_params()
+        params = adapter._connect_params({}, include_database=False)
 
         assert params["account"] == "test_account"
-        assert params["username"] == "test_user"
+        assert params["user"] == "test_user"
         assert params["password"] == "test_pass"
         assert params["warehouse"] == "TEST_WH"
         assert params["role"] == "TEST_ROLE"
 
-        override_params = adapter._get_connection_params(account="override_account", username="override_user")
+        override_params = adapter._connect_params(
+            {"account": "override_account", "username": "override_user"},
+            include_database=False,
+        )
         assert override_params["account"] == "override_account"
-        assert override_params["username"] == "override_user"
+        assert override_params["user"] == "override_user"
         assert override_params["password"] == "test_pass"
 
     @patch("benchbox.platforms.snowflake.snowflake")
@@ -183,9 +186,6 @@ class TestSnowflakeAdapter:
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_create_admin_connection(self, mock_snowflake):
-        snowflake_connection = pytest.importorskip("snowflake.connector.connection")
-        DEFAULT_CONFIGURATION = snowflake_connection.DEFAULT_CONFIGURATION
-
         mock_connection = Mock()
         mock_snowflake.connector.connect.return_value = mock_connection
 
@@ -204,6 +204,9 @@ class TestSnowflakeAdapter:
         call_kwargs = mock_snowflake.connector.connect.call_args[1]
         assert call_kwargs["user"] == "test_user"
         assert "username" not in call_kwargs
+
+        snowflake_connection = pytest.importorskip("snowflake.connector.connection")
+        DEFAULT_CONFIGURATION = snowflake_connection.DEFAULT_CONFIGURATION
         extra = {"client_session_keep_alive", "login_timeout", "network_timeout"}
         assert set(call_kwargs) - extra <= set(DEFAULT_CONFIGURATION)
 

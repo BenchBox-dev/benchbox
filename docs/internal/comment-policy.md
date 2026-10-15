@@ -105,8 +105,8 @@ checker cannot judge that. Then merge the exception before the code that uses
 it, because CI reads exceptions from the base commit. Remove unused exceptions
 when you review a module.
 
-The one current fixture lets a test run conditions taken from the Makefile, to
-prove a broken gate still runs its guard. It allows no comment text. Changing
+One fixture lets a test run conditions taken from the Makefile, to prove a
+broken gate still runs its guard. It allows no comment text. Changing
 the code that reads it breaks the match. Its syntax-tree digest ignores only
 empty type-parameter lists, so all Python versions agree.
 
@@ -137,15 +137,15 @@ module docstrings are transition debt, not an example.
 
 ## How CI protects the check
 
-The `comment-policy` job runs on every pull request and merge group and feeds
-the required tooling result. Its exit status decides the result; the log is
-for information only. The job stops a pull request from weakening the check
+The `comment-policy` job runs on every pull request and feeds the required
+tooling result. Its exit status decides the result; the log is for information
+only. The job stops a pull request from weakening the check
 that judges it:
 
 - **Fixed base.** The base SHA comes from the GitHub event and cannot be
   overridden. A pull request compares against the first parent of the merge
   commit CI checks out: the target branch tip. Later changes to the target are
-  not charged to it. A merge group uses the event's base.
+  not charged to it.
 - **Trusted code.** The launcher, checker, adapters, and hash-pinned parser
   dependency lists come from the base. CI uses the pull request's checker only
   when the base contains rollout commit

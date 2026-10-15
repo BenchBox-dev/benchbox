@@ -4,7 +4,7 @@ status_context: oracle-verdict
 findings_delivery: review
 bot_login: benchbox-oracle
 brief_max_bytes: 100000
-max_attempts: 4
+max_attempts: 5
 author_label_prefix: "author-family:"
 default_author_family: claude
 tier_labels:
@@ -91,8 +91,7 @@ reviewers:
     timeout_minutes: 20
     turn_cap: null
     allowed_tiers: [low-medium, medium-high]
-    enabled: false
-    disabled_reason: CI authentication and quota output are not yet calibrated, and the workflow has no agy job
+    enabled: true
 tiers:
   low-medium:
     order: [luna, muse, agy, sonnet, sol]

@@ -26,7 +26,7 @@ CALIBRATED_QUOTA_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {
     "muse": (),
 }
 CALIBRATED_AUTH_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {
-    "agy": (),
+    "agy": (re.compile(r"API key not valid\. Please pass a valid API key\."),),
     "claude": (re.compile(r"Failed to authenticate\. API Error: 401[^\"\n]*"),),
     "codex": (re.compile(r"^ERROR: unexpected status 401 Unauthorized", re.MULTILINE),),
     "muse": (re.compile(r"authentication failed: your API key from META_API_KEY was rejected"),),
@@ -74,6 +74,7 @@ _MONTHS = {
 }
 _LONG_TOKEN = re.compile(r"[A-Za-z0-9_\-]{32,}")
 EXCERPT_LIMIT = 300
+REQUIRED_CREDENTIAL = {"agy": "GEMINI_API_KEY"}
 CREDENTIAL_ENV = ("CLAUDE_CODE_OAUTH_TOKEN", "OPENAI_API_KEY", "CODEX_API_KEY", "META_API_KEY", "GEMINI_API_KEY")
 
 

@@ -385,9 +385,90 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  attempt-1-agy:
+    name: attempt 1 (agy ${{ needs.select-1.outputs.reviewer }})
+    needs: [plan, select-1]
+    if: ${{ !cancelled() && needs.select-1.outputs.harness == 'agy' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: oracle
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the trusted develop copy
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.sha }}
+          path: trusted
+          persist-credentials: false
+          sparse-checkout: |
+            .github/oracle-reviewers.yml
+            .github/soundness-paths.txt
+            _project/scripts/oracle_reviewers
+            _project/scripts/soundness_paths.py
+          sparse-checkout-cone-mode: false
+
+      - name: Check out the pull request head for reading only
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ needs.plan.outputs.head_sha }}
+          path: workspace
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Download the plan
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: oracle-verdict-plan
+          path: ${{ runner.temp }}/oracle-plan
+
+      - name: Install agy
+        continue-on-error: true
+        env:
+          AGY_URL: https://storage.googleapis.com/antigravity-public/antigravity-cli/1.3.3-5524738307653632/linux-x64/cli_linux_x64.tar.gz
+          AGY_SHA256: 8ee3ca32574c431285efbf4d4732f7f8d53e959370bc4a61646e4fa496f7f2b6
+        run: |
+          curl -fsSL --proto '=https' --tlsv1.2 "$AGY_URL" -o "$RUNNER_TEMP/agy.tar.gz"
+          echo "$AGY_SHA256  $RUNNER_TEMP/agy.tar.gz" | sha256sum --check --strict
+          mkdir -p "$HOME/.local/bin" "$HOME/.gemini/antigravity-cli"
+          tar -xzf "$RUNNER_TEMP/agy.tar.gz" -C "$RUNNER_TEMP" antigravity
+          install -m 0755 "$RUNNER_TEMP/antigravity" "$HOME/.local/bin/agy"
+          echo '{"modelProvider": "gemini"}' > "$HOME/.gemini/antigravity-cli/settings.json"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "Installed agy $("$HOME/.local/bin/agy" --version)" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Run the reviewer
+        working-directory: trusted
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          AGY_CLI_DISABLE_AUTO_UPDATE: '1'
+          REVIEWER: ${{ needs.select-1.outputs.reviewer }}
+        run: >-
+          python3 -m _project.scripts.oracle_reviewers.cli review --plan "$RUNNER_TEMP/oracle-plan/plan.json" --slot 1 --reviewer "$REVIEWER" --harness agy
+          --workspace "$GITHUB_WORKSPACE/workspace" --scratch "$RUNNER_TEMP/oracle-scratch"
+          --out-dir "$RUNNER_TEMP/oracle-attempt"
+
+      - name: Record an absence if the reviewer did not finish
+        if: always()
+        working-directory: trusted
+        env:
+          REVIEWER: ${{ needs.select-1.outputs.reviewer }}
+        run: >-
+          python3 -m _project.scripts.oracle_reviewers.cli ensure-attempt --plan "$RUNNER_TEMP/oracle-plan/plan.json" --slot 1 --reviewer "$REVIEWER"
+          --out-dir "$RUNNER_TEMP/oracle-attempt"
+
+      - name: Upload the attempt
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: oracle-verdict-attempt-1
+          path: ${{ runner.temp }}/oracle-attempt/attempt-1.json
+          if-no-files-found: error
+          retention-days: 7
+
   select-2:
     name: select 2
-    needs: [plan, select-1, attempt-1-claude, attempt-1-codex, attempt-1-muse]
+    needs: [plan, select-1, attempt-1-claude, attempt-1-codex, attempt-1-muse, attempt-1-agy]
     if: ${{ !cancelled() && needs.plan.outputs.decision == 'review' && needs.select-1.outputs.reviewer != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -662,9 +743,90 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  attempt-2-agy:
+    name: attempt 2 (agy ${{ needs.select-2.outputs.reviewer }})
+    needs: [plan, select-2]
+    if: ${{ !cancelled() && needs.select-2.outputs.harness == 'agy' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: oracle
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the trusted develop copy
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.sha }}
+          path: trusted
+          persist-credentials: false
+          sparse-checkout: |
+            .github/oracle-reviewers.yml
+            .github/soundness-paths.txt
+            _project/scripts/oracle_reviewers
+            _project/scripts/soundness_paths.py
+          sparse-checkout-cone-mode: false
+
+      - name: Check out the pull request head for reading only
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ needs.plan.outputs.head_sha }}
+          path: workspace
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Download the plan
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: oracle-verdict-plan
+          path: ${{ runner.temp }}/oracle-plan
+
+      - name: Install agy
+        continue-on-error: true
+        env:
+          AGY_URL: https://storage.googleapis.com/antigravity-public/antigravity-cli/1.3.3-5524738307653632/linux-x64/cli_linux_x64.tar.gz
+          AGY_SHA256: 8ee3ca32574c431285efbf4d4732f7f8d53e959370bc4a61646e4fa496f7f2b6
+        run: |
+          curl -fsSL --proto '=https' --tlsv1.2 "$AGY_URL" -o "$RUNNER_TEMP/agy.tar.gz"
+          echo "$AGY_SHA256  $RUNNER_TEMP/agy.tar.gz" | sha256sum --check --strict
+          mkdir -p "$HOME/.local/bin" "$HOME/.gemini/antigravity-cli"
+          tar -xzf "$RUNNER_TEMP/agy.tar.gz" -C "$RUNNER_TEMP" antigravity
+          install -m 0755 "$RUNNER_TEMP/antigravity" "$HOME/.local/bin/agy"
+          echo '{"modelProvider": "gemini"}' > "$HOME/.gemini/antigravity-cli/settings.json"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "Installed agy $("$HOME/.local/bin/agy" --version)" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Run the reviewer
+        working-directory: trusted
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          AGY_CLI_DISABLE_AUTO_UPDATE: '1'
+          REVIEWER: ${{ needs.select-2.outputs.reviewer }}
+        run: >-
+          python3 -m _project.scripts.oracle_reviewers.cli review --plan "$RUNNER_TEMP/oracle-plan/plan.json" --slot 2 --reviewer "$REVIEWER" --harness agy
+          --workspace "$GITHUB_WORKSPACE/workspace" --scratch "$RUNNER_TEMP/oracle-scratch"
+          --out-dir "$RUNNER_TEMP/oracle-attempt"
+
+      - name: Record an absence if the reviewer did not finish
+        if: always()
+        working-directory: trusted
+        env:
+          REVIEWER: ${{ needs.select-2.outputs.reviewer }}
+        run: >-
+          python3 -m _project.scripts.oracle_reviewers.cli ensure-attempt --plan "$RUNNER_TEMP/oracle-plan/plan.json" --slot 2 --reviewer "$REVIEWER"
+          --out-dir "$RUNNER_TEMP/oracle-attempt"
+
+      - name: Upload the attempt
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: oracle-verdict-attempt-2
+          path: ${{ runner.temp }}/oracle-attempt/attempt-2.json
+          if-no-files-found: error
+          retention-days: 7
+
   select-3:
     name: select 3
-    needs: [plan, select-2, attempt-2-claude, attempt-2-codex, attempt-2-muse]
+    needs: [plan, select-2, attempt-2-claude, attempt-2-codex, attempt-2-muse, attempt-2-agy]
     if: ${{ !cancelled() && needs.plan.outputs.decision == 'review' && needs.select-2.outputs.reviewer != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -939,9 +1101,90 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  attempt-3-agy:
+    name: attempt 3 (agy ${{ needs.select-3.outputs.reviewer }})
+    needs: [plan, select-3]
+    if: ${{ !cancelled() && needs.select-3.outputs.harness == 'agy' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: oracle
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the trusted develop copy
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.sha }}
+          path: trusted
+          persist-credentials: false
+          sparse-checkout: |
+            .github/oracle-reviewers.yml
+            .github/soundness-paths.txt
+            _project/scripts/oracle_reviewers
+            _project/scripts/soundness_paths.py
+          sparse-checkout-cone-mode: false
+
+      - name: Check out the pull request head for reading only
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ needs.plan.outputs.head_sha }}
+          path: workspace
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Download the plan
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: oracle-verdict-plan
+          path: ${{ runner.temp }}/oracle-plan
+
+      - name: Install agy
+        continue-on-error: true
+        env:
+          AGY_URL: https://storage.googleapis.com/antigravity-public/antigravity-cli/1.3.3-5524738307653632/linux-x64/cli_linux_x64.tar.gz
+          AGY_SHA256: 8ee3ca32574c431285efbf4d4732f7f8d53e959370bc4a61646e4fa496f7f2b6
+        run: |
+          curl -fsSL --proto '=https' --tlsv1.2 "$AGY_URL" -o "$RUNNER_TEMP/agy.tar.gz"
+          echo "$AGY_SHA256  $RUNNER_TEMP/agy.tar.gz" | sha256sum --check --strict
+          mkdir -p "$HOME/.local/bin" "$HOME/.gemini/antigravity-cli"
+          tar -xzf "$RUNNER_TEMP/agy.tar.gz" -C "$RUNNER_TEMP" antigravity
+          install -m 0755 "$RUNNER_TEMP/antigravity" "$HOME/.local/bin/agy"
+          echo '{"modelProvider": "gemini"}' > "$HOME/.gemini/antigravity-cli/settings.json"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "Installed agy $("$HOME/.local/bin/agy" --version)" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Run the reviewer
+        working-directory: trusted
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          AGY_CLI_DISABLE_AUTO_UPDATE: '1'
+          REVIEWER: ${{ needs.select-3.outputs.reviewer }}
+        run: >-
+          python3 -m _project.scripts.oracle_reviewers.cli review --plan "$RUNNER_TEMP/oracle-plan/plan.json" --slot 3 --reviewer "$REVIEWER" --harness agy
+          --workspace "$GITHUB_WORKSPACE/workspace" --scratch "$RUNNER_TEMP/oracle-scratch"
+          --out-dir "$RUNNER_TEMP/oracle-attempt"
+
+      - name: Record an absence if the reviewer did not finish
+        if: always()
+        working-directory: trusted
+        env:
+          REVIEWER: ${{ needs.select-3.outputs.reviewer }}
+        run: >-
+          python3 -m _project.scripts.oracle_reviewers.cli ensure-attempt --plan "$RUNNER_TEMP/oracle-plan/plan.json" --slot 3 --reviewer "$REVIEWER"
+          --out-dir "$RUNNER_TEMP/oracle-attempt"
+
+      - name: Upload the attempt
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: oracle-verdict-attempt-3
+          path: ${{ runner.temp }}/oracle-attempt/attempt-3.json
+          if-no-files-found: error
+          retention-days: 7
+
   select-4:
     name: select 4
-    needs: [plan, select-3, attempt-3-claude, attempt-3-codex, attempt-3-muse]
+    needs: [plan, select-3, attempt-3-claude, attempt-3-codex, attempt-3-muse, attempt-3-agy]
     if: ${{ !cancelled() && needs.plan.outputs.decision == 'review' && needs.select-3.outputs.reviewer != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -1216,6 +1459,445 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  attempt-4-agy:
+    name: attempt 4 (agy ${{ needs.select-4.outputs.reviewer }})
+    needs: [plan, select-4]
+    if: ${{ !cancelled() && needs.select-4.outputs.harness == 'agy' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: oracle
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the trusted develop copy
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.sha }}
+          path: trusted
+          persist-credentials: false
+          sparse-checkout: |
+            .github/oracle-reviewers.yml
+            .github/soundness-paths.txt
+            _project/scripts/oracle_reviewers
+            _project/scripts/soundness_paths.py
+          sparse-checkout-cone-mode: false
+
+      - name: Check out the pull request head for reading only
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ needs.plan.outputs.head_sha }}
+          path: workspace
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Download the plan
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: oracle-verdict-plan
+          path: ${{ runner.temp }}/oracle-plan
+
+      - name: Install agy
+        continue-on-error: true
+        env:
+          AGY_URL: https://storage.googleapis.com/antigravity-public/antigravity-cli/1.3.3-5524738307653632/linux-x64/cli_linux_x64.tar.gz
+          AGY_SHA256: 8ee3ca32574c431285efbf4d4732f7f8d53e959370bc4a61646e4fa496f7f2b6
+        run: |
+          curl -fsSL --proto '=https' --tlsv1.2 "$AGY_URL" -o "$RUNNER_TEMP/agy.tar.gz"
+          echo "$AGY_SHA256  $RUNNER_TEMP/agy.tar.gz" | sha256sum --check --strict
+          mkdir -p "$HOME/.local/bin" "$HOME/.gemini/antigravity-cli"
+          tar -xzf "$RUNNER_TEMP/agy.tar.gz" -C "$RUNNER_TEMP" antigravity
+          install -m 0755 "$RUNNER_TEMP/antigravity" "$HOME/.local/bin/agy"
+          echo '{"modelProvider": "gemini"}' > "$HOME/.gemini/antigravity-cli/settings.json"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "Installed agy $("$HOME/.local/bin/agy" --version)" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Run the reviewer
+        working-directory: trusted
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          AGY_CLI_DISABLE_AUTO_UPDATE: '1'
+          REVIEWER: ${{ needs.select-4.outputs.reviewer }}
+        run: >-
+          python3 -m _project.scripts.oracle_reviewers.cli review --plan "$RUNNER_TEMP/oracle-plan/plan.json" --slot 4 --reviewer "$REVIEWER" --harness agy
+          --workspace "$GITHUB_WORKSPACE/workspace" --scratch "$RUNNER_TEMP/oracle-scratch"
+          --out-dir "$RUNNER_TEMP/oracle-attempt"
+
+      - name: Record an absence if the reviewer did not finish
+        if: always()
+        working-directory: trusted
+        env:
+          REVIEWER: ${{ needs.select-4.outputs.reviewer }}
+        run: >-
+          python3 -m _project.scripts.oracle_reviewers.cli ensure-attempt --plan "$RUNNER_TEMP/oracle-plan/plan.json" --slot 4 --reviewer "$REVIEWER"
+          --out-dir "$RUNNER_TEMP/oracle-attempt"
+
+      - name: Upload the attempt
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: oracle-verdict-attempt-4
+          path: ${{ runner.temp }}/oracle-attempt/attempt-4.json
+          if-no-files-found: error
+          retention-days: 7
+
+  select-5:
+    name: select 5
+    needs: [plan, select-4, attempt-4-claude, attempt-4-codex, attempt-4-muse, attempt-4-agy]
+    if: ${{ !cancelled() && needs.plan.outputs.decision == 'review' && needs.select-4.outputs.reviewer != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      reviewer: ${{ steps.select.outputs.reviewer }}
+      harness: ${{ steps.select.outputs.harness }}
+    steps:
+      - name: Check out the trusted develop copy
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          sparse-checkout: |
+            .github/oracle-reviewers.yml
+            .github/soundness-paths.txt
+            _project/scripts/oracle_reviewers
+            _project/scripts/soundness_paths.py
+          sparse-checkout-cone-mode: false
+
+      - name: Download the plan
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: oracle-verdict-plan
+          path: ${{ runner.temp }}/oracle-plan
+
+      - name: Download this run's attempts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          pattern: oracle-verdict-attempt-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/oracle-attempts
+
+      - name: Select the reviewer for attempt 5
+        id: select
+        run: python3 -m _project.scripts.oracle_reviewers.cli select --plan "$RUNNER_TEMP/oracle-plan/plan.json" --attempts-dir "$RUNNER_TEMP/oracle-attempts" --slot 5
+
+  attempt-5-claude:
+    name: attempt 5 (claude ${{ needs.select-5.outputs.reviewer }})
+    needs: [plan, select-5]
+    if: ${{ !cancelled() && needs.select-5.outputs.harness == 'claude' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: oracle
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the trusted develop copy
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.sha }}
+          path: trusted
+          persist-credentials: false
+          sparse-checkout: |
+            .github/oracle-reviewers.yml
+            .github/soundness-paths.txt
+            _project/scripts/oracle_reviewers
+            _project/scripts/soundness_paths.py
+          sparse-checkout-cone-mode: false
+
+      - name: Check out the pull request head for reading only
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ needs.plan.outputs.head_sha }}
+          path: workspace
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Download the plan
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: oracle-verdict-plan
+          path: ${{ runner.temp }}/oracle-plan
+
+      - name: Set up Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - name: Install Claude Code
+        continue-on-error: true
+        run: npm install --global @anthropic-ai/claude-code@2.1.289
+
+      - name: Run the reviewer
+        working-directory: trusted
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          REVIEWER: ${{ needs.select-5.outputs.reviewer }}
+        run: >-
+          python3 -m _project.scripts.oracle_reviewers.cli review --plan "$RUNNER_TEMP/oracle-plan/plan.json" --slot 5 --reviewer "$REVIEWER" --harness claude
+          --workspace "$GITHUB_WORKSPACE/workspace" --scratch "$RUNNER_TEMP/oracle-scratch"
+          --out-dir "$RUNNER_TEMP/oracle-attempt"
+
+      - name: Record an absence if the reviewer did not finish
+        if: always()
+        working-directory: trusted
+        env:
+          REVIEWER: ${{ needs.select-5.outputs.reviewer }}
+        run: >-
+          python3 -m _project.scripts.oracle_reviewers.cli ensure-attempt --plan "$RUNNER_TEMP/oracle-plan/plan.json" --slot 5 --reviewer "$REVIEWER"
+          --out-dir "$RUNNER_TEMP/oracle-attempt"
+
+      - name: Upload the attempt
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: oracle-verdict-attempt-5
+          path: ${{ runner.temp }}/oracle-attempt/attempt-5.json
+          if-no-files-found: error
+          retention-days: 7
+
+  attempt-5-codex:
+    name: attempt 5 (codex ${{ needs.select-5.outputs.reviewer }})
+    needs: [plan, select-5]
+    if: ${{ !cancelled() && needs.select-5.outputs.harness == 'codex' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: oracle
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the trusted develop copy
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.sha }}
+          path: trusted
+          persist-credentials: false
+          sparse-checkout: |
+            .github/oracle-reviewers.yml
+            .github/soundness-paths.txt
+            _project/scripts/oracle_reviewers
+            _project/scripts/soundness_paths.py
+          sparse-checkout-cone-mode: false
+
+      - name: Check out the pull request head for reading only
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ needs.plan.outputs.head_sha }}
+          path: workspace
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Download the plan
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: oracle-verdict-plan
+          path: ${{ runner.temp }}/oracle-plan
+
+      - name: Set up Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - name: Install Codex
+        continue-on-error: true
+        run: npm install --global @openai/codex@0.160.0
+
+      - name: Let the Codex sandbox create user namespaces
+        continue-on-error: true
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+      - name: Log in to Codex with the API key
+        continue-on-error: true
+        env:
+          CODEX_HOME: ${{ runner.temp }}/codex-home
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          mkdir -p "$CODEX_HOME"
+          printenv OPENAI_API_KEY | codex login --with-api-key
+
+      - name: Run the reviewer
+        working-directory: trusted
+        env:
+          CODEX_HOME: ${{ runner.temp }}/codex-home
+          REVIEWER: ${{ needs.select-5.outputs.reviewer }}
+        run: >-
+          python3 -m _project.scripts.oracle_reviewers.cli review --plan "$RUNNER_TEMP/oracle-plan/plan.json" --slot 5 --reviewer "$REVIEWER" --harness codex
+          --workspace "$GITHUB_WORKSPACE/workspace" --scratch "$RUNNER_TEMP/oracle-scratch"
+          --out-dir "$RUNNER_TEMP/oracle-attempt"
+
+      - name: Record an absence if the reviewer did not finish
+        if: always()
+        working-directory: trusted
+        env:
+          REVIEWER: ${{ needs.select-5.outputs.reviewer }}
+        run: >-
+          python3 -m _project.scripts.oracle_reviewers.cli ensure-attempt --plan "$RUNNER_TEMP/oracle-plan/plan.json" --slot 5 --reviewer "$REVIEWER"
+          --out-dir "$RUNNER_TEMP/oracle-attempt"
+
+      - name: Upload the attempt
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: oracle-verdict-attempt-5
+          path: ${{ runner.temp }}/oracle-attempt/attempt-5.json
+          if-no-files-found: error
+          retention-days: 7
+
+  attempt-5-muse:
+    name: attempt 5 (muse ${{ needs.select-5.outputs.reviewer }})
+    needs: [plan, select-5]
+    if: ${{ !cancelled() && needs.select-5.outputs.harness == 'muse' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: oracle
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the trusted develop copy
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.sha }}
+          path: trusted
+          persist-credentials: false
+          sparse-checkout: |
+            .github/oracle-reviewers.yml
+            .github/soundness-paths.txt
+            _project/scripts/oracle_reviewers
+            _project/scripts/soundness_paths.py
+          sparse-checkout-cone-mode: false
+
+      - name: Check out the pull request head for reading only
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ needs.plan.outputs.head_sha }}
+          path: workspace
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Download the plan
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: oracle-verdict-plan
+          path: ${{ runner.temp }}/oracle-plan
+
+      - name: Install muse
+        continue-on-error: true
+        run: |
+          curl -fsSL --proto '=https' --tlsv1.2 https://dev.meta.ai/install.sh -o "$RUNNER_TEMP/muse-install.sh"
+          bash "$RUNNER_TEMP/muse-install.sh"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "Installed $("$HOME/.local/bin/muse" --version)" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Run the reviewer
+        working-directory: trusted
+        env:
+          META_API_KEY: ${{ secrets.META_API_KEY }}
+          REVIEWER: ${{ needs.select-5.outputs.reviewer }}
+        run: >-
+          python3 -m _project.scripts.oracle_reviewers.cli review --plan "$RUNNER_TEMP/oracle-plan/plan.json" --slot 5 --reviewer "$REVIEWER" --harness muse
+          --workspace "$GITHUB_WORKSPACE/workspace" --scratch "$RUNNER_TEMP/oracle-scratch"
+          --out-dir "$RUNNER_TEMP/oracle-attempt"
+
+      - name: Record an absence if the reviewer did not finish
+        if: always()
+        working-directory: trusted
+        env:
+          REVIEWER: ${{ needs.select-5.outputs.reviewer }}
+        run: >-
+          python3 -m _project.scripts.oracle_reviewers.cli ensure-attempt --plan "$RUNNER_TEMP/oracle-plan/plan.json" --slot 5 --reviewer "$REVIEWER"
+          --out-dir "$RUNNER_TEMP/oracle-attempt"
+
+      - name: Upload the attempt
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: oracle-verdict-attempt-5
+          path: ${{ runner.temp }}/oracle-attempt/attempt-5.json
+          if-no-files-found: error
+          retention-days: 7
+
+  attempt-5-agy:
+    name: attempt 5 (agy ${{ needs.select-5.outputs.reviewer }})
+    needs: [plan, select-5]
+    if: ${{ !cancelled() && needs.select-5.outputs.harness == 'agy' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: oracle
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the trusted develop copy
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.sha }}
+          path: trusted
+          persist-credentials: false
+          sparse-checkout: |
+            .github/oracle-reviewers.yml
+            .github/soundness-paths.txt
+            _project/scripts/oracle_reviewers
+            _project/scripts/soundness_paths.py
+          sparse-checkout-cone-mode: false
+
+      - name: Check out the pull request head for reading only
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ needs.plan.outputs.head_sha }}
+          path: workspace
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Download the plan
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: oracle-verdict-plan
+          path: ${{ runner.temp }}/oracle-plan
+
+      - name: Install agy
+        continue-on-error: true
+        env:
+          AGY_URL: https://storage.googleapis.com/antigravity-public/antigravity-cli/1.3.3-5524738307653632/linux-x64/cli_linux_x64.tar.gz
+          AGY_SHA256: 8ee3ca32574c431285efbf4d4732f7f8d53e959370bc4a61646e4fa496f7f2b6
+        run: |
+          curl -fsSL --proto '=https' --tlsv1.2 "$AGY_URL" -o "$RUNNER_TEMP/agy.tar.gz"
+          echo "$AGY_SHA256  $RUNNER_TEMP/agy.tar.gz" | sha256sum --check --strict
+          mkdir -p "$HOME/.local/bin" "$HOME/.gemini/antigravity-cli"
+          tar -xzf "$RUNNER_TEMP/agy.tar.gz" -C "$RUNNER_TEMP" antigravity
+          install -m 0755 "$RUNNER_TEMP/antigravity" "$HOME/.local/bin/agy"
+          echo '{"modelProvider": "gemini"}' > "$HOME/.gemini/antigravity-cli/settings.json"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "Installed agy $("$HOME/.local/bin/agy" --version)" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Run the reviewer
+        working-directory: trusted
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          AGY_CLI_DISABLE_AUTO_UPDATE: '1'
+          REVIEWER: ${{ needs.select-5.outputs.reviewer }}
+        run: >-
+          python3 -m _project.scripts.oracle_reviewers.cli review --plan "$RUNNER_TEMP/oracle-plan/plan.json" --slot 5 --reviewer "$REVIEWER" --harness agy
+          --workspace "$GITHUB_WORKSPACE/workspace" --scratch "$RUNNER_TEMP/oracle-scratch"
+          --out-dir "$RUNNER_TEMP/oracle-attempt"
+
+      - name: Record an absence if the reviewer did not finish
+        if: always()
+        working-directory: trusted
+        env:
+          REVIEWER: ${{ needs.select-5.outputs.reviewer }}
+        run: >-
+          python3 -m _project.scripts.oracle_reviewers.cli ensure-attempt --plan "$RUNNER_TEMP/oracle-plan/plan.json" --slot 5 --reviewer "$REVIEWER"
+          --out-dir "$RUNNER_TEMP/oracle-attempt"
+
+      - name: Upload the attempt
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: oracle-verdict-attempt-5
+          path: ${{ runner.temp }}/oracle-attempt/attempt-5.json
+          if-no-files-found: error
+          retention-days: 7
+
   post:
     name: post
     needs:
@@ -1224,23 +1906,33 @@ jobs:
       - select-2
       - select-3
       - select-4
+      - select-5
       - attempt-1-claude
       - attempt-1-codex
       - attempt-1-muse
+      - attempt-1-agy
       - attempt-2-claude
       - attempt-2-codex
       - attempt-2-muse
+      - attempt-2-agy
       - attempt-3-claude
       - attempt-3-codex
       - attempt-3-muse
+      - attempt-3-agy
       - attempt-4-claude
       - attempt-4-codex
       - attempt-4-muse
+      - attempt-4-agy
+      - attempt-5-claude
+      - attempt-5-codex
+      - attempt-5-muse
+      - attempt-5-agy
     if: ${{ !cancelled() && needs.plan.result == 'success' && needs.plan.outputs.post == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: oracle
     permissions:
+      actions: write
       contents: read
     env:
       HAS_APP: ${{ secrets.ORACLE_APP_ID != '' && secrets.ORACLE_APP_PRIVATE_KEY != '' }}
@@ -1330,3 +2022,14 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
         run: gh api --method POST "repos/$REPO/pulls/$PR_NUMBER/reviews" --input "$RUNNER_TEMP/oracle-final/review.json"
+
+      - name: Rerun the failed synchronize suite for this head
+        if: env.HAS_APP == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          IDS="$(gh run list --repo "$REPO" --workflow oracle-review.yml --limit 100 --json databaseId,headSha,event,conclusion --jq '[.[] | select(.headSha == env.HEAD_SHA and .event == "pull_request" and .conclusion == "failure") | .databaseId] | join(" ")')"
+          for id in $IDS; do
+            gh run rerun "$id" --failed --repo "$REPO"
+          done
