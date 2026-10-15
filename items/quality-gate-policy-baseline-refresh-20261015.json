@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Every figure in the baseline table is re-measured at one named commit",
+    "The 'Measured:' header names the new date and commit",
+    "Tests that read the doc pass"
+  ],
+  "context": "Re-measure the whole table in one pass, then update the \"Measured:\" header and baseline commit. Keep the strings that tests read unchanged: \"70 is the blocking CI floor\" and \"intentionally advisory\". Run `tests/system/test_ci_lint_parity.py` afterwards.",
+  "description": "`docs/internal/quality-gate-policy.md` records a baseline measured on 2026-08-08 (quality baseline `d649c027f0`). Several figures have drifted:\n\n| Figure | Doc | Now |\n|---|---|---|\n| Global Ruff rule ignores | 34 | 36 |\n| Tracked Python files in `_project` | 62 | 116 |\n| Ruff discovery exclusions | 8 | 8 |\n\nThe doc labels these figures with their measurement date, so they are not wrong, but readers may take them as current.",
+  "links": [
+    "docs/internal/quality-gate-policy.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:00516a6384fc19784260646d",
+      "at": "2026-10-15T12:22:21Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "dffe92390fa5478590a12c260a822a09",
+      "session_id": "1bbb7e6116f84849933bd91a3804c2c6"
+    }
+  ]
+}

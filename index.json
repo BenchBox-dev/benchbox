@@ -16829,6 +16829,13 @@
       "status": "dropped",
       "title": "Align complexity, typing, duplication, and lint gates with actual policy"
     },
+    "quality-gate-policy-baseline-refresh-20261015": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Re-measure the quality-gate policy baseline (last measured 2026-08-08)"
+    },
     "quality-make-timing-policy-ci-gate": {
       "claim": null,
       "needs": [],
