@@ -49,6 +49,15 @@
       "op_id": "f8f4da2ba3e24b0c88bd04eb4ed6870d",
       "reason": "The holder took this claim during interrupted Muse session 01a1375a-37e2-7b11-ad14-55328c9f21c8; its transcript records clean exit at 2026-10-15T00:05:09Z. No live repository writer remains.",
       "session_id": "a4547e3a2da34101955f1470631f44f0"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:122820e0d0649bb1515cedf7",
+      "at": "2026-10-15T01:37:05Z",
+      "client": "codex-mcp-client",
+      "generation": "ba7e46fb7e734771890864c763359e6d",
+      "op": "take",
+      "op_id": "d0b8ed43ba9f4ea8a1d9ee1734cc5e74",
+      "session_id": "a4547e3a2da34101955f1470631f44f0"
     }
   ]
 }
