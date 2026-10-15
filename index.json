@@ -4523,15 +4523,10 @@
       "title": "Remove comments and docstrings from Write primitives modules"
     },
     "comment-policy-digest-and-base-exception-catch22-20261008": {
-      "claim": {
-        "expires_at": "2026-10-16T01:37:05Z",
-        "generation": "ba7e46fb7e734771890864c763359e6d",
-        "renewals": 1,
-        "worker": "mcp:codex-mcp-client:joe@joe-mac-mini.local:122820e0d0649bb1515cedf7"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Comment-policy exceptions, digest-keyed fixtures and pinned external notices are read only from the base, so any edit needs a second PR"
     },
     "comment-policy-fixture-exception-wording-cleanup": {
