@@ -32,6 +32,17 @@
       "op": "update",
       "op_id": "1545c46599974694a83783296c50f99c",
       "session_id": "63fb16e6ece34adb91d17cdd1e1f2310"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:1f8c5d7706213cbfec63db59",
+      "at": "2026-10-15T03:20:46Z",
+      "client": "codex-mcp-client",
+      "displaced": "mcp:tbh:joe@joe-mac-mini.local:2ddfad0386e20e3a0ffba40a",
+      "generation": "fa5adbd0d9334f41877b89a11cab449b",
+      "op": "takeover",
+      "op_id": "77f2b328a0de440bbe0c396faf9b5dd8",
+      "reason": "Inspected the holder session 63fb16e6ece34adb91d17cdd1e1f2310; it ended 2026-10-14 23:26Z, while its claim remained live. The interrupted batch assigns this item to the current takeover.",
+      "session_id": "22bf838e3a6d4061858731420b5ff0f7"
     }
   ]
 }
