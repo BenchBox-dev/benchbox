@@ -11,6 +11,7 @@ import stat
 import subprocess
 import sys
 import tokenize
+import zipfile
 from collections import Counter
 from dataclasses import asdict
 from datetime import date
@@ -98,6 +99,87 @@ def check_ratchet(policy: dict, baseline: dict) -> None:
         if matched_base and not any(b in policy["external"] for b in matched_base):
             continue
         raise ValueError("candidate policy cannot add or expand external exclusions")
+
+
+def revision_bytes(root: Path, path: str, staged: bool) -> bytes | None:
+    try:
+        return git(root, "show", f":{path}") if staged else (root / path).read_bytes()
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
+def _wheel_metadata(wheel: bytes) -> dict[str, str]:
+    with zipfile.ZipFile(io.BytesIO(wheel)) as archive:
+        names = [name for name in archive.namelist() if re.fullmatch(r"[^/]+\.dist-info/METADATA", name)]
+        if len(names) != 1:
+            raise ValueError("wheel must carry exactly one dist-info METADATA file")
+        lines = archive.read(names[0]).decode("utf-8", errors="replace").splitlines()
+    fields: dict[str, str] = {}
+    for line in lines:
+        if not line.strip():
+            break
+        key, _, value = line.partition(":")
+        fields.setdefault(key.strip(), value.strip())
+    return fields
+
+
+def _normalized_name(value: str) -> str:
+    return re.sub(r"[-_.]+", "-", value).lower()
+
+
+def _declares(requirement: str, owner: str) -> bool:
+    match = re.match(r"[A-Za-z0-9][A-Za-z0-9._-]*", requirement)
+    return match is not None and _normalized_name(match.group()) == _normalized_name(owner)
+
+
+def verify_bound_wheel(root: Path, entry: dict, staged: bool) -> None:
+    import tomllib
+
+    path, project_path, owner = entry["path"], entry["provenance"], entry["owner"]
+    label = f"wheel bump is not verified: {path}"
+    if not project_path.endswith("/pyproject.toml"):
+        raise ValueError(f"{label}: provenance must be the owning pyproject.toml")
+    lock_path = str(PurePosixPath(project_path).with_name("uv.lock"))
+    wheel = revision_bytes(root, path, staged)
+    project_raw = revision_bytes(root, project_path, staged)
+    lock_raw = revision_bytes(root, lock_path, staged)
+    if wheel is None or project_raw is None or lock_raw is None:
+        raise ValueError(f"{label}: wheel, pyproject.toml or uv.lock is missing")
+    try:
+        project = tomllib.loads(project_raw.decode("utf-8"))
+        locked = tomllib.loads(lock_raw.decode("utf-8"))
+        metadata = _wheel_metadata(wheel)
+    except (UnicodeError, tomllib.TOMLDecodeError, zipfile.BadZipFile, ValueError) as exc:
+        raise ValueError(f"{label}: {exc}") from exc
+    source = str(PurePosixPath(path).relative_to(PurePosixPath(project_path).parent))
+    binding = project.get("tool", {}).get("uv", {}).get("sources", {}).get(owner)
+    if binding != {"path": source}:
+        raise ValueError(f"{label}: pyproject.toml does not bind {owner} to it")
+    dependencies = project.get("project", {}).get("dependencies", [])
+    if not any(_declares(dependency, owner) for dependency in dependencies):
+        raise ValueError(f"{label}: {owner} is not a declared dependency")
+    packages = [package for package in locked.get("package", []) if package.get("name") == owner]
+    filename = PurePosixPath(path).name
+    version = filename.split("-")[1] if filename.count("-") >= 2 else ""
+    digest = "sha256:" + hashlib.sha256(wheel).hexdigest()
+    if (
+        len(packages) != 1
+        or packages[0].get("source") != binding
+        or packages[0].get("wheels") != [{"filename": filename, "hash": digest}]
+    ):
+        raise ValueError(f"{label}: uv.lock does not record this file and hash")
+    if _normalized_name(metadata.get("Name", "")) != _normalized_name(owner) or metadata.get("Version") != version:
+        raise ValueError(f"{label}: wheel METADATA does not match {owner} {version}")
+    if packages[0].get("version") != version:
+        raise ValueError(f"{label}: uv.lock version does not match the wheel")
+
+
+def verify_wheel_bumps(root: Path, policy: dict, baseline: dict, staged: bool) -> None:
+    for entry in policy["external"]:
+        if entry in baseline["external"]:
+            continue
+        if any(_is_wheel_bump(entry, b) for b in baseline["external"]):
+            verify_bound_wheel(root, entry, staged)
 
 
 def bootstrap_base_allowed(root: Path, base: str) -> bool:
@@ -192,12 +274,38 @@ def native_results(root: Path, requests: dict[str, str]) -> dict[str, list[dict]
     return results
 
 
-def ownership_base(mode: str, comparison: str | None, requested: str | None) -> str | None:
+def develop_merge_base(root: Path) -> str | None:
+    try:
+        return git(root, "merge-base", "HEAD", "origin/develop").decode().strip()
+    except subprocess.CalledProcessError:
+        return None
+
+
+def ownership_base(root: Path, mode: str, comparison: str | None, requested: str | None) -> str | None:
     if mode == "transition":
         if requested and requested != comparison:
             raise ValueError("transition ownership base must match the comparison base")
         return comparison
-    return requested
+    anchor = develop_merge_base(root)
+    if requested:
+        if anchor is None:
+            raise ValueError("an explicit ownership base needs origin/develop to be anchored to its history")
+        if (
+            subprocess.run(
+                ["git", "-C", str(root), "merge-base", "--is-ancestor", requested, anchor], capture_output=True
+            ).returncode
+            != 0
+        ):
+            raise ValueError("ownership base must be an ancestor of the merge-base with origin/develop")
+        return requested
+    if mode == "strict":
+        if anchor is None:
+            raise ValueError(
+                "strict mode derives its ownership base from the merge-base with origin/develop, "
+                "which is unavailable; fetch origin/develop or pass --ownership-base"
+            )
+        return anchor
+    return None
 
 
 def ownership_exclusions(root: Path, base: str | None, staged: bool) -> set[str] | None:
@@ -301,14 +409,24 @@ def source_paths(root: Path, staged: bool) -> list[str]:
     return paths
 
 
-def validate_consumers(root: Path, policy: dict) -> None:
+def path_present(root: Path, path: str, staged: bool) -> bool:
+    if staged:
+        return (
+            subprocess.run(["git", "-C", str(root), "cat-file", "-e", f":{path}"], capture_output=True).returncode == 0
+        )
+    return (root / path).is_file()
+
+
+def validate_consumers(root: Path, policy: dict, staged: bool = False) -> None:
     for entry in policy["exceptions"]:
-        if not (root / entry["consumer"]).is_file():
+        if not path_present(root, entry["consumer"], staged):
             raise ValueError(f"exception consumer missing: {entry['consumer']}")
     for entry in policy["external"]:
         validate_path(entry["provenance"])
-        if not (root / entry["provenance"]).is_file():
+        if not path_present(root, entry["provenance"], staged):
             raise ValueError(f"external provenance missing: {entry['provenance']}")
+        if entry["path"].endswith(".whl") and not path_present(root, entry["path"], staged):
+            raise ValueError(f"external wheel missing: {entry['path']}")
 
 
 def plain_text(value: str) -> str:
@@ -364,12 +482,13 @@ def main(argv: list[str] | None = None) -> int:
             raise ValueError("base must be a full commit SHA")
         if args.bootstrap and (args.mode != "transition" or not bootstrap_base_allowed(root, args.base or "")):
             raise ValueError("bootstrap requires a base that contains the initial rollout commit")
-        owner_base = ownership_base(args.mode, args.base, args.ownership_base)
+        owner_base = ownership_base(root, args.mode, args.base, args.ownership_base)
         owned_exclusions = ownership_exclusions(root, owner_base, args.staged)
         baseline_policy = policy
         if args.base and not args.bootstrap:
             baseline_policy = load_policy(git(root, "show", f"{args.base}:{POLICY_PATH}"))
             check_ratchet(policy, baseline_policy)
+            verify_wheel_bumps(root, policy, baseline_policy, args.staged)
         paths = source_paths(root, args.staged)
         if not paths:
             raise ValueError("empty source inventory")
@@ -405,7 +524,7 @@ def main(argv: list[str] | None = None) -> int:
             for path in paths
             if args.staged or (root / path).is_file()
         }
-        validate_consumers(root, policy)
+        validate_consumers(root, policy, args.staged)
         effective_policy = {
             **policy,
             "exceptions": [e for e in policy["exceptions"] if e in baseline_policy["exceptions"]],
