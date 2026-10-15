@@ -24213,15 +24213,10 @@
       "title": "Tuning receipts count harness session statements and unrendered settings as applied tuning"
     },
     "tuning-record-genuine-engine-versions": {
-      "claim": {
-        "expires_at": "2026-10-16T02:45:56Z",
-        "generation": "8bd6a3c799624a57b528ecfe11f3f57f",
-        "renewals": 0,
-        "worker": "mcp:codex-mcp-client:joe@joe-mac-mini.local:bee9f454654b0d0ee4fa97f5"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Record genuine engine_version metadata for local runs so measured template evidence is reachable"
     },
     "tuning-registry-mixin-honesty-20260717": {
