@@ -1,12 +1,12 @@
 {
   "acceptance": [
-    "Each of tpch/polars-df sf0.01, tpch/polars-df sf0.1 and tpch/datafusion sf1.0 has a recorded decision (fix, remove, or keep with a reason); the datafusion failure cause is confirmed from the job log",
-    "If a cell is removed: a workflow test beside tests/unit/workflows/test_seed_corpus_pr_base.py asserts the matrix no longer lists it",
-    "If a cell is kept as expected-ineligible: a test shows a fixture bundle with summary.validation uncertain is not staged into the seed PR",
-    "The next Seed Corpus run needs no manual bundle drops, or the remaining drops are listed in the PR body by the workflow"
+    "The original 18 seed-corpus matrix cells are present, and results-data/SEED_CORPUS_SPEC.md matches its pre-PR #2971 contents.",
+    "Uncertain result bundles, including validation uncertainty derived from translation fallback, are not copied to results-data or uploaded as artifacts.",
+    "Workflow tests cover explicit uncertainty, derived translation uncertainty, clean bundle staging, and plan/tuning companions.",
+    "The corrective change is merged with exact-head required checks and review evidence recorded here."
   ],
-  "context": "Raised by the 2026-10-13 adversarial review (handoff revision 9, blind spots). Evidence: run 38331461283 job list shows tpch / datafusion / sf1.0 failure; PR #2930 commit a341576e3 \"drop run-3093 bundles with mirror-ineligible validation\"; precedent for dropping uncertain bundles is #2494. Low priority; does not block the pipeline fix. DECISIONS 2026-10-14 (all three cells removed from the seed-corpus.yml matrix, 18 to 15 cells; nothing committable lost since none ever produced a committable bundle): (1) tpch/polars-df sf0.01 — remove: structural SQL-translation fallback keeps validation permanently uncertain, so bundles are always mirror-ineligible and hand-dropped. (2) tpch/polars-df sf0.1 — remove, same cause. (3) tpch/datafusion sf1.0 — remove: deterministic engine failure confirmed from the job log (TPC-H Q18 exhausts DataFusion's 12 GB fair memory pool in ~0.1s on warm-up and all 3 measurement runs: \"Failed to allocate additional 44.3 MB ... with 2.9 GB already allocated ... 26.3 MB remain available\"); raising the pool is platform work for a follow-up, re-add the cell with it if wanted. Tests: rewrote test_supported_matrix_has_three_local_identities_per_cohort as test_supported_matrix_platforms_per_cohort with exact per-cohort platform sets, and added test_ineligible_seed_cells_are_absent_from_the_matrix asserting the three cells are gone. No verification Seed run dispatched: run 3093 showed every remaining cell succeeding with committable-or-identical bundles, so the next scheduled run needs no manual drops by construction.",
-  "description": "In Seed Corpus run 38331461283 both tpch/polars-df bundles validated uncertain (structural translation fallback) and were dropped from PR #2930 by hand, and tpch/datafusion/sf1.0 failed on the runner (reported as an out-of-memory failure at Q18; not independently checked). The matrix will keep producing the same output, so each seed PR needs the same manual cleanup.\n\nDecide per cell: fix the cause, mark it expected-ineligible so its bundle is not committed, or remove it from the matrix.",
+  "context": "Review evidence: Seed Corpus run 38331461283 showed tpch/polars-df at SF0.01 and SF0.1 validating uncertain; PR #2930 dropped those bundles manually. The same run showed tpch/datafusion/SF1.0 failing from DataFusion's 12 GB fair memory pool exhaustion at TPC-H Q18.\n\nOwner decision, 2026-10-14 review session (D1): keep all 18 matrix cells and SEED_CORPUS_SPEC.md unchanged; add a test that the seed workflow never stages an uncertain bundle. PR #2971 nevertheless merged as b2096f60347073ba3af95469368a9ed438fae381 and removed three cells plus changed the spec. The corrective follow-up restores the pre-#2971 matrix and spec and gates staging through results-data/validate_corpus.py's bundle_validation_status. DataFusion SF1.0 remains in the matrix; its existing engine failure remains visible as a failed job.\n\nTAKEOVER progress: branch fix/seed-uncertain-bundles, worktree /Users/joe/Developer/BenchBox.wt-seed-uncertain-bundles. The implementation adds scripts/stage_seed_corpus_bundle.py, conditions artifact upload on its eligible output, and updates tests/unit/workflows/test_seed_corpus_pr_base.py. The spec is byte-identical to b2096f6^ and the matrix test verifies 18 unique cells. Focused suite: 12 passed. make pr-preflight passed on base 3d06ffb2b. Comment-policy check passed on earlier base 53f0fc7af; the staged commit hook is still running on current base before a commit exists. PR and exact-head CI evidence will be added after publication.",
+  "description": "Keep the full 18-cell seed matrix and its specification unchanged while preventing uncertain bundles from being staged for seed PRs.",
   "sessions": [
     {
       "actor": "mcp:claude-code:joe@joe-mac-mini.local:812b6e01fb0a3c7a08e17bfb",
@@ -51,6 +51,14 @@
       "generation": "91431c5e757548c692a9a575da8e79f9",
       "op": "take",
       "op_id": "f8e78ba0d87743d6804a6b5d0b845c3b",
+      "session_id": "22bf838e3a6d4061858731420b5ff0f7"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:1f8c5d7706213cbfec63db59",
+      "at": "2026-10-15T03:35:46Z",
+      "client": "codex-mcp-client",
+      "op": "update",
+      "op_id": "080f3678365f457bb6a416517b886690",
       "session_id": "22bf838e3a6d4061858731420b5ff0f7"
     }
   ]
