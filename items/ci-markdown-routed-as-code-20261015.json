@@ -1,0 +1,28 @@
+{
+  "acceptance": [
+    "A change to only `README.md`, `CHANGELOG.md`, or a `docs/agent/` page that no test reads sets `code_tests_needed=false`",
+    "A change to a markdown file that a test reads (for example `docs/agent/review-protocol.md` or `AGENTS.md`) still runs the tests that read it",
+    "`.github/path-filters.yml` and `.github/ci-units.yml` agree on which markdown counts as code",
+    "A unit test pins the routing for the paths in the table above",
+    "A guard or test fails when a test starts reading a markdown file that the unit map does not route to code"
+  ],
+  "context": "Found when a markdown-only docs PR touching `docs/agent/attribution-surfaces.md` ran the full fast suite, and the run was cancelled at the 45-minute job timeout. Reproduce with `uv run python -c \"import sys; sys.path.insert(0,'scripts'); import ci_units as c; r=c.load_unit_rules(c.DEFAULT_RULES); print(c.classify_units(['README.md'], r))\"`.\n\nOptions:\n1. Replace folder globs with the specific test-input files, and add a test that fails when a test reads a markdown file the unit map does not route to code.\n2. Route markdown that tests read to a narrow job that runs only those tests, not the full fast suite.\n\nThe `tooling` unit also needs a separate decision on whether `*.md`, `_blog/**` and `_project/**` should count toward `code_tests_needed`.\n\nBoth rule files and `ci.yml` are soundness-sensitive, so the change needs an oracle review.",
+  "description": "A pull request that changes only markdown can run the `lint` and `test (ubuntu-latest, 3.12)` jobs: the full fast suite, which has a 45-minute timeout. The two path classifiers in `ci.yml` disagree about markdown.\n\n**Path filters** (`.github/path-filters.yml`, read by `scripts/path_filter_decision.py`) list `docs/agent/**` (line 64), `docs/*/dependency-audit-raw.md` and `docs/*/agent-instruction*.md` as code. Root `*.md`, `_blog/**` and the `_project` notes folders are safe content.\n\n**Unit map** (`.github/ci-units.yml`, read by `scripts/ci_units.py`) puts the same `docs/agent/**` and named markdown files in `core` (lines 35-39). It also puts root `*.md` (line 100), `_blog/**` and `_project/**` in `tooling`. `ci_units.py` sets `code_tests_needed = core or tooling`, and that output gates both `code-lint` and `code-test`.\n\nWhat `classify_units` returns for single-file changes:\n\n| Changed file | Units | code_tests_needed |\n|---|---|---|\n| `README.md`, `AGENTS.md`, `CHANGELOG.md` | tooling | true |\n| `_blog/x.md`, `_project/notes/x.md` | tooling | true |\n| `docs/agent/attribution-surfaces.md` | core, docs | true |\n| `docs/internal/comment-policy.md` | docs | false |\n\nSo a typo fix in `README.md`, or in any `docs/agent/` page, runs the whole Python suite. Path filters already call root markdown safe content.\n\nWhy the rules exist: some tests read files in `docs/agent/` as inputs. `test_agent_instruction_audit.py` and `test_blind_spot_tools.py` read `review-protocol.md`, `test_pr_refresh_certification.py` reads `identity-instruction-boundary.md`, and `test_todo_review_own_edit_freshness.py` reads `todo-review.md`. `AGENTS.md` and `CLAUDE.md` feed the agent-instruction audit. The folder-wide globs were copied into `core` when the six-unit map replaced the old path filters (`c7bcdb9bc`, \"report six unit results from one workflow\"). Most `docs/agent/` pages, such as `attribution-surfaces.md` and `audit-evidence-provenance.md`, are not test inputs.",
+  "links": [
+    ".github/ci-units.yml",
+    ".github/path-filters.yml",
+    "scripts/ci_units.py",
+    "scripts/path_filter_decision.py",
+    ".github/workflows/ci.yml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:00516a6384fc19784260646d",
+      "at": "2026-10-15T12:22:02Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "76dbcfaca476401bb6c20946df013716",
+      "session_id": "1bbb7e6116f84849933bd91a3804c2c6"
+    }
+  ]
+}

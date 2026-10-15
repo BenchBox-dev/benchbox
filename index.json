@@ -2609,6 +2609,13 @@
       "status": "done",
       "title": "Close three local/CI parity gaps beyond WS3/WS5: Make inventory in guards-fix, brittle inventory assertion, local lane-isolation check"
     },
+    "ci-markdown-routed-as-code-20261015": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "CI unit map sends markdown-only changes to the full lint and fast-test jobs"
+    },
     "ci-oracle-reviewer-availability-and-head-race": {
       "claim": null,
       "needs": [],
