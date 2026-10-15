@@ -5670,6 +5670,13 @@
       "status": "done",
       "title": "Expand the permanent credential sentinel sweep (successor) (successor) (successor)"
     },
+    "credential-messages-remaining-platforms-20261014": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Snowflake, Redshift, Firebolt, Databend and Athena credential errors still say \"Environment variables: ...\""
+    },
     "crlf-framing-coverage-and-text-mode-invariant": {
       "claim": null,
       "needs": [],
