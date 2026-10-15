@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "The core helper can emit a no-effect notice with its own wording, separate from the deprecated-alias template.",
+    "SQL Polars `streaming=True` and the other accepted no-effect options use it.",
+    "The notice still warns once per run and still appears in the MCP `deprecations` list.",
+    "Tests assert the exact message text for one alias case and one no-effect case."
+  ],
+  "context": "Reported by the Polars batch agent after #2977 (0ff3a4a89). The helper is the core deprecation helper used across the CLI and MCP; MCP surfaces these notices in its `deprecations` list.",
+  "description": "`warn_deprecated_alias` has one fixed template: \"... use <replacement> instead\". The SQL Polars adapter's `streaming=True` has no replacement, because it does nothing. Its warning therefore puts the explanation in the replacement slot, which reads as \"use no value ('streaming' has no effect on the SQL Polars adapter) instead\". Other options that are accepted but have no effect, such as the Dask and LakeSail options handled in #2975, need the same kind of notice.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/2977",
+    "https://github.com/BenchBox-dev/benchbox/pull/2975"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-15T00:27:23Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "2b48923b63a84d03829735e3a52596b3",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    }
+  ]
+}

@@ -6699,6 +6699,13 @@
       "status": "done",
       "title": "Platform Deployment Registry Extensions"
     },
+    "deprecation-helper-no-effect-notice-20261014": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "The deprecation helper has no wording for an option that is accepted but has no effect"
+    },
     "derive-benchmark-compatibility-per-platform": {
       "claim": null,
       "needs": [],
