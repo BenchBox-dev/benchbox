@@ -2,7 +2,7 @@
   "acceptance": [
     "Decision recorded: local adapters record genuine engine versions, or measured path formally declared unreachable without engine metadata"
   ],
-  "context": "2026-10-14: Decision implemented: local adapters record genuine engine versions (engine_version and engine_version_source='sql_query') from live queries on active connection (DuckDB SELECT version(), SQLite SELECT sqlite_version(), DataFusion SELECT version()). Staged and committed (bd02782a68b6153b93fb7123ed011f0c35ec7827). Rebased cleanly onto origin/develop. Ladder verified: fast tests passed, ruff check/format passed, ty check clean (baseline warnings only), make lint-imports (3 kept, 0 broken), comment-policy-check clean, make pr-preflight passed. PR #2996 opened, non-soundness paths only, armed for auto-merge with squash per owner D1. Waiting on CI to merge before finishing item.",
+  "context": "Rebased PR #2996 onto origin/develop; preserved the intervening develop changelog bullet alongside the engine-version entry. New head 9827094a8985be100ef634a72651d0586f7184e6. Local ladder on this head: fast suite 38,490 passed, 28 skipped, 849 warnings, 4 subtests; ruff and formatting passed; ty 678 diagnostics; import contracts 3 kept, 0 broken; make pr-preflight 125 passed. Force-with-lease push succeeded. PR #2996 remains open, mergeable, auto-merge armed; exact-head CI and oracle verdict are queued/in progress. Resume by checking new-head CI at a 10-minute cadence, address any real failures, and finish only after gh reports MERGED.",
   "description": "Oracle review on #2875 (2026-10-12) required removing driver/platform substitution from _tuning_evidence_engine_version. Consequence: with no platform recording genuine engine_version metadata, measured-benefit states are unreachable for local runs (CLI measured-benefit test reworked to pin unmeasured).",
   "sessions": [
     {
@@ -94,6 +94,14 @@
       "generation": "8bd6a3c799624a57b528ecfe11f3f57f",
       "op": "take",
       "op_id": "d6d0b59ae52d4bf29844f2ee9d970384",
+      "session_id": "6f643d8692e8442884de4af547f77a25"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:bee9f454654b0d0ee4fa97f5",
+      "at": "2026-10-15T02:55:09Z",
+      "client": "codex-mcp-client",
+      "op": "update",
+      "op_id": "6eb20ed4bb434fb8bbc77dd0c7441e49",
       "session_id": "6f643d8692e8442884de4af547f77a25"
     }
   ]
