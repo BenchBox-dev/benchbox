@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import json
+import os
 import re
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -54,32 +58,84 @@ def test_schedule_runs_the_full_matrix() -> None:
     assert "github.event_name == 'schedule'" in selected
 
 
-def test_supported_matrix_platforms_per_cohort() -> None:
+def test_supported_matrix_has_three_local_identities_per_cohort() -> None:
     entries = _workflow()["jobs"]["generate-seed-corpus"]["strategy"]["matrix"]["include"]
     cohorts: dict[tuple[str, str], set[str]] = {}
+    cells = set()
     for entry in entries:
         assert "cloud" not in entry["platform"]
         assert entry["extras"] in {"duckdb", "datafusion", "polars", "clickhouse-local"}
         cohorts.setdefault((entry["benchmark"], entry["scale_factor"]), set()).add(entry["platform"])
+        cells.add((entry["benchmark"], entry["platform"], entry["scale_factor"]))
 
     assert cohorts == {
-        ("tpch", "0.01"): {"duckdb", "datafusion", "clickhouse-local"},
-        ("tpch", "0.1"): {"duckdb", "datafusion", "clickhouse-local"},
-        ("tpch", "1.0"): {"duckdb", "clickhouse-local", "polars-df"},
+        ("tpch", "0.01"): {"duckdb", "datafusion", "polars-df"},
+        ("tpch", "0.1"): {"duckdb", "datafusion", "polars-df"},
+        ("tpch", "1.0"): {"duckdb", "datafusion", "clickhouse-local"},
         ("tpcds", "1"): {"duckdb", "datafusion", "clickhouse-local"},
         ("ssb", "0.01"): {"duckdb", "datafusion", "polars-df"},
         ("ssb", "0.1"): {"duckdb", "datafusion", "polars-df"},
     }
     assert all(len(platforms) == 3 for platforms in cohorts.values())
+    assert len(entries) == len(cells) == 18
 
 
-def test_ineligible_seed_cells_are_absent_from_the_matrix() -> None:
-    entries = _workflow()["jobs"]["generate-seed-corpus"]["strategy"]["matrix"]["include"]
-    cells = {(entry["benchmark"], entry["platform"], entry["scale_factor"]) for entry in entries}
+def _stage_bundle(
+    tmp_path: Path,
+    payload: dict[str, Any],
+    companions: tuple[str, ...] = (),
+) -> tuple[subprocess.CompletedProcess[str], Path]:
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    result_file = tmp_path / "bundle.json"
+    result_file.write_text(json.dumps(payload), encoding="utf-8")
+    for suffix in companions:
+        Path(f"{result_file.with_suffix('')}{suffix}").write_text("{}", encoding="utf-8")
+    destination = tmp_path / "staged"
+    output_file = tmp_path / "github-output"
+    environment = {**os.environ, "GITHUB_OUTPUT": str(output_file)}
+    process = subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "scripts" / "stage_seed_corpus_bundle.py"),
+            str(result_file),
+            str(destination),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+    return process, destination
 
-    assert ("tpch", "polars-df", "0.01") not in cells
-    assert ("tpch", "polars-df", "0.1") not in cells
-    assert ("tpch", "datafusion", "1.0") not in cells
+
+def test_seed_workflow_never_stages_uncertain_bundles(tmp_path: Path) -> None:
+    uncertain_payloads = [
+        {"summary": {"validation": "uncertain"}},
+        {"summary": {"validation": "passed"}, "execution": {"translation": "fallback"}, "queries": []},
+    ]
+    for index, payload in enumerate(uncertain_payloads):
+        process, destination = _stage_bundle(tmp_path / str(index), payload)
+        assert process.returncode == 0, process.stderr
+        assert "eligible=false" in (tmp_path / str(index) / "github-output").read_text(encoding="utf-8")
+        assert not destination.exists()
+
+    workflow = _workflow()
+    steps = workflow["jobs"]["generate-seed-corpus"]["steps"]
+    stage = next(step for step in steps if step.get("name") == "Stage bundle under results-data/")
+    upload = next(step for step in steps if step.get("name") == "Upload bundle artifact")
+    assert "scripts/stage_seed_corpus_bundle.py" in stage["run"]
+    assert upload["if"] == "env.SELECTED == 'true' && steps.stage.outputs.eligible == 'true'"
+
+
+def test_seed_workflow_stages_clean_bundles(tmp_path: Path) -> None:
+    payload = {"summary": {"validation": "passed"}, "execution": {"translation": "success"}, "queries": []}
+    process, destination = _stage_bundle(tmp_path, payload, (".plans.json", ".tuning.json"))
+
+    assert process.returncode == 0, process.stderr
+    assert "eligible=true" in (tmp_path / "github-output").read_text(encoding="utf-8")
+    assert (destination / "bundle.json").is_file()
+    assert (destination / "bundle.plans.json").is_file()
+    assert (destination / "bundle.tuning.json").is_file()
 
 
 def test_seed_corpus_local_jobs_do_not_reference_cloud_credentials() -> None:

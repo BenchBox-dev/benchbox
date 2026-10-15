@@ -30,9 +30,9 @@ jobs:
             scale_factor: "0.01"
             extras: datafusion
           - benchmark: tpch
-            platform: clickhouse-local
+            platform: polars-df
             scale_factor: "0.01"
-            extras: clickhouse-local
+            extras: polars
 
           - benchmark: tpch
             platform: duckdb
@@ -43,22 +43,22 @@ jobs:
             scale_factor: "0.1"
             extras: datafusion
           - benchmark: tpch
-            platform: clickhouse-local
+            platform: polars-df
             scale_factor: "0.1"
-            extras: clickhouse-local
+            extras: polars
 
           - benchmark: tpch
             platform: duckdb
             scale_factor: "1.0"
             extras: duckdb
           - benchmark: tpch
+            platform: datafusion
+            scale_factor: "1.0"
+            extras: datafusion
+          - benchmark: tpch
             platform: clickhouse-local
             scale_factor: "1.0"
             extras: clickhouse-local
-          - benchmark: tpch
-            platform: polars-df
-            scale_factor: "1.0"
-            extras: polars
 
           - benchmark: tpcds
             platform: duckdb
@@ -160,19 +160,11 @@ jobs:
           RESULT_FILE: ${{ steps.locate.outputs.result_file }}
         run: |
           DEST="results-data/bundles/${{ matrix.benchmark }}/${{ matrix.platform }}/sf${{ matrix.scale_factor }}"
-          mkdir -p "$DEST"
-          BASENAME=$(basename "$RESULT_FILE")
-          cp "$RESULT_FILE" "$DEST/$BASENAME"
-
-          STEM="${RESULT_FILE%.json}"
-          [ -f "${STEM}.plans.json" ] && cp "${STEM}.plans.json" "$DEST/" || true
-          [ -f "${STEM}.tuning.json" ] && cp "${STEM}.tuning.json" "$DEST/" || true
-
-          echo "Staged to: $DEST/$BASENAME"
+          python scripts/stage_seed_corpus_bundle.py "$RESULT_FILE" "$DEST"
         id: stage
 
       - name: Upload bundle artifact
-        if: env.SELECTED == 'true'
+        if: env.SELECTED == 'true' && steps.stage.outputs.eligible == 'true'
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: seed-bundle--${{ matrix.benchmark }}--${{ matrix.platform }}--sf${{ matrix.scale_factor }}
