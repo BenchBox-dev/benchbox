@@ -5,7 +5,7 @@
     "Every registered pg_duckdb option appears in its docs table",
     "CHANGELOG Before you upgrade covers the Dask scheduler_address change"
   ],
-  "context": "Found 2026-10-14 by the docs-example sweep and the probe rerun during the core execution-variants remediation; verified on develop 9400b62c4. The Velox part should land before core-exec-remove-deprecated-aliases.\nBatch: _project/handoffs/execution-variant-general-followups-batch-20261014.md, started 2026-10-14",
+  "context": "Found 2026-10-14 by the docs-example sweep and the probe rerun during the core execution-variants remediation; verified on develop 9400b62c4. The Velox part should land before core-exec-remove-deprecated-aliases.\nBatch: _project/handoffs/execution-variant-general-followups-batch-20261014.md, started 2026-10-14\n\nClosed: PR #2995 merged into develop as bc0c866bd1a6ab1a86ef90c78d278aaa8c933785. The explorer-compat help example and Dask adapter-factory tests passed; mapped preflight passed 67 tests. Exact-head CI passed the six required unit checks, including the parallel fast suite, and the Oracle review returned SHIP for aab03bb162b63d55d324d304bea063478e444134. No ADR amendment. Follow-up: decide whether Python adapter-constructor deployment_mode and warehouse kwargs, the Snowflake credential setup writer, and examples/config/snowflake*.yaml should be migrated when removing deprecated aliases.",
   "description": "## Problem\n- **Velox `deployment=`.** The Velox Docker entrypoint, README and docs use `--platform-option deployment=` (`docker/velox/entrypoint.sh:62`, `docker/velox/README.md:41,118`, `docs/platforms/velox.md:113,183`). It is a deprecated alias removed in 0.6.0 (`core/deployment.py:13,139-140`), so every container run warns and the entrypoint breaks at 0.6.0.\n- **Explorer-compat help.** `scripts/publication/check_explorer_compat.py:22,26,41` help text says schema v13; the current version is 16. Its example `--schema-versions 13` exits 2.\n- **pg_duckdb docs.** The option table (`docs/platforms/pg_duckdb.md:125-134`) lost its `schema` row, though the option is still registered (`platforms/__init__.py:511`, default `public`).\n- **Dask break.** `use_distributed=false` plus `scheduler_address` connected in v0.4.2 and now raises (`platforms/dataframe/dask_df.py:157-158`). There is no \"Before you upgrade\" entry, and the deprecation hint points at `threaded`, which raises the same error.\n\n## Change\n- Use `velox:local`/`velox:remote` in the entrypoint and docs.\n- Build the compat help text from `CURRENT_SCHEMA_VERSION`.\n- Restore the pg_duckdb row, and consider a spec-to-docs parity test.\n- Add the Dask upgrade note, and make the hint conditional when `scheduler_address` is set.",
   "links": [
     "docker/velox/entrypoint.sh",
@@ -37,6 +37,14 @@
       "generation": "ee44d7946f3f4beb862d30c4dfc10a4f",
       "op": "take",
       "op_id": "b1fa5591c0a443bb8fa52baa2460f501",
+      "session_id": "e00a82d9ed604651bf534df74d6af4f3"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:28f4d356809e247ffe5c4b92",
+      "at": "2026-10-15T11:37:11Z",
+      "client": "codex-mcp-client",
+      "op": "update",
+      "op_id": "d6c7fa3fb31f4774a71fd37e6f09288e",
       "session_id": "e00a82d9ed604651bf534df74d6af4f3"
     }
   ]
