@@ -420,7 +420,14 @@ class TestRealBenchmarkSpecs:
         assert "~1.2 GB" in help_text
 
     def test_benchmarks_without_specs_still_work(self):
-        assert not BenchmarkHookRegistry.has_specs("tpch")
+        assert not BenchmarkHookRegistry.has_specs("tpcds")
+
+    def test_tpch_refresh_specs_registered(self):
+        from benchbox.core.tpch.benchmark import TPCHBenchmark
+
+        specs = BenchmarkHookRegistry.list_option_specs("tpch")
+        assert "tpch_refresh_functions" in specs
+        assert "tpch_refresh_first_set" in specs
 
 
 class TestBenchmarkOptionShellCompletion:
@@ -461,8 +468,12 @@ class TestBenchmarkOptionShellCompletion:
         assert items == []
 
     def test_unknown_or_missing_benchmark_completes_nothing(self):
-        assert self._completer().shell_complete(self._ctx("tpch"), None, "") == []
+        assert self._completer().shell_complete(self._ctx("tpcds"), None, "") == []
         assert self._completer().shell_complete(self._ctx(None), None, "") == []
+
+    def test_tpch_refresh_options_complete(self):
+        items = self._completer().shell_complete(self._ctx("tpch"), None, "tpch_refresh_")
+        assert {item.value for item in items} == {"tpch_refresh_functions=", "tpch_refresh_first_set="}
 
     def test_used_keys_omitted(self):
         items = self._completer().shell_complete(self._ctx("tpch_skew", pairs=(("skew_preset", "heavy"),)), None, "")

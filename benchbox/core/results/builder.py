@@ -383,6 +383,7 @@ class ResultBuilder:
                 geometric_mean = 0.0
         else:
             tpc_metrics = self._calculate_tpc_metrics()
+        self._add_qphh_metrics(tpc_metrics, len(failed_queries))
 
         execution_phases = self._build_execution_phases(
             exec_times_all,
@@ -429,8 +430,12 @@ class ResultBuilder:
             },
             execution_phases=execution_phases,
             test_execution_type=self._benchmark.test_type,
+            query_subset=self._run_config.query_subset if self._run_config else None,
             power_at_size=tpc_metrics.get("power_at_size"),
             throughput_at_size=tpc_metrics.get("throughput_at_size"),
+            qph_at_size=tpc_metrics.get("qphh_at_size"),
+            refresh_included=tpc_metrics.get("refresh_included"),
+            qphh_unavailable=tpc_metrics.get("qphh_unavailable"),
             geometric_mean_execution_time=geometric_mean or None,
             validation_status=validation_status,
             validation_details=self._validation_details,
@@ -493,8 +498,8 @@ class ResultBuilder:
         total_query_time = sum(r.execution_time_seconds or 0.0 for r in self._query_results)
         return total_query_time + (self._loading_time_ms / 1000.0)
 
-    def _calculate_tpc_metrics(self) -> dict[str, float | None]:
-        metrics: dict[str, float | None] = {
+    def _calculate_tpc_metrics(self) -> dict[str, Any]:
+        metrics: dict[str, Any] = {
             "power_at_size": None,
             "throughput_at_size": None,
         }
@@ -504,18 +509,91 @@ class ResultBuilder:
             return metrics
 
         test_type = self._benchmark.test_type
-
+        power_phase = self._execution_phases_override.power_test if self._execution_phases_override else None
         if test_type in ("power", "standard", "combined"):
-            power = self._calculate_power_at_size()
+            power = power_phase.power_at_size if power_phase and power_phase.power_at_size > 0 else None
+            refresh_configured = power_phase is not None and power_phase.refresh_first_set is not None
+            if power is None and not refresh_configured:
+                power = self._calculate_power_at_size()
             if power and power > 0:
                 metrics["power_at_size"] = power
 
-        if test_type in ("throughput", "combined"):
-            phase = self._execution_phases_override.throughput_test if self._execution_phases_override else None
-            if phase is not None and phase.success and phase.throughput_at_size and phase.throughput_at_size > 0:
-                metrics["throughput_at_size"] = phase.throughput_at_size
+        throughput_phase = self._execution_phases_override.throughput_test if self._execution_phases_override else None
+        if throughput_phase and throughput_phase.success and throughput_phase.throughput_at_size:
+            if throughput_phase.throughput_at_size > 0:
+                metrics["throughput_at_size"] = throughput_phase.throughput_at_size
 
         return metrics
+
+    def _add_qphh_metrics(self, metrics: dict[str, Any], failed_query_count: int) -> None:
+        if normalize_benchmark_id(self._benchmark.name) != "tpch":
+            return
+
+        execution_phases = self._execution_phases_override
+        power_phase = execution_phases.power_test if execution_phases else None
+        throughput_phase = execution_phases.throughput_test if execution_phases else None
+        power_refresh_functions = power_phase.refresh_functions if power_phase else None
+        power_data_phase = None
+        if power_phase is not None:
+            executions = [
+                execution for execution in power_phase.query_executions if execution.query_id != "power_test_error"
+            ]
+            query_count = power_phase.query_count if power_phase.query_count is not None else len(executions)
+            query_success = (
+                power_phase.success
+                if power_phase.success is not None
+                else bool(executions) and all(execution.status == "SUCCESS" for execution in executions)
+            )
+            power_refresh_success = power_refresh_functions is None or (
+                len(power_refresh_functions) == 2
+                and all(function.get("status") == "SUCCESS" for function in power_refresh_functions)
+            )
+            power_data_phase = {
+                "status": "COMPLETED" if query_count == 22 and query_success and power_refresh_success else "FAILED",
+                "query_count": query_count,
+                "refresh_first_set": power_phase.refresh_first_set,
+                "refresh_functions": power_refresh_functions,
+            }
+
+        throughput_data_phase = None
+        if throughput_phase is not None:
+            refresh_stream = throughput_phase.refresh_stream
+            throughput_data_phase = {
+                "status": "COMPLETED" if throughput_phase.success else "FAILED",
+                "num_streams": throughput_phase.num_streams,
+                "stream_results": [{} for _ in throughput_phase.streams],
+                "refresh_stream": refresh_stream,
+            }
+
+        compliance_class = self._benchmark.compliance_class
+        if hasattr(compliance_class, "value"):
+            compliance_class = compliance_class.value
+        power_data = {
+            "benchmark": {"id": "tpch", "compliance_class": compliance_class},
+            "phases": {"power_test": power_data_phase} if power_data_phase else {},
+            "summary": {"queries": {"failed": failed_query_count}},
+            "run": {"query_subset": self._run_config.query_subset if self._run_config else None},
+        }
+        throughput_data = {
+            "benchmark": {"id": "tpch", "compliance_class": compliance_class},
+            "phases": {"throughput_test": throughput_data_phase} if throughput_data_phase else {},
+            "summary": {"queries": {"failed": failed_query_count}},
+            "run": {"query_subset": self._run_config.query_subset if self._run_config else None},
+        }
+        metrics["refresh_included"] = TPCMetricsCalculator.refresh_included(
+            power_data_phase,
+            throughput_data_phase,
+        )
+        unavailable = TPCMetricsCalculator.qphh_unavailable_reasons(power_data, throughput_data)
+        if not unavailable and metrics.get("power_at_size") and metrics.get("throughput_at_size"):
+            metrics["qphh_at_size"] = TPCMetricsCalculator.calculate_qphh_at_size(
+                metrics["power_at_size"],
+                metrics["throughput_at_size"],
+            )
+        else:
+            if not unavailable:
+                unavailable.append("Power@Size or Throughput@Size could not be derived")
+            metrics["qphh_unavailable"] = unavailable
 
     def _calculate_power_at_size(self) -> float | None:
         measurement = [

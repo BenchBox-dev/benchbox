@@ -188,10 +188,11 @@ slowdowns), `import` (load results into database), `stats`, and `list`.
 
 ### `benchbox metrics qphh`
 
-Calculates Power@Size and Throughput@Size from power and throughput test
-results. It does not compute the composite QphH@Size or QphDS@Size, and it
-refuses result files with suppressed metrics or failed queries.
-Auto-detects scale factor from result files.
+Calculates Power@Size and Throughput@Size from TPC-H power and throughput
+results. It exports QphH@Size only when official-run metadata and complete
+refresh evidence pass the shared gate; otherwise it reports
+`qphh_unavailable` reasons. It does not compute QphDS@Size. Scale factor is
+auto-detected from the result files.
 
 ### `benchbox aggregate`
 

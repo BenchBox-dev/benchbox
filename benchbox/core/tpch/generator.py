@@ -293,8 +293,8 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
         ]
 
         env = os.environ.copy()
-        env["DSS_PATH"] = str(work_dir)
-        env["DSS_CONFIG"] = str(work_dir)
+        env["DSS_PATH"] = "."
+        env["DSS_CONFIG"] = "."
 
         compressor = self.get_compressor()
 
@@ -337,7 +337,7 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
         work_dir_path.mkdir(parents=True, exist_ok=True)
 
         dists_file = self.dbgen_path / "dists.dss"
-        if dists_file.exists():
+        if not (work_dir_path / "dists.dss").exists():
             shutil.copy2(dists_file, work_dir_path / "dists.dss")
 
         tables = list(_TPCH_TABLE_CODES.keys())
@@ -413,6 +413,9 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
         resolved_work_dir = work_dir_path.resolve()
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        distributions = dbgen_exe.parent / "dists.dss"
+        if not (work_dir_path / "dists.dss").exists():
+            shutil.copy2(distributions, work_dir_path / "dists.dss")
 
         cmd = [
             str(dbgen_exe),
@@ -422,10 +425,14 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
         ]
 
         try:
+            env = os.environ.copy()
+            env["DSS_PATH"] = "."
+            env["DSS_CONFIG"] = "."
             subprocess.run(
                 cmd,
                 cwd=resolved_work_dir,
                 check=True,
+                env=env,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.PIPE,
             )
@@ -518,16 +525,12 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
             pass
 
         dists_file = self.dbgen_path / "dists.dss"
-        if dists_file.exists():
-            with contextlib.suppress(OSError, shutil.Error):
-                shutil.copy2(dists_file, work_dir_path / "dists.dss")
+        if not (work_dir_path / "dists.dss").exists():
+            shutil.copy2(dists_file, work_dir_path / "dists.dss")
 
         if self.parallel > 1:
             self._run_parallel_dbgen(work_dir_path)
         else:
-            dists_in_workdir = work_dir_path / "dists.dss"
-            dss_config_dir = str((work_dir_path if dists_in_workdir.exists() else dists_file.parent).resolve())
-
             cmd = [
                 str(self.dbgen_exe),
                 "-vf",
@@ -537,8 +540,8 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
 
             try:
                 env = os.environ.copy()
-                env["DSS_PATH"] = str(resolved_work_dir)
-                env["DSS_CONFIG"] = dss_config_dir
+                env["DSS_PATH"] = "."
+                env["DSS_CONFIG"] = "."
                 subprocess.run(
                     cmd,
                     cwd=resolved_work_dir,
@@ -581,13 +584,10 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
         resolved_work_dir = work_dir_path.resolve()
 
         dists_file = self.dbgen_path / "dists.dss"
-        if dists_file.exists():
+        if not (work_dir_path / "dists.dss").exists():
             shutil.copy2(dists_file, work_dir_path / "dists.dss")
 
         def generate_chunk(chunk_id: int) -> None:
-            dists_in_workdir = work_dir_path / "dists.dss"
-            dss_config_dir = str((work_dir_path if dists_in_workdir.exists() else dists_file.parent).resolve())
-
             cmd = [
                 str(self.dbgen_exe),
                 "-vf",
@@ -601,8 +601,8 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
 
             try:
                 env = os.environ.copy()
-                env["DSS_PATH"] = str(resolved_work_dir)
-                env["DSS_CONFIG"] = dss_config_dir
+                env["DSS_PATH"] = "."
+                env["DSS_CONFIG"] = "."
                 subprocess.run(
                     cmd,
                     cwd=resolved_work_dir,

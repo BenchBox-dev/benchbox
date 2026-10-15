@@ -71,6 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and the two flags must be booleans. MCP rejects them. A result bundle with a routed gateway records
   `platform.gateway` with `name` and `routed: true` and the top-level `tpc_compliant: false`.
 
+- TPC-H refresh functions are opt-in for Power and Throughput. Power includes RF1/RF2 in its 24-term score and Throughput runs a concurrent RF stream; update sets and failures are recorded. QphH@Size is exported only when official-run and refresh-evidence gates pass.
 
 - Result schema 2.3 supports execution-engine receipts, query engine observations,
   compute resource and size, selected deployment, routed gateway, and variant identity.

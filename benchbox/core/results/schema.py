@@ -1016,13 +1016,8 @@ def _build_phases_block(result: BenchmarkResults) -> dict[str, Any]:
     phases.update(_merge_settle_phase_payload(setup))
 
     if result.execution_phases and result.execution_phases.power_test:
-        power_test = result.execution_phases.power_test
-        real_executions = [qe for qe in power_test.query_executions if qe.query_id != "power_test_error"]
-        power_test_status = "COMPLETED" if real_executions else "FAILED"
-        phases["power_test"] = {
-            "status": power_test_status,
-            "duration_ms": power_test.duration_ms,
-        }
+        phases["power_test"] = _power_phase_payload(result.execution_phases.power_test)
+
     if result.execution_phases and result.execution_phases.throughput_test:
         phases["throughput_test"] = _throughput_phase_payload(result.execution_phases.throughput_test)
 
@@ -1051,6 +1046,30 @@ def _build_phases_block(result: BenchmarkResults) -> dict[str, Any]:
     return phases
 
 
+def _power_phase_payload(power_test: Any) -> dict[str, Any]:
+    real_executions = [qe for qe in power_test.query_executions if qe.query_id != "power_test_error"]
+    refresh_functions = power_test.refresh_functions
+    refresh_success = refresh_functions is None or (
+        len(refresh_functions) == 2 and all(function.get("status") == "SUCCESS" for function in refresh_functions)
+    )
+    query_count = power_test.query_count if power_test.query_count is not None else len(real_executions)
+    queries_succeeded = (
+        power_test.success
+        if power_test.success is not None
+        else bool(real_executions) and all(execution.status == "SUCCESS" for execution in real_executions)
+    )
+    payload: dict[str, Any] = {
+        "status": "COMPLETED" if queries_succeeded and refresh_success else "FAILED",
+        "duration_ms": power_test.duration_ms,
+        "query_count": query_count,
+    }
+    if power_test.refresh_first_set is not None:
+        payload["refresh_first_set"] = power_test.refresh_first_set
+    if refresh_functions is not None:
+        payload["refresh_functions"] = refresh_functions
+    return payload
+
+
 def _throughput_phase_payload(throughput: Any) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "status": "COMPLETED" if throughput.success else "FAILED",
@@ -1073,6 +1092,8 @@ def _throughput_phase_payload(throughput: Any) -> dict[str, Any]:
         }
     if throughput.stream_numbering is not None:
         payload["stream_numbering"] = dict(throughput.stream_numbering)
+    if throughput.refresh_stream is not None:
+        payload["refresh_stream"] = dict(throughput.refresh_stream)
     return payload
 
 
@@ -1463,14 +1484,21 @@ def _compute_timing_stats(times_ms: list[float]) -> dict[str, Any]:
 def _build_tpc_metrics(result: BenchmarkResults) -> dict[str, Any] | None:
     compliance_class = getattr(result, "compliance_class", None)
     if compliance_class in UNOFFICIAL_COMPLIANCE_CLASSES:
-        return {"suppressed": True, "reason": f"compliance_class={compliance_class}"}
+        metrics: dict[str, Any] = {"suppressed": True, "reason": f"compliance_class={compliance_class}"}
+    else:
+        metrics = {}
+        if result.power_at_size is not None:
+            metrics["power_at_size"] = result.power_at_size
+        if result.throughput_at_size is not None:
+            metrics["throughput_at_size"] = result.throughput_at_size
 
-    metrics: dict[str, Any] = {}
-
-    if result.power_at_size is not None:
-        metrics["power_at_size"] = result.power_at_size
-    if result.throughput_at_size is not None:
-        metrics["throughput_at_size"] = result.throughput_at_size
+    if getattr(result, "benchmark_id", None) == "tpch":
+        if getattr(result, "qph_at_size", None) is not None:
+            metrics["qphh_at_size"] = result.qph_at_size
+        if getattr(result, "refresh_included", None) is not None:
+            metrics["refresh_included"] = result.refresh_included
+        if getattr(result, "qphh_unavailable", None):
+            metrics["qphh_unavailable"] = list(result.qphh_unavailable)
 
     return metrics if metrics else None
 

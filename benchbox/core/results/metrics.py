@@ -91,6 +91,12 @@ class TPCMetricsCalculator:
         return (total_queries * scale_factor * 3600) / total_time_seconds
 
     @staticmethod
+    def calculate_qphh_at_size(power_at_size: float, throughput_at_size: float) -> float:
+        if power_at_size <= 0 or throughput_at_size <= 0:
+            return 0.0
+        return round(math.sqrt(power_at_size * throughput_at_size), 1)
+
+    @staticmethod
     def calculate_geometric_mean(times: Sequence[float]) -> float:
         return geometric_mean_ms(times)
 
@@ -132,6 +138,164 @@ class TPCMetricsCalculator:
         return None
 
     @staticmethod
+    def _power_refresh_evidence(power_phase: dict | None) -> tuple[bool, int | None]:
+        if not isinstance(power_phase, dict):
+            return False, None
+        first_set = power_phase.get("refresh_first_set")
+        functions = power_phase.get("refresh_functions")
+        if isinstance(first_set, bool) or not isinstance(first_set, int) or first_set < 1:
+            return False, None
+        if not isinstance(functions, list) or len(functions) != 2:
+            return False, first_set
+        for expected, function in zip(("RF1", "RF2"), functions, strict=True):
+            update_set = function.get("update_set") if isinstance(function, dict) else None
+            duration_ms = function.get("duration_ms") if isinstance(function, dict) else None
+            if (
+                not isinstance(function, dict)
+                or function.get("function") != expected
+                or isinstance(update_set, bool)
+                or update_set != first_set
+                or function.get("status") != "SUCCESS"
+                or isinstance(duration_ms, bool)
+                or not isinstance(duration_ms, (int, float))
+                or not math.isfinite(duration_ms)
+                or duration_ms <= 0
+            ):
+                return False, first_set
+        return True, first_set
+
+    @staticmethod
+    def _throughput_refresh_evidence(
+        throughput_phase: dict | None,
+        expected_streams: int | None = None,
+    ) -> tuple[bool, int | None, int]:
+        if not isinstance(throughput_phase, dict):
+            return False, None, 0
+        refresh_stream = throughput_phase.get("refresh_stream")
+        if not isinstance(refresh_stream, dict):
+            return False, None, 0
+        first_set = refresh_stream.get("first_set")
+        if isinstance(first_set, bool) or not isinstance(first_set, int) or first_set < 1:
+            return False, None, 0
+        pairs = refresh_stream.get("pairs")
+        if not isinstance(pairs, list):
+            return False, first_set, 0
+        stream_count = throughput_phase.get("num_streams")
+        if isinstance(stream_count, bool) or not isinstance(stream_count, int):
+            stream_count = (
+                expected_streams
+                if isinstance(expected_streams, int) and not isinstance(expected_streams, bool)
+                else len(throughput_phase.get("stream_results") or [])
+            )
+        pair_count = refresh_stream.get("pair_count")
+        start_time = refresh_stream.get("start_time")
+        end_time = refresh_stream.get("end_time")
+        valid = (
+            refresh_stream.get("status") == "COMPLETED"
+            and isinstance(start_time, str)
+            and bool(start_time)
+            and isinstance(end_time, str)
+            and bool(end_time)
+            and stream_count > 0
+            and len(pairs) == stream_count
+            and isinstance(pair_count, int)
+            and not isinstance(pair_count, bool)
+            and pair_count == len(pairs)
+        )
+        for offset, pair in enumerate(pairs):
+            set_id = first_set + offset
+            functions = pair.get("functions") if isinstance(pair, dict) else None
+            pair_set = pair.get("update_set") if isinstance(pair, dict) else None
+            if (
+                not isinstance(pair, dict)
+                or isinstance(pair_set, bool)
+                or pair_set != set_id
+                or pair.get("status") != "SUCCESS"
+                or not isinstance(functions, list)
+                or len(functions) != 2
+            ):
+                valid = False
+                continue
+            for expected, function in zip(("RF1", "RF2"), functions, strict=True):
+                update_set = function.get("update_set") if isinstance(function, dict) else None
+                duration_ms = function.get("duration_ms") if isinstance(function, dict) else None
+                if (
+                    not isinstance(function, dict)
+                    or function.get("function") != expected
+                    or isinstance(update_set, bool)
+                    or update_set != set_id
+                    or function.get("status") != "SUCCESS"
+                    or isinstance(duration_ms, bool)
+                    or not isinstance(duration_ms, (int, float))
+                    or not math.isfinite(duration_ms)
+                    or duration_ms <= 0
+                ):
+                    valid = False
+        return valid, first_set, stream_count
+
+    @staticmethod
+    def refresh_included(power_phase: dict | None, throughput_phase: dict | None) -> bool:
+        power_present = isinstance(power_phase, dict)
+        throughput_present = isinstance(throughput_phase, dict)
+        if power_present and throughput_present:
+            power_valid, _power_set = TPCMetricsCalculator._power_refresh_evidence(power_phase)
+            throughput_valid, _first_set, _streams = TPCMetricsCalculator._throughput_refresh_evidence(throughput_phase)
+            return power_valid and throughput_valid
+        if power_present:
+            return TPCMetricsCalculator._power_refresh_evidence(power_phase)[0]
+        if throughput_present:
+            return TPCMetricsCalculator._throughput_refresh_evidence(throughput_phase)[0]
+        return False
+
+    @staticmethod
+    def qphh_unavailable_reasons(power_data: dict, throughput_data: dict) -> list[str]:
+        reasons = []
+        for label, data in (("Power", power_data), ("Throughput", throughput_data)):
+            benchmark = data.get("benchmark") or {}
+            compliance_class = getattr(benchmark.get("compliance_class"), "value", benchmark.get("compliance_class"))
+            if compliance_class != "official":
+                reasons.append(f"{label} results are not official compliance ({compliance_class or 'unspecified'})")
+            if benchmark.get("id") != "tpch":
+                reasons.append(f"{label} results are not TPC-H")
+            failed = (data.get("summary") or {}).get("queries", {}).get("failed", 0)
+            if failed:
+                reasons.append(f"{label} results contain {failed} failed queries")
+            if (data.get("run") or {}).get("query_subset"):
+                reasons.append(f"{label} results use a query subset")
+
+        power_phase = (power_data.get("phases") or {}).get("power_test")
+        if not isinstance(power_phase, dict) or power_phase.get("status") != "COMPLETED":
+            reasons.append("Power phase did not complete")
+        elif power_phase.get("query_count") != 22:
+            reasons.append("Power phase must complete all 22 TPC-H queries")
+
+        power_refresh_valid, power_first_set = TPCMetricsCalculator._power_refresh_evidence(power_phase)
+        if not power_refresh_valid:
+            reasons.append("Power phase must contain successful RF1 and RF2 evidence for one update set")
+
+        throughput_phase = (throughput_data.get("phases") or {}).get("throughput_test")
+        if not isinstance(throughput_phase, dict) or throughput_phase.get("status") != "COMPLETED":
+            reasons.append("Throughput phase did not complete")
+        stream_count = throughput_phase.get("num_streams") if isinstance(throughput_phase, dict) else None
+        if isinstance(stream_count, bool) or not isinstance(stream_count, int):
+            stream_count = (
+                len(throughput_phase.get("stream_results") or []) if isinstance(throughput_phase, dict) else 0
+            )
+        if stream_count < 2:
+            reasons.append("QphH requires at least two throughput streams")
+
+        throughput_refresh_valid, throughput_first_set, actual_stream_count = (
+            TPCMetricsCalculator._throughput_refresh_evidence(throughput_phase, stream_count)
+        )
+        if not throughput_refresh_valid:
+            reasons.append("Throughput phase must complete one successful RF1/RF2 pair per query stream")
+        if power_first_set is not None and throughput_first_set != power_first_set + 1:
+            reasons.append("Throughput refresh sets must start at the set immediately after the Power set")
+        if actual_stream_count != stream_count:
+            reasons.append("Throughput refresh pair count must match the requested stream count")
+        return list(dict.fromkeys(reasons))
+
+    @staticmethod
     def derive_tpc_metrics(
         power_data: dict,
         throughput_data: dict,
@@ -148,15 +312,30 @@ class TPCMetricsCalculator:
         throughput_at_size = throughput_metrics.get("throughput_at_size")
 
         power_times = TPCMetricsCalculator._final_power_iteration_times(power_data)
-        power_time = sum(power_times) if power_times else None
+        power_phase = (power_data.get("phases") or {}).get("power_test")
+        power_refresh_valid, _power_first_set = TPCMetricsCalculator._power_refresh_evidence(power_phase)
+        refresh_times = (
+            [function["duration_ms"] / 1000.0 for function in power_phase["refresh_functions"]]
+            if power_refresh_valid
+            else []
+        )
+        power_time = (
+            sum([refresh_times[0], *power_times, refresh_times[1]])
+            if power_times and refresh_times
+            else (sum(power_times) if power_times else None)
+        )
         if power_at_size is None and power_times:
-            power_at_size = TPCMetricsCalculator.calculate_power_at_size(power_times, scale_factor)
+            power_times_for_metric = (
+                [refresh_times[0], *power_times, refresh_times[1]] if refresh_times else power_times
+            )
+            power_at_size = TPCMetricsCalculator.calculate_power_at_size(power_times_for_metric, scale_factor)
 
         phase = (throughput_data.get("phases") or {}).get("throughput_test") or {}
         duration_ms = phase.get("duration_ms")
         throughput_time = duration_ms / 1000.0 if duration_ms else None
         if throughput_at_size is None and throughput_time and phase.get("status") == "COMPLETED":
-            num_streams = len(phase.get("stream_results") or []) or throughput_data.get("run", {}).get("streams") or 1
+            num_streams = phase.get("num_streams") or len(phase.get("stream_results") or [])
+            num_streams = num_streams or throughput_data.get("run", {}).get("streams") or 1
             per_stream = TPC_QUERIES_PER_STREAM.get(throughput_data.get("benchmark", {}).get("id"))
             if per_stream:
                 throughput_at_size = TPCMetricsCalculator.calculate_throughput_at_size(
@@ -189,26 +368,47 @@ class TPCMetricsCalculator:
         scale_factor: float | None = None,
     ) -> dict:
         sf = TPCMetricsCalculator.resolve_scale_factor(power_data, throughput_data, scale_factor)
-        power_at_size, throughput_at_size, power_time, throughput_time = TPCMetricsCalculator.derive_tpc_metrics(
-            power_data, throughput_data, sf
-        )
-        if power_at_size is None or throughput_at_size is None:
-            raise ValueError("Could not derive Power@Size or Throughput@Size from result data")
+        power_benchmark = power_data.get("benchmark") or {}
+        throughput_benchmark = throughput_data.get("benchmark") or {}
+        benchmark_id = throughput_benchmark.get("id") or power_benchmark.get("id")
+        refresh_included = False
+        qphh_at_size = None
+        if benchmark_id == "tpch" or power_benchmark.get("id") == "tpch":
+            reasons = TPCMetricsCalculator.qphh_unavailable_reasons(power_data, throughput_data)
+            if reasons:
+                raise ValueError("QphH@Size unavailable: " + "; ".join(reasons))
+            power_at_size, throughput_at_size, power_time, throughput_time = TPCMetricsCalculator.derive_tpc_metrics(
+                power_data, throughput_data, sf
+            )
+            if power_at_size is None or throughput_at_size is None:
+                raise ValueError("QphH@Size unavailable: could not derive Power@Size or Throughput@Size")
+            refresh_included = True
+            qphh_at_size = TPCMetricsCalculator.calculate_qphh_at_size(power_at_size, throughput_at_size)
+        else:
+            power_at_size, throughput_at_size, power_time, throughput_time = TPCMetricsCalculator.derive_tpc_metrics(
+                power_data, throughput_data, sf
+            )
+            if power_at_size is None or throughput_at_size is None:
+                raise ValueError("Could not derive Power@Size or Throughput@Size from result data")
+
         throughput_phase = (throughput_data.get("phases") or {}).get("throughput_test") or {}
         num_streams = (
-            len(throughput_phase.get("stream_results") or [])
+            throughput_phase.get("num_streams")
+            or len(throughput_phase.get("stream_results") or [])
             or throughput_data.get("run", {}).get("streams")
             or throughput_data.get("environment", {}).get("num_streams", 1)
         )
-        benchmark = throughput_data.get("benchmark", {})
+        benchmark = throughput_benchmark
         return {
-            "benchmark": benchmark.get("name") or _TPC_BENCHMARK_LABELS.get(benchmark.get("id"), "TPC"),
+            "benchmark": benchmark.get("name") or _TPC_BENCHMARK_LABELS.get(str(benchmark.get("id") or ""), "TPC"),
             "scale_factor": sf,
             "num_streams": num_streams,
             "power_test_time": power_time,
             "throughput_test_time": throughput_time,
             "power_at_size": power_at_size,
             "throughput_at_size": throughput_at_size,
+            "qphh_at_size": qphh_at_size,
+            "refresh_included": refresh_included,
         }
 
 

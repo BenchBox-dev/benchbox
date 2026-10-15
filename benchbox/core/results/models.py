@@ -247,6 +247,11 @@ class PowerTestPhase:
     geometric_mean_time: float
     power_at_size: float
 
+    refresh_first_set: int | None = None
+    refresh_functions: list[dict[str, Any]] | None = None
+    query_count: int | None = None
+    success: bool | None = None
+
 
 @dataclass
 class ThroughputStream:
@@ -277,6 +282,7 @@ class ThroughputTestPhase:
     errors: list[str] = field(default_factory=list)
     outstanding_work: ThroughputOutstandingWork | None = None
     stream_numbering: dict[str, Any] | None = None
+    refresh_stream: dict[str, Any] | None = None
 
 
 @dataclass
@@ -383,6 +389,8 @@ class BenchmarkResults:
     power_at_size: float | None = None
     throughput_at_size: float | None = None
     qph_at_size: float | None = None
+    refresh_included: bool | None = None
+    qphh_unavailable: list[str] | None = None
     geometric_mean_execution_time: float | None = None
     validation_status: str = "PASSED"
     validation_details: dict[str, Any] | None = None

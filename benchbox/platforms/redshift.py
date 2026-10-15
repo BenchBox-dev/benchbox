@@ -85,6 +85,7 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
     driver_isolation_capability = DriverIsolationCapability.FEASIBLE_CLIENT_ONLY
     supports_external_tables = True
     plan_capture_phase_eligible = True
+    supports_refresh_functions = True
     physical_identifier_case = "lower"
 
     def __init__(self, **config):

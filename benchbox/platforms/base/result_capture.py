@@ -1254,6 +1254,14 @@ class ResultCaptureMixin:
 
         raw_stream_numbering = getattr(throughput_result, "stream_numbering", None)
         stream_numbering = dict(raw_stream_numbering) if isinstance(raw_stream_numbering, dict) else None
+        refresh_stream_result = getattr(throughput_result, "refresh_stream", None)
+        refresh_stream = None
+        if refresh_stream_result is not None:
+            refresh_stream = (
+                refresh_stream_result.to_dict()
+                if callable(getattr(refresh_stream_result, "to_dict", None))
+                else dict(refresh_stream_result)
+            )
 
         return ThroughputTestPhase(
             start_time=throughput_result.start_time,
@@ -1267,6 +1275,7 @@ class ResultCaptureMixin:
             errors=list(getattr(throughput_result, "errors", []) or []),
             outstanding_work=outstanding_work,
             stream_numbering=stream_numbering,
+            refresh_stream=refresh_stream,
         )
 
     @staticmethod
@@ -1425,8 +1434,19 @@ class ResultCaptureMixin:
         execution_type = eet if eet is not None else run_config.get("test_execution_type", "standard")
 
         power_at_size_value = 0.0
+        power_refresh_functions = None
+        power_refresh_first_set = None
+        power_query_count = None
+        power_success = None
         if getattr(self, "_last_power_test_result", None) is not None:
-            power_at_size_value = getattr(self._last_power_test_result, "power_at_size", 0.0) or 0.0
+            last_power_result = self._last_power_test_result
+            power_at_size_value = getattr(last_power_result, "power_at_size", 0.0) or 0.0
+            refresh_functions = getattr(last_power_result, "refresh_functions", None)
+            power_refresh_functions = list(refresh_functions) if refresh_functions is not None else None
+            if refresh_functions is not None:
+                power_refresh_first_set = getattr(getattr(last_power_result, "config", None), "refresh_first_set", None)
+            power_query_count = getattr(last_power_result, "queries_executed", None)
+            power_success = getattr(last_power_result, "success", None)
             self._last_power_test_result = None
 
         power_test_phase = None
@@ -1443,6 +1463,10 @@ class ResultCaptureMixin:
                 query_executions=query_executions,
                 geometric_mean_time=avg_time,
                 power_at_size=power_at_size_value,
+                refresh_first_set=power_refresh_first_set,
+                refresh_functions=power_refresh_functions,
+                query_count=power_query_count,
+                success=power_success,
             )
 
         throughput_test_phase = None

@@ -54,6 +54,7 @@ def phases(monkeypatch):
     power = Mock()
     power.return_value.run.return_value = _power()
     adapter = Mock()
+    adapter.supports_refresh_functions = True
     adapter._run_routed_throughput.return_value = _throughput()
     throughput = adapter._run_routed_throughput
     maintenance = Mock()
@@ -181,6 +182,7 @@ def test_maintenance_is_refused_while_throughput_work_is_outstanding(phases, tmp
 
 def test_adapter_route_runs_throughput_with_the_factory_connection_as_the_shared_connection(phases, tmp_path):
     adapter = Mock()
+    adapter.supports_refresh_functions = True
     adapter._run_routed_throughput.return_value = _throughput(80.0)
     connection = Mock()
     benchmark = TPCHOfficialBenchmark(scale_factor=0.01, output_dir=tmp_path)
@@ -239,6 +241,7 @@ def test_missing_adapter_is_allowed_when_throughput_is_disabled(phases, tmp_path
 
 def test_adapter_gate_refusal_withholds_the_throughput_metric(phases, tmp_path):
     adapter = Mock()
+    adapter.supports_refresh_functions = True
     adapter._run_routed_throughput.side_effect = RuntimeError("stream_connection_capability=UNSUPPORTED")
     benchmark = TPCHOfficialBenchmark(scale_factor=0.01, output_dir=tmp_path)
 
@@ -248,6 +251,22 @@ def test_adapter_gate_refusal_withholds_the_throughput_metric(phases, tmp_path):
     assert result.success is False
     assert result.throughput_at_size == 0.0
     assert any("UNSUPPORTED" in err for err in result.errors)
+
+
+def test_maintenance_refuses_unsupported_adapter_before_work(phases, tmp_path):
+    benchmark = TPCHOfficialBenchmark(scale_factor=0.01, output_dir=tmp_path)
+    config = TPCHOfficialBenchmarkConfig(
+        scale_factor=0.01,
+        power_test_enabled=False,
+        throughput_test_enabled=False,
+        maintenance_test_enabled=True,
+    )
+    phases.adapter.supports_refresh_functions = False
+
+    with pytest.raises(NotImplementedError, match="refresh functions are not supported"):
+        _run(benchmark, phases, config=config)
+
+    phases.maintenance.assert_not_called()
 
 
 def test_facade_builds_the_official_benchmark_from_its_scale_factor(tmp_path):
@@ -313,3 +332,38 @@ def test_generate_audit_trail_writes_file(monkeypatch, tmp_path):
     assert "Throughput@Size" in content
     assert "QphH" not in content
     assert "Power@Size: 10.00" in content
+
+
+def test_refresh_update_sets_are_sequenced_across_power_throughput_and_maintenance(phases, monkeypatch, tmp_path):
+    from benchbox.core.tpch.official_benchmark import TPCHOfficialBenchmarkConfig
+
+    benchmark = TPCHOfficialBenchmark(scale_factor=1.0, output_dir=tmp_path)
+    phases.adapter.supports_refresh_functions = True
+    generated = []
+
+    def generate(scale_factor, first_set, count, output_dir):
+        generated.append((scale_factor, first_set, count))
+        return {first_set: SimpleNamespace(set_id=first_set)}
+
+    monkeypatch.setattr("benchbox.core.tpch.official_benchmark.require_refresh_support", lambda adapter: None)
+    monkeypatch.setattr("benchbox.core.tpch.official_benchmark.generate_refresh_update_sets", generate)
+    config = TPCHOfficialBenchmarkConfig(
+        scale_factor=1.0,
+        num_streams=2,
+        output_dir=tmp_path,
+        tpch_refresh_functions=True,
+        tpch_refresh_first_set=8,
+    )
+
+    result = benchmark.run_official_benchmark(
+        connection_factory=FakeConnection,
+        config=config,
+        adapter=phases.adapter,
+        _warn_deprecated=False,
+    )
+
+    assert generated == [(1.0, 8, 1)]
+    assert phases.power.call_args.kwargs["refresh_update_set"].set_id == 8
+    assert phases.throughput.call_args.args[2]["tpch_refresh_first_set"] == 8
+    assert phases.maintenance.call_args.kwargs["first_set"] == 11
+    assert result.success is True

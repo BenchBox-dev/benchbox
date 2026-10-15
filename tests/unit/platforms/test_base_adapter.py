@@ -2932,6 +2932,7 @@ class TestTPCHAndTPCDSExecutionHelpers:
     @patch("benchbox.platforms.base.execution.quiet_console")
     def test_execute_tpch_maintenance_test_passes_rf_intervals_and_integrity_flag(self, _mock_console, tmp_path):
         adapter = MockPlatformAdapterWithDialect()
+        adapter.supports_refresh_functions = True
         connection = Mock()
         connection.cursor.return_value = Mock(name="tpch_maintenance_cursor")
         run_config = {
@@ -3304,6 +3305,7 @@ class TestExceptionPathsForThroughputAndMaintenance:
     @patch("benchbox.platforms.base.adapter.quiet_console")
     def test_execute_tpch_maintenance_test_returns_error_on_exception(self, _mock_console):
         adapter = MockPlatformAdapterWithDialect()
+        adapter.supports_refresh_functions = True
 
         class BrokenTPCHMaintenanceTest:
             def __init__(self, **kwargs):
@@ -3319,6 +3321,24 @@ class TestExceptionPathsForThroughputAndMaintenance:
                 "status": "FAILED",
                 "rows_returned": 0,
                 "error": "tpch maintenance boom",
+                "test_type": "maintenance",
+            }
+        ]
+
+    @patch("benchbox.platforms.base.adapter.quiet_console")
+    def test_execute_tpch_maintenance_test_refuses_unsupported_platform(self, _mock_console):
+        adapter = MockPlatformAdapterWithDialect()
+        adapter.supports_refresh_functions = False
+
+        results = adapter._execute_tpch_maintenance_test(Mock(), Mock(), {"scale_factor": 1.0})
+
+        assert results == [
+            {
+                "query_id": "maintenance_test_error",
+                "execution_time_seconds": 0.0,
+                "status": "FAILED",
+                "rows_returned": 0,
+                "error": "TPC-H refresh functions are not supported by platform 'MockPlatformAdapterWithDialect'",
                 "test_type": "maintenance",
             }
         ]

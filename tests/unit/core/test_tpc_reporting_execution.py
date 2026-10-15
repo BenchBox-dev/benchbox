@@ -397,15 +397,17 @@ def test_tpch_throughput_and_maintenance_core_paths(monkeypatch: pytest.MonkeyPa
     assert stream.queries_executed == 22
 
     maint = TPCHMaintenanceTest(connection_factory=_Conn, scale_factor=1.0, verbose=False)
+    update_sets = {set_id: SimpleNamespace(set_id=set_id) for set_id in (1, 2)}
+    monkeypatch.setattr("benchbox.core.tpch.maintenance_test.generate_refresh_update_sets", lambda *_args: update_sets)
     monkeypatch.setattr(
         maint,
         "_execute_rf1",
-        lambda pair_id: TPCHMaintenanceOperation("RF1", 0.0, 1.0, 1.0, 10, True),
+        lambda pair_id, update_set: TPCHMaintenanceOperation("RF1", 0.0, 1.0, 1.0, 10, True),
     )
     monkeypatch.setattr(
         maint,
         "_execute_rf2",
-        lambda pair_id: TPCHMaintenanceOperation(
+        lambda pair_id, update_set: TPCHMaintenanceOperation(
             "RF2", 1.0, 2.0, 1.0, 5, pair_id % 2 == 0, error="x" if pair_id % 2 else None
         ),
     )
@@ -639,20 +641,7 @@ class _BrokenMaintenanceConn(_FakeMaintenanceConn):
 
 
 def _make_maintenance_test(monkeypatch: pytest.MonkeyPatch, conn: _FakeMaintenanceConn) -> TPCHMaintenanceTest:
-    maint = TPCHMaintenanceTest(connection_factory=lambda: conn, scale_factor=1.0, verbose=True)
-    monkeypatch.setattr(
-        maint,
-        "_generate_rf1_orders_data",
-        lambda pair_id, num_orders: (
-            [{"O_ORDERKEY": 200 + pair_id, "O_CUSTKEY": 1, "O_COMMENT": "x"}] * max(1, num_orders)
-        ),
-    )
-    monkeypatch.setattr(
-        maint,
-        "_generate_rf1_lineitems_data",
-        lambda order_key, num_items: [{"L_ORDERKEY": order_key, "L_PARTKEY": 10, "L_SUPPKEY": 20}] * max(1, num_items),
-    )
-    return maint
+    return TPCHMaintenanceTest(connection_factory=lambda: conn, scale_factor=1.0, verbose=True)
 
 
 def test_tpch_maintenance_helpers(monkeypatch: pytest.MonkeyPatch):
@@ -661,44 +650,45 @@ def test_tpch_maintenance_helpers(monkeypatch: pytest.MonkeyPatch):
 
     sql_preview = maint.get_maintenance_operations_sql(pair_id=0, placeholder="?")
     assert "RF1" in sql_preview and "RF2" in sql_preview
-    assert maint._get_parameter_placeholder(type("SQLiteConn", (), {})()) == "?"
-    assert maint._get_parameter_placeholder(type("PostgresConn", (), {})()) == "%s"
-    assert maint._identify_old_orders(conn, 2) == [101, 102]
-
-    valid_cust, invalid_cust = maint._validate_customer_keys(conn, [1, 2, 3])
-    assert valid_cust is False and 3 in invalid_cust
-    valid_ps, invalid_parts, invalid_supp = maint._validate_part_supplier_keys(conn, [10, 12], [20, 22])
-    assert valid_ps is False and invalid_parts and invalid_supp
-
-    with pytest.raises(ValueError):
-        maint._validate_rf1_data(conn, [{"O_CUSTKEY": 99}], [{"L_PARTKEY": 10, "L_SUPPKEY": 20}])
+    assert "DBGen refresh set 1" in sql_preview["RF1"][0]
+    assert "Delete keys from DBGen refresh set 1" in sql_preview["RF2"][0]
 
 
 def test_tpch_maintenance_execution(monkeypatch: pytest.MonkeyPatch):
     conn = _FakeMaintenanceConn()
     maint = _make_maintenance_test(monkeypatch, conn)
-
-    monkeypatch.setattr(maint, "_validate_rf1_data", lambda *_a, **_k: None)
-    rf1 = maint._execute_rf1(pair_id=0)
+    update_set = SimpleNamespace(set_id=1)
+    module = "benchbox.core.tpch.maintenance_test"
+    monkeypatch.setattr(f"{module}.generate_refresh_update_sets", lambda *_args: {1: update_set})
+    monkeypatch.setattr(f"{module}.check_rf1_preconditions", lambda *_args: None)
+    monkeypatch.setattr(f"{module}.check_rf2_preconditions", lambda *_args: 3)
+    monkeypatch.setattr(f"{module}.check_rf2_applied", lambda *_args: None)
+    monkeypatch.setattr(f"{module}.apply_rf1", lambda *_args: 10)
+    monkeypatch.setattr(f"{module}.apply_rf2", lambda *_args: 5)
+    rf1 = maint._execute_rf1(pair_id=0, update_set=update_set)
     assert rf1.success is True
-    rf2 = maint._execute_rf2(pair_id=0)
-    assert rf2.success is True and rf2.rows_affected >= 0
+    rf2 = maint._execute_rf2(pair_id=0, update_set=update_set)
+    assert rf2.success is True and rf2.rows_affected == 5
 
-    conn.fail_delete = True
-    rf2_fail = maint._execute_rf2(pair_id=1)
+    def reject_rf2(*_args):
+        raise ValueError("missing order")
+
+    monkeypatch.setattr(f"{module}.check_rf2_preconditions", reject_rf2)
+    rf2_fail = maint._execute_rf2(pair_id=1, update_set=update_set)
     assert rf2_fail.success is False
+    assert rf2_fail.duration == 0
 
     monkeypatch.setattr("benchbox.core.tpch.maintenance_test.time.sleep", lambda _s: None)
-    monkeypatch.setattr(maint, "_execute_rf1", lambda _pid: TPCHMaintenanceOperation("RF1", 0, 1, 1, 1, True))
+    monkeypatch.setattr(maint, "_execute_rf1", lambda _pid, _set: TPCHMaintenanceOperation("RF1", 0, 1, 1, 1, True))
     monkeypatch.setattr(
         maint,
         "_execute_rf2",
-        lambda _pid: TPCHMaintenanceOperation("RF2", 0, 1, 1, 0, False, error="bad"),
+        lambda _pid, _set: TPCHMaintenanceOperation("RF2", 0, 1, 1, 0, False, error="bad"),
     )
     run_res = maint.run_maintenance_test(maintenance_pairs=1, rf1_interval=0, rf2_interval=0)
     assert run_res.success is False and run_res.failed_operations == 1
 
-    monkeypatch.setattr(maint, "_execute_rf1", lambda _pid: (_ for _ in ()).throw(RuntimeError("boom")))
+    monkeypatch.setattr(maint, "_execute_rf1", lambda _pid, _set: (_ for _ in ()).throw(RuntimeError("boom")))
     crash_res = maint.run_maintenance_test(maintenance_pairs=1, rf1_interval=0, rf2_interval=0)
     assert crash_res.success is False
 

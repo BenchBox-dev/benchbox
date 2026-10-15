@@ -15,6 +15,7 @@ from benchbox.core.results.models import (
     MigrationPhase,
     NativeComparison,
     NativeComparisonEntry,
+    PowerTestPhase,
     SetupPhase,
     ThroughputStream,
     ThroughputTestPhase,
@@ -227,6 +228,8 @@ def reconstruct_benchmark_results(
         power_at_size=tpc["power_at_size"],
         throughput_at_size=tpc["throughput_at_size"],
         qph_at_size=tpc["qph_at_size"],
+        refresh_included=tpc["refresh_included"],
+        qphh_unavailable=tpc["qphh_unavailable"],
         geometric_mean_execution_time=tpc["geometric_mean_execution_time"],
         test_execution_type=benchmark_section.get("mode", "standard"),
         validation_status=summary_section.get("validation", "NOT_RUN"),
@@ -328,6 +331,8 @@ def _extract_tpc_metrics(summary_section: dict[str, Any]) -> dict[str, Any]:
         "power_at_size": tpc.get("power_at_size"),
         "throughput_at_size": tpc.get("throughput_at_size"),
         "qph_at_size": tpc.get("qphh_at_size") or tpc.get("qphds_at_size"),
+        "refresh_included": tpc.get("refresh_included"),
+        "qphh_unavailable": tpc.get("qphh_unavailable"),
         "geometric_mean_execution_time": geometric_mean_ms / 1000.0 if geometric_mean_ms else None,
     }
 
@@ -611,7 +616,7 @@ def iter_query_results(results: Any) -> list[dict[str, Any]]:
     return list(getattr(results, "query_results", None) or [])
 
 
-_RECONSTRUCTED_PHASES = frozenset({"throughput_test", "migration"})
+_RECONSTRUCTED_PHASES = frozenset({"power_test", "throughput_test", "migration"})
 
 
 def _recorded_phase_status(phases_section: dict[str, Any]) -> dict[str, dict[str, Any]]:
@@ -629,6 +634,22 @@ def _recorded_phase_status(phases_section: dict[str, Any]) -> dict[str, dict[str
 def _reconstruct_execution_phases(phases_section: dict[str, Any]) -> ExecutionPhases | None:
     if not phases_section:
         return None
+
+    power = None
+    power_data = phases_section.get("power_test")
+    if power_data and power_data.get("status") != "NOT_RUN":
+        power = PowerTestPhase(
+            start_time="",
+            end_time="",
+            duration_ms=power_data.get("duration_ms", 0),
+            query_executions=[],
+            geometric_mean_time=0.0,
+            power_at_size=0.0,
+            refresh_first_set=power_data.get("refresh_first_set"),
+            refresh_functions=power_data.get("refresh_functions"),
+            query_count=power_data.get("query_count"),
+            success=power_data.get("status") == "COMPLETED",
+        )
 
     migration = None
     mig = phases_section.get("migration")
@@ -661,11 +682,12 @@ def _reconstruct_execution_phases(phases_section: dict[str, Any]) -> ExecutionPh
         ]
         outstanding_work = throughput_data.get("outstanding_work")
         stream_numbering = throughput_data.get("stream_numbering")
+        refresh_stream = throughput_data.get("refresh_stream")
         throughput = ThroughputTestPhase(
             start_time="",
             end_time="",
             duration_ms=throughput_data.get("duration_ms", 0),
-            num_streams=len(streams),
+            num_streams=throughput_data.get("num_streams", len(streams)),
             streams=streams,
             total_queries_executed=0,
             throughput_at_size=None,
@@ -680,17 +702,15 @@ def _reconstruct_execution_phases(phases_section: dict[str, Any]) -> ExecutionPh
                 else None
             ),
             stream_numbering=dict(stream_numbering) if isinstance(stream_numbering, dict) else None,
+            refresh_stream=dict(refresh_stream) if isinstance(refresh_stream, dict) else None,
         )
 
-    if (
-        migration is None
-        and throughput is None
-        and not any(phases_section.get(p, {}).get("status") not in (None, "NOT_RUN") for p in ("power_test",))
-    ):
+    if power is None and migration is None and throughput is None:
         return None
 
     return ExecutionPhases(
         setup=SetupPhase(),
+        power_test=power,
         migration=migration,
         throughput_test=throughput,
     )

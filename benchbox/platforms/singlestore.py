@@ -74,6 +74,7 @@ def _extract_create_table_name(stmt: str) -> str | None:
 
 class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, BaseDdlOptimizer, PlatformAdapter):
     plan_capture_phase_eligible = True
+    supports_refresh_functions = True
     default_service_port = _DEFAULT_PORT
 
     _platform_key: ClassVar[str] = "singlestore"
