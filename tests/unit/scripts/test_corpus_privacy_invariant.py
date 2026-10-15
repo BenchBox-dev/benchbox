@@ -281,6 +281,24 @@ def test_spoofed_anonymized_flag_fails_on_raw_explain_in_plan() -> None:
     assert export_anonymized_errors(payload), "spoofed flag with raw explain output passed validation"
 
 
+@pytest.mark.parametrize("top_level_queries", [{"q2": {"status": "success"}}, []])
+def test_top_level_queries_do_not_hide_raw_explain_in_nested_plans(top_level_queries: object) -> None:
+    payload = {
+        "export": {"anonymized": True},
+        "queries": top_level_queries,
+        "plans": {
+            "queries": {
+                "q1": {
+                    "plan": {
+                        "raw_explain_output": "Seq Scan on private_table",
+                    }
+                }
+            }
+        },
+    }
+    assert any("plans.queries[q1]" in error for error in export_anonymized_errors(payload))
+
+
 def test_spoofed_anonymized_flag_fails_on_unanonymized_tuning_diagnostics() -> None:
     payload = {
         "export": {"anonymized": True},

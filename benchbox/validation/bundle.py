@@ -2274,23 +2274,25 @@ def _unanonymized_operator_metadata_findings(node: Any, where: str) -> list[str]
 def unanonymized_plans_findings(data: Any) -> list[str]:
     if not isinstance(data, dict):
         return []
-    queries = data.get("queries")
-    if queries is None and isinstance(data.get("plans"), dict):
-        queries = data["plans"].get("queries")
-    if not isinstance(queries, dict):
-        return []
     findings: list[str] = []
-    for query_id, entry in queries.items():
-        if not isinstance(entry, dict):
+    query_sources = [data.get("queries")]
+    plans = data.get("plans")
+    if isinstance(plans, dict):
+        query_sources.append(plans.get("queries"))
+    for queries in query_sources:
+        if not isinstance(queries, dict):
             continue
-        plan = entry.get("plan")
-        if not isinstance(plan, dict):
-            continue
-        if plan.get("raw_explain_output") is not None:
-            findings.append(f"plans.queries[{query_id}].plan exposes unanonymized raw_explain_output")
-        findings.extend(
-            _unanonymized_operator_metadata_findings(plan.get("logical_root"), f"plans.queries[{query_id}].plan")
-        )
+        for query_id, entry in queries.items():
+            if not isinstance(entry, dict):
+                continue
+            plan = entry.get("plan")
+            if not isinstance(plan, dict):
+                continue
+            if plan.get("raw_explain_output") is not None:
+                findings.append(f"plans.queries[{query_id}].plan exposes unanonymized raw_explain_output")
+            findings.extend(
+                _unanonymized_operator_metadata_findings(plan.get("logical_root"), f"plans.queries[{query_id}].plan")
+            )
     return findings
 
 
