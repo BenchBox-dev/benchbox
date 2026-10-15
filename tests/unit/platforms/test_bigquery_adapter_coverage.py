@@ -47,6 +47,24 @@ def _make_adapter(**kwargs):
 
 
 class TestFromConfigProjectAutoDetect:
+    def test_nested_tuning_key_order_keeps_generated_dataset_name(self):
+        import benchbox.platforms.bigquery as bq_module
+
+        tuning_a = {
+            "platform_optimizations": {"z_ordering_enabled": True, "auto_optimize_enabled": False},
+            "table_tunings": {"lineitem": {"sorting": [{"name": "l_orderkey", "order": 1}]}},
+        }
+        tuning_b = {
+            "table_tunings": {"lineitem": {"sorting": [{"order": 1, "name": "l_orderkey"}]}},
+            "platform_optimizations": {"auto_optimize_enabled": False, "z_ordering_enabled": True},
+        }
+        common = {"project_id": "test-project", "benchmark": "tpch", "scale_factor": 1.0}
+
+        adapter_a = bq_module.BigQueryAdapter.from_config({**common, "tuning_config": tuning_a})
+        adapter_b = bq_module.BigQueryAdapter.from_config({**common, "tuning_config": tuning_b})
+
+        assert adapter_a.dataset_id == adapter_b.dataset_id
+
     def test_auto_detects_project_when_not_in_config(self):
         import benchbox.platforms.bigquery as bq_module
 

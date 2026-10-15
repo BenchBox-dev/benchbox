@@ -841,6 +841,31 @@ class TestResolveClusteringStrategy:
 
 
 class TestFromConfig:
+    def test_nested_tuning_key_order_keeps_generated_schema_name(self):
+        from benchbox.platforms.databricks import DatabricksAdapter
+
+        tuning_a = {
+            "platform_optimizations": {"z_ordering_enabled": True, "auto_optimize_enabled": False},
+            "table_tunings": {"lineitem": {"sorting": [{"name": "l_orderkey", "order": 1}]}},
+        }
+        tuning_b = {
+            "table_tunings": {"lineitem": {"sorting": [{"order": 1, "name": "l_orderkey"}]}},
+            "platform_optimizations": {"auto_optimize_enabled": False, "z_ordering_enabled": True},
+        }
+        common = {
+            "server_hostname": "real.cloud.databricks.com",
+            "http_path": "/sql/1.0/warehouses/abc",
+            "access_token": "tok",
+            "benchmark": "tpch",
+            "scale_factor": 1.0,
+            "catalog": "main",
+        }
+
+        adapter_a = DatabricksAdapter.from_config({**common, "tuning_config": tuning_a})
+        adapter_b = DatabricksAdapter.from_config({**common, "tuning_config": tuning_b})
+
+        assert adapter_a.schema == adapter_b.schema
+
     def test_passes_explicit_credentials_to_adapter(self):
         from benchbox.platforms.databricks import DatabricksAdapter
 

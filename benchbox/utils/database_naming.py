@@ -128,6 +128,17 @@ def _get_optimizations_suffix(tuning_config: Optional[Any]) -> str:
     return "_".join(components) if components else ""
 
 
+def _canonicalize_for_hash(val: Any) -> Any:
+    if isinstance(val, dict):
+        items = sorted(val.items(), key=lambda item: (str(item[0]), type(item[0]).__name__, repr(item[0])))
+        return [(key, _canonicalize_for_hash(value)) for key, value in items]
+    if isinstance(val, list):
+        return [_canonicalize_for_hash(item) for item in val]
+    if isinstance(val, tuple):
+        return tuple(_canonicalize_for_hash(item) for item in val)
+    return val
+
+
 def _get_config_hash(tuning_config: Optional[Any]) -> str:
     config_dict = _tuning_config_to_dict(tuning_config)
     if not config_dict:
@@ -136,7 +147,7 @@ def _get_config_hash(tuning_config: Optional[Any]) -> str:
     config_copy = config_dict.copy()
     config_copy.pop("_metadata", None)
 
-    config_str = str(sorted(config_copy.items()))
+    config_str = str(_canonicalize_for_hash(config_copy))
     hash_obj = hashlib.md5(config_str.encode("utf-8"))
     return hash_obj.hexdigest()[:6]
 

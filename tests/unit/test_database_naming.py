@@ -348,6 +348,39 @@ class TestTuningConfigurationHelpers:
         assert len(hash1) == 6
         assert hash1.isalnum()
 
+    def test_nested_key_order_independence(self):
+        config_a = {
+            "platform_optimizations": {"z_ordering_enabled": True, "auto_optimize_enabled": False},
+            "table_tunings": {
+                "orders": {
+                    "partitioning": [{"name": "order_date", "type": "DATE"}],
+                    "sorting": [{"name": "orderkey", "type": "INTEGER", "order": 1}],
+                }
+            },
+        }
+        config_b = {
+            "table_tunings": {
+                "orders": {
+                    "sorting": [{"order": 1, "type": "INTEGER", "name": "orderkey"}],
+                    "partitioning": [{"type": "DATE", "name": "order_date"}],
+                }
+            },
+            "platform_optimizations": {"auto_optimize_enabled": False, "z_ordering_enabled": True},
+        }
+
+        assert _get_config_hash(config_a) == _get_config_hash(config_b)
+        assert generate_database_name(
+            "tpch", 1.0, "duckdb", config_a, template="{benchmark}_{scale}_{hash}"
+        ) == generate_database_name("tpch", 1.0, "duckdb", config_b, template="{benchmark}_{scale}_{hash}")
+
+    def test_flat_config_hash_golden(self):
+        flat_config = {"alpha": "one", "beta": 2, "gamma": True, "tags": ["x", "y"], "window": (1, 3)}
+        expected_hash = "80e724"
+        assert _get_config_hash(flat_config) == expected_hash
+
+        flat_config_reversed = {"window": (1, 3), "tags": ["x", "y"], "gamma": True, "beta": 2, "alpha": "one"}
+        assert _get_config_hash(flat_config_reversed) == expected_hash
+
 
 class TestDatabaseConfigurationListing:
     def test_list_configurations(self):
@@ -438,3 +471,35 @@ class TestDatabaseNamingIntegration:
         assert "noconstraints" in name
         assert "part" in name
         assert "sort" in name
+
+    def test_callers_nested_key_order_independence(self):
+        from benchbox.platforms.base.config_utils import build_adapter_config
+
+        config_a = {
+            "benchmark": "tpch",
+            "scale_factor": 1.0,
+            "tuning_config": {
+                "platform_optimizations": {"z_ordering_enabled": True, "auto_optimize_enabled": False},
+                "table_tunings": {
+                    "lineitem": {
+                        "sorting": [{"name": "l_orderkey", "order": 1}],
+                    }
+                },
+            },
+        }
+        config_b = {
+            "benchmark": "tpch",
+            "scale_factor": 1.0,
+            "tuning_config": {
+                "table_tunings": {
+                    "lineitem": {
+                        "sorting": [{"order": 1, "name": "l_orderkey"}],
+                    }
+                },
+                "platform_optimizations": {"auto_optimize_enabled": False, "z_ordering_enabled": True},
+            },
+        }
+
+        built_spark_a = build_adapter_config(config_a, platform="spark", generated_key="database")
+        built_spark_b = build_adapter_config(config_b, platform="spark", generated_key="database")
+        assert built_spark_a["database"] == built_spark_b["database"]
