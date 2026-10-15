@@ -3,9 +3,11 @@ from __future__ import annotations
 import sys
 import types
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Optional
 
 import pytest
+import yaml
 
 from benchbox.core.platform_registry import PlatformRegistry
 from benchbox.core.tuning.interface import (
@@ -727,6 +729,59 @@ def test_compare_tuning_configurations_rejects_extra_table_tunings():
     assert result.is_valid is False
     assert result.extra_tables == {"lineitem"}
     assert any("lineitem" in error for error in result.errors)
+
+
+def _tunings_with_constraint_only_tables(*column_tuned: TableTuning) -> BenchmarkTunings:
+    table_tunings = {table.table_name: table for table in column_tuned}
+    for name in ("customer", "supplier"):
+        table_tunings[name] = TableTuning(table_name=name)
+    return BenchmarkTunings("tpch", table_tunings=table_tunings)
+
+
+@pytest.mark.parametrize("template", ["tpch_tuned.yaml", "tpcds_tuned.yaml"])
+def test_validate_tunings_accepts_saved_template_with_constraint_only_tables(template):
+    path = Path(__file__).resolve().parents[4] / "examples" / "tunings" / "snowflake" / template
+    config = UnifiedTuningConfiguration.from_dict(yaml.safe_load(path.read_text()))
+    assert any(not table.has_any_tuning() for table in config.table_tunings.values())
+    manager = TuningMetadataManager(_Adapter("snowflake"), connection=_StatefulConn())
+    assert manager.save_tunings(manager._as_benchmark_tunings(config)) is True
+
+    result = manager.validate_tunings(manager._as_benchmark_tunings(config))
+
+    assert result.is_valid is True, result.errors
+    assert not result.missing_tables
+
+
+def test_compare_tuning_configurations_ignores_constraint_only_tables_but_reports_missing_column_tuning():
+    manager = TuningMetadataManager(_Adapter("duckdb"))
+    expected = _tunings_with_constraint_only_tables(
+        TableTuning(table_name="orders", clustering=[_col("o_orderdate")]),
+        TableTuning(table_name="lineitem", clustering=[_col("l_shipdate")]),
+    )
+    existing = BenchmarkTunings("tpch")
+    existing.add_table_tuning(TableTuning(table_name="orders", clustering=[_col("o_orderdate")]))
+
+    result = MetadataValidationResult()
+    manager._compare_tuning_configurations(expected, existing, result)
+
+    assert result.is_valid is False
+    assert result.missing_tables == {"lineitem"}
+    assert result.errors == ["Expected tuning for table 'lineitem' not found in database"]
+
+
+def test_compare_tuning_configurations_reports_column_tuning_on_constraint_only_table():
+    manager = TuningMetadataManager(_Adapter("duckdb"))
+    expected = _tunings_with_constraint_only_tables(TableTuning(table_name="orders", clustering=[_col("o_orderdate")]))
+    existing = BenchmarkTunings("tpch")
+    existing.add_table_tuning(TableTuning(table_name="orders", clustering=[_col("o_orderdate")]))
+    existing.add_table_tuning(TableTuning(table_name="customer", clustering=[_col("c_custkey")]))
+
+    result = MetadataValidationResult()
+    manager._compare_tuning_configurations(expected, existing, result)
+
+    assert result.is_valid is False
+    assert result.extra_tables == {"customer"}
+    assert not result.missing_tables
 
 
 def test_clear_tunings_returns_true_when_no_table_exists(monkeypatch):
