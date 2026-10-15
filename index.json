@@ -20953,15 +20953,10 @@
       "title": "Widen the migration snapshot to carry findings once todo-db can accept them"
     },
     "snowflake-campaign-statement-history-timestamp-type-20261015": {
-      "claim": {
-        "expires_at": "2026-10-16T23:25:24Z",
-        "generation": "e25f1c2e5bad46d6ae07d696a3016f49",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:9e002f45bd6cb1f33b959f2c"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Snowflake campaign helper statement-history fails with a TIMESTAMP_TZ parameter type error"
     },
     "snowflake-clickhouse-open-table-format-loading": {
