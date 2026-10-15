@@ -124,6 +124,17 @@
       "op": "take",
       "op_id": "dcceaeeb077c43f193eb26159a883f3c",
       "session_id": "134457addb0345bf8b28fd188b0118d0"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:ea0be403a8b96a2da6b4bc02",
+      "at": "2026-10-15T02:10:22Z",
+      "client": "codex-mcp-client",
+      "displaced": "mcp:antigravity-client:joe@joe-mac-mini.local:856260f34f48ed8b6cea784d",
+      "generation": "f392b8c279c448f089a9176cbc9684ae",
+      "op": "takeover",
+      "op_id": "ab94af12a1344e1da88acaaf9030ba2f",
+      "reason": "Taking over the named Antigravity conversation d51d3863-a2e0-4070-bde3-048f7e3f8814 after confirming its transcript ended at 2026-10-15T01:00:35Z and its process/worktree has no live writer.",
+      "session_id": "285b770cc65649b79de585983b85d97b"
     }
   ]
 }

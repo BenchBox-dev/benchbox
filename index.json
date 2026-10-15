@@ -23260,10 +23260,10 @@
     },
     "tpch-refresh-functions-in-power-and-throughput": {
       "claim": {
-        "expires_at": "2026-10-16T00:01:01Z",
-        "generation": "f0bb5435df384e0985d38d321487db93",
+        "expires_at": "2026-10-16T02:10:22Z",
+        "generation": "f392b8c279c448f089a9176cbc9684ae",
         "renewals": 0,
-        "worker": "mcp:antigravity-client:joe@joe-mac-mini.local:856260f34f48ed8b6cea784d"
+        "worker": "mcp:codex-mcp-client:joe@joe-mac-mini.local:ea0be403a8b96a2da6b4bc02"
       },
       "needs": [
         "tpch-qphh-missing-refresh-functions"
