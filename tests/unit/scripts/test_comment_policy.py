@@ -1822,6 +1822,10 @@ def test_opaque_fixture_permission_changes_with_contributing_consumer_code() -> 
     assert not allowed(changed, registered, changed_source)
 
 
+def _payload_error_finding(source: str) -> Any:
+    return next(finding for finding in python_findings("a.py", source) if finding.kind == "payload-error")
+
+
 def test_fixture_accepts_legacy_whole_tree_digest() -> None:
     from comment_syntax import python_consumer_digest
 
@@ -1846,6 +1850,38 @@ def test_fixture_accepts_legacy_whole_tree_digest() -> None:
         ]
     )
     assert not allowed(finding, bogus, source)
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "class Runner:\n    def run(self):\n        exec(self.cmd)",
+        'def cmd():\n    return "prog"\n\n\ndef test_main(cmd):\n    exec(cmd)',
+        'CMD = "a"\nif True:\n    CMD = "b"\nexec(CMD)',
+        'CMD = ["a"]\nCMD.append("b")\nexec(CMD[0])',
+        'CMD = ["a"]\nCMD[0] = "b"\nexec(CMD[0])',
+        "import subprocess\nsubprocess.run = fake\nexec(prog)",
+    ],
+)
+def test_scoped_digest_falls_back_to_whole_tree_on_hidden_mutation_channels(source: str) -> None:
+    from comment_syntax import python_consumer_digest
+
+    finding = _payload_error_finding(source)
+    assert finding.payload == python_consumer_digest(ast.parse(source))
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        'CMD = "prog"\nCMD += " --flag"\ndef run():\n    exec(CMD)',
+        "import sys\ndef run():\n    exec(sys.argv[1])",
+    ],
+)
+def test_scoped_digest_survives_plain_reads_of_stable_bindings(source: str) -> None:
+    from comment_syntax import python_consumer_digest
+
+    finding = _payload_error_finding(source)
+    assert finding.payload != python_consumer_digest(ast.parse(source))
 
 
 def test_native_payload_batches_include_nested_shell_javascript(monkeypatch: pytest.MonkeyPatch) -> None:

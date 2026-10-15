@@ -121,7 +121,10 @@ editing the reader or a binding it resolves through breaks the match. Entries
 registered before the scoped scheme carry the whole-file syntax-tree digest
 instead, and the checker still honors those during the transition. Either
 syntax-tree digest ignores only empty type-parameter lists, so all Python
-versions agree.
+versions agree. When the reader touches parameters, attributes, or bindings
+used inside compound statements or through non-name targets, the checker
+falls back to the whole-file digest, since those channels can change the
+executed input without touching the resolved bindings.
 
 ## What the checker compares
 

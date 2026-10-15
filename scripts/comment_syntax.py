@@ -464,16 +464,117 @@ def _locally_bound(bindings: PythonBindings, module: ast.AST, node: ast.Name) ->
     return False
 
 
+_COMPOUND_STATEMENTS: tuple[type[ast.AST], ...] = (
+    ast.For,
+    ast.AsyncFor,
+    ast.While,
+    ast.If,
+    ast.With,
+    ast.AsyncWith,
+    ast.Try,
+    ast.TryStar,
+)
+
+
+def _attribute_root(node: ast.Attribute) -> ast.AST:
+    value = node.value
+    while isinstance(value, ast.Attribute):
+        value = value.value
+    return value
+
+
+def _scope_params(scope: ast.AST) -> set[str]:
+    params: set[str] = set()
+    if isinstance(scope, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        arguments = scope.args
+        params.update(arg.arg for arg in (*arguments.posonlyargs, *arguments.args, *arguments.kwonlyargs))
+        if arguments.vararg is not None:
+            params.add(arguments.vararg.arg)
+        if arguments.kwarg is not None:
+            params.add(arguments.kwarg.arg)
+    return params
+
+
+def _scope_touches_hidden_channels(scope: ast.AST, names: set[str], imported: set[str]) -> bool:
+    params = _scope_params(scope)
+    for child in ast.walk(scope):
+        if isinstance(child, ast.Attribute):
+            root = _attribute_root(child)
+            if isinstance(root, ast.Name) and root.id not in imported:
+                return True
+        if not isinstance(child, ast.Name):
+            continue
+        if isinstance(child.ctx, ast.Load):
+            if child.id in params and child.id in names:
+                return True
+        elif child.id in names:
+            return True
+    return False
+
+
+def _tree_mutates_scoped_bindings(
+    tree: ast.Module, names: set[str], code_names: set[str], data_names: set[str]
+) -> bool:
+    stack: list[tuple[ast.AST, ast.AST | None, bool]] = [(tree, None, False)]
+    while stack:
+        node, parent, in_compound = stack.pop()
+        if node is not tree and parent is tree and isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+            for child in ast.iter_child_nodes(node):
+                if child not in node.targets if isinstance(node, ast.Assign) else child is not node.target:
+                    stack.append((child, node, in_compound))
+            continue
+        compound = in_compound or isinstance(node, _COMPOUND_STATEMENTS)
+        if isinstance(node, ast.Name) and node.id in names:
+            if not isinstance(node.ctx, ast.Load):
+                return True
+            if node.id in data_names and (isinstance(parent, (ast.Attribute, ast.Subscript)) or compound):
+                return True
+            if node.id in code_names and isinstance(parent, ast.Attribute):
+                attribute = parent
+                if isinstance(attribute.ctx, (ast.Store, ast.Del)):
+                    return True
+        for child in ast.iter_child_nodes(node):
+            stack.append((child, node, compound))
+    return False
+
+
+def _scope_needs_whole_tree(
+    tree: ast.Module, scope: ast.AST, names: set[str], code_names: set[str], data_names: set[str]
+) -> bool:
+    if _scope_touches_hidden_channels(scope, names, _imported_names(tree)):
+        return True
+    return _tree_mutates_scoped_bindings(tree, names, code_names, data_names)
+
+
+def _imported_names(tree: ast.Module) -> set[str]:
+    names: set[str] = set()
+    for statement in tree.body:
+        if isinstance(statement, ast.Import):
+            names.update(alias.asname or alias.name.split(".")[0] for alias in statement.names)
+        elif isinstance(statement, ast.ImportFrom):
+            names.update(alias.asname or alias.name for alias in statement.names)
+    return names
+
+
 def python_scoped_digest(tree: ast.AST, symbol: str, lineno: int, bindings: PythonBindings) -> str:
     scope = _consumer_scope_node(tree, symbol, lineno)
     if scope is None or not isinstance(tree, ast.Module):
         return python_consumer_digest(tree)
     index: dict[str, list[ast.AST]] = {}
+    code_names: set[str] = set()
+    data_names: set[str] = set()
     for statement in tree.body:
         if statement is scope or not isinstance(statement, ast.stmt):
             continue
-        for name in _module_binding_names(statement):
+        bound = _module_binding_names(statement)
+        for name in bound:
             index.setdefault(name, []).append(statement)
+        if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Import, ast.ImportFrom)):
+            code_names.update(bound)
+        else:
+            data_names.update(bound)
+    if _scope_needs_whole_tree(tree, scope, set(index), code_names, data_names):
+        return python_consumer_digest(tree)
     if isinstance(__builtins__, dict):
         builtin_names = set(__builtins__)
     else:
