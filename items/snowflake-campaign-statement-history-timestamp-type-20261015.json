@@ -3,7 +3,7 @@
     "statement-history casts its start time to TIMESTAMP_LTZ",
     "budget's metering-history casts are checked and left alone or fixed with a stated reason"
   ],
-  "context": "Observed 2026-10-15 in the C0 reuse check of the Snowflake trial-exit campaign.",
+  "context": "Observed 2026-10-15 in the C0 reuse check of the Snowflake trial-exit campaign. Fix: PR #3014 (branch docs/snowflake-trial-c0-findings, together with the findings.md update), open and armed 2026-10-15. budget's WAREHOUSE_METERING_HISTORY / AUTOMATIC_CLUSTERING_HISTORY casts worked in that session and are unchanged.",
   "description": "`_project/analysis/snowflake-trial-exit/snowflake_campaign.py statement-history` calls `INFORMATION_SCHEMA.QUERY_HISTORY(END_TIME_RANGE_START => '<since>'::TIMESTAMP_TZ, ...)`. Snowflake rejects it: \"invalid type [TIMESTAMP_TZ(9)] for parameter 'END_TIME_RANGE_START'\". The function takes TIMESTAMP_LTZ. A scratch copy using `::TIMESTAMP_LTZ` ran correctly on 2026-10-15.",
   "sessions": [
     {
@@ -12,6 +12,14 @@
       "client": "claude-code",
       "op": "create",
       "op_id": "68d383389cff4301947051a4d2a796bb",
+      "session_id": "70accbe5849d4e1da05dfca7c4ffe8da"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:9e002f45bd6cb1f33b959f2c",
+      "at": "2026-10-15T21:12:55Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "33e6dfd8fcd8459a92ad3a4596c5a16c",
       "session_id": "70accbe5849d4e1da05dfca7c4ffe8da"
     }
   ]
