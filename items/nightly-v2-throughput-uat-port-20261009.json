@@ -50,6 +50,15 @@
       "op": "renew",
       "op_id": "b5766011df754be4a0cd762650fecde0",
       "session_id": "a4547e3a2da34101955f1470631f44f0"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:122820e0d0649bb1515cedf7",
+      "at": "2026-10-15T02:56:58Z",
+      "client": "codex-mcp-client",
+      "generation": "1090a1d9b6d345bd814dfb0de1142777",
+      "op": "renew",
+      "op_id": "170b00b7530146f0b9536f6959319145",
+      "session_id": "a4547e3a2da34101955f1470631f44f0"
     }
   ]
 }
