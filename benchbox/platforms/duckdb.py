@@ -633,6 +633,8 @@ class DuckDBAdapter(PlatformAdapter):
         live_version = self._detect_connection_version(connection)
         if live_version:
             platform_info["platform_version"] = live_version
+            platform_info["engine_version"] = live_version
+            platform_info["engine_version_source"] = "sql_query"
             platform_info["driver_version_actual"] = live_version
             self.driver_version_actual = live_version
         elif self.driver_version_actual:

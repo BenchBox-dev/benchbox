@@ -80,6 +80,8 @@ class TestDataFusionRealConnection:
     def test_platform_info_returns_version(self, adapter, ctx):
         info = adapter.get_platform_info(ctx)
         assert "platform_version" in info
+        assert info["engine_version"] == info["platform_version"]
+        assert info["engine_version_source"] == "sql_query"
 
     def test_execute_aggregation_query(self, adapter, ctx, tmp_path):
         csv_path = tmp_path / "sales.csv"
