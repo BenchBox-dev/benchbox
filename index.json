@@ -20616,10 +20616,10 @@
     },
     "site-split-64-enforce-anonymized-flag": {
       "claim": {
-        "expires_at": "2026-10-15T20:53:44Z",
-        "generation": "fddce55b0e3b4ef9a18ed7f480a40a09",
+        "expires_at": "2026-10-16T00:07:53Z",
+        "generation": "d495e64cd3ee4d658a55850edec34fe3",
         "renewals": 0,
-        "worker": "mcp:tbh:joe@joe-mac-mini.local:2ff26e731ddb7b681f9dacbc"
+        "worker": "mcp:antigravity-client:joe@joe-mac-mini.local:cd8c618ea962a360e046a1de"
       },
       "needs": [],
       "priority": "medium",

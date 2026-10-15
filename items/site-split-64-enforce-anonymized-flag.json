@@ -25,6 +25,17 @@
       "op": "take",
       "op_id": "3063988554dc4ba3b01fa0cd161648d7",
       "session_id": "8250681ba4eb464e88a8d9c11374e76e"
+    },
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:cd8c618ea962a360e046a1de",
+      "at": "2026-10-15T00:07:53Z",
+      "client": "antigravity-client",
+      "displaced": "mcp:tbh:joe@joe-mac-mini.local:2ff26e731ddb7b681f9dacbc",
+      "generation": "d495e64cd3ee4d658a55850edec34fe3",
+      "op": "takeover",
+      "op_id": "4a377e9ebf2b4d669cfde55ee51b4ac7",
+      "reason": "previous session ended and handed off in 20261014 remediation handoff section 8",
+      "session_id": "711af2aaf02d4886ac50956ef5db4c4a"
     }
   ]
 }
