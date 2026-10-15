@@ -113,7 +113,7 @@ check, then merge. Remove unused exceptions when you review a module. A
 candidate scope notice must stay inside the byte range already pinned at the
 base and must not escalate a partial pin into a whole-file exclusion.
 
-The 55 current fixtures let named tests read exact parser input the checker
+The 56 current fixtures let named tests read exact parser input the checker
 cannot parse on its own. A fixture allows no comment text. Its digest covers
 the reading symbol plus the module-level bindings that symbol resolves
 through, so editing unrelated code in the file keeps the entry valid, while
