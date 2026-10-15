@@ -2,8 +2,11 @@
   "acceptance": [
     "`bundle-fetch` refuses a bundle unless its producing run meets all of these: repo `BenchBox-dev/benchbox`, workflow path `.github/workflows/site-inputs.yml`, `head_branch == develop`, event `workflow_run` or `workflow_dispatch`, and conclusion `success`. Tests cover each refusal with recorded run fixtures. `bundle-verify.mjs` is unchanged (D6). The environment-gate option is recorded in item 55's context."
   ],
-  "context": "F8. Site scripts/bundle-fetch.mjs:15-19 accepts any SITE_INPUTS_RUN_ID without checking the producing run. Owner decision D6 (2026-10-14 review session): bundle-verify.mjs stays unchanged.\n\nTAKEOVER 2026-10-15: PR #35 branch fix/bundle-fetch-provenance updated to head 9a8ec8916b18f49a534dd34c2c845736c2ab7c9f. Tightened workflow path check to require exact .github/workflows/site-inputs.yml; added nested-path refusal test. Local 11 targeted tests, full npm test (after npm run bundle:fetch), npm run check and npm run lint:guard pass. Changes pushed; exact-head CI run 38673574456 still had Explorer browser pending at last check; other required jobs passed. Item55 already records the develop-only SITE_BRIDGE_* environment option was not used under D3.",
+  "context": "F8: bundle-fetch now accepts only a producing run from BenchBox-dev/benchbox at the exact workflow path `.github/workflows/site-inputs.yml`, on `develop`, from `workflow_run` or `workflow_dispatch`, with conclusion `success`. `bundle-verify.mjs` is unchanged as required by D6.\n\nMerged PR #35: 9a8ec8916b18f49a534dd34c2c845736c2ab7c9f merged by squash as 4c0dd44ac56b875328953f24893408532018cf66 at 2026-10-15T03:13:56Z. Exact-head checks from run 38673574456 all passed: aggregate `ci`, lint/types/unit/build, Explorer browser suite, both bundle schema checks, core bundle and dependency audit. Visual comparison was advisory and passed. No review threads remained.\n\nTests in scripts/bundle-fetch.test.mjs cover foreign repo, wrong workflow, nested same-name workflow, wrong branch, invalid event, non-success conclusion, missing run, passing workflow_dispatch, and run-id lookup. The added nested workflow case verifies exact path matching. Local targeted 11 tests, full `npm test`, `npm run check`, and `npm run lint:guard` passed after fetching the bundle.\n\nPost-merge production Deploy run 38675182017 completed success at site SHA 4c0dd44ac56b875328953f24893408532018cf66. Receipt artifact `site-deploy-receipt-38675182017` has digest 3295fc5d8030f9317bb3e9db5c9ea319eaf5e0def686eb7f7c7e68d882016caf; production target, all applicable gates passed (origin skipped by configuration), and all 33 route probes matched with no errors. Receipt records core SHA a9c80901a1d028d8869406cc54c6ed2c978c10fe and bundle digest sha256:1299c8578d89d08310b1e97331b69a82dd4f5993b56b10ceddccf9e9d9baf33d.",
   "description": "F8. Site `scripts/bundle-fetch.mjs:15-19` accepts any `SITE_INPUTS_RUN_ID` without checking the producing run.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox-site/pull/35"
+  ],
   "sessions": [
     {
       "actor": "mcp:tbh:joe@joe-mac-mini.local:2ff26e731ddb7b681f9dacbc",
@@ -82,6 +85,14 @@
       "generation": "1592ccbd7ad54f16af7e2428798c942b",
       "op": "take",
       "op_id": "3af6dafa102b40c7b895c4ca3341be86",
+      "session_id": "22bf838e3a6d4061858731420b5ff0f7"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:1f8c5d7706213cbfec63db59",
+      "at": "2026-10-15T03:40:02Z",
+      "client": "codex-mcp-client",
+      "op": "update",
+      "op_id": "77280c7832d74af1adcc4d9ebab409d2",
       "session_id": "22bf838e3a6d4061858731420b5ff0f7"
     }
   ]
