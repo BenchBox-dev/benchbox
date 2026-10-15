@@ -5,12 +5,18 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 
 _FIRST_NUMBER = re.compile(r"(\d+)")
+
+
+def local_iceberg_location(path: str | Path) -> str:
+    local_path = Path(path)
+    return str(local_path.resolve()) if os.name == "nt" else local_path.as_uri()
 
 
 def is_iceberg_directory(path: str | Path) -> bool:

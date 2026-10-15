@@ -1,4 +1,4 @@
-import sys
+import json
 from pathlib import Path
 
 import pyarrow as pa
@@ -10,6 +10,7 @@ from benchbox.utils.format_converters.base import (
     SchemaError,
 )
 from benchbox.utils.format_converters.iceberg_converter import IcebergConverter
+from benchbox.utils.iceberg_layout import local_iceberg_location
 
 try:
     from pyiceberg.catalog.sql import SqlCatalog
@@ -17,8 +18,6 @@ try:
     ICEBERG_AVAILABLE = True
 except ImportError:
     ICEBERG_AVAILABLE = False
-
-IS_WINDOWS = sys.platform == "win32"
 
 pytestmark = [
     pytest.mark.unit,
@@ -227,7 +226,6 @@ class TestArrowSchemaBuilding:
         assert arrow_schema.field("c_mktsegment").type == pa.string()
 
 
-@pytest.mark.skipif(IS_WINDOWS, reason="Iceberg path format incompatible with Windows")
 class TestIcebergConversion:
     @pytest.fixture
     def temp_dir(self, tmp_path):
@@ -410,6 +408,8 @@ class TestIcebergConversion:
 
         metadata_files = list(metadata_dir.glob("*.metadata.json"))
         assert len(metadata_files) > 0
+        metadata = json.loads(metadata_files[-1].read_text(encoding="utf-8"))
+        assert metadata["location"] == local_iceberg_location(iceberg_table_path)
 
     def test_overwrite_existing_table(self, temp_dir, sample_schema):
         tbl_file = temp_dir / "test.tbl"
@@ -498,7 +498,6 @@ class TestIcebergConversion:
         assert result.output_files[0].exists()
 
 
-@pytest.mark.skipif(IS_WINDOWS, reason="Iceberg path format incompatible with Windows")
 class TestIcebergPartitioning:
     @pytest.fixture
     def temp_dir(self, tmp_path):

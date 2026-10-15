@@ -3,7 +3,6 @@
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
 import logging
-import sys
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -13,6 +12,7 @@ import pytest
 
 from benchbox.platforms.base import DriverIsolationCapability
 from benchbox.platforms.bigquery import BigQueryAdapter
+from benchbox.utils.iceberg_layout import local_iceberg_location
 
 pytestmark = [
     pytest.mark.unit,
@@ -40,7 +40,7 @@ def _make_real_iceberg_table(table_dir: Path) -> None:
     table = catalog.create_table(
         "ns.t",
         schema=Schema(NestedField(1, "id", LongType()), NestedField(2, "name", StringType())),
-        location=table_dir.as_uri(),
+        location=local_iceberg_location(table_dir),
         properties={"format-version": "2"},
     )
     table.overwrite(pa.table({"id": [1], "name": ["a"]}))
@@ -570,10 +570,6 @@ class TestBigQueryAdapter:
             with pytest.raises(ValueError, match="biglake_connection"):
                 adapter._prepare_external_table_uris(Mock(), "lineitem", [iceberg_dir])
 
-    @pytest.mark.skipif(
-        sys.platform == "win32",
-        reason="pyiceberg PyArrowFileIO cannot open file:///C:/ table locations on Windows (WinError 123)",
-    )
     @patch("benchbox.platforms.bigquery.bigquery")
     def test_prepare_iceberg_uris_points_at_metadata_file(self, mock_bigquery, dependencies_available):
         adapter = BigQueryAdapter(

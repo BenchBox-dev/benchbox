@@ -13,6 +13,7 @@ from benchbox.utils.format_converters.base import (
     ConversionResult,
     SchemaError,
 )
+from benchbox.utils.iceberg_layout import local_iceberg_location
 
 
 class IcebergConverter(BaseFormatConverter):
@@ -119,7 +120,7 @@ class IcebergConverter(BaseFormatConverter):
         create_kwargs: dict[str, Any] = {
             "identifier": table_identifier,
             "schema": iceberg_schema if iceberg_schema else arrow_schema,
-            "location": iceberg_table_path.as_uri(),
+            "location": local_iceberg_location(iceberg_table_path),
             "properties": {
                 "format-version": "2",
                 "write.format.default": "parquet",
