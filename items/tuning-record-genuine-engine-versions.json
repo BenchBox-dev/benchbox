@@ -2,7 +2,7 @@
   "acceptance": [
     "Decision recorded: local adapters record genuine engine versions, or measured path formally declared unreachable without engine metadata"
   ],
-  "context": "Rebased PR #2996 onto origin/develop; preserved the intervening develop changelog bullet alongside the engine-version entry. New head 9827094a8985be100ef634a72651d0586f7184e6. Local ladder on this head: fast suite 38,490 passed, 28 skipped, 849 warnings, 4 subtests; ruff and formatting passed; ty 678 diagnostics; import contracts 3 kept, 0 broken; make pr-preflight 125 passed. Force-with-lease push succeeded. PR #2996 remains open, mergeable, auto-merge armed; exact-head CI and oracle verdict are queued/in progress. Resume by checking new-head CI at a 10-minute cadence, address any real failures, and finish only after gh reports MERGED.",
+  "context": "PR #2996 merged at 2026-10-15T03:28:27Z. Head 9827094a8985be100ef634a72651d0586f7184e6 was squashed as 3d06ffb2b5df7ad63b5db8366a2d448211797e21, verified as an ancestor of origin/develop. Exact-head required checks and oracle-review passed, GraphQL showed zero unresolved review threads. Local verification: fast suite 38,490 passed, 28 skipped, 849 warnings, 4 subtests; Ruff/format pass; typecheck 678 diagnostics; import contracts 3 kept, 0 broken; preflight 125 passed. Closed out during takeover.",
   "description": "Oracle review on #2875 (2026-10-12) required removing driver/platform substitution from _tuning_evidence_engine_version. Consequence: with no platform recording genuine engine_version metadata, measured-benefit states are unreachable for local runs (CLI measured-benefit test reworked to pin unmeasured).",
   "sessions": [
     {
@@ -120,6 +120,14 @@
       "generation": "8b931c89c1154335b678f42f0d714556",
       "op": "take",
       "op_id": "00a7ae84cca445c281722c3877980886",
+      "session_id": "6f643d8692e8442884de4af547f77a25"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:bee9f454654b0d0ee4fa97f5",
+      "at": "2026-10-15T03:43:01Z",
+      "client": "codex-mcp-client",
+      "op": "update",
+      "op_id": "d626028b2fc748369b681ee3989f5986",
       "session_id": "6f643d8692e8442884de4af547f77a25"
     }
   ]
