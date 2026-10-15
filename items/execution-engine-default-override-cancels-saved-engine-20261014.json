@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "A test reproduces the current behaviour, or shows that the report is wrong.",
+    "ADR D5 states whether an override value of `default` is an explicit request or no request.",
+    "build_database_config follows that rule, and the CLI and MCP surfaces match it, with tests for each."
+  ],
+  "context": "Reported, not reproduced, as a follow-up from the work that merged in #2985 (b1fb45c5d). Builder precedence tests are in `tests/unit/core/test_execution_engine_config.py`. Decide first whether `default` passed in an override counts as an explicit request (it would then conflict and raise) or means \"no request\" (it would then not override). Record the decision in ADR D5.",
+  "description": "The Polars batch agent reported that `PlatformHookRegistry.build_database_config` lets an override value of `default` beat a non-default `execution_engine` given in options. That follows the rule \"builder overrides beat options\". The effect is that an explicit `default` from a higher layer silently drops a non-default engine requested at a lower layer, with no warning and no recorded conflict. Conflicting explicit values are supposed to raise (ADR D5 precedence: explicit > tuning > legacy > default).",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/2985"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:db24af8b2b1fd243732dda5f",
+      "at": "2026-10-15T00:27:16Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "edca6a808a1d417a9ba50f3b39474eb2",
+      "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    }
+  ]
+}

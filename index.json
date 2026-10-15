@@ -8841,6 +8841,13 @@
       "status": "open",
       "title": "Support Exasol table tuning: distribution, partitioning, and constraints"
     },
+    "execution-engine-default-override-cancels-saved-engine-20261014": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "An override of execution_engine=default can silently cancel a non-default engine set through options"
+    },
     "execution-harness-extraction-throughput-maintenance-combined": {
       "claim": null,
       "needs": [],
