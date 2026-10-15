@@ -4,7 +4,7 @@
     "`--force datagen` keeps recreating the database as today",
     "Unit tests cover option parsing and the CLI override merge"
   ],
-  "context": "The Snowflake trial-exit campaign plan's untuned loads pass this option; found by dry run on 2026-10-15.",
+  "context": "The Snowflake trial-exit campaign plan's untuned loads pass this option; found by dry run on 2026-10-15. Fix: PR #3013 (branch fix/platform-option-force-recreate), open and armed 2026-10-15. Related finding (not fixed there): on develop, the `--force datagen` runtime override lands only in `database_config.options` and is not lifted into the adapter config, so for DuckDB, PostgreSQL, DataFusion, SQLite (dry-run probe) and Snowflake the adapter does not receive force_recreate from `--force datagen`. Also on develop, `--phases generate,load` (no power) exits 1 with \"'NoneType' object has no attribute 'overall_status'\" on DuckDB sf0.01.",
   "description": "`benchbox run --platform snowflake ... --platform-option force_recreate=true` fails with \"Unknown platform option 'force_recreate' for platform 'snowflake'\". Adapters read `force_recreate` from config, but the CLI sets it only from `--force datagen` (`benchbox/cli/commands/run.py`, `\"force_recreate\": s.force_regenerate`), which also regenerates local data. Recreating a database from existing data (for example an untuned load that must replace an old database at sf100) is therefore impossible without a full datagen.",
   "sessions": [
     {
@@ -13,6 +13,14 @@
       "client": "claude-code",
       "op": "create",
       "op_id": "49843c47bd524870bd103b73167061f3",
+      "session_id": "70accbe5849d4e1da05dfca7c4ffe8da"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:9e002f45bd6cb1f33b959f2c",
+      "at": "2026-10-15T21:12:49Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "1cd8df42330448048c1994902beb9043",
       "session_id": "70accbe5849d4e1da05dfca7c4ffe8da"
     }
   ]
