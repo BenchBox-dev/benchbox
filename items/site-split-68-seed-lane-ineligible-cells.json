@@ -5,7 +5,7 @@
     "Workflow tests cover explicit uncertainty, derived translation uncertainty, clean bundle staging, and plan/tuning companions.",
     "The corrective change is merged with exact-head required checks and review evidence recorded here."
   ],
-  "context": "Review evidence: Seed Corpus run 38331461283 showed tpch/polars-df at SF0.01 and SF0.1 validating uncertain; PR #2930 dropped those bundles manually. The same run showed tpch/datafusion/SF1.0 failing from DataFusion's 12 GB fair memory pool exhaustion at TPC-H Q18.\n\nOwner decision, 2026-10-14 review session (D1): keep all 18 matrix cells and SEED_CORPUS_SPEC.md unchanged; add a test that the seed workflow never stages an uncertain bundle. PR #2971 nevertheless merged as b2096f60347073ba3af95469368a9ed438fae381 and removed three cells plus changed the spec. The corrective follow-up restores the pre-#2971 matrix and spec and gates staging through results-data/validate_corpus.py's bundle_validation_status. DataFusion SF1.0 remains in the matrix; its existing engine failure remains visible as a failed job.\n\nTAKEOVER progress: branch fix/seed-uncertain-bundles, worktree /Users/joe/Developer/BenchBox.wt-seed-uncertain-bundles. The implementation adds scripts/stage_seed_corpus_bundle.py, conditions artifact upload on its eligible output, and updates tests/unit/workflows/test_seed_corpus_pr_base.py. The spec is byte-identical to b2096f6^ and the matrix test verifies 18 unique cells. Focused suite: 12 passed. make pr-preflight passed on base 3d06ffb2b. Comment-policy check passed on earlier base 53f0fc7af; the staged commit hook is still running on current base before a commit exists. PR and exact-head CI evidence will be added after publication.",
+  "context": "Review evidence: Seed Corpus run 38331461283 showed tpch/polars-df at SF0.01 and SF0.1 validating uncertain; PR #2930 dropped those bundles manually. The same run showed tpch/datafusion/SF1.0 failing from DataFusion's 12 GB fair memory pool exhaustion at TPC-H Q18.\n\nOwner decision, 2026-10-14 review session (D1): keep all 18 matrix cells and SEED_CORPUS_SPEC.md unchanged; add a test that the seed workflow never stages an uncertain bundle. PR #2971 nevertheless merged as b2096f60347073ba3af95469368a9ed438fae381 and removed three cells plus changed the spec. The corrective follow-up restores the pre-#2971 matrix and spec and gates staging through results-data/validate_corpus.py's bundle_validation_status. DataFusion SF1.0 remains in the matrix; its existing engine failure remains visible as a failed job.\n\nIMPLEMENTED: scripts/stage_seed_corpus_bundle.py uses the corpus validator classification, skips copy for uncertain bundles and writes the upload eligibility output. `.github/workflows/seed-corpus.yml` preserves 18 unique cells and uploads only eligible artifacts. The spec is byte-identical to b2096f6^.\n\nLOCAL EVIDENCE: branch fix/seed-uncertain-bundles, worktree /Users/joe/Developer/BenchBox.wt-seed-uncertain-bundles. `uv run -- python -m pytest -q tests/unit/workflows/test_seed_corpus_pr_base.py`: 12 passed. `make pr-preflight`: passed on base 3d06ffb2b. `make duplicate-check-verbose`: passed (2303 duplicate lines within 8073 threshold). `make comment-policy-check` passed on 53f0fc7af. Commit 7c9cd1fa03622da15f8895241ba5ded0cd1359be passed the staged comment-policy hook.\n\nLIVE PR: BenchBox-dev/benchbox#3006, base 3d06ffb2b5df7ad63b5db8366a2d448211797e21, head 7c9cd1fa03622da15f8895241ba5ded0cd1359be, mergeable. Exact-head checks and oracle review are pending; no review threads. Repo `make pr-open READY=1` enabled auto-merge; no required checks or review findings are green yet. Reconcile exact-head CI and review before recording completion.",
   "description": "Keep the full 18-cell seed matrix and its specification unchanged while preventing uncertain bundles from being staged for seed PRs.",
   "sessions": [
     {
@@ -59,6 +59,14 @@
       "client": "codex-mcp-client",
       "op": "update",
       "op_id": "080f3678365f457bb6a416517b886690",
+      "session_id": "22bf838e3a6d4061858731420b5ff0f7"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:1f8c5d7706213cbfec63db59",
+      "at": "2026-10-15T03:38:04Z",
+      "client": "codex-mcp-client",
+      "op": "update",
+      "op_id": "376d37dfc53e4c27b5103ad49a40c603",
       "session_id": "22bf838e3a6d4061858731420b5ff0f7"
     }
   ]
