@@ -129,6 +129,15 @@
       "op": "update",
       "op_id": "d626028b2fc748369b681ee3989f5986",
       "session_id": "6f643d8692e8442884de4af547f77a25"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:bee9f454654b0d0ee4fa97f5",
+      "at": "2026-10-15T03:43:09Z",
+      "client": "codex-mcp-client",
+      "generation": "8b931c89c1154335b678f42f0d714556",
+      "op": "finish",
+      "op_id": "8c83295d78c24acc8f7b7de89e521f45",
+      "session_id": "6f643d8692e8442884de4af547f77a25"
     }
   ]
 }
