@@ -11,6 +11,8 @@ if TYPE_CHECKING:
 
 import yaml
 
+from benchbox.core.deployment import configured_deployment
+from benchbox.core.platform_registry import PlatformRegistry
 from benchbox.core.results.builder import normalize_benchmark_id
 from benchbox.core.results.platform_options import sanitize_platform_options
 from benchbox.core.schemas import (
@@ -110,6 +112,11 @@ class DryRunExecutor:
             execution_mode=execution_mode,
         )
 
+        if database_config is not None:
+            result.deployment = configured_deployment(database_config) or PlatformRegistry.get_default_deployment(
+                database_config.type
+            )
+
         try:
             benchmark = self._get_benchmark_instance(benchmark_config, system_profile)
 
@@ -123,11 +130,13 @@ class DryRunExecutor:
                 platform_config["dry_run"] = True
                 result.platform_config = platform_config
 
-                try:
-                    platform_adapter = get_platform_adapter(database_config.type, **platform_config)
-                except Exception as e:
-                    result.warnings.append(f"Platform adapter initialization failed: {e}")
-                    platform_adapter = None
+                platform_adapter = None
+                if execution_mode != "dataframe":
+                    try:
+                        platform_adapter = get_platform_adapter(database_config.type, **platform_config)
+                    except Exception as e:
+                        result.warnings.append(f"Platform adapter initialization failed: {e}")
+                result.deployment = getattr(platform_adapter, "deployment_selected", None) or result.deployment
 
             platform_type = database_config.type if database_config else None
             result.queries = self._extract_queries(
@@ -310,6 +319,7 @@ class DryRunExecutor:
             MetadataPrimitives,
             ReadPrimitives,
             TPCHavoc,
+            TSBSDevOps,
             WritePrimitives,
         )
 
@@ -328,6 +338,7 @@ class DryRunExecutor:
             "write_primitives": WritePrimitives,
             "tpchavoc": TPCHavoc,
             "coffeeshop": CoffeeShop,
+            "tsbs_devops": TSBSDevOps,
         }
 
         benchmark_name = config.name.lower()

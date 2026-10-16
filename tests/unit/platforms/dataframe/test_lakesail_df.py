@@ -164,6 +164,7 @@ class TestLakeSailDataFrameAdapterConfig:
         adapter._driver_memory = "4g"
         adapter._shuffle_partitions = 8
         adapter._enable_aqe = True
+        adapter.deployment_selected = "local"
         adapter.verbose = False
         adapter.very_verbose = False
         adapter.working_dir = "/tmp"
@@ -172,6 +173,7 @@ class TestLakeSailDataFrameAdapterConfig:
         assert info["platform"] == "LakeSail"
         assert info["family"] == "expression"
         assert info["endpoint"] == "sc://localhost:50051"
+        assert info["deployment_mode"] == "local"
         assert "driver_memory" in info
         assert "shuffle_partitions" in info
         assert "aqe_enabled" in info

@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from benchbox.core.dataframe.tuning import DataFrameTuningConfiguration
+from benchbox.core.deployment import deployment_class, select_adapter_deployment
 from benchbox.platforms._spark_helpers import spark_aqe_conf_entries
 from benchbox.platforms.dataframe.expression_family import ExpressionFamilyAdapter
 from benchbox.platforms.dataframe.pyspark_df import (
@@ -40,6 +41,7 @@ class LakeSailDataFrameAdapter(PySparkDataFrameAdapter):
         driver_memory: str = "4g",
         shuffle_partitions: int | None = None,
         enable_aqe: bool = True,
+        deployment_mode: str | None = None,
         **spark_config: Any,
     ) -> None:
         if not PYSPARK_AVAILABLE:
@@ -60,6 +62,8 @@ class LakeSailDataFrameAdapter(PySparkDataFrameAdapter):
         self._driver_memory = driver_memory
         self._shuffle_partitions = shuffle_partitions or os.cpu_count() or 8
         self._enable_aqe = enable_aqe
+        self.deployment_selected = select_adapter_deployment("lakesail", {"deployment_mode": deployment_mode}, "local")
+        self.deployment_selected_class = deployment_class("lakesail", self.deployment_selected)
         self._spark_config = spark_config
         self._spark: SparkSession | None = None
         self._validate_and_apply_tuning()
@@ -111,6 +115,7 @@ class LakeSailDataFrameAdapter(PySparkDataFrameAdapter):
             "platform": self.platform_name,
             "family": self.family,
             "endpoint": self._endpoint,
+            "deployment_mode": self.deployment_selected,
             "driver_memory": self._driver_memory,
             "shuffle_partitions": self._shuffle_partitions,
             "aqe_enabled": self._enable_aqe,

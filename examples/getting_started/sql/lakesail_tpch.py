@@ -31,12 +31,11 @@ def _build_configs(scale_factor: float) -> tuple[BenchmarkConfig, DatabaseConfig
     )
 
     database_config = DatabaseConfig(
-        type="lakesail",
+        type=f"lakesail:{sail_mode}",
         name="lakesail_tpch",
         options={
             "endpoint": endpoint,
             "app_name": "BenchBox-LakeSail-Example",
-            "deployment_mode": sail_mode,
             "sail_workers": int(sail_workers) if sail_workers else None,
             "table_format": "parquet",
             "driver_memory": "4g",

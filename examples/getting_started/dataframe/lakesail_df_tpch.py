@@ -15,14 +15,19 @@ if str(_PROJECT_ROOT) not in sys.path:
 
 from benchbox.cli.orchestrator import BenchmarkOrchestrator
 from benchbox.core.config import BenchmarkConfig, DatabaseConfig
+from benchbox.core.system import SystemProfiler
+from benchbox.examples import execute_example_dry_run
 
 _OUTPUT_DIR = _PROJECT_ROOT / "benchmark_runs" / "getting_started" / "lakesail_df"
+_DEFAULT_DRY_RUN_DIR = _OUTPUT_DIR / "dry_run"
+
+
+def _sail_mode() -> str:
+    return os.getenv("SAIL_MODE", "local")
 
 
 def _build_configs(scale_factor: float) -> tuple[BenchmarkConfig, DatabaseConfig]:
     endpoint = os.getenv("SAIL_ENDPOINT", "sc://localhost:50051")
-    sail_mode = os.getenv("SAIL_MODE", "local")
-    sail_workers = os.getenv("SAIL_WORKERS")
 
     benchmark_config = BenchmarkConfig(
         name="tpch",
@@ -33,25 +38,15 @@ def _build_configs(scale_factor: float) -> tuple[BenchmarkConfig, DatabaseConfig
     )
 
     database_config = DatabaseConfig(
-        type="lakesail-df",
+        type=f"lakesail-df:{_sail_mode()}",
         name="lakesail_df_tpch",
-        options={
-            "endpoint": endpoint,
-            "app_name": "BenchBox-LakeSail-DF-Example",
-            "deployment_mode": sail_mode,
-            "sail_workers": int(sail_workers) if sail_workers else None,
-            "execution_mode": "dataframe",
-            "table_format": "parquet",
-            "driver_memory": "4g",
-            "shuffle_partitions": 200,
-            "adaptive_enabled": True,
-        },
+        options={"endpoint": endpoint},
     )
 
     return benchmark_config, database_config
 
 
-def run_example(scale_factor: float = 0.01, *, dry_run: bool = False) -> None:
+def run_example(scale_factor: float = 0.01, *, dry_run_output: Path | None = None) -> None:
     print("=" * 70)
     print("LakeSail Sail DataFrame TPC-H Benchmark")
     print("=" * 70)
@@ -60,18 +55,22 @@ def run_example(scale_factor: float = 0.01, *, dry_run: bool = False) -> None:
     print("on LakeSail Sail via Spark Connect protocol.")
     print()
 
-    if dry_run:
-        print("[DRY RUN] Validating configuration without connecting...")
-        print()
+    benchmark_config, database_config = _build_configs(scale_factor)
 
-        benchmark_config, database_config = _build_configs(scale_factor)
-        print(f"  Platform: {database_config.type} (DataFrame mode)")
-        print(f"  Benchmark: {benchmark_config.name}")
-        print(f"  Scale Factor: {benchmark_config.scale_factor}")
-        print(f"  Endpoint: {database_config.options.get('endpoint')}")
-        print(f"  Sail Mode: {database_config.options.get('deployment_mode')}")
-        print()
-        print("[OK] Configuration valid")
+    print("Configuration:")
+    print(f"  Endpoint: {database_config.options.get('endpoint')}")
+    print(f"  Sail Mode: {_sail_mode()}")
+    print(f"  Execution Mode: {database_config.execution_mode}")
+    print(f"  Scale Factor: {scale_factor}")
+    print()
+
+    if dry_run_output is not None:
+        execute_example_dry_run(
+            benchmark_config=benchmark_config,
+            database_config=database_config,
+            output_dir=Path(dry_run_output),
+            filename_prefix="lakesail_df_tpch",
+        )
         print()
         print("To compare SQL vs DataFrame performance:")
         print("  1. Run SQL mode:       python examples/getting_started/sql/lakesail_tpch.py")
@@ -79,37 +78,26 @@ def run_example(scale_factor: float = 0.01, *, dry_run: bool = False) -> None:
         print("  3. Compare results in benchmark_runs/getting_started/")
         return
 
-    benchmark_config, database_config = _build_configs(scale_factor)
-
-    print("Configuration:")
-    print(f"  Endpoint: {database_config.options.get('endpoint')}")
-    print(f"  Sail Mode: {database_config.options.get('deployment_mode')}")
-    print("  Execution Mode: DataFrame")
-    print(f"  Scale Factor: {scale_factor}")
-    print()
-
     _OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     print("Starting benchmark run...")
     print()
 
-    orchestrator = BenchmarkOrchestrator(
-        benchmark_config=benchmark_config,
+    orchestrator = BenchmarkOrchestrator(base_dir=str(_OUTPUT_DIR))
+    result = orchestrator.execute_benchmark(
+        config=benchmark_config,
+        system_profile=SystemProfiler().get_system_profile(),
         database_config=database_config,
-        output_dir=_OUTPUT_DIR,
+        phases_to_run=["generate", "load", "power"],
     )
-
-    results = orchestrator.run()
 
     print()
     print("=" * 70)
     print("Results Summary")
     print("=" * 70)
-    if results:
-        print(f"  Total queries: {len(results.get('query_results', []))}")
-        print("  Execution mode: DataFrame")
-        if "total_time" in results:
-            print(f"  Total time: {results['total_time']:.2f}s")
+    print(f"  Successful queries: {result.successful_queries}")
+    print("  Execution mode: DataFrame")
+    print(f"  Total time: {result.total_execution_time:.2f}s")
     print()
     print("Results saved to:", _OUTPUT_DIR)
     print()
@@ -129,8 +117,12 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--dry-run",
-        action="store_true",
-        help="Validate configuration without connecting to Sail server",
+        type=str,
+        nargs="?",
+        const=str(_DEFAULT_DRY_RUN_DIR),
+        metavar="OUTPUT_DIR",
+        help=f"Preview without connecting to a Sail server; write artifacts to OUTPUT_DIR "
+        f"(default: {_DEFAULT_DRY_RUN_DIR})",
     )
     return parser.parse_args(argv)
 
@@ -139,7 +131,7 @@ def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
     run_example(
         scale_factor=args.scale,
-        dry_run=args.dry_run,
+        dry_run_output=Path(args.dry_run) if args.dry_run else None,
     )
     return 0
 

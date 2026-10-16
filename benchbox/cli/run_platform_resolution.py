@@ -63,7 +63,7 @@ def _tuning_arg_is_tuning_bearing(tuning_arg: str | None) -> bool:
 
 def _apply_dataframe_suffix_mode(s: types.SimpleNamespace) -> None:
     if s.mode is None and s.platform:
-        s.mode = get_platform_alias_mode(s.platform)
+        s.mode = get_platform_alias_mode(s.platform.partition(":")[0])
 
 
 def _split_deployment_selector(raw: str | None) -> tuple[str | None, str | None]:
@@ -79,11 +79,11 @@ def _split_deployment_selector(raw: str | None) -> tuple[str | None, str | None]
         resolved = resolve_platform_selector(key)
     except ValueError:
         return key, None
-    if resolved != base:
+    if resolved != normalize_platform_name(base):
         return resolved, None
-    if base not in DEPLOYMENT_ALIAS_KEYS:
+    if resolved not in DEPLOYMENT_ALIAS_KEYS:
         return key, None
-    return base, suffix
+    return resolved, suffix
 
 
 def _apply_deployment_selector_option(s: types.SimpleNamespace) -> None:

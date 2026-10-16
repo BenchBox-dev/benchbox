@@ -39,7 +39,7 @@ def _build_configs(scale_factor: float) -> tuple[BenchmarkConfig, DatabaseConfig
             "  (TIMESCALE_HOST/TIMESCALE_PASSWORD fallback supported)."
         )
 
-    options: dict[str, object] = {"deployment_mode": "cloud"}
+    options: dict[str, object] = {}
     if service_url:
         options["service_url"] = service_url
     else:
@@ -50,7 +50,7 @@ def _build_configs(scale_factor: float) -> tuple[BenchmarkConfig, DatabaseConfig
         options["database"] = _env("TIGERDATA_DATABASE", "TIMESCALE_DATABASE") or "tsdb"
 
     database_config = DatabaseConfig(
-        type="timescaledb",
+        type="timescaledb:cloud",
         name="tigerdata_tpch",
         options=options,
     )

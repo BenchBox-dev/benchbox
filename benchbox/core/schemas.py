@@ -326,6 +326,17 @@ class DatabaseConfig(BaseModel):
             raise ValueError("database name cannot be empty")
         return v.strip()
 
+    @model_validator(mode="after")
+    def resolve_platform_selector(self) -> "DatabaseConfig":
+        if ":" not in self.type:
+            return self
+        from benchbox.core.deployment import normalize_config_platform
+
+        self.type, self.options, self.execution_mode = normalize_config_platform(
+            self.type, self.options, self.execution_mode
+        )
+        return self
+
 
 class SystemProfile(BaseModel):
     os_name: str
@@ -476,6 +487,7 @@ class DryRunResult(BaseModel):
     platform_config: dict[str, Any]
     queries: dict[str, str]
     execution_mode: str = "sql"
+    deployment: Optional[str] = None
     schema_sql: Optional[str] = None
     dataframe_schema: Optional[str] = None
     ddl_preview: Optional[dict[str, dict[str, Any]]] = None

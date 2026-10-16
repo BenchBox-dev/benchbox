@@ -57,6 +57,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Python callers can select a deployment mode with the same selector as
+  `--platform`: `DatabaseConfig(type="timescaledb:cloud", ...)` or
+  `DatabaseConfig(type="lakesail-df:distributed", ...)`. The config resolves
+  the selector when it is built, so `type` holds the base platform, the mode
+  reaches the adapter without a deprecation warning, and a DataFrame alias sets
+  `execution_mode="dataframe"`. This replaces the deprecated `deployment_mode`
+  option, which still works with its warning until 0.6.0. Dry-run results now
+  record the selected deployment in a `deployment` field and print it in the
+  summary.
+
 - MCP responses from `run_benchmark`, `start_benchmark`, `get_benchmark_status`, `cancel_benchmark` and
   `get_benchmark_result` carry a `deprecations` list of `{option, replacement, removed_in, message}`. It is empty
   when nothing deprecated was used. `replacement` names the MCP parameter or platform name to use, never a CLI
@@ -151,6 +161,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the option was ignored and the run used the default
   `<benchmark>_<scale>_notuning_noconstraints.sqlite` file. Runs without the
   option keep the default name.
+- A `DatabaseConfig` whose `type` used a `<platform>:<mode>` selector no longer
+  breaks registry and credential lookups, puts `:` in database file names,
+  falls back to the no-op DDL generator for TimescaleDB, or drops the
+  deployment from the dry-run output.
+- DataFrame runs built from Python config keep their platform options: a
+  `lakesail-df` (or other `-df`) config no longer loses `endpoint` and the
+  other registered options, and the selected deployment reaches
+  `LakeSailDataFrameAdapter`, which records it as `deployment_selected`
+  instead of passing it to Spark as a session setting. Dry runs of DataFrame
+  configs no longer report "Unsupported platform: lakesail-df".
+- `benchbox run --platform lakesail-df:distributed` keeps the deployment and
+  its DataFrame mode; before, the `:distributed` suffix was dropped.
+- Dry runs of TSBS DevOps (`benchbox run --benchmark tsbs_devops --dry-run`
+  and the Python API) preview the queries instead of reporting
+  "Unknown benchmark: tsbs_devops".
+- The LakeSail, LakeSail DataFrame, LakeSail-vs-Spark, TigerData and InfluxDB
+  getting-started examples select their deployment with the selector and
+  dry-run without a deprecation warning. The LakeSail DataFrame and InfluxDB
+  examples, whose dry runs and real runs called APIs that no longer exist,
+  now use `execute_example_dry_run` and `BenchmarkOrchestrator.execute_benchmark`;
+  the LakeSail-vs-Spark example gains `--dry-run OUTPUT_DIR`.
 
 - A tuning file that sets only some constraint types (for example
   `primary_keys: {enabled: true}`) no longer fails validation with
