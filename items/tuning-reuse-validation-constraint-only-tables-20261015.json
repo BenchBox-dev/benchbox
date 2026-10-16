@@ -6,7 +6,7 @@
     "Constraint drift stays detected through the section-hash markers",
     "Regression tests run without a live cloud connection"
   ],
-  "context": "Found 2026-10-15 during the Snowflake trial-exit C0 smoke test: the reuse run found the tuned database (existence check works) but tuning validation failed with four errors (CUSTOMER, PART, PARTSUPP, SUPPLIER) and the run issued DROP DATABASE, 8 TRUNCATE and 8 COPY INTO. Blocks the tuned-vs-untuned campaign cells C1-C4. The Snowflake TPC-DS template has three such tables too. Fix: PR #3012 (branch fix/tuning-reuse-validation, head 6edbfd13c), open and armed 2026-10-15; reproduced offline with the shipped templates.",
+  "context": "Found 2026-10-15 during the Snowflake trial-exit smoke test: the reuse run found the tuned database but tuning validation failed with four errors (CUSTOMER, PART, PARTSUPP, SUPPLIER) and the run issued DROP DATABASE, 8 TRUNCATE and 8 COPY INTO. The Snowflake TPC-DS template has three such tables too. Fixed by PR #3012, merged 2026-10-16T00:02:10Z as 59a74fb64: `_compare_tuning_configurations` compares only column-tuned tables on both sides; missing column tuning and unexpected persisted column tuning still fail; constraints stay on section-hash markers. Offline regression tests use the shipped templates. Live confirmation is the campaign's reuse check.",
   "description": "`examples/tunings/snowflake/tpch_tuned.yaml` (and the packaged template) lists CUSTOMER, PART, PARTSUPP and SUPPLIER with no partitioning, clustering, distribution or sorting columns; their only tuning is the benchmark-wide constraint sections. `TuningMetadataManager.save_tunings` writes no rows for such tables, and `_rebuild_tunings_from_records` keeps only tables with `has_any_tuning()`, but the expected configuration passed to `validate_tunings` still contains them. `_compare_tuning_configurations` (`benchbox/core/tuning/metadata.py`) therefore always reports \"Expected tuning for table '<T>' not found in database\" for each of them, validation fails, and the run drops and reloads the tuned database. A tuned Snowflake database is never reused, so automatic clustering never settles between runs.",
   "sessions": [
     {
@@ -50,6 +50,14 @@
       "generation": "18a81d54c61e4d9485c3128e8c4d57ae",
       "op": "take",
       "op_id": "f99d3508f1794824950337ed19aaccf8",
+      "session_id": "70accbe5849d4e1da05dfca7c4ffe8da"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:9e002f45bd6cb1f33b959f2c",
+      "at": "2026-10-16T00:02:31Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "fa9060b34e22491bad326726606353f5",
       "session_id": "70accbe5849d4e1da05dfca7c4ffe8da"
     }
   ]
