@@ -14541,10 +14541,15 @@
       "title": "Interactive platform options bypass the explicit option layer, and some platforms lack option specs"
     },
     "option-resolution-single-path-20261014": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-17T14:05:11Z",
+        "generation": "fe1498b02c0249edbdd475392b46490a",
+        "renewals": 0,
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Option resolution: a CLI value equal to the default loses to a saved profile, registry aliases fail with options, and some specs register only through the CLI"
     },
     "options-recorded-not-applied-20261014": {
