@@ -153,8 +153,9 @@ class TestSparkAdapter:
         assert adapter.driver_memory == "4g"
         assert adapter.executor_memory == "4g"
         assert adapter.executor_cores == 2
-        assert adapter.shuffle_partitions == 200
-        assert adapter.adaptive_enabled is True
+        assert adapter.disable_cache is True
+        assert adapter.shuffle_partitions is None
+        assert adapter.adaptive_enabled is None
         assert adapter.table_format == "parquet"
 
     def test_initialization_with_cluster_mode(self, mock_pyspark):
@@ -250,8 +251,18 @@ class TestSparkAdapter:
             }
         )
 
-        assert joinorder_adapter.broadcast_threshold == -1
-        assert joinorder_adapter._get_spark_conf()["spark.sql.autoBroadcastJoinThreshold"] == "-1"
+        assert joinorder_adapter.broadcast_threshold is None
+        assert "spark.sql.autoBroadcastJoinThreshold" not in joinorder_adapter._get_spark_conf()
+
+        tuned_joinorder_adapter = SparkAdapter.from_config(
+            {
+                "benchmark": "joinorder",
+                "scale_factor": 1.0,
+                "tuning_enabled": True,
+            }
+        )
+        assert tuned_joinorder_adapter.broadcast_threshold == -1
+        assert tuned_joinorder_adapter._get_spark_conf()["spark.sql.autoBroadcastJoinThreshold"] == "-1"
 
         database_config = PlatformHookRegistry.build_database_config(
             "spark", {}, {"benchmark": "joinorder", "scale_factor": 1.0}
@@ -259,8 +270,8 @@ class TestSparkAdapter:
         platform_config = get_platform_config(database_config, None, benchmark_name="joinorder", scale_factor=1.0)
         hook_adapter = SparkAdapter.from_config(platform_config)
 
-        assert hook_adapter.broadcast_threshold == -1
-        assert hook_adapter._get_spark_conf()["spark.sql.autoBroadcastJoinThreshold"] == "-1"
+        assert hook_adapter.broadcast_threshold is None
+        assert "spark.sql.autoBroadcastJoinThreshold" not in hook_adapter._get_spark_conf()
 
         explicit_broadcast_adapter = SparkAdapter.from_config(
             {
@@ -318,8 +329,43 @@ class TestSparkAdapter:
         assert conf["spark.executor.cores"] == "4"
         assert conf["spark.sql.shuffle.partitions"] == "500"
         assert conf["spark.sql.adaptive.enabled"] == "true"
-        codecs = conf["spark.hadoop.io.compression.codecs"]
-        assert "ZStandardCodec" in codecs
+
+    def test_get_spark_conf_keeps_harness_settings_and_engine_tuning_defaults(self, mock_pyspark):
+        from benchbox.platforms.spark import SparkAdapter
+
+        conf = SparkAdapter()._get_spark_conf()
+
+        assert conf["spark.driver.memory"] == "4g"
+        assert conf["spark.executor.memory"] == "4g"
+        assert conf["spark.executor.cores"] == "2"
+        assert conf["spark.sql.inMemoryColumnarStorage.enabled"] == "false"
+        assert "spark.sql.shuffle.partitions" not in conf
+        assert "spark.sql.adaptive.enabled" not in conf
+        assert "spark.hadoop.io.compression.codecs" not in conf
+
+    def test_baseline_records_cache_and_resource_settings_as_harness(self, mock_pyspark):
+        from benchbox.core.tuning.applied_ledger import HARNESS_DEFAULT, AppliedTuningLedger
+        from benchbox.platforms.spark import SparkAdapter
+
+        adapter = SparkAdapter()
+        adapter._applied_tuning_ledger = AppliedTuningLedger()
+        conf = adapter._get_spark_conf()
+        connection = MagicMock()
+        connection.conf.get.side_effect = lambda key, default=None: conf.get(key, default)
+
+        adapter.configure_for_benchmark(connection, "tpch")
+
+        recorded = {s.statement: s for s in adapter._applied_tuning_ledger.statements}
+        for key in (
+            "spark.driver.memory",
+            "spark.executor.memory",
+            "spark.executor.cores",
+            "spark.sql.inMemoryColumnarStorage.enabled",
+        ):
+            statement = recorded[f"SET {key}={conf[key]}"]
+            assert statement.status == HARNESS_DEFAULT
+            assert statement.mechanism == "harness_required"
+        connection.conf.set.assert_not_called()
 
     def test_csv_compression_codecs_excludes_zstd(self, mock_pyspark):
         from benchbox.platforms.spark import SparkAdapter
@@ -653,9 +699,20 @@ class TestSparkAdapterExecution:
         mock_spark_session.conf.set.reset_mock()
         adapter.configure_for_benchmark(mock_spark_session, "joinorder")
 
-        mock_spark_session.conf.set.assert_any_call("spark.sql.adaptive.enabled", "true")
+        mock_spark_session.conf.set.assert_not_called()
+
+    def test_tuned_run_applies_olap_session_defaults(self, mock_pyspark):
+        from benchbox.platforms.spark import SparkAdapter
+
+        _, mock_spark_session = mock_pyspark
+        adapter = SparkAdapter(tuning_enabled=True)
+
+        conf = adapter._get_spark_conf()
+        adapter.configure_for_benchmark(mock_spark_session, "tpch")
+
+        assert conf["spark.sql.shuffle.partitions"] == "200"
+        assert conf["spark.sql.adaptive.enabled"] == "true"
         mock_spark_session.conf.set.assert_any_call("spark.sql.cbo.enabled", "true")
-        mock_spark_session.conf.set.assert_any_call("spark.sql.cbo.joinReorder.enabled", "true")
 
     def test_get_query_plan(self, mock_pyspark):
         from benchbox.platforms.spark import SparkAdapter
@@ -841,7 +898,7 @@ class TestSparkAdapterCliArguments:
         enabled_args = parser.parse_args(["--adaptive-enabled"])
         disabled_args = parser.parse_args(["--no-adaptive-enabled"])
 
-        assert default_args.adaptive_enabled is True
+        assert default_args.adaptive_enabled is None
         assert enabled_args.adaptive_enabled is True
         assert disabled_args.adaptive_enabled is False
 

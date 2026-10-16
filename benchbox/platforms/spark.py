@@ -23,7 +23,7 @@ from ._spark_helpers import (
     list_spark_tables,
     optimize_spark_table_definition,
     run_spark_schema_creation_loop,
-    spark_aqe_conf_entries,
+    spark_session_tuning_conf_entries,
     validate_spark_identifier,
 )
 from .base import DriverIsolationCapability, PlatformAdapter
@@ -182,11 +182,9 @@ class SparkAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
         self.executor_cores = config.get("executor_cores") if config.get("executor_cores") is not None else 2
         self.num_executors = config.get("num_executors")
 
-        self.shuffle_partitions = (
-            config.get("shuffle_partitions") if config.get("shuffle_partitions") is not None else 200
-        )
+        self.shuffle_partitions = config.get("shuffle_partitions")
         self.broadcast_threshold = config.get("broadcast_threshold")
-        self.adaptive_enabled = config.get("adaptive_enabled") if config.get("adaptive_enabled") is not None else True
+        self.adaptive_enabled = config.get("adaptive_enabled")
 
         self.table_format = config.get("table_format") or "parquet"
 
@@ -229,7 +227,7 @@ class SparkAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
         spark_group.add_argument(
             "--shuffle-partitions",
             type=int,
-            default=200,
+            default=None,
             help="Number of shuffle partitions (spark.sql.shuffle.partitions)",
         )
         spark_group.add_argument(
@@ -245,7 +243,7 @@ class SparkAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
         spark_group.add_argument(
             "--adaptive-enabled",
             action=argparse.BooleanOptionalAction,
-            default=True,
+            default=None,
             help="Enable or disable Adaptive Query Execution (AQE)",
         )
 
@@ -253,7 +251,6 @@ class SparkAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
     def from_config(cls, config: dict[str, Any]):
         from benchbox.platforms.base.config_utils import build_adapter_config
 
-        benchmark_name = str(config["benchmark"]).lower()
         adapter_config = build_adapter_config(
             config,
             platform="spark",
@@ -278,12 +275,11 @@ class SparkAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
             ],
         )
 
-        spark_config = adapter_config.get("spark_config") or {}
-        broadcast_threshold = adapter_config.get("broadcast_threshold")
         if (
-            benchmark_name == "joinorder"
-            and broadcast_threshold is None
-            and _SPARK_AUTO_BROADCAST_THRESHOLD not in spark_config
+            str(config.get("benchmark", "")).lower() == "joinorder"
+            and config.get("tuning_enabled")
+            and adapter_config.get("broadcast_threshold") is None
+            and _SPARK_AUTO_BROADCAST_THRESHOLD not in (adapter_config.get("spark_config") or {})
         ):
             adapter_config["broadcast_threshold"] = -1
 
@@ -376,10 +372,13 @@ class SparkAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
             "spark.driver.memory": self.driver_memory,
             "spark.executor.memory": self.executor_memory,
             "spark.executor.cores": str(self.executor_cores),
-            "spark.sql.shuffle.partitions": str(self.shuffle_partitions),
         }
 
-        conf.update(spark_aqe_conf_entries(self.adaptive_enabled))
+        conf.update(
+            spark_session_tuning_conf_entries(
+                self.shuffle_partitions, self.adaptive_enabled, tuning_enabled=self.tuning_enabled
+            )
+        )
 
         if self.broadcast_threshold is not None:
             conf[_SPARK_AUTO_BROADCAST_THRESHOLD] = str(self.broadcast_threshold)
@@ -389,16 +388,6 @@ class SparkAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
 
         if self.warehouse_dir:
             conf["spark.sql.warehouse.dir"] = self.warehouse_dir
-
-        conf["spark.hadoop.io.compression.codecs"] = (
-            "org.apache.hadoop.io.compress.DefaultCodec,"
-            "org.apache.hadoop.io.compress.GzipCodec,"
-            "org.apache.hadoop.io.compress.BZip2Codec,"
-            "org.apache.hadoop.io.compress.DeflateCodec,"
-            "org.apache.hadoop.io.compress.SnappyCodec,"
-            "org.apache.hadoop.io.compress.Lz4Codec,"
-            "org.apache.hadoop.io.compress.ZStandardCodec"
-        )
 
         if self.disable_cache:
             conf["spark.sql.inMemoryColumnarStorage.enabled"] = "false"
@@ -530,8 +519,23 @@ class SparkAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
         return elapsed_seconds(start_time)
 
     def configure_for_benchmark(self, connection: Any, benchmark_type: str) -> None:
-        self.apply_olap_runtime_conf(connection, benchmark_type, "Spark")
+        self.record_harness_spark_conf(
+            connection,
+            (
+                "spark.app.name",
+                "spark.driver.memory",
+                "spark.executor.memory",
+                "spark.executor.cores",
+                "spark.executor.instances",
+                "spark.sql.inMemoryColumnarStorage.enabled",
+                "spark.sql.warehouse.dir",
+                "spark.sql.extensions",
+                "spark.sql.catalog.spark_catalog",
+                "spark.sql.catalog.spark_catalog.type",
+            ),
+        )
         if self.tuning_enabled:
+            self.apply_olap_runtime_conf(connection, benchmark_type, "Spark")
             from benchbox.platforms._spark_helpers import apply_tuned_spark_session_config
 
             apply_tuned_spark_session_config(self, connection)

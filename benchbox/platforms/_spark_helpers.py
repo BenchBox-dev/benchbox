@@ -31,6 +31,27 @@ def spark_aqe_conf_entries(adaptive_enabled: bool) -> dict[str, str]:
     return dict.fromkeys(SPARK_AQE_KEYS, value)
 
 
+SPARK_TUNED_SHUFFLE_PARTITIONS = 200
+
+
+def spark_session_tuning_conf_entries(
+    shuffle_partitions: int | None,
+    adaptive_enabled: bool | None,
+    *,
+    tuning_enabled: bool,
+) -> dict[str, str]:
+    if shuffle_partitions is None and tuning_enabled:
+        shuffle_partitions = SPARK_TUNED_SHUFFLE_PARTITIONS
+    if adaptive_enabled is None and tuning_enabled:
+        adaptive_enabled = True
+    entries: dict[str, str] = {}
+    if shuffle_partitions is not None:
+        entries["spark.sql.shuffle.partitions"] = str(shuffle_partitions)
+    if adaptive_enabled is not None:
+        entries.update(spark_aqe_conf_entries(adaptive_enabled))
+    return entries
+
+
 def adaptive_enabled_from_config(config: Mapping[str, Any]) -> bool:
     options = config.get("options") or {}
     value = config.get("adaptive_enabled", options.get("adaptive_enabled", True))
@@ -49,15 +70,14 @@ def apply_spark_olap_runtime_conf(
     logger: logging.Logger | None = None,
     platform_label: str = "Spark",
 ) -> None:
+    if benchmark_type.lower() not in tuple(t.lower() for t in benchmark_types):
+        return
+    overrides = spark_config or {}
+    aqe_value = "true" if adaptive_enabled else "false"
     try:
-        if benchmark_type.lower() not in tuple(t.lower() for t in benchmark_types):
-            return
-        overrides = spark_config or {}
-        aqe_value = "true" if adaptive_enabled else "false"
-        for aqe_key in SPARK_AQE_KEYS:
-            connection.conf.set(aqe_key, overrides.get(aqe_key, aqe_value))
-        for cbo_key in SPARK_CBO_KEYS:
-            connection.conf.set(cbo_key, overrides.get(cbo_key, "true"))
+        for key in (*SPARK_AQE_KEYS, *SPARK_CBO_KEYS):
+            default = aqe_value if key in SPARK_AQE_KEYS else "true"
+            connection.conf.set(key, overrides.get(key, default))
         if logger is not None:
             logger.debug("Applied OLAP optimizations for %s", platform_label)
     except Exception as exc:
@@ -312,22 +332,68 @@ class SparkLikeAdapterMixin:
 
         apply_standard_unified_tuning(self, unified_config, connection)
 
-    def apply_platform_optimizations(self, platform_config: Any, connection: Any) -> None:
-        if not platform_config:
-            return
-
     def apply_olap_runtime_conf(self, connection: Any, benchmark_type: str, platform_label: str) -> None:
         apply_spark_olap_runtime_conf(
             connection,
             benchmark_type,
-            adaptive_enabled=self.adaptive_enabled,
+            adaptive_enabled=self.adaptive_enabled if self.adaptive_enabled is not None else True,
             spark_config=self.spark_config,
             logger=self.logger,
             platform_label=platform_label,
         )
 
+    def apply_platform_optimizations(self, platform_config: Any, connection: Any) -> None:
+        if not platform_config:
+            return
+
+    def record_harness_spark_conf(self, connection: Any, keys: tuple[str, ...]) -> None:
+        ledger = getattr(self, "_applied_tuning_ledger", None)
+        if ledger is None:
+            return
+        try:
+            from benchbox.core.tuning.applied_ledger import HARNESS_DEFAULT
+
+            for key in keys:
+                try:
+                    value = connection.conf.get(key, None)
+                except Exception:
+                    continue
+                if value is None:
+                    continue
+                recorded_value = (
+                    "<redacted>"
+                    if key
+                    in {
+                        "spark.app.name",
+                        "spark.sql.warehouse.dir",
+                        "spark.jars",
+                        "spark.driver.extraClassPath",
+                        "spark.executor.extraClassPath",
+                    }
+                    else value
+                )
+                self._record_spark_conf_ledger(
+                    ledger,
+                    key,
+                    recorded_value,
+                    applied=True,
+                    status_override=HARNESS_DEFAULT,
+                    mechanism="harness_required",
+                )
+        except Exception:
+            pass
+
     @staticmethod
-    def _record_spark_conf_ledger(ledger: Any, key: str, value: Any, *, applied: bool, error: Any = None) -> None:
+    def _record_spark_conf_ledger(
+        ledger: Any,
+        key: str,
+        value: Any,
+        *,
+        applied: bool,
+        error: Any = None,
+        status_override: str | None = None,
+        mechanism: str = "spark_session_config",
+    ) -> None:
         if ledger is None:
             return
         try:
@@ -337,8 +403,8 @@ class SparkLikeAdapterMixin:
             ledger.record(
                 f"SET {recorded}={value}",
                 PHASE_SESSION,
-                status=EXECUTED if applied else STATEMENT_FAILED,
-                mechanism="spark_session_config",
+                status=status_override or (EXECUTED if applied else STATEMENT_FAILED),
+                mechanism=mechanism,
                 error=error,
             )
         except Exception:  # pragma: no cover

@@ -100,6 +100,24 @@ block a run outright, versus warn and proceed? See Consequences.
    Databricks liquid-clustering questions: compatibility checks warn first; a run is blocked only for explicit,
    named unsafe combinations, not by default.
 
+   **Spark session defaults.** Spark, LakeSail and Velox leave AQE, CBO,
+   shuffle-partition and broadcast-threshold settings at engine defaults when
+   no tuning profile or explicit adapter option supplies them. Spark applies
+   supported tuning-file settings only on tuned runs; LakeSail and Velox keep
+   warning and dropping session keys until their honored-key sets are verified.
+   Cache disabling (`spark.sql.inMemoryColumnarStorage.enabled=false` plus the
+   catalog cache clear between queries) and the Spark driver and executor
+   memory and core settings stay in every mode: they keep timed queries from
+   reading cached results and keep resources the same across environments.
+   They are harness-required, not tuning. Hadoop compression codecs are left at
+   the engine default. Harness-required session settings are recorded with
+   `status=harness_default` and `mechanism=harness_required`; they remain
+   visible in the ledger payload but do not change tuning outcome or
+   applied-ledger hash. The owner agreed to bump `TUNING_POLICY_GENERATION` to
+   `adr-003-spark-baseline` for this change, so Spark, LakeSail and Velox
+   results recorded under `adr-003` or earlier are not comparable with later
+   ones.
+
 2. **Single renderer.** `core/tuning/generators/*` becomes the single
    tuning-DDL renderer. Adapter mixins are migrated to consume the
    generators rather than maintaining independent `generate_tuning_clause`
@@ -159,7 +177,8 @@ consume their core generators on their execution paths.
 
 The consolidation is explicit rather than inferred from a package version.
 `benchbox.core.tuning.policy_generation.TUNING_POLICY_GENERATION` stamps
-`adr-003` into tuned bundle summaries and tuning companions, and the Explorer
+the current generation (`adr-003-spark-baseline`; `adr-003` before the Spark
+baseline change) into tuned bundle summaries and tuning companions, and the Explorer
 warns on comparisons across that seam. The capability registry is the current
 inventory of migrated and remaining adapter-renderer parity: entries that still
 have a distinct execution renderer remain documented gaps, not evidence that

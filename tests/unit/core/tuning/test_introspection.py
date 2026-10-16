@@ -7,6 +7,7 @@ from __future__ import annotations
 import pytest
 
 from benchbox.core.tuning.applied_ledger import (
+    HARNESS_DEFAULT,
     PHASE_DDL,
     PHASE_POST_LOAD,
     PHASE_SESSION,
@@ -182,6 +183,16 @@ class TestCorroborate:
         assert receipt.corroborated is False
         assert receipt.entries[0].verdict == UNVERIFIABLE
         assert receipt.entries[0].reason == "ddl/post_load statement failed -- blocks corroboration"
+
+    def test_harness_defaults_are_not_corroboration_targets(self):
+        ledger = AppliedTuningLedger()
+        ledger.record("SET spark.plugins=org.example.Plugin", PHASE_SESSION, status=HARNESS_DEFAULT)
+
+        receipt = corroborate(ledger, _index_state())
+
+        assert receipt.entries == []
+        assert receipt.corroborated is False
+        assert receipt.summary["gate_relevant_total"] == 0
 
     def test_failed_physical_statement_blocks_corroborated_sibling(self):
         ledger = _index_ledger()

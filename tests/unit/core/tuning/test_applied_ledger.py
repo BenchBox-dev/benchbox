@@ -11,6 +11,7 @@ from benchbox.core.tuning.applied_ledger import (
     APPLIED_VERIFIED,
     EXECUTED,
     FAILED,
+    HARNESS_DEFAULT,
     LEDGER_PHASES,
     NOOP,
     NOT_APPLICABLE,
@@ -169,6 +170,31 @@ class TestAppliedLedgerHash:
         with_failure.record("CREATE INDEX bad", PHASE_DDL, status=STATEMENT_FAILED, error="nope")
 
         assert clean.applied_ledger_hash() == with_failure.applied_ledger_hash()
+
+    def test_harness_defaults_are_payload_only(self) -> None:
+        ledger = AppliedTuningLedger()
+        ledger.record("SET spark.plugins=org.example.Plugin", PHASE_SESSION, status=HARNESS_DEFAULT)
+
+        assert ledger.is_empty() is False
+        assert ledger.executed_statements == []
+        assert ledger.applied_ledger_hash() is None
+        assert ledger.overall_status(tuning_enabled=True, has_config=True) == NOOP
+        assert ledger.overall_status(tuning_enabled=False, has_config=True) == NOT_APPLICABLE
+        assert ledger.to_payload(status=NOOP)["statements"] == [
+            {
+                "statement": "SET spark.plugins=org.example.Plugin",
+                "phase": PHASE_SESSION,
+                "status": HARNESS_DEFAULT,
+            }
+        ]
+
+    def test_harness_defaults_do_not_hide_tuned_statements(self) -> None:
+        ledger = AppliedTuningLedger()
+        ledger.record("SET spark.plugins=org.example.Plugin", PHASE_SESSION, status=HARNESS_DEFAULT)
+        ledger.record("SET spark.sql.adaptive.enabled=true", PHASE_SESSION)
+
+        assert ledger.overall_status(tuning_enabled=True, has_config=True) == APPLIED_UNVERIFIED
+        assert ledger.applied_ledger_hash() is not None
 
 
 class TestDroppedIntents:

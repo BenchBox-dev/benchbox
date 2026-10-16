@@ -25,7 +25,7 @@ from ._spark_helpers import (
     parse_spark_connect_endpoint,
     purge_orphaned_warehouse_directory,
     run_spark_schema_creation_loop,
-    spark_aqe_conf_entries,
+    spark_session_tuning_conf_entries,
     validate_spark_identifier,
 )
 from .base import DriverIsolationCapability, PlatformAdapter
@@ -83,10 +83,8 @@ class LakeSailAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecu
         self.database = config.get("database") or "default"
 
         self.driver_memory = config.get("driver_memory") or "4g"
-        self.shuffle_partitions = (
-            config.get("shuffle_partitions") if config.get("shuffle_partitions") is not None else 200
-        )
-        self.adaptive_enabled = config.get("adaptive_enabled") if config.get("adaptive_enabled") is not None else True
+        self.shuffle_partitions = config.get("shuffle_partitions")
+        self.adaptive_enabled = config.get("adaptive_enabled")
 
         self.sail_mode = select_adapter_deployment("lakesail", config, config.get("sail_mode") or "local")
         self.deployment_selected = self.sail_mode
@@ -153,7 +151,7 @@ class LakeSailAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecu
         lakesail_group.add_argument(
             "--shuffle-partitions",
             type=int,
-            default=200,
+            default=None,
             help="Number of shuffle partitions (spark.sql.shuffle.partitions)",
         )
         lakesail_group.add_argument(
@@ -166,7 +164,7 @@ class LakeSailAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecu
         lakesail_group.add_argument(
             "--adaptive-enabled",
             action=argparse.BooleanOptionalAction,
-            default=True,
+            default=None,
             help="Enable or disable Adaptive Query Execution (AQE)",
         )
 
@@ -238,10 +236,13 @@ class LakeSailAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecu
     def _get_spark_conf(self) -> dict[str, Any]:
         conf = {
             "spark.app.name": self.app_name,
-            "spark.sql.shuffle.partitions": str(self.shuffle_partitions),
         }
 
-        conf.update(spark_aqe_conf_entries(self.adaptive_enabled))
+        conf.update(
+            spark_session_tuning_conf_entries(
+                self.shuffle_partitions, self.adaptive_enabled, tuning_enabled=self.tuning_enabled
+            )
+        )
 
         if self.disable_cache:
             conf["spark.sql.inMemoryColumnarStorage.enabled"] = "false"
@@ -444,7 +445,9 @@ class LakeSailAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecu
         return elapsed_seconds(start_time)
 
     def configure_for_benchmark(self, connection: Any, benchmark_type: str) -> None:
-        self.apply_olap_runtime_conf(connection, benchmark_type, "LakeSail Sail")
+        self.record_harness_spark_conf(connection, ("spark.app.name", "spark.sql.inMemoryColumnarStorage.enabled"))
+        if self.tuning_enabled:
+            self.apply_olap_runtime_conf(connection, benchmark_type, "LakeSail Sail")
 
     def _get_dialect_queries(
         self,

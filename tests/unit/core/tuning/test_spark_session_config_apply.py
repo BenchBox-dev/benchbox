@@ -6,7 +6,7 @@ import types
 
 import pytest
 
-from benchbox.core.tuning.applied_ledger import AppliedTuningLedger
+from benchbox.core.tuning.applied_ledger import HARNESS_DEFAULT, NOOP, AppliedTuningLedger
 from benchbox.core.tuning.interface import UnifiedTuningConfiguration
 from benchbox.platforms._spark_helpers import SparkLikeAdapterMixin, apply_tuned_spark_session_config
 
@@ -58,6 +58,22 @@ class _ProbeAdapter(SparkLikeAdapterMixin):
 
 def _applied_statements(adapter) -> list:
     return list(adapter._applied_tuning_ledger.statements)
+
+
+def test_harness_defaults_are_recorded_with_redacted_values():
+    adapter = _ProbeAdapter()
+    session = _FakeSession()
+    session.conf.store["spark.app.name"] = "private-name"
+    session.conf.store["spark.plugins"] = "org.example.Plugin"
+
+    adapter.record_harness_spark_conf(session, ("spark.app.name", "spark.plugins"))
+
+    statements = _applied_statements(adapter)
+    assert [(item.statement, item.status, item.mechanism) for item in statements] == [
+        ("SET spark.app.name=<redacted>", HARNESS_DEFAULT, "harness_required"),
+        ("SET spark.plugins=org.example.Plugin", HARNESS_DEFAULT, "harness_required"),
+    ]
+    assert adapter._applied_tuning_ledger.overall_status(tuning_enabled=True, has_config=True) == NOOP
 
 
 def test_tuned_keys_set_and_recorded_once_per_run():

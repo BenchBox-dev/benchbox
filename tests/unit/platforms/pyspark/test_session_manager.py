@@ -60,6 +60,32 @@ def test_get_or_create_returns_singleton(monkeypatch: pytest.MonkeyPatch) -> Non
     assert SparkSessionManager._session is None
 
 
+def test_baseline_session_sets_only_harness_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    builder = MagicMock()
+    builder.master.return_value = builder
+    builder.appName.return_value = builder
+    builder.config.return_value = builder
+    session = MagicMock()
+    builder.getOrCreate.return_value = session
+    monkeypatch.setattr(session_module, "SparkSession", SimpleNamespace(builder=builder))
+    monkeypatch.setattr(session_module, "suppress_window_exec_warning", lambda _: None)
+
+    SparkSessionManager._create_session(
+        SparkSessionConfig(
+            master="local[1]",
+            app_name="baseline",
+            driver_memory=None,
+            executor_memory=None,
+            shuffle_partitions=None,
+            enable_aqe=None,
+            extra_configs=(),
+        )
+    )
+
+    configured_keys = [call.args[0] for call in builder.config.call_args_list]
+    assert configured_keys == ["spark.driver.extraJavaOptions", "spark.sql.inMemoryColumnarStorage.enabled"]
+
+
 def test_get_or_create_redacts_azure_sas_config_in_debug_log(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,

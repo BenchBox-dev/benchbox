@@ -15,7 +15,6 @@ from ..utils.dependencies import (
     get_dependency_error_message,
 )
 from ._spark_helpers import (
-    SPARK_CBO_KEYS,
     SparkLikeAdapterMixin,
     analyze_spark_table,
     is_spark_connect_reachable,
@@ -24,7 +23,7 @@ from ._spark_helpers import (
     parse_spark_connect_endpoint,
     purge_orphaned_warehouse_directory,
     run_spark_schema_creation_loop,
-    spark_aqe_conf_entries,
+    spark_session_tuning_conf_entries,
     validate_spark_identifier,
 )
 from .base import DriverIsolationCapability, PlatformAdapter
@@ -130,10 +129,8 @@ class VeloxAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
         self.app_name = config.get("app_name") or "BenchBox-Velox"
         self.database = config.get("database") or "default"
         self.driver_memory = config.get("driver_memory") or "4g"
-        self.shuffle_partitions = (
-            config.get("shuffle_partitions") if config.get("shuffle_partitions") is not None else 200
-        )
-        self.adaptive_enabled = config.get("adaptive_enabled") if config.get("adaptive_enabled") is not None else True
+        self.shuffle_partitions = config.get("shuffle_partitions")
+        self.adaptive_enabled = config.get("adaptive_enabled")
         table_format = (config.get("table_format") or "parquet").lower()
         if table_format not in _SUPPORTED_TABLE_FORMATS:
             raise ValueError(
@@ -291,10 +288,13 @@ class VeloxAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
     def _get_spark_conf(self) -> dict[str, str]:
         conf: dict[str, str] = {
             "spark.app.name": self.app_name,
-            "spark.sql.shuffle.partitions": str(self.shuffle_partitions),
         }
 
-        conf.update(spark_aqe_conf_entries(self.adaptive_enabled))
+        conf.update(
+            spark_session_tuning_conf_entries(
+                self.shuffle_partitions, self.adaptive_enabled, tuning_enabled=self.tuning_enabled
+            )
+        )
 
         if self.disable_cache:
             conf["spark.sql.inMemoryColumnarStorage.enabled"] = "false"
@@ -438,14 +438,22 @@ class VeloxAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
             return False
 
     def configure_for_benchmark(self, connection: Any, benchmark_type: str) -> None:
-        spark = connection
-        try:
-            if benchmark_type.lower() in ["olap", "analytics", "tpch", "tpcds"]:
-                for cbo_key in SPARK_CBO_KEYS:
-                    spark.conf.set(cbo_key, self.spark_config.get(cbo_key, "true"))
-                self.logger.debug("Applied OLAP optimisations for Velox")
-        except Exception as e:
-            self.logger.warning(f"Failed to apply benchmark configuration: {e}")
+        keys = ["spark.app.name", "spark.sql.inMemoryColumnarStorage.enabled"]
+        if self.deployment == "local":
+            keys.extend(
+                (
+                    "spark.plugins",
+                    "spark.memory.offHeap.enabled",
+                    "spark.memory.offHeap.size",
+                    "spark.shuffle.manager",
+                    "spark.jars",
+                    "spark.driver.extraClassPath",
+                    "spark.executor.extraClassPath",
+                )
+            )
+        self.record_harness_spark_conf(connection, tuple(keys))
+        if self.tuning_enabled:
+            self.apply_olap_runtime_conf(connection, benchmark_type, "Velox")
 
     def create_schema(self, benchmark, connection: Any) -> float:
         start_time = mono_time()

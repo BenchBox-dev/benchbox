@@ -153,6 +153,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Generated database names now stay the same when nested tuning configuration keys are reordered.
 
+- Spark, LakeSail and Velox untuned runs now use engine defaults for AQE, CBO,
+  shuffle partitions and broadcast thresholds unless an explicit adapter option
+  sets them; tuned runs keep the curated values. Cache disabling and Spark's
+  driver and executor memory and core settings still apply in every mode, and
+  Spark no longer forces a Hadoop compression codec list. These harness
+  settings are recorded in the tuning ledger separately from applied tuning,
+  with sensitive values redacted.
+
 - Sorted ingestion no longer runs unsafe CTAS rewrites on Athena, Azure Synapse
   and Redshift. Athena's rewrite read from the table it was replacing and always
   failed; Synapse left an unsorted original plus an orphan `__ctas_sort` copy
@@ -461,6 +469,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   never a valid profile key.
 
 ### Before you upgrade
+- The tuning policy generation is now `adr-003-spark-baseline`. Spark,
+  LakeSail and Velox results recorded under `adr-003` or earlier are not
+  comparable with new ones, because untuned runs no longer set AQE, CBO,
+  shuffle-partition or broadcast-threshold values. The Explorer warns when a
+  comparison spans the two generations.
 - Runs whose tuning configuration contains nested mappings (for example per-table
   settings) get a different generated database name once, because the name now
   ignores the order of nested keys. BenchBox does not find the database an

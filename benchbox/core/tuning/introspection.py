@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
 from benchbox.core.tuning.applied_ledger import (
+    HARNESS_DEFAULT,
     PHASE_DDL,
     PHASE_POST_LOAD,
     PHASE_SESSION,
@@ -764,7 +765,7 @@ def corroborate(ledger: AppliedTuningLedger, introspected_state: IntrospectedSta
         state_error = "introspection truncated (catalog row bound hit)"
 
     entries: list[ReceiptEntry] = []
-    for stmt in ledger.statements:
+    for stmt in (s for s in ledger.statements if s.status != HARNESS_DEFAULT):
         if stmt.status == STATEMENT_FAILED:
             is_session_failure = stmt.phase == PHASE_SESSION
             reason = (
