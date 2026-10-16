@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- The LakeSail documentation no longer says the CLI has no `--platform-option`
+  keys. `--platform lakesail:distributed` selects distributed mode, and
+  `endpoint` and `adaptive_enabled` are accepted as `--platform-option` keys.
+
 - The Explorer read model is at version 16 with execution-variant identity:
   the pipeline records `variant_id`, `variant_label`, the requested execution
   engine and gateway routing on every result, cohort and leaderboard row.

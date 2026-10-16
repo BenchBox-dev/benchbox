@@ -59,12 +59,15 @@ cd docker/lakesail && docker compose up -d lakesail-connect
 
 ### Configuration Methods
 
-The CLI runs LakeSail with its defaults:
+The CLI runs LakeSail with its defaults. `--platform lakesail:distributed` selects distributed mode, and `endpoint` and `adaptive_enabled` are the `--platform-option` keys:
 
 ```bash
 benchbox run --platform lakesail --benchmark tpch --scale 1.0
+
+benchbox run --platform lakesail:distributed --platform-option endpoint=sc://my-sail-server:50051 --benchmark tpch --scale 1.0
 ```
-Settings below can also be set by constructing the adapter directly:
+
+Every setting below can be set by constructing the adapter directly:
 
 ```python
 from benchbox.platforms.lakesail import LakeSailAdapter
