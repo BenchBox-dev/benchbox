@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+from benchbox.core.results.schema_policy import CURRENT_SCHEMA_VERSION
 from tests.fixtures.result_dict_fixtures import make_v2_result_dict
 from tests.integration._cli_e2e_utils import run_cli_command
 
@@ -260,7 +261,7 @@ def test_export_preserves_content(tmp_path):
     with open(json_files[0], encoding="utf-8") as f:
         exported_data = json.load(f)
 
-    assert exported_data["version"] in ("2.0", "2.1", "2.2")
+    assert exported_data["version"] == CURRENT_SCHEMA_VERSION
     assert exported_data["benchmark"]["name"] == "TPC-H"
     assert exported_data["run"]["id"] == "preserve_test"
     assert exported_data["benchmark"]["scale_factor"] == 10.0

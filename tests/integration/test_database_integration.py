@@ -580,6 +580,13 @@ class TestDatabaseIntegration:
 
         import psutil
 
+        warmup_conn = duckdb.connect(":memory:")
+        try:
+            benchmark_instance.load_data_to_database(warmup_conn, tables=["region", "nation"])
+        finally:
+            warmup_conn.close()
+        gc.collect()
+
         process = psutil.Process(os.getpid())
         initial_memory = process.memory_info().rss / 1024 / 1024
 
