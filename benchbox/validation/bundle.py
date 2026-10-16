@@ -72,20 +72,20 @@ PRIVATE_LOCAL_PATH_RE = re.compile(
 
 def find_public_path_leaks(value: Any, key_path: tuple[str, ...] = ()) -> list[str]:
     leaks: list[str] = []
-    if isinstance(value, dict):
-        for key, child in value.items():
-            label = str(key)
-            if isinstance(key, str) and PRIVATE_LOCAL_PATH_RE.search(key):
-                label = "<key>"
-                leaks.append(".".join((*key_path, label)))
-            leaks.extend(find_public_path_leaks(child, (*key_path, label)))
-        return leaks
-    if isinstance(value, (list, tuple, set, frozenset)):
-        for index, child in enumerate(value):
-            leaks.extend(find_public_path_leaks(child, (*key_path, str(index))))
-        return leaks
-    if isinstance(value, str) and PRIVATE_LOCAL_PATH_RE.search(value):
-        leaks.append(".".join(key_path) or "<root>")
+    pending: list[tuple[Any, tuple[str, ...]]] = [(value, key_path)]
+    while pending:
+        node, path = pending.pop()
+        if isinstance(node, dict):
+            for key, child in node.items():
+                label = str(key)
+                if isinstance(key, str) and PRIVATE_LOCAL_PATH_RE.search(key):
+                    label = "<key>"
+                    leaks.append(".".join((*path, label)))
+                pending.append((child, (*path, label)))
+        elif isinstance(node, (list, tuple, set, frozenset)):
+            pending.extend((child, (*path, str(index))) for index, child in enumerate(node))
+        elif isinstance(node, str) and PRIVATE_LOCAL_PATH_RE.search(node):
+            leaks.append(".".join(path) or "<root>")
     return leaks
 
 
