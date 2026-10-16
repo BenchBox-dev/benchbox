@@ -335,6 +335,11 @@ class TestRowCountStrategies:
             (100, "store", 402),
             (10, "item", 102_000),
             (1, "reason", 75),
+            (10, "reason", 75),
+            (100, "reason", 75),
+            (1, "web_site", 30),
+            (10, "web_site", 42),
+            (100, "web_site", 24),
             (100, "store_sales", 287_997_024),
             (100, "CUSTOMER", 2_000_000),
         ],
@@ -373,12 +378,10 @@ class TestRowCountStrategies:
             "web_page",
             "web_returns",
             "web_sales",
+            "web_site",
         }
 
         assert all(strategy.get_expected_range(table) is not None for table in tables)
-
-    def test_tpcds_strategy_leaves_web_site_unchecked(self):
-        assert TPCDSRowCountStrategy(scale_factor=100.0).get_expected_range("web_site") is None
 
     def test_tpcds_strategy_rejects_linear_customer_count_at_scale_100(self):
         expected = TPCDSRowCountStrategy(scale_factor=100.0).get_expected_range("customer")

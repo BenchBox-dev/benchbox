@@ -186,6 +186,7 @@ _TPCDS_SPEC_ROWS: dict[str, tuple[int, int, int]] = {
     "web_page": (60, 200, 2_040),
     "web_returns": (71_763, 719_217, 7_197_670),
     "web_sales": (719_384, 7_197_566, 72_001_237),
+    "web_site": (30, 42, 24),
 }
 _TPCDS_SPEC_SCALES = (1, 10, 100)
 _TPCDS_LINEAR_TABLES = frozenset(

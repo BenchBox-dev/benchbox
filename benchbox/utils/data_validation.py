@@ -62,7 +62,7 @@ class BenchmarkDataValidator:
         "inventory": TableExpectation("inventory", 11745000, ["inventory.dat"]),
         "item": TableExpectation("item", 18000, ["item.dat"]),
         "promotion": TableExpectation("promotion", 300, ["promotion.dat"]),
-        "reason": TableExpectation("reason", 35, ["reason.dat"]),
+        "reason": TableExpectation("reason", 75, ["reason.dat"]),
         "ship_mode": TableExpectation("ship_mode", 20, ["ship_mode.dat"]),
         "store": TableExpectation("store", 12, ["store.dat"]),
         "store_returns": TableExpectation("store_returns", 287514, ["store_returns.dat"]),
