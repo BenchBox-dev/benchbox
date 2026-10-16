@@ -20818,15 +20818,10 @@
       "title": "Bring the batch records up to date and give the handoff, plan, ledger and evidence a durable second location"
     },
     "site-split-68-seed-lane-ineligible-cells": {
-      "claim": {
-        "expires_at": "2026-10-17T14:07:10Z",
-        "generation": "c084a11aa4a341309c48745cbebaa663",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Stop the seed lane producing bundles that are always dropped or fail on the runner"
     },
     "site-split-69-deployed-sha-design": {
