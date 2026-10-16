@@ -12,7 +12,7 @@ from typing import Optional, Union
 from benchbox.utils.datagen_version import describe_datagen_staleness, manifest_datagen_is_current
 from benchbox.utils.file_format import detect_compression, strip_compression_suffix
 from benchbox.utils.printing import emit
-from benchbox.utils.tpcds_row_counts import TPCDS_LINEAR_TABLES, tpcds_spec_row_count
+from benchbox.utils.tpcds_row_counts import TPCDS_LINEAR_TABLES, tpcds_spec_row_count, tpcds_subscale_row_count
 
 logger = logging.getLogger(__name__)
 
@@ -92,23 +92,10 @@ class BenchmarkDataValidator:
 
         tpch_invariant_fixed = {"nation", "region"}
 
-        tpcds_official_fixed = {
-            "call_center",
-            "reason",
-            "ship_mode",
-            "warehouse",
-            "income_band",
-            "web_site",
-            "store",
-            "time_dim",
-        }
-
         for table_name, expectation in base_expectations.items():
-            if self.benchmark_name == "tpcds" and self.scale_factor >= 1.0:
+            if self.benchmark_name == "tpcds":
                 scaled_rows = self._tpcds_scaled_rows(table_name, expectation.expected_rows)
-            elif table_name in tpch_invariant_fixed or (
-                table_name in tpcds_official_fixed and self.scale_factor >= 1.0
-            ):
+            elif table_name in tpch_invariant_fixed:
                 scaled_rows = expectation.expected_rows
             else:
                 scaled_rows = max(1, int(expectation.expected_rows * self.scale_factor))
@@ -124,6 +111,8 @@ class BenchmarkDataValidator:
 
     def _tpcds_scaled_rows(self, table_name: str, sf1_rows: int) -> int:
         spec_rows = tpcds_spec_row_count(table_name, self.scale_factor)
+        if spec_rows is None:
+            spec_rows = tpcds_subscale_row_count(table_name, self.scale_factor)
         if spec_rows is not None:
             return spec_rows
         if table_name in TPCDS_LINEAR_TABLES:
