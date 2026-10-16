@@ -8602,10 +8602,15 @@
       "title": "Browser CI is red on develop: e2e specs hardcode fixture result IDs that drift"
     },
     "e2e-tests-write-real-benchmark-runs-20261016": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-17T16:59:07Z",
+        "generation": "50fdee5783ad44908230e60cefe9b5a5",
+        "renewals": 0,
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Stop e2e and integration tests writing into the real benchmark_runs folder"
     },
     "eliminate-non-data-loading-wrong-layer-compensation": {
