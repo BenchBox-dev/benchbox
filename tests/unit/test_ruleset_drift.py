@@ -52,6 +52,7 @@ def test_parse_expected_rulesets_from_admin_runbook() -> None:
         "landing",
         "tooling",
         "oracle-review",
+        "hold",
     )
     assert expected["develop-squash-only"].strict_required_status_checks_policy is False
     assert expected["release-only"].ref == "refs/heads/release"
@@ -228,7 +229,7 @@ def test_merge_queue_present_is_blocking() -> None:
 def _verified_develop_ruleset() -> dict:
     live = _live_ruleset(
         "refs/heads/develop",
-        ["core", "explorer", "results-data", "docs", "landing", "tooling", "oracle-review"],
+        ["core", "explorer", "results-data", "docs", "landing", "tooling", "oracle-review", "hold"],
         strict=False,
     )
     live["name"] = "develop-squash-only"
