@@ -803,6 +803,15 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: uv run -- python scripts/release_curation_dry_run.py --changed-since "$BASE_SHA"
 
+      - name: Pre-build the assertion-rewrite cache
+        run: |
+          find tests \( -name 'test_*.py' -o -name '*_test.py' \) -not -path '*/__pycache__/*' | sort \
+            | awk -v n="$(nproc)" -v dir="$RUNNER_TEMP" '{ print > (dir "/rewrite-chunk." (NR % n)) }'
+          for chunk in "$RUNNER_TEMP"/rewrite-chunk.*; do
+            xargs uv run -- python -m pytest --collect-only -q -n 0 -p no:cacheprovider < "$chunk" > /dev/null 2>&1 &
+          done
+          wait
+
       - name: Run fast tests
         env:
           BENCHBOX_MAX_XDIST_WORKERS: "4"
