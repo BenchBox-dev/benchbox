@@ -111,7 +111,11 @@ without that review. The local check and CI fail on the new entries until the
 verdict succeeds; push, obtain the success verdict, rerun the comment-policy
 check, then merge. Remove unused exceptions when you review a module. A
 candidate scope notice must stay inside the byte range already pinned at the
-base and must not escalate a partial pin into a whole-file exclusion.
+base, must keep the bytes of that range identical to the base, and must not
+escalate a partial pin into a whole-file exclusion. The verdict counts only
+when the scanned checkout is the reviewed head, or a merge commit of the base
+and the reviewed head with no other content; a stale event or a modified
+checkout gets no review cover.
 
 One fixture lets a test run conditions taken from the Makefile, to prove a
 broken gate still runs its guard. It allows no comment text. Changing

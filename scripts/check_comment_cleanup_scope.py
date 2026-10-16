@@ -1251,7 +1251,29 @@ def _oracle_verdict_covers(token: str, repo: str, number: Any, head: str) -> boo
     return verdicts[-1][1] == "success"
 
 
-def oracle_review_covers() -> bool:
+def _git_succeeds(root: Path, *args: str) -> bool:
+    return subprocess.run(["git", "-C", str(root), *args], capture_output=True, check=False).returncode == 0
+
+
+def scanned_tree_is_reviewed_head(root: Path, head: str) -> bool:
+    try:
+        if not _git_succeeds(root, "diff", "--quiet", "--cached", "HEAD", "--"):
+            return False
+        if not _git_succeeds(root, "diff", "--quiet", "HEAD", "--"):
+            return False
+        commits = git(root, "rev-list", "--parents", "-n", "1", "HEAD").decode().split()
+        if commits[0] == head:
+            return True
+        if len(commits) != 3 or commits[2] != head:
+            return False
+        merged = git(root, "merge-tree", "--write-tree", commits[1], commits[2]).decode().split()
+        tree = git(root, "rev-parse", "HEAD^{tree}").decode().strip()
+        return bool(merged) and merged[0] == tree
+    except (OSError, subprocess.CalledProcessError, UnicodeError):
+        return False
+
+
+def oracle_review_covers(root: Path) -> bool:
     try:
         event_path = os.environ.get("GITHUB_EVENT_PATH")
         repo = os.environ.get("GITHUB_REPOSITORY")
@@ -1263,6 +1285,8 @@ def oracle_review_covers() -> bool:
         head = (pull.get("head") or {}).get("sha") or ""
         number = pull.get("number")
         if not re.fullmatch(r"[a-f0-9]{40}", head) or not number:
+            return False
+        if not scanned_tree_is_reviewed_head(root, head):
             return False
         page = 1
         completed: list[Any] = []
@@ -1327,6 +1351,7 @@ def _check_candidate_ranges(
     candidates: list[dict[str, Any]], base_notices: Any, root: Path, base: str, staged: bool
 ) -> None:
     pinned: dict[str, list[tuple[int, int, bool]]] = {}
+    base_raws: dict[str, bytes] = {}
     if isinstance(base_notices, list):
         for notice in base_notices:
             if (
@@ -1340,6 +1365,7 @@ def _check_candidate_ranges(
                 raw = base_blob(root, base, notice["path"])
             except (OSError, subprocess.CalledProcessError):
                 continue
+            base_raws[notice["path"]] = raw
             whole = notice["byte_start"] == 0 and notice["byte_end"] == len(raw)
             pinned.setdefault(notice["path"], []).append((notice["byte_start"], notice["byte_end"], whole))
     for entry in candidates:
@@ -1347,12 +1373,18 @@ def _check_candidate_ranges(
         if not ranges:
             raise PolicyError(f"candidate notice {entry['path']} has no pinned base range")
         raw = head_blob(root, entry["path"], staged) or b""
-        candidate_whole = entry["byte_start"] == 0 and entry["byte_end"] == len(raw)
+        start, end = entry["byte_start"], entry["byte_end"]
+        candidate_whole = start == 0 and end == len(raw)
         if not any(
-            start <= entry["byte_start"] and entry["byte_end"] <= end and (not candidate_whole or whole)
-            for start, end, whole in ranges
+            range_start <= start and end <= range_end and (not candidate_whole or whole)
+            for range_start, range_end, whole in ranges
         ):
             raise PolicyError(f"candidate notice {entry['path']} expands the pinned base range")
+        base_raw = base_raws[entry["path"]]
+        if raw[start:end] != base_raw[start:end]:
+            raise PolicyError(f"candidate notice {entry['path']} retained bytes differ from the pinned base bytes")
+        if candidate_whole and raw != base_raw:
+            raise PolicyError(f"candidate notice {entry['path']} whole-file bytes differ from the pinned base blob")
 
 
 def immutable_external_ownership(
@@ -1422,11 +1454,20 @@ def immutable_external_ownership(
     if fresh:
         raise PolicyError("candidate notices must update paths already pinned at the base: " + ", ".join(fresh))
     _check_candidate_ranges(effective_notices, policy["notices"], root, base, staged)
-    notices = [
-        {**notice, "whole_file": None}
-        for notice in effective_notices
-        if any(matches(notice["path"], entry["selector"]) for entry in external)
-    ]
+    notices = []
+    for notice in effective_notices:
+        if not any(matches(notice["path"], entry["selector"]) for entry in external):
+            continue
+        base_raw = base_blob(root, base, notice["path"])
+        start, end = notice["byte_start"], notice["byte_end"]
+        notices.append(
+            {
+                **notice,
+                "retained_sha256": hashlib.sha256(base_raw[start:end]).hexdigest(),
+                "blob_sha256": hashlib.sha256(base_raw).hexdigest(),
+                "whole_file": start == 0 and end == len(base_raw),
+            }
+        )
     return excluded, notices
 
 
@@ -1606,7 +1647,7 @@ def main(argv: list[str] | None = None) -> int:
                 ]
             except (ValueError, TypeError, KeyError, AttributeError) as error:
                 raise PolicyError(f"invalid trusted comment-policy: {error}") from error
-            reviewed = oracle_review_covers()
+            reviewed = oracle_review_covers(root)
             snapshot = immutable_external_ownership(
                 root,
                 args.base,

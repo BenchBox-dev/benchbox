@@ -349,18 +349,13 @@ def ownership_exclusions(
             raw = git(root, "show", f":{notice['path']}") if staged else (root / notice["path"]).read_bytes()
             start, end = notice["byte_start"], notice["byte_end"]
             retained = notice["retained_sha256"]
+            whole_file = notice["whole_file"]
+            blob = notice["blob_sha256"]
         except (KeyError, TypeError) as exc:
             raise ValueError(f"protected external notice entry is malformed: {exc}") from exc
         if len(raw) < end or hashlib.sha256(raw[start:end]).hexdigest() != retained:
             raise ValueError(f"protected external notice changed: {notice['path']}")
-        whole_file = notice.get("whole_file")
-        if whole_file is None:
-            whole_file = start == 0 and end == len(raw)
         if whole_file:
-            try:
-                blob = notice["blob_sha256"]
-            except (KeyError, TypeError) as exc:
-                raise ValueError(f"protected external notice entry is malformed: {exc}") from exc
             if hashlib.sha256(raw).hexdigest() != blob:
                 raise ValueError(f"protected external notice blob changed: {notice['path']}")
             excluded.add(notice["path"])
@@ -518,7 +513,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.bootstrap and (args.mode != "transition" or not bootstrap_base_allowed(root, args.base or "")):
             raise ValueError("bootstrap requires a base that contains the initial rollout commit")
         owner_base = ownership_base(root, args.mode, args.base, args.ownership_base)
-        reviewed = args.mode == "transition" and oracle_review_covers()
+        reviewed = args.mode == "transition" and oracle_review_covers(root)
         candidate_notices = candidate_scope_notices(root, args.staged) if reviewed else None
         owned_exclusions = ownership_exclusions(root, owner_base, args.staged, candidate_notices)
         baseline_policy = policy

@@ -347,6 +347,63 @@ def test_candidate_notice_partial_to_whole_escalation_is_rejected(tmp_path: Path
         scope.immutable_external_ownership(tmp_path, base, [], False, [candidate])
 
 
+def test_candidate_notice_in_range_byte_substitution_is_rejected(tmp_path: Path, policy: dict) -> None:
+    content = b"0123456789abcdef"
+    policy["notices"] = [_partial_notice_entry("src/a.py", content, 4, 12)]
+    base = _scope_repo(tmp_path, policy, {"src/a.py": content})
+    changed = b"0123XXXXXXXXcdef"
+    (tmp_path / "src/a.py").write_bytes(changed)
+    candidate = _partial_notice_entry("src/a.py", changed, 4, 12)
+    assert scope.validate_candidate_notices([candidate], tmp_path, False)
+    with pytest.raises(scope.PolicyError, match="differ from the pinned base bytes"):
+        scope.immutable_external_ownership(tmp_path, base, [], False, [candidate])
+
+
+def test_candidate_notice_subrange_substitution_is_rejected(tmp_path: Path, policy: dict) -> None:
+    content = b"0123456789abcdef"
+    policy["notices"] = [_partial_notice_entry("src/a.py", content, 4, 12)]
+    base = _scope_repo(tmp_path, policy, {"src/a.py": content})
+    changed = b"01234567X9abcdef"
+    (tmp_path / "src/a.py").write_bytes(changed)
+    candidate = _partial_notice_entry("src/a.py", changed, 6, 10)
+    with pytest.raises(scope.PolicyError, match="differ from the pinned base bytes"):
+        scope.immutable_external_ownership(tmp_path, base, [], False, [candidate])
+
+
+def test_candidate_notice_unchanged_range_with_outside_edit_is_accepted(tmp_path: Path, policy: dict) -> None:
+    content = b"0123456789abcdef"
+    policy["notices"] = [_partial_notice_entry("src/a.py", content, 4, 12)]
+    base = _scope_repo(tmp_path, policy, {"src/a.py": content})
+    edited = b"XXXX456789abYYYY"
+    (tmp_path / "src/a.py").write_bytes(edited)
+    candidate = _partial_notice_entry("src/a.py", edited, 4, 12)
+    excluded, notices = scope.immutable_external_ownership(tmp_path, base, [], False, [candidate]) or (None, None)
+    assert excluded is not None
+    assert notices == []
+
+
+def test_candidate_notice_pins_are_derived_from_the_base(tmp_path: Path, policy: dict) -> None:
+    content = b"0123456789abcdef"
+    policy["notices"] = [_partial_notice_entry("src/a.py", content, 4, 12)]
+    policy["external_entries"] = [
+        {
+            "selector": {"path": "src/a.py"},
+            "owner": "comment-cleanup-core-bootstrap",
+            "provenance": "fixture",
+            "governing_requirement": "fixture",
+            "blocking_disposition": "fixture",
+        }
+    ]
+    base = _scope_repo(tmp_path, policy, {"src/a.py": content})
+    candidate = _partial_notice_entry("src/a.py", content, 6, 10)
+    candidate["retained_sha256"] = hashlib.sha256(content[6:10]).hexdigest()
+    result = scope.immutable_external_ownership(tmp_path, base, [], False, [candidate])
+    assert result is not None
+    _, notices = result
+    assert [(n["byte_start"], n["byte_end"], n["whole_file"]) for n in notices] == [(6, 10, False)]
+    assert notices[0]["blob_sha256"] == hashlib.sha256(content).hexdigest()
+
+
 def test_obligation_requires_exactly_one_destination_reference(tmp_path: Path, policy: dict) -> None:
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     subprocess.run(["git", "-C", str(tmp_path), "config", "user.name", "Test"], check=True)
