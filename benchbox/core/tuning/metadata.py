@@ -55,6 +55,10 @@ def _insert_value_mark(connection: Any) -> str:
     return "%s" if _driver_paramstyle(connection) in {"format", "pyformat"} else "?"
 
 
+def _column_tuned_table_names(tunings: BenchmarkTunings) -> set[str]:
+    return {name for name, table_tuning in tunings.table_tunings.items() if table_tuning.has_any_tuning()}
+
+
 def _normalize_platform_key(raw: object) -> str:
     key = str(raw).strip().lower().replace("-", "_").replace(" ", "_")
     return _PLATFORM_KEY_ALIASES.get(key, key)
@@ -860,8 +864,8 @@ class TuningMetadataManager:
         if expected_hash == existing_hash:
             return
 
-        expected_tables = set(expected.get_table_names())
-        existing_tables = set(existing.get_table_names())
+        expected_tables = _column_tuned_table_names(expected)
+        existing_tables = _column_tuned_table_names(existing)
 
         result.missing_tables = expected_tables - existing_tables
         result.extra_tables = existing_tables - expected_tables
