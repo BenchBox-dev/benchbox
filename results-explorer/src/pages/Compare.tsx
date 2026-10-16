@@ -72,6 +72,7 @@ import { formatWarningClassSummary, formatWarningCount } from "@/lib/copyFormatt
 import { assignRunColorSlots, paletteColor } from "@/lib/chartTheme";
 import { queryRunComparisonHref } from "@/lib/queryRunComparison";
 import { ChartPanel } from "@/components/ChartPanel";
+import { isValidChartId } from "@/lib/chartRegistry";
 import { RunDateChip } from "@/components/RunAge";
 import { PageHeader } from "@/components/PageHeader";
 import { Leaderboard } from "@/pages/Leaderboard";
@@ -155,6 +156,8 @@ export function compareLayoutForSelection(resultIds: readonly string[]): Compare
 export function Compare({ url }: CompareProps) {
   const activeUrl = currentCompareUrl(url);
   const requestedIdsToken = searchParamsFromUrl(activeUrl).get("ids") ?? "";
+  const requestedChartToken = searchParamsFromUrl(activeUrl).get("chart") ?? "";
+  const focusChartId = isValidChartId(requestedChartToken) ? requestedChartToken : null;
   const [compareState, setCompareState] = useState<CompareState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -660,6 +663,7 @@ export function Compare({ url }: CompareProps) {
             queryFilter={queryLimiter === "all" ? undefined : limitedQueryIds}
             queryHref={(queryId) => queryRunComparisonHref(queryId, results.map((result) => result.result_id), basis)}
             excludeChartIds={["performance_bar", "power_bar", "comparison_bar"]}
+            focusChartId={focusChartId}
           />
         </div>
       )}

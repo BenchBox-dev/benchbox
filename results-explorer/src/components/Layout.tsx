@@ -15,7 +15,7 @@ export function Layout({ children }: LayoutProps) {
     <div class="bb-app-shell flex min-h-screen flex-col" data-testid="app-shell">
       <SiteHeader pathname={RESULTS_SURFACE_PATH} testId="benchbox-global-header" />
       <ExplorerNav />
-      <main class="bb-explorer flex-1">{children}</main>
+      <main id="main" tabIndex={-1} class="bb-explorer flex-1">{children}</main>
       <SiteFooter pathname={RESULTS_SURFACE_PATH}>
         <p class="site-footer__legal">
           Maintainers review every result before publishing it. You can reproduce a run with{" "}

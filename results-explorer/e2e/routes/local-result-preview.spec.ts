@@ -65,10 +65,11 @@ test.describe("local result preview", () => {
     await expect(page.getByTestId("local-result-banner")).toBeVisible();
   });
 
-  test("uses the local recovery view for the bare local route", async ({ page }) => {
+  test("offers the file chooser on the bare local route", async ({ page }) => {
     await page.goto("/results/local/");
-    await expect(page.getByRole("alert")).toContainText("No result ID provided");
-    await expect(page.getByRole("button", { name: "Open result file again" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Open a local result" })).toBeVisible();
+    await expect(page.getByRole("alert")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Choose result file" })).toBeFocused();
     await expect(page.getByRole("heading", { name: /local results/i })).toHaveCount(0);
   });
 });

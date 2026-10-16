@@ -9,19 +9,20 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="BenchBox Results Explorer - browse, compare, and analyze public benchmark results across platforms." />
-    <title>BenchBox Results Explorer</title>
+    <title>Results Explorer - BenchBox</title>
     <link rel="canonical" href="https://benchbox.dev/results/" />
     <meta property="og:site_name" content="BenchBox" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="BenchBox Results Explorer" />
+    <meta property="og:title" content="Results Explorer - BenchBox" />
     <meta property="og:description" content="BenchBox Results Explorer - browse, compare, and analyze public benchmark results across platforms." />
     <meta property="og:url" content="https://benchbox.dev/results/" />
     <meta property="og:image" content="https://benchbox.dev/hero.png" />
     <meta property="og:image:alt" content="BenchBox - Database Benchmarking Toolkit" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="BenchBox Results Explorer" />
+    <meta name="twitter:title" content="Results Explorer - BenchBox" />
     <meta name="twitter:description" content="BenchBox Results Explorer - browse, compare, and analyze public benchmark results across platforms." />
     <meta name="twitter:image" content="https://benchbox.dev/hero.png" />
+    <noscript><style>.bb-static-loading { display: none; }</style></noscript>
     <script>
       (function () {
         try {
@@ -41,7 +42,49 @@
     </script>
   </head>
   <body class="bb-explorer-page">
-    <div id="app"></div>
+    <a href="#main" class="skip-link">Skip to content</a>
+    <div id="app">
+      <header class="site-header" data-site-header>
+        <div class="site-header__inner">
+          <a class="site-header__logo" href="/">
+            <span class="site-header__logo-text">BenchBox</span>
+          </a>
+          <div class="site-header__panel">
+            <nav id="benchbox-site-header-nav" class="site-header__nav" aria-label="BenchBox">
+              <a class="site-header__link" href="/">Home</a>
+              <a class="site-header__link" href="/docs/">Docs</a>
+              <a class="site-header__link" href="/blog/">Blog</a>
+              <a class="site-header__link" href="/results/" aria-current="page">Results</a>
+              <a class="site-header__link" href="https://github.com/BenchBox-dev/BenchBox" target="_blank" rel="noopener">GitHub</a>
+              <a class="site-header__cta" href="/docs/usage/installation.html">Run benchmark</a>
+            </nav>
+          </div>
+        </div>
+      </header>
+      <main id="main" tabindex="-1" class="bb-explorer flex-1">
+        <div class="bb-static-loading" role="status" style="padding: 2rem; max-width: 48rem; margin: 0 auto; text-align: center;">
+          Loading the Results Explorer…
+        </div>
+        <noscript>
+          <div style="padding: 2rem; max-width: 48rem; margin: 0 auto; text-align: center;">
+            <p>JavaScript is required to run the interactive Results Explorer.</p>
+            <p>Return to <a href="/">Home</a>, browse <a href="/docs/">Documentation</a>, or read our <a href="/blog/">Blog</a>.</p>
+          </div>
+        </noscript>
+      </main>
+      <footer class="site-footer" data-site-footer>
+        <div class="site-footer__inner">
+          <p class="site-footer__legal">BenchBox is open source under the MIT License.</p>
+          <nav class="site-footer__nav" aria-label="Footer">
+            <a class="site-footer__link" href="/">Home</a>
+            <a class="site-footer__link" href="/docs/">Docs</a>
+            <a class="site-footer__link" href="/blog/">Blog</a>
+            <a class="site-footer__link" href="/results/">Results</a>
+            <a class="site-footer__link" href="https://github.com/BenchBox-dev/BenchBox" target="_blank" rel="noopener">GitHub</a>
+          </nav>
+        </div>
+      </footer>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
