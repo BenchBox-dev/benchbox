@@ -2882,6 +2882,13 @@
       "status": "done",
       "title": "Restore and enforce the lean-import guarantee for import benchbox, import benchbox.cli.main, and benchbox --help"
     },
+    "cli-load-only-phases-overall-status-none-20261016": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "`--phases generate,load` without power exits 1: 'NoneType' object has no attribute 'overall_status'"
+    },
     "cli-mcp-execution-type-divergence-still-live": {
       "claim": null,
       "needs": [

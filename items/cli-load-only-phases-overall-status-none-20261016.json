@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "`--phases generate,load` completes with exit 0 and records data_loading in the result",
+    "Regression test covers a load-only run without a power phase"
+  ],
+  "context": "Found 2026-10-15 during a local DuckDB check for PR #3013; reproduced on unmodified develop. The Snowflake trial campaign used the fallback `generate,load,power --iterations 1` instead.",
+  "description": "On develop (2026-10-15), `benchbox run --platform duckdb --benchmark tpch --scale 0.01 --seed 42 --phases generate,load --non-interactive` loads the data (\"Data loading completed\") and then fails with \"Benchmark execution failed: 'NoneType' object has no attribute 'overall_status'\" and \"Data loading failed: FAILED\", exiting 1. The same command with `generate,load,power` succeeds. Load-only runs, which campaign plans use to prepare databases, cannot complete.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:9e002f45bd6cb1f33b959f2c",
+      "at": "2026-10-16T12:06:43Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "f6f2800032ba420e8abc59bf4f6b47c2",
+      "session_id": "70accbe5849d4e1da05dfca7c4ffe8da"
+    }
+  ]
+}
