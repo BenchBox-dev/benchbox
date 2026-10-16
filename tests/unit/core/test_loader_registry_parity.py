@@ -235,3 +235,47 @@ def test_loader_forwards_explicit_cli_options(monkeypatch: pytest.MonkeyPatch) -
         "quiet": True,
         "seed": 42,
     }
+
+
+GENERATOR_BACKED_BENCHMARKS = ["tpch", "tpcds", "tpchavoc", "write_primitives", "transaction_primitives"]
+
+
+def _orchestrated_generator(benchmark_id: str, tmp_path, force_regenerate: bool | None):
+    from benchbox.cli.orchestrator import BenchmarkOrchestrator
+
+    options = {} if force_regenerate is None else {"force_regenerate": force_regenerate}
+    config = BenchmarkConfig(name=benchmark_id, display_name=benchmark_id, scale_factor=0.01, options=options)
+    orchestrator = BenchmarkOrchestrator(base_dir=str(tmp_path))
+    orchestrator.set_custom_output_dir(str(tmp_path / "datagen"))
+    return orchestrator._get_benchmark_instance(config, system_profile=None).data_generator
+
+
+@pytest.mark.parametrize("benchmark_id", GENERATOR_BACKED_BENCHMARKS)
+def test_orchestrator_forwards_force_regenerate_to_data_generator(benchmark_id: str, tmp_path) -> None:
+
+    assert _orchestrated_generator(benchmark_id, tmp_path, force_regenerate=True).force_regenerate is True
+
+
+@pytest.mark.parametrize("benchmark_id", GENERATOR_BACKED_BENCHMARKS)
+@pytest.mark.parametrize("force_regenerate", [None, False])
+def test_orchestrator_keeps_data_reuse_without_force(benchmark_id: str, force_regenerate, tmp_path) -> None:
+
+    assert _orchestrated_generator(benchmark_id, tmp_path, force_regenerate).force_regenerate is False
+
+
+def test_loader_forwards_force_regenerate_to_any_accepting_benchmark(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+
+    class ForceAwareBenchmark:
+        def __init__(self, *, scale_factor: float, force_regenerate: bool = False, **kwargs: object) -> None:
+            captured["force_regenerate"] = force_regenerate
+
+    monkeypatch.setattr("benchbox.core.benchmark_loader.get_core_benchmark_class", lambda _name: ForceAwareBenchmark)
+    monkeypatch.setattr("benchbox.core.benchmark_loader.validate_scale_factor", lambda _name, _scale: None)
+
+    config = BenchmarkConfig(
+        name="custom_bench", display_name="Custom", scale_factor=0.01, options={"force_regenerate": True}
+    )
+    get_benchmark_instance(config, system_profile=None)
+
+    assert captured == {"force_regenerate": True}

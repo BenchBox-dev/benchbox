@@ -112,3 +112,31 @@ class TestRealDbgenGeneration:
         finally:
             conn.close()
         assert count > 0
+
+
+class TestOrchestratedForceRegenerate:
+    @staticmethod
+    def _generate(tmp_path: Path, force_regenerate: bool) -> dict[str, int]:
+        from benchbox.cli.orchestrator import BenchmarkOrchestrator
+        from benchbox.core.schemas import BenchmarkConfig
+
+        output_dir = tmp_path / "datagen"
+        config = BenchmarkConfig(
+            name="tpch", display_name="TPC-H", scale_factor=0.01, options={"force_regenerate": force_regenerate}
+        )
+        orchestrator = BenchmarkOrchestrator(base_dir=str(tmp_path))
+        orchestrator.set_custom_output_dir(str(output_dir))
+        orchestrator._get_benchmark_instance(config, system_profile=None).generate_data()
+        return {path.name: path.stat().st_mtime_ns for path in output_dir.glob("*.tbl*")}
+
+    def test_force_regenerate_rewrites_valid_existing_data(self, tmp_path: Path):
+        _require_binary("dbgen")
+
+        first = self._generate(tmp_path, force_regenerate=False)
+        reused = self._generate(tmp_path, force_regenerate=False)
+        forced = self._generate(tmp_path, force_regenerate=True)
+
+        assert first
+        assert reused == first
+        assert forced.keys() == first.keys()
+        assert all(forced[name] > first[name] for name in first)

@@ -158,6 +158,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `unique_constraints` or `check_constraints` now means the file does not
   request them; before, the omitted keys defaulted to enabled.
 
+- `benchbox run --force datagen` and `--force all` now regenerate TPC-H data
+  that is already valid on disk. Before, the data generator never received the
+  force request and logged "Skipping data generation (existing data is valid)".
+  TPC-Havoc, Write Primitives and Transaction Primitives had the same problem.
+  The force request now reaches every benchmark that accepts it. Runs without
+  `--force` still reuse valid data.
+
 - Load-only runs (`--phases generate,load`) on SQL platforms exit 0 again
   after a successful load. Before, every such run loaded the data and then
   failed with "'NoneType' object has no attribute 'overall_status'" because

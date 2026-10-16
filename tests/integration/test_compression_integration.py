@@ -261,6 +261,7 @@ class TestOrchestrator:
             compression_level=5,
             verbose=0,
             quiet=False,
+            force_regenerate=False,
         )
 
         assert result == mock_benchmark_instance
