@@ -296,3 +296,9 @@ def test_q93_binds_the_drawn_reason() -> None:
 def test_explicit_parameters_override_the_draw() -> None:
     sql = TPCDSOBTQueryManager().get_query(93, {"REASON": "Parts missing"})
     assert "reason_r_reason_desc = 'Parts missing'" in sql
+
+
+@pytest.mark.parametrize("key", ["REASON.1", "REASON.01"])
+def test_indexed_overrides_accept_template_and_log_spellings(key: str) -> None:
+    sql = TPCDSOBTQueryManager().get_query(93, {key: "Parts missing"})
+    assert "reason_r_reason_desc = 'Parts missing'" in sql

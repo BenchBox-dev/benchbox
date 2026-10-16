@@ -54,11 +54,12 @@ class TPCDSOBTQueryManager:
         converted = None if qid_int in self._manual_queries else self._get_converted(query_id)
         values = {**self.drawn_parameters(qid_int, seed=seed, scale_factor=scale_factor, stream_id=stream_id)}
         for name, value in (parameters or {}).items():
-            if "." in name:
-                values[name] = str(value)
+            base, _, index = name.partition(".")
+            if index:
+                values[f"{base}.{int(index):02d}"] = str(value)
             else:
-                values.update({key: str(value) for key in values if key.split(".")[0] == name})
-                values[f"{name}.01"] = str(value)
+                values.update({key: str(value) for key in values if key.split(".")[0] == base})
+                values[f"{base}.01"] = str(value)
         if converted is None:
             names = self._manual_queries[qid_int].parameters
             return render_manual_query(qid_int, {name: values[f"{name}.01"] for name in names})
