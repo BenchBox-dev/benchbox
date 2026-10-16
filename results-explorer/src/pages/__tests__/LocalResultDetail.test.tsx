@@ -109,4 +109,13 @@ describe("local ResultDetail", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("no longer available");
     expect(screen.getByRole("button", { name: "Open result file again" })).toBeTruthy();
   });
+
+  it("offers the file picker with focus when no local result is open yet", () => {
+    render(<ResultDetail resultId="" source="local" />);
+
+    const chooseButton = screen.getByRole("button", { name: "Choose result file" });
+    expect(document.activeElement).toBe(chooseButton);
+    expect(screen.getByTestId("local-result-file-input")).toHaveAttribute("accept", ".json,application/json");
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
 });

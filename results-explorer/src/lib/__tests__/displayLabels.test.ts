@@ -18,8 +18,10 @@ import {
 
 describe("formatTrustLabel", () => {
   it("humanizes the canonical trust labels", () => {
-    expect(formatTrustLabel("maintainer-run")).toBe("Maintainer run");
-    expect(formatTrustLabel("community-submission")).toBe("Community submission");
+    expect(formatTrustLabel("maintainer-run")).toBe("Maintainer Run");
+    expect(formatTrustLabel("community-submission")).toBe("Community Submission");
+    expect(formatTrustLabel("vendor-supplied")).toBe("Vendor Supplied");
+    expect(formatTrustLabel("verified")).toBe("Verified");
   });
 
   it("returns 'unknown' for null/empty values", () => {

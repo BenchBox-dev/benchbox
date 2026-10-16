@@ -70,6 +70,7 @@ interface ChartPanelProps {
   queryFilter?: readonly string[];
   cardAnchors?: Readonly<Record<string, string>>;
   forceOpenChartId?: string | null;
+  focusChartId?: string | null;
   queryHref?: (queryId: string) => string;
   rankGateReason?: string | null;
   rankGateContext?: { benchmark: string; scaleFactor: string; phase: string };
@@ -526,7 +527,9 @@ function ChartPanelLong({
   excludeChartIds,
   queryFilter,
   queryHref,
+  focusChartId,
 }: ChartPanelProps) {
+  const panelRef = useRef<HTMLElement>(null);
   const charts = useMemo(
     () => selectPanelCharts(context, excludeChartIds, queryFilter),
     [context, excludeChartIds, queryFilter],
@@ -569,6 +572,15 @@ function ChartPanelLong({
     if (!isBaselineControlled) setLocalBaselineIdx(0);
   }, [context, isBaselineControlled]);
 
+  const focusTargetPresent = focusChartId ? charts.some((chart) => chart.id === focusChartId) : false;
+  useEffect(() => {
+    if (!focusChartId || !focusTargetPresent) return;
+    const target = panelRef.current?.querySelector<HTMLElement>(`[data-chart-id="${focusChartId}"]`);
+    if (!target) return;
+    if (typeof target.scrollIntoView === "function") target.scrollIntoView({ block: "start" });
+    target.focus({ preventScroll: true });
+  }, [focusChartId, focusTargetPresent]);
+
   if (charts.length === 0) return null;
 
   const showBaseline =
@@ -577,7 +589,7 @@ function ChartPanelLong({
     charts.some((chart) => chart.id === "normalized_speedup" || chart.id === "diverging_bar");
 
   return (
-    <section class="card" data-testid="chart-panel-long">
+    <section ref={panelRef} class="card" data-testid="chart-panel-long">
       {context.kind === "compare" && summary && (
         <div class="mb-8" data-testid="chart-panel-compare-summary-table">
           <SummaryMetricTable summary={summary} scope="compare" framed={false} />
@@ -687,7 +699,12 @@ function ChartFigure({
   const fewUsableQueries = Boolean(queryFilter && (chartSummary?.query_ids.length ?? 0) < 2);
 
   return (
-    <div data-chart-container data-chart-id={chart.id} data-testid={`chart-panel-chart-${chart.id}`}>
+    <div
+      data-chart-container
+      data-chart-id={chart.id}
+      data-testid={`chart-panel-chart-${chart.id}`}
+      tabIndex={-1}
+    >
       <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
         <h3 class="text-base font-semibold text-[var(--bb-data-fg-primary)]">{chart.title}</h3>
       </div>

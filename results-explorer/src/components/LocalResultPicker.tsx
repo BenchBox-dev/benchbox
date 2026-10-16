@@ -1,4 +1,4 @@
-import { useRef, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { route } from "preact-router";
 import { useLocalResultState } from "@/lib/localResultState";
 import { errMsg } from "@/utils";
@@ -6,13 +6,23 @@ import { errMsg } from "@/utils";
 interface LocalResultPickerProps {
   label?: string;
   className?: string;
+  autoFocus?: boolean;
 }
 
-export function LocalResultPicker({ label = "Open local result", className = "btn btn-secondary" }: LocalResultPickerProps) {
+export function LocalResultPicker({
+  label = "Open local result",
+  className = "btn btn-secondary",
+  autoFocus = false,
+}: LocalResultPickerProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const { importFile } = useLocalResultState();
+
+  useEffect(() => {
+    if (autoFocus) buttonRef.current?.focus();
+  }, [autoFocus]);
 
   async function handleFile(file: File | undefined) {
     if (!file) return;
@@ -43,6 +53,7 @@ export function LocalResultPicker({ label = "Open local result", className = "bt
         onChange={(event) => void handleFile(event.currentTarget.files?.[0])}
       />
       <button
+        ref={buttonRef}
         type="button"
         class={className}
         disabled={loading}

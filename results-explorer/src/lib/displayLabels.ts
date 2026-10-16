@@ -2,8 +2,10 @@ import type { StatusTone } from "@/components/StatusBadge";
 import { humanizeBenchmark } from "@/utils";
 
 const TRUST_LABEL_LABELS: Record<string, string> = {
-  "maintainer-run": "Maintainer run",
-  "community-submission": "Community submission",
+  "maintainer-run": "Maintainer Run",
+  "community-submission": "Community Submission",
+  "vendor-supplied": "Vendor Supplied",
+  verified: "Verified",
   "local-run": "Local run",
 };
 

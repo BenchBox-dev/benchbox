@@ -13,7 +13,12 @@
     <h2 id="search-dialog-title">Search docs and blog</h2>
     <form method="dialog"><button class="search-close" aria-label="Close search">Close</button></form>
   </div>
-  <div data-search-mount></div>
+  <div data-search-mount>
+    <p class="search-dialog__status" role="status" data-search-status>Loading search…</p>
+  </div>
+  <div class="search-dialog__footer">
+    <a href="/results/" class="search-dialog__results-link">Looking for benchmark runs? Explore Results →</a>
+  </div>
 </dialog>
 
 <script>
@@ -31,6 +36,7 @@
       script.src = "/pagefind/pagefind-ui.js";
       script.onload = () => {
         const mount = dialog?.querySelector("[data-search-mount]");
+        mount?.replaceChildren();
         const Ui = (window as unknown as { PagefindUI: new (options: object) => unknown }).PagefindUI;
         new Ui({ element: mount, showSubResults: true, showImages: false });
         resolve();
@@ -41,13 +47,20 @@
     return ready;
   }
 
+  function showStatus(message: string) {
+    const status = dialog?.querySelector<HTMLElement>("[data-search-status]");
+    if (status) status.textContent = message;
+  }
+
   function open() {
     if (!dialog || dialog.open) return;
     dialog.showModal();
+    showStatus("Loading search…");
     load()
       .then(() => dialog.querySelector<HTMLInputElement>("input")?.focus())
       .catch(() => {
         ready = undefined;
+        showStatus("Search could not be loaded. Close this dialog and open it again to retry, or browse the docs and blog directly.");
       });
   }
 

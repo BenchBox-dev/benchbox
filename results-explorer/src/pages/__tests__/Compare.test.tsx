@@ -1073,6 +1073,58 @@ describe("Compare", () => {
     expect(params.get("cost_status")).toBe("normalized");
   });
 
+  it("keeps the chart parameter when canonicalizing compare IDs", async () => {
+    setupUrl(["tpch-duckdb-long-id", "tpch-sqlite-long-id"], { chart: "cdf_chart" });
+    vi.mocked(resolveShortId).mockImplementation((id) =>
+      Promise.resolve(id.includes("duckdb") ? "r1" : "r2"),
+    );
+    vi.mocked(toShortIds).mockResolvedValue(["short1", "short2"]);
+
+    render(<Compare />);
+
+    await waitFor(() =>
+      expect(new URL(window.location.href).searchParams.get("ids")).toBe("short1,short2"),
+    );
+    expect(new URL(window.location.href).searchParams.get("chart")).toBe("cdf_chart");
+  });
+
+  it.each(["distribution_box", "cdf_chart"])("focuses the %s chart named in the URL", async (chartId) => {
+    setupUrl(["r1", "r2"], { chart: chartId });
+
+    render(<Compare />);
+
+    const target = await screen.findByTestId(`chart-panel-chart-${chartId}`);
+    await waitFor(() => expect(document.activeElement).toBe(target));
+  });
+
+  it("moves focus to a different chart when the URL names a different chart", async () => {
+    setupUrl(["r1", "r2"], { chart: "distribution_box" });
+    const first = render(<Compare />);
+    const distribution = await first.findByTestId("chart-panel-chart-distribution_box");
+    await waitFor(() => expect(document.activeElement).toBe(distribution));
+    first.unmount();
+
+    setupUrl(["r1", "r2"], { chart: "cdf_chart" });
+    const second = render(<Compare />);
+    const cdf = await second.findByTestId("chart-panel-chart-cdf_chart");
+    await waitFor(() => expect(document.activeElement).toBe(cdf));
+    expect(document.activeElement).not.toBe(distribution);
+  });
+
+  it.each(["no_such_chart", "toString", "performance_bar"])(
+    "ignores the chart value %s that names no focusable chart",
+    async (chartId) => {
+      setupUrl(["r1", "r2"], { chart: chartId });
+
+      render(<Compare />);
+
+      await screen.findByTestId("chart-panel-long");
+      const figures = Array.from(document.querySelectorAll("[data-chart-container]"));
+      expect(figures.length).toBeGreaterThan(0);
+      expect(figures).not.toContain(document.activeElement);
+    },
+  );
+
   it("shows a secondary Geomean row when power_score is primary", async () => {
     render(<Compare />);
     await waitFor(() => {

@@ -1440,7 +1440,7 @@ function BenchmarkRow({
           data-testid={`benchmark-list-compare-checkbox-${entry.result_id}`}
         />
       </td>
-      <td class="table-td">
+      <td class="table-td min-w-[11rem]">
         <RunIdentityLabel
           label={runIdentityLabel}
           href={`/results/p/${entry.platform_id}/`}

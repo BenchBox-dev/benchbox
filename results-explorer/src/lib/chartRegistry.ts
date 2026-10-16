@@ -275,7 +275,7 @@ export const CHART_REGISTRY_BY_ID: Readonly<Record<string, ChartRegistryEntry>> 
   Object.fromEntries(CHART_REGISTRY.map((e) => [e.id, e]));
 
 export function isValidChartId(id: string): boolean {
-  return id in CHART_REGISTRY_BY_ID;
+  return Object.prototype.hasOwnProperty.call(CHART_REGISTRY_BY_ID, id);
 }
 
 export type ChartContext =

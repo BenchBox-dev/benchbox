@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { RoutableProps } from "preact-router";
+import { route } from "preact-router";
 import type { MetaLeaderboard as MetaLeaderboardData } from "@/types";
 import type { ResultRow } from "@/lib/duckdbQueries";
 import { getMetaLeaderboardData, listResults } from "@/lib/duckdbQueries";
@@ -20,6 +21,7 @@ import { RunDateChip } from "@/components/RunAge";
 import { formatCount, formatCountWithVerb } from "@/lib/copyFormatters";
 import { normalizedCostShortLabel, normalizedCostValue } from "@/lib/costDisplay";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
+import { legacyEntryRedirect } from "@/lib/legacyEntryRoutes";
 
 const SUPPORTED_BENCHMARK_COUNT = new Set(Object.values(BENCHMARK_LABELS)).size;
 const RECENT_RESULT_COUNT = 5;
@@ -32,7 +34,14 @@ export function Home(_: RoutableProps) {
   const [error, setError] = useState<string | null>(null);
   const [resultsRetryToken, setResultsRetryToken] = useState(0);
 
+  const redirectTarget = typeof window === "undefined" ? null : legacyEntryRedirect(window.location.search, window.location.hash);
+
   useEffect(() => {
+    if (redirectTarget) route(redirectTarget, true);
+  }, [redirectTarget]);
+
+  useEffect(() => {
+    if (redirectTarget) return;
     let cancelled = false;
     setError(null);
     listResults()
@@ -45,9 +54,10 @@ export function Home(_: RoutableProps) {
     return () => {
       cancelled = true;
     };
-  }, [resultsRetryToken]);
+  }, [redirectTarget, resultsRetryToken]);
 
   useEffect(() => {
+    if (redirectTarget) return;
     let cancelled = false;
     getMetaLeaderboardData()
       .then((data) => {
@@ -59,8 +69,9 @@ export function Home(_: RoutableProps) {
     return () => {
       cancelled = true;
     };
-  }, [resultsRetryToken]);
+  }, [redirectTarget, resultsRetryToken]);
 
+  if (redirectTarget) return <OverviewSkeleton />;
   if (error) return <ErrorMessage title="Could not load results" message={error} onRetry={() => setResultsRetryToken((t) => t + 1)} />;
   if (!results) return <OverviewSkeleton />;
 

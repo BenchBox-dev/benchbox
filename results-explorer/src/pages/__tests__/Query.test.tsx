@@ -585,7 +585,7 @@ describe("Query", () => {
 
     expect(screen.getAllByText("SQLite").length).toBeGreaterThan(0);
     expect(within(resultsTable).getAllByText("ClickBench").length).toBeGreaterThan(0);
-    expect(within(resultsTable).getByText("Maintainer run")).toBeTruthy();
+    expect(within(resultsTable).getByText("Maintainer Run")).toBeTruthy();
   });
 
   it("uses public table labels and formatted values in the default result table", async () => {
@@ -729,7 +729,7 @@ describe("Query", () => {
     const mobileDrawer = screen.getByTestId("query-mobile-filter-drawer");
     expect(within(mobileDrawer).getAllByText("Benchmark: SSB").length).toBeGreaterThan(0);
     expect(within(mobileDrawer).getAllByText("Benchmark: SSB (historical source)").length).toBeGreaterThan(0);
-    expect(within(mobileDrawer).getAllByText("Trust: Maintainer run").length).toBeGreaterThan(0);
+    expect(within(mobileDrawer).getAllByText("Trust: Maintainer Run").length).toBeGreaterThan(0);
     expect(within(mobileDrawer).getAllByText("Cost status: not applicable (local)").length).toBeGreaterThan(0);
     expect(within(mobileDrawer).queryByText("Trust: maintainer-run")).toBeNull();
     expect(within(mobileDrawer).queryByText("Cost status: not applicable local")).toBeNull();

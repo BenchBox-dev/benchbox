@@ -83,7 +83,8 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
 
   useEffect(() => {
     if (!resultId) {
-      setError("No result ID provided.");
+      setDetailState(null);
+      setError(isLocal ? null : "No result ID provided.");
       return;
     }
     setDetailState(null);
@@ -161,6 +162,22 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
     [detail, rawSort],
   );
 
+  if (isLocal && !resultId) {
+    return (
+      <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8" data-testid="local-result-empty">
+        <Breadcrumb crumbs={[{ label: "Results", href: "/results/" }, { label: "Local preview" }]} />
+        <div class="mt-8">
+          <h1 class="text-2xl font-bold text-[var(--bb-data-fg-primary)]">Open a local result</h1>
+          <p class="mt-2 max-w-2xl text-sm text-[var(--bb-data-fg-muted)]">
+            Choose a BenchBox result JSON file. It stays in this browser: it is not uploaded and is not added to the public rankings.
+          </p>
+          <div class="mt-4">
+            <LocalResultPicker label="Choose result file" className="btn btn-primary" autoFocus />
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (error) {
     return (
       <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">

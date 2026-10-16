@@ -93,7 +93,7 @@ describe("RunReceipt", () => {
     expect(within(receipt).getByText("DuckDB")).toBeTruthy();
     expect(within(receipt).getByText("macOS")).toBeTruthy();
     expect(within(receipt).getByText("Trust")).toBeTruthy();
-    expect(within(receipt).getByText("Maintainer run")).toBeTruthy();
+    expect(within(receipt).getByText("Maintainer Run")).toBeTruthy();
     expect(within(receipt).getByText("Published, maintainer reviewed")).toBeTruthy();
     expect(within(receipt).getByText("Exact")).toBeTruthy();
     expect(within(receipt).getByText("Funding")).toBeTruthy();
@@ -293,7 +293,7 @@ describe("RunReceipt", () => {
     const receipt = screen.getByRole("region", { name: "Run receipt" });
     expect(within(receipt).getByText("TPC-H")).toBeTruthy();
     expect(within(receipt).getByText("DuckDB")).toBeTruthy();
-    expect(within(receipt).getByText("Maintainer run")).toBeTruthy();
+    expect(within(receipt).getByText("Maintainer Run")).toBeTruthy();
     expect(within(receipt).getByText("Published, maintainer reviewed")).toBeTruthy();
 
     expect(within(receipt).queryByText("Platform version")).toBeNull();
