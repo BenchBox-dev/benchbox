@@ -56,6 +56,7 @@ class TestNormalizePlanLiteralsFlagAccepted:
 class TestNormalizePlanLiteralsFingerprintInResults:
     def _run(self, monkeypatch, tmp_path, extra_args):
         monkeypatch.chdir(tmp_path)
+        monkeypatch.delenv("BENCHBOX_OUTPUT_DIR", raising=False)
         runner = CliRunner()
         result = runner.invoke(
             run,

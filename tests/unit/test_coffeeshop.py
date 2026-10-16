@@ -301,6 +301,7 @@ class TestCoffeeShopBenchmark:
 
     def test_default_output_dir_matches_basebenchmark(self, monkeypatch, tmp_path):
         monkeypatch.chdir(tmp_path)
+        monkeypatch.delenv("BENCHBOX_OUTPUT_DIR", raising=False)
         benchmark = CoffeeShopBenchmark(scale_factor=0.001)
         tables = benchmark.generate_data()
 

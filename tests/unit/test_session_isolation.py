@@ -137,6 +137,29 @@ def test_session_finish_restores_caller_environment(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stdout + result.stderr
 
 
+@pytest.mark.parametrize("caller_value", [None, "", "{tmp}/caller-runs"])
+def test_session_owns_benchmark_runs_root(tmp_path: Path, caller_value: str | None) -> None:
+    env = dict(os.environ, PYTHONPATH=str(REPO_ROOT))
+    env.pop("BENCHBOX_TEST_SESSION_OWNER", None)
+    env.pop("BENCHBOX_OUTPUT_DIR", None)
+    if caller_value is not None:
+        env["BENCHBOX_OUTPUT_DIR"] = caller_value.format(tmp=tmp_path)
+    script = (
+        "import os\nfrom pathlib import Path\nfrom tests.utilities import session_isolation as isolation\n"
+        "before = dict(os.environ)\n"
+        "isolation.start(acquire_lock=False)\n"
+        'caller = (before.get("BENCHBOX_OUTPUT_DIR") or "").strip()\n'
+        'expected = caller or str(Path.home() / "benchmark_runs")\n'
+        'assert os.environ["BENCHBOX_OUTPUT_DIR"] == expected, os.environ["BENCHBOX_OUTPUT_DIR"]\n'
+        "isolation.finish()\n"
+        "assert dict(os.environ) == before\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", script], cwd=tmp_path, env=env, capture_output=True, text=True, timeout=30
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
 def _run_session_probe(
     tmp_path: Path,
     test_source: str,
