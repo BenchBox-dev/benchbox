@@ -647,6 +647,17 @@ class ConfigManager:
                 TuningColumn(name="linenumber", type="INTEGER", order=2),
             ]
 
+        from benchbox.core.tuning.capability_registry import get_capability, unapplied_reason
+
+        platform_known = TuningType.is_known_platform(platform)
+        for tuning_type in list(sample_config.get_enabled_tuning_types()):
+            capability = get_capability(platform, tuning_type)
+            if capability is not None:
+                if unapplied_reason(capability, sample_config.platform_optimizations.sorted_ingestion_mode):
+                    sample_config.disable_tuning_type(tuning_type)
+            elif platform_known and not tuning_type.is_compatible_with_platform(platform):
+                sample_config.disable_tuning_type(tuning_type)
+
         self.save_unified_tuning_config(sample_config, path)
         console.print(
             f"[green]✅ Sample unified tuning configuration created for platform '{platform}' at {path}[/green]"

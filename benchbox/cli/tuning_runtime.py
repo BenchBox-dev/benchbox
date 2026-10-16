@@ -9,8 +9,16 @@ from benchbox.core.tuning.interface import UnifiedTuningConfiguration
 
 
 def build_default_unified_config(platform: str | None) -> UnifiedTuningConfiguration:
+    from benchbox.core.tuning.capability_registry import get_capability, is_not_rendered_at_execution
+
     config = UnifiedTuningConfiguration()
-    if platform and resolve_platform_key(str(platform).split(":", 1)[0]) == "duckdb":
+    if platform:
+        platform_key = resolve_platform_key(str(platform))
+        for tuning_type in config.get_enabled_tuning_types():
+            capability = get_capability(platform_key, tuning_type)
+            if capability is not None and is_not_rendered_at_execution(capability):
+                config.disable_tuning_type(tuning_type)
+    if platform and resolve_platform_key(str(platform)) == "duckdb":
         config.check_constraints.enabled = False
     return config
 

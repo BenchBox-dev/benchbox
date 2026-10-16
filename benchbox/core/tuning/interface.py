@@ -1158,6 +1158,13 @@ class UnifiedTuningConfiguration:
         elif optimization_type == TuningType.MATERIALIZED_VIEWS:
             self.platform_optimizations.materialized_views_enabled = False
 
+    def disable_tuning_type(self, tuning_type: TuningType) -> None:
+        for attr, checked_type in self._CONSTRAINT_CHECKS:
+            if checked_type == tuning_type:
+                getattr(self, attr).enabled = False
+                return
+        self.disable_platform_optimization(tuning_type)
+
     _CONSTRAINT_CHECKS = [
         ("primary_keys", TuningType.PRIMARY_KEYS),
         ("foreign_keys", TuningType.FOREIGN_KEYS),
@@ -1208,13 +1215,24 @@ class UnifiedTuningConfiguration:
         errors: list[str] = []
         warnings: list[str] = []
         enabled_types = self.get_enabled_tuning_types()
-        platform_known = TuningType.is_known_platform(platform)
+
+        from benchbox.core.tuning.capability_registry import (
+            get_capability,
+            resolve_platform_key,
+            unapplied_reason,
+        )
 
         for tuning_type in enabled_types:
+            capability = get_capability(platform, tuning_type)
+            if capability is not None:
+                reason = unapplied_reason(capability, self.platform_optimizations.sorted_ingestion_mode)
+                if reason is not None:
+                    errors.append(f"requested {tuning_type.value} is not applied at execution on {platform}: {reason}")
+                continue
             if tuning_type.is_compatible_with_platform(platform):
                 continue
             message = f"Tuning type '{tuning_type.value}' is not supported by platform '{platform}'"
-            if tuning_type in _CONSTRAINT_TUNING_TYPES or not platform_known:
+            if tuning_type in _CONSTRAINT_TUNING_TYPES:
                 warnings.append(message)
             else:
                 errors.append(message)
@@ -1225,13 +1243,12 @@ class UnifiedTuningConfiguration:
                 f"'spark' session-config map is not applied by platform '{platform}'; "
                 "run on spark, velox, or lakesail to apply it"
             )
-        validator = _get_effective_layout_validator(platform_key)
+        resolved_key = resolve_platform_key(platform_key)
+        validator = _get_effective_layout_validator(resolved_key)
         if validator is not None:
             errors.extend(validator(self))
         if schema_primary_keys:
-            from benchbox.core.tuning.capability_registry import resolve_platform_key
-
-            if resolve_platform_key(platform_key) == "clickhouse":
+            if resolved_key == "clickhouse":
                 errors.extend(_clickhouse_primary_key_prefix_errors(self, schema_primary_keys))
         return errors, warnings
 

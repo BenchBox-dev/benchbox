@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from unittest.mock import Mock
 
 import pytest
@@ -15,7 +16,7 @@ from benchbox.core.tuning.applied_ledger import (
     STATEMENT_FAILED,
     AppliedTuningLedger,
 )
-from benchbox.core.tuning.capability_registry import get_capability
+from benchbox.core.tuning.capability_registry import get_capability, not_rendered_reason
 from benchbox.core.tuning.interface import (
     PlatformOptimizationConfiguration,
     TableTuning,
@@ -266,7 +267,8 @@ class TestEvidence:
 
         assert ledger.dropped == []
         assert [(item.intent, item.satisfied_by) for item in ledger.satisfied] == [
-            ("distribution:LINEITEM (L_ORDERKEY)", 0)
+            ("distribution:LINEITEM (L_ORDERKEY)", 0),
+            ("primary_keys", 1),
         ]
 
     def test_property_style_columns_inside_literals_are_evidence(self):
@@ -330,7 +332,7 @@ class TestDropReasons:
             ("duckdb", "partitioning", TuningType.PARTITIONING),
         ],
     )
-    def test_registry_none_or_preview_only_drops_with_registry_notes(self, platform, slot, tuning_type):
+    def test_registry_none_or_preview_only_drops_with_registry_reason(self, platform, slot, tuning_type):
         ledger = AppliedTuningLedger()
 
         _reconcile(_config(**{slot: _columns("L_SHIPDATE")}), ledger, platform)
@@ -338,7 +340,8 @@ class TestDropReasons:
         [dropped] = ledger.dropped
         capability = get_capability(platform, tuning_type)
         assert capability is not None and capability.rendered_via == "none"
-        assert dropped.reason == capability.notes
+        assert dropped.reason == f"not rendered at execution: {not_rendered_reason(capability)}"
+        assert not re.search(r"\.py:\d+", dropped.reason)
 
     @pytest.mark.parametrize("platform", ["datafusion", "emr-serverless", "cedardb", "influxdb"])
     def test_platform_without_registry_entry_drops_as_not_rendered(self, platform):
@@ -609,10 +612,15 @@ class TestDeclaredConstraints:
             declared_constraints=frozenset({TuningType.PRIMARY_KEYS, TuningType.FOREIGN_KEYS}),
         )
 
-        assert {item.intent: item.reason for item in ledger.dropped} == {
-            "primary_keys": NOT_RENDERED_REASON,
-            "foreign_keys": NOT_RENDERED_REASON,
-        }
+        expected_reasons = {"primary_keys": NOT_RENDERED_REASON, "foreign_keys": NOT_RENDERED_REASON}
+        if platform == "datafusion":
+            expected_reasons = {
+                kind.value: "not rendered at execution: "
+                "the schema is created without constraints (datafusion_unconstrained_schema)"
+                for kind in (TuningType.PRIMARY_KEYS, TuningType.FOREIGN_KEYS)
+            }
+
+        assert {item.intent: item.reason for item in ledger.dropped} == expected_reasons
 
     def test_unknown_declarations_reconcile_every_enabled_toggle(self):
         ledger = AppliedTuningLedger()

@@ -17,14 +17,20 @@ class TuningCapability:
     rendered_via: RenderedVia
     mechanism_id: str
     notes: str = ""
+    requires_sorted_ingestion: bool = False
 
 
 def _ddl(mechanism_id: str, notes: str = "") -> TuningCapability:
     return TuningCapability(rendered_via="ddl", mechanism_id=mechanism_id, notes=notes)
 
 
-def _post_load(mechanism_id: str, notes: str = "") -> TuningCapability:
-    return TuningCapability(rendered_via="post_load", mechanism_id=mechanism_id, notes=notes)
+def _post_load(mechanism_id: str, notes: str = "", requires_sorted_ingestion: bool = False) -> TuningCapability:
+    return TuningCapability(
+        rendered_via="post_load",
+        mechanism_id=mechanism_id,
+        notes=notes,
+        requires_sorted_ingestion=requires_sorted_ingestion,
+    )
 
 
 def _session(mechanism_id: str, notes: str = "") -> TuningCapability:
@@ -40,12 +46,26 @@ _INLINE_CONSTRAINT = "inline_column_constraint"
 _CONSTRAINT_NOTE = "Rendered as an inline column/table constraint clause at CREATE TABLE time."
 
 
-def _constraint_entries() -> dict[TuningType, TuningCapability]:
+def _pk_fk_entries() -> dict[TuningType, TuningCapability]:
     return {
         _T.PRIMARY_KEYS: _ddl(_INLINE_CONSTRAINT, _CONSTRAINT_NOTE),
         _T.FOREIGN_KEYS: _ddl(_INLINE_CONSTRAINT, _CONSTRAINT_NOTE),
-        _T.UNIQUE_CONSTRAINTS: _ddl(_INLINE_CONSTRAINT, _CONSTRAINT_NOTE),
-        _T.CHECK_CONSTRAINTS: _ddl(_INLINE_CONSTRAINT, _CONSTRAINT_NOTE),
+    }
+
+
+_UNRENDERED_UNIQUE_CHECK_NOTE = (
+    "Benchmark DDL never carries UNIQUE/CHECK clauses from tuning flags: no in-tree benchmark "
+    "consumes those flags (pinned tree-wide by "
+    "tests/unit/core/tuning/test_capability_registry_parity.py "
+    "test_unique_check_rendering_is_vacuous_in_tree), so requesting them renders nothing at execution."
+)
+
+
+def _no_unique_check_entries(mechanism_id: str, notes: str = "") -> dict[TuningType, TuningCapability]:
+    detail = f"{notes} {_UNRENDERED_UNIQUE_CHECK_NOTE}".strip()
+    return {
+        _T.UNIQUE_CONSTRAINTS: _none(mechanism_id, detail),
+        _T.CHECK_CONSTRAINTS: _none(mechanism_id, detail),
     }
 
 
@@ -56,8 +76,8 @@ PLATFORM_ALIASES: dict[str, str] = {
     "chdb": "clickhouse",
     "spark": "databricks",
     "delta": "databricks",
-    "fabric-warehouse": "databricks",
     "synapse": "azure-synapse",
+    "starburst": "trino",
 }
 
 
@@ -68,21 +88,25 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "CTAS reorder (CREATE OR REPLACE TABLE ... AS SELECT * FROM ... ORDER BY ...) run after data "
             "load; DuckDB has no inline CREATE TABLE ORDER BY syntax. Consumed via "
             "core.tuning.generators.duckdb.DuckDBDDLGenerator.generate_ctas_ddl by both dry-run preview "
-            "and real execution as of the w2 duckdb migration.",
+            "and real execution since the DuckDB DDL migration.",
         ),
         _T.PARTITIONING: _none(
             "duckdb_copy_to_hint_only",
             "DuckDBDDLGenerator.generate_tuning_clauses logs a COPY TO Hive-partitioning hint for "
             "partition columns but no BenchBox code path applies it to the physical benchmark schema. "
-            "Documented gap, not migrated this round (compatible per the legacy map; no rendering yet).",
+            "Documented gap: compatible per the legacy map, but nothing renders it yet.",
         ),
-        **_constraint_entries(),
+        **_pk_fk_entries(),
+        **_no_unique_check_entries(
+            "duckdb_no_unique_check_rendering",
+            "DuckDBAdapter.apply_constraint_configuration only logs UNIQUE/CHECK flag state (duckdb.py).",
+        ),
     },
     "clickhouse": {
         _T.PARTITIONING: _ddl(
             "clickhouse_ddl_generator:PARTITION_BY",
             "core.tuning.generators.clickhouse.ClickHouseDDLGenerator renders PARTITION BY at CREATE "
-            "TABLE time. Consumed by dry-run preview and (as of the w2 clickhouse migration) real "
+            "TABLE time. Consumed by dry-run preview and (since the ClickHouse DDL migration) real "
             "execution in ClickHouseWorkloadMixin._optimize_table_definition.",
         ),
         _T.SORTING: _ddl(
@@ -111,18 +135,30 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "Compatible per the legacy map (downgraded to a warning regardless, as a constraint type); "
             "ClickHouse has no UNIQUE constraint syntax and no adapter code renders one.",
         ),
+        _T.FOREIGN_KEYS: _none(
+            "clickhouse_drops_foreign_keys",
+            "ClickHouseWorkloadMixin._optimize_table_definition preserves FOREIGN KEY clauses it "
+            "cannot execute (clickhouse/workload.py); the engine has no FOREIGN KEY syntax, so a "
+            "requested foreign key fails at execution.",
+        ),
+        _T.CHECK_CONSTRAINTS: _none(
+            "clickhouse_no_unique_check_rendering",
+            "The ClickHouse workload column parser terminates column types at UNIQUE/CHECK keywords "
+            "without rendering them (clickhouse/workload.py).",
+        ),
         _T.MATERIALIZED_VIEWS: _none(
             "unimplemented",
             "Compatible per the legacy map; no adapter code creates a materialized view.",
         ),
     },
     "databricks": {
-        _T.PARTITIONING: _ddl(
-            "delta_partitioned_by",
-            "Rendered as Delta PARTITIONED BY at CREATE TABLE time via the cloud_spark DDL mixin "
-            "(third renderer per ADR-3; not migrated to core.tuning.generators this round -- Databricks "
-            "migration is explicitly out of scope, owned by the blocked databricks-liquid-clustering "
-            "TODO).",
+        _T.PARTITIONING: _none(
+            "databricks_partitioning_preview_only",
+            "DatabricksAdapter.generate_tuning_clause builds PARTITIONED BY from tuned columns "
+            "(databricks/adapter.py:3005-3048) but has no production call site tree-wide, so no "
+            "PARTITIONED BY is rendered at preview or execution. Real execution builds Delta DDL in "
+            "_convert_to_delta_table (databricks/adapter.py:2672-2729), which never adds partitioning "
+            "columns, and apply_table_tunings only logs them via _log_partitioning_and_sorting.",
         ),
         _T.CLUSTERING: _post_load(
             "databricks_z_order_or_liquid",
@@ -155,7 +191,12 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "unimplemented",
             "Compatible per the legacy map; no adapter code creates a materialized view.",
         ),
-        **_constraint_entries(),
+        **_pk_fk_entries(),
+        **_no_unique_check_entries(
+            "databricks_no_unique_check_rendering",
+            "DatabricksAdapter executes tuning only through ZORDER, OPTIMIZE, Liquid and CLUSTER "
+            "statements (databricks/adapter.py).",
+        ),
         _T.PRIMARY_KEYS: _ddl(
             _INLINE_CONSTRAINT,
             "Declared keys are informational and unenforced on Databricks. The adapter never emits RELY "
@@ -182,7 +223,12 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "partition clause. See CLUSTERING entry for the full mechanism/evidence.",
         ),
         _T.MATERIALIZED_VIEWS: _none("unimplemented", "Compatible per the legacy map; no adapter implementation."),
-        **_constraint_entries(),
+        **_pk_fk_entries(),
+        **_no_unique_check_entries(
+            "snowflake_no_unique_check_rendering",
+            "SnowflakeAdapter tuning executes ALTER TABLE ... CLUSTER BY and constraint-bearing "
+            "CREATE TABLE carrying PK/FK only (snowflake.py).",
+        ),
         _T.PRIMARY_KEYS: _ddl(
             _INLINE_CONSTRAINT,
             "Primary keys on standard Snowflake tables are informational and unenforced (Snowflake table "
@@ -219,7 +265,10 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "tests/unit/platforms/test_bigquery_adapter.py.",
         ),
         _T.FOREIGN_KEYS: _ddl(_INLINE_CONSTRAINT, _CONSTRAINT_NOTE),
-        _T.CHECK_CONSTRAINTS: _ddl(_INLINE_CONSTRAINT, _CONSTRAINT_NOTE),
+        **_no_unique_check_entries(
+            "bigquery_no_unique_check_rendering",
+            "BigQuery DDL emits PRIMARY KEY (...) NOT ENFORCED plus FOREIGN KEY clauses only (bigquery.py).",
+        ),
     },
     "redshift": {
         _T.DISTRIBUTION: _none(
@@ -245,6 +294,7 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "apply_table_tunings only logs the sort-key mismatch (redshift.py:2599-2605) because it cannot "
             "rewrite the key without table recreation. With sorted ingestion off, _build_ctas_sort_sql "
             "returns None and nothing is rendered.",
+            requires_sorted_ingestion=True,
         ),
         _T.PARTITIONING: _none(
             "redshift_no_partition_rendering",
@@ -253,7 +303,11 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "(redshift.py:2629-2636). Nothing is rendered at execution.",
         ),
         _T.MATERIALIZED_VIEWS: _none("unimplemented", "Compatible per the legacy map; no adapter implementation."),
-        **_constraint_entries(),
+        **_pk_fk_entries(),
+        **_no_unique_check_entries(
+            "redshift_no_unique_check_rendering",
+            "RedshiftAdapter tuning executes CTAS-sort, VACUUM and maintenance statements only (redshift.py).",
+        ),
         _T.PRIMARY_KEYS: _ddl(
             _INLINE_CONSTRAINT,
             "Redshift documents primary and foreign keys as informational and unenforced, but states that "
@@ -264,7 +318,14 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "matter here because the planner trusts them.",
         ),
     },
-    "sqlite": _constraint_entries(),
+    "sqlite": {
+        **_pk_fk_entries(),
+        **_no_unique_check_entries(
+            "sqlite_no_unique_check_rendering",
+            "The shared tuning-aware DDL path forwards tuning_config; SQLite execution builds no "
+            "UNIQUE/CHECK clause from the flags.",
+        ),
+    },
     "postgresql": {
         _T.PARTITIONING: _none(
             "postgresql_ddl_generator:preview_only",
@@ -285,7 +346,11 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         ),
         _T.BLOOM_FILTERS: _none("unimplemented", "Compatible per the legacy map; no adapter implementation."),
         _T.MATERIALIZED_VIEWS: _none("unimplemented", "Compatible per the legacy map; no adapter implementation."),
-        **_constraint_entries(),
+        **_pk_fk_entries(),
+        **_no_unique_check_entries(
+            "postgresql_no_unique_check_rendering",
+            "PostgreSQLAdapter renders constraint-bearing CREATE TABLE from PK/FK flags only (postgresql.py).",
+        ),
     },
     "mysql": {
         _T.PARTITIONING: _none(
@@ -298,7 +363,200 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "execution. Corrects the prior false "
             "_ddl(adapter_mixin:MySQLAdapter.generate_tuning_clause) claim.",
         ),
-        **_constraint_entries(),
+        **_pk_fk_entries(),
+        **_no_unique_check_entries(
+            "mysql_no_unique_check_rendering",
+            "The mysql-wire tuning-aware DDL path renders PK/FK from flags only (base/mysql_wire.py).",
+        ),
+    },
+    "singlestore": {
+        _T.PARTITIONING: _none(
+            "singlestore_no_partition_rendering",
+            "SingleStoreAdapter inherits NoOpTableTuningMixin (singlestore.py:75): "
+            "generate_tuning_clause returns '' and apply_table_tunings is a no-op. Tuned "
+            "constraints flow through the shared mysql-wire tuning-aware DDL path, as on MySQL.",
+        ),
+        _T.PRIMARY_KEYS: _ddl(_INLINE_CONSTRAINT, _CONSTRAINT_NOTE),
+        _T.FOREIGN_KEYS: _none(
+            "singlestore_strips_foreign_keys",
+            "SingleStore strips FOREIGN KEY clauses from every CREATE TABLE at execution "
+            "(singlestore.py singlestore_strip_foreign_keys at 379-380, wired by the DDL_OPTIMIZE "
+            "strip_foreign_keys rule in sql_compat/rules/ddl_optimize/singlestore_ddl_rewrites.py:6-16). "
+            "Requested foreign keys never reach the engine (SingleStore error 2752).",
+        ),
+        **_no_unique_check_entries(
+            "singlestore_no_unique_check_rendering",
+            "SingleStoreAdapter inherits the mysql-wire tuning-aware DDL path rendering PK from "
+            "flags only; FOREIGN KEY clauses are stripped (singlestore.py).",
+        ),
+    },
+    "cedardb": {
+        _T.PARTITIONING: _none(
+            "postgresql_ddl_generator:preview_only",
+            "CedarDBAdapter subclasses PostgreSQLAdapter with no DDL override: identical "
+            "execution gap to postgresql (preview computes PARTITION BY, execution renders nothing).",
+        ),
+        _T.CLUSTERING: _none(
+            "postgresql_ddl_generator:preview_only",
+            "Same inherited execution gap as PARTITIONING.",
+        ),
+        _T.BLOOM_FILTERS: _none("unimplemented", "Compatible per the legacy map; no adapter implementation."),
+        _T.MATERIALIZED_VIEWS: _none("unimplemented", "Compatible per the legacy map; no adapter implementation."),
+        **_pk_fk_entries(),
+        **_no_unique_check_entries(
+            "cedardb_no_unique_check_rendering",
+            "CedarDBAdapter inherits PostgreSQLAdapter execution rendering PK/FK from flags only (cedardb.py).",
+        ),
+    },
+    "citus": {
+        _T.PARTITIONING: _none(
+            "postgresql_ddl_generator:preview_only",
+            "CitusAdapter subclasses PostgreSQLAdapter with no DDL override: identical "
+            "execution gap to postgresql (preview computes PARTITION BY, execution renders nothing).",
+        ),
+        _T.CLUSTERING: _none(
+            "postgresql_ddl_generator:preview_only",
+            "Same inherited execution gap as PARTITIONING.",
+        ),
+        _T.BLOOM_FILTERS: _none("unimplemented", "Compatible per the legacy map; no adapter implementation."),
+        _T.MATERIALIZED_VIEWS: _none("unimplemented", "Compatible per the legacy map; no adapter implementation."),
+        **_pk_fk_entries(),
+        **_no_unique_check_entries(
+            "citus_no_unique_check_rendering",
+            "CitusAdapter inherits PostgreSQLAdapter execution rendering PK/FK from flags only (citus.py).",
+        ),
+    },
+    "paradedb": {
+        _T.PARTITIONING: _none(
+            "postgresql_ddl_generator:preview_only",
+            "ParadeDBAdapter subclasses PostgreSQLAdapter with no DDL override: identical "
+            "execution gap to postgresql (preview computes PARTITION BY, execution renders nothing).",
+        ),
+        _T.CLUSTERING: _none(
+            "postgresql_ddl_generator:preview_only",
+            "Same inherited execution gap as PARTITIONING.",
+        ),
+        _T.BLOOM_FILTERS: _none("unimplemented", "Compatible per the legacy map; no adapter implementation."),
+        _T.MATERIALIZED_VIEWS: _none("unimplemented", "Compatible per the legacy map; no adapter implementation."),
+        **_pk_fk_entries(),
+        **_no_unique_check_entries(
+            "paradedb_no_unique_check_rendering",
+            "ParadeDBAdapter inherits PostgreSQLAdapter execution rendering PK/FK from flags only (paradedb.py).",
+        ),
+    },
+    "fabric-warehouse": {
+        _T.PARTITIONING: _none(
+            "delta_ddl_generator:preview_only_tsql_ignores",
+            "The Delta preview generator computes partitioning, but FabricWarehouseAdapter executes "
+            "T-SQL (FABRIC_DIALECT='tsql'): the shared builder's tsql output ignores tuned partition "
+            "columns, generate_tuning_clause returns '' and _optimize_table_definition only adds the "
+            "schema (fabric_warehouse.py:857-883). Previously aliased to databricks (rendered _ddl) "
+            "-- that claim was false for the warehouse execution path.",
+        ),
+        **_pk_fk_entries(),
+        **_no_unique_check_entries(
+            "fabric_warehouse_no_unique_check_rendering",
+            "FabricWarehouseAdapter executes T-SQL carrying PK/FK only (fabric_warehouse.py).",
+        ),
+    },
+    "databend": {
+        _T.CLUSTERING: _post_load(
+            "databend_alter_cluster_by",
+            "DatabendAdapter.apply_table_tunings executes ALTER TABLE ... CLUSTER BY from tuned "
+            "clustering columns (databend/adapter.py:632-651).",
+        ),
+        _T.PARTITIONING: _none(
+            "unimplemented",
+            "DatabendAdapter.generate_tuning_clause only handles CLUSTERING; nothing renders "
+            "partitioning at execution.",
+        ),
+        _T.SORTING: _none(
+            "unimplemented",
+            "Same gap as PARTITIONING: only CLUSTERING is rendered at execution.",
+        ),
+        _T.DISTRIBUTION: _none(
+            "unimplemented",
+            "Same gap as PARTITIONING: only CLUSTERING is rendered at execution.",
+        ),
+        _T.MATERIALIZED_VIEWS: _none("unimplemented", "Compatible per the legacy map; no adapter implementation."),
+        _T.PRIMARY_KEYS: _none(
+            "databend_strips_primary_keys",
+            "DatabendAdapter strips PRIMARY KEY clauses from every executed CREATE TABLE via "
+            "inline regex (databend/adapter.py:678), alongside the foreign-key strip. Tuned keys "
+            "reach the DDL builder but never reach the engine.",
+        ),
+        _T.FOREIGN_KEYS: _none(
+            "databend_strips_foreign_keys",
+            "DatabendAdapter strips foreign keys from every CREATE TABLE (databend/adapter.py:680); "
+            "remaining constraint configuration is informational log-only.",
+        ),
+        _T.UNIQUE_CONSTRAINTS: _none(
+            "databend_no_unique_check_rendering",
+            "DatabendAdapter strips PK/FK and only renders CLUSTERING; UNIQUE/CHECK clauses are "
+            "never produced or consumed from tuning.",
+        ),
+        _T.CHECK_CONSTRAINTS: _none(
+            "databend_no_unique_check_rendering",
+            "Same gap as UNIQUE_CONSTRAINTS: never produced or consumed from tuning.",
+        ),
+    },
+    "datafusion": {
+        _T.PRIMARY_KEYS: _none(
+            "datafusion_unconstrained_schema",
+            "DataFusionAdapter builds its schema explicitly without constraints even when enabled "
+            "(datafusion.py:558-564).",
+        ),
+        _T.FOREIGN_KEYS: _none(
+            "datafusion_unconstrained_schema",
+            "Same as PRIMARY_KEYS: schema is created without constraints.",
+        ),
+        _T.UNIQUE_CONSTRAINTS: _none(
+            "datafusion_unconstrained_schema",
+            "Same as PRIMARY_KEYS: schema is created without constraints.",
+        ),
+        _T.CHECK_CONSTRAINTS: _none(
+            "datafusion_unconstrained_schema",
+            "Same as PRIMARY_KEYS: schema is created without constraints.",
+        ),
+    },
+    "motherduck": {
+        _T.SORTING: _post_load(
+            "duckdb_ctas_sort",
+            "MotherDuckAdapter runs the shared CTAS-sort path from tuned sorting columns during load "
+            "(motherduck.py:337, via base/sorted_ingestion.py).",
+        ),
+        _T.PARTITIONING: _none(
+            "motherduck_external_views_unpartitioned",
+            "MotherDuckAdapter.create_schema executes benchmark DDL verbatim without tuning_config "
+            "(motherduck.py:307-318) and loads through external views; tuned partitioning columns "
+            "reshape nothing.",
+        ),
+        _T.CLUSTERING: _none(
+            "motherduck_no_cluster_rendering",
+            "Same execution gap as PARTITIONING: no post-create CLUSTER step consumes tuning.",
+        ),
+        _T.DISTRIBUTION: _none(
+            "motherduck_not_applicable_single_writer",
+            "MotherDuck is single-writer cloud DuckDB; nothing renders distribution columns.",
+        ),
+        _T.MATERIALIZED_VIEWS: _none("unimplemented", "Compatible per the legacy map; no adapter implementation."),
+        _T.PRIMARY_KEYS: _none(
+            "motherduck_drops_tuning_config",
+            "create_schema drops tuning_config and apply_constraint_configuration is a pass-through "
+            "no-op (motherduck.py:354-355).",
+        ),
+        _T.FOREIGN_KEYS: _none(
+            "motherduck_drops_tuning_config",
+            "Same as PRIMARY_KEYS: tuning never reaches DDL or the adapter.",
+        ),
+        _T.UNIQUE_CONSTRAINTS: _none(
+            "motherduck_drops_tuning_config",
+            "Same as PRIMARY_KEYS: tuning never reaches DDL or the adapter.",
+        ),
+        _T.CHECK_CONSTRAINTS: _none(
+            "motherduck_drops_tuning_config",
+            "Same as PRIMARY_KEYS: tuning never reaches DDL or the adapter.",
+        ),
     },
     "starrocks": {
         _T.PARTITIONING: _ddl(
@@ -326,16 +584,60 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "tables -- byte-identical to the previous bespoke injection (BUCKETS 8). Preview and "
             "execution render through the same generator.",
         ),
+        _T.PRIMARY_KEYS: _ddl(
+            _INLINE_CONSTRAINT,
+            "Tuned primary keys choose the StarRocks key model: the workload rewrite reads the "
+            "PK columns from the tuned DDL and emits PRIMARY KEY when they lead the table, else "
+            "DUPLICATE KEY (starrocks/workload.py:122-152).",
+        ),
+        _T.FOREIGN_KEYS: _none(
+            "starrocks_strips_foreign_keys",
+            "StarRocksWorkloadMixin strips foreign keys from every CREATE TABLE (starrocks/workload.py:120).",
+        ),
+        _T.UNIQUE_CONSTRAINTS: _none(
+            "starrocks_no_unique_check_rendering",
+            "StarRocksWorkloadMixin._optimize_table_definition handles PARTITION/DISTRIBUTION/"
+            "ORDER BY plus PK-model selection and foreign-key stripping only (starrocks/workload.py:"
+            "109-198); nothing renders, strips, or validates UNIQUE/CHECK clauses.",
+        ),
+        _T.CHECK_CONSTRAINTS: _none(
+            "starrocks_no_unique_check_rendering",
+            "Same gap as UNIQUE_CONSTRAINTS: no UNIQUE/CHECK handling in the workload rewrite.",
+        ),
     },
     "doris": {
-        _T.PARTITIONING: _ddl(
-            "doris_ddl_generator",
-            "core.tuning.generators.doris.DorisDDLGenerator exists and is reachable via "
-            "get_ddl_generator('doris') for dry-run preview. Adapter execution-path parity was not "
-            "audited this round (Doris is not in this TODO's migration order).",
+        _T.PARTITIONING: _none(
+            "doris_ddl_generator:preview_only",
+            "core.tuning.generators.doris.DorisDDLGenerator computes PARTITION BY from tuned columns "
+            "for dry-run preview, but DorisAdapter inherits NoOpTableTuningMixin (doris.py:187) and "
+            "renders nothing at execution. Corrects the prior unaudited _ddl claim.",
         ),
-        _T.SORTING: _ddl("doris_ddl_generator", "See PARTITIONING entry."),
-        _T.DISTRIBUTION: _ddl("doris_ddl_generator", "See PARTITIONING entry."),
+        _T.SORTING: _none(
+            "doris_ddl_generator:preview_only",
+            "Same execution gap as PARTITIONING: preview only, NoOp at execution.",
+        ),
+        _T.DISTRIBUTION: _none(
+            "doris_ddl_generator:preview_only",
+            "Same execution gap as PARTITIONING: preview only, NoOp at execution.",
+        ),
+        _T.PRIMARY_KEYS: _none(
+            "doris_strips_primary_keys",
+            "The shared tuning-aware DDL path would emit tuned primary keys, but DorisAdapter "
+            "strips PRIMARY KEY clauses from every CREATE TABLE (doris.py:803-805).",
+        ),
+        _T.FOREIGN_KEYS: _none(
+            "doris_strips_foreign_keys",
+            "DorisAdapter strips foreign keys from every CREATE TABLE (doris.py:802).",
+        ),
+        _T.UNIQUE_CONSTRAINTS: _none(
+            "doris_no_unique_check_rendering",
+            "DorisAdapter renders nothing at execution (NoOpTableTuningMixin) and strips PK/FK; "
+            "UNIQUE/CHECK clauses are never produced or consumed from tuning.",
+        ),
+        _T.CHECK_CONSTRAINTS: _none(
+            "doris_no_unique_check_rendering",
+            "Same gap as UNIQUE_CONSTRAINTS: never produced or consumed from tuning.",
+        ),
     },
     "trino": {
         _T.PARTITIONING: _none(
@@ -369,6 +671,16 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "Trino has no separate clustering clause; the generator folds clustering columns into "
             "sorted_by (trino.py:202-210, see SORTING entry), and the same execution-path gap applies.",
         ),
+        _T.PRIMARY_KEYS: _none(
+            "trino_strips_primary_keys",
+            "PrestoTrinoAdapterBase._optimize_table_definition strips PRIMARY KEY clauses from every "
+            "CREATE TABLE via ddl_helpers strip_primary_keys (presto_trino_adapter_base.py).",
+        ),
+        _T.FOREIGN_KEYS: _ddl(_INLINE_CONSTRAINT, _CONSTRAINT_NOTE),
+        **_no_unique_check_entries(
+            "trino_no_unique_check_rendering",
+            "TrinoAdapter renders no UNIQUE/CHECK clause at execution (trino.py).",
+        ),
     },
     "presto": {
         _T.PARTITIONING: _none(
@@ -396,6 +708,16 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "trino_ddl_generator:preview_only",
             "Presto has no separate clustering clause; folded into sorted_by upstream (see SORTING "
             "entry), and the same execution-path gap applies.",
+        ),
+        _T.PRIMARY_KEYS: _none(
+            "presto_strips_primary_keys",
+            "PrestoTrinoAdapterBase._optimize_table_definition strips PRIMARY KEY clauses from every "
+            "CREATE TABLE via ddl_helpers strip_primary_keys (presto_trino_adapter_base.py).",
+        ),
+        _T.FOREIGN_KEYS: _ddl(_INLINE_CONSTRAINT, _CONSTRAINT_NOTE),
+        **_no_unique_check_entries(
+            "presto_no_unique_check_rendering",
+            "PrestoAdapter renders no UNIQUE/CHECK clause at execution (presto.py).",
         ),
     },
     "athena": {
@@ -432,6 +754,12 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "Athena has no separate clustering clause; folded into sorted_by upstream, which is dropped "
             "(see SORTING entry).",
         ),
+        **_pk_fk_entries(),
+        **_no_unique_check_entries(
+            "athena_no_unique_check_rendering",
+            "AthenaAdapter._convert_to_external_table builds CREATE EXTERNAL TABLE without UNIQUE/CHECK "
+            "clauses (athena.py).",
+        ),
     },
     "firebolt": {
         _T.DISTRIBUTION: _none(
@@ -461,6 +789,20 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "Clustering is achieved through PRIMARY INDEX in Firebolt; the generator only info-logs "
             "clustering hints (firebolt.py:135-142) instead of computing a clause, even for dry-run "
             "preview.",
+        ),
+        _T.PRIMARY_KEYS: _none(
+            "firebolt_strips_primary_keys",
+            "FireboltAdapter._optimize_table_definition strips PRIMARY KEY clauses from every "
+            "CREATE TABLE via ddl_helpers strip_primary_keys (firebolt.py).",
+        ),
+        _T.FOREIGN_KEYS: _none(
+            "firebolt_strips_foreign_keys",
+            "FireboltAdapter._optimize_table_definition strips FOREIGN KEY clauses from every "
+            "CREATE TABLE via ddl_helpers strip_foreign_keys (firebolt.py).",
+        ),
+        **_no_unique_check_entries(
+            "firebolt_no_unique_check_rendering",
+            "FireboltAdapter renders no UNIQUE/CHECK clause at execution (firebolt.py).",
         ),
     },
     "azure-synapse": {
@@ -495,6 +837,11 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "Clustering is achieved via DISTRIBUTION and CLUSTERED INDEX; the generator only info-logs "
             "clustering hints (azure_synapse.py:183-189) instead of computing a clause, even for dry-run "
             "preview.",
+        ),
+        **_pk_fk_entries(),
+        **_no_unique_check_entries(
+            "azure_synapse_no_unique_check_rendering",
+            "AzureSynapseAdapter real DDL carries PK/FK with the engine-default DISTRIBUTION only (azure_synapse.py).",
         ),
     },
     "timescaledb": {
@@ -531,6 +878,11 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "Merged with DISTRIBUTION into compress_segmentby by the generator (timescaledb.py:177-186); "
             "same real-execution gap -- compress_segmentby is hardcoded empty regardless of tuning.",
         ),
+        **_pk_fk_entries(),
+        **_no_unique_check_entries(
+            "timescaledb_no_unique_check_rendering",
+            "TimescaleDBAdapter hypertable and compression paths consume no UNIQUE/CHECK tuning (timescaledb.py).",
+        ),
     },
     "questdb": {
         _T.PARTITIONING: _none(
@@ -556,6 +908,19 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "questdb_ddl_generator:not_applicable_single_node",
             "QuestDB is single-node; the generator only warning-logs distribution hints and ignores the "
             "columns (questdb.py:193-199) instead of computing a clause, even for dry-run preview.",
+        ),
+        _T.PRIMARY_KEYS: _none(
+            "questdb_strips_primary_keys",
+            "QuestDBAdapter.create_schema strips PRIMARY KEY clauses via _strip_pk_constraints (questdb.py).",
+        ),
+        _T.FOREIGN_KEYS: _none(
+            "questdb_strips_foreign_keys",
+            "QuestDBAdapter.create_schema strips FOREIGN KEY clauses via ddl_helpers strip_foreign_keys (questdb.py).",
+        ),
+        **_no_unique_check_entries(
+            "questdb_no_unique_check_rendering",
+            "QuestDB schema enhancement maps hardcoded timestamp/partition columns only and builds no "
+            "UNIQUE/CHECK clause (questdb.py).",
         ),
     },
     "pg-duckdb": {
@@ -594,6 +959,11 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "post_create_statements via the inherited no-op apply_table_tunings/generate_tuning_clause "
             "path.",
         ),
+        **_pk_fk_entries(),
+        **_no_unique_check_entries(
+            "pg_duckdb_no_unique_check_rendering",
+            "PgDuckDBAdapter inherits PostgreSQLAdapter execution carrying PK/FK only (pg_duckdb.py).",
+        ),
     },
     "pg-mooncake": {
         _T.PARTITIONING: _none(
@@ -616,6 +986,11 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "columnstore_manages_own_layout",
             "Same as PARTITIONING: the generator always returns empty clauses, and "
             "supports_tuning_type() is unconditionally False.",
+        ),
+        **_pk_fk_entries(),
+        **_no_unique_check_entries(
+            "pg_mooncake_no_unique_check_rendering",
+            "PgMooncakeAdapter inherits PostgreSQLAdapter execution carrying PK/FK only (pg_mooncake.py).",
         ),
     },
 }
@@ -641,7 +1016,7 @@ def interface_compatibility_map() -> dict[str, frozenset[TuningType]]:
 
 
 def resolve_platform_key(platform: str) -> str:
-    platform_key = platform.lower().replace("_", "-")
+    platform_key = platform.split(":", 1)[0].strip().lower().replace("_", "-")
     return PLATFORM_ALIASES.get(platform_key, platform_key)
 
 
@@ -651,6 +1026,37 @@ def get_capability(platform: str, tuning_type: TuningType) -> TuningCapability |
     if entries is None:
         return None
     return entries.get(tuning_type)
+
+
+def is_not_rendered_at_execution(capability: TuningCapability | None) -> bool:
+    if capability is None:
+        return False
+    return capability.rendered_via == "none" or ":preview_only" in capability.mechanism_id
+
+
+def not_rendered_reason(capability: TuningCapability) -> str:
+    mechanism_id = capability.mechanism_id
+    if "strips" in mechanism_id:
+        reason = "the platform adapter removes it from CREATE TABLE statements"
+    elif "unconstrained" in mechanism_id:
+        reason = "the schema is created without constraints"
+    elif "no_unique_check_rendering" in mechanism_id:
+        reason = "table DDL never carries this constraint"
+    elif "preview" in mechanism_id or mechanism_id.endswith("hint_only"):
+        reason = "it is generated only for dry-run previews and is not applied when tables are created"
+    elif "log_only" in mechanism_id:
+        reason = "the adapter only logs it and does not apply it"
+    else:
+        reason = "BenchBox does not apply it on this platform"
+    return f"{reason} ({mechanism_id})"
+
+
+def unapplied_reason(capability: TuningCapability, sorted_ingestion_mode: str | None) -> str | None:
+    if is_not_rendered_at_execution(capability):
+        return not_rendered_reason(capability)
+    if capability.requires_sorted_ingestion and sorted_ingestion_mode in (None, "off"):
+        return "it runs only when sorted ingestion is enabled; set sorted_ingestion_mode to auto or force"
+    return None
 
 
 def known_registry_platforms() -> frozenset[str]:

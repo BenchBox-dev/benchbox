@@ -332,12 +332,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   mismatched keys are recorded as failed ledger statements and warned. Result
   metadata reports the live tuned values for shuffle partitions and adaptive
   execution.
+- Tuning validation now rejects tuning requests the platform cannot execute,
+  and platforms without tuning coverage error on unsupported types like
+  covered platforms. The registry corrects several platforms' coverage
+  (Postgres family, Doris, SingleStore, Databend, Starburst, MotherDuck,
+  DataFusion, and fabric-warehouse, which now has its own entry instead of
+  sharing Databricks'), and the sample and fallback configuration builders
+  only enable tuning the target platform supports. Layout tuning on
+  BigQuery, Redshift, Trino and Synapse now errors until their execution
+  support lands.
 - Tuned load-only runs (`--phases generate,load`) now go through the same
   apply → load → reconcile → metadata → ledger/receipt → export lifecycle as
   full runs, so a load-only bundle never carries a tuned mode without
   `platform.tuning`. Adapters without the full lifecycle refuse tuned load-only
   runs with an actionable error instead.
-
 - Result metadata records genuine engine versions (`engine_version`, `engine_version_source: sql_query`) for DuckDB, SQLite and DataFusion queried directly from the active connection rather than package versions.
 
 - ClickHouse tuning introspection bounds table queries in SQL by ledger tables and measures snapshot truncation directly on raw query results.
@@ -690,6 +698,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   how to choose the engine at run time; pass `--execution-engine` (for example
   `--execution-engine streaming`). Tuning files that already set
   `engine_affinity` keep working and record `resolution` `tuning_profile`.
+- Tuning validation now fails when a configuration asks for tuning that the
+  platform does not apply during a run. Earlier releases accepted these
+  configurations and ran without the tuning. Run `benchbox tuning validate
+  --platform <platform>` on your saved tuning files before you upgrade; each
+  error names the tuning type and why it is not applied. Remove the setting
+  or use a platform that applies it. Platforms that apply tuning in part are
+  checked type by type. The new errors are:
+  - `unique_constraints` and `check_constraints` fail on every platform with
+    registry coverage, because no benchmark schema carries those clauses. The
+    packaged DuckDB and Snowflake templates and the matching
+    `examples/tunings` files now disable both.
+  - Layout tuning fails on BigQuery (`partitioning`, `clustering`), Redshift
+    (`partitioning`, `distribution`), Trino and
+    Azure Synapse (all four layout types). These adapters build the clauses
+    for dry-run previews but do not apply them when tables are created. Other
+    platforms that only preview layout tuning fail the same way (for example
+    the Postgres family, Doris, Firebolt, QuestDB, SingleStore and
+    TimescaleDB).
+  - Redshift `sorting` fails while `sorted_ingestion_mode` is `off`, which is
+    the default, because the adapter sorts tables only when sorted ingestion
+    is on. Set `sorted_ingestion_mode` to `auto` or `force` to keep the
+    request.
+  - `partitioning` fails on Databricks, and so on the `spark` and `delta`
+    platform names that resolve to it. The adapter builds the clause for
+    previews only and never adds it when tables are created. Fabric Warehouse
+    no longer shares the Databricks rules and also rejects `partitioning`.
+  - `primary_keys` and `foreign_keys` fail where the adapter removes that
+    constraint from table definitions: primary keys on Databend, Doris,
+    Firebolt, QuestDB, Trino and Presto; foreign keys on ClickHouse, Databend,
+    Doris, Firebolt, QuestDB, SingleStore and StarRocks. Constraints that
+    DataFusion and MotherDuck do not create fail the same way.
+  - Platforms without registry coverage now report unsupported tuning types as
+    errors where earlier releases reported warnings, and default tuning
+    configurations on platforms that drop tuning report errors where they
+    reported warnings.
 
 ### Added
 
