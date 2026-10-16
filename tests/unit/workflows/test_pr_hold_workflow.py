@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import importlib.util
 import re
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -21,13 +19,10 @@ def _load() -> dict[str, Any]:
 
 
 def _hold_label() -> str:
-    spec = importlib.util.spec_from_file_location("pr_landing_under_test", REPO_ROOT / "scripts" / "pr_landing.py")
-    assert spec is not None
-    assert spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module.HOLD_LABEL
+    source = (REPO_ROOT / "scripts" / "pr_landing.py").read_text(encoding="utf-8")
+    match = re.search(r'^HOLD_LABEL = "([^"]+)"$', source, re.MULTILINE)
+    assert match is not None
+    return match.group(1)
 
 
 def test_hold_check_reevaluates_on_label_changes_and_new_heads() -> None:
