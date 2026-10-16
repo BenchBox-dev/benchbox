@@ -1546,3 +1546,109 @@ def test_head_directive_count_must_match_the_head_source(tmp_path: Path, policy:
     policy["directives"][0]["count"] = 2
     _write_scope_policy(root, policy)
     assert scope.immutable_external_ownership(root, base, []) is not None
+
+
+def _stale_directive_repo(tmp_path: Path, policy: dict, directive: dict) -> tuple[Path, str]:
+    policy["directives"] = [directive]
+    root, _ = _git_repo_with(tmp_path, {"src/a.py": "x = 1  # noqa\ny = 2  # noqa\n"})
+    _write_scope_policy(root, policy)
+    _commit_all(root, "register suppressions")
+    (root / "src/a.py").write_text("x = 1\n", encoding="utf-8")
+    return root, _commit_all(root, "remove suppressions but keep their evidence")
+
+
+def _stale_directive(**overrides: object) -> dict:
+    return {
+        "path": "src/a.py",
+        "token": "noqa",
+        "count": 2,
+        "consumer": "ruff",
+        "necessity": "Fixture suppression.",
+        "alternative": "None.",
+        "owner": "comment-cleanup-core-bootstrap",
+        "removal_trigger": "Fixture removal.",
+        **overrides,
+    }
+
+
+def test_repair_that_renames_an_entry_keeps_failing_on_a_broken_base(tmp_path: Path, policy: dict) -> None:
+    root, broken = _stale_directive_repo(tmp_path, policy, _stale_directive())
+    (root / "src/b.py").write_text("y = 2  # noqa\nz = 3  # noqa\n", encoding="utf-8")
+    policy["directives"] = [_stale_directive(path="src/b.py")]
+    _write_scope_policy(root, policy)
+
+    with pytest.raises(scope.PolicyError, match="token is not present"):
+        scope.immutable_external_ownership(root, broken, [])
+
+
+def test_repair_that_edits_an_entry_keeps_failing_on_a_broken_base(tmp_path: Path, policy: dict) -> None:
+    root, broken = _stale_directive_repo(tmp_path, policy, _stale_directive())
+    (root / "src/a.py").write_text("x = 1  # type: ignore\n", encoding="utf-8")
+    policy["directives"] = [_stale_directive(token="type: ignore", count=1)]
+    _write_scope_policy(root, policy)
+
+    with pytest.raises(scope.PolicyError, match="token is not present"):
+        scope.immutable_external_ownership(root, broken, [])
+
+
+def test_repair_that_also_adds_an_entry_keeps_failing_on_a_broken_base(tmp_path: Path, policy: dict) -> None:
+    root, broken = _stale_directive_repo(tmp_path, policy, _stale_directive())
+    (root / "src/b.py").write_text("y = 2  # noqa\n", encoding="utf-8")
+    policy["directives"] = [_stale_directive(path="src/b.py", count=1)]
+    _write_scope_policy(root, policy)
+
+    with pytest.raises(scope.PolicyError, match="token is not present"):
+        scope.immutable_external_ownership(root, broken, [])
+
+
+def test_repair_that_also_changes_another_policy_section_keeps_failing(tmp_path: Path, policy: dict) -> None:
+    root, broken = _stale_directive_repo(tmp_path, policy, _stale_directive())
+    policy["directives"] = []
+    policy["external_entries"] = [_external()]
+    _write_scope_policy(root, policy)
+
+    with pytest.raises(scope.PolicyError, match="token is not present"):
+        scope.immutable_external_ownership(root, broken, [])
+
+
+def test_deleting_the_head_ledger_fails_the_check(tmp_path: Path, policy: dict) -> None:
+    root, broken = _stale_directive_repo(tmp_path, policy, _stale_directive())
+    (root / scope.POLICY_PATH).unlink()
+
+    with pytest.raises(scope.PolicyError, match="is missing at the head"):
+        scope.immutable_external_ownership(root, broken, [])
+    subprocess.run(["git", "-C", str(root), "rm", "-q", "--cached", scope.POLICY_PATH], check=True)
+    with pytest.raises(scope.PolicyError, match="is missing at the head"):
+        scope.immutable_external_ownership(root, broken, [], staged=True)
+
+
+def test_head_obligation_needs_exactly_one_destination(tmp_path: Path, policy: dict) -> None:
+    obligation = {
+        "path": "src/a.py",
+        "token": "noqa",
+        "destination": "Fixture destination.",
+        "tracker_reference": "fixture-item",
+        "approved_destination": "",
+        "owner": "comment-cleanup-core-bootstrap",
+        "blocking_disposition": "Fixture disposition.",
+    }
+    policy["obligations"] = [obligation]
+    root, _ = _git_repo_with(tmp_path, {"src/a.py": "x = 1  # noqa\n"})
+    _write_scope_policy(root, policy)
+    base = _commit_all(root, "register obligation")
+    assert scope.immutable_external_ownership(root, base, []) is not None
+
+    policy["obligations"] = [{**obligation, "approved_destination": "also set"}]
+    _write_scope_policy(root, policy)
+    with pytest.raises(scope.PolicyError, match="exactly one tracker_reference or approved_destination"):
+        scope.immutable_external_ownership(root, base, [])
+
+
+def test_staged_head_blob_distinguishes_an_absent_path_from_a_git_failure(tmp_path: Path) -> None:
+    root, _ = _git_repo_with(tmp_path, {"src/a.py": "x = 1\n"})
+
+    assert scope.head_blob(root, "src/missing.py", True) is None
+    assert scope.head_blob(root, "src/missing.py", False) is None
+    assert scope.head_blob(root, "src/a.py", True) == b"x = 1\n"
+    with pytest.raises(subprocess.CalledProcessError):
+        scope.head_blob(tmp_path / "not-a-repository", "src/a.py", True)

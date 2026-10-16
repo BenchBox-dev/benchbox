@@ -333,10 +333,17 @@ EVIDENCE_FIELDS = {
 }
 
 
+LEDGER_CATEGORIES = ("directives", "obligations")
+
+
 def head_blob(root: Path, path: str, staged: bool) -> bytes | None:
+    if staged:
+        if not git(root, "ls-files", "--stage", "--", path).strip():
+            return None
+        return git(root, "show", f":{path}")
     try:
-        return git(root, "show", f":{path}") if staged else (root / path).read_bytes()
-    except (OSError, subprocess.CalledProcessError):
+        return (root / path).read_bytes()
+    except (FileNotFoundError, NotADirectoryError):
         return None
 
 
@@ -351,7 +358,7 @@ def head_policy(root: Path, staged: bool) -> dict[str, Any] | None:
 
 
 def validate_head_token_evidence(policy: dict[str, Any], root: Path, staged: bool) -> None:
-    for category in ("directives", "obligations"):
+    for category in LEDGER_CATEGORIES:
         for index, entry in enumerate(policy[category]):
             if not isinstance(entry, dict):
                 raise PolicyError(f"{category}[{index}] must be an object")
@@ -360,6 +367,11 @@ def validate_head_token_evidence(policy: dict[str, Any], root: Path, staged: boo
                 check_evidence_field(category, index, field, value)
             if not valid_path(entry["path"]):
                 raise PolicyError(f"{category}[{index}] path is invalid")
+            check_owner(entry["owner"], f"{category}[{index}].owner", None)
+            if category == "obligations" and bool(entry["tracker_reference"]) == bool(entry["approved_destination"]):
+                raise PolicyError(
+                    f"obligations[{index}] must have exactly one tracker_reference or approved_destination"
+                )
             occurrences = head_token_count(root, entry, staged)
             if occurrences == 0:
                 raise PolicyError(f"{category}[{index}] token is not present in {entry['path']} at the head")
@@ -379,11 +391,21 @@ def retired_token_evidence(entry: Any, kept: set[tuple[str, str]], root: Path, s
     )
 
 
+def removes_entries_only(policy: dict[str, Any], head: dict[str, Any]) -> bool:
+    if {key: value for key, value in policy.items() if key not in LEDGER_CATEGORIES} != {
+        key: value for key, value in head.items() if key not in LEDGER_CATEGORIES
+    }:
+        return False
+    return all(entry in policy[category] for category in LEDGER_CATEGORIES for entry in head[category])
+
+
 def without_retired_token_evidence(
     policy: dict[str, Any], head: dict[str, Any], root: Path, staged: bool
 ) -> dict[str, Any]:
+    if not removes_entries_only(policy, head):
+        return policy
     retained = dict(policy)
-    for category in ("directives", "obligations"):
+    for category in LEDGER_CATEGORIES:
         kept = {(entry["path"], entry["token"]) for entry in head[category]}
         retained[category] = [
             entry for entry in policy[category] if not retired_token_evidence(entry, kept, root, staged)
@@ -1399,9 +1421,10 @@ def immutable_external_ownership(
         return None
     policy = load_policy_bytes(base_blob(root, base, POLICY_PATH))
     head = head_policy(root, staged)
-    if head is not None:
-        validate_head_token_evidence(head, root, staged)
-        policy = without_retired_token_evidence(policy, head, root, staged)
+    if head is None:
+        raise PolicyError(f"{POLICY_PATH} is missing at the head")
+    validate_head_token_evidence(head, root, staged)
+    policy = without_retired_token_evidence(policy, head, root, staged)
     if candidate_notices is not None:
         effective_notices = validate_candidate_notices(candidate_notices, root, staged)
     else:
