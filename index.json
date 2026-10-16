@@ -20783,15 +20783,10 @@
       "title": "Rehearse parent-chain recovery end to end, then deploy the stalled bundles to production and confirm the content"
     },
     "site-split-64-enforce-anonymized-flag": {
-      "claim": {
-        "expires_at": "2026-10-17T16:31:54Z",
-        "generation": "3ffe5c78eaf349609d1374b9348f5297",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Enforce export.anonymized=true on corpus bundles in CI and mirror"
     },
     "site-split-64-seed-vehicle-authorization": {
