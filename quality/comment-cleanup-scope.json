@@ -111,13 +111,13 @@
           "path": "tests/unit/scripts/test_comment_cleanup_scope.py"
         },
         {
-          "path": "docs/development/comment-cleanup-scope.md"
+          "path": "docs/internal/comment-cleanup-scope.md"
         },
         {
           "path": "docs/index.rst"
         },
         {
-          "path": "docs/development/dev-loop-property-ledger.md"
+          "path": "docs/internal/dev-loop-property-ledger.md"
         }
       ]
     },
