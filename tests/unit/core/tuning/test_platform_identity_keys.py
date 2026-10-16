@@ -73,17 +73,33 @@ class TestDisplayNameValidationNoLongerErrors:
     @pytest.mark.parametrize("display_name", DISPLAY_NAMES)
     def test_default_config_produces_no_errors_for_display_names(self, display_name):
         config = UnifiedTuningConfiguration()
+        config.disable_all_constraints()
         assert config.validate_for_platform(display_name) == []
 
-    @pytest.mark.parametrize("display_name", DISPLAY_NAMES)
-    def test_display_name_mismatches_are_warnings_not_errors(self, display_name):
+    def test_doris_display_name_applies_rendered_via_rules(self):
+        config = UnifiedTuningConfiguration()
+        errors, _warnings = config.validate_for_platform_detailed("Doris")
+        assert any("requested primary_keys is not applied at execution" in error for error in errors)
+        assert any("requested foreign_keys is not applied at execution" in error for error in errors)
+
+    def test_starrocks_display_name_validates_clean(self):
+        config = UnifiedTuningConfiguration()
+        config.foreign_keys.enabled = False
+        config.unique_constraints.enabled = False
+        config.check_constraints.enabled = False
+        errors, warnings = config.validate_for_platform_detailed("StarRocks")
+        assert errors == []
+        assert warnings == []
+
+    @pytest.mark.parametrize("display_name", ["ClickHouse (Local)", "Apache Doris"])
+    def test_unresolvable_display_name_mismatches_are_warnings_not_errors(self, display_name):
         config = UnifiedTuningConfiguration()
         errors, warnings = config.validate_for_platform_detailed(display_name)
         assert errors == []
         assert len(warnings) == 4
         assert all("is not supported by platform" in w for w in warnings)
 
-    def test_table_layout_tuning_on_unknown_platform_warns_not_errors(self):
+    def test_table_layout_tuning_on_rendering_unknown_platform_is_silent(self):
         config = UnifiedTuningConfiguration()
         config.disable_all_constraints()
         config.table_tunings["orders"] = TableTuning(
@@ -93,7 +109,7 @@ class TestDisplayNameValidationNoLongerErrors:
 
         errors, warnings = config.validate_for_platform_detailed("starrocks")
         assert errors == []
-        assert any("'distribution'" in w for w in warnings)
+        assert warnings == []
 
 
 class TestKnownPlatformSemanticsPreserved:
@@ -132,10 +148,11 @@ class TestKnownPlatformSemanticsPreserved:
             for tuning_type in tuning_types:
                 assert tuning_type.is_compatible_with_platform(platform) is True
 
-    def test_duckdb_default_config_still_validates_clean(self):
+    def test_duckdb_default_config_errors_on_unrendered_constraints(self):
         config = UnifiedTuningConfiguration()
         errors, warnings = config.validate_for_platform_detailed("duckdb")
-        assert errors == []
+        assert any("requested unique_constraints is not applied at execution" in e for e in errors)
+        assert any("requested check_constraints is not applied at execution" in e for e in errors)
         assert warnings == []
 
     def test_layout_incompatibility_on_known_platform_still_errors(self):
@@ -158,12 +175,13 @@ class TestKnownPlatformSemanticsPreserved:
         assert any("'z_ordering'" in e for e in errors)
         assert config.validate_for_platform("databricks") == []
 
-    def test_constraint_mismatch_on_known_platform_is_warning(self):
+    def test_requested_but_not_rendered_constraint_is_an_error(self):
         config = UnifiedTuningConfiguration()
         errors, warnings = config.validate_for_platform_detailed("clickhouse")
-        assert errors == []
-        assert any("'foreign_keys'" in w for w in warnings)
-        assert any("'check_constraints'" in w for w in warnings)
+        assert any("requested unique_constraints is not applied at execution" in e for e in errors)
+        assert any("requested foreign_keys is not applied at execution" in e for e in errors)
+        assert any("requested check_constraints is not applied at execution" in e for e in errors)
+        assert warnings == []
 
     def test_databricks_liquid_layout_validation_still_errors(self):
         config = UnifiedTuningConfiguration()
@@ -220,9 +238,13 @@ class TestCanonicalPlatformType:
 
     def test_validate_tuning_configuration_uses_canonical_key(self):
         adapter = _StubAdapter(display_name="StarRocks", type="starrocks")
-        adapter.unified_tuning_configuration = UnifiedTuningConfiguration()
+        config = UnifiedTuningConfiguration()
+        config.foreign_keys.enabled = False
+        config.unique_constraints.enabled = False
+        config.check_constraints.enabled = False
+        adapter.unified_tuning_configuration = config
         assert adapter.validate_tuning_configuration_for_platform() == []
-        assert adapter.validate_tuning_configuration(UnifiedTuningConfiguration()) == []
+        assert adapter.validate_tuning_configuration(config) == []
 
 
 class _MetadataStubAdapter:

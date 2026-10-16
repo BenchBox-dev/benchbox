@@ -20,6 +20,8 @@ red domain does not hide the others, and each domain uploads its own artifacts.
 | `t3:browser` | `browser` | Results Explorer Firefox and WebKit smoke suites. |
 | `t3:extension` | `extension` | DuckDB `datasketches` community-extension smoke, which catches upstream rebuilds. |
 | `t3:install` | `install` | Installs the latest PyPI release outside the checkout and imports it. |
+| `t3:throughput` | `throughput` | DuckDB TPC-H SF1 `run-official --streams 3` cell, plus the DuckDB throughput integration tests. It fails when a requested stream is missing or fails, and evaluates the Throughput@Size floor from retained baselines of scheduled `nightly-v2.yml` and `nightly.yml` runs. |
+| `t3:throughput-cedardb` | `throughput-cedardb` | CedarDB TPC-H SF1 `run-official --streams 3` cell from the mirrored `ghcr.io/benchbox-dev/cedardb` image. It gates the nightly signal. |
 | `t3:drift` | `drift` | Corpus drift and privacy scan, submission-validator drift, cross-surface baseline drift, and vendor pricing drift. Scheduled runs execute it on Mondays (UTC); a manual run executes it unless `run_drift` is cleared. |
 | `t3:quarantine` | `quarantine` | Runs tests marked `quarantine`. It passes with a notice until the marker is registered in `pytest.ini`. |
 | `t3:linkcheck` | `linkcheck` | Checks external documentation links with Sphinx and uploads the linkcheck report. |

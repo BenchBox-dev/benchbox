@@ -112,6 +112,31 @@ body.shell {
   margin: 0;
 }
 
+.search-dialog__status {
+  margin: 0;
+  padding: 0.75rem 0;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.search-dialog__footer {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-primary);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.search-dialog__results-link {
+  font-size: 0.875rem;
+  color: var(--accent-primary);
+  text-decoration: none;
+}
+
+.search-dialog__results-link:hover {
+  text-decoration: underline;
+}
+
 .context-bar {
   position: sticky;
   top: var(--header-height);

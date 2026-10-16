@@ -3,7 +3,6 @@ import json
 import click
 
 import benchbox
-import benchbox.cli.platform_defaults as _platform_defaults  # noqa: F401
 from benchbox.cli.commands import register_commands
 from benchbox.cli.help import BenchBoxGroup
 from benchbox.cli.logo import styled_logo

@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- The LakeSail documentation no longer says the CLI has no `--platform-option`
+  keys. `--platform lakesail:distributed` selects distributed mode, and
+  `endpoint` and `adaptive_enabled` are accepted as `--platform-option` keys.
+
 - The Explorer read model is at version 16 with execution-variant identity:
   the pipeline records `variant_id`, `variant_label`, the requested execution
   engine and gateway routing on every result, cohort and leaderboard row.
@@ -141,6 +145,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- InfluxDB and LakeSail `deployment_mode` are now deprecated aliases of the
+  `--platform influxdb:core|cloud` and `--platform lakesail:local|distributed`
+  selectors, like their `mode` and `sail_mode` spellings. Before, supplying
+  them logged no deprecation notice, and the 0.6.0 removal of the aliases would
+  have missed them. A run that does not pass the option logs no notice.
+
 - Generated database names now stay the same when nested tuning configuration keys are reordered.
 
 - Sorted ingestion no longer runs unsafe CTAS rewrites on Athena, Azure Synapse
@@ -166,6 +176,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `warehouse`, and Polars `streaming=True`. The Firebolt and Fabric Warehouse
   error messages no longer recommend deprecated options.
 
+- A `--platform-option` value now overrides a saved credential profile even
+  when it equals the option's default. Before, `--platform-option
+  host=localhost` against a saved `host: prod.example.com` connected to
+  `prod.example.com`, so table creation and loads ran against the saved host.
+  This affected the PostgreSQL family, Trino, Presto and the MySQL-wire
+  platforms.
+- Platform names that the registry accepts as aliases (`sqlite3`,
+  `azure_synapse`, `pg_duckdb`, `fabric_lakehouse`) now accept the same
+  `--platform-option` keys as their canonical names, where they used to fail
+  with "does not accept platform-specific options".
+- The ClickHouse, DuckDB and SQLite option definitions now register when
+  `benchbox.platforms` is imported, so Python and MCP callers see the same
+  options as the command line. An invalid integer or number option value is
+  reported as a platform option error instead of a traceback.
 - Options that have no effect now log one warning per run and are left out of
   the platform information a result records, instead of being recorded as if
   they had been applied. Under the Dask `threaded` execution engine this covers
@@ -308,13 +332,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   mismatched keys are recorded as failed ledger statements and warned. Result
   metadata reports the live tuned values for shuffle partitions and adaptive
   execution.
+- Tuning validation now rejects tuning requests the platform cannot execute,
+  and platforms without tuning coverage error on unsupported types like
+  covered platforms. The registry corrects several platforms' coverage
+  (Postgres family, Doris, SingleStore, Databend, Starburst, MotherDuck,
+  DataFusion, and fabric-warehouse, which now has its own entry instead of
+  sharing Databricks'), and the sample and fallback configuration builders
+  only enable tuning the target platform supports. Layout tuning on
+  BigQuery, Redshift, Trino and Synapse now errors until their execution
+  support lands.
 - Tuned load-only runs (`--phases generate,load`) now go through the same
   apply → load → reconcile → metadata → ledger/receipt → export lifecycle as
   full runs, so a load-only bundle never carries a tuned mode without
   `platform.tuning`. Adapters without the full lifecycle refuse tuned load-only
   runs with an actionable error instead.
-
 - Result metadata records genuine engine versions (`engine_version`, `engine_version_source: sql_query`) for DuckDB, SQLite and DataFusion queried directly from the active connection rather than package versions.
+- A successful physical sort rewrite (CTAS or constraint-preserving in-place sort)
+  is recorded as an executed post-load ledger statement and shown in the run
+  receipt as attested (`Recorded; not catalog-checkable`). Attested evidence never
+  satisfies catalog-verifiable intents and never promotes a run to verified on
+  its own.
+- ClickHouse tuning introspection bounds table queries in SQL by ledger tables and measures snapshot truncation directly on raw query results.
 - The Atom feed uses canonical `/blog/` self and entry links while retaining stable entry IDs for existing subscribers.
 - Deprecated option aliases now show their warning. The Polars `streaming`
   option, `--polars-streaming`, Dask `use_distributed`, pg-duckdb
@@ -423,10 +461,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   never a valid profile key.
 
 ### Before you upgrade
+- Runs whose tuning configuration contains nested mappings (for example per-table
+  settings) get a different generated database name once, because the name now
+  ignores the order of nested keys. BenchBox does not find the database an
+  earlier release created for the same configuration, so it creates a new one
+  and loads the data again. Drop the old database if you no longer need it.
+  Names for flat configurations do not change.
 - Dask `use_distributed=false` together with `scheduler_address` now fails with
   an error. In 0.4.2 it connected to the scheduler. To connect to an existing
   scheduler, use the `distributed` engine:
   `--execution-engine distributed --platform-option scheduler_address=tcp://host:8786`.
+- A `--platform-option` value that equals the option's default now overrides a
+  saved credential profile, as any other value already did. If a run relied on
+  the saved value winning, remove the `--platform-option` or save the value you
+  want.
 - Result metadata for Dask runs on the `threaded` engine no longer contains
   `n_workers`, `threads_per_worker`, `memory_limit`, `spill_to_disk` or
   `spill_directory`, and LakeSail metadata no longer contains `sail_workers`.
@@ -468,6 +516,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `benchbox.core.deprecation_notices` logger instead of `DeprecationWarning`s.
   Code that filtered or asserted on `DeprecationWarning` for these aliases
   must read the log instead. `--quiet` still hides them.
+- `--platform-option deployment_mode=...` for InfluxDB and LakeSail now logs a
+  deprecation notice and stops working in 0.6.0. Use `--platform influxdb:core`,
+  `--platform influxdb:cloud`, `--platform lakesail:local` or
+  `--platform lakesail:distributed`.
 - Runs that pass `--polars-streaming` record
   `platform.execution_engine.resolution` as `legacy_option` instead of
   `explicit`. The requested and applied engines and `platform.variant` do not
@@ -656,6 +708,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   how to choose the engine at run time; pass `--execution-engine` (for example
   `--execution-engine streaming`). Tuning files that already set
   `engine_affinity` keep working and record `resolution` `tuning_profile`.
+- Tuning validation now fails when a configuration asks for tuning that the
+  platform does not apply during a run. Earlier releases accepted these
+  configurations and ran without the tuning. Run `benchbox tuning validate
+  --platform <platform>` on your saved tuning files before you upgrade; each
+  error names the tuning type and why it is not applied. Remove the setting
+  or use a platform that applies it. Platforms that apply tuning in part are
+  checked type by type. The new errors are:
+  - `unique_constraints` and `check_constraints` fail on every platform with
+    registry coverage, because no benchmark schema carries those clauses. The
+    packaged DuckDB and Snowflake templates and the matching
+    `examples/tunings` files now disable both.
+  - Layout tuning fails on BigQuery (`partitioning`, `clustering`), Redshift
+    (`partitioning`, `distribution`), Trino and
+    Azure Synapse (all four layout types). These adapters build the clauses
+    for dry-run previews but do not apply them when tables are created. Other
+    platforms that only preview layout tuning fail the same way (for example
+    the Postgres family, Doris, Firebolt, QuestDB, SingleStore and
+    TimescaleDB).
+  - Redshift `sorting` fails while `sorted_ingestion_mode` is `off`, which is
+    the default, because the adapter sorts tables only when sorted ingestion
+    is on. Set `sorted_ingestion_mode` to `auto` or `force` to keep the
+    request.
+  - `partitioning` fails on Databricks, and so on the `spark` and `delta`
+    platform names that resolve to it. The adapter builds the clause for
+    previews only and never adds it when tables are created. Fabric Warehouse
+    no longer shares the Databricks rules and also rejects `partitioning`.
+  - `primary_keys` and `foreign_keys` fail where the adapter removes that
+    constraint from table definitions: primary keys on Databend, Doris,
+    Firebolt, QuestDB, Trino and Presto; foreign keys on ClickHouse, Databend,
+    Doris, Firebolt, QuestDB, SingleStore and StarRocks. Constraints that
+    DataFusion and MotherDuck do not create fail the same way.
+  - Platforms without registry coverage now report unsupported tuning types as
+    errors where earlier releases reported warnings, and default tuning
+    configurations on platforms that drop tuning report errors where they
+    reported warnings.
 
 ### Added
 

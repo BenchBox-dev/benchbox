@@ -457,7 +457,9 @@ function AppliedReceiptDrilldown({ raw }: { raw?: string | null }) {
 }
 
 function AppliedReceiptEntryBody({ entry }: { entry: AppliedReceiptEntry }) {
-  const verdict = receiptText(entry.verdict);
+  const rawVerdict = receiptText(entry.verdict);
+  const verdict =
+    rawVerdict === "attested" ? "attested — Recorded; not catalog-checkable" : rawVerdict;
   const statement = receiptText(entry.statement);
   const fields: { label: string; value: string }[] = [
     { label: "Kind", value: receiptText(entry.kind) },

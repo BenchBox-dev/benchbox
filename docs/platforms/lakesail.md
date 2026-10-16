@@ -59,12 +59,15 @@ cd docker/lakesail && docker compose up -d lakesail-connect
 
 ### Configuration Methods
 
-The CLI runs LakeSail with its defaults:
+The CLI runs LakeSail with its defaults. `--platform lakesail:distributed` selects distributed mode, and `endpoint` and `adaptive_enabled` are the `--platform-option` keys:
 
 ```bash
 benchbox run --platform lakesail --benchmark tpch --scale 1.0
+
+benchbox run --platform lakesail:distributed --platform-option endpoint=sc://my-sail-server:50051 --benchmark tpch --scale 1.0
 ```
-Settings below can also be set by constructing the adapter directly:
+
+Every setting below can be set by constructing the adapter directly:
 
 ```python
 from benchbox.platforms.lakesail import LakeSailAdapter
@@ -82,7 +85,7 @@ adapter = LakeSailAdapter(
 | Option | Default | Description |
 |--------|---------|-------------|
 | `endpoint` | `sc://localhost:50051` | Sail server Spark Connect URL |
-| `deployment_mode` | `local` | Adapter constructor form of `--platform lakesail:local\|distributed` |
+| `deployment_mode` | `local` | Deprecated alias of `--platform lakesail:local\|distributed`; `sail_mode` is an alias of this option |
 | `sail_workers` | - | Has no effect: BenchBox logs a warning and does not record it, because Sail takes no worker count from BenchBox |
 | `app_name` | `BenchBox-LakeSail` | Application name for the session |
 | `driver_memory` | `4g` | Driver memory allocation (e.g., `4g`, `8g`) |

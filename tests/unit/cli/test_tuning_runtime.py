@@ -59,16 +59,41 @@ def test_build_baseline_unified_config_reports_no_clustering_strategy() -> None:
     assert config.platform_optimizations.liquid_clustering_enabled is False
 
 
-@pytest.mark.parametrize("platform", ["duckdb", "DuckDB", "duckdb:memory"])
-def test_default_unified_config_disables_check_constraints_on_duckdb(platform: str) -> None:
+@pytest.mark.parametrize("platform", ["duckdb", "DuckDB"])
+def test_default_unified_config_disables_unique_and_check_constraints_on_duckdb(platform: str) -> None:
     config = build_default_unified_config(platform)
 
     assert config.check_constraints.enabled is False
     assert config.primary_keys.enabled is True
     assert config.foreign_keys.enabled is True
-    assert config.unique_constraints.enabled is True
+    assert config.unique_constraints.enabled is False
 
 
-@pytest.mark.parametrize("platform", [None, "motherduck", "postgresql", "snowflake"])
-def test_default_unified_config_keeps_check_constraints_elsewhere(platform: str | None) -> None:
-    assert build_default_unified_config(platform).to_dict() == UnifiedTuningConfiguration().to_dict()
+def test_default_unified_config_shares_base_rules_on_duckdb_memory_variant() -> None:
+    config = build_default_unified_config("duckdb:memory")
+
+    assert config.check_constraints.enabled is False
+    assert config.unique_constraints.enabled is False
+
+
+def test_default_unified_config_without_platform_keeps_all_constraints() -> None:
+    assert build_default_unified_config(None).to_dict() == UnifiedTuningConfiguration().to_dict()
+
+
+@pytest.mark.parametrize("platform", ["postgresql", "snowflake"])
+def test_default_unified_config_disables_unrendered_unique_and_check(platform: str) -> None:
+    config = build_default_unified_config(platform)
+
+    assert config.primary_keys.enabled is True
+    assert config.foreign_keys.enabled is True
+    assert config.unique_constraints.enabled is False
+    assert config.check_constraints.enabled is False
+
+
+def test_default_unified_config_disables_unrendered_constraints_on_motherduck() -> None:
+    config = build_default_unified_config("motherduck")
+
+    assert config.primary_keys.enabled is False
+    assert config.foreign_keys.enabled is False
+    assert config.unique_constraints.enabled is False
+    assert config.check_constraints.enabled is False

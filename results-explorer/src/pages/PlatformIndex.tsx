@@ -921,7 +921,7 @@ export function PlatformIndex({ platform = "" }: PlatformIndexProps) {
                 <th class="table-th sticky left-0 z-10 w-8 bg-[var(--bb-surface-data-muted)]" aria-colindex={platformTableColumnIndex("compare", showMetricContract)}>
                   <span class="sr-only">Compare</span>
                 </th>
-                <th class="table-th" aria-colindex={platformTableColumnIndex("version", showMetricContract)}>Version</th>
+                <th class="table-th min-w-[11rem]" aria-colindex={platformTableColumnIndex("version", showMetricContract)}>Version</th>
                 <th class="p-0" scope="col" aria-sort={ariaSort("benchmark")} aria-colindex={platformTableColumnIndex("benchmark", showMetricContract)}>
                   <button
                     type="button"
@@ -1485,7 +1485,7 @@ function PlatformRow({ entry, runIdentityLabel, versionLabel, checked, onToggle,
           data-testid={`platform-compare-checkbox-${entry.result_id}`}
         />
       </td>
-      <td class="table-td" aria-colindex={platformTableColumnIndex("version", showMetricContract)}>
+      <td class="table-td min-w-[11rem] whitespace-nowrap" aria-colindex={platformTableColumnIndex("version", showMetricContract)}>
         <a
           href={resultReceiptHref(entry)}
           aria-label={resultIdentityAriaLabel(entry, "receipt")}

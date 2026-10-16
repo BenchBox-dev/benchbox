@@ -196,6 +196,7 @@ function ActiveChipPreview({ activeChips }: { activeChips: ActiveFacetChip[] }) 
       {activeChips.map((chip) => (
         <span
           key={chip.key}
+          title={chip.label}
           class="max-w-32 truncate rounded-full bg-[var(--bb-tone-info-bg)] px-2 py-0.5 text-[11px] font-medium text-[var(--bb-tone-info-fg)]"
         >
           {chip.label}
@@ -358,7 +359,7 @@ function FacetGroupSection({
                         disabled={option.disabled}
                         onChange={() => onToggle(group.key, option.value)}
                       />
-                      <span class="truncate">{option.displayLabel}</span>
+                      <span class="truncate" title={option.displayLabel}>{option.displayLabel}</span>
                     </span>
                     {option.count !== undefined && (
                       <span class="shrink-0 text-xs text-[var(--bb-data-fg-subtle)]">{option.count.toLocaleString()}</span>

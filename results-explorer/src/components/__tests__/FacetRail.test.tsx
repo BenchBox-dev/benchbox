@@ -69,6 +69,26 @@ describe("FacetRail", () => {
     expect(onReset).toHaveBeenCalledTimes(2);
   });
 
+  it("binds the full label as the title wherever a facet label is truncated", () => {
+    const longLabel = "DuckDB v2.0.0-alpha38615 on a very long machine description";
+    const groups: FacetGroup[] = [
+      { key: "platform", label: "Platform", selected: ["duckdb"], options: [{ value: "duckdb", label: longLabel, count: 1 }] },
+    ];
+
+    render(
+      <FacetRail
+        groups={groups}
+        resultCount={1}
+        activeChips={[{ key: "platform:duckdb", label: longLabel }]}
+        onToggle={vi.fn()}
+        onReset={vi.fn()}
+      />,
+    );
+
+    const platformSection = screen.getByRole("heading", { name: "Platform" }).closest("section")!;
+    expect(within(platformSection).getByText(longLabel)).toHaveAttribute("title", longLabel);
+  });
+
   it("renders canonical environment facet values with stable display labels", () => {
     const onToggle = vi.fn();
 

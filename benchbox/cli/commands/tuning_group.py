@@ -38,7 +38,6 @@ from benchbox.core.dataframe.tuning.profiles import (
 from benchbox.core.platform_manifest import get_platform_aliases
 from benchbox.core.tuning.capability_registry import (
     PLATFORM_ALIASES,
-    get_capability,
     known_registry_platforms,
     resolve_platform_key,
 )
@@ -343,13 +342,6 @@ def _validate_sql_config(config_file: str, platform: str) -> None:
 
     errors, warnings = config.validate_for_platform_detailed(platform_key)
     enabled = sorted(config.get_enabled_tuning_types(), key=lambda tuning_type: tuning_type.value)
-    for tuning_type in enabled:
-        capability = get_capability(platform_key, tuning_type)
-        if capability is not None and capability.rendered_via == "none":
-            warnings.append(
-                f"Tuning type '{tuning_type.value}' is accepted by platform '{platform_key}' "
-                f"but not rendered yet ({capability.mechanism_id})"
-            )
 
     for message in errors:
         console.print(f"[red]Error: {message}[/red]")

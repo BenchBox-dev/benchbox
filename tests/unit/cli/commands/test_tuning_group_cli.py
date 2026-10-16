@@ -315,7 +315,7 @@ class TestTuningValidateSql:
 
         assert result.exit_code == 0, output
         assert "Configuration is valid for duckdb" in output
-        assert "Enabled tuning types: 4" in output
+        assert "Enabled tuning types: 3" in output
 
     def test_sql_validation_goes_through_validate_for_platform_detailed(self):
         template = REPO_ROOT / "examples/tunings/duckdb/tpch_tuned.yaml"
@@ -340,7 +340,7 @@ class TestTuningValidateSql:
         assert "Tuning type 'sorting' is not supported by platform 'bigquery'" in output
         assert "Configuration has errors" in output
 
-    def test_registry_unrendered_type_is_reported_as_warning(self, tmp_path):
+    def test_registry_unrendered_type_is_an_error(self, tmp_path):
         template = tmp_path / "databricks_distribution.yaml"
         template.write_text(
             "primary_keys:\n"
@@ -363,9 +363,9 @@ class TestTuningValidateSql:
 
         result, output = _run_validate([str(template), "--platform", "databricks"])
 
-        assert result.exit_code == 0, output
-        assert "'distribution' is accepted by platform 'databricks' but not rendered yet" in output
-        assert "Configuration is valid but has warnings" in output
+        assert result.exit_code != 0
+        assert "requested distribution is not applied at execution on databricks" in output
+        assert "Configuration has errors" in output
 
     def test_platform_alias_resolves_to_registry_key(self):
         template = REPO_ROOT / "examples/tunings/duckdb/tpch_tuned.yaml"
@@ -409,12 +409,22 @@ class TestTuningValidateSql:
 class TestTuningValidateMode:
     def test_sql_datafusion_file_validates_with_mode_sql(self, tmp_path):
         target = tmp_path / "datafusion_tuned.yaml"
-        target.write_text("table_tunings: {}\n")
+        target.write_text(
+            "primary_keys:\n"
+            "  enabled: false\n"
+            "foreign_keys:\n"
+            "  enabled: false\n"
+            "unique_constraints:\n"
+            "  enabled: false\n"
+            "check_constraints:\n"
+            "  enabled: false\n"
+            "table_tunings: {}\n"
+        )
 
         result, output = _run_validate([str(target), "--platform", "datafusion", "--mode", "sql"])
 
         assert result.exit_code == 0, output
-        assert "Enabled tuning types: 4" in output
+        assert "Enabled tuning types: 0" in output
 
     def test_dataframe_file_rejected_with_mode_sql(self):
         template = REPO_ROOT / "examples/tunings/dataframe/polars_optimized.yaml"

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
@@ -153,6 +153,25 @@ class PlatformHookRegistry:
         defaults = cls.get_default_options(platform)
         defaults.update(resolved)
         return {name: value for name, value in defaults.items() if value is not None}
+
+    @classmethod
+    def supplied_option_keys(cls, platform: str, provided: Iterable[tuple[str, str]]) -> frozenset[str]:
+        platform = platform.lower()
+        keys: set[str] = set()
+        for key, _raw in provided:
+            keys.add(key.lower())
+            keys.add(cls._resolve_option_name(platform, key))
+        return frozenset(keys)
+
+    @classmethod
+    def explicit_option_layer(
+        cls, options: Mapping[str, Any] | None, supplied_keys: Iterable[str] | None = None
+    ) -> dict[str, Any]:
+        layer = dict(options or {})
+        if supplied_keys is None:
+            return layer
+        supplied = set(supplied_keys)
+        return {key: value for key, value in layer.items() if key in supplied}
 
     @classmethod
     def describe_options(cls, platform: str) -> list[str]:

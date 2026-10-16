@@ -206,6 +206,34 @@ class SortedIngestionMixin:
             execute_verbs=("sql",),
         )
 
+    def _attach_sorted_ingestion_evidence(
+        self, statements: list[str], ledger_statement: str, validated_table: str
+    ) -> None:
+        from benchbox.core.tuning.applied_ledger import EXECUTED, PHASE_POST_LOAD
+
+        ledger = getattr(self, "_applied_tuning_ledger", None)
+        if ledger is None:
+            return
+        upgraded = False
+        for statement in statements:
+            for recorded in ledger.statements:
+                if (
+                    recorded.status == EXECUTED
+                    and recorded.phase == PHASE_POST_LOAD
+                    and recorded.mechanism is None
+                    and recorded.statement == statement
+                ):
+                    recorded.mechanism = "sorted_ingestion"
+                    recorded.table = validated_table
+                    upgraded = True
+        if not upgraded:
+            ledger.record(
+                ledger_statement,
+                PHASE_POST_LOAD,
+                mechanism="sorted_ingestion",
+                table=validated_table,
+            )
+
     def _execute_ctas_sort(
         self,
         table_name: str,
@@ -285,6 +313,7 @@ class SortedIngestionMixin:
             raise
         self._sorted_ingestion_applied_tables.append(validated_table)
         self._sorted_ingestion_total_apply_seconds += elapsed_seconds(apply_start)
+        self._attach_sorted_ingestion_evidence(statements, ledger_statement, validated_table)
         sorted_col_names = ", ".join(column.name for column in sorted_columns)
         self.log_verbose(f"Applied CTAS sorting to {table_name}: {sorted_col_names}")
         return True

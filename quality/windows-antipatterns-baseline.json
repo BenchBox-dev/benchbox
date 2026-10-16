@@ -226,9 +226,6 @@
     "tests/unit/platforms/credentials/test_credential_files.py": {
       "WA003": 1
     },
-    "tests/unit/platforms/test_clickhouse_deployment_mode.py": {
-      "WA003": 1
-    },
     "tests/unit/platforms/test_cloud_saas_plan_capture.py": {
       "WA003": 1
     },

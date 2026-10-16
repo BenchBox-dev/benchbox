@@ -23,4 +23,5 @@ if (
 const root = document.getElementById("app");
 if (!root) throw new Error("Root element #app not found");
 
+root.replaceChildren();
 render(<App />, root);

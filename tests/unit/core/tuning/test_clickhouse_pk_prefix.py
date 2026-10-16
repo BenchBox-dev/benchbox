@@ -86,6 +86,8 @@ def _config(table_tuning: TableTuning, primary_keys_enabled: bool) -> UnifiedTun
     config = UnifiedTuningConfiguration()
     config.primary_keys.enabled = primary_keys_enabled
     config.foreign_keys.enabled = False
+    config.unique_constraints.enabled = False
+    config.check_constraints.enabled = False
     config.table_tunings[table_tuning.table_name] = table_tuning
     return config
 

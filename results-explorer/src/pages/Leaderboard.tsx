@@ -833,6 +833,7 @@ function ActiveLeaderboardSummary({
             <span
               key={facet.key}
               class={LEADERBOARD_SHELL_GEOMETRY_CLASSES.activeFacetChip}
+              title={`${facet.label}: ${facet.value}`}
             >
               {facet.label}: {facet.value}
             </span>
@@ -1355,8 +1356,10 @@ function LeaderboardComparePicker({
                       title={disabled ? `Select up to ${MAX_COMPARE_SELECTIONS} runs.` : undefined}
                     />
                     <span class="min-w-0">
-                      <span class="block truncate font-medium text-[var(--bb-fg-primary)]">{result.platform}</span>
-                      <span class="block truncate text-xs text-[var(--bb-fg-muted)]">{runId} · {result.run_date.slice(0, 10)}</span>
+                      <span class="block truncate font-medium text-[var(--bb-fg-primary)]" title={result.platform}>{result.platform}</span>
+                      <span class="block truncate text-xs text-[var(--bb-fg-muted)]" title={`${runId} · ${result.run_date.slice(0, 10)}`}>
+                        {runId} · {result.run_date.slice(0, 10)}
+                      </span>
                     </span>
                   </label>
                   <p class="mt-2 text-xs leading-snug text-[var(--bb-fg-muted)]" role="note">

@@ -611,7 +611,10 @@ export function QueryHeatmap({
                         class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md bg-[var(--bb-surface-data-muted)] px-2 py-1.5"
                       >
                         <div class="min-w-0">
-                          <div class="truncate font-mono text-xs font-semibold text-[var(--bb-data-fg-primary)]">
+                          <div
+                            class="truncate font-mono text-xs font-semibold text-[var(--bb-data-fg-primary)]"
+                            title={queryDisplayLabel(outlier.queryId)}
+                          >
                             {queryDisplayLabel(outlier.queryId)}
                           </div>
                           <div class="text-xs text-[var(--bb-data-fg-muted)]">{outlier.ratioLabel}</div>

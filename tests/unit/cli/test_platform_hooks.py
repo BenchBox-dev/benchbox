@@ -250,6 +250,7 @@ def test_database_manager_create_config_explicit_options_override_saved_credenti
             "pg-duckdb",
             {"host": "cli-host"},
             {"benchmark": "tpch", "scale_factor": 1},
+            explicit_option_keys={"host"},
         )
 
     assert config.host == "cli-host"

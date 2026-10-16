@@ -93,7 +93,7 @@ describe("RunReceipt", () => {
     expect(within(receipt).getByText("DuckDB")).toBeTruthy();
     expect(within(receipt).getByText("macOS")).toBeTruthy();
     expect(within(receipt).getByText("Trust")).toBeTruthy();
-    expect(within(receipt).getByText("Maintainer run")).toBeTruthy();
+    expect(within(receipt).getByText("Maintainer Run")).toBeTruthy();
     expect(within(receipt).getByText("Published, maintainer reviewed")).toBeTruthy();
     expect(within(receipt).getByText("Exact")).toBeTruthy();
     expect(within(receipt).getByText("Funding")).toBeTruthy();
@@ -293,7 +293,7 @@ describe("RunReceipt", () => {
     const receipt = screen.getByRole("region", { name: "Run receipt" });
     expect(within(receipt).getByText("TPC-H")).toBeTruthy();
     expect(within(receipt).getByText("DuckDB")).toBeTruthy();
-    expect(within(receipt).getByText("Maintainer run")).toBeTruthy();
+    expect(within(receipt).getByText("Maintainer Run")).toBeTruthy();
     expect(within(receipt).getByText("Published, maintainer reviewed")).toBeTruthy();
 
     expect(within(receipt).queryByText("Platform version")).toBeNull();
@@ -533,6 +533,34 @@ describe("RunReceipt applied-tuning receipt drill-down", () => {
     expect(within(divergent).getByText("o_custkey")).toBeTruthy();
     expect(within(divergent).getByText("column mismatch")).toBeTruthy();
     expect(within(divergent).getByText("catalog reports a different index definition")).toBeTruthy();
+  });
+
+  it("labels an attested sort entry as recorded but not catalog-checkable", () => {
+    const receipt = JSON.stringify({
+      platform: "duckdb",
+      corroborated: false,
+      summary: { attested: 1 },
+      entries: [
+        {
+          statement: "CREATE OR REPLACE TABLE lineitem AS SELECT * FROM lineitem ORDER BY l_shipdate",
+          phase: "post_load",
+          verdict: "attested",
+          kind: "sort_key",
+          table: "lineitem",
+          expected_columns: ["l_shipdate"],
+          reason: "physical sort executed; no catalog footprint",
+        },
+      ],
+    });
+    render(<RunReceipt detail={makeDetail({ applied_receipt: receipt })} />);
+
+    const region = screen.getByRole("region", { name: "Run receipt" });
+    const drilldown = within(region).getByTestId("applied-receipt-drilldown");
+    const entries = within(drilldown).getAllByTestId("applied-receipt-entry");
+    expect(entries.length).toBe(1);
+    const [attested] = entries as [HTMLElement];
+    expect(within(attested).getByText("attested — Recorded; not catalog-checkable")).toBeTruthy();
+    expect(within(attested).getByText("physical sort executed; no catalog footprint")).toBeTruthy();
   });
 
   it("omits fields the receipt did not record rather than inventing them", () => {

@@ -23,6 +23,7 @@ from benchbox.mcp.schemas import MCP_PLATFORM_OPTION_ALLOWLIST, MCP_PLATFORM_OPT
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 GRANDFATHERED_KEYS: frozenset[tuple[str, str]] = frozenset()
+DEPLOYMENT_SELECTOR_KEYS = frozenset({"deployment_mode", "mode", "deployment", "sail_mode", "firebolt_mode"})
 REGISTERED_PLATFORM_SENTINELS = ("polars-df", "snowflake", "databricks", "redshift", "firebolt", "influxdb")
 CORE_VOCABULARY_KEYS = ("execution_engine", "compute_resource", "compute_size", "gateway")
 
@@ -35,8 +36,7 @@ class Registration(NamedTuple):
 
 
 def _import_adapter_modules() -> None:
-    for module in ("benchbox.platforms", "benchbox.cli.platform_defaults"):
-        importlib.import_module(module)
+    importlib.import_module("benchbox.platforms")
     for entry in PLATFORM_MANIFEST:
         if entry.adapter is not None:
             pytest.importorskip(entry.adapter.module)
@@ -127,6 +127,36 @@ def test_no_unlisted_reserved_option_keys() -> None:
 def test_grandfather_list_matches_live_registrations() -> None:
     live = {(item.platform, item.key) for item in _registrations() if item.key in RESERVED_OPTION_KEYS}
     assert live - set(DEPRECATED_OPTION_ALIASES) == GRANDFATHERED_KEYS
+
+
+def _unlisted_deployment_selectors(registrations: list[Registration]) -> list[tuple[str, str]]:
+    return sorted(
+        {
+            (item.platform, item.key)
+            for item in registrations
+            if item.surface == "option spec"
+            and item.key in DEPLOYMENT_SELECTOR_KEYS
+            and (item.platform, item.key) not in DEPRECATED_OPTION_ALIASES
+        }
+    )
+
+
+def test_every_registered_deployment_selector_option_is_a_deprecated_alias() -> None:
+    registrations = _registrations()
+    assert any(item.key in DEPLOYMENT_SELECTOR_KEYS for item in registrations)
+    assert _unlisted_deployment_selectors(registrations) == []
+
+
+def test_registered_deployment_selector_missing_from_the_table_is_reported(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(
+        PlatformHookRegistry._option_specs,
+        "fixture-platform",
+        {"deployment_mode": PlatformOptionSpec(name="deployment_mode", aliases=("sail_mode",))},
+    )
+    assert _unlisted_deployment_selectors(_registrations()) == [
+        ("fixture-platform", "deployment_mode"),
+        ("fixture-platform", "sail_mode"),
+    ]
 
 
 def test_new_reserved_canonical_key_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
