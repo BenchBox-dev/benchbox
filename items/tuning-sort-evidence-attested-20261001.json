@@ -4,7 +4,7 @@
     "Test: requested sort + index corroborated + executed rewrite → applied_verified, and the receipt shows the attested entry.",
     "Explorer drill-down renders the new verdict class (vitest)."
   ],
-  "context": "Rebased cleanly onto develop (a9c80901a), resolved CHANGELOG conflict keeping develop Spark bullet and sort evidence bullet, ladder + lint-imports passed (all 3 contracts kept, 12 focused sort tests passed, 38,471 fast tests passed, preflight 65 passed, 0 ty errors), pushed head 1d2a76138f92ab773c3fc97da16d5d4bb06af278. PR #2924 mergeable and armed; awaiting CI and oracle review.",
+  "context": "PR 2924 merged 2026-10-16 as b05e3adef: successful CTAS and atomic sort rewrites are recorded as executed post_load statements with mechanism sorted_ingestion and an attested verdict; requested sorts with no executed rewrite remain dropped intents.",
   "description": "## Problem\nThe DuckDB verified evidence is the ART index, not the physical order. A successful CTAS or atomic sort rewrite is never recorded (`benchbox/platforms/base/sorted_ingestion.py:211-320`).\n\n## Change (per gate D-1; option A expected)\n- Record a successful rewrite in `_execute_ctas_sort` as an executed `post_load` statement with `mechanism=\"sorted_ingestion\"`.\n- Classify it per the decision (e.g. a non-blocking `attested` verdict), surfaced in the receipt and the Explorer drill-down.\n- \"Sort requested but no executed rewrite\" is enforced by the reconciliation item as a dropped intent. `corroborate()` stays configuration-free (plan review F2).\n- MotherDuck: wire `DuckDBTuningIntrospector` only if D-1 permits attested-only verification. MotherDuck creates no index.\n\n## Guardrails (must preserve)\n- `attested` never counts as corroboration of a catalog-verifiable intent.\n- Skipped or failed sorts still block.\n\n## Process guardrails\n- One PR per item against `develop`, via the AGENTS.md worktree flow (`make worktree-claim BRANCH=...`, `make agent-write-preflight`).\n- Verification ladder: `uv run -- python -m pytest -m fast -q`, `uv run -- ruff check .`, `uv run -- ruff format --check .` and `uv run -- ty check`.\n- Then `make pr-preflight` and `make pr-open`.\n- Stage explicit paths; never `git add -A`.\n- No live cloud runs without explicit user approval stating the command, maximum runtime, log path and stop condition.\n- Re-read every file:line anchor before editing. Anchors are from develop d39166ea.\n- This item touches paths listed in the soundness manifest by `tuning-trust-paths-soundness-manifest-20261001`. The PR needs an external `Soundness review:` section (AGENTS.md) and must not auto-merge.",
   "links": [
     "benchbox/platforms/base/sorted_ingestion.py",
@@ -104,6 +104,14 @@
       "generation": "f5a96a61b9e74380b33f96e996394365",
       "op": "finish",
       "op_id": "f6a2141f1fac42bda079c41ae6540fc4",
+      "session_id": "5c80d5d463444a2ba9410e1fdfb1d517"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:6b9b7c4e8f8d58a0a7174a0a",
+      "at": "2026-10-16T11:58:06Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "874342fc77cd439baa2859924b8015c9",
       "session_id": "5c80d5d463444a2ba9410e1fdfb1d517"
     }
   ]
