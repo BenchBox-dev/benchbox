@@ -251,8 +251,10 @@ Below SF 1, BenchBox therefore replaces the template's
 `define REASON= dist(return_reasons, 1, 1);` with
 `define REASON= distmember(return_reasons, random(1, rowcount("reason"), uniform), 1);`
 before running dsqgen (`SUBSCALE_TEMPLATE_OVERRIDES` in
-`benchbox/core/tpcds/c_tools.py`). dsqgen's `rowcount("reason")` matches the
-generated table, so the drawn description always exists, and the draw stays
+`benchbox/core/tpcds/c_tools.py`). Only the Q93 template is rewritten, and
+only when it contains the official line exactly once. dsqgen's
+`rowcount("reason")` matches the generated table (checked at SF 0.01, 0.05,
+0.1, 0.25 and 0.5), so the drawn description always exists, and the draw stays
 deterministic for a given seed and stream. The parameter log records the value
 used, so the DataFrame surfaces bind the same reason. From SF 1 up the
 template is unchanged and the query text is exactly the official one. Q93

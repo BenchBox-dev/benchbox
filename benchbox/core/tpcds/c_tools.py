@@ -9,6 +9,7 @@ import re
 import subprocess
 import sys
 import warnings
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Callable, Optional, Union
 
@@ -78,15 +79,22 @@ SUBSCALE_TEMPLATE_OVERRIDES: dict[str, tuple[str, str]] = {
 }
 
 
-def apply_subscale_template_overrides(query_dir: Path, scale_factor: float) -> None:
+def apply_subscale_template_overrides(
+    query_dir: Path, scale_factor: float, template_names: Optional[Iterable[str]] = None
+) -> None:
     if scale_factor >= 1:
         return
+    selected = SUBSCALE_TEMPLATE_OVERRIDES.keys() if template_names is None else set(template_names)
     for template_name, (official, override) in SUBSCALE_TEMPLATE_OVERRIDES.items():
+        if template_name not in selected:
+            continue
         template = query_dir / template_name
         text = template.read_text(encoding="utf-8")
-        if official not in text:
-            raise TPCDSError(f"{template_name} no longer contains the line its sub-SF1 override replaces: {official}")
-        template.write_text(text.replace(official, override), encoding="utf-8")
+        if text.count(official) != 1:
+            raise TPCDSError(
+                f"{template_name} must contain the line its sub-SF1 override replaces exactly once: {official}"
+            )
+        template.write_text(text.replace(official, override, 1), encoding="utf-8")
 
 
 class TPCDSCTools:
@@ -284,12 +292,12 @@ class DSQGenBinary:
             cmd.extend([f"{_opt}STREAMS", str(streams)])
         return cmd, _opt
 
-    def _stage_dsqgen_workdir(self, temp_path: Path, scale_factor: float) -> dict[str, str]:
+    def _stage_dsqgen_workdir(self, temp_path: Path, scale_factor: float, query_id: int) -> dict[str, str]:
         import os
         import shutil as _shutil
 
         _shutil.copytree(self.templates_dir, temp_path / "q")
-        apply_subscale_template_overrides(temp_path / "q", scale_factor)
+        apply_subscale_template_overrides(temp_path / "q", scale_factor, {f"query{query_id}.tpl"})
         var_src = self.templates_dir.parent / "query_variants"
         if var_src.exists():
             _shutil.copytree(var_src, temp_path / "query_variants")
@@ -328,7 +336,7 @@ class DSQGenBinary:
         log_text: Optional[str] = None
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
-            env = self._stage_dsqgen_workdir(temp_path, scale_factor)
+            env = self._stage_dsqgen_workdir(temp_path, scale_factor, query_id)
             if edit_workdir is not None:
                 edit_workdir(temp_path)
 
