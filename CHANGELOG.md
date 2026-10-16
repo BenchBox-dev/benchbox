@@ -145,6 +145,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Load-only runs (`--phases generate,load`) on SQL platforms exit 0 again
+  after a successful load. Before, every such run loaded the data and then
+  failed with "'NoneType' object has no attribute 'overall_status'" because
+  the applied-tuning ledger was never created outside the full benchmark run.
+  A load that fails still exits non-zero.
+
 - InfluxDB and LakeSail `deployment_mode` are now deprecated aliases of the
   `--platform influxdb:core|cloud` and `--platform lakesail:local|distributed`
   selectors, like their `mode` and `sail_mode` spellings. Before, supplying

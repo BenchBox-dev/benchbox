@@ -160,6 +160,26 @@ class TestCLIDataLoadModes:
             call_args = mocks["orchestrator"].return_value.execute_benchmark.call_args[0]
             assert call_args[2] is not None
 
+    def test_load_only_failure_exits_non_zero(self):
+        with _mock_run_command_components(include_db_manager=True) as mocks:
+            mock_db_config = Mock()
+            mock_db_config.type = "duckdb"
+            mock_db_config.options = {}
+            assert mocks["db_mgr"] is not None
+            mocks["db_mgr"].return_value.create_config.return_value = mock_db_config
+            failed_result = mocks["orchestrator"].return_value.execute_benchmark.return_value
+            failed_result.validation_status = "FAILED"
+            failed_result.validation_details = {"error": "load failed"}
+
+            result = self.runner.invoke(
+                cli,
+                ["run", "--platform", "duckdb", "--benchmark", "tpch", "--scale", "0.01", "--phases", "generate,load"],
+            )
+
+            assert result.exit_code == 1
+            assert "Data loading failed: FAILED" in result.output
+            mocks["exporter"].return_value.export_result.assert_not_called()
+
     def test_benchmark_config_test_execution_type(self):
 
         with _mock_run_command_components() as mocks:
