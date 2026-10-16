@@ -141,6 +141,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- InfluxDB and LakeSail `deployment_mode` are now deprecated aliases of the
+  `--platform influxdb:core|cloud` and `--platform lakesail:local|distributed`
+  selectors, like their `mode` and `sail_mode` spellings. Before, supplying
+  them logged no deprecation notice, and the 0.6.0 removal of the aliases would
+  have missed them. A run that does not pass the option logs no notice.
+
 - Generated database names now stay the same when nested tuning configuration keys are reordered.
 
 - Sorted ingestion no longer runs unsafe CTAS rewrites on Athena, Azure Synapse
@@ -468,6 +474,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `benchbox.core.deprecation_notices` logger instead of `DeprecationWarning`s.
   Code that filtered or asserted on `DeprecationWarning` for these aliases
   must read the log instead. `--quiet` still hides them.
+- `--platform-option deployment_mode=...` for InfluxDB and LakeSail now logs a
+  deprecation notice and stops working in 0.6.0. Use `--platform influxdb:core`,
+  `--platform influxdb:cloud`, `--platform lakesail:local` or
+  `--platform lakesail:distributed`.
 - Runs that pass `--polars-streaming` record
   `platform.execution_engine.resolution` as `legacy_option` instead of
   `explicit`. The requested and applied engines and `platform.variant` do not
