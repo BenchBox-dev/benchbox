@@ -2,7 +2,7 @@
   "acceptance": [
     "e2e: load-only tuned DuckDB run → the bundle carries platform.tuning whose ddl/post_load statements equal those of the corresponding full run (or the run is refused with the decided message)."
   ],
-  "context": "Rebased cleanly onto develop (a9c80901a), resolved CHANGELOG conflict keeping develop Spark bullet and load-only bullet, ladder + lint-imports passed (all 3 contracts kept, 38,462 tests passed, 0 ty errors), pushed head f7c1c09aec14878276c8514cb13ed85d7051afa3. PR #2925 mergeable and armed; awaiting CI and oracle review.",
+  "context": "PR 2925 merged 2026-10-15T01:25Z as edd8b2e50: tuned load-only runs go through the same apply, load, reconcile, metadata, ledger/receipt and export lifecycle as full runs; adapters without the full lifecycle refuse tuned load-only runs. Tracker closed after the merge was confirmed.",
   "description": "## Problem\n`--phases generate,load` goes through `_execute_load_only_mode` (`benchbox/core/runner/runner.py:528-585`). It applies a different subset of tuning from a full run (the CTAS sort runs, `apply_unified_tuning` does not), saves no metadata, and exports `platform.tuning: null` under a tuned `tuning_mode`.\n\n## Change (per gate D-4)\n- **Parity (expected):** route through the same apply → load → post-load → reconcile → metadata → ledger/receipt → export path as `_setup_fresh_database_phases`.\n- **Or refusal:** an actionable error for tuned load-only runs.\n\n## Guardrails (must preserve)\n- A load-only bundle never carries a tuned mode without `platform.tuning`.\n\n## Process guardrails\n- One PR per item against `develop`, via the AGENTS.md worktree flow (`make worktree-claim BRANCH=...`, `make agent-write-preflight`).\n- Verification ladder: `uv run -- python -m pytest -m fast -q`, `uv run -- ruff check .`, `uv run -- ruff format --check .` and `uv run -- ty check`.\n- Then `make pr-preflight` and `make pr-open`.\n- Stage explicit paths; never `git add -A`.\n- No live cloud runs without explicit user approval stating the command, maximum runtime, log path and stop condition.\n- Re-read every file:line anchor before editing. Anchors are from develop d39166ea.",
   "links": [
     "benchbox/core/runner/runner.py",
@@ -110,6 +110,14 @@
       "generation": "bb780e44bbae4aeaaa5fcab55bd816a8",
       "op": "take",
       "op_id": "15155db2abbf4c469393cefc41042447",
+      "session_id": "5c80d5d463444a2ba9410e1fdfb1d517"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:6b9b7c4e8f8d58a0a7174a0a",
+      "at": "2026-10-16T09:13:20Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "0b0496eaca884861a9a3c4f8a4a19f76",
       "session_id": "5c80d5d463444a2ba9410e1fdfb1d517"
     }
   ]
