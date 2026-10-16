@@ -247,12 +247,15 @@ class SQLiteAdapter(PlatformAdapter):
             else:
                 data_dir = get_benchmark_runs_databases_path(config["benchmark"], config["scale_factor"])
 
-            db_filename = generate_database_filename(
-                benchmark_name=config["benchmark"],
-                scale_factor=config["scale_factor"],
-                platform="sqlite",
-                tuning_config=config.get("tuning_config"),
-            )
+            if config.get("database_name"):
+                db_filename = f"{config['database_name']}.db"
+            else:
+                db_filename = generate_database_filename(
+                    benchmark_name=config["benchmark"],
+                    scale_factor=config["scale_factor"],
+                    platform="sqlite",
+                    tuning_config=config.get("tuning_config"),
+                )
             adapter_config["database_path"] = str(data_dir / db_filename)
             data_dir.mkdir(parents=True, exist_ok=True)
         else:
