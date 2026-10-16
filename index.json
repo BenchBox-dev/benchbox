@@ -10725,15 +10725,10 @@
       "title": "Confirm --force datagen recreates the target database, or fix its propagation to the adapter"
     },
     "force-datagen-tpch-regenerate-20261016": {
-      "claim": {
-        "expires_at": "2026-10-17T23:13:24Z",
-        "generation": "8e1557bec3194340bab174893dff225e",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "`--force datagen` does not regenerate TPC-H data"
     },
     "formalize-mcp-internal-apis": {
