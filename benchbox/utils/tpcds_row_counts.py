@@ -40,3 +40,24 @@ def tpcds_spec_row_count(table: str, scale_factor: float) -> int | None:
     if rows is None or not scale.is_integer() or int(scale) not in TPCDS_SPEC_SCALES:
         return None
     return rows[TPCDS_SPEC_SCALES.index(int(scale))]
+
+
+TPCDS_SUBSCALE_FIXED_TABLES: frozenset[str] = frozenset(
+    {"catalog_page", "date_dim", "household_demographics", "income_band", "ship_mode", "time_dim"}
+)
+
+TPCDS_INVENTORY_WEEKS = 261
+
+
+def tpcds_subscale_row_count(table: str, scale_factor: float) -> int | None:
+    name = table.lower()
+    rows = TPCDS_ROW_COUNTS.get(name)
+    scale = float(scale_factor)
+    if rows is None or not 0 < scale < 1:
+        return None
+    if name in TPCDS_SUBSCALE_FIXED_TABLES:
+        return rows[0]
+    if name == "inventory":
+        items = tpcds_subscale_row_count("item", scale) // 2
+        return items * tpcds_subscale_row_count("warehouse", scale) * TPCDS_INVENTORY_WEEKS
+    return max(1, int(rows[0] * scale))
