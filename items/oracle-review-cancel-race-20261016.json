@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Reproduce or explain the cancellation from the workflow concurrency settings",
+    "A verdict-triggered oracle-review run is no longer cancelled by concurrent runs, or a cancelled one is automatically re-run, so a PR with a SHIP verdict is not left BLOCKED",
+    "Workflow test or documented proof run on a PR",
+    "No weakening of the required oracle-review gate"
+  ],
+  "description": "After an oracle success verdict, the oracle-review run triggered by that verdict is often cancelled by a concurrent pull_request (or edited/synchronize) run in the same concurrency group. The cancelled check row leaves the PR BLOCKED until someone manually re-runs that specific run. Seen on #2993, #3006, #3004 and others. The existing automatic re-run after a late verdict does not cover this case.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-16T16:43:16Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "8f7d5f0550f54d5ebd6c855709133001",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}
