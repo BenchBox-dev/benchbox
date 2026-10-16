@@ -83,7 +83,7 @@ benchbox run --platform starburst --benchmark tpch --scale 0.1
 
 ### Deprecated deployment aliases
 
-The platform options below are deprecated aliases of the `--platform name:mode` selector. They keep working through the 0.6.0 removal window, warn once per run, and resolve to the same deployment as the selector: Velox `deployment`, LakeSail `sail_mode`, InfluxDB `mode`, ClickHouse `deployment_mode` and `mode`, Firebolt `deployment_mode` and `firebolt_mode`, DuckLake `deployment_mode`, pg-duckdb `deployment_mode`, TimescaleDB `deployment_mode`, Databend `deployment_mode`. If the selector and an alias disagree, the run fails before any work starts.
+The platform options below are deprecated aliases of the `--platform name:mode` selector. They keep working through the 0.6.0 removal window, warn once per run, and resolve to the same deployment as the selector: Velox `deployment`, LakeSail `deployment_mode` and `sail_mode`, InfluxDB `deployment_mode` and `mode`, ClickHouse `deployment_mode` and `mode`, Firebolt `deployment_mode` and `firebolt_mode`, DuckLake `deployment_mode`, pg-duckdb `deployment_mode`, TimescaleDB `deployment_mode`, Databend `deployment_mode`. If the selector and an alias disagree, the run fails before any work starts.
 
 ### First-Class Cloud Platforms
 
