@@ -12,6 +12,7 @@ from typing import Optional, Union
 from benchbox.utils.datagen_version import describe_datagen_staleness, manifest_datagen_is_current
 from benchbox.utils.file_format import detect_compression, strip_compression_suffix
 from benchbox.utils.printing import emit
+from benchbox.utils.tpcds_row_counts import TPCDS_LINEAR_TABLES, tpcds_spec_row_count
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +104,11 @@ class BenchmarkDataValidator:
         }
 
         for table_name, expectation in base_expectations.items():
-            if table_name in tpch_invariant_fixed or (table_name in tpcds_official_fixed and self.scale_factor >= 1.0):
+            if self.benchmark_name == "tpcds" and self.scale_factor >= 1.0:
+                scaled_rows = self._tpcds_scaled_rows(table_name, expectation.expected_rows)
+            elif table_name in tpch_invariant_fixed or (
+                table_name in tpcds_official_fixed and self.scale_factor >= 1.0
+            ):
                 scaled_rows = expectation.expected_rows
             else:
                 scaled_rows = max(1, int(expectation.expected_rows * self.scale_factor))
@@ -116,6 +121,14 @@ class BenchmarkDataValidator:
                 allow_zero_rows=expectation.allow_zero_rows,
             )
         return scaled
+
+    def _tpcds_scaled_rows(self, table_name: str, sf1_rows: int) -> int:
+        spec_rows = tpcds_spec_row_count(table_name, self.scale_factor)
+        if spec_rows is not None:
+            return spec_rows
+        if table_name in TPCDS_LINEAR_TABLES:
+            return max(1, int(sf1_rows * self.scale_factor))
+        return 0
 
     def validate_data_directory(self, data_dir: Union[str, Path]) -> DataValidationResult:
         data_path = Path(data_dir)
@@ -232,7 +245,7 @@ class BenchmarkDataValidator:
                 actual_rows = self._count_rows_paths(resolved_files)
                 expected_rows = expectation.expected_rows
                 tolerance = max(1, int(expected_rows * 0.05))
-                if actual_rows > 0 and abs(actual_rows - expected_rows) > tolerance:
+                if expected_rows > 0 and actual_rows > 0 and abs(actual_rows - expected_rows) > tolerance:
                     row_count_mismatches[table_name] = (expected_rows, actual_rows)
                     table_valid = False
                     issues.append(f"Table {table_name}: expected ~{expected_rows} rows, found {actual_rows} rows")

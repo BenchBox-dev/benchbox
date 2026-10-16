@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from benchbox.platforms.base.models import DatabaseValidationResult
+from benchbox.utils.tpcds_row_counts import TPCDS_LINEAR_TABLES, TPCDS_ROW_COUNTS, tpcds_spec_row_count
 
 
 @dataclass
@@ -162,37 +163,7 @@ class TPCHRowCountStrategy(RowCountStrategy):
         return ranges.get(table)
 
 
-_TPCDS_SPEC_ROWS: dict[str, tuple[int, int, int]] = {
-    "call_center": (6, 24, 30),
-    "catalog_page": (11_718, 12_000, 20_400),
-    "catalog_returns": (144_067, 1_439_749, 14_404_374),
-    "catalog_sales": (1_441_548, 14_401_261, 143_997_065),
-    "customer": (100_000, 500_000, 2_000_000),
-    "customer_address": (50_000, 250_000, 1_000_000),
-    "customer_demographics": (1_920_800, 1_920_800, 1_920_800),
-    "date_dim": (73_049, 73_049, 73_049),
-    "household_demographics": (7_200, 7_200, 7_200),
-    "income_band": (20, 20, 20),
-    "inventory": (11_745_000, 133_110_000, 399_330_000),
-    "item": (18_000, 102_000, 204_000),
-    "promotion": (300, 500, 1_000),
-    "reason": (75, 75, 75),
-    "ship_mode": (20, 20, 20),
-    "store": (12, 102, 402),
-    "store_returns": (287_514, 2_875_432, 28_795_080),
-    "store_sales": (2_880_404, 28_800_991, 287_997_024),
-    "time_dim": (86_400, 86_400, 86_400),
-    "warehouse": (5, 10, 15),
-    "web_page": (60, 200, 2_040),
-    "web_returns": (71_763, 719_217, 7_197_670),
-    "web_sales": (719_384, 7_197_566, 72_001_237),
-    "web_site": (30, 42, 24),
-}
-_TPCDS_SPEC_SCALES = (1, 10, 100)
-_TPCDS_LINEAR_TABLES = frozenset(
-    {"store_sales", "catalog_sales", "web_sales", "store_returns", "catalog_returns", "web_returns"}
-)
-_TPCDS_FRACTIONAL_LINEAR_TABLES = _TPCDS_LINEAR_TABLES | {"customer"}
+_TPCDS_FRACTIONAL_LINEAR_TABLES = TPCDS_LINEAR_TABLES | {"customer"}
 
 
 class TPCDSRowCountStrategy(RowCountStrategy):
@@ -201,14 +172,12 @@ class TPCDSRowCountStrategy(RowCountStrategy):
 
     def get_expected_range(self, table: str) -> tuple[float, float] | None:
         name = table.lower()
-        rows = _TPCDS_SPEC_ROWS.get(name)
-        if rows is None:
-            return None
         scale = float(self.scale_factor)
-        if scale.is_integer() and int(scale) in _TPCDS_SPEC_SCALES:
-            expected = float(rows[_TPCDS_SPEC_SCALES.index(int(scale))])
-        elif name in _TPCDS_LINEAR_TABLES or (scale < 1 and name in _TPCDS_FRACTIONAL_LINEAR_TABLES):
-            expected = rows[0] * scale
+        spec_rows = tpcds_spec_row_count(name, scale)
+        if spec_rows is not None:
+            expected = float(spec_rows)
+        elif name in TPCDS_LINEAR_TABLES or (scale < 1 and name in _TPCDS_FRACTIONAL_LINEAR_TABLES):
+            expected = TPCDS_ROW_COUNTS[name][0] * scale
         else:
             return None
         return (expected * 0.8, expected * 1.2)

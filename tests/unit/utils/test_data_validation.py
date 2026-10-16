@@ -130,6 +130,43 @@ class TestTableExpectationsConstants:
         assert BenchmarkDataValidator.TPCH_TABLE_EXPECTATIONS["region"].expected_rows == 5
 
 
+class TestTpcdsScaleExpectations:
+    @pytest.mark.parametrize(
+        ("scale", "table", "rows"),
+        [
+            (10.0, "store", 102),
+            (10.0, "promotion", 500),
+            (10.0, "item", 102_000),
+            (10.0, "customer_address", 250_000),
+            (10.0, "reason", 75),
+            (10.0, "web_site", 42),
+            (100.0, "web_site", 24),
+            (100.0, "customer", 2_000_000),
+            (1.0, "reason", 75),
+        ],
+    )
+    def test_spec_scales_use_generated_row_counts(self, scale, table, rows):
+        assert BenchmarkDataValidator("tpcds", scale_factor=scale).table_expectations[table].expected_rows == rows
+
+    def test_other_scales_check_only_linear_tables(self):
+        expectations = BenchmarkDataValidator("tpcds", scale_factor=1000.0).table_expectations
+
+        assert expectations["store_sales"].expected_rows == 2_880_404 * 1000
+        assert expectations["customer"].expected_rows == 0
+        assert expectations["store"].expected_rows == 0
+
+    @pytest.mark.parametrize("scale", [1.0, 10.0, 100.0])
+    def test_agrees_with_post_load_row_count_strategy(self, scale):
+        from benchbox.platforms.base.validation import TPCDSRowCountStrategy
+
+        strategy = TPCDSRowCountStrategy(scale_factor=scale)
+        for table, expectation in BenchmarkDataValidator("tpcds", scale_factor=scale).table_expectations.items():
+            expected = strategy.get_expected_range(table)
+            assert expected is not None, table
+            low, high = expected
+            assert low <= expectation.expected_rows <= high, table
+
+
 class TestScaleAdjustedExpectations:
     def test_sf001_scales_variable_tables(self):
         v = BenchmarkDataValidator("tpch", scale_factor=0.01)
