@@ -181,6 +181,7 @@ def select_adapter_deployment(
 
 
 DEPLOYMENT_SELECTOR_OPTION = "_deployment_selector"
+LEGACY_CLICKHOUSE_SELECTOR_BASE = "clickhouse"
 
 
 @dataclass(frozen=True)
@@ -192,21 +193,11 @@ class ConfigPlatformSelection:
 
 def resolve_config_platform(platform_type: str) -> ConfigPlatformSelection:
     from benchbox.core.platform_manifest import get_platform_alias_modes
-    from benchbox.platforms.clickhouse.deployment_mode import (
-        CLICKHOUSE_LEGACY_SELECTOR_MAP,
-        clickhouse_legacy_selector_warning,
-    )
 
     key = platform_type.strip().lower()
     base, separator, _mode = key.partition(":")
-    if not separator:
+    if not separator or base == LEGACY_CLICKHOUSE_SELECTOR_BASE:
         return ConfigPlatformSelection(platform_type, None, None)
-    if key in CLICKHOUSE_LEGACY_SELECTOR_MAP:
-        import warnings
-
-        target = CLICKHOUSE_LEGACY_SELECTOR_MAP[key]
-        warnings.warn(clickhouse_legacy_selector_warning(platform_type, target), DeprecationWarning, stacklevel=3)
-        return ConfigPlatformSelection(target, None, None)
     selector = parse_platform_selector(key)
     deployment = selector.deployment if selector.platform in DEPLOYMENT_ALIAS_KEYS else None
     return ConfigPlatformSelection(selector.platform, deployment, get_platform_alias_modes("cli").get(base))

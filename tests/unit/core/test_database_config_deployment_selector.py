@@ -62,11 +62,10 @@ class TestSelectorInType:
         assert config.execution_mode == "sql"
 
     @pytest.mark.parametrize("mode", ["local", "server", "cloud"])
-    def test_legacy_clickhouse_selectors_warn_and_map_to_named_platforms(self, mode: str) -> None:
-        with pytest.warns(DeprecationWarning, match=f"clickhouse-{mode}"):
-            config = DatabaseConfig(type=f"clickhouse:{mode}", name="db")
+    def test_legacy_clickhouse_selectors_are_left_to_the_adapter_factory(self, mode: str) -> None:
+        config = DatabaseConfig(type=f"clickhouse:{mode}", name="db")
 
-        assert config.type == f"clickhouse-{mode}"
+        assert config.type == f"clickhouse:{mode}"
         assert DEPLOYMENT_SELECTOR_OPTION not in config.options
 
     def test_default_selector_on_platform_without_deployment_options(self) -> None:
