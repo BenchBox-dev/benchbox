@@ -100,11 +100,8 @@ class BenchmarkOrchestrator:
         from benchbox.cli.benchmark_hooks import BenchmarkHookRegistry
 
         registered_specs = BenchmarkHookRegistry.list_option_specs(config.name)
-        for key in ("seed", "force_regenerate"):
-            if key in registered_specs and key not in benchmark_options and key in opts:
-                val = opts[key]
-                if val is not None:
-                    benchmark_options[key] = val
+        if "seed" in registered_specs and "seed" not in benchmark_options and opts.get("seed") is not None:
+            benchmark_options["seed"] = opts["seed"]
 
         construction_output_dir = self._resolve_construction_output_dir(config, benchmark_class)
 
