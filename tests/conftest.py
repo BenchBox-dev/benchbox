@@ -374,7 +374,7 @@ def _snapshot_logger(logger: logging.Logger) -> tuple[int, list[logging.Handler]
 
 
 def _restore_logger(logger: logging.Logger, state: tuple[int, list[logging.Handler], bool, bool]) -> None:
-    logger.setLevel(state[0])
+    logger.level = state[0]
     logger.handlers[:] = state[1]
     logger.propagate = state[2]
     logger.disabled = state[3]
@@ -391,6 +391,7 @@ def _restore_logging_state():
             _restore_logger(logger, known[name][1])
         else:
             _restore_logger(logger, (logging.NOTSET, [], True, False))
+    logging.root.manager._clear_cache()
 
 
 @pytest.fixture(autouse=True)
