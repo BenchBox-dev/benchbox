@@ -984,6 +984,14 @@ make-timings-report:
 agent-write-preflight:
 	@sh scripts/agent_write_preflight.sh
 
+.PHONY: cloud-bootstrap
+cloud-bootstrap:
+	@sh scripts/cloud_bootstrap.sh
+
+.PHONY: cloud-verify
+cloud-verify:
+	@sh scripts/cloud_verify.sh "$(or $(LEVEL),tests)"
+
 .PHONY: pr-preflight
 pr-preflight:
 	@set -eu; \
