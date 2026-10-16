@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 from copy import deepcopy
@@ -1652,3 +1653,21 @@ def test_staged_head_blob_distinguishes_an_absent_path_from_a_git_failure(tmp_pa
     assert scope.head_blob(root, "src/a.py", True) == b"x = 1\n"
     with pytest.raises(subprocess.CalledProcessError):
         scope.head_blob(tmp_path / "not-a-repository", "src/a.py", True)
+
+
+def test_head_blob_rejects_a_directory_or_unreadable_path_as_a_policy_error(tmp_path: Path) -> None:
+    root, _ = _git_repo_with(tmp_path, {"src/a.py": "x = 1\n"})
+
+    with pytest.raises(scope.PolicyError, match="src cannot be read at the head"):
+        scope.head_blob(root, "src", False)
+    assert scope.head_blob(root, "src", True) is None
+
+    if os.geteuid() == 0:
+        pytest.skip("root can read files without read permission")
+    target = root / "src/a.py"
+    target.chmod(0)
+    try:
+        with pytest.raises(scope.PolicyError, match="src/a.py cannot be read at the head"):
+            scope.head_blob(root, "src/a.py", False)
+    finally:
+        target.chmod(0o644)

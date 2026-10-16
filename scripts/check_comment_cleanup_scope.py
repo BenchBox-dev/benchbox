@@ -338,13 +338,15 @@ LEDGER_CATEGORIES = ("directives", "obligations")
 
 def head_blob(root: Path, path: str, staged: bool) -> bytes | None:
     if staged:
-        if not git(root, "ls-files", "--stage", "--", path).strip():
+        if git(root, "ls-files", "-z", "--", path).decode().split("\0")[0] != path:
             return None
         return git(root, "show", f":{path}")
     try:
         return (root / path).read_bytes()
     except (FileNotFoundError, NotADirectoryError):
         return None
+    except OSError as error:
+        raise PolicyError(f"{path} cannot be read at the head: {error.strerror}") from error
 
 
 def head_token_count(root: Path, entry: dict[str, Any], staged: bool) -> int:
