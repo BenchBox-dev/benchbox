@@ -466,7 +466,7 @@ benchbox run --platform lakesail --benchmark tpch --scale 1.0
 benchbox run --platform lakesail-df --benchmark tpch --scale 1.0
 ```
 
-The extra installs the Spark Connect-capable PySpark client, `pysail` installs the Sail server, and `python -m pysail spark server` starts it locally (run it in a separate terminal and leave it running). The two runs are the SQL and DataFrame benchmarks. Endpoint and tuning overrides need the Python adapter (see the LakeSail Platform Guide); LakeSail registers no `--platform-option` keys.
+The extra installs the Spark Connect-capable PySpark client, `pysail` installs the Sail server, and `python -m pysail spark server` starts it locally (run it in a separate terminal and leave it running). The two runs are the SQL and DataFrame benchmarks. The CLI accepts the `--platform-option` keys `endpoint` and `adaptive_enabled`, and `--platform lakesail:distributed` selects distributed mode. Other tuning overrides need the Python adapter (see the LakeSail Platform Guide).
 
 ### Distributed Mode
 
@@ -481,12 +481,12 @@ adapter = LakeSailAdapter(
 )
 ```
 
-**Connection Parameters** (adapter constructor only - LakeSail has no CLI options):
+**Connection Parameters** (`endpoint` and `adaptive_enabled` are also `--platform-option` keys; the rest are adapter constructor only):
 
 | Parameter | Default | Notes |
 |-----------|---------|-------|
 | `endpoint` | `sc://localhost:50051` | Spark Connect URL |
-| `deployment_mode` | `local` | `local` or `distributed` |
+| `deployment_mode` | `local` | `local` or `distributed`. Deprecated alias of `--platform lakesail:local\|distributed` |
 | `sail_workers` | - | Has no effect; BenchBox logs a warning and does not record it |
 | `driver_memory` | `4g` | Driver memory allocation |
 | `shuffle_partitions` | `200` | Shuffle partition count |

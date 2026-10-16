@@ -346,7 +346,7 @@ benchbox run --platform lakesail-df --benchmark tpch --scale 1.0
 benchbox run --platform lakesail --benchmark tpch --scale 10.0
 ```
 
-In order, these commands install the Spark Connect-capable PySpark client, install the Sail server (`pysail`), start it in a separate terminal, run SQL mode, run DataFrame mode and run at a larger scale. Distributed mode is selected through the Python adapter, because LakeSail registers no `--platform-option` keys.
+In order, these commands install the Spark Connect-capable PySpark client, install the Sail server (`pysail`), start it in a separate terminal, run SQL mode, run DataFrame mode and run at a larger scale. Select distributed mode with `--platform lakesail:distributed`; `--platform-option endpoint=sc://host:50051` points the run at the Sail server.
 
 See [LakeSail Platform Guide](lakesail.md) for the full configuration reference.
 
