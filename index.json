@@ -19491,10 +19491,15 @@
       "title": "Close the empty-salt confirmation oracle on retained published identifiers"
     },
     "retire-comment-cleanup-scope-ledger": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-17T16:40:00Z",
+        "generation": "f956da7e7ee9475d86f6c18586b8bdc9",
+        "renewals": 0,
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Re-scope quality/comment-cleanup-scope.json as the external-ownership and pinned-notice source"
     },
     "retire-dead-checker-and-fix-curated-release-targets-20260811": {
