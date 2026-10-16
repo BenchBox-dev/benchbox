@@ -228,8 +228,13 @@ def _resolve_dsqgen_binary_and_templates() -> tuple[Path, Path]:
     return _resolve_tpcds_tool_and_template_paths()
 
 
-def _stage_dsqgen_streams_workdir(temp_path: Path, templates_dir: Path, tools_dir: Path, dsqgen_path: Path) -> dict:
+def _stage_dsqgen_streams_workdir(
+    temp_path: Path, templates_dir: Path, tools_dir: Path, dsqgen_path: Path, scale_factor: float
+) -> dict:
+    from benchbox.core.tpcds.c_tools import apply_subscale_template_overrides
+
     shutil.copytree(templates_dir, temp_path / "q")
+    apply_subscale_template_overrides(temp_path / "q", scale_factor)
     variants_src = templates_dir.parent / "query_variants"
     if variants_src.exists():
         shutil.copytree(variants_src, temp_path / "query_variants")
@@ -335,7 +340,7 @@ def generate_dsqgen_streams(
 
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
-        env = _stage_dsqgen_streams_workdir(temp_path, templates_dir, tools_dir, dsqgen_path)
+        env = _stage_dsqgen_streams_workdir(temp_path, templates_dir, tools_dir, dsqgen_path, scale_factor)
 
         cmd = [
             str(dsqgen_path),

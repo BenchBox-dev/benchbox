@@ -70,6 +70,25 @@ class TPCDSError(Exception):
     pass
 
 
+SUBSCALE_TEMPLATE_OVERRIDES: dict[str, tuple[str, str]] = {
+    "query93.tpl": (
+        "define REASON= dist(return_reasons, 1, 1);",
+        'define REASON= distmember(return_reasons, random(1, rowcount("reason"), uniform), 1);',
+    ),
+}
+
+
+def apply_subscale_template_overrides(query_dir: Path, scale_factor: float) -> None:
+    if scale_factor >= 1:
+        return
+    for template_name, (official, override) in SUBSCALE_TEMPLATE_OVERRIDES.items():
+        template = query_dir / template_name
+        text = template.read_text(encoding="utf-8")
+        if official not in text:
+            raise TPCDSError(f"{template_name} no longer contains the line its sub-SF1 override replaces: {official}")
+        template.write_text(text.replace(official, override), encoding="utf-8")
+
+
 class TPCDSCTools:
     def __init__(self) -> None:
         self.tools_path, self.templates_path = _resolve_tpcds_tool_and_template_paths()
@@ -204,7 +223,9 @@ class DSQGenBinary:
             streams=stream_id + 1 if stream_id else None,
         )
         try:
-            _, log_text = self._run_dsqgen_with_log(cmd, opt, base_query_id, variant, capture_log=True)
+            _, log_text = self._run_dsqgen_with_log(
+                cmd, opt, base_query_id, variant, scale_factor=scale_factor, capture_log=True
+            )
         except subprocess.TimeoutExpired:
             raise TPCDSError(f"dsqgen timed out for query {base_query_id}{variant or ''}") from None
         except FileNotFoundError:
@@ -263,11 +284,12 @@ class DSQGenBinary:
             cmd.extend([f"{_opt}STREAMS", str(streams)])
         return cmd, _opt
 
-    def _stage_dsqgen_workdir(self, temp_path: Path) -> dict[str, str]:
+    def _stage_dsqgen_workdir(self, temp_path: Path, scale_factor: float) -> dict[str, str]:
         import os
         import shutil as _shutil
 
         _shutil.copytree(self.templates_dir, temp_path / "q")
+        apply_subscale_template_overrides(temp_path / "q", scale_factor)
         var_src = self.templates_dir.parent / "query_variants"
         if var_src.exists():
             _shutil.copytree(var_src, temp_path / "query_variants")
@@ -286,9 +308,9 @@ class DSQGenBinary:
         return env
 
     def _run_dsqgen(
-        self, cmd: list[str], opt: str, query_id: int, variant: Optional[str]
+        self, cmd: list[str], opt: str, query_id: int, variant: Optional[str], scale_factor: float
     ) -> subprocess.CompletedProcess:
-        return self._run_dsqgen_with_log(cmd, opt, query_id, variant, capture_log=False)[0]
+        return self._run_dsqgen_with_log(cmd, opt, query_id, variant, scale_factor=scale_factor, capture_log=False)[0]
 
     def _run_dsqgen_with_log(
         self,
@@ -297,6 +319,7 @@ class DSQGenBinary:
         query_id: int,
         variant: Optional[str],
         *,
+        scale_factor: float,
         capture_log: bool,
         edit_workdir: Optional[Callable[[Path], None]] = None,
     ) -> tuple[subprocess.CompletedProcess, Optional[str]]:
@@ -305,7 +328,7 @@ class DSQGenBinary:
         log_text: Optional[str] = None
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
-            env = self._stage_dsqgen_workdir(temp_path)
+            env = self._stage_dsqgen_workdir(temp_path, scale_factor)
             if edit_workdir is not None:
                 edit_workdir(temp_path)
 
@@ -400,7 +423,7 @@ class DSQGenBinary:
         cmd, opt = self._build_dsqgen_cmd(query_id, variant, seed, scale_factor, dialect, is_multi_part)
 
         try:
-            result = self._run_dsqgen(cmd, opt, query_id, variant)
+            result = self._run_dsqgen(cmd, opt, query_id, variant, scale_factor)
             sql_query = self._extract_sql_from_output(result.stdout, query_id, variant)
             if is_multi_part:
                 return self._select_multi_part(sql_query, query_id, variant)
@@ -812,7 +835,13 @@ class DSQGenBinary:
 
         try:
             result, _ = self._run_dsqgen_with_log(
-                cmd, opt, base_query_id, variant, capture_log=False, edit_workdir=substitute
+                cmd,
+                opt,
+                base_query_id,
+                variant,
+                scale_factor=scale_factor,
+                capture_log=False,
+                edit_workdir=substitute,
             )
         except subprocess.TimeoutExpired:
             raise TPCDSError(f"dsqgen timed out for query {q}") from None
