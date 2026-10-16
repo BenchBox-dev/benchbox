@@ -18,7 +18,11 @@ Phase 3 hosted service.
 
 The hard requirement today is still the validator gate in `results-data/validate_corpus.py`:
 every committed cohort must have at least 3 distinct comparison identities. Ordinary
-cohorts count platform names, preserving the historical three-platform floor. Bundles in
+cohorts count platform names, preserving the historical three-platform floor. A bundle
+that records `platform.variant` counts under that variant string instead of the bare
+platform name, so two execution variants of one platform (for example
+`polars-df+streaming` alongside `polars-df`) are distinct identities while repeated
+runs of one variant do not pad the floor. Bundles in
 the explicitly segregated `duckdb-version-matrix/` corpus count platform plus version;
 repeated runs of one platform/version do not pad that matrix.
 
