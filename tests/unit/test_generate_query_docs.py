@@ -131,3 +131,17 @@ class TestTreeIO:
 
         gqd.write_tree(gqd.render_all({"clickbench"}), target)
         assert not (target / "datavault").exists()
+
+
+class TestAnswerSetNote:
+    def test_returns_difference_statements_get_the_note(self):
+        for query_id in ("85", "93"):
+            note = "\n".join(gqd._answer_set_note("tpcds", query_id))
+            assert "differ from the official TPC-DS answer set" in note
+            assert "tpcds-dataframe-parity.md#q85-and-q93-reason-table-size" in note
+
+    def test_other_statements_and_benchmarks_get_no_note(self):
+        assert gqd._answer_set_note("tpcds", "9") == []
+        assert gqd._answer_set_note("tpcds", "17") == []
+        assert gqd._answer_set_note("tpcds_obt", "93") == []
+        assert gqd._answer_set_note("tpch", "1") == []
