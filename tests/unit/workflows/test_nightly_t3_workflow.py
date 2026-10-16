@@ -30,6 +30,8 @@ DOMAIN_JOBS = {
     "browser": "t3:browser",
     "extension": "t3:extension",
     "install": "t3:install",
+    "throughput": "t3:throughput",
+    "throughput-cedardb": "t3:throughput-cedardb",
     "drift": "t3:drift",
     "quarantine": "t3:quarantine",
     "linkcheck": "t3:linkcheck",
@@ -609,9 +611,10 @@ def test_write_permissions_are_scoped_to_reporting_and_image_publication() -> No
     issue_writers = {name for name, job in jobs.items() if (job.get("permissions") or {}).get("issues") == "write"}
     package_writers = {name for name, job in jobs.items() if (job.get("permissions") or {}).get("packages") == "write"}
     assert issue_writers == {"report"}
-    assert package_writers == {"mirror-images"}
+    assert package_writers == {"mirror-images", "mirror-cedardb"}
     assert jobs["report"]["permissions"] == {"contents": "read", "issues": "write"}
     assert jobs["mirror-images"]["permissions"] == {"contents": "read", "packages": "write"}
+    assert jobs["mirror-cedardb"]["permissions"] == {"contents": "read", "packages": "write"}
     assert jobs["docker"]["permissions"] == {"contents": "read", "packages": "read"}
     for name in DOMAIN_JOBS:
         assert "write" not in (jobs[name].get("permissions") or {}).values()
@@ -763,3 +766,92 @@ def test_ruleset_drift_domain_reports_through_the_token_and_uploads_evidence() -
     assert "continue-on-error" not in job
     uploads = [step for step in _steps(job) if "upload-artifact" in str(step.get("uses", ""))]
     assert [step["with"]["name"] for step in uploads] == ["t3-ruleset-drift"]
+
+
+def test_throughput_domain_runs_the_duckdb_cell_and_reads_history_from_both_nightlies() -> None:
+    jobs = _load()["jobs"]
+    text = _run_text(jobs["throughput"])
+
+    assert "tests/uat/configs/uat-throughput-duckdb-nightly.yaml" in text
+    assert "--platform duckdb --benchmark tpch --scale 1 --streams 3" in text
+    assert "--evaluate-floor" in text
+    assert "for workflow in nightly-v2.yml nightly.yml; do" in text
+    assert '--workflow "$workflow" --branch develop --event schedule' in text
+    assert "throughput-baseline-duckdb-tpch-sf1-*" in text
+    uploads = {
+        step["with"]["name"].split("-${{", 1)[0]
+        for step in _steps(jobs["throughput"])
+        if str(step.get("uses", "")).startswith("actions/upload-artifact@")
+    }
+    assert "throughput-baseline-duckdb-tpch-sf1" in uploads
+
+
+def test_throughput_cedardb_domain_runs_the_cell_from_the_mirrored_image() -> None:
+    jobs = _load()["jobs"]
+    job = jobs["throughput-cedardb"]
+    text = _run_text(job)
+
+    assert job["needs"] == "mirror-cedardb"
+    assert "if" not in job
+    assert jobs["mirror-images"]["with"]["images"] == '["clickhouse", "trino"]'
+    assert jobs["mirror-cedardb"]["with"]["images"] == '["cedardb"]'
+    assert "mirror-cedardb" in jobs["report"]["needs"]
+    assert job["permissions"] == {"contents": "read", "packages": "read"}
+    assert job["env"]["CEDARDB_IMAGE"].startswith("ghcr.io/benchbox-dev/cedardb@sha256:")
+    assert "tests/uat/configs/uat-throughput-cedardb-nightly.yaml" in text
+    assert "--platform cedardb --benchmark tpch --scale 1 --streams 3" in text
+
+
+def test_report_attributes_cedardb_mirror_failure_to_the_cedardb_domain(tmp_path: Path) -> None:
+    if shutil.which("jq") is None:
+        pytest.skip("report execution requires jq")
+    gh = tmp_path / "gh"
+    gh.write_text(
+        f"#!{sys.executable}\n"
+        "import json, os, sys\n"
+        "from pathlib import Path\n"
+        "args = sys.argv[1:]\n"
+        "with Path(os.environ['GH_CALLS']).open('a') as output:\n"
+        "    output.write(json.dumps(args) + '\\n')\n",
+        encoding="utf-8",
+    )
+    gh.chmod(0o755)
+    needs = {job: {"result": "skipped"} for job in DOMAIN_JOBS}
+    needs["mirror-images"] = {"result": "success"}
+    needs["mirror-cedardb"] = {"result": "failure"}
+    call_path = tmp_path / "gh-calls.jsonl"
+    result = _run_workflow_script(
+        _load()["jobs"]["report"]["steps"][0]["run"],
+        tmp_path,
+        {
+            "NEEDS_JSON": json.dumps(needs),
+            "GH_CALLS": str(call_path),
+            "GITHUB_REPOSITORY": "example/repo",
+            "GITHUB_RUN_ID": "123",
+            "GITHUB_SHA": "abc",
+            "RUN_URL": "https://example.test/run/123",
+            "DOC_URL": "https://example.test/docs",
+        },
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    calls = [json.loads(line) for line in call_path.read_text(encoding="utf-8").splitlines()]
+    issue_creates = [args for args in calls if args[:2] == ["issue", "create"]]
+    assert len(issue_creates) == 1
+    assert "t3:throughput-cedardb" in issue_creates[0]
+    body = issue_creates[0][issue_creates[0].index("--body") + 1]
+    assert "CedarDB image mirror infrastructure failed" in body
+    assert "throughput cell result: skipped" in body
+    assert not any("t3:docker" in args for args in issue_creates)
+
+
+def test_throughput_signal_publishes_the_commit_status_the_retiring_workflow_published() -> None:
+    job = _load()["jobs"]["throughput-signal"]
+    text = _run_text(job)
+
+    assert set(job["needs"]) == {"throughput", "throughput-cedardb"}
+    assert str(job["if"]).replace(" ", "") == "${{always()}}"
+    assert job["permissions"] == {"statuses": "write"}
+    assert 'context="nightly/throughput-uat"' in text
+    assert "success:success) state=success" in text
+    assert "cancelled:*|*:cancelled) state=error" in text
+    assert "throughput-signal" not in _load()["jobs"]["report"]["needs"]
