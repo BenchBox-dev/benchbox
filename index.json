@@ -21228,10 +21228,10 @@
     },
     "spark-baseline-no-default-overrides": {
       "claim": {
-        "expires_at": "2026-10-16T11:35:59Z",
-        "generation": "cf0f8ae04dce4917ab3c7aed44d6a86f",
+        "expires_at": "2026-10-17T13:48:23Z",
+        "generation": "4b6c519913184ad585d9e07d736395ba",
         "renewals": 0,
-        "worker": "mcp:codex-mcp-client:joe@joe-mac-mini.local:bee9f454654b0d0ee4fa97f5"
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
       },
       "needs": [
         "spark-session-config-runtime"
