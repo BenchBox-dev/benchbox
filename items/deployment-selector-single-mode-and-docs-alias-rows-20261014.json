@@ -1,11 +1,10 @@
 {
   "acceptance": [
     "A single-mode platform accepts `name:<its only mode>` and records it, and rejects any other mode. CLI and MCP tests cover this.",
-    "The InfluxDB and LakeSail docs match the alias table.",
     "A parity test asserts that every option or alias named in `docs/platforms/*.md` option tables exists in the registry or the alias table."
   ],
-  "context": "Follow-ups from #2974, #2980 and #2995. The alias table is `DEPRECATED_OPTION_ALIASES`, and the deployment alias keys are derived from it (ADR D12).",
-  "description": "Two related gaps:\n- Platforms that declare a single deployment mode do not accept the `name:mode` selector, even with their own mode. Scripts that pass the selector for every platform fail.\n- `docs/platforms/influxdb.md:86` and `docs/platforms/lakesail.md` call `deployment_mode` a deprecated alias, but `DEPRECATED_OPTION_ALIASES` has no such entry for those platforms. Either the docs are wrong, or an alias is missing.\n\nThere is also no general parity test between registered option specs and the platform docs.",
+  "context": "Follow-ups from #2974, #2980 and #2995. The alias table is `DEPRECATED_OPTION_ALIASES`, and the deployment alias keys are derived from it (ADR D12). Alias half closed by #3020 on 2026-10-16; MCP is fail-closed and does not expose InfluxDB/LakeSail deployment_mode.",
+  "description": "Platforms that declare a single deployment mode do not accept the `name:mode` selector, even with their own mode. Scripts that pass the selector for every platform fail.\n\nThe InfluxDB and LakeSail alias-table gap (`deployment_mode` missing from `DEPRECATED_OPTION_ALIASES`) and the matching docs rows were fixed in PR #3020 (merge 926199a695cf964552f3087ebe0e2bcafc9044a2), with a registry-walk test. Remaining: the single-mode selector, and a general parity test between registered option specs and the platform docs.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/2974",
     "https://github.com/BenchBox-dev/benchbox/pull/2995"
@@ -18,6 +17,14 @@
       "op": "create",
       "op_id": "4d960a880eb94ee1ab86b35ba09af0a7",
       "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:6b9b7c4e8f8d58a0a7174a0a",
+      "at": "2026-10-16T04:49:22Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "02a410138c904d3ead21d385e61a41dc",
+      "session_id": "5c80d5d463444a2ba9410e1fdfb1d517"
     }
   ]
 }
