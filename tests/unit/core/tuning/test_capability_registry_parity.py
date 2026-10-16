@@ -109,6 +109,20 @@ class TestRequestedButNotRenderedIsAnError:
             errors, _warnings = config.validate_for_platform_detailed(platform)
             assert any("requested unique_constraints is not applied at execution" in e for e in errors), platform
 
+    def test_omitted_unique_and_check_keys_are_not_requested(self) -> None:
+        config = UnifiedTuningConfiguration.from_dict({"primary_keys": {"enabled": True}})
+        assert config.unique_constraints.enabled is False
+        assert config.check_constraints.enabled is False
+        errors, _warnings = config.validate_for_platform_detailed("duckdb")
+        assert errors == []
+
+    def test_explicit_unique_request_in_file_still_errors(self) -> None:
+        config = UnifiedTuningConfiguration.from_dict(
+            {"primary_keys": {"enabled": True}, "unique_constraints": {"enabled": True}}
+        )
+        errors, _warnings = config.validate_for_platform_detailed("duckdb")
+        assert any("requested unique_constraints is not applied at execution" in e for e in errors)
+
     def test_vacuous_unique_check_types_error(self) -> None:
         for platform in (
             "duckdb",

@@ -145,6 +145,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A tuning file that sets only some constraint types (for example
+  `primary_keys: {enabled: true}`) no longer fails validation with
+  "requested unique_constraints is not applied at execution". Leaving out
+  `unique_constraints` or `check_constraints` now means the file does not
+  request them; before, the omitted keys defaulted to enabled.
+
 - Load-only runs (`--phases generate,load`) on SQL platforms exit 0 again
   after a successful load. Before, every such run loaded the data and then
   failed with "'NoneType' object has no attribute 'overall_status'" because
@@ -735,9 +741,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   or use a platform that applies it. Platforms that apply tuning in part are
   checked type by type. The new errors are:
   - `unique_constraints` and `check_constraints` fail on every platform with
-    registry coverage, because no benchmark schema carries those clauses. The
-    packaged DuckDB and Snowflake templates and the matching
-    `examples/tunings` files now disable both.
+    registry coverage when a tuning file enables them, because no benchmark
+    schema carries those clauses. A tuning file that leaves either key out
+    does not request it. The packaged DuckDB and Snowflake templates and the
+    matching `examples/tunings` files now disable both. Tuning files that
+    leave out these keys get a different configuration hash, and so a new
+    generated database name, once.
   - Layout tuning fails on BigQuery (`partitioning`, `clustering`), Redshift
     (`partitioning`, `distribution`), Trino and
     Azure Synapse (all four layout types). These adapters build the clauses

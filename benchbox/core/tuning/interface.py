@@ -1276,10 +1276,12 @@ class UnifiedTuningConfiguration:
             instance.primary_keys = PrimaryKeyConfiguration.from_dict(data["primary_keys"])
         if "foreign_keys" in data:
             instance.foreign_keys = ForeignKeyConfiguration.from_dict(data["foreign_keys"])
-        if "unique_constraints" in data:
-            instance.unique_constraints = UniqueConstraintConfiguration.from_dict(data["unique_constraints"])
-        if "check_constraints" in data:
-            instance.check_constraints = CheckConstraintConfiguration.from_dict(data["check_constraints"])
+        instance.unique_constraints = UniqueConstraintConfiguration.from_dict(
+            data.get("unique_constraints", {"enabled": False})
+        )
+        instance.check_constraints = CheckConstraintConfiguration.from_dict(
+            data.get("check_constraints", {"enabled": False})
+        )
 
         if "platform_optimizations" in data:
             instance.platform_optimizations = PlatformOptimizationConfiguration.from_dict(

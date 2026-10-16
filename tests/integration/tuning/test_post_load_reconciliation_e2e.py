@@ -42,13 +42,11 @@ def test_duckdb_sort_only_custom_config_reaches_applied_verified_end_to_end(tpch
     assert result.applied_tuning_ledger["receipt"]["corroborated"] is True
 
 
-def test_duckdb_inline_keys_are_satisfied_and_undeclared_unique_constraints_not_dropped(tpch_data, tmp_path):
+def test_duckdb_inline_keys_are_satisfied_end_to_end(tpch_data, tmp_path):
     config = UnifiedTuningConfiguration.from_dict(
         {
             "primary_keys": {"enabled": True},
             "foreign_keys": {"enabled": True},
-            "unique_constraints": {"enabled": True},
-            "check_constraints": {"enabled": False},
         }
     )
     result = _run(tpch_data, config, tmp_path / "constraints.duckdb")
