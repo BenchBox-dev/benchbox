@@ -88,12 +88,14 @@ def _stage_bundle(
     payload: dict[str, Any],
     companions: tuple[str, ...] = (),
     salt: str | None = SEED_TEST_SALT,
+    companion_payloads: dict[str, Any] | None = None,
 ) -> tuple[subprocess.CompletedProcess[str], Path]:
     tmp_path.mkdir(parents=True, exist_ok=True)
     result_file = tmp_path / "bundle.json"
     result_file.write_text(json.dumps(payload), encoding="utf-8")
     for suffix in companions:
-        Path(f"{result_file.with_suffix('')}{suffix}").write_text("{}", encoding="utf-8")
+        content = (companion_payloads or {}).get(suffix, {})
+        Path(f"{result_file.with_suffix('')}{suffix}").write_text(json.dumps(content), encoding="utf-8")
     destination = tmp_path / "staged"
     output_file = tmp_path / "github-output"
     environment = {key: value for key, value in os.environ.items() if key != "BENCHBOX_MACHINE_ID_SALT"} | {
@@ -188,9 +190,48 @@ def test_seed_staging_fails_closed_without_the_salt(tmp_path: Path) -> None:
 
     assert process.returncode != 0
     assert "BENCHBOX_MACHINE_ID_SALT" in process.stderr
-    output_file = tmp_path / "github-output"
-    assert not output_file.exists() or "eligible=true" not in output_file.read_text(encoding="utf-8")
+    assert (tmp_path / "github-output").read_text(encoding="utf-8") == "eligible=false\n"
+    assert "\tstaging_failed: " in (tmp_path / "seed-status.txt").read_text(encoding="utf-8")
     assert not destination.exists()
+
+
+def test_seed_staging_anonymizes_plans_companions(tmp_path: Path) -> None:
+    plans = {"queries": {"1": {"plan": {"source": "/home/runner/work/data/lineitem.parquet"}}}}
+    process, destination = _stage_bundle(
+        tmp_path, _clean_payload(), (".plans.json",), companion_payloads={".plans.json": plans}
+    )
+
+    assert process.returncode == 0, process.stderr
+    staged = (destination / "bundle.plans.json").read_text(encoding="utf-8")
+    assert "/home/runner" not in staged
+    assert "lineitem.parquet" not in staged
+
+
+def test_seed_staging_refuses_plans_with_raw_explain_output(tmp_path: Path) -> None:
+    plans = {"queries": {"1": {"plan": {"raw_explain_output": "EXPLAIN text"}}}}
+    process, destination = _stage_bundle(
+        tmp_path, _clean_payload(), (".plans.json",), companion_payloads={".plans.json": plans}
+    )
+
+    assert process.returncode != 0
+    assert "raw_explain_output" in process.stderr
+    assert "eligible=true" not in (tmp_path / "github-output").read_text(encoding="utf-8")
+    assert "\tstaging_failed: " in (tmp_path / "seed-status.txt").read_text(encoding="utf-8")
+    assert not destination.exists()
+
+
+def test_seed_workflow_reports_every_failed_cell() -> None:
+    job = _workflow()["jobs"]["generate-seed-corpus"]
+    steps = {step.get("name"): step for step in job["steps"]}
+    record = steps["Record a failed cell"]
+    upload = steps["Upload cell status"]
+
+    assert record["if"] == "failure() && env.SELECTED == 'true'"
+    assert "job_failed" in record["run"]
+    assert '[ ! -f "$SEED_STATUS_FILE" ]' in record["run"]
+    assert upload["if"] == "${{ !cancelled() && env.SELECTED == 'true' }}"
+    assert "SEED_STATUS_FILE" in job["env"]
+    assert "SEED_CELL" in job["env"]
 
 
 def test_seed_staging_runs_in_the_project_environment_with_the_salt_secret() -> None:

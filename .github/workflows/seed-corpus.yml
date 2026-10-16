@@ -102,6 +102,8 @@ jobs:
     env:
       SELECTED: ${{ github.event_name == 'schedule' || github.event.inputs.benchmark == '' || github.event.inputs.benchmark == matrix.benchmark }}
       BENCHBOX_OUTPUT_DIR: ${{ github.workspace }}/benchmark_runs
+      SEED_CELL: ${{ matrix.benchmark }} / ${{ matrix.platform }} / sf${{ matrix.scale_factor }}
+      SEED_STATUS_FILE: seed-status/${{ matrix.benchmark }}--${{ matrix.platform }}--sf${{ matrix.scale_factor }}.txt
 
     steps:
       - name: Checkout code
@@ -158,16 +160,23 @@ jobs:
         shell: bash
         env:
           RESULT_FILE: ${{ steps.locate.outputs.result_file }}
-          SEED_CELL: ${{ matrix.benchmark }} / ${{ matrix.platform }} / sf${{ matrix.scale_factor }}
-          SEED_STATUS_FILE: seed-status/${{ matrix.benchmark }}--${{ matrix.platform }}--sf${{ matrix.scale_factor }}.txt
           BENCHBOX_MACHINE_ID_SALT: ${{ secrets.BENCHBOX_MACHINE_ID_SALT }}
         run: |
           DEST="results-data/bundles/${{ matrix.benchmark }}/${{ matrix.platform }}/sf${{ matrix.scale_factor }}"
           uv run -- python scripts/stage_seed_corpus_bundle.py "$RESULT_FILE" "$DEST"
         id: stage
 
+      - name: Record a failed cell
+        if: failure() && env.SELECTED == 'true'
+        shell: bash
+        run: |
+          if [ ! -f "$SEED_STATUS_FILE" ]; then
+            mkdir -p "$(dirname "$SEED_STATUS_FILE")"
+            printf '%s\tjob_failed\n' "$SEED_CELL" > "$SEED_STATUS_FILE"
+          fi
+
       - name: Upload cell status
-        if: env.SELECTED == 'true' && steps.stage.outcome == 'success'
+        if: ${{ !cancelled() && env.SELECTED == 'true' }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: seed-status--${{ matrix.benchmark }}--${{ matrix.platform }}--sf${{ matrix.scale_factor }}
