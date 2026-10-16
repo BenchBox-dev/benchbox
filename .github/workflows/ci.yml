@@ -839,7 +839,7 @@ jobs:
 
       - name: Run fast tests
         env:
-          BENCHBOX_MAX_XDIST_WORKERS: "2"
+          BENCHBOX_MAX_XDIST_WORKERS: "4"
           BENCHBOX_XDIST_TRACE_DIR: xdist-failure-trace
         run: |
           uv run -- python -m pytest tests -m "fast and not (slow or stress or resource_heavy or live_integration)" -n auto --tb=short --timeout=120 --durations=25 -p pytest_cov --cov=benchbox --cov-report=xml --cov-report=term-missing --cov-fail-under=70
