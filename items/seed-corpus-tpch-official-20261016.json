@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "TPC-H seed cells run with --official and a fixed seed; spec updated to match",
+    "Evidence (local dry run or classification test) of which TPC-H cells become rankable",
+    "Matrix decision for sub-SF1 TPC-H cells recorded in the spec",
+    "Workflow tests/spec checks pass"
+  ],
+  "description": "Owner decision 2026-10-16: the seed corpus should include TPC-H. Since #3006 the seed workflow stages only rankable bundles, and the TPC-H cells run without `--official`, so all 8 green TPC-H cells in run 38935736737 were skipped as `unofficial_compliance`. Change `.github/workflows/seed-corpus.yml` and `results-data/SEED_CORPUS_SPEC.md` so TPC-H cells run with `--official` (and a fixed seed, as TPC-DS does). Official TPC-H below SF1 is classed `unofficial_subscale`, so expect only SF1 cells to be admitted; decide with evidence whether sub-SF1 TPC-H cells stay in the matrix.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-16T17:46:45Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "69453499b67a44b08fe0ec876f611f16",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}

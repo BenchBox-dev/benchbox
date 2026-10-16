@@ -20122,6 +20122,13 @@
       "status": "done",
       "title": "Close Seed Corpus proof against the latest successful post-fix dispatch"
     },
+    "seed-corpus-tpch-official-20261016": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Run Seed Corpus TPC-H cells as official runs so they are admitted"
+    },
     "seed-corpus-workflow-fails-on-every-push": {
       "claim": null,
       "needs": [],
