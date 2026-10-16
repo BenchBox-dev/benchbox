@@ -2554,6 +2554,13 @@
       "status": "dropped",
       "title": "Baseline CI-failure metrics in dev-loop-metrics before landing the reduction workstreams"
     },
+    "ci-fast-test-slowdown-20261016": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Explain and reduce the CI fast-test slowdown"
+    },
     "ci-fast-test-ubuntu-timeout-20261014": {
       "claim": null,
       "needs": [],

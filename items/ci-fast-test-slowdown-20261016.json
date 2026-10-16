@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Breakdown of where the added time goes, with evidence from CI durations and local profiling",
+    "Fixes that cut the step's wall time substantially without dropping coverage",
+    "Slow tests moved to the right marker where misclassified",
+    "Before/after CI timings recorded in the PR"
+  ],
+  "description": "The CI step \"Run fast tests\" grew from about 16 to about 45 minutes while the test count grew only about 1.4%, so per-test overhead rose sharply. The job timeout was raised to 60 minutes and `--durations=25` was added as a stopgap. Find where the time goes (fixtures, imports, xdist distribution, lock contention, slow tests misclassified as fast) and bring the step back down.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-16T16:43:39Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "98ab264182d24566beda517ce0a61064",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}
