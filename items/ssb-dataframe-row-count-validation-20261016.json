@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "SSB DataFrame runs (polars-df at least, other DataFrame engines where the same path applies) validate against expected row counts per query and scale factor, reusing the SQL path's SSB expectations where they exist",
+    "A correct polars-df SSB run at SF0.01 and SF0.1 reports validation_status passed; a wrong row count reports failed",
+    "Tests that fail without the fix",
+    "Report whether the TPC-H seeded/SF1-only DataFrame skip (lines 68-72) should change, without changing it unless trivially correct"
+  ],
+  "description": "`validate_dataframe_query_results` (benchbox/core/dataframe/query_validation.py:63-66) returns NOT_RUN for every benchmark except TPC-H and TPC-DS, because no DataFrame row-count oracle is registered for SSB. results-data/validate_corpus.py treats not_run as not clean, so ssb/polars-df seed cells are always skipped as `validation_not_clean`, leaving SSB cohorts with at most two rankable engines (below the 3-identity depth rule). Owner decision 2026-10-16: add an SSB DataFrame check. Related limit: lines 68-72 skip TPC-H DataFrame validation unless SF1 with no seed.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-16T20:43:41Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "6813f319689e4085895a3603c8d275d4",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}
