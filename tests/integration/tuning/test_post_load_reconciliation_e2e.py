@@ -6,7 +6,7 @@ import pytest
 
 from benchbox.cli.config import ConfigManager
 from benchbox.core.tpch.benchmark import TPCHBenchmark
-from benchbox.core.tuning.applied_ledger import APPLIED_UNVERIFIED, APPLIED_VERIFIED
+from benchbox.core.tuning.applied_ledger import APPLIED_VERIFIED
 from benchbox.core.tuning.interface import UnifiedTuningConfiguration
 from benchbox.platforms.duckdb import DuckDBAdapter
 
@@ -54,6 +54,7 @@ def test_duckdb_inline_keys_are_satisfied_and_undeclared_unique_constraints_not_
     result = _run(tpch_data, config, tmp_path / "constraints.duckdb")
 
     ledger = result.applied_tuning_ledger
-    assert result.tuning_validation_status == APPLIED_UNVERIFIED
+    assert result.tuning_validation_status == APPLIED_VERIFIED
+    assert ledger["receipt"]["corroborated"] is True
     assert {item["intent"] for item in ledger["satisfied"]} == {"primary_keys", "foreign_keys"}
     assert ledger["dropped"] == []
