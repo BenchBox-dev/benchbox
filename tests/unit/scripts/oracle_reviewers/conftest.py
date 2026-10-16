@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -14,6 +15,16 @@ POLICY_PATH = REPO_ROOT / ".github" / "oracle-reviewers.yml"
 @pytest.fixture(scope="session")
 def policy() -> Policy:
     return load_policy(POLICY_PATH)
+
+
+@pytest.fixture(scope="session")
+def codex_enabled_policy() -> Policy:
+    policy = load_policy(POLICY_PATH)
+    reviewers = {
+        name: replace(reviewer, enabled=True, disabled_reason="") if reviewer.family == "codex" else reviewer
+        for name, reviewer in policy.reviewers.items()
+    }
+    return replace(policy, reviewers=reviewers)
 
 
 WINDOWS_SKIP = pytest.mark.skip(

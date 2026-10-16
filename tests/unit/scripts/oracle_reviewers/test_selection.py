@@ -11,6 +11,12 @@ from _project.scripts.oracle_reviewers.selection import Attempt, SelectionInput,
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
+
+@pytest.fixture
+def policy(codex_enabled_policy: Policy) -> Policy:
+    return codex_enabled_policy
+
+
 NOW = datetime(2026, 10, 5, 12, 0, tzinfo=UTC)
 
 

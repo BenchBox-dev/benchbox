@@ -55,7 +55,8 @@ reviewers:
     timeout_minutes: 25
     turn_cap: null
     allowed_tiers: [low-medium, medium-high, very-high]
-    enabled: true
+    enabled: false
+    disabled_reason: "the OpenAI API project behind OPENAI_API_KEY has no quota"
   luna:
     harness: codex
     family: codex
@@ -67,7 +68,8 @@ reviewers:
     timeout_minutes: 25
     turn_cap: null
     allowed_tiers: [low-medium, medium-high]
-    enabled: true
+    enabled: false
+    disabled_reason: "the OpenAI API project behind OPENAI_API_KEY has no quota"
   muse:
     harness: muse
     family: muse

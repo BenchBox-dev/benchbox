@@ -284,8 +284,13 @@ These checks must pass before the cut-over that makes the context required.
   branch cannot.
 - **P3:** each reviewer authenticates in CI. A reviewer that cannot is set to
   `enabled: false` with a `disabled_reason`. agy is enabled with its own
-  job in every slot, and the workflow has five slots so the longest enabled
-  chain fits.
+  job in every slot, and the workflow has five slots so the longest chain
+  fits when every reviewer is enabled. The codex reviewers, sol and luna, are
+  disabled because the OpenAI API project behind `OPENAI_API_KEY` has no
+  quota; their jobs and tier places stay, so setting `enabled: true` on each
+  re-enables them. While they are off, very high is reviewed by opus alone
+  (diversity-exempt), and the lower tiers by sonnet, muse and agy, skipping the
+  author's family.
 - **P4:** capture each reviewer's quota, authentication and outage output from
   real runs. The attempt artifact's `diagnostic` field holds one redacted line
   of the output, at most 300 characters, with credentials and long tokens
