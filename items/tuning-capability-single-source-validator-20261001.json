@@ -191,6 +191,15 @@
       "op": "update",
       "op_id": "2e69f9eccab84c6496387dc4fcb5b37a",
       "session_id": "5c80d5d463444a2ba9410e1fdfb1d517"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:6b9b7c4e8f8d58a0a7174a0a",
+      "at": "2026-10-16T08:57:27Z",
+      "client": "claude-code",
+      "generation": "6c703d3d7b9448d19679e49db8ecc24d",
+      "op": "finish",
+      "op_id": "445dd5c1997d40aeb918c622f477c8cf",
+      "session_id": "5c80d5d463444a2ba9410e1fdfb1d517"
     }
   ]
 }
