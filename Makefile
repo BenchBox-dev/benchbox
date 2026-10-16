@@ -686,6 +686,8 @@ ci-lint:
 	[ $$? -eq 0 ] || failed="$$failed release-curation"; \
 	sh scripts/check_untracked_skill_mirrors.sh; \
 	[ $$? -eq 0 ] || failed="$$failed skill-mirror-drift"; \
+	sh scripts/check_untracked_handoffs.sh; \
+	[ $$? -eq 0 ] || failed="$$failed handoff-tracking"; \
 	$(MAKE) duplicate-check-delta; \
 	[ $$? -eq 0 ] || failed="$$failed duplicate-delta"; \
 	$(MAKE) complexity-check; \

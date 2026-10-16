@@ -103,6 +103,15 @@ jobs:
               ;;
           esac
 
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Enforce untracked handoff boundary
+        run: sh scripts/check_untracked_handoffs.sh
+
   ci-paths:
     name: ci-paths
     runs-on: ubuntu-latest

@@ -417,6 +417,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `duplicate-code-warn` | tooling | Hygiene |
 | `agent-instructions-check` | tooling | Agent instruction lockstep |
 | `agent-write-preflight` | tooling | Worktree safety |
+| `untracked-handoffs` | tooling | Handoffs stay out of the repository |
 | `agent-git-identity` | tooling | Identity pinning |
 | `agent-attribution-trailers` | tooling | Attribution hygiene |
 | `ruff-check`, `ruff-format` | tooling | Lint and format |

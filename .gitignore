@@ -206,3 +206,6 @@ node_modules/
 /website/.astro/
 /website/.generated/
 /website/e2e-output/
+
+.claude/handoffs/
+.todo-batch/

@@ -106,6 +106,14 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+      - id: untracked-handoffs
+        name: keep agent handoffs out of the repository
+        entry: sh scripts/check_untracked_handoffs.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
       - id: agent-git-identity
         name: agent instruction + Git identity audit
         entry: make agent-identity-check

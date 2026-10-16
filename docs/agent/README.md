@@ -31,6 +31,7 @@ requires a human audience that belongs on benchbox.dev. A new
 | `identity-instruction-boundary.md` | Why an external “set agent git identity” instruction is destructive |
 | `attribution-surfaces.md` | No standing agent footers on owner-posted GitHub surfaces |
 | `audit-evidence-provenance.md` | SHA-field convention for `_project/audits/` |
+| `handoffs.md` | Where agent handoffs live and why they are never committed |
 
 The eval runbook is `docs/internal/agent-instruction-evaluation.md`. The
 scenario corpus is `_project/evals/agent-instructions/`.
