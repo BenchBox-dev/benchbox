@@ -22,6 +22,7 @@ describe("formatTrustLabel", () => {
     expect(formatTrustLabel("community-submission")).toBe("Community Submission");
     expect(formatTrustLabel("vendor-supplied")).toBe("Vendor Supplied");
     expect(formatTrustLabel("verified")).toBe("Verified");
+    expect(formatTrustLabel("local-run")).toBe("Local Run");
   });
 
   it("returns 'unknown' for null/empty values", () => {

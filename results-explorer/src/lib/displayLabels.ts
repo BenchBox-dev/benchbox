@@ -6,7 +6,7 @@ const TRUST_LABEL_LABELS: Record<string, string> = {
   "community-submission": "Community Submission",
   "vendor-supplied": "Vendor Supplied",
   verified: "Verified",
-  "local-run": "Local run",
+  "local-run": "Local Run",
 };
 
 const VALIDATION_STATUS_LABELS: Record<string, string> = {
