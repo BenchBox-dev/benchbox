@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Reproduce on current develop with DuckDB: `benchbox run --platform duckdb --benchmark tpch --scale 0.01 --phases generate,load` (or the equivalent flags) and record the traceback.",
+    "A load-only run that loads successfully exits 0 and prints a load summary without power-test fields.",
+    "A load-only run whose load fails still exits non-zero.",
+    "Regression tests cover load-only output and exit codes for SQL and DataFrame paths, and tuned load-only runs.",
+    "CHANGELOG entry under Fixed."
+  ],
+  "context": "Reported in ~/.benchbox/handoffs/2026-10-15-snowflake-trial-exit-handoff.md (campaign C0 notes). Likely areas: benchbox/cli/output.py (_render_overall_status, ~line 378-480) and the run result summary in benchbox/cli/commands/run.py.",
+  "description": "A run with `--phases generate,load` and no power phase loads the data and then exits 1 with \"'NoneType' object has no attribute 'overall_status'\". The result output path appears to assume power-test results exist. Load-only runs are a documented mode and tuned load-only parity depends on them, so a successful load reports failure to scripts and CI. Found on develop during the 2026-10-15 Snowflake campaign; not yet reproduced locally.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-16T14:07:05Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "e052485c584f41e8896a77cabf519415",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}

@@ -15079,6 +15079,13 @@
       "status": "done",
       "title": "Phase 3.1: Manifest v2 Implementation Specification"
     },
+    "phases-generate-load-exit-overall-status-20261016": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Make load-only runs (--phases generate,load) exit 0 instead of crashing on missing power results"
+    },
     "physical-tuning-ddl-generation": {
       "claim": null,
       "needs": [],
