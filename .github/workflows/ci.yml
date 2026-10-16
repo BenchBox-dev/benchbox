@@ -749,7 +749,7 @@ jobs:
           echo "All lint guards passed."
 
   code-test:
-    name: test (ubuntu-latest, 3.12)
+    name: test (ubuntu-latest, 3.14)
     needs: ci-paths
     if: ${{ needs.ci-paths.outputs.code-tests-needed == 'true' }}
     runs-on: ubuntu-latest
@@ -760,10 +760,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Python 3.12
+      - name: Set up Python 3.14
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
-          python-version: '3.12'
+          python-version: '3.14'
 
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
@@ -841,6 +841,7 @@ jobs:
         env:
           BENCHBOX_MAX_XDIST_WORKERS: "4"
           BENCHBOX_XDIST_TRACE_DIR: xdist-failure-trace
+          COVERAGE_CORE: sysmon
         run: |
           uv run -- python -m pytest tests -m "fast and not (slow or stress or resource_heavy or live_integration)" -n auto --tb=short --timeout=120 --durations=25 -p pytest_cov --cov=benchbox --cov-report=xml --cov-report=term-missing --cov-fail-under=70
 
