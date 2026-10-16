@@ -704,6 +704,23 @@ jobs:
         continue-on-error: true
         run: make complexity-check
 
+      - name: Run promoted regression reproducers
+        id: guard-promoted-reproducers
+        continue-on-error: true
+        run: |
+          uv run -- python -m pytest \
+            tests/integration/test_cross_surface_mutation_sensitivity.py \
+            tests/unit/test_standardized_test_commands.py::TestMakefileCommands::test_cross_surface_gates_are_pinned_in_make_and_ci \
+            tests/integration/test_plan_capture_phase.py \
+            tests/integration/test_tpcds_power_test.py \
+            tests/integration/test_ducklake_integration.py \
+            tests/integration/tuning/test_duckdb_fk_load_ordering.py \
+            tests/integration/test_tpch_power_test.py \
+            tests/integration/test_tpch_throughput_test.py \
+            -m "(slow or medium) and not live_integration" \
+            -k "not (test_cross_surface_mutation_sensitivity or test_tpcds_power_test or test_tpch_power_test or test_tpch_throughput_test) or test_targets_cover_every_enforced_gate or h2odb or test_execute_one_query_drains_raw_cursor_before_commit or boundary_query" \
+            -n 0 --tb=short -q
+
       - name: lint-guard-summary
         id: lint-guard-summary
         if: always()
@@ -780,57 +797,6 @@ jobs:
         env:
           BASE_REF: ${{ github.event.pull_request.base.sha }}
         run: python make/interface_summary.py --base-ref "$BASE_REF" --summary "$GITHUB_STEP_SUMMARY"
-
-      - name: Run cross-surface mutation target drift guard
-        run: |
-          uv run -- python -m pytest \
-            tests/integration/test_cross_surface_mutation_sensitivity.py::test_targets_cover_every_enforced_gate \
-            -m "slow" -n 0 --tb=short -q
-
-      - name: Run cross-surface GATES Make/CI pinning guard
-        run: |
-          uv run -- python -m pytest \
-            tests/unit/test_standardized_test_commands.py::TestMakefileCommands::test_cross_surface_gates_are_pinned_in_make_and_ci \
-            -m "medium" -n 0 --tb=short -q
-
-      - name: Run promoted h2odb mutation-catch reproducer (#901)
-        run: |
-          uv run -- python -m pytest \
-            tests/integration/test_cross_surface_mutation_sensitivity.py \
-            -m "slow" -n 0 -k "h2odb" --tb=short -q
-
-      - name: Run promoted plan-capture-phase reproducers (#909)
-        run: |
-          uv run -- python -m pytest \
-            tests/integration/test_plan_capture_phase.py \
-            -m "medium" -n 0 --tb=short -q
-
-      - name: Run promoted TPC-DS power-test drain-before-commit reproducer
-        run: |
-          uv run -- python -m pytest \
-            tests/integration/test_tpcds_power_test.py \
-            -m "slow" -n 0 -k "test_execute_one_query_drains_raw_cursor_before_commit" --tb=short -q
-
-      - name: Run DuckLake in-process adapter integration tests
-        run: |
-          uv run -- python -m pytest \
-            tests/integration/test_ducklake_integration.py \
-            -m "slow and not live_integration" -n 0 --tb=short -q
-
-      - name: Run promoted DuckDB FK tuning load-ordering reproducers
-        run: |
-          uv run -- python -m pytest \
-            tests/integration/tuning/test_duckdb_fk_load_ordering.py \
-            -m "slow" -n 0 --tb=short -q
-
-      - name: Run promoted TPC-H power/throughput boundary-query (w0 defect) reproducers
-        run: |
-          uv run -- python -m pytest \
-            tests/integration/test_tpch_power_test.py \
-            -m "slow" -n 0 -k "boundary_query" --tb=short -q
-          uv run -- python -m pytest \
-            tests/integration/test_tpch_throughput_test.py \
-            -m "slow" -n 0 -k "boundary_query" --tb=short -q
 
       - name: Run changed tests on the curated release tree
         env:
