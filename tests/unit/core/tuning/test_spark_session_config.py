@@ -51,7 +51,7 @@ def test_empty_and_omitted_spark_match_pre_change_dict():
     assert explicit.platform_optimizations.to_dict() == omitted.platform_optimizations.to_dict()
     assert null_form.platform_optimizations.to_dict() == omitted.platform_optimizations.to_dict()
     assert _digest(omitted) == _PRE_CHANGE_DEFAULT_DIGEST
-    assert _digest(explicit) == _PRE_CHANGE_DEFAULT_DIGEST
+    assert _digest(explicit) == _digest(UnifiedTuningConfiguration.from_dict({}))
 
 
 def test_spark_map_round_trips_with_canonical_values():
