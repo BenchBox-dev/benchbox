@@ -10704,10 +10704,15 @@
       "title": "Integrate additional ASCII chart types into template workflows"
     },
     "force-datagen-force-recreate-propagation-20261016": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-17T16:39:38Z",
+        "generation": "5110091336ca4c61832f816f6d1e8d2c",
+        "renewals": 0,
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Confirm --force datagen recreates the target database, or fix its propagation to the adapter"
     },
     "force-datagen-tpch-regenerate-20261016": {
