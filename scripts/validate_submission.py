@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import re
 import sys
 from pathlib import Path
 
@@ -18,6 +17,8 @@ try:
         RULES_VERSION,
         ValidationResult,
         discover_bundles,
+        export_anonymized_errors,
+        find_public_path_leaks,
         format_pr_comment,
         format_summary,
         unsatisfied_override_rules,
@@ -37,42 +38,13 @@ except ImportError:
     RULES_VERSION = bundle.RULES_VERSION
     ValidationResult = bundle.ValidationResult
     discover_bundles = bundle.discover_bundles
+    export_anonymized_errors = bundle.export_anonymized_errors
+    find_public_path_leaks = bundle.find_public_path_leaks
     format_pr_comment = bundle.format_pr_comment
     format_summary = bundle.format_summary
     unsatisfied_override_rules = bundle.unsatisfied_override_rules
     validate_bundles = bundle.validate_bundles
     validation_failed = bundle.validation_failed
-
-try:
-    from benchbox.core.results.anonymization import find_public_path_leaks
-except ImportError:  # pragma: no cover
-    _PRIVATE_LOCAL_PATH_RE = re.compile(
-        r"(?<![A-Za-z0-9_])(?:"
-        r"(?:~|/Users|/home|/root|/private/var|/var/folders|/var/run|/Volumes)/[^\s'\",;)]*"
-        r"|[A-Za-z]:\\Users\\[^\s'\",;)]*"
-        r")",
-        flags=re.IGNORECASE,
-    )
-
-    def find_public_path_leaks(value, key_path=()):
-        if isinstance(value, dict):
-            leaks = []
-            for key, child in value.items():
-                label = str(key)
-                if isinstance(key, str) and _PRIVATE_LOCAL_PATH_RE.search(key):
-                    label = "<key>"
-                    leaks.append(".".join((*key_path, label)))
-                leaks.extend(find_public_path_leaks(child, (*key_path, label)))
-            return leaks
-        if isinstance(value, (list, tuple)):
-            return [
-                leak
-                for index, child in enumerate(value)
-                for leak in find_public_path_leaks(child, (*key_path, str(index)))
-            ]
-        if isinstance(value, str) and _PRIVATE_LOCAL_PATH_RE.search(value):
-            return [".".join(key_path) or "<root>"]
-        return []
 
 
 __all__ = [
@@ -104,6 +76,34 @@ def _public_json_surfaces(bundle_path: Path) -> list[Path]:
     return list(dict.fromkeys(candidates))
 
 
+CORPUS_RELATIVE_ROOT = "results-data/bundles"
+_CORPUS_ROOT_PARTS = ("results-data", "bundles")
+
+
+def _is_corpus_bundle(path: Path) -> bool:
+    if path.suffix != ".json":
+        return False
+    parts = path.parts
+    return any(parts[i : i + 2] == _CORPUS_ROOT_PARTS for i in range(len(parts) - 1))
+
+
+def _append_corpus_anonymized_errors(paths: list[Path], results: list[ValidationResult]) -> None:
+    by_path = {Path(result.path): result for result in results}
+    for bundle_path in paths:
+        if not _is_corpus_bundle(bundle_path):
+            continue
+        result = by_path.get(bundle_path)
+        if result is None:
+            continue
+        try:
+            payload = json.loads(bundle_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            result.error(f"Cannot read corpus bundle {bundle_path.name}: {exc}")
+            continue
+        for message in export_anonymized_errors(payload):
+            result.error(message)
+
+
 def _append_public_privacy_errors(paths: list[Path], results: list[ValidationResult]) -> None:
     by_path = {Path(result.path): result for result in results}
     for bundle_path in paths:
@@ -133,8 +133,6 @@ def _append_public_privacy_errors(paths: list[Path], results: list[ValidationRes
                 )
 
 
-CORPUS_RELATIVE_ROOT = "results-data/bundles"
-_CORPUS_ROOT_PARTS = ("results-data", "bundles")
 _CORPUS_METADATA_SUFFIXES = (".plans.json", ".tuning.json", ".applied.json", ".manifest.json", ".override.json")
 _CORPUS_METADATA_FILENAMES = ("corpus-inventory.json", "submission-manifest.json")
 _CORPUS_NON_DATA_JSON = {
@@ -330,6 +328,7 @@ def main(argv: list[str] | None = None) -> int:
             require_manifest=require_manifest,
             allow_partial_validation=allow_partial_validation,
         )
+        _append_corpus_anonymized_errors(paths, results)
         _append_public_privacy_errors(paths, results)
     else:
         print("No bundle files found.", file=sys.stderr)
