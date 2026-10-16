@@ -151,6 +151,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the applied-tuning ledger was never created outside the full benchmark run.
   A load that fails still exits non-zero.
 
+- `--force datagen` (and `--force all`) drops and recreates an existing
+  benchmark database. Before, the request stayed nested in the platform
+  options, so adapters saw `force_recreate=False` and reused the old database.
+  Dry runs now record the same `force_recreate` value the real run uses.
+  `--platform-option force_recreate=true` already worked and is unchanged.
+
 - InfluxDB and LakeSail `deployment_mode` are now deprecated aliases of the
   `--platform influxdb:core|cloud` and `--platform lakesail:local|distributed`
   selectors, like their `mode` and `sail_mode` spellings. Before, supplying

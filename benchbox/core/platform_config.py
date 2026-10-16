@@ -61,6 +61,8 @@ def get_platform_config(
     platform_config.update(db_config_dict)
     options = database_config.options if isinstance(database_config.options, dict) else {}
     lift_explicit_options(database_config.type, options, platform_config)
+    if options.get("force_recreate"):
+        platform_config["force_recreate"] = True
     if platform_config.get("force_recreate"):
         platform_config["force"] = True
 
