@@ -20784,10 +20784,10 @@
     },
     "site-split-66-explorer-compat-regression-test": {
       "claim": {
-        "expires_at": "2026-10-16T12:20:08Z",
-        "generation": "baec562e9af443a59c543a409ad3ec84",
+        "expires_at": "2026-10-17T14:04:33Z",
+        "generation": "9d0f22ba6abb4ea38b10f8699f378bf1",
         "renewals": 0,
-        "worker": "mcp:antigravity-client:joe@joe-mac-mini.local:400a541e03471a80c4d8d3ee"
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
       },
       "needs": [],
       "priority": "medium",
