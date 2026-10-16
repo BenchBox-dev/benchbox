@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import collections
 import datetime as _dt
+import importlib.util
 import json
 import math
 import pathlib
 import re
 import sys
 from typing import NamedTuple
-
-from benchbox.validation.bundle import export_anonymized_errors
 
 COMPANION_SUFFIXES = (".manifest.json", ".plans.json", ".tuning.json", ".applied.json", ".override.json")
 LEGACY_MANIFEST_NAME = "submission-manifest.json"
@@ -81,11 +80,34 @@ def _load_bundle(bundle: pathlib.Path) -> dict:
         raise CorpusReadError(f"ERROR reading {bundle}: {exc}") from exc
 
 
-def _try_load_bundle(bundle: pathlib.Path) -> dict:
+def _load_export_anonymized_errors():
     try:
-        return _load_bundle(bundle)
-    except CorpusReadError:
-        return {}
+        from benchbox.validation.bundle import export_anonymized_errors
+
+        return export_anonymized_errors
+    except ImportError:
+        pass
+    bundle_path = pathlib.Path(__file__).resolve().parents[1] / "benchbox" / "validation" / "bundle.py"
+    spec = importlib.util.spec_from_file_location("_benchbox_validation_bundle", bundle_path)
+    if spec is None or spec.loader is None or not bundle_path.is_file():
+        raise CorpusReadError(f"ERROR cannot load the anonymization gate from {bundle_path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module.export_anonymized_errors
+
+
+def unanonymized_bundle_errors(bundles: list[pathlib.Path]) -> list[str]:
+    export_anonymized_errors = _load_export_anonymized_errors()
+    errors: list[str] = []
+    for bundle in bundles:
+        try:
+            payload = _load_bundle(bundle)
+        except CorpusReadError as exc:
+            errors.append(f"{bundle}: {exc}")
+            continue
+        errors.extend(f"{bundle}: {message}" for message in export_anonymized_errors(payload))
+    return errors
 
 
 def _phase_executed(phase: object) -> bool:
@@ -748,11 +770,15 @@ def main(bundles_dir: pathlib.Path | None = None, *, as_of: _dt.date | None = No
     bundles = discover_bundles(bundles_dir)
     print(f"Found {len(bundles)} bundles")
 
-    raw = sorted(str(bundle) for bundle in bundles for _ in export_anonymized_errors(_try_load_bundle(bundle)))
-    if raw:
-        print(f"ERROR: {len(raw)} bundle(s) are not anonymized and cannot merge:")
-        for name in raw:
-            print(f"  {name}")
+    try:
+        unanonymized = unanonymized_bundle_errors(bundles)
+    except CorpusReadError as exc:
+        print(exc)
+        return 1
+    if unanonymized:
+        print(f"ERROR: {len(unanonymized)} anonymization finding(s); unanonymized bundles cannot merge:")
+        for message in unanonymized:
+            print(f"  {message}")
         return 1
 
     try:

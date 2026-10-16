@@ -61,25 +61,33 @@ def _load_bundle_failed_query_count():
 bundle_failed_query_count = _load_bundle_failed_query_count()
 
 
-def _load_anonymization_leak_helper():
-    try:
-        from benchbox.core.results.anonymization import find_public_path_leaks
-
-        return find_public_path_leaks
-    except ImportError:
-        pass
-    helper_path = Path(__file__).resolve().parents[1] / "core" / "results" / "anonymization.py"
-    if helper_path.is_file():
-        spec = importlib.util.spec_from_file_location("_benchbox_anonymization", helper_path)
-        if spec is not None and spec.loader is not None:
-            module = importlib.util.module_from_spec(spec)
-            sys.modules[spec.name] = module
-            spec.loader.exec_module(module)
-            return getattr(module, "find_public_path_leaks", lambda value, key_path=(): [])
-    return lambda value, key_path=(): []
+PRIVATE_LOCAL_PATH_RE = re.compile(
+    r"(?<![A-Za-z0-9_])(?:"
+    r"(?:~|/Users|/home|/root|/private/var|/var/folders|/var/run|/Volumes)/[^\s'\",;)]*"
+    r"|[A-Za-z]:\\Users\\[^\s'\",;)]*"
+    r")",
+    flags=re.IGNORECASE,
+)
 
 
-find_public_path_leaks = _load_anonymization_leak_helper()
+def find_public_path_leaks(value: Any, key_path: tuple[str, ...] = ()) -> list[str]:
+    leaks: list[str] = []
+    if isinstance(value, dict):
+        for key, child in value.items():
+            label = str(key)
+            if isinstance(key, str) and PRIVATE_LOCAL_PATH_RE.search(key):
+                label = "<key>"
+                leaks.append(".".join((*key_path, label)))
+            leaks.extend(find_public_path_leaks(child, (*key_path, label)))
+        return leaks
+    if isinstance(value, (list, tuple, set, frozenset)):
+        for index, child in enumerate(value):
+            leaks.extend(find_public_path_leaks(child, (*key_path, str(index))))
+        return leaks
+    if isinstance(value, str) and PRIVATE_LOCAL_PATH_RE.search(value):
+        leaks.append(".".join(key_path) or "<root>")
+    return leaks
+
 
 SUBMISSION_NOTES_MAX_LEN = 500
 

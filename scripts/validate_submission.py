@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import re
 import sys
 from pathlib import Path
 
@@ -19,6 +18,7 @@ try:
         ValidationResult,
         discover_bundles,
         export_anonymized_errors,
+        find_public_path_leaks,
         format_pr_comment,
         format_summary,
         unsatisfied_override_rules,
@@ -39,42 +39,12 @@ except ImportError:
     ValidationResult = bundle.ValidationResult
     discover_bundles = bundle.discover_bundles
     export_anonymized_errors = bundle.export_anonymized_errors
+    find_public_path_leaks = bundle.find_public_path_leaks
     format_pr_comment = bundle.format_pr_comment
     format_summary = bundle.format_summary
     unsatisfied_override_rules = bundle.unsatisfied_override_rules
     validate_bundles = bundle.validate_bundles
     validation_failed = bundle.validation_failed
-
-try:
-    from benchbox.core.results.anonymization import find_public_path_leaks
-except ImportError:  # pragma: no cover
-    _PRIVATE_LOCAL_PATH_RE = re.compile(
-        r"(?<![A-Za-z0-9_])(?:"
-        r"(?:~|/Users|/home|/root|/private/var|/var/folders|/var/run|/Volumes)/[^\s'\",;)]*"
-        r"|[A-Za-z]:\\Users\\[^\s'\",;)]*"
-        r")",
-        flags=re.IGNORECASE,
-    )
-
-    def find_public_path_leaks(value, key_path=()):
-        if isinstance(value, dict):
-            leaks = []
-            for key, child in value.items():
-                label = str(key)
-                if isinstance(key, str) and _PRIVATE_LOCAL_PATH_RE.search(key):
-                    label = "<key>"
-                    leaks.append(".".join((*key_path, label)))
-                leaks.extend(find_public_path_leaks(child, (*key_path, label)))
-            return leaks
-        if isinstance(value, (list, tuple)):
-            return [
-                leak
-                for index, child in enumerate(value)
-                for leak in find_public_path_leaks(child, (*key_path, str(index)))
-            ]
-        if isinstance(value, str) and _PRIVATE_LOCAL_PATH_RE.search(value):
-            return [".".join(key_path) or "<root>"]
-        return []
 
 
 __all__ = [
