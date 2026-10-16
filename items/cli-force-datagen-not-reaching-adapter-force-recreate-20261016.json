@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "`--force datagen` reaches the adapter as force_recreate=True on every SQL platform that reads it",
+    "Platforms that fail closed on force_recreate keep doing so, with the behaviour change documented",
+    "Unit test covers the CLI-to-adapter path for --force datagen"
+  ],
+  "context": "Found 2026-10-15 while adding the force_recreate platform option (PR #3013).",
+  "description": "The CLI sets the runtime override `force_recreate` from `--force datagen` (`benchbox/cli/commands/run.py`, `_force_recreate_requested`), but runtime overrides land only in `database_config.options`. `get_platform_config` (`benchbox/core/platform_config.py`) lifts only explicit platform options to the top-level adapter config, and most adapters build their `force_recreate` from top-level `force` or `force_recreate`. A dry-run constructor probe on 2026-10-15 showed DuckDB, PostgreSQL, DataFusion and SQLite receiving `force_recreate=False`, and Snowflake receiving nothing, under `--force datagen`. So `--force datagen` regenerates data but does not recreate the database. The explicit `--platform-option force_recreate=true` (PR #3013) does work.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:9e002f45bd6cb1f33b959f2c",
+      "at": "2026-10-16T12:06:24Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "1b0d919c39114ee0b293258d10925f31",
+      "session_id": "70accbe5849d4e1da05dfca7c4ffe8da"
+    }
+  ]
+}

@@ -2826,6 +2826,13 @@
       "status": "done",
       "title": "\"CLI: Detect and Skip Unneeded Data Generation ✅\""
     },
+    "cli-force-datagen-not-reaching-adapter-force-recreate-20261016": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "`--force datagen` never reaches the adapter's force_recreate"
+    },
     "cli-guided-run-enhancements-completed": {
       "claim": null,
       "needs": [],
