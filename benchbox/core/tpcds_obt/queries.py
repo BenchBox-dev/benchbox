@@ -51,6 +51,7 @@ class TPCDSOBTQueryManager:
         stream_id: int = 0,
     ) -> str:
         qid_int = self._normalize_id(query_id)
+        converted = None if qid_int in self._manual_queries else self._get_converted(query_id)
         values = {**self.drawn_parameters(qid_int, seed=seed, scale_factor=scale_factor, stream_id=stream_id)}
         for name, value in (parameters or {}).items():
             if "." in name:
@@ -58,10 +59,10 @@ class TPCDSOBTQueryManager:
             else:
                 values.update({key: str(value) for key in values if key.split(".")[0] == name})
                 values[f"{name}.01"] = str(value)
-        if qid_int in self._manual_queries:
+        if converted is None:
             names = self._manual_queries[qid_int].parameters
             return render_manual_query(qid_int, {name: values[f"{name}.01"] for name in names})
-        return self.converter.render(self._get_converted(query_id), values)
+        return self.converter.render(converted, values)
 
     def drawn_parameters(
         self, query_id: int, *, seed: int | None = None, scale_factor: float = 1.0, stream_id: int = 0
