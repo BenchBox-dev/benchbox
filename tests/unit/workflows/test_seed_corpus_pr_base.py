@@ -268,19 +268,25 @@ def test_seed_corpus_local_jobs_do_not_reference_cloud_credentials() -> None:
     assert "matrix.optional" not in workflow_text
 
 
-def test_tpcds_matrix_jobs_run_with_official_seeded_command() -> None:
+def test_tpc_matrix_jobs_run_official_seeded_at_every_official_scale_point() -> None:
+    from benchbox.core.tpcds.compliance import OFFICIAL_SCALE_POINTS as TPCDS_OFFICIAL_SCALE_POINTS
+    from benchbox.core.tpch.compliance import OFFICIAL_SCALE_POINTS as TPCH_OFFICIAL_SCALE_POINTS
+
+    official_points = {"tpch": TPCH_OFFICIAL_SCALE_POINTS, "tpcds": TPCDS_OFFICIAL_SCALE_POINTS}
     workflow = _workflow()
     entries = workflow["jobs"]["generate-seed-corpus"]["strategy"]["matrix"]["include"]
-    assert all(
-        entry["benchmark"] == "tpcds" and entry["scale_factor"] == "1"
-        for entry in entries
-        if entry["benchmark"] == "tpcds"
-    )
+    official_cells = set()
+    for entry in entries:
+        at_official_point = float(entry["scale_factor"]) in official_points.get(entry["benchmark"], frozenset())
+        assert entry.get("official", False) is at_official_point, entry
+        if at_official_point:
+            official_cells.add((entry["benchmark"], entry["scale_factor"]))
+    assert official_cells == {("tpch", "1.0"), ("tpcds", "1")}
 
     run_step = next(
         step["run"] for step in workflow["jobs"]["generate-seed-corpus"]["steps"] if step.get("name") == "Run benchmark"
     )
-    assert 'if [ "${{ matrix.benchmark }}" = "tpcds" ]; then' in run_step
+    assert 'if [ "${{ matrix.official }}" = "true" ]; then' in run_step
     assert "command+=(--official --seed 42)" in run_step
     assert '"${command[@]}"' in run_step
 
