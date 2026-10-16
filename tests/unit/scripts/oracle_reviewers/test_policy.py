@@ -65,11 +65,36 @@ def test_muse_is_enabled_second_in_low_medium(policy: Policy) -> None:
     assert policy.reviewers["muse"].enabled is True
     assert policy.tiers["low-medium"].order[:2] == ("luna", "muse")
     enabled = {name for name, reviewer in policy.reviewers.items() if reviewer.enabled}
-    assert enabled == {"opus", "sonnet", "sol", "luna", "muse", "agy"}
+    assert enabled == {"opus", "sonnet", "muse", "agy"}
+
+
+def test_codex_reviewers_are_disabled_with_a_reason(policy: Policy) -> None:
+    for name in ("sol", "luna"):
+        assert policy.reviewers[name].enabled is False
+        assert "no quota" in policy.reviewers[name].disabled_reason
+
+
+@pytest.mark.parametrize("tier", ["low-medium", "medium-high", "very-high"])
+@pytest.mark.parametrize("author", ["claude", "codex", "muse", "agy"])
+@pytest.mark.parametrize("brief_mode", ["inline", "file-list"])
+def test_every_tier_has_an_eligible_reviewer_for_every_author(
+    policy: Policy, tier: str, author: str, brief_mode: str
+) -> None:
+    exempt = set(policy.tiers[tier].diversity_exempt)
+    eligible = [
+        reviewer.name
+        for reviewer in policy.chain(tier)
+        if reviewer.enabled
+        and (reviewer.family != author or reviewer.name in exempt)
+        and (brief_mode == "inline" or (reviewer.read_only == "hard" and reviewer.reads_files))
+    ]
+    assert eligible, (tier, author, brief_mode)
 
 
 def test_max_attempts_must_cover_the_longest_enabled_chain() -> None:
     raw = _raw()
+    for name in ("sol", "luna"):
+        raw["reviewers"][name]["enabled"] = True
     raw["max_attempts"] = 4
     with pytest.raises(PolicyError, match=r"longest enabled chain \(5\)"):
         parse_policy(raw)

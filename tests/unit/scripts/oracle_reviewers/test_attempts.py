@@ -18,6 +18,12 @@ from _project.scripts.oracle_reviewers.verdict import Finding, validate
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
+
+@pytest.fixture
+def policy(codex_enabled_policy: Policy) -> Policy:
+    return codex_enabled_policy
+
+
 CHECKER = "benchbox/core/equivalence/checker.py"
 
 RUN_ID = "4242"
