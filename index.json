@@ -24082,13 +24082,18 @@
       "title": "Positive liveness CI gate: real-CLI tuned runs must reach applied_verified on DuckDB and ClickHouse"
     },
     "tuning-load-only-lifecycle-parity-20261001": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-17T09:13:00Z",
+        "generation": "bb780e44bbae4aeaaa5fcab55bd816a8",
+        "renewals": 0,
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:6b9b7c4e8f8d58a0a7174a0a"
+      },
       "needs": [
         "tuning-gate-load-only-semantics-20261001",
         "tuning-requested-vs-rendered-reconciliation-20261001"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Give load-only runs the decided tuning semantics (lifecycle parity or refusal)"
     },
     "tuning-local-diagnosability-20261001": {
