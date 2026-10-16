@@ -21589,6 +21589,13 @@
       "status": "done",
       "title": "Extend SQLGlot repro harness to cover wrapper call shapes (cross-dialect probes)"
     },
+    "sqlite-database-name-ignored-20261016": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Make SQLite honour --platform-option database_name"
+    },
     "sqlite-throughput-dialect-and-stream-isolation": {
       "claim": null,
       "needs": [

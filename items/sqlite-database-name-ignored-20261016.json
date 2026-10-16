@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "`--platform-option database_name=<name>` on SQLite creates and uses the named database file",
+    "Default naming unchanged when the option is absent",
+    "Test that fails without the fix",
+    "CHANGELOG Fixed entry"
+  ],
+  "description": "The SQLite config builder (benchbox/cli/platform_defaults.py:276-299) puts `<database_name>.db` into `connection_string`, but `get_platform_config` (benchbox/core/platform_config.py:56-57) drops that field, and `SQLiteAdapter.from_config` (benchbox/platforms/sqlite.py:233-249) falls back to `<runs_root>/databases/<bench_sf>/<bench_sf>_notuning_noconstraints.sqlite`. Confirmed: `--platform-option database_name=pytest_xyz` created the default-named file and no pytest_xyz.db.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-16T16:58:34Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "2cbf0bf414df4be98dbacc9c8fa16f8c",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}
