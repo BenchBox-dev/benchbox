@@ -8,7 +8,7 @@ This directory contains focused examples that each teach a single feature or cap
 
 - **One feature per example** - Each script focuses on a single capability
 - **Practical and runnable** - All examples are complete, working programs
-- **Well-commented** - Inline documentation explains why, not just what
+- **Readable** - Names and structure carry the intent; this README carries the explanation
 - **Build on basics** - Assumes you've completed getting_started examples
 
 ## Available Examples
@@ -199,10 +199,8 @@ sections into your scripts.
 
 All feature examples follow a consistent structure:
 
-- A module docstring with a brief description of the feature, a usage line
-  (`python features/example.py`), and a list of key concepts.
-- A setup section with clear comments.
-- A feature demonstration with explanations.
+- A setup section built from named helpers.
+- A feature demonstration with descriptive names.
 - A result display that shows what to look for.
 - A tips section with best practices.
 
@@ -225,7 +223,7 @@ After mastering these features, explore:
 ## Tips
 
 1. **Run examples as-is first** - See the feature in action before modifying
-2. **Read inline comments** - They explain why, not just what
+2. **Read the README entry** - It explains what each example shows
 3. **Experiment with parameters** - Change scale factors, platforms, etc.
 4. **Combine features** - Use multiple features together in your workflows
 5. **Check exit codes** - Examples return 0 on success for CI/CD integration
@@ -250,9 +248,9 @@ Have a feature that needs a focused example? Submit a PR following this pattern:
 
 1. One feature per example
 2. Complete, runnable code
-3. Inline comments explaining concepts
-4. Usage section in docstring
-5. Update this README with your example
+3. No comments or docstrings (see the [comment policy](../../docs/internal/comment-policy.md))
+4. Describe the example and its usage in this README
+5. Add the example to the list above
 
 ---
 

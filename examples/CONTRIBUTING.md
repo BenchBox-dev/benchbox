@@ -84,7 +84,7 @@ examples/
 
 Describe what the example demonstrates, when to use it and its prerequisites
 in the directory README. Source files carry no explanatory comments or
-docstrings; see the [comment policy](../docs/development/comment-policy.md).
+docstrings; see the [comment policy](../docs/internal/comment-policy.md).
 
 Every example should follow this structure. The first line of the file is the
 shebang, `#!/usr/bin/env python3`; the block below shows everything after it:
@@ -134,7 +134,7 @@ Every example must include:
 - **Formatting tool:** `ruff format`
 - **Linting:** `ruff check` must pass
 - **Type hints:** Required for function signatures
-- **Comments and docstrings:** None; follow the [comment policy](../docs/development/comment-policy.md)
+- **Comments and docstrings:** None; follow the [comment policy](../docs/internal/comment-policy.md)
 
 ### Error Handling
 
