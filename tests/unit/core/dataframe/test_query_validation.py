@@ -5,6 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from benchbox.core.dataframe.query_validation import validate_dataframe_query_results
+from benchbox.core.expected_results.ssb_results import SSB_EXPECTED_ROW_COUNTS
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -94,7 +95,8 @@ def test_tpcds_is_uncertain_until_its_parameters_are_seed_aligned() -> None:
 @pytest.mark.parametrize(
     ("benchmark_name", "scale_factor", "seed", "expected_status"),
     [
-        ("ssb", 1.0, None, "NOT_RUN"),
+        ("clickbench", 1.0, None, "NOT_RUN"),
+        ("ssb", 0.5, None, "UNCERTAIN"),
         ("tpch", 0.01, None, "UNCERTAIN"),
         ("tpch", 1.0, 123, "UNCERTAIN"),
         ("tpch", 1.0, 17039360, "UNCERTAIN"),
@@ -250,3 +252,77 @@ def test_tpch_answer_set_context_is_false_for_any_seed(seed: int) -> None:
     assert _tpch_reference_context(1.0, seed) is False
     assert _tpch_reference_context(1.0, None) is True
     assert _tpch_reference_context(0.01, None) is False
+
+
+@pytest.mark.parametrize("scale_factor", [0.01, 0.1, 1.0, 10.0])
+def test_ssb_expected_row_counts_record_a_pass(scale_factor: float) -> None:
+    counts = SSB_EXPECTED_ROW_COUNTS[scale_factor]
+    measurements = [_measurement(query_id=query_id, rows=rows) for query_id, rows in counts.items()]
+
+    summary = validate_dataframe_query_results(
+        measurements,
+        benchmark_name="ssb",
+        scale_factor=scale_factor,
+        seed=7,
+    )
+
+    assert summary.status == "PASSED"
+    assert summary.details == {
+        "provider": "ssb_expected_row_counts",
+        "benchmark": "ssb",
+        "checked": 13,
+        "passed": 13,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0,
+    }
+    assert {row["row_count_validation"]["status"] for row in measurements} == {"PASSED"}
+
+
+def test_ssb_query_ids_with_a_q_prefix_match_the_expected_counts() -> None:
+    measurement = _measurement(query_id="Q4.3", rows=242)
+
+    summary = validate_dataframe_query_results([measurement], benchmark_name="ssb", scale_factor=0.1)
+
+    assert summary.status == "PASSED"
+    assert measurement["row_count_validation"] == {"expected": 242, "actual": 242, "status": "PASSED"}
+
+
+def test_ssb_wrong_row_count_fails_the_query_and_run() -> None:
+    correct = _measurement(query_id="2.1", rows=280)
+    wrong = _measurement(query_id="3.2", rows=397)
+
+    summary = validate_dataframe_query_results([correct, wrong], benchmark_name="ssb", scale_factor=0.1)
+
+    assert summary.status == "FAILED"
+    assert summary.details["checked"] == 2
+    assert summary.details["failed"] == 1
+    assert correct["status"] == "SUCCESS"
+    assert wrong["status"] == "FAILED"
+    assert wrong["row_count_validation"]["status"] == "FAILED"
+    assert wrong["row_count_validation"]["expected"] == 398
+    assert wrong["row_count_validation"]["actual"] == 397
+    assert "expected 398" in wrong["error"]
+
+
+def test_ssb_unknown_query_is_uncertain_not_passed() -> None:
+    measurement = _measurement(query_id="9.9", rows=1)
+
+    summary = validate_dataframe_query_results([measurement], benchmark_name="ssb", scale_factor=0.1)
+
+    assert summary.status == "UNCERTAIN"
+    assert summary.details["checked"] == 0
+    assert summary.details["skipped"] == 1
+    assert measurement["status"] == "SUCCESS"
+    assert measurement["row_count_validation"]["status"] == "SKIPPED"
+
+
+def test_ssb_unrecorded_scale_factor_is_uncertain() -> None:
+    measurement = _measurement(query_id="1.1", rows=1)
+
+    summary = validate_dataframe_query_results([measurement], benchmark_name="ssb", scale_factor=0.5)
+
+    assert summary.status == "UNCERTAIN"
+    assert summary.details["provider"] == "ssb_expected_row_counts"
+    assert "scale factor 0.5" in summary.details["reason"]
+    assert measurement["row_count_validation"]["status"] == "SKIPPED"
