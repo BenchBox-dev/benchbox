@@ -171,6 +171,17 @@
       "op": "take",
       "op_id": "bf1833fd4cd64ede807d03544dbc5ec4",
       "session_id": "5c80d5d463444a2ba9410e1fdfb1d517"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-16T16:57:39Z",
+      "client": "claude-code",
+      "displaced": "mcp:claude-code:joe@joe-mac-mini.local:6b9b7c4e8f8d58a0a7174a0a",
+      "generation": "a050a1ab521b41aea1be812ebaaa7f24",
+      "op": "takeover",
+      "op_id": "31b7033640884ce798388ebcf3731f44",
+      "reason": "Holder was a subagent killed by a session restart (take 2026-10-16T11:58Z); its generation returns E_CLAIM_STALE. Work done: PR #3004 merged as 960c61674. Owner approved takeover to close.",
+      "session_id": "400c76c14fce4783943655593419ae3c"
     }
   ]
 }
