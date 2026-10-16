@@ -719,7 +719,35 @@ jobs:
             tests/integration/test_tpch_throughput_test.py \
             -m "(slow or medium) and not live_integration" \
             -k "not (test_cross_surface_mutation_sensitivity or test_tpcds_power_test or test_tpch_power_test or test_tpch_throughput_test) or test_targets_cover_every_enforced_gate or h2odb or test_execute_one_query_drains_raw_cursor_before_commit or boundary_query" \
-            -n 0 --tb=short -q
+            -n 0 --tb=short -q --junitxml="$RUNNER_TEMP/promoted-reproducers.xml"
+          uv run -- python - "$RUNNER_TEMP/promoted-reproducers.xml" <<'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+
+          cases = [
+              (case.get("classname", ""), case.get("name", ""))
+              for case in ET.parse(sys.argv[1]).iter("testcase")
+          ]
+          groups = {
+              "cross-surface target drift guard": ("test_cross_surface_mutation_sensitivity", "test_targets_cover_every_enforced_gate"),
+              "cross-surface Make/CI pinning guard": ("test_standardized_test_commands", "test_cross_surface_gates_are_pinned_in_make_and_ci"),
+              "h2odb mutation-catch": ("test_cross_surface_mutation_sensitivity", "h2odb"),
+              "plan-capture phase": ("test_plan_capture_phase", ""),
+              "TPC-DS drain before commit": ("test_tpcds_power_test", "test_execute_one_query_drains_raw_cursor_before_commit"),
+              "DuckLake in-process adapter": ("test_ducklake_integration", ""),
+              "DuckDB FK load ordering": ("test_duckdb_fk_load_ordering", ""),
+              "TPC-H power boundary query": ("test_tpch_power_test", "boundary_query"),
+              "TPC-H throughput boundary query": ("test_tpch_throughput_test", "boundary_query"),
+          }
+          empty = [
+              label
+              for label, (module, name) in groups.items()
+              if not any(f".{module}" in classname and name in test for classname, test in cases)
+          ]
+          if empty:
+              raise SystemExit(f"Promoted reproducer groups selected no tests: {', '.join(empty)}")
+          print(f"All {len(groups)} promoted reproducer groups ran ({len(cases)} tests).")
+          PY
 
       - name: lint-guard-summary
         id: lint-guard-summary
@@ -807,17 +835,46 @@ jobs:
         run: |
           find tests \( -name 'test_*.py' -o -name '*_test.py' \) -not -path '*/__pycache__/*' | sort \
             | awk -v n="$(nproc)" -v dir="$RUNNER_TEMP" '{ print > (dir "/rewrite-chunk." (NR % n)) }'
+          pids=()
           for chunk in "$RUNNER_TEMP"/rewrite-chunk.*; do
-            xargs uv run -- python -m pytest --collect-only -q -n 0 -p no:cacheprovider < "$chunk" > /dev/null 2>&1 &
+            xargs uv run -- python -m pytest --collect-only -q -n 0 -p no:cacheprovider < "$chunk" > "$chunk.log" 2>&1 &
+            pids+=("$!:$chunk")
           done
-          wait
+          for entry in "${pids[@]}"; do
+            status=0
+            wait "${entry%%:*}" || status=$?
+            if [ "$status" -ne 0 ] && [ "$status" -ne 5 ]; then
+              echo "::warning::Assertion-rewrite warm-up chunk ${entry#*:} exited $status"
+              tail -n 20 "${entry#*:}.log"
+            fi
+          done
 
       - name: Run fast tests
         env:
           BENCHBOX_MAX_XDIST_WORKERS: "4"
           BENCHBOX_XDIST_TRACE_DIR: xdist-failure-trace
         run: |
-          uv run -- python -m pytest tests -m "fast and not (slow or stress or resource_heavy or live_integration)" -n auto --tb=short --timeout=120 --durations=25 -p pytest_cov --cov=benchbox --cov-report=xml --cov-report=term-missing --cov-fail-under=70
+          (
+            min_kb=
+            while :; do
+              avail_kb=$(awk '/^MemAvailable:/ { print $2 }' /proc/meminfo)
+              if [ -z "$min_kb" ] || [ "$avail_kb" -lt "$min_kb" ]; then
+                min_kb=$avail_kb
+                echo "$min_kb" > "$RUNNER_TEMP/mem-available-min-kb"
+              fi
+              sleep 2
+            done
+          ) &
+          sampler=$!
+          status=0
+          uv run -- python -m pytest tests -m "fast and not (slow or stress or resource_heavy or live_integration)" -n auto --tb=short --timeout=120 --durations=25 -p pytest_cov --cov=benchbox --cov-report=xml --cov-report=term-missing --cov-fail-under=70 || status=$?
+          kill "$sampler" 2>/dev/null || true
+          total_mib=$(awk '/^MemTotal:/ { print int($2 / 1024) }' /proc/meminfo)
+          if [ -s "$RUNNER_TEMP/mem-available-min-kb" ]; then
+            min_mib=$(( $(cat "$RUNNER_TEMP/mem-available-min-kb") / 1024 ))
+            echo "Lowest available memory during the fast tests: ${min_mib} MiB of ${total_mib} MiB" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$status"
 
       - name: Upload xdist failure trace
         if: always()
