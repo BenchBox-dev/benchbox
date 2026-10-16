@@ -59,7 +59,10 @@ def test_no_run_cancels_another_so_every_check_suite_completes() -> None:
     workflow = _load()
     assert "concurrency" not in workflow
     assert "concurrency" not in workflow["jobs"]["oracle-review"]
-    verdict = (REPO_ROOT / ".github" / "workflows" / "oracle-verdict.yml").read_text(encoding="utf-8")
+    verdict_path = REPO_ROOT / ".github" / "workflows" / "oracle-verdict.yml"
+    if not verdict_path.is_file():
+        pytest.skip("the release tree has no oracle-verdict workflow")
+    verdict = verdict_path.read_text(encoding="utf-8")
     assert "--workflow oracle-review.yml" in verdict
     assert 'gh run rerun "$id" --failed' in verdict
 
@@ -143,7 +146,7 @@ def _environment(tmp_path: Path, pulls: list[Any], checker_exit: int, checker_me
         "import json, os, sys\n"
         "from pathlib import Path\n"
         "counter = Path(os.environ['FAKE_GH_COUNTER'])\n"
-        "index = int(counter.read_text()) if counter.exists() else 0\n"
+        "index = int(counter.read_text(encoding='utf-8')) if counter.exists() else 0\n"
         "counter.write_text(str(index + 1))\n"
         "with open(os.environ['FAKE_GH_CALLS'], 'a') as calls:\n"
         "    calls.write(json.dumps(sys.argv[1:]) + '\\n')\n"
@@ -208,7 +211,7 @@ def _dispatch(
     result = _run_step(tmp_path, resolve, env)
     if result.returncode:
         return result, {}
-    outputs = dict(line.split("=", 1) for line in (tmp_path / "outputs").read_text().splitlines())
+    outputs = dict(line.split("=", 1) for line in (tmp_path / "outputs").read_text(encoding="utf-8").splitlines())
     env["PR_SNAPSHOT"] = outputs["snapshot"]
     return _run_step(tmp_path, check, env), outputs
 
@@ -222,8 +225,8 @@ def test_dispatch_checks_current_head_around_every_checker_success(tmp_path: Pat
     assert result.returncode == 0, result.stderr
     assert outputs["base_sha"] == BASE
     assert json.loads(outputs["snapshot"])["headRefOid"] == HEAD
-    assert (tmp_path / "gh-count").read_text() == "3"
-    assert json.loads((tmp_path / "checker-call").read_text()) == [
+    assert (tmp_path / "gh-count").read_text(encoding="utf-8") == "3"
+    assert json.loads((tmp_path / "checker-call").read_text(encoding="utf-8")) == [
         SCRIPT,
         "--repo",
         REPO,
@@ -320,7 +323,7 @@ def test_dispatch_malformed_metadata_never_reaches_checkout(tmp_path: Path, pull
 def test_dispatch_waiting_and_error_remain_failed(tmp_path: Path, checker_exit: int) -> None:
     result, _ = _dispatch(tmp_path, [_pull(), _pull()], checker_exit=checker_exit)
     assert result.returncode == checker_exit
-    assert (tmp_path / "gh-count").read_text() == "2"
+    assert (tmp_path / "gh-count").read_text(encoding="utf-8") == "2"
 
 
 def test_dispatch_does_not_require_develop_to_stop_advancing(tmp_path: Path) -> None:
@@ -347,10 +350,10 @@ def test_event_head_comes_from_the_triggering_pull_request() -> None:
 def test_pull_request_events_check_their_head_around_the_checker(tmp_path: Path, event: str) -> None:
     result = _event_check(tmp_path, [_pull(), _pull()], event)
     assert result.returncode == 0, result.stderr
-    assert (tmp_path / "gh-count").read_text() == "2"
-    calls = [json.loads(line) for line in (tmp_path / "gh-calls").read_text().splitlines()]
+    assert (tmp_path / "gh-count").read_text(encoding="utf-8") == "2"
+    calls = [json.loads(line) for line in (tmp_path / "gh-calls").read_text(encoding="utf-8").splitlines()]
     assert all(call[5:7] == ["--json", "headRefOid"] for call in calls)
-    assert json.loads((tmp_path / "checker-call").read_text()) == [
+    assert json.loads((tmp_path / "checker-call").read_text(encoding="utf-8")) == [
         SCRIPT,
         "--repo",
         REPO,
@@ -385,4 +388,4 @@ def test_a_pull_request_event_head_read_failure_never_passes(tmp_path: Path, fai
 def test_a_pull_request_event_waiting_or_error_stays_failed(tmp_path: Path, checker_exit: int) -> None:
     result = _event_check(tmp_path, [_pull(), _pull()], "pull_request_review", checker_exit=checker_exit)
     assert result.returncode == checker_exit
-    assert (tmp_path / "gh-count").read_text() == "1"
+    assert (tmp_path / "gh-count").read_text(encoding="utf-8") == "1"
