@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import sys
+import urllib.request
 from copy import deepcopy
 from datetime import date, timedelta
 from pathlib import Path
@@ -1863,6 +1864,438 @@ def test_consumer_digest_has_stable_python_version_encoding() -> None:
     assert python_consumer_digest(tree) == "sha256:c6aaea25c78f8f6fdbf83d97c11fe1be21e859156b678d34cfbcc79f8c261c69"
 
 
+REVIEW_GATED_POLICY = {"version": 1, "external": [], "completed": [], "exceptions": []}
+
+REVIEW_GATED_SCOPE_POLICY = {
+    "version": 1,
+    "maintained_roots": [],
+    "ownership_rules": [],
+    "external_entries": [],
+    "format_classes": [],
+    "payloads": [],
+    "derived_rules": [],
+    "consumer_edges": [],
+    "directives": [],
+    "notices": [],
+    "obligations": [],
+    "review_dispositions": [],
+}
+
+REVIEW_GATED_ENTRY = {
+    "path": "a.py",
+    "symbol": "",
+    "text": "# explanation",
+    "kind": "notice",
+    "consumer": "a.py",
+    "necessity": "Keep the fixture prose.",
+    "alternative": "No prose needed.",
+    "owner": "comment-cleanup-test",
+    "removal": "Remove with the fixture.",
+}
+
+
+def _review_gated_repo(tmp_path: Path) -> str:
+    (tmp_path / "quality").mkdir()
+    (tmp_path / "quality" / "comment-policy.json").write_text(json.dumps(REVIEW_GATED_POLICY), encoding="utf-8")
+    (tmp_path / "quality" / "comment-cleanup-scope.json").write_text(
+        json.dumps(REVIEW_GATED_SCOPE_POLICY), encoding="utf-8"
+    )
+    git_run(tmp_path, "init", "-q")
+    git_run(tmp_path, "add", ".")
+    git_run(tmp_path, "commit", "-qm", "base")
+    base = git_run(tmp_path, "rev-parse", "HEAD")
+    (tmp_path / "a.py").write_text("x = 1  # explanation\n", encoding="utf-8")
+    candidate = dict(REVIEW_GATED_POLICY, exceptions=[dict(REVIEW_GATED_ENTRY)])
+    (tmp_path / "quality" / "comment-policy.json").write_text(json.dumps(candidate), encoding="utf-8")
+    git_run(tmp_path, "add", ".")
+    git_run(tmp_path, "commit", "-qm", "head")
+    return base
+
+
+def test_transition_self_registered_exception_fails_without_review(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base = _review_gated_repo(tmp_path)
+    monkeypatch.setattr(check_comment_policy, "oracle_review_covers", lambda root: False)
+    assert check_comment_policy.main(["--root", str(tmp_path), "--mode", "transition", "--base", base]) == 1
+
+
+def test_transition_self_registered_exception_counts_with_review(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base = _review_gated_repo(tmp_path)
+    monkeypatch.setattr(check_comment_policy, "oracle_review_covers", lambda root: True)
+    assert check_comment_policy.main(["--root", str(tmp_path), "--mode", "transition", "--base", base]) == 0
+
+
+def _check_runs_payload(*runs: dict, total: int | None = None) -> bytes:
+    import json as json_module
+
+    return json_module.dumps({"total_count": len(runs) if total is None else total, "check_runs": list(runs)}).encode()
+
+
+def _workflow_payload(
+    path: str = ".github/workflows/oracle-review.yml", head: str = "a" * 40, conclusion: str = "success"
+) -> bytes:
+    import json as json_module
+
+    return json_module.dumps({"path": path, "head_sha": head, "conclusion": conclusion}).encode()
+
+
+class _FakeResponse:
+    def __init__(self, payload: bytes) -> None:
+        self._payload = payload
+
+    def __enter__(self) -> _FakeResponse:
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        return None
+
+    def read(self) -> bytes:
+        return self._payload
+
+
+def _review_event(tmp_path: Path, head: str = "a" * 40) -> None:
+    import json as json_module
+
+    (tmp_path / "event.json").write_text(
+        json_module.dumps({"pull_request": {"number": 1, "head": {"sha": head}}}), encoding="utf-8"
+    )
+
+
+def test_oracle_review_covers_needs_event_token_and_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    monkeypatch.delenv("GITHUB_EVENT_PATH", raising=False)
+    monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
+    monkeypatch.setenv("GITHUB_TOKEN", "t")
+    assert scope.oracle_review_covers(tmp_path) is False
+
+
+def _review_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, head: str = "a" * 40) -> None:
+    _review_event(tmp_path, head)
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(tmp_path / "event.json"))
+    monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
+    monkeypatch.setenv("GITHUB_TOKEN", "t")
+    import check_comment_cleanup_scope as scope
+
+    monkeypatch.setattr(scope, "scanned_tree_is_reviewed_head", lambda root, head: True)
+
+
+def _review_run(
+    conclusion: str = "success",
+    completed_at: str = "2026-10-14T00:00:00Z",
+    app: str = "github-actions",
+    run_id: int = 7,
+) -> dict:
+    return {
+        "name": "oracle-review",
+        "status": "completed",
+        "conclusion": conclusion,
+        "completed_at": completed_at,
+        "app": {"slug": app},
+        "html_url": f"https://github.com/o/r/actions/runs/{run_id}/job/9",
+    }
+
+
+def _verdict_review(
+    state: str = "success",
+    head: str = "a" * 40,
+    login: str = "benchbox-oracle",
+    account_type: str = "Bot",
+    commit: str | None = None,
+    review_state: str = "COMMENTED",
+    submitted: str = "2026-10-14T00:00:01Z",
+) -> dict:
+    return {
+        "user": {"login": login, "type": account_type},
+        "commit_id": commit if commit is not None else head,
+        "state": review_state,
+        "submitted_at": submitted,
+        "body": f"### oracle-verdict: {state} for `{head}`\n",
+    }
+
+
+def _fake_api(
+    monkeypatch: pytest.MonkeyPatch,
+    runs: list[dict],
+    workflow: bytes,
+    seen: list[str],
+    reviews: list[dict] | None = None,
+) -> None:
+    import json as json_module
+
+    payload = json_module.dumps(reviews if reviews is not None else [_verdict_review()]).encode()
+
+    def fake(request: urllib.request.Request, timeout: int = 30) -> _FakeResponse:
+        url = request.full_url
+        seen.append(url)
+        if "/actions/runs/" in url:
+            return _FakeResponse(workflow)
+        if "/pulls/" in url and url.endswith("/reviews?per_page=100&page=1"):
+            return _FakeResponse(payload)
+        return _FakeResponse(_check_runs_payload(*runs))
+
+    monkeypatch.setattr("urllib.request.urlopen", fake)
+
+
+def test_oracle_review_covers_bound_workflow_success(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_env(tmp_path, monkeypatch)
+    seen: list[str] = []
+    _fake_api(monkeypatch, [_review_run()], _workflow_payload(), seen)
+    assert scope.oracle_review_covers(tmp_path) is True
+    assert any("a" * 40 in url for url in seen)
+
+
+def test_oracle_review_covers_latest_completed_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_env(tmp_path, monkeypatch)
+    seen: list[str] = []
+    old = _review_run(completed_at="2026-10-13T00:00:00Z", run_id=6)
+    new = _review_run(conclusion="failure", run_id=7)
+    _fake_api(monkeypatch, [old, new], _workflow_payload(), seen)
+    assert scope.oracle_review_covers(tmp_path) is False
+
+
+def test_oracle_review_covers_rejects_foreign_app_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_env(tmp_path, monkeypatch)
+    seen: list[str] = []
+    _fake_api(monkeypatch, [_review_run(app="forged-checks")], _workflow_payload(), seen)
+    assert scope.oracle_review_covers(tmp_path) is False
+    assert not any("/actions/runs/" in url for url in seen)
+
+
+def test_oracle_review_covers_rejects_other_workflow_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_env(tmp_path, monkeypatch)
+    seen: list[str] = []
+    _fake_api(monkeypatch, [_review_run()], _workflow_payload(path=".github/workflows/ci.yml"), seen)
+    assert scope.oracle_review_covers(tmp_path) is False
+
+
+def test_oracle_review_covers_rejects_other_head_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_env(tmp_path, monkeypatch)
+    seen: list[str] = []
+    _fake_api(monkeypatch, [_review_run()], _workflow_payload(head="b" * 40), seen)
+    assert scope.oracle_review_covers(tmp_path) is False
+
+
+def test_oracle_review_covers_fails_closed_on_api_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_event(tmp_path)
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(tmp_path / "event.json"))
+    monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
+    monkeypatch.setenv("GITHUB_TOKEN", "t")
+
+    def fail(request: object, timeout: int = 30) -> _FakeResponse:
+        raise OSError("network down")
+
+    monkeypatch.setattr("urllib.request.urlopen", fail)
+    assert scope.oracle_review_covers(tmp_path) is False
+
+
+def test_oracle_review_covers_rejects_check_success_without_verdict(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_env(tmp_path, monkeypatch)
+    seen: list[str] = []
+    _fake_api(monkeypatch, [_review_run()], _workflow_payload(), seen, reviews=[])
+    assert scope.oracle_review_covers(tmp_path) is False
+
+
+def test_oracle_review_covers_rejects_failure_verdict(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_env(tmp_path, monkeypatch)
+    seen: list[str] = []
+    _fake_api(monkeypatch, [_review_run()], _workflow_payload(), seen, reviews=[_verdict_review(state="failure")])
+    assert scope.oracle_review_covers(tmp_path) is False
+
+
+def test_oracle_review_covers_rejects_verdict_for_other_head(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_env(tmp_path, monkeypatch)
+    seen: list[str] = []
+    _fake_api(
+        monkeypatch,
+        [_review_run()],
+        _workflow_payload(),
+        seen,
+        reviews=[_verdict_review(commit="b" * 40, head="b" * 40)],
+    )
+    assert scope.oracle_review_covers(tmp_path) is False
+
+
+def test_oracle_review_covers_rejects_non_oracle_verdict(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_env(tmp_path, monkeypatch)
+    seen: list[str] = []
+    _fake_api(monkeypatch, [_review_run()], _workflow_payload(), seen, reviews=[_verdict_review(login="attacker")])
+    assert scope.oracle_review_covers(tmp_path) is False
+
+
+def test_oracle_review_covers_prefers_latest_verdict(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_env(tmp_path, monkeypatch)
+    seen: list[str] = []
+    _fake_api(
+        monkeypatch,
+        [_review_run()],
+        _workflow_payload(),
+        seen,
+        reviews=[
+            _verdict_review(state="success", submitted="2026-10-14T00:00:01Z"),
+            _verdict_review(state="failure", submitted="2026-10-14T00:00:02Z"),
+        ],
+    )
+    assert scope.oracle_review_covers(tmp_path) is False
+
+
+def _bound_checkout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, event_head: str | None = None) -> tuple[Path, str]:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    git_run(repo, "init", "-q")
+    (repo / "f.txt").write_text("one\n", encoding="utf-8")
+    git_run(repo, "add", "f.txt")
+    git_run(repo, "commit", "-qm", "head")
+    head = git_run(repo, "rev-parse", "HEAD")
+    reviewed = event_head or head
+    _review_event(tmp_path, reviewed)
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(tmp_path / "event.json"))
+    monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
+    monkeypatch.setenv("GITHUB_TOKEN", "t")
+    _fake_api(
+        monkeypatch,
+        [_review_run()],
+        _workflow_payload(head=reviewed),
+        [],
+        reviews=[_verdict_review(head=reviewed)],
+    )
+    return repo, head
+
+
+def test_oracle_review_covers_when_checkout_is_reviewed_head(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    repo, _ = _bound_checkout(tmp_path, monkeypatch)
+    assert scope.oracle_review_covers(repo) is True
+
+
+def test_oracle_review_covers_rejects_stale_event_head(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    repo, _ = _bound_checkout(tmp_path, monkeypatch, event_head="b" * 40)
+    assert scope.oracle_review_covers(repo) is False
+
+
+def test_oracle_review_covers_rejects_new_commit_after_reviewed_head(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import check_comment_cleanup_scope as scope
+
+    repo, _ = _bound_checkout(tmp_path, monkeypatch)
+    (repo / "f.txt").write_text("two\n", encoding="utf-8")
+    git_run(repo, "commit", "-qam", "unreviewed")
+    assert scope.oracle_review_covers(repo) is False
+
+
+@pytest.mark.parametrize("area", ["worktree", "index"])
+def test_oracle_review_covers_rejects_modified_checkout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, area: str
+) -> None:
+    import check_comment_cleanup_scope as scope
+
+    repo, _ = _bound_checkout(tmp_path, monkeypatch)
+    (repo / "f.txt").write_text("two\n", encoding="utf-8")
+    if area == "index":
+        git_run(repo, "add", "f.txt")
+        (repo / "f.txt").write_text("one\n", encoding="utf-8")
+    assert scope.oracle_review_covers(repo) is False
+
+
+def _merge_checkout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, tamper: bool, event_head: str | None) -> Path:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    git_run(repo, "init", "-q", "-b", "main")
+    (repo / "base.txt").write_text("base\n", encoding="utf-8")
+    git_run(repo, "add", "base.txt")
+    git_run(repo, "commit", "-qm", "base")
+    git_run(repo, "checkout", "-qb", "topic")
+    (repo / "topic.txt").write_text("topic\n", encoding="utf-8")
+    git_run(repo, "add", "topic.txt")
+    git_run(repo, "commit", "-qm", "topic")
+    topic = git_run(repo, "rev-parse", "HEAD")
+    git_run(repo, "checkout", "-q", "main")
+    (repo / "main.txt").write_text("main\n", encoding="utf-8")
+    git_run(repo, "add", "main.txt")
+    git_run(repo, "commit", "-qm", "main")
+    git_run(repo, "merge", "-q", "--no-ff", "--no-commit", topic)
+    if tamper:
+        (repo / "extra.txt").write_text("unreviewed\n", encoding="utf-8")
+        git_run(repo, "add", "extra.txt")
+    git_run(repo, "commit", "-qm", "merge")
+    reviewed = event_head or topic
+    _review_event(tmp_path, reviewed)
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(tmp_path / "event.json"))
+    monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
+    monkeypatch.setenv("GITHUB_TOKEN", "t")
+    _fake_api(
+        monkeypatch,
+        [_review_run()],
+        _workflow_payload(head=reviewed),
+        [],
+        reviews=[_verdict_review(head=reviewed)],
+    )
+    return repo
+
+
+def test_oracle_review_covers_merge_checkout_of_reviewed_head(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    repo = _merge_checkout(tmp_path, monkeypatch, tamper=False, event_head=None)
+    assert scope.oracle_review_covers(repo) is True
+
+
+def test_oracle_review_covers_rejects_merge_checkout_of_other_head(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import check_comment_cleanup_scope as scope
+
+    repo = _merge_checkout(tmp_path, monkeypatch, tamper=False, event_head="c" * 40)
+    assert scope.oracle_review_covers(repo) is False
+
+
+def test_oracle_review_covers_rejects_merge_with_content_outside_parents(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import check_comment_cleanup_scope as scope
+
+    repo = _merge_checkout(tmp_path, monkeypatch, tamper=True, event_head=None)
+    assert scope.oracle_review_covers(repo) is False
+
+
+def test_oracle_review_covers_rejects_non_repository_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _bound_checkout(tmp_path, monkeypatch)
+    assert scope.oracle_review_covers(tmp_path / "missing") is False
+
+
 @pytest.mark.parametrize("prefix", [["python3"], ["env", "python3"], ["uv", "run", "python3"]])
 def test_sys_executable_inline_source_is_not_literal_program_name(prefix: list[str]) -> None:
     prefix_expression = ", ".join(repr(word) for word in prefix)
@@ -2199,6 +2632,87 @@ def test_ownership_partial_notice_rejects_inside_edit(tmp_path: Path) -> None:
     (tmp_path / "benchbox/_binaries/vendor/tools/PATCHES.md").write_bytes(b"prefix\nModified notice!\nsuffix\n")
     with pytest.raises(ValueError, match="protected external notice"):
         check_comment_policy.ownership_exclusions(tmp_path, base, False)
+
+
+NOTICE_PATH = "benchbox/_binaries/vendor/tools/PATCHES.md"
+
+
+def recomputed_candidate(ledger: dict, raw: bytes, start: int, end: int) -> dict:
+    entry = deepcopy(ledger["notices"][0])
+    entry.update(
+        {
+            "byte_start": start,
+            "byte_end": end,
+            "retained_sha256": hashlib.sha256(raw[start:end]).hexdigest(),
+            "blob_sha256": hashlib.sha256(raw).hexdigest(),
+        }
+    )
+    return entry
+
+
+@pytest.mark.parametrize("layer", ["scope-range-check", "base-anchored-pins"])
+def test_candidate_whole_file_notice_rewrite_with_recomputed_pins_is_rejected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, layer: str
+) -> None:
+    import check_comment_cleanup_scope as scope
+
+    base, ledger = ownership_repo(tmp_path)
+    raw = b"Modified upstream notice\n"
+    (tmp_path / NOTICE_PATH).write_bytes(raw)
+    candidate = recomputed_candidate(ledger, raw, 0, len(raw))
+    if layer == "base-anchored-pins":
+        monkeypatch.setattr(scope, "_check_candidate_ranges", lambda *args: None)
+    with pytest.raises(ValueError, match="notice|retained bytes differ|base blob"):
+        check_comment_policy.ownership_exclusions(tmp_path, base, False, [candidate])
+
+
+@pytest.mark.parametrize("layer", ["scope-range-check", "base-anchored-pins"])
+def test_candidate_partial_notice_in_range_substitution_is_rejected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, layer: str
+) -> None:
+    import check_comment_cleanup_scope as scope
+
+    base, ledger = ownership_repo(tmp_path, partial_notice=True)
+    original = (tmp_path / NOTICE_PATH).read_bytes()
+    start, end = ledger["notices"][0]["byte_start"], ledger["notices"][0]["byte_end"]
+    raw = original[:start] + b"X" * (end - start) + original[end:]
+    (tmp_path / NOTICE_PATH).write_bytes(raw)
+    candidate = recomputed_candidate(ledger, raw, start, end)
+    if layer == "base-anchored-pins":
+        monkeypatch.setattr(scope, "_check_candidate_ranges", lambda *args: None)
+    with pytest.raises(ValueError, match="protected external notice|retained bytes differ"):
+        check_comment_policy.ownership_exclusions(tmp_path, base, False, [candidate])
+
+
+def test_candidate_whole_file_truncation_is_rejected(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    base, ledger = ownership_repo(tmp_path)
+    raw = (tmp_path / NOTICE_PATH).read_bytes()[:-1]
+    (tmp_path / NOTICE_PATH).write_bytes(raw)
+    candidate = recomputed_candidate(ledger, raw, 0, len(raw))
+    with pytest.raises(ValueError, match="base blob"):
+        check_comment_policy.ownership_exclusions(tmp_path, base, False, [candidate])
+    monkeypatch.setattr(scope, "_check_candidate_ranges", lambda *args: None)
+    assert NOTICE_PATH not in check_comment_policy.ownership_exclusions(tmp_path, base, False, [candidate])
+
+
+def test_candidate_unchanged_whole_file_notice_is_still_excluded(tmp_path: Path) -> None:
+    base, ledger = ownership_repo(tmp_path)
+    raw = (tmp_path / NOTICE_PATH).read_bytes()
+    candidate = recomputed_candidate(ledger, raw, 0, len(raw))
+    assert NOTICE_PATH in check_comment_policy.ownership_exclusions(tmp_path, base, False, [candidate])
+
+
+def test_candidate_narrowed_partial_notice_allows_outside_edit(tmp_path: Path) -> None:
+    base, ledger = ownership_repo(tmp_path, partial_notice=True)
+    raw = (tmp_path / NOTICE_PATH).read_bytes()
+    start, end = ledger["notices"][0]["byte_start"], ledger["notices"][0]["byte_end"]
+    edited = raw + b"outside edit\n"
+    (tmp_path / NOTICE_PATH).write_bytes(edited)
+    candidate = recomputed_candidate(ledger, edited, start + 1, end - 1)
+    exclusions = check_comment_policy.ownership_exclusions(tmp_path, base, False, [candidate])
+    assert NOTICE_PATH not in exclusions
 
 
 def test_ownership_absent_ledger_preserves_legacy_behavior(tmp_path: Path) -> None:
