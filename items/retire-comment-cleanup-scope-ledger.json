@@ -1,9 +1,11 @@
 {
   "acceptance": [
-    "Scope ledger retired or re-scoped with an accurate doc; CI drift wiring updated; no finished work left in blocked state."
+    "docs/internal/comment-cleanup-scope.md states that the file is the strict-mode ownership manifest and pinned-notice source, and that blocked rule states are historical",
+    "make comment-policy-check and make comment-policy-strict still pass",
+    "No checker change unless it passes oracle review"
   ],
-  "context": "Found during the 2026-10-13 comment-cleanup re-evaluation session. A stale ledger entry blocked every PR's comment gate (repaired via PR #2953); the ledger itself is untouched technical debt.",
-  "description": "quality/comment-cleanup-scope.json still marks all 110 ownership rules blocked, including slices the merged cleanup demonstrably finished, and docs/internal/comment-cleanup-scope.md still presents the frozen pre-cleanup state. The file feeds the CI pinned-notice drift job and its checker sits beside soundness-protected wiring, so the closeout needs an owner decision (mark terminal states and retire as a unit, delete as superseded by quality/comment-policy.json, or keep as a pinned-notice guard with a re-scoped doc) plus oracle review for any checker change.",
+  "context": "Rewritten 2026-10-15 from \"retire the ledger\" after the owner's decision to keep it. A stale ledger entry once blocked every PR's comment gate (repaired by #2954). Any change to the checker or ledger needs oracle review.",
+  "description": "The repository owner decided on 2026-10-15 to keep quality/comment-cleanup-scope.json: strict comment-policy mode reads external ownership from its external_entries (scripts/check_comment_cleanup_scope.py immutable_external_ownership), and the CI pinned-notice drift job reads its notices. Retiring it would break both. The file still marks all 110 ownership rules blocked, and docs/internal/comment-cleanup-scope.md still presents the frozen pre-cleanup work queue. Re-scope the page to say what the file is now (ownership manifest for strict mode and pinned notices for the drift job; rule states are historical, not a work queue). The checker accepts only ready or blocked, so do not invent a terminal state unless the checker change is also reviewed. Do not delete ownership_rules: unclassified maintained paths fail validation.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/2953"
   ],
@@ -15,6 +17,14 @@
       "op": "create",
       "op_id": "0ec76d0aaab34899afc5a347fdb4b175",
       "session_id": "be2b066e755a4a4bb3ff24b1b46fe0b7"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:6b9b7c4e8f8d58a0a7174a0a",
+      "at": "2026-10-16T03:51:34Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "254490547d8d4c719b9284eb0d94b880",
+      "session_id": "5c80d5d463444a2ba9410e1fdfb1d517"
     }
   ]
 }
