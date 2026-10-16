@@ -16627,10 +16627,15 @@
       "title": "The Python API reference still documents the anonymization API deleted in #1528"
     },
     "python-deployment-selection-and-lakesail-df-20261016": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-17T23:40:18Z",
+        "generation": "dd677142c1154a57ad6b4bb1ba28adf0",
+        "renewals": 0,
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Give Python callers a supported way to select a deployment mode, and fix the lakesail-df example"
     },
     "qpc-01-plan-rehydration-and-phases-view": {
