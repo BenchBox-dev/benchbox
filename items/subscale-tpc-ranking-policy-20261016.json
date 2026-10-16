@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "polars-df TPC-H SF0.01/SF0.1 validates passed with 22 queries checked; SQL duckdb/datafusion sub-SF1 runs record 22 per-query PASSED checks",
+    "Legacy 18 bundles stay ranked with identity counts unchanged; new subscale bundles carry power_at_size with an unofficial marker and rank; back-filled bundles rank and are marked derived",
+    "Every Explorer surface listed in the plan shows the Subscale · Unofficial label; SF1 cohorts show none",
+    "New ADR records the policy, supersedes the subscale-unranked rules, and states the fair-use mitigation",
+    "Seed workflow re-cuts the ledger seed, runs the publication suites, and its PR passes CI with no manual fix",
+    "QphH stays unavailable and official submission still refuses subscale runs"
+  ],
+  "description": "Owner decisions 2026-10-16: sub-SF1 TPC-H (and TPC-DS) results stay ranked by Power@Size and are labelled \"Subscale · Unofficial\" on every surface; the 18 legacy sub-SF1 bundles keep their rankings; new subscale runs record power_at_size with an unofficial marker instead of suppressing it; the 11 no-power subscale bundles get power back-filled from timings at read time (marked derived); an exact per-query row-count reference at SF0.01 and SF0.1 validates both DataFrame and SQL runs; the seed workflow re-cuts publication/ledger-seed.json and runs the publication suites; the owner merges each mirror. Delivered as four PRs: row-count reference, ranking policy + ADR, Explorer labels (same release as the policy), seed workflow re-cut.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-16T22:20:26Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "2b8bab28914e4ec9a45fc1f5733fb637",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}

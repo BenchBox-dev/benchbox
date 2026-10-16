@@ -21988,6 +21988,13 @@
       "status": "done",
       "title": "Carry funding + result_source in the submission manifest; enforce vendor label governance"
     },
+    "subscale-tpc-ranking-policy-20261016": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Rank sub-SF1 TPC results labelled Subscale · Unofficial, with exact sub-SF1 row-count checks"
+    },
     "summary-box-system-environment-info": {
       "claim": null,
       "needs": [],
