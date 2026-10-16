@@ -21,10 +21,6 @@ permissions:
   issues: read
   pull-requests: read
 
-concurrency:
-  group: oracle-review-${{ github.event.pull_request.number || inputs.pr }}
-  cancel-in-progress: true
-
 jobs:
   oracle-review:
     name: oracle-review
@@ -77,6 +73,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           GH_TOKEN: ${{ github.token }}
           EVENT_NAME: ${{ github.event_name }}
+          EVENT_HEAD: ${{ github.event.pull_request.head.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr }}
           PR_SNAPSHOT: ${{ steps.dispatch-pr.outputs.snapshot }}
           REPO: ${{ github.repository }}
@@ -89,10 +86,20 @@ jobs:
               exit 2
             }
           }
-          if [ "$EVENT_NAME" = workflow_dispatch ]; then
-            check_dispatch_head
-          fi
+          check_event_head() {
+            CURRENT_HEAD=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid | jq -er .headRefOid)
+            [ "$CURRENT_HEAD" = "$EVENT_HEAD" ] || {
+              echo "oracle-review: error: this run is for $EVENT_HEAD, but the pull request head is now $CURRENT_HEAD" >&2
+              exit 2
+            }
+          }
+          check_head() {
+            if [ "$EVENT_NAME" = workflow_dispatch ]; then
+              check_dispatch_head
+            else
+              check_event_head
+            fi
+          }
+          check_head
           python _project/scripts/oracle_review_check.py --repo "$REPO" --pr "$PR_NUMBER" --signal oracle
-          if [ "$EVENT_NAME" = workflow_dispatch ]; then
-            check_dispatch_head
-          fi
+          check_head

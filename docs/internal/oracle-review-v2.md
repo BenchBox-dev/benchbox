@@ -322,6 +322,16 @@ oracle signal needs `findings_delivery: review`, under which every run that
 reaches a result, including a pending one, posts a review, so the latest
 review is the latest result.
 
+Each `oracle-review` run is its own check suite on the head, and a failed or
+cancelled suite keeps the required check red until it is re-run. After the
+`post` job of `oracle-verdict` posts its review, it re-runs the failed
+`pull_request` runs for the head, at the same moment the review starts a
+`pull_request_review` run. The workflow has no concurrency group, because
+under `cancel-in-progress` one of those runs cancelled the other. Instead, a
+run for a pull request event checks, before and after the checker, that the
+head it was triggered for is still the pull request's head; a run for a
+superseded head fails rather than report on a head it was not created for.
+
 The stand-in attestation must be posted after the oracle's latest review of
 the head, so overriding a failing verdict is a deliberate act; it never
 overrides an open thread.
