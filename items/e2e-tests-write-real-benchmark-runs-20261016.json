@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Autouse fixture in tests/e2e/conftest.py (and tests/integration where needed) sets BENCHBOX_OUTPUT_DIR to a per-test tmp dir; subprocesses inherit it",
+    "session_isolation.start() sets BENCHBOX_OUTPUT_DIR to <session home>/benchmark_runs when unset and restores it in finish()",
+    "The DuckDB result check reads the isolated output dir and fails when no bundle is found",
+    "Proof: running the affected e2e tests leaves ~/Developer/benchmark_runs unchanged (mtime/listing before and after)",
+    "No change to tests marked live_integration that intentionally use real paths"
+  ],
+  "description": "Tests that call `run_benchmark` in tests/e2e/conftest.py (lines ~221-230) run the CLI via `run_cli_command` (tests/integration/_cli_e2e_utils.py:13-41) with no cwd and no BENCHBOX_OUTPUT_DIR. `default_benchmark_runs_root` (benchbox/core/runtime_paths.py:34-39) resolves to the parent of the git repo, so output lands in ~/Developer/benchmark_runs for the main clone and every worktree. HOME isolation (tests/utilities/session_isolation.py) does not cover this path. Affected: TestDuckDBE2E, TestSQLiteE2E, TestDataFusionE2E in tests/e2e/test_local_platforms.py, tests/e2e/test_dataframe_platforms.py and others. `--force all` runs regenerate the shared datagen/tpch_sf001 cache and recreate shared SQLite/DuckDB files; parallel workers and worktrees race on them. TestDuckDBE2E::test_tpch_full_execution (~lines 45-53) checks Path(\"benchmark_runs\") relative to the repo root, so its result validation is silently skipped.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-16T16:58:26Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "b1437857882749dd886167ea2f5afd44",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}
