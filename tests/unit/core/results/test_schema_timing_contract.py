@@ -8,7 +8,13 @@ import pytest
 
 from benchbox.core.results.loader import reconstruct_benchmark_results
 from benchbox.core.results.metrics import percentile_ms
-from benchbox.core.results.models import ExecutionPhases, SetupPhase, ThroughputStream, ThroughputTestPhase
+from benchbox.core.results.models import (
+    ExecutionPhases,
+    PowerTestPhase,
+    SetupPhase,
+    ThroughputStream,
+    ThroughputTestPhase,
+)
 from benchbox.core.results.query_execution import QueryExecutionContractError
 from benchbox.core.results.schema import build_result_payload
 
@@ -131,12 +137,97 @@ def test_build_result_payload_accepts_consistent_duration_aliases() -> None:
     assert payload["phases"]["throughput_test"] == {
         "status": "FAILED",
         "duration_ms": 1000,
+        "num_streams": 1,
         "stream_results": [
             {"stream_id": 5, "success": False, "error": "worker died"},
         ],
         "errors": ["Stream 5 failed: worker died"],
     }
     assert "throughput_at_size" not in payload["summary"].get("tpc_metrics", {})
+
+
+def test_refresh_evidence_is_serialized_as_phase_data_not_query_rows() -> None:
+    result = _result_with_queries(
+        [
+            {
+                "query_id": "Q1",
+                "status": "SUCCESS",
+                "execution_time_seconds": 1.0,
+                "rows_returned": 4,
+                "iteration": 1,
+                "stream_id": 0,
+                "run_type": "measurement",
+            }
+        ]
+    )
+    power_functions = [
+        {"function": "RF1", "update_set": 3, "duration_ms": 12, "rows": 8, "status": "SUCCESS"},
+        {"function": "RF2", "update_set": 3, "duration_ms": 13, "rows": 4, "status": "SUCCESS"},
+    ]
+    refresh_stream = {
+        "first_set": 4,
+        "pair_count": 2,
+        "pairs": [{"update_set": set_id, "status": "SUCCESS", "functions": []} for set_id in (4, 5)],
+        "start_time": "2026-02-12T00:00:00",
+        "end_time": "2026-02-12T00:00:01",
+        "status": "COMPLETED",
+        "error": None,
+    }
+    result.execution_phases = ExecutionPhases(
+        setup=SetupPhase(),
+        power_test=PowerTestPhase(
+            start_time="2026-02-12T00:00:00",
+            end_time="2026-02-12T00:00:01",
+            duration_ms=1000,
+            query_executions=[],
+            geometric_mean_time=1.0,
+            power_at_size=1.0,
+            refresh_first_set=3,
+            refresh_functions=power_functions,
+            query_count=22,
+            success=True,
+        ),
+        throughput_test=ThroughputTestPhase(
+            start_time="2026-02-12T00:00:00",
+            end_time="2026-02-12T00:00:01",
+            duration_ms=1000,
+            num_streams=2,
+            streams=[],
+            total_queries_executed=44,
+            throughput_at_size=1.0,
+            refresh_stream=refresh_stream,
+        ),
+    )
+    result.power_at_size = 1.0
+    result.throughput_at_size = 2.0
+    result.qph_at_size = 1.5
+    result.refresh_included = True
+
+    payload = build_result_payload(result)
+
+    assert len(payload["queries"]) == 1
+    assert payload["phases"]["power_test"]["refresh_functions"] == power_functions
+    assert payload["phases"]["power_test"]["geometric_mean_time"] == 1.0
+    assert payload["phases"]["power_test"]["power_at_size"] == 1.0
+    assert payload["phases"]["throughput_test"]["refresh_stream"] == refresh_stream
+    assert payload["phases"]["throughput_test"]["num_streams"] == 2
+
+    reload_payload = {
+        **payload,
+        "phases": {name: dict(phase) for name, phase in payload["phases"].items()},
+    }
+    reload_payload["phases"]["power_test"].pop("geometric_mean_time")
+    reload_payload["phases"]["power_test"].pop("power_at_size")
+    reloaded = reconstruct_benchmark_results(reload_payload)
+    reloaded_payload = build_result_payload(reloaded)
+
+    assert reloaded.execution_phases.power_test.geometric_mean_time == 1.0
+    assert reloaded.execution_phases.power_test.power_at_size == 1.0
+    assert reloaded.execution_phases.throughput_test.num_streams == 2
+    assert reloaded.qph_at_size == 1.5
+    assert reloaded_payload["phases"]["power_test"]["power_at_size"] == 1.0
+    assert reloaded_payload["phases"]["throughput_test"]["num_streams"] == 2
+    assert reloaded_payload["summary"]["tpc_metrics"]["qphh_at_size"] == 1.5
 
 
 def test_throughput_outstanding_work_survives_schema_round_trip_without_query_rows() -> None:

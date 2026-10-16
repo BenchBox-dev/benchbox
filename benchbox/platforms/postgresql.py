@@ -261,6 +261,7 @@ def ensure_postgres_extension(
 class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
     driver_isolation_capability = DriverIsolationCapability.FEASIBLE_CLIENT_ONLY
     plan_capture_phase_eligible = True
+    supports_refresh_functions = True
     default_service_port = 5432
 
     @property

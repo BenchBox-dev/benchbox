@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import tempfile
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from benchbox.core.constants import (
@@ -11,6 +13,7 @@ from benchbox.core.plan_capture_phase import propagate_query_execution_metadata
 
 TPCH_BENCHMARK_ID = "tpch"
 PowerConnectionAdapterFactory = Callable[[Any, str, float], Any]
+PowerRefreshConnectionAdapterFactory = Callable[[Any, float], Any]
 
 
 def _power_query_result(
@@ -67,22 +70,46 @@ def execute_tpch_power_test(
     run_config: dict[str, Any],
     *,
     make_connection_adapter: PowerConnectionAdapterFactory,
+    make_refresh_connection_adapter: PowerRefreshConnectionAdapterFactory | None = None,
     console: Any,
 ) -> list[dict[str, Any]]:
     from benchbox.core.tpch.power_test import TPCHPowerTest
 
+    refresh_temp_directory = None
     try:
         scale_factor = run_config.get("scale_factor", 1.0)
         seed = run_config.get("seed")
         validation_mode = run_config.get("validation_mode")
         stream_id = run_config.get("stream_id", 0)
         query_subset = run_config.get("query_subset")
-        getattr(adapter, "get_target_dialect", lambda: "standard")()
         verbose = run_config.get("verbose", False)
         timeout = run_config.get("timeout")
         iterations = run_config.get("iterations", TPCH_POWER_DEFAULT_MEASUREMENT_ITERATIONS)
         warm_up_iterations = run_config.get("warm_up_iterations", TPCH_POWER_DEFAULT_WARMUP_ITERATIONS)
         fail_fast = run_config.get("power_fail_fast", False)
+
+        refresh_update_set = None
+        refresh_connection_factory = None
+        refresh_enabled = (
+            run_config.get("tpch_refresh_functions", getattr(benchmark, "tpch_refresh_functions", False)) is True
+        )
+        if refresh_enabled:
+            from benchbox.core.tpch.refresh import generate_refresh_update_sets, require_refresh_support
+
+            require_refresh_support(adapter)
+            if make_refresh_connection_adapter is None:
+                raise RuntimeError("TPC-H refresh functions require a platform refresh connection adapter")
+            first_set = run_config.get("tpch_refresh_first_set", getattr(benchmark, "tpch_refresh_first_set", 1))
+            refresh_temp_directory = tempfile.TemporaryDirectory(prefix="benchbox-tpch-refresh-")
+            refresh_update_set = generate_refresh_update_sets(
+                scale_factor,
+                first_set,
+                1,
+                Path(refresh_temp_directory.name),
+            )[first_set]
+
+            def refresh_connection_factory():
+                return make_refresh_connection_adapter(connection, scale_factor)
 
         console.print(f"[green]Running TPC-H Power Test (Scale Factor: {scale_factor}, Stream ID: {stream_id})[/green]")
         console.print(f"[green]Warm-up runs: {warm_up_iterations}, Measurement runs: {iterations}[/green]")
@@ -120,6 +147,7 @@ def execute_tpch_power_test(
         for i in range(iterations):
             current_stream_id = stream_id
             console.print(f"[cyan]--- Measurement Run {i + 1}/{iterations} ---[/cyan]")
+            is_final_iteration = i == iterations - 1
             power_test = TPCHPowerTest(
                 benchmark=benchmark,
                 connection=connection_adapter,
@@ -131,6 +159,8 @@ def execute_tpch_power_test(
                 dialect=adapter.get_target_dialect(),
                 validation_mode=validation_mode,
                 query_subset=query_subset,
+                refresh_update_set=refresh_update_set if is_final_iteration else None,
+                refresh_connection_factory=refresh_connection_factory if is_final_iteration else None,
             )
             connection_adapter._validate_row_count = power_test.config.validation
             power_test_result = power_test.run()
@@ -151,16 +181,15 @@ def execute_tpch_power_test(
                 for error in power_test_result.errors:
                     console.print(f"  Error: {error}")
 
-            query_results = []
-            for query_result in power_test_result.query_results:
-                query_results.append(
-                    _power_query_result(
-                        query_result,
-                        stream_id=current_stream_id,
-                        iteration=i + 1,
-                        run_type="measurement",
-                    )
+            query_results = [
+                _power_query_result(
+                    query_result,
+                    stream_id=current_stream_id,
+                    iteration=i + 1,
+                    run_type="measurement",
                 )
+                for query_result in power_test_result.query_results
+            ]
             all_results.extend(query_results)
 
             if not power_test_result.success:
@@ -184,7 +213,9 @@ def execute_tpch_power_test(
                     break
 
         return all_results
-
-    except Exception as e:
-        console.print(f"[red]❌ TPC-H Power Test failed: {e}[/red]")
-        return [_power_test_error_result(str(e))]
+    except Exception as exc:
+        console.print(f"[red]❌ TPC-H Power Test failed: {exc}[/red]")
+        return [_power_test_error_result(str(exc))]
+    finally:
+        if refresh_temp_directory is not None:
+            refresh_temp_directory.cleanup()

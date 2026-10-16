@@ -44,7 +44,7 @@ Comprehensive reference for benchmarking, database, and BenchBox-specific termin
 : Database storage architecture that stores data by columns rather than rows, optimizing for analytical queries that read many rows but few columns.
 
 **Composite Score**
-: Single metric combining results from multiple benchmark tests. The TPC-H (QphH@Size) and TPC-DS (QphDS@Size) composites are not exported by BenchBox; see those entries.
+: Single metric combining results from multiple benchmark tests. TPC-H QphH@Size is exported only when its official-run and refresh-evidence gates pass; TPC-DS QphDS@Size is not exported. See those entries.
 
 **Concurrent Streams**
 : Multiple query streams executing simultaneously to test throughput performance. Each stream runs a complete set of queries in parallel with other streams.
@@ -142,7 +142,7 @@ Comprehensive reference for benchmarking, database, and BenchBox-specific termin
 : TPC-DS composite performance metric: "Queries per hour at database size". **Not exported by BenchBox.** The specification formula is `SF × Q / (T_PT × T_TT × T_DM × T_LD)^(1/4)` with `Q = 99 × S`, and it needs the data maintenance and load times. BenchBox previously exported the geometric mean of Power@Size and Throughput@Size under this name, which is not the specification metric, so it no longer exports any QphDS@Size. Throughput@Size is scored with `Q = 99 × S`. See the [TPC-DS official guide](../guides/tpc/tpc-ds-official-guide.md#qphds-size-not-exported).
 
 **QphH@Size**
-: TPC-H composite performance metric: "Queries per hour at database size". **Not exported by BenchBox.** The specification defines Power@Size over the 22 queries plus refresh functions RF1 and RF2, and a throughput test that runs the refresh stream concurrently with the query streams. BenchBox does not run the refresh functions inside the power and throughput tests, so a composite built from its Power@Size and Throughput@Size would overstate the specification metric. BenchBox therefore exports Power@Size and Throughput@Size only. Adding RF1/RF2 to both tests is tracked as follow-up work. See the [TPC-H official guide](../guides/tpc/tpc-h-official-guide.md#qphh-size-not-exported).
+: TPC-H composite performance metric: "Queries per hour at database size". BenchBox exports it only for official runs with 22 successful Power queries and successful RF1/RF2 on update set F, plus at least two complete Throughput streams with consecutive RF1/RF2 sets F+1..F+S. Failed queries, refresh functions, or query subsets prevent export; `qphh_unavailable` explains the reason. See the [TPC-H official guide](../guides/tpc/tpc-h-official-guide.md#qphh-size).
 
 **Query ID**
 : Unique identifier for a benchmark query. Examples: `"q1"`, `"query42"`, `"Q01"`.
@@ -165,7 +165,7 @@ Comprehensive reference for benchmarking, database, and BenchBox-specific termin
 : Amazon Web Services cloud data warehouse. Supported via `RedshiftAdapter`.
 
 **Refresh Function (RF)**
-: Maintenance operations in TPC benchmarks that permanently modify data. RF1 typically inserts new data (e.g., new orders and lineitems in TPC-H), while RF2 deletes old data. **Database must be reloaded** after executing refresh functions before running power or throughput tests. Executed in the Maintenance Test phase, not during power/throughput tests. See [TPC-H Maintenance Test](../guides/tpc/tpc-h-official-guide.md#maintenance-test) for details.
+: TPC maintenance operations that permanently modify data. TPC-H RF1 inserts DBGen update rows; RF2 deletes selected orders and their lineitems. With `tpch_refresh_functions=true`, Power includes RF1/RF2 and Throughput runs a concurrent refresh stream; it is disabled by default. Advance `tpch_refresh_first_set` to the next unused update set or reload original data before reusing sets. The standalone Maintenance phase also applies RF1/RF2. See [TPC-H refresh functions](../guides/tpc/tpc-h-official-guide.md#maintenance-test).
 
 **Result Schema**
 : Standardized JSON format for BenchBox benchmark results. Includes query timings, metadata, system profile, and validation status.

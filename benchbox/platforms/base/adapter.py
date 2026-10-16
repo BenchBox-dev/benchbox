@@ -115,6 +115,7 @@ class PlatformAdapter(
     stream_connection_capability = _ManifestStreamCapability()
     default_service_port: int | None = None
     supports_external_tables: bool = False
+    supports_refresh_functions: bool = False
     plan_capture_phase_eligible: bool = True
     deployment_selected: str | None = None
     deployment_selected_class: str | None = None

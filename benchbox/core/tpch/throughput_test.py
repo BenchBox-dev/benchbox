@@ -1,9 +1,12 @@
 import concurrent.futures
+import contextlib
 import contextvars
 import logging
+import tempfile
 import threading
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Callable, Optional
 
 from benchbox.core.plan_capture_phase import (
@@ -12,6 +15,15 @@ from benchbox.core.plan_capture_phase import (
 from benchbox.core.throughput.result import ThroughputResult, ThroughputStreamResult, throughput_stream_ids
 from benchbox.core.throughput.runner import StreamRunner
 from benchbox.core.tpch.power_test import _parse_tpch_query_id
+from benchbox.core.tpch.refresh import (
+    TPCHRefreshUpdateSet,
+    apply_rf1,
+    apply_rf2,
+    check_rf1_preconditions,
+    check_rf2_applied,
+    check_rf2_preconditions,
+    generate_refresh_update_sets,
+)
 from benchbox.core.validation.query_validation import (
     clear_reference_seed_context,
     set_reference_seed_context,
@@ -30,9 +42,38 @@ class TPCHThroughputTestConfig:
     cancel_on_timeout: bool = False
     query_subset: Optional[list[str]] = None
     min_success_rate: float = 0.99
+    refresh_functions: bool = False
+    refresh_first_set: int = 1
 
 
 TPCHThroughputStreamResult = ThroughputStreamResult
+
+
+@dataclass
+class TPCHRefreshStreamResult:
+    first_set: int
+    pairs: list[dict[str, Any]] = field(default_factory=list)
+    start_time: str | None = None
+    end_time: str | None = None
+    start_monotonic: float | None = None
+    end_monotonic: float | None = None
+    status: str = "PENDING"
+    error: str | None = None
+
+    @property
+    def success(self) -> bool:
+        return self.status == "COMPLETED"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "first_set": self.first_set,
+            "pair_count": len(self.pairs),
+            "pairs": self.pairs,
+            "start_time": self.start_time,
+            "end_time": self.end_time,
+            "status": self.status,
+            "error": self.error,
+        }
 
 
 def _derive_query_seed(seed: int, stream_id: int, position: int) -> int:
@@ -66,6 +107,7 @@ def _count_cursor_rows(cursor: Any) -> int:
 @dataclass
 class TPCHThroughputTestResult(ThroughputResult):
     config: TPCHThroughputTestConfig = field(kw_only=True)
+    refresh_stream: TPCHRefreshStreamResult | None = None
 
     @property
     def scale_factor(self) -> float:
@@ -81,11 +123,21 @@ class TPCHThroughputTest:
         num_streams: int = 2,
         verbose: bool = False,
         dialect: Optional[str] = None,
+        refresh_enabled: bool = False,
+        refresh_first_set: int = 1,
+        refresh_connection_factory: Callable[[], Any] | None = None,
     ) -> None:
         self.benchmark = benchmark
         self.connection_factory = connection_factory
         self.target_dialect = dialect
-        self.config = TPCHThroughputTestConfig(scale_factor=scale_factor, num_streams=num_streams, verbose=verbose)
+        self.refresh_connection_factory = refresh_connection_factory
+        self.config = TPCHThroughputTestConfig(
+            scale_factor=scale_factor,
+            num_streams=num_streams,
+            verbose=verbose,
+            refresh_functions=refresh_enabled,
+            refresh_first_set=refresh_first_set,
+        )
 
         self.logger = logging.getLogger(__name__)
         if verbose:
@@ -100,11 +152,9 @@ class TPCHThroughputTest:
             config = self.config
 
         start_time = mono_time()
-        start_time_str = datetime.now().isoformat()
-
         result = TPCHThroughputTestResult(
             config=config,
-            start_time=start_time_str,
+            start_time=datetime.now().isoformat(),
             end_time="",
             total_time=0.0,
             throughput_at_size=0.0,
@@ -112,16 +162,40 @@ class TPCHThroughputTest:
             streams_successful=0,
             query_throughput=0.0,
         )
+        refresh_temp_directory = None
 
         try:
+            refresh_temp_directory, update_sets = self._prepare_refresh_sets(config, result)
+            deleted_lineitems = self._check_refresh_preconditions(
+                update_sets, config.num_streams, result.refresh_stream
+            )
+
             if config.verbose:
                 self.logger.info("Starting TPC-H Throughput Test")
                 self.logger.info(f"Number of streams: {config.num_streams}")
                 self.logger.info(f"Scale factor: {config.scale_factor}")
 
             self._pregenerated_queries = self._pregenerate_stream_queries(config)
+            start_time = mono_time()
+            result.start_time = datetime.now().isoformat()
+            auxiliary_fn = None
+            if config.refresh_functions:
+                auxiliary_fn = lambda: self._execute_refresh_stream(
+                    update_sets,
+                    config.num_streams,
+                    result.refresh_stream,
+                    getattr(config, "_stream_cancel_events", {}).get(0),
+                    deleted_lineitems,
+                )
 
-            StreamRunner.execute(self._execute_stream, config, result, self.logger)
+            StreamRunner.execute(self._execute_stream, config, result, self.logger, auxiliary_fn=auxiliary_fn)
+            self._check_refresh_postconditions(update_sets, result)
+
+            if result.refresh_stream is not None and result.refresh_stream.status == "PENDING":
+                result.refresh_stream.status = "FAILED"
+                result.refresh_stream.error = "refresh stream did not start"
+                result.refresh_stream.end_time = datetime.now().isoformat()
+                result.errors.append("Refresh stream failed: refresh stream did not start")
 
             result.success = StreamRunner.compute_metrics(result, config, start_time)
 
@@ -141,11 +215,257 @@ class TPCHThroughputTest:
             result.end_time = datetime.now().isoformat()
             result.success = False
             result.errors.append(f"Throughput Test execution failed: {e}")
+            if config.refresh_functions:
+                if result.refresh_stream is None:
+                    result.refresh_stream = TPCHRefreshStreamResult(first_set=max(1, config.refresh_first_set + 1))
+                if result.refresh_stream.status == "PENDING":
+                    result.refresh_stream.status = "FAILED"
+                    result.refresh_stream.error = str(e)
+                    result.refresh_stream.end_time = result.end_time
 
             if config.verbose:
                 self.logger.error(f"Throughput Test failed: {e}")
 
             return result
+
+        finally:
+            if refresh_temp_directory is not None:
+                outstanding_future = getattr(result, "_outstanding_futures", {}).get(0)
+                if outstanding_future is not None and not outstanding_future.done():
+                    outstanding_future.add_done_callback(lambda _future: refresh_temp_directory.cleanup())
+                else:
+                    refresh_temp_directory.cleanup()
+
+    def _prepare_refresh_sets(
+        self, config: TPCHThroughputTestConfig, result: TPCHThroughputTestResult
+    ) -> tuple[tempfile.TemporaryDirectory[str] | None, dict[int, TPCHRefreshUpdateSet]]:
+        if not config.refresh_functions:
+            return None, {}
+        if config.num_streams < 1:
+            raise ValueError("TPC-H refresh throughput requires at least one query stream")
+        if isinstance(config.refresh_first_set, bool) or not isinstance(config.refresh_first_set, int):
+            raise TypeError("tpch_refresh_first_set must be an integer")
+        if config.refresh_first_set < 1:
+            raise ValueError(f"tpch_refresh_first_set must be positive, got {config.refresh_first_set}")
+        if self.refresh_connection_factory is None:
+            raise RuntimeError("TPC-H refresh throughput requires a separate connection factory")
+        temporary = tempfile.TemporaryDirectory(prefix="benchbox-tpch-refresh-")
+        refresh_first_set = config.refresh_first_set + 1
+        try:
+            update_sets = generate_refresh_update_sets(
+                scale_factor=config.scale_factor,
+                first_set=refresh_first_set,
+                count=config.num_streams,
+                output_dir=Path(temporary.name),
+            )
+        except BaseException:
+            temporary.cleanup()
+            raise
+        result.refresh_stream = TPCHRefreshStreamResult(first_set=refresh_first_set)
+        return temporary, update_sets
+
+    def _with_refresh_session(self, action: Callable[[Any], Any]) -> Any:
+        if self.refresh_connection_factory is None:
+            raise RuntimeError("TPC-H refresh stream requires a separate connection factory")
+        connection = self.refresh_connection_factory()
+        try:
+            return action(connection)
+        finally:
+            with contextlib.suppress(Exception):
+                connection.close()
+
+    def _check_refresh_preconditions(
+        self,
+        update_sets: dict[int, TPCHRefreshUpdateSet],
+        num_streams: int,
+        refresh_stream: TPCHRefreshStreamResult | None,
+    ) -> dict[int, int]:
+        if refresh_stream is None:
+            return {}
+
+        def check(connection: Any) -> dict[int, int]:
+            deleted_lineitems = {}
+            for offset in range(num_streams):
+                update_set_id = refresh_stream.first_set + offset
+                update_set = update_sets[update_set_id]
+                pair = {"update_set": update_set_id, "functions": [], "status": "PENDING", "error": None}
+                refresh_stream.pairs.append(pair)
+                for function, precondition in (("RF1", check_rf1_preconditions), ("RF2", check_rf2_preconditions)):
+                    try:
+                        checked = precondition(connection, update_set)
+                    except Exception as exc:
+                        self._record_refresh_precondition_failure(refresh_stream, pair, function, update_set, exc)
+                        raise RuntimeError(f"Refresh stream failed: {refresh_stream.error}") from exc
+                    if function == "RF2":
+                        deleted_lineitems[update_set_id] = checked
+            return deleted_lineitems
+
+        return self._with_refresh_session(check)
+
+    def _check_refresh_postconditions(
+        self, update_sets: dict[int, TPCHRefreshUpdateSet], result: TPCHThroughputTestResult
+    ) -> None:
+        refresh_stream = result.refresh_stream
+        if refresh_stream is None or refresh_stream.status != "COMPLETED":
+            return
+
+        def check(connection: Any) -> None:
+            for pair in refresh_stream.pairs:
+                update_set_id = pair["update_set"]
+                try:
+                    check_rf2_applied(connection, update_sets[update_set_id])
+                except Exception as exc:
+                    rf2_result = pair["functions"][1]
+                    rf2_result["duration_ms"] = 0
+                    rf2_result["status"] = "FAILED"
+                    rf2_result["error"] = str(exc)
+                    pair["status"] = "FAILED"
+                    pair["error"] = str(exc)
+                    refresh_stream.error = f"refresh set {update_set_id} RF2 failed: {exc}"
+                    refresh_stream.status = "FAILED"
+                    return
+
+        try:
+            self._with_refresh_session(check)
+        except Exception as exc:
+            refresh_stream.status = "FAILED"
+            refresh_stream.error = f"refresh postcondition check failed: {exc}"
+        if refresh_stream.status == "FAILED":
+            result.errors.append(f"Refresh stream failed: {refresh_stream.error}")
+
+    def _execute_refresh_stream(
+        self,
+        update_sets: dict[int, TPCHRefreshUpdateSet],
+        num_streams: int,
+        refresh_stream: TPCHRefreshStreamResult | None,
+        cancel_event: threading.Event | None = None,
+        deleted_lineitems: dict[int, int] | None = None,
+    ) -> TPCHRefreshStreamResult:
+        if refresh_stream is None:
+            raise RuntimeError("TPC-H refresh stream result was not initialized")
+
+        refresh_stream.start_monotonic = mono_time()
+        refresh_stream.start_time = datetime.now().isoformat()
+        refresh_stream.status = "RUNNING"
+        connection = None
+        try:
+            if self.refresh_connection_factory is None:
+                raise RuntimeError("TPC-H refresh stream requires a separate connection factory")
+            connection = self.refresh_connection_factory()
+            deleted_lineitems = deleted_lineitems or {}
+            for offset in range(num_streams):
+                if cancel_event is not None and cancel_event.is_set():
+                    refresh_stream.status = "FAILED"
+                    refresh_stream.error = "refresh stream cancelled after timeout"
+                    return refresh_stream
+                update_set_id = refresh_stream.first_set + offset
+                update_set = update_sets[update_set_id]
+                if offset < len(refresh_stream.pairs):
+                    pair = refresh_stream.pairs[offset]
+                else:
+                    pair = {"update_set": update_set_id, "functions": [], "status": "PENDING", "error": None}
+                    refresh_stream.pairs.append(pair)
+                pair["status"] = "RUNNING"
+                for function in ("RF1", "RF2"):
+                    function_result = self._execute_refresh_function(
+                        function,
+                        update_set,
+                        connection,
+                        deleted_lineitems.get(update_set_id),
+                        prevalidated=update_set_id in deleted_lineitems,
+                    )
+                    pair["functions"].append(function_result)
+                    if function_result["status"] != "SUCCESS":
+                        pair["status"] = "FAILED"
+                        pair["error"] = function_result["error"]
+                        refresh_stream.error = (
+                            f"refresh set {update_set_id} {function} failed: {function_result['error']}"
+                        )
+                        refresh_stream.status = "FAILED"
+                        return refresh_stream
+
+                pair["status"] = "SUCCESS"
+
+            refresh_stream.status = "COMPLETED"
+            return refresh_stream
+        except Exception as exc:
+            refresh_stream.status = "FAILED"
+            refresh_stream.error = str(exc)
+            return refresh_stream
+        finally:
+            refresh_stream.end_monotonic = mono_time()
+            refresh_stream.end_time = datetime.now().isoformat()
+            if connection is not None:
+                try:
+                    connection.close()
+                except Exception:
+                    pass
+
+    @staticmethod
+    def _record_refresh_precondition_failure(
+        refresh_stream: TPCHRefreshStreamResult,
+        pair: dict[str, Any],
+        function: str,
+        update_set: TPCHRefreshUpdateSet,
+        error: Exception,
+    ) -> None:
+        detail = str(error)
+        pair["functions"].append(
+            {
+                "function": function,
+                "update_set": update_set.set_id,
+                "duration_ms": 0,
+                "rows": 0,
+                "status": "FAILED",
+                "error": detail,
+            }
+        )
+        pair["status"] = "FAILED"
+        pair["error"] = detail
+        refresh_stream.error = f"refresh set {update_set.set_id} {function} failed: {detail}"
+        refresh_stream.status = "FAILED"
+
+    def _execute_refresh_function(
+        self,
+        function: str,
+        update_set: TPCHRefreshUpdateSet,
+        connection: Any,
+        deleted_lineitems: int | None = None,
+        prevalidated: bool = False,
+    ) -> dict[str, Any]:
+        if function not in {"RF1", "RF2"}:
+            raise ValueError(f"Unsupported TPC-H refresh function: {function}")
+
+        rows = 0
+        status = "FAILED"
+        error = None
+        duration_ms = 0
+        try:
+            if function == "RF1":
+                if not prevalidated:
+                    check_rf1_preconditions(connection, update_set)
+                start_time = mono_time()
+                rows = apply_rf1(connection, update_set)
+            else:
+                if deleted_lineitems is None:
+                    deleted_lineitems = check_rf2_preconditions(connection, update_set)
+                start_time = mono_time()
+                rows = apply_rf2(connection, update_set, deleted_lineitems)
+            duration_ms = max(1, round(elapsed_seconds(start_time) * 1000))
+            if function == "RF2" and not prevalidated:
+                check_rf2_applied(connection, update_set)
+            status = "SUCCESS"
+        except Exception as exc:
+            error = str(exc)
+
+        return {
+            "function": function,
+            "update_set": update_set.set_id,
+            "duration_ms": duration_ms if status == "SUCCESS" else 0,
+            "rows": rows,
+            "status": status,
+            "error": error,
+        }
 
     def _pregenerate_stream_queries(self, config: TPCHThroughputTestConfig) -> dict[int, list[Any]]:
 
@@ -286,7 +606,7 @@ class TPCHThroughputTest:
                     break
 
                 query_start = mono_time()
-                query_result = {
+                query_result: dict[str, Any] = {
                     "query_id": query_id,
                     "position": position + 1,
                     "stream_id": stream_id,

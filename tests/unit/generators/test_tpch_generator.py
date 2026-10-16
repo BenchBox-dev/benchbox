@@ -606,6 +606,7 @@ class TestTPCHDataGeneratorParallelProcessing(unittest.TestCase):
         self.work_dir = self.temp_dir / "work"
         self.work_dir.mkdir(exist_ok=True)
         self.output_dir = self.temp_dir / "output"
+        (self.temp_dir / "dists.dss").write_text("fixture distribution", encoding="utf-8")
 
     def tearDown(self):
         shutil.rmtree(self.temp_dir, ignore_errors=True)
@@ -816,12 +817,9 @@ class TestTPCHDataGeneratorParallelProcessing(unittest.TestCase):
             self.assertTrue(Path(dbgen_call["cwd"]).is_absolute())
             self.assertEqual(Path(dbgen_call["cwd"]), expected_dir)
 
-            dss_path = Path(dbgen_call["env"]["DSS_PATH"])
-            self.assertTrue(dss_path.is_absolute())
-            self.assertEqual(dss_path, expected_dir)
-
-            dss_config = Path(dbgen_call["env"]["DSS_CONFIG"])
-            self.assertTrue(dss_config.is_absolute())
+            self.assertEqual(dbgen_call["env"]["DSS_PATH"], ".")
+            self.assertEqual(dbgen_call["env"]["DSS_CONFIG"], ".")
+            self.assertTrue((expected_dir / "dists.dss").is_file())
         finally:
             os.chdir(original_cwd)
 
@@ -946,10 +944,10 @@ class TestTPCHDataGeneratorParallelProcessing(unittest.TestCase):
             self.assertIn("env", call_kwargs)
             env = call_kwargs["env"]
             self.assertIn("DSS_PATH", env)
-            expected_dir = self.work_dir.resolve()
-            self.assertEqual(Path(env["DSS_PATH"]).resolve(), expected_dir)
+            self.assertEqual(env["DSS_PATH"], ".")
             self.assertIn("DSS_CONFIG", env)
-            self.assertEqual(Path(env["DSS_CONFIG"]).resolve(), expected_dir)
+            self.assertEqual(env["DSS_CONFIG"], ".")
+            self.assertTrue((self.work_dir / "dists.dss").is_file())
 
 
 class TestTPCHDataGeneratorEdgeCases(unittest.TestCase):
@@ -1017,3 +1015,29 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_missing_distributions_file_names_both_paths(tmp_path):
+    from benchbox.core.tpch.generator import _stage_distributions
+
+    source = tmp_path / "dbgen" / "dists.dss"
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+
+    with pytest.raises(FileNotFoundError, match="dbgen distributions file not found") as error:
+        _stage_distributions(source, work_dir)
+
+    assert str(source) in str(error.value)
+    assert str(work_dir / "dists.dss") in str(error.value)
+
+
+def test_existing_distributions_file_in_work_dir_is_kept(tmp_path):
+    from benchbox.core.tpch.generator import _stage_distributions
+
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+    (work_dir / "dists.dss").write_text("local", encoding="utf-8")
+
+    _stage_distributions(tmp_path / "missing" / "dists.dss", work_dir)
+
+    assert (work_dir / "dists.dss").read_text(encoding="utf-8") == "local"

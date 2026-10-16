@@ -14,20 +14,21 @@ benchbox metrics <subcommand> [OPTIONS]
 
 ## Subcommands
 
-### `qphh` - Power@Size and Throughput@Size
+### `qphh` - TPC-H QphH@Size
 
-Calculate Power@Size and Throughput@Size from power test and throughput test results. The subcommand name is kept for compatibility, but it does not compute the composite QphH@Size or QphDS@Size: BenchBox does not yet run the TPC-H refresh functions or the TPC-DS data maintenance phases that the composite requires.
+Calculate Power@Size, Throughput@Size, and QphH@Size from TPC-H power and throughput results. QphH@Size requires official compliance, all 22 completed power queries, successful RF1/RF2 in Power, at least two completed throughput query streams, and one successful refresh pair per stream on consecutive update sets. If a condition is missing, the command exits with a reason; result JSON can carry those reasons in `qphh_unavailable`. QphDS@Size is not computed.
 
 **Formula:**
 
 ```
-Power@Size       = 3600 × SF / geometric_mean(final power iteration query times)
+Power@Size       = 3600 × SF / geometric_mean(RF1, final power iteration's 22 query times, RF2)
 Throughput@Size  = Queries × 3600 × SF / Throughput_Phase_Wall_Time
+QphH@Size        = sqrt(Power@Size × Throughput@Size), rounded to 0.1
 
 Where Queries = 22 × streams for TPC-H and 99 × streams for TPC-DS.
 ```
 
-The command exits non-zero when either file has suppressed TPC metrics, any failed query, or a failed throughput phase.
+The command exits non-zero when either file has suppressed TPC metrics or any QphH condition fails.
 
 ```bash
 benchbox metrics qphh --power-results <path> --throughput-results <path> [OPTIONS]
@@ -60,7 +61,7 @@ benchbox metrics qphh \
   --format json --output qphh.json
 ```
 
-The first command calculates QphH from test results. The second specifies the scale factor explicitly, and the third exports to a JSON file.
+The first command calculates QphH@Size from eligible TPC-H results. The second specifies the scale factor explicitly, and the third exports to a JSON file.
 
 ## Notes
 

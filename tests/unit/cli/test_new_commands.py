@@ -342,6 +342,45 @@ class TestMetricsCommand:
             assert "Throughput@Size" in result.output
             assert "QphH@Size:" not in result.output
 
+    def test_metrics_qphh_reports_unavailable_reasons_for_tpch_without_refresh(self):
+        runner = CliRunner()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            power_file = Path(tmpdir) / "power.json"
+            throughput_file = Path(tmpdir) / "throughput.json"
+            power_file.write_text(
+                json.dumps(
+                    {
+                        "benchmark": {"id": "tpch", "name": "TPC-H"},
+                        "environment": {"scale_factor": 1.0},
+                        "summary": {"tpc_metrics": {"power_at_size": 36.0}},
+                    }
+                )
+            )
+            throughput_file.write_text(
+                json.dumps(
+                    {
+                        "benchmark": {"id": "tpch", "name": "TPC-H"},
+                        "environment": {"scale_factor": 1.0},
+                        "run": {"streams": 2},
+                        "summary": {"tpc_metrics": {"throughput_at_size": 36.0}},
+                        "phases": {"throughput_test": {"status": "COMPLETED", "duration_ms": 1000}},
+                    }
+                )
+            )
+
+            result = runner.invoke(
+                cli,
+                ["metrics", "qphh", "--power-results", str(power_file), "--throughput-results", str(throughput_file)],
+            )
+
+            assert result.exit_code == 0
+            assert "Power@Size:" in result.output
+            assert "Throughput@Size:" in result.output
+            assert "QphH@Size:" not in result.output
+            assert "QphH@Size is not reported" in result.output
+            assert "Power phase must contain successful RF1 and RF2 evidence" in result.output
+
     @pytest.mark.parametrize(
         ("power_summary", "throughput_summary", "expected"),
         [

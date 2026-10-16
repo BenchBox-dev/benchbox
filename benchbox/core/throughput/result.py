@@ -36,11 +36,13 @@ def throughput_result_succeeded(result: Any, requested_streams: int | None = Non
         return False
 
     stream_results = list(getattr(result, "stream_results", []) or [])
+    refresh_stream = getattr(result, "refresh_stream", None)
     return (
         getattr(result, "streams_executed", None) == requested_streams
         and getattr(result, "streams_successful", None) == requested_streams
         and len(stream_results) == requested_streams
         and not (getattr(result, "errors", []) or [])
+        and (refresh_stream is None or getattr(refresh_stream, "success", False))
         and all(throughput_stream_succeeded(stream) for stream in stream_results)
     )
 

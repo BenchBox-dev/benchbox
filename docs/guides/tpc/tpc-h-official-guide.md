@@ -5,35 +5,36 @@
 ```{tags} advanced, guide, tpc-h, validation
 ```
 
-This guide provides systematic documentation for the TPC-H official benchmark implementation in BenchBox, including Power@Size and Throughput@Size. BenchBox does not export the composite QphH@Size; see [QphH@Size (not exported)](#qphh-size-not-exported).
+This guide documents BenchBox's TPC-H Power@Size and Throughput@Size phases and its opt-in RF1/RF2 integration. QphH@Size is emitted only when the required evidence is present; see [QphH@Size](#qphh-size).
 
 ## Overview
 
-The TPC-H official benchmark implementation provides a complete TPC-H benchmark that coordinates all three test phases and reports Power@Size and Throughput@Size. It does not report the composite QphH@Size (Queries per Hour @ Size). See the deviation note above before planning a certification submission.
+The TPC-H official runner coordinates Power, Throughput, and Maintenance phases. Refresh-function integration is disabled by default and does not by itself certify a result.
 
 ### What is TPC-H?
 
 TPC-H is a decision support benchmark that consists of a suite of business-oriented ad-hoc queries and concurrent data modifications. The benchmark illustrates decision support systems that examine large volumes of data, execute queries with a high degree of complexity, and give answers to critical business questions.
 
-### QphH@Size (not exported)
+### QphH@Size
 
-The QphH@Size metric is the official TPC-H performance measure. The specification defines Power@Size over the 22 queries plus the refresh functions RF1 and RF2, and requires the throughput test to run S pairs of RF1/RF2 in a refresh stream concurrently with the S query streams. QphH@Size is the geometric mean of Power@Size and Throughput@Size.
+TPC-H QphH@Size is the geometric mean of Power@Size and Throughput@Size. BenchBox emits it only for an official run with complete evidence: all 22 Power queries and RF1/RF2 succeed on update set F; Throughput completes at least two query streams and one successful RF1/RF2 pair per stream on consecutive sets F+1 through F+S; and neither phase has failed queries. Query-subset runs and refresh failures do not qualify.
 
-**Deviation from the specification.** BenchBox does not export QphH@Size. Its power test runs the 22 queries only, its throughput test has no refresh stream, and the maintenance test runs afterwards, not concurrently. A composite built from those values would overstate the specification metric, so results carry neither `qphh_at_size` nor a QphH label. Adding RF1/RF2 to the power and throughput tests is tracked as follow-up work.
+Enable refresh functions with `--benchmark-option tpch_refresh_functions=true`. The default is `false`; `tpch_refresh_first_set` defaults to 1. The Power phase applies set F only on its final measurement iteration. The Throughput phase runs a separate refresh stream alongside query streams. Both phases record refresh evidence; separate result files qualify only when the Power and Throughput sets are consecutive.
 
-BenchBox reports these two metrics instead:
+The composite is `round(sqrt(Power@Size × Throughput@Size), 1)`. Results that fail any gate omit `qphh_at_size` and report `qphh_unavailable` reasons. `benchbox metrics qphh` uses the same gate.
 
-- **Power@Size** = 3600 × Scale_Factor / geometric_mean(query times)
-- **Throughput@Size** = (22 × Num_Streams) × 3600 × Scale_Factor / Throughput_Test_Time, where the time is the wall-clock interval from the first stream's first query to the last stream's last query (connection setup is excluded)
+This implementation is not a TPC certification claim. It does not apply the specification's 0.01-second refresh rounding, 1000x clamp, upward Ts rounding, or two-run lower-score rule. Refresh support is declared for DuckDB, SQLite, PostgreSQL and the adapters built on it, Snowflake, and SingleStore.
 
-A result with any failed query, or whose throughput phase failed, carries no Throughput@Size.
+BenchBox also reports the component metrics:
+
+- **Power@Size** = 3600 × Scale_Factor / geometric mean of the 22 query times, or 22 query times plus RF1 and RF2 when refresh is enabled.
+- **Throughput@Size** = (22 × Num_Streams) × 3600 × Scale_Factor / measured throughput interval. The interval includes concurrent RF activity when enabled.
 
 ## Key Features
 
 - **Complete TPC-H Implementation**: All 22 queries with proper parameterization
 - **Three Test Phases**: Power Test, Throughput Test, and Maintenance Test
-- **Power@Size and Throughput@Size**: reported separately; no composite QphH@Size
-- **Structured for Audit**: Power and throughput phases with validation, audit trail, and reporting
+- **Power@Size, Throughput@Size, and gated QphH@Size**: QphH is emitted only when official-run and refresh-evidence requirements pass.
 - **Comprehensive Reporting**: HTML, text, and CSV report generation
 - **Result Validation**: Automatic validation against TPC-H specification
 - **Audit Trail**: Complete audit trail for certification submissions
@@ -42,15 +43,15 @@ A result with any failed query, or whose throughput phase failed, carries no Thr
 
 ## TPC-H Specification Compliance
 
-The implementation follows the TPC-H specification requirements:
+The implementation provides the TPC-H query, power, throughput, and maintenance phases. Adapter support and refresh evidence are reported per run; this implementation does not claim TPC certification.
 
-- **Query Execution**: All 22 TPC-H queries with proper parameterization
-- **Stream Generation**: Query streams with official permutation matrix
-- **Power Test**: Sequential execution of all queries
-- **Throughput Test**: Concurrent execution of multiple query streams
-- **Maintenance Test**: Concurrent data modification operations
-- **Metric Calculation**: Power@Size and Throughput@Size (the QphH@Size composite is not exported)
-- **Result Validation**: Validation against TPC-H specification requirements
+- **Query Execution**: All 22 TPC-H queries with parameterization
+- **Stream Generation**: Query streams with the TPC-H permutation matrix
+- **Power Test**: Sequential query execution, optionally with RF1/RF2
+- **Throughput Test**: Concurrent query streams, optionally with a concurrent RF stream
+- **Maintenance Test**: Standalone RF1/RF2 data modification
+- **Metric Calculation**: Power@Size, Throughput@Size, and QphH@Size when its evidence gate passes
+- **Result Validation**: Validation and evidence are included in the result
 
 ## Installation and Setup
 
@@ -68,7 +69,7 @@ uv add benchbox
 
 ## Quick Start
 
-Run the official TPC-H benchmark with the CLI (this SF1 DuckDB run completes in about a minute and reports a compliant `official` result):
+Run the official TPC-H benchmark with the CLI. `--official` marks the run metadata; it is not a certification claim, and QphH@Size requires the additional refresh evidence described below.
 
 ```bash
 benchbox run --official --platform duckdb --benchmark tpch --scale 1 --seed 42 --output ./official_data
@@ -150,160 +151,60 @@ print(f"Errors: {result.errors}")
 
 ### Power Test
 
-The Power Test measures single-stream performance by executing all 22 TPC-H queries sequentially. The Power Test runs automatically as part of the official benchmark. It executes the 22 queries in stream permutation order with a fixed seed for reproducible parameters.
+The Power Test measures single-stream performance by executing all 22 TPC-H queries sequentially. With `tpch_refresh_functions=true`, it also executes RF1, then the queries, then RF2 using `tpch_refresh_first_set`; refreshes run only in the final measurement iteration, not warmups or earlier iterations.
 
-**Key characteristics:**
-- Sequential execution of all 22 queries
-- Fixed seed for reproducible parameters
-- Measures single-stream query processing capability
-- Contributes to Power@Size calculation
+Power@Size uses the geometric mean of 22 query times by default, or 24 terms (22 queries plus RF1 and RF2) when refresh is enabled. Update files are generated before the measured phase. The refresh functions permanently modify database contents.
 
 ### Throughput Test
 
-The Throughput Test measures multi-stream performance by executing multiple concurrent query streams. The Throughput Test runs automatically as part of the official benchmark. Each stream contains all 22 queries in randomized order.
-
-**Key characteristics:**
-- Concurrent execution of multiple query streams
-- qgen-backed generation selects the same permutation-matrix row as the built-in generator
-- Stream-specific parameter generation
-- Measures multi-user concurrent processing capability
-- Contributes to Throughput@Size calculation
+The Throughput Test executes S concurrent query streams. With refresh enabled, one additional refresh stream runs S serial RF1/RF2 pairs on update sets F+1 through F+S, concurrently with the query streams. The measured interval includes the earliest query or refresh start and latest query or refresh end. A failed refresh withholds Throughput@Size.
 
 ### Maintenance Test
 
-> **⚠️ CRITICAL: Database Reload Required After Maintenance Test**
->
-> The Maintenance Test permanently modifies database contents by inserting and deleting data through
-> Refresh Functions (RF1 and RF2). After running the maintenance phase, you **must reload the database**
-> before running power or throughput tests again. Failure to reload will result in incorrect benchmark
-> results because queries will execute against modified data.
->
-> **Proper workflow:** `generate` → `load` → `power` → `throughput` → `maintenance` → **[RELOAD before next power/throughput]**
+> **Database state:** The standalone Maintenance phase permanently modifies the database. Power or Throughput with `tpch_refresh_functions=true` also permanently applies refresh functions. Reload the base data before reusing update sets; otherwise, set `tpch_refresh_first_set` to the next unused set.
 
-The Maintenance Test measures the system's ability to handle data modification operations while
-maintaining query performance. It executes two Refresh Functions (RF1 and RF2) that simulate
-real-world data warehouse operations.
+The standalone Maintenance Test uses the same DBGen update-set generator and RF1/RF2 executor as the Power and Throughput phases. Set F selects DBGen update files; after a combined run using Power set F and throughput sets F+1..F+S, the next unused set is F+S+1. Generated files are prepared before measurement. RF1 and RF2 use one transaction each and process rows in 1,000-row chunks. RF1 rejects duplicate order keys; RF2 verifies all target orders exist, then deletes LINEITEM rows before ORDERS rows.
 
-#### Refresh Function 1 (RF1): Insert New Sales
-
-RF1 simulates processing of new sales orders by inserting data into the database:
-
-**Operations:**
-- Inserts new ORDERS records (`max(1, int(scale_factor × 1.5))` per refresh pair)
-  - For SF=1: 1 new order with a unique order key
-- Inserts corresponding LINEITEM records (1-7 items per order)
-  - For SF=1: 1-7 lineitems
-- Uses generated data (proper dates, prices, quantities)
-- All insertions are committed to the database
-
-**Data Volume by Scale Factor:**
-
-| Scale Factor | Orders Inserted | Lineitems Inserted (approx) |
-|--------------|-----------------|------------------------------|
-| 0.01         | 1               | 1-7                          |
-| 0.1          | 1               | 1-7                          |
-| 1            | 1               | 1-7                          |
-| 10           | 15              | 15-105                       |
-
-#### Refresh Function 2 (RF2): Delete Old Sales
-
-RF2 simulates purging of old sales data by deleting records:
-
-**Operations:**
-- Identifies oldest orders by `O_ORDERDATE`
-- **CRITICAL:** Deletes LINEITEM records first (maintains referential integrity)
-- Then deletes corresponding ORDERS records
-- Deletes same volume as RF1 (see the table above)
-- All deletions are committed to the database
-
-**Referential Integrity:**
-RF2 must delete LINEITEM rows before ORDERS rows to maintain foreign key constraints. This
-reflects real-world database constraints where line items reference parent orders.
-
-#### Why Database Reload Is Required
-
-**The Maintenance Test permanently modifies database contents:**
-
-1. **Data Changes Are Committed**
-   - RF1 inserts 1 order + 1-7 lineitems (at SF=1)
-   - RF2 deletes 1 order + its corresponding lineitems
-   - Changes are committed and permanent
-
-2. **Query Results Will Differ**
-   - `SELECT COUNT(*) FROM ORDERS` returns different count
-   - Aggregate queries return different totals (e.g., `SUM(O_TOTALPRICE)`)
-   - Join operations produce different row counts
-   - Power/Throughput test results become invalid
-
-3. **Not Idempotent**
-   - Running maintenance again modifies different data
-   - Second RF2 deletes different "oldest" orders (dates have changed)
-   - Results become unpredictable and non-reproducible
-
-4. **TPC Specification Requirement**
-   - Official TPC-H specification requires fresh, unmodified dataset
-   - Benchmark results are only valid on clean data
-   - Certification requires strict adherence to data integrity
-
-#### Code Example
+The update sets carry scale-factor-specific TPC-H data. They do not use a fixed synthetic row count. A dry run can still preview maintenance SQL without applying the refresh functions.
 
 ```python
-from benchbox.tpch import TPCH
+from benchbox import TPCH
 from benchbox.platforms.duckdb import DuckDBAdapter
-from pathlib import Path
 
-benchmark = TPCH(scale_factor=1.0, output_dir=Path("./tpch_data"))
+benchmark = TPCH(
+    scale_factor=1.0,
+    official=True,
+    tpch_refresh_functions=True,
+    tpch_refresh_first_set=1,
+)
 benchmark.generate_data()
-
 adapter = DuckDBAdapter(database_path="tpch.duckdb", force_recreate=True)
 
 power_result = adapter.run_benchmark(benchmark, test_execution_type="power")
-print(f"Power Test: {power_result.total_execution_time:.2f}s")
-
 throughput_result = adapter.run_benchmark(benchmark, test_execution_type="throughput")
-print(f"Throughput Test: {throughput_result.total_execution_time:.2f}s")
-
-print("\n⚠️  Reloading database before maintenance test...")
-adapter = DuckDBAdapter(database_path="tpch.duckdb", force_recreate=True)
-
-maintenance_result = adapter.run_benchmark(benchmark, test_execution_type="maintenance")
-print(f"Maintenance Test: {maintenance_result.total_execution_time:.2f}s")
-
-print("\n⚠️  Database modified - reload required before additional tests!")
 ```
 
-The example runs in three steps. Step 1 runs the power and throughput tests on clean data. Step 2 reloads the database before maintenance, which creates a fresh database. Step 3 runs the maintenance test. After step 3 the database contains modified data, so it must be reloaded before the power or throughput test runs again.
+This example modifies the database in both phases. The next run must use the next unused update set or reload the original data. Adapter support is declared per platform; see [TPC-H refresh support](../../benchmarks/tpc-h.md#official-tpc-h-metrics).
 
-**Workflow Summary:**
-
-```
-Correct:   generate → load → power → throughput → maintenance
-Correct:   generate → load → power → throughput → maintenance → [RELOAD] → power (if rerunning)
-Incorrect: generate → load → power → maintenance → throughput  ❌ (throughput runs on modified data!)
-Incorrect: generate → load → maintenance → power → throughput  ❌ (power/throughput run on modified data!)
-```
-
-**Key characteristics:**
-- Executes real INSERT and DELETE SQL operations
-- Modifies a small fixed number of rows per refresh pair (insert and delete)
-- Tests the system's ability to handle data modifications
-- Runs after the power and throughput tests, not concurrently with them
+**Workflow:** `generate` → `load` → `power` → `throughput` → `maintenance`. Reload before reusing update sets or comparing against a fresh dataset.
 
 ## Power@Size and Throughput@Size Calculation
 
-BenchBox does not calculate QphH@Size (see [QphH@Size (not exported)](#qphh-size-not-exported)). It calculates the two component metrics.
+Power@Size and Throughput@Size are calculated separately. QphH@Size is emitted only when the official-run and refresh-evidence gates in [QphH@Size](#qphh-size) pass.
 
 ### Component Calculations
 
 **Power@Size:**
 ```
-Power@Size = 3600 × Scale_Factor / geometric_mean(query times)
+Power@Size = 3600 × Scale_Factor / geometric_mean(22 query times [+ RF1 and RF2 when enabled])
 ```
 
 **Throughput@Size:**
 ```
 Throughput@Size = 22 × Num_Streams × 3600 × Scale_Factor / Throughput_Test_Time
 ```
+
+When refresh is enabled, `Throughput_Test_Time` includes the concurrent refresh stream. When disabled, it spans the first query start through the last query completion.
 
 ### Example Calculation
 
@@ -316,13 +217,13 @@ For a throughput test with:
 throughput_at_size = 22 * 2 * 3600 * 1.0 / 150
 ```
 
-With a 150-second throughput test at SF1 and 2 streams, `throughput_at_size = 1056.0`. (BenchBox exports the two component metrics only, never the QphH composite.)
+With a 150-second throughput test at SF1 and 2 streams, `throughput_at_size = 1056.0`. A qualifying official run also exports QphH@Size; other runs provide `qphh_unavailable` reasons.
 
 ## Reporting and Validation
 
 ### Report Generation
 
-The reports show Power@Size and Throughput@Size and contain no QphH@Size. They accept the object returned by `run_official_benchmark` directly.
+Reports show the available Power@Size, Throughput@Size, and QphH@Size values, together with refresh evidence and any QphH refusal reasons. They accept the object returned by `run_official_benchmark` directly.
 
 ```python
 from benchbox.core.tpch.reporting import TPCHReportGenerator

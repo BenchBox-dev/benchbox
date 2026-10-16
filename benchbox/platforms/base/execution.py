@@ -127,6 +127,15 @@ class TestDriversMixin:
         connection_adapter.scale_factor = scale_factor
         return connection_adapter
 
+    def _make_tpch_refresh_connection_adapter(self, connection: Any, scale_factor: float):
+        stream_connection = open_stream_connection(self, connection, "olap")
+        if stream_connection is connection:
+            raise RuntimeError("TPC-H refresh functions require a separate database session")
+        connection_adapter = PlatformAdapterConnection(stream_connection, self, maintenance_mode=True)
+        connection_adapter.benchmark_type = "tpch"
+        connection_adapter.scale_factor = scale_factor
+        return connection_adapter
+
     def _execute_tpch_power_test(self, benchmark, connection: Any, run_config: dict) -> list[dict[str, Any]]:
         from benchbox.core.tpch.platform_power import execute_tpch_power_test
 
@@ -136,6 +145,7 @@ class TestDriversMixin:
             connection,
             run_config,
             make_connection_adapter=self._make_direct_power_connection_adapter,
+            make_refresh_connection_adapter=self._make_tpch_refresh_connection_adapter,
             console=quiet_console,
         )
 
@@ -363,6 +373,24 @@ class TestDriversMixin:
                 conn_wrapper.scale_factor = scale_factor
                 return conn_wrapper
 
+            refresh_enabled = (
+                run_config.get("tpch_refresh_functions", getattr(benchmark, "tpch_refresh_functions", False)) is True
+            )
+            refresh_connection_factory = None
+            if refresh_enabled:
+                from benchbox.core.tpch.refresh import require_refresh_support
+
+                require_refresh_support(self)
+
+                def refresh_connection_factory():
+                    stream_connection = open_stream_connection(self, connection, benchmark_type)
+                    if stream_connection is connection:
+                        raise RuntimeError("TPC-H refresh functions require a separate database session")
+                    connection_wrapper = PlatformAdapterConnection(stream_connection, self, maintenance_mode=True)
+                    connection_wrapper.benchmark_type = "tpch"
+                    connection_wrapper.scale_factor = scale_factor
+                    return connection_wrapper
+
             throughput_test = TPCHThroughputTest(
                 benchmark=benchmark,
                 connection_factory=connection_factory,
@@ -370,11 +398,20 @@ class TestDriversMixin:
                 num_streams=num_streams,
                 verbose=verbose,
                 dialect=self.get_target_dialect(),
+                refresh_enabled=refresh_enabled,
+                refresh_first_set=run_config.get(
+                    "tpch_refresh_first_set", getattr(benchmark, "tpch_refresh_first_set", 1)
+                ),
+                refresh_connection_factory=refresh_connection_factory,
             )
 
             cfg = TPCHThroughputTestConfig(
                 scale_factor=scale_factor,
                 num_streams=num_streams,
+                refresh_functions=refresh_enabled,
+                refresh_first_set=run_config.get(
+                    "tpch_refresh_first_set", getattr(benchmark, "tpch_refresh_first_set", 1)
+                ),
                 **_throughput_config_options(run_config),
             )
             console.print(f"[dim]{_describe_stream_timeout(cfg, run_config)}[/dim]")
@@ -512,10 +549,25 @@ class TestDriversMixin:
     def _execute_tpch_maintenance_test(self, benchmark, connection: Any, run_config: dict) -> list[dict[str, Any]]:
 
         from benchbox.core.tpch.maintenance_test import TPCHMaintenanceTest
-
-        self._plan_capture_checkpoint(connection)
+        from benchbox.core.tpch.refresh import refresh_unsupported_reason
 
         console = quiet_console
+
+        unsupported_reason = refresh_unsupported_reason(self)
+        if unsupported_reason is not None:
+            console.print(f"[yellow]TPC-H Maintenance Test skipped: {unsupported_reason}[/yellow]")
+            return [
+                {
+                    "query_id": "maintenance_not_supported",
+                    "execution_time_seconds": 0.0,
+                    "status": "SKIPPED",
+                    "rows_returned": 0,
+                    "error": unsupported_reason,
+                    "test_type": "maintenance",
+                }
+            ]
+
+        self._plan_capture_checkpoint(connection)
 
         try:
             scale_factor = run_config.get("scale_factor", 1.0)
@@ -524,6 +576,7 @@ class TestDriversMixin:
             rf1_interval = run_config.get("rf1_interval", 0.0)
             rf2_interval = run_config.get("rf2_interval", 0.0)
             validate_integrity = run_config.get("validate_integrity", True)
+            first_set = run_config.get("tpch_refresh_first_set", getattr(benchmark, "tpch_refresh_first_set", 1))
             output_dir = run_config.get("output_dir", Path.cwd() / "tpch_maintenance_test")
 
             console.print(f"[green]Running TPC-H Maintenance Test (Scale Factor: {scale_factor})[/green]")
@@ -542,6 +595,7 @@ class TestDriversMixin:
                 scale_factor=scale_factor,
                 output_dir=Path(output_dir) if isinstance(output_dir, str) else output_dir,
                 verbose=verbose,
+                first_set=first_set,
             )
 
             result = maintenance_test.run_maintenance_test(

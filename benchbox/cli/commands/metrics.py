@@ -196,10 +196,20 @@ def _format_text_output(result: dict) -> str:
     lines.append("-" * 70)
     lines.append(f"Power@Size:       {result['power_at_size']:,.2f}")
     lines.append(f"Throughput@Size:  {result['throughput_at_size']:,.2f}")
+    if result.get("qphh_at_size") is not None:
+        lines.append(f"QphH@Size:        {result['qphh_at_size']:,.1f}")
+    if "refresh_included" in result:
+        lines.append(f"Refresh included:  {'yes' if result['refresh_included'] else 'no'}")
     lines.append("")
     lines.append("=" * 70)
-    lines.append("Composite QphH/QphDS is not computed (refresh/maintenance phases are not run).")
-    lines.append("  Power@Size = 3600 × SF / geometric_mean(final power iteration query times)")
+    if result.get("qphh_at_size") is not None:
+        lines.append("QphH@Size = sqrt(Power@Size × Throughput@Size), rounded to 0.1.")
+    elif result.get("qphh_unavailable"):
+        lines.append("QphH@Size is not reported:")
+        lines.extend(f"  - {reason}" for reason in result["qphh_unavailable"])
+    else:
+        lines.append("Composite QphDS@Size is not computed; TPC-DS maintenance support is not implemented.")
+    lines.append("  Power@Size = 3600 × SF / geometric_mean(final power iteration times, plus RF1 and RF2 when run)")
     lines.append("  Throughput@Size = Queries × 3600 × SF / Throughput_Phase_Wall_Time")
     lines.append("")
 

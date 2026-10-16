@@ -111,34 +111,62 @@ platform and scale.
 
 ## Official TPC-H Metrics
 
-BenchBox exports two TPC-H metrics:
+BenchBox reports Power@Size and Throughput@Size. TPC-H refresh functions are
+opt-in, so existing runs remain query-only:
 
-| Metric | Meaning |
-|--------|---------|
-| **Power@Size** | Single-stream geometric-mean throughput over the 22 queries (power test) |
-| **Throughput@Size** | Multi-stream throughput (queries executed per hour) over the wall-clock duration of the throughput test |
+```text
+--benchmark-option tpch_refresh_functions=true
+--benchmark-option tpch_refresh_first_set=1
+```
 
-BenchBox does not export QphH@Size. The specification defines Power@Size
-and the throughput test with the refresh functions RF1 and RF2, and the
-refresh stream runs concurrently with the query streams. BenchBox runs
-the maintenance phase after the throughput test and does not include
-RF1/RF2 in the power or throughput measurement, so a composite from
-these two values would overstate the specification metric. Adding the
-refresh functions to both tests is tracked as follow-up work.
+`tpch_refresh_functions` defaults to `false`; `tpch_refresh_first_set` defaults
+to the positive integer `1`. DBGen creates the update files in a temporary
+directory before measurement. If enabled, Power runs RF1 for set F, all 22
+queries, then RF2 for set F; only the final measurement iteration applies
+refresh functions. Power@Size uses the geometric mean of the 22 query times
+plus RF1 and RF2 (24 terms). With the option disabled, it uses the 22 query
+times.
+
+The throughput phase starts one refresh stream alongside its S query streams.
+It runs S serial RF1/RF2 pairs on sets F+1 through F+S. The measured interval
+runs from the earliest query or refresh stream start to the latest query or
+refresh stream end. Refresh safety checks are not timed: the RF1 and RF2
+precondition checks for every set run before the interval starts, and the RF2
+postcondition checks run after it ends. A failed check or refresh function
+records function evidence and withholds Throughput@Size.
+
+Refresh functions permanently change the database. No set cursor is saved.
+After a run using Power set F and throughput sets F+1..F+S, pass
+`tpch_refresh_first_set=F+S+1` on the next run, or reload the base data and
+restart at set 1. For a power-only run, the next set is F+1.
+
+Refresh support is declared per adapter. It is enabled for DuckDB, SQLite,
+PostgreSQL and the adapters built on it, Snowflake, and SingleStore. Redshift
+and other adapters do not declare it yet. Power or throughput with refresh
+enabled fails clearly on DataFrame engines and undeclared adapters. The
+standalone maintenance phase on an undeclared adapter completes with one
+skipped `maintenance_not_supported` row and runs no refresh SQL.
+
+QphH@Size is exported only for official TPC-H results when Power completed all
+22 queries and successful RF1/RF2 on F, throughput completed at least two
+streams with one successful RF1/RF2 pair per stream on F+1..F+S, and neither
+result contains failed queries. The composite is
+`round(sqrt(Power@Size × Throughput@Size), 1)`. Unqualified results omit
+`qphh_at_size` and include `qphh_unavailable` reasons. Separate Power and
+throughput result files qualify only when both carry refresh evidence and
+their update sets are consecutive. `benchbox metrics qphh` applies the same
+gate and reports the refusal reason.
+
+The implementation does not yet apply the specification's 0.01-second RF
+rounding, 1000x clamp, upward Ts rounding, or two-run lower-score rule.
 
 ### Refresh Functions (RF1 / RF2)
 
-The maintenance phase is implemented in
-`benchbox/core/tpch/maintenance_test.py` (`TPCHMaintenanceTest`):
-
-- **RF1 - Insert new sales:** generates new `orders` and `lineitem` rows
-  with foreign-key validation before insertion.
-- **RF2 - Delete old sales:** deletes matching orders/lineitems to keep the
-  database in steady state.
-
-`maintenance_pairs`, `rf1_interval`, and `rf2_interval` on
-`TPCHMaintenanceTestConfig` control how many RF1/RF2 pairs run and at what
-cadence, per the TPC-H spec.
+The standalone maintenance phase uses the same DBGen update-set generator and
+transactional executors as Power and throughput. RF1 rejects already-applied
+order keys; RF2 verifies its delete keys before deleting LINEITEM and ORDERS.
+Rows are processed in 1,000-row chunks. The SQL preview remains available for
+dry runs.
 
 ### DataFrame Coverage
 

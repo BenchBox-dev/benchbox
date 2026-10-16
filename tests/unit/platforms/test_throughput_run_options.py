@@ -298,6 +298,17 @@ class TestStreamCountEntryPoints:
 
 
 class TestMaintenanceSessions:
+    def test_tpch_maintenance_reports_unsupported_adapter_as_skipped(self):
+        driver = _Driver()
+        driver.supports_refresh_functions = False
+        driver._plan_capture_checkpoint = lambda connection: None
+
+        rows = driver._execute_tpch_maintenance_test(Mock(), Mock(), {"scale_factor": 0.01})
+
+        assert len(rows) == 1
+        assert rows[0]["status"] == "SKIPPED"
+        assert "refresh functions are not supported" in rows[0]["error"]
+
     @pytest.mark.parametrize(
         ("family", "patch_target"),
         [
@@ -310,6 +321,8 @@ class TestMaintenanceSessions:
         self, family, patch_target, run_config, expected
     ):
         driver = _Driver()
+        if family == "tpch":
+            driver.supports_refresh_functions = True
         seen: list[str | None] = []
 
         def new_stream_connection(connection, *, benchmark_type=None):

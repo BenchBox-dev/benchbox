@@ -191,6 +191,7 @@ def _register_sqlite_compatibility_functions(connection: Any) -> None:
 class SQLiteAdapter(PlatformAdapter):
     driver_isolation_capability = DriverIsolationCapability.NOT_APPLICABLE
     plan_capture_phase_eligible = True
+    supports_refresh_functions = True
 
     @property
     def platform_name(self) -> str:

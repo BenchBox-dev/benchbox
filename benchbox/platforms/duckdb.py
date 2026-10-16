@@ -467,6 +467,7 @@ def _create_duckdb_external_views(
 class DuckDBAdapter(PlatformAdapter):
     driver_isolation_capability = DriverIsolationCapability.SUPPORTED
     supports_external_tables = True
+    supports_refresh_functions = True
     plan_capture_phase_eligible = True
     physical_identifier_case = "lower"
     index_ddl_unsupported_reason: str | None = None

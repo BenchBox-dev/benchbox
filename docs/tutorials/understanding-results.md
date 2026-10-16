@@ -88,7 +88,7 @@ Where:
 
 **Higher is better.** Compare these metrics only at the same scale factor.
 
-BenchBox does not export the composite QphH@Size (TPC-H) or QphDS@Size (TPC-DS). It does not run the TPC-H refresh functions inside the power and throughput tests, and the TPC-DS composite needs the data maintenance and load times. A result with a failed query or a failed throughput phase carries no Throughput@Size.
+BenchBox exports QphH@Size only for an official TPC-H run with all 22 power queries, successful RF1 and RF2 in Power, at least two completed throughput query streams, and one successful refresh pair per throughput stream using consecutive update sets. Failed queries, incomplete phases, query subsets, missing refresh evidence, or a nonofficial compliance class withhold the composite; `qphh_unavailable` lists the reasons. BenchBox does not export QphDS@Size (TPC-DS), which also needs data maintenance and load times. A failed query or throughput phase also withholds Throughput@Size.
 
 ### Price/Performance
 

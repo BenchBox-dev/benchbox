@@ -178,6 +178,8 @@ class TPCHBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         parallel: int = 1,
         force_regenerate: bool = False,
         official: bool = False,
+        tpch_refresh_functions: bool = False,
+        tpch_refresh_first_set: int = 1,
         **kwargs: Any,
     ) -> None:
         if not isinstance(scale_factor, (int, float)):
@@ -194,6 +196,12 @@ class TPCHBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
             raise TypeError(f"parallel must be an integer, got {type(parallel).__name__}")
         if parallel < 1:
             raise ValueError(f"parallel must be positive, got {parallel}")
+        if type(tpch_refresh_functions) is not bool:
+            raise TypeError("tpch_refresh_functions must be a boolean")
+        if isinstance(tpch_refresh_first_set, bool) or not isinstance(tpch_refresh_first_set, int):
+            raise TypeError("tpch_refresh_first_set must be an integer")
+        if tpch_refresh_first_set < 1:
+            raise ValueError(f"tpch_refresh_first_set must be positive, got {tpch_refresh_first_set}")
 
         kwargs = dict(kwargs)
         quiet = kwargs.pop("quiet", False)
@@ -201,6 +209,8 @@ class TPCHBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         super().__init__(scale_factor=scale_factor, output_dir=output_dir, verbose=verbose, quiet=quiet, **kwargs)
         self._name = "TPC-H Benchmark"
         self.parallel = parallel
+        self.tpch_refresh_functions = tpch_refresh_functions
+        self.tpch_refresh_first_set = tpch_refresh_first_set
         self.query_manager = TPCHQueries()
         self.data_generator = TPCHDataGenerator(
             scale_factor=scale_factor,
@@ -357,3 +367,30 @@ class TPCHBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
     @property
     def generator(self) -> TPCHDataGenerator:
         return self.data_generator
+
+
+from benchbox.core.hooks.benchmark_hooks import (
+    BenchmarkHookRegistry,
+    BenchmarkOptionSpec,
+    parse_bool,
+    parse_int,
+)
+
+BenchmarkHookRegistry.register_option_specs(
+    "tpch",
+    BenchmarkOptionSpec(
+        name="tpch_refresh_functions",
+        parser=parse_bool,
+        default=False,
+        help="Run TPC-H DBGen refresh functions in power and throughput phases",
+        aliases=("tpch-refresh-functions",),
+    ),
+    BenchmarkOptionSpec(
+        name="tpch_refresh_first_set",
+        parser=parse_int,
+        default=1,
+        help="First DBGen refresh set number for this run",
+        aliases=("tpch-refresh-first-set",),
+    ),
+    benchmark_class=TPCHBenchmark,
+)

@@ -62,6 +62,8 @@ Keyword arguments that the constructor acts on:
 - `parallel` (`int`, default `1`): number of `dbgen` processes. With `parallel` above 1, each large table is written as numbered chunk files (`customer.tbl.1`, `customer.tbl.2`) and its entry in `generate_data()` and `tables` is a list of paths. `nation` and `region` stay a single file.
 - `force_regenerate` (`bool`, default `False`): regenerate data even when a valid set exists in `output_dir`.
 - `official` (`bool`, default `False`): mark the run as an official run; it only affects `compliance_class`.
+- `tpch_refresh_functions` (`bool`, default `False`): opt in to RF1/RF2 during Power and the concurrent RF stream during Throughput. These operations permanently modify database contents.
+- `tpch_refresh_first_set` (`int`, default `1`): first DBGen update set used for Power; Throughput uses the following sets. After a run, advance to the next unused set or reload the original data before reusing a set.
 - `compress_data` (`bool`): write `.zst` files; add `compression_type="gzip"` for `.gz`. Pass an absolute `output_dir` with compression: on 0.4.1 a relative path made `dbgen` fail with `RuntimeError: dbgen failed for table customer: Open failed for ... dists.dss`.
 - `verbose` (`bool` or `int`) and `quiet` (`bool`): log level.
 

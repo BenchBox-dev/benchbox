@@ -5,17 +5,14 @@
 ```{tags} advanced, guide, tpc-h, tpc-ds
 ```
 
-> **⚠️ CRITICAL SAFETY WARNING**
->
-> The Maintenance Phase permanently modifies your database by executing INSERT, UPDATE, and DELETE operations.
-> After running a Maintenance Test, you **MUST reload the database** before running Power or Throughput tests again.
-> Failure to reload will produce incorrect benchmark results.
+> Standalone Maintenance tests permanently modify the database. TPC-H Power and Throughput also write
+> when `tpch_refresh_functions=true`. Reload the original data before reusing update sets; otherwise,
+> use `tpch_refresh_first_set` to continue at the next unused set.
 
 ## Overview
 
-The TPC Maintenance Phase is a critical component of official TPC benchmarks (TPC-H and TPC-DS) that tests a database's ability to handle data warehouse refresh operations while maintaining performance and data integrity.
-
-Unlike Power and Throughput tests that only **read** data, Maintenance tests **write, update, and delete** data, permanently modifying database contents. This simulates real-world data warehouse scenarios where:
+The TPC maintenance phases test data warehouse refresh operations. Standalone Maintenance tests write, update, and delete data. TPC-H Power and Throughput remain read-only by default but can apply RF1/RF2 when refresh integration is enabled.
+These operations support common warehouse workflows:
 
 - New transactions arrive continuously from source systems
 - Historical data requires periodic updates
@@ -24,23 +21,22 @@ Unlike Power and Throughput tests that only **read** data, Maintenance tests **w
 
 ### Key Characteristics
 
-| Aspect | Power/Throughput Tests | Maintenance Test |
-|--------|------------------------|------------------|
-| **Data Modification** | None (read-only) | Permanent (INSERT/UPDATE/DELETE) |
-| **Database State** | Unchanged after test | **Modified after test** |
-| **Repeatability** | Can run multiple times | **Requires reload between runs** |
-| **Purpose** | Query performance | Data modification performance |
-| **TPC Compliance** | Required for official results | Required for official results |
+| Aspect | Power/Throughput Tests | Standalone Maintenance Test |
+|--------|------------------------|------------------------------|
+| **Data Modification** | None by default; optional TPC-H RF1/RF2 | Permanent (INSERT/UPDATE/DELETE) |
+| **Database State** | Unchanged by default; modified with TPC-H refresh | **Modified after test** |
+| **Repeatability** | Reuse clean data or advance update-set number | **Reload or use unused update sets** |
+| **Purpose** | Query performance; optionally concurrent refresh | Data modification performance |
+| **TPC Compliance** | Depends on configuration and evidence | Required for official results |
 
 ## When to Use Maintenance Tests
 
 ### Use Maintenance Tests When You Need To:
 
-* ✅ **Complete official TPC benchmark compliance** - TPC specifications require all three test types (Power, Throughput, Maintenance) for valid results
-* ✅ **Test data warehouse ETL performance** - Measure how well your database handles incremental updates, bulk inserts, and data purging
-* ✅ **Evaluate write performance under analytical workloads** - Understand the cost of data modifications in OLAP systems
-* ✅ **Simulate mixed read/write workloads** - Test realistic scenarios where queries run while data is being updated
-* ✅ **Benchmark data maintenance windows** - Measure how long it takes to process daily, weekly, or monthly data refreshes
+* ✅ **Test data warehouse ETL performance** - Measure how the database handles data refresh operations
+* ✅ **Evaluate write performance under analytical workloads** - Understand the cost of data modifications
+* ✅ **Simulate mixed read/write workloads** - TPC-H Throughput can run its opt-in refresh stream concurrently with query streams
+* ✅ **Benchmark data maintenance windows** - Measure how long it takes to process data refreshes
 
 ### Skip Maintenance Tests When:
 
@@ -49,74 +45,35 @@ Unlike Power and Throughput tests that only **read** data, Maintenance tests **w
 * ❌ **Comparing read-only OLAP systems** - Some analytical databases are immutable and don't support data modifications
 * ❌ **Working in production environments** - Never run Maintenance tests against production data (they permanently modify it!)
 
-## TPC-H Maintenance Test
+## TPC-H Refresh Functions
 
-### Overview
+TPC-H uses DBGen update sets. `tpch_refresh_functions` defaults to `false`; set it to `true` to include RF1/RF2 in Power and the refresh stream in Throughput. `tpch_refresh_first_set` defaults to 1 and selects the first DBGen update set.
 
-TPC-H defines two **Refresh Functions** that simulate daily business operations in a retail/distribution scenario:
+DBGen creates update files before measurement. Power uses RF1(set F), runs the 22 queries, then applies RF2(set F); only the final measurement iteration modifies data. Throughput starts a separate refresh stream and runs S serial RF1/RF2 pairs on sets F+1 through F+S alongside the S query streams. Refresh time contributes to the throughput interval; the refresh safety checks run before the interval starts and after it ends.
 
-- **RF1 (Refresh Function 1)**: Insert new orders and associated line items
-- **RF2 (Refresh Function 2)**: Delete old orders and their line items
+The standalone TPC-H maintenance phase runs only on adapters that declare refresh support (DuckDB, SQLite, PostgreSQL and the adapters built on it, Snowflake, and SingleStore). On other adapters it completes with one skipped `maintenance_not_supported` row and issues no refresh SQL.
 
-### What RF1 Does (Insert Operations)
+RF1 inserts the DBGen order and lineitem rows in 1,000-row chunks and rejects order-key collisions. RF2 verifies that all selected orders exist, then deletes their lineitems before the orders. Each function uses a transaction. The standalone Maintenance phase uses the same generator and executor. These operations permanently modify the database.
 
-RF1 simulates new business activity by inserting fresh sales data:
-
-1. **Generate new ORDERS records** representing recent customer orders
-2. **Generate associated LINEITEM records** for each order (typically 1-7 lineitems per order)
-3. **Insert records into database** with proper foreign key relationships
-4. **Commit transaction** permanently
-
-**Volume**: ~0.1% of scale factor
-- At SF=1: ~1,500 orders + ~6,000-10,500 lineitems
-- At SF=10: ~15,000 orders + ~60,000-105,000 lineitems
-
-### What RF2 Does (Delete Operations)
-
-RF2 simulates data archival by removing old sales records:
-
-1. **Identify old LINEITEM records** to be archived
-2. **Delete LINEITEM records first** (respects foreign key constraints)
-3. **Delete corresponding ORDERS records** after lineitems removed
-4. **Commit transaction** permanently
-
-**Volume**: Same as RF1 (maintains database size)
-
-**Critical Detail**: RF2 must delete LINEITEM before ORDERS to maintain referential integrity (LINEITEM.L_ORDERKEY references ORDERS.O_ORDERKEY).
-
-### Data Modified in TPC-H
-
-| Scale Factor | Orders Inserted | Lineitems Inserted | Orders Deleted | Lineitems Deleted | Total Rows Modified |
-|--------------|-----------------|--------------------| ---------------|-------------------|---------------------|
-| 0.01         | 15              | 60-105             | 15             | 60-105            | ~150-240            |
-| 0.1          | 150             | 600-1,050          | 150            | 600-1,050         | ~1,500-2,400        |
-| 1            | 1,500           | 6,000-10,500       | 1,500          | 6,000-10,500      | ~15,000-24,000      |
-| 10           | 15,000          | 60,000-105,000     | 15,000         | 60,000-105,000    | ~150,000-240,000    |
-| 100          | 150,000         | 600,000-1,050,000  | 150,000        | 600,000-1,050,000 | ~1,500,000-2,400,000|
-
-### TPC-H Code Example
+After a combined run using Power set F and Throughput sets F+1..F+S, the next unused set is F+S+1. Reload the original data to repeat the run from set 1. This feature is verified in memory on DuckDB and SQLite; support is declared by the adapter.
 
 ```python
-from benchbox.tpch import TPCH
+from benchbox import TPCH
 from benchbox.platforms.duckdb import DuckDBAdapter
-from pathlib import Path
 
-benchmark = TPCH(scale_factor=1.0, output_dir=Path("./tpch_data"))
+benchmark = TPCH(
+    scale_factor=1.0,
+    tpch_refresh_functions=True,
+    tpch_refresh_first_set=1,
+)
 benchmark.generate_data()
-
-print("Step 1: Load fresh database...")
 adapter = DuckDBAdapter(database_path="tpch.duckdb", force_recreate=True)
 
-print("Step 2: Running Power and Throughput tests...")
 power_result = adapter.run_benchmark(benchmark, test_execution_type="power")
 throughput_result = adapter.run_benchmark(benchmark, test_execution_type="throughput")
-
-print("Step 3: Running Maintenance test (can run immediately after Power/Throughput)...")
-maintenance_result = adapter.run_benchmark(benchmark, test_execution_type="maintenance")
-
-print("\n⚠️  Database modified - MUST reload before running Power/Throughput again!")
-print("To run more tests: adapter = DuckDBAdapter(database_path='tpch.duckdb', force_recreate=True)")
 ```
+
+This example writes to the database in both phases. Use the next unused update set or reload the data before another run.
 
 ## TPC-DS Maintenance Test
 
@@ -189,32 +146,9 @@ print("\n⚠️  Database modified - MUST reload before running Power/Throughput
 print("To run more tests: adapter = DuckDBAdapter(database_path='tpcds.duckdb', force_recreate=True)")
 ```
 
-## Foreign Key Requirements and Data Integrity
+### TPC-H Refresh Integrity
 
-Both TPC-H and TPC-DS maintenance operations must respect referential integrity constraints. BenchBox implements comprehensive FK validation and handling to ensure data quality.
-
-### TPC-H Foreign Key Validation
-
-**RF1 (Insert) Validation:**
-
-Before inserting orders and lineitems, BenchBox validates that all foreign keys reference existing dimension table records:
-
-1. **Customer Keys** (`O_CUSTKEY`): Validates against `CUSTOMER.C_CUSTKEY`
-2. **Part Keys** (`L_PARTKEY`): Validates against `PART.P_PARTKEY`
-3. **Supplier Keys** (`L_SUPPKEY`): Validates against `SUPPLIER.S_SUPPKEY`
-
-If any foreign keys are invalid, RF1 fails before attempting database insertion, preventing constraint violations.
-
-**RF2 (Delete) Order:**
-
-RF2 deletes child records before parent records to maintain referential integrity:
-
-```
-1. DELETE FROM LINEITEM WHERE L_ORDERKEY IN (...)  -- Delete child records first
-2. DELETE FROM ORDERS WHERE O_ORDERKEY IN (...)     -- Then delete parent records
-```
-
-This order prevents FK constraint violations that would occur if orders were deleted while lineitems still reference them.
+RF1 uses DBGen's generated update rows and rejects any order key already present before inserting. RF2 reads the DBGen delete keys and verifies that every order exists before deleting LINEITEM children and then ORDERS parents. The function transaction rolls back if a validation or DML operation fails.
 
 ### TPC-DS Foreign Key Handling
 
@@ -459,9 +393,7 @@ benchbox run \
   --phases power
 ```
 
-The first workflow is wrong because Maintenance runs between Power and Throughput, so the Throughput queries run on data that RF1 and RF2 already changed and their results are not comparable to the Power results. The second workflow is wrong because the final `--phases power` run follows Maintenance with no reload, so it runs on the modified data and is not comparable to a Power test on clean data.
-
-Maintenance modifies the database, so reload it before running Power or Throughput again.
+If standalone Maintenance runs between Power and Throughput, the Throughput queries run against modified data. With TPC-H refresh integration enabled, Power and Throughput deliberately use consecutive update sets in that order; do not insert standalone Maintenance between them. Reload or choose the next unused update set before repeating a run.
 
 ## Troubleshooting
 
@@ -469,9 +401,9 @@ Maintenance modifies the database, so reload it before running Power or Throughp
 
 ✅ **This is expected behavior!** Maintenance tests permanently modify data. Reload the database to restore original results.
 
-### "Can I run Maintenance before Power/Throughput?"
+### "Can I run Power or Throughput after Maintenance?"
 
-❌ **No.** You must run Power and Throughput on clean, unmodified data. Run Maintenance **last**.
+For query-only comparisons, load fresh data before Power or Throughput. When TPC-H refresh integration is enabled, the phases intentionally use consecutive update sets in Power-then-Throughput order; run standalone Maintenance afterward with the next unused set or reload first.
 
 ### "I want to run Maintenance multiple times to test sustained ETL load"
 
@@ -515,19 +447,18 @@ Some immutable analytical databases (like certain columnar stores) don't support
 
 ### Golden Rules
 
-1. **Maintenance test can run immediately after Power/Throughput** (no reload needed before Maintenance)
-2. **MUST reload database after Maintenance before running Power/Throughput again**
-3. **Never run Power or Throughput on modified data**
-4. **Maintenance test should typically run LAST in your workflow**
+1. Standalone Maintenance can run after Power/Throughput, but its update set must not have been applied already.
+2. Reload before reusing DBGen update sets; otherwise advance `tpch_refresh_first_set`.
+3. Keep Power and Throughput on the same intended dataset sequence.
+4. Run standalone Maintenance last when using query-only tests.
 
 ### Correct Sequences
 
 ```
 ✓ generate → load → power → throughput
-✓ generate → load → power → throughput → maintenance
-✓ generate → load → power → throughput → maintenance → [RELOAD] → power
-✓ generate → load → maintenance (testing ETL only)
-✓ maintenance → [RELOAD] → maintenance (repeat Maintenance test)
+✓ generate → load → power → throughput → maintenance using next unused set
+✓ generate → load → maintenance
+✓ maintenance → [RELOAD] → maintenance (repeat from the same set)
 ```
 
 ### Incorrect Sequences
@@ -549,13 +480,13 @@ Some immutable analytical databases (like certain columnar stores) don't support
 ## FAQ
 
 **Q: Do I need to reload between Power and Throughput tests?**
-A: No. Both are read-only tests that don't modify data.
+A: Not by default. With TPC-H refresh enabled, Power applies set F and Throughput uses consecutive sets F+1..F+S; do not run standalone Maintenance between them.
 
-**Q: What happens if I accidentally run Maintenance first?**
-A: Your Power/Throughput results will be invalid. Reload the database and start over.
+**Q: What happens if Maintenance runs before Power/Throughput?**
+A: It modifies the database. Reload original data or configure the next unused TPC-H update set before measuring.
 
-**Q: Can I run Maintenance during Throughput tests (mixed workload)?**
-A: The standard TPC benchmarks don't support this, but BenchBox allows it for research purposes. This is not TPC-compliant.
+**Q: Can refresh functions run during Throughput tests?**
+A: Yes, for TPC-H when `tpch_refresh_functions=true`; one RF1/RF2 stream runs concurrently with query streams. This does not imply full TPC certification.
 
 **Q: How long does database reload take?**
 A: Depends on scale factor and platform:

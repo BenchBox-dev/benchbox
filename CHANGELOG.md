@@ -71,6 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and the two flags must be booleans. MCP rejects them. A result bundle with a routed gateway records
   `platform.gateway` with `name` and `routed: true` and the top-level `tpc_compliant: false`.
 
+- TPC-H refresh functions are opt-in for Power and Throughput. Power includes RF1/RF2 in its 24-term score and Throughput runs a concurrent RF stream; update sets and failures are recorded. QphH@Size is exported only when official-run and refresh-evidence gates pass.
 
 - Result schema 2.3 supports execution-engine receipts, query engine observations,
   compute resource and size, selected deployment, routed gateway, and variant identity.
@@ -492,6 +493,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   comparable with new ones, because untuned runs no longer set AQE, CBO,
   shuffle-partition or broadcast-threshold values. The Explorer warns when a
   comparison spans the two generations.
+- The standalone TPC-H maintenance phase now applies DBGen update sets instead
+  of synthetic rows, and runs only on adapters that declare refresh support:
+  DuckDB, SQLite, PostgreSQL and the adapters built on it, Snowflake, and
+  SingleStore. On other adapters, including ClickHouse, Databricks, BigQuery,
+  Trino and Redshift, the phase no longer modifies data. It completes with one
+  skipped `maintenance_not_supported` row.
+- `benchbox metrics qphh` and `benchbox calculate-qphh` still print
+  Power@Size and Throughput@Size and exit 0 for TPC-H result pairs. They now
+  also print QphH@Size when both files carry official refresh evidence, and
+  otherwise list the reasons QphH@Size is not reported. JSON output adds
+  `refresh_included` and either `qphh_at_size` or `qphh_unavailable`.
+- Runs with `tpch_refresh_functions=true` fail before any work on adapters
+  without refresh support and on DataFrame engines.
 - Runs whose tuning configuration contains nested mappings (for example per-table
   settings) get a different generated database name once, because the name now
   ignores the order of nested keys. BenchBox does not find the database an
