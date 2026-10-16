@@ -19,6 +19,7 @@ from benchbox.platforms.base import (
     BenchmarkResults,
     ConnectionConfig,
     PlatformAdapter,
+    PlatformAdapterConnection,
     StreamConnectionCapability,
 )
 from benchbox.platforms.base.execution import _power_query_result, _power_test_error_result
@@ -3326,22 +3327,45 @@ class TestExceptionPathsForThroughputAndMaintenance:
         ]
 
     @patch("benchbox.platforms.base.adapter.quiet_console")
-    def test_execute_tpch_maintenance_test_refuses_unsupported_platform(self, _mock_console):
+    def test_execute_tpch_maintenance_test_reports_not_supported_platform(self, _mock_console):
         adapter = MockPlatformAdapterWithDialect()
         adapter.supports_refresh_functions = False
+        connection = Mock()
 
-        results = adapter._execute_tpch_maintenance_test(Mock(), Mock(), {"scale_factor": 1.0})
+        with patch("benchbox.core.tpch.maintenance_test.TPCHMaintenanceTest") as maintenance_test:
+            results = adapter._execute_tpch_maintenance_test(Mock(), connection, {"scale_factor": 1.0})
 
+        maintenance_test.assert_not_called()
+        connection.execute.assert_not_called()
+        connection.cursor.assert_not_called()
         assert results == [
             {
-                "query_id": "maintenance_test_error",
+                "query_id": "maintenance_not_supported",
                 "execution_time_seconds": 0.0,
-                "status": "FAILED",
+                "status": "SKIPPED",
                 "rows_returned": 0,
                 "error": "TPC-H refresh functions are not supported by platform 'MockPlatformAdapterWithDialect'",
                 "test_type": "maintenance",
             }
         ]
+
+    @pytest.mark.parametrize(
+        ("module_name", "class_name", "expected"),
+        [
+            ("benchbox.platforms.duckdb", "DuckDBAdapter", True),
+            ("benchbox.platforms.sqlite", "SQLiteAdapter", True),
+            ("benchbox.platforms.postgresql", "PostgreSQLAdapter", True),
+            ("benchbox.platforms.singlestore", "SingleStoreAdapter", True),
+            ("benchbox.platforms.snowflake", "SnowflakeAdapter", True),
+            ("benchbox.platforms.redshift", "RedshiftAdapter", False),
+        ],
+    )
+    def test_refresh_capability_matches_verified_platforms(self, module_name, class_name, expected):
+        import importlib
+
+        adapter_class = getattr(importlib.import_module(module_name), class_name)
+
+        assert adapter_class.supports_refresh_functions is expected
 
 
 class TestDataGenerationPhaseEdgeCases:
@@ -3839,6 +3863,19 @@ class TestTPCHRefreshPowerConnectionAdapter:
         assert refresh_connection._maintenance_mode is True
         assert refresh_connection.benchmark_type == "tpch"
         assert refresh_connection.scale_factor == 0.01
+
+    def test_maintenance_statements_use_a_cursor_when_the_session_has_no_execute(self):
+        cursor = Mock()
+        session = Mock(spec=["cursor", "commit", "rollback"])
+        session.cursor.return_value = cursor
+
+        wrapper = PlatformAdapterConnection(session, MockPlatformAdapter(), maintenance_mode=True)
+        result = wrapper.execute("SELECT COUNT(*) FROM orders")
+        wrapper.execute("DELETE FROM orders WHERE o_orderkey = %s", (1,))
+
+        assert result is cursor
+        cursor.execute.assert_any_call("SELECT COUNT(*) FROM orders")
+        cursor.execute.assert_any_call("DELETE FROM orders WHERE o_orderkey = %s", (1,))
 
     def test_rejects_a_shared_session_for_refresh_statements(self):
         adapter = MockPlatformAdapter()

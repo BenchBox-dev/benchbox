@@ -191,10 +191,10 @@ class PlatformAdapterConnection:
 
     def execute(self, query: str, parameters: tuple | list | None = None):
         if self._maintenance_mode:
-            if parameters:
-                return self.connection.execute(query, parameters)
-            else:
-                return self.connection.execute(query)
+            target = self.connection if callable(getattr(self.connection, "execute", None)) else None
+            cursor = self.connection.cursor() if target is None else None
+            result = (target or cursor).execute(*((query, parameters) if parameters else (query,)))
+            return result if cursor is None else cursor
 
         if parameters:
             return self.connection.execute(query, parameters)

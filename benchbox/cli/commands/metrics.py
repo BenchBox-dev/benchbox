@@ -20,7 +20,7 @@ from benchbox.cli.shared import console
         "Available subcommands:\n"
         "\n"
         "\x08\n"
-        "  qphh    Calculate Power@Size, Throughput@Size, and eligible QphH@Size\n"
+        "  qphh    Calculate Power@Size and Throughput@Size (no composite QphH)\n"
         "\n"
         "Examples:\n"
         "    # Calculate Power@Size and Throughput@Size\n"
@@ -36,14 +36,15 @@ def metrics_group():
 @metrics_group.command(
     "qphh",
     help=(
-        "Calculate Power@Size and Throughput@Size from result files and, when\n"
-        "the evidence qualifies, TPC-H QphH@Size. QphH requires official\n"
-        "compliance, 22 successful power queries, RF1/RF2 in the power phase,\n"
-        "one successful refresh pair per throughput stream on consecutive sets,\n"
-        "at least two streams, and no failed query. QphDS remains unsupported.\n"
+        "Calculate Power@Size and Throughput@Size from result files.\n"
+        "\n"
+        "The composite QphH@Size / QphDS@Size is not computed: BenchBox does not\n"
+        "yet run the TPC-H refresh functions or the TPC-DS data maintenance\n"
+        "phases that the composite requires. The command refuses result files\n"
+        "with suppressed metrics, failed queries or a failed throughput phase.\n"
         "\n"
         "Power@Size uses the final power iteration. Throughput@Size uses the\n"
-        "throughput phase wall-clock duration including the refresh stream.\n"
+        "throughput phase wall-clock duration.\n"
         "\n"
         "\x08\n"
         "Examples:\n"
@@ -197,14 +198,18 @@ def _format_text_output(result: dict) -> str:
     lines.append(f"Throughput@Size:  {result['throughput_at_size']:,.2f}")
     if result.get("qphh_at_size") is not None:
         lines.append(f"QphH@Size:        {result['qphh_at_size']:,.1f}")
-    lines.append(f"Refresh included:  {'yes' if result.get('refresh_included') else 'no'}")
+    if "refresh_included" in result:
+        lines.append(f"Refresh included:  {'yes' if result['refresh_included'] else 'no'}")
     lines.append("")
     lines.append("=" * 70)
-    if result.get("qphh_at_size") is None:
-        lines.append("QphDS@Size is not computed; TPC-DS maintenance support is not implemented.")
-    else:
+    if result.get("qphh_at_size") is not None:
         lines.append("QphH@Size = sqrt(Power@Size × Throughput@Size), rounded to 0.1.")
-    lines.append("  Power@Size = 3600 × SF / geometric_mean(final iteration's 22 queries, RF1, RF2)")
+    elif result.get("qphh_unavailable"):
+        lines.append("QphH@Size is not reported:")
+        lines.extend(f"  - {reason}" for reason in result["qphh_unavailable"])
+    else:
+        lines.append("Composite QphDS@Size is not computed; TPC-DS maintenance support is not implemented.")
+    lines.append("  Power@Size = 3600 × SF / geometric_mean(final power iteration times, plus RF1 and RF2 when run)")
     lines.append("  Throughput@Size = Queries × 3600 × SF / Throughput_Phase_Wall_Time")
     lines.append("")
 

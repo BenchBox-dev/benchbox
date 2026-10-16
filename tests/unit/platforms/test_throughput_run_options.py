@@ -298,7 +298,7 @@ class TestStreamCountEntryPoints:
 
 
 class TestMaintenanceSessions:
-    def test_tpch_maintenance_refuses_unsupported_adapter(self):
+    def test_tpch_maintenance_reports_unsupported_adapter_as_skipped(self):
         driver = _Driver()
         driver.supports_refresh_functions = False
         driver._plan_capture_checkpoint = lambda connection: None
@@ -306,7 +306,7 @@ class TestMaintenanceSessions:
         rows = driver._execute_tpch_maintenance_test(Mock(), Mock(), {"scale_factor": 0.01})
 
         assert len(rows) == 1
-        assert rows[0]["status"] == "FAILED"
+        assert rows[0]["status"] == "SKIPPED"
         assert "refresh functions are not supported" in rows[0]["error"]
 
     @pytest.mark.parametrize(

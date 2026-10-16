@@ -95,6 +95,15 @@ def normalize_tbl_trailing_delimiters(path: Path) -> bool:
     return True
 
 
+def _stage_distributions(source: Path, work_dir: Path) -> None:
+    target = work_dir / "dists.dss"
+    if target.exists():
+        return
+    if not source.exists():
+        raise FileNotFoundError(f"TPC-H dbgen distributions file not found: {source} (also missing from {target})")
+    shutil.copy2(source, target)
+
+
 class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityMixin):
     def __init__(
         self,
@@ -336,9 +345,7 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
         work_dir_path = Path(work_dir)
         work_dir_path.mkdir(parents=True, exist_ok=True)
 
-        dists_file = self.dbgen_path / "dists.dss"
-        if not (work_dir_path / "dists.dss").exists():
-            shutil.copy2(dists_file, work_dir_path / "dists.dss")
+        _stage_distributions(self.dbgen_path / "dists.dss", work_dir_path)
 
         tables = list(_TPCH_TABLE_CODES.keys())
 
@@ -413,9 +420,7 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
         resolved_work_dir = work_dir_path.resolve()
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        distributions = dbgen_exe.parent / "dists.dss"
-        if not (work_dir_path / "dists.dss").exists():
-            shutil.copy2(distributions, work_dir_path / "dists.dss")
+        _stage_distributions(dbgen_exe.parent / "dists.dss", work_dir_path)
 
         cmd = [
             str(dbgen_exe),
@@ -524,9 +529,7 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
         except Exception:
             pass
 
-        dists_file = self.dbgen_path / "dists.dss"
-        if not (work_dir_path / "dists.dss").exists():
-            shutil.copy2(dists_file, work_dir_path / "dists.dss")
+        _stage_distributions(self.dbgen_path / "dists.dss", work_dir_path)
 
         if self.parallel > 1:
             self._run_parallel_dbgen(work_dir_path)
@@ -583,9 +586,7 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
         work_dir_path.mkdir(parents=True, exist_ok=True)
         resolved_work_dir = work_dir_path.resolve()
 
-        dists_file = self.dbgen_path / "dists.dss"
-        if not (work_dir_path / "dists.dss").exists():
-            shutil.copy2(dists_file, work_dir_path / "dists.dss")
+        _stage_distributions(self.dbgen_path / "dists.dss", work_dir_path)
 
         def generate_chunk(chunk_id: int) -> None:
             cmd = [

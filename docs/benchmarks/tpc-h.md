@@ -129,9 +129,11 @@ times.
 
 The throughput phase starts one refresh stream alongside its S query streams.
 It runs S serial RF1/RF2 pairs on sets F+1 through F+S. The measured interval
-includes the earliest query or refresh stream start and the latest query or
-refresh stream end, including refresh precondition and postcondition checks. A
-refresh failure records function evidence and withholds Throughput@Size.
+runs from the earliest query or refresh stream start to the latest query or
+refresh stream end. Refresh safety checks are not timed: the RF1 and RF2
+precondition checks for every set run before the interval starts, and the RF2
+postcondition checks run after it ends. A failed check or refresh function
+records function evidence and withholds Throughput@Size.
 
 Refresh functions permanently change the database. No set cursor is saved.
 After a run using Power set F and throughput sets F+1..F+S, pass
@@ -139,9 +141,11 @@ After a run using Power set F and throughput sets F+1..F+S, pass
 restart at set 1. For a power-only run, the next set is F+1.
 
 Refresh support is declared per adapter. It is enabled for DuckDB, SQLite,
-PostgreSQL-family adapters, Redshift, Snowflake, and SingleStore; DataFrame
-engines and undeclared adapters fail clearly. In-memory integration coverage
-is verified on DuckDB and SQLite.
+PostgreSQL and the adapters built on it, Snowflake, and SingleStore. Redshift
+and other adapters do not declare it yet. Power or throughput with refresh
+enabled fails clearly on DataFrame engines and undeclared adapters. The
+standalone maintenance phase on an undeclared adapter completes with one
+skipped `maintenance_not_supported` row and runs no refresh SQL.
 
 QphH@Size is exported only for official TPC-H results when Power completed all
 22 queries and successful RF1/RF2 on F, throughput completed at least two

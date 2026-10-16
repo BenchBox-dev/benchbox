@@ -253,7 +253,7 @@ def test_adapter_gate_refusal_withholds_the_throughput_metric(phases, tmp_path):
     assert any("UNSUPPORTED" in err for err in result.errors)
 
 
-def test_maintenance_refuses_unsupported_adapter_before_work(phases, tmp_path):
+def test_maintenance_on_unsupported_adapter_is_skipped_as_not_supported(phases, tmp_path):
     benchmark = TPCHOfficialBenchmark(scale_factor=0.01, output_dir=tmp_path)
     config = TPCHOfficialBenchmarkConfig(
         scale_factor=0.01,
@@ -262,11 +262,26 @@ def test_maintenance_refuses_unsupported_adapter_before_work(phases, tmp_path):
         maintenance_test_enabled=True,
     )
     phases.adapter.supports_refresh_functions = False
+    phases.adapter.platform_name = "ClickHouse"
+
+    result = _run(benchmark, phases, config=config)
+
+    phases.maintenance.assert_not_called()
+    assert result.success is True
+    assert result.errors == []
+    assert result.maintenance_test_result is None
+    assert result.maintenance_skipped_reason == "TPC-H refresh functions are not supported by platform 'ClickHouse'"
+
+
+def test_refresh_functions_still_refuse_unsupported_adapter_before_work(phases, tmp_path):
+    benchmark = TPCHOfficialBenchmark(scale_factor=0.01, output_dir=tmp_path)
+    config = TPCHOfficialBenchmarkConfig(scale_factor=0.01, tpch_refresh_functions=True)
+    phases.adapter.supports_refresh_functions = False
 
     with pytest.raises(NotImplementedError, match="refresh functions are not supported"):
         _run(benchmark, phases, config=config)
 
-    phases.maintenance.assert_not_called()
+    phases.power.assert_not_called()
 
 
 def test_facade_builds_the_official_benchmark_from_its_scale_factor(tmp_path):

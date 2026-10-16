@@ -49,7 +49,9 @@ These operations support common warehouse workflows:
 
 TPC-H uses DBGen update sets. `tpch_refresh_functions` defaults to `false`; set it to `true` to include RF1/RF2 in Power and the refresh stream in Throughput. `tpch_refresh_first_set` defaults to 1 and selects the first DBGen update set.
 
-DBGen creates update files before measurement. Power uses RF1(set F), runs the 22 queries, then applies RF2(set F); only the final measurement iteration modifies data. Throughput starts a separate refresh stream and runs S serial RF1/RF2 pairs on sets F+1 through F+S alongside the S query streams. Refresh time contributes to the throughput interval.
+DBGen creates update files before measurement. Power uses RF1(set F), runs the 22 queries, then applies RF2(set F); only the final measurement iteration modifies data. Throughput starts a separate refresh stream and runs S serial RF1/RF2 pairs on sets F+1 through F+S alongside the S query streams. Refresh time contributes to the throughput interval; the refresh safety checks run before the interval starts and after it ends.
+
+The standalone TPC-H maintenance phase runs only on adapters that declare refresh support (DuckDB, SQLite, PostgreSQL and the adapters built on it, Snowflake, and SingleStore). On other adapters it completes with one skipped `maintenance_not_supported` row and issues no refresh SQL.
 
 RF1 inserts the DBGen order and lineitem rows in 1,000-row chunks and rejects order-key collisions. RF2 verifies that all selected orders exist, then deletes their lineitems before the orders. Each function uses a transaction. The standalone Maintenance phase uses the same generator and executor. These operations permanently modify the database.
 

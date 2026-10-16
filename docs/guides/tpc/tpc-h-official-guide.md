@@ -23,7 +23,7 @@ Enable refresh functions with `--benchmark-option tpch_refresh_functions=true`. 
 
 The composite is `round(sqrt(Power@Size × Throughput@Size), 1)`. Results that fail any gate omit `qphh_at_size` and report `qphh_unavailable` reasons. `benchbox metrics qphh` uses the same gate.
 
-This implementation is not a TPC certification claim. It does not apply the specification's 0.01-second refresh rounding, 1000x clamp, upward Ts rounding, or two-run lower-score rule. Live integration coverage is verified on DuckDB and SQLite.
+This implementation is not a TPC certification claim. It does not apply the specification's 0.01-second refresh rounding, 1000x clamp, upward Ts rounding, or two-run lower-score rule. Refresh support is declared for DuckDB, SQLite, PostgreSQL and the adapters built on it, Snowflake, and SingleStore.
 
 BenchBox also reports the component metrics:
 
@@ -184,7 +184,7 @@ power_result = adapter.run_benchmark(benchmark, test_execution_type="power")
 throughput_result = adapter.run_benchmark(benchmark, test_execution_type="throughput")
 ```
 
-This example modifies the database in both phases. The next run must use the next unused update set or reload the original data. Adapter support is declared per platform; in-memory integration coverage is verified on DuckDB and SQLite.
+This example modifies the database in both phases. The next run must use the next unused update set or reload the original data. Adapter support is declared per platform; see [TPC-H refresh support](../../benchmarks/tpc-h.md#official-tpc-h-metrics).
 
 **Workflow:** `generate` → `load` → `power` → `throughput` → `maintenance`. Reload before reusing update sets or comparing against a fresh dataset.
 

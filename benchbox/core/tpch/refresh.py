@@ -24,11 +24,17 @@ class TPCHRefreshUpdateSet:
     delete_path: Path
 
 
-def require_refresh_support(adapter: Any) -> None:
+def refresh_unsupported_reason(adapter: Any) -> str | None:
     if getattr(adapter, "supports_refresh_functions", False) is True:
-        return
+        return None
     platform_name = getattr(adapter, "platform_name", type(adapter).__name__)
-    raise NotImplementedError(f"TPC-H refresh functions are not supported by platform '{platform_name}'")
+    return f"TPC-H refresh functions are not supported by platform '{platform_name}'"
+
+
+def require_refresh_support(adapter: Any) -> None:
+    reason = refresh_unsupported_reason(adapter)
+    if reason is not None:
+        raise NotImplementedError(reason)
 
 
 def generate_refresh_update_sets(
@@ -181,7 +187,7 @@ def _begin_transaction(connection: Any) -> None:
     execute = getattr(connection, "execute", None)
     if not callable(execute):
         raise TypeError("TPC-H refresh functions require a connection with execute()")
-    execute("BEGIN TRANSACTION")
+    execute("BEGIN")
 
 
 def _commit(connection: Any) -> None:

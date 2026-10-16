@@ -1015,3 +1015,29 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_missing_distributions_file_names_both_paths(tmp_path):
+    from benchbox.core.tpch.generator import _stage_distributions
+
+    source = tmp_path / "dbgen" / "dists.dss"
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+
+    with pytest.raises(FileNotFoundError, match="dbgen distributions file not found") as error:
+        _stage_distributions(source, work_dir)
+
+    assert str(source) in str(error.value)
+    assert str(work_dir / "dists.dss") in str(error.value)
+
+
+def test_existing_distributions_file_in_work_dir_is_kept(tmp_path):
+    from benchbox.core.tpch.generator import _stage_distributions
+
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+    (work_dir / "dists.dss").write_text("local", encoding="utf-8")
+
+    _stage_distributions(tmp_path / "missing" / "dists.dss", work_dir)
+
+    assert (work_dir / "dists.dss").read_text(encoding="utf-8") == "local"

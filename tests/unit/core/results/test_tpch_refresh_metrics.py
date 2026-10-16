@@ -209,7 +209,7 @@ def test_sf001_unofficial_results_keep_refresh_evidence_but_withhold_qphh() -> N
     power["summary"]["tpc_metrics"] = {"power_at_size": 100.0}
     throughput["summary"]["tpc_metrics"] = {"throughput_at_size": 200.0}
 
-    with pytest.raises(ValueError, match="not official compliance"):
+    with pytest.raises(ValueError, match="unofficial_subscale"):
         TPCMetricsCalculator.compute_qphh_result(power, throughput, scale_factor=0.01)
 
     assert len(power["phases"]["power_test"]["refresh_functions"]) == 2

@@ -1,4 +1,5 @@
 import concurrent.futures
+import contextlib
 import contextvars
 import logging
 import tempfile
@@ -165,6 +166,9 @@ class TPCHThroughputTest:
 
         try:
             refresh_temp_directory, update_sets = self._prepare_refresh_sets(config, result)
+            deleted_lineitems = self._check_refresh_preconditions(
+                update_sets, config.num_streams, result.refresh_stream
+            )
 
             if config.verbose:
                 self.logger.info("Starting TPC-H Throughput Test")
@@ -181,9 +185,11 @@ class TPCHThroughputTest:
                     config.num_streams,
                     result.refresh_stream,
                     getattr(config, "_stream_cancel_events", {}).get(0),
+                    deleted_lineitems,
                 )
 
             StreamRunner.execute(self._execute_stream, config, result, self.logger, auxiliary_fn=auxiliary_fn)
+            self._check_refresh_postconditions(update_sets, result)
 
             if result.refresh_stream is not None and result.refresh_stream.status == "PENDING":
                 result.refresh_stream.status = "FAILED"
@@ -258,12 +264,82 @@ class TPCHThroughputTest:
         result.refresh_stream = TPCHRefreshStreamResult(first_set=refresh_first_set)
         return temporary, update_sets
 
+    def _with_refresh_session(self, action: Callable[[Any], Any]) -> Any:
+        if self.refresh_connection_factory is None:
+            raise RuntimeError("TPC-H refresh stream requires a separate connection factory")
+        connection = self.refresh_connection_factory()
+        try:
+            return action(connection)
+        finally:
+            with contextlib.suppress(Exception):
+                connection.close()
+
+    def _check_refresh_preconditions(
+        self,
+        update_sets: dict[int, TPCHRefreshUpdateSet],
+        num_streams: int,
+        refresh_stream: TPCHRefreshStreamResult | None,
+    ) -> dict[int, int]:
+        if refresh_stream is None:
+            return {}
+
+        def check(connection: Any) -> dict[int, int]:
+            deleted_lineitems = {}
+            for offset in range(num_streams):
+                update_set_id = refresh_stream.first_set + offset
+                update_set = update_sets[update_set_id]
+                pair = {"update_set": update_set_id, "functions": [], "status": "PENDING", "error": None}
+                refresh_stream.pairs.append(pair)
+                for function, precondition in (("RF1", check_rf1_preconditions), ("RF2", check_rf2_preconditions)):
+                    try:
+                        checked = precondition(connection, update_set)
+                    except Exception as exc:
+                        self._record_refresh_precondition_failure(refresh_stream, pair, function, update_set, exc)
+                        raise RuntimeError(f"Refresh stream failed: {refresh_stream.error}") from exc
+                    if function == "RF2":
+                        deleted_lineitems[update_set_id] = checked
+            return deleted_lineitems
+
+        return self._with_refresh_session(check)
+
+    def _check_refresh_postconditions(
+        self, update_sets: dict[int, TPCHRefreshUpdateSet], result: TPCHThroughputTestResult
+    ) -> None:
+        refresh_stream = result.refresh_stream
+        if refresh_stream is None or refresh_stream.status != "COMPLETED":
+            return
+
+        def check(connection: Any) -> None:
+            for pair in refresh_stream.pairs:
+                update_set_id = pair["update_set"]
+                try:
+                    check_rf2_applied(connection, update_sets[update_set_id])
+                except Exception as exc:
+                    rf2_result = pair["functions"][1]
+                    rf2_result["duration_ms"] = 0
+                    rf2_result["status"] = "FAILED"
+                    rf2_result["error"] = str(exc)
+                    pair["status"] = "FAILED"
+                    pair["error"] = str(exc)
+                    refresh_stream.error = f"refresh set {update_set_id} RF2 failed: {exc}"
+                    refresh_stream.status = "FAILED"
+                    return
+
+        try:
+            self._with_refresh_session(check)
+        except Exception as exc:
+            refresh_stream.status = "FAILED"
+            refresh_stream.error = f"refresh postcondition check failed: {exc}"
+        if refresh_stream.status == "FAILED":
+            result.errors.append(f"Refresh stream failed: {refresh_stream.error}")
+
     def _execute_refresh_stream(
         self,
         update_sets: dict[int, TPCHRefreshUpdateSet],
         num_streams: int,
         refresh_stream: TPCHRefreshStreamResult | None,
         cancel_event: threading.Event | None = None,
+        deleted_lineitems: dict[int, int] | None = None,
     ) -> TPCHRefreshStreamResult:
         if refresh_stream is None:
             raise RuntimeError("TPC-H refresh stream result was not initialized")
@@ -276,7 +352,7 @@ class TPCHThroughputTest:
             if self.refresh_connection_factory is None:
                 raise RuntimeError("TPC-H refresh stream requires a separate connection factory")
             connection = self.refresh_connection_factory()
-            deleted_lineitems = {}
+            deleted_lineitems = deleted_lineitems or {}
             for offset in range(num_streams):
                 if cancel_event is not None and cancel_event.is_set():
                     refresh_stream.status = "FAILED"
@@ -284,34 +360,19 @@ class TPCHThroughputTest:
                     return refresh_stream
                 update_set_id = refresh_stream.first_set + offset
                 update_set = update_sets[update_set_id]
-                pair = {"update_set": update_set_id, "functions": [], "status": "RUNNING", "error": None}
-                refresh_stream.pairs.append(pair)
-                try:
-                    check_rf1_preconditions(connection, update_set)
-                except Exception as exc:
-                    self._record_refresh_precondition_failure(refresh_stream, pair, "RF1", update_set, exc)
-                    return refresh_stream
-                try:
-                    deleted_lineitems[update_set_id] = check_rf2_preconditions(connection, update_set)
-                except Exception as exc:
-                    self._record_refresh_precondition_failure(refresh_stream, pair, "RF2", update_set, exc)
-                    return refresh_stream
-
-            for offset in range(num_streams):
-                if cancel_event is not None and cancel_event.is_set():
-                    refresh_stream.status = "FAILED"
-                    refresh_stream.error = "refresh stream cancelled after timeout"
-                    return refresh_stream
-                update_set_id = refresh_stream.first_set + offset
-                update_set = update_sets[update_set_id]
-                pair = refresh_stream.pairs[offset]
+                if offset < len(refresh_stream.pairs):
+                    pair = refresh_stream.pairs[offset]
+                else:
+                    pair = {"update_set": update_set_id, "functions": [], "status": "PENDING", "error": None}
+                    refresh_stream.pairs.append(pair)
+                pair["status"] = "RUNNING"
                 for function in ("RF1", "RF2"):
                     function_result = self._execute_refresh_function(
                         function,
                         update_set,
                         connection,
                         deleted_lineitems.get(update_set_id),
-                        prevalidated=True,
+                        prevalidated=update_set_id in deleted_lineitems,
                     )
                     pair["functions"].append(function_result)
                     if function_result["status"] != "SUCCESS":
@@ -324,22 +385,6 @@ class TPCHThroughputTest:
                         return refresh_stream
 
                 pair["status"] = "SUCCESS"
-
-            for offset in range(num_streams):
-                update_set_id = refresh_stream.first_set + offset
-                try:
-                    check_rf2_applied(connection, update_sets[update_set_id])
-                except Exception as exc:
-                    pair = refresh_stream.pairs[offset]
-                    rf2_result = pair["functions"][1]
-                    rf2_result["duration_ms"] = 0
-                    rf2_result["status"] = "FAILED"
-                    rf2_result["error"] = str(exc)
-                    pair["status"] = "FAILED"
-                    pair["error"] = str(exc)
-                    refresh_stream.error = f"refresh set {update_set_id} RF2 failed: {exc}"
-                    refresh_stream.status = "FAILED"
-                    return refresh_stream
 
             refresh_stream.status = "COMPLETED"
             return refresh_stream

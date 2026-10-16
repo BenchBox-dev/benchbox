@@ -549,14 +549,27 @@ class TestDriversMixin:
     def _execute_tpch_maintenance_test(self, benchmark, connection: Any, run_config: dict) -> list[dict[str, Any]]:
 
         from benchbox.core.tpch.maintenance_test import TPCHMaintenanceTest
-        from benchbox.core.tpch.refresh import require_refresh_support
-
-        self._plan_capture_checkpoint(connection)
+        from benchbox.core.tpch.refresh import refresh_unsupported_reason
 
         console = quiet_console
 
+        unsupported_reason = refresh_unsupported_reason(self)
+        if unsupported_reason is not None:
+            console.print(f"[yellow]TPC-H Maintenance Test skipped: {unsupported_reason}[/yellow]")
+            return [
+                {
+                    "query_id": "maintenance_not_supported",
+                    "execution_time_seconds": 0.0,
+                    "status": "SKIPPED",
+                    "rows_returned": 0,
+                    "error": unsupported_reason,
+                    "test_type": "maintenance",
+                }
+            ]
+
+        self._plan_capture_checkpoint(connection)
+
         try:
-            require_refresh_support(self)
             scale_factor = run_config.get("scale_factor", 1.0)
             verbose = run_config.get("verbose", False)
             maintenance_pairs = run_config.get("maintenance_pairs", 1)

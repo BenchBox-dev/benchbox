@@ -371,25 +371,24 @@ class TPCMetricsCalculator:
         power_benchmark = power_data.get("benchmark") or {}
         throughput_benchmark = throughput_data.get("benchmark") or {}
         benchmark_id = throughput_benchmark.get("id") or power_benchmark.get("id")
-        refresh_included = False
-        qphh_at_size = None
+        power_at_size, throughput_at_size, power_time, throughput_time = TPCMetricsCalculator.derive_tpc_metrics(
+            power_data, throughput_data, sf
+        )
+        if power_at_size is None or throughput_at_size is None:
+            raise ValueError("Could not derive Power@Size or Throughput@Size from result data")
+        tpch_extras: dict = {}
         if benchmark_id == "tpch" or power_benchmark.get("id") == "tpch":
             reasons = TPCMetricsCalculator.qphh_unavailable_reasons(power_data, throughput_data)
+            tpch_extras["refresh_included"] = TPCMetricsCalculator.refresh_included(
+                (power_data.get("phases") or {}).get("power_test"),
+                (throughput_data.get("phases") or {}).get("throughput_test"),
+            )
             if reasons:
-                raise ValueError("QphH@Size unavailable: " + "; ".join(reasons))
-            power_at_size, throughput_at_size, power_time, throughput_time = TPCMetricsCalculator.derive_tpc_metrics(
-                power_data, throughput_data, sf
-            )
-            if power_at_size is None or throughput_at_size is None:
-                raise ValueError("QphH@Size unavailable: could not derive Power@Size or Throughput@Size")
-            refresh_included = True
-            qphh_at_size = TPCMetricsCalculator.calculate_qphh_at_size(power_at_size, throughput_at_size)
-        else:
-            power_at_size, throughput_at_size, power_time, throughput_time = TPCMetricsCalculator.derive_tpc_metrics(
-                power_data, throughput_data, sf
-            )
-            if power_at_size is None or throughput_at_size is None:
-                raise ValueError("Could not derive Power@Size or Throughput@Size from result data")
+                tpch_extras["qphh_unavailable"] = reasons
+            else:
+                tpch_extras["qphh_at_size"] = TPCMetricsCalculator.calculate_qphh_at_size(
+                    power_at_size, throughput_at_size
+                )
 
         throughput_phase = (throughput_data.get("phases") or {}).get("throughput_test") or {}
         num_streams = (
@@ -407,8 +406,7 @@ class TPCMetricsCalculator:
             "throughput_test_time": throughput_time,
             "power_at_size": power_at_size,
             "throughput_at_size": throughput_at_size,
-            "qphh_at_size": qphh_at_size,
-            "refresh_included": refresh_included,
+            **tpch_extras,
         }
 
 

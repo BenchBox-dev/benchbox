@@ -86,7 +86,7 @@ def test_rf1_uses_1000_row_insert_chunks_and_one_transaction(tmp_path: Path) -> 
     assert inserted == 2002
     assert len(inserts) == 4
     assert [statement.count("), (") + 1 for statement in inserts] == [1000, 1, 1000, 1]
-    assert connection.statements[0] == "BEGIN TRANSACTION"
+    assert connection.statements[0] == "BEGIN"
     assert connection.commits == 1
     assert connection.rollbacks == 0
 
@@ -116,7 +116,7 @@ def test_rf2_deletes_lineitems_before_orders_in_one_transaction(tmp_path: Path) 
         "DELETE FROM lineitem WHERE L_ORDERKEY IN (121, 122)",
         "DELETE FROM orders WHERE O_ORDERKEY IN (121, 122)",
     ]
-    assert "BEGIN TRANSACTION" in connection.statements
+    assert "BEGIN" in connection.statements
     assert connection.commits == 1
     assert connection.rollbacks == 0
 
@@ -218,7 +218,7 @@ def test_throughput_assigns_consecutive_update_sets_after_the_power_set(monkeypa
     def execute(stream_fn, config, result, logger, auxiliary_fn=None):
         auxiliary_fn()
 
-    def execute_refresh(update_sets, num_streams, refresh_stream, cancel_event=None):
+    def execute_refresh(update_sets, num_streams, refresh_stream, cancel_event=None, deleted_lineitems=None):
         executed_sets.extend(sorted(update_sets))
         refresh_stream.start_time = "refresh-start"
         refresh_stream.end_time = "refresh-end"
@@ -230,6 +230,8 @@ def test_throughput_assigns_consecutive_update_sets_after_the_power_set(monkeypa
     monkeypatch.setattr(throughput_test, "generate_refresh_update_sets", generate)
     monkeypatch.setattr(throughput_test.StreamRunner, "execute", staticmethod(execute))
     monkeypatch.setattr(test, "_execute_refresh_stream", execute_refresh)
+    monkeypatch.setattr(test, "_check_refresh_preconditions", lambda *_args: {})
+    monkeypatch.setattr(test, "_check_refresh_postconditions", lambda *_args: None)
 
     result = test.run()
 
@@ -259,6 +261,7 @@ def test_throughput_reports_refresh_worker_that_never_started(monkeypatch: pytes
         },
     )
     monkeypatch.setattr(throughput_test.StreamRunner, "execute", staticmethod(lambda *_args, **_kwargs: None))
+    monkeypatch.setattr(test, "_check_refresh_preconditions", lambda *_args: {})
 
     result = test.run()
 
@@ -271,49 +274,54 @@ def test_throughput_runs_all_safety_checks_outside_the_refresh_measurement(monke
     from types import SimpleNamespace
 
     from benchbox.core.tpch import throughput_test
-    from benchbox.core.tpch.throughput_test import TPCHRefreshStreamResult, TPCHThroughputTest
+    from benchbox.core.tpch.throughput_test import TPCHThroughputTest
+    from benchbox.utils.clock import mono_time
 
     events = []
-    connection = SimpleNamespace(close=lambda: None)
     test = TPCHThroughputTest(
         benchmark=object(),
         connection_factory=lambda: None,
         scale_factor=0.01,
         num_streams=2,
         refresh_enabled=True,
-        refresh_connection_factory=lambda: connection,
+        refresh_first_set=2,
+        refresh_connection_factory=lambda: SimpleNamespace(close=lambda: None),
     )
-    update_sets = {set_id: SimpleNamespace(set_id=set_id) for set_id in (3, 4)}
+    test._pregenerate_stream_queries = lambda config: {}
     monkeypatch.setattr(
         throughput_test,
-        "check_rf1_preconditions",
-        lambda _connection, update_set: events.append(("precheck-rf1", update_set.set_id)),
-    )
-    monkeypatch.setattr(
-        throughput_test,
-        "check_rf2_preconditions",
-        lambda _connection, update_set: events.append(("precheck-rf2", update_set.set_id)) or 1,
-    )
-    monkeypatch.setattr(
-        throughput_test,
-        "apply_rf1",
-        lambda _connection, update_set: events.append(("apply-rf1", update_set.set_id)) or 2,
-    )
-    monkeypatch.setattr(
-        throughput_test,
-        "apply_rf2",
-        lambda _connection, update_set, _deleted: events.append(("apply-rf2", update_set.set_id)) or 3,
-    )
-    monkeypatch.setattr(
-        throughput_test,
-        "check_rf2_applied",
-        lambda _connection, update_set: events.append(("postcheck-rf2", update_set.set_id)),
+        "generate_refresh_update_sets",
+        lambda scale_factor, first_set, count, output_dir: {
+            set_id: SimpleNamespace(set_id=set_id) for set_id in range(first_set, first_set + count)
+        },
     )
 
-    result = test._execute_refresh_stream(update_sets, 2, TPCHRefreshStreamResult(first_set=3))
+    def record(name):
+        def recorder(_connection, update_set, *_args):
+            events.append((name, update_set.set_id, mono_time()))
+            return 1
 
-    assert result.success is True
-    assert events == [
+        return recorder
+
+    for name, target in (
+        ("precheck-rf1", "check_rf1_preconditions"),
+        ("precheck-rf2", "check_rf2_preconditions"),
+        ("apply-rf1", "apply_rf1"),
+        ("apply-rf2", "apply_rf2"),
+        ("postcheck-rf2", "check_rf2_applied"),
+    ):
+        monkeypatch.setattr(throughput_test, target, record(name))
+    monkeypatch.setattr(
+        throughput_test.StreamRunner,
+        "execute",
+        staticmethod(lambda _stream_fn, _config, _result, _logger, auxiliary_fn=None: auxiliary_fn()),
+    )
+
+    result = test.run()
+
+    refresh_stream = result.refresh_stream
+    assert refresh_stream.status == "COMPLETED"
+    assert [(name, set_id) for name, set_id, _ in events] == [
         ("precheck-rf1", 3),
         ("precheck-rf2", 3),
         ("precheck-rf1", 4),
@@ -325,9 +333,90 @@ def test_throughput_runs_all_safety_checks_outside_the_refresh_measurement(monke
         ("postcheck-rf2", 3),
         ("postcheck-rf2", 4),
     ]
-    assert result.start_monotonic is not None
-    assert result.end_monotonic is not None
-    assert result.start_monotonic <= result.end_monotonic
+    measured = [name for name, _, at in events if refresh_stream.start_monotonic <= at <= refresh_stream.end_monotonic]
+    assert measured == ["apply-rf1", "apply-rf2", "apply-rf1", "apply-rf2"]
+
+
+def test_throughput_failed_precondition_withholds_throughput_before_streams_start(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from types import SimpleNamespace
+
+    from benchbox.core.tpch import throughput_test
+    from benchbox.core.tpch.throughput_test import TPCHThroughputTest
+
+    started = []
+    test = TPCHThroughputTest(
+        benchmark=object(),
+        connection_factory=lambda: None,
+        num_streams=2,
+        refresh_enabled=True,
+        refresh_connection_factory=lambda: SimpleNamespace(close=lambda: None),
+    )
+    test._pregenerate_stream_queries = lambda config: {}
+    monkeypatch.setattr(
+        throughput_test,
+        "generate_refresh_update_sets",
+        lambda scale_factor, first_set, count, output_dir: {
+            set_id: SimpleNamespace(set_id=set_id) for set_id in range(first_set, first_set + count)
+        },
+    )
+
+    def reject(_connection, update_set):
+        raise ValueError(f"set {update_set.set_id} keys already present")
+
+    monkeypatch.setattr(throughput_test, "check_rf1_preconditions", reject)
+    monkeypatch.setattr(
+        throughput_test.StreamRunner, "execute", staticmethod(lambda *_args, **_kwargs: started.append(True))
+    )
+
+    result = test.run()
+
+    assert started == []
+    assert result.success is False
+    assert result.throughput_at_size == 0.0
+    assert result.refresh_stream.status == "FAILED"
+    assert "set 2 keys already present" in result.refresh_stream.error
+
+
+def test_throughput_failed_postcondition_withholds_throughput(monkeypatch: pytest.MonkeyPatch) -> None:
+    from types import SimpleNamespace
+
+    from benchbox.core.tpch import throughput_test
+    from benchbox.core.tpch.throughput_test import TPCHRefreshStreamResult, TPCHThroughputTest
+
+    test = TPCHThroughputTest(
+        benchmark=object(),
+        connection_factory=lambda: None,
+        num_streams=1,
+        refresh_enabled=True,
+        refresh_connection_factory=lambda: SimpleNamespace(close=lambda: None),
+    )
+    refresh_stream = TPCHRefreshStreamResult(first_set=2)
+    refresh_stream.status = "COMPLETED"
+    refresh_stream.pairs.append(
+        {
+            "update_set": 2,
+            "status": "SUCCESS",
+            "error": None,
+            "functions": [
+                {"function": "RF1", "status": "SUCCESS", "duration_ms": 1},
+                {"function": "RF2", "status": "SUCCESS", "duration_ms": 1},
+            ],
+        }
+    )
+    result = SimpleNamespace(refresh_stream=refresh_stream, errors=[])
+
+    def still_present(_connection, update_set):
+        raise ValueError(f"set {update_set.set_id} rows remain")
+
+    monkeypatch.setattr(throughput_test, "check_rf2_applied", still_present)
+
+    test._check_refresh_postconditions({2: SimpleNamespace(set_id=2)}, result)
+
+    assert refresh_stream.status == "FAILED"
+    assert refresh_stream.pairs[0]["functions"][1]["status"] == "FAILED"
+    assert result.errors == ["Refresh stream failed: refresh set 2 RF2 failed: set 2 rows remain"]
 
 
 def test_refresh_stream_stops_before_next_update_set_after_cancellation(monkeypatch: pytest.MonkeyPatch) -> None:

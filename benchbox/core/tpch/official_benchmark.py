@@ -18,7 +18,11 @@ from benchbox.core.tpch.maintenance_test import (
     TPCHMaintenanceTestResult,
 )
 from benchbox.core.tpch.power_test import TPCHPowerTest, TPCHPowerTestResult
-from benchbox.core.tpch.refresh import generate_refresh_update_sets, require_refresh_support
+from benchbox.core.tpch.refresh import (
+    generate_refresh_update_sets,
+    refresh_unsupported_reason,
+    require_refresh_support,
+)
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 
@@ -53,6 +57,7 @@ class TPCHOfficialBenchmarkResult:
     errors: list[str]
     compliance_validated: bool = False
     audit_trail_saved: bool = False
+    maintenance_skipped_reason: Optional[str] = None
 
 
 def _close_quietly(connection: Any) -> None:
@@ -200,7 +205,7 @@ class TPCHOfficialBenchmark:
             warn_legacy_throughput_api("TPCHOfficialBenchmark.run_official_benchmark", "tpch")
         if config.throughput_test_enabled:
             require_adapter("TPCHOfficialBenchmark.run_official_benchmark", adapter)
-        if adapter is not None and (config.maintenance_test_enabled or config.tpch_refresh_functions is True):
+        if adapter is not None and config.tpch_refresh_functions is True:
             require_refresh_support(adapter)
         benchmark_start = mono_time()
 
@@ -229,7 +234,10 @@ class TPCHOfficialBenchmark:
                     maintenance_first_set += config.num_streams + 1
                 elif config.power_test_enabled:
                     maintenance_first_set += 1
-            if config.maintenance_test_enabled:
+            maintenance_unsupported = refresh_unsupported_reason(adapter) if adapter is not None else None
+            if config.maintenance_test_enabled and maintenance_unsupported is not None:
+                result.maintenance_skipped_reason = maintenance_unsupported
+            elif config.maintenance_test_enabled:
                 boundary = check_phase_boundary(result.throughput_test_result)
                 if not boundary.proceed:
                     refusal = f"Maintenance Test refused: {boundary.reason}"

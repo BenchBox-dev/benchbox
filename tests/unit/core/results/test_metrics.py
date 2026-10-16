@@ -283,7 +283,7 @@ class TestDeriveFromResultFiles:
             TPCMetricsCalculator.compute_qphh_result(power, throughput, scale_factor=1.0)
 
     def test_failed_throughput_phase_without_failed_rows_is_refused(self) -> None:
-        with pytest.raises(ValueError, match="Throughput phase did not complete"):
+        with pytest.raises(ValueError, match="failed throughput phase"):
             TPCMetricsCalculator.compute_qphh_result(
                 _power_file({1: 1.0}), _throughput_file(phase_status="FAILED"), scale_factor=1.0
             )
@@ -334,11 +334,48 @@ class TestDeriveFromResultFiles:
         power["phases"]["power_test"].pop("refresh_functions")
         throughput = _throughput_file()
 
-        reasons = TPCMetricsCalculator.qphh_unavailable_reasons(power, throughput)
-        assert reasons
-        assert any("Power phase" in reason for reason in reasons)
-        with pytest.raises(ValueError, match="QphH@Size unavailable"):
-            TPCMetricsCalculator.compute_qphh_result(power, throughput, scale_factor=1.0)
+        result = TPCMetricsCalculator.compute_qphh_result(power, throughput, scale_factor=1.0)
+
+        assert "qphh_at_size" not in result
+        assert result["qphh_unavailable"]
+        assert any("Power phase" in reason for reason in result["qphh_unavailable"])
+        assert result["refresh_included"] is False
+        assert result["power_at_size"] == pytest.approx(3600.0)
+
+    def test_result_includes_composite_with_complete_refresh_evidence(self) -> None:
+        result = TPCMetricsCalculator.compute_qphh_result(_power_file({1: 1.0}), _throughput_file(), scale_factor=1.0)
+
+        assert "qphh_unavailable" not in result
+        assert result["refresh_included"] is True
+        assert result["qphh_at_size"] == TPCMetricsCalculator.calculate_qphh_at_size(
+            result["power_at_size"], result["throughput_at_size"]
+        )
+
+    def test_pair_without_refresh_fields_or_compliance_class_reports_power_and_throughput(self) -> None:
+        power = _legacy_power_file()
+        throughput = _legacy_throughput_file()
+
+        result = TPCMetricsCalculator.compute_qphh_result(power, throughput, scale_factor=1.0)
+
+        assert result["power_at_size"] == pytest.approx(3600.0)
+        assert result["throughput_at_size"] == pytest.approx(22 * 2)
+        assert "qphh_at_size" not in result
+        assert result["qphh_unavailable"]
+        assert result["refresh_included"] is False
+
+
+def _legacy_power_file() -> dict:
+    power = _power_file({1: 1.0})
+    power["benchmark"].pop("compliance_class")
+    power.pop("phases")
+    return power
+
+
+def _legacy_throughput_file() -> dict:
+    throughput = _throughput_file()
+    throughput["benchmark"].pop("compliance_class")
+    throughput["phases"]["throughput_test"] = {"status": "COMPLETED", "duration_ms": 3_600_000}
+    return throughput
 
 
 def test_scale_factor_is_detected_from_the_benchmark_block() -> None:
