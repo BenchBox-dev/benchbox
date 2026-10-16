@@ -24375,15 +24375,10 @@
       "title": "Tuning resolver: config default overrides --tuning tuned everywhere; --official --tuning auto slips through; provenance and CLI gaps"
     },
     "tuning-reuse-validation-constraint-only-tables-20261015": {
-      "claim": {
-        "expires_at": "2026-10-16T23:25:47Z",
-        "generation": "18a81d54c61e4d9485c3128e8c4d57ae",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:9e002f45bd6cb1f33b959f2c"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Tuned-database reuse always fails when a template lists tables with constraints but no column tuning"
     },
     "tuning-snowpark-session-ledger-capture-20260723": {
