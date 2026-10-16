@@ -33,6 +33,15 @@ describe("home results preview", () => {
     expect(links).toContain(`/results/compare?ids=${RUN_IDS}&chart=cdf_chart`);
   });
 
+  it("opens results links in the same tab without an external-link arrow", () => {
+    const anchors = Array.from(home.matchAll(/<a\b[^>]*href="\/results[^"]*"[^>]*>[\s\S]*?<\/a>/g), (match) => match[0]);
+    expect(anchors.length).toBeGreaterThan(0);
+    for (const anchor of anchors) {
+      expect(anchor).not.toContain('target="_blank"');
+      expect(anchor).not.toContain("↗");
+    }
+  });
+
   it("links the local step straight to the local result page", () => {
     expect(hrefs()).toContain("/results/local");
   });

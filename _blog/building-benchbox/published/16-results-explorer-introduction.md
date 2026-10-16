@@ -221,7 +221,7 @@ That keeps the site cheap to run and the evidence portable: use the pages, query
    - Maintainers review the PR
    - Merged runs appear in the Explorer after a later curated publish, not at merge
    - Ranked tables include maintainer-run, CI, and vendor-supplied results (vendor results carry a badge). A run also needs clean validation and no failed queries to rank.
-   - Community results carry a Community submission label and are currently excluded from ranked tables. We will re-evaluate their inclusion over the coming months.
+   - Community results carry a Community Submission label and are currently excluded from ranked tables. We will re-evaluate their inclusion over the coming months.
 
 Full details: [Contributing Benchmark Results](https://benchbox.dev/docs/contributing-results.html)
 
