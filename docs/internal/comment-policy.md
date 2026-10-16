@@ -187,9 +187,11 @@ that judges it:
   request file can run first or change the interpreter.
 - **Safe output.** The checker escapes untrusted text. Native JavaScript tests
   run inside a `stop-commands` block with a random token.
-- **Pinned notices.** A separate drift step runs
-  `scripts/check_comment_cleanup_scope.py` from the pull request. It can fail
-  the job but does not replace or change the trusted parser.
+- **Pinned notices.** When a pull request changes `LICENSE`, `COPYRIGHT.md`,
+  or `quality/comment-cleanup-scope.json`, a separate drift step runs the base
+  commit's copy of `scripts/check_comment_cleanup_scope.py` against the pull
+  request's files. A missing base copy fails the step. The step can fail the
+  job but does not replace or change the trusted parser.
 
 `.github/soundness-paths.txt` protects the workflow, checker, manifest, and
 tests. Changes to them need an independent soundness review.
