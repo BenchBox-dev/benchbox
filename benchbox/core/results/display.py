@@ -192,6 +192,9 @@ def print_dry_run_summary(result, output_dir, saved_files=None) -> None:
     _print_dry_run_artifacts(saved_files)
     _print_benchmark_overview(benchmark_info, preview, query_count)
     _print_platform_summary(platform_info)
+    deployment = getattr(result, "deployment", None)
+    if deployment:
+        emit(f"  • Deployment: {deployment}")
     _print_resource_estimates(resources)
 
     if result.warnings:

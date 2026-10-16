@@ -64,6 +64,25 @@ benchbox run --platform motherduck --benchmark tpch --scale 0.1
 benchbox run --platform starburst --benchmark tpch --scale 0.1
 ```
 
+### Selecting a deployment from Python
+
+`DatabaseConfig` takes the same selector as `--platform` in its `type` field. Put the deployment after a colon:
+
+```python
+from benchbox.core.config import DatabaseConfig
+
+tigerdata = DatabaseConfig(type="timescaledb:cloud", name="tigerdata", options={"host": "abc.tsdb.cloud.timescale.com"})
+sail = DatabaseConfig(type="lakesail-df:distributed", name="sail", options={"endpoint": "sc://sail-host:50051"})
+
+print(tigerdata.type, sail.type, sail.execution_mode)
+```
+
+```text
+timescaledb lakesail dataframe
+```
+
+The config resolves the selector when it is built, exactly as the CLI does: `type` becomes the base platform, the selected deployment is passed to the adapter, and a DataFrame alias such as `lakesail-df` sets `execution_mode="dataframe"` unless you set it yourself. Credential lookups, database file names, DDL generation and dry-run output all use the base platform, and the dry run records the selected deployment. A mode the platform does not declare raises `pydantic.ValidationError`. The deprecated `deployment_mode` option still works with a deprecation warning; the selector is the replacement.
+
 ## Platform Deployment Reference
 
 ### Platforms with Multiple Deployment Modes

@@ -178,3 +178,61 @@ def select_adapter_deployment(
                 )
         return first_value
     return default
+
+
+DEPLOYMENT_SELECTOR_OPTION = "_deployment_selector"
+
+
+@dataclass(frozen=True)
+class ConfigPlatformSelection:
+    platform: str
+    deployment: str | None
+    implied_mode: str | None
+
+
+def resolve_config_platform(platform_type: str) -> ConfigPlatformSelection:
+    from benchbox.core.platform_manifest import get_platform_alias_modes
+    from benchbox.platforms.clickhouse.deployment_mode import (
+        CLICKHOUSE_LEGACY_SELECTOR_MAP,
+        clickhouse_legacy_selector_warning,
+    )
+
+    key = platform_type.strip().lower()
+    base, separator, _mode = key.partition(":")
+    if not separator:
+        return ConfigPlatformSelection(platform_type, None, None)
+    if key in CLICKHOUSE_LEGACY_SELECTOR_MAP:
+        import warnings
+
+        target = CLICKHOUSE_LEGACY_SELECTOR_MAP[key]
+        warnings.warn(clickhouse_legacy_selector_warning(platform_type, target), DeprecationWarning, stacklevel=3)
+        return ConfigPlatformSelection(target, None, None)
+    selector = parse_platform_selector(key)
+    deployment = selector.deployment if selector.platform in DEPLOYMENT_ALIAS_KEYS else None
+    return ConfigPlatformSelection(selector.platform, deployment, get_platform_alias_modes("cli").get(base))
+
+
+def normalize_config_platform(
+    platform_type: str,
+    options: Mapping[str, Any],
+    execution_mode: str | None,
+) -> tuple[str, dict[str, Any], str | None]:
+    selection = resolve_config_platform(platform_type)
+    resolved_options = dict(options)
+    if selection.deployment is not None:
+        existing = resolved_options.get(DEPLOYMENT_SELECTOR_OPTION)
+        if existing is not None and normalize_deployment_value(selection.platform, existing) != selection.deployment:
+            raise ValueError(
+                f"Deployment selector '{platform_type}' conflicts with explicit deployment '{existing}'. "
+                "Use one deployment selection."
+            )
+        resolved_options[DEPLOYMENT_SELECTOR_OPTION] = selection.deployment
+    return selection.platform, resolved_options, execution_mode or selection.implied_mode
+
+
+def configured_deployment(database_config: Any) -> str | None:
+    if not database_config:
+        return None
+    options = getattr(database_config, "options", None) or {}
+    selected = options.get(DEPLOYMENT_SELECTOR_OPTION) or options.get("deployment_mode")
+    return str(selected) if selected else None
