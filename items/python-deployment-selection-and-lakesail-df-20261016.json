@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "A plan (in the PR body) for one supported, documented way to select a deployment from Python config that matches the CLI selector's behavior, with prior art and the rejected alternatives",
+    "Registry, credential, DDL-generator, database naming and dry-run recording all resolve the base platform and the selected deployment correctly",
+    "The five examples use the supported form and run their dry run with no deprecation warning and the correct mode",
+    "lakesail_df_tpch.py works in dry run and the dataframe path passes endpoint and deployment to LakeSailDataFrameAdapter",
+    "Tests that fail without the fix for each broken path; CHANGELOG entry; docs for the public option",
+    "Deprecated `deployment_mode` keeps working with its warning (migration path)"
+  ],
+  "description": "The config-based examples (examples/getting_started/sql/lakesail_tpch.py, lakesail_vs_spark_comparison.py, dataframe/lakesail_df_tpch.py, cloud/tigerdata_tpch.py, cloud/influxdb_tsbs_devops.py dry-run dict ~133) select a deployment with the deprecated `deployment_mode` option. The deprecation (benchbox/core/execution_engine.py:37) points to the CLI `--platform name:mode` selector, which the CLI passes through a private `_deployment_selector` option. Python callers building `DatabaseConfig` have no public, warning-free equivalent: `options={\"deployment\": ...}` is silently ignored (falls back to self-hosted), and `type=\"timescaledb:cloud\"` breaks registry and credential lookups (keyed on the raw type), puts ':' in database file names, makes `get_ddl_generator` return NoOpDDLGenerator for TimescaleDB, and stops the dry run recording the deployment. Separately, lakesail_df_tpch.py fails in the example dry run with \"Unsupported platform: lakesail-df\" in either form, and in the orchestrator's dataframe path LakeSailDataFrameAdapter gets endpoint=None and no deployment because options are filtered by PlatformHookRegistry.list_option_specs(type).",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-16T20:35:10Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "165d166693a94db999a5ee4705e7f840",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}

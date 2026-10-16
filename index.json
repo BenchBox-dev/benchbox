@@ -16631,6 +16631,13 @@
       "status": "done",
       "title": "The Python API reference still documents the anonymization API deleted in #1528"
     },
+    "python-deployment-selection-and-lakesail-df-20261016": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Give Python callers a supported way to select a deployment mode, and fix the lakesail-df example"
+    },
     "qpc-01-plan-rehydration-and-phases-view": {
       "claim": null,
       "needs": [],
