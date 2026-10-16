@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "List every adapter that inherits the refresh capability from the PostgreSQL adapter",
+    "For each: an SF0.01 local container proof (load, power, throughput with refresh, 2 streams) with RF1/RF2 row evidence, or the capability explicitly disabled with a reason",
+    "Capability test updated to pin the resulting list",
+    "No cloud spend"
+  ],
+  "context": "Follows the TPC-H refresh and QphH work in PR #3004, which proved PostgreSQL 18 and SingleStore locally.",
+  "description": "TPC-H refresh support (RF1/RF2) is declared for PostgreSQL, and adapters built on the PostgreSQL adapter (for example CedarDB and Citus) inherit the capability flag without having been tested. Run local container proofs for each inheriting adapter, or turn the flag off where a proof fails or is impractical.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-16T16:43:24Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "310c7afbf94c47bebb4bd888368bd86d",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}
