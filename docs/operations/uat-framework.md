@@ -605,11 +605,13 @@ cell fails the cell. The runner applies the same checks to every
 `run-official` cell. PR fast-lane coverage stays with the focused
 session-isolation integration tests.
 
-Each nightly job uploads `throughput-uat-<run_id>-<attempt>` (cell logs,
-`cells.jsonl`, result JSON; 14 days) with `if: always()`, so a timed-out
-cell still leaves logs. A separate `throughput-uat-signal` job publishes the
-commit status `nightly/throughput-uat` from the job result, so a throughput
-failure is visible independent of the other red nightly jobs.
+The cells run in the nightly T3 workflow (`nightly-v2.yml`) as the
+`t3:throughput` (DuckDB) and `t3:throughput-cedardb` domains. Each job uploads
+`throughput-uat-<platform>-<run_id>-<attempt>` (cell logs, `cells.jsonl`,
+result JSON; 14 days) with `if: always()`, so a timed-out cell still leaves
+logs. A separate `throughput-signal` job publishes the commit status
+`nightly/throughput-uat` from both job results, so a throughput failure is
+visible independent of the other red nightly jobs.
 `tests/unit/workflows/test_nightly_throughput_uat_contract.py` fails if any
 throughput step gains `continue-on-error` or a quarantine label, or if the
 sweep and assert steps lose `if: !cancelled()`.
@@ -621,12 +623,12 @@ bundle, and a bundle whose distinct stream count is not exactly 3 all fail;
 the Playwright spec receives the count as `E2E_REQUIRE_THROUGHPUT_STREAMS`
 and asserts it exactly. It is not scheduled: a nightly lane needs a second
 job with Node, `npm ci`, Playwright browsers and its own SF1 data
-generation, and `throughput-uat` already gates the driver. Run it by hand
+generation, and `t3:throughput` already gates the driver. Run it by hand
 after changes that touch throughput or the explorer pipeline.
 
 ## Throughput performance floor (relative model)
 
-The nightly `throughput-uat` job gates breakage (identity, stream count,
+The nightly `t3:throughput` job gates breakage (identity, stream count,
 per-stream success), not gradual slowdown. The Throughput@Size floor is
 meant to close that gap: fail when observed Throughput@Size drops more than
 X% (default 20%, `THROUGHPUT_FLOOR_MAX_DROP_FRACTION`) below the rolling
@@ -654,20 +656,22 @@ else is ignored. The `<run_id>` is the `run_id` field, which local runs leave
 empty unless `GITHUB_RUN_ID` is set, so a local record needs that variable
 and a matching directory.
 
-Status: active per runner class. The nightly `throughput-uat` job runs a
+Status: active per runner class. The nightly `t3:throughput` job runs a
 "Download retained Throughput@Size baselines" step before the DuckDB assert.
-It lists the last 30 scheduled `nightly.yml` runs on `develop` (excluding
-the current run) with `gh run list --event schedule` and fetches each run's
-baseline artifact (`throughput-baseline-duckdb-tpch-sf1-*`) with
-`gh run download` into
+It lists the last 30 scheduled runs on `develop` of `nightly-v2.yml` and of
+`nightly.yml` (excluding the current run). `nightly.yml` no longer runs the
+cell; its records count until their 90-day retention ends. The step lists
+runs with `gh run list --event schedule` and fetches each run's baseline
+artifact (`throughput-baseline-duckdb-tpch-sf1-*`) with `gh run download` into
 `~/Developer/benchmark_runs/throughput-baseline-history/<run_id>/`. Only
 scheduled runs count: the branch filter matches a head branch name, which a
 fork pull request controls, and a `workflow_dispatch` run can come from any
 ref. The job's
 `GITHUB_TOKEN` carries `contents: read` and `actions: read`, nothing more. A
 run with no such artifact (its sweep or assert failed, or the 90 days have
-passed) is skipped. A failure to list runs prints a warning and leaves the
-floor observe-only; it never fails the job.
+passed) is skipped. A failure to list one workflow's runs prints a warning
+and skips that workflow's records; it never fails the job, and with too few
+records the floor stays observe-only.
 
 The assert then runs with `--evaluate-floor --baseline-history DIR`. It
 computes the rolling median (window 10) of the downloaded records for the
