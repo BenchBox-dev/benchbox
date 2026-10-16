@@ -20825,10 +20825,15 @@
       "title": "Stop the seed lane producing bundles that are always dropped or fail on the runner"
     },
     "site-split-69-deployed-sha-design": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-17T16:30:37Z",
+        "generation": "446778c4fca44bcc83deb5295631aa86",
+        "renewals": 0,
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Design how core learns the deployed core SHA from the site side for bundle parents"
     },
     "site-split-70-oracle-check-stale-suite": {
