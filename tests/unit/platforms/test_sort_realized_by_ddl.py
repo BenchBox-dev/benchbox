@@ -6,7 +6,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from benchbox.core.results.exporter import ResultExporter
+from benchbox.core.results.anonymization import anonymize_applied_tuning_payload
 from benchbox.core.tuning.applied_ledger import PHASE_DDL, AppliedTuningLedger
 from benchbox.core.tuning.interface import (
     PlatformOptimizationConfiguration,
@@ -213,9 +213,6 @@ def test_anonymized_export_redacts_satisfied_entries():
     _sort(adapter, "l_orderkey", "l_linenumber")
     payload = adapter._applied_tuning_ledger.to_payload(status="applied_unverified")
 
-    sanitized = ResultExporter._sanitize_applied_satisfied
-
-    redacted = {**payload, "satisfied": list(payload["satisfied"])}
-    sanitized(redacted)
+    redacted = anonymize_applied_tuning_payload(payload)
     assert redacted["satisfied"] == [{"redacted": True}]
     assert payload["satisfied"][0]["intent"].startswith("sorted_ingestion lineitem")

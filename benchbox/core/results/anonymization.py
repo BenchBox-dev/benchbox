@@ -2,6 +2,7 @@
 
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
+import copy
 import functools
 import hashlib
 import logging
@@ -332,7 +333,12 @@ class AnonymizationManager:
         return anonymous_id
 
     def anonymize_result_payload(self, payload: dict[str, Any]) -> dict[str, Any]:
-        return self._anonymize_public_value(payload, ())
+        anonymized = self._anonymize_public_value(payload, ())
+        platform_block = anonymized.get("platform") if isinstance(anonymized, dict) else None
+        tuning_block = platform_block.get("tuning") if isinstance(platform_block, dict) else None
+        if isinstance(tuning_block, dict) and isinstance(tuning_block.get("applied"), dict):
+            _redact_applied_tuning(tuning_block["applied"])
+        return anonymized
 
     def anonymize_tuning_payload(self, payload: dict[str, Any]) -> dict[str, Any]:
         source_file = payload.get("source_file")
@@ -679,12 +685,90 @@ def find_public_path_leaks(value: Any, key_path: tuple[str, ...] = ()) -> list[s
     return leaks
 
 
+_APPLIED_STATEMENT_DROP_KEYS = ("statement", "error", "table")
+_APPLIED_RECEIPT_ENTRY_DROP_KEYS = (
+    "statement",
+    "diff",
+    "detail",
+    "evidence",
+    "table",
+    "name",
+    "expected_columns",
+    "observed_columns",
+)
+_APPLIED_RECEIPT_OBSERVED_DROP_KEYS = ("table", "name", "columns", "evidence")
+_APPLIED_DRIFT_DROP_KEYS = ("errors", "warnings", "configuration_mismatches", "missing_tables", "extra_tables")
+
+
+def _redact_applied_intents(payload: Any, key: str) -> None:
+    if not isinstance(payload, dict) or not payload.get(key):
+        return
+    items = payload[key]
+    count = len(items) if isinstance(items, list) else 1
+    payload[key] = [{"redacted": True} for _ in range(count)]
+
+
+def _redact_applied_drift_check(drift_check: Any) -> None:
+    if not isinstance(drift_check, dict):
+        return
+    present = [key for key in _APPLIED_DRIFT_DROP_KEYS if key in drift_check]
+    for key in present:
+        drift_check.pop(key)
+    if present:
+        drift_check["drift_redacted"] = True
+
+
+def _redact_applied_receipt(receipt: Any) -> None:
+    if not isinstance(receipt, dict):
+        return
+    if "error" in receipt:
+        receipt.pop("error")
+        receipt["error_redacted"] = True
+    for entry in receipt.get("entries") or []:
+        if not isinstance(entry, dict):
+            continue
+        for key in _APPLIED_RECEIPT_ENTRY_DROP_KEYS:
+            entry.pop(key, None)
+        for key in ("reason", "error"):
+            if key in entry:
+                entry.pop(key)
+                entry[f"{key}_redacted"] = True
+        entry["statement_redacted"] = True
+    for observed in receipt.get("observed") or []:
+        if isinstance(observed, dict):
+            for key in _APPLIED_RECEIPT_OBSERVED_DROP_KEYS:
+                observed.pop(key, None)
+            observed["redacted"] = True
+    _redact_applied_intents(receipt, "dropped")
+
+
+def _redact_applied_tuning(applied: dict[str, Any]) -> None:
+    statements = applied.get("statements")
+    if isinstance(statements, list):
+        for entry in statements:
+            if isinstance(entry, dict):
+                for key in _APPLIED_STATEMENT_DROP_KEYS:
+                    entry.pop(key, None)
+                entry["statement_redacted"] = True
+    _redact_applied_intents(applied, "dropped")
+    _redact_applied_intents(applied, "satisfied")
+    _redact_applied_receipt(applied.get("receipt"))
+    _redact_applied_drift_check(applied.get("drift_check"))
+
+
+def anonymize_applied_tuning_payload(applied_payload: dict[str, Any]) -> dict[str, Any]:
+    sanitized = copy.deepcopy(applied_payload)
+    _redact_applied_tuning(sanitized)
+    return sanitized
+
+
 __all__ = [
     "PUBLIC_PSEUDONYM_SALT_ENV",
     "PUBLIC_REDACTED_VALUE",
     "AnonymizationConfig",
     "AnonymizationManager",
     "MissingPublicPseudonymSaltError",
+    "anonymize_applied_tuning_payload",
     "find_public_path_leaks",
     "require_public_pseudonym_salt",
     "resolve_public_pseudonym_salt",
