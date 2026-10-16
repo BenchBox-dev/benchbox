@@ -18,6 +18,7 @@ pytestmark = [
 def _minimal_bundle() -> dict:
     return {
         "version": "2.1",
+        "export": {"anonymized": True},
         "run": {
             "id": "abc123",
             "timestamp": "2026-04-01T12:00:00",
