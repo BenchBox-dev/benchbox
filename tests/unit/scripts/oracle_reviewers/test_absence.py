@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from _project.scripts.oracle_reviewers import absence
+from _project.scripts.oracle_reviewers import absence, evidence
 from _project.scripts.oracle_reviewers.absence import classify, parse_reset
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -119,6 +119,7 @@ CODEX_UNAUTHORIZED = (
     "API key at https://platform.openai.com/account/api-keys., url: https://api.openai.com/v1/responses, "
     "auth error: 401, auth error code: invalid_api_key"
 )
+CODEX_QUOTA_EXCEEDED = "ERROR: Quota exceeded. Check your plan and billing details."
 MUSE_REJECTED_KEY = "failed to fetch model catalog: authentication failed: your API key from META_API_KEY was rejected"
 
 
@@ -136,6 +137,20 @@ def test_codex_usage_limit_is_quota() -> None:
 
 def test_codex_usage_limit_with_a_straight_apostrophe_is_quota() -> None:
     assert _classify("codex", 1, stderr="ERROR: You've hit your usage limit.").kind == absence.QUOTA
+
+
+def test_codex_quota_exceeded_is_quota_without_a_reset_time() -> None:
+    result = _classify("codex", 1, stderr=f"warning: retrying\n{CODEX_QUOTA_EXCEEDED}")
+    assert result.kind == absence.QUOTA
+    assert result.detail == CODEX_QUOTA_EXCEEDED
+    assert result.reset_at is None
+
+
+def test_codex_quota_exceeded_in_a_json_error_event_is_quota() -> None:
+    events = evidence.codex_errors(
+        json.dumps({"type": "error", "message": "Quota exceeded. Check your plan and billing details."})
+    )
+    assert _classify("codex", 1, stderr=events).kind == absence.QUOTA
 
 
 def test_claude_invalid_token_is_auth() -> None:
@@ -163,6 +178,7 @@ def test_muse_rejected_key_is_auth() -> None:
         ("claude", CLAUDE_SESSION_LIMIT_ENVELOPE),
         ("codex", CODEX_USAGE_LIMIT),
         ("codex", CODEX_UNAUTHORIZED),
+        ("codex", CODEX_QUOTA_EXCEEDED),
         ("muse", MUSE_REJECTED_KEY),
     ],
 )
@@ -216,6 +232,7 @@ def test_excerpt_is_one_capped_line() -> None:
         ("claude", CLAUDE_AUTH_ENVELOPE),
         ("codex", CODEX_USAGE_LIMIT),
         ("codex", CODEX_UNAUTHORIZED),
+        ("codex", CODEX_QUOTA_EXCEEDED),
         ("muse", MUSE_REJECTED_KEY),
     ],
 )

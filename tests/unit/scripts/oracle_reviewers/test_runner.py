@@ -530,19 +530,35 @@ def test_codex_quota_reported_in_the_event_stream_is_quota(
     assert outcome.missing.reset_at == NOW + timedelta(hours=2)
 
 
-@skip_on_windows
-def test_an_unclassified_codex_failure_names_its_error_event(
-    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    workspace, head = _workspace(tmp_path)
-    error = {"type": "error", "message": "Quota exceeded. Check your plan and billing details."}
+def _codex_error_event(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, message: str) -> None:
+    error = {"type": "error", "message": message}
     body = (
         f"print(__import__('json').dumps({error!r}))\n"
         "sys.stderr.write('Reading additional input from stdin...\\n')\nraise SystemExit(1)"
     )
     _fake_muse(tmp_path, monkeypatch, body, name="codex")
+
+
+@skip_on_windows
+def test_an_unclassified_codex_failure_names_its_error_event(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _workspace(tmp_path)
+    _codex_error_event(tmp_path, monkeypatch, "stream disconnected before completion")
     outcome = _review(policy, tmp_path, workspace, head, reviewer="sol")
     assert outcome.missing is not None and outcome.missing.detail == "exit code 1"
+    assert outcome.diagnostic == "ERROR: stream disconnected before completion"
+
+
+@skip_on_windows
+def test_a_codex_quota_error_event_is_a_quota_absence(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _workspace(tmp_path)
+    _codex_error_event(tmp_path, monkeypatch, "Quota exceeded. Check your plan and billing details.")
+    outcome = _review(policy, tmp_path, workspace, head, reviewer="sol")
+    assert outcome.missing is not None and outcome.missing.kind == "quota"
+    assert outcome.missing.detail == "ERROR: Quota exceeded. Check your plan and billing details."
     assert outcome.diagnostic == "ERROR: Quota exceeded. Check your plan and billing details."
 
 

@@ -291,7 +291,11 @@ These checks must pass before the cut-over that makes the context required.
   of the output, at most 300 characters, with credentials and long tokens
   removed; raw output is never uploaded. Add the messages to the `CALIBRATED_*_PATTERNS` tables in
   `_project/scripts/oracle_reviewers/absence.py`; until then they count as
-  errors, which never pass.
+  errors, which never pass. A quota absence skips the reviewer's whole pool
+  for the rest of the run, and in later runs until the reset time the CLI
+  reported, or for one hour (`QUOTA_BACKOFF` in `selection.py`) when it
+  reported none, such as Codex's `Quota exceeded. Check your plan and billing
+  details.`
 
 ## Cut-over
 

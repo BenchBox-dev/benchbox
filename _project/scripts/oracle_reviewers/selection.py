@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from .policy import Policy, Reviewer
@@ -13,6 +13,7 @@ ABSENT = "absent"
 REVIEW = "review"
 PENDING = "pending"
 BRIEF_MODES = ("inline", "file-list", "oversize")
+QUOTA_BACKOFF = timedelta(hours=1)
 
 
 @dataclass(frozen=True)
@@ -119,7 +120,8 @@ def pool_resets(selection: SelectionInput, attempts: Sequence[Attempt]) -> dict[
     by_name = {reviewer.name: reviewer for reviewer in selection.chain}
     resets = {pool: until for pool, until in selection.pool_blocked_until.items() if until > selection.now}
     for attempt in attempts:
-        if attempt.absence == "quota" and attempt.reset_at is not None and attempt.reviewer in by_name:
+        if attempt.absence == "quota" and attempt.reviewer in by_name:
             pool = by_name[attempt.reviewer].pool
-            resets[pool] = max(resets.get(pool, attempt.reset_at), attempt.reset_at)
+            until = attempt.reset_at or selection.now + QUOTA_BACKOFF
+            resets[pool] = max(resets.get(pool, until), until)
     return resets
