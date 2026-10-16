@@ -3,7 +3,7 @@
     "Parity test passes: every adapter/type with rendered_via != none has an executing implementation (call-chain-following), and every no-op implementation is registered none.",
     "Validator tests: partitioning on postgresql errors; distribution on redshift errors (until its renderer lands); Trino/Athena behave per D-5."
   ],
-  "context": "PR 2919 (feat/tuning-capability-validator), head 0e070578d, one commit on develop. Owner decisions 2026-10-15 applied: hard errors for UNIQUE/CHECK, layout on BigQuery/Redshift/Trino/Synapse and Databricks/Spark/Delta partitioning, all listed in the CHANGELOG under Before you upgrade; the AST call-graph parity test was replaced by a table-driven registry parity test (tests/unit/core/tuning/test_capability_registry_parity.py), so the MRO-following parity acceptance is superseded by the owner decision. Errors name the mechanism with a short reason and carry no source line numbers. Oracle verdict: success on 0e070578d. Remaining: required unit-test check fails only on test_site_header_parity (develop breakage from the explorer skip-link rule); merge after develop is fixed, then arm.",
+  "context": "PR 2919 merged 2026-10-16 as aab9a4991. Owner decisions 2026-10-15 applied: hard errors for UNIQUE/CHECK, layout on BigQuery/Redshift/Trino/Synapse and Databricks/Spark/Delta partitioning, all listed in the CHANGELOG under Before you upgrade. The AST call-graph parity test was replaced by a table-driven registry parity test (tests/unit/core/tuning/test_capability_registry_parity.py), so the MRO-following parity acceptance is superseded by the owner decision. Errors name the mechanism with a short reason and carry no source line numbers.",
   "description": "## Problem\nThe validator accepts tuning that execution never applies (partitioning on PostgreSQL/BigQuery/Snowflake/Databricks/DuckDB; distribution and sorting on Redshift), while `capability_registry.py:174` itself records \"render nothing at execution\". Trino and Athena only warn because they are unknown platforms (`interface.py:1595-1604`).\n\n## Change (per gate D-5)\n- `validate_for_platform_detailed` reads the registry: `rendered_via=\"none\"` or `:preview_only` → error \"requested <type> is not applied at execution on <platform>: <notes>\".\n- Treat unknown platforms per D-5.\n- Include the ClickHouse PK-prefix rule.\n- Correct the registry entries for all no-op surfaces: Postgres family, Doris, SingleStore, Databend, Firebolt, Trino/Starburst/Presto/Athena, Synapse, Fabric, BigQuery (partitioning and clustering preview-only), Redshift (distribution and sorting preview-only), managed Spark, MotherDuck table tunings, DataFusion and SQLite constraints.\n- Add a registry↔execution parity test from an MRO sweep that **follows `super()` and helper callees**. The text-only sweep had false negatives (plan review F4).\n\n## Guardrails (must preserve)\n- Only rules named in the D-5 addendum block.\n\n## Process guardrails\n- One PR per item against `develop`, via the AGENTS.md worktree flow (`make worktree-claim BRANCH=...`, `make agent-write-preflight`).\n- Verification ladder: `uv run -- python -m pytest -m fast -q`, `uv run -- ruff check .`, `uv run -- ruff format --check .` and `uv run -- ty check`.\n- Then `make pr-preflight` and `make pr-open`.\n- Stage explicit paths; never `git add -A`.\n- No live cloud runs without explicit user approval stating the command, maximum runtime, log path and stop condition.\n- Re-read every file:line anchor before editing. Anchors are from develop d39166ea.\n- This item touches paths listed in the soundness manifest by `tuning-trust-paths-soundness-manifest-20261001`. The PR needs an external `Soundness review:` section (AGENTS.md) and must not auto-merge.",
   "links": [
     "benchbox/core/tuning/interface.py",
@@ -199,6 +199,14 @@
       "generation": "6c703d3d7b9448d19679e49db8ecc24d",
       "op": "finish",
       "op_id": "445dd5c1997d40aeb918c622f477c8cf",
+      "session_id": "5c80d5d463444a2ba9410e1fdfb1d517"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:6b9b7c4e8f8d58a0a7174a0a",
+      "at": "2026-10-16T11:57:29Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "dc5cf433de8a46479be621fe772f8c2b",
       "session_id": "5c80d5d463444a2ba9410e1fdfb1d517"
     }
   ]
