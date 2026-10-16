@@ -386,7 +386,8 @@ def test_parent_candidates_come_only_from_develop_runs() -> None:
     assert "gh run list --workflow site-inputs.yml" not in _site_inputs_workflow()
     script = _site_inputs_parent_script()
     assert "--branch" in script and "develop" in script
-    assert "branch=develop" in script
+    assert 'TRUNK_BRANCH = "develop"' in script
+    assert "head_branch" in script and "conclusion" in script
 
 
 def test_parent_selection_fails_closed_without_a_bundled_ancestor() -> None:

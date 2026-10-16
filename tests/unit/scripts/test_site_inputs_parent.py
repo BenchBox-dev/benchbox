@@ -104,7 +104,13 @@ def test_resolve_commit_rejects_unknown_ref() -> None:
         parent_mod.resolve_commit("no-such-ref-for-site-inputs-parent")
 
 
-TRUNK_RUN = {"databaseId": 38216829987, "headSha": CORE, "event": "push"}
+TRUNK_RUN = {
+    "databaseId": 38216829987,
+    "headSha": CORE,
+    "headBranch": "develop",
+    "event": "push",
+    "conclusion": "success",
+}
 
 
 def test_dispatch_build_records_numeric_trunk_run_id() -> None:
@@ -296,3 +302,112 @@ def test_manual_dispatch_does_not_read_the_site(monkeypatch: pytest.MonkeyPatch)
     parent_sha, parent_source, certified = parent_mod.resolve_and_decide(CORE, PARENT, "o/r", 100, "123")
     assert (parent_sha, parent_source) == (PARENT, "bundle")
     assert certified == "123"
+
+
+def test_dispatch_build_refuses_non_develop_trunk_run() -> None:
+    foreign = dict(TRUNK_RUN, headBranch="feature")
+    with pytest.raises(RuntimeError, match="no successful trunk.yml push run"):
+        parent_mod.decide_certified_by(CORE, "", [foreign])
+
+
+def test_dispatch_build_refuses_unsuccessful_trunk_run() -> None:
+    failed = dict(TRUNK_RUN, conclusion="failure")
+    with pytest.raises(RuntimeError, match="no successful trunk.yml push run"):
+        parent_mod.decide_certified_by(CORE, "", [failed])
+
+
+REPO = "BenchBox-dev/benchbox"
+DEPLOYED_SHA = "a9c80901a1d028d8869406cc54c6ed2c978c10fe"
+BUNDLE_RUN_ID = "38673016998"
+BUNDLE_RUN_HEAD_SHA = "5bce4dbedb85b8b700402ac3bb160f8d34900211"
+TRUNK_BUNDLE_RUN = f"{REPO}\t.github/workflows/site-inputs.yml\tdevelop\tsuccess"
+
+
+def _gh_fixture(monkeypatch: pytest.MonkeyPatch, routes: dict[str, str]) -> list[str]:
+    import subprocess as subprocess_mod
+
+    real_run = subprocess_mod.run
+    commands: list[str] = []
+
+    def fake_run(argv: list[str], **kwargs: object) -> object:
+        args = list(argv)
+        if args[0] != "gh":
+            return real_run(argv, **kwargs)
+        command = " ".join(args[1:])
+        commands.append(command)
+        for fragment, body in routes.items():
+            if fragment in command:
+                return subprocess_mod.CompletedProcess(args, 0, body, "")
+        raise AssertionError(f"unexpected gh call: {command}")
+
+    monkeypatch.setattr(subprocess_mod, "run", fake_run)
+    return commands
+
+
+def _artifact_routes(expired: str, run_id: str, run_fields: str) -> dict[str, str]:
+    return {
+        f"actions/artifacts?name=site-inputs-{DEPLOYED_SHA}": f"site-inputs-{DEPLOYED_SHA} {expired} {run_id}\n",
+        f"actions/runs/{run_id}": f"{run_fields}\n",
+    }
+
+
+def test_bundle_built_by_a_run_with_a_different_head_is_found(monkeypatch: pytest.MonkeyPatch) -> None:
+    commands = _gh_fixture(monkeypatch, _artifact_routes("false", BUNDLE_RUN_ID, TRUNK_BUNDLE_RUN))
+    assert BUNDLE_RUN_HEAD_SHA != DEPLOYED_SHA
+    assert parent_mod.parent_bundle_state(DEPLOYED_SHA, REPO) == "bundle"
+    assert not [command for command in commands if f"head_sha={DEPLOYED_SHA}" in command]
+
+
+def test_deployed_parent_resolves_when_the_bundle_run_head_differs(monkeypatch: pytest.MonkeyPatch) -> None:
+    _gh_fixture(monkeypatch, _artifact_routes("false", BUNDLE_RUN_ID, TRUNK_BUNDLE_RUN))
+    assert parent_mod.decide_deployed_parent(
+        CORE, DEPLOYED_SHA, lambda parent, core: True, lambda sha: parent_mod.parent_bundle_state(sha, REPO)
+    ) == (DEPLOYED_SHA, "bundle")
+
+
+def test_expired_bundle_from_a_trunk_run_is_reported_expired(monkeypatch: pytest.MonkeyPatch) -> None:
+    _gh_fixture(monkeypatch, _artifact_routes("true", BUNDLE_RUN_ID, TRUNK_BUNDLE_RUN))
+    assert parent_mod.parent_bundle_state(DEPLOYED_SHA, REPO) == "expired"
+
+
+def test_absent_bundle_is_reported_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    _gh_fixture(monkeypatch, {f"actions/artifacts?name=site-inputs-{DEPLOYED_SHA}": ""})
+    assert parent_mod.parent_bundle_state(DEPLOYED_SHA, REPO) == "missing"
+
+
+@pytest.mark.parametrize(
+    "run_fields",
+    [
+        f"{REPO}\t.github/workflows/site-inputs.yml\tfeature\tsuccess",
+        f"{REPO}\t.github/workflows/site-inputs.yml\tdevelop\tfailure",
+        f"{REPO}\t.github/workflows/site-inputs.yml\tdevelop\t",
+        f"{REPO}\t.github/workflows/other.yml\tdevelop\tsuccess",
+        "someone/fork\t.github/workflows/site-inputs.yml\tdevelop\tsuccess",
+        "",
+    ],
+)
+@pytest.mark.parametrize("expired", ["false", "true"])
+def test_bundle_from_an_untrusted_run_is_ignored(
+    monkeypatch: pytest.MonkeyPatch, run_fields: str, expired: str
+) -> None:
+    _gh_fixture(monkeypatch, _artifact_routes(expired, BUNDLE_RUN_ID, run_fields))
+    assert parent_mod.parent_bundle_state(DEPLOYED_SHA, REPO) == "missing"
+
+
+def test_trusted_bundle_is_found_beside_an_untrusted_one(monkeypatch: pytest.MonkeyPatch) -> None:
+    name = f"site-inputs-{DEPLOYED_SHA}"
+    _gh_fixture(
+        monkeypatch,
+        {
+            f"actions/artifacts?name={name}": f"{name} false 111\n{name} false 222\n",
+            "actions/runs/111": f"{REPO}\t.github/workflows/site-inputs.yml\tfeature\tsuccess\n",
+            "actions/runs/222": f"{TRUNK_BUNDLE_RUN}\n",
+        },
+    )
+    assert parent_mod.parent_bundle_state(DEPLOYED_SHA, REPO) == "bundle"
+
+
+def test_workflow_path_with_a_ref_suffix_is_accepted(monkeypatch: pytest.MonkeyPatch) -> None:
+    fields = f"{REPO}\t.github/workflows/site-inputs.yml@refs/heads/develop\tdevelop\tsuccess"
+    _gh_fixture(monkeypatch, _artifact_routes("false", BUNDLE_RUN_ID, fields))
+    assert parent_mod.parent_bundle_state(DEPLOYED_SHA, REPO) == "bundle"

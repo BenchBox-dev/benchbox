@@ -19,6 +19,8 @@ RECOVERY_SUFFIX = "dispatch site-inputs.yml with parent_core_sha set to the last
 SITE_REPO = "BenchBox-dev/benchbox-site"
 SITE_ENVIRONMENT = "github-pages"
 PRODUCTION_TARGET = "production"
+TRUNK_BRANCH = "develop"
+SITE_INPUTS_WORKFLOW_PATH = ".github/workflows/site-inputs.yml"
 
 
 class ParentResolutionError(RuntimeError):
@@ -83,7 +85,12 @@ def decide_certified_by(
     for run in trunk_runs:
         if not isinstance(run, dict):
             continue
-        if str(run.get("event")) == "push" and run.get("headSha") == core_sha:
+        if (
+            str(run.get("event")) == "push"
+            and run.get("headSha") == core_sha
+            and str(run.get("headBranch")) == TRUNK_BRANCH
+            and str(run.get("conclusion")) == "success"
+        ):
             return str(run.get("databaseId"))
     raise ParentResolutionError(f"no successful trunk.yml push run on {core_sha}")
 
@@ -100,7 +107,7 @@ def recent_trunk_runs(repo: str, limit: int = 20) -> list[dict]:
             "--status",
             "success",
             "--json",
-            "databaseId,headSha,event",
+            "databaseId,headSha,headBranch,event,conclusion",
             "--limit",
             str(limit),
         ]
@@ -153,37 +160,51 @@ def recent_bundled_shas(repo: str, limit: int = 100) -> list[str]:
     return ordered
 
 
-def parent_bundle_state(parent_sha: str, repo: str) -> str:
-    expected = f"site-inputs-{parent_sha}"
-    runs_raw = _gh(
+def _is_trunk_site_inputs_run(run_id: str, repo: str) -> bool:
+    raw = _gh(
         [
             "api",
-            f"repos/{repo}/actions/workflows/site-inputs.yml/runs?branch=develop&status=success"
-            f"&per_page=100&head_sha={parent_sha}",
+            f"repos/{repo}/actions/runs/{run_id}",
             "-q",
-            ".workflow_runs[].id",
+            '[.repository.full_name, (.path // ""), (.head_branch // ""), (.conclusion // "")] | @tsv',
         ]
     )
-    run_ids = [line.strip() for line in runs_raw.split() if line.strip()]
-    if not run_ids:
-        return "missing"
+    fields = raw.rstrip("\n").split("\t")
+    if len(fields) != 4:
+        return False
+    run_repo, run_path, head_branch, conclusion = fields
+    return (
+        run_repo == repo
+        and run_path.split("@", 1)[0] == SITE_INPUTS_WORKFLOW_PATH
+        and head_branch == TRUNK_BRANCH
+        and conclusion == "success"
+    )
+
+
+def parent_bundle_state(parent_sha: str, repo: str) -> str:
+    expected = f"site-inputs-{parent_sha}"
+    rows = _gh(
+        [
+            "api",
+            f"repos/{repo}/actions/artifacts?name={expected}&per_page=100",
+            "-q",
+            '.artifacts[] | "\\(.name) \\(.expired) \\(.workflow_run.id)"',
+        ]
+    )
     expired_seen = False
-    for run_id in run_ids:
-        rows = _gh(
-            [
-                "api",
-                f"repos/{repo}/actions/runs/{run_id}/artifacts?per_page=100",
-                "-q",
-                f'.artifacts[] | select(.name == "{expected}") | "\\(.name) \\(.expired)"',
-            ]
-        )
-        for line in rows.splitlines():
-            parts = line.strip().split()
-            if len(parts) != 2 or parts[0] != expected:
-                continue
-            if parts[1] == "false":
-                return "bundle"
-            expired_seen = True
+    trusted_runs: dict[str, bool] = {}
+    for line in rows.splitlines():
+        parts = line.strip().split()
+        if len(parts) != 3 or parts[0] != expected:
+            continue
+        _, expired, run_id = parts
+        if run_id not in trusted_runs:
+            trusted_runs[run_id] = _is_trunk_site_inputs_run(run_id, repo)
+        if not trusted_runs[run_id]:
+            continue
+        if expired == "false":
+            return "bundle"
+        expired_seen = True
     if expired_seen:
         return "expired"
     return "missing"
