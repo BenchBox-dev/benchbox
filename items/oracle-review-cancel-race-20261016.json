@@ -5,6 +5,7 @@
     "Workflow test or documented proof run on a PR",
     "No weakening of the required oracle-review gate"
   ],
+  "context": "Related failure (PR #3049): oracle-verdict run 38938627249's `post` job failed at its last step, \"Rerun the failed synchronize suite for this head\". It tried to re-run oracle-review run 38938422659, which predated a close/reopen and could not be retried (\"This workflow run cannot be retried\"). The success status had already been posted, but the failed job marked the PR \"unstable\", so the first `make pr-arm` auto-merge attempt failed. The rerun step should skip runs that cannot be retried, or only target runs newer than the latest successful oracle-review for that head. Fix both together.",
   "description": "After an oracle success verdict, the oracle-review run triggered by that verdict is often cancelled by a concurrent pull_request (or edited/synchronize) run in the same concurrency group. The cancelled check row leaves the PR BLOCKED until someone manually re-runs that specific run. Seen on #2993, #3006, #3004 and others. The existing automatic re-run after a late verdict does not cover this case.",
   "sessions": [
     {
@@ -13,6 +14,14 @@
       "client": "claude-code",
       "op": "create",
       "op_id": "8f7d5f0550f54d5ebd6c855709133001",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-16T19:53:22Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "c9a810b0b4764178bcb43c8f5e51e33c",
       "session_id": "400c76c14fce4783943655593419ae3c"
     }
   ]
