@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import json
 import os
 import re
@@ -18,6 +19,8 @@ pytestmark = [
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "seed-corpus.yml"
+
+SEED_TEST_SALT = "seed-test-salt"
 
 RELEASE_HEAD_RE = re.compile(r"^v[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.+-]+)?$")
 
@@ -84,6 +87,7 @@ def _stage_bundle(
     tmp_path: Path,
     payload: dict[str, Any],
     companions: tuple[str, ...] = (),
+    salt: str | None = SEED_TEST_SALT,
 ) -> tuple[subprocess.CompletedProcess[str], Path]:
     tmp_path.mkdir(parents=True, exist_ok=True)
     result_file = tmp_path / "bundle.json"
@@ -92,12 +96,13 @@ def _stage_bundle(
         Path(f"{result_file.with_suffix('')}{suffix}").write_text("{}", encoding="utf-8")
     destination = tmp_path / "staged"
     output_file = tmp_path / "github-output"
-    environment = {
-        **os.environ,
+    environment = {key: value for key, value in os.environ.items() if key != "BENCHBOX_MACHINE_ID_SALT"} | {
         "GITHUB_OUTPUT": str(output_file),
         "SEED_CELL": "ssb / duckdb / sf0.01",
         "SEED_STATUS_FILE": str(tmp_path / "seed-status.txt"),
     }
+    if salt is not None:
+        environment["BENCHBOX_MACHINE_ID_SALT"] = salt
     process = subprocess.run(
         [
             sys.executable,
@@ -133,21 +138,67 @@ def test_seed_workflow_never_stages_uncertain_bundles(tmp_path: Path) -> None:
     assert upload["if"] == "env.SELECTED == 'true' && steps.stage.outputs.eligible == 'true'"
 
 
-def test_seed_workflow_stages_clean_bundles(tmp_path: Path) -> None:
-    payload = {
+def _clean_payload() -> dict[str, Any]:
+    return {
         "benchmark": {"id": "ssb"},
         "summary": {"validation": "passed", "queries": {"total": 2}},
         "execution": {"translation": "success"},
+        "environment": {"hostname": "seed-runner.internal"},
         "queries": [{"id": "1", "ms": 12.0}, {"id": "2", "ms": 15.0}],
+        "export": {"tool": "benchbox", "anonymized": False},
     }
-    process, destination = _stage_bundle(tmp_path, payload, (".plans.json", ".tuning.json"))
+
+
+def test_seed_workflow_stages_clean_bundles_anonymized(tmp_path: Path) -> None:
+    process, destination = _stage_bundle(tmp_path, _clean_payload(), (".plans.json", ".tuning.json"))
 
     assert process.returncode == 0, process.stderr
     assert "eligible=true" in (tmp_path / "github-output").read_text(encoding="utf-8")
     assert "eligible" in (tmp_path / "seed-status.txt").read_text(encoding="utf-8")
-    assert (destination / "bundle.json").is_file()
+    staged = json.loads((destination / "bundle.json").read_text(encoding="utf-8"))
+    assert staged["export"] == {"tool": "benchbox", "anonymized": True}
+    assert staged["environment"]["hostname"] != "seed-runner.internal"
+    assert staged["queries"] == _clean_payload()["queries"]
     assert (destination / "bundle.plans.json").is_file()
     assert (destination / "bundle.tuning.json").is_file()
+
+    sys.path.insert(0, str(REPO_ROOT / "results-data"))
+    try:
+        validate_corpus = importlib.import_module("validate_corpus")
+    finally:
+        sys.path.remove(str(REPO_ROOT / "results-data"))
+    assert validate_corpus.unanonymized_bundle_errors([destination / "bundle.json"]) == []
+
+
+def test_seed_pseudonyms_follow_the_salt(tmp_path: Path) -> None:
+    first, first_destination = _stage_bundle(tmp_path / "first", _clean_payload())
+    again, again_destination = _stage_bundle(tmp_path / "again", _clean_payload())
+    other, other_destination = _stage_bundle(tmp_path / "other", _clean_payload(), salt="another-salt")
+    assert first.returncode == again.returncode == other.returncode == 0
+
+    def hostname(destination: Path) -> str:
+        return json.loads((destination / "bundle.json").read_text(encoding="utf-8"))["environment"]["hostname"]
+
+    assert hostname(first_destination) == hostname(again_destination)
+    assert hostname(first_destination) != hostname(other_destination)
+
+
+def test_seed_staging_fails_closed_without_the_salt(tmp_path: Path) -> None:
+    process, destination = _stage_bundle(tmp_path, _clean_payload(), salt=None)
+
+    assert process.returncode != 0
+    assert "BENCHBOX_MACHINE_ID_SALT" in process.stderr
+    output_file = tmp_path / "github-output"
+    assert not output_file.exists() or "eligible=true" not in output_file.read_text(encoding="utf-8")
+    assert not destination.exists()
+
+
+def test_seed_staging_runs_in_the_project_environment_with_the_salt_secret() -> None:
+    steps = _workflow()["jobs"]["generate-seed-corpus"]["steps"]
+    stage = next(step for step in steps if step.get("name") == "Stage bundle under results-data/")
+
+    assert "uv run -- python scripts/stage_seed_corpus_bundle.py" in stage["run"]
+    assert stage["env"]["BENCHBOX_MACHINE_ID_SALT"] == "${{ secrets.BENCHBOX_MACHINE_ID_SALT }}"
 
 
 @pytest.mark.parametrize(

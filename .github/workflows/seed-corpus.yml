@@ -160,9 +160,10 @@ jobs:
           RESULT_FILE: ${{ steps.locate.outputs.result_file }}
           SEED_CELL: ${{ matrix.benchmark }} / ${{ matrix.platform }} / sf${{ matrix.scale_factor }}
           SEED_STATUS_FILE: seed-status/${{ matrix.benchmark }}--${{ matrix.platform }}--sf${{ matrix.scale_factor }}.txt
+          BENCHBOX_MACHINE_ID_SALT: ${{ secrets.BENCHBOX_MACHINE_ID_SALT }}
         run: |
           DEST="results-data/bundles/${{ matrix.benchmark }}/${{ matrix.platform }}/sf${{ matrix.scale_factor }}"
-          python scripts/stage_seed_corpus_bundle.py "$RESULT_FILE" "$DEST"
+          uv run -- python scripts/stage_seed_corpus_bundle.py "$RESULT_FILE" "$DEST"
         id: stage
 
       - name: Upload cell status

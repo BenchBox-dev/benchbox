@@ -3,14 +3,33 @@ from __future__ import annotations
 import importlib
 import json
 import os
-import shutil
 import sys
 from pathlib import Path
 from typing import Any
 
+from benchbox.core.results.anonymization import (
+    AnonymizationConfig,
+    AnonymizationManager,
+    MissingPublicPseudonymSaltError,
+    require_public_pseudonym_salt,
+)
+from benchbox.core.results.canonical_json import canonical_json_text
+from benchbox.validation.bundle import (
+    export_anonymized_errors,
+    unanonymized_plans_findings,
+    unanonymized_tuning_findings,
+)
+
 RESULTS_DATA = Path(__file__).resolve().parents[1] / "results-data"
 sys.path.insert(0, str(RESULTS_DATA))
 exclusion_reason = importlib.import_module("validate_corpus").exclusion_reason
+
+PLANS_SUFFIX = ".plans.json"
+TUNING_SUFFIX = ".tuning.json"
+
+
+class StagingError(Exception):
+    pass
 
 
 def _write_output(eligible: bool) -> None:
@@ -26,6 +45,37 @@ def _write_status(reason: str | None) -> None:
         path.write_text(f"{os.environ['SEED_CELL']}\t{reason or 'eligible'}\n", encoding="utf-8")
 
 
+def _anonymization_manager() -> AnonymizationManager:
+    try:
+        salt = require_public_pseudonym_salt()
+    except MissingPublicPseudonymSaltError as exc:
+        raise StagingError(str(exc)) from exc
+    return AnonymizationManager(AnonymizationConfig(machine_id_salt=salt))
+
+
+def anonymize_bundle(payload: dict[str, Any], manager: AnonymizationManager) -> dict[str, Any]:
+    working = dict(payload)
+    export = working.pop("export", None)
+    anonymized = manager.anonymize_result_payload(working)
+    anonymized["export"] = {**(export if isinstance(export, dict) else {}), "anonymized": True}
+    errors = export_anonymized_errors(anonymized)
+    if errors:
+        raise StagingError("; ".join(errors))
+    return anonymized
+
+
+def _anonymized_companion(path: Path, manager: AnonymizationManager) -> dict[str, Any]:
+    payload: Any = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise StagingError(f"{path.name} is not a JSON object")
+    if path.name.endswith(TUNING_SUFFIX):
+        payload = manager.anonymize_tuning_payload(payload)
+    findings = unanonymized_plans_findings(payload) + unanonymized_tuning_findings(payload)
+    if findings:
+        raise StagingError(f"{path.name}: " + "; ".join(findings))
+    return payload
+
+
 def stage_seed_bundle(result_file: Path, destination: Path) -> bool:
     payload: Any = json.loads(result_file.read_text(encoding="utf-8"))
     reason = exclusion_reason(payload)
@@ -35,15 +85,19 @@ def stage_seed_bundle(result_file: Path, destination: Path) -> bool:
         _write_output(False)
         return False
 
-    destination.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(result_file, destination / result_file.name)
+    manager = _anonymization_manager()
+    staged = {result_file.name: anonymize_bundle(payload, manager)}
     stem = result_file.with_suffix("")
-    for suffix in (".plans.json", ".tuning.json"):
+    for suffix in (PLANS_SUFFIX, TUNING_SUFFIX):
         companion = Path(f"{stem}{suffix}")
         if companion.is_file():
-            shutil.copy2(companion, destination / companion.name)
+            staged[companion.name] = _anonymized_companion(companion, manager)
+
+    destination.mkdir(parents=True, exist_ok=True)
+    for name, content in staged.items():
+        (destination / name).write_text(canonical_json_text(content), encoding="utf-8")
     _write_output(True)
-    print(f"Staged to: {destination / result_file.name}")
+    print(f"Staged anonymized bundle to: {destination / result_file.name}")
     return True
 
 
@@ -51,7 +105,11 @@ def main(arguments: list[str] | None = None) -> int:
     arguments = sys.argv[1:] if arguments is None else arguments
     if len(arguments) != 2:
         raise SystemExit("usage: stage_seed_corpus_bundle.py RESULT_FILE DESTINATION")
-    stage_seed_bundle(Path(arguments[0]), Path(arguments[1]))
+    try:
+        stage_seed_bundle(Path(arguments[0]), Path(arguments[1]))
+    except StagingError as exc:
+        print(f"ERROR cannot stage {arguments[0]}: {exc}", file=sys.stderr)
+        return 1
     return 0
 
 
