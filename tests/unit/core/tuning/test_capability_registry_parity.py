@@ -619,11 +619,9 @@ class TestBenchmarkDdlAndAdapterBehavior:
         assert known <= found, f"discovery lost known benchmarks: {sorted(known - found)}"
         for key in _VACUITY_SIGNATURE_ONLY:
             assert key in found, f"signature-only benchmark {key} disappeared from discovery"
+        covered = {(seen_module, seen_class) for seen_module, seen_class, _ in _vacuous_capable_benchmarks()}
         for module_name, class_name in sorted(found - set(_VACUITY_SIGNATURE_ONLY)):
-            assert any(
-                module_name == seen_module and class_name == seen_class
-                for seen_module, seen_class, _ in _vacuous_capable_benchmarks()
-            ), (
+            assert (module_name, class_name) in covered, (
                 f"{module_name}.{class_name} is not covered by the vacuity proof; construct it in "
                 "_vacuous_capable_benchmarks or classify it in _VACUITY_SIGNATURE_ONLY"
             )
