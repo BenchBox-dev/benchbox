@@ -1,0 +1,90 @@
+{
+  "benchmark": "tpch",
+  "scale_factor": 0.01,
+  "reference_seed": null,
+  "query_parameters": "qgen -d (TPC-H default substitution parameters)",
+  "provenance": {
+    "data_generator": "_sources/tpc-h/dbgen (dbgen)",
+    "query_generator": "_sources/tpc-h/dbgen (qgen -d)",
+    "query_template_digest": {
+      "algorithm": "sha256 over path, NUL, contents for each template in order",
+      "templates": [
+        "queries/1.sql",
+        "queries/2.sql",
+        "queries/3.sql",
+        "queries/4.sql",
+        "queries/5.sql",
+        "queries/6.sql",
+        "queries/7.sql",
+        "queries/8.sql",
+        "queries/9.sql",
+        "queries/10.sql",
+        "queries/11.sql",
+        "queries/12.sql",
+        "queries/13.sql",
+        "queries/14.sql",
+        "queries/16.sql",
+        "queries/17.sql",
+        "queries/18.sql",
+        "queries/19.sql",
+        "queries/20.sql",
+        "queries/21.sql",
+        "queries/22.sql",
+        "variants/15a.sql"
+      ],
+      "sha256": "0037776cd2526cbef4a6adbf520cc378a9fd582976f8fc23e8b482809a966956"
+    },
+    "engines": {
+      "duckdb": "1.5.5",
+      "datafusion": "54.0.0"
+    },
+    "probe_seeds": [
+      1,
+      7,
+      42,
+      99,
+      123,
+      2024,
+      31337,
+      65537,
+      1000003,
+      17039360
+    ],
+    "phases": "generate,load,power",
+    "note": "Exact per-query row counts for TPC-H at a scale factor below 1, with qgen default substitution parameters (qgen -d, no seed). TPC publishes answer files only at SF 1, so these counts are a BenchBox reference: DuckDB returned exactly these counts in every iteration, and every other listed engine returned them too, on data from the bundled dbgen. parameter_sensitive_query_ids lists queries whose count changed under at least one probe seed or that are parameter-sensitive at SF 1; runs with other parameters skip them. Regenerate with `make tpch-subscale-row-counts-regen`; do not hand-edit."
+  },
+  "parameter_sensitive_query_ids": [
+    "2",
+    "9",
+    "11",
+    "13",
+    "16",
+    "18",
+    "20",
+    "21"
+  ],
+  "row_counts": {
+    "1": 4,
+    "2": 4,
+    "3": 10,
+    "4": 5,
+    "5": 5,
+    "6": 1,
+    "7": 4,
+    "8": 2,
+    "9": 173,
+    "10": 20,
+    "11": 1,
+    "12": 2,
+    "13": 33,
+    "14": 1,
+    "15": 1,
+    "16": 296,
+    "17": 1,
+    "18": 2,
+    "19": 1,
+    "20": 1,
+    "21": 1,
+    "22": 7
+  }
+}

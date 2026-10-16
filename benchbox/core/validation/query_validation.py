@@ -223,6 +223,20 @@ class QueryValidator:
                 warning_message=warning_msg,
             )
 
+        if get_reference_seed_context() is False and expected_result.reference_parameters_only:
+            return ValidationResult(
+                is_valid=True,
+                query_id=query_id_str,
+                expected_row_count=None,
+                actual_row_count=actual_row_count,
+                validation_mode=ValidationMode.SKIP,
+                warning_message=(
+                    f"Query '{query_id}' row count at scale factor {scale_factor} depends on the substitution "
+                    f"parameters; the '{benchmark_type}' reference count holds only for qgen default parameters. "
+                    f"Row-count validation excluded. Actual rows returned: {actual_row_count}"
+                ),
+            )
+
         if get_reference_seed_context() is False and query_id_normalized in get_parameter_sensitive_query_ids(
             benchmark_type
         ):

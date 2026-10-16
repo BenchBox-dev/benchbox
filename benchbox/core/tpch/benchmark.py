@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from benchbox.core.tuning.interface import UnifiedTuningConfiguration
 
 from benchbox.base import BaseBenchmark, GeneratorOutputDirMixin
+from benchbox.core.expected_results.loader import TPCH_SUBSCALE_ROW_COUNT_SCALE_FACTORS
 from benchbox.core.tpch.compliance import validate_tpch_scale
 from benchbox.core.tpch.generator import TPCHDataGenerator
 from benchbox.core.tpch.maintenance_test import TPCHMaintenanceTest
@@ -27,6 +28,10 @@ TPCH_ANSWER_SET_SCALE_FACTOR = 1.0
 
 def has_answer_set(scale_factor: float) -> bool:
     return float(scale_factor) == TPCH_ANSWER_SET_SCALE_FACTOR
+
+
+def has_row_count_reference(scale_factor: float) -> bool:
+    return has_answer_set(scale_factor) or float(scale_factor) in TPCH_SUBSCALE_ROW_COUNT_SCALE_FACTORS
 
 
 def binds_answer_set_parameters(seed: int | None) -> bool:

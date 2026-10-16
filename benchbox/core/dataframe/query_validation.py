@@ -118,7 +118,9 @@ def _reference_unavailable_reason(benchmark_id: str, scale_factor: float, seed: 
             return f"SSB expected row counts are not recorded for scale factor {scale_factor}"
         return None
     if not _tpch_reference_context(scale_factor, seed):
-        return "TPC-H answer-file row counts apply only to SF 1 runs with qgen default parameters (no seed)"
+        return (
+            "TPC-H reference row counts apply only to SF 0.01, 0.1, and 1 runs with qgen default parameters (no seed)"
+        )
     return None
 
 
@@ -247,9 +249,9 @@ def _apply_row_count_oracle(
 
 
 def _tpch_reference_context(scale_factor: float, seed: int | None) -> bool:
-    from benchbox.core.tpch.benchmark import binds_answer_set_parameters, has_answer_set
+    from benchbox.core.tpch.benchmark import binds_answer_set_parameters, has_row_count_reference
 
-    return has_answer_set(scale_factor) and binds_answer_set_parameters(seed)
+    return has_row_count_reference(scale_factor) and binds_answer_set_parameters(seed)
 
 
 def _bounded_message(value: str) -> str:
