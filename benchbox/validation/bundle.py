@@ -60,6 +60,35 @@ def _load_bundle_failed_query_count():
 
 bundle_failed_query_count = _load_bundle_failed_query_count()
 
+
+PRIVATE_LOCAL_PATH_RE = re.compile(
+    r"(?<![A-Za-z0-9_])(?:"
+    r"(?:~|/Users|/home|/root|/private/var|/var/folders|/var/run|/Volumes)/[^\s'\",;)]*"
+    r"|[A-Za-z]:\\Users\\[^\s'\",;)]*"
+    r")",
+    flags=re.IGNORECASE,
+)
+
+
+def find_public_path_leaks(value: Any, key_path: tuple[str, ...] = ()) -> list[str]:
+    leaks: list[str] = []
+    pending: list[tuple[Any, tuple[str, ...]]] = [(value, key_path)]
+    while pending:
+        node, path = pending.pop()
+        if isinstance(node, dict):
+            for key, child in node.items():
+                label = str(key)
+                if isinstance(key, str) and PRIVATE_LOCAL_PATH_RE.search(key):
+                    label = "<key>"
+                    leaks.append(".".join((*path, label)))
+                pending.append((child, (*path, label)))
+        elif isinstance(node, (list, tuple, set, frozenset)):
+            pending.extend((child, (*path, str(index))) for index, child in enumerate(node))
+        elif isinstance(node, str) and PRIVATE_LOCAL_PATH_RE.search(node):
+            leaks.append(".".join(path) or "<root>")
+    return leaks
+
+
 SUBMISSION_NOTES_MAX_LEN = 500
 
 KNOWN_DEFECT_IDS = frozenset(
@@ -2253,21 +2282,43 @@ def _unanonymized_operator_metadata_findings(node: Any, where: str) -> list[str]
 def unanonymized_plans_findings(data: Any) -> list[str]:
     if not isinstance(data, dict):
         return []
-    queries = data.get("queries")
-    if not isinstance(queries, dict):
-        return []
     findings: list[str] = []
-    for query_id, entry in queries.items():
-        if not isinstance(entry, dict):
+    query_sources = [data.get("queries")]
+    plans = data.get("plans")
+    if isinstance(plans, dict):
+        query_sources.append(plans.get("queries"))
+    for queries in query_sources:
+        if not isinstance(queries, dict):
             continue
-        plan = entry.get("plan")
-        if not isinstance(plan, dict):
-            continue
-        if plan.get("raw_explain_output") is not None:
-            findings.append(f"plans.queries[{query_id}].plan exposes unanonymized raw_explain_output")
-        findings.extend(
-            _unanonymized_operator_metadata_findings(plan.get("logical_root"), f"plans.queries[{query_id}].plan")
-        )
+        for query_id, entry in queries.items():
+            if not isinstance(entry, dict):
+                continue
+            plan = entry.get("plan")
+            if not isinstance(plan, dict):
+                continue
+            if plan.get("raw_explain_output") is not None:
+                findings.append(f"plans.queries[{query_id}].plan exposes unanonymized raw_explain_output")
+            findings.extend(
+                _unanonymized_operator_metadata_findings(plan.get("logical_root"), f"plans.queries[{query_id}].plan")
+            )
+    return findings
+
+
+def export_anonymized_errors(payload: Any) -> list[str]:
+    if not isinstance(payload, dict):
+        return ["Corpus bundles must carry an export section with anonymized set"]
+    export = payload.get("export")
+    if not isinstance(export, dict):
+        return ["Corpus bundles must carry an export section with anonymized set"]
+    if export.get("anonymized") is not True:
+        return ["Corpus bundles must be anonymized before they merge"]
+    findings: list[str] = []
+    for leak in sorted(set(find_public_path_leaks(payload))):
+        findings.append(f"Corpus bundle contains unanonymized private path leak at {leak}")
+    for finding in unanonymized_plans_findings(payload):
+        findings.append(f"Corpus bundle contains unanonymized plans diagnostics: {finding}")
+    for finding in unanonymized_tuning_findings(payload):
+        findings.append(f"Corpus bundle contains unanonymized tuning diagnostics: {finding}")
     return findings
 
 

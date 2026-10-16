@@ -85,6 +85,7 @@ def _write_bundle(
         "benchmark": {"id": benchmark, "scale_factor": scale},
         "platform": platform_payload,
         "run": {"timestamp": run_timestamp},
+        "export": {"anonymized": True},
         **_rankable_body(),
     }
     if test_type is not None:
@@ -347,6 +348,7 @@ def _write_phase_bundle(
             "tpc_metrics": tpc_metrics,
         },
         "queries": queries,
+        "export": {"anonymized": True},
     }
     directory.mkdir(parents=True, exist_ok=True)
     (directory / name).write_text(json.dumps(payload), encoding="utf-8")
@@ -682,6 +684,7 @@ def _rankable_bundle(directory: Path, name: str, platform: str, **overrides: obj
         "benchmark": {"id": "tpch", "scale_factor": 1.0, "test_type": "power", "compliance_class": "official"},
         "platform": {"name": platform},
         "run": {"timestamp": "2026-08-01T12:00:00"},
+        "export": {"anonymized": True},
         **_rankable_body(),
     }
     payload.update(overrides)
@@ -1091,6 +1094,7 @@ def test_timestamp_less_bundle_does_not_fail_depth_exit(tmp_path: Path, capsys: 
     bare = {
         "benchmark": {"id": "tpch", "scale_factor": 1.0, "test_type": "power"},
         "platform": {"name": "ClickHouse"},
+        "export": {"anonymized": True},
     }
     (tmp_path / "bare.json").write_text(json.dumps(bare), encoding="utf-8")
 

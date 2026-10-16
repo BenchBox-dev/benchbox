@@ -1,6 +1,6 @@
 {
   "schema_version": "2.3",
-  "generated_at": "2026-10-14T23:30:45.453944+00:00",
+  "generated_at": "2026-10-15T12:13:04.871052+00:00",
   "bundles": [
     {
       "file": "amplab_sf01_bigquery_sql_20260920_000055_35490af7.json",
@@ -4088,7 +4088,7 @@
       "query_count": 66,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "738e103fedb16376fcbb94aa1bb8f9eccff319351cfed05a4ef080fe631f9d6f"
+      "bundle_sha256": "bb68bfc67897de2f7c0c600d2d84ed8b5c4a3dce9bb88a18f16fd2fb2ceb6fa2"
     },
     {
       "file": "tpch_sf001_clickhouse_server_sql_20260825_092429_4cd12ac0.json",
@@ -4158,7 +4158,7 @@
       "query_count": 66,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "666b97d0826bbe865c59dbae210bc7eb8b8351b3b7d53d5d0b777c366d979c0d"
+      "bundle_sha256": "b571409d07a7b98b03007561c22f00eec5fa2a5b5871d149bf7aab807b2095c7"
     },
     {
       "file": "tpch_sf01_datafusion_sql_20260824_082755_adcfb35e.json",
@@ -4214,7 +4214,7 @@
       "query_count": 66,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "ebe19d1afd75ce0d71c6b5e4e4bdd852fad65203212ec74d40ebcb625073972b"
+      "bundle_sha256": "584d1349956a99a4da5eed9a6d12c856d68d39596e0400f4d51e276f86e26905"
     },
     {
       "file": "tpch_sf1_datafusion_sql_20260825_172912_1d62bd4f.json",
@@ -4326,7 +4326,7 @@
       "query_count": 66,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "84d6ce7a958b57d132ed435f61c0369229e91c267f581c4eafb244341d9f1d02"
+      "bundle_sha256": "d60b9dccb5b7bb52753530d864544505a2ff2258a045fef242cd8d75b105ce5d"
     },
     {
       "file": "tpch_sf01_duckdb_sql_20260826_092426_786dcba6.json",
@@ -4382,7 +4382,7 @@
       "query_count": 66,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "bc543615787bcd0363287b3993812789ea15fca00cc3cea7a5c54ed8fee2b48c"
+      "bundle_sha256": "c28dcfb77b600c28d7f5f4cf1ea666d46df1bd7ab32224ffed0a4fb4dc991edb"
     },
     {
       "file": "tpch_sf1_duckdb_sql_20260826_162117_67e59fb6.json",
@@ -4480,7 +4480,7 @@
       "query_count": 66,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "055ed20c8e0183d716806167ee6b645dcfb47b5ce1bb815da6a8ca6816e66169"
+      "bundle_sha256": "9757cfbb80cd3f6655bd349dc1f22161d1a34aee9fcba00404d14b0295c6ddd0"
     },
     {
       "file": "duckdb-version-matrix/tpch_sf10_duckdb_v1_0_0_median.json",
