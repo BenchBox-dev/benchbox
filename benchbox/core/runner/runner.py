@@ -603,6 +603,8 @@ def _execute_load_only_mode(
     connection_lifecycle = as_connection_lifecycle(adapter)
     setattr(adapter, "_existing_db_decided", False)  # noqa: B010
     full_lifecycle, effective_tuning_config, tuned_run = _resolve_load_only_tuning(adapter)
+    if full_lifecycle:
+        adapter._start_applied_tuning_ledger()
     try:
         connection = connection_lifecycle.create_connection(**(platform_config or {}))
 

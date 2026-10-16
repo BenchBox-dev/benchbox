@@ -527,8 +527,7 @@ class PlatformAdapter(
                     raise ValueError(f"Invalid tuning configuration: {'; '.join(tuning_errors)}")
                 quiet_console.print("✅ Unified tuning configuration validated")
 
-            self._applied_tuning_ledger = AppliedTuningLedger()
-            self._applied_layout_operations = []
+            self._start_applied_tuning_ledger()
 
             self.log_verbose(f"Checking database_was_reused flag before schema creation: {self.database_was_reused}")
             if self.database_was_reused:
@@ -878,6 +877,10 @@ class PlatformAdapter(
 
     def _attach_applied_ledger_payload(self, result: Any, status: str) -> None:
         tuning_trust.attach_applied_ledger_payload(self, result, status)
+
+    def _start_applied_tuning_ledger(self) -> None:
+        self._applied_tuning_ledger = AppliedTuningLedger()
+        self._applied_layout_operations = []
 
     def _export_load_only_tuning(
         self,

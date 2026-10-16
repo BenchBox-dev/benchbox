@@ -7,7 +7,6 @@ from unittest.mock import Mock
 import pytest
 
 from benchbox.core.runner.runner import ValidationOptions, _execute_load_only_mode
-from benchbox.core.tuning.applied_ledger import AppliedTuningLedger
 from benchbox.core.tuning.interface import TableTuning, TuningColumn, UnifiedTuningConfiguration
 
 pytestmark = [
@@ -68,7 +67,6 @@ def _duckdb_adapter(database_path: Path, config: UnifiedTuningConfiguration | No
     adapter = DuckDBAdapter(database_path=str(database_path))
     adapter.tuning_enabled = config is not None
     adapter.unified_tuning_configuration = config
-    adapter._applied_tuning_ledger = AppliedTuningLedger()
     return adapter
 
 
@@ -93,6 +91,7 @@ class TestLoadOnlyLifecycleParity:
 
         full_adapter = _duckdb_adapter(tmp_path / "full.duckdb", config)
         full_benchmark = _StubBenchmark(tmp_path / "data")
+        full_adapter._start_applied_tuning_ledger()
         full_connection = full_adapter.create_connection()
         try:
             full_adapter._setup_fresh_database_phases(full_benchmark, full_connection, config)
@@ -164,3 +163,38 @@ class TestLoadOnlyLifecycleParity:
         assert result.tunings_applied is None
         assert result.applied_tuning_ledger is None
         assert result.tuning_validation_status is None
+
+    def test_load_only_untuned_duckdb_run_starts_its_own_ledger(self, tmp_path: Path) -> None:
+        _seed_parquet(tmp_path / "data")
+        adapter = _duckdb_adapter(tmp_path / "load.duckdb", None)
+        assert adapter._applied_tuning_ledger is None
+
+        result, _postload = _execute_load_only_mode(
+            benchmark=_StubBenchmark(tmp_path / "data"),
+            benchmark_config=_benchmark_config(),
+            adapter=adapter,
+            platform_config={},
+            validation_opts=ValidationOptions(),
+            table_mode="native",
+        )
+
+        assert result.table_statistics == {"t": 3}
+        assert result.phases["data_loading"]["status"] == "COMPLETED"
+        assert result.query_results == []
+        assert result.tunings_applied is None
+        assert result.tuning_validation_status is not None
+
+    def test_load_only_run_whose_load_fails_raises(self, tmp_path: Path) -> None:
+        (tmp_path / "data").mkdir()
+        (tmp_path / "data" / "t.parquet").write_bytes(b"not a parquet file")
+        adapter = _duckdb_adapter(tmp_path / "load.duckdb", None)
+
+        with pytest.raises(Exception):
+            _execute_load_only_mode(
+                benchmark=_StubBenchmark(tmp_path / "data"),
+                benchmark_config=_benchmark_config(),
+                adapter=adapter,
+                platform_config={},
+                validation_opts=ValidationOptions(),
+                table_mode="native",
+            )
