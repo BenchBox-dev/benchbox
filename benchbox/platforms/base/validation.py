@@ -176,7 +176,6 @@ _TPCDS_SPEC_ROWS: dict[str, tuple[int, int, int]] = {
     "inventory": (11_745_000, 133_110_000, 399_330_000),
     "item": (18_000, 102_000, 204_000),
     "promotion": (300, 500, 1_000),
-    "reason": (75, 75, 75),
     "ship_mode": (20, 20, 20),
     "store": (12, 102, 402),
     "store_returns": (287_514, 2_875_432, 28_795_080),
