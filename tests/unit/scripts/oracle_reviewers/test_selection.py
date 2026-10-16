@@ -181,6 +181,21 @@ def test_pool_resets_carry_quota_reset_times(policy: Policy) -> None:
     assert resets == {"claude": reset}
 
 
+def test_a_quota_absence_without_a_reset_time_backs_the_pool_off(policy: Policy) -> None:
+    selection_input = _input(policy, "very-high")
+    resets = selection.pool_resets(selection_input, [_absent(1, "opus"), _absent(2, "sol", "quota")])
+    assert resets == {"codex": NOW + selection.QUOTA_BACKOFF}
+    later = replace(selection_input, now=NOW + timedelta(minutes=30), pool_blocked_until=resets)
+    assert next_step(later, [_absent(1, "opus")]).reasons[-1].startswith("sol: skipped: codex pool out of quota until")
+
+
+def test_a_reported_reset_time_wins_over_the_default_back_off(policy: Policy) -> None:
+    reset = NOW + timedelta(minutes=10)
+    selection_input = _input(policy, "very-high")
+    resets = selection.pool_resets(selection_input, [Attempt(1, "sol", selection.ABSENT, "quota", "", reset)])
+    assert resets == {"codex": reset}
+
+
 @pytest.mark.parametrize("tier", ["low-medium", "medium-high", "very-high"])
 @pytest.mark.parametrize("label", [(), ("author-family:codex",), ("author-family:muse",), ("author-family:agy",)])
 def test_every_enabled_chain_is_fully_reachable(policy: Policy, tier: str, label: tuple[str, ...]) -> None:
