@@ -8,7 +8,7 @@
     "Tests cover fake-connection statement shapes, chunking, safety failures, set disjointness, formulae, Ts boundaries, each QphH refusal condition, and unsupported platforms. In-memory DuckDB and SQLite SF0.01 integrations prove inserted row counts and deleted keys. DuckDB SF0.01 end-to-end records refresh data but withholds the composite for unofficial_subscale; DuckDB SF1 with two streams exports QphH only when all conditions hold.",
     "Documentation covers opt-in options/defaults, set numbering and next-unused-set repeat runs, final-iteration behavior, verified platform support, QphH conditions, and deviations not implemented: 0.01-second refresh rounding, 1000x clamp, Ts rounding, and two-run lower-score rule."
   ],
-  "context": "Progress 2026-10-15 12:07 UTC (Antigravity takeover from interrupted Codex session 01a13d13-ba0a-72b2-b53b-d91d84667a44): claim taken over on todo-db. Resolved and verified all oracle review defects (D1-D7) and CI medium-shard-2 failures: wired cooperative cancellation for auxiliary refresh stream, propagated unstarted refresh failures to throughput errors, accepted sub-millisecond and zero durations with 1ms minimum floor in Power@Size, unwrapped nested connection for PlatformAdapterConnection transactions, and aligned execution engine assertion. Pushed commit c57e56a49 to origin/feat/tpch-refresh-power-recovery, resolved review threads, and re-triggered oracle review via /oracle-review. Fresh official DuckDB SF1 2-stream UAT run succeeded after verifying 6 consecutive one-minute host load readings below 8 (3.49-7.80); all 22 queries, Power RF set 1, and throughput RF sets 2 and 3 succeeded; emitted valid official QphH@Size 168052.2 (Power@Size 105932.0, Throughput@Size 266600.6) with refresh_included=True. Result JSON preserved at /Users/joe/Developer/benchmark_runs/item7-uat-sf1-final/results/tpch_sf1_duckdb_sql_20261015_080616_041f641b.json. CI checks and oracle review verdict in progress on PR #3004.",
+  "context": "Completed by PR #3004, merged 2026-10-16 as 960c616744185fb34915c91e9bb0d33f881bca02. RF1/RF2 run in Power@Size and in the throughput refresh stream; refresh preconditions run before Ts and the RF2 postcondition after the streams. `benchbox metrics qphh` reports Power@Size and Throughput@Size, with QphH@Size only when the pair qualifies. Refresh is declared for DuckDB, SQLite, PostgreSQL (and adapters built on it), Snowflake and SingleStore; Redshift is off. Proofs: DuckDB SF1 official (QphH@Size 142,943.8), PostgreSQL 18 and SingleStore 9.1.1 local containers. Follow-ups: tpch-refresh-pg-derived-adapter-proofs-20261016, tpch-refresh-redshift-proof-20261016, and a CLI help text correction.",
   "description": "Scope moved here from tpch-qphh-missing-refresh-functions by owner decision on 2026-10-04: suppress the official QphH label first, and implement the spec later. Per the TPC-H spec, Power@Size uses the 24th root over the 22 query times plus RF1 and RF2, and the throughput test runs a refresh stream of S RF1/RF2 pairs concurrently with the S query streams, inside Ts. Currently neither test runs refresh functions (tpch/power_test.py, tpch/throughput_test.py), and maintenance runs afterwards with concurrent_with_queries=False (execution.py:692-698).",
   "links": [
     "benchbox/core/tpch/power_test.py",
@@ -181,6 +181,14 @@
       "op": "takeover",
       "op_id": "31b7033640884ce798388ebcf3731f44",
       "reason": "Holder was a subagent killed by a session restart (take 2026-10-16T11:58Z); its generation returns E_CLAIM_STALE. Work done: PR #3004 merged as 960c61674. Owner approved takeover to close.",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-16T16:57:53Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "4097ec9505344d2caacbda5a0c7d69d1",
       "session_id": "400c76c14fce4783943655593419ae3c"
     }
   ]
