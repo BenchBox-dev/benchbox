@@ -2558,7 +2558,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Explain and reduce the CI fast-test slowdown"
     },
     "ci-fast-test-ubuntu-timeout-20261014": {
