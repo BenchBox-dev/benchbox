@@ -96,9 +96,10 @@ _DISPLAY_STATEMENTS = (
 )
 
 _REASON_COUNT_EVIDENCE = (
-    "Generated returns tables draw wr_reason_sk and sr_reason_sk from a 75-row reason table; the specification "
-    "and the official answers use 35 rows at SF 1. With a 35-row table the unchanged SQL reproduces the official "
-    "rows."
+    "The TPC-DS v4.0.0 kit's scaling.dst generates a 75-row reason table from SF 1 up, so sr_reason_sk, "
+    "cr_reason_sk and wr_reason_sk span 1 to 75. Specification Table 3-2 and the official answers, which were not "
+    "regenerated for v4.0.0, use 35 rows at SF 1; clause 3.4.2 says dsdgen prevails. With a 35-row table the "
+    "unchanged SQL reproduces the official rows."
 )
 
 _HALF_BOUNDARY_COLUMNS = frozenset(range(8, 44))
