@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import sys
+import urllib.request
 from copy import deepcopy
 from datetime import date, timedelta
 from pathlib import Path
@@ -1861,6 +1862,305 @@ def test_consumer_digest_has_stable_python_version_encoding() -> None:
 
     tree = ast.parse("def consume(value):\n    return value + 1\n")
     assert python_consumer_digest(tree) == "sha256:c6aaea25c78f8f6fdbf83d97c11fe1be21e859156b678d34cfbcc79f8c261c69"
+
+
+REVIEW_GATED_POLICY = {"version": 1, "external": [], "completed": [], "exceptions": []}
+
+REVIEW_GATED_SCOPE_POLICY = {
+    "version": 1,
+    "maintained_roots": [],
+    "ownership_rules": [],
+    "external_entries": [],
+    "format_classes": [],
+    "payloads": [],
+    "derived_rules": [],
+    "consumer_edges": [],
+    "directives": [],
+    "notices": [],
+    "obligations": [],
+    "review_dispositions": [],
+}
+
+REVIEW_GATED_ENTRY = {
+    "path": "a.py",
+    "symbol": "",
+    "text": "# explanation",
+    "kind": "notice",
+    "consumer": "a.py",
+    "necessity": "Keep the fixture prose.",
+    "alternative": "No prose needed.",
+    "owner": "comment-cleanup-test",
+    "removal": "Remove with the fixture.",
+}
+
+
+def _review_gated_repo(tmp_path: Path) -> str:
+    (tmp_path / "quality").mkdir()
+    (tmp_path / "quality" / "comment-policy.json").write_text(json.dumps(REVIEW_GATED_POLICY), encoding="utf-8")
+    (tmp_path / "quality" / "comment-cleanup-scope.json").write_text(
+        json.dumps(REVIEW_GATED_SCOPE_POLICY), encoding="utf-8"
+    )
+    git_run(tmp_path, "init", "-q")
+    git_run(tmp_path, "add", ".")
+    git_run(tmp_path, "commit", "-qm", "base")
+    base = git_run(tmp_path, "rev-parse", "HEAD")
+    (tmp_path / "a.py").write_text("x = 1  # explanation\n", encoding="utf-8")
+    candidate = dict(REVIEW_GATED_POLICY, exceptions=[dict(REVIEW_GATED_ENTRY)])
+    (tmp_path / "quality" / "comment-policy.json").write_text(json.dumps(candidate), encoding="utf-8")
+    git_run(tmp_path, "add", ".")
+    git_run(tmp_path, "commit", "-qm", "head")
+    return base
+
+
+def test_transition_self_registered_exception_fails_without_review(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base = _review_gated_repo(tmp_path)
+    monkeypatch.setattr(check_comment_policy, "oracle_review_covers", lambda: False)
+    assert check_comment_policy.main(["--root", str(tmp_path), "--mode", "transition", "--base", base]) == 1
+
+
+def test_transition_self_registered_exception_counts_with_review(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base = _review_gated_repo(tmp_path)
+    monkeypatch.setattr(check_comment_policy, "oracle_review_covers", lambda: True)
+    assert check_comment_policy.main(["--root", str(tmp_path), "--mode", "transition", "--base", base]) == 0
+
+
+def _check_runs_payload(*runs: dict, total: int | None = None) -> bytes:
+    import json as json_module
+
+    return json_module.dumps({"total_count": len(runs) if total is None else total, "check_runs": list(runs)}).encode()
+
+
+def _workflow_payload(
+    path: str = ".github/workflows/oracle-review.yml", head: str = "a" * 40, conclusion: str = "success"
+) -> bytes:
+    import json as json_module
+
+    return json_module.dumps({"path": path, "head_sha": head, "conclusion": conclusion}).encode()
+
+
+class _FakeResponse:
+    def __init__(self, payload: bytes) -> None:
+        self._payload = payload
+
+    def __enter__(self) -> _FakeResponse:
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        return None
+
+    def read(self) -> bytes:
+        return self._payload
+
+
+def _review_event(tmp_path: Path, head: str = "a" * 40) -> None:
+    import json as json_module
+
+    (tmp_path / "event.json").write_text(
+        json_module.dumps({"pull_request": {"number": 1, "head": {"sha": head}}}), encoding="utf-8"
+    )
+
+
+def test_oracle_review_covers_needs_event_token_and_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    monkeypatch.delenv("GITHUB_EVENT_PATH", raising=False)
+    monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
+    monkeypatch.setenv("GITHUB_TOKEN", "t")
+    assert scope.oracle_review_covers() is False
+
+
+def _review_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, head: str = "a" * 40) -> None:
+    _review_event(tmp_path, head)
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(tmp_path / "event.json"))
+    monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
+    monkeypatch.setenv("GITHUB_TOKEN", "t")
+
+
+def _review_run(
+    conclusion: str = "success",
+    completed_at: str = "2026-10-14T00:00:00Z",
+    app: str = "github-actions",
+    run_id: int = 7,
+) -> dict:
+    return {
+        "name": "oracle-review",
+        "status": "completed",
+        "conclusion": conclusion,
+        "completed_at": completed_at,
+        "app": {"slug": app},
+        "html_url": f"https://github.com/o/r/actions/runs/{run_id}/job/9",
+    }
+
+
+def _verdict_review(
+    state: str = "success",
+    head: str = "a" * 40,
+    login: str = "benchbox-oracle",
+    account_type: str = "Bot",
+    commit: str | None = None,
+    review_state: str = "COMMENTED",
+    submitted: str = "2026-10-14T00:00:01Z",
+) -> dict:
+    return {
+        "user": {"login": login, "type": account_type},
+        "commit_id": commit if commit is not None else head,
+        "state": review_state,
+        "submitted_at": submitted,
+        "body": f"### oracle-verdict: {state} for `{head}`\n",
+    }
+
+
+def _fake_api(
+    monkeypatch: pytest.MonkeyPatch,
+    runs: list[dict],
+    workflow: bytes,
+    seen: list[str],
+    reviews: list[dict] | None = None,
+) -> None:
+    import json as json_module
+
+    payload = json_module.dumps(reviews if reviews is not None else [_verdict_review()]).encode()
+
+    def fake(request: urllib.request.Request, timeout: int = 30) -> _FakeResponse:
+        url = request.full_url
+        seen.append(url)
+        if "/actions/runs/" in url:
+            return _FakeResponse(workflow)
+        if "/pulls/" in url and url.endswith("/reviews?per_page=100&page=1"):
+            return _FakeResponse(payload)
+        return _FakeResponse(_check_runs_payload(*runs))
+
+    monkeypatch.setattr("urllib.request.urlopen", fake)
+
+
+def test_oracle_review_covers_bound_workflow_success(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_env(tmp_path, monkeypatch)
+    seen: list[str] = []
+    _fake_api(monkeypatch, [_review_run()], _workflow_payload(), seen)
+    assert scope.oracle_review_covers() is True
+    assert any("a" * 40 in url for url in seen)
+
+
+def test_oracle_review_covers_latest_completed_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_env(tmp_path, monkeypatch)
+    seen: list[str] = []
+    old = _review_run(completed_at="2026-10-13T00:00:00Z", run_id=6)
+    new = _review_run(conclusion="failure", run_id=7)
+    _fake_api(monkeypatch, [old, new], _workflow_payload(), seen)
+    assert scope.oracle_review_covers() is False
+
+
+def test_oracle_review_covers_rejects_foreign_app_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_env(tmp_path, monkeypatch)
+    seen: list[str] = []
+    _fake_api(monkeypatch, [_review_run(app="forged-checks")], _workflow_payload(), seen)
+    assert scope.oracle_review_covers() is False
+    assert not any("/actions/runs/" in url for url in seen)
+
+
+def test_oracle_review_covers_rejects_other_workflow_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_env(tmp_path, monkeypatch)
+    seen: list[str] = []
+    _fake_api(monkeypatch, [_review_run()], _workflow_payload(path=".github/workflows/ci.yml"), seen)
+    assert scope.oracle_review_covers() is False
+
+
+def test_oracle_review_covers_rejects_other_head_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_env(tmp_path, monkeypatch)
+    seen: list[str] = []
+    _fake_api(monkeypatch, [_review_run()], _workflow_payload(head="b" * 40), seen)
+    assert scope.oracle_review_covers() is False
+
+
+def test_oracle_review_covers_fails_closed_on_api_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_event(tmp_path)
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(tmp_path / "event.json"))
+    monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
+    monkeypatch.setenv("GITHUB_TOKEN", "t")
+
+    def fail(request: object, timeout: int = 30) -> _FakeResponse:
+        raise OSError("network down")
+
+    monkeypatch.setattr("urllib.request.urlopen", fail)
+    assert scope.oracle_review_covers() is False
+
+
+def test_oracle_review_covers_rejects_check_success_without_verdict(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_env(tmp_path, monkeypatch)
+    seen: list[str] = []
+    _fake_api(monkeypatch, [_review_run()], _workflow_payload(), seen, reviews=[])
+    assert scope.oracle_review_covers() is False
+
+
+def test_oracle_review_covers_rejects_failure_verdict(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_env(tmp_path, monkeypatch)
+    seen: list[str] = []
+    _fake_api(monkeypatch, [_review_run()], _workflow_payload(), seen, reviews=[_verdict_review(state="failure")])
+    assert scope.oracle_review_covers() is False
+
+
+def test_oracle_review_covers_rejects_verdict_for_other_head(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_env(tmp_path, monkeypatch)
+    seen: list[str] = []
+    _fake_api(
+        monkeypatch,
+        [_review_run()],
+        _workflow_payload(),
+        seen,
+        reviews=[_verdict_review(commit="b" * 40, head="b" * 40)],
+    )
+    assert scope.oracle_review_covers() is False
+
+
+def test_oracle_review_covers_rejects_non_oracle_verdict(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_env(tmp_path, monkeypatch)
+    seen: list[str] = []
+    _fake_api(monkeypatch, [_review_run()], _workflow_payload(), seen, reviews=[_verdict_review(login="attacker")])
+    assert scope.oracle_review_covers() is False
+
+
+def test_oracle_review_covers_prefers_latest_verdict(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_env(tmp_path, monkeypatch)
+    seen: list[str] = []
+    _fake_api(
+        monkeypatch,
+        [_review_run()],
+        _workflow_payload(),
+        seen,
+        reviews=[
+            _verdict_review(state="success", submitted="2026-10-14T00:00:01Z"),
+            _verdict_review(state="failure", submitted="2026-10-14T00:00:02Z"),
+        ],
+    )
+    assert scope.oracle_review_covers() is False
 
 
 @pytest.mark.parametrize("prefix", [["python3"], ["env", "python3"], ["uv", "run", "python3"]])

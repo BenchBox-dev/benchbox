@@ -16,13 +16,17 @@ from collections import Counter
 from dataclasses import asdict
 from datetime import date
 from pathlib import Path, PurePosixPath
+from typing import Any
 
 from check_comment_cleanup_scope import (
     COMMENT_POLICY_DIRECTIVES,
     COMMENT_POLICY_ENFORCEMENT_MODES,
+    POLICY_PATH as SCOPE_POLICY_PATH,
     comment_policy_matches as matches,
     immutable_external_ownership,
     load_comment_policy as load_policy,
+    load_policy_bytes as load_scope_policy_bytes,
+    oracle_review_covers,
     validate_comment_policy_path as validate_path,
 )
 from comment_syntax import Finding, javascript_requests, language, scan, source_language
@@ -308,7 +312,27 @@ def ownership_base(root: Path, mode: str, comparison: str | None, requested: str
     return None
 
 
-def ownership_exclusions(root: Path, base: str | None, staged: bool) -> set[str] | None:
+def candidate_scope_notices(root: Path, staged: bool) -> list[dict[str, Any]] | None:
+    try:
+        raw = git(root, "show", f":{SCOPE_POLICY_PATH}") if staged else (root / SCOPE_POLICY_PATH).read_bytes()
+        notices = load_scope_policy_bytes(raw)["notices"]
+    except (
+        OSError,
+        UnicodeError,
+        json.JSONDecodeError,
+        ValueError,
+        KeyError,
+        TypeError,
+        AttributeError,
+        subprocess.CalledProcessError,
+    ):
+        return None
+    return notices if isinstance(notices, list) else None
+
+
+def ownership_exclusions(
+    root: Path, base: str | None, staged: bool, candidate_notices: list[dict[str, Any]] | None = None
+) -> set[str] | None:
     if base is None:
         return None
     if not re.fullmatch(r"[a-f0-9]{40}", base):
@@ -316,17 +340,28 @@ def ownership_exclusions(root: Path, base: str | None, staged: bool) -> set[str]
     git(root, "cat-file", "-e", f"{base}^{{commit}}")
     git(root, "merge-base", "--is-ancestor", base, "HEAD")
     trusted_external = load_policy(git(root, "show", f"{base}:{POLICY_PATH}"))["external"]
-    snapshot = immutable_external_ownership(root, base, trusted_external, staged)
+    snapshot = immutable_external_ownership(root, base, trusted_external, staged, candidate_notices)
     if snapshot is None:
         return None
     excluded, notices = snapshot
     for notice in notices:
-        raw = git(root, "show", f":{notice['path']}") if staged else (root / notice["path"]).read_bytes()
-        start, end = notice["byte_start"], notice["byte_end"]
-        if len(raw) < end or hashlib.sha256(raw[start:end]).hexdigest() != notice["retained_sha256"]:
+        try:
+            raw = git(root, "show", f":{notice['path']}") if staged else (root / notice["path"]).read_bytes()
+            start, end = notice["byte_start"], notice["byte_end"]
+            retained = notice["retained_sha256"]
+        except (KeyError, TypeError) as exc:
+            raise ValueError(f"protected external notice entry is malformed: {exc}") from exc
+        if len(raw) < end or hashlib.sha256(raw[start:end]).hexdigest() != retained:
             raise ValueError(f"protected external notice changed: {notice['path']}")
-        if notice["whole_file"]:
-            if hashlib.sha256(raw).hexdigest() != notice["blob_sha256"]:
+        whole_file = notice.get("whole_file")
+        if whole_file is None:
+            whole_file = start == 0 and end == len(raw)
+        if whole_file:
+            try:
+                blob = notice["blob_sha256"]
+            except (KeyError, TypeError) as exc:
+                raise ValueError(f"protected external notice entry is malformed: {exc}") from exc
+            if hashlib.sha256(raw).hexdigest() != blob:
                 raise ValueError(f"protected external notice blob changed: {notice['path']}")
             excluded.add(notice["path"])
     return excluded
@@ -483,7 +518,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.bootstrap and (args.mode != "transition" or not bootstrap_base_allowed(root, args.base or "")):
             raise ValueError("bootstrap requires a base that contains the initial rollout commit")
         owner_base = ownership_base(root, args.mode, args.base, args.ownership_base)
-        owned_exclusions = ownership_exclusions(root, owner_base, args.staged)
+        reviewed = args.mode == "transition" and oracle_review_covers()
+        candidate_notices = candidate_scope_notices(root, args.staged) if reviewed else None
+        owned_exclusions = ownership_exclusions(root, owner_base, args.staged, candidate_notices)
         baseline_policy = policy
         if args.base and not args.bootstrap:
             baseline_policy = load_policy(git(root, "show", f"{args.base}:{POLICY_PATH}"))
@@ -527,7 +564,7 @@ def main(argv: list[str] | None = None) -> int:
         validate_consumers(root, policy, args.staged)
         effective_policy = {
             **policy,
-            "exceptions": [e for e in policy["exceptions"] if e in baseline_policy["exceptions"]],
+            "exceptions": [e for e in policy["exceptions"] if e in baseline_policy["exceptions"] or reviewed],
             "ownership_excluded_members": owned_exclusions,
         }
         base_paths = []
