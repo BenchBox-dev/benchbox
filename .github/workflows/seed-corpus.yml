@@ -30,9 +30,9 @@ jobs:
             scale_factor: "0.01"
             extras: datafusion
           - benchmark: tpch
-            platform: clickhouse-local
+            platform: polars-df
             scale_factor: "0.01"
-            extras: clickhouse-local
+            extras: polars
 
           - benchmark: tpch
             platform: duckdb
@@ -43,22 +43,22 @@ jobs:
             scale_factor: "0.1"
             extras: datafusion
           - benchmark: tpch
-            platform: clickhouse-local
+            platform: polars-df
             scale_factor: "0.1"
-            extras: clickhouse-local
+            extras: polars
 
           - benchmark: tpch
             platform: duckdb
             scale_factor: "1.0"
             extras: duckdb
           - benchmark: tpch
+            platform: datafusion
+            scale_factor: "1.0"
+            extras: datafusion
+          - benchmark: tpch
             platform: clickhouse-local
             scale_factor: "1.0"
             extras: clickhouse-local
-          - benchmark: tpch
-            platform: polars-df
-            scale_factor: "1.0"
-            extras: polars
 
           - benchmark: tpcds
             platform: duckdb
@@ -102,6 +102,8 @@ jobs:
     env:
       SELECTED: ${{ github.event_name == 'schedule' || github.event.inputs.benchmark == '' || github.event.inputs.benchmark == matrix.benchmark }}
       BENCHBOX_OUTPUT_DIR: ${{ github.workspace }}/benchmark_runs
+      SEED_CELL: ${{ matrix.benchmark }} / ${{ matrix.platform }} / sf${{ matrix.scale_factor }}
+      SEED_STATUS_FILE: seed-status/${{ matrix.benchmark }}--${{ matrix.platform }}--sf${{ matrix.scale_factor }}.txt
 
     steps:
       - name: Checkout code
@@ -158,21 +160,31 @@ jobs:
         shell: bash
         env:
           RESULT_FILE: ${{ steps.locate.outputs.result_file }}
+          BENCHBOX_MACHINE_ID_SALT: ${{ secrets.BENCHBOX_MACHINE_ID_SALT }}
         run: |
           DEST="results-data/bundles/${{ matrix.benchmark }}/${{ matrix.platform }}/sf${{ matrix.scale_factor }}"
-          mkdir -p "$DEST"
-          BASENAME=$(basename "$RESULT_FILE")
-          cp "$RESULT_FILE" "$DEST/$BASENAME"
-
-          STEM="${RESULT_FILE%.json}"
-          [ -f "${STEM}.plans.json" ] && cp "${STEM}.plans.json" "$DEST/" || true
-          [ -f "${STEM}.tuning.json" ] && cp "${STEM}.tuning.json" "$DEST/" || true
-
-          echo "Staged to: $DEST/$BASENAME"
+          uv run -- python scripts/stage_seed_corpus_bundle.py "$RESULT_FILE" "$DEST"
         id: stage
 
+      - name: Record a failed cell
+        if: failure() && env.SELECTED == 'true'
+        shell: bash
+        run: |
+          if [ ! -f "$SEED_STATUS_FILE" ]; then
+            mkdir -p "$(dirname "$SEED_STATUS_FILE")"
+            printf '%s\tjob_failed\n' "$SEED_CELL" > "$SEED_STATUS_FILE"
+          fi
+
+      - name: Upload cell status
+        if: ${{ !cancelled() && env.SELECTED == 'true' }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: seed-status--${{ matrix.benchmark }}--${{ matrix.platform }}--sf${{ matrix.scale_factor }}
+          path: seed-status/
+          retention-days: 14
+
       - name: Upload bundle artifact
-        if: env.SELECTED == 'true'
+        if: env.SELECTED == 'true' && steps.stage.outputs.eligible == 'true'
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: seed-bundle--${{ matrix.benchmark }}--${{ matrix.platform }}--sf${{ matrix.scale_factor }}
@@ -199,6 +211,13 @@ jobs:
           path: results-data/bundles/
           merge-multiple: false
 
+      - name: Download cell statuses
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          pattern: seed-status--*
+          path: seed-status/
+          merge-multiple: true
+
       - name: Flatten artifact subdirectories
         shell: bash
         run: |
@@ -221,6 +240,9 @@ jobs:
 
       - name: Regenerate corpus inventory
         run: uv run -- python scripts/generate_corpus_inventory.py --write
+
+      - name: Validate corpus before opening a PR
+        run: uv run -- python results-data/validate_corpus.py
 
       - name: Check for new corpus changes
         id: check
@@ -252,9 +274,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh pr create \
-            --title "chore(data): seed corpus bundles (run ${{ github.run_number }})" \
-            --body "$(cat <<'EOF'
+          BODY_FILE="$(mktemp)"
+          cat > "$BODY_FILE" <<'EOF'
           ## Seed corpus update
 
           Automated PR from the `seed-corpus` workflow (run [${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})).
@@ -263,6 +284,16 @@ jobs:
 
           New or updated result bundles are committed under `results-data/bundles/`.
           Review the diff to confirm expected benchmark × platform × scale coverage.
+
+          ### Skipped cells
+          EOF
+          SKIPPED="$(find seed-status -type f -name '*.txt' -exec cat {} + | LC_ALL=C sort | awk -F '\t' '$2 != "eligible" {print "- `" $1 "`: `" $2 "`"}')"
+          if [ -n "$SKIPPED" ]; then
+            printf '\n%s\n' "$SKIPPED" >> "$BODY_FILE"
+          else
+            printf '\nNone.\n' >> "$BODY_FILE"
+          fi
+          cat >> "$BODY_FILE" <<'EOF'
 
           ### Trust label
 
@@ -274,7 +305,9 @@ jobs:
           opens a draft PR mirroring these bundles onto the `published-results`
           corpus branch.
           EOF
-          )" \
+          gh pr create \
+            --title "chore(data): seed corpus bundles (run ${{ github.run_number }})" \
+            --body-file "$BODY_FILE" \
             --base develop \
             --head "${{ steps.commit.outputs.branch }}"
 
