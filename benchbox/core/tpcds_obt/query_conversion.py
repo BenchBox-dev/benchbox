@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import random
 import re
 import zlib
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -38,41 +37,33 @@ _PREFIX_TO_TABLE = _QUERY_SPECS["prefix_to_table"]
 _DIM_STATIC_ROLE = _QUERY_SPECS["dim_static_role"]
 _IDENTIFIER_DEFAULT_FACT_TABLES = _QUERY_SPECS["identifier_default_fact_tables"]
 _CHANNEL_FACT_TABLES = _QUERY_SPECS["channel_fact_tables"]
+_QUERY_IDENTIFIER_COLUMNS = _QUERY_SPECS["query_identifier_columns"]
 _ROLE_PREFIX_MAP = _QUERY_SPECS["role_prefix_map"]
 
 
 @dataclass(frozen=True)
 class TemplateParameter:
     name: str
-    default: str | int | float
     kind: str
-    token: str
+    indices: tuple[int, ...]
 
-    def token_expression(self) -> str:
+    def token(self, index: int) -> str:
+        return f"__BB_PARAM_{self.name}__" if index == 1 else f"__BB_PARAM_{self.name}_{index}__"
+
+    def token_expression(self, index: int) -> str:
         if self.kind == "numeric":
-            return str(self.numeric_token)
-        if self.kind == "string":
-            return self.token
-        return self.token
+            return str(9_000_000 + int(zlib.crc32(self.token(index).encode()) % 1_000_000))
+        return self.token(index)
 
-    @property
-    def numeric_token(self) -> int:
-        import zlib
-
-        return 9_000_000 + int(zlib.crc32(self.token.encode()) % 1_000_000)
-
-    def render(self, value: Any | None = None) -> str:
-        val = self.default if value is None else value
-        if isinstance(val, (int, float)):
-            return str(val)
-        return str(val)
+    def placeholder(self, index: int) -> str:
+        return f"[{self.name}]" if index == 1 else f"[{self.name}.{index}]"
 
 
 @dataclass(frozen=True)
 class ConvertedQuery:
     query_id: int
     template_sql: str
-    default_sql: str
+    placeholder_sql: str
     parameters: dict[str, TemplateParameter]
     channels: tuple[str, ...]
 
@@ -189,7 +180,6 @@ class TemplateLoader:
 
         self.body_sql = "\n".join(lines).strip()
         self.limit_value = self._parse_limit()
-        self._expand_ulist_defaults()
         self.parameters = self._parse_parameters()
 
     def _store_definition(self, line: str) -> None:
@@ -207,90 +197,30 @@ class TemplateLoader:
         except ValueError:
             return None
 
-    def _expand_ulist_defaults(self) -> None:
-        expanded_names: list[str] = []
-        for name, expr in self.definitions.items():
-            if name.startswith("_"):
-                continue
-            if not expr.lower().startswith("ulist("):
-                continue
-            values = self._generate_ulist_values(name, expr)
-            if values is None:
-                continue
-            for i, val in enumerate(values, 1):
-                self.body_sql = self.body_sql.replace(f"[{name}.{i}]", str(val))
-            self.body_sql = self.body_sql.replace(f"[{name}]", str(values[0]))
-            expanded_names.append(name)
-        for name in expanded_names:
-            del self.definitions[name]
-
-    def _generate_ulist_values(self, name: str, expr: str) -> list[int] | None:
-        match = re.match(r"ulist\(random\((\d+),(\d+)", expr, re.IGNORECASE)
-        if not match:
-            return None
-        lo, hi = int(match.group(1)), int(match.group(2))
-        count_match = re.search(r",\s*(\d+)\)\s*$", expr)
-        if not count_match:
-            return None
-        count = int(count_match.group(1))
-        rng = random.Random(self.query_id * 1000 + zlib.crc32(name.encode()) % 10000)
-        if hi - lo + 1 < count:
-            return None
-        return rng.sample(range(lo, hi + 1), count)
-
     def _parse_parameters(self) -> dict[str, TemplateParameter]:
         params: dict[str, TemplateParameter] = {}
         for name, expr in self.definitions.items():
             if name.startswith("_"):
                 continue
-            default, kind = self._default_value(expr)
-            token = f"__BB_PARAM_{name}__"
-            params[name] = TemplateParameter(name=name, default=default, kind=kind, token=token)
+            indices = sorted(
+                {int(index or 1) for index in re.findall(rf"\[{re.escape(name)}(?:\.(\d+))?\]", self.body_sql)}
+            )
+            params[name] = TemplateParameter(name=name, kind=self._kind(expr), indices=tuple(indices))
         return params
 
-    def _default_value(self, expr: str) -> tuple[str | int | float, str]:
+    @staticmethod
+    def _kind(expr: str) -> str:
         expr_lower = expr.lower()
-        if expr_lower.startswith("random("):
-            numbers = re.findall(r"-?\d+", expr)
-            if numbers:
-                return int(numbers[0]), "numeric"
-            return 0, "numeric"
-
+        if expr_lower.startswith(("random(", "ulist(", "dist", "sub")):
+            return "numeric"
         if expr_lower.startswith("text("):
             match = re.search(r'\{"([^"]+)"', expr)
             if match:
-                value = match.group(1)
-                kind = "numeric" if value.isdigit() else "identifier"
-                return value, kind
-            return "value", "string"
-
+                return "numeric" if match.group(1).isdigit() else "identifier"
+            return "string"
         if expr_lower.startswith("date("):
-            return "1998-01-01", "string"
-
-        if expr_lower.startswith("ulist("):
-            numbers = re.findall(r"-?\d+", expr)
-            if numbers:
-                return int(numbers[0]), "numeric"
-            return 0, "numeric"
-
-        if expr_lower.startswith("dist") or expr_lower.startswith("sub"):
-            return 0, "numeric"
-
-        raw = expr.strip('"')
-        return raw, "numeric" if raw.isdigit() else "string"
-
-    def substitute_tokens(self, text: str) -> tuple[str, dict[str, TemplateParameter]]:
-        result = text
-        for name, param in self.parameters.items():
-            replacement = param.token_expression()
-            result = result.replace(f"[{name}]", replacement)
-        return result, self.parameters
-
-    def substitute_defaults(self, text: str) -> str:
-        result = text
-        for name, param in self.parameters.items():
-            result = result.replace(f"[{name}]", param.render())
-        return result
+            return "string"
+        return "numeric" if expr.strip('"').isdigit() else "string"
 
 
 def _gather_aliases(select: exp.Select) -> dict[str, str]:
@@ -442,27 +372,40 @@ class QueryConverter:
 
         template = TemplateLoader(query_id)
         channels = self._detect_channels(template.body_sql)
-        channel = next(iter(channels)) if len(channels) == 1 else None
-
-        params = self._normalize_identifier_defaults(template.parameters, channel)
+        params = template.parameters
         normalized_sql = self._apply_limit_macros(template.body_sql, template.limit_value)
         tokenized_sql = self._apply_param_tokens(normalized_sql, params)
 
         converted = self._rewrite_sql(tokenized_sql, channels)
-        template_sql = self._restore_placeholders(converted, params.values())
-        default_sql = self._apply_defaults(template_sql, params.values())
-        template_sql = self._normalize_intervals(template_sql)
-        default_sql = self._normalize_intervals(default_sql)
-        template_sql = self._post_process(query_id, template_sql)
-        default_sql = self._post_process(query_id, default_sql)
+        placeholder_sql = self._restore_placeholders(converted, params.values())
+        template_sql = self._post_process(query_id, self._normalize_intervals(placeholder_sql))
 
         return ConvertedQuery(
             query_id=query_id,
             template_sql=template_sql,
-            default_sql=default_sql,
+            placeholder_sql=placeholder_sql,
             parameters=params,
             channels=tuple(sorted(channels)),
         )
+
+    def render(self, converted: ConvertedQuery, values: Mapping[str, str]) -> str:
+        channel = converted.channels[0] if len(converted.channels) == 1 else None
+        sql = converted.placeholder_sql
+        for param in converted.parameters.values():
+
+            def substitute(match: re.Match[str], param: TemplateParameter = param) -> str:
+                key = f"{param.name}.{int(match.group(1) or 1):02d}"
+                if key not in values:
+                    raise ValueError(f"Query {converted.query_id} has no value for parameter {key}")
+                value = str(values[key])
+                if param.kind == "identifier":
+                    return ", ".join(
+                        self._map_identifier(converted.query_id, item.strip(), channel) for item in value.split(",")
+                    )
+                return value
+
+            sql = self._param_pattern(param.name).sub(substitute, sql)
+        return self._post_process(converted.query_id, self._normalize_intervals(sql))
 
     def _detect_channels(self, sql_text: str) -> set[str]:
         channels: set[str] = set()
@@ -482,8 +425,9 @@ class QueryConverter:
     def _apply_param_tokens(self, sql_text: str, params: dict[str, TemplateParameter]) -> str:
         result = sql_text
         for param in params.values():
-            pattern = self._param_pattern(param.name)
-            result = pattern.sub(param.token_expression(), result)
+            result = self._param_pattern(param.name).sub(
+                lambda match, param=param: param.token_expression(int(match.group(1) or 1)), result
+            )
         return result
 
     def _rewrite_sql(self, sql_text: str, channels: set[str]) -> str:
@@ -889,31 +833,17 @@ class QueryConverter:
     def _restore_placeholders(self, sql_text: str, params: Iterable[TemplateParameter]) -> str:
         restored = sql_text
         for param in params:
-            placeholder = f"[{param.name}]"
-            pattern = self._param_pattern(param.name)
-            restored = restored.replace(param.token_expression(), placeholder)
-            restored = restored.replace(param.token, placeholder)
-            restored = pattern.sub(placeholder, restored)
+            for index in sorted(param.indices, reverse=True):
+                placeholder = param.placeholder(index)
+                restored = restored.replace(param.token_expression(index), placeholder)
+                restored = restored.replace(param.token(index), placeholder)
         return restored
 
-    def _apply_defaults(self, template_sql: str, params: Iterable[TemplateParameter]) -> str:
-        rendered = template_sql
-        for param in params:
-            pattern = self._param_pattern(param.name)
-            rendered = pattern.sub(param.render(), rendered)
-        return rendered
-
-    def _normalize_identifier_defaults(
-        self, params: dict[str, TemplateParameter], channel: str | None
-    ) -> dict[str, TemplateParameter]:
-        normalized: dict[str, TemplateParameter] = {}
-        for name, param in params.items():
-            default = param.default
-            if param.kind == "identifier":
-                mapped = self._map_identifier_default(str(default), channel)
-                default = mapped or default
-            normalized[name] = TemplateParameter(name=name, default=default, kind=param.kind, token=param.token)
-        return normalized
+    def _map_identifier(self, query_id: int, value: str, channel: str | None) -> str:
+        overrides = _QUERY_IDENTIFIER_COLUMNS.get(query_id, {})
+        if value.lower() in overrides:
+            return overrides[value.lower()]
+        return self._map_identifier_default(value, channel) or value
 
     def _map_identifier_default(self, value: str, channel: str | None) -> str | None:
         lowered = value.lower()
@@ -1115,7 +1045,7 @@ class QueryConverter:
             sql_text = sql_text.replace("AND item_i_item_sk = item_sk", "AND obt.item_sk = descending.item_sk", 1)
 
         if query_id == 45:
-            sql_text = sql_text.replace("ca_city", "bill_addr_ca_city")
+            sql_text = re.sub(r"(?<![\w.])ca_(\w+)", r"bill_addr_ca_\1", sql_text)
 
         if query_id in {47, 57}:
             sql_text = re.sub(r"\[SELECTONE\]\s*AS\s*,", "[SELECTONE],", sql_text)
@@ -1129,10 +1059,7 @@ class QueryConverter:
                     "GROUP BY\n    obt.item_i_category AS i_category,\n    obt.item_i_brand AS i_brand,\n    obt.store_s_store_name AS s_store_name,\n    obt.store_s_company_name AS s_company_name,\n    obt.sold_date_d_year AS d_year,\n    obt.sold_date_d_moy AS d_moy",
                     "GROUP BY\n    obt.item_i_category,\n    obt.item_i_brand,\n    obt.store_s_store_name,\n    obt.store_s_company_name,\n    obt.sold_date_d_year,\n    obt.sold_date_d_moy",
                 )
-                sql_text = sql_text.replace(
-                    "WHERE\n  sold_date_d_year = 1999",
-                    "WHERE\n  d_year = 1999",
-                )
+                sql_text = re.sub(r"WHERE\n  sold_date_d_year = (\S+)", r"WHERE\n  d_year = \1", sql_text)
             if query_id == 57:
                 sql_text = sql_text.replace(
                     "SELECT\n    obt.item_i_category,\n    obt.item_i_brand,\n    obt.call_center_cc_name,\n    obt.sold_date_d_year,\n    obt.sold_date_d_moy,",
@@ -1142,10 +1069,7 @@ class QueryConverter:
                     "GROUP BY\n    obt.item_i_category AS i_category,",
                     "GROUP BY\n    obt.item_i_category,",
                 )
-                sql_text = sql_text.replace(
-                    "WHERE\n  sold_date_d_year = 1999",
-                    "WHERE\n  d_year = 1999",
-                )
+                sql_text = re.sub(r"WHERE\n  sold_date_d_year = (\S+)", r"WHERE\n  d_year = \1", sql_text)
 
         if query_id == 49:
             sql_text = sql_text.replace("wr.wr_order_number", "obt.sale_id")
@@ -1201,6 +1125,8 @@ class QueryConverter:
             )
 
         if query_id == 59:
+            month_seq = re.search(r"sold_date_d_month_seq BETWEEN (\S+) AND", sql_text)
+            dms = month_seq.group(1) if month_seq else ""
             sql_text = sql_text.replace(
                 "  SELECT\n    obt.sold_date_d_week_seq,\n    obt.store_sk,",
                 "  SELECT\n    obt.sold_date_d_week_seq,\n    obt.store_sk,\n    obt.store_s_store_name,\n    obt.store_s_store_id,\n    obt.sold_date_d_month_seq,",
@@ -1211,7 +1137,7 @@ class QueryConverter:
             )
 
             sql_text = sql_text.replace(
-                """FROM (
+                f"""FROM (
   SELECT
     obt.store_s_store_name AS s_store_name1,
     wss.d_week_seq AS d_week_seq1,
@@ -1229,11 +1155,11 @@ class QueryConverter:
     (
       sold_date_d_week_seq = wss.d_week_seq
       AND obt.store_sk = obt.store_s_store_sk
-      AND obt.sold_date_d_month_seq BETWEEN 1176 AND 1176 + 11
+      AND obt.sold_date_d_month_seq BETWEEN {dms} AND {dms} + 11
     )
     AND channel = 'store'
 ) AS y, (""",
-                """FROM (
+                f"""FROM (
   SELECT
     wss.store_s_store_name AS s_store_name1,
     wss.sold_date_d_week_seq AS d_week_seq1,
@@ -1247,12 +1173,12 @@ class QueryConverter:
     sat_sales AS sat_sales1
   FROM wss
   WHERE
-    wss.sold_date_d_month_seq BETWEEN 1176 AND 1176 + 11
+    wss.sold_date_d_month_seq BETWEEN {dms} AND {dms} + 11
 ) AS y, (""",
             )
 
             sql_text = sql_text.replace(
-                """  SELECT
+                f"""  SELECT
     obt.store_s_store_name AS s_store_name2,
     wss.d_week_seq AS d_week_seq2,
     obt.store_s_store_id AS s_store_id2,
@@ -1269,11 +1195,11 @@ class QueryConverter:
     (
       sold_date_d_week_seq = wss.d_week_seq
       AND obt.store_sk = obt.store_s_store_sk
-      AND obt.sold_date_d_month_seq BETWEEN 1176 + 12 AND 1176 + 23
+      AND obt.sold_date_d_month_seq BETWEEN {dms} + 12 AND {dms} + 23
     )
     AND channel = 'store'
 ) AS x""",
-                """  SELECT
+                f"""  SELECT
     wss.store_s_store_name AS s_store_name2,
     wss.sold_date_d_week_seq AS d_week_seq2,
     wss.store_s_store_id AS s_store_id2,
@@ -1286,7 +1212,7 @@ class QueryConverter:
     sat_sales AS sat_sales2
   FROM wss
   WHERE
-    wss.sold_date_d_month_seq BETWEEN 1176 + 12 AND 1176 + 23
+    wss.sold_date_d_month_seq BETWEEN {dms} + 12 AND {dms} + 23
 ) AS x""",
             )
             sql_text = sql_text.replace(
@@ -1421,7 +1347,7 @@ class QueryConverter:
 
     @staticmethod
     def _param_pattern(name: str) -> re.Pattern[str]:
-        return re.compile(rf"\[{re.escape(name)}(?:\.\d+)?\]")
+        return re.compile(rf"\[{re.escape(name)}(?:\.(\d+))?\]")
 
 
 __all__ = [

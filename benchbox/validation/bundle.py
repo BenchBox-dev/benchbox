@@ -94,6 +94,7 @@ SUBMISSION_NOTES_MAX_LEN = 500
 KNOWN_DEFECT_IDS = frozenset(
     {
         "defective-macdbgen-addresses",
+        "defective-tpcds-obt-parameters",
         "defective-windows-dsdgen-scale",
     }
 )
