@@ -68,6 +68,15 @@
       "op": "release",
       "op_id": "1dbacbf28cde4a05b321b1554619236a",
       "session_id": "6f643d8692e8442884de4af547f77a25"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:6b9b7c4e8f8d58a0a7174a0a",
+      "at": "2026-10-16T09:04:32Z",
+      "client": "claude-code",
+      "generation": "eb6ab8bc7be84fec9c49c02610fa2195",
+      "op": "take",
+      "op_id": "becdcfd4632541ebae17eedaf4e3396c",
+      "session_id": "5c80d5d463444a2ba9410e1fdfb1d517"
     }
   ]
 }
