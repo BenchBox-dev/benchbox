@@ -3,7 +3,7 @@
     "Owner decision recorded for each gap (tighten, with the design, or keep, with the reason)",
     "If tightened: an implementation item filed, or the change merged with oracle review"
   ],
-  "context": "Owner decisions D-O1 and D-O2 (2026-10-08) matched the live gate and said tightening could be its own decision after cutover. Two oracle shadow threads on PR #2751 record the gaps (validator change skipped; bijection self-comparison); the agent rebutted them and left them for the owner to resolve. Bridge-secret environment option (item 72, 2026-10-14): a develop-only environment for SITE_BRIDGE_* was not done here because repository-settings changes are forbidden by owner decision D3 (2026-10-14 review session); item 72 instead tightens bundle-fetch producing-run provenance in code. Core bridge secrets in a develop-only environment remain an option recorded here.\n\nINPUT FOR THE DECISION 2026-10-16: gap 2 has a live example. #2930 (b14349cf0) merged six bundles with export.anonymized false because the corpus validator did not yet check the flag; the check arrived later as validator code in #2993 (89b350dda). #2993 also changed the corpus (flag flipped on those six bundles), so the corpus validator ran against the full corpus in that PR's results-data-check, and the bundle attestations did re-check. A validator-only change with no corpus edit would not have been re-checked against the existing corpus by validator_parity. Core results-data-check (ci.yml) runs `results-data/validate_corpus.py` over every bundle on each PR that touches results-data or the validator, which covers core but not the site bundle attestation.",
+  "context": "Owner decisions D-O1 and D-O2 (2026-10-08) matched the live gate and said tightening could be its own decision after cutover. Two oracle shadow threads on PR #2751 record the gaps (validator change skipped; bijection self-comparison); the agent rebutted them and left them for the owner to resolve. Bridge-secret environment option (item 72, 2026-10-14): a develop-only environment for SITE_BRIDGE_* was not done here because repository-settings changes are forbidden by owner decision D3 (2026-10-14 review session); item 72 instead tightens bundle-fetch producing-run provenance in code. Core bridge secrets in a develop-only environment remain an option recorded here.\n\nINPUT FOR THE DECISION 2026-10-16: gap 2 has a live example. #2930 (b14349cf0) merged six bundles with export.anonymized false because the corpus validator did not yet check the flag; the check arrived later as validator code in #2993 (89b350dda). #2993 also changed the corpus (flag flipped on those six bundles), so its results-data-check ran the new validator over the full corpus. A validator-only change with no corpus edit would not have been re-checked against the existing corpus by validator_parity. In core, results-data-check (ci.yml) runs `results-data/validate_corpus.py` over every bundle whenever the CI path filter selects the results-data unit; that covers core PRs, not the site bundle attestation.",
   "description": "The bundle attestations deliberately match the deploy gate they replace. Two accepted gaps remain:\n\n1. **Bijection self-reference.** `corpus_bijection` runs with `--accepted-ref`, `--expect-source` and `--bundles-dir` all at the bundle commit, as `scripts/site_deploy/gates.py:117-131` does. It proves snapshot-to-tree consistency, not that the published bundles were accepted. Comparing against `published-results` instead failed every bundle while a results mirror PR was open.\n2. **Validator-only changes.** `validator_parity` runs only when the results-data tree changed. A change to validator code alone is not re-checked against the existing corpus until the next corpus change. `validator_parity.py` compares only bundles that changed in range, so it cannot cover this without a new full-corpus mode.\n\nDecide, with the owner, whether either should be tightened once the site repo is the production writer. Options include a full-corpus parity mode, or a bijection against the accepted corpus that tolerates an open mirror PR.",
   "sessions": [
     {
@@ -28,6 +28,14 @@
       "client": "claude-code",
       "op": "update",
       "op_id": "655543d0c5f54901b3a63147558bff62",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-16T17:08:36Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "98b500e0a6d54236a343730cce0be3c4",
       "session_id": "400c76c14fce4783943655593419ae3c"
     }
   ]
