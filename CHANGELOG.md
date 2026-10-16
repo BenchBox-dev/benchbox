@@ -449,6 +449,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   never a valid profile key.
 
 ### Before you upgrade
+- Runs whose tuning configuration contains nested mappings (for example per-table
+  settings) get a different generated database name once, because the name now
+  ignores the order of nested keys. BenchBox does not find the database an
+  earlier release created for the same configuration, so it creates a new one
+  and loads the data again. Drop the old database if you no longer need it.
+  Names for flat configurations do not change.
 - Dask `use_distributed=false` together with `scheduler_address` now fails with
   an error. In 0.4.2 it connected to the scheduler. To connect to an existing
   scheduler, use the `distributed` engine:
