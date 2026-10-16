@@ -138,6 +138,24 @@ modes check everything.
 - **External exclusions:** each names its upstream owner and a provenance file.
   A pull request cannot widen one or overlap it with a completed scope. New
   files under an exclusion are still checked in a base comparison.
+- **Policy ratchet:** a base comparison (`--base` without `--bootstrap`, as
+  `make comment-policy-check`, the hook, and CI run it) compares your policy
+  with the base policy. It fails if enforcement moves from blocking to
+  advisory, a completed scope is removed, or an external exclusion is added
+  or changed. Report and strict runs without `--base`, and bootstrap runs,
+  skip it.
+- **Wheel bumps:** the one allowed external change replaces a pinned `.whl`
+  entry with a wheel of the same distribution in the same directory, with the
+  same `owner` and `provenance`; the old entry must go. The checker then
+  verifies the new wheel: `provenance` is the owning `pyproject.toml`, which
+  lists the owner as a dependency and binds it in `[tool.uv.sources]` to the
+  new wheel's relative path. The `uv.lock` beside it has one package of that
+  name, with the same source, the wheel's version, and exactly that file name
+  and SHA-256 hash. The wheel's `METADATA` name and version must match. With
+  `--staged` it reads these files from the index. To bump a wheel, add the new
+  file and delete the old one, point `[tool.uv.sources]` at it, run `uv lock`
+  in that project, change only `path` in the policy entry, and commit them
+  together.
 - Generated first-party code and `_sources/compilation` scripts are in scope.
   TPC templates and catalog-owned skill mirrors are not; they have their own
   provenance.

@@ -215,3 +215,50 @@ def test_staged_bump_verification_reads_the_index(tmp_path: Path) -> None:
 
     _git(root, "add", "vendor")
     verify_wheel_bumps(root, policy, baseline, staged=True)
+
+
+def _bump_against_base(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, **overrides: object) -> tuple[Path, str]:
+    for name in ("GITHUB_EVENT_PATH", "GITHUB_REPOSITORY", "GITHUB_TOKEN", "GH_TOKEN", "GITHUB_ACTIONS"):
+        monkeypatch.delenv(name, raising=False)
+    root, policy, baseline = _bump_repo(tmp_path, **overrides)
+    policy_path = root / "quality/comment-policy.json"
+    policy_path.write_text(json.dumps(baseline), encoding="utf-8")
+    (root / "module.py").write_text("x = 1\n", encoding="utf-8")
+    _git(root, "add", "quality/comment-policy.json", "module.py")
+    base = _commit(root, "base.txt")
+    policy_path.write_text(json.dumps(policy), encoding="utf-8")
+    return root, base
+
+
+def test_main_accepts_a_bound_wheel_bump_against_the_base(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root, base = _bump_against_base(tmp_path, monkeypatch)
+
+    assert main(["--root", str(root), "--mode", "transition", "--base", base]) == 0
+
+
+def test_main_rejects_an_unbound_wheel_bump_against_the_base(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root, base = _bump_against_base(tmp_path, monkeypatch, digest="sha256:" + "0" * 64)
+
+    assert main(["--root", str(root), "--mode", "transition", "--base", base]) == 2
+    assert "uv.lock does not record this file and hash" in capsys.readouterr().err
+
+
+def test_main_without_a_base_skips_wheel_bump_verification(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root, _ = _bump_against_base(tmp_path, monkeypatch, digest="sha256:" + "0" * 64)
+
+    assert main(["--root", str(root), "--mode", "report"]) == 0
+
+
+def test_main_bootstrap_skips_wheel_bump_verification(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import check_comment_policy
+
+    root, base = _bump_against_base(tmp_path, monkeypatch, digest="sha256:" + "0" * 64)
+    monkeypatch.setattr(check_comment_policy, "bootstrap_base_allowed", lambda _root, _base: True)
+
+    assert main(["--root", str(root), "--mode", "transition", "--base", base]) == 2
+    assert "wheel bump is not verified" in capsys.readouterr().err
+    assert main(["--root", str(root), "--mode", "transition", "--base", base, "--bootstrap"]) == 0
