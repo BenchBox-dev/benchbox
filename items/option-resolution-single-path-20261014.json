@@ -4,7 +4,7 @@
     "Every registry alias accepts the same --platform-option set as its canonical name",
     "Option specs for every platform are visible after importing benchbox.platforms alone (fresh-process test)"
   ],
-  "context": "Found 2026-10-14 during the core execution-variants remediation (#2946 follow-ups); verified on develop 9400b62c4. Related: platform-options-reach-adapters-20261014.\nBatch: _project/handoffs/execution-variant-general-followups-batch-20261014.md, started 2026-10-14",
+  "context": "Found 2026-10-14 during the core execution-variants remediation (#2946 follow-ups); verified on develop 9400b62c4. Related: platform-options-reach-adapters-20261014.\nBatch: _project/handoffs/execution-variant-general-followups-batch-20261014.md, started 2026-10-14\nLanded 2026-10-16: PR #2983, merge commit 9a0947f74d60b6e0b200146ba19d777bf474bde2 (rebased onto develop 75d93e863; the force_recreate spec added to the deleted platform_defaults.py by #3013 was carried into the central table in benchbox/platforms/__init__.py; the platform_defaults.py entry in the CLI drift test allowlist is kept). Oracle: muse SHIP on head e54665ade, no stand-in.\nTests: tests/unit/cli/test_option_resolution.py, tests/unit/cli/test_platform_options_reach_adapters.py, tests/uat/test_no_cli_surface_drift.py, tests/integration/test_execution_engine_sources.py, tests/unit/cli, tests/unit/mcp, tests/unit/core/test_execution_vocabulary_parity.py all green; make lint and make comment-policy-check green.\nNo ADR amendment. Follow-ups already tracked in option-resolution-remaining-paths-20261014.\nClose-out (finish) pending: the tracker worker identity already holds a live claim on tuning-capability-single-source-validator-20261001 (another session), so take returned E_MULTIPLE_CLAIMS and the claim was not touched.",
   "description": "## Problem\n- **Default-valued CLI options lose to saved profiles.** `create_config` leaves a CLI value equal to the spec default out of the explicit layer (`benchbox/cli/database.py:364`; `platforms/base/config_utils.py:84-87`; `base/mysql_wire.py:536-539`).\n  - A saved credential then wins. Probe: `--platform-option host=localhost` with a saved `prod.example.com` connects to `prod.example.com`, so DDL and loads hit the remote host.\n  - Affected: postgres-family, Trino/Presto and mysql-wire.\n- **Registry aliases are not resolved before option parsing** (`cli/platform.py:42-48`, `cli/run_platform_resolution.py:75,188`, `core/platform_registry.py:139-141`). `sqlite3`, `azure_synapse`, `pg_duckdb` and `fabric_lakehouse` with any `--platform-option` fail with \"does not accept platform-specific options\".\n- **Some option specs register only on CLI import.** ClickHouse, DuckDB, SQLite and the well-known option specs live in `cli/platform_defaults.py:41-310,352`, imported only by `cli/app.py` and `cli/database.py`.\n  - So `list_option_specs(\"clickhouse\")` returns [] from the Python API or MCP.\n  - The MCP dataframe filter (`mcp/tools/benchmark.py:394`) then falls back to all options.\n\n## Change\n- Build the explicit layer from the keys the user actually supplied.\n- Apply `PlatformRegistry.resolve_platform_name` before `parse_options`.\n- Move the CLI-only spec registrations into `benchbox/platforms/__init__.py`.",
   "links": [
     "benchbox/cli/database.py",
@@ -28,6 +28,14 @@
       "op": "update",
       "op_id": "e4199d89a1b54d8cba24e777ccced6f7",
       "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:6b9b7c4e8f8d58a0a7174a0a",
+      "at": "2026-10-16T04:49:16Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "348fa93340194f5f8c7ed8d8143700f2",
+      "session_id": "5c80d5d463444a2ba9410e1fdfb1d517"
     }
   ]
 }
