@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Owner approves the cloud run and its budget before it starts",
+    "SF0.01 (or smallest practical) Redshift run with refresh: RF1/RF2 row evidence and transaction syntax accepted",
+    "Refresh capability re-enabled for Redshift with the capability test updated, or the reason it stays off recorded",
+    "Cloud resources cleaned up after the run"
+  ],
+  "description": "PR #3004 turned off TPC-H refresh support on Redshift because it had no proof run. Re-enabling it needs a small Redshift proof run, which is live cloud spend and requires owner approval at run time.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-16T16:43:31Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "b90ccb4ce6714e6bb9681fe8b56056ba",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}

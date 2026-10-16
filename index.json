@@ -23360,6 +23360,13 @@
       "status": "open",
       "title": "Prove TPC-H refresh functions on PostgreSQL-derived adapters"
     },
+    "tpch-refresh-redshift-proof-20261016": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Prove TPC-H refresh functions on Redshift before re-enabling them"
+    },
     "tpch-skew-dataframe-sql-id-mapping": {
       "claim": null,
       "needs": [],
