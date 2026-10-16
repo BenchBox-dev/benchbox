@@ -146,6 +146,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- SQLite runs now honour `--platform-option database_name=<name>`. The run
+  creates and uses `<name>.db` in the benchmark's database directory. Before,
+  the option was ignored and the run used the default
+  `<benchmark>_<scale>_notuning_noconstraints.sqlite` file. Runs without the
+  option keep the default name.
+
 - A tuning file that sets only some constraint types (for example
   `primary_keys: {enabled: true}`) no longer fails validation with
   "requested unique_constraints is not applied at execution". Leaving out

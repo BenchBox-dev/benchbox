@@ -570,6 +570,33 @@ class TestSQLiteAdapter:
         assert str(custom_output) in adapter.database_path
         assert "tpch" in adapter.database_path.lower()
 
+    def test_from_config_with_database_name(self, tmp_path):
+        config = {
+            "benchmark": "tpch",
+            "scale_factor": 0.01,
+            "output_dir": str(tmp_path),
+            "database_name": "named_run",
+        }
+
+        adapter = SQLiteAdapter.from_config(config)
+
+        assert adapter.database_path == str(tmp_path / "databases" / "tpch_sf001" / "named_run.db")
+
+    def test_cli_database_name_option_reaches_adapter(self, tmp_path, monkeypatch):
+        from benchbox.core.platform_config import get_platform_config
+        from benchbox.core.schemas import DatabaseConfig
+
+        monkeypatch.setenv("BENCHBOX_OUTPUT_DIR", str(tmp_path))
+        named = {"database_name": "named_run"}
+        database_config = DatabaseConfig(
+            type="sqlite", name="SQLite", options={**named, "_explicit_platform_options": named}
+        )
+
+        platform_config = get_platform_config(database_config, None, benchmark_name="tpch", scale_factor=0.01)
+        adapter = SQLiteAdapter.from_config(platform_config)
+
+        assert adapter.database_path == str(tmp_path / "databases" / "tpch_sf001" / "named_run.db")
+
     def test_from_config_raises_on_missing_path(self):
         from benchbox.core.exceptions import ConfigurationError
 
