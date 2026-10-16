@@ -4,7 +4,7 @@
 ```{tags} reference, cli, metrics
 ```
 
-Calculate TPC Power@Size and Throughput@Size from benchmark results.
+Calculate TPC Power@Size, Throughput@Size, and TPC-H QphH@Size from benchmark results.
 
 ## Basic Syntax
 
@@ -16,7 +16,7 @@ benchbox metrics <subcommand> [OPTIONS]
 
 ### `qphh` - TPC-H QphH@Size
 
-Calculate Power@Size, Throughput@Size, and QphH@Size from TPC-H power and throughput results. QphH@Size requires official compliance, all 22 completed power queries, successful RF1/RF2 in Power, at least two completed throughput query streams, and one successful refresh pair per stream on consecutive update sets. If a condition is missing, the command exits with a reason; result JSON can carry those reasons in `qphh_unavailable`. QphDS@Size is not computed.
+Calculate Power@Size, Throughput@Size, and QphH@Size from TPC-H power and throughput results. QphH@Size requires official compliance, all 22 completed power queries, successful RF1/RF2 in Power, at least two completed throughput query streams, and one successful refresh pair per stream on consecutive update sets. Refresh functions run only when the TPC-H run sets `--benchmark-option tpch_refresh_functions=true`, on DuckDB, SQLite, PostgreSQL, Snowflake, SingleStore, and the adapters built on them. If a condition is missing, the command still reports Power@Size and Throughput@Size, omits QphH@Size, and lists the reasons; JSON output carries them in `qphh_unavailable`. QphDS@Size is not computed because BenchBox does not run the TPC-DS data maintenance phases it requires.
 
 **Formula:**
 
@@ -28,7 +28,7 @@ QphH@Size        = sqrt(Power@Size × Throughput@Size), rounded to 0.1
 Where Queries = 22 × streams for TPC-H and 99 × streams for TPC-DS.
 ```
 
-The command exits non-zero when either file has suppressed TPC metrics or any QphH condition fails.
+The command exits non-zero when either file has suppressed TPC metrics, an unofficial sub-scale or non-standard compliance class, failed queries, or a failed throughput phase. A missing QphH condition does not cause a non-zero exit.
 
 ```bash
 benchbox metrics qphh --power-results <path> --throughput-results <path> [OPTIONS]
