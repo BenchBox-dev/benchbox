@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Reproduce on develop: second `--force datagen` run against existing TPC-H SF0.01 data skips generation",
+    "`--force datagen` and `--force all` regenerate TPC-H data (and other dbgen/dsdgen-backed benchmarks that share the path, e.g. TPC-DS), confirmed by log and file mtimes",
+    "Runs without --force still reuse valid existing data",
+    "Unit or integration test that fails without the fix",
+    "CHANGELOG Fixed entry"
+  ],
+  "context": "Found while fixing force-datagen-force-recreate-propagation-20261016 (PR #3036).",
+  "description": "With existing valid TPC-H data, `benchbox run --benchmark tpch --force datagen` still logs \"Skipping data generation (existing data is valid)\" from the dbgen generator. The force flag reaches the platform adapter as force_recreate (fixed separately), but not the data generator. Suspected cause: `BenchmarkOrchestrator._get_benchmark_instance` in `benchbox/cli/orchestrator.py` only forwards `force_regenerate` when the benchmark registers that option, and TPC-H likely does not.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-16T16:27:11Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "1696fc5c4baa4a109a38d1c6de868184",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}
