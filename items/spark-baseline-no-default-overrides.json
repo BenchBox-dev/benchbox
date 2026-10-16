@@ -7,7 +7,7 @@
     "The generation-seam decision (bump or not) is recorded with the user's agreement, and results docs state which Spark baselines are comparable.",
     "uv run -- pytest tests/unit/platforms tests/unit/core/tuning -q -k spark passes."
   ],
-  "context": "PR #3007 (fix/spark-baseline-no-default-overrides, worktree BenchBox.wt-spark-baseline-no-default-overrides). Taken over 2026-10-16 from an idle codex worker whose claim expired. Owner decisions 2026-10-15 being applied: cache disabling and Spark driver/executor memory and cores stay in every mode and are recorded in the ledger as harness_required; Hadoop compression codecs left at engine defaults; TUNING_POLICY_GENERATION bumped to adr-003-spark-baseline (owner agreed to the bump). Shuffle/AQE fallback collapsed into spark_session_tuning_conf_entries in _spark_helpers.py. Claim released between steps because the worker identity is shared; re-take and finish after the PR merges.",
+  "context": "PR #3007 merged 2026-10-16 as aa25bd836 (oracle success on head bc3902d63). Untuned Spark, LakeSail, Velox and PySpark runs leave AQE, CBO, shuffle partitions and broadcast thresholds at engine defaults; tuned runs keep curated values through spark_session_tuning_conf_entries in _spark_helpers.py. Owner decisions 2026-10-15 applied: cache disabling and Spark driver/executor memory and cores stay in every mode and are recorded in the ledger as harness_required (status harness_default, excluded from overall_status and corroboration); Hadoop codecs left at engine defaults; owner agreed to bump TUNING_POLICY_GENERATION, now adr-003-spark-baseline. ADR-003 and the CHANGELOG (Before you upgrade) state that Spark-family results across the change are not comparable.",
   "description": "User decision 2026-09-30: a `notuning` run must not override Spark's default configuration. Today `configure_for_benchmark` (spark.py ~L659, lakesail.py ~L526) always calls `apply_spark_olap_runtime_conf` (_spark_helpers.py ~L70-101), which sets five AQE/CBO keys in every mode; Spark's defaults for spark.sql.cbo.enabled and spark.sql.cbo.joinReorder.enabled are false. That is a curated optimisation pack running in the baseline, the same inversion ADR-003 (docs/development/tuning-adr-003-baseline-and-single-renderer.md) fixed for ClickHouse (see benchbox/platforms/clickhouse/tuning.py ~L44-99: harness settings in every mode, optimisation pack gated on self.tuning_enabled). Velox's configure_for_benchmark (velox.py ~L563-576) sets the CBO keys inline, records nothing and does not use the shared helper.\n\nScope:\n- Gate the CBO pack (and any AQE/shuffle values that differ from the engine default on the supported Spark versions) on tuning_enabled, for spark, velox and lakesail.\n- Review other BenchBox-originated session values set in every mode: `adaptive_enabled` default at session build (spark.py ~L453-459), `shuffle_partitions` default 200, and the joinorder-only `broadcast_threshold = -1` (spark.py ~L349-356). Keep only engine-mandatory settings (warehouse dir, table-format extensions/catalogs, the Gluten plugin and off-heap settings) and record them in the ledger as harness-required so they are visible and not mistaken for tuning.\n- Route Velox through the shared helper so its session settings are recorded.\n- Baseline Spark and LakeSail bundles will gain a ledger payload; keep `overall_status` meaningful (Opus suggested a `harness_default` mechanism excluded from overall_status) - decide and document.\n- This changes baseline numbers. ADR-003 reconciliation: decide whether TUNING_POLICY_GENERATION (benchbox/core/tuning/policy_generation.py) needs a new generation, and ask the user before bumping it. Document the comparability break for old Spark baselines.",
   "links": [
     "item:spark-session-config-runtime",
@@ -91,6 +91,14 @@
       "generation": "4b6c519913184ad585d9e07d736395ba",
       "op": "release",
       "op_id": "50424105f6674734969c13ee35e98581",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-16T15:24:18Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "8a1548b3eaa64956808adce9062ad88b",
       "session_id": "400c76c14fce4783943655593419ae3c"
     }
   ]
