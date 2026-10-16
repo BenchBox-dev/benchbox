@@ -18,6 +18,7 @@ from benchbox.core.results.anonymization import (
     AnonymizationConfig,
     AnonymizationManager,
     _is_public_pseudonym,
+    anonymize_applied_tuning_payload,
     find_public_path_leaks,
 )
 
@@ -1380,3 +1381,41 @@ class TestCloudWarehouseAndOutputLocation:
         from benchbox.core.results.environment import MetadataSource
 
         assert frozenset(get_args(MetadataSource)) == anonymization._OPTION_SOURCE_LABELS
+
+
+class TestInlinedAppliedTuningRedaction:
+    @staticmethod
+    def _applied() -> dict:
+        return {
+            "status": "applied_unverified",
+            "statements": [
+                {"statement": "CREATE TABLE orders (o_id Int64) ENGINE = MergeTree() ORDER BY o_id", "phase": "ddl"},
+                {"statement": "SET max_threads = 8", "phase": "session", "error": "denied", "table": "orders"},
+            ],
+            "dropped": [{"intent": "partitioning:orders", "reason": "load-time only"}],
+            "satisfied": [{"intent": "sorted_ingestion orders", "reason": "ddl order by"}],
+            "receipt": {"error": "lookup failed", "entries": [{"statement": "x", "reason": "absent"}]},
+            "drift_check": {"is_valid": False, "errors": ["orders missing"]},
+        }
+
+    def test_result_payload_redacts_inlined_applied_tuning_like_export(self):
+        from benchbox.validation.bundle import unanonymized_tuning_findings
+
+        payload = {"platform": {"name": "clickhouse-local", "tuning": {"applied": self._applied()}}}
+        assert unanonymized_tuning_findings(payload)
+
+        anonymized = AnonymizationManager().anonymize_result_payload(payload)
+
+        applied = anonymized["platform"]["tuning"]["applied"]
+        assert unanonymized_tuning_findings(anonymized) == []
+        assert "MergeTree" not in json.dumps(anonymized)
+        assert all(entry["statement_redacted"] is True for entry in applied["statements"])
+        assert applied["dropped"] == applied["satisfied"] == [{"redacted": True}]
+        assert applied["receipt"]["error_redacted"] is True
+        assert applied["drift_check"]["drift_redacted"] is True
+        assert "statement" in payload["platform"]["tuning"]["applied"]["statements"][0]
+
+        expected = AnonymizationManager().anonymize_result_payload(
+            {"platform": {"tuning": {"applied": anonymize_applied_tuning_payload(self._applied())}}}
+        )
+        assert applied == expected["platform"]["tuning"]["applied"]

@@ -26,6 +26,7 @@ PathLike = Union[Path, "CloudPath", "DatabricksPath"]
 from benchbox.core.results.anonymization import (
     AnonymizationConfig,
     AnonymizationManager,
+    anonymize_applied_tuning_payload,
 )
 from benchbox.core.results.canonical_json import canonical_json_text
 from benchbox.core.results.models import BenchmarkResults
@@ -285,7 +286,7 @@ class ResultExporter:
         if not applied_payload:
             return None
         if self.anonymize and self.anonymization_manager:
-            return self._anonymize_applied_payload(applied_payload)
+            return anonymize_applied_tuning_payload(applied_payload)
         return _redact_usernames(applied_payload)
 
     def _write_companion_files(self, result: ResultLike, filename_base: str) -> None:
@@ -340,90 +341,6 @@ class ResultExporter:
             physical_operator["platform_metadata"] = {}
         for child in node.get("children") or []:
             self._strip_operator_platform_metadata(child)
-
-    def _anonymize_applied_payload(self, applied_payload: dict[str, Any]) -> dict[str, Any]:
-        sanitized = copy.deepcopy(applied_payload)
-        statements = sanitized.get("statements")
-        if isinstance(statements, list):
-            for entry in statements:
-                if not isinstance(entry, dict):
-                    continue
-                entry.pop("statement", None)
-                entry.pop("error", None)
-                entry.pop("table", None)
-                entry["statement_redacted"] = True
-        self._sanitize_applied_dropped(sanitized)
-        self._sanitize_applied_satisfied(sanitized)
-        self._sanitize_applied_receipt(sanitized.get("receipt"))
-        self._sanitize_applied_drift_check(sanitized.get("drift_check"))
-        return sanitized
-
-    @staticmethod
-    def _sanitize_applied_dropped(payload: Any) -> None:
-        if not isinstance(payload, dict) or "dropped" not in payload:
-            return
-        dropped = payload.get("dropped")
-        if not dropped:
-            return
-        count = len(dropped) if isinstance(dropped, list) else 1
-        payload["dropped"] = [{"redacted": True} for _ in range(count)]
-
-    @staticmethod
-    def _sanitize_applied_satisfied(payload: Any) -> None:
-        if not isinstance(payload, dict) or not payload.get("satisfied"):
-            return
-        satisfied = payload["satisfied"]
-        count = len(satisfied) if isinstance(satisfied, list) else 1
-        payload["satisfied"] = [{"redacted": True} for _ in range(count)]
-
-    @staticmethod
-    def _sanitize_applied_drift_check(drift_check: Any) -> None:
-        if not isinstance(drift_check, dict):
-            return
-        dropped = False
-        for key in ("errors", "warnings", "configuration_mismatches", "missing_tables", "extra_tables"):
-            if key in drift_check:
-                drift_check.pop(key, None)
-                dropped = True
-        if dropped:
-            drift_check["drift_redacted"] = True
-
-    @staticmethod
-    def _sanitize_applied_receipt(receipt: Any) -> None:
-        if not isinstance(receipt, dict):
-            return
-        if "error" in receipt:
-            receipt.pop("error", None)
-            receipt["error_redacted"] = True
-        _drop = (
-            "statement",
-            "diff",
-            "detail",
-            "evidence",
-            "table",
-            "name",
-            "expected_columns",
-            "observed_columns",
-        )
-        for entry in receipt.get("entries") or []:
-            if isinstance(entry, dict):
-                for key in _drop:
-                    entry.pop(key, None)
-                if "reason" in entry:
-                    entry.pop("reason", None)
-                    entry["reason_redacted"] = True
-                if "error" in entry:
-                    entry.pop("error", None)
-                    entry["error_redacted"] = True
-                entry["statement_redacted"] = True
-        for obj in receipt.get("observed") or []:
-            if isinstance(obj, dict):
-                obj.pop("table", None)
-                obj.pop("name", None)
-                obj.pop("columns", None)
-                obj.pop("evidence", None)
-                obj["redacted"] = True
-        ResultExporter._sanitize_applied_dropped(receipt)
 
     def _convert_datetimes_to_iso(self, obj: Any) -> Any:
         if isinstance(obj, datetime):
