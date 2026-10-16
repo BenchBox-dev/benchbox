@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import pytest
 
+from benchbox.core.results.anonymization import anonymize_applied_tuning_payload
 from benchbox.core.tuning.applied_ledger import AppliedTuningLedger
 from benchbox.core.tuning.metadata import MetadataValidationResult
 from benchbox.platforms.duckdb import DuckDBAdapter
@@ -93,8 +94,6 @@ class TestAdapterDriftGating:
 
 class TestDriftCheckAnonymization:
     def test_free_text_dropped_structural_kept(self):
-        from benchbox.core.results.exporter import ResultExporter
-
         payload = {
             "status": "not_applicable",
             "applied_ledger_hash": None,
@@ -102,8 +101,7 @@ class TestDriftCheckAnonymization:
             "dropped": [],
             "drift_check": _drifted_result().to_payload(),
         }
-        exporter = ResultExporter.__new__(ResultExporter)
-        sanitized = exporter._anonymize_applied_payload(payload)
+        sanitized = anonymize_applied_tuning_payload(payload)
         drift = sanitized["drift_check"]
         assert drift["is_valid"] is False
         assert drift["drifted_sections"] == ["constraints"]

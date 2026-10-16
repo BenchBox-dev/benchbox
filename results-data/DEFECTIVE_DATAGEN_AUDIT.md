@@ -78,8 +78,13 @@ BigQuery (10 cells); read_primitives at SF0.01 and SF0.1 on all three
 (6 cells); transaction_primitives and write_primitives at SF0.01, SF0.1 and
 SF1.0 on all three (18 cells).
 
-## Out of batch: TPC-DS Q85/Q93 scaling defect
+## Not a defect: TPC-DS reason table size
 
-The `scaling.dst` generator defect affecting TPC-DS Q85/Q93 is reported only.
-Relabelling or regenerating TPC-DS data needs an owner decision and rebuilt
-binaries first; no TPC-DS bundle is labelled by this change.
+TPC-DS Q85 and Q93 answers differ from the official answer files, but the data
+is not defective. The official TPC-DS v4.0.0 kit's `scaling.dst`, which BenchBox
+ships unchanged, generates a 75-row `reason` table at every scale from SF 1 up, so
+`sr_reason_sk`, `cr_reason_sk` and `wr_reason_sk` span 1 to 75. Specification
+4.0.0 Table 3-2 still lists 35 rows at SF 1, and the official answer files were
+not regenerated for v4.0.0. Clause 3.4.2 says dsdgen prevails over the table.
+Every platform ran on the same v4.0.0 data, so cross-platform comparisons are
+unaffected, and no TPC-DS bundle carries a `known_defects` label.

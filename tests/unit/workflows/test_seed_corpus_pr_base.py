@@ -172,6 +172,45 @@ def test_seed_workflow_stages_clean_bundles_anonymized(tmp_path: Path) -> None:
     assert validate_corpus.unanonymized_bundle_errors([destination / "bundle.json"]) == []
 
 
+def _tuned_clickhouse_local_payload() -> dict[str, Any]:
+    from benchbox.core.tuning.applied_ledger import PHASE_DDL, AppliedTuningLedger
+
+    ledger = AppliedTuningLedger()
+    for table in ("store_sales", "web_sales"):
+        ledger.record(
+            f"CREATE TABLE {table} (ss_item_sk Int64, ss_sold_date_sk Int64) "
+            "ENGINE = MergeTree() ORDER BY (ss_sold_date_sk, ss_item_sk)",
+            PHASE_DDL,
+        )
+    payload = _clean_payload()
+    payload["platform"] = {
+        "name": "clickhouse-local",
+        "tuning": {"applied": ledger.to_payload(status="applied_unverified")},
+    }
+    return payload
+
+
+def test_seed_staging_redacts_applied_tuning_statements(tmp_path: Path) -> None:
+    payload = _tuned_clickhouse_local_payload()
+    assert all("statement" in entry for entry in payload["platform"]["tuning"]["applied"]["statements"])
+
+    process, destination = _stage_bundle(tmp_path, payload)
+
+    assert process.returncode == 0, process.stderr
+    staged_text = (destination / "bundle.json").read_text(encoding="utf-8")
+    assert "MergeTree" not in staged_text
+    statements = json.loads(staged_text)["platform"]["tuning"]["applied"]["statements"]
+    assert len(statements) == 2
+    assert all(entry["statement_redacted"] is True and "statement" not in entry for entry in statements)
+
+    sys.path.insert(0, str(REPO_ROOT / "results-data"))
+    try:
+        validate_corpus = importlib.import_module("validate_corpus")
+    finally:
+        sys.path.remove(str(REPO_ROOT / "results-data"))
+    assert validate_corpus.unanonymized_bundle_errors([destination / "bundle.json"]) == []
+
+
 def test_seed_pseudonyms_follow_the_salt(tmp_path: Path) -> None:
     first, first_destination = _stage_bundle(tmp_path / "first", _clean_payload())
     again, again_destination = _stage_bundle(tmp_path / "again", _clean_payload())
