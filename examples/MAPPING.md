@@ -241,12 +241,12 @@ flowchart TD
 
 1. Find the topic in the Quick Reference table above
 2. Navigate to the listed example file
-3. Read the file's docstring for usage instructions
+3. Read the directory README and the file for usage
 4. Run the example with `python examples/<category>/<file>.py`
 
 ### If you're exploring examples and want context:
 
-1. Read the example's docstring (first 10-20 lines)
+1. Read the example's source (first 10-20 lines)
 2. Check this mapping to find related documentation
 3. Read the docs for conceptual background
 4. Return to the example with better understanding
