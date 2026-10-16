@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import pytest
 
-from benchbox.core.results.exporter import ResultExporter
+from benchbox.core.results.anonymization import anonymize_applied_tuning_payload
 from benchbox.core.tuning.applied_ledger import (
     APPLIED_UNVERIFIED,
     APPLIED_VERIFIED,
@@ -61,7 +61,6 @@ class TestReceiptRidesInCompanion:
 
 class TestReceiptAnonymization:
     def test_anonymized_export_scrubs_receipt_freetext(self):
-        exporter = ResultExporter(anonymize=True)
         applied = {
             "status": APPLIED_VERIFIED,
             "statements": [
@@ -70,7 +69,7 @@ class TestReceiptAnonymization:
             "dropped": [],
             "receipt": _receipt_payload(),
         }
-        sanitized = exporter._anonymize_applied_payload(applied)
+        sanitized = anonymize_applied_tuning_payload(applied)
 
         assert "statement" not in sanitized["statements"][0]
         entry = sanitized["receipt"]["entries"][0]
@@ -85,8 +84,7 @@ class TestReceiptAnonymization:
         assert sanitized["receipt"]["corroborated"] is True
 
     def test_anonymization_does_not_mutate_input(self):
-        exporter = ResultExporter(anonymize=True)
         applied = {"status": APPLIED_VERIFIED, "statements": [], "dropped": [], "receipt": _receipt_payload()}
-        exporter._anonymize_applied_payload(applied)
+        anonymize_applied_tuning_payload(applied)
 
         assert "statement" in applied["receipt"]["entries"][0]
