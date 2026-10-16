@@ -20832,10 +20832,15 @@
       "title": "Design how core learns the deployed core SHA from the site side for bundle parents"
     },
     "site-split-70-oracle-check-stale-suite": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-17T16:33:23Z",
+        "generation": "5753ba6df9d0486fa6d651c50a97eee0",
+        "renewals": 0,
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Fix stale oracle-review suite blocking PRs after late verdicts"
     },
     "site-split-71-datafusion-sf1-q18-memory": {
