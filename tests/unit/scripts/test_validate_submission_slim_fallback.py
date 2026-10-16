@@ -9,28 +9,21 @@ import pytest
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 ROOT = Path(__file__).resolve().parents[3]
-CANONICAL = "benchbox.core.results.anonymization"
 
 
 @pytest.fixture(scope="module")
 def slim_leak_detector():
-    saved = sys.modules.get(CANONICAL, ...)
-    sys.modules[CANONICAL] = None
+    spec = importlib.util.spec_from_file_location("_validation_bundle_slim", ROOT / "benchbox/validation/bundle.py")
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
     try:
-        spec = importlib.util.spec_from_file_location(
-            "_validate_submission_slim", ROOT / "scripts/validate_submission.py"
-        )
-        assert spec is not None and spec.loader is not None
-        module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
     finally:
-        if saved is ...:
-            del sys.modules[CANONICAL]
-        else:
-            sys.modules[CANONICAL] = saved
+        del sys.modules[spec.name]
 
     detector = module.find_public_path_leaks
-    assert detector.__module__ == "_validate_submission_slim", "fixture did not exercise the slim fallback"
+    assert detector.__module__ == "_validation_bundle_slim", "fixture did not exercise the stdlib detector"
     return detector
 
 

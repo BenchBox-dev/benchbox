@@ -16,6 +16,7 @@ pytestmark = [
 
 _FAKE_BUNDLE = {
     "version": "2.0",
+    "export": {"anonymized": True},
     "run": {
         "id": "fake-run-1",
         "timestamp": "2026-04-27T00:00:00Z",
