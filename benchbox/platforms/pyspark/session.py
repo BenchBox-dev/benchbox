@@ -299,6 +299,7 @@ class SparkSessionManager:
             SparkSession.builder.master(config.master)
             .appName(config.app_name)
             .config("spark.driver.extraJavaOptions", log4j_opts)
+            .config("spark.sql.inMemoryColumnarStorage.enabled", "false")
         )
 
         if config.driver_memory:

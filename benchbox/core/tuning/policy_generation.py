@@ -4,6 +4,6 @@
 
 from __future__ import annotations
 
-TUNING_POLICY_GENERATION = "adr-003"
+TUNING_POLICY_GENERATION = "adr-003-spark-baseline"
 
 __all__ = ["TUNING_POLICY_GENERATION"]

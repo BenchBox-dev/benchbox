@@ -89,7 +89,7 @@ class TestLakeSailAdapter:
         assert adapter.table_format == "parquet"
         assert adapter.sail_mode == "local"
         assert not hasattr(adapter, "sail_workers")
-        assert adapter.disable_cache is False
+        assert adapter.disable_cache is True
 
     def test_initialization_with_distributed_mode(self, mock_pyspark):
 
@@ -215,7 +215,7 @@ class TestLakeSailAdapter:
         assert conf["spark.app.name"] == "TestApp"
         assert conf["spark.sql.shuffle.partitions"] == "500"
         assert conf["spark.sql.adaptive.enabled"] == "true"
-        assert "spark.sql.inMemoryColumnarStorage.enabled" not in conf
+        assert conf["spark.sql.inMemoryColumnarStorage.enabled"] == "false"
 
     def test_get_spark_conf_no_adaptive(self, mock_pyspark):
 

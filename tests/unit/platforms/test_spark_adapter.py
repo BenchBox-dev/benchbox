@@ -150,9 +150,10 @@ class TestSparkAdapter:
         assert adapter.master == "local[*]"
         assert adapter.app_name == "BenchBox"
         assert adapter.database == "default"
-        assert adapter.driver_memory is None
-        assert adapter.executor_memory is None
-        assert adapter.executor_cores is None
+        assert adapter.driver_memory == "4g"
+        assert adapter.executor_memory == "4g"
+        assert adapter.executor_cores == 2
+        assert adapter.disable_cache is True
         assert adapter.shuffle_partitions is None
         assert adapter.adaptive_enabled is None
         assert adapter.table_format == "parquet"
@@ -329,17 +330,42 @@ class TestSparkAdapter:
         assert conf["spark.sql.shuffle.partitions"] == "500"
         assert conf["spark.sql.adaptive.enabled"] == "true"
 
-    def test_get_spark_conf_uses_engine_defaults(self, mock_pyspark):
+    def test_get_spark_conf_keeps_harness_settings_and_engine_tuning_defaults(self, mock_pyspark):
         from benchbox.platforms.spark import SparkAdapter
 
         conf = SparkAdapter()._get_spark_conf()
 
-        assert "spark.driver.memory" not in conf
-        assert "spark.executor.memory" not in conf
-        assert "spark.executor.cores" not in conf
+        assert conf["spark.driver.memory"] == "4g"
+        assert conf["spark.executor.memory"] == "4g"
+        assert conf["spark.executor.cores"] == "2"
+        assert conf["spark.sql.inMemoryColumnarStorage.enabled"] == "false"
         assert "spark.sql.shuffle.partitions" not in conf
         assert "spark.sql.adaptive.enabled" not in conf
         assert "spark.hadoop.io.compression.codecs" not in conf
+
+    def test_baseline_records_cache_and_resource_settings_as_harness(self, mock_pyspark):
+        from benchbox.core.tuning.applied_ledger import HARNESS_DEFAULT, AppliedTuningLedger
+        from benchbox.platforms.spark import SparkAdapter
+
+        adapter = SparkAdapter()
+        adapter._applied_tuning_ledger = AppliedTuningLedger()
+        conf = adapter._get_spark_conf()
+        connection = MagicMock()
+        connection.conf.get.side_effect = lambda key, default=None: conf.get(key, default)
+
+        adapter.configure_for_benchmark(connection, "tpch")
+
+        recorded = {s.statement: s for s in adapter._applied_tuning_ledger.statements}
+        for key in (
+            "spark.driver.memory",
+            "spark.executor.memory",
+            "spark.executor.cores",
+            "spark.sql.inMemoryColumnarStorage.enabled",
+        ):
+            statement = recorded[f"SET {key}={conf[key]}"]
+            assert statement.status == HARNESS_DEFAULT
+            assert statement.mechanism == "harness_required"
+        connection.conf.set.assert_not_called()
 
     def test_csv_compression_codecs_excludes_zstd(self, mock_pyspark):
         from benchbox.platforms.spark import SparkAdapter

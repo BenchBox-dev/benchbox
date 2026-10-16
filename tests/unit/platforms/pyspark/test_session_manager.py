@@ -60,7 +60,7 @@ def test_get_or_create_returns_singleton(monkeypatch: pytest.MonkeyPatch) -> Non
     assert SparkSessionManager._session is None
 
 
-def test_baseline_session_does_not_set_spark_tuning_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_baseline_session_sets_only_harness_settings(monkeypatch: pytest.MonkeyPatch) -> None:
     builder = MagicMock()
     builder.master.return_value = builder
     builder.appName.return_value = builder
@@ -83,7 +83,7 @@ def test_baseline_session_does_not_set_spark_tuning_defaults(monkeypatch: pytest
     )
 
     configured_keys = [call.args[0] for call in builder.config.call_args_list]
-    assert configured_keys == ["spark.driver.extraJavaOptions"]
+    assert configured_keys == ["spark.driver.extraJavaOptions", "spark.sql.inMemoryColumnarStorage.enabled"]
 
 
 def test_get_or_create_redacts_azure_sas_config_in_debug_log(

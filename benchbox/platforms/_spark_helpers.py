@@ -31,6 +31,27 @@ def spark_aqe_conf_entries(adaptive_enabled: bool) -> dict[str, str]:
     return dict.fromkeys(SPARK_AQE_KEYS, value)
 
 
+SPARK_TUNED_SHUFFLE_PARTITIONS = 200
+
+
+def spark_session_tuning_conf_entries(
+    shuffle_partitions: int | None,
+    adaptive_enabled: bool | None,
+    *,
+    tuning_enabled: bool,
+) -> dict[str, str]:
+    if shuffle_partitions is None and tuning_enabled:
+        shuffle_partitions = SPARK_TUNED_SHUFFLE_PARTITIONS
+    if adaptive_enabled is None and tuning_enabled:
+        adaptive_enabled = True
+    entries: dict[str, str] = {}
+    if shuffle_partitions is not None:
+        entries["spark.sql.shuffle.partitions"] = str(shuffle_partitions)
+    if adaptive_enabled is not None:
+        entries.update(spark_aqe_conf_entries(adaptive_enabled))
+    return entries
+
+
 def adaptive_enabled_from_config(config: Mapping[str, Any]) -> bool:
     options = config.get("options") or {}
     value = config.get("adaptive_enabled", options.get("adaptive_enabled", True))

@@ -765,9 +765,7 @@ def corroborate(ledger: AppliedTuningLedger, introspected_state: IntrospectedSta
         state_error = "introspection truncated (catalog row bound hit)"
 
     entries: list[ReceiptEntry] = []
-    for stmt in ledger.statements:
-        if stmt.status == HARNESS_DEFAULT:
-            continue
+    for stmt in (s for s in ledger.statements if s.status != HARNESS_DEFAULT):
         if stmt.status == STATEMENT_FAILED:
             is_session_failure = stmt.phase == PHASE_SESSION
             reason = (

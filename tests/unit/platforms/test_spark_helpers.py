@@ -14,6 +14,7 @@ from benchbox.platforms._spark_helpers import (
     purge_orphaned_warehouse_directory,
     run_spark_schema_creation_loop,
     spark_aqe_conf_entries,
+    spark_session_tuning_conf_entries,
     validate_spark_identifier,
 )
 
@@ -876,3 +877,19 @@ class TestAdaptiveEnabledFromConfig:
         assert adaptive_enabled_from_config({"options": {"adaptive_enabled": "false"}}) is False
         assert adaptive_enabled_from_config({"options": {"adaptive_enabled": "0"}}) is False
         assert adaptive_enabled_from_config({"adaptive_enabled": "yes"}) is True
+
+
+class TestSessionTuningConfEntries:
+    def test_baseline_with_no_options_leaves_engine_defaults(self) -> None:
+        assert spark_session_tuning_conf_entries(None, None, tuning_enabled=False) == {}
+
+    def test_tuned_run_falls_back_to_curated_values(self) -> None:
+        entries = spark_session_tuning_conf_entries(None, None, tuning_enabled=True)
+        assert entries["spark.sql.shuffle.partitions"] == "200"
+        assert all(entries[key] == "true" for key in SPARK_AQE_KEYS)
+
+    @pytest.mark.parametrize("tuning_enabled", [False, True])
+    def test_explicit_options_win_in_every_mode(self, tuning_enabled: bool) -> None:
+        entries = spark_session_tuning_conf_entries(64, False, tuning_enabled=tuning_enabled)
+        assert entries["spark.sql.shuffle.partitions"] == "64"
+        assert all(entries[key] == "false" for key in SPARK_AQE_KEYS)

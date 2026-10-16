@@ -23,7 +23,7 @@ from ._spark_helpers import (
     parse_spark_connect_endpoint,
     purge_orphaned_warehouse_directory,
     run_spark_schema_creation_loop,
-    spark_aqe_conf_entries,
+    spark_session_tuning_conf_entries,
     validate_spark_identifier,
 )
 from .base import DriverIsolationCapability, PlatformAdapter
@@ -140,7 +140,7 @@ class VeloxAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
         self.table_format = table_format
         self.lakehouse_jars = self._parse_jar_list(config.get("lakehouse_jars"))
         self.spark_config = config.get("spark_config") or {}
-        self.disable_cache = config.get("disable_cache") if config.get("disable_cache") is not None else False
+        self.disable_cache = config.get("disable_cache") if config.get("disable_cache") is not None else True
 
         self._spark_session = None
 
@@ -290,16 +290,11 @@ class VeloxAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
             "spark.app.name": self.app_name,
         }
 
-        shuffle_partitions = self.shuffle_partitions
-        if shuffle_partitions is None and self.tuning_enabled:
-            shuffle_partitions = 200
-        if shuffle_partitions is not None:
-            conf["spark.sql.shuffle.partitions"] = str(shuffle_partitions)
-        adaptive_enabled = self.adaptive_enabled
-        if adaptive_enabled is None and self.tuning_enabled:
-            adaptive_enabled = True
-        if adaptive_enabled is not None:
-            conf.update(spark_aqe_conf_entries(adaptive_enabled))
+        conf.update(
+            spark_session_tuning_conf_entries(
+                self.shuffle_partitions, self.adaptive_enabled, tuning_enabled=self.tuning_enabled
+            )
+        )
 
         if self.disable_cache:
             conf["spark.sql.inMemoryColumnarStorage.enabled"] = "false"
@@ -443,7 +438,7 @@ class VeloxAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
             return False
 
     def configure_for_benchmark(self, connection: Any, benchmark_type: str) -> None:
-        keys = ["spark.app.name"]
+        keys = ["spark.app.name", "spark.sql.inMemoryColumnarStorage.enabled"]
         if self.deployment == "local":
             keys.extend(
                 (

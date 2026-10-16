@@ -67,7 +67,7 @@ class TestVeloxAdapterInit:
         assert adapter.shuffle_partitions is None
         assert adapter.adaptive_enabled is None
         assert adapter.table_format == "parquet"
-        assert adapter.disable_cache is False
+        assert adapter.disable_cache is True
 
     def test_custom_config(self, mock_pyspark):
         from benchbox.platforms.velox import VeloxAdapter
@@ -198,11 +198,11 @@ class TestVeloxSparkConf:
         conf = adapter._get_spark_conf()
         assert conf["spark.sql.adaptive.enabled"] == "true"
 
-    def test_cache_setting_uses_engine_default(self, mock_pyspark):
+    def test_cache_disabled_in_every_mode(self, mock_pyspark):
         from benchbox.platforms.velox import VeloxAdapter
 
         conf = VeloxAdapter()._get_spark_conf()
-        assert "spark.sql.inMemoryColumnarStorage.enabled" not in conf
+        assert conf["spark.sql.inMemoryColumnarStorage.enabled"] == "false"
 
     def test_spark_config_overrides_merged(self, mock_pyspark):
         from benchbox.platforms.velox import VeloxAdapter
