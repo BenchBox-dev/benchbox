@@ -120,9 +120,9 @@ def _drivers_resolved(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-def _dry_run(tmp_path: Path, platform: str, *options: str) -> dict[str, Any]:
+def _dry_run(tmp_path: Path, platform: str, *options: str, extra_args: tuple[str, ...] = ()) -> dict[str, Any]:
     preview_dir = Path(tempfile.mkdtemp(prefix="preview-", dir=tmp_path))
-    args = ["--platform", platform, "--benchmark", "tpch", "--scale", "0.01", "--non-interactive"]
+    args = ["--platform", platform, "--benchmark", "tpch", "--scale", "0.01", "--non-interactive", *extra_args]
     for option in options:
         args.extend(["--platform-option", option])
     result = CliRunner().invoke(run, [*args, "--dry-run", str(preview_dir)], obj={"config": ConfigManager()})
@@ -131,7 +131,7 @@ def _dry_run(tmp_path: Path, platform: str, *options: str) -> dict[str, Any]:
 
 
 def _constructor_kwargs(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, platform: str, *options: str
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, platform: str, *options: str, extra_args: tuple[str, ...] = ()
 ) -> dict[str, Any]:
     adapter_class = PlatformRegistry.get_adapter_class(platform)
     seen: list[dict[str, Any]] = []
@@ -141,7 +141,7 @@ def _constructor_kwargs(
         raise AdapterReached
 
     monkeypatch.setattr(adapter_class, "__init__", spy)
-    _dry_run(tmp_path, platform, *options)
+    _dry_run(tmp_path, platform, *options, extra_args=extra_args)
     assert len(seen) == 1, f"{platform} adapter was not constructed"
     return seen[0]
 
@@ -180,6 +180,31 @@ def test_force_recreate_option_reaches_the_adapter_without_force_datagen(
     kwargs = _constructor_kwargs(monkeypatch, tmp_path, platform, *options)
 
     assert bool(kwargs.get("force_recreate")) is expected
+
+
+@pytest.mark.parametrize("platform", ["duckdb", "postgresql", "datafusion", "sqlite", "snowflake"])
+@pytest.mark.parametrize("force", ["datagen", "all"])
+def test_force_datagen_reaches_the_adapter_as_force_recreate(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, platform: str, force: str
+) -> None:
+    kwargs = _constructor_kwargs(monkeypatch, tmp_path, platform, extra_args=("--force", force))
+
+    assert kwargs.get("force_recreate") is True
+
+
+def test_force_upload_alone_does_not_recreate_the_database(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    kwargs = _constructor_kwargs(monkeypatch, tmp_path, "duckdb", extra_args=("--force", "upload"))
+
+    assert not kwargs.get("force_recreate")
+
+
+def test_runtime_force_recreate_is_lifted_from_nested_options() -> None:
+    config = DatabaseConfig(type="duckdb", name="DuckDB", options={"force_recreate": True})
+
+    platform_config = get_platform_config(config, SYSTEM_PROFILE)
+
+    assert platform_config["force_recreate"] is True
+    assert platform_config["force"] is True
 
 
 def test_duckdb_threads_beat_the_system_profile_value() -> None:

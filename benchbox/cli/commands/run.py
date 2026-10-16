@@ -1272,7 +1272,11 @@ def _dry_run_build_db_config(s: types.SimpleNamespace, db_manager: DatabaseManag
     if logger:
         logger.debug(f"Creating database configuration for: {s.platform}")
     assert s.platform_key is not None
-    overrides = {**s.verbosity_payload, **_tuning_override_entries(s)}
+    overrides = {
+        **s.verbosity_payload,
+        "force_recreate": _force_recreate_requested(s),
+        **_tuning_override_entries(s),
+    }
     database_config: DatabaseConfig | None = None
     try:
         database_config = db_manager.create_config(
