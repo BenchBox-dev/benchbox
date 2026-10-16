@@ -84,6 +84,7 @@ describe("local ResultDetail", () => {
 
     expect(screen.getByTestId("local-result-banner")).toHaveTextContent("has not been uploaded");
     expect(screen.getByText("Local", { selector: "span" })).toBeTruthy();
+    expect(screen.getAllByText("Local Run").length).toBeGreaterThan(0);
     expect(screen.getByText(/Local preview ID/)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Submit for public review" })).toHaveAttribute(
       "href",

@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from benchbox.platforms.base.models import DatabaseValidationResult
+from benchbox.utils.tpcds_row_counts import TPCDS_LINEAR_TABLES, TPCDS_ROW_COUNTS, tpcds_spec_row_count
 
 
 @dataclass
@@ -162,17 +163,24 @@ class TPCHRowCountStrategy(RowCountStrategy):
         return ranges.get(table)
 
 
+_TPCDS_FRACTIONAL_LINEAR_TABLES = TPCDS_LINEAR_TABLES | {"customer"}
+
+
 class TPCDSRowCountStrategy(RowCountStrategy):
     def get_sample_tables(self, available_tables: set[str]) -> list[str]:
         return list(available_tables)
 
     def get_expected_range(self, table: str) -> tuple[float, float] | None:
-        ranges = {
-            "store_sales": (2880000 * self.scale_factor * 0.8, 2880000 * self.scale_factor * 1.2),
-            "catalog_sales": (1440000 * self.scale_factor * 0.8, 1440000 * self.scale_factor * 1.2),
-            "customer": (100000 * self.scale_factor * 0.8, 100000 * self.scale_factor * 1.2),
-        }
-        return ranges.get(table)
+        name = table.lower()
+        scale = float(self.scale_factor)
+        spec_rows = tpcds_spec_row_count(name, scale)
+        if spec_rows is not None:
+            expected = float(spec_rows)
+        elif name in TPCDS_LINEAR_TABLES or (scale < 1 and name in _TPCDS_FRACTIONAL_LINEAR_TABLES):
+            expected = TPCDS_ROW_COUNTS[name][0] * scale
+        else:
+            return None
+        return (expected * 0.8, expected * 1.2)
 
 
 class SSBRowCountStrategy(RowCountStrategy):
