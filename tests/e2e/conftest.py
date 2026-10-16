@@ -15,6 +15,13 @@ from tests.integration._cli_e2e_utils import run_cli_command
 E2E_BENCHMARK_TIMEOUT = 600.0
 
 
+@pytest.fixture(autouse=True)
+def benchmark_runs_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    root = tmp_path / "benchmark_runs"
+    monkeypatch.setenv("BENCHBOX_OUTPUT_DIR", str(root))
+    return root
+
+
 @pytest.fixture
 def results_dir(tmp_path: Path) -> Path:
     results = tmp_path / "benchmark_results"

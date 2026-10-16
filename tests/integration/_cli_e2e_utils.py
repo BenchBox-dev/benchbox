@@ -23,6 +23,8 @@ def run_cli_command(
     effective_env: MutableMapping[str, str] = os.environ.copy()
 
     effective_env["PYTHONUTF8"] = "1"
+    if cwd is not None:
+        effective_env["BENCHBOX_OUTPUT_DIR"] = str(Path(cwd) / "benchmark_runs")
     if env:
         effective_env.update(env)
 

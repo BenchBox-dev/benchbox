@@ -1923,7 +1923,8 @@ def test_execute_free_space_abort_reports_context_after_docker_teardown(tmp_path
     assert "docker_cleanup_status=ok" in (outcome.abort_reason or "")
 
 
-def test_execute_passes_config_extra_args_to_runner(tmp_path):
+def test_execute_passes_config_extra_args_to_runner(tmp_path, monkeypatch):
+    monkeypatch.delenv("BENCHBOX_OUTPUT_DIR", raising=False)
     cfg = validate_config(
         {
             "name": "fake",

@@ -5,16 +5,13 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from benchbox.core.results.loader import load_result_file
 from tests.e2e.conftest import (
     E2E_BENCHMARK_TIMEOUT,
     find_result_files,
     run_benchmark,
 )
-from tests.e2e.utils import (
-    assert_benchmark_result_valid,
-    is_platform_available,
-    load_result_json,
-)
+from tests.e2e.utils import is_platform_available
 from tests.integration._cli_e2e_utils import run_cli_command
 
 pytestmark = pytest.mark.slow
@@ -30,7 +27,7 @@ class TestDuckDBE2E:
     @pytest.mark.e2e_quick
     @pytest.mark.duckdb
     @pytest.mark.tpch
-    def test_tpch_full_execution(self, tmp_path: Path) -> None:
+    def test_tpch_full_execution(self, benchmark_runs_root: Path) -> None:
         config = {
             "platform": "duckdb",
             "benchmark": "tpch",
@@ -42,16 +39,14 @@ class TestDuckDBE2E:
         assert result.returncode == 0, f"CLI failed with:\nstdout: {result.stdout}\nstderr: {result.stderr}"
         assert "Benchmark completed" in result.stdout or "benchmark completed" in result.stdout.lower()
 
-        results_dir = Path("benchmark_runs")
-        if results_dir.exists():
-            result_files = find_result_files(results_dir, pattern="*duckdb*tpch*.json")
-            if result_files:
-                result_data = load_result_json(result_files[0])
-                assert_benchmark_result_valid(result_data)
-                assert result_data["platform"] == "duckdb"
-                assert result_data["benchmark_name"].lower() in ("tpch", "tpc-h")
-                assert result_data["scale_factor"] == 0.01
-                assert result_data["successful_queries"] > 0
+        result_files = find_result_files(benchmark_runs_root / "results", pattern="tpch_*_duckdb_*.json")
+        assert result_files, f"no DuckDB TPC-H result bundle under {benchmark_runs_root}"
+        loaded, raw = load_result_file(result_files[0])
+        assert raw["benchmark"]["id"] == "tpch"
+        assert loaded.platform.lower() == "duckdb"
+        assert loaded.scale_factor == 0.01
+        assert loaded.successful_queries > 0
+        assert loaded.failed_queries == 0
 
     @pytest.mark.e2e
     @pytest.mark.e2e_local
