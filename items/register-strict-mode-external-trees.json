@@ -2,7 +2,7 @@
   "acceptance": [
     "Strict inventory green, or policy documents it as diagnostic-only with no completeness claims made from it."
   ],
-  "context": "Found during the 2026-10-13 comment-cleanup re-evaluation session. PR #2962 (head-side token evidence) landed meanwhile and partially overlaps; coordinate before duplicating it.",
+  "context": "Closed 2026-10-15 on the repository owner's decision (\"Close strict item; keep ledger\"). The need was met by #2915 (merge f2c874c44): strict mode now applies the base-trusted ownership manifest, so the TPC vendor trees and bundled binaries are no longer reported as first-party findings. Evidence: on develop at f3a28356d plus a docs-only change, `make comment-policy-strict` reported \"7117 source files, 0 violations, 0 enforced failures (strict)\". The owner chose to keep quality/comment-cleanup-scope.json as the ownership source for strict mode, so no policy-registry change is needed. Recorded as dropped because the tracker could not finish it: this worker already holds a live claim on another item.",
   "description": "make comment-policy-strict stays red on _sources/tpc-ds/PATCHES.md, _sources/tpc-h/PATCHES.md, _sources/tpc-ds/tests/, and benchbox/_binaries/ binaries decoded as text. check_ratchet rejects any candidate policy that adds or expands external exclusions (only same-distribution wheel bumps allowed), so a normal PR cannot register these trees. Options: checker change excluding binary/checksum formats from text decoding (regression fixtures plus oracle review), accept strict as diagnostic-only, or a base-policy-owner flow for external changes.",
   "sessions": [
     {
@@ -12,6 +12,14 @@
       "op": "create",
       "op_id": "9b1cbe3f93d24399bcf8627aaec834a1",
       "session_id": "be2b066e755a4a4bb3ff24b1b46fe0b7"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:6b9b7c4e8f8d58a0a7174a0a",
+      "at": "2026-10-16T03:51:18Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "1cb7ad9a49eb48c38cfc1ebf0fc006f2",
+      "session_id": "5c80d5d463444a2ba9410e1fdfb1d517"
     }
   ]
 }
