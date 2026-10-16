@@ -9,6 +9,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from benchbox.core.results.anonymization import anonymize_applied_tuning_payload
 from benchbox.core.results.loader import reconstruct_benchmark_results
 from benchbox.core.results.result_factory import build_enhanced_benchmark_result
 from benchbox.core.results.schema import build_result_payload
@@ -98,9 +99,6 @@ def test_loader_without_applied_companion_leaves_fields_none() -> None:
 
 
 def test_anonymized_export_drops_raw_statement_text(tmp_path) -> None:
-    from benchbox.core.results.exporter import ResultExporter
-
-    exporter = ResultExporter(output_dir=tmp_path, anonymize=True)
     payload = {
         "status": "applied_unverified",
         "applied_ledger_hash": "f" * 64,
@@ -122,7 +120,7 @@ def test_anonymized_export_drops_raw_statement_text(tmp_path) -> None:
         "dropped": [{"intent": "partitioning:LINEITEM", "reason": "load-time only"}],
     }
 
-    sanitized = exporter._anonymize_applied_payload(payload)
+    sanitized = anonymize_applied_tuning_payload(payload)
 
     dumped = str(sanitized)
     assert "/Users/secret" not in dumped
@@ -141,8 +139,6 @@ def test_anonymized_export_drops_raw_statement_text(tmp_path) -> None:
 
 
 def test_anonymized_export_scrubs_receipt_and_dropped_free_text(tmp_path) -> None:
-    from benchbox.core.results.exporter import ResultExporter
-
     payload = {
         "status": "applied_unverified",
         "statements": [],
@@ -181,7 +177,7 @@ def test_anonymized_export_scrubs_receipt_and_dropped_free_text(tmp_path) -> Non
         },
     }
 
-    sanitized = ResultExporter(output_dir=tmp_path, anonymize=True)._anonymize_applied_payload(payload)
+    sanitized = anonymize_applied_tuning_payload(payload)
     serialized = json.dumps(sanitized, sort_keys=True)
 
     for secret in ("secret.internal", "/private", "private_catalog", "private_schema"):
