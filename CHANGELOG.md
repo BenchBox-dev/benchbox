@@ -172,6 +172,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `warehouse`, and Polars `streaming=True`. The Firebolt and Fabric Warehouse
   error messages no longer recommend deprecated options.
 
+- A `--platform-option` value now overrides a saved credential profile even
+  when it equals the option's default. Before, `--platform-option
+  host=localhost` against a saved `host: prod.example.com` connected to
+  `prod.example.com`, so table creation and loads ran against the saved host.
+  This affected the PostgreSQL family, Trino, Presto and the MySQL-wire
+  platforms.
+- Platform names that the registry accepts as aliases (`sqlite3`,
+  `azure_synapse`, `pg_duckdb`, `fabric_lakehouse`) now accept the same
+  `--platform-option` keys as their canonical names, where they used to fail
+  with "does not accept platform-specific options".
+- The ClickHouse, DuckDB and SQLite option definitions now register when
+  `benchbox.platforms` is imported, so Python and MCP callers see the same
+  options as the command line. An invalid integer or number option value is
+  reported as a platform option error instead of a traceback.
 - Options that have no effect now log one warning per run and are left out of
   the platform information a result records, instead of being recorded as if
   they had been applied. Under the Dask `threaded` execution engine this covers
@@ -435,6 +449,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an error. In 0.4.2 it connected to the scheduler. To connect to an existing
   scheduler, use the `distributed` engine:
   `--execution-engine distributed --platform-option scheduler_address=tcp://host:8786`.
+- A `--platform-option` value that equals the option's default now overrides a
+  saved credential profile, as any other value already did. If a run relied on
+  the saved value winning, remove the `--platform-option` or save the value you
+  want.
 - Result metadata for Dask runs on the `threaded` engine no longer contains
   `n_workers`, `threads_per_worker`, `memory_limit`, `spill_to_disk` or
   `spill_directory`, and LakeSail metadata no longer contains `sail_workers`.

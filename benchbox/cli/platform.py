@@ -45,7 +45,7 @@ PLATFORM_ALIAS_MODES: dict[str, DefaultMode] = get_platform_alias_modes("cli")
 
 def normalize_platform_name(name: str) -> str:
     normalized = name.lower()
-    return PLATFORM_ALIASES.get(normalized, normalized)
+    return PlatformRegistry.resolve_platform_name(PLATFORM_ALIASES.get(normalized, normalized))
 
 
 def resolve_platform_selector(selector: str) -> str:

@@ -16,7 +16,7 @@ from benchbox.core.schemas import DatabaseConfig
 __import__("benchbox.cli.commands.run")
 _run_module = _sys.modules["benchbox.cli.commands.run"]
 
-import benchbox.cli.platform_defaults
+import benchbox.platforms
 
 pytestmark = [
     pytest.mark.unit,

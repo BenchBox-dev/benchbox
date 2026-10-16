@@ -5,7 +5,7 @@
 import ast
 import importlib
 import importlib.util
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from typing import Optional, Type
 
 from benchbox.core.execution_engine import resolve_requested
@@ -434,7 +434,12 @@ def _make_lazy_config_builder(module_path: str, builder_name: str):
 
 
 try:
-    from benchbox.core.hooks.platform_hooks import PlatformHookRegistry, PlatformOptionSpec, parse_bool
+    from benchbox.core.hooks.platform_hooks import (
+        PlatformHookRegistry,
+        PlatformOptionError,
+        PlatformOptionSpec,
+        parse_bool,
+    )
 
     def _spec(name: str, help_text: str, **kwargs) -> PlatformOptionSpec:
         return PlatformOptionSpec(name=name, help=help_text, **kwargs)
@@ -673,6 +678,23 @@ datafusion|parquet_pushdown|Enable predicate/projection pushdown for Parquet fil
 datafusion|batch_size|Batch size for query execution|{'parser': 'int', 'default': '8192'}
 datafusion|memory_limit|Memory limit for fair spill pool (e.g., '8G', '16GB')|{}
 datafusion|temp_dir|Temporary directory for disk spilling (default: system temp)|{}
+clickhouse|deployment_mode|Deprecated alias of the platform selector: deployment mode for ClickHouse (server or local).|{'parser': 'clickhouse_mode', 'default': 'server', 'choices': ('server', 'local'), 'aliases': ('mode',)}
+clickhouse|host|ClickHouse server hostname (server mode only).|{'default': 'localhost'}
+clickhouse|port|ClickHouse native protocol port.|{'parser': 'int', 'default': 9000}
+clickhouse|username|ClickHouse username for authentication.|{'default': 'default', 'aliases': ('user',)}
+clickhouse|password|ClickHouse password for authentication.|{'default': ''}
+clickhouse|secure|Enable TLS for ClickHouse connections (server mode).|{'parser': 'parse_bool', 'default': False}
+clickhouse|data_path|Data path for ClickHouse local mode (optional).|{}
+clickhouse-local|data_path|Path to chDB database directory for persistent local storage (optional).|{}
+clickhouse-server|host|ClickHouse server hostname.|{'default': 'localhost'}
+clickhouse-server|port|ClickHouse native protocol port.|{'parser': 'int', 'default': 9000}
+clickhouse-server|username|ClickHouse username for authentication.|{'default': 'default', 'aliases': ('user',)}
+clickhouse-server|password|ClickHouse password for authentication.|{'default': ''}
+clickhouse-server|secure|Enable TLS for ClickHouse server connections.|{'parser': 'parse_bool', 'default': False}
+duckdb|memory_limit|DuckDB memory limit (e.g. '4GB').|{'default': '8GB'}
+duckdb|threads|Thread pool size for DuckDB (None uses auto detection).|{'parser': 'int'}
+duckdb|temp_directory|Temporary directory for DuckDB spill files.|{}
+sqlite|database_name|Base filename for SQLite database files.|{'default': 'benchbox'}
 sqlite|database_path|Path to the SQLite database file (auto-generated from --benchmark/--scale when omitted)|{}
 sqlite|timeout|SQLite connection timeout in seconds|{'parser': 'float', 'default': '30.0'}
 sqlite|check_same_thread|Enforce that connections are used on the creating thread only|{'parser': 'parse_bool', 'default': 'false'}
@@ -723,7 +745,27 @@ velox|table_format|Lakehouse table format for accelerated reads (parquet, orc, d
 velox|lakehouse_jars|Comma-separated connector jars for delta/iceberg/hudi reads (local paths, URIs, or Maven coordinates; required for lakehouse formats in local mode)|{}
 """
 
-    _SPEC_PARSERS = {"int": int, "float": float, "parse_bool": parse_bool}
+    def _numeric_parser(kind: type, label: str) -> Callable[[str], object]:
+        def parse(value: str) -> object:
+            try:
+                return kind(value)
+            except ValueError as exc:
+                raise PlatformOptionError(f"Invalid {label} value '{value}'") from exc
+
+        return parse
+
+    def _parse_clickhouse_mode(value: str) -> str:
+        normalized = value.strip().lower()
+        if normalized in {"server", "local"}:
+            return normalized
+        raise PlatformOptionError(f"Invalid ClickHouse mode '{value}'. Expected 'server' or 'local'.")
+
+    _SPEC_PARSERS = {
+        "int": _numeric_parser(int, "integer"),
+        "float": _numeric_parser(float, "number"),
+        "parse_bool": parse_bool,
+        "clickhouse_mode": _parse_clickhouse_mode,
+    }
 
     def _spec_kwargs(text: str) -> dict[str, object]:
         kwargs = ast.literal_eval(text)
@@ -738,6 +780,24 @@ velox|lakehouse_jars|Comma-separated connector jars for delta/iceberg/hudi reads
             _register_specs(platform, (name, help_text, _spec_kwargs(kwargs_text)))
 
     _register_spec_rows(_OPTION_SPEC_ROWS)
+
+    _WELL_KNOWN_SPEC_ROWS = """\
+driver_version|Requested driver package version (e.g. '1.2.0').|{}
+driver_auto_install|Automatically install the requested driver version using uv if missing.|{'parser': 'parse_bool', 'default': False}
+plan_max_depth|Maximum query-plan tree depth persisted to the plans companion and used for the capture-time size estimate.|{'parser': 'int'}
+plan_capture_timeout_seconds|Timeout in seconds for EXPLAIN plan-capture queries.|{'parser': 'int'}
+force_recreate|Drop and recreate the benchmark database before loading, reusing the existing data files (true or false).|{'parser': 'parse_bool'}
+"""
+
+    from benchbox.core.platform_manifest import PLATFORM_MANIFEST
+
+    for _entry in PLATFORM_MANIFEST:
+        _register_spec_rows("\n".join(f"{_entry.key}|{row}" for row in _WELL_KNOWN_SPEC_ROWS.splitlines()))
+
+    from benchbox.platforms.config_builders import LOCAL_CONFIG_BUILDERS
+
+    for _builder_platform, _builder in LOCAL_CONFIG_BUILDERS.items():
+        PlatformHookRegistry.register_config_builder(_builder_platform, _builder)
 
     from benchbox.core.compute_resource import register_compute_specs
     from benchbox.core.gateway import register_gateway_connection_specs
