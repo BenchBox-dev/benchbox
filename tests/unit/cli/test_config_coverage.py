@@ -136,10 +136,18 @@ tpch:
     u = cfg.UnifiedTuningConfiguration()
     u.primary_keys.enabled = True
     u.foreign_keys.enabled = True
+    u.unique_constraints.enabled = False
+    u.check_constraints.enabled = False
     unified = tmp_path / "unified.yaml"
     mgr.save_unified_tuning_config(u, unified, format="yaml")
     loaded = mgr.load_unified_tuning_config(unified, platform="duckdb")
     assert loaded.primary_keys.enabled is True
+
+    bare = cfg.UnifiedTuningConfiguration()
+    bare_path = tmp_path / "bare.yaml"
+    mgr.save_unified_tuning_config(bare, bare_path, format="yaml")
+    with pytest.raises(ValueError):
+        mgr.load_unified_tuning_config(bare_path, platform="duckdb")
 
 
 def test_show_config_prints_path_and_yaml(tmp_path: Path) -> None:

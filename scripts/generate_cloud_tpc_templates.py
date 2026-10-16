@@ -140,11 +140,11 @@ foreign_keys:
   on_update_action: RESTRICT
 
 unique_constraints:
-  enabled: true
+  enabled: false
   ignore_nulls: false
 
 check_constraints:
-  enabled: true
+  enabled: false
   enforce_on_insert: true
   enforce_on_update: true
 

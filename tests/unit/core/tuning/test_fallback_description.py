@@ -46,7 +46,7 @@ def test_descriptions_are_not_one_fixed_string():
 def test_sql_override_keys_are_canonical_registry_platforms():
     sql_overrides = {key for key in PLATFORM_FALLBACK_DESCRIPTIONS if key in PLATFORM_TUNING_CAPABILITIES}
 
-    assert sql_overrides == {"clickhouse"}
+    assert sql_overrides == {"clickhouse", "datafusion"}
 
 
 @pytest.mark.parametrize(

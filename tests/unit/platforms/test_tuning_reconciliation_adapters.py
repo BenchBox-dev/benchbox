@@ -20,7 +20,7 @@ from benchbox.core.tuning.applied_ledger import (
     PHASE_POST_LOAD,
     AppliedTuningLedger,
 )
-from benchbox.core.tuning.capability_registry import get_capability
+from benchbox.core.tuning.capability_registry import get_capability, not_rendered_reason
 from benchbox.core.tuning.interface import TableTuning, TuningColumn, TuningType, UnifiedTuningConfiguration
 from benchbox.core.tuning.reconciliation import NOT_RENDERED_REASON, RECONCILIATION_FAILED_INTENT
 from benchbox.platforms.base import PlatformAdapter, tuning_trust
@@ -89,14 +89,19 @@ def _tuned(adapter: PlatformAdapter) -> PlatformAdapter:
     return adapter
 
 
+_DATAFUSION_REASON = (
+    "not rendered at execution: the schema is created without constraints (datafusion_unconstrained_schema)"
+)
+
+
 def _drops(adapter: PlatformAdapter) -> dict[str, str]:
     return {item.intent: item.reason for item in adapter._applied_tuning_ledger.dropped}
 
 
-def _registry_notes(platform: str, tuning_type: TuningType) -> str:
+def _registry_reason(platform: str, tuning_type: TuningType) -> str:
     capability = get_capability(platform, tuning_type)
     assert capability is not None and capability.rendered_via == "none"
-    return capability.notes
+    return f"not rendered at execution: {not_rendered_reason(capability)}"
 
 
 def _status(adapter: PlatformAdapter) -> str:
@@ -117,7 +122,7 @@ class FakeMetadataManager:
 
 
 class TestFamilies:
-    def test_postgres_no_op_apply_drops_layout_with_registry_notes(self, monkeypatch, tmp_path):
+    def test_postgres_no_op_apply_drops_layout_with_registry_reason(self, monkeypatch, tmp_path):
         monkeypatch.setattr(postgresql_module, "psycopg", Mock(__version__="3.1.0"))
         monkeypatch.setattr("benchbox.core.tuning.metadata.TuningMetadataManager", FakeMetadataManager)
         config = _layout_config(partitioning=_columns("L_SHIPDATE"), clustering=_columns("L_ORDERKEY"))
@@ -133,8 +138,8 @@ class TestFamilies:
         adapter._reconcile_requested_tuning(config)
 
         assert _drops(adapter) == {
-            "partitioning:LINEITEM (L_SHIPDATE)": _registry_notes("postgresql", TuningType.PARTITIONING),
-            "clustering:LINEITEM (L_ORDERKEY)": _registry_notes("postgresql", TuningType.CLUSTERING),
+            "partitioning:LINEITEM (L_SHIPDATE)": _registry_reason("postgresql", TuningType.PARTITIONING),
+            "clustering:LINEITEM (L_ORDERKEY)": _registry_reason("postgresql", TuningType.CLUSTERING),
         }
         assert _status(adapter) == NOOP
 
@@ -146,7 +151,12 @@ class TestFamilies:
 
         [reason] = _drops(adapter).values()
         capability = get_capability(platform, TuningType.PARTITIONING)
-        assert reason == (capability.notes if capability is not None else NOT_RENDERED_REASON)
+        expected = (
+            f"not rendered at execution: {not_rendered_reason(capability)}"
+            if capability is not None
+            else NOT_RENDERED_REASON
+        )
+        assert reason == expected
 
     def test_postgres_constraints_rendered_in_create_table_are_satisfied(self):
         adapter = _tuned(_Adapter(type="postgresql"))
@@ -165,7 +175,7 @@ class TestFamilies:
         ]
         assert _drops(adapter) == {"foreign_keys": NOT_RENDERED_REASON}
 
-    def test_bigquery_inspect_only_drops_partitioning_and_clustering_with_registry_notes(self):
+    def test_bigquery_inspect_only_drops_partitioning_and_clustering_with_registry_reason(self):
         adapter = _tuned(_Adapter(type="bigquery"))
 
         adapter._reconcile_requested_tuning(
@@ -173,8 +183,8 @@ class TestFamilies:
         )
 
         assert _drops(adapter) == {
-            "partitioning:LINEITEM (L_SHIPDATE)": _registry_notes("bigquery", TuningType.PARTITIONING),
-            "clustering:LINEITEM (L_ORDERKEY)": _registry_notes("bigquery", TuningType.CLUSTERING),
+            "partitioning:LINEITEM (L_SHIPDATE)": _registry_reason("bigquery", TuningType.PARTITIONING),
+            "clustering:LINEITEM (L_ORDERKEY)": _registry_reason("bigquery", TuningType.CLUSTERING),
         }
 
     def test_redshift_analyze_only_drops_distribution_and_unrendered_sort(self):
@@ -188,7 +198,7 @@ class TestFamilies:
         )
 
         assert _drops(adapter) == {
-            "distribution:LINEITEM (L_ORDERKEY)": _registry_notes("redshift", TuningType.DISTRIBUTION),
+            "distribution:LINEITEM (L_ORDERKEY)": _registry_reason("redshift", TuningType.DISTRIBUTION),
             "sorting:LINEITEM (L_SHIPDATE)": NOT_RENDERED_REASON,
         }
         assert _status(adapter) == APPLIED_UNVERIFIED
@@ -221,8 +231,8 @@ class TestFamilies:
         adapter._reconcile_requested_tuning(config)
 
         assert _drops(adapter) == {
-            "primary_keys": NOT_RENDERED_REASON,
-            "foreign_keys": NOT_RENDERED_REASON,
+            "primary_keys": _DATAFUSION_REASON,
+            "foreign_keys": _DATAFUSION_REASON,
         }
         assert adapter._applied_tuning_ledger.statements == []
         assert _status(adapter) == NOOP
@@ -325,7 +335,7 @@ class TestSeam:
 
         adapter._reconcile_requested_tuning(UnifiedTuningConfiguration())
 
-        assert _drops(adapter) == {"primary_keys": NOT_RENDERED_REASON}
+        assert _drops(adapter) == {"primary_keys": _DATAFUSION_REASON}
 
     def test_reconciliation_error_fails_closed_with_a_blocking_drop(self, monkeypatch):
         adapter = self._adapter()

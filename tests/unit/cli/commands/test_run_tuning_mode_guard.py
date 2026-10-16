@@ -52,8 +52,8 @@ def test_dataframe_run_loads_without_the_sql_guard(tmp_path):
     ("mode", "source"),
     [(TuningMode.TUNED, TuningSource.FALLBACK), (TuningMode.AUTO, TuningSource.SMART_DEFAULTS)],
 )
-@pytest.mark.parametrize(("platform", "check_enabled"), [("duckdb", False), ("postgresql", True)])
-def test_fallback_and_auto_request_check_constraints_except_on_duckdb(mode, source, platform, check_enabled):
+@pytest.mark.parametrize("platform", ["duckdb", "postgresql"])
+def test_fallback_and_auto_do_not_request_unrendered_check_constraints(mode, source, platform):
     s = SimpleNamespace(
         tuning_resolution=SimpleNamespace(config_file=None, source=source, mode=mode),
         resolved_mode="sql",
@@ -67,5 +67,6 @@ def test_fallback_and_auto_request_check_constraints_except_on_duckdb(mode, sour
 
     _load_unified_tuning_config(s)
 
-    assert s.loaded_unified_config.check_constraints.enabled is check_enabled
+    assert s.loaded_unified_config.check_constraints.enabled is False
+    assert s.loaded_unified_config.unique_constraints.enabled is False
     assert s.loaded_unified_config.primary_keys.enabled is True
