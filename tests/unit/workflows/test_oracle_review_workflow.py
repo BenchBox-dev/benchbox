@@ -55,12 +55,13 @@ def test_permissions_are_read_only() -> None:
     assert "permissions" not in _load()["jobs"]["oracle-review"]
 
 
-def test_concurrency_cancels_superseded_runs_per_pull_request() -> None:
-    concurrency = _load()["concurrency"]
-    assert concurrency["cancel-in-progress"] is True
-    assert "github.event.pull_request.number" in concurrency["group"]
-    assert "inputs.pr" in concurrency["group"]
-    assert "merge_group" not in concurrency["group"]
+def test_no_run_cancels_another_so_every_check_suite_completes() -> None:
+    workflow = _load()
+    assert "concurrency" not in workflow
+    assert "concurrency" not in workflow["jobs"]["oracle-review"]
+    verdict = (REPO_ROOT / ".github" / "workflows" / "oracle-verdict.yml").read_text(encoding="utf-8")
+    assert "--workflow oracle-review.yml" in verdict
+    assert 'gh run rerun "$id" --failed' in verdict
 
 
 def test_job_invokes_the_script_with_the_pull_request_number_and_token() -> None:
@@ -328,13 +329,27 @@ def test_dispatch_does_not_require_develop_to_stop_advancing(tmp_path: Path) -> 
     assert outputs["base_sha"] == BASE
 
 
-def test_pull_request_events_do_not_use_dispatch_guards(tmp_path: Path) -> None:
-    env = _environment(tmp_path, [], 0, "oracle-review: not a soundness path change")
-    env.update(EVENT_NAME="pull_request", PR_NUMBER="7")
+def _event_check(
+    tmp_path: Path, pulls: list[Any], event: str, *, checker_exit: int = 0
+) -> subprocess.CompletedProcess[str]:
+    env = _environment(tmp_path, pulls, checker_exit, f"oracle-review: pass (oracle review of {HEAD})")
+    env.update(EVENT_NAME=event, PR_NUMBER="7", EVENT_HEAD=HEAD)
     check = next(step for step in _load()["jobs"]["oracle-review"]["steps"] if SCRIPT in step.get("run", ""))
-    result = _run_step(tmp_path, check, env)
+    return _run_step(tmp_path, check, env)
+
+
+def test_event_head_comes_from_the_triggering_pull_request() -> None:
+    check = next(step for step in _load()["jobs"]["oracle-review"]["steps"] if SCRIPT in step.get("run", ""))
+    assert check["env"]["EVENT_HEAD"] == "${{ github.event.pull_request.head.sha }}"
+
+
+@pytest.mark.parametrize("event", ["pull_request", "pull_request_review"])
+def test_pull_request_events_check_their_head_around_the_checker(tmp_path: Path, event: str) -> None:
+    result = _event_check(tmp_path, [_pull(), _pull()], event)
     assert result.returncode == 0, result.stderr
-    assert not (tmp_path / "gh-count").exists()
+    assert (tmp_path / "gh-count").read_text() == "2"
+    calls = [json.loads(line) for line in (tmp_path / "gh-calls").read_text().splitlines()]
+    assert all(call[5:7] == ["--json", "headRefOid"] for call in calls)
     assert json.loads((tmp_path / "checker-call").read_text()) == [
         SCRIPT,
         "--repo",
@@ -344,3 +359,30 @@ def test_pull_request_events_do_not_use_dispatch_guards(tmp_path: Path) -> None:
         "--signal",
         "oracle",
     ]
+
+
+@pytest.mark.parametrize("event", ["pull_request", "pull_request_review"])
+@pytest.mark.parametrize("moved_read", [0, 1])
+def test_a_run_for_a_superseded_head_never_passes(tmp_path: Path, event: str, moved_read: int) -> None:
+    pulls = [_pull(), _pull()]
+    pulls[moved_read] = _pull(headRefOid="c" * 40)
+    result = _event_check(tmp_path, pulls, event)
+    assert result.returncode != 0
+    assert f"this run is for {HEAD}, but the pull request head is now {'c' * 40}" in result.stderr
+    assert (tmp_path / "checker-call").exists() is (moved_read == 1)
+
+
+@pytest.mark.parametrize("failed_read", [0, 1])
+def test_a_pull_request_event_head_read_failure_never_passes(tmp_path: Path, failed_read: int) -> None:
+    pulls: list[Any] = [_pull(), _pull()]
+    pulls[failed_read] = {"api_error": True}
+    result = _event_check(tmp_path, pulls, "pull_request")
+    assert result.returncode != 0
+    assert (tmp_path / "checker-call").exists() is (failed_read == 1)
+
+
+@pytest.mark.parametrize("checker_exit", [1, 2])
+def test_a_pull_request_event_waiting_or_error_stays_failed(tmp_path: Path, checker_exit: int) -> None:
+    result = _event_check(tmp_path, [_pull(), _pull()], "pull_request_review", checker_exit=checker_exit)
+    assert result.returncode == checker_exit
+    assert (tmp_path / "gh-count").read_text() == "1"
