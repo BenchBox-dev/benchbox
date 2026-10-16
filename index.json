@@ -20805,10 +20805,10 @@
     },
     "site-split-68-seed-lane-ineligible-cells": {
       "claim": {
-        "expires_at": "2026-10-16T11:36:34Z",
-        "generation": "247f4f04664d4af887c5cb107754fe66",
+        "expires_at": "2026-10-17T14:07:10Z",
+        "generation": "c084a11aa4a341309c48745cbebaa663",
         "renewals": 0,
-        "worker": "mcp:codex-mcp-client:joe@joe-mac-mini.local:1f8c5d7706213cbfec63db59"
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
       },
       "needs": [],
       "priority": "medium",
