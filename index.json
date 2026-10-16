@@ -15094,10 +15094,15 @@
       "title": "Phase 3.1: Manifest v2 Implementation Specification"
     },
     "phases-generate-load-exit-overall-status-20261016": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-17T16:39:13Z",
+        "generation": "72bffb9a94014eb98c39d247d9492a67",
+        "renewals": 0,
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Make load-only runs (--phases generate,load) exit 0 instead of crashing on missing power results"
     },
     "physical-tuning-ddl-generation": {
