@@ -325,6 +325,75 @@ class TestRowCountStrategies:
         assert len(samples) == len(available)
         assert set(samples) == available
 
+    @pytest.mark.parametrize(
+        ("scale", "table", "actual_rows"),
+        [
+            (100, "customer", 2_000_000),
+            (10, "customer", 500_000),
+            (100, "customer_address", 1_000_000),
+            (100, "inventory", 399_330_000),
+            (100, "store", 402),
+            (10, "item", 102_000),
+            (100, "store_sales", 287_997_024),
+            (1, "reason", 75),
+            (100, "CUSTOMER", 2_000_000),
+        ],
+    )
+    def test_tpcds_strategy_accepts_generated_row_counts(self, scale, table, actual_rows):
+        low, high = TPCDSRowCountStrategy(scale_factor=float(scale)).get_expected_range(table)
+
+        assert low <= actual_rows <= high
+
+    @pytest.mark.parametrize("scale", [1.0, 10.0, 100.0])
+    def test_tpcds_strategy_covers_every_table_at_spec_scales(self, scale):
+        strategy = TPCDSRowCountStrategy(scale_factor=scale)
+        tables = {
+            "call_center",
+            "catalog_page",
+            "catalog_returns",
+            "catalog_sales",
+            "customer",
+            "customer_address",
+            "customer_demographics",
+            "date_dim",
+            "household_demographics",
+            "income_band",
+            "inventory",
+            "item",
+            "promotion",
+            "reason",
+            "ship_mode",
+            "store",
+            "store_returns",
+            "store_sales",
+            "time_dim",
+            "warehouse",
+            "web_page",
+            "web_returns",
+            "web_sales",
+            "web_site",
+        }
+
+        assert all(strategy.get_expected_range(table) is not None for table in tables)
+
+    def test_tpcds_strategy_rejects_linear_customer_count_at_scale_100(self):
+        low, high = TPCDSRowCountStrategy(scale_factor=100.0).get_expected_range("customer")
+
+        assert not low <= 10_000_000 <= high
+
+    def test_tpcds_strategy_scales_fact_tables_and_skips_sublinear_tables_off_spec_scales(self):
+        strategy = TPCDSRowCountStrategy(scale_factor=1000.0)
+
+        low, high = strategy.get_expected_range("store_sales")
+        assert low <= 2_880_404 * 1000 <= high
+        assert strategy.get_expected_range("customer") is None
+        assert strategy.get_expected_range("inventory") is None
+
+    def test_tpcds_strategy_scales_customer_linearly_below_scale_one(self):
+        low, high = TPCDSRowCountStrategy(scale_factor=0.01).get_expected_range("customer")
+
+        assert low <= 1_000 <= high
+
     def test_ssb_strategy_sample_tables(self):
 
         strategy = SSBRowCountStrategy(scale_factor=1.0)
