@@ -1,0 +1,30 @@
+name: pr-hold
+
+run-name: pr-hold (${{ github.event.action }} pr=${{ github.event.pull_request.number }})
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review, labeled, unlabeled]
+
+permissions: {}
+
+concurrency:
+  group: pr-hold-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  hold:
+    name: hold
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Refuse to merge while the durable hold label is present
+        env:
+          HELD: ${{ contains(github.event.pull_request.labels.*.name, 'no-auto-merge') }}
+        run: |
+          set -eu
+          if [ "$HELD" = "true" ]; then
+            echo "::error::PR carries the durable hold label 'no-auto-merge'. Only the owner releases it, by naming this PR in a current request."
+            exit 1
+          fi
+          echo "No durable hold label."

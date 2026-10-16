@@ -182,7 +182,7 @@ sweep honour these durable holds (and nothing re-arms on push or nightly
 | Hold | Who honours it | Effect |
 | --- | --- | --- |
 | **Draft** | `make pr-arm` / `pr-ready` (refuse to arm), green-unmerged sweep | Not ready; no arm, not stranded |
-| **Label `no-auto-merge`** | `make pr-arm-auto-merge` / `pr-arm` / `pr-ready` (refuse to arm), green-unmerged sweep | Non-draft intentional hold; blocks arming only; not stranded |
+| **Label `no-auto-merge`** | Required `hold` check (`pr-hold.yml`), `make pr-arm-auto-merge` / `pr-arm` / `pr-ready` (refuse to arm), green-unmerged sweep | Intentional hold; blocks arming and merging, even through a raw `gh pr merge`; not stranded |
 | **Never armed** | green-unmerged sweep (timeline arm-intent classifier) | Green + auto-merge OFF with no prior arm events is normal after the post-#1592 policy; not stranded |
 
 Use draft while the branch is incomplete. Use `no-auto-merge` when the PR

@@ -58,12 +58,15 @@ Required status checks:
 - landing
 - tooling
 - oracle-review
+- hold
 ```
 
 Six of these contexts are always-reporting result jobs in
 `.github/workflows/ci.yml`. `oracle-review` comes from
 `.github/workflows/oracle-review.yml` and passes at once for a change outside
-`.github/soundness-paths.txt`.
+`.github/soundness-paths.txt`. `hold` comes from `.github/workflows/pr-hold.yml`
+and fails while the PR carries the `no-auto-merge` label; it re-runs when a
+label is added or removed.
 
 The `ci-paths` job maps changed paths to units with `.github/ci-units.yml`. An
 untouched unit reports success at once. A touched unit succeeds only when every
@@ -229,10 +232,10 @@ The soundness gate, as operated:
 - Durable holds are **draft** and label **`no-auto-merge`**. Arming checks both
   (`make pr-arm-auto-merge`, `pr-arm` and `pr-ready` refuse to arm). The nightly
   green-unmerged sweep never enables auto-merge and does not classify either
-  hold as stranded. Adding the label later does not disarm an armed PR: disable
-  auto-merge (`gh pr merge <n> --disable-auto`) or run
-  `make pr-landing-withdraw PR=<n> HEAD=<sha>`, then add the label. See
-  `docs/internal/pr-triage.md` "Durable auto-merge holds".
+  hold as stranded. Adding the label to an armed PR fails the required `hold`
+  check, so the PR cannot merge even though auto-merge stays on. Disable
+  auto-merge too (`gh pr merge <n> --disable-auto`) so the PR shows no false
+  intent to land. See `docs/internal/pr-triage.md` "Durable auto-merge holds".
 - `make pr-arm` refuses drafts, non-develop bases, durable holds, requested
   changes, unresolved threads, unpublished work, and a remote head that differs
   from local HEAD. It enables squash auto-merge for the exact reviewed head.

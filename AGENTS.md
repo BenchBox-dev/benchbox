@@ -23,6 +23,8 @@ Personal defaults apply only where this guide is silent; where behavior conflict
 
 `[HANDOFF-LOCATION-001]` Handoffs live only in `~/.benchbox/handoffs/`, never in a checkout or a commit (`docs/agent/handoffs.md`).
 
+`[MERGE-AUTHORITY-001]` A hold is the `no-auto-merge` label, applied in the turn the owner asks. Lift one, post a stand-in, or bypass a check only when the owner names that PR now (`docs/agent/merge-authority.md`).
+
 ## Code Review Rules
 
 Do not report commit identity. Review sandboxes may use synthetic identities.
@@ -86,11 +88,9 @@ For long output, write `/tmp/<slug>.log` (report status + short tail). UAT/stres
 
 `[EVIDENCE-FRESHNESS-001]` Assert tracker state, timings, and gate outcomes from a live read; a scheduled validation of the `todo-state` branch dates a past state, never a current one. A validator pass is not a `submit` pass.
 
-Before creating a batch ledger under `.todo-batch/`, add it to `.git/info/exclude` and confirm with `git check-ignore`. Never track batch ledgers.
-
 Before publication, self-review with the `code` review action and fix all Critical and Required findings; nits and considerations are optional. Run `make pr-preflight` once, then `make pr-open`. Low-effort subagents may handle boilerplate gates; you choose commands and interpret failures. Check CI on a schedule, never in a loop. Wait on pending checks.
 
-Dev PRs target `develop` (or `release` / `published-results`); squash-merge, never direct-push protected branches. Force-push feature branches only with `--force-with-lease`. Soundness paths need oracle review: resolve `benchbox-oracle` threads; arm only on its success review of the current head (`/oracle-review` reruns; oracle down/overruled: stand-in marker, dev-loop ADR D4). `oracle-review` enforces it; rerun after marker. Land drift/pinning guards with required-CI wiring. Six `ci.yml` unit checks pass even when untouched. Stacks: one agent, one tracker item, 3 PRs max; no other agent's unmerged branch. Upper PRs are parent-based drafts. After parent squash-merge, retarget to `develop`, `git rebase --onto origin/develop <old parent tip>`, mark ready, pass CI and review on that head, then arm.
+Dev PRs target `develop` (or `release` / `published-results`); squash-merge, never direct-push protected branches. Force-push feature branches only with `--force-with-lease`. Soundness paths need oracle review: resolve `benchbox-oracle` threads; arm only on its success review of the current head (`/oracle-review` reruns). Land drift/pinning guards with required-CI wiring. Six `ci.yml` unit checks pass even when untouched. Stacks: one agent, one tracker item, 3 PRs max; no other agent's unmerged branch. Upper PRs are parent-based drafts. After parent squash-merge, retarget to `develop`, `git rebase --onto origin/develop <old parent tip>`, mark ready, pass CI and review on that head, then arm.
 
 ## TODO tracker
 
