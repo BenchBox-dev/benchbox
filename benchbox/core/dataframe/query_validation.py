@@ -67,10 +67,9 @@ def validate_dataframe_query_results(
         evidence["reason"] = "no production DataFrame oracle is registered for this benchmark"
         return DataFrameQueryValidationSummary("PARTIAL" if execution_failures else "NOT_RUN", evidence)
 
-    ssb_counts = ssb_expected_row_counts(scale_factor) if benchmark_id == "ssb" else None
     if benchmark_id == "ssb":
         evidence["provider"] = "ssb_expected_row_counts"
-    reason = _unavailable_oracle_reason(benchmark_id, scale_factor, seed, ssb_counts)
+    reason = _reference_unavailable_reason(benchmark_id, scale_factor, seed)
     if reason:
         for row in successful_rows:
             _attach_skipped_validation(row, reason)
@@ -79,13 +78,7 @@ def validate_dataframe_query_results(
         status = _unavailable_status(execution_failures, bool(successful_rows or selected_skips))
         return DataFrameQueryValidationSummary(status, evidence)
 
-    initialization_error = None
-    if ssb_counts is not None:
-        _apply_row_count_oracle(
-            successful_rows, lambda query_id, actual: _validate_ssb_row_count(ssb_counts, query_id, actual), evidence
-        )
-    else:
-        initialization_error = _apply_expected_row_counts(successful_rows, benchmark_id, scale_factor, evidence)
+    initialization_error = _apply_reference_row_counts(successful_rows, benchmark_id, scale_factor, evidence)
     if initialization_error:
         evidence["reason"] = initialization_error
         status = _unavailable_status(execution_failures, bool(successful_rows))
@@ -117,21 +110,31 @@ def _unavailable_status(execution_failures: int, has_unavailable_evidence: bool)
     return "NOT_RUN"
 
 
-def _unavailable_oracle_reason(
-    benchmark_id: str,
-    scale_factor: float,
-    seed: int | None,
-    ssb_counts: dict[str, int] | None,
-) -> str | None:
+def _reference_unavailable_reason(benchmark_id: str, scale_factor: float, seed: int | None) -> str | None:
     if benchmark_id == "tpcds":
         return "TPC-DS expected row counts are not seed-aligned with this DataFrame run"
     if benchmark_id == "ssb":
-        if ssb_counts is None:
+        if ssb_expected_row_counts(scale_factor) is None:
             return f"SSB expected row counts are not recorded for scale factor {scale_factor}"
         return None
     if not _tpch_reference_context(scale_factor, seed):
         return "TPC-H answer-file row counts apply only to SF 1 runs with qgen default parameters (no seed)"
     return None
+
+
+def _apply_reference_row_counts(
+    successful_rows: list[dict[str, Any]],
+    benchmark_id: str,
+    scale_factor: float,
+    evidence: dict[str, Any],
+) -> str | None:
+    if benchmark_id == "ssb":
+        counts = ssb_expected_row_counts(scale_factor) or {}
+        _apply_row_count_oracle(
+            successful_rows, lambda query_id, actual: _validate_ssb_row_count(counts, query_id, actual), evidence
+        )
+        return None
+    return _apply_expected_row_counts(successful_rows, benchmark_id, scale_factor, evidence)
 
 
 def _validate_ssb_row_count(counts: dict[str, int], query_id: str, actual_row_count: int) -> ValidationResult:
