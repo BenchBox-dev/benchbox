@@ -23347,17 +23347,12 @@
       "title": "Stop exporting TPC-H QphH@Size as official while refresh functions are missing"
     },
     "tpch-refresh-functions-in-power-and-throughput": {
-      "claim": {
-        "expires_at": "2026-10-17T16:57:39Z",
-        "generation": "a050a1ab521b41aea1be812ebaaa7f24",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
-      },
+      "claim": null,
       "needs": [
         "tpch-qphh-missing-refresh-functions"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Implement TPC-H RF1/RF2 in Power@Size and a concurrent refresh stream in the throughput test"
     },
     "tpch-refresh-pg-derived-adapter-proofs-20261016": {
