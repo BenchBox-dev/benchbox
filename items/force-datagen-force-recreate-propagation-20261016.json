@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Reproduce on current develop without cloud spend (DuckDB or a mocked adapter): with an existing database, `--force datagen` must reach the adapter as `force_recreate=True` (`PlatformAdapter.force_recreate`).",
+    "If it already works: add a regression test pinning the propagation and close the item.",
+    "If it does not: fix the propagation so the adapter config carries `force_recreate` at top level, add tests for `--force datagen` and `--platform-option force_recreate=true`, and add a CHANGELOG entry."
+  ],
+  "context": "Reported in ~/.benchbox/handoffs/2026-10-15-snowflake-trial-exit-handoff.md. Relevant code: benchbox/cli/commands/run.py `_force_recreate_requested` (~539) and its uses (~1326, ~1492, ~1805); benchbox/platforms/base/adapter.py:128; benchbox/platforms/base/connection_lifecycle.py:182.",
+  "description": "During the 2026-10-15 Snowflake campaign, `--force datagen` regenerated data but the `force_recreate` setting stayed nested in `options`, so the adapter never saw it and reused the existing database. PR #3013 later accepted `force_recreate` as a platform option, and `benchbox/cli/commands/run.py:539` now ORs `--force` regeneration into `force_recreate`, so this may already be fixed.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-16T14:07:18Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "188a6fcd5f7a4c14b2d2f4feb0121173",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}
