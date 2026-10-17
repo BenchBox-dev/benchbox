@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "A title or body edit with no base change does not start or cancel CI (filter `edited` to base changes, or skip code jobs for it)",
+    "Jobs of a run cancelled by a newer same-PR run do not appear as failed checks on the PR",
+    "Workflow test covering the edited-event behaviour"
+  ],
+  "context": "Found while landing #3086 and #3092 (2026-10-17).",
+  "description": ".github/workflows/ci.yml runs on `pull_request` types including `edited` (line 9) with `concurrency: cancel-in-progress: true` (lines 12-14). Any title or body edit therefore starts a full CI run and cancels the one in progress. The cancelled run's jobs then appear in `gh pr checks` as failures. On #3092 (2026-10-17), after a body edit, cancelled run 39051130924 left `medium-test (shard ${{ matrix.shard_index }})` (job 117450436540) listed as `fail` after the PR merged, alongside cancelled `core`, `docs`, `landing` and `tooling` rows. On #3086, setting the title right after `make pr-open` cancelled run 39021313679 and showed six failing rows. The same title edit is the workaround for `make pr-open` using the branch name as the title (see pr-open-multi-commit-title-20261017).",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T22:05:15Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "8b10629b862247bf9f23824b66b22438",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}

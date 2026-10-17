@@ -15676,6 +15676,13 @@
       "status": "open",
       "title": "make pr-arm reads stale remote head right after push and refuses"
     },
+    "pr-edit-cancels-ci-and-leaves-red-rows-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Editing a PR's title or body restarts CI, cancels the run in progress and leaves its jobs as red rows"
+    },
     "pr-followup-resumable-ownership": {
       "claim": null,
       "needs": [
