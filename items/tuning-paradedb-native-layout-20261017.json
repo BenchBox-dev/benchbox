@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "The supported ParadeDB image and extension combination is pinned and documented, and the adapter fails clearly when pg_analytics is missing",
+    "_supported_tuning_type_names matches what the adapter actually applies",
+    "Applied layout requests are verified against the catalog; skipped ones are recorded with a reason",
+    "Live TPC-H SF0.01 tuned run, with the evidence recorded in the PR"
+  ],
+  "context": "Owner request 2026-10-17: \"There should be a method for tuning these platforms.\" Found during the #3092 verification: the current ParadeDB image lacks pg_analytics. Related closed item: pg-analytics-paradedb-and-citus-extension-support.",
+  "description": "ParadeDB declares PARTITIONING and CLUSTERING as supported (benchbox/platforms/paradedb.py:123) but skips partitioning at execution (paradedb.py:33). The claimed support doesn't match what happens. Work out the right layout method for ParadeDB's storage: pg_analytics/DuckDB-backed tables and heap tables. Either implement it with ledger evidence, or stop claiming the tuning types. The current ParadeDB image no longer ships pg_analytics, which the adapter requires, so first settle which ParadeDB image and extension combination is supported.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T17:32:29Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "b7b513b27fc84fbfb8502ca4d5ee6f26",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}

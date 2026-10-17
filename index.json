@@ -24310,6 +24310,13 @@
       "status": "open",
       "title": "Notuning reuse refusal can miss tuned databases: error misclassification, swallowed probe errors, marker deleted by save"
     },
+    "tuning-paradedb-native-layout-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "ParadeDB: fix the claimed-but-skipped layout tuning, and restore a working test image"
+    },
     "tuning-partition-order-rendered-contract": {
       "claim": null,
       "needs": [
