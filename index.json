@@ -21367,13 +21367,18 @@
       "title": "Ship curated Spark tuning templates with measured non-default values"
     },
     "spark-tuning-discovery-cli": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-18T05:07:26Z",
+        "generation": "ae754a49ff9b42cc9c6e219f40e2ed27",
+        "renewals": 0,
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
+      },
       "needs": [
         "spark-session-config-model",
         "spark-session-config-runtime"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Make Spark tuning discoverable in tuning CLI and capability registry"
     },
     "spellcheck-node-modules-skip-never-landed": {
