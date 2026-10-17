@@ -1,10 +1,11 @@
 {
   "acceptance": [
-    "Each failure is reproduced on a fresh develop checkout, with the failing assertion recorded.",
-    "Each one is fixed at its cause, or bisected to the commit that broke it and fixed there. No test is skipped, marked xfail or weakened.",
-    "`make test-pytest` passes on a fresh develop checkout."
+    "Each failure is reproduced on a fresh develop checkout, with the failing assertion recorded. (met: #3027, #3035, #3039)",
+    "Each one is fixed at its cause, or bisected to the commit that broke it and fixed there. No test is skipped, marked xfail or weakened. (met: #3027, #3035, #3039)",
+    "`make test-pytest` passes on a fresh develop checkout.",
+    "`make test-pytest` passes once serially and three times with `-n 8` on a fresh develop checkout, with the commit SHA recorded"
   ],
-  "context": "Reported in the takeover handoff for the general follow-ups batch (2026-10-15, step 4 of the final verification). Not yet bisected. Check whether `root-privilege-assumptions-beyond-the-exporter-test` covers the export failure, and whether the logging and isolation fixture from #2970 changed what these tests see.",
+  "context": "The three failures listed in the description were fixed test-side in #3027 (79c5d8005): a lazy pandas/pyarrow import in a memory-baseline test, an export schema version asserted as <=2.2, and DuckDB key receipts now reported as applied_verified. A later full run on 89b350dda found three more failures; they are fixed by #3039 (omitted UNIQUE/CHECK keys no longer count as requested) and #3035 (load-only runs no longer crash on a missing power result). #3048 and #3050 keep e2e runs out of the shared benchmark_runs folder. No full `make test-pytest` run on develop has been recorded since those merges. Owner, 2026-10-15, Claude session e0e74e6b, question dialog: \"Must be fully green\". Next: run `make test-pytest` once serially and three times with `-n 8` on a fresh develop checkout with a temporary HOME, and record the commit SHA.",
   "description": "The general batch agent found three failures under `make test-pytest`. They also fail on unmodified develop, so they come from earlier work, not from that batch:\n- `tests/integration/test_database_integration.py::test_database_resource_management`\n- `tests/integration/test_export_cli.py::test_export_preserves_content`\n- `tests/integration/tuning/test_post_load_reconciliation_e2e.py::test_duckdb_inline_keys_are_satisfied_and_undeclared_unique_constraints_not_dropped`\n\nUntil they are fixed, no batch can pass a final verification that requires a clean `make test-pytest`.",
   "sessions": [
     {
@@ -14,6 +15,14 @@
       "op": "create",
       "op_id": "5f2a674735c8447e9dc68597da26de15",
       "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-17T23:59:05Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "30bf76e4ac5b481b985982d531641fa0",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
     }
   ]
 }
