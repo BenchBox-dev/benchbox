@@ -22894,6 +22894,13 @@
       "status": "open",
       "title": "Handle git checkout timeouts in todo_db git_backend with structured error and retry"
     },
+    "todo-db-mcp-shared-worker-claim-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Subagents sharing one tracker MCP server share one claim slot, so one agent's claim blocks every other agent's take"
+    },
     "todo-db-runtime-schema3-batch-capability": {
       "claim": null,
       "needs": [
