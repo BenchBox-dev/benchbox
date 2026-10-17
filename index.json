@@ -23527,7 +23527,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "dropped",
       "title": "Rebuild the TPC-DS binaries with a corrected scaling table so Q85/Q93 verify against official answers"
     },
     "tpcds-stdout-fix-integrate-stdout-datagen": {
