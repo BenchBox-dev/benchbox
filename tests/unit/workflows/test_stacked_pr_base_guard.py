@@ -16,6 +16,7 @@ WORKFLOWS = REPO_ROOT / ".github" / "workflows"
 WORKFLOW = WORKFLOWS / "ci.yml"
 JOB = "ci-paths"
 STEP_NAME = "Check base branch"
+TEXT_EDIT_SKIP = "${{ !(github.event.action == 'edited' && !github.event.changes.base) }}"
 
 INTEGRATION_BRANCHES = {"develop", "release", "published-results"}
 
@@ -67,7 +68,7 @@ def test_stacked_pr_base_guard_reevaluates_when_draft_status_changes() -> None:
 
 def test_stacked_pr_base_guard_names_integration_branches_and_can_fail() -> None:
     job = _job()
-    assert "if" not in job, "ci-paths must run on every PR event so a stacked base always reports"
+    assert job.get("if") == TEXT_EDIT_SKIP, "ci-paths must run on every PR event except a title or body edit"
     assert job["steps"][0].get("name") == STEP_NAME, "the base check must run before any PR code is checked out"
     step = job["steps"][0]
     body = str(step.get("run", ""))

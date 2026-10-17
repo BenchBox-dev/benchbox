@@ -51,7 +51,7 @@ def _cancel_step(job: dict[str, Any]) -> dict[str, Any]:
 @pytest.mark.parametrize("name", AGGREGATE_JOBS)
 def test_aggregate_still_reports_on_every_outcome(name: str) -> None:
     job = _job(name)
-    assert job["if"] == "always()"
+    assert job["if"] == "${{ always() && !(github.event.action == 'edited' && !github.event.changes.base) }}"
     assert "scripts/ci_unit_result.py" in _aggregate_step(job)["run"]
 
 
