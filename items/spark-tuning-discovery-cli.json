@@ -6,7 +6,7 @@
     "A spark map on an unsupported platform produces a validation warning and a dropped ledger record.",
     "uv run -- pytest tests/unit/core/tuning tests/unit/cli -q passes."
   ],
-  "context": "Origin: user-approved 2026-09-30. Opus findings R5, R6, R9 and the Considerations. Known related gap, tracked separately: ddl_generator maps spark to DeltaDDLGenerator (see spark-ddl-generator-delta-default-mismatch); dry-run DDL preview for default Parquet Spark stays wrong until that is fixed.",
+  "context": "Merged in #3080 (squash 3c6808bb2, 2026-10-17). Spark has its own registry row (partitioning not applied, sorting Delta-only post_load OPTIMIZE ZORDER, PK/FK kept as DDL so default-key files still load, unique/check not applied); spark->databricks alias removed (delta stays); SESSION_CONFIG_CAPABILITIES via _session() for spark/velox; tuning platforms lists spark; tuning init spark/velox appends a commented spark-map example; show/validate/dry-run render a Property/Value table; non-applying platforms record each spark-map key as dropped; Spark guide documents precedence and the discrepancy report. Oracle SHIP on head e6331606a.",
   "description": "Users do not find Spark under `benchbox tuning`: `PLATFORM_ALIASES[\"spark\"] = \"databricks\"` (benchbox/core/tuning/capability_registry.py ~L152) makes Spark lookups resolve as Databricks (Liquid Clustering / Z-Order), `PLATFORM_TUNING_CAPABILITIES` has no spark row so `tuning platforms` (cli/commands/tuning_group.py ~L503) omits it, and `tuning init --platform spark` has no Spark branch.\n\nScope:\n- Remove the spark to databricks alias; add a spark registry row using the existing `_session()` helper (capability_registry.py ~L100, currently unused) for the session-config mechanism. DO NOT add spark to `_INTERFACE_KNOWN_PLATFORMS`: that turns every unsupported-type warning into a hard error at config load (interface.py ~L1597-1604, cli/config.py ~L756) and would break existing custom Spark files that use table_tunings; it also conflicts with tests/unit/core/tuning/test_platform_identity_keys.py and the instruction in test_capability_source_drift.py ~L510-522. Follow the starrocks/doris precedent (registry row, not in the known set). The registry is keyed by TuningType and has no session type; decide the row shape, and check `tuning platforms` renders a session-only platform sensibly.\n- `tuning init --platform spark` emits a documented, commented example of the `spark:` map (also check `is_compatible_with_platform`, cli/config.py ~L811-835). It must NOT ship as a curated `tuned` template, which would relabel `tuned-fallback` as `tuned` (ADR-002) without changing behaviour; curated templates are a separate item.\n- `tuning show`, `validate` and `--dry-run` report the spark map; benchbox/cli/dryrun.py ~L665-676 renders nested dicts as str(dict), so render a Property/Value sub-table.\n- Non-Spark platforms given a non-empty `spark` map (Databricks, EMR, Glue, Dataproc; cloud_spark/mixins.py ~L108-125 returns []) warn at validation and call ledger.record_dropped instead of silently ignoring.\n- Docs: tuning guide section for Spark session config, including precedence and the preflight discrepancy report.",
   "links": [
     "item:spark-session-config-model",
@@ -40,6 +40,14 @@
       "generation": "ae754a49ff9b42cc9c6e219f40e2ed27",
       "op": "take",
       "op_id": "b13405f48a1847ec8615694e79f00569",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T06:15:40Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "9a2f5d96e71640e4a4b9599f99dcc096",
       "session_id": "400c76c14fce4783943655593419ae3c"
     }
   ]
