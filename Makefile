@@ -22,7 +22,7 @@ JOINORDER_QUERIES ?= _project/joinorder/build-inputs/queries
 JOINORDER_REFERENCE ?= _project/joinorder/reference_cardinalities.json
 
 DEVELOPMENT_TREE_ONLY_TARGETS := \
-	correctness-gate-digests-regen cross-surface-baseline-autodetect \
+	correctness-gate-digests-regen ledger-seed-gates ledger-seed-recut cross-surface-baseline-autodetect \
 	oracle-coverage-map oracle-coverage-map-check cross-surface-applicability-report \
 	joinorder-verify-reference-results complexity-check complexity-report \
 	quality-governance-typecheck uv-lock-revision-check sqlglot-repro-retirement-check audit-deps audit-raw audit-raw-check \
@@ -145,6 +145,21 @@ plan-capture-gate:
 .PHONY: correctness-gate-digests-regen
 correctness-gate-digests-regen:
 	BENCHBOX_CORRECTNESS_GATE_QUERY_IDS=$(CORRECTNESS_GATE_QUERY_IDS) uv run -- python _project/scripts/regenerate_correctness_gate_digests.py
+
+LEDGER_SEED_GATE_SUITES := tests/unit/scripts/publication/test_ledger_seed.py \
+	tests/unit/scripts/publication/test_check_corpus_bijection.py \
+	tests/unit/workflows/test_corpus_cutover.py \
+	tests/unit/scripts/test_site_inputs.py
+
+.PHONY: ledger-seed-gates
+ledger-seed-gates:
+	uv run -- pytest -n 0 -q $(LEDGER_SEED_GATE_SUITES)
+
+.PHONY: ledger-seed-recut
+ledger-seed-recut:
+	git fetch --no-tags origin published-results:refs/remotes/origin/published-results
+	uv run -- python scripts/publication/create_ledger_seed.py --accepted-ref origin/published-results
+	$(MAKE) ledger-seed-gates
 
 .PHONY: tpchavoc-equivalence-report
 tpchavoc-equivalence-report:
