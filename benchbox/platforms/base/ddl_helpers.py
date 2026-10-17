@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from typing import Any
 
 _REF_ACTION = r"(?:NO\s+ACTION|RESTRICT|CASCADE|SET\s+(?:NULL|DEFAULT))"
 _FK_CLAUSE_RE = re.compile(
@@ -22,6 +23,26 @@ _INLINE_REFERENCES_RE = re.compile(
 )
 
 _TRAILING_COMMA_RE = re.compile(r",(\s*\))")
+
+
+TPCDS_FOREIGN_KEY_DROP_REASON = (
+    "TPC-DS generated data does not satisfy every declared foreign key, so the tables are created without them"
+)
+
+
+def is_tpcds_benchmark(benchmark: object) -> bool:
+    name = getattr(benchmark, "_name", "") or type(benchmark).__name__
+    return "TPC-DS" in str(name) or "TPCDS" in str(name)
+
+
+def strip_tpcds_foreign_keys(adapter: Any, benchmark: object, schema_sql: str) -> str:
+    if not is_tpcds_benchmark(benchmark):
+        return schema_sql
+    config = adapter.get_effective_tuning_configuration() if adapter.tuning_enabled else None
+    ledger = getattr(adapter, "_applied_tuning_ledger", None)
+    if config is not None and config.foreign_keys.enabled and ledger is not None:
+        ledger.record_dropped("foreign_keys", TPCDS_FOREIGN_KEY_DROP_REASON)
+    return strip_foreign_keys(schema_sql)
 
 
 def strip_foreign_keys(stmt: str) -> str:

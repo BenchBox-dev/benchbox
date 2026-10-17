@@ -64,6 +64,7 @@ MERGE_GATE_GUARD_TOKENS = (
 )
 
 MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
+    ("ci.yml", "tuning-liveness", "Run real-CLI tuning liveness matrix"): "tuning-liveness-gate",
     ("ci.yml", "dist-artifact", "Verify source bundled binary manifest"): "scripts/bundled_binary_manifest.py",
     ("ci.yml", "dist-artifact", "Build wheel and sdist"): "scripts/verify_distribution_binaries.py",
     ("ci.yml", "ci-paths", "Check release content"): "release-check",

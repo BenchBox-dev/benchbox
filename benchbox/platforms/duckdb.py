@@ -18,7 +18,7 @@ from benchbox.utils.cloud_storage import get_cloud_path_info, is_cloud_path
 from benchbox.utils.printing import emit
 
 from .base import DriverIsolationCapability, PlatformAdapter
-from .base.ddl_helpers import strip_foreign_keys
+from .base.ddl_helpers import strip_tpcds_foreign_keys
 
 if TYPE_CHECKING:
     from benchbox.core.tuning.interface import TuningColumn
@@ -840,9 +840,7 @@ class DuckDBAdapter(PlatformAdapter):
 
         schema_sql = self._create_schema_with_tuning(benchmark, source_dialect="standard")
 
-        benchmark_name = getattr(benchmark, "_name", "") or benchmark.__class__.__name__
-        if "TPC-DS" in str(benchmark_name) or "TPCDS" in str(benchmark_name):
-            schema_sql = strip_foreign_keys(schema_sql)
+        schema_sql = strip_tpcds_foreign_keys(self, benchmark, schema_sql)
 
         statements = []
         current_statement = []

@@ -4,7 +4,7 @@ primary_keys:
   nullable: false
 
 foreign_keys:
-  enabled: true
+  enabled: false
   enforce_referential_integrity: true
   on_delete_action: CASCADE
   on_update_action: RESTRICT
