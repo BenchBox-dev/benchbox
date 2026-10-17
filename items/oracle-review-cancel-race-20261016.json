@@ -5,7 +5,7 @@
     "Workflow test or documented proof run on a PR",
     "No weakening of the required oracle-review gate"
   ],
-  "context": "Related failure (PR #3049): oracle-verdict run 38938627249's `post` job failed at its last step, \"Rerun the failed synchronize suite for this head\". It tried to re-run oracle-review run 38938422659, which predated a close/reopen and could not be retried (\"This workflow run cannot be retried\"). The success status had already been posted, but the failed job marked the PR \"unstable\", so the first `make pr-arm` auto-merge attempt failed. The rerun step should skip runs that cannot be retried, or only target runs newer than the latest successful oracle-review for that head. Fix both together.",
+  "context": "Cancellation half done: #3056 (3d7aaf854, 2026-10-16) removed the oracle-review concurrency group. Each run now checks that its head is still the PR head before and after it runs, and fails closed; workflow tests were updated. Residual risk: overlapping runs can finish out of order. Owner, 2026-10-16, question dialog: \"Fix both now\" (cancellation race and quota classification; the latter is #3058). Not done: the oracle-verdict 'Rerun the failed synchronize suite' step (.github/workflows/oracle-verdict.yml, around lines 2026-2035) still reruns every failed run for the head and fails on runs that cannot be retried (#3049, run 38938627249). If that half belongs elsewhere, split it into a new item and finish this one.",
   "description": "After an oracle success verdict, the oracle-review run triggered by that verdict is often cancelled by a concurrent pull_request (or edited/synchronize) run in the same concurrency group. The cancelled check row leaves the PR BLOCKED until someone manually re-runs that specific run. Seen on #2993, #3006, #3004 and others. The existing automatic re-run after a late verdict does not cover this case.",
   "sessions": [
     {
@@ -23,6 +23,14 @@
       "op": "update",
       "op_id": "c9a810b0b4764178bcb43c8f5e51e33c",
       "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-17T23:55:22Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "39c7f6af33b3408ba597d582bbd12e21",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
     }
   ]
 }
