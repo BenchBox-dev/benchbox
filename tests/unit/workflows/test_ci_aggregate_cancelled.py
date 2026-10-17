@@ -32,8 +32,9 @@ def _load(workflow: str) -> dict[str, Any]:
 def _job(name: str) -> dict[str, Any]:
     workflow = AGGREGATE_WORKFLOWS[name]
     jobs = _load(workflow)["jobs"]
-    assert name in jobs, f"{workflow} has no {name!r} aggregate job"
-    return jobs[name]
+    job_id = f"{name}-summary"
+    assert job_id in jobs, f"{workflow} has no {job_id!r} aggregate job"
+    return jobs[job_id]
 
 
 def _aggregate_step(job: dict[str, Any]) -> dict[str, Any]:
@@ -51,7 +52,7 @@ def _cancel_step(job: dict[str, Any]) -> dict[str, Any]:
 @pytest.mark.parametrize("name", AGGREGATE_JOBS)
 def test_aggregate_still_reports_on_every_outcome(name: str) -> None:
     job = _job(name)
-    assert job["if"] == "always()"
+    assert job["if"] == "${{ always() && !(github.event.action == 'edited' && !github.event.changes.base) }}"
     assert "scripts/ci_unit_result.py" in _aggregate_step(job)["run"]
 
 
