@@ -167,7 +167,6 @@ def find_coverage(
             sha=sha,
             repo=repo,
             token=token,
-            require_browser_gate=False,
             urlopen=opener,
             event="push",
             ref="refs/heads/develop",

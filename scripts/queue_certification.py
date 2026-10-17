@@ -20,10 +20,6 @@ CLI_DESCRIPTION = (
     "   ``.github/workflows/pr.yml``, conclusion ``success``, and ``head_sha``\n"
     "   exactly equal to the pushed SHA exists.\n"
     "2. That run's ``ci-required-result`` job concluded ``success``.\n"
-    "3. With ``--require-browser-gate``, a ``merge_group`` run of\n"
-    "   ``.github/workflows/results-explorer-browser.yml`` for the same SHA also\n"
-    "   concluded ``success`` and its ``Results Explorer browser gate`` job\n"
-    "   concluded ``success``.\n"
     "\n"
     "Nothing else counts: no tree matching, no ``pull_request``-run evidence, no\n"
     "parent inheritance.\n"
@@ -46,9 +42,7 @@ CLI_DESCRIPTION = (
 
 API_BASE = "https://api.github.com"
 PR_WORKFLOW_FILE = ".github/workflows/pr.yml"
-BROWSER_WORKFLOW_FILE = ".github/workflows/results-explorer-browser.yml"
 REQUIRED_JOB = "ci-required-result"
-BROWSER_GATE_JOB = "Results Explorer browser gate"
 REQUEST_TIMEOUT_SECONDS = 20
 
 
@@ -125,7 +119,6 @@ def find_certifying_run(
     sha: str,
     repo: str,
     token: str,
-    require_browser_gate: bool = False,
     urlopen: Callable[..., Any] = urllib.request.urlopen,
     event: str = "push",
     ref: str = "",
@@ -135,7 +128,7 @@ def find_certifying_run(
     if ineligible is not None:
         return {"certified": False, "run_id": None, "reason": ineligible}
     try:
-        return _find_certifying_run(sha, repo, token, require_browser_gate, urlopen)
+        return _find_certifying_run(sha, repo, token, urlopen)
     except CertificationError as exc:
         return {"certified": False, "run_id": None, "reason": f"lookup failed open: {exc}"}
 
@@ -144,7 +137,6 @@ def _find_certifying_run(
     sha: str,
     repo: str,
     token: str,
-    require_browser_gate: bool,
     urlopen: Callable[..., Any],
 ) -> dict[str, Any]:
     if not sha or not repo or not token:
@@ -169,43 +161,12 @@ def _find_certifying_run(
         jobs = _run_jobs(repo, token, run_id, urlopen)
         if _job_conclusion(jobs, REQUIRED_JOB) != "success":
             continue
-        if require_browser_gate:
-            browser = _check_browser_gate(repo, token, sha, urlopen)
-            if browser is None:
-                continue
         return {
             "certified": True,
             "run_id": run_id,
             "reason": f"merge_group run {run_id} passed {PR_WORKFLOW_FILE} on this exact SHA",
         }
     return {"certified": False, "run_id": None, "reason": "no successful merge_group run of pr.yml on this exact SHA"}
-
-
-def _check_browser_gate(
-    repo: str,
-    token: str,
-    sha: str,
-    urlopen: Callable[..., Any],
-) -> int | None:
-    candidates = sorted(
-        _workflow_runs(repo, token, BROWSER_WORKFLOW_FILE, sha, urlopen),
-        key=lambda run: str(run.get("created_at") or ""),
-        reverse=True,
-    )
-    for run in candidates:
-        if str(run.get("event")) != "merge_group":
-            continue
-        if str(run.get("head_sha") or "") != sha:
-            continue
-        if str(run.get("conclusion") or "") != "success":
-            continue
-        run_id = run.get("id")
-        if not isinstance(run_id, int):
-            continue
-        jobs = _run_jobs(repo, token, run_id, urlopen)
-        if _job_conclusion(jobs, BROWSER_GATE_JOB) == "success":
-            return run_id
-    return None
 
 
 def _write_github_output(path: Path, certified: bool, run_id: int | None) -> None:
@@ -219,7 +180,6 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--sha", default=os.environ.get("GITHUB_SHA", ""))
     parser.add_argument("--repo", default=os.environ.get("GITHUB_REPOSITORY", ""))
     parser.add_argument("--token", default=os.environ.get("GH_TOKEN", ""))
-    parser.add_argument("--require-browser-gate", action="store_true")
     parser.add_argument("--event", default=os.environ.get("GITHUB_EVENT_NAME", ""))
     parser.add_argument("--ref", default=os.environ.get("GITHUB_REF", ""))
     parser.add_argument("--allow-ref", default="refs/heads/develop")
@@ -231,7 +191,6 @@ def main(argv: list[str] | None = None) -> int:
         sha=args.sha,
         repo=args.repo,
         token=args.token,
-        require_browser_gate=args.require_browser_gate,
         event=args.event,
         ref=args.ref,
         allow_ref=args.allow_ref,
