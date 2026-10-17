@@ -24612,6 +24612,13 @@
       "status": "done",
       "title": "Ship discoverable tuning templates with the installed package"
     },
+    "tuning-timescaledb-native-layout-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "TimescaleDB: map tuning-file partitioning and sorting onto hypertables and compression"
+    },
     "tuning-tracker-hygiene-reopen-and-edges-20261001": {
       "claim": null,
       "needs": [],

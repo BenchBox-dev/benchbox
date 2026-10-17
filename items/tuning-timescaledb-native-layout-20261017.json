@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Tuning-file partitioning and sorting map to hypertable and compression settings; the precedence between CLI flags and the tuning file is documented",
+    "Each request is verified against the timescaledb_information catalog, or recorded as not applied with a reason",
+    "Live TPC-H SF0.01 tuned run, with the evidence recorded in the PR",
+    "Platform docs page describes the method"
+  ],
+  "context": "Owner request 2026-10-17: \"There should be a method for tuning these platforms.\"",
+  "description": "TimescaleDB skips tuning-file partitioning (benchbox/platforms/timescaledb.py:50). Its native layout controls are reachable only through CLI flags: --timescale-chunk-interval and --timescale-compression (timescaledb.py:73-97). Map the tuning file onto them: a date partition column becomes the hypertable time column, sort columns become compress_orderby, and segment columns become compress_segmentby. Also keep CLUSTER, which was confirmed working on a hypertable during the #3092 verification. Record each request in the ledger with catalog evidence (timescaledb_information views).",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T17:33:10Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "bc0278ce357f428686d0d6b6936abbc3",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}
