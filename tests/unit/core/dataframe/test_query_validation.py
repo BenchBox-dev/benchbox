@@ -98,7 +98,6 @@ def test_tpcds_is_uncertain_until_its_parameters_are_seed_aligned() -> None:
         ("clickbench", 1.0, None, "NOT_RUN"),
         ("ssb", 0.5, None, "UNCERTAIN"),
         ("tpch", 0.5, None, "UNCERTAIN"),
-        ("tpch", 0.01, 7, "UNCERTAIN"),
         ("tpch", 1.0, 123, "UNCERTAIN"),
         ("tpch", 1.0, 17039360, "UNCERTAIN"),
     ],
@@ -251,7 +250,6 @@ def test_tpch_answer_set_context_is_false_for_any_seed(seed: int) -> None:
     from benchbox.core.dataframe.query_validation import _tpch_reference_context
 
     assert _tpch_reference_context(1.0, seed) is False
-    assert _tpch_reference_context(0.01, seed) is False
     assert _tpch_reference_context(1.0, None) is True
     assert _tpch_reference_context(0.01, None) is True
     assert _tpch_reference_context(0.1, None) is True
@@ -366,3 +364,38 @@ def test_tpch_subscale_wrong_count_fails_the_query_and_run() -> None:
         "status": "FAILED",
         "error": wrong["row_count_validation"]["error"],
     }
+
+
+def test_seeded_subscale_run_checks_fixed_queries_and_skips_parameter_sensitive_ones() -> None:
+    from benchbox.core.expected_results.loader import load_tpch_subscale_row_counts
+
+    reference = load_tpch_subscale_row_counts(0.01)
+    measurements = [_measurement(query_id=f"Q{qid}", rows=rows) for qid, rows in reference.row_counts.items()]
+
+    summary = validate_dataframe_query_results(measurements, benchmark_name="tpch", scale_factor=0.01, seed=7)
+
+    statuses = {row["query_id"]: row["row_count_validation"]["status"] for row in measurements}
+    assert summary.status == "UNCERTAIN"
+    assert summary.details["skipped"] == len(reference.parameter_sensitive_query_ids)
+    assert summary.details["checked"] == 22 - len(reference.parameter_sensitive_query_ids)
+    assert statuses["Q2"] == "SKIPPED"
+    assert statuses["Q4"] == "PASSED"
+
+
+def test_seeded_subscale_run_fails_a_wrong_fixed_cardinality_count() -> None:
+    measurement = _measurement(query_id="Q4", rows=4)
+
+    summary = validate_dataframe_query_results([measurement], benchmark_name="tpch", scale_factor=0.01, seed=7)
+
+    assert summary.status == "FAILED"
+    assert measurement["row_count_validation"]["expected"] == 5
+
+
+def test_seeded_validation_leaves_the_reference_seed_context_unchanged() -> None:
+    from benchbox.core.validation.query_validation import get_reference_seed_context
+
+    validate_dataframe_query_results(
+        [_measurement(query_id="Q4", rows=5)], benchmark_name="tpch", scale_factor=0.01, seed=7
+    )
+
+    assert get_reference_seed_context() is None
