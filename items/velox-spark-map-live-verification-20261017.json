@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Live Velox local-mode TPC-H SF0.01 tuned run with a spark.gluten.* key: ledger shows it executed and the effective-session-config block shows it applied",
+    "Live Velox remote (Spark Connect) run: snapshot status and any refused keys recorded correctly",
+    "Findings recorded in docs/platforms/velox.md"
+  ],
+  "context": "Follow-up to #3077 (d9e9da9f4) and #3079 (e995879f3), 2026-10-17; no Gluten build was available on the macOS host.",
+  "description": "#3079 made Velox apply a tuning file's spark map through apply_tuned_spark_session_config (benchbox/platforms/velox.py configure_for_benchmark), and #3077 added effective-session-config snapshots for Spark, LakeSail and Velox (benchbox/platforms/spark_effective_config.py). Both were verified only with fake sessions for Velox; only native Spark (PySpark 4.2, JDK 17) ran live. Still open: whether `spark.gluten.*` keys set at runtime read back as set; whether remote Velox over Spark Connect refuses core keys server-side and how that is recorded; and whether `spark.conf.getAll` works over Spark Connect, or the snapshot reports not_readable.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T22:06:32Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "0738404f3a5c4e5cab7a3db7e4db5891",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}

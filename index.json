@@ -25749,6 +25749,13 @@
       "status": "done",
       "title": "Add Velox + Gluten Spark Acceleration Platform Adapter"
     },
+    "velox-spark-map-live-verification-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Verify the Velox spark-map apply path and effective-config capture against a live Gluten build"
+    },
     "vendor-duckdb-wasm-bundle-to-remove-jsdelivr-dependency": {
       "claim": null,
       "needs": [
