@@ -127,6 +127,7 @@ class ClickHouseWorkloadMixin:
             for statement, table_name, optimized in prepared_statements:
                 connection.execute(optimized)
                 self._record_tuned_sort_key_op(statement, optimized, table_name, table_tunings)
+                self._record_primary_key_order_op(statement, optimized, table_name, table_tunings, effective_config)
                 self.logger.debug(f"Executed schema statement: {optimized[:100]}...")
 
             self.logger.info(f"Schema created (PKs: {enable_primary_keys}, FKs: {enable_foreign_keys})")
@@ -262,6 +263,33 @@ class ClickHouseWorkloadMixin:
             )
         except Exception as exc:
             self.logger.debug("clickhouse tuned key ledger record degraded: %s", exc)
+
+    def _record_primary_key_order_op(
+        self,
+        original_statement: str,
+        executed_statement: str,
+        table_name: str | None,
+        table_tunings: dict[str, Any] | None,
+        effective_config: Any,
+    ) -> None:
+        try:
+            if not getattr(self, "tuning_enabled", False) or effective_config is None:
+                return
+            if not effective_config.primary_keys.enabled or has_order_by_clause(original_statement):
+                return
+            tuning_clauses = self._resolve_tuned_ddl_clauses(original_statement, table_tunings)
+            if tuning_clauses is not None and (tuning_clauses.sort_by or tuning_clauses.partition_by):
+                return
+            if not self._extract_primary_key_columns(original_statement):
+                return
+            ledger = getattr(self, "_applied_tuning_ledger", None)
+            if ledger is None:
+                return
+            from benchbox.core.tuning.applied_ledger import PHASE_DDL
+
+            ledger.record(executed_statement, PHASE_DDL, mechanism="primary_key_order_by", table=table_name)
+        except Exception as exc:
+            self.logger.debug("clickhouse primary-key ledger record degraded: %s", exc)
 
     @staticmethod
     def _extract_table_name(statement: str) -> str | None:

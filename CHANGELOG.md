@@ -202,6 +202,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- ClickHouse and chDB runs that request primary keys now record the
+  `CREATE TABLE` whose `ORDER BY` comes from the declared key, and the
+  ClickHouse catalog check reads `system.tables.primary_key`, so a
+  `--tuning auto` run (primary keys only) reaches `applied_verified` instead
+  of recording the primary-key request as not applied.
+
 - Tuning validation and `benchbox tuning init` treat a platform variant such
   as `duckdb:memory` like its base platform, so the sample configuration for a
   variant includes the same layout tunings as the base platform.
