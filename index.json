@@ -24250,18 +24250,13 @@
       "title": "Applied-ledger capture for native Spark/Snowpark session tuning"
     },
     "tuning-nits-sweep-20261001": {
-      "claim": {
-        "expires_at": "2026-10-18T09:17:41Z",
-        "generation": "25fa134bb7c84ca5af778b8d8fac0e4f",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
-      },
+      "claim": null,
       "needs": [
         "tuning-gate-ledger-outcome-vocabulary-20261001",
         "tuning-sort-evidence-attested-20261001"
       ],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Tuning nits: dead ALTER branch, conditional DuckDB re-create recording, ClickHouse truncation reason"
     },
     "tuning-no-midrun-destructive-db-handling-20261001": {
