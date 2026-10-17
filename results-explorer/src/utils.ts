@@ -1,5 +1,6 @@
 import { MISSING_VALUE_GLYPH } from "@/lib/metricFormatters";
 import { formatLatencyMs, formatPowerScore, formatPowerScoreExact } from "./lib/metricFormatters";
+import { complianceBadge } from "@/lib/subscale";
 
 export const BENCHMARK_LABELS: Record<string, string> = {
   ai_primitives: "AI Primitives",
@@ -65,12 +66,5 @@ export function shortHash(hash: string, length = 12): string {
 }
 
 export function complianceLabel(complianceClass: string | null | undefined): string {
-  switch (complianceClass) {
-    case "unofficial_subscale":
-      return "(subscale)";
-    case "unofficial_nonstandard":
-      return "(non-standard)";
-    default:
-      return "(unofficial)";
-  }
+  return complianceBadge(complianceClass) ?? "Unofficial";
 }

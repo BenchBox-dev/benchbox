@@ -37509,6 +37509,20 @@
     },
     {
       "path": "tests/unit/scripts/publication/test_artifacts.py",
+      "symbol": "html-output:doc",
+      "text": "unresolved HTML output source",
+      "payload": "sha256:7eed9fa43dcef27ecb7ff3457c73bbfc90f6d655cfffee85e58cc9d34a743217",
+      "finding_kind": "payload-error",
+      "kind": "fixture",
+      "consumer": "tests/unit/scripts/publication/test_artifacts.py",
+      "necessity": "Pre-registered for the publication-plane retirement, which deletes the shadow-site verifier and its tests from this file and changes its AST digest. Same fixture as above: in `html-output:doc` the test starts a subprocess whose program or inline source (unresolved HTML output source) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
+      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
+      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
+      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it.",
+      "count": 3
+    },
+    {
+      "path": "tests/unit/scripts/publication/test_artifacts.py",
       "symbol": "html-output:leaked",
       "text": "unresolved HTML output source",
       "payload": "sha256:1cfb5e3e8b6c8d4479c277e9b13fd20effe069cc6741d91aa10bc9664426d8c8",
@@ -37516,6 +37530,19 @@
       "kind": "fixture",
       "consumer": "tests/unit/scripts/publication/test_artifacts.py",
       "necessity": "In `html-output:leaked` the test starts a subprocess whose program or inline source (unresolved HTML output source) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
+      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
+      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
+      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
+    },
+    {
+      "path": "tests/unit/scripts/publication/test_artifacts.py",
+      "symbol": "html-output:leaked",
+      "text": "unresolved HTML output source",
+      "payload": "sha256:7eed9fa43dcef27ecb7ff3457c73bbfc90f6d655cfffee85e58cc9d34a743217",
+      "finding_kind": "payload-error",
+      "kind": "fixture",
+      "consumer": "tests/unit/scripts/publication/test_artifacts.py",
+      "necessity": "Pre-registered for the publication-plane retirement, which deletes the shadow-site verifier and its tests from this file and changes its AST digest. Same fixture as above: in `html-output:leaked` the test starts a subprocess whose program or inline source (unresolved HTML output source) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
       "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
       "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
       "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
@@ -37535,6 +37562,19 @@
     },
     {
       "path": "tests/unit/scripts/publication/test_artifacts.py",
+      "symbol": "html-output:mixed",
+      "text": "unresolved HTML output source",
+      "payload": "sha256:7eed9fa43dcef27ecb7ff3457c73bbfc90f6d655cfffee85e58cc9d34a743217",
+      "finding_kind": "payload-error",
+      "kind": "fixture",
+      "consumer": "tests/unit/scripts/publication/test_artifacts.py",
+      "necessity": "Pre-registered for the publication-plane retirement, which deletes the shadow-site verifier and its tests from this file and changes its AST digest. Same fixture as above: in `html-output:mixed` the test starts a subprocess whose program or inline source (unresolved HTML output source) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
+      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
+      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
+      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
+    },
+    {
+      "path": "tests/unit/scripts/publication/test_artifacts.py",
       "symbol": "html-output:real",
       "text": "unresolved HTML output source",
       "payload": "sha256:1cfb5e3e8b6c8d4479c277e9b13fd20effe069cc6741d91aa10bc9664426d8c8",
@@ -37542,6 +37582,19 @@
       "kind": "fixture",
       "consumer": "tests/unit/scripts/publication/test_artifacts.py",
       "necessity": "In `html-output:real` the test starts a subprocess whose program or inline source (unresolved HTML output source) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
+      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
+      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
+      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
+    },
+    {
+      "path": "tests/unit/scripts/publication/test_artifacts.py",
+      "symbol": "html-output:real",
+      "text": "unresolved HTML output source",
+      "payload": "sha256:7eed9fa43dcef27ecb7ff3457c73bbfc90f6d655cfffee85e58cc9d34a743217",
+      "finding_kind": "payload-error",
+      "kind": "fixture",
+      "consumer": "tests/unit/scripts/publication/test_artifacts.py",
+      "necessity": "Pre-registered for the publication-plane retirement, which deletes the shadow-site verifier and its tests from this file and changes its AST digest. Same fixture as above: in `html-output:real` the test starts a subprocess whose program or inline source (unresolved HTML output source) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
       "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
       "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
       "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
@@ -37941,6 +37994,19 @@
     },
     {
       "path": "tests/unit/test_standardized_test_commands.py",
+      "symbol": "TestMakefileCommands.test_pr_preflight_fast_tests_creates_classifier_artifacts_when_absent",
+      "text": "unresolved executable source: make",
+      "payload": "sha256:d0fc52c1f2d59e782df081a82235f13c2f3aacab0021b3dee1700cc608498804",
+      "finding_kind": "payload-error",
+      "kind": "fixture",
+      "consumer": "tests/unit/test_standardized_test_commands.py",
+      "necessity": "Pre-registered for the TPC-H subscale row-count reference change, which moves the strict expected-results scale-drift case from SF 0.1 to SF 0.5 and changes this file's AST digest. Same fixture as above: in `TestMakefileCommands.test_pr_preflight_fast_tests_creates_classifier_artifacts_when_absent` the test starts a subprocess whose program or inline source (make) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
+      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
+      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
+      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
+    },
+    {
+      "path": "tests/unit/test_standardized_test_commands.py",
       "symbol": "TestMakefileCommands.test_skill_integrity_preflight_selected_lane_failure_propagates",
       "text": "unresolved executable source: make",
       "payload": "sha256:03360c0e07a3f752ea2b2febd1fc49e90b02ae2a7fb7d10f1ea60f6d82ceda9f",
@@ -38078,6 +38144,19 @@
       "kind": "fixture",
       "consumer": "tests/unit/workflows/test_validate_submission_override_approval.py",
       "necessity": "In `_run_review_program` the test starts a subprocess whose program or inline source (program) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
+      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
+      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
+      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
+    },
+    {
+      "path": "tests/unit/workflows/test_validate_submission_override_approval.py",
+      "symbol": "_run_review_program",
+      "text": "unresolved executable source: program",
+      "payload": "sha256:e21a464c1820676a7e678e42f75415b2fd1b0a1b3bd7f64cdc8034167edeb812",
+      "finding_kind": "payload-error",
+      "kind": "fixture",
+      "consumer": "tests/unit/workflows/test_validate_submission_override_approval.py",
+      "necessity": "Pre-registered for the publication-plane retirement, which deletes the tests that read the retired deploy and corpus-cutover workflows from this file and changes its AST digest. Same fixture as above: in `_run_review_program` the test starts a subprocess whose program or inline source (program) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
       "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
       "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
       "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
@@ -38861,7 +38940,7 @@
       "finding_kind": "payload-error",
       "kind": "fixture",
       "consumer": ".github/workflows/ci.yml",
-      "necessity": "The test executes the run script that it extracts from the base-guard job in the checked CI workflow. The checker scans that script in place in the workflow, so the extracted copy carries no comment the policy has not seen.",
+      "necessity": "The test executes the run script that it extracts from the base check in the ci-paths job of the checked CI workflow. The checker scans that script in place in the workflow, so the extracted copy carries no comment the policy has not seen.",
       "alternative": "Inlining the script as a literal would stop the test from exercising the checked workflow it targets.",
       "owner": "BenchBox maintainers",
       "removal": "Remove when the executable-payload adapter can resolve this source statically."

@@ -456,6 +456,7 @@ class SparkAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
         try:
             spark = builder.getOrCreate()
             self._spark_session = spark
+            self.capture_effective_session_config(spark, "session_created")
 
             self._configure_runtime_logging(spark)
 

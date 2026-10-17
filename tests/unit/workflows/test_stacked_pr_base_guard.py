@@ -14,7 +14,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 REPO_ROOT = Path(__file__).resolve().parents[3]
 WORKFLOWS = REPO_ROOT / ".github" / "workflows"
 WORKFLOW = WORKFLOWS / "ci.yml"
-JOB = "base-guard"
+JOB = "ci-paths"
 STEP_NAME = "Check base branch"
 
 INTEGRATION_BRANCHES = {"develop", "release", "published-results"}
@@ -57,19 +57,19 @@ def test_stacked_pr_base_guard_reevaluates_when_a_pr_is_retargeted() -> None:
 def test_stacked_pr_base_guard_reevaluates_when_draft_status_changes() -> None:
     types = (_triggers(_load())["pull_request"] or {}).get("types", [])
     assert "ready_for_review" in types, "guard does not re-evaluate when a draft becomes ready"
-    assert "converted_to_draft" in types, "guard does not re-evaluate when a ready PR becomes a draft"
-    assert sorted(types) == sorted(
-        ["opened", "synchronize", "reopened", "edited", "ready_for_review", "converted_to_draft"]
-    ), "ci.yml pull_request types changed; every listed event re-runs the guard and the CI lanes"
+    assert "converted_to_draft" not in types, (
+        "a draft cannot merge and converting to draft only relaxes the guard, so it must not re-run every lane"
+    )
+    assert sorted(types) == sorted(["opened", "synchronize", "reopened", "edited", "ready_for_review"]), (
+        "ci.yml pull_request types changed; every listed event re-runs the guard and the CI lanes"
+    )
 
 
 def test_stacked_pr_base_guard_names_integration_branches_and_can_fail() -> None:
     job = _job()
-    assert job.get("if") == "${{ github.event_name == 'pull_request' }}", (
-        "base-guard must run on every PR event so a stacked base always reports"
-    )
-    step = next((s for s in job.get("steps", []) if s.get("name") == STEP_NAME), None)
-    assert step is not None, f"base-guard has no {STEP_NAME!r} step"
+    assert "if" not in job, "ci-paths must run on every PR event so a stacked base always reports"
+    assert job["steps"][0].get("name") == STEP_NAME, "the base check must run before any PR code is checked out"
+    step = job["steps"][0]
     body = str(step.get("run", ""))
     accepted = {branch for branch in INTEGRATION_BRANCHES if branch in body}
     assert accepted == INTEGRATION_BRANCHES, (
@@ -80,14 +80,12 @@ def test_stacked_pr_base_guard_names_integration_branches_and_can_fail() -> None
 
 def test_stacked_pr_base_guard_feeds_the_tooling_result() -> None:
     workflow = _load()
-    tooling = workflow["jobs"]["tooling"]
-    assert JOB in tooling["needs"], (
-        f"tooling result does not aggregate {JOB}; a stacked-PR failure would not gate merge"
-    )
-    run_text = "\n".join(str(step.get("run", "")) for step in tooling.get("steps", []))
-    assert "base-guard" in run_text, (
-        "tooling result never evaluates base-guard; a stacked-PR failure would not gate merge"
-    )
+    assert "base-guard" not in workflow["jobs"]
+    for unit in ("core", "results-data", "tooling"):
+        job = workflow["jobs"][unit]
+        assert JOB in job["needs"], f"{unit} result does not aggregate {JOB}; a stacked-PR failure would not gate merge"
+        run_text = "\n".join(str(step.get("run", "")) for step in job.get("steps", []))
+        assert f"--always {JOB}" in run_text, f"{unit} result does not require {JOB} to succeed"
 
 
 def _run_guard(base_ref: str, *, draft: bool) -> subprocess.CompletedProcess[str]:

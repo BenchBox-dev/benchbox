@@ -40,6 +40,8 @@ import { stringSerde, useUrlState } from "@/lib/useUrlState";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
 import { useOptionalPickingState } from "@/lib/pickingState";
 import { formatTimingExclusion } from "@/lib/displayEligibility";
+import { SubscaleBadge } from "@/components/SubscaleNotice";
+import { isSubscaleTpc, subscaleCohortNote, subscaleTpcName } from "@/lib/subscale";
 import {
   buildCompareUrl,
   MAX_COMPARE_SELECTIONS,
@@ -1329,7 +1331,17 @@ function LeaderboardComparePicker({
           <h2 class="text-sm font-semibold text-[var(--bb-fg-primary)]">
             {formatBenchmarkLabel(cohort.benchmark)} SF {cohort.scaleFactor} · {cohort.phase}
             {cohort.phase === "throughput" && cohort.streamCount !== null ? ` · ${cohort.streamCount} streams` : ""}
+            {isSubscaleTpc(cohort.benchmark, cohort.scaleFactor) && (
+              <span class="ml-2 align-middle">
+                <SubscaleBadge testId="leaderboard-cohort-subscale-badge" />
+              </span>
+            )}
           </h2>
+          {subscaleTpcName(cohort.benchmark, cohort.scaleFactor) && (
+            <p class="mt-1 text-xs text-[var(--bb-fg-muted)]" data-testid="leaderboard-cohort-subscale-note">
+              {subscaleCohortNote(subscaleTpcName(cohort.benchmark, cohort.scaleFactor) as string)}
+            </p>
+          )}
           <p class="mt-1 text-xs text-[var(--bb-fg-muted)]">
             {cohort.results.length} {scopeRunsNoun} {cohort.results.length === 1 ? "run is" : "runs are"} available in this cohort.
           </p>

@@ -44,9 +44,9 @@ def _distributed_config() -> UnifiedTuningConfiguration:
 
 
 class TestRequestedButNotRenderedIsAnError:
-    def test_partitioning_on_postgresql_errors(self) -> None:
+    def test_partitioning_on_postgresql_validates(self) -> None:
         errors, _warnings = _partitioned_config().validate_for_platform_detailed("postgresql")
-        assert any("requested partitioning is not applied at execution on postgresql" in e for e in errors)
+        assert not any("partitioning" in e for e in errors)
 
     def test_partitioning_on_postgres_family_errors(self) -> None:
         for platform in ("cedardb", "citus", "paradedb", "pg-duckdb"):
@@ -180,6 +180,8 @@ class TestRequestedButNotRenderedIsAnError:
             ("questdb", "foreign_keys"),
             ("trino", "primary_keys"),
             ("presto", "primary_keys"),
+            ("athena", "primary_keys"),
+            ("athena", "foreign_keys"),
         ):
             config = UnifiedTuningConfiguration()
             config.disable_all_constraints()
@@ -208,7 +210,16 @@ class TestRequestedButNotRenderedIsAnError:
 
 _NOT_RENDERED: dict[str, frozenset[str]] = {
     "athena": frozenset(
-        {"check_constraints", "clustering", "distribution", "partitioning", "sorting", "unique_constraints"}
+        {
+            "check_constraints",
+            "clustering",
+            "distribution",
+            "foreign_keys",
+            "partitioning",
+            "primary_keys",
+            "sorting",
+            "unique_constraints",
+        }
     ),
     "azure-synapse": frozenset(
         {"check_constraints", "clustering", "distribution", "partitioning", "sorting", "unique_constraints"}
@@ -251,6 +262,7 @@ _NOT_RENDERED: dict[str, frozenset[str]] = {
             "check_constraints",
             "distribution",
             "foreign_keys",
+            "materialized_views",
             "partitioning",
             "primary_keys",
             "sorting",
@@ -290,7 +302,7 @@ _NOT_RENDERED: dict[str, frozenset[str]] = {
     "pg-duckdb": frozenset({"check_constraints", "clustering", "partitioning", "sorting", "unique_constraints"}),
     "pg-mooncake": frozenset({"check_constraints", "clustering", "partitioning", "sorting", "unique_constraints"}),
     "postgresql": frozenset(
-        {"bloom_filters", "check_constraints", "clustering", "materialized_views", "partitioning", "unique_constraints"}
+        {"bloom_filters", "check_constraints", "clustering", "materialized_views", "unique_constraints"}
     ),
     "presto": frozenset(
         {
@@ -319,6 +331,7 @@ _NOT_RENDERED: dict[str, frozenset[str]] = {
     ),
     "singlestore": frozenset({"check_constraints", "foreign_keys", "partitioning", "unique_constraints"}),
     "snowflake": frozenset({"check_constraints", "materialized_views", "unique_constraints"}),
+    "spark": frozenset({"check_constraints", "partitioning", "unique_constraints"}),
     "sqlite": frozenset({"check_constraints", "unique_constraints"}),
     "starrocks": frozenset({"check_constraints", "foreign_keys", "unique_constraints"}),
     "timescaledb": frozenset(
@@ -337,7 +350,7 @@ _NOT_RENDERED: dict[str, frozenset[str]] = {
     ),
 }
 _RENDERED: dict[str, frozenset[str]] = {
-    "athena": frozenset({"foreign_keys", "primary_keys"}),
+    "athena": frozenset({}),
     "azure-synapse": frozenset({"foreign_keys", "primary_keys"}),
     "bigquery": frozenset({"foreign_keys", "primary_keys"}),
     "cedardb": frozenset({"foreign_keys", "primary_keys"}),
@@ -365,12 +378,13 @@ _RENDERED: dict[str, frozenset[str]] = {
     "paradedb": frozenset({"foreign_keys", "primary_keys"}),
     "pg-duckdb": frozenset({"foreign_keys", "primary_keys"}),
     "pg-mooncake": frozenset({"foreign_keys", "primary_keys"}),
-    "postgresql": frozenset({"foreign_keys", "primary_keys"}),
+    "postgresql": frozenset({"foreign_keys", "partitioning", "primary_keys"}),
     "presto": frozenset({"foreign_keys"}),
     "questdb": frozenset({}),
     "redshift": frozenset({"foreign_keys", "primary_keys", "sorting"}),
     "singlestore": frozenset({"primary_keys"}),
     "snowflake": frozenset({"clustering", "foreign_keys", "partitioning", "primary_keys"}),
+    "spark": frozenset({"foreign_keys", "primary_keys", "sorting"}),
     "sqlite": frozenset({"foreign_keys", "primary_keys"}),
     "starrocks": frozenset({"distribution", "partitioning", "primary_keys", "sorting"}),
     "timescaledb": frozenset({"foreign_keys", "primary_keys"}),
@@ -424,7 +438,7 @@ class TestMechanismPreconditions:
         }
         assert gated == {("redshift", "sorting")}
 
-    @pytest.mark.parametrize("alias", ["spark", "delta", "databricks:sql", "Databricks"])
+    @pytest.mark.parametrize("alias", ["delta", "databricks:sql", "Databricks"])
     def test_databricks_aliases_run_the_effective_layout_validator(self, alias: str) -> None:
         config = UnifiedTuningConfiguration()
         config.disable_all_constraints()
@@ -737,6 +751,26 @@ class TestBenchmarkDdlAndAdapterBehavior:
         parameters = inspect.signature(AthenaAdapter._convert_to_external_table).parameters
         assert "tuning_config" not in parameters and "table_tuning" not in parameters
 
+    def test_athena_external_table_strips_constraints(self) -> None:
+        from benchbox.platforms.athena import AthenaAdapter
+
+        adapter = AthenaAdapter.__new__(AthenaAdapter)
+        adapter.s3_bucket = "bucket"
+        adapter.s3_prefix = "prefix"
+        adapter.database = "db"
+        adapter.data_format = "text"
+        adapter.default_format = "TEXTFILE"
+        create = (
+            "CREATE TABLE orders (o_orderkey INTEGER NOT NULL PRIMARY KEY, o_custkey INTEGER, "
+            "FOREIGN KEY (o_custkey) REFERENCES customer (c_custkey))"
+        )
+        for is_staging in (False, True):
+            rendered = AthenaAdapter._convert_to_external_table(adapter, create, is_staging=is_staging)
+            assert "PRIMARY KEY" not in rendered.upper()
+            assert "FOREIGN KEY" not in rendered.upper()
+            assert "REFERENCES" not in rendered.upper()
+            assert "o_custkey INTEGER)" in rendered
+
     def test_datafusion_schema_ignores_constraints(self) -> None:
         from benchbox.platforms.datafusion import DataFusionAdapter
 
@@ -759,7 +793,18 @@ class TestShippedTemplatesValidateClean:
 
     @pytest.mark.parametrize(
         "platform",
-        ["duckdb", "clickhouse", "snowflake", "bigquery", "postgresql", "databricks", "redshift"],
+        [
+            "duckdb",
+            "duckdb:memory",
+            "clickhouse",
+            "snowflake",
+            "bigquery",
+            "postgresql",
+            "databricks",
+            "redshift",
+            "athena",
+            "doris",
+        ],
     )
     def test_sample_configs_validate_clean(self, tmp_path, platform: str) -> None:
         from benchbox.cli.config import ConfigManager
@@ -769,6 +814,46 @@ class TestShippedTemplatesValidateClean:
         config = UnifiedTuningConfiguration.from_dict(yaml.safe_load(target.read_text(encoding="utf-8")))
         errors, _warnings = config.validate_for_platform_detailed(platform)
         assert errors == [], f"sample for {platform}: {errors}"
+
+    def test_sample_config_summary_lists_only_enabled_constraints(self, tmp_path, monkeypatch) -> None:
+        from rich.console import Console
+
+        import benchbox.cli.config as cli_config
+
+        recorder = Console(record=True, width=200)
+        monkeypatch.setattr(cli_config, "console", recorder)
+        cli_config.ConfigManager().create_sample_unified_tuning_config(tmp_path / "duckdb.yaml", "duckdb")
+        summary = recorder.export_text()
+        assert "Schema constraints (primary keys, foreign keys)" in summary
+        assert "unique" not in summary and "check" not in summary
+
+        recorder = Console(record=True, width=200)
+        monkeypatch.setattr(cli_config, "console", recorder)
+        cli_config.ConfigManager().create_sample_unified_tuning_config(tmp_path / "doris.yaml", "doris")
+        assert "Schema constraints" not in recorder.export_text()
+
+    def test_platform_variant_validates_like_its_base(self) -> None:
+        for tuning_type in TuningType:
+            config = UnifiedTuningConfiguration()
+            config.disable_all_constraints()
+            constraint_attrs = {tt: attr for attr, tt in config._CONSTRAINT_CHECKS}
+            option_attrs = {tt: attr for attr, tt in config._OPT_CHECKS}
+            if tuning_type in constraint_attrs:
+                getattr(config, constraint_attrs[tuning_type]).enabled = True
+            elif tuning_type in option_attrs:
+                setattr(config.platform_optimizations, option_attrs[tuning_type], True)
+            else:
+                config.table_tunings["orders"] = TableTuning(
+                    table_name="orders",
+                    **{tuning_type.value: [TuningColumn(name="o_orderdate", type="DATE", order=1)]},
+                )
+            assert config.get_enabled_tuning_types() == {tuning_type}, tuning_type
+            base_errors, base_warnings = config.validate_for_platform_detailed("duckdb")
+            variant_errors, variant_warnings = config.validate_for_platform_detailed("duckdb:memory")
+            assert [e.replace("duckdb:memory", "duckdb") for e in variant_errors] == base_errors, tuning_type
+            assert [w.replace("duckdb:memory", "duckdb") for w in variant_warnings] == base_warnings, tuning_type
+        assert TuningType.is_known_platform("duckdb:memory")
+        assert TuningType.SORTING.is_compatible_with_platform("DuckDB:memory")
 
     @pytest.mark.parametrize("platform", sorted(known_registry_platforms() | {"spark", "starburst"}))
     def test_fallback_config_validates_clean(self, tmp_path, platform: str) -> None:

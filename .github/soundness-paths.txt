@@ -106,7 +106,6 @@ file	scripts/check_dependency_bounds.py
 file	_project/scripts/check_uv_lock_revision.py
 file	_project/decisions/single-repo-migration.md
 file	.github/workflows/release.yml
-file	scripts/check_decision_records.py
 prefix	benchbox/_binaries/
 file	benchbox/utils/binary_manifest.py
 file	scripts/bundled_binary_manifest.py

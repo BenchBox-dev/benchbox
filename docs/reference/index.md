@@ -31,6 +31,7 @@ Complete reference documentation for BenchBox APIs, CLI, and data formats.
 ## Data Formats & Schemas
 
 - [Result Export Formats](result-formats.md) - Comprehensive guide to JSON, CSV, HTML exports
+- [Tuning Platform Support](tuning-platform-support.md) - Which tuning types each platform applies and which can reach `applied_verified`
 - [Result Schema v1.0](result-schema-v1.md) - Benchmark result JSON schema specification
 - [Backward Compatibility Registry](backward-compatibility.md) - Lifecycle policy and shim tracking process
 
@@ -49,6 +50,7 @@ api-reference
 public-contracts
 mcp
 result-formats
+tuning-platform-support
 result-schema-v1
 backward-compatibility
 python-api/index

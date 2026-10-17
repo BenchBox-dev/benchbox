@@ -28,6 +28,7 @@ import {
 } from "@/lib/displayEligibility";
 
 import { colorForCell, lightnessForCell } from "@/lib/chartMath";
+import { SUBSCALE_BADGE } from "@/lib/subscale";
 export { colorForCell, lightnessForCell };
 
 const STICKY_COL_REM = {
@@ -565,6 +566,15 @@ export function QueryHeatmap({
                         *
                       </span>
                     )}
+                    {!rankingExclusion && row.compliance_class === "unofficial_subscale" && (
+                      <span
+                        class="text-xs text-[var(--bb-tone-warning-fg)]"
+                        title={SUBSCALE_BADGE}
+                        data-testid={`heatmap-mobile-subscale-marker-${row.result_id}`}
+                      >
+                        subscale
+                      </span>
+                    )}
                   </div>
                   {(identityCounts.get(`${row.platform}\0${row.platform_version}`) ?? 0) > 1 && (
                     <span class="block font-mono text-xs text-[var(--bb-data-fg-muted)]" data-testid="visible-run-qualifier-mobile">{row.short_id || row.result_id}</span>
@@ -757,6 +767,15 @@ export function QueryHeatmap({
                           data-testid={`heatmap-compliance-marker-${row.result_id}`}
                         >
                           *
+                        </span>
+                      )}
+                      {!rankingExclusion && row.compliance_class === "unofficial_subscale" && (
+                        <span
+                          class="shrink-0 text-xs text-[var(--bb-tone-warning-fg)]"
+                          title={SUBSCALE_BADGE}
+                          data-testid={`heatmap-subscale-marker-${row.result_id}`}
+                        >
+                          subscale
                         </span>
                       )}
                     </div>

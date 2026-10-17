@@ -236,6 +236,18 @@ The last two lines confirm that native execution happened.
 | Primary Keys | Informational | Not enforced (Spark behavior) |
 | Foreign Keys | Informational | Not enforced (Spark behavior) |
 
+A tuning file's `platform_optimizations.spark` map applies to Velox the same
+way it applies to Spark: each key is set with `spark.conf.set` after the
+session starts, read back, and recorded in the applied-tuning ledger. Standard
+Spark SQL keys and `spark.gluten.*` keys are accepted. Keys the adapter owns
+(`spark.plugins`, `spark.shuffle.manager`, `spark.memory.offHeap.*`) and core
+deploy keys (`spark.driver.*`, `spark.executor.*`) are rejected when the tuning
+file loads; set them through the adapter options instead. In remote mode the
+Spark Connect server can also refuse a key; a refused or overridden key is
+recorded as failed and listed in the run's effective session configuration.
+Velox has no curated tuning templates, so `--tuning tuned` uses the generic
+fallback configuration.
+
 ## Comparison: Velox vs. Spark vs. LakeSail
 
 | Dimension | Apache Gluten + Velox | Apache Spark | LakeSail Sail |

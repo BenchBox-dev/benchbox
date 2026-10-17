@@ -22,7 +22,10 @@ KINDS = (OK, QUOTA, AUTH, TIMEOUT, INVALID, EMPTY, ERROR, INCOMPLETE)
 CALIBRATED_QUOTA_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {
     "agy": (re.compile(r"RESOURCE_EXHAUSTED \(code 429\)"),),
     "claude": (re.compile(r"You[\u2019']ve hit your session limit"),),
-    "codex": (re.compile(r"^ERROR: You[\u2019']ve hit your usage limit", re.MULTILINE),),
+    "codex": (
+        re.compile(r"^ERROR: You[\u2019']ve hit your usage limit", re.MULTILINE),
+        re.compile(r"^ERROR: Quota exceeded\. Check your plan and billing details\.", re.MULTILINE),
+    ),
     "muse": (),
 }
 CALIBRATED_AUTH_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {

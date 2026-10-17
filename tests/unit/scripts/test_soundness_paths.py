@@ -111,7 +111,6 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
         ".github/workflows/new-example.yml",
         "scripts/pr_arm.py",
         "_project/decisions/single-repo-migration.md",
-        "scripts/check_decision_records.py",
     ],
 )
 def test_soundness_predicate_matches_review_required_paths(path: str) -> None:

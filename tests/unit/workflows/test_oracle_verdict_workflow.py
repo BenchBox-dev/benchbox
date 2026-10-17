@@ -160,8 +160,9 @@ def test_reviewer_slots_cover_the_policy_and_run_sequentially() -> None:
 
 def test_every_enabled_harness_has_jobs() -> None:
     enabled = {reviewer.harness for reviewer in POLICY.reviewers.values() if reviewer.enabled}
-    assert enabled == set(HARNESS_SECRETS)
-    assert {_harness(name) for name in _attempt_jobs()} == enabled
+    assert enabled <= set(HARNESS_SECRETS)
+    assert {_harness(name) for name in _attempt_jobs()} == set(HARNESS_SECRETS)
+    assert {reviewer.harness for reviewer in POLICY.reviewers.values()} == set(HARNESS_SECRETS)
 
 
 def test_each_reviewer_job_loads_only_its_own_secret() -> None:

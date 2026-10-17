@@ -80,7 +80,7 @@ a maintainer reviews and accepts intentional changes.
 
 ## What CI gates
 
-The `explorer-e2e` job in [`.github/workflows/ci.yml`](https://github.com/BenchBox-dev/BenchBox/blob/develop/.github/workflows/ci.yml)
+The `explorer-e2e` job in [`.github/workflows/site-docs.yml`](https://github.com/BenchBox-dev/BenchBox/blob/develop/.github/workflows/site-docs.yml)
 (Chromium full suite, blocking) runs on **pull requests**
 when the change touches the explorer unit (with the `explorer` unit result
 always reporting; the job is skipped when no relevant files change).

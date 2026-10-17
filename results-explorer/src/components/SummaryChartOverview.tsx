@@ -48,6 +48,7 @@ import { StackedPhase } from "@/components/StackedPhase";
 import { CDFChart } from "@/components/CDFChart";
 import { RankTable } from "@/components/RankTable";
 import { EmptyState } from "@/components/EmptyState";
+import { isDerivedPowerScore, isSubscaleTpc, powerScoreTitle } from "@/lib/subscale";
 
 interface Props {
   context: Extract<ChartContext, { kind: "summary" }>;
@@ -141,7 +142,10 @@ export function SummaryMetricTable({
   const scoreMetric = normalizePrimaryMetric(summary.ranking?.primary_metric) === "throughput_at_size"
     ? "throughput_at_size"
     : "power_score";
-  const scoreName = scoreMetric === "throughput_at_size" ? "Throughput@Size" : "Power@Size";
+  const scoreName =
+    scoreMetric === "throughput_at_size"
+      ? "Throughput@Size"
+      : powerScoreTitle(isSubscaleTpc(summary.benchmark, summary.scale_factor));
   const powerRows = summary.platforms.filter(
     (platform) => isRankable(platform) && validPrimaryMetricValue(platform, scoreMetric) !== null,
   );
@@ -248,13 +252,17 @@ export function SummaryMetricTable({
                   {showScoreColumn && (
                     <InlineMetricCell
                       value={powerValue}
-                      formatted={powerValue === null ? "—" : fmtScore(powerValue)}
+                      formatted={
+                        powerValue === null
+                          ? "—"
+                          : `${fmtScore(powerValue)}${scoreMetric === "power_score" && isDerivedPowerScore(platform.power_score_source) ? " (derived)" : ""}`
+                      }
                       fraction={powerFraction}
                       color={color}
                       title={
                         powerValue === null
                           ? `${scoreName} unavailable or not rank-safe`
-                          : `${fmtScore(powerValue)} ${scoreName}`
+                          : `${fmtScore(powerValue)} ${scoreName}${scoreMetric === "power_score" && isDerivedPowerScore(platform.power_score_source) ? ", derived from query timings" : ""}`
                       }
                     />
                   )}

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-from benchbox.core.expected_results.models import ValidationMode
+from benchbox.core.expected_results.models import ValidationMode, ValidationResult
+from benchbox.core.expected_results.ssb_results import normalize_ssb_query_id, ssb_expected_row_counts
 from benchbox.core.validation.query_validation import QueryValidator
 
 _MAX_EVIDENCE_MESSAGE_CHARS = 500
@@ -60,17 +62,15 @@ def validate_dataframe_query_results(
         status = _unavailable_status(execution_failures, bool(successful_rows or selected_skips))
         return DataFrameQueryValidationSummary(status, evidence)
 
-    if benchmark_id not in {"tpch", "tpcds"}:
+    if benchmark_id not in {"tpch", "tpcds", "ssb"}:
         evidence["provider"] = "none"
         evidence["reason"] = "no production DataFrame oracle is registered for this benchmark"
         return DataFrameQueryValidationSummary("PARTIAL" if execution_failures else "NOT_RUN", evidence)
 
-    if benchmark_id == "tpcds" or not _tpch_reference_context(scale_factor, seed):
-        reason = (
-            "TPC-DS expected row counts are not seed-aligned with this DataFrame run"
-            if benchmark_id == "tpcds"
-            else "TPC-H answer-file row counts apply only to SF 1 runs with qgen default parameters (no seed)"
-        )
+    if benchmark_id == "ssb":
+        evidence["provider"] = "ssb_expected_row_counts"
+    reason = _reference_unavailable_reason(benchmark_id, scale_factor, seed)
+    if reason:
         for row in successful_rows:
             _attach_skipped_validation(row, reason)
         evidence["skipped"] = len(successful_rows) + selected_skips
@@ -78,7 +78,7 @@ def validate_dataframe_query_results(
         status = _unavailable_status(execution_failures, bool(successful_rows or selected_skips))
         return DataFrameQueryValidationSummary(status, evidence)
 
-    initialization_error = _apply_expected_row_counts(successful_rows, benchmark_id, scale_factor, evidence)
+    initialization_error = _apply_reference_row_counts(successful_rows, benchmark_id, scale_factor, evidence)
     if initialization_error:
         evidence["reason"] = initialization_error
         status = _unavailable_status(execution_failures, bool(successful_rows))
@@ -110,6 +110,57 @@ def _unavailable_status(execution_failures: int, has_unavailable_evidence: bool)
     return "NOT_RUN"
 
 
+def _reference_unavailable_reason(benchmark_id: str, scale_factor: float, seed: int | None) -> str | None:
+    if benchmark_id == "tpcds":
+        return "TPC-DS expected row counts are not seed-aligned with this DataFrame run"
+    if benchmark_id == "ssb":
+        if ssb_expected_row_counts(scale_factor) is None:
+            return f"SSB expected row counts are not recorded for scale factor {scale_factor}"
+        return None
+    if not _tpch_reference_context(scale_factor, seed):
+        return "TPC-H answer-file row counts apply only to SF 1 runs with qgen default parameters (no seed)"
+    return None
+
+
+def _apply_reference_row_counts(
+    successful_rows: list[dict[str, Any]],
+    benchmark_id: str,
+    scale_factor: float,
+    evidence: dict[str, Any],
+) -> str | None:
+    if benchmark_id == "ssb":
+        counts = ssb_expected_row_counts(scale_factor) or {}
+        _apply_row_count_oracle(
+            successful_rows, lambda query_id, actual: _validate_ssb_row_count(counts, query_id, actual), evidence
+        )
+        return None
+    return _apply_expected_row_counts(successful_rows, benchmark_id, scale_factor, evidence)
+
+
+def _validate_ssb_row_count(counts: dict[str, int], query_id: str, actual_row_count: int) -> ValidationResult:
+    expected = counts.get(normalize_ssb_query_id(query_id))
+    if expected is None:
+        return ValidationResult(
+            is_valid=True,
+            query_id=query_id,
+            expected_row_count=None,
+            actual_row_count=actual_row_count,
+            validation_mode=ValidationMode.SKIP,
+            warning_message=f"No expected SSB row count is recorded for query {query_id!r}",
+        )
+    is_valid = actual_row_count == expected
+    return ValidationResult(
+        is_valid=is_valid,
+        query_id=query_id,
+        expected_row_count=expected,
+        actual_row_count=actual_row_count,
+        validation_mode=ValidationMode.EXACT,
+        error_message=None
+        if is_valid
+        else f"Query {query_id} returned {actual_row_count} rows; expected {expected} for this scale factor",
+    )
+
+
 def _apply_expected_row_counts(
     successful_rows: list[dict[str, Any]],
     benchmark_id: str,
@@ -131,6 +182,24 @@ def _apply_expected_row_counts(
         evidence["errors"] = len(successful_rows)
         return message
 
+    _apply_row_count_oracle(
+        successful_rows,
+        lambda query_id, actual: validator.validate_query_result(
+            benchmark_type=benchmark_id,
+            query_id=query_id,
+            actual_row_count=actual,
+            scale_factor=scale_factor,
+        ),
+        evidence,
+    )
+    return None
+
+
+def _apply_row_count_oracle(
+    successful_rows: list[dict[str, Any]],
+    validate: Callable[[str, int], ValidationResult],
+    evidence: dict[str, Any],
+) -> None:
     for row in successful_rows:
         actual_row_count = row.get("rows_returned")
         if isinstance(actual_row_count, bool) or not isinstance(actual_row_count, int) or actual_row_count < 0:
@@ -141,12 +210,7 @@ def _apply_expected_row_counts(
             continue
 
         try:
-            result = validator.validate_query_result(
-                benchmark_type=benchmark_id,
-                query_id=str(row.get("query_id", "")),
-                actual_row_count=actual_row_count,
-                scale_factor=scale_factor,
-            )
+            result = validate(str(row.get("query_id", "")), actual_row_count)
         except Exception as exc:
             message = _bounded_message(f"Row-count oracle failed: {type(exc).__name__}: {exc}")
             row["row_count_validation"] = {
@@ -180,7 +244,6 @@ def _apply_expected_row_counts(
             evidence["checked"] += 1
             evidence["failed"] += 1
         row["row_count_validation"] = row_count_validation
-    return None
 
 
 def _tpch_reference_context(scale_factor: float, seed: int | None) -> bool:

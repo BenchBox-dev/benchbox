@@ -307,19 +307,25 @@ def test_seed_corpus_local_jobs_do_not_reference_cloud_credentials() -> None:
     assert "matrix.optional" not in workflow_text
 
 
-def test_tpcds_matrix_jobs_run_with_official_seeded_command() -> None:
+def test_tpc_matrix_jobs_run_official_seeded_at_every_official_scale_point() -> None:
+    from benchbox.core.tpcds.compliance import OFFICIAL_SCALE_POINTS as TPCDS_OFFICIAL_SCALE_POINTS
+    from benchbox.core.tpch.compliance import OFFICIAL_SCALE_POINTS as TPCH_OFFICIAL_SCALE_POINTS
+
+    official_points = {"tpch": TPCH_OFFICIAL_SCALE_POINTS, "tpcds": TPCDS_OFFICIAL_SCALE_POINTS}
     workflow = _workflow()
     entries = workflow["jobs"]["generate-seed-corpus"]["strategy"]["matrix"]["include"]
-    assert all(
-        entry["benchmark"] == "tpcds" and entry["scale_factor"] == "1"
-        for entry in entries
-        if entry["benchmark"] == "tpcds"
-    )
+    official_cells = set()
+    for entry in entries:
+        at_official_point = float(entry["scale_factor"]) in official_points.get(entry["benchmark"], frozenset())
+        assert entry.get("official", False) is at_official_point, entry
+        if at_official_point:
+            official_cells.add((entry["benchmark"], entry["scale_factor"]))
+    assert official_cells == {("tpch", "1.0"), ("tpcds", "1")}
 
     run_step = next(
         step["run"] for step in workflow["jobs"]["generate-seed-corpus"]["steps"] if step.get("name") == "Run benchmark"
     )
-    assert 'if [ "${{ matrix.benchmark }}" = "tpcds" ]; then' in run_step
+    assert 'if [ "${{ matrix.official }}" = "true" ]; then' in run_step
     assert "command+=(--official --seed 42)" in run_step
     assert '"${command[@]}"' in run_step
 
@@ -367,3 +373,51 @@ def test_release_head_regex_matches_real_release_branches() -> None:
     assert RELEASE_HEAD_RE.match("v0.3.1")
     assert RELEASE_HEAD_RE.match("v1.2.3-rc.1")
     assert not RELEASE_HEAD_RE.match("chore/seed-corpus-20260710-123")
+
+
+def _create_pr_step_names() -> list[str]:
+    steps = _workflow()["jobs"]["create-pr"]["steps"]
+    return [step["name"] for step in steps if "name" in step]
+
+
+def test_ledger_seed_is_recut_and_gated_after_corpus_validation() -> None:
+    names = _create_pr_step_names()
+    steps = _create_pr_steps()
+
+    validate = names.index("Validate corpus before opening a PR")
+    recut = names.index("Re-cut the publication ledger seed")
+    gates = names.index("Run the publication gate suites")
+    check = names.index("Check for new corpus changes")
+    assert validate < recut < gates < check
+    assert "git fetch --no-tags origin published-results:refs/remotes/origin/published-results" in steps[names[recut]]
+    assert "scripts/publication/create_ledger_seed.py --accepted-ref origin/published-results" in steps[names[recut]]
+    assert steps[names[gates]].strip() == "make ledger-seed-gates"
+
+
+def test_ledger_seed_is_committed_only_with_corpus_changes() -> None:
+    check = _create_pr_steps()["Check for new corpus changes"]
+
+    before, _, after = check.partition("else")
+    assert "publication/ledger-seed.json" not in before
+    assert "git add publication/ledger-seed.json" in after
+
+
+def test_ledger_seed_gate_target_runs_the_publication_suites() -> None:
+    makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+
+    for suite in (
+        "tests/unit/scripts/publication/test_ledger_seed.py",
+        "tests/unit/scripts/publication/test_check_corpus_bijection.py",
+        "tests/unit/workflows/test_corpus_cutover.py",
+        "tests/unit/scripts/test_site_inputs.py",
+    ):
+        assert suite in makefile
+        assert (REPO_ROOT / suite).is_file()
+    assert re.search(r"^ledger-seed-recut:\n(?:\t.*\n)*\t\$\(MAKE\) ledger-seed-gates$", makefile, re.MULTILINE)
+
+
+def test_seed_pr_body_tells_the_owner_to_merge_the_mirror_and_recut() -> None:
+    body = _create_pr_steps()["Open pull request"]
+
+    assert "The owner merges that mirror PR in the same cycle." in body
+    assert "make ledger-seed-recut" in body

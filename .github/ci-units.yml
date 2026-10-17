@@ -50,6 +50,7 @@ explorer:
   - "benchbox/core/results/**"
   - "benchbox/core/visualization/**"
   - "results-data/**"
+  - ".github/workflows/site-docs.yml"
 
 results-data:
   - "results-data/**"
@@ -71,6 +72,7 @@ docs:
   - "benchbox/cli/**"
   - "benchbox/core/platform_registry.py"
   - "benchbox/core/benchmark_registry.py"
+  - ".github/workflows/site-docs.yml"
 
 landing:
   - "landing/**"
@@ -82,6 +84,7 @@ landing:
   - "benchbox/core/platform_registry.py"
   - "benchbox/platforms/manifest.py"
   - "pyproject.toml"
+  - ".github/workflows/site-docs.yml"
 
 tooling:
   - ".github/**"

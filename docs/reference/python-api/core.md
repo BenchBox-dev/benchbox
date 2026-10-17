@@ -92,7 +92,7 @@ All parameters are keyword-only.
 
 | Name | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `type` | `str` | required | The platform type, such as `"duckdb"`. Surrounding spaces are removed. Must not be empty. |
+| `type` | `str` | required | The platform type, such as `"duckdb"`. Surrounding spaces are removed. Must not be empty. A platform with deployment modes also accepts the `--platform` selector `"<platform>:<mode>"`, such as `"timescaledb:cloud"`; see [Deployment modes](../../platforms/deployment-modes.md). |
 | `name` | `str` | required | The database name. Surrounding spaces are removed. Must not be empty. |
 | `connection_string` | `str` or `None` | `None` | Connection string or path. |
 | `options` | `dict[str, Any]` | `{}` | Free-form options. |
@@ -110,11 +110,11 @@ All parameters are keyword-only.
 
 ### Returns
 
-A `DatabaseConfig` instance with the stripped `type` and `name`.
+A `DatabaseConfig` instance with the stripped `type` and `name`. A `"<platform>:<mode>"` selector is resolved: `type` holds the base platform (`"timescaledb"`), the mode is kept for the adapter, and a DataFrame alias such as `"lakesail-df:local"` also sets `execution_mode="dataframe"` when it was not given.
 
 ### Raises
 
-`pydantic.ValidationError` when `type` or `name` is missing, empty or only spaces (`database type cannot be empty`, `database name cannot be empty`), or when `execution_mode` is not one of the three values.
+`pydantic.ValidationError` when `type` or `name` is missing, empty or only spaces (`database type cannot be empty`, `database name cannot be empty`), when `execution_mode` is not one of the three values, or when a `"<platform>:<mode>"` selector names a mode the platform does not declare.
 
 ### Example
 

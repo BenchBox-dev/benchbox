@@ -31,6 +31,7 @@ CITUS_EXTENSION = "citus"
 
 
 class CitusAdapter(PostgreSQLAdapter):
+    execution_partitioning_supported = False
     plan_capture_phase_eligible = True
 
     @property

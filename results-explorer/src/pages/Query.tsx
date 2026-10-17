@@ -63,6 +63,7 @@ import {
   type CompareExclusionReasonCopy,
 } from "@/lib/compareExclusionReasons";
 import { formatSelectedCount } from "@/lib/copyFormatters";
+import { exportColumnsWithCompliance, withComplianceCaption } from "@/lib/subscale";
 
 const EMPTY_STRING_ARRAY: string[] = [];
 
@@ -714,14 +715,21 @@ export function Query({ url }: QueryProps) {
   async function downloadJson() {
     setDownloadError(null);
     try {
+      const exportColumns = exportColumnsWithCompliance(visibleColumns);
       const query = buildQueryResultExportQuery(
-        buildSelectQuery(activeFilters, visibleColumns, sort, rowLimit),
+        buildSelectQuery(activeFilters, exportColumns, sort, rowLimit),
         searchText,
       );
       const exportRows = await queryRows<ResultRow>(query.sql, query.params, DUCKDB_USER_QUERY_TIMEOUT_MS);
       const exportName = `benchbox-query-export-${Date.now()}.json`;
       const blob = new Blob(
-        [JSON.stringify(exportRows.map((row) => projectVisibleRow(row, visibleColumns)), null, 2)],
+        [
+          JSON.stringify(
+            exportRows.map((row) => withComplianceCaption(projectVisibleRow(row, exportColumns))),
+            null,
+            2,
+          ),
+        ],
         { type: "application/json;charset=utf-8" },
       );
       const url = URL.createObjectURL(blob);
@@ -743,15 +751,19 @@ export function Query({ url }: QueryProps) {
 
   async function downloadCsv() {
     const exportName = `benchbox-query-export-${Date.now()}.csv`;
+    const exportColumns = exportColumnsWithCompliance(visibleColumns);
     const selectQuery = buildQueryResultExportQuery(
-      buildSelectQuery(activeFilters, visibleColumns, sort, rowLimit),
+      buildSelectQuery(activeFilters, exportColumns, sort, rowLimit),
       searchText,
     );
 
     setDownloadError(null);
     try {
       const exportRows = await queryRows<ResultRow>(selectQuery.sql, selectQuery.params, DUCKDB_USER_QUERY_TIMEOUT_MS);
-      const blob = new Blob([serializeCsv(exportRows, visibleColumns)], { type: "text/csv;charset=utf-8" });
+      const blob = new Blob(
+        [serializeCsv(exportRows.map(withComplianceCaption), [...exportColumns, "compliance_note"])],
+        { type: "text/csv;charset=utf-8" },
+      );
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;

@@ -351,6 +351,7 @@ def test_failed_throughput_bundle_is_excluded_even_with_a_throughput_score(tmp_p
 
 def test_power_phase_still_ranks_on_power_score_not_throughput(tmp_path: Path) -> None:
     payload = copy.deepcopy(MINIMAL_BUNDLE)
+    payload["benchmark"]["scale_factor"] = 1.0
     payload["summary"]["tpc_metrics"] = {"throughput_at_size": 3741.0}
     ((entry, _),) = _pairs(tmp_path, {"duckdb": payload})
 

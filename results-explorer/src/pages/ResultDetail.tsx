@@ -42,6 +42,7 @@ import { RunDateChip } from "@/components/RunAge";
 import { PageHeader } from "@/components/PageHeader";
 import { useLocalResultState } from "@/lib/localResultState";
 import { LocalResultPicker } from "@/components/LocalResultPicker";
+import { isDerivedPowerScore, isSubscaleTpc, powerScoreTitle } from "@/lib/subscale";
 
 interface ResultDetailProps extends RoutableProps {
   resultId?: string;
@@ -245,10 +246,16 @@ export function ResultDetail({ resultId = "", source = "public" }: ResultDetailP
   const primaryMetricRaw = primaryMetricValue(detail, primaryMetric);
   const hasPrimaryMetric = primaryMetricRaw !== null && primaryMetricRaw !== undefined;
   const primaryMetricDirection = primaryMetricHigherIsBetter(primaryMetric) ? "higher is better" : "lower is better";
-  const primaryMetricName = primaryMetricLabel(primaryMetric);
+  const isPowerMetric = primaryMetric === "power_score";
+  const primaryMetricName = isPowerMetric
+    ? [
+        isSubscaleTpc(detail.benchmark, detail.scale_factor) ? powerScoreTitle(true) : primaryMetricLabel(primaryMetric),
+        ...(isDerivedPowerScore(detail.power_score_source) ? ["derived from query timings"] : []),
+      ].join(" · ")
+    : primaryMetricLabel(primaryMetric);
   const primaryMetricExactTitle =
     primaryMetric !== "display_geomean_ms" && hasPrimaryMetric
-      ? `Exact ${primaryMetricName.toLowerCase()}: ${fmtScoreExact(primaryMetricRaw)}`
+      ? `Exact ${primaryMetricLabel(primaryMetric).toLowerCase()}: ${fmtScoreExact(primaryMetricRaw)}`
       : undefined;
 
   return (

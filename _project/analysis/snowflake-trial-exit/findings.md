@@ -1,89 +1,118 @@
 # Snowflake trial: tuned-template measurements and corrected evidence
 
 Runs on a Snowflake trial account (X-Small warehouse, result cache disabled)
-between 2026-09-17 and 2026-10-15. Estimated total spend: 56.496 credits
-(55.527 metered through 2026-10-12 19:00 PT, plus 0.469 warehouse use from
-2026-10-13 02:00 UTC to the end of the last run on 2026-10-15, plus a 0.5
-safety margin). The account's free-usage contract item runs from 2026-09-17
-to 2026-10-18; no Snowsight balance check was needed under the 85-credit
-cap.
+between 2026-09-17 and 2026-10-17. Estimated total spend: 70.927 credits
+(55.527 metered through 2026-10-12 19:00 PT, plus 14.900 warehouse credits
+from 2026-10-13 02:00 UTC to the end of the last run on 2026-10-17, plus a 0.5
+safety margin; automatic clustering used 0.000 credits). That is below the
+85-credit cap set for the program. The account's free-usage contract item runs
+from 2026-09-17 to 2026-10-18.
 
 ## Tuned versus untuned at scale
 
-The campaign was designed as follows. Each measured cell loads an untuned
-and a tuned database from the same generated data. Tuned tables use the
-shipped Snowflake templates
+Each measured cell loads an untuned and a tuned database from the same
+generated data. Tuned tables use the shipped Snowflake templates
 (`examples/tunings/snowflake/{tpch,tpcds}_tuned.yaml`: CLUSTER BY on fact
 tables, primary and foreign keys without RELY). After loading, automatic
-clustering is allowed to settle: every clustered table's average depth
-stable within 5% across three polls 10 minutes apart, up to 3 hours. Six
-power runs (one warmup and three measured passes each) alternate untuned,
-tuned, tuned, untuned, untuned, tuned, with the warehouse suspended before
-each. `campaign_analysis.py` compares per-query medians of run means; the
-verdict rule was fixed before the runs: benefit if the 95% upper bound of
+clustering is allowed to settle: every clustered table's average depth stable
+within 5% across three polls 10 minutes apart, up to 3 hours. Six power runs
+(one warmup and three measured passes each) alternate untuned, tuned, tuned,
+untuned, untuned, tuned, with the warehouse suspended before each.
+`campaign_analysis.py` compares per-query medians of run means; the verdict
+rule was fixed before the runs: benefit if the 95% upper bound of
 tuned/untuned is below 0.95, regression if the lower bound is above 1.05,
 otherwise no detectable effect.
 
-No measurement cell ran. The smoke test (TPC-H sf0.01 tuned load, tried
-twice on 2026-10-13) aborted while writing the tuned-run marker, so the
-reuse check, settle step and interleaved runs never started, and cells
-C1–C4 were skipped without spending their budgets. Under verbose logging
-(`-v`, which the campaign command template used), every Snowflake
-`execute_query` call raises `ValueError` after the query itself succeeds,
-because it passes the query id where the completion log expects a duration
-in seconds, and formatting the id with `:.2f` raises. The exception escapes
-`execute_query`, so the metadata-table creation fails, the tuned-run
-marker is never written, and the run aborts. Quiet runs are unaffected.
-The defect is fixed by
-[benchbox#2990](https://github.com/BenchBox-dev/benchbox/pull/2990),
-which passes the measured duration at the three call sites (plus the same
-one-line defect in the Azure Synapse adapter) with regression tests that run
-`execute_query` at verbosity level 1; omitting `-v` also avoids it.
-
-The smoke test was repeated on 2026-10-15 without `-v`. The tuned load
-passed: the tuning metadata and tuned-run marker were written, data loading
-took 34.3 s, and the power run completed (validation status
-`applied_unverified`). Clustering keys were present on LINEITEM
-(`L_SHIPDATE, L_SUPPKEY, L_PARTKEY`) and ORDERS
-(`O_ORDERDATE, O_CUSTKEY, O_ORDERKEY`), each with average depth 1.0 over 8
-partitions. The reuse check then failed. The existing-database check found
-the tuned database, but tuning validation reported four errors ("Expected
-tuning for table 'CUSTOMER' not found in database", and the same for PART,
-PARTSUPP and SUPPLIER), so the run dropped and reloaded it: query history
-after the first run shows 1 DROP DATABASE, 8 TRUNCATE TABLE and 8 COPY INTO
-statements.
-
-The cause is deterministic. The shipped TPC-H template lists CUSTOMER, PART,
-PARTSUPP and SUPPLIER with constraints only and no column tuning (the TPC-DS
-template has three such tables). The metadata store keeps no rows for those
-tables, but the expected configuration still contained them, so validation
-always reported them missing and a tuned Snowflake database was never
-reused. Every tuned measurement run would therefore have reloaded its data
-and discarded settled clustering, which the campaign's validity rule treats
-as an invalid run, so the measurement cells were not started.
-[benchbox#3012](https://github.com/BenchBox-dev/benchbox/pull/3012)
-compares only column-tuned tables. The campaign's untuned loads also pass
-`--platform-option force_recreate=true`, which the CLI rejected;
-[benchbox#3013](https://github.com/BenchBox-dev/benchbox/pull/3013)
-accepts it.
-
 | Benchmark | Scale | Settled | Average depth (tuned tables) | Clustering credits | Tuned/untuned | 95% CI | Verdict |
 |---|---|---|---|---|---|---|---|
-| TPC-H | 100 | skipped | — | 0.000 | — | — | not run: a tuned database is reloaded instead of reused (see above) |
-| TPC-DS | 100 | skipped | — | 0.000 | — | — | not run: a tuned database is reloaded instead of reused (see above) |
-| TPC-H | 10 | skipped | — | 0.000 | — | — | not run: a tuned database is reloaded instead of reused (see above) |
-| TPC-DS | 10 | skipped | — | 0.000 | — | — | not run: a tuned database is reloaded instead of reused (see above) |
+| TPC-H | 100 | yes, 3 polls (1,206 s) | LINEITEM 1.01 (419 partitions), ORDERS 1.00 (127) | 0.000 | 0.914 | 0.834–0.996 | no detectable effect |
+| TPC-H | 10 | yes, 3 polls (1,219 s) | LINEITEM 1.00 (45), ORDERS 1.00 (16) | 0.000 | 0.979 | 0.919–1.043 | no detectable effect |
+| TPC-DS | 100 | yes, 3 polls (1,220 s) | STORE_SALES 1.48 (401), CATALOG_SALES 1.05 (299), WEB_SALES 2.00 (146), returns tables 1.00–1.13 | 0.000 | 0.761 | 0.730–0.793 | benefit |
+| TPC-DS | 10 | yes, 3 polls (1,211 s) | STORE_SALES 1.48 (44), CATALOG_SALES 1.00 (36), WEB_SALES 2.00 (15), returns tables 1.00 | 0.000 | 0.925 | 0.898–0.958 | no detectable effect |
 
-No per-query movement, same-arm noise comparison, or check problems exist
-to report, because no tuned or untuned measurement run completed in this
-campaign. The smoke tests used about 0.19 credits on 2026-10-15; their
-command, log paths, statement history and clustering state are recorded in
-the program closeout rather than here.
+Only TPC-DS sf100 shows a benefit: tuned runs took 0.761 of the untuned time
+across the geometric mean of 103 statements, 94 of them faster, and the effect
+exceeds the spread between runs of the same arm (same-arm pair ratios
+0.90–1.02). TPC-DS sf10 leans the same way (80 of 103 faster) but its upper
+bound, 0.958, misses the 0.95 threshold, and the effect does not exceed
+same-arm noise (0.90–1.06). Neither TPC-H cell shows an effect beyond noise
+(14 of 22 and 11 of 22 queries faster). Clustering credits were zero in every
+cell: the tables were loaded in a well-clustered state and stayed there, so
+these results measure the shipped clustering keys at load time, not long-term
+reclustering. Per-query results are in `tuned-vs-untuned-<benchmark>-sf<scale>.json`.
 
-Primary and foreign keys were declared without RELY, so on Snowflake the
-tuned arm's effective mechanism is clustering. Template quality issues found
-in review (keys after the date add little pruning; INVENTORY unclustered)
-were not changed before measuring.
+Every measured run was valid: no run reloaded its database (data loading
+0 ms), and every query execution succeeded (88 per TPC-H run, 412 per TPC-DS
+run). Measurement runs were published with the `maintainer-run` label. One
+TPC-H sf10 run was interrupted by an operator error before it recorded a
+result; the six-run sequence was restarted from its first run.
+
+### Code and data for each cell
+
+| Cell | BenchBox commit | Tuned template requests | Data |
+|---|---|---|---|
+| TPC-H sf100, sf10 | `59a74fb64` | primary keys, foreign keys, UNIQUE, CHECK, clustering | dbgen 0.4.2, generated 2026-10-16 (canonical customer and supplier addresses) |
+| TPC-DS sf100, sf10 | `876f3dfbe` | primary keys, foreign keys, clustering | bundled TPC-DS v4.0.0 dsdgen, generated 2026-10-16 |
+
+Between the two pairs of cells,
+[benchbox#3039](https://github.com/BenchBox-dev/benchbox/pull/3039)
+(`f479cc8e6`) set `unique_constraints` and `check_constraints` to disabled in
+both shipped Snowflake templates. UNIQUE and CHECK constraints are
+informational on Snowflake, so no performance effect is expected from the
+difference; the tuned mechanism in every cell is clustering. Both arms of each cell used the same commit and the
+same data. Loads ran `generate,load,power --iterations 1` (the power result is
+not scored) because a load-only `--phases generate,load` run exits with an
+error on the current code; that defect is tracked separately.
+
+### How the campaign reached these runs
+
+The first smoke test (TPC-H sf0.01 tuned load, tried twice on 2026-10-13)
+aborted while writing the tuned-run marker. Under verbose logging (`-v`),
+every Snowflake `execute_query` call raised `ValueError` after the query
+itself succeeded, because it passed the query id where the completion log
+expects a duration in seconds. Fixed by
+[benchbox#2990](https://github.com/BenchBox-dev/benchbox/pull/2990).
+
+A repeated smoke test on 2026-10-15 loaded correctly, but the reuse run
+dropped and reloaded the tuned database: tuning validation reported the
+template's constraint-only tables (CUSTOMER, PART, PARTSUPP, SUPPLIER) as
+missing, because the metadata store keeps no rows for tables without column
+tuning. A tuned database was therefore never reused, and every tuned run would
+have discarded settled clustering. Fixed by
+[benchbox#3012](https://github.com/BenchBox-dev/benchbox/pull/3012); the
+campaign's untuned loads also needed
+[benchbox#3013](https://github.com/BenchBox-dev/benchbox/pull/3013), which
+accepts `--platform-option force_recreate=true`. After both merged, a smoke
+test on 2026-10-16 reused the tuned database with no DROP, TRUNCATE or COPY
+statements.
+
+The first TPC-DS sf100 attempt on 2026-10-16 was abandoned after two
+measurement runs: the post-load row-count check scaled TPC-DS `customer`
+linearly (8–12 million rows expected at SF100, 2,000,000 generated), so every
+TPC-DS run at SF10 or SF100 failed validation and reloaded its database.
+[benchbox#3031](https://github.com/BenchBox-dev/benchbox/pull/3031) checks
+every TPC-DS table against the row counts dsdgen generates at SF1, SF10 and
+SF100, and both TPC-DS cells were rerun from the start after it merged.
+
+### TPC-DS reason table
+
+The bundled generator is the official TPC-DS v4.0.0 dsdgen. Its scaling table
+defines 75 `reason` rows at every scale, while the specification's Table 3-2
+lists 35 at SF1 (35/45/55 is the row in older kits). Clause 3.4.2 states that
+where the table and dsdgen differ, dsdgen prevails, so the generated data is
+correct for v4.0.0. The resulting differences from the official Q85 and Q93
+answer sets are classified in
+`benchbox/core/tpcds/qualification/classification.py`. Q85 and Q93 are the
+statements that join returns to `reason`; Q9 reads only reason row 1, which
+exists either way.
+
+### Clean-up
+
+After the last run on 2026-10-17, all 48 BenchBox-created databases in the
+trial account (the `*_NOTUNING_NOCONSTRAINTS` and `*_CUSTOM_*` databases) were
+dropped and the warehouse was suspended. Snowflake's own databases and the
+user's personal database were left in place. Results remain in the local
+result bundles, the published bundles and the files listed below.
 
 ## Earlier pilot at scale factor 1
 
@@ -147,13 +176,15 @@ published bundles were left unchanged. Untuned bundles also lost
   https://github.com/BenchBox-dev/benchbox/pull/3012.
 - `force_recreate` accepted as a platform option:
   https://github.com/BenchBox-dev/benchbox/pull/3013.
+- TPC-DS post-load row-count checks follow what dsdgen generates at SF1, SF10
+  and SF100: https://github.com/BenchBox-dev/benchbox/pull/3031.
 
 ## Files
 
 | File | Content |
 |---|---|
-| `tuned-vs-untuned-<benchmark>-sf<scale>.json` | Not produced: no measurement cell ran, so there is no per-cell output |
-| `snowflake_campaign.py` | Settle, clustering-state, budget and statement-history helper prepared for the runs; it ran no measurement cell |
+| `tuned-vs-untuned-<benchmark>-sf<scale>.json` | Per-cell verdict, confidence interval, same-arm noise and per-query ratios for TPC-H sf100 and sf10 and TPC-DS sf100 and sf10 |
+| `snowflake_campaign.py` | Settle, clustering-state, budget and statement-history helper used for the runs |
 | `campaign_analysis.py` | Produces the per-cell analysis files from local result bundles |
 | `comparability-matrix-2026-10-12.json` / `-corrected-2026-10-13.json` | Original and corrected comparability matrix |
 | `database-reuse-map-2026-10-12.json` / `-corrected-2026-10-13.json` | Original and corrected reuse map |

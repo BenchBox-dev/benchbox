@@ -17,11 +17,13 @@ from benchbox.core.benchmark_loader import (
     instantiate_benchmark_class,
 )
 from benchbox.core.config import BenchmarkConfig, RunConfig
+from benchbox.core.deployment import DEPLOYMENT_SELECTOR_OPTION, configured_deployment
 from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
 from benchbox.core.platform_config import (
     DATABASE_ONLY_PLATFORM_OPTIONS,
     get_platform_config as _core_get_platform_config,
 )
+from benchbox.core.platform_manifest import get_all_platform_aliases
 from benchbox.core.platform_registry import PlatformRegistry
 from benchbox.core.results.models import BenchmarkResults
 from benchbox.core.run_service import execute_run, resolve_lifecycle_phases, resolve_run_config
@@ -35,11 +37,7 @@ console = quiet_console
 
 
 def resolved_deployment_mode(database_config) -> Optional[str]:
-    if not database_config:
-        return None
-    options = getattr(database_config, "options", None) or {}
-    mode = options.get("deployment_mode")
-    return mode or None
+    return configured_deployment(database_config)
 
 
 def _build_failure_result(config: BenchmarkConfig, exc: Exception) -> BenchmarkResults:
@@ -100,11 +98,8 @@ class BenchmarkOrchestrator:
         from benchbox.cli.benchmark_hooks import BenchmarkHookRegistry
 
         registered_specs = BenchmarkHookRegistry.list_option_specs(config.name)
-        for key in ("seed", "force_regenerate"):
-            if key in registered_specs and key not in benchmark_options and key in opts:
-                val = opts[key]
-                if val is not None:
-                    benchmark_options[key] = val
+        if "seed" in registered_specs and "seed" not in benchmark_options and opts.get("seed") is not None:
+            benchmark_options["seed"] = opts["seed"]
 
         construction_output_dir = self._resolve_construction_output_dir(config, benchmark_class)
 
@@ -329,15 +324,20 @@ class BenchmarkOrchestrator:
             return None
         if execution_mode == "dataframe":
             self.console.print("[cyan]Using DataFrame execution mode[/cyan]")
-            registered_option_names = PlatformHookRegistry.list_option_specs(database_config.type)
+            platform_key = database_config.type.lower()
+            registered_option_names = PlatformHookRegistry.list_option_specs(
+                get_all_platform_aliases().get(platform_key, platform_key)
+            )
+            options = database_config.options or {}
             dataframe_options = {
                 key: value
-                for key, value in (database_config.options or {}).items()
+                for key, value in options.items()
                 if key in registered_option_names and key not in DATABASE_ONLY_PLATFORM_OPTIONS
             }
             return get_adapter(
                 database_config.type,
                 mode="dataframe",
+                deployment=options.get(DEPLOYMENT_SELECTOR_OPTION),
                 working_dir=output_root,
                 verbose=self._verbosity.verbose if self._verbosity else False,
                 very_verbose=self._verbosity.very_verbose if self._verbosity else False,

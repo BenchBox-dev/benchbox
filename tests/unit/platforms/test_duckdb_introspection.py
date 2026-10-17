@@ -209,7 +209,7 @@ class TestCtasSortIndexReCreation:
         adapter._applied_layout_operations = []
         return adapter, con
 
-    def test_ctas_sort_recreates_index_and_records_post_load_op(self):
+    def test_ctas_sort_keeps_index_and_records_re_create_as_satisfied(self):
         adapter, con = self._adapter_with_loaded_table()
         config = _sorted_tuning_config()
 
@@ -219,6 +219,19 @@ class TestCtasSortIndexReCreation:
 
         indexes = {row[0] for row in con.execute("SELECT index_name FROM duckdb_indexes()").fetchall()}
         assert "idx_lineitem_sort" in indexes
+        assert [op for op in adapter._applied_layout_operations if op["mechanism"] == "sort_index"] == []
+        ledger = adapter._applied_tuning_ledger
+        assert [entry.intent for entry in ledger.satisfied] == ["sort_index:LINEITEM"]
+        assert ledger.statements[ledger.satisfied[0].satisfied_by].statement.startswith(
+            "CREATE INDEX IF NOT EXISTS idx_lineitem_sort"
+        )
+
+    def test_re_create_without_an_earlier_index_records_post_load_op(self):
+        adapter, con = self._adapter_with_loaded_table()
+        config = _sorted_tuning_config()
+
+        assert adapter.apply_ctas_sort("LINEITEM", config, con) is True
+
         post_load = [op for op in adapter._applied_layout_operations if op["mechanism"] == "sort_index"]
         assert len(post_load) == 1
         assert post_load[0]["phase"] == PHASE_POST_LOAD

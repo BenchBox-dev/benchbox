@@ -181,6 +181,9 @@ accordingly; this ADR does not propose one.
 
 ## References
 
+- [Rank subscale TPC-H and TPC-DS results as unofficial](adr-subscale-tpc-ranking-policy.md):
+  the compliance-class rule that decides which admitted bundles rank.
+
 - `benchbox/validation/bundle.py:88-94` (allowlist definitions and their
   comment), `:316-346` (`_validate_summary_section`), `:684-711`
   (`_validate_validation_phase_consistency`), `:715-741` (`_validate_bundle`)

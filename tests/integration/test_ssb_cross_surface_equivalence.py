@@ -17,6 +17,7 @@ from benchbox.core.equivalence.cross_surface import (
     count_executed_cells,
     find_cross_surface_divergences,
 )
+from benchbox.core.expected_results.ssb_results import SSB_EXPECTED_ROW_COUNTS, normalize_ssb_query_id
 from benchbox.core.tpchavoc.validation import ResultValidator
 
 pytestmark = [
@@ -72,3 +73,12 @@ def test_ssb_previously_empty_queries_now_discriminate(ssb_cell):
         f"SSB queries regressed to vacuous (0 reference rows) at SF={EQUIVALENCE_SCALE}: {empty} - "
         "the generator no longer emits values matching the canonical query literals (#870)."
     )
+
+
+def test_ssb_sql_reference_row_counts_match_the_recorded_expectations(ssb_cell):
+    data = ssb_cell
+    actual = {
+        normalize_ssb_query_id(qid): len(data.connection.execute(data.reference_sql(qid)).fetchall())
+        for qid in data.query_ids
+    }
+    assert actual == SSB_EXPECTED_ROW_COUNTS[EQUIVALENCE_SCALE]

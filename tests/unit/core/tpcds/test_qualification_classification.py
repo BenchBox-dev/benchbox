@@ -54,7 +54,6 @@ _OWNER_EMPTY_AT_SF001 = {
     "90",
     "91",
     "92",
-    "93",
 }
 
 _DISPLAY_ONLY = {
@@ -137,12 +136,13 @@ def test_q17_is_a_permanent_exception_recorded_with_its_shape():
     assert [name for name, other in KNOWN.items() if other.permanent] == ["17"]
 
 
-def test_lane_requires_nonempty_comparison_for_all_26_statements_empty_at_sf001():
-    assert REQUIRED_NONEMPTY == _OWNER_EMPTY_AT_SF001 and len(REQUIRED_NONEMPTY) == 26
+def test_lane_requires_nonempty_comparison_for_the_statements_empty_at_sf001_and_q93():
+    assert _OWNER_EMPTY_AT_SF001 | {"93"} == REQUIRED_NONEMPTY and len(REQUIRED_NONEMPTY) == 26
     assert set(runner.STATEMENTS) >= REQUIRED_NONEMPTY
-    for statement in REQUIRED_NONEMPTY:
+    for statement in _OWNER_EMPTY_AT_SF001:
         key = statement[:-1] if statement.endswith("a") else statement
         assert key in _TPCDS_LEGITIMATELY_EMPTY, statement
+    assert "93" not in _TPCDS_LEGITIMATELY_EMPTY
 
 
 def test_a_required_statement_that_is_empty_at_sf1_fails_the_gate():

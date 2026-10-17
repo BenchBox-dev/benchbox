@@ -1,0 +1,146 @@
+{
+  "artifact": "tuned-vs-untuned",
+  "untuned_runs": [
+    "tpch_sf10_snowflake_sql_20261016_082103_dde52163.json",
+    "tpch_sf10_snowflake_sql_20261016_082825_21afae60.json",
+    "tpch_sf10_snowflake_sql_20261016_083047_50fe3b8a.json"
+  ],
+  "tuned_runs": [
+    "tpch_sf10_snowflake_sql_20261016_082336_4e0829ad.json",
+    "tpch_sf10_snowflake_sql_20261016_082600_ad8f5ebb.json",
+    "tpch_sf10_snowflake_sql_20261016_083324_a4a22e2d.json"
+  ],
+  "queries": 22,
+  "method": "Per run, the mean of measured iterations per query; per arm, the median of run means per query; ratio is the geometric mean of tuned/untuned across queries with a percentile bootstrap over queries (4000 resamples, seed 1). Verdict: benefit if the 95% upper bound < 0.95, regression if the lower bound > 1.05, otherwise no detectable effect.",
+  "ratio_tuned_over_untuned": 0.979,
+  "ci95_low": 0.919,
+  "ci95_high": 1.043,
+  "verdict": "no detectable effect",
+  "exceeds_same_arm_noise": false,
+  "same_arm_ratios": {
+    "untuned_pairs": [
+      0.975,
+      0.941,
+      0.965
+    ],
+    "tuned_pairs": [
+      0.976,
+      1.076,
+      1.102
+    ]
+  },
+  "queries_faster": 11,
+  "per_query": {
+    "1": {
+      "untuned_ms": 1342.6,
+      "tuned_ms": 1457.1,
+      "ratio": 1.085
+    },
+    "10": {
+      "untuned_ms": 1551.8,
+      "tuned_ms": 1457.2,
+      "ratio": 0.939
+    },
+    "11": {
+      "untuned_ms": 1278.9,
+      "tuned_ms": 1278.7,
+      "ratio": 1.0
+    },
+    "12": {
+      "untuned_ms": 1324.7,
+      "tuned_ms": 1014.9,
+      "ratio": 0.766
+    },
+    "13": {
+      "untuned_ms": 1757.9,
+      "tuned_ms": 2165.3,
+      "ratio": 1.232
+    },
+    "14": {
+      "untuned_ms": 1013.7,
+      "tuned_ms": 827.1,
+      "ratio": 0.816
+    },
+    "15": {
+      "untuned_ms": 1355.5,
+      "tuned_ms": 967.5,
+      "ratio": 0.714
+    },
+    "16": {
+      "untuned_ms": 1706.9,
+      "tuned_ms": 1738.3,
+      "ratio": 1.018
+    },
+    "17": {
+      "untuned_ms": 1314.4,
+      "tuned_ms": 1207.6,
+      "ratio": 0.919
+    },
+    "18": {
+      "untuned_ms": 1629.0,
+      "tuned_ms": 1923.2,
+      "ratio": 1.181
+    },
+    "19": {
+      "untuned_ms": 1356.7,
+      "tuned_ms": 1165.9,
+      "ratio": 0.859
+    },
+    "2": {
+      "untuned_ms": 1115.0,
+      "tuned_ms": 1414.0,
+      "ratio": 1.268
+    },
+    "20": {
+      "untuned_ms": 1450.0,
+      "tuned_ms": 1370.7,
+      "ratio": 0.945
+    },
+    "21": {
+      "untuned_ms": 1513.7,
+      "tuned_ms": 1777.4,
+      "ratio": 1.174
+    },
+    "22": {
+      "untuned_ms": 1093.8,
+      "tuned_ms": 1099.2,
+      "ratio": 1.005
+    },
+    "3": {
+      "untuned_ms": 1375.7,
+      "tuned_ms": 1126.7,
+      "ratio": 0.819
+    },
+    "4": {
+      "untuned_ms": 1100.6,
+      "tuned_ms": 1109.0,
+      "ratio": 1.008
+    },
+    "5": {
+      "untuned_ms": 1325.3,
+      "tuned_ms": 1307.9,
+      "ratio": 0.987
+    },
+    "6": {
+      "untuned_ms": 1009.8,
+      "tuned_ms": 816.1,
+      "ratio": 0.808
+    },
+    "7": {
+      "untuned_ms": 1233.7,
+      "tuned_ms": 1267.6,
+      "ratio": 1.028
+    },
+    "8": {
+      "untuned_ms": 1310.1,
+      "tuned_ms": 1352.6,
+      "ratio": 1.032
+    },
+    "9": {
+      "untuned_ms": 1518.9,
+      "tuned_ms": 1826.5,
+      "ratio": 1.203
+    }
+  },
+  "check_problems": []
+}

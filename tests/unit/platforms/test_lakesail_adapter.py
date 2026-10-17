@@ -477,6 +477,26 @@ class TestLakeSailAdapterExecution:
         assert conf["spark.sql.adaptive.enabled"] == "true"
         mock_spark_session.conf.set.assert_any_call("spark.sql.cbo.enabled", "true")
 
+    def test_tuned_spark_map_is_dropped_not_set(self, mock_pyspark):
+        from benchbox.core.tuning.applied_ledger import AppliedTuningLedger
+        from benchbox.core.tuning.interface import UnifiedTuningConfiguration
+        from benchbox.platforms.lakesail import LakeSailAdapter
+
+        _, mock_spark_session = mock_pyspark
+        adapter = LakeSailAdapter(tuning_enabled=True)
+        adapter._applied_tuning_ledger = AppliedTuningLedger()
+        adapter.unified_tuning_configuration = UnifiedTuningConfiguration.from_dict(
+            {"platform_optimizations": {"spark": {"spark.sql.files.maxPartitionBytes": "64m"}}}
+        )
+
+        adapter.configure_for_benchmark(mock_spark_session, "tpch")
+
+        set_keys = [call.args[0] for call in mock_spark_session.conf.set.call_args_list]
+        assert "spark.sql.files.maxPartitionBytes" not in set_keys
+        assert [item.intent for item in adapter._applied_tuning_ledger.dropped] == [
+            "spark_session_config:spark.sql.files.maxPartitionBytes"
+        ]
+
     def test_spark_config_keeps_explicit_session_override(self, mock_pyspark):
 
         from benchbox.platforms.lakesail import LakeSailAdapter

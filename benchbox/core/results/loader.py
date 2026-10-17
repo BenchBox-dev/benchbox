@@ -252,6 +252,7 @@ def reconstruct_benchmark_results(
         tuning_legacy_source=tuning["tuning_legacy_source"],
         applied_tuning_ledger=_extract_applied_ledger(platform_section, applied_data),
         applied_ledger_hash=_extract_applied_ledger_hash(platform_section, applied_data),
+        effective_session_config=platform_section.get("effective_session_config"),
         query_plans_captured=plans_captured,
         plan_capture_failures=plan_failures,
         cost_summary=cost_summary,

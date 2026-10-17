@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- A new reference page, Tuning Platform Support
+  (`docs/reference/tuning-platform-support.md`), lists for every platform in
+  the tuning capability registry the shipped templates, the tuning types
+  applied at execution and those that are not, whether the Spark session map
+  applies, whether a catalog introspector exists, and whether a tuned run can
+  reach `applied_verified`. It is generated from the registry
+  (`make tuning-support-matrix`) and a test fails when it drifts. The
+  introspection receipts design note now describes DuckDB's in-place sort and
+  its satisfied index re-create.
+
 - The LakeSail documentation no longer says the CLI has no `--platform-option`
   keys. `--platform lakesail:distributed` selects distributed mode, and
   `endpoint` and `adaptive_enabled` are accepted as `--platform-option` keys.
@@ -56,6 +66,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   public submissions require a private salt.
 
 ### Added
+
+- Tuned PostgreSQL runs now apply requested partitioning: date columns get
+  yearly `RANGE` partitions over the benchmark's date domain plus a `DEFAULT`
+  partition, integer columns get `HASH` partitions. Partitioning requests no
+  longer fail validation on PostgreSQL. While primary or unique keys are
+  requested, partitioning is skipped and recorded as not applied, because
+  PostgreSQL requires those keys to include the partition column. The
+  PostgreSQL-compatible platforms are unchanged.
+
+- `benchbox tuning platforms` lists Spark with its own capabilities and marks
+  the platforms that apply a tuning file's `spark` session map (Spark and
+  Velox). `benchbox tuning init --platform spark` ends the sample with a
+  commented example of the map, and `tuning show`, `tuning validate` and
+  `--dry-run` list it as a property and value table. A non-empty `spark` map
+  on a platform that does not apply it is recorded as dropped in the
+  applied-tuning ledger, in addition to the validation warning.
+
+- Spark, LakeSail and Velox runs now read the session configuration back from
+  the live session at three points: when the session is created, after
+  BenchBox applies its settings, and just before the first measured query.
+  Bundles record the redacted values and any discrepancies in
+  `platform.effective_session_config` (versioned block, see the result-format
+  reference), and the console warns before the queries run when a setting
+  BenchBox asked for did not take effect, when `spark-defaults.conf` or
+  `PYSPARK_SUBMIT_ARGS` supplied a setting, or when a setting changed before
+  the run. Untuned runs carry the block too. Engines that cannot report their
+  configuration are marked `not_readable`. Older bundles load unchanged.
+
+- Python callers can select a deployment mode with the same selector as
+  `--platform`: `DatabaseConfig(type="timescaledb:cloud", ...)` or
+  `DatabaseConfig(type="lakesail-df:distributed", ...)`. The config resolves
+  the selector when it is built, so `type` holds the base platform, the mode
+  reaches the adapter without a deprecation warning, and a DataFrame alias sets
+  `execution_mode="dataframe"`. This replaces the deprecated `deployment_mode`
+  option, which still works with its warning until 0.6.0. Dry-run results now
+  record the selected deployment in a `deployment` field and print it in the
+  summary.
 
 - MCP responses from `run_benchmark`, `start_benchmark`, `get_benchmark_status`, `cancel_benchmark` and
   `get_benchmark_result` carry a `deprecations` list of `{option, replacement, removed_in, message}`. It is empty
@@ -144,13 +191,109 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dataframe-surface equivalence checks use Polars' default engine; these paths
   do not receive `benchbox run`'s execution-engine selection.
 
+### Changed
+
+- **Subscale TPC-H and TPC-DS results are ranked and labelled
+  "Subscale · Unofficial".** Runs below SF 1 now record Power@Size with an
+  `"unofficial": true` marker instead of suppressing it, and the Results
+  Explorer and `results-data/validate_corpus.py` rank them in their own
+  cohort. Non-standard runs at SF 1 and above stay unranked with suppressed
+  metrics. QphH@Size is still never computed for subscale runs, and
+  `benchbox submit` and `benchbox publish` still refuse them. Older bundles
+  without a compliance class are read as subscale below SF 1, so they keep
+  their rankings and gain the label. Fourteen published subscale bundles
+  stored no Power@Size; the Explorer derives it from their exported query
+  timings and marks it "derived". Cohort headers, rank rows, run receipts,
+  the compare page, Power@Size chart titles and CSV/JSON exports carry the
+  label. The Explorer read model moves to version 17 for the new
+  `power_score_source` column.
+
 ### Fixed
+
+- Tuned runs on PostgreSQL and the platforms built on it no longer stop with
+  "Failed to write the tuned-run marker". Statements that return no rows, such
+  as the tuning metadata `CREATE TABLE`, no longer try to fetch rows.
+
+- ClickHouse and chDB runs that request primary keys now record the
+  `CREATE TABLE` whose `ORDER BY` comes from the declared key, and the
+  ClickHouse catalog check reads `system.tables.primary_key`, so a
+  `--tuning auto` run (primary keys only) reaches `applied_verified` instead
+  of recording the primary-key request as not applied.
+
+- Tuning validation and `benchbox tuning init` treat a platform variant such
+  as `duckdb:memory` like its base platform, so the sample configuration for a
+  variant includes the same layout tunings as the base platform.
+- `benchbox tuning init` lists only the constraint types the sample
+  configuration enables, and the `--tuning auto` notice on SQL platforms no
+  longer claims unique and check constraints are enabled.
+- Requesting materialized views on Doris now reports that BenchBox does not
+  create them on Doris, instead of a generic unsupported-type error.
+- `benchbox run --dry-run --tuning tuned` on a cloud platform whose driver is
+  not installed (for example Snowflake or Databricks) now shows the tuning DDL
+  preview from that platform's generator, with a warning that no platform
+  configuration was available. Before, the preview was silently empty.
+- Tuned dry runs now show a note above the tuning DDL preview when it is
+  generator output that execution does not run, and name each requested
+  tuning type that the platform does not apply at execution (also saved as
+  `ddl_preview_notes` in the dry-run JSON). The DuckDB preview lists the sort and
+  cluster indexes and the transactional sort rewrite that a real run executes.
+  The Athena preview no longer contains a `-- Note: PARTITIONED BY ...`
+  placeholder line.
+- Tuned and `--tuning auto` TPC-DS runs on SQLite no longer fail during data
+  loading. TPC-DS generated data does not satisfy every declared foreign key,
+  so SQLite now creates TPC-DS tables without foreign keys, as DuckDB already
+  did, and both record the requested foreign keys as dropped with that reason
+  instead of the generic "adapter rendered no statement".
+- The shipped DuckDB TPC-DS tuned template no longer requests foreign keys,
+  which DuckDB never applies to TPC-DS. Tuned DuckDB TPC-DS runs now reach
+  `applied_verified`; the tables and query plans are unchanged.
+- On DuckDB, the sort index that a tuned run re-creates after the in-place
+  sort rewrite is now recorded in the applied-tuning ledger as `satisfied` by
+  the original `CREATE INDEX`, not as a second executed statement, because
+  the rewrite keeps the index and the re-create does nothing. The run's
+  verification status does not change, but the applied-ledger hash of sorted
+  DuckDB runs does. The ClickHouse tuning introspector now escapes
+  backslashes as well as quotes in its table filter.
+
+- SQLite runs now honour `--platform-option database_name=<name>`. The run
+  creates and uses `<name>.db` in the benchmark's database directory. Before,
+  the option was ignored and the run used the default
+  `<benchmark>_<scale>_notuning_noconstraints.sqlite` file. Runs without the
+  option keep the default name.
+- A `DatabaseConfig` whose `type` used a `<platform>:<mode>` selector no longer
+  breaks registry and credential lookups, puts `:` in database file names,
+  falls back to the no-op DDL generator for TimescaleDB, or drops the
+  deployment from the dry-run output.
+- DataFrame runs built from Python config keep their platform options: a
+  `lakesail-df` (or other `-df`) config no longer loses `endpoint` and the
+  other registered options, and the selected deployment reaches
+  `LakeSailDataFrameAdapter`, which records it as `deployment_selected`
+  instead of passing it to Spark as a session setting. Dry runs of DataFrame
+  configs no longer report "Unsupported platform: lakesail-df".
+- `benchbox run --platform lakesail-df:distributed` keeps the deployment and
+  its DataFrame mode; before, the `:distributed` suffix was dropped.
+- Dry runs of TSBS DevOps (`benchbox run --benchmark tsbs_devops --dry-run`
+  and the Python API) preview the queries instead of reporting
+  "Unknown benchmark: tsbs_devops".
+- The LakeSail, LakeSail DataFrame, LakeSail-vs-Spark, TigerData and InfluxDB
+  getting-started examples select their deployment with the selector and
+  dry-run without a deprecation warning. The LakeSail DataFrame and InfluxDB
+  examples, whose dry runs and real runs called APIs that no longer exist,
+  now use `execute_example_dry_run` and `BenchmarkOrchestrator.execute_benchmark`;
+  the LakeSail-vs-Spark example gains `--dry-run OUTPUT_DIR`.
 
 - A tuning file that sets only some constraint types (for example
   `primary_keys: {enabled: true}`) no longer fails validation with
   "requested unique_constraints is not applied at execution". Leaving out
   `unique_constraints` or `check_constraints` now means the file does not
   request them; before, the omitted keys defaulted to enabled.
+
+- `benchbox run --force datagen` and `--force all` now regenerate TPC-H data
+  that is already valid on disk. Before, the data generator never received the
+  force request and logged "Skipping data generation (existing data is valid)".
+  TPC-Havoc, Write Primitives and Transaction Primitives had the same problem.
+  The force request now reaches every benchmark that accepts it. Runs without
+  `--force` still reuse valid data.
 
 - Load-only runs (`--phases generate,load`) on SQL platforms exit 0 again
   after a successful load. Before, every such run loaded the data and then
@@ -488,6 +631,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   never a valid profile key.
 
 ### Before you upgrade
+- Spark tuning validation no longer borrows the Databricks rules. Spark has its
+  own capability entry: Liquid Clustering, Z-Ordering and the other Databricks
+  layout types are reported as unsupported on Spark, partitioning stays
+  unsupported, sorting is applied only on Delta tables, and keys stay accepted.
+  Spark runs that use a Databricks template no longer show that template's
+  measured evidence label. Delta stays an alias for Databricks.
+- A tuning file's `platform_optimizations.spark` map now applies on Velox the
+  same way as on Spark (set, read back, and recorded in the applied-tuning
+  ledger). On LakeSail it is no longer reported as applied: LakeSail accepts
+  settings it ignores, so validation warns and each key is recorded as a
+  dropped intent, which keeps such runs from being reported as verified.
+- Athena tables no longer carry PRIMARY KEY or FOREIGN KEY clauses. Athena's
+  CREATE EXTERNAL TABLE has no constraint syntax, so BenchBox now removes them
+  before creating each table, and a tuning file that asks for primary or
+  foreign keys on Athena fails validation with an error that says the
+  platform does not apply them. Turn those keys off in Athena tuning files.
 - The tuning policy generation is now `adr-003-spark-baseline`. Spark,
   LakeSail and Velox results recorded under `adr-003` or earlier are not
   comparable with new ones, because untuned runs no longer set AQE, CBO,

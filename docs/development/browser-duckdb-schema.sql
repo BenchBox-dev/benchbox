@@ -114,7 +114,8 @@ CREATE TABLE IF NOT EXISTS results (
     physical_rendering_id VARCHAR,
     benchmark_support_status VARCHAR,
     throughput_at_size   DOUBLE,
-    stream_count         INTEGER
+    stream_count         INTEGER,
+    power_score_source   VARCHAR
 );
 
 CREATE TABLE IF NOT EXISTS query_display_timings (
@@ -220,6 +221,7 @@ SELECT
     r.benchmark_support_status,
     r.throughput_at_size,
     r.stream_count,
+    r.power_score_source,
     e.os,
     e.arch,
     e.cpu_count,
@@ -297,6 +299,7 @@ CREATE TABLE IF NOT EXISTS benchmark_rankings (
     speedup_vs_slowest_in_cohort DOUBLE,
     throughput_at_size           DOUBLE,
     stream_count                 INTEGER,
+    power_score_source           VARCHAR,
     PRIMARY KEY (benchmark, scale_factor, phase, result_id)
 );
 
@@ -352,7 +355,8 @@ SELECT
     node_count,
     cluster_size,
     storage_format,
-    storage_tier
+    storage_tier,
+    power_score_source
 FROM results;
 
 CREATE TABLE IF NOT EXISTS cohort_metadata (

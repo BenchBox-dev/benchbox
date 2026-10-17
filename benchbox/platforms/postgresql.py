@@ -258,6 +258,20 @@ def ensure_postgres_extension(
             cursor.close()
 
 
+PARTITIONING_WITH_KEYS_REASON = (
+    "PostgreSQL requires a primary or unique key on a partitioned table to include the partition column, "
+    "so partitioning is skipped while primary or unique keys are requested"
+)
+_CREATE_TABLE_NAME_RE = re.compile(r"^\s*CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?P<table>[^\s(]+)", re.IGNORECASE)
+_BENCHMARK_DATE_YEARS = {"tpch": (1992, 1999), "ssb": (1992, 1999), "tpcds": (1998, 2004)}
+
+
+def _benchmark_date_years(benchmark: Any) -> tuple[int, int] | None:
+    name = str(getattr(benchmark, "_name", "") or type(benchmark).__name__).lower()
+    key = re.sub(r"[^a-z]", "", name).removesuffix("benchmark")
+    return _BENCHMARK_DATE_YEARS.get(key)
+
+
 class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
     driver_isolation_capability = DriverIsolationCapability.FEASIBLE_CLIENT_ONLY
     plan_capture_phase_eligible = True
@@ -536,7 +550,8 @@ class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
         cursor = connection.cursor()
 
         statements = [s.strip() for s in schema_sql.split(";") if s.strip()]
-        for stmt in statements:
+        for raw_stmt in statements:
+            stmt, partition_children = self.partitioned_create_statements(raw_stmt, benchmark)
             try:
                 cursor.execute(self._transform_create_statement(stmt))
             except Exception as e:
@@ -555,6 +570,8 @@ class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
                         raise
                 else:
                     raise
+            for child in partition_children:
+                cursor.execute(child)
 
         connection.commit()
         cursor.close()
@@ -562,6 +579,44 @@ class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
         duration = elapsed_seconds(start_time)
         self.log_operation_complete("Schema creation", duration, "Schema and tables created")
         return duration
+
+    execution_partitioning_supported = True
+
+    def partitioned_create_statements(self, statement: str, benchmark: Any) -> tuple[str, list[str]]:
+        match = _CREATE_TABLE_NAME_RE.match(statement)
+        config = self.get_effective_tuning_configuration() if self.tuning_enabled else None
+        if match is None or config is None or not self.execution_partitioning_supported:
+            return statement, []
+        table_name = match.group("table").split(".")[-1].strip('"').lower()
+        table_tuning = self.table_tuning_for(config, table_name)
+        partition_columns = list(getattr(table_tuning, "partitioning", None) or [])
+        if not partition_columns:
+            return statement, []
+        if config.primary_keys.enabled or config.unique_constraints.enabled:
+            self._record_partitioning_skipped(table_tuning, partition_columns)
+            return statement, []
+        from benchbox.core.tuning.ddl_generator import get_ddl_generator
+        from benchbox.core.tuning.interface import TableTuning as RuntimeTableTuning
+
+        generator = get_ddl_generator("postgresql")
+        layout_only = RuntimeTableTuning(table_name=table_tuning.table_name, partitioning=partition_columns)
+        clauses = generator.generate_tuning_clauses(layout_only)
+        children = generator.generate_partition_children(
+            table_name,
+            [],
+            clauses,
+            table_tuning=layout_only,
+            schema=self.schema if self.schema != "public" else None,
+            year_range=_benchmark_date_years(benchmark),
+        )
+        return f"{statement}\n{clauses.partition_by}", children
+
+    def _record_partitioning_skipped(self, table_tuning: TableTuning, partition_columns: list[Any]) -> None:
+        ledger = getattr(self, "_applied_tuning_ledger", None)
+        if ledger is None:
+            return
+        columns = ", ".join(column.name for column in sorted(partition_columns, key=lambda column: column.order))
+        ledger.record_dropped(f"partitioning:{table_tuning.table_name} ({columns})", PARTITIONING_WITH_KEYS_REASON)
 
     def _transform_create_statement(self, stmt: str) -> str:
         return stmt

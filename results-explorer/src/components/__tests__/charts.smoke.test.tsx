@@ -533,8 +533,22 @@ describe("PowerBar", () => {
     expect(midIdx).toBeLessThan(lowIdx);
   });
 
+  it("labels subscale Power@Size as unofficial and marks derived scores", () => {
+    const summary = makeSummary({
+      scale_factor: 0.01,
+      platforms: [
+        makePlatform({ result_id: "r1", platform: "High", power_score: 900, power_score_source: "derived_from_timings" }),
+      ],
+    });
+    const { container } = render(<PowerBar summary={summary} />);
+
+    expect(container.textContent).toContain("Power@Size (subscale, unofficial) - higher is better");
+    expect(container.querySelector("title")?.textContent ?? "").toContain("(derived from query timings)");
+  });
+
   it("labels the metric Power@Size without a QphH unit", () => {
     const summary = makeSummary({
+      scale_factor: 1,
       platforms: [makePlatform({ result_id: "r1", platform: "High", power_score: 900 })],
     });
     const { container } = render(<PowerBar summary={summary} />);

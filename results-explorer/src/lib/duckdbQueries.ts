@@ -145,6 +145,7 @@ export interface ResultRow extends CostDeploymentFields {
   validation_status: string | null;
   cost_usd: number | null;
   compliance_class: string | null;
+  power_score_source?: string | null;
   benchmark_support_status?: string | null;
   is_ranking_eligible: boolean;
   has_plans: boolean;
@@ -251,6 +252,7 @@ export interface BenchmarkRankingRow extends CostDeploymentFields {
   comparison_exclusion_reason: string | null;
   ranking_exclusion_reason: string | null;
   power_score: number | null;
+  power_score_source?: string | null;
   throughput_at_size: number | null;
   stream_count: number | null;
   display_geomean_ms: number | null;
@@ -444,6 +446,7 @@ const RESULT_COLUMNS = [
   "bundle_download_url",
   "physical_rendering_id",
   "benchmark_support_status",
+  "power_score_source",
 ].join(", ");
 
 const RESULT_HARDWARE_COLUMNS = `${RESULT_COLUMNS}, arch, cpu_family, memory_gb`;
@@ -526,6 +529,7 @@ const RESULT_DETAIL_METRICS_COLUMNS = [
   "bundle_download_url",
   "physical_mechanisms",
   "physical_rendering_id",
+  "power_score_source",
   "os",
   "arch",
   "cpu_count",
@@ -602,6 +606,7 @@ const BENCHMARK_RANKING_COLUMNS = [
   "br.comparison_exclusion_reason",
   "br.ranking_exclusion_reason",
   "br.power_score",
+  "br.power_score_source",
   "br.throughput_at_size",
   "br.stream_count",
   "br.display_geomean_ms",
@@ -899,6 +904,7 @@ function detailResultFromWideRow(
     geomean_ms: wide.geomean_ms,
     display_geomean_ms: wide.display_geomean_ms,
     power_score: wide.power_score,
+    power_score_source: wide.power_score_source ?? null,
     throughput_at_size: wide.throughput_at_size ?? null,
     stream_count: wide.stream_count ?? null,
     has_display_timing: wide.has_display_timing,
@@ -1136,6 +1142,7 @@ async function loadBenchmarkSummaryFromDuckDB(
       comparison_exclusion_reason: row.comparison_exclusion_reason,
       ranking_exclusion_reason: row.ranking_exclusion_reason,
       power_score: row.power_score,
+      power_score_source: row.power_score_source ?? null,
       throughput_at_size: row.throughput_at_size,
       display_geomean_ms: row.display_geomean_ms,
       sample_geomean_ms: row.sample_geomean_ms,

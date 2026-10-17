@@ -250,13 +250,15 @@ class TPCDSOBTBenchmark(BaseBenchmark):
         dialect: str | None = None,
         **kwargs: Any,
     ) -> str:
-        sql = self.query_manager.get_query(query_id, params)
+        sql = self.query_manager.get_query(
+            query_id, params, seed=seed, scale_factor=scale_factor if scale_factor is not None else self.scale_factor
+        )
         if dialect:
             sql = self.translate_query_text(sql, dialect, query_id=int(query_id))
         return sql
 
     def get_all_queries(self) -> dict[str, str]:
-        return {str(k): v for k, v in self.query_manager.get_queries().items()}
+        return {str(k): v for k, v in self.query_manager.get_queries(scale_factor=self.scale_factor).items()}
 
     @staticmethod
     def _rewrite_clickhouse_query(query_id: int, query_text: str) -> str:
@@ -352,7 +354,7 @@ class TPCDSOBTBenchmark(BaseBenchmark):
         return query_text
 
     def get_queries(self, dialect: str | None = None) -> dict[str, str]:
-        queries = {str(k): v for k, v in self.query_manager.get_queries().items()}
+        queries = {str(k): v for k, v in self.query_manager.get_queries(scale_factor=self.scale_factor).items()}
         if dialect:
             queries = {qid: self.translate_query_text(sql, dialect, query_id=int(qid)) for qid, sql in queries.items()}
         return queries

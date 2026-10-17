@@ -390,9 +390,6 @@
     "tests/unit/workflows/test_corpus_trust_boundary.py": {
       "WA003": 2
     },
-    "tests/unit/workflows/test_oracle_review_workflow.py": {
-      "WA003": 5
-    },
     "tests/unit/workflows/test_public_site_visual_workflow.py": {
       "WA003": 4
     },

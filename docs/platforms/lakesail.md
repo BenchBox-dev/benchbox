@@ -198,6 +198,11 @@ Key architectural points:
 - **Optimizer**: DataFusion query optimizer with cost-based optimization
 - **Execution**: Rust-based workers for vectorized query processing
 - **Constraints**: Primary and foreign keys are informational only (not enforced), matching Spark behavior
+- **Session configuration**: LakeSail accepts `spark.conf.set` for Spark keys
+  it ignores and does not report which ones it honours. BenchBox therefore does
+  not apply a tuning file's `platform_optimizations.spark` map on LakeSail:
+  validation warns, and each key is recorded as a dropped intent in the
+  applied-tuning ledger. LakeSail has no curated tuning templates.
 
 ### Tuning Support
 

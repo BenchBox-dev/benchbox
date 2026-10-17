@@ -4,6 +4,8 @@ import argparse
 import os
 from pathlib import Path
 
+from benchbox.core.config import BenchmarkConfig, DatabaseConfig
+
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _OUTPUT_DIR = _PROJECT_ROOT / "benchmark_runs" / "getting_started" / "influxdb"
 
@@ -78,6 +80,32 @@ def _require_env(var_name: str) -> str:
     return value
 
 
+def _build_configs(scale_factor: float, mode: str, *, ssl: bool) -> tuple[BenchmarkConfig, DatabaseConfig]:
+    benchmark_config = BenchmarkConfig(
+        name="tsbs_devops",
+        display_name="TSBS DevOps",
+        scale_factor=scale_factor,
+        test_execution_type="power",
+        options={"enable_preflight_validation": False},
+    )
+    options: dict[str, object] = {
+        "token": _require_env("INFLUXDB_TOKEN"),
+        "host": _get_env("INFLUXDB_HOST", "localhost"),
+        "port": int(_get_env("INFLUXDB_PORT", "8086") or "8086"),
+        "database": _get_env("INFLUXDB_DATABASE", "benchbox"),
+        "ssl": ssl,
+    }
+    org = _get_env("INFLUXDB_ORG")
+    if org:
+        options["org"] = org
+    database_config = DatabaseConfig(
+        type=f"influxdb:{mode}",
+        name="influxdb_tsbs_devops",
+        options=options,
+    )
+    return benchmark_config, database_config
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Run TSBS DevOps benchmark on InfluxDB 3.x",
@@ -109,84 +137,43 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    token = _require_env("INFLUXDB_TOKEN")
-    host = _get_env("INFLUXDB_HOST", "localhost")
-    port = int(_get_env("INFLUXDB_PORT", "8086"))
-    org = _get_env("INFLUXDB_ORG")
-    database = _get_env("INFLUXDB_DATABASE", "benchbox")
-    ssl = not args.no_ssl
+    benchmark_config, database_config = _build_configs(args.scale, args.mode, ssl=not args.no_ssl)
 
     if args.dry_run:
         from benchbox.examples import execute_example_dry_run
 
         execute_example_dry_run(
-            dry_run_path=args.dry_run,
-            platform_name="influxdb",
-            benchmark_name="tsbs-devops",
-            scale_factor=args.scale,
-            platform_config={
-                "host": host,
-                "port": port,
-                "token": "***",
-                "org": org or "(not set)",
-                "database": database,
-                "deployment_mode": args.mode,
-                "ssl": ssl,
-            },
+            benchmark_config=benchmark_config,
+            database_config=database_config,
+            output_dir=Path(args.dry_run),
+            filename_prefix="influxdb_tsbs_devops",
         )
         return
 
     from benchbox.cli.orchestrator import BenchmarkOrchestrator
-    from benchbox.core.config import BenchmarkConfig, DatabaseConfig
     from benchbox.core.system import SystemProfiler
-    from benchbox.platforms.influxdb import INFLUXDB_AVAILABLE, InfluxDBAdapter
 
-    if not INFLUXDB_AVAILABLE:
-        raise ImportError("InfluxDB client not installed. Run: uv add influxdb3-python")
-
-    print(f"Connecting to InfluxDB ({args.mode} mode)...")
-    adapter = InfluxDBAdapter(
-        host=host,
-        port=port,
-        token=token,
-        org=org,
-        database=database,
-        deployment_mode=args.mode,
-        ssl=ssl,
-    )
-
-    db_config = DatabaseConfig(
-        platform=adapter,
-        output_dir=_OUTPUT_DIR,
-    )
-
-    bench_config = BenchmarkConfig(
-        benchmark_type="tsbs_devops",
-        scale_factor=args.scale,
-        phases=["power"],
-    )
-
-    orchestrator = BenchmarkOrchestrator(
-        database_config=db_config,
-        benchmark_config=bench_config,
-        system_profiler=SystemProfiler(),
-    )
-
-    print(f"Running TSBS DevOps benchmark at scale {args.scale}...")
-    print(f"  Host: {host}:{port}")
-    print(f"  Database: {database}")
-    print(f"  Mode: {args.mode}")
-    print(f"  SSL: {ssl}")
+    options = database_config.options
+    print(f"Running TSBS DevOps benchmark on InfluxDB ({args.mode} mode) at scale {args.scale}...")
+    print(f"  Host: {options['host']}:{options['port']}")
+    print(f"  Database: {options['database']}")
+    print(f"  SSL: {options['ssl']}")
     print()
 
-    results = orchestrator.run()
+    _OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    orchestrator = BenchmarkOrchestrator(base_dir=str(_OUTPUT_DIR))
+    result = orchestrator.execute_benchmark(
+        config=benchmark_config,
+        system_profile=SystemProfiler().get_system_profile(),
+        database_config=database_config,
+        phases_to_run=["generate", "load", "power"],
+    )
 
     print("\n" + "=" * 60)
     print("Benchmark Complete!")
     print("=" * 60)
+    print(f"Successful queries: {result.successful_queries}")
     print(f"Output directory: {_OUTPUT_DIR}")
-    if hasattr(results, "manifest_path"):
-        print(f"Results manifest: {results.manifest_path}")
 
 
 if __name__ == "__main__":

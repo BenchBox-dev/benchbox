@@ -118,6 +118,22 @@ class BenchBoxConfig(BaseModel):
     tuning: dict[str, Any] = Field(default_factory=dict)
 
 
+SPARK_SESSION_CONFIG_EXAMPLE = """
+# Spark session settings. BenchBox sets each key with spark.conf.set after the
+# session starts, reads it back, and records it in the applied-tuning ledger.
+# To use them, move this block under platform_optimizations above and remove
+# the leading '#'. Keys may omit the 'spark.' prefix. Static keys (warehouse,
+# catalogs, extensions), core deploy keys (spark.driver.*, spark.executor.*),
+# adapter-owned keys and credentials are rejected; set those through the
+# adapter options instead.
+#
+#   spark:
+#     spark.sql.shuffle.partitions: "200"
+#     spark.sql.adaptive.enabled: "true"
+#     spark.sql.autoBroadcastJoinThreshold: "10485760"
+"""
+
+
 class ConfigManager:
     def __init__(self, config_path: Optional[Path] = None, *, strict: bool = False):
         self.console = quiet_console
@@ -659,28 +675,38 @@ class ConfigManager:
                 sample_config.disable_tuning_type(tuning_type)
 
         self.save_unified_tuning_config(sample_config, path)
+        if platform.split(":", 1)[0].strip().lower() in UnifiedTuningConfiguration._SPARK_SESSION_CONFIG_PLATFORMS:
+            with Path(path).open("a", encoding="utf-8") as handle:
+                handle.write(SPARK_SESSION_CONFIG_EXAMPLE)
         console.print(
             f"[green]✅ Sample unified tuning configuration created for platform '{platform}' at {path}[/green]"
         )
 
-        enabled_types = sample_config.get_enabled_tuning_types()
-        console.print("This configuration includes:")
-        console.print("  • Schema constraints (primary keys, foreign keys, unique, check)")
-        if any(t.value.startswith(("z_ordering", "auto_", "bloom_", "materialized_")) for t in enabled_types):
-            console.print(f"  • Platform optimizations for {platform}")
-        if any(
-            t
-            in [
-                TuningType.PARTITIONING,
-                TuningType.CLUSTERING,
-                TuningType.SORTING,
-                TuningType.DISTRIBUTION,
-            ]
-            for t in enabled_types
-        ):
-            console.print("  • Table-level tunings (partitioning, clustering, sorting)")
-        console.print(f"All settings are compatible with {platform}.")
-        console.print("Edit this file to customize your tuning settings.")
+        _print_sample_summary(platform, sample_config.get_enabled_tuning_types())
+
+
+_SAMPLE_CONSTRAINT_LABELS = (
+    (TuningType.PRIMARY_KEYS, "primary keys"),
+    (TuningType.FOREIGN_KEYS, "foreign keys"),
+    (TuningType.UNIQUE_CONSTRAINTS, "unique"),
+    (TuningType.CHECK_CONSTRAINTS, "check"),
+)
+_SAMPLE_LAYOUT_TYPES = frozenset(
+    {TuningType.PARTITIONING, TuningType.CLUSTERING, TuningType.SORTING, TuningType.DISTRIBUTION}
+)
+
+
+def _print_sample_summary(platform: str, enabled_types: set[TuningType]) -> None:
+    console.print("This configuration includes:")
+    constraint_labels = [label for tuning_type, label in _SAMPLE_CONSTRAINT_LABELS if tuning_type in enabled_types]
+    if constraint_labels:
+        console.print(f"  • Schema constraints ({', '.join(constraint_labels)})")
+    if any(t.value.startswith(("z_ordering", "auto_", "bloom_", "materialized_")) for t in enabled_types):
+        console.print(f"  • Platform optimizations for {platform}")
+    if enabled_types & _SAMPLE_LAYOUT_TYPES:
+        console.print("  • Table-level tunings (partitioning, clustering, sorting)")
+    console.print(f"All settings are compatible with {platform}.")
+    console.print("Edit this file to customize your tuning settings.")
 
 
 class DirectoryManager:

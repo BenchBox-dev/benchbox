@@ -83,6 +83,9 @@ class TestManifestProvenance:
     def test_valid_known_defects_ok(self):
         assert self._run({"known_defects": ["defective-macdbgen-addresses"]}).ok
 
+    def test_tpcds_obt_parameter_defect_ok(self):
+        assert self._run({"known_defects": ["defective-tpcds-obt-parameters"]}).ok
+
     def test_multiple_known_defects_ok(self):
         assert self._run({"known_defects": ["defective-macdbgen-addresses", "defective-windows-dsdgen-scale"]}).ok
 

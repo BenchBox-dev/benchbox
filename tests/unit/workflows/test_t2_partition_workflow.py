@@ -11,8 +11,23 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 ROOT = Path(__file__).resolve().parents[3]
 
 
+MOVED_STEPS = {
+    "a": (
+        "Run the required local-engine cases",
+        "Run TPC-Havoc DataFusion variant-equivalence sample and .tbl load regression",
+    ),
+    "b": ("Run in-process plan-capture gate", "Run the polars-df smoke and cross-surface gates on Polars 2.0.0"),
+}
+HEAVY_CONDITION = "${{ needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }}"
+
+
 def _jobs(filename: str) -> dict:
     return yaml.safe_load((ROOT / ".github/workflows" / filename).read_text(encoding="utf-8"))["jobs"]
+
+
+def _moved(job: dict) -> list[dict]:
+    names = {name for steps in MOVED_STEPS.values() for name in steps}
+    return [step for step in job["steps"] if step.get("name") in names]
 
 
 def test_correctness_partitions_preserve_each_gate_once() -> None:
@@ -31,7 +46,8 @@ def test_correctness_partitions_preserve_each_gate_once() -> None:
             target = "joinorder-synthetic"
         expected.add(f"make {target}-cross-surface-equivalence-report")
     expected.add("make tpcds-pandas-cross-surface-equivalence-report")
-    steps = [step for step in job["steps"] if str(step.get("run", "")).startswith("make ")]
+    moved = _moved(job)
+    steps = [step for step in job["steps"] if str(step.get("run", "")).startswith("make ") and step not in moved]
     assert Counter(step["run"] for step in steps) == Counter(dict.fromkeys(expected, 1))
     groups = {
         name: {step["run"] for step in steps if step["if"] == f"matrix.partition == '{name}'"} for name in ("a", "b")
@@ -42,22 +58,40 @@ def test_correctness_partitions_preserve_each_gate_once() -> None:
     assert not any(step.get("continue-on-error") for step in steps)
 
 
+def test_heavy_checks_run_last_in_their_partition_even_after_a_failure() -> None:
+    jobs = _jobs("ci.yml")
+    job = jobs["correctness-gate"]
+    assert job["if"] == HEAVY_CONDITION
+    assert job["timeout-minutes"] == 65
+    names = [step.get("name") for step in job["steps"]]
+    for partition, moved in MOVED_STEPS.items():
+        partition_steps = [step for step in job["steps"] if f"matrix.partition == '{partition}'" in str(step.get("if"))]
+        assert [step["name"] for step in partition_steps[-len(moved) :]] == list(moved)
+        for name in moved:
+            step = job["steps"][names.index(name)]
+            assert step["if"] == f"${{{{ !cancelled() && matrix.partition == '{partition}' }}}}"
+            assert step["timeout-minutes"] > 0
+    assert [step["name"] for step in _moved(job) if step.get("continue-on-error")] == [MOVED_STEPS["a"][1]]
+    assert names[-1] == MOVED_STEPS["b"][1]
+    polars = job["steps"][-1]["run"]
+    assert polars.index('uv pip install "polars==2.0.0"') < polars.index("make polars-df-compat-check")
+
+
 def test_required_local_cases_run_before_merge_and_gate_core() -> None:
     jobs = _jobs("ci.yml")
-    job = jobs["required-local-cases"]
-    assert job["needs"] == "ci-paths"
-    assert job["if"] == jobs["correctness-gate"]["if"]
-    assert job["runs-on"] == "ubuntu-latest"
-    assert job["timeout-minutes"] == 20
-    assert "strategy" not in job
+    job = jobs["correctness-gate"]
     runs = [step["run"] for step in job["steps"] if "run" in step]
     assert runs.count("make test-required-local-cases") == 1
+    step = next(step for step in job["steps"] if step.get("run") == "make test-required-local-cases")
+    assert step["timeout-minutes"] == 20
+    assert not step.get("continue-on-error")
     assert not job.get("continue-on-error")
-    assert not any(step.get("continue-on-error") for step in job["steps"])
-    assert "required-local-cases" in jobs["core"]["needs"]
+    for retired in ("required-local-cases", "plan-capture-gate", "datafusion-integration", "polars-2-compat"):
+        assert retired not in jobs
+        assert retired not in jobs["core"]["needs"]
+    assert "correctness-gate" in jobs["core"]["needs"]
     core_text = "\n".join(step.get("run", "") for step in jobs["core"]["steps"])
-    condition = "${{ needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }}"
-    assert f"--expect required-local-cases={condition}" in core_text
+    assert f"--expect correctness-gate={HEAVY_CONDITION}" in core_text
 
 
 def test_medium_selection_and_receipts_gate_core() -> None:
@@ -98,15 +132,12 @@ def test_the_medium_shard_records_memory_and_stalled_stacks() -> None:
     assert names.index(memory_step["name"]) == names.index(run_step["name"]) + 1
 
 
-def test_heavy_payload_uses_at_most_twelve_standard_linux_runners() -> None:
+def test_heavy_payload_uses_at_most_nine_standard_linux_runners() -> None:
     jobs = _jobs("ci.yml")
     payload = (
         "medium-collect",
         "medium-test",
         "correctness-gate",
-        "required-local-cases",
-        "plan-capture-gate",
-        "datafusion-integration",
         "package-smoke",
         "dependency-audit",
     )
@@ -115,7 +146,7 @@ def test_heavy_payload_uses_at_most_twelve_standard_linux_runners() -> None:
         assert jobs[name]["runs-on"] == "ubuntu-latest"
         matrix = jobs[name].get("strategy", {}).get("matrix", {})
         count += prod(len(values) for values in matrix.values())
-    assert count == 12
+    assert count == 9
 
 
 def test_native_binary_framing_remains_required_before_merge() -> None:

@@ -484,3 +484,32 @@ truncation is measured before filtering.
 ## Addendum (2026-10-05): fail-closed tuned-run marker
 
 Decision: every tuned run writes a run-kind marker row (existing `benchbox_tuning_metadata` row shape, no DDL change) before applying any physical tuning and fails instead of tuning when the marker cannot be written, so a notuning run refuses any database carrying the marker even when full tuning metadata was never saved; baselines still write nothing.
+
+## Addendum (2026-10-17): landed trust evidence and its limits
+
+Changes since the 2026-10-05 addendum that later work must not undo:
+
+- **Effective session configuration is evidence, not identity.** Spark, LakeSail
+  and Velox runs read the live session configuration back at session creation,
+  after configuration and at run start, and record the redacted values and any
+  discrepancies in `platform.effective_session_config`. The block never enters
+  `requested_config_hash`, `applied_ledger_hash` or the drift markers, and it
+  has no digest of its own, because the captured values include per-run fields
+  such as `spark.app.id`. It carries its own layout `version`; the bundle schema
+  version did not change for it.
+- **A no-op re-create is satisfied, not executed.** When DuckDB re-issues
+  `CREATE INDEX IF NOT EXISTS` after its in-place sort rewrite, the ledger
+  records a `satisfied` entry pointing at the original index statement. Like
+  every satisfied entry it is not part of `applied_ledger_hash` and never counts
+  as corroboration.
+- **Benchmark-specific drops carry their reason.** DuckDB and SQLite create
+  TPC-DS tables without foreign keys and record requested foreign keys as a
+  dropped intent with that reason, so the run cannot reach `applied_verified`
+  while claiming keys it did not create.
+- **Liveness is tested, not assumed.** A real-CLI integration gate
+  (`tests/integration/tuning/test_tuning_liveness_e2e.py`, CI job
+  `tuning-liveness`) pins which platform, benchmark and mode cells reach
+  `applied_verified`. The generated support matrix
+  (`docs/reference/tuning-platform-support.md`) lists the platforms that can:
+  only those with a catalog introspector and at least one tuning type applied
+  at execution.

@@ -31,7 +31,6 @@ def _eligible_record(**overrides: object) -> dict:
             "code-lint": "success",
             "code-test": "success",
             "correctness-gate": "success",
-            "plan-capture-gate": "success",
             "medium-test": "success",
         },
         "required_gate_seconds": 1800,
@@ -56,6 +55,32 @@ def test_shadow_eligible_with_failed_medium_is_full_only_failure() -> None:
     assert result.decision == DECISION_SHADOW
     assert result.full_only_failure is True
     assert result.actual_full_lanes_failed == ["medium-test"]
+
+
+def test_plan_capture_failure_inside_the_correctness_partition_is_full_only_failure() -> None:
+    record = _eligible_record()
+    record["actual_lane_conclusions"]["correctness-gate"] = "failure"
+    result = replay_record(record)
+    assert result.decision == DECISION_SHADOW
+    assert result.full_only_failure is True
+    assert result.actual_full_lanes_failed == ["correctness-gate"]
+    assert completeness_errors([record], [result]) == []
+
+
+def test_record_from_before_plan_capture_moved_still_counts_its_failure() -> None:
+    record = _eligible_record()
+    record["actual_lane_conclusions"]["plan-capture-gate"] = "failure"
+    result = replay_record(record)
+    assert result.full_only_failure is True
+    assert result.actual_full_lanes_failed == ["plan-capture-gate"]
+    assert completeness_errors([record], [result]) == []
+
+
+def test_record_from_before_plan_capture_moved_still_needs_a_terminal_outcome() -> None:
+    record = _eligible_record()
+    record["actual_lane_conclusions"]["plan-capture-gate"] = "in_progress"
+    errors = completeness_errors([record], [replay_record(record)])
+    assert errors == ["eligible-refresh: non-terminal lane conclusions [\"plan-capture-gate='in_progress'\"]"]
 
 
 def test_chained_refresh_is_full_required() -> None:

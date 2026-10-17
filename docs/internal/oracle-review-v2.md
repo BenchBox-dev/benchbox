@@ -284,14 +284,23 @@ These checks must pass before the cut-over that makes the context required.
   branch cannot.
 - **P3:** each reviewer authenticates in CI. A reviewer that cannot is set to
   `enabled: false` with a `disabled_reason`. agy is enabled with its own
-  job in every slot, and the workflow has five slots so the longest enabled
-  chain fits.
+  job in every slot, and the workflow has five slots so the longest chain
+  fits when every reviewer is enabled. The codex reviewers, sol and luna, are
+  disabled because the OpenAI API project behind `OPENAI_API_KEY` has no
+  quota; their jobs and tier places stay, so setting `enabled: true` on each
+  re-enables them. While they are off, very high is reviewed by opus alone
+  (diversity-exempt), and the lower tiers by sonnet, muse and agy, skipping the
+  author's family.
 - **P4:** capture each reviewer's quota, authentication and outage output from
   real runs. The attempt artifact's `diagnostic` field holds one redacted line
   of the output, at most 300 characters, with credentials and long tokens
   removed; raw output is never uploaded. Add the messages to the `CALIBRATED_*_PATTERNS` tables in
   `_project/scripts/oracle_reviewers/absence.py`; until then they count as
-  errors, which never pass.
+  errors, which never pass. A quota absence skips the reviewer's whole pool
+  for the rest of the run, and in later runs until the reset time the CLI
+  reported, or for one hour (`QUOTA_BACKOFF` in `selection.py`) when it
+  reported none, such as Codex's `Quota exceeded. Check your plan and billing
+  details.`
 
 ## Cut-over
 
@@ -312,6 +321,16 @@ status, which any pull request with the same head commit could set. The
 oracle signal needs `findings_delivery: review`, under which every run that
 reaches a result, including a pending one, posts a review, so the latest
 review is the latest result.
+
+Each `oracle-review` run is its own check suite on the head, and a failed or
+cancelled suite keeps the required check red until it is re-run. After the
+`post` job of `oracle-verdict` posts its review, it re-runs the failed
+`pull_request` runs for the head, at the same moment the review starts a
+`pull_request_review` run. The workflow has no concurrency group, because
+under `cancel-in-progress` one of those runs cancelled the other. Instead, a
+run for a pull request event checks, before and after the checker, that the
+head it was triggered for is still the pull request's head; a run for a
+superseded head fails rather than report on a head it was not created for.
 
 The stand-in attestation must be posted after the oracle's latest review of
 the head, so overriding a failing verdict is a deliberate act; it never

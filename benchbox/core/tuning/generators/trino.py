@@ -249,7 +249,10 @@ class AthenaDDLGenerator(TrinoDDLGenerator):
         statement = f"{statement} (\n    {col_list}\n)"
 
         if tuning and "partitioned_by" in tuning.table_properties:
-            statement = f"{statement}\n-- Note: PARTITIONED BY clause should be added with column types"
+            logger.warning(
+                f"Partitioning for Athena table {table_name} is not rendered: BenchBox creates Athena tables "
+                "without PARTITIONED BY, so the preview omits it as well."
+            )
 
         file_format = self._default_format.value
         if tuning and "format" in tuning.table_properties:

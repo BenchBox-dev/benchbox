@@ -22,6 +22,7 @@ CEDARDB_DEFAULT_PORT = 5432
 
 
 class CedarDBAdapter(PostgreSQLAdapter):
+    execution_partitioning_supported = False
     plan_capture_phase_eligible = True
 
     @property

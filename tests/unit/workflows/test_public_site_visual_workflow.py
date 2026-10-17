@@ -18,7 +18,7 @@ DOCS_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "docs.yml"
 CAPTURE_SPEC = REPO_ROOT / "results-explorer" / "e2e" / "captures" / "public-site-pages.spec.ts"
 
 
-CI_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci.yml"
+SITE_DOCS_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "site-docs.yml"
 CLASSIFY_STEP = "Classify site inputs and validate recovery source"
 GATE_STEP = "Require comparison for affected develop trees"
 RUNBOOK = REPO_ROOT / "docs" / "internal" / "public-site-visual-baseline.md"
@@ -35,8 +35,8 @@ def _workflow() -> dict[str, Any]:
     return yaml.safe_load(DOCS_WORKFLOW.read_text(encoding="utf-8"))
 
 
-def _ci() -> dict[str, Any]:
-    return yaml.safe_load(CI_WORKFLOW.read_text(encoding="utf-8"))
+def _site_docs() -> dict[str, Any]:
+    return yaml.safe_load(SITE_DOCS_WORKFLOW.read_text(encoding="utf-8"))
 
 
 def _step(job: dict[str, Any], name: str) -> dict[str, Any]:
@@ -44,7 +44,8 @@ def _step(job: dict[str, Any], name: str) -> dict[str, Any]:
 
 
 def _classifier(workflow: dict[str, Any]) -> str:
-    return _step(workflow["jobs"]["visual-inputs"], CLASSIFY_STEP)["run"]
+    job = "visual-inputs" if "visual-inputs" in workflow["jobs"] else "site-paths"
+    return _step(workflow["jobs"][job], CLASSIFY_STEP)["run"]
 
 
 def test_develop_pushes_produce_a_public_site_visual_baseline() -> None:
@@ -194,7 +195,7 @@ def test_baseline_candidates_narrow_scripts_and_reject_non_equivalent_ancestor(t
 
 
 def test_both_workflows_configure_baseline_wait_and_coherent_timeout() -> None:
-    for path in (DOCS_WORKFLOW, CI_WORKFLOW):
+    for path in (DOCS_WORKFLOW, SITE_DOCS_WORKFLOW):
         workflow = yaml.safe_load(path.read_text(encoding="utf-8"))
         visual_job = workflow["jobs"]["public-site-visual-regression"]
         assert visual_job["timeout-minutes"] == 90, f"expected 90m timeout in {path.name}"
@@ -272,14 +273,28 @@ def test_docs_workflow_keeps_baselines_and_ci_reports_the_comparison() -> None:
     assert gate["if"] == "always()"
     assert set(gate["needs"]) == {"visual-inputs", "build", "public-site-visual-regression"}
 
-    ci = _ci()
-    ci_triggers = ci.get("on", ci.get(True))
-    assert "paths" not in ci_triggers["pull_request"]
-    assert "merge_group" not in ci_triggers
-    visual = ci["jobs"]["public-site-visual-regression"]
+    lane = _site_docs()
+    lane_triggers = lane.get("on", lane.get(True))
+    assert "paths" not in lane_triggers["pull_request"]
+    assert "merge_group" not in lane_triggers
+    visual = lane["jobs"]["public-site-visual-regression"]
     assert visual["name"] == "Public-site visual regression"
-    assert "render_changed" in visual["if"]
+    assert "needs.site-paths.outputs.site-render-changed == 'true'" in visual["if"]
     assert "merge_group" not in visual["if"]
+
+
+def test_visual_regression_runs_when_the_site_uploaded_even_if_a_later_docs_check_failed() -> None:
+    jobs = _site_docs()["jobs"]
+    visual = jobs["public-site-visual-regression"]
+    assert visual["if"].startswith("${{ !cancelled() && needs.docs-build.outputs.site-uploaded == 'true'")
+    build = jobs["docs-build"]
+    assert build["outputs"]["site-uploaded"] == "${{ steps.site-artifact.outputs.uploaded }}"
+    names = [step.get("name") for step in build["steps"]]
+    record = names.index("Record that the assembled site was uploaded")
+    assert names[record - 1] == "Upload assembled site for visual acceptance"
+    assert "if" not in build["steps"][record]
+    for later in build["steps"][record + 1 :]:
+        assert later["if"].startswith("${{ !cancelled()"), later["name"]
 
 
 @pytest.mark.parametrize(
@@ -393,22 +408,38 @@ def test_input_classifier_uses_exact_base_diff(tmp_path: Path, event: str, chang
 
 
 def test_astro_dry_run_captures_without_comparing_or_gating() -> None:
-    ci = _ci()
-    job = ci["jobs"]["public-site-visual-astro-dry-run"]
-    assert job["name"] == "Public-site visual Astro dry run"
+    lane = _site_docs()
+    assert "public-site-visual-astro-dry-run" not in lane["jobs"]
+    job = lane["jobs"]["site-build"]
     assert "site-needed" in job["if"]
+    assert job["timeout-minutes"] == 45
     steps = {step["name"]: step for step in job["steps"] if "name" in step}
-    assert steps["Build website"]["run"] == "make site-build"
-    assert "make site-visual-capture" in steps["Capture public site from the Astro build"]["run"]
+    assert steps["Typecheck, audit and build website"]["run"] == "make site-check site-build"
+    capture = steps["Capture public site from the Astro build"]
+    assert capture["continue-on-error"] is True
+    assert capture["timeout-minutes"] == 15
+    assert capture["if"].startswith("${{ !cancelled()")
+    assert "make site-visual-capture" in capture["run"]
+    assert "SITE_VISUAL_SOURCE_SHA=${{ github.sha }}" in capture["run"]
     upload = steps["Upload Astro visual captures"]
+    assert upload["continue-on-error"] is True
     assert upload["with"]["name"].startswith("public-site-visual-astro-")
     text = str(job)
     assert "download-public-site-visual-baseline" not in text
     assert "PUBLIC_SITE_VISUAL_BASELINE" not in text
-    for name, other in ci["jobs"].items():
-        needs = other.get("needs", [])
-        needs = [needs] if isinstance(needs, str) else needs
-        assert "public-site-visual-astro-dry-run" not in needs, name
+
+
+def _playwright_version(lockfile: Path) -> str:
+    import json
+
+    packages = json.loads(lockfile.read_text(encoding="utf-8"))["packages"]
+    return packages["node_modules/playwright"]["version"]
+
+
+def test_site_build_and_explorer_pin_the_same_playwright() -> None:
+    website = _playwright_version(REPO_ROOT / "website" / "package-lock.json")
+    explorer = _playwright_version(REPO_ROOT / "results-explorer" / "package-lock.json")
+    assert website == explorer
 
 
 def _capture_recipe(*overrides: str) -> str:
@@ -454,7 +485,7 @@ def test_capture_spec_records_the_renderer_and_keeps_the_matrix() -> None:
 
 
 def test_visual_inputs_classify_website_in_both_workflows() -> None:
-    for path in (DOCS_WORKFLOW, CI_WORKFLOW):
+    for path in (DOCS_WORKFLOW, SITE_DOCS_WORKFLOW):
         workflow = yaml.safe_load(path.read_text(encoding="utf-8"))
         classifier = _classifier(workflow)
         site_paths = classifier.split("SITE_PATHS=(")[1].split(")")[0]
@@ -470,22 +501,22 @@ def test_runbook_names_only_approval_controls_that_a_workflow_reads() -> None:
     runbook = RUNBOOK.read_text(encoding="utf-8")
     controls = set(re.findall(r"`((?:[A-Z_]*APPROVED[A-Z_]*|[A-Z_]*APPROVAL_REASON))`", runbook))
     assert {"APPROVED_HEAD_SHA", "APPROVAL_REASON"} <= controls
-    workflow_text = CI_WORKFLOW.read_text(encoding="utf-8")
+    workflow_text = SITE_DOCS_WORKFLOW.read_text(encoding="utf-8")
     assert [name for name in sorted(controls) if f"vars.{name}" not in workflow_text] == []
-    assert "merge_group" not in _ci().get("on", _ci().get(True))
+    assert "merge_group" not in _site_docs().get("on", _site_docs().get(True))
 
 
 def test_runbook_renderer_switch_section_names_real_jobs_and_steps() -> None:
     runbook = RUNBOOK.read_text(encoding="utf-8")
     section = runbook.split("### Renderer-switch pull request")[1].split("## What CI gates")[0]
-    docs_workflow, ci = _workflow(), _ci()
+    docs_workflow, lane = _workflow(), _site_docs()
     named = set(re.findall(r"`([^`]+)`", section))
     for step in ("Assemble public site", "Upload assembled site for visual acceptance", "Capture public site"):
         assert step in named
-        assert step in _step_names(docs_workflow) and step in _step_names(ci)
-    assert "docs-build" in named and "docs-build" in ci["jobs"]
+        assert step in _step_names(docs_workflow) and step in _step_names(lane)
+    assert "docs-build" in named and "docs-build" in lane["jobs"]
     assert "Public-site visual regression" in named
-    assert ci["jobs"]["public-site-visual-regression"]["name"] == "Public-site visual regression"
+    assert lane["jobs"]["public-site-visual-regression"]["name"] == "Public-site visual regression"
     assert "build" in docs_workflow["jobs"]
     assert "Queue position" in section or "queue position" in section
     assert '"renderer": "astro"' in section

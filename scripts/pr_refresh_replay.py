@@ -36,9 +36,9 @@ FULL_LANE_NAMES = (
     "code-lint",
     "code-test",
     "correctness-gate",
-    "plan-capture-gate",
     "medium-test",
 )
+RETIRED_LANE_NAMES = ("plan-capture-gate",)
 
 
 @dataclass
@@ -90,7 +90,7 @@ def _failed_lanes(raw: Mapping[str, Any]) -> list[str]:
     if not isinstance(lanes, Mapping):
         return []
     failed: list[str] = []
-    for name in FULL_LANE_NAMES:
+    for name in FULL_LANE_NAMES + RETIRED_LANE_NAMES:
         conclusion = str(lanes.get(name) or "").lower()
         if conclusion in {"failure", "timed_out", "cancelled"}:
             failed.append(name)
@@ -194,7 +194,7 @@ def completeness_errors(records: list[Mapping[str, Any]], results: list[ReplayRe
             errors.append(f"{record_id}: missing lane outcomes {missing}")
         invalid = sorted(
             f"{name}={lanes.get(name)!r}"
-            for name in FULL_LANE_NAMES
+            for name in FULL_LANE_NAMES + RETIRED_LANE_NAMES
             if name in lanes and str(lanes.get(name) or "").lower() not in TERMINAL_LANE_CONCLUSIONS
         )
         if invalid:

@@ -423,7 +423,8 @@ composite metrics.
 
 **Subscale behavior:** Scale factors below 1 are supported for development and
 testing. Runs at SF < 1 are allowed by default, but remain unofficial and are
-not compliance-valid.
+not compliance-valid. They record Power@Size marked unofficial, and the
+Results Explorer ranks them in their own cohort labelled Subscale · Unofficial.
 
 **Note:** Query execution times depend on platform, hardware, query complexity, and configuration. Run benchmarks to establish baselines for your environment.
 

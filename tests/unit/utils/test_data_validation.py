@@ -183,14 +183,70 @@ class TestScaleAdjustedExpectations:
         assert v.table_expectations["customer"].expected_rows == 1500000
         assert v.table_expectations["nation"].expected_rows == 25
 
-    def test_tpcds_fixed_tables_at_different_scale(self):
-        v = BenchmarkDataValidator("tpcds", scale_factor=0.5)
-        assert v.table_expectations["call_center"].expected_rows == max(1, int(6 * 0.5))
-        assert v.table_expectations["ship_mode"].expected_rows == max(1, int(20 * 0.5))
-        assert v.table_expectations["warehouse"].expected_rows == max(1, int(5 * 0.5))
-        assert v.table_expectations["time_dim"].expected_rows == max(1, int(86400 * 0.5))
-        expected_cs = max(1, int(1441548 * 0.5))
-        assert v.table_expectations["catalog_sales"].expected_rows == expected_cs
+    @pytest.mark.parametrize(
+        ("scale", "generated"),
+        [
+            (
+                0.01,
+                {
+                    "call_center": 1,
+                    "catalog_page": 11718,
+                    "customer": 1000,
+                    "customer_address": 500,
+                    "customer_demographics": 19208,
+                    "date_dim": 73049,
+                    "household_demographics": 7200,
+                    "income_band": 20,
+                    "inventory": 23490,
+                    "item": 180,
+                    "promotion": 3,
+                    "reason": 1,
+                    "ship_mode": 20,
+                    "store": 1,
+                    "time_dim": 86400,
+                    "warehouse": 1,
+                    "web_page": 1,
+                    "web_site": 1,
+                },
+            ),
+            (
+                0.05,
+                {"customer_demographics": 96040, "inventory": 117450, "item": 900, "reason": 3, "web_page": 3},
+            ),
+            (
+                0.1,
+                {
+                    "call_center": 1,
+                    "catalog_page": 11718,
+                    "customer": 10000,
+                    "customer_address": 5000,
+                    "customer_demographics": 192080,
+                    "date_dim": 73049,
+                    "household_demographics": 7200,
+                    "income_band": 20,
+                    "inventory": 234900,
+                    "item": 1800,
+                    "promotion": 30,
+                    "reason": 7,
+                    "ship_mode": 20,
+                    "store": 1,
+                    "time_dim": 86400,
+                    "warehouse": 1,
+                    "web_page": 6,
+                    "web_site": 3,
+                },
+            ),
+            (0.25, {"inventory": 587250, "reason": 18, "store": 3, "web_site": 7, "warehouse": 1}),
+            (0.5, {"call_center": 3, "inventory": 2349000, "reason": 37, "store": 6, "warehouse": 2, "web_site": 15}),
+        ],
+    )
+    def test_tpcds_below_sf1_expects_what_dsdgen_writes(self, scale, generated):
+        expectations = BenchmarkDataValidator("tpcds", scale_factor=scale).table_expectations
+        assert {table: expectations[table].expected_rows for table in generated} == generated
+
+    def test_tpcds_below_sf1_scales_fact_tables_linearly(self):
+        expectations = BenchmarkDataValidator("tpcds", scale_factor=0.5).table_expectations
+        assert expectations["catalog_sales"].expected_rows == int(1441548 * 0.5)
 
     def test_tpcds_fixed_tables_at_official_scale(self):
         v = BenchmarkDataValidator("tpcds", scale_factor=1.0)

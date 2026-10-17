@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 
 from .base import DriverIsolationCapability, PlatformAdapter
 from .base.connection_wrappers import _make_stream_cursor
+from .base.ddl_helpers import strip_tpcds_foreign_keys
 
 try:
     import sqlite3
@@ -247,12 +248,15 @@ class SQLiteAdapter(PlatformAdapter):
             else:
                 data_dir = get_benchmark_runs_databases_path(config["benchmark"], config["scale_factor"])
 
-            db_filename = generate_database_filename(
-                benchmark_name=config["benchmark"],
-                scale_factor=config["scale_factor"],
-                platform="sqlite",
-                tuning_config=config.get("tuning_config"),
-            )
+            if config.get("database_name"):
+                db_filename = f"{config['database_name']}.db"
+            else:
+                db_filename = generate_database_filename(
+                    benchmark_name=config["benchmark"],
+                    scale_factor=config["scale_factor"],
+                    platform="sqlite",
+                    tuning_config=config.get("tuning_config"),
+                )
             adapter_config["database_path"] = str(data_dir / db_filename)
             data_dir.mkdir(parents=True, exist_ok=True)
         else:
@@ -419,7 +423,9 @@ class SQLiteAdapter(PlatformAdapter):
         start_time = mono_time()
         self.log_operation_start("Schema creation", f"benchmark: {benchmark.__class__.__name__}")
 
-        schema_sql = self._create_schema_with_tuning(benchmark, source_dialect="standard")
+        schema_sql = strip_tpcds_foreign_keys(
+            self, benchmark, self._create_schema_with_tuning(benchmark, source_dialect="standard")
+        )
 
         self.log_very_verbose(f"Executing schema creation script ({len(schema_sql)} characters)")
 

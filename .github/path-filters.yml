@@ -129,7 +129,7 @@ explorer-vitest:
   - "scripts/generate_corpus_inventory.py"
   - "tests/parity/fixtures/**"
   - "tests/unit/core/tuning/fixtures/**"
-  - ".github/workflows/ci.yml"
+  - ".github/workflows/site-docs.yml"
   - ".github/path-filters.yml"
   - "tests/unit/core/tuning/fixtures/tuning_mode_vocabulary.yaml"
   - "tests/parity/fixtures/chart_ids.json"
@@ -162,7 +162,7 @@ site:
   - "make/documentation.mk"
   - "pyproject.toml"
   - "uv.lock"
-  - ".github/workflows/ci.yml"
+  - ".github/workflows/site-docs.yml"
   - ".github/path-filters.yml"
 
 site-parity:
@@ -178,4 +178,4 @@ site-parity:
   - "scripts/assemble_public_site.py"
   - "scripts/publication/check_artifact_privacy.py"
   - "make/documentation.mk"
-  - ".github/workflows/ci.yml"
+  - ".github/workflows/site-docs.yml"

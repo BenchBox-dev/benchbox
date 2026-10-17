@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_valid
 from benchbox.core.cost.models import NormalizedCost
 from benchbox.core.cost.pricing import PRICING_VERSION
 from benchbox.core.results.status import validation_status_is_non_clean
+from benchbox.core.results.subscale_policy import RANKING_EXCLUDED_COMPLIANCE_CLASSES
 
 _COST_MODEL_SOURCE = "benchbox.core.cost.pricing"
 
@@ -164,6 +165,7 @@ class ManifestEntry(BaseModel):
     instance_or_warehouse: str | None = None
     storage_format: str | None = None
     compliance_class: str | None = None
+    power_score_source: str | None = None
     basis_availability: BasisAvailability | None = None
 
     @field_serializer("normalized_cost")
@@ -405,6 +407,7 @@ class DetailResult(BaseModel):
     cost_usd: float | None = None
     normalized_cost: NormalizedCost = Field(default_factory=_unavailable_normalized_cost)
     compliance_class: str | None = None
+    power_score_source: str | None = None
     phase_durations: dict[str, float] | None = None
     physical_mechanisms: list[str] | None = None
     physical_rendering_id: str | None = None
@@ -442,7 +445,7 @@ def is_ranking_eligible(entry: ManifestEntry) -> bool:
     return (
         entry.visibility in RANKING_ELIGIBLE_VISIBILITIES
         and entry.trust_label in RANKING_ELIGIBLE_TRUST_LABELS
-        and entry.compliance_class not in UNOFFICIAL_COMPLIANCE_CLASSES
+        and entry.compliance_class not in RANKING_EXCLUDED_COMPLIANCE_CLASSES
         and entry.failed_query_count == 0
         and not validation_status_is_non_clean(entry.validation_status)
         and custom_tuning_is_materially_applied(entry)
@@ -459,7 +462,7 @@ def ranking_exclusion_reason(entry: ManifestEntry, primary_metric: str | None = 
         return "visibility_not_rankable"
     if entry.trust_label not in RANKING_ELIGIBLE_TRUST_LABELS:
         return "trust_not_rankable"
-    if entry.compliance_class in UNOFFICIAL_COMPLIANCE_CLASSES:
+    if entry.compliance_class in RANKING_EXCLUDED_COMPLIANCE_CLASSES:
         return "unofficial_compliance"
     if entry.failed_query_count != 0:
         return "failed_queries"
@@ -616,6 +619,7 @@ class PlatformRow(BaseModel):
     sample_geomean_ms: float | None
     cost_usd: float | None
     compliance_class: str | None = None
+    power_score_source: str | None = None
     percentile_stats: PercentileStats | None = None
     phase_durations: dict[str, float] | None = None
     timings: dict[str, float | None]
@@ -954,6 +958,7 @@ __all__ = [
     "QueryTiming",
     "RankingConfig",
     "RANKING_ELIGIBLE_TRUST_LABELS",
+    "RANKING_EXCLUDED_COMPLIANCE_CLASSES",
     "UNOFFICIAL_COMPLIANCE_CLASSES",
     "RANKING_ELIGIBLE_VISIBILITIES",
     "RANKING_METRIC_BY_FAMILY",

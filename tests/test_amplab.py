@@ -24,18 +24,20 @@ class TestAMPLab:
     def amplab(self, small_scale_factor: float, temp_dir: Path) -> AMPLab:
         return AMPLab(scale_factor=small_scale_factor, output_dir=temp_dir)
 
-    def test_generate_data(self, amplab: AMPLab) -> None:
+    def test_generate_data(self, temp_dir: Path) -> None:
+        amplab = AMPLab(scale_factor=0.01, output_dir=temp_dir)
         data_paths = amplab.generate_data()
 
-        expected_tables = ["rankings", "uservisits", "documents"]
+        expected_row_counts = {"rankings": 2_500, "uservisits": 25_000, "documents": 1_250}
 
         assert isinstance(data_paths, dict), "generate_data should return a dictionary"
+        assert set(data_paths) == set(expected_row_counts)
 
-        for table in expected_tables:
-            assert table in data_paths, f"Table {table} not found in generated data"
-
-        for _table_name, path in data_paths.items():
+        for table_name, path in data_paths.items():
             assert Path(path).exists(), f"Generated file {path} does not exist"
+            with open(path, encoding="utf-8") as data_file:
+                row_count = sum(1 for _ in data_file)
+            assert row_count == expected_row_counts[table_name], table_name
 
     def test_get_queries(self, amplab: AMPLab) -> None:
         queries = amplab.get_queries()

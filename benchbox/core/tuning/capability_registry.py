@@ -74,7 +74,6 @@ PLATFORM_ALIASES: dict[str, str] = {
     "clickhouse-server": "clickhouse",
     "clickhouse-cloud": "clickhouse",
     "chdb": "clickhouse",
-    "spark": "databricks",
     "delta": "databricks",
     "synapse": "azure-synapse",
     "starburst": "trino",
@@ -149,6 +148,33 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         _T.MATERIALIZED_VIEWS: _none(
             "unimplemented",
             "Compatible per the legacy map; no adapter code creates a materialized view.",
+        ),
+    },
+    "spark": {
+        _T.PARTITIONING: _none(
+            "spark_partitioning_log_only",
+            "SparkAdapter.apply_table_tunings only logs partition columns, and SparkAdapter.generate_tuning_clause "
+            "has no call site, so CREATE TABLE never carries PARTITIONED BY.",
+        ),
+        _T.SORTING: _post_load(
+            "spark_delta_optimize_zorder",
+            "Delta tables only: SparkAdapter.apply_table_tunings runs OPTIMIZE ... ZORDER BY on the sort columns "
+            "after load. Parquet and ORC tables (the default) get no sort, and post-load reconciliation records "
+            "the intent as dropped.",
+        ),
+        _T.PRIMARY_KEYS: _ddl(
+            _INLINE_CONSTRAINT,
+            "Delta tables keep the inline PRIMARY KEY clause. Parquet and ORC tables, the default formats, cannot "
+            "carry constraints, so optimize_spark_table_definition removes the clause; Spark never enforces "
+            "declared keys either way. Kept as DDL so tuning files that leave keys at their default still load.",
+        ),
+        _T.FOREIGN_KEYS: _ddl(
+            _INLINE_CONSTRAINT,
+            "Same as PRIMARY_KEYS: kept for Delta tables, removed from Parquet and ORC tables, never enforced.",
+        ),
+        **_no_unique_check_entries(
+            "spark_no_unique_check_rendering",
+            "optimize_spark_table_definition removes UNIQUE clauses from Parquet and ORC tables.",
         ),
     },
     "databricks": {
@@ -327,16 +353,13 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         ),
     },
     "postgresql": {
-        _T.PARTITIONING: _none(
-            "postgresql_ddl_generator:preview_only",
-            "core.tuning.generators.postgresql.PostgreSQLDDLGenerator computes a real PARTITION BY RANGE/"
-            "LIST/HASH clause from tuned columns (generators/postgresql.py:139) for dry-run preview, but "
-            "real execution never renders it. PostgreSQLAdapter.generate_tuning_clause unconditionally "
-            "returns '' (postgresql.py:972-977) and has no production call site; apply_table_tunings and "
-            "apply_unified_tuning are both no-ops (postgresql.py:968-970, 979-981); and get_create_tables_sql "
-            "consumes tuning_config only for PK/FK constraint flags. Corrects the prior false "
-            "_ddl(adapter_mixin:PostgreSQLAdapter.generate_tuning_clause) claim (already flagged in the "
-            "pg-duckdb entry below).",
+        _T.PARTITIONING: _ddl(
+            "postgresql_partition_by_date_domain",
+            "PostgreSQLAdapter.create_schema appends the PostgreSQLDDLGenerator PARTITION BY clause (RANGE for "
+            "date columns, HASH for integers, LIST otherwise) and creates the child partitions: yearly RANGE "
+            "children over the benchmark's date domain (TPC-H and SSB 1992-1998, TPC-DS 1998-2003) plus a "
+            "DEFAULT partition for any other value. Skipped, and recorded as dropped, while primary or unique "
+            "keys are requested, because PostgreSQL requires those keys to include the partition column.",
         ),
         _T.CLUSTERING: _none(
             "postgresql_ddl_generator:preview_only",
@@ -620,6 +643,10 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "doris_ddl_generator:preview_only",
             "Same execution gap as PARTITIONING: preview only, NoOp at execution.",
         ),
+        _T.MATERIALIZED_VIEWS: _none(
+            "unimplemented",
+            "Doris supports materialized views, but DorisAdapter has no code that creates one from tuning.",
+        ),
         _T.PRIMARY_KEYS: _none(
             "doris_strips_primary_keys",
             "The shared tuning-aware DDL path would emit tuned primary keys, but DorisAdapter "
@@ -754,7 +781,16 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "Athena has no separate clustering clause; folded into sorted_by upstream, which is dropped "
             "(see SORTING entry).",
         ),
-        **_pk_fk_entries(),
+        _T.PRIMARY_KEYS: _none(
+            "athena_strips_primary_keys",
+            "Athena tables are Hive CREATE EXTERNAL TABLE statements, which have no constraint syntax, so "
+            "AthenaAdapter._convert_to_external_table removes PRIMARY KEY clauses before execution.",
+        ),
+        _T.FOREIGN_KEYS: _none(
+            "athena_strips_foreign_keys",
+            "Athena CREATE EXTERNAL TABLE has no constraint syntax, so "
+            "AthenaAdapter._convert_to_external_table removes FOREIGN KEY and REFERENCES clauses.",
+        ),
         **_no_unique_check_entries(
             "athena_no_unique_check_rendering",
             "AthenaAdapter._convert_to_external_table builds CREATE EXTERNAL TABLE without UNIQUE/CHECK "
@@ -993,6 +1029,16 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "PgMooncakeAdapter inherits PostgreSQLAdapter execution carrying PK/FK only (pg_mooncake.py).",
         ),
     },
+}
+
+
+SESSION_CONFIG_CAPABILITIES: dict[str, TuningCapability] = {
+    "spark": _session(
+        "spark_session_config",
+        "Each key in platform_optimizations.spark is set with spark.conf.set after the session starts, read back, "
+        "and recorded in the applied-tuning ledger.",
+    ),
+    "velox": _session("spark_session_config", "Applied the same way as on Spark; spark.gluten.* keys are accepted."),
 }
 
 

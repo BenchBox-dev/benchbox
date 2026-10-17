@@ -70,10 +70,7 @@ def get_benchmark_instance(
     if quiet is not None:
         optional_kwargs["quiet"] = quiet
 
-    force_regenerate = bool(opts.get("force_regenerate"))
-    benchmark_id = config.name.lower()
-    if benchmark_id in {"tpcds", "joinorder", "joinorder_synthetic"}:
-        optional_kwargs["force_regenerate"] = force_regenerate
+    optional_kwargs["force_regenerate"] = bool(opts.get("force_regenerate"))
 
     options_to_forward = (
         dict(benchmark_options) if benchmark_options is not None else dict(opts.get("benchmark_options", {}))

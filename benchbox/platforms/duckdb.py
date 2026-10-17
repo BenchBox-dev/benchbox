@@ -18,7 +18,7 @@ from benchbox.utils.cloud_storage import get_cloud_path_info, is_cloud_path
 from benchbox.utils.printing import emit
 
 from .base import DriverIsolationCapability, PlatformAdapter
-from .base.ddl_helpers import strip_foreign_keys
+from .base.ddl_helpers import strip_tpcds_foreign_keys
 
 if TYPE_CHECKING:
     from benchbox.core.tuning.interface import TuningColumn
@@ -840,9 +840,7 @@ class DuckDBAdapter(PlatformAdapter):
 
         schema_sql = self._create_schema_with_tuning(benchmark, source_dialect="standard")
 
-        benchmark_name = getattr(benchmark, "_name", "") or benchmark.__class__.__name__
-        if "TPC-DS" in str(benchmark_name) or "TPCDS" in str(benchmark_name):
-            schema_sql = strip_foreign_keys(schema_sql)
+        schema_sql = strip_tpcds_foreign_keys(self, benchmark, schema_sql)
 
         statements = []
         current_statement = []
@@ -967,7 +965,23 @@ class DuckDBAdapter(PlatformAdapter):
             self.logger.warning(f"Failed to re-create sort index on {physical_table} after CTAS: {exc}")
             self._record_sort_index_layout_op(index_sql, physical_table, status="failed", error=exc)
             return
+        if self._record_kept_sort_index(index_sql, physical_table):
+            return
         self._record_sort_index_layout_op(index_sql, physical_table, status="applied")
+
+    def _record_kept_sort_index(self, index_sql: str, physical_table: str) -> bool:
+        ledger = getattr(self, "_applied_tuning_ledger", None)
+        if ledger is None or not self._requires_constraint_preserving_ctas_sort:
+            return False
+        original = ledger.executed_statement_index(lambda statement: statement.statement == index_sql)
+        if original is None:
+            return False
+        ledger.record_satisfied(
+            f"sort_index:{physical_table}",
+            original,
+            "the in-place sort rewrite keeps the existing sort index, so its re-create is a no-op",
+        )
+        return True
 
     def _record_sort_index_layout_op(
         self, statement: str, table: str, *, status: str, error: Exception | None = None
@@ -1177,6 +1191,26 @@ class DuckDBAdapter(PlatformAdapter):
         clauses = []
 
         return " ".join(clauses) if clauses else ""
+
+    def preview_tuning_statements(self, table_name: str, table_tuning: Any) -> list[str]:
+        from benchbox.core.tuning.interface import TuningType
+
+        statements: list[str] = []
+        index_supported = self.index_ddl_unsupported_reason is None
+        sort_columns = sorted(table_tuning.get_columns_by_type(TuningType.SORTING), key=lambda col: col.order)
+        if sort_columns:
+            sort_names = [col.name for col in sort_columns]
+            if index_supported:
+                statements.append(_duckdb_sort_index_sql(table_name, sort_names))
+            statements.append("BEGIN TRANSACTION;")
+            statements.extend(self._build_fk_safe_ctas_sort_sql(table_name, sort_columns) or [])
+            statements.append("COMMIT;")
+            if index_supported:
+                statements.append(_duckdb_sort_index_sql(table_name, sort_names))
+        cluster_columns = sorted(table_tuning.get_columns_by_type(TuningType.CLUSTERING), key=lambda col: col.order)
+        if cluster_columns and index_supported:
+            statements.append(_duckdb_cluster_index_sql(table_name, [col.name for col in cluster_columns]))
+        return statements
 
     def apply_table_tunings(self, table_name: str, table_tuning, connection: Any) -> None:
         if not table_tuning or not table_tuning.has_any_tuning():

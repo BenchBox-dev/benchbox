@@ -203,7 +203,11 @@ def test_evidence_state_normalizes_platform_aliases():
     assert evidence_state("clickhouse-local", "tpch") == "unmeasured"
     assert evidence_state("clickhouse-server", "tpch") == "unmeasured"
     assert evidence_state("chdb", "tpch") == "unmeasured"
-    assert evidence_state("spark", "tpch") == "unmeasured"
+
+
+def test_spark_does_not_inherit_databricks_template_evidence():
+    assert evidence_state("spark", "tpch") is None
+    assert template_cell("examples/tunings/databricks/tpch_liquid_tuned.yaml", "spark", "TPC-H") is None
 
 
 def test_evidence_state_returns_none_off_registry():
@@ -354,7 +358,7 @@ def test_evidence_state_resolves_display_benchmark_names():
 
 def test_template_cell_reads_cell_from_template_path():
     assert template_cell("examples/tunings/duckdb/tpch_tuned.yaml", "DuckDB", "TPC-H") == ("duckdb", "tpch")
-    assert template_cell("examples/tunings/databricks/tpch_liquid_tuned.yaml", "spark", "TPC-H") == (
+    assert template_cell("examples/tunings/databricks/tpch_liquid_tuned.yaml", "Databricks", "TPC-H") == (
         "databricks",
         "tpch",
     )

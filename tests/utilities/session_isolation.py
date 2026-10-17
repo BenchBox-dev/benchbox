@@ -13,7 +13,8 @@ import pytest
 from scripts.local_validation import _close_lock, read_holder, seek_lock_byte, wait_for_lock, write_holder
 
 _OWNER = "BENCHBOX_TEST_SESSION_OWNER"
-_ENV_KEYS = ("HOME", "USERPROFILE", "BENCHBOX_TEST_LOCK_DIR", _OWNER)
+_OUTPUT_DIR = "BENCHBOX_OUTPUT_DIR"
+_ENV_KEYS = ("HOME", "USERPROFILE", "BENCHBOX_TEST_LOCK_DIR", _OUTPUT_DIR, _OWNER)
 _state: dict[str, Any] | None = None
 
 
@@ -86,6 +87,8 @@ def start(acquire_lock: bool = True) -> bool:
     os.environ["HOME"] = home.name
     os.environ["USERPROFILE"] = home.name
     os.environ["BENCHBOX_TEST_LOCK_DIR"] = str(lock_dir)
+    if not (previous[_OUTPUT_DIR] or "").strip():
+        os.environ[_OUTPUT_DIR] = str(Path(home.name) / "benchmark_runs")
     if acquire_lock and not inherited:
         os.environ[_OWNER] = str(os.getpid())
     _state = {"previous": previous, "home": home, "fd": fd}

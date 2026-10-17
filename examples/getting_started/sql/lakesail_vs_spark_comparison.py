@@ -11,6 +11,7 @@ from pathlib import Path
 from benchbox.cli.orchestrator import BenchmarkOrchestrator
 from benchbox.core.config import BenchmarkConfig, DatabaseConfig
 from benchbox.core.system import SystemProfiler
+from benchbox.examples import execute_example_dry_run
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _OUTPUT_DIR = _PROJECT_ROOT / "benchmark_runs" / "getting_started" / "comparison"
@@ -29,12 +30,11 @@ def _build_benchmark_config(scale_factor: float) -> BenchmarkConfig:
 def _build_lakesail_config() -> DatabaseConfig:
     endpoint = os.getenv("SAIL_ENDPOINT", "sc://localhost:50051")
     return DatabaseConfig(
-        type="lakesail",
+        type="lakesail:local",
         name="lakesail_comparison",
         options={
             "endpoint": endpoint,
             "app_name": "BenchBox-Comparison-LakeSail",
-            "deployment_mode": "local",
             "table_format": "parquet",
             "driver_memory": "4g",
             "shuffle_partitions": 200,
@@ -58,9 +58,23 @@ def _build_spark_config() -> DatabaseConfig:
     )
 
 
-def run_comparison(scale_factor: float = 0.01) -> None:
-    _OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+def _dry_run(benchmark_config: BenchmarkConfig, output_dir: Path) -> None:
+    for name, database_config in (("lakesail", _build_lakesail_config()), ("spark", _build_spark_config())):
+        execute_example_dry_run(
+            benchmark_config=benchmark_config,
+            database_config=database_config,
+            output_dir=output_dir / name,
+            filename_prefix=f"{name}_comparison",
+        )
+    print("Dry-run complete. Review the generated SQL for both platforms before running the comparison.")
+
+
+def run_comparison(scale_factor: float = 0.01, *, dry_run_output: Path | None = None) -> None:
     benchmark_config = _build_benchmark_config(scale_factor)
+    if dry_run_output is not None:
+        _dry_run(benchmark_config, Path(dry_run_output))
+        return
+    _OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     profiler = SystemProfiler()
     system_profile = profiler.get_system_profile()
     phases = ["generate", "load", "power"]
@@ -112,8 +126,14 @@ def run_comparison(scale_factor: float = 0.01) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Compare TPC-H: LakeSail Sail vs Apache Spark")
     parser.add_argument("--scale", type=float, default=0.01, help="Benchmark scale factor")
+    parser.add_argument(
+        "--dry-run",
+        type=str,
+        metavar="OUTPUT_DIR",
+        help="Preview both runs without executing; write artifacts to OUTPUT_DIR.",
+    )
     args = parser.parse_args(argv)
-    run_comparison(scale_factor=args.scale)
+    run_comparison(scale_factor=args.scale, dry_run_output=Path(args.dry_run) if args.dry_run else None)
     return 0
 
 

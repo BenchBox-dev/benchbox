@@ -346,6 +346,9 @@ class DryRunDisplay:
         if result.tuning_config:
             self._display_tuning_config(result.tuning_config)
 
+        for note in result.ddl_preview_notes:
+            self.console.print(f"[yellow]{note}[/yellow]")
+
         if result.ddl_preview:
             self._display_ddl_preview(result.ddl_preview)
 
@@ -568,11 +571,17 @@ class DryRunDisplay:
         platform_table.add_column("Enabled", style="white")
 
         for opt_name, opt_value in platform_opts.items():
-            if opt_value:
+            if opt_value and opt_name != "spark":
                 platform_table.add_row(opt_name.replace("_", " ").title(), str(opt_value))
 
         if platform_table.row_count > 0:
             self.console.print(platform_table)
+
+        from benchbox.cli.tuning_resolver import spark_session_config_table
+
+        spark_table = spark_session_config_table(platform_opts.get("spark"))
+        if spark_table is not None:
+            self.console.print(spark_table)
 
     def _display_dataframe_tuning(self, df_tuning: dict[str, Any]) -> None:
         self.console.print("\n[bold]DataFrame Tuning Configuration[/bold]")
@@ -826,9 +835,18 @@ class DryRunExecutor(CoreDryRunExecutor):
         benchmark_config: BenchmarkConfig,
         system_profile: SystemProfile,
         database_config: DatabaseConfig | None,
+        *,
+        preview_platform: str | None = None,
+        preview_platform_note: str | None = None,
     ) -> DryRunResult:
         try:
-            return super().execute_dry_run(benchmark_config, system_profile, database_config)
+            return super().execute_dry_run(
+                benchmark_config,
+                system_profile,
+                database_config,
+                preview_platform=preview_platform,
+                preview_platform_note=preview_platform_note,
+            )
         except DryRunQueryExtractionError as exc:
             raise click.ClickException(str(exc)) from exc
 

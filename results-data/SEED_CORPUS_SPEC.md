@@ -39,7 +39,10 @@ Only bundles the Explorer can rank contribute an identity. `exclusion_reason` in
 `ranking_exclusion_reason`, and a bundle counts only when it returns no reason. It applies
 these conditions, in order:
 
-1. The compliance class is not `unofficial_nonstandard` or `unofficial_subscale`.
+1. The compliance class is not `unofficial_nonstandard`. Subscale TPC-H and TPC-DS
+   (`unofficial_subscale`, or no class below SF 1) rank, labelled Subscale · Unofficial;
+   a subscale bundle with no stored Power@Size ranks on Power@Size derived from its
+   final-iteration timings (see `docs/development/adr/adr-subscale-tpc-ranking-policy.md`).
 2. No measurement query failed.
 3. The validation status is clean. A `passed` or missing status with failed queries is
    `partial`, and one with a failed or fallback SQL translation is `uncertain`.
@@ -75,8 +78,7 @@ The depth gate applies to cohorts that publish a ranking:
 
 A cohort with no rankable bundle publishes no ranking, so there is nothing to
 read against and nothing for the gate to protect. This is how a cohort made up
-only of `unofficial_subscale` runs (for example TPC-DS at SF0.1 on cloud
-warehouses) stays in the corpus without blocking it.
+only of unrankable runs stays in the corpus without blocking it.
 
 Distinct identities are distinct platform names. The validator does not merge engines
 that share a backend (Spark SQL and PySpark, DuckDB and DuckDB-based services), so
@@ -109,7 +111,8 @@ source of truth; the workflow drifts as admitted coverage changes.
 The supported matrix contains six local, merge-ready cohorts. TPC-H SF 0.01
 and SF 0.1 plus SSB use DuckDB, DataFusion, and Polars DataFrame. TPC-H SF 1
 and TPC-DS SF 1 use DuckDB, DataFusion, and ClickHouse Local. Every cohort has
-three local comparison identities and no cloud dependency.
+three local comparison identities and no cloud dependency. TPC-H SF 1 and TPC-DS SF 1
+run as official seeded runs; see [Official runs](#official-runs).
 
 | Benchmark | Scale factors |
 |-----------|---------------|
@@ -129,6 +132,12 @@ gate when changed.
 2. Checked-in coverage and the workflow target can diverge briefly after a
    restore or schedule change. Prefer `results-data/corpus-inventory.json` and
    `results-data/README.md` for what is currently committed.
+3. The workflow re-cuts `publication/ledger-seed.json` against the current
+   `published-results` tip and runs `make ledger-seed-gates` before it opens
+   its PR. New bundles enter the seed as `legacy_overlay`. After the seed PR
+   merges, the owner merges the auto-mirror PR in the same cycle, then runs
+   `make ledger-seed-recut` on a branch from `develop` and opens a PR with the
+   result, which moves those bundles to `accepted`.
 
 ### Version-over-version cohorts
 
@@ -152,9 +161,22 @@ The workflow includes `polars-df` for TPC-H SF 0.01/0.1 and SSB. TPC-H SF 1
 and TPC-DS use `clickhouse-local` as their local third identity because the
 admitted matrix does not rely on Polars DataFrame support there.
 
-TPC-DS SF 1 jobs also run with `--official --seed 42`. This benchmark-specific
-command is required for the scheduled output to be compliance-admissible; all
-other matrix entries retain the generic local command.
+### Official runs
+
+A matrix entry marked `official: true` adds `--official --seed 42` to the
+generic local command. Only a TPC-H or TPC-DS run made with `--official` is
+classed `official`; without the flag a run at SF 1 or above is
+`unofficial_nonstandard` and is never admitted. The TPC-H SF 1 and TPC-DS SF 1
+entries are marked, so those cohorts can rank.
+
+The flag applies only at official scale points (SF 1, 10, 30, and so on).
+`benchbox run --official` refuses any other scale factor, and every TPC-H or
+TPC-DS run below SF 1 is classed `unofficial_subscale` with or without the
+flag. The TPC-H SF 0.01 and SF 0.1 entries therefore run the generic command,
+and staging skips their bundles as `unofficial_compliance`. Those cohorts
+contribute no rankable bundle and are reported as `UNRANKED`. They stay in the
+matrix because removing coverage is a maintainer decision; dropping them would
+only save runner time, since they add nothing to the admitted corpus.
 
 ### Timestamp contract
 

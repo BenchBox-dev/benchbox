@@ -388,6 +388,7 @@ class VeloxAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
         try:
             spark = self._create_spark_session()
             self._spark_session = spark
+            self.capture_effective_session_config(spark, "session_created")
 
             self.handle_existing_database(**connection_config)
 
@@ -454,6 +455,9 @@ class VeloxAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
         self.record_harness_spark_conf(connection, tuple(keys))
         if self.tuning_enabled:
             self.apply_olap_runtime_conf(connection, benchmark_type, "Velox")
+            from benchbox.platforms._spark_helpers import apply_tuned_spark_session_config
+
+            apply_tuned_spark_session_config(self, connection)
 
     def create_schema(self, benchmark, connection: Any) -> float:
         start_time = mono_time()

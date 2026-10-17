@@ -137,8 +137,8 @@ the snapshot that the composed tree actually serves.
 Route and digest probes prove that the served bytes are the artifact's bytes,
 not that the layout is right. Trunk-sourced pages (`/docs/dev/`, `/blog/`,
 `/results/`) are compared on every render change by the `Public-site visual
-regression` job in `ci.yml`. Release-sourced pages are compared at deploy time by
-the `Pre-deploy visual comparison` job of this workflow. It runs when the resolve
+regression` job in `site-docs.yml`. Release-sourced pages are compared at
+deploy time by the `Pre-deploy visual comparison` job of this workflow. It runs when the resolve
 step reports `visual_required`: the candidate's release commit or renderer
 differs from the deployed receipt's, or a first deploy would publish Astro. It is
 skipped for rollback, which restores an artifact that was compared when it was
@@ -160,7 +160,7 @@ pages: `landing` (`/`) and `getting-started`
 (`/docs/usage/getting-started.html`). The other public-site captures
 (`release-overview`, one `/blog/` post, and `results`, `results-benchmarks` and
 `results-platforms` on `/results/`) are trunk-sourced, and the `Public-site
-visual regression` job in `ci.yml` covers them on every pull request that
+visual regression` job in `site-docs.yml` covers them on every pull request that
 changes rendering, before it merges to trunk. No
 other page is compared before deploy: the layout of the remaining `/docs/`
 pages, the API reference, `/docs/dev/`, other blog posts, `/prompts/` and the

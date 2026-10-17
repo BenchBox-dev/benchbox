@@ -68,6 +68,13 @@ REQUIRED_ATTESTATIONS = (
     "explorer_compat",
     "snapshot_invariants",
     "corpus_bijection",
+    "corpus_validation",
+)
+CORPUS_VALIDATOR_PATHS = (
+    "results-data/validate_corpus.py",
+    "benchbox/validation",
+    "benchbox/core/results",
+    "scripts/validate_submission.py",
 )
 
 
@@ -355,6 +362,17 @@ def build_attestations(out: Path, bundle: Path, core_sha: str, parent_sha: str) 
                 "ledger_seed": file_sha(seed),
             },
             {"accepted_ref": core_sha},
+        )
+    )
+    entries.append(
+        attestation(
+            "corpus_validation",
+            ["uv", "run", "--", "python", "results-data/validate_corpus.py"],
+            {
+                "corpus": tree_sha(core_sha, "results-data"),
+                **{path: tree_sha(core_sha, path) for path in CORPUS_VALIDATOR_PATHS},
+            },
+            {"core_sha": core_sha},
         )
     )
     if tree_sha(core_sha, "results-data") == tree_sha(parent_sha, "results-data"):

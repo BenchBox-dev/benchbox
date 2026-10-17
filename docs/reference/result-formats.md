@@ -155,6 +155,7 @@ Consumer policy is intentionally split by use case:
 | `cloud`, `compute`, `storage` | object | Optional normalized environment facets |
 | `config` | object | Optional adapter configuration flattened out of `platform_info` (e.g. Databricks clustering strategy below) |
 | `tuning` | object | Tuning summary, present on bundles for runs executed by this version except a tuned run that recorded neither a status nor a ledger (see `platform.tuning`) |
+| `effective_session_config` | object | Optional. The engine session settings read back from the live session, with any discrepancies (see `platform.effective_session_config`). Spark, LakeSail and Velox runs only. |
 
 Platform-specific extensions should stay inside the existing schema-v2 blocks
 where possible. Current canonical locations are `platform.*` for platform
@@ -267,6 +268,49 @@ to answer what a run requested and what it applied:
 Bundles exported before this were accompanied by `<result>.tuning.json` and
 `<result>.applied.json` files carrying the same content. Nothing writes them
 now; readers still accept them where they exist.
+
+##### `platform.effective_session_config` (optional)
+
+Spark, LakeSail and Velox runs read the session configuration back from the
+live session, because settings can also come from outside BenchBox
+(`spark-defaults.conf`, `SPARK_CONF_DIR`, `PYSPARK_SUBMIT_ARGS`, or a cluster
+or service policy). A request that BenchBox sent proves nothing about what
+ran; this block records what the engine reports. Untuned runs carry it too, so
+a baseline bundle shows the real default state. Bundles from other platforms
+and from earlier versions omit it, and readers treat the absence as "not
+captured".
+
+| Field | Type | Description |
+| ------- | ------ | ------------- |
+| `version` | number | Version of this block's layout, currently `1`. It changes only when the block changes; the bundle schema version does not move for it. |
+| `engine` | string | Adapter that took the snapshots. |
+| `snapshots` | object | Keyed by `session_created` (just after the session is built, before BenchBox sets anything at runtime), `after_configuration` (after BenchBox applied its session settings, tuned or harness), and `run_start` (just before the first measured query). Each entry has `status` (`captured`, or `not_readable` when the engine exposes no configuration read-back), `sources` (`runtime_config` for `spark.conf.getAll`, `spark_context` for `SparkContext.getConf`), and `values`. |
+| `discrepancies` | array | Each entry has `key`, `kind`, `snapshot`, `actual`, and `expected` when BenchBox intended a value. An empty list means the session matched what BenchBox asked for. |
+
+Discrepancy kinds:
+
+- `external_override`: a setting BenchBox passed to the session builder reads
+  back with a different value when the session is created, for example a static
+  key on a reused session or a value forced by a cluster policy.
+- `external_supplied`: a setting from `spark-defaults.conf` or
+  `PYSPARK_SUBMIT_ARGS` that BenchBox did not set is in effect.
+- `requested_not_effective`: a tuned session setting is missing or has a
+  different value after configuration, because the engine refused or
+  overrode it.
+- `changed_before_run`: a setting changed between `after_configuration` and
+  `run_start`.
+
+A discrepancy is a warning: the run prints it before the measured queries and
+continues. Values are redacted before they reach the bundle, the console or a
+log: credential-shaped keys (secrets, passwords, tokens, access keys) and host
+identity keys (`spark.driver.host`, `spark.app.name`) become `<redacted>`,
+URI user information is removed, and absolute paths and URIs become `<path>`.
+
+The block is evidence, not identity. It never enters `requested_config_hash`,
+`applied_ledger_hash` or the tuning drift marker, and it has no digest of its
+own: the captured values include per-run fields such as `spark.app.id` and
+`spark.app.startTime`, so a digest would differ on every run and identify
+nothing.
 
 The `.plans.json` companion file (same base filename, `.plans.json` suffix)
 carries captured query plans keyed by query id. Tree depth is bounded by the

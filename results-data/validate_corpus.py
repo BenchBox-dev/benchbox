@@ -20,7 +20,6 @@ NON_CLEAN_VALIDATION_STATUSES = frozenset(
     {"failed", "interrupted", "partial", "error", "not_run", "not_validated", "uncertain", "unknown"}
 )
 NON_CLEAN_TRANSLATION_STATUSES = frozenset({"fallback", "failed"})
-UNOFFICIAL_COMPLIANCE_CLASSES = frozenset({"unofficial_nonstandard", "unofficial_subscale"})
 PHASE_ALIASES = {"standard": "power"}
 EXECUTION_RUN_TYPES = frozenset({"measurement", "warmup"})
 PASS_STATUSES = frozenset({"SUCCESS", "PASS", "pass", "success"})
@@ -80,6 +79,20 @@ def _load_bundle(bundle: pathlib.Path) -> dict:
         raise CorpusReadError(f"ERROR reading {bundle}: {exc}") from exc
 
 
+def _load_repo_module(name: str, relative_path: str):
+    module_path = pathlib.Path(__file__).resolve().parents[1] / relative_path
+    spec = importlib.util.spec_from_file_location(name, module_path)
+    if spec is None or spec.loader is None or not module_path.is_file():
+        raise CorpusReadError(f"ERROR cannot load {module_path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+SUBSCALE_POLICY = _load_repo_module("_benchbox_subscale_policy", "benchbox/core/results/subscale_policy.py")
+
+
 def _load_export_anonymized_errors():
     try:
         from benchbox.validation.bundle import export_anonymized_errors
@@ -87,14 +100,7 @@ def _load_export_anonymized_errors():
         return export_anonymized_errors
     except ImportError:
         pass
-    bundle_path = pathlib.Path(__file__).resolve().parents[1] / "benchbox" / "validation" / "bundle.py"
-    spec = importlib.util.spec_from_file_location("_benchbox_validation_bundle", bundle_path)
-    if spec is None or spec.loader is None or not bundle_path.is_file():
-        raise CorpusReadError(f"ERROR cannot load the anonymization gate from {bundle_path}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module.export_anonymized_errors
+    return _load_repo_module("_benchbox_validation_bundle", "benchbox/validation/bundle.py").export_anonymized_errors
 
 
 def unanonymized_bundle_errors(bundles: list[pathlib.Path]) -> list[str]:
@@ -504,7 +510,18 @@ def _tpc_metric(payload: dict, name: str) -> float | None:
 
 
 def _power_score(payload: dict) -> float | None:
-    return _tpc_metric(payload, "power_at_size")
+    recorded = _tpc_metric(payload, "power_at_size")
+    benchmark = _mapping(payload.get("benchmark"))
+    compliance = SUBSCALE_POLICY.effective_compliance_class(
+        benchmark.get("id"), benchmark.get("scale_factor"), benchmark.get("compliance_class")
+    )
+    if compliance != SUBSCALE_POLICY.SUBSCALE_COMPLIANCE_CLASS:
+        return recorded
+    queries = payload.get("queries")
+    power, _ = SUBSCALE_POLICY.subscale_power_at_size(
+        benchmark.get("id"), recorded, queries if isinstance(queries, list) else [], benchmark.get("scale_factor")
+    )
+    return power
 
 
 def _throughput_phase_clean(payload: dict) -> bool:
@@ -550,8 +567,10 @@ def _primary_metric_reason(payload: dict, display: list[tuple[str, float | None,
 
 def exclusion_reason(payload: dict) -> str | None:
     benchmark = _mapping(payload.get("benchmark"))
-    compliance = benchmark.get("compliance_class")
-    if compliance is not None and str(compliance) in UNOFFICIAL_COMPLIANCE_CLASSES:
+    compliance = SUBSCALE_POLICY.effective_compliance_class(
+        benchmark.get("id"), benchmark.get("scale_factor"), benchmark.get("compliance_class")
+    )
+    if compliance in SUBSCALE_POLICY.RANKING_EXCLUDED_COMPLIANCE_CLASSES:
         return "unofficial_compliance"
     if failed_query_count(payload):
         return "failed_queries"

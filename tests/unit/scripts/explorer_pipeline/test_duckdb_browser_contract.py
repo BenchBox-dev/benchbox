@@ -404,7 +404,7 @@ class TestSourceFidelity:
         assert self._result_row(db_path)["platform"] == "duckdb"
 
     def test_scale_factor_matches_bundle(self, db_path: Path) -> None:
-        assert self._result_row(db_path)["scale_factor"] == pytest.approx(0.1)
+        assert self._result_row(db_path)["scale_factor"] == pytest.approx(1.0)
 
     def test_run_date_matches_bundle(self, db_path: Path) -> None:
         assert self._result_row(db_path)["run_date"] == "2026-03-15"
@@ -785,7 +785,7 @@ class TestCohortVariantPreservation:
         with _connect(variant_db_path) as con:
             rows = con.execute(
                 "SELECT result_id, tuning_mode, rank FROM cohort_metadata"
-                " WHERE cohort_key = 'tpch-sf0.1-power' ORDER BY rank"
+                " WHERE cohort_key = 'tpch-sf1-power' ORDER BY rank"
             ).fetchall()
         assert len(rows) == 2, "cohort_metadata must preserve both publishable variants"
         assert {r[1] for r in rows} == {"tuned", "notuning"}
@@ -794,7 +794,7 @@ class TestCohortVariantPreservation:
     def test_cohort_metadata_carries_short_id_and_trust_label(self, variant_db_path: Path) -> None:
         with _connect(variant_db_path) as con:
             rows = con.execute(
-                "SELECT short_id, trust_label FROM cohort_metadata WHERE cohort_key = 'tpch-sf0.1-power'"
+                "SELECT short_id, trust_label FROM cohort_metadata WHERE cohort_key = 'tpch-sf1-power'"
             ).fetchall()
         for short_id, trust_label in rows:
             assert short_id, "short_id must be populated on every cohort_metadata row"

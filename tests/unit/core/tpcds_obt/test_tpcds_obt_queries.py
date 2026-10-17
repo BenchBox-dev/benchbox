@@ -3,7 +3,7 @@ import re
 import pytest
 
 from benchbox.core.tpcds_obt.queries import CONVERTIBLE_QUERY_IDS, TPCDSOBTQueryManager
-from benchbox.core.tpcds_obt.query_conversion import QueryConverter
+from benchbox.core.tpcds_obt.query_conversion import TemplateLoader
 from benchbox.core.tpcds_obt.schema import OBT_TABLE_NAME, get_obt_columns
 
 pytestmark = [
@@ -263,13 +263,42 @@ def test_queries_parse_in_duckdb() -> None:
 
 
 def test_q8_has_diverse_zip_codes() -> None:
-    converter = QueryConverter()
-    result = converter.convert(8)
-    numbers = re.findall(r"'(\d{5})'", result.default_sql)
+    numbers = re.findall(r"'(\d{5})'", TPCDSOBTQueryManager().get_query(8))
     assert len(set(numbers)) > 100
 
 
-def test_ulist_expansion_is_deterministic() -> None:
-    c1 = QueryConverter().convert(8)
-    c2 = QueryConverter().convert(8)
-    assert c1.default_sql == c2.default_sql
+def test_rendering_is_deterministic_for_a_seed() -> None:
+    assert TPCDSOBTQueryManager().get_query(8, seed=7) == TPCDSOBTQueryManager().get_query(8, seed=7)
+    assert TPCDSOBTQueryManager().get_query(8, seed=7) != TPCDSOBTQueryManager().get_query(8, seed=8)
+
+
+def test_every_parameter_renders_the_dsqgen_draw() -> None:
+    manager = TPCDSOBTQueryManager()
+    for query_id, converted in manager._converted.items():
+        sql = manager.get_query(query_id)
+        assert not re.search(r"\[[A-Z_]+(?:\.\d+)?\]|__BB_PARAM_", sql), query_id
+        drawn = manager.drawn_parameters(query_id)
+        definitions = TemplateLoader(query_id).definitions
+        for name, param in converted.parameters.items():
+            if not param.indices or not definitions[name].lower().startswith(("dist", "sub")):
+                continue
+            for index in param.indices:
+                assert drawn[f"{name}.{index:02d}"] in sql, (query_id, name, index)
+
+
+def test_q93_binds_the_drawn_reason() -> None:
+    manager = TPCDSOBTQueryManager()
+    reason = manager.drawn_parameters(93)["REASON.01"]
+    assert reason != "0"
+    assert f"reason_r_reason_desc = '{reason}'" in manager.get_query(93)
+
+
+def test_explicit_parameters_override_the_draw() -> None:
+    sql = TPCDSOBTQueryManager().get_query(93, {"REASON": "Parts missing"})
+    assert "reason_r_reason_desc = 'Parts missing'" in sql
+
+
+@pytest.mark.parametrize("key", ["REASON.1", "REASON.01"])
+def test_indexed_overrides_accept_template_and_log_spellings(key: str) -> None:
+    sql = TPCDSOBTQueryManager().get_query(93, {key: "Parts missing"})
+    assert "reason_r_reason_desc = 'Parts missing'" in sql

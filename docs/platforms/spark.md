@@ -201,6 +201,54 @@ adapter = SparkAdapter(
 )
 ```
 
+### Session Settings in a Tuning File
+
+A tuning file can carry Spark SQL session settings under
+`platform_optimizations.spark`:
+
+```yaml
+platform_optimizations:
+  spark:
+    spark.sql.shuffle.partitions: "64"
+    spark.sql.adaptive.enabled: "true"
+```
+
+`benchbox tuning init --platform spark` writes a sample file that ends with a
+commented example of this map. `benchbox tuning show`, `benchbox tuning
+validate` and `benchbox run --dry-run` list the map as a property and value
+table.
+
+On a tuned run, BenchBox sets each key with `spark.conf.set` after the session
+starts, reads it back, and records it in the applied-tuning ledger. A key that
+the engine refuses or that reads back with a different value is recorded as
+failed. Keys may omit the `spark.` prefix. Static keys (warehouse, catalogs,
+extensions), core deploy keys (`spark.driver.*`, `spark.executor.*`),
+adapter-owned keys and credential-shaped keys are rejected when the file
+loads; set those through the adapter options instead.
+
+Precedence, from lowest to highest:
+
+1. `spark-defaults.conf` (`SPARK_CONF_DIR` or `SPARK_HOME/conf`) and
+   `PYSPARK_SUBMIT_ARGS`, for keys BenchBox does not set.
+2. Adapter options and `spark_config`, passed to the session builder.
+3. The tuning file's `spark` map, applied after the session starts. When it
+   changes a key that an adapter option also set, the run logs a warning and
+   the tuning file wins.
+
+Untuned runs (`--tuning notuning`) ignore the map.
+
+Before the measured queries, the run reads the session configuration back and
+prints any discrepancy: a builder setting that reads back differently, a
+setting supplied by `spark-defaults.conf` or `PYSPARK_SUBMIT_ARGS`, a tuned
+setting that did not take effect, or a setting that changed before the run.
+The result bundle records the redacted snapshots and discrepancies in
+`platform.effective_session_config` (see the result-format reference).
+
+Velox applies the map the same way. LakeSail does not apply it: validation
+warns and the keys are recorded as dropped. Any other platform, including
+Databricks and the managed Spark services, warns at validation and records the
+keys as dropped instead of ignoring them silently.
+
 ## Benchmark Recommendations
 
 ### Scale Factor Guidelines

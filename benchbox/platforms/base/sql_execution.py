@@ -81,7 +81,7 @@ def execute_sql_query(
     cursor = connection.cursor() if _owns_cursor else connection
     try:
         cursor.execute(query)
-        results = cursor.fetchall()
+        results = [] if getattr(cursor, "description", ()) is None else cursor.fetchall()
 
         execution_time = elapsed_seconds(start_time)
         actual_row_count = len(results)
