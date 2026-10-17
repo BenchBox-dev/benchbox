@@ -57,6 +57,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Spark, LakeSail and Velox runs now read the session configuration back from
+  the live session at three points: when the session is created, after
+  BenchBox applies its settings, and just before the first measured query.
+  Bundles record the redacted values and any discrepancies in
+  `platform.effective_session_config` (versioned block, see the result-format
+  reference), and the console warns before the queries run when a setting
+  BenchBox asked for did not take effect, when `spark-defaults.conf` or
+  `PYSPARK_SUBMIT_ARGS` supplied a setting, or when a setting changed before
+  the run. Untuned runs carry the block too. Engines that cannot report their
+  configuration are marked `not_readable`. Older bundles load unchanged.
+
 - Python callers can select a deployment mode with the same selector as
   `--platform`: `DatabaseConfig(type="timescaledb:cloud", ...)` or
   `DatabaseConfig(type="lakesail-df:distributed", ...)`. The config resolves

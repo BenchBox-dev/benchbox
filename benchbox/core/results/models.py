@@ -407,6 +407,7 @@ class BenchmarkResults:
     tuning_config_hash: str | None = None
     applied_tuning_ledger: dict[str, Any] | None = None
     applied_ledger_hash: str | None = None
+    effective_session_config: dict[str, Any] | None = None
     tuning_source_file: str | None = None
     tuning_source: str | None = None
     tuning_legacy_source: str | None = None

@@ -534,6 +534,10 @@ def _build_platform_section(
     if tuning:
         platform["tuning"] = tuning
 
+    effective_session_config = getattr(result, "effective_session_config", None)
+    if effective_session_config:
+        platform["effective_session_config"] = effective_session_config
+
     return platform
 
 
