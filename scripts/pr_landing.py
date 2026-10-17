@@ -58,7 +58,6 @@ REQUIRED_CONTEXTS: tuple[str, ...] = (
     "explorer",
     "results-data",
     "docs",
-    "landing",
     "tooling",
 )
 REQUIRED_BATCH_TOOLS = frozenset({"register_batch", "prepare", "bind_batch_pr", "abort_batch"})

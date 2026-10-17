@@ -29,7 +29,7 @@ def needed(paths: list[str], rules: dict[str, list[str]]) -> set[str]:
     [
         (["benchbox/core/tpch/generator.py"], {"core"}),
         (["tests/unit/core/test_x.py"], {"core"}),
-        (["landing/prompts/catalog.yaml"], {"docs", "landing"}),
+        (["landing/prompts/catalog.yaml"], {"docs"}),
         (["website/src/pages/index.astro"], {"core"}),
         (["results-explorer/src/App.tsx"], {"core"}),
         (["_project/scripts/explorer_pipeline/pipeline.py"], {"explorer", "tooling"}),
@@ -111,7 +111,7 @@ def test_github_output_lines(tmp_path: Path, rules: dict[str, list[str]]) -> Non
     out = tmp_path / "out"
     write_github_output(out, classify_units(["landing/prompts/catalog.yaml"], rules))
     lines = dict(line.split("=", 1) for line in out.read_text(encoding="utf-8").splitlines())
-    assert lines["unit-landing"] == "true"
+    assert lines["unit-docs"] == "true"
     assert lines["unit-core"] == "false"
     assert lines["code-tests-needed"] == "false"
     assert lines["run-all-units"] == "false"

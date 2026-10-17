@@ -16,7 +16,7 @@ CLI_DESCRIPTION = (
     "\n"
     "Reads ``.github/ci-units.yml`` and a newline-delimited list of changed paths\n"
     "(or a diff against a base ref) and reports which of the six units\n"
-    "(``core``, ``explorer``, ``results-data``, ``docs``, ``landing``, ``tooling``)\n"
+    "(``core``, ``explorer``, ``results-data``, ``docs``, ``tooling``)\n"
     "have work to do.\n"
     "\n"
     "Rules:\n"
@@ -29,7 +29,7 @@ CLI_DESCRIPTION = (
     "The script is stdlib-only so the classifier job needs no dependency sync.\n"
 )
 
-UNITS: tuple[str, ...] = ("core", "explorer", "results-data", "docs", "landing", "tooling")
+UNITS: tuple[str, ...] = ("core", "explorer", "results-data", "docs", "tooling")
 ALL_UNITS_KEY = "all-units"
 DEFAULT_RULES = Path(__file__).resolve().parents[1] / ".github" / "ci-units.yml"
 
