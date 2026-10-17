@@ -175,6 +175,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Tuning validation and `benchbox tuning init` treat a platform variant such
+  as `duckdb:memory` like its base platform, so the sample configuration for a
+  variant includes the same layout tunings as the base platform.
+- `benchbox tuning init` lists only the constraint types the sample
+  configuration enables, and the `--tuning auto` notice on SQL platforms no
+  longer claims unique and check constraints are enabled.
+- Requesting materialized views on Doris now reports that BenchBox does not
+  create them on Doris, instead of a generic unsupported-type error.
+
 - SQLite runs now honour `--platform-option database_name=<name>`. The run
   creates and uses `<name>.db` in the benchmark's database directory. Before,
   the option was ignored and the run used the default
@@ -562,6 +571,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ledger). On LakeSail it is no longer reported as applied: LakeSail accepts
   settings it ignores, so validation warns and each key is recorded as a
   dropped intent, which keeps such runs from being reported as verified.
+- Athena tables no longer carry PRIMARY KEY or FOREIGN KEY clauses. Athena's
+  CREATE EXTERNAL TABLE has no constraint syntax, so BenchBox now removes them
+  before creating each table, and a tuning file that asks for primary or
+  foreign keys on Athena fails validation with an error that says the
+  platform does not apply them. Turn those keys off in Athena tuning files.
 - The tuning policy generation is now `adr-003-spark-baseline`. Spark,
   LakeSail and Velox results recorded under `adr-003` or earlier are not
   comparable with new ones, because untuned runs no longer set AQE, CBO,

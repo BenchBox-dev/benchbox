@@ -682,24 +682,31 @@ class ConfigManager:
             f"[green]✅ Sample unified tuning configuration created for platform '{platform}' at {path}[/green]"
         )
 
-        enabled_types = sample_config.get_enabled_tuning_types()
-        console.print("This configuration includes:")
-        console.print("  • Schema constraints (primary keys, foreign keys, unique, check)")
-        if any(t.value.startswith(("z_ordering", "auto_", "bloom_", "materialized_")) for t in enabled_types):
-            console.print(f"  • Platform optimizations for {platform}")
-        if any(
-            t
-            in [
-                TuningType.PARTITIONING,
-                TuningType.CLUSTERING,
-                TuningType.SORTING,
-                TuningType.DISTRIBUTION,
-            ]
-            for t in enabled_types
-        ):
-            console.print("  • Table-level tunings (partitioning, clustering, sorting)")
-        console.print(f"All settings are compatible with {platform}.")
-        console.print("Edit this file to customize your tuning settings.")
+        _print_sample_summary(platform, sample_config.get_enabled_tuning_types())
+
+
+_SAMPLE_CONSTRAINT_LABELS = (
+    (TuningType.PRIMARY_KEYS, "primary keys"),
+    (TuningType.FOREIGN_KEYS, "foreign keys"),
+    (TuningType.UNIQUE_CONSTRAINTS, "unique"),
+    (TuningType.CHECK_CONSTRAINTS, "check"),
+)
+_SAMPLE_LAYOUT_TYPES = frozenset(
+    {TuningType.PARTITIONING, TuningType.CLUSTERING, TuningType.SORTING, TuningType.DISTRIBUTION}
+)
+
+
+def _print_sample_summary(platform: str, enabled_types: set[TuningType]) -> None:
+    console.print("This configuration includes:")
+    constraint_labels = [label for tuning_type, label in _SAMPLE_CONSTRAINT_LABELS if tuning_type in enabled_types]
+    if constraint_labels:
+        console.print(f"  • Schema constraints ({', '.join(constraint_labels)})")
+    if any(t.value.startswith(("z_ordering", "auto_", "bloom_", "materialized_")) for t in enabled_types):
+        console.print(f"  • Platform optimizations for {platform}")
+    if enabled_types & _SAMPLE_LAYOUT_TYPES:
+        console.print("  • Table-level tunings (partitioning, clustering, sorting)")
+    console.print(f"All settings are compatible with {platform}.")
+    console.print("Edit this file to customize your tuning settings.")
 
 
 class DirectoryManager:

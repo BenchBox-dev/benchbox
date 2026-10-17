@@ -429,8 +429,7 @@ def warn_sql_auto_mode(
         console.print(
             "[yellow]Warning: --tuning auto smart defaults are DataFrame-only today; "
             "this SQL run proceeds with a basic constraints-only configuration "
-            "(primary/foreign/unique constraints enabled, plus check constraints except on DuckDB; "
-            "no other tunings applied), "
+            "(the primary and foreign keys the platform applies; no other tunings applied), "
             "not an untuned baseline.[/yellow]"
         )
     if logger:
