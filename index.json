@@ -5120,6 +5120,13 @@
       "status": "done",
       "title": "Copyright and License Declaration Updates ✅ COMPLETED"
     },
+    "core-docs-advisory-site-build-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Add an advisory site build for core PRs that change docs"
+    },
     "core-exec-compute-resource-unification": {
       "claim": null,
       "needs": [

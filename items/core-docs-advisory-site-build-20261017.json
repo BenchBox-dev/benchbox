@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "A core PR that changes docs/ gets an advisory check reporting whether the site builds from its bundle",
+    "A deliberately broken docs link in a test PR makes the check fail; the check is not in the required contexts",
+    "Core still contains no JS/TS or package.json"
+  ],
+  "context": "Found 2026-10-17 at site-split closeout (follow-up list in site-split-99). Must not become a required context; D17 allows no further ruleset change.",
+  "description": "Decision D5 of the site-repo split ADR (docs/internal/adr/adr-site-repo-split.md:25) means a core docs PR that breaks the site build is found only after merge: the site refuses the bundle, keeps the last good site and opens an issue. The ADR names an advisory pre-merge check as a follow-up. No core workflow builds the site before merge; the only reference to benchbox-site in core workflows is the post-merge dispatch in .github/workflows/site-inputs.yml:105-116.\n\nAdd a non-required check on core PRs that touch docs/: build the PR's site-inputs bundle and ask the site repo to build it (for example through a dispatch that reports back as a check), without adding Node to core (ADR D9).",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T22:16:06Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "1007f09196e248c6b98e97168312d9c7",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}
