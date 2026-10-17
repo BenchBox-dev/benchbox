@@ -6,7 +6,7 @@
     "Platform docs page describes the method"
   ],
   "context": "Owner request 2026-10-17: \"There should be a method for tuning these platforms.\"",
-  "description": "TimescaleDB skips tuning-file partitioning (benchbox/platforms/timescaledb.py:50). Its native layout controls are reachable only through CLI flags: --timescale-chunk-interval and --timescale-compression (timescaledb.py:73-97). Map the tuning file onto them: a date partition column becomes the hypertable time column, sort columns become compress_orderby, and segment columns become compress_segmentby. Also keep CLUSTER, which was confirmed working on a hypertable during the #3092 verification. Record each request in the ledger with catalog evidence (timescaledb_information views).",
+  "description": "TimescaleDB skips tuning-file partitioning and clustering (benchbox/platforms/timescaledb.py:50-51: execution_partitioning_supported = False, post_load_index_cluster_supported = False). Its native layout controls are reachable only through CLI flags: --timescale-chunk-interval and --timescale-compression (timescaledb.py:73-97). Map the tuning file onto them: a date partition column becomes the hypertable time column, sort columns become compress_orderby, and segment columns become compress_segmentby. CLUSTER on a hypertable succeeded in the timescale/timescaledb:latest-pg17 image during the #3092 verification, so enabling the PostgreSQL index + CLUSTER step for TimescaleDB is also an option. Record each request in the ledger with catalog evidence (timescaledb_information views).",
   "sessions": [
     {
       "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
@@ -14,6 +14,14 @@
       "client": "claude-code",
       "op": "create",
       "op_id": "bc0278ce357f428686d0d6b6936abbc3",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T21:33:55Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "b89d4b9b22c0499695c4b456b68ebc34",
       "session_id": "400c76c14fce4783943655593419ae3c"
     }
   ]
