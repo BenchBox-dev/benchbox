@@ -9,6 +9,8 @@ from typing import Any
 
 from benchbox.core.tuning.applied_ledger import AppliedTuningLedger
 from benchbox.core.tuning.introspection import (
+    CONSTRAINT_PRIMARY_KEY,
+    KIND_CONSTRAINT,
     KIND_PARTITION_KEY,
     KIND_SORT_KEY,
     IntrospectedObject,
@@ -38,7 +40,7 @@ class ClickHouseTuningIntrospector:
             table_filter = f" AND lower(name) IN ({escaped_tables})"
         try:
             result = connection.execute(
-                "SELECT name, sorting_key, partition_key FROM system.tables "
+                "SELECT name, sorting_key, partition_key, primary_key FROM system.tables "
                 f"WHERE database = currentDatabase(){table_filter} LIMIT {_MAX_TABLE_ROWS}"
             )
             rows = list(result) if result is not None else []
@@ -52,6 +54,7 @@ class ClickHouseTuningIntrospector:
         for row in relevant_rows:
             try:
                 name, sorting_key, partition_key = row[0], row[1], row[2]
+                primary_key = row[3] if len(row) > 3 else ""
             except Exception:  # pragma: no cover
                 continue
             if sorting_key:
@@ -63,6 +66,16 @@ class ClickHouseTuningIntrospector:
                         evidence={"sorting_key": sorting_key},
                     )
                 )
+            if primary_key:
+                objects.append(
+                    IntrospectedObject(
+                        kind=KIND_CONSTRAINT,
+                        table=name,
+                        columns=normalize_columns(primary_key),
+                        constraint_type=CONSTRAINT_PRIMARY_KEY,
+                        evidence={"primary_key": primary_key},
+                    )
+                )
             if partition_key:
                 objects.append(
                     IntrospectedObject(
@@ -72,7 +85,12 @@ class ClickHouseTuningIntrospector:
                         evidence={"partition_key": partition_key},
                     )
                 )
-        return IntrospectedState(platform=self.platform, objects=objects, truncated=truncated)
+        return IntrospectedState(
+            platform=self.platform,
+            objects=objects,
+            truncated=truncated,
+            constraint_types=frozenset({CONSTRAINT_PRIMARY_KEY}),
+        )
 
 
 __all__ = ["ClickHouseTuningIntrospector"]

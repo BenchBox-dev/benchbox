@@ -349,3 +349,98 @@ class TestCombinedPartitionAndSortKey:
         partition_entry = next(e for e in receipt["entries"] if e.get("kind") == KIND_PARTITION_KEY)
         assert partition_entry["expected_columns"] == ["toyyyymm(l_shipdate)"]
         assert partition_entry["verdict"] == "corroborated"
+
+
+def _primary_key_only_config() -> UnifiedTuningConfiguration:
+    return UnifiedTuningConfiguration.from_dict({"primary_keys": {"enabled": True}, "foreign_keys": {"enabled": False}})
+
+
+class TestPrimaryKeyOrderEvidence:
+    _ORIGINAL = (
+        "CREATE TABLE orders (o_orderkey INTEGER NOT NULL, o_custkey INTEGER NOT NULL, PRIMARY KEY (o_orderkey))"
+    )
+
+    def _adapter(self, *, tuning_enabled: bool = True) -> ClickHouseAdapter:
+        adapter = ClickHouseAdapter()
+        adapter.tuning_enabled = tuning_enabled
+        adapter._applied_tuning_ledger = AppliedTuningLedger()
+        adapter._applied_layout_operations = []
+        return adapter
+
+    def _record(self, adapter: ClickHouseAdapter, config: UnifiedTuningConfiguration) -> str:
+        tunings = config.table_tunings or None
+        executed = adapter._optimize_table_definition(self._ORIGINAL, tunings, nullable_columns=set())
+        adapter._record_tuned_sort_key_op(self._ORIGINAL, executed, "orders", tunings)
+        adapter._record_primary_key_order_op(self._ORIGINAL, executed, "orders", tunings, config)
+        return executed
+
+    def test_key_derived_create_table_is_recorded(self):
+        adapter = self._adapter()
+        executed = self._record(adapter, _primary_key_only_config())
+
+        assert "ORDER BY (o_orderkey)" in executed
+        [statement] = adapter._applied_tuning_ledger.executed_statements
+        assert statement.statement == executed
+        assert (statement.phase, statement.mechanism, statement.table) == (PHASE_DDL, "primary_key_order_by", "orders")
+
+    def test_key_derived_create_table_corroborates_to_applied_verified(self):
+        adapter = self._adapter()
+        self._record(adapter, _primary_key_only_config())
+
+        connection = _FakeCHConnection([("orders", "o_orderkey", "", "o_orderkey")])
+        status, receipt = adapter._corroborate_applied_ledger(connection, APPLIED_UNVERIFIED)
+
+        assert status == APPLIED_VERIFIED
+        assert receipt["corroborated"] is True
+        assert "primary_key" in connection.queries[0]
+
+    def test_wrong_catalog_primary_key_blocks_verification(self):
+        adapter = self._adapter()
+        self._record(adapter, _primary_key_only_config())
+
+        connection = _FakeCHConnection([("orders", "o_orderkey", "", "o_custkey")])
+        status, _receipt = adapter._corroborate_applied_ledger(connection, APPLIED_UNVERIFIED)
+
+        assert status == APPLIED_UNVERIFIED
+
+    def test_not_recorded_without_tuning_or_without_requested_keys(self):
+        untuned = self._adapter(tuning_enabled=False)
+        self._record(untuned, _primary_key_only_config())
+        assert untuned._applied_tuning_ledger.executed_statements == []
+
+        keys_off = UnifiedTuningConfiguration()
+        keys_off.disable_all_constraints()
+        adapter = self._adapter()
+        self._record(adapter, keys_off)
+        assert adapter._applied_tuning_ledger.executed_statements == []
+
+    def test_tuned_sort_table_is_recorded_once(self):
+        config = _primary_key_only_config()
+        config.table_tunings["ORDERS"] = TableTuning(
+            table_name="ORDERS",
+            sorting=[
+                TuningColumn(name="o_orderkey", type="INTEGER", order=1),
+                TuningColumn(name="o_custkey", type="INTEGER", order=2),
+            ],
+        )
+        adapter = self._adapter()
+        self._record(adapter, config)
+
+        assert [s.mechanism for s in adapter._applied_tuning_ledger.executed_statements] == ["sort_key"]
+
+    def test_introspector_reports_primary_key_facts(self):
+        state = ClickHouseTuningIntrospector().introspect(
+            _FakeCHConnection([("orders", "o_orderkey", "", "o_orderkey")]), _optimize_ledger_for("orders")
+        )
+
+        constraints = [obj for obj in state.objects if obj.kind == "constraint"]
+        assert [(obj.table, obj.columns, obj.constraint_type) for obj in constraints] == [
+            ("orders", ("o_orderkey",), "PRIMARY KEY")
+        ]
+        assert state.constraint_types == frozenset({"PRIMARY KEY"})
+
+
+def _optimize_ledger_for(table: str) -> AppliedTuningLedger:
+    ledger = AppliedTuningLedger()
+    ledger.record(f"OPTIMIZE TABLE {table}", PHASE_DDL)
+    return ledger
