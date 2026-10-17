@@ -161,6 +161,17 @@ skips partitioning and records the request as not applied. Set
 `primary_keys.enabled: false` (and `unique_constraints.enabled: false`) to
 partition. The PostgreSQL-compatible platforms (CedarDB, Citus, ParadeDB,
 pg_duckdb, pg_mooncake, TimescaleDB) do not partition.
+A tuning file can request clustering or sorting columns per table. After each
+table loads, BenchBox creates an index on those columns (clustering columns
+first, then sorting columns) and runs `CLUSTER <table> USING <index>`, which
+rewrites the table in index order. With a non-public `schema`, the table is
+schema-qualified and the index name is not: PostgreSQL creates an index in its
+table's schema and `CLUSTER ... USING` accepts only an unqualified index name.
+Both statements are recorded in the applied-tuning ledger; if either fails,
+both are recorded as failed and the run reports `failed`. When a table requests both clustering and sorting, the
+index leads with the clustering columns, so the sort request is recorded as
+not applied. The PostgreSQL-compatible platforms (CedarDB, Citus, ParadeDB, pg_duckdb,
+pg_mooncake, TimescaleDB) do not run this step.
 
 ## Query Plan Capture
 

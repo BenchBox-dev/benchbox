@@ -74,6 +74,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   requested, partitioning is skipped and recorded as not applied, because
   PostgreSQL requires those keys to include the partition column. The
   PostgreSQL-compatible platforms are unchanged.
+- Tuned PostgreSQL runs now apply requested clustering and sorting: after each
+  table loads, BenchBox creates an index on the tuned columns and clusters the
+  table on it, and records both statements in the applied-tuning ledger. These
+  requests no longer fail validation on PostgreSQL. The PostgreSQL-compatible
+  platforms are unchanged.
 
 - `benchbox tuning platforms` lists Spark with its own capabilities and marks
   the platforms that apply a tuning file's `spark` session map (Spark and

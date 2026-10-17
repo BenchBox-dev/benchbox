@@ -938,6 +938,57 @@ class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
             self.logger.debug(f"Connection test failed: {e}")
             return False
 
+    post_load_index_cluster_supported = True
+
+    def postgres_layout_statements(self, table_name: str, table_tuning: TableTuning | None) -> list[str]:
+        if table_tuning is None or not self.post_load_index_cluster_supported:
+            return []
+        from benchbox.core.tuning.ddl_generator import get_ddl_generator
+        from benchbox.core.tuning.interface import TableTuning as RuntimeTableTuning
+
+        generator = get_ddl_generator("postgresql")
+        layout_only = RuntimeTableTuning(
+            table_name=table_tuning.table_name,
+            clustering=table_tuning.clustering,
+            sorting=table_tuning.sorting,
+        )
+        clauses = generator.generate_tuning_clauses(layout_only)
+        schema = self.schema if self.schema != "public" else None
+        return generator.get_post_load_statements(table_name.lower(), clauses, schema=schema)
+
+    post_load_connection_recording = False
+
+    def apply_post_load_tunings(self, table_name: str, effective_config: Any, connection: Any) -> bool:
+        statements = self.postgres_layout_statements(table_name, self.table_tuning_for(effective_config, table_name))
+        if not statements:
+            return False
+        from benchbox.core.tuning.applied_ledger import PHASE_POST_LOAD, STATEMENT_FAILED
+
+        ledger = getattr(self, "_applied_tuning_ledger", None)
+        cursor = connection.cursor()
+        try:
+            for statement in statements:
+                cursor.execute(statement)
+            connection.commit()
+        except Exception as exc:
+            connection.rollback()
+            if ledger is not None:
+                for statement in statements:
+                    ledger.record(statement, PHASE_POST_LOAD, status=STATEMENT_FAILED, table=table_name, error=exc)
+            raise
+        finally:
+            cursor.close()
+        if ledger is not None:
+            for statement in statements:
+                ledger.record(statement, PHASE_POST_LOAD, table=table_name)
+        self.logger.info(f"Clustered {table_name} on its tuned index")
+        return True
+
+    def apply_ctas_sort(self, table_name: str, tuning_config: Any, connection: Any) -> bool:
+        if self.postgres_layout_statements(table_name, self.table_tuning_for(tuning_config, table_name)):
+            return False
+        return super().apply_ctas_sort(table_name, tuning_config, connection)
+
     def apply_table_tunings(self, table_tuning: TableTuning, connection: Any) -> None:
         pass
 
