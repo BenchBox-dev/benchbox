@@ -16,6 +16,15 @@
       "op": "create",
       "op_id": "2b8bab28914e4ec9a45fc1f5733fb637",
       "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T01:09:09Z",
+      "client": "claude-code",
+      "generation": "9ef1ccef529748948a85a80bbccefd93",
+      "op": "take",
+      "op_id": "ebc13f19278f4919ab1fb6b4c3267bc4",
+      "session_id": "400c76c14fce4783943655593419ae3c"
     }
   ]
 }
