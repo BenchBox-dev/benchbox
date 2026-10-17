@@ -194,6 +194,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cluster indexes and the transactional sort rewrite that a real run executes.
   The Athena preview no longer contains a `-- Note: PARTITIONED BY ...`
   placeholder line.
+- Tuned and `--tuning auto` TPC-DS runs on SQLite no longer fail during data
+  loading. TPC-DS generated data does not satisfy every declared foreign key,
+  so SQLite now creates TPC-DS tables without foreign keys, as DuckDB already
+  did, and both record the requested foreign keys as dropped with that reason
+  instead of the generic "adapter rendered no statement".
+- The shipped DuckDB TPC-DS tuned template no longer requests foreign keys,
+  which DuckDB never applies to TPC-DS. Tuned DuckDB TPC-DS runs now reach
+  `applied_verified`; the tables and query plans are unchanged.
 
 - SQLite runs now honour `--platform-option database_name=<name>`. The run
   creates and uses `<name>.db` in the benchmark's database directory. Before,
