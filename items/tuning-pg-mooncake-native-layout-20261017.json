@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Documented finding of which columnstore layout controls exist, with sources",
+    "Supported controls are implemented and verified; unsupported requests are recorded as not applied with a reason",
+    "Live TPC-H SF0.01 tuned run, with the evidence recorded in the PR",
+    "Platform docs page describes the method"
+  ],
+  "context": "Owner request 2026-10-17: \"There should be a method for tuning these platforms.\" Found during the #3092 verification: the image only allows DuckDB-backed tables.",
+  "description": "pg_mooncake skips partitioning and clustering (benchbox/platforms/pg_mooncake.py:30). The current image only allows DuckDB-backed columnstore tables (pg_mooncake.py:169, 401), so heap CLUSTER doesn't apply. Find out which layout controls the columnstore honours, such as sort order on load or any clustering or partitioning options. Implement the ones that exist with ledger evidence, and record unsupported requests as not applied with a reason.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T17:32:46Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "b6bd68b8652d4c0cab4293b6ed40be9c",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}
