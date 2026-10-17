@@ -20759,12 +20759,17 @@
       "title": "Remove the site, Sphinx and all JS/TS from core and re-point CI, release tooling, tests and docs"
     },
     "site-split-51-publication-retirement": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-18T21:33:24Z",
+        "generation": "6beef3d3845d4183b83f5f50171b4d8b",
+        "renewals": 0,
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
+      },
       "needs": [
         "site-split-40-production-cutover"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Retire the publication control plane workflows, scripts, ledger seed and docs from core"
     },
     "site-split-52-ruleset-landing-context": {
