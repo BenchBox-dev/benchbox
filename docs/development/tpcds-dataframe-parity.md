@@ -108,7 +108,7 @@ Before classifying a query as legitimately empty at a gate scale:
 
 Keep classifications scoped to the scale and draw. Empty results are not monotonic in scale. A SQL-only search that finds a non-empty draw is a candidate for further testing; rerun every DataFrame backend under that exact binding before claiming parity. A one-row hit may still need a stronger fixture that distinguishes the operation being changed.
 
-The 26 statements that are empty at SF 0.01 (3, 4, 8, 10, 23a, 23b, 24a, 24b, 31, 32, 37, 39a, 39b, 41, 54, 58, 61, 64, 65, 73, 82, 85, 90, 91, 92, 93) are required to return rows in the SF 1 qualification lane, where each is compared between SQL and every DataFrame engine. The lane fails if one of them is empty or all NULL at SF 1. Their entries in `_TPCDS_LEGITIMATELY_EMPTY` stay as the cause of the SF 0.01 result.
+The 25 statements that are empty at SF 0.01 (3, 4, 8, 10, 23a, 23b, 24a, 24b, 31, 32, 37, 39a, 39b, 41, 54, 58, 61, 64, 65, 73, 82, 85, 90, 91, 92) and Q93 are required to return rows in the SF 1 qualification lane, where each is compared between SQL and every DataFrame engine. The lane fails if one of them is empty or all NULL at SF 1. The 25 entries in `_TPCDS_LEGITIMATELY_EMPTY` stay as the cause of the SF 0.01 result. Q93 returns rows at SF 0.01 because of its sub-SF 1 reason draw (below).
 
 Classified empty matches never count as non-empty query coverage. Report registered queries, attempted comparisons, non-empty matches, empty matches, all-NULL matches, missing implementations, errors, and divergences separately.
 
@@ -238,6 +238,28 @@ columns, and then the unchanged Q85 and Q93 SQL returns the official rows
 (`85.ans` and `93_NULLS_LAST.ans`). Q9 reads only `r_reason_sk = 1` and is
 unaffected. Q85 and Q93 stay classified because the generated data follows the
 v4.0.0 kit; their recorded digests are the v4.0.0 results.
+
+### Q93 below SF 1: reason draw
+
+Below SF 1, dsdgen v4.0.0 shrinks the `reason` table in proportion to the
+scale: 7 rows at SF 0.1 and 1 row at SF 0.01. It draws `sr_reason_sk` from
+the rows it wrote. dsqgen still draws Q93's `[REASON]` from all 75 entries of
+`return_reasons`, so at those scales the drawn description is usually absent
+and Q93 returns no rows on every platform.
+
+Below SF 1, BenchBox therefore replaces the template's
+`define REASON= dist(return_reasons, 1, 1);` with
+`define REASON= distmember(return_reasons, random(1, rowcount("reason"), uniform), 1);`
+before running dsqgen (`SUBSCALE_TEMPLATE_OVERRIDES` in
+`benchbox/core/tpcds/c_tools.py`). Only the Q93 template is rewritten, and
+only when it contains the official line exactly once. dsqgen's
+`rowcount("reason")` matches the generated table (checked at SF 0.01, 0.05,
+0.1, 0.25 and 0.5), so the drawn description always exists, and the draw stays
+deterministic for a given seed and stream. The parameter log records the value
+used, so the DataFrame surfaces bind the same reason. From SF 1 up the
+template is unchanged and the query text is exactly the official one. Q93
+results below SF 1 from before this change were empty and are not comparable
+with later ones.
 
 ### Q17: permanent exception
 

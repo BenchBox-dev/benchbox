@@ -1225,7 +1225,6 @@ _TPCDS_LEGITIMATELY_EMPTY: dict[Any, str] = {
         "filter yields a row."
     ),
     "92": ("No web sale in the 90 days from 2000-01-13 is for manufacturer 942; dropping that filter yields a row."),
-    "93": "The reason table has one row, and it is not the drawn 'reason 33'.",
 }
 
 
