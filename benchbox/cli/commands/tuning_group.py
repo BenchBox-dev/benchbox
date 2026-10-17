@@ -360,7 +360,7 @@ def _validate_sql_config(config_file: str, platform: str) -> None:
     console.print(f"  Enabled tuning types: {len(enabled)}")
     console.print(f"  Table tunings: {len(config.table_tunings)}")
 
-    from benchbox.cli.spark_session_display import spark_session_config_table
+    from benchbox.cli.tuning_resolver import spark_session_config_table
 
     spark_table = spark_session_config_table(config.platform_optimizations.spark)
     if spark_table is not None:

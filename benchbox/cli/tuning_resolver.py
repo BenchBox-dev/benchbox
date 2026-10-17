@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import os
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from rich.console import Console
 from rich.panel import Panel
@@ -478,6 +479,17 @@ def display_tuning_list(
     console.print("\n[dim]Template discovery pattern: examples/tunings/<platform>/<benchmark>_tuned.yaml[/dim]")
 
 
+def spark_session_config_table(spark_map: Mapping[str, Any] | None) -> Table | None:
+    if not spark_map:
+        return None
+    table = Table(title="Spark Session Config", show_header=True, header_style="bold blue")
+    table.add_column("Property", style="cyan")
+    table.add_column("Value", style="yellow")
+    for key, value in sorted(spark_map.items()):
+        table.add_row(str(key), str(value))
+    return table
+
+
 def display_tuning_show(
     console: Console,
     config: UnifiedTuningConfiguration | None,
@@ -508,8 +520,6 @@ def display_tuning_show(
         config_yaml = yaml.dump(config_dict, default_flow_style=False, sort_keys=False)
         syntax = Syntax(config_yaml, "yaml", theme="monokai", line_numbers=True)
         console.print(syntax)
-
-        from benchbox.cli.spark_session_display import spark_session_config_table
 
         spark_table = spark_session_config_table(config.platform_optimizations.spark)
         if spark_table is not None:

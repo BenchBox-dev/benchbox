@@ -574,7 +574,7 @@ class DryRunDisplay:
         if platform_table.row_count > 0:
             self.console.print(platform_table)
 
-        from benchbox.cli.spark_session_display import spark_session_config_table
+        from benchbox.cli.tuning_resolver import spark_session_config_table
 
         spark_table = spark_session_config_table(platform_opts.get("spark"))
         if spark_table is not None:
