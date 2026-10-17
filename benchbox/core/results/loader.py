@@ -31,8 +31,10 @@ from benchbox.core.results.schema_policy import (
     ROW_COUNT_VALIDATION_SCHEMA_VERSION,
     is_loader_supported_result_schema,
     result_schema_version_value,
+    supports_round_trip_timing_fields,
     supports_row_count_validation,
 )
+from benchbox.core.results.timing_fields import bundle_timing_field_paths, run_timing_problems
 from benchbox.validation.bundle import COMPANION_SUFFIXES
 
 logger = logging.getLogger(__name__)
@@ -146,6 +148,14 @@ def _load_companion_file(main_file: Path, suffix: str) -> tuple[dict[str, Any] |
 
 def _validate_versioned_query_extensions(data: dict[str, Any]) -> None:
     version = str(result_schema_version_value(data) or "")
+    if not supports_round_trip_timing_fields(version):
+        timing_paths = bundle_timing_field_paths(data)
+        if timing_paths:
+            raise ValueError(f"{timing_paths[0]} requires schema version 2.4 or later, got {version!r}")
+    run_section = data.get("run")
+    run_problems = run_timing_problems(run_section) if isinstance(run_section, dict) else []
+    if run_problems:
+        raise ValueError(f"run.{run_problems[0]}")
     if supports_row_count_validation(version):
         return
 
@@ -243,6 +253,9 @@ def reconstruct_benchmark_results(
         platform_raw_metadata=platform_section.get("raw_metadata"),
         system_profile=system_profile,
         query_subset=run_section.get("query_subset"),
+        timing_method=run_section.get("timing_method"),
+        net_estimate_status=run_section.get("net_estimate_status"),
+        run_platform_timing=run_section.get("platform_timing"),
         platform_info=platform_info,
         tunings_applied=tuning["tunings_applied"],
         tuning_source_file=tuning["tuning_source_file"],

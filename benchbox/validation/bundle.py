@@ -61,6 +61,26 @@ def _load_bundle_failed_query_count():
 bundle_failed_query_count = _load_bundle_failed_query_count()
 
 
+def _load_timing_field_helpers():
+    helper_path = Path(__file__).resolve().parents[1] / "core" / "results" / "timing_fields.py"
+    spec = importlib.util.spec_from_file_location("_benchbox_timing_fields", helper_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot load timing field rules from {helper_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return (
+        module.platform_timing_problems,
+        module.run_timing_problems,
+        module.bundle_timing_field_paths,
+        module.supports_timing_fields,
+    )
+
+
+platform_timing_problems, run_timing_problems, bundle_timing_field_paths, supports_timing_fields = (
+    _load_timing_field_helpers()
+)
+
+
 PRIVATE_LOCAL_PATH_RE = re.compile(
     r"(?<![A-Za-z0-9_])(?:"
     r"(?:~|/Users|/home|/root|/private/var|/var/folders|/var/run|/Volumes)/[^\s'\",;)]*"
@@ -114,7 +134,6 @@ ACCEPTED_VERSION_PREFIX = "2."
 NUMERIC_SCHEMA_VERSION_RE = re.compile(r"^\d+\.\d+(?:\.\d+)?$")
 ROW_COUNT_VALIDATION_SCHEMA_VERSION = (2, 2)
 ROW_COUNT_VALIDATION_MESSAGE_MAX_CHARS = 500
-PLATFORM_TIMING_STATUSES = frozenset({"valid", "suspect", "unavailable"})
 ROW_COUNT_VALIDATION_STATUSES = frozenset({"PASSED", "FAILED", "SKIPPED", "ERROR"})
 ROW_COUNT_VALIDATION_FIELDS = frozenset({"status", "expected", "actual", "error", "warning"})
 ROW_COUNT_VALIDATION_REQUIRED_FIELDS = frozenset({"status", "expected", "actual"})
@@ -649,34 +668,8 @@ def _validate_run_section(run: Any, vr: ValidationResult) -> None:
 
 
 def _validate_run_timing_fields(run: dict, vr: ValidationResult) -> None:
-    timing_method = run.get("timing_method")
-    if timing_method is not None and (
-        isinstance(timing_method, bool) or not isinstance(timing_method, int) or timing_method < 1
-    ):
-        vr.error(f"'run.timing_method' must be a positive int, got {timing_method!r}")
-
-    net_estimate_status = run.get("net_estimate_status")
-    if net_estimate_status is not None and not isinstance(net_estimate_status, str):
-        vr.error(f"'run.net_estimate_status' must be a string, got {net_estimate_status!r}")
-
-    platform_timing = run.get("platform_timing")
-    if platform_timing is None:
-        return
-    if not isinstance(platform_timing, dict):
-        vr.error("'run.platform_timing' must be a dict")
-        return
-    for key in ("source", "definition"):
-        value = platform_timing.get(key)
-        if value is not None and not isinstance(value, str):
-            vr.error(f"'run.platform_timing.{key}' must be a string, got {value!r}")
-    coverage = platform_timing.get("coverage")
-    if coverage is not None and (
-        isinstance(coverage, bool)
-        or not isinstance(coverage, (int, float))
-        or not math.isfinite(coverage)
-        or not 0 <= coverage <= 1
-    ):
-        vr.error(f"'run.platform_timing.coverage' must be a number from 0 to 1, got {coverage!r}")
+    for problem in run_timing_problems(run):
+        vr.error(f"run.{problem}")
 
 
 def _validate_query_timing_fields(index: int, q: dict, vr: ValidationResult) -> None:
@@ -684,26 +677,17 @@ def _validate_query_timing_fields(index: int, q: dict, vr: ValidationResult) -> 
         value = q.get(key)
         if value is not None and (isinstance(value, bool) or not isinstance(value, int) or value < 0):
             vr.error(f"queries[{index}].{key} must be a non-negative int, got {value!r}")
-    platform_timing = q.get("platform_timing")
-    if platform_timing is None:
+    if "platform_timing" not in q:
         return
-    if not isinstance(platform_timing, dict):
-        vr.error(f"queries[{index}].platform_timing must be a dict")
+    for problem in platform_timing_problems(q["platform_timing"]):
+        vr.error(f"queries[{index}].platform_timing {problem}")
+
+
+def _validate_timing_field_versions(data: dict, version: Any, vr: ValidationResult) -> None:
+    if supports_timing_fields(_schema_version_tuple(version)):
         return
-    status = platform_timing.get("status")
-    if status not in PLATFORM_TIMING_STATUSES:
-        vr.error(
-            f"queries[{index}].platform_timing.status must be one of {sorted(PLATFORM_TIMING_STATUSES)}, got {status!r}"
-        )
-    for key in ("platform_ms", "queue_ms", "compile_ms", "exec_ms"):
-        value = platform_timing.get(key)
-        if value is not None and (
-            isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0
-        ):
-            vr.error(f"queries[{index}].platform_timing.{key} must be a non-negative number, got {value!r}")
-    requests = platform_timing.get("requests")
-    if requests is not None and not isinstance(requests, list):
-        vr.error(f"queries[{index}].platform_timing.requests must be a list")
+    for field_path in bundle_timing_field_paths(data):
+        vr.error(f"{field_path} requires schema version 2.4 or later")
 
 
 def _validate_benchmark_section(benchmark: Any, vr: ValidationResult) -> None:
@@ -2139,6 +2123,7 @@ def _validate_bundle(
     _warn_pre_cutoff_clustering_claim(data, vr)
     _validate_public_cost_section(data, vr)
     _validate_queries_section(data.get("queries", []), version, vr)
+    _validate_timing_field_versions(data, version, vr)
     _warn_empty_result_rows(data, vr)
     _warn_timing_plateau(data, vr)
     _warn_small_scale_floor(data, vr)

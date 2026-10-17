@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import copy
+
 import pytest
 
 from benchbox.core.results.loader import reconstruct_benchmark_results
@@ -9,13 +11,14 @@ from benchbox.core.results.query_execution import (
     query_execution_from_compact_v2,
     query_execution_to_compact_v2,
 )
-from benchbox.core.results.schema import SchemaV2Validator, build_result_payload
+from benchbox.core.results.schema import SchemaV2ValidationError, SchemaV2Validator, build_result_payload
 from benchbox.core.results.schema_policy import CURRENT_SCHEMA_VERSION, RUNTIME_SCHEMA_POLICY
 from benchbox.validation.bundle import (
     ValidationResult,
     _validate_environment_client_link,
     _validate_run_section,
     _validate_single_query,
+    _validate_timing_field_versions,
 )
 from tests.fixtures.result_dict_fixtures import make_benchmark_results
 
@@ -37,12 +40,32 @@ PLATFORM_TIMING = {
     "cache_hit": False,
     "status": "valid",
 }
-
+RUN_TIMING = {
+    "timing_method": 2,
+    "net_estimate_status": "probe_unverified",
+    "platform_timing": {"source": "snowflake.query_history", "definition": "server_complete", "coverage": 0.95},
+}
 VALID_RUN = {"id": "r", "timestamp": "2026-10-17T00:00:00", "total_duration_ms": 10, "query_time_ms": 10}
 
 
 def _execution(**fields: object) -> QueryExecution:
     return QueryExecution(query_id="1", execution_time_ms=58.0, rows_returned=4, status="SUCCESS", **fields)
+
+
+def _bundle_2_4() -> dict:
+    payload = copy.deepcopy(
+        build_result_payload(make_benchmark_results(platform="snowflake", query_results=[_execution()]))
+    )
+    payload["result_schema_version"] = payload["version"] = "2.4"
+    payload["run"].update(copy.deepcopy(RUN_TIMING))
+    payload["queries"][0].update(
+        {"request_count": 1, "result_bytes": 96, "platform_timing": copy.deepcopy(PLATFORM_TIMING)}
+    )
+    payload.setdefault("environment", {})["client_link"] = {
+        "collection_status": "available",
+        "probed_at": "2026-10-17T00:00:01+00:00",
+    }
+    return payload
 
 
 def test_readers_accept_2_4_before_the_producer_writes_it():
@@ -60,24 +83,34 @@ def test_timing_fields_round_trip_through_the_compact_entry_in_order():
     assert restored.platform_timing == PLATFORM_TIMING
 
 
-def test_timing_fields_survive_build_load_build():
-    result = make_benchmark_results(
-        platform="snowflake",
-        query_results=[_execution(request_count=1, result_bytes=96, platform_timing=PLATFORM_TIMING)],
-    )
-    payload = build_result_payload(result)
-    SchemaV2Validator().validate(payload)
-    query = payload["queries"][0]
-    assert query["request_count"] == 1
-    assert query["platform_timing"] == PLATFORM_TIMING
-    rebuilt = build_result_payload(reconstruct_benchmark_results(payload))
-    assert rebuilt["queries"][0]["result_bytes"] == 96
-    assert rebuilt["queries"][0]["platform_timing"] == PLATFORM_TIMING
+def test_loading_a_2_4_bundle_keeps_query_and_run_timing_fields():
+    bundle = _bundle_2_4()
+    SchemaV2Validator().validate(bundle)
+    loaded = reconstruct_benchmark_results(bundle)
+    query = loaded.query_results[0]
+    assert (query["request_count"], query["result_bytes"], query["platform_timing"]) == (1, 96, PLATFORM_TIMING)
+    assert loaded.timing_method == 2
+    assert loaded.net_estimate_status == "probe_unverified"
+    assert loaded.run_platform_timing == RUN_TIMING["platform_timing"]
+
+
+def test_the_2_3_producer_cannot_write_2_4_fields():
+    loaded = reconstruct_benchmark_results(_bundle_2_4())
+    with pytest.raises(SchemaV2ValidationError, match="requires schema version 2.4 or later"):
+        SchemaV2Validator().validate(build_result_payload(loaded))
+
+
+def test_a_2_3_bundle_carrying_2_4_fields_is_rejected_on_load():
+    bundle = _bundle_2_4()
+    bundle["result_schema_version"] = bundle["version"] = "2.3"
+    with pytest.raises(ValueError, match="requires schema version 2.4 or later"):
+        reconstruct_benchmark_results(bundle)
 
 
 def test_absent_producers_do_not_fill_timing_fields():
-    entry = query_execution_to_compact_v2(_execution())
-    assert not {"request_count", "result_bytes", "platform_timing"} & set(entry)
+    payload = build_result_payload(make_benchmark_results(platform="duckdb", query_results=[_execution()]))
+    assert not {"request_count", "result_bytes", "platform_timing"} & set(payload["queries"][0])
+    assert not {"timing_method", "net_estimate_status", "platform_timing"} & set(payload["run"])
 
 
 @pytest.mark.parametrize(
@@ -86,7 +119,12 @@ def test_absent_producers_do_not_fill_timing_fields():
         ({"request_count": -1}, "request_count must be non-negative"),
         ({"result_bytes": -5}, "result_bytes must be non-negative"),
         ({"platform_timing": ["valid"]}, "platform_timing must be an object"),
-        ({"platform_timing": {"status": "ok"}}, "platform_timing.status must be one of"),
+        ({"platform_timing": {"status": "ok"}}, "status must be one of"),
+        ({"platform_timing": {"status": "valid"}}, "status 'valid' requires platform_ms"),
+        ({"platform_timing": {"status": "suspect", "platform_ms": 1}}, "status 'suspect' requires a reason"),
+        ({"platform_timing": {"status": "valid", "platform_ms": float("nan")}}, "platform_ms must be"),
+        ({"platform_timing": {"status": "valid", "platform_ms": 1, "platfrom_ms": 2}}, "unknown field"),
+        ({"platform_timing": {"status": "valid", "platform_ms": 1, "requests": [{"kind": "query"}]}}, "attempt"),
     ],
 )
 def test_contract_rejects_malformed_timing_fields(fields, message):
@@ -102,6 +140,7 @@ def _query_errors(query: dict) -> list[str]:
 
 def test_bundle_validator_accepts_well_formed_query_timing():
     assert _query_errors({"request_count": 1, "result_bytes": 0, "platform_timing": PLATFORM_TIMING}) == []
+    assert _query_errors({"platform_timing": {"status": "unavailable", "reason": "lookup failed"}}) == []
 
 
 @pytest.mark.parametrize(
@@ -109,10 +148,13 @@ def test_bundle_validator_accepts_well_formed_query_timing():
     [
         ({"request_count": True}, "request_count must be a non-negative int"),
         ({"result_bytes": 1.5}, "result_bytes must be a non-negative int"),
-        ({"platform_timing": "41"}, "platform_timing must be a dict"),
-        ({"platform_timing": {"status": "valid", "platform_ms": -1}}, "platform_timing.platform_ms"),
-        ({"platform_timing": {"status": "valid", "requests": {}}}, "platform_timing.requests must be a list"),
-        ({"platform_timing": {}}, "platform_timing.status must be one of"),
+        ({"platform_timing": "41"}, "platform_timing must be an object"),
+        ({"platform_timing": {"status": "valid", "platform_ms": -1}}, "platform_ms must be"),
+        ({"platform_timing": {"status": "valid", "platform_ms": 1, "requests": {}}}, "requests must be a list"),
+        ({"platform_timing": {}}, "status must be one of"),
+        ({"platform_timing": {"status": "valid"}}, "requires platform_ms"),
+        ({"platform_timing": {"status": "unavailable"}}, "requires a reason"),
+        ({"platform_timing": {"status": "valid", "platform_ms": 1, "extra": 1}}, "unknown field 'extra'"),
     ],
 )
 def test_bundle_validator_rejects_malformed_query_timing(query, fragment):
@@ -126,23 +168,21 @@ def _run_errors(run_fields: dict) -> list[str]:
 
 
 def test_bundle_validator_accepts_well_formed_run_timing():
-    run_fields = {
-        "timing_method": 2,
-        "net_estimate_status": "eligible",
-        "platform_timing": {"source": "snowflake.query_history", "definition": "server_complete", "coverage": 0.95},
-    }
-    assert _run_errors(run_fields) == []
+    assert _run_errors(RUN_TIMING) == []
 
 
 @pytest.mark.parametrize(
     ("run_fields", "fragment"),
     [
         ({"timing_method": 0}, "run.timing_method"),
+        ({"timing_method": 3}, "run.timing_method"),
         ({"timing_method": True}, "run.timing_method"),
         ({"net_estimate_status": 1}, "run.net_estimate_status"),
-        ({"platform_timing": []}, "run.platform_timing' must be a dict"),
-        ({"platform_timing": {"coverage": 1.2}}, "run.platform_timing.coverage"),
-        ({"platform_timing": {"definition": 3}}, "run.platform_timing.definition"),
+        ({"net_estimate_status": ""}, "run.net_estimate_status"),
+        ({"platform_timing": []}, "run.platform_timing must be an object"),
+        ({"platform_timing": {}}, "run.platform_timing.source"),
+        ({"platform_timing": {**RUN_TIMING["platform_timing"], "coverage": 1.2}}, "run.platform_timing.coverage"),
+        ({"platform_timing": {**RUN_TIMING["platform_timing"], "definition": "other"}}, "platform_timing.definition"),
     ],
 )
 def test_bundle_validator_rejects_malformed_run_timing(run_fields, fragment):
@@ -155,3 +195,18 @@ def test_bundle_validator_checks_probed_at_type():
         {"environment": {"client_link": {"collection_status": "available", "probed_at": 1}}}, vr
     )
     assert any("client_link.probed_at" in error for error in vr.errors)
+
+
+@pytest.mark.parametrize("version", ["2.0", "2.3", None])
+def test_bundle_validator_rejects_2_4_fields_in_older_bundles(version):
+    vr = ValidationResult(path="<test>")
+    _validate_timing_field_versions(_bundle_2_4(), version, vr)
+    assert "queries[0].request_count requires schema version 2.4 or later" in vr.errors
+    assert "run.timing_method requires schema version 2.4 or later" in vr.errors
+    assert "environment.client_link.probed_at requires schema version 2.4 or later" in vr.errors
+
+
+def test_bundle_validator_allows_2_4_fields_in_2_4_bundles():
+    vr = ValidationResult(path="<test>")
+    _validate_timing_field_versions(_bundle_2_4(), "2.4", vr)
+    assert vr.errors == []

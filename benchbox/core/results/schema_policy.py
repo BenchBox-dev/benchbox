@@ -117,6 +117,10 @@ def supports_row_count_validation(version: Any) -> bool:
     return version in KNOWN_SCHEMA_V2_VERSIONS and tuple(map(int, version.split("."))) >= (2, 2)
 
 
+def supports_round_trip_timing_fields(version: Any) -> bool:
+    return version in KNOWN_SCHEMA_V2_VERSIONS and tuple(map(int, version.split("."))) >= (2, 4)
+
+
 def result_schema_version_value(data: dict[str, Any]) -> Any:
     if not isinstance(data, dict):
         return None

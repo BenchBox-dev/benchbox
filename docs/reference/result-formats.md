@@ -165,7 +165,8 @@ keys require a public-contract update and consumer tests.
 
 ##### Round-trip and platform timing fields (schema 2.4)
 
-These fields are optional and omitted until a producer supplies them. They
+These fields are optional and omitted until a producer supplies them, and
+bundles older than 2.4 may not carry them. They
 support comparing an in-process engine with a networked one once the client
 round trip is removed; see the
 [locality ADR amendment](../development/adr/adr-client-link-locality-disclosure.md#amendment-round-trip-removed-and-platform-timings).
@@ -174,10 +175,10 @@ round trip is removed; see the
 |-------|---------|
 | `queries[].request_count` | Requests the adapter sent to the platform inside the query's timer: each `execute()` or job submit, including `BEGIN` and `COMMIT`. A count of calls, not parsed statements. |
 | `queries[].result_bytes` | Bytes of the result that crossed back to the client. `rows` remains the row count. |
-| `queries[].platform_timing` | The platform's own timing for the query, captured by platform statement ID: `source`, `requests` (one entry per request with its ID, attempt, kind and raw `fields` in ms and bytes), the derived `platform_ms`, optional `queue_ms`, `compile_ms` and `exec_ms`, `cache_hit`, and `status` (`valid`, `suspect` or `unavailable`) with a `reason`. Values are marked, never deleted. |
-| `run.timing_method` | Positive integer naming the timer scope. Runs without it are method 1. Method 2 times only the query's own requests. |
-| `run.platform_timing` | Run summary: `source`, its `definition` class (`server_complete` or `includes_fetch`), and `coverage`, the share of measured queries with a valid `platform_ms` (0 to 1). |
-| `run.net_estimate_status` | `eligible` when the round-trip estimate may be shown for this run, otherwise the reason it may not. |
+| `queries[].platform_timing` | The platform's own timing for the query, captured by platform statement ID: `source`, `requests` (one entry per request with its `id`, `attempt`, `kind` of `query`, `begin`, `commit` or `setup`, and raw `fields` in ms and bytes), the derived `platform_ms`, optional `queue_ms`, `compile_ms` and `exec_ms`, `cache_hit`, and `status`. `valid` requires `platform_ms`; `suspect` and `unavailable` require a `reason`. Values are marked, never deleted, and unknown keys are rejected. |
+| `run.timing_method` | `1` or `2`, naming the timer scope. Runs without it are method 1. Method 2 times only the query's own requests. |
+| `run.platform_timing` | Run summary, all required: `source`, its `definition` class (`server_complete` or `includes_fetch`), and `coverage`, the share of measured queries with a valid `platform_ms` (0 to 1). |
+| `run.net_estimate_status` | `eligible` when the round-trip estimate may be shown for this run, otherwise the reason it may not: `embedded`, `endpoint_unknown`, `timing_method`, `probe_samples`, `probe_unverified` or `floor_suspect`. |
 | `environment.client_link.probed_at` | ISO 8601 time the statement overhead probe ran. |
 
 ##### Execution variants (schema 2.3)

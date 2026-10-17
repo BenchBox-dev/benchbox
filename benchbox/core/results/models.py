@@ -467,6 +467,9 @@ class BenchmarkResults:
     funding: str | None = None
     result_source: str | None = None
     execution_engine: dict[str, Any] | None = None
+    timing_method: int | None = None
+    net_estimate_status: str | None = None
+    run_platform_timing: dict[str, Any] | None = None
 
     @property
     def benchmark_id(self) -> str:

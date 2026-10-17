@@ -33,9 +33,11 @@ from benchbox.core.results.schema_policy import (
     ROW_COUNT_VALIDATION_SCHEMA_VERSION,
     RUNTIME_SCHEMA_POLICY,
     result_schema_version_value,
+    supports_round_trip_timing_fields,
     supports_row_count_validation,
 )
 from benchbox.core.results.subscale_policy import NONSTANDARD_COMPLIANCE_CLASS, unofficial_metric_marker
+from benchbox.core.results.timing_fields import bundle_timing_field_paths, run_timing_problems
 from benchbox.validation.bundle import REQUIRED_TOP_KEYS
 
 if TYPE_CHECKING:
@@ -179,9 +181,21 @@ class SchemaV2Validator:
             except QueryExecutionContractError as exc:
                 raise SchemaV2ValidationError(f"queries[{index}].row_count_validation is invalid: {exc}") from exc
 
+        _validate_timing_fields(payload, version, run)
+
         unexpected = set(payload.keys()) - set(self.REQUIRED_KEYS) - set(self.OPTIONAL_KEYS)
         if unexpected:
             raise SchemaV2ValidationError(f"schema v2.0 payload contains unexpected keys: {sorted(unexpected)}")
+
+
+def _validate_timing_fields(payload: Mapping[str, Any], version: Any, run: Mapping[str, Any]) -> None:
+    if not supports_round_trip_timing_fields(version):
+        timing_paths = bundle_timing_field_paths(payload)
+        if timing_paths:
+            raise SchemaV2ValidationError(f"{timing_paths[0]} requires schema version 2.4 or later")
+    run_problems = run_timing_problems(run)
+    if run_problems:
+        raise SchemaV2ValidationError(f"run.{run_problems[0]}")
 
 
 def build_result_payload(result: BenchmarkResults, *, sanitize_platform_secrets: bool = True) -> dict[str, Any]:
@@ -219,7 +233,19 @@ def build_result_payload(result: BenchmarkResults, *, sanitize_platform_secrets:
         "result_schema_version": SCHEMA_VERSION,
         "version": SCHEMA_VERSION,
         "run": order_dict(
-            run, ["id", "timestamp", "total_duration_ms", "query_time_ms", "iterations", "streams", "query_subset"]
+            run,
+            [
+                "id",
+                "timestamp",
+                "total_duration_ms",
+                "query_time_ms",
+                "iterations",
+                "streams",
+                "query_subset",
+                "timing_method",
+                "net_estimate_status",
+                "platform_timing",
+            ],
         ),
         "benchmark": order_dict(benchmark, ["id", "name", "scale_factor", "test_type"]),
         "platform": order_dict(platform, PLATFORM_KEY_ORDER),
@@ -419,6 +445,15 @@ def _build_run_section(
     run["streams"] = len(streams_set) if streams_set else 1
     if result.query_subset:
         run["query_subset"] = result.query_subset
+    timing_method = getattr(result, "timing_method", None)
+    if timing_method is not None:
+        run["timing_method"] = timing_method
+    net_estimate_status = getattr(result, "net_estimate_status", None)
+    if net_estimate_status is not None:
+        run["net_estimate_status"] = net_estimate_status
+    run_platform_timing = getattr(result, "run_platform_timing", None)
+    if run_platform_timing is not None:
+        run["platform_timing"] = run_platform_timing
     return run
 
 

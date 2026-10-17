@@ -5,6 +5,8 @@ from collections.abc import Mapping
 from dataclasses import asdict, is_dataclass
 from typing import TYPE_CHECKING, Any, Callable
 
+from benchbox.core.results.timing_fields import platform_timing_problems
+
 if TYPE_CHECKING:
     from benchbox.core.results.models import QueryExecution
 
@@ -13,7 +15,6 @@ ROW_COUNT_VALIDATION_MESSAGE_MAX_CHARS = 500
 ROW_COUNT_VALIDATION_STATUSES = frozenset({"PASSED", "FAILED", "SKIPPED", "ERROR"})
 ROW_COUNT_VALIDATION_FIELDS = frozenset({"status", "expected", "actual", "error", "warning"})
 ROW_COUNT_VALIDATION_REQUIRED_FIELDS = frozenset({"status", "expected", "actual"})
-PLATFORM_TIMING_STATUSES = frozenset({"valid", "suspect", "unavailable"})
 
 COMPACT_V2_QUERY_FIELDS = frozenset(
     {
@@ -323,13 +324,9 @@ def normalize_non_negative_integer(field: str, raw_value: Any) -> int:
 def normalize_platform_timing(value: Any) -> dict[str, Any] | None:
     if value is None:
         return None
-    if not isinstance(value, Mapping):
-        raise QueryExecutionContractError("platform_timing must be an object")
-    status = value.get("status")
-    if status not in PLATFORM_TIMING_STATUSES:
-        raise QueryExecutionContractError(
-            f"platform_timing.status must be one of {sorted(PLATFORM_TIMING_STATUSES)}, got {status!r}"
-        )
+    problems = platform_timing_problems(value)
+    if problems:
+        raise QueryExecutionContractError(f"platform_timing {problems[0]}")
     return dict(value)
 
 
@@ -734,7 +731,6 @@ __all__ = [
     "DURATION_CONSISTENCY_TOLERANCE_MS",
     "LEGACY_IGNORED_EXTRA_FIELDS",
     "LEGACY_QUERY_FIELDS",
-    "PLATFORM_TIMING_STATUSES",
     "QueryExecutionContractError",
     "legacy_query_execution_mapping",
     "normalize_duration_ms",
