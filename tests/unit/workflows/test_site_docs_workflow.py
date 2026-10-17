@@ -121,6 +121,20 @@ def test_docs_build_runs_the_example_and_docs_reference_checks_after_a_failure()
     assert references["run"] == "make docs-validate"
 
 
+def test_docs_build_still_blocks_on_screenshot_sync_and_the_prompts_catalog() -> None:
+    job = _load("site-docs.yml")["jobs"]["docs-build"]
+    generate = _step(job, "Generate documentation inputs")
+    assert generate["run"] == "make docs-generate"
+    assert "if" not in generate
+    assert "continue-on-error" not in generate
+
+    makefile = (WORKFLOWS.parents[1] / "make" / "documentation.mk").read_text(encoding="utf-8")
+    prerequisites = makefile.split("\ndocs-generate:", 1)[1].split("\n", 1)[0].split()
+    assert {"prompt-quickstarts-check", "docs-images-check"} <= set(prerequisites)
+    assert "\t@uv run -- python scripts/generate_landing_quickstarts.py --check" in makefile
+    assert "docs-images-check:\n\t@uv run -- python scripts/validate_visualization_images.py" in makefile
+
+
 def test_codespell_stays_advisory_and_scans_the_clean_checkout() -> None:
     job = _load("site-docs.yml")["jobs"]["docs-build"]
     names = [step.get("name") for step in job["steps"]]
