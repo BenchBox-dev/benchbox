@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "_project/scripts/browser_gate_aggregate.py and tests/unit/scripts/test_browser_gate_aggregate.py are deleted",
+    "git grep browser_gate_aggregate on develop matches only the comment-policy completed entry, CHANGELOG and tracker exports",
+    "make pr-preflight passes"
+  ],
+  "context": "Found 2026-10-17 while cleaning up site-removal leftovers (#3105); out of that PR's scope. Verified present with `git grep browser_gate_aggregate origin/develop`.",
+  "description": "_project/scripts/browser_gate_aggregate.py evaluated the Results Explorer browser gate. Its only caller, .github/workflows/results-explorer-browser.yml, was deleted with the site removal (#3096, 364a6e9cd), so nothing runs it. It still exists on develop (27f7a7d1f), with:\n- its test tests/unit/scripts/test_browser_gate_aggregate.py;\n- a soundness self-change entry at scripts/pr_refresh_certification.py:101 and the test parameter at tests/unit/scripts/test_pr_refresh_certification.py:331;\n- a retained-path entry at tests/unit/test_release_infrastructure.py:771;\n- the release-cut `git rm` lists in Makefile:900 and :904;\n- a ledger row at docs/internal/dev-loop-property-ledger.md:144;\n- a completed-scope entry at quality/comment-policy.json:132 (the ratchet in scripts/check_comment_policy.py:97-98 forbids removing completed scopes, so that entry stays).\n\nDelete the script and its test, and remove the references above except the comment-policy entry.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T22:17:26Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "57ef968965e446879f3d010a6a5f3766",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}

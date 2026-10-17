@@ -1884,6 +1884,13 @@
       "status": "done",
       "title": "Break benchbox root-package import cycle pulled in by utils/version.py and utils/datagen_manifest.py"
     },
+    "browser-gate-aggregate-dead-script-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Delete the dead Results Explorer browser-gate aggregate script and its test"
+    },
     "browser-gate-aggregate-script-contract-tests-20260805": {
       "claim": null,
       "needs": [
