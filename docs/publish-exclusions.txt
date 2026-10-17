@@ -1,7 +1,6 @@
 # Paths under docs/ that are never published on the public site.
 #
-# Both doc builds read this file: the Astro converter
-# (website/src/converter/sources.ts) and Sphinx (docs/conf.py). It lives under
+# The site build in BenchBox-dev/benchbox-site reads this file. It lives under
 # docs/ so the site build receives it with the pages it governs.
 #
 # A line ending in "/" excludes a whole top-level directory. Any other line

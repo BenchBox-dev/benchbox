@@ -40,35 +40,3 @@ def test_compare_deep_link_exception_matches_published_receipts() -> None:
 )
 def test_compare_deep_link_exception_does_not_mask_other_live_routes(url: str) -> None:
     assert compare_deep_link_pattern().fullmatch(url) is None
-
-
-ABLOG_CATALOG_PREFIX = "(.*/)?"
-
-
-def ablog_catalog_patterns() -> list[re.Pattern[str]]:
-    patterns = [
-        line for line in IGNORE_FILE.read_text(encoding="utf-8").splitlines() if line.startswith(ABLOG_CATALOG_PREFIX)
-    ]
-    assert len(patterns) == 3
-    return [re.compile(pattern) for pattern in patterns]
-
-
-@pytest.mark.parametrize("uri", ["archive.html", "tag.html", "author.html"])
-def test_ablog_catalog_exception_matches_builder_generated_pages(uri: str) -> None:
-    assert any(pattern.match(uri) for pattern in ablog_catalog_patterns())
-
-
-@pytest.mark.parametrize(
-    "uri",
-    [
-        "archives.html",
-        "tagcloud.html",
-        "tags.html",
-        "authors.html",
-        "author/joe-harris.html",
-        "tag/duckdb.html",
-        "blog/archive/",
-    ],
-)
-def test_ablog_catalog_exception_does_not_mask_neighbor_pages(uri: str) -> None:
-    assert not any(pattern.match(uri) for pattern in ablog_catalog_patterns())

@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_SYMBOLS = REPO_ROOT / "_project" / "design" / "site-inventory" / "api-public-symbols.json"
+DEFAULT_SYMBOLS = REPO_ROOT / "_project" / "design" / "api-public-symbols.json"
 
 PROBE = Path(__file__).resolve().with_name("api_contract_probe.py")
 MAX_WORKERS = 8

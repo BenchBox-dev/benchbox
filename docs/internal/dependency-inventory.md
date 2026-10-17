@@ -32,7 +32,7 @@ extract). Together:
    was deliberately avoided because it includes transitives and masks which
    extras group owns a package.
 2. **Source of truth for import sites.** Walked every `.py` file under
-   `benchbox/`, `scripts/`, `tests/`, `docs/conf.py`, and `docs/_static/` with
+   `benchbox/`, `scripts/` and `tests/` with
    `ast.parse` (`_project/scripts/dependency_audit/scan_imports.py`). For
    `from X import a, b` we record both `X` and the synthesized `X.a`, `X.b`
    so namespace packages (`google.cloud.*`, `azure.*`, `databricks.*`) are
@@ -45,11 +45,10 @@ extract). Together:
    import sites but is required by another live dep is annotated
    `transitive-via-X` rather than flagged unused.
 5. **Plugin-style deps verified.** `pytest-*`, `ruff`, `ty`, `tox`, `mutmut`,
-   `codespell`, `pre-commit`, `sphinx-*`, `furo`, `pygments`,
-   `roman-numerals`, `myst-parser` are CLI tools or build-time plugins.
+   `codespell`, `pre-commit` and `pygments` are CLI tools or build-time plugins.
    They are correctly absent from
    `import` lines and were verified live by checking the relevant config
-   surface (`pytest.ini`, `tox.ini`, `docs/conf.py`).
+   surface (`pytest.ini`, `tox.ini`).
 6. **Ongoing check.** `make audit-deps` runs
    `_project/scripts/dependency_audit/check_deps.py` in CI (`.github/workflows/lint.yml`)
    and fails if any declared package has zero import sites and is not in one
@@ -69,7 +68,6 @@ keep this map in sync when adding or auditing deps.
 | `pyyaml` | `yaml` |
 | `markdown-it-py` | `markdown_it` |
 | `psycopg2-binary` | `psycopg2` |
-| `pillow` | `PIL` |
 | `beautifulsoup4` *(not declared)* | `bs4` |
 | `google-cloud-bigquery` | `google.cloud.bigquery`, `google.cloud.bigquery_storage` |
 | `google-cloud-storage` | `google.cloud.storage` |
@@ -84,13 +82,6 @@ keep this map in sync when adding or auditing deps.
 | `presto-python-client` | `prestodb` |
 | `redshift-connector` | `redshift_connector` |
 | `firebolt-sdk` | `firebolt` |
-| `myst-parser` | `myst_parser` |
-| `sphinx-rtd-theme` | `sphinx_rtd_theme` |
-| `sphinx-tags` | `sphinx_tags` |
-| `sphinx-design` | `sphinx_design` |
-| `sphinx-copybutton` | `sphinx_copybutton` |
-| `sphinxcontrib-mermaid` | `sphinxcontrib.mermaid` |
-| `roman-numerals` | `roman_numerals` |
 | `ruamel-yaml` | `ruamel.yaml` |
 | `influxdb3-python` | `influxdb_client_3` |
 | `databend-driver` | `databend_driver` |
@@ -190,17 +181,7 @@ or declaration appears unused.
 | `cloudpathlib[s3,gs,azure]` | DEV | tests use `cloudpathlib` core | covered above | KEEP - extras pin S3/GCS/Azure providers for live tests |
 | `pyiceberg[sql-sqlite,pyarrow]` | DEV | tests use `pyiceberg` core | covered above | KEEP - extras pin SQL-SQLite catalog for tests |
 | `ruamel-yaml` | DEV | (none) | 0 | **REMOVAL CANDIDATE** - its only consumer was `_project/scripts/todo_cli.py`, removed in the 0.6.x MCP cutover. todo-db now handles YAML import through `pyyaml` (`_project/scripts/pyproject.toml`). No current declaration or import; confirm before dropping. |
-| `sphinx` | DOC | `tests/conftest.py`, `tests/unit/docs/test_docs_build.py` | 2 | KEEP - drives docs build via `make docs-build` |
-| `sphinx-tags` | DOC | (config in `docs/conf.py:66`) | 0 | KEEP - registered in `extensions` list |
-| `sphinx-design` | DOC | (config in `docs/conf.py:68`) | 0 | KEEP |
-| `sphinxcontrib-mermaid` | DOC | (config in `docs/conf.py:65`) | 1 | KEEP |
-| `myst-parser` | DOC | (config in `docs/conf.py:64`) | 0 | KEEP - markdown parser for docs |
-| `furo` | DOC | (`docs/conf.py:html_theme = "furo"`) | 0 | KEEP - active Sphinx theme |
-| `pygments` | DOC | `docs/_static/pygments_cobalt2.py`, `docs/conf.py` | 4 | KEEP - custom code-block style |
-| `roman-numerals` | DOC | (transitive of Sphinx 9) | 0 | KEEP - Sphinx 9 needs `roman_numerals` module; v4.x broke the import (cap `<4.0`) |
-| `ablog` | DOC | `tests/unit/docs/test_docs_build.py:28`, `docs/conf.py:69` | 1 | KEEP - Sphinx blog extension; configured in `docs/conf.py` |
-| `sphinx-rtd-theme` | DOC | - | 0 | **FLAG-DEAD-EXTRA** - declared in `dep-group:dev` but `docs/conf.py` sets `html_theme = "furo"`. Not referenced anywhere in repo source. See finding F5. |
-| `sphinx-copybutton` | DOC | - | 0 | **FLAG-DEAD-EXTRA** - declared in `dep-group:dev` but **not** listed in `docs/conf.py:extensions`. Sphinx will not load it. See finding F6. |
+| `pygments` | DEV | `scripts/comment_syntax.py` | 1 | KEEP - comment-policy lexers |
 
 (Total declared package names: **76**. KEEP: **70**. FLAG-*: **6**.)
 
@@ -271,75 +252,21 @@ or declaration appears unused.
 - **Risk:** Removing the explicit declarations would reintroduce silent
   fragility - minimal QuestDB or Azure-only installs would lose `requests`.
 
-### F5 - `sphinx-rtd-theme` is dead
+### F5 and F6 - Sphinx extras
 
-- **Where:** `pyproject.toml` line 487 (`[dependency-groups] dev`).
-- **Evidence:**
-  - `docs/conf.py:130` sets `html_theme = "furo"`.
-  - `sphinx_rtd_theme` does not appear in any Python file or RST file across
-    the repo. Only references are in `pyproject.toml`, this audit, and
-    `dependency-compatibility.md`.
-- **Recommended action:** Remove `sphinx-rtd-theme>=3.1.0` from
-  `[dependency-groups] dev`.
-- **Risk:** None. Theme switch to furo happened earlier; this dep was not
-  cleaned up.
-
-### F6 - `sphinx-copybutton` is declared but not loaded
-
-- **Where:** `pyproject.toml` line 491 (`[dependency-groups] dev`).
-- **Evidence:**
-  - `docs/conf.py:59` lists `extensions = [..., "myst_parser", "sphinxcontrib.mermaid", "sphinx_tags", "sphinx_tags_fix", "sphinx_design", "ablog"]`.
-  - `sphinx_copybutton` is not in that list, so Sphinx will **not** activate
-    it. The package is installed but inert.
-- **Recommended action:** Decide between two outcomes:
-  - **Drop:** Remove `sphinx-copybutton>=0.5.2` from `dep-group:dev`.
-  - **Wire up:** Add `"sphinx_copybutton"` to `docs/conf.py:extensions` if
-    copy buttons in code blocks are wanted.
-  Either choice is fine - the current state (declared, not wired) is a bug.
-- **Risk:** None for the drop path. Wiring it up requires a docs rebuild.
-
-### F7 - `pandas` removed from core dependencies (RESOLVED 2026-05-30)
-
-- **Where:** `pyproject.toml` `[project] dependencies` (previously `pandas>=2.0.0`).
-- **Background:** v0.3.0 shipped a broken clean install: `import benchbox`
-  raised `ImportError` without pandas because `clickhouse/client.py` did a
-  top-level `import pandas`, reachable from `import benchbox` via
-  `adapter_factory` -> `clickhouse/__init__` eager re-exports. PR #681 patched
-  the symptom by adding pandas to core deps (~41.5 MB tax on every install,
-  incl. SQL-only users), contradicting this inventory's `DF/BM` classification.
-- **Resolution (applies the F1 pattern to pandas):**
-  - Made the sole reachable pandas import lazy (`clickhouse/client.py`
-    `_arrow_to_dataframe`); made `clickhouse/__init__` re-exports lazy (PEP 562)
-    so importing `clickhouse.deployment_mode` no longer pulls adapter/client;
-    converted latent top-level pandas imports in `joinorder`, `ssb`, and
-    `joinorder_synthetic` dataframe_queries to in-function imports.
-  - Removed `pandas>=2.0.0` from core deps. It remains in
-    `extras:{pandas,dataframe-pandas,tpcdi,dask,all}` and is pulled
-    transitively by `chdb`, so DataFrame mode, TPC-DI, and ClickHouse-local
-    runs are unaffected.
-- **Import-surface audit (post-fix):** heavy modules still eagerly imported on
-  `import benchbox` are `numpy`, `pydantic`, and `sqlglot` - all genuinely core
-  (numerics, config models, SQL translation); accepted. `duckdb` is reached
-  only via guarded/optional paths and is **not** required for a core import
-  (verified: a core-only wheel installs 24 packages, excludes pandas, imports
-  and runs `benchbox --help`).
-- **Regression guard:** the wheel smoke in `test.yml`/`nightly.yml` (and the
-  post-publish check in `release.yml`) now asserts `find_spec('pandas') is None`
-  on a core install, and `tests/unit/test_release_infrastructure.py` asserts
-  `import benchbox` succeeds with pandas unavailable and never imports it.
+Resolved: the Sphinx documentation build and every Sphinx package left the
+repository when benchbox.dev moved to `BenchBox-dev/benchbox-site`.
 
 ---
 
 ## Used-but-undeclared findings
 
-Walking `benchbox/`, `scripts/`, `tests/`, `docs/conf.py`, and `docs/_static/`
+Walking `benchbox/`, `scripts/` and `tests/`
 turned up the following top-level imports for which **no** `pyproject.toml`
 declaration exists. Each is classified below.
 
 | Top-level module | Classification | Notes |
 | --- | --- | --- |
-| `PIL` | declared (dev) | `scripts/capture_chart_images.py` - PIL.Image for chart PNG output. Declared as `pillow>=10.0.0` in `[dependency-groups] dev`. |
-| `ansi2html` | declared (dev) | `scripts/capture_chart_images.py` - ANSI→HTML conversion for chart captures. Declared as `ansi2html>=1.8.0` in `[dependency-groups] dev`. |
 | `chardet` | transitive-reach | Pulled in by `requests` / cloud SDKs. Direct use is implicit; safe today. |
 | `coverage` | transitive-reach | Pulled in by `pytest-cov`. Safe. |
 | `cryptography` | transitive-reach | Pulled in by `snowflake-connector-python`, `azure-identity`. Safe. |
@@ -351,12 +278,10 @@ declaration exists. Each is classified below.
 | `pysail` | guarded optional | LakeSail Spark distribution; guarded import in `benchbox/platforms/lakesail.py`. |
 | `sentence_transformers`, `spacy`, `textblob`, `torch` | declared (extras) | NLP / ML stacks for `benchbox/core/ai_primitives/`. All guarded behind `try/except`. Now declared in `extras:ai-primitives` as `sentence-transformers>=2.0.0`, `torch>=2.0.0`, `textblob>=0.17.0`, `spacy>=3.0.0`. |
 | `urllib3` | transitive-reach | Pulled in by `requests`. Safe. |
-| `pygments_cobalt2` | first-party | Lives at `docs/_static/pygments_cobalt2.py`. Not a third-party package. |
-| `automate_release`, `build_release`, `capture_chart_images`, `check_windows_antipatterns`, `examples`, `finalize_release`, `generate_corpus_inventory`, `scripts`, `tests`, `unified_runner`, `unified_test_runner`, `update_version`, `utilities`, `validate_submission`, `validate_visualization_images`, `verify_release` | first-party | Local scripts / packages - not third-party. |
+| `automate_release`, `build_release`, `check_windows_antipatterns`, `examples`, `finalize_release`, `generate_corpus_inventory`, `scripts`, `tests`, `unified_runner`, `unified_test_runner`, `update_version`, `utilities`, `validate_submission`, `verify_release` | first-party | Local scripts / packages - not third-party. |
 
 **Status after `declare-undeclared-runtime-imports`:**
 
-- `pillow` and `ansi2html` declared in `[dependency-groups] dev` (used by `scripts/capture_chart_images.py` only).
 - `sentence_transformers`, `spacy`, `textblob`, `torch` declared in `extras:ai-primitives`.
 - `PIL` in `benchbox/` or `tests/` - zero import sites found; no declaration needed in runtime extras.
 
@@ -384,7 +309,7 @@ declaration exists. Each is classified below.
 | Total declared packages | 76 |
 | KEEP | 70 |
 | FLAG-* (elimination candidates) | 6 |
-| Used-but-undeclared (audit candidates) | 0 (all resolved: `pillow`+`ansi2html` → dev group; AI-primitives → `extras:ai-primitives`) |
+| Used-but-undeclared (audit candidates) | 0 (all resolved: AI-primitives → `extras:ai-primitives`) |
 
 Each FLAG-* finding has a corresponding follow-up TODO under
 `_project/TODO/main/planning/`. This audit performs **no removals**; the

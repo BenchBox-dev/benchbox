@@ -21,7 +21,7 @@ Complete reference documentation for BenchBox APIs, CLI, and data formats.
 ## Python API
 
 - [API Reference](api-reference.md) - Python API overview
-- [Python API Documentation](python-api/index.md) - Detailed API reference (Sphinx)
+- [Python API Documentation](python-api/index.md) - Detailed API reference
 - [Public Contracts and Support Taxonomy](public-contracts.md) - Compatibility tiers, support status vocabulary, and source-of-truth map
 
 ## Integrations

@@ -192,7 +192,6 @@ def test_subcommands_table_covers_all_make_targets():
         "gate-check",
         "validate",
         "package",
-        "explorer-smoke",
         "report",
         "sweep",
         "stress",
@@ -510,7 +509,7 @@ def _write_stage(tmp_path: Path, index: int, name: str, completed_at: str, **ove
         "aborted": False,
         "abort_phase": None,
         "abort_reason": None,
-        "phase_exit_codes": {"execute": 0, "validate": 0, "explorer_smoke": 0, "report": 0},
+        "phase_exit_codes": {"execute": 0, "validate": 0, "report": 0},
         "accounting": gate_summary.PhaseAccounting(attempted=5, passed=5, total_defined=5),
         "unreachable_is_estimated": False,
         "validator_clean_rate": 1.0,
@@ -519,7 +518,6 @@ def _write_stage(tmp_path: Path, index: int, name: str, completed_at: str, **ove
         "cross_scale_clean_pairs": 10,
         "cross_scale_floor": 8,
         "cross_scale_floor_breached": False,
-        "explorer_smoke_status": "ran",
         "verdict": "green",
     }
     if "artifact_digests" not in overrides:

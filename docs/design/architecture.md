@@ -40,7 +40,7 @@ Two classifications do most of the work:
 | Result JSON bundles (schema-versioned product data) | `beta-public` | `benchbox/core/results/schema_policy.py`, `benchbox/core/results/schema.py` |
 | Explorer browser store (DuckDB + summaries, built from bundles) | `generated` | Explorer publish pipeline (repository tooling); reproducible from source bundles plus pipeline code |
 | Public result submissions and their validation behavior | `beta-public` | `scripts/validate_submission.py`, `docs/reference/hosted-results-contract.md`, `docs/contributing-results.md` |
-| Semantic chart IDs shared by CLI, MCP, templates, and Explorer | `beta-public` | `benchbox/core/visualization/chart_types.py`, `results-explorer/src/lib/chartRegistry.ts`, `tests/parity/fixtures/chart_ids.json` |
+| Semantic chart IDs shared by CLI, MCP, templates, and Explorer | `beta-public` | `benchbox/core/visualization/chart_types.py`, `tests/parity/fixtures/chart_ids.json` (the Explorer registry lives in `BenchBox-dev/benchbox-site`) |
 | `benchbox.experimental` namespace | `experimental` | Ships in the wheel for convenience, outside the supported product surface |
 | Maintainer scripts, audits, and planning records | `repo-only` | Maintainer tooling, not a user API |
 
@@ -176,7 +176,6 @@ carries contract obligations from the map:
 | Path | Purpose | Tier |
 |---|---|---|
 | `benchbox/` | Installable product: benchmarks, platforms, CLI, MCP, results, visualization | `beta-public` surface over `internal` engine |
-| `results-explorer/` | Browser application for published results | Product UI over a `generated` store |
 | `results-data/` | Public result corpus and validation metadata | Published data |
 | `docs/` | User, concept, reference, and contributor documentation | Varies by page; the map governs |
 | `tests/` | Unit, integration, end-to-end, parity, and live suites | Verification gates per map row |

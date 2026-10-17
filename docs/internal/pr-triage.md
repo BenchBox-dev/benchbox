@@ -41,27 +41,6 @@ item and keep that side's resolution. Do not resurrect an archived item by
 re-adding the modified-but-stale copy — that reintroduces work the other
 side had already closed out.
 
-## Browser-lane triage
-
-- Chromium's full e2e suite **does** gate develop merges. It is the
-  `explorer-e2e` job of the required `explorer` unit (ruleset
-  `develop-squash-only`). The unit is path-aware through `.github/ci-units.yml`:
-  a red Chromium run on explorer-relevant paths makes the PR unmergeable;
-  unrelated PRs get a green `explorer` unit without running the
-  suite. Before attributing a red Chromium (or `explorer`) result to the PR under
-  review, check whether develop's own tip is already red for the same
-  reason; a pre-existing develop-side failure is not the PR's fault.
-  Full wiring and lane status:
-  [`docs/internal/browser-ci.md`](browser-ci.md) (merge-gate decision).
-  Historical tracker id `chromium-blocking-suite-not-in-required-checks`
-  described the pre-ruleset state and is no longer accurate.
-- Firefox `@smoke` runs nightly and has been green in recent history — a red
-  Firefox run is worth investigating as a real signal, not waved off as
-  routine flake.
-- WebKit failures are **not** dismissible as flake. See
-  `docs/internal/browser-ci.md` for current lane status and the
-  triage rule in force there.
-
 ## `mergeable_state` semantics
 
 - `dirty` — a real merge conflict against the base branch; the PR needs a

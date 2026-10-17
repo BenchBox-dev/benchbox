@@ -1,6 +1,0 @@
-[
-  {"label": "SF=1     (1 GB each)",       "value": 1},
-  {"label": "SF=10    (10 GB vs 100 GB)", "value": 10},
-  {"label": "SF=100   (100 GB vs 10 TB)", "value": 100},
-  {"label": "SF=1000  (1 TB vs 1 PB)",   "value": 1000}
-]

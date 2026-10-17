@@ -24,7 +24,6 @@ tests/uat/
 │   ├── execute.py
 │   ├── validate.py
 │   ├── package.py
-│   ├── explorer_smoke.py
 │   └── report.py
 ├── configs/
 │   ├── stress-default.yaml        # TEMPLATE preset for `make uat-stress`
@@ -150,5 +149,4 @@ There is no frozen-hash file or hash-enforcement test.
 The framework imports registry truth directly from `benchbox.core.*`
 helpers and validates result bundles in-process through
 `benchbox.validation.bundle`. It does not shell out to validator scripts.
-Explorer smoke still uses the Results Explorer build and Playwright
-entrypoints; package still delegates to `benchbox submit`.
+Package still delegates to `benchbox submit`.

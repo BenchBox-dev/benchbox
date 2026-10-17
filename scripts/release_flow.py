@@ -18,8 +18,8 @@ CLI_DESCRIPTION = (
     "Two subcommands, exposed as ``make release-prep`` and ``make release-check``:\n"
     "\n"
     "``prep --version X.Y.Z``\n"
-    "    Bumps every version marker (``benchbox/__init__.py``, ``pyproject.toml``,\n"
-    "    the documentation release markers, the landing-page badge) with\n"
+    "    Bumps every version marker (``benchbox/__init__.py``, ``pyproject.toml``\n"
+    "    and the documentation release markers) with\n"
     "    ``scripts/update_version.py``, refreshes ``uv.lock`` with ``uv lock``, and\n"
     "    drafts the ``CHANGELOG.md`` section with\n"
     "    ``scripts/generate_changelog_entry.py``. The result is one normal PR diff.\n"
@@ -31,7 +31,7 @@ CLI_DESCRIPTION = (
     "    found:\n"
     "\n"
     "    * ``pyproject.toml``, ``benchbox/__init__.py``, the documentation release\n"
-    "      markers, the landing-page badge, and the ``uv.lock`` package entry all\n"
+    "      markers and the ``uv.lock`` package entry all\n"
     "      carry the requested version;\n"
     "    * ``CHANGELOG.md`` has a dated, hand-curated section for the version;\n"
     "    * the ``uv.lock`` schema revision has not been downgraded;\n"
@@ -130,13 +130,6 @@ def check_version_markers(root: Path, version: str) -> list[str]:
             match = update_version.DOC_RELEASE_PATTERN.search(path.read_text(encoding="utf-8"))
             found = match.group("version").rstrip(".") if match else None
         expect(doc.as_posix(), found)
-
-    landing = root / update_version.LANDING_PAGE_PATH
-    found = None
-    if landing.is_file():
-        match = update_version.LANDING_VERSION_PATTERN.search(landing.read_text(encoding="utf-8"))
-        found = match.group("version") if match else None
-    expect("landing/index.html badge", found)
 
     lock_version = _lock_version(root)
     expected_lock = normalize_version(version)
@@ -292,7 +285,6 @@ def select_candidate(root: Path, base_sha: str) -> tuple[bool, str]:
         "uv.lock",
         "CHANGELOG.md",
         *(p.as_posix() for p in update_version.DOCUMENTATION_PATHS),
-        update_version.LANDING_PAGE_PATH.as_posix(),
     ]
 
     def signature(contents: dict[str, str]) -> tuple:
@@ -310,8 +302,7 @@ def select_candidate(root: Path, base_sha: str) -> tuple[bool, str]:
             update_version.DOC_RELEASE_PATTERN.search(contents[p.as_posix()])
             for p in update_version.DOCUMENTATION_PATHS
         ]
-        badge = update_version.LANDING_VERSION_PATTERN.search(contents[update_version.LANDING_PAGE_PATH.as_posix()])
-        if init is None or badge is None or any(match is None for match in docs):
+        if init is None or any(match is None for match in docs):
             raise ValueError("release selection found a missing managed version marker")
         section = re.search(
             rf"^## \[{re.escape(project_version)}\][^\n]*\n.*?(?=^## |\Z)",
@@ -322,7 +313,6 @@ def select_candidate(root: Path, base_sha: str) -> tuple[bool, str]:
             project_version,
             init[1],
             *(match.group("version").rstrip(".") for match in docs),
-            badge.group("version"),
             packages[0]["version"],
             lock["version"],
             lock["revision"],

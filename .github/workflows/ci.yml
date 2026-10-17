@@ -36,9 +36,6 @@ jobs:
           enable-cache: false
           working-directory: ${{ runner.temp }}
           ignore-empty-workdir: true
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
-        with:
-          node-version: '20'
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
           fetch-depth: 0
@@ -52,10 +49,9 @@ jobs:
           : "${BASE_REF:?BASE_REF is required}"
           installed="$(git ls-tree -r --name-only "$BASE_REF" -- \
             scripts/check_comment_policy.py scripts/check_comment_cleanup_scope.py \
-            scripts/comment_syntax.py scripts/comment_syntax_js.cjs \
+            scripts/comment_syntax.py \
             scripts/comment_payloads.py scripts/comment_execution.py scripts/comment_policy_entry.py \
-            quality/comment-policy.json quality/comment-policy-requirements.txt \
-            quality/comment-policy-package.json quality/comment-policy-package-lock.json)"
+            quality/comment-policy.json quality/comment-policy-requirements.txt)"
           if git cat-file -e "${BASE_REF}:scripts/run_comment_policy.py" 2>/dev/null; then
             git show "${BASE_REF}:scripts/run_comment_policy.py" > "$RUNNER_TEMP/comment-policy-runner.py"
           elif [ -z "$installed" ] && git merge-base --is-ancestor ed5c263c513ba65499f4918d3a7de607f280c65b "$BASE_REF"; then
@@ -64,7 +60,7 @@ jobs:
             echo "Trusted comment-policy launcher is missing" >&2
             exit 1
           fi
-          python -I "$RUNNER_TEMP/comment-policy-runner.py" --native-tests
+          python -I "$RUNNER_TEMP/comment-policy-runner.py"
       - name: Enforce pinned notice drift
         env:
           BASE_REF: ${{ github.event.pull_request.base.sha }}
@@ -98,9 +94,11 @@ jobs:
       estimated-runner-minutes-saved: ${{ steps.classify.outputs.estimated-runner-minutes-saved }}
       packaging-needed: ${{ steps.classify.outputs.packaging-needed }}
       framing-needed: ${{ steps.classify.outputs.framing-needed }}
+      viz-needed: ${{ steps.classify.outputs.viz-needed }}
       heavy-needed: ${{ steps.heavy.outputs.heavy-needed }}
       unit-core: ${{ steps.units.outputs.unit-core }}
       unit-results-data: ${{ steps.units.outputs.unit-results-data }}
+      unit-docs: ${{ steps.units.outputs.unit-docs }}
       unit-tooling: ${{ steps.units.outputs.unit-tooling }}
       code-tests-needed: ${{ steps.units.outputs.code-tests-needed }}
     steps:
@@ -179,9 +177,9 @@ jobs:
           validator=false
           api=false
           tuning=false
-          if grep -qE '^(_project/audits/|results-explorer/e2e/captures/)' .ci-paths/changed.txt; then audit=true; fi
+          if grep -qE '^_project/audits/' .ci-paths/changed.txt; then audit=true; fi
           if grep -qxE '\.github/workflows/validate-submission\.yml|scripts/check_submission_validator_sync\.py' .ci-paths/changed.txt; then validator=true; fi
-          if grep -qxE '_project/design/site-inventory/api-public-symbols\.json|scripts/check_api_contract_symbols\.py|scripts/api_contract_probe\.py' .ci-paths/changed.txt; then api=true; fi
+          if grep -qxE '_project/design/api-public-symbols\.json|scripts/check_api_contract_symbols\.py|scripts/api_contract_probe\.py' .ci-paths/changed.txt; then api=true; fi
           echo "audit-paths-changed=$audit" >> "$GITHUB_OUTPUT"
           echo "submission-validator-changed=$validator" >> "$GITHUB_OUTPUT"
           echo "api-contract-changed=$api" >> "$GITHUB_OUTPUT"
@@ -917,25 +915,6 @@ jobs:
       - name: Install dependencies
         run: uv sync --group dev
 
-      - name: Set up Node.js for TypeScript comment parsing
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
-        with:
-          node-version: '20'
-
-      - name: Install locked TypeScript parser
-        shell: bash
-        run: |
-          set -euo pipefail
-          package_dir="$RUNNER_TEMP/comment-policy-node"
-          mkdir -p "$package_dir"
-          cp quality/comment-policy-package.json "$package_dir/package.json"
-          cp quality/comment-policy-package-lock.json "$package_dir/package-lock.json"
-          (
-            cd "$package_dir"
-            npm ci --ignore-scripts --no-audit --no-fund
-          )
-          echo "COMMENT_POLICY_TYPESCRIPT=$package_dir/node_modules/typescript" >> "$GITHUB_ENV"
-
       - name: Download medium collection evidence
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
@@ -1259,6 +1238,29 @@ jobs:
             tests/unit/publication \
             tests/unit/explorer
 
+  parity-check:
+    name: parity-check
+    needs: ci-paths
+    if: ${{ needs.ci-paths.outputs.viz-needed == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Verify parity fixtures match Python source
+        run: make parity-check
+
   api-contract-check:
     name: api-contract-check
     needs: ci-paths
@@ -1276,6 +1278,49 @@ jobs:
 
       - name: Verify public API symbols against the released wheel
         run: make api-contract-check
+
+  example-validation:
+    needs: ci-paths
+    if: ${{ needs.ci-paths.outputs.unit-docs == 'true' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Validate examples and docs references
+        run: make docs-validate
+
+      - name: Generate documentation inputs
+        run: make docs-generate
+
+  spellcheck:
+    needs: ci-paths
+    if: ${{ needs.ci-paths.outputs.unit-docs == 'true' }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Run codespell
+        run: >-
+          uvx --from 'codespell[toml]==2.4.3' codespell
+          --ignore-words .codespell-ignore.txt
+          --skip "*.pyc,_build,*.json,*.lock,*.svg,*.min.js,*.min.css,_binaries,*.tpl,*.dst,*.tbl,_sources,benchmark_runs,*.dat,*.pdf,_project,htmlcov,.venv"
 
   core:
     name: core
@@ -1344,6 +1389,51 @@ jobs:
           gh run cancel "${{ github.run_id }}" --repo "${{ github.repository }}" || true
           sleep 90
 
+  explorer:
+    name: explorer
+    needs: [ci-paths, parity-check]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Checkout the result helper
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          sparse-checkout: scripts/ci_unit_result.py
+          sparse-checkout-cone-mode: false
+
+      - name: Aggregate explorer result
+        id: aggregate
+        env:
+          NEEDS_JSON: ${{ toJson(needs) }}
+        run: |
+          set -euo pipefail
+          python scripts/ci_unit_result.py \
+            --unit explorer \
+            --needs "$NEEDS_JSON" \
+            --always ci-paths \
+            --expect parity-check=${{ needs.ci-paths.outputs.viz-needed == 'true' }} || {
+            rc=$?
+            if [ "$rc" -eq 3 ]; then
+              echo "superseded=true" >> "$GITHUB_OUTPUT"
+            fi
+            exit "$rc"
+          }
+
+      - name: Cancel superseded run so the aggregate concludes cancelled
+        if: always() && cancelled() && steps.aggregate.outputs.superseded == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh run cancel "${{ github.run_id }}" --repo "${{ github.repository }}" || true
+          sleep 90
+
   results-data:
     name: results-data
     needs: [ci-paths, results-data-check]
@@ -1373,6 +1463,96 @@ jobs:
             --needs "$NEEDS_JSON" \
             --always ci-paths \
             --expect results-data-check=${{ needs.ci-paths.outputs.unit-results-data == 'true' }} || {
+            rc=$?
+            if [ "$rc" -eq 3 ]; then
+              echo "superseded=true" >> "$GITHUB_OUTPUT"
+            fi
+            exit "$rc"
+          }
+
+      - name: Cancel superseded run so the aggregate concludes cancelled
+        if: always() && cancelled() && steps.aggregate.outputs.superseded == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh run cancel "${{ github.run_id }}" --repo "${{ github.repository }}" || true
+          sleep 90
+
+  docs:
+    name: docs
+    needs: [ci-paths, example-validation, spellcheck]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Checkout the result helper
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          sparse-checkout: scripts/ci_unit_result.py
+          sparse-checkout-cone-mode: false
+
+      - name: Aggregate docs result
+        id: aggregate
+        env:
+          NEEDS_JSON: ${{ toJson(needs) }}
+        run: |
+          set -euo pipefail
+          python scripts/ci_unit_result.py \
+            --unit docs \
+            --needs "$NEEDS_JSON" \
+            --always ci-paths \
+            --expect example-validation=${{ needs.ci-paths.outputs.unit-docs == 'true' }} \
+            --expect spellcheck=${{ needs.ci-paths.outputs.unit-docs == 'true' }} || {
+            rc=$?
+            if [ "$rc" -eq 3 ]; then
+              echo "superseded=true" >> "$GITHUB_OUTPUT"
+            fi
+            exit "$rc"
+          }
+
+      - name: Cancel superseded run so the aggregate concludes cancelled
+        if: always() && cancelled() && steps.aggregate.outputs.superseded == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh run cancel "${{ github.run_id }}" --repo "${{ github.repository }}" || true
+          sleep 90
+
+  landing:
+    name: landing
+    needs: [ci-paths]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Checkout the result helper
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          sparse-checkout: scripts/ci_unit_result.py
+          sparse-checkout-cone-mode: false
+
+      - name: Aggregate landing result
+        id: aggregate
+        env:
+          NEEDS_JSON: ${{ toJson(needs) }}
+        run: |
+          set -euo pipefail
+          python scripts/ci_unit_result.py \
+            --unit landing \
+            --needs "$NEEDS_JSON" \
+            --always ci-paths || {
             rc=$?
             if [ "$rc" -eq 3 ]; then
               echo "superseded=true" >> "$GITHUB_OUTPUT"

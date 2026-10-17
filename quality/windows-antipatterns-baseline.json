@@ -26,7 +26,7 @@
       "WA002": 1
     },
     "scripts/update_version.py": {
-      "WA003": 5
+      "WA003": 4
     },
     "scripts/validate_example_references.py": {
       "WA003": 1
@@ -293,7 +293,7 @@
       "WA003": 2
     },
     "tests/unit/scripts/test_comment_policy.py": {
-      "WA003": 4
+      "WA003": 3
     },
     "tests/unit/scripts/test_dev_loop_pr_metrics.py": {
       "WA003": 15
@@ -389,9 +389,6 @@
     },
     "tests/unit/workflows/test_corpus_trust_boundary.py": {
       "WA003": 2
-    },
-    "tests/unit/workflows/test_public_site_visual_workflow.py": {
-      "WA003": 4
     },
     "tests/validation/test_dsqgen_integration_light.py": {
       "WA001": 1

@@ -46,25 +46,12 @@ fails it. Checks run on the pull request head, which need not be current with
 | Required Context | Workflow Path | Contract |
 | --- | --- | --- |
 | `core` | `.github/workflows/ci.yml` | Lint, type checks, fast tests on Python 3.14 and parity gates on the PR head. On `pull_request`, the heavy tier (medium-test, correctness-gate, required-local-cases, plan-capture-gate, DataFusion integration, and the macOS and Windows TPC-H binary-framing matrix) is skipped unless a carve-out applies (soundness paths, packaging paths); `trunk.yml` runs the Python 3.12 fast lane, the medium tier, the correctness gate and `required-local-cases` on `develop` after each merge. |
-| `explorer` | `.github/workflows/site-docs.yml` | Token scan, Vitest, CLI-versus-explorer parity, and the blocking Chromium suite on explorer changes. Reports success on unaffected paths. |
+| `explorer` | `.github/workflows/ci.yml` | CLI-versus-explorer parity fixtures on Explorer pipeline and visualization changes. Reports success on unaffected paths. The Explorer app and its browser suite live in `BenchBox-dev/benchbox-site`. |
 | `results-data` | `.github/workflows/ci.yml` | Corpus inventory and validation, submission validator sync, and corpus contract tests on results-data changes. |
-| `docs` | `.github/workflows/site-docs.yml` | Sphinx build with warnings as errors, example validation, and spell check on docs changes. |
-| `landing` | `.github/workflows/site-docs.yml` | Site theme token scan on landing changes. |
+| `docs` | `.github/workflows/ci.yml` | Example validation, generated docs inputs (`make docs-generate`), and spell check on docs changes. The site build runs in `BenchBox-dev/benchbox-site`. |
+| `landing` | `.github/workflows/ci.yml` | Always passes. Kept only until the context is removed from the ruleset. |
 | `tooling` | `.github/workflows/ci.yml` | Every event. Base-branch guard, comment policy, content guard, skill integrity, and audit checks by path. |
 | `oracle-review` | `.github/workflows/oracle-review.yml` (job and check name `oracle-review`) | Passes when no soundness path changes, or when the `benchbox-oracle` app's latest review of the current head, submitted after any retarget, reports success and none of the app's threads is unresolved. Each new head gets its own oracle result (`.github/workflows/oracle-verdict.yml`; rerun with a `/oracle-review` comment): a full review, a follow-up on files whose patch changed, or the earlier decision carried over when a rebase or prose-only push leaves the patch unchanged (Rounds in `docs/internal/oracle-review-v2.md`). If the oracle cannot review or its verdict is overruled, the check also passes on an independent stand-in review of the exact head followed by a `Stand-in oracle review: APPROVE <full head SHA>` comment from an account in `STANDIN_ATTESTERS`, posted after the oracle's latest review of that head (dev-loop ADR, D4; `docs/internal/soundness-drain.md`). A plain owner comment does not. |
-
-The public-site visual comparison runs only when a render input changed, and
-compares against the exact protected base SHA that `.github/workflows/docs.yml`
-captures on every push to `develop`. It is advisory until the public site is
-in production: the job runs and uploads its report, but a difference or a
-missing baseline does not block a merge. Once the site is in production it
-becomes a required check again.
-
-The pull request that switches the public-site renderer from Sphinx to Astro
-needs an exact-head approval for its PR head, and the baseline producer must
-publish an Astro-rendered baseline for its merge commit. See the
-Renderer-switch pull request section of
-[Public-site visual baseline](../internal/public-site-visual-baseline.md).
 
 ---
 

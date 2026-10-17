@@ -291,7 +291,6 @@ def _run_sweep_phases(  # noqa: C901
     submissions_dir: Path | None = None
     validate_result: Any = None
     report_summary: Any = None
-    explorer_smoke_status = gate_summary.EXPLORER_SMOKE_NOT_RUN
 
     if not config.dry_run and "execute" in config.phases:
         for gate_warning in (disk_gate_disabled_warning(config), memory_gate_disabled_warning(config)):
@@ -505,53 +504,6 @@ def _run_sweep_phases(  # noqa: C901
                     container_engine=container_engine,
                 )
                 break
-        elif phase == "explorer_smoke":
-            from tests.uat.phases.explorer_smoke import run_explorer_smoke
-
-            bundles_dir = submissions_dir if submissions_dir is not None else log_dir / "bundles"
-            result = run_explorer_smoke(
-                bundles_dir=bundles_dir,
-                output_dir=log_dir / "explorer_data",
-                log_dir=log_dir,
-                playwright_browsers=config.explorer_smoke.playwright_browsers,
-                require_throughput_streams=config.explorer_smoke.require_throughput_streams,
-            )
-            phase_exit_codes[phase] = result.exit_code()
-            if getattr(result, "skipped", False):
-                explorer_smoke_status = (
-                    "skipped_no_node" if getattr(result, "skip_reason", None) == "node not on PATH" else "skipped"
-                )
-            else:
-                explorer_smoke_status = gate_summary.EXPLORER_SMOKE_RAN
-            if getattr(result, "skip_reason", None) == "node not on PATH":
-                recorded = cells_io.update_accounting_sidecar(cells_jsonl, explorer_smoke_status="skipped_no_node")
-                if recorded:
-                    print(
-                        "[explorer_smoke] WARNING: node not on PATH -- browser coverage skipped for this sweep "
-                        "(explorer_smoke_status=skipped_no_node recorded in the accounting sidecar)",
-                        file=sys.stderr,
-                    )
-                else:
-                    print(
-                        "[explorer_smoke] WARNING: node not on PATH -- browser coverage skipped for this sweep. "
-                        "explorer_smoke_status=skipped_no_node was NOT durably recorded: no accounting sidecar "
-                        "exists for this run (no execute phase wrote one), so this warning is the only record.",
-                        file=sys.stderr,
-                    )
-            if getattr(result, "aborted", False):
-                aborted_phase = phase
-                abort_reason = getattr(result, "abort_reason", None)
-                report_summary = _emit_abort_artifacts(
-                    config=config,
-                    log_dir=log_dir,
-                    attempted=(),
-                    execute_outcome=execute_outcome,
-                    source_info=source_info,
-                    aborted_phase=phase,
-                    abort_reason=abort_reason,
-                    container_engine=container_engine,
-                )
-                break
         elif phase == "report":
             if execute_outcome is None:
                 phase_exit_codes[phase] = 2
@@ -605,7 +557,6 @@ def _run_sweep_phases(  # noqa: C901
         execute_outcome=execute_outcome,
         report_summary=report_summary,
         validate_result=validate_result,
-        explorer_smoke_status=explorer_smoke_status,
     )
 
     return SweepResult(
@@ -775,7 +726,6 @@ def _write_gate_summary_artifact(
     execute_outcome: Any,
     report_summary: Any,
     validate_result: Any,
-    explorer_smoke_status: str,
 ) -> None:
     summary = gate_summary.GateSummary(
         config_name=config.name,
@@ -797,7 +747,6 @@ def _write_gate_summary_artifact(
         cross_scale_clean_pairs=(report_summary.cross_scale_clean_pairs if report_summary is not None else None),
         cross_scale_floor=(report_summary.cross_scale_floor if report_summary is not None else None),
         cross_scale_floor_breached=(report_summary.cross_scale_floor_breached if report_summary is not None else None),
-        explorer_smoke_status=explorer_smoke_status,
         artifact_digests=_collect_artifact_digests(log_dir),
         verdict=gate_summary.derive_verdict(
             dry_run=config.dry_run,

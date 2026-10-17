@@ -14,7 +14,7 @@ render less every week and would tie the reference to source prose.
 
 ## 1. Public-symbol list
 
-[`_project/design/site-inventory/api-public-symbols.json`](../design/site-inventory/api-public-symbols.json)
+[`_project/design/api-public-symbols.json`](../design/api-public-symbols.json)
 lists 81 symbols in five areas: benchmarks 28, utilities 21, core 12, results 10
 and platforms 10.
 

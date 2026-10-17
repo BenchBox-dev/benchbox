@@ -11,7 +11,7 @@
 BenchBox/
 ├── benchbox/              # Main package (see below)
 ├── tests/                 # Test suite
-├── docs/                  # Documentation (Sphinx/MyST)
+├── docs/                  # Documentation (Markdown)
 ├── docker/                # Docker configurations
 ├── examples/              # Example scripts and configs
 ├── scripts/               # Development and CI scripts

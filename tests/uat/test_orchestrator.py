@@ -74,7 +74,6 @@ def test_stress_default_yaml_loads():
     cfg = load_config(p)
     assert cfg.name == "stress-default"
     assert "package" not in cfg.phases
-    assert "explorer_smoke" not in cfg.phases
 
 
 def test_stress_docker_managed_yaml_loads():
@@ -111,55 +110,6 @@ def test_dry_run_passes_without_public_enumerate(tmp_path: Path):
     assert "enumerate" not in result.phase_exit_codes
 
 
-def test_explorer_smoke_uses_package_submissions_dir(tmp_path: Path):
-    cfg = validate_config(
-        {
-            "name": "smoke",
-            "phases": ["execute", "package", "explorer_smoke"],
-            "platforms": {"include": ["duckdb"]},
-            "benchmarks": {"include": ["tpch"]},
-            "scales": {"rungs": [0.01]},
-            "package": {"submit_terminal_state": "local-stage"},
-            "output": {"submissions_dir_template": str(tmp_path / "submissions" / "{name}")},
-        }
-    )
-    cell = CellResult(
-        platform="duckdb",
-        benchmark="tpch",
-        scale=0.01,
-        status="passed",
-        exit_code=0,
-        elapsed_s=1.0,
-        log_path=tmp_path / "cell.log",
-        result_path=tmp_path / "result.json",
-    )
-    execute_outcome = type(
-        "ExecuteOutcome",
-        (),
-        {"results": (cell,), "aborted": False, "abort_reason": None, "exit_code": lambda self: 0},
-    )()
-    captured: dict[str, Path] = {}
-
-    def fake_package(config, *, result_paths, submissions_dir):
-        captured["package_dir"] = submissions_dir
-        return type("PackageResult", (), {"aborted": False, "abort_reason": None, "exit_code": lambda self: 0})()
-
-    def fake_explorer_smoke(**kwargs):
-        captured["bundles_dir"] = kwargs["bundles_dir"]
-        return type("ExplorerResult", (), {"exit_code": lambda self: 0})()
-
-    with (
-        patch.object(orchestrator.exec_phase, "run_execute", return_value=execute_outcome),
-        patch("tests.uat.phases.package.run_package", side_effect=fake_package),
-        patch("tests.uat.phases.explorer_smoke.run_explorer_smoke", side_effect=fake_explorer_smoke),
-    ):
-        result = orchestrator.run_sweep(cfg, log_dir_override=tmp_path / "logs")
-
-    assert result.aborted_phase is None
-    assert captured["bundles_dir"] == captured["package_dir"]
-    assert captured["bundles_dir"] == tmp_path / "submissions" / "smoke"
-
-
 def test_report_phase_aborts_when_execute_outcome_missing(tmp_path: Path):
     cfg = validate_config({"name": "report-only", "phases": ["report"]})
 
@@ -181,134 +131,6 @@ def test_dry_run_report_only_sweep_stays_exit_zero(tmp_path: Path):
     assert result.aborted_phase is None
     assert result.exit_code() == 0
     assert result.phase_exit_codes == {"report": 0}
-
-
-def test_explorer_smoke_corpus_failure_emits_abort_artifacts(tmp_path: Path):
-    cfg = validate_config(
-        {
-            "name": "explorer-corpus-fail",
-            "phases": ["execute", "explorer_smoke"],
-            "platforms": {"include": ["duckdb"]},
-            "benchmarks": {"include": ["tpch"]},
-            "scales": {"rungs": [0.01]},
-        }
-    )
-    cell = CellResult(
-        platform="duckdb",
-        benchmark="tpch",
-        scale=0.01,
-        status="passed",
-        exit_code=0,
-        elapsed_s=1.0,
-        log_path=tmp_path / "cell.log",
-        result_path=tmp_path / "result.json",
-    )
-    execute_outcome = type(
-        "ExecuteOutcome",
-        (),
-        {"results": (cell,), "aborted": False, "abort_reason": None, "exit_code": lambda self: 0},
-    )()
-    aborted_result = type(
-        "ExplorerResult",
-        (),
-        {
-            "aborted": True,
-            "abort_reason": "Explorer smoke corpus contract failed:\n  - no result bundles",
-            "skip_reason": None,
-            "exit_code": lambda self: 2,
-        },
-    )()
-
-    with (
-        patch.object(orchestrator.exec_phase, "run_execute", return_value=execute_outcome),
-        patch("tests.uat.phases.explorer_smoke.run_explorer_smoke", return_value=aborted_result),
-    ):
-        result = orchestrator.run_sweep(cfg, log_dir_override=tmp_path / "logs")
-
-    assert result.aborted_phase == "explorer_smoke"
-    assert result.exit_code() == 2
-    partial_text = (tmp_path / "logs" / "matrix_summary.partial.tsv").read_text(encoding="utf-8")
-    assert "# run_status=ABORTED" in partial_text
-    assert "abort_phase=explorer_smoke" in partial_text
-
-
-def test_explorer_smoke_node_missing_records_sidecar_status_and_warns(tmp_path: Path, capsys):
-    cfg = validate_config(
-        {
-            "name": "explorer-node-missing",
-            "phases": ["execute", "explorer_smoke"],
-            "platforms": {"include": ["duckdb"]},
-            "benchmarks": {"include": ["tpch"]},
-            "scales": {"rungs": [0.01]},
-        }
-    )
-    cell = CellResult(
-        platform="duckdb",
-        benchmark="tpch",
-        scale=0.01,
-        status="passed",
-        exit_code=0,
-        elapsed_s=1.0,
-        log_path=tmp_path / "cell.log",
-        result_path=tmp_path / "result.json",
-    )
-    execute_outcome = type(
-        "ExecuteOutcome",
-        (),
-        {"results": (cell,), "aborted": False, "abort_reason": None, "exit_code": lambda self: 0},
-    )()
-    skipped_result = type(
-        "ExplorerResult",
-        (),
-        {
-            "aborted": False,
-            "abort_reason": None,
-            "skipped": True,
-            "skip_reason": "node not on PATH",
-            "exit_code": lambda self: 0,
-        },
-    )()
-
-    with (
-        patch.object(orchestrator.exec_phase, "run_execute", return_value=execute_outcome),
-        patch("tests.uat.phases.explorer_smoke.run_explorer_smoke", return_value=skipped_result),
-    ):
-        result = orchestrator.run_sweep(cfg, log_dir_override=tmp_path / "logs")
-
-    assert result.aborted_phase is None
-    assert result.phase_exit_codes["explorer_smoke"] == 0
-    accounting = json.loads((tmp_path / "logs" / "cells.jsonl.accounting.json").read_text(encoding="utf-8"))
-    assert accounting["explorer_smoke_status"] == "skipped_no_node"
-    stderr = capsys.readouterr().err
-    assert "node not on PATH" in stderr
-    assert "skipped_no_node" in stderr
-    assert "recorded in the accounting sidecar" in stderr
-    assert "NOT durably recorded" not in stderr
-
-
-def test_explorer_smoke_node_missing_warns_not_durably_recorded_without_sidecar(tmp_path: Path, capsys):
-    cfg = validate_config({"name": "explorer-node-missing-no-sidecar", "phases": ["explorer_smoke"]})
-    skipped_result = type(
-        "ExplorerResult",
-        (),
-        {
-            "aborted": False,
-            "abort_reason": None,
-            "skipped": True,
-            "skip_reason": "node not on PATH",
-            "exit_code": lambda self: 0,
-        },
-    )()
-
-    with patch("tests.uat.phases.explorer_smoke.run_explorer_smoke", return_value=skipped_result):
-        result = orchestrator.run_sweep(cfg, log_dir_override=tmp_path / "logs")
-
-    assert result.aborted_phase is None
-    assert result.phase_exit_codes["explorer_smoke"] == 0
-    assert not (tmp_path / "logs" / "cells.jsonl.accounting.json").exists()
-    stderr = capsys.readouterr().err
-    assert "node not on PATH" in stderr
-    assert "NOT durably recorded" in stderr
 
 
 def test_package_phase_excludes_failed_cells_result_paths(tmp_path: Path):
@@ -1381,54 +1203,6 @@ def test_disk_floor_abort_threads_startup_failed_count_into_sidecar_and_partial_
     assert "attempted=1 skipped=0 unreachable=0 startup_failed=1 died_mid_platform=0 total_defined=2" in partial_text
 
 
-def test_update_accounting_sidecar_returns_false_and_creates_no_file_without_sidecar(tmp_path: Path):
-    cells_jsonl = tmp_path / "cells.jsonl"
-
-    recorded = cells_io.update_accounting_sidecar(cells_jsonl, explorer_smoke_status="skipped_no_node")
-
-    assert recorded is False
-    assert not cells_jsonl.with_name("cells.jsonl.accounting.json").exists()
-
-
-def test_update_accounting_sidecar_preserves_existing_counts(tmp_path: Path):
-    cells_jsonl = tmp_path / "cells.jsonl"
-    cells_io.write_cells_jsonl(
-        cells_jsonl,
-        (),
-        source_info=_source_info(),
-        skipped_unreachable_count=3,
-        startup_failed_count=2,
-    )
-
-    recorded = cells_io.update_accounting_sidecar(cells_jsonl, explorer_smoke_status="skipped_no_node")
-
-    assert recorded is True
-    payload = json.loads(cells_jsonl.with_name("cells.jsonl.accounting.json").read_text(encoding="utf-8"))
-    assert payload == {
-        "skipped_unreachable_count": 3,
-        "startup_failed_count": 2,
-        "died_mid_platform_count": 0,
-        "compatibility_pruned_count": 0,
-        "early_stop_pruned_count": 0,
-        "registry_pruned_count": 0,
-        "disk_gate_disabled": False,
-        "memory_gate_disabled": False,
-        "container_engine": None,
-        "explorer_smoke_status": "skipped_no_node",
-    }
-
-
-def test_update_accounting_sidecar_returns_false_on_corrupt_sidecar_without_clobbering(tmp_path: Path):
-    cells_jsonl = tmp_path / "cells.jsonl"
-    sidecar = cells_jsonl.with_name("cells.jsonl.accounting.json")
-    sidecar.write_text("{not valid json", encoding="utf-8")
-
-    recorded = cells_io.update_accounting_sidecar(cells_jsonl, explorer_smoke_status="skipped_no_node")
-
-    assert recorded is False
-    assert sidecar.read_text(encoding="utf-8") == "{not valid json"
-
-
 def _read_gate_summary(log_dir: Path) -> dict:
     return json.loads((log_dir / "uat_gate_summary.json").read_text(encoding="utf-8"))
 
@@ -1507,7 +1281,6 @@ def test_green_sweep_writes_green_gate_summary_with_accounting(tmp_path: Path):
     assert payload["cross_scale_floor"] == 1
     assert payload["cross_scale_floor_breached"] is False
     assert payload["unreachable_is_estimated"] is False
-    assert payload["explorer_smoke_status"] == "not_run"
 
 
 def test_green_sweep_with_unvalidated_cells_reports_unvalidated_count_not_zero(tmp_path: Path):
@@ -1670,7 +1443,7 @@ def _stage_summary(name: str, completed_at: str, **overrides):
         "aborted": False,
         "abort_phase": None,
         "abort_reason": None,
-        "phase_exit_codes": {"execute": 0, "validate": 0, "explorer_smoke": 0, "report": 0},
+        "phase_exit_codes": {"execute": 0, "validate": 0, "report": 0},
         "accounting": gate_summary.PhaseAccounting(attempted=5, passed=5, total_defined=5),
         "unreachable_is_estimated": False,
         "validator_clean_rate": 1.0,
@@ -1679,7 +1452,6 @@ def _stage_summary(name: str, completed_at: str, **overrides):
         "cross_scale_clean_pairs": 10,
         "cross_scale_floor": 8,
         "cross_scale_floor_breached": False,
-        "explorer_smoke_status": "ran",
         "artifact_digests": {
             "cells_jsonl": "a" * 64,
             "accounting_sidecar": "b" * 64,
@@ -1715,7 +1487,6 @@ def test_combined_evidence_green_when_all_stages_clean():
         ({"verdict": "red"}, "not green"),
         ({"dry_run": True, "verdict": "dry_run"}, "dry-run summary"),
         ({"unreachable_is_estimated": True}, "sidecar missing"),
-        ({"explorer_smoke_status": "skipped_no_node"}, "explorer_smoke but it did not run"),
         ({"source_dirty": True}, "dirty source tree"),
         ({"source_commit_sha": "other"}, "source_commit_sha differs"),
     ],
@@ -1750,25 +1521,6 @@ def test_combined_evidence_red_on_wrong_stage_count_and_ordering_violation():
     assert evidence.verdict == "red"
     assert any("expected 3" in reason for reason in evidence.reasons)
     assert any("started early" in reason for reason in evidence.reasons)
-
-
-def test_explorer_smoke_stage_not_flagged_when_not_configured():
-    from tests.uat import gate_summary
-
-    stages = [
-        _stage_summary(
-            gate_summary.EXPECTED_RELEASE_GATE_STAGES[0],
-            "2026-07-10T10:00:00",
-            phase_exit_codes={"execute": 0, "report": 0},
-            explorer_smoke_status="not_run",
-        ),
-        _stage_summary(gate_summary.EXPECTED_RELEASE_GATE_STAGES[1], "2026-07-10T12:00:00"),
-        _stage_summary(gate_summary.EXPECTED_RELEASE_GATE_STAGES[2], "2026-07-10T14:00:00"),
-    ]
-    evidence = gate_summary.build_combined_evidence(
-        stages, ordering_violations=(), generated_at=_dt.datetime(2026, 7, 10, 15)
-    )
-    assert evidence.verdict == "green"
 
 
 def test_combined_evidence_red_when_stage_names_are_not_the_expected_set():

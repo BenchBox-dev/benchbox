@@ -48,17 +48,6 @@ version = "{version}"
 source = {{ editable = "." }}
 """
 
-LANDING = """<a
-    href="https://example.invalid/releases"
-    class="badge badge-version"
-    >v{version}</a
->
-"""
-
-
-def write_page(path: Path, text: str) -> None:
-    path.write_text(text, encoding="utf-8")
-
 
 def write_tree(root: Path, version: str = VERSION) -> Path:
 
@@ -67,7 +56,6 @@ def write_tree(root: Path, version: str = VERSION) -> Path:
         shutil.copy(SCRIPTS / name, root / "scripts" / name)
     (root / "benchbox" / "utils").mkdir(parents=True, exist_ok=True)
     (root / "docs").mkdir(exist_ok=True)
-    (root / "landing").mkdir(exist_ok=True)
     (root / "pyproject.toml").write_text(
         f'[project]\nname = "benchbox"\nversion = "{version}"\nrequires-python = ">=3.11"\n\n'
         '[tool.ruff]\ntarget-version = "py311"\n',
@@ -79,7 +67,6 @@ def write_tree(root: Path, version: str = VERSION) -> Path:
     (root / "benchbox" / "utils" / "VERSION_MANAGEMENT.md").write_text(
         f"Current release: `v{version}`.\n", encoding="utf-8"
     )
-    write_page(root / "landing" / "index.html", LANDING.format(version=version))
     (root / "CHANGELOG.md").write_text(CHANGELOG, encoding="utf-8")
     (root / "uv.lock").write_text(LOCK.format(version=version), encoding="utf-8")
     return root
@@ -120,7 +107,6 @@ def test_check_passes_when_every_element_is_present(tree: Path) -> None:
         ("README.md", f"v{VERSION}", "v1.2.4", "README.md"),
         ("docs/README.md", f"v{VERSION}", "v1.2.4", "docs/README.md"),
         ("benchbox/utils/VERSION_MANAGEMENT.md", f"v{VERSION}", "v1.2.4", "VERSION_MANAGEMENT.md"),
-        ("landing/index.html", f"v{VERSION}", "v1.2.4", "landing/index.html"),
         ("uv.lock", f'version = "{VERSION}"', 'version = "1.2.4"', "uv.lock"),
     ],
 )
@@ -135,7 +121,7 @@ def test_check_fails_when_a_version_marker_is_stale(
     assert any(expected in problem for problem in problems), problems
 
 
-@pytest.mark.parametrize("relative_path", ["README.md", "landing/index.html", "uv.lock"])
+@pytest.mark.parametrize("relative_path", ["README.md", "uv.lock"])
 def test_check_fails_when_a_version_marker_is_missing(tree: Path, relative_path: str) -> None:
     (tree / relative_path).write_text("nothing here\n", encoding="utf-8")
 
@@ -378,7 +364,6 @@ def test_prep_updates_every_marker_and_drafts_the_changelog(
         "README.md",
         "docs/README.md",
         "benchbox/utils/VERSION_MANAGEMENT.md",
-        "landing/index.html",
     }
     assert release_flow.check_version_markers(root, version) == []
     changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
@@ -434,7 +419,6 @@ def candidate_tree(tmp_path: Path) -> tuple[Path, str]:
         "README.md",
         "docs/README.md",
         "benchbox/utils/VERSION_MANAGEMENT.md",
-        "landing/index.html",
     ],
 )
 def test_candidate_selection_catches_each_split_version_bump(candidate_tree: tuple[Path, str], path: str) -> None:

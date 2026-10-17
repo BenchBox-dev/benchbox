@@ -29,11 +29,10 @@
       "preflight/compat/timeouts": 1650,
       "Docker lifecycle (default-OFF, incl. `container_cleanup.py`)": 2250,
       "chartered evidence artifacts (validate/report/package/cells_io/gate_summary)": 2100,
-      "explorer-prep": 450,
       "throughput": 440,
       "artifact hygiene": 400,
       "package init markers": 50
     },
-    "total": 13500
+    "total": 13050
   }
 }

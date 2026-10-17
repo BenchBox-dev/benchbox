@@ -342,7 +342,6 @@ jobs:
         run: |
           missing=0
           for forbidden in \
-            _blog \
             .claude \
             .codex \
             .gemini \
@@ -369,7 +368,6 @@ jobs:
 
           for required in \
             results-data \
-            results-explorer \
             _project/scripts/explorer_pipeline \
             _project/scripts/explorer_publish.py \
             _project/scripts/results_explorer_snapshot_invariants.py; do
@@ -446,50 +444,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
 
-      - name: Detect results explorer
-        id: explorer
-        shell: bash
-        run: |
-          if [ -f results-explorer/package.json ]; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "results-explorer is absent; skipping explorer parity."
-          fi
-
       - name: Set up Python
-        if: steps.explorer.outputs.present == 'true'
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: '3.12'
 
       - name: Install uv
-        if: steps.explorer.outputs.present == 'true'
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
 
-      - name: Set up Node.js
-        if: steps.explorer.outputs.present == 'true'
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
-        with:
-          node-version: '20'
-
       - name: Install Python dependencies
-        if: steps.explorer.outputs.present == 'true'
         run: uv sync --group dev
 
-      - name: Install Node dependencies
-        if: steps.explorer.outputs.present == 'true'
-        run: npm ci
-        working-directory: results-explorer
-
       - name: Verify parity fixtures match Python source
-        if: steps.explorer.outputs.present == 'true'
         run: make parity-check
-
-      - name: Run Vitest parity suite
-        if: steps.explorer.outputs.present == 'true'
-        run: npm test -- --reporter=verbose
-        working-directory: results-explorer
 
   pyspark-tests:
     if: ${{ github.event_name != 'pull_request' || github.base_ref != 'develop' }}

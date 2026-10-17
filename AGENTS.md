@@ -132,5 +132,5 @@ Stable wrappers are `code`, `test`, `todo`, `docs`, `blog`, `benchbox`, `skill-s
 ## Operational references
 
 - Unpublished: `docs/agent/`; `docs/internal/` holds internal docs and runbooks (CI, release, repo admin, evidence, plans). List `development/` and `operations/` pages in `docs/publish-allowlist.txt` only for users.
-- Site: `results-explorer/`, `website/`, `landing/`, `docs/blog/`, `_blog/` deploy only via a replay PR to `benchbox-site`.
+- Site: the site, Explorer app, landing page and blog live in `BenchBox-dev/benchbox-site`; change them there by PR.
 - SQL compatibility: `benchbox/sql_compat/README.md`; tests: `tests/README.md`

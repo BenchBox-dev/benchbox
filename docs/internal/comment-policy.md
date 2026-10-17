@@ -258,9 +258,7 @@ The checker does not see comments in:
 - Text piped to interpreters the checker does not model, such as `perl` or
   `ruby`.
 - HTML comments and MyST `%` lines in Markdown prose. In maintained docs these
-  are copyright headers, generator start and end markers, `<!-- content-ok -->`
-  markers read by `scripts/blog_content_validation.py`, and two `%` lines in
-  `docs/blog/index.md` that keep a heading ID stable.
+  are copyright headers and generator start and end markers.
 - Python strings that never reach recognized SQL, shell, or HTML output.
   Generated output keeps such comments where the product needs them:
   maintenance SQL headers, dry-run DDL previews, stream-file headers, the Trino

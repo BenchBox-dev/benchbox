@@ -229,21 +229,14 @@ reads more protection into a green badge than is there:
 The static Explorer at `benchbox.dev/results/` is built and deployed from
 `BenchBox-dev/benchbox-site` by its `.github/workflows/deploy.yml`. The site takes the snapshot and
 corpus from the certified core bundle (`site-inputs-<sha>`, built by `site-inputs.yml`) and builds the
-UI from its own `explorer/` copy of `results-explorer/`. A change to `results-explorer/` in this
-repository reaches production only when it is replayed into that repository by pull request; see
-"Replaying core changes" in its `AGENTS.md`. `docs.yml` does not deploy.
+UI from its own `explorer/` source. Change the Explorer app there by pull request.
 `published-results` is **not** the Explorer's build source — it is the
 corpus-archive branch that contributor PRs target and that mirrors develop's
 `results-data/`.
 
-> **Curated-preview state:** `release-cut` retains `results-explorer/`,
-> `results-data/`, and the three publication helpers under
-> `_project/scripts/`; all other `_project/` content remains development-only.
-> The `docs.yml` build still gates Explorer steps on
-> `hashFiles('results-explorer/package.json')`, but a release that includes the
-> application now fails closed when the corpus, helper set, or generated
-> snapshot is missing. Production Pages is deployed from
-> `BenchBox-dev/benchbox-site`.
+> **Curated-preview state:** `release-cut` retains `results-data/` and the
+> three publication helpers under `_project/scripts/`; all other `_project/`
+> content remains development-only.
 >
 > This is a curated preview, not a broad leaderboard or full-cohort claim.
 > Completion evidence must pin the release SHA, artifact digest, deployment
@@ -361,19 +354,16 @@ resubmission is welcome. Record the erasure approval when that exception was use
 
 ## 6. Re-triggering an Explorer Rebuild
 
-If the corpus is correct but the explorer build needs to rerun:
+If the corpus is correct but the Explorer needs to rebuild, rerun the newest
+`site-inputs.yml` run on `develop`, or dispatch the site repository's deploy:
 
 ```bash
-gh workflow run docs.yml --repo BenchBox-dev/BenchBox
-gh run watch --repo BenchBox-dev/BenchBox
+gh run list --repo BenchBox-dev/BenchBox --workflow site-inputs.yml --branch develop -L 1
+gh workflow run deploy.yml --repo BenchBox-dev/benchbox-site -f mode=redeploy
 ```
 
-Use `workflow_dispatch` only after confirming there is no newer push already
-rebuilding the site. Note that `workflow_dispatch` runs the `build` job but
-**not** the legacy `deploy` job — the legacy Pages deploy is gated on
-`github.event_name == 'push' && github.ref == 'refs/heads/release'` — so a manual
-run validates the build without publishing. A publish uses the candidate build plus
-transaction promotion in §1.3, not a push to `release`.
+See the "Deploys" section of the site repository's `AGENTS.md` before
+dispatching a deploy.
 
 ## 7. Data Locations
 
@@ -382,7 +372,7 @@ transaction promotion in §1.3, not a push to `release`.
 - Bundles: `results-data/bundles/`
 - Inventory: `results-data/corpus-inventory.json`
 - Community sidecar: `<result>.manifest.json` (legacy `submission-manifest.json` is still accepted)
-- Generated explorer read model: `results-explorer/public/data/`
+- Generated explorer read model: the `explorer/` member of the site-inputs bundle
 
 The explorer pipeline treats sidecar presence as the trust-label contract for community
 submissions.
@@ -414,7 +404,7 @@ uv run -- python scripts/validate_submission.py results-data/bundles/
 uv run -- python scripts/generate_corpus_inventory.py --check
 uv run -- python results-data/validate_corpus.py
 uv run -- python -m pytest tests/unit/scripts/test_validate_submission.py tests/unit/scripts/test_generate_corpus_inventory.py -q
-cd results-explorer && npm run typecheck && npm run build
+make site-inputs SITE_INPUTS_OUT=/tmp/site-inputs
 ```
 
 ## 10. Escalation

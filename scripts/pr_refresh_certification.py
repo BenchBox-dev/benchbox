@@ -112,17 +112,14 @@ SCHEMA_TOKENS = ("schema", "registry")
 KNOWN_ROOTS = (
     ".github/",
     ".claude/",
-    "_blog/",
     "_project/",
     "benchbox/",
     "docs/",
     "examples/",
     "landing/",
     "results-data/",
-    "results-explorer/",
     "scripts/",
     "tests/",
-    "website/",
     "vendor/",
     "make/",
 )

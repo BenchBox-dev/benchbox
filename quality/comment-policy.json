@@ -33032,18 +33032,6 @@
       "removal": "Remove when the test no longer checks comment handling."
     },
     {
-      "path": "_blog/table-formats/research/format_benchmark.py",
-      "symbol": "export_ducklake",
-      "text": "# noqa: F841",
-      "kind": "directive",
-      "consumer": "pyproject.toml",
-      "necessity": "Ruff F841 reports this line; the configured rule is enabled for _blog/table-formats/research/format_benchmark.py. Ruff RUF100 confirms the suppression is used.",
-      "alternative": "Restructure the code so the rule no longer fires, then delete the suppression.",
-      "owner": "comment-cleanup-documentation-samples",
-      "removal": "Remove when Ruff RUF100 reports the suppression as unused or the code is restructured.",
-      "expires": "2027-01-04"
-    },
-    {
       "path": "_project/scripts/build_joinorder_data.py",
       "symbol": "compute_fk_dangling_census",
       "text": "# pragma: no cover",
@@ -35503,78 +35491,6 @@
       "count": 2
     },
     {
-      "path": "results-explorer/src/__tests__/svgAttributeHygiene.test.ts",
-      "symbol": "",
-      "text": "// @vitest-environment node",
-      "kind": "directive",
-      "consumer": "results-explorer/package.json",
-      "necessity": "The TypeScript compiler or Vitest reads this directive to select types, environment or a suppression for the file.",
-      "alternative": "Configure the setting in tsconfig or the Vitest configuration instead.",
-      "owner": "comment-cleanup-explorer-build",
-      "removal": "Remove when the setting moves to configuration.",
-      "expires": "2027-01-04"
-    },
-    {
-      "path": "results-explorer/src/__tests__/themeTokenHygiene.test.ts",
-      "symbol": "",
-      "text": "// @vitest-environment node",
-      "kind": "directive",
-      "consumer": "results-explorer/package.json",
-      "necessity": "The TypeScript compiler or Vitest reads this directive to select types, environment or a suppression for the file.",
-      "alternative": "Configure the setting in tsconfig or the Vitest configuration instead.",
-      "owner": "comment-cleanup-explorer-build",
-      "removal": "Remove when the setting moves to configuration.",
-      "expires": "2027-01-04"
-    },
-    {
-      "path": "results-explorer/src/__tests__/userFacingStringHygiene.test.ts",
-      "symbol": "",
-      "text": "// @vitest-environment node",
-      "kind": "directive",
-      "consumer": "results-explorer/package.json",
-      "necessity": "The TypeScript compiler or Vitest reads this directive to select types, environment or a suppression for the file.",
-      "alternative": "Configure the setting in tsconfig or the Vitest configuration instead.",
-      "owner": "comment-cleanup-explorer-build",
-      "removal": "Remove when the setting moves to configuration.",
-      "expires": "2027-01-04"
-    },
-    {
-      "path": "results-explorer/src/lib/__tests__/auditHigh.test.ts",
-      "symbol": "",
-      "text": "// @vitest-environment node",
-      "kind": "directive",
-      "consumer": "results-explorer/package.json",
-      "necessity": "The TypeScript compiler or Vitest reads this directive to select types, environment or a suppression for the file.",
-      "alternative": "Configure the setting in tsconfig or the Vitest configuration instead.",
-      "owner": "comment-cleanup-explorer-data",
-      "removal": "Remove when the setting moves to configuration.",
-      "expires": "2027-01-04"
-    },
-    {
-      "path": "results-explorer/src/lib/__tests__/publicSiteVisualBaselineLookup.test.ts",
-      "symbol": "",
-      "text": "// @vitest-environment node",
-      "kind": "directive",
-      "consumer": "results-explorer/package.json",
-      "necessity": "The TypeScript compiler or Vitest reads this directive to select types, environment or a suppression for the file.",
-      "alternative": "Configure the setting in tsconfig or the Vitest configuration instead.",
-      "owner": "comment-cleanup-explorer-data",
-      "removal": "Remove when the setting moves to configuration.",
-      "expires": "2027-01-04"
-    },
-    {
-      "path": "results-explorer/src/vite-env.d.ts",
-      "symbol": "",
-      "text": "/// <reference types=\"vite/client\" />",
-      "kind": "directive",
-      "consumer": "results-explorer/package.json",
-      "necessity": "The TypeScript compiler or Vitest reads this directive to select types, environment or a suppression for the file.",
-      "alternative": "Configure the setting in tsconfig or the Vitest configuration instead.",
-      "owner": "comment-cleanup-explorer-build",
-      "removal": "Remove when the setting moves to configuration.",
-      "expires": "2027-01-04"
-    },
-    {
       "path": "scripts/audit_skip_xfail.py",
       "symbol": "_literal",
       "text": "# pragma: no cover",
@@ -35633,19 +35549,6 @@
       "owner": "comment-cleanup-operational-tooling",
       "removal": "Remove when Ruff RUF100 reports the suppression as unused or the code is restructured.",
       "expires": "2027-01-04"
-    },
-    {
-      "path": "scripts/capture_chart_images.py",
-      "symbol": "_require_capture_dependencies",
-      "text": "# noqa: F401",
-      "kind": "directive",
-      "consumer": "pyproject.toml",
-      "necessity": "Ruff F401 reports this import as unused. The import is kept for its side effect or as a re-export that callers rely on. Ruff RUF100 confirms the suppression is used.",
-      "alternative": "Restructure the code so the rule no longer fires, then delete the suppression.",
-      "owner": "comment-cleanup-operational-tooling",
-      "removal": "Remove when Ruff RUF100 reports the suppression as unused or the code is restructured.",
-      "expires": "2027-01-04",
-      "count": 2
     },
     {
       "path": "scripts/generate_changelog_entry.py",
@@ -37180,31 +37083,6 @@
       "expires": "2027-01-04"
     },
     {
-      "path": "results-explorer/src/lib/__tests__/measurementBasis.types.test.ts",
-      "symbol": "",
-      "text": "// @ts-expect-error",
-      "kind": "directive",
-      "consumer": "results-explorer/package.json",
-      "necessity": "The TypeScript compiler or Vitest reads this directive to select types, environment or a suppression for the file.",
-      "alternative": "Configure the setting in tsconfig or the Vitest configuration instead.",
-      "owner": "comment-cleanup-explorer-data",
-      "removal": "Remove when the setting moves to configuration.",
-      "expires": "2027-01-04",
-      "count": 6
-    },
-    {
-      "path": "results-explorer/src/lib/__tests__/measurementBasis.types.test.ts",
-      "symbol": "_mutateBasis",
-      "text": "// @ts-expect-error",
-      "kind": "directive",
-      "consumer": "results-explorer/package.json",
-      "necessity": "The TypeScript compiler or Vitest reads this directive to select types, environment or a suppression for the file.",
-      "alternative": "Configure the setting in tsconfig or the Vitest configuration instead.",
-      "owner": "comment-cleanup-explorer-data",
-      "removal": "Remove when the setting moves to configuration.",
-      "expires": "2027-01-04"
-    },
-    {
       "path": "benchbox/core/metadata_primitives/catalog/queries.yaml",
       "symbol": "",
       "text": "# Copyright 2026 Joe Harris / BenchBox Project",
@@ -38045,58 +37923,6 @@
       "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
     },
     {
-      "path": "tests/unit/workflows/test_public_site_visual_workflow.py",
-      "symbol": "test_baseline_candidates_stop_at_the_first_site_input_change",
-      "text": "unresolved executable source: classifier",
-      "payload": "sha256:019a37ec2709fe3a91c3e50e83bf8b3ee356daf28b8fd1b9bdfeca7312326be3",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/workflows/test_public_site_visual_workflow.py",
-      "necessity": "In `test_baseline_candidates_stop_at_the_first_site_input_change` the test starts a subprocess whose program or inline source (classifier) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/workflows/test_public_site_visual_workflow.py",
-      "symbol": "test_input_classifier_uses_exact_base_diff",
-      "text": "unresolved executable source: classifier",
-      "payload": "sha256:019a37ec2709fe3a91c3e50e83bf8b3ee356daf28b8fd1b9bdfeca7312326be3",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/workflows/test_public_site_visual_workflow.py",
-      "necessity": "In `test_input_classifier_uses_exact_base_diff` the test starts a subprocess whose program or inline source (classifier) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/workflows/test_public_site_visual_workflow.py",
-      "symbol": "test_required_gate_fails_closed_for_changed_inputs",
-      "text": "unresolved executable source: step['run']",
-      "payload": "sha256:019a37ec2709fe3a91c3e50e83bf8b3ee356daf28b8fd1b9bdfeca7312326be3",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/workflows/test_public_site_visual_workflow.py",
-      "necessity": "In `test_required_gate_fails_closed_for_changed_inputs` the test starts a subprocess whose program or inline source (step['run']) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/workflows/test_public_site_visual_workflow.py",
-      "symbol": "test_required_gate_rejects_failed_input_classification",
-      "text": "unresolved executable source: step['run']",
-      "payload": "sha256:019a37ec2709fe3a91c3e50e83bf8b3ee356daf28b8fd1b9bdfeca7312326be3",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/workflows/test_public_site_visual_workflow.py",
-      "necessity": "In `test_required_gate_rejects_failed_input_classification` the test starts a subprocess whose program or inline source (step['run']) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
       "path": "tests/unit/workflows/test_publication_canaries.py",
       "symbol": "test_publication_canaries_scripts_fail_closed_without_evidence",
       "text": "unresolved executable source: sys.executable",
@@ -38422,28 +38248,6 @@
       "removal": "Remove when the UAT lifecycle classification moves out of the header comment into structured config."
     },
     {
-      "path": "tests/uat/configs/uat-explorer-external-corpus-smoke.yaml",
-      "symbol": "",
-      "text": "# TEMPLATE — reusable small smoke sweep for Explorer external-corpus route",
-      "kind": "notice",
-      "consumer": "tests/uat/test_config.py",
-      "necessity": "The UAT config lifecycle header classifies the file as an editable template or an immutable historical record. tests/uat/test_config.py requires the first line to start with a recognized marker, and _project/specs/uat-framework.md Section 9 defines the header and its edit protocol.",
-      "alternative": "A top-level YAML lifecycle key would need a loader schema change and a coordinated spec, README and test update; the header is the documented contract today.",
-      "owner": "BenchBox maintainers",
-      "removal": "Remove when the UAT lifecycle classification moves out of the header comment into structured config."
-    },
-    {
-      "path": "tests/uat/configs/uat-explorer-external-corpus-smoke.yaml",
-      "symbol": "",
-      "text": "# derivation. See _project/specs/uat-framework.md Section 9.",
-      "kind": "notice",
-      "consumer": "tests/uat/test_config.py",
-      "necessity": "The UAT config lifecycle header classifies the file as an editable template or an immutable historical record. tests/uat/test_config.py requires the first line to start with a recognized marker, and _project/specs/uat-framework.md Section 9 defines the header and its edit protocol.",
-      "alternative": "A top-level YAML lifecycle key would need a loader schema change and a coordinated spec, README and test update; the header is the documented contract today.",
-      "owner": "BenchBox maintainers",
-      "removal": "Remove when the UAT lifecycle classification moves out of the header comment into structured config."
-    },
-    {
       "path": "tests/uat/configs/uat-joinorder-canonical-corpus-20260512.yaml",
       "symbol": "",
       "text": "# TEMPLATE - canonical JoinOrder corpus backfill for Issue #289.",
@@ -38565,28 +38369,6 @@
       "removal": "Remove when the UAT lifecycle classification moves out of the header comment into structured config."
     },
     {
-      "path": "tests/uat/configs/uat-throughput-explorer-smoke.yaml",
-      "symbol": "",
-      "text": "# TEMPLATE — small throughput-phase explorer coverage sweep. See",
-      "kind": "notice",
-      "consumer": "tests/uat/test_config.py",
-      "necessity": "The UAT config lifecycle header classifies the file as an editable template or an immutable historical record. tests/uat/test_config.py requires the first line to start with a recognized marker, and _project/specs/uat-framework.md Section 9 defines the header and its edit protocol.",
-      "alternative": "A top-level YAML lifecycle key would need a loader schema change and a coordinated spec, README and test update; the header is the documented contract today.",
-      "owner": "BenchBox maintainers",
-      "removal": "Remove when the UAT lifecycle classification moves out of the header comment into structured config."
-    },
-    {
-      "path": "tests/uat/configs/uat-throughput-explorer-smoke.yaml",
-      "symbol": "",
-      "text": "# _project/specs/uat-framework.md Section 9.",
-      "kind": "notice",
-      "consumer": "tests/uat/test_config.py",
-      "necessity": "The UAT config lifecycle header classifies the file as an editable template or an immutable historical record. tests/uat/test_config.py requires the first line to start with a recognized marker, and _project/specs/uat-framework.md Section 9 defines the header and its edit protocol.",
-      "alternative": "A top-level YAML lifecycle key would need a loader schema change and a coordinated spec, README and test update; the header is the documented contract today.",
-      "owner": "BenchBox maintainers",
-      "removal": "Remove when the UAT lifecycle classification moves out of the header comment into structured config."
-    },
-    {
       "path": "tests/uat/configs/uat-throughput-postgresql-nightly.yaml",
       "symbol": "",
       "text": "# TEMPLATE — canonical nightly-CI PostgreSQL throughput config; edited in",
@@ -38696,58 +38478,6 @@
       "owner": "comment-cleanup-utilities",
       "removal": "Remove when the formatter layout is accepted for the region.",
       "expires": "2027-01-04"
-    },
-    {
-      "path": "tests/unit/scripts/site_deploy/test_site_deploy_cli.py",
-      "symbol": "html-output:restored / 'index.html'",
-      "text": "unresolved HTML output source",
-      "payload": "sha256:fb734df44729e78dcd5ba7f8070da4106cfdaee85526fce60d8b8078649438a8",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/scripts/site_deploy/test_site_deploy_cli.py",
-      "necessity": "The test writes fixed placeholder text into a temporary site tree under tmp_path to prove that changed or tampered output is detected; the written text holds no comment.",
-      "alternative": "Inlining the executed or written text as a literal would stop the test from exercising the checked source it targets.",
-      "owner": "BenchBox maintainers",
-      "removal": "Remove when the executable-payload adapter can resolve this source statically."
-    },
-    {
-      "path": "tests/unit/scripts/site_deploy/test_site_deploy_cli.py",
-      "symbol": "html-output:current / 'index.html'",
-      "text": "unresolved HTML output source",
-      "payload": "sha256:fb734df44729e78dcd5ba7f8070da4106cfdaee85526fce60d8b8078649438a8",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/scripts/site_deploy/test_site_deploy_cli.py",
-      "necessity": "The test writes fixed placeholder text into a temporary site tree under tmp_path to prove that changed or tampered output is detected; the written text holds no comment.",
-      "alternative": "Inlining the executed or written text as a literal would stop the test from exercising the checked source it targets.",
-      "owner": "BenchBox maintainers",
-      "removal": "Remove when the executable-payload adapter can resolve this source statically."
-    },
-    {
-      "path": "tests/unit/scripts/site_deploy/test_site_deploy_publish.py",
-      "symbol": "html-output:site / 'docs' / 'index.html'",
-      "text": "unresolved HTML output source",
-      "payload": "sha256:e01e1aef6350fffbd10675b9ad4ec42369f0f5e5412328ea54825392b2276b99",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/scripts/site_deploy/test_site_deploy_publish.py",
-      "necessity": "The test writes fixed placeholder text into a temporary site tree under tmp_path to prove that changed or tampered output is detected; the written text holds no comment.",
-      "alternative": "Inlining the executed or written text as a literal would stop the test from exercising the checked source it targets.",
-      "owner": "BenchBox maintainers",
-      "removal": "Remove when the executable-payload adapter can resolve this source statically."
-    },
-    {
-      "path": "tests/unit/scripts/site_deploy/test_site_deploy_publish.py",
-      "symbol": "html-output:target.slot_dir / 'docs' / 'index.html'",
-      "text": "unresolved HTML output source",
-      "payload": "sha256:e01e1aef6350fffbd10675b9ad4ec42369f0f5e5412328ea54825392b2276b99",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/scripts/site_deploy/test_site_deploy_publish.py",
-      "necessity": "The test writes fixed placeholder text into a temporary site tree under tmp_path to prove that changed or tampered output is detected; the written text holds no comment.",
-      "alternative": "Inlining the executed or written text as a literal would stop the test from exercising the checked source it targets.",
-      "owner": "BenchBox maintainers",
-      "removal": "Remove when the executable-payload adapter can resolve this source statically."
     },
     {
       "path": "tests/unit/scripts/test_path_filter_decision.py",
@@ -38979,31 +38709,6 @@
       "alternative": "A literal binary path would stop the test from exercising the binary the package ships for the host.",
       "owner": "BenchBox maintainers",
       "removal": "Remove when the executable-payload adapter can resolve the bundled binary path statically."
-    },
-    {
-      "path": "results-explorer/src/__tests__/linkColourScoping.test.ts",
-      "symbol": "",
-      "text": "// @vitest-environment node",
-      "kind": "directive",
-      "consumer": "results-explorer/package.json",
-      "necessity": "The TypeScript compiler or Vitest reads this directive to select types, environment or a suppression for the file.",
-      "alternative": "Configure the setting in tsconfig or the Vitest configuration instead.",
-      "owner": "comment-cleanup-explorer-build",
-      "removal": "Remove when the setting moves to configuration.",
-      "expires": "2027-01-04"
-    },
-    {
-      "path": "tests/unit/scripts/site_deploy/test_site_deploy_gates.py",
-      "symbol": "html-output:inputs.site_dir / 'docs' / 'old.html'",
-      "text": "unresolved HTML output source",
-      "payload": "sha256:33739fc48952d882ad236167e0af539e83537a6c0fa4a6cc419e89b6d9c29f72",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/scripts/site_deploy/test_site_deploy_gates.py",
-      "owner": "BenchBox maintainers",
-      "necessity": "The test writes fixed placeholder HTML into a temporary site tree under tmp_path to exercise the deploy gates; the written text holds no comment.",
-      "alternative": "A literal output path would stop the test from exercising the gate's own site-directory handling.",
-      "removal": "Remove when the executable-payload adapter can resolve this source statically."
     },
     {
       "path": "tests/unit/scripts/test_browser_fixtures_port.py",

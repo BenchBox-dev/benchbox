@@ -1,9 +1,0 @@
-[
-  {
-    "id": "GHSA-vfj7-8cjw-p6xm",
-    "package": "braces",
-    "reason": "braces <= 3.0.3 has no patched release. It is reachable only through tailwindcss 3 (chokidar, micromatch), which runs at build time on trusted source files, so no untrusted brace pattern reaches it. The audit is clean with --omit=dev.",
-    "review_by": "2026-12-01",
-    "link": "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm"
-  }
-]

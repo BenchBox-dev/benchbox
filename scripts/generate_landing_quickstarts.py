@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import copy
-import json
 import sys
 from functools import cache
 from pathlib import Path
@@ -17,11 +16,10 @@ from benchbox.core.benchmark_registry import BENCHMARK_METADATA
 from benchbox.core.platform_registry import PlatformRegistry
 from benchbox.utils.dependencies import list_available_dependency_groups
 
-CLI_DESCRIPTION = "Generate landing/prompts/catalog.generated.js from landing/prompts/catalog.yaml."
+CLI_DESCRIPTION = "Validate landing/prompts/catalog.yaml, the source of the site's prompt catalog."
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SOURCE = REPO_ROOT / "landing" / "prompts" / "catalog.yaml"
-OUTPUT = REPO_ROOT / "landing" / "prompts" / "catalog.generated.js"
 FORBIDDEN_JSON = REPO_ROOT / "landing" / "prompts" / "recipes.json"
 
 VALID_DEPLOYMENT_MODES = frozenset({"local", "self-hosted", "managed"})
@@ -586,28 +584,8 @@ def validate(catalog: dict[str, Any]) -> list[str]:
     return errors
 
 
-def render_js(catalog: dict[str, Any]) -> str:
-    payload = json.dumps(build_prompt_catalog(catalog), sort_keys=True, indent=2, ensure_ascii=False)
-    return "window.__BENCHBOX_PROMPT_CATALOG__ = " + payload + ";\n"
-
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=CLI_DESCRIPTION)
-    parser.add_argument(
-        "--write",
-        action="store_true",
-        help="Regenerate landing/prompts/catalog.generated.js from catalog.yaml.",
-    )
-    parser.add_argument(
-        "--check",
-        action="store_true",
-        help="Fail non-zero if regenerating would change catalog.generated.js.",
-    )
-    parser.add_argument(
-        "--validate-only",
-        action="store_true",
-        help="Validate catalog.yaml without writing or comparing the include.",
-    )
     parser.add_argument(
         "--source",
         type=Path,
@@ -616,39 +594,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    catalog = load_catalog(args.source)
-    errors = validate(catalog)
+    errors = validate(load_catalog(args.source))
+    for error in errors:
+        print(f"validation error: {error}", file=sys.stderr)
     if errors:
-        for e in errors:
-            print(f"validation error: {e}", file=sys.stderr)
         return 2
-
-    if args.validate_only:
-        print("validate-only: OK")
-        return 0
-
-    rendered = render_js(catalog)
-
-    if args.check:
-        existing = OUTPUT.read_text(encoding="utf-8") if OUTPUT.exists() else ""
-        if existing != rendered:
-            print(
-                f"check: {OUTPUT.relative_to(REPO_ROOT)} is stale; "
-                "run `uv run -- python scripts/generate_landing_quickstarts.py --write` "
-                "to regenerate.",
-                file=sys.stderr,
-            )
-            return 3
-        print("check: OK")
-        return 0
-
-    if args.write:
-        OUTPUT.write_text(rendered, encoding="utf-8")
-        print(f"wrote {OUTPUT.relative_to(REPO_ROOT)}")
-        return 0
-
-    parser.print_help()
-    return 1
+    print("catalog: OK")
+    return 0
 
 
 if __name__ == "__main__":

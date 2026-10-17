@@ -53,13 +53,6 @@ pytest.register_assert_rewrite("tests.utilities.leak_detector")
 from tests.utilities.leak_detector import restore_global
 from tests.utilities.session_isolation import active as isolated_session_active
 
-try:
-    from sphinx.deprecation import RemovedInSphinx11Warning
-
-    warnings.filterwarnings("ignore", category=RemovedInSphinx11Warning)
-except (ImportError, AttributeError):
-    pass
-
 pytest_plugins = [
     "tests.fixtures.database_fixtures",
     "tests.fixtures.test_data_fixtures",

@@ -103,11 +103,7 @@ only.
    image pull or PySail build silently eats
    `cleanup.docker_start_timeout_s` and the stack records
    `skipped-unreachable` instead of a clear pull/build failure.
-6. **node + Playwright** for `explorer_smoke`: `cd results-explorer && npm ci
-   && npx playwright install --with-deps chromium`. Skip this → the phase
-   records `skip_reason="node not on PATH"`, or a Playwright browser-download
-   failure, instead of running.
-7. **First-run costs.** Scale-1.0 TPC-H/TPC-DS datagen is CPU/disk-bound, not
+6. **First-run costs.** Scale-1.0 TPC-H/TPC-DS datagen is CPU/disk-bound, not
    instant; LakeSail's first build additionally downloads a multi-GB PySail
    package tarball over the network (covered by step 5's prepull). Budget the
    first sweep's wall-clock time accordingly.

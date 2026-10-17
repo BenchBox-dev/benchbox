@@ -186,27 +186,12 @@ def _stage_fixtures(data: Path, out_fixtures: Path) -> None:
 
 
 def build_fixtures(out_fixtures: Path) -> None:
-    import os
     import tempfile
 
-    node = shutil.which("node")
-    if node is None:
-        raise RuntimeError("node is required to generate the browser fixture corpus")
-    with tempfile.TemporaryDirectory(prefix="benchbox-large-browser-fixture-") as tmp_root:
-        env = dict(os.environ, E2E_FIXTURE_OUTPUT_ROOT=tmp_root, E2E_FIXTURE_PROFILE="default")
-        proc = subprocess.run(
-            [node, "results-explorer/scripts/generate-browser-fixtures.mjs"],
-            cwd=str(ROOT),
-            env=env,
-            check=False,
-            text=True,
-            capture_output=True,
-        )
-        if proc.returncode != 0:
-            raise RuntimeError(
-                f"generate-browser-fixtures.mjs failed ({proc.returncode}): {(proc.stdout + proc.stderr)[-2000:]}"
-            )
-        _stage_fixtures(Path(tmp_root) / "data", out_fixtures)
+    from _project.scripts.explorer_pipeline.browser_fixtures import OUTPUT_ROOT_PREFIX, generate
+
+    with tempfile.TemporaryDirectory(prefix=OUTPUT_ROOT_PREFIX) as tmp_root:
+        _stage_fixtures(generate(Path(tmp_root)), out_fixtures)
 
 
 def build_parity(out_parity: Path) -> None:
@@ -452,7 +437,7 @@ def cmd_build(args: argparse.Namespace) -> int:
     build_parity(out / "explorer/parity")
     (out / "landing").mkdir(parents=True, exist_ok=True)
     build_prompt_catalog(out / "landing/prompt-catalog.json")
-    shutil.copy2(ROOT / "_project/design/site-inventory/api-public-symbols.json", out / "api-public-symbols.json")
+    shutil.copy2(ROOT / "_project/design/api-public-symbols.json", out / "api-public-symbols.json")
     build_downloads(out / "downloads", out / "docs")
     build_attestations(out / "attestations.json", out, core_sha, parent_sha)
     members = {

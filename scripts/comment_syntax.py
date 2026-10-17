@@ -4,13 +4,11 @@ import ast
 import hashlib
 import io
 import json
-import os
 import re
 import shlex
-import subprocess
 import tokenize
 from dataclasses import dataclass
-from pathlib import Path, PurePosixPath
+from pathlib import PurePosixPath
 
 import yaml
 from comment_execution import PythonBindings, python_html_sources
@@ -101,8 +99,6 @@ OWNED_ROOTS = (
     "scripts/",
     "tools/",
     "_project/scripts/",
-    "results-explorer/",
-    "website/",
     "docker/",
     "make/",
     ".github/",
@@ -168,7 +164,7 @@ def language(path: str) -> str | None:
         return "make"
     if name.startswith("Dockerfile"):
         return "docker"
-    if path.endswith((".md", ".rst")) and not path.startswith(("_project/", "_blog/")):
+    if path.endswith((".md", ".rst")) and not path.startswith("_project/"):
         return "examples"
     if not PurePosixPath(path).suffix and path.startswith(OWNED_ROOTS):
         return "unsupported"
@@ -308,7 +304,7 @@ def _python_sql_context(node: ast.AST, parent: ast.AST | None, grandparent: ast.
     return False
 
 
-def python_findings(path: str, source: str, js_results: dict[str, list[dict]] | None = None) -> list[Finding]:
+def python_findings(path: str, source: str) -> list[Finding]:
     tree = ast.parse(source)
     result: list[Finding] = []
     scopes: list[tuple[int, int, str]] = []
@@ -383,7 +379,7 @@ def python_findings(path: str, source: str, js_results: dict[str, list[dict]] | 
                     f"{symbol}:{finding.symbol}",
                     finding.payload or text,
                 )
-                for finding in scan(path + ".html", text, "html", js_results)
+                for finding in scan(path + ".html", text, "html")
             )
     return result
 
@@ -447,113 +443,6 @@ def python_executable_findings(path: str, tree: ast.AST, scopes: list[tuple[int,
                     text,
                 )
                 for finding in scan(path + "." + lang, text, lang)
-            )
-    return result
-
-
-def resolve_typescript_dir(root: Path | str) -> Path | None:
-    override = os.environ.get("COMMENT_POLICY_TYPESCRIPT")
-    if override:
-        return Path(override)
-    local = Path(root) / "results-explorer" / "node_modules" / "typescript"
-    if local.exists():
-        return local
-    try:
-        raw = subprocess.run(
-            ["git", "rev-parse", "--git-common-dir"],
-            cwd=root,
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout.strip()
-    except (OSError, subprocess.CalledProcessError):
-        return None
-    common = Path(raw)
-    if not common.is_absolute():
-        common = Path(root) / common
-    return (common.parent / "results-explorer" / "node_modules" / "typescript").resolve()
-
-
-def javascript_key(path: str, source: str) -> str:
-    suffix = ".tsx" if path.endswith((".tsx", ".jsx")) else ".ts"
-    return hashlib.sha256(source.encode()).hexdigest() + suffix
-
-
-def javascript_requests(path: str, source: str, lang: str) -> dict[str, str]:
-    if source.startswith("#!"):
-        lang = source_language(path, source) or lang
-    if lang == "javascript":
-        return {javascript_key(path, source): source}
-    result = {}
-    try:
-        if lang == "python":
-            for _, text, _ in python_html_sources(source):
-                if text is not None:
-                    result.update(javascript_requests(path + ".html", text, "html"))
-        for _, child_path, text, child_lang, _ in nested_sources(path, source, lang):
-            result.update(javascript_requests(child_path, text, child_lang))
-    except (SyntaxError, ValueError, KeyError, TypeError, yaml.YAMLError):
-        return {}
-    return result
-
-
-REVIEWED_JAVASCRIPT_FLOWS: dict[tuple[str, str], str] = {
-    (
-        "results-explorer/src/db.ts",
-        "unresolved executable sql payload: scan.sql",
-    ): "SNAPSHOT_READY_SCANS entries are object literals whose sql values are scanned as SQL",
-    (
-        "results-explorer/src/lib/duckdbQueries.ts",
-        "unresolved executable sql payload: query.sql",
-    ): "SnapshotRowsQuery objects come from query builders whose sql property values are scanned as SQL",
-    (
-        "results-explorer/src/pages/Query.tsx",
-        "unresolved executable sql payload: pageQueries.rows.sql",
-    ): "page query objects come from query builders whose sql property values are scanned as SQL",
-    (
-        "results-explorer/src/pages/Query.tsx",
-        "unresolved executable sql payload: pageQueries.count.sql",
-    ): "page query objects come from query builders whose sql property values are scanned as SQL",
-    (
-        "results-explorer/src/pages/Query.tsx",
-        "unresolved executable sql payload: query.sql",
-    ): "starter and builder query objects have sql property values that are scanned as SQL",
-    (
-        "results-explorer/src/pages/Query.tsx",
-        "unresolved executable sql payload: selectQuery.sql",
-    ): "select query objects come from query builders whose sql property values are scanned as SQL",
-    (
-        "results-explorer/src/pages/Query.tsx",
-        "unresolved executable sql payload: sqlText",
-    ): "sqlText is SQL the user types into the query editor; it is runtime input, not source",
-    (
-        "results-explorer/scripts/generate-browser-fixtures.mjs",
-        "unresolved process arguments require an executable-payload adapter: spawnSync(args[0], args.slice(1))",
-    ): "the pipeline command comes from the explorer build contract data file and runs the snapshot pipeline CLI",
-}
-
-
-def javascript_findings(path: str, source: str, js_results: dict[str, list[dict]] | None) -> list[Finding]:
-    key = javascript_key(path, source)
-    if js_results is None or key not in js_results:
-        raise ValueError("TypeScript parser result missing")
-    result = []
-    for row in js_results[key]:
-        if row["kind"] == "payload":
-            result.extend(
-                Finding(
-                    path,
-                    row["line"] + f.line - 1,
-                    f.kind,
-                    f.text,
-                    f"{row.get('symbol', '')}:payload:{f.symbol}",
-                    f.payload or row["text"],
-                )
-                for f in scan(path + "." + row["language"], row["text"], row["language"], js_results)
-            )
-        elif (path, row["text"]) not in REVIEWED_JAVASCRIPT_FLOWS:
-            result.append(
-                Finding(path, row["line"], row["kind"], row["text"], row.get("symbol", ""), row.get("payload", ""))
             )
     return result
 
@@ -628,20 +517,18 @@ def mdx_findings(path: str, source: str, lang: str) -> list[Finding]:
     return [Finding(path, line, "comment", text) for line, text in mdx_jsx_comments(source)]
 
 
-def scan(path: str, source: str, lang: str, js_results: dict[str, list[dict]] | None = None) -> list[Finding]:
+def scan(path: str, source: str, lang: str) -> list[Finding]:
     try:
         if source.startswith("#!"):
             lang = source_language(path, source) or lang
         if lang == "python":
-            return python_findings(path, source, js_results)
+            return python_findings(path, source)
         if lang in {"sql", "sql+jinja"}:
             return sql_findings(path, source, lang)
-        if lang == "javascript":
-            return javascript_findings(path, source, js_results)
         nested = [
             Finding(path, start + f.line - 1, f.kind, f.text, f"{symbol}:{f.symbol}", f.payload or text)
             for start, child_path, text, child_lang, symbol in nested_sources(path, source, lang)
-            for f in scan(child_path, text, child_lang, js_results)
+            for f in scan(child_path, text, child_lang)
         ]
         nested.extend(template_coverage(path, source, lang))
         if lang in {"notebook", "examples", "astro", "mdx"}:

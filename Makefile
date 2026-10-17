@@ -26,8 +26,7 @@ DEVELOPMENT_TREE_ONLY_TARGETS := \
 	oracle-coverage-map oracle-coverage-map-check cross-surface-applicability-report \
 	joinorder-verify-reference-results complexity-check complexity-report \
 	quality-governance-typecheck uv-lock-revision-check sqlglot-repro-retirement-check audit-deps audit-raw audit-raw-check \
-	audit-sha-check lint-explorer-tokens lint-site-theme-tokens lint-explorer-stale-theme \
-	explorer-snapshot-check artifact-hygiene agent-instructions-check agent-identity-check security-audit \
+	audit-sha-check artifact-hygiene agent-instructions-check agent-identity-check security-audit \
 	agent-commit-range-check skill-integrity-check ci-lint pr-preflight pr-arm-auto-merge shrink-rollup \
 	pr-review-followups-list pr-review-followups dev-loop-metrics platform-manifest \
 	platform-manifest-check test-docker-parity blind-spots-list blind-spots-report \
@@ -53,8 +52,7 @@ publication-help:
 	@echo "Publication flow:"
 	@echo "  benchbox.dev is built and deployed from BenchBox-dev/benchbox-site, not from this repository."
 	@echo "  Data and pipeline changes reach it through the site-inputs bundle (site-inputs.yml)."
-	@echo "  Changes under results-explorer/, website/, landing/, docs/blog/, _blog/ and"
-	@echo "  _project/design/site-inventory/ must be replayed there by pull request; see CONTRIBUTING.md."
+	@echo "  Site, Explorer, landing and blog sources live in that repository; see CONTRIBUTING.md."
 
 .PHONY: test-all
 test-all:
@@ -439,8 +437,6 @@ lint:
 	uv run ruff check .
 	$(MAKE) comment-policy-check
 	$(MAKE) windows-antipatterns-check
-	$(MAKE) lint-explorer-tokens
-	$(MAKE) lint-site-theme-tokens
 
 .PHONY: uv-lock-revision-check
 uv-lock-revision-check:
@@ -474,7 +470,7 @@ windows-antipatterns-check:
 
 .PHONY: comment-policy-check
 comment-policy-check:
-	uv run -- python scripts/run_comment_policy.py --native-tests && uv run -- python scripts/check_comment_cleanup_scope.py --check-drift $(if $(BASE_REF),--base "$(BASE_REF)",)
+	uv run -- python scripts/run_comment_policy.py && uv run -- python scripts/check_comment_cleanup_scope.py --check-drift $(if $(BASE_REF),--base "$(BASE_REF)",)
 
 .PHONY: check-comment-scope
 check-comment-scope:
@@ -496,22 +492,6 @@ lint-markers:
 .PHONY: lint-imports
 lint-imports:
 	uv run -- lint-imports
-
-.PHONY: lint-explorer-tokens
-lint-explorer-tokens:
-	python3 _project/scripts/scan_explorer_tokens.py results-explorer/src landing/shared/site-tokens.css
-
-.PHONY: lint-site-theme-tokens
-lint-site-theme-tokens:
-	python3 _project/scripts/scan_explorer_tokens.py landing/shared landing/index.html landing/style.css landing/prompts/index.html landing/prompts/prompts.css docs/_templates/page.html docs/_static/custom.css results-explorer/index.html results-explorer/src/components/Layout.tsx
-
-lint-explorer-stale-theme:
-	python3 _project/scripts/scan_explorer_stale_theme.py
-
-SNAPSHOT ?= results-explorer/public/data/results.duckdb
-.PHONY: explorer-snapshot-check
-explorer-snapshot-check:
-	uv run -- python _project/scripts/results_explorer_snapshot_invariants.py "$(SNAPSHOT)"
 
 .PHONY: artifact-hygiene
 artifact-hygiene:
@@ -668,10 +648,6 @@ ci-lint:
 	[ $$? -eq 0 ] || failed="$$failed windows-antipatterns"; \
 	$(MAKE) comment-policy-check; \
 	[ $$? -eq 0 ] || failed="$$failed comment-policy"; \
-	$(MAKE) lint-explorer-tokens; \
-	[ $$? -eq 0 ] || failed="$$failed lint-explorer-tokens"; \
-	$(MAKE) lint-site-theme-tokens; \
-	[ $$? -eq 0 ] || failed="$$failed lint-site-theme-tokens"; \
 	$(MAKE) artifact-hygiene; \
 	[ $$? -eq 0 ] || failed="$$failed artifact-hygiene"; \
 	$(MAKE) agent-instructions-check; \
@@ -745,8 +721,7 @@ ci-test:
 ci-docs:
 	@echo "Running CI docs checks..."
 	@$(MAKE) docs-validate docs-generate
-	@cd docs && uv run sphinx-build -b html -W --keep-going . _build/html
-	@echo "✅ CI docs build passed"
+	@echo "✅ CI docs checks passed"
 
 .PHONY: security-audit
 security-audit:
@@ -765,8 +740,7 @@ SPELLCHECK_EXCLUDE_PATHS := \
 	':(exclude,glob)**/.*'          ':(exclude,glob)**/.*/**' \
 	':(exclude,glob)**/_binaries/**' ':(exclude,glob)_binaries/**' \
 	':(exclude,glob)**/_sources/**'  ':(exclude,glob)_sources/**' \
-	':(exclude,glob)**/_project/**'  ':(exclude,glob)_project/**' \
-	':(exclude,glob)**/_blog/**'     ':(exclude,glob)_blog/**'
+	':(exclude,glob)**/_project/**'  ':(exclude,glob)_project/**'
 
 .PHONY: spellcheck
 spellcheck:
@@ -774,13 +748,6 @@ spellcheck:
 	git ls-files -z -- $(SPELLCHECK_EXCLUDE_PATHS) \
 		| xargs -0 uvx codespell --ignore-words=.codespell-ignore.txt --skip="$(SPELLCHECK_SKIP_GLOBS)"
 	@echo "✅ Spellcheck passed"
-
-ci-linkcheck: docs-generate
-	@echo "Running documentation link check..."
-	@cd docs && uv run sphinx-build -b linkcheck . _build/linkcheck
-	@echo "Link check results:"
-	@cat docs/_build/linkcheck/output.txt 2>/dev/null || echo "No output file generated"
-	@echo "✅ Linkcheck passed"
 
 .PHONY: test-package
 test-package:
@@ -824,7 +791,7 @@ ci-local:
 	@echo "Step 3/5: Integration smoke tests..."
 	@$(MAKE) test-integration-smoke
 	@echo ""
-	@echo "Step 4/5: Documentation build..."
+	@echo "Step 4/5: Documentation checks..."
 	@$(MAKE) ci-docs
 	@echo ""
 	@echo "Step 5/5: Package build..."
@@ -925,7 +892,7 @@ release-cut: .release-cut-tree-required
 		echo "    Or pass the curated section body in one pass: CHANGELOG_SECTION=<path>"; \
 	fi
 	uv run -- python scripts/generate_changelog_entry.py --check-curation --version $(VERSION)
-	git rm -rf --ignore-unmatch _project ':(exclude)_project/scripts/explorer_pipeline/**' ':(exclude)_project/scripts/explorer_publish.py' ':(exclude)_project/scripts/results_explorer_snapshot_invariants.py' _blog .claude .codex .gemini tools
+	git rm -rf --ignore-unmatch _project ':(exclude)_project/scripts/explorer_pipeline/**' ':(exclude)_project/scripts/explorer_publish.py' ':(exclude)_project/scripts/results_explorer_snapshot_invariants.py' .claude .codex .gemini tools
 	git rm -f --ignore-unmatch .pre-commit-config.yaml .importlinter todo.config.yaml skill-sync.conf .gitattributes .coveragerc_core .dockerignore .env.example .mcp.json AGENTS.md CLAUDE.md GEMINI.md ANTIGRAVITY.md
 	git rm -f --ignore-unmatch .github/workflows/results-explorer-browser.yml .github/workflows/seed-corpus.yml .github/workflows/sync-results-data-to-published.yml .github/workflows/validate-submission.yml .github/workflows/oracle-verdict.yml .github/oracle-reviewers.yml
 	git rm -rf --ignore-unmatch tests/unit/scripts/explorer_pipeline tests/unit/explorer tests/unit/scripts/oracle_reviewers tests/unit/workflows/test_oracle_verdict_workflow.py
@@ -935,13 +902,13 @@ release-cut: .release-cut-tree-required
 	git rm -f --ignore-unmatch tests/unit/test_auto_merge_hold_is_durable.py tests/unit/test_release_infrastructure.py tests/unit/workflows/test_auto_merge_partial_stack_race.py tests/unit/workflows/test_develop_post_merge_gaps.py tests/unit/workflows/test_merge_group_triggers.py tests/unit/workflows/test_published_results_base_ci.py tests/unit/workflows/test_results_explorer_browser_gate.py tests/unit/workflows/test_results_explorer_dependency_audit.py tests/unit/workflows/test_seed_corpus_pr_base.py tests/unit/workflows/test_validate_submission_changed_bundles.py tests/unit/workflows/test_validate_submission_fail_open.py
 	git rm -f --ignore-unmatch tests/integration/worktree/test_pr_process.py tests/integration/worktree/test_worktree_audit.py tests/integration/worktree/test_worktree_finish_preview.py tests/unit/scripts/test_migrate_clickhouse_labels.py tests/unit/scripts/test_pr_arm.py tests/unit/scripts/test_pr_ready_make.py tests/unit/scripts/test_pr_landing.py tests/unit/scripts/test_results_explorer_cpu_attestation_backfill.py tests/unit/scripts/test_todo_state_contract_check.py tests/unit/scripts/test_worktree_audit.py tests/unit/workflows/test_publication_preview.py tests/unit/workflows/test_queue_certification.py tests/integration/worktree/test_batch_skill_delivery.py tests/unit/scripts/publication/test_plan_reconciliation.py tests/unit/workflows/test_validate_submission_override_approval.py tests/unit/scripts/test_sqlite_extract_repro.py tests/unit/workflows/test_validate_submission_workflow_guard_mirror.py tests/unit/workflows/test_validate_submission_trusted_checkout.py tests/unit/workflows/test_validate_submission_corpus_allowlist.py tests/unit/workflows/test_corpus_trust_boundary.py tests/unit/scripts/test_branch_prune_merged.py tests/unit/docs/test_publication_architecture.py
 	git rm -f --ignore-unmatch tests/unit/scripts/test_heavy_tier_needed.py tests/unit/scripts/test_preflight_targets.py tests/unit/scripts/test_oracle_review_check.py tests/unit/scripts/test_check_project_references.py tests/unit/scripts/test_regenerate_correctness_gate_digests.py tests/unit/workflows/test_nightly_t3_workflow.py tests/unit/test_ledger_coverage.py tests/unit/workflows/test_stacked_pr_base_guard.py tests/unit/scripts/test_site_parity.py tests/unit/scripts/test_perf_smoke_baseline.py
-	@LEFTOVER=$$(git ls-files _project ':(exclude)_project/scripts/explorer_pipeline/**' ':(exclude)_project/scripts/explorer_publish.py' ':(exclude)_project/scripts/results_explorer_snapshot_invariants.py' _blog .claude .codex .gemini .pre-commit-config.yaml .importlinter todo.config.yaml skill-sync.conf tools .gitattributes .coveragerc_core .dockerignore .env.example .mcp.json AGENTS.md CLAUDE.md GEMINI.md ANTIGRAVITY.md .github/workflows/results-explorer-browser.yml .github/workflows/seed-corpus.yml .github/workflows/sync-results-data-to-published.yml .github/workflows/validate-submission.yml .github/workflows/oracle-verdict.yml .github/oracle-reviewers.yml tests/unit/workflows/test_oracle_verdict_workflow.py tests/unit/scripts/explorer_pipeline tests/unit/explorer tests/unit/scripts/oracle_reviewers tests/uat/test_explorer_smoke.py tests/unit/release/test_ruleset_drift_review_coverage.py tests/unit/release/test_ruleset_review_enforcement.py tests/unit/scripts/test_blind_spot_tools.py tests/unit/scripts/test_build_joinorder_data.py tests/unit/scripts/test_check_complexity.py tests/unit/scripts/test_explorer_build_contract.py tests/unit/scripts/test_pr_review_followups.py tests/unit/scripts/test_reference_usage_audit.py tests/unit/scripts/test_scan_explorer_stale_theme.py tests/unit/scripts/test_scan_explorer_tokens.py tests/unit/scripts/test_shrink_rollup.py tests/unit/scripts/test_submission_workflow_waiver.py tests/unit/test_agent_write_preflight.py tests/unit/scripts/test_soundness_paths.py tests/unit/test_cross_surface_applicability.py tests/unit/test_oracle_coverage_map.py tests/unit/test_ruleset_drift.py tests/unit/test_self_binding_detector.py tests/unit/test_site_header_parity.py tests/unit/test_sync_results_workflow.py tests/unit/core/joinorder/test_canonical_queries.py tests/unit/core/test_platform_labels.py tests/unit/workflows/test_validate_submission_comment_security.py tests/unit/workflows/test_detect_orphaned_commits.py tests/unit/workflows/test_validate_submission_vendor_gate.py tests/integration/test_todo_db_standalone_compat_real.py tests/unit/core/equivalence/test_cross_surface_baseline_autodetect.py tests/unit/docs/test_architecture_decision_surfaces.py tests/unit/scripts/test_agent_instruction_audit.py tests/unit/scripts/test_audit_sha_check.py tests/unit/scripts/test_browser_gate_aggregate.py tests/unit/scripts/test_check_release_curation.py tests/unit/scripts/test_check_uv_lock_revision.py tests/unit/scripts/test_ci_lint_environment_boundary.py tests/unit/scripts/test_corpus_privacy_invariant.py tests/unit/scripts/test_dev_loop_pr_metrics.py tests/unit/scripts/test_green_unmerged_sweep.py tests/unit/scripts/test_guard_messages.py tests/unit/scripts/test_mirror_partial_validation_policy.py tests/unit/scripts/test_path_filter_decision.py tests/unit/scripts/test_results_explorer_corpus_migrate.py tests/unit/scripts/test_results_explorer_snapshot_invariants.py tests/unit/scripts/test_skill_sync_ci_policy.py tests/unit/scripts/test_soundness_drain_report.py tests/unit/scripts/test_soundness_merge_digest.py tests/unit/scripts/test_fast_lane_ceiling_check.py tests/unit/scripts/test_timing_policy_check.py tests/unit/scripts/test_todo_db_shadow.py tests/unit/scripts/test_todo_db_standalone_compat.py tests/unit/scripts/test_todo_schema_migration_check.py tests/unit/scripts/test_todo_verification_lint.py tests/unit/scripts/test_todo_wrapper.py tests/unit/test_auto_merge_hold_is_durable.py tests/unit/test_release_infrastructure.py tests/unit/workflows/test_auto_merge_partial_stack_race.py tests/unit/workflows/test_develop_post_merge_gaps.py tests/unit/workflows/test_merge_group_triggers.py tests/unit/workflows/test_published_results_base_ci.py tests/unit/workflows/test_results_explorer_browser_gate.py tests/unit/workflows/test_results_explorer_dependency_audit.py tests/unit/workflows/test_seed_corpus_pr_base.py tests/unit/workflows/test_validate_submission_changed_bundles.py tests/unit/workflows/test_validate_submission_fail_open.py tests/integration/worktree/test_pr_process.py tests/integration/worktree/test_worktree_audit.py tests/integration/worktree/test_worktree_finish_preview.py tests/unit/scripts/test_migrate_clickhouse_labels.py tests/unit/scripts/test_pr_arm.py tests/unit/scripts/test_pr_ready_make.py tests/unit/scripts/test_pr_landing.py tests/unit/scripts/test_results_explorer_cpu_attestation_backfill.py tests/unit/scripts/test_todo_state_contract_check.py tests/unit/scripts/test_worktree_audit.py tests/unit/workflows/test_publication_preview.py tests/unit/workflows/test_queue_certification.py tests/integration/worktree/test_batch_skill_delivery.py tests/unit/scripts/publication/test_plan_reconciliation.py tests/unit/workflows/test_validate_submission_override_approval.py tests/unit/scripts/test_sqlite_extract_repro.py tests/unit/workflows/test_validate_submission_workflow_guard_mirror.py tests/unit/workflows/test_validate_submission_trusted_checkout.py tests/unit/workflows/test_validate_submission_corpus_allowlist.py tests/unit/workflows/test_corpus_trust_boundary.py tests/unit/scripts/test_branch_prune_merged.py tests/unit/docs/test_publication_architecture.py tests/unit/scripts/test_heavy_tier_needed.py tests/unit/scripts/test_preflight_targets.py tests/unit/scripts/test_oracle_review_check.py tests/unit/scripts/test_check_project_references.py tests/unit/scripts/test_regenerate_correctness_gate_digests.py tests/unit/workflows/test_nightly_t3_workflow.py tests/unit/test_ledger_coverage.py tests/unit/workflows/test_stacked_pr_base_guard.py tests/unit/scripts/test_site_parity.py tests/unit/scripts/test_perf_smoke_baseline.py); \
+	@LEFTOVER=$$(git ls-files _project ':(exclude)_project/scripts/explorer_pipeline/**' ':(exclude)_project/scripts/explorer_publish.py' ':(exclude)_project/scripts/results_explorer_snapshot_invariants.py' .claude .codex .gemini .pre-commit-config.yaml .importlinter todo.config.yaml skill-sync.conf tools .gitattributes .coveragerc_core .dockerignore .env.example .mcp.json AGENTS.md CLAUDE.md GEMINI.md ANTIGRAVITY.md .github/workflows/results-explorer-browser.yml .github/workflows/seed-corpus.yml .github/workflows/sync-results-data-to-published.yml .github/workflows/validate-submission.yml .github/workflows/oracle-verdict.yml .github/oracle-reviewers.yml tests/unit/workflows/test_oracle_verdict_workflow.py tests/unit/scripts/explorer_pipeline tests/unit/explorer tests/unit/scripts/oracle_reviewers tests/uat/test_explorer_smoke.py tests/unit/release/test_ruleset_drift_review_coverage.py tests/unit/release/test_ruleset_review_enforcement.py tests/unit/scripts/test_blind_spot_tools.py tests/unit/scripts/test_build_joinorder_data.py tests/unit/scripts/test_check_complexity.py tests/unit/scripts/test_explorer_build_contract.py tests/unit/scripts/test_pr_review_followups.py tests/unit/scripts/test_reference_usage_audit.py tests/unit/scripts/test_scan_explorer_stale_theme.py tests/unit/scripts/test_scan_explorer_tokens.py tests/unit/scripts/test_shrink_rollup.py tests/unit/scripts/test_submission_workflow_waiver.py tests/unit/test_agent_write_preflight.py tests/unit/scripts/test_soundness_paths.py tests/unit/test_cross_surface_applicability.py tests/unit/test_oracle_coverage_map.py tests/unit/test_ruleset_drift.py tests/unit/test_self_binding_detector.py tests/unit/test_site_header_parity.py tests/unit/test_sync_results_workflow.py tests/unit/core/joinorder/test_canonical_queries.py tests/unit/core/test_platform_labels.py tests/unit/workflows/test_validate_submission_comment_security.py tests/unit/workflows/test_detect_orphaned_commits.py tests/unit/workflows/test_validate_submission_vendor_gate.py tests/integration/test_todo_db_standalone_compat_real.py tests/unit/core/equivalence/test_cross_surface_baseline_autodetect.py tests/unit/docs/test_architecture_decision_surfaces.py tests/unit/scripts/test_agent_instruction_audit.py tests/unit/scripts/test_audit_sha_check.py tests/unit/scripts/test_browser_gate_aggregate.py tests/unit/scripts/test_check_release_curation.py tests/unit/scripts/test_check_uv_lock_revision.py tests/unit/scripts/test_ci_lint_environment_boundary.py tests/unit/scripts/test_corpus_privacy_invariant.py tests/unit/scripts/test_dev_loop_pr_metrics.py tests/unit/scripts/test_green_unmerged_sweep.py tests/unit/scripts/test_guard_messages.py tests/unit/scripts/test_mirror_partial_validation_policy.py tests/unit/scripts/test_path_filter_decision.py tests/unit/scripts/test_results_explorer_corpus_migrate.py tests/unit/scripts/test_results_explorer_snapshot_invariants.py tests/unit/scripts/test_skill_sync_ci_policy.py tests/unit/scripts/test_soundness_drain_report.py tests/unit/scripts/test_soundness_merge_digest.py tests/unit/scripts/test_fast_lane_ceiling_check.py tests/unit/scripts/test_timing_policy_check.py tests/unit/scripts/test_todo_db_shadow.py tests/unit/scripts/test_todo_db_standalone_compat.py tests/unit/scripts/test_todo_schema_migration_check.py tests/unit/scripts/test_todo_verification_lint.py tests/unit/scripts/test_todo_wrapper.py tests/unit/test_auto_merge_hold_is_durable.py tests/unit/test_release_infrastructure.py tests/unit/workflows/test_auto_merge_partial_stack_race.py tests/unit/workflows/test_develop_post_merge_gaps.py tests/unit/workflows/test_merge_group_triggers.py tests/unit/workflows/test_published_results_base_ci.py tests/unit/workflows/test_results_explorer_browser_gate.py tests/unit/workflows/test_results_explorer_dependency_audit.py tests/unit/workflows/test_seed_corpus_pr_base.py tests/unit/workflows/test_validate_submission_changed_bundles.py tests/unit/workflows/test_validate_submission_fail_open.py tests/integration/worktree/test_pr_process.py tests/integration/worktree/test_worktree_audit.py tests/integration/worktree/test_worktree_finish_preview.py tests/unit/scripts/test_migrate_clickhouse_labels.py tests/unit/scripts/test_pr_arm.py tests/unit/scripts/test_pr_ready_make.py tests/unit/scripts/test_pr_landing.py tests/unit/scripts/test_results_explorer_cpu_attestation_backfill.py tests/unit/scripts/test_todo_state_contract_check.py tests/unit/scripts/test_worktree_audit.py tests/unit/workflows/test_publication_preview.py tests/unit/workflows/test_queue_certification.py tests/integration/worktree/test_batch_skill_delivery.py tests/unit/scripts/publication/test_plan_reconciliation.py tests/unit/workflows/test_validate_submission_override_approval.py tests/unit/scripts/test_sqlite_extract_repro.py tests/unit/workflows/test_validate_submission_workflow_guard_mirror.py tests/unit/workflows/test_validate_submission_trusted_checkout.py tests/unit/workflows/test_validate_submission_corpus_allowlist.py tests/unit/workflows/test_corpus_trust_boundary.py tests/unit/scripts/test_branch_prune_merged.py tests/unit/docs/test_publication_architecture.py tests/unit/scripts/test_heavy_tier_needed.py tests/unit/scripts/test_preflight_targets.py tests/unit/scripts/test_oracle_review_check.py tests/unit/scripts/test_check_project_references.py tests/unit/scripts/test_regenerate_correctness_gate_digests.py tests/unit/workflows/test_nightly_t3_workflow.py tests/unit/test_ledger_coverage.py tests/unit/workflows/test_stacked_pr_base_guard.py tests/unit/scripts/test_site_parity.py tests/unit/scripts/test_perf_smoke_baseline.py); \
 	if [ -n "$$LEFTOVER" ]; then \
 		echo "ERROR: release curation incomplete; development-only paths still tracked:" >&2; \
 		echo "$$LEFTOVER" | sed 's/^/  /' >&2; \
 		exit 1; \
 	fi
-	@for required_dir in results-data results-explorer _project/scripts/explorer_pipeline; do \
+	@for required_dir in results-data _project/scripts/explorer_pipeline; do \
 		test -d "$$required_dir" || { echo "ERROR: curated Explorer publication directory is missing: $$required_dir" >&2; exit 1; }; \
 		git ls-files "$$required_dir" | grep -q . || { echo "ERROR: curated Explorer publication directory is not tracked: $$required_dir" >&2; exit 1; }; \
 	done
@@ -1479,18 +1446,6 @@ uat-report:
 		--output-tsv "$(OUTPUT_TSV)" \
 		$(if $(RUNGS),--rungs "$(RUNGS)",) \
 		$(if $(CROSS_SCALE_FLOOR),--cross-scale-floor "$(CROSS_SCALE_FLOOR)",)
-
-.PHONY: uat-explorer-smoke
-uat-explorer-smoke:
-	@if [ -z "$(BUNDLES_DIR)" ] || [ -z "$(OUTPUT_DIR)" ] || [ -z "$(LOG_DIR)" ]; then \
-		echo "Usage: make uat-explorer-smoke BUNDLES_DIR=<path> OUTPUT_DIR=<path> LOG_DIR=<path> [BROWSERS=chromium]" >&2; \
-		exit 2; \
-	fi
-	@uv run --no-sync -- python -m tests.uat._cli explorer-smoke \
-		--data-dir "$(BUNDLES_DIR)" \
-		--output-dir "$(OUTPUT_DIR)" \
-		--log-dir "$(LOG_DIR)" \
-		$(if $(BROWSERS),--browsers "$(BROWSERS)",)
 
 .PHONY: uat-package
 uat-package:

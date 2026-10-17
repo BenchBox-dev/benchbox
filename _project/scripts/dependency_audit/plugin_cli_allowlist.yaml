@@ -37,23 +37,5 @@ pre-commit:
 import-linter:
   reason: "Import-layering CLI; invoked as `uv run -- lint-imports` (see `make lint-imports`). Configured via [tool.importlinter] in pyproject.toml. Not imported."
 
-furo:
-  reason: "Sphinx HTML theme; activated via html_theme='furo' in docs/conf.py. Not imported."
-
-myst-parser:
-  reason: "Sphinx Markdown parser; activated via extensions=['myst_parser'] in docs/conf.py."
-
-sphinxcontrib-mermaid:
-  reason: "Sphinx Mermaid diagram extension; activated in docs/conf.py extensions."
-
-sphinx-tags:
-  reason: "Sphinx tagging extension; activated in docs/conf.py extensions."
-
-sphinx-design:
-  reason: "Sphinx design components extension; activated in docs/conf.py extensions."
-
-ablog:
-  reason: "Sphinx blogging extension; activated in docs/conf.py extensions."
-
-roman-numerals:
-  reason: "Sphinx dependency for roman numeral support; pulled in via sphinx>=9 requirement. Not directly imported."
+lxml:
+  reason: "Backend for pandas DataFrame.to_xml, which the TPC-DI XML source format calls. Not imported directly."

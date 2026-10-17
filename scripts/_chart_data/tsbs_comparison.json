@@ -1,6 +1,0 @@
-[
-  {"label": "SF=1",    "baseline_value": 1,    "comparison_value": 1,       "baseline_name": "BenchBox (hosts only)", "comparison_name": "Naive (hosts x duration)"},
-  {"label": "SF=10",   "baseline_value": 10,   "comparison_value": 100,     "baseline_name": "BenchBox (hosts only)", "comparison_name": "Naive (hosts x duration)"},
-  {"label": "SF=100",  "baseline_value": 100,  "comparison_value": 10000,   "baseline_name": "BenchBox (hosts only)", "comparison_name": "Naive (hosts x duration)"},
-  {"label": "SF=1000", "baseline_value": 1000, "comparison_value": 1000000, "baseline_name": "BenchBox (hosts only)", "comparison_name": "Naive (hosts x duration)"}
-]

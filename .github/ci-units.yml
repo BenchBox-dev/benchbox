@@ -20,14 +20,7 @@ core:
   - "pytest-ci.ini"
   - ".importlinter"
   - "codecov.yml"
-  - "deploy/**"
-  - "docs/conf.py"
-  - "docs/Makefile"
-  - "docs/_extensions/**"
-  - "docs/_static/**"
-  - "docs/_templates/**"
   - "docs/**.py"
-  - "docs/**.js"
   - "docs/**.css"
   - "docs/**.html"
   - "docs/**.jinja"
@@ -37,12 +30,8 @@ core:
   - "docs/internal/dependency-audit-raw.md"
   - "docs/operations/agent-instruction*.md"
   - "docs/internal/agent-instruction*.md"
-  - "landing/**.py"
-  - "website/**.py"
 
 explorer:
-  - "results-explorer/**"
-  - "landing/shared/site-tokens.css"
   - "_project/scripts/explorer_pipeline/**"
   - "_project/scripts/explorer_publish.py"
   - "tests/parity/**"
@@ -50,7 +39,6 @@ explorer:
   - "benchbox/core/results/**"
   - "benchbox/core/visualization/**"
   - "results-data/**"
-  - ".github/workflows/site-docs.yml"
 
 results-data:
   - "results-data/**"
@@ -62,7 +50,13 @@ results-data:
 
 docs:
   - "docs/**"
-  - "website/**"
+  - "landing/**"
+  - "scripts/generate_landing_quickstarts.py"
+  - "scripts/check_doc_external_links.py"
+  - "scripts/check_doc_relative_links.py"
+  - "scripts/validate_example_references.py"
+  - "scripts/check_example_syntax.py"
+  - "examples/**"
   - "_project/scripts/generate_oracle_coverage_map.py"
   - "scripts/generate_query_docs.py"
   - "scripts/generate_compat_docs.py"
@@ -72,25 +66,14 @@ docs:
   - "benchbox/cli/**"
   - "benchbox/core/platform_registry.py"
   - "benchbox/core/benchmark_registry.py"
-  - ".github/workflows/site-docs.yml"
 
 landing:
   - "landing/**"
-  - "website/**"
-  - "docs/_static/custom.css"
-  - "docs/_templates/page.html"
-  - "results-explorer/index.html"
-  - "scripts/generate_landing_quickstarts.py"
-  - "benchbox/core/platform_registry.py"
-  - "benchbox/platforms/manifest.py"
-  - "pyproject.toml"
-  - ".github/workflows/site-docs.yml"
 
 tooling:
   - ".github/**"
   - "scripts/**"
   - "_project/**"
-  - "_blog/**"
   - "make/**"
   - "Makefile"
   - ".pre-commit-config.yaml"
