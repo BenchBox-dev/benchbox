@@ -20,21 +20,46 @@ Configure each cloud environment once:
 | `BENCHBOX_EPHEMERAL_CLONE` | `1` |
 | `BENCHBOX_GIT_NAME` | The human commit author's name |
 | `BENCHBOX_GIT_EMAIL` | The human commit author's email |
-| Setup script | Install `uv` if the image lacks it, then run `make cloud-bootstrap` |
+| Setup script | Install `uv` if the image lacks it, put a `node` that satisfies `^22.22.2`, `^24.15.0`, or `>=26` first on `PATH`, then run `make cloud-bootstrap` |
 | Network | GitHub and the Python package index; add Docker registries for container checks |
+| Repository access | `BenchBox-dev/BenchBox` with push access |
 
 Set these as environment variables, not secrets, so they stay visible to
 every command and Git hook in the session.
 
+The `node` range comes from a dependency of the markdownlint pre-commit hook;
+an older `node` makes that hook fail to install. `make cloud-bootstrap` refuses
+one before it changes anything, then builds the hook environments so they use
+the `node` it checked. Make the `node` change persist beyond the setup script,
+for example by linking the newer `node`, `npm`, and `npx` into
+`/usr/local/bin`, because some platforms do not keep the setup script's
+environment.
+
+Start each session from a clone of the GitHub repository, with the
+repository attached and push access granted: in Claude Code on the web, select
+the repository when creating the session; in Codex Cloud, use an environment
+for the repository. A session uploaded from a local checkout may have no
+`origin` remote, and a session without push access gets
+`403 ... not in this session's authorized repository set` on push. Both cases
+cost the whole session, so the builder checks them first.
+
 ## Builder procedure
 
-1. **Bootstrap.** Confirm the setup script ran:
+1. **First-minute checks.** Before any other work, confirm that the session
+   can publish and that the setup script ran:
 
    ```bash
+   git remote get-url origin
+   git fetch origin develop
+   git push --dry-run --no-verify origin HEAD:refs/heads/<branch from the task prompt>
    cat "$(git rev-parse --absolute-git-dir)/benchbox-cloud-bootstrap"
    ```
 
-   If the file is missing, run `make cloud-bootstrap`. Stop if it refuses.
+   `--no-verify` skips the pre-push hooks here only, so the dry run tests
+   access and not the change. Stop and report the exact error if `origin` is
+   missing or is not the GitHub repository, if the fetch fails, or if the
+   dry-run push is refused. If the
+   marker file is missing, run `make cloud-bootstrap`; stop if it refuses.
    Never commit as an agent or vendor identity.
 
 2. **Scope.** Work only on the item, acceptance criteria, and path scope in the
@@ -80,7 +105,9 @@ every command and Git hook in the session.
    and Required findings and rerun step 5. Report the rest.
 
 9. **Commit and push.** Stage explicit paths and write durable commit messages.
-   Push the session branch. Do not open a pull request or poll CI.
+   Push the session branch. Do not open a pull request or poll CI. Never arm
+   or merge a pull request, resolve review threads, change labels or draft
+   state, or post an approval: those belong to close-out and to the owner.
 
 ## Hand-off
 

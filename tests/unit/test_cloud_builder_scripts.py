@@ -95,6 +95,36 @@ def test_bootstrap_refuses_without_a_human_author(tmp_path: Path, missing: str) 
     assert _local_identity(repo) == ""
 
 
+def _path_with_node(tmp_path: Path, version: str) -> str:
+    bin_dir = tmp_path / "node-bin"
+    bin_dir.mkdir()
+    for name, body in {"node": f"echo {version}\n", "uv": "exit 0\n"}.items():
+        stub = bin_dir / name
+        stub.write_text("#!/bin/sh\n" + body, encoding="utf-8")
+        stub.chmod(0o755)
+    return f"{bin_dir}{os.pathsep}{os.environ['PATH']}"
+
+
+@pytest.mark.parametrize("version", ["v22.22.0", "v22.22.1", "v23.11.0", "v24.14.0", "v25.9.0"])
+def test_bootstrap_refuses_a_node_too_old_for_the_markdownlint_hook(tmp_path: Path, version: str) -> None:
+    repo = _clone(tmp_path)
+
+    result = _run(BOOTSTRAP, cwd=repo, env=_env(PATH=_path_with_node(tmp_path, version)))
+
+    assert result.returncode == 1
+    assert f"node {version[1:]} cannot install the markdownlint hook" in result.stderr
+    assert _local_identity(repo) == ""
+
+
+@pytest.mark.parametrize("version", ["v22.22.2", "v22.23.0", "v24.15.0", "v26.0.0"])
+def test_bootstrap_accepts_a_node_the_markdownlint_hook_supports(tmp_path: Path, version: str) -> None:
+    repo = _clone(tmp_path)
+
+    result = _run(BOOTSTRAP, cwd=repo, env=_env(PATH=_path_with_node(tmp_path, version)))
+
+    assert "cannot install the markdownlint hook" not in result.stderr
+
+
 def test_verify_rejects_an_unknown_level(tmp_path: Path) -> None:
     repo = _clone(tmp_path)
 

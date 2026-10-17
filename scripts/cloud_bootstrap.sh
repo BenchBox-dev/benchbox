@@ -24,6 +24,13 @@ email=${BENCHBOX_GIT_EMAIL:-}
   refuse "BENCHBOX_GIT_NAME and BENCHBOX_GIT_EMAIL must name the human commit author in the cloud environment"
 
 command -v uv >/dev/null 2>&1 || refuse "uv is not on PATH; install it in the environment setup script"
+command -v node >/dev/null 2>&1 || refuse "node is not on PATH; the markdownlint hook needs it"
+node_version=$(node --version | sed 's/^v//')
+node_ok=$(printf '%s\n' "$node_version" | awk -F. '{
+  print (($1 == 22 && ($2 > 22 || ($2 == 22 && $3 >= 2))) || ($1 == 24 && $2 >= 15) || $1 >= 26) ? "yes" : "no"
+}')
+[ "$node_ok" = yes ] ||
+  refuse "node $node_version cannot install the markdownlint hook, which needs ^22.22.2, ^24.15.0, or >=26; put a newer node first on PATH in the environment setup script"
 
 started=$(date +%s)
 
@@ -34,11 +41,12 @@ sync_started=$(date +%s)
 uv sync --locked --group dev
 sync_seconds=$(($(date +%s) - sync_started))
 
-uv run -- pre-commit install
+uv run -- pre-commit install --install-hooks
 make agent-write-preflight
 
 {
   printf 'head=%s\n' "$(git rev-parse HEAD)"
+  printf 'node=%s\n' "$node_version"
   printf 'author=%s\n' "$(git var GIT_AUTHOR_IDENT | sed 's/ [0-9]* [-+][0-9]*$//')"
   printf 'uv_sync_seconds=%s\n' "$sync_seconds"
   printf 'total_seconds=%s\n' "$(($(date +%s) - started))"
