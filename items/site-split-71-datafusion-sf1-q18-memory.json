@@ -2,7 +2,7 @@
   "acceptance": [
     "reproduce it locally or on the runner image. Record the cause: pool or partition configuration, or real memory need. Then either fix the configuration so the cell passes, or record the cell as expected runner-failure, with a test that a failed cell stages nothing."
   ],
-  "context": "Re-homed from item 68 (owner decision D1, 2026-10-14 review session). Seed cell tpch/datafusion SF1.0 fails Q18 with \"Resources exhausted … fair(pool_size: 12.0 GB)\" (runs 38331461283 and 36875524717). Never reproduced.",
+  "context": "Re-homed from item 68 under owner decision D1. Owner, 2026-10-14T17:41Z, Claude session 5ca5fa6c, question dialog (option \"Mark ineligible (Recommended)\"): \"Close #2971. Keep the cells and spec; add a test that the seed workflow never stages an 'uncertain' bundle, so manual drops stop. Fix the polars root cause text (SF1-only oracle).\"\n\nSeed cell tpch/datafusion SF1.0 fails Q18 with 'Resources exhausted … fair(pool_size: 12.0 GB)' (runs 38331461283, 36875524717). Never reproduced. Seed staging now skips ineligible cells (#3006 9d703bb92), so the failure stages nothing, but the cell still never passes. Not started.",
   "description": "Re-homed from item 68 (D1). The seed cell `tpch/datafusion` SF1.0 fails Q18 with \"Resources exhausted … fair(pool_size: 12.0 GB)\" (runs 38331461283 and 36875524717). It has never been reproduced.",
   "sessions": [
     {
@@ -12,6 +12,14 @@
       "op": "create",
       "op_id": "85f344f9cd504d67959f014f2c3cf7fe",
       "session_id": "8250681ba4eb464e88a8d9c11374e76e"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-17T23:51:41Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "509202db7c45403ea21e407517950269",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
     }
   ]
 }
