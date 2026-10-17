@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "`make pr-open` accepts a PR_TITLE (or uses the first commit subject) so multi-commit PRs open with a descriptive title",
+    "pr-open refuses, or warns, when the resulting title equals the branch name",
+    "Documented in the PR workflow docs"
+  ],
+  "context": "Found in the tuning-local fix batch, 2026-10-17 (#3082).",
+  "description": "`make pr-open` calls `gh pr create --fill` (Makefile:1164, 1166). For a branch with more than one commit, `--fill` uses the branch name as the PR title. #3082 opened from `fix/tuning-registry-followups` with two commits and merged with the squash subject \"fix/tuning registry followups (#3082)\" (f4ca650c9 on develop), which does not describe the change. The workaround of editing the title right after opening restarts and cancels CI (see pr-edit-cancels-ci-and-leaves-red-rows-20261017).",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T22:05:55Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "60393e45196e4bf7b516d8043c68c944",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}

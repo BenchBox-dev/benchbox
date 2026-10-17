@@ -15752,6 +15752,13 @@
       "status": "open",
       "title": "Stop `make pr-open` titling multi-commit PRs after the branch name"
     },
+    "pr-open-multi-commit-title-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "`make pr-open` titles a multi-commit PR with the branch name, which becomes the squash commit subject"
+    },
     "pr-open-stacked-draft-support-20261015": {
       "claim": null,
       "needs": [],
