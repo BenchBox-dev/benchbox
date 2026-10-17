@@ -348,7 +348,7 @@ class TestExplorerPipelineRun:
         entry = _duckdb_results(output)[0]
         assert entry["benchmark"] == "tpch"
         assert entry["platform"] == "duckdb"
-        assert entry["scale_factor"] == pytest.approx(0.1)
+        assert entry["scale_factor"] == pytest.approx(1.0)
         assert entry["trust_label"] == "maintainer-run"
         assert entry["visibility"] == "public-curated"
 
@@ -609,7 +609,7 @@ class TestExplorerPipelineRun:
         assert not list((output / "bundles").glob(f"*{suffix}"))
 
     def test_discovers_nested_bundle_layout(self, tmp_path: Path) -> None:
-        nested_dir = tmp_path / "data" / "bundles" / "tpch" / "duckdb" / "sf0.1"
+        nested_dir = tmp_path / "data" / "bundles" / "tpch" / "duckdb" / "sf1.0"
         nested_dir.mkdir(parents=True)
         bundle_path = nested_dir / "nested.json"
         bundle_path.write_text(json.dumps(MINIMAL_BUNDLE), encoding="utf-8")
@@ -619,10 +619,10 @@ class TestExplorerPipelineRun:
 
         results = _duckdb_results(output)
         assert len(results) == 1
-        assert results[0]["result_id"].startswith("tpch-duckdb-sf0.1-")
+        assert results[0]["result_id"].startswith("tpch-duckdb-sf1.0-")
 
     def test_skips_companion_files_during_recursive_discovery(self, tmp_path: Path) -> None:
-        nested_dir = tmp_path / "data" / "bundles" / "tpch" / "duckdb" / "sf0.1"
+        nested_dir = tmp_path / "data" / "bundles" / "tpch" / "duckdb" / "sf1.0"
         nested_dir.mkdir(parents=True)
         bundle_path = nested_dir / "sample.json"
         bundle_path.write_text(json.dumps(MINIMAL_BUNDLE), encoding="utf-8")

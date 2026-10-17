@@ -388,6 +388,18 @@ TABLE_COLUMNS_V16: dict[str, dict[str, str]] = {
     },
 }
 
+TABLE_COLUMNS_V17: dict[str, dict[str, str]] = {
+    **TABLE_COLUMNS_V16,
+    "results": {
+        **TABLE_COLUMNS_V16["results"],
+        "power_score_source": "VARCHAR",
+    },
+    "benchmark_rankings": {
+        **TABLE_COLUMNS_V16["benchmark_rankings"],
+        "power_score_source": "VARCHAR",
+    },
+}
+
 
 SCHEMA_REGISTRY: dict[int, dict[str, dict[str, str]]] = {
     9: TABLE_COLUMNS_V9,
@@ -398,6 +410,7 @@ SCHEMA_REGISTRY: dict[int, dict[str, dict[str, str]]] = {
     14: TABLE_COLUMNS_V14,
     15: TABLE_COLUMNS_V15,
     16: TABLE_COLUMNS_V16,
+    17: TABLE_COLUMNS_V17,
 }
 
 REQUIRED_INDEXES_V9: list[tuple[str, str, list[str]]] = [
@@ -464,6 +477,29 @@ REQUIRED_VIEW_COLUMNS_V16: dict[str, list[str]] = {
         "gateway_routed",
     ],
 }
+
+REQUIRED_VIEW_COLUMNS_V17: dict[str, list[str]] = {
+    "result_detail_metrics": [
+        *REQUIRED_VIEW_COLUMNS_V16["result_detail_metrics"],
+        "power_score_source",
+    ],
+}
+
+_VIEW_COLUMN_REQUIREMENTS_BY_MIN_VERSION: tuple[tuple[int, dict[str, list[str]]], ...] = (
+    (17, REQUIRED_VIEW_COLUMNS_V17),
+    (16, REQUIRED_VIEW_COLUMNS_V16),
+    (15, REQUIRED_VIEW_COLUMNS_V15),
+    (14, REQUIRED_VIEW_COLUMNS_V14),
+    (13, REQUIRED_VIEW_COLUMNS_V13),
+    (12, REQUIRED_VIEW_COLUMNS_V12),
+)
+
+
+def _view_column_requirements(version: int) -> dict[str, list[str]]:
+    for minimum, requirements in _VIEW_COLUMN_REQUIREMENTS_BY_MIN_VERSION:
+        if version >= minimum:
+            return requirements
+    return REQUIRED_VIEW_COLUMNS_V11
 
 
 def get_table_columns_for_version(version: int) -> dict[str, dict[str, str]]:
@@ -690,18 +726,7 @@ def validate_database_schema(con: Any, expected_version: int | None = None) -> l
     if missing_views:
         errors.append(f"missing required views for v{version_to_check}: {', '.join(missing_views)}")
 
-    if version_to_check >= 16:
-        view_column_requirements = REQUIRED_VIEW_COLUMNS_V16
-    elif version_to_check >= 15:
-        view_column_requirements = REQUIRED_VIEW_COLUMNS_V15
-    elif version_to_check >= 14:
-        view_column_requirements = REQUIRED_VIEW_COLUMNS_V14
-    elif version_to_check >= 13:
-        view_column_requirements = REQUIRED_VIEW_COLUMNS_V13
-    elif version_to_check >= 12:
-        view_column_requirements = REQUIRED_VIEW_COLUMNS_V12
-    else:
-        view_column_requirements = REQUIRED_VIEW_COLUMNS_V11
+    view_column_requirements = _view_column_requirements(version_to_check)
     if version_to_check >= 11:
         for view, required_cols in view_column_requirements.items():
             if view not in existing_views:

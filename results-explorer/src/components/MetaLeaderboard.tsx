@@ -19,6 +19,7 @@ import { formatPhaseWithStreams, parseOverrideRules } from "@/lib/displayLabels"
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { TableScrollHint } from "@/components/TableScrollHint";
 import { formatRunAge } from "@/lib/runAge";
+import { SUBSCALE_BADGE, subscaleCohortNote, subscaleTpcName } from "@/lib/subscale";
 import {
   EXPLORER_PERFORMANCE_MARKS,
   EXPLORER_PERFORMANCE_MEASURES,
@@ -332,6 +333,15 @@ export function MetaLeaderboard({
                         class="flex flex-col gap-0.5 no-underline text-[var(--bb-data-fg-muted)] hover:text-[var(--bb-accent-hover)]"
                       >
                         <span class="font-semibold text-[var(--bb-data-fg-primary)]">{cohort.label}</span>
+                        {subscaleTpcName(cohort.benchmark, cohort.scale_factor) && (
+                          <span
+                            class="text-[10px] font-medium normal-case tracking-normal text-[var(--bb-tone-warning-fg)]"
+                            title={subscaleCohortNote(subscaleTpcName(cohort.benchmark, cohort.scale_factor) as string)}
+                            data-testid={`meta-cohort-subscale-${cohort.key}`}
+                          >
+                            {SUBSCALE_BADGE}
+                          </span>
+                        )}
                         <span class="text-[10px] font-normal normal-case tracking-normal text-[var(--bb-data-fg-subtle)]">
                           {cohortMetricSublabel(cohort)}
                         </span>

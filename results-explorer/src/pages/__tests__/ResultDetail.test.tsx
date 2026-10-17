@@ -266,6 +266,7 @@ describe("ResultDetail - median-first contract", () => {
   });
 
   it("renders primary summary and actions before the run receipt", async () => {
+    vi.mocked(getDetailResult).mockResolvedValue(makeDetail({ scale_factor: 1 }));
     render(<ResultDetail resultId="r1" />);
     await waitFor(() => expect(screen.queryByText("Loading result...")).toBeNull());
 

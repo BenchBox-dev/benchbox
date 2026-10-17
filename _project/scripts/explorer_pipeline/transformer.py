@@ -50,6 +50,12 @@ from benchbox.core.results.canonical_json import canonical_json_bytes
 from benchbox.core.results.execution_variant import published_variant_id, read_requested_variant
 from benchbox.core.results.schema_policy import EXPLORER_INPUT_SCHEMA_POLICY, result_schema_version_value
 from benchbox.core.results.status import bundle_failed_query_count, bundle_non_clean_reason, normalize_validation_status
+from benchbox.core.results.subscale_policy import (
+    POWER_SCORE_RECORDED,
+    SUBSCALE_COMPLIANCE_CLASS,
+    effective_compliance_class,
+    subscale_power_at_size,
+)
 from benchbox.core.tuning.modes import is_canonical_mode
 from benchbox.validation.bundle import (
     APPLIED_COMPANION_MAX_BYTES,
@@ -399,8 +405,14 @@ def _tpc_metric(value: Any) -> float | None:
         return None
 
 
-def _power_score(bundle: BundleDocument) -> float | None:
-    return _tpc_metric(bundle.summary.tpc_metrics.power_at_size)
+def _power_score(bundle: BundleDocument, bundle_data: Mapping[str, Any]) -> tuple[float | None, str | None]:
+    recorded = _tpc_metric(bundle.summary.tpc_metrics.power_at_size)
+    if _compliance_class(bundle) != SUBSCALE_COMPLIANCE_CLASS:
+        return recorded, POWER_SCORE_RECORDED if recorded is not None else None
+    queries = bundle_data.get("queries")
+    return subscale_power_at_size(
+        bundle.benchmark.id, recorded, queries if isinstance(queries, list) else [], bundle.benchmark.scale_factor
+    )
 
 
 def _configured_stream_count(bundle: BundleDocument) -> int | None:
@@ -1293,7 +1305,9 @@ def _environment_facets(
 
 
 def _compliance_class(bundle: BundleDocument) -> str | None:
-    return bundle.benchmark.compliance_class
+    return effective_compliance_class(
+        bundle.benchmark.id, bundle.benchmark.scale_factor, bundle.benchmark.compliance_class
+    )
 
 
 def _benchmark_support_status(benchmark_id: str) -> str | None:
@@ -1615,6 +1629,7 @@ class BundleTransformer:
         override = _override_display(bundle_path)
         test_type = _test_type(bundle)
         variant = _variant_info(bundle, bundle_data)
+        power_score, power_score_source = _power_score(bundle, bundle_data)
         entry = ManifestEntry(
             result_id=rid,
             benchmark=benchmark,
@@ -1628,7 +1643,7 @@ class BundleTransformer:
             gateway_routed=variant[4],
             driver_version=_driver_version(bundle),
             run_date=run_date,
-            power_score=_power_score(bundle),
+            power_score=power_score,
             throughput_at_size=_throughput_at_size(bundle, bundle_data),
             stream_count=_stream_count(bundle, test_type),
             total_duration_s=total_duration_s,
@@ -1672,6 +1687,7 @@ class BundleTransformer:
             instance_or_warehouse=environment_facets["instance_or_warehouse"],
             storage_format=environment_facets["storage_format"],
             compliance_class=_compliance_class(bundle),
+            power_score_source=power_score_source,
             basis_availability=_compute_basis_availability(timings),
         )
         reason = ranking_exclusion_reason(entry)
@@ -1715,6 +1731,7 @@ class BundleTransformer:
         normalized_cost = _normalized_cost(bundle)
         test_type = _test_type(bundle)
         variant = _variant_info(bundle, bundle_data)
+        power_score, power_score_source = _power_score(bundle, bundle_data)
         detail = DetailResult(
             result_id=result_id,
             benchmark=benchmark,
@@ -1731,7 +1748,7 @@ class BundleTransformer:
             total_duration_s=total_duration_s,
             geomean_ms=_geomean_ms(bundle),
             display_geomean_ms=_display_geomean_ms(display_timings),
-            power_score=_power_score(bundle),
+            power_score=power_score,
             throughput_at_size=_throughput_at_size(bundle, bundle_data),
             stream_count=_stream_count(bundle, test_type),
             has_display_timing=timing_contract.has_display_timing,
@@ -1770,6 +1787,7 @@ class BundleTransformer:
             cost_usd=_cost_usd_alias(normalized_cost),
             normalized_cost=normalized_cost,
             compliance_class=_compliance_class(bundle),
+            power_score_source=power_score_source,
             phase_durations=_phase_durations(bundle),
             physical_mechanisms=_physical_mechanisms(bundle),
             physical_rendering_id=_physical_rendering_id(bundle),

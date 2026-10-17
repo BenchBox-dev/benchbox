@@ -51,9 +51,12 @@ Top-level timing and counts.
 - `summary.timing.total_ms`, `avg_ms`, `geometric_mean_ms`: aggregate query timing.
 - `summary.queries.total/passed/failed`: execution counts across all iterations and streams.
 - `summary.validation`: `passed`, `failed`, or `partial`.
-- `benchmark.compliance_class`: for example `unofficial_subscale` below SF1.
+- `benchmark.compliance_class`: for example `unofficial_subscale` below SF1. Subscale TPC-H and TPC-DS runs record
+  `summary.tpc_metrics.power_at_size` with `"unofficial": true`; it compares runs within the subscale cohort and is not a
+  TPC result. `unofficial_nonstandard` runs record `{"suppressed": true}` instead.
 
-**Example** (trimmed from a real TPC-H SF0.01 DuckDB run):
+**Example** (trimmed from a real TPC-H SF0.01 DuckDB run; `tpc_metrics` shows the form current releases write for a
+subscale run):
 ```json
 {
   "result_schema_version": "2.2",
@@ -63,7 +66,7 @@ Top-level timing and counts.
     "queries": {"total": 66, "passed": 66, "failed": 0},
     "timing": {"total_ms": 966.0, "avg_ms": 14.6, "geometric_mean_ms": 14.5},
     "validation": "passed",
-    "tpc_metrics": {"suppressed": true, "reason": "compliance_class=unofficial_subscale"}
+    "tpc_metrics": {"unofficial": true, "reason": "compliance_class=unofficial_subscale", "power_at_size": 4503.0}
   }
 }
 ```

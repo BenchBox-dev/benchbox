@@ -12,6 +12,7 @@ import {
 } from "@/lib/displayEligibility";
 import { formatCompactLatencyMs, formatPowerScore } from "@/lib/metricFormatters";
 import { formatRunIdentitiesForCohort } from "@/lib/runIdentity";
+import { isSubscaleTpc, powerScoreTitle } from "@/lib/subscale";
 
 interface Props {
   summary: BenchmarkSummary;
@@ -46,7 +47,10 @@ export function SparklineTable({ summary, colorIndexFor }: Props) {
 
   const metric = normalizePrimaryMetric(summary.ranking?.primary_metric);
   const scoreMetric = metric === "throughput_at_size" ? "throughput_at_size" : "power_score";
-  const scoreLabel = scoreMetric === "throughput_at_size" ? "Throughput@Size" : "Power@Size";
+  const scoreLabel =
+    scoreMetric === "throughput_at_size"
+      ? "Throughput@Size"
+      : powerScoreTitle(isSubscaleTpc(summary.benchmark, summary.scale_factor));
   const showPower =
     metric !== "display_geomean_ms" && platforms.some((p) => isRankable(p) && primaryMetricValue(p, scoreMetric) !== null);
   const showP99 = platforms.some((p) => isTimingDisplayable(p) && p.percentile_stats !== null);

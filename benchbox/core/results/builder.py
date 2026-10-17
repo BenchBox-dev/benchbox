@@ -39,6 +39,7 @@ from benchbox.core.results.query_normalizer import (
     format_query_id,
 )
 from benchbox.core.results.query_status import has_failed_query_validation
+from benchbox.core.results.subscale_policy import NONSTANDARD_COMPLIANCE_CLASS
 
 if TYPE_CHECKING:
     pass
@@ -370,11 +371,8 @@ class ResultBuilder:
         avg_time = timing_stats.get("avg_s", 0.0)
         geometric_mean = timing_stats.get("geometric_mean_s", 0.0)
 
-        _is_unofficial = self._benchmark.compliance_class == "unofficial_subscale" or (
-            hasattr(self._benchmark.compliance_class, "value")
-            and self._benchmark.compliance_class.value == "unofficial_subscale"
-        )
-        if failed_queries or _is_unofficial:
+        compliance_class = getattr(self._benchmark.compliance_class, "value", self._benchmark.compliance_class)
+        if failed_queries or compliance_class == NONSTANDARD_COMPLIANCE_CLASS:
             tpc_metrics = {
                 "power_at_size": None,
                 "throughput_at_size": None,

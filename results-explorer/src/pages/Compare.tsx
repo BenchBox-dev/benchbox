@@ -80,6 +80,8 @@ import { Select } from "@/components/Select";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ProvenanceLegend } from "@/components/ProvenanceLegend";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
+import { SubscaleBadge } from "@/components/SubscaleNotice";
+import { DERIVED_POWER_NOTE, isDerivedPowerScore, isSubscaleTpc, subscaleCohortNote, subscaleTpcName } from "@/lib/subscale";
 import {
   planCompareIds,
   recoverCompareResults,
@@ -532,7 +534,13 @@ export function Compare({ url }: CompareProps) {
     displayGeomeanMs: r.display_geomean_ms,
     totalDurationS: r.total_duration_s,
     driverVersion: r.driver_version,
+    subscale: isSubscaleTpc(r.benchmark, r.scale_factor),
+    derivedPower: isDerivedPowerScore(r.power_score_source),
   }));
+  const anySubscale = rowData.some((r) => r.subscale);
+  const subscaleName = resolvedResults
+    .map((r) => subscaleTpcName(r.benchmark, r.scale_factor))
+    .find((name): name is string => name !== null);
   const runColorSlots = assignRunColorSlots(
     resolvedResults.map((r) => ({ result_id: r.result_id, platform_id: r.platform_id, platform: r.platform })),
   );
@@ -566,6 +574,17 @@ export function Compare({ url }: CompareProps) {
         }
 
       />
+
+      {anySubscale && subscaleName && (
+        <div
+          class="mb-6 flex flex-wrap items-center gap-2 rounded-lg border border-[var(--bb-tone-warning-border)] bg-[var(--bb-tone-warning-bg)] px-4 py-3 text-sm text-[var(--bb-tone-warning-fg)]"
+          role="note"
+          data-testid="compare-subscale-notice"
+        >
+          <SubscaleBadge />
+          <span>{subscaleCohortNote(subscaleName)}</span>
+        </div>
+      )}
 
       {compareNotice && (
         <div
@@ -728,6 +747,7 @@ export function Compare({ url }: CompareProps) {
                       fastest
                     </StatusBadge>
                   )}
+                  {r.subscale && <SubscaleBadge testId={`compare-subscale-badge-${r.resultId}`} />}
                 </div>
               </div>
               <p class="mb-3 text-xs text-[var(--bb-data-fg-muted)]">
@@ -746,6 +766,11 @@ export function Compare({ url }: CompareProps) {
                         ? formatScoreMetric(effectivePrimaryMetric, r.primaryScore)
                         : "—"
                       : fmtGeomean(r.displayGeomeanMs)}
+                    {effectivePrimaryMetric === "power_score" && r.derivedPower && (
+                      <span class="ml-1 font-sans text-xs text-[var(--bb-data-fg-subtle)]" title={DERIVED_POWER_NOTE}>
+                        derived
+                      </span>
+                    )}
                   </dd>
                 </div>
                 <div class="flex justify-between gap-3">

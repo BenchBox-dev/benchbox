@@ -74,6 +74,7 @@ export interface DetailResult extends CostDeploymentFields {
   geomean_ms: number | null;
   display_geomean_ms: number | null;
   power_score: number | null;
+  power_score_source?: string | null;
   throughput_at_size?: number | null;
   stream_count?: number | null;
   has_display_timing: boolean;
@@ -159,6 +160,7 @@ export interface PlatformRow extends CostDeploymentFields {
   comparison_exclusion_reason: string | null;
   ranking_exclusion_reason: string | null;
   power_score: number | null;
+  power_score_source?: string | null;
   throughput_at_size?: number | null;
   display_geomean_ms: number | null;
   sample_geomean_ms: number | null;

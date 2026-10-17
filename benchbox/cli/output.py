@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
 PathLike = Union[Path, "CloudPath", "DatabricksPath"]
 from benchbox.core.results.models import BenchmarkResults
+from benchbox.core.results.subscale_policy import NONSTANDARD_COMPLIANCE_CLASS, SUBSCALE_COMPLIANCE_CLASS
 from benchbox.utils import format_bytes, format_duration
 from benchbox.utils.printing import quiet_console
 
@@ -326,10 +327,12 @@ class ConsoleResultFormatter:
 
         if getattr(results, "validation_status", None):
             stats["validation_status"] = str(results.validation_status)
-        _compliance_class = getattr(results, "compliance_class", None)
-        _unofficial = _compliance_class in {"unofficial_nonstandard", "unofficial_subscale"}
-        if not _unofficial and getattr(results, "power_at_size", None):
-            stats["power_at_size"] = f"{results.power_at_size:.2f}"
+        compliance_class = getattr(results, "compliance_class", None)
+        power_at_size = getattr(results, "power_at_size", None)
+        if compliance_class == SUBSCALE_COMPLIANCE_CLASS and power_at_size:
+            stats["power_at_size"] = f"{power_at_size:.2f} (subscale, unofficial)"
+        elif compliance_class != NONSTANDARD_COMPLIANCE_CLASS and power_at_size:
+            stats["power_at_size"] = f"{power_at_size:.2f}"
 
         return stats
 

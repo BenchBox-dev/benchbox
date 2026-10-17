@@ -28,7 +28,7 @@ class TestToManifestEntry:
         entry = transformer.to_manifest_entry(bundle, result_id=result_id)
         detail = transformer.to_detail_result(bundle, result_id=result_id)
 
-        assert result_id.startswith("tpch-duckdb-sf0.1-20260905-")
+        assert result_id.startswith("tpch-duckdb-sf1.0-20260905-")
         assert entry.run_date == "2026-09-04"
         assert detail.run_date == "2026-09-04"
 
@@ -52,7 +52,7 @@ class TestToManifestEntry:
         assert isinstance(entry, ManifestEntry)
         assert entry.benchmark == "tpch"
         assert entry.platform == "duckdb"
-        assert entry.scale_factor == pytest.approx(0.1)
+        assert entry.scale_factor == pytest.approx(1.0)
         assert entry.run_date == "2026-03-15"
         assert entry.total_duration_s == pytest.approx(45.0)
         assert entry.query_count == 2
@@ -83,6 +83,7 @@ class TestToManifestEntry:
 
     def test_composite_metrics_are_not_used_as_the_power_score(self, tmp_path: Path) -> None:
         data = copy.deepcopy(MINIMAL_BUNDLE)
+        data["benchmark"]["scale_factor"] = 1.0
         data["summary"]["tpc_metrics"] = {"qphh_at_size": 777.0, "qphds_at_size": 888.0}
         bundle = tmp_path / "legacy-composite.json"
         bundle.write_text(json.dumps(data), encoding="utf-8")
@@ -178,7 +179,7 @@ class TestToDetailResult:
         assert detail.result_id == rid
         assert detail.benchmark == "tpch"
         assert detail.platform == "duckdb"
-        assert detail.scale_factor == pytest.approx(0.1)
+        assert detail.scale_factor == pytest.approx(1.0)
 
     def test_queries_extracted(self, bundle_file: Path) -> None:
         transformer = BundleTransformer()
@@ -245,7 +246,7 @@ class TestResultIdFromBundle:
         transformer = BundleTransformer()
         rid = transformer.result_id_from_bundle(bundle_file)
 
-        assert rid.startswith("tpch-duckdb-sf0.1-")
+        assert rid.startswith("tpch-duckdb-sf1.0-")
         parts = rid.split("-")
         sha_part = parts[-1]
         assert len(sha_part) == 8

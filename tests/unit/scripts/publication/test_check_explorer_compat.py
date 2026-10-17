@@ -53,7 +53,7 @@ def test_schema_versions_definitions() -> None:
     assert checker.CURRENT_SCHEMA_VERSION == EXPLORER_READ_MODEL_VERSION
     assert checker.SUPPORTED_SCHEMA_VERSIONS == (EXPLORER_READ_MODEL_VERSION,)
 
-    cols = checker.get_table_columns_for_version(16)
+    cols = checker.get_table_columns_for_version(17)
     assert "results" in cols
     assert "metadata" in cols
     assert "result_environment" in cols
@@ -110,50 +110,50 @@ def test_check_schema_compatibility_all_supported() -> None:
 
 
 def test_validate_database_schema_detects_missing_table() -> None:
-    con = checker.create_in_memory_schema(16)
+    con = checker.create_in_memory_schema(17)
     try:
         con.execute("DROP TABLE cohort_metadata")
-        errors = checker.validate_database_schema(con, expected_version=16)
-        assert any("missing required tables for v16: cohort_metadata" in err for err in errors)
+        errors = checker.validate_database_schema(con, expected_version=17)
+        assert any("missing required tables for v17: cohort_metadata" in err for err in errors)
     finally:
         con.close()
 
 
 def test_validate_database_schema_detects_missing_column() -> None:
-    con = checker.create_in_memory_schema(16)
+    con = checker.create_in_memory_schema(17)
     try:
         con.execute("ALTER TABLE results DROP COLUMN funding")
-        errors = checker.validate_database_schema(con, expected_version=16)
+        errors = checker.validate_database_schema(con, expected_version=17)
         assert any("table 'results' missing required columns: funding" in err for err in errors)
     finally:
         con.close()
 
 
 def test_validate_database_schema_detects_missing_template_evidence() -> None:
-    con = checker.create_in_memory_schema(16)
+    con = checker.create_in_memory_schema(17)
     try:
         con.execute("ALTER TABLE results DROP COLUMN template_evidence")
-        errors = checker.validate_database_schema(con, expected_version=16)
+        errors = checker.validate_database_schema(con, expected_version=17)
         assert any("table 'results' missing required columns: template_evidence" in err for err in errors)
     finally:
         con.close()
 
 
 def test_validate_database_schema_detects_missing_view() -> None:
-    con = checker.create_in_memory_schema(16)
+    con = checker.create_in_memory_schema(17)
     try:
         con.execute("DROP VIEW result_detail_metrics")
-        errors = checker.validate_database_schema(con, expected_version=16)
-        assert any("missing required views for v16: result_detail_metrics" in err for err in errors)
+        errors = checker.validate_database_schema(con, expected_version=17)
+        assert any("missing required views for v17: result_detail_metrics" in err for err in errors)
     finally:
         con.close()
 
 
 def test_validate_database_schema_detects_missing_view_column() -> None:
-    con = checker.create_in_memory_schema(16)
+    con = checker.create_in_memory_schema(17)
     try:
         con.execute("CREATE OR REPLACE VIEW result_detail_metrics AS SELECT result_id FROM results")
-        errors = checker.validate_database_schema(con, expected_version=16)
+        errors = checker.validate_database_schema(con, expected_version=17)
         assert any(
             "view 'result_detail_metrics' missing required columns:" in err and "override_rules" in err
             for err in errors
@@ -177,11 +177,11 @@ def test_validate_database_schema_detects_missing_view_column() -> None:
 
 
 def test_validate_database_schema_version_mismatch() -> None:
-    con = checker.create_in_memory_schema(16)
+    con = checker.create_in_memory_schema(17)
     try:
         con.execute("UPDATE metadata SET read_model_version = 8")
-        errors = checker.validate_database_schema(con, expected_version=16)
-        assert any("read_model_version mismatch: expected 16, got 8" in err for err in errors)
+        errors = checker.validate_database_schema(con, expected_version=17)
+        assert any("read_model_version mismatch: expected 17, got 8" in err for err in errors)
     finally:
         con.close()
 
@@ -345,7 +345,7 @@ def test_cli_default_schema_checks(capsys: pytest.CaptureFixture[str]) -> None:
     assert exit_code == 0
     captured = capsys.readouterr()
     assert "Results Explorer Compatibility" in captured.out
-    assert "Schema v16" in captured.out
+    assert "Schema v17" in captured.out
     assert "Schema v12" not in captured.out
     assert "Schema v11" not in captured.out
     assert "Schema v10" not in captured.out
@@ -369,10 +369,10 @@ def test_cli_json_mode(capsys: pytest.CaptureFixture[str]) -> None:
 
 
 def test_cli_specific_schema_version(capsys: pytest.CaptureFixture[str]) -> None:
-    exit_code = checker.main(["--schema-only", "--schema-versions", "16"])
+    exit_code = checker.main(["--schema-only", "--schema-versions", "17"])
     assert exit_code == 0
     captured = capsys.readouterr()
-    assert "Schema v16" in captured.out
+    assert "Schema v17" in captured.out
     assert "Schema v12" not in captured.out
     assert "Schema v11" not in captured.out
     assert "Schema v10" not in captured.out
@@ -440,9 +440,9 @@ def test_cli_db_path_check(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -
 
     db_file = tmp_path / "test.duckdb"
     with duckdb.connect(str(db_file)) as con:
-        for stmt in checker.generate_schema_ddl(16):
+        for stmt in checker.generate_schema_ddl(17):
             con.execute(stmt)
-        con.execute("INSERT INTO metadata VALUES (16)")
+        con.execute("INSERT INTO metadata VALUES (17)")
 
     exit_code = checker.main(["--db-path", str(db_file)])
     assert exit_code == 0

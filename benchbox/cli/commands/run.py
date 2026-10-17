@@ -1153,32 +1153,25 @@ def _dry_run_validate_inputs(s: types.SimpleNamespace) -> None:
         ctx.exit(1)
 
 
-def _warn_tpcds_subscale(s: types.SimpleNamespace) -> None:
-    if s.benchmark == "tpcds" and s.scale < 1.0 and not s.quiet:
-        console.print(
-            "[yellow]⚠  TPC-DS UNOFFICIAL SUBSCALE RUN[/yellow]\n"
-            f"   Scale factor: [bold]{s.scale}[/bold] (< 1.0 - not TPC-DS compliant)\n"
-            "   Results are for development use only and must not be published or\n"
-            "   submitted as official TPC-DS results. Official TPC metrics\n"
-            "   (power@size, throughput@size) will not be computed.\n"
-            "   See _sources/tpcds-subscale-contract.md for the data contract."
-        )
-
-
-def _warn_tpch_subscale(s: types.SimpleNamespace) -> None:
-    if s.benchmark == "tpch" and s.scale < 1.0 and not s.quiet:
-        console.print(
-            "[yellow]⚠  TPC-H UNOFFICIAL SUBSCALE RUN[/yellow]\n"
-            f"   Scale factor: [bold]{s.scale}[/bold] (< 1.0 - not TPC-H compliant)\n"
-            "   Results are for development use only and must not be published or\n"
-            "   submitted as official TPC-H results. Official TPC metrics\n"
-            "   (power@size, throughput@size) will not be computed."
-        )
+_SUBSCALE_WARNING_TAILS = {
+    "tpch": ("TPC-H", "   QphH@Size is not computed."),
+    "tpcds": ("TPC-DS", "   See _sources/tpcds-subscale-contract.md for the data contract."),
+}
 
 
 def _warn_unofficial_subscale(s: types.SimpleNamespace) -> None:
-    _warn_tpcds_subscale(s)
-    _warn_tpch_subscale(s)
+    warning = _SUBSCALE_WARNING_TAILS.get(s.benchmark)
+    if warning is None or s.scale >= 1.0 or s.quiet:
+        return
+    name, tail = warning
+    console.print(
+        f"[yellow]⚠  {name} UNOFFICIAL SUBSCALE RUN[/yellow]\n"
+        f"   Scale factor: [bold]{s.scale}[/bold] (< 1.0 - not {name} compliant)\n"
+        "   Results are for development use only and must not be published or\n"
+        f"   submitted as official {name} results. Power@Size is recorded for\n"
+        "   comparison with other subscale runs only and is marked unofficial.\n"
+        f"{tail}"
+    )
 
 
 def _run_dry_run(s: types.SimpleNamespace) -> None:

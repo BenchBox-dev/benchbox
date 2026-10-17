@@ -13,10 +13,10 @@ from _project.scripts.explorer_pipeline import transformer as explorer_transform
 from _project.scripts.explorer_pipeline.models import (
     _PHASE_ALIASES,
     APPLIED_TUNING_STATUSES,
+    RANKING_EXCLUDED_COMPLIANCE_CLASSES,
     RANKING_METRIC_BY_FAMILY,
     RANKING_METRIC_BY_FAMILY_PHASE,
     THROUGHPUT_PHASE,
-    UNOFFICIAL_COMPLIANCE_CLASSES,
     canonical_phase,
     ranking_exclusion_reason,
 )
@@ -701,7 +701,7 @@ UNRANKABLE_OVERRIDES = {
             "id": "tpch",
             "scale_factor": 1.0,
             "test_type": "power",
-            "compliance_class": "unofficial_subscale",
+            "compliance_class": "unofficial_nonstandard",
         }
     },
     "translation-fallback": {
@@ -1292,7 +1292,8 @@ def _parity_variants() -> dict[str, dict]:
         "translation-fallback-no-validation": variant(
             summary={"queries": clean_queries}, execution={"translation": "failed"}
         ),
-        "unofficial": with_benchmark(compliance_class="unofficial_nonstandard"),
+        "unofficial": with_benchmark(compliance_class="unofficial_nonstandard", scale_factor=1.0),
+        "subscale-recorded-official": with_benchmark(compliance_class="official"),
         "official": with_benchmark(compliance_class="official"),
         "phase-upper": with_benchmark(test_type="POWER"),
         "phase-standard": with_benchmark(test_type="standard"),
@@ -1411,7 +1412,7 @@ def test_copied_constants_match_their_explorer_sources() -> None:
     assert validator.EXECUTION_RUN_TYPES == explorer_transformer._ALLOWED_EXECUTION_RUN_TYPES
     assert validator.NON_CLEAN_VALIDATION_STATUSES == NON_CLEAN_VALIDATION_STATUSES
     assert validator.NON_CLEAN_TRANSLATION_STATUSES == NON_CLEAN_TRANSLATION_STATUSES
-    assert validator.UNOFFICIAL_COMPLIANCE_CLASSES == UNOFFICIAL_COMPLIANCE_CLASSES
+    assert validator.SUBSCALE_POLICY.RANKING_EXCLUDED_COMPLIANCE_CLASSES == RANKING_EXCLUDED_COMPLIANCE_CLASSES
     assert validator.PHASE_ALIASES == _PHASE_ALIASES
 
 
@@ -1469,3 +1470,126 @@ def test_a_timed_out_stream_cannot_form_a_throughput_identity(tmp_path: Path) ->
     assert cohorts[("tpch", "1.0#throughput#3streams")] == {"duckdb", "spark"}
     assert cohorts[("tpch", "1.0#throughput#2streams")] == set()
     assert validator.main(tmp_path) == 1
+
+
+def _subscale_bundle(directory: Path, name: str, platform: str, tpc_metrics: dict, **benchmark: object) -> Path:
+    payload: dict = {
+        "benchmark": {"id": "tpch", "scale_factor": 0.01, "test_type": "power", **benchmark},
+        "platform": {"name": platform},
+        "run": {"timestamp": "2026-08-01T12:00:00"},
+        "export": {"anonymized": True},
+        "result_schema_version": "2.3",
+        "summary": {
+            "queries": {"total": 22, "passed": 22, "failed": 0},
+            "validation": "passed",
+            "tpc_metrics": tpc_metrics,
+        },
+        "queries": [
+            {"id": "1", "ms": 50.0, "iter": 0, "run_type": "warmup", "status": "SUCCESS"},
+            *(
+                {"id": str(query), "ms": 20.0, "iter": 1, "run_type": "measurement", "status": "SUCCESS"}
+                for query in range(1, 23)
+            ),
+        ],
+    }
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / name
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    return path
+
+
+@pytest.mark.parametrize(
+    ("tpc_metrics", "benchmark_fields", "expected_power"),
+    [
+        ({"power_at_size": 1820.0, "unofficial": True}, {"compliance_class": "unofficial_subscale"}, 1820.0),
+        ({"power_at_size": 1820.0}, {}, 1820.0),
+        ({"suppressed": True}, {"compliance_class": "unofficial_subscale"}, 0.01 * 3600 / 0.02),
+        ({"suppressed": True}, {"id": "TPC-H", "compliance_class": "official"}, 0.01 * 3600 / 0.02),
+    ],
+    ids=["recorded-unofficial", "legacy-null-class", "suppressed-back-filled", "id-variant-recorded-official"],
+)
+def test_subscale_tpc_bundles_rank_on_recorded_or_derived_power(
+    tmp_path: Path, tpc_metrics: dict, benchmark_fields: dict, expected_power: float
+) -> None:
+    validator = _load_validator()
+    path = _subscale_bundle(tmp_path, "duckdb.json", "DuckDB", tpc_metrics, **benchmark_fields)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+
+    assert validator.exclusion_reason(payload) is None
+    assert validator._power_score(payload) == pytest.approx(expected_power)
+    entry = BundleTransformer().to_manifest_entry(path, result_id="r")
+    assert entry.ranking_exclusion_reason is None
+    assert entry.compliance_class == "unofficial_subscale"
+    assert entry.power_score == pytest.approx(expected_power)
+    assert entry.power_score_source == ("derived_from_timings" if "suppressed" in tpc_metrics else "recorded")
+
+
+def test_subscale_bundle_without_iteration_numbers_has_no_primary_metric(tmp_path: Path) -> None:
+    validator = _load_validator()
+    path = _subscale_bundle(
+        tmp_path, "duckdb.json", "DuckDB", {"suppressed": True}, compliance_class="unofficial_subscale"
+    )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    for query in payload["queries"]:
+        query.pop("iter")
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    assert validator.exclusion_reason(payload) == "missing_primary_metric"
+    assert BundleTransformer().to_manifest_entry(path, result_id="r").ranking_exclusion_reason == (
+        "missing_primary_metric"
+    )
+
+
+def test_nonstandard_bundle_is_not_back_filled(tmp_path: Path) -> None:
+    validator = _load_validator()
+    path = _subscale_bundle(
+        tmp_path,
+        "duckdb.json",
+        "DuckDB",
+        {"suppressed": True},
+        compliance_class="unofficial_nonstandard",
+        scale_factor=1.0,
+    )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+
+    assert validator.exclusion_reason(payload) == "unofficial_compliance"
+    assert validator._power_score(payload) is None
+    entry = BundleTransformer().to_manifest_entry(path, result_id="r")
+    assert entry.ranking_exclusion_reason == "unofficial_compliance"
+    assert entry.power_score is None
+
+
+def test_a_recorded_official_class_below_sf1_is_read_as_subscale(tmp_path: Path) -> None:
+    path = _subscale_bundle(tmp_path, "duckdb.json", "DuckDB", {"power_at_size": 1800.0}, compliance_class="official")
+
+    assert BundleTransformer().to_manifest_entry(path, result_id="r").compliance_class == "unofficial_subscale"
+
+
+def test_recorded_subscale_power_that_disagrees_with_timings_is_not_ranked(tmp_path: Path) -> None:
+    validator = _load_validator()
+    path = _subscale_bundle(
+        tmp_path,
+        "duckdb.json",
+        "DuckDB",
+        {"power_at_size": 1e12, "unofficial": True},
+        compliance_class="unofficial_subscale",
+    )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+
+    assert validator.exclusion_reason(payload) == "missing_primary_metric"
+    entry = BundleTransformer().to_manifest_entry(path, result_id="r")
+    assert entry.ranking_exclusion_reason == "missing_primary_metric"
+    assert entry.power_score is None
+
+
+def test_partial_final_iteration_is_not_back_filled(tmp_path: Path) -> None:
+    validator = _load_validator()
+    path = _subscale_bundle(
+        tmp_path, "duckdb.json", "DuckDB", {"suppressed": True}, compliance_class="unofficial_subscale"
+    )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["queries"].append({"id": "1", "ms": 20.0, "iter": 2, "run_type": "measurement", "status": "SUCCESS"})
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    assert validator._power_score(payload) is None
+    assert BundleTransformer().to_manifest_entry(path, result_id="r").power_score is None

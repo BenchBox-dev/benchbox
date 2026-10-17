@@ -41,6 +41,8 @@ import { CompareCta, isCompareAllAvailable } from "@/components/CompareCta";
 import { CompareTray } from "@/components/CompareTray";
 import { TrayAnnouncer } from "@/components/TrayAnnouncer";
 import { RunDateChip } from "@/components/RunAge";
+import { SubscaleCohortNotice } from "@/components/SubscaleNotice";
+import { DERIVED_POWER_NOTE, isDerivedPowerScore } from "@/lib/subscale";
 import { NotFound } from "@/pages/NotFound";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
 import {
@@ -815,6 +817,10 @@ export function BenchmarkIndex({ benchmark = "" }: BenchmarkIndexProps) {
         }
       />
 
+      {filteredSummary && (
+        <SubscaleCohortNotice benchmark={filteredSummary.benchmark} scaleFactor={filteredSummary.scale_factor} />
+      )}
+
       <CohortFilterPanel
         testId="benchmark-filters"
         fields={benchmarkCohortFilterFields}
@@ -1448,13 +1454,26 @@ function BenchmarkRow({
           title={platformVersionTitle(entry)}
         />
         {entry.compliance_class && entry.compliance_class !== "official" && (
-          <span class="ml-2 text-xs text-[var(--bb-data-fg-subtle)]">{complianceLabel(entry.compliance_class)}</span>
+          <span class="ml-2 text-xs text-[var(--bb-data-fg-subtle)]" data-testid={`benchmark-list-compliance-${entry.result_id}`}>
+            {complianceLabel(entry.compliance_class)}
+          </span>
         )}
         <ListCompareDisabledReason id={reasonId} copy={disabledCopy} />
       </td>
       <td class="table-td">SF {entry.scale_factor}</td>
       <td class="table-td text-[var(--bb-data-fg-muted)]"><RunDateChip runDate={entry.run_date} /></td>
-      <td class="table-td font-mono">{fmtScore(phaseScoreValue(entry))}</td>
+      <td class="table-td font-mono">
+        {fmtScore(phaseScoreValue(entry))}
+        {isDerivedPowerScore(entry.power_score_source) && (
+          <span
+            class="ml-1 font-sans text-xs text-[var(--bb-data-fg-subtle)]"
+            title={DERIVED_POWER_NOTE}
+            data-testid={`benchmark-list-derived-power-${entry.result_id}`}
+          >
+            derived
+          </span>
+        )}
+      </td>
       <td class="table-td font-mono">{fmtGeomean(entry.display_geomean_ms ?? entry.geomean_ms)}</td>
       <td class="table-td text-[var(--bb-data-fg-muted)]" title={queryExecutionTitle(entry)}>{distinctQueryCount(entry)}</td>
       <td class="table-td min-w-[12rem]">

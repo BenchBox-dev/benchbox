@@ -226,6 +226,24 @@ describe("QueryHeatmap rendering", () => {
     expect(screen.queryByText("(subscale)")).toBeNull();
   });
 
+  it("labels a ranked subscale row", () => {
+    const subscaleSummary = makeSummary({
+      platforms: [
+        {
+          ...makeSummary().platforms[0]!,
+          result_id: "platform-subscale",
+          compliance_class: "unofficial_subscale",
+        },
+      ],
+    });
+    render(<QueryHeatmap summary={subscaleSummary} />);
+
+    const marker = screen.getByTestId("heatmap-subscale-marker-platform-subscale");
+    expect(marker.textContent).toBe("subscale");
+    expect(marker.getAttribute("title")).toBe("Subscale · Unofficial");
+    expect(screen.queryByTestId("heatmap-compliance-marker-platform-subscale")).toBeNull();
+  });
+
   it("links the platform name to its receipt and shows validation status without a disclosure", () => {
     render(<QueryHeatmap summary={makeSummary()} />);
     const receiptLinks = screen.getAllByRole("link", { name: /Open receipt for/ }) as HTMLAnchorElement[];
