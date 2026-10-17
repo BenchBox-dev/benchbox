@@ -1,6 +1,6 @@
 # Results Explorer browser CI - lane status
 
-**Audience:** Maintainers watching the `explorer-e2e` job in `.github/workflows/ci.yml`
+**Audience:** Maintainers watching the `explorer-e2e` job in `.github/workflows/site-docs.yml`
 and anyone triaging a red or nightly browser-lane check on a PR.
 **Companion docs:** [`docs/internal/browser-test-architecture.md`](browser-test-architecture.md)
 (why the suite is shaped this way) and
@@ -18,7 +18,7 @@ required status check on `develop`.
 
 ### How the gate actually blocks
 
-The suite is the `explorer-e2e` job in `.github/workflows/ci.yml`. It is a
+The suite is the `explorer-e2e` job in `.github/workflows/site-docs.yml`. It is a
 direct `needs` of the `explorer` unit job, and the `explorer` context is
 required by the develop branch ruleset:
 
@@ -26,14 +26,14 @@ required by the develop branch ruleset:
 |-------|--------|
 | Ruleset | `develop-squash-only` (resolve by name; current id `15611785` until a transfer) |
 | Required context | `explorer` |
-| Unit job | `explorer` in `ci.yml`, `if: always()` |
-| Unit inputs | `explorer-tokens`, `explorer-vitest`, `parity-check`, `explorer-e2e`, `visual-inputs` |
+| Unit job | `explorer` in `site-docs.yml`, `if: always()` |
+| Unit inputs | `site-paths`, `explorer-tokens`, `explorer-vitest`, `parity-check`, `explorer-e2e` |
 
 The `public-site-visual-regression` job still runs and uploads its report, but it
 is advisory until the public site is in production and feeds no required context.
 
 The unit job, not the Chromium job itself, holds the required context.
-`explorer-e2e` runs when the `ci-paths` classifier maps a changed path to the
+`explorer-e2e` runs when the `site-paths` classifier maps a changed path to the
 `explorer` unit (`.github/ci-units.yml`) and is skipped otherwise; a required
 check that never reports would leave a PR unmergeable forever. The unit job
 therefore always runs, and `scripts/ci_unit_result.py` decides its result:
@@ -94,7 +94,7 @@ needs it.
 
 | Browser  | Job name                          | Scope                | Gate       | Status as of 2026-07-23 |
 |----------|------------------------------------|-----------------------|------------|--------------------------|
-| Chromium | `Chromium (full suite, blocking)` (`ci.yml`) | Full `e2e/` suite      | Blocking   | Zero-row snapshot race mitigated 2026-07-29 (see correction below) |
+| Chromium | `Chromium (full suite, blocking)` (`site-docs.yml`) | Full `e2e/` suite      | Blocking   | Zero-row snapshot race mitigated 2026-07-29 (see correction below) |
 | Firefox  | `t3:browser \| firefox` (`nightly.yml`)  | `@smoke`-tagged subset | Nightly, advisory   | Green in recent history |
 | WebKit   | `t3:browser \| webkit` (`nightly.yml`)   | `@smoke`-tagged subset | Nightly, advisory   | Fixed 2026-07-23 (see below) - was deterministically red on PRs #1264 and #1270 |
 

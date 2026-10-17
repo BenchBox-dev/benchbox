@@ -64,12 +64,12 @@ def test_compat_docs_check_fails_on_seeded_drift(monkeypatch: pytest.MonkeyPatch
 
 QUERY_DOC_GENERATORS = ("query-docs", "docs-generate", "generate_query_docs.py")
 SPHINX_WORKFLOWS = (
-    "ci.yml",
     "docs.yml",
     "nightly-v2.yml",
     "publication-deploy.yml",
     "publication-preview-deploy.yml",
     "site-deploy.yml",
+    "site-docs.yml",
 )
 
 

@@ -402,4 +402,4 @@ def test_runbook_states_the_pre_deploy_visual_scope_the_workflow_uses() -> None:
     named = set(re.findall(r"`([a-z-]+)`", section))
     assert selected <= named
     assert captured - selected <= named
-    assert "`Public-site visual regression` job in `ci.yml`" in " ".join(section.split())
+    assert "`Public-site visual regression` job in `site-docs.yml`" in " ".join(section.split())

@@ -56,6 +56,7 @@ SYNCHRONIZE_WORKFLOW_NAMES: tuple[str, ...] = (
     "Develop ruleset drift",
     "Documentation",
     "PR base guard",
+    "Site and docs",
 )
 
 

@@ -79,7 +79,7 @@ skins, deliberate palette exports for design tooling, and similar.
 
 ## CI wiring
 
-`.github/workflows/ci.yml` job `explorer-tokens` runs `make
+`.github/workflows/site-docs.yml` job `explorer-tokens` runs `make
 lint-explorer-tokens` on a pull request that changes files under
 `results-explorer/src/` (the `explorer-tokens` group in
 `.github/path-filters.yml`). The shared site theme has its own

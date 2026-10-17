@@ -23,7 +23,7 @@ def _jobs(name: str) -> dict[str, Any]:
 
 
 def test_ci_and_nightly_run_the_website_high_severity_audit() -> None:
-    ci_steps = _jobs("ci.yml")["site-build"]["steps"]
+    ci_steps = _jobs("site-docs.yml")["site-build"]["steps"]
     nightly_steps = _jobs("nightly.yml")["website-audit"]["steps"]
     makefile = (ROOT / "make/documentation.mk").read_text(encoding="utf-8")
 
@@ -69,8 +69,8 @@ def test_website_package_is_pinned_exactly_on_node_22() -> None:
 
 
 def test_only_the_website_jobs_use_node_22() -> None:
-    website_jobs = {"site-build", "site-parity", "website-audit", "public-site-visual-astro-dry-run"}
-    for workflow in ("ci.yml", "nightly.yml"):
+    website_jobs = {"site-build", "site-parity", "website-audit"}
+    for workflow in ("ci.yml", "site-docs.yml", "nightly.yml"):
         for name, job in _jobs(workflow).items():
             versions = {
                 str(step["with"]["node-version"])
@@ -84,7 +84,7 @@ def test_only_the_website_jobs_use_node_22() -> None:
 
 
 def test_ci_tests_the_built_website_and_the_not_found_fallback_after_the_build() -> None:
-    steps = _jobs("ci.yml")["site-build"]["steps"]
+    steps = _jobs("site-docs.yml")["site-build"]["steps"]
     runs = [step.get("run") for step in steps]
     makefile = (ROOT / "make/documentation.mk").read_text(encoding="utf-8")
 

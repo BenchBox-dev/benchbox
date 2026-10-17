@@ -13,7 +13,7 @@ JOB = "site-parity"
 
 
 def _jobs() -> dict[str, Any]:
-    return yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))["jobs"]
+    return yaml.safe_load((ROOT / ".github/workflows/site-docs.yml").read_text(encoding="utf-8"))["jobs"]
 
 
 def _needs(job: dict[str, Any]) -> list[str]:
@@ -29,9 +29,9 @@ def _recipe(target: str) -> str:
 def test_parity_job_is_gated_on_its_own_path_filter_and_never_required() -> None:
     jobs = _jobs()
 
-    assert jobs[JOB]["if"] == "${{ needs.ci-paths.outputs.site-parity-needed == 'true' }}"
+    assert jobs[JOB]["if"] == "${{ needs.site-paths.outputs.site-parity-needed == 'true' }}"
     assert "continue-on-error" not in jobs[JOB]
-    assert "site-parity-needed" in jobs["ci-paths"]["outputs"]
+    assert "site-parity-needed" in jobs["site-paths"]["outputs"]
     assert [name for name, job in jobs.items() if JOB in _needs(job)] == []
 
 
