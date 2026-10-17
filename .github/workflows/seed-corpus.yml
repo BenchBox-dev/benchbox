@@ -51,27 +51,33 @@ jobs:
             platform: duckdb
             scale_factor: "1.0"
             extras: duckdb
+            official: true
           - benchmark: tpch
             platform: datafusion
             scale_factor: "1.0"
             extras: datafusion
+            official: true
           - benchmark: tpch
             platform: clickhouse-local
             scale_factor: "1.0"
             extras: clickhouse-local
+            official: true
 
           - benchmark: tpcds
             platform: duckdb
             scale_factor: "1"
             extras: duckdb
+            official: true
           - benchmark: tpcds
             platform: datafusion
             scale_factor: "1"
             extras: datafusion
+            official: true
           - benchmark: tpcds
             platform: clickhouse-local
             scale_factor: "1"
             extras: clickhouse-local
+            official: true
 
           - benchmark: ssb
             platform: duckdb
@@ -133,7 +139,7 @@ jobs:
             --scale "${{ matrix.scale_factor }}" \
             --phases generate,load,power \
             --compression zstd:9)
-          if [ "${{ matrix.benchmark }}" = "tpcds" ]; then
+          if [ "${{ matrix.official }}" = "true" ]; then
             command+=(--official --seed 42)
           fi
           "${command[@]}"
