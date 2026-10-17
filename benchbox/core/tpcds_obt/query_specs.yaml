@@ -45,6 +45,10 @@ identifier_default_fact_tables:
   wr_: web_returns
   cs_: catalog_sales
   cr_: catalog_returns
+query_identifier_columns:
+  78:
+    ss_item_sk: ss.item_sk
+    ss_customer_sk: ship_customer_sk
 channel_fact_tables:
   store: store_sales
   web: web_sales

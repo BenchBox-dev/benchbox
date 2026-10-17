@@ -437,16 +437,11 @@ def get_manual_query(query_id: int) -> ManualQueryDefinition:
     return MANUAL_QUERY_DEFS[query_id]
 
 
-def render_manual_query(query_id: int, parameters: dict[str, str] | None = None) -> str:
+def render_manual_query(query_id: int, values: dict[str, str]) -> str:
     defn = get_manual_query(query_id)
     sql = defn.template_sql
-
-    params = parameters or {}
-    for name, (default, _kind) in defn.parameters.items():
-        value = params.get(name, default)
-        placeholder = f"[{name}]"
-        sql = sql.replace(placeholder, str(value))
-
+    for name in defn.parameters:
+        sql = sql.replace(f"[{name}]", str(values[name]))
     return sql
 
 
