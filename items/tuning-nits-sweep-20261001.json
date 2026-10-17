@@ -2,7 +2,7 @@
   "acceptance": [
     "Unit tests cover each nit; the tuning suites pass with no verdict change on shipped-generator vectors."
   ],
-  "context": "Source: tuning remediation plan rev2 (2026-10-01; adversarial re-review of develop d39166ea plus independent plan review). Plan task P5.6 (N-2, N-3; plan review F13).",
+  "context": "Merged in #3086 (squash ceb072414, 2026-10-17). DuckDB post-sort CREATE INDEX IF NOT EXISTS re-create recorded as satisfied by the original index statement on the in-place (constraint-preserving) path; stays executed when no earlier index executed or on a replace path. Dead duplicate ALTER branch in _statement_table removed. ClickHouse introspector table filter now escapes backslashes as well as quotes (filter-in-SQL and raw-row truncation were already in place). Verdicts unchanged (unit guard and real-CLI DuckDB liveness cells still applied_verified); applied_ledger_hash of sorted DuckDB runs changes. Oracle SHIP on 9ee068398.",
   "description": "## Items\n- Remove the dead duplicate ALTER branch in `_statement_table` (`benchbox/core/tuning/introspection.py:404-412`).\n- DuckDB's post-CTAS `CREATE INDEX IF NOT EXISTS` re-create is a no-op only on the FK-safe in-place path (`benchbox/platforms/base/sorted_ingestion.py:169-185`). Record it as `satisfied_by` (D-6) only there. On the `CREATE OR REPLACE` path the index really is dropped and re-created, and must stay executed (plan review F13).\n- ClickHouse introspector: filter in the SQL and compute `truncated` on the raw row count (`clickhouse/introspection.py:73,81`), so cut-off rows aren't reported `absent`.\n\n## Guardrails (must preserve)\n- No verdict changes for statements the shipped generators emit (regression vectors).\n\n## Process guardrails\n- One PR per item against `develop`, via the AGENTS.md worktree flow (`make worktree-claim BRANCH=...`, `make agent-write-preflight`).\n- Verification ladder: `uv run -- python -m pytest -m fast -q`, `uv run -- ruff check .`, `uv run -- ruff format --check .` and `uv run -- ty check`.\n- Then `make pr-preflight` and `make pr-open`.\n- Stage explicit paths; never `git add -A`.\n- No live cloud runs without explicit user approval stating the command, maximum runtime, log path and stop condition.\n- Re-read every file:line anchor before editing. Anchors are from develop d39166ea.\n- This item touches paths listed in the soundness manifest by `tuning-trust-paths-soundness-manifest-20261001`. The PR needs an external `Soundness review:` section (AGENTS.md) and must not auto-merge.",
   "links": [
     "benchbox/core/tuning/introspection.py",
@@ -25,6 +25,14 @@
       "generation": "25fa134bb7c84ca5af778b8d8fac0e4f",
       "op": "take",
       "op_id": "275928c987224081b2611860fd08640c",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T09:48:28Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "0274d3e40f46484dab8ff74f38af22b8",
       "session_id": "400c76c14fce4783943655593419ae3c"
     }
   ]
