@@ -147,10 +147,10 @@ a BenchBox reference in
 default parameters, produced from bundled dbgen data and checked to agree on
 DuckDB and DataFusion. Regenerate it with `make tpch-subscale-row-counts-regen`.
 Each file also lists the queries whose count depends on the substitution
-parameters at that scale. SQL runs with other parameters (a seed) skip those
-queries and still check the rest. DataFrame runs are checked only with qgen's
-default parameters; a seeded DataFrame run reports UNCERTAIN, as it does at
-SF 1.
+parameters at that scale. SQL and DataFrame runs with other parameters (a
+seed) skip those queries and still check the rest, so a seeded run reports
+UNCERTAIN unless a checked query fails. Seeded DataFrame runs at SF 1 are not
+checked, as before.
 
 ### TPC-DS
 
