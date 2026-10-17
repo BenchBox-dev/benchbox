@@ -3,7 +3,7 @@
     "Before and after ruleset JSON recorded; the only difference is the removed landing context",
     "Drift check output recorded showing only the landing difference"
   ],
-  "context": "Owner decision D17 (2026-10-06): the agent may make this one hosted-ruleset edit and no other. If the API refuses, or the before-state differs from the documented contexts (core, explorer, results-data, docs, landing, tooling, oracle-review), stop and ask the owner.\n\n2026-10-09 tracker review: Between this edit and site-split-53, scripts/ruleset_drift_check.py fails. Its APPROVED_MERGE_QUEUE_CONTEXTS (lines 308-316) still lists `landing`, so the live ruleset no longer matches it, and the check fails in nightly, release-canary and validate-release-pr. Keep the window between the two items short, and do not open a release PR inside it. Expected drift output after this edit therefore shows the landing difference until site-split-53 lands.",
+  "context": "Owner decision D17 (2026-10-06): the agent may make this one hosted-ruleset edit and no other. If the API refuses, or the before-state differs from the documented contexts (core, explorer, results-data, docs, landing, tooling, oracle-review), stop and ask the owner.\n\n2026-10-09 tracker review: Between this edit and site-split-53, scripts/ruleset_drift_check.py fails. Its APPROVED_MERGE_QUEUE_CONTEXTS (lines 308-316) still lists `landing`, so the live ruleset no longer matches it, and the check fails in nightly, release-canary and validate-release-pr. Keep the window between the two items short, and do not open a release PR inside it. Expected drift output after this edit therefore shows the landing difference until site-split-53 lands.\n\n2026-10-17 DONE (owner approved in session):\n- Applied with `gh api -X PUT repos/BenchBox-dev/benchbox/rulesets/15611785 --input ~/.benchbox/batch-records/site-repo-split/owner-actions/ruleset-15611785-no-landing.json`.\n- Before: ~/.benchbox/batch-records/site-repo-split/owner-actions/ruleset-15611785-before.json, with contexts core, explorer, results-data, docs, landing, tooling, oracle-review, hold.\n- Normalised diff of the payload against the live ruleset before the edit: only the landing context.\n- Read back after the edit: core, explorer, results-data, docs, tooling, oracle-review, hold.\n- Drift check (`scripts/ruleset_drift_check.py --token-stdin`): FAILED on exactly one difference, as expected: develop-squash-only required checks lack landing. One existing non-blocking warning about v-tag-restricted bypass actors.\n- Not taken or finished yet: needs 50 and 51, which are still open; 50 waits on a stale-reference cleanup PR.",
   "description": "Agent action via gh api; no PR. Do it right after the C2 PR merges.\n\n1. Read ruleset 15611785 and save the JSON in the item context.\n2. Remove only the `landing` entry from the required status checks. Change nothing else.\n3. Read the ruleset back and record the result.\n4. Run scripts/ruleset_drift_check.py against the live state. Expect only the landing difference; site-split-53 then removes it from the approved list.",
   "sessions": [
     {
@@ -29,6 +29,14 @@
       "op": "update",
       "op_id": "8306c169f20a45149dcf5df9b7bbe81a",
       "session_id": "05afd70780334fa0b0e411a688cf8f7a"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T19:21:35Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "10c098f23ffe46d8a7e1e6a3c49ccbb7",
+      "session_id": "400c76c14fce4783943655593419ae3c"
     }
   ]
 }
