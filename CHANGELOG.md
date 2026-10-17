@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- A new reference page, Tuning Platform Support
+  (`docs/reference/tuning-platform-support.md`), lists for every platform in
+  the tuning capability registry the shipped templates, the tuning types
+  applied at execution and those that are not, whether the Spark session map
+  applies, whether a catalog introspector exists, and whether a tuned run can
+  reach `applied_verified`. It is generated from the registry
+  (`make tuning-support-matrix`) and a test fails when it drifts. The
+  introspection receipts design note now describes DuckDB's in-place sort and
+  its satisfied index re-create.
+
 - The LakeSail documentation no longer says the CLI has no `--platform-option`
   keys. `--platform lakesail:distributed` selects distributed mode, and
   `endpoint` and `adaptive_enabled` are accepted as `--platform-option` keys.

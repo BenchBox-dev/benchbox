@@ -483,3 +483,26 @@ with 1.2-1.7x more user CPU on fewer input rows under date order. The Q13
 but lost before timed rounds), not engine behaviour; the correct answer is 42.
 No layout changes: the shipped date-first layout still wins on the overall
 geometric mean.
+
+## Addendum (2026-10-17): Spark family capabilities and preview honesty
+
+- **Spark is its own registry platform.** The `spark -> databricks` alias is
+  gone; `delta` stays a Databricks alias. Spark's entry matches its adapter:
+  partitioning is not applied, sorting is `OPTIMIZE ... ZORDER BY` on Delta
+  tables only, and declared keys stay accepted because Parquet and ORC tables
+  drop them while Delta keeps them. Spark stays out of the legacy known-platform
+  set.
+- **Session maps follow the engine.** Spark and Velox apply a tuning file's
+  `platform_optimizations.spark` map and read each key back. LakeSail accepts
+  keys it ignores, so the map is warned about and recorded as dropped there, and
+  every other platform records it as dropped. These platforms are listed in
+  `SESSION_CONFIG_CAPABILITIES`.
+- **Shipped templates request only what renders.** The DuckDB TPC-DS tuned
+  template no longer requests foreign keys, which DuckDB never applies to
+  TPC-DS. The requested-but-not-rendered rule from the 2026-10-04 addendum now
+  holds for every shipped DuckDB template in the real-CLI liveness gate.
+- **Previews say when they are not what runs.** Tuned dry runs on platforms
+  whose execution does not use the tuning DDL generator (all but DuckDB,
+  MotherDuck, ClickHouse and StarRocks) carry a preview-only note, plus one note
+  per requested type the registry marks as not applied. The DuckDB preview is
+  built from the statements its adapter executes.
