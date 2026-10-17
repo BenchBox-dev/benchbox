@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Documented finding of which CedarDB layout controls exist, with sources",
+    "Supported controls are implemented and verified against the catalog; unsupported requests are recorded as not applied with a reason",
+    "Live TPC-H SF0.01 tuned run on a Linux host with io_uring (CI or nightly), with the evidence recorded in the PR",
+    "Platform docs page describes the method"
+  ],
+  "context": "Owner request 2026-10-17: \"There should be a method for tuning these platforms.\" Local verification was blocked because CedarDB needs io_uring, which the container VM lacks. Nightly already runs CedarDB throughput cells (see monitor-nightly-cedardb-throughput-gate-and-floor), so a Linux runner is the verification route.",
+  "description": "CedarDB supports only PRIMARY_KEYS and FOREIGN_KEYS tuning (benchbox/platforms/cedardb.py:180) and skips partitioning and clustering (cedardb.py:25). First find which layout controls CedarDB actually honours (sort order, clustering, indexes, partitioning), using its documentation and live checks. Then implement the ones that exist, recording each in the ledger with catalog evidence. If CedarDB has no layout controls, record that, and make each skipped request carry an explicit reason instead of silently doing nothing.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T17:32:19Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "44ff5ca23a014aa98ffa19f5035df0f8",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}
