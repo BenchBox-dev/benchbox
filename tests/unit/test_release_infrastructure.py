@@ -36,7 +36,14 @@ def _makefile_text() -> str:
 
 def _make_target_recipe(target: str) -> str:
     lines = _makefile_text().splitlines()
-    start = next(index for index, line in enumerate(lines) if line.split(":", 1)[0] == target) + 1
+    start = (
+        next(
+            index
+            for index, line in enumerate(lines)
+            if line.split(":", 1)[0] == target and index + 1 < len(lines) and lines[index + 1].startswith("\t")
+        )
+        + 1
+    )
     recipe_lines: list[str] = []
     for line in lines[start:]:
         if line and not line.startswith("\t"):
