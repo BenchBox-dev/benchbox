@@ -3153,15 +3153,10 @@
       "title": "ClickHouse: never emit a PRIMARY KEY that is not a prefix of the tuned sort key; validator rejects it"
     },
     "clickhouse-primary-key-order-evidence-20261017": {
-      "claim": {
-        "expires_at": "2026-10-18T15:11:46Z",
-        "generation": "5c7f53e12eff467ebd185aa151939a47",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Record ClickHouse key-derived ORDER BY as evidence for the primary-key intent"
     },
     "clickhouse-read-primitives-dialect-fixes": {
