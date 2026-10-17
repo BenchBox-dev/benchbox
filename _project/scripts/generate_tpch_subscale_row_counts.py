@@ -29,10 +29,11 @@ TEMPLATE_FILES = [*(f"queries/{query_id}.sql" for query_id in QUERY_IDS if query
 _NOTE = (
     "Exact per-query row counts for TPC-H at a scale factor below 1, with qgen default substitution "
     "parameters (qgen -d, no seed). TPC publishes answer files only at SF 1, so these counts are a "
-    "BenchBox reference: DuckDB returned exactly these counts in every iteration, and every other "
-    "listed engine returned them too, on data from the bundled dbgen. parameter_sensitive_query_ids lists queries whose count changed under at least one probe "
-    "seed or that are parameter-sensitive at SF 1; runs with other parameters skip them. Regenerate "
-    "with `make tpch-subscale-row-counts-regen`; do not hand-edit."
+    "BenchBox reference: every listed engine returned exactly these counts in every iteration, on data "
+    "from the bundled dbgen. parameter_sensitive_query_ids lists queries whose count changed under at "
+    "least one probe seed (every listed engine agreed on each seeded count) or that are "
+    "parameter-sensitive at SF 1; runs with other parameters skip them. Regenerate with "
+    "`make tpch-subscale-row-counts-regen`; do not hand-edit."
 )
 
 
@@ -118,33 +119,33 @@ def _engine_versions() -> dict[str, str]:
     return {"duckdb": duckdb.__version__, "datafusion": datafusion.__version__}
 
 
+def _agreed_counts(engine_counts: dict[str, dict[str, set[int]]], label: str) -> dict[str, int]:
+    disagreements = []
+    agreed: dict[str, int] = {}
+    for qid in QUERY_IDS:
+        observed = {engine: sorted(counts[qid]) for engine, counts in engine_counts.items()}
+        values = {value for counts in observed.values() for value in counts}
+        if len(values) != 1:
+            disagreements.append(f"Q{qid} {observed}")
+            continue
+        agreed[qid] = values.pop()
+    if disagreements:
+        raise SystemExit(f"{label}: engines did not all return one identical count: {'; '.join(disagreements)}")
+    return agreed
+
+
 def build_reference(
     scale_factor: float,
     engine_counts: dict[str, dict[str, set[int]]],
-    seed_counts: dict[int, dict[str, set[int]]],
+    seed_counts: dict[int, dict[str, dict[str, set[int]]]],
     engine_versions: dict[str, str],
     template_digest: str,
 ) -> dict:
-    reference_engine = REFERENCE_ENGINES[0]
-    unstable = sorted((qid for qid in QUERY_IDS if len(engine_counts[reference_engine][qid]) != 1), key=int)
-    if unstable:
-        raise SystemExit(
-            f"SF {scale_factor}: {reference_engine} returned different counts across iterations for {unstable}"
-        )
-    reference_counts = {qid: next(iter(engine_counts[reference_engine][qid])) for qid in QUERY_IDS}
-    for engine, counts in engine_counts.items():
-        missing = sorted((qid for qid in QUERY_IDS if reference_counts[qid] not in counts[qid]), key=int)
-        if missing:
-            raise SystemExit(f"SF {scale_factor}: {engine} never returned the {reference_engine} count for {missing}")
-        for qid in QUERY_IDS:
-            others = sorted(counts[qid] - {reference_counts[qid]})
-            if others:
-                print(
-                    f"WARNING SF {scale_factor}: {engine} Q{qid} also returned {others} "
-                    f"(reference {reference_counts[qid]}); that engine answers this query inconsistently",
-                    file=sys.stderr,
-                )
-    varying = {qid for counts in seed_counts.values() for qid in QUERY_IDS if counts[qid] != {reference_counts[qid]}}
+    reference_counts = _agreed_counts(engine_counts, f"SF {scale_factor} qgen -d")
+    varying = set()
+    for seed, counts_by_engine in seed_counts.items():
+        seeded = _agreed_counts(counts_by_engine, f"SF {scale_factor} seed {seed}")
+        varying |= {qid for qid in QUERY_IDS if seeded[qid] != reference_counts[qid]}
     sensitive = sorted(varying | set(PARAMETER_SENSITIVE_QUERY_IDS), key=int)
     return {
         "benchmark": "tpch",
@@ -199,7 +200,8 @@ def main(argv: list[str] | None = None) -> int:
                 for engine in REFERENCE_ENGINES
             }
             seed_counts = {
-                seed: _run_counts(runs_root, REFERENCE_ENGINES[0], scale_factor, seed, 1) for seed in probe_seeds
+                seed: {engine: _run_counts(runs_root, engine, scale_factor, seed, 1) for engine in REFERENCE_ENGINES}
+                for seed in probe_seeds
             }
             reference = build_reference(scale_factor, engine_counts, seed_counts, engine_versions, template_digest)
             path = tpch_subscale_row_count_reference_path(scale_factor)
