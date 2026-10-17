@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Documented list of honoured keys with sources and live evidence, pinned by a test",
+    "Honoured keys are applied and recorded; others are still recorded as dropped with the reason",
+    "Live LakeSail run shows the effective-session-config block and the applied keys read back"
+  ],
+  "context": "Follow-up to spark-family-session-config-velox-lakesail (#3079, e995879f3), 2026-10-17.",
+  "description": "Since #3079, LakeSail warns at validation and records every key of a tuning file's `platform_optimizations.spark` map as dropped (benchbox/platforms/_spark_helpers.py LAKESAIL_SPARK_MAP_DROP_REASON and drop_tuned_spark_session_config; called from benchbox/platforms/lakesail.py configure_for_benchmark). The reason is that LakeSail accepts `spark.conf.set` for keys it ignores. That is safe but means no tuning reaches LakeSail. Build and pin a verified list of honoured keys from LakeSail sources and live runs. Apply only those keys, record them in the ledger, and keep the drop for the rest. Neither the drop path nor the effective-session-config capture from #3077 was run against a live LakeSail server (none available on the macOS host).",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T22:06:23Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "9b4b3ab5ab1a41e0909aeb547c2eab1b",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}

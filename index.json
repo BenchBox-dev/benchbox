@@ -12235,6 +12235,13 @@
       "status": "done",
       "title": "LakeSail and Velox compose files use nested variable defaults mocker cannot parse"
     },
+    "lakesail-honoured-spark-keys-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Build a verified list of Spark session keys LakeSail honours, so tuned spark maps can apply there"
+    },
     "lakesail-spark-platform": {
       "claim": null,
       "needs": [],
