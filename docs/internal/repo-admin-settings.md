@@ -682,7 +682,7 @@ of owner. Re-apply in this order:
    live ruleset **by name** (`develop-squash-only`); a stale numeric id is not
    authority.
 3. Verify with the `gh api … rulesets/<id> --jq …` command above.
-4. Open a no-op pull request against develop and confirm the six unit results
+4. Open a no-op pull request against develop and confirm the five unit results
    and `oracle-review` report on it. Arm the exact head for squash auto-merge
    and confirm its merged commit has a successful `trunk.yml` run. This
    validates workflow permissions end to end.

@@ -38,7 +38,6 @@ REQUIRED_CONTEXT_NAMES: tuple[str, ...] = (
     "explorer",
     "results-data",
     "docs",
-    "landing",
     "tooling",
 )
 LEGACY_REQUIRED_CONTEXT_NAMES: tuple[str, ...] = (

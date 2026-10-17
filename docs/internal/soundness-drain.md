@@ -71,8 +71,8 @@ hold:
 - **(a) required-lane green** — **every** required status context of the
   `develop-squash-only` ruleset has its latest check run on the PR's head
   SHA completed with `conclusion: success`. Today that is
-  the six unit results defined in `.github/workflows/ci.yml` (`core`,
-  `explorer`, `results-data`, `docs`, `landing`, and `tooling`; see
+  the five unit results defined in `.github/workflows/ci.yml` (`core`,
+  `explorer`, `results-data`, `docs` and `tooling`; see
   [`repo-admin-settings.md`](repo-admin-settings.md)). Partial green — one
   context green while another is red or has never reported — is not green;
   a missing run is fail-closed, not an absent requirement.

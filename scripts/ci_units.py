@@ -15,7 +15,7 @@ CLI_DESCRIPTION = (
     "Decide which merge units a change touches.\n"
     "\n"
     "Reads ``.github/ci-units.yml`` and a newline-delimited list of changed paths\n"
-    "(or a diff against a base ref) and reports which of the six units\n"
+    "(or a diff against a base ref) and reports which of the five units\n"
     "(``core``, ``explorer``, ``results-data``, ``docs``, ``tooling``)\n"
     "have work to do.\n"
     "\n"
