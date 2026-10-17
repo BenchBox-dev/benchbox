@@ -1103,6 +1103,9 @@ pr-content-guard:
 	fi
 
 .PHONY: pr-open
+pr-open: override PR_TITLE := $(value PR_TITLE)
+pr-open: export PR_TEXT_TITLE := $(PR_TITLE)
+pr-open: export PR_TEXT_BODY_FILE := $(PR_BODY_FILE)
 pr-open:
 	@set -eu; \
 	$(MAKE) -s agent-write-preflight; \
@@ -1160,17 +1163,11 @@ pr-open:
 		--jq '.[] | select((.headRepositoryOwner.login | ascii_downcase) == (env.PR_HEAD_OWNER | ascii_downcase) and .headRefName == env.PR_HEAD_NAME) | .url' \
 		2>/dev/null | sed -n '1p'); \
 	if [ -z "$$URL" ]; then \
-		if [ -n "$(PR_BODY_FILE)" ]; then \
-			URL=$$(gh pr create --repo "$$REPOSITORY" --base develop --fill --head "$$HEAD_SPEC" --body-file "$(PR_BODY_FILE)"); \
-		else \
-			URL=$$(gh pr create --repo "$$REPOSITORY" --base develop --fill --head "$$HEAD_SPEC"); \
-		fi; \
+		URL=$$(PR_TEXT_REPO="$$REPOSITORY" PR_TEXT_HEAD="$$HEAD_SPEC" uv run -- python scripts/pr_text.py create) || exit 1; \
 	else \
 		REUSED_PR=1; \
 		echo "Reusing existing PR: $$URL"; \
-		if [ -n "$(PR_BODY_FILE)" ]; then \
-			gh pr edit --repo "$$REPOSITORY" "$$URL" --body-file "$(PR_BODY_FILE)"; \
-		fi; \
+		PR_TEXT_REPO="$$REPOSITORY" PR_TEXT_URL="$$URL" uv run -- python scripts/pr_text.py sync || exit 1; \
 	fi && \
 	echo "$$URL" && \
 	if [ "$(READY)" != "1" ]; then \
@@ -1216,6 +1213,14 @@ oracle-review-recover: export ORACLE_REVIEW_PR := $(PR)
 oracle-review-recover: export ORACLE_REVIEW_REPO := $(or $(REPO),BenchBox-dev/BenchBox)
 oracle-review-recover:
 	@uv run -- python scripts/oracle_review_recover.py
+
+.PHONY: pr-rerun
+pr-rerun: override PR := $(value PR)
+pr-rerun: override REPO := $(value REPO)
+pr-rerun: export PR_RERUN_PR := $(PR)
+pr-rerun: export PR_RERUN_REPO := $(or $(REPO),BenchBox-dev/BenchBox)
+pr-rerun:
+	@uv run -- python scripts/pr_rerun.py
 
 .PHONY: pr-arm
 pr-arm: override PR := $(value PR)

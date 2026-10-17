@@ -1474,10 +1474,11 @@ def test_make_entrypoints_forward_explicit_landing_bindings() -> None:
     assert "pr-arm-auto-merge" in ready
     open_body = makefile.split("pr-open:", 1)[1].split("\n\n", 1)[0]
     assert "gh pr list --repo" in open_body
-    assert "gh pr create --repo" in open_body
-    assert "gh pr edit --repo" in open_body
+    assert "scripts/pr_text.py create" in open_body and "scripts/pr_text.py sync" in open_body
+    assert "gh pr create" not in open_body and "gh pr edit" not in open_body
+    assert "$(PR_TITLE)" not in open_body.split("pr-open:\n", 1)[1]
     assert "git remote get-url --push origin" in open_body
-    assert "HEAD_SPEC" in open_body and '--head "$$HEAD_SPEC"' in open_body
+    assert "HEAD_SPEC" in open_body and 'PR_TEXT_HEAD="$$HEAD_SPEC"' in open_body
     assert "Next: make pr-arm once the review fixes are pushed" in open_body
     assert "withheld" not in open_body and "held" not in open_body
 

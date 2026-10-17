@@ -239,6 +239,7 @@ AGENT_MAKE_INTERFACES = [
     "pr-open",
     "pr-preflight",
     "pr-ready",
+    "pr-rerun",
     "skill-sync",
     "test",
     "test-fast",
