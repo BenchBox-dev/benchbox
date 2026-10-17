@@ -2,6 +2,7 @@
 
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
+import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
@@ -86,10 +87,7 @@ class TestDataFusionAdapter:
             mock_df_module = Mock()
             mock_df_module.__version__ = "50.1.0"
 
-            with patch(
-                "builtins.__import__",
-                side_effect=lambda name, *args: mock_df_module if name == "datafusion" else __import__(name, *args),
-            ):
+            with patch.dict(sys.modules, {"datafusion": mock_df_module}):
                 info = adapter.get_platform_info()
 
             assert info["platform_type"] == "datafusion"
