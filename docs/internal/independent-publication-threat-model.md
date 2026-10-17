@@ -166,7 +166,7 @@ never executed as code.
 
 ### Watchdog privilege boundaries and runner loss
 
-**Threat:** An out-of-band recovery workflow (`publication-recover.yml`) has broad privileges
+**Threat:** An out-of-band recovery workflow (now retired) had broad privileges
 that could be exploited by untrusted PR events or forge maintainer approvals.
 
 **Controls:** Watchdog scanning is strictly read-only (`contents: read, actions: read`). It
