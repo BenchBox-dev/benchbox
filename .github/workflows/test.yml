@@ -356,7 +356,6 @@ jobs:
             AGENTS.md \
             CLAUDE.md \
             GEMINI.md \
-            .github/workflows/results-explorer-browser.yml \
             .github/workflows/seed-corpus.yml \
             .github/workflows/sync-results-data-to-published.yml \
             .github/workflows/validate-submission.yml; do

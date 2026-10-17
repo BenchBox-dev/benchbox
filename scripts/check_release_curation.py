@@ -15,7 +15,6 @@ DEVELOPMENT_TREE_TARGETS_VARIABLE = "DEVELOPMENT_TREE_ONLY_TARGETS"
 CURATED_RESUMABLE_PROJECT_TARGETS = {"release-cut"}
 REQUIRED_CURATED_PATHS = frozenset(
     {
-        ".github/workflows/results-explorer-browser.yml",
         ".github/workflows/seed-corpus.yml",
         ".github/workflows/sync-results-data-to-published.yml",
         ".github/workflows/validate-submission.yml",

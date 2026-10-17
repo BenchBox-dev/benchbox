@@ -520,16 +520,16 @@ def test_script_help_examples_name_the_current_version_and_all_run(mock_artifact
     assert ["--schema-only", "--schema-versions", str(EXPLORER_READ_MODEL_VERSION)] in examples
 
     workdir = tmp_path / "workdir"
-    dist = workdir / "results-explorer" / "dist"
+    dist = workdir / "explorer-dist"
     dist.parent.mkdir(parents=True)
     mock_artifact_dir.rename(dist)
-    database = workdir / "results-explorer" / "public" / "data" / "results.duckdb"
+    database = workdir / "explorer-data" / "results.duckdb"
     database.parent.mkdir(parents=True)
     with duckdb.connect(str(database)) as con:
         for statement in checker.generate_schema_ddl(EXPLORER_READ_MODEL_VERSION):
             con.execute(statement)
         con.execute(f"INSERT INTO metadata VALUES ({EXPLORER_READ_MODEL_VERSION})")
-    seeded = _run_script("--artifact", "results-explorer/dist", "--generate-manifest", cwd=workdir)
+    seeded = _run_script("--artifact", "explorer-dist", "--generate-manifest", cwd=workdir)
     assert seeded.returncode == 0, seeded.stdout + seeded.stderr
 
     for example in examples:

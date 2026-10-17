@@ -380,7 +380,6 @@ class TestReleaseInfrastructure:
         assert "git ls-files -- _project" in readiness_run_text
         for retained_path in [
             "results-data",
-            "results-explorer",
             "_project/scripts/explorer_pipeline",
             "_project/scripts/explorer_publish.py",
             "_project/scripts/results_explorer_snapshot_invariants.py",
