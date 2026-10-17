@@ -5,8 +5,8 @@
     "Live TPC-H SF0.01 tuned run, with the evidence recorded in the PR",
     "Platform docs page describes the method"
   ],
-  "context": "Owner request 2026-10-17: \"There should be a method for tuning these platforms.\" Found during the #3092 verification: the image only allows DuckDB-backed tables.",
-  "description": "pg_mooncake skips partitioning and clustering (benchbox/platforms/pg_mooncake.py:30). The current image only allows DuckDB-backed columnstore tables (pg_mooncake.py:169, 401), so heap CLUSTER doesn't apply. Find out which layout controls the columnstore honours, such as sort order on load or any clustering or partitioning options. Implement the ones that exist with ledger evidence, and record unsupported requests as not applied with a reason.",
+  "context": "Owner request 2026-10-17: \"There should be a method for tuning these platforms.\" Corrected 2026-10-17: the #3092 check did not show that the image only allows DuckDB-backed tables. It showed the columnstore access method missing and DuckDB tables limited to TEMP; the `mooncake` access method the adapter uses was not checked.",
+  "description": "pg_mooncake skips partitioning and clustering (benchbox/platforms/pg_mooncake.py:30-31). The adapter's _add_columnstore_access_method appends `USING mooncake` to CREATE TABLE (pg_mooncake.py:170-182), so tables are meant to be columnstore and heap CLUSTER does not apply to them. Find out which layout controls the columnstore honours, such as sort order on load or any clustering or partitioning options. Implement the ones that exist with ledger evidence, and record unsupported requests as not applied with a reason. First settle the test image: in the local mooncakelabs/pg_mooncake:latest image checked during the #3092 work, `USING columnstore` failed (\"access method \\\"columnstore\\\" does not exist\") and `USING duckdb` failed (\"Only TEMP tables are supported in DuckDB if MotherDuck support is not enabled\"); `USING mooncake` and heap tables were not tested.",
   "sessions": [
     {
       "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
@@ -14,6 +14,14 @@
       "client": "claude-code",
       "op": "create",
       "op_id": "b6bd68b8652d4c0cab4293b6ed40be9c",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T21:32:34Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "7d394d21dde34f6393f1a273429ddc23",
       "session_id": "400c76c14fce4783943655593419ae3c"
     }
   ]
