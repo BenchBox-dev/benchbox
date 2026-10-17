@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "_supported_tuning_type_names matches what is applied",
+    "Heap-table clustering and partitioning applied and verified against the catalog, or skipped with a recorded reason",
+    "Live TPC-H SF0.01 tuned run, with the evidence recorded in the PR",
+    "Platform docs page describes the method"
+  ],
+  "context": "Owner request 2026-10-17: \"There should be a method for tuning these platforms.\"",
+  "description": "pg_duckdb declares PARTITIONING and CLUSTERING as supported (benchbox/platforms/pg_duckdb.py:383) but skips partitioning at execution (pg_duckdb.py:42). Decide the method for each table kind: CLUSTER and partitioning for heap tables (CLUSTER was confirmed working on a pg_duckdb plain table during the #3092 verification), and sort order on load for DuckDB-backed or Parquet-backed tables. Implement it with ledger evidence, and make the claimed tuning types match what is applied.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T17:32:37Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "db767c095152445185c4cc6a1e07087e",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}

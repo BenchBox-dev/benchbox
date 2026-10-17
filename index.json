@@ -24326,6 +24326,13 @@
       "status": "done",
       "title": "Extend rendered-SQL clause contract to partition_by/order_by previews"
     },
+    "tuning-pg-duckdb-native-layout-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "pg_duckdb: fix the claimed-but-skipped layout tuning, and add a native method"
+    },
     "tuning-physical-identifier-resolution-20261001": {
       "claim": null,
       "needs": [],
