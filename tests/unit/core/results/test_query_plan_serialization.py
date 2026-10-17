@@ -637,7 +637,7 @@ class TestSchemaV2Validation:
         with pytest.raises(SchemaV2ValidationError) as exc:
             validator.validate(payload)
         assert "runtime result schema policy" in str(exc.value)
-        assert "schema versions 2.0, 2.1, 2.2, and 2.3" in str(exc.value)
+        assert "schema versions 2.0, 2.1, 2.2, 2.3, and 2.4" in str(exc.value)
 
     def test_validator_rejects_missing_run_fields(self) -> None:
 

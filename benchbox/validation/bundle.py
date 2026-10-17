@@ -114,6 +114,7 @@ ACCEPTED_VERSION_PREFIX = "2."
 NUMERIC_SCHEMA_VERSION_RE = re.compile(r"^\d+\.\d+(?:\.\d+)?$")
 ROW_COUNT_VALIDATION_SCHEMA_VERSION = (2, 2)
 ROW_COUNT_VALIDATION_MESSAGE_MAX_CHARS = 500
+PLATFORM_TIMING_STATUSES = frozenset({"valid", "suspect", "unavailable"})
 ROW_COUNT_VALIDATION_STATUSES = frozenset({"PASSED", "FAILED", "SKIPPED", "ERROR"})
 ROW_COUNT_VALIDATION_FIELDS = frozenset({"status", "expected", "actual", "error", "warning"})
 ROW_COUNT_VALIDATION_REQUIRED_FIELDS = frozenset({"status", "expected", "actual"})
@@ -631,6 +632,8 @@ def _validate_run_section(run: Any, vr: ValidationResult) -> None:
     if missing_run:
         vr.error(f"Missing keys in 'run': {sorted(missing_run)}")
 
+    _validate_run_timing_fields(run, vr)
+
     total_ms = run.get("total_duration_ms")
     if total_ms is None:
         return
@@ -643,6 +646,64 @@ def _validate_run_section(run: Any, vr: ValidationResult) -> None:
         vr.error(f"Negative total_duration_ms: {total_ms_f}")
     elif total_ms_f > MAX_TOTAL_DURATION_MS:
         vr.warn(f"Unusually long total_duration_ms: {total_ms_f:.0f} (>{MAX_TOTAL_DURATION_MS})")
+
+
+def _validate_run_timing_fields(run: dict, vr: ValidationResult) -> None:
+    timing_method = run.get("timing_method")
+    if timing_method is not None and (
+        isinstance(timing_method, bool) or not isinstance(timing_method, int) or timing_method < 1
+    ):
+        vr.error(f"'run.timing_method' must be a positive int, got {timing_method!r}")
+
+    net_estimate_status = run.get("net_estimate_status")
+    if net_estimate_status is not None and not isinstance(net_estimate_status, str):
+        vr.error(f"'run.net_estimate_status' must be a string, got {net_estimate_status!r}")
+
+    platform_timing = run.get("platform_timing")
+    if platform_timing is None:
+        return
+    if not isinstance(platform_timing, dict):
+        vr.error("'run.platform_timing' must be a dict")
+        return
+    for key in ("source", "definition"):
+        value = platform_timing.get(key)
+        if value is not None and not isinstance(value, str):
+            vr.error(f"'run.platform_timing.{key}' must be a string, got {value!r}")
+    coverage = platform_timing.get("coverage")
+    if coverage is not None and (
+        isinstance(coverage, bool)
+        or not isinstance(coverage, (int, float))
+        or not math.isfinite(coverage)
+        or not 0 <= coverage <= 1
+    ):
+        vr.error(f"'run.platform_timing.coverage' must be a number from 0 to 1, got {coverage!r}")
+
+
+def _validate_query_timing_fields(index: int, q: dict, vr: ValidationResult) -> None:
+    for key in ("request_count", "result_bytes"):
+        value = q.get(key)
+        if value is not None and (isinstance(value, bool) or not isinstance(value, int) or value < 0):
+            vr.error(f"queries[{index}].{key} must be a non-negative int, got {value!r}")
+    platform_timing = q.get("platform_timing")
+    if platform_timing is None:
+        return
+    if not isinstance(platform_timing, dict):
+        vr.error(f"queries[{index}].platform_timing must be a dict")
+        return
+    status = platform_timing.get("status")
+    if status not in PLATFORM_TIMING_STATUSES:
+        vr.error(
+            f"queries[{index}].platform_timing.status must be one of {sorted(PLATFORM_TIMING_STATUSES)}, got {status!r}"
+        )
+    for key in ("platform_ms", "queue_ms", "compile_ms", "exec_ms"):
+        value = platform_timing.get(key)
+        if value is not None and (
+            isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0
+        ):
+            vr.error(f"queries[{index}].platform_timing.{key} must be a non-negative number, got {value!r}")
+    requests = platform_timing.get("requests")
+    if requests is not None and not isinstance(requests, list):
+        vr.error(f"queries[{index}].platform_timing.requests must be a list")
 
 
 def _validate_benchmark_section(benchmark: Any, vr: ValidationResult) -> None:
@@ -1279,7 +1340,7 @@ def _validate_environment_client_link(data: dict, vr: ValidationResult) -> None:
     if source is not None and not isinstance(source, str):
         vr.error(f"'environment.client_link.source' must be a string, got {source!r}")
 
-    for key in ("client_region", "client_cloud", "collection_error_class", "collection_error_message"):
+    for key in ("client_region", "client_cloud", "probed_at", "collection_error_class", "collection_error_message"):
         value = client_link.get(key)
         if value is not None and not isinstance(value, str):
             vr.error(f"'environment.client_link.{key}' must be a string, got {value!r}")
@@ -1714,6 +1775,7 @@ def _validate_single_query(index: int, q: Any, version: Any, vr: ValidationResul
         return False
 
     _validate_row_count_validation(index, q, version, vr)
+    _validate_query_timing_fields(index, q, vr)
 
     ms = q.get("ms")
     if ms is None:

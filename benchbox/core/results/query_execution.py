@@ -13,6 +13,7 @@ ROW_COUNT_VALIDATION_MESSAGE_MAX_CHARS = 500
 ROW_COUNT_VALIDATION_STATUSES = frozenset({"PASSED", "FAILED", "SKIPPED", "ERROR"})
 ROW_COUNT_VALIDATION_FIELDS = frozenset({"status", "expected", "actual", "error", "warning"})
 ROW_COUNT_VALIDATION_REQUIRED_FIELDS = frozenset({"status", "expected", "actual"})
+PLATFORM_TIMING_STATUSES = frozenset({"valid", "suspect", "unavailable"})
 
 COMPACT_V2_QUERY_FIELDS = frozenset(
     {
@@ -29,6 +30,9 @@ COMPACT_V2_QUERY_FIELDS = frozenset(
         "dataframe_skip_summary",
         "plan_capture_error",
         "execution_engine",
+        "request_count",
+        "result_bytes",
+        "platform_timing",
     }
 )
 
@@ -183,6 +187,9 @@ LEGACY_QUERY_FIELDS = frozenset(
         "digest",
         "test_type",
         "execution_engine",
+        "request_count",
+        "result_bytes",
+        "platform_timing",
     }
 )
 
@@ -313,6 +320,19 @@ def normalize_non_negative_integer(field: str, raw_value: Any) -> int:
     return value
 
 
+def normalize_platform_timing(value: Any) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    if not isinstance(value, Mapping):
+        raise QueryExecutionContractError("platform_timing must be an object")
+    status = value.get("status")
+    if status not in PLATFORM_TIMING_STATUSES:
+        raise QueryExecutionContractError(
+            f"platform_timing.status must be one of {sorted(PLATFORM_TIMING_STATUSES)}, got {status!r}"
+        )
+    return dict(value)
+
+
 def normalize_row_count_validation(value: Any, *, rows_returned: int | None) -> dict[str, Any] | None:
     if value is None:
         return None
@@ -420,6 +440,9 @@ def validate_query_execution(execution: QueryExecution) -> QueryExecution:
         test_type=execution.test_type,
         error_type=execution.error_type,
         execution_engine=execution.execution_engine,
+        request_count=execution.request_count,
+        result_bytes=execution.result_bytes,
+        platform_timing=execution.platform_timing,
     )
 
 
@@ -477,6 +500,9 @@ def legacy_query_execution_mapping(value: Any) -> Mapping[str, Any]:
         "digest",
         "test_type",
         "execution_engine",
+        "request_count",
+        "result_bytes",
+        "platform_timing",
     )
     extracted = {field: getattr(value, field) for field in contract_fields if hasattr(value, field)}
     if extracted:
@@ -594,6 +620,9 @@ def query_execution_from_legacy_dict(
         test_type=source.get("test_type"),
         error_type=source.get("error_type"),
         execution_engine=source.get("execution_engine"),
+        request_count=source.get("request_count"),
+        result_bytes=source.get("result_bytes"),
+        platform_timing=source.get("platform_timing"),
     )
 
 
@@ -636,6 +665,9 @@ def query_execution_to_legacy_dict(
         "result_digest",
         "test_type",
         "execution_engine",
+        "request_count",
+        "result_bytes",
+        "platform_timing",
     )
     for field in optional_fields:
         value = getattr(execution, field)
@@ -690,6 +722,10 @@ def query_execution_to_compact_v2(execution: QueryExecution) -> dict[str, Any]:
         result["dataframe_skip_summary"] = execution.dataframe_skip_summary
     if execution.plan_capture_error is not None:
         result["plan_capture_error"] = execution.plan_capture_error
+    for field in ("request_count", "result_bytes", "platform_timing"):
+        value = getattr(execution, field)
+        if value is not None:
+            result[field] = value
     return result
 
 
@@ -698,10 +734,12 @@ __all__ = [
     "DURATION_CONSISTENCY_TOLERANCE_MS",
     "LEGACY_IGNORED_EXTRA_FIELDS",
     "LEGACY_QUERY_FIELDS",
+    "PLATFORM_TIMING_STATUSES",
     "QueryExecutionContractError",
     "legacy_query_execution_mapping",
     "normalize_duration_ms",
     "normalize_non_negative_integer",
+    "normalize_platform_timing",
     "normalize_row_count_validation",
     "normalize_status",
     "normalize_stream_id",

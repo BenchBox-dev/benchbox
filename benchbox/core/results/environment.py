@@ -173,6 +173,7 @@ class ClientLinkEnvironment:
     client_region: str | None = None
     client_cloud: str | None = None
     statement_overhead_ms: dict[str, Any] | None = None
+    probed_at: str | None = None
     collection_error_class: str | None = None
     collection_error_message: str | None = None
 

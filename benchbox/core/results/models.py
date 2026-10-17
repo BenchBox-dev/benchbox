@@ -164,6 +164,9 @@ class QueryExecution:
     test_type: str | None = None
     error_type: str | None = None
     execution_engine: str | None = None
+    request_count: int | None = None
+    result_bytes: int | None = None
+    platform_timing: dict[str, Any] | None = None
 
     def __init__(
         self,
@@ -189,12 +192,16 @@ class QueryExecution:
         test_type: str | None = None,
         error_type: str | None = None,
         execution_engine: str | None = None,
+        request_count: int | None = None,
+        result_bytes: int | None = None,
+        platform_timing: dict[str, Any] | None = None,
         *,
         execution_time_seconds: float | None = None,
     ) -> None:
         from benchbox.core.results.query_execution import (
             normalize_duration_ms,
             normalize_non_negative_integer,
+            normalize_platform_timing,
             normalize_status,
             normalize_stream_id,
         )
@@ -230,6 +237,13 @@ class QueryExecution:
         self.test_type = test_type
         self.error_type = error_type
         self.execution_engine = execution_engine
+        self.request_count = (
+            normalize_non_negative_integer("request_count", request_count) if request_count is not None else None
+        )
+        self.result_bytes = (
+            normalize_non_negative_integer("result_bytes", result_bytes) if result_bytes is not None else None
+        )
+        self.platform_timing = normalize_platform_timing(platform_timing)
 
     @property
     def execution_time_seconds(self) -> float | None:
