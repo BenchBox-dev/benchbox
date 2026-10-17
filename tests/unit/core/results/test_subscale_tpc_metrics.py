@@ -7,7 +7,11 @@ from benchbox.core.results.metrics import TPCMetricsCalculator
 from benchbox.core.results.platform_info import PlatformInfoInput
 from benchbox.core.results.query_normalizer import normalize_query_result
 from benchbox.core.results.schema import build_result_payload
-from benchbox.core.results.subscale_policy import derive_power_at_size, effective_compliance_class
+from benchbox.core.results.subscale_policy import (
+    derive_power_at_size,
+    effective_compliance_class,
+    subscale_power_at_size,
+)
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -105,6 +109,8 @@ def test_derived_power_is_unavailable_when_the_final_iteration_failed() -> None:
         ("ssb", 0.01, None, None),
         ("tpch", 0.01, "official", "unofficial_subscale"),
         ("tpcds", 0.1, "unofficial_nonstandard", "unofficial_subscale"),
+        ("TPC-H", 0.01, "official", "unofficial_subscale"),
+        ("tpc_ds", 0.1, None, "unofficial_subscale"),
         ("tpch", 1.0, "unofficial_nonstandard", "unofficial_nonstandard"),
     ],
 )
@@ -121,3 +127,28 @@ def test_derived_power_accepts_pass_statuses() -> None:
     assert derive_power_at_size(queries, 0.01) == pytest.approx(
         TPCMetricsCalculator.calculate_power_at_size([0.02, 0.08], 0.01)
     )
+
+
+_FULL_RUN = [
+    {"id": str(query), "iter": 1, "ms": 20.0, "run_type": "measurement", "status": "SUCCESS"} for query in range(1, 23)
+]
+_FULL_RUN_POWER = 0.01 * 3600 / 0.02
+
+
+def test_recorded_subscale_power_within_tolerance_is_kept() -> None:
+    assert subscale_power_at_size("tpch", _FULL_RUN_POWER * 1.04, _FULL_RUN, 0.01) == (
+        pytest.approx(_FULL_RUN_POWER * 1.04),
+        "recorded",
+    )
+
+
+def test_recorded_subscale_power_inconsistent_with_timings_is_not_used() -> None:
+    assert subscale_power_at_size("tpch", 1e12, _FULL_RUN, 0.01) == (None, None)
+
+
+def test_missing_subscale_power_is_derived_from_a_complete_final_iteration() -> None:
+    assert subscale_power_at_size("tpch", None, _FULL_RUN, 0.01) == (
+        pytest.approx(_FULL_RUN_POWER),
+        "derived_from_timings",
+    )
+    assert subscale_power_at_size("tpch", None, _FULL_RUN[:21], 0.01) == (None, None)

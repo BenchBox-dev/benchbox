@@ -51,11 +51,10 @@ from benchbox.core.results.execution_variant import published_variant_id, read_r
 from benchbox.core.results.schema_policy import EXPLORER_INPUT_SCHEMA_POLICY, result_schema_version_value
 from benchbox.core.results.status import bundle_failed_query_count, bundle_non_clean_reason, normalize_validation_status
 from benchbox.core.results.subscale_policy import (
-    POWER_SCORE_DERIVED_FROM_TIMINGS,
     POWER_SCORE_RECORDED,
     SUBSCALE_COMPLIANCE_CLASS,
-    derive_power_at_size,
     effective_compliance_class,
+    subscale_power_at_size,
 )
 from benchbox.core.tuning.modes import is_canonical_mode
 from benchbox.validation.bundle import (
@@ -408,15 +407,12 @@ def _tpc_metric(value: Any) -> float | None:
 
 def _power_score(bundle: BundleDocument, bundle_data: Mapping[str, Any]) -> tuple[float | None, str | None]:
     recorded = _tpc_metric(bundle.summary.tpc_metrics.power_at_size)
-    if recorded is not None:
-        return recorded, POWER_SCORE_RECORDED
     if _compliance_class(bundle) != SUBSCALE_COMPLIANCE_CLASS:
-        return None, None
+        return recorded, POWER_SCORE_RECORDED if recorded is not None else None
     queries = bundle_data.get("queries")
-    derived = derive_power_at_size(queries if isinstance(queries, list) else [], bundle.benchmark.scale_factor)
-    if derived is None:
-        return None, None
-    return derived, POWER_SCORE_DERIVED_FROM_TIMINGS
+    return subscale_power_at_size(
+        bundle.benchmark.id, recorded, queries if isinstance(queries, list) else [], bundle.benchmark.scale_factor
+    )
 
 
 def _configured_stream_count(bundle: BundleDocument) -> int | None:

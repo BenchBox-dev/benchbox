@@ -511,18 +511,17 @@ def _tpc_metric(payload: dict, name: str) -> float | None:
 
 def _power_score(payload: dict) -> float | None:
     recorded = _tpc_metric(payload, "power_at_size")
-    if recorded is not None:
-        return recorded
     benchmark = _mapping(payload.get("benchmark"))
     compliance = SUBSCALE_POLICY.effective_compliance_class(
         benchmark.get("id"), benchmark.get("scale_factor"), benchmark.get("compliance_class")
     )
     if compliance != SUBSCALE_POLICY.SUBSCALE_COMPLIANCE_CLASS:
-        return None
+        return recorded
     queries = payload.get("queries")
-    return SUBSCALE_POLICY.derive_power_at_size(
-        queries if isinstance(queries, list) else [], benchmark.get("scale_factor")
+    power, _ = SUBSCALE_POLICY.subscale_power_at_size(
+        benchmark.get("id"), recorded, queries if isinstance(queries, list) else [], benchmark.get("scale_factor")
     )
+    return power
 
 
 def _throughput_phase_clean(payload: dict) -> bool:

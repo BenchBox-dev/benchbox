@@ -16,6 +16,7 @@ describe("subscale labels", () => {
   it.each([
     ["tpch", 0.01, "TPC-H"],
     ["TPCDS", "0.1", "TPC-DS"],
+    ["TPC-H", 0.01, "TPC-H"],
     ["tpch", 1, null],
     ["ssb", 0.01, null],
     ["tpch", null, null],

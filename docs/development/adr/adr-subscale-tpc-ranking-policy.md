@@ -41,17 +41,25 @@ ranking at all.
    `benchbox submit` and `benchbox publish` still refuse them, so no
    official TPC metric can be produced from a subscale bundle.
 4. A TPC-H or TPC-DS bundle below SF 1 is read as `unofficial_subscale`
-   whatever class it records, so a missing or incorrect class cannot avoid
+   whatever class it records and however its benchmark id is spelled
+   (`tpch`, `TPC-H`, `tpc_ds`), so a missing or incorrect class cannot avoid
    the label. This keeps the 18 legacy bundles, which record no class,
    ranked and labelled. Stored bundle bytes are not changed.
 5. Derived and recorded Power@Size share one cohort ranking. A recorded
-   value is used as stored, as it is for every other bundle; the read path
-   does not recompute it.
+   subscale value is used only when it agrees within 5% with the value
+   recomputed from the bundle's own final-iteration timings; otherwise the
+   bundle has no primary metric and is not ranked. When the timings cannot
+   be recomputed (no complete final iteration), the recorded value is used
+   as stored, as it is for every bundle at SF 1 and above. On the 25
+   published subscale bundles that store a value, the largest difference is
+   1.4%.
 6. Eleven TPC-H and three TPC-DS subscale bundles were written with
    suppressed metrics and no Power@Size. The read path derives Power@Size
    from their final measurement iteration: `SF × 3600 ÷ geomean(seconds)`,
-   the same formula the result builder uses. The read model marks these
-   values `power_score_source = "derived_from_timings"`, and the Explorer
+   the same formula the result builder uses. The final iteration must cover
+   every query (22 for TPC-H, 99 for TPC-DS), each with a passing status.
+   The read model marks these values
+   `power_score_source = "derived_from_timings"`, and the Explorer
    shows them as derived. Exported timings are rounded, so a derived value
    can differ slightly from what the run would have stored: about 0.1% or
    less on the legacy bundles that store both, with one Polars bundle at

@@ -1480,14 +1480,16 @@ def _subscale_bundle(directory: Path, name: str, platform: str, tpc_metrics: dic
         "export": {"anonymized": True},
         "result_schema_version": "2.3",
         "summary": {
-            "queries": {"total": 2, "passed": 2, "failed": 0},
+            "queries": {"total": 22, "passed": 22, "failed": 0},
             "validation": "passed",
             "tpc_metrics": tpc_metrics,
         },
         "queries": [
             {"id": "1", "ms": 50.0, "iter": 0, "run_type": "warmup", "status": "SUCCESS"},
-            {"id": "1", "ms": 10.0, "iter": 1, "run_type": "measurement", "status": "SUCCESS"},
-            {"id": "2", "ms": 40.0, "iter": 1, "run_type": "measurement", "status": "SUCCESS"},
+            *(
+                {"id": str(query), "ms": 20.0, "iter": 1, "run_type": "measurement", "status": "SUCCESS"}
+                for query in range(1, 23)
+            ),
         ],
     }
     directory.mkdir(parents=True, exist_ok=True)
@@ -1499,11 +1501,12 @@ def _subscale_bundle(directory: Path, name: str, platform: str, tpc_metrics: dic
 @pytest.mark.parametrize(
     ("tpc_metrics", "benchmark_fields", "expected_power"),
     [
-        ({"power_at_size": 7.5, "unofficial": True}, {"compliance_class": "unofficial_subscale"}, 7.5),
-        ({"power_at_size": 7.5}, {}, 7.5),
+        ({"power_at_size": 1820.0, "unofficial": True}, {"compliance_class": "unofficial_subscale"}, 1820.0),
+        ({"power_at_size": 1820.0}, {}, 1820.0),
         ({"suppressed": True}, {"compliance_class": "unofficial_subscale"}, 0.01 * 3600 / 0.02),
+        ({"suppressed": True}, {"id": "TPC-H", "compliance_class": "official"}, 0.01 * 3600 / 0.02),
     ],
-    ids=["recorded-unofficial", "legacy-null-class", "suppressed-back-filled"],
+    ids=["recorded-unofficial", "legacy-null-class", "suppressed-back-filled", "id-variant-recorded-official"],
 )
 def test_subscale_tpc_bundles_rank_on_recorded_or_derived_power(
     tmp_path: Path, tpc_metrics: dict, benchmark_fields: dict, expected_power: float
@@ -1560,3 +1563,33 @@ def test_a_recorded_official_class_below_sf1_is_read_as_subscale(tmp_path: Path)
     path = _subscale_bundle(tmp_path, "duckdb.json", "DuckDB", {"power_at_size": 1800.0}, compliance_class="official")
 
     assert BundleTransformer().to_manifest_entry(path, result_id="r").compliance_class == "unofficial_subscale"
+
+
+def test_recorded_subscale_power_that_disagrees_with_timings_is_not_ranked(tmp_path: Path) -> None:
+    validator = _load_validator()
+    path = _subscale_bundle(
+        tmp_path,
+        "duckdb.json",
+        "DuckDB",
+        {"power_at_size": 1e12, "unofficial": True},
+        compliance_class="unofficial_subscale",
+    )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+
+    assert validator.exclusion_reason(payload) == "missing_primary_metric"
+    entry = BundleTransformer().to_manifest_entry(path, result_id="r")
+    assert entry.ranking_exclusion_reason == "missing_primary_metric"
+    assert entry.power_score is None
+
+
+def test_partial_final_iteration_is_not_back_filled(tmp_path: Path) -> None:
+    validator = _load_validator()
+    path = _subscale_bundle(
+        tmp_path, "duckdb.json", "DuckDB", {"suppressed": True}, compliance_class="unofficial_subscale"
+    )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["queries"].append({"id": "1", "ms": 20.0, "iter": 2, "run_type": "measurement", "status": "SUCCESS"})
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    assert validator._power_score(payload) is None
+    assert BundleTransformer().to_manifest_entry(path, result_id="r").power_score is None

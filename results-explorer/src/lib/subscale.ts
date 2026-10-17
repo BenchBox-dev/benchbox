@@ -5,7 +5,7 @@ export const DERIVED_POWER_SOURCE = "derived_from_timings";
 const SUBSCALE_TPC_NAMES: Record<string, string> = { tpch: "TPC-H", tpcds: "TPC-DS" };
 
 export function subscaleTpcName(benchmark: string | null | undefined, scaleFactor: number | string | null | undefined) {
-  const name = SUBSCALE_TPC_NAMES[(benchmark ?? "").trim().toLowerCase()];
+  const name = SUBSCALE_TPC_NAMES[(benchmark ?? "").toLowerCase().replace(/[^a-z0-9]/g, "")];
   const scale = Number(scaleFactor);
   return name && Number.isFinite(scale) && scale > 0 && scale < 1 ? name : null;
 }
