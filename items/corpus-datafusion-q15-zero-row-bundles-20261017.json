@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Every published TPC-H bundle with a Q15 measurement row of 0 rows is listed",
+    "Each is relabelled, overridden with a recorded reason, or withdrawn under the corpus admission policy",
+    "The reason the SF 1 bundle passed validation with a wrong Q15 count is recorded",
+    "validate_corpus.py and the Explorer agree on the outcome"
+  ],
+  "description": "Defect: some published DataFusion TPC-H bundles contain measurement Q15 rows with 0 rows (the correct answer is 1) and still carry summary.validation=passed, so a wrong answer is in the published corpus marked clean. Found 2026-10-16 by scanning results-data bundles for Q15 counts: results-data/bundles/tpch_sf1_datafusion_sql_20260825_172912_1d62bd4f.json (SF 1, Q15 0/SUCCESS and 1/SUCCESS, validation passed), tpch_sf001_datafusion_sql_20260826_110608_e8a7d048.json and tpch_sf01_datafusion_sql_20260824_082755_adcfb35e.json (Q15 [0,1]). Root cause is datafusion-tpch-money-columns-double-20261017. The SF 1 case should already fail the answer-file check, so also find out why it passed (likely validation was not enforced when recorded).",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T22:05:59Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "6dbec77133544061b05f33dd1fb6779e",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}

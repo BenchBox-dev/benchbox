@@ -5268,6 +5268,15 @@
       "status": "done",
       "title": "Corpus bundles carry no EOL attribute, so a CRLF checkout breaks byte identity"
     },
+    "corpus-datafusion-q15-zero-row-bundles-20261017": {
+      "claim": null,
+      "needs": [
+        "datafusion-tpch-money-columns-double-20261017"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Published DataFusion TPC-H bundles record Q15 with 0 rows yet validation passed"
+    },
     "corpus-depth-gate-counts-unrankable-bundles": {
       "claim": null,
       "needs": [],
