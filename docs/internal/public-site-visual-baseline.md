@@ -44,7 +44,7 @@ digests and unexpected new captures, but it never accepts a capture missing
 from the current matrix. Clear both variables after the approved run so only
 one reviewed head occupies the repository-wide approval slot.
 
-The PR-head slot is the only approval slot. `ci.yml` triggers only on
+The PR-head slot is the only approval slot. `site-docs.yml` triggers only on
 `pull_request`, and its compare step reads only `APPROVED_HEAD_SHA`,
 `APPROVAL_REASON` and the PR head SHA.
 
@@ -54,11 +54,14 @@ reviewed PR merges. PR diagnostic artifacts remain short-lived and non-promotabl
 
 ### Renderer-switch pull request
 
-The Astro build is captured ahead of the switch by the non-required
-`Public-site visual Astro dry run` job in `ci.yml`, locally by
-`make site-build site-visual-capture`. It captures the same route and viewport
-matrix from `website/dist` with `PUBLIC_SITE_VISUAL_RENDERER=astro`, uploads
+The Astro build is captured ahead of the switch by the advisory
+`Capture public site from the Astro build` step of the `site-build` job in
+`site-docs.yml`, locally by `make site-build site-visual-capture`. It captures
+the same route and viewport matrix from `website/dist` with
+`PUBLIC_SITE_VISUAL_RENDERER=astro`, uploads
 `public-site-visual-astro-<run id>`, and never compares or replaces a baseline.
+On a pull request the capture records the merge commit it built
+(`github.sha`), not the head commit.
 Each manifest records its `renderer`. If a route or viewport changes, update
 the matrix in `public-site-pages.spec.ts` in the same change.
 
@@ -75,7 +78,7 @@ comparison is never skipped, disabled or loosened.
    `Capture public site` step of `public-site-visual-regression` sets
    `PUBLIC_SITE_VISUAL_RENDERER: astro`. The push run on `develop` then
    publishes an Astro baseline for the merge commit.
-2. `ci.yml`: the `docs-build` job and the `Capture public site` step of the
+2. `site-docs.yml`: the `docs-build` job and the `Capture public site` step of the
    `Public-site visual regression` job make the same change, so the pull
    request captures the Astro build against the Sphinx baseline of its exact
    base.

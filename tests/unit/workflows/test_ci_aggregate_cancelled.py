@@ -10,21 +10,30 @@ import yaml
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci.yml"
+WORKFLOWS = REPO_ROOT / ".github" / "workflows"
 
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 import ci_unit_result
 
-AGGREGATE_JOBS = ("core", "explorer", "results-data", "docs", "landing", "tooling")
+AGGREGATE_WORKFLOWS = {
+    "core": "ci.yml",
+    "results-data": "ci.yml",
+    "tooling": "ci.yml",
+    "explorer": "site-docs.yml",
+    "docs": "site-docs.yml",
+    "landing": "site-docs.yml",
+}
+AGGREGATE_JOBS = tuple(AGGREGATE_WORKFLOWS)
 
 
-def _load() -> dict[str, Any]:
-    return yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+def _load(workflow: str) -> dict[str, Any]:
+    return yaml.safe_load((WORKFLOWS / workflow).read_text(encoding="utf-8"))
 
 
 def _job(name: str) -> dict[str, Any]:
-    jobs = _load()["jobs"]
-    assert name in jobs, f"ci.yml has no {name!r} aggregate job"
+    workflow = AGGREGATE_WORKFLOWS[name]
+    jobs = _load(workflow)["jobs"]
+    assert name in jobs, f"{workflow} has no {name!r} aggregate job"
     return jobs[name]
 
 

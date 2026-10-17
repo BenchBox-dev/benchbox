@@ -720,6 +720,8 @@ ci-lint:
 	[ $$? -eq 0 ] || failed="$$failed duplicate-delta"; \
 	$(MAKE) complexity-check; \
 	[ $$? -eq 0 ] || failed="$$failed complexity-check"; \
+	uv run -- python scripts/check_patch_safety.py; \
+	[ $$? -eq 0 ] || failed="$$failed patch-safety"; \
 	$(MAKE) spellcheck; \
 	[ $$? -eq 0 ] || failed="$$failed spellcheck"; \
 	uv run -- python scripts/check_rerun_shard_retention.py; \

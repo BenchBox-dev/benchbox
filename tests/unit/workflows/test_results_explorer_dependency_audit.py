@@ -10,7 +10,7 @@ ROOT = Path(__file__).parents[3]
 
 
 def test_browser_and_nightly_lanes_run_the_high_severity_audit() -> None:
-    browser = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    browser = (ROOT / ".github/workflows/site-docs.yml").read_text(encoding="utf-8")
     nightly = (ROOT / ".github/workflows/nightly.yml").read_text(encoding="utf-8")
 
     assert browser.count("npm run audit:high") >= 1

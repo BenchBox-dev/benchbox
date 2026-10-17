@@ -12,6 +12,7 @@ pytestmark = pytest.mark.medium
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 PR_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci.yml"
+SITE_DOCS_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "site-docs.yml"
 PUBLICATION_DOCS_WORKFLOW = None
 RELEASE_TEST_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "test.yml"
 MAKEFILE = REPO_ROOT / "Makefile"
@@ -26,6 +27,7 @@ EXCLUDED_STEPS: dict[str, str] = {}
 
 MERGE_GATE_WORKFLOWS = {
     "ci.yml": PR_WORKFLOW,
+    "site-docs.yml": SITE_DOCS_WORKFLOW,
     "test.yml": RELEASE_TEST_WORKFLOW,
 }
 MERGE_GATE_SETUP_NAMES = {
@@ -72,16 +74,16 @@ MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "comment-policy", "Enforce comment and docstring policy"): "comment-policy-check",
     ("ci.yml", "medium-test", "Install locked TypeScript parser"): "test-medium",
     ("ci.yml", "comment-policy", "Enforce pinned notice drift"): "comment-policy-check",
-    ("ci.yml", "site-build", "Typecheck, audit and build website"): "site-check",
-    ("ci.yml", "site-build", "Test built website and not-found fallback"): "site-test-built",
-    ("ci.yml", "public-site-visual-astro-dry-run", "Capture public site from the Astro build"): "site-visual-capture",
-    ("ci.yml", "site-parity", "Generate Explorer browser fixtures"): "site-parity",
-    ("ci.yml", "site-parity", "Compare the Astro build with the Sphinx site"): "site-parity",
+    ("site-docs.yml", "site-build", "Typecheck, audit and build website"): "site-check",
+    ("site-docs.yml", "site-build", "Test built website and not-found fallback"): "site-test-built",
+    ("site-docs.yml", "site-build", "Capture public site from the Astro build"): "site-visual-capture",
+    ("site-docs.yml", "site-parity", "Generate Explorer browser fixtures"): "site-parity",
+    ("site-docs.yml", "site-parity", "Compare the Astro build with the Sphinx site"): "site-parity",
     ("ci.yml", "api-contract-check", "Verify public API symbols against the released wheel"): "api-contract-check",
     ("ci.yml", "content-guard", "Validate YAML hygiene"): "pr-content-guard",
     ("ci.yml", "content-guard", "Validate artifact hygiene"): "pr-content-guard",
     ("ci.yml", "content-guard", "Validate markdown hygiene"): "pr-content-guard",
-    ("ci.yml", "content-guard", "Validate docs references"): "pr-content-guard",
+    ("site-docs.yml", "docs-build", "Validate docs references"): "docs-validate",
     ("ci.yml", "content-guard", "Validate public contract drift guard"): "pr-content-guard",
     ("ci.yml", "skill-integrity", "Validate skill config, receipt, and tool pin"): "skill-integrity-check",
     ("ci.yml", "skill-integrity", "Validate tracked artifact hygiene"): "skill-integrity-check",
@@ -103,7 +105,8 @@ MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "code-lint", "Dependency inventory drift check"): "ci-lint",
     ("ci.yml", "code-lint", "Release curation list drift check"): "ci-lint",
     ("ci.yml", "code-lint", "Untracked skill-mirror drift guard (cloud parity)"): "ci-lint",
-    ("ci.yml", "parity-check", "Verify parity fixtures match Python source"): "parity-check",
+    ("ci.yml", "code-lint", "Check for unsafe patch() string paths in tests"): "ci-lint",
+    ("site-docs.yml", "parity-check", "Verify parity fixtures match Python source"): "parity-check",
     ("ci.yml", "required-local-cases", "Run the required local-engine cases"): "test-required-local-cases",
     ("ci.yml", "polars-2-compat", "Run the polars-df smoke and cross-surface gates on Polars 2.0.0"): (
         "polars-df-compat-check"
@@ -242,15 +245,19 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
         "Hosted ClickHouse is an optional service sample; the local required lane "
         "does not start or substitute that service."
     ),
-    ("ci.yml", "explorer-tokens", "Run explorer token scan"): "Covered by the local `lint-explorer-tokens` target.",
     (
-        "ci.yml",
+        "site-docs.yml",
+        "explorer-tokens",
+        "Run explorer token scan",
+    ): "Covered by the local `lint-explorer-tokens` target.",
+    (
+        "site-docs.yml",
         "site-theme-tokens",
         "Run public site theme token scan",
     ): "Covered by the local `lint-site-theme-tokens` target.",
     ("ci.yml", "package-smoke", "Test package installation"): "Covered by the local `test-package` target.",
     ("ci.yml", "dependency-audit", "Run security audit"): "Covered by the local `security-audit` target.",
-    ("ci.yml", "explorer-vitest", "Run Explorer Vitest suite"): (
+    ("site-docs.yml", "explorer-vitest", "Run Explorer Vitest suite"): (
         "Hosted Node/npm lane; the local required Python preflight does not manufacture the Explorer dependency tree."
     ),
     ("ci.yml", "audit-sha", "Fetch PR head for audit ancestry (merge queue only)"): (
@@ -279,13 +286,13 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
         "Hosted governance check reads the live ruleset via the API with a "
         "secret token; covered locally by tests/unit/test_ruleset_drift.py."
     ),
-    ("ci.yml", "explorer-e2e", "Typecheck explorer e2e harness"): (
+    ("site-docs.yml", "explorer-e2e", "Typecheck explorer e2e harness"): (
         "Hosted Node/npm lane; the local required Python preflight does not manufacture the Explorer dependency tree."
     ),
-    ("ci.yml", "explorer-e2e", "Audit frontend dependencies"): (
+    ("site-docs.yml", "explorer-e2e", "Audit frontend dependencies"): (
         "Hosted Node/npm lane; the local required Python preflight does not manufacture the Explorer dependency tree."
     ),
-    ("ci.yml", "explorer-e2e", "Run Chromium suite"): (
+    ("site-docs.yml", "explorer-e2e", "Run Chromium suite"): (
         "Hosted browser suite; covered locally by the explorer-vitest contract, not a headed browser."
     ),
     ("ci.yml", "results-data-check", "Corpus inventory is current"): (
@@ -300,47 +307,38 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "results-data-check", "Corpus, submission, and explorer-pipeline contract tests"): (
         "Covered by the local unit test lane running the same test files."
     ),
-    ("ci.yml", "visual-inputs", "Classify site inputs and validate recovery source"): (
-        "Hosted path classifier output consumed by downstream ci.yml jobs; the "
+    ("site-docs.yml", "site-paths", "Classify site inputs and validate recovery source"): (
+        "Hosted path classifier output consumed by downstream site-docs.yml jobs; the "
         "classifier logic is covered by tests/unit/scripts/test_ci_units.py."
     ),
-    ("ci.yml", "docs-build", "Validate results-explorer lockfile"): (
+    ("site-docs.yml", "docs-build", "Validate results-explorer lockfile"): (
         "Hosted Node/npm lane; the local required Python preflight does not manufacture the Explorer dependency tree."
     ),
-    ("ci.yml", "docs-build", "Verify curated Explorer publication inputs"): (
+    ("site-docs.yml", "docs-build", "Verify curated Explorer publication inputs"): (
         "Hosted publication-input check; covered locally by the explorer-pipeline contract tests."
     ),
-    ("ci.yml", "docs-build", "Typecheck results-explorer"): (
+    ("site-docs.yml", "docs-build", "Typecheck results-explorer"): (
         "Hosted Node/npm lane; the local required Python preflight does not manufacture the Explorer dependency tree."
     ),
-    ("ci.yml", "docs-build", "Validate explorer snapshot invariants"): (
+    ("site-docs.yml", "docs-build", "Validate explorer snapshot invariants"): (
         "Hosted snapshot check; covered locally by the explorer-pipeline contract tests."
     ),
-    ("ci.yml", "site-build", "Scan website output for privacy leaks"): (
+    ("site-docs.yml", "site-build", "Scan website output for privacy leaks"): (
         "Hosted build-output scan; the privacy invariant is covered by tests/unit/scripts/test_corpus_privacy_invariant.py."
     ),
-    ("ci.yml", "docs-build", "Scan assembled site for privacy leaks"): (
+    ("site-docs.yml", "docs-build", "Scan assembled site for privacy leaks"): (
         "Hosted site-assembly scan; the privacy invariant is covered by tests/unit/scripts/test_corpus_privacy_invariant.py."
     ),
-    ("ci.yml", "public-site-visual-regression", "Capture public site"): (
+    ("site-docs.yml", "public-site-visual-regression", "Capture public site"): (
         "Hosted visual-baseline capture; needs the assembled site and Playwright browsers."
     ),
-    ("ci.yml", "public-site-visual-regression", "Compare public site with exact base"): (
+    ("site-docs.yml", "public-site-visual-regression", "Compare public site with exact base"): (
         "Hosted visual comparison against the SHA-bound baseline; no local equivalent."
     ),
-    ("ci.yml", "example-validation", "Validate example file references"): (
+    ("site-docs.yml", "docs-build", "Validate example file references"): (
         "Covered by the local example-validation lane in preflight."
     ),
-    ("ci.yml", "example-validation", "Check example file syntax"): (
-        "Covered by the local example-validation lane in preflight."
-    ),
-    ("ci.yml", "example-validation", "Validate visualization screenshot sync"): (
-        "Hosted screenshot sync check; needs the built explorer app."
-    ),
-    ("ci.yml", "example-validation", "Check /prompts/ catalog is fresh"): (
-        "Covered by the local example-validation lane in preflight."
-    ),
-    ("ci.yml", "example-validation", "Check for unsafe patch() string paths in tests"): (
+    ("site-docs.yml", "docs-build", "Check example file syntax"): (
         "Covered by the local example-validation lane in preflight."
     ),
 }

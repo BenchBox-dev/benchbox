@@ -138,7 +138,7 @@ def test_explorer_vitest_group_covers_the_full_contract(rules: dict[str, list[st
             "_project/scripts/explorer_pipeline/contract.py",
             "results-data/corpus-inventory.json",
             "scripts/generate_corpus_inventory.py",
-            ".github/workflows/ci.yml",
+            ".github/workflows/site-docs.yml",
         ],
         rules,
     )
@@ -150,7 +150,7 @@ def test_explorer_vitest_group_covers_the_full_contract(rules: dict[str, list[st
         "_project/scripts/explorer_pipeline/contract.py",
         "results-data/corpus-inventory.json",
         "scripts/generate_corpus_inventory.py",
-        ".github/workflows/ci.yml",
+        ".github/workflows/site-docs.yml",
     }
 
 
@@ -477,8 +477,8 @@ def test_git_changed_paths_includes_deletions(tmp_path: Path) -> None:
     assert "README.md" in changed
 
 
-CI_WORKFLOW = REPO_RULES.parent / "workflows" / "ci.yml"
-UNIT_RESULT_JOBS = ("core", "explorer", "results-data", "docs", "landing", "tooling")
+SITE_DOCS_WORKFLOW = REPO_RULES.parent / "workflows" / "site-docs.yml"
+SITE_DOCS_UNIT_JOBS = ("explorer", "docs", "landing")
 SITE_BUILD_INPUTS = [
     "website/src/pages/index.astro",
     "website/package-lock.json",
@@ -498,12 +498,12 @@ SITE_BUILD_INPUTS = [
     "make/documentation.mk",
     "pyproject.toml",
     "uv.lock",
-    ".github/workflows/ci.yml",
+    ".github/workflows/site-docs.yml",
 ]
 
 
-def _ci_jobs() -> dict[str, dict]:
-    return yaml.safe_load(CI_WORKFLOW.read_text(encoding="utf-8"))["jobs"]
+def _site_docs_jobs() -> dict[str, dict]:
+    return yaml.safe_load(SITE_DOCS_WORKFLOW.read_text(encoding="utf-8"))["jobs"]
 
 
 def _needs(job: dict) -> list[str]:
@@ -517,6 +517,14 @@ def test_site_build_inputs_trigger_the_site_build_gate(rules: dict[str, list[str
 
         assert decision["site_needed"] is True
         assert decision["site_paths"] == [path]
+
+
+def test_core_workflow_edit_skips_the_site_gates(rules: dict[str, list[str]]) -> None:
+    decision = classify_paths([".github/workflows/ci.yml"], rules)
+
+    assert decision["site_needed"] is False
+    assert decision["site_parity_needed"] is False
+    assert decision["explorer_vitest_needed"] is False
 
 
 def test_unrelated_change_skips_the_site_build_gate(rules: dict[str, list[str]]) -> None:
@@ -559,18 +567,18 @@ def test_github_output_exposes_site_needed(rules: dict[str, list[str]], tmp_path
 
 
 def test_site_build_job_is_gated_on_the_site_filter_and_feeds_the_landing_unit() -> None:
-    jobs = _ci_jobs()
+    jobs = _site_docs_jobs()
     landing_run = "\n".join(step.get("run", "") for step in jobs["landing"]["steps"])
 
-    assert jobs["site-build"]["if"] == "${{ needs.ci-paths.outputs.site-needed == 'true' }}"
-    assert "site-needed" in jobs["ci-paths"]["outputs"]
-    assert tuple(unit for unit in UNIT_RESULT_JOBS if unit in jobs) == UNIT_RESULT_JOBS
+    assert jobs["site-build"]["if"] == "${{ needs.site-paths.outputs.site-needed == 'true' }}"
+    assert "site-needed" in jobs["site-paths"]["outputs"]
+    assert tuple(unit for unit in SITE_DOCS_UNIT_JOBS if unit in jobs) == SITE_DOCS_UNIT_JOBS
     assert [name for name, job in jobs.items() if "site-build" in _needs(job)] == ["landing"]
-    assert "--expect site-build=${{ needs.ci-paths.outputs.site-needed == 'true' }}" in landing_run
+    assert "--expect site-build=${{ needs.site-paths.outputs.site-needed == 'true' }}" in landing_run
 
 
 def test_site_jobs_run_the_site_gates_on_node_22_only() -> None:
-    jobs = _ci_jobs()
+    jobs = _site_docs_jobs()
     steps = jobs["site-build"]["steps"]
     versions = {
         job_name: [str(step["with"]["node-version"]) for step in job["steps"] if "setup-node" in step.get("uses", "")]
@@ -578,7 +586,7 @@ def test_site_jobs_run_the_site_gates_on_node_22_only() -> None:
     }
     commands = [step.get("run", "") for step in steps]
 
-    site_jobs = {"site-build", "site-parity", "public-site-visual-astro-dry-run"}
+    site_jobs = {"site-build", "site-parity"}
     assert versions["site-build"] == ["22"]
     assert all(version == ["20"] for name, version in versions.items() if name not in site_jobs and version)
     assert "make site-check site-build" in commands
@@ -606,7 +614,9 @@ def test_visual_inputs_classify_website_as_a_render_input(tmp_path: Path, change
     _git(repo, "commit", "-m", "change", "-q")
     head = _git(repo, "rev-parse", "HEAD").strip()
 
-    classifier = _ci_jobs()["visual-inputs"]["steps"][1]["run"]
+    classifier = next(
+        step["run"] for step in _site_docs_jobs()["site-paths"]["steps"] if step.get("id") == "site-inputs"
+    )
     output = tmp_path / "github-output"
     env = {
         **os.environ,

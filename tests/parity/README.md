@@ -8,7 +8,7 @@ Vitest parity suite (`chartMath.parity.test.ts`).
 
 - `make parity-fixtures` — regenerate and overwrite the committed fixtures.
 - `make parity-check` — regenerate into a tmpdir and fail on any diff
-  (the CI `parity-check` job in `.github/workflows/ci.yml`, path-filtered to
+  (the CI `parity-check` job in `.github/workflows/site-docs.yml`, path-filtered to
   viz changes).
 
 ## Environment note: `geomean_ms` last-bit drift

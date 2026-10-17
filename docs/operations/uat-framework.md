@@ -325,7 +325,7 @@ to them, but they are not separately validated under mocker.
 
 `make uat-explorer-smoke` invokes Playwright directly against a freshly
 built Explorer app, mirroring the entrypoint of the `explorer-e2e` job in
-`ci.yml`. Each invocation runs three steps inside `results-explorer/`
+`site-docs.yml`. Each invocation runs three steps inside `results-explorer/`
 in order:
 
 1. `npm ci` — clean install of Explorer JS dependencies.
