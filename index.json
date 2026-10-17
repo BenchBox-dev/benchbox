@@ -24161,7 +24161,12 @@
       "title": "Record tuning statements issued through non-DB-API drivers (.sql / .query) and extend the schema-capture footprint"
     },
     "tuning-liveness-e2e-gates-20261001": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-18T08:20:42Z",
+        "generation": "43e4de85986f45d89b4b3f35b05e7a17",
+        "renewals": 0,
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
+      },
       "needs": [
         "tuning-no-midrun-destructive-db-handling-20261001",
         "tpcds-composite-primary-keys-20261001",
@@ -24175,7 +24180,7 @@
         "tuning-constraint-corroboration-20261001"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Positive liveness CI gate: real-CLI tuned runs must reach applied_verified on DuckDB and ClickHouse"
     },
     "tuning-load-only-lifecycle-parity-20261001": {
