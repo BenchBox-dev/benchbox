@@ -83,6 +83,15 @@ def test_adapter_statements_equal_generator_output(adapter):
     ]
 
 
+def test_cluster_index_name_is_never_schema_qualified(adapter):
+    adapter.schema = "bench"
+    tuning = _config(clustering=_columns("L_SHIPDATE")).table_tunings["LINEITEM"]
+
+    cluster = adapter.postgres_layout_statements("lineitem", tuning)[1]
+
+    assert cluster.split(" USING ", 1)[1] == "idx_lineitem_cluster"
+
+
 def test_non_public_schema_is_qualified(adapter):
     adapter.schema = "bench"
     tuning = _config(sorting=_columns("L_SHIPDATE")).table_tunings["LINEITEM"]
