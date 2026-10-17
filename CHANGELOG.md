@@ -202,6 +202,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The shipped DuckDB TPC-DS tuned template no longer requests foreign keys,
   which DuckDB never applies to TPC-DS. Tuned DuckDB TPC-DS runs now reach
   `applied_verified`; the tables and query plans are unchanged.
+- On DuckDB, the sort index that a tuned run re-creates after the in-place
+  sort rewrite is now recorded in the applied-tuning ledger as `satisfied` by
+  the original `CREATE INDEX`, not as a second executed statement, because
+  the rewrite keeps the index and the re-create does nothing. The run's
+  verification status does not change, but the applied-ledger hash of sorted
+  DuckDB runs does. The ClickHouse tuning introspector now escapes
+  backslashes as well as quotes in its table filter.
 
 - SQLite runs now honour `--platform-option database_name=<name>`. The run
   creates and uses `<name>.db` in the benchmark's database directory. Before,
