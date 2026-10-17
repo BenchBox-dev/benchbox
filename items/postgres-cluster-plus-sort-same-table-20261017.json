@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Decided semantics for clustering + sorting on one PostgreSQL table, recorded in the registry note and the platform docs",
+    "Ledger and reconciliation match the decision: no generic 'adapter rendered no statement' drop for this case",
+    "Unit test for the combined case"
+  ],
+  "context": "Found 2026-10-17 while implementing #3092.",
+  "description": "Since #3092 (6dc8cdc74), PostgreSQL builds one index on the clustering columns followed by the sorting columns and runs CLUSTER on it (PostgreSQLDDLGenerator.generate_tuning_clauses in benchbox/core/tuning/generators/postgresql.py; PostgreSQLAdapter.postgres_layout_statements and apply_post_load_tunings in benchbox/platforms/postgresql.py). Reconciliation matches a sort intent only when its columns are a prefix of a recorded index (benchbox/core/tuning/reconciliation.py _shows, _INDEX_COLUMNS). So a table that requests both records the sort intent as dropped (\"adapter rendered no statement\"), even though the table is physically ordered by clustering then sort columns. Documented in docs/platforms/postgresql.md as a limitation. Decide the intended semantics: order by sort columns first, a dedicated reason, or a validation warning.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T22:06:54Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "d3e408c378584041bab896a65e8d64d8",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}
