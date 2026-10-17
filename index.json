@@ -15583,6 +15583,13 @@
       "status": "done",
       "title": "Build Shared Infrastructure for Benchmarking PostgreSQL Extensions"
     },
+    "postgres-partitioning-date-domain-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Render PostgreSQL partitioning at execution from the benchmark date domain"
+    },
     "postgres-throughput-uat-cell-unquarantine": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Tuned TPC-H/TPC-DS runs with partitioning on a date column load successfully on a local PostgreSQL container and the tables are partitioned with a DEFAULT partition.",
+    "Partitioning is skipped and recorded as dropped with a reason when primary or unique keys are requested.",
+    "Registry postgresql PARTITIONING entry flipped to a rendered mechanism; registry parity, snapshot and fake-driver execution tests pass."
+  ],
+  "context": "Owner-approved 2026-10-17 (coordinator relay of owner decision). Clustering/sorting half ships under tuning-render-layout-postgres-family-20261001.",
+  "description": "Partitioning half of tuning-render-layout-postgres-family-20261001, split by owner decision 2026-10-17. PostgreSQLDDLGenerator's RANGE partitions are hardcoded to yearly 2020-2026 children while TPC-H/TPC-DS dates fall in 1992-2003, so rendering them as-is fails every load. Change: derive RANGE partition bounds from the benchmark's date domain, always add a DEFAULT partition, and skip partitioning (recording it as dropped with a reason) when primary or unique keys are requested, because PostgreSQL requires those keys to include the partition column. Flip the postgresql PARTITIONING registry entry once execution renders it, with a snapshot test (adapter output equals generator output), a fake-driver execution test, and a local Postgres container run. Postgres-compatible variants keep their own entries.",
+  "links": [
+    "item:tuning-render-layout-postgres-family-20261001"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T13:57:48Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "6da7f556b32f487380dd7f44a3904058",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}
