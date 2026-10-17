@@ -301,9 +301,7 @@ _NOT_RENDERED: dict[str, frozenset[str]] = {
     ),
     "pg-duckdb": frozenset({"check_constraints", "clustering", "partitioning", "sorting", "unique_constraints"}),
     "pg-mooncake": frozenset({"check_constraints", "clustering", "partitioning", "sorting", "unique_constraints"}),
-    "postgresql": frozenset(
-        {"bloom_filters", "check_constraints", "materialized_views", "unique_constraints"}
-    ),
+    "postgresql": frozenset({"bloom_filters", "check_constraints", "materialized_views", "unique_constraints"}),
     "presto": frozenset(
         {
             "check_constraints",
