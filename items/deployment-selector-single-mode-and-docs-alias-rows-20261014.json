@@ -1,9 +1,10 @@
 {
   "acceptance": [
     "A single-mode platform accepts `name:<its only mode>` and records it, and rejects any other mode. CLI and MCP tests cover this.",
-    "A parity test asserts that every option or alias named in `docs/platforms/*.md` option tables exists in the registry or the alias table."
+    "A parity test asserts that every option or alias named in `docs/platforms/*.md` option tables exists in the registry or the alias table.",
+    "Platform docs examples select deployment with the `platform:mode` selector, not the deprecated `deployment_mode` option"
   ],
-  "context": "Follow-ups from #2974, #2980 and #2995. The alias table is `DEPRECATED_OPTION_ALIASES`, and the deployment alias keys are derived from it (ADR D12). Alias half closed by #3020 on 2026-10-16; MCP is fail-closed and does not expose InfluxDB/LakeSail deployment_mode.",
+  "context": "Follow-ups from #2974, #2980 and #2995. The alias table is `DEPRECATED_OPTION_ALIASES`, and the deployment alias keys are derived from it (ADR D12). Alias half closed by #3020 on 2026-10-16; MCP is fail-closed and does not expose InfluxDB/LakeSail deployment_mode.\n\n2026-10-17: Python callers can now select a mode with `DatabaseConfig(type=\"platform:mode\")` (#3066, b7e364ad8), and the examples use it. `docs/platforms/influxdb.md` still shows the deprecated `deployment_mode` in its Python examples (lines 99, 107, 167).",
   "description": "Platforms that declare a single deployment mode do not accept the `name:mode` selector, even with their own mode. Scripts that pass the selector for every platform fail.\n\nThe InfluxDB and LakeSail alias-table gap (`deployment_mode` missing from `DEPRECATED_OPTION_ALIASES`) and the matching docs rows were fixed in PR #3020 (merge 926199a695cf964552f3087ebe0e2bcafc9044a2), with a registry-walk test. Remaining: the single-mode selector, and a general parity test between registered option specs and the platform docs.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/2974",
@@ -25,6 +26,14 @@
       "op": "update",
       "op_id": "02a410138c904d3ead21d385e61a41dc",
       "session_id": "5c80d5d463444a2ba9410e1fdfb1d517"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-17T23:59:45Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "623302d5e4cb48c0ba79b211e4c148e4",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
     }
   ]
 }
