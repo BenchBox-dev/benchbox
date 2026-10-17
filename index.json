@@ -21408,6 +21408,13 @@
       "status": "done",
       "title": "Support tuning spark map on Velox/Gluten and LakeSail separately"
     },
+    "spark-inline-references-not-stripped-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Spark Parquet/ORC DDL keeps column-level REFERENCES clauses that it should strip"
+    },
     "spark-mixin-open-table-format-loading": {
       "claim": null,
       "needs": [],

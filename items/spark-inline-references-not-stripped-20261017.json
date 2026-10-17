@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Column-level REFERENCES clauses are removed for Parquet/ORC tables, with a unit test",
+    "Delta behaviour unchanged",
+    "Registry notes for spark foreign keys stay accurate"
+  ],
+  "context": "Found 2026-10-17 during #3080; still reproduces on origin/develop.",
+  "description": "optimize_spark_table_definition (benchbox/platforms/_spark_helpers.py:257) removes inline PRIMARY KEY (line 278 via _INLINE_PK_RE, line 168) and table-level FOREIGN KEY clauses through _strip_balanced_paren_constraints (line 218; _REFERENCES_TAIL_RE at line 174 only matches after a table-level FOREIGN KEY). A column-level `REFERENCES t(c)` survives. Reproduced on origin/develop: `CREATE TABLE o (k INTEGER NOT NULL, c INTEGER REFERENCES customer(c_custkey), PRIMARY KEY (k))` becomes `CREATE TABLE o (k INTEGER NOT NULL, c INTEGER REFERENCES customer(c_custkey)) USING PARQUET`. The shipped benchmarks declare table-level foreign keys, so nothing fails today, but any benchmark or tuning path that emits column-level REFERENCES would send Spark DDL it may reject. Found while writing the Spark registry notes for #3080.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T22:06:42Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "d122c38951d845fdb9746a5b5b753c97",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}
