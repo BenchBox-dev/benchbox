@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "/docs/ on benchbox.dev serves the docs of the latest release tag; /docs/dev/ serves develop",
+    "Each /docs/dev/ page with a /docs/ counterpart carries rel=canonical to it; a site test checks this",
+    "ADR D7 row updated to describe the new behaviour"
+  ],
+  "context": "Found 2026-10-17 at site-split closeout (follow-up list in site-split-99). Core must be able to build or retain a site-inputs bundle for a release tag (scripts/site_inputs.py, .github/workflows/site-inputs.yml); the site resolves bundles in deploy/. The related astro-site-36 item predates the split and will be dropped at closeout.",
+  "description": "Decision D7 of the site-repo split ADR (docs/internal/adr/adr-site-repo-split.md:27) renders both /docs/ and /docs/dev/ from the newest certified develop bundle and names release-pinned docs as a follow-up. As a result, /docs/ shows unreleased behaviour to users of the published package, and the two trees are duplicate content. No docs page carries a canonical link: in benchbox-site the only `rel=\"canonical\"` is in website/src/layouts/Redirect.astro:15.\n\nMake /docs/ render from the bundle of the latest release tag and /docs/dev/ from develop. Every /docs/dev/ page gets a canonical link to its /docs/ counterpart when that page exists.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T22:15:58Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "780e80f9475d4ee1a6f6eb30c8f49850",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}

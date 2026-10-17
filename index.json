@@ -20692,6 +20692,13 @@
       "status": "done",
       "title": "Prune the 36 site-parity allowances for broken links that now resolve"
     },
+    "site-release-pinned-docs-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Serve /docs/ from the latest release and add canonical tags from /docs/dev/"
+    },
     "site-sphinx-fallback-exposure": {
       "claim": null,
       "needs": [],
