@@ -4,7 +4,7 @@
     "The floor-history lookup reads the new workflow's scheduled runs (or imports the nightly.yml samples), shown by a dispatched run reporting the same sample count as the last nightly.yml run.",
     "A workflow test pins the domain and its history lookup."
   ],
-  "context": "Found in the 2026-10-09 tracker review. Related: monitor-nightly-cedardb-throughput-gate-and-floor (watches the gate in nightly.yml today), dlv2-70-retire-scheduled-workflows (must wait for this port).\n\nTakeover evidence (2026-10-15): preserved the three staged files, rebased branch chore/nightly-v2-throughput-uat onto origin/develop 5bce4dbedb85b8b700402ac3bb160f8d34900211, and passed 78 workflow tests, make pr-preflight, release curation, ty check (0 exit; 678 diagnostics), and make comment-policy-check (5916 files, 0 violations; 19 native tests passed). Commit e90820e473d982e0a1136dae37192fd50bcd5998 is Joe Harris authored. PR #3005 is open at that exact head and auto-merge is armed. Formal oracle-verdict dispatch 38674795092 is pending; PR acceptance still needs the dispatched nightly-v2 baseline sample-count proof after the Docker and perf-floor prerequisites merge.",
+  "context": "#3005 merged as 75d93e863 on 2026-10-16 and added the nightly-v2 throughput domain. #3023 (2bdb1fc03) removed the legacy nightly.yml throughput jobs, so nightly/throughput-uat has one writer, the nightly-v2 throughput-signal job (owner, 2026-10-15, Claude session e0e74e6b, question dialog: \"Follow-up PR right after merge\"). Scheduled run 39029650977 (2026-10-17): DuckDB throughput and throughput-signal passed; the CedarDB cell failed for a reason not yet established. Still to do: show that the floor-history lookup reports the same sample count as the last nightly.yml run. The current claim expired on 2026-10-16.\n\nOpen question for the owner: investigate the CedarDB throughput failure under this item, under monitor-nightly-cedardb-throughput-gate-and-floor, or as a new item?",
   "description": "nightly.yml runs throughput-uat (nightly.yml:707) and throughput-uat-signal (:804). Since #2757 the CedarDB cell gates the nightly, and the Throughput@Size floor learns from scheduled nightly.yml history (`--workflow nightly.yml ... --event schedule`, nightly.yml:755; minimum samples per runner class in tests/uat/throughput.py:203-212). nightly-v2.yml has no throughput, UAT or CedarDB job, and dlv2-70 deletes nightly.yml. Without a port, the throughput gate and its floor disappear when nightly.yml is retired.\n\nPort both jobs into a nightly-v2 domain. Move the floor-history lookup to the new workflow's runs and artifact names, or carry the existing samples over, so the floor does not reset to 0 of 5.",
   "sessions": [
     {
@@ -103,6 +103,14 @@
       "op": "renew",
       "op_id": "6ab0a459dbe1492a96c8fa9be873820f",
       "session_id": "a4547e3a2da34101955f1470631f44f0"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-17T23:54:20Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "5b334636ac314d85a871a4676aacec5a",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
     }
   ]
 }
