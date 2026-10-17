@@ -275,7 +275,7 @@ def test_repo_files_lists_every_tracked_path_with_kinds(tmp_path: Path) -> None:
     payload = json.loads(out.read_text(encoding="utf-8"))
     assert payload["core_sha"] == "abc123"
     by_path = {entry["path"]: entry["kind"] for entry in payload["files"]}
-    assert by_path["scripts/check_decision_records.py"] == "file"
+    assert by_path["scripts/site_inputs.py"] == "file"
     assert by_path["scripts"] == "tree"
     assert by_path["docs/internal/adr/adr-site-repo-split.md"] == "file"
 
