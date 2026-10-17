@@ -250,6 +250,18 @@ jobs:
       - name: Validate corpus before opening a PR
         run: uv run -- python results-data/validate_corpus.py
 
+      - name: Re-cut the publication ledger seed
+        shell: bash
+        run: |
+          git fetch --no-tags origin published-results:refs/remotes/origin/published-results
+          uv run -- python scripts/publication/create_ledger_seed.py --accepted-ref origin/published-results
+
+      - name: Run the publication gate suites
+        env:
+          FORCE_COLOR: ""
+          COLORTERM: ""
+        run: make ledger-seed-gates
+
       - name: Check for new corpus changes
         id: check
         shell: bash
@@ -258,6 +270,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "no_changes=true" >> "$GITHUB_OUTPUT"
           else
+            git add publication/ledger-seed.json
             echo "no_changes=false" >> "$GITHUB_OUTPUT"
           fi
 
@@ -305,11 +318,22 @@ jobs:
 
           All bundles in this PR carry the `maintainer-run` / `public-curated` trust label.
 
+          ### Ledger seed
+
+          `publication/ledger-seed.json` was re-cut against the current
+          `published-results` tip, and the publication gate suites
+          (`make ledger-seed-gates`) passed before this PR was opened. New
+          bundles appear in the seed as `legacy_overlay` until they reach
+          `published-results`.
+
           ### Merging
 
           Merge into `develop` triggers `sync-results-data-to-published`, which
           opens a draft PR mirroring these bundles onto the `published-results`
-          corpus branch.
+          corpus branch. The owner merges that mirror PR in the same cycle.
+          After it merges, run `make ledger-seed-recut` on a branch from
+          `develop` and open a PR with the re-cut `publication/ledger-seed.json`,
+          so the new bundles move from `legacy_overlay` to `accepted`.
           EOF
           gh pr create \
             --title "chore(data): seed corpus bundles (run ${{ github.run_number }})" \

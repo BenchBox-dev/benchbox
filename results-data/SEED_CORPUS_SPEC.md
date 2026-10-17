@@ -130,6 +130,12 @@ gate when changed.
 2. Checked-in coverage and the workflow target can diverge briefly after a
    restore or schedule change. Prefer `results-data/corpus-inventory.json` and
    `results-data/README.md` for what is currently committed.
+3. The workflow re-cuts `publication/ledger-seed.json` against the current
+   `published-results` tip and runs `make ledger-seed-gates` before it opens
+   its PR. New bundles enter the seed as `legacy_overlay`. After the seed PR
+   merges, the owner merges the auto-mirror PR in the same cycle, then runs
+   `make ledger-seed-recut` on a branch from `develop` and opens a PR with the
+   result, which moves those bundles to `accepted`.
 
 ### Version-over-version cohorts
 
