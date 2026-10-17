@@ -55,7 +55,7 @@ def test_lane_runs_on_every_pull_request_that_ci_runs_on() -> None:
     assert "paths" not in lane
     assert "paths-ignore" not in lane
     assert lane["branches-ignore"] == core["branches-ignore"]
-    assert set(lane["types"]) == set(core["types"]) - {"converted_to_draft"}
+    assert lane["types"] == core["types"]
 
 
 def test_each_required_check_comes_from_exactly_one_pull_request_workflow() -> None:

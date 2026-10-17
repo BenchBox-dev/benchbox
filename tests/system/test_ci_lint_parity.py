@@ -88,7 +88,7 @@ MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "skill-integrity", "Validate skill config, receipt, and tool pin"): "skill-integrity-check",
     ("ci.yml", "skill-integrity", "Validate tracked artifact hygiene"): "skill-integrity-check",
     ("ci.yml", "skill-integrity", "Enforce untracked mirror boundary"): "ci-lint",
-    ("ci.yml", "base-guard", "Enforce untracked handoff boundary"): "ci-lint",
+    ("ci.yml", "ci-paths", "Enforce untracked handoff boundary"): "ci-lint",
     ("ci.yml", "code-lint", "Lint and format check with ruff"): "ci-lint",
     ("ci.yml", "code-lint", "Type check with ty"): "ci-lint",
     ("ci.yml", "code-lint", "Validate test marker annotations"): "ci-lint",
@@ -107,8 +107,8 @@ MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "code-lint", "Untracked skill-mirror drift guard (cloud parity)"): "ci-lint",
     ("ci.yml", "code-lint", "Check for unsafe patch() string paths in tests"): "ci-lint",
     ("site-docs.yml", "parity-check", "Verify parity fixtures match Python source"): "parity-check",
-    ("ci.yml", "required-local-cases", "Run the required local-engine cases"): "test-required-local-cases",
-    ("ci.yml", "polars-2-compat", "Run the polars-df smoke and cross-surface gates on Polars 2.0.0"): (
+    ("ci.yml", "correctness-gate", "Run the required local-engine cases"): "test-required-local-cases",
+    ("ci.yml", "correctness-gate", "Run the polars-df smoke and cross-surface gates on Polars 2.0.0"): (
         "polars-df-compat-check"
     ),
     ("test.yml", "test", "Run linting"): "ci-lint",
@@ -199,7 +199,7 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
         "Release parity's Node/npm suite is hosted in this workflow; it is not a "
         "silent omission because the exception names the exact runner surface."
     ),
-    ("ci.yml", "base-guard", "Check base branch"): (
+    ("ci.yml", "ci-paths", "Check base branch"): (
         "Branch-identity guard with no local equivalent: the check reads the "
         "hosted PR base ref (`github.base_ref`), which has no meaning in a "
         "local checkout. The policy itself is pinned by "
@@ -238,7 +238,7 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
     ),
     (
         "ci.yml",
-        "datafusion-integration",
+        "correctness-gate",
         "Run TPC-Havoc DataFusion variant-equivalence sample and .tbl load regression",
     ): ("Hosted integration sample with its own dependency/runtime; the local required lane does not substitute it."),
     ("ci.yml", "clickhouse-integration", "Run TPC-Havoc ClickHouse variant-equivalence sample"): (

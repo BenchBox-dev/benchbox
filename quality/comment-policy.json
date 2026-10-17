@@ -38940,7 +38940,7 @@
       "finding_kind": "payload-error",
       "kind": "fixture",
       "consumer": ".github/workflows/ci.yml",
-      "necessity": "The test executes the run script that it extracts from the base-guard job in the checked CI workflow. The checker scans that script in place in the workflow, so the extracted copy carries no comment the policy has not seen.",
+      "necessity": "The test executes the run script that it extracts from the base check in the ci-paths job of the checked CI workflow. The checker scans that script in place in the workflow, so the extracted copy carries no comment the policy has not seen.",
       "alternative": "Inlining the script as a literal would stop the test from exercising the checked workflow it targets.",
       "owner": "BenchBox maintainers",
       "removal": "Remove when the executable-payload adapter can resolve this source statically."

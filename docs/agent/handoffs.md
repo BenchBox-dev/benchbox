@@ -37,7 +37,7 @@ repository is one of them.
 `_project/handoffs/`, `.claude/handoffs/`, or `.todo-batch/`, or has a name
 matching `*handoff*.md`. It skips generated skill references under
 `.claude/skills/` and this note. It runs in pre-commit, in `make ci-lint`, and in the
-`base-guard` CI job that feeds the required `tooling` result. `.gitignore`
+`ci-paths` CI job that every required `ci.yml` result needs. `.gitignore`
 ignores `.claude/handoffs/` and `.todo-batch/`. It cannot ignore
 `_project/handoffs/` while that directory holds tracked files.
 

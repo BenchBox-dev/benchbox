@@ -177,7 +177,7 @@ a vendor-subtree addition.
 
 A separate, narrower gap remains and is **not** fixed by the above:
 `published-results` carries exactly one workflow file
-(`validate-submission.yml`). The `base-guard` job in `ci.yml` — the repo-wide
+(`validate-submission.yml`). The base check in `ci.yml` — the repo-wide
 check that every PR gets regardless of base, added precisely so a PR against
 an unexpected base branch cannot show zero checks — cannot run against
 `published-results` because its file simply does not exist there, whatever
@@ -187,13 +187,14 @@ the `permissions:` block granted to it (a hard-coded GitHub Actions
 restriction — see the "workflow file itself is NOT auto-mirrored" section of
 [`adr-published-results-slim-corpus-branch.md`](adr/adr-published-results-slim-corpus-branch.md),
 which already documents this exact restriction for `validate-submission.yml`
-edits). Porting the `base-guard` job (or any future repo-wide guard) onto
+edits). Porting the base check (or any future repo-wide guard) onto
 `published-results` is therefore a **manual** maintainer step. Copy only the
-`base-guard` job into a small standalone workflow on that branch (not the whole
-of `ci.yml`, whose units do not apply there), and read the current job with:
+`Check base branch` step of the `ci-paths` job into a small standalone
+workflow on that branch (not the whole of `ci.yml`, whose units do not apply
+there), and read the current step with:
 
 ```bash
-git show origin/develop:.github/workflows/ci.yml | sed -n '/^  base-guard:/,/^  # Classifier/p'
+git show origin/develop:.github/workflows/ci.yml | sed -n '/- name: Check base branch/,/^          esac/p'
 ```
 
 then apply and push directly to `published-results` (or a PR against it) as

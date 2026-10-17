@@ -48,25 +48,30 @@ unit results. Units run against a parent branch validate the child on top of its
 parent, not the tree that lands on `develop`. So the rebase onto `develop` and
 the CI rerun after it are what gate the merge.
 
-## Loud failure: the `base-guard` job
+## Loud failure: the base check in `ci-paths`
 
-The `base-guard` job in `.github/workflows/ci.yml` runs on every
-`pull_request`. The `tooling` unit `needs` it, so a bad base turns the
-required `tooling` check red. It always reports:
+The first step of the `ci-paths` job in `.github/workflows/ci.yml` checks the
+base branch, before any PR code is checked out. `ci-paths` runs on every
+`pull_request`, and the `core`, `results-data` and `tooling` units require it
+to succeed, so a bad base turns all three required checks red. It always
+reports:
 
 - Base is `develop` / `release` / `published-results`: pass in seconds; the
   normal CI lanes apply.
 - Any other base, draft PR: pass; the PR cannot be armed until it is
   retargeted at `develop`.
 - Any other base, ready PR: fail, with an explicit message to retarget to
-  `develop` after the parent merges.
+  `develop` after the parent merges. The other `ci.yml` jobs then do not
+  start, so a PR that cannot merge uses no further runners.
 
-`ci.yml` also listens for `edited`, `ready_for_review` and
-`converted_to_draft`, so retargeting a PR or changing its draft state
-re-evaluates it. A PR pointed at a feature branch, or a draft marked ready,
-must not keep a stale result. On a ready PR against a non-integration base,
-`tooling` is red by design while the other five units still report. This is
-expected, not a separate defect.
+`ci.yml` also listens for `edited` and `ready_for_review`, so retargeting a PR
+or marking a draft ready re-evaluates it. A PR pointed at a feature branch, or
+a draft marked ready, must not keep a stale result. It does not listen for
+`converted_to_draft`: a draft cannot merge, and converting to draft can only
+relax the check, which runs again when the PR is marked ready. On a ready PR
+against a non-integration base, `core`, `results-data` and `tooling` are red
+by design while the `explorer`, `docs` and `landing` units from
+`site-docs.yml` still report. This is expected, not a separate defect.
 
 Unit pins live in `tests/unit/workflows/test_stacked_pr_base_guard.py`.
 
@@ -126,7 +131,7 @@ conflicts, or a filter bug, from an empty or partial check list alone.
 - Open a PR with `--base` set to another feature branch only as a draft in a
   stack (one agent, one tracker item, depth 3 or less). Never arm it before
   it is retargeted at `develop`.
-- If `base-guard` fails on a ready PR, fix the base. Do not try to "add CI" to
+- If the base check in `ci-paths` fails on a ready PR, fix the base. Do not try to "add CI" to
   the stacked base by editing branch filters.
 - Short agent-facing summary: `AGENTS.md` → section **Verification and
   close-out** (stacking rule).

@@ -6,7 +6,7 @@ env:
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, edited, ready_for_review, converted_to_draft]
+    types: [opened, synchronize, reopened, edited, ready_for_review]
     branches-ignore: [release]
 
 concurrency:
@@ -82,11 +82,27 @@ jobs:
           git show "${BASE_REF}:scripts/check_comment_cleanup_scope.py" > "$RUNNER_TEMP/trusted_check_scope.py"
           python -I "$RUNNER_TEMP/trusted_check_scope.py" --check-drift --base "$BASE_REF"
 
-  base-guard:
-    name: PR base branch is an integration branch
-    if: ${{ github.event_name == 'pull_request' }}
+  ci-paths:
+    name: ci-paths
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    outputs:
+      safe-content-only: ${{ steps.classify.outputs.safe-content-only }}
+      needs-code-ci: ${{ steps.classify.outputs.needs-code-ci }}
+      content-guard-needed: ${{ steps.classify.outputs.content-guard-needed }}
+      skill-integrity-needed: ${{ steps.classify.outputs.skill-integrity-needed }}
+      skill-integrity-only: ${{ steps.classify.outputs.skill-integrity-only }}
+      audit-paths-changed: ${{ steps.path-flags.outputs.audit-paths-changed }}
+      submission-validator-changed: ${{ steps.path-flags.outputs.submission-validator-changed }}
+      api-contract-changed: ${{ steps.path-flags.outputs.api-contract-changed }}
+      tuning-paths-changed: ${{ steps.path-flags.outputs.tuning-paths-changed }}
+      estimated-runner-minutes-saved: ${{ steps.classify.outputs.estimated-runner-minutes-saved }}
+      packaging-needed: ${{ steps.classify.outputs.packaging-needed }}
+      framing-needed: ${{ steps.classify.outputs.framing-needed }}
+      heavy-needed: ${{ steps.heavy.outputs.heavy-needed }}
+      unit-core: ${{ steps.units.outputs.unit-core }}
+      unit-results-data: ${{ steps.units.outputs.unit-results-data }}
+      unit-tooling: ${{ steps.units.outputs.unit-tooling }}
+      code-tests-needed: ${{ steps.units.outputs.code-tests-needed }}
     steps:
       - name: Check base branch
         env:
@@ -112,38 +128,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
-          fetch-depth: 1
-          persist-credentials: false
+          fetch-depth: 0
 
       - name: Enforce untracked handoff boundary
         run: sh scripts/check_untracked_handoffs.sh
-
-  ci-paths:
-    name: ci-paths
-    runs-on: ubuntu-latest
-    outputs:
-      safe-content-only: ${{ steps.classify.outputs.safe-content-only }}
-      needs-code-ci: ${{ steps.classify.outputs.needs-code-ci }}
-      content-guard-needed: ${{ steps.classify.outputs.content-guard-needed }}
-      skill-integrity-needed: ${{ steps.classify.outputs.skill-integrity-needed }}
-      skill-integrity-only: ${{ steps.classify.outputs.skill-integrity-only }}
-      audit-paths-changed: ${{ steps.path-flags.outputs.audit-paths-changed }}
-      submission-validator-changed: ${{ steps.path-flags.outputs.submission-validator-changed }}
-      api-contract-changed: ${{ steps.path-flags.outputs.api-contract-changed }}
-      tuning-paths-changed: ${{ steps.path-flags.outputs.tuning-paths-changed }}
-      estimated-runner-minutes-saved: ${{ steps.classify.outputs.estimated-runner-minutes-saved }}
-      packaging-needed: ${{ steps.classify.outputs.packaging-needed }}
-      framing-needed: ${{ steps.classify.outputs.framing-needed }}
-      heavy-needed: ${{ steps.heavy.outputs.heavy-needed }}
-      unit-core: ${{ steps.units.outputs.unit-core }}
-      unit-results-data: ${{ steps.units.outputs.unit-results-data }}
-      unit-tooling: ${{ steps.units.outputs.unit-tooling }}
-      code-tests-needed: ${{ steps.units.outputs.code-tests-needed }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
-        with:
-          fetch-depth: 0
 
       - name: Validate TODO JSON/Git state contract
         run: python _project/scripts/todo_state_contract_check.py
@@ -1013,7 +1001,7 @@ jobs:
     needs: ci-paths
     if: ${{ needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 65
     strategy:
       fail-fast: false
       matrix:
@@ -1110,95 +1098,32 @@ jobs:
         if: matrix.partition == 'a'
         run: make tpcds-pandas-cross-surface-equivalence-report
 
-  polars-2-compat:
-    name: polars-2-compat
-    needs: ci-paths
-    if: ${{ needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
-        with:
-          fetch-depth: 0
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
-        with:
-          python-version: '3.12'
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-
-      - name: Create virtual environment
-        run: uv venv
-
-      - name: Install dependencies
-        run: uv sync --group dev
-
-      - name: Install Polars 2.0.0 over the locked environment
-        run: uv pip install "polars==2.0.0"
-
-      - name: Run the polars-df smoke and cross-surface gates on Polars 2.0.0
-        run: make polars-df-compat-check
-
-  required-local-cases:
-    name: required-local-cases
-    needs: ci-paths
-    if: ${{ needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
-        with:
-          fetch-depth: 0
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
-        with:
-          python-version: '3.12'
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-
-      - name: Create virtual environment
-        run: uv venv
-
-      - name: Install dependencies
-        run: uv sync --group dev
-
       - name: Run the required local-engine cases
+        if: ${{ !cancelled() && matrix.partition == 'a' }}
+        timeout-minutes: 20
         run: make test-required-local-cases
 
-  plan-capture-gate:
-    name: plan-capture-gate
-    needs: ci-paths
-    if: ${{ needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
-        with:
-          fetch-depth: 0
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
-        with:
-          python-version: '3.12'
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-
-      - name: Create virtual environment
-        run: uv venv
-
-      - name: Install dependencies
-        run: uv sync --group dev
+      - name: Run TPC-Havoc DataFusion variant-equivalence sample and .tbl load regression
+        if: ${{ !cancelled() && matrix.partition == 'a' }}
+        continue-on-error: true
+        timeout-minutes: 15
+        run: |
+          uv run -- python -m pytest \
+            tests/integration/platforms/test_tpchavoc_datafusion_equivalence.py \
+            tests/integration/platforms/test_datafusion_tbl_load.py \
+            -m "slow" -n 0 --tb=short -v
 
       - name: Run in-process plan-capture gate
+        if: ${{ !cancelled() && matrix.partition == 'b' }}
+        timeout-minutes: 10
         run: make plan-capture-gate
+
+      - name: Run the polars-df smoke and cross-surface gates on Polars 2.0.0
+        if: ${{ !cancelled() && matrix.partition == 'b' }}
+        timeout-minutes: 30
+        run: |
+          uv pip install "polars==2.0.0"
+          make polars-df-compat-check
 
   tuning-liveness:
     name: tuning-liveness
@@ -1226,35 +1151,6 @@ jobs:
 
       - name: Run real-CLI tuning liveness matrix
         run: make tuning-liveness-gate
-
-  datafusion-integration:
-    name: datafusion-integration
-    needs: ci-paths
-    if: ${{ needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    continue-on-error: true
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
-        with:
-          python-version: '3.12'
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-
-      - name: Install dependencies
-        run: uv sync --group dev
-
-      - name: Run TPC-Havoc DataFusion variant-equivalence sample and .tbl load regression
-        run: |
-          uv run -- python -m pytest \
-            tests/integration/platforms/test_tpchavoc_datafusion_equivalence.py \
-            tests/integration/platforms/test_datafusion_tbl_load.py \
-            -m "slow" -n 0 --tb=short -v
 
   package-smoke:
     name: package-smoke
@@ -1383,7 +1279,7 @@ jobs:
 
   core:
     name: core
-    needs: [ci-paths, code-lint, code-test, medium-collect, medium-test, correctness-gate, polars-2-compat, required-local-cases, plan-capture-gate, tpch-binary-framing, datafusion-integration, tuning-liveness, package-smoke, dependency-audit]
+    needs: [ci-paths, code-lint, code-test, medium-collect, medium-test, correctness-gate, tpch-binary-framing, tuning-liveness, package-smoke, dependency-audit]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -1428,11 +1324,7 @@ jobs:
             --expect medium-collect=${{ needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }} \
             --expect medium-test=${{ needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }} \
             --expect correctness-gate=${{ needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }} \
-            --expect polars-2-compat=${{ needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }} \
-            --expect required-local-cases=${{ needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }} \
-            --expect plan-capture-gate=${{ needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }} \
             --expect tpch-binary-framing=${{ needs.ci-paths.outputs.heavy-needed == 'true' || needs.ci-paths.outputs.framing-needed == 'true' }} \
-            --expect datafusion-integration=${{ needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }} \
             --expect tuning-liveness=${{ needs.ci-paths.outputs.tuning-paths-changed == 'true' }} \
             --expect package-smoke=${{ needs.ci-paths.outputs.packaging-needed == 'true' }} \
             --expect dependency-audit=${{ needs.ci-paths.outputs.packaging-needed == 'true' }} || {
@@ -1499,7 +1391,7 @@ jobs:
 
   tooling:
     name: tooling
-    needs: [ci-paths, base-guard, content-guard, skill-integrity, audit-sha, comment-policy]
+    needs: [ci-paths, content-guard, skill-integrity, audit-sha, comment-policy]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -1526,7 +1418,6 @@ jobs:
             --needs "$NEEDS_JSON" \
             --always ci-paths \
             --always comment-policy \
-            --expect base-guard=${{ github.event_name == 'pull_request' }} \
             --expect content-guard=${{ needs.ci-paths.outputs.content-guard-needed == 'true' }} \
             --expect skill-integrity=${{ needs.ci-paths.outputs.skill-integrity-needed == 'true' }} \
             --expect audit-sha=${{ needs.ci-paths.outputs.audit-paths-changed == 'true' }} || {
