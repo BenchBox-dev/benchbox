@@ -2,9 +2,10 @@
   "acceptance": [
     "Each option listed is either forwarded to the adapter and covered by the parity test, or removed from the registered specs so it is rejected.",
     "glue and dataproc-serverless register specs for the options their adapters read.",
-    "Published bundles and `result_id`s are unchanged, with corpus evidence."
+    "Published bundles and `result_id`s are unchanged, with corpus evidence.",
+    "`KNOWN_UNAPPLIED_OPTIONS` is empty and the plan-option exemption names no platform whose adapter now forwards the options"
   ],
-  "context": "These are follow-ups from #2972 (platform options reach adapters) and #2974 (deployment modes). Extend the per-platform parity test from #2972 to these platforms. If the shape of recorded `platform_options` changes, it touches results identity: published `result_id`s must not change, so check against the corpus first.",
+  "context": "These are follow-ups from #2972 (platform options reach adapters) and #2974 (deployment modes). Extend the per-platform parity test from #2972 to these platforms. If the shape of recorded `platform_options` changes, it touches results identity: published `result_id`s must not change, so check against the corpus first.\n\n2026-10-17: SQLite `database_name` is now applied (#3048, 7959be931), but `tests/unit/cli/test_platform_options_reach_adapters.py` still lists it in `KNOWN_UNAPPLIED_OPTIONS`; remove that entry. The plan-option exemption (`plan_max_depth`, `plan_capture_timeout_seconds`) on the hand-written `from_config` platforms is the main remaining gap; shrink it as each platform forwards the options. Owner, 2026-10-15, Claude session e0e74e6b, question dialog: \"Keep follow-up tracker items\".",
   "description": "These options are accepted but never reach the adapter:\n- The hand-written `from_config` methods of emr-serverless, dataproc, dataproc-serverless, synapse-spark, fabric-spark and snowpark-connect do not forward `plan_max_depth` or `plan_capture_timeout_seconds`.\n- SQLite parses `database_name` but never reads it.\n- TimescaleDB `from_config` drops `service_url`.\n- glue and dataproc-serverless register no platform options at all.\n\nSeparately, supplied options are lifted only in `get_platform_config`, not in the default builder. The default builder was left alone because `DatabaseConfig` has `extra=\"allow\"`, so lifting there would change the recorded `platform_options` shape.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/2972",
@@ -18,6 +19,14 @@
       "op": "create",
       "op_id": "c4ecb19c34eb4581b906330d93a9e337",
       "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-17T23:59:23Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "116020e447ba448d9e25f5a1408af784",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
     }
   ]
 }
