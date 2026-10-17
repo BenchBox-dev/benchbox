@@ -5,7 +5,7 @@
     "No alias from velox/lakesail to spark in the capability registry or template discovery.",
     "Live evidence (or an explicit unverified note) for each engine is attached to the PR."
   ],
-  "context": "Origin: user-approved 2026-09-30; Opus Considerations on LakeSail and review finding R8. Low urgency; native Spark first.",
+  "context": "Merged in #3079 (squash e995879f3, 2026-10-17). Velox applies the tuning spark map like Spark (set, read back, ledger). LakeSail warns at validation and records each key as dropped (no verified honoured-key list). No velox/lakesail alias to spark (pinned test). Live evidence: none; no Gluten build or LakeSail server available locally (explicit unverified note in the PR).",
   "description": "SparkAdapter, VeloxAdapter and LakeSailAdapter share SparkLikeAdapterMixin but not configuration semantics, so each needs its own decision after native Spark ships.\n- Velox/Gluten: accepts standard Spark SQL keys plus spark.gluten.* ; adapter-owned keys (spark.plugins, spark.shuffle.manager, spark.memory.offHeap.* in velox.py ~L395-398) stay rejected. Remote Velox over Spark Connect rejects core keys server-side. Needs live verification with a Gluten build.\n- LakeSail: a Rust engine behind Spark Connect. A successful conf.set records \"executed\" even for keys Sail ignores. Build a verified list of honoured keys (or an advisory tag on ledger statements) before shipping Sail templates or accepting the map; until then, a spark map on LakeSail warns and is recorded as dropped.\n- Template discovery is keyed by platform directory: Velox and LakeSail stay `tuned-fallback` until they have their own templates; do NOT alias them to spark.\n- Use the preflight capture from spark-effective-config-preflight-capture to confirm what each engine actually reports.",
   "links": [
     "item:spark-session-config-runtime",
@@ -36,6 +36,14 @@
       "generation": "7629081b28b4494ab685535a5c6368f5",
       "op": "take",
       "op_id": "dd8fc2eb1e9e4a3494e7e7b29aaaa335",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T05:07:10Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "f895d8b1cd0a44f7a91a7356a85c4471",
       "session_id": "400c76c14fce4783943655593419ae3c"
     }
   ]
