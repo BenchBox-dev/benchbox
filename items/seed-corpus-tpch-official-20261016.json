@@ -5,6 +5,7 @@
     "Matrix decision for sub-SF1 TPC-H cells recorded in the spec",
     "Workflow tests/spec checks pass"
   ],
+  "context": "State as of 2026-10-17 (recorded by the subscale-ranking worker; this worker did not implement this item). #3054 \"fix(seed-corpus): run TPC-H SF1 seed cells as official seeded runs\" merged 2026-10-17T01:11:43Z as c5fcb0a68bc80aa1e77d49f57505f9edb3ff2cd3. Related: #3075 (merge f4e9d4a9) now ranks unofficial_subscale TPC-H/TPC-DS bundles, so sub-SF1 seed cells are staged rather than skipped as unofficial_compliance; #3076 (merge 8a94e071) makes the seed workflow re-cut the ledger seed and run the publication gates before opening its PR. Acceptance not re-verified here; close only after checking #3054 against the acceptance list. Remaining owner steps: Seed Corpus run, seed PR merge, auto-mirror merge, post-mirror re-cut (`make ledger-seed-recut`).",
   "description": "Owner decision 2026-10-16: the seed corpus should include TPC-H. Since #3006 the seed workflow stages only rankable bundles, and the TPC-H cells run without `--official`, so all 8 green TPC-H cells in run 38935736737 were skipped as `unofficial_compliance`. Change `.github/workflows/seed-corpus.yml` and `results-data/SEED_CORPUS_SPEC.md` so TPC-H cells run with `--official` (and a fixed seed, as TPC-DS does). Official TPC-H below SF1 is classed `unofficial_subscale`, so expect only SF1 cells to be admitted; decide with evidence whether sub-SF1 TPC-H cells stay in the matrix.",
   "sessions": [
     {
@@ -13,6 +14,14 @@
       "client": "claude-code",
       "op": "create",
       "op_id": "69453499b67a44b08fe0ec876f611f16",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T21:32:04Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "29bb79ed02ad4df291c4c90828734fa4",
       "session_id": "400c76c14fce4783943655593419ae3c"
     }
   ]
