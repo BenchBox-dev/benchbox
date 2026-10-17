@@ -23545,6 +23545,15 @@
       "status": "done",
       "title": "Fix TPCHStreams qgen path pairing -p stream_id + 1 with PERMUTATION_MATRIX[stream_id]"
     },
+    "tpch-subscale-row-count-pr-ci-20261017": {
+      "claim": null,
+      "needs": [
+        "datafusion-tpch-money-columns-double-20261017"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Bring #3068 (TPC-H SF0.01/0.1 row-count reference) back to mergeable and green"
+    },
     "tpch-throughput-dialect-translation": {
       "claim": null,
       "needs": [],

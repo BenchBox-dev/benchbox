@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "#3068 rebased on develop with no conflicts",
+    "test_result_parity cross-mode contract passes, with the cause explained in the PR",
+    "core and test (ubuntu-latest, 3.14) pass on the rebased head",
+    "After the DataFusion fix lands: reference regenerated with the strict generator; DataFusion SQL records 22 PASSED at SF 0.01 and 0.1; required-local-cases passes",
+    "Oracle verdict success on the final head; PR armed and merged"
+  ],
+  "context": "Parent: subscale-tpc-ranking-policy-20261016. Worktree /Users/joe/Developer/BenchBox.wt-tpch-subscale-row-counts, branch feat/tpch-subscale-row-count-reference. Oracle verdict on 47d96a5d: success. Keep unarmed until the DataFusion fix lands, then regenerate the reference with the strict generator (make tpch-subscale-row-counts-regen) before arming.",
+  "description": "Gap: PR #3068 (head 47d96a5d8eec9696474136d10f2362184bcaeeb9, unarmed) is CONFLICTING with develop and has failing checks, found by gh pr checks on 2026-10-17:\n- required-local-cases: tests/integration/test_local_platform_benchmark_matrix.py::test_local_platform_benchmark_matrix[tpch-datafusion] \"CLI failed for datafusion/tpch (sf=0.01)\", the DataFusion Q15 DOUBLE defect (datafusion-tpch-money-columns-double-20261017) caught by the new exact reference. Expected until that fix lands.\n- test (ubuntu-latest, 3.14): tests/unit/core/results/test_result_parity.py::test_exported_sql_and_dataframe_bundles_share_cross_mode_contract fails `assert {'errors'} <= {'tables'}`. Its fixture is a TPC-H SF 0.01 subscale run (ExportParitySqlBenchmark), so the new reference likely produces a per-query FAILED/errors entry; needs investigation, real PR defect until shown otherwise. Also tests/unit/platforms/dataframe/test_df_timing_contract.py::...test_helper_excludes_capture_from_execution_time (25.9 < 20.0), likely a timing flake.\n- core: exit code 1 (job 117412929511), not yet diagnosed.\nConflicts arise from develop moving after the f4e9d4a9 (#3075) merge.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T22:05:44Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "3647e6caf51b48138861e8b7483f73da",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}
