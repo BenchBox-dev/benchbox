@@ -114,7 +114,7 @@
           "path": "docs/internal/comment-cleanup-scope.md"
         },
         {
-          "path": "docs/index.rst"
+          "path": "docs/index.md"
         },
         {
           "path": "docs/internal/dev-loop-property-ledger.md"
@@ -2338,9 +2338,6 @@
         },
         {
           "path": "tests/unit/platforms/aws/conftest.py"
-        },
-        {
-          "path": "tests/unit/platforms/conftest.py"
         },
         {
           "path": "tests/unit/platforms/dataframe/conftest.py"
