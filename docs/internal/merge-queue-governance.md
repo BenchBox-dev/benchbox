@@ -45,7 +45,7 @@ fails it. Checks run on the pull request head, which need not be current with
 
 | Required Context | Workflow Path | Contract |
 | --- | --- | --- |
-| `core` | `.github/workflows/ci.yml` | Lint, type checks, fast tests and parity gates on the PR head. On `pull_request`, the heavy tier (medium-test, correctness-gate, required-local-cases, plan-capture-gate, DataFusion integration, and the macOS and Windows TPC-H binary-framing matrix) is skipped unless a carve-out applies (soundness paths, packaging paths); `trunk.yml` runs the medium tier, the correctness gate and `required-local-cases` on `develop` after each merge. |
+| `core` | `.github/workflows/ci.yml` | Lint, type checks, fast tests on Python 3.14 and parity gates on the PR head. On `pull_request`, the heavy tier (medium-test, correctness-gate, required-local-cases, plan-capture-gate, DataFusion integration, and the macOS and Windows TPC-H binary-framing matrix) is skipped unless a carve-out applies (soundness paths, packaging paths); `trunk.yml` runs the Python 3.12 fast lane, the medium tier, the correctness gate and `required-local-cases` on `develop` after each merge. |
 | `explorer` | `.github/workflows/ci.yml` | Token scan, Vitest, CLI-versus-explorer parity, and the blocking Chromium suite on explorer changes. Reports success on unaffected paths. |
 | `results-data` | `.github/workflows/ci.yml` | Corpus inventory and validation, submission validator sync, and corpus contract tests on results-data changes. |
 | `docs` | `.github/workflows/ci.yml` | Sphinx build with warnings as errors, example validation, and spell check on docs changes. |
