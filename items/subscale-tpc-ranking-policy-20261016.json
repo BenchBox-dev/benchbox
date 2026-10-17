@@ -7,6 +7,7 @@
     "Seed workflow re-cuts the ledger seed, runs the publication suites, and its PR passes CI with no manual fix",
     "QphH stays unavailable and official submission still refuses subscale runs"
   ],
+  "context": "State as of 2026-10-17 (verified live from GitHub).\n\nMERGED\n- #3076 seed workflow re-cut: merge 8a94e07149122e16754a3c9cf12ea629721b81e8. create-pr re-cuts publication/ledger-seed.json against published-results after validate_corpus, runs `make ledger-seed-gates` (test_ledger_seed, test_check_corpus_bijection, test_corpus_cutover, test_site_inputs), stages the seed only with bundle changes; `make ledger-seed-recut` is the post-mirror re-cut.\n- #3075 ranking policy + Explorer labels (B+C, one PR): merge f4e9d4a955143da73ce15ba97bf58d5989c5d99c. Only unofficial_nonstandard is unranked; any TPC-H/TPC-DS bundle below SF 1 is read as unofficial_subscale; new subscale runs store power_at_size with \"unofficial\": true; suppressed bundles get Power@Size derived from a complete final iteration (marked derived_from_timings); recorded subscale values used only if timings reproduce them within 5%; read model v17 (power_score_source); \"Subscale · Unofficial\" labels on every listed surface; ADR docs/development/adr/adr-subscale-tpc-ranking-policy.md. validate_corpus: TPC-H SF0.01 9 identities (unchanged), TPC-H SF0.1 5->8, TPC-DS SF0.1 unranked->3.\n- #3084 comment-policy digest pre-registration for the #3068 test edit: merge 48c44cf73919f327b4f4984767e353efd2dfcceb.\n- Site replay benchbox-site #41 (\"Replay subscale ranking and the Subscale · Unofficial labels from core through f4e9d4a95\"): merge 4b52d5e319e0ce2a5fa422353f2773d66711cd65.\n\nOPEN\n- #3068 row-count reference (PR A), head 47d96a5d8eec9696474136d10f2362184bcaeeb9, unarmed by owner instruction. Oracle verdict on that head: success. Waiting on the DataFusion Q15 DOUBLE-money-column fix from another session (no fix PR found yet); DataFusion Q15 intermittently returns 0 rows, which the new exact check correctly fails. Current GitHub state: mergeable=CONFLICTING with develop; failing checks: core, test (ubuntu-latest, 3.14), required-local-cases (plus two superseded oracle-review runs). Next: after the DataFusion fix lands, rebase, resolve conflicts and CI failures, regenerate the reference with the strict generator (`make tpch-subscale-row-counts-regen`), re-verify DataFusion SQL records 22 PASSED at SF0.01/0.1, then arm.\n\nREMAINING OWNER STEPS\n- Dispatch the Seed Corpus run, merge its seed PR, merge the auto-mirror PR in the same cycle, then run the post-mirror re-cut (`make ledger-seed-recut`) and merge that PR.\n\nNot done: acceptance item 1 (SQL/DataFrame sub-SF1 per-query checks) ships with #3068; acceptance item 5 (seed workflow PR passes CI with no manual fix) is unproven until the owner's seed run.",
   "description": "Owner decisions 2026-10-16: sub-SF1 TPC-H (and TPC-DS) results stay ranked by Power@Size and are labelled \"Subscale · Unofficial\" on every surface; the 18 legacy sub-SF1 bundles keep their rankings; new subscale runs record power_at_size with an unofficial marker instead of suppressing it; the 11 no-power subscale bundles get power back-filled from timings at read time (marked derived); an exact per-query row-count reference at SF0.01 and SF0.1 validates both DataFrame and SQL runs; the seed workflow re-cuts publication/ledger-seed.json and runs the publication suites; the owner merges each mirror. Delivered as four PRs: row-count reference, ranking policy + ADR, Explorer labels (same release as the policy), seed workflow re-cut.",
   "sessions": [
     {
@@ -33,6 +34,14 @@
       "generation": "9ef1ccef529748948a85a80bbccefd93",
       "op": "release",
       "op_id": "92b38ff59ced40d782701dd05e9c54a8",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T21:31:38Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "a99629464f5949faa91bbeb841c023c7",
       "session_id": "400c76c14fce4783943655593419ae3c"
     }
   ]
