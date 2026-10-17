@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "DataFusion TPC-H loads monetary columns with exact decimal (or otherwise deterministic) types",
+    "DataFusion SQL TPC-H Q15 returns 1 row in every one of at least 20 executions at SF 0.01, 0.1 and 1",
+    "tests/integration/test_local_platform_benchmark_matrix.py tpch-datafusion passes with the SF 0.01/0.1 row-count reference from #3068",
+    "A regression test covers the column type mapping"
+  ],
+  "context": "Unblocks #3068 (subscale-tpc-ranking-policy-20261016, tpch-subscale-row-count-pr-ci-20261017). Owned by another session; do not duplicate the fix.",
+  "description": "Defect: benchbox/platforms/datafusion.py:1103-1104 maps DECIMAL/NUMERIC columns to pa.float64() when converting TPC-H data, so l_extendedprice and l_discount are DOUBLE. TPC-H Q15 sums the revenue CTE twice and compares with `total_revenue = (SELECT MAX(total_revenue) FROM revenue)`; with parallel aggregation the two DOUBLE sums can differ in the last bit and the query returns 0 rows instead of 1. Another session owns the fix; this item tracks the dependency for #3068.\n\nHow found (2026-10-16, row-count reference work for #3068): DataFusion 54.0.0 returned Q15=0 in about a third to a half of executions at SF 0.01 and SF 0.1 (repeated `benchbox run --queries Q15 --iterations 5/6`: [0,1,1,0,0,1], [1,0,0,1,0,1,0]); reproduced directly on the converted parquet with datafusion Python (10 runs: [0,0,1,1,1,1,1,1,1,1]); pyarrow schema shows l_extendedprice: double. Published bundles also show Q15 counts [0,1] (results-data/bundles/tpch_sf1_datafusion_sql_20260825_172912_1d62bd4f.json, tpch_sf001_datafusion_sql_20260826_110608_e8a7d048.json, tpch_sf01_datafusion_sql_20260824_082755_adcfb35e.json). With #3068's exact SF 0.01/0.1 reference, CI's required-local-cases test_local_platform_benchmark_matrix[tpch-datafusion] fails on it.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T22:04:26Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "bb483cd4339e4f4da873a5651f15914b",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}

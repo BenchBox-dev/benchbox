@@ -6423,6 +6423,13 @@
       "status": "done",
       "title": "Fix DataFusion adapter ingest of trailing-delimiter TPC .tbl/.dat files"
     },
+    "datafusion-tpch-money-columns-double-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "DataFusion stores TPC-H money columns as DOUBLE, so Q15 intermittently returns 0 rows"
+    },
     "datagen-empty-manifest-vacuous-validation-20261001": {
       "claim": null,
       "needs": [],
