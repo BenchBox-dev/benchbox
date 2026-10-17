@@ -65,9 +65,10 @@ def derive_power_at_size(
         return None
     if len({str(query.get("id", query.get("query_id"))) for query in final}) < minimum_queries:
         return None
-    seconds = [ms / 1000.0 for query in final if (ms := _duration_ms(query)) is not None and ms > 0]
-    if not seconds:
+    durations = [_duration_ms(query) for query in final]
+    if any(ms is None or ms <= 0 for ms in durations):
         return None
+    seconds = [ms / 1000.0 for ms in durations if ms is not None]
     geometric_mean = math.exp(sum(math.log(value) for value in seconds) / len(seconds))
     return (scale * 3600) / geometric_mean
 
@@ -79,7 +80,7 @@ def subscale_power_at_size(
     derived = derive_power_at_size(queries, scale_factor, minimum)
     if recorded is None:
         return (derived, POWER_SCORE_DERIVED_FROM_TIMINGS) if derived is not None else (None, None)
-    if derived is not None and abs(recorded / derived - 1.0) > RECORDED_POWER_TOLERANCE:
+    if derived is None or abs(recorded / derived - 1.0) > RECORDED_POWER_TOLERANCE:
         return None, None
     return recorded, POWER_SCORE_RECORDED
 

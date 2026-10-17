@@ -48,16 +48,18 @@ ranking at all.
 5. Derived and recorded Power@Size share one cohort ranking. A recorded
    subscale value is used only when it agrees within 5% with the value
    recomputed from the bundle's own final-iteration timings; otherwise the
-   bundle has no primary metric and is not ranked. When the timings cannot
-   be recomputed (no complete final iteration), the recorded value is used
-   as stored, as it is for every bundle at SF 1 and above. On the 25
-   published subscale bundles that store a value, the largest difference is
-   1.4%.
+   bundle has no primary metric and is not ranked. A recorded value that
+   cannot be checked, because the final iteration is incomplete or lacks a
+   usable timing, is not used either. Bundles at SF 1 and above keep their
+   recorded values unchecked, as before. On the 25 published subscale
+   bundles that store a value, every value can be checked and the largest
+   difference is 1.4%.
 6. Eleven TPC-H and three TPC-DS subscale bundles were written with
    suppressed metrics and no Power@Size. The read path derives Power@Size
    from their final measurement iteration: `SF × 3600 ÷ geomean(seconds)`,
    the same formula the result builder uses. The final iteration must cover
-   every query (22 for TPC-H, 99 for TPC-DS), each with a passing status.
+   every query (22 for TPC-H, 99 for TPC-DS), each with a passing status and
+   a positive timing.
    The read model marks these values
    `power_score_source = "derived_from_timings"`, and the Explorer
    shows them as derived. Exported timings are rounded, so a derived value

@@ -152,3 +152,16 @@ def test_missing_subscale_power_is_derived_from_a_complete_final_iteration() -> 
         "derived_from_timings",
     )
     assert subscale_power_at_size("tpch", None, _FULL_RUN[:21], 0.01) == (None, None)
+
+
+def test_recorded_subscale_power_without_a_complete_final_iteration_is_not_used() -> None:
+    assert subscale_power_at_size("tpch", _FULL_RUN_POWER, _FULL_RUN[:21], 0.01) == (None, None)
+
+
+@pytest.mark.parametrize("bad_ms", [None, 0.0, -1.0, "fast"])
+def test_a_final_query_without_a_usable_timing_blocks_derivation(bad_ms) -> None:
+    queries = [dict(query) for query in _FULL_RUN]
+    queries[5]["ms"] = bad_ms
+
+    assert derive_power_at_size(queries, 0.01, 22) is None
+    assert subscale_power_at_size("tpch", _FULL_RUN_POWER, queries, 0.01) == (None, None)
