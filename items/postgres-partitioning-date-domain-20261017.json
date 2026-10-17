@@ -4,7 +4,7 @@
     "Partitioning is skipped and recorded as dropped with a reason when primary or unique keys are requested.",
     "Registry postgresql PARTITIONING entry flipped to a rendered mechanism; registry parity, snapshot and fake-driver execution tests pass."
   ],
-  "context": "Owner-approved 2026-10-17 (coordinator relay of owner decision). Clustering/sorting half ships under tuning-render-layout-postgres-family-20261001.",
+  "context": "Merged in #3098 (squash a10876401, 2026-10-17). PostgreSQLAdapter.create_schema appends the generator PARTITION BY and creates children: yearly RANGE over the benchmark date domain (TPC-H/SSB 1992-1998, TPC-DS 1998-2003) plus DEFAULT; HASH x4 for integers; LIST with DEFAULT only. Skipped and recorded dropped while primary/unique keys are requested. Registry postgresql PARTITIONING -> ddl. Family adapters opt out. Also fixed execute_sql_query fetching rows from no-row statements (tuned Postgres runs failed on the metadata CREATE TABLE). Live-verified TPC-H and TPC-DS SF0.01 on local postgres:17. Oracle SHIP on 9236c60c1.",
   "description": "Partitioning half of tuning-render-layout-postgres-family-20261001, split by owner decision 2026-10-17. PostgreSQLDDLGenerator's RANGE partitions are hardcoded to yearly 2020-2026 children while TPC-H/TPC-DS dates fall in 1992-2003, so rendering them as-is fails every load. Change: derive RANGE partition bounds from the benchmark's date domain, always add a DEFAULT partition, and skip partitioning (recording it as dropped with a reason) when primary or unique keys are requested, because PostgreSQL requires those keys to include the partition column. Flip the postgresql PARTITIONING registry entry once execution renders it, with a snapshot test (adapter output equals generator output), a fake-driver execution test, and a local Postgres container run. Postgres-compatible variants keep their own entries.",
   "links": [
     "item:tuning-render-layout-postgres-family-20261001"
@@ -25,6 +25,14 @@
       "generation": "91f14a41e6194dd2bcfc53eb7d9abb80",
       "op": "take",
       "op_id": "6a004327c02e4a7bad18e86ce2443afa",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T16:30:57Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "9664601ac8c24a9fb20addbe63d9d6bb",
       "session_id": "400c76c14fce4783943655593419ae3c"
     }
   ]
