@@ -21634,15 +21634,10 @@
       "title": "SQLite fails every TPC-DS query: a Cursor reaches execute_query where a Connection is expected"
     },
     "ssb-dataframe-row-count-validation-20261016": {
-      "claim": {
-        "expires_at": "2026-10-18T00:05:33Z",
-        "generation": "242ece2794f34ecc97362002eb99d74f",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Validate SSB DataFrame runs against expected row counts"
     },
     "ssb-generator-dimension-value-fidelity": {
