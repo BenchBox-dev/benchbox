@@ -568,11 +568,17 @@ class DryRunDisplay:
         platform_table.add_column("Enabled", style="white")
 
         for opt_name, opt_value in platform_opts.items():
-            if opt_value:
+            if opt_value and opt_name != "spark":
                 platform_table.add_row(opt_name.replace("_", " ").title(), str(opt_value))
 
         if platform_table.row_count > 0:
             self.console.print(platform_table)
+
+        from benchbox.cli.spark_session_display import spark_session_config_table
+
+        spark_table = spark_session_config_table(platform_opts.get("spark"))
+        if spark_table is not None:
+            self.console.print(spark_table)
 
     def _display_dataframe_tuning(self, df_tuning: dict[str, Any]) -> None:
         self.console.print("\n[bold]DataFrame Tuning Configuration[/bold]")

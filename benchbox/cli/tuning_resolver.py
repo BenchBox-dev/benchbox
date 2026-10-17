@@ -508,3 +508,9 @@ def display_tuning_show(
         config_yaml = yaml.dump(config_dict, default_flow_style=False, sort_keys=False)
         syntax = Syntax(config_yaml, "yaml", theme="monokai", line_numbers=True)
         console.print(syntax)
+
+        from benchbox.cli.spark_session_display import spark_session_config_table
+
+        spark_table = spark_session_config_table(config.platform_optimizations.spark)
+        if spark_table is not None:
+            console.print(spark_table)

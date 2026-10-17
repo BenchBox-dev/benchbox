@@ -360,6 +360,12 @@ def _validate_sql_config(config_file: str, platform: str) -> None:
     console.print(f"  Enabled tuning types: {len(enabled)}")
     console.print(f"  Table tunings: {len(config.table_tunings)}")
 
+    from benchbox.cli.spark_session_display import spark_session_config_table
+
+    spark_table = spark_session_config_table(config.platform_optimizations.spark)
+    if spark_table is not None:
+        console.print(spark_table)
+
 
 @tuning_group.command(
     "defaults",
@@ -566,12 +572,15 @@ def show_tuning(
 
 
 def _sql_platform_capability_rows() -> list[tuple[str, str, str]]:
-    from benchbox.core.tuning.capability_registry import PLATFORM_TUNING_CAPABILITIES
+    from benchbox.core.tuning.capability_registry import PLATFORM_TUNING_CAPABILITIES, SESSION_CONFIG_CAPABILITIES
 
     rows = []
-    for platform in sorted(PLATFORM_TUNING_CAPABILITIES):
-        capabilities = PLATFORM_TUNING_CAPABILITIES[platform]
-        tuning_types = ", ".join(sorted(tuning_type.value for tuning_type in capabilities))
+    for platform in sorted(PLATFORM_TUNING_CAPABILITIES.keys() | SESSION_CONFIG_CAPABILITIES.keys()):
+        capabilities = PLATFORM_TUNING_CAPABILITIES.get(platform, {})
+        type_names = sorted(tuning_type.value for tuning_type in capabilities)
+        if platform in SESSION_CONFIG_CAPABILITIES:
+            type_names.append("spark session config")
+        tuning_types = ", ".join(type_names)
 
         gaps = sorted(
             tuning_type.value for tuning_type, capability in capabilities.items() if capability.rendered_via == "none"

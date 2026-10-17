@@ -57,6 +57,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `benchbox tuning platforms` lists Spark with its own capabilities and marks
+  the platforms that apply a tuning file's `spark` session map (Spark and
+  Velox). `benchbox tuning init --platform spark` ends the sample with a
+  commented example of the map, and `tuning show`, `tuning validate` and
+  `--dry-run` list it as a property and value table. A non-empty `spark` map
+  on a platform that does not apply it is recorded as dropped in the
+  applied-tuning ledger, in addition to the validation warning.
+
 - Spark, LakeSail and Velox runs now read the session configuration back from
   the live session at three points: when the session is created, after
   BenchBox applies its settings, and just before the first measured query.
@@ -543,6 +551,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   never a valid profile key.
 
 ### Before you upgrade
+- Spark tuning validation no longer borrows the Databricks rules. Spark has its
+  own capability entry: Liquid Clustering, Z-Ordering and the other Databricks
+  layout types are reported as unsupported on Spark, partitioning stays
+  unsupported, sorting is applied only on Delta tables, and keys stay accepted.
+  Spark runs that use a Databricks template no longer show that template's
+  measured evidence label. Delta stays an alias for Databricks.
 - A tuning file's `platform_optimizations.spark` map now applies on Velox the
   same way as on Spark (set, read back, and recorded in the applied-tuning
   ledger). On LakeSail it is no longer reported as applied: LakeSail accepts
