@@ -6,7 +6,7 @@
     "tuning init lists only enabled constraint kinds; the auto-mode notice no longer claims unique/check constraints.",
     "uv run -- pytest tests/unit/core/tuning -q passes."
   ],
-  "context": "Work started in worktree /Users/joe/Developer/BenchBox.wt-tuning-registry-followups, branch fix/tuning-registry-followups.",
+  "context": "Merged in #3082 (squash f4ca650c9, 2026-10-17). Athena PK/FK registry not applied + _convert_to_external_table strips PK/FK/REFERENCES; Doris MATERIALIZED_VIEWS explicit entry; TuningType.is_known_platform/is_compatible_with_platform strip :variant (duckdb:memory parity test); tuning init summary lists only enabled constraint kinds and the auto-mode notice no longer claims unique/check. Oracle SHIP on b4e8d9721.",
   "description": "Owner-approved follow-up PR to the capability validator (decision 2026-10-14: \"One PR after #2919\"). Scope: (1) Athena PK/FK registry entries are _ddl but Athena executes Hive CREATE EXTERNAL TABLE, which has no constraint syntax; mark them not rendered and strip PK/FK in AthenaAdapter._convert_to_external_table. (2) Doris has no MATERIALIZED_VIEWS registry entry; add an explicit not-rendered entry. (3) Platform variants such as duckdb:memory must validate and build sample configs like their base platform (TuningType.is_known_platform / is_compatible_with_platform strip the :variant suffix); pin it with a test. (4) `benchbox tuning init` console text lists unique/check constraints unconditionally; list only enabled kinds, and fix the --tuning auto notice that claims unique/check are enabled.",
   "links": [
     "item:tuning-capability-single-source-validator-20261001"
@@ -27,6 +27,14 @@
       "generation": "57635beacc824dbbb78ee633701032ca",
       "op": "take",
       "op_id": "02df1ff93c5f41c18df3130dc4b9d578",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T07:01:25Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "a44d9a447b204afca979b680c80573ef",
       "session_id": "400c76c14fce4783943655593419ae3c"
     }
   ]
