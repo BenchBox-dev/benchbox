@@ -20725,17 +20725,12 @@
       "title": "Rehearse real deploys, rollback and the failure path from the site repo on next.benchbox.dev"
     },
     "site-split-40-production-cutover": {
-      "claim": {
-        "expires_at": "2026-10-18T03:00:32Z",
-        "generation": "4541afd925fa43099775623d31cc64fb",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
-      },
+      "claim": null,
       "needs": [
         "site-split-30-rehearsal"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Cut benchbox.dev over to the site repo with the owner present, then gather per-route production evidence"
     },
     "site-split-50-core-site-removal": {
