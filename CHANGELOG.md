@@ -187,9 +187,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   not installed (for example Snowflake or Databricks) now shows the tuning DDL
   preview from that platform's generator, with a warning that no platform
   configuration was available. Before, the preview was silently empty.
-- Tuned dry runs now warn when the tuning DDL preview is generator output that
-  execution does not run, and name each requested tuning type that the
-  platform does not apply at execution. The DuckDB preview lists the sort and
+- Tuned dry runs now show a note above the tuning DDL preview when it is
+  generator output that execution does not run, and name each requested
+  tuning type that the platform does not apply at execution (also saved as
+  `ddl_preview_notes` in the dry-run JSON). The DuckDB preview lists the sort and
   cluster indexes and the transactional sort rewrite that a real run executes.
   The Athena preview no longer contains a `-- Note: PARTITIONED BY ...`
   placeholder line.

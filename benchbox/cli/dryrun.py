@@ -346,6 +346,9 @@ class DryRunDisplay:
         if result.tuning_config:
             self._display_tuning_config(result.tuning_config)
 
+        for note in result.ddl_preview_notes:
+            self.console.print(f"[yellow]{note}[/yellow]")
+
         if result.ddl_preview:
             self._display_ddl_preview(result.ddl_preview)
 

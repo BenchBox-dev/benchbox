@@ -181,7 +181,7 @@ class DryRunExecutor:
                     )
                     result.ddl_preview = ddl_preview
                     result.post_load_statements = post_load
-                    result.warnings.extend(notes)
+                    result.ddl_preview_notes = notes
                 except Exception as e:
                     result.warnings.append(f"DDL preview extraction failed: {e}")
 

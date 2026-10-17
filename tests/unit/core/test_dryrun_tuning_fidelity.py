@@ -44,6 +44,8 @@ def test_missing_database_config_still_previews_the_requested_platform(tmp_path:
     assert result.ddl_preview, result.warnings
     assert any("snowflake-connector-python" in warning for warning in result.warnings)
     assert any("generator only" in warning for warning in result.warnings)
+    assert any("comes from the tuning generator" in note for note in result.ddl_preview_notes)
+    assert not any("comes from the tuning generator" in warning for warning in result.warnings)
 
 
 def test_data_only_dry_run_has_no_tuning_preview(tmp_path: Path):

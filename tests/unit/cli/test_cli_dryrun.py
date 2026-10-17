@@ -485,6 +485,7 @@ class TestDryRunExecutor:
             "enable_foreign_keys": False,
         }
         result.warnings = []
+        result.ddl_preview_notes = []
         result.schema_sql = "CREATE TABLE test (id INTEGER)"
         result.tuning_config = None
         result.estimated_resources = None
