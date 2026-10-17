@@ -492,6 +492,7 @@ class DryRunResult(BaseModel):
     dataframe_schema: Optional[str] = None
     ddl_preview: Optional[dict[str, dict[str, Any]]] = None
     post_load_statements: Optional[dict[str, list[str]]] = None
+    ddl_preview_notes: list[str] = Field(default_factory=list)
     tuning_config: Optional[dict[str, Any]] = None
     constraint_config: Optional[dict[str, Any]] = None
     estimated_resources: Optional[dict[str, Any]] = None

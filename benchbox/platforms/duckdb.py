@@ -1178,6 +1178,26 @@ class DuckDBAdapter(PlatformAdapter):
 
         return " ".join(clauses) if clauses else ""
 
+    def preview_tuning_statements(self, table_name: str, table_tuning: Any) -> list[str]:
+        from benchbox.core.tuning.interface import TuningType
+
+        statements: list[str] = []
+        index_supported = self.index_ddl_unsupported_reason is None
+        sort_columns = sorted(table_tuning.get_columns_by_type(TuningType.SORTING), key=lambda col: col.order)
+        if sort_columns:
+            sort_names = [col.name for col in sort_columns]
+            if index_supported:
+                statements.append(_duckdb_sort_index_sql(table_name, sort_names))
+            statements.append("BEGIN TRANSACTION;")
+            statements.extend(self._build_fk_safe_ctas_sort_sql(table_name, sort_columns) or [])
+            statements.append("COMMIT;")
+            if index_supported:
+                statements.append(_duckdb_sort_index_sql(table_name, sort_names))
+        cluster_columns = sorted(table_tuning.get_columns_by_type(TuningType.CLUSTERING), key=lambda col: col.order)
+        if cluster_columns and index_supported:
+            statements.append(_duckdb_cluster_index_sql(table_name, [col.name for col in cluster_columns]))
+        return statements
+
     def apply_table_tunings(self, table_name: str, table_tuning, connection: Any) -> None:
         if not table_tuning or not table_tuning.has_any_tuning():
             return
