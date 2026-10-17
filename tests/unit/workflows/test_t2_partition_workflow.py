@@ -88,9 +88,9 @@ def test_required_local_cases_run_before_merge_and_gate_core() -> None:
     assert not job.get("continue-on-error")
     for retired in ("required-local-cases", "plan-capture-gate", "datafusion-integration", "polars-2-compat"):
         assert retired not in jobs
-        assert retired not in jobs["core-summary"]["needs"]
-    assert "correctness-gate" in jobs["core-summary"]["needs"]
-    core_text = "\n".join(step.get("run", "") for step in jobs["core-summary"]["steps"])
+        assert retired not in jobs["core"]["needs"]
+    assert "correctness-gate" in jobs["core"]["needs"]
+    core_text = "\n".join(step.get("run", "") for step in jobs["core"]["steps"])
     assert f"--expect correctness-gate={HEAVY_CONDITION}" in core_text
 
 
@@ -109,9 +109,9 @@ def test_medium_selection_and_receipts_gate_core() -> None:
     assert "--collection-summary" in medium_text and "--checked-sha" in medium_text
     assert "test -s" in medium_text
     assert not medium.get("continue-on-error")
-    core_text = "\n".join(step.get("run", "") for step in jobs["core-summary"]["steps"])
+    core_text = "\n".join(step.get("run", "") for step in jobs["core"]["steps"])
     for job in ("medium-collect", "medium-test", "correctness-gate"):
-        assert job in jobs["core-summary"]["needs"]
+        assert job in jobs["core"]["needs"]
         assert f"--expect {job}=" in core_text
     assert "verify-medium" in core_text
 
@@ -171,8 +171,8 @@ def test_native_binary_framing_remains_required_before_merge() -> None:
     )
     assert not native.get("continue-on-error")
     assert not framing.get("continue-on-error")
-    assert "tpch-binary-framing" in jobs["core-summary"]["needs"]
-    core_text = "\n".join(step.get("run", "") for step in jobs["core-summary"]["steps"])
+    assert "tpch-binary-framing" in jobs["core"]["needs"]
+    core_text = "\n".join(step.get("run", "") for step in jobs["core"]["steps"])
     expectation = framing_condition.removeprefix("${{ ").removesuffix(" }}")
     assert f"--expect tpch-binary-framing=${{{{ {expectation} }}}}" in core_text
     assert "framing-needed" in _jobs("ci.yml")["ci-paths"]["outputs"]

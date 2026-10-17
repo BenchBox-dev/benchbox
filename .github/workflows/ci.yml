@@ -1356,7 +1356,7 @@ jobs:
           --ignore-words .codespell-ignore.txt
           --skip "*.pyc,_build,*.json,*.lock,*.svg,*.min.js,*.min.css,_binaries,*.tpl,*.dst,*.tbl,_sources,benchmark_runs,*.dat,*.pdf,_project,htmlcov,.venv"
 
-  core-summary:
+  core:
     name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'core (text edit)' || 'core' }}
     needs: [ci-paths, code-lint, code-test, medium-collect, medium-test, correctness-gate, tpch-binary-framing, tuning-liveness, package-smoke, dependency-audit]
     if: ${{ always() && !(github.event.action == 'edited' && !github.event.changes.base) }}
@@ -1423,7 +1423,7 @@ jobs:
           gh run cancel "${{ github.run_id }}" --repo "${{ github.repository }}" || true
           sleep 90
 
-  explorer-summary:
+  explorer:
     name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'explorer (text edit)' || 'explorer' }}
     needs: [ci-paths, parity-check]
     if: ${{ always() && !(github.event.action == 'edited' && !github.event.changes.base) }}
@@ -1468,7 +1468,7 @@ jobs:
           gh run cancel "${{ github.run_id }}" --repo "${{ github.repository }}" || true
           sleep 90
 
-  results-data-summary:
+  results-data:
     name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'results-data (text edit)' || 'results-data' }}
     needs: [ci-paths, results-data-check]
     if: ${{ always() && !(github.event.action == 'edited' && !github.event.changes.base) }}
@@ -1513,7 +1513,7 @@ jobs:
           gh run cancel "${{ github.run_id }}" --repo "${{ github.repository }}" || true
           sleep 90
 
-  docs-summary:
+  docs:
     name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'docs (text edit)' || 'docs' }}
     needs: [ci-paths, example-validation, spellcheck]
     if: ${{ always() && !(github.event.action == 'edited' && !github.event.changes.base) }}
@@ -1559,7 +1559,7 @@ jobs:
           gh run cancel "${{ github.run_id }}" --repo "${{ github.repository }}" || true
           sleep 90
 
-  tooling-summary:
+  tooling:
     name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'tooling (text edit)' || 'tooling' }}
     needs: [ci-paths, content-guard, skill-integrity, audit-sha, comment-policy]
     if: ${{ always() && !(github.event.action == 'edited' && !github.event.changes.base) }}

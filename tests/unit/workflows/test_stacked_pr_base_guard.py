@@ -83,7 +83,7 @@ def test_stacked_pr_base_guard_feeds_the_tooling_result() -> None:
     workflow = _load()
     assert "base-guard" not in workflow["jobs"]
     for unit in ("core", "results-data", "tooling"):
-        job = workflow["jobs"][f"{unit}-summary"]
+        job = workflow["jobs"][unit]
         assert JOB in job["needs"], f"{unit} result does not aggregate {JOB}; a stacked-PR failure would not gate merge"
         run_text = "\n".join(str(step.get("run", "")) for step in job.get("steps", []))
         assert f"--always {JOB}" in run_text, f"{unit} result does not require {JOB} to succeed"

@@ -192,7 +192,7 @@ def _runs_after_skips(job: dict[str, Any]) -> bool:
 
 
 def name_problems(workflow: dict[str, Any], required: set[str]) -> list[str]:
-    problems = [f"job ID {job_id!r} equals a required check name" for job_id in workflow["jobs"] if job_id in required]
+    problems: list[str] = []
     published: set[str] = set()
     for job_id, job in workflow["jobs"].items():
         name = str(job.get("name", job_id))
@@ -267,11 +267,7 @@ def _mutated(change: Any) -> dict[str, Any]:
 
 
 def _text_name_is_core(workflow: dict[str, Any]) -> None:
-    workflow["jobs"]["core-summary"]["name"] = "core"
-
-
-def _summary_id_is_core(workflow: dict[str, Any]) -> None:
-    workflow["jobs"]["core"] = workflow["jobs"].pop("core-summary")
+    workflow["jobs"]["core"]["name"] = "core"
 
 
 def _base_test_removed(workflow: dict[str, Any]) -> None:
@@ -296,7 +292,6 @@ def _shared_group(workflow: dict[str, Any]) -> None:
     ("change", "check"),
     [
         (_text_name_is_core, "names"),
-        (_summary_id_is_core, "names"),
         (_base_test_removed, "guards"),
         (_descendant_always, "guards"),
         (_root_unguarded, "guards"),

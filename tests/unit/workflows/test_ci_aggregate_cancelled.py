@@ -32,9 +32,8 @@ def _load(workflow: str) -> dict[str, Any]:
 def _job(name: str) -> dict[str, Any]:
     workflow = AGGREGATE_WORKFLOWS[name]
     jobs = _load(workflow)["jobs"]
-    job_id = f"{name}-summary"
-    assert job_id in jobs, f"{workflow} has no {job_id!r} aggregate job"
-    return jobs[job_id]
+    assert name in jobs, f"{workflow} has no {name!r} aggregate job"
+    return jobs[name]
 
 
 def _aggregate_step(job: dict[str, Any]) -> dict[str, Any]:

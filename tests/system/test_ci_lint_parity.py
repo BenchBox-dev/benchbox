@@ -47,11 +47,11 @@ MERGE_GATE_NON_GUARD_JOBS = {
     "certification-identity",
     "ci-required-result",
     "release-required-result",
-    "core-summary",
-    "explorer-summary",
-    "results-data-summary",
-    "docs-summary",
-    "tooling-summary",
+    "core",
+    "explorer",
+    "results-data",
+    "docs",
+    "tooling",
 }
 MERGE_GATE_GUARD_TOKENS = (
     "guard",
@@ -134,7 +134,7 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "medium-test", "Partition the complete medium tier"): (
         "Hosted partitioning binds the shared collection artifact to this SHA; local test-medium runs the full set."
     ),
-    ("ci.yml", "core-summary", "Verify complete medium shard coverage"): (
+    ("ci.yml", "core", "Verify complete medium shard coverage"): (
         "Hosted evidence proves both medium shard assignments executed once; local test-medium runs the full set."
     ),
     ("ci.yml", "skill-integrity", "Clone skill sources to the configured checkout paths"): (
