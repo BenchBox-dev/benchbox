@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "skills/blog in the catalog source names benchbox-site drafts/STYLE_GUIDE.md and drafts/VOICE_REFERENCE.md and no _blog/ path",
+    "make skill-sync in core leaves the synced blog skill matching the source"
+  ],
+  "context": "Found 2026-10-17 by grepping the skill catalog source for _blog/ after the core site removal (#3096, 364a6e9cd). Catalog source rev at check: 8b7752c.",
+  "description": "The blog skill tells agents to read `_blog/STYLE_GUIDE.md` and `_blog/VOICE_REFERENCE.md` (~/Developer/skill-sync-skills skills/blog/SKILL.md:14, synced into BenchBox .claude/skills/blog/SKILL.md:14). Core no longer has _blog/: it moved to benchbox-site as drafts/ (drafts/STYLE_GUIDE.md and drafts/VOICE_REFERENCE.md exist there). In a core checkout the skill silently falls back to the global ~/.claude/blog guides, so posts are written against the wrong voice rules. skills/blog/references/draft.md:3 also assumes `{series}/drafts/{slug}.md` under _blog/.\n\nUpdate the skill source to name the site repo's drafts/ guides, then run `make skill-sync` in core.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T22:16:22Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "0ad518ae09074ed1a517036cd36d77da",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}

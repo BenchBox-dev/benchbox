@@ -1822,6 +1822,13 @@
       "status": "open",
       "title": "Add the SF1 basic row to the SCD2 blog scale table for balance"
     },
+    "blog-skill-site-paths-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Point the blog skill at the site repo's drafts/ guides instead of core's removed _blog/"
+    },
     "bodo-dataframe-platform": {
       "claim": null,
       "needs": [
