@@ -14865,6 +14865,13 @@
       "status": "open",
       "title": "Decide shared-credential concurrency and whether a later pending oracle review voids a stand-in"
     },
+    "oracle-same-head-rebuttal-rereview-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "An author cannot get the oracle to reconsider a disputed finding without pushing a new commit"
+    },
     "oracle-self-attested-file-list-reviewers-20261008": {
       "claim": null,
       "needs": [],

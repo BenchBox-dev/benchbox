@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "A `/oracle-review` comment, or a thread reply, can request a fresh review of the same head, bounded so it cannot loop",
+    "The reviewer brief includes unresolved thread replies and asks the reviewer to confirm or withdraw each disputed finding with a reason",
+    "Regression fixture: a disputed finding with author evidence on the same head is re-judged, not skipped"
+  ],
+  "context": "Found while landing #3092, 2026-10-17. Evidence: threads 4302987072 and 4303177915 and their replies on #3092; verdict runs on heads 9d7b7a148, 397a4b3f3 and dafe062fe.",
+  "description": "On #3092 the oracle (muse) raised \"Schema-qualified CLUSTER uses unqualified index name\" (thread 4302987072) and kept it open on head 9d7b7a148 and head 397a4b3f3. PostgreSQL's `CLUSTER table USING index_name` accepts only an unqualified index name; the qualified form failed live on PostgreSQL 17 with `syntax error at or near \".\"`. A reply with that evidence plus a `/oracle-review` comment did not trigger a re-review: the verdict plan skipped with \"head 9d7b7a148... already has a failure result\" (_project/scripts/oracle_reviewers/retry.py:84; protocol.py:263). The only way forward was another commit. The next review then reported \"New tests explicitly assert the D2 buggy SQL\", and only a rebase and another head got SHIP, which called the finding \"not a correctness defect\". The PR needed an owner decision in between. There are two gaps: (1) no same-head re-review after an author rebuttal; (2) the reviewer brief does not ask the reviewer to weigh thread replies or check the claimed SQL grammar.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T22:06:05Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "b7931cdbfb98423c995616bba6f8e971",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}
