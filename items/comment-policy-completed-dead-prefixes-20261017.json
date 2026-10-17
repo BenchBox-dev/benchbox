@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "The ratchet accepts removal of a completed entry that matches no tracked file and still rejects removal of one that matches files; unit tests cover both",
+    "The results-explorer/ and website/ entries are removed"
+  ],
+  "context": "Found 2026-10-17 while cleaning up site-removal leftovers (#3105): removing the website/ and results-explorer/ prefixes failed the ratchet, so they were left in place.",
+  "description": "The comment-policy ratchet refuses any change that removes a completed scope (scripts/check_comment_policy.py:97-98, \"completed scopes cannot be removed\"). That protects against relaxing the policy, but it also blocks removing entries for deleted paths. After the site removal, quality/comment-policy.json keeps completed entries for `results-explorer/` (line 252), `website/` (line 257) and `_project/scripts/browser_gate_aggregate.py` (line 132), and the dead entries will keep accumulating.\n\nAllow removing a completed entry when no tracked file matches it at the candidate commit, and keep refusing removal otherwise.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T22:17:58Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "a1503d454f8a435fb24dd4d6bebdd70c",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}
