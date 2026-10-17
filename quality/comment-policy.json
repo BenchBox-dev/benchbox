@@ -37941,6 +37941,19 @@
     },
     {
       "path": "tests/unit/test_standardized_test_commands.py",
+      "symbol": "TestMakefileCommands.test_pr_preflight_fast_tests_creates_classifier_artifacts_when_absent",
+      "text": "unresolved executable source: make",
+      "payload": "sha256:d0fc52c1f2d59e782df081a82235f13c2f3aacab0021b3dee1700cc608498804",
+      "finding_kind": "payload-error",
+      "kind": "fixture",
+      "consumer": "tests/unit/test_standardized_test_commands.py",
+      "necessity": "Pre-registered for the TPC-H subscale row-count reference change, which moves the strict expected-results scale-drift case from SF 0.1 to SF 0.5 and changes this file's AST digest. Same fixture as above: in `TestMakefileCommands.test_pr_preflight_fast_tests_creates_classifier_artifacts_when_absent` the test starts a subprocess whose program or inline source (make) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
+      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
+      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
+      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
+    },
+    {
+      "path": "tests/unit/test_standardized_test_commands.py",
       "symbol": "TestMakefileCommands.test_skill_integrity_preflight_selected_lane_failure_propagates",
       "text": "unresolved executable source: make",
       "payload": "sha256:03360c0e07a3f752ea2b2febd1fc49e90b02ae2a7fb7d10f1ea60f6d82ceda9f",
