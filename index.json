@@ -14626,6 +14626,13 @@
       "status": "done",
       "title": "Codex reviewers cannot run read commands in CI: the read-only sandbox fails to start bubblewrap"
     },
+    "oracle-coverage-gate-large-prs-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Let the oracle review PRs too large for its read-every-changed-file coverage gate"
+    },
     "oracle-coverage-independence-disclosure": {
       "claim": null,
       "needs": [],
