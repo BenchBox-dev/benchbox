@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "The header comment names the workflow that actually runs the config",
+    "The change passes the comment-scope policy check"
+  ],
+  "context": "Found when the legacy nightly throughput jobs were retired from nightly.yml (PR #3023). The comment-scope policy blocks a comment-only edit to this file unless the policy file allows it, so the fix needs that policy change or an allowed exception.",
+  "description": "`tests/uat/configs/uat-throughput-duckdb-nightly.yaml` line 1 says it is the canonical nightly-CI throughput config for `.github/workflows/nightly.yml`. `nightly.yml` no longer runs it. The config is run from `.github/workflows/nightly-v2.yml` (around line 432, `make uat-sweep CONFIG=...`). Point the comment at `nightly-v2.yml`.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3023"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:9e002f45bd6cb1f33b959f2c",
+      "at": "2026-10-17T21:51:22Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "0ce69bdbec994a9490d0f29851fb9134",
+      "session_id": "70accbe5849d4e1da05dfca7c4ffe8da"
+    }
+  ]
+}

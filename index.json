@@ -25140,6 +25140,13 @@
       "status": "done",
       "title": "UAT: add compatibility-prune rules for read-only native + dataframe engine gaps"
     },
+    "uat-nightly-config-stale-workflow-comment-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Correct the workflow named in the nightly throughput UAT config's header comment"
+    },
     "uat-operator-provisioning": {
       "claim": null,
       "needs": [
