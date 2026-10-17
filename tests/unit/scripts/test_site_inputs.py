@@ -81,6 +81,7 @@ def _bundle(tmp_path: Path, schema: int = 3, attestations: str = "pass") -> Path
             "inputs": {"snapshot": snapshot},
             "compared": {"accepted_ref": "abc"},
         },
+        {"name": "corpus_validation", "result": "pass", "inputs": {"corpus": "tree"}},
         {"name": "validator_parity", "result": "skip", "compared": {"base": "def", "head": "abc"}},
     ]
     _write(out / "attestations.json", json.dumps(att) + "\n")
@@ -334,6 +335,47 @@ def test_verify_rejects_accepted_ref_other_than_core_sha(tmp_path: Path) -> None
         for e in json.loads((out / "attestations.json").read_text(encoding="utf-8"))
     ]
     (out / "attestations.json").write_text(json.dumps(changed) + "\n", encoding="utf-8")
+    assert site_inputs.cmd_verify(out) == 1
+
+
+@pytest.mark.parametrize("corpus_changed", [False, True])
+def test_full_corpus_validation_runs_on_every_build(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corpus_changed: bool
+) -> None:
+    entries, commands = _captured_attestations(tmp_path, monkeypatch, corpus_changed=corpus_changed)
+    assert _command(commands, "results-data/validate_corpus.py") == [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "results-data/validate_corpus.py",
+    ]
+    validation = next(e for e in entries if e["name"] == "corpus_validation")
+    assert validation["result"] == "pass"
+    assert set(validation["inputs"]) == {"corpus", *site_inputs.CORPUS_VALIDATOR_PATHS}
+
+
+def test_failed_full_corpus_validation_fails_the_build(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_run(*cmd: str, cwd: Path = site_inputs.ROOT) -> argparse.Namespace:
+        failed = "results-data/validate_corpus.py" in cmd
+        return argparse.Namespace(returncode=1 if failed else 0, stdout="", stderr="bad bundle" if failed else "")
+
+    monkeypatch.setattr(site_inputs, "run", fake_run)
+    monkeypatch.setattr(site_inputs, "tree_sha", lambda ref, subdir: "tree")
+    bundle = tmp_path / "bundle"
+    _write(bundle / "explorer/results.duckdb", "duckdb-bytes")
+    with pytest.raises(RuntimeError, match="corpus_validation"):
+        site_inputs.build_attestations(tmp_path / "attestations.json", bundle, "core", "parent")
+
+
+def test_verify_rejects_bundle_without_full_corpus_validation(tmp_path: Path) -> None:
+    out = _bundle(tmp_path)
+    kept = [
+        e
+        for e in json.loads((out / "attestations.json").read_text(encoding="utf-8"))
+        if e["name"] != "corpus_validation"
+    ]
+    (out / "attestations.json").write_text(json.dumps(kept) + "\n", encoding="utf-8")
     assert site_inputs.cmd_verify(out) == 1
 
 
