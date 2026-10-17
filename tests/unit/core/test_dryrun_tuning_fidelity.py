@@ -80,12 +80,10 @@ def test_preview_only_platforms_get_a_banner_and_per_type_notes():
         table_name="orders", partitioning=[TuningColumn(name="o_orderdate", type="DATE", order=1)]
     )
 
-    notes = tuning_preview_notes("postgresql", config)
+    notes = tuning_preview_notes("citus", config)
 
     assert any("comes from the tuning generator" in note for note in notes)
-    assert any(
-        note.startswith("Preview only: partitioning is not applied at execution on postgresql") for note in notes
-    )
+    assert any(note.startswith("Preview only: partitioning is not applied at execution on citus") for note in notes)
 
 
 def test_generator_driven_platforms_get_no_banner():
