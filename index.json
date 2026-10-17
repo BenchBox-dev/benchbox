@@ -8069,6 +8069,13 @@
       "status": "done",
       "title": "Run the stop-the-world flip: swap required checks and merge the flip PR"
     },
+    "doc-external-links-fragments-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Check #fragment anchors in the core docs external-link checker, as Sphinx linkcheck did"
+    },
     "docs-accuracy-benchmarks-reference": {
       "claim": null,
       "needs": [],

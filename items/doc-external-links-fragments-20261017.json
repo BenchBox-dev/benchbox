@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "An external link whose fragment does not exist on the target page fails the checker; a unit test covers it",
+    "Current docs pass, or each failing anchor is fixed or allowlisted with a reason"
+  ],
+  "context": "Found 2026-10-17 while writing the replacement checker for #3096; at the time it checked 125 links with 0 broken, fragments excluded. Related: site-docs-broken-fragments-20261009 covers internal fragments found by the site link gate.",
+  "description": "scripts/check_doc_external_links.py replaced Sphinx linkcheck in the site removal (#3096). It strips the fragment before the request (scripts/check_doc_external_links.py:96: `url.split(\"#\", 1)[0]`), so an external link to a heading that was renamed or removed still passes. Sphinx linkcheck checked anchors by default. The site's nightly lychee job (ADR D15) does not cover this either unless it is configured to check fragments.\n\nFor HTML responses, fetch the page with GET and confirm an element with the fragment's id or name exists; keep an allowlist for pages that build anchors with JavaScript.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T22:17:37Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "d31ebbc50c5c4946932287fd1ba0b246",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}
