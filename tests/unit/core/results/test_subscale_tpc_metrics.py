@@ -165,3 +165,8 @@ def test_a_final_query_without_a_usable_timing_blocks_derivation(bad_ms) -> None
 
     assert derive_power_at_size(queries, 0.01, 22) is None
     assert subscale_power_at_size("tpch", _FULL_RUN_POWER, queries, 0.01) == (None, None)
+
+
+@pytest.mark.parametrize("recorded", [float("nan"), float("inf"), -_FULL_RUN_POWER, 0.0])
+def test_non_finite_or_non_positive_recorded_subscale_power_is_not_used(recorded) -> None:
+    assert subscale_power_at_size("tpch", recorded, _FULL_RUN, 0.01) == (None, None)

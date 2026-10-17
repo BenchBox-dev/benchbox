@@ -80,7 +80,7 @@ def subscale_power_at_size(
     derived = derive_power_at_size(queries, scale_factor, minimum)
     if recorded is None:
         return (derived, POWER_SCORE_DERIVED_FROM_TIMINGS) if derived is not None else (None, None)
-    if derived is None or abs(recorded / derived - 1.0) > RECORDED_POWER_TOLERANCE:
+    if derived is None or not abs(recorded / derived - 1.0) <= RECORDED_POWER_TOLERANCE:
         return None, None
     return recorded, POWER_SCORE_RECORDED
 
