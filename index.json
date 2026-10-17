@@ -23961,12 +23961,17 @@
       "title": "Route rerun drift-validation results into the published bundle"
     },
     "tuning-dry-run-fidelity-20261001": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-18T07:02:02Z",
+        "generation": "eb88cb0ac1204b06b3ce579973785b39",
+        "renewals": 0,
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
+      },
       "needs": [
         "tuning-capability-single-source-validator-20261001"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Make --dry-run tuning previews execution-faithful or explicitly flagged"
     },
     "tuning-duckdb-templates-drop-partitioning-20261001": {
