@@ -20685,6 +20685,13 @@
       "status": "done",
       "title": "Include TPC license sidecars for downloadable query templates in the certified site bundle"
     },
+    "site-comment-policy-parity-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Enforce a comment and docstring policy on the site repo's source"
+    },
     "site-docs-broken-fragments-20261009": {
       "claim": null,
       "needs": [],
