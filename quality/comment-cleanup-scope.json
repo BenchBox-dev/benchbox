@@ -2903,14 +2903,6 @@
       "blocking_disposition": "Map every benchmark-class producer before changing the display reader."
     },
     {
-      "id": "sphinx-autodoc-reader",
-      "path": "docs/conf.py",
-      "carrier": "sphinx.ext.autodoc",
-      "owner": "comment-cleanup-contracts-gate",
-      "state": "blocked",
-      "blocking_disposition": "Preserve useful interface reference content before source docstring deletion."
-    },
-    {
       "id": "pricing-runtime-docstring-writer",
       "path": "benchbox/core/cost/pricing.py",
       "carrier": "_resolve.__doc__",

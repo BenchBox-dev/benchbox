@@ -29,10 +29,11 @@ Classification values:
 | Monotonic-clock policy (wall-clock part) | `_project/scripts/timing_policy_check.py`, `_project/scripts/timing_audit.py` | ci.yml `tooling` | pending | open |
 | Submission validation | `scripts/validate_submission.py`, `.github/workflows/validate-submission.yml`, `.github/workflows/validate-submission-comment.yml`, `tests/unit/workflows/test_validate_submission_changed_bundles.py`, `tests/unit/workflows/test_validate_submission_comment_security.py`, `tests/unit/scripts/test_validate_submission*.py` | ci.yml `results-data` | pending | open |
 | Corpus trust boundary | `tests/unit/workflows/test_corpus_trust_boundary.py`, `.github/workflows/sync-results-data-to-published.yml` | ci.yml `results-data` | pending | open |
-| Artifact privacy (no private paths in published site) | `assemble_public_site.py` privacy scan step in `.github/workflows/docs.yml` build job, `tests/unit/scripts/test_corpus_privacy_invariant.py` | `BenchBox-dev/benchbox-site` deploy gates (`privacy`) | pending | open |
-| Publication rollback and transactions | `.github/workflows/publication-transaction.yml`, `.github/workflows/publication-recover.yml`, `.github/workflows/publication-soak-monitor.yml`, `tests/unit/workflows/test_publication_transaction.py`, `tests/unit/workflows/test_publication_recover.py`, `tests/unit/workflows/test_publication_rollback.py` | `BenchBox-dev/benchbox-site` deploy `rollback` mode, which restores a receipt's artifact | pending | open |
-| Explorer snapshot and UI compatibility | `results-explorer/src/db.ts` read-model version gate, `tests/unit/scripts/test_results_explorer_snapshot_invariants.py` | site-docs.yml `explorer` | pending | open |
-| Public-site visual acceptance | Advisory comparison in `site-docs.yml` and protected baselines from `docs.yml` | Trunk renders: the `Public-site visual regression` job in `site-docs.yml`, compared against the exact protected base and reported under the `docs`, `landing` and `explorer` contexts (advisory until the public site is in production, `docs/internal/merge-queue-governance.md`). Deploys: the Visual comparison workflow in `BenchBox-dev/benchbox-site` screenshots a pull request's build and the deployed artifact and reports the differences; it is advisory and not part of that repository's `ci`. The deploy's route and digest probes prove availability and identity, not layout | pending | open |
+| Artifact privacy (no private paths in published site) | `scripts/publication/check_artifact_privacy.py` attestation in the `site-inputs.yml` bundle build, `tests/unit/scripts/test_corpus_privacy_invariant.py` | `BenchBox-dev/benchbox-site` deploy gates (`privacy`) | pending | open |
+| Publication rollback and transactions | `BenchBox-dev/benchbox-site` deploy `rollback` mode, which restores the artifact of a recorded receipt, and the receipt each deploy writes | `BenchBox-dev/benchbox-site` deploy probes, which dispatch at most one rollback to the last known good receipt | pending | open |
+| Corpus promotion (privacy, bijection and Explorer compatibility of the published corpus) | `privacy`, `corpus_bijection`, `explorer_compat` and `snapshot_invariants` attestations recorded by `scripts/site_inputs.py` in the `site-inputs.yml` bundle build, `tests/unit/scripts/test_site_inputs.py` | `BenchBox-dev/benchbox-site` deploy gates, which refuse a bundle whose attestations or digests do not verify | pending | open |
+| Explorer snapshot and UI compatibility | `explorer_compat` and `snapshot_invariants` attestations in the `site-inputs.yml` bundle build, `tests/unit/scripts/test_results_explorer_snapshot_invariants.py` | `BenchBox-dev/benchbox-site` deploy gates (`explorer_compat`) | pending | open |
+| Public-site visual acceptance | The Visual comparison workflow in `BenchBox-dev/benchbox-site` | The site repository screenshots a pull request's build and the deployed artifact and reports the differences; it is advisory and not part of that repository's `ci`. The deploy's route and digest probes prove availability and identity, not layout | pending | open |
 | Binary integrity (vendored engine hashes, dbgen framing) | `_binaries/` hashes, TPC-H binary framing tests | ci.yml `core` hash checks and required macOS/Windows dbgen framing; nightly-v2.yml matrix dbgen framing on all three OS at Python 3.12 | pending | open |
 | Wheel installability | `package-smoke` job, release workflow build | release workflow artifact verification | pending | open |
 | Shipped bundled generator integrity | `benchbox/_binaries/SHA256MANIFEST.json`, `tests/unit/utils/test_binary_manifest.py` | trunk.yml `dist-artifact` verifies source, wheel, and sdist membership and hashes on each push to develop; installed-package verifier for release checks | pending | open |
@@ -71,7 +72,6 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `cross-platform-validation.yml` | product-safety | Cross-platform correctness |
 | `cross-surface-baseline-autodetect.yml` | tooling | Baseline maintenance support |
 | `docker-integration.yml` | product-safety | Container integration coverage |
-| `docs.yml` | product-safety | Public-site build, privacy scan, visual acceptance |
 | `extension-smoke.yml` | product-safety | Extension smoke coverage |
 | `gitignore-lint.yml` | tooling | Hygiene; standalone, not part of the ci.yml units |
 | `lint.yml` | tooling | Lint gate |
@@ -83,20 +83,9 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `perf-smoke.yml` | product-safety | Performance smoke |
 | `pr-hold.yml` | product-safety | Required `hold` check: fails while the `no-auto-merge` label is present, on every label change |
 | `pricing-data-drift-check.yml` | product-safety | Pricing data integrity |
-| `publication-canaries.yml` | product-safety | Publication canary protection |
-| `publication-corpus-cutover.yml` | product-safety | Corpus cutover protection; disabled |
-| `publication-deploy.yml` | product-safety | Publication deployment; disabled, replaced by the `BenchBox-dev/benchbox-site` deploy |
-| `publication-preview-deploy.yml` | product-safety | Preview deployment; disabled, replaced by the `BenchBox-dev/benchbox-site` deploy |
-| `publication-preview-soak.yml` | product-safety | Preview soak; replaced by the site repository's shadow comparison |
-| `publication-recover.yml` | product-safety | Publication recovery and rollback |
-| `publication-soak-monitor.yml` | product-safety | Publication availability monitoring |
-| `publication-transaction.yml` | product-safety | Publication transaction integrity; disabled |
-| `rehearse-release-isolation.yml` | product-safety | Release isolation rehearsal |
 | `release.yml` | product-safety | Release publishing |
 | `release-canary.yml` | product-safety | Release canary protection |
 | `seed-corpus.yml` | product-safety | Corpus seeding |
-| `site-deploy.yml` | product-safety | Retired Python site deploy plane; disabled |
-| `site-docs.yml` | product-safety | Pull-request site and docs lane: the required `explorer`, `docs` and `landing` checks, the docs and site builds, and the advisory visual comparison |
 | `site-inputs.yml` | product-safety | Versioned site-inputs bundle build, attestation, artifact upload and site dispatch |
 | `soundness-merge-digest.yml` | product-safety | Post-merge soundness review digest |
 | `submission-validator-drift-check.yml` | product-safety | Submission validator sync |
@@ -116,7 +105,6 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 
 | File | Classification | Property or reason |
 | --- | --- | --- |
-| `test_corpus_cutover.py` | product-safety | Corpus cutover |
 | `test_corpus_event_bridge.py` | product-safety | Corpus event integrity |
 | `test_corpus_trust_boundary.py` | product-safety | Corpus trust boundary |
 | `test_docker_integration_workflow.py` | product-safety | Container integration |
@@ -125,23 +113,11 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_oracle_review_workflow.py` | product-safety | The required check name, triggers, read-only token and script invocation of the oracle-review check |
 | `test_oracle_verdict_workflow.py` | product-safety | Oracle review triggers, guards, per-job secret scoping, sequential reviewer slots and App-only posting |
 | `test_t2_partition_workflow.py` | product-safety | Complete medium selection, correctness gate conservation, and binary framing placement |
-| `test_public_site_visual_workflow.py` | product-safety | Visual acceptance |
 | `test_trunk_workflow.py` | product-safety | Develop-push triggers, retained pending runs and read-only test permissions |
-| `test_publication_canaries.py` | product-safety | Publication canaries |
-| `test_publication_preview.py` | product-safety | Preview deployment |
-| `test_publication_recover.py` | product-safety | Publication recovery |
-| `test_publication_rollback.py` | product-safety | Publication rollback |
-| `test_publication_soak_monitor.py` | product-safety | Availability monitoring |
-| `test_publication_transaction.py` | product-safety | Transaction integrity |
 | `test_published_results_base_ci.py` | product-safety | Published corpus CI |
 | `test_release_canary_shard_evidence.py` | product-safety | Release canary evidence |
-| `test_release_isolation.py` | product-safety | Release isolation |
 | `test_release_uat_charter_guard.py` | product-safety | Release charter guard |
-| `test_results_explorer_dependency_audit.py` | product-safety | Explorer dependency audit |
-| `test_website_dependency_audit.py` | product-safety | Website dependency audit |
-| `test_results_explorer_publication.py` | product-safety | Explorer publication |
 | `test_seed_corpus_pr_base.py` | product-safety | Corpus seeding |
-| `test_site_deploy.py` | product-safety | Site-deploy workflow contract |
 | `test_site_inputs_workflow.py` | product-safety | Site-inputs parent resolution by SHA |
 | `test_stacked_pr_base_guard.py` | pure-process | Stacked-PR base mechanics |
 | `test_validate_submission_changed_bundles.py` | product-safety | Submission validation |
@@ -160,12 +136,9 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | File | Classification |
 | --- | --- |
 | `test_agent_instruction_audit.py` | tooling |
-| `test_api_reference_url_map.py` | product-safety |
-| `test_assemble_public_site.py` | product-safety |
 | `test_audit_sha_check.py` | product-safety |
 | `test_batch_integration.py` | product-safety |
 | `test_blind_spot_tools.py` | product-safety |
-| `test_blog_content_validation.py` | product-safety |
 | `test_branch_prune_merged.py` | pure-process |
 | `test_browser_fixtures_port.py` | product-safety | Fixture-query port byte-identity |
 | `test_browser_gate_aggregate.py` | product-safety |
@@ -185,12 +158,10 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_check_windows_antipatterns.py` | tooling |
 | `test_comment_policy.py` | tooling |
 | `test_comment_policy_strict_ownership.py` | tooling |
-| `test_comment_syntax_js.cjs` | tooling |
 | `test_ci_lint_environment_boundary.py` | tooling |
 | `test_comment_cleanup_scope.py` | tooling |
 | `test_comment_parity.py` | tooling |
 | `test_compile_all_platforms.py` | product-safety |
-| `test_compose_joinorder_hero.py` | product-safety |
 | `test_corpus_cohort_depth.py` | product-safety |
 | `test_corpus_drift_canary.py` | product-safety |
 | `test_corpus_privacy_invariant.py` | product-safety |
@@ -200,9 +171,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_ci_units.py` | tooling |
 | `test_duckdb_datasketches_smoke.py` | product-safety |
 | `test_duckdb_version_matrix.py` | product-safety |
-| `test_e2e_specs_have_no_hardcoded_ids.py` | tooling |
 | `test_explorer_build_contract.py` | product-safety |
-| `test_explorer_receipt_ui_contract.py` | product-safety |
 | `test_fast_lane_ceiling_check.py` | pure-process |
 | `test_generate_changelog_entry.py` | product-safety |
 | `test_heavy_tier_needed.py` | product-safety |
@@ -250,13 +219,10 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_results_explorer_corpus_migrate.py` | product-safety |
 | `test_results_explorer_cpu_attestation_backfill.py` | product-safety |
 | `test_results_explorer_snapshot_invariants.py` | product-safety |
-| `test_scan_explorer_stale_theme.py` | product-safety |
-| `test_scan_explorer_tokens.py` | product-safety |
 | `test_scheduled_workflow_liveness.py` | tooling |
 | `test_shrink_rollup.py` | pure-process |
 | `test_site_inputs.py` | product-safety | Site-inputs bundle manifest, digests and verify |
 | `test_site_inputs_parent.py` | product-safety | Site-inputs parent resolution by SHA |
-| `test_site_inventory.py` | product-safety |
 | `test_skill_sync_ci_policy.py` | tooling |
 | `test_soundness_merge_digest.py` | product-safety | Post-merge soundness review digest |
 | `test_sqlglot_generator.py` | product-safety |
@@ -292,40 +258,12 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `explorer_pipeline/test_result_id_contract.py` | product-safety |
 | `explorer_pipeline/test_transformer.py` | pure-process |
 | `explorer_pipeline/test_visible_metrics_registry.py` | product-safety |
-| `publication/test_acquire_canary_evidence.py` | product-safety |
 | `publication/test_artifacts.py` | product-safety |
-| `publication/test_assembler.py` | product-safety |
-| `publication/test_audit_mirror_prs.py` | product-safety |
-| `publication/test_baseline.py` | product-safety |
-| `publication/test_candidate.py` | product-safety |
-| `publication/test_check_control_plane.py` | tooling |
 | `publication/test_check_corpus_bijection.py` | product-safety |
 | `publication/test_check_explorer_compat.py` | product-safety |
-| `publication/test_check_pages_artifact_wiring.py` | product-safety |
-| `publication/test_check_workflow_permissions.py` | tooling |
-| `publication/test_db_digest.py` | product-safety |
-| `publication/test_journal.py` | product-safety |
 | `publication/test_ledger_seed.py` | product-safety |
-| `publication/test_manifest.py` | product-safety |
 | `publication/test_override_companion_exclusion.py` | product-safety |
-| `publication/test_pages.py` | product-safety |
-| `publication/test_plan_reconciliation.py` | product-safety |
 | `publication/test_reconciler.py` | product-safety |
-| `publication/test_reconciliation.py` | product-safety |
-| `publication/test_transaction.py` | product-safety |
-| `publication/test_transaction_executor.py` | product-safety |
-| `publication/test_verify_corpus_promotion.py` | product-safety |
-| `publication/test_verify_live.py` | product-safety |
-| `site_deploy/test_site_deploy_candidate.py` | product-safety |
-| `site_deploy/test_site_deploy_cli.py` | product-safety |
-| `site_deploy/test_site_deploy_cli_flow.py` | product-safety |
-| `site_deploy/test_site_deploy_gates.py` | product-safety |
-| `site_deploy/test_site_deploy_generation.py` | product-safety |
-| `site_deploy/test_site_deploy_githubapi.py` | product-safety |
-| `site_deploy/test_site_deploy_mixed_version.py` | product-safety |
-| `site_deploy/test_site_deploy_publish.py` | product-safety |
-| `site_deploy/test_site_deploy_receipt.py` | product-safety |
-| `site_deploy/test_site_deploy_routes.py` | product-safety |
 | `test_tpcds_divergence_report.py` | tooling |
 | `test_tpcds_platform_identity.py` | product-safety |
 
@@ -354,7 +292,6 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `ruleset_drift_check.py` | product-safety | Ruleset drift (KEEP trap) |
 | `check_dependency_bounds.py` | product-safety | Dependency bounds |
 | `check_release_curation.py` | product-safety | Release curation |
-| `assemble_public_site.py` | product-safety | Public-site assembly and privacy scan |
 | `generate_landing_quickstarts.py` | product-safety | Landing quickstart generation |
 | `site_inputs.py` | product-safety | Site-inputs bundle build and verify |
 | `site_inputs_parent.py` | product-safety | Site-inputs parent resolution by SHA |

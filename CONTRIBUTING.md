@@ -49,7 +49,7 @@ This document provides guidelines and instructions for contributing.
 
 `develop` is the long-lived development branch and the repository's default branch; **all changes land via PR**. `release` is release-only (handled by the version-branch flow — see `docs/internal/release-guide.md`). PRs target `develop` and squash-merge with linear history.
 
-Required CI on `develop` reports six unit results (`core`, `results-data` and `tooling` from `.github/workflows/ci.yml`; `explorer`, `docs` and `landing` from `.github/workflows/site-docs.yml`), plus `oracle-review`, which passes on a result-affecting PR only when the `benchbox-oracle` app's latest review of its current head reports success (or a listed attester has posted the stand-in approval for that head) and the oracle's threads are resolved. `.github/ci-units.yml` and `.github/path-filters.yml` classify each PR: content-only PRs run content validation and skip Python fast tests, while code, infra, workflow, tooling, and unknown paths run the lint/type + Ubuntu Python 3.14 fast-test checks. Python 3.12 runs the same fast suite after each merge to `develop` (`trunk.yml`) and nightly (`nightly.yml`). Soundness-path review applies even when the author uses the owner's account; once a finished branch is armed, auto-merge lands it when required checks are green and all review threads are resolved.
+Required CI on `develop` reports six unit results (`core`, `explorer`, `results-data`, `docs`, `landing` and `tooling` from `.github/workflows/ci.yml`), plus `oracle-review`, which passes on a result-affecting PR only when the `benchbox-oracle` app's latest review of its current head reports success (or a listed attester has posted the stand-in approval for that head) and the oracle's threads are resolved. `.github/ci-units.yml` and `.github/path-filters.yml` classify each PR: content-only PRs run content validation and skip Python fast tests, while code, infra, workflow, tooling, and unknown paths run the lint/type + Ubuntu Python 3.14 fast-test checks. Python 3.12 runs the same fast suite after each merge to `develop` (`trunk.yml`) and nightly (`nightly.yml`). Soundness-path review applies even when the author uses the owner's account; once a finished branch is armed, auto-merge lands it when required checks are green and all review threads are resolved.
 
 ## Development Workflow
 
@@ -256,7 +256,7 @@ We use ruff for fast Python linting and formatting with a 120-character line len
 
 ## Documentation
 
-Please update documentation when adding or modifying features. We use Sphinx for generating documentation.
+Please update documentation when adding or modifying features. Documentation pages are Markdown under `docs/`; `make docs-check` validates examples, links between pages and generated inputs. The site repository renders them for benchbox.dev.
 
 ## Site and Explorer changes
 
@@ -271,22 +271,8 @@ repository, whose deploy fetches and verifies that bundle.
 A failed bundle build, or a site deploy that cannot use the bundle, opens or
 updates a `site-bundle-failed` issue in this repository.
 
-Changes to the site source kept here do not deploy. They reach production only
-when they are replayed into `benchbox-site` by pull request:
-
-| Path here | Path in `benchbox-site` |
-| --- | --- |
-| `results-explorer/` | `explorer/` |
-| `docs/blog/` | `blog/` |
-| `_blog/` | `drafts/` |
-| `_project/design/site-inventory/` | `inventory/` |
-| `website/` | `website/` |
-| `landing/` | `landing/` |
-
-If your pull request touches one of these paths, say in its description that
-it needs a replay. The steps are in the "Replaying core changes" section of
-the `AGENTS.md` in `benchbox-site`. `make site-build` and `make site-check`
-build and test the site locally from this tree; they do not publish anything.
+The site, the Results Explorer app, the landing page, the blog and blog drafts
+live only in `benchbox-site`. To change them, open a pull request there.
 
 ## Releasing
 

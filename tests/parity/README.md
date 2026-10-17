@@ -2,13 +2,14 @@
 
 `generate_visualization_fixtures.py` writes one JSON fixture per chart-math
 helper into `fixtures/`. Each fixture is the checked-in contract between the
-Python reference implementations (this directory) and the TypeScript helpers
-in `results-explorer/src/lib/chartMath.ts`, asserted byte-identically by the
-Vitest parity suite (`chartMath.parity.test.ts`).
+Python reference implementations (this directory) and the Explorer's
+TypeScript chart-math helpers. The fixtures ship to `BenchBox-dev/benchbox-site`
+in the site-inputs bundle (`explorer/parity`), where the Explorer's parity suite
+asserts them byte-identically.
 
 - `make parity-fixtures` — regenerate and overwrite the committed fixtures.
 - `make parity-check` — regenerate into a tmpdir and fail on any diff
-  (the CI `parity-check` job in `.github/workflows/site-docs.yml`, path-filtered to
+  (the CI `parity-check` job in `.github/workflows/ci.yml`, path-filtered to
   viz changes).
 
 ## Environment note: `geomean_ms` last-bit drift

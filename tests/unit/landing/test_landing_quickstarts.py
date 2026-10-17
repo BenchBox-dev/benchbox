@@ -12,11 +12,7 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SCRIPT_PATH = REPO_ROOT / "scripts" / "generate_landing_quickstarts.py"
 CATALOG_PATH = REPO_ROOT / "landing" / "prompts" / "catalog.yaml"
-GENERATED_PATH = REPO_ROOT / "landing" / "prompts" / "catalog.generated.js"
 FORBIDDEN_JSON = REPO_ROOT / "landing" / "prompts" / "recipes.json"
-PROMPTS_INDEX_PATH = REPO_ROOT / "landing" / "prompts" / "index.html"
-PROMPTS_JS_PATH = REPO_ROOT / "landing" / "prompts" / "prompts.js"
-PROMPTS_CSS_PATH = REPO_ROOT / "landing" / "prompts" / "prompts.css"
 KNOWN_PAID_PLATFORM_COST_CLASSES = {
     "athena": "paid_credits",
     "athena-spark": "paid_compute",
@@ -71,14 +67,6 @@ def browser_catalog(gen, catalog):
     return gen.build_prompt_catalog(catalog)
 
 
-def _load_committed_generated_payload():
-    text = GENERATED_PATH.read_text(encoding="utf-8")
-    prefix = "window.__BENCHBOX_PROMPT_CATALOG__ = "
-    assert text.startswith(prefix)
-    payload = text.split(prefix, 1)[1].rsplit(";\n", 1)[0]
-    return json.loads(payload)
-
-
 def _filter_platform_ids(catalog_payload, interface, deployment):
     return {
         platform["id"]
@@ -92,24 +80,6 @@ pytestmark = [pytest.mark.fast, pytest.mark.unit]
 
 def test_committed_catalog_validates(gen, catalog):
     assert gen.validate(catalog) == []
-
-
-def test_generator_is_deterministic(gen, catalog):
-    first = gen.render_js(catalog)
-    second = gen.render_js(catalog)
-    assert first == second
-
-
-def test_check_passes_against_committed_include(gen):
-    assert GENERATED_PATH.exists(), "catalog.generated.js must be committed"
-    rc = gen.main(["--check"])
-    assert rc == 0
-
-
-def test_check_fails_on_stale_include(gen, monkeypatch):
-    drifted = gen.render_js
-    monkeypatch.setattr(gen, "render_js", lambda catalog: drifted(catalog) + "// drift\n")
-    assert gen.main(["--check"]) == 3
 
 
 def test_platform_inclusion_list_is_rejected(gen, catalog):
@@ -460,167 +430,6 @@ def test_runtime_hints_log_dir_under_tmp(gen, catalog):
     assert any("runtime_hints.log_dir must start with '/tmp'" in e for e in errors)
 
 
-def test_agent_prompt_includes_output_discipline_and_summary_labels():
-    prompts_js = PROMPTS_JS_PATH.read_text(encoding="utf-8")
-
-    assert "set -o pipefail" in prompts_js
-    assert " 2>&1 | tee " in prompts_js
-    assert "Announce before running" in prompts_js
-    assert "SMOKE" in prompts_js
-    assert "COST ACKNOWLEDGMENT" in prompts_js
-    assert "Discover & summarize" in prompts_js
-    assert "Save provenance" in prompts_js
-    assert "force_datagen_footer" in prompts_js
-    assert "resultsPathsCommand" in prompts_js
-    assert "target MCP call(s)" in prompts_js
-    assert "MCP tool result payload" in prompts_js
-    assert "capture_plans_footer" in prompts_js
-
-
-def test_prompt_code_blocks_use_code_foreground_token():
-    prompts_css = PROMPTS_CSS_PATH.read_text(encoding="utf-8")
-    pre_rule = prompts_css[prompts_css.index(".prompts-block pre") : prompts_css.index(".prompts-copy")]
-
-    assert "background: var(--code-bg);" in pre_rule
-    assert "color: var(--code-fg);" in pre_rule
-    assert "color: var(--text-primary);" not in pre_rule
-
-
-def test_mcp_prompt_uses_smoke_and_cost_gates():
-    prompts_js = PROMPTS_JS_PATH.read_text(encoding="utf-8")
-    mcp_block = prompts_js[
-        prompts_js.index("function buildMcpPrompt") : prompts_js.index("function renderMcpDependencyStep")
-    ]
-
-    assert "isPaidSelection(platformEntry, platformBEntry)" in mcp_block
-    assert "needsSmokeStep(state, isPaid)" in mcp_block
-    assert "needsCostAcknowledgment(state, isPaid)" in mcp_block
-    assert 'mcpRunCalls(mcpToolName, selectedPlatforms, state, "0.01", false)' in mcp_block
-    assert "target MCP call(s)" in mcp_block
-
-
-def test_mcp_prompt_uses_real_analysis_profile_and_plan_tools():
-    prompts_js = PROMPTS_JS_PATH.read_text(encoding="utf-8")
-    mcp_block = prompts_js[
-        prompts_js.index("function buildMcpPrompt") : prompts_js.index("function renderMcpDependencyStep")
-    ]
-
-    assert "mcpAnalysisStep(state, platform)" in mcp_block
-    assert "mcpProvenanceStep()" in mcp_block
-    assert "mcpCapturePlansFootnote()" in mcp_block
-    assert 'analysis_tool || "analyze_results"' in prompts_js
-    assert 'system_profile_tool || "system_profile"' in prompts_js
-    assert 'plan_tool || "get_query_plan"' in prompts_js
-    assert 'analysis=\\"compare\\", file1=\\"<first-result-json>\\", file2=\\"<second-result-json>\\"' in prompts_js
-    assert 'analysis=\\"aggregate\\", platform=\\"' in prompts_js
-    assert "capture_plans=true" in prompts_js
-    assert 'query_id=\\"Q1\\"' in prompts_js
-
-
-def test_mcp_prompt_does_not_emit_nonexistent_platform_options_argument():
-    prompts_js = PROMPTS_JS_PATH.read_text(encoding="utf-8")
-
-    assert "Platform option gap for " in prompts_js
-    assert "does not expose platform option arguments yet" in prompts_js
-    assert "appendMcpPlatformOptionLines" in prompts_js
-    assert "platform_options" not in prompts_js
-
-
-def test_compare_prompt_uses_comparison_log_not_recent_result_paths():
-    prompts_js = PROMPTS_JS_PATH.read_text(encoding="utf-8")
-    build_agent_prompt = prompts_js[
-        prompts_js.index("function buildAgentPrompt") : prompts_js.index("function readStateFromForm")
-    ]
-    discover_start = build_agent_prompt.index("Discover & summarize: summarize total runtime")
-    compare_start = build_agent_prompt.rfind('if (state.goal === "compare")', 0, discover_start)
-    compare_summary = build_agent_prompt[compare_start : build_agent_prompt.index("        } else {", compare_start)]
-
-    assert 'if (state.goal === "compare")' in build_agent_prompt
-    assert "comparison output in" in compare_summary
-    assert "liveLogPath" in compare_summary
-    assert "benchbox results --paths" not in compare_summary
-    assert "resultsPaths" not in compare_summary
-    assert "showCli" not in compare_summary
-
-
-def test_agent_prompt_includes_platform_footgun_and_dsdgen_labels():
-    prompts_js = PROMPTS_JS_PATH.read_text(encoding="utf-8")
-
-    assert "Likely required platform options for" in prompts_js
-    assert "TPC-DS sub-scale warning" in prompts_js
-    assert "requires_bundled_dsdgen_below" in prompts_js
-    assert "_binaries/tpc-ds/<platform>/dsdgen" not in prompts_js
-    assert "_binaries/tpc-ds/<os>-<arch>/dsdgen" in prompts_js
-    assert "_binaries/tpc-ds/linux-x86_64/dsdgen" in prompts_js
-    assert "_binaries/tpc-ds/darwin-arm64/dsdgen" in prompts_js
-
-
-def test_dsdgen_warning_accounts_for_injected_smoke_scale():
-    prompts_js = PROMPTS_JS_PATH.read_text(encoding="utf-8")
-    warning_fn = prompts_js[
-        prompts_js.index("function needsBundledDsdgenWarning") : prompts_js.index("function mcpModeArg")
-    ]
-
-    assert "function needsBundledDsdgenWarning(state, benchmarkEntry, isPaid)" in warning_fn
-    assert "needsSmokeStep(state, isPaid) && 0.01 < numericThreshold" in warning_fn
-
-    assert prompts_js.count("if (needsBundledDsdgenWarning(state, benchmarkEntry, isPaid))") == 3
-
-
-def test_mcp_prompt_includes_smoke_for_managed_at_scale():
-    prompts_js = PROMPTS_JS_PATH.read_text(encoding="utf-8")
-    assert "SMOKE: call " in prompts_js
-    assert 'mcpRunCall(mcpToolName, platform, state, "0.01", false, false)' in prompts_js
-    assert "Abort if the smoke run fails" in prompts_js
-
-
-def test_credential_preflight_precedes_smoke_steps():
-    prompts_js = PROMPTS_JS_PATH.read_text(encoding="utf-8")
-    credential_step = "Make sure platform connection credentials/config are set outside this conversation"
-
-    mcp_block = prompts_js[
-        prompts_js.index("function buildMcpPrompt") : prompts_js.index("function renderMcpDependencyStep")
-    ]
-    mcp_compare_block = mcp_block[mcp_block.index("if (isCompare)") : mcp_block.index("        var lines = [];")]
-    mcp_single_block = mcp_block[mcp_block.index("        var lines = [];") :]
-    agent_block = prompts_js[
-        prompts_js.index("function buildAgentPrompt") : prompts_js.index("function readStateFromForm")
-    ]
-
-    assert mcp_compare_block.index(credential_step) < mcp_compare_block.index("SMOKE: call ")
-    assert mcp_single_block.index(credential_step) < mcp_single_block.index("SMOKE: call ")
-    assert agent_block.index(credential_step) < agent_block.index("SMOKE: run the same live command")
-
-
-def test_mcp_prompt_includes_cost_ack_for_paid_platforms():
-    prompts_js = PROMPTS_JS_PATH.read_text(encoding="utf-8")
-    assert "COST ACKNOWLEDGMENT" in prompts_js
-    assert "confirm credit or compute spend" in prompts_js
-
-
-def test_mcp_prompt_emits_platform_options_mapping():
-    prompts_js = PROMPTS_JS_PATH.read_text(encoding="utf-8")
-    assert "Platform option gap for " in prompts_js
-    assert "MCP `run_benchmark` does not expose platform option arguments yet" in prompts_js
-    assert 'replace("--platform-option", "")' in prompts_js
-
-
-def test_mcp_prompt_calls_analyze_results_and_system_profile():
-    prompts_js = PROMPTS_JS_PATH.read_text(encoding="utf-8")
-    assert "analysis_tool" in prompts_js
-    assert "mcp_metadata.result_file" in prompts_js
-    assert "only the filename component from each live response's `mcp_metadata.result_file`" in prompts_js
-    assert "`mcp_metadata.result_file` paths from both live responses" not in prompts_js
-    assert "systemProfileTool" in prompts_js
-    assert "system_profile_tool" in prompts_js
-
-
-def test_mcp_prompt_footnotes_capture_plans():
-    prompts_js = PROMPTS_JS_PATH.read_text(encoding="utf-8")
-    assert "capture_plans=true" in prompts_js
-    assert "To capture EXPLAIN plans" in prompts_js
-
-
 def test_defaults_resolve_to_known_ids(browser_catalog):
     platform_ids = {p["id"] for p in browser_catalog["platforms"]}
     benchmark_ids = {b["id"] for b in browser_catalog["benchmarks"]}
@@ -710,21 +519,6 @@ def test_no_recipes_json_committed():
     assert not FORBIDDEN_JSON.exists(), "landing/prompts/recipes.json is forbidden for MVP — see the decision record"
 
 
-def test_generated_include_assigns_window_global():
-    text = GENERATED_PATH.read_text(encoding="utf-8")
-    assert "window.__BENCHBOX_PROMPT_CATALOG__" in text
-    assert text.endswith(";\n")
-
-
-def test_prompts_route_assets_are_cache_busted():
-    text = PROMPTS_INDEX_PATH.read_text(encoding="utf-8")
-    assert 'href="prompts.css?v=' in text
-    assert 'src="catalog.generated.js?v=' in text
-    assert 'src="prompts.js?v=' in text
-    assert 'src="catalog.generated.js"></script>' not in text
-    assert 'src="prompts.js"></script>' not in text
-
-
 def test_generated_platforms_cover_registry_ids(gen, browser_catalog):
     generated_ids = {p["id"] for p in browser_catalog["platforms"]}
     expected_ids = gen._supported_registry_platform_ids()
@@ -781,47 +575,6 @@ def test_non_ui_registry_deployment_modes_are_normalized(gen, browser_catalog):
     assert "self-hosted" in velox["deployments"]
 
 
-def test_static_generated_payload_supports_dropdown_smoke(gen, browser_catalog):
-    prompts_js = PROMPTS_JS_PATH.read_text(encoding="utf-8")
-    committed_payload = _load_committed_generated_payload()
-
-    assert "function platformsForFilters" in prompts_js
-    assert committed_payload["platforms"] == browser_catalog["platforms"]
-
-    scenarios = [
-        ("sql", "managed"),
-        ("sql", "self-hosted"),
-        ("dataframe", "local"),
-    ]
-    for interface, deployment in scenarios:
-        expected = _filter_platform_ids(browser_catalog, interface, deployment)
-        actual = _filter_platform_ids(committed_payload, interface, deployment)
-        assert actual == expected
-        assert actual
-
-    assert len(_filter_platform_ids(committed_payload, "sql", "managed")) >= 2
-    assert len(_filter_platform_ids(committed_payload, "sql", "self-hosted")) >= 2
-    assert "polars" in _filter_platform_ids(committed_payload, "dataframe", "local")
-    assert committed_payload["runtime_hints"] == browser_catalog["runtime_hints"]
-    assert committed_payload["mcp"]["analysis_tool"] == "analyze_results"
-    assert committed_payload["mcp"]["system_profile_tool"] == "system_profile"
-    assert committed_payload["mcp"]["plan_tool"] == "get_query_plan"
-    committed_by_id = {platform["id"]: platform for platform in committed_payload["platforms"]}
-    assert committed_by_id["snowflake"]["cost_class"] == "paid_credits"
-    assert committed_by_id["duckdb"]["cost_class"] == "free"
-    assert "--platform-option http_port=9000" in committed_by_id["questdb"]["platform_option_hints"][0]
-    committed_templates = committed_payload["templates"]["cli"]
-    browser_templates = browser_catalog["templates"]["cli"]
-    assert committed_templates["results_paths"] == browser_templates["results_paths"]
-    assert committed_templates["show_cli"] == browser_templates["show_cli"]
-    assert committed_templates["provenance_snapshot"] == browser_templates["provenance_snapshot"]
-    assert committed_templates["force_datagen_footer"] == browser_templates["force_datagen_footer"]
-    assert committed_templates["capture_plans_footer"] == browser_templates["capture_plans_footer"]
-    benchmark_by_id = {benchmark["id"]: benchmark for benchmark in committed_payload["benchmarks"]}
-    assert benchmark_by_id["tpcds"]["requires_bundled_dsdgen_below"] == "1.0"
-    assert "requires_bundled_dsdgen_below" not in benchmark_by_id["tpch"]
-
-
 def test_generated_platforms_include_install_commands(browser_catalog):
     assert all(platform.get("install_command") for platform in browser_catalog["platforms"])
     duckdb = next(platform for platform in browser_catalog["platforms"] if platform["id"] == "duckdb")
@@ -862,67 +615,3 @@ def test_spark_keeps_local_prompt_deployment_when_registry_modes_are_missing(gen
     spark = next(platform for platform in browser_catalog["platforms"] if platform["id"] == "spark")
     assert spark["deployments"] == ["local", "self-hosted"]
     assert spark["credential_deployments"] == ["self-hosted"]
-
-
-def test_removed_prompt_blocks_stay_removed():
-    text = PROMPTS_INDEX_PATH.read_text(encoding="utf-8") + PROMPTS_JS_PATH.read_text(encoding="utf-8")
-    assert "block-cli" not in text
-    assert "block-mcp-prompt" not in text
-
-
-def test_hidden_fields_override_flex_display():
-    text = PROMPTS_CSS_PATH.read_text(encoding="utf-8")
-    assert ".prompts-field[hidden]" in text
-    assert ".prompts-block[hidden]" in text
-    assert "display: none !important" in text
-
-
-def test_agent_field_stays_removed_from_route():
-    text = PROMPTS_INDEX_PATH.read_text(encoding="utf-8") + PROMPTS_JS_PATH.read_text(encoding="utf-8")
-    assert "sel-agent" not in text
-    assert 'name="agent"' not in text
-    assert "state.agent" not in text
-    assert "catalog.agents" not in text
-    assert '["goal", "agent"' not in text
-
-
-def test_prompt_state_guards_stay_in_place():
-    text = PROMPTS_JS_PATH.read_text(encoding="utf-8")
-    assert 'state.goal === "compare" && pool.length < 2' in text
-    assert "state.goal = defaults.goal" in text
-    assert "var preferredPlatform = raw.platform || defaults.platform" in text
-    assert "pp.id === preferredPlatform" in text
-
-
-def test_credential_warning_box_is_credentials_only():
-    text = PROMPTS_JS_PATH.read_text(encoding="utf-8")
-    safety_block = text[text.index('var safetyList = $("cloud-safety-list")') : text.index("function platformLabel")]
-    assert '"no_secrets"' in safety_block
-    assert '"dependency"' not in safety_block
-    assert '"dry_run"' not in safety_block
-
-
-def test_prompt_includes_dependency_and_dry_run_safety():
-    text = PROMPTS_JS_PATH.read_text(encoding="utf-8")
-    assert "Check dependencies:" in text
-    assert "Dry run first:" in text
-    assert "dryRunB" in text
-    assert "dry_run_dir: dryRunDir(platform)" in text
-    assert "dry_run_dir: dryRunDir(platformB)" in text
-    assert 'safetyTexts(entries, "dependency", deployment)' in text
-    assert 'safetyTexts(entries, "dry_run", deployment)' in text
-    assert "appendDeploymentSafetyLines(lines" in text
-    assert 'check_dependencies(platform=\\"' in text
-    assert 'dry_run=" + (dryRun ? "true" : "false")' in text
-
-
-def test_agent_identity_sentence_stays_removed():
-    text = PROMPTS_JS_PATH.read_text(encoding="utf-8")
-    assert "You are a coding agent with shell access" not in text
-
-
-def test_prompts_background_is_full_page():
-    text = PROMPTS_CSS_PATH.read_text(encoding="utf-8")
-    assert "body::before" in text
-    assert ".prompts-main::before" not in text
-    assert "position: fixed" in text

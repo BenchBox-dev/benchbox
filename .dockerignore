@@ -16,8 +16,6 @@ _sources/
 
 release/
 
-results-explorer/node_modules/
-
 **/.venv
 
 .claude/

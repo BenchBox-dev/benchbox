@@ -33,11 +33,8 @@ How did you verify the change? Include the commands you ran (e.g.
 - [ ] I updated the relevant user-facing docs.
 - [ ] I added regression notes for behavior changes.
 - [ ] I confirmed API contract wording remains accurate.
-- [ ] This PR does not change `results-explorer/`, `website/`, `landing/`,
-      `docs/blog/`, `_blog/` or `_project/design/site-inventory/`, or its
-      description says the change must be replayed into
-      `BenchBox-dev/benchbox-site` to reach benchbox.dev (see
-      `CONTRIBUTING.md`).
+- [ ] Site, Explorer app, landing page and blog changes went to
+      `BenchBox-dev/benchbox-site` instead (see `CONTRIBUTING.md`).
 
 ## Code Quality
 

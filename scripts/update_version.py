@@ -22,8 +22,6 @@ DOCUMENTATION_PATHS = (
     Path("benchbox") / "utils" / "VERSION_MANAGEMENT.md",
 )
 
-LANDING_PAGE_PATH = Path("landing") / "index.html"
-
 PYPROJECT_VERSION_PATTERN = re.compile(
     r'^(?P<prefix>version\s*=\s*["\'])(?P<version>[^"\']+)(?P<suffix>["\'])',
     re.MULTILINE,
@@ -35,13 +33,6 @@ DOC_RELEASE_PATTERN = re.compile(
     r"(?P<prefix>Current\s+release\s*:?\s*)(?P<marker>`?)v?"
     r"(?P<version>\d+\.\d+\.\d+(?:-[\w\.]+)?)(?P=marker)(?P<suffix>[\.]?)",
     re.IGNORECASE,
-)
-
-LANDING_VERSION_PATTERN = re.compile(
-    r'(?P<prefix><a\b(?=[^>]*\bclass="[^"]*\bbadge-version\b[^"]*")[^>]*>\s*)'
-    r"v?(?P<version>\d+\.\d+\.\d+(?:-[\w\.]+)?)"
-    r"(?P<suffix>\s*</a\s*>)",
-    re.DOTALL,
 )
 
 
@@ -173,39 +164,6 @@ def update_release_marker(path: Path, new_version: str, dry_run: bool = False) -
     return True
 
 
-def update_landing_page_version(new_version: str, dry_run: bool = False) -> bool:
-    path = get_project_root() / LANDING_PAGE_PATH
-
-    if not path.exists():
-        print(f"Warning: {path} not found")
-        return False
-
-    text = path.read_text()
-
-    def replacer(match: re.Match) -> str:
-        prefix = match.group("prefix")
-        suffix = match.group("suffix")
-        return f"{prefix}v{new_version}{suffix}"
-
-    new_text, count = LANDING_VERSION_PATTERN.subn(replacer, text)
-
-    if count == 0:
-        print(f"Warning: Version badge not found in {path}")
-        return False
-
-    if new_text == text:
-        print(f"No version badge changes needed in {path}")
-        return True
-
-    if dry_run:
-        print(f"[dry-run] Would update version badge in {path}")
-        return True
-
-    path.write_text(new_text)
-    print(f"Updated version badge in {path}")
-    return True
-
-
 def run_version_consistency_check() -> tuple[bool, str]:
     if _core_check_version_consistency is None:
         init_version = get_current_version_from_init()
@@ -282,9 +240,6 @@ def main():
     for doc_path in DOCUMENTATION_PATHS:
         updated = update_release_marker(doc_path, args.version, dry_run=args.dry_run)
         success = success and updated
-
-    if not update_landing_page_version(args.version, dry_run=args.dry_run):
-        success = False
 
     if success:
         if args.dry_run:

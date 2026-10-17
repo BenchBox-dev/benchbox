@@ -19,9 +19,9 @@ AGGREGATE_WORKFLOWS = {
     "core": "ci.yml",
     "results-data": "ci.yml",
     "tooling": "ci.yml",
-    "explorer": "site-docs.yml",
-    "docs": "site-docs.yml",
-    "landing": "site-docs.yml",
+    "explorer": "ci.yml",
+    "docs": "ci.yml",
+    "landing": "ci.yml",
 }
 AGGREGATE_JOBS = tuple(AGGREGATE_WORKFLOWS)
 

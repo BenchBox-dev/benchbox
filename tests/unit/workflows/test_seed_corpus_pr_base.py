@@ -408,7 +408,6 @@ def test_ledger_seed_gate_target_runs_the_publication_suites() -> None:
     for suite in (
         "tests/unit/scripts/publication/test_ledger_seed.py",
         "tests/unit/scripts/publication/test_check_corpus_bijection.py",
-        "tests/unit/workflows/test_corpus_cutover.py",
         "tests/unit/scripts/test_site_inputs.py",
     ):
         assert suite in makefile

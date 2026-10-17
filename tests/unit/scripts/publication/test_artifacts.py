@@ -13,7 +13,6 @@ from scripts.publication.check_artifact_privacy import (
     scan_file_for_privacy,
 )
 from scripts.publication.check_corpus_bijection import check as check_corpus, check_bijection, main as bijection_main
-from scripts.publication.verify_shadow_site import main as shadow_main, verify_site_directory
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -118,28 +117,6 @@ def test_privacy_scanner_clean_and_dirty(tmp_path: Path):
     findings = scan_file_for_privacy(dirty_file)
     assert len(findings) > 0
     assert "GitHub Personal Access Token" in findings[0]
-
-
-def test_shadow_site_verifier(tmp_path: Path):
-    site = tmp_path / "site"
-    site.mkdir()
-    (site / "index.html").write_text('<a href="about.html">About</a>', encoding="utf-8")
-    (site / "about.html").write_text('<a href="index.html">Home</a>', encoding="utf-8")
-
-    errors = verify_site_directory(site)
-    assert errors == []
-
-    (site / "broken.html").write_text('<a href="missing.html">Link</a>', encoding="utf-8")
-    errors = verify_site_directory(site)
-    assert any("missing.html" in e for e in errors)
-
-
-def test_shadow_site_missing_directory_fails_closed(tmp_path: Path) -> None:
-    missing = tmp_path / "no-such-site"
-    errors = verify_site_directory(missing)
-    assert errors
-    assert any("does not exist" in e for e in errors)
-    assert shadow_main([str(missing)]) != 0
 
 
 def test_privacy_scanner_exempts_aws_example_tokens(tmp_path: Path) -> None:

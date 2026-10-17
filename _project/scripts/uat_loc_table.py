@@ -30,7 +30,6 @@ BUCKETS: list[tuple[str, list[str]]] = [
         "chartered evidence artifacts (validate/report/package/cells_io/gate_summary)",
         ["phases/validate.py", "phases/report.py", "phases/package.py", "cells_io.py", "gate_summary.py"],
     ),
-    ("explorer-prep", ["phases/explorer_smoke.py"]),
     ("throughput", ["throughput.py", "throughput_baseline.py"]),
     ("artifact hygiene", ["artifact_hygiene.py"]),
     ("package init markers", ["__init__.py", "phases/__init__.py"]),

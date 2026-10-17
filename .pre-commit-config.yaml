@@ -75,14 +75,6 @@ repos:
         files: ^_project/blind-spots/.*\.md$
         exclude: ^_project/blind-spots/README\.md$
 
-      - id: explorer-tokens
-        name: results-explorer token-scan
-        entry: python3 _project/scripts/scan_explorer_tokens.py
-        language: system
-        pass_filenames: false
-        stages: [pre-commit]
-        files: ^(results-explorer/src/.*\.(tsx|ts|jsx|js|css|html)|landing/shared/site-tokens\.css)$
-
       - id: duplicate-code-warn
         name: pylint duplicate-code (warn-only)
         entry: uv run -- python _project/scripts/pylint_duplicate_code_warn.py

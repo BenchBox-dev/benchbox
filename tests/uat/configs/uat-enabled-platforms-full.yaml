@@ -8,7 +8,6 @@ phases:
   - execute
   - validate
   - package
-  - explorer_smoke
   - report
 
 platforms:
@@ -50,9 +49,6 @@ validate:
 
 package:
   submit_terminal_state: "local-stage"
-
-explorer_smoke:
-  playwright_browsers: ["chromium"]
 
 report:
   matrix_summary_tsv: "matrix_summary.tsv"

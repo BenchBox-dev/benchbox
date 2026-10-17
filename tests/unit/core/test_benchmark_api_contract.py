@@ -366,11 +366,6 @@ def test_public_benchmark_count_claims_are_registry_derived() -> None:
     spec_count = len(set(BENCHMARK_SPECS) & public_ids)
 
     required_claims = {
-        "landing/index.html": [
-            f"{public_count} Benchmarks",
-            f"{public_count} benchmarks (TPC",
-            f"Explore {public_count} benchmarks",
-        ],
         "docs/design/architecture.md": [f"currently {public_count} benchmarks"],
         "docs/development/result-integrity-validation.md": [
             f"Specs exist for {spec_count} of {public_count} registered benchmarks"

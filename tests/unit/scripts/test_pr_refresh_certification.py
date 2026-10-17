@@ -377,9 +377,10 @@ def test_fallback_unknown_path() -> None:
     assert result.reasons == [REASON_UNKNOWN_PATH]
 
 
-def test_website_paths_are_known_roots() -> None:
-    result = classify(_eligible_request(authored_paths=["website/src/pages/index.astro"]))
-    assert REASON_UNKNOWN_PATH not in result.reasons
+@pytest.mark.parametrize("path", ["website/src/pages/index.astro", "results-explorer/src/db.ts", "_blog/post.md"])
+def test_site_paths_moved_to_the_site_repository_are_unknown_roots(path: str) -> None:
+    result = classify(_eligible_request(authored_paths=[path]))
+    assert result.reasons == [REASON_UNKNOWN_PATH]
 
 
 def test_fallback_missing_path_evidence() -> None:

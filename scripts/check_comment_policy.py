@@ -29,7 +29,7 @@ from check_comment_cleanup_scope import (
     oracle_review_covers,
     validate_comment_policy_path as validate_path,
 )
-from comment_syntax import Finding, javascript_requests, language, scan, source_language
+from comment_syntax import Finding, language, scan, source_language
 
 DIRECTIVES = COMMENT_POLICY_DIRECTIVES
 ENFORCEMENT_MODES = COMMENT_POLICY_ENFORCEMENT_MODES
@@ -251,33 +251,6 @@ def decode(path: str, raw: bytes) -> str:
     return raw.decode("utf-8-sig")
 
 
-def native_results(root: Path, requests: dict[str, str]) -> dict[str, list[dict]]:
-    results = {}
-    pending = requests
-    while pending:
-        response = subprocess.run(
-            ["node", str(Path(__file__).with_name("comment_syntax_js.cjs"))],
-            input=json.dumps(pending),
-            text=True,
-            capture_output=True,
-            check=True,
-            env={**os.environ, "COMMENT_POLICY_ROOT": str(root)},
-        )
-        batch = json.loads(response.stdout)
-        if set(batch) != set(pending):
-            raise ValueError("native parser returned a different request set")
-        results.update(batch)
-        pending = {
-            key: text
-            for rows in batch.values()
-            for row in rows
-            if row["kind"] == "payload"
-            for key, text in javascript_requests("payload." + row["language"], row["text"], row["language"]).items()
-            if key not in results
-        }
-    return results
-
-
 def develop_merge_base(root: Path) -> str | None:
     try:
         return git(root, "merge-base", "HEAD", "origin/develop").decode().strip()
@@ -379,18 +352,12 @@ def scan_sources(root: Path, sources: dict[str, bytes], policy: dict) -> list[Fi
                 decoded[path] = decode(path, raw)
             except (UnicodeError, SyntaxError) as exc:
                 errors.append(Finding(path, 1, "coverage-error", str(exc)))
-    requests = {
-        key: text
-        for path, source in decoded.items()
-        for key, text in javascript_requests(path, source, language(path)).items()
-    }
-    js_results = native_results(root, requests)
     budget = Counter({index: entry.get("count", 1) for index, entry in enumerate(policy["exceptions"])})
     expired = expired_exception_identities(policy)
     return errors + [
         finding
         for path, text in decoded.items()
-        for finding in scan(path, text, source_language(path, text), js_results)
+        for finding in scan(path, text, source_language(path, text))
         if not allowed(finding, policy, text, budget, expired)
     ]
 

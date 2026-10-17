@@ -112,7 +112,6 @@ tests/uat/
 │   ├── execute.py                 # iterates ladder, invokes runner per cell, applies cleanup
 │   ├── validate.py                # in-process bundle validation + validator TSV
 │   ├── package.py                 # invokes benchbox submit per submit_terminal_state
-│   ├── explorer_smoke.py          # uv run -- python _project/scripts/explorer_publish.py build + Playwright via results-explorer/scripts/serve-browser-tests.mjs
 │   └── report.py                  # TSV roll-up + cross-scale coverage assertion
 ├── orchestrator.py                # composes phases per YAML phases: list (uat-sweep entry point)
 ├── configs/                       # tracked YAML configs
@@ -151,7 +150,6 @@ tests/uat/
 | `phases/execute.py` | Sequential iteration over (platform, benchmark, rung); invokes runner+ladder+cleanup; owns Docker platform-boundary lifecycle | 220 |
 | `phases/validate.py` | Call `benchbox.validation.bundle` in-process; write validator TSV; compute clean-rate floor | 100 |
 | `phases/package.py` | Read `submit_terminal_state`; invoke `benchbox submit --output` or `--service`; `draft-pr`/`merged-to-published-results` are **stubs** (dispatcher only, per `PR_STUB_TERMINAL_STATES`) that emit the same argv as `local-stage` plus an operator warning -- PR-opening to `published-results` is not implemented | 130 |
-| `phases/explorer_smoke.py` | Branch-presence-guarded explorer smoke: always-on corpus contract, delegates build+Playwright to the Results Explorer | 60 |
 | `phases/report.py` | Read each phase's outputs; emit `matrix_summary.tsv`; cross-scale coverage check | 130 |
 | `orchestrator.py` | Walk YAML `phases:` list in order; surface phase failures; respect `dry_run:` toggle | 100 |
 
@@ -218,10 +216,9 @@ phases:                          # required, list[str]. Order matters.
   - execute
   - validate
   - package
-  - explorer_smoke
   - report
-# Allowed: preflight, execute, validate, package, explorer_smoke, report.
-# Stress preset omits validate/package/explorer_smoke. Entries must be a
+# Allowed: preflight, execute, validate, package, report.
+# Stress preset omits validate/package. Entries must be a
 # subsequence of that canonical order (the orchestrator walks `phases:`
 # literally, not reordered) and must not repeat -- both rejected at load
 # time (see "Schema enforcement" below).
@@ -446,12 +443,6 @@ package:
 # local-stage and prints an operator warning naming the config that any
 # result submitted this way is a local stage, not a published-results PR.
 
-# Explorer smoke phase --------------------------------------------------
-explorer_smoke:
-  playwright_browsers: ["chromium"]    # optional, list[str], default
-                                       # ["chromium"]. Subset of
-                                       # chromium, firefox, webkit.
-
 # Report phase ----------------------------------------------------------
 report:
   matrix_summary_tsv: "matrix_summary.tsv"     # optional, str.
@@ -553,7 +544,6 @@ Args below are the real Makefile signatures (`Makefile` targets `uat-*`);
 | `make uat-execute` | `CONFIG=` `[DATABASES_ROOT=] [NO_CLEANUP=1]` |
 | `make uat-validate` | `RESULTS_DIR= OUTPUT_TSV=` `[FLOOR=0.80]` |
 | `make uat-package` | `CONFIG= SUBMISSIONS_DIR= RESULTS="r1.json r2.json ..."` |
-| `make uat-explorer-smoke` | `BUNDLES_DIR= OUTPUT_DIR= LOG_DIR=` `[BROWSERS=chromium]` |
 | `make uat-report` | `CELLS_JSONL= OUTPUT_TSV=` `[RUNGS=0.01,0.1,1.0] [CROSS_SCALE_FLOOR=N]` |
 | `make uat-sweep` | `CONFIG=` `[DRY_RUN=1]` |
 | `python -m tests.uat._cli preflight` | `--config <path>` |
@@ -635,7 +625,7 @@ Encode the 2026-05-02 sweep as a historical replay config:
 name: "uat-2026-05-02"
 description: "Historical replay of the 2026-05-02 results-explorer multi-scale corpus sweep"
 
-phases: [preflight, execute, validate, package, explorer_smoke, report]
+phases: [preflight, execute, validate, package, report]
 
 platforms:
   groups: ["sql", "dataframe"]
@@ -662,8 +652,6 @@ validate:
   validator_clean_rate_floor: 0.80
 package:
   submit_terminal_state: "local-stage"
-explorer_smoke:
-  playwright_browsers: ["chromium"]
 report:
   matrix_summary_tsv: "matrix_summary.tsv"
   cross_scale_coverage_min_pairs: null

@@ -1,9 +1,0 @@
----
-import Collection from "../components/blog/Collection.astro";
-import { newestFirst } from "../lib/blog.ts";
-import { loadBlog } from "../lib/blog-posts.ts";
-
-const posts = newestFirst((await loadBlog()).published);
----
-
-<Collection title="All Posts" posts={posts} />

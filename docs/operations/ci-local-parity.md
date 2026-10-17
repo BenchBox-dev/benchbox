@@ -133,8 +133,7 @@ path lists the caller did not supply. It runs under the shared test lock.
 ## Hosted-only guard inventory
 
 `tests/system/test_ci_lint_parity.py` also checks guard-shaped steps in the
-other jobs of the merge-gating workflows: `ci.yml`, `site-docs.yml` (the site
-and docs checks) and `test.yml`. Each must name a local equivalent or a
+other jobs of the merge-gating workflows: `ci.yml` and `test.yml`. Each must name a local equivalent or a
 written reason in the test's `MERGE_GATE_EXEMPTIONS` table, so no new check
 step becomes a silent CI-only failure.
 

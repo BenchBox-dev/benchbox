@@ -37,7 +37,6 @@ Re-run the method when adding a new develop-push workflow.
 
 | Workflow | Push scope | Schedule | Dispatch | Role | Push-drop residual | Disposition |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs.yml` | `develop` and `release`, all paths | **none** | yes | Captures the SHA-bound public-site visual baseline and builds the site; production Pages is deployed from `BenchBox-dev/benchbox-site` | A dropped develop push leaves the exact base SHA without a baseline; an affected visual comparison reports failure, which is advisory until the public site is in production | Dispatch on `develop` with `baseline_source_sha=<exact-protected-base-sha>` to rebuild that ancestor's baseline, then re-run the comparison; see `docs/internal/public-site-visual-baseline.md` |
 | `pricing-data-drift-check.yml` | `develop` + pricing generator/inputs path filter | weekly Mon `0 6 * * 1` | yes | Safety-critical integrity — regenerated pricing tables vs vendor APIs | Weekly schedule + dispatch bound drift even if a path-matched push is dropped | **Covered** — schedule present; path filter already limits push volume |
 | `submission-validator-drift-check.yml` | `develop` + validator path filter | weekly Mon `0 6 * * 1` | yes | Safety-critical integrity — develop vs `published-results` validator copy | Weekly schedule + dispatch bound drift even if a path-matched push is dropped | **Covered** — schedule present; path filter already limits push volume |
 | `sync-results-data-to-published.yml` | `develop` + `results-data/**` (and related validator paths) | **none** | yes | Safety-critical — only automated mirror of the develop corpus to `published-results` | A dropped path-matched push leaves the public corpus stale until human recovery | **Accepted risk** — the daily `corpus-drift-check.yml` canary detects develop-ahead drift and recommends `gh workflow run sync-results-data-to-published.yml`; the workflow keeps the write-heavy mirror on push and dispatch only (no scheduled mutation of a public branch) |
@@ -55,11 +54,10 @@ inventory's risk class:
 ### Retired entries
 
 The previous snapshot also listed `develop-post-merge.yml`,
-`orphaned-commit-detector.yml`, `results-explorer-browser.yml`, and
-`publication-lane-explorer.yml`. They were retired with the six-unit CI. The
-Chromium suite now runs before merge in the `explorer` unit. It does not depend
-on develop push delivery; the retired queue no longer repeats it on the composed
-tree.
+`orphaned-commit-detector.yml`, `results-explorer-browser.yml`,
+`publication-lane-explorer.yml` and `docs.yml`. The first three were retired
+with the six-unit CI. `docs.yml` was removed when the public site moved to
+`BenchBox-dev/benchbox-site`; the site's own CI now builds and checks it.
 
 ### Related scheduled canaries (no develop push)
 
@@ -73,21 +71,18 @@ Not push-drop *subjects*, but they **mitigate** the class for other workflows:
 
 ### Safety-critical without schedule
 
-Two develop-push workflows lack a schedule:
+One develop-push workflow lacks a schedule:
 
-1. **`sync-results-data-to-published.yml`** — The 2026-08-03 incident was
-   exactly this failure mode: three consecutive develop merges got no push
-   delivery, the mirror never opened, and `published-results` stayed stale
-   with private path leaks until a human noticed. The deliberate design
-   response was **not** to put the write-capable mirror on a cron (mutation of
-   a public branch from schedule is a higher blast radius). Instead
-   `corpus-drift-check.yml` is schedule-only, read-only, fails loud on
-   develop-ahead content changes, and points maintainers at a one-shot
-   `workflow_dispatch` of the mirror. That is an accepted residual risk with a
+- **`sync-results-data-to-published.yml`** — The 2026-08-03 incident was
+  exactly this failure mode: three consecutive develop merges got no push
+  delivery, the mirror never opened, and `published-results` stayed stale
+  with private path leaks until a human noticed. The deliberate design
+  response was **not** to put the write-capable mirror on a cron (mutation of
+  a public branch from schedule is a higher blast radius). Instead
+  `corpus-drift-check.yml` is schedule-only, read-only, fails loud on
+  develop-ahead content changes, and points maintainers at a one-shot
+  `workflow_dispatch` of the mirror. That is an accepted residual risk with a
    bounded detection window (≤ ~1 day), not an untracked gap.
-
-2. **`docs.yml`** — The same fail-closed shape for the visual baseline. The
-   dispatch input `baseline_source_sha` exists for exactly this recovery.
 
 ### Covered rows (schedule present)
 
@@ -115,7 +110,6 @@ one other develop-push subject:
 
 ```bash
 test -f docs/internal/develop-push-drop-inventory.md
-rg -q "docs.yml" docs/internal/develop-push-drop-inventory.md
 rg -q "sync-results-data-to-published|submission-validator-drift-check" \
   docs/internal/develop-push-drop-inventory.md
 rg -q "push-drop|push gaps" docs/internal/develop-post-merge-gaps.md
@@ -156,14 +150,13 @@ PY
 ```
 
 Expected subject set (names only):
-`docs.yml`, `pricing-data-drift-check.yml`,
+`pricing-data-drift-check.yml`,
 `submission-validator-drift-check.yml`, `sync-results-data-to-published.yml`.
 
 ## Manual recovery cheatsheet
 
 | If this is silent / red after a develop burst | Recover |
 | --- | --- |
-| Visual comparison reports a missing baseline | `gh workflow run docs.yml --ref develop -f baseline_source_sha=<sha>` |
 | Corpus mirror lag | `gh workflow run corpus-drift-check.yml` then, if develop-ahead, `gh workflow run sync-results-data-to-published.yml --ref develop` |
 | Validator drift | `gh workflow run submission-validator-drift-check.yml --ref develop` |
 | Pricing data drift | `gh workflow run pricing-data-drift-check.yml --ref develop` |

@@ -1,9 +1,0 @@
----
-import Collection from "../../components/blog/Collection.astro";
-import { newestFirst } from "../../lib/blog.ts";
-import { loadBlog } from "../../lib/blog-posts.ts";
-
-const { drafts } = await loadBlog();
----
-
-<Collection title="Drafts" posts={newestFirst(drafts)} emptyText="There are no drafts." />

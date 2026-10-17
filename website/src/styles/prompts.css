@@ -1,5 +1,0 @@
-.prompts-page .prompts-copy:hover,
-.prompts-page .prompts-copy:focus-visible {
-  background: var(--pill-bg);
-  color: var(--pill-fg);
-}

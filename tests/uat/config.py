@@ -10,7 +10,6 @@ VALID_PHASES: tuple[str, ...] = (
     "execute",
     "validate",
     "package",
-    "explorer_smoke",
     "report",
 )
 
@@ -113,12 +112,6 @@ class PackageConfig:
 
 
 @dataclass(frozen=True)
-class ExplorerSmokeConfig:
-    playwright_browsers: tuple[str, ...] = ("chromium",)
-    require_throughput_streams: int | None = None
-
-
-@dataclass(frozen=True)
 class ReportConfig:
     matrix_summary_tsv: str = "matrix_summary.tsv"
     cross_scale_coverage_min_pairs: int | None = None
@@ -144,7 +137,6 @@ class UATConfig:
     cleanup: CleanupConfig = field(default_factory=CleanupConfig)
     validate: ValidateConfig = field(default_factory=ValidateConfig)
     package: PackageConfig = field(default_factory=PackageConfig)
-    explorer_smoke: ExplorerSmokeConfig = field(default_factory=ExplorerSmokeConfig)
     report: ReportConfig = field(default_factory=ReportConfig)
     compatibility: CompatibilityConfig = field(default_factory=CompatibilityConfig)
 
@@ -194,7 +186,6 @@ ROOT_FIELDS = frozenset(
         "cleanup",
         "validate",
         "package",
-        "explorer_smoke",
         "report",
         "compatibility",
     }
@@ -646,25 +637,6 @@ def _validate_package(payload: dict[str, Any] | None) -> PackageConfig:
     return PackageConfig(submit_terminal_state=state, service=service)
 
 
-def _validate_explorer_smoke(payload: dict[str, Any] | None) -> ExplorerSmokeConfig:
-    if payload is None:
-        payload = {}
-    if not isinstance(payload, dict):
-        raise ConfigError("`explorer_smoke:` must be a mapping")
-    _reject_unknown_fields(payload, frozenset({"playwright_browsers", "require_throughput_streams"}), "explorer_smoke")
-    require_throughput_streams = _optional_positive_int(payload, "require_throughput_streams", section="explorer_smoke")
-    if require_throughput_streams is not None and require_throughput_streams < 2:
-        raise ConfigError("`explorer_smoke.require_throughput_streams` must be at least 2")
-    return ExplorerSmokeConfig(
-        playwright_browsers=_as_string_tuple(
-            payload.get("playwright_browsers", ["chromium"]),
-            section="explorer_smoke",
-            key="playwright_browsers",
-        ),
-        require_throughput_streams=require_throughput_streams,
-    )
-
-
 def _validate_report(payload: dict[str, Any] | None) -> ReportConfig:
     if payload is None:
         payload = {}
@@ -746,7 +718,6 @@ def validate_config(payload: dict[str, Any]) -> UATConfig:
             )
         if package.submit_terminal_state == "cloud-uploaded" and not package.service:
             raise ConfigError("`package.submit_terminal_state: cloud-uploaded` requires `package.service`")
-    explorer_smoke = _validate_explorer_smoke(payload.get("explorer_smoke"))
     report = _validate_report(payload.get("report"))
     compatibility = _validate_compatibility(payload.get("compatibility"))
     return UATConfig(
@@ -763,7 +734,6 @@ def validate_config(payload: dict[str, Any]) -> UATConfig:
         cleanup=cleanup,
         validate=validate,
         package=package,
-        explorer_smoke=explorer_smoke,
         report=report,
         compatibility=compatibility,
     )

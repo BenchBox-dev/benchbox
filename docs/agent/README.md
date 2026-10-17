@@ -1,7 +1,7 @@
 # Agent governance
 
 Repository documentation for agent review, identity, attribution, and
-audit-record conventions. This tree is **not** part of the public Sphinx
+audit-record conventions. This tree is **not** part of the public
 site. `docs/development/` is the human contributor handbook.
 
 ## Placement

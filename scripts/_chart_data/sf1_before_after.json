@@ -1,9 +1,0 @@
-[
-  {"label": "CoffeeShop",  "baseline_value": 6.0,   "comparison_value": 1.0,  "baseline_name": "Before v0.2.1", "comparison_name": "After v0.2.1"},
-  {"label": "JoinOrder",   "baseline_value": 5.0,   "comparison_value": 1.0,  "baseline_name": "Before v0.2.1", "comparison_name": "After v0.2.1"},
-  {"label": "AMPLab",      "baseline_value": 0.45,  "comparison_value": 1.1,  "baseline_name": "Before v0.2.1", "comparison_name": "After v0.2.1"},
-  {"label": "H2ODB",       "baseline_value": 0.1,   "comparison_value": 1.0,  "baseline_name": "Before v0.2.1", "comparison_name": "After v0.2.1"},
-  {"label": "TSBS DevOps", "baseline_value": 0.47,  "comparison_value": 0.93, "baseline_name": "Before v0.2.1", "comparison_name": "After v0.2.1"},
-  {"label": "NYC Taxi",    "baseline_value": 0.096, "comparison_value": 0.96, "baseline_name": "Before v0.2.1", "comparison_name": "After v0.2.1"},
-  {"label": "FlightData",  "baseline_value": 0.0,   "comparison_value": 1.0,  "baseline_name": "Before v0.2.1", "comparison_name": "After v0.2.1"}
-]

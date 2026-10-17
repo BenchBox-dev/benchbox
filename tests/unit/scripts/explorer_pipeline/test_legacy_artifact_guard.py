@@ -10,10 +10,6 @@ from tests.unit.scripts.explorer_pipeline.conftest import MINIMAL_BUNDLE
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
-EXPLORER_SRC = REPO_ROOT / "results-explorer/src"
-
-
 LEGACY_FILES = (
     "manifest.json",
     "meta_leaderboard.json",
@@ -67,32 +63,3 @@ class TestPipelineOutputIsMetricFree:
             assert not (output / name).exists(), f"rebuild left {name} in place"
         for name in LEGACY_DIRS:
             assert not (output / name).exists(), f"rebuild left {name}/ in place"
-
-
-class TestSourceTreeDoesNotFetchMetricJson:
-    FORBIDDEN_PATH_PATTERNS = (
-        "/results/data/benchmarks/",
-        "/results/data/details/",
-        "/results/data/compare/",
-        "/results/data/meta_leaderboard.json",
-        "/results/data/short_ids.json",
-        "/results/data/results_schema.json",
-        "/results/data/manifest.json",
-        "/results/data/bundles/",
-    )
-
-    def _source_files(self) -> list[Path]:
-        pages = list((EXPLORER_SRC / "pages").rglob("*.tsx")) + list((EXPLORER_SRC / "pages").rglob("*.ts"))
-        components = list((EXPLORER_SRC / "components").rglob("*.tsx")) + list(
-            (EXPLORER_SRC / "components").rglob("*.ts")
-        )
-        return [p for p in (*pages, *components) if "__tests__" not in p.parts]
-
-    def test_no_page_or_component_fetches_legacy_json(self) -> None:
-        violations: list[str] = []
-        for path in self._source_files():
-            text = path.read_text(encoding="utf-8")
-            for pattern in self.FORBIDDEN_PATH_PATTERNS:
-                if pattern in text:
-                    violations.append(f"{path.relative_to(REPO_ROOT)}: references {pattern}")
-        assert not violations, "explorer source references legacy metric JSON paths:\n  " + "\n  ".join(violations)

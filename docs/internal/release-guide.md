@@ -26,8 +26,7 @@ release canary, and correctness remain the blocking gates; UAT is a
 non-blocking matrix campaign.
 
 This flow releases the Python package. It does not publish `benchbox.dev`: the site is built and
-deployed from `BenchBox-dev/benchbox-site` by its `.github/workflows/deploy.yml`. `docs.yml` does not
-deploy Pages; it builds the site and captures the protected-develop visual baseline only.
+deployed from `BenchBox-dev/benchbox-site` by its `.github/workflows/deploy.yml`.
 
 ## Pre-merge release-required contract
 
@@ -165,16 +164,14 @@ must not be bypassed with an undocumented local change.
    runs first.
 4. Curates the release branch — `git rm`'s the dev-only and deferred
    release paths while retaining the curated Results Explorer publication
-   inputs: `results-data/`, `results-explorer/`,
+   inputs: `results-data/`,
    `_project/scripts/explorer_pipeline/`,
    `_project/scripts/explorer_publish.py`, and
    `_project/scripts/results_explorer_snapshot_invariants.py`. The rest of
-   `_project/`, `_blog/`, agent configs, and dev-tooling root files remain
+   `_project/`, agent configs, and dev-tooling root files remain
    development-only; the exact list is enforced by the `release-cut:`
    Makefile target and `scripts/check_release_curation.py`.
-   For v0.3.0, `landing/` and `docs/blog/` stay in the release tree so
-   `/prompts/` and promoted release posts ship. Explorer browser/seed/
-   submission/sync workflows remain development-only.
+   Explorer seed, submission and sync workflows remain development-only.
 5. Commits a single `Release vX.Y.Z` commit on `vX.Y.Z`.
 6. Merges `origin/release` into `vX.Y.Z` with `-s ours
    --allow-unrelated-histories`. `release` and `develop` have unrelated roots and
@@ -288,13 +285,12 @@ raw commit subjects, which step 3 requires you to curate anyway.
    design (per A3 in `_project/decisions/single-repo-migration.md`); the
    release squash on `release` does not need to be replayed onto develop.
 
-**The site.** A release needs no site deploy step. `docs.yml` does not deploy on release, and
-`release-finalize` sends nothing to the site. The site's `/docs/` and `/docs/dev/` pages build from
-the newest certified `develop` bundle, which `site-inputs.yml` builds and sends to
-`BenchBox-dev/benchbox-site` as a `core-bundle` dispatch after each successful push to `develop`.
-The release version on the landing page and the release blog posts come from `landing/` and
-`docs/blog/`, which reach the site only when replayed into `BenchBox-dev/benchbox-site` by pull
-request; see "Replaying core changes" in that repository's `AGENTS.md`.
+**The site.** A release needs no site deploy step; deploys are automatic from
+`BenchBox-dev/benchbox-site`. `release-finalize` sends nothing to the site. The site's `/docs/` and
+`/docs/dev/` pages build from the newest certified `develop` bundle, which `site-inputs.yml` builds
+and sends to `BenchBox-dev/benchbox-site` as a `core-bundle` dispatch after each successful push to
+`develop`. The landing page and the release blog posts live in `BenchBox-dev/benchbox-site`; change
+them there by pull request.
 
 **Resuming finalization.** Run `make release-finalize VERSION=X.Y.Z` again after
 an interrupted merge, tag creation, or tag push. If the PR is still open, its
@@ -313,12 +309,9 @@ D5's original "rebase `develop` onto `main`" step became impossible once
 `release`/`develop` diverged as unrelated roots. After a release publishes, bump
 `develop` to match on a branch off `develop`:
 `scripts/update_version.py --version X.Y.Z --update-pyproject`, then `uv lock`,
-then PR back to `develop`. This realigns all six version sources
-(`benchbox/__init__.py`, `pyproject.toml`, the three `Current release:` doc
-markers, and the `landing/index.html` badge) with the latest published release,
-so `develop` no longer trails PyPI.
-The `landing/index.html` badge change reaches benchbox.dev only when replayed into
-`BenchBox-dev/benchbox-site`.
+then PR back to `develop`. This realigns all five version sources
+(`benchbox/__init__.py`, `pyproject.toml` and the three `Current release:` doc
+markers) with the latest published release, so `develop` no longer trails PyPI.
 
 The fast guard
 `tests/unit/release/test_changelog_tag_guard.py::test_repo_release_accounting_matches_*`
@@ -467,8 +460,7 @@ make release-check VERSION=X.Y.Z [BASE_REF=<immutable-predecessor-sha>]
 Hand-curate the `[X.Y.Z]` section of `CHANGELOG.md` between the two commands.
 
 `release-prep` runs `scripts/update_version.py` (`pyproject.toml`,
-`benchbox/__init__.py`, the documentation release markers, and the landing-page
-badge), then `uv lock`, then `scripts/generate_changelog_entry.py`. The changelog
+`benchbox/__init__.py` and the documentation release markers), then `uv lock`, then `scripts/generate_changelog_entry.py`. The changelog
 lower bound defaults to the newest final `vX.Y.Z` tag; `SINCE_REF` overrides it.
 Commit the changed files as one PR.
 
@@ -476,7 +468,7 @@ Commit the changed files as one PR.
 problem it finds. It verifies that:
 
 - the version in `pyproject.toml`, `benchbox/__init__.py`, the documentation
-  markers, the landing badge, and the `uv.lock` package entry equals `VERSION`;
+  markers, and the `uv.lock` package entry equals `VERSION`;
 - `CHANGELOG.md` has a dated, hand-curated `## [X.Y.Z]` section;
 - the `uv.lock` schema revision was not downgraded
   (`_project/scripts/check_uv_lock_revision.py`);

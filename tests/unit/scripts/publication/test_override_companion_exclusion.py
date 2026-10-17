@@ -24,7 +24,6 @@ def _load(module_name: str, filename: str):
 
 ledger_seed = _load("ledger_seed_under_test", "create_ledger_seed.py")
 bijection = _load("bijection_override_under_test", "check_corpus_bijection.py")
-promotion = _load("promotion_override_under_test", "verify_corpus_promotion.py")
 reconciler = _load("reconciler_override_under_test", "reconciler.py")
 parity = _load("parity_override_under_test", "validator_parity.py")
 
@@ -61,17 +60,6 @@ def test_ledger_seed_ignores_override_suffix() -> None:
 def test_bijection_ignores_override_suffix() -> None:
     assert bijection._is_primary_bundle(BUNDLE) is True
     assert bijection._is_primary_bundle(OVERRIDE) is False
-
-
-def test_promotion_local_bundles_ignore_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    bundles = tmp_path / "results-data" / "bundles"
-    bundles.mkdir(parents=True)
-    (bundles / "sf1.json").write_text("{}", encoding="utf-8")
-    (bundles / "sf1.override.json").write_text("{}", encoding="utf-8")
-    (bundles / "sf1.plans.json").write_text("{}", encoding="utf-8")
-    monkeypatch.setattr(promotion, "REPO_ROOT", tmp_path)
-    found = promotion.get_local_bundles(bundles)
-    assert found == ["results-data/bundles/sf1.json"]
 
 
 def test_reconciler_corpus_paths_ignore_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

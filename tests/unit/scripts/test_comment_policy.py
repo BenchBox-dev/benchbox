@@ -28,7 +28,7 @@ from check_comment_policy import (
     source_paths,
 )
 from comment_payloads import stdin_language
-from comment_syntax import Finding, javascript_requests, language, python_findings, scan, source_language, sql_comments
+from comment_syntax import Finding, language, python_findings, scan, source_language, sql_comments
 from run_comment_policy import TRUSTED_FILES, parser_environment, resolve_base
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
@@ -110,28 +110,6 @@ def test_sql_unterminated_constructs_fail(source: str) -> None:
 def test_lexers_preserve_data_and_find_comments(lang: str, source: str, text: str) -> None:
     findings = scan("a", source, lang)
     assert [(f.kind, f.text) for f in findings] == [("comment", text)]
-
-
-def test_native_request_and_payload_response_contract(monkeypatch: pytest.MonkeyPatch) -> None:
-    source = '<script>const x = "// data"; // explanation\n</script>'
-    requests = javascript_requests("a.html", source, "html")
-    assert len(requests) == 1
-
-    def native_run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess:
-        assert command[0] == "node"
-        assert json.loads(str(kwargs["input"])) == requests
-        rows = [
-            {"line": 1, "kind": "comment", "text": "// explanation", "symbol": "f"},
-            {"line": 1, "kind": "payload", "text": "# executable prose", "symbol": "f", "language": "python"},
-        ]
-        return subprocess.CompletedProcess(command, 0, json.dumps(dict.fromkeys(requests, rows)))
-
-    monkeypatch.setattr("check_comment_policy.subprocess.run", native_run)
-    findings = scan_sources(ROOT, {"a.html": source.encode()}, policy())
-    assert [(f.kind, f.text, f.symbol) for f in findings] == [
-        ("comment", "// explanation", "script:0:f"),
-        ("comment", "# executable prose", "script:0:f:payload:"),
-    ]
 
 
 def test_yaml_run_and_notebook_cells() -> None:
@@ -537,41 +515,12 @@ def test_legacy_command_markers_are_neutralized_in_text_and_annotations() -> Non
     assert policy_runner.plain_text("line one\n::add-mask::x") == "line one\\x0a::add-mask::x"
 
 
-@pytest.mark.parametrize("fails", [False, True])
-def test_native_test_output_runs_between_stop_and_resume_tokens(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], fails: bool, tmp_path: Path
-) -> None:
-    monkeypatch.setenv("GITHUB_ACTIONS", "true")
-    seen: list[str] = []
-
-    def native_run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess:
-        before = capsys.readouterr().out.splitlines()
-        assert len(before) == 1 and before[0].startswith("::stop-commands::")
-        seen.append(before[0])
-        assert kwargs["stderr"] is subprocess.STDOUT
-        print("child output")
-        if fails:
-            raise subprocess.CalledProcessError(1, command)
-        return subprocess.CompletedProcess(command, 0)
-
-    monkeypatch.setattr(policy_runner.subprocess, "run", native_run)
-    if fails:
-        with pytest.raises(subprocess.CalledProcessError):
-            policy_runner.run_native_tests(tmp_path, tmp_path, {})
-    else:
-        policy_runner.run_native_tests(tmp_path, tmp_path, {})
-    after = capsys.readouterr().out.splitlines()
-    token = seen[0].removeprefix("::stop-commands::")
-    assert len(token) == 32
-    assert after == ["child output", f"::{token}::"]
-
-
 def test_comment_policy_job_sets_up_every_tool_before_the_candidate_checkout() -> None:
     workflow = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
     steps = workflow["jobs"]["comment-policy"]["steps"]
     uses = [str(step.get("uses", "")).split("@")[0] for step in steps]
     checkout = uses.index("actions/checkout")
-    for tool in ("actions/setup-python", "astral-sh/setup-uv", "actions/setup-node"):
+    for tool in ("actions/setup-python", "astral-sh/setup-uv"):
         assert uses.index(tool) < checkout, f"{tool} must run before the candidate checkout"
     assert checkout == max(index for index, name in enumerate(uses) if name) and steps[checkout + 1]["name"].startswith(
         "Enforce"
@@ -587,17 +536,6 @@ def test_comment_policy_job_does_not_let_setup_uv_scan_the_candidate_checkout() 
         "working-directory": "${{ runner.temp }}",
         "ignore-empty-workdir": True,
     }
-
-
-def test_native_test_output_is_not_wrapped_outside_github_actions(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path
-) -> None:
-    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
-    monkeypatch.setattr(
-        policy_runner.subprocess, "run", lambda command, **kwargs: subprocess.CompletedProcess(command, 0)
-    )
-    policy_runner.run_native_tests(tmp_path, tmp_path, {})
-    assert capsys.readouterr().out == ""
 
 
 def test_candidate_cannot_relax_blocking_enforcement_in_a_comparison(tmp_path: Path) -> None:
@@ -823,28 +761,6 @@ def test_ci_event_rejects_base_override(
         resolve_base(tmp_path, "b" * 40)
 
 
-def test_ci_policy_is_always_required_and_has_local_equivalent() -> None:
-    workflow = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
-    job = workflow["jobs"]["comment-policy"]
-    assert "if" not in job
-    step = next(step for step in job["steps"] if step.get("name") == "Enforce comment and docstring policy")
-    assert 'git show "${BASE_REF}:scripts/run_comment_policy.py"' in step["run"]
-    assert 'python -I "$RUNNER_TEMP/comment-policy-runner.py" --native-tests' in step["run"]
-    assert ': "${BASE_REF:?' in step["run"]
-    listing = step["run"].split('installed="$(git ls-tree -r --name-only "$BASE_REF" --', 1)[1].split(')"', 1)[0]
-    assert set(listing.replace("\\", " ").split()) == {*TRUSTED_FILES, "quality/comment-policy.json"}
-    assert step["run"].index('installed="$(') < step["run"].index("git cat-file -e")
-    assert 'elif [ -z "$installed" ] && git merge-base --is-ancestor' in step["run"]
-    assert "git merge-base --is-ancestor ed5c263c513ba65499f4918d3a7de607f280c65b" in step["run"]
-    assert "pull_request.base.sha" in step["env"]["BASE_REF"]
-    assert "merge_group" not in step["env"]["BASE_REF"]
-    tooling = workflow["jobs"]["tooling"]
-    assert "comment-policy" in tooling["needs"]
-    assert any("--always comment-policy" in step.get("run", "") for step in tooling["steps"])
-    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
-    assert 'failed="$$failed comment-policy"' in makefile
-
-
 @pytest.mark.parametrize(
     "source,expected",
     [
@@ -1058,11 +974,6 @@ def test_multiple_heredocs_and_continued_header() -> None:
     assert [f.text for f in scan("a.sh", source, "bash")] == ["# explanation"]
 
 
-def test_piped_heredoc_is_executable() -> None:
-    source = "cat <<'JS' | node\n// explanation\nJS\n"
-    assert javascript_requests("a.sh", source, "bash")
-
-
 @pytest.mark.parametrize(
     "source",
     [
@@ -1073,11 +984,6 @@ def test_piped_heredoc_is_executable() -> None:
 )
 def test_repository_sql_carriers_are_routed(source: str) -> None:
     assert [f.text for f in scan("a.yaml", source, "yaml")] == ["-- explanation"]
-
-
-def test_github_script_routes_native_request() -> None:
-    source = "steps:\n- uses: actions/github-script@sha\n  with:\n    script: |\n      // explanation\n"
-    assert list(javascript_requests("ci.yaml", source, "yaml").values()) == ["// explanation\n"]
 
 
 def test_myst_metadata_and_nested_examples() -> None:
@@ -1130,12 +1036,9 @@ def test_report_handles_provenance_excluded_vendor_binary(tmp_path: Path) -> Non
 
 
 def test_parser_environment_installs_only_trusted_material(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    for name in ("comment-policy-package.json", "comment-policy-package-lock.json"):
-        (tmp_path / name).write_text("{}", encoding="utf-8")
     commands = []
     monkeypatch.setenv("PYTHONPATH", "candidate")
-    monkeypatch.setenv("NODE_OPTIONS", "--require=candidate")
-    monkeypatch.setenv("COMMENT_POLICY_TYPESCRIPT", "candidate")
+    monkeypatch.setenv("UV_INDEX_URL", "https://candidate.invalid/simple")
 
     def install(command: list[str], **kwargs: object) -> subprocess.CompletedProcess:
         commands.append((command, kwargs))
@@ -1144,81 +1047,16 @@ def test_parser_environment_installs_only_trusted_material(tmp_path: Path, monke
     monkeypatch.setattr("run_comment_policy.subprocess.run", install)
     python, env = parser_environment(tmp_path)
     assert str(python).startswith(str(tmp_path))
-    assert "PYTHONPATH" not in env and "NODE_OPTIONS" not in env
-    assert env["COMMENT_POLICY_TYPESCRIPT"] == str(tmp_path / "node_modules/typescript")
+    assert "PYTHONPATH" not in env and "UV_INDEX_URL" not in env
     assert "--require-hashes" in commands[1][0]
-    assert "--ignore-scripts" in commands[2][0]
     assert str(tmp_path / "comment-policy-requirements.txt") in commands[1][0]
-    assert commands[2][1]["cwd"] == tmp_path
+    assert len(commands) == 2
 
 
 def test_comment_policy_trust_roots_require_soundness_review() -> None:
     routes = (ROOT / ".github/soundness-paths.txt").read_text().splitlines()
     for path in (*TRUSTED_FILES, "scripts/run_comment_policy.py", "quality/comment-policy.json"):
         assert "file\t" + path in routes
-
-
-@pytest.mark.parametrize("prose,native_failure", [(True, False), (True, True), (False, False), (False, True)])
-def test_candidate_native_execution_cannot_replace_checker(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, prose: bool, native_failure: bool
-) -> None:
-    git_repo(tmp_path, "x = 1\n")
-    for name in TRUSTED_FILES:
-        target = tmp_path / name
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text("", encoding="utf-8")
-    (tmp_path / "scripts/comment_policy_entry.py").write_bytes((ROOT / "scripts/comment_policy_entry.py").read_bytes())
-    (tmp_path / "scripts/check_comment_policy.py").write_text(
-        "import sys\nfrom pathlib import Path\n"
-        "root = Path(sys.argv[sys.argv.index('--root') + 1])\n"
-        "raise SystemExit(int('# explanation' in (root / 'scripts/bad.py').read_text()))\n",
-        encoding="utf-8",
-    )
-    subprocess.run(["git", "-C", str(tmp_path), "add", "scripts", "quality"], check=True)
-    subprocess.run(
-        [
-            "git",
-            "-C",
-            str(tmp_path),
-            "-c",
-            "user.name=Fixture",
-            "-c",
-            "user.email=fixture@example.invalid",
-            "-c",
-            "commit.gpgsign=false",
-            "commit",
-            "-qm",
-            "Checker fixture",
-        ],
-        check=True,
-    )
-    base = subprocess.check_output(["git", "-C", str(tmp_path), "rev-parse", "HEAD"], text=True).strip()
-    (tmp_path / "scripts/bad.py").write_text("# explanation\n" if prose else "x = 1\n", encoding="utf-8")
-    order = []
-    real_run = subprocess.run
-
-    def execute(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess:
-        if command[0] == "node":
-            order.append("native")
-            directory = kwargs["cwd"]
-            assert isinstance(directory, Path)
-            (directory / "check_comment_policy.py").write_text("raise SystemExit(0)\n", encoding="utf-8")
-            if native_failure:
-                raise subprocess.CalledProcessError(1, command)
-            return subprocess.CompletedProcess(command, 0)
-        if command[0] == sys.executable and any(str(value).endswith("comment_policy_entry.py") for value in command):
-            order.append("checker")
-        return real_run(command, **kwargs)
-
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
-    monkeypatch.delenv("GITHUB_EVENT_NAME", raising=False)
-    monkeypatch.delenv("GITHUB_EVENT_PATH", raising=False)
-    monkeypatch.setattr(policy_runner, "parser_environment", lambda trusted: (Path(sys.executable), dict(os.environ)))
-    monkeypatch.setattr(policy_runner.subprocess, "run", execute)
-    assert policy_runner.main(["--base", base, "--native-tests"]) == (1 if prose else 2 if native_failure else 0)
-    assert order == (["checker"] if prose else ["checker", "native"])
-    assert (tmp_path / "scripts/bad.py").read_text() == ("# explanation\n" if prose else "x = 1\n")
 
 
 def test_new_files_do_not_inherit_vendor_directory_exclusion() -> None:
@@ -1819,27 +1657,6 @@ def test_opaque_fixture_permission_changes_with_contributing_consumer_code() -> 
     assert changed.text == finding.text
     assert changed.payload != finding.payload
     assert not allowed(changed, registered, source)
-
-
-def test_native_payload_batches_include_nested_shell_javascript(monkeypatch: pytest.MonkeyPatch) -> None:
-    source = 'import {execSync} from "node:child_process"; execSync("node -e \'// explanation\'");'
-    batches = []
-
-    def native_run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess:
-        requests = json.loads(str(kwargs["input"]))
-        batches.append(requests)
-        row = (
-            {"kind": "payload", "language": "bash", "line": 1, "symbol": "", "text": "node -e '// explanation'"}
-            if len(batches) == 1
-            else {"kind": "comment", "line": 1, "text": "// explanation", "symbol": ""}
-        )
-        return subprocess.CompletedProcess(command, 0, json.dumps({key: [row] for key in requests}))
-
-    monkeypatch.setattr("check_comment_policy.subprocess.run", native_run)
-    findings = scan_sources(ROOT, {"a.ts": source.encode()}, policy())
-    assert [(f.kind, f.text) for f in findings] == [("comment", "// explanation")]
-    assert len(batches) == 2
-    assert list(batches[1].values()) == ["// explanation"]
 
 
 @pytest.mark.parametrize("node_type", [ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef])
@@ -3002,7 +2819,7 @@ def test_preclassified_external_dependency_still_checks_immutable_bytes(
         ("htmloutput", "<script>{{ payload }}</script>", "html+jinja", "coverage-error"),
         ("htmlliteral", '<script>{{ "// hidden" }}</script>', "html+jinja", "coverage-error"),
         ("htmlemittedtags", '{{ "<script>// hidden</script>" }}', "html+jinja", "coverage-error"),
-        ("htmlbranch", "{% if x %}<script>// hidden</script>{% endif %}", "html+jinja", "coverage-error"),
+        ("htmlbranch", "{% if x %}<script>// hidden</script>{% endif %}", "html+jinja", "comment"),
         ("htmlstatic", "<div>{# template prose #}</div>", "html+jinja", "comment"),
         ("quotedcallee", 'this."sh"("echo ok # hidden")', "groovy", "coverage-error"),
         ("unclosedcall", "sh('echo ok'", "groovy", "coverage-error"),
@@ -3042,30 +2859,6 @@ def test_groovy_shell_payload_location():
     assert [(finding.line, finding.text) for finding in findings if finding.kind == "comment"] == [(2, "# shell prose")]
 
 
-def test_owned_template_scripts_are_scanned_beside_rendered_output():
-    source = "{% block body %}{{ body }}<script>// owned\nconsole.log(1)</script>{% endblock %}"
-    requests = javascript_requests("page.html", source, "html+jinja")
-    assert list(requests.values()) == ["// owned\nconsole.log(1)"]
-    results = {key: [{"kind": "comment", "line": 1, "text": "// owned"}] for key in requests}
-    findings = scan("page.html", source, "html+jinja", results)
-    assert not any(finding.kind == "coverage-error" for finding in findings)
-    assert any(finding.kind == "comment" and finding.text == "// owned" for finding in findings)
-
-
-@pytest.mark.parametrize(
-    "source",
-    [
-        "<script>{{ payload }}</script>",
-        '<script>{{ "// hidden" }}</script>',
-        '{{ "<script>// hidden</script>" }}',
-        "<script>{% if x %}// hidden{% endif %}</script>",
-    ],
-)
-def test_template_output_is_not_treated_as_literal_javascript(source):
-    assert javascript_requests("page.html", source, "html+jinja") == {}
-    assert any(finding.kind == "coverage-error" for finding in scan("page.html", source, "html+jinja"))
-
-
 def test_owned_template_css_comments_are_found_inside_template_logic():
     source = "{% if x %}<style>/* owned CSS */a{color:red}</style>{% endif %}"
     findings = scan("page.html", source, "html+jinja")
@@ -3090,17 +2883,9 @@ const title = "x";
 """
 
 
-def test_astro_sources_are_a_registered_maintained_language() -> None:
-    from comment_syntax import language
-
-    assert language("website/src/pages/index.astro") == "astro"
-    assert language("website/src/data.unregistered") == "unsupported"
-    assert "website/" in json.loads((ROOT / "quality/comment-policy.json").read_text(encoding="utf-8"))["completed"]
-
-
 def test_astro_template_comments_are_found_without_flagging_embedded_blocks() -> None:
     source = "<div>{/* expression */}</div>\n<!-- html -->\n<style>a::after { content: '<!-- data -->'; }</style>\n"
-    findings = scan("a.astro", source, "astro", {k: [] for k in javascript_requests("a.astro", source, "astro")})
+    findings = scan("a.astro", source, "astro")
     assert [(f.line, f.kind, f.text) for f in findings if f.kind == "comment" and f.text.startswith("<!--")] == [
         (2, "comment", "<!-- html -->")
     ]
@@ -3117,28 +2902,7 @@ ASTRO_STRING_MARKER_SOURCES = [
 
 def test_astro_html_comment_markers_inside_strings_are_data() -> None:
     for source in ASTRO_STRING_MARKER_SOURCES:
-        assert not [
-            f
-            for f in scan("a.astro", source, "astro", {k: [] for k in javascript_requests("a.astro", source, "astro")})
-            if f.text.startswith("<!--")
-        ]
-
-
-@pytest.mark.parametrize(
-    "source,expressions",
-    [
-        ("<p>{x /* c */}</p>\n", ["x /* c */"]),
-        ("<ul>{items.map((i) => /* c */ i)}</ul>\n", ["items.map((i) => /* c */ i)"]),
-        ("<p>{\n// c\nx}</p>\n", ["\n// c\nx"]),
-        ('<a href={u /* c */} class="b">x</a>\n', ["u /* c */"]),
-        ("<p>{cond && <b>{y /* c */}</b>}</p>\n", ["cond && <b>{y /* c */}</b>"]),
-        ("<p>{cond && <b>don't {y}</b> /* c */}</p>\n", ["cond && <b>don't {y}</b> /* c */"]),
-        ("<p>{`a ${b /* c */} d`}</p>\n", ["`a ${b /* c */} d`"]),
-    ],
-)
-def test_astro_template_expressions_are_scanned_as_typescript(source: str, expressions: list[str]) -> None:
-    requests = javascript_requests("a.astro", source, "astro")
-    assert list(requests.values()) == [f"[\n{text}\n];" for text in expressions]
+        assert not [f for f in scan("a.astro", source, "astro") if f.text.startswith("<!--")]
 
 
 @pytest.mark.parametrize(
@@ -3322,133 +3086,9 @@ def test_notebook_pip_source_and_file_options_remain_unknown(source: str) -> Non
     assert any(f.kind == "coverage-error" for f in findings)
 
 
-@pytest.mark.parametrize(
-    "source",
-    [
-        '(directory / "page.html").write_text(dynamic)',
-        '(directory / "page.html").write_text(data=dynamic)',
-        'HTML = "<style>body{}</style>"\nHTML = dynamic\n(directory / "page.html").write_text(HTML)',
-        'HTML = "<script>\\n// hidden</script>"\n(directory / "page.html").write_text(HTML)',
-        'HTML = "<script>" + "// hidden</script>"\n(directory / "page.html").write_text(HTML)',
-        'HTML = "<script>" "// hidden</script>"\n(directory / "page.html").write_text(HTML)',
-        '(directory / "page.html").write_text(f"<script>{dynamic}</script>")',
-        '(directory / "page.html").write_text()',
-    ],
-)
-def test_python_html_output_unresolved_source_is_visible(source: str) -> None:
-    source = 'from pathlib import Path\ndirectory = Path("/tmp")\n' + source
-    findings = scan("a.py", source, "python", {})
-    assert any(f.kind == "payload-error" and f.text == "unresolved HTML output source" for f in findings)
-    assert not javascript_requests("a.py", source, "python")
-
-
-@pytest.mark.parametrize(
-    "source",
-    [
-        'HTML = "<script>// inert</script>"',
-        '(directory / "page.txt").write_text("<script>// data</script>")',
-        'help_text = "A <script> tag"',
-    ],
-)
-def test_python_non_html_output_stays_data(source: str) -> None:
-    assert not scan("a.py", source, "python", {})
-    assert not javascript_requests("a.py", source, "python")
-
-
-@pytest.mark.parametrize(
-    "writer",
-    [
-        '(directory / "page.html").write_text(HTML)',
-        '(directory / "page.HTML").write_text(data=HTML)',
-        'from pathlib import Path\nPath("page.htm").write_text(HTML)',
-        'from pathlib import Path as P\nP("page.html").write_text(HTML)',
-    ],
-)
-def test_python_html_output_uses_declaration_offsets(writer: str) -> None:
-    source = (
-        'from pathlib import Path\ndirectory = Path("/tmp")\nHTML = """<script>\n// visible\n</script>"""\n\n' + writer
-    )
-    requests = javascript_requests("a.py", source, "python")
-    assert len(requests) == 1
-    rows = {key: [{"line": 2, "kind": "comment", "text": "// visible", "symbol": ""}] for key in requests}
-    findings = scan("a.py", source, "python", rows)
-    assert [(f.kind, f.line, f.text) for f in findings] == [("comment", 4, "// visible")]
-    missing = scan("a.py", source, "python", {})
-    assert any(f.kind == "coverage-error" and "TypeScript parser result missing" in f.text for f in missing)
-
-
-def test_published_404_html_reaches_native_scanner(monkeypatch: pytest.MonkeyPatch) -> None:
-    source = (ROOT / "scripts/assemble_public_site.py").read_text(encoding="utf-8")
-    comment = "// checker fixture"
-    source = source.replace("<script>", "<script>\n" + comment, 1)
-    requests = javascript_requests("scripts/assemble_public_site.py", source, "python")
-    assert len(requests) == 1
-    payload = next(iter(requests.values()))
-    rows = {
-        key: [
-            {
-                "line": payload[: payload.index(comment)].count("\n") + 1,
-                "kind": "comment",
-                "text": comment,
-                "symbol": "",
-            }
-        ]
-        for key in requests
-    }
-
-    def native_run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess:
-        assert json.loads(str(kwargs["input"])) == requests
-        return subprocess.CompletedProcess(command, 0, json.dumps(rows))
-
-    monkeypatch.setattr("check_comment_policy.subprocess.run", native_run)
-    findings = scan_sources(ROOT, {"scripts/assemble_public_site.py": source.encode()}, policy())
-    visible = [f for f in findings if f.text == comment]
-    assert len(visible) == 1
-    assert visible[0].line == source[: source.index(comment)].count("\n") + 1
-
-
-def test_python_html_output_invalid_python_retains_coverage_error() -> None:
-    source = '(directory / "page.html").write_text('
-    assert javascript_requests("a.py", source, "python") == {}
-    assert scan("a.py", source, "python")[0].kind == "coverage-error"
-
-
-@pytest.mark.parametrize(
-    "call",
-    [
-        '(directory / "page.html").write_text("<script>const x=1;</script>", data=dynamic)',
-        '(directory / "page.html").write_text(data="<script>const x=1;</script>", **options)',
-        '(directory / "page.html").write_text("<script>const x=1;</script>", **options)',
-        '(directory / "page.html").write_text(*arguments)',
-    ],
-)
-def test_python_html_output_ambiguous_argument_binding_is_visible(call: str) -> None:
-    source = 'from pathlib import Path\ndirectory = Path("/tmp")\n' + call
-    assert any(f.kind == "payload-error" for f in scan("a.py", source, "python", {}))
-    assert not javascript_requests("a.py", source, "python")
-
-
-def test_non_path_html_named_data_sink_is_not_executed_source() -> None:
-    source = 'class DataSink:\n    def __truediv__(self, name): return self\n    def write_text(self, data): return data\nvalue = DataSink()\n(value / "page.html").write_text("<script>// data</script>")\n'
-    assert not javascript_requests("a.py", source, "python")
-    assert not scan("a.py", source, "python", {})
-
-
-def test_path_parameter_rebinding_does_not_prove_html_sink() -> None:
-    source = 'from pathlib import Path\ndef write(directory: Path):\n    directory = arbitrary_object\n    (directory / "page.html").write_text("<script>// data</script>")\n'
-    assert not javascript_requests("a.py", source, "python")
-    assert any(f.kind == "payload-error" for f in scan("a.py", source, "python", {}))
-
-
 def test_path_parameter_html_sink_preserves_comment_line() -> None:
     source = 'from pathlib import Path\ndef write(directory: Path):\n    directory = directory.resolve()\n    (directory / "page.html").write_text("""<style>\n/* visible */\n</style>""")\n'
-    assert [(f.line, f.text) for f in scan("a.py", source, "python", {})] == [(5, "/* visible */")]
-
-
-def test_unknown_division_html_sink_stays_unresolved() -> None:
-    source = '(unknown / "page.html").write_text("<script>// unresolved</script>")'
-    assert not javascript_requests("a.py", source, "python")
-    assert any(f.kind == "payload-error" for f in scan("a.py", source, "python", {}))
+    assert [(f.line, f.text) for f in scan("a.py", source, "python")] == [(5, "/* visible */")]
 
 
 def test_c_include_targets_are_not_comments() -> None:
@@ -3484,10 +3124,10 @@ def test_reviewed_process_argv_is_exact() -> None:
 
     path, argv = next(key for key in REVIEWED_PROCESS_ARGV if key[0] == "benchbox/core/tpch/streams.py")
     source = f"import subprocess\ncmd = {argv}\nsubprocess.run(cmd)\n"
-    assert not [f for f in scan(path, source, "python", {}) if f.kind == "payload-error"]
-    assert [f.kind for f in scan("other.py", source, "python", {})] == ["payload-error"]
+    assert not [f for f in scan(path, source, "python") if f.kind == "payload-error"]
+    assert [f.kind for f in scan("other.py", source, "python")] == ["payload-error"]
     edited = source.replace("'-p'", "'-c'")
-    assert [f.kind for f in scan(path, edited, "python", {})] == ["payload-error"]
+    assert [f.kind for f in scan(path, edited, "python")] == ["payload-error"]
 
 
 def test_reviewed_process_argv_entries_match_current_sources() -> None:
@@ -3504,14 +3144,14 @@ def test_reviewed_process_argv_entries_match_current_sources() -> None:
 
 def test_absolute_literal_path_executable_is_resolved() -> None:
     source = "import subprocess\nfrom pathlib import Path\nhelper = Path('/usr/libexec/java_home')\nsubprocess.run([str(helper), '-v', '17'])\n"
-    assert scan("a.py", source, "python", {}) == []
+    assert scan("a.py", source, "python") == []
 
 
 def test_module_file_path_script_operand_is_resolved() -> None:
     source = "import subprocess, sys\nfrom pathlib import Path\nscript = Path(__file__).parent / 'run.py'\nsubprocess.run([sys.executable, str(script)])\n"
-    assert scan("a.py", source, "python", {}) == []
+    assert scan("a.py", source, "python") == []
     rebound = "__file__ = '-c'\n" + source
-    assert [f.kind for f in scan("a.py", rebound, "python", {})] == ["payload-error"]
+    assert [f.kind for f in scan("a.py", rebound, "python")] == ["payload-error"]
 
 
 def test_tailwind_apply_does_not_hide_css_comments() -> None:
@@ -3525,7 +3165,7 @@ def test_tailwind_apply_does_not_hide_css_comments() -> None:
 )
 def test_literal_path_executable_must_not_be_an_option(literal: str, kinds: list) -> None:
     source = f"import subprocess\nfrom pathlib import Path\nexe = Path({literal!r})\nsubprocess.run([str(exe), '-c', 'print(1)'])\n"
-    assert [f.kind for f in scan("a.py", source, "python", {})] == kinds
+    assert [f.kind for f in scan("a.py", source, "python")] == kinds
 
 
 @pytest.mark.parametrize(
@@ -3539,7 +3179,7 @@ def test_literal_path_executable_must_not_be_an_option(literal: str, kinds: list
     ],
 )
 def test_jinja_html_template_logic_is_bounded(source: str, kinds: list) -> None:
-    assert [f.kind for f in scan("docs/_templates/a.html", source, "html+jinja", {})] == kinds
+    assert [f.kind for f in scan("docs/_templates/a.html", source, "html+jinja")] == kinds
 
 
 @pytest.mark.parametrize(
@@ -3566,14 +3206,14 @@ def test_github_expressions_in_run_scripts_are_data() -> None:
         "          print(name)\n"
         '          "\n'
     )
-    findings = scan(".github/workflows/a.yml", source, "yaml", {})
+    findings = scan(".github/workflows/a.yml", source, "yaml")
     assert [f.kind for f in findings] == ["comment"]
     assert findings[0].text == "# hidden"
 
 
 def test_github_expressions_outside_workflows_stay_dynamic() -> None:
     source = "steps:\n  - run: |\n      uv run -- python -c \"print('${{ x }}')\"\n"
-    assert [f.kind for f in scan("docs/a.yml", source, "yaml", {})] == ["coverage-error"]
+    assert [f.kind for f in scan("docs/a.yml", source, "yaml")] == ["coverage-error"]
 
 
 @pytest.mark.parametrize(
@@ -3644,82 +3284,6 @@ def test_inert_uv_subcommands_and_simple_data_heredoc_substitutions(source: str,
     assert [f.kind for f in scan("a.sh", source, "bash")] == kinds
 
 
-def test_reviewed_javascript_flows_are_exact_and_current() -> None:
-    from comment_syntax import REVIEWED_JAVASCRIPT_FLOWS, javascript_key
-
-    for path, text in REVIEWED_JAVASCRIPT_FLOWS:
-        source = (ROOT / path).read_text(encoding="utf-8")
-        row = {"kind": "coverage-error", "line": 1, "text": text}
-        key = javascript_key(path, source)
-        assert scan(path, source, "javascript", {key: [row]}) == []
-        other = "results-explorer/src/other.ts"
-        assert [f.text for f in scan(other, source, "javascript", {javascript_key(other, source): [row]})] == [text]
-
-
-def test_reviewed_javascript_flows_still_occur() -> None:
-    import json
-    import shutil
-    import subprocess
-
-    from comment_syntax import REVIEWED_JAVASCRIPT_FLOWS, resolve_typescript_dir
-
-    typescript = resolve_typescript_dir(ROOT)
-    assert shutil.which("node") is not None, "Node.js is required to verify reviewed JavaScript flows"
-    assert typescript is not None and typescript.exists(), "the TypeScript parser is required for reviewed flows"
-    paths = sorted({path for path, _ in REVIEWED_JAVASCRIPT_FLOWS})
-    requests = {path: (ROOT / path).read_text(encoding="utf-8") for path in paths}
-    result = subprocess.run(
-        ["node", str(ROOT / "scripts/comment_syntax_js.cjs")],
-        input=json.dumps(requests),
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    observed = {(path, row["text"]) for path, rows in json.loads(result.stdout).items() for row in rows}
-    assert set(REVIEWED_JAVASCRIPT_FLOWS) <= observed
-
-
-def test_typescript_resolution_prefers_environment_then_local(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from comment_syntax import resolve_typescript_dir
-
-    monkeypatch.setenv("COMMENT_POLICY_TYPESCRIPT", "/env/typescript")
-    assert resolve_typescript_dir(tmp_path) == Path("/env/typescript")
-    monkeypatch.delenv("COMMENT_POLICY_TYPESCRIPT")
-    local = tmp_path / "results-explorer" / "node_modules" / "typescript"
-    local.mkdir(parents=True)
-    assert resolve_typescript_dir(tmp_path) == local
-
-
-def test_typescript_resolution_falls_back_to_git_common_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    import comment_syntax
-    from comment_syntax import resolve_typescript_dir
-
-    monkeypatch.delenv("COMMENT_POLICY_TYPESCRIPT", raising=False)
-    primary = tmp_path / "primary" / "results-explorer" / "node_modules" / "typescript"
-    primary.mkdir(parents=True)
-
-    def fake_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess:
-        return subprocess.CompletedProcess(args, 0, str(tmp_path / "primary" / ".git"))
-
-    monkeypatch.setattr(comment_syntax.subprocess, "run", fake_run)
-    assert resolve_typescript_dir(tmp_path / "linked-worktree") == primary.resolve()
-
-
-def test_typescript_resolution_returns_none_when_git_is_unavailable(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    import comment_syntax
-    from comment_syntax import resolve_typescript_dir
-
-    monkeypatch.delenv("COMMENT_POLICY_TYPESCRIPT", raising=False)
-
-    def missing_git(*args: object, **kwargs: object) -> subprocess.CompletedProcess:
-        raise FileNotFoundError("no git on PATH")
-
-    monkeypatch.setattr(comment_syntax.subprocess, "run", missing_git)
-    assert resolve_typescript_dir(tmp_path) is None
-
-
 @pytest.mark.parametrize(
     ("source", "kind"),
     [
@@ -3740,7 +3304,7 @@ def test_typescript_resolution_returns_none_when_git_is_unavailable(
     ],
 )
 def test_python_process_and_html_sinks_fail_closed(source: str, kind: str) -> None:
-    assert [f.kind for f in scan("a.py", source, "python", {})] == [kind]
+    assert [f.kind for f in scan("a.py", source, "python")] == [kind]
 
 
 @pytest.mark.parametrize(
@@ -3748,7 +3312,7 @@ def test_python_process_and_html_sinks_fail_closed(source: str, kind: str) -> No
     ['import subprocess\nsubprocess.run(["git", "-c", "user.name=x", "status"])\n', 'open("o.html").read()\n'],
 )
 def test_data_process_and_html_reads_stay_clean(source: str) -> None:
-    assert scan("a.py", source, "python", {}) == []
+    assert scan("a.py", source, "python") == []
 
 
 @pytest.mark.parametrize(
@@ -3796,7 +3360,7 @@ def test_unmodeled_inline_source_without_a_comment_marker_is_accepted(source: st
     ],
 )
 def test_shell_script_keys_without_comments_are_clean(path: str, source: str, lang: str) -> None:
-    assert scan(path, source, lang, {}) == []
+    assert scan(path, source, lang) == []
 
 
 @pytest.mark.parametrize(
@@ -3812,7 +3376,7 @@ def test_shell_script_keys_without_comments_are_clean(path: str, source: str, la
     ],
 )
 def test_structured_command_keys_are_scanned(path: str, source: str, lang: str, kind: str) -> None:
-    assert [f.kind for f in scan(path, source, lang, {})] == [kind]
+    assert [f.kind for f in scan(path, source, lang)] == [kind]
 
 
 def test_reviewed_joinorder_copy_where_clause_is_an_integer_id_list() -> None:
@@ -3838,121 +3402,26 @@ def test_reviewed_joinorder_copy_where_clause_is_an_integer_id_list() -> None:
                 assert "id IN (" in text and "str(value) for value in table_ids" in text
 
 
-@pytest.mark.parametrize(
-    "source",
-    ["<p>{x}</p>\n", '<a href="http://example.com">x</a>\n', '<p>{"http://example.com"}</p>\n'],
-)
-def test_astro_expressions_without_comment_tokens_are_still_parsed(source: str) -> None:
-    requests = javascript_requests("a.astro", source, "astro")
-    assert len(requests) == source.count("{")
-
-
-def test_astro_expression_comment_lines_map_to_source_lines() -> None:
-    source = "<div>\n  <p>\n    {\n      // c\n      x\n    }\n  </p>\n</div>\n"
-    requests = javascript_requests("a.astro", source, "astro")
-    rows = {key: [{"kind": "comment", "line": 3, "text": "// c", "symbol": ""}] for key in requests}
-    findings = scan("a.astro", source, "astro", rows)
-    assert [(f.line, f.text) for f in findings] == [(4, "// c")]
-
-
-@pytest.mark.parametrize(
-    "source,expressions",
-    [
-        ('<p>{/"/.test(s) /* c */}</p>\n', ['/"/.test(s) /* c */']),
-        ("<p>{/{/.test(s) /* c */}</p>\n", ["/{/.test(s) /* c */"]),
-        ('<p>{s.replace(/https?:\\/\\//, "") /* c */}</p>\n', ['s.replace(/https?:\\/\\//, "") /* c */']),
-        ("<p>{/a\\/*b/.test(s) /* c */}</p>\n", ["/a\\/*b/.test(s) /* c */"]),
-        ("<p>{/[/}]/.test(s) /* c */}</p>\n", ["/[/}]/.test(s) /* c */"]),
-        ("<p>{a / b /* c */}</p>\n", ["a / b /* c */"]),
-        ("<p>{x/2 /* c */}</p>\n", ["x/2 /* c */"]),
-        ("<p>{(a) / (b) // c\n}</p>\n", ["(a) / (b) // c\n"]),
-    ],
-)
-def test_astro_regex_literals_and_division_in_expressions(source: str, expressions: list[str]) -> None:
-    requests = javascript_requests("a.astro", source, "astro")
-    assert list(requests.values()) == [f"[\n{text}\n];" for text in expressions]
-    rows = {key: [{"kind": "comment", "line": 2, "text": "/* c */", "symbol": ""}] for key in requests}
-    findings = scan("a.astro", source, "astro", rows)
-    assert [f.kind for f in findings] == ["comment"]
-
-
 @pytest.mark.parametrize("source", ['<p>{/"/.test(s)}</p>\n', "<p>{/{/.test(s)}</p>\n", "<p>{a / b}</p>\n"])
 def test_astro_regex_literal_without_comment_tokens_is_not_a_coverage_error(source: str) -> None:
-    assert scan("a.astro", source, "astro", {k: [] for k in javascript_requests("a.astro", source, "astro")}) == []
-
-
-def test_astro_frontmatter_regex_literal_with_backtick_does_not_open_a_template() -> None:
-    source = "---\nconst r = /`/;\nconst d = a / b;\n// c\n---\n<p>x</p>\n"
-    requests = javascript_requests("a.astro", source, "astro")
-    assert list(requests.values()) == ["const r = /`/;\nconst d = a / b;\n// c\n"]
-
-
-def test_astro_html_comment_inside_jsx_in_an_expression_is_found() -> None:
-    source = "<ul>{xs.map((x) => <li><!-- in jsx --></li>)}</ul>\n<p>{'<!-- data -->'}</p>\n"
-    findings = scan("a.astro", source, "astro", {k: [] for k in javascript_requests("a.astro", source, "astro")})
-    assert [(f.line, f.text) for f in findings] == [(1, "<!-- in jsx -->")]
-
-
-def test_astro_frontmatter_ends_at_the_first_top_level_fence() -> None:
-    source = "---\nconst text = `\n---\nstill code\n`;\nconst other = '---';\n---\n<p>{text}</p>\n"
-    requests = javascript_requests("a.astro", source, "astro")
-    assert list(requests.values()) == [
-        "const text = `\n---\nstill code\n`;\nconst other = '---';\n",
-        "[\ntext\n];",
-    ]
-    assert not scan("a.astro", source, "astro", {k: [] for k in requests})
-
-
-def test_astro_frontmatter_fence_after_comment_and_interpolation() -> None:
-    source = "---\n// ---\nconst a = `${'}'}`;\n/*\n---\n*/\n---\n<p>x</p>\n"
-    requests = javascript_requests("a.astro", source, "astro")
-    assert list(requests.values()) == ["// ---\nconst a = `${'}'}`;\n/*\n---\n*/\n"]
+    assert scan("a.astro", source, "astro") == []
 
 
 def test_astro_unterminated_frontmatter_is_a_coverage_error() -> None:
-    findings = scan("a.astro", "---\nconst a = 1;\n<p>x</p>\n", "astro", {})
+    findings = scan("a.astro", "---\nconst a = 1;\n<p>x</p>\n", "astro")
     assert [f.kind for f in findings] == ["coverage-error"]
-
-
-def test_astro_frontmatter_script_and_style_are_scanned_as_their_own_languages() -> None:
-    requests = javascript_requests("a.astro", ASTRO_SOURCE, "astro")
-    assert len(requests) == 4
-    comments = ["// frontmatter explanation", "// script explanation", "/* expression explanation */", None]
-    lines = [1, 1, 2, 2]
-    rows = {
-        key: [{"kind": "comment", "line": line, "text": text, "symbol": ""}] if text else []
-        for key, text, line in zip(requests, comments, lines, strict=True)
-    }
-    assert list(requests.values()) == [
-        '// frontmatter explanation\nconst title = "x";\n',
-        '\n  // script explanation\n  console.log("<!-- data -->");\n',
-        "[\n/* expression explanation */\n];",
-        "[\ntitle\n];",
-    ]
-    findings = scan("a.astro", ASTRO_SOURCE, "astro", rows)
-    assert sorted((f.line, f.text) for f in findings) == [
-        (2, "// frontmatter explanation"),
-        (5, "<!-- template explanation -->"),
-        (6, "/* expression explanation */"),
-        (8, "/* style explanation */"),
-        (11, "// script explanation"),
-    ]
-
-
-def test_astro_without_frontmatter_has_no_javascript_requests() -> None:
-    assert javascript_requests("a.astro", "<p>text</p>\n", "astro") == {}
 
 
 def test_myst_list_table_content_is_scanned_and_postlist_is_display_only() -> None:
     table = "````{list-table}\n:header-rows: 1\n\n* - Name\n  - Example\n* - a\n  - ```python\n    x = 1  # note\n    ```\n````\n"
-    assert [f.text for f in scan("docs/a.md", table, "examples", {})] == ["# note"]
-    assert scan("docs/blog/index.md", "```{postlist}\n:list-style: none\n```\n", "examples", {}) == []
+    assert [f.text for f in scan("docs/a.md", table, "examples")] == ["# note"]
+    assert scan("docs/blog/index.md", "```{postlist}\n:list-style: none\n```\n", "examples") == []
 
 
 def test_myst_eval_rst_content_is_scanned_like_an_rst_page() -> None:
     source = "```{eval-rst}\n.. code-block:: python\n\n   x = 1  # note\n```\n"
-    assert [f.text for f in scan("docs/a.md", source, "examples", {})] == ["# note"]
-    assert scan("docs/blog/index.md", "```{eval-rst}\n* `Archive <archive.html>`_\n```\n", "examples", {}) == []
+    assert [f.text for f in scan("docs/a.md", source, "examples")] == ["# note"]
+    assert scan("docs/blog/index.md", "```{eval-rst}\n* `Archive <archive.html>`_\n```\n", "examples") == []
 
 
 @pytest.mark.parametrize(
@@ -3977,7 +3446,7 @@ def test_myst_eval_rst_content_is_scanned_like_an_rst_page() -> None:
     ],
 )
 def test_unmodeled_executable_forms_fail_closed(path: str, source: str, lang: str) -> None:
-    assert [f.kind for f in scan(path, source, lang, {})] in (["payload-error"], ["coverage-error"])
+    assert [f.kind for f in scan(path, source, lang)] in (["payload-error"], ["coverage-error"])
 
 
 @pytest.mark.parametrize(
@@ -3999,7 +3468,7 @@ def test_unmodeled_executable_forms_fail_closed(path: str, source: str, lang: st
     ],
 )
 def test_sql_clients_entry_keys_and_nested_commands_are_scanned(path: str, source: str, lang: str, text: str) -> None:
-    assert [f.text for f in scan(path, source, lang, {})] == [text]
+    assert [f.text for f in scan(path, source, lang)] == [text]
 
 
 @pytest.mark.parametrize(
@@ -4013,12 +3482,7 @@ def test_sql_clients_entry_keys_and_nested_commands_are_scanned(path: str, sourc
     ],
 )
 def test_data_flags_and_comment_free_sources_stay_clean(path: str, source: str, lang: str) -> None:
-    assert scan(path, source, lang, {}) == []
-
-
-def test_every_astro_expression_is_sent_to_the_typescript_scanner() -> None:
-    source = '<div>{query("SELECT 1 -- hi")}</div>\n'
-    assert list(javascript_requests("a.astro", source, "astro").values()) == ['[\nquery("SELECT 1 -- hi")\n];']
+    assert scan(path, source, lang) == []
 
 
 @pytest.mark.parametrize(
@@ -4072,12 +3536,7 @@ def test_heredoc_inside_command_substitution_is_skipped_as_data() -> None:
     ],
 )
 def test_interpreter_options_before_inline_source_and_find_exec(path: str, source: str, lang: str, kinds: list) -> None:
-    assert [f.kind for f in scan(path, source, lang, {})] == kinds
-
-
-@pytest.mark.parametrize("source", ["node -p '// hi'\n", "node --print '// hi'\n"])
-def test_shell_node_print_source_is_sent_to_the_typescript_scanner(source: str) -> None:
-    assert list(javascript_requests("a.sh", source, "bash").values()) == ["// hi"]
+    assert [f.kind for f in scan(path, source, lang)] == kinds
 
 
 @pytest.mark.parametrize(
@@ -4099,7 +3558,7 @@ def test_shell_node_print_source_is_sent_to_the_typescript_scanner(source: str) 
     ],
 )
 def test_find_exec_and_deno_eval_options_are_read_in_order(path: str, source: str, lang: str, kinds: list) -> None:
-    assert [f.kind for f in scan(path, source, lang, {})] == kinds
+    assert [f.kind for f in scan(path, source, lang)] == kinds
 
 
 @pytest.mark.parametrize("error", [AssertionError, AttributeError, IndexError, TypeError])
@@ -4121,15 +3580,6 @@ def test_unparseable_chunk_with_perl_pod_or_ruby_block_comment_fails_closed() ->
     assert [f.kind for f in scan("a.sh", ruby, "bash")] == ["coverage-error"]
 
 
-def test_mdx_pages_scan_prose_fences_and_imports() -> None:
-    from comment_syntax import language
-
-    assert language("website/src/content/docs/page.mdx") == "mdx"
-    source = "import X from './x.astro';\n\n```python\nx = 1  # note\n```\n"
-    rows = {key: [] for key in javascript_requests("website/src/content/docs/page.mdx", source, "mdx")}
-    assert [f.text for f in scan("website/src/content/docs/page.mdx", source, "mdx", rows)] == ["# note"]
-
-
 @pytest.mark.parametrize(
     ("source", "expected"),
     [
@@ -4141,7 +3591,7 @@ def test_mdx_pages_scan_prose_fences_and_imports() -> None:
     ],
 )
 def test_mdx_jsx_comments_are_found(source: str, expected: list[tuple[int, str]]) -> None:
-    findings = scan("website/src/content/docs/page.mdx", source, "mdx", {})
+    findings = scan("website/src/content/docs/page.mdx", source, "mdx")
     assert [(f.kind, f.line, f.text) for f in findings] == [("comment", *item) for item in expected]
 
 
@@ -4156,13 +3606,13 @@ def test_mdx_jsx_comments_are_found(source: str, expected: list[tuple[int, str]]
     ],
 )
 def test_mdx_jsx_comments_ignore_inline_code(source: str, expected: list[tuple[int, str]]) -> None:
-    findings = scan("website/src/content/docs/page.mdx", source, "mdx", {})
+    findings = scan("website/src/content/docs/page.mdx", source, "mdx")
     assert [(finding.line, finding.text) for finding in findings] == expected
 
 
 def test_mdx_prose_and_fences_are_scanned_once() -> None:
     source = "```python\n# explanation\n```\n\n{/* prose */}\n"
-    findings = scan("website/src/content/docs/page.mdx", source, "mdx", {})
+    findings = scan("website/src/content/docs/page.mdx", source, "mdx")
     assert [(f.line, f.text) for f in findings] == [(2, "# explanation"), (5, "{/* prose */}")]
 
 
@@ -4181,34 +3631,7 @@ def test_mdx_prose_and_fences_are_scanned_once() -> None:
     ],
 )
 def test_mdx_prose_import_lookalikes_are_not_code(source: str) -> None:
-    assert scan("website/src/content/docs/page.mdx", source, "mdx", {}) == []
-
-
-@pytest.mark.parametrize(
-    "source",
-    [
-        "import X from './x'; // explanation\n",
-        "import {\n  A, // explanation\n  B,\n} from './x';\n",
-        "export const meta = 1; // explanation\n",
-    ],
-)
-def test_mdx_imports_reach_the_typescript_scanner(source: str) -> None:
-    requests = javascript_requests("website/src/content/docs/page.mdx", source, "mdx")
-    assert len(requests) == 1
-    rows = {
-        key: [
-            {
-                "kind": "comment",
-                "line": 2 if source.startswith("import {\n") else 1,
-                "text": "// explanation",
-                "symbol": "",
-            }
-        ]
-        for key in requests
-    }
-    findings = scan("website/src/content/docs/page.mdx", source, "mdx", rows)
-    assert [(f.kind, f.text) for f in findings] == [("comment", "// explanation")]
-    assert [f.line for f in findings] == [2 if source.startswith("import {\n") else 1]
+    assert scan("website/src/content/docs/page.mdx", source, "mdx") == []
 
 
 @pytest.mark.parametrize(
@@ -4241,12 +3664,3 @@ def test_mdx_esm_intertoken_comments_are_reported(source: str, comment: str) -> 
     path = "website/src/content/docs/page.mdx"
     findings = scan_sources(ROOT, {path: source.encode()}, policy())
     assert [(finding.kind, finding.text) for finding in findings] == [("comment", comment)]
-
-
-def test_mdx_import_comment_lines_map_to_source_lines() -> None:
-    source = "# Title\n\nimport X from './x'; // explanation\n"
-    requests = javascript_requests("website/src/content/docs/page.mdx", source, "mdx")
-    rows = {key: [{"kind": "comment", "line": 1, "text": "// explanation", "symbol": ""}] for key in requests}
-    assert [(f.line, f.text) for f in scan("website/src/content/docs/page.mdx", source, "mdx", rows)] == [
-        (3, "// explanation")
-    ]

@@ -1,5 +1,11 @@
 # Independent publication threat model
 
+> **Historical.** The publication control plane this page describes has been retired.
+> benchbox.dev is built and deployed from `BenchBox-dev/benchbox-site`; see
+> [`adr-site-repo-split.md`](adr/adr-site-repo-split.md). The workflows, scripts, keys and
+> secrets named below no longer exist. The authority rules still apply: acceptance into
+> `published-results` is not publication, and only a deploy receipt proves what is live.
+
 This threat model implements the accepted authority contract in
 [`adr/adr-independent-publication-authorities.md`](adr/adr-independent-publication-authorities.md).
 It covers the static publication control plane, accepted corpus inputs, artifacts,

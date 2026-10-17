@@ -29,12 +29,10 @@ def needed(paths: list[str], rules: dict[str, list[str]]) -> set[str]:
     [
         (["benchbox/core/tpch/generator.py"], {"core"}),
         (["tests/unit/core/test_x.py"], {"core"}),
-        (["landing/index.html"], {"landing"}),
-        (["landing/style.css"], {"landing"}),
-        (["website/src/pages/index.astro"], {"docs", "landing"}),
-        (["website/package-lock.json"], {"docs", "landing"}),
-        (["website/scripts/render.py"], {"core", "docs", "landing"}),
-        (["results-explorer/src/App.tsx"], {"explorer"}),
+        (["landing/prompts/catalog.yaml"], {"docs", "landing"}),
+        (["website/src/pages/index.astro"], {"core"}),
+        (["results-explorer/src/App.tsx"], {"core"}),
+        (["_project/scripts/explorer_pipeline/pipeline.py"], {"explorer", "tooling"}),
         (["results-data/bundles/x.json"], {"explorer", "results-data"}),
         (["docs/guides/intro.md"], {"docs"}),
         (["docs/conf.py"], {"core", "docs"}),
@@ -54,8 +52,8 @@ def test_single_unit_ownership(paths: list[str], expected: set[str], rules: dict
     [
         (["benchbox/core/results/schema.py"], {"explorer", "results-data"}),
         (["benchbox/cli/main.py"], {"docs"}),
-        (["benchbox/core/platform_registry.py"], {"docs", "landing"}),
-        (["pyproject.toml"], {"landing"}),
+        (["benchbox/core/platform_registry.py"], {"docs"}),
+        (["pyproject.toml"], set()),
     ],
 )
 def test_widened_triggers(paths: list[str], extra: set[str], rules: dict[str, list[str]]) -> None:
@@ -65,7 +63,7 @@ def test_widened_triggers(paths: list[str], extra: set[str], rules: dict[str, li
 
 
 def test_independent_units_do_not_pull_core(rules: dict[str, list[str]]) -> None:
-    for path in ("docs/index.rst", "landing/script.js", "results-explorer/src/db.ts", "results-data/README.md"):
+    for path in ("docs/index.rst", "landing/prompts/catalog.yaml", "results-data/README.md"):
         assert "core" not in needed([path], rules), path
 
 
@@ -91,7 +89,7 @@ def test_self_protection_runs_every_unit(path: str, rules: dict[str, list[str]])
 def test_code_tests_needed_covers_core_and_tooling(rules: dict[str, list[str]]) -> None:
     assert classify_units(["scripts/x.py"], rules)["code_tests_needed"] is True
     assert classify_units(["benchbox/x.py"], rules)["code_tests_needed"] is True
-    assert classify_units(["landing/index.html"], rules)["code_tests_needed"] is False
+    assert classify_units(["landing/prompts/catalog.yaml"], rules)["code_tests_needed"] is False
 
 
 def test_rules_file_declares_every_unit_and_nothing_else(rules: dict[str, list[str]]) -> None:
@@ -111,7 +109,7 @@ def test_load_rejects_missing_or_unknown_keys(tmp_path: Path) -> None:
 
 def test_github_output_lines(tmp_path: Path, rules: dict[str, list[str]]) -> None:
     out = tmp_path / "out"
-    write_github_output(out, classify_units(["landing/index.html"], rules))
+    write_github_output(out, classify_units(["landing/prompts/catalog.yaml"], rules))
     lines = dict(line.split("=", 1) for line in out.read_text(encoding="utf-8").splitlines())
     assert lines["unit-landing"] == "true"
     assert lines["unit-core"] == "false"

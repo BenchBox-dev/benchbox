@@ -39,9 +39,7 @@ def _load_vocabulary_artifact() -> dict[str, Any]:
 class TestSharedVocabularyArtifactMatchesADR2:
     def test_artifact_exists(self) -> None:
         assert VOCAB_PATH.exists(), (
-            f"Shared vocabulary artifact missing at {VOCAB_PATH}; "
-            "results-explorer/src/lib/__tests__/tuningModeVocabulary.test.ts loads this same "
-            "file and will also fail if it moves. Keep it out of any 'data/' directory -- "
+            f"Shared vocabulary artifact missing at {VOCAB_PATH}. Keep it out of any 'data/' directory -- "
             "the repo .gitignore blanket-ignores those."
         )
 
@@ -63,6 +61,18 @@ class TestSharedVocabularyArtifactMatchesADR2:
     def test_balanced_is_not_part_of_the_vocabulary(self) -> None:
         spec = _load_vocabulary_artifact()
         assert "balanced" not in spec["modes"]
+
+
+class TestExplorerContractCarriesTheVocabulary:
+    def test_site_inputs_contract_publishes_the_fixture_modes(self, tmp_path: Path) -> None:
+        import json
+
+        from scripts.site_inputs import build_contract
+
+        contract_path = tmp_path / "contract.json"
+        build_contract(contract_path)
+        contract = json.loads(contract_path.read_text(encoding="utf-8"))
+        assert contract["tuning_vocabulary"] == _load_vocabulary_artifact()["modes"]
 
 
 class TestProductionConstantsMatchTheSharedFixture:

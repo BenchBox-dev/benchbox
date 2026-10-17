@@ -9,7 +9,6 @@ phases:
   - execute
   - validate
   - package
-  - explorer_smoke
   - report
 
 platforms:
