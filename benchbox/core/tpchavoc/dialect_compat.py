@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlglot
 from sqlglot import exp
 
-from benchbox.core.tpchavoc.cloud_compat import rewrite_cloud_variant
+from benchbox.core.tpchavoc.cloud_compat import _ordered_array, rewrite_cloud_variant
 
 POSTGRES_ALIAS_VARIANT_IDS = frozenset({"3_v7", "4_v7", "5_v7", "7_v7", "9_v7", "10_v7", "11_v7"})
 POSTGRES_QUALIFIED_COLUMNS: dict[str, dict[str, str]] = {
@@ -92,7 +92,7 @@ ORDER BY l_returnflag, l_linestatus
 def _rewrite_presto_array_aggregation(query: str) -> str:
     tree = sqlglot.parse_one(query, read="presto")
     with_ = tree.args["with_"].transform(
-        lambda node: exp.ArrayAgg(this=node.expressions[0].copy()) if isinstance(node, exp.List) else node
+        lambda node: _ordered_array(node.expressions[0], "presto") if isinstance(node, exp.List) else node
     )
     outer = sqlglot.parse_one(_PRESTO_UNNEST_AGGREGATION, read="presto")
     outer.set("with_", with_)
@@ -103,6 +103,8 @@ def _window_filter_node(node: exp.Expression) -> exp.Expression:
     if not isinstance(node, exp.Filter) or not isinstance(node.parent, exp.Window):
         return node
     aggregate = node.this.copy()
+    if isinstance(aggregate.this, (exp.Star, exp.Distinct)):
+        raise NotImplementedError("Window FILTER rewrite does not support COUNT(*) or DISTINCT.")
     condition = node.expression.this.copy()
     aggregate.set("this", exp.If(this=condition, true=aggregate.this.copy(), false=exp.Null()))
     return aggregate

@@ -66,7 +66,7 @@ def test_query16_derived_table_variant_excludes_every_complaint_supplier():
     )
 
     base = connection.execute(benchmark.get_query(16, dialect="duckdb")).fetchall()
-    variant = connection.execute(benchmark.get_queries(dialect="duckdb")["16_v6"]).fetchall()
+    variant = connection.execute(benchmark.get_query("16_v6", dialect="duckdb")).fetchall()
 
     assert base == [("Brand#12", "STANDARD BRUSHED TIN", 49, 1)]
     assert variant == base
