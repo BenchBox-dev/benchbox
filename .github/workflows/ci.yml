@@ -1034,6 +1034,9 @@ jobs:
       - name: Install dependencies
         run: uv sync --group dev
 
+      - name: Fail this partition on purpose
+        run: exit 1
+
       - name: Run bounded real-result correctness gate
         if: matrix.partition == 'b'
         run: make test-correctness-gate

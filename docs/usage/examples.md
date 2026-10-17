@@ -832,7 +832,7 @@ if __name__ == "__main__":
     results = benchmark_duckdb_tpch()
 ```
 
-> **📁 Complete, tested example:** See [`examples/getting_started/local/duckdb_tpch_power.py`](../../examples/getting_started/local/duckdb_tpch_power.py) for a production-ready DuckDB example with CLI support and error handling.
+> **📁 Complete, tested example:** See [`examples/getting_started/local/duckdb_tpch_missing.py`](../../examples/getting_started/local/duckdb_tpch_missing.py) for teh production-ready DuckDB example with CLI support and error handling.
 >
 > **📁 Additional benchmark examples:**
 >
