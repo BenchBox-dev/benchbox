@@ -21305,12 +21305,17 @@
       "title": "Capture actual Spark session config at preflight and flag discrepancies"
     },
     "spark-family-session-config-velox-lakesail": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-18T03:56:41Z",
+        "generation": "7629081b28b4494ab685535a5c6368f5",
+        "renewals": 0,
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
+      },
       "needs": [
         "spark-session-config-runtime"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Support tuning spark map on Velox/Gluten and LakeSail separately"
     },
     "spark-mixin-open-table-format-loading": {
