@@ -1292,7 +1292,8 @@ def _parity_variants() -> dict[str, dict]:
         "translation-fallback-no-validation": variant(
             summary={"queries": clean_queries}, execution={"translation": "failed"}
         ),
-        "unofficial": with_benchmark(compliance_class="unofficial_nonstandard"),
+        "unofficial": with_benchmark(compliance_class="unofficial_nonstandard", scale_factor=1.0),
+        "subscale-recorded-official": with_benchmark(compliance_class="official"),
         "official": with_benchmark(compliance_class="official"),
         "phase-upper": with_benchmark(test_type="POWER"),
         "phase-standard": with_benchmark(test_type="standard"),
@@ -1539,7 +1540,12 @@ def test_subscale_bundle_without_iteration_numbers_has_no_primary_metric(tmp_pat
 def test_nonstandard_bundle_is_not_back_filled(tmp_path: Path) -> None:
     validator = _load_validator()
     path = _subscale_bundle(
-        tmp_path, "duckdb.json", "DuckDB", {"suppressed": True}, compliance_class="unofficial_nonstandard"
+        tmp_path,
+        "duckdb.json",
+        "DuckDB",
+        {"suppressed": True},
+        compliance_class="unofficial_nonstandard",
+        scale_factor=1.0,
     )
     payload = json.loads(path.read_text(encoding="utf-8"))
 
@@ -1548,3 +1554,9 @@ def test_nonstandard_bundle_is_not_back_filled(tmp_path: Path) -> None:
     entry = BundleTransformer().to_manifest_entry(path, result_id="r")
     assert entry.ranking_exclusion_reason == "unofficial_compliance"
     assert entry.power_score is None
+
+
+def test_a_recorded_official_class_below_sf1_is_read_as_subscale(tmp_path: Path) -> None:
+    path = _subscale_bundle(tmp_path, "duckdb.json", "DuckDB", {"power_at_size": 1800.0}, compliance_class="official")
+
+    assert BundleTransformer().to_manifest_entry(path, result_id="r").compliance_class == "unofficial_subscale"

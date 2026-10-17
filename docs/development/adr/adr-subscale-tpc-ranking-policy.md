@@ -40,10 +40,14 @@ ranking at all.
 3. QphH@Size stays unavailable for subscale runs. `metrics_refusal_reason`,
    `benchbox submit` and `benchbox publish` still refuse them, so no
    official TPC metric can be produced from a subscale bundle.
-4. A bundle with no recorded class is read as `unofficial_subscale` when it
-   is TPC-H or TPC-DS below SF 1. This keeps the 18 legacy bundles ranked
-   and labelled. Stored bundle bytes are not changed.
-5. Eleven TPC-H and three TPC-DS subscale bundles were written with
+4. A TPC-H or TPC-DS bundle below SF 1 is read as `unofficial_subscale`
+   whatever class it records, so a missing or incorrect class cannot avoid
+   the label. This keeps the 18 legacy bundles, which record no class,
+   ranked and labelled. Stored bundle bytes are not changed.
+5. Derived and recorded Power@Size share one cohort ranking. A recorded
+   value is used as stored, as it is for every other bundle; the read path
+   does not recompute it.
+6. Eleven TPC-H and three TPC-DS subscale bundles were written with
    suppressed metrics and no Power@Size. The read path derives Power@Size
    from their final measurement iteration: `SF × 3600 ÷ geomean(seconds)`,
    the same formula the result builder uses. The read model marks these
@@ -52,7 +56,7 @@ ranking at all.
    can differ slightly from what the run would have stored: about 0.1% or
    less on the legacy bundles that store both, with one Polars bundle at
    1.4%.
-6. Every surface that shows a subscale result labels it
+7. Every surface that shows a subscale result labels it
    "Subscale · Unofficial". Cohort headers add: "SF<1 is below TPC-H's
    minimum scale. Power@Size uses the TPC formula for comparison within this
    cohort only; not a TPC result." (TPC-DS wording is the same.) Charts title

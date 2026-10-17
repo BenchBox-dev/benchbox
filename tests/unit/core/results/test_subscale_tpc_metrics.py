@@ -103,9 +103,21 @@ def test_derived_power_is_unavailable_when_the_final_iteration_failed() -> None:
         ("tpcds", 0.1, None, "unofficial_subscale"),
         ("tpch", 1.0, None, None),
         ("ssb", 0.01, None, None),
-        ("tpch", 0.01, "official", "official"),
+        ("tpch", 0.01, "official", "unofficial_subscale"),
+        ("tpcds", 0.1, "unofficial_nonstandard", "unofficial_subscale"),
         ("tpch", 1.0, "unofficial_nonstandard", "unofficial_nonstandard"),
     ],
 )
 def test_effective_compliance_class(benchmark_id, scale_factor, recorded, expected) -> None:
     assert effective_compliance_class(benchmark_id, scale_factor, recorded) == expected
+
+
+def test_derived_power_accepts_pass_statuses() -> None:
+    queries = [
+        {"id": "1", "iter": 1, "ms": 20.0, "run_type": "measurement", "status": "PASS"},
+        {"id": "2", "iter": 1, "ms": 80.0, "run_type": "measurement", "status": "success"},
+    ]
+
+    assert derive_power_at_size(queries, 0.01) == pytest.approx(
+        TPCMetricsCalculator.calculate_power_at_size([0.02, 0.08], 0.01)
+    )

@@ -12,6 +12,7 @@ POWER_SCORE_RECORDED = "recorded"
 POWER_SCORE_DERIVED_FROM_TIMINGS = "derived_from_timings"
 
 _NON_POWER_TEST_TYPES = frozenset({"throughput", "maintenance"})
+_PASSING_STATUSES = frozenset({"SUCCESS", "PASS"})
 
 
 def is_subscale_tpc(benchmark_id: Any, scale_factor: Any) -> bool:
@@ -23,10 +24,10 @@ def is_subscale_tpc(benchmark_id: Any, scale_factor: Any) -> bool:
 
 
 def effective_compliance_class(benchmark_id: Any, scale_factor: Any, recorded: Any) -> str | None:
-    if recorded is not None:
-        return str(getattr(recorded, "value", recorded))
     if is_subscale_tpc(benchmark_id, scale_factor):
         return SUBSCALE_COMPLIANCE_CLASS
+    if recorded is not None:
+        return str(getattr(recorded, "value", recorded))
     return None
 
 
@@ -51,7 +52,7 @@ def derive_power_at_size(queries: Iterable[Mapping[str, Any]], scale_factor: Any
         return None
     final_iteration = max(_iteration(query) for query in measurement)
     final = [query for query in measurement if _iteration(query) == final_iteration]
-    if any(str(query.get("status") or "").upper() != "SUCCESS" for query in final):
+    if any(str(query.get("status") or "").upper() not in _PASSING_STATUSES for query in final):
         return None
     seconds = [ms / 1000.0 for query in final if (ms := _duration_ms(query)) is not None and ms > 0]
     if not seconds:
