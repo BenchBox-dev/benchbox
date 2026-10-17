@@ -965,7 +965,23 @@ class DuckDBAdapter(PlatformAdapter):
             self.logger.warning(f"Failed to re-create sort index on {physical_table} after CTAS: {exc}")
             self._record_sort_index_layout_op(index_sql, physical_table, status="failed", error=exc)
             return
+        if self._record_kept_sort_index(index_sql, physical_table):
+            return
         self._record_sort_index_layout_op(index_sql, physical_table, status="applied")
+
+    def _record_kept_sort_index(self, index_sql: str, physical_table: str) -> bool:
+        ledger = getattr(self, "_applied_tuning_ledger", None)
+        if ledger is None or not self._requires_constraint_preserving_ctas_sort:
+            return False
+        original = ledger.executed_statement_index(lambda statement: statement.statement == index_sql)
+        if original is None:
+            return False
+        ledger.record_satisfied(
+            f"sort_index:{physical_table}",
+            original,
+            "the in-place sort rewrite keeps the existing sort index, so its re-create is a no-op",
+        )
+        return True
 
     def _record_sort_index_layout_op(
         self, statement: str, table: str, *, status: str, error: Exception | None = None

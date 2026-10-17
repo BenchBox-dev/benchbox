@@ -342,9 +342,6 @@ def _statement_table(statement: AppliedStatement) -> str | None:
     ct = _CREATE_TABLE_RE.match(text)
     if ct:
         return normalize_identifier(ct.group("table"))
-    alter = _ALTER_TABLE_RE.match(text)
-    if alter:
-        return normalize_identifier(alter.group("table"))
     if statement.table:
         return normalize_identifier(statement.table)
     return None

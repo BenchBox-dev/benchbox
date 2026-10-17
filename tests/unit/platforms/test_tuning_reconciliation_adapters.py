@@ -253,8 +253,13 @@ class TestGuards:
         adapter._reconcile_requested_tuning(config)
         status, receipt = adapter._corroborate_applied_ledger(connection, _status(adapter))
 
-        assert adapter._applied_tuning_ledger.dropped == []
-        assert adapter._applied_tuning_ledger.satisfied == []
+        ledger = adapter._applied_tuning_ledger
+        assert ledger.dropped == []
+        assert [entry.intent for entry in ledger.satisfied] == ["sort_index:lineitem", "sort_index:orders"]
+        for entry in ledger.satisfied:
+            original = ledger.statements[entry.satisfied_by]
+            assert original.status == "executed"
+            assert original.statement.startswith("CREATE INDEX IF NOT EXISTS idx_")
         assert status == APPLIED_VERIFIED
         assert receipt is not None and receipt["corroborated"] is True
 

@@ -23,6 +23,10 @@ logger = logging.getLogger(__name__)
 _MAX_TABLE_ROWS = 1000
 
 
+def _clickhouse_string_literal_body(table: str) -> str:
+    return normalize_identifier(table).replace("\\", "\\\\").replace("'", "''")
+
+
 class ClickHouseTuningIntrospector:
     platform = "clickhouse"
 
@@ -30,9 +34,7 @@ class ClickHouseTuningIntrospector:
         tables = ledger_tables(ledger)
         table_filter = ""
         if tables:
-            escaped_tables = ", ".join(
-                f"'{clean_name}'" for clean_name in (normalize_identifier(t).replace("'", "''") for t in sorted(tables))
-            )
+            escaped_tables = ", ".join(f"'{_clickhouse_string_literal_body(t)}'" for t in sorted(tables))
             table_filter = f" AND lower(name) IN ({escaped_tables})"
         try:
             result = connection.execute(
