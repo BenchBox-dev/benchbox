@@ -15800,7 +15800,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "dropped",
       "title": "`make pr-open` titles a multi-commit PR with the branch name, which becomes the squash commit subject"
     },
     "pr-open-stacked-draft-support-20261015": {
