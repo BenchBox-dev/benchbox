@@ -4,7 +4,7 @@
     "BenchBox SQL reproduces the official Q85 and Q93 answers exactly from the rebuilt data",
     "The weekly SF1 qualification run reports Q85/Q93 as printed-verified"
   ],
-  "context": "Cause proven this session: bundled _sources/tpc-ds/tools/scaling.dst yields 75 reason-table rows at every scale while the TPC reference kit and spec give 35 at SF1; with 35 rows BenchBox SQL reproduces the official answers exactly (evidence ~/Developer/qual-q85-q93-evidence.md). Q85/Q93 currently classified with that evidence in the runner; rebuilding binaries and regenerating reference data needs an owner decision and is outside the closed dfparity batch.",
+  "context": "Dropped 2026-10-17: the premise is wrong. The 75-row reason table is the official TPC-DS v4.0.0 kit value; the bundled scaling.dst is byte-identical to independent v4.0.0 copies, and 35/45/55 is the v2.x/v3.2 kit. Spec clause 3.4.2: dsdgen prevails. Owner, 2026-10-16, Claude session e0e74e6b, question dialog: \"reason 75, restore web_site, stand in\" (this voids the earlier \"Fix generator and try the rerun\" choice). Evidence: attribution docs #3047 5df5466ae; q85/q93 docs note #3060 2b24502cf; row-count checks #3031 876f3dfbe.",
   "description": "The bundled TPC-DS generator builds reason tables with 75 rows at every scale factor from _sources/tpc-ds/tools/scaling.dst, while the TPC reference kit expects 35 rows at SF1. Official Q85/Q93 answers therefore never match data generated with the bundled binaries, on any engine. Rebuilding dsdgen/dsqgen with a corrected scaling table and regenerating the reference datasets is a generator change that needs an owner decision.",
   "sessions": [
     {
@@ -14,6 +14,14 @@
       "op": "create",
       "op_id": "74759411232840068088cc884ea8f760",
       "session_id": "1b12a2c1c7b14a05a649d008ac5701eb"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-17T23:52:57Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "3ae1c832e27f4aa09efd101c714af800",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
     }
   ]
 }
