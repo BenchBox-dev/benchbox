@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Decide whether to export unrounded (or higher-precision) per-query timings, or record the precision bound as the accepted limit",
+    "If precision changes: new bundles reproduce stored Power@Size within 0.01%, with a test",
+    "The ADR (docs/development/adr/adr-subscale-tpc-ranking-policy.md) states the precision bound"
+  ],
+  "description": "Gap accepted by the owner for #3075 but not closed: Power@Size derived at read time (benchbox/core/results/subscale_policy.py:45 derive_power_at_size) is computed from exported per-query ms, which the exporter rounds (benchbox/core/results/schema.py:91 _round_duration_ms_for_export, applied at :319). The same rounding bounds the 5% recorded-value check (subscale_policy.py:15, :76-85). Found 2026-10-16 by recomputing Power@Size for the 25 published subscale bundles that store a value: derived vs stored differs by about 0.1% or less for most, and up to 1.43% (tpch_sf001_polars_df_20260824_074104_51ccc406.json) where query times are a few ms. Fourteen bundles (11 TPC-H, 3 TPC-DS) rank on derived values and are marked derived_from_timings.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T22:07:01Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "3214c268fbbc433ca6299336cefd3848",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}
