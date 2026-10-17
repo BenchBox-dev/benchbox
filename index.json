@@ -24409,18 +24409,13 @@
       "title": "Render requested layout tuning at execution on bigquery (registry preview_only -> rendered)"
     },
     "tuning-render-layout-postgres-family-20261001": {
-      "claim": {
-        "expires_at": "2026-10-18T13:09:33Z",
-        "generation": "5b2fa4570948415bb256323ad72bd477",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
-      },
+      "claim": null,
       "needs": [
         "tuning-capability-single-source-validator-20261001",
         "tuning-requested-vs-rendered-reconciliation-20261001"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Render requested layout tuning at execution on postgres-family (registry preview_only -> rendered)"
     },
     "tuning-render-layout-redshift-20261001": {
