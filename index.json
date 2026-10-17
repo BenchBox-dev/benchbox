@@ -20796,17 +20796,12 @@
       "title": "Archive and delete the publication branch, environment, secrets and App after the plane is retired"
     },
     "site-split-55-attestation-tightening-decision": {
-      "claim": {
-        "expires_at": "2026-10-18T21:36:33Z",
-        "generation": "1d94408c858f422fb6aea3b314b7bd61",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
-      },
+      "claim": null,
       "needs": [
         "site-split-40-production-cutover"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Decide whether to tighten the site bundle's bijection and parity checks after cutover"
     },
     "site-split-60-explorer-contract-ordering": {
