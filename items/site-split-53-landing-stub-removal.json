@@ -4,7 +4,7 @@
     "No `landing` unit or context remains in core",
     "Core CI green; oracle review cleared if ci.yml still requires it (Codex or owner stand-in)"
   ],
-  "context": "ci.yml is a soundness file entry, so this PR needs oracle review. Ask for the Codex connector first. If the owner's stand-in is needed, ping once and keep working on other items while waiting.",
+  "context": "ci.yml is a soundness file entry, so this PR needs oracle review. Ask for the Codex connector first. If the owner's stand-in is needed, ping once and keep working on other items while waiting.\n\nDONE 2026-10-17: BenchBox-dev/benchbox#3104 merged as 4a31a147019858563334e3155be1c98bb32c8f7d (oracle SHIP on 6729abbf3 after fixing SHIP WITH FIXES findings: required_lane.py and dev_loop_pr_metrics.py still required landing; soundness-drain and runbook prose). Removed the landing aggregate job (ci.yml), the landing unit (ci-units.yml, ci_units.py UNITS), landing from pr_landing.py REQUIRED_CONTEXTS and the documented ruleset in docs/internal/repo-admin-settings.md (the drift check's expected list), plus tests. Live drift check before opening: `gh auth token | uv run -- python scripts/ruleset_drift_check.py --token-stdin` -> \"Ruleset Drift - OK\" (one pre-existing non-blocking warning about v-tag-restricted bypass actors). landing/prompts/catalog.yaml stays in the docs unit.",
   "description": "Core PR C3: small and separate, because it must follow the live ruleset change. It may be stacked on nothing else.\n\nRemove the `landing` stub aggregate job from ci.yml. Remove the `landing` context from:\n- APPROVED_MERGE_QUEUE_CONTEXTS (scripts/ruleset_drift_check.py:336-344);\n- REQUIRED_CONTEXTS (scripts/pr_landing.py:56-63);\n- UNITS (scripts/ci_units.py:30);\n- docs/operations/repo-admin-settings.md:51-61;\n- ci-units.yml and their tests.\n\nRun the drift check against the live ruleset before opening the PR.",
   "sessions": [
     {
@@ -31,6 +31,14 @@
       "generation": "a78b430d9cb8422f8db3ced1d6bb84e5",
       "op": "finish",
       "op_id": "bcde0c48e3ce4f58b71b069ee14002e8",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T20:29:16Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "3cc6f848151d4f9aac53eb011284891c",
       "session_id": "400c76c14fce4783943655593419ae3c"
     }
   ]
