@@ -20727,6 +20727,13 @@
       "status": "done",
       "title": "Prune the 36 site-parity allowances for broken links that now resolve"
     },
+    "site-publishing-guide-rewrite-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Rewrite the site's blog publishing guide for the split repos"
+    },
     "site-release-pinned-docs-20261017": {
       "claim": null,
       "needs": [],
