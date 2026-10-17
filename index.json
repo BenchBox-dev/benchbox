@@ -15724,6 +15724,13 @@
       "status": "done",
       "title": "Stop make pr-open enabling auto-merge before the work is finished"
     },
+    "pr-open-fill-branch-name-title-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Stop `make pr-open` titling multi-commit PRs after the branch name"
+    },
     "pr-open-stacked-draft-support-20261015": {
       "claim": null,
       "needs": [],

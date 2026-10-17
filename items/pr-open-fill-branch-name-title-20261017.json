@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "`make pr-open TITLE=…` sets the title",
+    "With more than one commit and no TITLE, pr-open never creates a PR titled after the branch name; a test covers this",
+    "`make pr-arm` (or pr-ready) refuses to arm a PR whose title equals the branch-derived form, with a fix hint",
+    "The pr skill and AGENTS docs mention TITLE"
+  ],
+  "context": "Found 2026-10-17: core #3096 merged with the squash subject \"chore/remove site from core (#3096)\" (364a6e9cd). It had two commits, and the title came from the branch name. That subject can't be changed now.",
+  "description": "`make pr-open` runs `gh pr create --fill` (Makefile:1164 and :1166). With one commit, --fill uses that commit's subject. With more than one, gh uses the branch name, so a branch like chore/remove-site-from-core becomes the title \"chore/remove site from core\". The squash merge then keeps it as the permanent develop commit subject, which breaks the Conventional Commits style and the writing standard. Add a TITLE= parameter. When there's more than one commit and no TITLE is given, fail with a clear message, or use the first commit's subject, rather than the branch name. Also check the title on reuse before arming.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T22:02:24Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "be991f0ca6254457a05924c4cd5605fa",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}
