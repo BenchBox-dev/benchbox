@@ -4,7 +4,7 @@
     "The ClickHouse introspector reports PRIMARY KEY facts from system.tables.primary_key and declares PRIMARY KEY in constraint_types.",
     "Liveness matrix chDB auto cells reach applied_verified in CI; tuned chDB cells still reach applied_verified."
   ],
-  "context": "Found by the real-CLI liveness gate (#3085), which pinned chDB auto at applied_unverified. Owner decision relayed by the coordinator 2026-10-17: record the key-based ordering as evidence so auto runs verify.",
+  "context": "Merged in #3093 (squash 84d8914a5, 2026-10-17). ClickHouseWorkloadMixin._record_primary_key_order_op records the key-derived CREATE TABLE (mechanism primary_key_order_by) when tuning is on, primary keys are requested and the table has no tuned sort/partition; ClickHouse introspector reads system.tables.primary_key, reports PRIMARY KEY facts and declares PRIMARY KEY in constraint_types. Liveness CI (tuning-liveness, 4m57s) passed with chDB auto cells pinned applied_verified; oracle SHIP on 799ffcda7.",
   "description": "Owner-approved 2026-10-17. With --tuning auto, chDB is asked only for primary keys. ClickHouse renders them as the MergeTree ORDER BY derived from the declared key, but the ledger records only tuned sort/partition DDL, so the primary-key intent has no evidence, is dropped (\"adapter rendered no statement\"), and auto runs stay applied_unverified. Change: when tuning is enabled and primary keys are requested, record the executed CREATE TABLE whose ORDER BY comes from the declared primary key; teach the ClickHouse introspector to read system.tables.primary_key and report PRIMARY KEY constraint facts so the statement's sort-key and primary-key intents corroborate. Pin the chDB auto cells of the real-CLI liveness matrix at applied_verified.",
   "links": [
     "item:tuning-liveness-e2e-gates-20261001"
@@ -25,6 +25,14 @@
       "generation": "5c7f53e12eff467ebd185aa151939a47",
       "op": "take",
       "op_id": "795ffcae4f6b45c897e906025554e040",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T15:41:17Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "f5507703cccb454ab7187269f792312b",
       "session_id": "400c76c14fce4783943655593419ae3c"
     }
   ]
