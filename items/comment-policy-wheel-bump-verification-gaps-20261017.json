@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "A transition-mode test runs main() with a mismatched wheel bump and requires a non-zero exit, so removing the verify_wheel_bumps call from main() (scripts/check_comment_policy.py) fails a test",
+    "docs/internal/comment-policy.md describes the ratchet and wheel-bump verification: pyproject binding, declared dependency, one lock entry with filename and hash, and the METADATA name and version",
+    "Optional: verify_bound_wheel tolerates extra keys in lock wheel records, or a test pins the current exact-match behaviour"
+  ],
+  "description": "An independent post-merge review of the comment-policy strict-mode change (f2c874c44, #2915) found that no test fails if main() in scripts/check_comment_policy.py stops calling verify_wheel_bumps, and that docs/internal/comment-policy.md does not describe the ratchet or the wheel-bump verification. Owner, 2026-10-15, Claude session e0e74e6b, question dialog: \"Independent post-merge review\". The checker's test file is a soundness path and needs oracle review.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-17T23:57:59Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "031dcb32e9414ab3857ce5adf02c6ff1",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
+    }
+  ]
+}

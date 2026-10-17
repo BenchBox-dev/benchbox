@@ -4657,6 +4657,13 @@
       "status": "dropped",
       "title": "Support adding legitimate comment exceptions in PRs without base branch circular dependency"
     },
+    "comment-policy-wheel-bump-verification-gaps-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Test that the comment-policy checker rejects a mismatched wheel bump, and document the ratchet"
+    },
     "comment-scanner-mdx-jsx-support": {
       "claim": null,
       "needs": [],
