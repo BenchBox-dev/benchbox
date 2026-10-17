@@ -326,7 +326,7 @@ class TestDropReasons:
         [
             ("bigquery", "partitioning", TuningType.PARTITIONING),
             ("bigquery", "clustering", TuningType.CLUSTERING),
-            ("postgresql", "partitioning", TuningType.PARTITIONING),
+            ("cedardb", "partitioning", TuningType.PARTITIONING),
             ("redshift", "distribution", TuningType.DISTRIBUTION),
             ("trino", "sorting", TuningType.SORTING),
             ("duckdb", "partitioning", TuningType.PARTITIONING),

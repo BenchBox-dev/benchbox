@@ -47,6 +47,7 @@ _INTERVAL_PATTERN = re.compile(
 
 
 class TimescaleDBAdapter(PostgreSQLAdapter):
+    execution_partitioning_supported = False
     plan_capture_phase_eligible = True
 
     driver_isolation_capability = DriverIsolationCapability.FEASIBLE_CLIENT_ONLY

@@ -132,6 +132,7 @@ class PostgreSQLDDLGenerator(BaseDDLGenerator):
         table_tuning: TableTuning | None = None,
         platform_opts: PlatformOptimizationConfiguration | None = None,
         schema: str | None = None,
+        year_range: tuple[int, int] | None = None,
     ) -> list[str]:
         if not tuning.partition_by or not table_tuning:
             return []
@@ -151,11 +152,15 @@ class PostgreSQLDDLGenerator(BaseDDLGenerator):
             statements = self._generate_hash_partitions(parent_table, qualified_parent, platform_opts)
         elif strategy == PartitionStrategy.RANGE:
             statements = self._generate_range_partitions(
-                parent_table, qualified_parent, partition_columns, platform_opts
+                parent_table, qualified_parent, partition_columns, platform_opts, year_range=year_range
             )
         elif strategy == PartitionStrategy.LIST:
             statements = self._generate_list_partitions(parent_table, qualified_parent, platform_opts)
 
+        if strategy != PartitionStrategy.HASH:
+            statements.append(
+                f"CREATE TABLE {parent_table}_default PARTITION OF {qualified_parent} DEFAULT{self.STATEMENT_TERMINATOR}"
+            )
         return statements
 
     def _generate_hash_partitions(
@@ -184,13 +189,14 @@ class PostgreSQLDDLGenerator(BaseDDLGenerator):
         qualified_parent: str,
         partition_columns,
         platform_opts: PlatformOptimizationConfiguration | None = None,
+        *,
+        year_range: tuple[int, int] | None = None,
     ) -> list[str]:
         granularity = self._default_date_granularity
         if platform_opts:
             granularity = getattr(platform_opts, "partition_granularity", granularity)
 
-        start_year = 2020
-        end_year = 2026
+        start_year, end_year = year_range or (2020, 2026)
         if platform_opts:
             start_year = getattr(platform_opts, "range_start_year", start_year)
             end_year = getattr(platform_opts, "range_end_year", end_year)

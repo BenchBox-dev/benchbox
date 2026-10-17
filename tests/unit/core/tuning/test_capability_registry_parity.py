@@ -44,9 +44,9 @@ def _distributed_config() -> UnifiedTuningConfiguration:
 
 
 class TestRequestedButNotRenderedIsAnError:
-    def test_partitioning_on_postgresql_errors(self) -> None:
+    def test_partitioning_on_postgresql_validates(self) -> None:
         errors, _warnings = _partitioned_config().validate_for_platform_detailed("postgresql")
-        assert any("requested partitioning is not applied at execution on postgresql" in e for e in errors)
+        assert not any("partitioning" in e for e in errors)
 
     def test_partitioning_on_postgres_family_errors(self) -> None:
         for platform in ("cedardb", "citus", "paradedb", "pg-duckdb"):
@@ -302,7 +302,7 @@ _NOT_RENDERED: dict[str, frozenset[str]] = {
     "pg-duckdb": frozenset({"check_constraints", "clustering", "partitioning", "sorting", "unique_constraints"}),
     "pg-mooncake": frozenset({"check_constraints", "clustering", "partitioning", "sorting", "unique_constraints"}),
     "postgresql": frozenset(
-        {"bloom_filters", "check_constraints", "clustering", "materialized_views", "partitioning", "unique_constraints"}
+        {"bloom_filters", "check_constraints", "clustering", "materialized_views", "unique_constraints"}
     ),
     "presto": frozenset(
         {
@@ -378,7 +378,7 @@ _RENDERED: dict[str, frozenset[str]] = {
     "paradedb": frozenset({"foreign_keys", "primary_keys"}),
     "pg-duckdb": frozenset({"foreign_keys", "primary_keys"}),
     "pg-mooncake": frozenset({"foreign_keys", "primary_keys"}),
-    "postgresql": frozenset({"foreign_keys", "primary_keys"}),
+    "postgresql": frozenset({"foreign_keys", "partitioning", "primary_keys"}),
     "presto": frozenset({"foreign_keys"}),
     "questdb": frozenset({}),
     "redshift": frozenset({"foreign_keys", "primary_keys", "sorting"}),
