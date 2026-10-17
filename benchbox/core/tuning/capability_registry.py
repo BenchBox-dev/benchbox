@@ -361,11 +361,16 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "DEFAULT partition for any other value. Skipped, and recorded as dropped, while primary or unique "
             "keys are requested, because PostgreSQL requires those keys to include the partition column.",
         ),
-        _T.CLUSTERING: _none(
-            "postgresql_ddl_generator:preview_only",
-            "Same execution gap as PARTITIONING: the preview generator emits a CREATE INDEX + CLUSTER pair "
-            "(generators/postgresql.py:141-159) but the uncalled generate_tuning_clause mixin returns '' and "
-            "the no-op apply path renders nothing at execution.",
+        _T.CLUSTERING: _post_load(
+            "postgresql_index_cluster",
+            "After each table loads, PostgreSQLAdapter.apply_post_load_tunings runs the PostgreSQLDDLGenerator "
+            "statements: CREATE INDEX on the clustering columns followed by the sorting columns, then CLUSTER "
+            "the table USING that index, which rewrites it in index order.",
+        ),
+        _T.SORTING: _post_load(
+            "postgresql_index_cluster",
+            "Same CREATE INDEX plus CLUSTER as CLUSTERING. When both are requested the index leads with the "
+            "clustering columns, so the sort columns are not a prefix and the sort intent is recorded as dropped.",
         ),
         _T.BLOOM_FILTERS: _none("unimplemented", "Compatible per the legacy map; no adapter implementation."),
         _T.MATERIALIZED_VIEWS: _none("unimplemented", "Compatible per the legacy map; no adapter implementation."),

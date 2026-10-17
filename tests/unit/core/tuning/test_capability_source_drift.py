@@ -124,6 +124,7 @@ EXPECTED_PRE_REFACTOR_COMPATIBILITY_BASELINE_20260716: dict[str, frozenset[str]]
         {
             "partitioning",
             "clustering",
+            "sorting",
             "primary_keys",
             "foreign_keys",
             "unique_constraints",

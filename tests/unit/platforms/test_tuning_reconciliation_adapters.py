@@ -122,7 +122,7 @@ class FakeMetadataManager:
 
 
 class TestFamilies:
-    def test_postgres_no_op_apply_drops_layout_with_registry_reason(self, monkeypatch, tmp_path):
+    def test_postgres_layout_without_executed_statements_is_dropped(self, monkeypatch, tmp_path):
         monkeypatch.setattr(postgresql_module, "psycopg", Mock(__version__="3.1.0"))
         monkeypatch.setattr("benchbox.core.tuning.metadata.TuningMetadataManager", FakeMetadataManager)
         config = _layout_config(clustering=_columns("L_ORDERKEY"))
@@ -138,7 +138,7 @@ class TestFamilies:
         adapter._reconcile_requested_tuning(config)
 
         assert _drops(adapter) == {
-            "clustering:LINEITEM (L_ORDERKEY)": _registry_reason("postgresql", TuningType.CLUSTERING),
+            "clustering:LINEITEM (L_ORDERKEY)": NOT_RENDERED_REASON,
         }
         assert _status(adapter) == NOOP
 
