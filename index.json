@@ -24375,6 +24375,13 @@
       "status": "done",
       "title": "Record genuine engine_version metadata for local runs so measured template evidence is reachable"
     },
+    "tuning-registry-followups-20261016": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Tuning registry follow-ups: Athena keys, Doris materialized views, variant names, init text"
+    },
     "tuning-registry-mixin-honesty-20260717": {
       "claim": null,
       "needs": [],

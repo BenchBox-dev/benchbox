@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Athena PK/FK requests fail validation as not applied, and _convert_to_external_table output contains no PRIMARY KEY, FOREIGN KEY or REFERENCES clause.",
+    "Doris MATERIALIZED_VIEWS has an explicit not-rendered registry entry.",
+    "validate_for_platform_detailed('duckdb:memory') matches 'duckdb' for every tuning type, and the duckdb:memory sample config validates clean.",
+    "tuning init lists only enabled constraint kinds; the auto-mode notice no longer claims unique/check constraints.",
+    "uv run -- pytest tests/unit/core/tuning -q passes."
+  ],
+  "context": "Work started in worktree /Users/joe/Developer/BenchBox.wt-tuning-registry-followups, branch fix/tuning-registry-followups.",
+  "description": "Owner-approved follow-up PR to the capability validator (decision 2026-10-14: \"One PR after #2919\"). Scope: (1) Athena PK/FK registry entries are _ddl but Athena executes Hive CREATE EXTERNAL TABLE, which has no constraint syntax; mark them not rendered and strip PK/FK in AthenaAdapter._convert_to_external_table. (2) Doris has no MATERIALIZED_VIEWS registry entry; add an explicit not-rendered entry. (3) Platform variants such as duckdb:memory must validate and build sample configs like their base platform (TuningType.is_known_platform / is_compatible_with_platform strip the :variant suffix); pin it with a test. (4) `benchbox tuning init` console text lists unique/check constraints unconditionally; list only enabled kinds, and fix the --tuning auto notice that claims unique/check are enabled.",
+  "links": [
+    "item:tuning-capability-single-source-validator-20261001"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T02:41:24Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "ecf200ede0fe421886be5f81bac613ce",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}
