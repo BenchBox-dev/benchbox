@@ -20778,17 +20778,12 @@
       "title": "Remove the landing required context from core ruleset 15611785"
     },
     "site-split-53-landing-stub-removal": {
-      "claim": {
-        "expires_at": "2026-10-18T19:22:43Z",
-        "generation": "a78b430d9cb8422f8db3ced1d6bb84e5",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
-      },
+      "claim": null,
       "needs": [
         "site-split-52-ruleset-landing-context"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Delete the landing stub aggregate and its approved-context entries from core"
     },
     "site-split-54-publication-github-cleanup": {
