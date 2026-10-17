@@ -37,9 +37,12 @@ def test_duckdb_sort_only_custom_config_reaches_applied_verified_end_to_end(tpch
     result = _run(tpch_data, config, tmp_path / "sort_only.duckdb")
 
     assert result.tuning_validation_status == APPLIED_VERIFIED
-    assert result.applied_tuning_ledger["dropped"] == []
-    assert "satisfied" not in result.applied_tuning_ledger
-    assert result.applied_tuning_ledger["receipt"]["corroborated"] is True
+    ledger = result.applied_tuning_ledger
+    assert ledger["dropped"] == []
+    assert sorted(item["intent"] for item in ledger["satisfied"]) == ["sort_index:lineitem", "sort_index:orders"]
+    for item in ledger["satisfied"]:
+        assert ledger["statements"][item["satisfied_by"]]["statement"].startswith("CREATE INDEX IF NOT EXISTS idx_")
+    assert ledger["receipt"]["corroborated"] is True
 
 
 def test_duckdb_inline_keys_are_satisfied_end_to_end(tpch_data, tmp_path):
