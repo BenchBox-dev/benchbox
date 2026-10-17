@@ -26124,6 +26124,13 @@
       "status": "dropped",
       "title": "Windows nightly: decode source and query-plan fixtures explicitly as UTF-8 (7 failures)"
     },
+    "windows-fast-test-stall-cause-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Find the cause of the Windows fast-test stalls at 90-95%"
+    },
     "windows-file-format-unreadable-test-capability": {
       "claim": null,
       "needs": [],

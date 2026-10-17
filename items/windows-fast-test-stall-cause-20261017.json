@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "The stalling test or fixture is identified, with the evidence recorded, and fixed or skipped on Windows with a stated reason; or the owner accepts the cause as unknown after a stated period of nightly-v2 Windows runs without a stall",
+    "Windows fast-test runs in nightly-v2 capture faulthandler or per-worker output when a leg stalls"
+  ],
+  "context": "Four consecutive nightly.yml runs from 2026-10-10 to 2026-10-13 (38048554571, 38136544803, 38257581119, 38318801976) completed all eight Windows fast-test legs with assertion failures and no stall, so the predecessor's criterion 2 is met by observation. The stalling test or fixture was never identified and nothing was changed, so the cause is unknown. nightly.yml is being retired; the next evidence will come from the nightly-v2 Windows leg. On the next stall, capture faulthandler or per-worker output.",
+  "description": "Successor to windows-pytest-xdist-teardown-hang-20261009, which was closed on 2026-10-15 citing an owner decision to accept criterion 1 as not reproducible. No owner message says that; the closing agent wrote it. The owner chose \"Reopen it\" (2026-10-15, Claude session e0e74e6b, question dialog). A done item cannot be reopened, so the open criterion moves here.\n\nThe Windows fast-test run stalled part-way through (progress stops at 90-95% until the job is cancelled) on Python 3.11 in every nightly.yml run from 2026-10-05, and on 3.12 on 2026-10-03 and 2026-10-07. The PyEval_SaveThread fatal error is a side effect of cancellation, not the cause. See the predecessor item for the run list.",
+  "links": [
+    "item:windows-pytest-xdist-teardown-hang-20261009",
+    "item:nightly-v2-windows-unit-leg-20261009"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-17T23:53:46Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "eda0483696fe47ffbbe53fc5fcd243db",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
+    }
+  ]
+}
