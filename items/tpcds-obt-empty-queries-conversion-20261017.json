@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Each of the 17 statements (1, 6, 8, 10, 15, 19, 30, 35, 44, 45, 54, 58, 69, 78, 81, 83, 91) either returns rows on SF1 OBT data or has a documented reason why an empty result is correct for the TPC-DS query it mirrors",
+    "For each fixed statement, the conversion keeps the base TPC-DS query's join and filter semantics; tests check the converted SQL for those semantics",
+    "A test fails if any converted statement returns no rows on the small OBT dataset used by tests/integration/test_tpcds_obt_parameter_draws.py, except documented exceptions",
+    "Statements returning exactly one row (16, 18, 27, 28, 36, 88, 90, 94, 95, 96 before the parameter fix) are rechecked, and any that are aggregates over an empty set are fixed or documented"
+  ],
+  "context": "Found while fixing TPC-DS OBT query parameters (PR #3062). That PR made 17 empty statements return rows, but left these 17 alone as out of scope. Measured on local SF1 OBT parquet in DuckDB. The six published TPC-DS OBT SF1 bundles are marked `defective-tpcds-obt-parameters` and are out of the rankings until rerun (see tpcds-obt-rerun-defective-sf1-bundles-20261017).",
+  "description": "On local SF1 OBT data in DuckDB, 17 converted TPC-DS OBT statements still return no rows after query parameters started coming from dsqgen: 1, 6, 8, 10, 15, 19, 30, 35, 44, 45, 54, 58, 69, 78, 81, 83, 91. The cause is how the converter rewrites the base TPC-DS query against the one big table, not the parameters. For example, Q1 joins `returned_date_sk` to the sold date, so no return row matches. Any run of these statements times a query that returns nothing, so their results are not comparable with TPC-DS.\n\nThe converter is `benchbox/core/tpcds_obt/query_conversion.py`, with per-query rewrites in `query_specs.yaml`. Parameter rendering is already correct, and the parameter tests in `tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py` cover it.\n\nAlso check the statements that return exactly one row. Before the parameter fix, 10 statements did (16, 18, 27, 28, 36, 88, 90, 94, 95, 96), and they are likely aggregates over an empty set. Confirm which of them are still affected now that parameters are real.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3062"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:9e002f45bd6cb1f33b959f2c",
+      "at": "2026-10-17T21:50:43Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "a3ab80e0aac846b6922c5d59b44932d3",
+      "session_id": "70accbe5849d4e1da05dfca7c4ffe8da"
+    }
+  ]
+}
