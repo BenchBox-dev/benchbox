@@ -3152,6 +3152,13 @@
       "status": "done",
       "title": "ClickHouse: never emit a PRIMARY KEY that is not a prefix of the tuned sort key; validator rejects it"
     },
+    "clickhouse-primary-key-order-evidence-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Record ClickHouse key-derived ORDER BY as evidence for the primary-key intent"
+    },
     "clickhouse-read-primitives-dialect-fixes": {
       "claim": null,
       "needs": [],
