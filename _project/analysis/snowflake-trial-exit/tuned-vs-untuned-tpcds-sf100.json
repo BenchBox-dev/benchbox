@@ -1,0 +1,551 @@
+{
+  "artifact": "tuned-vs-untuned",
+  "untuned_runs": [
+    "tpcds_sf100_snowflake_sql_20261016_181419_ec9cd5bc.json",
+    "tpcds_sf100_snowflake_sql_20261016_191626_eeeb607b.json",
+    "tpcds_sf100_snowflake_sql_20261016_193929_a1e57ccf.json"
+  ],
+  "tuned_runs": [
+    "tpcds_sf100_snowflake_sql_20261016_183340_d65dfe03.json",
+    "tpcds_sf100_snowflake_sql_20261016_185305_2652d679.json",
+    "tpcds_sf100_snowflake_sql_20261016_200050_9aff52c0.json"
+  ],
+  "queries": 103,
+  "method": "Per run, the mean of measured iterations per query; per arm, the median of run means per query; ratio is the geometric mean of tuned/untuned across queries with a percentile bootstrap over queries (4000 resamples, seed 1). Verdict: benefit if the 95% upper bound < 0.95, regression if the lower bound > 1.05, otherwise no detectable effect.",
+  "ratio_tuned_over_untuned": 0.761,
+  "ci95_low": 0.73,
+  "ci95_high": 0.793,
+  "verdict": "benefit",
+  "exceeds_same_arm_noise": true,
+  "same_arm_ratios": {
+    "untuned_pairs": [
+      1.003,
+      0.906,
+      0.904
+    ],
+    "tuned_pairs": [
+      1.021,
+      0.94,
+      0.921
+    ]
+  },
+  "queries_faster": 94,
+  "per_query": {
+    "1": {
+      "untuned_ms": 1189.0,
+      "tuned_ms": 1265.6,
+      "ratio": 1.064
+    },
+    "10": {
+      "untuned_ms": 1996.1,
+      "tuned_ms": 1548.6,
+      "ratio": 0.776
+    },
+    "11": {
+      "untuned_ms": 6313.2,
+      "tuned_ms": 4459.9,
+      "ratio": 0.706
+    },
+    "12": {
+      "untuned_ms": 1372.3,
+      "tuned_ms": 1077.2,
+      "ratio": 0.785
+    },
+    "13": {
+      "untuned_ms": 3239.0,
+      "tuned_ms": 1765.0,
+      "ratio": 0.545
+    },
+    "14a": {
+      "untuned_ms": 7620.2,
+      "tuned_ms": 5528.1,
+      "ratio": 0.725
+    },
+    "14b": {
+      "untuned_ms": 10713.0,
+      "tuned_ms": 6874.0,
+      "ratio": 0.642
+    },
+    "15": {
+      "untuned_ms": 1195.4,
+      "tuned_ms": 1319.9,
+      "ratio": 1.104
+    },
+    "16": {
+      "untuned_ms": 1580.2,
+      "tuned_ms": 1479.4,
+      "ratio": 0.936
+    },
+    "17": {
+      "untuned_ms": 3294.3,
+      "tuned_ms": 2657.3,
+      "ratio": 0.807
+    },
+    "18": {
+      "untuned_ms": 1927.7,
+      "tuned_ms": 2057.4,
+      "ratio": 1.067
+    },
+    "19": {
+      "untuned_ms": 1949.1,
+      "tuned_ms": 996.1,
+      "ratio": 0.511
+    },
+    "2": {
+      "untuned_ms": 2236.1,
+      "tuned_ms": 1914.2,
+      "ratio": 0.856
+    },
+    "20": {
+      "untuned_ms": 1133.0,
+      "tuned_ms": 1321.2,
+      "ratio": 1.166
+    },
+    "21": {
+      "untuned_ms": 1626.8,
+      "tuned_ms": 1353.9,
+      "ratio": 0.832
+    },
+    "22": {
+      "untuned_ms": 3975.6,
+      "tuned_ms": 3441.8,
+      "ratio": 0.866
+    },
+    "23a": {
+      "untuned_ms": 7617.8,
+      "tuned_ms": 6103.5,
+      "ratio": 0.801
+    },
+    "23b": {
+      "untuned_ms": 7551.1,
+      "tuned_ms": 6525.6,
+      "ratio": 0.864
+    },
+    "24a": {
+      "untuned_ms": 3716.3,
+      "tuned_ms": 3630.5,
+      "ratio": 0.977
+    },
+    "24b": {
+      "untuned_ms": 4093.2,
+      "tuned_ms": 4512.9,
+      "ratio": 1.103
+    },
+    "25": {
+      "untuned_ms": 2564.5,
+      "tuned_ms": 1649.4,
+      "ratio": 0.643
+    },
+    "26": {
+      "untuned_ms": 1621.0,
+      "tuned_ms": 1550.3,
+      "ratio": 0.956
+    },
+    "27": {
+      "untuned_ms": 2258.4,
+      "tuned_ms": 1365.9,
+      "ratio": 0.605
+    },
+    "28": {
+      "untuned_ms": 4382.3,
+      "tuned_ms": 4244.0,
+      "ratio": 0.968
+    },
+    "29": {
+      "untuned_ms": 2901.4,
+      "tuned_ms": 1739.0,
+      "ratio": 0.599
+    },
+    "3": {
+      "untuned_ms": 1553.0,
+      "tuned_ms": 1115.6,
+      "ratio": 0.718
+    },
+    "30": {
+      "untuned_ms": 1556.5,
+      "tuned_ms": 1642.6,
+      "ratio": 1.055
+    },
+    "31": {
+      "untuned_ms": 2577.3,
+      "tuned_ms": 1951.5,
+      "ratio": 0.757
+    },
+    "32": {
+      "untuned_ms": 1219.8,
+      "tuned_ms": 1091.6,
+      "ratio": 0.895
+    },
+    "33": {
+      "untuned_ms": 2768.0,
+      "tuned_ms": 1557.1,
+      "ratio": 0.563
+    },
+    "34": {
+      "untuned_ms": 3301.5,
+      "tuned_ms": 2031.1,
+      "ratio": 0.615
+    },
+    "35": {
+      "untuned_ms": 2673.0,
+      "tuned_ms": 2230.4,
+      "ratio": 0.834
+    },
+    "36": {
+      "untuned_ms": 3609.3,
+      "tuned_ms": 2293.3,
+      "ratio": 0.635
+    },
+    "37": {
+      "untuned_ms": 1244.5,
+      "tuned_ms": 1117.2,
+      "ratio": 0.898
+    },
+    "38": {
+      "untuned_ms": 3066.1,
+      "tuned_ms": 2373.9,
+      "ratio": 0.774
+    },
+    "39a": {
+      "untuned_ms": 3781.6,
+      "tuned_ms": 2826.7,
+      "ratio": 0.747
+    },
+    "39b": {
+      "untuned_ms": 5447.3,
+      "tuned_ms": 4845.7,
+      "ratio": 0.89
+    },
+    "4": {
+      "untuned_ms": 9942.7,
+      "tuned_ms": 7082.7,
+      "ratio": 0.712
+    },
+    "40": {
+      "untuned_ms": 1304.3,
+      "tuned_ms": 1621.8,
+      "ratio": 1.243
+    },
+    "41": {
+      "untuned_ms": 931.7,
+      "tuned_ms": 887.8,
+      "ratio": 0.953
+    },
+    "42": {
+      "untuned_ms": 1453.4,
+      "tuned_ms": 884.9,
+      "ratio": 0.609
+    },
+    "43": {
+      "untuned_ms": 1713.2,
+      "tuned_ms": 1170.8,
+      "ratio": 0.683
+    },
+    "44": {
+      "untuned_ms": 1770.2,
+      "tuned_ms": 1505.9,
+      "ratio": 0.851
+    },
+    "45": {
+      "untuned_ms": 1463.0,
+      "tuned_ms": 1392.2,
+      "ratio": 0.952
+    },
+    "46": {
+      "untuned_ms": 3228.7,
+      "tuned_ms": 1978.1,
+      "ratio": 0.613
+    },
+    "47": {
+      "untuned_ms": 4801.7,
+      "tuned_ms": 3143.4,
+      "ratio": 0.655
+    },
+    "48": {
+      "untuned_ms": 3038.3,
+      "tuned_ms": 1691.8,
+      "ratio": 0.557
+    },
+    "49": {
+      "untuned_ms": 3298.3,
+      "tuned_ms": 1969.4,
+      "ratio": 0.597
+    },
+    "5": {
+      "untuned_ms": 3107.1,
+      "tuned_ms": 2251.5,
+      "ratio": 0.725
+    },
+    "50": {
+      "untuned_ms": 2318.3,
+      "tuned_ms": 1869.9,
+      "ratio": 0.807
+    },
+    "51": {
+      "untuned_ms": 6578.6,
+      "tuned_ms": 5683.4,
+      "ratio": 0.864
+    },
+    "52": {
+      "untuned_ms": 1389.0,
+      "tuned_ms": 799.8,
+      "ratio": 0.576
+    },
+    "53": {
+      "untuned_ms": 1892.0,
+      "tuned_ms": 1129.1,
+      "ratio": 0.597
+    },
+    "54": {
+      "untuned_ms": 2057.8,
+      "tuned_ms": 1299.9,
+      "ratio": 0.632
+    },
+    "55": {
+      "untuned_ms": 1618.8,
+      "tuned_ms": 1079.3,
+      "ratio": 0.667
+    },
+    "56": {
+      "untuned_ms": 2513.6,
+      "tuned_ms": 1584.3,
+      "ratio": 0.63
+    },
+    "57": {
+      "untuned_ms": 3548.3,
+      "tuned_ms": 3236.6,
+      "ratio": 0.912
+    },
+    "58": {
+      "untuned_ms": 1904.8,
+      "tuned_ms": 1608.9,
+      "ratio": 0.845
+    },
+    "59": {
+      "untuned_ms": 2639.8,
+      "tuned_ms": 1581.3,
+      "ratio": 0.599
+    },
+    "6": {
+      "untuned_ms": 1983.0,
+      "tuned_ms": 1519.8,
+      "ratio": 0.766
+    },
+    "60": {
+      "untuned_ms": 2922.1,
+      "tuned_ms": 1992.9,
+      "ratio": 0.682
+    },
+    "61": {
+      "untuned_ms": 2746.3,
+      "tuned_ms": 1471.0,
+      "ratio": 0.536
+    },
+    "62": {
+      "untuned_ms": 1510.9,
+      "tuned_ms": 1436.9,
+      "ratio": 0.951
+    },
+    "63": {
+      "untuned_ms": 1768.6,
+      "tuned_ms": 1205.8,
+      "ratio": 0.682
+    },
+    "64": {
+      "untuned_ms": 6871.1,
+      "tuned_ms": 3402.9,
+      "ratio": 0.495
+    },
+    "65": {
+      "untuned_ms": 3451.5,
+      "tuned_ms": 2752.0,
+      "ratio": 0.797
+    },
+    "66": {
+      "untuned_ms": 3314.0,
+      "tuned_ms": 2434.5,
+      "ratio": 0.735
+    },
+    "67": {
+      "untuned_ms": 5926.6,
+      "tuned_ms": 4208.1,
+      "ratio": 0.71
+    },
+    "68": {
+      "untuned_ms": 2715.7,
+      "tuned_ms": 1339.3,
+      "ratio": 0.493
+    },
+    "69": {
+      "untuned_ms": 2372.6,
+      "tuned_ms": 1659.3,
+      "ratio": 0.699
+    },
+    "7": {
+      "untuned_ms": 2491.0,
+      "tuned_ms": 1389.2,
+      "ratio": 0.558
+    },
+    "70": {
+      "untuned_ms": 3440.7,
+      "tuned_ms": 1371.2,
+      "ratio": 0.399
+    },
+    "71": {
+      "untuned_ms": 2848.2,
+      "tuned_ms": 2076.7,
+      "ratio": 0.729
+    },
+    "72": {
+      "untuned_ms": 4005.0,
+      "tuned_ms": 3843.3,
+      "ratio": 0.96
+    },
+    "73": {
+      "untuned_ms": 2079.1,
+      "tuned_ms": 1261.1,
+      "ratio": 0.607
+    },
+    "74": {
+      "untuned_ms": 5176.3,
+      "tuned_ms": 3757.7,
+      "ratio": 0.726
+    },
+    "75": {
+      "untuned_ms": 5999.7,
+      "tuned_ms": 4909.5,
+      "ratio": 0.818
+    },
+    "76": {
+      "untuned_ms": 2946.3,
+      "tuned_ms": 2492.8,
+      "ratio": 0.846
+    },
+    "77": {
+      "untuned_ms": 2898.2,
+      "tuned_ms": 2143.0,
+      "ratio": 0.739
+    },
+    "78": {
+      "untuned_ms": 8771.2,
+      "tuned_ms": 5993.5,
+      "ratio": 0.683
+    },
+    "79": {
+      "untuned_ms": 3054.2,
+      "tuned_ms": 1658.6,
+      "ratio": 0.543
+    },
+    "8": {
+      "untuned_ms": 2148.7,
+      "tuned_ms": 1850.7,
+      "ratio": 0.861
+    },
+    "80": {
+      "untuned_ms": 3917.7,
+      "tuned_ms": 2418.5,
+      "ratio": 0.617
+    },
+    "81": {
+      "untuned_ms": 1986.5,
+      "tuned_ms": 1727.9,
+      "ratio": 0.87
+    },
+    "82": {
+      "untuned_ms": 1569.1,
+      "tuned_ms": 1543.0,
+      "ratio": 0.983
+    },
+    "83": {
+      "untuned_ms": 2076.2,
+      "tuned_ms": 1439.8,
+      "ratio": 0.693
+    },
+    "84": {
+      "untuned_ms": 1173.1,
+      "tuned_ms": 1089.7,
+      "ratio": 0.929
+    },
+    "85": {
+      "untuned_ms": 1987.0,
+      "tuned_ms": 1760.3,
+      "ratio": 0.886
+    },
+    "86": {
+      "untuned_ms": 1355.1,
+      "tuned_ms": 1099.0,
+      "ratio": 0.811
+    },
+    "87": {
+      "untuned_ms": 4007.2,
+      "tuned_ms": 2846.1,
+      "ratio": 0.71
+    },
+    "88": {
+      "untuned_ms": 1925.1,
+      "tuned_ms": 1646.1,
+      "ratio": 0.855
+    },
+    "89": {
+      "untuned_ms": 1935.2,
+      "tuned_ms": 1191.0,
+      "ratio": 0.615
+    },
+    "9": {
+      "untuned_ms": 3532.9,
+      "tuned_ms": 3770.3,
+      "ratio": 1.067
+    },
+    "90": {
+      "untuned_ms": 1486.3,
+      "tuned_ms": 1062.8,
+      "ratio": 0.715
+    },
+    "91": {
+      "untuned_ms": 1616.1,
+      "tuned_ms": 1330.5,
+      "ratio": 0.823
+    },
+    "92": {
+      "untuned_ms": 1346.2,
+      "tuned_ms": 1020.6,
+      "ratio": 0.758
+    },
+    "93": {
+      "untuned_ms": 1967.7,
+      "tuned_ms": 1776.5,
+      "ratio": 0.903
+    },
+    "94": {
+      "untuned_ms": 1741.4,
+      "tuned_ms": 1624.9,
+      "ratio": 0.933
+    },
+    "95": {
+      "untuned_ms": 2108.6,
+      "tuned_ms": 1837.2,
+      "ratio": 0.871
+    },
+    "96": {
+      "untuned_ms": 1540.1,
+      "tuned_ms": 1388.4,
+      "ratio": 0.901
+    },
+    "97": {
+      "untuned_ms": 3852.4,
+      "tuned_ms": 3185.9,
+      "ratio": 0.827
+    },
+    "98": {
+      "untuned_ms": 2638.1,
+      "tuned_ms": 2162.9,
+      "ratio": 0.82
+    },
+    "99": {
+      "untuned_ms": 1639.9,
+      "tuned_ms": 1640.9,
+      "ratio": 1.001
+    }
+  },
+  "check_problems": []
+}
