@@ -98,6 +98,9 @@ class DryRunExecutor:
         benchmark_config: BenchmarkConfig,
         system_profile: SystemProfile,
         database_config: Optional[DatabaseConfig],
+        *,
+        preview_platform: str | None = None,
+        preview_platform_note: str | None = None,
     ) -> DryRunResult:
         execution_mode = self._resolve_execution_mode(database_config)
 
@@ -164,11 +167,21 @@ class DryRunExecutor:
             if benchmark_config.options.get("tuning_enabled", False):
                 result.tuning_config = self._extract_tuning_config(benchmark, benchmark_config, platform_type)
 
-            if execution_mode == "sql" and database_config:
+            preview_type = database_config.type if database_config else preview_platform
+            if execution_mode == "sql" and preview_type:
+                if database_config is None:
+                    reason = f" ({preview_platform_note})" if preview_platform_note else ""
+                    result.warnings.append(
+                        f"No {preview_type} configuration is available{reason}; the tuning DDL preview comes "
+                        f"from the {preview_type} generator only."
+                    )
                 try:
-                    ddl_preview, post_load = self._extract_ddl_preview(benchmark, benchmark_config, database_config)
+                    ddl_preview, post_load, notes = self._extract_ddl_preview(
+                        benchmark, benchmark_config, preview_type, platform_adapter
+                    )
                     result.ddl_preview = ddl_preview
                     result.post_load_statements = post_load
+                    result.warnings.extend(notes)
                 except Exception as e:
                     result.warnings.append(f"DDL preview extraction failed: {e}")
 
@@ -1003,24 +1016,27 @@ class DryRunExecutor:
         self,
         benchmark,
         config: BenchmarkConfig,
-        database_config: DatabaseConfig,
-    ) -> tuple[dict[str, dict[str, Any]], dict[str, list[str]]]:
+        platform_type: str,
+        platform_adapter: Any = None,
+    ) -> tuple[dict[str, dict[str, Any]], dict[str, list[str]], list[str]]:
         from benchbox.core.tuning.ddl_generator import get_ddl_generator
 
         ddl_preview: dict[str, dict[str, Any]] = {}
         post_load_statements: dict[str, list[str]] = {}
 
-        try:
-            generator = get_ddl_generator(database_config.type)
-        except Exception:
-            return ddl_preview, post_load_statements
-
         unified_config = config.options.get("unified_tuning_configuration")
         if not unified_config:
-            return ddl_preview, post_load_statements
+            return ddl_preview, post_load_statements, []
+
+        try:
+            generator = get_ddl_generator(platform_type)
+        except Exception as exc:
+            raise RuntimeError(f"no tuning DDL generator for {platform_type}: {exc}") from exc
+
+        notes = tuning_preview_notes(platform_type, unified_config)
 
         if not hasattr(benchmark, "get_schema"):
-            return ddl_preview, post_load_statements
+            return ddl_preview, post_load_statements, notes
 
         raw_schema = benchmark.get_schema()
         if isinstance(raw_schema, dict):
@@ -1028,9 +1044,10 @@ class DryRunExecutor:
         elif isinstance(raw_schema, list):
             tables = [t["name"] for t in raw_schema if isinstance(t, dict) and "name" in t]
         else:
-            return ddl_preview, post_load_statements
+            return ddl_preview, post_load_statements, notes
 
         table_tunings_by_upper = {str(key).upper(): value for key, value in unified_config.table_tunings.items()}
+        execution_preview = getattr(platform_adapter, "preview_tuning_statements", None)
 
         for table_name in tables:
             table_tuning = table_tunings_by_upper.get(str(table_name).upper())
@@ -1038,16 +1055,18 @@ class DryRunExecutor:
                 continue
 
             tuning_clauses = generator.generate_tuning_clauses(table_tuning)
-            if tuning_clauses.is_empty():
+            executed = execution_preview(table_name, table_tuning) if callable(execution_preview) else None
+            if tuning_clauses.is_empty() and not executed:
                 continue
 
-            ddl_preview[table_name] = _build_table_ddl_entry(tuning_clauses)
+            if not tuning_clauses.is_empty():
+                ddl_preview[table_name] = _build_table_ddl_entry(tuning_clauses)
 
-            post_load = generator.get_post_load_statements(table_name, tuning_clauses)
+            post_load = executed if executed else generator.get_post_load_statements(table_name, tuning_clauses)
             if post_load:
                 post_load_statements[table_name] = post_load
 
-        return ddl_preview, post_load_statements
+        return ddl_preview, post_load_statements, notes
 
     def _get_execution_context(self, benchmark_config: BenchmarkConfig, query_count: int) -> str:
         test_execution_type = getattr(benchmark_config, "test_execution_type", "standard")
@@ -1072,6 +1091,28 @@ class DryRunExecutor:
                 return "Maintenance test execution (data operations)"
         else:
             return f"Standard sequential execution ({query_count} queries)"
+
+
+GENERATOR_DRIVEN_EXECUTION_PLATFORMS = frozenset({"duckdb", "motherduck", "clickhouse", "starrocks"})
+
+
+def tuning_preview_notes(platform_type: str, unified_config: Any) -> list[str]:
+    from benchbox.core.tuning.capability_registry import get_capability, resolve_platform_key, unapplied_reason
+
+    platform_key = resolve_platform_key(platform_type)
+    notes: list[str] = []
+    if platform_key not in GENERATOR_DRIVEN_EXECUTION_PLATFORMS:
+        notes.append(
+            f"Preview only: the tuning DDL shown for {platform_type} comes from the tuning generator; "
+            "execution builds its own table DDL, so what runs can differ."
+        )
+    sorted_ingestion_mode = getattr(unified_config.platform_optimizations, "sorted_ingestion_mode", None)
+    for tuning_type in sorted(unified_config.get_enabled_tuning_types(), key=lambda item: item.value):
+        capability = get_capability(platform_type, tuning_type)
+        reason = unapplied_reason(capability, sorted_ingestion_mode) if capability is not None else None
+        if reason is not None:
+            notes.append(f"Preview only: {tuning_type.value} is not applied at execution on {platform_type}: {reason}")
+    return notes
 
 
 def preview_benchmark_run(

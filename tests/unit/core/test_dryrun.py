@@ -691,7 +691,7 @@ class TestExtractDdlPreview:
         benchmark = self._make_tpch_benchmark(tmp_path)
         assert "lineitem" in benchmark.get_schema()
 
-        ddl_preview, _post_load = self.executor._extract_ddl_preview(benchmark, config, database_config)
+        ddl_preview, _post_load, _notes = self.executor._extract_ddl_preview(benchmark, config, database_config.type)
 
         assert "lineitem" in ddl_preview
         assert ddl_preview["lineitem"]["ddl_clauses"]
@@ -704,7 +704,7 @@ class TestExtractDdlPreview:
         database_config.type = "duckdb"
         benchmark = self._make_tpch_benchmark(tmp_path)
 
-        ddl_preview, post_load = self.executor._extract_ddl_preview(benchmark, config, database_config)
+        ddl_preview, post_load, _notes = self.executor._extract_ddl_preview(benchmark, config, database_config.type)
         assert ddl_preview == {}
         assert post_load == {}
 
@@ -719,7 +719,9 @@ class TestExtractDdlPreview:
             def get_schema(self) -> str:
                 return "CREATE TABLE title (id INTEGER, title VARCHAR);"
 
-        ddl_preview, post_load = self.executor._extract_ddl_preview(_StringSchemaBenchmark(), config, database_config)
+        ddl_preview, post_load, _notes = self.executor._extract_ddl_preview(
+            _StringSchemaBenchmark(), config, database_config.type
+        )
         assert ddl_preview == {}
         assert post_load == {}
 
@@ -734,7 +736,7 @@ class TestExtractDdlPreview:
         database_config.type = "duckdb"
         benchmark = self._make_tpch_benchmark(tmp_path)
 
-        ddl_preview, _post_load = self.executor._extract_ddl_preview(benchmark, config, database_config)
+        ddl_preview, _post_load, _notes = self.executor._extract_ddl_preview(benchmark, config, database_config.type)
         assert ddl_preview == {}
 
 

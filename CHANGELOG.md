@@ -183,6 +183,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer claims unique and check constraints are enabled.
 - Requesting materialized views on Doris now reports that BenchBox does not
   create them on Doris, instead of a generic unsupported-type error.
+- `benchbox run --dry-run --tuning tuned` on a cloud platform whose driver is
+  not installed (for example Snowflake or Databricks) now shows the tuning DDL
+  preview from that platform's generator, with a warning that no platform
+  configuration was available. Before, the preview was silently empty.
+- Tuned dry runs now warn when the tuning DDL preview is generator output that
+  execution does not run, and name each requested tuning type that the
+  platform does not apply at execution. The DuckDB preview lists the sort and
+  cluster indexes and the transactional sort rewrite that a real run executes.
+  The Athena preview no longer contains a `-- Note: PARTITIONED BY ...`
+  placeholder line.
 
 - SQLite runs now honour `--platform-option database_name=<name>`. The run
   creates and uses `<name>.db` in the benchmark's database directory. Before,

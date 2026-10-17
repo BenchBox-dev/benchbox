@@ -832,9 +832,18 @@ class DryRunExecutor(CoreDryRunExecutor):
         benchmark_config: BenchmarkConfig,
         system_profile: SystemProfile,
         database_config: DatabaseConfig | None,
+        *,
+        preview_platform: str | None = None,
+        preview_platform_note: str | None = None,
     ) -> DryRunResult:
         try:
-            return super().execute_dry_run(benchmark_config, system_profile, database_config)
+            return super().execute_dry_run(
+                benchmark_config,
+                system_profile,
+                database_config,
+                preview_platform=preview_platform,
+                preview_platform_note=preview_platform_note,
+            )
         except DryRunQueryExtractionError as exc:
             raise click.ClickException(str(exc)) from exc
 
