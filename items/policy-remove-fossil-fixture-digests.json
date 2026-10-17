@@ -1,7 +1,10 @@
 {
   "acceptance": [
-    "No exception entry with a payload digest matching no file state; gate still green"
+    "No exception entry with a payload digest matching no file state; gate still green",
+    "The five #3081 fossil entries listed in context are removed",
+    "The checker (or a separate check) reports exception entries that match no finding, so new fossils surface automatically"
   ],
+  "context": "Update 2026-10-17 (site-split closeout): the publication-plane retirement left more fossils. #3081 (d153fbb1a) pre-registered new digests for two test files because CI reads exceptions from the base commit; the old-digest entries could not be removed in the same change and now match nothing. On develop 27f7a7d1f, quality/comment-policy.json:\n- tests/unit/scripts/publication/test_artifacts.py, payload sha256:1cfb5e3e8b6c8d4479c277e9b13fd20effe069cc6741d91aa10bc9664426d8c8, four entries with the payload at lines 37318, 37346, 37372 and 37398 (the current digest is sha256:7eed9fa4...);\n- tests/unit/workflows/test_validate_submission_override_approval.py, payload sha256:028c7bd68dcb0d303e8bccc7b38b912d2b0cadc20f2f85c4442853ec3f47c815, line 37868 (current: sha256:e21a464c...).\nThe checker does not report unused exceptions: scripts/run_comment_policy.py --staged on a clean develop worktree reported \"5175 source files, 0 violations\", and no module under scripts/*comment* looks for unmatched entries. So fossils are found only by hand.",
   "description": "quality/comment-policy.json carries digest-pinned fixture entries (e.g. payload sha256:297e9756 for tests/unit/test_standardized_test_commands.py) whose digests match no current file state. Policy says to remove unused exceptions during module review.",
   "sessions": [
     {
@@ -11,6 +14,14 @@
       "op": "create",
       "op_id": "40825b96e74344c88041ab537155fc92",
       "session_id": "8be230d790474fda8edea19668121bf9"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T22:19:33Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "9f201ed517244e2a84ad465d5bc8d332",
+      "session_id": "400c76c14fce4783943655593419ae3c"
     }
   ]
 }
