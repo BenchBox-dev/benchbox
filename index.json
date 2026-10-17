@@ -23826,6 +23826,13 @@
       "status": "done",
       "title": "Make the capability registry the single source for validator severity, with an MRO-following parity test"
     },
+    "tuning-citus-native-layout-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Citus: drive distribution and columnar layout from the tuning file, and verify it live"
+    },
     "tuning-companion-constraint-shapes-v1": {
       "claim": null,
       "needs": [

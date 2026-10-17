@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "A tuning file can set the distribution column per table and mark tables as reference tables; the CLI flag still works and its precedence over the file is documented",
+    "Every tuning request is recorded in the ledger as applied_verified, not applied, or failed, with a reason, and is verified against the Citus catalog (pg_dist_partition)",
+    "Live run of TPC-H SF0.01 on a Citus amd64 environment, with the catalog evidence recorded in the PR",
+    "Platform docs page describes the tuning method and its limits"
+  ],
+  "context": "Owner request 2026-10-17: \"There should be a method for tuning these platforms.\" Local live verification wasn't possible because Citus has no arm64 image. Verify on an amd64 runner (CI or a nightly cell) or with an emulated amd64 container.",
+  "description": "PostgreSQL tuning now partitions tables and runs CLUSTER (#3098, #3092), but Citus skips both (benchbox/platforms/citus.py:34, execution_partitioning_supported = False). Citus's only layout control is `--citus-distribution-column` (citus.py:85-117), which distributes every table on one column and ignores the tuning file. Add a tuning-file method: per-table distribution columns (create_distributed_table), reference tables for small dimensions, an optional columnar access method, and native PostgreSQL partitioning where Citus allows it. Record each request in the applied-tuning ledger as applied_verified, not applied, or failed, with reasons.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T17:32:00Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "225d4781c88c4887907a9b7cea47c5bc",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}
