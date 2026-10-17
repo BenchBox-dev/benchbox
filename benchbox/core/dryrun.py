@@ -131,7 +131,7 @@ class DryRunExecutor:
                 result.platform_config = platform_config
 
                 platform_adapter = None
-                if execution_mode != "dataframe":
+                if execution_mode != "dataframe" or self._has_sql_adapter(database_config.type):
                     try:
                         platform_adapter = get_platform_adapter(database_config.type, **platform_config)
                     except Exception as e:
@@ -182,6 +182,11 @@ class DryRunExecutor:
             result.warnings.append(f"Dry run execution error: {e}")
 
         return result
+
+    @staticmethod
+    def _has_sql_adapter(platform_type: str) -> bool:
+        canonical_name = PlatformRegistry.resolve_platform_name(platform_type)
+        return canonical_name in PlatformRegistry.get_available_platforms()
 
     @staticmethod
     def _resolve_execution_mode(database_config: Optional[DatabaseConfig]) -> str:

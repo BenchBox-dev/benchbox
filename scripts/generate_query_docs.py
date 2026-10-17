@@ -28,6 +28,7 @@ from benchbox.core.query_catalog import (
     query_source_path,
     supports_dialect_translation,
 )
+from benchbox.core.tpcds.c_tools import SUBSCALE_TEMPLATE_OVERRIDES
 from benchbox.core.tpcds.qualification.classification import KNOWN as TPCDS_KNOWN_DIFFERENCES, RETURNS_DIFFERENCE
 
 CLI_DESCRIPTION = "Generate the per-query documentation tree under ``docs/benchmarks/queries/``."
@@ -125,10 +126,11 @@ def _recipe_class(benchmark_id: str) -> tuple[str, str]:
     return f"from benchbox.core.{benchmark_id}.benchmark import {core}", core
 
 
-_TPCDS_PARITY_NOTES_URL = (
+_TPCDS_PARITY_DOC_URL = (
     "https://github.com/BenchBox-dev/benchbox/blob/develop/docs/development/tpcds-dataframe-parity.md"
-    "#q85-and-q93-reason-table-size"
 )
+_TPCDS_PARITY_NOTES_URL = f"{_TPCDS_PARITY_DOC_URL}#q85-and-q93-reason-table-size"
+_TPCDS_SUBSCALE_NOTES_URL = f"{_TPCDS_PARITY_DOC_URL}#q93-below-sf-1-reason-draw"
 
 
 def _answer_set_note(benchmark_id: str, query_id: str) -> list[str]:
@@ -143,6 +145,19 @@ def _answer_set_note(benchmark_id: str, query_id: str) -> list[str]:
         "produced from a 35-row table and were not regenerated for v4.0.0, so this query's rows do not match them. "
         "Every platform runs on the same generated data, so results remain comparable across platforms. "
         f"See the [TPC-DS reason table notes]({_TPCDS_PARITY_NOTES_URL}).",
+        "",
+    ]
+
+
+def _subscale_note(benchmark_id: str, query_id: str) -> list[str]:
+    if benchmark_id != "tpcds" or f"query{query_id}.tpl" not in SUBSCALE_TEMPLATE_OVERRIDES:
+        return []
+    return [
+        "> **Below SF 1 the reason is drawn from the generated rows.** dsdgen shrinks the `reason` table below "
+        "SF 1 (7 rows at SF 0.1, 1 at SF 0.01), but dsqgen draws this query's reason from all 75 descriptions, "
+        "so the official draw usually matches no row. Below SF 1, BenchBox draws the reason from the rows that "
+        "exist at that scale, deterministically for a given seed. From SF 1 up the query text is exactly the "
+        f"official one. See the [sub-SF 1 reason draw notes]({_TPCDS_SUBSCALE_NOTES_URL}).",
         "",
     ]
 
@@ -180,6 +195,7 @@ def _query_page(benchmark_id: str, display: str, query_id: str) -> DocFile:
         lines += [description, ""]
 
     lines += _answer_set_note(benchmark_id, query_id)
+    lines += _subscale_note(benchmark_id, query_id)
 
     render = get_sql_render(benchmark_id, query_id, bulk=True)
     lines += ["## Representative SQL", ""]
