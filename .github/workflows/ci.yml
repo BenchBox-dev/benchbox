@@ -1557,50 +1557,6 @@ jobs:
           gh run cancel "${{ github.run_id }}" --repo "${{ github.repository }}" || true
           sleep 90
 
-  landing:
-    name: landing
-    needs: [ci-paths]
-    if: always()
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      actions: write
-      contents: read
-    steps:
-      - name: Checkout the result helper
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
-        with:
-          fetch-depth: 1
-          persist-credentials: false
-          sparse-checkout: scripts/ci_unit_result.py
-          sparse-checkout-cone-mode: false
-
-      - name: Aggregate landing result
-        id: aggregate
-        env:
-          NEEDS_JSON: ${{ toJson(needs) }}
-        run: |
-          set -euo pipefail
-          python scripts/ci_unit_result.py \
-            --unit landing \
-            --needs "$NEEDS_JSON" \
-            --always ci-paths || {
-            rc=$?
-            if [ "$rc" -eq 3 ]; then
-              echo "superseded=true" >> "$GITHUB_OUTPUT"
-            fi
-            exit "$rc"
-          }
-
-      - name: Cancel superseded run so the aggregate concludes cancelled
-        if: always() && cancelled() && steps.aggregate.outputs.superseded == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          gh run cancel "${{ github.run_id }}" --repo "${{ github.repository }}" || true
-          sleep 90
-
   tooling:
     name: tooling
     needs: [ci-paths, content-guard, skill-integrity, audit-sha, comment-policy]

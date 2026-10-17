@@ -49,7 +49,6 @@ def test_parse_expected_rulesets_from_admin_runbook() -> None:
         "explorer",
         "results-data",
         "docs",
-        "landing",
         "tooling",
         "oracle-review",
         "hold",
@@ -229,7 +228,7 @@ def test_merge_queue_present_is_blocking() -> None:
 def _verified_develop_ruleset() -> dict:
     live = _live_ruleset(
         "refs/heads/develop",
-        ["core", "explorer", "results-data", "docs", "landing", "tooling", "oracle-review", "hold"],
+        ["core", "explorer", "results-data", "docs", "tooling", "oracle-review", "hold"],
         strict=False,
     )
     live["name"] = "develop-squash-only"

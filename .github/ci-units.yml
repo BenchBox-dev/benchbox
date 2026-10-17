@@ -67,8 +67,6 @@ docs:
   - "benchbox/core/platform_registry.py"
   - "benchbox/core/benchmark_registry.py"
 
-landing:
-  - "landing/**"
 
 tooling:
   - ".github/**"

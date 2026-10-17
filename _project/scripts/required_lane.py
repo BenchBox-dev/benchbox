@@ -10,7 +10,6 @@ REQUIRED_CHECK_NAMES: tuple[str, ...] = (
     "explorer",
     "results-data",
     "docs",
-    "landing",
     "tooling",
 )
 

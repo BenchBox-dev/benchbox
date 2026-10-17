@@ -55,13 +55,12 @@ Required status checks:
 - explorer
 - results-data
 - docs
-- landing
 - tooling
 - oracle-review
 - hold
 ```
 
-Six of these contexts are always-reporting result jobs in
+Five of these contexts are always-reporting result jobs in
 `.github/workflows/ci.yml`. `oracle-review` comes from
 `.github/workflows/oracle-review.yml` and passes at once for a change outside
 `.github/soundness-paths.txt`. `hold` comes from `.github/workflows/pr-hold.yml`
@@ -72,7 +71,7 @@ The `ci-paths` job maps changed paths to units with `.github/ci-units.yml`. An
 untouched unit reports success at once. A touched unit succeeds only when every
 job it requires succeeded; a skipped required job fails it, so a path filter or
 broken `if:` never reads as a pass (`scripts/ci_unit_result.py` holds the
-rule). All six contexts report on every `pull_request` event, so no required
+rule). All five contexts report on every `pull_request` event, so no required
 check stays pending forever on a change that does not touch it.
 
 | Context | Runs for | Jobs it requires |
@@ -81,7 +80,6 @@ check stays pending forever on a change that does not touch it.
 | `explorer` | explorer pipeline, parity fixtures, `benchbox/core/results/`, `results-data/` | CLI-versus-explorer parity fixtures |
 | `results-data` | `results-data/`, submission validator, `benchbox/core/results/` | corpus inventory and validation, submission validator sync, corpus and explorer-pipeline contract tests |
 | `docs` | `docs/`, examples, the prompt catalog, CLI and registries | example and docs reference validation, docs generators, spell check |
-| `landing` | every event | none; always passes until the context leaves the ruleset |
 | `tooling` | every event | content guard, skill integrity, and audit checks by path |
 | `oracle-review` | every PR; review required on soundness paths | `benchbox-oracle` success review of the current head, or the stand-in approval, with oracle threads resolved; other paths report success |
 
@@ -684,7 +682,7 @@ of owner. Re-apply in this order:
    live ruleset **by name** (`develop-squash-only`); a stale numeric id is not
    authority.
 3. Verify with the `gh api … rulesets/<id> --jq …` command above.
-4. Open a no-op pull request against develop and confirm the six unit results
+4. Open a no-op pull request against develop and confirm the five unit results
    and `oracle-review` report on it. Arm the exact head for squash auto-merge
    and confirm its merged commit has a successful `trunk.yml` run. This
    validates workflow permissions end to end.

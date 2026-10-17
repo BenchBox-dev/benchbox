@@ -51,7 +51,6 @@ MERGE_GATE_NON_GUARD_JOBS = {
     "explorer",
     "results-data",
     "docs",
-    "landing",
     "tooling",
 }
 MERGE_GATE_GUARD_TOKENS = (
