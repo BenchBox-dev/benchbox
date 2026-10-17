@@ -1,0 +1,28 @@
+{
+  "acceptance": [
+    "pr-open and pr-arm succeed in a cloud session using only REST (gh api) or CCR routes, with no GraphQL calls; they keep working locally",
+    "pr-arm keeps all current refusals (hold label, draft, base, changes requested, unresolved threads, head mismatch) and handles the 422 clean-status case with a head-pinned squash merge",
+    "worktree-create (or a sibling target) can attach an existing session branch without weakening the main-clone write guard",
+    "Missing shared pre-commit hook is installed or reported before worktree creation, with one documented command",
+    "The pre-commit node hooks run on the cloud image's Node version, or the repo pins/provisions a compatible Node (e.g. through the session-start hook)",
+    "Tests cover the GraphQL-free code paths in scripts/pr_arm.py and the pr-open recipe"
+  ],
+  "description": "In a Claude Code cloud session (PR #3090, 2026-10-17), the documented PR flow (agent-write-preflight -> commit -> pr-preflight -> pr-open -> pr-arm) needed manual workarounds at five steps. Make each step work as-is in cloud containers, without weakening any gate.\n\nObserved failures:\n1. pr-open and pr-arm fail: `gh pr list/create/merge` use GraphQL, which the cloud proxy blocks (\"HTTP 403: GitHub GraphQL is not available from Claude Code sessions; use the REST API\"). The push inside pr-open succeeded; the PR was opened with the GitHub MCP tool instead. pr-arm's hold check had to be redone by hand via `gh api` REST.\n2. Auto-merge: the REST route is `PUT /repos/{o}/{r}/pulls/{n}/ccr/auto_merge`. It returns 422 \"Pull request is in clean status\" when the PR can already merge, so pr-arm needs a fallback: a squash merge pinned to the head SHA (`--match-head-commit` equivalent) when the PR is clean.\n3. scripts/worktree_lifecycle.sh `create` refuses an existing local or remote branch. Cloud sessions are handed a fixed, pre-created branch, so `make worktree-create` cannot be used; the worktree was attached with a plain `git worktree add`.\n4. agent-write-preflight requires the shared pre-commit hook in the primary clone. Fresh cloud clones don't have it, and the refusal only appears after the worktree exists.\n5. markdownlint-cli pre-commit hook: npm fails with EBADENGINE (ini@7 needs node ^22.22.2; the container has 22.22.0 at /opt/node22). Worked around by putting Node 24 on PATH.\n\nAlso seen, out of scope unless cheap: the global git identity is Claude <noreply@anthropic.com>, which agent-write-preflight correctly refuses. The session needs a documented way to set the human author.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3090",
+    "scripts/pr_arm.py",
+    "scripts/worktree_lifecycle.sh",
+    "Makefile",
+    ".pre-commit-config.yaml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:root@vm:0fe658420af10fcd252d7204",
+      "at": "2026-10-17T16:41:32Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "26b675c620d84516891ab486512bc41a",
+      "session_id": "c08b375b83fb4dbaa84bacf85e02ce59"
+    }
+  ]
+}
