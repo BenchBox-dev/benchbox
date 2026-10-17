@@ -4,7 +4,7 @@
     "Before-state recorded; branch, environment and the two secrets deleted (gh api reads confirm)",
     "App uninstalled or listed for the owner"
   ],
-  "context": "Owner decision D18 (2026-10-06): the agent performs this cleanup after archiving. The tag date comes from the branch head (muse AR-24). These are the only deletions of GitHub objects the batch may make; never delete any other branch, tag, environment, secret or App.",
+  "context": "Owner decision D18 (2026-10-06): the agent performs this cleanup after archiving. The tag date comes from the branch head (muse AR-24). These are the only deletions of GitHub objects the batch may make; never delete any other branch, tag, environment, secret or App.\n\nSTATE 2026-10-17: BLOCKED, waiting on the owner. Needs 51 is met (the publication plane was retired in core #3096, merge 364a6e9cdf37f3c98374fe03fa5d3f8adc0bd071; #3106 27f7a7d1f removed the last doc references). The remediation session's rules forbid the agent from deleting branches, environments, secrets or Apps, so the owner runs these steps or explicitly authorizes the agent to. Nothing has been archived or deleted yet: no archive/* tag exists on the remote (gh api git/refs/tags/archive returns 404).\n\nBEFORE-STATE (gh api reads, 2026-10-17):\n- branch publication head ef42ea54c9f99b4d8b4f9d5ed7ce7e4174a3531f, committer date 2026-10-04T16:07:13Z, so the tag is archive/publication-20261004;\n- environment publication-attestation, id 21285982908, environment secret PUBLICATION_ATTESTOR_PRIVATE_KEY; full config JSON saved at ~/.benchbox/batch-records/site-repo-split/owner-actions/;\n- repo secrets PUBLICATION_APP_ID and PUBLICATION_APP_PRIVATE_KEY present;\n- App benchbox-publication-controller, app id 4796924, installation id 158313669.\n\nCOMMANDS (run in order; repo BenchBox-dev/benchbox):\n1. gh api repos/BenchBox-dev/benchbox/git/refs -f ref=refs/tags/archive/publication-20261004 -f sha=ef42ea54c9f99b4d8b4f9d5ed7ce7e4174a3531f\n2. gh api repos/BenchBox-dev/benchbox/git/ref/tags/archive/publication-20261004 --jq .object.sha   (expect ef42ea54c...)\n3. gh api -X DELETE repos/BenchBox-dev/benchbox/git/refs/heads/publication\n4. gh api -X DELETE repos/BenchBox-dev/benchbox/environments/publication-attestation\n5. gh secret delete PUBLICATION_APP_ID -R BenchBox-dev/benchbox; gh secret delete PUBLICATION_APP_PRIVATE_KEY -R BenchBox-dev/benchbox\n6. Uninstall the App: org settings > GitHub Apps > benchbox-publication-controller > Uninstall (or gh api -X DELETE app/installations/158313669 with an App JWT).\n7. Verify: branch, environment and the two secrets return 404 or are absent; the tag remains.\nIf the publication branch or a ruleset protects the branch, the delete in step 3 may be refused; report that rather than changing the ruleset.",
   "description": "Agent action via gh api; no PR. Do it after the C2 PR merges.\n\n1. Record the before-state in the item context:\n   - the `publication` branch head SHA and commit date;\n   - the `publication-attestation` environment config and its secret names;\n   - the repo secret names PUBLICATION_APP_ID and PUBLICATION_APP_PRIVATE_KEY;\n   - the publication App id and installation id.\n2. Create and push the tag `archive/publication-<UTC date of that head, YYYYMMDD>` on the branch head. Verify it on the remote.\n3. Delete:\n   - the `publication` branch;\n   - the `publication-attestation` environment;\n   - the repo secrets PUBLICATION_APP_ID and PUBLICATION_APP_PRIVATE_KEY.\n4. Uninstall the publication App from the org. If the API refuses, add it to the owner list in the batch's final report.",
   "sessions": [
     {
@@ -14,6 +14,14 @@
       "op": "create",
       "op_id": "a4cac9f5129647b29064eb37d5ebcf0e",
       "session_id": "2d03f81d904c4b488222c4b6be81ba33"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T21:43:21Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "b759c076b60845d5b389a45814d2dcd3",
+      "session_id": "400c76c14fce4783943655593419ae3c"
     }
   ]
 }

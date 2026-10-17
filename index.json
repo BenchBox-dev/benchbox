@@ -20792,7 +20792,7 @@
         "site-split-51-publication-retirement"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "blocked",
       "title": "Archive and delete the publication branch, environment, secrets and App after the plane is retired"
     },
     "site-split-55-attestation-tightening-decision": {
