@@ -20768,18 +20768,13 @@
       "title": "Retire the publication control plane workflows, scripts, ledger seed and docs from core"
     },
     "site-split-52-ruleset-landing-context": {
-      "claim": {
-        "expires_at": "2026-10-18T21:35:31Z",
-        "generation": "75c5d2e33f9c4192b337d3f3cbc59718",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
-      },
+      "claim": null,
       "needs": [
         "site-split-50-core-site-removal",
         "site-split-51-publication-retirement"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Remove the landing required context from core ruleset 15611785"
     },
     "site-split-53-landing-stub-removal": {
