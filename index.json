@@ -20699,6 +20699,13 @@
       "status": "open",
       "title": "Generate the landing page benchmark cards from the core bundle instead of a hand-kept copy"
     },
+    "site-myst-converter-retirement-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Decide whether to keep or retire the site's MyST-to-Markdown converter"
+    },
     "site-parity-header-shrink-toggle": {
       "claim": null,
       "needs": [],
