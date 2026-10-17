@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "The SSB generator draws all random values from a per-instance random.Random seeded in the generator, never from the global random module",
+    "Generated SSB data is byte-identical to today's output at SF 0.01 and 0.1, or, if the stream necessarily changes, ssb_results.py, the corpus and the integration pin in tests/integration/test_ssb_cross_surface_equivalence.py are updated together with the reason stated",
+    "A test shows that global random calls, or a second generator built before generation, no longer change the generated files",
+    "SSB SQL and DataFrame runs at SF 0.01 and 0.1 still validate as passed"
+  ],
+  "description": "SSBDataGenerator seeds the process-wide RNG once, in its constructor (benchbox/core/ssb/generator.py:51 `random.seed(42)`). All row generation then draws from the global `random` module (generator.py:11 `import random`; for example :341, :343, :378, :510-513, :548-560). The generated data therefore depends on every other use of `random` in the process between construction and generation, and on the order generators are built. Examples: two generators built before either runs, a library or test that draws a random number, or generating with one instance twice.\n\nThis now matters for correctness. PR #3065 (commit 87adc2cd9) added exact per-query SSB row counts (benchbox/core/expected_results/ssb_results.py), and DataFrame validation fails a run whose counts differ. Data drawn from a disturbed RNG gives wrong counts and a FAILED run, not a benchmark defect.\n\nHow found: while checking during #3065 that the SSB counts are stable. Reproduced on origin/develop 27f7a7d1f: generating `customer` at SF 0.01 normally gives md5 434197e8; building a second generator and calling `random.random()` once before generate_data gives 6e492a9c. Normal CLI runs are not affected today, because construction and generation happen back to back with no other random use. Fresh runs on 2026-10-16 matched the corpus counts from August.",
+  "links": [
+    "benchbox/core/ssb/generator.py",
+    "benchbox/core/expected_results/ssb_results.py",
+    "tests/integration/test_ssb_cross_surface_equivalence.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T22:04:33Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "0d4a8207d966491aaeb44782a7b4c8a8",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}
