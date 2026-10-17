@@ -319,6 +319,7 @@ _NOT_RENDERED: dict[str, frozenset[str]] = {
     ),
     "singlestore": frozenset({"check_constraints", "foreign_keys", "partitioning", "unique_constraints"}),
     "snowflake": frozenset({"check_constraints", "materialized_views", "unique_constraints"}),
+    "spark": frozenset({"check_constraints", "partitioning", "unique_constraints"}),
     "sqlite": frozenset({"check_constraints", "unique_constraints"}),
     "starrocks": frozenset({"check_constraints", "foreign_keys", "unique_constraints"}),
     "timescaledb": frozenset(
@@ -371,6 +372,7 @@ _RENDERED: dict[str, frozenset[str]] = {
     "redshift": frozenset({"foreign_keys", "primary_keys", "sorting"}),
     "singlestore": frozenset({"primary_keys"}),
     "snowflake": frozenset({"clustering", "foreign_keys", "partitioning", "primary_keys"}),
+    "spark": frozenset({"foreign_keys", "primary_keys", "sorting"}),
     "sqlite": frozenset({"foreign_keys", "primary_keys"}),
     "starrocks": frozenset({"distribution", "partitioning", "primary_keys", "sorting"}),
     "timescaledb": frozenset({"foreign_keys", "primary_keys"}),
@@ -424,7 +426,7 @@ class TestMechanismPreconditions:
         }
         assert gated == {("redshift", "sorting")}
 
-    @pytest.mark.parametrize("alias", ["spark", "delta", "databricks:sql", "Databricks"])
+    @pytest.mark.parametrize("alias", ["delta", "databricks:sql", "Databricks"])
     def test_databricks_aliases_run_the_effective_layout_validator(self, alias: str) -> None:
         config = UnifiedTuningConfiguration()
         config.disable_all_constraints()

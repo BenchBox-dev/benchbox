@@ -195,6 +195,7 @@ def test_registry_has_platforms_interface_deliberately_excludes():
         "datafusion",
         "motherduck",
         "fabric-warehouse",
+        "spark",
     }
 
 

@@ -314,6 +314,7 @@ def purge_orphaned_warehouse_directory(spark: Any, *, logger: logging.Logger) ->
 
 class SparkLikeAdapterMixin:
     ledger_execute_verbs = ("sql",)
+    handles_spark_session_config = True
 
     def capture_effective_session_config(self, connection: Any, snapshot: str) -> None:
         from benchbox.platforms.spark_effective_config import (

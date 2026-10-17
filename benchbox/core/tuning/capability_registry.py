@@ -74,7 +74,6 @@ PLATFORM_ALIASES: dict[str, str] = {
     "clickhouse-server": "clickhouse",
     "clickhouse-cloud": "clickhouse",
     "chdb": "clickhouse",
-    "spark": "databricks",
     "delta": "databricks",
     "synapse": "azure-synapse",
     "starburst": "trino",
@@ -149,6 +148,33 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         _T.MATERIALIZED_VIEWS: _none(
             "unimplemented",
             "Compatible per the legacy map; no adapter code creates a materialized view.",
+        ),
+    },
+    "spark": {
+        _T.PARTITIONING: _none(
+            "spark_partitioning_log_only",
+            "SparkAdapter.apply_table_tunings only logs partition columns, and SparkAdapter.generate_tuning_clause "
+            "has no call site, so CREATE TABLE never carries PARTITIONED BY.",
+        ),
+        _T.SORTING: _post_load(
+            "spark_delta_optimize_zorder",
+            "Delta tables only: SparkAdapter.apply_table_tunings runs OPTIMIZE ... ZORDER BY on the sort columns "
+            "after load. Parquet and ORC tables (the default) get no sort, and post-load reconciliation records "
+            "the intent as dropped.",
+        ),
+        _T.PRIMARY_KEYS: _ddl(
+            _INLINE_CONSTRAINT,
+            "Delta tables keep the inline PRIMARY KEY clause. Parquet and ORC tables, the default formats, cannot "
+            "carry constraints, so optimize_spark_table_definition removes the clause; Spark never enforces "
+            "declared keys either way. Kept as DDL so tuning files that leave keys at their default still load.",
+        ),
+        _T.FOREIGN_KEYS: _ddl(
+            _INLINE_CONSTRAINT,
+            "Same as PRIMARY_KEYS: kept for Delta tables, removed from Parquet and ORC tables, never enforced.",
+        ),
+        **_no_unique_check_entries(
+            "spark_no_unique_check_rendering",
+            "optimize_spark_table_definition removes UNIQUE clauses from Parquet and ORC tables.",
         ),
     },
     "databricks": {
@@ -993,6 +1019,16 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "PgMooncakeAdapter inherits PostgreSQLAdapter execution carrying PK/FK only (pg_mooncake.py).",
         ),
     },
+}
+
+
+SESSION_CONFIG_CAPABILITIES: dict[str, TuningCapability] = {
+    "spark": _session(
+        "spark_session_config",
+        "Each key in platform_optimizations.spark is set with spark.conf.set after the session starts, read back, "
+        "and recorded in the applied-tuning ledger.",
+    ),
+    "velox": _session("spark_session_config", "Applied the same way as on Spark; spark.gluten.* keys are accepted."),
 }
 
 

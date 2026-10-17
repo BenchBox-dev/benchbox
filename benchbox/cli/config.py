@@ -118,6 +118,22 @@ class BenchBoxConfig(BaseModel):
     tuning: dict[str, Any] = Field(default_factory=dict)
 
 
+SPARK_SESSION_CONFIG_EXAMPLE = """
+# Spark session settings. BenchBox sets each key with spark.conf.set after the
+# session starts, reads it back, and records it in the applied-tuning ledger.
+# To use them, move this block under platform_optimizations above and remove
+# the leading '#'. Keys may omit the 'spark.' prefix. Static keys (warehouse,
+# catalogs, extensions), core deploy keys (spark.driver.*, spark.executor.*),
+# adapter-owned keys and credentials are rejected; set those through the
+# adapter options instead.
+#
+#   spark:
+#     spark.sql.shuffle.partitions: "200"
+#     spark.sql.adaptive.enabled: "true"
+#     spark.sql.autoBroadcastJoinThreshold: "10485760"
+"""
+
+
 class ConfigManager:
     def __init__(self, config_path: Optional[Path] = None, *, strict: bool = False):
         self.console = quiet_console
@@ -659,6 +675,9 @@ class ConfigManager:
                 sample_config.disable_tuning_type(tuning_type)
 
         self.save_unified_tuning_config(sample_config, path)
+        if platform.split(":", 1)[0].strip().lower() in UnifiedTuningConfiguration._SPARK_SESSION_CONFIG_PLATFORMS:
+            with Path(path).open("a", encoding="utf-8") as handle:
+                handle.write(SPARK_SESSION_CONFIG_EXAMPLE)
         console.print(
             f"[green]✅ Sample unified tuning configuration created for platform '{platform}' at {path}[/green]"
         )

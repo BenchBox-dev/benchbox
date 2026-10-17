@@ -268,6 +268,21 @@ class PlatformAdapter(
             platform_info["driver_runtime_strategy"] = self.driver_runtime_strategy
         return platform_info
 
+    handles_spark_session_config: bool = False
+
+    def _drop_unhandled_spark_session_config(self, tuning_config: Any) -> None:
+        ledger = self._applied_tuning_ledger
+        if self.handles_spark_session_config or not self.tuning_enabled or tuning_config is None or ledger is None:
+            return
+        spark_map = getattr(tuning_config.platform_optimizations, "spark", None) or {}
+        if not spark_map:
+            return
+        reason = f"{self.platform_name} does not apply the spark session-config map"
+        self.logger.warning(f"Tuned session config not applied: {reason} ({', '.join(sorted(spark_map))})")
+        for key in sorted(spark_map):
+            qualified = key if key.startswith("spark.") else f"spark.{key}"
+            ledger.record_dropped(f"spark_session_config:{qualified}", reason)
+
     def capture_effective_session_config(self, connection: Any, snapshot: str) -> None:
         return None
 
@@ -611,6 +626,7 @@ class PlatformAdapter(
                 ),
                 benchmark_type,
             )
+            self._drop_unhandled_spark_session_config(effective_tuning_config)
             self.capture_effective_session_config(connection, "after_configuration")
 
             statistics_phase = None
