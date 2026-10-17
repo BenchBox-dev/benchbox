@@ -21984,15 +21984,10 @@
       "title": "Carry funding + result_source in the submission manifest; enforce vendor label governance"
     },
     "subscale-tpc-ranking-policy-20261016": {
-      "claim": {
-        "expires_at": "2026-10-18T01:09:09Z",
-        "generation": "9ef1ccef529748948a85a80bbccefd93",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Rank sub-SF1 TPC results labelled Subscale · Unofficial, with exact sub-SF1 row-count checks"
     },
     "summary-box-system-environment-info": {
