@@ -98,9 +98,9 @@ The canonical loop is **branch → edit → preflight → `make pr-open` → arm
    `make pr-preflight` runs the local lint and the path-aware content guard or fast tests. `make pr-open` pushes and
    runs `gh pr create --base develop`; it refuses to run from `develop` or `release`. Without `PR_TITLE`, a branch with
    several commits gets a title built from its name. On a PR that is already open, `make pr-open` pushes and then
-   edits the title and body only if they differ from the PR's current text. Every edit to an open PR's title or body
-   starts a new CI run, so pass the final text when you open it; after a fix, update the title and body in the
-   `make pr-open` that pushes the fix, and leave out figures that change with each push, such as test counts.
+   edits the title and body only if they differ from the PR's current text. Pass the final text when you open the PR;
+   after a fix, update the title and body in the `make pr-open` that pushes the fix, and leave out figures that
+   change with each push, such as test counts.
 
 5. **Arm it and monitor until it merges:**
 
