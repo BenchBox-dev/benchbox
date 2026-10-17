@@ -158,6 +158,7 @@ platform-agnostic; the per-platform catalog *reads* live in the
 | `ALTER TABLE T CLUSTER BY (cols)`, `CREATE TABLE ... CLUSTER BY (cols)` | ddl/post_load | `cluster_key` | a catalog `cluster_key` fact on `T` whose columns equal `cols`, in order | yes |
 | `CREATE TABLE T (..., PRIMARY KEY (cols))`, `UNIQUE (cols)`, or column-level `PRIMARY KEY` / `UNIQUE` | ddl/post_load | `constraint` | a catalog `constraint` fact on `T` of the same `constraint_type` whose columns equal `cols`, in order; only when the introspector reads that constraint type | yes |
 | `CREATE TABLE T (..., FOREIGN KEY (cols) REFERENCES R (rcols))`, or column-level `REFERENCES R (rcols)` | ddl/post_load | `constraint` | a catalog `FOREIGN KEY` fact on `T` whose child columns equal `cols`, referenced table equals `R` and referenced columns equal `rcols`, all in order | yes |
+| physical sort rewrite (`mechanism="sorted_ingestion"`) | post_load | `attested` | the rewrite ran and leaves no catalog footprint -- recorded, **non-blocking**, never counts as corroboration | no |
 | `SET ...`, `PRAGMA ...`                       | any            | `transient`   | session/config, no persistent catalog footprint -- noted, **non-blocking**         | no                   |
 | `OPTIMIZE TABLE ...` / maintenance           | ddl/post_load  | `maintenance` | merge/compaction op, no distinct catalog footprint -- noted, **non-blocking**      | no                   |
 | `ALTER TABLE T [RESUME/SUSPEND] RECLUSTER`   | ddl/post_load  | `maintenance` | reorganizes existing data; the clustering KEY is the catalog footprint -- **non-blocking** | no          |
@@ -307,22 +308,36 @@ that itself reaches the cap remains explicitly truncated.
   `normalize_columns` is deliberately unchanged, so a bound form is never
   unwrapped into a match.
 
-  The loader's `CREATE OR REPLACE TABLE ... ORDER BY` CTAS drops the initial
-  index, so `DuckDBAdapter.apply_ctas_sort` re-creates the same index after the
-  CTAS using the shared `_duckdb_sort_index_sql` helper.
-  `_record_sort_index_layout_op` records the re-creation as a `post_load`
-  layout operation, and `PlatformAdapter._fold_layout_operations_into_ledger`
-  folds it into the ledger before corroboration. Dry runs capture SQL but
-  neither execute nor record the re-creation.
+  DuckDB sorts a loaded table in place: inside one transaction it copies the
+  rows into a sorted temporary table, deletes them, and reinserts them in
+  order (`SortedIngestionMixin._build_fk_safe_ctas_sort_sql`). The table and
+  its sort index survive the rewrite. The rewrite is recorded as an executed
+  `post_load` statement with `mechanism="sorted_ingestion"`, which receives the
+  non-blocking `attested` verdict (ADR-001, 2026-10-04 addendum).
+  `DuckDBAdapter.apply_ctas_sort` then issues the same
+  `CREATE INDEX IF NOT EXISTS` through the shared `_duckdb_sort_index_sql`
+  helper. Because the index already exists, that statement is recorded as
+  `satisfied` by the original `CREATE INDEX` rather than as a second executed
+  statement. When no earlier index statement executed, or on a path that
+  replaces the table, the re-creation is recorded as a `post_load` layout
+  operation that `PlatformAdapter._fold_layout_operations_into_ledger` folds
+  into the ledger before corroboration. Dry runs neither execute nor record
+  any of these statements.
 
   A corroborated index is evidence of the index, not of row order: an index can
   exist when the data was never sorted. Reaching `applied_verified` also needs
   every other statement in the ledger to corroborate, so a run that also
   requests partitioning or CHECK constraints stays `applied_unverified`.
-  Primary, unique and foreign keys corroborate against `duckdb_constraints()`;
-  the shipped DuckDB TPC-H template reaching `applied_verified` end to end is
-  pinned by
-  `tests/integration/tuning/test_duckdb_constraint_corroboration_e2e.py`. A sort-only
+  Primary, unique and foreign keys corroborate against `duckdb_constraints()`.
+  The shipped DuckDB TPC-H, SSB and TPC-DS templates reaching `applied_verified`
+  through the real `benchbox run` CLI are pinned by
+  `tests/integration/tuning/test_tuning_liveness_e2e.py`, which also pins the
+  expected status of every platform, benchmark and tuning-mode cell it runs;
+  constraint corroboration for the TPC-H template is pinned by
+  `tests/integration/tuning/test_duckdb_constraint_corroboration_e2e.py`.
+  DuckDB and SQLite create TPC-DS tables without foreign keys, because the
+  generated data does not satisfy all of them, and record requested foreign
+  keys as a dropped intent with that reason. A sort-only
   configuration built through the real `create_schema` is pinned by
   `tests/unit/platforms/test_physical_identifier_resolution.py::TestDuckDBPhysicalIdentifiers::test_sort_only_config_reaches_applied_verified_without_mismatch`.
 

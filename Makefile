@@ -138,6 +138,14 @@ test-correctness-gate:
 	rm -f "$$REPORT"; \
 	test $$PYTEST_STATUS -eq 0 && test $$GUARD_STATUS -eq 0
 
+.PHONY: tuning-support-matrix
+tuning-support-matrix:
+	uv run -- python scripts/generate_tuning_support_matrix.py
+
+.PHONY: tuning-support-matrix-check
+tuning-support-matrix-check:
+	uv run -- python scripts/generate_tuning_support_matrix.py --check
+
 .PHONY: plan-capture-gate
 plan-capture-gate:
 	uv run -- python -m pytest tests/integration/test_plan_capture_gate.py -q -n 0 --tb=short
