@@ -5,6 +5,7 @@ import { paletteColor } from "@/lib/chartTheme";
 import { isRankable } from "@/lib/displayEligibility";
 import { formatPowerScore } from "@/lib/metricFormatters";
 import { formatRunIdentityLabelsForCohort, preserveUniqueAfterTruncation } from "@/lib/runIdentity";
+import { isDerivedPowerScore, isSubscaleTpc, powerScoreTitle } from "@/lib/subscale";
 
 const LABEL_W = 160;
 const ROW_H = 36;
@@ -45,6 +46,7 @@ export function PowerBar({ summary, colorIndexFor }: Props) {
   }
 
   const maxScore = Math.max(...rows.map((r) => r.power_score!));
+  const scoreTitle = powerScoreTitle(isSubscaleTpc(summary.benchmark, summary.scale_factor));
   const plotW = layout.plotWidth;
   const totalH = PADDING_TOP + rows.length * layout.rowHeight + AXIS_H;
 
@@ -56,7 +58,7 @@ export function PowerBar({ summary, colorIndexFor }: Props) {
         height={totalH}
         viewBox={`0 0 ${w} ${totalH}`}
         role="img"
-        aria-label="TPC Power@Size comparison - higher is better"
+        aria-label={`TPC ${scoreTitle} comparison - higher is better`}
       >
         {rows.map((row, ri) => {
           const barW = (row.power_score! / maxScore) * plotW;
@@ -85,7 +87,7 @@ export function PowerBar({ summary, colorIndexFor }: Props) {
                 fill={color}
                 rx={2}
               >
-                <title>{`${row.fullLabel}: ${valueText} Power@Size`}</title>
+                <title>{`${row.fullLabel}: ${valueText} ${scoreTitle}${isDerivedPowerScore(row.power_score_source) ? " (derived from query timings)" : ""}`}</title>
               </rect>
               <text
                 x={layout.labelAbove ? w : layout.plotX + barW + 6}
@@ -134,7 +136,7 @@ export function PowerBar({ summary, colorIndexFor }: Props) {
             text-anchor="middle"
             style={{ fontSize: "10px", fill: "var(--bb-chart-label-muted)" }}
           >
-            Power@Size - higher is better
+            {scoreTitle} - higher is better
           </text>
         </g>
       </svg>

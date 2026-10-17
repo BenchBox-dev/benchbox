@@ -50,6 +50,7 @@ const EXCLUSION_LABELS: Record<string, string> = {
   partial_query_coverage: "Result has partial query coverage.",
   stream_count_mismatch: "Recorded throughput stream count does not match the configured count.",
   trust_not_rankable: "Results from this source are not included in rankings.",
+  unofficial_compliance: "Non-standard runs are unofficial and are not ranked.",
   tuning_not_applied: "Custom tuning was requested, but the run recorded no applied settings.",
   validation_not_clean: "Validation status excludes this result from ranking.",
   visibility_not_comparable: "Visibility policy excludes this result from comparison.",

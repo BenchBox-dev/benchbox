@@ -83,6 +83,7 @@ class TestToManifestEntry:
 
     def test_composite_metrics_are_not_used_as_the_power_score(self, tmp_path: Path) -> None:
         data = copy.deepcopy(MINIMAL_BUNDLE)
+        data["benchmark"]["scale_factor"] = 1.0
         data["summary"]["tpc_metrics"] = {"qphh_at_size": 777.0, "qphds_at_size": 888.0}
         bundle = tmp_path / "legacy-composite.json"
         bundle.write_text(json.dumps(data), encoding="utf-8")

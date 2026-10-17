@@ -111,7 +111,7 @@ These nine are required.
 | Name | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | <span id="benchbox.core.results.models.BenchmarkResults.test_execution_type"></span>`test_execution_type` | `str` | `'standard'` | Kind of test the run performed. BenchBox uses `standard`, `power`, `throughput` and `maintenance`. |
-| <span id="benchbox.core.results.models.BenchmarkResults.power_at_size"></span>`power_at_size` | `float \| None` | `None` | TPC power metric, when the run computed one. |
+| <span id="benchbox.core.results.models.BenchmarkResults.power_at_size"></span>`power_at_size` | `float \| None` | `None` | TPC power metric, when the run computed one. Subscale TPC runs (`compliance_class` `unofficial_subscale`) compute it for comparison within the subscale cohort only; it is not a TPC result. |
 | <span id="benchbox.core.results.models.BenchmarkResults.throughput_at_size"></span>`throughput_at_size` | `float \| None` | `None` | TPC throughput metric, when the run computed one. |
 | <span id="benchbox.core.results.models.BenchmarkResults.qph_at_size"></span>`qph_at_size` | `float \| None` | `None` | QphH@Size for an official TPC-H result with complete Power and Throughput phases and successful, consecutive RF1/RF2 evidence; otherwise `None`. QphDS@Size is not exported. |
 | <span id="benchbox.core.results.models.BenchmarkResults.qphh_unavailable"></span>`qphh_unavailable` | `list[str] \| None` | `None` | Reasons QphH@Size was withheld, such as nonofficial scale, failed queries, query subsets, incomplete phases, or missing refresh evidence. |

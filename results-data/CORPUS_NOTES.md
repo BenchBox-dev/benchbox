@@ -265,9 +265,11 @@ What these results are and are not:
 
 - The SF 1 and SF 10 runs used `--official` with `--seed 42` and are stamped
   `compliance_class: official`. The SF 0.1 runs are
-  `compliance_class: unofficial_subscale`, as every sub-SF-1 TPC-H run is; they
-  are carried like the other unofficial cohorts and no official TPC-H metrics
-  are computed for them.
+  `compliance_class: unofficial_subscale`, as every sub-SF-1 TPC-H run is. They
+  were written with suppressed TPC metrics, so the Explorer and
+  `validate_corpus.py` derive their Power@Size from the exported final-iteration
+  timings, mark it derived, and rank them labelled Subscale · Unofficial. No
+  QphH@Size is computed for them.
 - Four bundles pass `scripts/validate_submission.py --require-manifest` with
   no error, warning or override: SF 1 on all three platforms and SF 10 on
   BigQuery. Snowflake SF 10 and Databricks SF 10 pass with the overrides

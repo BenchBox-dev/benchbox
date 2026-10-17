@@ -420,7 +420,8 @@ class DuckDBSnapshotBuilder:
                 physical_rendering_id VARCHAR,
                 benchmark_support_status VARCHAR,
                 throughput_at_size   DOUBLE,
-                stream_count         INTEGER
+                stream_count         INTEGER,
+                power_score_source   VARCHAR
             )
         """)
         con.execute("""
@@ -504,6 +505,7 @@ class DuckDBSnapshotBuilder:
                 r.benchmark_support_status,
                 r.throughput_at_size,
                 r.stream_count,
+                r.power_score_source,
                 e.os,
                 e.arch,
                 e.cpu_count,
@@ -604,6 +606,7 @@ class DuckDBSnapshotBuilder:
                 speedup_vs_slowest_in_cohort DOUBLE,
                 throughput_at_size           DOUBLE,
                 stream_count                 INTEGER,
+                power_score_source           VARCHAR,
                 PRIMARY KEY (benchmark, scale_factor, phase, result_id)
             )
         """)
@@ -663,7 +666,8 @@ class DuckDBSnapshotBuilder:
                 node_count,
                 cluster_size,
                 storage_format,
-                storage_tier
+                storage_tier,
+                power_score_source
             FROM results
         """)
         con.execute("""
@@ -884,6 +888,7 @@ class DuckDBSnapshotBuilder:
                     entry.benchmark_support_status,
                     entry.throughput_at_size,
                     entry.stream_count,
+                    entry.power_score_source,
                 )
             )
         if rows:
@@ -1070,6 +1075,7 @@ class DuckDBSnapshotBuilder:
                         ranked_row.speedup_vs_slowest,
                         platform_row.throughput_at_size,
                         stream_count,
+                        platform_row.power_score_source,
                     )
                 )
         if rows:

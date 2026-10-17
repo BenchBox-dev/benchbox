@@ -35,6 +35,7 @@ from benchbox.core.results.schema_policy import (
     result_schema_version_value,
     supports_row_count_validation,
 )
+from benchbox.core.results.subscale_policy import NONSTANDARD_COMPLIANCE_CLASS, unofficial_metric_marker
 from benchbox.validation.bundle import REQUIRED_TOP_KEYS
 
 if TYPE_CHECKING:
@@ -1486,10 +1487,12 @@ def _compute_timing_stats(times_ms: list[float]) -> dict[str, Any]:
 
 def _build_tpc_metrics(result: BenchmarkResults) -> dict[str, Any] | None:
     compliance_class = getattr(result, "compliance_class", None)
-    if compliance_class in UNOFFICIAL_COMPLIANCE_CLASSES:
+    if compliance_class == NONSTANDARD_COMPLIANCE_CLASS:
         metrics: dict[str, Any] = {"suppressed": True, "reason": f"compliance_class={compliance_class}"}
     else:
-        metrics = {}
+        metrics = (
+            unofficial_metric_marker(compliance_class) if compliance_class in UNOFFICIAL_COMPLIANCE_CLASSES else {}
+        )
         if result.power_at_size is not None:
             metrics["power_at_size"] = result.power_at_size
         if result.throughput_at_size is not None:

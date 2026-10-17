@@ -32,6 +32,7 @@ development/adr/adr-read-primitives-cloud-variants.md
 development/adr/adr-runtime-composition-boundary.md
 development/adr/adr-sql-compat-phase-aware-pipeline.md
 development/adr/adr-sqlglot-use-and-non-use.md
+development/adr/adr-subscale-tpc-ranking-policy.md
 development/adr/adr-textcharts-extraction.md
 development/adr/adr-tpcdi-enhanced-parallel-support-decision.md
 development/adr/adr-tpchavoc-submission-variant-coverage.md

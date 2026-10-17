@@ -39,7 +39,10 @@ Only bundles the Explorer can rank contribute an identity. `exclusion_reason` in
 `ranking_exclusion_reason`, and a bundle counts only when it returns no reason. It applies
 these conditions, in order:
 
-1. The compliance class is not `unofficial_nonstandard` or `unofficial_subscale`.
+1. The compliance class is not `unofficial_nonstandard`. Subscale TPC-H and TPC-DS
+   (`unofficial_subscale`, or no class below SF 1) rank, labelled Subscale · Unofficial;
+   a subscale bundle with no stored Power@Size ranks on Power@Size derived from its
+   final-iteration timings (see `docs/development/adr/adr-subscale-tpc-ranking-policy.md`).
 2. No measurement query failed.
 3. The validation status is clean. A `passed` or missing status with failed queries is
    `partial`, and one with a failed or fallback SQL translation is `uncertain`.
@@ -75,8 +78,7 @@ The depth gate applies to cohorts that publish a ranking:
 
 A cohort with no rankable bundle publishes no ranking, so there is nothing to
 read against and nothing for the gate to protect. This is how a cohort made up
-only of `unofficial_subscale` runs (for example TPC-DS at SF0.1 on cloud
-warehouses) stays in the corpus without blocking it.
+only of unrankable runs stays in the corpus without blocking it.
 
 Distinct identities are distinct platform names. The validator does not merge engines
 that share a backend (Spark SQL and PySpark, DuckDB and DuckDB-based services), so

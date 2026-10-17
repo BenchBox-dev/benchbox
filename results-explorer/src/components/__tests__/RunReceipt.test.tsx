@@ -802,3 +802,32 @@ describe("RunReceipt applied-tuning receipt drill-down", () => {
     expect(within(receipt).queryByText("Query ID repairs")).toBeNull();
   });
 });
+
+describe("RunReceipt subscale compliance", () => {
+  it("humanizes the compliance class and marks derived Power@Size", () => {
+    render(
+      <RunReceipt
+        detail={makeDetail({ compliance_class: "unofficial_subscale", power_score_source: "derived_from_timings" })}
+        shortId="abc12345"
+        isRankingEligible={true}
+      />,
+    );
+
+    const receipt = screen.getByRole("region", { name: "Run receipt" });
+    expect(within(receipt).getByText("Subscale · Unofficial")).toBeTruthy();
+    expect(within(receipt).getByText("Power@Size source")).toBeTruthy();
+    expect(within(receipt).getByText("Derived from exported query timings")).toBeTruthy();
+  });
+
+  it("omits the source row for recorded Power@Size", () => {
+    render(
+      <RunReceipt
+        detail={makeDetail({ compliance_class: "unofficial_subscale", power_score_source: "recorded" })}
+        shortId="abc12345"
+        isRankingEligible={true}
+      />,
+    );
+
+    expect(screen.queryByText("Power@Size source")).toBeNull();
+  });
+});

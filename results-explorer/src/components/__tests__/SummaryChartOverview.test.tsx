@@ -54,7 +54,7 @@ function makePlatform(overrides: Partial<PlatformRow> = {}): PlatformRow {
 function makeSummary(overrides: Partial<BenchmarkSummary> = {}): BenchmarkSummary {
   return {
     benchmark: "tpch",
-    scale_factor: 0.1,
+    scale_factor: 1,
     phase: "standard",
     query_ids: ["Q1", "Q2", "Q3"],
     platforms: [

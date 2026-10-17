@@ -23,6 +23,7 @@ import { TuningVerificationBadge } from "@/components/TuningVerificationBadge";
 import { formatCpuIdentityProvenance } from "@/lib/hardwareProvenance";
 import { RunDateChip } from "@/components/RunAge";
 import { VersionLabel } from "@/components/VersionLabel";
+import { complianceBadge, isDerivedPowerScore } from "@/lib/subscale";
 
 interface RunReceiptProps {
   detail: DetailResult;
@@ -249,7 +250,10 @@ export function RunReceipt({
         rowFromString("Visibility", detail.visibility, formatVisibility),
         ...overrideRows(detail),
         ...queryIdRepairRows(detail),
-        rowFromString("Compliance", detail.compliance_class),
+        rowFromString("Compliance", detail.compliance_class, (raw) => complianceBadge(raw) ?? raw),
+        ...(isDerivedPowerScore(detail.power_score_source)
+          ? [recordedRow("Power@Size source", "Derived from exported query timings")]
+          : []),
         rankingEligibilityRow(isRankingEligible),
       ],
     },

@@ -330,6 +330,7 @@ def _build_benchmark_summaries(
                 sample_geomean_ms=entry.geomean_ms,
                 cost_usd=entry.cost_usd,
                 compliance_class=entry.compliance_class,
+                power_score_source=entry.power_score_source,
                 percentile_stats=_platform_percentile_stats(detail.display_timings),
                 phase_durations=detail.phase_durations,
                 timings=timings,

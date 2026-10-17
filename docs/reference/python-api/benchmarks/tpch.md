@@ -79,7 +79,7 @@ A `TPCH` instance. It subclasses `BaseBenchmark`; see {doc}`/reference/python-ap
 | --- | --- |
 | `official` | `official=True` and `scale_factor` is 1, 10, 30, 100, 300, 1000, 3000, 10000, 30000 or 100000. |
 | `unofficial_nonstandard` | `scale_factor` is 1 or more and the run is not official, or the scale factor is not an official one. |
-| `unofficial_subscale` | `scale_factor` is below 1. |
+| `unofficial_subscale` | `scale_factor` is below 1. The run records Power@Size marked `"unofficial": true`, never QphH@Size, and `benchbox submit` and `benchbox publish` refuse it. |
 
 ##### Raises
 

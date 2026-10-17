@@ -154,6 +154,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dataframe-surface equivalence checks use Polars' default engine; these paths
   do not receive `benchbox run`'s execution-engine selection.
 
+### Changed
+
+- **Subscale TPC-H and TPC-DS results are ranked and labelled
+  "Subscale · Unofficial".** Runs below SF 1 now record Power@Size with an
+  `"unofficial": true` marker instead of suppressing it, and the Results
+  Explorer and `results-data/validate_corpus.py` rank them in their own
+  cohort. Non-standard runs at SF 1 and above stay unranked with suppressed
+  metrics. QphH@Size is still never computed for subscale runs, and
+  `benchbox submit` and `benchbox publish` still refuse them. Older bundles
+  without a compliance class are read as subscale below SF 1, so they keep
+  their rankings and gain the label. Fourteen published subscale bundles
+  stored no Power@Size; the Explorer derives it from their exported query
+  timings and marks it "derived". Cohort headers, rank rows, run receipts,
+  the compare page, Power@Size chart titles and CSV/JSON exports carry the
+  label. The Explorer read model moves to version 17 for the new
+  `power_score_source` column.
+
 ### Fixed
 
 - SQLite runs now honour `--platform-option database_name=<name>`. The run

@@ -20,7 +20,6 @@ NON_CLEAN_VALIDATION_STATUSES = frozenset(
     {"failed", "interrupted", "partial", "error", "not_run", "not_validated", "uncertain", "unknown"}
 )
 NON_CLEAN_TRANSLATION_STATUSES = frozenset({"fallback", "failed"})
-UNOFFICIAL_COMPLIANCE_CLASSES = frozenset({"unofficial_nonstandard", "unofficial_subscale"})
 PHASE_ALIASES = {"standard": "power"}
 EXECUTION_RUN_TYPES = frozenset({"measurement", "warmup"})
 PASS_STATUSES = frozenset({"SUCCESS", "PASS", "pass", "success"})
@@ -78,6 +77,20 @@ def _load_bundle(bundle: pathlib.Path) -> dict:
             return json.load(handle)
     except Exception as exc:
         raise CorpusReadError(f"ERROR reading {bundle}: {exc}") from exc
+
+
+def _load_subscale_policy():
+    policy_path = pathlib.Path(__file__).resolve().parents[1] / "benchbox" / "core" / "results" / "subscale_policy.py"
+    spec = importlib.util.spec_from_file_location("_benchbox_subscale_policy", policy_path)
+    if spec is None or spec.loader is None or not policy_path.is_file():
+        raise CorpusReadError(f"ERROR cannot load the subscale ranking policy from {policy_path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+SUBSCALE_POLICY = _load_subscale_policy()
 
 
 def _load_export_anonymized_errors():
@@ -504,7 +517,19 @@ def _tpc_metric(payload: dict, name: str) -> float | None:
 
 
 def _power_score(payload: dict) -> float | None:
-    return _tpc_metric(payload, "power_at_size")
+    recorded = _tpc_metric(payload, "power_at_size")
+    if recorded is not None:
+        return recorded
+    benchmark = _mapping(payload.get("benchmark"))
+    compliance = SUBSCALE_POLICY.effective_compliance_class(
+        benchmark.get("id"), benchmark.get("scale_factor"), benchmark.get("compliance_class")
+    )
+    if compliance != SUBSCALE_POLICY.SUBSCALE_COMPLIANCE_CLASS:
+        return None
+    queries = payload.get("queries")
+    return SUBSCALE_POLICY.derive_power_at_size(
+        queries if isinstance(queries, list) else [], benchmark.get("scale_factor")
+    )
 
 
 def _throughput_phase_clean(payload: dict) -> bool:
@@ -551,7 +576,7 @@ def _primary_metric_reason(payload: dict, display: list[tuple[str, float | None,
 def exclusion_reason(payload: dict) -> str | None:
     benchmark = _mapping(payload.get("benchmark"))
     compliance = benchmark.get("compliance_class")
-    if compliance is not None and str(compliance) in UNOFFICIAL_COMPLIANCE_CLASSES:
+    if compliance is not None and str(compliance) in SUBSCALE_POLICY.RANKING_EXCLUDED_COMPLIANCE_CLASSES:
         return "unofficial_compliance"
     if failed_query_count(payload):
         return "failed_queries"

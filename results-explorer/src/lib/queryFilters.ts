@@ -93,6 +93,7 @@ const ALLOWED_COLUMNS = new Set([
   "physical_rendering_id",
   "storage_tier",
   "compliance_class",
+  "power_score_source",
   "is_ranking_eligible",
   "has_plans",
   "plans_published",
