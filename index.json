@@ -8360,6 +8360,13 @@
       "status": "done",
       "title": "Sync published-results validator with develop's per-file hash contract (release-blocker)"
     },
+    "dryrun-dataframe-mode-option-checks-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Make DataFrame-mode dry runs check platform options against the DataFrame adapter"
+    },
     "duckdb-architecture-verification": {
       "claim": null,
       "needs": [],

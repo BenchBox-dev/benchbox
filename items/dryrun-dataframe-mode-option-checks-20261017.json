@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "A DataFrame-mode dry run passes the user's platform options to the DataFrame adapter's constructor, or to an equivalent options validator, for every platform with a DataFrame mode",
+    "An invalid platform option fails or warns in a DataFrame-mode dry run for pyspark, snowpark-connect and lakesail-df, with tests",
+    "The lakesail-df dry run still produces no 'Unsupported platform' warning, and the existing tests in test_platform_options_reach_adapters.py still pass"
+  ],
+  "context": "Found while fixing the develop break in PR #3070, which restored SQL-adapter construction for DataFrame-mode platforms that register a SQL adapter. That restored the guarantee pinned by `tests/unit/cli/test_platform_options_reach_adapters.py`, but against the SQL adapter only. Constraint: the `lakesail-df` dry run must not bring back the \"Unsupported platform\" warning.",
+  "description": "In DataFrame mode, a dry run never builds the DataFrame adapter that the real run uses (`benchbox/core/dryrun.py`, around line 137):\n\n- Platforms that also register a SQL adapter, such as pyspark and snowpark-connect, build the SQL adapter instead. Their platform options are checked against the wrong constructor.\n- DataFrame-only aliases such as `lakesail-df` build no adapter, so their platform options are not checked at all.\n\nAs a result, a dry run can pass with options that the real DataFrame run rejects or ignores.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3070"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:9e002f45bd6cb1f33b959f2c",
+      "at": "2026-10-17T21:51:06Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "d899854d21c0463aa083f1c8787625f0",
+      "session_id": "70accbe5849d4e1da05dfca7c4ffe8da"
+    }
+  ]
+}
