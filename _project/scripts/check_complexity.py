@@ -30,7 +30,7 @@ CLI_DESCRIPTION = (
     "* configured Ruff fails when complexity is greater than 18 in Ruff's configured\n"
     "  file-discovery scope;\n"
     "* this checker scans ``benchbox`` with isolated Ruff, reports scores from 12\n"
-    "  through 20, and fails on scores greater than 20 unless an exact, current\n"
+    "  through 18, and fails on scores greater than 18 unless an exact, current\n"
     "  exception exists.\n"
     "\n"
     "Exception metadata is fail-closed. An entry must pin the target, line, measured\n"

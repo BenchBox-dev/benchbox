@@ -385,7 +385,7 @@ def test_repo_policy_pins_scope_commands_and_required_ci_together() -> None:
 
     assert "_project" not in ruff["exclude"]
     assert "ruff==0.16.7" in config["dependency-groups"]["dev"]
-    assert complexity["max_complexity"] == 20
+    assert complexity["max_complexity"] == 18
     assert complexity["warn_complexity"] == 12
     assert complexity["max_exception_days"] == 90
     assert complexity["exclusions"] == []
