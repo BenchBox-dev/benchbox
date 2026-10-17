@@ -23,7 +23,12 @@ AGGREGATOR_STEP_NAME = "lint-guard-summary"
 
 SETUP_STEP_NAMES = {"Install dependencies"}
 
-EXCLUDED_STEPS: dict[str, str] = {}
+EXCLUDED_STEPS: dict[str, str] = {
+    "Run promoted regression reproducers": (
+        "Promoted slow and medium regression reproducers; they are intentionally CI-gated, run here so they stay "
+        "off the unit-test job's critical path, and are not silently represented by the fast local lane."
+    ),
+}
 
 MERGE_GATE_WORKFLOWS = {
     "ci.yml": PR_WORKFLOW,
@@ -152,18 +157,6 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
         "The hosted command checks the immutable PR base range; ci-lint covers the "
         "current checkout and agent-commit-range-check covers local commits."
     ),
-    ("ci.yml", "code-test", "Run cross-surface mutation target drift guard"): (
-        "Promoted slow regression guard; it is intentionally CI-gated and is not "
-        "silently represented by the fast local test lane."
-    ),
-    ("ci.yml", "code-test", "Run cross-surface GATES Make/CI pinning guard"): (
-        "Promoted medium regression guard; its explicit CI node prevents marker "
-        "selection from dropping it and has no cheaper local equivalent."
-    ),
-    ("ci.yml", "code-test", "Run promoted TPC-DS power-test drain-before-commit reproducer"): (
-        "Promoted slow regression guard; it is intentionally CI-gated and is not "
-        "silently represented by the fast local test lane."
-    ),
     ("ci.yml", "postgres-integration", "Wait for PostgreSQL service to be reachable"): (
         "Non-blocking service sample; the hosted container is deliberately not a "
         "local prerequisite for the required product lane."
@@ -210,24 +203,10 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
         "same tests run as part of the local full preflight rather than a separate "
         "lightweight Make target."
     ),
-    ("ci.yml", "code-test", "Run promoted h2odb mutation-catch reproducer (#901)"): (
-        "Promoted slow mutation regression; it is intentionally CI-gated and is "
-        "not silently represented by the fast local lane."
-    ),
-    ("ci.yml", "code-test", "Run promoted plan-capture-phase reproducers (#909)"): (
-        "Promoted slow regression; it is intentionally CI-gated and is not silently represented by the fast local lane."
-    ),
-    ("ci.yml", "code-test", "Run DuckLake in-process adapter integration tests"): (
-        "Optional integration dependency is hosted in this lane; the local "
-        "required preflight does not manufacture the DuckLake service."
-    ),
-    ("ci.yml", "code-test", "Run promoted DuckDB FK tuning load-ordering reproducers"): (
-        "Promoted slow regression; it is intentionally CI-gated and is not silently represented by the fast local lane."
-    ),
-    ("ci.yml", "code-test", "Run promoted TPC-H power/throughput boundary-query (w0 defect) reproducers"): (
-        "Promoted slow regression; it is intentionally CI-gated and is not silently represented by the fast local lane."
-    ),
     ("ci.yml", "code-test", "Run fast tests"): "Covered by the local `test-fast` target.",
+    ("ci.yml", "code-test", "Pre-build the assertion-rewrite cache"): (
+        "Cache warm-up for the fast lane; it asserts nothing and only shortens collection in the step after it."
+    ),
     ("ci.yml", "medium-test", "Run medium speed tier"): "Covered by the local `test-medium` target.",
     ("ci.yml", "correctness-gate", "Run bounded real-result correctness gate"): (
         "Covered by the local `test-correctness-gate` target."
