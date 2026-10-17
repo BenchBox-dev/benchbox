@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "The drift check reports any branch with classic protection that isn't in an approved list",
+    "Unit test with a mocked API response that includes classic protection",
+    "Running it against the live repo today shows no classic protection"
+  ],
+  "context": "Found 2026-10-17 during site-split-54. Deleting refs/heads/publication returned HTTP 422 (\"Cannot delete this branch\"). The cause was classic branch protection, which no ruleset or drift output had shown. With the owner's OK the protection was removed and the branch deleted; the history is kept as tag archive/publication-20261004.",
+  "description": "scripts/ruleset_drift_check.py checks rulesets, tag protection and the pypi environment's protection (ruleset_drift_check.py:52-67, 266-274). It never reads classic branch protection (GET /repos/{repo}/branches?protected=true and /branches/{b}/protection). A classic rule can therefore sit alongside the rulesets without being seen. The publication branch had one, with allow_deletions=false, and nothing in the repo recorded it. Have the drift check list protected branches, and fail on, or warn about, any classic protection outside an approved list. Today that list is empty: develop and release are protected by rulesets only.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T22:03:01Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "15686a7b162844829fb3f47c66eeba1e",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}

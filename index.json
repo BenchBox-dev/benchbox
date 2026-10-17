@@ -19699,6 +19699,13 @@
       "status": "done",
       "title": "Extend ruleset_drift_check.py to assert the develop pull_request review rule"
     },
+    "ruleset-drift-classic-branch-protection-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Make the ruleset drift check report classic branch protection rules"
+    },
     "run-lifecycle-and-export-unification-refactor": {
       "claim": null,
       "needs": [],
