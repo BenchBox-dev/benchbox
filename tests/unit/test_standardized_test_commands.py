@@ -663,7 +663,7 @@ class TestCorrectnessGateOracle:
         monkeypatch.setenv("BENCHBOX_STRICT_EXPECTED_RESULTS", "1")
         payload = {"queries": [{"id": "9", "stream": 0, "status": "SUCCESS", "rows": 175}]}
         with pytest.raises(AssertionError, match="strict expected-results"):
-            _validate_against_expected_results(payload, "tpch", 0.1, expected_query_ids={"9"})
+            _validate_against_expected_results(payload, "tpch", 0.5, expected_query_ids={"9"})
 
     def test_strict_mode_fails_on_benchmark_drift(self, monkeypatch):
         monkeypatch.setenv("BENCHBOX_STRICT_EXPECTED_RESULTS", "1")

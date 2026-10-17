@@ -135,12 +135,22 @@ streams.
 
 ### TPC-H
 
-- **Scale Factors**: SF=1.0 (with fallback for scale-independent queries at other SFs)
+- **Scale Factors**: SF=1.0, SF=0.01 and SF=0.1 (with fallback for scale-independent queries at other SFs)
 - **Queries**: All 22 official TPC-H queries (Q1-Q22)
 - **Query Variants**: Q15 variants supported (15a, 15b, etc.)
 - **Scale-Independent Queries**: Q1 (same row count at any SF)
 
-Expected results sourced from official TPC-H answer files distributed with dbgen.
+SF=1.0 expected results come from the official TPC-H answer files distributed
+with dbgen. TPC publishes no answer files below SF 1, so SF=0.01 and SF=0.1 use
+a BenchBox reference in
+`benchbox/core/expected_results/reference_row_counts/`: exact counts for qgen's
+default parameters, produced from bundled dbgen data and checked to agree on
+DuckDB and DataFusion. Regenerate it with `make tpch-subscale-row-counts-regen`.
+Each file also lists the queries whose count depends on the substitution
+parameters at that scale. SQL and DataFrame runs with other parameters (a
+seed) skip those queries and still check the rest, so a seeded run reports
+UNCERTAIN unless a checked query fails. Seeded DataFrame runs at SF 1 are not
+checked, as before.
 
 ### TPC-DS
 
@@ -407,7 +417,7 @@ See `.github/workflows/upload-answers.yml` for the expected archive layout.
 **Symptom**: All validations skipped at SF=10, SF=100, etc.
 
 **This is expected behavior:**
-- Expected results are only available for SF=1.0
+- Expected results are only available for SF=1.0, SF=0.01 and SF=0.1
 - Scale-dependent queries cannot be validated at other SFs
 - Scale-independent queries (e.g., TPC-H Q1) still validate via fallback
 
@@ -455,7 +465,11 @@ class ExpectedQueryResult:
     validation_mode: ValidationMode = ValidationMode.EXACT
     scale_independent: bool = False
     notes: str | None = None
+    reference_parameters_only: bool = False
 ```
+
+`reference_parameters_only` marks a count that holds only for the reference
+substitution parameters; runs with other parameters skip that query.
 
 `expected_row_count_min` and `expected_row_count_max` are for non-deterministic queries. `row_count_formula` holds an expression such as `"SF * 100"`.
 

@@ -183,6 +183,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dataframe-surface equivalence checks use Polars' default engine; these paths
   do not receive `benchbox run`'s execution-engine selection.
 
+### Changed
+
+- **TPC-H runs at SF 0.01 and SF 0.1 check every query's row count.** TPC
+  publishes answer files only at SF 1, so these scales used to check table
+  row counts only, and DataFrame runs reported UNCERTAIN. A new BenchBox
+  reference holds exact counts for all 22 queries at qgen's default
+  parameters, generated from bundled dbgen data and confirmed on DuckDB and
+  DataFusion. SQL and DataFrame runs now fail a query whose count differs.
+  Seeded runs skip the queries whose count depends on the parameters at that
+  scale (Q2, Q9, Q11, Q13, Q16, Q18, Q20 and Q21 at SF 0.01) and check the
+  rest, so they report UNCERTAIN unless a checked query fails. DataFusion SQL can return no rows for Q15, because it stores money
+  columns as floating point and the two revenue sums can differ; that query
+  now fails instead of passing silently.
+
 ### Fixed
 
 - Tuning validation and `benchbox tuning init` treat a platform variant such
