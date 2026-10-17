@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "SQL SSB runs at SF 0.01, 0.1, 1 and 10 check every query's row count against benchbox/core/expected_results/ssb_results.py, through the shared expected-results registry or an equivalent single source, so the SQL and DataFrame paths cannot diverge",
+    "A wrong SSB query row count on a SQL platform fails the query and the run; an SSB scale factor with no recorded counts does not report passed on query evidence",
+    "Local DuckDB, DataFusion and SQLite SSB runs at SF 0.01 and 0.1 still report passed, with row_count_validation PASSED on every measured query",
+    "Tests fail without the change: a SQL SSB pass, a wrong count, and an unrecorded scale factor",
+    "The PR states how the change affects existing corpus SSB SQL bundles and cloud SSB results"
+  ],
+  "description": "SQL SSB runs report summary.validation \"passed\" even though no query result is checked. No SSB expected-results provider is registered. benchbox/core/expected_results/registry.py:229 register_benchmark_provider is called only for tpch (tpch_results.py:95) and tpcds (tpcds_results.py:117). QueryValidator therefore returns SKIP for every SSB query. The \"passed\" comes only from the load-time table row-count ranges in SSBRowCountStrategy (benchbox/platforms/base/validation.py:186, selected at :267). A SQL engine that returns wrong SSB query results would still be labelled passed and ranked as clean by results-data/validate_corpus.py.\n\nPR #3065 (commit 87adc2cd9) added exact SSB per-query row counts at SF 0.01, 0.1, 1 and 10 in benchbox/core/expected_results/ssb_results.py. Only the DataFrame path uses them (benchbox/core/dataframe/query_validation.py). They were deliberately left unregistered, because registering them changes SQL validation on every platform.\n\nHow found: during the #3065 work. A local `benchbox run --platform duckdb --benchmark ssb --scale 0.1` on develop gives summary.validation \"passed\" and phases.validation PASSED, but all 39 measured query rows have no row_count_validation. The corpus SSB SQL bundles (results-data/bundles/ssb_*_sql_*.json) are the same.\n\nRelated: TPC-H SQL runs below SF 1 show the same pattern (passed with no query-level check). That case belongs to subscale-tpc-ranking-policy-20261016 and is not in scope here.",
+  "links": [
+    "benchbox/core/expected_results/ssb_results.py",
+    "benchbox/core/expected_results/registry.py",
+    "benchbox/platforms/base/validation.py",
+    "benchbox/core/validation/query_validation.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T22:03:35Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "b03d7777225e476a944ca9b514d36e66",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}

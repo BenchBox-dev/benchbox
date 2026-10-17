@@ -21698,6 +21698,13 @@
       "status": "done",
       "title": "Fix SSB generator 3-digit p_category emission (MFGR#212 vs MFGR#12) causing empty Q2/Q3/Q4 results"
     },
+    "ssb-sql-query-row-count-validation-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Check SSB SQL query row counts so SQL \"passed\" means the query results were validated"
+    },
     "ssb-tuned-merge-settle-retest-20261008": {
       "claim": null,
       "needs": [],
