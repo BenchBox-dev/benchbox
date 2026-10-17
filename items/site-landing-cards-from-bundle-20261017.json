@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "The site-inputs bundle carries the benchmark card data, produced from core metadata",
+    "landing-data.ts card content is generated at build time; the hand-kept literal is gone",
+    "Changing a benchmark's query count in core changes the landing card after the next bundle"
+  ],
+  "context": "Found 2026-10-17 at site-split closeout (follow-up list in site-split-99). A bundle schema addition is additive (ADR D16: no schema bump); core lands first, site second.",
+  "description": "benchbox-site website/src/lib/landing-data.ts (655 lines) holds the landing page's benchmark cards (names, query and table counts, doc links) as a hand-maintained literal, used by website/src/pages/index.astro and website/src/components/landing/CatalogGroup.astro. Core owns those facts, so the cards drift whenever core adds a benchmark or changes a count, and nothing detects it.\n\nCarry the card data in the site-inputs bundle (core scripts/site_inputs.py) and have the site build generate the cards from it, failing the build if the bundle lacks the data.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T22:16:15Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "10a769767fc94108ad27c3123f418ef1",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}

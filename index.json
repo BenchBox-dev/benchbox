@@ -20685,6 +20685,13 @@
       "status": "open",
       "title": "Fix 10 broken fragment links that are live on benchbox.dev today"
     },
+    "site-landing-cards-from-bundle-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Generate the landing page benchmark cards from the core bundle instead of a hand-kept copy"
+    },
     "site-parity-header-shrink-toggle": {
       "claim": null,
       "needs": [],
