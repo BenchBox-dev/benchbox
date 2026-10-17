@@ -1,13 +1,20 @@
 from __future__ import annotations
 
-import runpy
+import importlib.util
+import sys
 from pathlib import Path
 
 import pytest
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
-DOCS = Path(__file__).parents[3] / "docs"
+ROOT = Path(__file__).parents[3]
+DOCS = ROOT / "docs"
+SPEC = importlib.util.spec_from_file_location("check_doc_external_links", ROOT / "scripts/check_doc_external_links.py")
+assert SPEC and SPEC.loader
+links = importlib.util.module_from_spec(SPEC)
+sys.modules[SPEC.name] = links
+SPEC.loader.exec_module(links)
 PUBLISH_LIST_ROOTS = ("development", "operations")
 
 
@@ -60,60 +67,40 @@ def test_excluded_directories_are_top_level_and_excluded_files_exist() -> None:
     assert [path for path in EXCLUDED_FILES if not (DOCS / path).is_file()] == []
 
 
-@pytest.fixture(scope="module")
-def conf() -> dict:
-    return runpy.run_path(str(DOCS / "conf.py"))
+def published(docs: Path = DOCS) -> set[str]:
+    return {page.relative_to(docs).as_posix() for page in links.published_pages(docs)}
 
 
-def test_sphinx_excludes_every_listed_path(conf: dict) -> None:
-    assert set(conf["exclude_patterns"]) >= EXCLUDED_ROOTS | EXCLUDED_FILES
+def test_published_pages_leave_out_every_listed_path() -> None:
+    pages = published()
+    assert pages
+    assert sorted(page for page in pages if page.split("/", 1)[0] in EXCLUDED_ROOTS) == []
+    assert sorted(pages & EXCLUDED_FILES) == []
 
 
-def test_sphinx_excludes_every_unlisted_page_in_gated_directories(conf: dict) -> None:
-    excluded = set(conf["exclude_patterns"])
-    assert gated_pages() - set(ALLOWLIST) <= excluded
-    assert not set(ALLOWLIST) & excluded
+def test_published_pages_in_gated_directories_are_allowlisted() -> None:
+    gated = {page for page in published() if page.split("/", 1)[0] in PUBLISH_LIST_ROOTS}
+    assert gated <= set(ALLOWLIST)
+    assert {page for page in ALLOWLIST if page.endswith(".md")} <= published()
 
 
-def test_sphinx_excludes_a_new_unlisted_page(conf: dict, tmp_path: Path) -> None:
+def test_a_new_unlisted_page_in_a_gated_directory_is_not_published(tmp_path: Path) -> None:
     (tmp_path / "development").mkdir()
     (tmp_path / "development" / "kept.md").write_text("# Kept\n")
     (tmp_path / "development" / "new-page.md").write_text("# New\n")
-    (tmp_path / "development" / "kept.rst").write_text("Kept\n====\n")
-    (tmp_path / "development" / "new-page.rst").write_text("New\n===\n")
-    (tmp_path / "publish-allowlist.txt").write_text("# comment\ndevelopment/kept.md\ndevelopment/kept.rst\n")
-    exclude_patterns = conf["_unlisted_publish_list_pages"](tmp_path)
-    assert exclude_patterns == ["development/new-page.md", "development/new-page.rst"]
-    assert sphinx_docnames(tmp_path, exclude_patterns) == {"development/kept"}
+    (tmp_path / "publish-allowlist.txt").write_text("# comment\ndevelopment/kept.md\n")
+    assert published(tmp_path) == {"development/kept.md"}
 
 
-def test_missing_publish_list_publishes_nothing_in_gated_directories(conf: dict, tmp_path: Path) -> None:
+def test_missing_publish_list_publishes_nothing_in_gated_directories(tmp_path: Path) -> None:
     (tmp_path / "operations").mkdir()
     (tmp_path / "operations" / "runbook.md").write_text("# Runbook\n")
-    assert conf["_unlisted_publish_list_pages"](tmp_path) == ["operations/runbook.md"]
+    assert published(tmp_path) == set()
 
 
-def sphinx_docnames(srcdir: Path, exclude_patterns: list[str]) -> set[str]:
-    from sphinx.project import Project
-
-    return Project(str(srcdir), [".md", ".rst"]).discover(exclude_paths=exclude_patterns)
-
-
-def test_sphinx_discovers_no_excluded_or_unlisted_page(conf: dict) -> None:
-    docnames = sphinx_docnames(DOCS, conf["exclude_patterns"])
-    assert docnames
-    assert sorted(name for name in docnames if name.split("/")[0] in EXCLUDED_ROOTS) == []
-    assert (
-        sorted(name for name in docnames if any(f"{name}{suffix}" in EXCLUDED_FILES for suffix in (".md", ".rst")))
-        == []
-    )
-    gated = {name for name in docnames if name.split("/")[0] in PUBLISH_LIST_ROOTS}
-    assert sorted(name for name in gated if not any(f"{name}{suffix}" in ALLOWLIST for suffix in (".md", ".rst"))) == []
-
-
-def test_sphinx_excludes_everything_under_a_listed_directory(tmp_path: Path) -> None:
+def test_everything_under_a_listed_directory_is_excluded(tmp_path: Path) -> None:
     for relative in ("kept.md", "agent/notes.md", "internal/deep/runbook.md", "guides/user.md"):
         (tmp_path / relative).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / relative).write_text("# Page\n")
-    patterns = [entry.rstrip("/") for entry in ("agent/", "internal/")]
-    assert sphinx_docnames(tmp_path, patterns) == {"kept", "guides/user"}
+    (tmp_path / "publish-exclusions.txt").write_text("agent/\ninternal/\n")
+    assert published(tmp_path) == {"kept.md", "guides/user.md"}

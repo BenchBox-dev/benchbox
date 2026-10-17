@@ -228,16 +228,6 @@ def read_skipped_unreachable_sidecar(cells_jsonl: Path) -> tuple[int, bool]:
     return coerce_accounting_count(payload.get("skipped_unreachable_count", 0)), present
 
 
-def update_accounting_sidecar(cells_jsonl: Path, **fields: object) -> bool:
-    payload, present = read_accounting_sidecar(cells_jsonl)
-    if not present:
-        return False
-    payload.update(fields)
-    accounting_path = cells_accounting_path(cells_jsonl)
-    atomic_write_text(accounting_path, json.dumps(payload) + "\n")
-    return True
-
-
 def _persist_cell_failure_context(cell: CellResult, *, terminal_state: str) -> str:
     if cell.status == "passed" and cell.result_path is not None:
         return ""

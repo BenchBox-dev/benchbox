@@ -18,7 +18,6 @@ MAKE_TARGET_SUBCOMMANDS = (
     "gate-check",
     "validate",
     "package",
-    "explorer-smoke",
     "report",
     "sweep",
     "stress",
@@ -323,31 +322,6 @@ def _handle_gate_check(args: argparse.Namespace) -> int:
     return 0
 
 
-def _handle_explorer_smoke(args: argparse.Namespace) -> int:
-    from tests.uat.phases.explorer_smoke import run_explorer_smoke
-
-    result = run_explorer_smoke(
-        bundles_dir=Path(args.data_dir),
-        output_dir=Path(args.output_dir),
-        log_dir=Path(args.log_dir),
-        playwright_browsers=tuple(args.browsers.split(",")),
-    )
-    print(
-        json.dumps(
-            {
-                "skipped": result.skipped,
-                "skip_reason": result.skip_reason,
-                "build_returncode": result.build_returncode,
-                "smoke_returncode": result.smoke_returncode,
-                "build_log": str(result.build_log) if result.build_log else None,
-                "smoke_log": str(result.smoke_log) if result.smoke_log else None,
-            },
-            indent=2,
-        )
-    )
-    return result.exit_code()
-
-
 def _handle_replay_classify(args: argparse.Namespace) -> int:
     from tests.uat.runner import SubmitTerminalState, classify_for_submit
 
@@ -621,13 +595,6 @@ def _build_parser() -> argparse.ArgumentParser:
     report.add_argument("--rungs", default=None, help="Comma-separated rung scales for cross-scale coverage")
     report.add_argument("--cross-scale-floor", type=int, default=None)
     _set_handler(report, _handle_report)
-
-    explorer = subparsers.add_parser("explorer-smoke", help="build and smoke-test the results explorer")
-    explorer.add_argument("--data-dir", required=True)
-    explorer.add_argument("--output-dir", required=True)
-    explorer.add_argument("--log-dir", required=True)
-    explorer.add_argument("--browsers", default="chromium")
-    _set_handler(explorer, _handle_explorer_smoke)
 
     replay = subparsers.add_parser("replay-classify", help="classify passed coverage cells for submission readiness")
     replay.add_argument("--coverage-cells", required=True)

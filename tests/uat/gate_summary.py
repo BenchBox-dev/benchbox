@@ -17,9 +17,6 @@ VERDICT_GREEN = "green"
 VERDICT_RED = "red"
 VERDICT_DRY_RUN = "dry_run"
 
-EXPLORER_SMOKE_NOT_RUN = "not_run"
-EXPLORER_SMOKE_RAN = "ran"
-
 EXPECTED_RELEASE_GATE_STAGES = (
     "release-gate-01-native-dataframe",
     "release-gate-02-docker-nonoltp",
@@ -68,7 +65,6 @@ class GateSummary:
     cross_scale_clean_pairs: int | None
     cross_scale_floor: int | None
     cross_scale_floor_breached: bool | None
-    explorer_smoke_status: str
     verdict: str
     abort_kind: str | None = None
     artifact_digests: dict[str, str | None] | None = None
@@ -160,11 +156,6 @@ def build_combined_evidence(
             reasons.append(f"stage {stage.config_name!r} verdict is {stage.verdict!r}, not green")
         if stage.unreachable_is_estimated:
             reasons.append(f"stage {stage.config_name!r} accounting sidecar missing (unreachable_is_estimated=true)")
-        if "explorer_smoke" in stage.phase_exit_codes and stage.explorer_smoke_status != EXPLORER_SMOKE_RAN:
-            reasons.append(
-                f"stage {stage.config_name!r} configured explorer_smoke but it did not run "
-                f"(explorer_smoke_status={stage.explorer_smoke_status!r})"
-            )
         if stage.validator_clean_rate_floor is None or stage.cross_scale_floor is None:
             reasons.append(f"stage {stage.config_name!r} floor gates were not configured")
         if stage.source_commit_sha == "unknown":

@@ -1,7 +1,7 @@
 # UAT Framework — Operator Guide
 
-The UAT framework lives at `tests/uat/`. It composes six configured
-phases — preflight, execute, validate, package, explorer-smoke, report —
+The UAT framework lives at `tests/uat/`. It composes five configured
+phases — preflight, execute, validate, package, report —
 driven by YAML configs under `tests/uat/configs/`. Configs declare what
 to run; the framework runs it. Cell enumeration is internal to the
 execute phase, not a public phase.
@@ -16,12 +16,11 @@ The developer guide for hacking on the framework itself is
 |---|---|
 | Native TPCH smoke loop (SF 0.01, no Docker) | `make uat-smoke` |
 | Smoke a single cell | `make uat-cell PLATFORM=duckdb BENCHMARK=tpch SCALE=0.01` |
-| Stress preset (one scale, no validate/package/explorer) | `make uat-stress` |
+| Stress preset (one scale, no validate/package) | `make uat-stress` |
 | Stress, single platform / benchmark | `make uat-stress PLATFORM=duckdb BENCHMARK=tpch` |
 | Full sweep from a config | `make uat-sweep CONFIG=tests/uat/configs/uat-enabled-platforms-full.yaml` |
 | Validate a directory of bundles | `make uat-validate RESULTS_DIR=<dir> OUTPUT_TSV=<path>` |
 | Package staged bundles via terminal-state YAML | `make uat-package CONFIG=<path> SUBMISSIONS_DIR=<path> RESULTS="r1.json r2.json"` |
-| Explorer build + Playwright smoke | `make uat-explorer-smoke BUNDLES_DIR=<path> OUTPUT_DIR=<path> LOG_DIR=<path>` |
 | TSV roll-up from a cells JSONL | `make uat-report CELLS_JSONL=<path> OUTPUT_TSV=<path>` |
 | Single-phase execute (already-validated config) | `make uat-execute CONFIG=<path>` |
 | Discover subcommands and options | `uv run -- python -m tests.uat._cli --help` |
@@ -321,39 +320,6 @@ to them, but they are not separately validated under mocker.
 `tests/uat/test_docker_assets.py` pins these compose files' service *names*
 (not just counts) so this guidance cannot silently drift out of sync.
 
-## Explorer smoke (browser)
-
-`make uat-explorer-smoke` invokes Playwright directly against a freshly
-built Explorer app, mirroring the entrypoint of the `explorer-e2e` job in
-`site-docs.yml`. Each invocation runs three steps inside `results-explorer/`
-in order:
-
-1. `npm ci` — clean install of Explorer JS dependencies.
-2. `npm run build` — full Explorer production build.
-3. `npx playwright test --grep @uat-external-corpus --project <browser>` —
-   the UAT smoke run, against the staged data dir.
-
-The UAT smoke is intentionally separate from the Results Explorer developer
-fixture route suite. Before launching Playwright, it validates that the
-packaged corpus has at least one result bundle with `run`, `benchmark`,
-`scale_factor`, and `platform` metadata, then writes the compact contract to
-`explorer_corpus_contract.json` under the UAT log directory. The browser test
-discovers benchmark, platform, result, and query evidence from the mounted
-corpus, so a valid LakeSail-only or otherwise narrow UAT run is not coupled to
-the deterministic DuckDB/TPC-H fixture IDs.
-
-Steps 1 and 2 are not cached locally, so a single `make uat-explorer-smoke`
-invocation pays the full npm cost every time. The CI workflow caches
-`node_modules/` and the build output; a developer-loop sweep does not. If
-you are iterating on a UAT change unrelated to the Explorer browser smoke,
-prefer running the targeted test (`uv run -- python -m pytest
-tests/uat/test_explorer_smoke.py -m fast`) and reserve
-`make uat-explorer-smoke` for end-to-end validation.
-
-The fixed developer fixture route regressions still run from
-`results-explorer/` with `npm run test:e2e:fixtures && npm run build &&
-npx playwright test --grep @smoke --project chromium`.
-
 ## Artifact provenance and abort evidence
 
 Every non-dry-run sweep captures the current git commit once at sweep
@@ -615,16 +581,6 @@ visible independent of the other red nightly jobs.
 `tests/unit/workflows/test_nightly_throughput_uat_contract.py` fails if any
 throughput step gains `continue-on-error` or a quarantine label, or if the
 sweep and assert steps lose `if: !cancelled()`.
-
-The throughput explorer sweep (`uat-throughput-explorer-smoke.yaml`) sets
-`explorer_smoke.require_throughput_streams: 3`. With that key a skipped
-smoke (explorer assets or `node` missing), a corpus with no throughput
-bundle, and a bundle whose distinct stream count is not exactly 3 all fail;
-the Playwright spec receives the count as `E2E_REQUIRE_THROUGHPUT_STREAMS`
-and asserts it exactly. It is not scheduled: a nightly lane needs a second
-job with Node, `npm ci`, Playwright browsers and its own SF1 data
-generation, and `t3:throughput` already gates the driver. Run it by hand
-after changes that touch throughput or the explorer pipeline.
 
 ## Throughput performance floor (relative model)
 

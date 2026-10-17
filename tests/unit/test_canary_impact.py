@@ -552,11 +552,6 @@ def test_medium_preflight_ignores_non_product_paths() -> None:
     ]
 
 
-def test_medium_preflight_treats_website_sources_as_product_paths() -> None:
-    changed = ["website/src/pages/index.astro", "website/package-lock.json"]
-    assert medium_relevant_paths(changed) == changed
-
-
 def test_medium_preflight_skips_collection_and_mapping_without_product_paths(tmp_path: Path) -> None:
     output = tmp_path / "selection.json"
     rc = canary_impact.main(

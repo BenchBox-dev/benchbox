@@ -54,7 +54,10 @@ def test_comparison_validation_and_capture_logic_is_medium_high(policy: Policy, 
 def test_larger_or_multi_area_code_diff_is_medium_high(policy: Policy) -> None:
     assert _classify(policy, _file("scripts/publication/validator_parity.py", 200)).tier == "medium-high"
     assert (
-        _classify(policy, _file("scripts/publication/validator_parity.py"), _file("deploy/x.sh")).tier == "medium-high"
+        _classify(
+            policy, _file("scripts/publication/validator_parity.py"), _file("benchbox/core/equivalence/x.py")
+        ).tier
+        == "medium-high"
     )
 
 
@@ -95,7 +98,7 @@ def test_large_multi_area_diff_is_very_high(policy: Policy) -> None:
     result = _classify(
         policy,
         _file("scripts/publication/validator_parity.py", 400),
-        _file("deploy/b.sh", 300),
+        _file("benchbox/core/equivalence/b.py", 300),
         _file("publication/ledger-seed.json", 200),
     )
     assert result.tier == "very-high"

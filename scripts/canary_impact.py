@@ -116,11 +116,9 @@ MEDIUM_PRODUCT_ROOTS = (
     "_project/compat/",
     "_project/evals/agent-instructions/",
     "tools/",
-    "results-explorer/",
     "results-data/",
     "examples/",
     "landing/",
-    "website/",
     "docker/",
     "_binaries/",
     "_sources/",
@@ -128,7 +126,6 @@ MEDIUM_PRODUCT_ROOTS = (
     "quality/",
 )
 MEDIUM_DOC_CODE_SUFFIXES = (".py", ".js", ".css", ".html", ".jinja", ".j2")
-MEDIUM_DOC_CODE_ROOTS = ("docs/_extensions/", "docs/_static/", "docs/_templates/")
 MEDIUM_WHOLE_SUITE_PATHS = frozenset(
     {"pyproject.toml", "uv.lock", "pytest.ini", "pytest-ci.ini", "tox.ini", CONFTEST_REPO_PATH, SELECTOR_REPO_PATH}
 )
@@ -140,10 +137,7 @@ def medium_relevant_paths(changed_paths: list[str]) -> list[str]:
         for path in changed_paths
         if path.startswith(MEDIUM_PRODUCT_ROOTS)
         or path in MEDIUM_WHOLE_SUITE_PATHS
-        or (
-            path.startswith("docs/")
-            and (path.startswith(MEDIUM_DOC_CODE_ROOTS) or path.endswith(MEDIUM_DOC_CODE_SUFFIXES))
-        )
+        or (path.startswith("docs/") and path.endswith(MEDIUM_DOC_CODE_SUFFIXES))
     ]
 
 

@@ -335,3 +335,13 @@ def test_curated_release_removes_dangling_project_test_and_runs_retained_tests(
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert "passed" in result.stdout
+
+
+def test_release_cut_stages_only_tracked_version_files() -> None:
+    makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    recipe = makefile.split("\nrelease-cut:", 1)[1].split("\n\n", 1)[0]
+    staged = [line.split()[2:] for line in recipe.splitlines() if line.strip().startswith("git add ")]
+    assert staged, "release-cut must stage the version files before its release commit"
+    tracked = set(subprocess.check_output(["git", "ls-files"], cwd=REPO_ROOT, text=True).splitlines())
+    missing = [path for paths in staged for path in paths if path not in tracked]
+    assert not missing, f"release-cut stages untracked paths: {missing}"

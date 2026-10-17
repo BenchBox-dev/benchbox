@@ -1,9 +1,0 @@
-node_modules/
-dist/
-.vite/
-*.local
-public/data/
-
-test-fixtures/.generated/
-test-results/
-playwright-report/

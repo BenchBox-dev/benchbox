@@ -16,7 +16,6 @@ CLI_DESCRIPTION = "Classify changed paths for the develop PR CI umbrella."
 
 DEFAULT_RULES = Path(".github/path-filters.yml")
 CORE_RULE_KEYS = {"safe-content", "content-guard", "code-ci"}
-GROUP_ALIASES = {"explorer-paths": "explorer-tokens"}
 LIST_NAMES = {
     "changed": "changed_paths",
     "content": "content_guard_paths",
@@ -81,7 +80,7 @@ def matches_any(path: str, patterns: Iterable[str]) -> bool:
 
 def extra_group_keys(rules: dict[str, list[str]]) -> list[str]:
     groups = [key for key in rules if key not in CORE_RULE_KEYS]
-    return [*groups, *(alias for alias, source in GROUP_ALIASES.items() if source in rules)]
+    return groups
 
 
 def git_changed_paths(base_ref: str) -> list[str]:
@@ -166,12 +165,9 @@ def classify_paths(
     group_keys = extra_group_keys(rules)
     for group in group_keys:
         group_id = group.replace("-", "_")
-        source_group = GROUP_ALIASES.get(group, group)
-        matched = [path for path in changed_paths if matches_any(path, rules[source_group])]
+        matched = [path for path in changed_paths if matches_any(path, rules[group])]
         decision[f"{group_id}_paths"] = matched
         decision[f"{group_id}_needed"] = bool(matched)
-    if "explorer_paths_paths" in decision:
-        decision["explorer_paths"] = decision.pop("explorer_paths_paths")
     decision["extra_group_ids"] = [group.replace("-", "_") for group in group_keys]
 
     return decision

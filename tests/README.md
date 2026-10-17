@@ -754,18 +754,11 @@ service certification or complete SQL compliance.
   fixtures inject the credential class and refresh five minutes before expiry.
   GCS path tests retain ConfigurationError wording, empty bucket-only prefixes
   and trailing-slash normalization shared by Dataproc adapters.
-- [Corpus digest tests](unit/scripts/publication/test_db_digest.py) compare
-  canonical logical content rather than database file bytes: build timestamps
-  and bounded floating-point noise are ignored, while content changes differ.
-  Explorer ranking rejects unofficial compliance even with an eligible trust
+- [Explorer pipeline tests](unit/scripts/explorer_pipeline/): Explorer ranking
+  rejects unofficial compliance even with an eligible trust
   label. The read-model version expectation is an independent migration pin;
   update it with the compatibility matrix deliberately, not by copying a changed
   production constant.
-- [Promotion fixtures](unit/scripts/publication/test_verify_corpus_promotion.py)
-  isolate inventory/site failures by substituting privacy and bijection checks;
-  they do not establish those checks independently. Candidate archive validation
-  packages real files; linear Git fixture helpers return oldest-first commits,
-  and parent-bound fixtures retain their manifest generation/digest relationship.
 - Trusted mirror publication may allow partial validation while community
   submission may not; privacy and inventory still apply. Corpus workflows use
   trusted-base code, explicit permits and parity checks. Empty changed-corpus

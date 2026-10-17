@@ -54,7 +54,6 @@ def test_validate_config_minimal():
     assert cfg.scales.rungs == (0.01,)
     assert cfg.validate.validator_clean_rate_floor == 0.80
     assert cfg.package.submit_terminal_state is None
-    assert cfg.explorer_smoke.playwright_browsers == ("chromium",)
     assert cfg.report.matrix_summary_tsv == "matrix_summary.tsv"
     assert cfg.compatibility.release_gate_runtime_envelopes is False
 
@@ -669,7 +668,6 @@ def test_uat_smoke_config_is_native_tpch_sf001_loop():
     assert cfg.scales.rungs == (0.01,)
     assert cfg.phases == ("preflight", "execute", "report")
     assert "package" not in cfg.phases
-    assert "explorer_smoke" not in cfg.phases
     assert not cfg.cleanup.docker_manage_platforms
     assert cfg.cleanup.docker_platform_switch == "off"
 
@@ -732,32 +730,4 @@ def test_top_level_config_carries_recognized_lifecycle_header(config_path: Path)
 def test_top_level_config_paths_exclude_generated_rerun_shards():
     shard_dir = _CORPUS_CONFIGS_ROOT / "generated-rerun-shards"
     assert all(shard_dir not in p.parents for p in _top_level_config_paths())
-    assert len(_top_level_config_paths()) == 18
-
-
-def test_throughput_explorer_smoke_config_covers_throughput_phase():
-    from tests.uat.config import load_config
-
-    cfg = load_config(_CORPUS_CONFIGS_ROOT / "uat-throughput-explorer-smoke.yaml")
-    assert cfg.execute.phases_arg == "load,throughput"
-    assert cfg.execute.official is True
-    assert cfg.execute.streams == 3
-    assert cfg.scales.rungs == (1.0,)
-    assert "package" in cfg.phases
-    assert "explorer_smoke" in cfg.phases
-    assert "{time}" in cfg.output.logs_dir_template
-
-
-def test_throughput_explorer_smoke_config_fails_closed_on_the_requested_stream_count():
-    from tests.uat.config import load_config
-
-    cfg = load_config(_CORPUS_CONFIGS_ROOT / "uat-throughput-explorer-smoke.yaml")
-    assert cfg.explorer_smoke.require_throughput_streams == cfg.execute.streams == 3
-
-
-def test_explorer_smoke_require_throughput_streams_defaults_to_unset_and_rejects_one():
-    assert config.validate_config({"name": "x"}).explorer_smoke.require_throughput_streams is None
-    with pytest.raises(config.ConfigError, match="at least 2"):
-        config.validate_config({"name": "x", "explorer_smoke": {"require_throughput_streams": 1}})
-    with pytest.raises(config.ConfigError, match="require_throughput_streams"):
-        config.validate_config({"name": "x", "explorer_smoke": {"require_throughput_streams": "many"}})
+    assert len(_top_level_config_paths()) == 16

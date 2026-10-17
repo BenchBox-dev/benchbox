@@ -72,25 +72,9 @@ REVIEWED_PROCESS_ARGV: dict[tuple[str, str], str] = {
         "[str(qgen_exe), '-p', str(stream_id % len(self.PERMUTATION_MATRIX)), '-s', str(self.scale_factor), '-r', str(self.rng_seed + stream_id), '-o', str(work_dir)]",
     ): "qgen_exe is the bundled TPC-H qgen query generator binary",
     (
-        "scripts/_render_blog_charts.py",
-        "['uv', 'run', '--project', str(ROOT), *cmd]",
-    ): "uv runs the textcharts CLI; every CHARTS command starts with textcharts",
-    (
-        "scripts/capture_chart_images.py",
-        "[str(CHROME), '--headless=new', '--disable-gpu', '--no-sandbox', '--disable-web-security', f'--window-size={width},{height}', f'--screenshot={out_path}', '--hide-scrollbars', f'file://{tmp_html}']",
-    ): "CHROME is the headless Chrome browser binary",
-    (
-        "scripts/capture_release_heroes.py",
-        "[str(CHROME), '--headless=new', '--disable-gpu', '--no-sandbox', '--disable-web-security', f'--window-size={width},{height}', f'--screenshot={out_path}', '--hide-scrollbars', '--run-all-compositor-stages-before-draw', '--virtual-time-budget=8000', target]",
-    ): "CHROME is the headless Chrome browser binary",
-    (
         "scripts/heavy_tier_needed.py",
         "[sys.executable, '-I', '-S', str(root / PREDICATE_REPO_PATH), '--stdin', '--format', 'github-output']",
     ): "Python runs the soundness predicate script file; no -c or -m source",
-    (
-        "scripts/run_comment_policy.py",
-        "['node', '--test', str(root / 'tests/unit/scripts/test_comment_syntax_js.cjs')]",
-    ): "node --test runs the native parser test file; no inline source",
     (
         "scripts/validate_todo_indexes.py",
         "[sys.executable, str(repo_root / '_project' / 'scripts' / script), '--strict']",

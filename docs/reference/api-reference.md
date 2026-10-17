@@ -5,7 +5,7 @@
 ```{tags} reference, python-api
 ```
 
-Complete API documentation for BenchBox classes and methods. This page highlights the most common entry points; the full set of hand-authored API pages lives under the [`python-api/`](python-api) section. The full API reference is published at `reference/python-api/`.
+Complete API documentation for BenchBox classes and methods. This page highlights the most common entry points; the full set of hand-authored API pages lives under the [`python-api/`](python-api) section. The full API reference is published at <https://benchbox.dev/docs/reference/python-api/>.
 
 ## Core Classes
 

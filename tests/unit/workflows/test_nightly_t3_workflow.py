@@ -27,7 +27,6 @@ DOMAIN_JOBS = {
     "cloud": "t3:cloud",
     "perf": "t3:perf",
     "matrix": "t3:matrix",
-    "browser": "t3:browser",
     "extension": "t3:extension",
     "install": "t3:install",
     "throughput": "t3:throughput",
@@ -386,10 +385,6 @@ def test_wheel_matrix_covers_python_versions_and_operating_systems() -> None:
     assert set(matrix["os"]) == {"ubuntu-latest", "macos-latest", "windows-latest"}
     text = _run_text(job)
     assert "generate_data" in text and "TPCH" in text and "TPCDS" in text, "dbgen and dsdgen must run per OS"
-
-
-def test_browser_covers_firefox_and_webkit() -> None:
-    assert _load()["jobs"]["browser"]["strategy"]["matrix"]["browser"] == ["firefox", "webkit"]
 
 
 def test_cloud_job_is_gated_by_repository_variable() -> None:

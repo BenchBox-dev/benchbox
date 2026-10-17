@@ -55,7 +55,6 @@ tests, examples, and project operations:
 | `docs/` | User guides, concepts, reference material, design records, and contributor documentation |
 | `tests/` | Unit, integration, end-to-end, performance, and live test suites |
 | `examples/` | Runnable examples, notebooks, tuning files, and workflow patterns |
-| `results-explorer/` | Browser application for published benchmark results; benchbox.dev serves a copy built and deployed from `BenchBox-dev/benchbox-site` |
 | `results-data/` | Public result corpus and its validation metadata |
 
 This map describes ownership boundaries rather than every directory. Use the

@@ -60,17 +60,6 @@ dev = [
     "pyspark>=3.5.0",
     "pytest-timeout>=2.4.0",
 ]
-docs = [
-    "sphinx>=7.2.0",
-    "roman-numerals<4.0",
-    "furo>=2025.9.25",
-    "myst-parser>=2.0.0",
-    "sphinxcontrib-mermaid>=0.8.1",
-    "pygments>=2.18.0",
-    "sphinx-tags>=0.4.0",
-    "sphinx-design>=0.6.0",
-    "ablog>=0.11.13 ; python_version >= '3.11'",
-]
 viz = []
 explorer = ["duckdb>=1.0.0,<2.0.0"]
 
@@ -292,7 +281,7 @@ benchbox-mcp = "benchbox.mcp.cli:main"
 [project.urls]
 "Homepage" = "https://github.com/BenchBox-dev/benchbox"
 "Bug Tracker" = "https://github.com/BenchBox-dev/benchbox/issues"
-"Documentation" = "https://benchbox.readthedocs.io/"
+"Documentation" = "https://benchbox.dev/docs/"
 "Repository" = "https://github.com/BenchBox-dev/benchbox.git"
 "Changelog" = "https://github.com/BenchBox-dev/benchbox/blob/release/CHANGELOG.md"
 
@@ -335,8 +324,6 @@ error-on-warning = false
 dev = [
     "ruff==0.16.7",
     "ty>=0.0.1a14",
-    "ansi2html>=1.8.0",
-    "pillow>=12.3.0",
     "duckdb>=1.5.0,<2.0.0",
     "polars>=1.35.2",
     "clickhouse-connect>=0.10.0",
@@ -359,14 +346,6 @@ dev = [
     "databricks-sdk>=0.20.0",
     "pyspark>=3.5.0",
     "mcp>=2,<3",
-    "sphinx>=7.4.7",
-    "roman-numerals<4.0",
-    "myst-parser>=3.0.1",
-    "sphinxcontrib-mermaid>=1.2.3",
-    "sphinx-tags>=0.4",
-    "sphinx-design>=0.6.1",
-    "furo>=2025.9.25",
-    "ablog>=0.11.13 ; python_version >= '3.11'",
     "mutmut>=3.5.0",
     "dask[distributed]>=2026.1.1",
     "pymysql>=1.1.2",
@@ -381,6 +360,7 @@ dev = [
     "pygments>=2.18.0",
     "markdown-it-py>=4.0.0",
     "bashlex==0.18",
+    "lxml>=6.0.0",
 ]
 
 [tool.mutmut]

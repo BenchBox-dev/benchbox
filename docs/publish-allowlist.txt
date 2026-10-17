@@ -1,6 +1,6 @@
 # Pages under docs/development/ and docs/operations/ that are published on
-# the public site. Any other page in those directories is left out of both the
-# Sphinx and the Astro build.
+# the public site. Any other page in those directories is left out of the site
+# build.
 #
 # Add a page here only if it is for people who use BenchBox or for outside
 # contributors. Maintainer runbooks, governance, release and CI procedure,
@@ -8,8 +8,8 @@
 # docs/internal/, which is never published. A page in these directories that
 # stays unpublished must be listed in docs/publish-exclusions.txt.
 #
-# tests/unit/docs/test_publish_policy.py and website/tests/sources.test.ts
-# enforce this list.
+# tests/unit/docs/test_publish_policy.py and the site repository's build enforce
+# this list.
 
 development/adding-dataframe-platform.md
 development/adding-new-platforms.md
@@ -54,7 +54,6 @@ development/read-primitives-skips-reference.md
 development/result-execution-environment.md
 development/result-integrity-validation.md
 development/result-validation.md
-development/results-explorer-browser-testing.md
 development/roadmap.md
 development/run-lifecycle-map.md
 development/runtime-modules.md
@@ -72,7 +71,6 @@ operations/concurrency-proof-matrix.md
 operations/fast-lane-budget.md
 operations/guards-fix.md
 operations/mcp-remote-security.md
-operations/results-explorer-token-scan.md
 operations/uat-framework.md
 operations/uat-local-provisioning.md
 operations/uat-methodology.md

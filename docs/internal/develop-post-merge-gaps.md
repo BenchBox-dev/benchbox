@@ -44,7 +44,6 @@ guard are retired. The remaining consequences include:
 | Workflow | Loses when its push is dropped | Recovery |
 | --- | --- | --- |
 | `trunk.yml` | Test evidence and the release distribution artifact for that exact commit. Admission requires a successful trunk `push` run on `develop`; a dispatch or later commit cannot substitute. | Verify that the release candidate has its own successful push run before tagging it; otherwise choose a tested candidate or obtain an owner decision on recovery. |
-| `docs.yml` | The protected public-site visual baseline for that commit. A PR whose render inputs changed then has no baseline to compare against at the download step (the comparison is advisory). | `gh workflow run docs.yml --ref develop -f baseline_source_sha=<sha>` |
 
 Check exact-commit workflow evidence before blaming a PR or admitting a release.
 

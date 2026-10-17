@@ -29,7 +29,6 @@ prune docs
 prune examples
 
 prune _project
-prune _blog
 prune .claude
 prune .codex
 prune .gemini
@@ -38,7 +37,6 @@ prune .mypy_cache
 prune .ruff_cache
 prune htmlcov
 prune landing
-prune website
 prune scripts
 exclude .pre-commit-config.yaml
 exclude .coveragerc_core

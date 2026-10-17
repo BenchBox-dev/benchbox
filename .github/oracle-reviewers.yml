@@ -137,5 +137,4 @@ classifier:
     - _sources/tpc-ds/answer_sets/*
     - results-data/bundles/*.override.json
     - _project/joinorder/*.json
-    - _project/design/site-inventory/*
     - "*_specs.yaml"

@@ -4,7 +4,6 @@ import argparse
 import json
 import os
 import re
-import secrets
 import subprocess
 import sys
 import tempfile
@@ -15,13 +14,10 @@ TRUSTED_FILES = (
     "scripts/check_comment_policy.py",
     "scripts/check_comment_cleanup_scope.py",
     "scripts/comment_syntax.py",
-    "scripts/comment_syntax_js.cjs",
     "scripts/comment_payloads.py",
     "scripts/comment_execution.py",
     "scripts/comment_policy_entry.py",
     "quality/comment-policy-requirements.txt",
-    "quality/comment-policy-package.json",
-    "quality/comment-policy-package-lock.json",
 )
 
 
@@ -33,13 +29,10 @@ def parser_environment(trusted: Path) -> tuple[Path, dict[str, str]]:
         not in {
             "PYTHONPATH",
             "PYTHONHOME",
-            "NODE_PATH",
-            "NODE_OPTIONS",
-            "COMMENT_POLICY_TYPESCRIPT",
             "VIRTUAL_ENV",
             "UV_PROJECT_ENVIRONMENT",
         }
-        and not key.upper().startswith(("UV_", "PIP_", "NPM_"))
+        and not key.upper().startswith(("UV_", "PIP_"))
     }
     python = trusted / "venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
     subprocess.run(
@@ -65,27 +58,6 @@ def parser_environment(trusted: Path) -> tuple[Path, dict[str, str]]:
         env=env,
         check=True,
     )
-    (trusted / "package.json").write_bytes((trusted / "comment-policy-package.json").read_bytes())
-    (trusted / "package-lock.json").write_bytes((trusted / "comment-policy-package-lock.json").read_bytes())
-    for config in ("npm-user.conf", "npm-global.conf"):
-        (trusted / config).write_text("", encoding="utf-8")
-    subprocess.run(
-        [
-            "npm",
-            "ci",
-            "--ignore-scripts",
-            "--no-audit",
-            "--no-fund",
-            "--userconfig",
-            str(trusted / "npm-user.conf"),
-            "--globalconfig",
-            str(trusted / "npm-global.conf"),
-        ],
-        cwd=trusted,
-        env=env,
-        check=True,
-    )
-    env["COMMENT_POLICY_TYPESCRIPT"] = str(trusted / "node_modules/typescript")
     return python, env
 
 
@@ -167,28 +139,10 @@ def plain_text(value: str) -> str:
     return f"\\{text}" if text.lstrip().startswith("::") else text
 
 
-def run_native_tests(root: Path, trusted: Path, env: dict[str, str]) -> None:
-    token = secrets.token_hex(16) if os.environ.get("GITHUB_ACTIONS") == "true" else ""
-    if token:
-        print(f"::stop-commands::{token}", flush=True)
-    try:
-        subprocess.run(
-            ["node", "--test", str(root / "tests/unit/scripts/test_comment_syntax_js.cjs")],
-            cwd=trusted,
-            env=env,
-            check=True,
-            stderr=subprocess.STDOUT,
-        )
-    finally:
-        if token:
-            print(f"::{token}::", flush=True)
-
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run the comment policy with immutable base parsers.")
     parser.add_argument("--base", default=os.environ.get("BASE_REF"))
     parser.add_argument("--staged", action="store_true")
-    parser.add_argument("--native-tests", action="store_true")
     args = parser.parse_args(argv)
     root = Path.cwd().resolve()
     try:
@@ -215,11 +169,7 @@ def main(argv: list[str] | None = None) -> int:
                 python, trusted, root, comparison_base(root, base), bootstrap=bootstrap, staged=args.staged
             )
             result = subprocess.run(command, cwd=trusted, env=env, check=False).returncode
-            if result:
-                return result
-            if args.native_tests:
-                run_native_tests(root, trusted, env)
-            return 0
+            return result
     except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as exc:
         print(plain_text(f"comment-policy: trusted invocation failed: {exc}"), file=sys.stderr)
         return 2

@@ -1,9 +1,0 @@
----
-import { pageMeta, type PageMetaInput } from "../lib/page-meta.ts";
-
-type Props = Omit<PageMetaInput, "pathname">;
-
-const tags = pageMeta({ ...Astro.props, pathname: Astro.url.pathname });
----
-
-{tags.map(({ tag, attrs }) => (tag === "link" ? <link {...attrs} /> : <meta {...attrs} />))}

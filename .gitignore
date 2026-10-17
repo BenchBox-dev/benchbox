@@ -11,8 +11,6 @@ eggs/
 .eggs/
 lib/
 lib64/
-!results-explorer/src/lib/
-!/website/src/lib/
 parts/
 sdist/
 var/
@@ -49,7 +47,6 @@ venv.bak/
 .venv
 virtualenv/
 
-docs/_build/
 docs/_tags/
 docs/site/
 docs/benchmarks/queries/
@@ -200,12 +197,6 @@ node_modules/
 /.agents/skills/
 /.claude/skills/.system/
 /.claude/skills/blog/
-/site-inventory/
-/site-parity/
-/site-visual-astro/
-/website/.astro/
-/website/.generated/
-/website/e2e-output/
 
 .claude/handoffs/
 .todo-batch/
