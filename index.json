@@ -20964,17 +20964,12 @@
       "title": "Delete the landing stub aggregate and its approved-context entries from core"
     },
     "site-split-54-publication-github-cleanup": {
-      "claim": {
-        "expires_at": "2026-10-18T22:25:18Z",
-        "generation": "ecf89c44734d4841bd3712a2db7a4608",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
-      },
+      "claim": null,
       "needs": [
         "site-split-51-publication-retirement"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Archive and delete the publication branch, environment, secrets and App after the plane is retired"
     },
     "site-split-55-attestation-tightening-decision": {
