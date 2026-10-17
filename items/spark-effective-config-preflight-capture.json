@@ -7,7 +7,7 @@
     "Result schema change is versioned and documented; old bundles still load.",
     "requested_config_hash and the drift marker are unchanged by the capture."
   ],
-  "context": "Takeover 2026-10-15: implementation underway in /Users/joe/Developer/BenchBox.wt-spark-effective-config-capture, branch fix/spark-effective-config-capture. Five files modified; code is incomplete and uncommitted. Pausing to fix item33's PR #3007 Spark driver-memory regression. Preserve dirty worktree and resume from git diff. Design: three snapshots, redacted values, warning-only discrepancies, schema bump, no digest. Claim released to obey one-live-claim rule.",
+  "context": "Merged in #3077 (squash d9e9da9f4, 2026-10-17). New module benchbox/platforms/spark_effective_config.py; PlatformAdapter hooks capture_effective_session_config / effective_session_config_payload / effective_session_config_report; bundle block platform.effective_session_config with its own version 1 (bundle schema version unchanged; additive and optional); no digest (per-run values such as spark.app.id). Verified on a live local Spark run (PySpark 4.2, JDK 17, TPC-H SF0.01 notuning): three snapshots captured, external_supplied warning from PYSPARK_SUBMIT_ARGS. LakeSail and Velox not run live (no Sail server or Gluten build locally).",
   "description": "User requirement 2026-09-30 (must): capture the ACTUAL Spark configuration state during run preflight and highlight discrepancies. Configuration can be changed outside BenchBox (spark-defaults.conf, SPARK_CONF_DIR, cluster or service policy), so a ledger of what BenchBox asked for does not prove what ran. Today nothing reads the live session back; `get_platform_info` reports adapter fields, and spark.conf.set results are only recorded as \"executed\".\n\nDesign:\n- Snapshot the effective session config at three points: (1) right after session creation, before BenchBox sets anything, to show what external config supplied; (2) after BenchBox has applied its settings (tuning, and for baseline only the harness-required ones); (3) at run start (just before queries) so late changes are visible. Use spark.conf.getAll() or per-key spark.conf.get; check availability on Spark Connect engines (Velox remote, LakeSail) and degrade explicitly (\"not readable\"), never silently.\n- Compare: requested (tuning map) vs effective; BenchBox harness intent vs effective; external-supplied values that differ from the engine default. Discrepancy classes: requested != effective (override/refusal/immutable), external value present at snapshot 1, value changed between snapshots 2 and 3.\n- Applies to notuning too: the baseline run must show the real default state.\n- Surface discrepancies on the console at preflight and in the result bundle (a new block beside the applied ledger; extend the schema deliberately and version it). A discrepancy is a warning, not a failure, unless the user asks for strict mode.\n- Redaction is mandatory: getAll() will include credentials (spark.hadoop.fs.s3a.*, tokens) and absolute paths. Apply the same credential-shaped key rules as the model item, and the anonymisation path used for the ledger, before anything is written to a bundle or log.\n- Do not hash the full effective config into requested_config_hash or the drift marker; it is evidence, not identity (ADR-001). Decide whether a digest of the effective config belongs beside applied_ledger_hash.\n- Tests with a fake session for each discrepancy class; live-Spark check for the real read-back behaviour.",
   "links": [
     "item:spark-session-config-runtime",
@@ -83,6 +83,14 @@
       "generation": "fced7307047d4b03a9721d704bd74e78",
       "op": "take",
       "op_id": "c93bde48c7e742a499b75a634055756a",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T03:49:54Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "02832ff02ef24d68b98164790bd58061",
       "session_id": "400c76c14fce4783943655593419ae3c"
     }
   ]
