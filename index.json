@@ -15591,15 +15591,10 @@
       "title": "Build Shared Infrastructure for Benchmarking PostgreSQL Extensions"
     },
     "postgres-partitioning-date-domain-20261017": {
-      "claim": {
-        "expires_at": "2026-10-18T15:41:57Z",
-        "generation": "91f14a41e6194dd2bcfc53eb7d9abb80",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Render PostgreSQL partitioning at execution from the benchmark date domain"
     },
     "postgres-throughput-uat-cell-unquarantine": {
