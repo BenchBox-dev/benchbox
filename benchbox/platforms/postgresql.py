@@ -956,22 +956,32 @@ class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
         schema = self.schema if self.schema != "public" else None
         return generator.get_post_load_statements(table_name.lower(), clauses, schema=schema)
 
+    post_load_connection_recording = False
+
     def apply_post_load_tunings(self, table_name: str, effective_config: Any, connection: Any) -> bool:
         statements = self.postgres_layout_statements(table_name, self.table_tuning_for(effective_config, table_name))
         if not statements:
             return False
+        from benchbox.core.tuning.applied_ledger import PHASE_POST_LOAD, STATEMENT_FAILED
+
+        ledger = getattr(self, "_applied_tuning_ledger", None)
         cursor = connection.cursor()
         try:
             for statement in statements:
                 cursor.execute(statement)
             connection.commit()
-            self.logger.info(f"Clustered {table_name} on its tuned index")
         except Exception as exc:
             connection.rollback()
-            self.logger.warning(f"Failed to cluster {table_name}: {exc}")
-            self.note_post_load_maintenance_failure()
+            if ledger is not None:
+                for statement in statements:
+                    ledger.record(statement, PHASE_POST_LOAD, status=STATEMENT_FAILED, table=table_name, error=exc)
+            raise
         finally:
             cursor.close()
+        if ledger is not None:
+            for statement in statements:
+                ledger.record(statement, PHASE_POST_LOAD, table=table_name)
+        self.logger.info(f"Clustered {table_name} on its tuned index")
         return True
 
     def apply_ctas_sort(self, table_name: str, tuning_config: Any, connection: Any) -> bool:

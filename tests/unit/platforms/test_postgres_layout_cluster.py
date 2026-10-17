@@ -40,10 +40,13 @@ def adapter(monkeypatch) -> PostgreSQLAdapter:
 
 
 class _FakeCursor:
-    def __init__(self, executed: list[str]):
+    def __init__(self, executed: list[str], fail_on: str | None = None):
         self._executed = executed
+        self._fail_on = fail_on
 
     def execute(self, statement, *args, **kwargs):
+        if self._fail_on and str(statement).startswith(self._fail_on):
+            raise RuntimeError("cluster failed")
         self._executed.append(str(statement))
 
     def close(self):
@@ -51,18 +54,20 @@ class _FakeCursor:
 
 
 class _FakeConnection:
-    def __init__(self):
+    def __init__(self, fail_on: str | None = None):
         self.executed: list[str] = []
         self.commits = 0
+        self.rollbacks = 0
+        self._fail_on = fail_on
 
     def cursor(self):
-        return _FakeCursor(self.executed)
+        return _FakeCursor(self.executed, self._fail_on)
 
     def commit(self):
         self.commits += 1
 
     def rollback(self):
-        return None
+        self.rollbacks += 1
 
 
 def test_adapter_statements_equal_generator_output(adapter):
@@ -110,6 +115,21 @@ def test_post_load_executes_and_records_the_statements(adapter):
         ("CREATE INDEX IF NOT EXISTS idx_lineitem_cluster ON lineitem (L_SHIPDATE)", PHASE_POST_LOAD, "executed"),
         ("CLUSTER lineitem USING idx_lineitem_cluster", PHASE_POST_LOAD, "executed"),
     ]
+
+
+def test_failed_cluster_is_recorded_as_failed_and_not_applied(adapter):
+    config = _config(clustering=_columns("L_SHIPDATE"))
+    connection = _FakeConnection(fail_on="CLUSTER")
+
+    adapter.run_post_load_tunings("lineitem", config, connection)
+
+    assert connection.rollbacks == 1 and connection.commits == 0
+    ledger = adapter._applied_tuning_ledger
+    assert [item.status for item in ledger.statements] == ["failed", "failed"]
+    assert ledger.executed_statements == []
+    assert adapter._post_load_maintenance_errors == 1
+    adapter._reconcile_requested_tuning(config)
+    assert ledger.overall_status(tuning_enabled=True, has_config=True) == "failed"
 
 
 def test_recorded_index_satisfies_reconciliation(adapter):

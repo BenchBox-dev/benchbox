@@ -1093,7 +1093,7 @@ class DryRunExecutor:
             return f"Standard sequential execution ({query_count} queries)"
 
 
-GENERATOR_DRIVEN_EXECUTION_PLATFORMS = frozenset({"duckdb", "motherduck", "clickhouse", "starrocks", "postgresql"})
+GENERATOR_DRIVEN_EXECUTION_PLATFORMS = frozenset({"duckdb", "motherduck", "clickhouse", "starrocks"})
 
 
 def tuning_preview_notes(platform_type: str, unified_config: Any) -> list[str]:
