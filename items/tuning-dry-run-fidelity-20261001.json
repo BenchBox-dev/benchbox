@@ -3,7 +3,7 @@
     "`benchbox run --dry-run <dir> --platform snowflake --benchmark tpch --tuning tuned` without credentials produces a non-null ddl_preview (or an explicit warning), with the preview-only banner where applicable.",
     "DuckDB dry-run preview lists CREATE INDEX and the sort statements; Athena preview contains no '-- Note:' placeholder."
   ],
-  "context": "Source: tuning remediation plan rev2 (2026-10-01; adversarial re-review of develop d39166ea plus independent plan review). Plan task P5.2 (R-8).",
+  "context": "Merged in #3083 (squash 386ba7519, 2026-10-17). Dry run passes the requested platform when no database config is available (missing driver) and builds the preview from that generator with a warning; generator lookup failures are reported; preview-only notes (new ddl_preview_notes field, not warnings) for non-generator-driven platforms and per not-applied type; DuckDB preview built by DuckDBAdapter.preview_tuning_statements (sort/cluster indexes, transactional in-place sort); Athena generator no longer emits the '-- Note: PARTITIONED BY' placeholder. Not a soundness path (no oracle review).",
   "description": "## Problem\n- Cloud dry-runs without credentials fall back to `database_config: data_only`. The generator lookup then throws and the error is swallowed (`benchbox/core/dryrun.py:1053-1056`), so the Snowflake and Databricks tuned previews are `null`.\n- Generators drive execution only for DuckDB (CTAS SQL), ClickHouse and StarRocks. Elsewhere the preview is generator output that execution does not run, with no disclaimer.\n- The DuckDB preview omits the index DDL that execution runs.\n- The Athena generator emits a SQL comment (\"-- Note: PARTITIONED BY…\") instead of partitioning.\n\n## Change\n- Use the requested platform type for generator lookup and surface a warning on failure.\n- Add a banner for `:preview_only` / non-migrated platforms that cites the registry notes.\n- Include the DuckDB index and atomic-sort statements.\n- Replace the Athena comment with real `PARTITIONED BY` or an explicit \"unsupported\" marker.\n\n## Guardrails (must preserve)\n- Dry-run never executes or records statements.\n\n## Process guardrails\n- One PR per item against `develop`, via the AGENTS.md worktree flow (`make worktree-claim BRANCH=...`, `make agent-write-preflight`).\n- Verification ladder: `uv run -- python -m pytest -m fast -q`, `uv run -- ruff check .`, `uv run -- ruff format --check .` and `uv run -- ty check`.\n- Then `make pr-preflight` and `make pr-open`.\n- Stage explicit paths; never `git add -A`.\n- No live cloud runs without explicit user approval stating the command, maximum runtime, log path and stop condition.\n- Re-read every file:line anchor before editing. Anchors are from develop d39166ea.",
   "links": [
     "benchbox/core/dryrun.py",
@@ -25,6 +25,14 @@
       "generation": "eb88cb0ac1204b06b3ce579973785b39",
       "op": "take",
       "op_id": "ad1edcb82906497c849c0f34340810db",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T08:20:06Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "5f208d33e1f943a398efb51f0a7330fd",
       "session_id": "400c76c14fce4783943655593419ae3c"
     }
   ]
