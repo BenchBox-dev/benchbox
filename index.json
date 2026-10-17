@@ -2413,9 +2413,9 @@
     },
     "ci-amplab-entropy-timeout-flake": {
       "claim": {
-        "expires_at": "2026-10-17T12:41:20Z",
+        "expires_at": "2026-10-18T11:19:30Z",
         "generation": "fc43376457c74f0c88a7a3b9e8147e55",
-        "renewals": 0,
+        "renewals": 1,
         "worker": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd"
       },
       "needs": [],
