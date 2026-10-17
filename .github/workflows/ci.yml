@@ -10,7 +10,7 @@ on:
     branches-ignore: [release]
 
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ (github.event.action == 'edited' && !github.event.changes.base) && format('ci-text-{0}', github.run_id) || format('ci-{0}', github.event.pull_request.number || github.ref) }}
   cancel-in-progress: true
 
 permissions:
@@ -20,6 +20,7 @@ permissions:
 jobs:
   comment-policy:
     name: comment-policy
+    if: ${{ !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -80,6 +81,7 @@ jobs:
 
   ci-paths:
     name: ci-paths
+    if: ${{ !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
     outputs:
       safe-content-only: ${{ steps.classify.outputs.safe-content-only }}
@@ -923,7 +925,7 @@ jobs:
   medium-test:
     name: medium-test (shard ${{ matrix.shard_index }})
     needs: [ci-paths, medium-collect]
-    if: ${{ !cancelled() && needs.medium-collect.result == 'success' && needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }}
+    if: ${{ !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) && needs.medium-collect.result == 'success' && needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
@@ -1354,10 +1356,10 @@ jobs:
           --ignore-words .codespell-ignore.txt
           --skip "*.pyc,_build,*.json,*.lock,*.svg,*.min.js,*.min.css,_binaries,*.tpl,*.dst,*.tbl,_sources,benchmark_runs,*.dat,*.pdf,_project,htmlcov,.venv"
 
-  core:
-    name: core
+  core-summary:
+    name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'core (text edit)' || 'core' }}
     needs: [ci-paths, code-lint, code-test, medium-collect, medium-test, correctness-gate, tpch-binary-framing, tuning-liveness, package-smoke, dependency-audit]
-    if: always()
+    if: ${{ always() && !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -1421,10 +1423,10 @@ jobs:
           gh run cancel "${{ github.run_id }}" --repo "${{ github.repository }}" || true
           sleep 90
 
-  explorer:
-    name: explorer
+  explorer-summary:
+    name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'explorer (text edit)' || 'explorer' }}
     needs: [ci-paths, parity-check]
-    if: always()
+    if: ${{ always() && !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -1466,10 +1468,10 @@ jobs:
           gh run cancel "${{ github.run_id }}" --repo "${{ github.repository }}" || true
           sleep 90
 
-  results-data:
-    name: results-data
+  results-data-summary:
+    name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'results-data (text edit)' || 'results-data' }}
     needs: [ci-paths, results-data-check]
-    if: always()
+    if: ${{ always() && !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -1511,10 +1513,10 @@ jobs:
           gh run cancel "${{ github.run_id }}" --repo "${{ github.repository }}" || true
           sleep 90
 
-  docs:
-    name: docs
+  docs-summary:
+    name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'docs (text edit)' || 'docs' }}
     needs: [ci-paths, example-validation, spellcheck]
-    if: always()
+    if: ${{ always() && !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -1557,10 +1559,10 @@ jobs:
           gh run cancel "${{ github.run_id }}" --repo "${{ github.repository }}" || true
           sleep 90
 
-  tooling:
-    name: tooling
+  tooling-summary:
+    name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'tooling (text edit)' || 'tooling' }}
     needs: [ci-paths, content-guard, skill-integrity, audit-sha, comment-policy]
-    if: always()
+    if: ${{ always() && !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
