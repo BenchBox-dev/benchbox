@@ -13,6 +13,9 @@ POSTGRES_QUALIFIED_COLUMNS: dict[str, dict[str, str]] = {
 POSTGRES_DUAL_VARIANT_IDS = frozenset({"17_v4"})
 CLICKHOUSE_FILTER_VARIANT_IDS = frozenset({"1_v6", "12_v7"})
 DATAFUSION_EMPTY_GROUP_VARIANT_IDS = frozenset({"6_v2", "14_v2"})
+PRESTO_ALIAS_VARIANT_IDS = POSTGRES_ALIAS_VARIANT_IDS
+PRESTO_WINDOW_FILTER_VARIANT_IDS = frozenset({"2_v7"})
+PRESTO_ARRAY_AGGREGATION_VARIANT_IDS = frozenset({"1_v7"})
 _CLOUD_DIALECTS = frozenset({"bigquery", "databricks", "snowflake"})
 _POSTGRES_DIALECTS = frozenset({"postgres", "postgresql"})
 
@@ -25,9 +28,16 @@ def rewrite_dialect_variant(query_id: str, query: str, target_dialect: str) -> s
         return _rewrite_clickhouse_filters(query)
     if target == "datafusion" and query_id in DATAFUSION_EMPTY_GROUP_VARIANT_IDS:
         return _drop_empty_grouping(query)
+    if target == "presto":
+        if query_id in PRESTO_ALIAS_VARIANT_IDS:
+            query = _inline_select_aliases(query, "presto")
+        if query_id in PRESTO_WINDOW_FILTER_VARIANT_IDS:
+            query = _rewrite_window_filters(query, "presto")
+        if query_id in PRESTO_ARRAY_AGGREGATION_VARIANT_IDS:
+            query = _rewrite_presto_array_aggregation(query)
     if target in _POSTGRES_DIALECTS:
         if query_id in POSTGRES_ALIAS_VARIANT_IDS:
-            query = _inline_postgres_select_aliases(query)
+            query = _inline_select_aliases(query, "postgres")
         if columns := POSTGRES_QUALIFIED_COLUMNS.get(query_id):
             query = _qualify_postgres_columns(query, columns)
         if query_id in POSTGRES_DUAL_VARIANT_IDS:
@@ -35,8 +45,8 @@ def rewrite_dialect_variant(query_id: str, query: str, target_dialect: str) -> s
     return query
 
 
-def _inline_postgres_select_aliases(query: str) -> str:
-    tree = sqlglot.parse_one(query, read="postgres")
+def _inline_select_aliases(query: str, dialect: str) -> str:
+    tree = sqlglot.parse_one(query, read=dialect)
     for select in tree.find_all(exp.Select):
         aliases = {
             projection.alias: projection.this
@@ -54,7 +64,48 @@ def _inline_postgres_select_aliases(query: str) -> str:
                     continue
                 if column.find_ancestor(exp.Select) is select:
                     column.replace(aliases[column.name].copy())
-    return tree.sql(dialect="postgres")
+    return tree.sql(dialect=dialect)
+
+
+def _rewrite_window_filters(query: str, dialect: str) -> str:
+    tree = sqlglot.parse_one(query, read=dialect)
+    return tree.transform(_window_filter_node).sql(dialect=dialect)
+
+
+_PRESTO_UNNEST_AGGREGATION = """
+SELECT l_returnflag, l_linestatus,
+    SUM(quantity) AS sum_qty,
+    SUM(price) AS sum_base_price,
+    SUM(price * (1 - discount)) AS sum_disc_price,
+    SUM(price * (1 - discount) * (1 + tax)) AS sum_charge,
+    AVG(quantity) AS avg_qty,
+    AVG(price) AS avg_price,
+    AVG(discount) AS avg_disc,
+    COUNT(*) AS count_order
+FROM aggregated
+CROSS JOIN UNNEST(quantities, prices, discounts, taxes) AS item(quantity, price, discount, tax)
+GROUP BY l_returnflag, l_linestatus
+ORDER BY l_returnflag, l_linestatus
+"""
+
+
+def _rewrite_presto_array_aggregation(query: str) -> str:
+    tree = sqlglot.parse_one(query, read="presto")
+    with_ = tree.args["with_"].transform(
+        lambda node: exp.ArrayAgg(this=node.expressions[0].copy()) if isinstance(node, exp.List) else node
+    )
+    outer = sqlglot.parse_one(_PRESTO_UNNEST_AGGREGATION, read="presto")
+    outer.set("with_", with_)
+    return outer.sql(dialect="presto")
+
+
+def _window_filter_node(node: exp.Expression) -> exp.Expression:
+    if not isinstance(node, exp.Filter) or not isinstance(node.parent, exp.Window):
+        return node
+    aggregate = node.this.copy()
+    condition = node.expression.this.copy()
+    aggregate.set("this", exp.If(this=condition, true=aggregate.this.copy(), false=exp.Null()))
+    return aggregate
 
 
 def _qualify_postgres_columns(query: str, columns: dict[str, str]) -> str:
@@ -116,5 +167,8 @@ __all__ = [
     "POSTGRES_ALIAS_VARIANT_IDS",
     "POSTGRES_DUAL_VARIANT_IDS",
     "POSTGRES_QUALIFIED_COLUMNS",
+    "PRESTO_ALIAS_VARIANT_IDS",
+    "PRESTO_ARRAY_AGGREGATION_VARIANT_IDS",
+    "PRESTO_WINDOW_FILTER_VARIANT_IDS",
     "rewrite_dialect_variant",
 ]

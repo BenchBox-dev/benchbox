@@ -46,3 +46,27 @@ def test_query1_signature_variants():
 
     sql10 = Q1_VARIANTS[10].generate("base")
     assert "case when" in sql10.lower()
+
+
+def test_query16_derived_table_variant_excludes_every_complaint_supplier():
+    duckdb = pytest.importorskip("duckdb")
+    from benchbox.core.tpchavoc.benchmark import TPCHavocBenchmark
+
+    benchmark = TPCHavocBenchmark(scale_factor=0.01)
+    connection = duckdb.connect()
+    connection.execute(
+        """
+        CREATE TABLE part AS SELECT * FROM (VALUES (1, 'Brand#12', 'STANDARD BRUSHED TIN', 49))
+            AS t(p_partkey, p_brand, p_type, p_size);
+        CREATE TABLE supplier AS SELECT * FROM (VALUES
+            (1, 'Customer Complaints'), (2, 'Customer Complaints'), (3, 'no complaints'))
+            AS t(s_suppkey, s_comment);
+        CREATE TABLE partsupp AS SELECT * FROM (VALUES (1, 1), (1, 2), (1, 3)) AS t(ps_partkey, ps_suppkey);
+        """
+    )
+
+    base = connection.execute(benchmark.get_query(16, dialect="duckdb")).fetchall()
+    variant = connection.execute(benchmark.get_queries(dialect="duckdb")["16_v6"]).fetchall()
+
+    assert base == [("Brand#12", "STANDARD BRUSHED TIN", 49, 1)]
+    assert variant == base
