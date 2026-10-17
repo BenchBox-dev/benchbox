@@ -525,7 +525,7 @@ exclude_lines = [
 
 
 [tool.benchbox.complexity]
-max_complexity = 20
+max_complexity = 18
 warn_complexity = 12
 max_exception_days = 90
 exclusions = []
