@@ -150,6 +150,18 @@ benchbox run --platform postgresql --benchmark tpch \
 
 The first command runs with tuning enabled. The second runs the baseline with no tuning.
 
+A tuning file can partition tables. A `DATE` or `TIMESTAMP` partition column
+gets `PARTITION BY RANGE` with yearly child partitions over the benchmark's
+date domain (TPC-H and SSB 1992-1998, TPC-DS 1998-2003) plus a `DEFAULT`
+partition for any other value; an integer column gets four `HASH` partitions;
+any other type gets `LIST` with only the `DEFAULT` partition. PostgreSQL
+requires a primary or unique key on a partitioned table to include the
+partition column, so while primary or unique keys are requested, BenchBox
+skips partitioning and records the request as not applied. Set
+`primary_keys.enabled: false` (and `unique_constraints.enabled: false`) to
+partition. The PostgreSQL-compatible platforms (CedarDB, Citus, ParadeDB,
+pg_duckdb, pg_mooncake, TimescaleDB) do not partition.
+
 ## Query Plan Capture
 
 PostgreSQL provides detailed query plan analysis:

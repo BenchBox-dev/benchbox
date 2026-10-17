@@ -43,7 +43,7 @@ Aliases resolve to another platform's entry: `chdb` -> `clickhouse`, `clickhouse
 | `paradedb` | none | foreign_keys, primary_keys | bloom_filters, check_constraints, clustering, materialized_views, partitioning, unique_constraints | - | no | no |
 | `pg-duckdb` | none | foreign_keys, primary_keys | check_constraints, clustering, partitioning, sorting, unique_constraints | - | no | no |
 | `pg-mooncake` | none | foreign_keys, primary_keys | check_constraints, clustering, partitioning, sorting, unique_constraints | - | no | no |
-| `postgresql` | none | foreign_keys, primary_keys | bloom_filters, check_constraints, clustering, materialized_views, partitioning, unique_constraints | - | no | no |
+| `postgresql` | none | foreign_keys, partitioning, primary_keys | bloom_filters, check_constraints, clustering, materialized_views, unique_constraints | - | no | no |
 | `presto` | none | foreign_keys | check_constraints, clustering, distribution, partitioning, primary_keys, sorting, unique_constraints | - | no | no |
 | `questdb` | none | none | check_constraints, distribution, foreign_keys, partitioning, primary_keys, sorting, unique_constraints | - | no | no |
 | `redshift` | none | foreign_keys, primary_keys, sorting (with sorted ingestion) | check_constraints, distribution, materialized_views, partitioning, unique_constraints | - | no | no |

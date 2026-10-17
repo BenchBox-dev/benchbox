@@ -67,6 +67,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Tuned PostgreSQL runs now apply requested partitioning: date columns get
+  yearly `RANGE` partitions over the benchmark's date domain plus a `DEFAULT`
+  partition, integer columns get `HASH` partitions. Partitioning requests no
+  longer fail validation on PostgreSQL. While primary or unique keys are
+  requested, partitioning is skipped and recorded as not applied, because
+  PostgreSQL requires those keys to include the partition column. The
+  PostgreSQL-compatible platforms are unchanged.
+
 - `benchbox tuning platforms` lists Spark with its own capabilities and marks
   the platforms that apply a tuning file's `spark` session map (Spark and
   Velox). `benchbox tuning init --platform spark` ends the sample with a
@@ -201,6 +209,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `power_score_source` column.
 
 ### Fixed
+
+- Tuned runs on PostgreSQL and the platforms built on it no longer stop with
+  "Failed to write the tuned-run marker". Statements that return no rows, such
+  as the tuning metadata `CREATE TABLE`, no longer try to fetch rows.
 
 - ClickHouse and chDB runs that request primary keys now record the
   `CREATE TABLE` whose `ORDER BY` comes from the declared key, and the

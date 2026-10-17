@@ -125,7 +125,7 @@ class TestFamilies:
     def test_postgres_no_op_apply_drops_layout_with_registry_reason(self, monkeypatch, tmp_path):
         monkeypatch.setattr(postgresql_module, "psycopg", Mock(__version__="3.1.0"))
         monkeypatch.setattr("benchbox.core.tuning.metadata.TuningMetadataManager", FakeMetadataManager)
-        config = _layout_config(partitioning=_columns("L_SHIPDATE"), clustering=_columns("L_ORDERKEY"))
+        config = _layout_config(clustering=_columns("L_ORDERKEY"))
         adapter = _tuned(PostgreSQLAdapter(tuning_enabled=True, unified_tuning_configuration=config))
         adapter.create_schema = Mock(return_value=0.0)
         adapter.load_data = Mock(return_value=({"lineitem": 1}, 0.0, {}))
@@ -138,7 +138,6 @@ class TestFamilies:
         adapter._reconcile_requested_tuning(config)
 
         assert _drops(adapter) == {
-            "partitioning:LINEITEM (L_SHIPDATE)": _registry_reason("postgresql", TuningType.PARTITIONING),
             "clustering:LINEITEM (L_ORDERKEY)": _registry_reason("postgresql", TuningType.CLUSTERING),
         }
         assert _status(adapter) == NOOP

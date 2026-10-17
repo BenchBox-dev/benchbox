@@ -353,16 +353,13 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         ),
     },
     "postgresql": {
-        _T.PARTITIONING: _none(
-            "postgresql_ddl_generator:preview_only",
-            "core.tuning.generators.postgresql.PostgreSQLDDLGenerator computes a real PARTITION BY RANGE/"
-            "LIST/HASH clause from tuned columns (generators/postgresql.py:139) for dry-run preview, but "
-            "real execution never renders it. PostgreSQLAdapter.generate_tuning_clause unconditionally "
-            "returns '' (postgresql.py:972-977) and has no production call site; apply_table_tunings and "
-            "apply_unified_tuning are both no-ops (postgresql.py:968-970, 979-981); and get_create_tables_sql "
-            "consumes tuning_config only for PK/FK constraint flags. Corrects the prior false "
-            "_ddl(adapter_mixin:PostgreSQLAdapter.generate_tuning_clause) claim (already flagged in the "
-            "pg-duckdb entry below).",
+        _T.PARTITIONING: _ddl(
+            "postgresql_partition_by_date_domain",
+            "PostgreSQLAdapter.create_schema appends the PostgreSQLDDLGenerator PARTITION BY clause (RANGE for "
+            "date columns, HASH for integers, LIST otherwise) and creates the child partitions: yearly RANGE "
+            "children over the benchmark's date domain (TPC-H and SSB 1992-1998, TPC-DS 1998-2003) plus a "
+            "DEFAULT partition for any other value. Skipped, and recorded as dropped, while primary or unique "
+            "keys are requested, because PostgreSQL requires those keys to include the partition column.",
         ),
         _T.CLUSTERING: _none(
             "postgresql_ddl_generator:preview_only",

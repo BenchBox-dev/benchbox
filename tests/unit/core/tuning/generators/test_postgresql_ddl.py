@@ -159,7 +159,8 @@ class TestPartitionChildGeneration:
 
         children = generator.generate_partition_children("orders", columns, tuning, table_tuning)
 
-        assert len(children) == 6
+        assert len(children) == 7
+        assert children[-1] == "CREATE TABLE orders_default PARTITION OF orders DEFAULT;"
         assert "orders_2020 PARTITION OF orders" in children[0]
         assert "FOR VALUES FROM ('2020-01-01') TO ('2021-01-01')" in children[0]
         assert "orders_2025 PARTITION OF orders" in children[5]
