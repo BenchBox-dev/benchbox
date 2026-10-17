@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Each of the six platforms has a new TPC-DS OBT SF1 bundle produced with dsqgen parameters and the corrected conversion, validated and published",
+    "The new bundles are ranked; the defective bundles no longer appear in rankings and are retired or kept as comparison-only history, as the DEFECTIVE_DATAGEN_AUDIT.md precedent sets out",
+    "CORPUS_NOTES.md records the rerun and closes the defect note",
+    "Paid-platform runs proceed only after owner approval of the spend"
+  ],
+  "context": "Parameters fixed and bundles marked in PR #3062. Cost: BigQuery, Databricks and Snowflake runs use paid cloud credit. The Snowflake trial account used for recent campaigns has closed, so the Snowflake rerun needs an account and the owner's approval of the spend. Local platforms (ClickHouse Local, DataFusion, DuckDB) can run without cost.",
+  "description": "The six published TPC-DS OBT SF1 bundles ran with query parameters set to `0` instead of dsqgen's values. The platforms are BigQuery, ClickHouse Local, Databricks, DataFusion, DuckDB and Snowflake. Their manifest sidecars carry `known_defects: [\"defective-tpcds-obt-parameters\"]`, so the explorer marks them `known_defective_data` and leaves them out of the rankings.\n\nRerun each platform at SF1 with the corrected queries and publish the new bundles. Then retire the defective bundles, or keep them as comparison-only history, following `results-data/DEFECTIVE_DATAGEN_AUDIT.md`. `results-data/CORPUS_NOTES.md` records the defect.\n\nThe rerun waits for the conversion fix, because 17 statements still return no rows. Rerunning before that fix would publish results that are still wrong and would need a second rerun.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3062"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:9e002f45bd6cb1f33b959f2c",
+      "at": "2026-10-17T21:52:22Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "74f38d07254842e7941aa1f0c1ae8cc1",
+      "session_id": "70accbe5849d4e1da05dfca7c4ffe8da"
+    }
+  ]
+}

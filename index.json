@@ -23211,6 +23211,15 @@
       "status": "done",
       "title": "Expand TPC-DS OBT Query Coverage to 93 Queries"
     },
+    "tpcds-obt-rerun-defective-sf1-bundles-20261017": {
+      "claim": null,
+      "needs": [
+        "tpcds-obt-empty-queries-conversion-20261017"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Rerun the six published TPC-DS OBT SF1 results with correct queries and restore their rankings"
+    },
     "tpcds-parity-b0-diagnose": {
       "claim": null,
       "needs": [],
