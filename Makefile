@@ -914,7 +914,7 @@ release-cut: .release-cut-tree-required
 	@for required_file in _project/scripts/explorer_publish.py _project/scripts/results_explorer_snapshot_invariants.py; do \
 		test -f "$$required_file" && git ls-files --error-unmatch "$$required_file" >/dev/null || { echo "ERROR: curated Explorer publication helper is missing: $$required_file" >&2; exit 1; }; \
 	done
-	git add pyproject.toml uv.lock benchbox/__init__.py landing/index.html README.md docs/README.md benchbox/utils/VERSION_MANAGEMENT.md CHANGELOG.md
+	git add pyproject.toml uv.lock benchbox/__init__.py README.md docs/README.md benchbox/utils/VERSION_MANAGEMENT.md CHANGELOG.md
 	git commit --no-verify -m "Release v$(VERSION)"
 	@echo "==> Aligning release histories: merging origin/release into v$(VERSION) (strategy: ours)"
 	@RELEASE_TREE=$$(git rev-parse 'HEAD^{tree}') && \
