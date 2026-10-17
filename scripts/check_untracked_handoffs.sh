@@ -26,6 +26,6 @@ tracked=$(git ls-files \
 if [ -n "$tracked" ]; then
   echo "ERROR: agent handoff files are git-tracked:" >&2
   echo "$tracked" >&2
-  echo "Move them to ~/.benchbox/handoffs/ and untrack them with 'git rm --cached <path>'." >&2
+  echo "Untrack them with 'git rm --cached <path>' and move their state into the tracker item (docs/agent/handoffs.md)." >&2
   exit 1
 fi

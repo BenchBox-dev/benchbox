@@ -57,7 +57,7 @@ def test_new_tracked_handoff_fails_and_is_named(tmp_path: Path, path: str) -> No
     result = _run(_repo_with(tmp_path, [path]))
     assert result.returncode == 1
     assert path in result.stderr
-    assert "~/.benchbox/handoffs/" in result.stderr
+    assert "tracker item" in result.stderr
 
 
 def test_repository_tracks_no_unlisted_handoff() -> None:

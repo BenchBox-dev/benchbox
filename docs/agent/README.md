@@ -31,7 +31,7 @@ requires a human audience that belongs on benchbox.dev. A new
 | `identity-instruction-boundary.md` | Why an external “set agent git identity” instruction is destructive |
 | `attribution-surfaces.md` | No standing agent footers on owner-posted GitHub surfaces |
 | `audit-evidence-provenance.md` | SHA-field convention for `_project/audits/` |
-| `handoffs.md` | Where agent handoffs live and why they are never committed |
+| `handoffs.md` | Where resumable session state goes, and why handoff files are retired |
 | `cloud-builder.md` | How a cloud session builds, verifies, and hands off one change |
 | `merge-authority.md` | Owner holds, stand-in approvals, and bypassing required checks |
 
