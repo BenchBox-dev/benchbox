@@ -65,7 +65,8 @@ downloads. Unrelated EULAs are not included.
   superseded by this ADR for the site and deploy control-plane scope. Its
   corpus authority statements stay normative until the publication retirement
   re-homes them; that change applies the superseded marker.
-  `scripts/check_decision_records.py` keeps enforcing the record set until then.
+  `tests/unit/docs/test_publication_architecture.py` keeps enforcing the record
+  set until then.
 
 ## Consumers appendix
 
