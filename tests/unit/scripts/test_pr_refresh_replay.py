@@ -58,6 +58,17 @@ def test_shadow_eligible_with_failed_medium_is_full_only_failure() -> None:
     assert result.actual_full_lanes_failed == ["medium-test"]
 
 
+def test_plan_capture_failure_inside_the_correctness_partition_is_full_only_failure() -> None:
+    record = _eligible_record()
+    lanes = record["actual_lane_conclusions"]
+    del lanes["plan-capture-gate"]
+    lanes["correctness-gate"] = "failure"
+    result = replay_record(record)
+    assert result.decision == DECISION_SHADOW
+    assert result.full_only_failure is True
+    assert result.actual_full_lanes_failed == ["correctness-gate"]
+
+
 def test_chained_refresh_is_full_required() -> None:
     record = _eligible_record()
     request = record["request"]
