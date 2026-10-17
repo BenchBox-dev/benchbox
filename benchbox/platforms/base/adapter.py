@@ -268,6 +268,15 @@ class PlatformAdapter(
             platform_info["driver_runtime_strategy"] = self.driver_runtime_strategy
         return platform_info
 
+    def capture_effective_session_config(self, connection: Any, snapshot: str) -> None:
+        return None
+
+    def effective_session_config_payload(self) -> dict[str, Any] | None:
+        return None
+
+    def effective_session_config_report(self) -> list[str]:
+        return []
+
     @abstractmethod
     def create_connection(self, **connection_config) -> Any:
 
@@ -602,6 +611,7 @@ class PlatformAdapter(
                 ),
                 benchmark_type,
             )
+            self.capture_effective_session_config(connection, "after_configuration")
 
             statistics_phase = None
             if run_config.get("gather_statistics"):
@@ -616,6 +626,9 @@ class PlatformAdapter(
 
             test_execution_type = run_config.get("test_execution_type", "standard")
             quiet_console.print(f"Executing benchmark queries ({test_execution_type} mode)...")
+            self.capture_effective_session_config(connection, "run_start")
+            for line in self.effective_session_config_report():
+                quiet_console.print(line)
             self._last_throughput_test_result = None
             query_results = self._execute_queries_by_type(benchmark, connection, run_config)
             probe_elapsed_s = self._collect_post_measurement_metadata(connection, run_config)
@@ -685,7 +698,7 @@ class PlatformAdapter(
                 self, connection, tuning_validation_status, bool(effective_tuning_config)
             )
 
-            return benchmark.create_enhanced_benchmark_result(
+            result = benchmark.create_enhanced_benchmark_result(
                 platform=self.platform_name,
                 query_results=query_results,
                 execution_metadata=execution_metadata,
@@ -721,6 +734,8 @@ class PlatformAdapter(
                 throughput_at_size=throughput_at_size,
                 test_execution_type=execution_type,
             )
+            result.effective_session_config = self.effective_session_config_payload()
+            return result
 
         finally:
             self.capture_plans = plan_capture_config["capture_plans"]

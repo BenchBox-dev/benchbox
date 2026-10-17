@@ -388,6 +388,7 @@ class LakeSailAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecu
             self._ensure_server_ready()
             spark = self._create_spark_session()
             self._spark_session = spark
+            self.capture_effective_session_config(spark, "session_created")
 
             self.handle_existing_database(**connection_config)
 

@@ -67,6 +67,7 @@ platform_key_order:
 - raw_config
 - raw_metadata
 - tuning
+- effective_session_config
 platform_execution_engine_key_order:
 - requested
 - applied

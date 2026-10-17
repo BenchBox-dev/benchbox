@@ -315,6 +315,38 @@ def purge_orphaned_warehouse_directory(spark: Any, *, logger: logging.Logger) ->
 class SparkLikeAdapterMixin:
     ledger_execute_verbs = ("sql",)
 
+    def capture_effective_session_config(self, connection: Any, snapshot: str) -> None:
+        from benchbox.platforms.spark_effective_config import (
+            SNAPSHOT_AFTER_CONFIGURATION,
+            SNAPSHOT_SESSION_CREATED,
+            EffectiveSparkConfigCapture,
+            external_spark_conf,
+        )
+
+        capture = getattr(self, "_effective_spark_config", None)
+        if capture is None or snapshot == SNAPSHOT_SESSION_CREATED:
+            capture = EffectiveSparkConfigCapture(engine=str(self.platform_name))
+            self._effective_spark_config = capture
+        if snapshot == SNAPSHOT_SESSION_CREATED:
+            get_conf = getattr(self, "_get_spark_conf", None)
+            try:
+                builder_conf = get_conf() if callable(get_conf) else {}
+            except Exception:
+                builder_conf = {}
+            capture.builder_conf = {str(key): str(value) for key, value in builder_conf.items() if value is not None}
+            capture.external_conf = external_spark_conf()
+        if snapshot == SNAPSHOT_AFTER_CONFIGURATION:
+            capture.requested_conf = requested_tuned_spark_map(self)
+        capture.take_snapshot(snapshot, connection)
+
+    def effective_session_config_payload(self) -> dict[str, Any] | None:
+        capture = getattr(self, "_effective_spark_config", None)
+        return capture.payload() if capture is not None else None
+
+    def effective_session_config_report(self) -> list[str]:
+        capture = getattr(self, "_effective_spark_config", None)
+        return capture.console_lines() if capture is not None else []
+
     def apply_constraint_configuration(
         self,
         primary_key_config: Any,
@@ -411,13 +443,25 @@ class SparkLikeAdapterMixin:
             pass
 
 
+def _effective_tuning_configuration(adapter: Any) -> Any:
+    getter = getattr(adapter, "get_effective_tuning_configuration", None)
+    return getter() if callable(getter) else None
+
+
+def _tuned_spark_map(adapter: Any, config: Any) -> dict[str, str]:
+    if not getattr(adapter, "tuning_enabled", False) or config is None:
+        return {}
+    return dict(getattr(config.platform_optimizations, "spark", None) or {})
+
+
+def requested_tuned_spark_map(adapter: Any) -> dict[str, str]:
+    spark_map = _tuned_spark_map(adapter, _effective_tuning_configuration(adapter))
+    return {(key if key.startswith("spark.") else f"spark.{key}"): str(value) for key, value in spark_map.items()}
+
+
 def apply_tuned_spark_session_config(adapter: Any, connection: Any) -> dict[str, str]:
-    config = (
-        adapter.get_effective_tuning_configuration() if hasattr(adapter, "get_effective_tuning_configuration") else None
-    )
-    spark_map: dict[str, str] = {}
-    if getattr(adapter, "tuning_enabled", False) and config is not None:
-        spark_map = dict(getattr(config.platform_optimizations, "spark", None) or {})
+    config = _effective_tuning_configuration(adapter)
+    spark_map = _tuned_spark_map(adapter, config)
     if getattr(adapter, "_tuned_session_config_id", None) == id(config) and spark_map:
         return dict(getattr(adapter, "_tuned_session_applied", {}) or {})
     adapter._tuned_session_config_id = id(config)
