@@ -646,6 +646,10 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "doris_ddl_generator:preview_only",
             "Same execution gap as PARTITIONING: preview only, NoOp at execution.",
         ),
+        _T.MATERIALIZED_VIEWS: _none(
+            "unimplemented",
+            "Doris supports materialized views, but DorisAdapter has no code that creates one from tuning.",
+        ),
         _T.PRIMARY_KEYS: _none(
             "doris_strips_primary_keys",
             "The shared tuning-aware DDL path would emit tuned primary keys, but DorisAdapter "
@@ -780,7 +784,16 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "Athena has no separate clustering clause; folded into sorted_by upstream, which is dropped "
             "(see SORTING entry).",
         ),
-        **_pk_fk_entries(),
+        _T.PRIMARY_KEYS: _none(
+            "athena_strips_primary_keys",
+            "Athena tables are Hive CREATE EXTERNAL TABLE statements, which have no constraint syntax, so "
+            "AthenaAdapter._convert_to_external_table removes PRIMARY KEY clauses before execution.",
+        ),
+        _T.FOREIGN_KEYS: _none(
+            "athena_strips_foreign_keys",
+            "Athena CREATE EXTERNAL TABLE has no constraint syntax, so "
+            "AthenaAdapter._convert_to_external_table removes FOREIGN KEY and REFERENCES clauses.",
+        ),
         **_no_unique_check_entries(
             "athena_no_unique_check_rendering",
             "AthenaAdapter._convert_to_external_table builds CREATE EXTERNAL TABLE without UNIQUE/CHECK "

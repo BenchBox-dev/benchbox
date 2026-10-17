@@ -684,7 +684,18 @@ class ConfigManager:
 
         enabled_types = sample_config.get_enabled_tuning_types()
         console.print("This configuration includes:")
-        console.print("  • Schema constraints (primary keys, foreign keys, unique, check)")
+        constraint_labels = [
+            label
+            for tuning_type, label in (
+                (TuningType.PRIMARY_KEYS, "primary keys"),
+                (TuningType.FOREIGN_KEYS, "foreign keys"),
+                (TuningType.UNIQUE_CONSTRAINTS, "unique"),
+                (TuningType.CHECK_CONSTRAINTS, "check"),
+            )
+            if tuning_type in enabled_types
+        ]
+        if constraint_labels:
+            console.print(f"  • Schema constraints ({', '.join(constraint_labels)})")
         if any(t.value.startswith(("z_ordering", "auto_", "bloom_", "materialized_")) for t in enabled_types):
             console.print(f"  • Platform optimizations for {platform}")
         if any(

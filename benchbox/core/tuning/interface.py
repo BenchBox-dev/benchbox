@@ -41,12 +41,15 @@ class TuningType(Enum):
         raise ValueError(f"Invalid tuning type: {value}")
 
     def is_compatible_with_platform(self, platform: str) -> bool:
-        platform_lower = platform.lower()
-        return self in _PLATFORM_COMPATIBILITY_MAP.get(platform_lower, frozenset())
+        return self in _PLATFORM_COMPATIBILITY_MAP.get(_base_platform_name(platform), frozenset())
 
     @classmethod
     def is_known_platform(cls, platform: str) -> bool:
-        return platform.lower() in _KNOWN_COMPATIBILITY_PLATFORMS
+        return _base_platform_name(platform) in _KNOWN_COMPATIBILITY_PLATFORMS
+
+
+def _base_platform_name(platform: str) -> str:
+    return platform.split(":", 1)[0].strip().lower()
 
 
 def _platform_compatibility_map() -> dict[str, frozenset[TuningType]]:

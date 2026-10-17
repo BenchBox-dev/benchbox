@@ -29,7 +29,7 @@ from ..utils.dependencies import (
 from .base import DriverIsolationCapability, PlatformAdapter
 from .base.config_utils import make_registered_platform_config_builder
 from .base.data_loading import DataSourceResolver, FileFormatRegistry
-from .base.ddl_helpers import strip_with_properties
+from .base.ddl_helpers import strip_foreign_keys, strip_primary_keys, strip_with_properties
 from .base.runtime_metadata import build_default_normalized_result_metadata
 from .presto_trino_utils import normalize_existing_files, show_tables_lower
 
@@ -670,6 +670,7 @@ class AthenaAdapter(PlatformAdapter):
                 )
 
         statement = re.sub(r"\s+NOT\s+NULL", "", statement, flags=re.IGNORECASE)
+        statement = strip_primary_keys(strip_foreign_keys(statement))
 
         statement = strip_with_properties(statement)
 
