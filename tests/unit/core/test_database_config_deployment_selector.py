@@ -129,6 +129,16 @@ class TestDryRunRecordsDeployment:
         assert result.execution_mode == "dataframe"
         assert not [warning for warning in result.warnings if "Unsupported platform" in warning]
 
+    def test_dataframe_selector_dry_run_records_deployment_without_warnings(self, tmp_path: Path) -> None:
+        config = DatabaseConfig(type="lakesail-df:distributed", name="db", options={"endpoint": "sc://h:1"})
+
+        result = DryRunExecutor(tmp_path).execute_dry_run(_tpch(), _profile(), config)
+
+        assert result.database_config["type"] == "lakesail"
+        assert result.execution_mode == "dataframe"
+        assert result.deployment == "distributed"
+        assert result.warnings == []
+
     def test_tsbs_devops_dry_run_previews_queries(self, tmp_path: Path) -> None:
         benchmark = BenchmarkConfig(name="tsbs_devops", display_name="TSBS DevOps", scale_factor=0.01)
         config = DatabaseConfig(type="influxdb:core", name="db", options={"token": "t"})
