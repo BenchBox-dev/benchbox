@@ -5,6 +5,7 @@
     "Tests that fail without the fix",
     "Report whether the TPC-H seeded/SF1-only DataFrame skip (lines 68-72) should change, without changing it unless trivially correct"
   ],
+  "context": "Merged: PR #3065, squash commit 87adc2cd947055301b1a7f9a1c03b2607e424993 on develop (verified as an ancestor of origin/develop). New file benchbox/core/expected_results/ssb_results.py holds exact SSB per-query row counts at SF 0.01/0.1/1/10. They come from the published SQL bundles in results-data/bundles, where every SQL engine at each scale agrees. benchbox/core/dataframe/query_validation.py checks SSB against them, through one seam: _reference_unavailable_reason / _apply_reference_row_counts. Local polars-df and pandas-df SSB runs at SF0.01 and SF0.1 report validation passed and validate_corpus.exclusion_reason returns None (rankable); a wrong count reports FAILED. Open: none. Blocked: none. Follow-ups, not tracked: the SQL path could register the SSB table as a global expected-results provider; the TPC-H sub-SF1 DataFrame reference is owned by another agent's item.",
   "description": "`validate_dataframe_query_results` (benchbox/core/dataframe/query_validation.py:63-66) returns NOT_RUN for every benchmark except TPC-H and TPC-DS, because no DataFrame row-count oracle is registered for SSB. results-data/validate_corpus.py treats not_run as not clean, so ssb/polars-df seed cells are always skipped as `validation_not_clean`, leaving SSB cohorts with at most two rankable engines (below the 3-identity depth rule). Owner decision 2026-10-16: add an SSB DataFrame check. Related limit: lines 68-72 skip TPC-H DataFrame validation unless SF1 with no seed.",
   "sessions": [
     {
@@ -31,6 +32,14 @@
       "generation": "242ece2794f34ecc97362002eb99d74f",
       "op": "finish",
       "op_id": "0582acc20d3249f88e9e3fae4389179e",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T21:30:26Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "c0055c5fcdfd45ceaa017b06365e6914",
       "session_id": "400c76c14fce4783943655593419ae3c"
     }
   ]
