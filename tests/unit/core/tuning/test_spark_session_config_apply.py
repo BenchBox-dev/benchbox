@@ -202,13 +202,13 @@ def test_platform_info_matches_tuned_session():
     assert info["configuration"]["adaptive_enabled"] is False
 
 
-@pytest.mark.parametrize("platform", ["databricks", "duckdb", "DatabricksAdapter"])
+@pytest.mark.parametrize("platform", ["databricks", "duckdb", "DatabricksAdapter", "lakesail", "LakeSail"])
 def test_spark_map_warns_on_ignoring_platform(platform):
     _, warnings = _config_with_spark({"spark.sql.shuffle.partitions": "8"}).validate_for_platform_detailed(platform)
     assert any("not applied by platform" in message for message in warnings)
 
 
-@pytest.mark.parametrize("platform", ["spark", "velox", "lakesail", "Spark"])
+@pytest.mark.parametrize("platform", ["spark", "velox", "Spark", "velox:remote"])
 def test_spark_map_quiet_on_applying_platform(platform):
     _, warnings = _config_with_spark({"spark.sql.shuffle.partitions": "8"}).validate_for_platform_detailed(platform)
     assert not any("not applied by platform" in message for message in warnings)
@@ -221,3 +221,46 @@ def test_empty_spark_map_warns_nowhere():
 
 def _config_with_spark(spark_map):
     return UnifiedTuningConfiguration.from_dict({"platform_optimizations": {"spark": spark_map}})
+
+
+def test_lakesail_warning_explains_why_the_map_is_dropped():
+    _, warnings = _config_with_spark({"spark.sql.shuffle.partitions": "8"}).validate_for_platform_detailed("lakesail")
+    assert any("records the map as dropped" in message for message in warnings)
+
+
+def test_drop_records_each_requested_key_and_sets_nothing(caplog):
+    from benchbox.platforms._spark_helpers import LAKESAIL_SPARK_MAP_DROP_REASON, drop_tuned_spark_session_config
+
+    adapter = _ProbeAdapter({"sql.shuffle.partitions": "8", "spark.sql.adaptive.enabled": "false"})
+    adapter.platform_name = "LakeSail"
+
+    with caplog.at_level("WARNING"):
+        dropped = drop_tuned_spark_session_config(adapter, LAKESAIL_SPARK_MAP_DROP_REASON)
+
+    assert dropped == ["spark.sql.adaptive.enabled", "spark.sql.shuffle.partitions"]
+    assert [(item.intent, item.reason) for item in adapter._applied_tuning_ledger.dropped] == [
+        ("spark_session_config:spark.sql.adaptive.enabled", LAKESAIL_SPARK_MAP_DROP_REASON),
+        ("spark_session_config:spark.sql.shuffle.partitions", LAKESAIL_SPARK_MAP_DROP_REASON),
+    ]
+    assert adapter._applied_tuning_ledger.statements == []
+    assert "not applied on LakeSail" in caplog.text
+
+
+def test_drop_is_silent_without_a_map_or_with_tuning_off(caplog):
+    from benchbox.platforms._spark_helpers import drop_tuned_spark_session_config
+
+    for adapter in (_ProbeAdapter(), _ProbeAdapter({"spark.sql.shuffle.partitions": "8"}, tuning_enabled=False)):
+        with caplog.at_level("WARNING"):
+            assert drop_tuned_spark_session_config(adapter, "reason") == []
+        assert adapter._applied_tuning_ledger.dropped == []
+    assert caplog.text == ""
+
+
+def test_spark_family_platforms_have_no_spark_alias():
+    from benchbox.core.tuning.capability_registry import PLATFORM_ALIASES, resolve_platform_key
+    from benchbox.core.tuning.packaged_templates import list_packaged_templates
+
+    for platform in ("velox", "lakesail"):
+        assert platform not in PLATFORM_ALIASES
+        assert resolve_platform_key(platform) == platform
+        assert not list_packaged_templates(platform).get(platform)
