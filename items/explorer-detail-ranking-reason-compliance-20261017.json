@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "to_detail_result passes compliance_class (and any other ranking inputs) to the peer entry",
+    "A test shows a non-standard bundle gets the same ranking_exclusion_reason in its manifest entry and its detail result"
+  ],
+  "description": "Defect: BundleTransformer.to_detail_result builds a ManifestEntry peer to compute ranking_exclusion_reason (_project/scripts/explorer_pipeline/transformer.py:1796) but does not pass compliance_class, so for an unofficial_nonstandard bundle the detail record's ranking_exclusion_reason can differ from the manifest/ranking row (which reports unofficial_compliance). Found 2026-10-16 while reading the transformer for the subscale ranking change; left out of #3075 to keep it to the subscale policy. Pre-existing.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T22:06:47Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "cb4c7f63202840c08aae9365e4015b11",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}
