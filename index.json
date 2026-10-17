@@ -23436,6 +23436,13 @@
       "status": "done",
       "title": "Fix TPC-DS stream query labels that turn each query into a SQL comment line"
     },
+    "tpcds-subscale-row-count-reference-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Add an exact per-query row-count reference for TPC-DS below SF 1"
+    },
     "tpcds-throughput-failed-queries-counted-success": {
       "claim": null,
       "needs": [],

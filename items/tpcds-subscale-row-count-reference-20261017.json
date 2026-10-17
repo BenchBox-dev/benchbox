@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Exact TPC-DS per-query row counts at the sub-SF1 scales the corpus uses, generated with the bundled dsdgen/dsqgen and agreed by at least two engines",
+    "Parameter-sensitive queries identified and skipped for non-reference parameters",
+    "SQL and DataFrame TPC-DS sub-SF1 runs check every fixed query; a mutated count fails",
+    "Generator and provenance follow the TPC-H reference pattern from #3068"
+  ],
+  "description": "Gap deferred from the subscale ranking work: #3068 adds exact SF 0.01/0.1 references for TPC-H only. TPC-DS sub-SF1 runs are now ranked (TPC-DS SF 0.1 has 3 identities after #3075) but have no per-query row-count oracle: the DataFrame path always skips TPC-DS (benchbox/core/dataframe/query_validation.py:114, \"TPC-DS expected row counts are not seed-aligned\"), and SQL sub-SF1 runs check only table row counts, schema and integrity (benchbox/platforms/base/phase_tracking.py, _determine_overall_validation_status in result_capture.py). So a wrong TPC-DS subscale answer still ranks as passed. Found while scoping owner decision 4 (TPC-DS follows the same rule) for subscale-tpc-ranking-policy-20261016.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T22:06:13Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "e33a27017f1a452a87381c33aa77b532",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}
