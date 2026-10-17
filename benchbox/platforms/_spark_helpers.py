@@ -459,6 +459,25 @@ def requested_tuned_spark_map(adapter: Any) -> dict[str, str]:
     return {(key if key.startswith("spark.") else f"spark.{key}"): str(value) for key, value in spark_map.items()}
 
 
+LAKESAIL_SPARK_MAP_DROP_REASON = (
+    "LakeSail accepts spark.conf.set for keys it ignores and BenchBox has no verified list of the keys it "
+    "honours, so the setting is not applied"
+)
+
+
+def drop_tuned_spark_session_config(adapter: Any, reason: str) -> list[str]:
+    requested = requested_tuned_spark_map(adapter)
+    if not requested:
+        return []
+    ledger = getattr(adapter, "_applied_tuning_ledger", None)
+    keys = sorted(requested)
+    adapter.logger.warning(f"Tuned session config not applied on {adapter.platform_name} ({', '.join(keys)}): {reason}")
+    if ledger is not None:
+        for key in keys:
+            ledger.record_dropped(f"spark_session_config:{key}", reason)
+    return keys
+
+
 def apply_tuned_spark_session_config(adapter: Any, connection: Any) -> dict[str, str]:
     config = _effective_tuning_configuration(adapter)
     spark_map = _tuned_spark_map(adapter, config)

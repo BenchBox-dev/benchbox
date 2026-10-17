@@ -16,8 +16,10 @@ from ..utils.dependencies import (
     get_dependency_error_message,
 )
 from ._spark_helpers import (
+    LAKESAIL_SPARK_MAP_DROP_REASON,
     SparkLikeAdapterMixin,
     analyze_spark_table,
+    drop_tuned_spark_session_config,
     get_spark_query_plan,
     is_spark_connect_reachable,
     list_spark_tables,
@@ -449,6 +451,7 @@ class LakeSailAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecu
         self.record_harness_spark_conf(connection, ("spark.app.name", "spark.sql.inMemoryColumnarStorage.enabled"))
         if self.tuning_enabled:
             self.apply_olap_runtime_conf(connection, benchmark_type, "LakeSail Sail")
+            drop_tuned_spark_session_config(self, LAKESAIL_SPARK_MAP_DROP_REASON)
 
     def _get_dialect_queries(
         self,

@@ -543,6 +543,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   never a valid profile key.
 
 ### Before you upgrade
+- A tuning file's `platform_optimizations.spark` map now applies on Velox the
+  same way as on Spark (set, read back, and recorded in the applied-tuning
+  ledger). On LakeSail it is no longer reported as applied: LakeSail accepts
+  settings it ignores, so validation warns and each key is recorded as a
+  dropped intent, which keeps such runs from being reported as verified.
 - The tuning policy generation is now `adr-003-spark-baseline`. Spark,
   LakeSail and Velox results recorded under `adr-003` or earlier are not
   comparable with new ones, because untuned runs no longer set AQE, CBO,

@@ -384,6 +384,32 @@ class TestVeloxConfigureForBenchmark:
         assert conf["spark.sql.adaptive.enabled"] == "true"
         mock_session.conf.set.assert_any_call("spark.sql.cbo.enabled", "true")
 
+    def test_tuned_spark_map_is_applied_and_recorded(self, mock_pyspark):
+        from benchbox.core.tuning.applied_ledger import AppliedTuningLedger
+        from benchbox.core.tuning.interface import UnifiedTuningConfiguration
+        from benchbox.platforms.velox import VeloxAdapter
+
+        store: dict[str, str] = {}
+        mock_session = MagicMock()
+        mock_session.conf.set.side_effect = lambda key, value: store.__setitem__(key, str(value))
+        mock_session.conf.get.side_effect = lambda key, default=None: store.get(key, default)
+        mock_session.conf.isModifiable.return_value = True
+        adapter = VeloxAdapter(tuning_enabled=True)
+        adapter._applied_tuning_ledger = AppliedTuningLedger()
+        adapter.unified_tuning_configuration = UnifiedTuningConfiguration.from_dict(
+            {"platform_optimizations": {"spark": {"spark.gluten.sql.columnar.maxBatchSize": "8192"}}}
+        )
+
+        adapter.configure_for_benchmark(mock_session, "tpch")
+
+        mock_session.conf.set.assert_any_call("spark.gluten.sql.columnar.maxBatchSize", "8192")
+        executed = [
+            (item.statement, item.mechanism)
+            for item in adapter._applied_tuning_ledger.statements
+            if item.status == "executed"
+        ]
+        assert ("SET spark.gluten.sql.columnar.maxBatchSize=8192", "spark_session_config") in executed
+
     def test_explicit_spark_config_keeps_cbo_override(self, mock_pyspark):
         from benchbox.platforms.velox import VeloxAdapter
 

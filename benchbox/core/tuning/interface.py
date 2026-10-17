@@ -1185,7 +1185,7 @@ class UnifiedTuningConfiguration:
         ("distribution", TuningType.DISTRIBUTION),
         ("sorting", TuningType.SORTING),
     ]
-    _SPARK_SESSION_CONFIG_PLATFORMS = frozenset({"spark", "velox", "lakesail"})
+    _SPARK_SESSION_CONFIG_PLATFORMS = frozenset({"spark", "velox"})
 
     def get_enabled_tuning_types(self) -> set[TuningType]:
         enabled_types: set[TuningType] = set()
@@ -1237,11 +1237,15 @@ class UnifiedTuningConfiguration:
             else:
                 errors.append(message)
 
-        platform_key = platform.lower().replace("_", "-")
-        if self.platform_optimizations.spark and platform_key not in self._SPARK_SESSION_CONFIG_PLATFORMS:
+        platform_key = platform.split(":", 1)[0].strip().lower().replace("_", "-")
+        if self.platform_optimizations.spark and platform_key == "lakesail":
             warnings.append(
-                f"'spark' session-config map is not applied by platform '{platform}'; "
-                "run on spark, velox, or lakesail to apply it"
+                f"'spark' session-config map is not applied by platform '{platform}': LakeSail ignores some "
+                "Spark keys without reporting it, so BenchBox records the map as dropped"
+            )
+        elif self.platform_optimizations.spark and platform_key not in self._SPARK_SESSION_CONFIG_PLATFORMS:
+            warnings.append(
+                f"'spark' session-config map is not applied by platform '{platform}'; run on spark or velox to apply it"
             )
         resolved_key = resolve_platform_key(platform_key)
         validator = _get_effective_layout_validator(resolved_key)
