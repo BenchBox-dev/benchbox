@@ -4,7 +4,7 @@
     "The procedure requires confirming the failure on current develop before a bypass",
     "The develop ruleset shows zero bypass actors again with enforcement active"
   ],
-  "context": "Incident 2026-10-14: a stale scope-ledger entry failed every PR's comment gate. Repair PR #2953 could not merge normally (gate pins the base copy) and the develop-squash-only ruleset listed zero bypass actors, so even admin API merge was refused. Resolved with owner approval via temporary org-admin pull_request bypass, immediate merge, and verified restore. Later finding: PR #2954 had already removed the stranded ledger entries about 11 hours before #2953 merged, so #2953's bypass fixed nothing that was still broken; its squash adds only a 14-line test. Owner decision 2026-10-15: agents may bypass required checks only after the owner approves that specific PR in the current request; the agent records the reason and opens a follow-up issue. The written procedure must confirm the gate is still broken on current develop before any bypass.",
+  "context": "Incident 2026-10-14: a stale scope-ledger entry failed every PR's comment gate. Repair PR #2953 could not merge normally (gate pins the base copy) and the develop-squash-only ruleset listed zero bypass actors, so even admin API merge was refused. Resolved with owner approval via temporary org-admin pull_request bypass, immediate merge, and verified restore. Later finding: PR #2954 had already removed the stranded ledger entries about 11 hours before #2953 merged, so #2953's bypass fixed nothing that was still broken; its squash adds only a 14-line test. Owner, 2026-10-15, Claude session e0e74e6b, question dialog: \"Agents may bypass with approval\" — an agent may bypass required checks only after the owner approves that specific PR in the current request, records the reason, and opens a follow-up issue (now [MERGE-AUTHORITY-001] and docs/agent/merge-authority.md). The written procedure must confirm the gate is still broken on current develop before any bypass.",
   "description": "There is no standing break-glass path for base-pinned gate breakage: with zero bypass actors, the next all-PR-blocking outage requires improvising repo security changes under pressure again. Record the emergency procedure (temporary org-admin pull_request bypass, merge, immediate verified restore) or pre-approve a standing break-glass actor, with the exact commands and verification checks, and get it reviewed before the next incident.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/2953"
@@ -25,6 +25,14 @@
       "op": "update",
       "op_id": "4e82ea5f73d14522937fe56fba072a76",
       "session_id": "5c80d5d463444a2ba9410e1fdfb1d517"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-17T23:57:32Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "2253045f25dd4a08ab60fdfb29c32a04",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
     }
   ]
 }
