@@ -2,7 +2,13 @@
 
 ## Status
 
-Accepted (2026-08-31).
+Accepted (2026-08-31). Superseded by
+[`adr-site-repo-split.md`](adr-site-repo-split.md).
+
+The publication control plane that implemented this contract has been retired from
+core. benchbox.dev is built and deployed from `BenchBox-dev/benchbox-site`, which
+records a receipt for every deploy and rolls back to a receipt's artifact. The authority
+and state rules below remain the reference for acceptance, withdrawal and readmission.
 
 The maintainer decision approving this ADR is recorded by tracker item
 `independent-publication-a1-authority-and-threat-contract`. Publication control-plane

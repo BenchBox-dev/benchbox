@@ -128,7 +128,6 @@ def test_soundness_predicate_matches_review_required_paths(path: str) -> None:
         "docs/internal/adr/adr-published-results-slim-corpus-branch.md",
         "docs/internal/independent-publication-threat-model.md",
         "docs/internal/independent-publication-contract.md",
-        "docs/internal/publication-deployer-soak-and-retirement.md",
         "docs/internal/results-phase-2-runbook.md",
         "docs/internal/results-phase-3-runbook.md",
         "docs/reference/hosted-results-contract.md",

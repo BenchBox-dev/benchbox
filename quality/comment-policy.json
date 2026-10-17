@@ -35588,18 +35588,6 @@
       "expires": "2027-01-04"
     },
     {
-      "path": "scripts/publication/candidate.py",
-      "symbol": "validate_candidate_directory",
-      "text": "# noqa: C901",
-      "kind": "directive",
-      "consumer": "pyproject.toml",
-      "necessity": "Ruff C901 measures this function above the configured complexity ceiling. Ruff RUF100 confirms the suppression is used. Recorded reason: this is one fail-closed validation boundary.",
-      "alternative": "Restructure the code so the rule no longer fires, then delete the suppression.",
-      "owner": "comment-cleanup-publication-tooling",
-      "removal": "Remove when Ruff RUF100 reports the suppression as unused or the code is restructured.",
-      "expires": "2027-01-04"
-    },
-    {
       "path": "scripts/publication/check_explorer_compat.py",
       "symbol": "main",
       "text": "# noqa: C901",
@@ -35612,56 +35600,8 @@
       "expires": "2027-01-04"
     },
     {
-      "path": "scripts/publication/transaction_executor.py",
-      "symbol": "cmd_prepare",
-      "text": "# noqa: C901",
-      "kind": "directive",
-      "consumer": "pyproject.toml",
-      "necessity": "Ruff C901 measures this function above the configured complexity ceiling. Ruff RUF100 confirms the suppression is used.",
-      "alternative": "Restructure the code so the rule no longer fires, then delete the suppression.",
-      "owner": "comment-cleanup-publication-tooling",
-      "removal": "Remove when Ruff RUF100 reports the suppression as unused or the code is restructured.",
-      "expires": "2027-01-04"
-    },
-    {
       "path": "scripts/publication/validator_parity.py",
       "symbol": "_discover_changed_bundles",
-      "text": "# noqa: C901",
-      "kind": "directive",
-      "consumer": "pyproject.toml",
-      "necessity": "Ruff C901 measures this function above the configured complexity ceiling. Ruff RUF100 confirms the suppression is used.",
-      "alternative": "Restructure the code so the rule no longer fires, then delete the suppression.",
-      "owner": "comment-cleanup-publication-tooling",
-      "removal": "Remove when Ruff RUF100 reports the suppression as unused or the code is restructured.",
-      "expires": "2027-01-04"
-    },
-    {
-      "path": "scripts/publication/verify_lane_isolation.py",
-      "symbol": "_walk_lane_files",
-      "text": "# noqa: C901",
-      "kind": "directive",
-      "consumer": "pyproject.toml",
-      "necessity": "Ruff C901 measures this function above the configured complexity ceiling. Ruff RUF100 confirms the suppression is used.",
-      "alternative": "Restructure the code so the rule no longer fires, then delete the suppression.",
-      "owner": "comment-cleanup-publication-tooling",
-      "removal": "Remove when Ruff RUF100 reports the suppression as unused or the code is restructured.",
-      "expires": "2027-01-04"
-    },
-    {
-      "path": "scripts/publication/verify_lane_isolation.py",
-      "symbol": "verify_lane_isolation",
-      "text": "# noqa: C901",
-      "kind": "directive",
-      "consumer": "pyproject.toml",
-      "necessity": "Ruff C901 measures this function above the configured complexity ceiling. Ruff RUF100 confirms the suppression is used.",
-      "alternative": "Restructure the code so the rule no longer fires, then delete the suppression.",
-      "owner": "comment-cleanup-publication-tooling",
-      "removal": "Remove when Ruff RUF100 reports the suppression as unused or the code is restructured.",
-      "expires": "2027-01-04"
-    },
-    {
-      "path": "scripts/publication/verify_lane_isolation.py",
-      "symbol": "verify_workflow_isolation",
       "text": "# noqa: C901",
       "kind": "directive",
       "consumer": "pyproject.toml",
@@ -37491,33 +37431,6 @@
       "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
     },
     {
-      "path": "tests/unit/scripts/publication/test_reconciliation.py",
-      "symbol": "html-output:pages / 'index.html'",
-      "text": "unresolved HTML output source",
-      "payload": "sha256:74167f7a86edafc64b7bf2ecd26579ee0477fcbd28a923e831bc72a45cd98eef",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/scripts/publication/test_reconciliation.py",
-      "necessity": "In `html-output:pages / 'index.html'` the test starts a subprocess whose program or inline source (unresolved HTML output source) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/scripts/publication/test_verify_corpus_promotion.py",
-      "symbol": "html-output:site / 'index.html'",
-      "text": "unresolved HTML output source",
-      "payload": "sha256:54e9c6822d28e2d129966f7a2f0ad74b17c45707796872b69ec415a637a85254",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/scripts/publication/test_verify_corpus_promotion.py",
-      "necessity": "In `html-output:site / 'index.html'` the test starts a subprocess whose program or inline source (unresolved HTML output source) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it.",
-      "count": 3
-    },
-    {
       "path": "tests/unit/scripts/test_ci_lint_environment_boundary.py",
       "symbol": "TestGateFailsClosed.test_ci_lint_environment_boundary_runs_the_guard_when_the_gate_is_broken",
       "text": "unresolved executable source: f'{broken} echo RAN; else echo SKIPPED; fi'",
@@ -37918,19 +37831,6 @@
       "kind": "fixture",
       "consumer": "tests/unit/workflows/test_nightly_t3_workflow.py",
       "necessity": "Pre-registered for the mirror skopeo tag fix, which updates the copy-source assertion and adds a tag-drop regression test in this file and changes its AST digest. Same fixture as above: the test starts a subprocess whose program or inline source ('-o') is assembled at runtime.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/workflows/test_publication_canaries.py",
-      "symbol": "test_publication_canaries_scripts_fail_closed_without_evidence",
-      "text": "unresolved executable source: sys.executable",
-      "payload": "sha256:549f13df56b1d262033af19ba7d27c70202086126ceb4f5be7de6af23484c95b",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/workflows/test_publication_canaries.py",
-      "necessity": "In `test_publication_canaries_scripts_fail_closed_without_evidence` the test starts a subprocess whose program or inline source (sys.executable) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
       "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
       "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
       "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."

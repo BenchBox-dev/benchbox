@@ -159,7 +159,6 @@ correctness-gate-digests-regen:
 
 LEDGER_SEED_GATE_SUITES := tests/unit/scripts/publication/test_ledger_seed.py \
 	tests/unit/scripts/publication/test_check_corpus_bijection.py \
-	tests/unit/workflows/test_corpus_cutover.py \
 	tests/unit/scripts/test_site_inputs.py
 
 .PHONY: ledger-seed-gates
