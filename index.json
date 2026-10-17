@@ -20762,6 +20762,13 @@
       "status": "open",
       "title": "Serve /docs/ from the latest release and add canonical tags from /docs/dev/"
     },
+    "site-runner-pool-decision-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Decide the site repo's runner pool from a month of deploy receipts"
+    },
     "site-sphinx-fallback-exposure": {
       "claim": null,
       "needs": [],
