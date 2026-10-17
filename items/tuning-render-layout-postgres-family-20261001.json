@@ -3,7 +3,7 @@
     "Snapshot test (adapter == generator) and fake-driver execution test pass; registry entry flipped; registry parity test green.",
     "With a tuning file requesting the layout, the reconciliation records no drop for it on this platform."
   ],
-  "context": "2026-10-17: owner split the item. Clustering/sorting half is PR #3092 (head 397a4b3f3): PostgreSQL index + CLUSTER after load via PostgreSQLDDLGenerator, failure recorded as failed, family variants opt out, plus fix for tuned Postgres runs failing on the metadata CREATE TABLE fetch. Live-verified on local postgres:17 (public and non-public schema). Not verified: Citus (no arm64 image), CedarDB (needs io_uring), ParadeDB (image lacks pg_analytics). Partitioning half: postgres-partitioning-date-domain-20261017. BLOCKED on review: oracle keeps flagging D2 (index name in CLUSTER ... USING not schema-qualified); PostgreSQL grammar accepts only an unqualified index name, and the qualified form fails live with 'syntax error at or near \".\"'. Needs an owner decision (stand-in attestation for #3092 or another reviewer); claim released while waiting.",
+  "context": "Done 2026-10-17 in two PRs per owner split. Clustering/sorting: #3092 (squash 6dc8cdc74) — PostgreSQL index + CLUSTER after load via PostgreSQLDDLGenerator, failures recorded as failed, family variants opt out; oracle SHIP on dafe062fe, four threads resolved with owner authorization. Partitioning: #3098 (squash a10876401, item postgres-partitioning-date-domain-20261017) — date-domain RANGE + DEFAULT, HASH for integers, skipped and recorded dropped while keys are requested. Both live-verified on local postgres:17. Postgres-compatible variants (CedarDB, Citus, ParadeDB, pg_duckdb, pg_mooncake, TimescaleDB) keep their not-applied entries; Citus/CedarDB/ParadeDB could not run in local containers.",
   "description": "## Problem\nOn postgres-family, the capability registry marks layout tuning `:preview_only`: the generator renders it for `--dry-run`, but execution applies nothing (`capability_registry.py:174` and the platform entries). A user's tuning file therefore silently does nothing. Until the reconciliation item lands it isn't even recorded as dropped.\n\n## Change\nRender at execution: declarative PARTITION BY RANGE and CREATE INDEX for sorting (or CLUSTER ... USING post-load) for postgresql/cedardb/citus/paradedb/pg-duckdb/pg-mooncake/timescaledb.\n\nFollow ADR-003's per-platform cutover:\n1. a before/after DDL snapshot test proving adapter output equals generator output;\n2. flip the registry entry from `:preview_only` to a rendered mechanism;\n3. a fake-driver execution test showing the statements are executed and recorded.\n\n## Guardrails (must preserve)\n- Untuned DDL is unchanged (snapshot).\n- Live confirmation only with explicit approval.\n\n## Process guardrails\n- One PR per item against `develop`, via the AGENTS.md worktree flow (`make worktree-claim BRANCH=...`, `make agent-write-preflight`).\n- Verification ladder: `uv run -- python -m pytest -m fast -q`, `uv run -- ruff check .`, `uv run -- ruff format --check .` and `uv run -- ty check`.\n- Then `make pr-preflight` and `make pr-open`.\n- Stage explicit paths; never `git add -A`.\n- No live cloud runs without explicit user approval stating the command, maximum runtime, log path and stop condition.\n- Re-read every file:line anchor before editing. Anchors are from develop d39166ea.",
   "links": [
     "benchbox/platforms/postgresql.py (empty apply stubs)",
@@ -59,6 +59,14 @@
       "generation": "b6287cee423b43089b80b91cffbdc57b",
       "op": "take",
       "op_id": "87bfe3f7cedc4da28cc438cabd5fd852",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T17:48:19Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "b8710f9f6ac3469089b5669269e8eb67",
       "session_id": "400c76c14fce4783943655593419ae3c"
     }
   ]
