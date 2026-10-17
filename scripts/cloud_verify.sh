@@ -12,7 +12,6 @@ esac
 
 top=$(git rev-parse --show-toplevel)
 cd "$top"
-base_ref=${BASE_REF:-origin/develop}
 log_dir=${CLOUD_VERIFY_LOG_DIR:-/tmp/benchbox-cloud-verify}
 summary="$log_dir/summary.tsv"
 mkdir -p "$log_dir"
@@ -22,6 +21,11 @@ git fetch origin develop --quiet || {
   exit 1
 }
 
+base_ref=$(git merge-base "${BASE_REF:-origin/develop}" HEAD 2>/dev/null) || {
+  printf 'cloud-verify: cannot find a merge base between BASE_REF %s and HEAD; in a shallow clone, run git fetch --unshallow\n' \
+    "${BASE_REF:-origin/develop}" >&2
+  exit 1
+}
 head=$(git rev-parse HEAD)
 dirty=$(git status --porcelain | wc -l | tr -d ' ')
 BENCHBOX_MEDIUM_CHANGED_PATHS_JSON=$(git diff --name-only "$base_ref...HEAD" |
@@ -58,7 +62,7 @@ fi
 end_head=$(git rev-parse HEAD)
 end_dirty=$(git status --porcelain | wc -l | tr -d ' ')
 
-printf '\ncloud-verify level=%s head=%s dirty_paths=%s\n' "$level" "$head" "$dirty"
+printf '\ncloud-verify level=%s base=%s head=%s dirty_paths=%s\n' "$level" "$base_ref" "$head" "$dirty"
 cat "$summary"
 if [ "$end_head" != "$head" ] || [ "$end_dirty" != "$dirty" ]; then
   printf 'cloud-verify: the tree changed during verification (head %s, dirty paths %s); rerun on a settled tree\n' \

@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import shlex
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -102,3 +103,82 @@ def test_verify_rejects_an_unknown_level(tmp_path: Path) -> None:
 
     assert result.returncode == 2
     assert "LEVEL must be static or tests" in result.stderr
+
+
+def _clone_with_origin(tmp_path: Path) -> Path:
+    origin = tmp_path / "origin.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(origin)], check=True)
+    repo = _clone(tmp_path)
+    subprocess.run(["git", "-C", str(repo), "remote", "add", "origin", str(origin)], check=True)
+    subprocess.run(["git", "-C", str(repo), "push", "-q", "origin", "HEAD:refs/heads/develop"], check=True)
+    return repo
+
+
+def _stub_tools(tmp_path: Path) -> tuple[Path, Path]:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    make_log = tmp_path / "make.log"
+    stubs = {
+        "make": f"printf '%s\\n' \"$*\" >>{shlex.quote(make_log.as_posix())}\n",
+        "uv": (
+            '[ "$1" = run ] && shift\n'
+            '[ "$1" = -- ] && shift\n'
+            f'[ "$1" = python ] && shift && exec {shlex.quote(sys.executable)} "$@"\n'
+            'exec "$@"\n'
+        ),
+    }
+    for name, body in stubs.items():
+        stub = bin_dir / name
+        stub.write_text("#!/bin/sh\n" + body, encoding="utf-8")
+        stub.chmod(0o755)
+    return bin_dir, make_log
+
+
+def _git(repo: Path, *args: str) -> str:
+    return subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True, check=True).stdout.strip()
+
+
+def test_verify_passes_the_merge_base_as_a_full_commit_sha(tmp_path: Path) -> None:
+    repo = _clone_with_origin(tmp_path)
+    bin_dir, make_log = _stub_tools(tmp_path)
+    base = _git(repo, "rev-parse", "HEAD")
+    _git(
+        repo,
+        "-c",
+        "user.name=Seed",
+        "-c",
+        "user.email=seed@example.com",
+        "commit",
+        "-q",
+        "--allow-empty",
+        "-m",
+        "ahead",
+    )
+    _git(repo, "push", "-q", "origin", "HEAD:refs/heads/develop")
+    _git(repo, "reset", "-q", "--hard", base)
+    env = _env(
+        PATH=f"{bin_dir}{os.pathsep}{os.environ['PATH']}", CLOUD_VERIFY_LOG_DIR=str(tmp_path / "logs"), BASE_REF=None
+    )
+
+    result = _run(VERIFY, "static", cwd=repo, env=env)
+
+    assert result.returncode == 0, result.stderr
+    calls = make_log.read_text(encoding="utf-8").splitlines()
+    assert f"comment-policy-check BASE_REF={base}" in calls
+    assert f"duplicate-check-delta BASE_REF={base}" in calls
+
+
+def test_verify_refuses_a_base_ref_that_is_not_a_commit(tmp_path: Path) -> None:
+    repo = _clone_with_origin(tmp_path)
+    bin_dir, make_log = _stub_tools(tmp_path)
+    env = _env(
+        PATH=f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+        CLOUD_VERIFY_LOG_DIR=str(tmp_path / "logs"),
+        BASE_REF="origin/no-such-branch",
+    )
+
+    result = _run(VERIFY, "static", cwd=repo, env=env)
+
+    assert result.returncode == 1
+    assert "cannot find a merge base between BASE_REF origin/no-such-branch" in result.stderr
+    assert not make_log.exists()
