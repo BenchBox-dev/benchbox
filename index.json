@@ -21296,12 +21296,17 @@
       "title": "Stop mapping spark to the Delta DDL generator for Parquet/ORC tables"
     },
     "spark-effective-config-preflight-capture": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-18T02:20:51Z",
+        "generation": "4c237ec0f7ee470d8c9d906ef35cf314",
+        "renewals": 0,
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c"
+      },
       "needs": [
         "spark-session-config-runtime"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Capture actual Spark session config at preflight and flag discrepancies"
     },
     "spark-family-session-config-velox-lakesail": {
