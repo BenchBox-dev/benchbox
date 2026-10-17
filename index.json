@@ -25686,6 +25686,13 @@
       "status": "open",
       "title": "Enforce 1..S stream numbering and full query counts in validate_corpus clean-phase check"
     },
+    "validate-corpus-known-defects-parity-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "validate_corpus counts bundles the Explorer excludes as known_defective_data"
+    },
     "validate-isolated-runtime-importability": {
       "claim": null,
       "needs": [],

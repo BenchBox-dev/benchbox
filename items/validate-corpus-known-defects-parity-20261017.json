@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "validate_corpus.py applies the same known-defects exclusion as the Explorer, with the same reason code",
+    "A parity test in tests/unit/scripts/test_corpus_cohort_depth.py covers a bundle with a known-defects sidecar",
+    "Cohort identity counts reported by validate_corpus match the Explorer's ranked identities for the current corpus, or the remaining differences are documented"
+  ],
+  "description": "Defect: the Explorer pipeline excludes bundles that have a known-defects sidecar (_project/scripts/explorer_pipeline/transformer.py:666 _sidecar_known_defects, applied at :1695 and :1820, reason known_defective_data), but results-data/validate_corpus.py:568 exclusion_reason never reads that sidecar. The corpus depth gate and cohort identity counts therefore include bundles the Explorer will not rank. Found 2026-10-16 comparing outcomes after #3075: validate_corpus reports TPC-H SF 0.1 with 8 identities (including BigQuery, Databricks and Snowflake), while the Explorer ranks 6 rows and excludes those three cloud bundles, plus most legacy SF 0.01/0.1 rows, as known_defective_data. Pre-existing; not introduced by #3075.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
+      "at": "2026-10-17T22:06:36Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "059e6bc1f473447db96442a2c72cc047",
+      "session_id": "400c76c14fce4783943655593419ae3c"
+    }
+  ]
+}
