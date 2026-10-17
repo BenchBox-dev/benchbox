@@ -1,5 +1,21 @@
 # Corpus Generation Notes - 2026-04-03
 
+## TPC-DS OBT parameter defect (2026-10-16)
+
+The six TPC-DS OBT bundles at SF1 (BigQuery, ClickHouse Local, Databricks,
+DataFusion, DuckDB and Snowflake) ran queries whose `dist()` and `sub()`
+template parameters were rendered as `0` and whose other parameters were
+fixed template defaults instead of the dsqgen draw. For example, Q93 filtered
+on `r_reason_desc = '0'`, so it and many other statements returned no rows.
+Each bundle's `.manifest.json` sidecar now carries `known_defects:
+["defective-tpcds-obt-parameters"]`; three sidecars were created for bundles
+that had none, recording `result_source: internal` so trust labels are
+unchanged. The explorer pipeline removes these bundles from rankings; they
+remain available for comparison. Query rendering now takes every parameter
+from the dsqgen parameter log for the run's seed and scale, as TPC-DS does.
+Rerunning the six cells with the fixed renderer, then ingesting the new
+bundles, is a follow-up.
+
 ## DuckDB version matrix (operator-run, 2026-08-29)
 
 The Results Explorer corpus includes a reproducible DuckDB version-over-version matrix at
@@ -63,6 +79,13 @@ results were exported directly by filename.
 Both cohorts meet the >=3-platform depth criterion required for the Compare view:
 - `tpch SF=0.01`: DuckDB, DataFusion, Polars
 - `star_schema SF=0.01`: DuckDB, DataFusion, SQLite
+
+## Execution-variant identity (schema 2.3 and later)
+Bundles that record `platform.variant` count toward cohort depth under the variant
+string; every bundle committed here predates that field, so all existing identities
+are unchanged platform names and no cohort gains or loses depth from the rename.
+Gateway-routed bundles are excluded from native ranking with
+`ranking_exclusion_reason=gateway_routed` and contribute no identity.
 
 ## Zero-query DataFrame withdrawal (2026-08-24)
 

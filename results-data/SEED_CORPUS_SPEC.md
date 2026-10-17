@@ -18,7 +18,11 @@ Phase 3 hosted service.
 
 The hard requirement today is still the validator gate in `results-data/validate_corpus.py`:
 every committed cohort must have at least 3 distinct comparison identities. Ordinary
-cohorts count platform names, preserving the historical three-platform floor. Bundles in
+cohorts count platform names, preserving the historical three-platform floor. A bundle
+that records `platform.variant` counts under that variant string instead of the bare
+platform name, so two execution variants of one platform (for example
+`polars-df+streaming` alongside `polars-df`) are distinct identities while repeated
+runs of one variant do not pad the floor. Bundles in
 the explicitly segregated `duckdb-version-matrix/` corpus count platform plus version;
 repeated runs of one platform/version do not pad that matrix.
 
@@ -105,7 +109,8 @@ source of truth; the workflow drifts as admitted coverage changes.
 The supported matrix contains six local, merge-ready cohorts. TPC-H SF 0.01
 and SF 0.1 plus SSB use DuckDB, DataFusion, and Polars DataFrame. TPC-H SF 1
 and TPC-DS SF 1 use DuckDB, DataFusion, and ClickHouse Local. Every cohort has
-three local comparison identities and no cloud dependency.
+three local comparison identities and no cloud dependency. TPC-H SF 1 and TPC-DS SF 1
+run as official seeded runs; see [Official runs](#official-runs).
 
 | Benchmark | Scale factors |
 |-----------|---------------|
@@ -125,6 +130,12 @@ gate when changed.
 2. Checked-in coverage and the workflow target can diverge briefly after a
    restore or schedule change. Prefer `results-data/corpus-inventory.json` and
    `results-data/README.md` for what is currently committed.
+3. The workflow re-cuts `publication/ledger-seed.json` against the current
+   `published-results` tip and runs `make ledger-seed-gates` before it opens
+   its PR. New bundles enter the seed as `legacy_overlay`. After the seed PR
+   merges, the owner merges the auto-mirror PR in the same cycle, then runs
+   `make ledger-seed-recut` on a branch from `develop` and opens a PR with the
+   result, which moves those bundles to `accepted`.
 
 ### Version-over-version cohorts
 
@@ -148,9 +159,22 @@ The workflow includes `polars-df` for TPC-H SF 0.01/0.1 and SSB. TPC-H SF 1
 and TPC-DS use `clickhouse-local` as their local third identity because the
 admitted matrix does not rely on Polars DataFrame support there.
 
-TPC-DS SF 1 jobs also run with `--official --seed 42`. This benchmark-specific
-command is required for the scheduled output to be compliance-admissible; all
-other matrix entries retain the generic local command.
+### Official runs
+
+A matrix entry marked `official: true` adds `--official --seed 42` to the
+generic local command. Only a TPC-H or TPC-DS run made with `--official` is
+classed `official`; without the flag a run at SF 1 or above is
+`unofficial_nonstandard` and is never admitted. The TPC-H SF 1 and TPC-DS SF 1
+entries are marked, so those cohorts can rank.
+
+The flag applies only at official scale points (SF 1, 10, 30, and so on).
+`benchbox run --official` refuses any other scale factor, and every TPC-H or
+TPC-DS run below SF 1 is classed `unofficial_subscale` with or without the
+flag. The TPC-H SF 0.01 and SF 0.1 entries therefore run the generic command,
+and staging skips their bundles as `unofficial_compliance`. Those cohorts
+contribute no rankable bundle and are reported as `UNRANKED`. They stay in the
+matrix because removing coverage is a maintainer decision; dropping them would
+only save runner time, since they add nothing to the admitted corpus.
 
 ### Timestamp contract
 

@@ -1,0 +1,11 @@
+{
+  "bundle_file": "tpcds_obt_sf1_duckdb_sql_20260826_162433_2a6932b1.json",
+  "bundle_hash": "224c18b9fc693297fcfee359bc96c134446ce4ca3172eeec1f2bc4ea8d65ca48",
+  "funding": "unspecified",
+  "manifest_version": "1.0",
+  "result_source": "internal",
+  "submitted_by": "maintainer",
+  "known_defects": [
+    "defective-tpcds-obt-parameters"
+  ]
+}
