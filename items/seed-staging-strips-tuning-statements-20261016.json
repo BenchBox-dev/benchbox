@@ -5,6 +5,7 @@
     "Existing anonymization and exporter tests pass; the guard is not weakened",
     "Next Seed Corpus run stages the tpcds/clickhouse-local/sf1 cell"
   ],
+  "context": "Closeable-after-check (verified 2026-10-18): PR #3053 merged 2026-10-16 (redaction moved to anonymization.py, exporter shares it), so acceptance 1-3 plausibly met. Remaining: verify #3053 tests cover clickhouse-shaped payloads and the seed-run staging proof (owner-dispatched Seed Corpus run). Work stopped before the check ran.",
   "description": "Seed Corpus run 38935736737: tpcds/clickhouse-local/sf1 failed in \"Stage bundle\" with \"Corpus bundle contains unanonymized tuning diagnostics: platform.tuning.applied.statements[0..9]\". `scripts/stage_seed_corpus_bundle.py` anonymizes via `AnonymizationManager.anonymize_result_payload` (benchbox/core/results/anonymization.py), which does not strip `platform.tuning.applied.statements`; only `ResultExporter._anonymize_applied_payload` (benchbox/core/results/exporter.py:344) does. Since #2863 local results keep those statements, so every seed cell that applies tuning is rejected by `unanonymized_tuning_findings` (benchbox/validation/bundle.py ~2250). The guard is correct; the shared anonymizer should apply the same treatment as the exporter.",
   "sessions": [
     {
@@ -14,6 +15,14 @@
       "op": "create",
       "op_id": "2e6349d13e794fb9b30ed3ddf87a5478",
       "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:3ce222eaad5d12493e27d4cc",
+      "at": "2026-10-18T11:44:24Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "073aad6b6b0b4c86a6a6d946447bfde9",
+      "session_id": "d2c53a64af484bf0b44e45ae35143611"
     }
   ]
 }
