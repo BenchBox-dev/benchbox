@@ -6,7 +6,7 @@
     "No artifact larger than 100 MB was downloaded (recorded)",
     "PR merged in benchbox-site under that repo's gates (required checks green); if the cause is nondeterministic generated content owned by core, a follow-up or PR exists in the owning repo"
   ],
-  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs a stated, evidenced cause and a fix that cannot hide a persistent mismatch. FAIL if tolerance is widened without evidence.",
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs a stated, evidenced cause and a fix that cannot hide a persistent mismatch. FAIL if tolerance is widened without evidence.\nPre-publication (AGENTS.md): self-review with the code review action and fix every Critical and Required finding before make pr-open (G13).",
   "description": "Site repo items (BenchBox-dev/benchbox-site): read that repo's AGENTS.md first and follow its worktree, test and PR rules (G2); decision D6 authorizes PRs and merges there.\nConfirmed: production deploys 39088161813, 39133744379 and 39134642424 deployed, then 'probe FAILED: 32 matched, 1 mismatched' (39134642424: 31 matched, 2 mismatched: /docs/benchmarks/queries/metadata_primitives/acl-column-privileges-list.html and /docs/benchmarks/queries/tpcdi/vq1.html; receipt artifact site-deploy-receipt-39134642424, id 12139398515). Automatic rollback fired (target 39134275364) and the site serves. Deep-link 404 is the expected outcome. Cause is UNRESOLVED: a Cloudflare email-obfuscation rewrite was tested and refuted on the live pages (no data-cfemail markers). Hypotheses (INFERENCE): Pages/CDN serving the previous generation for a few URLs inside the probe window; or nondeterministic generated content in those pages.\nWork: (1) add the mismatched URL list with expected and served sha256 and relevant cache/age headers to the receipt (deploy/lib/probe.ts, receipt.ts); (2) determine which hypothesis holds by comparing mismatch URLs across the three runs, re-probing after a delay, and checking whether the mismatched pages changed between generations; (3) fix per evidence: nondeterministic content -> fix the generator; CDN propagation -> a bounded re-probe window that still fails when the mismatch persists.\nGuardrails: never drop a path from the manifest, never accept a mismatched required path, never extend tolerance beyond a bounded, evidenced window; avoid downloading the 628 MB site artifact (the account hit GitHub egress limits): use receipts, small deploy-work artifacts or direct HTTP fetches of individual pages.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox-site/actions/runs/39134642424",
@@ -19,6 +19,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "fb5b93fa392247f09a67a1227faaec08",
+      "session_id": "cab8a4e762844fd9912c504ebfd76c56"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7ac6538e56f6607b35a3f600",
+      "at": "2026-10-18T20:28:37Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "320885ce206c4a699a5197fd5d7eef1b",
       "session_id": "cab8a4e762844fd9912c504ebfd76c56"
     }
   ]
