@@ -8489,6 +8489,15 @@
       "status": "open",
       "title": "Define published documentation ownership and supersede the split decision"
     },
+    "docs-mig-core-doc-contracts-export": {
+      "claim": null,
+      "needs": [
+        "docs-mig-adr-ownership"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Export the contracts needed to validate site-owned documentation"
+    },
     "docs-mig-core-doc-paths-to-urls": {
       "claim": null,
       "needs": [
