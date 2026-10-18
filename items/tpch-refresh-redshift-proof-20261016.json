@@ -5,6 +5,7 @@
     "Refresh capability re-enabled for Redshift with the capability test updated, or the reason it stays off recorded",
     "Cloud resources cleaned up after the run"
   ],
+  "context": "Blocked: needs owner approval of a live Redshift run and its budget (acceptance criterion 1). Redshift's refresh flag was turned off in #3004 per the owner's decision; Snowflake was proven in its trial account instead. Owner, 2026-10-15, Claude session e0e74e6b, question dialog: \"Keep all, prove first\", refined by \"Snowflake in trial, Redshift later\".",
   "description": "PR #3004 turned off TPC-H refresh support on Redshift because it had no proof run. Re-enabling it needs a small Redshift proof run, which is live cloud spend and requires owner approval at run time.",
   "sessions": [
     {
@@ -14,6 +15,14 @@
       "op": "create",
       "op_id": "b90ccb4ce6714e6bb9681fe8b56056ba",
       "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-18T00:00:52Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "3c5f5e1f7dc54140b9e22501ada68c71",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
     }
   ]
 }
