@@ -97,11 +97,7 @@ def _has_real_tests(tree: ast.Module) -> bool:
 
 
 def _top_level_marker_names(path: Path) -> set[str]:
-    cache = _get_module_cache()
-    if path in cache:
-        return cache[path].top_level_markers
-    tree = ast.parse(path.read_text(encoding="utf-8"))
-    return _pytestmark_assignment_names(tree.body)
+    return _get_module_cache()[path].top_level_markers
 
 
 def _pytestmark_assignment_names(nodes: list[ast.stmt]) -> set[str]:
@@ -133,36 +129,8 @@ def _decorator_marker_names(node: ast.AST) -> set[str]:
     return {name for name in (_marker_name(decorator) for decorator in getattr(node, "decorator_list", [])) if name}
 
 
-def _iter_test_marker_sets(path: Path) -> list[tuple[str, set[str]]]:
-    return [(name, markers) for name, markers, _fixture_args in _iter_test_marker_sets_with_fixtures(path)]
-
-
 def _iter_test_marker_sets_with_fixtures(path: Path) -> list[tuple[str, set[str], set[str]]]:
-    cache = _get_module_cache()
-    if path in cache:
-        return cache[path].test_marker_sets_with_fixtures
-    tree = ast.parse(path.read_text(encoding="utf-8"))
-    module_markers = _top_level_marker_names(path)
-    tests: list[tuple[str, set[str], set[str]]] = []
-
-    for node in tree.body:
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith(("test_", "benchmark_")):
-            tests.append((node.name, module_markers | _decorator_marker_names(node), _function_arg_names(node)))
-        if isinstance(node, ast.ClassDef) and (node.name.startswith("Test") or node.name.endswith("Tests")):
-            class_markers = module_markers | _decorator_marker_names(node) | _pytestmark_assignment_names(node.body)
-            for child in node.body:
-                if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)) and child.name.startswith(
-                    ("test_", "benchmark_")
-                ):
-                    tests.append(
-                        (
-                            f"{node.name}::{child.name}",
-                            class_markers | _decorator_marker_names(child),
-                            _function_arg_names(child),
-                        )
-                    )
-
-    return tests
+    return _get_module_cache()[path].test_marker_sets_with_fixtures
 
 
 def _function_arg_names(node: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str]:
