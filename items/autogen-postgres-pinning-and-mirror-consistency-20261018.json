@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Every remaining Postgres image reference in .github/workflows and docker/ is listed with its pin and source",
+    "Each is pinned by sha256; those on rate-limited public paths use the GHCR mirror or have a recorded reason",
+    "Workflow tests cover the change; PR merged with required checks green (oracle review for workflow paths)"
+  ],
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11, guardrails G1-G12; read first). Follow-up created by the controller during the batch; not part of the batch set; do not take it during the batch. Rubric: PASS needs the reference inventory and tests. FAIL if any image stays unpinned.",
+  "description": "Follow-up from the docker mirror item. nightly.yml uses an unpinned public.ecr.aws/docker/library/postgres:17 service container (nightly.yml is being retired by dlv2-70-retire-scheduled-workflows, so confirm first whether it still runs), and docker-integration.yml uses the ECR default in docker/postgresql/docker-compose.yml rather than the GHCR mirror. Work: for each remaining caller decide pin-only versus mirror, apply the smallest consistent change, keep digest-equality checks. Guardrail: no unpinned references, no new secrets.",
+  "links": [
+    "item:dlv2-70-retire-scheduled-workflows"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a",
+      "at": "2026-10-18T23:47:54Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f1ed75dd1aad421c9cd66d658944e58e",
+      "session_id": "0722acca462b419aa525d939aedd0290"
+    }
+  ]
+}
