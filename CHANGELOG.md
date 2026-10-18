@@ -246,6 +246,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   only when their text changes. Repeating the command no longer rewrites an
   unchanged body. `make pr-rerun` retries CI directly instead of using a PR edit.
 
+- `benchbox run --dry-run` with a deployment selector such as
+  `--platform timescaledb:cloud` no longer fails on Windows. The preview files
+  are named `tpch_timescaledb~cloud_<timestamp>.*` instead of using a colon,
+  which Windows file names cannot contain.
+
 - Tuned runs on PostgreSQL and the platforms built on it no longer stop with
   "Failed to write the tuned-run marker". Statements that return no rows, such
   as the tuning metadata `CREATE TABLE`, no longer try to fetch rows.
