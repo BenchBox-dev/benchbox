@@ -5,7 +5,7 @@
     "Live TPC-H SF0.01 tuned run, with the evidence recorded in the PR",
     "Platform docs page describes the method"
   ],
-  "context": "Owner request 2026-10-17: There should be a method for tuning these platforms.\n\nImplementation in linked worktree /Users/joe/Developer/BenchBox.wt-timescaledb-native-tuning, branch feat/timescaledb-native-tuning. Reuses TimescaleDBDDLGenerator for native hypertable and compression layout, validates temporal partition columns, records catalog readback against dimensions and compression_settings. Added TPC-H tuned example and documented precedence.\nLive local Apple container benchbox-timescale-native-tuning, TimescaleDB 2.30.2 / PostgreSQL 17.11, port 55439. TPC-H SF0.01 seed 42 generate,load,power completed PASSED with 22 queries x3 iterations. Export: /Users/joe/Developer/benchmark_runs/results/tpch_sf001_timescaledb_sql_20261018_133703_a37954a6.json; six catalog-backed satisfied intents across orders and lineitem. Separate live probes: DESC NULLS LAST, segmentby, native space dimension (4 partitions), partition-only with compression_enabled=false.\nSelf-review (task agent) found 2 Critical + 4 Required + 1 Nit; all addressed: restored shared registry invariant tests with corrected NOT_RENDERED/RENDERED maps; gated legacy fallback on layout presence; hypertable membership after verification; mock-cursor success test; regenerated support matrix (generator reproduces committed row; no introspector so applied_unverified stands); bool coercion hardened.\nFocused suite 302 passed; pr-preflight 298 passed; full fast suite 30,179 passed / 24 skipped; ty/ruff/duplicate-delta/matrix-check/comment-policy passed.\nPR #3144 opened from afd2cc19e+8cfa80275, body updated with final evidence, pr-arm done (auto-merge enabled 2026-10-18T17:56:30Z). Pending: CI run 39151823858 + oracle-verdict 39151823702 + merge, then container cleanup and finish.",
+  "context": "Done. PR #3144 squash-merged as bdaeea364. Native TimescaleDB tuning-file layouts with catalog evidence; TPC-H SF0.01 seed-42 live runs PASSED (22/22 x3 iterations, strict-code rerun 20261018_141054); focused 302 passed; full fast 30,179 passed; oracle-verdict SHIP with zero open threads. Local Apple container removed.",
   "description": "TimescaleDB skips tuning-file partitioning and clustering (benchbox/platforms/timescaledb.py:50-51: execution_partitioning_supported = False, post_load_index_cluster_supported = False). Its native layout controls are reachable only through CLI flags: --timescale-chunk-interval and --timescale-compression (timescaledb.py:73-97). Map the tuning file onto them: a date partition column becomes the hypertable time column, sort columns become compress_orderby, and segment columns become compress_segmentby. CLUSTER on a hypertable succeeded in the timescale/timescaledb:latest-pg17 image during the #3092 verification, so enabling the PostgreSQL index + CLUSTER step for TimescaleDB is also an option. Record each request in the ledger with catalog evidence (timescaledb_information views).",
   "sessions": [
     {
@@ -47,6 +47,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "49af3e12f4a1469ba1edd75ebe12f3a7",
+      "session_id": "3f5fa805770a402e8ab72d3d4353a0bd"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:169d3b2cfca92ce2510f11ad",
+      "at": "2026-10-18T19:12:16Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "2c9a5704db9f4fa397838c8dd2c2d771",
       "session_id": "3f5fa805770a402e8ab72d3d4353a0bd"
     }
   ]
