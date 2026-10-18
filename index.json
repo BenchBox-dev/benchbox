@@ -8605,6 +8605,15 @@
       "status": "open",
       "title": "Prepare the site for bundles without source docs or downloads"
     },
+    "docs-mig-site-cleanup": {
+      "claim": null,
+      "needs": [
+        "docs-mig-core-removal"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Finish compatibility cleanup and documentation link checking"
+    },
     "docs-mig-site-contract-checks": {
       "claim": null,
       "needs": [
