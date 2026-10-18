@@ -34,7 +34,7 @@ from run_comment_policy import TRUSTED_FILES, parser_environment, resolve_base
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 ROOT = Path(__file__).resolve().parents[3]
-DEVELOPMENT_TREE = (ROOT / "AGENTS.md").is_file()
+DEVELOPMENT_TREE = (ROOT / "_project/decisions").is_dir()
 RELEASE_TREE_SKIP = "_project scripts are not in this checkout (release tree)"
 EMPTY_POLICY = {"version": 1, "external": [], "completed": [], "exceptions": []}
 
