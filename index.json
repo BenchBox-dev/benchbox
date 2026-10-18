@@ -21956,12 +21956,17 @@
       "title": "Build and verify an isolated BenchBox SQLGlot distribution"
     },
     "sqlglot-soft-fork-publish": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-19T03:25:44Z",
+        "generation": "5e365a4c13e14aa1b639cc4cd14502de",
+        "renewals": 0,
+        "worker": "mcp:codex-mcp-client:joe@joe-mac-mini.local:e0ab14b9d48e92582f492d05"
+      },
       "needs": [
         "sqlglot-soft-fork-distribution"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Publish the verified BenchBox SQLGlot release with owner approval"
     },
     "sqlglot-soft-fork-source": {
