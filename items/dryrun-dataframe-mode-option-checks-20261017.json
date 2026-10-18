@@ -4,7 +4,7 @@
     "An invalid platform option fails or warns in a DataFrame-mode dry run for pyspark, snowpark-connect and lakesail-df, with tests",
     "The lakesail-df dry run still produces no 'Unsupported platform' warning, and the existing tests in test_platform_options_reach_adapters.py still pass"
   ],
-  "context": "Found while fixing the develop break in PR #3070, which restored SQL-adapter construction for DataFrame-mode platforms that register a SQL adapter. That restored the guarantee pinned by `tests/unit/cli/test_platform_options_reach_adapters.py`, but against the SQL adapter only. Constraint: the `lakesail-df` dry run must not bring back the \"Unsupported platform\" warning.",
+  "context": "Implemented in PR #3122 (branch fix/dryrun-dataframe-option-checks, rebased commit after dffb6e360): DataFrame-mode dry runs now resolve get_adapter(mode=dataframe); lakesail-df invalid deployment_mode rejected; SQL dry runs unchanged; 3 new durable tests failed pre-change and pass now. PR armed 2026-10-18; after merge, take and finish.",
   "description": "In DataFrame mode, a dry run never builds the DataFrame adapter that the real run uses (`benchbox/core/dryrun.py`, around line 137):\n\n- Platforms that also register a SQL adapter, such as pyspark and snowpark-connect, build the SQL adapter instead. Their platform options are checked against the wrong constructor.\n- DataFrame-only aliases such as `lakesail-df` build no adapter, so their platform options are not checked at all.\n\nAs a result, a dry run can pass with options that the real DataFrame run rejects or ignores.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3070"
@@ -34,6 +34,14 @@
       "generation": "2fbddd5555284bdaa5b788075abd92b8",
       "op": "take",
       "op_id": "1b76c6a1f19d48e98d07a1c6266ed1e5",
+      "session_id": "d2c53a64af484bf0b44e45ae35143611"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:3ce222eaad5d12493e27d4cc",
+      "at": "2026-10-18T04:09:21Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "9c5b18307f8b4181873e398f63334bf5",
       "session_id": "d2c53a64af484bf0b44e45ae35143611"
     }
   ]
