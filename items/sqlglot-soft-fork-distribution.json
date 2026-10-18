@@ -9,7 +9,7 @@
     "Prospective consumer wrapper, SQLite and BigQuery tests pass against the built artifact using only the planned import changes in an isolated merged-base copy; a real new semantic regression blocks publication for an owner decision.",
     "Reviewed packaging/CI PR is merged; exact candidate artifact hashes, tests and source head are recorded. No publication or settings changes without owner authorization."
   ],
-  "context": "Source and BigQuery prerequisite are merged and tracker done. Owned packaging worktree /Users/joe/Developer/sqlglot.wt-benchbox-distribution, branch feat/benchbox-distribution, commit e651934d. Splitting implementation into packaging/installed-verification PR and separate refresh/publication-controls PR for manageable review. Packaging core passed targeted tests, Ruff and mypy; full make check with the combined tooling passed 1478 pure and1389 compiled tests (5 skipped). Initial installed artifact suite passed1468 tests (59 standard integration skips), offline sdist rebuild and byte-identical wheel comparison, import orders, pickle/spawn, plugins and uninstall independence. Prospective merged-base BenchBox preview passed419 tests on47012331b8e0ccd97428a5cbe66c76cbe382f067. Clean exact-commit artifact build/verification is running; publication remains unapproved. Owned later maintenance code is preserved as Git stash a66ef1f9128c6f4900746690c439f31fb3262753 in the SQLGlot repository, to restore only in a separately owned maintenance worktree. No protected publishing environment currently exists; owner configuration/publication are separate gates.",
+  "context": "Packaging PR https://github.com/joeharris76/sqlglot/pull/2 is ready, branch feat/benchbox-distribution. Initial CI exposed a missing upstream tag on the fork remote; head598ed244 adds explicit read-only tag fetch plus recorded-SHA verification and complete source history for CI. Clean artifacts from e651934d passed the installed full suite, offline sdist rebuild, byte-identical wheel proof, coexistence and uninstall checks. Initial merged-base BenchBox preview419 passed; extended preview now includes actual mixin/base tests plus one shared SQLite execution matrix through all three public entrypoints. Maintenance worktree /Users/joe/Developer/sqlglot.wt-benchbox-maintenance has commit e117de20; full native make check passed1478 pure +1389 compiled tests (5 skips), plus Ruff/mypy and source refresh/approval tests. It adds normalized patch reconstruction, two refresh cycles with retirement, source-preserving integration, manual exact-hash publication workflow and read-only monthly reports. Next finish extended preview, refresh the owned maintenance branch onto the updated packaging parent, open its parent-based draft, resolve hosted checks and merge both. Production publication remains unapproved, and the publishing environment is absent. Source SQLGlot patches and separate BigQuery prerequisite are already merged/done.",
   "description": "Implement downstream release assembly, artifact/installed-suite tests, CI and refresh operations in joeharris76/sqlglot using downstream/ to preserve upstream source layout. Distribution benchbox-sqlglot, namespace benchbox_sqlglot, initial version30.23.0.1. Use static metadata and provenance, pure Python, preserved py.typed/license, syntax-aware relocation and isolated plugin group. Enforce self-contained sdist and reproducible builds. Keep publication explicit and owner-controlled. Run prospective BenchBox consumer tests against the built artifact from a disposable copy of the merged BigQuery prerequisite.",
   "links": [
     "/Users/joe/Developer/BenchBox.wt-sqlglot-soft-fork/_project/decisions/sqlglot-soft-fork-plan.md",
@@ -41,6 +41,14 @@
       "client": "codex-mcp-client",
       "op": "update",
       "op_id": "b4ca37da88e74128b2dcaf3e56a68334",
+      "session_id": "5626a6dfe7d44c419c7db613d1059c06"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:e0ab14b9d48e92582f492d05",
+      "at": "2026-10-18T01:30:43Z",
+      "client": "codex-mcp-client",
+      "op": "update",
+      "op_id": "c0d63d8ab0d549258530dbf68955d827",
       "session_id": "5626a6dfe7d44c419c7db613d1059c06"
     }
   ]
