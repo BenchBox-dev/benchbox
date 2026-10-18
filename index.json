@@ -21983,7 +21983,7 @@
       ],
       "priority": "medium-high",
       "status": "active",
-      "title": "Prepare the maintained SQLGlot source for private BenchBox vendoring"
+      "title": "Prepare the maintained SQLGlot wheel runtime for BenchBox bundling"
     },
     "sqlglot-soft-fork-source": {
       "claim": null,

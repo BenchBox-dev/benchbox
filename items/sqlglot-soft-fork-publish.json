@@ -1,12 +1,12 @@
 {
   "acceptance": [
-    "Canonical repository is BenchBox-dev/benchbox-sqlglot and existing history, tags, PRs and upstream relationship remain intact.",
-    "Deterministic exporter produces a private benchbox._vendor.sqlglot runtime from a pinned clean commit, preserving license, py.typed, version, manifest, upstream/fork SHAs and per-file hashes.",
-    "No active workflow can publish a separate benchbox-sqlglot PyPI project; old waiting release cancelled and no upload performed.",
-    "Native source/compiled and relocated runtime checks pass; reviewed fork PR merged and exact immutable source recorded for adoption."
+    "Canonical source repository BenchBox-dev/benchbox-sqlglot preserves upstream history and immutable refs.",
+    "Pinned clean fork builds a deterministic pure-Python runtime wheel with private namespace, license,py.typed and immutable provenance/file hashes.",
+    "No active workflow can publish a separate PyPI project; old waiting release remains cancelled with no upload.",
+    "Native source/compiled and installed/direct wheel runtime checks pass, fork PR merges, and adoption receives exact merged-source wheel digest."
   ],
-  "context": "Owner explicitly approved vendoring instead of separate publication and named canonical BenchBox-dev/benchbox-sqlglot. Repo renamed in place, ID1368421376 unchanged, origin updated. Original30.23.0.1tag remains. ForkVendoring agent editing source tooling in owned releaseWT; ConsumerMigration editing known BenchBox consumers in shared ownedWT. Parent owns integration/governance/guard/packaging and all checks. Existing claim generatione75cfad8f9334628a2ea8b45135fdbda. Need deterministic private exporter then merge fork and pin immutable source in BenchBox. No PyPI publisher setup or production upload is authorized/needed in revised plan.",
-  "description": "Supersedes separate PyPI publication per the owner's explicit 2026-10-18 vendoring approval. Keep maintained source in BenchBox-dev/benchbox-sqlglot, preserve upstream history and immutable refs, remove production package publication, and implement deterministic clean-source export to benchbox._vendor.sqlglot with license, exact provenance and per-file hashes. Review and merge fork changes through native source/compiled/relocated-runtime checks. Runtime shipping and installed BenchBox proof belong to adoption.",
+  "context": "User explicitly rejected source vendoring; only wheel runtime may be shipped. Stop source-export CLI and new comment-policy exemption. Fork agent keeps private wheel builder; consumer migration namespace unchanged. Parent implements wheel package-data bootstrap using standard zipimport on benchbox._vendor.__path__, no global sys.path mutation or pip calls. No unpacked SQLGlot source goes into BenchBox repository/wheel/sdist. Source files inside the nested pure-Python wheel are normal runtime contents. Claim generatione75cfad8f9334628a2ea8b45135fdbda; native gates before correction passed but revised wheel delivery needs fresh checks.",
+  "description": "Owner correction: do NOT vendor unpacked SQLGlot source into BenchBox; ship only the built runtime wheel. Canonical fork BenchBox-dev/benchbox-sqlglot retains source and upstream ancestry. Build a deterministic pure-Python wheel using private namespacebenchbox._vendor.sqlglot with license and exact source provenance, remove separate production PyPI publication, verify installed and direct ZIP-import paths, and merge the fork changes. BenchBox adoption stores only the pinned wheel and loads it via standard package ZIP import; no runtime pip/network/extraction and no governance exemption.",
   "links": [
     "https://github.com/joeharris76/sqlglot/actions/runs/39093404507",
     "https://github.com/joeharris76/sqlglot/actions/runs/39093404507/artifacts/12123572445",
@@ -146,6 +146,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "095049cf7bec4a5f8468303735f28830",
+      "session_id": "a5197da3d60b4447b3b0ac38e65a8fbc"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:00f9896dc298dff5fa33ec9d",
+      "at": "2026-10-18T13:01:17Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "0b619cb6cacd4d1d874326a0b7a7e841",
       "session_id": "a5197da3d60b4447b3b0ac38e65a8fbc"
     }
   ]
