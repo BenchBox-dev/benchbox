@@ -51,8 +51,8 @@ In the primary clone, the closer may:
 - fetch `develop` with the same `git -c` and `--no-tags` options;
 - read the fetched objects with commands such as `git diff`, `git merge-base`,
   and `git show`;
-- run `make pr-arm-remote`, `make pr-landing-remote-withdraw`, and
-  `make pr-landing-remote-ready`.
+- run `make pr-arm-remote` and the `make pr-landing-remote-bind`, `-manifest`,
+  `-record`, `-withdraw`, and `-ready` targets.
 
 It never checks out a change, edits a working-tree file, creates or moves a
 local branch, changes local Git config, commits, pushes, or arms with a raw
@@ -95,6 +95,44 @@ The record is the closer's own attestation. Any session with the owner's
 filesystem could write one, so it is enforced by audit, like the rules in
 `docs/agent/merge-authority.md`. Arming never replaces the required checks:
 `hold`, `oracle-review`, and CI still decide whether the PR merges.
+
+## Binding and storing records
+
+When the builder's report first names the PR, the closer binds it:
+
+```bash
+make pr-landing-remote-bind PR=<n> BRANCH=<head branch> ITEM=<tracker item>
+```
+
+`ITEM` is optional. The binding stores the PR number, the head branch, the node
+ID GitHub reports, and the item, and it never changes afterwards.
+
+`make pr-landing-remote-manifest PR=<n> HEAD=<sha>` fetches as above and prints
+the base SHA and manifest digest to pin the reviewer to. The digest is the
+SHA-256 of the exact output of `git diff --raw --no-renames <base> <head>`.
+
+The reviewer returns its record as a JSON object with exactly these fields:
+`pr_number`, `head_branch`, `pr_node_id`, `base_sha`, `head_sha`,
+`manifest_digest`, `findings` (a list of objects with exactly `location`,
+`reasoning`, and `severity`), `disposition`, and `reviewer` (an object with
+exactly `model` and `run_id`). The closer publishes the findings, then stores
+the record with the head the builder's latest report names:
+
+```bash
+make pr-landing-remote-record PR=<n> RECORD=<record.json> BUILDER_HEAD=<sha>
+```
+
+The target refuses a record with a missing or unknown field, a SHA that is not
+full and lowercase, another disposition, or a PR identity that differs from the
+binding. It adds the closer's observation of the live labels, draft state, and
+review threads, which is why the findings are published first.
+
+Each PR has one file, `~/.benchbox/reviews/<owner>/<name>/pr-<n>.json`, where
+`BENCHBOX_REVIEWS_DIR` replaces `~/.benchbox/reviews` when set. It holds the
+binding, every record in the order stored, the open withdrawal if there is one,
+and every arm. An arm that condition 7 allowed only because the owner explained
+a change stores the owner's statement, passed as
+`OWNER_EXPLAINED="<statement>"`.
 
 ## Arm conditions
 

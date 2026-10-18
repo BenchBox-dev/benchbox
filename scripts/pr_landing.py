@@ -11,7 +11,7 @@ import os
 import re
 import subprocess
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import BinaryIO, cast
@@ -598,6 +598,13 @@ def verify_evidence_live(run: Runner, repo_full: str, pr: dict, evidence: ReadyE
 
 
 def unresolved_review_threads(run: Runner, repo_full: str, pr_number: int) -> bool:
+    return any(
+        isinstance(thread, dict) and not thread.get("isResolved") and not thread.get("isOutdated")
+        for thread in review_threads(run, repo_full, pr_number)
+    )
+
+
+def review_threads(run: Runner, repo_full: str, pr_number: int) -> Iterator[object]:
     try:
         owner, name = repo_full.split("/", 1)
     except ValueError as exc:
@@ -609,7 +616,7 @@ def unresolved_review_threads(run: Runner, repo_full: str, pr_number: int) -> bo
         repository(owner:$owner, name:$name) {
           pullRequest(number:$number) {
             reviewThreads(first:100, after:$cursor) {
-              nodes { isResolved isOutdated }
+              nodes { id isResolved isOutdated }
               pageInfo { hasNextPage endCursor }
             }
           }
@@ -646,13 +653,9 @@ def unresolved_review_threads(run: Runner, repo_full: str, pr_number: int) -> bo
             raise LandingError(f"unparseable live review-thread payload for PR #{pr_number}") from exc
         if not isinstance(nodes, list):
             raise LandingError(f"live review threads for PR #{pr_number} are not a list")
-        if any(
-            isinstance(thread, dict) and not thread.get("isResolved") and not thread.get("isOutdated")
-            for thread in nodes
-        ):
-            return True
+        yield from nodes
         if not page.get("hasNextPage"):
-            return False
+            return
         next_cursor = str(page.get("endCursor") or "")
         if not next_cursor or next_cursor in seen_cursors:
             raise LandingError("live review-thread pagination did not advance; refusing")
