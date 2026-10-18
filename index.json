@@ -9438,9 +9438,9 @@
     },
     "explorer-detail-ranking-reason-compliance-20261017": {
       "claim": {
-        "expires_at": "2026-10-19T00:41:29Z",
-        "generation": "f1ca6cad483f454c91aa74757c66c16a",
-        "renewals": 0,
+        "expires_at": "2026-10-19T00:48:44Z",
+        "generation": "fff997f5718f4aefa9cc538c4289f194",
+        "renewals": 1,
         "worker": "mcp:tbh:joe@joe-mac-mini.local:3ce222eaad5d12493e27d4cc"
       },
       "needs": [],
