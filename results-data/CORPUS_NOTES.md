@@ -1,5 +1,39 @@
 # Corpus Generation Notes - 2026-04-03
 
+## TPC-Havoc cross-variant row-count divergence audit (2026-10-17)
+
+The three SF=0.01 TPC-Havoc SQL bundles (`tpchavoc_sf001_duckdb_sql_20260826_163147_d96baca2.json`,
+`tpchavoc_sf001_datafusion_sql_20260826_165844_721d2f5e.json`, and
+`tpchavoc_sf001_clickhouse_local_sql_20260826_171608_ce266327.json`) ran `16_v6` before its
+cross-joined `excluded` supplier subquery (`ps_suppkey <> excluded_suppkey`) was replaced with
+`NOT IN`. Because SF=0.01 has zero suppliers matching `'%Customer%Complaints%'`, the cross-join
+produced `rows: 0` with `status: SUCCESS` while the remaining Q16 variants returned `rows: 296`.
+In addition, the August 2026 DataFusion (`SF=0.01`, `0.1`, `1.0`) and ClickHouse Local (`SF=0.01`,
+`0.1`, `1.0`) TPC-Havoc bundles recorded pre-fix `15_v*` float-equality or ClickHouse
+`2_v8`/`3_v7`/`7_v7`/`9_v7`/`10_v7`/`10_v8` row-count divergences across variants of the same
+base query.
+
+All seven `.manifest.json` sidecars now carry `defective-tpchavoc-variant-divergence` in
+`known_defects`. Bundle validation (`benchbox/validation/bundle.py`) now enforces cross-variant
+row-count agreement across all successful measurement variants of each base query in a
+`tpchavoc` bundle, rejecting any new submission with divergent variant row counts.
+
+## TPC-DS OBT parameter defect (2026-10-16)
+
+The six TPC-DS OBT bundles at SF1 (BigQuery, ClickHouse Local, Databricks,
+DataFusion, DuckDB and Snowflake) ran queries whose `dist()` and `sub()`
+template parameters were rendered as `0` and whose other parameters were
+fixed template defaults instead of the dsqgen draw. For example, Q93 filtered
+on `r_reason_desc = '0'`, so it and many other statements returned no rows.
+Each bundle's `.manifest.json` sidecar now carries `known_defects:
+["defective-tpcds-obt-parameters"]`; three sidecars were created for bundles
+that had none, recording `result_source: internal` so trust labels are
+unchanged. The explorer pipeline removes these bundles from rankings; they
+remain available for comparison. Query rendering now takes every parameter
+from the dsqgen parameter log for the run's seed and scale, as TPC-DS does.
+Rerunning the six cells with the fixed renderer, then ingesting the new
+bundles, is a follow-up.
+
 ## DuckDB version matrix (operator-run, 2026-08-29)
 
 The Results Explorer corpus includes a reproducible DuckDB version-over-version matrix at
@@ -63,6 +97,13 @@ results were exported directly by filename.
 Both cohorts meet the >=3-platform depth criterion required for the Compare view:
 - `tpch SF=0.01`: DuckDB, DataFusion, Polars
 - `star_schema SF=0.01`: DuckDB, DataFusion, SQLite
+
+## Execution-variant identity (schema 2.3 and later)
+Bundles that record `platform.variant` count toward cohort depth under the variant
+string; every bundle committed here predates that field, so all existing identities
+are unchanged platform names and no cohort gains or loses depth from the rename.
+Gateway-routed bundles are excluded from native ranking with
+`ranking_exclusion_reason=gateway_routed` and contribute no identity.
 
 ## Zero-query DataFrame withdrawal (2026-08-24)
 
@@ -242,9 +283,11 @@ What these results are and are not:
 
 - The SF 1 and SF 10 runs used `--official` with `--seed 42` and are stamped
   `compliance_class: official`. The SF 0.1 runs are
-  `compliance_class: unofficial_subscale`, as every sub-SF-1 TPC-H run is; they
-  are carried like the other unofficial cohorts and no official TPC-H metrics
-  are computed for them.
+  `compliance_class: unofficial_subscale`, as every sub-SF-1 TPC-H run is. They
+  were written with suppressed TPC metrics, so the Explorer and
+  `validate_corpus.py` derive their Power@Size from the exported final-iteration
+  timings, mark it derived, and rank them labelled Subscale · Unofficial. No
+  QphH@Size is computed for them.
 - Four bundles pass `scripts/validate_submission.py --require-manifest` with
   no error, warning or override: SF 1 on all three platforms and SF 10 on
   BigQuery. Snowflake SF 10 and Databricks SF 10 pass with the overrides

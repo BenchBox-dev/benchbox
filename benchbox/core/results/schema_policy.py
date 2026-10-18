@@ -4,8 +4,8 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-CURRENT_SCHEMA_VERSION = "2.2"
-KNOWN_SCHEMA_V2_VERSIONS = ("2.0", "2.1", "2.2")
+CURRENT_SCHEMA_VERSION = "2.3"
+KNOWN_SCHEMA_V2_VERSIONS = ("2.0", "2.1", "2.2", "2.3")
 ROW_COUNT_VALIDATION_SCHEMA_VERSION = "2.2"
 LEGACY_NORMALIZED_SCHEMA_VERSION = "1.x"
 
@@ -113,6 +113,10 @@ def normalize_schema_version_value(raw_version: Any) -> tuple[str | None, str | 
     return version, None
 
 
+def supports_row_count_validation(version: Any) -> bool:
+    return version in KNOWN_SCHEMA_V2_VERSIONS and tuple(map(int, version.split("."))) >= (2, 2)
+
+
 def result_schema_version_value(data: dict[str, Any]) -> Any:
     if not isinstance(data, dict):
         return None
@@ -138,21 +142,21 @@ PRODUCER_SCHEMA_POLICY = SchemaVersionPolicy(
 RUNTIME_SCHEMA_POLICY = SchemaVersionPolicy(
     policy_name="runtime result schema policy",
     accepted_versions=KNOWN_SCHEMA_V2_VERSIONS,
-    accepted_versions_description="schema versions 2.0, 2.1, and 2.2",
+    accepted_versions_description="schema versions 2.0, 2.1, 2.2, and 2.3",
     remediation="Re-export the result using a BenchBox version that writes a supported schema.",
 )
 
 LOADER_SCHEMA_POLICY = SchemaVersionPolicy(
     policy_name="runtime loader schema policy",
     accepted_versions=KNOWN_SCHEMA_V2_VERSIONS,
-    accepted_versions_description="schema versions 2.0, 2.1, and 2.2",
+    accepted_versions_description="schema versions 2.0, 2.1, 2.2, and 2.3",
     remediation="Re-export the result using a BenchBox version that writes a supported schema.",
 )
 
 NORMALIZER_SCHEMA_POLICY = SchemaVersionPolicy(
     policy_name="normalizer schema policy",
     accepted_versions=KNOWN_SCHEMA_V2_VERSIONS,
-    accepted_versions_description="known v2 schema versions 2.0, 2.1, and 2.2; all other shapes use legacy fallback",
+    accepted_versions_description="known v2 schema versions 2.0, 2.1, 2.2, and 2.3; all other shapes use legacy fallback",
     remediation="Use a known v2 result bundle for exact field mapping, or rely on legacy best-effort extraction.",
     legacy_fallback_version=LEGACY_NORMALIZED_SCHEMA_VERSION,
 )
@@ -170,7 +174,7 @@ PUBLIC_SUBMISSION_SCHEMA_POLICY = SchemaVersionPolicy(
 EXPLORER_INPUT_SCHEMA_POLICY = SchemaVersionPolicy(
     policy_name="explorer input schema policy",
     accepted_versions=KNOWN_SCHEMA_V2_VERSIONS,
-    accepted_versions_description="schema versions 2.0, 2.1, and 2.2",
+    accepted_versions_description="schema versions 2.0, 2.1, 2.2, and 2.3",
     remediation="Re-export or normalize the bundle before building explorer data.",
 )
 
