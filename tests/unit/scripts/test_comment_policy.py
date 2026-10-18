@@ -2764,11 +2764,25 @@ def test_dependency_replacements_fail_closed(
         scope.immutable_dependency_artifacts(tmp_path, "base", records, rules, external, staged)
 
 
-@pytest.mark.parametrize("case", ["bumped", "still-listed", "no-replacement", "replacement-missing"])
+@pytest.mark.parametrize(
+    "case",
+    [
+        "bumped",
+        "still-listed",
+        "no-replacement",
+        "replacement-missing",
+        "replacement-unbound",
+        "replacement-mismatched-lock",
+        "replacement-invalid-metadata",
+    ],
+)
 def test_dependency_removed_only_by_a_verified_policy_wheel_bump(
     tmp_path: Path, dependency_artifact_inputs, case: str
 ) -> None:
-    scope, path, project_path, _, frozen, _, records, rules, external = dependency_artifact_inputs
+    import io
+    import zipfile
+
+    scope, path, project_path, lock_path, frozen, _, records, rules, external = dependency_artifact_inputs
     (tmp_path / path).unlink()
     replacement = {**external[0], "path": path.replace("0.8.1", "0.9.0")}
     head_external = {
@@ -2776,14 +2790,42 @@ def test_dependency_removed_only_by_a_verified_policy_wheel_bump(
         "still-listed": [external[0], replacement],
         "no-replacement": [],
         "replacement-missing": [replacement],
+        "replacement-unbound": [replacement],
+        "replacement-mismatched-lock": [replacement],
+        "replacement-invalid-metadata": [replacement],
     }[case]
+
+    meta_version = "0.9.0" if case != "replacement-invalid-metadata" else "0.8.1"
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as arc:
+        arc.writestr("todo_db-0.9.0.dist-info/METADATA", f"Name: todo-db\nVersion: {meta_version}\n")
+        arc.writestr("todo_db/__init__.py", "value = 2\n")
+    new_wheel = buf.getvalue()
+
     if case != "replacement-missing":
-        (tmp_path / replacement["path"]).write_bytes(frozen[path])
+        (tmp_path / replacement["path"]).write_bytes(new_wheel)
+
+    bound_version = "0.9.0" if case != "replacement-unbound" else "0.8.1"
+    new_project = (
+        f'[project]\ndependencies = ["todo-db[mcp]"]\n'
+        f'[tool.uv.sources]\ntodo-db = {{path = "vendor/todo_db-{bound_version}-py3-none-any.whl"}}\n'
+    ).encode()
+    (tmp_path / project_path).write_bytes(new_project)
+
+    digest = "sha256:" + (hashlib.sha256(new_wheel).hexdigest() if case != "replacement-mismatched-lock" else "0" * 64)
+    new_lock = (
+        f'[[package]]\nname = "todo-db"\nversion = "0.9.0"\n'
+        f'source = {{path = "vendor/todo_db-0.9.0-py3-none-any.whl"}}\n'
+        f'wheels = [{{filename = "todo_db-0.9.0-py3-none-any.whl", hash = "{digest}"}}]\n'
+    ).encode()
+    (tmp_path / lock_path).write_bytes(new_lock)
+
     policy_file = tmp_path / "quality/comment-policy.json"
     policy_file.parent.mkdir(parents=True, exist_ok=True)
     policy_file.write_text(
         json.dumps({"version": 1, "external": head_external, "completed": [], "exceptions": []}), encoding="utf-8"
     )
+
     if case == "bumped":
         assert scope.immutable_dependency_artifacts(tmp_path, "base", records, rules, external) == set()
     else:

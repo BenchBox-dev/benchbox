@@ -1122,6 +1122,70 @@ def owned_paths(
     return results, findings
 
 
+def _wheel_metadata(wheel: bytes) -> dict[str, str]:
+    with zipfile.ZipFile(io.BytesIO(wheel)) as archive:
+        names = [name for name in archive.namelist() if re.fullmatch(r"[^/]+\.dist-info/METADATA", name)]
+        if len(names) != 1:
+            raise ValueError("wheel must carry exactly one dist-info METADATA file")
+        lines = archive.read(names[0]).decode("utf-8", errors="replace").splitlines()
+    fields: dict[str, str] = {}
+    for line in lines:
+        if not line.strip():
+            break
+        key, _, value = line.partition(":")
+        fields.setdefault(key.strip(), value.strip())
+    return fields
+
+
+def _normalized_name(value: str) -> str:
+    return re.sub(r"[-_.]+", "-", value).lower()
+
+
+def _declares(requirement: str, owner: str) -> bool:
+    match = re.match(r"[A-Za-z0-9][A-Za-z0-9._-]*", requirement)
+    return match is not None and _normalized_name(match.group()) == _normalized_name(owner)
+
+
+def verify_bound_wheel(root: Path, entry: dict, staged: bool) -> None:
+    path, project_path, owner = entry["path"], entry["provenance"], entry["owner"]
+    label = f"wheel bump is not verified: {path}"
+    if not project_path.endswith("/pyproject.toml"):
+        raise ValueError(f"{label}: provenance must be the owning pyproject.toml")
+    lock_path = str(PurePosixPath(project_path).with_name("uv.lock"))
+    wheel = head_blob(root, path, staged)
+    project_raw = head_blob(root, project_path, staged)
+    lock_raw = head_blob(root, lock_path, staged)
+    if wheel is None or project_raw is None or lock_raw is None:
+        raise ValueError(f"{label}: wheel, pyproject.toml or uv.lock is missing")
+    try:
+        project = tomllib.loads(project_raw.decode("utf-8"))
+        locked = tomllib.loads(lock_raw.decode("utf-8"))
+        metadata = _wheel_metadata(wheel)
+    except (UnicodeError, tomllib.TOMLDecodeError, zipfile.BadZipFile, ValueError) as exc:
+        raise ValueError(f"{label}: {exc}") from exc
+    source = str(PurePosixPath(path).relative_to(PurePosixPath(project_path).parent))
+    binding = project.get("tool", {}).get("uv", {}).get("sources", {}).get(owner)
+    if binding != {"path": source}:
+        raise ValueError(f"{label}: pyproject.toml does not bind {owner} to it")
+    dependencies = project.get("project", {}).get("dependencies", [])
+    if not any(_declares(dependency, owner) for dependency in dependencies):
+        raise ValueError(f"{label}: {owner} is not a declared dependency")
+    packages = [package for package in locked.get("package", []) if package.get("name") == owner]
+    filename = PurePosixPath(path).name
+    version = filename.split("-")[1] if filename.count("-") >= 2 else ""
+    digest = "sha256:" + hashlib.sha256(wheel).hexdigest()
+    if (
+        len(packages) != 1
+        or packages[0].get("source") != binding
+        or packages[0].get("wheels") != [{"filename": filename, "hash": digest}]
+    ):
+        raise ValueError(f"{label}: uv.lock does not record this file and hash")
+    if _normalized_name(metadata.get("Name", "")) != _normalized_name(owner) or metadata.get("Version") != version:
+        raise ValueError(f"{label}: wheel METADATA does not match {owner} {version}")
+    if packages[0].get("version") != version:
+        raise ValueError(f"{label}: uv.lock version does not match the wheel")
+
+
 def is_wheel_bump(candidate_entry: dict, baseline_entry: dict) -> bool:
     cand_path = PurePosixPath(candidate_entry["path"])
     base_path = PurePosixPath(baseline_entry["path"])
@@ -1145,12 +1209,15 @@ def bumped_by_head_policy(root: Path, entry: dict[str, str], staged: bool) -> bo
     head_external = load_comment_policy(raw)["external"]
     if entry in head_external:
         return False
-    return any(
-        is_wheel_bump(candidate, entry)
-        and candidate["path"] != entry["path"]
-        and head_blob(root, candidate["path"], staged) is not None
-        for candidate in head_external
-    )
+    for candidate in head_external:
+        if not (is_wheel_bump(candidate, entry) and candidate["path"] != entry["path"]):
+            continue
+        try:
+            verify_bound_wheel(root, candidate, staged)
+            return True
+        except ValueError:
+            continue
+    return False
 
 
 def immutable_dependency_artifacts(
