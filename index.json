@@ -8489,6 +8489,15 @@
       "status": "open",
       "title": "Define published documentation ownership and supersede the split decision"
     },
+    "docs-mig-core-relocate-contract-sql": {
+      "claim": null,
+      "needs": [
+        "docs-mig-adr-ownership"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Relocate the Explorer SQL schema contract out of published docs"
+    },
     "docs-move-internal-to-internal-root": {
       "claim": null,
       "needs": [],
