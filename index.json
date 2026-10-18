@@ -8536,6 +8536,16 @@
       "status": "open",
       "title": "Relocate the Explorer SQL schema contract out of published docs"
     },
+    "docs-mig-legacy-downloads-redirects": {
+      "claim": null,
+      "needs": [
+        "docs-mig-site-bundle-schema4",
+        "docs-mig-tpc-eula-gate"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Replace copied downloads with canonical GitHub links and legacy redirects"
+    },
     "docs-mig-site-bundle-schema4": {
       "claim": null,
       "needs": [
