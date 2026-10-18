@@ -142,6 +142,11 @@ def _wheel_bytes(name: str = "tool", version: str = "2.0") -> bytes:
     return buffer.getvalue()
 
 
+@pytest.fixture(autouse=True)
+def _skip_remote_fetch(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("BENCHBOX_TEST_SKIP_REMOTE_FETCH", "1")
+
+
 def _bump_repo(tmp_path: Path, **overrides: object) -> tuple[Path, dict, dict]:
     import hashlib
 

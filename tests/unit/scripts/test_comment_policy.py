@@ -2717,6 +2717,24 @@ def dependency_artifact_inputs(tmp_path: Path, monkeypatch):
     return scope, wheel_path, project_path, lock_path, frozen, index, records, rules, external
 
 
+def test_verify_upstream_release_validates_real_github_asset() -> None:
+    from check_comment_cleanup_scope import _verify_upstream_release
+
+    _verify_upstream_release(
+        "https://github.com/joeharris76/todo-db",
+        "0.10.1",
+        "todo_db-0.10.1-py3-none-any.whl",
+        "3a878a3ac2e7c3b458ed3e71d53d036456ba017eb9ec1adfa030d823cf2c2ffd",
+    )
+    with pytest.raises(ValueError, match="wheel hash mismatch"):
+        _verify_upstream_release(
+            "https://github.com/joeharris76/todo-db",
+            "0.10.1",
+            "todo_db-0.10.1-py3-none-any.whl",
+            "0" * 64,
+        )
+
+
 def test_pep440_version_ordering() -> None:
     from check_comment_cleanup_scope import _parse_version
 
@@ -2808,8 +2826,9 @@ def test_dependency_replacements_fail_closed(
     ],
 )
 def test_dependency_removed_only_by_a_verified_policy_wheel_bump(
-    tmp_path: Path, dependency_artifact_inputs, case: str
+    tmp_path: Path, dependency_artifact_inputs, monkeypatch: pytest.MonkeyPatch, case: str
 ) -> None:
+    monkeypatch.setenv("BENCHBOX_TEST_SKIP_REMOTE_FETCH", "1")
     import io
     import zipfile
 

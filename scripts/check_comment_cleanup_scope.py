@@ -1252,8 +1252,32 @@ def _declares(requirement: str, owner: str, cand_version: str) -> bool:
     return all(_eval_spec_clause(c.strip(), cand_p, cand_version) for c in spec.split(",") if c.strip())
 
 
+def _verify_upstream_release(repo_url: str, version: str, filename: str, expected_hash: str) -> None:
+    if os.environ.get("BENCHBOX_TEST_SKIP_REMOTE_FETCH") == "1":
+        return
+    tag = f"v{version}"
+    url = f"{repo_url.rstrip('/')}/releases/download/{tag}/SHA256SUMS"
+    req = urllib.request.Request(url, headers={"User-Agent": "BenchBox-Comment-Policy"})
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            content = resp.read().decode("utf-8")
+    except Exception as exc:
+        raise ValueError(f"cannot fetch upstream release SHA256SUMS from {url}: {exc}") from exc
+
+    hashes = {}
+    for line in content.splitlines():
+        parts = line.strip().split()
+        if len(parts) == 2:
+            hashes[parts[1].removeprefix("*")] = parts[0]
+
+    if filename not in hashes:
+        raise ValueError(f"upstream release {tag} SHA256SUMS does not contain {filename!r}")
+    if hashes[filename] != expected_hash:
+        raise ValueError(f"wheel hash mismatch with upstream release {tag}: {expected_hash} != {hashes[filename]}")
+
+
 def _verify_rollout_evidence(
-    root: Path, owner: str, filename: str, expected_version: str, digest: str, staged: bool
+    root: Path, base: str | None, owner: str, filename: str, expected_version: str, digest: str, staged: bool
 ) -> None:
     evidence_path = "_project/analysis/batch-rollout-evidence.json"
     raw = head_blob(root, evidence_path, staged)
@@ -1286,6 +1310,18 @@ def _verify_rollout_evidence(
     except (json.JSONDecodeError, UnicodeError, AttributeError) as exc:
         raise ValueError(f"malformed rollout evidence ledger: {exc}") from exc
 
+    trusted_repo = ""
+    if base is not None:
+        try:
+            base_data = json.loads(base_blob(root, base, evidence_path).decode("utf-8"))
+            trusted_repo = base_data.get("source", {}).get("repository", "")
+        except (subprocess.CalledProcessError, json.JSONDecodeError, UnicodeError, AttributeError, KeyError):
+            pass
+    if not trusted_repo:
+        trusted_repo = data.get("source", {}).get("repository", "")
+    if trusted_repo and trusted_repo.startswith("https://github.com/"):
+        _verify_upstream_release(trusted_repo, expected_version, filename, digest)
+
 
 def _wheel_metadata(wheel: bytes, owner: str) -> email.message.Message:
     with zipfile.ZipFile(io.BytesIO(wheel)) as archive:
@@ -1314,7 +1350,9 @@ def _wheel_metadata(wheel: bytes, owner: str) -> email.message.Message:
         return msg
 
 
-def verify_bound_wheel(root: Path, entry: dict, expected_version: str, staged: bool) -> None:
+def verify_bound_wheel(
+    root: Path, entry: dict, expected_version: str, staged: bool = False, base: str | None = None
+) -> None:
     path, project_path, owner = entry["path"], entry["provenance"], entry["owner"]
     label = f"wheel bump is not verified: {path}"
     if not project_path.endswith("/pyproject.toml"):
@@ -1353,7 +1391,9 @@ def verify_bound_wheel(root: Path, entry: dict, expected_version: str, staged: b
             )
         if packages[0].get("version") != expected_version:
             raise ValueError(f"{label}: uv.lock version does not match {expected_version}")
-        _verify_rollout_evidence(root, owner, filename, expected_version, hashlib.sha256(wheel).hexdigest(), staged)
+        _verify_rollout_evidence(
+            root, base, owner, filename, expected_version, hashlib.sha256(wheel).hexdigest(), staged
+        )
     except (
         AttributeError,
         TypeError,
@@ -1416,7 +1456,7 @@ def bumped_by_head_policy(root: Path, base: str, entry: dict[str, str], staged: 
             cand_v = _extract_version_from_path(candidate["path"])
             if _parse_version(cand_v) <= _parse_version(base_v):
                 continue
-            verify_bound_wheel(root, candidate, cand_v, staged)
+            verify_bound_wheel(root, candidate, cand_v, staged, base=base)
             return True
     except (
         ValueError,

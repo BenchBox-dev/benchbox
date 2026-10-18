@@ -86,7 +86,9 @@ def revision_bytes(root: Path, path: str, staged: bool) -> bytes | None:
         return None
 
 
-def verify_wheel_bumps(root: Path, policy: dict, baseline: dict, staged: bool) -> set[str]:
+def verify_wheel_bumps(
+    root: Path, policy: dict, baseline: dict, staged: bool = False, base: str | None = None
+) -> set[str]:
     verified = set()
     for entry in policy["external"]:
         if entry in baseline["external"]:
@@ -97,7 +99,7 @@ def verify_wheel_bumps(root: Path, policy: dict, baseline: dict, staged: bool) -
             cand_v = _extract_version_from_path(entry["path"])
             if _parse_version(cand_v) <= _parse_version(base_v):
                 raise ValueError(f"wheel bump version {cand_v} must be strictly greater than base {base_v}")
-            verify_bound_wheel(root, entry, cand_v, staged)
+            verify_bound_wheel(root, entry, cand_v, staged, base=base)
             verified.add(entry["path"])
     return verified
 
@@ -105,7 +107,7 @@ def verify_wheel_bumps(root: Path, policy: dict, baseline: dict, staged: bool) -
 def ratchet_against_base(root: Path, policy: dict, base: str, staged: bool) -> tuple[dict, set[str]]:
     baseline = load_policy(git(root, "show", f"{base}:{POLICY_PATH}"))
     check_ratchet(policy, baseline)
-    return baseline, verify_wheel_bumps(root, policy, baseline, staged)
+    return baseline, verify_wheel_bumps(root, policy, baseline, staged, base=base)
 
 
 def with_bumped_wheels(exclusions: set[str] | None, bumped: set[str]) -> set[str] | None:
