@@ -5,7 +5,7 @@
     "No active workflow can publish a separate PyPI project; old waiting release remains cancelled with no upload.",
     "Native source/compiled and installed/direct wheel runtime checks pass, fork PR merges, and adoption receives exact merged-source wheel digest."
   ],
-  "context": "User explicitly rejected source vendoring; only wheel runtime may be shipped. Stop source-export CLI and new comment-policy exemption. Fork agent keeps private wheel builder; consumer migration namespace unchanged. Parent implements wheel package-data bootstrap using standard zipimport on benchbox._vendor.__path__, no global sys.path mutation or pip calls. No unpacked SQLGlot source goes into BenchBox repository/wheel/sdist. Source files inside the nested pure-Python wheel are normal runtime contents. Claim generatione75cfad8f9334628a2ea8b45135fdbda; native gates before correction passed but revised wheel delivery needs fresh checks.",
+  "context": "Owner correction honored: no unpacked source vendoring; BenchBox bundles only runtime wheel archive. Canonical repo BenchBox-dev/benchbox-sqlglot (ID1368421376). Fork PR #4 merged by merge commit fdf71456e02896e4083c0056a19c2cc50e006a9a after local native 1480 source/1391 compiled tests, fork hosted checks all green incl. python3.9-3.15 run-checks, wheel-smoke 3.11-3.14, installed suite and offline sdist/coexistence. Immutable runtime source6de7947e0b90aed7e62adf53e597bf6e05a6147e is reachable from main. Wheel30.23.0.2 SHA256006b739c9935789ab373ac91a8adba6e5d9c28e8369b3b4e4b08bc40f1578da1, 799094 bytes. Old waiting release cancelled; no production upload or PyPI publisher exists/needed. Two independent reviews completed; BenchBox findings fixed in commit5a53da247. Remaining adoption verification/merge tracked on adoption item. Claim generatione75cfad8f9334628a2ea8b45135fdbda.",
   "description": "Owner correction: do NOT vendor unpacked SQLGlot source into BenchBox; ship only the built runtime wheel. Canonical fork BenchBox-dev/benchbox-sqlglot retains source and upstream ancestry. Build a deterministic pure-Python wheel using private namespacebenchbox._vendor.sqlglot with license and exact source provenance, remove separate production PyPI publication, verify installed and direct ZIP-import paths, and merge the fork changes. BenchBox adoption stores only the pinned wheel and loads it via standard package ZIP import; no runtime pip/network/extraction and no governance exemption.",
   "links": [
     "https://github.com/joeharris76/sqlglot/actions/runs/39093404507",
@@ -154,6 +154,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "0b619cb6cacd4d1d874326a0b7a7e841",
+      "session_id": "a5197da3d60b4447b3b0ac38e65a8fbc"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:00f9896dc298dff5fa33ec9d",
+      "at": "2026-10-18T16:05:40Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "fdb589e814804bed86e725a040391d6e",
       "session_id": "a5197da3d60b4447b3b0ac38e65a8fbc"
     }
   ]
