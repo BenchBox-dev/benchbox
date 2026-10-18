@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "doctor reports no FAIL",
+    "health.json shows the service up"
+  ],
+  "description": "Plan owner action O6. Run the printed install commands, launchctl bootstrap, run ship-no-ship-service doctor.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51",
+      "at": "2026-10-18T00:59:16Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "19db98ae18d141c58ba8fb6de0bee983",
+      "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    }
+  ]
+}

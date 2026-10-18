@@ -22028,6 +22028,19 @@
       "status": "open",
       "title": "ship-no-ship owner: enable automatic restart after power loss"
     },
+    "ssns-o6-install-and-doctor": {
+      "claim": null,
+      "needs": [
+        "ssns-v010-release",
+        "ssns-o2-role-users",
+        "ssns-o3-app-key-permissions",
+        "ssns-o4-cli-signin",
+        "ssns-o5-autorestart"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "ship-no-ship owner: install the service, bootstrap launchd and pass doctor"
+    },
     "ssns-prepublication-hardening": {
       "claim": null,
       "needs": [],
