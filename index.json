@@ -21932,17 +21932,12 @@
       "title": "ship-no-ship: import the oracle review engine from BenchBox"
     },
     "ssns-n3-engine-config-v2": {
-      "claim": {
-        "expires_at": "2026-10-19T00:55:34Z",
-        "generation": "489f60eeabb04bbe90f0bcd12a39a653",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51"
-      },
+      "claim": null,
       "needs": [
         "ssns-n2-engine-extraction"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "ship-no-ship: configure base branch, path manifest and workflow names per policy"
     },
     "ssns-n4-local-executor": {
