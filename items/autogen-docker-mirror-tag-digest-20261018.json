@@ -6,7 +6,7 @@
     "t3:docker compose files pull Postgres from the GHCR mirror reference",
     "PR merged with a success oracle-review verdict (no stand-in) and required checks green; nightly-t3.md docker row accurate"
   ],
-  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs every line with evidence. FAIL if any image pin or digest check is relaxed, if a secret is added, or if the dispatch proof is missing. The T3 docker legs going green is proven by autogen-nightly-dispatch-verify-20261018, not here.\nPre-publication (AGENTS.md): self-review with the code review action and fix every Critical and Required finding before make pr-open (G13).",
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs every line with evidence. FAIL if any image pin or digest check is relaxed, if a secret is added, or if the dispatch proof is missing. The T3 docker legs going green is proven by autogen-nightly-dispatch-verify-20261018, not here.\nPre-publication (AGENTS.md): self-review with the code review action and fix every Critical and Required finding before make pr-open (G13).\n\nEVIDENCE (controller, 2026-10-18): PR #3150 merged as e328d68596aea0a93185b5432ca1d3138e03e1da after oracle-review success on 04220c427. Tests: 7 new/updated workflow tests failed before the fix and pass after (544 pass in tests/unit/workflows). Branch dispatch of nightly-v2 run 39165721544: mirror-images (clickhouse, trino, postgres) and mirror-cedardb all succeeded; the mirror step fails unless the GHCR manifest hashes to the pinned digest, so success is the digest check (a separate anonymous skopeo check was impossible: GHCR packages are private and the gh token lacks read:packages). GATE-B: Postgres compose image was public.ecr.aws/docker/library/postgres:18 (not Docker Hub), pinned to sha256:74935e72... on 2026-10-18; compose now takes POSTGRES_IMAGE, nightly t3:docker points it at ghcr.io/benchbox-dev/postgres@sha256:7493.... Follow-ups noted by the worker, not done: nightly.yml postgres:17 service container is unpinned/unmirrored; docker-integration.yml uses the ECR default, not the GHCR mirror. t3:docker legs are proven in autogen-nightly-dispatch-verify-20261018.",
   "description": "Confirmed in nightly-v2 run 39125986956: mirror-images (clickhouse) and (trino) fail at 'Verify pinned digest and mirror image' with: Invalid source name docker://docker.io/clickhouse/clickhouse-server:25.8@sha256:0152dd51... : Docker references with both a tag and digest are currently not supported (same for trinodb/trino:480@sha256:1565e8ca...). skopeo rejects name:tag@sha256 sources. The mirror never lands, then t3:docker clickhouse and trino fail with 'manifest unknown' on the GHCR pull. CedarDB (digest-only pin) mirrors fine. Separately the t3:docker postgres leg failed once with 'toomanyrequests: Data limit exceeded' (Docker Hub anonymous pull): Postgres is pulled directly from Docker Hub and is not mirrored. The subagent hypothesis 'GHCR permission denied' is refuted by the log.\nWork: derive the skopeo source reference without the tag for tag+digest pins (keep the pinned digest and the digest-equality check); add Postgres to the mirror set through the same workflow (no new secrets). Files to re-verify: .github/workflows/mirror-ci-images.yml, the mirror jobs in .github/workflows/nightly-v2.yml, docker/clickhouse, docker/trino, docker/cedardb and the Postgres compose file used by t3:docker, docs/internal/nightly-t3.md docker row.\nGATE-B (Postgres): if the Postgres compose image has no sha256 pin, pin it by resolving the currently used tag with docker buildx imagetools inspect, record digest and date in the PR, then mirror. If other workflows also pull Postgres from Docker Hub, list them in context but change only what shares the same compose file.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/issues/2906",
@@ -54,6 +54,14 @@
       "generation": "377daef8a89a4e2abad9b7c4a14f00ac",
       "op": "take",
       "op_id": "aff631e943ed4b93a7a0a9831a7c40dd",
+      "session_id": "0722acca462b419aa525d939aedd0290"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a",
+      "at": "2026-10-18T22:36:16Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "aef65c34d3ee4955b920cc622d540217",
       "session_id": "0722acca462b419aa525d939aedd0290"
     }
   ]
