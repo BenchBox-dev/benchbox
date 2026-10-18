@@ -332,9 +332,7 @@ _NOT_RENDERED: dict[str, frozenset[str]] = {
     "spark": frozenset({"check_constraints", "partitioning", "unique_constraints"}),
     "sqlite": frozenset({"check_constraints", "unique_constraints"}),
     "starrocks": frozenset({"check_constraints", "foreign_keys", "unique_constraints"}),
-    "timescaledb": frozenset(
-        {"check_constraints", "clustering", "distribution", "partitioning", "sorting", "unique_constraints"}
-    ),
+    "timescaledb": frozenset({"check_constraints", "unique_constraints"}),
     "trino": frozenset(
         {
             "check_constraints",
@@ -385,7 +383,7 @@ _RENDERED: dict[str, frozenset[str]] = {
     "spark": frozenset({"foreign_keys", "primary_keys", "sorting"}),
     "sqlite": frozenset({"foreign_keys", "primary_keys"}),
     "starrocks": frozenset({"distribution", "partitioning", "primary_keys", "sorting"}),
-    "timescaledb": frozenset({"foreign_keys", "primary_keys"}),
+    "timescaledb": frozenset({"clustering", "distribution", "foreign_keys", "partitioning", "primary_keys", "sorting"}),
     "trino": frozenset({"foreign_keys"}),
 }
 
@@ -457,6 +455,35 @@ class TestMechanismPreconditions:
 class TestRegistryTable:
     def test_table_covers_every_registry_platform(self) -> None:
         assert set(_NOT_RENDERED) == set(_RENDERED) == known_registry_platforms()
+
+    @pytest.mark.parametrize("platform", sorted(_NOT_RENDERED))
+    def test_registry_matches_table(self, platform: str) -> None:
+        entries = PLATFORM_TUNING_CAPABILITIES[platform]
+        not_rendered = frozenset(
+            tuning_type.value for tuning_type, capability in entries.items() if is_not_rendered_at_execution(capability)
+        )
+        rendered = frozenset(tuning_type.value for tuning_type in entries) - not_rendered
+        assert not_rendered == _NOT_RENDERED[platform], f"{platform}: not-rendered set changed"
+        assert rendered == _RENDERED[platform], f"{platform}: rendered set changed"
+
+    @pytest.mark.parametrize("platform", sorted(_NOT_RENDERED))
+    def test_requested_types_error_exactly_when_table_says_not_rendered(self, platform: str) -> None:
+        for tuning_value in sorted(_NOT_RENDERED[platform] | _RENDERED[platform]):
+            errors, _warnings = _config_requesting(TuningType(tuning_value)).validate_for_platform_detailed(platform)
+            refused = any(error.startswith(f"requested {tuning_value} is not applied at execution") for error in errors)
+            assert refused == (tuning_value in _NOT_RENDERED[platform]), (platform, tuning_value, errors)
+
+    @pytest.mark.parametrize("platform", sorted(_NOT_RENDERED))
+    def test_error_text_names_mechanism_without_source_locations(self, platform: str) -> None:
+        for tuning_value in sorted(_NOT_RENDERED[platform]):
+            tuning_type = TuningType(tuning_value)
+            capability = get_capability(platform, tuning_type)
+            assert capability is not None
+            errors, _warnings = _config_requesting(tuning_type).validate_for_platform_detailed(platform)
+            refusal = next(error for error in errors if error.startswith(f"requested {tuning_value} is not applied"))
+            assert capability.mechanism_id in refusal
+            assert not _SOURCE_LOCATION.search(refusal), refusal
+            assert not _SOURCE_LOCATION.search(not_rendered_reason(capability))
 
     def test_alias_platforms_resolve_to_registry_entries(self) -> None:
         for alias, target in PLATFORM_ALIASES.items():

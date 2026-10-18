@@ -305,13 +305,24 @@ class TimescaleDBAdapter(PostgreSQLAdapter):
     ) -> None:
         cursor = connection.cursor()
         effective_config = self.get_effective_tuning_configuration() if self.tuning_enabled else None
+        from benchbox.core.tuning.interface import TuningType as _LayoutTuningType
+
+        layout_types = (
+            _LayoutTuningType.PARTITIONING,
+            _LayoutTuningType.SORTING,
+            _LayoutTuningType.CLUSTERING,
+            _LayoutTuningType.DISTRIBUTION,
+        )
         tuned_tables = set()
         if effective_config:
             for table_name in tables:
                 table_tuning = self.table_tuning_for(effective_config, table_name)
-                if table_tuning is not None:
-                    tuned_tables.add(table_name)
-                    self._apply_native_table_tuning(connection, table_name, table_tuning)
+                if table_tuning is None:
+                    continue
+                if not any(table_tuning.get_columns_by_type(kind) for kind in layout_types):
+                    continue
+                tuned_tables.add(table_name)
+                self._apply_native_table_tuning(connection, table_name, table_tuning)
 
         time_column_tables = self._get_tables_with_time_column(connection, tables)
 
@@ -388,7 +399,11 @@ class TimescaleDBAdapter(PostgreSQLAdapter):
             row = cursor.fetchone()
             if not row or row[0] not in ("date", "timestamp without time zone", "timestamp with time zone"):
                 raise ValueError(f"Partition column {time_column} must have a date or timestamp type")
-            compression = str(self.compression_enabled).strip().lower() in ("true", "1", "yes", "on") or any(
+            if isinstance(self.compression_enabled, str):
+                compression_opt_in = self.compression_enabled.strip().lower() in ("true", "1", "yes", "on")
+            else:
+                compression_opt_in = bool(self.compression_enabled)
+            compression = compression_opt_in or any(
                 requested[kind] for kind in (TuningType.SORTING, TuningType.CLUSTERING, TuningType.DISTRIBUTION)
             )
             generator = TimescaleDBDDLGenerator(
@@ -416,8 +431,8 @@ class TimescaleDBAdapter(PostgreSQLAdapter):
                     raise
                 if ledger is not None:
                     ledger.record(statement, PHASE_DDL, table=table_name, mechanism="timescaledb_native_layout")
-            self._hypertables.add(table_name)
             self._verify_native_table_tuning(cursor, table_name, requested, ledger)
+            self._hypertables.add(table_name)
         except Exception as exc:
             connection.rollback()
             if ledger is not None:

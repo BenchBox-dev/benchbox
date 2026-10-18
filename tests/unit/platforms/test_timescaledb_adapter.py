@@ -483,3 +483,52 @@ def test_native_catalog_mismatch_does_not_claim_satisfaction(timescale_stubs):
     with pytest.raises(ValueError, match="Hypertable catalog mismatch"):
         adapter._verify_native_table_tuning(cursor, "events", requested, ledger)
     assert not ledger.satisfied
+
+
+def test_native_layout_success_records_catalog_evidence(timescale_stubs, monkeypatch):
+    from unittest.mock import Mock
+
+    import benchbox.platforms.timescaledb as timescaledb_module
+    from benchbox.core.tuning.applied_ledger import AppliedTuningLedger
+    from benchbox.core.tuning.interface import TableTuning, TuningColumn
+
+    class _FakeComposed:
+        def __init__(self, text):
+            self._text = text
+
+        def as_string(self, connection):
+            return self._text
+
+        def format(self, *args, **kwargs):
+            return _FakeComposed(self._text)
+
+    fake_psql = Mock()
+    fake_psql.Identifier.side_effect = lambda *parts: _FakeComposed('"public"."events"')
+    fake_psql.Literal.side_effect = lambda value: _FakeComposed(f"'{value}'")
+    fake_psql.SQL.side_effect = lambda text: _FakeComposed(text)
+    monkeypatch.setattr(timescaledb_module, "psql", fake_psql)
+
+    adapter = TimescaleDBAdapter()
+    adapter._applied_tuning_ledger = AppliedTuningLedger()
+    cursor = Mock()
+    cursor.fetchone.return_value = ("date",)
+    cursor.fetchall.side_effect = [
+        [("event_time",)],
+        [("amount", None, 1, True, False), ("category", 1, None, None, None)],
+    ]
+    connection = Mock()
+    connection.cursor.return_value = cursor
+    tuning = TableTuning(
+        table_name="events",
+        partitioning=[TuningColumn("event_time", "DATE", 1)],
+        sorting=[TuningColumn("amount", "NUMERIC", 1)],
+        clustering=[TuningColumn("category", "INTEGER", 1)],
+    )
+    adapter._apply_native_table_tuning(connection, "events", tuning)
+    assert "events" in adapter._hypertables
+    assert not adapter._applied_tuning_ledger.dropped
+    satisfied = {entry.intent for entry in adapter._applied_tuning_ledger.satisfied}
+    assert satisfied == {"partitioning:events", "sorting:events", "clustering:events"}
+    statements = [statement.statement for statement in adapter._applied_tuning_ledger.statements]
+    assert any("create_hypertable" in statement for statement in statements)
+    assert any("timescaledb.compress" in statement for statement in statements)
