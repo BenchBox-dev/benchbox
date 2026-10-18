@@ -8438,10 +8438,15 @@
       "title": "Sync published-results validator with develop's per-file hash contract (release-blocker)"
     },
     "dryrun-dataframe-mode-option-checks-20261017": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-19T03:54:47Z",
+        "generation": "430fcf06241f4f83bc3ddf941ce29b0c",
+        "renewals": 0,
+        "worker": "mcp:tbh:joe@joe-mac-mini.local:3ce222eaad5d12493e27d4cc"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Make DataFrame-mode dry runs check platform options against the DataFrame adapter"
     },
     "duckdb-architecture-verification": {
