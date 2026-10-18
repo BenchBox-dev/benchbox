@@ -1116,12 +1116,10 @@
     },
     "astro-site-54-retire-sphinx-and-legacy-site": {
       "claim": null,
-      "needs": [
-        "astro-site-53-cutover"
-      ],
+      "needs": [],
       "priority": "medium",
       "status": "open",
-      "title": "Retire Sphinx, ablog, the static landing page, and duplicate theme tooling after the Astro site is stable"
+      "title": "Remove the legacy static landing and Sphinx-era parity files from benchbox-site, and the last Sphinx leftovers from core"
     },
     "astro-site-60-results-embeds": {
       "claim": null,
