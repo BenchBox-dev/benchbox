@@ -16,6 +16,11 @@ COMPANION_SUFFIXES = (".manifest.json", ".plans.json", ".tuning.json", ".applied
 LEGACY_MANIFEST_NAME = "submission-manifest.json"
 
 MINIMUM_PLATFORMS_PER_COHORT = 3
+DOCUMENTED_SHALLOW_COHORTS = {
+    ("tpch", "0.01"): frozenset({"datafusion", "duckdb"}),
+    ("tpch", "0.1"): frozenset({"datafusion", "duckdb"}),
+    ("tpch", "1.0"): frozenset({"duckdb"}),
+}
 NON_CLEAN_VALIDATION_STATUSES = frozenset(
     {"failed", "interrupted", "partial", "error", "not_run", "not_validated", "uncertain", "unknown"}
 )
@@ -42,6 +47,7 @@ THROUGHPUT_STREAM_QUERY_IDS = {
     "tpch": frozenset(str(number) for number in range(1, 23)),
     "tpcds": frozenset(str(number) for number in range(1, 100)),
 }
+KNOWN_DEFECTIVE_DATA = "known_defective_data"
 TPCDS_VARIANT_BASES = ("14", "23", "24", "39")
 THROUGHPUT_USABLE_STATUSES = frozenset({"SUCCESS", "PASS"})
 UTC = _dt.timezone.utc
@@ -565,7 +571,23 @@ def _primary_metric_reason(payload: dict, display: list[tuple[str, float | None,
     return None
 
 
-def exclusion_reason(payload: dict) -> str | None:
+def sidecar_known_defects(bundle: pathlib.Path) -> list[str]:
+    manifest_path = bundle.parent / f"{bundle.stem}.manifest.json"
+    try:
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    if not isinstance(payload, dict):
+        return []
+    recorded = payload.get("known_defects")
+    if not isinstance(recorded, list):
+        return []
+    return [item for item in recorded if isinstance(item, str) and item]
+
+
+def exclusion_reason(payload: dict, bundle: pathlib.Path | None = None) -> str | None:
+    if bundle is not None and sidecar_known_defects(bundle):
+        return KNOWN_DEFECTIVE_DATA
     benchmark = _mapping(payload.get("benchmark"))
     compliance = SUBSCALE_POLICY.effective_compliance_class(
         benchmark.get("id"), benchmark.get("scale_factor"), benchmark.get("compliance_class")
@@ -598,8 +620,8 @@ def exclusion_reason(payload: dict) -> str | None:
     return _primary_metric_reason(payload, display)
 
 
-def bundle_rankable(payload: dict) -> bool:
-    return exclusion_reason(payload) is None
+def bundle_rankable(payload: dict, bundle: pathlib.Path | None = None) -> bool:
+    return exclusion_reason(payload, bundle) is None
 
 
 def cohort_phase_suffix(payload: dict) -> str:
@@ -715,7 +737,7 @@ def cohort_platforms(bundles: list[pathlib.Path]) -> dict[CohortKey, set[str]]:
                 f"stream_results={recorded_count}"
             )
         identities = cohorts[_cohort_key(payload)]
-        if bundle_rankable(payload):
+        if bundle_rankable(payload, bundle):
             identities.add(_comparison_identity(bundle, payload))
     return dict(cohorts)
 
@@ -779,6 +801,20 @@ def shallow_cohorts(cohorts: dict[CohortKey, set[str]]) -> dict[CohortKey, set[s
     return {key: platforms for key, platforms in cohorts.items() if 0 < len(platforms) < MINIMUM_PLATFORMS_PER_COHORT}
 
 
+def documented_shallow_cohorts(
+    bundles: list[pathlib.Path], cohorts: dict[CohortKey, set[str]]
+) -> dict[CohortKey, set[str]]:
+    shallow = shallow_cohorts(cohorts)
+    documented: dict[CohortKey, set[str]] = {}
+    for bundle in bundles:
+        if not sidecar_known_defects(bundle):
+            continue
+        key = _cohort_key(_load_bundle(bundle))
+        if key in shallow and DOCUMENTED_SHALLOW_COHORTS.get(key) == shallow[key]:
+            documented[key] = shallow[key]
+    return documented
+
+
 def unranked_cohorts(cohorts: dict[CohortKey, set[str]]) -> list[CohortKey]:
     return sorted(key for key, platforms in cohorts.items() if not platforms)
 
@@ -828,15 +864,30 @@ def main(bundles_dir: pathlib.Path | None = None, *, as_of: _dt.date | None = No
     print(format_recency_report(overall, per_cohort, as_of=as_of))
 
     low = shallow_cohorts(cohorts)
-    if low:
-        print(f"\nWARN: {len(low)} cohort(s) have <3 comparison identities: { {k: len(v) for k, v in low.items()} }")
+    documented_low = documented_shallow_cohorts(bundles, cohorts)
+    unexpected = {key: platforms for key, platforms in low.items() if documented_low.get(key) != platforms}
+    if unexpected:
+        print(
+            f"\nWARN: {len(unexpected)} cohort(s) have <3 comparison identities: "
+            f"{ {k: len(v) for k, v in unexpected.items()} }"
+        )
         return 1
+    if low:
+        print(f"\nDOCUMENTED SHALLOW: {len(low)} cohort(s) below the floor with known-defective exclusions:")
+        for key, platforms in sorted(low.items()):
+            print(f"  {key[0]} SF={key[1]}: {sorted(platforms)}")
 
     unranked = unranked_cohorts(cohorts)
     if unranked:
         print(f"\nUNRANKED: {len(unranked)} cohort(s) have no rankable bundle and publish no ranking: {unranked}")
     ranked = len(cohorts) - len(unranked)
-    print(f"\nAll {ranked} ranked cohort(s) meet the >={MINIMUM_PLATFORMS_PER_COHORT}-identity depth criterion.")
+    if low:
+        print(
+            f"\n{ranked - len(low)} ranked cohort(s) meet the >={MINIMUM_PLATFORMS_PER_COHORT}-identity "
+            f"depth criterion; {len(low)} documented shallow cohort(s) listed above."
+        )
+    else:
+        print(f"\nAll {ranked} ranked cohort(s) meet the >={MINIMUM_PLATFORMS_PER_COHORT}-identity depth criterion.")
     return 0
 
 
