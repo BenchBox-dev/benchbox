@@ -21876,10 +21876,15 @@
       "title": "Fix SSB generator dimension value formats (p_category/p_brand1/c_city) — 6 canonical SSB queries return empty for everyone"
     },
     "ssb-generator-global-random-state-20261017": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-19T00:30:24Z",
+        "generation": "282256f5e95747709db4e0e3775ace17",
+        "renewals": 0,
+        "worker": "mcp:tbh:joe@joe-mac-mini.local:3ce222eaad5d12493e27d4cc"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Give the SSB data generator its own seeded RNG instead of the global random module"
     },
     "ssb-generator-p-category-bug": {
