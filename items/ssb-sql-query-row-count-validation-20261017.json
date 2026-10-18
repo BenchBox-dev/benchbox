@@ -6,6 +6,7 @@
     "Tests fail without the change: a SQL SSB pass, a wrong count, and an unrecorded scale factor",
     "The PR states how the change affects existing corpus SSB SQL bundles and cloud SSB results"
   ],
+  "context": "Implemented in PR #3121 (branch fix/ssb-sql-row-count-validation, commit e9fab87d): SSB expected-results provider registered; SQL QueryValidator now checks SSB counts (wrong count fails, unrecorded scale SKIPs); new test file tests/unit/core/expected_results/test_ssb_sql_validation.py (9 tests); oracle coverage map regenerated. PR armed 2026-10-18; after merge, take and finish.",
   "description": "SQL SSB runs report summary.validation \"passed\" even though no query result is checked. No SSB expected-results provider is registered. benchbox/core/expected_results/registry.py:229 register_benchmark_provider is called only for tpch (tpch_results.py:95) and tpcds (tpcds_results.py:117). QueryValidator therefore returns SKIP for every SSB query. The \"passed\" comes only from the load-time table row-count ranges in SSBRowCountStrategy (benchbox/platforms/base/validation.py:186, selected at :267). A SQL engine that returns wrong SSB query results would still be labelled passed and ranked as clean by results-data/validate_corpus.py.\n\nPR #3065 (commit 87adc2cd9) added exact SSB per-query row counts at SF 0.01, 0.1, 1 and 10 in benchbox/core/expected_results/ssb_results.py. Only the DataFrame path uses them (benchbox/core/dataframe/query_validation.py). They were deliberately left unregistered, because registering them changes SQL validation on every platform.\n\nHow found: during the #3065 work. A local `benchbox run --platform duckdb --benchmark ssb --scale 0.1` on develop gives summary.validation \"passed\" and phases.validation PASSED, but all 39 measured query rows have no row_count_validation. The corpus SSB SQL bundles (results-data/bundles/ssb_*_sql_*.json) are the same.\n\nRelated: TPC-H SQL runs below SF 1 show the same pattern (passed with no query-level check). That case belongs to subscale-tpc-ranking-policy-20261016 and is not in scope here.",
   "links": [
     "benchbox/core/expected_results/ssb_results.py",
@@ -38,6 +39,14 @@
       "generation": "0307791409c74ea18a3859798c468310",
       "op": "take",
       "op_id": "d3cb722beb3a438e9d830284c0fa52c3",
+      "session_id": "d2c53a64af484bf0b44e45ae35143611"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:3ce222eaad5d12493e27d4cc",
+      "at": "2026-10-18T03:54:22Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "70fa08d468f84885972c8cc8e1880637",
       "session_id": "d2c53a64af484bf0b44e45ae35143611"
     }
   ]
