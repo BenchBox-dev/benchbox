@@ -21923,12 +21923,17 @@
       "title": "ship-no-ship: bootstrap the uv workspace, CI and publish-safety checks"
     },
     "ssns-n2-engine-extraction": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-19T00:55:05Z",
+        "generation": "16ed3717308e4bc2a4f89b34aa5db479",
+        "renewals": 0,
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51"
+      },
       "needs": [
         "ssns-n1-bootstrap"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "ship-no-ship: import the oracle review engine from BenchBox"
     },
     "ssns-n3-engine-config-v2": {
