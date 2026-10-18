@@ -9437,10 +9437,15 @@
       "title": "Reconcile the remaining 'measurement runs only' copy to name the per-query median"
     },
     "explorer-detail-ranking-reason-compliance-20261017": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-19T01:06:50Z",
+        "generation": "4b028792120a4a858503a09fa742d5d9",
+        "renewals": 0,
+        "worker": "mcp:tbh:joe@joe-mac-mini.local:3ce222eaad5d12493e27d4cc"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Explorer detail view computes the ranking reason without the compliance class"
     },
     "explorer-dev-snapshot-dx": {
