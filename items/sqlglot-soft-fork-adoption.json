@@ -1,16 +1,15 @@
 {
   "acceptance": [
-    "pip-installed BenchBox wheel/sdist metadata and uv.lock select the same published downstream release, with no developer-only source override; current runtime import inventory migrates completely.",
-    "Ruff TID251 rejects public SQLGlot imports in benchbox/; narrow research/upstream comparison exemptions are explicit. Pickle/type/mock/container/notebook/active-doc references are audited without rewriting historical evidence.",
-    "Upgrade guard parses TOML dependency identity and schema1 _project/sqlglot-upstream/runtime-baseline.json; reruns on artifact/source identity changes and handles acknowledged PASS outcomes without repeated false failures; malformed/missing baselines and unexpected behavior fail closed.",
-    "Per-retirement evidence covers translate_sql_query, DialectTranslationMixin.translate_sql and BaseBenchmark.translate_query as applicable, identify=True and postgres-normalized cross-dialect probes. Mixed helpers retain BenchBox-specific behavior.",
-    "Targeted wrapper/delegation/SQLiteQ6/BigQuery/AST/repro/generator/guard tests, configured Ruff+ty, comment-policy, compatibility-doc checks, and native preflight pass; actual BenchBox wheel and sdist run outside checkout with pip/uv and upstream present.",
-    "Initial rollback drill restores the entire pre-migration BenchBox import/dependency baseline using publicSQLGlot30.18.0 and passes key baseline tests; later-fork downgrade procedure is documented.",
-    "Accepted ADR supersedes only the no-fork/main-release-line choice and documents ownership, versioning, source/fork boundary, refresh and rollback. Review disposition record and plan are durable and linked.",
-    "Native make pr-open/pr-arm workflow reaches verified merge with all required checks and current-head oracle review; post-merge evidence is refreshed and tracker closes only after those outcomes."
+    "BenchBox repository and published wheel/sdist include exactly one pinned SQLGlot runtime .whl and metadata, not an unpacked SQLGlot source tree; no separate PyPI release, Git/custom-index dependency or network build step.",
+    "All first-party runtime/AST/test/tool callers use the wheel-backed private namespace. No fallback or sys.modules alias to publicSQLGlot. Runtime metadata reports bundled version/provenance.",
+    "CI validates pinned wheel SHA/source/metadata/license/file hashes offline, rejects changes without reviewed pin/baseline update, and executes acknowledged pass/unsupported runtime baselines without repeated false failures.",
+    "All three real translation entrypoints execute PostgreSQL-normalized identifyTrue cases correctly; retain SQLiteQ6exact bounds/DATE_TRUNC/mixed helper and unrelated engine/DDL/variant policies.",
+    "Actual BenchBox wheel and sdist-built wheel run outside checkout with pip/uv and no separately installed fork; upstream coexistence, dynamic dialects, resources, pickle/spawn and uninstall independence are exercised. Report measured sizes and direct ZIP-import performance versus unpacked runtime.",
+    "Raw upstream comparison probes stay explicitly isolated; ADR/plan/refresh/rollback/dependency docs reflect wheel-only shipping and BenchBox-dev/benchbox-sqlglot ownership. No source-vendoring comment-policy exemption.",
+    "Initial rollback restores complete pre-migration imports/publicSQLGlot30.18baseline and key tests; native preflight,all required CI/current-headOracle and makepr-open/pr-arm reach verified merge,then postmerge proof and tracker finish."
   ],
-  "context": "Serial batch member; do not bypass publication or BigQuery done gates. Preserve primary clone and other agents' worktrees. User's current task authorizes plan/review remediation and implementation through BenchBox merge, but publication approval remains separate.",
-  "description": "In the owned BenchBox.wt-sqlglot-soft-fork branch, refresh from develop containing the merged BigQuery prerequisite after the downstream package is public. Replace sqlglot with the exact tested benchbox-sqlglot release using uv dependency commands. Migrate all current runtime/AST users, active tests/tools and mocks to benchbox_sqlglot. Add Ruff banned-api protection and TOML-based source identity/runtime-baseline guard; preserve isolated raw upstream probes. Retire only proved redundant syntax fixes, retaining SQLiteQ6 exact bounds, physical DDL, variants and semantic policy. Update ADR/docs and verify installed BenchBox artifacts and rollback.",
+  "context": "Explicit wheel-only owner correction supersedes source export/exemption. Parent owns package data/bootstrap/pin validator/retirement baseline/packaging. Consumer agent finished namespace and docs slice, no checks. Fork agent finishing pure private wheel tooling/noPyPI/source stays fork. Need merged source artifact before this item's done-only prerequisite clears.",
+  "description": "Owner explicitly requires only a built wheel runtime, not unpacked vendored SQLGlot source. Store one verified pure-Python wheel plus immutable pin metadata as BenchBox package data. Import privatebenchbox._vendor.sqlglot directly using standard ZIP import via private package search path; no global aliases/runtime pip/network/extraction. Remove externalSQLGlot requirement, migrate all consumers/tests/tools, update behavioral retirement/identity guard and docs, and verify actual BenchBox wheel/sdist installs, coexistence, package sizes and rollback before native merged PR.",
   "links": [
     "/Users/joe/Developer/BenchBox.wt-sqlglot-soft-fork/_project/decisions/sqlglot-soft-fork-plan.md",
     "/Users/joe/Developer/BenchBox.wt-sqlglot-soft-fork/_project/decisions/sqlglot-soft-fork-review.md",
@@ -25,6 +24,14 @@
       "op": "create",
       "op_id": "e0afc37ec0714ca0adff6cf0d87bdca6",
       "session_id": "5626a6dfe7d44c419c7db613d1059c06"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:00f9896dc298dff5fa33ec9d",
+      "at": "2026-10-18T13:02:17Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d659e8b59dfa4191822d9c6bf5e0d708",
+      "session_id": "a5197da3d60b4447b3b0ac38e65a8fbc"
     }
   ]
 }
