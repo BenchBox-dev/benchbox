@@ -1384,6 +1384,16 @@
       "status": "open",
       "title": "Give the core site-inputs failure reporter a close path and failure classes"
     },
+    "autogen-site-deploy-reporter-lifecycle-20261018": {
+      "claim": null,
+      "needs": [
+        "autogen-issues-decisions-20261018",
+        "autogen-site-core-reporter-lifecycle-20261018"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Split site deploy failure relay by failure class, close it on a successful deploy, and mark expected rejections"
+    },
     "autogen-site-parent-lookup-regression-guard-20261018": {
       "claim": null,
       "needs": [
