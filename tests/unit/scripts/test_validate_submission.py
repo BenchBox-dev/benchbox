@@ -1826,7 +1826,8 @@ class TestSubmissionDeterministicGates:
         data = _minimal_bundle()
         data["benchmark"]["id"] = "tpchavoc"
         data["queries"] = [
-            {"id": query_id, "ms": 100, "status": "SUCCESS"} for query_id in sorted(TPCHAVOC_CANONICAL_VARIANTS)
+            {"id": query_id, "ms": 100, "status": "SUCCESS", "rows": 100}
+            for query_id in sorted(TPCHAVOC_CANONICAL_VARIANTS)
         ]
         data["summary"]["queries"] = {"total": 220, "passed": 220, "failed": 0}
         vr = ValidationResult("test")
@@ -1840,7 +1841,7 @@ class TestSubmissionDeterministicGates:
         assert not vr.ok
         assert any("covers 21 of 22 canonical queries" in error and "12_v4" in error for error in vr.errors)
 
-        data["queries"].append({"id": "12_v4", "ms": 100, "status": "SUCCESS", "run_type": "warmup"})
+        data["queries"].append({"id": "12_v4", "ms": 100, "status": "SUCCESS", "run_type": "warmup", "rows": 100})
         vr = ValidationResult("test")
         _validate_bundle(data, vr)
         assert not vr.ok
@@ -1852,7 +1853,8 @@ class TestSubmissionDeterministicGates:
         data = _minimal_bundle()
         data["benchmark"]["id"] = "tpchavoc"
         data["queries"] = [
-            {"id": query_id, "ms": 100, "status": "SUCCESS"} for query_id in sorted(TPCHAVOC_CANONICAL_VARIANTS)
+            {"id": query_id, "ms": 100, "status": "SUCCESS", "rows": 100}
+            for query_id in sorted(TPCHAVOC_CANONICAL_VARIANTS)
         ]
         data["queries"][0]["ms"] = None
         data["summary"]["queries"] = {"total": 220, "passed": 220, "failed": 0}
@@ -1868,7 +1870,7 @@ class TestSubmissionDeterministicGates:
         data["benchmark"]["id"] = "tpchavoc"
         data["platform"]["name"] = "DataFusion"
         ids = TPCHAVOC_CANONICAL_VARIANTS - TPCHAVOC_DOCUMENTED_SKIPS["datafusion"]
-        data["queries"] = [{"id": query_id, "ms": 100, "status": "SUCCESS"} for query_id in sorted(ids)]
+        data["queries"] = [{"id": query_id, "ms": 100, "status": "SUCCESS", "rows": 100} for query_id in sorted(ids)]
         data["summary"]["queries"] = {"total": len(ids), "passed": len(ids), "failed": 0}
         vr = ValidationResult("test")
         _validate_bundle(data, vr)
@@ -2682,3 +2684,101 @@ class TestOverrideSatisfaction:
         doc = _override_doc(reason="see /Users/alice/private notes")
         bundle.with_name("flat.override.json").write_text(json.dumps(doc), encoding="utf-8")
         assert main([str(bundle)]) == 1
+
+
+class TestTPCHavocVariantRowCountConsistency:
+    @staticmethod
+    def _tpchavoc_bundle(*, q16_v6_rows: int = 296) -> dict:
+        queries = []
+        for q_num in range(1, 23):
+            for v_num in range(1, 11):
+                qid = f"{q_num}_v{v_num}"
+                rows = q16_v6_rows if qid == "16_v6" else (296 if q_num == 16 else 10)
+                queries.append(
+                    {
+                        "id": qid,
+                        "ms": 15.0 + v_num,
+                        "rows": rows,
+                        "status": "SUCCESS",
+                        "run_type": "measurement",
+                    }
+                )
+        data = _minimal_bundle()
+        data["benchmark"] = {"id": "tpchavoc", "name": "TPC-Havoc", "scale_factor": 0.01}
+        data["summary"]["queries"] = {"total": 220, "passed": 220, "failed": 0}
+        data["queries"] = queries
+        return data
+
+    def test_known_defect_id_accepted_in_manifest(self):
+        vr = ValidationResult("test")
+        _validate_manifest_provenance(
+            {"known_defects": ["defective-tpchavoc-variant-divergence"]},
+            Path("/repo/results-data/bundles/tpchavoc_result.json"),
+            vr,
+        )
+        assert vr.ok, vr.errors
+
+    def test_consistent_variant_row_counts_pass(self):
+        vr = ValidationResult("test")
+        _validate_bundle(self._tpchavoc_bundle(q16_v6_rows=296), vr)
+        assert vr.ok, vr.errors
+
+    def test_divergent_variant_row_counts_rejected_for_submission(self, tmp_path: Path):
+        bundle_path = tmp_path / "tpchavoc_sf001_duckdb.json"
+        bundle_path.write_text(json.dumps(self._tpchavoc_bundle(q16_v6_rows=0)), encoding="utf-8")
+
+        (vr,) = validate_bundles([bundle_path])
+        assert not vr.ok
+        assert any("tpchavoc query 16 variants report inconsistent row counts" in err for err in vr.errors)
+        assert any("16_v6=0" in err for err in vr.errors)
+
+    def test_tagged_sidecar_warns_in_mirror_lane_but_still_fails_submission_lane(self, tmp_path: Path):
+        bundle_path = tmp_path / "tpchavoc_sf001_duckdb.json"
+        bundle_bytes = json.dumps(self._tpchavoc_bundle(q16_v6_rows=0)).encode("utf-8")
+        bundle_path.write_bytes(bundle_bytes)
+
+        (untagged_mirror,) = validate_bundles([bundle_path], allow_partial_validation=True)
+        assert not untagged_mirror.ok
+        assert any("tpchavoc query 16 variants report inconsistent row counts" in err for err in untagged_mirror.errors)
+
+        manifest = {
+            "bundle_file": bundle_path.name,
+            "bundle_hash": hashlib.sha256(bundle_bytes).hexdigest(),
+            "known_defects": ["defective-tpchavoc-variant-divergence"],
+        }
+        bundle_path.with_name(f"{bundle_path.stem}.manifest.json").write_text(
+            json.dumps(manifest),
+            encoding="utf-8",
+        )
+
+        (submission_vr,) = validate_bundles([bundle_path], allow_partial_validation=False)
+        assert not submission_vr.ok
+        assert any("tpchavoc query 16 variants report inconsistent row counts" in err for err in submission_vr.errors)
+
+        (tagged_mirror,) = validate_bundles([bundle_path], allow_partial_validation=True)
+        assert tagged_mirror.ok, tagged_mirror.errors
+        assert any(
+            "tpchavoc query 16 variants report inconsistent row counts" in warn for warn in tagged_mirror.warnings
+        )
+
+    def test_divergent_row_counts_rejected_when_summary_validation_not_passed(self):
+        data = self._tpchavoc_bundle(q16_v6_rows=0)
+        data["summary"]["validation"] = "partial"
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr)
+        assert not vr.ok
+        assert any("tpchavoc query 16 variants report inconsistent row counts" in err for err in vr.errors)
+
+    def test_missing_or_invalid_rows_rejected_for_successful_variant(self):
+        data = self._tpchavoc_bundle(q16_v6_rows=296)
+        for q in data["queries"]:
+            if q.get("id") == "16_v6":
+                del q["rows"]
+                break
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr)
+        assert not vr.ok
+        assert any(
+            "tpchavoc query 16_v6 has successful status 'SUCCESS' but missing or invalid rows" in err
+            for err in vr.errors
+        )

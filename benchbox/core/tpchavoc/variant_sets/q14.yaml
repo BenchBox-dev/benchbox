@@ -5,12 +5,12 @@ variants:
 
     select
         100.00 *
-        (select sum(l2.l_extendedprice * (1 - l2.l_discount))
+        coalesce((select sum(l2.l_extendedprice * (1 - l2.l_discount))
          from lineitem l2, part p2
          where l2.l_partkey = p2.p_partkey
            and p2.p_type like 'PROMO%'
            and l2.l_shipdate >= date '1995-09-01'
-           and l2.l_shipdate < date '1995-09-01' + interval '1' month) /
+           and l2.l_shipdate < date '1995-09-01' + interval '1' month), 0) /
         (select sum(l3.l_extendedprice * (1 - l3.l_discount))
          from lineitem l3, part p3
          where l3.l_partkey = p3.p_partkey
@@ -134,7 +134,7 @@ variants:
 
     select
         100.00 *
-        sum(l_extendedprice * (1 - l_discount)) filter (where p_type like 'PROMO%') /
+        coalesce(sum(l_extendedprice * (1 - l_discount)) filter (where p_type like 'PROMO%'), 0) /
         sum(l_extendedprice * (1 - l_discount)) as promo_revenue
     from
         lineitem,

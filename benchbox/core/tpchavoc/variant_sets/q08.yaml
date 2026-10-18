@@ -263,7 +263,7 @@ variants:
 
     select
         o_year,
-        sum(volume) filter (where nation = 'BRAZIL') / sum(volume) as mkt_share
+        coalesce(sum(volume) filter (where nation = 'BRAZIL'), 0) / sum(volume) as mkt_share
     from (
         select
             extract(year from o_orderdate) as o_year,

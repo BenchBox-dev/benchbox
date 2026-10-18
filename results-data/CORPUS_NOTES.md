@@ -1,5 +1,23 @@
 # Corpus Generation Notes - 2026-04-03
 
+## TPC-Havoc cross-variant row-count divergence audit (2026-10-17)
+
+The three SF=0.01 TPC-Havoc SQL bundles (`tpchavoc_sf001_duckdb_sql_20260826_163147_d96baca2.json`,
+`tpchavoc_sf001_datafusion_sql_20260826_165844_721d2f5e.json`, and
+`tpchavoc_sf001_clickhouse_local_sql_20260826_171608_ce266327.json`) ran `16_v6` before its
+cross-joined `excluded` supplier subquery (`ps_suppkey <> excluded_suppkey`) was replaced with
+`NOT IN`. Because SF=0.01 has zero suppliers matching `'%Customer%Complaints%'`, the cross-join
+produced `rows: 0` with `status: SUCCESS` while the remaining Q16 variants returned `rows: 296`.
+In addition, the August 2026 DataFusion (`SF=0.01`, `0.1`, `1.0`) and ClickHouse Local (`SF=0.01`,
+`0.1`, `1.0`) TPC-Havoc bundles recorded pre-fix `15_v*` float-equality or ClickHouse
+`2_v8`/`3_v7`/`7_v7`/`9_v7`/`10_v7`/`10_v8` row-count divergences across variants of the same
+base query.
+
+All seven `.manifest.json` sidecars now carry `defective-tpchavoc-variant-divergence` in
+`known_defects`. Bundle validation (`benchbox/validation/bundle.py`) now enforces cross-variant
+row-count agreement across all successful measurement variants of each base query in a
+`tpchavoc` bundle, rejecting any new submission with divergent variant row counts.
+
 ## TPC-DS OBT parameter defect (2026-10-16)
 
 The six TPC-DS OBT bundles at SF1 (BigQuery, ClickHouse Local, Databricks,
