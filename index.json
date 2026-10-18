@@ -15967,6 +15967,13 @@
       "status": "dropped",
       "title": "`make pr-open` titles a multi-commit PR with the branch name, which becomes the squash commit subject"
     },
+    "pr-open-rest-path-20261018": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Make make pr-open work without GraphQL"
+    },
     "pr-open-stacked-draft-support-20261015": {
       "claim": null,
       "needs": [],
