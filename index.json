@@ -2680,10 +2680,15 @@
       "title": "Compare soundness-flag against the merge commit's first parent, not the stale event base"
     },
     "ci-stale-check-run-blocks-merge": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-19T00:16:51Z",
+        "generation": "d0e8c88e150c4c65953230315199587f",
+        "renewals": 0,
+        "worker": "mcp:tbh:joe@joe-mac-mini.local:3ce222eaad5d12493e27d4cc"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Required oracle-review gate honors a stale failed run despite newer same-head successes"
     },
     "ci-superseded-aggregate-shows-failure-20261014": {
