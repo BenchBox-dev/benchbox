@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "App-dispatched run shows benchbox-oracle[bot] and uploads proof state",
+    "Owner-dispatched run fails closed and the App's bot opens oracle-record-rejected"
+  ],
+  "context": "On failure: do not activate; fix the actor check.",
+  "description": "Plan gate A3. The service dispatches the record workflow on a test PR with proof=true; then a dispatch by the owner's account must fail closed. doctor --actor-probe checks both runs.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51",
+      "at": "2026-10-18T01:00:49Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "e849a3862dbf40579607e0e5dc7973f6",
+      "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    }
+  ]
+}
