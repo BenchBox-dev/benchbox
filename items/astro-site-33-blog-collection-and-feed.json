@@ -5,7 +5,7 @@
     "Feed validates as Atom 1.0",
     "_blog/ drafts are not built or published"
   ],
-  "context": "IN PR https://github.com/BenchBox-dev/BenchBox/pull/2606 as d2ac2e58 (2026-10-04). Review PASS (88 /blog files identical to ablog; feed ids/links/fields equal ablog for all 10 entries). Medium follow-ups in progress: strip Expressive Code assets from feed content, date-based drafts (date >= tomorrow UTC), real-route feed test that runs in CI. site-split-01 (2026-10-07): code merged; inventory-diff and feed-comparison evidence not recorded here with run ids. Remaining verification owned by site-split-25 and site-split-30. Do not finish here.\n\n2026-10-09 tracker review: this item's code shipped in #2606 and production deploys are green (site-deploy runs 37532428364, 37406123669). site-split-99-closeout should fold this astro-site chain into the site-split items. Not closed here, because this item's own text defers closing to the site-split items.",
+  "context": "Dropped 2026-10-17 as delivered (owner chose \"Drop delivered, re-scope rest\"). Delivered in #2606 and live: all 87 /blog paths in the Sphinx inventory return 200, including all 17 posts and the tag, archive and index pages. Live /blog/atom.xml has the same feed id and the same 10 entry ids and links as the ablog reference (website/tests/fixtures/ablog-atom-ids.json); website/tests/dist-feed.test.ts and blog-feed.test.ts check that match and the RFC 4287 elements on every site CI build. Drafts live in drafts/, are never read by the build, and return 404 live.",
   "description": "Map the 16 posts in docs/blog/*.md (ablog frontmatter: blogpost, date, tags, meta_description, series) to a blog collection. Post URLs stay at /blog/YYYY-MM-DD-slug.html.\n\nBuild the blog index, tag pages, series navigation and author line.\n\nGenerate /blog/atom.xml as Atom, not RSS. Entry <id> and <link> values must be byte-identical to the current ablog feed, so feed readers do not re-show old posts. Keep full-text content in the feed.\n\nKeep any ablog redirect pages (post_redirect) that exist today. Images in docs/blog/images (7.9 MB) keep their current URLs.",
   "links": [
     "docs/blog",
@@ -44,6 +44,14 @@
       "op": "update",
       "op_id": "f5e257c553074274af6c450341dba9d2",
       "session_id": "05afd70780334fa0b0e411a688cf8f7a"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-18T00:48:27Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "901844d070194f3ab3b381fccce77e42",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
     }
   ]
 }
