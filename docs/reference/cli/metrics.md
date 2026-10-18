@@ -16,7 +16,7 @@ benchbox metrics <subcommand> [OPTIONS]
 
 ### `qphh` - TPC-H QphH@Size
 
-Calculate Power@Size, Throughput@Size, and QphH@Size from TPC-H power and throughput results. QphH@Size requires official compliance, all 22 completed power queries, successful RF1/RF2 in Power, at least two completed throughput query streams, and one successful refresh pair per stream on consecutive update sets. Refresh functions run only when the TPC-H run sets `--benchmark-option tpch_refresh_functions=true`, on DuckDB, SQLite, PostgreSQL, Snowflake, SingleStore, and the adapters built on them. If a condition is missing, the command still reports Power@Size and Throughput@Size, omits QphH@Size, and lists the reasons; JSON output carries them in `qphh_unavailable`. QphDS@Size is not computed because BenchBox does not run the TPC-DS data maintenance phases it requires.
+Calculate Power@Size, Throughput@Size, and QphH@Size from TPC-H power and throughput results. QphH@Size requires official compliance, all 22 completed power queries, successful RF1/RF2 in Power, at least two completed throughput query streams, and one successful refresh pair per stream on consecutive update sets. Refresh functions run only when the TPC-H run sets `--benchmark-option tpch_refresh_functions=true`, on DuckDB, SQLite, PostgreSQL, Snowflake and SingleStore. If a condition is missing, the command still reports Power@Size and Throughput@Size, omits QphH@Size, and lists the reasons; JSON output carries them in `qphh_unavailable`. QphDS@Size is not computed because BenchBox does not run the TPC-DS data maintenance phases it requires.
 
 **Formula:**
 

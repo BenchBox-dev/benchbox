@@ -41,6 +41,7 @@ except ImportError:
 class PgDuckDBAdapter(PostgreSQLAdapter):
     execution_partitioning_supported = False
     post_load_index_cluster_supported = False
+    supports_refresh_functions = False
     plan_capture_phase_eligible = True
 
     @property
