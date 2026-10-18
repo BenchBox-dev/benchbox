@@ -10,12 +10,17 @@ overwrite the fork or change the AST classes BenchBox uses.
 Coexistence guarantees independent implementations, not exchange of AST or
 dialect class instances between them. No implicit AST conversion is promised.
 
-Implementation covers `joeharris76/sqlglot` and `BenchBox-dev/BenchBox`.
+Implementation covers `BenchBox-dev/sqlglot` and `BenchBox-dev/BenchBox`.
 Completion means the source and packaging changes are reviewed and merged in
 the fork, a verified release is available to downstream installers, and the
 BenchBox migration is reviewed, tested and merged. Public package publication
 requires a separate owner approval after the artifacts are reviewable. Do not
 mark the publication or adoption items done before those outcomes occur.
+
+The organization owns the hard dependency's source and publishing workflow.
+Transfer the existing personal fork rather than copying its history; preserve
+its upstream relationship, immutable refs and review records. Use the canonical
+organization URL in package metadata, publishing guards and local remotes.
 
 The implementation batch is serial. Cross-repository and publication-separated
 items do not use prepared feature delivery or pretend a local artifact is a
@@ -24,7 +29,8 @@ claim and consume its merged result rather than editing its worktree.
 
 ## Prior art and recorded decisions
 
-- Extend the patch branches in `joeharris76/sqlglot`, upstream dialect tests,
+- Extend the patch branches transferred from `joeharris76/sqlglot` to
+  `BenchBox-dev/sqlglot`, upstream dialect tests,
   `sqlglot/parsers/postgres.py`, `sqlglot/generators/sqlite.py`,
   `sqlglot/optimizer/annotate_types.py`, and AST serialization tests.
 - Extend BenchBox's `_project/sqlglot-upstream/repros/repro_all.py`,
@@ -108,10 +114,11 @@ or new database service is authorized. State any source-engine proof limitation.
 ## Distribution and artifact contract
 
 The distribution is `benchbox-sqlglot`; its import package is
-`benchbox_sqlglot`. Initial public version is `30.23.0.1`, where the first three
-components identify the upstream base and the fourth identifies this fork's
-release. Never reuse a version for different bytes. Do not use a local `+`
-version identifier for PyPI. Preserve upstream license files and notices.
+`benchbox_sqlglot`. The initial organization-owned public candidate is
+`30.23.0.2`; the existing `30.23.0.1` tag remains immutable and unpublished.
+The first three components identify the upstream base and the fourth identifies
+this fork's release. Never reuse a version for different bytes. Do not use a
+local `+` version identifier for PyPI. Preserve upstream license files and notices.
 Increment N for a fork-only change; reset N to 1 when X.Y.Z changes. For
 example, a fix after `30.23.0.1` becomes `30.23.0.2`, and the first release
 based on upstream `30.24.0` becomes `30.24.0.1`.
@@ -182,10 +189,13 @@ orders and uninstall directions are subprocess cases, not matrix dimensions.
 Replace or disable the inherited automatic `v*` package-publish workflow in
 the first source PR before any hosted release tag is created. Its jobs publish
 upstream-named `sqlglot` and `sqlglotc` and write generated docs/changelog.
-The downstream release workflow validates an explicit `benchbox-v30.23.0.1`
+The downstream release workflow validates an explicit `benchbox-vX.Y.Z.N`
 tag/version pair, builds and verifies artifacts before publication, uses the
 correct distribution identity, and requires the owner's approved publishing
-credentials / protected environment. Do not weaken settings or invent secrets.
+credentials / protected environment. PyPI trusted publishing identifies GitHub
+owner `BenchBox-dev`, repository `sqlglot`, workflow `benchbox-release.yml`,
+and environment `benchbox-sqlglot-pypi`. Reject the former personal publishing
+identity. Do not weaken settings or invent secrets.
 Retain downloadable CI artifacts if publishing configuration is unavailable.
 Retain artifacts and SHA256SUMS for 30 days. Approval binds their exact hashes;
 different bytes or unavailable evidence require new reviewable artifacts and
