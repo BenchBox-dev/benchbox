@@ -424,7 +424,6 @@ class TimescaleDBAdapter(PostgreSQLAdapter):
                 ).replace("{table_name}", qualified_name)
                 try:
                     cursor.execute(statement)
-                    connection.commit()
                 except Exception as exc:
                     connection.rollback()
                     if ledger is not None:
@@ -432,6 +431,7 @@ class TimescaleDBAdapter(PostgreSQLAdapter):
                     raise
                 executed_statements.append(statement)
             observed_by_kind = self._verify_native_table_tuning(cursor, table_name, requested)
+            connection.commit()
             if ledger is not None:
                 for statement in executed_statements:
                     ledger.record(statement, PHASE_DDL, table=table_name, mechanism="timescaledb_native_layout")
