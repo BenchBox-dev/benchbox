@@ -6,7 +6,7 @@
     "No cloud spend",
     "`benchbox metrics qphh --help` and `docs/reference/cli/metrics.md` list only the proven platforms once this item settles"
   ],
-  "context": "Follows the TPC-H refresh and QphH work in PR #3004 (960c61674). PostgreSQL 18 and SingleStore 9.1.1 passed SF0.01 load, power and two-stream throughput with refresh (RF sets 1–3, 110/110 queries) in local containers on 2026-10-16, on the code that merged as #3004. Snowflake passed an SF0.01 RF1/RF2 run in its trial account on 2026-10-15. Adapters that inherit the flag from the PostgreSQL adapter (CedarDB, Citus, ParadeDB, pg_duckdb, pg_mooncake, TimescaleDB) have no proof yet. On macOS without Docker Desktop, use mocker (see docs/operations/uat-framework.md). The `benchbox metrics qphh` help (#3046) already lists the inherited adapters as supported. Owner, 2026-10-15, Claude session e0e74e6b, question dialog: \"Keep all, prove first\", refined by \"Snowflake in trial, Redshift later\".",
+  "context": "Resume 2026-10-18: Branch fix/tpch-refresh-pg-derived-proofs at e7bd664d5 in subagent worktree disables supports_refresh_functions=False on CedarDB, Citus, ParadeDB, pg_duckdb, pg_mooncake, TimescaleDB (no SF0.01 container proof run; fail-closed per acceptance alternative), pins all 12 platforms in test_refresh_capability_matches_verified_platforms (12 passed), pr-preflight 298 passed, comment-policy 0 violations, qphh --help now lists only DuckDB/SQLite/PostgreSQL/Snowflake/SingleStore. Blocker: make pr-open refused - develop trunk red 375m (trunk.yml run 39101239021, failed 2026-10-18T05:51:11Z). Next: after trunk green, make pr-open && make pr-arm on that branch/head, monitor to merge, then finish. Do not edit tuning reconciliation (PR #3123 files) - no overlap.",
   "description": "TPC-H refresh support (RF1/RF2) is declared for PostgreSQL, and adapters built on the PostgreSQL adapter (for example CedarDB and Citus) inherit the capability flag without having been tested. Run local container proofs for each inheriting adapter, or turn the flag off where a proof fails or is impractical.",
   "sessions": [
     {
@@ -32,6 +32,14 @@
       "generation": "7c06c1b325cc4ca49fc374cdc3375207",
       "op": "take",
       "op_id": "add5606b34004375b9260de2d0079632",
+      "session_id": "87d06cad22c6432492f6ab29c953a6a3"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:77fbca394bd06462bafe34af",
+      "at": "2026-10-18T12:06:51Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "eed04ff350ca4948b3d00840b6d9e119",
       "session_id": "87d06cad22c6432492f6ab29c953a6a3"
     }
   ]
