@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "test_oracle_verdict_workflow.py passes",
+    "test_verify_oracle_wheel.py covers tampered RECORD, extra file, .pth",
+    "Contract tests pass"
+  ],
+  "context": "Plan: ~/.benchbox/handoffs/2026-10-16-oracle-local-reviewer-plan-handoff.md section 7. B0 (concurrency fix) is done as oracle-review-cancel-race-20261016.",
+  "description": "Plan step B1. .github/oracle/engine.lock and the vendored ship-no-ship wheel; every oracle job installs it and calls ship-no-ship; sparse checkouts include .github/oracle/; .github/oracle/ added to gate_paths and soundness-paths.txt; make oracle-engine-bump (writes the lock, pastes the release's source diff into the PR body); _project/scripts/verify_oracle_wheel.py and make oracle-engine-verify in CI; contract tests (policy passes validate-config; paths.py agrees with soundness_paths.py on every tracked file). Hosted reviewers unchanged; in-repo engine frozen.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51",
+      "at": "2026-10-18T01:00:25Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "130634cdf38140c299198944c67757a5",
+      "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    }
+  ]
+}
