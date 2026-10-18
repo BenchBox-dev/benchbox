@@ -7,12 +7,16 @@ from typing import Any
 
 import pytest
 
+import scripts.worktree_finish as finish
+import scripts.worktree_reap as reap
 from scripts.worktree_lifecycle_metadata import init_metadata
 from scripts.worktree_reap import (
     AMBIGUOUS,
     KEEP,
     REMOVE,
+    ReapError,
     ReapVerdict,
+    build_batch_pr_lookup,
     classify_worktrees,
     format_summary,
     list_worktree_entries,
@@ -258,3 +262,136 @@ def test_apply_reevaluates_and_continues_past_a_candidate_that_changed(tmp_path:
     assert (moved / "more.txt").exists() and _branch_exists(repo, moved_branch)
     assert outcomes[clean.resolve()].status == "removed"
     assert not clean.exists() and not _branch_exists(repo, clean_branch)
+
+
+def test_reused_branch_name_at_develop_tip_is_not_removed(tmp_path: Path) -> None:
+    repo = _init_repo(tmp_path / "repo")
+    old, branch = _feature_worktree(repo, "reused")
+    old_pr = _merge(repo, branch, 1)
+    _git(["worktree", "remove", str(old)], repo)
+    _git(["branch", "-D", branch], repo)
+
+    fresh = tmp_path / "wt-reused-again"
+    _git(["worktree", "add", "-q", "-b", branch, str(fresh), "develop"], repo)
+    init_metadata(fresh, branch=branch, base_ref="origin/develop", base_oid=_git(["rev-parse", "develop"], repo))
+    lookup = _lookup({branch: [old_pr]})
+
+    verdict = _verdicts(repo, lookup)[fresh.resolve()]
+    assert verdict.verdict == KEEP
+    assert "possible reuse of branch name" in verdict.reason
+
+    forced = ReapVerdict(verdict=REMOVE, path=verdict.path, branch=branch, head=verdict.head, reason="forced")
+    outcome = remove_worktree(forced, repo, SLUG, lookup)
+    assert outcome.status == "failed"
+    assert "possible reuse of branch name" in outcome.detail
+    assert fresh.exists() and _branch_exists(repo, branch)
+
+
+def test_each_target_branch_is_refreshed_once_per_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    repo = _init_repo(tmp_path / "repo")
+    prs: dict[str, list[dict[str, Any]]] = {}
+    for number, name in enumerate(("one", "two", "three"), start=1):
+        _, branch = _feature_worktree(repo, name)
+        prs[branch] = [_merge(repo, branch, number)]
+    refreshed: list[str] = []
+    real_refresh = reap.refresh_target_ref
+
+    def counting_refresh(base: str, root: Path) -> str | None:
+        refreshed.append(base)
+        return real_refresh(base, root)
+
+    monkeypatch.setattr(reap, "refresh_target_ref", counting_refresh)
+    verdicts = _verdicts(repo, _lookup(prs))
+
+    assert [v.verdict for v in verdicts.values()].count(REMOVE) == 3
+    assert refreshed == ["develop"]
+
+
+def _cli_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, live_prs: bool) -> tuple[Path, Path, str, dict]:
+    repo = _init_repo(tmp_path / "repo")
+    wt, branch = _feature_worktree(repo, "cli")
+    prs = {branch: [_merge(repo, branch, 1)]}
+    monkeypatch.chdir(repo)
+    monkeypatch.setattr(reap, "build_batch_pr_lookup", lambda root, slug, branches: _lookup(prs))
+    monkeypatch.setattr(finish, "resolve_github_token", lambda: None)
+    monkeypatch.setattr(finish, "get_remote_repository_slug", lambda root: None)
+    monkeypatch.setattr(finish, "resolve_repository_identity", lambda *a, **k: (1, SLUG, None))
+    live = prs if live_prs else {}
+    monkeypatch.setattr(finish, "fetch_prs_for_branch", lambda owner, name, b, rid, tok: (live.get(b, []), None))
+    return repo, wt, branch, prs
+
+
+def test_cli_dry_run_leaves_the_candidate_in_place(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    repo, wt, branch, _ = _cli_repo(tmp_path, monkeypatch, live_prs=True)
+
+    assert reap.main(["--repo", SLUG]) == 0
+
+    out = capsys.readouterr().out
+    assert f"remove    {wt.resolve()}  {branch}  merged via PR #1" in out
+    assert "Summary: 2 worktrees: remove=1 keep=1 ambiguous=0" in out
+    assert wt.exists() and _branch_exists(repo, branch)
+
+
+def test_cli_apply_removes_the_candidate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    repo, wt, branch, _ = _cli_repo(tmp_path, monkeypatch, live_prs=True)
+
+    assert reap.main(["--apply", "--repo", SLUG]) == 0
+
+    out = capsys.readouterr().out
+    assert f"removed   {wt.resolve()}  {branch}" in out
+    assert "Applied: removed=1 not_removed=0" in out
+    assert not wt.exists() and not _branch_exists(repo, branch)
+
+
+def test_cli_apply_returns_nonzero_when_reevaluation_holds(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    repo, wt, branch, _ = _cli_repo(tmp_path, monkeypatch, live_prs=False)
+
+    assert reap.main(["--apply", "--repo", SLUG]) == 1
+
+    out = capsys.readouterr().out
+    assert f"failed    {wt.resolve()}  {branch}  re-evaluation held: No PRs found" in out
+    assert wt.exists() and _branch_exists(repo, branch)
+
+
+def test_cli_lookup_error_is_ambiguous_and_never_removed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    repo, wt, branch, _ = _cli_repo(tmp_path, monkeypatch, live_prs=True)
+    monkeypatch.setattr(
+        reap, "build_batch_pr_lookup", lambda root, slug, branches: lambda b: ([], "GitHub PR listing failed: 502")
+    )
+
+    assert reap.main(["--apply", "--repo", SLUG]) == 0
+
+    out = capsys.readouterr().out
+    assert f"ambiguous {wt.resolve()}  {branch}  GitHub PR listing failed: 502" in out
+    assert "Applied: removed=0 not_removed=0" in out
+    assert wt.exists() and _branch_exists(repo, branch)
+
+
+def test_batch_lookup_reports_identity_and_listing_failures(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    repo = _init_repo(tmp_path / "repo")
+    monkeypatch.setattr(reap, "resolve_github_token", lambda: None)
+    monkeypatch.setattr(reap, "resolve_repository_identity", lambda *a, **k: (None, None, "HTTP 404 Not Found"))
+    lookup = build_batch_pr_lookup(repo, SLUG, {"feat/a"})
+    assert lookup("feat/a") == ([], "Failed to resolve repository identity for PR verification: HTTP 404 Not Found")
+
+    monkeypatch.setattr(reap, "resolve_repository_identity", lambda *a, **k: (1, SLUG, None))
+    monkeypatch.setattr(reap, "fetch_prs_for_branches", lambda *a: ({}, "PR listing pagination truncated"))
+    lookup = build_batch_pr_lookup(repo, SLUG, {"feat/a"})
+    assert lookup("feat/a") == ([], "GitHub PR listing failed: PR listing pagination truncated")
+
+    listed = {"feat/a": [{"number": 7}], "feat/b": []}
+    monkeypatch.setattr(reap, "fetch_prs_for_branches", lambda *a: (listed, None))
+    lookup = build_batch_pr_lookup(repo, SLUG, {"feat/a", "feat/b"})
+    assert lookup("feat/a") == ([{"number": 7}], None)
+    assert lookup("feat/b") == ([], None)
+
+    with pytest.raises(ReapError, match="Invalid repository slug"):
+        build_batch_pr_lookup(repo, "no-slash", {"feat/a"})

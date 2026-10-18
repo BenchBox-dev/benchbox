@@ -41,6 +41,7 @@ from scripts.worktree_lifecycle_metadata import (
 HEX_40_RE = re.compile(r"^[0-9a-fA-F]{40}$")
 
 PrLookup = Callable[[str], Tuple[List[Dict[str, Any]], Optional[str]]]
+TargetRefresher = Callable[[str], Optional[str]]
 
 
 class FinishError(RuntimeError):
@@ -66,6 +67,7 @@ class FinishPreviewResult:
     detached: bool
     pr_number: Optional[int]
     pr_base: Optional[str]
+    merged_head: Optional[str]
     pr_merged: bool
     merge_commit_reachable: bool
     proposed_actions: List[Dict[str, str]]
@@ -177,7 +179,7 @@ def _branch_ref_argument(branch: str) -> str:
     return shlex.quote(f"refs/heads/{branch}")
 
 
-def _refresh_target_ref(base_ref: str, repo_root: Path) -> Optional[str]:
+def refresh_target_ref(base_ref: str, repo_root: Path) -> Optional[str]:
     code, _, stderr = _run_git(
         ["fetch", "--quiet", "origin", f"{base_ref}:refs/remotes/origin/{base_ref}"],
         repo_root,
@@ -245,6 +247,7 @@ def _make_hold_result(
         detached=detached,
         pr_number=pr_number,
         pr_base=pr_base,
+        merged_head=None,
         pr_merged=pr_merged,
         merge_commit_reachable=merge_commit_reachable,
         proposed_actions=[],
@@ -471,7 +474,8 @@ def _evaluate_pr_integration(
     meta: WorktreeLifecycleMetadata,
     repo_root: Path,
     timestamp: str,
-) -> Tuple[Optional[Dict[str, Any]], Optional[FinishPreviewResult]]:
+    refresh_target: TargetRefresher,
+) -> Tuple[Optional[Tuple[Dict[str, Any], str]], Optional[FinishPreviewResult]]:
     merged_prs = [p for p in prs if is_pr_merged(p)]
     if not merged_prs:
         reason = (
@@ -568,7 +572,7 @@ def _evaluate_pr_integration(
             pr_merged=True,
         )
 
-    refresh_error = _refresh_target_ref(pr_base, repo_root)
+    refresh_error = refresh_target(pr_base)
     if refresh_error:
         return None, _make_hold_result(
             target_path,
@@ -650,7 +654,7 @@ def _evaluate_pr_integration(
             pr_merged=True,
         )
 
-    return latest, None
+    return (latest, historical_head), None
 
 
 def evaluate_finish_preview(
@@ -660,6 +664,7 @@ def evaluate_finish_preview(
     repo_slug: str = "BenchBox-dev/BenchBox",
     evidence_file: Optional[Path] = None,
     pr_lookup: Optional[PrLookup] = None,
+    refresh_target: Optional[TargetRefresher] = None,
 ) -> FinishPreviewResult:
     now_utc = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -693,13 +698,23 @@ def evaluate_finish_preview(
             clean=True,
         )
 
-    latest_pr, pr_hold = _evaluate_pr_integration(
-        prs, target_path, expected_head_oid, actual_head, branch, repo_slug, meta, repo_root, now_utc
+    merged, pr_hold = _evaluate_pr_integration(
+        prs,
+        target_path,
+        expected_head_oid,
+        actual_head,
+        branch,
+        repo_slug,
+        meta,
+        repo_root,
+        now_utc,
+        refresh_target or (lambda base: refresh_target_ref(base, repo_root)),
     )
-    if pr_hold or not latest_pr:
+    if pr_hold or not merged:
         return pr_hold or _make_hold_result(
             target_path, expected_head_oid, "PR integration hold", now_utc, hold_code="unknown"
         )
+    latest_pr, merged_head = merged
 
     action_remove = " ".join(["git", "worktree", "remove"])
     action_delete_ref = " ".join(["git", "update-ref", "-d"])
@@ -735,6 +750,7 @@ def evaluate_finish_preview(
         detached=False,
         pr_number=latest_pr.get("number"),
         pr_base=latest_pr.get("base", {}).get("ref"),
+        merged_head=merged_head,
         pr_merged=True,
         merge_commit_reachable=True,
         proposed_actions=proposed,

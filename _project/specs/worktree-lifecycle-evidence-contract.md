@@ -33,8 +33,9 @@ the complete §7 evidence; it never consumes an audit snapshot as authority.
   `make worktree-remove`, `make worktree-finish APPLY=1`, or
   `make worktree-reap APPLY=1` (`docs/internal/dev-loop-worktrees.md`).
   `worktree-reap` previews by default and removes only worktrees for which a
-  fresh per-target `worktree-finish` evaluation is actionable, using the same
-  apply actions; it never removes the primary clone, the invoking worktree, or
+  fresh per-target `worktree-finish` evaluation is actionable and whose HEAD is
+  exactly the merged PR's historical merge-time head, using the same apply
+  actions; it never removes the primary clone, the invoking worktree, or
   anything that evaluation holds. The authorized branch-only exception is
   `make branch-prune-merged`, which reaps only worktree-less local branches
   still at their historically proven merge-time PR head (operator-driven, `gh`-based, with
