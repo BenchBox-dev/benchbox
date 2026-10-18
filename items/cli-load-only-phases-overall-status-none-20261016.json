@@ -3,7 +3,7 @@
     "`--phases generate,load` completes with exit 0 and records data_loading in the result",
     "Regression test covers a load-only run without a power phase"
   ],
-  "context": "Appears delivered by #3035 5aa9fabc5 (\"exit 0 from successful load-only runs\", merged 2026-10-16). Next: confirm a regression test covers the acceptance criteria, then finish.",
+  "context": "Dropped 2026-10-17 as a duplicate of phases-generate-load-exit-overall-status-20261016 (done). Fixed by #3035 (5aa9fabc5, merged 2026-10-16), which starts the applied-tuning ledger on the load-only path and adds tests/integration/test_load_only_cli_exit_status.py.",
   "description": "On develop (2026-10-15), `benchbox run --platform duckdb --benchmark tpch --scale 0.01 --seed 42 --phases generate,load --non-interactive` loads the data (\"Data loading completed\") and then fails with \"Benchmark execution failed: 'NoneType' object has no attribute 'overall_status'\" and \"Data loading failed: FAILED\", exiting 1. The same command with `generate,load,power` succeeds. Load-only runs, which campaign plans use to prepare databases, cannot complete.",
   "sessions": [
     {
@@ -20,6 +20,14 @@
       "client": "claude-code",
       "op": "update",
       "op_id": "6bcb6b2c07184d7ea6331d252e871a35",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-18T00:01:00Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "3a69d0a024604d5a882fb3f56d5be1f3",
       "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
     }
   ]
