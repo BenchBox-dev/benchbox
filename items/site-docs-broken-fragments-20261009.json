@@ -1,9 +1,9 @@
 {
   "acceptance": [
-    "The 10 links resolve on the built site",
-    "Their entries are removed from the site's known-broken-links.json and the deploy link gate still passes"
+    "Every entry in benchbox-site inventory/known-broken-links.json resolves on the built site (the 10 in the description plus the 5 in context)",
+    "known-broken-links.json is empty and the deploy link gate still passes"
   ],
-  "context": "Found 2026-10-09 while building the site's TypeScript link gate (site-split-23) against a real build of core 0d5f01e91's bundle. Checked against the live page: https://benchbox.dev/docs/usage/installation.html has no no-docker-required id.",
+  "context": "Found 2026-10-09 while building the site's TypeScript link gate (site-split-23) against a real build of core 0d5f01e91's bundle. Checked against the live page: https://benchbox.dev/docs/usage/installation.html has no no-docker-required id.\n\nWidened 2026-10-17 when astro-site-53 was dropped: benchbox-site inventory/known-broken-links.json lists 29 links to 15 missing fragments, all confirmed missing live. The five not in the description: /docs/platforms/dataframe.html#tuning-system, /docs/platforms/comparison-matrix.html#hybrid-platforms-sql--dataframe, /docs/guides/tpc/tpc-ds-official-guide.html#3-maintenance-test, /docs/usage/troubleshooting.html#catalog-not-found-prestotrino and /docs/usage/troubleshooting.html#missing-dependencies.",
   "description": "The site's deploy link gate found 10 internal links whose fragment does not exist on the target page. All 10 are broken on the live site too, so they predate the site split; they were added to the site repo's inventory/known-broken-links.json so the gate does not block deploys on existing breakage.\n\n- Site repo: the landing page links /docs/usage/installation.html#no-docker-required; the page has no such heading id.\n- Core docs: the CLI reference index (/docs/reference/cli/) links fragments that the results, tuning and utilities pages do not have: results.html#compare, #export, #results; tuning.html#tuning-dataframe, #tuning-init; utilities.html#benchmarks, #check-deps, #profile, #validate.\n\nFix the links or add the anchors, then remove the 10 entries from inventory/known-broken-links.json.",
   "sessions": [
     {
@@ -13,6 +13,14 @@
       "op": "create",
       "op_id": "15983e3db1034247b3399532770f600d",
       "session_id": "33bd3c37f6654182bd23ec8ba6d6c4d1"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-18T00:51:50Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "6caa79da1fc54db7a1b1f343cb7a71ac",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
     }
   ]
 }
