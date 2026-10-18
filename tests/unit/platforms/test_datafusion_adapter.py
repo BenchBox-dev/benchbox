@@ -1163,9 +1163,20 @@ class TestDataFusionColumnTypeMapping:
                     adapter._load_table_parquet(mock_conn, "test_table", [csv_file], Path(tmpdir))
 
             assert "price" in captured_types
-            assert captured_types["price"] == pa.float64()
+            assert captured_types["price"] == pa.decimal128(10, 2)
             assert "tax" in captured_types
-            assert captured_types["tax"] == pa.float64()
+            assert captured_types["tax"] == pa.decimal128(18, 2)
+
+    def test_decimal_mapping_is_exact_and_float_stays_float(self):
+        import pyarrow as pa
+
+        from benchbox.platforms.datafusion import DataFusionAdapter
+
+        assert DataFusionAdapter._map_schema_type_to_pyarrow("DECIMAL(15,2)", pa) == pa.decimal128(15, 2)
+        assert DataFusionAdapter._map_schema_type_to_pyarrow("NUMERIC(15, 2)", pa) == pa.decimal128(15, 2)
+        assert DataFusionAdapter._map_schema_type_to_pyarrow("DECIMAL(10)", pa) == pa.decimal128(10, 2)
+        assert DataFusionAdapter._map_schema_type_to_pyarrow("DOUBLE", pa) == pa.float64()
+        assert DataFusionAdapter._map_schema_type_to_pyarrow("FLOAT", pa) == pa.float64()
 
     @patch("benchbox.platforms.datafusion.SessionContext")
     def test_column_type_mapping_integer_uses_inference(self, mock_session_context):
