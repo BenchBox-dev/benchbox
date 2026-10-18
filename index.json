@@ -8527,6 +8527,19 @@
       "status": "open",
       "title": "Export generated documentation data without rendering Markdown"
     },
+    "docs-mig-core-freeze": {
+      "claim": null,
+      "needs": [
+        "docs-mig-ts-parity-gate",
+        "docs-mig-site-contract-checks",
+        "docs-mig-legacy-downloads-redirects",
+        "docs-mig-history-filter",
+        "docs-mig-adr-ownership"
+      ],
+      "priority": "critical",
+      "status": "open",
+      "title": "Freeze source ownership and pin the cutover snapshot"
+    },
     "docs-mig-core-relocate-contract-sql": {
       "claim": null,
       "needs": [
