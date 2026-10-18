@@ -42,6 +42,7 @@ jobs:
             clickhouse) compose=docker/clickhouse/docker-compose.yml; service=clickhouse ;;
             trino) compose=docker/trino/docker-compose.yml; service=trino ;;
             cedardb) compose=docker/cedardb/docker-compose.yml; service=cedardb ;;
+            postgres) compose=docker/postgresql/docker-compose.yml; service=postgresql ;;
             *) echo "::error::Unsupported mirror image: $IMAGE"; exit 1 ;;
           esac
           source=$(CLICKHOUSE_MEMORY_LIMIT=4g docker compose -f "$compose" config --format json | jq -r --arg service "$service" '.services[$service].image')
@@ -50,7 +51,20 @@ jobs:
             exit 1
           fi
           digest=${source##*@}
-          source_ref="docker://docker.io/$source"
+          source_name=${source%@*}
+          source_registry=docker.io
+          if [[ "$source_name" == */* && "${source_name%%/*}" == *[.:]* ]]; then
+            source_registry=${source_name%%/*}
+            source_name=${source_name#*/}
+          fi
+          source_repository=${source_name%/*}
+          source_leaf=${source_name##*/}
+          if [[ "$source_name" == */* ]]; then
+            source_repository="$source_repository/${source_leaf%%:*}"
+          else
+            source_repository=${source_leaf%%:*}
+          fi
+          source_ref="docker://$source_registry/$source_repository@${digest}"
           destination="ghcr.io/benchbox-dev/$IMAGE@${digest}"
           copy_destination="ghcr.io/benchbox-dev/$IMAGE:digest-${digest#sha256:}"
           destination_ref="docker://$destination"

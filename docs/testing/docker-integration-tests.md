@@ -26,7 +26,7 @@ Docker integration tests execute real queries against real database engines runn
 | ClickHouse | `clickhouse/clickhouse-server:25.8@sha256:0152dd511befe6a2c2ef53e930726179669b08116da78500b37c51c96ff5ee77` | 9000, 8123 | Native TCP / HTTP |
 | Trino | `trinodb/trino:480@sha256:1565e8cac299a32dd9177a4da2d748da4ceb9f1560a9c409d1d18fd72ea5253e` | 18080 -> 8080 | HTTP (DBAPI) |
 | Presto | `prestodb/presto:0.297` | 18081 -> 8080 | HTTP (DBAPI) |
-| PostgreSQL | `public.ecr.aws/docker/library/postgres:18` | 5432 | PostgreSQL wire |
+| PostgreSQL | `public.ecr.aws/docker/library/postgres:18@sha256:74935e72241653ca55e0414067e6d8763aceb8a810eb51b452253ec3dcfc4336` | 5432 | PostgreSQL wire |
 | StarRocks | `starrocks/allin1-ubuntu:3.5.16` | 19030 -> 9030, 18040 -> 8040 | MySQL / HTTP Stream Load |
 | Doris | `apache/doris:4.0.3-all-slim` | 19031 -> 9030, 18030 -> 8030 | MySQL / HTTP Stream Load |
 | Databend | `datafuselabs/databend` + MinIO | 8000, 19000 -> 9000, 19001 -> 9001 | HTTP/DSN |
@@ -34,19 +34,21 @@ Docker integration tests execute real queries against real database engines runn
 
 ## CI image registries
 
-PostgreSQL compose pulls the official image from Amazon ECR Public; the
+PostgreSQL compose pins the official image from Amazon ECR Public by digest; the
 nightly PostgreSQL service uses the same registry with its existing version 17.
-Nightly T3 and Docker integration jobs pull the manifest-list digests pinned in
-compose from `ghcr.io/benchbox-dev/clickhouse:25.8@sha256:0152dd511befe6a2c2ef53e930726179669b08116da78500b37c51c96ff5ee77`
-and `ghcr.io/benchbox-dev/trino:480@sha256:1565e8cac299a32dd9177a4da2d748da4ceb9f1560a9c409d1d18fd72ea5253e`.
+Nightly T3 jobs pull the manifest-list digests pinned in
+compose from `ghcr.io/benchbox-dev/clickhouse:25.8@sha256:0152dd511befe6a2c2ef53e930726179669b08116da78500b37c51c96ff5ee77`,
+`ghcr.io/benchbox-dev/trino:480@sha256:1565e8cac299a32dd9177a4da2d748da4ceb9f1560a9c409d1d18fd72ea5253e`,
+and `ghcr.io/benchbox-dev/postgres:18@sha256:74935e72241653ca55e0414067e6d8763aceb8a810eb51b452253ec3dcfc4336`.
 The nightly CedarDB throughput job uses `ghcr.io/benchbox-dev/cedardb` with the
 unchanged SHA-256 digest from its compose file.
 
 These jobs wait for `mirror-ci-images.yml`, which requires digest-pinned source
 references and checks GHCR by that digest on every run. A successful check
-records the pinned digest in the run summary without querying Docker Hub.
-Only a `MANIFEST_UNKNOWN` response triggers a Skopeo copy from the same pinned
-Docker Hub digest; all other registry errors fail closed. Copies preserve all
+records the pinned digest in the run summary without querying the source registry.
+Only a `MANIFEST_UNKNOWN` response triggers a Skopeo copy from the pinned
+source digest (the compose image reference without its tag, on Docker Hub or
+the registry the compose image names); all other registry errors fail closed. Copies preserve all
 architectures and manifest digests, then the workflow verifies the GHCR
 manifest. A missing mirror needs one successful upstream copy; a rate limit
 during that copy fails the mirror job rather than falling back in the consumer.

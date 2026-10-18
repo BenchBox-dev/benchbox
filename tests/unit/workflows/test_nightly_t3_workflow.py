@@ -61,6 +61,16 @@ def _run_text(job: dict[str, Any]) -> str:
     return "\n".join(str(step.get("run", "")) for step in _steps(job))
 
 
+def _mirrored_images(job: dict[str, Any]) -> list[str]:
+    return json.loads(job["with"]["images"])
+
+
+def _compose_default_image(compose: str) -> str:
+    match = re.search(r"image: \$\{[A-Z_]+:-([^}]+)\}", (REPO_ROOT / compose).read_text(encoding="utf-8"))
+    assert match, compose
+    return match.group(1)
+
+
 def _run_workflow_script(script: str, cwd: Path, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     skip_without_posix_shell()
     return run_posix_shell(
@@ -106,17 +116,18 @@ def test_docker_covers_all_three_services() -> None:
     docker = _load()["jobs"]["docker"]
     services = {entry["service"] for entry in docker["strategy"]["matrix"]["include"]}
     assert services == {"postgres", "clickhouse", "trino"}
+    assert set(_mirrored_images(_load()["jobs"]["mirror-images"])) >= services
     assert docker["strategy"]["fail-fast"] is False
 
 
-def test_docker_attempts_pulls_after_mirror_failure_without_authenticating_postgres() -> None:
+def test_docker_attempts_pulls_after_mirror_failure() -> None:
     jobs = _load()["jobs"]
     docker = jobs["docker"]
     assert str(docker["if"]).replace(" ", "") == "${{!cancelled()}}"
     needs = docker["needs"]
     assert "mirror-images" in ([needs] if isinstance(needs, str) else needs)
     login = next(step for step in _steps(docker) if "docker login ghcr.io" in str(step.get("run", "")))
-    assert str(login["if"]).replace(" ", "") == "${{matrix.service!='postgres'}}"
+    assert "if" not in login
     assert "mirror-images" in jobs["report"]["needs"]
 
 
@@ -144,7 +155,8 @@ def _run_mirror_step(
         "compose = sys.argv[sys.argv.index('-f') + 1]\n"
         "service = {'docker/clickhouse/docker-compose.yml': 'clickhouse', "
         "'docker/trino/docker-compose.yml': 'trino', "
-        "'docker/cedardb/docker-compose.yml': 'cedardb'}[compose]\n"
+        "'docker/cedardb/docker-compose.yml': 'cedardb', "
+        "'docker/postgresql/docker-compose.yml': 'postgresql'}[compose]\n"
         "print(json.dumps({'services': {service: {'image': os.environ['SOURCE_IMAGE']}}}))\n",
         encoding="utf-8",
     )
@@ -322,7 +334,7 @@ def test_mirror_copies_only_a_missing_digest_and_checks_the_result(
 ) -> None:
     manifest = '{"schemaVersion":2,"annotations":{"revision":"pinned"}}'
     digest = hashlib.sha256(manifest.encode("utf-8")).hexdigest()
-    pinned_source = f"{source_image}@sha256:{digest}"
+    tagless_source = f"{source_image.split(':')[0]}@sha256:{digest}"
     result, calls = _run_mirror_step(
         tmp_path,
         image=image,
@@ -333,7 +345,7 @@ def test_mirror_copies_only_a_missing_digest_and_checks_the_result(
     assert result.returncode == 0, result.stdout + result.stderr
     copy = next(call for call in calls if call[0] == "copy")
     assert "--all" in copy and "--preserve-digests" in copy
-    assert copy[-2] == f"docker://docker.io/{pinned_source}"
+    assert copy[-2] == f"docker://docker.io/{tagless_source}"
     assert copy[-1] == f"docker://ghcr.io/benchbox-dev/{image}:digest-{digest}"
     assert any(
         call[-1] == f"docker://ghcr.io/benchbox-dev/{image}@sha256:{digest}" for call in calls if call[0] == "inspect"
@@ -788,7 +800,7 @@ def test_throughput_cedardb_domain_runs_the_cell_from_the_mirrored_image() -> No
 
     assert job["needs"] == "mirror-cedardb"
     assert "if" not in job
-    assert jobs["mirror-images"]["with"]["images"] == '["clickhouse", "trino"]'
+    assert jobs["mirror-images"]["with"]["images"] == '["clickhouse", "trino", "postgres"]'
     assert jobs["mirror-cedardb"]["with"]["images"] == '["cedardb"]'
     assert "mirror-cedardb" in jobs["report"]["needs"]
     assert job["permissions"] == {"contents": "read", "packages": "read"}
@@ -850,3 +862,85 @@ def test_throughput_signal_publishes_the_commit_status_the_retiring_workflow_pub
     assert "success:success) state=success" in text
     assert "cancelled:*|*:cancelled) state=error" in text
     assert "throughput-signal" not in _load()["jobs"]["report"]["needs"]
+
+
+@pytest.mark.parametrize(
+    ("image", "compose", "expected_source"),
+    [
+        (
+            "clickhouse",
+            "docker/clickhouse/docker-compose.yml",
+            "docker://docker.io/clickhouse/clickhouse-server@sha256:0152dd511befe6a2c2ef53e930726179669b08116da78500b37c51c96ff5ee77",
+        ),
+        (
+            "trino",
+            "docker/trino/docker-compose.yml",
+            "docker://docker.io/trinodb/trino@sha256:1565e8cac299a32dd9177a4da2d748da4ceb9f1560a9c409d1d18fd72ea5253e",
+        ),
+        (
+            "cedardb",
+            "docker/cedardb/docker-compose.yml",
+            "docker://docker.io/cedardb/cedardb@sha256:dbbacb16b24421a9a123cd1d065e2a049c60b7cc6060d7db2f3cccbf69f5ff62",
+        ),
+        (
+            "postgres",
+            "docker/postgresql/docker-compose.yml",
+            "docker://public.ecr.aws/docker/library/postgres@sha256:74935e72241653ca55e0414067e6d8763aceb8a810eb51b452253ec3dcfc4336",
+        ),
+    ],
+)
+def test_mirror_source_reference_for_the_committed_compose_pins(
+    tmp_path: Path, image: str, compose: str, expected_source: str
+) -> None:
+    source_image = _compose_default_image(compose)
+    digest = source_image.rsplit("@", 1)[1]
+    assert expected_source.endswith(f"@{digest}")
+    _, calls = _run_mirror_step(
+        tmp_path,
+        image=image,
+        source_image=source_image,
+        source_manifest="{}",
+        mirror_error="Error reading manifest: manifest unknown",
+        pin_source=False,
+    )
+    copy = next(call for call in calls if call[0] == "copy")
+    assert copy[-2] == expected_source
+    assert copy[-1] == f"docker://ghcr.io/benchbox-dev/{image}:digest-{digest.removeprefix('sha256:')}"
+
+
+def test_mirror_leaves_a_digest_only_source_unchanged(tmp_path: Path) -> None:
+    manifest = '{"schemaVersion":2,"annotations":{"revision":"pinned"}}'
+    digest = hashlib.sha256(manifest.encode("utf-8")).hexdigest()
+    result, calls = _run_mirror_step(
+        tmp_path,
+        image="cedardb",
+        source_image=f"cedardb/cedardb@sha256:{digest}",
+        source_manifest=manifest,
+        mirror_error="Error reading manifest: manifest unknown",
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    copy = next(call for call in calls if call[0] == "copy")
+    assert copy[-2] == f"docker://docker.io/cedardb/cedardb@sha256:{digest}"
+
+
+@pytest.mark.parametrize("image", ["clickhouse", "trino", "postgres"])
+def test_mirror_rejects_a_source_without_a_digest(tmp_path: Path, image: str) -> None:
+    result, calls = _run_mirror_step(
+        tmp_path,
+        image=image,
+        source_image="example/image:1",
+        source_manifest="{}",
+        pin_source=False,
+    )
+    assert result.returncode != 0
+    assert "must be pinned to a SHA-256 digest" in result.stdout + result.stderr
+    assert not calls
+
+
+def test_t3_docker_postgres_pulls_from_the_ghcr_mirror() -> None:
+    docker = _load()["jobs"]["docker"]
+    image = docker["env"]["POSTGRES_IMAGE"]
+    compose_image = _compose_default_image("docker/postgresql/docker-compose.yml")
+    assert image.startswith("ghcr.io/benchbox-dev/postgres:")
+    assert image.rsplit("@", 1)[1] == compose_image.rsplit("@", 1)[1]
+    assert "POSTGRES_IMAGE" in (REPO_ROOT / "docker/postgresql/docker-compose.yml").read_text(encoding="utf-8")
