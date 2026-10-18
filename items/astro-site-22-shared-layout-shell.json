@@ -6,7 +6,7 @@
     "Pagefind returns a docs term and a blog title; results section is absent or empty until astro-site-61",
     "Starlight overrides used are listed; none patch Starlight internals"
   ],
-  "context": "IN PR https://github.com/BenchBox-dev/BenchBox/pull/2606 as a2e0150a (2026-10-04). Overrides: PageTitle + Footer (wrap built-ins), routeMiddleware src/starlight-route.ts for edit links (develop). Evidence: e2e/shell.mjs axe 0 serious/critical at 1280/390/320 both themes, 44px targets, theme persistence, Pagefind docs+blog with empty Results section; header parity test extended. Independent review running. site-split-01 (2026-10-07): code merged; acceptance evidence (header parity green on Astro, axe matrix, Pagefind results) lives in PR #2606, not recorded here with run ids. Remaining verification owned by site-split-25 and site-split-30. Do not finish here.",
+  "context": "Dropped 2026-10-17 as delivered (owner chose \"Drop delivered, re-scope rest\"). Delivered in #2606 and live: docs pages report Astro v7.3.5 and Starlight v0.42.5. The header takes labels and links from the shared contract (website/tests/shell.test.ts, explorer/e2e/routes/header.spec.ts, both in site CI); theme persists under benchbox:theme; Pagefind 1.5.2 indexes only docs and blog (1767 pages); Starlight overrides go only through its components API. The axe matrix and Pagefind smoke search passed in #2606 but run in no workflow; moved to site-browser-acceptance-ci-20261017.",
   "description": "Build the shell in the layout variant chosen at G1 (default: Starlight docs inside a custom shell).\n\nComponents:\n- header: Docs, Blog, Results, GitHub, search, theme toggle\n- footer\n- docs layout: sidebar, breadcrumbs, on-page TOC, edit link\n- blog layout\n\nThe header must match the current header contract (results-explorer/src headerContract.ts and tests/unit/test_site_header_parity.py), and is extracted as a shared component so the Explorer renders the same shell (see astro-site-40).\n\nThe sidebar comes from config that the converter derives from toctrees.\n\nSearch: Pagefind indexes docs and blog HTML only. The search UI reserves a separate \"Results\" section. It stays empty until astro-site-61 supplies generated result summaries; Pagefind never indexes DuckDB-WASM content.\n\nUse real <a>/<button> elements, keep 44px touch targets, and make the layout work at phone width.",
   "links": [
     "tests/unit/test_site_header_parity.py",
@@ -45,6 +45,14 @@
       "op": "update",
       "op_id": "74eb58d8824d4050bb7bfa5f863377a5",
       "session_id": "17181812c7324e43a406f44f60eedacc"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-18T00:48:20Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "8d63a0976120408ba984088473d10a2c",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
     }
   ]
 }
