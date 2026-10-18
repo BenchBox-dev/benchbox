@@ -21918,13 +21918,18 @@
       "title": "Adopt the maintained SQLGlot distribution in BenchBox"
     },
     "sqlglot-soft-fork-distribution": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-19T01:12:50Z",
+        "generation": "15b814b680244c0986f8b42381865c9e",
+        "renewals": 0,
+        "worker": "mcp:codex-mcp-client:joe@joe-mac-mini.local:e0ab14b9d48e92582f492d05"
+      },
       "needs": [
         "sqlglot-soft-fork-source",
         "sqlglot-upper-bound-bigquery-filter-compat"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Build and verify an isolated BenchBox SQLGlot distribution"
     },
     "sqlglot-soft-fork-publish": {
