@@ -1145,7 +1145,8 @@ def _parse_version(v: str) -> tuple[int, tuple[int, ...], tuple[int, int, int, i
     if not m:
         raise ValueError(f"invalid PEP 440 version: {v}")
 
-    rel_list = [int(x) for x in m.group("release").split(".")]
+    raw_release = tuple(int(x) for x in m.group("release").split("."))
+    rel_list = list(raw_release)
     while len(rel_list) > 1 and rel_list[-1] == 0:
         rel_list.pop()
     release = tuple(rel_list)
@@ -1166,7 +1167,7 @@ def _parse_version(v: str) -> tuple[int, tuple[int, ...], tuple[int, int, int, i
     else:
         phase = (0, 0, 0, 0)
 
-    return (epoch, release, phase)
+    return (epoch, release, phase, raw_release)
 
 
 def _extract_version_from_path(path: str) -> str:
@@ -1178,9 +1179,12 @@ def _extract_version_from_path(path: str) -> str:
 
 
 def _eval_spec_clause(clause: str, cand_p: tuple, cand_version: str) -> bool:
-    m_wildcard = re.match(r"^(==|!=)\s*([0-9]+(?:\.[0-9]+)*)\.\*$", clause)
+    m_wildcard = re.match(r"^(==|!=)\s*(?:([0-9]+)!)?([0-9]+(?:\.[0-9]+)*)\.\*$", clause)
     if m_wildcard:
-        op, prefix_str = m_wildcard.group(1), m_wildcard.group(2)
+        op, epoch_str, prefix_str = m_wildcard.group(1), m_wildcard.group(2), m_wildcard.group(3)
+        clause_epoch = int(epoch_str) if epoch_str is not None else 0
+        if cand_p[0] != clause_epoch:
+            return op != "=="
         if cand_p[2] != (0, 0, 0, 0):
             return op != "=="
         prefix = tuple(int(x) for x in prefix_str.split("."))
@@ -1220,9 +1224,7 @@ def _eval_spec_clause(clause: str, cand_p: tuple, cand_version: str) -> bool:
             return False
         if cand_p < v_p:
             return False
-        raw_v_parts = tuple(
-            int(x) for x in re.sub(r"[^0-9.]", "", v_str.partition("+")[0].partition("-")[0]).split(".")
-        )
+        raw_v_parts = v_p[3]
         if len(raw_v_parts) == 1:
             upper_prefix = (raw_v_parts[0] + 1,)
         else:
@@ -1250,13 +1252,18 @@ def _declares(requirement: str, owner: str, cand_version: str) -> bool:
     return all(_eval_spec_clause(c.strip(), cand_p, cand_version) for c in spec.split(",") if c.strip())
 
 
-def _verify_rollout_evidence(root: Path, owner: str, filename: str, digest: str, staged: bool) -> None:
+def _verify_rollout_evidence(
+    root: Path, owner: str, filename: str, expected_version: str, digest: str, staged: bool
+) -> None:
     evidence_path = "_project/analysis/batch-rollout-evidence.json"
     raw = head_blob(root, evidence_path, staged)
     if raw is None:
         raise ValueError(f"wheel bump is not verified: missing required rollout evidence ledger {evidence_path}")
     try:
         data = json.loads(raw.decode("utf-8"))
+        source_override = data.get("benchbox", {}).get("source_name_override")
+        if source_override is not None and _normalized_name(source_override) != _normalized_name(owner):
+            raise ValueError(f"evidence ledger source_name_override {source_override!r} does not match {owner!r}")
         artifact = data.get("artifact", {})
         if not isinstance(artifact, dict) or artifact.get("filename") != filename:
             raise ValueError(f"evidence ledger artifact filename {artifact.get('filename')!r} != {filename!r}")
@@ -1268,9 +1275,10 @@ def _verify_rollout_evidence(root: Path, owner: str, filename: str, digest: str,
         build = artifact.get("build", {})
         if not isinstance(build, dict) or not isinstance(build.get("source_input"), str):
             raise ValueError("evidence ledger must record build.source_input")
-        if not re.search(r"v\S+\s*\([a-f0-9]{40}\)", build["source_input"]):
+        expected_tag = f"v{expected_version}"
+        if not re.search(rf"\b{re.escape(expected_tag)}\s*\([a-f0-9]{{40}}\)", build["source_input"]):
             raise ValueError(
-                f"evidence ledger source_input must name release tag and full SHA, found {build['source_input']!r}"
+                f"evidence ledger source_input must name tag {expected_tag} and full SHA, found {build['source_input']!r}"
             )
         repro = build.get("reproducibility", {})
         if not isinstance(repro, dict) or repro.get("matching_sha256") != digest:
@@ -1345,7 +1353,7 @@ def verify_bound_wheel(root: Path, entry: dict, expected_version: str, staged: b
             )
         if packages[0].get("version") != expected_version:
             raise ValueError(f"{label}: uv.lock version does not match {expected_version}")
-        _verify_rollout_evidence(root, owner, filename, hashlib.sha256(wheel).hexdigest(), staged)
+        _verify_rollout_evidence(root, owner, filename, expected_version, hashlib.sha256(wheel).hexdigest(), staged)
     except (
         AttributeError,
         TypeError,

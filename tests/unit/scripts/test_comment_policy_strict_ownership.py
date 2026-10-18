@@ -175,7 +175,7 @@ def _bump_repo(tmp_path: Path, **overrides: object) -> tuple[Path, dict, dict]:
                     "sha256": raw_hash,
                     "origin": "GitHub release asset",
                     "build": {
-                        "source_input": "git archive v2.0 (0123456789012345678901234567890123456789)",
+                        "source_input": f"git archive v{version} (0123456789012345678901234567890123456789)",
                         "reproducibility": {"matching_sha256": raw_hash},
                     },
                 }
