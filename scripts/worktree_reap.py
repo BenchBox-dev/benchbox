@@ -99,6 +99,13 @@ def once_per_base(repo_root: Path) -> TargetRefresher:
     return functools.cache(lambda base: refresh_target_ref(base, repo_root))
 
 
+def open_pr_hold(res: FinishPreviewResult) -> Optional[str]:
+    if not res.open_pr_numbers:
+        return None
+    numbers = ", ".join(f"#{n}" for n in res.open_pr_numbers)
+    return f"branch '{res.branch}' still has open PR {numbers}"
+
+
 def merged_head_mismatch(res: FinishPreviewResult) -> Optional[str]:
     if res.merged_head and res.current_head == res.merged_head:
         return None
@@ -142,7 +149,7 @@ def classify_worktree(
         return verdict(AMBIGUOUS, f"finish evaluation failed: {err}")
 
     if res.status == "actionable":
-        mismatch = merged_head_mismatch(res)
+        mismatch = open_pr_hold(res) or merged_head_mismatch(res)
         if mismatch:
             return verdict(KEEP, mismatch)
         return verdict(
@@ -191,7 +198,7 @@ def remove_worktree(
         )
         if res.status != "actionable":
             return outcome("failed", f"re-evaluation held: {res.hold_reason}")
-        mismatch = merged_head_mismatch(res)
+        mismatch = open_pr_hold(res) or merged_head_mismatch(res)
         if mismatch:
             return outcome("failed", f"re-evaluation held: {mismatch}")
         worktree_removed, branch_deleted, executed = apply_finish_actions(res, repo_root)

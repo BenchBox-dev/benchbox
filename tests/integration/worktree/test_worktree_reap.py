@@ -287,6 +287,23 @@ def test_reused_branch_name_at_develop_tip_is_not_removed(tmp_path: Path) -> Non
     assert fresh.exists() and _branch_exists(repo, branch)
 
 
+def test_merged_branch_with_another_open_pr_is_kept(tmp_path: Path) -> None:
+    repo = _init_repo(tmp_path / "repo")
+    wt, branch = _feature_worktree(repo, "reopened")
+    open_pr = {"number": 9, "state": "open", "merged_at": None, "base": {"ref": "develop"}}
+    lookup = _lookup({branch: [_merge(repo, branch, 1), open_pr]})
+
+    verdict = _verdicts(repo, lookup)[wt.resolve()]
+    assert verdict.verdict == KEEP
+    assert "open PR #9" in verdict.reason
+
+    forced = ReapVerdict(verdict=REMOVE, path=verdict.path, branch=branch, head=verdict.head, reason="forced")
+    outcome = remove_worktree(forced, repo, SLUG, lookup)
+    assert outcome.status == "failed"
+    assert "open PR #9" in outcome.detail
+    assert wt.exists() and _branch_exists(repo, branch)
+
+
 def test_each_target_branch_is_refreshed_once_per_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     repo = _init_repo(tmp_path / "repo")
     prs: dict[str, list[dict[str, Any]]] = {}

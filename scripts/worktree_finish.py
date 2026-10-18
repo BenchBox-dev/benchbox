@@ -72,6 +72,7 @@ class FinishPreviewResult:
     merge_commit_reachable: bool
     proposed_actions: List[Dict[str, str]]
     timestamp: str
+    open_pr_numbers: Tuple[int, ...] = ()
 
     def to_dict(self) -> Dict[str, Any]:
         return dataclasses.asdict(self)
@@ -755,6 +756,7 @@ def evaluate_finish_preview(
         merge_commit_reachable=True,
         proposed_actions=proposed,
         timestamp=now_utc,
+        open_pr_numbers=tuple(p.get("number") for p in prs if p.get("state") == "open"),
     )
 
 
