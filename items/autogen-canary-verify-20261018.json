@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "The dispatched run URL and develop head SHA are recorded; the four target tests are shown passing in it",
+    "#2887 has an evidence comment and is closed by a green canary result, or remains open with the distinct remaining failures listed and follow-ups created",
+    "No release-readiness setting or ruleset was touched"
+  ],
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs the four tests green in a live canary run. FAIL if #2887 is closed by hand against a red canary. Never poll: record WAITING with the run id and end the invocation.",
+  "description": "Verification and hosted-write item (D7, D8). After the TPC-H failure fixes have merged, dispatch release-canary.yml on develop (read its dispatch inputs first). The canary reporter closes #2887 itself on a green run; verify rather than duplicate.\nExpected: the four tests behind the 2026-10-17/18 failures are green. The canary failure set has changed daily since 2026-10-09, so other failures may exist: if the canary is red for different tests, record each test id, comment on #2887 with the evidence and create one follow-up item per distinct cause; this item then finishes only if the four target tests pass.\nRelated existing item with a separate aggregator bug that can mask results: ci-retry-artifact-collision-breaks-canary-gate (do not fix here; check the run is not affected).",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/issues/2887",
+    "item:ci-retry-artifact-collision-breaks-canary-gate"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7ac6538e56f6607b35a3f600",
+      "at": "2026-10-18T20:24:32Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1e646cc8901e43e3bed1699dddf051cf",
+      "session_id": "cab8a4e762844fd9912c504ebfd76c56"
+    }
+  ]
+}
