@@ -638,6 +638,8 @@ ci-lint:
 	[ $$? -eq 0 ] || failed="$$failed ruff-format"; \
 	uv run ty check; \
 	[ $$? -eq 0 ] || failed="$$failed ty-check"; \
+	$(MAKE) typecheck; \
+	[ $$? -eq 0 ] || failed="$$failed bundled-runtime-typecheck"; \
 	$(MAKE) quality-governance-typecheck; \
 	[ $$? -eq 0 ] || failed="$$failed quality-governance-typecheck"; \
 	$(MAKE) uv-lock-revision-check; \
