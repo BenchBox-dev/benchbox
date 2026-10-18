@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Specification for recurring nightly or scheduled PR workflow that updates tests/fixtures/test_durations.json",
+    "Updated test-tier-policy.md documenting handling of newly added unmeasured tests before nightly measurement"
+  ],
+  "context": "Decision A2 in fast-lane remediation plan: design the durable duration budget refresh loop as a follow-up item.",
+  "description": "Design and implement recurring refresh loop for tests/fixtures/test_durations.json and clarify duration policy contract for newly added tests.",
+  "sessions": [
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:583acf13c5bd57c889a0a6d0",
+      "at": "2026-10-18T03:06:23Z",
+      "client": "antigravity-client",
+      "op": "create",
+      "op_id": "17ba6f09a4b54ec9b02050fb076a08a7",
+      "session_id": "3d3966853b9243b9a8a4edf367cb475b"
+    }
+  ]
+}

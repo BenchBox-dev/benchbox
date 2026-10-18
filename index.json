@@ -10133,6 +10133,13 @@
       "status": "done",
       "title": "Fast-lane budget: remove per-PR contention on fast_test_lane_policy.json (log split, quantum, base-relative delta, auto-ratchet)"
     },
+    "fast-lane-duration-budget-refresh-loop": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Design recurring test duration refresh loop and unmeasured test policy"
+    },
     "fast-lane-load-sensitive-tests-worktree-audit-disk-floor-20261005": {
       "claim": null,
       "needs": [],
