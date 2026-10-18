@@ -21942,6 +21942,15 @@
       "status": "open",
       "title": "ship-no-ship: local executor handoff, state generations and record-state in the engine"
     },
+    "ssns-n5-release-workflow": {
+      "claim": null,
+      "needs": [
+        "ssns-n4-local-executor"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "ship-no-ship: reproducible release workflow and wheel verifier"
+    },
     "stabilize-full-test-suite-failures": {
       "claim": null,
       "needs": [],

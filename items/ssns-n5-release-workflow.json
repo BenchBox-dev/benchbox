@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Wheel installs in a clean venv and runs ship-no-ship --help"
+  ],
+  "context": "Done: joeharris76/ship-no-ship#6 merged after owner review.",
+  "description": "Plan step N5. release.yml (tag to wheels, SHA-256 sums, source diff between tags, Linux/macOS identical-build check), CHANGELOG, docs/releasing.md, verify_wheel.py. Cutting v0.1.0 is tracked separately (ssns-v010-release).",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51",
+      "at": "2026-10-18T00:53:58Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "e5e9c430c75b44a7b8e4eba8160c4a66",
+      "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    }
+  ]
+}
