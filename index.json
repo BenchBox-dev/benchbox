@@ -8554,6 +8554,15 @@
       "status": "open",
       "title": "Generate query, compatibility and tuning pages in TypeScript"
     },
+    "docs-mig-ts-parity-gate": {
+      "claim": null,
+      "needs": [
+        "docs-mig-site-ts-generators"
+      ],
+      "priority": "critical",
+      "status": "open",
+      "title": "Prove TypeScript output matches Python-generated documentation"
+    },
     "docs-move-internal-to-internal-root": {
       "claim": null,
       "needs": [],
