@@ -455,3 +455,85 @@ class TestDataFrameMaintenanceDryRun:
 
         assert "_maintenance_not_supported" not in result.queries
         assert "DM1_INSERT" in result.queries
+
+
+class TestDataFrameAdapterDryRun:
+    def _make_benchmark(self):
+        benchmark = Mock()
+        benchmark.scale_factor = 0.1
+        benchmark.get_queries.return_value = {"1": "SELECT 1"}
+        benchmark.get_all_queries = Mock(return_value={})
+        benchmark.get_schema.return_value = {}
+        return benchmark
+
+    def test_dataframe_dry_run_uses_dataframe_adapter_for_dual_registered_platform(self, mock_system_profile, tmp_path):
+        database_config = DatabaseConfig(
+            type="pyspark",
+            name="pyspark",
+            execution_mode="dataframe",
+            options={"driver_memory": "4g"},
+        )
+        benchmark_config = BenchmarkConfig(name="tpch", display_name="TPC-H", scale_factor=0.1)
+
+        with (
+            patch.object(CoreDryRunExecutor, "_get_benchmark_instance", return_value=self._make_benchmark()),
+            patch.object(CoreDryRunExecutor, "_get_platform_config", return_value={"driver_memory": "4g"}),
+            patch("benchbox.core.dryrun.get_adapter") as mock_dataframe_adapter,
+            patch("benchbox.core.dryrun.get_platform_adapter") as mock_sql_adapter,
+        ):
+            mock_dataframe_adapter.return_value.deployment_selected = None
+            executor = DryRunExecutor(tmp_path)
+            result = executor.execute_dry_run(benchmark_config, mock_system_profile, database_config)
+
+        mock_dataframe_adapter.assert_called_once()
+        assert mock_dataframe_adapter.call_args.args[0] == "pyspark"
+        assert mock_dataframe_adapter.call_args.kwargs["mode"] == "dataframe"
+        assert mock_dataframe_adapter.call_args.kwargs["driver_memory"] == "4g"
+        mock_sql_adapter.assert_not_called()
+        assert not any("Platform adapter initialization failed" in warning for warning in result.warnings)
+
+    def test_dataframe_only_alias_dry_run_rejects_invalid_option(self, mock_system_profile, tmp_path):
+        from benchbox.platforms.dataframe.pyspark_df import PYSPARK_AVAILABLE
+
+        if not PYSPARK_AVAILABLE:
+            pytest.skip("PySpark is not available")
+
+        database_config = DatabaseConfig(
+            type="lakesail-df",
+            name="lakesail",
+            execution_mode="dataframe",
+            options={"deployment_mode": "bogus"},
+        )
+        benchmark_config = BenchmarkConfig(name="tpch", display_name="TPC-H", scale_factor=0.1)
+
+        with (
+            patch.object(CoreDryRunExecutor, "_get_benchmark_instance", return_value=self._make_benchmark()),
+            patch.object(CoreDryRunExecutor, "_get_platform_config", return_value={"type": "lakesail-df"}),
+            patch("benchbox.core.dryrun.get_platform_adapter") as mock_sql_adapter,
+        ):
+            executor = DryRunExecutor(tmp_path)
+            result = executor.execute_dry_run(benchmark_config, mock_system_profile, database_config)
+
+        mock_sql_adapter.assert_not_called()
+        assert any(
+            "Platform adapter initialization failed" in warning and "deployment mode 'bogus'" in warning
+            for warning in result.warnings
+        )
+
+    def test_sql_dry_run_uses_sql_adapter(self, mock_system_profile, tmp_path):
+        database_config = DatabaseConfig(type="duckdb", name="test.db")
+        benchmark_config = BenchmarkConfig(name="tpch", display_name="TPC-H", scale_factor=0.1)
+
+        with (
+            patch.object(CoreDryRunExecutor, "_get_benchmark_instance", return_value=self._make_benchmark()),
+            patch.object(CoreDryRunExecutor, "_get_platform_config", return_value={"type": "duckdb"}),
+            patch("benchbox.core.dryrun.get_adapter") as mock_dataframe_adapter,
+            patch("benchbox.core.dryrun.get_platform_adapter") as mock_sql_adapter,
+        ):
+            mock_sql_adapter.return_value.deployment_selected = None
+            executor = DryRunExecutor(tmp_path)
+            result = executor.execute_dry_run(benchmark_config, mock_system_profile, database_config)
+
+        mock_sql_adapter.assert_called_once_with("duckdb", type="duckdb", dry_run=True)
+        mock_dataframe_adapter.assert_not_called()
+        assert result.execution_mode == "sql"
