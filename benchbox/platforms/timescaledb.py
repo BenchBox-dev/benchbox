@@ -417,6 +417,7 @@ class TimescaleDBAdapter(PostgreSQLAdapter):
             )
             clauses = generator.generate_tuning_clauses(table_tuning)
             qualified_name = psql.Identifier(self.schema, table_name).as_string(connection)
+            executed_statements: list[str] = []
             for template in clauses.post_create_statements:
                 statement = template.replace(
                     "'{table_name}'", psql.Literal(qualified_name).as_string(connection)
@@ -429,9 +430,25 @@ class TimescaleDBAdapter(PostgreSQLAdapter):
                     if ledger is not None:
                         ledger.record(statement, PHASE_DDL, status=STATEMENT_FAILED, table=table_name, error=exc)
                     raise
-                if ledger is not None:
+                executed_statements.append(statement)
+            observed_by_kind = self._verify_native_table_tuning(cursor, table_name, requested)
+            if ledger is not None:
+                for statement in executed_statements:
                     ledger.record(statement, PHASE_DDL, table=table_name, mechanism="timescaledb_native_layout")
-            self._verify_native_table_tuning(cursor, table_name, requested, ledger)
+                for kind, observed in observed_by_kind.items():
+                    footprint = "create_hypertable" if kind == TuningType.PARTITIONING else "timescaledb.compress"
+                    statement_index = ledger.executed_statement_index(
+                        lambda statement, _table=table_name, _footprint=footprint: (
+                            statement.table == _table and _footprint in statement.statement
+                        )
+                    )
+                    if statement_index is None:
+                        raise ValueError(f"No executed native layout statement for {kind.value}:{table_name}")
+                    ledger.record_satisfied(
+                        f"{kind.value}:{table_name}",
+                        statement_index,
+                        f"timescaledb_information catalog readback: {observed!r}",
+                    )
             self._hypertables.add(table_name)
         except Exception as exc:
             connection.rollback()
@@ -443,7 +460,7 @@ class TimescaleDBAdapter(PostgreSQLAdapter):
         finally:
             cursor.close()
 
-    def _verify_native_table_tuning(self, cursor: Any, table_name: str, requested: dict, ledger: Any) -> None:
+    def _verify_native_table_tuning(self, cursor: Any, table_name: str, requested: dict) -> dict:
         from benchbox.core.tuning.interface import TuningType
 
         cursor.execute(
@@ -456,18 +473,48 @@ class TimescaleDBAdapter(PostgreSQLAdapter):
         if time_columns != expected_time:
             raise ValueError(f"Hypertable catalog mismatch: expected {expected_time}, observed {time_columns}")
         cursor.execute(
+            "SELECT column_name FROM timescaledb_information.dimensions "
+            "WHERE hypertable_schema = %s AND hypertable_name = %s AND dimension_type = 'Space' "
+            "ORDER BY dimension_number",
+            (self.schema, table_name),
+        )
+        space_columns = [row[0] for row in cursor.fetchall()]
+        distribution_columns = sorted(requested[TuningType.DISTRIBUTION], key=lambda column: column.order)
+        expected_space = [distribution_columns[0].name] if distribution_columns else []
+        if space_columns != expected_space:
+            raise ValueError(f"Space dimension catalog mismatch: expected {expected_space}, observed {space_columns}")
+        cursor.execute(
             "SELECT attname, segmentby_column_index, orderby_column_index, orderby_asc, orderby_nullsfirst "
             "FROM timescaledb_information.compression_settings "
             "WHERE hypertable_schema = %s AND hypertable_name = %s",
             (self.schema, table_name),
         )
         settings = cursor.fetchall()
+        observed_by_kind: dict = {}
+        segment_columns = sorted(
+            {
+                column.name: column
+                for column in distribution_columns
+                + sorted(requested[TuningType.CLUSTERING], key=lambda column: column.order)
+            }.values(),
+            key=lambda column: column.order,
+        )
+        expected_segmentby = [column.name for column in segment_columns]
+        observed_segmentby = [row[0] for row in sorted(settings, key=lambda row: row[1] or 0) if row[1]]
         for kind, columns in requested.items():
             if not columns:
                 continue
             ordered = sorted(columns, key=lambda column: column.order)
             if kind == TuningType.PARTITIONING:
-                observed = time_columns
+                observed_by_kind[kind] = time_columns
+            elif kind == TuningType.DISTRIBUTION:
+                if observed_segmentby != expected_segmentby or space_columns != expected_space:
+                    raise ValueError(
+                        f"Space and segmentation catalog mismatch: expected space {expected_space} "
+                        f"segmentby {expected_segmentby}, observed space {space_columns} "
+                        f"segmentby {observed_segmentby}"
+                    )
+                observed_by_kind[kind] = space_columns
             elif kind == TuningType.SORTING:
                 observed = [(row[0], row[3], row[4]) for row in sorted(settings, key=lambda row: row[2] or 0) if row[2]]
                 expected = [
@@ -479,24 +526,19 @@ class TimescaleDBAdapter(PostgreSQLAdapter):
                     )
                     for column in ordered
                 ]
-                if observed[: len(expected)] != expected:
+                extra = observed[len(expected) :]
+                extra_names = [name for name, _, _ in extra]
+                if observed[: len(expected)] != expected or extra_names not in ([], expected_time):
                     raise ValueError(f"Compression ordering catalog mismatch: expected {expected}, observed {observed}")
+                observed_by_kind[kind] = observed
             else:
-                observed = [row[0] for row in sorted(settings, key=lambda row: row[1] or 0) if row[1]]
-                if not all(column.name in observed for column in ordered):
-                    raise ValueError(f"Compression segmentation catalog mismatch: observed {observed}")
-            if ledger is not None:
-                footprint = "create_hypertable" if kind == TuningType.PARTITIONING else "timescaledb.compress"
-                statement_index = ledger.executed_statement_index(
-                    lambda statement: statement.table == table_name and footprint in statement.statement
-                )
-                if statement_index is None:
-                    raise ValueError(f"No executed native layout statement for {kind.value}:{table_name}")
-                ledger.record_satisfied(
-                    f"{kind.value}:{table_name}",
-                    statement_index,
-                    f"timescaledb_information catalog readback: {observed!r}",
-                )
+                if observed_segmentby != expected_segmentby:
+                    raise ValueError(
+                        f"Compression segmentation catalog mismatch: expected {expected_segmentby}, "
+                        f"observed {observed_segmentby}"
+                    )
+                observed_by_kind[kind] = observed_segmentby
+        return observed_by_kind
 
     def _get_tables_with_time_column(self, connection: Any, tables: list[str]) -> list[str]:
         if not tables:

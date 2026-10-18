@@ -138,13 +138,16 @@ benchbox run --platform timescaledb --benchmark tpch --scale 0.01 \
 ```
 
 Each tuned table needs exactly one partition column with a server-side `DATE`
-or timestamp type. That column becomes its hypertable time dimension. Sorting
-columns become `timescaledb.compress_orderby`; clustering and distribution
-columns become `timescaledb.compress_segmentby`. Distribution also configures
-the generator's native space partition. Sorting or segmentation requests enable
-compression, even when the platform's `compression_enabled` default is false.
-These are compression-layout settings, not a guarantee that all rows have
-already been compressed or that ordinary query output is sorted.
+or timestamp type. That column becomes its hypertable time dimension. The first
+distribution column, when present, becomes the native space dimension; every
+distribution and clustering column, in tuning order, becomes
+`timescaledb.compress_segmentby` in that exact order. Sorting columns become
+`timescaledb.compress_orderby` in tuning order; TimescaleDB may append the time
+column after the requested keys, and only that suffix is accepted. Sorting or
+segmentation requests enable compression, even when the platform's
+`compression_enabled` default is false. These are compression-layout settings,
+not a guarantee that all rows have already been compressed or that ordinary
+query output is sorted.
 
 The tuning file selects columns; `chunk_interval` and `compression_after`
 platform options select the intervals. An explicit layout request takes
