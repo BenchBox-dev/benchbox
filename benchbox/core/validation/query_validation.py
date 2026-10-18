@@ -9,6 +9,9 @@ import benchbox.core.expected_results  # noqa: F401
 from benchbox.core.expected_results.models import ValidationMode, ValidationResult
 from benchbox.core.expected_results.registry import LoadOutcome, get_registry
 from benchbox.core.expected_results.ssb_results import normalize_ssb_query_id
+from benchbox.core.expected_results.tpcds_results import (
+    TPCDS_PARAMETER_SENSITIVE_QUERY_IDS as _TPCDS_PARAMETER_SENSITIVE_QUERY_IDS,
+)
 from benchbox.core.expected_results.tpch_results import (
     PARAMETER_SENSITIVE_QUERY_IDS as _TPCH_PARAMETER_SENSITIVE_QUERY_IDS,
 )
@@ -18,6 +21,8 @@ logger = logging.getLogger(__name__)
 _PARAMETER_SENSITIVE_QUERY_IDS_BY_BENCHMARK: dict[str, frozenset[str]] = {
     "tpch": _TPCH_PARAMETER_SENSITIVE_QUERY_IDS,
     "tpc-h": _TPCH_PARAMETER_SENSITIVE_QUERY_IDS,
+    "tpcds": _TPCDS_PARAMETER_SENSITIVE_QUERY_IDS,
+    "tpc-ds": _TPCDS_PARAMETER_SENSITIVE_QUERY_IDS,
 }
 
 
@@ -123,12 +128,11 @@ class QueryValidator:
         query_id_str = str(query_id)
 
         if benchmark_type.lower() in ("tpcds", "tpc-ds"):
-            match = re.search(r"(\d+)([a-d]?)", query_id_str)
+            match = re.fullmatch(r"[Qq]?(\d+)([a-dA-D]?)", query_id_str.strip())
             if match:
                 query_num = str(int(match.group(1)))
-                variant = match.group(2)
+                variant = match.group(2).lower()
                 return f"{query_num}{variant}"
-
         elif benchmark_type.lower() in ("tpch", "tpc-h"):
             match = re.search(r"(\d+)", query_id_str)
             if match:

@@ -129,7 +129,6 @@ class TestParameterSensitiveValidation:
         assert get_parameter_sensitive_query_ids("TPCH") == PARAMETER_SENSITIVE_QUERY_IDS
 
     def test_get_parameter_sensitive_query_ids_unknown_benchmark_is_empty(self):
-        assert get_parameter_sensitive_query_ids("tpcds") == frozenset()
         assert get_parameter_sensitive_query_ids("unknown_benchmark") == frozenset()
 
     def test_context_default_is_none(self):

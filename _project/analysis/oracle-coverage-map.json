@@ -293,13 +293,13 @@
       "dual_surface": true,
       "guarded": true,
       "independence": "semi-independent",
-      "independence_rationale": "External TPC answer sets provide row-count authority only; result values are not checked.",
+      "independence_rationale": "External TPC answer sets provide SF=1 row-count authority; subscale row counts are verified against cross-engine (DuckDB/DataFusion) reference counts.",
       "oracles": [
         "expected-results",
         "cross-surface"
       ],
       "primary_oracle": "expected-results",
-      "scale": "SF=1",
+      "scale": "SF=1, 0.01, 0.1",
       "strength": "cardinality-only",
       "surface_provenance": "separate-handwritten",
       "surface_provenance_rationale": "TPC-DS expression and pandas DataFrame implementations are separately handwritten for each query.",

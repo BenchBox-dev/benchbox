@@ -4,8 +4,11 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import math
 import os
+from pathlib import Path
 
 from benchbox.core.expected_results.loader import load_tpcds_expected_results
 from benchbox.core.expected_results.models import (
@@ -15,6 +18,54 @@ from benchbox.core.expected_results.models import (
 )
 
 logger = logging.getLogger(__name__)
+
+_SUBSCALE_REFERENCE_PATH = Path(__file__).with_name("reference_digests") / "tpcds_subscale_row_counts.json"
+
+
+def _load_subscale_reference() -> dict:
+    try:
+        payload = json.loads(_SUBSCALE_REFERENCE_PATH.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict) or payload.get("benchmark") != "tpcds":
+            return {}
+        return payload
+    except (OSError, ValueError) as exc:
+        logger.warning(f"TPC-DS subscale row-count reference is unreadable: {_SUBSCALE_REFERENCE_PATH}: {exc}")
+        return {}
+
+
+def _materialize_subscale_reference() -> tuple[dict[float, dict[str, int]], frozenset[str], dict, int]:
+    raw = _load_subscale_reference()
+    try:
+        counts = {
+            float(scale): {str(query_id): int(row_count) for query_id, row_count in scale_counts.items()}
+            for scale, scale_counts in raw.get("scales", {}).items()
+        }
+        sensitive = frozenset(str(query_id) for query_id in raw.get("parameter_sensitive_query_ids", []))
+        provenance = dict(raw.get("provenance", {}))
+        rngseed = int(raw.get("reference", {}).get("dsqgen_rngseed", 1001))
+        return counts, sensitive, provenance, rngseed
+    except (TypeError, ValueError, AttributeError) as exc:
+        logger.warning(f"TPC-DS subscale row-count reference is malformed: {exc}")
+        return {}, frozenset(), {}, 1001
+
+
+(
+    TPCDS_SUBSCALE_ROW_COUNTS,
+    TPCDS_PARAMETER_SENSITIVE_QUERY_IDS,
+    TPCDS_SUBSCALE_PROVENANCE,
+    TPCDS_REFERENCE_RNGSEED,
+) = _materialize_subscale_reference()
+
+
+def tpcds_subscale_expected_row_counts(scale_factor: float) -> dict[str, int] | None:
+    for recorded_scale, counts in TPCDS_SUBSCALE_ROW_COUNTS.items():
+        if math.isclose(recorded_scale, scale_factor, rel_tol=1e-9):
+            return counts
+    return None
+
+
+def tpcds_subscale_reference_seed(seed: int | None) -> bool:
+    return seed is None or seed == 1
 
 
 def set_query_validation_mode(mode: ValidationMode | None) -> None:
@@ -65,8 +116,34 @@ def get_query_validation_mode() -> ValidationMode:
 
 def get_tpcds_expected_results(scale_factor: float = 1.0) -> BenchmarkExpectedResults | None:
     if scale_factor != 1.0:
+        subscale_counts = tpcds_subscale_expected_row_counts(scale_factor)
+        if subscale_counts is not None:
+            return BenchmarkExpectedResults(
+                benchmark_name="tpcds",
+                scale_factor=scale_factor,
+                query_results={
+                    query_id: ExpectedQueryResult(
+                        query_id=query_id,
+                        scale_factor=scale_factor,
+                        expected_row_count=row_count,
+                        validation_mode=ValidationMode.EXACT,
+                        notes=(
+                            f"Expected result from TPC-DS subscale recorded row counts for SF={scale_factor} "
+                            f"at dsqgen RNGSEED {TPCDS_REFERENCE_RNGSEED} (stream 0)."
+                        ),
+                    )
+                    for query_id, row_count in subscale_counts.items()
+                },
+                metadata={
+                    "source": "TPC-DS subscale recorded row counts",
+                    "total_queries": len(subscale_counts),
+                    "reference_rngseed": TPCDS_REFERENCE_RNGSEED,
+                    "provenance": TPCDS_SUBSCALE_PROVENANCE,
+                },
+            )
         logger.info(
-            f"TPC-DS expected results only available for SF=1.0. "
+            f"TPC-DS expected results only available for SF=1.0 and recorded subscale factors "
+            f"{sorted(TPCDS_SUBSCALE_ROW_COUNTS)}. "
             f"Validation will be skipped for SF={scale_factor}. "
             f"Most TPC-DS queries are scale-dependent."
         )

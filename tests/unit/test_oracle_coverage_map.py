@@ -106,7 +106,7 @@ def test_known_oracle_strength_and_scale_truth(rows):
     assert by_id["tpch"]["strength"] == STRENGTH_VALUE_AND_CARDINALITY
     assert by_id["tpch"]["scale"] == "SF=1"
     assert by_id["tpcds"]["strength"] == STRENGTH_CARDINALITY
-    assert by_id["tpcds"]["scale"] == "SF=1"
+    assert by_id["tpcds"]["scale"] == "SF=1, 0.01, 0.1"
 
     for benchmark in ("ssb", "amplab", "coffeeshop", "tpchavoc"):
         assert by_id[benchmark]["strength"] == STRENGTH_VALUE, f"{benchmark} should be value-level"
