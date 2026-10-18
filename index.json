@@ -1111,7 +1111,7 @@
         "astro-site-52-site-deploy-integration"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "dropped",
       "title": "Decision gate G3: switch every production route from Sphinx to Astro in one release-driven deploy"
     },
     "astro-site-54-retire-sphinx-and-legacy-site": {
