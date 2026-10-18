@@ -1070,7 +1070,7 @@
         "astro-site-22-shared-layout-shell"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Integrate the Results Explorer into the shared shell without changing its behaviour"
     },
     "astro-site-50-parity-harness": {
