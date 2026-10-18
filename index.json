@@ -22080,7 +22080,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "blocked",
       "title": "ship-no-ship discovery: a generation-0 request can be wrongly marked stale during an engine rollback"
     },
     "ssns-go-public": {

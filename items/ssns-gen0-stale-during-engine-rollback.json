@@ -3,7 +3,7 @@
     "Rollback case decided: fix, or document it in the rollback steps (operating-macos.md) with re-offer as the recovery",
     "Confirm the first installed database is created with the proof column, or add a migration test"
   ],
-  "context": "Accepted without fix during the fix review of the discovery/queue follow-ups (merged as db9d0be). Evidence: review-r2/adjudication.md.",
+  "context": "Accepted without fix during the fix review of the discovery/queue follow-ups (merged as db9d0be). Evidence: review-r2/adjudication.md. Blocked: the ship-no-ship effort was paused by the owner on 2026-10-17; resume only on the owner's word.",
   "description": "Discovery treats a generation-0 request as stale when the PR has a recorded non-proof review and a trusted, unexpired state artifact exists. If BenchBox rolls back to an engine version that does not read state generations, its requests carry generation 0 and can be staled even though they are current. Separately, queue rows created before the proof-column migration default to proof = 0; harmless today because no installed database exists, but it matters if a database is created before that migration ships.",
   "sessions": [
     {
@@ -12,6 +12,14 @@
       "client": "claude-code",
       "op": "create",
       "op_id": "d87c373979e443a180fb2faf0f3a41cd",
+      "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51",
+      "at": "2026-10-18T01:02:58Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "826c538a782e4ec7a3bd8b26efe1de8c",
       "session_id": "843d10c2193d483aba6b1b07dad544c1"
     }
   ]
