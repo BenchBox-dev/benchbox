@@ -2828,15 +2828,18 @@ def test_dependency_replacements_fail_closed(
 def test_dependency_removed_only_by_a_verified_policy_wheel_bump(
     tmp_path: Path, dependency_artifact_inputs, monkeypatch: pytest.MonkeyPatch, case: str
 ) -> None:
-    monkeypatch.setenv("BENCHBOX_TEST_SKIP_REMOTE_FETCH", "1")
     import io
     import zipfile
 
     scope, path, project_path, lock_path, frozen, _, records, rules, external = dependency_artifact_inputs
+    monkeypatch.setattr(scope, "_verify_upstream_release", lambda *a, **k: None)
     (tmp_path / path).unlink()
 
     base_policy_bytes = json.dumps({"version": 1, "external": external, "completed": [], "exceptions": []}).encode()
     frozen["quality/comment-policy.json"] = base_policy_bytes
+    frozen["_project/analysis/batch-rollout-evidence.json"] = json.dumps(
+        {"source": {"repository": "https://github.com/joeharris76/todo-db"}}
+    ).encode()
 
     bump_version = "0.9.0" if case != "downgrade" else "0.8.0"
     replacement = {**external[0], "path": path.replace("0.8.1", bump_version)}

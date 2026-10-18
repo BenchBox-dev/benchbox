@@ -144,7 +144,9 @@ def _wheel_bytes(name: str = "tool", version: str = "2.0") -> bytes:
 
 @pytest.fixture(autouse=True)
 def _skip_remote_fetch(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("BENCHBOX_TEST_SKIP_REMOTE_FETCH", "1")
+    import check_comment_cleanup_scope as scope
+
+    monkeypatch.setattr(scope, "_verify_upstream_release", lambda *a, **k: None)
 
 
 def _bump_repo(tmp_path: Path, **overrides: object) -> tuple[Path, dict, dict]:
@@ -175,6 +177,7 @@ def _bump_repo(tmp_path: Path, **overrides: object) -> tuple[Path, dict, dict]:
     (evidence_dir / "batch-rollout-evidence.json").write_text(
         json.dumps(
             {
+                "source": {"repository": "https://github.com/BenchBox-dev/tool"},
                 "artifact": {
                     "filename": "tool-2.0-py3-none-any.whl",
                     "sha256": raw_hash,
@@ -183,7 +186,7 @@ def _bump_repo(tmp_path: Path, **overrides: object) -> tuple[Path, dict, dict]:
                         "source_input": f"git archive v{version} (0123456789012345678901234567890123456789)",
                         "reproducibility": {"matching_sha256": raw_hash},
                     },
-                }
+                },
             }
         ),
         encoding="utf-8",

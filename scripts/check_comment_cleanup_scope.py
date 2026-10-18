@@ -1253,8 +1253,6 @@ def _declares(requirement: str, owner: str, cand_version: str) -> bool:
 
 
 def _verify_upstream_release(repo_url: str, version: str, filename: str, expected_hash: str) -> None:
-    if os.environ.get("BENCHBOX_TEST_SKIP_REMOTE_FETCH") == "1":
-        return
     tag = f"v{version}"
     url = f"{repo_url.rstrip('/')}/releases/download/{tag}/SHA256SUMS"
     req = urllib.request.Request(url, headers={"User-Agent": "BenchBox-Comment-Policy"})
@@ -1315,12 +1313,19 @@ def _verify_rollout_evidence(
         try:
             base_data = json.loads(base_blob(root, base, evidence_path).decode("utf-8"))
             trusted_repo = base_data.get("source", {}).get("repository", "")
-        except (subprocess.CalledProcessError, json.JSONDecodeError, UnicodeError, AttributeError, KeyError):
-            pass
-    if not trusted_repo:
+        except (subprocess.CalledProcessError, json.JSONDecodeError, UnicodeError, AttributeError, KeyError) as exc:
+            raise ValueError(f"cannot load trusted repository from base evidence ledger: {exc}") from exc
+        if not trusted_repo or not trusted_repo.startswith("https://github.com/"):
+            raise ValueError(
+                f"trusted upstream repository in base evidence ledger must be a GitHub URL, found {trusted_repo!r}"
+            )
+    else:
         trusted_repo = data.get("source", {}).get("repository", "")
-    if trusted_repo and trusted_repo.startswith("https://github.com/"):
-        _verify_upstream_release(trusted_repo, expected_version, filename, digest)
+        if not trusted_repo or not trusted_repo.startswith("https://github.com/"):
+            raise ValueError(
+                f"trusted upstream repository in evidence ledger must be a GitHub URL, found {trusted_repo!r}"
+            )
+    _verify_upstream_release(trusted_repo, expected_version, filename, digest)
 
 
 def _wheel_metadata(wheel: bytes, owner: str) -> email.message.Message:
