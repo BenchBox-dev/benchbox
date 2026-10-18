@@ -4,7 +4,7 @@
     "The fix makes the job finish well inside its timeout across at least 5 consecutive PR runs, without raising the timeout or skipping tests.",
     "If a test hangs, a per-test timeout or a regression test makes the hang fail fast with the test's name, instead of consuming the job timeout."
   ],
-  "context": "Cause identified: the autouse fixture _restore_logging_state in tests/conftest.py, added by #2970 (e1a4cf5a0), called Logger.setLevel on about 300 loggers after every test, and each call clears the whole logger cache. In a local A/B on 23,579 tests the suite took 560 s with the fixture and 294 s with it reduced to a bare yield. #3024 (4331f3b9b) fixed it: fast-runner fast tests went from 1,557 s back to 1,053 s. Separately, #3011 raised the job timeout from 45 to 60 minutes on the owner's decision, and the lane later moved to four xdist workers (#3040), Python 3.14 with sys.monitoring coverage (#3045), and reproducers and cold collection left the unit job (#3051). Re-check recent run times before investigating further.\n\nOpen question for the owner: criterion 2 says \"without raising the timeout\", but the timeout was raised to 60 minutes. Count criterion 2 as met (the #3024 runs finish well inside the limit), or rewrite it against the current limit?",
+  "context": "Cause identified: the autouse fixture _restore_logging_state in tests/conftest.py, added by #2970 (e1a4cf5a0), called Logger.setLevel on about 300 loggers after every test, and each call clears the whole logger cache. In a local A/B on 23,579 tests the suite took 560 s with the fixture and 294 s with it reduced to a bare yield. #3024 (4331f3b9b) fixed it: fast-runner fast tests went from 1,557 s back to 1,053 s. Separately, #3011 raised the job timeout from 45 to 60 minutes on the owner's decision, and the lane later moved to four xdist workers (#3040), Python 3.14 with sys.monitoring coverage (#3045), and reproducers and cold collection left the unit job (#3051).\n\nClosed 2026-10-17. Criterion 1: met (cause above). Criterion 2: owner, 2026-10-17, in a Claude Code session: \"Yes\" to counting it as met with the 60-minute limit. Criterion 3: not applicable; the cause was a slow fixture, not a hanging test.",
   "description": "The fast-test job on ubuntu-latest / Python 3.12 timed out at 45 minutes on PRs #2968 and #2985. Each time, rerunning the failed jobs passed. On #2960 (run 38612765430, attempt 2), the same job was still in \"Run fast tests\" more than 30 minutes after it started. The suite runs in about 6.5 minutes locally. This adds one to two hours of latency to every affected PR and forces manual reruns.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/2968",
@@ -34,6 +34,14 @@
       "client": "claude-code",
       "op": "update",
       "op_id": "714fdbf77eac401e9558f1a9cadd7ef6",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-18T00:18:20Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "326fc71330044387b6e249511150e313",
       "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
     }
   ]
