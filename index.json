@@ -2914,7 +2914,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "`--phases generate,load` without power exits 1: 'NoneType' object has no attribute 'overall_status'"
     },
     "cli-mcp-execution-type-divergence-still-live": {
