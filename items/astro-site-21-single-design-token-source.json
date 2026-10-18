@@ -6,7 +6,7 @@
     "Sphinx and landing keep their current CSS until cutover (no regression on those routes), except the intentional landing restyle used as the rehearsal below",
     "Visual approval rehearsal (moved from astro-site-03, owner decision 2026-10-03): this PR's intentional landing change is merged using the PR-head approval slot (APPROVED_HEAD_SHA/APPROVAL_REASON, set by the owner), with run ids recorded in the ADR's visual-change section. The merge-group slot applies only if develop has a merge queue again (retired 2026-10-03)."
   ],
-  "context": "2026-10-04: implementation merged in #2606 (b77ccf7c7). Open acceptance line: visual approval rehearsal. Owner decision 2026-10-05: run the rehearsal on the cutover PR (astro-site-53), which carries an intended visual change and needs the PR-head approval anyway; record its run ids in the ADR visual-change section, then finish 21 and the dependents whose code is merged (22, 33, 34, 35, 36, 40). site-split-01 (2026-10-07): rehearsal run ids were never recorded in the ADR visual-change section, so the finish condition is unverified. Remaining verification owned by site-split-25 (shadow parity) and site-split-30 (rehearsal). Do not finish here.",
+  "context": "Dropped 2026-10-17 as delivered (owner chose \"Drop delivered, re-scope rest\"). Delivered in #2606 and carried into BenchBox-dev/benchbox-site: landing/shared/site-tokens.css is the one token file, imported by website/src/layouts/Shell.astro, Starlight customCss in website/astro.config.ts and explorer/src/index.css. Token checks moved with it (explorer/src/__tests__/themeTokenHygiene.test.ts, website/tests/docs-code-theme.test.ts). The core lint targets, the Sphinx/landing CSS rule and the PR-head visual approval rehearsal went away with core's site (#3096); site visual review is advisory under site-split ADR D8. The leftover second theme file (site-theme.css) moves to astro-site-54.",
   "description": "Today tokens live in landing/shared/site-theme.css, the Furo variables in docs/_static, and the explorer's Tailwind config. scan_explorer_tokens.py, scan_explorer_stale_theme.py and lint-site-theme-tokens police the drift.\n\nCreate one CSS custom-property token file, light and dark, covering color, type, spacing and radius. website/ imports it. results-explorer's Tailwind config reads the same variables, so explorer output does not change visually.\n\nPoint the token lint targets at the new source. Keep the light/dark behaviour and the benchbox:theme key.",
   "links": [
     "landing/shared/site-theme.css",
@@ -78,6 +78,14 @@
       "op": "update",
       "op_id": "3acbfcb870c3469d9dd4f6c75a1c93f9",
       "session_id": "17181812c7324e43a406f44f60eedacc"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-18T00:48:13Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "3e5db8ca76104cd995a9d5a2ada21fe5",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
     }
   ]
 }
