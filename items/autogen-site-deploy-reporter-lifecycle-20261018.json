@@ -6,7 +6,7 @@
     "No new secret or permission; the bridge token scope is unchanged (assertion)",
     "PR merged in benchbox-site under that repo's gates (required checks green)"
   ],
-  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs every line. FAIL if any failure class is silently dropped or a marker can be set by error text. Site-side verification of live behavior happens in autogen-site-verify-and-close-20261018.",
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs every line. FAIL if any failure class is silently dropped or a marker can be set by error text. Site-side verification of live behavior happens in autogen-site-verify-and-close-20261018.\nPre-publication (AGENTS.md): self-review with the code review action and fix every Critical and Required finding before make pr-open (G13).",
   "description": "Site repo items (BenchBox-dev/benchbox-site): read that repo's AGENTS.md first and follow its worktree, test and PR rules (G2); decision D6 authorizes PRs and merges there.\nConfirmed: BenchBox-dev/benchbox-site .github/workflows/deploy.yml report-failure (lines 186-238) posts every failing deploy to the core repository under site-bundle-failed and never closes it on a later successful deploy; one issue accumulated six causes: 25 core parent-lookup failures (fixed elsewhere), 4 snapshot_digest gate failures (2026-10-14), 3 'Explorer read-model version 16 expected, got 17' (2026-10-17: core bumped the contract before the site accepted it), 1 GitHub egress 503, 3 post-deploy probe mismatches (2026-10-18; automatic rollback fired) and 1 producer-not-concluded.\nWork: (1) classify the site-side failure from the failing step/gate (producer-not-concluded, contract-version-mismatch, snapshot-digest gate, post-deploy probe mismatch, infrastructure) and relay under label site-bundle-undeployed (named by the core reporter item); comment only when the class changes; (2) a successful deploy comments and closes the open relay issue through the bridge token; (3) a contract-version mismatch is a named class whose text states the required action (update the Explorer for the new contract); (4) expected rejections (the deliberate wrong-digest negative probe, manual dispatch before certification) carry the explicit marker defined by the core reporter item and create no incident. Extract the classification into a testable script under deploy/ with tests (the repo's deploy/test pattern) rather than more inline shell.\nOut of scope, re-homed: preventing the core-before-site contract bump is autogen-site-contract-bump-sequencing-20261018.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/issues/2979",
@@ -20,6 +20,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "2d8a5e35ec67433299612fd9794ce708",
+      "session_id": "cab8a4e762844fd9912c504ebfd76c56"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7ac6538e56f6607b35a3f600",
+      "at": "2026-10-18T20:28:17Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a8d8cf3d63f244c7ad50a0337b18b572",
       "session_id": "cab8a4e762844fd9912c504ebfd76c56"
     }
   ]
