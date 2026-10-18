@@ -21949,15 +21949,10 @@
       "title": "Maintain the SQLGlot source patches on a reviewed upstream base"
     },
     "sqlglot-upper-bound-bigquery-filter-compat": {
-      "claim": {
-        "expires_at": "2026-10-19T01:11:21Z",
-        "generation": "dbd758be53724f0eb9be6273b591f0f9",
-        "renewals": 0,
-        "worker": "mcp:antigravity-client:joe@joe-mac-mini.local:83b3829dccae64b585f393fd"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Audit sqlglot >=30.23.0 BigQuery FILTER transpilation change against cloud_compat and pin or adapt"
     },
     "sqlite-database-name-ignored-20261016": {
