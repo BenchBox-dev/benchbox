@@ -385,6 +385,56 @@ def test_finalize_writes_the_strike_count_into_the_state_artifact(
     assert state["strikes"] == 3 and state["head_sha"] == HEAD
 
 
+def test_disputed_finding_on_the_same_head_is_rejudged_not_skipped() -> None:
+    record = {
+        "v": 2,
+        "cycle": 1,
+        "round": 1,
+        "kind": protocol.FIRST,
+        "decision": protocol.SHIP_WITH_FIXES,
+        "head_sha": HEAD,
+        "base_ref": "develop",
+        "reviewer": "muse",
+        "tier": "medium-high",
+        "strikes_after": 0,
+        "open_defects": [
+            {"id": "D1", "severity": "High", "file": "a.py", "line": 3, "end_line": None, "title": "disputed"}
+        ],
+        "next_id": 2,
+        "patch_digest": "d" * 32,
+        "carried": False,
+        "summary": "",
+    }
+    history = protocol.History([record])
+    skipped = protocol.plan_round(
+        history,
+        head_sha=HEAD,
+        base_ref="develop",
+        tier="medium-high",
+        digest="d" * 32,
+        patches={},
+        paths=["a.py"],
+        strike_count=0,
+        max_do_not_ship=3,
+    )
+    assert skipped.kind == protocol.SKIP
+    rejudged = protocol.plan_round(
+        history,
+        head_sha=HEAD,
+        base_ref="develop",
+        tier="medium-high",
+        digest="d" * 32,
+        patches={},
+        paths=["a.py"],
+        strike_count=0,
+        max_do_not_ship=3,
+        same_head_rereview=True,
+    )
+    assert rejudged.kind == protocol.FOLLOW_UP
+    assert rejudged.changed == frozenset({"a.py"})
+    assert rejudged.previous is not None and rejudged.previous["open_defects"][0]["id"] == "D1"
+
+
 FIXTURE = Path(__file__).resolve().parents[3] / "fixtures" / "oracle_reviewers" / "pr2769_history.json"
 
 

@@ -284,13 +284,15 @@ def test_dispatch_outside_develop_is_refused(monkeypatch: pytest.MonkeyPatch, tm
     assert values == {}
 
 
-def test_comment_rerun_after_a_decisive_result_is_refused(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_comment_rerun_after_a_decisive_result_replans_the_same_head(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     state = State(7, HEAD, "success", datetime.now(UTC) - timedelta(hours=3))
     _, values, plan = _plan(
         monkeypatch, tmp_path, FakeGitHub(_pull(), SOUNDNESS, state), event_name="issue_comment", event={}
     )
-    assert values["decision"] == "skip" and values["post"] == "false"
-    assert "already has a success result" in plan["decision_reason"]
+    assert values["decision"] == "review" and values["post"] == "true"
+    assert "manual same-head re-review within budget" in plan["decision_reason"]
 
 
 def test_manual_retry_inside_backoff_waits_for_the_next_slot(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

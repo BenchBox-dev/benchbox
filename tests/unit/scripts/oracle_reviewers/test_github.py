@@ -372,8 +372,15 @@ def test_review_threads_pages_and_keeps_the_first_comment(monkeypatch: pytest.Mo
 
     monkeypatch.setattr(github, "_gh", fake_gh)
     assert github.review_threads(REPO, 7) == [
-        {"resolved": False, "path": "a.py", "author": "benchbox-oracle", "author_type": "Bot", "body": "**High**: A"},
-        {"resolved": True, "path": "b.py", "author": None, "author_type": None, "body": ""},
+        {
+            "resolved": False,
+            "path": "a.py",
+            "author": "benchbox-oracle",
+            "author_type": "Bot",
+            "body": "**High**: A",
+            "replies": [],
+        },
+        {"resolved": True, "path": "b.py", "author": None, "author_type": None, "body": "", "replies": []},
     ]
     assert "after=c1" in calls[1] and not any(arg.startswith("after=") for arg in calls[0])
     flags = dict(zip(calls[0][1::2], calls[0][2::2], strict=False))

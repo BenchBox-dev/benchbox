@@ -249,6 +249,7 @@ def plan_round(
     paths: Sequence[str],
     strike_count: int,
     max_do_not_ship: int,
+    same_head_rereview: bool = False,
 ) -> Round:
     latest = found.latest
     if strike_count >= max_do_not_ship:
@@ -259,6 +260,15 @@ def plan_round(
     if latest is None:
         return Round(FIRST, "first review of this pull request")
     if latest["head_sha"] == head_sha:
+        if same_head_rereview and latest["decision"] != REFUSED:
+            return Round(
+                FOLLOW_UP,
+                f"manual same-head re-review after {LABELS[latest['decision']]}",
+                latest["cycle"],
+                latest["round"] + 1,
+                latest,
+                frozenset(paths),
+            )
         return Round(SKIP, f"head {head_sha} already has a {LABELS[latest['decision']]} decision")
     restart = latest["cycle"] + 1
     if latest["base_ref"] != base_ref:

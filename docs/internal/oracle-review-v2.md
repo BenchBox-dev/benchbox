@@ -303,7 +303,12 @@ request; the attempt jobs have no concurrency group of their own.
 - `/oracle-review` at the start of a top-level pull request comment, from an
   owner, member or collaborator, reruns the review on the current head. A reply
   on a review thread or a line comment does not trigger it, because those are
-  review comments, not issue comments.
+  review comments, not issue comments. A manual rerun may re-review the same
+  head after a decisive result, bounded by the daily retry budget and the
+  doubling backoff, so an author can dispute a finding without a new commit.
+  The new brief carries unresolved thread replies as disputed findings and
+  asks the reviewer to confirm or withdraw each disputed defect with a reason,
+  checking any claimed grammar or documented behaviour.
 - `gh workflow run oracle-verdict.yml --ref develop -f pr=<number>`
   does the same. A dispatch from any other ref is refused.
 - An hourly schedule retries pull requests whose last result on the current
