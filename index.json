@@ -22236,7 +22236,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "blocked",
       "title": "ship-no-ship: merge the public-repository hardening (README notice, tag-on-main, zip64 and skipped-file checks)"
     },
     "ssns-release-attestations": {
