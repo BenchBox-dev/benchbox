@@ -34,6 +34,7 @@ requires a human audience that belongs on benchbox.dev. A new
 | `handoffs.md` | Where resumable session state goes, and why handoff files are retired |
 | `cloud-builder.md` | How a cloud session builds, verifies, and hands off one change |
 | `merge-authority.md` | Owner holds, stand-in approvals, and bypassing required checks |
+| `remote-closeout.md` | Closing out a PR from the primary clone without a checkout |
 
 The eval runbook is `docs/internal/agent-instruction-evaluation.md`. The
 scenario corpus is `_project/evals/agent-instructions/`.
