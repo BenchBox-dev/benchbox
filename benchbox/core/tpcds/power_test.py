@@ -15,6 +15,10 @@ from benchbox.core.connection import DatabaseConnection
 from benchbox.core.plan_capture_phase import (
     propagate_query_execution_metadata,
 )
+from benchbox.core.validation.query_validation import (
+    clear_reference_seed_context,
+    set_reference_seed_context,
+)
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 
@@ -276,21 +280,25 @@ class TPCDSPowerTest:
             try:
                 if hasattr(connection, "set_query_context"):
                     connection.set_query_context(query_display_id, stream_id=self.config.stream_id)
-                cursor = connection.execute(query_text)
+                set_reference_seed_context(stream_param_seed == 1001)
+                try:
+                    cursor = connection.execute(query_text)
 
-                if hasattr(cursor, "platform_result"):
-                    result_dict = cursor.platform_result
-                    if result_dict.get("status") == "FAILED":
-                        error_msg = result_dict.get(
-                            "error", result_dict.get("row_count_validation_error", "Query validation failed")
-                        )
-                        raise RuntimeError(error_msg)
-                    propagate_query_execution_metadata(result_dict, query_result)
+                    if hasattr(cursor, "platform_result"):
+                        result_dict = cursor.platform_result
+                        if result_dict.get("status") == "FAILED":
+                            error_msg = result_dict.get(
+                                "error", result_dict.get("row_count_validation_error", "Query validation failed")
+                            )
+                            raise RuntimeError(error_msg)
+                        propagate_query_execution_metadata(result_dict, query_result)
 
-                result_count = self._query_result_count(cursor)
+                    result_count = self._query_result_count(cursor)
 
-                if hasattr(connection, "commit"):
-                    connection.commit()
+                    if hasattr(connection, "commit"):
+                        connection.commit()
+                finally:
+                    clear_reference_seed_context()
             finally:
                 self.captured_items.append((label, query_text))
 

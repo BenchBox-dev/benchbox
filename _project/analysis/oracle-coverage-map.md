@@ -1,6 +1,6 @@
 <!-- PROVENANCE
 generated: 2026-10-18
-content-revision: sha256:66231511773206b8
+content-revision: sha256:0e23755f48088714
 This header is drift-IGNORED by `--check` (see _strip_provenance). content-revision
 is a hash of the generated body (markdown + json), NOT a git SHA: a PR-branch SHA is
 orphaned by squash-merge, so to verify this artifact, regenerate it with
@@ -37,7 +37,7 @@ does this). Do not rely on this header for diffs.
 | read_primitives | sql+dataframe | cross-surface | value-level | SF=0.05 | self-referential | Both compared surfaces are benchbox's own implementations; see Surface provenance for how far apart they were authored. | mixed-provenance | Read Primitives combines explicit family implementations with factory-built/query-catalog implementations, so provenance is mixed rather than wholly independent. | enforced (CI-blocking) | cross-surface |
 | ssb | sql+dataframe | cross-surface | value-level | SF=0.1 | self-referential | Both compared surfaces are benchbox's own implementations; see Surface provenance for how far apart they were authored. | shared-spec | Both DataFrame backends are generated from compact SSB query metadata; the independent signal is SQL text versus the shared generated DataFrame spec. | enforced (CI-blocking) | expected-results, cross-surface |
 | tpcdi | sql+dataframe | NONE | — | — | — | — | — | — | — | dual-surface → dispatch to cross-surface gate (w1) |
-| tpcds | sql+dataframe | expected-results | cardinality-only | SF=1 | semi-independent | External TPC answer sets provide row-count authority only; result values are not checked. | separate-handwritten | TPC-DS expression and pandas DataFrame implementations are separately handwritten for each query. | enforced (CI-blocking) | expected-results, cross-surface |
+| tpcds | sql+dataframe | expected-results | cardinality-only | SF=1, 0.01, 0.1 | semi-independent | External TPC answer sets provide SF=1 row-count authority; subscale row counts are verified against cross-engine (DuckDB/DataFusion) reference counts. | separate-handwritten | TPC-DS expression and pandas DataFrame implementations are separately handwritten for each query. | enforced (CI-blocking) | expected-results, cross-surface |
 | tpcds_obt | sql+dataframe | NONE | — | — | — | — | — | — | — | dual-surface → dispatch to cross-surface gate (w1) |
 | tpch | sql+dataframe | expected-results | value+cardinality (SF=1 only; values UNGUARDED above SF=1) | SF=1 | self-referential | Reference is a frozen benchbox snapshot, not an external authority. | separate-handwritten | TPC-H expression and pandas DataFrame implementations are separately handwritten for each query. | enforced (CI-blocking) | expected-results, cross-surface |
 | tpch_skew | sql+dataframe | cross-surface | value-level | SF=0.01 | self-referential | Both compared surfaces are benchbox's own implementations; see Surface provenance for how far apart they were authored. | separate-handwritten | TPC-H Skew expression and pandas DataFrame implementations are separately handwritten for each query. | enforced (CI-blocking) | cross-surface |

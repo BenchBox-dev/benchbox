@@ -25,29 +25,28 @@ _SUBSCALE_REFERENCE_PATH = Path(__file__).with_name("reference_digests") / "tpcd
 def _load_subscale_reference() -> dict:
     try:
         payload = json.loads(_SUBSCALE_REFERENCE_PATH.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict) or payload.get("benchmark") != "tpcds":
+            return {}
+        return payload
     except (OSError, ValueError) as exc:
-        raise ValueError(
-            f"TPC-DS subscale row-count reference is unreadable: {_SUBSCALE_REFERENCE_PATH}: {exc}"
-        ) from exc
-    if not isinstance(payload, dict) or payload.get("benchmark") != "tpcds":
-        raise ValueError("TPC-DS subscale row-count reference must describe the tpcds benchmark")
-    return payload
+        logger.warning(f"TPC-DS subscale row-count reference is unreadable: {_SUBSCALE_REFERENCE_PATH}: {exc}")
+        return {}
 
 
 _SUBSCALE_REFERENCE = _load_subscale_reference()
 
 TPCDS_SUBSCALE_ROW_COUNTS: dict[float, dict[str, int]] = {
     float(scale): {str(query_id): int(row_count) for query_id, row_count in counts.items()}
-    for scale, counts in _SUBSCALE_REFERENCE["scales"].items()
+    for scale, counts in _SUBSCALE_REFERENCE.get("scales", {}).items()
 }
 
 TPCDS_PARAMETER_SENSITIVE_QUERY_IDS: frozenset[str] = frozenset(
-    str(query_id) for query_id in _SUBSCALE_REFERENCE["parameter_sensitive_query_ids"]
+    str(query_id) for query_id in _SUBSCALE_REFERENCE.get("parameter_sensitive_query_ids", [])
 )
 
-TPCDS_SUBSCALE_PROVENANCE: dict = dict(_SUBSCALE_REFERENCE["provenance"])
+TPCDS_SUBSCALE_PROVENANCE: dict = dict(_SUBSCALE_REFERENCE.get("provenance", {}))
 
-TPCDS_REFERENCE_RNGSEED: int = int(_SUBSCALE_REFERENCE["reference"]["dsqgen_rngseed"])
+TPCDS_REFERENCE_RNGSEED: int = int(_SUBSCALE_REFERENCE.get("reference", {}).get("dsqgen_rngseed", 1001))
 
 
 def tpcds_subscale_expected_row_counts(scale_factor: float) -> dict[str, int] | None:

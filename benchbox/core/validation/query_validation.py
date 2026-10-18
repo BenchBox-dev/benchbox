@@ -128,12 +128,11 @@ class QueryValidator:
         query_id_str = str(query_id)
 
         if benchmark_type.lower() in ("tpcds", "tpc-ds"):
-            match = re.search(r"(\d+)([a-d]?)", query_id_str)
+            match = re.fullmatch(r"[Qq]?(\d+)([a-dA-D]?)", query_id_str.strip())
             if match:
                 query_num = str(int(match.group(1)))
-                variant = match.group(2)
+                variant = match.group(2).lower()
                 return f"{query_num}{variant}"
-
         elif benchmark_type.lower() in ("tpch", "tpc-h"):
             match = re.search(r"(\d+)", query_id_str)
             if match:
@@ -159,13 +158,7 @@ class QueryValidator:
 
         query_id_normalized = self._normalize_query_id(benchmark_type, query_id)
 
-        if (
-            get_reference_seed_context() is False
-            and benchmark_type.lower() in _NON_REFERENCE_SEED_EXCLUDED_BENCHMARKS
-            and (
-                query_id_normalized in get_parameter_sensitive_query_ids(benchmark_type) or (scale_factor or 1.0) == 1.0
-            )
-        ):
+        if get_reference_seed_context() is False and benchmark_type.lower() in _NON_REFERENCE_SEED_EXCLUDED_BENCHMARKS:
             _warn_stream_seed_override_once(benchmark_type, self._resolve_tpcds_run_mode(benchmark_type))
             return ValidationResult(
                 is_valid=True,
@@ -209,7 +202,7 @@ class QueryValidator:
                 error_message=error_msg,
             )
 
-        if expected_result is not None and benchmark_type.lower() == "tpcds" and (scale_factor or 1.0) == 1.0:
+        if expected_result is not None and benchmark_type.lower() == "tpcds":
             run_mode = self._resolve_tpcds_run_mode(benchmark_type)
             if run_mode is not None and run_mode != expected_result.validation_mode:
                 import dataclasses

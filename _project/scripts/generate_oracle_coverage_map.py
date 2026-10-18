@@ -138,6 +138,8 @@ def oracle_strength_and_scale(primary: str, benchmark_id: str) -> tuple[str, str
             if _expected_results_has_value_digests(benchmark_id)
             else STRENGTH_CARDINALITY
         )
+        if benchmark_id == "tpcds":
+            return strength, "SF=1, 0.01, 0.1"
         return strength, "SF=1"
     if primary in (ORACLE_VARIANT_EQUIVALENCE, ORACLE_CROSS_SURFACE_VARIANT, ORACLE_CROSS_SURFACE):
         return STRENGTH_VALUE, _bounded_value_gate_scale(benchmark_id)
@@ -154,7 +156,7 @@ def oracle_reference_independence(primary: str, strength: str) -> str:
     return INDEPENDENCE_NONE
 
 
-def oracle_independence_and_rationale(primary: str, strength: str) -> tuple[str, str]:
+def oracle_independence_and_rationale(primary: str, strength: str, benchmark_id: str | None = None) -> tuple[str, str]:
     independence = oracle_reference_independence(primary, strength)
     if independence == INDEPENDENCE_SELF:
         if primary == ORACLE_CROSS_SURFACE:
@@ -173,6 +175,11 @@ def oracle_independence_and_rationale(primary: str, strength: str) -> tuple[str,
             "Reference is a frozen benchbox snapshot, not an external authority.",
         )
     if independence == INDEPENDENCE_SEMI:
+        if benchmark_id == "tpcds":
+            return (
+                independence,
+                "External TPC answer sets provide SF=1 row-count authority; subscale row counts are verified against cross-engine (DuckDB/DataFusion) reference counts.",
+            )
         return independence, "External TPC answer sets provide row-count authority only; result values are not checked."
     if independence == INDEPENDENCE_INDEPENDENT:
         return independence, "Full result values are checked against an external authority."
@@ -223,7 +230,7 @@ def build_coverage_map() -> list[dict[str, Any]]:
         )
         primary = primary_oracle(oracles, benchmark_id)
         strength, scale = oracle_strength_and_scale(primary, benchmark_id)
-        independence, independence_rationale = oracle_independence_and_rationale(primary, strength)
+        independence, independence_rationale = oracle_independence_and_rationale(primary, strength, benchmark_id)
         surface_provenance, surface_provenance_rationale = oracle_surface_provenance(primary, benchmark_id)
         dual_surface = has_sql and has_dataframe
         if ORACLE_CROSS_SURFACE in oracles:

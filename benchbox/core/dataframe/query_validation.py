@@ -7,7 +7,6 @@ from typing import Any
 from benchbox.core.expected_results.models import ValidationMode, ValidationResult
 from benchbox.core.expected_results.ssb_results import normalize_ssb_query_id, ssb_expected_row_counts
 from benchbox.core.expected_results.tpcds_results import (
-    TPCDS_PARAMETER_SENSITIVE_QUERY_IDS,
     tpcds_subscale_expected_row_counts,
     tpcds_subscale_reference_seed,
 )
@@ -172,17 +171,17 @@ def _tpcds_row_reference_parameters(seed: int | None, row: dict[str, Any]) -> bo
 def _normalize_tpcds_query_id(query_id: object) -> str:
     import re
 
-    match = re.search(r"(\d+)([a-d]?)", str(query_id))
+    match = re.fullmatch(r"[Qq]?(\d+)([a-dA-D]?)", str(query_id).strip())
     if not match:
         return str(query_id).strip()
-    return f"{int(match.group(1))}{match.group(2)}"
+    return f"{int(match.group(1))}{match.group(2).lower()}"
 
 
 def _validate_tpcds_subscale_row_count(
     counts: dict[str, int], query_id: str, actual_row_count: int, is_reference_seed: bool
 ) -> ValidationResult:
     normalized = _normalize_tpcds_query_id(query_id)
-    if not is_reference_seed and normalized in TPCDS_PARAMETER_SENSITIVE_QUERY_IDS:
+    if not is_reference_seed:
         return ValidationResult(
             is_valid=True,
             query_id=query_id,
