@@ -506,7 +506,12 @@ async def _recover_until_unknown(
     return job
 
 
-def test_benchmark_capacity_tool_is_tenant_scoped(tmp_path: Path) -> None:
+async def _server_worker_stays_idle(_worker: DurableJobWorker) -> None:
+    await anyio.sleep_forever()
+
+
+def test_benchmark_capacity_tool_is_tenant_scoped(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(DurableJobWorker, "run", _server_worker_stays_idle)
     token_a = "tenant-a-capacity-token"
     token_b = "tenant-b-capacity-token"
     config = write_security_config(
