@@ -26839,6 +26839,13 @@
       "status": "done",
       "title": "No guard prevents a job-level 'if' from referencing the matrix context (startup failure)"
     },
+    "worktree-build-artifact-not-ignored-20261018": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Commit hooks leave an untracked .build/ directory in every worktree"
+    },
     "worktree-maintenance-bossmode-adapter": {
       "claim": null,
       "needs": [

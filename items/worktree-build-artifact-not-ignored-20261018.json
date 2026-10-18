@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    ".build/ is ignored or no longer generated in worktrees, verified by git status staying clean after a commit that runs the hooks",
+    "No committed file relies on the untracked .build/ contents"
+  ],
+  "context": "Observed in every implementation worktree this session (oracle, ssb, explorer, validate-corpus, tpcds-obt, ssb-sql, dryrun, tuning, subscale) and in the benchbox-site worktree; each worker had to delete it before publishing. Root cause not diagnosed: find which hook/tool writes it (candidates: pre-commit/commit hooks) before choosing ignore-vs-stop-generating.",
+  "description": "Commit hooks generate an untracked .build/ directory in every worktree (BenchBox and benchbox-site). .gitignore covers build/ but not .build/, so git status is dirty after every commit until the directory is deleted by hand. It carries no source, but it pollutes status checks and forced a manual rm -rf .build step in every implementation cycle this session.",
+  "sessions": [
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:3ce222eaad5d12493e27d4cc",
+      "at": "2026-10-18T11:45:34Z",
+      "client": "tbh",
+      "op": "create",
+      "op_id": "f60148dbd46845289440b6fc4d2c3ed9",
+      "session_id": "d2c53a64af484bf0b44e45ae35143611"
+    }
+  ]
+}
