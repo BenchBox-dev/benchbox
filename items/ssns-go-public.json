@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Audit finds nothing private",
+    "Repository public",
+    "Every protection setting read back through the API"
+  ],
+  "context": "Done 2026-10-17. Audit: 191 commits incl. 39 retained force-pushed commits, all PR text, 107 runs, 66 artifacts; one hit, a documentation placeholder (https://user:token@host). Record: evidence dir p1-audit.md. Rulesets: main 25318975 (PR, squash only, 9 required checks pinned to GitHub Actions, no force push or deletion, no bypass), release tags 25318976 (v* create/update/delete, admin bypass). Private vulnerability reporting, secret scanning, push protection, Dependabot alerts on; fork-run approval all_external_contributors; delete_branch_on_merge on. #18 (Linux-only CI) closed by owner decision: macOS runners stay on every PR.",
+  "description": "Plan section 16 steps P1-P3 and owner action O1. Pre-flip audit of everything that becomes public (all refs, force-pushed PR heads, PR text, run logs, artifacts), visibility flip, rulesets on main and v* tags, security features, fork-run approval, read-back.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51",
+      "at": "2026-10-18T00:54:09Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "d21759a61cda46b1a00e971117dd63a9",
+      "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    }
+  ]
+}
