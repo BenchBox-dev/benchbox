@@ -111,7 +111,11 @@ from a checkout that no other principal can write.
 Limits inside that boundary:
 
 - The hosted tag is read once, at the fetch. A move during admission is not
-  detected; the tag ruleset is what forbids moves.
+  detected by admission itself; the publishing workflow re-checks the hosted
+  tag object and peeled commit after approval, and the tag ruleset forbids
+  moves by other collaborators. The ruleset bypass actor is the same account
+  the agent runs as, so the workflow re-check is the control that binds that
+  account.
 - `release_flow.py` and `benchbox/utils/clock.py` are loaded into the
   credential-bearing process from the consumer's own directory, so they are
   trusted exactly as the consumer script is.
@@ -129,8 +133,9 @@ Limits inside that boundary:
 An admitted directory crosses a job boundary, an artifact upload and download,
 before a publisher uses it. `scripts/release_admitted_dist.py` runs in the job
 that publishes and confirms the directory is still the admitted one. It is
-offline: it builds, downloads, and publishes nothing, and no workflow calls it
-yet.
+offline: it builds, downloads, and publishes nothing.
+`.github/workflows/release-v2.yml` calls it in its install, UAT, publish, and
+GitHub-release jobs.
 
 The tag and commit come from the publishing run (`github.ref_name` and
 `github.sha`), never from the directory. The directory must match its admission
@@ -159,3 +164,24 @@ the deferred Darwin digest certification.
 TestPyPI rehearsals must exercise refusal paths and verify installed hashes.
 Production PyPI retains owner approval. The existing `release.yml` remains
 operational until its approved replacement is accepted.
+
+## Publishing workflow
+
+`.github/workflows/release-v2.yml` is dispatched by hand with a tag input
+while the legacy path keeps its `v*` tag trigger; the trigger flip is part of
+retiring the legacy path, after the first new-path PyPI release. Pre-release
+tags (for example `v0.5.0-rc.1`) publish to TestPyPI only; final tags publish
+to PyPI. Tags must be annotated (`git tag -a`); the admission consumer refuses
+lightweight tags. The workflow never rebuilds artifacts, never falls back to
+an older trunk run, and must not be run after a trunk rerun on the tagged
+commit, because a rerun changes the admitted hashes. Before publishing, the
+publish job re-checks the hosted tag object and peeled commit against the
+admission receipt (`scripts/release_tag_recheck.py`), refuses while an issue
+carrying the `release-blocking` label is open
+(`scripts/release_blocker_check.py`; the gate passes when no maintainer has
+applied that label), and runs the ruleset drift check without the readiness
+override variables. PyPI and TestPyPI trusted publishers are bound to the
+workflow file name, so the owner must register `release-v2.yml` publishers
+before the first rehearsal. Recovery from an expired or superseded artifact
+is a fresh qualifying trunk artifact plus full downstream revalidation, never
+an older-success fallback.
