@@ -21950,12 +21950,17 @@
       "title": "ship-no-ship: local executor handoff, state generations and record-state in the engine"
     },
     "ssns-n5-release-workflow": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-19T00:56:35Z",
+        "generation": "99173944a33f495daabade0c38e5a835",
+        "renewals": 0,
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51"
+      },
       "needs": [
         "ssns-n4-local-executor"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "ship-no-ship: reproducible release workflow and wheel verifier"
     },
     "stabilize-full-test-suite-failures": {
