@@ -21980,13 +21980,18 @@
       "title": "Extend SQLGlot repro harness to cover wrapper call shapes (cross-dialect probes)"
     },
     "sqlglot-soft-fork-adoption": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-19T16:06:02Z",
+        "generation": "bb5a3947d0db4cd6b0612f8ff0887be8",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:00f9896dc298dff5fa33ec9d"
+      },
       "needs": [
         "sqlglot-soft-fork-publish",
         "sqlglot-upper-bound-bigquery-filter-compat"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Ship the pinned SQLGlot wheel runtime inside BenchBox"
     },
     "sqlglot-soft-fork-distribution": {
