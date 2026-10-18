@@ -20433,10 +20433,15 @@
       "title": "Seed Corpus workflow records a failed run on every push to develop (startup failure, 0 jobs)"
     },
     "seed-staging-strips-tuning-statements-20261016": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-19T13:47:19Z",
+        "generation": "fc8531735cad4df7b57a61192a81bd63",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:169d3b2cfca92ce2510f11ad"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Strip applied tuning statements when staging seed corpus bundles"
     },
     "seek-formal-legal-review-of-imdb-dataverse-terms": {
