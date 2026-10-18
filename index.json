@@ -21976,6 +21976,15 @@
       "status": "open",
       "title": "ship-no-ship: review runner, run-review supervisor and production wiring"
     },
+    "ssns-n8-macos-install-kit": {
+      "claim": null,
+      "needs": [
+        "ssns-n7-review-runner"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "ship-no-ship: macOS install kit (launchd, sudoers, install --print, reboot resume, live check)"
+    },
     "ssns-prepublication-hardening": {
       "claim": null,
       "needs": [],

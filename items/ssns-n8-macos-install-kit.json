@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "plutil -lint and visudo -cf pass",
+    "No secret-like values",
+    "On-Mac full install, reboot, doctor --post-reboot",
+    "Owner review"
+  ],
+  "context": "Not started. Estimate 1.5-2.5 d.",
+  "description": "Plan step N8. launchd, notifier, sudoers and newsyslog templates; install --print and uninstall --print (print sudo commands, never run them); versioned venvs (keep two); install --resume after the reboot checkpoint; scripted activation run (A4) as doctor --live-check. Touches the daemon and sudoers, so the owner reviews.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51",
+      "at": "2026-10-18T00:58:09Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "b363545c048643b4ba49cc5135170091",
+      "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    }
+  ]
+}
