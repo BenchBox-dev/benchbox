@@ -91,6 +91,6 @@ def test_depth_gate_counts_reruns_once_and_streaming_separately(mixed_corpus: Pa
     cohorts = validator.cohort_platforms(validator.discover_bundles(mixed_corpus / "bundles"))
     legacy = validator.cohort_platforms(validator.discover_bundles(CORPUS))
 
-    assert cohorts[("tpch", "1.0")] == legacy[("tpch", "1.0")] | {"polars+streaming"}
+    assert cohorts[("tpch", "1.0")] == legacy[("tpch", "1.0")] | {"polars", "polars+streaming"}
     assert {"duckdb", "polars"} <= cohorts[("tpch", "1.0")]
     assert not {"polars-df", "polars-df+streaming"} & cohorts[("tpch", "1.0")]

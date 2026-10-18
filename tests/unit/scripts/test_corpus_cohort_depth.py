@@ -95,15 +95,24 @@ def _write_bundle(
     (directory / name).write_text(json.dumps(payload), encoding="utf-8")
 
 
+KNOWN_DEFECTIVE_SHALLOW_COHORTS = {
+    ("tpch", "0.01"): {"datafusion", "duckdb"},
+    ("tpch", "0.1"): {"datafusion", "duckdb"},
+    ("tpch", "1.0"): {"duckdb"},
+}
+
+
 def test_every_committed_cohort_meets_the_platform_floor() -> None:
     validator = _load_validator()
     cohorts = validator.cohort_platforms(validator.discover_bundles(BUNDLES))
 
     assert cohorts, "no cohorts found - this gate would be vacuous"
     shallow = validator.shallow_cohorts(cohorts)
-    assert not shallow, (
-        f"{len(shallow)} cohort(s) below {validator.MINIMUM_PLATFORMS_PER_COHORT} identities; a one-identity "
-        "cohort is not a comparison. See results-data/SEED_CORPUS_SPEC.md:\n  "
+    assert shallow == KNOWN_DEFECTIVE_SHALLOW_COHORTS, (
+        f"{len(shallow)} cohort(s) below {validator.MINIMUM_PLATFORMS_PER_COHORT} identities; excluding "
+        "known-defective bundles leaves only the named TPC-H cohorts below the floor until replacement "
+        "bundles are ingested, and any other shallow cohort is a regression. "
+        "See results-data/SEED_CORPUS_SPEC.md:\n  "
         + "\n  ".join(
             f"{benchmark} SF={scale}: {sorted(platforms)}" for (benchmark, scale), platforms in shallow.items()
         )
@@ -214,6 +223,98 @@ def test_gateway_routed_bundles_contribute_no_identity(tmp_path: Path) -> None:
 
     assert validator.exclusion_reason(payload) == "gateway_routed"
     assert validator.cohort_platforms(validator.discover_bundles(tmp_path)) == {("tpch", "1.0"): set()}
+
+
+def _write_sidecar(bundle_path: Path, payload: object) -> None:
+    sidecar = bundle_path.parent / f"{bundle_path.stem}.manifest.json"
+    if isinstance(payload, str):
+        sidecar.write_text(payload, encoding="utf-8")
+    else:
+        sidecar.write_text(json.dumps(payload), encoding="utf-8")
+
+
+def test_sidecar_known_defects_exclude_a_bundle_from_cohort_identity_counts(tmp_path: Path) -> None:
+    validator = _load_validator()
+    _write_bundle(tmp_path, "duckdb.json", benchmark="tpch", scale=1.0, platform="DuckDB")
+    _write_bundle(tmp_path, "datafusion.json", benchmark="tpch", scale=1.0, platform="DataFusion")
+    _write_bundle(tmp_path, "spark.json", benchmark="tpch", scale=1.0, platform="Spark")
+    spark_path = tmp_path / "spark.json"
+    _write_sidecar(spark_path, {"known_defects": ["defective-macdbgen-addresses"]})
+    payload = json.loads(spark_path.read_text(encoding="utf-8"))
+
+    assert validator.sidecar_known_defects(spark_path) == ["defective-macdbgen-addresses"]
+    assert validator.exclusion_reason(payload, spark_path) == "known_defective_data"
+    assert validator.bundle_rankable(payload, spark_path) is False
+    assert validator.cohort_platforms(validator.discover_bundles(tmp_path)) == {
+        ("tpch", "1.0"): {"duckdb", "datafusion"}
+    }
+
+
+def test_sidecar_known_defects_take_precedence_over_other_exclusion_reasons(tmp_path: Path) -> None:
+    validator = _load_validator()
+    _write_bundle(tmp_path, "spark.json", benchmark="tpch", scale=1.0, platform="Spark")
+    spark_path = tmp_path / "spark.json"
+    payload = json.loads(spark_path.read_text(encoding="utf-8"))
+    payload["summary"]["queries"]["failed"] = 1
+    spark_path.write_text(json.dumps(payload), encoding="utf-8")
+    _write_sidecar(spark_path, {"known_defects": ["defective-macdbgen-addresses"]})
+
+    assert validator.exclusion_reason(payload) == "failed_queries"
+    assert validator.exclusion_reason(payload, spark_path) == "known_defective_data"
+
+
+@pytest.mark.parametrize(
+    "sidecar",
+    [
+        {"result_source": "internal"},
+        {"known_defects": []},
+        "{not json",
+        [1, 2, 3],
+        {"known_defects": "defective-macdbgen-addresses"},
+        {"known_defects": [123, None]},
+    ],
+)
+def test_sidecar_without_known_defects_preserves_rankability(tmp_path: Path, sidecar: object) -> None:
+    validator = _load_validator()
+    _write_bundle(tmp_path, "duckdb.json", benchmark="tpch", scale=1.0, platform="DuckDB")
+    bundle_path = tmp_path / "duckdb.json"
+    _write_sidecar(bundle_path, sidecar)
+    payload = json.loads(bundle_path.read_text(encoding="utf-8"))
+
+    assert validator.sidecar_known_defects(bundle_path) == []
+    assert validator.exclusion_reason(payload, bundle_path) is None
+    assert validator.cohort_platforms(validator.discover_bundles(tmp_path)) == {("tpch", "1.0"): {"duckdb"}}
+
+
+def test_validator_and_explorer_agree_on_the_tpch_sf01_cohort() -> None:
+    validator = _load_validator()
+    bundles = []
+    for path in validator.discover_bundles(BUNDLES):
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        benchmark = payload.get("benchmark")
+        if (
+            isinstance(benchmark, dict)
+            and benchmark.get("id") == "tpch"
+            and str(benchmark.get("scale_factor")) == "0.1"
+        ):
+            bundles.append(path)
+
+    assert bundles, "no committed TPC-H SF0.1 bundles found"
+    transformer = BundleTransformer()
+    explorer_identities = set()
+    defective = 0
+    for path in bundles:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        entry = transformer.to_manifest_entry(path)
+        assert validator.exclusion_reason(payload, path) == entry.ranking_exclusion_reason
+        if entry.ranking_exclusion_reason == "known_defective_data":
+            defective += 1
+        if entry.ranking_exclusion_reason is None:
+            explorer_identities.add(entry.variant_id)
+
+    assert defective > 0
+    assert validator.cohort_platforms(bundles) == {("tpch", "0.1"): explorer_identities}
+    assert explorer_identities == {"datafusion", "duckdb"}
 
 
 def test_requested_engine_without_variant_string_matches_pipeline(tmp_path: Path) -> None:
@@ -1375,7 +1476,9 @@ def test_validator_agrees_with_the_explorer_on_every_committed_bundle() -> None:
     disagreements = []
     for path in bundles:
         payload = json.loads(path.read_text(encoding="utf-8"))
-        if (validator.bundle_phase(payload), validator.exclusion_reason(payload)) != _explorer_view(path):
+        if (validator.bundle_phase(payload), validator.exclusion_reason(payload, path)) != _explorer_pipeline_view(
+            path
+        ):
             disagreements.append(path.name)
 
     assert not disagreements

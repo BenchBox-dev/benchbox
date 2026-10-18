@@ -42,6 +42,7 @@ THROUGHPUT_STREAM_QUERY_IDS = {
     "tpch": frozenset(str(number) for number in range(1, 23)),
     "tpcds": frozenset(str(number) for number in range(1, 100)),
 }
+KNOWN_DEFECTIVE_DATA = "known_defective_data"
 TPCDS_VARIANT_BASES = ("14", "23", "24", "39")
 THROUGHPUT_USABLE_STATUSES = frozenset({"SUCCESS", "PASS"})
 UTC = _dt.timezone.utc
@@ -565,7 +566,23 @@ def _primary_metric_reason(payload: dict, display: list[tuple[str, float | None,
     return None
 
 
-def exclusion_reason(payload: dict) -> str | None:
+def sidecar_known_defects(bundle: pathlib.Path) -> list[str]:
+    manifest_path = bundle.parent / f"{bundle.stem}.manifest.json"
+    try:
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    if not isinstance(payload, dict):
+        return []
+    recorded = payload.get("known_defects")
+    if not isinstance(recorded, list):
+        return []
+    return [item for item in recorded if isinstance(item, str) and item]
+
+
+def exclusion_reason(payload: dict, bundle: pathlib.Path | None = None) -> str | None:
+    if bundle is not None and sidecar_known_defects(bundle):
+        return KNOWN_DEFECTIVE_DATA
     benchmark = _mapping(payload.get("benchmark"))
     compliance = SUBSCALE_POLICY.effective_compliance_class(
         benchmark.get("id"), benchmark.get("scale_factor"), benchmark.get("compliance_class")
@@ -598,8 +615,8 @@ def exclusion_reason(payload: dict) -> str | None:
     return _primary_metric_reason(payload, display)
 
 
-def bundle_rankable(payload: dict) -> bool:
-    return exclusion_reason(payload) is None
+def bundle_rankable(payload: dict, bundle: pathlib.Path | None = None) -> bool:
+    return exclusion_reason(payload, bundle) is None
 
 
 def cohort_phase_suffix(payload: dict) -> str:
@@ -715,7 +732,7 @@ def cohort_platforms(bundles: list[pathlib.Path]) -> dict[CohortKey, set[str]]:
                 f"stream_results={recorded_count}"
             )
         identities = cohorts[_cohort_key(payload)]
-        if bundle_rankable(payload):
+        if bundle_rankable(payload, bundle):
             identities.add(_comparison_identity(bundle, payload))
     return dict(cohorts)
 
