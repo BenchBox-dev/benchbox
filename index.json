@@ -18229,12 +18229,17 @@
       "title": "Implement checkout-free close-out: pr-arm-remote and pr-landing-remote targets"
     },
     "remote-closeout-codex-reviewer-20261018": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-19T16:33:18Z",
+        "generation": "19fd8b2cbea8454bae26b0ad6bd8bb8e",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:515fc6c5ed940969bed3c6eb"
+      },
       "needs": [
         "remote-closeout-arm-landing-20261018"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Add a Codex reviewer that produces remote close-out review records"
     },
     "remove-alpha-backward-compatibility-surface": {
