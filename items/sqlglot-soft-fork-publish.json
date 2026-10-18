@@ -5,7 +5,7 @@
     "Fresh public pip and uv installations resolve the expected version, provenance and package hashes and preserve upstream SQLGlot coexistence.",
     "Record public artifact/install evidence, then finish this item. Do not substitute local path/VCS-only developer overrides or mark publication done before live verification."
   ],
-  "context": "Owner approval is pending; no publication, release tag or publishing settings change has been made. Approval question names exact benchbox-sqlglot30.23.0.1 source59b65e5fb53968dca1c324d5afa6321b04263e2f and candidate run39093404507, artifact12123572445 (expires2026-11-17T03:22:58Z). Wheel SHA25681cae29efe1e4342ba1d1d7970c6dbb809c610836bbcc23042163eb364aed63e; sdist SHA25666d26544aced71c5e055d271591aff4564d69f45015cec10c6a1e16e9fefbd19. Files and SHA256SUMS are under /Users/joe/Developer/sqlglot.wt-benchbox-release/dist/ci-candidate-39093404507. Clean release worktree branch release/benchbox-30.23.0.1 is at59b65e5f, equal to origin/main at last fetch. Main artifact CI succeeded and local exact-source artifact/consumer verification passed; CI wheel equals local wheel byte for byte. PyPI project JSON returned404 and GitHub environments were empty. Requested setup is only repojoeharris76/sqlglot, environmentbenchbox-sqlglot-pypi with Joe as required reviewer, PyPI projectbenchbox-sqlglot and trusted workflowbenchbox-release.yml. On explicit approval, reconcile live package/settings/source, configure authorized controls, create immutable benchbox-v30.23.0.1 tag at59b65e5f and dispatch workflow at that tag using candidate run39093404507 and exact hashes; complete fresh public pip/uv install and coexistence proof before finish. Do not substitute local/VCS overrides. If owner sign-in/MFA is required, report that concrete action. BenchBox adoption remains open and cannot be claimed before publication.",
+  "context": "Waiting for owner approval; exact-artifact publication and settings question was presented with no answer. Claim has been released. No publication, release tag or settings change was made. Release30.23.0.1 source59b65e5fb53968dca1c324d5afa6321b04263e2f; successful main candidate run39093404507, artifact12123572445 expires2026-11-17T03:22:58Z. Wheel SHA25681cae29efe1e4342ba1d1d7970c6dbb809c610836bbcc23042163eb364aed63e; sdist SHA25666d26544aced71c5e055d271591aff4564d69f45015cec10c6a1e16e9fefbd19. Files/SHA256SUMS: /Users/joe/Developer/sqlglot.wt-benchbox-release/dist/ci-candidate-39093404507. Clean release branchrelease/benchbox-30.23.0.1 is at59b65e5f. PR3 d81724e7 passed all hosted source/artifact checks and merged with identical tree; main candidate CI, fresh artifact verification and529 consumer tests passed. Refresh the separate main source rerun39093404494 before publishing. PyPI JSON404 and GitHub environments empty at last read. Setup approval requested only for repojoeharris76/sqlglot, environmentbenchbox-sqlglot-pypi with reviewerjoeharris76 (user ID57046), and PyPI projectbenchbox-sqlglot trusting workflowbenchbox-release.yml. On explicit approval, reopen/take this item, reconcile live source/settings/artifacts, configure approved controls, tagbenchbox-v30.23.0.1 at59b65e5f and dispatch workflow at that tag with run39093404507 and both exact hashes. Complete fresh public pip/uv and coexistence proof before finish. Request only actual sign-in/MFA if needed. BenchBox adoption remains open and cannot be claimed until this item finishes.",
   "description": "Present the exact reviewed benchbox-sqlglot30.23.0.1 wheel/sdist and SHA256SUMS to the owner; obtain explicit production-publication approval. Check actual PyPI name/project access and owner-authorized trusted publishing configuration. Publish only approved artifacts from the reviewed source and verify public pip/uv installs. This is a distinct publication boundary; implementation authorization is not a publishing credential or approval.",
   "links": [
     "https://github.com/joeharris76/sqlglot/actions/runs/39093404507",
@@ -47,6 +47,14 @@
       "generation": "5e365a4c13e14aa1b639cc4cd14502de",
       "op": "release",
       "op_id": "6cd1e740b8164b4199166d23b72df340",
+      "session_id": "5626a6dfe7d44c419c7db613d1059c06"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:e0ab14b9d48e92582f492d05",
+      "at": "2026-10-18T03:28:51Z",
+      "client": "codex-mcp-client",
+      "op": "update",
+      "op_id": "36636a3c95fb407090d62c6cc0b7b068",
       "session_id": "5626a6dfe7d44c419c7db613d1059c06"
     }
   ]
