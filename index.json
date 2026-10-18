@@ -18222,10 +18222,15 @@
       "title": "✅ Remediate unified_runner Lifecycle Regression Suite"
     },
     "remote-closeout-arm-landing-20261018": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-19T14:20:22Z",
+        "generation": "352e745be0a04dec96d2730b959f9fff",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:515fc6c5ed940969bed3c6eb"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Implement checkout-free close-out: pr-arm-remote and pr-landing-remote targets"
     },
     "remove-alpha-backward-compatibility-surface": {
