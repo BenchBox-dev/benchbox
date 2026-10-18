@@ -5,7 +5,7 @@
     "Fresh public pip and uv installations resolve the expected version, provenance and package hashes and preserve upstream SQLGlot coexistence.",
     "Record public artifact/install evidence, then finish this item. Do not substitute local path/VCS-only developer overrides or mark publication done before live verification."
   ],
-  "context": "Waiting for owner approval; exact-artifact publication and settings question was presented with no answer. Claim has been released. No publication, release tag or settings change was made. Release30.23.0.1 source59b65e5fb53968dca1c324d5afa6321b04263e2f; successful main candidate run39093404507, artifact12123572445 expires2026-11-17T03:22:58Z. Wheel SHA25681cae29efe1e4342ba1d1d7970c6dbb809c610836bbcc23042163eb364aed63e; sdist SHA25666d26544aced71c5e055d271591aff4564d69f45015cec10c6a1e16e9fefbd19. Files/SHA256SUMS: /Users/joe/Developer/sqlglot.wt-benchbox-release/dist/ci-candidate-39093404507. Clean release branchrelease/benchbox-30.23.0.1 is at59b65e5f. PR3 d81724e7 passed all hosted source/artifact checks and merged with identical tree; main candidate CI, fresh artifact verification and529 consumer tests passed. Refresh the separate main source rerun39093404494 before publishing. PyPI JSON404 and GitHub environments empty at last read. Setup approval requested only for repojoeharris76/sqlglot, environmentbenchbox-sqlglot-pypi with reviewerjoeharris76 (user ID57046), and PyPI projectbenchbox-sqlglot trusting workflowbenchbox-release.yml. On explicit approval, reopen/take this item, reconcile live source/settings/artifacts, configure approved controls, tagbenchbox-v30.23.0.1 at59b65e5f and dispatch workflow at that tag with run39093404507 and both exact hashes. Complete fresh public pip/uv and coexistence proof before finish. Request only actual sign-in/MFA if needed. BenchBox adoption remains open and cannot be claimed until this item finishes. Latest live verification: main source/compiled CI run39093404494 is also successful on59b65e5fb53968dca1c324d5afa6321b04263e2f.",
+  "context": "Owner replied Proceed on2026-10-18 to the concrete request approving publication of benchbox-sqlglot30.23.0.1 and setup limited to repojoeharris76/sqlglot environmentbenchbox-sqlglot-pypi with reviewerjoeharris76 user57046, PyPI projectbenchbox-sqlglot trustingbenchbox-release.yml. Approved source59b65e5fb53968dca1c324d5afa6321b04263e2f, candidate39093404507 artifact12123572445. Wheel SHA25681cae29efe1e4342ba1d1d7970c6dbb809c610836bbcc23042163eb364aed63e; sdist66d26544aced71c5e055d271591aff4564d69f45015cec10c6a1e16e9fefbd19. Source and artifacts freshly confirmed unchanged, source and artifact CI successful. Resume authorized setup/publication using release worktree /Users/joe/Developer/sqlglot.wt-benchbox-release. Create immutable tagbenchbox-v30.23.0.1 and dispatch at tag after publishing controls configured. Fresh public pip/uv/coexistence proof required before finish.",
   "description": "Present the exact reviewed benchbox-sqlglot30.23.0.1 wheel/sdist and SHA256SUMS to the owner; obtain explicit production-publication approval. Check actual PyPI name/project access and owner-authorized trusted publishing configuration. Publish only approved artifacts from the reviewed source and verify public pip/uv installs. This is a distinct publication boundary; implementation authorization is not a publishing credential or approval.",
   "links": [
     "https://github.com/joeharris76/sqlglot/actions/runs/39093404507",
@@ -63,6 +63,14 @@
       "client": "codex-mcp-client",
       "op": "update",
       "op_id": "e63b5aa3e7744cbb8917bbc0a2cf078d",
+      "session_id": "5626a6dfe7d44c419c7db613d1059c06"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:e0ab14b9d48e92582f492d05",
+      "at": "2026-10-18T11:26:08Z",
+      "client": "codex-mcp-client",
+      "op": "update",
+      "op_id": "5d3a72e0b77147379782424ba978bff2",
       "session_id": "5626a6dfe7d44c419c7db613d1059c06"
     }
   ]

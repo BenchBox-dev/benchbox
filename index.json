@@ -21956,7 +21956,7 @@
         "sqlglot-soft-fork-distribution"
       ],
       "priority": "medium-high",
-      "status": "blocked",
+      "status": "open",
       "title": "Publish the verified BenchBox SQLGlot release with owner approval"
     },
     "sqlglot-soft-fork-source": {
