@@ -20870,9 +20870,9 @@
     },
     "site-publishing-guide-rewrite-20261017": {
       "claim": {
-        "expires_at": "2026-10-19T04:23:30Z",
-        "generation": "864ab0dac383447bb831f09b50962782",
-        "renewals": 0,
+        "expires_at": "2026-10-19T04:25:31Z",
+        "generation": "1c13685d4b814dfbac2ecfdce0a3c44f",
+        "renewals": 1,
         "worker": "mcp:tbh:joe@joe-mac-mini.local:3ce222eaad5d12493e27d4cc"
       },
       "needs": [],
