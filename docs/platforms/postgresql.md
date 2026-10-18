@@ -169,8 +169,10 @@ schema-qualified and the index name is not: PostgreSQL creates an index in its
 table's schema and `CLUSTER ... USING` accepts only an unqualified index name.
 Both statements are recorded in the applied-tuning ledger; if either fails,
 both are recorded as failed and the run reports `failed`. When a table requests both clustering and sorting, the
-index leads with the clustering columns, so the sort request is recorded as
-not applied. The PostgreSQL-compatible platforms (CedarDB, Citus, ParadeDB, pg_duckdb,
+index leads with the clustering columns and follows with the sorting columns,
+so the table is ordered by the clustering columns first and by the sorting
+columns within each clustering group; both requests are recorded as applied.
+The PostgreSQL-compatible platforms (CedarDB, Citus, ParadeDB, pg_duckdb,
 pg_mooncake, TimescaleDB) do not run this step.
 
 ## Query Plan Capture

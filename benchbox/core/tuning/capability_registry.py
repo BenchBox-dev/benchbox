@@ -370,7 +370,8 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         _T.SORTING: _post_load(
             "postgresql_index_cluster",
             "Same CREATE INDEX plus CLUSTER as CLUSTERING. When both are requested the index leads with the "
-            "clustering columns, so the sort columns are not a prefix and the sort intent is recorded as dropped.",
+            "clustering columns and follows with the sorting columns, so the sort intent is realized as the "
+            "secondary ordering of the combined index.",
         ),
         _T.BLOOM_FILTERS: _none("unimplemented", "Compatible per the legacy map; no adapter implementation."),
         _T.MATERIALIZED_VIEWS: _none("unimplemented", "Compatible per the legacy map; no adapter implementation."),

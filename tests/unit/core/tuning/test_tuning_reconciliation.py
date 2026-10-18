@@ -320,6 +320,111 @@ class TestEvidence:
         assert len(ledger.dropped) == 1
 
 
+class TestPostgreSQLCombinedClusterSort:
+    _COMBINED_INDEX = (
+        'CREATE INDEX IF NOT EXISTS idx_lineitem_cluster ON "lineitem" ("l_shipdate", "l_orderkey", "l_linenumber")'
+    )
+    _CLUSTER_STATEMENT = 'CLUSTER "lineitem" USING idx_lineitem_cluster'
+
+    def _ledger(self, *statements: str) -> AppliedTuningLedger:
+        ledger = AppliedTuningLedger()
+        for statement in statements:
+            ledger.record(statement, PHASE_POST_LOAD)
+        return ledger
+
+    def test_cluster_and_sort_on_the_same_table_are_both_realized_by_the_combined_index(self):
+        ledger = self._ledger(self._COMBINED_INDEX, self._CLUSTER_STATEMENT)
+
+        _reconcile(
+            _config(clustering=_columns("L_SHIPDATE"), sorting=_columns("L_ORDERKEY", "L_LINENUMBER")),
+            ledger,
+            "postgresql",
+        )
+
+        assert ledger.dropped == []
+        assert ledger.satisfied == []
+
+    def test_sort_only_is_realized_by_the_index_prefix(self):
+        ledger = self._ledger(
+            'CREATE INDEX IF NOT EXISTS idx_lineitem_cluster ON "lineitem" ("l_orderkey", "l_linenumber")',
+            self._CLUSTER_STATEMENT,
+        )
+
+        _reconcile(_config(sorting=_columns("L_ORDERKEY", "L_LINENUMBER")), ledger, "postgresql")
+
+        assert ledger.dropped == []
+        assert ledger.satisfied == []
+
+    def test_sort_columns_unrelated_to_the_combined_index_still_drop(self):
+        ledger = self._ledger(self._COMBINED_INDEX, self._CLUSTER_STATEMENT)
+
+        _reconcile(
+            _config(clustering=_columns("L_SHIPDATE"), sorting=_columns("L_PARTKEY")),
+            ledger,
+            "postgresql",
+        )
+
+        assert [(item.intent, item.reason) for item in ledger.dropped] == [
+            ("sorting:LINEITEM (L_PARTKEY)", NOT_RENDERED_REASON)
+        ]
+
+    def test_sort_after_an_unrelated_leading_index_column_still_drops(self):
+        ledger = self._ledger(self._COMBINED_INDEX, self._CLUSTER_STATEMENT)
+
+        _reconcile(_config(sorting=_columns("L_ORDERKEY", "L_LINENUMBER")), ledger, "postgresql")
+
+        assert [(item.intent, item.reason) for item in ledger.dropped] == [
+            ("sorting:LINEITEM (L_ORDERKEY, L_LINENUMBER)", NOT_RENDERED_REASON)
+        ]
+
+    def test_sort_after_a_clustering_sub_prefix_still_drops(self):
+        ledger = self._ledger(
+            'CREATE INDEX IF NOT EXISTS idx_lineitem_cluster ON "lineitem" ("l_shipdate", "l_orderkey", "l_linenumber")',
+            'CREATE INDEX IF NOT EXISTS idx_lineitem_clustering ON "lineitem" ("l_shipdate", "l_partkey")',
+            self._CLUSTER_STATEMENT,
+        )
+
+        _reconcile(
+            _config(clustering=_columns("L_SHIPDATE", "L_PARTKEY"), sorting=_columns("L_ORDERKEY", "L_LINENUMBER")),
+            ledger,
+            "postgresql",
+        )
+
+        assert [(item.intent, item.reason) for item in ledger.dropped] == [
+            ("sorting:LINEITEM (L_ORDERKEY, L_LINENUMBER)", NOT_RENDERED_REASON)
+        ]
+
+    def test_cluster_offset_does_not_apply_to_duckdb_ctas_sort(self):
+        ledger = self._ledger(self._COMBINED_INDEX)
+
+        _reconcile(
+            _config(clustering=_columns("L_SHIPDATE"), sorting=_columns("L_ORDERKEY", "L_LINENUMBER")),
+            ledger,
+            "duckdb",
+            sorted_tables=("lineitem",),
+        )
+
+        assert [(item.intent, item.reason) for item in ledger.dropped] == [
+            ("sorting:LINEITEM (L_ORDERKEY, L_LINENUMBER)", "missing expected index evidence for duckdb_ctas_sort")
+        ]
+
+    def test_sort_separated_from_the_clustering_columns_still_drops(self):
+        ledger = self._ledger(
+            'CREATE INDEX IF NOT EXISTS idx_lineitem_cluster ON "lineitem" ("l_shipdate", "l_orderkey", "l_partkey")',
+            self._CLUSTER_STATEMENT,
+        )
+
+        _reconcile(
+            _config(clustering=_columns("L_SHIPDATE"), sorting=_columns("L_ORDERKEY", "L_LINENUMBER")),
+            ledger,
+            "postgresql",
+        )
+
+        assert [(item.intent, item.reason) for item in ledger.dropped] == [
+            ("sorting:LINEITEM (L_ORDERKEY, L_LINENUMBER)", NOT_RENDERED_REASON)
+        ]
+
+
 class TestDropReasons:
     @pytest.mark.parametrize(
         ("platform", "slot", "tuning_type"),
