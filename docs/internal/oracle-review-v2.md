@@ -332,9 +332,10 @@ run for a pull request event checks, before and after the checker, that the
 head it was triggered for is still the pull request's head; a run for a
 superseded head fails rather than report on a head it was not created for.
 
-The stand-in attestation must be posted after the oracle's latest review of
-the head, so overriding a failing verdict is a deliberate act; it never
-overrides an open thread.
+The stand-in attestation must be posted after the oracle's latest decisive
+verdict (`success` or `failure`) on the head, so overriding a failing verdict
+is a deliberate act; a later review that carries no decisive verdict, such as
+`pending`, does not void it, and it never overrides an open thread.
 
 The Codex connector is no longer a signal. The daily soundness merge digest
 still accepts a connector review or thumbs-up for merges before the cut-over

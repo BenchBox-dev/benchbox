@@ -172,12 +172,16 @@ its final content:
   of the last content commit or of a later merge that only refreshed the
   base, when that review reports success;
 - a stand-in approval of the merged head, posted after any retarget and after
-  the oracle's latest review of that head;
+  the oracle's latest decisive verdict (`success` or `failure`) on that head.
+  A later oracle review with no decisive verdict, such as `pending`, does not
+  void it. The `oracle-review` check uses the same rule through the same
+  helper;
 - for merges before the cut-over (2026-10-09 00:16 UTC), the Codex
   connector's submitted review of the last content commit (or of a later
   base-only refresh merge), or its thumbs-up reaction; or
 - an external review posted as a PR comment naming its reviewer
-  (`Reviewer: codex`, `muse` or `agy`).
+  (`External review: codex`, `muse` or `agy`; `Reviewer: ...` also counts),
+  from a listed attester.
 
 The reaction and comment must come after the last content commit and before
 the merge. A review submitted after the merge, or still pending, does not
@@ -196,9 +200,22 @@ carries any other change, merges two branches not on `develop`, or has more
 than two parents.
 
 A commit gets an issue labelled `soundness-review-gap` when it has no signal,
-no merged pull request, or a reviewer thread resolved with no later commit. An
-agent runs the external review and either records a clean result on the issue
-or opens a fix or revert pull request.
+no merged pull request, or a reviewer thread resolved with no later commit.
+The issue body carries a `Reason class` line naming why: `override of an
+oracle High finding` (an oracle thread rated Critical or High resolved with no
+later commit), `deferred finding` (any other thread resolved with no later
+commit) or `no review signal` (no signal, or no merged pull request). An agent
+runs the external review and either records a clean result on the issue or
+opens a fix or revert pull request.
+
+Every run also re-evaluates each open gap issue, whatever its age, against the
+same rules. It closes the issue with a comment that records the evidence, and
+that opens with a `soundness-gap-closed` marker, in two cases: the commit no
+longer needs attention, or a listed attester (`STANDIN_ATTESTERS` in
+`_project/scripts/oracle_review_check.py`) posted a comment on the issue that
+starts with `External review: codex`, `muse` or `agy`. A comment from anyone
+else never closes an issue, and a closed issue is never reopened or edited. A
+run without `--apply` lists the issues it would close.
 
 The checkpoint lives in the body of the one issue labelled
 `soundness-merge-digest` and must be on the first-parent history of

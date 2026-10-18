@@ -10,7 +10,7 @@ import urllib.error
 import urllib.request
 from collections.abc import Callable, Iterable
 from datetime import datetime
-from typing import Any
+from typing import Any, TypeVar
 
 from soundness_paths import any_soundness_path
 
@@ -77,23 +77,26 @@ def _is_oracle(login: str | None, account_type: str | None) -> bool:
 
 
 DECISIVE_VERDICTS = frozenset({"success", "failure"})
+Moment = TypeVar("Moment", str, datetime)
+
+
+def verdict_state(body: str | None, sha: str, pattern: re.Pattern[str] = _ORACLE_VERDICT) -> str | None:
+    match = pattern.match(body or "")
+    return match.group("state") if match and match.group("sha") == sha else None
+
+
+def standin_not_before(base_change: Moment | None, verdicts: Iterable[tuple[Moment, str | None]]) -> Moment | None:
+    decisive = (at for at, state in verdicts if state in DECISIVE_VERDICTS)
+    return max(filter(None, (base_change, *decisive)), default=None)
 
 
 def _review_verdict(review: dict[str, Any], head_sha: str) -> str | None:
-    match = _ORACLE_VERDICT.match(review.get("body") or "")
-    return match.group("state") if match and match.group("sha") == head_sha else None
+    return verdict_state(review.get("body"), head_sha)
 
 
-def _oracle_verdict(reviews: list[dict[str, Any]], head_sha: str) -> tuple[str | None, datetime | None]:
+def _oracle_verdict(reviews: list[dict[str, Any]], head_sha: str) -> str | None:
     ordered = sorted(reviews, key=lambda review: _parse_time(review["submitted_at"]))
-    if not ordered:
-        return None, None
-    decisive = [
-        _parse_time(review["submitted_at"])
-        for review in ordered
-        if _review_verdict(review, head_sha) in DECISIVE_VERDICTS
-    ]
-    return _review_verdict(ordered[-1], head_sha), max(decisive, default=None)
+    return _review_verdict(ordered[-1], head_sha) if ordered else None
 
 
 def _refused(reviews: list[dict[str, Any]]) -> bool:
@@ -126,8 +129,11 @@ def decide(
         and review.get("state") not in {"PENDING", "DISMISSED"}
         and (base_time is None or (review.get("submitted_at") and _parse_time(review["submitted_at"]) > base_time))
     ]
-    verdict, verdict_time = _oracle_verdict(head_reviews, head_sha)
-    standin_after = max(filter(None, (base_time, verdict_time)), default=None)
+    verdict = _oracle_verdict(head_reviews, head_sha)
+    standin_after = standin_not_before(
+        base_time,
+        ((_parse_time(review["submitted_at"]), _review_verdict(review, head_sha)) for review in head_reviews),
+    )
     standin = next((comment for comment in comments if _is_standin(comment, head_sha, standin_after)), None)
     if head_reviews and verdict != "success" and not standin:
         if _refused(head_reviews):
