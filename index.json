@@ -982,7 +982,7 @@
         "astro-site-03-visual-change-procedure"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Make one design-token source that website/ and results-explorer both consume"
     },
     "astro-site-22-shared-layout-shell": {
