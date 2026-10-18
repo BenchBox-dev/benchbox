@@ -2383,6 +2383,13 @@
       "status": "open",
       "title": "Parallel PRs conflict on CHANGELOG.md every time, because all of them append to the same Fixed list"
     },
+    "changelog-unreleased-test-paths-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Remove test-file paths from the unreleased CHANGELOG entries"
+    },
     "chdb-4x-engine-load-verification-20261006": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "No [Unreleased] CHANGELOG entry names a file under tests/",
+    "Each affected entry still tells a user what changed"
+  ],
+  "description": "CHANGELOG.md [Unreleased] entries on develop still cite test files (around lines 389, 414 and 435). A changelog is for users; test paths do not tell them what changed. Owner, 2026-10-15, Claude session e0e74e6b, question dialog: \"Remove test paths\". The decision was never carried out.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-18T00:01:16Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "2e0fc9c6b93a48b28c3d74035f2d47a9",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
+    }
+  ]
+}
