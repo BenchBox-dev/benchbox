@@ -4,7 +4,7 @@
     "snowflake-clustering-key-live-verification-20260730 annotated with this evidence.",
     "Record why validation_status is applied_unverified rather than applied_verified, or file the defect"
   ],
-  "context": "Live evidence gathered during the Snowflake trial campaign (2026-10-15/17); details in #3074 findings (_project/analysis/snowflake-trial-exit/). Load with tuning metadata saved. Tuned databases reused with data_loading 0 for TPC-H sf0.01/sf10/sf100 and TPC-DS sf10/sf100. Statement history after the first connection shows no DROP, TRUNCATE, COPY or CREATE OR REPLACE. Raw CLUSTERING_KEY text: LINEAR(L_SHIPDATE, L_SUPPKEY, L_PARTKEY) and LINEAR(O_ORDERDATE, O_CUSTKEY, O_ORDERKEY). Tuning metadata table present. validation_status was applied_unverified in every run, not applied_verified. The trial account has ended, so a further live run needs a new account and owner approval.\n\nOpen question for the owner: does this evidence certify the tuned Snowflake path despite applied_unverified (close the item), or does applied_verified need a code fix and a new live run (keep it open, file a fix item)?\n\nNot met: a verdict on applied_unverified, and the annotation on snowflake-clustering-key-live-verification-20260730.",
+  "context": "Closed 2026-10-17. Live evidence from the Snowflake trial campaign (2026-10-15/17; findings in #3074, _project/analysis/snowflake-trial-exit/). Tuned databases reused with data_loading 0 for TPC-H sf0.01/sf10/sf100 and TPC-DS sf10/sf100. Statement history after the first connection shows no DROP, TRUNCATE, COPY or CREATE OR REPLACE. Raw CLUSTERING_KEY text: LINEAR(L_SHIPDATE, L_SUPPKEY, L_PARTKEY) and LINEAR(O_ORDERDATE, O_CUSTKEY, O_ORDERKEY). Tuning metadata table present.\n\nWhy validation_status is applied_unverified (criterion 3): corroboration receipts mark every CLUSTER BY statement corroborated (TPC-H 2/2, TPC-DS 6/6), but (1) the Snowflake introspector reads no PRIMARY/FOREIGN/UNIQUE constraints, so those CREATE TABLE statements are \"unverifiable\" (TPC-H 17 of 19, TPC-DS 108 of 114), and (2) runs on reused databases carry only transient session statements (gate_relevant_total 0). Both are BenchBox checker gaps, not Snowflake failures; fix filed as snowflake-tuning-verification-gaps-20261017. The 2026-07-30 clustering-key item is annotated.\n\nOwner, 2026-10-17, in a Claude Code session: chose \"Close + file checker fix\".",
   "description": "## Problem\nSnowflake has an introspector, but no tuned run has ever been executed live.\n- The clustering-key text shape (`LINEAR(A, B)` vs `(A, B)`) is unconfirmed. `parse_clustering_key` accepts both.\n- The earlier item `snowflake-clustering-key-live-verification-20260730` is marked done, yet its description still says it was deferred for lack of credentials.\n- The mid-run DROP DATABASE path was simulated against the real adapter.\n\n## Change\nAfter the safety and portability items land, run one approved live Snowflake SF 0.01 TPC-H tuned run. The approval must state the command, maximum runtime, log path and stop condition. Confirm and record:\n1. no DROP/TRUNCATE after the first connection (from query history);\n2. the metadata table persists;\n3. the raw `INFORMATION_SCHEMA.TABLES.CLUSTERING_KEY` text;\n4. `validation_status` applied_verified, or the exact blocking verdicts.\n\nFix `parse_clustering_key` if needed. Reopen or annotate the 20260730 item with the evidence.\n\n## Guardrails (must preserve)\n- No live run without approval.\n- Use a dedicated database name; never a shared one.\n\n## Process guardrails\n- One PR per item against `develop`, via the AGENTS.md worktree flow (`make worktree-claim BRANCH=...`, `make agent-write-preflight`).\n- Verification ladder: `uv run -- python -m pytest -m fast -q`, `uv run -- ruff check .`, `uv run -- ruff format --check .` and `uv run -- ty check`.\n- Then `make pr-preflight` and `make pr-open`.\n- Stage explicit paths; never `git add -A`.\n- No live cloud runs without explicit user approval stating the command, maximum runtime, log path and stop condition.\n- Re-read every file:line anchor before editing. Anchors are from develop d39166ea.",
   "links": [
     "benchbox/platforms/snowflake.py",
@@ -65,6 +65,14 @@
       "client": "claude-code",
       "op": "update",
       "op_id": "7b357c1c3a8d454f8aa70e65ee5fd052",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-18T00:30:32Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "15d83abc311d4a208b05aec84f7cb81b",
       "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
     }
   ]
