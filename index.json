@@ -20716,6 +20716,13 @@
       "status": "open",
       "title": "Add SiriusDB (GPU-Native SQL Engine) Platform Adapter"
     },
+    "site-browser-acceptance-ci-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Run the site's browser acceptance checks against the built site in CI"
+    },
     "site-bundle-tpc-license-sidecars": {
       "claim": null,
       "needs": [

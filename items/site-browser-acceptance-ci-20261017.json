@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "A site workflow runs the shell, parity, not-found, explorer and landing checks and pages-artifact.spec.ts against the built site on every PR and on main",
+    "axe reports zero serious or critical violations on a docs page, a blog post, / and /prompts/ at 1280 and 390 px in both themes",
+    "The Pagefind smoke search finds a docs term and a blog title; search shows no Results section, or an empty one, until astro-site-61 adds one",
+    "A nested /results/ URL and a query-string URL load the right Explorer view through the 404 fallback",
+    "Docs and blog pages load zero Explorer or DuckDB bytes, and / makes no third-party script requests",
+    "The composer filter and copy behave correctly on the built /prompts/ page, and landing/prompts/a11y-checklist.md names the CI job",
+    "The owner decides whether the job joins the required ci aggregate or stays advisory like visual.yml, recorded in context"
+  ],
+  "description": "benchbox-site has browser acceptance scripts that passed in the Astro build PR (core #2606) but run in no workflow; site ci.yml runs only vitest and the Explorer Playwright suite.\n- website/e2e/shell.mjs: axe at 1280, 390 and 320 px in both themes, 44 px targets, theme persistence, Pagefind docs and blog search.\n- website/e2e/parity.mjs: axe over every page template and a Pagefind smoke search.\n- website/e2e/not-found.mjs: deep links and query-string URLs through the 404 fallback on a Pages-like server.\n- website/e2e/explorer.mjs: shell parity, back and forward, query-string restore, worker and WASM recovery, zero Explorer bytes on docs and blog pages.\n- website/e2e/landing.mjs: composer filter and copy, no third-party scripts on /, axe on / and /prompts/. Part of it compares against the legacy static landing/ tree, which astro-site-54 removes.\n- explorer/e2e/routes/pages-artifact.spec.ts: Pages-shaped direct routes, skipped unless E2E_PAGES_SHAPED and E2E_SITE_DIR are set.\n\nAdd a CI job that builds the site from the fetched bundle and runs these checks against website/dist. Drop the parts of landing.mjs that need the legacy landing/ tree. These criteria come from astro-site-22, 35, 36 and 40, which were dropped as delivered.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox-site"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-18T00:47:08Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "ae61132824564cf69061387845832adb",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
+    }
+  ]
+}
