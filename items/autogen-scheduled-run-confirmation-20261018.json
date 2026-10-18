@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "A per-check table with run URLs and results is recorded for checks 1-5",
+    "Any failing check has a follow-up item with its failing signature and evidence",
+    "No issue was closed or reopened except by the automation itself or on green evidence (D7)"
+  ],
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11, guardrails G1-G12; read first). Follow-up created by the controller during the batch; not part of the batch set; do not take it during the batch. Rubric: PASS needs live scheduled-run evidence for all five checks. FAIL if a check is satisfied by a manual dispatch instead of a scheduled run.",
+  "description": "Decision D8 (owner, 2026-10-18): batch items finish on merged code, unit tests and a green dispatch/CI run; confirmation on the next SCHEDULED runs is this separate check. Held until after Monday 2026-10-19 so the Monday-only t3:drift domain has run.\nChecks (one snapshot of each gate, G10): (1) the scheduled nightly-v2 run on or after 2026-10-19: per-domain table; t3:docker, t3:durations, t3:windows, t3:throughput-cedardb green; t3:drift green (Monday); perf/linkcheck recorded without action; (2) issue lifecycle live: no new duplicate t3:* issue for a domain that had a closed issue within 14 days; a red domain reopened or commented only on a signature change; (3) the scheduled release canary after the TPC-H fixes is green and #2887 stays closed; (4) the next scheduled soundness-merge-digest run opens/closes only issues it should (no thread-based auto-close, #3030 stays closed); (5) site deploys after 2026-10-19 produced no new relay issue for a fixed class.\nA failing check becomes a defect follow-up with its signature; do not edit gates or close issues to make it pass (G6).",
+  "not_before": "2026-10-20T00:00:00Z",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a",
+      "at": "2026-10-18T23:47:51Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "8f668d5e64954583ae531900dac08dbf",
+      "session_id": "0722acca462b419aa525d939aedd0290"
+    }
+  ]
+}
