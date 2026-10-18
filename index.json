@@ -1375,6 +1375,15 @@
       "status": "open",
       "title": "Reopen instead of recreating nightly T3 issues, and comment only when the failure changes"
     },
+    "autogen-site-parent-lookup-regression-guard-20261018": {
+      "claim": null,
+      "needs": [
+        "autogen-issues-decisions-20261018"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Confirm the site-inputs parent-bundle lookup fix is pinned by a regression test"
+    },
     "autogen-sync-validator-file-list-20261018": {
       "claim": null,
       "needs": [
