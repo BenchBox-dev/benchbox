@@ -121,7 +121,7 @@ help:
 	@echo "  make pr-preflight    Ruff on changed Python files, then the tests for changed files (serial, no test lock; CI runs the full fast lane)"
 	@echo "  make pr-preflight-fast-tests  Run the full fast lane and content guard locally, as CI does (takes the shared test lock)"
 	@echo "  make make-timings-report [MAKE_TIMINGS_DAYS=30] [MAKE_TIMINGS_SLOWEST=5]  Per-target run count, median, p90 and max from ~/.benchbox/make-timings.jsonl (BENCHBOX_MAKE_TIMINGS=0 disables recording)"
-	@echo "  make pr-open [PR_BODY_FILE=path] [READY=1]  Push branch + open PR vs develop (READY=1 also arms it with pr-arm)"
+	@echo "  make pr-open [TITLE=text] [PR_BODY_FILE=path] [READY=1]  Push branch + open PR vs develop over REST; TITLE (default: oldest branch commit subject) applies only on create; a reused PR keeps its title (READY=1 also arms it with pr-arm)"
 	@echo "  make pr-arm [PR=n] [HEAD=sha]  Enqueue the open PR for its exact head after a live hold check; the queue merges it"
 	@echo "  make pr-ready PR=n|URL=u HEAD=sha  Arm an open PR for an exact head (pr-arm; EVIDENCE or BATCH runs the readiness evidence transaction)"
 	@echo "  make pr-fanout       Run pr-open across worktrees with bounded parallelism (PR_FANOUT_JOBS=$(PR_FANOUT_JOBS))"

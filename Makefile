@@ -1141,9 +1141,6 @@ pr-open:
 	if [ "$$ORIGIN_REPOSITORY_KEY" != "$$TARGET_REPOSITORY_KEY" ]; then \
 		HEAD_SPEC="$$ORIGIN_OWNER:$$CURRENT"; \
 	fi; \
-	PR_HEAD_OWNER="$$ORIGIN_OWNER"; \
-	PR_HEAD_NAME="$$CURRENT"; \
-	export PR_HEAD_OWNER PR_HEAD_NAME; \
 	git fetch origin develop --quiet; \
 	if ! git merge-base --is-ancestor origin/develop HEAD; then \
 		if ! git merge-tree --write-tree origin/develop HEAD >/dev/null 2>&1; then \
@@ -1152,26 +1149,19 @@ pr-open:
 		fi; \
 	fi; \
 	uv run -- python scripts/trunk_revert.py gate --branch "$$CURRENT" --repo "$$REPOSITORY"; \
-	$(MAKE) -s pr-conflict-scan BRANCH="$$CURRENT" || true; \
+	$(MAKE) -s pr-conflict-scan BRANCH="$$CURRENT" REPO="$$REPOSITORY" || true; \
 	git push -u origin "$$CURRENT" || { echo "Push failed for $$CURRENT — aborting before opening a PR (remote branch may be stale)." >&2; exit 1; }; \
+	PUBLISHED=$$(uv run -- python scripts/pr_open_rest.py --repo "$$REPOSITORY" --head-owner "$$ORIGIN_OWNER" \
+		--branch "$$CURRENT" --head-spec "$$HEAD_SPEC" --title "$${TITLE:-}" --body-file "$(PR_BODY_FILE)"); \
+	PR_STATUS="$${PUBLISHED%% *}"; \
+	PR_NUMBER="$${PUBLISHED#* }"; \
+	URL="$${PR_NUMBER#* }"; \
+	PR_NUMBER="$${PR_NUMBER%% *}"; \
 	REUSED_PR=0; \
-	URL=$$(gh pr list --repo "$$REPOSITORY" --base develop --state open \
-		--json url,headRepositoryOwner,headRefName \
-		--jq '.[] | select((.headRepositoryOwner.login | ascii_downcase) == (env.PR_HEAD_OWNER | ascii_downcase) and .headRefName == env.PR_HEAD_NAME) | .url' \
-		2>/dev/null | sed -n '1p'); \
-	if [ -z "$$URL" ]; then \
-		if [ -n "$(PR_BODY_FILE)" ]; then \
-			URL=$$(gh pr create --repo "$$REPOSITORY" --base develop --fill --head "$$HEAD_SPEC" --body-file "$(PR_BODY_FILE)"); \
-		else \
-			URL=$$(gh pr create --repo "$$REPOSITORY" --base develop --fill --head "$$HEAD_SPEC"); \
-		fi; \
-	else \
+	if [ "$$PR_STATUS" = "reused" ]; then \
 		REUSED_PR=1; \
 		echo "Reusing existing PR: $$URL"; \
-		if [ -n "$(PR_BODY_FILE)" ]; then \
-			gh pr edit --repo "$$REPOSITORY" "$$URL" --body-file "$(PR_BODY_FILE)"; \
-		fi; \
-	fi && \
+	fi; \
 	echo "$$URL" && \
 	if [ "$(READY)" != "1" ]; then \
 		echo "Next: make pr-arm once the review fixes are pushed; auto-merge merges it when the required checks pass."; \
@@ -1183,7 +1173,6 @@ pr-open:
 			$(MAKE) -s pr-ready REPO="$$REPOSITORY" URL="$$URL" HEAD="$$(git rev-parse HEAD)" EVIDENCE="$(EVIDENCE)" BATCH="$(BATCH)"; \
 		fi; \
 	else \
-		PR_NUMBER=$$(gh pr view --repo "$$REPOSITORY" "$$URL" --json number --jq '.number') || { echo "Could not resolve $$URL to a PR in $$REPOSITORY" >&2; exit 1; }; \
 		$(MAKE) -s pr-arm PR="$$PR_NUMBER" REPO="$$REPOSITORY" HEAD="$$(git rev-parse HEAD)"; \
 	fi
 
@@ -1292,8 +1281,8 @@ pr-refresh:
 pr-conflict-scan:
 	@CURRENT="$(BRANCH)"; \
 	[ -n "$$CURRENT" ] || CURRENT=$$(git branch --show-current); \
-	gh pr list --base develop --state open --json number,headRefName \
-		--jq '.[] | "\(.number) \(.headRefName)"' 2>/dev/null | \
+	gh api --method GET --paginate "repos/$(or $(REPO),BenchBox-dev/BenchBox)/pulls?base=develop&state=open&per_page=100" \
+		--jq '.[] | "\(.number) \(.head.ref)"' 2>/dev/null | \
 	while read num branch; do \
 		[ "$$branch" = "$$CURRENT" ] && continue; \
 		git fetch origin "$$branch" --quiet 2>/dev/null || continue; \
