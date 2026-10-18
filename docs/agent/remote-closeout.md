@@ -154,7 +154,8 @@ The target needs a binding. It fetches and pins the base, head, and digest as
 the manifest target does, and refuses if the live head is not `HEAD`. It makes a
 private directory outside the repository, `/tmp`, and `/var/tmp`: in the system
 temporary directory, or in `~/.benchbox/review-runs/` when that is under `/tmp`
-or `/var/tmp`. There it writes the head tree from
+or `/var/tmp`; `BENCHBOX_REVIEW_RUNS_DIR` replaces that choice when set. There
+it writes the head tree from
 `git ls-tree` and `git cat-file`, so `.gitattributes` export rules cannot hide
 or rewrite a file, and checks every blob against its ID. Symlinks that point
 outside the tree are left out and listed. Beside the tree it writes the diff,

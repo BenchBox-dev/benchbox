@@ -854,6 +854,7 @@ if "fail" in behaviour:
 Path(args[args.index("-o") + 1]).write_text(behaviour["output"])
 """
 ORIGINAL_LOGIN = '{"tokens": "original"}'
+PRODUCTION_DENIED_ROOTS = remote_review.DENIED_ROOTS
 
 
 class FakeCodex:
@@ -879,7 +880,15 @@ class FakeCodex:
 
 
 @pytest.fixture
-def codex(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> FakeCodex:
+def denied_roots(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[str, str]:
+    roots = (str(tmp_path / "denied-tmp"), str(tmp_path / "denied-var-tmp"))
+    monkeypatch.setattr(remote_review, "DENIED_ROOTS", roots)
+    monkeypatch.setenv(remote_review.RUNS_ENV, str(tmp_path / "review-runs"))
+    return roots
+
+
+@pytest.fixture
+def codex(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, denied_roots: tuple[str, str]) -> FakeCodex:
     bin_dir, state, home = tmp_path / "bin", tmp_path / "codex-state", tmp_path / "codex-home"
     for directory in (bin_dir, state, home):
         directory.mkdir()
@@ -1049,7 +1058,7 @@ def test_the_reviewer_reads_the_head_tree_and_base_rules_exported_outside_the_re
 
 
 def test_the_reviewer_runs_isolated_from_user_config_secrets_and_the_network(
-    world: World, bound: FakeGitHub, codex: FakeCodex, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, world: World, bound: FakeGitHub, codex: FakeCodex, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("GH_TOKEN", "gh-secret")
     monkeypatch.setenv("OPENAI_API_KEY", "openai-secret")
@@ -1079,8 +1088,7 @@ def test_the_reviewer_runs_isolated_from_user_config_secrets_and_the_network(
         ":minimal": "read",
         str(workdir / "input"): "read",
         str(workdir / "head"): "read",
-        "/tmp": "none",
-        "/var/tmp": "none",
+        **dict.fromkeys(remote_review.DENIED_ROOTS, "none"),
     }
     filesystem = json.dumps(readable)
     assert settings == [
@@ -1092,19 +1100,27 @@ def test_the_reviewer_runs_isolated_from_user_config_secrets_and_the_network(
     ]
     disabled = {argv[index + 1] for index, value in enumerate(argv) if value == "--disable"}
     assert {"apps", "plugins", "hooks", "memories", "computer_use", "browser_use"} <= disabled
-    assert not any(workdir.resolve().is_relative_to(Path(root).resolve()) for root in ("/tmp", "/var/tmp"))
+    assert PRODUCTION_DENIED_ROOTS == ("/tmp", "/var/tmp")
+    assert workdir.parent == (tmp_path / "review-runs").resolve()
+    assert not remote_review._denied(workdir)
 
 
-def test_the_review_directory_moves_out_of_tmp_into_a_private_home_directory(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+def test_the_review_directory_moves_out_of_a_denied_temporary_directory_into_a_private_home_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, denied_roots: tuple[str, str]
 ) -> None:
-    if remote_review._denied(tmp_path):
-        pytest.skip("this platform's test directories are under /tmp, so no home outside it exists")
-    monkeypatch.setattr(remote_review.tempfile, "gettempdir", lambda: "/tmp")
+    monkeypatch.delenv(remote_review.RUNS_ENV)
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    allowed = tmp_path / "allowed-tmp"
+    allowed.mkdir()
+    monkeypatch.setattr(remote_review.tempfile, "gettempdir", lambda: str(allowed))
+    assert remote_review.runs_root() == allowed.resolve()
+    monkeypatch.setattr(remote_review.tempfile, "gettempdir", lambda: str(Path(denied_roots[0], "T")))
     root = remote_review.runs_root()
     assert root == (tmp_path / "home" / ".benchbox" / "review-runs").resolve()
     assert root.stat().st_mode & 0o777 == 0o700
+    monkeypatch.setenv(remote_review.RUNS_ENV, str(Path(denied_roots[1], "runs")))
+    with pytest.raises(remote_review.Refused, match="which the sandbox denies"):
+        remote_review.runs_root()
 
 
 @pytest.mark.parametrize(

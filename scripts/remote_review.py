@@ -33,6 +33,7 @@ DRAIN_TIMEOUT = 5
 LOCK_WAIT = 60.0
 LOCK_ATTEMPTS = 3
 DENIED_ROOTS = ("/tmp", "/var/tmp")
+RUNS_ENV = "BENCHBOX_REVIEW_RUNS_DIR"
 VIEW_FIELDS = f"{closeout.VIEW_FIELDS},title,body"
 SEVERITIES = ("Critical", "Required", "Nit")
 BLOCKING = frozenset({"Critical", "Required"})
@@ -167,14 +168,18 @@ def _denied(path: Path) -> bool:
 
 
 def runs_root() -> Path:
-    temporary = Path(tempfile.gettempdir()).resolve()
-    if not _denied(temporary):
-        return temporary
-    root = Path.home() / ".benchbox" / "review-runs"
+    override = os.environ.get(RUNS_ENV)
+    if override:
+        root = Path(override).expanduser()
+    else:
+        temporary = Path(tempfile.gettempdir()).resolve()
+        if not _denied(temporary):
+            return temporary
+        root = Path.home() / ".benchbox" / "review-runs"
     root.mkdir(mode=0o700, parents=True, exist_ok=True)
     root.chmod(0o700)
     if _denied(root):
-        raise Refused(f"no directory outside {' and '.join(DENIED_ROOTS)} is available for the review inputs")
+        raise Refused(f"the review directory {root} is under {' or '.join(DENIED_ROOTS)}, which the sandbox denies")
     return root.resolve()
 
 
