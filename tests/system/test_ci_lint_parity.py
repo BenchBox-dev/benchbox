@@ -70,6 +70,11 @@ MERGE_GATE_GUARD_TOKENS = (
 MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "tuning-liveness", "Run real-CLI tuning liveness matrix"): "tuning-liveness-gate",
     ("ci.yml", "package-smoke", "Build package"): "test-package",
+    (
+        "test.yml",
+        "release-readiness",
+        "Check bundled SQLGlot is on the newest upstream release",
+    ): "sqlglot-upstream-freshness-check",
     ("test.yml", "test-package", "Build package"): "test-package",
     ("ci.yml", "dist-artifact", "Verify source bundled binary manifest"): "scripts/bundled_binary_manifest.py",
     ("ci.yml", "dist-artifact", "Build wheel and sdist"): "scripts/verify_distribution_binaries.py",
