@@ -21832,10 +21832,15 @@
       "title": "Extend SQLGlot repro harness to cover wrapper call shapes (cross-dialect probes)"
     },
     "sqlglot-upper-bound-bigquery-filter-compat": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-19T00:37:55Z",
+        "generation": "508776debc424912a91e933627a0e4f1",
+        "renewals": 0,
+        "worker": "mcp:antigravity-client:joe@joe-mac-mini.local:83b3829dccae64b585f393fd"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Audit sqlglot >=30.23.0 BigQuery FILTER transpilation change against cloud_compat and pin or adapt"
     },
     "sqlite-database-name-ignored-20261016": {
