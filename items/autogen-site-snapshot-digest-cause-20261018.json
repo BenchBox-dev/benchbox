@@ -5,7 +5,7 @@
     "No repository variable or setting was changed"
   ],
   "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs the four digests and a stated outcome. FAIL if a variable was set or the gate was loosened.\nPre-publication (AGENTS.md): self-review with the code review action and fix every Critical and Required finding before make pr-open (G13).",
-  "description": "Site repo items (BenchBox-dev/benchbox-site): read that repo's AGENTS.md first and follow its worktree, test and PR rules (G2); decision D6 authorizes PRs and merges there.\nConfirmed: four site deploys on 2026-10-14 (runs 38615186053, 38619713842, 38622713758, 38627439350) failed the snapshot_digest gate: 'corpus is unchanged but the snapshot contents changed: canonical digest 2c1a0fbb... became b33aef4b...' (deploy/gates/snapshot-digest.ts). UNKNOWN: whether the 'became' digest was identical across the four runs (a deterministic content change that needed the approval variables) or differed (nondeterministic snapshot build).\nWork: read the four gate lines, record the digests, then (a) identical: record it as a deterministic change and finish with evidence, no code; (b) different: find the nondeterminism source (snapshot build in core, or canonical-digest.ts) and fix it with a regression test.\nGuardrail: never set SITE_SNAPSHOT_APPROVED_CHANGE or SITE_SNAPSHOT_APPROVAL_REASON (repository variables are owner-only, G5).",
+  "description": "Site repo items (BenchBox-dev/benchbox-site): read that repo's AGENTS.md first and follow its worktree, test and PR rules (G2); decision D6 authorizes PRs and merges there.\nConfirmed: four site deploys on 2026-10-14 (runs 38615186053, 38619713842, 38622713758, 38627439350) failed the snapshot_digest gate: 'corpus is unchanged but the snapshot contents changed: canonical digest 2c1a0fbb... became b33aef4b...' (deploy/gates/snapshot-digest.ts). UNKNOWN: whether the 'became' digest was identical across the four runs (a deterministic content change that needed the approval variables) or differed (nondeterministic snapshot build).\nWork: read the four gate lines, record the digests, then (a) identical: record it as a deterministic change and finish with evidence, no code; (b) different: find the nondeterminism source (snapshot build in core, or canonical-digest.ts) and fix it with a regression test.\nGuardrail: never set SITE_SNAPSHOT_APPROVED_CHANGE or SITE_SNAPSHOT_APPROVAL_REASON (repository variables are owner-only, G5).\nGATE-L: the outcome (stable change versus nondeterminism) is decided only from the four recorded digests; if the digests cannot be retrieved from the retained logs or artifacts, record that and block rather than guessing.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox-site/actions/runs/38615186053",
     "https://github.com/BenchBox-dev/benchbox/issues/2979"
@@ -25,6 +25,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "609ea0567a814b1e8bb9fa290fe3c69e",
+      "session_id": "cab8a4e762844fd9912c504ebfd76c56"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7ac6538e56f6607b35a3f600",
+      "at": "2026-10-18T20:29:33Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c49523e73f6f4dbd9a0faf0d027d8b71",
       "session_id": "cab8a4e762844fd9912c504ebfd76c56"
     }
   ]
