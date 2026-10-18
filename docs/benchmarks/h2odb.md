@@ -85,7 +85,7 @@ platform and scale.
 
 ### Basic Aggregation Queries
 
-**Q1: Simple Count**
+**[Q1](queries/h2odb/q1.md): Simple Count**
 ```sql
 SELECT COUNT(*) as count
 FROM trips;
@@ -93,7 +93,7 @@ FROM trips;
 - **Purpose**: Test basic table scanning and counting
 - **Performance focus**: Sequential scan optimization
 
-**Q2: Sum and Mean**
+**[Q2](queries/h2odb/q2.md): Sum and Mean**
 ```sql
 SELECT
     SUM(fare_amount) as sum_fare_amount,
@@ -105,7 +105,7 @@ FROM trips;
 
 ### Grouping Queries
 
-**Q3: Single-Column Grouping**
+**[Q3](queries/h2odb/q3.md): Single-Column Grouping**
 ```sql
 SELECT
     passenger_count,
@@ -117,7 +117,7 @@ ORDER BY passenger_count;
 - **Purpose**: Test basic GROUP BY performance
 - **Performance focus**: Hash aggregation vs. sort-based grouping
 
-**Q4: Multi-Aggregate Grouping**
+**[Q4](queries/h2odb/q4.md): Multi-Aggregate Grouping**
 ```sql
 SELECT
     passenger_count,
@@ -130,7 +130,7 @@ ORDER BY passenger_count;
 - **Purpose**: Test multiple aggregation functions in single query
 - **Performance focus**: Aggregation pipeline efficiency
 
-**Q5: Two-Column Grouping**
+**[Q5](queries/h2odb/q5.md): Two-Column Grouping**
 ```sql
 SELECT
     passenger_count,
@@ -145,7 +145,7 @@ ORDER BY passenger_count, vendor_id;
 
 ### Temporal Analysis Queries
 
-**Q7: Time-Based Grouping**
+**[Q7](queries/h2odb/q7.md): Time-Based Grouping**
 ```sql
 SELECT
     EXTRACT(HOUR FROM pickup_datetime) as hour,
@@ -157,7 +157,7 @@ ORDER BY hour;
 - **Purpose**: Test date/time function performance
 - **Performance focus**: Temporal extraction and grouping
 
-**Q8: Complex Temporal Analysis**
+**[Q8](queries/h2odb/q8.md): Complex Temporal Analysis**
 ```sql
 SELECT
     DATE_TRUNC('day', pickup_datetime) as pickup_date,
@@ -176,7 +176,7 @@ ORDER BY pickup_date, passenger_count;
 
 ### Advanced-level Analytics Queries
 
-**Q9: Statistical Analysis**
+**[Q9](queries/h2odb/q9.md): Statistical Analysis**
 ```sql
 SELECT
     vendor_id,
@@ -270,7 +270,7 @@ for query_id in ["Q7", "Q8"]:
 conn.close()
 ```
 
-Queries Q1 to Q6 are the basic aggregation tests. Q7 and Q8 are temporal analysis queries and take start and end dates as parameters.
+Queries [Q1](queries/h2odb/q1.md) to [Q6](queries/h2odb/q6.md) are the basic aggregation tests. [Q7](queries/h2odb/q7.md) and [Q8](queries/h2odb/q8.md) are temporal analysis queries and take start and end dates as parameters.
 
 ### Performance Benchmarking Framework
 
@@ -455,25 +455,25 @@ The example loads the data into pandas to simulate ML preprocessing, then times 
 
 ### Query Performance Patterns
 
-**Basic Queries (Q1-Q2):**
+**Basic Queries ([Q1](queries/h2odb/q1.md)-[Q2](queries/h2odb/q2.md)):**
 - **Primary bottleneck**: Sequential scan speed and basic aggregation
 - **Optimization targets**: Column store scanning, SIMD operations
 - **Typical performance**: Sub-second (10ms-2s depending on data size)
 - **Scaling characteristics**: Linear with data size
 
-**Grouping Queries (Q3-Q6):**
+**Grouping Queries ([Q3](queries/h2odb/q3.md)-[Q6](queries/h2odb/q6.md)):**
 - **Primary bottleneck**: Hash table construction and aggregation algorithms
 - **Optimization targets**: Hash aggregation efficiency, memory management
 - **Typical performance**: Fast to medium, seconds to tens of seconds
 - **Scaling characteristics**: Sub-linear with good hash distribution
 
-**Temporal Queries (Q7-Q8):**
+**Temporal Queries ([Q7](queries/h2odb/q7.md)-[Q8](queries/h2odb/q8.md)):**
 - **Primary bottleneck**: Date/time function evaluation and temporal grouping
 - **Optimization targets**: Date extraction optimization, temporal indexing
 - **Typical performance**: Medium, seconds to minutes
 - **Scaling characteristics**: Depends on temporal selectivity
 
-**Advanced-level Analytics (Q9-Q10):**
+**Advanced-level Analytics ([Q9](queries/h2odb/q9.md)-[Q10](queries/h2odb/q10.md)):**
 - **Primary bottleneck**: Statistical function computation, complex aggregations
 - **Optimization targets**: Statistical algorithm efficiency, sorting performance
 - **Typical performance**: Slower, minutes for large datasets
@@ -580,7 +580,7 @@ q3_result.explain(True)
 spark.stop()
 ```
 
-The example partitions the data by pickup date for temporal queries and caches it. Q1 is a basic count, Q3 groups by passenger count, and Q7 is a temporal analysis by hour. `explain(True)` shows the execution plan for Q3.
+The example partitions the data by pickup date for temporal queries and caches it. [Q1](queries/h2odb/q1.md) is a basic count, [Q3](queries/h2odb/q3.md) groups by passenger count, and [Q7](queries/h2odb/q7.md) is a temporal analysis by hour. `explain(True)` shows the execution plan for [Q3](queries/h2odb/q3.md).
 
 ### ClickHouse Integration
 
@@ -657,7 +657,7 @@ q7_result = client.query(q7_configured)
 print(f"Q7 results: {len(q7_result.result_rows)} hours")
 ```
 
-The table uses a MergeTree engine partitioned by month, and the queries use ClickHouse-native functions (`count()`, `sum()`, `toHour()`) for Q1 (count), Q3 (grouping) and Q7 (temporal analysis). The CSV is loaded with ClickHouse's CSV import.
+The table uses a MergeTree engine partitioned by month, and the queries use ClickHouse-native functions (`count()`, `sum()`, `toHour()`) for [Q1](queries/h2odb/q1.md) (count), [Q3](queries/h2odb/q3.md) (grouping) and [Q7](queries/h2odb/q7.md) (temporal analysis). The CSV is loaded with ClickHouse's CSV import.
 
 ## Best Practices
 

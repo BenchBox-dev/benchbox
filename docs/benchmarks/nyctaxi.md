@@ -82,53 +82,55 @@ The benchmark includes 25 queries organized into 9 categories:
 
 ### Temporal Queries
 Time-based aggregations and patterns:
-- `trips-per-hour`: Hourly trip distribution
-- `trips-per-day`: Daily trip patterns
-- `trips-per-month`: Monthly aggregations
-- `hourly-revenue`: Revenue by hour of day
+- [`trips-per-hour`](queries/nyctaxi/trips-per-hour.md): Hourly trip distribution
+- [`trips-per-day`](queries/nyctaxi/trips-per-day.md): Daily trip patterns
+- [`trips-per-month`](queries/nyctaxi/trips-per-month.md): Monthly aggregations
+- [`trips-by-day-of-week`](queries/nyctaxi/trips-by-day-of-week.md): Trip patterns by weekday
 
 ### Geographic Queries
 Zone-level spatial analytics:
-- `top-pickup-zones`: Busiest pickup locations
-- `top-dropoff-zones`: Busiest dropoff locations
-- `zone-pairs`: Popular origin-destination pairs
-- `borough-summary`: Borough-level aggregations
+- [`top-pickup-zones`](queries/nyctaxi/top-pickup-zones.md): Busiest pickup locations
+- [`top-dropoff-zones`](queries/nyctaxi/top-dropoff-zones.md): Busiest dropoff locations
+- [`top-routes`](queries/nyctaxi/top-routes.md): Most popular pickup-dropoff pairs
+- [`borough-summary`](queries/nyctaxi/borough-summary.md): Borough-level aggregations
 
 ### Financial Queries
 Revenue and tip analysis:
-- `total-revenue`: Overall revenue metrics
-- `tip-analysis`: Tip patterns and percentages
-- `fare-distribution`: Fare amount distributions
-- `payment-analysis`: Payment type breakdowns
+- [`revenue-by-payment-type`](queries/nyctaxi/revenue-by-payment-type.md): Revenue breakdown by payment method
+- [`tip-analysis`](queries/nyctaxi/tip-analysis.md): Tip patterns by time and location
+- [`fare-distribution`](queries/nyctaxi/fare-distribution.md): Fare amount distributions
+- [`surcharge-revenue`](queries/nyctaxi/surcharge-revenue.md): Revenue from surcharges and extras
 
 ### Characteristics Queries
 Trip attribute analysis:
-- `distance-stats`: Trip distance statistics
-- `passenger-distribution`: Passenger count patterns
-- `trip-duration`: Duration analysis
+- [`distance-distribution`](queries/nyctaxi/distance-distribution.md): Distribution of trip distances
+- [`passenger-count-analysis`](queries/nyctaxi/passenger-count-analysis.md): Trip patterns by passenger count
+- [`trip-duration-analysis`](queries/nyctaxi/trip-duration-analysis.md): Trip duration patterns
 
 ### Rate Code Queries
 Rate code analysis:
-- `rate-code-distribution`: Rate code usage patterns
+- [`rate-code-summary`](queries/nyctaxi/rate-code-summary.md): Trip statistics by rate code
+- [`airport-trips`](queries/nyctaxi/airport-trips.md): Analysis of airport trips (rate codes 2, 3)
 
 ### Vendor Queries
 Vendor performance comparisons:
-- `vendor-comparison`: Vendor-level metrics
+- [`vendor-comparison`](queries/nyctaxi/vendor-comparison.md): Vendor-level metrics
 
 ### Complex Queries
 Multi-dimensional analytics:
-- `peak-hour-zones`: Peak hours by zone
-- `weekend-weekday`: Weekend vs weekday patterns
-- `revenue-by-zone-hour`: Zone-hour revenue matrix
+- [`hourly-zone-heatmap`](queries/nyctaxi/hourly-zone-heatmap.md): Trip density by hour and zone
+- [`weekday-weekend-comparison`](queries/nyctaxi/weekday-weekend-comparison.md): Compare weekday and weekend patterns
+- [`rush-hour-analysis`](queries/nyctaxi/rush-hour-analysis.md): Analysis of rush hour patterns
+- [`monthly-year-over-year`](queries/nyctaxi/monthly-year-over-year.md): Compare monthly patterns across years
 
 ### Point Queries
 Single-value lookups:
-- `specific-trip-count`: Filtered trip counts
+- [`single-day-summary`](queries/nyctaxi/single-day-summary.md): Summary statistics for a single day
+- [`zone-detail`](queries/nyctaxi/zone-detail.md): Detailed statistics for a specific zone
 
 ### Baseline Queries
 Full table operations:
-- `full-scan`: Complete table scan
-- `row-count`: Basic count
+- [`full-scan-count`](queries/nyctaxi/full-scan-count.md): Count all trips (baseline scan query)
 
 ## Usage Examples
 

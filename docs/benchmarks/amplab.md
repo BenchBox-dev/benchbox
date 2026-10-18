@@ -107,14 +107,14 @@ platform and scale.
 
 **Purpose**: Test the ability to scan large datasets and perform filtering with aggregation.
 
-**Query 1 (Basic Scan)**:
+**[Query 1](queries/amplab/q1.md) (Basic Scan)**:
 ```sql
 SELECT pageURL, pageRank
 FROM rankings
 WHERE pageRank > 1000;
 ```
 
-**Query 1A (Aggregated Scan)**:
+**[Query 1A](queries/amplab/q1a.md) (Aggregated Scan)**:
 ```sql
 SELECT
     COUNT(*) as total_pages,
@@ -134,7 +134,7 @@ WHERE pageRank > 1000;
 
 **Purpose**: Test join performance between large tables with aggregation.
 
-**Query 2 (Revenue Analysis)**:
+**[Query 2](queries/amplab/q2.md) (Revenue Analysis)**:
 ```sql
 SELECT
     sourceIP,
@@ -148,7 +148,7 @@ ORDER BY totalRevenue DESC
 LIMIT 100;
 ```
 
-**Query 2A (Join with Filtering)**:
+**[Query 2A](queries/amplab/q2a.md) (Join with Filtering)**:
 ```sql
 SELECT
     uv.destURL,
@@ -174,7 +174,7 @@ LIMIT 100;
 
 **Purpose**: Test complex analytical operations including text processing and advanced aggregations.
 
-**Query 3 (User Behavior Analysis)**:
+**[Query 3](queries/amplab/q3.md) (User Behavior Analysis)**:
 ```sql
 SELECT
     sourceIP,
@@ -190,7 +190,7 @@ ORDER BY total_revenue DESC
 LIMIT 100;
 ```
 
-**Query 3A (Document Analysis)**:
+**[Query 3A](queries/amplab/q3a.md) (Document Analysis)**:
 ```sql
 SELECT
     url,
@@ -483,19 +483,19 @@ The framework runs each query type with standard parameters so results are repro
 
 ### Query Performance Patterns
 
-**Scan Queries (Query 1/1A):**
+**Scan Queries ([Query 1](queries/amplab/q1.md)/[1A](queries/amplab/q1a.md)):**
 - **Primary bottleneck**: I/O throughput and column scanning speed
 - **Optimization targets**: Column store efficiency, predicate pushdown
 - **Typical performance**: Fast on columnar systems, slower on row stores
 - **Scaling characteristics**: Linear with data size
 
-**Join Queries (Query 2/2A):**
+**Join Queries ([Query 2](queries/amplab/q2.md)/[2A](queries/amplab/q2a.md)):**
 - **Primary bottleneck**: Join algorithm efficiency and memory management
 - **Optimization targets**: Hash table construction, data distribution
 - **Typical performance**: Highly dependent on system architecture
 - **Scaling characteristics**: Can be super-linear without proper optimization
 
-**Analytics Queries (Query 3/3A):**
+**Analytics Queries ([Query 3](queries/amplab/q3.md)/[3A](queries/amplab/q3a.md)):**
 - **Primary bottleneck**: Complex predicate evaluation and text processing
 - **Optimization targets**: String function performance, aggregation speed
 - **Typical performance**: Variable depending on text processing capabilities

@@ -44,10 +44,10 @@ Text generation and completion tasks:
 
 | Query ID | Description |
 |----------|-------------|
-| `generative_complete_simple` | Basic text completion with short prompt |
-| `generative_complete_customer_profile` | Generate customer profile summaries from comments |
-| `generative_question_answer` | Answer questions about customer data |
-| `generative_sql_generation` | Generate SQL from natural language |
+| [`generative_complete_simple`](queries/ai_primitives/generative-complete-simple.md) | Basic text completion with a short prompt |
+| [`generative_complete_customer_profile`](queries/ai_primitives/generative-complete-customer-profile.md) | Generate customer profile summary from TPC-H comments |
+| [`generative_question_answer`](queries/ai_primitives/generative-question-answer.md) | Answer a question about customer data |
+| [`generative_sql_generation`](queries/ai_primitives/generative-sql-generation.md) | Generate SQL from natural language description |
 
 ### NLP (5 queries)
 
@@ -55,11 +55,11 @@ Natural language processing and understanding:
 
 | Query ID | Description |
 |----------|-------------|
-| `nlp_sentiment_analysis` | Analyze sentiment of customer comments |
-| `nlp_classification` | Classify customer feedback into categories |
-| `nlp_entity_extraction` | Extract entities (products, locations, etc.) |
-| `nlp_language_detection` | Detect language of supplier comments |
-| `nlp_keyword_extraction` | Extract key terms from order comments |
+| [`nlp_sentiment_single`](queries/ai_primitives/nlp-sentiment-single.md) | Analyze sentiment of a single customer comment |
+| [`nlp_sentiment_batch`](queries/ai_primitives/nlp-sentiment-batch.md) | Batch sentiment analysis on customer comments |
+| [`nlp_classify_priority`](queries/ai_primitives/nlp-classify-priority.md) | Classify order priority based on customer comments |
+| [`nlp_classify_segment`](queries/ai_primitives/nlp-classify-segment.md) | Classify customer into market segment from comment |
+| [`nlp_entity_extraction`](queries/ai_primitives/nlp-entity-extraction.md) | Extract entities from part descriptions |
 
 ### Transform (4 queries)
 
@@ -67,10 +67,10 @@ Text transformation tasks:
 
 | Query ID | Description |
 |----------|-------------|
-| `transform_summarize` | Summarize long customer comments |
-| `transform_translate` | Translate supplier comments |
-| `transform_grammar_correction` | Correct grammar in customer feedback |
-| `transform_rewrite_professional` | Rewrite comments in professional tone |
+| [`transform_summarize_short`](queries/ai_primitives/transform-summarize-short.md) | Summarize short customer comments |
+| [`transform_summarize_long`](queries/ai_primitives/transform-summarize-long.md) | Summarize longer part descriptions |
+| [`transform_translate_comment`](queries/ai_primitives/transform-translate-comment.md) | Translate customer comment to Spanish |
+| [`transform_grammar_fix`](queries/ai_primitives/transform-grammar-fix.md) | Fix grammar in customer comments (Databricks-specific) |
 
 ### Embedding (3 queries)
 
@@ -78,9 +78,9 @@ Vector embedding generation:
 
 | Query ID | Description |
 |----------|-------------|
-| `embedding_customer_comments` | Generate embeddings for customer comments |
-| `embedding_supplier_descriptions` | Generate embeddings for supplier descriptions |
-| `embedding_similarity_search` | Find similar items using vector similarity |
+| [`embedding_single`](queries/ai_primitives/embedding-single.md) | Generate embedding for a single customer comment |
+| [`embedding_batch`](queries/ai_primitives/embedding-batch.md) | Batch embedding generation for customer comments |
+| [`embedding_large_dimension`](queries/ai_primitives/embedding-large-dimension.md) | Generate 1024-dimension embedding |
 
 ## Quick Start
 

@@ -91,7 +91,7 @@ benchbox run --platform duckdb --benchmark tpcds --scale 1.0
 benchbox run --platform duckdb --benchmark tpcds_obt --scale 1.0
 ```
 
-The first command runs TPC-DS-OBT on DuckDB and the second runs only queries Q1, Q3 and Q7. The last two commands run standard TPC-DS and then TPC-DS-OBT at the same scale for comparison.
+The first command runs TPC-DS-OBT on DuckDB and the second runs only queries [Q1](queries/tpcds_obt/q1.md), [Q3](queries/tpcds_obt/q3.md) and [Q7](queries/tpcds_obt/q7.md). The last two commands run standard TPC-DS and then TPC-DS-OBT at the same scale for comparison.
 
 ## CLI Options (`--benchmark-option`)
 
@@ -147,7 +147,7 @@ automatic converter because their semantics require manual rewrites.
 
 ### Example: Query 1
 
-**Standard TPC-DS Q1** (with joins):
+**Standard TPC-DS [Q1](queries/tpcds/q1.md)** (with joins):
 ```sql
 SELECT c_customer_id, c_first_name, c_last_name, ...
 FROM customer, store_sales, date_dim, store
@@ -157,7 +157,7 @@ WHERE c_customer_sk = ss_customer_sk
   ...
 ```
 
-**TPC-DS-OBT Q1** (flat table):
+**TPC-DS-OBT [Q1](queries/tpcds_obt/q1.md)** (flat table):
 ```sql
 SELECT c_customer_id, c_first_name, c_last_name, ...
 FROM tpcds_obt

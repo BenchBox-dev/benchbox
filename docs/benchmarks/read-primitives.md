@@ -517,7 +517,7 @@ The Read Primitives benchmark provides **full DataFrame support** for both expre
 | **Dask** | Pandas | Full support | 149 queries |
 | **cuDF** | Pandas | Full support | 149 queries |
 
-**Note**: Only 3 queries are skipped for DataFrame platforms (correlated subqueries that have no DataFrame equivalent): `optimizer_exists_to_semijoin`, `optimizer_in_to_exists`, `optimizer_scalar_subquery_flattening`.
+**Note**: Only 3 queries are skipped for DataFrame platforms (correlated subqueries that have no DataFrame equivalent): [`optimizer_exists_to_semijoin`](queries/read_primitives/optimizer-exists-to-semijoin.md), [`optimizer_in_to_exists`](queries/read_primitives/optimizer-in-to-exists.md), [`optimizer_scalar_subquery_flattening`](queries/read_primitives/optimizer-scalar-subquery-flattening.md).
 
 ### DataFrame Execution
 

@@ -136,51 +136,51 @@ The benchmark includes 18 queries organized into categories:
 
 ### Single Host Queries
 Metrics for individual hosts over time ranges:
-- `single-host-12-hr`: CPU usage for one host over 12 hours
-- `single-host-1-hr`: Detailed CPU for one host over 1 hour
+- [`single-host-12-hr`](queries/tsbs_devops/single-host-12-hr.md): CPU usage for one host over 12 hours
+- [`single-host-1-hr`](queries/tsbs_devops/single-host-1-hr.md): Detailed CPU for one host over 1 hour
 
 ### Aggregation Queries
 Cross-host aggregations:
-- `cpu-max-all-1-hr`: Maximum CPU across all hosts (1 hour)
-- `cpu-max-all-8-hr`: Maximum CPU across all hosts (8 hours)
+- [`cpu-max-all-1-hr`](queries/tsbs_devops/cpu-max-all-1-hr.md): Maximum CPU across all hosts (1 hour)
+- [`cpu-max-all-8-hr`](queries/tsbs_devops/cpu-max-all-8-hr.md): Maximum CPU across all hosts (8 hours)
 
 ### GroupBy Queries
 Time-bucketed aggregations:
-- `double-groupby-1-hr`: CPU grouped by host and minute
-- `double-groupby-5-min`: Fine-grained CPU grouping
+- [`double-groupby-1-hr`](queries/tsbs_devops/double-groupby-1-hr.md): CPU grouped by host and minute
+- [`double-groupby-5-min`](queries/tsbs_devops/double-groupby-5-min.md): Fine-grained CPU grouping
 
 ### Threshold Queries
 Alert-style threshold filters:
-- `high-cpu-1-hr`: Hosts with CPU > 90%
-- `high-cpu-12-hr`: Sustained high CPU hosts
-- `low-memory-hosts`: Hosts with available memory < 10%
-- `net-errors`: Hosts with network errors
+- [`high-cpu-1-hr`](queries/tsbs_devops/high-cpu-1-hr.md): Hosts with CPU > 90%
+- [`high-cpu-12-hr`](queries/tsbs_devops/high-cpu-12-hr.md): Sustained high CPU hosts
+- [`low-memory-hosts`](queries/tsbs_devops/low-memory-hosts.md): Hosts with available memory < 10%
+- [`net-errors`](queries/tsbs_devops/net-errors.md): Hosts with network errors
 
 ### Memory Queries
 Memory-specific analytics:
-- `mem-by-host-1-hr`: Memory statistics per host
+- [`mem-by-host-1-hr`](queries/tsbs_devops/mem-by-host-1-hr.md): Memory statistics per host
 
 ### Disk Queries
 Disk I/O analytics:
-- `disk-iops-1-hr`: Read/write operations per host
-- `disk-latency`: Average disk latency analysis
+- [`disk-iops-1-hr`](queries/tsbs_devops/disk-iops-1-hr.md): Read/write operations per host
+- [`disk-latency`](queries/tsbs_devops/disk-latency.md): Average disk latency analysis
 
 ### Network Queries
 Network throughput analytics:
-- `net-throughput-1-hr`: Bytes sent/received per host
+- [`net-throughput-1-hr`](queries/tsbs_devops/net-throughput-1-hr.md): Bytes sent/received per host
 
 ### Combined Queries
 Cross-metric correlation:
-- `resource-utilization`: Combined CPU and memory per host
+- [`resource-utilization`](queries/tsbs_devops/resource-utilization.md): Combined CPU and memory per host
 
 ### Lastpoint Queries
 Most recent values (common in dashboards):
-- `lastpoint`: Most recent metrics per host
+- [`lastpoint`](queries/tsbs_devops/lastpoint.md): Most recent metrics per host
 
 ### Tag-filtered Queries
 Filtering by host metadata:
-- `by-region`: Metrics filtered by cloud region
-- `by-service`: Metrics grouped by service
+- [`by-region`](queries/tsbs_devops/by-region.md): Metrics filtered by cloud region
+- [`by-service`](queries/tsbs_devops/by-service.md): Metrics grouped by service
 
 ## Usage Examples
 

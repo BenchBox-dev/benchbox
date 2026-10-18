@@ -147,19 +147,19 @@ scale.
 
 | Query | Purpose | Validation Focus |
 |-------|---------|------------------|
-| **V1** | Customer Dimension Validation | SCD Type 2 implementation, `IsCurrent` flag counts on `DimCustomer` |
-| **V2** | Account Dimension Validation | Status tracking, current-flag counts on `DimAccount` |
-| **V3** | Trade Fact Validation | Aggregate quality check on `FactTrade` (counts, totals, fees) |
+| **[V1](queries/tpcdi/v1.md)** | Customer Dimension Validation | SCD Type 2 implementation, `IsCurrent` flag counts on `DimCustomer` |
+| **[V2](queries/tpcdi/v2.md)** | Account Dimension Validation | Status tracking, current-flag counts on `DimAccount` |
+| **[V3](queries/tpcdi/v3.md)** | Trade Fact Validation | Aggregate quality check on `FactTrade` (counts, totals, fees) |
 
 ### Base Analytical Queries (A1-A5)
 
 | Query | Purpose | Business Value |
 |-------|---------|----------------|
-| **A1** | Customer Trading Analysis | Customer segmentation by trading activity |
-| **A2** | Company Performance Analysis | Security performance by industry/rating |
-| **A3** | Broker Commission Analysis | Broker performance and commission tracking |
-| **A4** | Portfolio Analysis | Customer portfolio composition and risk |
-| **A5** | Market Trend Analysis | Historical price trends and volatility |
+| **[A1](queries/tpcdi/a1.md)** | Customer Trading Analysis | Customer segmentation by trading activity |
+| **[A2](queries/tpcdi/a2.md)** | Company Performance Analysis | Security performance by industry/rating |
+| **[A3](queries/tpcdi/a3.md)** | Broker Commission Analysis | Broker performance and commission tracking |
+| **[A4](queries/tpcdi/a4.md)** | Portfolio Analysis | Customer portfolio composition and risk |
+| **[A5](queries/tpcdi/a5.md)** | Market Trend Analysis | Historical price trends and volatility |
 
 ### Extended Data Quality Queries (VQ1-VQ12)
 
@@ -366,14 +366,14 @@ This is a simplified example of the transformation logic for SCD Type 2 processi
 ### Query Performance Patterns
 
 **Validation Queries:**
-- **Fast (< 1s)**: V1, V2 - Simple dimension counts and aggregations
-- **Medium (1-10s)**: V3 - Fact table aggregations
+- **Fast (< 1s)**: [V1](queries/tpcdi/v1.md), [V2](queries/tpcdi/v2.md) - Simple dimension counts and aggregations
+- **Medium (1-10s)**: [V3](queries/tpcdi/v3.md) - Fact table aggregations
 - **Slower (> 10s)**: VQ-series queries with cross-dimension joins
 
 **Analytical Queries:**
-- **Interactive (< 5s)**: A1, A3 - Customer and broker analysis
-- **Reporting (5-30s)**: A2, A4 - Company and portfolio analysis
-- **Analytical (> 30s)**: A5, AQ-series - Historical trend analysis
+- **Interactive (< 5s)**: [A1](queries/tpcdi/a1.md), [A3](queries/tpcdi/a3.md) - Customer and broker analysis
+- **Reporting (5-30s)**: [A2](queries/tpcdi/a2.md), [A4](queries/tpcdi/a4.md) - Company and portfolio analysis
+- **Analytical (> 30s)**: [A5](queries/tpcdi/a5.md), AQ-series - Historical trend analysis
 
 ## Configuration Options
 
