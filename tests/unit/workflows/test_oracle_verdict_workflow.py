@@ -354,10 +354,19 @@ def test_post_job_reruns_the_failed_synchronize_suite_for_the_head() -> None:
     assert "gh run list" in step["run"]
     assert "--workflow oracle-review.yml" in step["run"]
     assert '.event == "pull_request"' in step["run"]
+    assert '.event == "pull_request_review"' in step["run"]
     assert '.conclusion == "failure"' in step["run"]
     assert "env.HEAD_SHA" in step["run"]
     assert 'gh run rerun "$id" --failed --repo "$REPO"' in step["run"]
     assert "set -euo pipefail" in step["run"]
+
+
+def test_post_job_rerun_failures_are_warned_and_skipped() -> None:
+    post = _jobs()["post"]
+    step = next(item for item in post["steps"] if item["name"] == "Rerun the failed synchronize suite for this head")
+    rerun = 'gh run rerun "$id" --failed --repo "$REPO" || echo "::warning::could not rerun run $id; skipping"'
+    assert rerun in step["run"]
+    assert step["run"].count("gh run rerun") == 1
 
 
 def test_only_codex_jobs_let_the_sandbox_create_user_namespaces() -> None:
