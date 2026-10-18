@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Plan, retry, record-state, sweep, absence and github tests pass"
+  ],
+  "context": "Done: joeharris76/ship-no-ship#4, #5, #9, #10 merged.",
+  "description": "Plan step N4. Engine hands reviews to the local service: handoff outputs, request.json, State.generation/predecessor, record-state, codex quota classification, quota_default_block_minutes, sweep re-offer with heartbeat, ORACLE_EXECUTOR override, offline-reviewer report.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51",
+      "at": "2026-10-18T00:53:42Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "f77d10e9127a447b94a89b7407dc8df0",
+      "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    }
+  ]
+}

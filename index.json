@@ -21933,6 +21933,15 @@
       "status": "open",
       "title": "ship-no-ship: configure base branch, path manifest and workflow names per policy"
     },
+    "ssns-n4-local-executor": {
+      "claim": null,
+      "needs": [
+        "ssns-n3-engine-config-v2"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "ship-no-ship: local executor handoff, state generations and record-state in the engine"
+    },
     "stabilize-full-test-suite-failures": {
       "claim": null,
       "needs": [],
