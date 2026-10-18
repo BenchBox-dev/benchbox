@@ -4,6 +4,7 @@
     "A parity test in tests/unit/scripts/test_corpus_cohort_depth.py covers a bundle with a known-defects sidecar",
     "Cohort identity counts reported by validate_corpus match the Explorer's ranked identities for the current corpus, or the remaining differences are documented"
   ],
+  "context": "Implemented in PR #3116 (branch fix/validate-corpus-known-defects-parity, commit 9724d853): validate_corpus applies Explorer known_defective_data exclusion; parity tests cover sidecar bundles and committed corpus agreement (419 bundles, 0 disagreements). Shallow TPC-H cohorts documented in test pin until replacement bundles are ingested. PR armed 2026-10-18; after merge, take and finish this item.",
   "description": "Defect: the Explorer pipeline excludes bundles that have a known-defects sidecar (_project/scripts/explorer_pipeline/transformer.py:666 _sidecar_known_defects, applied at :1695 and :1820, reason known_defective_data), but results-data/validate_corpus.py:568 exclusion_reason never reads that sidecar. The corpus depth gate and cohort identity counts therefore include bundles the Explorer will not rank. Found 2026-10-16 comparing outcomes after #3075: validate_corpus reports TPC-H SF 0.1 with 8 identities (including BigQuery, Databricks and Snowflake), while the Explorer ranks 6 rows and excludes those three cloud bundles, plus most legacy SF 0.01/0.1 rows, as known_defective_data. Pre-existing; not introduced by #3075.",
   "sessions": [
     {
@@ -30,6 +31,14 @@
       "generation": "904ab60aa17349f0a53824058c3e1d17",
       "op": "take",
       "op_id": "345362b5ad454d2ab3c522cc4e43aada",
+      "session_id": "d2c53a64af484bf0b44e45ae35143611"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:3ce222eaad5d12493e27d4cc",
+      "at": "2026-10-18T01:06:04Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "b81b66eccd834d558fcba427064eea31",
       "session_id": "d2c53a64af484bf0b44e45ae35143611"
     }
   ]
