@@ -991,7 +991,7 @@
         "astro-site-21-single-design-token-source"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Build the shared site shell: header, footer, docs layout, theme toggle, and docs/blog search"
     },
     "astro-site-30-rst-to-myst-in-place": {
