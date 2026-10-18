@@ -26933,7 +26933,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "Add make worktree-reap to remove merged, clean worktrees in bulk"
     },
     "worktree-release-force-does-not-force-past-dirty-tree-20260806": {
