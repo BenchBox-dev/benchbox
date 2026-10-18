@@ -22011,6 +22011,18 @@
       "status": "open",
       "title": "ship-no-ship activation A4: scripted live run against the real CLIs"
     },
+    "ssns-a5-proof-prs": {
+      "claim": null,
+      "needs": [
+        "ssns-a1-reboot-checkpoint",
+        "ssns-a2-codex-token-measurement",
+        "ssns-a3-triggering-actor-probe",
+        "ssns-a4-live-check"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "ship-no-ship activation A5: review one or two real BenchBox soundness PRs in proof mode"
+    },
     "ssns-go-public": {
       "claim": null,
       "needs": [],
