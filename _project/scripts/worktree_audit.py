@@ -461,6 +461,55 @@ def fetch_prs_for_branch(
     return validated_prs, None
 
 
+def fetch_prs_for_branches(
+    owner: str,
+    repo: str,
+    branches: Set[str],
+    expected_repo_id: Optional[int],
+    token: Optional[str],
+    max_pages: int = 200,
+) -> Tuple[Dict[str, List[Dict[str, Any]]], Optional[str]]:
+    encoded_owner = urllib.parse.quote(owner, safe="")
+    encoded_repo = urllib.parse.quote(repo, safe="")
+    by_branch: Dict[str, List[Dict[str, Any]]] = {branch: [] for branch in branches}
+    page = 1
+
+    while True:
+        params = urllib.parse.urlencode({"state": "all", "per_page": 100, "page": page})
+        url = f"https://api.github.com/repos/{encoded_owner}/{encoded_repo}/pulls?{params}"
+        data, headers, err = _github_api_request(url, token)
+        if err:
+            return {}, err
+        if not isinstance(data, list):
+            return {}, "Expected list of PRs from API"
+
+        for pr in data:
+            if not isinstance(pr, dict):
+                continue
+            head = pr.get("head") if isinstance(pr.get("head"), dict) else {}
+            head_owner, _, head_ref = str(head.get("label") or "").partition(":")
+            if head_owner.lower() != owner.lower() or head_ref not in by_branch:
+                continue
+            base_repo = pr.get("base", {}).get("repo")
+            base_repo_id = base_repo.get("id") if isinstance(base_repo, dict) else None
+            if expected_repo_id is not None and base_repo_id != expected_repo_id:
+                return {}, (
+                    f"PR #{pr.get('number')} for branch '{head_ref}' failed repository identity validation "
+                    f"(expected repo id {expected_repo_id})"
+                )
+            validated_pr = dict(pr)
+            validated_pr[_EVIDENCE_SOURCE_KEY] = f"GET {url}"
+            by_branch[head_ref].append(validated_pr)
+
+        link_header = headers.get("link", "") if headers else ""
+        if 'rel="next"' not in link_header:
+            return by_branch, None
+
+        page += 1
+        if page > max_pages:
+            return {}, f"PR listing pagination truncated: exceeded {max_pages} pages"
+
+
 def _check_worktree_boundary_states(wt: WorktreeInfo, signals: List[str]) -> Optional[Classification]:
     if not wt.path_exists or not wt.registered:
         return Classification(

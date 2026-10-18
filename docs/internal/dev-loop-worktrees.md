@@ -109,6 +109,15 @@ Finish preview performs comprehensive live revalidation:
 - **Preview is the default / zero mutation**: without APPLY=1, emits human or JSON previews naming the exact proposed worktree removal and atomic expected-OID ref deletion commands, while performing zero changes to worktrees, branches, refs, locks, or tracker state.
 - **Separately gated apply**: `APPLY=1 make worktree-finish ...` re-evaluates fresh evidence in the same invocation, then executes normal `git worktree remove` on the canonical path followed by `git update-ref -d` on the local branch with the expected OID. A held target, a moved branch, or a failed removal stops the sequence; partial success (worktree removed, branch preserved) is reported explicitly.
 
+To sweep every registered worktree at once, run the reaper from any worktree:
+
+```bash
+make worktree-reap
+make worktree-reap APPLY=1
+```
+
+The dry run prints one line per worktree (`remove`, `keep`, or `ambiguous`, then path, branch, and reason) and changes nothing. It lists all PRs once and runs the worktree-finish evaluation for each worktree with that evidence. `remove` means finish would act: merged PR into a structural branch, clean, HEAD at or integrated past the merged head, managed provenance. `keep` covers the primary clone, the current worktree, locked or dirty/untracked worktrees, unintegrated post-merge commits, and branches with no PR or an open PR. Everything else finish cannot decide (detached, missing, legacy or controller-bound provenance, closed-unmerged PRs, unprovable merge heads, lookup failures) is `ambiguous` for the owner and never removed. `APPLY=1` re-evaluates each `remove` candidate with live per-branch evidence immediately before running the same apply actions as `APPLY=1 make worktree-finish`; it reports every removal and failure, continues past failures, and exits nonzero if any candidate was not fully removed.
+
 After the PR merges and the worktree is clean, remove the exact registration:
 
 ```bash
