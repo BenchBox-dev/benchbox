@@ -216,6 +216,8 @@ def test_lock_baseline_cannot_be_replaced_to_hide_a_committed_downgrade(tree: Pa
         "scripts/generate_changelog_entry.py",
         "scripts/check_release_curation.py",
         "scripts/check_dependency_bounds.py",
+        "scripts/check_sqlglot_upstream_freshness.py",
+        "scripts/sqlglot_refresh_waiver.json",
         "_project/scripts/check_uv_lock_revision.py",
         "_project/decisions/single-repo-migration.md",
     ],
@@ -279,6 +281,7 @@ def test_missing_preparation_marker_fails_before_any_write(tree: Path) -> None:
         ("check_uv_lock_revision.py", "uv.lock revision"),
         ("check_release_curation.py", "release curation"),
         ("check_dependency_bounds.py", "dependency bounds"),
+        ("check_sqlglot_upstream_freshness.py", "sqlglot upstream freshness"),
     ],
 )
 def test_check_fails_when_a_delegated_check_fails(tree: Path, script_name: str, label: str) -> None:
@@ -473,6 +476,8 @@ def test_candidate_selection_preserves_ordinary_prose_dependency_and_source_edit
     [
         "scripts/release_flow.py",
         "scripts/check_dependency_bounds.py",
+        "scripts/check_sqlglot_upstream_freshness.py",
+        "scripts/sqlglot_refresh_waiver.json",
         "_project/decisions/single-repo-migration.md",
         ".github/workflows/ci.yml",
     ],
