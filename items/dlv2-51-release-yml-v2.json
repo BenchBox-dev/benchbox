@@ -71,6 +71,15 @@
       "op": "update",
       "op_id": "f526f2127f614893a04150ceac7d6911",
       "session_id": "b88f90bbf0854ed0a599432bfe5fd099"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:047f7cbfbbf519bd65fe7eca",
+      "at": "2026-10-18T11:40:40Z",
+      "client": "tbh",
+      "generation": "da1db86b4bfa4b4eb344338f0fe81b93",
+      "op": "take",
+      "op_id": "d53f85fbcb174cc091d4d6521b67cfa1",
+      "session_id": "b88f90bbf0854ed0a599432bfe5fd099"
     }
   ]
 }
