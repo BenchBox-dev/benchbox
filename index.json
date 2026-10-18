@@ -23878,6 +23878,13 @@
       "status": "done",
       "title": "Sample TPC-Havoc variant equivalence on a third SQL engine (DataFusion)"
     },
+    "tpchavoc-trino-athena-v7-parity": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Extend TPC-Havoc V7 Presto dialect rewrites to Trino and Athena and verify live Trino equivalence"
+    },
     "tpchavoc-variant-equivalence-gate": {
       "claim": null,
       "needs": [],

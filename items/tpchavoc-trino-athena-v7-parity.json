@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "Probe all 9 TPC-Havoc V7 variants (1_v7, 2_v7, 3_v7, 4_v7, 5_v7, 7_v7, 9_v7, 10_v7, 11_v7) against Trino and document which require dialect rewrites.",
+    "Extend benchbox/core/tpchavoc/dialect_compat.py and benchbox/sql_compat/rules/query_adapter/ to register and apply the required Trino TPC-Havoc rewrites.",
+    "Regenerate docs/compat/capability-matrix.md via make compat-docs and verify make compat-docs-check passes.",
+    "Add unit tests in tests/unit/tpchavoc/ covering Trino dialect rewrites and rule registration."
+  ],
+  "context": "Follow-up from PR #3003 (issue #3001), which scoped the V7 rewrites strictly to target_dialect == 'presto' because live SF10 verification was executed on Presto C++ and Presto Java rather than Trino.",
+  "description": "PR #3003 added Presto-specific query-adapter rewrites for 9 TPC-Havoc V7 variants in benchbox/core/tpchavoc/dialect_compat.py (SELECT-alias inlining in HAVING/WHERE for 3_v7, 4_v7, 5_v7, 7_v7, 9_v7, 10_v7, and 11_v7; window FILTER rewrite for 2_v7; and ARRAY_AGG + CROSS JOIN UNNEST rewrite for 1_v7) gated on target_dialect == 'presto'. TrinoAdapter (benchbox/platforms/trino.py:61) and AthenaAdapter (benchbox/platforms/athena.py:422) share PrestoTrinoAdapterBase and emit target_dialect == 'trino', which shares Presto's SQL analyzer rejection of SELECT aliases in HAVING/WHERE and DuckDB LIST* functions. Verify which of the 9 V7 variants fail on live Trino, extend dialect_compat.py and sql_compat rules to trino where required, and regenerate docs/compat/capability-matrix.md.",
+  "links": [
+    "benchbox/core/tpchavoc/dialect_compat.py",
+    "benchbox/sql_compat/rules/query_adapter/presto_tpchavoc_rewrites.py",
+    "benchbox/platforms/presto_trino_adapter_base.py",
+    "benchbox/platforms/trino.py",
+    "benchbox/platforms/athena.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:83b3829dccae64b585f393fd",
+      "at": "2026-10-18T00:22:45Z",
+      "client": "antigravity-client",
+      "op": "create",
+      "op_id": "fed74ea7a80a45c0a968c706421ce9d3",
+      "session_id": "9a67c1a5fd8d43a3a852dde174db8062"
+    }
+  ]
+}
