@@ -22069,6 +22069,13 @@
       "status": "open",
       "title": "ship-no-ship activation A5: review one or two real BenchBox soundness PRs in proof mode"
     },
+    "ssns-doctor-rpath-chain-cap": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "ship-no-ship doctor: a planted toolchain can make the rpath walk take exponential time"
+    },
     "ssns-go-public": {
       "claim": null,
       "needs": [],
