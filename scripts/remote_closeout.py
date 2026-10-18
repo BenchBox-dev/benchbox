@@ -10,6 +10,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from pathlib import Path
@@ -133,18 +134,32 @@ def _load_store(path: Path, repo: str, number: int) -> dict:
 
 
 @contextmanager
-def _locked_store(repo: str, number: int) -> Iterator[tuple[Path, dict]]:
+def _locked_store(repo: str, number: int, wait: float | None = None, attempts: int = 1) -> Iterator[tuple[Path, dict]]:
     import fcntl
 
     path = store_path(repo, number)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.with_name(f"{path.name}.lock").open("a", encoding="utf-8") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
+        deadline = None if wait is None else time.monotonic() + wait
+        attempt = 1
+        while True:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX if deadline is None else fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError as exc:
+                if wait is not None and deadline is not None and time.monotonic() >= deadline:
+                    held = f"another close-out command held the review store for PR #{number} for over {wait} seconds"
+                    if attempt >= attempts:
+                        raise Refused(f"{held}, {attempts} time(s)") from exc
+                    print(f"{held}; waiting again ({attempt} of {attempts})", file=sys.stderr)
+                    attempt += 1
+                    deadline = time.monotonic() + wait
+                time.sleep(0.2)
         yield path, _load_store(path, repo, number)
 
 
-def _view(run: Runner, repo: str, number: int) -> dict:
-    code, out = run(["gh", "pr", "view", str(number), "--repo", repo, "--json", VIEW_FIELDS])
+def _view(run: Runner, repo: str, number: int, fields: str = VIEW_FIELDS) -> dict:
+    code, out = run(["gh", "pr", "view", str(number), "--repo", repo, "--json", fields])
     if code != 0:
         raise LandingError(f"cannot read PR #{number}: {out.strip()[:200]}")
     view = json.loads(out)
@@ -231,7 +246,7 @@ def fetch_develop(run: Runner) -> str:
     return fetched
 
 
-def compute_manifest(run: Runner, head: str, develop: str) -> tuple[str, str]:
+def pin_manifest(run: Runner, head: str, develop: str) -> tuple[str, str]:
     code, out = run(["git", "merge-base", head, develop])
     base = out.strip()
     if code != 0 or not _sha(base):
@@ -239,10 +254,19 @@ def compute_manifest(run: Runner, head: str, develop: str) -> tuple[str, str]:
     code, out = run(["git", "diff", "--raw", "--no-renames", "--no-abbrev", base, head])
     if code != 0:
         raise LandingError(f"git diff --raw {_short(base)} {_short(head)} failed: {out.strip()[:200]}")
-    return base, hashlib.sha256(out.encode("utf-8", "surrogateescape")).hexdigest()
+    return base, out
 
 
-def tracker_batches(run: Runner, config_path: Path = TRACKER_CONFIG) -> dict:
+def manifest_digest(listing: str) -> str:
+    return hashlib.sha256(listing.encode("utf-8", "surrogateescape")).hexdigest()
+
+
+def compute_manifest(run: Runner, head: str, develop: str) -> tuple[str, str]:
+    base, listing = pin_manifest(run, head, develop)
+    return base, manifest_digest(listing)
+
+
+def _tracker_file(run: Runner, name: str, config_path: Path) -> object:
     try:
         config = json.loads(config_path.read_text(encoding="utf-8"))
         state_repo = pr_landing.github_repository(config["state_remote"])
@@ -257,16 +281,34 @@ def tracker_batches(run: Runner, config_path: Path = TRACKER_CONFIG) -> dict:
             "api",
             "-H",
             "Accept: application/vnd.github.raw+json",
-            f"repos/{state_repo}/contents/index.json?ref={branch}",
+            f"repos/{state_repo}/contents/{name}?ref={branch}",
         ]
     )
     if code != 0:
-        raise LandingError(f"cannot read the tracker batch registry from {state_repo}@{branch}: {out.strip()[:200]}")
-    index = json.loads(out)
+        raise LandingError(f"cannot read the tracker's {name} from {state_repo}@{branch}: {out.strip()[:200]}")
+    try:
+        return json.loads(out)
+    except ValueError as exc:
+        raise LandingError(f"the tracker's {name} on {state_repo}@{branch} is not JSON: {exc}") from exc
+
+
+def tracker_batches(run: Runner, config_path: Path = TRACKER_CONFIG) -> dict:
+    index = _tracker_file(run, "index.json", config_path)
     batches = index.get("batches", {}) if isinstance(index, dict) else None
     if not isinstance(batches, dict):
         raise LandingError("the tracker index has no readable batch registry")
     return batches
+
+
+def tracker_item(run: Runner, item: str, config_path: Path = TRACKER_CONFIG) -> dict:
+    if len(item) > pr_landing.MAX_TODO_ID_LEN or not pr_landing.TODO_ID_RE.fullmatch(item):
+        raise LandingError(f"the bound item {item!r} is not a tracker item ID")
+    data = _tracker_file(run, f"items/{item}.json", config_path)
+    description = data.get("description") if isinstance(data, dict) else None
+    acceptance = data.get("acceptance", []) if isinstance(data, dict) else None
+    if not isinstance(description, str) or not isinstance(acceptance, list) or not all(map(_text, acceptance)):
+        raise LandingError(f"tracker item {item!r} has no readable description and acceptance criteria")
+    return {"id": item, "description": description, "acceptance": acceptance}
 
 
 def _same_repository(value: object, repo: str) -> bool:
@@ -363,6 +405,11 @@ def _record_refusals(record: dict | None, view: dict, head: str) -> list[str]:
         reasons.append(f"condition 3: the latest record reviewed {_short(record['head_sha'])}, not HEAD {_short(head)}")
     if record["disposition"] != "approve":
         reasons.append(f"condition 3: the latest record's disposition is {record['disposition']!r}, not 'approve'")
+    if record.get("published") is False:
+        reasons.append(
+            "condition 3: the latest record's findings are not all published; finish with "
+            "make pr-landing-remote-review RESUME=1, or review again if a step was abandoned"
+        )
     return reasons
 
 
@@ -606,35 +653,49 @@ def _read_record(record_file: str | None) -> dict:
     return record
 
 
+def _store_record(run: Runner, repo: str, number: int, state: dict, record: dict, builder_head: str) -> None:
+    binding = state.get("binding")
+    if binding is None:
+        raise Refused(f"no binding is recorded for PR #{number}; bind it before storing a record")
+    disagreements = [field for field, bound in BINDING_FIELDS if record[field] != binding.get(bound)]
+    if record["pr_number"] != number:
+        disagreements.append("pr_number")
+    if disagreements:
+        raise Refused(
+            f"the record's {', '.join(sorted(set(disagreements)))} disagree with the binding for PR #{number}"
+        )
+    open_findings = [
+        entry["id"]
+        for entry in state.get("review_findings") or []
+        if isinstance(entry, dict) and entry["status"] == "open"
+    ]
+    if record["disposition"] == "approve" and open_findings:
+        raise Refused(
+            f"an approve record cannot be stored while blocking findings {', '.join(open_findings)} are open; "
+            "run make pr-landing-remote-review"
+        )
+    view = _view(run, repo, number)
+    live_identity = _identity_refusals(binding, view, number)
+    if live_identity:
+        raise Refused("\n".join(live_identity))
+    state["records"].append(
+        {
+            **record,
+            "builder_head": builder_head,
+            "recorded_at": _now(),
+            "observed_head": view.get("headRefOid"),
+            "observation": observe(run, repo, view),
+        }
+    )
+
+
 def _record(pr: str | None, record_file: str | None, builder_head: str | None, repo: str | None, run: Runner) -> int:
     repo = _repository(repo)
     number = _pr_number(pr)
     builder_head = _revision(builder_head, "BUILDER_HEAD")
     record = _read_record(record_file)
     with _locked_store(repo, number) as (path, state):
-        binding = state.get("binding")
-        if binding is None:
-            raise Refused(f"no binding is recorded for PR #{number}; bind it before storing a record")
-        disagreements = [field for field, bound in BINDING_FIELDS if record[field] != binding.get(bound)]
-        if record["pr_number"] != number:
-            disagreements.append("pr_number")
-        if disagreements:
-            raise Refused(
-                f"the record's {', '.join(sorted(set(disagreements)))} disagree with the binding for PR #{number}"
-            )
-        view = _view(run, repo, number)
-        live_identity = _identity_refusals(binding, view, number)
-        if live_identity:
-            raise Refused("\n".join(live_identity))
-        state["records"].append(
-            {
-                **record,
-                "builder_head": builder_head,
-                "recorded_at": _now(),
-                "observed_head": view.get("headRefOid"),
-                "observation": observe(run, repo, view),
-            }
-        )
+        _store_record(run, repo, number, state, record, builder_head)
         pr_landing._write_json_atomic(path, state)
     print(f"stored a {record['disposition']} record for PR #{number} at {_short(record['head_sha'])} in {path}")
     return 0

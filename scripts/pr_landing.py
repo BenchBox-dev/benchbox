@@ -604,25 +604,31 @@ def unresolved_review_threads(run: Runner, repo_full: str, pr_number: int) -> bo
     )
 
 
-def review_threads(run: Runner, repo_full: str, pr_number: int) -> Iterator[object]:
+def review_threads(
+    run: Runner, repo_full: str, pr_number: int, fields: str = "id isResolved isOutdated"
+) -> Iterator[object]:
     try:
         owner, name = repo_full.split("/", 1)
     except ValueError as exc:
         raise LandingError(f"repository must be owner/name, got {repo_full!r}") from exc
     if not owner or not name or not pr_number:
         raise LandingError("live review-thread verification lacks a repository or PR number")
-    query = """
+    query = (
+        """
       query($owner:String!, $name:String!, $number:Int!, $cursor:String) {
         repository(owner:$owner, name:$name) {
           pullRequest(number:$number) {
             reviewThreads(first:100, after:$cursor) {
-              nodes { id isResolved isOutdated }
+              nodes { """
+        + fields
+        + """ }
               pageInfo { hasNextPage endCursor }
             }
           }
         }
       }
     """
+    )
     cursor: str | None = None
     seen_cursors: set[str] = set()
     while True:
