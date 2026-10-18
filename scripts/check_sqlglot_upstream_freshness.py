@@ -78,6 +78,8 @@ def validate_waivers(waivers: Any, today: date) -> tuple[dict[str, dict[str, Any
             continue
         if not (isinstance(tag, str) and _TAG.fullmatch(tag) and isinstance(reason, str) and reason.strip()):
             problems.append(f"waiver file: entry for {tag!r} needs a final release tag and a reason")
+        elif approved > today:
+            problems.append(f"waiver for {tag}: approval date {approved} is in the future")
         elif expires - approved > timedelta(days=MAX_WAIVER_DAYS) or expires < approved:
             problems.append(f"waiver for {tag}: must expire within {MAX_WAIVER_DAYS} days of approval")
         elif expires >= today:

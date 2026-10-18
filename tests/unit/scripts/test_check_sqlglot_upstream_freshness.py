@@ -44,6 +44,7 @@ def test_tags_compare_numerically_not_lexically() -> None:
         ([waiver("v30.24.0", approved="2026-10-01", expires="2026-10-17")], False),
         ([waiver("v30.23.5")], False),
         ([waiver("v30.24.0", approved="2026-10-01", expires="2026-12-01")], False),
+        ([waiver("v30.24.0", approved="2030-01-01", expires="2030-01-20")], False),
         ([waiver("v30.24.0", reason="  ")], False),
         ([{"tag": "v30.24.0"}], False),
         ("v30.24.0", False),
