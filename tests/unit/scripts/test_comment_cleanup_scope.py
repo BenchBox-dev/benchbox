@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = [pytest.mark.unit, pytest.mark.medium]
+pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 ROOT = Path(__file__).resolve().parents[3]
 NOTICE_PATHS = ("LICENSE", "COPYRIGHT.md")
