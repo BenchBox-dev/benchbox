@@ -6,7 +6,7 @@
     "Source tests execute SQLite correctness, source-type-aware division, casts/NULLs/negatives/nested expressions, unsupported boundaries and upstream dialect/optimizer/serialization regressions; make check passes or a concrete owner-only gate is recorded.",
     "Self-review resolves required findings; fork source PR is reviewed and merged preserving upstream ancestry; exact source revision and evidence are recorded in context."
   ],
-  "context": "Owner explicitly requested detailed plan, external agy+muse adversarial reviews, every finding disposition, revised plan, TODO creation and batch implementation. Plan blob reviewed:26a5a9ad62617b2f01c779235c3812d3dcfc3beed0d2fdef37328ce3442d0fb8. Revised plan and per-reviewer dispositions are in the linked owned BenchBox worktree. No public package publication is authorized yet.",
+  "context": "Both external plan reviews completed (agy Gemini3.8FlashHigh and muse-spark1.3 high). All30 findings have individual dispositions in linked review record; revised plan adds source/installed-suite proof, safe refresh topology, explicit baseline and initial rollback. Owned SQLGlot worktree /Users/joe/Developer/sqlglot.wt-benchbox-source branch feat/benchbox-source starts at upstream ad8764a0436a7b5c500b783ebe50dbf20c1e477c. All three patches applied without original commit metadata, resolving adjacent upstream additions. Added whole-unit interval execution and mixed division cases plus downstream manifest and workflow-safety tests; inherited mutating workflows moved outside active workflow directory. Next: finish source checks/self-review, commit, and open fork PR preserving upstream ancestry. Production package publication remains unapproved.",
   "description": "Implement the reviewed SQLGlot downstream source plan in joeharris76/sqlglot from upstream v30.23.0 ad8764a0436a7b5c500b783ebe50dbf20c1e477c. Apply PostgreSQL return-type, SQLite extraction and SQLite interval patches in dependency order; resolve source drift. Disable inherited mutating release/docs/upstream-sync workflows in the first PR. Preserve source layout, upstream notices and existing source/compiled gates. Record every prepared branch in downstream/patches.json with carried/upstreamed/excluded decisions. QuestDB and benchmark policy stay in BenchBox. Serial cross-repository delivery; no prepared batch shortcut.",
   "links": [
     "/Users/joe/Developer/BenchBox.wt-sqlglot-soft-fork/_project/decisions/sqlglot-soft-fork-plan.md",
@@ -30,6 +30,14 @@
       "generation": "7c2a0617382c4004a4f43dcb55ed1675",
       "op": "take",
       "op_id": "8915ec5d7bce4ac1a79b18f265689b55",
+      "session_id": "5626a6dfe7d44c419c7db613d1059c06"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:e0ab14b9d48e92582f492d05",
+      "at": "2026-10-18T01:03:24Z",
+      "client": "codex-mcp-client",
+      "op": "update",
+      "op_id": "86c6320f619045c9a49e5b81a650869f",
       "session_id": "5626a6dfe7d44c419c7db613d1059c06"
     }
   ]
