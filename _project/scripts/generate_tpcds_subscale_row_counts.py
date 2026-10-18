@@ -97,11 +97,15 @@ def _count_on_engines(scale_factor: float, work_root: Path) -> dict[str, dict[st
                     entry["datafusion"] = sum(batch.num_rows for batch in context.sql(sql).collect())
             alt_counts = []
             for alt_seed in ALT_RNGSEEDS:
-                alt_sql = bench.get_query(
-                    number, seed=alt_seed, scale_factor=scale_factor, dialect="duckdb", variant=variant
-                )
-                alt_counts.append(len(connection.execute(alt_sql).fetchall()))
-            entry["duckdb_alt_seeds"] = alt_counts
+                for engine, dialect in (("duckdb", "duckdb"), ("datafusion", "datafusion")):
+                    alt_sql = bench.get_query(
+                        number, seed=alt_seed, scale_factor=scale_factor, dialect=dialect, variant=variant
+                    )
+                    if engine == "duckdb":
+                        alt_counts.append(len(connection.execute(alt_sql).fetchall()))
+                    else:
+                        alt_counts.append(sum(batch.num_rows for batch in context.sql(alt_sql).collect()))
+            entry["alt_seed_counts"] = alt_counts
             counts[query_id] = entry
     finally:
         connection.close()
@@ -122,7 +126,7 @@ def _build_reference(work_root: Path) -> dict:
         agreed: dict[str, int] = {}
         scale_excluded: list[str] = []
         for query_id, entry in counts.items():
-            if any(entry["duckdb"] != alt_count for alt_count in entry["duckdb_alt_seeds"]):
+            if any(entry["duckdb"] != alt_count for alt_count in entry.get("alt_seed_counts", [])):
                 sensitive.add(query_id)
             if entry["duckdb"] == entry["datafusion"]:
                 agreed[query_id] = entry["duckdb"]

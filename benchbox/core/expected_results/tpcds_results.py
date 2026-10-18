@@ -33,20 +33,28 @@ def _load_subscale_reference() -> dict:
         return {}
 
 
-_SUBSCALE_REFERENCE = _load_subscale_reference()
+def _materialize_subscale_reference() -> tuple[dict[float, dict[str, int]], frozenset[str], dict, int]:
+    raw = _load_subscale_reference()
+    try:
+        counts = {
+            float(scale): {str(query_id): int(row_count) for query_id, row_count in scale_counts.items()}
+            for scale, scale_counts in raw.get("scales", {}).items()
+        }
+        sensitive = frozenset(str(query_id) for query_id in raw.get("parameter_sensitive_query_ids", []))
+        provenance = dict(raw.get("provenance", {}))
+        rngseed = int(raw.get("reference", {}).get("dsqgen_rngseed", 1001))
+        return counts, sensitive, provenance, rngseed
+    except (TypeError, ValueError, AttributeError) as exc:
+        logger.warning(f"TPC-DS subscale row-count reference is malformed: {exc}")
+        return {}, frozenset(), {}, 1001
 
-TPCDS_SUBSCALE_ROW_COUNTS: dict[float, dict[str, int]] = {
-    float(scale): {str(query_id): int(row_count) for query_id, row_count in counts.items()}
-    for scale, counts in _SUBSCALE_REFERENCE.get("scales", {}).items()
-}
 
-TPCDS_PARAMETER_SENSITIVE_QUERY_IDS: frozenset[str] = frozenset(
-    str(query_id) for query_id in _SUBSCALE_REFERENCE.get("parameter_sensitive_query_ids", [])
-)
-
-TPCDS_SUBSCALE_PROVENANCE: dict = dict(_SUBSCALE_REFERENCE.get("provenance", {}))
-
-TPCDS_REFERENCE_RNGSEED: int = int(_SUBSCALE_REFERENCE.get("reference", {}).get("dsqgen_rngseed", 1001))
+(
+    TPCDS_SUBSCALE_ROW_COUNTS,
+    TPCDS_PARAMETER_SENSITIVE_QUERY_IDS,
+    TPCDS_SUBSCALE_PROVENANCE,
+    TPCDS_REFERENCE_RNGSEED,
+) = _materialize_subscale_reference()
 
 
 def tpcds_subscale_expected_row_counts(scale_factor: float) -> dict[str, int] | None:

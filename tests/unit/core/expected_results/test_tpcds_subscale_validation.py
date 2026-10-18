@@ -326,3 +326,38 @@ def test_tpcds_dataframe_unrecorded_scale_remains_uncertain() -> None:
     assert summary.status == "UNCERTAIN"
     assert summary.details["checked"] == 0
     assert measurement["row_count_validation"]["status"] == "SKIPPED"
+
+
+def test_tpcds_dataframe_subscale_validation_mode_skip_opt_out() -> None:
+    from benchbox.core.validation.query_validation import set_validation_mode_context
+
+    set_validation_mode_context(ValidationMode.SKIP)
+    try:
+        measurement = _measurement(query_id="93", rows=999)
+        summary = validate_dataframe_query_results(
+            [measurement],
+            benchmark_name="tpcds",
+            scale_factor=0.01,
+        )
+        assert summary.status == "UNCERTAIN"
+        assert summary.details["checked"] == 0
+        assert summary.details["skipped"] == 1
+        assert measurement["row_count_validation"]["status"] == "SKIPPED"
+    finally:
+        set_validation_mode_context(None)
+
+
+def test_tpcds_subscale_malformed_values_degrade_gracefully() -> None:
+    from unittest.mock import patch
+
+    from benchbox.core.expected_results.tpcds_results import _materialize_subscale_reference
+
+    with patch(
+        "benchbox.core.expected_results.tpcds_results._load_subscale_reference",
+        return_value={"scales": {"not-a-number": {"1": "not-an-int"}}},
+    ):
+        counts, sensitive, provenance, rngseed = _materialize_subscale_reference()
+        assert counts == {}
+        assert sensitive == frozenset()
+        assert provenance == {}
+        assert rngseed == 1001

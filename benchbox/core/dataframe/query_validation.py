@@ -180,6 +180,22 @@ def _normalize_tpcds_query_id(query_id: object) -> str:
 def _validate_tpcds_subscale_row_count(
     counts: dict[str, int], query_id: str, actual_row_count: int, is_reference_seed: bool
 ) -> ValidationResult:
+    import os
+
+    from benchbox.core.validation.query_validation import get_validation_mode_context
+
+    context_mode = get_validation_mode_context()
+    env_mode = os.environ.get("BENCHBOX_QUERY_VALIDATION_MODE", "").lower()
+    if context_mode == ValidationMode.SKIP or env_mode in ("skip", "disabled"):
+        return ValidationResult(
+            is_valid=True,
+            query_id=query_id,
+            expected_row_count=None,
+            actual_row_count=actual_row_count,
+            validation_mode=ValidationMode.SKIP,
+            warning_message="TPC-DS query validation is skipped by configuration",
+        )
+
     normalized = _normalize_tpcds_query_id(query_id)
     if not is_reference_seed:
         return ValidationResult(

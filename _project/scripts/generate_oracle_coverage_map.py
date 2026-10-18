@@ -139,7 +139,11 @@ def oracle_strength_and_scale(primary: str, benchmark_id: str) -> tuple[str, str
             else STRENGTH_CARDINALITY
         )
         if benchmark_id == "tpcds":
-            return strength, "SF=1, 0.01, 0.1"
+            from benchbox.core.expected_results.tpcds_results import TPCDS_SUBSCALE_ROW_COUNTS
+
+            if TPCDS_SUBSCALE_ROW_COUNTS:
+                subscales = [f"{scale:g}" for scale in sorted(TPCDS_SUBSCALE_ROW_COUNTS)]
+                return strength, f"SF=1, {', '.join(subscales)}"
         return strength, "SF=1"
     if primary in (ORACLE_VARIANT_EQUIVALENCE, ORACLE_CROSS_SURFACE_VARIANT, ORACLE_CROSS_SURFACE):
         return STRENGTH_VALUE, _bounded_value_gate_scale(benchmark_id)
