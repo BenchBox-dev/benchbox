@@ -4,7 +4,7 @@
     "Ledger and reconciliation match the decision: no generic 'adapter rendered no statement' drop for this case",
     "Unit test for the combined case"
   ],
-  "context": "Found 2026-10-17 while implementing #3092.",
+  "context": "Implemented in PR #3123 (branch fix/postgres-cluster-sort-reconciliation, commit 58308bc5b rebased): reconciliation recognizes sort columns as secondary ordering after the same table's clustering columns in the combined index; unrelated sorts still drop; 5 new tests, broader tuning suite 1534 passed. PR armed 2026-10-18; after merge, take and finish.",
   "description": "Since #3092 (6dc8cdc74), PostgreSQL builds one index on the clustering columns followed by the sorting columns and runs CLUSTER on it (PostgreSQLDDLGenerator.generate_tuning_clauses in benchbox/core/tuning/generators/postgresql.py; PostgreSQLAdapter.postgres_layout_statements and apply_post_load_tunings in benchbox/platforms/postgresql.py). Reconciliation matches a sort intent only when its columns are a prefix of a recorded index (benchbox/core/tuning/reconciliation.py _shows, _INDEX_COLUMNS). So a table that requests both records the sort intent as dropped (\"adapter rendered no statement\"), even though the table is physically ordered by clustering then sort columns. Documented in docs/platforms/postgresql.md as a limitation. Decide the intended semantics: order by sort columns first, a dedicated reason, or a validation warning.",
   "sessions": [
     {
@@ -31,6 +31,14 @@
       "generation": "0b7470bd7ed74e668b84af7fcce7eeca",
       "op": "take",
       "op_id": "12309b690c81405798549e22affc3c36",
+      "session_id": "d2c53a64af484bf0b44e45ae35143611"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:3ce222eaad5d12493e27d4cc",
+      "at": "2026-10-18T04:22:22Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "5058590818ea4322908fb1b7eb39816f",
       "session_id": "d2c53a64af484bf0b44e45ae35143611"
     }
   ]
