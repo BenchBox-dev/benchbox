@@ -10109,10 +10109,15 @@
       "title": "Fast-lane headroom reserved for a named program is silently consumed by unrelated PRs"
     },
     "fast-lane-curation-and-ci-changed-medium-test": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-19T03:06:49Z",
+        "generation": "5c0bee7bc0dc44e79fadc4cd9e1e9eca",
+        "renewals": 0,
+        "worker": "mcp:antigravity-client:joe@joe-mac-mini.local:583acf13c5bd57c889a0a6d0"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Run changed medium tests in CI code-test and release curation dry-run"
     },
     "fast-lane-decouple-ceiling-contention": {
