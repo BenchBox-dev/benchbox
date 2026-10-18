@@ -45,7 +45,8 @@ def rewrite_cloud_variant(query_id: str, query: str, target_dialect: str) -> str
     if target_dialect != "bigquery":
         return query
 
-    has_filter = " FILTER(" in query
+    upper_query = query.upper()
+    has_filter = " FILTER(" in upper_query or " FILTER (" in upper_query
     if not (has_filter or query_id in _BIGQUERY_FROMLESS_IDS or query_id in _BIGQUERY_HAVING_COLUMNS):
         if query_id == "3_v9":
             return query.replace("ORDER BY `l_orderkey` NULLS LAST", "ORDER BY `l_orderkey`")
