@@ -6,7 +6,7 @@
     "After the DataFusion fix lands: reference regenerated with the strict generator; DataFusion SQL records 22 PASSED at SF 0.01 and 0.1; required-local-cases passes",
     "Oracle verdict success on the final head; PR armed and merged"
   ],
-  "context": "Parent: subscale-tpc-ranking-policy-20261016. Worktree /Users/joe/Developer/BenchBox.wt-tpch-subscale-row-counts, branch feat/tpch-subscale-row-count-reference. Oracle verdict on 47d96a5d: success. Keep unarmed until the DataFusion fix lands, then regenerate the reference with the strict generator (make tpch-subscale-row-counts-regen) before arming.",
+  "context": "Status 2026-10-18: PR #3068 OPEN, mergeable CONFLICTING (head 47d96a5d, worktree BenchBox.wt-tpch-subscale-row-counts). Failing: core, test (ubuntu 3.14), required-local-cases (the DataFusion Q15 defect caught by the new exact reference - expected, not a #3068 bug), plus oracle-review failures. Parity failure at test_result_parity.py (errors-key asymmetry) is unexplained and is a real PR defect until shown otherwise; timing failure is a likely flake; core failure undiagnosed. Blocked on datafusion-tpch-money-columns-double-20261017 (no fix PR exists). After it lands: rebase, fix parity, regen counts, re-verify.",
   "description": "Gap: PR #3068 (head 47d96a5d8eec9696474136d10f2362184bcaeeb9, unarmed) is CONFLICTING with develop and has failing checks, found by gh pr checks on 2026-10-17:\n- required-local-cases: tests/integration/test_local_platform_benchmark_matrix.py::test_local_platform_benchmark_matrix[tpch-datafusion] \"CLI failed for datafusion/tpch (sf=0.01)\", the DataFusion Q15 DOUBLE defect (datafusion-tpch-money-columns-double-20261017) caught by the new exact reference. Expected until that fix lands.\n- test (ubuntu-latest, 3.14): tests/unit/core/results/test_result_parity.py::test_exported_sql_and_dataframe_bundles_share_cross_mode_contract fails `assert {'errors'} <= {'tables'}`. Its fixture is a TPC-H SF 0.01 subscale run (ExportParitySqlBenchmark), so the new reference likely produces a per-query FAILED/errors entry; needs investigation, real PR defect until shown otherwise. Also tests/unit/platforms/dataframe/test_df_timing_contract.py::...test_helper_excludes_capture_from_execution_time (25.9 < 20.0), likely a timing flake.\n- core: exit code 1 (job 117412929511), not yet diagnosed.\nConflicts arise from develop moving after the f4e9d4a9 (#3075) merge.",
   "sessions": [
     {
@@ -16,6 +16,14 @@
       "op": "create",
       "op_id": "3647e6caf51b48138861e8b7483f73da",
       "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:3ce222eaad5d12493e27d4cc",
+      "at": "2026-10-18T11:45:00Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "f598dfe799404672a124a437eb7a9bdc",
+      "session_id": "d2c53a64af484bf0b44e45ae35143611"
     }
   ]
 }
