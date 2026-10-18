@@ -70,7 +70,13 @@ def test_creates_pr_over_rest_with_oldest_commit_subject_as_title() -> None:
 
     assert pr == pr_open_rest.PublishedPr("created", 77, "https://github.com/BenchBox-dev/BenchBox/pull/77")
     (lookup,) = gh.api("GET")
-    assert lookup[-1] == f"repos/{REPO}/pulls?head=BenchBox-dev:feat/widget&base=develop&state=open&per_page=100"
+    assert lookup[4] == f"repos/{REPO}/pulls"
+    assert _fields(lookup) == {
+        "head": "BenchBox-dev:feat/widget",
+        "base": "develop",
+        "state": "open",
+        "per_page": "100",
+    }
     (create,) = gh.api("POST")
     assert create[4] == f"repos/{REPO}/pulls"
     assert _fields(create) == {
@@ -140,7 +146,7 @@ def test_cross_repository_head_filters_by_fork_owner_and_creates_with_owner_pref
     pr = pr_open_rest.publish(REPO, "fork-owner", "feat/widget", "fork-owner:feat/widget", None, None, gh)
 
     assert pr.status == "created"
-    assert "head=fork-owner:feat/widget" in gh.api("GET")[0][-1]
+    assert _fields(gh.api("GET")[0])["head"] == "fork-owner:feat/widget"
     assert _fields(gh.api("POST")[0])["head"] == "fork-owner:feat/widget"
 
 
@@ -187,3 +193,21 @@ def test_main_rejects_bad_repo_and_missing_body_file(tmp_path: Path) -> None:
     assert pr_open_rest.main(["--repo", "not-a-repo", *base], gh) == 2
     assert pr_open_rest.main(["--repo", REPO, *base, "--body-file", str(tmp_path / "missing.md")], gh) == 1
     assert gh.calls == []
+
+
+def test_branch_with_query_metacharacters_is_passed_as_one_field() -> None:
+    branch = "feat/a+b#c&d%e"
+    gh = FakeGh([_pull("BenchBox-dev", branch, 3)])
+
+    pr = pr_open_rest.publish(REPO, "BenchBox-dev", branch, branch, None, None, gh)
+
+    assert (pr.status, pr.number) == ("reused", 3)
+    assert gh.api("GET")[0][4] == f"repos/{REPO}/pulls"
+    assert _fields(gh.api("GET")[0])["head"] == f"BenchBox-dev:{branch}"
+
+
+def test_malformed_matching_pr_fails_clearly() -> None:
+    gh = FakeGh([{"head": {"ref": "feat/w", "repo": {"owner": {"login": "BenchBox-dev"}}}}])
+
+    with pytest.raises(pr_open_rest.PrOpenError, match="missing number or html_url"):
+        pr_open_rest.publish(REPO, "BenchBox-dev", "feat/w", "feat/w", None, None, gh)

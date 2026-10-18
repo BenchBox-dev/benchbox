@@ -81,15 +81,18 @@ def default_body(commits: Sequence[Commit]) -> str:
 
 
 def find_open_pr(run: Runner, repo: str, head_owner: str, branch: str) -> PublishedPr | None:
-    route = f"repos/{repo}/pulls?head={head_owner}:{branch}&base={BASE_BRANCH}&state=open&per_page=100"
-    pulls = _json(_check(run, ["gh", "api", "--method", "GET", route], "open PR lookup"), "open PR lookup")
+    cmd = ["gh", "api", "--method", "GET", f"repos/{repo}/pulls", "-f", f"head={head_owner}:{branch}"]
+    cmd += ["-f", f"base={BASE_BRANCH}", "-f", "state=open", "-f", "per_page=100"]
+    pulls = _json(_check(run, cmd, "open PR lookup"), "open PR lookup")
     if not isinstance(pulls, list):
         raise PrOpenError("unreadable open PR lookup response: expected a list")
     for pull in pulls:
+        if not isinstance(pull, dict):
+            raise PrOpenError("unreadable open PR lookup response: expected PR objects")
         head = pull.get("head") or {}
         owner = ((head.get("repo") or {}).get("owner") or {}).get("login") or (head.get("user") or {}).get("login")
         if str(owner).lower() == head_owner.lower() and head.get("ref") == branch:
-            return PublishedPr("reused", int(pull["number"]), str(pull["html_url"]))
+            return _pr_from(pull, "reused")
     return None
 
 

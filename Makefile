@@ -1152,7 +1152,7 @@ pr-open:
 	$(MAKE) -s pr-conflict-scan BRANCH="$$CURRENT" REPO="$$REPOSITORY" || true; \
 	git push -u origin "$$CURRENT" || { echo "Push failed for $$CURRENT — aborting before opening a PR (remote branch may be stale)." >&2; exit 1; }; \
 	PUBLISHED=$$(uv run -- python scripts/pr_open_rest.py --repo "$$REPOSITORY" --head-owner "$$ORIGIN_OWNER" \
-		--branch "$$CURRENT" --head-spec "$$HEAD_SPEC" --title "$(TITLE)" --body-file "$(PR_BODY_FILE)"); \
+		--branch "$$CURRENT" --head-spec "$$HEAD_SPEC" --title "$${TITLE:-}" --body-file "$(PR_BODY_FILE)"); \
 	PR_STATUS="$${PUBLISHED%% *}"; \
 	PR_NUMBER="$${PUBLISHED#* }"; \
 	URL="$${PR_NUMBER#* }"; \
@@ -1281,7 +1281,7 @@ pr-refresh:
 pr-conflict-scan:
 	@CURRENT="$(BRANCH)"; \
 	[ -n "$$CURRENT" ] || CURRENT=$$(git branch --show-current); \
-	gh api --method GET --paginate "repos/$(or $(REPO),{owner}/{repo})/pulls?base=develop&state=open&per_page=100" \
+	gh api --method GET --paginate "repos/$(or $(REPO),BenchBox-dev/BenchBox)/pulls?base=develop&state=open&per_page=100" \
 		--jq '.[] | "\(.number) \(.head.ref)"' 2>/dev/null | \
 	while read num branch; do \
 		[ "$$branch" = "$$CURRENT" ] && continue; \
