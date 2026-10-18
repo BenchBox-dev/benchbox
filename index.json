@@ -1439,6 +1439,21 @@
       "status": "open",
       "title": "Establish whether the 2026-10-14 snapshot-digest gate failures were a stable change or nondeterminism"
     },
+    "autogen-site-verify-and-close-20261018": {
+      "claim": null,
+      "needs": [
+        "autogen-issues-decisions-20261018",
+        "autogen-site-parent-lookup-regression-guard-20261018",
+        "autogen-site-core-reporter-lifecycle-20261018",
+        "autogen-site-deploy-reporter-lifecycle-20261018",
+        "autogen-site-fetch-wait-and-retry-20261018",
+        "autogen-site-snapshot-digest-cause-20261018",
+        "autogen-site-probe-mismatch-diagnosis-20261018"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Verify the site pipeline after the fixes and close core issue #2979 with evidence"
+    },
     "autogen-sync-validator-file-list-20261018": {
       "claim": null,
       "needs": [
