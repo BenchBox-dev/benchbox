@@ -5,10 +5,11 @@
     "An existing open PR for the branch is reused and its body updated when PR_BODY_FILE is given",
     "Tests cover the REST lookup, create, reuse, and cross-repository head cases"
   ],
-  "context": "Split from pr-workflow-cloud-env-compat, which also asks pr-arm to merge directly on a 422 clean-status response; that part is not adopted, because builders never arm and a direct merge would bypass auto-merge's required-check wait.",
+  "context": "Split from pr-workflow-cloud-env-compat, which also asks pr-arm to merge directly on a 422 clean-status response; that part is not adopted, because builders never arm and a direct merge would bypass auto-merge's required-check wait.\n\nPR #3132 (branch feat/pr-open-rest, head e6c85ef60) implements it and was itself opened by the new REST pr-open; armed 2026-10-18T13:47Z. Also satisfies the title part of pr-open-fill-branch-name-title-20261017 (TITLE input, default oldest commit subject); that item's pr-arm/pr-ready refusal for branch-derived titles is not done. Finish this item when #3132 merges.",
   "description": "Claude Code cloud sessions block GitHub GraphQL (HTTP 403: GitHub GraphQL is not available from Claude Code sessions; use the REST API). make pr-open uses gh pr list, gh pr create, gh pr edit, and gh pr view, which use GraphQL, so a cloud builder cannot open its own PR. Move pr-open and the checks it calls onto REST (gh api) routes so the same target works locally and in cloud sessions, keeping every pre-publication check: write preflight, branch guard, conflict refusal, trunk-revert gate, conflict scan, push before open, existing-PR reuse.",
   "links": [
-    "pr-workflow-cloud-env-compat"
+    "pr-workflow-cloud-env-compat",
+    "https://github.com/BenchBox-dev/benchbox/pull/3132"
   ],
   "sessions": [
     {
@@ -17,6 +18,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "6eb92faa36674395942455565f724426",
+      "session_id": "47d0479093c54bd8bbf6c9bf3930003f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:515fc6c5ed940969bed3c6eb",
+      "at": "2026-10-18T13:53:21Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "242642dcdd214636ac78c7c6a45ef57c",
       "session_id": "47d0479093c54bd8bbf6c9bf3930003f"
     }
   ]
