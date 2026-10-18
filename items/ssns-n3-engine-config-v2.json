@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "test_paths.py, policy v1/v2 parse, non-develop base tests pass"
+  ],
+  "context": "Done: joeharris76/ship-no-ship#3 merged.",
+  "description": "Plan step N3. paths.py, policy v2 (repository, executor), v1 defaults, config-driven base branch and workflow/artifact names, paginated artifact listing, validate-config.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51",
+      "at": "2026-10-18T00:53:26Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "5222fe9309324aa1873f573ee1f720b2",
+      "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    }
+  ]
+}

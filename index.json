@@ -21924,6 +21924,15 @@
       "status": "open",
       "title": "ship-no-ship: import the oracle review engine from BenchBox"
     },
+    "ssns-n3-engine-config-v2": {
+      "claim": null,
+      "needs": [
+        "ssns-n2-engine-extraction"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "ship-no-ship: configure base branch, path manifest and workflow names per policy"
+    },
     "stabilize-full-test-suite-failures": {
       "claim": null,
       "needs": [],
