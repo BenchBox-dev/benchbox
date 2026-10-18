@@ -4,7 +4,8 @@ This contract applies to an agent that implements one BenchBox change in a
 cloud session, such as Claude Code on the web or Codex Cloud. The cloud session
 builds and verifies the change, then pushes one branch. A local session owns
 the tracker claim, the independent review, and close-out through the existing
-`make pr-open` and `make pr-arm` path.
+`make pr-open` and `make pr-arm` path, or the checkout-free path in
+`docs/agent/remote-closeout.md` once its targets exist.
 
 Nothing here depends on one vendor's hooks, skills, or subagents. Cloud clones
 do not contain the gitignored `.agents/skills` mirror, so this file and
@@ -108,6 +109,8 @@ cost the whole session, so the builder checks them first.
    Push the session branch. Do not open a pull request or poll CI. Never arm
    or merge a pull request, resolve review threads, change labels or draft
    state, or post an approval: those belong to close-out and to the owner.
+   After the hand-off, push again only when the local session hands back a
+   review finding or CI failure.
 
 ## Hand-off
 
@@ -148,3 +151,6 @@ after arming, start the revision transaction with `make pr-landing-start` and
 `make pr-landing-withdraw` before anyone edits again. A builder may then push the
 fix to the same branch; fetch it into the close-out worktree before
 `make pr-landing-ready`.
+
+For an eligible PR, the checkout-free close-out in
+`docs/agent/remote-closeout.md` replaces this worktree once its targets exist.
