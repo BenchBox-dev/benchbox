@@ -2764,6 +2764,21 @@ def test_dependency_replacements_fail_closed(
         scope.immutable_dependency_artifacts(tmp_path, "base", records, rules, external, staged)
 
 
+@pytest.mark.parametrize("bumped", [True, False])
+def test_dependency_removed_by_a_policy_wheel_bump_is_skipped(
+    tmp_path: Path, dependency_artifact_inputs, monkeypatch, bumped: bool
+) -> None:
+    scope, path, _, _, _, _, records, rules, external = dependency_artifact_inputs
+    (tmp_path / path).unlink()
+    head_external = [] if bumped else external
+    monkeypatch.setattr(scope, "head_policy", lambda root, staged: {"external": head_external})
+    if bumped:
+        assert scope.immutable_dependency_artifacts(tmp_path, "base", records, rules, external) == set()
+    else:
+        with pytest.raises(scope.PolicyError, match="immutable dependency artifact removed"):
+            scope.immutable_dependency_artifacts(tmp_path, "base", records, rules, external)
+
+
 @pytest.mark.parametrize("staged", [False, True])
 def test_dependency_protection_reads_selected_tree(tmp_path: Path, dependency_artifact_inputs, staged: bool) -> None:
     scope, path, _, _, frozen, index, records, rules, external = dependency_artifact_inputs

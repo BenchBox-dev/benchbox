@@ -1184,7 +1184,14 @@ def immutable_dependency_artifacts(
         def candidate_bytes(candidate_path: str) -> bytes:
             return git(root, "show", ":" + candidate_path) if staged else (root / candidate_path).read_bytes()
 
-        if candidate_bytes(path) != raw:
+        try:
+            current = candidate_bytes(path)
+        except (OSError, subprocess.CalledProcessError):
+            head = head_policy(root, staged)
+            if head is not None and all(item.get("path") != path for item in head.get("external", [])):
+                continue
+            raise PolicyError(f"immutable dependency artifact removed: {path}") from None
+        if current != raw:
             raise PolicyError(f"immutable dependency artifact changed: {path}")
         current_project = tomllib.loads(candidate_bytes(project_path).decode())
         current_lock = tomllib.loads(candidate_bytes(lock_path).decode())

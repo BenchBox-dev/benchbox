@@ -174,7 +174,10 @@ def test_a_bound_wheel_bump_is_accepted(tmp_path: Path) -> None:
 
     root, policy, baseline = _bump_repo(tmp_path)
 
-    verify_wheel_bumps(root, policy, baseline, staged=False)
+    bumped = verify_wheel_bumps(root, policy, baseline, staged=False)
+
+    assert bumped == {entry["path"] for entry in policy["external"] if entry not in baseline["external"]}
+    assert bumped
 
 
 @pytest.mark.parametrize(

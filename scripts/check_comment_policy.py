@@ -178,12 +178,25 @@ def verify_bound_wheel(root: Path, entry: dict, staged: bool) -> None:
         raise ValueError(f"{label}: uv.lock version does not match the wheel")
 
 
-def verify_wheel_bumps(root: Path, policy: dict, baseline: dict, staged: bool) -> None:
+def verify_wheel_bumps(root: Path, policy: dict, baseline: dict, staged: bool) -> set[str]:
+    verified = set()
     for entry in policy["external"]:
         if entry in baseline["external"]:
             continue
         if any(_is_wheel_bump(entry, b) for b in baseline["external"]):
             verify_bound_wheel(root, entry, staged)
+            verified.add(entry["path"])
+    return verified
+
+
+def ratchet_against_base(root: Path, policy: dict, base: str, staged: bool) -> tuple[dict, set[str]]:
+    baseline = load_policy(git(root, "show", f"{base}:{POLICY_PATH}"))
+    check_ratchet(policy, baseline)
+    return baseline, verify_wheel_bumps(root, policy, baseline, staged)
+
+
+def with_bumped_wheels(exclusions: set[str] | None, bumped: set[str]) -> set[str] | None:
+    return None if exclusions is None else exclusions | bumped
 
 
 def bootstrap_base_allowed(root: Path, base: str) -> bool:
@@ -483,11 +496,10 @@ def main(argv: list[str] | None = None) -> int:
         reviewed = args.mode == "transition" and oracle_review_covers(root)
         candidate_notices = candidate_scope_notices(root, args.staged) if reviewed else None
         owned_exclusions = ownership_exclusions(root, owner_base, args.staged, candidate_notices)
-        baseline_policy = policy
+        baseline_policy, bumped_wheels = policy, set()
         if args.base and not args.bootstrap:
-            baseline_policy = load_policy(git(root, "show", f"{args.base}:{POLICY_PATH}"))
-            check_ratchet(policy, baseline_policy)
-            verify_wheel_bumps(root, policy, baseline_policy, args.staged)
+            baseline_policy, bumped_wheels = ratchet_against_base(root, policy, args.base, args.staged)
+        owned_exclusions = with_bumped_wheels(owned_exclusions, bumped_wheels)
         paths = source_paths(root, args.staged)
         if not paths:
             raise ValueError("empty source inventory")
@@ -532,7 +544,7 @@ def main(argv: list[str] | None = None) -> int:
         base_paths = []
         if args.mode == "transition":
             base_paths = git(root, "ls-tree", "-r", "--name-only", "-z", args.base).decode().split("\0")
-            effective_policy["external_members"] = set(base_paths)
+            effective_policy["external_members"] = set(base_paths) | bumped_wheels
         current = expired_policy_findings(policy) + scan_sources(root, sources, effective_policy)
         failed = current
         if args.mode == "transition":
