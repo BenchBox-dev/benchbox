@@ -24078,10 +24078,15 @@
       "title": "Implement TPC-H RF1/RF2 in Power@Size and a concurrent refresh stream in the throughput test"
     },
     "tpch-refresh-pg-derived-adapter-proofs-20261016": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-19T11:54:33Z",
+        "generation": "7c06c1b325cc4ca49fc374cdc3375207",
+        "renewals": 0,
+        "worker": "mcp:tbh:joe@joe-mac-mini.local:77fbca394bd06462bafe34af"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Prove TPC-H refresh functions on PostgreSQL-derived adapters"
     },
     "tpch-refresh-redshift-proof-20261016": {
