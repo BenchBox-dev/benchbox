@@ -8586,6 +8586,15 @@
       "status": "open",
       "title": "Verify documentation-data bundles without changing published output"
     },
+    "docs-mig-site-bundle-schema5": {
+      "claim": null,
+      "needs": [
+        "docs-mig-site-import"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Prepare the site for bundles without source docs or downloads"
+    },
     "docs-mig-site-contract-checks": {
       "claim": null,
       "needs": [
