@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "make pr-landing-remote-review produces and stores a valid record for the pinned head, or refuses with a specific reason; it changes no repository file, local branch, or config",
+    "The reviewer runs in a read-only sandbox, from a different model family than Claude builders, and sees the diff at the pinned base and head, the item's acceptance criteria when an item is bound, and AGENTS.md at the head",
+    "Disposition is approve only when there are no Critical or Required findings",
+    "Critical and Required findings are posted as review threads without model identity; on re-review, threads are resolved only for findings the reviewer marks fixed at the new head",
+    "docs/agent/remote-closeout.md lists the target",
+    "Tests cover record construction, refusal paths, and thread publication and resolution with a fake codex and gh; one real codex run on a small PR is reported"
+  ],
+  "context": "Owner decision 2026-10-18 (chat): reviewer is \"Codex CLI (codex exec)\". codex-cli 0.162.1 is installed and logged in on the closer machine; it supports exec -s read-only, --output-schema, -o, --json, --ephemeral, -C.",
+  "description": "make pr-arm-remote arms only on a stored, head-bound review record from a fresh read-only reviewer the closer started (docs/agent/remote-closeout.md). Add the reviewer run: make pr-landing-remote-review PR=N fetches the PR safely, pins base, head, and digest exactly as the manifest target does, exports the head tree outside the repository, runs codex exec read-only against the diff, the item's acceptance criteria, and the repository rules with a JSON output schema, builds the record (findings, disposition, reviewer model and run ID), stores it through the existing record validation, and publishes blocking findings as PR review threads in plain text with no model ID. A re-review of a new head receives the open findings and reports which are fixed, so the closer resolves only those threads.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:515fc6c5ed940969bed3c6eb",
+      "at": "2026-10-18T15:53:51Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a8ec1afb35e94a57a0ed5f07e786e3fb",
+      "session_id": "47d0479093c54bd8bbf6c9bf3930003f"
+    }
+  ]
+}
