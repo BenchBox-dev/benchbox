@@ -5,8 +5,8 @@
     "Fresh public pip and uv installations resolve the expected version, provenance and package hashes and preserve upstream SQLGlot coexistence.",
     "Record public artifact/install evidence, then finish this item. Do not substitute local path/VCS-only developer overrides or mark publication done before live verification."
   ],
-  "context": "Owner explicitly authorized transfer to BenchBox-dev and next steps on 2026-10-18, superseding personal-account publishing. Requested cancellation of waiting release run39123289409 before transfer. Transfer API accepted; verify canonical owner. Implement organization repository URLs/release guard/tests and immutable next revision30.23.0.2 (retain existing30.23.0.1 tag). Build/verify new artifacts and record new hashes before production publication approval. Prior30.23.0.1 hashes remain historical, not approval for replacement bytes. PyPI publisher should trust BenchBox-dev/sqlglot, workflowbenchbox-release.yml, environmentbenchbox-sqlglot-pypi. Existing browser unavailable observation is historical; recheck current capabilities when needed. BenchBox adoption remains downstream of verified public release.",
-  "description": "Present the exact reviewed benchbox-sqlglot30.23.0.1 wheel/sdist and SHA256SUMS to the owner; obtain explicit production-publication approval. Check actual PyPI name/project access and owner-authorized trusted publishing configuration. Publish only approved artifacts from the reviewed source and verify public pip/uv installs. This is a distinct publication boundary; implementation authorization is not a publishing credential or approval.",
+  "context": "Transfer complete2026-10-18: canonical BenchBox-dev/sqlglot, unchanged repository ID1368421376 and upstream tobymao/sqlglot relationship. Old release run39123289409 cancelled with no upload. Publishing environment24628212051 retained required human reviewerjoeharris76. Origin updated to organization; owned release worktree now branchfix/benchbox-organization-release at original main59b65e5f. Implemented metadata URLs, release repository guard, personal-owner rejection test, manifest revision30.23.0.2, package README and maintenance instructions. Local native make check running. Current claim generatione75cfad8f9334628a2ea8b45135fdbda. Previous30.23.0.1 hashes/tag immutable historical evidence, not authorization for replacement bytes. Need current-head PR/CI merge then organization-owned main candidate build/verification and exact-artifact approval. Authenticated browser access being rechecked for PyPI publisher; required new ownerBenchBox-dev reposqlglot workflowbenchbox-release.yml environmentbenchbox-sqlglot-pypi. Adoption remains unclaimed pending publication.",
+  "description": "Publish the verified BenchBox-dev owned benchbox-sqlglot release after exact-artifact approval. Transfer the existing fork without losing history, update repository metadata and publishing identity guards, retain the30.23.0.1 tag and use30.23.0.2 for replacement bytes. Verify source/artifact CI, organization-controlled environment and PyPI trusted publisher. Fresh public pip/uv coexistence proof is required before BenchBox adoption.",
   "links": [
     "https://github.com/joeharris76/sqlglot/actions/runs/39093404507",
     "https://github.com/joeharris76/sqlglot/actions/runs/39093404507/artifacts/12123572445",
@@ -130,6 +130,14 @@
       "generation": "e75cfad8f9334628a2ea8b45135fdbda",
       "op": "take",
       "op_id": "842f80ade349496b8a5674b8dcb3e915",
+      "session_id": "a5197da3d60b4447b3b0ac38e65a8fbc"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:00f9896dc298dff5fa33ec9d",
+      "at": "2026-10-18T12:37:50Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c05fc5c5f77b401d94a7852492934d8e",
       "session_id": "a5197da3d60b4447b3b0ac38e65a8fbc"
     }
   ]
