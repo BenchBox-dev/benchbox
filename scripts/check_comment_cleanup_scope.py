@@ -1126,12 +1126,34 @@ def _normalized_name(value: str) -> str:
     return re.sub(r"[-_.]+", "-", value).lower()
 
 
-def _parse_version(v: str) -> tuple[int, ...]:
-    clean = re.sub(r"[^0-9.]", "", v.partition("+")[0].partition("-")[0])
-    parts = clean.split(".")
-    if not parts or not all(p.isdigit() for p in parts):
-        raise ValueError(f"invalid version string: {v!r}")
-    return tuple(int(p) for p in parts)
+PEP440_RE = re.compile(
+    r"^(?:(?P<epoch>\d+)!重)?(?P<release>\d+(?:\.\d+)*)(?:(?P<pre>a|b|rc)(?P<pre_v>\d+)?)?(?:\.post(?P<post>\d+))?(?:\.dev(?P<dev>\d+))?$",
+    re.IGNORECASE,
+)
+PRE_MAP = {"a": -3, "b": -2, "rc": -1}
+
+
+def _parse_version(v: str) -> tuple[int, tuple[int, ...], tuple[int, int], int, int, int]:
+    clean = v.partition("+")[0].strip()
+    epoch = 0
+    if "!" in clean:
+        e_str, clean = clean.split("!", 1)
+        if not e_str.isdigit():
+            raise ValueError(f"invalid epoch: {e_str}")
+        epoch = int(e_str)
+    m = PEP440_RE.match(clean)
+    if not m:
+        raise ValueError(f"invalid PEP 440 version: {v}")
+    release = tuple(int(x) for x in m.group("release").split("."))
+    pre = (0, 0)
+    if m.group("pre"):
+        pre_type = PRE_MAP[m.group("pre").lower()]
+        pre_v = int(m.group("pre_v")) if m.group("pre_v") else 0
+        pre = (pre_type, pre_v)
+    post = int(m.group("post")) if m.group("post") else 0
+    dev = int(m.group("dev")) if m.group("dev") is not None else 0
+    has_dev = -1 if m.group("dev") is not None else 0
+    return (epoch, release, pre, post, has_dev, dev)
 
 
 def _extract_version_from_path(path: str) -> str:
@@ -1140,6 +1162,48 @@ def _extract_version_from_path(path: str) -> str:
     if len(parts) < 3 or not filename.endswith(".whl"):
         raise ValueError(f"invalid wheel filename: {filename!r}")
     return parts[1]
+
+
+def _eval_spec_clause(clause: str, cand_p: tuple, cand_version: str) -> bool:
+    m_wildcard = re.match(r"^(==|!=)\s*([0-9]+(?:\.[0-9]+)*)\.\*$", clause)
+    if m_wildcard:
+        op, prefix_str = m_wildcard.group(1), m_wildcard.group(2)
+        prefix = tuple(int(x) for x in prefix_str.split("."))
+        matches_prefix = cand_p[1][: len(prefix)] == prefix
+        return matches_prefix if op == "==" else not matches_prefix
+
+    m_exact = re.match(r"^===\s*(\S+)$", clause)
+    if m_exact:
+        return cand_version == m_exact.group(1)
+
+    m = re.match(r"^(==|>=|<=|>|<|!=|~=)\s*([A-Za-z0-9.!+]+)$", clause)
+    if not m:
+        return False
+    op, v_str = m.group(1), m.group(2)
+    try:
+        v_p = _parse_version(v_str)
+    except ValueError:
+        return False
+
+    if op == "==":
+        return cand_p == v_p
+    if op == "!=":
+        return cand_p != v_p
+    if op == ">=":
+        return cand_p >= v_p
+    if op == "<=":
+        return cand_p <= v_p
+    if op == ">":
+        return cand_p > v_p
+    if op == "<":
+        return cand_p < v_p
+    if op == "~=":
+        if cand_p < v_p:
+            return False
+        rel = v_p[1]
+        upper_prefix = (rel[0] + 1,) if len(rel) == 1 else rel[:-2] + (rel[-2] + 1,)
+        return cand_p[1][: len(upper_prefix)] < upper_prefix
+    return False
 
 
 def _declares(requirement: str, owner: str, cand_version: str) -> bool:
@@ -1152,48 +1216,21 @@ def _declares(requirement: str, owner: str, cand_version: str) -> bool:
         return False
     if not spec:
         return True
-    cand_v = _parse_version(cand_version)
-    for clause in (c.strip() for c in spec.split(",")):
-        m = re.match(r"^(==|>=|<=|>|<|!=|~=)\s*([0-9]+(?:\.[0-9]+)*)", clause)
-        if not m:
-            continue
-        op, v_str = m.group(1), m.group(2)
-        v = _parse_version(v_str)
-        length = max(len(cand_v), len(v))
-        p_cand = cand_v + (0,) * (length - len(cand_v))
-        p_v = v + (0,) * (length - len(v))
-        if op == "==" and p_cand != p_v:
-            return False
-        if op == "!=" and p_cand == p_v:
-            return False
-        if op == ">=" and p_cand < p_v:
-            return False
-        if op == "<=" and p_cand > p_v:
-            return False
-        if op == ">" and p_cand <= p_v:
-            return False
-        if op == "<" and p_cand >= p_v:
-            return False
-        if op == "~=":
-            if p_cand < p_v:
-                return False
-            prefix = v[:-1] if len(v) > 1 else (v[0] + 1,)
-            upper = prefix[:-1] + (prefix[-1] + 1,)
-            p_upper = upper + (0,) * (length - len(upper))
-            if p_cand >= p_upper:
-                return False
-    return True
+    try:
+        cand_p = _parse_version(cand_version)
+    except ValueError:
+        return False
+    return all(_eval_spec_clause(c.strip(), cand_p, cand_version) for c in spec.split(",") if c.strip())
 
 
 def _wheel_metadata(wheel: bytes, owner: str) -> email.message.Message:
     with zipfile.ZipFile(io.BytesIO(wheel)) as archive:
-        pattern = re.compile(r"^[A-Za-z0-9._]+-[^/]+\.dist-info/METADATA$", re.IGNORECASE)
+        parts = [re.escape(p) for p in re.split(r"[-_.]+", owner) if p]
+        norm = r"[-_.]".join(parts)
+        pattern = re.compile(rf"^{norm}-[^/]+\.dist-info/METADATA$", re.IGNORECASE)
         metadata_paths = [name for name in archive.namelist() if pattern.match(name)]
         if len(metadata_paths) != 1:
-            raise ValueError(f"wheel must carry exactly one dist-info METADATA file, found {metadata_paths}")
-        dist_name = metadata_paths[0].split("-", 1)[0]
-        if _normalized_name(dist_name) != _normalized_name(owner):
-            raise ValueError(f"wheel METADATA does not match: dist-info prefix {dist_name!r} does not match {owner!r}")
+            raise ValueError(f"wheel METADATA does not match: dist-info must match {owner}, found {metadata_paths}")
         raw = archive.read(metadata_paths[0])
         try:
             text = raw.decode("utf-8")

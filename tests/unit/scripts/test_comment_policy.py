@@ -2717,6 +2717,35 @@ def dependency_artifact_inputs(tmp_path: Path, monkeypatch):
     return scope, wheel_path, project_path, lock_path, frozen, index, records, rules, external
 
 
+def test_pep440_version_ordering() -> None:
+    from check_comment_cleanup_scope import _parse_version
+
+    assert _parse_version("0.9.0rc1") < _parse_version("0.9.0")
+    assert _parse_version("0.9.0a1") < _parse_version("0.9.0b1") < _parse_version("0.9.0rc1")
+    assert _parse_version("0.9.0.dev1") < _parse_version("0.9.0")
+    assert _parse_version("1!0.9.0") > _parse_version("0.10.0")
+    assert _parse_version("0.9.0") < _parse_version("0.9.0.post1")
+
+
+def test_declares_evaluates_pep508_specifiers_fail_closed() -> None:
+    from check_comment_cleanup_scope import _declares
+
+    assert _declares("todo-db[mcp]", "todo-db", "0.10.1")
+    assert _declares("todo-db>=0.9.0", "todo-db", "0.10.1")
+    assert not _declares("todo-db>=0.11.0", "todo-db", "0.10.1")
+    assert _declares("todo-db===0.10.1", "todo-db", "0.10.1")
+    assert not _declares("todo-db===0.8.1", "todo-db", "0.10.1")
+    assert not _declares("todo-db???invalid", "todo-db", "0.10.1")
+    assert _declares("todo-db~=2", "todo-db", "2.5")
+    assert not _declares("todo-db~=2", "todo-db", "3.0")
+    assert _declares("todo-db~=2.2", "todo-db", "2.5")
+    assert not _declares("todo-db~=2.2", "todo-db", "3.0")
+    assert _declares("todo-db~=2.2.0", "todo-db", "2.2.5")
+    assert not _declares("todo-db~=2.2.0", "todo-db", "2.3.0")
+    assert _declares("todo-db==0.10.*", "todo-db", "0.10.1")
+    assert not _declares("todo-db==0.9.*", "todo-db", "0.10.1")
+
+
 def test_trusted_locked_dependency_overrides_only_generic_prefix(tmp_path: Path, dependency_artifact_inputs) -> None:
     scope, path, _, _, _, _, records, rules, external = dependency_artifact_inputs
     assert scope.immutable_dependency_artifacts(tmp_path, "base", records, rules, external) == {path}
