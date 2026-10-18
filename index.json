@@ -1495,17 +1495,12 @@
       "title": "Verify the site pipeline after the fixes and close core issue #2979 with evidence"
     },
     "autogen-sync-validator-file-list-20261018": {
-      "claim": {
-        "expires_at": "2026-10-19T21:01:27Z",
-        "generation": "820147c59b994c81b8fa5f4c0333c69d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7ac6538e56f6607b35a3f600"
-      },
+      "claim": null,
       "needs": [
         "autogen-issues-decisions-20261018"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Let the results mirror build again: cover every validator module and test the list"
     },
     "autogen-tpch-maintenance-failures-20261018": {
