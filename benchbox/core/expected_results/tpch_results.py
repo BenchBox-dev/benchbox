@@ -3,7 +3,12 @@
 
 import logging
 
-from benchbox.core.expected_results.loader import load_tpch_expected_results, load_tpch_value_digests
+from benchbox.core.expected_results.loader import (
+    TPCH_SUBSCALE_ROW_COUNT_SCALE_FACTORS,
+    load_tpch_expected_results,
+    load_tpch_subscale_row_counts,
+    load_tpch_value_digests,
+)
 from benchbox.core.expected_results.models import (
     BenchmarkExpectedResults,
     ExpectedQueryResult,
@@ -26,8 +31,11 @@ PARAMETER_SENSITIVE_QUERY_IDS: frozenset[str] = frozenset(TPCH_RANGE_ROW_COUNT_B
 
 def get_tpch_expected_results(scale_factor: float = 1.0) -> BenchmarkExpectedResults | None:
     if scale_factor != 1.0:
+        if float(scale_factor) in TPCH_SUBSCALE_ROW_COUNT_SCALE_FACTORS:
+            return _subscale_expected_results(float(scale_factor))
         logger.info(
-            f"TPC-H expected results only available for SF=1.0. "
+            f"TPC-H expected results are available for SF=1.0 and the reference scale factors "
+            f"{', '.join(f'{sf:g}' for sf in TPCH_SUBSCALE_ROW_COUNT_SCALE_FACTORS)}. "
             f"Validation will be skipped for SF={scale_factor}. "
             f"Note: Scale-independent queries (e.g., Q1) may still validate via registry fallback."
         )
@@ -86,6 +94,37 @@ def get_tpch_expected_results(scale_factor: float = 1.0) -> BenchmarkExpectedRes
             "answer_files_scale_factor": 1.0,
             "total_queries": len(query_results),
             "value_digest_queries": sum(1 for r in query_results.values() if r.value_digest is not None),
+        },
+    )
+
+
+def _subscale_expected_results(scale_factor: float) -> BenchmarkExpectedResults:
+    reference = load_tpch_subscale_row_counts(scale_factor)
+    query_results = {}
+    for query_id, row_count in reference.row_counts.items():
+        parameter_sensitive = query_id in reference.parameter_sensitive_query_ids
+        mode_notes = (
+            "Parameter-sensitive at this scale factor; EXACT at the qgen -d defaults, skipped for other parameters."
+            if parameter_sensitive
+            else "Output cardinality is fixed at this scale factor."
+        )
+        query_results[query_id] = ExpectedQueryResult(
+            query_id=query_id,
+            scale_factor=scale_factor,
+            expected_row_count=row_count,
+            validation_mode=ValidationMode.EXACT,
+            reference_parameters_only=parameter_sensitive,
+            notes=f"BenchBox TPC-H row-count reference. {mode_notes} SF={scale_factor:g}",
+        )
+    return BenchmarkExpectedResults(
+        benchmark_name="tpch",
+        scale_factor=scale_factor,
+        query_results=query_results,
+        metadata={
+            "source": "BenchBox TPC-H row-count reference",
+            "reference_scale_factor": scale_factor,
+            "total_queries": len(query_results),
+            "parameter_sensitive_queries": sorted(reference.parameter_sensitive_query_ids, key=int),
         },
     )
 

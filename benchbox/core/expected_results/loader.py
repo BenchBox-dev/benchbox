@@ -267,6 +267,51 @@ def load_tpch_expected_results(scale_factor: float = 1.0) -> dict[str, int]:
     return expected_results
 
 
+TPCH_SUBSCALE_ROW_COUNT_SCALE_FACTORS: tuple[float, ...] = (0.01, 0.1)
+_TPCH_ROW_COUNT_REFERENCE_DIR = Path(__file__).with_name("reference_row_counts")
+_TPCH_QUERY_IDS = tuple(str(query_id) for query_id in range(1, 23))
+
+
+@dataclass(frozen=True)
+class TPCHRowCountReference:
+    scale_factor: float
+    row_counts: dict[str, int]
+    parameter_sensitive_query_ids: frozenset[str]
+
+
+def tpch_subscale_row_count_reference_path(scale_factor: float) -> Path:
+    return _TPCH_ROW_COUNT_REFERENCE_DIR / f"tpch_row_counts_sf{float(scale_factor):g}.json"
+
+
+def load_tpch_subscale_row_counts(scale_factor: float) -> TPCHRowCountReference:
+    if float(scale_factor) not in TPCH_SUBSCALE_ROW_COUNT_SCALE_FACTORS:
+        raise FileNotFoundError(f"No TPC-H row-count reference is recorded for scale factor {scale_factor}")
+    path = tpch_subscale_row_count_reference_path(scale_factor)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if (
+        not isinstance(payload, dict)
+        or payload.get("benchmark") != "tpch"
+        or type(payload.get("scale_factor")) is not float
+        or payload["scale_factor"] != float(scale_factor)
+    ):
+        raise ValueError(f"{path.name} must describe TPC-H at scale factor {scale_factor}")
+    if payload.get("reference_seed", 0) is not None:
+        raise ValueError(f"{path.name} must record reference_seed null (qgen default parameters)")
+    row_counts = payload.get("row_counts")
+    if not isinstance(row_counts, dict) or tuple(row_counts) != _TPCH_QUERY_IDS:
+        raise ValueError(f"{path.name} must list row counts for queries 1-22 in order")
+    if any(type(count) is not int or count < 0 for count in row_counts.values()):
+        raise ValueError(f"{path.name} row counts must be non-negative integers")
+    sensitive = payload.get("parameter_sensitive_query_ids")
+    if not isinstance(sensitive, list) or not set(sensitive) <= set(_TPCH_QUERY_IDS):
+        raise ValueError(f"{path.name} parameter_sensitive_query_ids must list TPC-H query ids")
+    return TPCHRowCountReference(
+        scale_factor=float(scale_factor),
+        row_counts=dict(row_counts),
+        parameter_sensitive_query_ids=frozenset(sensitive),
+    )
+
+
 def load_tpch_value_digest_seed() -> int | None:
     payload = json.loads(_TPCH_VALUE_DIGEST_REFERENCE_PATH.read_text(encoding="utf-8"))
     if (

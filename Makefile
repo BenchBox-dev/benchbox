@@ -22,7 +22,8 @@ JOINORDER_QUERIES ?= _project/joinorder/build-inputs/queries
 JOINORDER_REFERENCE ?= _project/joinorder/reference_cardinalities.json
 
 DEVELOPMENT_TREE_ONLY_TARGETS := \
-	correctness-gate-digests-regen ledger-seed-gates ledger-seed-recut cross-surface-baseline-autodetect \
+	correctness-gate-digests-regen ledger-seed-gates ledger-seed-recut tpch-subscale-row-counts-regen \
+	cross-surface-baseline-autodetect \
 	oracle-coverage-map oracle-coverage-map-check cross-surface-applicability-report \
 	joinorder-verify-reference-results complexity-check complexity-report \
 	quality-governance-typecheck uv-lock-revision-check sqlglot-repro-retirement-check audit-deps audit-raw audit-raw-check \
@@ -170,6 +171,10 @@ ledger-seed-recut:
 	git fetch --no-tags origin published-results:refs/remotes/origin/published-results
 	uv run -- python scripts/publication/create_ledger_seed.py --accepted-ref origin/published-results
 	$(MAKE) ledger-seed-gates
+
+.PHONY: tpch-subscale-row-counts-regen
+tpch-subscale-row-counts-regen:
+	uv run -- python _project/scripts/generate_tpch_subscale_row_counts.py
 
 .PHONY: tpchavoc-equivalence-report
 tpchavoc-equivalence-report:

@@ -10,7 +10,11 @@ from benchbox.core.expected_results.tpcds_results import (
     tpcds_subscale_expected_row_counts,
     tpcds_subscale_reference_seed,
 )
-from benchbox.core.validation.query_validation import QueryValidator
+from benchbox.core.validation.query_validation import (
+    QueryValidator,
+    get_reference_seed_context,
+    set_reference_seed_context,
+)
 
 _MAX_EVIDENCE_MESSAGE_CHARS = 500
 
@@ -125,8 +129,11 @@ def _reference_unavailable_reason(benchmark_id: str, scale_factor: float, seed: 
         if ssb_expected_row_counts(scale_factor) is None:
             return f"SSB expected row counts are not recorded for scale factor {scale_factor}"
         return None
-    if not _tpch_reference_context(scale_factor, seed):
-        return "TPC-H answer-file row counts apply only to SF 1 runs with qgen default parameters (no seed)"
+    if not _tpch_reference_context(scale_factor, seed) and not _tpch_seeded_subscale_context(scale_factor, seed):
+        return (
+            "TPC-H reference row counts apply to SF 0.01 and 0.1 runs, and to SF 1 runs with qgen default "
+            "parameters (no seed)"
+        )
     return None
 
 
@@ -156,7 +163,14 @@ def _apply_reference_row_counts(
                 evidence,
             )
             return None
-    return _apply_expected_row_counts(successful_rows, benchmark_id, scale_factor, evidence)
+    from benchbox.core.tpch.benchmark import binds_answer_set_parameters
+
+    previous = get_reference_seed_context()
+    set_reference_seed_context(binds_answer_set_parameters(seed))
+    try:
+        return _apply_expected_row_counts(successful_rows, benchmark_id, scale_factor, evidence)
+    finally:
+        set_reference_seed_context(previous)
 
 
 def _tpcds_row_reference_parameters(seed: int | None, row: dict[str, Any]) -> bool:
@@ -338,10 +352,16 @@ def _apply_row_count_oracle(
         row["row_count_validation"] = row_count_validation
 
 
-def _tpch_reference_context(scale_factor: float, seed: int | None) -> bool:
-    from benchbox.core.tpch.benchmark import binds_answer_set_parameters, has_answer_set
+def _tpch_seeded_subscale_context(scale_factor: float, seed: int | None) -> bool:
+    from benchbox.core.tpch.benchmark import has_answer_set, has_row_count_reference
 
-    return has_answer_set(scale_factor) and binds_answer_set_parameters(seed)
+    return seed is not None and has_row_count_reference(scale_factor) and not has_answer_set(scale_factor)
+
+
+def _tpch_reference_context(scale_factor: float, seed: int | None) -> bool:
+    from benchbox.core.tpch.benchmark import binds_answer_set_parameters, has_row_count_reference
+
+    return has_row_count_reference(scale_factor) and binds_answer_set_parameters(seed)
 
 
 def _bounded_message(value: str) -> str:

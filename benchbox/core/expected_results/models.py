@@ -29,6 +29,7 @@ class ExpectedQueryResult:
     loose_tolerance_percent: float = 50.0
     notes: str | None = None
     value_digest: str | None = None
+    reference_parameters_only: bool = False
 
     def __post_init__(self):
         if self.validation_mode == ValidationMode.EXACT:
