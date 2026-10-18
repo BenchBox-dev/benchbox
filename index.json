@@ -22816,6 +22816,13 @@
       "status": "done",
       "title": "\"Technical Debt & Refactoring - COMPLETED ✅\""
     },
+    "template-evidence-calibration-provenance-20261018": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Make tuned-template evidence labels show whether a verdict was calibrated, and calibrate or retire the Snowflake exception"
+    },
     "template-evidence-label-matching-20261013": {
       "claim": null,
       "needs": [],

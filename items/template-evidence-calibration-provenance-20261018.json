@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Published results and the Explorer show whether each measured-* label came from a calibrated verdict; a test pins the exported field and the Explorer rendering",
+    "Each Snowflake entry in template_evidence.yaml is either backed by a calibrated harness verdict or shown as uncalibrated; the ADR-003 exception paragraph is removed or replaced by the adopted rule",
+    "ADR-003 states one rule for uncalibrated evidence, and docs/reference/result-formats.md matches it",
+    "Databricks and any other managed-cloud platform either get a tested warehouse_size scope with per-field provenance or are documented as unscoped"
+  ],
+  "description": "ADR-003's calibration gate says a cell without a passing A/A calibration yields no verdict. The owner chose on 2026-10-18 to record the four Snowflake trial-campaign verdicts in template_evidence.yaml with plain measured-* labels anyway, as a documented ADR-003 exception, and asked for a follow-up to address the issue comprehensively. Those runs used plain `benchbox run` plus a helper rather than the measurement harness, used the campaign's own rule (95% CI bound against 0.95/1.05), had no A/A calibration, and covered only a single-cluster X-Small warehouse; TPC-H and TPC-DS tuned arms used different template versions. Published results carry only the state string, so readers cannot tell these labels from calibrated ones.\n\nAddress it as a whole:\n1. Evidence provenance in published results: export, next to template_evidence, how the verdict was reached (for example calibrated harness verdict vs uncalibrated campaign verdict), through the results schema, the explorer read model and the Explorer UI, without changing result_id rules.\n2. Either replace the Snowflake exception with calibrated harness verdicts (needs a new Snowflake account and owner approval of command, runtime, cost cap, log path and stop condition), or downgrade those entries once the qualifier exists.\n3. Decide whether ADR-003 keeps the calibration gate as written or defines an explicit uncalibrated tier, and remove the exception paragraph when resolved.\n4. Cover other managed-cloud platforms (Databricks records warehouse_size and max_cluster_count) consistently with the warehouse_size scope.",
+  "links": [
+    "item:cloud-tuned-benefit-live-runs-20261008",
+    "item:tuning-evidence-benefit-rule-20261008",
+    "item:snowflake-tuning-verification-gaps-20261017"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-18T03:07:29Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "e21e47b578074467a8a1aaf6948cd9d0",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
+    }
+  ]
+}
