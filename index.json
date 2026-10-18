@@ -10140,6 +10140,15 @@
       "status": "done",
       "title": "Fast-lane tests that fail only under load or low disk: worktree audit timeout and UAT disk-floor"
     },
+    "fast-lane-move-over-budget-tests": {
+      "claim": null,
+      "needs": [
+        "fast-lane-curation-and-ci-changed-medium-test"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Reclassify over-budget and non-unit tests to medium and optimize AST parsing"
+    },
     "fast-lane-wallclock-budget-decision": {
       "claim": null,
       "needs": [],

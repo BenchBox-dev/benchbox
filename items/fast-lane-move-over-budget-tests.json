@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Non-unit test modules in tests/integration/, tests/uat/, tests/e2e/, tests/validation/, tests/contracts/, tests/system/, and root tests/ marked fast are reclassified to medium or optimized",
+    "Tests matching platform_smoke or (integration and fast) retain platform_smoke so smoke coverage is conserved",
+    "Tests in tests/unit/ with duration > 0.5s are optimized in place or moved to medium modules",
+    "AST caching in tests/unit/test_marker_strategy.py reduces runtime to sub-second per test",
+    "make test-fast runs in under 2 minutes on host",
+    "make ci-lint and make comment-policy-check pass cleanly"
+  ],
+  "context": "Fast-lane remediation plan: restore make test-fast to ~2 minute budget by reclassifying over-budget tests and optimizing in-place where appropriate.",
+  "description": "Move non-unit fast tests and over-budget (>0.5s) unit tests from fast to medium tier, preserving smoke coverage and optimizing in-place bottlenecks.",
+  "sessions": [
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:583acf13c5bd57c889a0a6d0",
+      "at": "2026-10-18T03:06:13Z",
+      "client": "antigravity-client",
+      "op": "create",
+      "op_id": "b23dcd91536a4b60ab2d45be2f4dbe31",
+      "session_id": "3d3966853b9243b9a8a4edf367cb475b"
+    }
+  ]
+}
