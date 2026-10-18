@@ -1110,7 +1110,7 @@ class DataFusionAdapter(NoConstraintEnforcementMixin, PlatformAdapter):
                 precision = 18
                 scale = 2
             if not (1 <= precision <= 76 and 0 <= scale <= precision):
-                return pa.float64()
+                raise ValueError(f"Invalid DECIMAL precision/scale: ({precision}, {scale}) in {col_type!r}")
             if precision > 38:
                 return pa.decimal256(precision, scale)
             return pa.decimal128(precision, scale)
