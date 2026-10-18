@@ -6,7 +6,7 @@
     "Source tests execute SQLite correctness, source-type-aware division, casts/NULLs/negatives/nested expressions, unsupported boundaries and upstream dialect/optimizer/serialization regressions; make check passes or a concrete owner-only gate is recorded.",
     "Self-review resolves required findings; fork source PR is reviewed and merged preserving upstream ancestry; exact source revision and evidence are recorded in context."
   ],
-  "context": "Owned SQLGlot source worktree /Users/joe/Developer/sqlglot.wt-benchbox-source, feature branch feat/benchbox-source, verified commit931cdb6e. Applied the three bounded patches on upstream ad8764a0436a7b5c500b783ebe50dbf20c1e477c and recorded six branch dispositions in downstream/patches.json. Inherited mutating workflows are preserved under .github/disabled-workflows. Focused211 tests passed. Native make check passed Ruff/format/mypy,1470 pure Python tests and1381 compiled tests (5skipped); local log /tmp/sqlglot-source-check.log. Five-axis self-review found no remaining Critical/Required issue; source proof is bounded to typedDATE extraction and whole-unit intervals and retains unsupported cases. Next publish the feature branch PR, verify its exact-head hosted checks/review and merge preserving upstream ancestry. Publication/adoption are not complete or approved.",
+  "context": "Completed source integration in https://github.com/joeharris76/sqlglot/pull/1; merged 2026-10-18T01:10:30Z as b06d74ef78cec8f30416dc445463fb6735b0fe5a from verified head 931cdb6e1f3cbc1f825d6facc670ba62e3626175. Fetched origin/main and verified identical tree to tested head. Upstream v30.23.0 and three bounded patches are recorded in downstream/patches.json; six branch dispositions retained. Inherited mutating workflows moved out of active directory. Native make check passed Ruff/format/mypy, 1470 pure Python tests and 1381 compiled tests (5 skipped); targeted 211 passed. Local self-review found no remaining Critical/Required defects. Fork had no configured hosted workflows/checks or branch rules at merge; normal matching-head PR merge enforced available controls, no admin bypass. BigQuery prerequisite PR3115 is now merged and its owner marked its tracker item done. Continue distribution item in separate linked worktree, not source feature branch. Production publication and BenchBox adoption remain incomplete.",
   "description": "Implement the reviewed SQLGlot downstream source plan in joeharris76/sqlglot from upstream v30.23.0 ad8764a0436a7b5c500b783ebe50dbf20c1e477c. Apply PostgreSQL return-type, SQLite extraction and SQLite interval patches in dependency order; resolve source drift. Disable inherited mutating release/docs/upstream-sync workflows in the first PR. Preserve source layout, upstream notices and existing source/compiled gates. Record every prepared branch in downstream/patches.json with carried/upstreamed/excluded decisions. QuestDB and benchmark policy stay in BenchBox. Serial cross-repository delivery; no prepared batch shortcut.",
   "links": [
     "/Users/joe/Developer/BenchBox.wt-sqlglot-soft-fork/_project/decisions/sqlglot-soft-fork-plan.md",
@@ -46,6 +46,14 @@
       "client": "codex-mcp-client",
       "op": "update",
       "op_id": "42343dd143284094b0a6e23306b38854",
+      "session_id": "5626a6dfe7d44c419c7db613d1059c06"
+    },
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:e0ab14b9d48e92582f492d05",
+      "at": "2026-10-18T01:12:45Z",
+      "client": "codex-mcp-client",
+      "op": "update",
+      "op_id": "5610cfd74aee480abfc42a6b05099e88",
       "session_id": "5626a6dfe7d44c419c7db613d1059c06"
     }
   ]
