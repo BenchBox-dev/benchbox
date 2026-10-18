@@ -107,6 +107,9 @@ def test_every_committed_cohort_meets_the_platform_floor() -> None:
     cohorts = validator.cohort_platforms(validator.discover_bundles(BUNDLES))
 
     assert cohorts, "no cohorts found - this gate would be vacuous"
+    assert {key: set(value) for key, value in validator.DOCUMENTED_SHALLOW_COHORTS.items()} == (
+        KNOWN_DEFECTIVE_SHALLOW_COHORTS
+    )
     shallow = validator.shallow_cohorts(cohorts)
     assert shallow == KNOWN_DEFECTIVE_SHALLOW_COHORTS, (
         f"{len(shallow)} cohort(s) below {validator.MINIMUM_PLATFORMS_PER_COHORT} identities; excluding "

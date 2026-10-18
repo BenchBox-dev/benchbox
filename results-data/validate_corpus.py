@@ -16,6 +16,11 @@ COMPANION_SUFFIXES = (".manifest.json", ".plans.json", ".tuning.json", ".applied
 LEGACY_MANIFEST_NAME = "submission-manifest.json"
 
 MINIMUM_PLATFORMS_PER_COHORT = 3
+DOCUMENTED_SHALLOW_COHORTS = {
+    ("tpch", "0.01"): frozenset({"datafusion", "duckdb"}),
+    ("tpch", "0.1"): frozenset({"datafusion", "duckdb"}),
+    ("tpch", "1.0"): frozenset({"duckdb"}),
+}
 NON_CLEAN_VALIDATION_STATUSES = frozenset(
     {"failed", "interrupted", "partial", "error", "not_run", "not_validated", "uncertain", "unknown"}
 )
@@ -796,6 +801,20 @@ def shallow_cohorts(cohorts: dict[CohortKey, set[str]]) -> dict[CohortKey, set[s
     return {key: platforms for key, platforms in cohorts.items() if 0 < len(platforms) < MINIMUM_PLATFORMS_PER_COHORT}
 
 
+def documented_shallow_cohorts(
+    bundles: list[pathlib.Path], cohorts: dict[CohortKey, set[str]]
+) -> dict[CohortKey, set[str]]:
+    shallow = shallow_cohorts(cohorts)
+    documented: dict[CohortKey, set[str]] = {}
+    for bundle in bundles:
+        if not sidecar_known_defects(bundle):
+            continue
+        key = _cohort_key(_load_bundle(bundle))
+        if key in shallow and DOCUMENTED_SHALLOW_COHORTS.get(key) == shallow[key]:
+            documented[key] = shallow[key]
+    return documented
+
+
 def unranked_cohorts(cohorts: dict[CohortKey, set[str]]) -> list[CohortKey]:
     return sorted(key for key, platforms in cohorts.items() if not platforms)
 
@@ -845,15 +864,30 @@ def main(bundles_dir: pathlib.Path | None = None, *, as_of: _dt.date | None = No
     print(format_recency_report(overall, per_cohort, as_of=as_of))
 
     low = shallow_cohorts(cohorts)
-    if low:
-        print(f"\nWARN: {len(low)} cohort(s) have <3 comparison identities: { {k: len(v) for k, v in low.items()} }")
+    documented_low = documented_shallow_cohorts(bundles, cohorts)
+    unexpected = {key: platforms for key, platforms in low.items() if documented_low.get(key) != platforms}
+    if unexpected:
+        print(
+            f"\nWARN: {len(unexpected)} cohort(s) have <3 comparison identities: "
+            f"{ {k: len(v) for k, v in unexpected.items()} }"
+        )
         return 1
+    if low:
+        print(f"\nDOCUMENTED SHALLOW: {len(low)} cohort(s) below the floor with known-defective exclusions:")
+        for key, platforms in sorted(low.items()):
+            print(f"  {key[0]} SF={key[1]}: {sorted(platforms)}")
 
     unranked = unranked_cohorts(cohorts)
     if unranked:
         print(f"\nUNRANKED: {len(unranked)} cohort(s) have no rankable bundle and publish no ranking: {unranked}")
     ranked = len(cohorts) - len(unranked)
-    print(f"\nAll {ranked} ranked cohort(s) meet the >={MINIMUM_PLATFORMS_PER_COHORT}-identity depth criterion.")
+    if low:
+        print(
+            f"\n{ranked - len(low)} ranked cohort(s) meet the >={MINIMUM_PLATFORMS_PER_COHORT}-identity "
+            f"depth criterion; {len(low)} documented shallow cohort(s) listed above."
+        )
+    else:
+        print(f"\nAll {ranked} ranked cohort(s) meet the >={MINIMUM_PLATFORMS_PER_COHORT}-identity depth criterion.")
     return 0
 
 
