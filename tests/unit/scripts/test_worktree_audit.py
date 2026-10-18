@@ -815,3 +815,56 @@ def test_git_run_timeout(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(mod.subprocess, "run", mock_run)
     with pytest.raises(mod.GitCollectionError, match="timed out after 0.01s"):
         mod._run_git(["status"], cwd=Path.cwd(), timeout=0.01)
+
+
+def _listed_pr(number: int, label: str, repo_id: int = 123) -> Dict[str, Any]:
+    return {"number": number, "head": {"label": label}, "base": {"ref": "develop", "repo": {"id": repo_id}}}
+
+
+def test_batch_pr_listing_groups_requested_branches_across_pages(monkeypatch: pytest.MonkeyPatch):
+    pages = [
+        [_listed_pr(9, "Owner:feat/a"), _listed_pr(8, "fork-user:feat/a"), _listed_pr(7, "Owner:feat/unrequested")],
+        [_listed_pr(6, "Owner:feat/b"), _listed_pr(5, "Owner:feat/a")],
+    ]
+    calls: List[str] = []
+
+    def mock_request(url: str, token: Any):
+        calls.append(url)
+        link = {"link": '<next>; rel="next"'} if len(calls) < len(pages) else {}
+        return pages[len(calls) - 1], link, None
+
+    monkeypatch.setattr(mod, "_github_api_request", mock_request)
+    by_branch, err = mod.fetch_prs_for_branches(
+        "owner", "repo", {"feat/a", "feat/b", "feat/none"}, expected_repo_id=123, token=None
+    )
+
+    assert err is None
+    assert {branch: [pr["number"] for pr in prs] for branch, prs in by_branch.items()} == {
+        "feat/a": [9, 5],
+        "feat/b": [6],
+        "feat/none": [],
+    }
+    assert len(calls) == 2
+
+
+def test_batch_pr_listing_fails_closed_on_foreign_base_repository(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(
+        mod, "_github_api_request", lambda url, token: ([_listed_pr(1, "owner:feat/a", repo_id=999)], {}, None)
+    )
+    by_branch, err = mod.fetch_prs_for_branches("owner", "repo", {"feat/a"}, expected_repo_id=123, token=None)
+    assert by_branch == {}
+    assert err is not None and "failed repository identity validation" in err
+
+
+def test_batch_pr_listing_fails_closed_on_truncation_and_api_error(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(mod, "_github_api_request", lambda url, token: ([], {"link": 'rel="next"'}, None))
+    by_branch, err = mod.fetch_prs_for_branches(
+        "owner", "repo", {"feat/a"}, expected_repo_id=123, token=None, max_pages=2
+    )
+    assert by_branch == {}
+    assert err is not None and "pagination truncated" in err
+
+    monkeypatch.setattr(mod, "_github_api_request", lambda url, token: (None, None, "HTTP Error 502: Bad Gateway"))
+    by_branch, err = mod.fetch_prs_for_branches("owner", "repo", {"feat/a"}, expected_repo_id=123, token=None)
+    assert by_branch == {}
+    assert err == "HTTP Error 502: Bad Gateway"

@@ -11,7 +11,7 @@ import shlex
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
@@ -40,6 +40,9 @@ from scripts.worktree_lifecycle_metadata import (
 
 HEX_40_RE = re.compile(r"^[0-9a-fA-F]{40}$")
 
+PrLookup = Callable[[str], Tuple[List[Dict[str, Any]], Optional[str]]]
+TargetRefresher = Callable[[str], Optional[str]]
+
 
 class FinishError(RuntimeError):
     pass
@@ -53,6 +56,7 @@ class FinishPreviewResult:
     expected_head: str
     status: str
     hold_reason: Optional[str]
+    hold_code: Optional[str]
     provenance_state: str
     owner_state: str
     controller_kind: Optional[str]
@@ -63,6 +67,7 @@ class FinishPreviewResult:
     detached: bool
     pr_number: Optional[int]
     pr_base: Optional[str]
+    merged_head: Optional[str]
     pr_merged: bool
     merge_commit_reachable: bool
     proposed_actions: List[Dict[str, str]]
@@ -174,7 +179,7 @@ def _branch_ref_argument(branch: str) -> str:
     return shlex.quote(f"refs/heads/{branch}")
 
 
-def _refresh_target_ref(base_ref: str, repo_root: Path) -> Optional[str]:
+def refresh_target_ref(base_ref: str, repo_root: Path) -> Optional[str]:
     code, _, stderr = _run_git(
         ["fetch", "--quiet", "origin", f"{base_ref}:refs/remotes/origin/{base_ref}"],
         repo_root,
@@ -207,6 +212,8 @@ def _make_hold_result(
     expected_head_oid: str,
     reason: str,
     timestamp: str,
+    *,
+    hold_code: str,
     branch: Optional[str] = None,
     current_head: Optional[str] = None,
     provenance_state: str = "unknown",
@@ -229,6 +236,7 @@ def _make_hold_result(
         expected_head=expected_head_oid,
         status="hold",
         hold_reason=reason,
+        hold_code=hold_code,
         provenance_state=provenance_state,
         owner_state=owner_state,
         controller_kind=controller_kind,
@@ -239,6 +247,7 @@ def _make_hold_result(
         detached=detached,
         pr_number=pr_number,
         pr_base=pr_base,
+        merged_head=None,
         pr_merged=pr_merged,
         merge_commit_reachable=merge_commit_reachable,
         proposed_actions=[],
@@ -265,6 +274,7 @@ def _check_worktree_structure(
                 expected_head_oid,
                 f"Worktree path does not exist on disk or is not a directory: '{target_path}'",
                 timestamp,
+                hold_code="missing_path",
                 provenance_state="missing",
             ),
         )
@@ -292,6 +302,7 @@ def _check_worktree_structure(
                 expected_head_oid,
                 f"Worktree path '{target_path}' is not registered in Git worktrees",
                 timestamp,
+                hold_code="unregistered",
                 provenance_state="unregistered",
             ),
         )
@@ -307,6 +318,7 @@ def _check_worktree_structure(
                 expected_head_oid,
                 "Worktree is in detached HEAD state (no symbolic branch ref)",
                 timestamp,
+                hold_code="detached",
                 current_head=matching.get("HEAD"),
                 provenance_state="detached",
                 detached=True,
@@ -324,6 +336,7 @@ def _check_worktree_structure(
                 expected_head_oid,
                 msg,
                 timestamp,
+                hold_code="locked",
                 branch=branch,
                 current_head=matching.get("HEAD"),
                 provenance_state="locked",
@@ -341,6 +354,7 @@ def _check_worktree_structure(
                 expected_head_oid,
                 "Worktree has uncommitted modifications, staged changes, or untracked files",
                 timestamp,
+                hold_code="dirty",
                 branch=branch,
                 current_head=matching.get("HEAD"),
                 provenance_state="dirty",
@@ -358,6 +372,7 @@ def _check_worktree_structure(
                 expected_head_oid,
                 f"Worktree HEAD ({actual_head}) does not match expected HEAD OID ({expected_head_oid})",
                 timestamp,
+                hold_code="head_mismatch",
                 branch=branch,
                 current_head=actual_head,
                 provenance_state="oid_mismatch",
@@ -382,6 +397,7 @@ def _check_provenance_state(
             expected_head_oid,
             f"Worktree lifecycle provenance is '{meta.provenance_state}'; only managed worktrees can be finished",
             timestamp,
+            hold_code="unmanaged_provenance",
             branch=branch,
             current_head=actual_head,
             provenance_state=meta.provenance_state,
@@ -401,6 +417,7 @@ def _check_provenance_state(
                 f"({meta.controller_id or 'no id'}); controller evidence remains an opaque hold"
             ),
             timestamp,
+            hold_code="controller_bound",
             branch=branch,
             current_head=actual_head,
             provenance_state=meta.provenance_state,
@@ -419,6 +436,7 @@ def _fetch_prs_for_evaluation(
     repo_slug: str,
     branch: str,
     evidence_file: Optional[Path],
+    pr_lookup: Optional[PrLookup],
 ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
     if evidence_file:
         prs = load_canned_evidence(evidence_file)
@@ -428,6 +446,8 @@ def _fetch_prs_for_evaluation(
                 if isinstance(head, dict) and isinstance(head.get("sha"), str):
                     pr["_historical_head_sha"] = head["sha"]
         return prs, None
+    if pr_lookup is not None:
+        return pr_lookup(branch)
 
     remote_slug = get_remote_repository_slug(repo_root)
     if "/" not in repo_slug:
@@ -454,7 +474,8 @@ def _evaluate_pr_integration(
     meta: WorktreeLifecycleMetadata,
     repo_root: Path,
     timestamp: str,
-) -> Tuple[Optional[Dict[str, Any]], Optional[FinishPreviewResult]]:
+    refresh_target: TargetRefresher,
+) -> Tuple[Optional[Tuple[Dict[str, Any], str]], Optional[FinishPreviewResult]]:
     merged_prs = [p for p in prs if is_pr_merged(p)]
     if not merged_prs:
         reason = (
@@ -462,11 +483,18 @@ def _evaluate_pr_integration(
             if prs
             else f"No PRs found on GitHub for branch '{branch}'"
         )
+        if not prs:
+            no_merge_code = "no_pr"
+        elif any(p.get("state") == "open" for p in prs):
+            no_merge_code = "open_pr"
+        else:
+            no_merge_code = "closed_unmerged_pr"
         return None, _make_hold_result(
             target_path,
             expected_head_oid,
             reason,
             timestamp,
+            hold_code=no_merge_code,
             branch=branch,
             current_head=actual_head,
             provenance_state=meta.provenance_state,
@@ -490,6 +518,7 @@ def _evaluate_pr_integration(
             expected_head_oid,
             f"PR #{pr_num} targets base '{pr_base}', which is not a structural integration branch",
             timestamp,
+            hold_code="non_structural_base",
             branch=branch,
             current_head=actual_head,
             provenance_state=meta.provenance_state,
@@ -510,6 +539,7 @@ def _evaluate_pr_integration(
             expected_head_oid,
             f"Merged PR #{pr_num} merge-time head could not be proven from PR history",
             timestamp,
+            hold_code="merge_head_unproven",
             branch=branch,
             current_head=actual_head,
             provenance_state=meta.provenance_state,
@@ -528,6 +558,7 @@ def _evaluate_pr_integration(
             expected_head_oid,
             f"Merged PR #{pr_num} head {historical_head[:12]} does not match current or historical branch commits",
             timestamp,
+            hold_code="head_diverged",
             branch=branch,
             current_head=actual_head,
             provenance_state=meta.provenance_state,
@@ -541,13 +572,14 @@ def _evaluate_pr_integration(
             pr_merged=True,
         )
 
-    refresh_error = _refresh_target_ref(pr_base, repo_root)
+    refresh_error = refresh_target(pr_base)
     if refresh_error:
         return None, _make_hold_result(
             target_path,
             expected_head_oid,
             f"Target structural branch '{pr_base}' could not be refreshed: {refresh_error}",
             timestamp,
+            hold_code="target_refresh_failed",
             branch=branch,
             current_head=actual_head,
             provenance_state=meta.provenance_state,
@@ -568,6 +600,7 @@ def _evaluate_pr_integration(
             expected_head_oid,
             f"Target structural branch '{pr_base}' tip could not be resolved locally",
             timestamp,
+            hold_code="target_unresolved",
             branch=branch,
             current_head=actual_head,
             provenance_state=meta.provenance_state,
@@ -587,6 +620,7 @@ def _evaluate_pr_integration(
             expected_head_oid,
             f"Worktree contains unintegrated post-merge commits on branch '{branch}' beyond PR #{pr_num} head",
             timestamp,
+            hold_code="unintegrated_commits",
             branch=branch,
             current_head=actual_head,
             provenance_state=meta.provenance_state,
@@ -606,6 +640,7 @@ def _evaluate_pr_integration(
             expected_head_oid,
             f"Merge commit '{merge_commit_sha}' for PR #{pr_num} is not reachable from '{pr_base}' tip",
             timestamp,
+            hold_code="merge_unreachable",
             branch=branch,
             current_head=actual_head,
             provenance_state=meta.provenance_state,
@@ -619,7 +654,7 @@ def _evaluate_pr_integration(
             pr_merged=True,
         )
 
-    return latest, None
+    return (latest, historical_head), None
 
 
 def evaluate_finish_preview(
@@ -628,12 +663,16 @@ def evaluate_finish_preview(
     repo_root: Path,
     repo_slug: str = "BenchBox-dev/BenchBox",
     evidence_file: Optional[Path] = None,
+    pr_lookup: Optional[PrLookup] = None,
+    refresh_target: Optional[TargetRefresher] = None,
 ) -> FinishPreviewResult:
     now_utc = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     entry, actual_head, hold_res = _check_worktree_structure(target_path, expected_head_oid, repo_root, now_utc)
     if hold_res or not entry or not actual_head:
-        return hold_res or _make_hold_result(target_path, expected_head_oid, "Unknown structural failure", now_utc)
+        return hold_res or _make_hold_result(
+            target_path, expected_head_oid, "Unknown structural failure", now_utc, hold_code="unknown"
+        )
 
     branch = entry["branch"]
     meta = read_metadata(target_path)
@@ -641,13 +680,14 @@ def evaluate_finish_preview(
     if provenance_hold:
         return provenance_hold
 
-    prs, fetch_err = _fetch_prs_for_evaluation(repo_root, repo_slug, branch, evidence_file)
+    prs, fetch_err = _fetch_prs_for_evaluation(repo_root, repo_slug, branch, evidence_file, pr_lookup)
     if fetch_err:
         return _make_hold_result(
             target_path,
             expected_head_oid,
             fetch_err,
             now_utc,
+            hold_code="pr_lookup_failed",
             branch=branch,
             current_head=actual_head,
             provenance_state=meta.provenance_state,
@@ -658,11 +698,23 @@ def evaluate_finish_preview(
             clean=True,
         )
 
-    latest_pr, pr_hold = _evaluate_pr_integration(
-        prs, target_path, expected_head_oid, actual_head, branch, repo_slug, meta, repo_root, now_utc
+    merged, pr_hold = _evaluate_pr_integration(
+        prs,
+        target_path,
+        expected_head_oid,
+        actual_head,
+        branch,
+        repo_slug,
+        meta,
+        repo_root,
+        now_utc,
+        refresh_target or (lambda base: refresh_target_ref(base, repo_root)),
     )
-    if pr_hold or not latest_pr:
-        return pr_hold or _make_hold_result(target_path, expected_head_oid, "PR integration hold", now_utc)
+    if pr_hold or not merged:
+        return pr_hold or _make_hold_result(
+            target_path, expected_head_oid, "PR integration hold", now_utc, hold_code="unknown"
+        )
+    latest_pr, merged_head = merged
 
     action_remove = " ".join(["git", "worktree", "remove"])
     action_delete_ref = " ".join(["git", "update-ref", "-d"])
@@ -687,6 +739,7 @@ def evaluate_finish_preview(
         expected_head=expected_head_oid,
         status="actionable",
         hold_reason=None,
+        hold_code=None,
         provenance_state=meta.provenance_state,
         owner_state=meta.owner_state,
         controller_kind=meta.controller_kind,
@@ -697,6 +750,7 @@ def evaluate_finish_preview(
         detached=False,
         pr_number=latest_pr.get("number"),
         pr_base=latest_pr.get("base", {}).get("ref"),
+        merged_head=merged_head,
         pr_merged=True,
         merge_commit_reachable=True,
         proposed_actions=proposed,

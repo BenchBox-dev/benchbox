@@ -136,6 +136,7 @@ help:
 	@echo "  make worktree-remove WORKTREE_PATH=path              Remove an exact clean, attached, unlocked worktree"
 	@echo "  make worktree-release WORKTREE_PATH=path             Record manual owner release for caller-owned worktree (non-destructive)"
 	@echo "  make worktree-finish WORKTREE_PATH=path EXPECTED_HEAD_OID=oid [FORMAT=json] [APPLY=1]  Preview single-target removal and ref deletion (APPLY=1 executes)"
+	@echo "  make worktree-reap [APPLY=1]                         Classify every worktree remove/keep/ambiguous with worktree-finish checks (APPLY=1 removes 'remove' verdicts)"
 	@echo "  make worktree-list                                   List registered worktrees"
 	@echo "  make worktree-audit [FORMAT=json]                    Read-only inventory and lifecycle audit of worktrees and branches"
 	@echo "  make branch-prune-merged [DRY_RUN=1]                 Delete worktree-less branches at a proven merge-time PR head (requires gh)"

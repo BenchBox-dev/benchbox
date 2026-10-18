@@ -28,6 +28,10 @@ worktree-finish: export FORMAT := $(FORMAT)
 worktree-finish:
 	@$(BENCHBOX_MAKEFILE_ROOT)scripts/worktree_lifecycle.sh finish
 
+.PHONY: worktree-reap
+worktree-reap:
+	@uv run --no-project -- python $(BENCHBOX_MAKEFILE_ROOT)scripts/worktree_reap.py $(if $(filter 1,$(value APPLY)),--apply,)
+
 .PHONY: worktree-list
 worktree-list:
 	@git worktree list --porcelain

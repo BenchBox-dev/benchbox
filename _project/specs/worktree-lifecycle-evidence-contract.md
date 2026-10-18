@@ -2,8 +2,9 @@
 
 Status: draft specification (2026-08-26) as amended 2026-08-31 to authorize
 `make branch-prune-merged` — an explicit, operator-driven, `gh`-based reaper
-limited to worktree-less local branches still at their historical merge-time PR head. No
-worktree reaper is authorized; see §2.
+limited to worktree-less local branches still at their historical merge-time PR head —
+and amended 2026-10-18 to authorize `make worktree-reap`, an operator-invoked
+sweep whose removals are exactly `worktree-finish` apply actions; see §2.
 
 ## 1. Problem
 
@@ -28,16 +29,20 @@ the complete §7 evidence; it never consumes an audit snapshot as authority.
 
 ## 2. Non-goals
 
-- No worktree reaper, sweep, or auto-cleanup command. Worktree removal stays
-  exact-path and operator-driven via `make worktree-remove` only
-  (`docs/operations/dev-loop-worktrees.md`). The single authorized exception is
+- No automatic worktree cleanup. Worktree removal stays operator-driven via
+  `make worktree-remove`, `make worktree-finish APPLY=1`, or
+  `make worktree-reap APPLY=1` (`docs/internal/dev-loop-worktrees.md`).
+  `worktree-reap` previews by default and removes only worktrees for which a
+  fresh per-target `worktree-finish` evaluation is actionable and whose HEAD is
+  exactly the merged PR's historical merge-time head, using the same apply
+  actions; it never removes the primary clone, the invoking worktree, or
+  anything that evaluation holds. The authorized branch-only exception is
   `make branch-prune-merged`, which reaps only worktree-less local branches
   still at their historically proven merge-time PR head (operator-driven, `gh`-based, with
-  `DRY_RUN=1` preview). Any other future mutation stays single-target and
-  operator-driven, exactly like `worktree-remove` today.
-- No destructive **worktree** operation and no change to `worktree-remove`'s
-  existing refusal rules. `branch-prune-merged` is the sole authorized new
-  destructive Git operation and deletes local branch refs only.
+  `DRY_RUN=1` preview).
+- No change to `worktree-remove`'s existing refusal rules, and no destructive
+  Git operation beyond `worktree-finish` apply actions (also reached through
+  `worktree-reap`) and `branch-prune-merged` local branch ref deletion.
 - No parsing of `.bossmode/control.db` (or any other worktree's copy of it),
   anywhere, by any future phase built on this contract.
 - No binding to Bossmode's current `bossmode reconcile` / `run show` /
