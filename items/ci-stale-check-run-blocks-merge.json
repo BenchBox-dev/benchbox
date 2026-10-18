@@ -3,7 +3,7 @@
     "Merge-gate evaluation documented for duplicate check runs",
     "Automated mitigation in place (bot rerun of superseded failures or dev-loop guide note) so authors stop hand-rerunning stale failures"
   ],
-  "context": "Found while landing PRs #2907 and #2913. Workaround used: gh run rerun <failed-run-id>. See handoff _project/handoffs/core-execution-variants-batch-20261009.md revisions 7 and 13.\n\nUpdate 2026-10-14: the mechanism is now confirmed. The required context `oracle-review` runs on both `pull_request` and `pull_request_review` (.github/workflows/oracle-review.yml:5-10,24-26,30-31), and each run is its own check suite. The `pull_request` run fails by design until a review exists (_project/scripts/oracle_review_check.py:137-146). A later passing `pull_request_review` run does not replace it, and the ruleset requires `oracle-review` without an app pin.\n- Seen again on #2940, #2945, #2952 and #2954. On the #2954 head b28d4d95b: failed at 02:42, the review run passed at 02:45, and the PR stayed blocked until a manual rerun at 03:13.\n- Fix options:\n  - have the trusted review or verdict path rerun the latest failed `pull_request` oracle-review run for the head SHA (needs `actions: write`);\n  - or publish `oracle-review` as a commit status from one trusted writer, so the latest result wins, and have the `pull_request` event report pending instead of failure.\n\nUpdate 2026-10-17: seen again on #3075, head c7fa4e88c. The `pull_request` run 39006810653 failed at 05:35Z on 10 unresolved oracle threads. Seven `pull_request_review` runs passed at 13:20Z after the threads were resolved, and the PR stayed blocked until run 39006810653 was rerun by hand (attempt 2, 13:46Z). It merged at 13:47Z.\n\nUpdate 2026-10-17 (#3092, head dafe062fe): after the four oracle threads were resolved and the PR armed, two oracle-review runs stayed red with \"4 unresolved oracle review thread(s)\": the `pull_request_review` run 39051460278 and the `pull_request` (edited) run 39051349932. The PR showed BLOCKED until both were rerun by hand; it merged as 6dc8cdc74 right after the second rerun.\n\nUpdate 2026-10-17 (#3096, head e41f96b97, stand-in path): the owner posted the stand-in attestation (comment 6238166802). The workflow has no issue_comment trigger (.github/workflows/oracle-review.yml:5-11), and the checker's own message says to \"rerun this check after it lands\" (_project/scripts/oracle_review_check.py:145-146). After arming, the PR stayed BLOCKED on three oracle-review runs that had failed before the stand-in: 39054803518, 39055089407 and 39054974675. Each was rerun once by hand, passed on the stand-in, and auto-merge then merged 364a6e9cd. So a stand-in also needs every earlier failed run rerun by hand; any fix should cover this path too.",
+  "context": "Implementation in PR #3111 (branch fix/oracle-verdict-rerun-tolerance, head 20cc4559b): oracle-verdict rerun step now tolerates non-retryable runs and also reruns failed pull_request_review runs for the head. 26 workflow tests pass; PR armed for auto-merge 2026-10-18. After #3111 merges: take and finish this item and oracle-review-cancel-race-20261016 (same PR).",
   "description": "Twice in the execution-variants effort (PR #2907 run 38189396586; PR #2913 runs 38267710604, 38270039090) the merge gate stayed blocked with two newer same-head SUCCESS check runs present for oracle-review. Running gh run rerun on the failed run replaced it in place and unblocked the merge both times. Suspected mechanism: the gate keys on something other than latest-completed (possibly the dispatch event), unverified.",
   "sessions": [
     {
@@ -53,6 +53,14 @@
       "generation": "d0e8c88e150c4c65953230315199587f",
       "op": "take",
       "op_id": "6d06daa4e3534c72ad84fdb543cfe9b6",
+      "session_id": "d2c53a64af484bf0b44e45ae35143611"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:3ce222eaad5d12493e27d4cc",
+      "at": "2026-10-18T00:28:56Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "b057a35ac1ae42f19f678e79cdd516d4",
       "session_id": "d2c53a64af484bf0b44e45ae35143611"
     }
   ]
