@@ -22000,17 +22000,12 @@
       "title": "Build and verify an isolated BenchBox SQLGlot distribution"
     },
     "sqlglot-soft-fork-publish": {
-      "claim": {
-        "expires_at": "2026-10-19T12:36:54Z",
-        "generation": "e75cfad8f9334628a2ea8b45135fdbda",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:00f9896dc298dff5fa33ec9d"
-      },
+      "claim": null,
       "needs": [
         "sqlglot-soft-fork-distribution"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Prepare the maintained SQLGlot wheel runtime for BenchBox bundling"
     },
     "sqlglot-soft-fork-source": {
