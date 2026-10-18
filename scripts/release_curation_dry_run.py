@@ -17,6 +17,7 @@ from check_release_curation import release_cut_rm_commands
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FAST_SELECTION = "fast and not (slow or stress or resource_heavy or live_integration)"
+ROUTINE_SELECTION = "(fast or medium) and not (slow or stress or resource_heavy or live_integration)"
 NO_TESTS_COLLECTED = 5
 
 
@@ -47,12 +48,22 @@ def pytest_command(targets: Sequence[str], marker: str) -> list[str]:
     return ["uv", "run", "--", "python", "-m", "pytest", *(targets or ["tests"]), "-m", marker, "-q", *parallel]
 
 
+def has_collected_tests(tree: Path, targets: Sequence[str], base_cmd: Sequence[str] | None) -> bool:
+    argv = (
+        [*base_cmd, *targets, "-m", "", "--collect-only", "-q", "-o", "addopts="]
+        if base_cmd
+        else ["uv", "run", "--", "python", "-m", "pytest", *targets, "-m", "", "--collect-only", "-q", "-o", "addopts="]
+    )
+    result = subprocess.run(argv, cwd=tree, check=False, capture_output=True, text=True)
+    return result.returncode == 0
+
+
 def run(
     root: Path,
     targets: Sequence[str],
     *,
     makefile: Path | None = None,
-    marker: str = FAST_SELECTION,
+    marker: str | None = None,
     command: Sequence[str] | None = None,
 ) -> int:
     commands = release_cut_rm_commands(makefile or root / "Makefile")
@@ -65,11 +76,27 @@ def run(
                 print("release curation dry run: no selected test remains on the release tree")
                 return 0
             targets = kept
-        argv = [*command, *(targets or ["tests"])] if command else pytest_command(targets, marker)
+        effective_marker = marker if marker is not None else (ROUTINE_SELECTION if targets else FAST_SELECTION)
+        argv = [*command, *(targets or ["tests"])] if command else pytest_command(targets, effective_marker)
         result = subprocess.run(argv, cwd=tree, check=False)
-    if result.returncode in (0, NO_TESTS_COLLECTED):
+        marker_excluded = (
+            bool(targets) and result.returncode == NO_TESTS_COLLECTED and has_collected_tests(tree, targets, command)
+        )
+    if result.returncode == 0:
         print("release curation dry run: OK")
         return 0
+    if not targets and result.returncode == NO_TESTS_COLLECTED:
+        print("release curation dry run: OK")
+        return 0
+    if marker_excluded:
+        print("release curation dry run: OK (all selected tests are marker-excluded)")
+        return 0
+    if targets and result.returncode == NO_TESTS_COLLECTED:
+        print(
+            "release curation dry run: FAILED. Retained test targets were selected, but no tests were collected.",
+            file=sys.stderr,
+        )
+        return 1
     print(
         "release curation dry run: FAILED. A test above fails on the release tree, usually because it reads a "
         "path that release-cut removes. Skip it when that specific file is absent, or add the test to the "
