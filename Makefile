@@ -1152,7 +1152,7 @@ pr-open:
 	$(MAKE) -s pr-conflict-scan BRANCH="$$CURRENT" REPO="$$REPOSITORY" || true; \
 	git push -u origin "$$CURRENT" || { echo "Push failed for $$CURRENT — aborting before opening a PR (remote branch may be stale)." >&2; exit 1; }; \
 	PUBLISHED=$$(uv run -- python scripts/pr_open_rest.py --repo "$$REPOSITORY" --head-owner "$$ORIGIN_OWNER" \
-		--branch "$$CURRENT" --head-spec "$$HEAD_SPEC" --title "$(PR_TITLE)" --body-file "$(PR_BODY_FILE)"); \
+		--branch "$$CURRENT" --head-spec "$$HEAD_SPEC" --title "$(TITLE)" --body-file "$(PR_BODY_FILE)"); \
 	PR_STATUS="$${PUBLISHED%% *}"; \
 	PR_NUMBER="$${PUBLISHED#* }"; \
 	URL="$${PR_NUMBER#* }"; \
