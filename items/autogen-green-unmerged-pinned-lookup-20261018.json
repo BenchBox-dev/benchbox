@@ -3,10 +3,11 @@
     "A test with a fake client whose pinned issue is beyond 1000 records fails before the change (creates a duplicate) and passes after (updates the original)",
     "Existing reopen-if-closed behavior and the no-label rule are unchanged (tests)",
     "A read-only (non-apply) run against the live repository finds an existing pinned issue and would not create a new one; output recorded",
-    "PR merged with required checks green"
+    "PR merged with required checks green",
+    "A lookup error aborts the run without creating or editing any issue (test)"
   ],
-  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs every line. FAIL if a label is introduced or a duplicate would still be created. Low priority; do not let it block other items.",
-  "description": "Confirmed in source: _project/scripts/green_unmerged_sweep.py:489-496 find_pinned_issue calls get_all(.../issues, state=all) and get_all stops at 10 pages of 100 (:398-414). Issues and PRs share numbers, so the original pinned issue #1508 fell outside the window (#2531 - #1508 = 1023) and #2531 was created as a duplicate (closed 2026-10-08 'duplicate of #1508'). The job is scheduled daily (nightly.yml, green-unmerged-sweep) and still affects the next write. Impact is a duplicate pinned issue, not a missed alert.\nWork: look the pinned issue up by its body marker (<!-- green-unmerged-sweep -->) via the search API or another unbounded mechanism, keeping the existing title check and the reopen-if-closed behavior. The script deliberately uses no label; do not add one.",
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs every line. FAIL if a label is introduced or a duplicate would still be created. Low priority; do not let it block other items.\nPre-publication (AGENTS.md): self-review with the code review action and fix every Critical and Required finding before make pr-open (G13).",
+  "description": "Confirmed in source: _project/scripts/green_unmerged_sweep.py:489-496 find_pinned_issue calls get_all(.../issues, state=all) and get_all stops at 10 pages of 100 (:398-414). Issues and PRs share numbers, so the original pinned issue #1508 fell outside the window (#2531 - #1508 = 1023) and #2531 was created as a duplicate (closed 2026-10-08 'duplicate of #1508'). The job is scheduled daily (nightly.yml, green-unmerged-sweep) and still affects the next write. Impact is a duplicate pinned issue, not a missed alert.\nWork: look the pinned issue up by its body marker (<!-- green-unmerged-sweep -->) via the search API or another unbounded mechanism, keeping the existing title check and the reopen-if-closed behavior. The script deliberately uses no label; do not add one.\nGATE-I: if the search API cannot return the pinned issue (rate limit or index lag), fall back to a label-free paginated scan sorted oldest first and record which mechanism was used. A lookup error must abort the run; it must never fall through to creating an issue.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/issues/2531"
   ],
@@ -17,6 +18,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "bafac14cf9e640bfb5c78a3a7a88ef94",
+      "session_id": "cab8a4e762844fd9912c504ebfd76c56"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7ac6538e56f6607b35a3f600",
+      "at": "2026-10-18T20:26:09Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "4a63c20ab11f4f2cb286709670a5ab51",
       "session_id": "cab8a4e762844fd9912c504ebfd76c56"
     }
   ]
