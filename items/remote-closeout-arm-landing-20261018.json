@@ -6,8 +6,11 @@
     "pr-landing-remote-withdraw disables auto-merge for the bound PR; pr-landing-remote-ready re-applies every arm condition to a new head and a new record",
     "Tests cover each refusal, a passing arm, and the withdraw and ready transitions"
   ],
-  "context": "Depends on the policy PR from branch docs/remote-closeout-policy, which adds [REMOTE-CLOSEOUT-001] and docs/agent/remote-closeout.md; this work stacks on that branch until it merges.",
+  "context": "Implemented and shipped together with the [REMOTE-CLOSEOUT-001] rule in PR #3131 (branch docs/remote-closeout-policy, head 0195cbd4a): tests/unit/scripts/test_check_makefile_inventory.py requires every make target AGENTS.md names to exist, so the rule cannot land before the targets. All acceptance criteria met; fresh-context review found no way to arm a stale or mismatched record; its two Required findings (re-arm without withdrawal, corrupt worktree config failing open) are fixed. Branch feat/remote-closeout-targets is now identical to the PR branch and needs no PR of its own.\n\nOwner decision before arming #3131: the rule grants agents a new permission in the read-only primary clone and its wording differs from the plan text the owner approved. Known gap: live tracker has no registered batches (schema 1), so the local worktree marker is the only feature-mode signal today. The remote path stays inactive until docs/agent/cloud-builder.md lets builders open their own PR (make pr-open now works without GraphQL, PR #3132).",
   "description": "Implement the targets that [REMOTE-CLOSEOUT-001] and docs/agent/remote-closeout.md define, so a local closer can judge and arm a cloud-built PR from the primary clone without a linked worktree: a reviewer-record store under ~/.benchbox/reviews/, a PR binding record, make pr-arm-remote PR=N HEAD=SHA enforcing the seven arm conditions, and make pr-landing-remote-withdraw and make pr-landing-remote-ready.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3131"
+  ],
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:515fc6c5ed940969bed3c6eb",
@@ -24,6 +27,14 @@
       "generation": "352e745be0a04dec96d2730b959f9fff",
       "op": "take",
       "op_id": "0e7eabeb6249495eb26717bc29780df0",
+      "session_id": "47d0479093c54bd8bbf6c9bf3930003f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:515fc6c5ed940969bed3c6eb",
+      "at": "2026-10-18T14:20:36Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "39fb1cd890704e6dade1cb3f62556a4c",
       "session_id": "47d0479093c54bd8bbf6c9bf3930003f"
     }
   ]
