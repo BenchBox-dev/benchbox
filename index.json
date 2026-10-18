@@ -22073,7 +22073,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "blocked",
       "title": "ship-no-ship doctor: a planted toolchain can make the rpath walk take exponential time"
     },
     "ssns-gen0-stale-during-engine-rollback": {
