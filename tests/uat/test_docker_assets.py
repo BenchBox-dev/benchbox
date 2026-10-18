@@ -10,7 +10,7 @@ import yaml
 from tests.uat import config, docker_assets, managed_runtime, matrix
 from tests.uat.docker_path_helpers import compose_path_ends_with
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 def test_docker_specs_cover_matrix_docker_group_only():

@@ -4,7 +4,7 @@ from .common import PrestoStubState, install_presto_stub
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

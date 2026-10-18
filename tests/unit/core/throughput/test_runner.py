@@ -19,7 +19,7 @@ from benchbox.core.throughput.runner import StreamRunner
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

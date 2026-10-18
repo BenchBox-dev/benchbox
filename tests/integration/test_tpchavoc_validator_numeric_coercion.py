@@ -13,7 +13,7 @@ from benchbox.core.tpchavoc.validation import ResultValidator, ValidationError
 pytestmark = [
     pytest.mark.integration,
     pytest.mark.tpchavoc,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

@@ -10,7 +10,7 @@ from benchbox.core.transaction_primitives.benchmark import OperationResult
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

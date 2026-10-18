@@ -10,7 +10,7 @@ from benchbox.mcp.deprecations import mcp_replacement
 from benchbox.mcp.schemas import MCP_CLICKHOUSE_PROFILE_ENV
 from tests.unit.mcp.public_api import call_tool
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 pytest.importorskip("mcp", reason="MCP SDK not installed. Install with: uv add benchbox --extra mcp")
 

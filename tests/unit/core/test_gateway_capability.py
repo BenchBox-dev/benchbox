@@ -32,7 +32,7 @@ from benchbox.core.results.execution_variant import variants_comparable
 from benchbox.core.results.models import BenchmarkResults, QueryExecution
 from benchbox.core.results.schema import SchemaV2Validator, build_result_payload
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 
 def test_manifest_declares_snowflake_and_databricks_gateways() -> None:

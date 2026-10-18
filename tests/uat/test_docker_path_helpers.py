@@ -11,7 +11,7 @@ from tests.uat.docker_path_helpers import (
     find_non_flat_benchbox_data_dir_mounts,
 )
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 

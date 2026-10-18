@@ -12,7 +12,7 @@ from tests.uat import runner
 from tests.uat.artifact_hygiene import LocalArtifactGrowthError
 from tests.uat.timeouts import TimeoutResult
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 @pytest.fixture(autouse=True)

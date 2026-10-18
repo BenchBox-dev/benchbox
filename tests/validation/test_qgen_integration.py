@@ -10,7 +10,7 @@ import pytest
 
 from benchbox.core.tpch.queries import QGenBinary, TPCHQueries
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 

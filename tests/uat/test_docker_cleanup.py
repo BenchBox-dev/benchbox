@@ -6,7 +6,7 @@ import pytest
 
 from tests.uat import docker_assets, docker_cleanup
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 def _jsonl(*rows: dict[str, object]) -> str:

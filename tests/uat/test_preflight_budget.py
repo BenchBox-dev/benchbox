@@ -28,7 +28,7 @@ from tests.uat.preflight_budget import (
     read_memory_snapshot,
 )
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 def test_estimate_peak_disk_counts_datagen_once_and_reports_unknown(tmp_path: Path):

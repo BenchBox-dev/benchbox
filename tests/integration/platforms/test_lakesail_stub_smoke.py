@@ -10,7 +10,7 @@ from .common import install_lakesail_stub
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

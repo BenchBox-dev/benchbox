@@ -15,7 +15,7 @@ from tests.uat.phases import execute as exec_phase
 from tests.uat.phases.enumerate import CompatibilityPrunedCell
 from tests.uat.runner import CellResult
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 def test_dry_run_records_zero_per_phase(tmp_path: Path):

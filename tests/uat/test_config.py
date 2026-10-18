@@ -9,7 +9,7 @@ import yaml
 
 from tests.uat import config, matrix
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 def _write(tmp_path: Path, payload: dict) -> Path:

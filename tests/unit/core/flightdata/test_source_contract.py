@@ -17,6 +17,11 @@ pytestmark = [
 ]
 
 
+@pytest.fixture(autouse=True)
+def _fast_synthetic_month(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(FlightDataDownloader, "_generate_synthetic_month", lambda *args, **kwargs: 1)
+
+
 def test_pin_matches_expected_snapshot():
     assert (PINNED_END_YEAR, PINNED_END_MONTH) == (2024, 12)
 

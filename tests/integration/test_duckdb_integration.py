@@ -16,7 +16,7 @@ from benchbox.core.read_primitives.benchmark import ReadPrimitivesBenchmark
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

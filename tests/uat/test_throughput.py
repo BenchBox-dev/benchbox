@@ -22,7 +22,7 @@ from tests.uat.throughput import (
     validate_throughput_result,
 )
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 def test_resolve_official_result_path_returns_none_without_emitted_path(tmp_path: Path):

@@ -28,7 +28,7 @@ from benchbox.core.tuning.coverage import (
 from tests.uat import _cli
 from tests.uat.matrix import PLATFORM_GROUPS, load_benchmarks, resolve_benchmarks
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 MATRIX_PATH = Path(__file__).resolve().parent / "data" / "tuning_coverage.tsv"
 

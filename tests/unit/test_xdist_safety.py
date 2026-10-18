@@ -8,7 +8,7 @@ import _benchbox_pytest_xdist_safety as safety_plugin
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

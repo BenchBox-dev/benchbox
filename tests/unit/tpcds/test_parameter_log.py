@@ -10,7 +10,7 @@ from benchbox.core.tpcds.parameter_log import TemplateParameters, parse_dsqgen_p
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
     pytest.mark.tpcds,
 ]
 

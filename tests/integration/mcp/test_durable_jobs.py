@@ -25,7 +25,7 @@ from benchbox.mcp.security import JobLimits, TenantWorkspaceProvider
 from benchbox.utils.clock import mono_time
 from tests.integration.mcp._security import authenticated_http_client, write_security_config
 
-pytestmark = [pytest.mark.integration, pytest.mark.fast]
+pytestmark = [pytest.mark.integration, pytest.mark.medium]
 
 
 def _request() -> dict[str, object]:

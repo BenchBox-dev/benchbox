@@ -13,7 +13,7 @@ from benchbox.core.equivalence.frame_api_check import (
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 _REPO_ROOT = Path(__file__).resolve().parents[4]

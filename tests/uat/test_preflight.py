@@ -9,7 +9,7 @@ import pytest
 from tests.uat import config, matrix, preflight_budget
 from tests.uat.phases import preflight
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 def test_local_platforms_check_attempts_automated_platform_then_succeeds(tmp_path: Path, monkeypatch):

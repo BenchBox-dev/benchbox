@@ -13,7 +13,7 @@ from benchbox.core.tpcds.generator import TPCDSDataGenerator
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 EXPECTED_TABLES = sorted([*TPCDS_TABLE_NAMES, "dbgen_version"])

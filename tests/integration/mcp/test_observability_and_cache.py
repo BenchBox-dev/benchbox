@@ -15,7 +15,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanE
 from benchbox.mcp.telemetry import RedactedTelemetryMiddleware, ScopeFilteringExporter
 from tests.integration.mcp._transport import http_client
 
-pytestmark = [pytest.mark.integration, pytest.mark.fast]
+pytestmark = [pytest.mark.integration, pytest.mark.medium]
 SECRET = "postgresql://user:password@example.invalid/database"
 
 

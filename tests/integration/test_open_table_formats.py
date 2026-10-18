@@ -15,7 +15,7 @@ from benchbox.utils.format_converters.parquet_converter import ParquetConverter
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

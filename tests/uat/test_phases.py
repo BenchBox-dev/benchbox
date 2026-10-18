@@ -25,7 +25,7 @@ from tests.uat.preflight_budget import (
 )
 from tests.uat.runner import CellResult, classify_for_submit, submit_state_is_cell_failure
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 def _write_submit_result(path: Path, *, failed: int = 0) -> None:

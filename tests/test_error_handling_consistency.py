@@ -10,7 +10,7 @@ import pytest
 from benchbox.tpcds import TPCDS
 from benchbox.tpch import TPCH
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 class TestErrorHandlingConsistency:

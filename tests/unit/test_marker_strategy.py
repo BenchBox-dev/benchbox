@@ -13,7 +13,7 @@ from tests.duration_policy import T1_BUDGET_SECONDS, t1_budget_violations, valid
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -30,21 +30,57 @@ _PERSISTENT_DATABASE_FIXTURES = {
 }
 
 
-_test_modules_cache: list[Path] | None = None
+class _ModuleData:
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self.text = path.read_text(encoding="utf-8")
+        tree = ast.parse(self.text)
+        self.has_real_tests = _has_real_tests(tree)
+        self.top_level_markers = _pytestmark_assignment_names(tree.body)
+        self.test_marker_sets_with_fixtures: list[tuple[str, set[str], set[str]]] = []
+        if self.has_real_tests:
+            for node in tree.body:
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith(
+                    ("test_", "benchmark_")
+                ):
+                    self.test_marker_sets_with_fixtures.append(
+                        (node.name, self.top_level_markers | _decorator_marker_names(node), _function_arg_names(node))
+                    )
+                if isinstance(node, ast.ClassDef) and (node.name.startswith("Test") or node.name.endswith("Tests")):
+                    class_markers = (
+                        self.top_level_markers | _decorator_marker_names(node) | _pytestmark_assignment_names(node.body)
+                    )
+                    for child in node.body:
+                        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)) and child.name.startswith(
+                            ("test_", "benchmark_")
+                        ):
+                            self.test_marker_sets_with_fixtures.append(
+                                (
+                                    f"{node.name}::{child.name}",
+                                    class_markers | _decorator_marker_names(child),
+                                    _function_arg_names(child),
+                                )
+                            )
+
+
+_module_cache: dict[Path, _ModuleData] | None = None
+
+
+def _get_module_cache() -> dict[Path, _ModuleData]:
+    global _module_cache
+    if _module_cache is not None:
+        return _module_cache
+    cache: dict[Path, _ModuleData] = {}
+    for path in sorted(_TESTS_ROOT.rglob("test_*.py")):
+        data = _ModuleData(path)
+        if data.has_real_tests:
+            cache[path] = data
+    _module_cache = cache
+    return cache
 
 
 def _iter_test_modules() -> list[Path]:
-
-    global _test_modules_cache
-    if _test_modules_cache is not None:
-        return _test_modules_cache
-    modules: list[Path] = []
-    for path in sorted(_TESTS_ROOT.rglob("test_*.py")):
-        tree = ast.parse(path.read_text(encoding="utf-8"))
-        if _has_real_tests(tree):
-            modules.append(path)
-    _test_modules_cache = modules
-    return modules
+    return list(_get_module_cache().keys())
 
 
 def _has_real_tests(tree: ast.Module) -> bool:
@@ -61,6 +97,9 @@ def _has_real_tests(tree: ast.Module) -> bool:
 
 
 def _top_level_marker_names(path: Path) -> set[str]:
+    cache = _get_module_cache()
+    if path in cache:
+        return cache[path].top_level_markers
     tree = ast.parse(path.read_text(encoding="utf-8"))
     return _pytestmark_assignment_names(tree.body)
 
@@ -99,6 +138,9 @@ def _iter_test_marker_sets(path: Path) -> list[tuple[str, set[str]]]:
 
 
 def _iter_test_marker_sets_with_fixtures(path: Path) -> list[tuple[str, set[str], set[str]]]:
+    cache = _get_module_cache()
+    if path in cache:
+        return cache[path].test_marker_sets_with_fixtures
     tree = ast.parse(path.read_text(encoding="utf-8"))
     module_markers = _top_level_marker_names(path)
     tests: list[tuple[str, set[str], set[str]]] = []
@@ -254,11 +296,11 @@ def test_persistent_database_fixtures_require_database_or_integration_marker():
 
 def test_tree_has_no_fast_or_medium_decorators():
     offenders = []
+    cache = _get_module_cache()
 
-    for path in _iter_test_modules():
+    for path, data in cache.items():
         rel = path.relative_to(_REPO_ROOT).as_posix()
-        text = path.read_text(encoding="utf-8")
-        if _FAST_MEDIUM_DECORATOR_RE.search(text):
+        if _FAST_MEDIUM_DECORATOR_RE.search(data.text):
             offenders.append(rel)
 
     assert offenders == []

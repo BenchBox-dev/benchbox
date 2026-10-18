@@ -20,7 +20,7 @@ from tests.utilities.optional_engines import pyspark_usable
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 _NULL = "<NULL>"

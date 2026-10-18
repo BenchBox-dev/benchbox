@@ -21,7 +21,7 @@ from scripts.new_platform_scaffold import (
     validate_snippet,
 )
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SCRIPT = REPO_ROOT / "scripts" / "new_platform_scaffold.py"

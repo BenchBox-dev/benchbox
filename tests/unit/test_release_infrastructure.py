@@ -17,7 +17,7 @@ from tests.utilities.posix_shell import run_posix_shell, skip_without_posix_shel
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 REPO_ROOT = Path(__file__).parent.parent.parent

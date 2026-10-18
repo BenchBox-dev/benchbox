@@ -4,7 +4,7 @@ from .common import TrinoStubState, install_trino_stub
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

@@ -6,7 +6,7 @@ from .common import create_smoke_benchmark, install_redshift_stubs, run_smoke_be
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

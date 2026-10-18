@@ -29,7 +29,7 @@ from benchbox.core.tuning.workload_profiles import VALID_ROLES, WorkloadTuningCa
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

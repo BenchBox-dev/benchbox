@@ -8,7 +8,7 @@ from pathlib import Path
 import comment_parity as parity
 import pytest
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 
 def compare(base: str, head: str) -> parity.FileReport:

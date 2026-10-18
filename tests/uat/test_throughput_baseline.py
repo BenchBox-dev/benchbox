@@ -17,7 +17,7 @@ from tests.uat.throughput_baseline import (
     runner_class_for,
 )
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 SLOW = "AMD EPYC 7763 64-Core Processor"
 FAST = "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz"

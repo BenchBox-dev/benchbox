@@ -9,7 +9,7 @@ from benchbox.platforms.base.link_probe import probe_statement_overhead
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

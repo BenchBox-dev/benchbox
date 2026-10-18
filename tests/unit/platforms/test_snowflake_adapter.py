@@ -14,7 +14,7 @@ from benchbox.platforms.snowflake import SnowflakeAdapter
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
     pytest.mark.cloud_import,
 ]
 

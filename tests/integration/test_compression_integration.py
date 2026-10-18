@@ -14,7 +14,7 @@ from benchbox.utils.compression import ZSTD_AVAILABLE, CompressionManager
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

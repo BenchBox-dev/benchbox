@@ -17,7 +17,7 @@ from benchbox.utils.dialect_utils import (
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

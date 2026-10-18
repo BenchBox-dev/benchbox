@@ -8,7 +8,7 @@ from mcp.types import TextContent
 
 from tests.integration.mcp._transport import http_client
 
-pytestmark = [pytest.mark.integration, pytest.mark.fast]
+pytestmark = [pytest.mark.integration, pytest.mark.medium]
 
 EXPECTED_PROMPTS = {
     "analyze_results",

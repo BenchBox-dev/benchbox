@@ -8,7 +8,7 @@ import pytest
 from benchbox.mcp.readiness import CURRENT_PROTOCOL_VERSION, SUPPORTED_LEGACY_VERSION
 from tests.integration.mcp._transport import http_client
 
-pytestmark = [pytest.mark.integration, pytest.mark.fast]
+pytestmark = [pytest.mark.integration, pytest.mark.medium]
 
 
 @pytest.mark.parametrize(

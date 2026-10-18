@@ -10,7 +10,7 @@ from tests.uat.gate_summary import PhaseAccounting
 from tests.uat.phases import report
 from tests.uat.runner import CellResult, SubmitTerminalState
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "report-accounting-skipped-unreachable-cells.jsonl"
 

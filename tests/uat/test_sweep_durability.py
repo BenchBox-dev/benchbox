@@ -25,7 +25,7 @@ from tests.uat.phases import execute as exec_phase
 from tests.uat.preflight_budget import MemorySnapshot
 from tests.uat.runner import CellResult
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 def _source_info() -> orchestrator.RunSourceInfo:

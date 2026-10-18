@@ -13,7 +13,7 @@ from benchbox.core.cost.models import DeploymentMetadata, NormalizedCost
 from benchbox.validation.bundle import is_primary_bundle_file
 from tests.unit.scripts.explorer_pipeline.conftest import MINIMAL_BUNDLE
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 
 class TestToManifestEntry:

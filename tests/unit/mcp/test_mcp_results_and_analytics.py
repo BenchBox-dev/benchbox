@@ -11,7 +11,7 @@ from tests.utilities.fixed_clock import set_mtimes
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

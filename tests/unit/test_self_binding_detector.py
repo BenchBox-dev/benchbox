@@ -18,7 +18,7 @@ from _project.scripts.detect_self_binding import (
     find_self_binding_candidates,
 )
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 PR756_CASES = {
     "11_v1": ("ps2.ps_partkey = partsupp.ps_partkey", "ps2.ps_partkey = ps_partkey"),

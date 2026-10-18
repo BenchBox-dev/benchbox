@@ -21,7 +21,7 @@ from benchbox.platforms.dataframe.polars_df import PolarsDataFrameAdapter
 from benchbox.platforms.dataframe.unified_frame import UnifiedLazyFrame
 from tests.utilities.deprecation_capture import captured_deprecations
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 TPCH_TABLES = {
     "partsupp": {

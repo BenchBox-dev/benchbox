@@ -6,7 +6,7 @@ import pytest
 
 from tests.uat import docker_assets, matrix
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 _HOST_CONTAINER_RE = re.compile(r'^\s*-\s*"?(?P<host>.+):(?P<container>\d+)"?\s*$')
 

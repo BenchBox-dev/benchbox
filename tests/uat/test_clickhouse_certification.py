@@ -12,7 +12,7 @@ from tests.uat.clickhouse_certification import (
     validate_exact_manifest_rows,
 )
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 
 def _write_artifacts(tmp_path: Path, *, lineitem_manifest: int = 3, lineitem_result: int = 3) -> tuple[Path, Path]:

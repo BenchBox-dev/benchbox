@@ -10,7 +10,7 @@ from benchbox.cli.commands.run import run
 from benchbox.cli.config import ConfigManager
 from benchbox.core.deprecation_notices import run_notices
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 
 def _dry_run(tmp_path: Path, platform: str, *options: str):

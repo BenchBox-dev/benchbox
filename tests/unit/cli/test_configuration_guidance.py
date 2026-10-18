@@ -6,7 +6,7 @@ from click.testing import CliRunner
 from benchbox.cli.main import cli
 from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 

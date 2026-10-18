@@ -21,7 +21,7 @@ from benchbox.utils.clock import elapsed_seconds, mono_time
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 TINY_TIMEOUT = 0.2

@@ -4,7 +4,7 @@ import pytest
 
 from tests.uat import ladder
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 def test_decide_next_advances_when_within_budget():

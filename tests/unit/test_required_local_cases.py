@@ -14,7 +14,7 @@ import pytest
 
 from tests import required_local_cases as required
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 MATRIX = required.MATRIX_MODULE
 ROOT = Path(__file__).resolve().parents[2]

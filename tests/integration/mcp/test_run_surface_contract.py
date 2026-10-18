@@ -5,7 +5,7 @@ import pytest
 from benchbox.core.run_service import translate_platform_options_for_adapter as _prepare_adapter_platform_options
 from benchbox.mcp.schemas import MCPValidationError, validate_platform_options
 
-pytestmark = [pytest.mark.integration, pytest.mark.fast]
+pytestmark = [pytest.mark.integration, pytest.mark.medium]
 
 
 def test_run_surface_normalizes_public_option_names_before_adapter_use() -> None:

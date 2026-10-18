@@ -5,7 +5,7 @@ import pytest
 
 from benchbox.core.tpcds.generator import TPCDSDataGenerator
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 @pytest.mark.validation

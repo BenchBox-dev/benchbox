@@ -18,7 +18,7 @@ _run_module = sys.modules["benchbox.cli.commands.run"]
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

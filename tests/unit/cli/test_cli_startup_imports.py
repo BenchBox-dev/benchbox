@@ -9,7 +9,7 @@ from click.testing import CliRunner
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

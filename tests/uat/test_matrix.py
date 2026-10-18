@@ -12,7 +12,7 @@ from tests.uat import compatibility, matrix
 from tests.uat.config import load_config, validate_config
 from tests.uat.phases import enumerate as enum_phase
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 _RELEASE_GATE_CONFIGS_DIR = Path(__file__).parent / "configs"
 

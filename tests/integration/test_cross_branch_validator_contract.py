@@ -13,7 +13,7 @@ from benchbox.validation.bundle import format_summary, validate_bundles, validat
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

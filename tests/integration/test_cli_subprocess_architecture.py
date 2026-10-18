@@ -6,7 +6,8 @@ from tests.integration._cli_e2e_utils import run_cli_command
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
+    pytest.mark.platform_smoke,
 ]
 
 

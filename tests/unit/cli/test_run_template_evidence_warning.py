@@ -11,7 +11,7 @@ from benchbox.cli.main import cli
 from benchbox.core.system import SystemProfiler
 from benchbox.core.tuning import template_evidence
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 WARNING = (
     "Tuned template duckdb/tpch has no measured benefit: the result shows "

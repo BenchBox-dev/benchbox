@@ -15,7 +15,7 @@ from benchbox.platforms.sqlite import SQLiteAdapter
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

@@ -11,7 +11,7 @@ import pytest
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
     pytest.mark.skipif(sys.platform == "win32", reason="branch pruning uses POSIX Git worktree behavior"),
 ]
 

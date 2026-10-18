@@ -19,7 +19,7 @@ from benchbox.core.tuning.interface import (
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

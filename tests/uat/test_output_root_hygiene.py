@@ -14,7 +14,7 @@ from tests.uat.artifact_hygiene import (
     snapshot_local_runs,
 )
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 def _isolated_roots(tmp_path: Path) -> tuple[Path, Path]:

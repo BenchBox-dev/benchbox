@@ -13,7 +13,7 @@ from benchbox.platforms.base.adapter import PlatformAdapter
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

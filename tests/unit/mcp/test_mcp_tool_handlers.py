@@ -10,7 +10,7 @@ from tests.unit.mcp.public_api import get_tool_functions
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

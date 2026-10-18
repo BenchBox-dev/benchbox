@@ -9,7 +9,7 @@ from benchbox.utils.datagen_version import current_datagen_stamp
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

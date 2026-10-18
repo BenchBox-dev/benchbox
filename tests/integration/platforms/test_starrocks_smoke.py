@@ -4,7 +4,7 @@ from .common import StarRocksStubState, install_starrocks_stub
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

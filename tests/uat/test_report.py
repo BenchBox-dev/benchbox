@@ -8,7 +8,7 @@ import pytest
 from tests.uat.phases import execute, report
 from tests.uat.runner import CellResult
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 def _cell(platform, benchmark, scale, status="passed", elapsed=1.0, result=None, throughput_check=None):

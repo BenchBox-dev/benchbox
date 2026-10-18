@@ -27,7 +27,7 @@ from benchbox.core.results.canonical_json import canonical_json_bytes
 from benchbox.validation.bundle import COMPANION_SUFFIXES
 from tests.unit.scripts.explorer_pipeline.conftest import MINIMAL_BUNDLE
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 
 class TestBuildShortIds:

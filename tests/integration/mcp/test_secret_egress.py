@@ -10,7 +10,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 
 from tests.integration.mcp._security import authenticated_http_client, write_security_config
 
-pytestmark = [pytest.mark.integration, pytest.mark.fast]
+pytestmark = [pytest.mark.integration, pytest.mark.medium]
 SENTINEL = "MCP_SECRET_SENTINEL"
 
 

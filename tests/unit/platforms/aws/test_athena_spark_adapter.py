@@ -10,7 +10,7 @@ from benchbox.core.exceptions import ConfigurationError
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

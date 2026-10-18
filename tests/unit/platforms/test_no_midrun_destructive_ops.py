@@ -27,7 +27,7 @@ from benchbox.core.tuning.interface import UnifiedTuningConfiguration
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 RUN_NAMESPACES = frozenset({"benchdb", "bench-project"})

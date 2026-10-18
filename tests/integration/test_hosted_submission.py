@@ -17,7 +17,7 @@ submit_module = import_module("benchbox.cli.commands.submit")
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

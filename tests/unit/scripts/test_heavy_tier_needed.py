@@ -10,7 +10,7 @@ import pytest
 
 from scripts import heavy_tier_needed as heavy
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 POLICY_FILES = (

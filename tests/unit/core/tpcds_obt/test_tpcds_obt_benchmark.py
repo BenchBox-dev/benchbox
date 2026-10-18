@@ -10,7 +10,7 @@ from benchbox.core.tpcds_obt.schema import OBT_TABLE_NAME
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

@@ -18,7 +18,7 @@ from benchbox.core.results.query_normalizer import normalize_query_result
 from benchbox.core.results.result_factory import build_enhanced_benchmark_result
 from benchbox.core.results.schema import build_result_payload
 
-pytestmark = [pytest.mark.integration, pytest.mark.fast]
+pytestmark = [pytest.mark.integration, pytest.mark.medium]
 
 OFFICIAL_SCALE = 1.0
 PUBLISH_LABEL = "maintainer-run"

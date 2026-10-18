@@ -14,7 +14,7 @@ import yaml
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]

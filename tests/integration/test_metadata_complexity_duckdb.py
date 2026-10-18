@@ -16,7 +16,7 @@ from benchbox.core.metadata_primitives import (
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

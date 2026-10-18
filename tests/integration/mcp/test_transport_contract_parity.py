@@ -12,7 +12,7 @@ from mcp.client.stdio import StdioServerParameters, stdio_client
 
 from tests.integration.mcp._transport import http_client
 
-pytestmark = [pytest.mark.integration, pytest.mark.fast]
+pytestmark = [pytest.mark.integration, pytest.mark.medium]
 
 PROMPT_ARGUMENTS: dict[str, dict[str, str]] = {
     "analyze_results": {"benchmark": "tpch", "platform": "duckdb", "focus": "slowest_queries"},

@@ -9,7 +9,7 @@ import yaml
 
 from tests.utilities.posix_shell import run_posix_shell, skip_without_posix_shell
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 WORKFLOWS = REPO_ROOT / ".github" / "workflows"

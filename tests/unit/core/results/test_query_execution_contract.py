@@ -26,7 +26,7 @@ from benchbox.core.results.query_execution import (
 from benchbox.core.results.query_normalizer import QueryResultInput
 from benchbox.core.results.schema import build_result_payload
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 _LEGACY_RESULT_SIGNAL_FIELDS = frozenset(
     {

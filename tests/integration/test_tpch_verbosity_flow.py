@@ -11,7 +11,7 @@ from benchbox.utils.verbosity import VerbosityMixin, VerbositySettings, compute_
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 
