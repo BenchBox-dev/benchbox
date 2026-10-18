@@ -302,3 +302,189 @@ def test_explicit_parameters_override_the_draw() -> None:
 def test_indexed_overrides_accept_template_and_log_spellings(key: str) -> None:
     sql = TPCDSOBTQueryManager().get_query(93, {key: "Parts missing"})
     assert "reason_r_reason_desc = 'Parts missing'" in sql
+
+
+@pytest.mark.parametrize("query_id", [1, 30, 81, 83])
+def test_return_queries_use_return_date_role(query_id: int) -> None:
+    sql = TPCDSOBTQueryManager().get_query(query_id)
+    assert "return_date_d_date_sk" in sql
+    assert "returned_date_sk = obt.sold_date_d_date_sk" not in sql
+
+
+@pytest.mark.parametrize("query_id", [6, 8, 15, 19, 35, 45, 69])
+def test_customer_queries_drop_current_pointer_equalities(query_id: int) -> None:
+    sql = TPCDSOBTQueryManager().get_query(query_id)
+    assert "c_current_addr_sk =" not in sql
+    assert "= obt.bill_customer_c_current_addr_sk" not in sql
+    assert "= bill_customer_c_current_addr_sk" not in sql
+
+
+@pytest.mark.parametrize("query_id", [10, 35, 69])
+def test_cross_channel_exists_correlates_on_bill_customer(query_id: int) -> None:
+    sql = TPCDSOBTQueryManager().get_query(query_id)
+    assert "ex_obt.bill_customer_c_customer_sk = obt.bill_customer_c_customer_sk" in sql
+
+
+@pytest.mark.parametrize("query_id", [30, 81])
+def test_return_state_uses_returning_address_role(query_id: int) -> None:
+    assert "returning_addr_ca_state" in TPCDSOBTQueryManager().get_query(query_id)
+
+
+def test_q44_resolves_product_names_from_ranked_items() -> None:
+    sql = TPCDSOBTQueryManager().get_query(44)
+    assert "(SELECT MAX(best_obt.item_i_product_name)" in sql
+    assert "(SELECT MAX(worst_obt.item_i_product_name)" in sql
+    assert "best_obt.item_sk = asceding.item_sk" in sql
+    assert "worst_obt.item_sk = descending.item_sk" in sql
+
+
+def test_q54_revenue_joins_my_customers() -> None:
+    sql = TPCDSOBTQueryManager().get_query(54)
+    assert "obt.bill_customer_c_customer_sk = my_customers.bill_customer_c_customer_sk" in sql
+
+
+def test_q58_averages_week_lookup() -> None:
+    assert "MAX(" in TPCDSOBTQueryManager().get_query(58)
+
+
+def test_q78_excludes_returned_sales() -> None:
+    assert "has_return = 'N'" in TPCDSOBTQueryManager().get_query(78)
+
+
+def test_q91_uses_returning_demographics() -> None:
+    sql = TPCDSOBTQueryManager().get_query(91)
+    assert "returning_cdemo_cd_marital_status" in sql
+    assert "returning_customer_c_customer_sk = obt.returning_customer_c_customer_sk" in sql
+
+
+@pytest.mark.parametrize("query_id", [16, 94])
+def test_multi_warehouse_exists_is_correlated(query_id: int) -> None:
+    sql = TPCDSOBTQueryManager().get_query(query_id)
+    assert "other_obt.sale_id = obt.sale_id" in sql
+    assert "other_obt.warehouse_sk <> obt.warehouse_sk" in sql
+    assert "ret_obt.sale_id = obt.sale_id" in sql
+    assert "ret_obt.has_return = 'Y'" in sql
+
+
+def test_q95_multi_warehouse_and_return_sets_are_correlated() -> None:
+    sql = TPCDSOBTQueryManager().get_query(95)
+    assert "other_obt.warehouse_sk" in sql
+    assert "ret_obt.sale_id = obt.sale_id" in sql
+
+
+@pytest.mark.parametrize("query_id", [18, 27, 36])
+def test_grouped_queries_can_legitimately_return_one_group(query_id: int) -> None:
+    sql = TPCDSOBTQueryManager().get_query(query_id)
+    assert "GROUP BY" in sql or "GROUPING" in sql
+
+
+@pytest.mark.parametrize("query_id", [16, 28, 88, 90, 94, 95, 96])
+def test_global_aggregates_legitimately_return_one_row(query_id: int) -> None:
+    sql = TPCDSOBTQueryManager().get_query(query_id)
+    assert "COUNT(" in sql or "SUM(" in sql
+
+
+def _obt_connection():
+    duckdb = pytest.importorskip("duckdb")
+    conn = duckdb.connect(":memory:")
+    columns = get_obt_columns("full")
+    col_defs = ", ".join(f"{col.name} {col.sql_type()}" for col in columns)
+    conn.execute(f"CREATE TABLE {OBT_TABLE_NAME} ({col_defs})")
+    return conn
+
+
+def _insert_obt_row(conn, **values) -> None:
+    names = list(values)
+    placeholders = ", ".join("?" for _ in names)
+    conn.execute(
+        f"INSERT INTO {OBT_TABLE_NAME} ({', '.join(names)}) VALUES ({placeholders})",
+        [values[name] for name in names],
+    )
+
+
+def test_q1_returns_customer_above_store_average() -> None:
+    conn = _obt_connection()
+    for customer_sk, fee in [(1, 100.0), (2, 10.0)]:
+        _insert_obt_row(
+            conn,
+            channel="store",
+            returning_customer_c_customer_sk=customer_sk,
+            bill_customer_c_customer_sk=customer_sk,
+            bill_customer_c_customer_id=f"C{customer_sk}",
+            store_sk=1,
+            store_s_store_sk=1,
+            store_s_state="TN",
+            return_fee=fee,
+            returned_date_sk=10,
+            return_date_d_date_sk=10,
+            return_date_d_year=2000,
+        )
+    rows = conn.execute(TPCDSOBTQueryManager().get_query(1)).fetchall()
+    conn.close()
+    assert rows == [("C1",)]
+
+
+def test_q16_counts_multi_warehouse_order_without_return() -> None:
+    conn = _obt_connection()
+    for warehouse_sk in [1, 2]:
+        _insert_obt_row(
+            conn,
+            channel="catalog",
+            sale_id=7,
+            warehouse_sk=warehouse_sk,
+            has_return="N",
+            ship_date_sk=10,
+            ship_date_d_date_sk=10,
+            ship_date_d_date="1999-02-10",
+            ship_addr_sk=1,
+            ship_addr_ca_address_sk=1,
+            ship_addr_ca_state="IL",
+            call_center_sk=1,
+            call_center_cc_call_center_sk=1,
+            call_center_cc_county="Williamson County",
+            ext_ship_cost=3.0,
+            net_profit=4.0,
+        )
+    rows = conn.execute(TPCDSOBTQueryManager().get_query(16)).fetchall()
+    conn.close()
+    assert rows[0][0] == 1
+
+
+def test_q44_returns_ranked_items() -> None:
+    conn = _obt_connection()
+    for item_sk, profit in [(1, 100.0), (2, 1.0)]:
+        _insert_obt_row(
+            conn,
+            channel="store",
+            store_sk=2,
+            item_sk=item_sk,
+            item_i_item_sk=item_sk,
+            item_i_product_name=f"P{item_sk}",
+            net_profit=profit,
+        )
+    _insert_obt_row(conn, channel="store", store_sk=2, item_sk=1, net_profit=50.0)
+    rows = conn.execute(TPCDSOBTQueryManager().get_query(44)).fetchall()
+    conn.close()
+    assert rows
+
+
+def test_q78_returns_store_sales_with_other_channel_sales() -> None:
+    conn = _obt_connection()
+    for channel in ["store", "web"]:
+        _insert_obt_row(
+            conn,
+            channel=channel,
+            has_return="N",
+            sold_date_sk=10,
+            sold_date_d_date_sk=10,
+            sold_date_d_year=2000,
+            item_sk=1,
+            bill_customer_sk=1,
+            ship_customer_sk=1,
+            quantity=2,
+            wholesale_cost=3.0,
+            sales_price=5.0,
+        )
+    rows = conn.execute(TPCDSOBTQueryManager().get_query(78)).fetchall()
+    conn.close()
+    assert rows

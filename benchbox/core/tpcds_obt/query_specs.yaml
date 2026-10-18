@@ -27,6 +27,7 @@ prefix_to_table:
   p_: promotion
   r_: reason
   w_: warehouse
+  c_: customer
 dim_static_role:
   item: item_
   store: store_

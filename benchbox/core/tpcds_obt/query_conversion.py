@@ -433,12 +433,19 @@ class QueryConverter:
     def _rewrite_sql(self, sql_text: str, channels: set[str]) -> str:
         parsed = sqlglot.parse_one(sql_text, read="postgres")
         rewritten = self._rewrite_expression(parsed, channels)
+        self._qualify_obt_columns(rewritten)
         return rewritten.sql(dialect="duckdb", pretty=True)
 
-    def _rewrite_expression(self, expression: exp.Expression, channels: set[str]) -> exp.Expression:
-        if isinstance(expression, exp.Select):
-            self._rewrite_select(expression, channels)
+    def _qualify_obt_columns(self, expression: exp.Expression) -> None:
+        for select in expression.find_all(exp.Select):
+            aliases = _gather_aliases(select)
+            if OBT_TABLE_NAME not in aliases.values():
+                continue
+            for column in self._direct_columns(select):
+                if not column.table and column.name != "channel" and column.name in self.mapper.obt_columns:
+                    column.set("table", "obt")
 
+    def _rewrite_expression(self, expression: exp.Expression, channels: set[str]) -> exp.Expression:
         for arg in expression.args.values():
             if isinstance(arg, exp.Expression):
                 self._rewrite_expression(arg, channels)
@@ -446,6 +453,9 @@ class QueryConverter:
                 for item in arg:
                     if isinstance(item, exp.Expression):
                         self._rewrite_expression(item, channels)
+
+        if isinstance(expression, exp.Select):
+            self._rewrite_select(expression, channels)
         return expression
 
     def _rewrite_select(self, select: exp.Select, channels: set[str]) -> None:
@@ -472,7 +482,7 @@ class QueryConverter:
         if "wscs" in extra_aliases:
             extra_aliases = [alias for alias in extra_aliases if alias != "wscs"]
 
-        join_conditions = [join.args["on"] for join in joins_arg if join.args.get("on")]
+        join_conditions = self._inner_join_conditions(joins_arg)
 
         where_clauses: list[exp.Expression] = []
         if select.args.get("where"):
@@ -483,11 +493,7 @@ class QueryConverter:
             if channel_predicate is not None:
                 where_clauses.append(channel_predicate)
 
-        if where_clauses:
-            combined = where_clauses[0]
-            for clause in where_clauses[1:]:
-                combined = exp.and_(combined, clause)
-            select.set("where", exp.Where(this=combined))
+        self._set_combined_where(select, where_clauses)
 
         if not base_aliases:
             return
@@ -537,6 +543,52 @@ class QueryConverter:
             if joins:
                 select.set("joins", joins)
 
+    def _set_combined_where(self, select: exp.Select, where_clauses: list[exp.Expression]) -> None:
+        if not where_clauses:
+            return
+        combined = where_clauses[0]
+        for clause in where_clauses[1:]:
+            combined = exp.and_(combined, clause)
+        pruned = self._prune_current_pointer_predicates(combined)
+        if pruned is not None:
+            select.set("where", exp.Where(this=pruned))
+
+    @staticmethod
+    def _inner_join_conditions(joins: list[Any]) -> list[exp.Expression]:
+        return [
+            join.args["on"]
+            for join in joins
+            if join.args.get("on") and str(join.args.get("side") or "").upper() not in {"LEFT", "RIGHT", "FULL"}
+        ]
+
+    _CURRENT_POINTER_PATTERN = re.compile(r"_c_current_(addr|cdemo|hdemo)_sk$")
+    _CURRENT_TARGET_PATTERN = re.compile(r"_(ca_address_sk|cd_demo_sk|hd_demo_sk)$")
+
+    def _prune_current_pointer_predicates(self, node: exp.Expression) -> exp.Expression | None:
+        if isinstance(node, exp.And):
+            left = self._prune_current_pointer_predicates(node.this)
+            right = self._prune_current_pointer_predicates(node.expression)
+            if left is None:
+                return right
+            if right is None:
+                return left
+            node.set("this", left)
+            node.set("expression", right)
+            return node
+        if isinstance(node, exp.Paren):
+            inner = self._prune_current_pointer_predicates(node.this)
+            if inner is None:
+                return None
+            node.set("this", inner)
+            return node
+        if isinstance(node, exp.EQ) and isinstance(node.left, exp.Column) and isinstance(node.right, exp.Column):
+            names = {node.left.name.lower(), node.right.name.lower()}
+            has_pointer = any(self._CURRENT_POINTER_PATTERN.search(name) for name in names)
+            has_target = any(self._CURRENT_TARGET_PATTERN.search(name) for name in names)
+            if has_pointer and has_target:
+                return None
+        return node
+
     @staticmethod
     def _build_channel_predicate(channels: set[str]) -> exp.Expression | None:
         if not channels:
@@ -550,10 +602,27 @@ class QueryConverter:
     def _channels_for_aliases(self, aliases: dict[str, str]) -> set[str]:
         return {self.CHANNEL_BY_TABLE[table] for table in aliases.values() if table in self.CHANNEL_BY_TABLE}
 
+    @staticmethod
+    def _direct_columns(select: exp.Select) -> list[exp.Column]:
+        columns: list[exp.Column] = []
+        stack: list[Any] = list(select.args.values())
+        while stack:
+            node = stack.pop()
+            if isinstance(node, list):
+                stack.extend(node)
+            elif isinstance(node, exp.Select):
+                continue
+            elif isinstance(node, exp.Column):
+                columns.append(node)
+                stack.extend(node.args.values())
+            elif isinstance(node, exp.Expression):
+                stack.extend(node.args.values())
+        return columns
+
     def _rewrite_columns(
         self, select: exp.Select, aliases: dict[str, str], role_map: dict[str, str], *, has_obt: bool
     ) -> None:
-        for column in select.find_all(exp.Column):
+        for column in self._direct_columns(select):
             table_alias = column.table
             name = column.name
             source_table: str | None = None
@@ -574,6 +643,10 @@ class QueryConverter:
                         )
                         if new_name is None:
                             new_name = self.mapper.map_fact(source_table, name)
+                        if new_name is None:
+                            new_name = self._map_unqualified_column(name, aliases, role_map)
+                elif table_alias:
+                    new_name = self._map_unqualified_column(name, aliases, role_map)
             if not new_name and name in getattr(self.mapper, "obt_columns", set()):
                 new_name = name
                 source_table = source_table or "fact"
@@ -769,20 +842,45 @@ class QueryConverter:
         if where_expr:
             conditions.append(where_expr.this)
 
+        resolved: list[tuple[str, str, str, str, str | None, str | None]] = []
         for condition in conditions:
             for left, right in self._extract_column_pairs(condition):
-                left_alias = left.table or self._table_from_prefix(left.name)
-                right_alias = right.table or self._table_from_prefix(right.name)
-
-                left_alias = left_alias or self._alias_for_table(aliases, self._table_from_prefix(left.name) or "")
-                right_alias = right_alias or self._alias_for_table(aliases, self._table_from_prefix(right.name) or "")
-
-                left_table = aliases.get(left_alias, self._table_from_prefix(left.name) or "")
-                right_table = aliases.get(right_alias, self._table_from_prefix(right.name) or "")
+                left_alias = self._resolve_alias(left, aliases)
+                right_alias = self._resolve_alias(right, aliases)
+                left_table = aliases.get(left_alias or "", self._table_from_prefix(left.name) or "")
+                right_table = aliases.get(right_alias or "", self._table_from_prefix(right.name) or "")
+                resolved.append((left_table, right_table, left.name, right.name, left_alias, right_alias))
                 self._update_role_map(role_map, left_table, right_table, left.name, right.name, left_alias, right_alias)
                 self._update_role_map(role_map, right_table, left_table, right.name, left.name, right_alias, left_alias)
 
+        pointer_suffix = {
+            "customer_demographics": "cdemo_",
+            "household_demographics": "hdemo_",
+            "customer_address": "addr_",
+        }
+        for left_table, right_table, _ln, _rn, left_alias, right_alias in resolved:
+            for dim_table, dim_alias, cust_alias in (
+                (left_table, left_alias, right_alias),
+                (right_table, right_alias, left_alias),
+            ):
+                if dim_table not in pointer_suffix or cust_alias is None or dim_alias is None:
+                    continue
+                cust_table = right_table if dim_table == left_table else left_table
+                if cust_table != "customer":
+                    continue
+                cust_role = role_map.get(cust_alias or "")
+                if cust_role and cust_role.endswith("customer_"):
+                    role_map[dim_alias] = f"{cust_role[: -len('customer_')]}{pointer_suffix[dim_table]}"
+
         return role_map
+
+    def _resolve_alias(self, column: exp.Column, aliases: dict[str, str]) -> str | None:
+        if column.table:
+            return column.table
+        prefix_table = self._table_from_prefix(column.name)
+        if not prefix_table:
+            return None
+        return self._alias_for_table(aliases, prefix_table) or prefix_table
 
     def _update_role_map(
         self,
@@ -823,11 +921,21 @@ class QueryConverter:
 
     def _extract_column_pairs(self, condition: exp.Expression) -> Iterable[tuple[exp.Column, exp.Column]]:
         pairs: list[tuple[exp.Column, exp.Column]] = []
-        for comparison in condition.find_all(exp.EQ):
-            left = comparison.left
-            right = comparison.right
-            if isinstance(left, exp.Column) and isinstance(right, exp.Column):
-                pairs.append((left, right))
+        stack: list[Any] = [condition]
+        while stack:
+            node = stack.pop()
+            if isinstance(node, list):
+                stack.extend(node)
+            elif isinstance(node, exp.Select):
+                continue
+            elif isinstance(node, exp.EQ):
+                left = node.left
+                right = node.right
+                if isinstance(left, exp.Column) and isinstance(right, exp.Column):
+                    pairs.append((left, right))
+                stack.extend(node.args.values())
+            elif isinstance(node, exp.Expression):
+                stack.extend(node.args.values())
         return pairs
 
     def _restore_placeholders(self, sql_text: str, params: Iterable[TemplateParameter]) -> str:
@@ -875,7 +983,101 @@ class QueryConverter:
         sql_text = self._post_process_fix_3(query_id, sql_text)
         sql_text = self._post_process_fix_4(query_id, sql_text)
         sql_text = self._post_process_fix_5(query_id, sql_text)
+        sql_text = self._post_process_fix_6(query_id, sql_text)
         return sql_text
+
+    def _post_process_fix_6(self, query_id: int, sql_text: str) -> str:
+        if query_id in {10, 35, 69}:
+            sql_text = self._correlate_customer_exists(sql_text)
+
+        if query_id == 44:
+            sql_text = re.sub(
+                r"obt\.item_i_product_name AS best_performing",
+                "(SELECT MAX(best_obt.item_i_product_name) FROM tpcds_sales_returns_obt AS best_obt "
+                "WHERE best_obt.item_sk = asceding.item_sk) AS best_performing",
+                sql_text,
+            )
+            sql_text = re.sub(
+                r"obt\.item_i_product_name AS worst_performing",
+                "(SELECT MAX(worst_obt.item_i_product_name) FROM tpcds_sales_returns_obt AS worst_obt "
+                "WHERE worst_obt.item_sk = descending.item_sk) AS worst_performing",
+                sql_text,
+            )
+            sql_text = re.sub(r"\s+AND obt\.item_i_item_sk = obt\.item_sk", "", sql_text)
+            sql_text = re.sub(r"AND channel = 'store'\s+ORDER BY", "ORDER BY", sql_text)
+            sql_text = sql_text.replace(
+                "FROM tpcds_sales_returns_obt AS obt\nCROSS JOIN (\n  SELECT\n    *\n  FROM (\n    SELECT\n      item_sk,\n      RANK() OVER (ORDER BY rank_col ASC) AS rnk",
+                "FROM (\n  SELECT\n    *\n  FROM (\n    SELECT\n      item_sk,\n      RANK() OVER (ORDER BY rank_col ASC) AS rnk",
+                1,
+            )
+
+        if query_id == 54:
+            sql_text = sql_text.replace(
+                "obt.bill_customer_c_customer_sk = obt.ship_customer_sk",
+                "obt.bill_customer_c_customer_sk = my_customers.bill_customer_c_customer_sk",
+            )
+
+        if query_id == 78:
+            sql_text = sql_text.replace("sale_id IS NULL AND", "has_return = 'N' AND")
+            sql_text = sql_text.replace("obt.sale_id IS NULL AND", "obt.has_return = 'N' AND")
+
+        if query_id in {16, 94}:
+            sql_text = re.sub(
+                r"FROM tpcds_sales_returns_obt AS obt\s+WHERE\s+\(\s+obt\.sale_id = obt\.sale_id "
+                r"AND obt\.warehouse_sk <> obt\.warehouse_sk\s+\)\s+AND channel = '(\w+)'",
+                r"FROM tpcds_sales_returns_obt AS other_obt WHERE ( other_obt.sale_id = obt.sale_id "
+                r"AND other_obt.warehouse_sk <> obt.warehouse_sk ) AND other_obt.channel = '\1'",
+                sql_text,
+            )
+            sql_text = re.sub(
+                r"FROM tpcds_sales_returns_obt AS obt\s+WHERE\s+obt\.sale_id = obt\.sale_id "
+                r"AND (?:obt\.has_return = 'Y' AND )?channel = '(\w+)'",
+                r"FROM tpcds_sales_returns_obt AS ret_obt WHERE ret_obt.sale_id = obt.sale_id "
+                r"AND ret_obt.has_return = 'Y' AND ret_obt.channel = '\1'",
+                sql_text,
+            )
+
+        if query_id == 95:
+            sql_text = sql_text.replace(
+                "WITH ws_wh AS (\n  SELECT\n    obt.sale_id,\n    obt.warehouse_sk AS wh1,\n    obt.warehouse_sk AS wh2\n"
+                "  FROM tpcds_sales_returns_obt AS obt\n  WHERE\n    (\n      obt.sale_id = obt.sale_id AND obt.warehouse_sk <> obt.warehouse_sk\n    )\n    AND channel = 'web'\n)",
+                "WITH ws_wh AS (\n  SELECT DISTINCT\n    obt.sale_id AS sale_id,\n    obt.warehouse_sk AS wh1,\n    other_obt.warehouse_sk AS wh2\n"
+                "  FROM tpcds_sales_returns_obt AS obt\n"
+                "  JOIN tpcds_sales_returns_obt AS other_obt\n"
+                "    ON obt.sale_id = other_obt.sale_id AND obt.warehouse_sk <> other_obt.warehouse_sk\n"
+                "  WHERE\n    obt.channel = 'web' AND other_obt.channel = 'web'\n)",
+            )
+            sql_text = re.sub(
+                r"AND obt\.sale_id IN \(\s+SELECT\s+obt\.sale_id\s+FROM tpcds_sales_returns_obt AS obt\s+"
+                r"CROSS JOIN ws_wh AS ws_wh\s+WHERE\s+obt\.sale_id = obt\.sale_id AND obt\.has_return = 'Y' "
+                r"AND obt\.channel = 'web'\s+\)",
+                "AND obt.sale_id IN (\n      SELECT\n        ret_obt.sale_id\n"
+                "      FROM tpcds_sales_returns_obt AS ret_obt\n"
+                "      WHERE\n        ret_obt.sale_id = obt.sale_id AND ret_obt.has_return = 'Y' "
+                "AND ret_obt.channel = 'web'\n    )",
+                sql_text,
+            )
+
+        return sql_text
+
+    @staticmethod
+    def _correlate_customer_exists(sql_text: str) -> str:
+        pattern = re.compile(
+            r"FROM tpcds_sales_returns_obt AS obt\s+WHERE\s+\(\s+obt\.bill_customer_c_customer_sk = "
+            r"obt\.(?:ship_customer_sk|bill_customer_sk)(?P<rest>.*?)\)\s+AND channel = '(?P<channel>\w+)'",
+            flags=re.DOTALL,
+        )
+
+        def _replace(match: re.Match[str]) -> str:
+            rest = match.group("rest").replace("obt.", "ex_obt.")
+            channel = match.group("channel")
+            return (
+                "FROM tpcds_sales_returns_obt AS ex_obt WHERE ( "
+                f"ex_obt.bill_customer_c_customer_sk = obt.bill_customer_c_customer_sk{rest}) "
+                f"AND ex_obt.channel = '{channel}'"
+            )
+
+        return pattern.sub(_replace, sql_text)
 
     def _post_process_fix_1(self, query_id: int, sql_text: str) -> str:
         if query_id == 2:
@@ -908,7 +1110,7 @@ class QueryConverter:
                 r"  CROSS JOIN wswscs AS wswscs\n"
                 r"  WHERE\n"
                 r"    \(\n"
-                r"      sold_date_d_week_seq = wswscs.d_week_seq AND obt.sold_date_d_year = ([^\n]+)\n"
+                r"      obt.sold_date_d_week_seq = wswscs.d_week_seq AND obt.sold_date_d_year = ([^\n]+)\n"
                 r"    \)\n"
                 r"    AND channel IN \('catalog', 'web'\)\n"
             )
@@ -1017,9 +1219,10 @@ class QueryConverter:
             sql_text = sql_text.replace("SUBSTRING(store_s_city", "SUBSTRING(obt.store_s_city")
             sql_text = re.sub(r"(?<![a-z_\.])bill_customer_c_", "obt.bill_customer_c_", sql_text)
             sql_text = sql_text.replace("obt.obt.bill_customer_c_", "obt.bill_customer_c_")
-            sql_text = sql_text.replace(
-                "ship_customer_sk = obt.bill_customer_c_customer_sk",
+            sql_text = re.sub(
+                r"(?<!obt\.)ship_customer_sk = obt\.bill_customer_c_customer_sk",
                 "obt.ship_customer_sk = obt.bill_customer_c_customer_sk",
+                sql_text,
             )
 
         return sql_text
@@ -1111,6 +1314,11 @@ class QueryConverter:
 
     def _post_process_fix_4(self, query_id: int, sql_text: str) -> str:
         if query_id == 58:
+            sql_text = re.sub(
+                r"(SELECT\s+)sold_date_d_week_seq(\s+FROM tpcds_sales_returns_obt AS obt\s+WHERE\s+sold_date_d_date =)",
+                r"\1MAX(sold_date_d_week_seq)\2",
+                sql_text,
+            )
             sql_text = sql_text.replace(
                 "obt.sold_date_d_week_seq = (\n            SELECT\n              obt.sold_date_d_week_seq\n            FROM tpcds_sales_returns_obt AS obt\n            WHERE\n              obt.sold_date_d_date =",
                 "obt.sold_date_d_week_seq = (\n            SELECT\n              MAX(obt.sold_date_d_week_seq)\n            FROM tpcds_sales_returns_obt AS obt\n            WHERE\n              obt.sold_date_d_date =",
@@ -1153,7 +1361,7 @@ class QueryConverter:
   CROSS JOIN wss AS wss
   WHERE
     (
-      sold_date_d_week_seq = wss.d_week_seq
+      obt.sold_date_d_week_seq = wss.d_week_seq
       AND obt.store_sk = obt.store_s_store_sk
       AND obt.sold_date_d_month_seq BETWEEN {dms} AND {dms} + 11
     )
@@ -1193,7 +1401,7 @@ class QueryConverter:
   CROSS JOIN wss AS wss
   WHERE
     (
-      sold_date_d_week_seq = wss.d_week_seq
+      obt.sold_date_d_week_seq = wss.d_week_seq
       AND obt.store_sk = obt.store_s_store_sk
       AND obt.sold_date_d_month_seq BETWEEN {dms} + 12 AND {dms} + 23
     )
