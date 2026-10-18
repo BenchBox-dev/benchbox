@@ -25321,15 +25321,10 @@
       "title": "Ship discoverable tuning templates with the installed package"
     },
     "tuning-timescaledb-native-layout-20261017": {
-      "claim": {
-        "expires_at": "2026-10-19T17:22:22Z",
-        "generation": "a3c06ebcddd64014b251776f856ba986",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:169d3b2cfca92ce2510f11ad"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "TimescaleDB: map tuning-file partitioning and sorting onto hypertables and compression"
     },
     "tuning-tracker-hygiene-reopen-and-edges-20261001": {
