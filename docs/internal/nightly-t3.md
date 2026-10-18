@@ -40,11 +40,23 @@ decision; do not set it in a pull request.
 ## Issues
 
 The final `report` job is the only job with `issues: write`. For each domain it
-keeps at most one open issue carrying that domain's label:
+keeps at most one open issue carrying that domain's `t3:<domain>` label and adds
+no other labels. The job reads each domain's result and decides as follows:
 
-- A failed domain opens the issue, or comments on it if one is already open.
-- A passing domain closes its open issue with a link to the passing run.
-- A skipped domain (cloud disabled, or drift on a non-Monday) changes nothing.
+1. A failed domain with an open issue comments only when the failure signature
+   differs from the signature recorded in the last bot comment. The signature is
+   the sorted names of the failed jobs for the domain, stored in the comment as a
+   hidden `t3-signature` marker. `docker` and `throughput-cedardb` list their
+   image mirror job and their database job separately, so a mirror failure and a
+   database failure carry different signatures.
+2. A failed domain with no open issue reopens the issue for that label that was
+   closed most recently, if it was closed within the last 14 days, and comments
+   on it. Otherwise it creates a new issue.
+3. A passing domain closes its open issue with a link to the passing run.
+4. A cancelled or timed-out domain with an open issue gets one comment per run,
+   "no verdict (cancelled or timed out)". It never creates, reopens, or closes an
+   issue. A cancelled image mirror job also counts as no verdict for its domain.
+5. A skipped domain (cloud disabled, or drift on a non-Monday) changes nothing.
 
 Each issue links to the failing run. Its artifacts are attached to that run.
 
