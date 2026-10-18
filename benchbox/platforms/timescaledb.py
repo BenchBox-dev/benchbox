@@ -304,10 +304,18 @@ class TimescaleDBAdapter(PostgreSQLAdapter):
         benchmark,
     ) -> None:
         cursor = connection.cursor()
+        effective_config = self.get_effective_tuning_configuration() if self.tuning_enabled else None
+        tuned_tables = set()
+        if effective_config:
+            for table_name in tables:
+                table_tuning = self.table_tuning_for(effective_config, table_name)
+                if table_tuning is not None:
+                    tuned_tables.add(table_name)
+                    self._apply_native_table_tuning(connection, table_name, table_tuning)
 
         time_column_tables = self._get_tables_with_time_column(connection, tables)
 
-        for table_name in time_column_tables:
+        for table_name in (table for table in time_column_tables if table not in tuned_tables):
             try:
                 if self.schema != "public":
                     table_identifier = psql.Identifier(self.schema, table_name)
@@ -355,6 +363,125 @@ class TimescaleDBAdapter(PostgreSQLAdapter):
                 connection.rollback()
 
         cursor.close()
+
+    def _apply_native_table_tuning(self, connection: Any, table_name: str, table_tuning: Any) -> None:
+        from benchbox.core.tuning.applied_ledger import PHASE_DDL, STATEMENT_FAILED
+        from benchbox.core.tuning.generators.timescaledb import TimescaleDBDDLGenerator
+        from benchbox.core.tuning.interface import TuningType
+
+        ledger = self._applied_tuning_ledger
+        layout_types = (TuningType.PARTITIONING, TuningType.SORTING, TuningType.CLUSTERING, TuningType.DISTRIBUTION)
+        requested = {kind: table_tuning.get_columns_by_type(kind) for kind in layout_types}
+        if not any(requested.values()):
+            return
+        partition_columns = requested[TuningType.PARTITIONING]
+        cursor = connection.cursor()
+        try:
+            if len(partition_columns) != 1:
+                raise ValueError("TimescaleDB native tuning requires exactly one date or timestamp partition column")
+            time_column = partition_columns[0].name
+            cursor.execute(
+                "SELECT data_type FROM information_schema.columns "
+                "WHERE table_schema = %s AND table_name = %s AND column_name = %s",
+                (self.schema, table_name, time_column),
+            )
+            row = cursor.fetchone()
+            if not row or row[0] not in ("date", "timestamp without time zone", "timestamp with time zone"):
+                raise ValueError(f"Partition column {time_column} must have a date or timestamp type")
+            compression = str(self.compression_enabled).strip().lower() in ("true", "1", "yes", "on") or any(
+                requested[kind] for kind in (TuningType.SORTING, TuningType.CLUSTERING, TuningType.DISTRIBUTION)
+            )
+            generator = TimescaleDBDDLGenerator(
+                default_chunk_interval=psql.SQL("INTERVAL {}")
+                .format(psql.Literal(self.chunk_interval))
+                .as_string(connection),
+                enable_compression=compression,
+                compression_after=psql.SQL("INTERVAL {}")
+                .format(psql.Literal(self.compression_after))
+                .as_string(connection),
+            )
+            clauses = generator.generate_tuning_clauses(table_tuning)
+            qualified_name = psql.Identifier(self.schema, table_name).as_string(connection)
+            for template in clauses.post_create_statements:
+                statement = template.replace(
+                    "'{table_name}'", psql.Literal(qualified_name).as_string(connection)
+                ).replace("{table_name}", qualified_name)
+                try:
+                    cursor.execute(statement)
+                    connection.commit()
+                except Exception as exc:
+                    connection.rollback()
+                    if ledger is not None:
+                        ledger.record(statement, PHASE_DDL, status=STATEMENT_FAILED, table=table_name, error=exc)
+                    raise
+                if ledger is not None:
+                    ledger.record(statement, PHASE_DDL, table=table_name, mechanism="timescaledb_native_layout")
+            self._hypertables.add(table_name)
+            self._verify_native_table_tuning(cursor, table_name, requested, ledger)
+        except Exception as exc:
+            connection.rollback()
+            if ledger is not None:
+                for kind, columns in requested.items():
+                    if columns:
+                        ledger.record_dropped(f"{kind.value}:{table_name}", str(exc))
+            self.logger.warning("Native tuning not applied for %s: %s", table_name, exc)
+        finally:
+            cursor.close()
+
+    def _verify_native_table_tuning(self, cursor: Any, table_name: str, requested: dict, ledger: Any) -> None:
+        from benchbox.core.tuning.interface import TuningType
+
+        cursor.execute(
+            "SELECT column_name FROM timescaledb_information.dimensions "
+            "WHERE hypertable_schema = %s AND hypertable_name = %s AND dimension_type = 'Time'",
+            (self.schema, table_name),
+        )
+        time_columns = [row[0] for row in cursor.fetchall()]
+        expected_time = [column.name for column in requested[TuningType.PARTITIONING]]
+        if time_columns != expected_time:
+            raise ValueError(f"Hypertable catalog mismatch: expected {expected_time}, observed {time_columns}")
+        cursor.execute(
+            "SELECT attname, segmentby_column_index, orderby_column_index, orderby_asc, orderby_nullsfirst "
+            "FROM timescaledb_information.compression_settings "
+            "WHERE hypertable_schema = %s AND hypertable_name = %s",
+            (self.schema, table_name),
+        )
+        settings = cursor.fetchall()
+        for kind, columns in requested.items():
+            if not columns:
+                continue
+            ordered = sorted(columns, key=lambda column: column.order)
+            if kind == TuningType.PARTITIONING:
+                observed = time_columns
+            elif kind == TuningType.SORTING:
+                observed = [(row[0], row[3], row[4]) for row in sorted(settings, key=lambda row: row[2] or 0) if row[2]]
+                expected = [
+                    (
+                        column.name,
+                        column.sort_order == "ASC",
+                        column.nulls_position == "FIRST"
+                        or (column.nulls_position == "DEFAULT" and column.sort_order == "DESC"),
+                    )
+                    for column in ordered
+                ]
+                if observed[: len(expected)] != expected:
+                    raise ValueError(f"Compression ordering catalog mismatch: expected {expected}, observed {observed}")
+            else:
+                observed = [row[0] for row in sorted(settings, key=lambda row: row[1] or 0) if row[1]]
+                if not all(column.name in observed for column in ordered):
+                    raise ValueError(f"Compression segmentation catalog mismatch: observed {observed}")
+            if ledger is not None:
+                footprint = "create_hypertable" if kind == TuningType.PARTITIONING else "timescaledb.compress"
+                statement_index = ledger.executed_statement_index(
+                    lambda statement: statement.table == table_name and footprint in statement.statement
+                )
+                if statement_index is None:
+                    raise ValueError(f"No executed native layout statement for {kind.value}:{table_name}")
+                ledger.record_satisfied(
+                    f"{kind.value}:{table_name}",
+                    statement_index,
+                    f"timescaledb_information catalog readback: {observed!r}",
+                )
 
     def _get_tables_with_time_column(self, connection: Any, tables: list[str]) -> list[str]:
         if not tables:
@@ -506,8 +633,8 @@ class TimescaleDBAdapter(PostgreSQLAdapter):
 
             supported = {
                 TuningType.PARTITIONING: True,
-                TuningType.SORTING: False,
-                TuningType.DISTRIBUTION: False,
+                TuningType.SORTING: True,
+                TuningType.DISTRIBUTION: True,
                 TuningType.CLUSTERING: True,
                 TuningType.PRIMARY_KEYS: True,
                 TuningType.FOREIGN_KEYS: True,

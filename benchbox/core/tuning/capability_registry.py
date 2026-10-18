@@ -887,38 +887,26 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         ),
     },
     "timescaledb": {
-        _T.PARTITIONING: _none(
-            "timescaledb_hypertable_hardcoded_time_column",
-            "core.tuning.generators.timescaledb.TimescaleDBDDLGenerator computes a real "
-            "SELECT create_hypertable(...) post_create_statement using the first tuned PARTITIONING "
-            "column as the time column (timescaledb.py:109-143) for dry-run preview only. Real execution "
-            "(benchbox/platforms/timescaledb.py's TimescaleDBAdapter._convert_to_hypertables, "
-            "timescaledb.py:378-447) ignores TableTuning entirely: it only converts tables that have a "
-            "column literally named 'time' (information_schema lookup, timescaledb.py:459-467) and always "
-            "passes the literal string 'time' to create_hypertable(), never the configured tuning column. "
-            "TPC-H/TPC-DS benchmark schemas have no column literally named 'time', so this path does not "
-            "fire for BenchBox's benchmarks today. TimescaleDBAdapter does not override "
-            "apply_table_tunings/generate_tuning_clause, so it inherits PostgreSQLAdapter's unconditional "
-            "no-ops (postgresql.py:894-903).",
+        _T.PARTITIONING: _ddl(
+            "timescaledb_native_layout",
+            "The configured date or timestamp partition column becomes the hypertable time dimension. "
+            "Requests with multiple partition columns or incompatible column types are recorded as dropped. "
+            "The dimensions catalog verifies the selected column.",
         ),
-        _T.SORTING: _none(
-            "timescaledb_compression_hardcoded_segmentby",
-            "The generator computes a real timescaledb.compress_orderby setting from tuned SORTING "
-            "columns (timescaledb.py:189-196), gated on platform_opts.enable_compression, for dry-run "
-            "preview only. Real execution's compression policy (TimescaleDBAdapter._add_compression_"
-            "policy, timescaledb.py:476-521) never sets compress_orderby from any tuning source.",
+        _T.SORTING: _ddl(
+            "timescaledb_native_layout",
+            "Sorting columns configure compress_orderby and enable compression. "
+            "The compression_settings catalog verifies the ordered columns and directions.",
         ),
-        _T.DISTRIBUTION: _none(
-            "timescaledb_compression_hardcoded_segmentby",
-            "The generator computes real space-partitioning columns and a compress_segmentby setting "
-            "from tuned DISTRIBUTION columns (timescaledb.py:131-141, 177-186) for dry-run preview only. "
-            "Real execution's compression policy hardcodes compress_segmentby='' (empty, "
-            "timescaledb.py:476-521), ignoring any configured distribution columns.",
+        _T.DISTRIBUTION: _ddl(
+            "timescaledb_native_layout",
+            "Distribution columns configure native space partitioning and compression segmentation. "
+            "Compression settings are verified from the TimescaleDB catalog.",
         ),
-        _T.CLUSTERING: _none(
-            "timescaledb_compression_hardcoded_segmentby",
-            "Merged with DISTRIBUTION into compress_segmentby by the generator (timescaledb.py:177-186); "
-            "same real-execution gap -- compress_segmentby is hardcoded empty regardless of tuning.",
+        _T.CLUSTERING: _ddl(
+            "timescaledb_native_layout",
+            "Clustering columns configure compress_segmentby and enable compression. "
+            "Compression settings are verified from the TimescaleDB catalog.",
         ),
         **_pk_fk_entries(),
         **_no_unique_check_entries(

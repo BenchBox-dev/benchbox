@@ -27,6 +27,10 @@ a matching `<benchmark>_notuning.yaml`):
   key per fact table; TPC-H also partitions `LINEITEM` and `ORDERS` by month.
   All constraints are disabled, because the sort key is ClickHouse's primary
   index
+- `timescaledb/` - `tpch`. Converts `lineitem` and `orders` to hypertables
+  using their date partition columns, with compression ordering and segmentation.
+  Constraints are disabled because the benchmark's logical keys do not include
+  the time dimensions.
 
 DataFrame platforms live under `dataframe/` with a flat
 `<platform>_<profile>.yaml` naming (e.g. `polars_optimized.yaml`,

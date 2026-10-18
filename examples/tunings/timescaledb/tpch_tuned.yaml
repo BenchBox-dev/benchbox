@@ -1,0 +1,33 @@
+primary_keys:
+  enabled: false
+foreign_keys:
+  enabled: false
+table_tunings:
+  lineitem:
+    table_name: lineitem
+    partitioning:
+      - name: l_shipdate
+        type: DATE
+        order: 1
+    sorting:
+      - name: l_orderkey
+        type: INTEGER
+        order: 1
+    clustering:
+      - name: l_returnflag
+        type: VARCHAR
+        order: 1
+  orders:
+    table_name: orders
+    partitioning:
+      - name: o_orderdate
+        type: DATE
+        order: 1
+    sorting:
+      - name: o_orderkey
+        type: INTEGER
+        order: 1
+    clustering:
+      - name: o_orderstatus
+        type: VARCHAR
+        order: 1

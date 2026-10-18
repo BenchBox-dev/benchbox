@@ -75,7 +75,7 @@ class TimescaleDBDDLGenerator(PostgreSQLDDLGenerator):
 
             hypertable_call += f", partitioning_column => '{space_col.name}', number_partitions => {num_partitions}"
 
-        hypertable_call += ")"
+        hypertable_call += ", if_not_exists => TRUE)"
 
         clauses.post_create_statements.append(hypertable_call)
 
@@ -115,8 +115,9 @@ class TimescaleDBDDLGenerator(PostgreSQLDDLGenerator):
             sorted_cols = sorted(sort_cols, key=lambda c: c.order)
             orderby_parts = []
             for col in sorted_cols:
-                direction = col.sort_order if hasattr(col, "sort_order") else "ASC"
-                orderby_parts.append(f"{col.name} {direction}")
+                direction = col.sort_order
+                nulls = f" NULLS {col.nulls_position}" if col.nulls_position != "DEFAULT" else ""
+                orderby_parts.append(f"{col.name} {direction}{nulls}")
             settings.append(f"timescaledb.compress_orderby = '{', '.join(orderby_parts)}'")
 
         settings_str = ", ".join(settings)
@@ -126,7 +127,9 @@ class TimescaleDBDDLGenerator(PostgreSQLDDLGenerator):
         if platform_opts:
             compression_after = getattr(platform_opts, "compression_after", compression_after)
 
-        statements.append(f"SELECT add_compression_policy('{{table_name}}', {compression_after})")
+        statements.append(
+            f"SELECT add_compression_policy('{{table_name}}', {compression_after}, if_not_exists => TRUE)"
+        )
 
         return statements
 

@@ -52,6 +52,6 @@ Aliases resolve to another platform's entry: `chdb` -> `clickhouse`, `clickhouse
 | `spark` | none | foreign_keys, primary_keys, sorting | check_constraints, partitioning, unique_constraints | applied | no | no |
 | `sqlite` | none | foreign_keys, primary_keys | check_constraints, unique_constraints | - | no | no |
 | `starrocks` | none | distribution, partitioning, primary_keys, sorting | check_constraints, foreign_keys, unique_constraints | - | no | no |
-| `timescaledb` | none | foreign_keys, primary_keys | check_constraints, clustering, distribution, partitioning, sorting, unique_constraints | - | no | no |
+| `timescaledb` | none | clustering, distribution, foreign_keys, partitioning, primary_keys, sorting | check_constraints, unique_constraints | - | no | no |
 | `trino` | none | foreign_keys | check_constraints, clustering, distribution, partitioning, primary_keys, sorting, unique_constraints | - | no | no |
 | `velox` | none | none | none | applied | no | no |
