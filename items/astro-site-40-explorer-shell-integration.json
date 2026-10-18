@@ -6,7 +6,7 @@
     "Loading/error states pass axe and announce via live region",
     "Explorer artifact digest recorded separately from the site artifact"
   ],
-  "context": "IN PR https://github.com/BenchBox-dev/BenchBox/pull/2606 (9bb371a3, 70626f12, 09659d17), 2026-10-04. Shared shell model (shellModel.ts) + landing/shared/site-shell.css + SiteShell.tsx mirrored to Astro components, browser parity in website/e2e/explorer.mjs. Review round 1 FAIL (sticky header, menu focus) fixed; round 2 PASS; theme flicker fixed. Explorer header non-sticky as before; /results/ published byte-identical to the Explorer build (build hook asserts). Visual change on /results* awaits owner approval. site-split-01 (2026-10-07): code merged; e2e and digest evidence not recorded here with run ids. Remaining verification owned by site-split-25 and site-split-30. Do not finish here.\n\n2026-10-09 tracker review: this item's code shipped in #2606 and production deploys are green (site-deploy runs 37532428364, 37406123669). site-split-99-closeout should fold this astro-site chain into the site-split items. Not closed here, because this item's own text defers closing to the site-split items.",
+  "context": "Dropped 2026-10-17 as delivered (owner chose \"Drop delivered, re-scope rest\"). Delivered in #2606 and now built in BenchBox-dev/benchbox-site (explorer/ workspace). Site CI runs the Explorer vitest, jest-axe and Playwright chromium suites (run 39061697212 green), including StateAnnouncements.a11y.test.tsx for loading and error states. Live docs pages carry no Explorer or DuckDB assets. The separate Explorer artifact digest no longer applies: the site-split ADR replaced D12, the Explorer builds from the same site commit, and each receipt pins site_sha, bundle_digest, snapshot_sha256 and explorer_read_model_version. Assembled-site e2e (website/e2e/explorer.mjs, pages-artifact.spec.ts) moved to site-browser-acceptance-ci-20261017.",
   "description": "results-explorer/src/App.tsx owns the routing (preact-router, absolute /results/ paths) and the full layout.\n\nWork:\n- Extract the header and frame into the shared shell component from astro-site-22, consumed by both the site and the Explorer.\n- Scope or remove Explorer global CSS so it cannot leak into or be overridden by site CSS.\n- Keep query-string state, nested-route deep links, the hard-coded /results/ links (resultsNav.ts, MetaLeaderboard.tsx, headerContract.ts), the DuckDB fetch path /results/data/results.duckdb, and worker/WASM asset paths.\n- Give loading and error states accessible names and live regions.\n- The Explorer stays a separate build artifact pinned by its own SHA and digest (D12). The site build consumes its dist; it does not rebuild Explorer source.\n\nNo changes to queries, metrics, admission or withdrawal logic.",
   "links": [
     "results-explorer/src/App.tsx",
@@ -46,6 +46,14 @@
       "op": "update",
       "op_id": "ab5aecf61b064a6c9af3fc584d7b745f",
       "session_id": "05afd70780334fa0b0e411a688cf8f7a"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-18T00:49:00Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "d408b11e347a4ed58cfc194582791868",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
     }
   ]
 }
