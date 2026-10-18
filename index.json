@@ -22010,6 +22010,16 @@
       "status": "open",
       "title": "ship-no-ship: add artifact attestations to release.yml"
     },
+    "ssns-v010-release": {
+      "claim": null,
+      "needs": [
+        "ssns-n8-macos-install-kit",
+        "ssns-prepublication-hardening"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "ship-no-ship: cut the first release (v0.1.0) once the service is ready"
+    },
     "stabilize-full-test-suite-failures": {
       "claim": null,
       "needs": [],

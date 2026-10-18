@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "v0.1.0 release published with wheels and SHA-256 sums",
+    "Wheel installs in a clean venv"
+  ],
+  "context": "Owner-only (MERGE-AUTHORITY-001, release cutting). No releases or tags exist yet.",
+  "description": "Owner step (N5 tag, O11 first instance). Owner cuts the v0.1.0 tag on main; release.yml builds identical Linux and macOS wheels and drafts the release; owner publishes it. Each later release follows O11: cut the tag, install on the Mac, then merge the BenchBox bump.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51",
+      "at": "2026-10-18T00:58:21Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "0a0ab469fa694f1392c1e9c992688532",
+      "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    }
+  ]
+}
