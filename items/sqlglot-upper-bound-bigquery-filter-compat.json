@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Inspect sqlglot >=30.23.0 BigQuery FILTER transpilation semantics (COUNT(*) FILTER, COUNT(DISTINCT x) FILTER, and all-false NULL vs 0 behavior) against benchbox/core/tpchavoc/cloud_compat.py:_rewrite_bigquery_filter.",
+    "Adapt _rewrite_bigquery_filter and tests/unit/tpchavoc/test_cloud_compat.py so both locked (30.18.0) and newer 30.x sqlglot releases preserve exact TPC-Havoc 1_v6 / 12_v7 semantics on BigQuery, or tighten the sqlglot upper bound in pyproject.toml if newer 30.x introduces a semantic regression."
+  ],
+  "context": "Surfaced during PR #3003 review when comparing unlocked contributor pytest results (sqlglot 30.23.0) against the repository's locked uv environment (sqlglot 30.18.0).",
+  "description": "pyproject.toml:28 declares sqlglot>=25.6.0,<31.0.0 while uv.lock pins sqlglot==30.18.0. In sqlglot >=30.23.0, sqlglot.transpile(..., read='duckdb', write='bigquery') natively rewrites aggregate FILTER (WHERE ...) before benchbox/core/tpchavoc/cloud_compat.py:_rewrite_bigquery_filter runs, causing tests/unit/tpchavoc/test_cloud_compat.py::test_bigquery_filter_rewrite_handles_count_star_distinct_and_null_semantics to fail in unlocked environments using newer sqlglot 30.x releases.",
+  "links": [
+    "pyproject.toml",
+    "benchbox/core/tpchavoc/cloud_compat.py",
+    "tests/unit/tpchavoc/test_cloud_compat.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:83b3829dccae64b585f393fd",
+      "at": "2026-10-18T00:23:07Z",
+      "client": "antigravity-client",
+      "op": "create",
+      "op_id": "dbb30aee0f124379a607568015dac34c",
+      "session_id": "9a67c1a5fd8d43a3a852dde174db8062"
+    }
+  ]
+}

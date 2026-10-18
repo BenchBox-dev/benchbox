@@ -21829,6 +21829,13 @@
       "status": "done",
       "title": "Extend SQLGlot repro harness to cover wrapper call shapes (cross-dialect probes)"
     },
+    "sqlglot-upper-bound-bigquery-filter-compat": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Audit sqlglot >=30.23.0 BigQuery FILTER transpilation change against cloud_compat and pin or adapt"
+    },
     "sqlite-database-name-ignored-20261016": {
       "claim": null,
       "needs": [],
