@@ -1407,12 +1407,17 @@
       "title": "Dispatch nightly-v2 on merged develop, check each fixed domain, and close the stale alert issues with evidence"
     },
     "autogen-nightly-report-lifecycle-20261018": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-19T22:36:21Z",
+        "generation": "63985c5ed49041aa9305271880910585",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
+      },
       "needs": [
         "autogen-issues-decisions-20261018"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Reopen instead of recreating nightly T3 issues, and comment only when the failure changes"
     },
     "autogen-site-contract-bump-sequencing-20261018": {
