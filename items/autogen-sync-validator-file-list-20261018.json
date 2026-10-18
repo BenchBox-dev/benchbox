@@ -6,7 +6,7 @@
     "After the mirror merge, published-results tip equals the merge SHA (recorded)",
     "Workflow change merged with a success oracle-review verdict (no stand-in) and required checks green"
   ],
-  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs every line with evidence; FAIL if anything outside the allowlist reaches published-results or a criterion of D11 is skipped. Related existing item (acceptance 3 is closed by the consolidated nightly dispatch): t3-drift-corpus-mismatch-20261009.",
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs every line with evidence; FAIL if anything outside the allowlist reaches published-results or a criterion of D11 is skipped. Related existing item (acceptance 3 is closed by the consolidated nightly dispatch): t3-drift-corpus-mismatch-20261009.\nPre-publication (AGENTS.md): self-review with the code review action and fix every Critical and Required finding before make pr-open (G13).",
   "description": "Confirmed: sync-results-data-to-published.yml 'Build mirror branch' overlays a hardcoded FILE_PATHS list (about lines 163-174; trigger paths lines 12-18; git add set about line 202) onto a branch cut from published-results. results-data/validate_corpus.py now loads benchbox/core/results/subscale_policy.py by path; that file is not in the list, so the mirror fails: 'validate_corpus.CorpusReadError: ERROR cannot load .../benchbox/core/results/subscale_policy.py' (run 39095414032, 2026-10-18; the three newest runs failed). published-results therefore falls further behind develop and t3:drift stays red (inference: the causal link to the 2026-10-12 drift failure is not proven; the mirror failure itself is).\nWork: add subscale_policy.py to all three places; add a test that the list covers every module validate_corpus.py and validate_submission.py load or import (derive by AST), so the next added dependency fails a unit test rather than the nightly.\nConstraint: the list is a trust boundary onto a PUBLIC branch: add only modules the test proves missing, no wildcard, no directory copy.\nGATE-C: if the test finds further missing modules, add each only if it is public-safe code (no private paths, tokens or internal-only data); otherwise stop and block with the evidence.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/issues/2471",
@@ -20,6 +20,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "198f3f94b0e44eeeab2c914de2a16343",
+      "session_id": "cab8a4e762844fd9912c504ebfd76c56"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7ac6538e56f6607b35a3f600",
+      "at": "2026-10-18T20:27:29Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5702e54826dc4257848b534dbef91bfb",
       "session_id": "cab8a4e762844fd9912c504ebfd76c56"
     }
   ]
