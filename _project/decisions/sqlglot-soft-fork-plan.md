@@ -255,8 +255,8 @@ claim, or change its branch. Reconcile live Git/tracker state first.
   dependency identity, named case IDs, source/target/call shape, expected
   pass/unsupported outcome, and acknowledged workaround decision/path. Update
   it with reviewed identity/behavior changes; reject missing or malformed data.
-- Retire only syntax workarounds demonstrated redundant through both actual
-  BenchBox translation paths with `identify=True`. Preserve exact SQLite Q6
+- Retire only syntax workarounds demonstrated redundant through all three actual
+  BenchBox translation entrypoints with `identify=True`. Preserve exact SQLite Q6
   decimal bounds, engine-semantic transforms, physical DDL, source normalization
   and unrelated query variants. Narrow helpers rather than deleting mixed
   policy/code wholesale. Record any remaining overlap and its reason.
