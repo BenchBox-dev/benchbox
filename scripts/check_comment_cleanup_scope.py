@@ -1133,7 +1133,7 @@ PEP440_RE = re.compile(
 PRE_MAP = {"a": -3, "b": -2, "rc": -1}
 
 
-def _parse_version(v: str) -> tuple[int, tuple[int, ...], tuple[int, int], int, int, int]:
+def _parse_version(v: str) -> tuple[int, tuple[int, ...], tuple[int, int, int, int]]:
     clean = v.partition("+")[0].strip()
     epoch = 0
     if "!" in clean:
@@ -1144,16 +1144,29 @@ def _parse_version(v: str) -> tuple[int, tuple[int, ...], tuple[int, int], int, 
     m = PEP440_RE.match(clean)
     if not m:
         raise ValueError(f"invalid PEP 440 version: {v}")
-    release = tuple(int(x) for x in m.group("release").split("."))
-    pre = (0, 0)
-    if m.group("pre"):
-        pre_type = PRE_MAP[m.group("pre").lower()]
-        pre_v = int(m.group("pre_v")) if m.group("pre_v") else 0
-        pre = (pre_type, pre_v)
-    post = int(m.group("post")) if m.group("post") else 0
-    dev = int(m.group("dev")) if m.group("dev") is not None else 0
-    has_dev = -1 if m.group("dev") is not None else 0
-    return (epoch, release, pre, post, has_dev, dev)
+
+    rel_list = [int(x) for x in m.group("release").split(".")]
+    while len(rel_list) > 1 and rel_list[-1] == 0:
+        rel_list.pop()
+    release = tuple(rel_list)
+
+    dev_num = int(m.group("dev")) if m.group("dev") is not None else None
+    pre_type = PRE_MAP[m.group("pre").lower()] if m.group("pre") else None
+    pre_v = int(m.group("pre_v")) if m.group("pre_v") else 0
+    post_num = int(m.group("post")) if m.group("post") else None
+
+    if dev_num is not None and pre_type is None and post_num is None:
+        phase = (-3, dev_num, 0, 0)
+    elif pre_type is not None:
+        dev_sub = dev_num if dev_num is not None else 999999
+        phase = (-2, pre_type, pre_v, dev_sub)
+    elif post_num is not None:
+        dev_sub = dev_num if dev_num is not None else 999999
+        phase = (1, post_num, dev_sub, 0)
+    else:
+        phase = (0, 0, 0, 0)
+
+    return (epoch, release, phase)
 
 
 def _extract_version_from_path(path: str) -> str:
@@ -1168,10 +1181,11 @@ def _eval_spec_clause(clause: str, cand_p: tuple, cand_version: str) -> bool:
     m_wildcard = re.match(r"^(==|!=)\s*([0-9]+(?:\.[0-9]+)*)\.\*$", clause)
     if m_wildcard:
         op, prefix_str = m_wildcard.group(1), m_wildcard.group(2)
-        if cand_p[2] < (0, 0):
+        if cand_p[2] != (0, 0, 0, 0):
             return op != "=="
         prefix = tuple(int(x) for x in prefix_str.split("."))
-        matches_prefix = cand_p[1][: len(prefix)] == prefix
+        cand_rel_padded = cand_p[1] + (0,) * max(0, len(prefix) - len(cand_p[1]))
+        matches_prefix = cand_rel_padded[: len(prefix)] == prefix
         return matches_prefix if op == "==" else not matches_prefix
 
     m_exact = re.match(r"^===\s*(\S+)$", clause)
@@ -1200,13 +1214,22 @@ def _eval_spec_clause(clause: str, cand_p: tuple, cand_version: str) -> bool:
     if op == "<":
         return cand_p < v_p
     if op == "~=":
-        if cand_p[2] < (0, 0) and v_p[2] >= (0, 0):
+        if cand_p[0] != v_p[0]:
+            return False
+        if cand_p[2] != (0, 0, 0, 0) and v_p[2] == (0, 0, 0, 0):
             return False
         if cand_p < v_p:
             return False
-        rel = v_p[1]
-        upper_prefix = (rel[0] + 1,) if len(rel) == 1 else rel[:-1][:-1] + (rel[:-1][-1] + 1,)
-        return cand_p[1][: len(upper_prefix)] < upper_prefix
+        raw_v_parts = tuple(
+            int(x) for x in re.sub(r"[^0-9.]", "", v_str.partition("+")[0].partition("-")[0]).split(".")
+        )
+        if len(raw_v_parts) == 1:
+            upper_prefix = (raw_v_parts[0] + 1,)
+        else:
+            prefix = raw_v_parts[:-1]
+            upper_prefix = prefix[:-1] + (prefix[-1] + 1,)
+        cand_rel_padded = cand_p[1] + (0,) * max(0, len(upper_prefix) - len(cand_p[1]))
+        return cand_rel_padded[: len(upper_prefix)] < upper_prefix
     return False
 
 
@@ -1231,9 +1254,7 @@ def _verify_rollout_evidence(root: Path, owner: str, filename: str, digest: str,
     evidence_path = "_project/analysis/batch-rollout-evidence.json"
     raw = head_blob(root, evidence_path, staged)
     if raw is None:
-        if owner == "todo-db":
-            raise ValueError(f"evidence ledger is required for {owner}: missing {evidence_path}")
-        return
+        raise ValueError(f"wheel bump is not verified: missing required rollout evidence ledger {evidence_path}")
     try:
         data = json.loads(raw.decode("utf-8"))
         artifact = data.get("artifact", {})
