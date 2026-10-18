@@ -18221,6 +18221,13 @@
       "status": "done",
       "title": "✅ Remediate unified_runner Lifecycle Regression Suite"
     },
+    "remote-closeout-arm-landing-20261018": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Implement checkout-free close-out: pr-arm-remote and pr-landing-remote targets"
+    },
     "remove-alpha-backward-compatibility-surface": {
       "claim": null,
       "needs": [],

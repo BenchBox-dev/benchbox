@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "make pr-arm-remote arms only when all seven arm conditions in docs/agent/remote-closeout.md hold, refuses with a specific reason otherwise, and arms with gh pr merge --squash --auto --match-head-commit",
+    "Feature-mode, batch, stacked, and soundness-path PRs are refused",
+    "The targets change no working-tree file, local branch, or local Git config, and fetch with --no-tags and auto maintenance disabled",
+    "pr-landing-remote-withdraw disables auto-merge for the bound PR; pr-landing-remote-ready re-applies every arm condition to a new head and a new record",
+    "Tests cover each refusal, a passing arm, and the withdraw and ready transitions"
+  ],
+  "context": "Depends on the policy PR from branch docs/remote-closeout-policy, which adds [REMOTE-CLOSEOUT-001] and docs/agent/remote-closeout.md; this work stacks on that branch until it merges.",
+  "description": "Implement the targets that [REMOTE-CLOSEOUT-001] and docs/agent/remote-closeout.md define, so a local closer can judge and arm a cloud-built PR from the primary clone without a linked worktree: a reviewer-record store under ~/.benchbox/reviews/, a PR binding record, make pr-arm-remote PR=N HEAD=SHA enforcing the seven arm conditions, and make pr-landing-remote-withdraw and make pr-landing-remote-ready.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:515fc6c5ed940969bed3c6eb",
+      "at": "2026-10-18T13:13:41Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1f8205274ee34dc183fbe942ee1760dc",
+      "session_id": "47d0479093c54bd8bbf6c9bf3930003f"
+    }
+  ]
+}
