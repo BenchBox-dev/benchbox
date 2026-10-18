@@ -21976,9 +21976,9 @@
     },
     "sqlglot-soft-fork-adoption": {
       "claim": {
-        "expires_at": "2026-10-19T16:06:02Z",
-        "generation": "bb5a3947d0db4cd6b0612f8ff0887be8",
-        "renewals": 0,
+        "expires_at": "2026-10-19T19:40:33Z",
+        "generation": "c2826fbac6fc4893acd5f1df4ae98bee",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:00f9896dc298dff5fa33ec9d"
       },
       "needs": [
