@@ -144,8 +144,9 @@ a change stores the owner's statement, passed as
 `make pr-arm-remote PR=<n> HEAD=<sha>` arms only when all of these hold at arm
 time, and refuses otherwise:
 
-1. The PR is eligible: it is not a feature-mode, batch, or stacked PR, and the
-   fetched `base..head` diff touches no soundness path.
+1. The PR is eligible: its head is a branch of this repository, not a fork; it
+   is not a feature-mode, batch, or stacked PR; and the fetched `base..head`
+   diff touches no soundness path.
 2. The PR number, head branch, and node ID match the values the closer
    recorded when the builder's report first named the PR. The builder opens
    the PR from its session with `make pr-open`.
