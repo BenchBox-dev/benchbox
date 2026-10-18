@@ -22216,7 +22216,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "ship-no-ship owner: enable automatic restart after power loss"
     },
     "ssns-o6-install-and-doctor": {
