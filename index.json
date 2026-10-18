@@ -2578,15 +2578,10 @@
       "title": "Explain and reduce the CI fast-test slowdown"
     },
     "ci-fast-test-ubuntu-timeout-20261014": {
-      "claim": {
-        "expires_at": "2026-10-19T00:18:38Z",
-        "generation": "c933650268034fdeaf28c484afef1af8",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "CI `test (ubuntu-latest, 3.12)` hits its 45-minute timeout while the same suite takes about 6.5 minutes locally"
     },
     "ci-lint-local-parity-pin": {
