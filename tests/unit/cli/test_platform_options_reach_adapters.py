@@ -11,13 +11,14 @@ from typing import Any
 import pytest
 from click.testing import CliRunner
 
+import benchbox.platforms.dataframe as dataframe_platforms
 from benchbox.cli.commands.run import run
 from benchbox.cli.config import ConfigManager
 from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
 from benchbox.core.platform_config import get_platform_config
 from benchbox.core.platform_registry import PlatformRegistry
 from benchbox.core.schemas import DatabaseConfig, SystemProfile
-from benchbox.platforms import get_platform_adapter
+from benchbox.platforms import _DATAFRAME_PLATFORM_INFO, get_platform_adapter, is_dataframe_platform
 from benchbox.utils.runtime_env import DriverResolution
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
@@ -130,10 +131,16 @@ def _dry_run(tmp_path: Path, platform: str, *options: str, extra_args: tuple[str
     return json.loads(next(preview_dir.glob("tpch_*.json")).read_text(encoding="utf-8"))
 
 
+def _dry_run_adapter_class(platform: str) -> type:
+    if PlatformRegistry.get_default_mode(platform) == "dataframe" and is_dataframe_platform(f"{platform}-df"):
+        return getattr(dataframe_platforms, _DATAFRAME_PLATFORM_INFO[f"{platform}-df"][0])
+    return PlatformRegistry.get_adapter_class(platform)
+
+
 def _constructor_kwargs(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, platform: str, *options: str, extra_args: tuple[str, ...] = ()
 ) -> dict[str, Any]:
-    adapter_class = PlatformRegistry.get_adapter_class(platform)
+    adapter_class = _dry_run_adapter_class(platform)
     seen: list[dict[str, Any]] = []
 
     def spy(self: Any, **kwargs: Any) -> None:

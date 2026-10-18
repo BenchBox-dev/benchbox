@@ -21,7 +21,7 @@ from benchbox.core.schemas import (
     DryRunResult,
     SystemProfile,
 )
-from benchbox.platforms import get_adapter, get_platform_adapter
+from benchbox.platforms import get_adapter, get_platform_adapter, is_dataframe_platform
 
 
 def _extract_df_write_tuning(write_config: Any) -> dict[str, Any]:
@@ -135,11 +135,11 @@ class DryRunExecutor:
 
                 platform_adapter = None
                 try:
-                    if execution_mode == "dataframe":
+                    if execution_mode == "dataframe" and self._has_dataframe_adapter(database_config.type):
                         platform_adapter = self._build_dataframe_adapter(
                             database_config, benchmark_config, platform_config
                         )
-                    else:
+                    elif execution_mode != "dataframe" or self._has_sql_adapter(database_config.type):
                         platform_adapter = get_platform_adapter(database_config.type, **platform_config)
                 except Exception as e:
                     result.warnings.append(f"Platform adapter initialization failed: {e}")
@@ -199,6 +199,16 @@ class DryRunExecutor:
             result.warnings.append(f"Dry run execution error: {e}")
 
         return result
+
+    @staticmethod
+    def _has_dataframe_adapter(platform_type: str) -> bool:
+        base_platform = platform_type.lower().split(":", 1)[0].removesuffix("-df")
+        return is_dataframe_platform(f"{base_platform}-df")
+
+    @staticmethod
+    def _has_sql_adapter(platform_type: str) -> bool:
+        canonical_name = PlatformRegistry.resolve_platform_name(platform_type)
+        return canonical_name in PlatformRegistry.get_available_platforms()
 
     def _build_dataframe_adapter(
         self,
