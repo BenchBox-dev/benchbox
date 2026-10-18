@@ -1,0 +1,29 @@
+{
+  "acceptance": [
+    "Unit test reproduces the #3030 timeline (stand-in 00:09, pending-verdict review 06:01 on the same head, merge 11:36): the entry no longer needs attention; a second test shows a decisive failure verdict after the stand-in DOES void it",
+    "The digest and the gate use one definition of the decisive-verdict window; a parametrized test over shared fixtures fails if they diverge",
+    "Re-evaluation tests: an open gap issue whose entry no longer needs attention is closed with an evidence comment; an issue with an attester External review comment is closed; a non-attester comment never closes; an issue whose entry still needs attention stays open; closed issues are never modified",
+    "Issue body includes the reason class for each of the three classes (test)",
+    "GATE-A before any hosted write: dry-run (no --apply) over e130b207b..3b3cfbcaa would close only the #3030 entry and keep #3125, #3126, #2806, #2807 and #2808 open; the output is recorded in context; any other result stops the item (blocked)",
+    "PR merged to develop with a success oracle-review verdict (no stand-in) and required checks green; the digest documentation (docs/internal/soundness-drain.md or the file that describes the digest) is updated",
+    "After merge, workflow_dispatch of soundness-merge-digest.yml with apply: #3030 is closed with an evidence comment, no other existing issue changes state (listing before/after recorded)"
+  ],
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs every acceptance line with recorded evidence. FAIL if any issue whose entry still needs attention is closed, if the apply run opens issues for already-known SHAs, or if verdict logic is duplicated. Related tracker item (already covers the base-only exception conflict): comment-policy-digest-and-base-exception-catch22-20261008. Files: _project/scripts/soundness_merge_digest.py, _project/scripts/oracle_review_check.py, tests for both, .github/workflows/soundness-merge-digest.yml (soundness paths: oracle review required).",
+  "description": "Problem 1 (confirmed): issue #3030 flags PR #2915 although a valid stand-in (2026-10-15T00:09:40Z) preceded the merge (11:36Z) and the only later oracle review (06:01:21Z, state COMMENTED, body 'oracle-verdict: pending', all reviewers absent) carries no success or failure verdict. _project/scripts/soundness_merge_digest.py:147-157,193-194 treats any non-PENDING/DISMISSED review as starting the stand-in window; the gate _project/scripts/oracle_review_check.py:87-96,129-131 starts it only at the latest decisive (success/failure) verdict, which PR #2769 records as intended behavior.\nProblem 2 (confirmed): gap issues are never re-evaluated or closed (open_gap_issues, soundness_merge_digest.py:536-560); closure is manual and the digest only recognises 'External review:' on PR comments, so seven issues were bulk-closed in 18 seconds with identical text (#2662-#2667, #2774) and no machine-readable evidence.\nDecision D2: re-evaluate OPEN gap issues each run; close with an evidence comment when the entry no longer needs attention, or when an authorized attester (STANDIN_ATTESTERS) posts 'External review: <codex|muse|agy>' on the gap issue; issue body states the reason class (override of an oracle High finding / deferred finding / no review signal).\nDo NOT narrow which threads are flagged: verified #3081/#3084 (oracle High overridden by the author) and #2769 (Medium/Low/P2 deferred to the PR description) are the digest's intended targets; the subagent idea 'count only threads without a reply' is rejected.\nConstraints: share the decisive-verdict logic with the gate by import or one shared helper (no copied logic); do not change STANDIN_ATTESTERS membership or the soundness path list; read-only record of who the attesters are goes in context; never touch closed issues; no stand-in or external-review comments by the agent (G4).",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/issues/3030",
+    "https://github.com/BenchBox-dev/benchbox/issues/2640",
+    "https://github.com/BenchBox-dev/benchbox/pull/2769",
+    "item:comment-policy-digest-and-base-exception-catch22-20261008"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7ac6538e56f6607b35a3f600",
+      "at": "2026-10-18T20:20:27Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9dcca725665e4baaba83a8d3faf0370b",
+      "session_id": "cab8a4e762844fd9912c504ebfd76c56"
+    }
+  ]
+}
