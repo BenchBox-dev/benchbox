@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 _providers_registered = False
 
-from benchbox.core.expected_results import tpcds_results, tpch_results
+from benchbox.core.expected_results import ssb_results, tpcds_results, tpch_results
 from benchbox.core.expected_results.registry import get_registry
 
 

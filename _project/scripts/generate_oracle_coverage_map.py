@@ -99,7 +99,13 @@ def classify_oracles(
     return oracles
 
 
-def primary_oracle(oracles: list[str]) -> str:
+_PRIMARY_ORACLE_OVERRIDES = {"ssb": ORACLE_CROSS_SURFACE}
+
+
+def primary_oracle(oracles: list[str], benchmark_id: str = "") -> str:
+    override = _PRIMARY_ORACLE_OVERRIDES.get(benchmark_id)
+    if override is not None and override in oracles:
+        return override
     for kind in _ORACLE_PRIORITY:
         if kind in oracles:
             return kind
@@ -215,7 +221,7 @@ def build_coverage_map() -> list[dict[str, Any]]:
             cross_surface_gates=cross_surface_gates,
             staged_cross_surface_gates=staged_cross_surface_gates,
         )
-        primary = primary_oracle(oracles)
+        primary = primary_oracle(oracles, benchmark_id)
         strength, scale = oracle_strength_and_scale(primary, benchmark_id)
         independence, independence_rationale = oracle_independence_and_rationale(primary, strength)
         surface_provenance, surface_provenance_rationale = oracle_surface_provenance(primary, benchmark_id)
@@ -312,8 +318,8 @@ def render_markdown(rows: list[dict[str, Any]]) -> str:
         "`value+cardinality` (both) — and the **Scale** column says at which scale it "
         "actually holds. Both are derived from live sources (the provider's stored "
         "answers/digests and the equivalence gate's bounded scale), not hand-labelled. "
-        "No expected-results oracle exists above SF=1 (the loader raises for other "
-        "scales), so `tpch`/`tpcds` values are unguarded above SF=1 — the tpch "
+        "The `tpch`/`tpcds` expected-results oracles exist only at SF=1, so "
+        "`tpch`/`tpcds` values are unguarded above SF=1 — the tpch "
         "**Strength** cell states this inline so the row is self-contained."
     )
     lines.append("")

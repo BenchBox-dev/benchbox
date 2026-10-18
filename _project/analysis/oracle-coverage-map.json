@@ -254,6 +254,7 @@
       "independence": "self-referential",
       "independence_rationale": "Both compared surfaces are benchbox's own implementations; see Surface provenance for how far apart they were authored.",
       "oracles": [
+        "expected-results",
         "cross-surface"
       ],
       "primary_oracle": "cross-surface",
