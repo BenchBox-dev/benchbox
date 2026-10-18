@@ -8564,6 +8564,13 @@
       "status": "open",
       "title": "Generate query, compatibility and tuning pages in TypeScript"
     },
+    "docs-mig-tpc-eula-gate": {
+      "claim": null,
+      "needs": [],
+      "priority": "critical",
+      "status": "open",
+      "title": "Verify TPC notices before removing query downloads"
+    },
     "docs-mig-ts-parity-gate": {
       "claim": null,
       "needs": [
