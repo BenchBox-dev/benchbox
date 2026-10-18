@@ -184,6 +184,8 @@ def reconcile_requested_intents(
         capability = get_capability(platform, intent.tuning_type)
         footprints = _footprints(intent.tuning_type, capability)
         cluster_columns = clustering_by_table.get(_bare_table(intent.table), ()) if intent.table is not None else ()
+        if capability is None or capability.mechanism_id != "postgresql_index_cluster":
+            cluster_columns = ()
 
         if capability is not None and capability.mechanism_id == "duckdb_ctas_sort":
             index = _realizing_index(intent, (_INDEX_COLUMNS,), ledger, cluster_columns)
@@ -244,12 +246,8 @@ def _index_realizes_sort(wanted: list[str], indexed: tuple[str, ...], cluster_co
         return True
     if not cluster_columns:
         return False
-    return any(
-        offset + len(wanted) <= len(indexed)
-        and indexed[:offset] == cluster_columns[:offset]
-        and indexed[offset : offset + len(wanted)] == tuple(wanted)
-        for offset in range(1, len(cluster_columns) + 1)
-    )
+    offset = len(cluster_columns)
+    return indexed[:offset] == cluster_columns and indexed[offset : offset + len(wanted)] == tuple(wanted)
 
 
 def _footprints(tuning_type: TuningType, capability: TuningCapability | None) -> tuple[str, ...]:

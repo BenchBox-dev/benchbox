@@ -377,6 +377,37 @@ class TestPostgreSQLCombinedClusterSort:
             ("sorting:LINEITEM (L_ORDERKEY, L_LINENUMBER)", NOT_RENDERED_REASON)
         ]
 
+    def test_sort_after_a_clustering_sub_prefix_still_drops(self):
+        ledger = self._ledger(
+            'CREATE INDEX IF NOT EXISTS idx_lineitem_cluster ON "lineitem" ("l_shipdate", "l_orderkey", "l_linenumber")',
+            'CREATE INDEX IF NOT EXISTS idx_lineitem_clustering ON "lineitem" ("l_shipdate", "l_partkey")',
+            self._CLUSTER_STATEMENT,
+        )
+
+        _reconcile(
+            _config(clustering=_columns("L_SHIPDATE", "L_PARTKEY"), sorting=_columns("L_ORDERKEY", "L_LINENUMBER")),
+            ledger,
+            "postgresql",
+        )
+
+        assert [(item.intent, item.reason) for item in ledger.dropped] == [
+            ("sorting:LINEITEM (L_ORDERKEY, L_LINENUMBER)", NOT_RENDERED_REASON)
+        ]
+
+    def test_cluster_offset_does_not_apply_to_duckdb_ctas_sort(self):
+        ledger = self._ledger(self._COMBINED_INDEX)
+
+        _reconcile(
+            _config(clustering=_columns("L_SHIPDATE"), sorting=_columns("L_ORDERKEY", "L_LINENUMBER")),
+            ledger,
+            "duckdb",
+            sorted_tables=("lineitem",),
+        )
+
+        assert [(item.intent, item.reason) for item in ledger.dropped] == [
+            ("sorting:LINEITEM (L_ORDERKEY, L_LINENUMBER)", "missing expected index evidence for duckdb_ctas_sort")
+        ]
+
     def test_sort_separated_from_the_clustering_columns_still_drops(self):
         ledger = self._ledger(
             'CREATE INDEX IF NOT EXISTS idx_lineitem_cluster ON "lineitem" ("l_shipdate", "l_orderkey", "l_partkey")',
