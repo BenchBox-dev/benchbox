@@ -22958,7 +22958,9 @@
     },
     "t3-drift-corpus-mismatch-20261009": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "autogen-sync-validator-file-list-20261018"
+      ],
       "priority": "high",
       "status": "open",
       "title": "Investigate corpus drift reported by nightly-v2 verification"
