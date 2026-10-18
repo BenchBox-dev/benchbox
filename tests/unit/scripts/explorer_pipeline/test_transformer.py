@@ -233,6 +233,21 @@ class TestToDetailResult:
 
         assert detail.run_date == "2026-03-15"
 
+    def test_detail_ranking_exclusion_matches_manifest_for_unofficial_nonstandard(self, tmp_path: Path) -> None:
+        data = copy.deepcopy(MINIMAL_BUNDLE)
+        data["benchmark"]["compliance_class"] = "unofficial_nonstandard"
+        bundle = tmp_path / "unofficial-nonstandard.json"
+        bundle.write_text(json.dumps(data), encoding="utf-8")
+
+        transformer = BundleTransformer()
+        rid = transformer.result_id_from_bundle(bundle)
+        entry = transformer.to_manifest_entry(bundle, result_id=rid)
+        detail = transformer.to_detail_result(bundle, rid)
+
+        assert entry.compliance_class == "unofficial_nonstandard"
+        assert entry.ranking_exclusion_reason == "unofficial_compliance"
+        assert detail.ranking_exclusion_reason == entry.ranking_exclusion_reason
+
 
 class TestResultIdFromBundle:
     def test_stable_id(self, bundle_file: Path) -> None:
