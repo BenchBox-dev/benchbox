@@ -21,6 +21,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from benchbox import TPCH
 
 EQUIVALENCE_SCALE = 0.1
+SUBSCALE_EQUIVALENCE_SCALE = 0.01
 
 KNOWN_DIVERGENCES: dict[str, str] = {}
 
@@ -269,6 +270,82 @@ def _report(
     return 1 if (new or resolved) else 0
 
 
+def _merge_divergences(
+    primary: list[Divergence],
+    additional: list[Divergence],
+    *,
+    context_label: str,
+) -> list[Divergence]:
+    by_key = {divergence.key: divergence for divergence in primary}
+    for divergence in additional:
+        annotated = Divergence(
+            divergence.query_id,
+            divergence.variant_id,
+            f"{divergence.detail} [{context_label}]",
+        )
+        if divergence.key not in by_key:
+            by_key[divergence.key] = annotated
+    return list(by_key.values())
+
+
+def find_q16_cardinality_divergences(
+    connection: Any,
+    tpchavoc: TPCHavocBenchmark,
+    canonical_query: Callable[[int], str],
+    *,
+    multi_complaint_count: int = 3,
+    translate_variant: Callable[[str], str] | None = None,
+    variant_query: Callable[[int, int], str] | None = None,
+    skip_variants: Collection[str] | None = None,
+    execute_transform: Callable[[str], str] | None = None,
+) -> list[Divergence]:
+    if multi_complaint_count < 2:
+        raise ValueError("multi_complaint_count must be at least 2")
+
+    existing_complaints = connection.execute(
+        "SELECT s_suppkey, s_comment FROM supplier WHERE s_comment LIKE '%Customer%Complaints%' ORDER BY s_suppkey"
+    ).fetchall()
+    probe_suppliers = connection.execute(
+        "SELECT s.s_suppkey, s.s_comment "
+        "FROM supplier s "
+        "WHERE EXISTS (SELECT 1 FROM partsupp ps WHERE ps.ps_suppkey = s.s_suppkey) "
+        f"ORDER BY s.s_suppkey LIMIT {int(multi_complaint_count)}"
+    ).fetchall()
+    if len(probe_suppliers) < 2:
+        return [
+            Divergence(16, 0, f"insufficient partsupp suppliers ({len(probe_suppliers)}) for multi-complaint probe")
+        ]
+
+    saved_comments = {int(suppkey): str(comment) for suppkey, comment in (*existing_complaints, *probe_suppliers)}
+    sweep_kwargs = {
+        "query_ids": [16],
+        "translate_variant": translate_variant,
+        "variant_query": variant_query,
+        "skip_variants": skip_variants,
+        "execute_transform": execute_transform,
+    }
+    try:
+        if existing_complaints:
+            existing_ids = ", ".join(str(int(suppkey)) for suppkey, _ in existing_complaints)
+            connection.execute(
+                f"UPDATE supplier SET s_comment = 'regular supplier' WHERE s_suppkey IN ({existing_ids})"
+            )
+        zero_divergences = find_divergences(connection, tpchavoc, canonical_query, **sweep_kwargs)
+
+        probe_ids = ", ".join(str(int(suppkey)) for suppkey, _ in probe_suppliers)
+        connection.execute(
+            f"UPDATE supplier SET s_comment = 'Customer Complaints probe' WHERE s_suppkey IN ({probe_ids})"
+        )
+        multi_divergences = find_divergences(connection, tpchavoc, canonical_query, **sweep_kwargs)
+    finally:
+        for suppkey, comment in saved_comments.items():
+            escaped = comment.replace("'", "''")
+            connection.execute(f"UPDATE supplier SET s_comment = '{escaped}' WHERE s_suppkey = {suppkey}")
+
+    merged = _merge_divergences([], zero_divergences, context_label="|excluded|=0")
+    return _merge_divergences(merged, multi_divergences, context_label=f"|excluded|={len(probe_suppliers)}")
+
+
 def run_duckdb_gate() -> int:
     import tempfile
 
@@ -276,8 +353,28 @@ def run_duckdb_gate() -> int:
         connection, tpchavoc, tpch = build_duckdb_with_tpch(EQUIVALENCE_SCALE, tmp)
         try:
             divergences = find_divergences(connection, tpchavoc, lambda q: tpch.get_query(q))
+            q16_cardinality_divergences = find_q16_cardinality_divergences(
+                connection, tpchavoc, lambda q: tpch.get_query(q)
+            )
+            divergences = _merge_divergences(
+                divergences,
+                q16_cardinality_divergences,
+                context_label="q16-cardinality",
+            )
         finally:
             connection.close()
+
+    with tempfile.TemporaryDirectory() as tmp_subscale:
+        sub_conn, sub_havoc, sub_tpch = build_duckdb_with_tpch(SUBSCALE_EQUIVALENCE_SCALE, tmp_subscale)
+        try:
+            subscale_divergences = find_divergences(sub_conn, sub_havoc, lambda q: sub_tpch.get_query(q))
+            divergences = _merge_divergences(
+                divergences,
+                subscale_divergences,
+                context_label=f"SF={SUBSCALE_EQUIVALENCE_SCALE}",
+            )
+        finally:
+            sub_conn.close()
 
     total = len(tpchavoc.get_implemented_queries()) * 10
     return _report(

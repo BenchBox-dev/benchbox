@@ -95,6 +95,7 @@ KNOWN_DEFECT_IDS = frozenset(
     {
         "defective-macdbgen-addresses",
         "defective-tpcds-obt-parameters",
+        "defective-tpchavoc-variant-divergence",
         "defective-windows-dsdgen-scale",
     }
 )
@@ -1904,6 +1905,78 @@ def throughput_stream_defects(data: dict[str, Any]) -> list[str]:
     return vr.errors
 
 
+def _manifest_known_defects(bundle_path: str | Path) -> set[str]:
+    try:
+        candidate = Path(bundle_path)
+    except (TypeError, ValueError):
+        return set()
+    if candidate.suffix != ".json" or _is_submission_manifest_path(candidate):
+        return set()
+    sidecar = candidate.with_name(f"{candidate.stem}{SUBMISSION_MANIFEST_SUFFIX}")
+    if not sidecar.is_file():
+        return set()
+    try:
+        payload = json.loads(sidecar.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return set()
+    if not isinstance(payload, dict):
+        return set()
+    defects = payload.get("known_defects")
+    if not isinstance(defects, list):
+        return set()
+    return {item for item in defects if isinstance(item, str)}
+
+
+def _validate_tpchavoc_variant_row_counts(
+    data: dict[str, Any],
+    vr: ValidationResult,
+    *,
+    allow_partial_validation: bool = False,
+) -> None:
+    if _bundle_benchmark_id(data) != "tpchavoc":
+        return
+    queries = data.get("queries")
+    if not isinstance(queries, list):
+        return
+
+    by_base: dict[str, dict[str, set[int]]] = {}
+    for query in queries:
+        if not isinstance(query, dict):
+            continue
+        if str(query.get("run_type") or "measurement").strip().lower() != "measurement":
+            continue
+        status = query.get("status")
+        if not isinstance(status, str) or status.upper() not in _PASS_TIMING_STATUSES:
+            continue
+        normalized_qid = _normalize_coverage_query_id(query.get("id"))
+        if normalized_qid not in TPCHAVOC_CANONICAL_VARIANTS:
+            continue
+        rows = query.get("rows")
+        if isinstance(rows, bool) or not isinstance(rows, int) or rows < 0:
+            vr.error(
+                f"tpchavoc query {normalized_qid} has successful status {status!r} but missing or invalid rows: {rows!r}"
+            )
+            continue
+        base_id = normalized_qid.split("_v")[0]
+        by_base.setdefault(base_id, {}).setdefault(normalized_qid, set()).add(rows)
+
+    exempted = allow_partial_validation and "defective-tpchavoc-variant-divergence" in _manifest_known_defects(vr.path)
+    for base_id in sorted(by_base, key=int):
+        variant_rows = by_base[base_id]
+        distinct_counts = {count for counts in variant_rows.values() for count in counts}
+        if len(distinct_counts) <= 1:
+            continue
+        summary_parts = [
+            f"{vid}={next(iter(counts)) if len(counts) == 1 else sorted(counts)}"
+            for vid, counts in sorted(variant_rows.items(), key=lambda item: int(item[0].split("_v")[1]))
+        ]
+        msg = f"tpchavoc query {base_id} variants report inconsistent row counts ({', '.join(summary_parts)})"
+        if exempted:
+            vr.warn(msg)
+        else:
+            vr.error(msg)
+
+
 def _validate_execution_consistency(data: dict[str, Any], vr: ValidationResult) -> None:
     summary = data.get("summary")
     if not isinstance(summary, dict) or _normalize_status(summary.get("validation")) != PUBLIC_CLEAN_VALIDATION_STATUS:
@@ -2009,6 +2082,7 @@ def _validate_bundle(
     _warn_small_scale_floor(data, vr)
     _validate_query_coverage(data, vr, allow_partial_validation=allow_partial_validation)
     _validate_execution_consistency(data, vr)
+    _validate_tpchavoc_variant_row_counts(data, vr, allow_partial_validation=allow_partial_validation)
     for message in override_artifact_errors(vr.path):
         vr.error(message)
     _validate_validation_phase_consistency(data, vr)

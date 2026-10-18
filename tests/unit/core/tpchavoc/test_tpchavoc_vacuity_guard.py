@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 import pytest
 
 import benchbox.core.tpchavoc.equivalence as equivalence_module
-from benchbox.core.tpchavoc.equivalence import _report, find_divergences
+from benchbox.core.tpchavoc.equivalence import _report, find_divergences, find_q16_cardinality_divergences
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -125,3 +125,119 @@ def test_report_vacuity_guard_stays_green_with_no_new_or_resolved_entries(capsys
     out = capsys.readouterr().out
     assert exit_code == 0
     assert "All variants equivalent to canonical TPC-H" in out
+
+
+def _build_q16_duckdb_fixture():
+    import duckdb
+
+    from benchbox.core.tpchavoc.benchmark import TPCHavocBenchmark
+
+    conn = duckdb.connect(":memory:")
+    benchmark = TPCHavocBenchmark(scale_factor=0.1)
+    for statement in benchmark.get_create_tables_sql(dialect="duckdb").strip().split(";"):
+        if statement.strip():
+            conn.execute(statement.strip())
+
+    conn.execute(
+        """
+        INSERT INTO part VALUES
+            (1, 'part1', 'mfgr1', 'Brand#11', 'STANDARD ANODIZED TIN', 3, 'SM BOX', 100.0, 'ok'),
+            (2, 'part2', 'mfgr1', 'Brand#22', 'SMALL PLATED BRASS', 14, 'LG CASE', 200.0, 'ok');
+        INSERT INTO supplier VALUES
+            (10, 'supp10', 'addr', 1, '11-111', 100.0, 'Customer Complaints initial'),
+            (20, 'supp20', 'addr', 1, '22-222', 200.0, 'reliable supplier'),
+            (30, 'supp30', 'addr', 1, '33-333', 300.0, 'prompt delivery'),
+            (40, 'supp40', 'addr', 1, '44-444', 400.0, 'trusted vendor');
+        INSERT INTO partsupp VALUES
+            (1, 10, 5, 10.0, 'ps10'),
+            (1, 20, 5, 10.0, 'ps20'),
+            (1, 30, 5, 10.0, 'ps30'),
+            (2, 20, 5, 10.0, 'ps20b'),
+            (2, 40, 5, 10.0, 'ps40');
+        """
+    )
+    return conn, benchmark
+
+
+def test_find_q16_cardinality_divergences_verifies_zero_and_multi_complaints_and_restores_comments():
+    conn, benchmark = _build_q16_duckdb_fixture()
+    try:
+        canonical_q16 = benchmark.get_query("16_v3")
+        before = conn.execute("SELECT s_suppkey, s_comment FROM supplier ORDER BY s_suppkey").fetchall()
+
+        divergences = find_q16_cardinality_divergences(conn, benchmark, lambda _q: canonical_q16)
+        after = conn.execute("SELECT s_suppkey, s_comment FROM supplier ORDER BY s_suppkey").fetchall()
+
+        assert divergences == []
+        assert after == before
+
+        defective_cross_join_16_v6 = """
+            SELECT p.p_brand, p.p_type, p.p_size, count(distinct ps.ps_suppkey) as supplier_cnt
+            FROM partsupp ps, part p, (
+                SELECT s_suppkey as excluded_suppkey
+                FROM supplier
+                WHERE s_comment like '%Customer%Complaints%'
+            ) excluded
+            WHERE p.p_partkey = ps.ps_partkey
+              AND p.p_brand <> 'Brand#45'
+              AND p.p_type not like 'MEDIUM POLISHED%'
+              AND p.p_size in (49, 14, 23, 45, 19, 3, 36, 9)
+              AND ps.ps_suppkey <> excluded.excluded_suppkey
+            GROUP BY p.p_brand, p.p_type, p.p_size
+            ORDER BY supplier_cnt desc, p.p_brand, p.p_type, p.p_size
+        """
+        single_complaint_divs = find_divergences(
+            conn,
+            benchmark,
+            lambda _q: canonical_q16,
+            query_ids=[16],
+            variant_query=lambda _q, v: defective_cross_join_16_v6 if v == 6 else benchmark.get_query(f"16_v{v}"),
+        )
+        assert single_complaint_divs == []
+
+        multi_cardinality_divs = find_q16_cardinality_divergences(
+            conn,
+            benchmark,
+            lambda _q: canonical_q16,
+            variant_query=lambda _q, v: defective_cross_join_16_v6 if v == 6 else benchmark.get_query(f"16_v{v}"),
+        )
+        assert [d.key for d in multi_cardinality_divs] == ["16_v6"]
+        assert "|excluded|=0" in multi_cardinality_divs[0].detail
+    finally:
+        conn.close()
+
+
+def test_q8_v7_and_q14_v7_coalesce_empty_filtered_numerator_groups():
+    import duckdb
+
+    from benchbox.core.tpchavoc.benchmark import TPCHavocBenchmark
+
+    conn = duckdb.connect(":memory:")
+    benchmark = TPCHavocBenchmark(scale_factor=0.01)
+    try:
+        for statement in benchmark.get_create_tables_sql(dialect="duckdb").strip().split(";"):
+            if statement.strip():
+                conn.execute(statement.strip())
+
+        conn.execute(
+            """
+            INSERT INTO region VALUES (1, 'AMERICA', 'ok');
+            INSERT INTO nation VALUES (1, 'CANADA', 1, 'ok'), (2, 'BRAZIL', 1, 'ok');
+            INSERT INTO part VALUES (1, 'p1', 'm1', 'Brand#11', 'ECONOMY ANODIZED STEEL', 1, 'SM BOX', 10.0, 'ok');
+            INSERT INTO supplier VALUES (1, 's1', 'a', 1, '11', 10.0, 'ok');
+            INSERT INTO customer VALUES (1, 'c1', 'a', 1, '11', 10.0, 'AUTOMOBILE', 'ok');
+            INSERT INTO orders VALUES (1, 1, 'O', 100.0, DATE '1995-06-15', '1-URGENT', 'Clerk#1', 0, 'ok');
+            INSERT INTO lineitem VALUES
+                (1, 1, 1, 1, 10.0, 100.0, 0.05, 0.02, 'N', 'O', DATE '1995-09-15', DATE '1995-09-15', DATE '1995-09-20', 'NONE', 'AIR', 'ok');
+            """
+        )
+
+        divergences = find_divergences(
+            conn,
+            benchmark,
+            lambda q: benchmark.get_query(f"{q}_v3"),
+            query_ids=[8, 14],
+        )
+        assert divergences == []
+    finally:
+        conn.close()
