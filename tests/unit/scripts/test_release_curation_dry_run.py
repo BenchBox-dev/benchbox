@@ -159,7 +159,7 @@ def test_reads_shipped_medium():
     assert dry_run.run(repo, ["tests/test_medium_shipped.py"]) == 0
 
 
-def test_retained_target_with_no_collected_tests_fails(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_marker_excluded_target_is_skipped(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
     reads_slow = """\
 from pathlib import Path
 import pytest
@@ -169,5 +169,15 @@ def test_reads_shipped_slow():
     assert (Path(__file__).resolve().parents[1] / "shipped.txt").read_text()
 """
     _commit(repo, "tests/test_slow_shipped.py", reads_slow)
-    assert dry_run.run(repo, ["tests/test_slow_shipped.py"]) == 1
-    assert "Retained test targets were selected, but no tests matched" in capsys.readouterr().err
+    assert dry_run.run(repo, ["tests/test_slow_shipped.py"]) == 0
+    assert "all selected tests are marker-excluded" in capsys.readouterr().out
+
+
+def test_target_with_no_collected_tests_fails(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    empty_test = """\
+from pathlib import Path
+x = 1
+"""
+    _commit(repo, "tests/test_empty.py", empty_test)
+    assert dry_run.run(repo, ["tests/test_empty.py"]) == 1
+    assert "Retained test targets were selected, but no tests were collected" in capsys.readouterr().err

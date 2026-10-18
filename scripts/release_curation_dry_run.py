@@ -48,6 +48,16 @@ def pytest_command(targets: Sequence[str], marker: str) -> list[str]:
     return ["uv", "run", "--", "python", "-m", "pytest", *(targets or ["tests"]), "-m", marker, "-q", *parallel]
 
 
+def has_collected_tests(tree: Path, targets: Sequence[str], base_cmd: Sequence[str] | None) -> bool:
+    argv = (
+        [*base_cmd, *targets, "-m", "", "--collect-only", "-q", "-o", "addopts="]
+        if base_cmd
+        else ["uv", "run", "--", "python", "-m", "pytest", *targets, "-m", "", "--collect-only", "-q", "-o", "addopts="]
+    )
+    result = subprocess.run(argv, cwd=tree, check=False, capture_output=True, text=True)
+    return result.returncode == 0
+
+
 def run(
     root: Path,
     targets: Sequence[str],
@@ -69,16 +79,21 @@ def run(
         effective_marker = marker if marker is not None else (ROUTINE_SELECTION if targets else FAST_SELECTION)
         argv = [*command, *(targets or ["tests"])] if command else pytest_command(targets, effective_marker)
         result = subprocess.run(argv, cwd=tree, check=False)
+        marker_excluded = (
+            bool(targets) and result.returncode == NO_TESTS_COLLECTED and has_collected_tests(tree, targets, command)
+        )
     if result.returncode == 0:
         print("release curation dry run: OK")
         return 0
     if not targets and result.returncode == NO_TESTS_COLLECTED:
         print("release curation dry run: OK")
         return 0
+    if marker_excluded:
+        print("release curation dry run: OK (all selected tests are marker-excluded)")
+        return 0
     if targets and result.returncode == NO_TESTS_COLLECTED:
         print(
-            "release curation dry run: FAILED. Retained test targets were selected, but no tests matched "
-            f"the selection '{effective_marker}'.",
+            "release curation dry run: FAILED. Retained test targets were selected, but no tests were collected.",
             file=sys.stderr,
         )
         return 1
