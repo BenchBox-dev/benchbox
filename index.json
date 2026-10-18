@@ -8482,6 +8482,13 @@
       "status": "done",
       "title": "docs linkcheck turns transient external-site timeouts into a red CI job"
     },
+    "docs-mig-adr-ownership": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Define published documentation ownership and supersede the split decision"
+    },
     "docs-move-internal-to-internal-root": {
       "claim": null,
       "needs": [],
