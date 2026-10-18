@@ -1122,31 +1122,94 @@ def owned_paths(
     return results, findings
 
 
-def _wheel_metadata(wheel: bytes) -> dict[str, str]:
-    with zipfile.ZipFile(io.BytesIO(wheel)) as archive:
-        names = [name for name in archive.namelist() if re.fullmatch(r"[^/]+\.dist-info/METADATA", name)]
-        if len(names) != 1:
-            raise ValueError("wheel must carry exactly one dist-info METADATA file")
-        lines = archive.read(names[0]).decode("utf-8", errors="replace").splitlines()
-    fields: dict[str, str] = {}
-    for line in lines:
-        if not line.strip():
-            break
-        key, _, value = line.partition(":")
-        fields.setdefault(key.strip(), value.strip())
-    return fields
-
-
 def _normalized_name(value: str) -> str:
     return re.sub(r"[-_.]+", "-", value).lower()
 
 
-def _declares(requirement: str, owner: str) -> bool:
-    match = re.match(r"[A-Za-z0-9][A-Za-z0-9._-]*", requirement)
-    return match is not None and _normalized_name(match.group()) == _normalized_name(owner)
+def _parse_version(v: str) -> tuple[int, ...]:
+    clean = re.sub(r"[^0-9.]", "", v.partition("+")[0].partition("-")[0])
+    parts = clean.split(".")
+    if not parts or not all(p.isdigit() for p in parts):
+        raise ValueError(f"invalid version string: {v!r}")
+    return tuple(int(p) for p in parts)
 
 
-def verify_bound_wheel(root: Path, entry: dict, staged: bool) -> None:
+def _extract_version_from_path(path: str) -> str:
+    filename = PurePosixPath(path).name
+    parts = filename.split("-")
+    if len(parts) < 3 or not filename.endswith(".whl"):
+        raise ValueError(f"invalid wheel filename: {filename!r}")
+    return parts[1]
+
+
+def _declares(requirement: str, owner: str, cand_version: str) -> bool:
+    dep = requirement.partition(";")[0].strip()
+    match = re.match(r"^([A-Za-z0-9][A-Za-z0-9._-]*)(?:\[[^\]]*\])?(?:\s*(.*))?$", dep)
+    if not match:
+        return False
+    name, spec = match.group(1), (match.group(2) or "").strip()
+    if _normalized_name(name) != _normalized_name(owner):
+        return False
+    if not spec:
+        return True
+    cand_v = _parse_version(cand_version)
+    for clause in (c.strip() for c in spec.split(",")):
+        m = re.match(r"^(==|>=|<=|>|<|!=|~=)\s*([0-9]+(?:\.[0-9]+)*)", clause)
+        if not m:
+            continue
+        op, v_str = m.group(1), m.group(2)
+        v = _parse_version(v_str)
+        length = max(len(cand_v), len(v))
+        p_cand = cand_v + (0,) * (length - len(cand_v))
+        p_v = v + (0,) * (length - len(v))
+        if op == "==" and p_cand != p_v:
+            return False
+        if op == "!=" and p_cand == p_v:
+            return False
+        if op == ">=" and p_cand < p_v:
+            return False
+        if op == "<=" and p_cand > p_v:
+            return False
+        if op == ">" and p_cand <= p_v:
+            return False
+        if op == "<" and p_cand >= p_v:
+            return False
+        if op == "~=":
+            if p_cand < p_v:
+                return False
+            prefix = v[:-1] if len(v) > 1 else (v[0] + 1,)
+            upper = prefix[:-1] + (prefix[-1] + 1,)
+            p_upper = upper + (0,) * (length - len(upper))
+            if p_cand >= p_upper:
+                return False
+    return True
+
+
+def _wheel_metadata(wheel: bytes, owner: str) -> email.message.Message:
+    with zipfile.ZipFile(io.BytesIO(wheel)) as archive:
+        pattern = re.compile(r"^[A-Za-z0-9._]+-[^/]+\.dist-info/METADATA$", re.IGNORECASE)
+        metadata_paths = [name for name in archive.namelist() if pattern.match(name)]
+        if len(metadata_paths) != 1:
+            raise ValueError(f"wheel must carry exactly one dist-info METADATA file, found {metadata_paths}")
+        dist_name = metadata_paths[0].split("-", 1)[0]
+        if _normalized_name(dist_name) != _normalized_name(owner):
+            raise ValueError(f"wheel METADATA does not match: dist-info prefix {dist_name!r} does not match {owner!r}")
+        raw = archive.read(metadata_paths[0])
+        try:
+            text = raw.decode("utf-8")
+        except UnicodeError as exc:
+            raise ValueError(f"METADATA must be valid UTF-8: {exc}") from exc
+        msg = email.message_from_string(text)
+        names = msg.get_all("Name") or []
+        versions = msg.get_all("Version") or []
+        if len(names) != 1:
+            raise ValueError(f"METADATA must contain exactly one Name header, found {len(names)}")
+        if len(versions) != 1:
+            raise ValueError(f"METADATA must contain exactly one Version header, found {len(versions)}")
+        return msg
+
+
+def verify_bound_wheel(root: Path, entry: dict, expected_version: str, staged: bool) -> None:
     path, project_path, owner = entry["path"], entry["provenance"], entry["owner"]
     label = f"wheel bump is not verified: {path}"
     if not project_path.endswith("/pyproject.toml"):
@@ -1160,30 +1223,43 @@ def verify_bound_wheel(root: Path, entry: dict, staged: bool) -> None:
     try:
         project = tomllib.loads(project_raw.decode("utf-8"))
         locked = tomllib.loads(lock_raw.decode("utf-8"))
-        metadata = _wheel_metadata(wheel)
-    except (UnicodeError, tomllib.TOMLDecodeError, zipfile.BadZipFile, ValueError) as exc:
+        metadata = _wheel_metadata(wheel, owner)
+        source = str(PurePosixPath(path).relative_to(PurePosixPath(project_path).parent))
+        binding = project.get("tool", {}).get("uv", {}).get("sources", {}).get(owner)
+        if binding != {"path": source}:
+            raise ValueError(f"{label}: pyproject.toml does not bind {owner} to it")
+        dependencies = project.get("project", {}).get("dependencies", [])
+        if not any(_declares(dep, owner, expected_version) for dep in dependencies):
+            raise ValueError(f"{label}: {owner} is not a declared dependency")
+        packages = [package for package in locked.get("package", []) if package.get("name") == owner]
+        filename = PurePosixPath(path).name
+        digest = "sha256:" + hashlib.sha256(wheel).hexdigest()
+        if (
+            len(packages) != 1
+            or packages[0].get("source") != binding
+            or packages[0].get("wheels") != [{"filename": filename, "hash": digest}]
+        ):
+            raise ValueError(f"{label}: uv.lock does not record this file and hash")
+        if _normalized_name(metadata.get("Name", "")) != _normalized_name(owner):
+            raise ValueError(f"{label}: wheel METADATA Name does not match {owner}")
+        if metadata.get("Version") != expected_version:
+            raise ValueError(
+                f"{label}: wheel METADATA does not match: Version {metadata.get('Version')} != {expected_version}"
+            )
+        if packages[0].get("version") != expected_version:
+            raise ValueError(f"{label}: uv.lock version does not match {expected_version}")
+    except (
+        AttributeError,
+        TypeError,
+        KeyError,
+        ValueError,
+        UnicodeError,
+        tomllib.TOMLDecodeError,
+        zipfile.BadZipFile,
+    ) as exc:
+        if isinstance(exc, ValueError) and str(exc).startswith(label):
+            raise exc
         raise ValueError(f"{label}: {exc}") from exc
-    source = str(PurePosixPath(path).relative_to(PurePosixPath(project_path).parent))
-    binding = project.get("tool", {}).get("uv", {}).get("sources", {}).get(owner)
-    if binding != {"path": source}:
-        raise ValueError(f"{label}: pyproject.toml does not bind {owner} to it")
-    dependencies = project.get("project", {}).get("dependencies", [])
-    if not any(_declares(dependency, owner) for dependency in dependencies):
-        raise ValueError(f"{label}: {owner} is not a declared dependency")
-    packages = [package for package in locked.get("package", []) if package.get("name") == owner]
-    filename = PurePosixPath(path).name
-    version = filename.split("-")[1] if filename.count("-") >= 2 else ""
-    digest = "sha256:" + hashlib.sha256(wheel).hexdigest()
-    if (
-        len(packages) != 1
-        or packages[0].get("source") != binding
-        or packages[0].get("wheels") != [{"filename": filename, "hash": digest}]
-    ):
-        raise ValueError(f"{label}: uv.lock does not record this file and hash")
-    if _normalized_name(metadata.get("Name", "")) != _normalized_name(owner) or metadata.get("Version") != version:
-        raise ValueError(f"{label}: wheel METADATA does not match {owner} {version}")
-    if packages[0].get("version") != version:
-        raise ValueError(f"{label}: uv.lock version does not match the wheel")
 
 
 def is_wheel_bump(candidate_entry: dict, baseline_entry: dict) -> bool:
@@ -1199,24 +1275,52 @@ def is_wheel_bump(candidate_entry: dict, baseline_entry: dict) -> bool:
         return False
     cand_dist = cand_path.name.split("-", 1)[0]
     base_dist = base_path.name.split("-", 1)[0]
-    return cand_dist == base_dist
+    return _normalized_name(cand_dist) == _normalized_name(base_dist)
 
 
-def bumped_by_head_policy(root: Path, entry: dict[str, str], staged: bool) -> bool:
-    raw = head_blob(root, COMMENT_POLICY_PATH, staged)
-    if raw is None:
-        return False
-    head_external = load_comment_policy(raw)["external"]
-    if entry in head_external:
-        return False
-    for candidate in head_external:
-        if not (is_wheel_bump(candidate, entry) and candidate["path"] != entry["path"]):
+def check_ratchet(policy: dict, baseline: dict) -> None:
+    if baseline.get("enforcement", "blocking") == "blocking" and policy.get("enforcement", "blocking") == "advisory":
+        raise ValueError("enforcement cannot be relaxed from blocking to advisory")
+    if not set(baseline["completed"]).issubset(policy["completed"]):
+        raise ValueError("completed scopes cannot be removed")
+    for entry in policy["external"]:
+        if entry in baseline["external"]:
             continue
-        try:
-            verify_bound_wheel(root, candidate, staged)
+        matched_base = [b for b in baseline["external"] if is_wheel_bump(entry, b)]
+        if matched_base and not any(b in policy["external"] for b in matched_base):
+            continue
+        raise ValueError("candidate policy cannot add or expand external exclusions")
+
+
+def bumped_by_head_policy(root: Path, base: str, entry: dict[str, str], staged: bool) -> bool:
+    raw_head = head_blob(root, COMMENT_POLICY_PATH, staged)
+    if raw_head is None:
+        return False
+    try:
+        base_policy = load_comment_policy(base_blob(root, base, COMMENT_POLICY_PATH))
+        head_policy = load_comment_policy(raw_head)
+        check_ratchet(head_policy, base_policy)
+        head_external = head_policy["external"]
+        if entry in head_external:
+            return False
+        base_v = _extract_version_from_path(entry["path"])
+        for candidate in head_external:
+            if not (is_wheel_bump(candidate, entry) and candidate["path"] != entry["path"]):
+                continue
+            cand_v = _extract_version_from_path(candidate["path"])
+            if _parse_version(cand_v) <= _parse_version(base_v):
+                continue
+            verify_bound_wheel(root, candidate, cand_v, staged)
             return True
-        except ValueError:
-            continue
+    except (
+        ValueError,
+        PolicyError,
+        KeyError,
+        TypeError,
+        AttributeError,
+        subprocess.CalledProcessError,
+    ):
+        return False
     return False
 
 
@@ -1286,7 +1390,7 @@ def immutable_dependency_artifacts(
         try:
             current = candidate_bytes(path)
         except (OSError, subprocess.CalledProcessError):
-            if bumped_by_head_policy(root, entry, staged):
+            if bumped_by_head_policy(root, base, entry, staged):
                 continue
             raise PolicyError(f"immutable dependency artifact removed: {path}") from None
         if current != raw:

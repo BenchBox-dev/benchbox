@@ -21,6 +21,9 @@ from check_comment_cleanup_scope import (
     COMMENT_POLICY_DIRECTIVES,
     COMMENT_POLICY_ENFORCEMENT_MODES,
     POLICY_PATH as SCOPE_POLICY_PATH,
+    _extract_version_from_path,
+    _parse_version,
+    check_ratchet,
     comment_policy_matches as matches,
     immutable_external_ownership,
     is_wheel_bump as _is_wheel_bump,
@@ -76,20 +79,6 @@ def expired_policy_findings(policy: dict) -> list[Finding]:
     ]
 
 
-def check_ratchet(policy: dict, baseline: dict) -> None:
-    if baseline.get("enforcement", "blocking") == "blocking" and policy.get("enforcement", "blocking") == "advisory":
-        raise ValueError("enforcement cannot be relaxed from blocking to advisory")
-    if not set(baseline["completed"]).issubset(policy["completed"]):
-        raise ValueError("completed scopes cannot be removed")
-    for entry in policy["external"]:
-        if entry in baseline["external"]:
-            continue
-        matched_base = [b for b in baseline["external"] if _is_wheel_bump(entry, b)]
-        if matched_base and not any(b in policy["external"] for b in matched_base):
-            continue
-        raise ValueError("candidate policy cannot add or expand external exclusions")
-
-
 def revision_bytes(root: Path, path: str, staged: bool) -> bytes | None:
     try:
         return git(root, "show", f":{path}") if staged else (root / path).read_bytes()
@@ -102,8 +91,13 @@ def verify_wheel_bumps(root: Path, policy: dict, baseline: dict, staged: bool) -
     for entry in policy["external"]:
         if entry in baseline["external"]:
             continue
-        if any(_is_wheel_bump(entry, b) for b in baseline["external"]):
-            verify_bound_wheel(root, entry, staged)
+        matched_base = [b for b in baseline["external"] if _is_wheel_bump(entry, b)]
+        if matched_base:
+            base_v = _extract_version_from_path(matched_base[0]["path"])
+            cand_v = _extract_version_from_path(entry["path"])
+            if _parse_version(cand_v) <= _parse_version(base_v):
+                raise ValueError(f"wheel bump version {cand_v} must be strictly greater than base {base_v}")
+            verify_bound_wheel(root, entry, cand_v, staged)
             verified.add(entry["path"])
     return verified
 
