@@ -7,7 +7,7 @@
     "nightly-t3.md Issues section describes R1-R5 and the unchanged owner response policy",
     "PR merged with a success oracle-review verdict (no stand-in) and required checks green; live behavior is proven by autogen-nightly-dispatch-verify-20261018"
   ],
-  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs every line with evidence. FAIL if a passing run no longer closes an open issue, if cancelled can close, or if the job gains permissions. Verify the quoted lines against current nightly-v2.yml before editing (G12). The durations behavior change is a separate item that needs this one (same file).\nPre-publication (AGENTS.md): self-review with the code review action and fix every Critical and Required finding before make pr-open (G13).",
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs every line with evidence. FAIL if a passing run no longer closes an open issue, if cancelled can close, or if the job gains permissions. Verify the quoted lines against current nightly-v2.yml before editing (G12). The durations behavior change is a separate item that needs this one (same file).\nPre-publication (AGENTS.md): self-review with the code review action and fix every Critical and Required finding before make pr-open (G13).\n\nEVIDENCE (controller, 2026-10-18): PR #3153 merged as 26bac4a8fc4a0d5c86ccdfff570d7f8497768557 after oracle-review success on c62b881ad. 18 new tests in tests/unit/workflows/test_nightly_t3_report_lifecycle.py (9 failed on the old workflow, all pass after); 105 pass with the existing report and mirror tests; the #2827 -> #2874 replay reopens instead of creating; job permissions asserted unchanged; no new labels; nightly-t3.md Issues section lists R1-R5. GATE-J: the report step runs under bash with a stub gh, so no script extraction was needed. Live proof is autogen-nightly-dispatch-verify-20261018.",
   "description": "Confirmed from the report job (.github/workflows/nightly-v2.yml, 'Open, update, or close one issue per domain', about lines 1058-1115) and the runbook (docs/internal/nightly-t3.md 'Issues'): a failing domain comments on every red run; a passing run closes the issue; the next red run creates a new issue; cancelled and skipped results change nothing (the '*)' branch), so Windows 50-minute timeouts were silent. Four domains account for 13 of the 17 nightly issues (durations 5, docker 3, perf 3, linkcheck 2); e.g. durations issue #2827 was closed by a green run and #2874 opened about 8 hours later.\nDecision D1 (behavior to implement):\nR1 failure + open issue: comment only if the failed-job signature differs from the signature recorded in the last bot comment (store it as a hidden marker in the comment body).\nR2 failure + no open issue: if the most recently closed issue for the t3:<domain> label was closed within 14 days, reopen it and comment; otherwise create a new issue.\nR3 success + open issue: comment and close (runbook rule unchanged).\nR4 cancelled: if an issue is open, comment 'no verdict (cancelled or timed out)' once per run; never create, never close. skipped: no change.\nR5 signature = sorted names of the failed jobs for the domain; for docker and throughput-cedardb list mirror-leg and database-leg jobs separately. Keep one label per domain; add no new labels.\nUpdate docs/internal/nightly-t3.md (Issues section) in the same change. The report job stays the only job with issues: write and gains no new permission or secret.\nGATE-J (before editing): confirm the report step can be extracted and run under bash with a stub gh. If the YAML-embedded script cannot be exercised that way, move the logic into a script the workflow calls (same soundness review), and record that decision in context.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/issues/2874",
@@ -56,6 +56,14 @@
       "generation": "63985c5ed49041aa9305271880910585",
       "op": "take",
       "op_id": "52c4852fa8774ea5b68cc0381bdb92c9",
+      "session_id": "0722acca462b419aa525d939aedd0290"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a",
+      "at": "2026-10-18T22:36:25Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f0c09e120d55437b818b2138336595ee",
       "session_id": "0722acca462b419aa525d939aedd0290"
     }
   ]
