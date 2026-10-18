@@ -14785,6 +14785,15 @@
       "status": "open",
       "title": "BenchBox: pin the vendored ship-no-ship wheel and run the oracle from it"
     },
+    "oracle-local-b2-record-workflow-and-proof": {
+      "claim": null,
+      "needs": [
+        "oracle-local-b1-engine-pin"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "BenchBox: record workflow, proof mode and engine-installed check for the local oracle"
+    },
     "oracle-map-staged-gate-scale-and-label-vocabulary": {
       "claim": null,
       "needs": [],
