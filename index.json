@@ -23836,6 +23836,13 @@
       "status": "done",
       "title": "Sample TPC-Havoc variant equivalence on a fourth SQL engine (ClickHouse)"
     },
+    "tpchavoc-multi-cardinality-equivalence-and-bundle-check": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Close the single-scale TPC-Havoc equivalence blind spot and validate cross-variant row counts in corpus bundles"
+    },
     "tpchavoc-pg-alias-inline": {
       "claim": null,
       "needs": [],

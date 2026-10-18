@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Extend TPC-Havoc equivalence testing (benchbox/core/tpchavoc/equivalence.py or tests/unit/tpchavoc/) to cover predicate cardinalities |excluded| == 0 and |excluded| >= 2 (e.g., SF=0.01 or multi-row fixtures) so cardinality-dependent variant bugs cannot pass solely at SF=0.1.",
+    "Add a cross-variant row-count agreement check for TPC-Havoc bundles in benchbox/validation/bundle.py (or corpus validation) so variants of the same base query that return divergent row counts within a run are flagged.",
+    "Audit and remediate or re-run the existing SF=0.01 TPC-Havoc bundles in results-data/bundles/ that recorded rows: 0 for 16_v6 prior to PR #3003."
+  ],
+  "context": "Discovered during review of PR #3003 (issue #3001). At SF=1.0 on DuckDB, 16_v6 was the sole variant out of 220 that diverged from its base query (returning inflated supplier_cnt on 50 groups because |excluded| == 4), while at SF=0.01 (|excluded| == 0) 16_v6 returned 0 rows vs 296 for base Q16.",
+  "description": "TPC-Havoc 16_v6 previously cross-joined the complaint-supplier derived table with ps.ps_suppkey <> excluded.excluded_suppkey, which coincides with NOT IN only when |excluded| == 1. Because benchbox/core/tpchavoc/equivalence.py:23 runs the equivalence oracle only at EQUIVALENCE_SCALE = 0.1 (where TPC-H dbgen produces exactly 1 supplier matching '%Customer%Complaints%'), the bug went undetected by the equivalence gate. Meanwhile, stored SF=0.01 corpus bundles (where |excluded| == 0, including tpchavoc_sf001_duckdb_sql_20260826_163147_d96baca2.json, tpchavoc_sf001_datafusion_sql_20260826_165844_721d2f5e.json, and tpchavoc_sf001_clickhouse_local_sql_20260826_171608_ce266327.json) recorded rows: 0 and status: SUCCESS for 16_v6 alongside rows: 296 for 16_v1..v5 and 16_v7..v10, passing _validate_query_timing_and_status in benchbox/validation/bundle.py:1123-1132 because bundle validation does not check cross-variant row-count consistency within a TPC-Havoc run.",
+  "links": [
+    "benchbox/core/tpchavoc/equivalence.py",
+    "benchbox/validation/bundle.py",
+    "results-data/bundles/tpchavoc_sf001_duckdb_sql_20260826_163147_d96baca2.json",
+    "results-data/bundles/tpchavoc_sf001_datafusion_sql_20260826_165844_721d2f5e.json",
+    "results-data/bundles/tpchavoc_sf001_clickhouse_local_sql_20260826_171608_ce266327.json"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:83b3829dccae64b585f393fd",
+      "at": "2026-10-18T00:22:56Z",
+      "client": "antigravity-client",
+      "op": "create",
+      "op_id": "0dc6dea50031408f8cbed57f9cd0f060",
+      "session_id": "9a67c1a5fd8d43a3a852dde174db8062"
+    }
+  ]
+}
