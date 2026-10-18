@@ -318,7 +318,8 @@ def render_markdown(rows: list[dict[str, Any]]) -> str:
         "`value+cardinality` (both) — and the **Scale** column says at which scale it "
         "actually holds. Both are derived from live sources (the provider's stored "
         "answers/digests and the equivalence gate's bounded scale), not hand-labelled. "
-        "The `tpch`/`tpcds` expected-results oracles exist only at SF=1, so "
+        "The `tpch` expected-results oracle exists only at SF=1 and the `tpcds` "
+        "oracle exists at SF=1 plus recorded subscale row counts, so "
         "`tpch`/`tpcds` values are unguarded above SF=1 — the tpch "
         "**Strength** cell states this inline so the row is self-contained."
     )

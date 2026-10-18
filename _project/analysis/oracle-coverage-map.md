@@ -1,6 +1,6 @@
 <!-- PROVENANCE
-generated: 2026-10-17
-content-revision: sha256:f039cb6412b7749c
+generated: 2026-10-18
+content-revision: sha256:66231511773206b8
 This header is drift-IGNORED by `--check` (see _strip_provenance). content-revision
 is a hash of the generated body (markdown + json), NOT a git SHA: a PR-branch SHA is
 orphaned by squash-merge, so to verify this artifact, regenerate it with
@@ -15,7 +15,7 @@ does this). Do not rely on this header for diffs.
 
 **Summary:** 23 shipped benchmarks — 15 guarded (oracle registered), 8 UNGUARDED (6 reachable by the cross-surface gate, 2 single-surface needing a fallback oracle). Cross-surface gates: 14 CI-enforced, 0 staged (not CI-enforced).
 
-**Strength + scale disclosure:** a guarded cell is not a uniform guarantee. The **Strength** column says what the oracle proves — `value-level` (full result values compared) vs `cardinality-only` (row counts only) vs `value+cardinality` (both) — and the **Scale** column says at which scale it actually holds. Both are derived from live sources (the provider's stored answers/digests and the equivalence gate's bounded scale), not hand-labelled. The `tpch`/`tpcds` expected-results oracles exist only at SF=1, so `tpch`/`tpcds` values are unguarded above SF=1 — the tpch **Strength** cell states this inline so the row is self-contained.
+**Strength + scale disclosure:** a guarded cell is not a uniform guarantee. The **Strength** column says what the oracle proves — `value-level` (full result values compared) vs `cardinality-only` (row counts only) vs `value+cardinality` (both) — and the **Scale** column says at which scale it actually holds. Both are derived from live sources (the provider's stored answers/digests and the equivalence gate's bounded scale), not hand-labelled. The `tpch` expected-results oracle exists only at SF=1 and the `tpcds` oracle exists at SF=1 plus recorded subscale row counts, so `tpch`/`tpcds` values are unguarded above SF=1 — the tpch **Strength** cell states this inline so the row is self-contained.
 
 **Reference-independence disclosure:** the **Independence** column answers one question — is the oracle's reference an authority *outside* benchbox? It is orthogonal to Strength (a `value-level` oracle can still be weak). `semi-independent` means an external authority is consulted for part of the claim only: the published TPC answer sets pin `tpcds` row counts, never its values. `self-referential` means benchbox is compared against benchbox — either two of its own surfaces (every cross-surface and variant gate) or a frozen snapshot of its own past output (the `tpch` value digests). A self-referential oracle catches drift and regressions; it cannot catch a mistake both sides share. The **Independence rationale** column gives the per-row reason.
 

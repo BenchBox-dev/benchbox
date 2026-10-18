@@ -9,6 +9,9 @@ import benchbox.core.expected_results  # noqa: F401
 from benchbox.core.expected_results.models import ValidationMode, ValidationResult
 from benchbox.core.expected_results.registry import LoadOutcome, get_registry
 from benchbox.core.expected_results.ssb_results import normalize_ssb_query_id
+from benchbox.core.expected_results.tpcds_results import (
+    TPCDS_PARAMETER_SENSITIVE_QUERY_IDS as _TPCDS_PARAMETER_SENSITIVE_QUERY_IDS,
+)
 from benchbox.core.expected_results.tpch_results import (
     PARAMETER_SENSITIVE_QUERY_IDS as _TPCH_PARAMETER_SENSITIVE_QUERY_IDS,
 )
@@ -18,6 +21,8 @@ logger = logging.getLogger(__name__)
 _PARAMETER_SENSITIVE_QUERY_IDS_BY_BENCHMARK: dict[str, frozenset[str]] = {
     "tpch": _TPCH_PARAMETER_SENSITIVE_QUERY_IDS,
     "tpc-h": _TPCH_PARAMETER_SENSITIVE_QUERY_IDS,
+    "tpcds": _TPCDS_PARAMETER_SENSITIVE_QUERY_IDS,
+    "tpc-ds": _TPCDS_PARAMETER_SENSITIVE_QUERY_IDS,
 }
 
 
@@ -154,7 +159,13 @@ class QueryValidator:
 
         query_id_normalized = self._normalize_query_id(benchmark_type, query_id)
 
-        if get_reference_seed_context() is False and benchmark_type.lower() in _NON_REFERENCE_SEED_EXCLUDED_BENCHMARKS:
+        if (
+            get_reference_seed_context() is False
+            and benchmark_type.lower() in _NON_REFERENCE_SEED_EXCLUDED_BENCHMARKS
+            and (
+                query_id_normalized in get_parameter_sensitive_query_ids(benchmark_type) or (scale_factor or 1.0) == 1.0
+            )
+        ):
             _warn_stream_seed_override_once(benchmark_type, self._resolve_tpcds_run_mode(benchmark_type))
             return ValidationResult(
                 is_valid=True,
@@ -198,7 +209,7 @@ class QueryValidator:
                 error_message=error_msg,
             )
 
-        if expected_result is not None and benchmark_type.lower() == "tpcds":
+        if expected_result is not None and benchmark_type.lower() == "tpcds" and (scale_factor or 1.0) == 1.0:
             run_mode = self._resolve_tpcds_run_mode(benchmark_type)
             if run_mode is not None and run_mode != expected_result.validation_mode:
                 import dataclasses
