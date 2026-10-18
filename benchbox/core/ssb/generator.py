@@ -48,7 +48,7 @@ class SSBDataGenerator(CompressionMixin, CloudStorageGeneratorMixin):
         self.base_lineorders = 6000000
         self.date_rows = 2556
 
-        random.seed(42)
+        self._rng = random.Random(42)
 
         self._nations = [
             "ALGERIA",
@@ -338,9 +338,9 @@ class SSBDataGenerator(CompressionMixin, CloudStorageGeneratorMixin):
             for i in range(1, num_customers + 1):
                 c_custkey = i
                 c_name = f"Customer#{i:09d}"
-                c_address = f"Address {random.randint(1, 999)} Street"
+                c_address = f"Address {self._rng.randint(1, 999)} Street"
 
-                nation = random.choice(self._nations)
+                nation = self._rng.choice(self._nations)
                 if nation in [
                     "ALGERIA",
                     "EGYPT",
@@ -371,11 +371,11 @@ class SSBDataGenerator(CompressionMixin, CloudStorageGeneratorMixin):
                 else:
                     region = "MIDDLE EAST"
 
-                c_city = f"{nation[:9]}{random.randint(0, 9)}"
+                c_city = f"{nation[:9]}{self._rng.randint(0, 9)}"
                 c_nation = nation
                 c_region = region
-                c_phone = f"{random.randint(10, 99)}-{random.randint(100, 999)}-{random.randint(1000, 9999)}"
-                c_mktsegment = random.choice(self._segments)
+                c_phone = f"{self._rng.randint(10, 99)}-{self._rng.randint(100, 999)}-{self._rng.randint(1000, 9999)}"
+                c_mktsegment = self._rng.choice(self._segments)
 
                 row = [
                     c_custkey,
@@ -403,9 +403,9 @@ class SSBDataGenerator(CompressionMixin, CloudStorageGeneratorMixin):
             for i in range(1, num_suppliers + 1):
                 s_suppkey = i
                 s_name = f"Supplier#{i:09d}"
-                s_address = f"Address {random.randint(1, 999)} Avenue"
+                s_address = f"Address {self._rng.randint(1, 999)} Avenue"
 
-                nation = random.choice(self._nations)
+                nation = self._rng.choice(self._nations)
                 if nation in [
                     "ALGERIA",
                     "EGYPT",
@@ -436,10 +436,10 @@ class SSBDataGenerator(CompressionMixin, CloudStorageGeneratorMixin):
                 else:
                     region = "MIDDLE EAST"
 
-                s_city = f"{nation[:9]}{random.randint(0, 9)}"
+                s_city = f"{nation[:9]}{self._rng.randint(0, 9)}"
                 s_nation = nation
                 s_region = region
-                s_phone = f"{random.randint(10, 99)}-{random.randint(100, 999)}-{random.randint(1000, 9999)}"
+                s_phone = f"{self._rng.randint(10, 99)}-{self._rng.randint(100, 999)}-{self._rng.randint(1000, 9999)}"
 
                 row = [
                     s_suppkey,
@@ -507,10 +507,10 @@ class SSBDataGenerator(CompressionMixin, CloudStorageGeneratorMixin):
                 p_category = f"MFGR#{mfgr_num}{category_num}"
                 p_brand1 = f"MFGR#{mfgr_num}{category_num}{brand_num:02d}"
 
-                p_color = random.choice(colors)
-                p_type = random.choice(types)
-                p_size = random.randint(1, 50)
-                p_container = random.choice(containers)
+                p_color = self._rng.choice(colors)
+                p_type = self._rng.choice(types)
+                p_size = self._rng.randint(1, 50)
+                p_container = self._rng.choice(containers)
 
                 row = [
                     p_partkey,
@@ -545,7 +545,7 @@ class SSBDataGenerator(CompressionMixin, CloudStorageGeneratorMixin):
             order_key = 1
             line_number = 0
             for i in range(1, num_lineorders + 1):
-                if i == 1 or random.random() < 0.7:
+                if i == 1 or self._rng.random() < 0.7:
                     order_key += 1
                     line_number = 1
                 else:
@@ -553,30 +553,30 @@ class SSBDataGenerator(CompressionMixin, CloudStorageGeneratorMixin):
 
                 lo_orderkey = order_key
                 lo_linenumber = line_number
-                lo_custkey = random.randint(1, num_customers)
-                lo_partkey = random.randint(1, num_parts)
-                lo_suppkey = random.randint(1, num_suppliers)
+                lo_custkey = self._rng.randint(1, num_customers)
+                lo_partkey = self._rng.randint(1, num_parts)
+                lo_suppkey = self._rng.randint(1, num_suppliers)
 
-                order_date = random.choice(valid_dates)
+                order_date = self._rng.choice(valid_dates)
                 lo_orderdate = int(order_date.strftime("%Y%m%d"))
 
-                lo_orderpriority = random.choice(self._priorities)
-                lo_shippriority = random.randint(0, 1)
-                lo_quantity = random.randint(1, 50)
+                lo_orderpriority = self._rng.choice(self._priorities)
+                lo_shippriority = self._rng.randint(0, 1)
+                lo_quantity = self._rng.randint(1, 50)
 
-                unit_price = random.randint(90000, 200000)
+                unit_price = self._rng.randint(90000, 200000)
                 lo_extendedprice = unit_price * lo_quantity
                 lo_ordtotalprice = lo_extendedprice
 
-                lo_discount = random.randint(0, 10)
+                lo_discount = self._rng.randint(0, 10)
                 lo_revenue = lo_extendedprice * (100 - lo_discount) // 100
 
-                lo_supplycost = unit_price * random.randint(50, 80) // 100
-                lo_tax = random.randint(0, 8)
+                lo_supplycost = unit_price * self._rng.randint(50, 80) // 100
+                lo_tax = self._rng.randint(0, 8)
 
-                commit_date = order_date + timedelta(days=random.randint(1, 121))
+                commit_date = order_date + timedelta(days=self._rng.randint(1, 121))
                 lo_commitdate = int(commit_date.strftime("%Y%m%d"))
-                lo_shipmode = random.choice(self._ship_modes)
+                lo_shipmode = self._rng.choice(self._ship_modes)
 
                 row = [
                     lo_orderkey,
