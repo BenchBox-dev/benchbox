@@ -568,7 +568,7 @@ jobs:
       - name: Type check with ty
         id: guard-ty
         continue-on-error: true
-        run: uv run ty check
+        run: make typecheck
 
       - name: Strict type check for quality-governance island
         id: guard-quality-governance-typecheck
@@ -1207,6 +1207,7 @@ jobs:
       - name: Build package
         run: |
           uv build
+          uv run -- python -m scripts.verify_sqlglot_runtime_distribution dist/*.whl dist/*.tar.gz
 
       - name: Test package installation
         shell: bash

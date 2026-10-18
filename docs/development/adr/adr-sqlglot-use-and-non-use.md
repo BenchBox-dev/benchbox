@@ -4,14 +4,15 @@
 
 Accepted (codifies existing practice as of 2026-05-03).
 
-**SQLGlot version at acceptance**: `>=20.0.0,<31.0.0` in `pyproject.toml`;
-resolved version 30.6.0 in `uv.lock`. Decisions were validated against that
-version; gaps may have changed since.
+**Runtime**: BenchBox ships a pinned pure-Python wheel from
+[`BenchBox-dev/benchbox-sqlglot`](https://github.com/BenchBox-dev/benchbox-sqlglot),
+based on upstream 30.23.0 with three bounded downstream patches. The runtime
+imports as `benchbox._vendor.sqlglot`, not the public `sqlglot` package.
 
-**Maintenance protocol**: Re-review when (a) a new SQLGlot major is adopted,
-(b) the phase taxonomy in the
+**Maintenance protocol**: Re-review on each immutable fork-pin refresh, when
+the phase taxonomy in the
 [phase-aware pipeline ADR](adr-sql-compat-phase-aware-pipeline.md) changes,
-or (c) `sqlglot[c]` is adopted in production.
+or before adopting a compiled runtime.
 
 ## Date
 
@@ -23,9 +24,9 @@ BenchBox runs benchmarks across 36 SQL platforms plus DataFrame engines
 (Polars, Pandas, DataFusion-Python, PySpark, Dask, Modin, cuDF, LakeSail).
 Cross-platform portability requires translating canonical benchmark SQL into
 something each engine accepts and executes correctly. We chose
-[SQLGlot](https://github.com/tobymao/sqlglot) for that translation. The
-recent mypyc work delivered ~5x parser, ~2.5x generator, ~2x optimizer
-speedups for our workload.
+[SQLGlot](https://github.com/tobymao/sqlglot) for that translation. BenchBox
+owns its bounded downstream fork; the pure-Python wheel is bundled inside the
+published BenchBox wheel and sdist, with no separate PyPI publication.
 
 Over the last 12 months BenchBox accreted a substantial layer of SQL
 infrastructure on top of SQLGlot, organized into seven categories:
@@ -55,13 +56,43 @@ syntactic transpiler can structurally do:
 
 ### Non-Goals
 
-- Replacing or forking SQLGlot.
-- Adopting `sqlglot[c]` immediately (deferred pending wheel-availability
-  check across our supported Python versions and architectures).
-- Pinning a specific SQLGlot version permanently.
+- Replacing SQLGlot or expanding the three-patch fork into a new SQL engine.
+- Adopting `sqlglot[c]` or runtime compilation.
+- Treating the current immutable fork pin as permanent.
 - Standardizing every dialect-branching call site. Legitimate local
   rendering (type mapping, identifier quoting, storage layout) remains in
   adapter code, gated by `@compat_local`.
+
+### Bundled Wheel Ownership and Refresh
+
+SQLGlot source and upstream patch history remain in
+`BenchBox-dev/benchbox-sqlglot`. BenchBox stores only the required pinned
+pure-Python wheel as package data, not an unpacked SQLGlot source tree.
+The private package bootstrap extends `benchbox._vendor.__path__` to the
+wheel's `benchbox/_vendor` directory for standard zipimport. It does not
+modify global `sys.path`, install or extract packages at runtime, or alias
+the public `sqlglot` module.
+
+Ordinary BenchBox installation and builds use that bundled artifact; they
+must not fetch Git or consult a custom package index. Runtime version
+reporting uses the bundled module's `__version__`, not
+`importlib.metadata.version("sqlglot")`. Preserve the upstream license,
+notices, typing marker and provenance in the runtime wheel.
+
+Refresh from a clean checkout of an immutable fork commit: build its private
+runtime wheel, update the BenchBox pin/artifact/provenance together, and
+review the bounded downstream patch delta. Validate source and installed
+wheel behavior, including the utility, adapter mixin and BaseBenchmark
+translation entrypoints. Roll back by restoring the preceding pin and its
+matching wheel/provenance together, never by selecting a moving branch.
+Public-upstream comparisons under `_project/sqlglot-upstream/repros` remain
+isolated and intentionally import public SQLGlot.
+
+The SQLite postprocessor is retained conservatively because it mixes
+DATE_TRUNC, unknown/timestamp EXTRACT, MONTH/YEAR interval handling and Q6
+discount-bound semantics. The fork's typed-date fixes do not justify deleting
+those cases. DuckDB ALL restoration, dialect normalization, engine-semantic
+rewrites, DDL registries and authored variants remain BenchBox-owned.
 
 ---
 

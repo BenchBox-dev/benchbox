@@ -6,9 +6,8 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-import sqlglot
-from sqlglot import exp
-
+from benchbox._vendor import sqlglot
+from benchbox._vendor.sqlglot import exp
 from benchbox.core.static_query_catalog import load_static_query_catalog
 from benchbox.sql_compat.local_exemptions import compat_local
 

@@ -2632,8 +2632,7 @@ class TestApplyTpcdiBigqueryRewrites:
 
     @patch("benchbox.platforms.bigquery.bigquery")
     def test_relative_date_uses_bigquery_interval_syntax(self, mock_bigquery):
-        import sqlglot
-
+        from benchbox._vendor import sqlglot
         from benchbox.core.tpcdi.query_analytics import TPCDIAnalyticalQueries
 
         adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")

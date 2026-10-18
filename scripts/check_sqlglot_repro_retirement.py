@@ -1,165 +1,152 @@
-#!/usr/bin/env python3
-
 from __future__ import annotations
 
 import argparse
-import re
+import json
+import sqlite3
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
+from typing import Any
 
-CLI_DESCRIPTION = (
-    "Run SQLGlot upstream repros when the locked sqlglot version changes.\n"
-    "\n"
-    "Workaround retirement needs a trigger: a repro that flips from FAIL to PASS\n"
-    "on a new sqlglot version means the upstream defect may be fixed and the\n"
-    "BenchBox workaround it pins may be removable. Without a trigger, upgrades\n"
-    "land silently and workarounds live forever.\n"
-    "\n"
-    "Behavior:\n"
-    "\n"
-    "* Resolve the locked sqlglot version from the working-tree ``uv.lock`` and at the\n"
-    "  merge-base with ``origin/develop`` (or a ``--base-ref`` override).\n"
-    "* When the versions match, exit 0: no upgrade, nothing to re-run.\n"
-    "* When they differ, run ``repro_all.py`` on the NEW lockfile version and\n"
-    "  report per-repro PASS/FAIL. A repro that now PASSes is a retirement\n"
-    "  candidate: print the linked workaround from the README tier table and fail\n"
-    "  with guidance to audit and retire it. A repro that still FAILs is\n"
-    "  informational only.\n"
-    "* ``--check`` is the CI gate mode (same behavior; explicit for symmetry with\n"
-    "  sibling lint scripts). Default mode also runs the comparison.\n"
-    "\n"
-    "Exit status: 0 no upgrade or no retirement candidates; 1 the upgrade contains\n"
-    "a newly-passing repro that needs a retirement audit, or the repro harness\n"
-    "crashed or reported no summary so retirement cannot be assessed; 2 the locked\n"
-    "version or merge-base could not be resolved.\n"
-    "\n"
-    "Usage:\n"
-    "    uv run -- python scripts/check_sqlglot_repro_retirement.py [--base-ref REF] [--check]\n"
-)
+import duckdb
+from packaging.requirements import Requirement
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-REPRO_SCRIPT = REPO_ROOT / "_project" / "sqlglot-upstream" / "repros" / "repro_all.py"
-TIER_TABLE_REF = "_project/sqlglot-upstream/README.md (tier table)"
+from scripts.sync_sqlglot_runtime import check_runtime
 
-_LOCK_VERSION_RE = re.compile(r'name = "sqlglot"\nversion = "([^"]+)"')
+REPO_ROOT = Path(__file__).resolve().parents[1]
+BASELINE = Path("_project/sqlglot-upstream/runtime-baseline.json")
+REQUIRED_CASES = {
+    "postgres-extract-fractional-division",
+    "postgres-integer-division",
+    "sqlite-leap-day-interval",
+    "sqlite-null-interval",
+    "sqlite-unknown-extract",
+    "sqlite-month-interval",
+    "questdb-dialect",
+    "duckdb-group-by-all",
+    "duckdb-order-by-all",
+    "mysql-percentile-decorator",
+}
 
 
-def locked_sqlglot_version(ref: str | None = None) -> str | None:
-    if ref is None:
-        try:
-            text = (REPO_ROOT / "uv.lock").read_text(encoding="utf-8")
-        except OSError as err:
-            raise ValueError(f"cannot read working-tree uv.lock: {err}") from err
-    else:
-        proc = subprocess.run(
-            ["git", "show", f"{ref}:uv.lock"],
-            cwd=REPO_ROOT,
-            capture_output=True,
-            text=True,
-        )
-        if proc.returncode != 0:
-            raise ValueError(f"cannot read uv.lock at ref {ref!r}: {proc.stderr.strip()}")
-        text = proc.stdout
-    match = _LOCK_VERSION_RE.search(text)
-    return match.group(1) if match else None
-
-
-def merge_base(ref: str = "origin/develop") -> str:
-    proc = subprocess.run(
-        ["git", "merge-base", "HEAD", ref],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
+def dependency_identity(root: Path, ref: str) -> dict[str, Any]:
+    result = subprocess.run(
+        ["git", "show", f"{ref}:benchbox/_vendor/sqlglot.json"], cwd=root, capture_output=True, text=True, check=False
     )
-    if proc.returncode != 0:
-        raise ValueError(f"cannot resolve merge-base with {ref!r}: {proc.stderr.strip()}")
-    return proc.stdout.strip()
+    if result.returncode == 0:
+        return json.loads(result.stdout)
+    lock = subprocess.check_output(["git", "show", f"{ref}:uv.lock"], cwd=root, text=True)
+    packages = [package for package in tomllib.loads(lock)["package"] if package["name"] == "sqlglot"]
+    if len(packages) != 1:
+        raise ValueError("Base must identify one public or bundled SQLGlot runtime")
+    return packages[0]
 
 
-def run_repros() -> tuple[int, str]:
-    proc = subprocess.run(
-        [sys.executable, str(REPRO_SCRIPT)],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
+def load_baseline(root: Path, identity: dict[str, Any]) -> list[dict[str, Any]]:
+    baseline = json.loads((root / BASELINE).read_text(encoding="utf-8"))
+    if baseline["schema"] != 1 or baseline["identity"] != identity:
+        raise ValueError("Runtime baseline identity must match the exact pinned wheel/source")
+    cases = baseline["cases"]
+    if (
+        not isinstance(cases, list)
+        or {case["id"] for case in cases} != REQUIRED_CASES
+        or len(cases) != len(REQUIRED_CASES)
+    ):
+        raise ValueError("Runtime baseline must retain every named case exactly once")
+    for case in cases:
+        if (
+            not all(isinstance(case[key], str) and case[key] for key in ("id", "sql", "source", "target", "call_shape"))
+            or case["call_shape"] != "transpile"
+            or case["identify"] is not True
+            or case["expected"]["outcome"] not in {"pass", "unsupported"}
+            or case["workaround"]["decision"] not in {"retain", "fork-covered"}
+            or not (root / case["workaround"]["path"]).is_file()
+            or not case["workaround"]["reason"]
+        ):
+            raise ValueError(f"Malformed runtime baseline case: {case.get('id')}")
+        if case["expected"]["outcome"] == "pass":
+            shape = {"sqlite": "rows", "duckdb": "rows", "mysql": "native_percentile"}.get(
+                case["target"], "dialect_available"
+            )
+            if shape not in case["expected"] or (shape == "rows" and not isinstance(case["expected"]["rows"], list)):
+                raise ValueError("Passing cases require the acknowledged result shape for their target")
+        elif not isinstance(case["expected"].get("error_type"), str):
+            raise ValueError("Unsupported cases require an explicit error type")
+    return cases
+
+
+def observe_case(case: dict[str, Any]) -> dict[str, Any]:
+    from benchbox._vendor import sqlglot
+
+    try:
+        sql = sqlglot.transpile(
+            case["sql"],
+            read=case["source"],
+            write=case["target"],
+            identify=case["identify"],
+            unsupported_level=sqlglot.ErrorLevel.RAISE,
+        )[0]
+        if case["target"] not in {"sqlite", "duckdb", "mysql"}:
+            return {"outcome": "pass", "dialect_available": True}
+        if case["target"] == "mysql":
+            expression = sqlglot.parse_one(sql, read="mysql")
+            if expression.find(sqlglot.exp.Case) and expression.find(sqlglot.exp.Null):
+                return {"outcome": "unsupported", "error_type": "SyntheticPercentileDecorator"}
+            return {"outcome": "pass", "native_percentile": True}
+        if case["target"] == "duckdb":
+            with duckdb.connect(":memory:") as connection:
+                rows = [list(row) for row in connection.execute(sql).fetchall()]
+        else:
+            with sqlite3.connect(":memory:") as connection:
+                rows = [list(row) for row in connection.execute(sql).fetchall()]
+        return {"outcome": "pass", "rows": rows}
+    except (
+        sqlglot.errors.UnsupportedError,
+        sqlglot.errors.ParseError,
+        ValueError,
+        sqlite3.Error,
+        duckdb.Error,
+    ) as error:
+        return {"outcome": "unsupported", "error_type": type(error).__name__}
+
+
+def check(root: Path = REPO_ROOT, base_ref: str = "origin/develop") -> None:
+    identity = check_runtime(root / "benchbox/_vendor")
+    project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+    if any(
+        Requirement(requirement).name.lower().replace("_", "-") in {"sqlglot", "benchbox-sqlglot"}
+        for requirement in project["project"]["dependencies"]
+    ):
+        raise ValueError("BenchBox must use only its bundled runtime, not an external SQLGlot requirement")
+    cases = load_baseline(root, identity)
+    base = subprocess.check_output(["git", "merge-base", "HEAD", base_ref], cwd=root, text=True).strip()
+    previous = dependency_identity(root, base)
+    print(
+        f"SQLGlot runtime identity {'changed' if previous != identity else 'unchanged'}; checking acknowledged outcomes"
     )
-    return proc.returncode, proc.stdout + proc.stderr
-
-
-def newly_passing(output: str) -> list[str] | None:
-    passing: list[str] = []
-    in_summary = False
-    for line in output.splitlines():
-        if line.startswith("=== Summary"):
-            in_summary = True
-            continue
-        if in_summary:
-            match = re.match(r"\s*\[(PASS|FAIL)\]\s+(.+)", line)
-            if match and match.group(1) == "PASS":
-                passing.append(match.group(2).strip())
-    return passing if in_summary else None
+    for case in cases:
+        actual = observe_case(case)
+        if actual != case["expected"]:
+            raise ValueError(
+                f"{case['id']}: expected {case['expected']}, observed {actual}; "
+                f"review retirement decision at {case['workaround']['path']}"
+            )
+        print(f"  {case['id']}: {actual['outcome']} ({case['workaround']['decision']})")
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=CLI_DESCRIPTION)
-    parser.add_argument(
-        "--base-ref",
-        default=None,
-        help="Branch or ref to compute the merge-base against (default: origin/develop).",
-    )
-    parser.add_argument(
-        "--check",
-        action="store_true",
-        help="CI gate mode (same behavior; fails on retirement candidates).",
-    )
-    args = parser.parse_args(argv)
-
+    parser = argparse.ArgumentParser(description="Verify the bundled wheel identity and reviewed runtime outcomes.")
+    parser.add_argument("--base-ref", default="origin/develop")
+    parser.add_argument("--check", action="store_true")
+    arguments = parser.parse_args(argv)
     try:
-        base = merge_base(args.base_ref) if args.base_ref else merge_base()
-        old = locked_sqlglot_version(base)
-        new = locked_sqlglot_version(None)
-    except ValueError as err:
-        print(f"sqlglot repro retirement: {err}", file=sys.stderr)
-        return 2
-    if old is None or new is None:
-        print("sqlglot repro retirement: locked version not found in uv.lock.", file=sys.stderr)
-        return 2
-    if old == new:
-        print(f"sqlglot repro retirement: OK - no upgrade (locked {new}).")
-        return 0
-
-    print(f"sqlglot repro retirement: upgrade {old} -> {new}; running repros...")
-    status, output = run_repros()
-    print(output)
-    if status != 0 and "=== Summary" not in output:
-        print(
-            "sqlglot repro retirement: repro harness crashed before reporting "
-            f"(exit {status}); cannot assess retirement - inspect the output above.",
-            file=sys.stderr,
-        )
+        check(base_ref=arguments.base_ref)
+    except (OSError, ValueError, TypeError, KeyError, subprocess.CalledProcessError) as error:
+        print(f"SQLGlot retirement check: {error}", file=sys.stderr)
         return 1
-    passing = newly_passing(output)
-    if passing is None:
-        print(
-            "sqlglot repro retirement: no summary section in repro output; cannot assess retirement.",
-            file=sys.stderr,
-        )
-        return 1
-    if not passing:
-        print("sqlglot repro retirement: OK - all repros still FAIL; no retirement candidates.")
-        return 0
-    print("sqlglot repro retirement: RETIREMENT CANDIDATES (repro now passes):")
-    for label in passing:
-        print(f"  PASS {label}")
-    print(
-        f"\nAudit each candidate against {TIER_TABLE_REF}: verify the linked "
-        "BenchBox workaround is truly unneeded on the new version, retire it, "
-        "and update the tier table. A PASS here is a candidate, not proof — "
-        "see repro_all.py header on proxy-dialect caveats."
-    )
-    return 1
+    return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())

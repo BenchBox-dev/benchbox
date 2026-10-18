@@ -78,7 +78,7 @@ class TestTwoTableCommaJoin:
         assert "WHERE" not in result.upper()
 
     def test_result_is_valid_sql(self):
-        import sqlglot
+        from benchbox._vendor import sqlglot
 
         sql = "SELECT l.x, o.y FROM lineitem l, orders o WHERE l.l_orderkey = o.o_orderkey"
         result = rewrite(sql)
@@ -105,7 +105,7 @@ class TestMultiTableCommaJoin:
         assert "l.l_quantity > 10" in result or "WHERE" in result.upper()
 
     def test_three_table_result_is_valid_sql(self):
-        import sqlglot
+        from benchbox._vendor import sqlglot
 
         sql = (
             "SELECT l.x, o.y, c.z "
@@ -314,16 +314,16 @@ class TestCteColumnListRewrite:
 
 class TestInternalHelpers:
     def test_flatten_and_single(self):
-        import sqlglot
-        from sqlglot import exp
+        from benchbox._vendor import sqlglot
+        from benchbox._vendor.sqlglot import exp
 
         cond = sqlglot.parse_one("a.x = b.x", dialect="postgres")
         parts = _flatten_and(cond)
         assert len(parts) == 1
 
     def test_flatten_and_two(self):
-        import sqlglot
-        from sqlglot import exp
+        from benchbox._vendor import sqlglot
+        from benchbox._vendor.sqlglot import exp
 
         tree = sqlglot.parse_one("SELECT * FROM t WHERE a.x = b.x AND a.z > 1", dialect="postgres")
         where = tree.args["where"]
@@ -331,7 +331,7 @@ class TestInternalHelpers:
         assert len(parts) == 2
 
     def test_flatten_and_three(self):
-        import sqlglot
+        from benchbox._vendor import sqlglot
 
         tree = sqlglot.parse_one("SELECT * FROM t WHERE a.x = b.x AND b.y = c.y AND a.z > 1", dialect="postgres")
         where = tree.args["where"]
@@ -342,15 +342,15 @@ class TestInternalHelpers:
         assert _build_and([]) is None
 
     def test_build_and_single(self):
-        import sqlglot
+        from benchbox._vendor import sqlglot
 
         node = sqlglot.parse_one("a.x = b.x", dialect="postgres")
         result = _build_and([node])
         assert result is node
 
     def test_build_and_two(self):
-        import sqlglot
-        from sqlglot import exp
+        from benchbox._vendor import sqlglot
+        from benchbox._vendor.sqlglot import exp
 
         n1 = sqlglot.parse_one("a.x = b.x", dialect="postgres")
         n2 = sqlglot.parse_one("a.z > 1", dialect="postgres")

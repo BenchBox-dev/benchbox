@@ -1908,8 +1908,8 @@ class BigQueryAdapter(PlatformAdapter):
 
     def _extract_unqualified_tables(self, query: str) -> list[str] | None:
         try:
-            import sqlglot
-            from sqlglot import exp
+            from benchbox._vendor import sqlglot
+            from benchbox._vendor.sqlglot import exp
         except ImportError:
             return None
         try:
@@ -2140,8 +2140,8 @@ class BigQueryAdapter(PlatformAdapter):
 
     def _safeguard_division_by_zero(self, query: str) -> str:
         try:
-            import sqlglot
-            from sqlglot import exp
+            from benchbox._vendor import sqlglot
+            from benchbox._vendor.sqlglot import exp
         except ImportError:
             return query
 

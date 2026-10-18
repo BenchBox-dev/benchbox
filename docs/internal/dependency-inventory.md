@@ -123,7 +123,7 @@ or declaration appears unused.
 | `pydantic` | CL | `benchbox/cli/**`, `benchbox/core/**`, `benchbox/mcp/**`, tests | 6 | KEEP |
 | `pyyaml` | C | `benchbox/cli/**`, `benchbox/core/**`, `scripts/`, `benchbox/security/**`, tests | 23 | KEEP |
 | `rich` | CL | `benchbox/cli/**`, `benchbox/core/**`, `benchbox/platforms/**`, `benchbox/utils/**` | 146 | KEEP |
-| `sqlglot` | C | `benchbox/base.py`, `benchbox/core/**`, `benchbox/platforms/**`, `benchbox/utils/**`, tests | 16 | KEEP |
+| `sqlglot` | — | `benchbox/_vendor/**` | 0 (public package) | BUNDLED - BenchBox ships only the pinned `BenchBox-dev/benchbox-sqlglot` runtime wheel; the public package is no longer a runtime requirement |
 | `textcharts` | C | `benchbox/core/visualization/ascii/**`, `benchbox/monitoring/**` | 20 | KEEP — retained by ADR follow-up; removing it would break supported ASCII shims and monitoring imports |
 | `tomli` | — | — | 0 | REMOVED - Python 3.11's standard-library `tomllib` is now the minimum runtime |
 | `zstandard` | C | `benchbox/core/primitives/**`, `benchbox/utils/**`, tests | 9 | KEEP |

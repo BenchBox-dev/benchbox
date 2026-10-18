@@ -3,6 +3,6 @@
   "mode": "advisory_with_age",
   "owner": "@joeharris76",
   "max_known_failure_age_days": 7,
-  "replay_command_template": "uv run --with sqlglot=={sqlglot_version} -- python _project/sqlglot-upstream/repros/generator.py --seed {seed} --source-dialect {source_dialect} --target-dialect {target_dialect} --failure-artifact {failure_artifact} --replay {failure_artifact}",
+  "replay_command_template": "uv run -- python _project/sqlglot-upstream/repros/generator.py --seed {seed} --source-dialect {source_dialect} --target-dialect {target_dialect} --failure-artifact {failure_artifact} --replay {failure_artifact}",
   "known_failures": []
 }

@@ -448,7 +448,7 @@ uv-lock-revision-check:
 
 .PHONY: sqlglot-repro-retirement-check
 sqlglot-repro-retirement-check:
-	uv run -- python scripts/check_sqlglot_repro_retirement.py $(if $(BASE_REF),--base-ref "$(BASE_REF)",) --check
+	uv run -- python -m scripts.check_sqlglot_repro_retirement $(if $(BASE_REF),--base-ref "$(BASE_REF)",) --check
 
 audit-deps:
 	uv run -- python _project/scripts/dependency_audit/check_deps.py
@@ -636,7 +636,7 @@ ci-lint:
 	[ $$? -eq 0 ] || failed="$$failed ruff-check"; \
 	uv run ruff format --check .; \
 	[ $$? -eq 0 ] || failed="$$failed ruff-format"; \
-	uv run ty check; \
+	uv run -- python -m scripts.typecheck; \
 	[ $$? -eq 0 ] || failed="$$failed ty-check"; \
 	$(MAKE) quality-governance-typecheck; \
 	[ $$? -eq 0 ] || failed="$$failed quality-governance-typecheck"; \
@@ -758,6 +758,7 @@ test-package:
 	@echo "Building and testing package installation..."
 	rm -rf dist/
 	uv build
+	uv run -- python -m scripts.verify_sqlglot_runtime_distribution dist/*.whl dist/*.tar.gz
 	uvx twine check dist/*
 	@echo "Testing package installation..."
 	@wheel_count=$$(find "$$PWD/dist" -maxdepth 1 -type f -name '*.whl' | wc -l | tr -d '[:space:]'); \
@@ -833,7 +834,7 @@ ci-linux:
 
 .PHONY: typecheck
 typecheck:
-	uv run ty check
+	uv run -- python -m scripts.typecheck
 
 typecheck-uv: typecheck
 

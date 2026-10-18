@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import duckdb
 import pytest
-import sqlglot
 
+from benchbox._vendor import sqlglot
 from benchbox.core.tpch.benchmark import TPCHBenchmark
 from benchbox.core.tpchavoc.benchmark import TPCHavocBenchmark
 from benchbox.core.tpchavoc.cloud_compat import BIGQUERY_FILTER_IDS, rewrite_cloud_variant

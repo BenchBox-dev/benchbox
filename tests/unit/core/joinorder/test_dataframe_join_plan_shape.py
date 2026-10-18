@@ -5,9 +5,9 @@ from typing import Any
 
 import pandas as pd
 import pytest
-from sqlglot import parse_one
 
 import benchbox.core.joinorder.dataframe_queries as dataframe_queries
+from benchbox._vendor.sqlglot import parse_one
 from benchbox.core.joinorder.dataframe_queries import (
     _QUERY_MANAGER,
     _flatten_and,

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import re
 
-import sqlglot
-from sqlglot import exp
+from benchbox._vendor import sqlglot
+from benchbox._vendor.sqlglot import exp
 
 
 def rewrite(query: str) -> str:

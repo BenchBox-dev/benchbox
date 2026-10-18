@@ -21,9 +21,9 @@ def test_datafusion_partitioned_ranks_match_translated_sql_with_nulls_and_ties(
     pytest.importorskip("datafusion")
     import duckdb
     import pyarrow as pa
-    import sqlglot
-    from sqlglot import exp
 
+    from benchbox._vendor import sqlglot
+    from benchbox._vendor.sqlglot import exp
     from benchbox.platforms.dataframe.datafusion_df import DataFusionDataFrameAdapter
 
     tables = {

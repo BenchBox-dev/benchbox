@@ -1316,8 +1316,8 @@ class SnowflakeAdapter(PlatformAdapter):
 
     def _safeguard_snowflake_division(self, query: str) -> str:
         try:
-            import sqlglot
-            from sqlglot import exp
+            from benchbox._vendor import sqlglot
+            from benchbox._vendor.sqlglot import exp
         except ImportError:
             return query
 

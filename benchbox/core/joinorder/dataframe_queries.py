@@ -8,8 +8,7 @@ import re
 from csv import reader
 from typing import TYPE_CHECKING, Any, NamedTuple, Protocol
 
-from sqlglot import exp, parse_one
-
+from benchbox._vendor.sqlglot import exp, parse_one
 from benchbox.core.dataframe.context import DataFrameContext
 from benchbox.core.dataframe.query import DataFrameQuery, QueryCategory, QueryRegistry
 from benchbox.core.joinorder.queries import CANONICAL_JOINORDER_QUERIES, JoinOrderQueryManager

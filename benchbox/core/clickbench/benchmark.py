@@ -62,7 +62,7 @@ class ClickBenchBenchmark(GeneratorOutputDirMixin, SimpleBenchmarkMixin, DataGen
     def translate_query_text(self, query: str, dialect: str) -> str:
 
         try:
-            import sqlglot
+            from benchbox._vendor import sqlglot
 
             translated = sqlglot.transpile(query, read="clickhouse", write=dialect.lower())[0]
             if dialect.lower() == "snowflake":

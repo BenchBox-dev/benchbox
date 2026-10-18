@@ -2584,8 +2584,8 @@ class DatabricksAdapter(PlatformAdapter):
 
     def _deduplicate_output_aliases(self, query: str) -> str:
         try:
-            import sqlglot
-            from sqlglot import exp
+            from benchbox._vendor import sqlglot
+            from benchbox._vendor.sqlglot import exp
         except ImportError:
             return query
 
@@ -2636,8 +2636,8 @@ class DatabricksAdapter(PlatformAdapter):
 
     def _safeguard_databricks_division(self, query: str) -> str:
         try:
-            import sqlglot
-            from sqlglot import exp
+            from benchbox._vendor import sqlglot
+            from benchbox._vendor.sqlglot import exp
         except ImportError:
             return query
 

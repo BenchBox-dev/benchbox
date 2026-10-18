@@ -241,8 +241,8 @@ def _fold_sqlite_discount_bounds(query: str) -> str:
     if not re.search(r"\bl_discount\b", query, re.IGNORECASE) or not re.search(r"\bBETWEEN\b", query, re.IGNORECASE):
         return query
 
-    import sqlglot
-    from sqlglot import exp
+    from benchbox._vendor import sqlglot
+    from benchbox._vendor.sqlglot import exp
 
     context = Context(prec=60, traps=[Inexact])
     max_leaves = 4
@@ -388,7 +388,7 @@ def translate_sql_query(
     fingerprint = _fingerprint_sql(query) if translation_collection_active() else None
 
     try:
-        import sqlglot
+        from benchbox._vendor import sqlglot
     except ImportError:
         outcome = SqlTranslationOutcome(
             source_dialect=source_dialect,

@@ -214,7 +214,7 @@ The example prints `False True`.
 
 `translate_query(query_id, dialect) -> str` returns one query translated to `dialect` with SQLGlot. Unlike `get_queries(dialect=...)`, it reads the query as PostgreSQL SQL and quotes every identifier: `SELECT COUNT(*) FROM "hits"` for DuckDB, PostgreSQL and Snowflake, and ``SELECT COUNT(*) FROM `hits` `` for BigQuery.
 
-Raises `ValueError` for an unknown query id and for an unknown dialect (`Error translating to dialect 'bogus': Unknown dialect 'bogus'.`). Raises `ImportError` when `sqlglot` is not installed.
+Raises `ValueError` for an unknown query id and for an unknown dialect (`Error translating to dialect 'bogus': Unknown dialect 'bogus'.`). Raises `ImportError` if the bundled `benchbox._vendor.sqlglot` runtime is unavailable; reinstall BenchBox rather than installing public SQLGlot.
 
 ```python
 q1_bq = benchmark.translate_query("Q1", "bigquery")

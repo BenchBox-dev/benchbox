@@ -7,8 +7,7 @@ from __future__ import annotations
 from csv import reader
 from typing import TYPE_CHECKING, Any
 
-from sqlglot import exp, parse_one
-
+from benchbox._vendor.sqlglot import exp, parse_one
 from benchbox.core.dataframe.context import DataFrameContext
 from benchbox.core.dataframe.query import DataFrameQuery, QueryCategory, QueryRegistry
 from benchbox.core.joinorder.dataframe_queries import (

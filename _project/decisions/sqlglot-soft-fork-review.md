@@ -75,3 +75,17 @@ Narrowed findings retain their valid concern and state the excluded mechanism
 and reason. Rebutted findings do not become unapproved follow-up infrastructure.
 Source-level and artifact-level proof are distinct; neither a passing plan
 review nor a parser-only reproduction certifies a release.
+
+## Wheel-only delivery amendment
+
+The owner superseded separate PyPI publication and rejected unpacked source
+vendoring. The maintained fork is `BenchBox-dev/benchbox-sqlglot`; BenchBox
+ships only its pinned pure-Python runtime wheel plus pin metadata. Standard
+ZIP import provides the private namespace without extraction, runtime package
+installation, downloads or global import-path changes.
+
+The original reviews remain evidence for source correctness, namespace
+independence, complete relocation tests, reproducibility, refresh and rollback.
+Publication-specific remedies are replaced by checked-in wheel/source hashes,
+offline artifact verification and actual BenchBox wheel/sdist install proof.
+No source-vendoring ownership exemption is part of this amended delivery model.

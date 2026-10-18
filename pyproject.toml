@@ -25,7 +25,6 @@ classifiers = [
 requires-python = ">=3.11,<3.15"
 dependencies = [
     "textcharts>=0.1.0",
-    "sqlglot>=25.6.0,<31.0.0",
     "click>=8.3.3,<9.0.0",
     "rich>=13.0.0",
     "keyring>=25.0.0",
@@ -374,6 +373,7 @@ paths_to_mutate = [
 tests_dir = ["tests/unit/"]
 
 [tool.setuptools.package-data]
+"benchbox._vendor" = ["*.zip", "sqlglot.json", "SQLGLOT_LICENSE.txt"]
 "benchbox.core" = ["benchmark_registry.yaml"]
 "benchbox.core.equivalence" = ["cross_surface_baseline.yaml"]
 "benchbox.core.flightdata" = ["query_catalog.yaml"]
@@ -412,6 +412,7 @@ select = [
     "PIE",
     "SIM",
     "PLW1514",
+    "TID251",
 ]
 ignore = [
     "E501",
@@ -452,6 +453,9 @@ ignore = [
     "N818",
 ]
 
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"sqlglot".msg = "Use the bundled wheel runtime through benchbox._vendor.sqlglot."
+
 [tool.ruff.lint.isort]
 force-single-line = false
 combine-as-imports = true
@@ -466,6 +470,10 @@ max-complexity = 18
 "tests/**/test_*.py" = ["F401", "F811"]
 "**/__init__.py" = ["F401", "F811", "F822"]
 "benchbox/utils/runtime_env.py" = ["F401"]
+"_project/sqlglot-upstream/repros/repro_all.py" = ["TID251"]
+"_project/sqlglot-upstream/repros/sqlite_extract.py" = ["TID251"]
+"_project/scripts/build_joinorder_data.py" = ["TID251"]
+"tests/utilities/qgen_wrapper.py" = ["TID251"]
 
 [tool.ruff.format]
 quote-style = "double"

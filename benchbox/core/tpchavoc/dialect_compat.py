@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import sqlglot
-from sqlglot import exp
-
+from benchbox._vendor import sqlglot
+from benchbox._vendor.sqlglot import exp
 from benchbox.core.tpchavoc.cloud_compat import _ordered_array, rewrite_cloud_variant
 
 POSTGRES_ALIAS_VARIANT_IDS = frozenset({"3_v7", "4_v7", "5_v7", "7_v7", "9_v7", "10_v7", "11_v7"})

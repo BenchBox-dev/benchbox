@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import pytest
-import sqlglot
-from sqlglot import exp
 
+from benchbox._vendor import sqlglot
+from benchbox._vendor.sqlglot import exp
 from benchbox.core.tpchavoc.benchmark import TPCHavocBenchmark
 from benchbox.core.tpchavoc.dialect_compat import (
     PRESTO_ALIAS_VARIANT_IDS,

@@ -2,35 +2,29 @@
 
 ## Objective and completion
 
-BenchBox will depend on an independently versioned SQLGlot distribution that
-carries a small, tested patch series and can regularly refresh from tagged
-upstream releases. Ordinary pip and uv installations must select the same
-implementation. Installing upstream SQLGlot in the same environment must not
-overwrite the fork or change the AST classes BenchBox uses.
-Coexistence guarantees independent implementations, not exchange of AST or
-dialect class instances between them. No implicit AST conversion is promised.
+Maintain the SQLGlot soft fork in `BenchBox-dev/benchbox-sqlglot`, preserving
+upstream ancestry and a bounded tested patch series. BenchBox ships only its
+pinned pure-Python runtime wheel, not an unpacked SQLGlot source tree. The
+wheel is package data inside both the published BenchBox wheel and sdist.
+There is no separately published fork dependency or PyPI trusted publisher.
 
-Implementation covers `BenchBox-dev/sqlglot` and `BenchBox-dev/BenchBox`.
-Completion means the source and packaging changes are reviewed and merged in
-the fork, a verified release is available to downstream installers, and the
-BenchBox migration is reviewed, tested and merged. Public package publication
-requires a separate owner approval after the artifacts are reviewable. Do not
-mark the publication or adoption items done before those outcomes occur.
+Ordinary pip and uv installations use the same bundled bytes. A small private
+package bootstrap extends `benchbox._vendor.__path__` into the bundled wheel;
+Python's standard ZIP importer loads `benchbox._vendor.sqlglot`. There are no
+runtime pip calls, downloads, extraction, global `sys.path` modifications,
+upstream fallbacks or `sys.modules` aliases. Upstream SQLGlot remains independent;
+exchange SQL text, not AST or dialect class instances across namespaces.
 
-The organization owns the hard dependency's source and publishing workflow.
-Transfer the existing personal fork rather than copying its history; preserve
-its upstream relationship, immutable refs and review records. Use the canonical
-organization URL in package metadata, publishing guards and local remotes.
-
-The implementation batch is serial. Cross-repository and publication-separated
-items do not use prepared feature delivery or pretend a local artifact is a
-published dependency. Preserve the other agent's live BigQuery compatibility
-claim and consume its merged result rather than editing its worktree.
+Completion requires reviewed merged fork tooling, a verified immutable runtime
+wheel, and a reviewed merged BenchBox migration with actual installed-artifact
+proof. Publishing a new BenchBox production release remains a separate action.
+The serial batch respects cross-repository merge boundaries. Preserve unrelated
+worktrees and consume the merged BigQuery prerequisite.
 
 ## Prior art and recorded decisions
 
 - Extend the patch branches transferred from `joeharris76/sqlglot` to
-  `BenchBox-dev/sqlglot`, upstream dialect tests,
+  `BenchBox-dev/benchbox-sqlglot`, upstream dialect tests,
   `sqlglot/parsers/postgres.py`, `sqlglot/generators/sqlite.py`,
   `sqlglot/optimizer/annotate_types.py`, and AST serialization tests.
 - Extend BenchBox's `_project/sqlglot-upstream/repros/repro_all.py`,
@@ -50,13 +44,11 @@ claim and consume its merged result rather than editing its worktree.
 - The future-state index does not propose a transpiler replacement or authorize
   moving other BenchBox subsystems into a companion package. This distribution
   changes only the SQLGlot dependency and its release ownership.
-- New infrastructure is limited to fork release assembly, artifact verification,
-  and a refresh workflow. Python distribution names and import names are
-  independent. A package named `benchbox-sqlglot` that also installs `sqlglot/`
-  can collide with upstream. pip's automated vendoring/import relocation is
-  relevant prior art; reuse an existing tool if it fully handles SQLGlot's
-  dynamic imports and self-contained sdists, otherwise implement the smallest
-  standard-library assembly step and prove those boundaries.
+- Reuse the fork's AST relocation, isolated wheel assembler, source and compiled
+  tests, installed relocated suite and refresh helper. Python's standard ZIP
+  importer supports package paths inside ZIP archives, avoiding a custom loader
+  or installer. Extend BenchBox package-data declarations and existing required
+  retirement guard rather than introducing a second release system.
 
 ## Source base and patch admission
 
@@ -111,201 +103,154 @@ expected values and types. Parsing or matching output strings is insufficient.
 Source database execution may use existing local engines; no live-cloud spend
 or new database service is authorized. State any source-engine proof limitation.
 
-## Distribution and artifact contract
+## Wheel runtime contract
 
-The distribution is `benchbox-sqlglot`; its import package is
-`benchbox_sqlglot`. The initial organization-owned public candidate is
-`30.23.0.2`; the existing `30.23.0.1` tag remains immutable and unpublished.
-The first three components identify the upstream base and the fourth identifies
-this fork's release. Never reuse a version for different bytes. Do not use a
-local `+` version identifier for PyPI. Preserve upstream license files and notices.
-Increment N for a fork-only change; reset N to 1 when X.Y.Z changes. For
-example, a fix after `30.23.0.1` becomes `30.23.0.2`, and the first release
-based on upstream `30.24.0` becomes `30.24.0.1`.
+The internal artifact distribution is `benchbox-sqlglot`; its runtime namespace
+is `benchbox._vendor.sqlglot`. Version `30.23.0.2` follows the immutable,
+unpublished `30.23.0.1` tag. Versions use `X.Y.Z.N`: increment N for a fork-only
+change and reset it to one on a new upstream base. Never reuse a version for
+different bytes or rewrite a consumed source/tag.
 
-Keep upstream's `sqlglot/` source layout for tests and upstream refreshes.
-Add a narrow release assembler under `downstream/` and Make entrypoints for
-building and checking the downstream distribution. Assemble into a fresh
-output directory; never rename source files in place or modify another tree.
-The release assembler must:
+Keep upstream's `sqlglot/` source layout only in the fork. Its assembler:
 
-1. Validate the manifest, upstream base, fork source revision and clean input.
-2. Copy only runtime sources, required resources and license/readme material
-   into an isolated build project providing `benchbox_sqlglot/`.
-   Explicitly include `py.typed` and declare it as package data. Generate fresh
-   metadata with no inherited console scripts; assert no `sqlglot` executable
-   or upstream entry points are installed.
-3. Rewrite absolute Python imports and dynamic module-loading references,
-   including `sqlglot.dialects.{key}`. Preserve public API names and SQL text.
-   Do not add a `sys.modules['sqlglot']` alias or fallback to upstream imports.
-   Use syntax-aware import rewriting, isolate the dialect plugin group as
-   `benchbox_sqlglot.dialects`, and enumerate dynamic runtime path replacements.
-   A fail-closed residual-import scan has an explicit retained-text allowlist.
-   Test ordinary SQL literals containing `sqlglot` for unchanged content.
-4. Generate static PEP 621 version metadata and a matching `_version.py`;
-   the downstream build does not use SCM version discovery. Package
-   `benchbox_sqlglot/benchbox_provenance.json` containing upstream SHA, fork
-   SHA, patch manifest and distribution version. Read it after installation
-   through `importlib.resources`; no checkout or custom public accessor is
-   required. Use a recorded SOURCE_DATE_EPOCH and stable file ordering.
-5. Build a pure-Python wheel and self-contained sdist with the existing uv /
-   setuptools toolchain. Building a wheel from the unpacked sdist must work
-   without the original repository, its `.git`, or a sibling source path.
-   Rebuild offline after seeding the pinned build dependencies. Verify version,
-   runtime payload and reproducible wheel output against the direct build.
-6. Exclude upstream's `sqlglotc` and `rs` extras from the downstream metadata.
-   Preserve upstream development and compiled-test infrastructure separately.
-7. Produce artifact hashes and test the actual artifacts, not the checkout.
+1. Requires a clean tracked and untracked checkout, verifies the upstream
+   tag/SHA and ancestry, and stages runtime files in a temporary build directory.
+2. Relocates imports and enumerated dynamic paths with the existing AST-aware
+   rewriter, preserving local bindings, SQL text, logger names and
+   `sqlglot.meta` / `sqlglot.anonymous`. Unknown runtime paths fail closed.
+3. Uses private dialect plugin group `benchbox._vendor.sqlglot.dialects`.
+   Upstream plugins are not silently reused.
+4. Generates static version metadata and `benchbox_provenance.json` recording
+   repository, namespace, version, upstream/fork SHAs, source timestamp, complete
+   patch manifest and SHA256 of runtime files. Preserve LICENSE and `py.typed`.
+5. Builds one pure-Python `py3-none-any` wheel with no runtime dependencies,
+   optional compiled extras or console scripts. A self-contained fork sdist is
+   an internal reproducibility check; BenchBox ships only the resulting wheel.
 
-Artifact checks install the wheel and the sdist-built wheel into fresh
-environments outside the repository. Cover Python 3.11 through 3.14. Also
-install upstream SQLGlot, import the two packages in both orders, exercise
-dynamic dialect lookup, AST round trips, serialization and optimizer entry
-points, and prove each class/module belongs to its own namespace. Uninstall
-one distribution and verify the other remains usable. An import scanner is
-supporting evidence; it is not a substitute for execution.
-Use a local fixture distribution requiring upstream SQLGlot to exercise
-transitive resolver installation. Cover pickle and spawn-based round trips,
-negative class identity checks, every built-in dialect registration, and
-namespace-separated third-party dialect entry points.
+BenchBox stores one wheel under `benchbox/_vendor/` and a `sqlglot.json` pin
+containing its filename, SHA256, version, namespace and source identities.
+The offline pin check verifies wheel metadata, resources, provenance and file
+hashes and rejects extra wheels, compiled payloads or an unpacked source tree.
+The pin and wheel change together in a reviewed PR. A maintenance command
+adopts a verified built wheel; normal BenchBox builds never regenerate it.
 
-Relocate the upstream unit test imports into a separate fixture directory and
-run the installed-artifact unit suite there with the checkout absent from
-sys.path. Preserve SQL fixture text and adapt explicit module-identity
-expectations. The direct wheel and sdist-built wheel must have equal runtime
-payloads; test both installation paths. Never certify the rewritten runtime
-solely from tests of the original source.
+Verify direct ZIP import before installing the fork wheel, as well as the full
+relocated upstream unit suite from an installed wheel outside the checkout.
+Cover all built-in dialects, independent plugin groups, SQL execution, resources,
+optimizer/serialization APIs, pickle/spawn, import order and coexistence.
+Rebuild the fork sdist offline after seeding pinned build backends and compare
+complete wheel bytes. Do not certify relocation only from original-source tests.
 
 ## CI, release and refresh operations
 
-Add fork CI for source regressions and built-artifact checks. Use uv and
-existing Make entrypoints. Run upstream `make check` before source publication;
-the downstream pure-Python wheel does not imply compiled upstream tests may be
-silently removed. Keep new CI focused on the declared downstream Python range.
-The added matrix is four wheel-smoke jobs (Python 3.11–3.14), one installed
-full upstream unit suite, and one offline sdist rebuild/coexistence job. Import
-orders and uninstall directions are subprocess cases, not matrix dimensions.
+Retain the native seven-Python source/compiled checks and the bounded runtime
+artifact matrix: four Python 3.11–3.14 smoke jobs, one full installed suite,
+and one offline sdist/coexistence job. Add the direct ZIP-import path to artifact
+verification. Candidate artifacts and SHA256SUMS are retained for 30 days.
+Remove the fork production publisher and obsolete publication helper. No active
+workflow may publish `sqlglot`, `sqlglotc` or `benchbox-sqlglot`.
 
-Replace or disable the inherited automatic `v*` package-publish workflow in
-the first source PR before any hosted release tag is created. Its jobs publish
-upstream-named `sqlglot` and `sqlglotc` and write generated docs/changelog.
-The downstream release workflow validates an explicit `benchbox-vX.Y.Z.N`
-tag/version pair, builds and verifies artifacts before publication, uses the
-correct distribution identity, and requires the owner's approved publishing
-credentials / protected environment. PyPI trusted publishing identifies GitHub
-owner `BenchBox-dev`, repository `sqlglot`, workflow `benchbox-release.yml`,
-and environment `benchbox-sqlglot-pypi`. Reject the former personal publishing
-identity. Do not weaken settings or invent secrets.
-Retain downloadable CI artifacts if publishing configuration is unavailable.
-Retain artifacts and SHA256SUMS for 30 days. Approval binds their exact hashes;
-different bytes or unavailable evidence require new reviewable artifacts and
-renewed approval. Verify workflow trigger structure locally rather than
-performing a tag push as a safety test. Prefer owner-configured trusted
-publishing; missing configuration remains an owner-only blocker.
+Before adoption, verify BenchBox's real wrapper, platform mixin, base benchmark,
+SQLite arithmetic/Q6 bounds, AST consumers and BigQuery behavior against the
+bundled wheel. A new semantic regression needs an owner scope decision; do not
+silently add a fourth patch or change the reviewed upstream base.
 
-Before publication, run the relevant BenchBox wrapper, SQLite and BigQuery
-tests against the built artifact using a disposable source copy with only the
-planned import migration applied. The copy must come from the merged BigQuery
-prerequisite, not the other agent's worktree. This preview is distribution
-verification, not tracker completion or a substitute for the final adoption PR.
-If failures expose a real 30.23.0 semantic regression, block publication and
-resolve its scope with the owner rather than silently adding a fourth patch or
-changing the reviewed upstream base. Representation-only changes may update
-tests while preserving execution assertions.
+The maintainer reviews upstream monthly and promptly for correctness/security
+fixes. The scheduled check is read-only. Refresh replays carried patches onto
+an explicit newer tag in a disposable candidate, stops on conflicts, and then
+merges upstream ancestry into a descendant integration branch. Reconcile the
+union of old/new patch-owned source paths to the tested candidate so retired
+patches cannot resurrect. Prove two refreshes and an upstreamed patch in the
+existing Git fixture. Record conflict count and measured check/maintainer effort.
 
-The maintainer owns a monthly upstream refresh review and urgent correctness
-or security refreshes. A scheduled read-only check reports a newer tagged base;
-it must not auto-publish, rewrite refs, or open unrequested upstream PRs.
-Provide an explicit refresh command/runbook that records the old/new upstream
-SHAs, replays the carried patches on a candidate, fails on conflicts, reruns
-source and artifact tests, and requires review of upstreamed/excluded patches.
-Refreshes replay/adapt carried patches and retire upstreamed patches; new
-capabilities require their own approved scope. Record actual conflict count,
-test runtime and maintainer effort rather than asserting an unmeasured budget.
-An empty carried set plus passing upstream equivalence tests triggers an owner
-decision on retiring the fork; no automatic namespace migration is implied and
-no active upstream PR is required for a previously declined patch.
+After fork review and merge, build and verify a clean exact-commit wheel,
+adopt its bytes and pin in BenchBox, update behavioral baseline decisions,
+and pass consumer/package gates before merge. A fork change reaches users only
+through a BenchBox release. An empty carried patch set triggers an owner decision
+on retiring the fork, never an automatic namespace change.
 
-Keep immutable artifacts and tags. Initial rollback reverts the complete
-BenchBox adoption PR, restoring its old imports and public SQLGlot 30.18.0
-lock. Later rollback selects the preceding tested fork release and restores
-the associated dependency/lock change. The adoption item owns an isolated
-initial-rollback drill; later release checks own the previous-fork drill.
+Initial rollback reverts the complete adoption, restoring pre-migration imports
+and public SQLGlot 30.18.0. Later rollback restores the previous bundled wheel
+and pin together. Neither rollback rewrites immutable fork refs.
 
 ## BenchBox adoption
 
-After the verified package is published and the BigQuery prerequisite is
-merged, refresh the owned `BenchBox.wt-sqlglot-soft-fork` feature worktree to
-that merged base. Never edit `BenchBox.wt-sqlglot-bigquery-filter`, take its
-claim, or change its branch. Reconcile live Git/tracker state first.
+Use the owned `BenchBox.wt-sqlglot-soft-fork` worktree on a current merged
+`develop` base containing the BigQuery prerequisite.
 
-- Use `uv remove` / `uv add` to replace the public `sqlglot` dependency with
-  the exact tested `benchbox-sqlglot` release and regenerate `uv.lock`.
-  Keep plain pip-installed wheel metadata consistent with uv resolution.
-- Change runtime imports in the discovered `benchbox/**/*.py` consumers to
-  `benchbox_sqlglot`, including direct AST users, the base benchmark path,
-  platform adapter mixin and the central dialect wrapper. Inventory again at
-  implementation time; the prior count of 24 modules is not a frozen target.
-- Update tests, monkeypatch targets, type configuration, generator/repro tools
-  and dependency inventories where they describe the active runtime. Keep
-  unpatched-upstream comparison probes explicitly separate so they can still
-  establish when a carried patch is removable.
-  Inventory active container/notebook/docs examples, string annotations and
-  persistence uses; retain historical evidence unchanged. Ban upstream runtime
-  imports in `benchbox/` with Ruff TID251/banned-api and a negative proving
-  case. Exempt only explicitly isolated upstream-comparison/research code.
-  Unpatched probes use `uv run --no-project --isolated --with sqlglot==VERSION
-  -- python ...`; fork and BenchBox-wrapper probes use the locked project.
-- Make the retirement guard parse TOML and compare the dependency identity
-  (distribution, version and artifact/source identity), rather than a regex
-  matching only the public `sqlglot` version. Run on any identity change.
-  Compare explicit baseline outcomes / accepted retirement decisions so a
-  previously acknowledged passing reproduction does not fail every update.
-  The baseline is `_project/sqlglot-upstream/runtime-baseline.json`, schema 1:
-  dependency identity, named case IDs, source/target/call shape, expected
-  pass/unsupported outcome, and acknowledged workaround decision/path. Update
-  it with reviewed identity/behavior changes; reject missing or malformed data.
-- Retire only syntax workarounds demonstrated redundant through all three actual
-  BenchBox translation entrypoints with `identify=True`. Preserve exact SQLite Q6
-  decimal bounds, engine-semantic transforms, physical DDL, source normalization
-  and unrelated query variants. Narrow helpers rather than deleting mixed
-  policy/code wholesale. Record any remaining overlap and its reason.
-  Cover `benchbox.utils.dialect_utils.translate_sql_query`,
-  `benchbox.platforms.base.dialect_translation.DialectTranslationMixin.translate_sql`,
-  and `benchbox.base.BaseBenchmark.translate_query`; exercise the applicable
-  `identify=True` and postgres-normalized cross-dialect call shapes.
-- Update the SQLGlot ADR, dialect translation docs and repro documentation with
-  dependency ownership, supported version, boundary, refresh and rollback.
+- Remove the public SQLGlot runtime dependency using uv and regenerate the lock.
+  Do not add a published fork requirement, Git URL or developer-only source override.
+- Include exactly the pinned nested wheel and its metadata as package data in
+  both BenchBox wheel and sdist. There must be no unpacked SQLGlot source tree
+  in the repository or outer distributions. No source-vendoring policy exemption
+  or comment stripping is needed.
+- Migrate all runtime consumers, direct AST users, tests, mocks, metadata queries
+  and active tools/docs to the private namespace. Audit annotations, pickle,
+  notebooks and containers; retain historical evidence. Ban public SQLGlot
+  runtime imports with Ruff TID251 and an execution-based negative proving case.
+  Raw upstream comparisons remain isolated with
+  `uv run --no-project --isolated --with sqlglot==VERSION -- python ...`.
+- Replace the version-only retirement regex with the bundled artifact/source
+  identity. Parse TOML when comparing the pre-migration lock or validating
+  dependency removal. Run offline artifact verification and schema-1
+  `_project/sqlglot-upstream/runtime-baseline.json` cases with explicit
+  source/target/call shape, expected pass/unsupported outcome and acknowledged
+  workaround decision/path. Missing/malformed data or changed outcomes fail
+  closed. Acknowledged passing cases must not fail every subsequent update.
+- Cover utility, mixin and BaseBenchmark translation with `identify=True` and
+  normalized PostgreSQL input. Retire only proven redundant syntax fixes;
+  preserve mixed DATE_TRUNC, timestamp/unknown extraction, month/year interval,
+  Q6 exact-decimal, DuckDB ALL, normalization, DDL and engine-semantic behavior.
+- Update ADR, ownership, maintenance, dependency and rollback documentation.
 
-Run targeted wrapper, adapter-delegation, SQLite Q6, TPC-Havoc BigQuery, AST
-consumer, repro/generator and retirement-guard tests. Run configured Ruff,
-type checks, comment-policy, compatibility-doc checks and the repository
-preflight. Validate BenchBox's built wheel and sdist outside the checkout with
-both pip and uv and upstream SQLGlot present. Complete required CI and current
-head oracle review, then use the native PR workflow through verified merge.
+Run targeted consumer/guard tests, configured Ruff and ty, comment-policy,
+compatibility-doc checks and native preflight. Build actual BenchBox wheel and
+sdist and install outside the checkout with pip and uv, without separately
+installing the fork. Prove nested ZIP import, all dialects, resources, pickle/
+spawn, upstream coexistence and uninstall independence. Measure package size
+and import overhead against the unpacked runtime; report residual limits.
+Complete the initial rollback drill, required CI and current-head Oracle review,
+then use native PR open/arm through verified merge and post-merge smoke proof.
+
+## Measured results
+
+Fork runtime `30.23.0.2` is built from clean fork commit
+`6de7947e0b90aed7e62adf53e597bf6e05a6147e` (merged into
+`BenchBox-dev/benchbox-sqlglot` `main`) with SHA256
+`006b739c9935789ab373ac91a8adba6e5d9c28e8369b3b4e4b08bc40f1578da1`. The
+bundled archive is 799,094 bytes. BenchBox wheel size changes from 9,399,548 to
+10,176,525 bytes (+8.3%); sdist size changes from 8,774,605 to 9,554,993 bytes
+(+8.9%). Both artifacts contain exactly the pinned archive, pin metadata,
+plain-text notice and bootstrap; neither contains an unpacked SQLGlot tree.
+
+On one Apple Silicon development machine, a fresh interpreter importing the
+runtime and transpiling one statement had a 373 ms median from the nested
+archive and 70 ms from an unpacked, already-compiled wheel. Archive loading is
+the accepted cost of not shipping source files. Cache a compiled runtime only if
+measured user-visible startup warrants a separate approved change.
+
+Verification covered installed wheel and offline-rebuilt sdist with pip and uv,
+without a separately installed fork; upstream SQLGlot 30.23.0 was installed
+before and after BenchBox, then uninstalled in both directions. The initial
+rollback drill used a disposable checkout of the pre-migration base, which locks
+public SQLGlot 30.18.0, built its distributions and passed the dialect utility
+and SQLite Q6 tests.
 
 ## TODO breakdown and delivery order
 
-1. `sqlglot-soft-fork-source`: rebase/admit the bounded source patch series,
-   disable inherited mutating workflows, disposition the other branches, add
-   the manifest and execute source tests.
-   Terminal evidence: reviewed merged fork source PR and exact revision.
-2. `sqlglot-soft-fork-distribution`: implement isolated release assembly,
-   artifact tests, CI, release safety and the refresh command/runbook.
-   Needs source and the existing BigQuery compatibility item. Terminal
-   evidence: reviewed merged fork packaging PR, prospective consumer tests,
-   verified wheel/sdist hashes and passing artifact checks.
-3. `sqlglot-soft-fork-publish`: obtain owner publication approval for those
-   exact artifacts, configure only owner-authorized publishing access, publish
-   the downstream version and verify a fresh public install. Needs distribution
-   item. A denied approval or missing owner-only configuration blocks this
-   item without marking it done or bypassing it with a local path dependency.
-4. `sqlglot-soft-fork-adoption`: migrate BenchBox imports/dependencies, update
-   the guard and decision/docs, retire proved redundant syntax fixes, verify
-   built distributions and merge through native gates. Needs publication and
-   the existing BigQuery compatibility item. Terminal evidence: merged
-   BenchBox PR, exact dependency, required checks and post-merge verification.
-   Its rollback drill proves restoration of the complete pre-migration baseline.
+1. `sqlglot-soft-fork-source`: bounded patch admission and source verification;
+   terminal evidence is the merged source PR and exact revision.
+2. `sqlglot-soft-fork-distribution`: isolated wheel/reproducibility checks and
+   refresh controls; retain its historical completed evidence.
+3. `sqlglot-soft-fork-publish`: repurpose the former publication item for the
+   owner-approved wheel-only contract: canonical fork name, private wheel build,
+   no production publisher, direct ZIP-import proof and merged fork tooling.
+   Terminal evidence is a merged fork PR and verified immutable runtime artifact.
+   It must not publish a separate PyPI project.
+4. `sqlglot-soft-fork-adoption`: bundle only that wheel/pin, migrate every
+   consumer, guard/docs/tests, verify actual packages and rollback, then merge
+   through BenchBox's native gates. Needs the fork tooling and merged BigQuery
+   prerequisite. Finish only after current-head gates, merge and post-merge proof.
 
 ## Review contract
 

@@ -148,7 +148,7 @@ class TestClickHouseAdapter:
         with patch("benchbox.platforms.clickhouse.setup.ClickHouseClient"):
             adapter = ClickHouseAdapter(deployment_mode="server")
 
-            with patch("sqlglot.transpile") as mock_transpile:
+            with patch("benchbox._vendor.sqlglot.transpile") as mock_transpile:
                 mock_transpile.return_value = ['SELECT * FROM "table"']
 
                 result = adapter.translate_sql("SELECT * FROM table", "duckdb")

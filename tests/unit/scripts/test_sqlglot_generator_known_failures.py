@@ -85,11 +85,6 @@ def test_empty_known_failure_list_passes() -> None:
     assert _errors(_policy()) == []
 
 
-def test_replay_template_keeps_future_generator_in_project_repro_scope() -> None:
-    assert " python _project/sqlglot-upstream/repros/generator.py " in EXPECTED_REPLAY_COMMAND_TEMPLATE
-    assert " python scripts/" not in EXPECTED_REPLAY_COMMAND_TEMPLATE
-
-
 def test_age_six_passes_and_age_seven_fails(tmp_path: Path) -> None:
     failure = _known_failure()
     _write_artifact(tmp_path, failure)

@@ -64,7 +64,7 @@ jobs:
 
       - name: Run type checking
         run: |
-          uv run ty check
+          make typecheck
 
       - name: Run fast tests
         run: |

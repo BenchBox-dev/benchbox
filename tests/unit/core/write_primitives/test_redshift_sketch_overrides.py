@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import pytest
-import sqlglot
 
+from benchbox._vendor import sqlglot
 from benchbox.core.write_primitives.catalog.loader import load_write_primitives_catalog
 
 pytestmark = [

@@ -115,7 +115,7 @@ def _final_key_tied_beyond_limit(
 
 
 def _is_star_projection(projection: Any) -> bool:
-    from sqlglot import exp
+    from benchbox._vendor.sqlglot import exp
 
     return isinstance(projection, exp.Star) or (
         isinstance(projection, exp.Column) and isinstance(projection.this, exp.Star)
@@ -123,8 +123,8 @@ def _is_star_projection(projection: Any) -> bool:
 
 
 def _order_by_result_key(sql: str) -> list[int] | None:
-    import sqlglot
-    from sqlglot import exp
+    from benchbox._vendor import sqlglot
+    from benchbox._vendor.sqlglot import exp
 
     try:
         tree = sqlglot.parse_one(sql, read="duckdb")
@@ -181,14 +181,14 @@ class _DerivedOrderPlan:
 
 
 def _projection_column(projection: Any) -> Any | None:
-    from sqlglot import exp
+    from benchbox._vendor.sqlglot import exp
 
     inner = projection.this if isinstance(projection, exp.Alias) else projection
     return inner if isinstance(inner, exp.Column) and not isinstance(inner.this, exp.Star) else None
 
 
 def _lone_source_qualifier(tree: Any) -> str | None:
-    from sqlglot import exp
+    from benchbox._vendor.sqlglot import exp
 
     from_node = tree.args.get("from")
     if from_node is None:
@@ -231,7 +231,7 @@ def _resolve_output_column(
 def _rewrite_order_term(
     target: Any, names: Sequence[str], projections: Sequence[Any] | None, lone_qualifier: str | None
 ) -> Any:
-    from sqlglot import exp
+    from benchbox._vendor.sqlglot import exp
 
     if isinstance(target, exp.Literal) and target.is_int:
         ordinal = int(target.name)
@@ -259,8 +259,8 @@ def _unverifiable(reason: str) -> _DerivedOrderPlan:
 
 
 def _derived_order_plan(sql: str, describe: Callable[[], Sequence[tuple[str, str]]]) -> _DerivedOrderPlan:
-    import sqlglot
-    from sqlglot import exp
+    from benchbox._vendor import sqlglot
+    from benchbox._vendor.sqlglot import exp
 
     try:
         tree = sqlglot.parse_one(sql, read="duckdb")
@@ -361,7 +361,7 @@ def _resolve_order_term(
     alias_to_index: dict[str, int],
     expr_to_index: dict[str, int],
 ) -> int | None:
-    from sqlglot import exp
+    from benchbox._vendor.sqlglot import exp
 
     if isinstance(target, exp.Literal) and target.is_int:
         ordinal = int(target.name)

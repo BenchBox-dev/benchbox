@@ -7,10 +7,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import sqlglot
 import yaml
-from sqlglot import exp
 
+from benchbox._vendor import sqlglot
+from benchbox._vendor.sqlglot import exp
 from benchbox.core.tpcds_obt.schema import OBT_TABLE_NAME, get_column_lineage
 
 
