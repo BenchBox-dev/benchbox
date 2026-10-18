@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Policy test passes",
+    "Owner approval recorded",
+    "First local verdicts post on real PRs"
+  ],
+  "description": "Plan step B4: executor.mode: local. Owner approves the cut-over the same day as the proof PRs (O9). Rollback: set ORACLE_EXECUTOR=hosted or revert, then re-dispatch waiting PRs.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51",
+      "at": "2026-10-18T01:01:02Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "eb8408cd5c914f3ab339473fac6599e0",
+      "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    }
+  ]
+}

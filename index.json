@@ -14803,6 +14803,16 @@
       "status": "open",
       "title": "BenchBox: decision record and docs for the local oracle executor"
     },
+    "oracle-local-b4-cutover": {
+      "claim": null,
+      "needs": [
+        "oracle-local-b3-decision-record-docs",
+        "ssns-a5-proof-prs"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "BenchBox: switch the oracle to the local executor"
+    },
     "oracle-map-staged-gate-scale-and-label-vocabulary": {
       "claim": null,
       "needs": [],
