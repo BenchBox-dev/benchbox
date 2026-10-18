@@ -6,7 +6,7 @@
     "PR merged with a success oracle-review verdict (no stand-in; .github/workflows/ is a soundness path) and required checks green",
     "GATE-H: how the existing negative probe is invoked is found and recorded before choosing the marker; no skip based on matching error text alone"
   ],
-  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs every line. FAIL if close-on-success can close an issue for a different label, or if text matching suppresses real failures. This item defines the label names the site deploy reporter item consumes.",
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs every line. FAIL if close-on-success can close an issue for a different label, or if text matching suppresses real failures. This item defines the label names the site deploy reporter item consumes.\nPre-publication (AGENTS.md): self-review with the code review action and fix every Critical and Required finding before make pr-open (G13).",
   "description": "Confirmed: .github/workflows/site-inputs.yml report-failure (about lines 131-155) opens or comments on one 'site-bundle-failed' issue and has no close path; its own text says 'Close this issue once a bundle succeeds again' but nothing does it. The same label is also used by the site repo's relay of site-side deploy failures (deploy.yml report-failure, lines 223-238), so core build failures and site deploy failures share one issue (#2979: 37 comments, six distinct causes; closed #2886 had 31).\nWork (core side): (1) core bundle build failures keep label site-bundle-failed; a successful site-inputs run on develop comments and closes the open issue (D7 style evidence comment); (2) classify the failure (parent-bundle-missing, not-trunk-certified, other) in a hidden marker and comment only when the class or the failing core commit changes class (no identical consecutive comments); (3) define the label for site-side relay issues: site-bundle-undeployed, created by the workflow itself with the existing 'gh label create --force' pattern (a label this item names, allowed by G7); (4) honor an explicit expected-rejection marker (see the site reporter item) and never create an incident for it.\nExpected rejections seen: #2850 (manual dispatch before Trunk certified: refused as designed) and #2851 (deliberate wrong-digest negative probe).",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/issues/2979",
@@ -20,6 +20,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "116d1d00ee5b4763830363f3194a61be",
+      "session_id": "cab8a4e762844fd9912c504ebfd76c56"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7ac6538e56f6607b35a3f600",
+      "at": "2026-10-18T20:28:06Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ceb77245c7654bd3a7eab1fb346be222",
       "session_id": "cab8a4e762844fd9912c504ebfd76c56"
     }
   ]
