@@ -1083,7 +1083,7 @@
         "astro-site-40-explorer-shell-integration"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "dropped",
       "title": "Decision gate G2: add a parity harness comparing the Astro build with the Sphinx site, and require a clean result"
     },
     "astro-site-51-visual-gate-transition": {
