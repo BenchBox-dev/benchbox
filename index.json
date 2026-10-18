@@ -14794,6 +14794,15 @@
       "status": "open",
       "title": "BenchBox: record workflow, proof mode and engine-installed check for the local oracle"
     },
+    "oracle-local-b3-decision-record-docs": {
+      "claim": null,
+      "needs": [
+        "oracle-local-b2-record-workflow-and-proof"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "BenchBox: decision record and docs for the local oracle executor"
+    },
     "oracle-map-staged-gate-scale-and-label-vocabulary": {
       "claim": null,
       "needs": [],

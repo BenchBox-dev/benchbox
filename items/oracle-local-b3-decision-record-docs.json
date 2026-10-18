@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "Docs checks pass"
+  ],
+  "description": "Plan step B3. _project/decisions/oracle-local-executor-2026-10-16.md (extraction, no hosted reviewers, per-CLI role users, residual risks, rebutted review options, A2 results); docs/internal/oracle-review-v2.md points to ship-no-ship docs; repo-admin-settings.md (App Actions: write, secrets, oracle-engine-installed required); merge-authority.md: Mac down is a stalled verdict, stand-in only when the owner names PR and head, including an emergency engine-revert PR; AGENTS.md: agents never touch the role users, service files or LaunchDaemon.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51",
+      "at": "2026-10-18T01:00:42Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "f1026a3b79364d41830c0d77771d2331",
+      "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    }
+  ]
+}
