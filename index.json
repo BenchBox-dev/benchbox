@@ -1133,7 +1133,7 @@
     "astro-site-61-results-discovery-pages": {
       "claim": null,
       "needs": [
-        "astro-site-54-retire-sphinx-and-legacy-site"
+        "site-browser-acceptance-ci-20261017"
       ],
       "priority": "low",
       "status": "open",
