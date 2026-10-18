@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import ast
 import shlex
 import subprocess
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import pytest
 import yaml
@@ -289,3 +290,107 @@ def test_drift_check_ignores_derived_inventory_difference() -> None:
     path_specs = run.split("PATHSPECS=(", 1)[1].split(")", 1)[0]
     assert "results-data/bundles" in path_specs
     assert "results-data/corpus-inventory.json" not in path_specs
+
+
+VALIDATOR_ROOTS = ("results-data/validate_corpus.py", "scripts/validate_submission.py")
+
+
+def _path_chain(node: ast.expr) -> list[ast.expr]:
+    parts: list[ast.expr] = []
+    while isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div):
+        parts.append(node.right)
+        node = node.left
+    parts.append(node)
+    return parts[::-1]
+
+
+def _chain_base(head: ast.expr, module: str) -> str | None:
+    if isinstance(head, ast.Name) and head.id == "CHECKOUT_ROOT":
+        return ""
+    if isinstance(head, ast.Subscript) and isinstance(head.slice, ast.Constant):
+        value = head.value
+        if isinstance(value, ast.Attribute) and value.attr == "parents":
+            return str(PurePosixPath(module).parents[head.slice.value])
+    return None
+
+
+def _repo_modules_loaded_by_path(module: str) -> set[str]:
+    tree = ast.parse((REPO_ROOT / module).read_text(encoding="utf-8"))
+    found: set[str] = set()
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "_load_repo_module"
+            and len(node.args) >= 2
+            and isinstance(node.args[1], ast.Constant)
+        ):
+            found.add(str(node.args[1].value))
+        elif isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div):
+            chain = _path_chain(node)
+            base = _chain_base(chain[0], module)
+            tail = chain[1:]
+            if (
+                base is None
+                or not tail
+                or not all(isinstance(p, ast.Constant) and isinstance(p.value, str) for p in tail)
+            ):
+                continue
+            rel = PurePosixPath(base, *(p.value for p in tail))
+            if rel.suffix == ".py":
+                found.add(str(rel))
+    return {path for path in found if (REPO_ROOT / path).is_file()}
+
+
+def _validator_module_closure() -> set[str]:
+    seen: set[str] = set()
+    pending = list(VALIDATOR_ROOTS)
+    while pending:
+        module = pending.pop()
+        if module in seen:
+            continue
+        seen.add(module)
+        pending.extend(_repo_modules_loaded_by_path(module))
+    return seen
+
+
+def _git_add_targets() -> list[str]:
+    build = _build_step_run()
+    line = next(raw for raw in build.splitlines() if raw.strip().startswith("git add results-data "))
+    return [token for token in shlex.split(line.strip())[2:] if not token.startswith("|")]
+
+
+def _covered_by_git_add(path: str, targets: list[str]) -> bool:
+    return any(path == target or path.startswith(f"{target}/") for target in targets)
+
+
+def test_validator_path_loader_discovery_finds_known_modules() -> None:
+    closure = _validator_module_closure()
+
+    assert set(VALIDATOR_ROOTS) <= closure
+    assert "benchbox/validation/bundle.py" in closure
+    assert "benchbox/core/results/schema_policy.py" in closure
+    assert "benchbox/core/results/query_status.py" in closure
+
+
+def test_mirror_file_lists_cover_every_module_the_validators_load_by_path() -> None:
+    required = _validator_module_closure()
+    triggers, compare_paths, copy_paths = _mirrored_runtime_paths()
+    add_targets = _git_add_targets()
+
+    assert sorted(required - set(triggers)) == []
+    assert sorted(required - set(compare_paths)) == []
+    assert sorted(required - set(copy_paths)) == []
+    assert sorted(path for path in required if not _covered_by_git_add(path, add_targets)) == []
+
+
+def test_mirror_file_lists_name_only_repo_files_without_wildcards() -> None:
+    triggers, compare_paths, copy_paths = _mirrored_runtime_paths()
+
+    for path in copy_paths:
+        assert "*" not in path
+        assert (REPO_ROOT / path).is_file(), path
+    for path in compare_paths:
+        assert "*" not in path
+        assert (REPO_ROOT / path).exists(), path
+    assert not [path for path in _git_add_targets() if "*" in path]
