@@ -22021,6 +22021,13 @@
       "status": "open",
       "title": "ship-no-ship owner: sign in each reviewer CLI as its role user"
     },
+    "ssns-o5-autorestart": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "ship-no-ship owner: enable automatic restart after power loss"
+    },
     "ssns-prepublication-hardening": {
       "claim": null,
       "needs": [],
