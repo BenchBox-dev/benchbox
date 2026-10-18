@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "release.yml attests each wheel",
+    "Owner review",
+    "Docs say attestations are supplementary to the pinned sha256"
+  ],
+  "description": "Plan section 16 step P5. Attest release wheels with GitHub artifact attestations (free for public repositories). Supplementary only: BenchBox's trust root stays the sha256 pinned in a reviewed BenchBox PR. Touches the release workflow, so the owner reviews.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51",
+      "at": "2026-10-18T00:57:56Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "bb8a51c284ca4dd58f161d40fdfdffe3",
+      "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    }
+  ]
+}

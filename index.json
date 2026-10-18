@@ -21974,6 +21974,15 @@
       "status": "open",
       "title": "ship-no-ship: merge the public-repository hardening (README notice, tag-on-main, zip64 and skipped-file checks)"
     },
+    "ssns-release-attestations": {
+      "claim": null,
+      "needs": [
+        "ssns-prepublication-hardening"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "ship-no-ship: add artifact attestations to release.yml"
+    },
     "stabilize-full-test-suite-failures": {
       "claim": null,
       "needs": [],
