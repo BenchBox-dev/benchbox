@@ -1333,17 +1333,12 @@
       "title": "Make the CedarDB nightly cell pass publication validation and explain baseline tuning statements"
     },
     "autogen-docker-mirror-tag-digest-20261018": {
-      "claim": {
-        "expires_at": "2026-10-19T20:48:24Z",
-        "generation": "33fbabeec78f40d883788199d14f4607",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7ac6538e56f6607b35a3f600"
-      },
+      "claim": null,
       "needs": [
         "autogen-issues-decisions-20261018"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Fix the CI image mirror for tag-plus-digest pins and stop pulling Postgres unmirrored"
     },
     "autogen-durations-decouple-from-correctness-20261018": {
