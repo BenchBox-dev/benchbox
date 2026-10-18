@@ -32,7 +32,7 @@ def guarded_repository(tmp_path: Path) -> Path:
     subprocess.run(["git", "-C", str(tmp_path), "config", "user.name", "Fixture"], check=True)
     subprocess.run(["git", "-C", str(tmp_path), "config", "user.email", "fixture@example.invalid"], check=True)
     subprocess.run(["git", "-C", str(tmp_path), "config", "commit.gpgsign", "false"], check=True)
-    subprocess.run(["git", "-C", str(tmp_path), "add", "benchbox", "pyproject.toml", "_project"], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "add", "benchbox", "pyproject.toml", "scripts"], check=True)
     subprocess.run(["git", "-C", str(tmp_path), "commit", "--quiet", "-m", "Fixture baseline"], check=True)
     return tmp_path
 

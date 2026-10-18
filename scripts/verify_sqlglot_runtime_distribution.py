@@ -36,7 +36,7 @@ def verify_distribution(distribution: Path) -> None:
     pin = json.loads(files["sqlglot.json"])
     archive_name = pin["archive"]
     expected = {"__init__.py", "sqlglot.json", NOTICE, archive_name}
-    unexpected = sorted(set(files) - expected - {name for name in files if name.startswith("__pycache__/")})
+    unexpected = sorted(set(files) - expected)
     missing = sorted(expected - set(files))
     if unexpected or missing or any(PurePosixPath(name).parts[0] == "sqlglot" for name in files):
         raise ValueError(f"{distribution.name}: unexpected {unexpected}, missing {missing}")

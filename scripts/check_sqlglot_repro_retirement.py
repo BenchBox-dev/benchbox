@@ -15,7 +15,7 @@ from packaging.requirements import Requirement
 from scripts.sync_sqlglot_runtime import check_runtime
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-BASELINE = Path("_project/sqlglot-upstream/runtime-baseline.json")
+BASELINE = Path("scripts/sqlglot_runtime_baseline.json")
 REQUIRED_CASES = {
     "postgres-extract-fractional-division",
     "postgres-integer-division",
@@ -71,6 +71,8 @@ def load_baseline(root: Path, identity: dict[str, Any]) -> list[dict[str, Any]]:
             )
             if shape not in case["expected"] or (shape == "rows" and not isinstance(case["expected"]["rows"], list)):
                 raise ValueError("Passing cases require the acknowledged result shape for their target")
+            if shape != "rows" and case["workaround"]["decision"] != "retain":
+                raise ValueError("A pass without database execution cannot retire a workaround")
         elif not isinstance(case["expected"].get("error_type"), str):
             raise ValueError("Unsupported cases require an explicit error type")
     return cases

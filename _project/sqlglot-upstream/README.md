@@ -6,7 +6,7 @@ BenchBox uses the pinned private runtime wheel from
 [`BenchBox-dev/benchbox-sqlglot`](https://github.com/BenchBox-dev/benchbox-sqlglot).
 Only the `.whl` and pin metadata are bundled under `benchbox/_vendor/`; source
 stays in the fork. `make sqlglot-repro-retirement-check` verifies the wheel hash
-and the acknowledged pass/unsupported outcomes in `runtime-baseline.json`.
+and the acknowledged pass/unsupported outcomes in `scripts/sqlglot_runtime_baseline.json`.
 An acknowledged passing case is not a recurring retirement failure.
 
 The generated-case pilot exercises BenchBox's real wrapper and parses with the

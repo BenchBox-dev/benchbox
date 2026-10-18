@@ -636,7 +636,7 @@ ci-lint:
 	[ $$? -eq 0 ] || failed="$$failed ruff-check"; \
 	uv run ruff format --check .; \
 	[ $$? -eq 0 ] || failed="$$failed ruff-format"; \
-	uv run -- python -m scripts.typecheck; \
+	uv run ty check; \
 	[ $$? -eq 0 ] || failed="$$failed ty-check"; \
 	$(MAKE) quality-governance-typecheck; \
 	[ $$? -eq 0 ] || failed="$$failed quality-governance-typecheck"; \

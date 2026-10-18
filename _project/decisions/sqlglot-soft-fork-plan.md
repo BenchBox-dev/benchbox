@@ -193,7 +193,7 @@ Use the owned `BenchBox.wt-sqlglot-soft-fork` worktree on a current merged
 - Replace the version-only retirement regex with the bundled artifact/source
   identity. Parse TOML when comparing the pre-migration lock or validating
   dependency removal. Run offline artifact verification and schema-1
-  `_project/sqlglot-upstream/runtime-baseline.json` cases with explicit
+  `scripts/sqlglot_runtime_baseline.json` cases with explicit
   source/target/call shape, expected pass/unsupported outcome and acknowledged
   workaround decision/path. Missing/malformed data or changed outcomes fail
   closed. Acknowledged passing cases must not fail every subsequent update.

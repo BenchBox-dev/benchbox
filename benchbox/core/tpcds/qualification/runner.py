@@ -424,6 +424,13 @@ def emit(path: Path, event: dict[str, Any]) -> None:
         stream.flush()
 
 
+def _bundled_sqlglot_identity() -> str:
+    from benchbox import _vendor
+
+    pin = json.loads(Path(_vendor.__file__).with_name("sqlglot.json").read_text(encoding="utf-8"))
+    return f"{pin['version']}+{pin['fork_sha'][:12]}.{pin['sha256'][:12]}"
+
+
 def prepare(answers_dir: Path) -> dict[str, Any]:
     from benchbox.core.tpcds.c_tools import DSQGenBinary
     from benchbox.core.tpcds.dataframe_queries import TPCDS_DATAFRAME_QUERIES
@@ -486,6 +493,7 @@ def prepare(answers_dir: Path) -> dict[str, Any]:
                 for name in ("duckdb", "polars", "pandas", "datafusion", "pyarrow")
             },
             "sqlglot": sqlglot.__version__,
+            "benchbox-sqlglot": _bundled_sqlglot_identity(),
         },
     }
 
