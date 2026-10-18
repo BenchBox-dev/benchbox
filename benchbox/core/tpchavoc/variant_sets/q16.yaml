@@ -244,16 +244,18 @@ variants:
             ps.ps_suppkey
          from
             partsupp ps,
-            part p,
-            (select s_suppkey as excluded_suppkey
-             from supplier
-             where s_comment like '%Customer%Complaints%') excluded
+            part p
          where
             p.p_partkey = ps.ps_partkey
             and p.p_brand <> 'Brand#45'
             and p.p_type not like 'MEDIUM POLISHED%'
             and p.p_size in (49, 14, 23, 45, 19, 3, 36, 9)
-            and ps.ps_suppkey <> excluded.excluded_suppkey) supplier_part_data
+            and ps.ps_suppkey not in (
+                select excluded.excluded_suppkey
+                from
+                    (select s_suppkey as excluded_suppkey
+                     from supplier
+                     where s_comment like '%Customer%Complaints%') excluded)) supplier_part_data
     group by
         supplier_part_data.p_brand,
         supplier_part_data.p_type,
