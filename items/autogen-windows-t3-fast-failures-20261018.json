@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "Each of the five tests has a recorded root cause and a fix (code or test portability) with no skip/xfail/quarantine",
+    "OS-independent logic is covered by unit tests that run on the local host (e.g. separator normalisation, closed-handle assertion)",
+    "A windows-latest dispatch run on the item branch shows all five tests passing; run URL recorded",
+    "PR merged with required checks green (oracle review if a soundness path changes, e.g. comment-cleanup scope code)",
+    "t3:windows domain green is proven in autogen-nightly-dispatch-verify-20261018"
+  ],
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs a Windows run showing the five tests passing. FAIL if any test is skipped or quarantined, or if the proof run is missing. Branch dispatch of nightly-v2 runs its report job and may comment on real t3:windows issue #2964; that is covered by D7.",
+  "description": "Decision D9: fix all five, no quarantine. Confirmed in run 39125986956 (windows-latest py3.12; 5 failed, 29509 passed, 607 skipped): (1) tests/unit/core/tpch/test_tpch_streams.py::TestGenerateStreamQueriesQgen::test_bundled_qgen_uses_the_first_query_in_each_stream_permutation: FileNotFoundError WinError 2 (bundled qgen not resolved). (2) tests/unit/platforms/test_redshift_adapter.py::TestRedshiftAdapter::test_external_table_mode_registers_iceberg_in_glue: PermissionError WinError 32 on a temp cat.db (catalog handle not closed before cleanup). (3) tests/unit/platforms/test_deployment_modes_recorded.py::test_timescaledb_cloud_selector_is_accepted_by_the_run_command: CLI output assertion failure (read the full assertion first). (4) tests/unit/scripts/test_check_untracked_handoffs.py::test_new_tracked_handoff_fails_and_is_named[_project\\handoffs\\...]: backslash vs forward-slash in expected output. (5) tests/unit/scripts/test_comment_cleanup_scope.py::test_head_blob_rejects_a_directory_or_unreadable_path_as_a_policy_error: os.geteuid does not exist on Windows.\nFix in code where product behavior is wrong on Windows (qgen resolution, unclosed catalog handle); fix the test only for genuine portability (separator normalisation, geteuid guard). Do not touch the stall investigation item windows-fast-test-stall-cause-20261017.\nWindows cannot be run locally on this host: prove with the narrowest workflow that runs these tests on windows-latest (cross-platform-validation.yml, or nightly-v2 t3:windows) via workflow_dispatch on the item's branch; read the available inputs first.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/issues/2964",
+    "item:windows-fast-test-stall-cause-20261017"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7ac6538e56f6607b35a3f600",
+      "at": "2026-10-18T20:21:54Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9230d40a32224a28bd43c1dddba81431",
+      "session_id": "cab8a4e762844fd9912c504ebfd76c56"
+    }
+  ]
+}

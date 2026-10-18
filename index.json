@@ -1384,6 +1384,15 @@
       "status": "open",
       "title": "Fix the four failing TPC-H slow-tier tests behind the release canary and t3:durations"
     },
+    "autogen-windows-t3-fast-failures-20261018": {
+      "claim": null,
+      "needs": [
+        "autogen-issues-decisions-20261018"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Fix the five Windows-only t3:windows fast-test failures"
+    },
     "automate-corpus-inventory-generation": {
       "claim": null,
       "needs": [
