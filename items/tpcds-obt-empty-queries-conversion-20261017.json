@@ -5,7 +5,7 @@
     "A test fails if any converted statement returns no rows on the small OBT dataset used by tests/integration/test_tpcds_obt_parameter_draws.py, except documented exceptions",
     "Statements returning exactly one row (16, 18, 27, 28, 36, 88, 90, 94, 95, 96 before the parameter fix) are rechecked, and any that are aggregates over an empty set are fixed or documented"
   ],
-  "context": "Implemented in PR #3120 (branch fix/tpcds-obt-empty-query-conversions, commit 3d396ee38): per-query conversion fixes for the 17 empty statements plus 16/94/95; single-row statements rechecked and documented in tests; 110 tpcds_obt tests pass. Live SF1 row counts NOT measured (no local SF1 OBT data); verification is conversion tests + synthetic DuckDB. PR armed 2026-10-18; after merge, take and finish. Note: tpcds-obt-rerun item stays blocked on this item's done state plus owner spend approval.",
+  "context": "Code fix merged in PR #3120 (2026-10-18). NOT finished: acceptance 1/3 still need row evidence on SF1 OBT data (worker verified conversion tests + synthetic DuckDB only; Q6/Q8/Q19/Q83/Q91 synthetic zeros attributed to fixture coverage, not live measurement). Next: run the converted statements on local SF1 OBT data (or the small-dataset no-rows test in tests/integration/test_tpcds_obt_parameter_draws.py) and finish only if all 17 return rows or have documented empty-result reasons.",
   "description": "On local SF1 OBT data in DuckDB, 17 converted TPC-DS OBT statements still return no rows after query parameters started coming from dsqgen: 1, 6, 8, 10, 15, 19, 30, 35, 44, 45, 54, 58, 69, 78, 81, 83, 91. The cause is how the converter rewrites the base TPC-DS query against the one big table, not the parameters. For example, Q1 joins `returned_date_sk` to the sold date, so no return row matches. Any run of these statements times a query that returns nothing, so their results are not comparable with TPC-DS.\n\nThe converter is `benchbox/core/tpcds_obt/query_conversion.py`, with per-query rewrites in `query_specs.yaml`. Parameter rendering is already correct, and the parameter tests in `tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py` cover it.\n\nAlso check the statements that return exactly one row. Before the parameter fix, 10 statements did (16, 18, 27, 28, 36, 88, 90, 94, 95, 96), and they are likely aggregates over an empty set. Confirm which of them are still affected now that parameters are real.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3062"
@@ -87,6 +87,14 @@
       "generation": "9fa87b42f3484865b2e583c981a3e51b",
       "op": "take",
       "op_id": "778122160dd544ec938eb5da34c6dfe0",
+      "session_id": "d2c53a64af484bf0b44e45ae35143611"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:3ce222eaad5d12493e27d4cc",
+      "at": "2026-10-18T04:10:00Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "70dbdc503f734a20ba871ec38abc99c8",
       "session_id": "d2c53a64af484bf0b44e45ae35143611"
     }
   ]
