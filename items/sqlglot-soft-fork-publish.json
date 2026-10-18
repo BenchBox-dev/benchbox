@@ -5,7 +5,7 @@
     "Fresh public pip and uv installations resolve the expected version, provenance and package hashes and preserve upstream SQLGlot coexistence.",
     "Record public artifact/install evidence, then finish this item. Do not substitute local path/VCS-only developer overrides or mark publication done before live verification."
   ],
-  "context": "Owner approved exact publication and named settings with Proceed on 2026-10-18. Source: 59b65e5fb53968dca1c324d5afa6321b04263e2f. Successful main candidate: 39093404507, artifact 12123572445. Wheel SHA256: 81cae29efe1e4342ba1d1d7970c6dbb809c610836bbcc23042163eb364aed63e. Sdist SHA256: 66d26544aced71c5e055d271591aff4564d69f45015cec10c6a1e16e9fefbd19. Approved files remain in /Users/joe/Developer/sqlglot.wt-benchbox-release/dist/ci-candidate-39093404507. Configured GitHub environment benchbox-sqlglot-pypi ID 24628212051 with required reviewer joeharris76 ID 57046. Created and pushed annotated tag benchbox-v30.23.0.1 at approved source. Local exact-source/hash/control validation passed. Release run https://github.com/joeharris76/sqlglot/actions/runs/39123289409 was dispatched at that tag; verify job passed including make benchbox-check, publish job is waiting on the environment. No upload has occurred. PyPI pending trusted publisher remains unconfirmed: cua inventory has no browsers, getBrowser and createBrowserTab(iab) report unavailable. Asked owner to configure https://pypi.org/manage/account/publishing/ with project benchbox-sqlglot, GitHub owner joeharris76, repository sqlglot, workflow benchbox-release.yml, environment benchbox-sqlglot-pypi, or connect a browser. Owner has not replied to this concrete access/setup blocker. Do not approve publish until publisher setup is confirmed. After setup, resume waiting run through environment approval; exact publication is already owner-authorized and does not need renewed approval unless bytes/scope change. Verify public hashes and fresh pip/uv/coexistence installs before finish. Adoption remains open and unclaimed pending publication. Release the claim and block publication while waiting for publisher setup.",
+  "context": "Owner explicitly authorized transfer to BenchBox-dev and next steps on 2026-10-18, superseding personal-account publishing. Requested cancellation of waiting release run39123289409 before transfer. Transfer API accepted; verify canonical owner. Implement organization repository URLs/release guard/tests and immutable next revision30.23.0.2 (retain existing30.23.0.1 tag). Build/verify new artifacts and record new hashes before production publication approval. Prior30.23.0.1 hashes remain historical, not approval for replacement bytes. PyPI publisher should trust BenchBox-dev/sqlglot, workflowbenchbox-release.yml, environmentbenchbox-sqlglot-pypi. Existing browser unavailable observation is historical; recheck current capabilities when needed. BenchBox adoption remains downstream of verified public release.",
   "description": "Present the exact reviewed benchbox-sqlglot30.23.0.1 wheel/sdist and SHA256SUMS to the owner; obtain explicit production-publication approval. Check actual PyPI name/project access and owner-authorized trusted publishing configuration. Publish only approved artifacts from the reviewed source and verify public pip/uv installs. This is a distinct publication boundary; implementation authorization is not a publishing credential or approval.",
   "links": [
     "https://github.com/joeharris76/sqlglot/actions/runs/39093404507",
@@ -114,6 +114,14 @@
       "op": "update",
       "op_id": "c896d6e831f745aea754aec75504436f",
       "session_id": "5626a6dfe7d44c419c7db613d1059c06"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:00f9896dc298dff5fa33ec9d",
+      "at": "2026-10-18T12:36:41Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "bea3ed5b9a4844a2ab6f17b9ea264b3f",
+      "session_id": "a5197da3d60b4447b3b0ac38e65a8fbc"
     }
   ]
 }
