@@ -21846,6 +21846,15 @@
       "status": "open",
       "title": "Build and verify an isolated BenchBox SQLGlot distribution"
     },
+    "sqlglot-soft-fork-publish": {
+      "claim": null,
+      "needs": [
+        "sqlglot-soft-fork-distribution"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Publish the verified BenchBox SQLGlot release with owner approval"
+    },
     "sqlglot-soft-fork-source": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Owner approval explicitly covers the concrete candidate artifacts/version/hashes; missing publishing settings or credentials remain an owner-only blocker and are not bypassed.",
+    "Publish the correct downstream name/version, immutable artifacts and explicit downstream tag without upstream-named jobs or automatic docs/changelog writes.",
+    "Fresh public pip and uv installations resolve the expected version, provenance and package hashes and preserve upstream SQLGlot coexistence.",
+    "Record public artifact/install evidence, then finish this item. Do not substitute local path/VCS-only developer overrides or mark publication done before live verification."
+  ],
+  "context": "Publication is not yet authorized. Prepare and verify everything permitted first, then ask the owner as the final publication step. If blocked, keep this item nonterminal with concrete required owner action, release its claim and keep downstream dependency blocked.",
+  "description": "Present the exact reviewed benchbox-sqlglot30.23.0.1 wheel/sdist and SHA256SUMS to the owner; obtain explicit production-publication approval. Check actual PyPI name/project access and owner-authorized trusted publishing configuration. Publish only approved artifacts from the reviewed source and verify public pip/uv installs. This is a distinct publication boundary; implementation authorization is not a publishing credential or approval.",
+  "links": [
+    "/Users/joe/Developer/BenchBox.wt-sqlglot-soft-fork/_project/decisions/sqlglot-soft-fork-plan.md",
+    "/Users/joe/Developer/BenchBox.wt-sqlglot-soft-fork/_project/decisions/sqlglot-soft-fork-review.md",
+    "https://github.com/joeharris76/sqlglot",
+    "https://github.com/BenchBox-dev/BenchBox"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:e0ab14b9d48e92582f492d05",
+      "at": "2026-10-18T00:59:39Z",
+      "client": "codex-mcp-client",
+      "op": "create",
+      "op_id": "51a9f521623d4153bbf828ad5d037aa8",
+      "session_id": "5626a6dfe7d44c419c7db613d1059c06"
+    }
+  ]
+}
