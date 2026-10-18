@@ -1,10 +1,11 @@
 {
   "acceptance": [
-    "The v-tag ruleset blocks update and deletion of refs/tags/v*, or the docs no longer claim it does and the release workflow verifies the tag object before publishing.",
-    "scripts/ruleset_drift_check.py records the chosen rule set so drift is caught."
+    "Owner has added update and delete rules to v-tag-restricted (18774756), verified by a live gh api read recorded in context, or the item records the owner's decision to rely on the workflow re-check alone with docs corrected",
+    "scripts/ruleset_drift_check.py plus _project/scripts/ruleset_review_enforcement.py reject a creation-only tag ruleset (fixture test fails before, passes after)",
+    "docs/internal/adr/adr-dev-loop-v2.md and docs/internal/release-artifacts.md describe the tag protection as it actually is, including the shared-account limit"
   ],
-  "context": "Found in the 2026-10-09 tracker review of dlv2-51. Changing the ruleset is an owner action. Agents share the owner account (ADR D4), so the real human gate for publishing is the pypi environment's required reviewers.",
-  "description": "The live ruleset v-tag-restricted (18774756) has only a `creation` rule. It does not block update or deletion of refs/tags/v*. docs/development/adr/adr-dev-loop-v2.md:187 says it prevents \"creation or mutation\", and docs/operations/release-artifacts.md says the tag ruleset \"is what forbids moves\". A moved tag would point a release at a different commit than the one that was tested.\n\nAdd update and deletion rules to the ruleset (owner settings change), or correct the ADR and docs and make the release workflow re-check the tag object at publish time.",
+  "context": "Updated 2026-10-17. The workflow half is implemented under dlv2-51; this item tracks the owner ruleset change plus the drift predicate. Close only when the acceptance evidence exists; the agent must not change rulesets itself (original task constraint: owner settings change).",
+  "description": "The live ruleset v-tag-restricted (18774756) has only a creation rule (verified 2026-10-17 via gh api). It does not block update or deletion of refs/tags/v*. docs/internal/adr/adr-dev-loop-v2.md:192 says it prevents creation or mutation, and docs/internal/release-artifacts.md says the tag ruleset is what forbids moves. A moved tag would point a release at a different commit than the one that was tested.\n\nResolution (2026-10-17 adversarial review, both reviewers): do both halves; neither alone is sufficient.\n- Owner settings change: add update and delete rules to v-tag-restricted. This is an owner action; agents share the owner account (ADR D4) and the ruleset bypass actor is that same user, so record honestly that this binds other collaborators and future automation, not the agent account itself (claude NEW-3).\n- Workflow control (the machine gate that actually binds): release-v2 re-checks the tag object and peeled commit in the publishing job after approval (owned by dlv2-51). This item does not close on the ruleset change alone.\n- Drift recording: extend the shared predicate in _project/scripts/ruleset_review_enforcement.py (tag_protection_findings currently accepts creation-only at :135-147) so creation-only fixtures fail, and record the chosen rule set in scripts/ruleset_drift_check.py so drift is caught (codex F9(2)).",
   "sessions": [
     {
       "actor": "mcp:claude-code:joe@joe-mac-mini.local:8c06561181af4cd0d5004653",
@@ -13,6 +14,14 @@
       "op": "create",
       "op_id": "4e4b257681354c2dbf40ce162b92e1f8",
       "session_id": "05afd70780334fa0b0e411a688cf8f7a"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:047f7cbfbbf519bd65fe7eca",
+      "at": "2026-10-18T11:39:58Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "6f073030248942f78d2a8058f5191dab",
+      "session_id": "b88f90bbf0854ed0a599432bfe5fd099"
     }
   ]
 }
