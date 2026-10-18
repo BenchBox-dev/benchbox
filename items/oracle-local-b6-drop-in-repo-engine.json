@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Full unit suite passes",
+    "Soundness path tests pass",
+    "Dangling-reference test passes"
+  ],
+  "description": "Plan step B6. Delete _project/scripts/oracle_reviewers/, its tests and fixture. Checklist: .github/soundness-paths.txt, gate_paths, quality/comment-policy.json, tests/unit/ledger_cutover_files.txt, workflow sparse checkouts, docs. New tests/unit/test_no_dangling_oracle_paths.py fails on any tracked reference outside dated history files.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51",
+      "at": "2026-10-18T01:01:29Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "307029b8e29e4be2a87fe8211c4278f9",
+      "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    }
+  ]
+}

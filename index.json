@@ -14822,6 +14822,15 @@
       "status": "open",
       "title": "BenchBox: remove the hosted oracle reviewer jobs"
     },
+    "oracle-local-b6-drop-in-repo-engine": {
+      "claim": null,
+      "needs": [
+        "oracle-local-b5-remove-hosted-reviewers"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "BenchBox: delete the in-repo oracle engine"
+    },
     "oracle-local-o10-delete-reviewer-secrets": {
       "claim": null,
       "needs": [
