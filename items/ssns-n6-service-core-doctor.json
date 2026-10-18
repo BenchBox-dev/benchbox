@@ -3,7 +3,7 @@
     "Fake-GitHub, fault-injection and planted-tree doctor tests pass",
     "All service PRs merged with green CI"
   ],
-  "context": "Merged: #7, #8, #11, #12, #13, #14, #15 (doctor, 551b3ac), #16 (discovery/queue/outbox follow-ups, db9d0be). Remaining: #17 (doctor CLI and App probes), rebased onto main at a3521ee, all 9 CI checks green; tree equals the reviewed head 2ecdf6c plus #16. The session's permission check refused the agent's merge (\"Merge Without Review\"), so the owner merges #17 or allows the agent to. Adversarial review r2 (codex, muse, agy) findings were fixed and independently verified on #15/#16/#17; adjudication in the plan's evidence dir review-r2/. Follow-ups filed separately: ssns-doctor-rpath-chain-cap, ssns-gen0-stale-during-engine-rollback. Production wiring of release_held, Heartbeat.payload and a real Effects belongs to ssns-n7-review-runner.",
+  "context": "Merged: #7, #8, #11, #12, #13, #14, #15 (doctor, 551b3ac), #16 (discovery/queue/outbox follow-ups, db9d0be). Remaining: #17 (doctor CLI and App probes), rebased onto main at a3521ee, all 9 CI checks green; tree equals the reviewed head 2ecdf6c plus #16. Blocked: the session's permission check refused the agent's merge (\"Merge Without Review\"); the owner merges #17 or allows the agent to. Effort paused by the owner on 2026-10-17; resume only on the owner's word. Adversarial review r2 (codex, muse, agy) findings were fixed and independently verified; adjudication in the plan's evidence dir review-r2/. Follow-ups filed: ssns-doctor-rpath-chain-cap, ssns-gen0-stale-during-engine-rollback. Production wiring of release_held, Heartbeat.payload and a real Effects belongs to ssns-n7-review-runner.",
   "description": "Plan step N6. config.py, appauth.py, discovery.py, queue.py, outbox.py, heartbeat.py, health.py, and doctor: path/owner/mode checks, group membership, ACLs, Python start-up hooks, Mach-O dependency closure, CLI auth status per role user, triggering_actor and codex-token probes, --post-reboot mode.",
   "sessions": [
     {
@@ -12,6 +12,14 @@
       "client": "claude-code",
       "op": "create",
       "op_id": "1ba3ad65c3994979a222ef126158a848",
+      "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51",
+      "at": "2026-10-18T01:02:38Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "c0dd38f14a95404b9a09faf23e3ff445",
       "session_id": "843d10c2193d483aba6b1b07dad544c1"
     }
   ]
