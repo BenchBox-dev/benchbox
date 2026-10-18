@@ -1,5 +1,5 @@
 {
-  "context": "Annotation 2026-10-04: this item was closed without live evidence. Its description records the check as deferred for lack of Snowflake credentials, and no live run result is recorded against it. Done items cannot be reopened; the live confirmation is tracked by snowflake-tuned-live-certification-20261001, which supersedes this item.",
+  "context": "Annotation 2026-10-04: this item was closed without live evidence. Its description records the check as deferred for lack of Snowflake credentials, and no live run result is recorded against it. Done items cannot be reopened; the live confirmation is tracked by snowflake-tuned-live-certification-20261001, which supersedes this item.\n\nAnnotation 2026-10-17, from the Snowflake trial campaign (2026-10-15/16, findings in #3074): INFORMATION_SCHEMA.TABLES.CLUSTERING_KEY returns the LINEAR form, for example LINEAR(L_SHIPDATE, L_SUPPKEY, L_PARTKEY) and LINEAR(O_ORDERDATE, O_CUSTKEY, O_ORDERKEY). parse_clustering_key parsed it, and the corroboration receipts mark every CLUSTER BY statement corroborated (2 of 2 for TPC-H, 6 of 6 for TPC-DS). No run reached applied_verified, for checker reasons recorded on snowflake-tuned-live-certification-20261001 and fixed under snowflake-tuning-verification-gaps-20261017.",
   "description": "Promoted from deferral #673 of snowflake-cluster-key-corroboration-20260730.\nDeferred: Confirm against a live Snowflake which text INFORMATION_SCHEMA.TABLES.CLUSTERING_KEY actually returns (LINEAR(A, B) vs (A, B)) and that a clustered table reaches applied_verified\nReason deferred: w3 needs live Snowflake credentials; AGENTS.md requires explicit approval for live cloud tests and none was given. parse_clustering_key accepts both documented forms defensively, but the guess is unverified — and it fails CLOSED (runs silently never verify), so it must not be assumed correct.",
   "legacy": {
     "item_meta": {
@@ -15,6 +15,14 @@
       "op": "update",
       "op_id": "39d6357349624396bb0ab0205794068c",
       "session_id": "796d606672604f3d869b9c79926d482c"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-18T00:30:11Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "f7140001e5604c16a28e62965b8256b0",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
     }
   ]
 }
