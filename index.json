@@ -1061,7 +1061,7 @@
         "astro-site-22-shared-layout-shell"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Add sitemap, robots, canonical and Open Graph metadata, plus a 404 page that keeps the results deep-link fallback"
     },
     "astro-site-40-explorer-shell-integration": {
