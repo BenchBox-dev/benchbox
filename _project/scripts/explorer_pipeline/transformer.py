@@ -1810,10 +1810,20 @@ class BundleTransformer:
             display_geomean_ms=detail.display_geomean_ms,
             query_count=int(query_count),
             logical_query_count=logical_query_count,
+            has_display_timing=detail.has_display_timing,
+            valid_query_count=detail.valid_query_count,
+            missing_query_count=detail.missing_query_count,
+            zero_timing_count=detail.zero_timing_count,
+            display_exclusion_reason=detail.display_exclusion_reason,
+            comparison_exclusion_reason=detail.comparison_exclusion_reason,
             trust_label=trust_label,
             visibility=visibility,
+            tuning_mode=detail.tuning_mode,
+            tuning_validation_status=detail.tuning_validation_status,
             validation_status=detail.validation_status,
             failed_query_count=detail.failed_query_count,
+            compliance_class=detail.compliance_class,
+            gateway_routed=detail.gateway_routed,
         )
         reason = ranking_exclusion_reason(manifest_peer)
         reason = _throughput_stream_exclusion(bundle, bundle_data, test_type, reason)
