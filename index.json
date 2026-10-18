@@ -8536,6 +8536,15 @@
       "status": "open",
       "title": "Relocate the Explorer SQL schema contract out of published docs"
     },
+    "docs-mig-history-filter": {
+      "claim": null,
+      "needs": [
+        "docs-mig-adr-ownership"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Archive filtered documentation history without forbidden content"
+    },
     "docs-mig-legacy-downloads-redirects": {
       "claim": null,
       "needs": [
