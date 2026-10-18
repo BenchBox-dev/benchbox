@@ -8439,9 +8439,9 @@
     },
     "dryrun-dataframe-mode-option-checks-20261017": {
       "claim": {
-        "expires_at": "2026-10-19T03:54:47Z",
-        "generation": "430fcf06241f4f83bc3ddf941ce29b0c",
-        "renewals": 0,
+        "expires_at": "2026-10-19T04:09:11Z",
+        "generation": "2fbddd5555284bdaa5b788075abd92b8",
+        "renewals": 1,
         "worker": "mcp:tbh:joe@joe-mac-mini.local:3ce222eaad5d12493e27d4cc"
       },
       "needs": [],
