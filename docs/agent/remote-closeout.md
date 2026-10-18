@@ -168,8 +168,11 @@ the PR to merge under `[WRITE-CLOSEOUT-001]`.
 
 ## Revisions
 
-Whether GitHub keeps auto-merge enabled after a later push is not verified, so
-the process assumes it might. Before a builder revises an armed PR, the closer
+GitHub keeps auto-merge enabled when an account with write access pushes to an
+armed PR, and merges the new head once its required checks pass:
+`--match-head-commit` is checked only when auto-merge is enabled. This was
+observed on 2026-10-18 in a test repository. A push to an armed PR would
+therefore merge unreviewed code. Before a builder revises an armed PR, the closer
 runs `make pr-landing-remote-withdraw`, which disables auto-merge, and only
 then hands the finding or CI failure to the builder. The builder pushes only
 after that hand-back. `make pr-landing-remote-ready` re-applies every arm
