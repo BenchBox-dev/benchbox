@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "Fork branch starts at the reviewed v30.23.0 SHA; patch eb360e1e2962b467ca093b9f6ab1000f9ced1a02, unique extraction 34cd3e9fdb29a4376023f9c6cd32932de07acd3d and interval b60935672d3fc52c4982077131d4cb5140a69b72 appear once, adapted where needed.",
+    "Manifest dispositions all six prepared branches and retains executed regression coverage for already-upstream behavior; no unapproved fourth source capability is admitted.",
+    "Inherited upstream-named publishing and mutating integration/docs jobs are disabled before source PR integration; structural workflow tests prove this without pushing tags.",
+    "Source tests execute SQLite correctness, source-type-aware division, casts/NULLs/negatives/nested expressions, unsupported boundaries and upstream dialect/optimizer/serialization regressions; make check passes or a concrete owner-only gate is recorded.",
+    "Self-review resolves required findings; fork source PR is reviewed and merged preserving upstream ancestry; exact source revision and evidence are recorded in context."
+  ],
+  "context": "Owner explicitly requested detailed plan, external agy+muse adversarial reviews, every finding disposition, revised plan, TODO creation and batch implementation. Plan blob reviewed:26a5a9ad62617b2f01c779235c3812d3dcfc3beed0d2fdef37328ce3442d0fb8. Revised plan and per-reviewer dispositions are in the linked owned BenchBox worktree. No public package publication is authorized yet.",
+  "description": "Implement the reviewed SQLGlot downstream source plan in joeharris76/sqlglot from upstream v30.23.0 ad8764a0436a7b5c500b783ebe50dbf20c1e477c. Apply PostgreSQL return-type, SQLite extraction and SQLite interval patches in dependency order; resolve source drift. Disable inherited mutating release/docs/upstream-sync workflows in the first PR. Preserve source layout, upstream notices and existing source/compiled gates. Record every prepared branch in downstream/patches.json with carried/upstreamed/excluded decisions. QuestDB and benchmark policy stay in BenchBox. Serial cross-repository delivery; no prepared batch shortcut.",
+  "links": [
+    "/Users/joe/Developer/BenchBox.wt-sqlglot-soft-fork/_project/decisions/sqlglot-soft-fork-plan.md",
+    "/Users/joe/Developer/BenchBox.wt-sqlglot-soft-fork/_project/decisions/sqlglot-soft-fork-review.md",
+    "https://github.com/joeharris76/sqlglot",
+    "https://github.com/BenchBox-dev/BenchBox"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:e0ab14b9d48e92582f492d05",
+      "at": "2026-10-18T00:59:33Z",
+      "client": "codex-mcp-client",
+      "op": "create",
+      "op_id": "9275bcc94586496db74f49040cb147ea",
+      "session_id": "5626a6dfe7d44c419c7db613d1059c06"
+    }
+  ]
+}
