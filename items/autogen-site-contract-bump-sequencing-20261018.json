@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "The options are compared with evidence and one is chosen with a reason",
+    "The chosen mechanism is implemented with tests or documented as the process, in the owning repos",
+    "A core PR that bumps the version without site support is demonstrably refused or flagged before it reaches deploy"
+  ],
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Not part of the batch: no batch item depends on it. Do not take it during the batch.",
+  "description": "Re-homed scope. On 2026-10-17 three site deploys failed 'Explorer read-model version 16 expected, got 17. The core bundle's explorer/contract.json no longer matches explorer/scripts/explorer-build-contract.mjs; update the Explorer for the new contract' because core bumped the read-model version before the site accepted it. The gate worked; the cost was hours of undeployed site content and an incident. The batch only gives the failure a named class (site deploy reporter item). Preventing the ordering problem needs a design choice (site accepts N and N+1 during a transition, a core CI check against the site's accepted versions, or a documented release order) that was not decided in the owner dialog.\nWork when taken: compare the options with evidence from the two repos, decide the smallest, and implement it.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/issues/2979"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7ac6538e56f6607b35a3f600",
+      "at": "2026-10-18T20:23:30Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "3c26deb3389a47c3aa6e219aaebbf35f",
+      "session_id": "cab8a4e762844fd9912c504ebfd76c56"
+    }
+  ]
+}

@@ -1375,6 +1375,15 @@
       "status": "open",
       "title": "Reopen instead of recreating nightly T3 issues, and comment only when the failure changes"
     },
+    "autogen-site-contract-bump-sequencing-20261018": {
+      "claim": null,
+      "needs": [
+        "autogen-issues-decisions-20261018"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "Follow-up (outside the remediation batch): sequence explorer read-model version bumps between core and site"
+    },
     "autogen-site-core-reporter-lifecycle-20261018": {
       "claim": null,
       "needs": [
