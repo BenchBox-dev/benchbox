@@ -8559,6 +8559,16 @@
       "status": "open",
       "title": "Remove relocated sources and retire the old bundle members"
     },
+    "docs-mig-final-verification": {
+      "claim": null,
+      "needs": [
+        "docs-mig-core-removal",
+        "docs-mig-site-cleanup"
+      ],
+      "priority": "critical",
+      "status": "open",
+      "title": "Verify production migration and release source ownership freeze"
+    },
     "docs-mig-history-filter": {
       "claim": null,
       "needs": [
