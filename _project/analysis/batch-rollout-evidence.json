@@ -32,25 +32,25 @@
     }
   },
   "artifact": {
-    "filename": "todo_db-0.9.1-py3-none-any.whl",
-    "project_path": "_project/scripts/vendor/todo_db-0.9.1-py3-none-any.whl",
-    "sha256": "760bc03241d25d8a5ebdefa3a64ca898dd9a63f093785afc06b5483d3b307637",
-    "origin": "GitHub release v0.9.1 asset, checked against the release SHA256SUMS",
+    "filename": "todo_db-0.10.1-py3-none-any.whl",
+    "project_path": "_project/scripts/vendor/todo_db-0.10.1-py3-none-any.whl",
+    "sha256": "3a878a3ac2e7c3b458ed3e71d53d036456ba017eb9ec1adfa030d823cf2c2ffd",
+    "origin": "GitHub release v0.10.1 asset, checked against the release SHA256SUMS",
     "build": {
-      "source_input": "git archive --format=tar v0.9.1 (3b32919c251aa9c9ba0e8df4685d0edfef8594b5)",
+      "source_input": "git archive --format=tar v0.10.1 (d85cdf3f43afe7ec9fc2898114bf6e3101742eac)",
       "source_date_epoch": null,
       "command": "uv build --wheel --out-dir <dist> <git-archive-directory>",
       "reproducibility": {
         "independent_builds": 2,
-        "matching_sha256": "760bc03241d25d8a5ebdefa3a64ca898dd9a63f093785afc06b5483d3b307637"
+        "matching_sha256": "3a878a3ac2e7c3b458ed3e71d53d036456ba017eb9ec1adfa030d823cf2c2ffd"
       },
       "sibling_checkout_used_for_install": false
     }
   },
   "runtime": {
     "project_command": "uv run --project _project/scripts --locked -- todo-db-mcp",
-    "dependency_metadata_version": "0.9.1",
-    "reported_tool_version": "0.9.1",
+    "dependency_metadata_version": "0.10.1",
+    "reported_tool_version": "0.10.1",
     "schema_version": 3,
     "supported_schema_versions": [
       1,
@@ -95,7 +95,7 @@
       "protocol_version": "2024-11-05",
       "server_info": {
         "name": "todo-db",
-        "version": "0.9.1"
+        "version": "0.10.1"
       },
       "result": "pass",
       "state_remote": "local throwaway bare Git remote; no hosted state touched"
@@ -150,7 +150,7 @@
   },
   "verification": {
     "clean_install": "uv sync --project _project/scripts --locked --offline passed",
-    "standalone_metadata": "wheel metadata and entry points identify todo-db 0.9.1",
+    "standalone_metadata": "wheel metadata and entry points identify todo-db 0.10.1",
     "no_sibling_path": "project source and lock paths resolve only under _project/scripts/vendor",
     "batch_delivery_integration": "full JSON-RPC handshake passed with schema 3 and 19 tools",
     "skill_integrity": "make skill-integrity-check passed against the pinned catalog and tracked mirror",
