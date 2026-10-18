@@ -20419,15 +20419,10 @@
       "title": "Close Seed Corpus proof against the latest successful post-fix dispatch"
     },
     "seed-corpus-tpch-official-20261016": {
-      "claim": {
-        "expires_at": "2026-10-19T13:47:59Z",
-        "generation": "10c63c7e724a4566b7bdf346d87a73b9",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:169d3b2cfca92ce2510f11ad"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Run Seed Corpus TPC-H cells as official runs so they are admitted"
     },
     "seed-corpus-workflow-fails-on-every-push": {
