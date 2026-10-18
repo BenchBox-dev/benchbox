@@ -1375,6 +1375,15 @@
       "status": "open",
       "title": "Let the results mirror build again: cover every validator module and test the list"
     },
+    "autogen-tpch-maintenance-failures-20261018": {
+      "claim": null,
+      "needs": [
+        "autogen-issues-decisions-20261018"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Fix the four failing TPC-H slow-tier tests behind the release canary and t3:durations"
+    },
     "automate-corpus-inventory-generation": {
       "claim": null,
       "needs": [
