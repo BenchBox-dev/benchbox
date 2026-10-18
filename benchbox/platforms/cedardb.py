@@ -76,6 +76,9 @@ class CedarDBAdapter(PostgreSQLAdapter):
         return platform_info
 
     def configure_for_benchmark(self, connection: Any, benchmark_type: str) -> None:
+        if not self.tuning_enabled:
+            return
+
         import psycopg
 
         cursor = connection.cursor()
@@ -85,14 +88,10 @@ class CedarDBAdapter(PostgreSQLAdapter):
                 "SET enable_seqscan = on",
                 "SET enable_hashjoin = on",
                 "SET enable_mergejoin = on",
-                "SET random_page_cost = 1.1",
                 "SET cpu_tuple_cost = 0.01",
             ]
         elif benchmark_type == "oltp":
-            guc_statements = [
-                "SET synchronous_commit = on",
-                "SET random_page_cost = 4.0",
-            ]
+            guc_statements = ["SET synchronous_commit = on"]
 
         for stmt in guc_statements:
             try:
