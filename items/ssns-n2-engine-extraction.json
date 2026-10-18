@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Moved tests pass",
+    "Distribution name and plan.json engine_version tests pass"
+  ],
+  "context": "Done: joeharris76/ship-no-ship#2 merged (17/18 modules byte-identical to BenchBox 4331f3b9).",
+  "description": "Plan step N2. Copy the 17 engine modules from BenchBox into ship_no_ship.engine, rewrite imports, inject the path predicate, console script ship-no-ship, move tests and the pr2769 fixture.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51",
+      "at": "2026-10-18T00:53:00Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "c080375f7cf44a76a35c87dc828af221",
+      "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    }
+  ]
+}
