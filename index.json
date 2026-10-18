@@ -21393,6 +21393,13 @@
       "status": "done",
       "title": "Generate Snowflake tuned templates that cluster fact tables only, with keys ordered by cardinality"
     },
+    "snowflake-tuning-verification-gaps-20261017": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Let tuned Snowflake runs reach applied_verified: read key constraints, and keep load-run verification on reused databases"
+    },
     "snowflake-verbose-logging-defect": {
       "claim": null,
       "needs": [],

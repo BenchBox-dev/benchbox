@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "The Snowflake introspector reads primary, foreign and unique key constraints, and the corroboration marks matching CREATE TABLE constraint statements corroborated; fixture tests cover a match, a missing constraint and a different column list",
+    "A run that reuses a tuned database reports a verification status derived from live introspection of the tuning the database already carries (or from the load run's corroborated ledger, with its identity checked), not applied_unverified by default; tests cover the reuse path",
+    "A constraint kind the introspector still cannot read is listed with a reason, and the rule for whether it blocks applied_verified is stated in docs and pinned by a test",
+    "Live confirmation on a Snowflake account is recorded, or deferred with the reason; any live run needs owner approval of command, runtime, cost cap, log path and stop condition"
+  ],
+  "description": "Every tuned Snowflake run in the 2026-10-15/16 trial campaign reported validation_status applied_unverified, although the live clustering keys matched the template. Two gaps in BenchBox's corroboration cause it; Snowflake itself is not at fault.\n\n1. The Snowflake tuning introspector (benchbox/platforms/snowflake_introspection.py) reads only CLUSTERING_KEY. Every CREATE TABLE carrying a PRIMARY KEY, FOREIGN KEY or UNIQUE constraint is marked \"unverifiable\" (\"snowflake introspection reads no PRIMARY KEY constraints\"): 17 of 19 gate-relevant statements on TPC-H, 108 of 114 on TPC-DS. Snowflake does not enforce these constraints but records them, readable through SHOW PRIMARY KEYS, SHOW IMPORTED KEYS and SHOW UNIQUE KEYS (or INFORMATION_SCHEMA.TABLE_CONSTRAINTS).\n2. Runs that reuse an already-tuned database record only the seven transient session statements, because the tuning DDL ran during the load run. With gate_relevant_total 0, corroboration returns false (benchbox/platforms/base/tuning_trust.py corroborate_applied_ledger), so every timed run on a reused database is applied_unverified.\n\nEvidence: campaign result files (owner's machine) show corroborated false with summary {corroborated 2, unverifiable 17} on TPC-H load runs, {corroborated 6, unverifiable 108} on TPC-DS load runs, and {gate_relevant_total 0, transient 7} on reuse runs.",
+  "links": [
+    "item:snowflake-tuned-live-certification-20261001",
+    "item:snowflake-clustering-key-live-verification-20260730"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-18T00:30:17Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "8d27cf94d03648c8b3532f1e36d56793",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
+    }
+  ]
+}
