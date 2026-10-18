@@ -436,6 +436,17 @@ verdict. An answer mismatch between identical arms fails calibration on its
 own; a cell whose timed rounds did not run under the configured session is
 therefore uncalibrated, not a verdict.
 
+**Exception: Snowflake trial verdicts (2026-10).** The registry carries four
+Snowflake entries at X-Small with engine 10.37.102 (TPC-H sf10 and sf100,
+TPC-DS sf10 and sf100) that did not pass this gate. They come from a trial
+campaign that ran plain `benchbox run` rather than the harness, had no A/A
+run, and judged each cell by whether the 95% interval of the tuned/untuned
+ratio fell below 0.95 or above 1.05. The maintainer accepted them as
+verdicts on 2026-10-18. Published results show their labels the same way
+as calibrated ones; each entry's `evidence` field records the method. This
+exception stands until results can show whether a verdict was calibrated,
+or calibrated runs replace these cells.
+
 **Verdict.**
 
 - **Regression** if any of these holds: a query that passes in `N` fails in

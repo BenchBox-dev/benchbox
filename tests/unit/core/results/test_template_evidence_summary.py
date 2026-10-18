@@ -204,3 +204,32 @@ def test_tuned_run_with_display_names_records_evidence():
     )
 
     assert build_result_payload(result)["platform"]["tuning"]["template_evidence"] == "unmeasured"
+
+
+def test_template_evidence_uses_recorded_warehouse_size_for_managed_cloud_run():
+    template_evidence.load_registry(refresh=True)
+    config = _tuned_config()
+    compute = {
+        "warehouse_size": "X-Small",
+        "warehouse_size_source": "observed",
+        "multi_cluster_warehouse": False,
+        "source": "observed",
+    }
+    fields = {
+        "benchmark_name": "tpcds",
+        "platform": "snowflake",
+        "scale_factor": 100.0,
+        "tunings_applied": config.to_dict(),
+        "tuning_source_file": "examples/tunings/snowflake/tpcds_tuned.yaml",
+        "tuning_config_hash": config.get_configuration_hash(),
+        "execution_environment": {"platform_runtime": {"runtime_type": "managed_cloud"}},
+        "platform_info": {"platform_version": "10.37.102", "engine_version": "10.37.102"},
+    }
+
+    measured = build_result_payload(_make_result(platform_compute=compute, **fields))
+    multi_cluster = build_result_payload(
+        _make_result(platform_compute={**compute, "multi_cluster_warehouse": True}, **fields)
+    )
+
+    assert measured["platform"]["tuning"]["template_evidence"] == "measured-benefit"
+    assert multi_cluster["platform"]["tuning"]["template_evidence"] == "unmeasured"

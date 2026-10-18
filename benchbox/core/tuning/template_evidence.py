@@ -51,35 +51,55 @@ def normalize_benchmark(benchmark: Any) -> str | None:
     return BENCHMARK_ALIASES.get(lowered, lowered)
 
 
-def _memory_scope(execution_environment: Any, system_profile: Any) -> dict[str, Any] | None:
-    if isinstance(execution_environment, Mapping):
-        container = execution_environment.get("container")
-        client_host = execution_environment.get("client_host")
-        platform_runtime = execution_environment.get("platform_runtime")
-    else:
-        container = getattr(execution_environment, "container", None)
-        client_host = getattr(execution_environment, "client_host", None)
-        platform_runtime = getattr(execution_environment, "platform_runtime", None)
+def _field(source: Any, key: str) -> Any:
+    if isinstance(source, Mapping):
+        return source.get(key)
+    return getattr(source, key, None)
+
+
+def _is_multi_cluster(platform_compute: Any) -> bool:
+    flag = _field(platform_compute, "multi_cluster_warehouse")
+    if flag is not None and flag is not False and str(flag).strip().lower() not in {"", "false", "0", "no"}:
+        return True
+    max_clusters = _field(platform_compute, "max_cluster_count")
+    try:
+        return max_clusters is not None and not isinstance(max_clusters, bool) and int(max_clusters) > 1
+    except (TypeError, ValueError):
+        return True
+
+
+def _warehouse_scope(platform_compute: Any) -> dict[str, Any] | None:
+    size = _field(platform_compute, "warehouse_size")
+    if not isinstance(size, str) or not size.strip():
+        return None
+    if _field(platform_compute, "warehouse_size_source") != "observed":
+        return None
+    return {"basis": "warehouse_size", "value": size}
+
+
+def _memory_scope(
+    execution_environment: Any, system_profile: Any, platform_compute: Any = None
+) -> dict[str, Any] | None:
+    container = _field(execution_environment, "container")
+    client_host = _field(execution_environment, "client_host")
+    platform_runtime = _field(execution_environment, "platform_runtime")
+    runtime_type = _field(platform_runtime, "runtime_type")
+    if runtime_type == "managed_cloud" and platform_compute is not None:
+        if _is_multi_cluster(platform_compute):
+            return None
+        scope = _warehouse_scope(platform_compute)
+        if scope is not None:
+            return scope
     if container is not None:
-        if isinstance(container, Mapping):
-            memory_limit = container.get("memory_limit")
-        else:
-            memory_limit = getattr(container, "memory_limit", None)
+        memory_limit = _field(container, "memory_limit")
         if isinstance(memory_limit, str) and memory_limit.strip():
             return {"basis": "container_limit", "value": memory_limit}
         if isinstance(memory_limit, (int, float)) and not isinstance(memory_limit, bool) and memory_limit > 0:
             return {"basis": "container_limit", "value": memory_limit}
         return None
-    if isinstance(platform_runtime, Mapping):
-        runtime_type = platform_runtime.get("runtime_type")
-    else:
-        runtime_type = getattr(platform_runtime, "runtime_type", None)
     if runtime_type not in {"local_process", "dataframe_process"}:
         return None
-    if isinstance(client_host, Mapping):
-        host_memory = client_host.get("memory_gb")
-    else:
-        host_memory = getattr(client_host, "memory_gb", None)
+    host_memory = _field(client_host, "memory_gb")
     if host_memory is None and system_profile is not None:
         profile = system_profile_snapshot(system_profile)
         host_memory = next(
@@ -192,6 +212,7 @@ def evidence_state_for_run(
     execution_environment: Any = None,
     system_profile: Any = None,
     engine_version: Any = None,
+    platform_compute: Any = None,
 ) -> str | None:
     if not tunings_applied:
         return None
@@ -201,7 +222,7 @@ def evidence_state_for_run(
     return evidence_state(
         *cell,
         scale_factor=scale_factor,
-        memory=_memory_scope(execution_environment, system_profile),
+        memory=_memory_scope(execution_environment, system_profile, platform_compute),
         engine_version=engine_version,
     )
 
@@ -216,6 +237,7 @@ def evidence_warning(
     execution_environment: Any = None,
     system_profile: Any = None,
     engine_version: Any = None,
+    platform_compute: Any = None,
 ) -> str | None:
     if not tunings_applied:
         return None
@@ -231,6 +253,7 @@ def evidence_warning(
         execution_environment=execution_environment,
         system_profile=system_profile,
         engine_version=engine_version,
+        platform_compute=platform_compute,
     )
     if state != UNMEASURED:
         return None

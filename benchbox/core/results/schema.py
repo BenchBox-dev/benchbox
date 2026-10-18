@@ -1590,6 +1590,7 @@ def _build_tuning_summary(result: BenchmarkResults) -> dict[str, Any]:
         execution_environment=result.execution_environment,
         system_profile=result.system_profile,
         engine_version=_tuning_evidence_engine_version(result),
+        platform_compute=getattr(result, "platform_compute", None),
     )
     if state:
         summary["template_evidence"] = state
