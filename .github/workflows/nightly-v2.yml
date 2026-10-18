@@ -1059,21 +1059,44 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          reopen_days=14
+          marker_prefix='<!-- t3-signature:'
+          result_of() {
+            printf '%s' "$NEEDS_JSON" | jq -r --arg j "$1" '.[$j].result // "skipped"'
+          }
           for job in docker cloud perf matrix extension install throughput throughput-cedardb drift quarantine linkcheck liveness ruleset-drift windows durations-refresh; do
             case "$job" in
               durations-refresh) domain=durations ;;
               *) domain="$job" ;;
             esac
             label="t3:${domain}"
-            result="$(printf '%s' "$NEEDS_JSON" | jq -r --arg j "$job" '.[$j].result')"
+            result="$(result_of "$job")"
             failure_detail="Domain job result: ${result}."
-            if [ "$job" = docker ] && [ "$(printf '%s' "$NEEDS_JSON" | jq -r '.["mirror-images"].result')" = failure ]; then
+            case "$job" in
+              docker) legs="mirror-images docker" ;;
+              throughput-cedardb) legs="mirror-cedardb throughput-cedardb" ;;
+              *) legs="$job" ;;
+            esac
+            failed_jobs=""
+            cancelled_jobs=""
+            for leg in $legs; do
+              case "$(result_of "$leg")" in
+                failure) failed_jobs="${failed_jobs}${leg}"$'\n' ;;
+                cancelled) cancelled_jobs="${cancelled_jobs}${leg}"$'\n' ;;
+              esac
+            done
+            signature="$(printf '%s' "$failed_jobs" | sed '/^$/d' | LC_ALL=C sort | paste -sd, -)"
+            if [ "$job" = docker ] && [ "$(result_of mirror-images)" = failure ]; then
               failure_detail="Image mirror infrastructure failed; database test job result: ${result}."
-              result=failure
             fi
-            if [ "$job" = throughput-cedardb ] && [ "$(printf '%s' "$NEEDS_JSON" | jq -r '.["mirror-cedardb"].result')" = failure ]; then
+            if [ "$job" = throughput-cedardb ] && [ "$(result_of mirror-cedardb)" = failure ]; then
               failure_detail="CedarDB image mirror infrastructure failed; throughput cell result: ${result}."
+            fi
+            if [ -n "$signature" ]; then
               result=failure
+              failure_detail="${failure_detail} Failed jobs: ${signature}."
+            elif [ -n "$cancelled_jobs" ]; then
+              result=cancelled
             fi
             echo "${label}: ${result}"
 
@@ -1082,23 +1105,44 @@ jobs:
 
             case "$result" in
               failure)
-                comment="Nightly T3 run ${GITHUB_RUN_ID} failed for \`${label}\` on $(date -u +%F): ${RUN_URL}. ${failure_detail}"
+                marker="${marker_prefix} ${signature} -->"
+                comment="Nightly T3 run ${GITHUB_RUN_ID} failed for \`${label}\` on $(date -u +%F): ${RUN_URL}. ${failure_detail}
+          ${marker}"
                 if [ -n "$existing" ]; then
-                  gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body "$comment"
-                  echo "Updated issue #${existing}"
+                  recorded="$(gh issue view "$existing" --repo "$GITHUB_REPOSITORY" --json body,comments \
+                    --jq '[.body, (.comments[].body)] | map(select(contains("<!-- t3-signature:"))) | last // ""' \
+                    | sed -n 's/.*<!-- t3-signature: \(.*\) -->.*/\1/p' | tail -n 1)"
+                  if [ "$recorded" = "$signature" ]; then
+                    echo "No new comment on issue #${existing}: failure signature unchanged (${signature})."
+                  else
+                    gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body "$comment"
+                    echo "Updated issue #${existing}"
+                  fi
                 else
-                  gh label create "$label" --repo "$GITHUB_REPOSITORY" \
-                    --description "Nightly T3 ${domain} domain is red" --color B60205 >/dev/null 2>&1 || true
-                  body="The nightly T3 \`${domain}\` domain failed.
+                  cutoff="$(( $(date -u +%s) - reopen_days * 86400 ))"
+                  recent="$(gh issue list --repo "$GITHUB_REPOSITORY" --state closed --label "$label" \
+                    --limit 100 --json number,closedAt \
+                    | jq -r --argjson cutoff "$cutoff" \
+                      '[.[] | select((.closedAt | fromdateiso8601) >= $cutoff)] | sort_by(.closedAt) | last | .number // empty')"
+                  if [ -n "$recent" ]; then
+                    gh issue reopen "$recent" --repo "$GITHUB_REPOSITORY"
+                    gh issue comment "$recent" --repo "$GITHUB_REPOSITORY" --body "$comment"
+                    echo "Reopened issue #${recent}"
+                  else
+                    gh label create "$label" --repo "$GITHUB_REPOSITORY" \
+                      --description "Nightly T3 ${domain} domain is red" --color B60205 >/dev/null 2>&1 || true
+                    body="The nightly T3 \`${domain}\` domain failed.
 
           - Run: ${RUN_URL}
           - Commit: ${GITHUB_SHA}
           - Failure: ${failure_detail}
           - Artifacts: attached to the run (names start with \`t3-${domain}\` where the domain uploads any)
 
-          The owner fixes or reverts within one working day. See ${DOC_URL} for the response policy. This issue stays open while the domain is red and closes when a nightly run passes."
-                  gh issue create --repo "$GITHUB_REPOSITORY" --label "$label" \
-                    --title "Nightly T3 ${domain} failing" --body "$body"
+          The owner fixes or reverts within one working day. See ${DOC_URL} for the response policy. This issue stays open while the domain is red and closes when a nightly run passes.
+          ${marker}"
+                    gh issue create --repo "$GITHUB_REPOSITORY" --label "$label" \
+                      --title "Nightly T3 ${domain} failing" --body "$body"
+                  fi
                 fi
                 ;;
               success)
@@ -1107,6 +1151,15 @@ jobs:
                     --body "Nightly T3 run ${GITHUB_RUN_ID} passed for \`${label}\`: ${RUN_URL}"
                   gh issue close "$existing" --repo "$GITHUB_REPOSITORY" --reason completed
                   echo "Closed issue #${existing}"
+                fi
+                ;;
+              cancelled)
+                if [ -n "$existing" ]; then
+                  gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" \
+                    --body "Nightly T3 run ${GITHUB_RUN_ID} has no verdict (cancelled or timed out) for \`${label}\`: ${RUN_URL}"
+                  echo "Commented on issue #${existing}: no verdict"
+                else
+                  echo "No issue change for ${label} (cancelled, no open issue)."
                 fi
                 ;;
               *)
