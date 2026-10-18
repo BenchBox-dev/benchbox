@@ -22076,6 +22076,13 @@
       "status": "open",
       "title": "ship-no-ship doctor: a planted toolchain can make the rpath walk take exponential time"
     },
+    "ssns-gen0-stale-during-engine-rollback": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "ship-no-ship discovery: a generation-0 request can be wrongly marked stale during an engine rollback"
+    },
     "ssns-go-public": {
       "claim": null,
       "needs": [],
