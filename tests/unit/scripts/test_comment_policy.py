@@ -2764,15 +2764,27 @@ def test_dependency_replacements_fail_closed(
         scope.immutable_dependency_artifacts(tmp_path, "base", records, rules, external, staged)
 
 
-@pytest.mark.parametrize("bumped", [True, False])
-def test_dependency_removed_by_a_policy_wheel_bump_is_skipped(
-    tmp_path: Path, dependency_artifact_inputs, monkeypatch, bumped: bool
+@pytest.mark.parametrize("case", ["bumped", "still-listed", "no-replacement", "replacement-missing"])
+def test_dependency_removed_only_by_a_verified_policy_wheel_bump(
+    tmp_path: Path, dependency_artifact_inputs, case: str
 ) -> None:
-    scope, path, _, _, _, _, records, rules, external = dependency_artifact_inputs
+    scope, path, project_path, _, frozen, _, records, rules, external = dependency_artifact_inputs
     (tmp_path / path).unlink()
-    head_external = [] if bumped else external
-    monkeypatch.setattr(scope, "head_policy", lambda root, staged: {"external": head_external})
-    if bumped:
+    replacement = {**external[0], "path": path.replace("0.8.1", "0.9.0")}
+    head_external = {
+        "bumped": [replacement],
+        "still-listed": [external[0], replacement],
+        "no-replacement": [],
+        "replacement-missing": [replacement],
+    }[case]
+    if case != "replacement-missing":
+        (tmp_path / replacement["path"]).write_bytes(frozen[path])
+    policy_file = tmp_path / "quality/comment-policy.json"
+    policy_file.parent.mkdir(parents=True, exist_ok=True)
+    policy_file.write_text(
+        json.dumps({"version": 1, "external": head_external, "completed": [], "exceptions": []}), encoding="utf-8"
+    )
+    if case == "bumped":
         assert scope.immutable_dependency_artifacts(tmp_path, "base", records, rules, external) == set()
     else:
         with pytest.raises(scope.PolicyError, match="immutable dependency artifact removed"):

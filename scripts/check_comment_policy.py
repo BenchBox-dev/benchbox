@@ -24,6 +24,7 @@ from check_comment_cleanup_scope import (
     POLICY_PATH as SCOPE_POLICY_PATH,
     comment_policy_matches as matches,
     immutable_external_ownership,
+    is_wheel_bump as _is_wheel_bump,
     load_comment_policy as load_policy,
     load_policy_bytes as load_scope_policy_bytes,
     oracle_review_covers,
@@ -73,22 +74,6 @@ def expired_policy_findings(policy: dict) -> list[Finding]:
         for entry in policy["exceptions"]
         if (exception_identity(entry)) in expired
     ]
-
-
-def _is_wheel_bump(candidate_entry: dict, baseline_entry: dict) -> bool:
-    cand_path = PurePosixPath(candidate_entry["path"])
-    base_path = PurePosixPath(baseline_entry["path"])
-    if cand_path.suffix != ".whl" or base_path.suffix != ".whl":
-        return False
-    if cand_path.parent != base_path.parent:
-        return False
-    if candidate_entry.get("owner") != baseline_entry.get("owner"):
-        return False
-    if candidate_entry.get("provenance") != baseline_entry.get("provenance"):
-        return False
-    cand_dist = cand_path.name.split("-", 1)[0]
-    base_dist = base_path.name.split("-", 1)[0]
-    return cand_dist == base_dist
 
 
 def check_ratchet(policy: dict, baseline: dict) -> None:

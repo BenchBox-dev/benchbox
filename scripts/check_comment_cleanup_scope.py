@@ -19,6 +19,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 POLICY_PATH = "quality/comment-cleanup-scope.json"
+COMMENT_POLICY_PATH = "quality/comment-policy.json"
 PINNED_NOTICE_DRIFT_PATHS = frozenset({"LICENSE", "COPYRIGHT.md"})
 
 COMMENT_POLICY_ENFORCEMENT_MODES = {"advisory", "blocking"}
@@ -1121,6 +1122,37 @@ def owned_paths(
     return results, findings
 
 
+def is_wheel_bump(candidate_entry: dict, baseline_entry: dict) -> bool:
+    cand_path = PurePosixPath(candidate_entry["path"])
+    base_path = PurePosixPath(baseline_entry["path"])
+    if cand_path.suffix != ".whl" or base_path.suffix != ".whl":
+        return False
+    if cand_path.parent != base_path.parent:
+        return False
+    if candidate_entry.get("owner") != baseline_entry.get("owner"):
+        return False
+    if candidate_entry.get("provenance") != baseline_entry.get("provenance"):
+        return False
+    cand_dist = cand_path.name.split("-", 1)[0]
+    base_dist = base_path.name.split("-", 1)[0]
+    return cand_dist == base_dist
+
+
+def bumped_by_head_policy(root: Path, entry: dict[str, str], staged: bool) -> bool:
+    raw = head_blob(root, COMMENT_POLICY_PATH, staged)
+    if raw is None:
+        return False
+    head_external = load_comment_policy(raw)["external"]
+    if entry in head_external:
+        return False
+    return any(
+        is_wheel_bump(candidate, entry)
+        and candidate["path"] != entry["path"]
+        and head_blob(root, candidate["path"], staged) is not None
+        for candidate in head_external
+    )
+
+
 def immutable_dependency_artifacts(
     root: Path,
     base: str,
@@ -1187,8 +1219,7 @@ def immutable_dependency_artifacts(
         try:
             current = candidate_bytes(path)
         except (OSError, subprocess.CalledProcessError):
-            head = head_policy(root, staged)
-            if head is not None and all(item.get("path") != path for item in head.get("external", [])):
+            if bumped_by_head_policy(root, entry, staged):
                 continue
             raise PolicyError(f"immutable dependency artifact removed: {path}") from None
         if current != raw:
