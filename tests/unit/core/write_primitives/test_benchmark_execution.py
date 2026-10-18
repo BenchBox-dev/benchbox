@@ -1381,9 +1381,6 @@ class TestCheckValidationQuery:
         assert _check_validation_query(q, actual_rows=2, val_result=[(15,), ()]) is False
 
 
-pytestmark_fast = [pytest.mark.unit, pytest.mark.medium]
-
-
 @pytest.fixture()
 def fast_bench(tmp_path):
     with patch("benchbox.core.write_primitives.benchmark.WritePrimitivesDataGenerator"):
