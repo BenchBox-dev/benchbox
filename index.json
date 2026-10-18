@@ -8596,6 +8596,19 @@
       "status": "open",
       "title": "Enforce code-documentation contracts in site CI"
     },
+    "docs-mig-site-import": {
+      "claim": null,
+      "needs": [
+        "docs-mig-site-baseline-build",
+        "docs-mig-legacy-downloads-redirects",
+        "docs-mig-site-contract-checks",
+        "docs-mig-ts-parity-gate",
+        "docs-mig-core-freeze"
+      ],
+      "priority": "critical",
+      "status": "open",
+      "title": "Import and publish all site-owned documentation in one cutover"
+    },
     "docs-mig-site-ts-generators": {
       "claim": null,
       "needs": [
