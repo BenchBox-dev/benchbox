@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Five local verdicts checked before starting",
+    "Workflow tests rewritten and passing"
+  ],
+  "description": "Plan step B5, after B4 plus five checked local verdicts. Delete the select-N and attempt-N-<harness> jobs (about 1,750 lines); post only for non-review decisions; remove reviewer secrets from docs; trim CREDENTIAL_ENV; remove B0's concurrency workaround if no longer needed.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51",
+      "at": "2026-10-18T01:01:16Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "3548dbc017074c23984ce304d3839cef",
+      "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    }
+  ]
+}
