@@ -1168,6 +1168,8 @@ def _eval_spec_clause(clause: str, cand_p: tuple, cand_version: str) -> bool:
     m_wildcard = re.match(r"^(==|!=)\s*([0-9]+(?:\.[0-9]+)*)\.\*$", clause)
     if m_wildcard:
         op, prefix_str = m_wildcard.group(1), m_wildcard.group(2)
+        if cand_p[2] < (0, 0):
+            return op != "=="
         prefix = tuple(int(x) for x in prefix_str.split("."))
         matches_prefix = cand_p[1][: len(prefix)] == prefix
         return matches_prefix if op == "==" else not matches_prefix
@@ -1198,10 +1200,12 @@ def _eval_spec_clause(clause: str, cand_p: tuple, cand_version: str) -> bool:
     if op == "<":
         return cand_p < v_p
     if op == "~=":
+        if cand_p[2] < (0, 0) and v_p[2] >= (0, 0):
+            return False
         if cand_p < v_p:
             return False
         rel = v_p[1]
-        upper_prefix = (rel[0] + 1,) if len(rel) == 1 else rel[:-2] + (rel[-2] + 1,)
+        upper_prefix = (rel[0] + 1,) if len(rel) == 1 else rel[:-1][:-1] + (rel[:-1][-1] + 1,)
         return cand_p[1][: len(upper_prefix)] < upper_prefix
     return False
 
@@ -1221,6 +1225,25 @@ def _declares(requirement: str, owner: str, cand_version: str) -> bool:
     except ValueError:
         return False
     return all(_eval_spec_clause(c.strip(), cand_p, cand_version) for c in spec.split(",") if c.strip())
+
+
+def _verify_rollout_evidence(root: Path, owner: str, filename: str, digest: str, staged: bool) -> None:
+    evidence_path = "_project/analysis/batch-rollout-evidence.json"
+    raw = head_blob(root, evidence_path, staged)
+    if raw is None:
+        return
+    try:
+        data = json.loads(raw.decode("utf-8"))
+        artifact = data.get("artifact", {})
+        if not isinstance(artifact, dict) or artifact.get("filename") != filename:
+            raise ValueError(f"evidence ledger artifact filename {artifact.get('filename')!r} != {filename!r}")
+        if artifact.get("sha256") != digest:
+            raise ValueError(f"evidence ledger artifact sha256 does not match {filename}")
+        origin = str(artifact.get("origin", ""))
+        if "GitHub release" not in origin:
+            raise ValueError(f"evidence ledger artifact origin must be a GitHub release, found {origin!r}")
+    except (json.JSONDecodeError, UnicodeError, AttributeError) as exc:
+        raise ValueError(f"malformed rollout evidence ledger: {exc}") from exc
 
 
 def _wheel_metadata(wheel: bytes, owner: str) -> email.message.Message:
@@ -1285,6 +1308,7 @@ def verify_bound_wheel(root: Path, entry: dict, expected_version: str, staged: b
             )
         if packages[0].get("version") != expected_version:
             raise ValueError(f"{label}: uv.lock version does not match {expected_version}")
+        _verify_rollout_evidence(root, owner, filename, hashlib.sha256(wheel).hexdigest(), staged)
     except (
         AttributeError,
         TypeError,
