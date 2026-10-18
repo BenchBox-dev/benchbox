@@ -7,7 +7,7 @@
     "No privacy rule, validator rule or floor is weakened (diff review recorded)",
     "PR merged with required checks green and a success oracle-review verdict if a soundness or tuning-trust path changes; live proof via autogen-nightly-dispatch-verify-20261018"
   ],
-  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs enumerated errors, a failing-before/passing-after regression test and no weakening. FAIL if the floor or the privacy contract changes. Related existing items: monitor-nightly-cedardb-throughput-gate-and-floor, tuning-cedardb-native-layout-20261017. Tuning trust paths are soundness manifest paths: expect oracle review.",
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs enumerated errors, a failing-before/passing-after regression test and no weakening. FAIL if the floor or the privacy contract changes. Related existing items: monitor-nightly-cedardb-throughput-gate-and-floor, tuning-cedardb-native-layout-20261017. Tuning trust paths are soundness manifest paths: expect oracle review.\nPre-publication (AGENTS.md): self-review with the code review action and fix every Critical and Required finding before make pr-open (G13).",
   "description": "Confirmed in run 39125986956 (artifact throughput-uat-cedardb-39125986956-1, id 12136515972): the cell executed and passed (exit 0, throughput_check ok, Throughput@Size 138598.52) but the validate phase exited 1: validator_status error, error_count 6, first_error 'Public privacy contract rejects unanonymized tuning diagnostics: platform.tuning.applied.statements[0] exposes unanonymized tuning statement'; uat_gate_summary verdict red (validator_clean_rate 0.0 < floor 1.0). Only the first of the six errors is known.\nSecond observation: the result has tuning_source 'baseline' yet applied.statements lists five PostgreSQL planner SET statements (enable_seqscan, enable_hashjoin, enable_mergejoin, random_page_cost -> failed 'cannot change configuration parameter \"random_page_cost\"', cpu_tuple_cost) with status not_applicable. A baseline run applying tuning is suspect and may be an independent defect.\nWork: (1) run the project validator on the artifact result JSON locally and record all six errors; (2) determine the fault side: serializer/producer emitting unanonymized statements, baseline applying tuning, or validator; (3) fix the producer side with a regression test built from a minimal fixture of that result; (4) explain or fix why baseline applies and records tuning statements; if a fix is out of scope create a follow-up with evidence.\nGATE-G (D10): if the only fix relaxes the public privacy contract, a validator rule, or the 1.0 clean-rate floor, set this item blocked with the evidence and stop; do not make that change.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/issues/3032",
@@ -21,6 +21,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "44f98e308cf34cbabd43d8fd850b4b89",
+      "session_id": "cab8a4e762844fd9912c504ebfd76c56"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7ac6538e56f6607b35a3f600",
+      "at": "2026-10-18T20:27:57Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "77abcd95c8604fd493a37d5a3b5ea2f7",
       "session_id": "cab8a4e762844fd9912c504ebfd76c56"
     }
   ]
