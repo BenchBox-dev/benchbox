@@ -5,7 +5,7 @@
     "Any code change has a test built from a captured failing output that fails before the fix and passes after, and a wrong-shape answer is still recorded absent",
     "Merged through the normal PR flow with an oracle success review, if a change is made"
   ],
-  "context": "#3015 (2257818e5, 2026-10-15) passes muse a verdict schema through --output-schema and accepts repeated identical verdicts. Since then muse has produced valid verdicts (for example SHIP on #3009, run 38821161668). The plan artifacts for runs 37982258535 and 37986952599 expired on 2026-10-16 without being saved. One raw stdout/stderr capture for 37986952599 (2026-10-12) is kept on the owner's machine.\n\nOpen question for the owner: close this item if no invalid muse answer has been recorded since #3015, rather than chasing the expired captures?",
+  "context": "Check-then-close status 2026-10-18: muse parsing fix merged 2026-10-15 (#3015 passes --output-schema). Remaining unverified acceptance: (1) raw captures of 2 invalid answers - artifacts expired 2026-10-16, unavailable; (2) recorded parser/prompt/order/no-change decision; (3) regression test - only if a change is made; (4) merged PR - only if a change is made. Next: owner confirms no invalid muse verdict since #3015, then close as no-change; if one occurred, capture raw output first.",
   "description": "On 2026-10-09, after the unpinned install (#2831), muse was selected three times on canary runs and gave a parseable verdict only once:\n- run 37982258535 (PR #2842): \"invalid: the verdict must have exactly the keys ('status', 'incomplete_reason', 'decision', 'summary', 'files_examined', 'defects', 'prior_defects')\";\n- run 37983182017 (PR #2842, next head): valid verdict, SHIP;\n- run 37986952599 (PR #2845, oracle-verdict.yml): \"invalid: the reviewer output is not JSON: Extra data\".\nAll three ran Muse Code 1.4.4 (1.4.4-R5419.1). An invalid answer counts as absent, so the next reviewer runs and nothing passes wrongly. Impact: the result stays pending only when muse is the only eligible reviewer. That happens when claude is excluded (it is by default, because every PR is treated as claude-authored; see oracle-author-family-labels-never-applied-20261009) and codex is out of quota.\n\nThe muse command (_project/scripts/oracle_reviewers/commands.py:74-89) passes no schema flag. The schema reaches muse only as text in the prompt, so wrong keys and extra text are possible.\n\nInvestigate. The existing attempt artifacts are only 456 and 408 bytes and expire on 2026-10-16, so they hold no raw output. Obtain raw muse output from a local `muse exec` run with the same brief and schema-in-prompt, or add a new diagnostic capture of the raw (redacted) output for failing runs. Determine whether the extra data is a trailing message, several JSON objects, or prose around the JSON, and whether the wrong keys are a schema drift in the muse model's answer. Compare with `verdict.parse_output` for the muse harness.\n\nPossible fixes, to decide after the evidence: make parse_output take the last complete JSON object from muse's output, strengthen the schema instruction in the muse prompt, or move muse later in the tier orders. Also related: oracle-self-attested-file-list-reviewers-20261008 (muse's file list is self-attested).\n\nGuardrails. An unparseable or wrong-shape answer must never pass; it stays absent. Never weaken the required oracle-review check. Very-high tier; normal oracle PR flow.",
   "links": [
     "_project/scripts/oracle_reviewers/verdict.py",
@@ -95,6 +95,14 @@
       "op": "update",
       "op_id": "cb5f14825329499f8faf0e4f12e6a3f9",
       "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:3ce222eaad5d12493e27d4cc",
+      "at": "2026-10-18T11:44:36Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "2c42a45676d54e12906b1600822a5845",
+      "session_id": "d2c53a64af484bf0b44e45ae35143611"
     }
   ]
 }
