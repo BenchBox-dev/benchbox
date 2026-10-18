@@ -1352,17 +1352,12 @@
       "title": "Make t3:durations fail only when duration tooling fails, after proving the canary covers the slow tier"
     },
     "autogen-gap-digest-stand-in-and-closure-20261018": {
-      "claim": {
-        "expires_at": "2026-10-19T20:31:12Z",
-        "generation": "1267b66c7835414a99beab4794c25d0b",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7ac6538e56f6607b35a3f600"
-      },
+      "claim": null,
       "needs": [
         "autogen-issues-decisions-20261018"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Make the soundness digest agree with the gate on stand-ins and close gap issues on evidence"
     },
     "autogen-green-unmerged-pinned-lookup-20261018": {
