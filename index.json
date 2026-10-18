@@ -21962,6 +21962,15 @@
       "status": "open",
       "title": "ship-no-ship activation A2: measure whether reviewers can read their own credentials"
     },
+    "ssns-a4-live-check": {
+      "claim": null,
+      "needs": [
+        "ssns-o6-install-and-doctor"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "ship-no-ship activation A4: scripted live run against the real CLIs"
+    },
     "ssns-go-public": {
       "claim": null,
       "needs": [],
