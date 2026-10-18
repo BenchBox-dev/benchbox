@@ -50,6 +50,8 @@ Before a release PR can merge, the `release-only` ruleset must require:
   `make ci-linux` for parity rather than reading a local mismatch as a defect;
 - the credential-free integration-not-slow suite:
   `tests/integration -m "integration and not (slow or stress or resource_heavy or live_integration)"`;
+- the complete medium tier, `medium (shard 0)` through `medium (shard 3)`, with
+  the same selection as the trunk medium shards;
 - isolated exact-one-wheel package build/install smoke;
 - dependency upper-bound checks;
 - release-branch curation checks that confirm dev-only paths are absent.
@@ -198,15 +200,16 @@ the gate.
 
 ### Tests on the release tree
 
-The release PR's required test job runs the fast test selection on the curated
-tree. A test that reads a path removed in step 4 passes on develop but fails or
-errors there, and blocks `release-required-result`.
+The release PR's required jobs run the fast and medium tiers on the curated
+tree: the `test` job runs the fast tier, and the `medium` jobs run the complete
+medium tier in four shards. A test that reads a path removed in step 4 passes on
+develop but fails or errors there, and blocks `release-required-result`.
 `scripts/release_curation_dry_run.py` catches this early. It reads the
 `git rm` commands from the `release-cut:` recipe, so it removes exactly what a
 cut removes. It applies them in a scratch worktree of the committed `HEAD`, then
-runs pytest there. CI runs it on every pull request for the test modules the PR
-changes. Before a cut, run the full fast selection on the curated tree (about
-8 minutes locally):
+runs the fast and medium tiers there. CI runs it on every pull request for the
+test modules the PR changes. Before a cut, run both tiers on the whole curated
+tree (about 20 minutes locally):
 
 ```bash
 uv run -- python scripts/release_curation_dry_run.py

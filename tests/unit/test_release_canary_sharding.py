@@ -118,8 +118,8 @@ def test_collection_and_shard_manifests_conserve_node_ids(tmp_path: Path):
     assert sorted(assigned) == sorted(nodeids.read_text(encoding="utf-8").splitlines())
 
 
-def _medium_artifacts(root: Path, sha: str) -> list[str]:
-    collection = root / f"t2-medium-nodeids-{sha}"
+def _medium_artifacts(root: Path, sha: str, workflow: str = "ci.yml", prefix: str = "t2-medium") -> list[str]:
+    collection = root / f"{prefix}-nodeids-{sha}"
     collection.mkdir()
     raw = collection / "raw.txt"
     ids = [f"tests/unit/test_a.py::test_{index}" for index in range(6)]
@@ -131,12 +131,12 @@ def _medium_artifacts(root: Path, sha: str) -> list[str]:
         expected_count=6,
         shard_count=MEDIUM_SHARD_COUNT,
         checked_sha=sha,
-        workflow="ci.yml",
+        workflow=workflow,
         job="medium-collect",
         marker_expression=MEDIUM_MARKER_EXPRESSION,
     )
     for index in range(MEDIUM_SHARD_COUNT):
-        shard = root / f"t2-medium-shard-{index}-{sha}"
+        shard = root / f"{prefix}-shard-{index}-{sha}"
         shard.mkdir()
         write_shard(
             collection / "medium-nodeids.txt",
@@ -144,7 +144,7 @@ def _medium_artifacts(root: Path, sha: str) -> list[str]:
             shard / "summary.json",
             shard_index=index,
             shard_count=MEDIUM_SHARD_COUNT,
-            workflow="ci.yml",
+            workflow=workflow,
             job="medium-test",
             marker_expression=MEDIUM_MARKER_EXPRESSION,
             collection_summary=collection / "medium-collection.json",
@@ -179,6 +179,17 @@ def _medium_artifacts(root: Path, sha: str) -> list[str]:
 def test_medium_artifact_union_covers_the_exact_collection(tmp_path: Path) -> None:
     _medium_artifacts(tmp_path, "a" * 40)
     verify_medium_shards(tmp_path, "a" * 40)
+
+
+def test_release_medium_artifacts_verify_under_their_own_workflow_and_prefix(tmp_path: Path) -> None:
+    sha = "a" * 40
+    _medium_artifacts(tmp_path, sha, workflow="test.yml", prefix="release-medium")
+
+    verify_medium_shards(tmp_path, sha, "test.yml", "release-medium")
+    with pytest.raises((ValueError, FileNotFoundError)):
+        verify_medium_shards(tmp_path, sha)
+    with pytest.raises(ValueError):
+        verify_medium_shards(tmp_path, sha, "ci.yml", "release-medium")
 
 
 @pytest.mark.parametrize(

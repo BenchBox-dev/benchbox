@@ -107,9 +107,12 @@ def test_repository_rm_commands_cover_development_only_paths() -> None:
     assert {"AGENTS.md", "_project", ".pre-commit-config.yaml"} <= paths
 
 
-def test_marker_selection_matches_the_release_test_job() -> None:
+def test_marker_selection_matches_the_release_test_jobs() -> None:
     workflow = (REPO_ROOT / ".github" / "workflows" / "test.yml").read_text(encoding="utf-8")
-    assert f'-m "{dry_run.FAST_SELECTION}"' in workflow
+    excluded = "not (slow or stress or resource_heavy or live_integration)"
+    assert f'-m "fast and {excluded}"' in workflow
+    assert f'-m "medium and {excluded}"' in workflow
+    assert f"(fast or medium) and {excluded}" == dry_run.ROUTINE_SELECTION
 
 
 def test_curated_tree_applies_removals_and_is_cleaned_up(repo: Path) -> None:

@@ -12,6 +12,9 @@ pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SCRIPTS = REPO_ROOT / "scripts"
+UV_LOCK_CHECKER = REPO_ROOT / "_project/scripts/check_uv_lock_revision.py"
+SOUNDNESS_PATHS = REPO_ROOT / "_project/scripts/soundness_paths.py"
+RELEASE_TREE_SKIP = "_project scripts are not in this checkout (release tree)"
 
 spec = importlib.util.spec_from_file_location("release_flow", SCRIPTS / "release_flow.py")
 release_flow = importlib.util.module_from_spec(spec)
@@ -164,10 +167,11 @@ def test_check_rejects_an_invalid_changelog_date(tree: Path, invalid_date: str) 
     assert any("valid YYYY-MM-DD" in problem for problem in release_flow.check_changelog(tree, VERSION))
 
 
+@pytest.mark.skipif(not UV_LOCK_CHECKER.exists(), reason=RELEASE_TREE_SKIP)
 def test_check_rejects_a_committed_lock_revision_downgrade(tree: Path) -> None:
     scripts = tree / "_project" / "scripts"
     scripts.mkdir(parents=True)
-    shutil.copy(REPO_ROOT / "_project/scripts/check_uv_lock_revision.py", scripts)
+    shutil.copy(UV_LOCK_CHECKER, scripts)
     (tree / "uv.lock").write_text(LOCK.format(version=VERSION).replace("revision = 3", "revision = 2"))
     git(tree, "add", "--", "uv.lock")
     git(tree, "commit", "-q", "-m", "Downgrade lock revision")
@@ -190,11 +194,12 @@ def test_check_pins_an_explicit_lock_baseline(tree: Path) -> None:
     assert len(seen) == 1
 
 
+@pytest.mark.skipif(not UV_LOCK_CHECKER.exists(), reason=RELEASE_TREE_SKIP)
 def test_lock_baseline_cannot_be_replaced_to_hide_a_committed_downgrade(tree: Path) -> None:
     base = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=tree, text=True).strip()
     scripts = tree / "_project/scripts"
     scripts.mkdir(parents=True)
-    shutil.copy(REPO_ROOT / "_project/scripts/check_uv_lock_revision.py", scripts)
+    shutil.copy(UV_LOCK_CHECKER, scripts)
     (tree / "uv.lock").write_text(LOCK.format(version=VERSION).replace("revision = 3", "revision = 2"))
     git(tree, "add", "--", "uv.lock")
     git(tree, "commit", "-q", "-m", "Downgrade lock revision")
@@ -215,10 +220,9 @@ def test_lock_baseline_cannot_be_replaced_to_hide_a_committed_downgrade(tree: Pa
         "_project/decisions/single-repo-migration.md",
     ],
 )
+@pytest.mark.skipif(not SOUNDNESS_PATHS.exists(), reason=RELEASE_TREE_SKIP)
 def test_release_enforcement_requires_external_review_for_each_dependency(path: str) -> None:
-    spec = importlib.util.spec_from_file_location(
-        "release_soundness_paths", REPO_ROOT / "_project/scripts/soundness_paths.py"
-    )
+    spec = importlib.util.spec_from_file_location("release_soundness_paths", SOUNDNESS_PATHS)
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
     sys.modules[spec.name] = module

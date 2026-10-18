@@ -231,6 +231,10 @@ class TestMakefileCommands:
             or "Timeout" in result.stderr
         )
 
+    @pytest.mark.skipif(
+        not (REPO_ROOT / "_project" / "decisions").is_dir(),
+        reason="skill-integrity-check needs the development tree (release tree)",
+    )
     def test_skill_integrity_preflight_missing_trusted_tool_fails_instead_of_skipping(self, tmp_path: Path):
         tool_bin = tmp_path / "bin"
         tool_bin.mkdir()

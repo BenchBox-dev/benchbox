@@ -239,3 +239,24 @@ def test_packaging_carve_out_and_non_code_routing_preserve_the_expected_tier() -
     decision = {**_decision([]), "packaging_needed": True}
     assert heavy.heavy_needed(decision, "absent", REPO_ROOT)["heavy_needed"] is True
     assert heavy.heavy_needed({**_decision([]), "needs_code_ci": False}, "absent", REPO_ROOT)["heavy_needed"] is False
+
+
+def test_suite_wide_test_configuration_needs_the_heavy_tier(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    for module in ("tests/unit/test_a.py", "tests/unit/test_b.py", "tests/unit/core/test_c.py"):
+        (tmp_path / module).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / module).write_text("", encoding="utf-8")
+    monkeypatch.setattr(heavy, "BROAD_CONFTEST_MODULES", 2)
+
+    assert heavy.broad_test_infrastructure(
+        [
+            "tests/unit/conftest.py",
+            "tests/unit/__init__.py",
+            "tests/unit/core/conftest.py",
+            "pytest.ini",
+            "benchbox/core/x.py",
+        ],
+        tmp_path,
+    ) == ["tests/unit/conftest.py", "tests/unit/__init__.py", "pytest.ini"]
+    result = heavy.heavy_needed(_decision(["tests/unit/conftest.py"]), "absent", tmp_path)
+    assert result["heavy_needed"] is True
+    assert "test-infrastructure carve-out" in result["reason"]

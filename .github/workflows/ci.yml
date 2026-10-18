@@ -853,23 +853,26 @@ jobs:
           fi
           exit "$status"
 
-      - name: Run changed medium tests
+      - name: Run medium tests for changed paths
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          if [ -n "$BASE_SHA" ]; then
-            changed_medium=$(git diff --name-only --diff-filter=AMR "$BASE_SHA...HEAD" -- tests \
-              | grep -E '^tests/.*test_.*\.py$' || true)
-            if [ -n "$changed_medium" ]; then
-              echo "Checking changed test files for medium tests: $changed_medium"
-              status=0
-              BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest $changed_medium \
-                -m "medium and not (slow or stress or resource_heavy or live_integration)" \
-                --tb=short --timeout=60 -q || status=$?
-              if [ "$status" -ne 0 ] && [ "$status" -ne 5 ]; then
-                exit "$status"
-              fi
-            fi
+          set -euo pipefail
+          : "${BASE_SHA:?the pull request base SHA is required to map changed paths to tests}"
+          targets="$RUNNER_TEMP/medium-targets.txt"
+          uv run -- python _project/scripts/preflight_targets.py tests --base-ref "$BASE_SHA" > "$targets"
+          if [ ! -s "$targets" ]; then
+            echo "No test modules map to the changed paths."
+            exit 0
+          fi
+          echo "Medium tests for changed paths:"
+          cat "$targets"
+          status=0
+          BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest $(cat "$targets") \
+            -m "medium and not (slow or stress or resource_heavy or live_integration)" \
+            --tb=short --timeout=60 -q || status=$?
+          if [ "$status" -ne 0 ] && [ "$status" -ne 5 ]; then
+            exit "$status"
           fi
 
       - name: Upload xdist failure trace

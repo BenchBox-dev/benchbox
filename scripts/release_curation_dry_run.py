@@ -16,7 +16,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from check_release_curation import release_cut_rm_commands
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-FAST_SELECTION = "fast and not (slow or stress or resource_heavy or live_integration)"
 ROUTINE_SELECTION = "(fast or medium) and not (slow or stress or resource_heavy or live_integration)"
 NO_TESTS_COLLECTED = 5
 
@@ -63,7 +62,7 @@ def run(
     targets: Sequence[str],
     *,
     makefile: Path | None = None,
-    marker: str | None = None,
+    marker: str = ROUTINE_SELECTION,
     command: Sequence[str] | None = None,
 ) -> int:
     commands = release_cut_rm_commands(makefile or root / "Makefile")
@@ -76,8 +75,7 @@ def run(
                 print("release curation dry run: no selected test remains on the release tree")
                 return 0
             targets = kept
-        effective_marker = marker if marker is not None else (ROUTINE_SELECTION if targets else FAST_SELECTION)
-        argv = [*command, *(targets or ["tests"])] if command else pytest_command(targets, effective_marker)
+        argv = [*command, *(targets or ["tests"])] if command else pytest_command(targets, marker)
         result = subprocess.run(argv, cwd=tree, check=False)
         marker_excluded = (
             bool(targets) and result.returncode == NO_TESTS_COLLECTED and has_collected_tests(tree, targets, command)
@@ -108,7 +106,7 @@ def run(
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=CLI_DESCRIPTION)
-    parser.add_argument("tests", nargs="*", help="test paths to run; default: every test in the fast selection")
+    parser.add_argument("tests", nargs="*", help="test paths to run; default: every test in the fast and medium tiers")
     parser.add_argument("--changed-since", metavar="REF", help="run only test modules changed since REF")
     args = parser.parse_args(argv)
     targets = list(args.tests)

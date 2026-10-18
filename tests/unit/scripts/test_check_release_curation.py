@@ -169,7 +169,7 @@ def test_curated_release_make_runtime_executes_help_and_inventory(tmp_path: Path
 
 @pytest.mark.parametrize(
     "target",
-    ["complexity-check", "platform-manifest-check", "blind-spots-list"],
+    ["complexity-check", "platform-manifest-check", "blind-spots-list", "skill-integrity-check"],
 )
 def test_curated_release_development_targets_fail_with_explicit_policy(tmp_path: Path, target: str) -> None:
     _copy_curated_make_runtime(tmp_path)

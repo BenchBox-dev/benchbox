@@ -152,3 +152,96 @@ def test_cli_prints_selection_and_reports_missing_base(repo: Path, capsys: pytes
     assert pt.main(["python", "--repo-root", str(repo)]) == 0
     assert capsys.readouterr().out.split() == ["benchbox/core/engine.py"]
     assert pt.main(["tests", "--repo-root", str(repo), "--base-ref", "origin/missing"]) == 2
+
+
+def test_changed_test_helper_selects_the_tests_that_import_it(repo: Path) -> None:
+    _write(repo, "tests/fixtures/helpers.py")
+    _write(repo, "tests/fixtures/__init__.py", "")
+    _write(repo, "tests/unit/test_absolute.py", "from tests.fixtures.helpers import x\n")
+    _write(repo, "tests/unit/test_package.py", "from tests.fixtures import helpers\n")
+    _write(repo, "tests/fixtures/test_relative.py", "from .helpers import x\n")
+    _commit_all(repo, "helpers")
+    _git(repo, "update-ref", "refs/remotes/origin/develop", "HEAD")
+    _write(repo, "tests/fixtures/helpers.py", "x = 2\n")
+    _write(repo, "tests/fixtures/__init__.py", "y = 1\n")
+
+    assert pt.map_tests(repo, pt.changed_paths(repo, "origin/develop")) == [
+        "tests/fixtures/test_relative.py",
+        "tests/unit/test_absolute.py",
+        "tests/unit/test_package.py",
+    ]
+
+
+def test_changed_conftest_selects_its_subtree_up_to_the_limit(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _write(repo, "tests/unit/core/conftest.py")
+    _write(repo, "tests/conftest.py")
+
+    assert pt.map_tests(repo, ["tests/unit/core/conftest.py"]) == ["tests/unit/core/test_engine.py"]
+    monkeypatch.setattr(pt, "CONFTEST_SUBTREE_LIMIT", 1)
+    assert pt.map_tests(repo, ["tests/conftest.py"]) == []
+
+
+def test_platform_source_selects_its_smoke_tests_and_guards(repo: Path) -> None:
+    for path in (
+        "tests/integration/platforms/test_clickhouse_smoke.py",
+        "tests/integration/platforms/test_lakesail_stub_smoke.py",
+        "tests/integration/platforms/test_local_platforms_smoke.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/uat/test_connection_registry_drift.py",
+    ):
+        _write(repo, path)
+
+    assert pt.map_tests(repo, ["benchbox/platforms/clickhouse/adapter.py", "benchbox/platforms/lakesail.py"]) == [
+        "tests/integration/platforms/test_clickhouse_smoke.py",
+        "tests/integration/platforms/test_lakesail_stub_smoke.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/uat/test_connection_registry_drift.py",
+    ]
+    assert pt.map_tests(repo, ["benchbox/platforms/base/adapter.py"]) == [
+        "tests/integration/platforms/test_local_platforms_smoke.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/uat/test_connection_registry_drift.py",
+    ]
+    assert pt.map_tests(repo, ["scripts/tool.py"]) == ["tests/unit/test_tool.py"]
+
+
+def test_source_guard_tests_exist() -> None:
+    root = SCRIPT.parents[2]
+    missing = [test for tests in pt.SOURCE_GUARD_TESTS.values() for test in tests if not (root / test).is_file()]
+
+    assert missing == []
+
+
+def test_platform_smoke_mapping_needs_the_whole_platform_name(repo: Path) -> None:
+    for path in (
+        "tests/integration/platforms/test_cloud_spark_smoke.py",
+        "tests/integration/platforms/test_presto_smoke.py",
+        "tests/integration/platforms/test_starrocks_smoke_resource_heavy.py",
+    ):
+        _write(repo, path)
+
+    assert pt.map_tests(repo, ["benchbox/platforms/cloud_shared.py"]) == []
+    assert pt.map_tests(repo, ["benchbox/platforms/presto_trino_utils.py", "benchbox/platforms/starrocks/x.py"]) == [
+        "tests/integration/platforms/test_presto_smoke.py",
+    ]
+
+
+def test_changed_test_package_init_selects_its_package_and_importers(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write(repo, "tests/fixtures/__init__.py", "")
+    _write(repo, "tests/fixtures/test_inside.py")
+    _write(repo, "tests/unit/test_user.py", "from tests.fixtures import data\n")
+
+    assert pt.map_tests(repo, ["tests/fixtures/__init__.py"]) == [
+        "tests/fixtures/test_inside.py",
+        "tests/unit/test_user.py",
+    ]
+    monkeypatch.setattr(pt, "CONFTEST_SUBTREE_LIMIT", 0)
+    assert pt.map_tests(repo, ["tests/fixtures/__init__.py"]) == []
+
+
+def test_conftest_limit_matches_the_heavy_tier_carve_out() -> None:
+    from scripts import heavy_tier_needed
+
+    assert pt.CONFTEST_SUBTREE_LIMIT == heavy_tier_needed.BROAD_CONFTEST_MODULES
