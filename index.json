@@ -21864,10 +21864,15 @@
       "title": "Publish the verified BenchBox SQLGlot release with owner approval"
     },
     "sqlglot-soft-fork-source": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-19T01:00:08Z",
+        "generation": "7c2a0617382c4004a4f43dcb55ed1675",
+        "renewals": 0,
+        "worker": "mcp:codex-mcp-client:joe@joe-mac-mini.local:e0ab14b9d48e92582f492d05"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Maintain the SQLGlot source patches on a reviewed upstream base"
     },
     "sqlglot-upper-bound-bigquery-filter-compat": {
