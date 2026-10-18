@@ -174,12 +174,19 @@ def reconcile_requested_intents(
     optimizations = getattr(config, "platform_optimizations", None)
     sorted_ingestion_method = getattr(optimizations, "sorted_ingestion_method", "auto")
     redshift_vacuum_sort = platform.lower() == "redshift" and sorted_ingestion_method == "vacuum_sort"
-    for intent in requested_intents(config, declared_constraints):
+    intents = requested_intents(config, declared_constraints)
+    clustering_by_table = {
+        _bare_table(intent.table): tuple(normalize_identifier(column) for column in intent.columns)
+        for intent in intents
+        if intent.tuning_type is TuningType.CLUSTERING and intent.table is not None
+    }
+    for intent in intents:
         capability = get_capability(platform, intent.tuning_type)
         footprints = _footprints(intent.tuning_type, capability)
+        cluster_columns = clustering_by_table.get(_bare_table(intent.table), ()) if intent.table is not None else ()
 
         if capability is not None and capability.mechanism_id == "duckdb_ctas_sort":
-            index = _realizing_index(intent, (_INDEX_COLUMNS,), ledger)
+            index = _realizing_index(intent, (_INDEX_COLUMNS,), ledger, cluster_columns)
             has_sorted_ingestion = intent.table is not None and _bare_table(intent.table) in executed_sorts
             if index is not None and has_sorted_ingestion:
                 continue
@@ -197,7 +204,7 @@ def reconcile_requested_intents(
                 intent.label, f"missing expected {' and '.join(missing)} evidence for {capability.mechanism_id}"
             )
             continue
-        index = _realizing_index(intent, footprints, ledger)
+        index = _realizing_index(intent, footprints, ledger, cluster_columns)
         if index is not None:
             if _realized_in_ddl(capability, ledger.statements[index]) and not _covered(
                 intent, footprints, (entry.intent for entry in ledger.satisfied)
@@ -216,15 +223,33 @@ def reconcile_requested_intents(
         ledger.record_dropped(intent.label, _drop_reason(capability))
 
 
-def _realizing_index(intent: RequestedIntent, footprints: tuple[str, ...], ledger: AppliedTuningLedger) -> int | None:
+def _realizing_index(
+    intent: RequestedIntent,
+    footprints: tuple[str, ...],
+    ledger: AppliedTuningLedger,
+    cluster_columns: tuple[str, ...] = (),
+) -> int | None:
     for index, statement in enumerate(ledger.statements):
         if (
             statement.status == EXECUTED
             and statement.phase in _PHYSICAL_PHASES
-            and _shows(intent, statement, footprints, match_columns=True)
+            and _shows(intent, statement, footprints, match_columns=True, cluster_columns=cluster_columns)
         ):
             return index
     return None
+
+
+def _index_realizes_sort(wanted: list[str], indexed: tuple[str, ...], cluster_columns: tuple[str, ...]) -> bool:
+    if indexed[: len(wanted)] == tuple(wanted):
+        return True
+    if not cluster_columns:
+        return False
+    return any(
+        offset + len(wanted) <= len(indexed)
+        and indexed[:offset] == cluster_columns[:offset]
+        and indexed[offset : offset + len(wanted)] == tuple(wanted)
+        for offset in range(1, len(cluster_columns) + 1)
+    )
 
 
 def _footprints(tuning_type: TuningType, capability: TuningCapability | None) -> tuple[str, ...]:
@@ -294,6 +319,7 @@ def _shows(
     footprints: tuple[str, ...],
     *,
     match_columns: bool,
+    cluster_columns: tuple[str, ...] = (),
 ) -> bool:
     if intent.table is not None and _statement_target(statement) != _bare_table(intent.table):
         return False
@@ -305,8 +331,12 @@ def _shows(
     for pattern in footprints:
         if pattern == _INDEX_COLUMNS:
             indexed = statement_index_columns(statement)
-            if wanted and indexed is not None and indexed[: len(wanted)] == tuple(wanted):
-                return True
+            if wanted and indexed is not None:
+                if intent.tuning_type is TuningType.SORTING:
+                    if _index_realizes_sort(wanted, indexed, cluster_columns):
+                        return True
+                elif indexed[: len(wanted)] == tuple(wanted):
+                    return True
             continue
         if any(
             _contains_contiguous_sequence(wanted, _clause_identifiers(tail))
