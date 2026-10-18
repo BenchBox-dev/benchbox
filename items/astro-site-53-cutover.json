@@ -6,7 +6,7 @@
     "Production rollback drill to the Sphinx artifact and roll-forward recorded",
     "Inventory diff against production: zero broken URLs or fragments; atom.xml ids unchanged"
   ],
-  "context": "Owner decisions 2026-10-05: cutover ships with release v0.4.2 (tag must contain website/). Order: (1) PR #2656 (site-deploy hardening, acceptance gaps, parity approvals) merges; (2) dlv2-62 publication cutover with owner github-pages approvals and admin deletions; (3) parity re-run on the cutover base; owner signs _project/decisions/astro-parity-signoff.md; (4) v0.4.2 release + PyPI by owner; (5) cutover PR flips deploy/routes.yml to renderer: auto and carries the item-21 visual approval rehearsal; owner sets SITE_DEPLOY_VISUAL_APPROVED_BINDING/REASON for the first Astro deploy. Precondition: a receipted Sphinx generation deployed by site-deploy. site-split-01 (2026-10-07): v0.4.2 tag contains website/ (verified); routes.yml renderer auto with green production deploys (runs 37532428364, 37406123669). Rollback drill, inventory diff and visual-slot evidence not recorded here. Remaining verification owned by site-split-40 (per-route production evidence + production rollback drill). Do not finish here.\n\n2026-10-09 tracker review: this item's code shipped in #2685 and production deploys are green (site-deploy runs 37532428364, 37406123669). site-split-99-closeout should fold this astro-site chain into the site-split items. Not closed here, because this item's own text defers closing to the site-split items.",
+  "context": "Dropped 2026-10-17 as delivered (owner chose \"Drop delivered, re-scope rest\"). The renderer cutover shipped with #2685 and release v0.4.2, whose tag contains website/. The repository cutover followed in site-split-40: first production deploy 38177778939 (probes 33/33) and green production deploys for every route class (bundle 38966204111, site push 38913044071, results data 38919097512). Live Atom ids match the ablog feed. The PR-head visual slots were removed (ADR D8). The owner waived the Sphinx rollback target (ADR D11) and cancelled the production rollback drill on 2026-10-16; rollback stays available through deploy.yml mode=rollback. Fifteen missing doc fragments that predate the cutover remain live; site-docs-broken-fragments-20261009 tracks them.",
   "description": "Go only if all of these hold:\n- the G2 URL compatibility sign-off is re-run on the cutover base SHA\n- site-deploy has an all-Astro preview with a rollback drill on record (astro-site-52)\n- the owner approves in writing\n\nSequence:\n1. PR to develop:\n   - make site-build a required context, with its drift guard, in the same PR\n   - switch visual capture to the Astro render, with intentional approvals in both slots per astro-site-03\n   - set routes.yml to select Astro from the next release\n   Sphinx still builds docs/ and still renders production.\n2. Cut the next release through the normal release flow. The tag now contains website/ and all migrated content.\n3. site-deploy builds one all-Astro artifact: / and /docs/ from the tag; /docs/dev/, /blog/ and /results/ from trunk. Deploy, probe every route, record the receipt.\n4. Run one production rollback drill to the last Sphinx artifact by receipt, then roll forward.\n\nRollback triggers: any probe failure, a broken URL or fragment against the inventory, or a changed feed id. Response: redeploy the prior artifact by receipt. Mixed-renderer artifacts are never a fallback (D13).",
   "sessions": [
     {
@@ -48,6 +48,14 @@
       "op": "update",
       "op_id": "318120824aa7410fab57c25671067918",
       "session_id": "05afd70780334fa0b0e411a688cf8f7a"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-18T00:49:24Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "4aa954ae4eaa4cd7b77ab686c3382150",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
     }
   ]
 }
