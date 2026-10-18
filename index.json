@@ -21916,10 +21916,15 @@
       "title": "ship-no-ship: audit, make the repository public and apply protections"
     },
     "ssns-n1-bootstrap": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-19T00:54:30Z",
+        "generation": "ac26174383924523b474427090311041",
+        "renewals": 0,
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "ship-no-ship: bootstrap the uv workspace, CI and publish-safety checks"
     },
     "ssns-n2-engine-extraction": {
