@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import threading
 import time
 from pathlib import Path
@@ -1100,7 +1101,14 @@ class DataFusionAdapter(NoConstraintEnforcementMixin, PlatformAdapter):
             return pa.string()
         if col_type.startswith("DATE"):
             return pa.date32()
-        if col_type.startswith(("DECIMAL", "NUMERIC", "FLOAT", "REAL", "DOUBLE")):
+        if col_type.startswith(("DECIMAL", "NUMERIC")):
+            match = re.search(r"\(\s*(\d+)\s*(?:,\s*(\d+)\s*)?\)", col_type)
+            precision = int(match.group(1)) if match else 18
+            scale = int(match.group(2)) if match and match.group(2) is not None else 2
+            if precision > 38:
+                return pa.decimal256(precision, scale)
+            return pa.decimal128(precision, scale)
+        if col_type.startswith(("FLOAT", "REAL", "DOUBLE")):
             return pa.float64()
         if col_type.startswith("BIGINT") or col_type.startswith("INT8"):
             return pa.int64()
