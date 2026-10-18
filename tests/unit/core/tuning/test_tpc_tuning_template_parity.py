@@ -23,7 +23,7 @@ from benchbox.core.tuning.workload_profiles import TEMPORAL_PARTITION, load_tpc_
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 REPO_ROOT = Path(__file__).resolve().parents[4]

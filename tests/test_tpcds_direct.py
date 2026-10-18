@@ -13,7 +13,7 @@ import pytest
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 project_root = Path(__file__).parent

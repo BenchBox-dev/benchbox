@@ -15,7 +15,7 @@ from benchbox.core.publishing.store import PublicationStore
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

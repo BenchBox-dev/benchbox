@@ -10,7 +10,7 @@ from tests.utilities.optional_engines import require_chdb
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

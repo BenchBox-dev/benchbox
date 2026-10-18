@@ -21,7 +21,7 @@ from benchbox.core.query_catalog import (
     supports_dialect_translation,
 )
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 _ALL_BENCHMARK_IDS = sorted(get_all_benchmarks())
 

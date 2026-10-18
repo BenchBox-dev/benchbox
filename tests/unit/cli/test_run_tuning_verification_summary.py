@@ -5,7 +5,7 @@ from click.testing import CliRunner
 
 from benchbox.cli.main import cli
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 
 def test_duckdb_tuned_run_prints_tuning_verification_summary(tmp_path, monkeypatch):

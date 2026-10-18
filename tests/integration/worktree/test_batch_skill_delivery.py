@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = [pytest.mark.integration, pytest.mark.fast]
+pytestmark = [pytest.mark.integration, pytest.mark.medium]
 
 ROOT = Path(__file__).resolve().parents[3]
 

@@ -15,7 +15,7 @@ from check_windows_antipatterns import (
     write_baseline,
 )
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 
 def _write(tmp_path: Path, source: str) -> Path:

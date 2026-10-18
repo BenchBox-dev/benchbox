@@ -12,7 +12,7 @@ from benchbox.platforms.base.data_loading import DataSource
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

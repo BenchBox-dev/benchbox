@@ -26,7 +26,7 @@ from benchbox.core.visualization.ascii.sparkline_table import (
 from benchbox.core.visualization.ascii.stacked_bar import StackedBar, StackedBarData, StackedBarSegment
 from benchbox.core.visualization.ascii.summary_box import SummaryBox, SummaryStats
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 GOLDEN_DIR = Path(__file__).resolve().parent.parent.parent / "fixtures" / "golden" / "ascii"

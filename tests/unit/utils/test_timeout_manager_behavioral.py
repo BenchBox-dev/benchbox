@@ -16,7 +16,7 @@ from benchbox.utils.timeout_manager import (
     timeout,
 )
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 
 class TestRunWithTimeoutBehavior:

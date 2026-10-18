@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import pytest
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 sys.path.insert(0, str(Path(__file__).parent / "utilities"))

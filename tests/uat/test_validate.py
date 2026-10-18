@@ -7,7 +7,7 @@ import pytest
 
 from tests.uat.phases import validate
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 def _minimal_bundle(

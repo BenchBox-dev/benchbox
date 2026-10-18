@@ -24,7 +24,7 @@ from _project.scripts.explorer_pipeline.transformer import BundleTransformer
 from benchbox.core.results.status import NON_CLEAN_TRANSLATION_STATUSES, NON_CLEAN_VALIDATION_STATUSES
 from benchbox.core.tuning.modes import MODES
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 _EXPLORER_FIXTURES = pytest.importorskip(
     "tests.unit.scripts.explorer_pipeline.conftest", reason="Explorer pipeline test fixtures are not in this checkout"

@@ -6,7 +6,7 @@ from benchbox.core.tpchavoc.queries import TPCHavocQueryManager
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

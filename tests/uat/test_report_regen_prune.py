@@ -15,7 +15,7 @@ from tests.uat.phases.enumerate import (
 )
 from tests.uat.runner import CellResult
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 def _source_info() -> orchestrator.RunSourceInfo:

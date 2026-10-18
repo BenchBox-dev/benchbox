@@ -18,7 +18,7 @@ from _project.scripts.oracle_reviewers.brief import (
 from _project.scripts.oracle_reviewers.commands import Invocation
 from _project.scripts.oracle_reviewers.policy import Policy
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 skip_on_windows = pytest.mark.skipif(
     sys.platform == "win32",
     reason="fake reviewer CLIs are POSIX shebang scripts, PATH is colon-joined, and runner.execute uses os.killpg",

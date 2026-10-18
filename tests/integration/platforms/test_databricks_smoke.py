@@ -6,7 +6,7 @@ from .common import create_smoke_benchmark, install_databricks_stub, run_smoke_b
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

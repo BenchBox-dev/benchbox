@@ -4,7 +4,7 @@ from .common import create_smoke_benchmark, install_databend_stub, run_smoke_ben
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

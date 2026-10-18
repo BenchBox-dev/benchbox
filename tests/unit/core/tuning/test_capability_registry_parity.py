@@ -19,7 +19,7 @@ from benchbox.core.tuning.interface import TableTuning, TuningColumn, TuningType
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

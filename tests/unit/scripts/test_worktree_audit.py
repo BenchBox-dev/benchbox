@@ -8,7 +8,7 @@ from typing import Any, Dict, List
 
 import pytest
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 _ROOT = Path(__file__).resolve().parents[3]
 _SCRIPT = _ROOT / "_project" / "scripts" / "worktree_audit.py"

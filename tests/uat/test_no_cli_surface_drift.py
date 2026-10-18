@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ALLOWED_INTERNAL_CLI_FILES = {

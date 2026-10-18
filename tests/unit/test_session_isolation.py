@@ -12,7 +12,7 @@ from click.testing import CliRunner
 from scripts.local_validation import _close_lock, wait_for_lock, write_holder
 from tests.utilities.paths import REPO_ROOT
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 
 def test_unit_home_is_owned_and_empty(_unit_home: Path) -> None:

@@ -15,7 +15,7 @@ from benchbox.core.tpch.benchmark import TPCHBenchmark
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

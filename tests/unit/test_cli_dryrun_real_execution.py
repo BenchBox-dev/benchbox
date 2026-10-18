@@ -14,7 +14,7 @@ from benchbox.platforms.duckdb import DuckDBAdapter
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

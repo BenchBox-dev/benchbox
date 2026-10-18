@@ -9,7 +9,7 @@ import pytest
 
 from scripts import check_api_contract_symbols as tool
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 INSTALLED_VERSION = "1.2.3"
 

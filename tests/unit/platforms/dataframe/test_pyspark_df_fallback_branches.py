@@ -15,7 +15,7 @@ from tests.utilities.optional_engines import pyspark_skip_reason, pyspark_usable
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 _REQUIRES_PYSPARK_SESSION = not pyspark_usable()

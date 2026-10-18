@@ -13,7 +13,7 @@ from tests.utilities.posix_shell import run_posix_shell, skip_without_posix_shel
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 SCRIPT = REPO_ROOT / "scripts" / "agent_write_preflight.sh"

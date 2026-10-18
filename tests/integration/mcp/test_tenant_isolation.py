@@ -10,7 +10,7 @@ from mcp.types import CallToolResult, TextContent
 from benchbox.mcp.security import Principal
 from tests.integration.mcp._security import authenticated_http_client, write_security_config
 
-pytestmark = [pytest.mark.integration, pytest.mark.fast]
+pytestmark = [pytest.mark.integration, pytest.mark.medium]
 
 
 def _text(result: CallToolResult) -> str:

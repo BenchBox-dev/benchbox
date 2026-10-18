@@ -15,7 +15,7 @@ from benchbox.core.results.builder import RunConfigInput
 from benchbox.core.results.exporter import ResultExporter
 from benchbox.core.results.loader import reconstruct_benchmark_results
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 CORPUS = REPO_ROOT / "results-data" / "bundles"

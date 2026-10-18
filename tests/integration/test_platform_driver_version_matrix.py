@@ -6,7 +6,7 @@ from benchbox.platforms.base.adapter import DriverIsolationCapability, check_iso
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

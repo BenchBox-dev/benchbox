@@ -19,7 +19,7 @@ from scripts.worktree_lifecycle_metadata import init_metadata
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
     pytest.mark.skipif(
         sys.platform == "win32",
         reason="make worktree-* targets are POSIX shell tooling; not supported on Windows",

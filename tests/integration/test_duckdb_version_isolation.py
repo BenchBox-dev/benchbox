@@ -12,7 +12,7 @@ from benchbox.utils.runtime_env import discover_isolated_runtime
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

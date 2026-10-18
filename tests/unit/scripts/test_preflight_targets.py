@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 SCRIPT = Path(__file__).resolve().parents[3] / "_project" / "scripts" / "preflight_targets.py"
 spec = importlib.util.spec_from_file_location("preflight_targets", SCRIPT)

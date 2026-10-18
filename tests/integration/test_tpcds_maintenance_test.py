@@ -21,7 +21,7 @@ from benchbox.core.tpcds.maintenance_test import TPCDSMaintenanceTest
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

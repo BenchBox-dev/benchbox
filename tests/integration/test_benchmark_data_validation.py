@@ -8,7 +8,7 @@ from benchbox.platforms.base import PlatformAdapter, ValidationPhase
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

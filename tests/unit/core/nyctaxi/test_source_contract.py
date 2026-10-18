@@ -118,6 +118,7 @@ def test_unparseable_download_is_not_recorded_as_ingested(tmp_path, monkeypatch)
     from benchbox.core.nyctaxi import downloader as module
 
     downloader = NYCTaxiDataDownloader(months=[1], output_dir=tmp_path)
+    monkeypatch.setattr(downloader, "_generate_synthetic_month", lambda *args, **kwargs: 1)
     url = downloader.source_contract()["urls"][0]
     monkeypatch.setattr(module.urllib.request, "urlretrieve", lambda _url, path: Path(path).write_bytes(b"bad"))
     monkeypatch.setattr(pq, "read_table", lambda _path: (_ for _ in ()).throw(ValueError("invalid parquet")))

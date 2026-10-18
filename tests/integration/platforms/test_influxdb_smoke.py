@@ -4,7 +4,7 @@ from .common import InfluxDBStubState, install_influxdb_stub
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

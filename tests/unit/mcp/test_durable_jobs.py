@@ -16,7 +16,7 @@ from mcp.shared.exceptions import MCPError
 from benchbox.mcp.jobs import DurableJobRepository, DurableJobWorker, _response_has_outstanding_work
 from benchbox.mcp.security import JobLimits, TenantWorkspaceProvider
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 
 def _request(scale: float = 0.01) -> dict[str, object]:

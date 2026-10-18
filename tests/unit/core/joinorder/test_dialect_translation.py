@@ -8,7 +8,7 @@ from benchbox.utils.dialect_utils import sql_translation_context
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 TRANSLATION_ENGINES = ["duckdb", "postgres", "sqlite", "spark", "clickhouse", "trino"]

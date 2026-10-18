@@ -19,7 +19,7 @@ from benchbox.platforms.base.execution import (
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

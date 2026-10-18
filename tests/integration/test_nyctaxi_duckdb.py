@@ -9,7 +9,7 @@ from benchbox import NYCTaxi
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

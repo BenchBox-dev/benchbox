@@ -21,7 +21,7 @@ from benchbox.mcp.jobs import DurableJobWorker
 from benchbox.mcp.security import RemoteSecurityRuntime
 from tests.integration.mcp._security import write_security_config
 
-pytestmark = [pytest.mark.integration, pytest.mark.fast]
+pytestmark = [pytest.mark.integration, pytest.mark.medium]
 
 
 class AlternatingASGITransport(httpx2.AsyncBaseTransport):

@@ -12,7 +12,7 @@ from benchbox.core.write_primitives.benchmark import OperationResult, WritePrimi
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 
@@ -1244,7 +1244,7 @@ class TestDataFrameSqlParity:
 
 
 class TestCheckValidationQuery:
-    pytestmark = [pytest.mark.unit, pytest.mark.fast]
+    pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
     def _make_query(
         self,
@@ -1381,7 +1381,7 @@ class TestCheckValidationQuery:
         assert _check_validation_query(q, actual_rows=2, val_result=[(15,), ()]) is False
 
 
-pytestmark_fast = [pytest.mark.unit, pytest.mark.fast]
+pytestmark_fast = [pytest.mark.unit, pytest.mark.medium]
 
 
 @pytest.fixture()

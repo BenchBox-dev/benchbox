@@ -10,7 +10,7 @@ import pytest
 from tests.utilities import leak_detector
 from tests.utilities.paths import REPO_ROOT
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 
 def test_legitimate_monkeypatch_and_chdir_pass(monkeypatch, tmp_path) -> None:

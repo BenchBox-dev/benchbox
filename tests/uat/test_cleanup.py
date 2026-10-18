@@ -9,7 +9,7 @@ from tests.uat.config import validate_config
 from tests.uat.phases import execute as exec_phase
 from tests.uat.runner import CellResult
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 def test_source_reuse_graph_comes_from_registry_metadata():

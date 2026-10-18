@@ -9,7 +9,7 @@ import pytest
 
 from tests.uat import clickhouse_memory
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 
 def _trace(

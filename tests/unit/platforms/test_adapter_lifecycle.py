@@ -11,7 +11,7 @@ from benchbox.platforms.base.models import ValidationPhase
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

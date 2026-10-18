@@ -22,7 +22,7 @@ except ImportError:
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
     pytest.mark.skipif(not DEPS_AVAILABLE, reason="Polars and/or Pandas not installed"),
 ]
 

@@ -11,7 +11,7 @@ from benchbox.utils.format_converters.vortex_converter import VortexConverter
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

@@ -9,7 +9,7 @@ import pytest
 
 from _project.scripts.explorer_pipeline import browser_fixtures
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 STAGED_SOURCE_SHA256 = "5bbe1df3a3b7c469f556f0b97e0dda4a61b673abb9a83489e6076e5f0fc3c48e"
 

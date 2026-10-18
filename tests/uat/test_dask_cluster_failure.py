@@ -7,7 +7,7 @@ import pytest
 
 mod = importlib.import_module("benchbox.platforms.dataframe.dask_df")
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 def _make_local_envelope_adapter():

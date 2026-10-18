@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 _SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "check_patch_safety.py"
 

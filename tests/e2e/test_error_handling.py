@@ -10,7 +10,7 @@ from click.testing import CliRunner
 from benchbox.cli.main import cli
 from tests.integration._cli_e2e_utils import run_cli_command as run_cli_subprocess_command
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 _CLI_RUNNER = CliRunner()

@@ -12,7 +12,7 @@ from tests.uat import _cli
 from tests.uat.config import validate_config
 from tests.utilities.paths import REPO_ROOT
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 def _write_uat_config(path: Path, payload: dict) -> None:

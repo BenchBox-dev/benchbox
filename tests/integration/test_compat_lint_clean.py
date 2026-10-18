@@ -7,7 +7,7 @@ import pytest
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 _BENCHBOX_ROOT = Path(__file__).parent.parent.parent / "benchbox"

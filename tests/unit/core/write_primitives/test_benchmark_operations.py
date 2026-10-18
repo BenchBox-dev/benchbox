@@ -10,7 +10,7 @@ from benchbox.core.write_primitives.benchmark import OperationResult, WritePrimi
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

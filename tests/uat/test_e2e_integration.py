@@ -10,7 +10,7 @@ from tests.uat import orchestrator
 from tests.uat.config import validate_config
 from tests.uat.runner import CellResult
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 def _runner_factory(invocations: list[tuple[str, str, float]]):

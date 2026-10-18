@@ -22,7 +22,7 @@ from benchbox.platforms.clickhouse.adapter import ClickHouseAdapter
 from benchbox.platforms.duckdb import DuckDBAdapter
 from benchbox.platforms.snowflake import SnowflakeAdapter
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 ROOT = Path(__file__).resolve().parents[4]
 ADAPTER_PATH = ROOT / "benchbox" / "platforms" / "base" / "adapter.py"

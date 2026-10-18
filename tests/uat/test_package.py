@@ -8,7 +8,7 @@ import pytest
 from tests.uat.config import validate_config
 from tests.uat.phases import package
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 def _fake_runner_factory(returncodes: list[int]):

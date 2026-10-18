@@ -23,7 +23,7 @@ from scripts.validate_submission import main
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 import yaml
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 
 def _workflows() -> list[Path]:

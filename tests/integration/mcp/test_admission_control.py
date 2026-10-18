@@ -8,7 +8,7 @@ from mcp.shared.exceptions import MCPError
 
 from benchbox.mcp.security import AdmissionLimits, DurableSecurityStore
 
-pytestmark = [pytest.mark.integration, pytest.mark.fast]
+pytestmark = [pytest.mark.integration, pytest.mark.medium]
 
 
 def test_two_workers_share_global_concurrency_and_bounded_queue(tmp_path: Path) -> None:

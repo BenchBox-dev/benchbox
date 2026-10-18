@@ -6,7 +6,7 @@ import pytest
 
 from tests.uat import container_cleanup, docker_assets
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 _IMAGES = [

@@ -4,7 +4,7 @@ import pytest
 
 from benchbox.core.tpcds.c_tools import DSQGenBinary
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 @pytest.mark.validation

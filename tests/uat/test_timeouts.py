@@ -13,7 +13,7 @@ import pytest
 
 from tests.uat import timeouts
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 def test_run_with_timeout_zero_disables():

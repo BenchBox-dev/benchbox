@@ -6,7 +6,7 @@ from .common import ClickHouseStubState, install_clickhouse_stub
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

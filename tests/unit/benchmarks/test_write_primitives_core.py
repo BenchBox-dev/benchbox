@@ -20,7 +20,7 @@ from benchbox.core.write_primitives.schema import (
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

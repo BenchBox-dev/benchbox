@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "sync-results-data-to-published.yml"

@@ -7,7 +7,7 @@ import pytest
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 pytest.importorskip("mcp", reason="MCP SDK not installed. Install with: uv add benchbox --extra mcp")

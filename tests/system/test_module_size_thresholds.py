@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = pytest.mark.fast
+pytestmark = pytest.mark.medium
 
 
 MAX_LINES_DEFAULT = 1_200

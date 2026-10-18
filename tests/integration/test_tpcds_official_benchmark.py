@@ -13,7 +13,7 @@ from benchbox.core.tpcds.official_benchmark import (
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.fast,
+    pytest.mark.medium,
 ]
 
 

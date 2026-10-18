@@ -16,7 +16,7 @@ from benchbox.utils.iceberg_layout import local_iceberg_location
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
     pytest.mark.cloud_import,
 ]
 
