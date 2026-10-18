@@ -193,8 +193,12 @@ def test_tpcds_subscale_validation_mode_opt_out(validator) -> None:
         set_validation_mode_context(None)
 
 
-def test_tpcds_subscale_invalid_env_mode_does_not_opt_out(validator, monkeypatch) -> None:
+def test_tpcds_subscale_invalid_env_mode_does_not_opt_out(monkeypatch) -> None:
+    from benchbox.core.validation.query_validation import set_validation_mode_context
+
+    set_validation_mode_context(None)
     monkeypatch.setenv("BENCHBOX_QUERY_VALIDATION_MODE", "invalid_mode_override")
+    validator = QueryValidator()
     result = validator.validate_query_result(
         benchmark_type="tpcds",
         query_id="86",
