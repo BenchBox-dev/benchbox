@@ -182,13 +182,11 @@ def _validate_tpcds_subscale_row_count(
 ) -> ValidationResult:
     import os
 
-    from benchbox.core.expected_results.tpcds_results import parse_validation_mode
     from benchbox.core.validation.query_validation import get_validation_mode_context
 
     context_mode = get_validation_mode_context()
-    env_mode = parse_validation_mode(os.environ.get("BENCHBOX_QUERY_VALIDATION_MODE"))
-    run_mode = context_mode or env_mode
-    if run_mode == ValidationMode.SKIP:
+    raw_env = os.environ.get("BENCHBOX_QUERY_VALIDATION_MODE", "").strip().lower()
+    if context_mode == ValidationMode.SKIP or raw_env in ("skip", "disabled"):
         return ValidationResult(
             is_valid=True,
             query_id=query_id,

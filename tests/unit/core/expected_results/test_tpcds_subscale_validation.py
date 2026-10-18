@@ -193,6 +193,18 @@ def test_tpcds_subscale_validation_mode_opt_out(validator) -> None:
         set_validation_mode_context(None)
 
 
+def test_tpcds_subscale_invalid_env_mode_does_not_opt_out(validator, monkeypatch) -> None:
+    monkeypatch.setenv("BENCHBOX_QUERY_VALIDATION_MODE", "invalid_mode_override")
+    result = validator.validate_query_result(
+        benchmark_type="tpcds",
+        query_id="86",
+        actual_row_count=TPCDS_SUBSCALE_ROW_COUNTS[0.01]["86"],
+        scale_factor=0.01,
+    )
+    assert result.is_valid
+    assert result.validation_mode == ValidationMode.EXACT
+
+
 def test_tpcds_subscale_corrupt_reference_degrades_gracefully() -> None:
     from unittest.mock import patch
 
