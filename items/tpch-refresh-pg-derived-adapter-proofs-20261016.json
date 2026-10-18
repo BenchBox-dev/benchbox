@@ -3,9 +3,10 @@
     "List every adapter that inherits the refresh capability from the PostgreSQL adapter",
     "For each: an SF0.01 local container proof (load, power, throughput with refresh, 2 streams) with RF1/RF2 row evidence, or the capability explicitly disabled with a reason",
     "Capability test updated to pin the resulting list",
-    "No cloud spend"
+    "No cloud spend",
+    "`benchbox metrics qphh --help` and `docs/reference/cli/metrics.md` list only the proven platforms once this item settles"
   ],
-  "context": "Follows the TPC-H refresh and QphH work in PR #3004, which proved PostgreSQL 18 and SingleStore locally.",
+  "context": "Follows the TPC-H refresh and QphH work in PR #3004 (960c61674). PostgreSQL 18 and SingleStore 9.1.1 passed SF0.01 load, power and two-stream throughput with refresh (RF sets 1–3, 110/110 queries) in local containers on 2026-10-16, on the code that merged as #3004. Snowflake passed an SF0.01 RF1/RF2 run in its trial account on 2026-10-15. Adapters that inherit the flag from the PostgreSQL adapter (CedarDB, Citus, ParadeDB, pg_duckdb, pg_mooncake, TimescaleDB) have no proof yet. On macOS without Docker Desktop, use mocker (see docs/operations/uat-framework.md). The `benchbox metrics qphh` help (#3046) already lists the inherited adapters as supported. Owner, 2026-10-15, Claude session e0e74e6b, question dialog: \"Keep all, prove first\", refined by \"Snowflake in trial, Redshift later\".",
   "description": "TPC-H refresh support (RF1/RF2) is declared for PostgreSQL, and adapters built on the PostgreSQL adapter (for example CedarDB and Citus) inherit the capability flag without having been tested. Run local container proofs for each inheriting adapter, or turn the flag off where a proof fails or is impractical.",
   "sessions": [
     {
@@ -15,6 +16,14 @@
       "op": "create",
       "op_id": "310c7afbf94c47bebb4bd888368bd86d",
       "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-18T00:00:42Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "af410bc830a44909938815eba2f72db0",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
     }
   ]
 }
