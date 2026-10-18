@@ -5,7 +5,7 @@
     "The primary clone, the current worktree, locked worktrees, and worktrees with uncommitted, untracked, or unpushed work are never removed",
     "Tests cover each verdict and the refusal cases"
   ],
-  "context": "Local worktree count was 175 on 2026-10-17. PR #3133 (branch feat/worktree-reap, head 70f2ebba9) implements the target; all acceptance criteria met; fresh-context review findings (reused-branch removal, CLI test gaps) fixed. Dry run on 2026-10-18: 179 worktrees, remove=107, keep=41, ambiguous=31. APPLY=1 not run on real worktrees.\n\nOwner decision needed before arming: _project/specs/worktree-lifecycle-evidence-contract.md section 2 listed 'No worktree reaper' as a non-goal; #3133 amends it to allow an operator-run sweep whose removals are exactly worktree-finish apply actions on a HEAD-exact match. #3133 is deliberately not armed. After merge, running APPLY=1 against the real worktrees is bulk cleanup and needs separate owner approval.",
+  "context": "Local worktree count was 175 on 2026-10-17. PR #3133 (branch feat/worktree-reap, head 70f2ebba9) implements the target; review findings fixed. Dry run 2026-10-18: 179 worktrees, remove=107, keep=41, ambiguous=31.\n\nOwner decision 2026-10-18 (chat): \"Arm, then sweep\" — approve the spec amendment, arm #3133, and after merge run make worktree-reap APPLY=1 on the remove verdicts. #3133 armed 2026-10-18.",
   "description": "Local linked worktrees accumulate because close-out removes them one at a time with make worktree-finish, and that step is often skipped. Add make worktree-reap: a dry run lists every linked worktree whose branch is merged or deleted on origin and that has no uncommitted or unpushed work; APPLY=1 removes those worktrees and their local branches; anything ambiguous is reported for the owner, never removed. Build on the existing worktree-audit and worktree-finish evaluation so the safety rules stay in one place.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3133"
@@ -51,6 +51,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "91394180985f434e973d9a8382d26ee7",
+      "session_id": "47d0479093c54bd8bbf6c9bf3930003f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:515fc6c5ed940969bed3c6eb",
+      "at": "2026-10-18T15:47:53Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3ef08738bbfd40329a29a0e3db9a4f55",
       "session_id": "47d0479093c54bd8bbf6c9bf3930003f"
     }
   ]
