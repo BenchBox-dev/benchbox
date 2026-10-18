@@ -32,6 +32,7 @@ def phases(monkeypatch):
     power = Mock()
     power.return_value.run.return_value = _power(100.0)
     adapter = Mock()
+    adapter.supports_refresh_functions = True
     adapter._run_routed_throughput.return_value = _throughput(200.0)
     throughput = adapter._run_routed_throughput
     maintenance = Mock()

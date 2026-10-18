@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import sqlite3
+import tempfile
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -11,6 +13,10 @@ from benchbox.core.tpch.refresh import require_refresh_support
 from tests.integration._tpch_refresh_utils import _check_rf1_rf2_with_expected_counts
 
 pytestmark = [pytest.mark.integration, pytest.mark.slow, pytest.mark.tpch]
+
+DBGEN_PATH_BUFFER_SIZE = 128
+LONGEST_UPDATE_FILE_NAME = "lineitem.tbl.u5"
+DBGEN_OVERFLOWING_DIR_LENGTH = DBGEN_PATH_BUFFER_SIZE - len(LONGEST_UPDATE_FILE_NAME)
 
 
 def test_sqlite_sf001_applies_rf1_and_rf2_with_expected_counts_and_deleted_keys(tmp_path: Path) -> None:
@@ -55,11 +61,28 @@ def test_dbgen_update_sets_use_generated_files_with_distinct_order_keys(tmp_path
     assert order_keys[5].isdisjoint(order_keys[6])
 
 
-def test_dbgen_update_sets_succeed_with_long_output_paths(tmp_path: Path) -> None:
+@pytest.fixture(params=["short-base", "long-base"])
+def base_dir(request: pytest.FixtureRequest, tmp_path: Path) -> Iterator[Path]:
+    if request.param == "long-base":
+        yield tmp_path / ("b" * 100)
+        return
+    with tempfile.TemporaryDirectory(dir="/tmp") as short_base:
+        yield Path(short_base)
+
+
+def _output_dir_beyond_dbgen_path_buffer(base: Path) -> Path:
+    output_dir = base / "dbgen-output"
+    padding = DBGEN_OVERFLOWING_DIR_LENGTH - len(str(output_dir))
+    if padding <= 0:
+        return output_dir
+    return base / ("p" * padding) / output_dir.name
+
+
+def test_dbgen_update_sets_succeed_with_long_output_paths(base_dir: Path) -> None:
     from benchbox.core.tpch.refresh import generate_refresh_update_sets
 
-    output_dir = tmp_path / ("p" * 32) / "dbgen-output"
-    assert len(str(output_dir)) > 111
+    output_dir = _output_dir_beyond_dbgen_path_buffer(base_dir)
+    assert len(str(output_dir)) >= DBGEN_OVERFLOWING_DIR_LENGTH
     update_sets = generate_refresh_update_sets(0.01, 5, 1, output_dir)
 
     assert set(update_sets) == {5}

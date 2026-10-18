@@ -4,12 +4,12 @@
 
 from __future__ import annotations
 
-import random
-
 import pytest
 
+from benchbox.core.tpch.refresh import generate_refresh_update_sets
 from benchbox.platforms.base.result_capture import _plan_capture_key
 from benchbox.platforms.duckdb import DuckDBAdapter
+from tests.integration._tpch_refresh_utils import _delete_keys
 
 pytestmark = [
     pytest.mark.integration,
@@ -312,20 +312,8 @@ def test_real_combined_power_maintenance_checkpoint_captures_pre_mutation_plan(t
         adapter.load_data(bench, conn, str(tmp_path / "data"))
 
         baseline_lineitem_count = conn.execute("SELECT COUNT(*) FROM lineitem").fetchone()[0]
-        oldest_order_key = conn.execute("SELECT O_ORDERKEY FROM orders ORDER BY O_ORDERDATE ASC LIMIT 1").fetchone()[0]
-        oldest_order_lineitem_count = conn.execute(
-            "SELECT COUNT(*) FROM lineitem WHERE L_ORDERKEY = ?", [oldest_order_key]
-        ).fetchone()[0]
-
-        forced_insert_count = oldest_order_lineitem_count + 1
-        original_randint = random.randint
-
-        def _deterministic_randint(a, b):
-            if (a, b) == (1, 7):
-                return forced_insert_count
-            return original_randint(a, b)
-
-        monkeypatch.setattr(random, "randint", _deterministic_randint)
+        refresh_update_set = generate_refresh_update_sets(0.01, 1, 1, tmp_path / "refresh_sets")[1]
+        deleted_order_key = _delete_keys(refresh_update_set)[0]
 
         captured_counts: list[int] = []
         original_capture_query_plan = adapter.capture_query_plan
@@ -357,8 +345,8 @@ def test_real_combined_power_maintenance_checkpoint_captures_pre_mutation_plan(t
         assert power_rows, "combined run produced no successful power rows"
         assert power_rows[0].get("plan_fingerprint"), "Q1's power-phase plan was never captured"
 
-        remaining = conn.execute("SELECT COUNT(*) FROM orders WHERE O_ORDERKEY = ?", [oldest_order_key]).fetchone()[0]
-        assert remaining == 0, "RF2 did not delete the identified oldest order - test setup invalid"
+        remaining = conn.execute("SELECT COUNT(*) FROM orders WHERE O_ORDERKEY = ?", [deleted_order_key]).fetchone()[0]
+        assert remaining == 0, "RF2 did not delete the first order of the refresh delete set - test setup invalid"
 
         post_run_lineitem_count = conn.execute("SELECT COUNT(*) FROM lineitem").fetchone()[0]
         assert post_run_lineitem_count != baseline_lineitem_count, (

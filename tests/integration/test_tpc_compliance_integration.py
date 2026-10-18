@@ -90,36 +90,31 @@ class TestTPCHCompliance:
             assert len(result.stream_results) == 2
 
     def test_tpch_maintenance_test_integration(self) -> None:
+        import duckdb
 
-        def mock_connection_factory():
-            mock_conn = Mock()
-            mock_cursor = Mock()
-            mock_cursor.fetchall.return_value = [("result1",), ("result2",)]
-            mock_conn.execute.return_value = mock_cursor
-            mock_conn.cursor.return_value = mock_cursor
-            mock_conn.commit.return_value = None
-            mock_conn.close.return_value = None
-            return mock_conn
+        from benchbox.core.tpch.maintenance_test import TPCHMaintenanceTest
+        from tests.integration._tpch_refresh_utils import _load_sf001_base
 
-        benchmark = TPCHBenchmark(scale_factor=1.0, output_dir=self.temp_dir)
+        database_path = str(Path(self.temp_dir) / "maintenance.duckdb")
+        seed_connection = duckdb.connect(database_path)
+        try:
+            _load_sf001_base(seed_connection)
+        finally:
+            seed_connection.close()
 
-        with patch.object(benchmark, "get_query") as mock_get_query:
-            mock_get_query.return_value = "SELECT 1"
+        maintenance_test = TPCHMaintenanceTest(
+            connection_factory=lambda: duckdb.connect(database_path),
+            scale_factor=0.01,
+            verbose=False,
+        )
 
-            from benchbox.core.tpch.maintenance_test import TPCHMaintenanceTest
+        result = maintenance_test.run_maintenance_test(rf1_interval=0.0, rf2_interval=0.0)
 
-            maintenance_test = TPCHMaintenanceTest(
-                connection_factory=mock_connection_factory,
-                scale_factor=1.0,
-                verbose=False,
-            )
-
-            result = maintenance_test.run_maintenance_test(rf1_interval=0.0, rf2_interval=0.0)
-
-            assert result.config.scale_factor == 1.0
-            assert result.total_time > 0
-            assert result.rf1_operations > 0
-            assert result.rf2_operations > 0
+        assert result.success, result.errors
+        assert result.config.scale_factor == 0.01
+        assert result.total_time > 0
+        assert result.rf1_operations > 0
+        assert result.rf2_operations > 0
 
 
 class TestTPCDSCompliance:
