@@ -49,6 +49,15 @@
       "op_id": "af35da5420814862ba6ab78941813c7a",
       "reason": "Same controller (same user and client) under an earlier server identity that rotated when the tracker MCP server restarted; that session cannot resume. The work is waiting on PR #3154 and no process holds the claim.",
       "session_id": "0722acca462b419aa525d939aedd0290"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a",
+      "at": "2026-10-18T22:37:21Z",
+      "client": "omp-coding-agent",
+      "generation": "e088d0def2fd41629510b89f4bae32a9",
+      "op": "release",
+      "op_id": "f650e6b7f524462eb7f46d7577390203",
+      "session_id": "0722acca462b419aa525d939aedd0290"
     }
   ]
 }
