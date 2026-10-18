@@ -29,7 +29,10 @@ CLI_DESCRIPTION = (
 
 PROMPT = Path(__file__).resolve().parent / "remote_review_prompt.txt"
 CODEX_TIMEOUT = 3600
+DRAIN_TIMEOUT = 5
 LOCK_WAIT = 60.0
+LOCK_ATTEMPTS = 3
+DENIED_ROOTS = ("/tmp", "/var/tmp")
 VIEW_FIELDS = f"{closeout.VIEW_FIELDS},title,body"
 SEVERITIES = ("Critical", "Required", "Nit")
 BLOCKING = frozenset({"Critical", "Required"})
@@ -64,6 +67,7 @@ DISABLED_FEATURES = (
     "daemon_auto_start",
 )
 MARKER = "<!-- benchbox-remote-review {} -->"
+DEAD_THREAD_ERRORS = ("Could not resolve to a node", "NOT_FOUND")
 THREAD_FIELDS = "id isResolved isOutdated comments(first:1) { nodes { body path pullRequestReview { databaseId } } }"
 RESOLVE_THREAD = """
   mutation($thread:ID!) {
@@ -75,6 +79,10 @@ Runner = closeout.Runner
 CodexRunner = Callable[[list[str], Mapping[str, str]], tuple[int, str]]
 Refused = closeout.Refused
 LandingError = closeout.LandingError
+
+
+class DeadStep(LandingError):
+    pass
 
 
 def _object_schema(properties: dict[str, dict]) -> dict:
@@ -106,6 +114,19 @@ def _kill_group(pid: int) -> None:
         os.killpg(pid, signal.SIGKILL)
 
 
+def _warn(message: str) -> None:
+    print(f"pr-landing-remote-review: warning: {message}", file=sys.stderr)
+
+
+def _drain(proc: subprocess.Popen) -> None:
+    with contextlib.suppress(subprocess.TimeoutExpired):
+        proc.communicate(timeout=DRAIN_TIMEOUT)
+    if proc.stdout is not None:
+        proc.stdout.close()
+    with contextlib.suppress(subprocess.TimeoutExpired):
+        proc.wait(timeout=DRAIN_TIMEOUT)
+
+
 def codex_run(cmd: list[str], env: Mapping[str, str]) -> tuple[int, str]:
     proc = subprocess.Popen(
         cmd,
@@ -119,11 +140,11 @@ def codex_run(cmd: list[str], env: Mapping[str, str]) -> tuple[int, str]:
         out, _ = proc.communicate(timeout=CODEX_TIMEOUT)
     except subprocess.TimeoutExpired:
         _kill_group(proc.pid)
-        proc.communicate()
+        _drain(proc)
         raise Refused(f"codex did not finish within {CODEX_TIMEOUT} seconds; its process group was killed") from None
     except BaseException:
         _kill_group(proc.pid)
-        proc.wait()
+        _drain(proc)
         raise
     _kill_group(proc.pid)
     return proc.returncode, out.decode("utf-8", "surrogateescape")
@@ -134,10 +155,27 @@ def codex_home() -> Path:
     return Path(home).expanduser() if home else Path.home() / ".codex"
 
 
-def _dry_run(value: str | None) -> bool:
+def _flag(name: str, value: str | None) -> bool:
     if value not in (None, "", "1"):
-        raise Refused(f"DRY_RUN must be 1 or unset, got {value!r}")
+        raise Refused(f"{name} must be 1 or unset, got {value!r}")
     return value == "1"
+
+
+def _denied(path: Path) -> bool:
+    resolved = path.resolve()
+    return any(resolved.is_relative_to(Path(root).resolve()) for root in DENIED_ROOTS)
+
+
+def runs_root() -> Path:
+    temporary = Path(tempfile.gettempdir()).resolve()
+    if not _denied(temporary):
+        return temporary
+    root = Path.home() / ".benchbox" / "review-runs"
+    root.mkdir(mode=0o700, parents=True, exist_ok=True)
+    root.chmod(0o700)
+    if _denied(root):
+        raise Refused(f"no directory outside {' and '.join(DENIED_ROOTS)} is available for the review inputs")
+    return root.resolve()
 
 
 def _codex_model(model: str | None) -> str:
@@ -341,20 +379,42 @@ def _isolated_env(workdir: Path) -> tuple[dict[str, str], bytes]:
 
 def _keep_refreshed_login(env: Mapping[str, str], login: bytes) -> None:
     source = codex_home() / "auth.json"
+    staged = source.with_name(f".auth.json.{os.getpid()}.tmp")
+    created = False
     try:
         refreshed = Path(env["CODEX_HOME"], "auth.json").read_bytes()
-        unchanged = source.read_bytes() == login
-    except OSError:
-        return
-    if refreshed != login and unchanged:
-        staged = source.with_name(f".auth.json.{os.getpid()}.tmp")
-        staged.touch(mode=0o600)
+        if refreshed == login:
+            return
+        json.loads(refreshed)
+        if source.is_symlink():
+            _warn(f"{source} is a symlink, so the login Codex refreshed during the review was not copied back")
+            return
+        if source.read_bytes() != login:
+            _warn(f"{source} changed during the review, so the login Codex refreshed was not copied back")
+            return
+        staged.touch(mode=0o600, exist_ok=False)
+        created = True
         staged.write_bytes(refreshed)
         os.replace(staged, source)
+    except (OSError, ValueError) as exc:
+        _warn(f"the login Codex refreshed during the review was not copied back to {source}: {exc}")
+    finally:
+        if created:
+            with contextlib.suppress(OSError):
+                staged.unlink(missing_ok=True)
+
+
+def codex_filesystem(workdir: Path) -> dict[str, str]:
+    return {
+        ":minimal": "read",
+        str(workdir / "input"): "read",
+        str(workdir / "head"): "read",
+        **dict.fromkeys(DENIED_ROOTS, "none"),
+    }
 
 
 def codex_command(workdir: Path, model: str, prompt: str) -> list[str]:
-    readable = {":minimal": "read", str(workdir / "input"): "read", str(workdir / "head"): "read"}
+    readable = codex_filesystem(workdir)
     filesystem = "{" + ",".join(f"{json.dumps(path)}={json.dumps(access)}" for path, access in readable.items()) + "}"
     return [
         "codex",
@@ -558,6 +618,8 @@ def _post_review(run: Runner, repo: str, number: int, ledger: Mapping[str, dict]
         step["payload"] = _without_inline(step["payload"], [ledger[finding] for finding in step["findings"]])
         step["findings"] = []
         code, out = _post(run, repo, number, step["payload"])
+    if code != 0 and "HTTP 422" in out:
+        raise DeadStep(f"GitHub refuses the review for PR #{number} even without inline comments: {out.strip()[:300]}")
     if code != 0:
         raise LandingError(f"posting the review to PR #{number} failed: {out.strip()[:300]}")
     posted = json.loads(out)
@@ -592,6 +654,8 @@ def _resolve_thread(run: Runner, thread_id: str) -> None:
         resolved = code == 0 and json.loads(out)["data"]["resolveReviewThread"]["thread"]["isResolved"] is True
     except (KeyError, TypeError, ValueError):
         resolved = False
+    if not resolved and any(error in out for error in DEAD_THREAD_ERRORS):
+        raise DeadStep(f"review thread {thread_id} no longer exists: {out.strip()[:200]}")
     if not resolved:
         raise LandingError(f"resolving review thread {thread_id} failed: {out.strip()[:200]}")
 
@@ -606,27 +670,53 @@ def _publish_review(run: Runner, repo: str, number: int, ledger: Mapping[str, di
             ledger[finding]["thread_id"] = thread
 
 
-def publish_pending(run: Runner, repo: str, number: int, path: Path, state: dict) -> None:
+def publish_pending(run: Runner, repo: str, number: int, path: Path, state: dict) -> int:
     ledger = {entry["id"]: entry for entry in state.get("review_findings", [])}
+    finished = 0
     for review_run in state.get("review_runs", []):
         record = state["records"][review_run["record_index"]]
         if record.get("published", True):
             continue
         for step in review_run["steps"]:
-            if step["status"] == "done":
+            if step["status"] != "pending":
                 continue
-            if step["kind"] == "review":
-                _publish_review(run, repo, number, ledger, step)
-            else:
-                _resolve_thread(run, step["thread_id"])
-            step["status"] = "done"
+            try:
+                if step["kind"] == "review":
+                    _publish_review(run, repo, number, ledger, step)
+                else:
+                    _resolve_thread(run, step["thread_id"])
+                step["status"] = "done"
+            except DeadStep as exc:
+                step.update(status="abandoned", reason=str(exc))
+                _warn(f"abandoned a publication step of record {review_run['record_index']}: {exc}")
+            finished += 1
             pr_landing._write_json_atomic(path, state)
+        if any(step["status"] == "abandoned" for step in review_run["steps"]):
+            continue
         if review_run["record_index"] == len(state["records"]) - 1:
             view = closeout._view(run, repo, number)
             record["observed_head"] = view.get("headRefOid")
             record["observation"] = closeout.observe(run, repo, view)
         record["published"] = True
         pr_landing._write_json_atomic(path, state)
+    return finished
+
+
+def _require_published(state: dict, number: int) -> None:
+    index = len(state["records"]) - 1
+    if index < 0 or state["records"][index].get("published", True):
+        return
+    reasons = [
+        str(step.get("reason"))
+        for review_run in state.get("review_runs", [])
+        if review_run["record_index"] == index
+        for step in review_run["steps"]
+        if step["status"] == "abandoned"
+    ]
+    raise Refused(
+        f"the latest record for PR #{number} is stored but unpublished, so make pr-arm-remote refuses it: "
+        f"{'; '.join(reasons)}; review the PR again for a new record"
+    )
 
 
 def _open_ids(state: Mapping[str, object]) -> list[str]:
@@ -644,13 +734,18 @@ def _store(
 ) -> tuple[Path, int]:
     record, findings, marks, diff = review["record"], review["findings"], review["marks"], review["diff"]
     head = record["head_sha"]
-    with closeout._locked_store(repo, number, wait=LOCK_WAIT) as (path, state):
-        publish_pending(run, repo, number, path, state)
+    with closeout._locked_store(repo, number, wait=LOCK_WAIT, attempts=LOCK_ATTEMPTS) as (path, state):
         if state.get("binding") != snapshot["binding"]:
             raise Refused(f"the binding of PR #{number} changed while the reviewer ran")
+        if len(state.get("arms") or []) > len(snapshot.get("arms") or []):
+            raise Refused(
+                f"PR #{number} was armed while the reviewer ran; withdraw it with make pr-landing-remote-withdraw, "
+                "then run the review again"
+            )
+        _review_view(run, repo, number, state["binding"], head)
+        publish_pending(run, repo, number, path, state)
         if _open_ids(state) != _open_ids(snapshot):
             raise Refused(f"the open findings of PR #{number} changed while the reviewer ran; run the review again")
-        _review_view(run, repo, number, state["binding"], head)
         ledger = state.setdefault("review_findings", [])
         fixed = [entry for entry in ledger if entry["status"] == "open" and marks[entry["id"]] == "fixed"]
         for entry in fixed:
@@ -702,7 +797,25 @@ def _store(
         )
         pr_landing._write_json_atomic(path, state)
         publish_pending(run, repo, number, path, state)
+        _require_published(state, number)
     return path, len(steps)
+
+
+def _resume(pr: str | None, flag: str, repo: str | None, run: Runner) -> int:
+    _flag("RESUME", flag)
+    repo = closeout._repository(repo)
+    number = closeout._pr_number(pr)
+    with closeout._locked_store(repo, number, wait=LOCK_WAIT, attempts=LOCK_ATTEMPTS) as (path, state):
+        binding = state.get("binding")
+        if binding is None:
+            raise Refused(f"no binding is recorded for PR #{number}; there is nothing to publish")
+        identity = closeout._identity_refusals(binding, closeout._view(run, repo, number), number)
+        if identity:
+            raise Refused("\n".join(identity))
+        finished = publish_pending(run, repo, number, path, state)
+        _require_published(state, number)
+    print(f"finished {finished} pending publication step(s) for PR #{number} in {path}")
+    return 0
 
 
 def _review(
@@ -719,7 +832,7 @@ def _review(
     repo = closeout._repository(repo)
     number = closeout._pr_number(pr)
     head = closeout._revision(head, "HEAD")
-    dry = _dry_run(dry_run)
+    dry = _flag("DRY_RUN", dry_run)
     builder_head = builder_head if dry else closeout._revision(builder_head, "BUILDER_HEAD")
     model = _codex_model(model)
     snapshot = closeout._load_store(closeout.store_path(repo, number), repo, number)
@@ -735,7 +848,7 @@ def _review(
         )
     base, listing = closeout.pin_manifest(run, head, closeout.fetch_develop(run))
     item = closeout.tracker_item(run, binding["item"]) if binding.get("item") else None
-    workdir = Path(tempfile.mkdtemp(prefix="benchbox-remote-review-")).resolve()
+    workdir = Path(tempfile.mkdtemp(prefix="benchbox-remote-review-", dir=runs_root())).resolve()
     try:
         diff = _prepare_input(run, checkout, workdir, view, (base, head, listing), item, previous)
         text, run_id, version = _run_reviewer(codex, workdir, model, review_prompt(workdir, number, base, head))
@@ -787,6 +900,10 @@ def review(
     )
 
 
+def resume(pr: str | None, repo: str = closeout.REPOSITORY, run: Runner = closeout.live_run, flag: str = "1") -> int:
+    return closeout._guarded("pr-landing-remote-review", lambda: _resume(pr, flag, repo, run))
+
+
 def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None) -> int:
     environment = os.environ if env is None else env
 
@@ -795,9 +912,11 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None
 
     parser = argparse.ArgumentParser(description=CLI_DESCRIPTION)
     parser.add_argument("--repo", default=selected("REPO") or closeout.REPOSITORY)
-    for name in ("PR", "HEAD", "BUILDER_HEAD", "MODEL", "DRY_RUN"):
+    for name in ("PR", "HEAD", "BUILDER_HEAD", "MODEL", "DRY_RUN", "RESUME"):
         parser.add_argument(f"--{name.lower().replace('_', '-')}", default=selected(name))
     args = parser.parse_args(argv)
+    if args.resume is not None:
+        return resume(args.pr, args.repo, flag=args.resume)
     return review(args.pr, args.head, args.builder_head, args.model, args.dry_run, args.repo)
 
 

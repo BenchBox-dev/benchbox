@@ -151,6 +151,7 @@ class FakeGitHub:
         self.resolved: list[str] = []
         self.post_failures: list[str] = []
         self.post_attempts: list[dict] = []
+        self.deleted: set[str] = set()
 
     def set_head(self, head: str) -> None:
         self.view["headRefOid"] = head
@@ -179,12 +180,7 @@ class FakeGitHub:
                 self.auto_merge = {"mergeMethod": "SQUASH"}
             return self.merge_code, "armed"
         if cmd[:3] == ["gh", "api", "graphql"] and "resolveReviewThread" in cmd[4]:
-            thread_id = cmd[-1].removeprefix("thread=")
-            self.resolved.append(thread_id)
-            for thread in self.threads:
-                if thread["id"] == thread_id:
-                    thread["isResolved"] = True
-            return 0, json.dumps({"data": {"resolveReviewThread": {"thread": {"id": thread_id, "isResolved": True}}}})
+            return self._resolve(cmd[-1].removeprefix("thread="))
         if cmd[:3] == ["gh", "api", "graphql"]:
             page = {"nodes": self.threads, "pageInfo": {"hasNextPage": False, "endCursor": None}}
             return 0, json.dumps({"data": {"repository": {"pullRequest": {"reviewThreads": page}}}})
@@ -217,10 +213,19 @@ class FakeGitHub:
     def arms(self) -> list[list[str]]:
         return [call for call in self.calls if call[:3] == ["gh", "pr", "merge"] and "--auto" in call]
 
+    def _resolve(self, thread_id: str) -> tuple[int, str]:
+        if thread_id in self.deleted:
+            return 1, f"gh: Could not resolve to a node with the global id of '{thread_id}'"
+        self.resolved.append(thread_id)
+        for thread in self.threads:
+            if thread["id"] == thread_id:
+                thread["isResolved"] = True
+        return 0, json.dumps({"data": {"resolveReviewThread": {"thread": {"id": thread_id, "isResolved": True}}}})
+
     def _post_review(self, payload: dict) -> tuple[int, str]:
         self.post_attempts.append(payload)
         failure = self.post_failures.pop(0) if self.post_failures else None
-        if failure == "422" and payload["comments"]:
+        if (failure == "422" and payload["comments"]) or failure == "422-always":
             return 1, "gh: Unprocessable Entity (HTTP 422): Line could not be resolved"
         if failure == "error":
             return 1, "gh: Bad Gateway (HTTP 502)"
@@ -756,7 +761,19 @@ def _make_env(tmp_path: Path, target: str, *assignments: str) -> dict[str, str]:
         encoding="utf-8",
     )
     shim.chmod(0o755)
-    names = {"PR", "HEAD", "REPO", "BRANCH", "ITEM", "RECORD", "BUILDER_HEAD", "OWNER_EXPLAINED", "MODEL", "DRY_RUN"}
+    names = {
+        "PR",
+        "HEAD",
+        "REPO",
+        "BRANCH",
+        "ITEM",
+        "RECORD",
+        "BUILDER_HEAD",
+        "OWNER_EXPLAINED",
+        "MODEL",
+        "DRY_RUN",
+        "RESUME",
+    }
     env = {k: v for k, v in os.environ.items() if k not in names and not k.startswith("REMOTE_CLOSEOUT_")}
     env.update({"PATH": f"{tmp_path}{os.pathsep}{env['PATH']}", "RECORD_DIR": str(tmp_path)})
     result = subprocess.run(
@@ -784,13 +801,14 @@ def test_the_make_wrapper_hands_values_over_untouched_and_runs_no_shell_metachar
 
 
 @skip_on_windows
-def test_the_review_target_hands_model_and_dry_run_to_the_review_script(tmp_path: Path) -> None:
-    env = _make_env(tmp_path, "pr-landing-remote-review", "PR=7", f"HEAD={OTHER_SHA}", "MODEL=gpt-x", "DRY_RUN=1")
+def test_the_review_target_hands_its_options_to_the_review_script(tmp_path: Path) -> None:
+    options = ("PR=7", f"HEAD={OTHER_SHA}", "MODEL=gpt-x", "DRY_RUN=1", "RESUME=1")
+    env = _make_env(tmp_path, "pr-landing-remote-review", *options)
     argv = (tmp_path / "argv").read_text(encoding="utf-8").split()
     assert argv == ["run", "--no-project", "--", "python", "scripts/remote_review.py"]
     assert env["REMOTE_CLOSEOUT_HEAD"] == OTHER_SHA
     assert env["REMOTE_CLOSEOUT_MODEL"] == "gpt-x"
-    assert env["REMOTE_CLOSEOUT_DRY_RUN"] == "1"
+    assert env["REMOTE_CLOSEOUT_DRY_RUN"] == env["REMOTE_CLOSEOUT_RESUME"] == "1"
     assert env["PYTHONDONTWRITEBYTECODE"] == "1"
 
 
@@ -1057,7 +1075,14 @@ def test_the_reviewer_runs_isolated_from_user_config_secrets_and_the_network(
     assert "-s" not in argv and "--sandbox" not in argv
     settings = [argv[index + 1] for index, value in enumerate(argv) if value == "-c"]
     profile = remote_review.PERMISSION_PROFILE
-    filesystem = json.dumps({":minimal": "read", str(workdir / "input"): "read", str(workdir / "head"): "read"})
+    readable = {
+        ":minimal": "read",
+        str(workdir / "input"): "read",
+        str(workdir / "head"): "read",
+        "/tmp": "none",
+        "/var/tmp": "none",
+    }
+    filesystem = json.dumps(readable)
     assert settings == [
         f'default_permissions="{profile}"',
         f"permissions.{profile}.filesystem={filesystem.replace(': ', '=').replace(', ', ',')}",
@@ -1067,12 +1092,49 @@ def test_the_reviewer_runs_isolated_from_user_config_secrets_and_the_network(
     ]
     disabled = {argv[index + 1] for index, value in enumerate(argv) if value == "--disable"}
     assert {"apps", "plugins", "hooks", "memories", "computer_use", "browser_use"} <= disabled
+    assert not any(workdir.resolve().is_relative_to(Path(root).resolve()) for root in ("/tmp", "/var/tmp"))
 
 
-def test_a_login_codex_refreshes_during_the_review_is_kept(world: World, bound: FakeGitHub, codex: FakeCodex) -> None:
-    codex.respond(refresh='{"tokens": "rotated"}')
+def test_the_review_directory_moves_out_of_tmp_into_a_private_home_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    if remote_review._denied(tmp_path):
+        pytest.skip("this platform's test directories are under /tmp, so no home outside it exists")
+    monkeypatch.setattr(remote_review.tempfile, "gettempdir", lambda: "/tmp")
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    root = remote_review.runs_root()
+    assert root == (tmp_path / "home" / ".benchbox" / "review-runs").resolve()
+    assert root.stat().st_mode & 0o777 == 0o700
+
+
+@pytest.mark.parametrize(
+    ("refreshed", "symlinked", "kept"),
+    [
+        ('{"tokens": "rotated"}', False, '{"tokens": "rotated"}'),
+        ("not json", False, ORIGINAL_LOGIN),
+        ('{"tokens": "rotated"}', True, ORIGINAL_LOGIN),
+    ],
+)
+def test_a_login_codex_refreshes_is_kept_only_when_it_is_valid_and_safe_to_replace(
+    tmp_path: Path,
+    world: World,
+    bound: FakeGitHub,
+    codex: FakeCodex,
+    capsys: pytest.CaptureFixture[str],
+    refreshed: str,
+    symlinked: bool,
+    kept: str,
+) -> None:
+    if symlinked:
+        target = tmp_path / "real-auth.json"
+        (codex.home / "auth.json").rename(target)
+        (codex.home / "auth.json").symlink_to(target)
+    codex.respond(refresh=refreshed)
     assert run_review(world, bound, dry_run="1") == 0
-    assert (codex.home / "auth.json").read_text(encoding="utf-8") == '{"tokens": "rotated"}'
+    assert (codex.home / "auth.json").is_symlink() is symlinked
+    assert (codex.home / "auth.json").read_text(encoding="utf-8") == kept
+    assert [path.name for path in codex.home.iterdir() if path.name.endswith(".tmp")] == []
+    assert ("was not copied back" in capsys.readouterr().err) is (kept == ORIGINAL_LOGIN)
 
 
 def test_the_head_tree_ignores_export_attributes_and_skips_symlinks_that_leave_it(
@@ -1375,12 +1437,18 @@ def test_review_waits_only_a_bounded_time_for_the_review_store_lock(
 ) -> None:
     import fcntl
 
-    monkeypatch.setattr(remote_review, "LOCK_WAIT", 0.3)
+    monkeypatch.setattr(remote_review, "LOCK_WAIT", 0.2)
+    monkeypatch.setattr(remote_review, "LOCK_ATTEMPTS", 3)
     codex.respond([finding("docs/note.md:1", "Required")])
     with remote_closeout.store_path(REPO, 7).with_name("pr-7.json.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         err = _review_refusal(world, bound, capsys)
-    assert "another close-out command held the review store for PR #7 for over 0.3 seconds" in err
+    held = "another close-out command held the review store for PR #7 for over 0.2 seconds"
+    assert [line for line in err.splitlines() if held in line] == [
+        f"{held}; waiting again (1 of 3)",
+        f"{held}; waiting again (2 of 3)",
+        f"pr-landing-remote-review: refusing: {held}, 3 time(s)",
+    ]
 
 
 def test_a_reviewer_that_hangs_is_killed_with_its_process_group(
@@ -1403,3 +1471,74 @@ def test_a_reviewer_that_hangs_is_killed_with_its_process_group(
         time.sleep(0.1)
     else:
         pytest.fail(f"the reviewer's child process {child} survived the timeout")
+
+
+def test_resume_finishes_pending_publication_without_running_the_reviewer(
+    world: World, bound: FakeGitHub, codex: FakeCodex, capsys: pytest.CaptureFixture[str]
+) -> None:
+    codex.respond([finding("docs/note.md:1", "Required")])
+    bound.post_failures = ["error"]
+    assert run_review(world, bound) == 1
+    assert stored(world)["records"][-1]["published"] is False
+    capsys.readouterr()
+    assert remote_review.resume("7", run=bound) == 0
+    assert "finished 1 pending publication step(s) for PR #7" in capsys.readouterr().out
+    assert len(codex.runs()) == 1
+    assert len(bound.reviews) == 1
+    assert stored(world)["records"][-1]["published"] is True
+    assert stored(world)["review_findings"][0]["thread_id"] == "RT1"
+    assert remote_review.resume("7", run=bound, flag="yes") == 2
+    assert "RESUME must be 1 or unset" in capsys.readouterr().err
+
+
+def test_a_deleted_thread_abandons_its_step_and_leaves_the_record_unpublished(
+    world: World, bound: FakeGitHub, codex: FakeCodex, capsys: pytest.CaptureFixture[str]
+) -> None:
+    codex.respond([finding("docs/note.md:1", "Required")])
+    assert run_review(world, bound) == 0
+    bound.deleted.add("RT1")
+    codex.respond([], previous=[{"id": "F1", "status": "fixed"}])
+    assert run_review(world, bound) == 2
+    err = capsys.readouterr().err
+    assert "abandoned a publication step of record 1: review thread RT1 no longer exists" in err
+    assert "the latest record for PR #7 is stored but unpublished, so make pr-arm-remote refuses it" in err
+    state = stored(world)
+    assert (state["records"][-1]["disposition"], state["records"][-1]["published"]) == ("approve", False)
+    assert state["review_runs"][-1]["steps"][0]["status"] == "abandoned"
+    assert "the latest record's findings are not all published" in _refusal(world, bound, capsys)
+    assert remote_review.resume("7", run=bound) == 2
+    codex.respond()
+    assert run_review(world, bound) == 0
+    assert stored(world)["records"][-1]["published"] is True
+
+
+def test_a_review_github_refuses_even_without_inline_comments_is_abandoned(
+    world: World, bound: FakeGitHub, codex: FakeCodex, capsys: pytest.CaptureFixture[str]
+) -> None:
+    codex.respond([finding("docs/note.md:1", "Required")])
+    bound.post_failures = ["422", "422-always"]
+    assert run_review(world, bound) == 2
+    assert "GitHub refuses the review for PR #7 even without inline comments" in capsys.readouterr().err
+    assert len(bound.post_attempts) == 2
+    assert bound.reviews == []
+    assert stored(world)["records"][-1]["published"] is False
+
+
+def test_review_refuses_to_store_when_the_pr_was_armed_while_the_reviewer_ran(
+    world: World, bound: FakeGitHub, codex: FakeCodex, capsys: pytest.CaptureFixture[str]
+) -> None:
+    real = remote_review._run_reviewer
+
+    def armed_meanwhile(*args, **kwargs):
+        outcome = real(*args, **kwargs)
+        path = remote_closeout.store_path(REPO, 7)
+        state = json.loads(path.read_text(encoding="utf-8"))
+        state["arms"].append({"head": world.head, "via": "arm"})
+        path.write_text(json.dumps(state), encoding="utf-8")
+        return outcome
+
+    codex.respond([finding("docs/note.md:1", "Required")])
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(remote_review, "_run_reviewer", armed_meanwhile)
+        err = _review_refusal(world, bound, capsys)
+    assert "PR #7 was armed while the reviewer ran; withdraw it with make pr-landing-remote-withdraw" in err

@@ -134,22 +134,26 @@ def _load_store(path: Path, repo: str, number: int) -> dict:
 
 
 @contextmanager
-def _locked_store(repo: str, number: int, wait: float | None = None) -> Iterator[tuple[Path, dict]]:
+def _locked_store(repo: str, number: int, wait: float | None = None, attempts: int = 1) -> Iterator[tuple[Path, dict]]:
     import fcntl
 
     path = store_path(repo, number)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.with_name(f"{path.name}.lock").open("a", encoding="utf-8") as lock:
         deadline = None if wait is None else time.monotonic() + wait
+        attempt = 1
         while True:
             try:
                 fcntl.flock(lock, fcntl.LOCK_EX if deadline is None else fcntl.LOCK_EX | fcntl.LOCK_NB)
                 break
             except BlockingIOError as exc:
-                if deadline is not None and time.monotonic() >= deadline:
-                    raise Refused(
-                        f"another close-out command held the review store for PR #{number} for over {wait} seconds"
-                    ) from exc
+                if wait is not None and deadline is not None and time.monotonic() >= deadline:
+                    held = f"another close-out command held the review store for PR #{number} for over {wait} seconds"
+                    if attempt >= attempts:
+                        raise Refused(f"{held}, {attempts} time(s)") from exc
+                    print(f"{held}; waiting again ({attempt} of {attempts})", file=sys.stderr)
+                    attempt += 1
+                    deadline = time.monotonic() + wait
                 time.sleep(0.2)
         yield path, _load_store(path, repo, number)
 
@@ -403,8 +407,8 @@ def _record_refusals(record: dict | None, view: dict, head: str) -> list[str]:
         reasons.append(f"condition 3: the latest record's disposition is {record['disposition']!r}, not 'approve'")
     if record.get("published") is False:
         reasons.append(
-            "condition 3: the latest record's findings are not all published; "
-            "run make pr-landing-remote-review again to finish"
+            "condition 3: the latest record's findings are not all published; finish with "
+            "make pr-landing-remote-review RESUME=1, or review again if a step was abandoned"
         )
     return reasons
 
