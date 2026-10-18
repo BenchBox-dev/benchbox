@@ -1313,6 +1313,15 @@
       "status": "done",
       "title": "Make auto-revert-on-failure signature-aware so persistent red does not blame every subsequent merge"
     },
+    "autogen-cedardb-uat-validation-and-baseline-tuning-20261018": {
+      "claim": null,
+      "needs": [
+        "autogen-issues-decisions-20261018"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Make the CedarDB nightly cell pass publication validation and explain baseline tuning statements"
+    },
     "autogen-docker-mirror-tag-digest-20261018": {
       "claim": null,
       "needs": [
