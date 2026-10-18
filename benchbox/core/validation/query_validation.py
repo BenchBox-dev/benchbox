@@ -8,6 +8,7 @@ from contextlib import contextmanager
 import benchbox.core.expected_results  # noqa: F401
 from benchbox.core.expected_results.models import ValidationMode, ValidationResult
 from benchbox.core.expected_results.registry import LoadOutcome, get_registry
+from benchbox.core.expected_results.ssb_results import normalize_ssb_query_id
 from benchbox.core.expected_results.tpch_results import (
     PARAMETER_SENSITIVE_QUERY_IDS as _TPCH_PARAMETER_SENSITIVE_QUERY_IDS,
 )
@@ -132,6 +133,9 @@ class QueryValidator:
             match = re.search(r"(\d+)", query_id_str)
             if match:
                 return str(int(match.group(1)))
+
+        elif benchmark_type.lower() == "ssb":
+            return normalize_ssb_query_id(query_id_str)
 
         return query_id_str
 
