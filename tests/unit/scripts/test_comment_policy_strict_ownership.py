@@ -142,6 +142,13 @@ def _wheel_bytes(name: str = "tool", version: str = "2.0") -> bytes:
     return buffer.getvalue()
 
 
+@pytest.fixture(autouse=True)
+def _skip_remote_fetch(monkeypatch: pytest.MonkeyPatch) -> None:
+    import check_comment_cleanup_scope as scope
+
+    monkeypatch.setattr(scope, "_verify_upstream_release", lambda *a, **k: None)
+
+
 def _bump_repo(tmp_path: Path, **overrides: object) -> tuple[Path, dict, dict]:
     import hashlib
 
@@ -164,6 +171,26 @@ def _bump_repo(tmp_path: Path, **overrides: object) -> tuple[Path, dict, dict]:
         f'wheels = [{{ filename = "tool-2.0-py3-none-any.whl", hash = "{digest}" }}]\n',
         encoding="utf-8",
     )
+    raw_hash = hashlib.sha256(wheel).hexdigest()
+    evidence_dir = root / "_project/analysis"
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    (evidence_dir / "batch-rollout-evidence.json").write_text(
+        json.dumps(
+            {
+                "source": {"repository": "https://github.com/BenchBox-dev/tool"},
+                "artifact": {
+                    "filename": "tool-2.0-py3-none-any.whl",
+                    "sha256": raw_hash,
+                    "origin": "GitHub release asset",
+                    "build": {
+                        "source_input": f"git archive v{version} (0123456789012345678901234567890123456789)",
+                        "reproducibility": {"matching_sha256": raw_hash},
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
     entry = {"path": new, "owner": "tool", "provenance": "vendor/pyproject.toml"}
     baseline = {**EMPTY_POLICY, "external": [{**entry, "path": old}]}
     return root, {**EMPTY_POLICY, "external": [entry]}, baseline
@@ -174,7 +201,10 @@ def test_a_bound_wheel_bump_is_accepted(tmp_path: Path) -> None:
 
     root, policy, baseline = _bump_repo(tmp_path)
 
-    verify_wheel_bumps(root, policy, baseline, staged=False)
+    bumped = verify_wheel_bumps(root, policy, baseline, staged=False)
+
+    assert bumped == {entry["path"] for entry in policy["external"] if entry not in baseline["external"]}
+    assert bumped
 
 
 @pytest.mark.parametrize(
@@ -213,7 +243,7 @@ def test_staged_bump_verification_reads_the_index(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="missing"):
         verify_wheel_bumps(root, policy, baseline, staged=True)
 
-    _git(root, "add", "vendor")
+    _git(root, "add", "vendor", "_project")
     verify_wheel_bumps(root, policy, baseline, staged=True)
 
 
@@ -224,7 +254,7 @@ def _bump_against_base(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, **overri
     policy_path = root / "quality/comment-policy.json"
     policy_path.write_text(json.dumps(baseline), encoding="utf-8")
     (root / "module.py").write_text("x = 1\n", encoding="utf-8")
-    _git(root, "add", "quality/comment-policy.json", "module.py")
+    _git(root, "add", "quality/comment-policy.json", "module.py", "_project")
     base = _commit(root, "base.txt")
     policy_path.write_text(json.dumps(policy), encoding="utf-8")
     return root, base

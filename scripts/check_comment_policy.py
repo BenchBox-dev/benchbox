@@ -11,23 +11,27 @@ import stat
 import subprocess
 import sys
 import tokenize
-import zipfile
 from collections import Counter
 from dataclasses import asdict
 from datetime import date
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any
 
 from check_comment_cleanup_scope import (
     COMMENT_POLICY_DIRECTIVES,
     COMMENT_POLICY_ENFORCEMENT_MODES,
     POLICY_PATH as SCOPE_POLICY_PATH,
+    _extract_version_from_path,
+    _parse_version,
+    check_ratchet,
     comment_policy_matches as matches,
     immutable_external_ownership,
+    is_wheel_bump as _is_wheel_bump,
     load_comment_policy as load_policy,
     load_policy_bytes as load_scope_policy_bytes,
     oracle_review_covers,
     validate_comment_policy_path as validate_path,
+    verify_bound_wheel,
 )
 from comment_syntax import Finding, language, scan, source_language
 
@@ -75,36 +79,6 @@ def expired_policy_findings(policy: dict) -> list[Finding]:
     ]
 
 
-def _is_wheel_bump(candidate_entry: dict, baseline_entry: dict) -> bool:
-    cand_path = PurePosixPath(candidate_entry["path"])
-    base_path = PurePosixPath(baseline_entry["path"])
-    if cand_path.suffix != ".whl" or base_path.suffix != ".whl":
-        return False
-    if cand_path.parent != base_path.parent:
-        return False
-    if candidate_entry.get("owner") != baseline_entry.get("owner"):
-        return False
-    if candidate_entry.get("provenance") != baseline_entry.get("provenance"):
-        return False
-    cand_dist = cand_path.name.split("-", 1)[0]
-    base_dist = base_path.name.split("-", 1)[0]
-    return cand_dist == base_dist
-
-
-def check_ratchet(policy: dict, baseline: dict) -> None:
-    if baseline.get("enforcement", "blocking") == "blocking" and policy.get("enforcement", "blocking") == "advisory":
-        raise ValueError("enforcement cannot be relaxed from blocking to advisory")
-    if not set(baseline["completed"]).issubset(policy["completed"]):
-        raise ValueError("completed scopes cannot be removed")
-    for entry in policy["external"]:
-        if entry in baseline["external"]:
-            continue
-        matched_base = [b for b in baseline["external"] if _is_wheel_bump(entry, b)]
-        if matched_base and not any(b in policy["external"] for b in matched_base):
-            continue
-        raise ValueError("candidate policy cannot add or expand external exclusions")
-
-
 def revision_bytes(root: Path, path: str, staged: bool) -> bytes | None:
     try:
         return git(root, "show", f":{path}") if staged else (root / path).read_bytes()
@@ -112,78 +86,32 @@ def revision_bytes(root: Path, path: str, staged: bool) -> bytes | None:
         return None
 
 
-def _wheel_metadata(wheel: bytes) -> dict[str, str]:
-    with zipfile.ZipFile(io.BytesIO(wheel)) as archive:
-        names = [name for name in archive.namelist() if re.fullmatch(r"[^/]+\.dist-info/METADATA", name)]
-        if len(names) != 1:
-            raise ValueError("wheel must carry exactly one dist-info METADATA file")
-        lines = archive.read(names[0]).decode("utf-8", errors="replace").splitlines()
-    fields: dict[str, str] = {}
-    for line in lines:
-        if not line.strip():
-            break
-        key, _, value = line.partition(":")
-        fields.setdefault(key.strip(), value.strip())
-    return fields
-
-
-def _normalized_name(value: str) -> str:
-    return re.sub(r"[-_.]+", "-", value).lower()
-
-
-def _declares(requirement: str, owner: str) -> bool:
-    match = re.match(r"[A-Za-z0-9][A-Za-z0-9._-]*", requirement)
-    return match is not None and _normalized_name(match.group()) == _normalized_name(owner)
-
-
-def verify_bound_wheel(root: Path, entry: dict, staged: bool) -> None:
-    import tomllib
-
-    path, project_path, owner = entry["path"], entry["provenance"], entry["owner"]
-    label = f"wheel bump is not verified: {path}"
-    if not project_path.endswith("/pyproject.toml"):
-        raise ValueError(f"{label}: provenance must be the owning pyproject.toml")
-    lock_path = str(PurePosixPath(project_path).with_name("uv.lock"))
-    wheel = revision_bytes(root, path, staged)
-    project_raw = revision_bytes(root, project_path, staged)
-    lock_raw = revision_bytes(root, lock_path, staged)
-    if wheel is None or project_raw is None or lock_raw is None:
-        raise ValueError(f"{label}: wheel, pyproject.toml or uv.lock is missing")
-    try:
-        project = tomllib.loads(project_raw.decode("utf-8"))
-        locked = tomllib.loads(lock_raw.decode("utf-8"))
-        metadata = _wheel_metadata(wheel)
-    except (UnicodeError, tomllib.TOMLDecodeError, zipfile.BadZipFile, ValueError) as exc:
-        raise ValueError(f"{label}: {exc}") from exc
-    source = str(PurePosixPath(path).relative_to(PurePosixPath(project_path).parent))
-    binding = project.get("tool", {}).get("uv", {}).get("sources", {}).get(owner)
-    if binding != {"path": source}:
-        raise ValueError(f"{label}: pyproject.toml does not bind {owner} to it")
-    dependencies = project.get("project", {}).get("dependencies", [])
-    if not any(_declares(dependency, owner) for dependency in dependencies):
-        raise ValueError(f"{label}: {owner} is not a declared dependency")
-    packages = [package for package in locked.get("package", []) if package.get("name") == owner]
-    filename = PurePosixPath(path).name
-    version = filename.split("-")[1] if filename.count("-") >= 2 else ""
-    digest = "sha256:" + hashlib.sha256(wheel).hexdigest()
-    if (
-        len(packages) != 1
-        or packages[0].get("source") != binding
-        or packages[0].get("wheels") != [{"filename": filename, "hash": digest}]
-    ):
-        raise ValueError(f"{label}: uv.lock does not record this file and hash")
-    if _normalized_name(metadata.get("Name", "")) != _normalized_name(owner) or metadata.get("Version") != version:
-        raise ValueError(f"{label}: wheel METADATA does not match {owner} {version}")
-    if packages[0].get("version") != version:
-        raise ValueError(f"{label}: uv.lock version does not match the wheel")
-
-
-def verify_wheel_bumps(root: Path, policy: dict, baseline: dict, staged: bool) -> None:
+def verify_wheel_bumps(
+    root: Path, policy: dict, baseline: dict, staged: bool = False, base: str | None = None
+) -> set[str]:
+    verified = set()
     for entry in policy["external"]:
         if entry in baseline["external"]:
             continue
-        if any(_is_wheel_bump(entry, b) for b in baseline["external"]):
-            verify_bound_wheel(root, entry, staged)
+        matched_base = [b for b in baseline["external"] if _is_wheel_bump(entry, b)]
+        if matched_base:
+            base_v = _extract_version_from_path(matched_base[0]["path"])
+            cand_v = _extract_version_from_path(entry["path"])
+            if _parse_version(cand_v) <= _parse_version(base_v):
+                raise ValueError(f"wheel bump version {cand_v} must be strictly greater than base {base_v}")
+            verify_bound_wheel(root, entry, cand_v, staged, base=base)
+            verified.add(entry["path"])
+    return verified
+
+
+def ratchet_against_base(root: Path, policy: dict, base: str, staged: bool) -> tuple[dict, set[str]]:
+    baseline = load_policy(git(root, "show", f"{base}:{POLICY_PATH}"))
+    check_ratchet(policy, baseline)
+    return baseline, verify_wheel_bumps(root, policy, baseline, staged, base=base)
+
+
+def with_bumped_wheels(exclusions: set[str] | None, bumped: set[str]) -> set[str] | None:
+    return None if exclusions is None else exclusions | bumped
 
 
 def bootstrap_base_allowed(root: Path, base: str) -> bool:
@@ -483,11 +411,10 @@ def main(argv: list[str] | None = None) -> int:
         reviewed = args.mode == "transition" and oracle_review_covers(root)
         candidate_notices = candidate_scope_notices(root, args.staged) if reviewed else None
         owned_exclusions = ownership_exclusions(root, owner_base, args.staged, candidate_notices)
-        baseline_policy = policy
+        baseline_policy, bumped_wheels = policy, set()
         if args.base and not args.bootstrap:
-            baseline_policy = load_policy(git(root, "show", f"{args.base}:{POLICY_PATH}"))
-            check_ratchet(policy, baseline_policy)
-            verify_wheel_bumps(root, policy, baseline_policy, args.staged)
+            baseline_policy, bumped_wheels = ratchet_against_base(root, policy, args.base, args.staged)
+        owned_exclusions = with_bumped_wheels(owned_exclusions, bumped_wheels)
         paths = source_paths(root, args.staged)
         if not paths:
             raise ValueError("empty source inventory")
@@ -532,7 +459,7 @@ def main(argv: list[str] | None = None) -> int:
         base_paths = []
         if args.mode == "transition":
             base_paths = git(root, "ls-tree", "-r", "--name-only", "-z", args.base).decode().split("\0")
-            effective_policy["external_members"] = set(base_paths)
+            effective_policy["external_members"] = set(base_paths) | bumped_wheels
         current = expired_policy_findings(policy) + scan_sources(root, sources, effective_policy)
         failed = current
         if args.mode == "transition":

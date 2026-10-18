@@ -10,7 +10,7 @@ import sys
 import urllib.request
 from copy import deepcopy
 from datetime import date, timedelta
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 import check_comment_policy
@@ -2717,6 +2717,70 @@ def dependency_artifact_inputs(tmp_path: Path, monkeypatch):
     return scope, wheel_path, project_path, lock_path, frozen, index, records, rules, external
 
 
+def test_verify_upstream_release_validates_real_github_asset(monkeypatch: pytest.MonkeyPatch) -> None:
+    import io
+    import urllib.request
+
+    from check_comment_cleanup_scope import _verify_upstream_release
+
+    checksums = b"3a878a3ac2e7c3b458ed3e71d53d036456ba017eb9ec1adfa030d823cf2c2ffd  todo_db-0.10.1-py3-none-any.whl\n"
+
+    class DummyResponse:
+        def __init__(self, data: bytes):
+            self.data = io.BytesIO(data)
+
+        def __enter__(self):
+            return self.data
+
+        def __exit__(self, *args):
+            pass
+
+    monkeypatch.setattr(urllib.request, "urlopen", lambda req, timeout=15: DummyResponse(checksums))
+
+    _verify_upstream_release(
+        "https://github.com/joeharris76/todo-db",
+        "0.10.1",
+        "todo_db-0.10.1-py3-none-any.whl",
+        "3a878a3ac2e7c3b458ed3e71d53d036456ba017eb9ec1adfa030d823cf2c2ffd",
+    )
+    with pytest.raises(ValueError, match="wheel hash mismatch"):
+        _verify_upstream_release(
+            "https://github.com/joeharris76/todo-db",
+            "0.10.1",
+            "todo_db-0.10.1-py3-none-any.whl",
+            "0" * 64,
+        )
+
+
+def test_pep440_version_ordering() -> None:
+    from check_comment_cleanup_scope import _parse_version
+
+    assert _parse_version("0.9.0rc1") < _parse_version("0.9.0")
+    assert _parse_version("0.9.0a1") < _parse_version("0.9.0b1") < _parse_version("0.9.0rc1")
+    assert _parse_version("0.9.0.dev1") < _parse_version("0.9.0")
+    assert _parse_version("1!0.9.0") > _parse_version("0.10.0")
+    assert _parse_version("0.9.0") < _parse_version("0.9.0.post1")
+
+
+def test_declares_evaluates_pep508_specifiers_fail_closed() -> None:
+    from check_comment_cleanup_scope import _declares
+
+    assert _declares("todo-db[mcp]", "todo-db", "0.10.1")
+    assert _declares("todo-db>=0.9.0", "todo-db", "0.10.1")
+    assert not _declares("todo-db>=0.11.0", "todo-db", "0.10.1")
+    assert _declares("todo-db===0.10.1", "todo-db", "0.10.1")
+    assert not _declares("todo-db===0.8.1", "todo-db", "0.10.1")
+    assert not _declares("todo-db???invalid", "todo-db", "0.10.1")
+    assert _declares("todo-db~=2", "todo-db", "2.5")
+    assert not _declares("todo-db~=2", "todo-db", "3.0")
+    assert _declares("todo-db~=2.2", "todo-db", "2.5")
+    assert not _declares("todo-db~=2.2", "todo-db", "3.0")
+    assert _declares("todo-db~=2.2.0", "todo-db", "2.2.5")
+    assert not _declares("todo-db~=2.2.0", "todo-db", "2.3.0")
+    assert _declares("todo-db==0.10.*", "todo-db", "0.10.1")
+    assert not _declares("todo-db==0.9.*", "todo-db", "0.10.1")
+
+
 def test_trusted_locked_dependency_overrides_only_generic_prefix(tmp_path: Path, dependency_artifact_inputs) -> None:
     scope, path, _, _, _, _, records, rules, external = dependency_artifact_inputs
     assert scope.immutable_dependency_artifacts(tmp_path, "base", records, rules, external) == {path}
@@ -2762,6 +2826,105 @@ def test_dependency_replacements_fail_closed(
         (tmp_path / changed_path).write_bytes(raw)
     with pytest.raises(scope.PolicyError, match="immutable dependency (artifact|binding) changed"):
         scope.immutable_dependency_artifacts(tmp_path, "base", records, rules, external, staged)
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        "bumped",
+        "downgrade",
+        "still-listed",
+        "no-replacement",
+        "replacement-missing",
+        "replacement-unbound",
+        "replacement-mismatched-lock",
+        "replacement-invalid-metadata",
+        "missing-rollout-evidence",
+    ],
+)
+def test_dependency_removed_only_by_a_verified_policy_wheel_bump(
+    tmp_path: Path, dependency_artifact_inputs, monkeypatch: pytest.MonkeyPatch, case: str
+) -> None:
+    import io
+    import zipfile
+
+    scope, path, project_path, lock_path, frozen, _, records, rules, external = dependency_artifact_inputs
+    monkeypatch.setattr(scope, "_verify_upstream_release", lambda *a, **k: None)
+    (tmp_path / path).unlink()
+
+    base_policy_bytes = json.dumps({"version": 1, "external": external, "completed": [], "exceptions": []}).encode()
+    frozen["quality/comment-policy.json"] = base_policy_bytes
+    frozen["_project/analysis/batch-rollout-evidence.json"] = json.dumps(
+        {"source": {"repository": "https://github.com/joeharris76/todo-db"}}
+    ).encode()
+
+    bump_version = "0.9.0" if case != "downgrade" else "0.8.0"
+    replacement = {**external[0], "path": path.replace("0.8.1", bump_version)}
+    head_external = {
+        "bumped": [replacement],
+        "downgrade": [replacement],
+        "still-listed": [external[0], replacement],
+        "no-replacement": [],
+        "replacement-missing": [replacement],
+        "replacement-unbound": [replacement],
+        "replacement-mismatched-lock": [replacement],
+        "replacement-invalid-metadata": [replacement],
+        "missing-rollout-evidence": [replacement],
+    }[case]
+
+    meta_version = bump_version if case != "replacement-invalid-metadata" else "0.8.1"
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as arc:
+        arc.writestr(f"todo_db-{bump_version}.dist-info/METADATA", f"Name: todo-db\nVersion: {meta_version}\n")
+        arc.writestr("todo_db/__init__.py", "value = 2\n")
+    new_wheel = buf.getvalue()
+
+    if case != "replacement-missing":
+        (tmp_path / replacement["path"]).write_bytes(new_wheel)
+
+    bound_version = bump_version if case != "replacement-unbound" else "0.8.1"
+    new_project = (
+        f'[project]\ndependencies = ["todo-db[mcp]"]\n'
+        f'[tool.uv.sources]\ntodo-db = {{path = "vendor/todo_db-{bound_version}-py3-none-any.whl"}}\n'
+    ).encode()
+    (tmp_path / project_path).write_bytes(new_project)
+
+    digest = "sha256:" + (hashlib.sha256(new_wheel).hexdigest() if case != "replacement-mismatched-lock" else "0" * 64)
+    new_lock = (
+        f'[[package]]\nname = "todo-db"\nversion = "{bump_version}"\n'
+        f'source = {{path = "vendor/todo_db-{bump_version}-py3-none-any.whl"}}\n'
+        f'wheels = [{{filename = "todo_db-{bump_version}-py3-none-any.whl", hash = "{digest}"}}]\n'
+    ).encode()
+    (tmp_path / lock_path).write_bytes(new_lock)
+
+    policy_file = tmp_path / "quality/comment-policy.json"
+    policy_file.parent.mkdir(parents=True, exist_ok=True)
+    policy_file.write_text(
+        json.dumps({"version": 1, "external": head_external, "completed": [], "exceptions": []}), encoding="utf-8"
+    )
+
+    if case != "missing-rollout-evidence":
+        evidence_file = tmp_path / "_project/analysis/batch-rollout-evidence.json"
+        evidence_file.parent.mkdir(parents=True, exist_ok=True)
+        raw_hash = hashlib.sha256(new_wheel).hexdigest()
+        evidence_data = {
+            "artifact": {
+                "filename": PurePosixPath(replacement["path"]).name,
+                "sha256": raw_hash,
+                "origin": "GitHub release asset",
+                "build": {
+                    "source_input": f"git archive v{bump_version} (0123456789012345678901234567890123456789)",
+                    "reproducibility": {"matching_sha256": raw_hash},
+                },
+            }
+        }
+        evidence_file.write_text(json.dumps(evidence_data), encoding="utf-8")
+
+    if case == "bumped":
+        assert scope.immutable_dependency_artifacts(tmp_path, "base", records, rules, external) == set()
+    else:
+        with pytest.raises(scope.PolicyError, match="immutable dependency artifact removed"):
+            scope.immutable_dependency_artifacts(tmp_path, "base", records, rules, external)
 
 
 @pytest.mark.parametrize("staged", [False, True])
