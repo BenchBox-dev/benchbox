@@ -196,6 +196,9 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
         "lightweight Make target."
     ),
     ("ci.yml", "code-test", "Run fast tests"): "Covered by the local `test-fast` target.",
+    ("ci.yml", "code-test", "Run changed medium tests"): (
+        "PR-time regression guard for modified medium tests; covered locally by targeted pytest or test-medium."
+    ),
     ("ci.yml", "code-test", "Pre-build the assertion-rewrite cache"): (
         "Cache warm-up for the fast lane; it asserts nothing and only shortens collection in the step after it."
     ),

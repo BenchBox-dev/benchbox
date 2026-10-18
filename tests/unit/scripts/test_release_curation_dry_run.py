@@ -144,3 +144,30 @@ def test_changed_test_files_lists_only_test_modules(repo: Path) -> None:
     _commit(repo, "tests/test_new_reader.py", READS_STRIPPED)
     _commit(repo, "tests/helper.py", "y = 2\n")
     assert dry_run.changed_test_files(repo, base) == ["tests/test_new_reader.py"]
+
+
+def test_changed_medium_test_runs_under_routine_selection(repo: Path) -> None:
+    reads_medium = """\
+from pathlib import Path
+import pytest
+pytestmark = pytest.mark.medium
+
+def test_reads_shipped_medium():
+    assert (Path(__file__).resolve().parents[1] / "shipped.txt").read_text()
+"""
+    _commit(repo, "tests/test_medium_shipped.py", reads_medium)
+    assert dry_run.run(repo, ["tests/test_medium_shipped.py"]) == 0
+
+
+def test_retained_target_with_no_collected_tests_fails(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    reads_slow = """\
+from pathlib import Path
+import pytest
+pytestmark = pytest.mark.slow
+
+def test_reads_shipped_slow():
+    assert (Path(__file__).resolve().parents[1] / "shipped.txt").read_text()
+"""
+    _commit(repo, "tests/test_slow_shipped.py", reads_slow)
+    assert dry_run.run(repo, ["tests/test_slow_shipped.py"]) == 1
+    assert "Retained test targets were selected, but no tests matched" in capsys.readouterr().err
