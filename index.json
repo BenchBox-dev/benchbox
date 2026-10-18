@@ -8536,6 +8536,15 @@
       "status": "open",
       "title": "Relocate the Explorer SQL schema contract out of published docs"
     },
+    "docs-mig-site-bundle-schema4": {
+      "claim": null,
+      "needs": [
+        "docs-mig-core-bundle-schema4"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Verify documentation-data bundles without changing published output"
+    },
     "docs-move-internal-to-internal-root": {
       "claim": null,
       "needs": [],
