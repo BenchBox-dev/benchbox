@@ -169,11 +169,11 @@ def test_tpcds_subscale_variant_normalization(validator) -> None:
     assert result.validation_mode == ValidationMode.EXACT
 
 
-def test_tpcds_subscale_default_mode_is_skip_without_configuration() -> None:
+def test_tpcds_subscale_default_mode_is_exact_without_configuration() -> None:
     validator = QueryValidator()
-    result = validator.validate_query_result("tpcds", "86", 100, 0.01)
+    result = validator.validate_query_result("tpcds", "86", TPCDS_SUBSCALE_ROW_COUNTS[0.01]["86"], 0.01)
     assert result.is_valid
-    assert result.validation_mode == ValidationMode.SKIP
+    assert result.validation_mode == ValidationMode.EXACT
 
 
 def test_tpcds_subscale_validation_mode_opt_out(validator) -> None:
@@ -191,6 +191,22 @@ def test_tpcds_subscale_validation_mode_opt_out(validator) -> None:
         assert result.validation_mode == ValidationMode.SKIP
     finally:
         set_validation_mode_context(None)
+
+
+def test_tpcds_subscale_invalid_env_mode_does_not_opt_out(monkeypatch) -> None:
+    from benchbox.core.validation.query_validation import set_validation_mode_context
+
+    set_validation_mode_context(None)
+    monkeypatch.setenv("BENCHBOX_QUERY_VALIDATION_MODE", "invalid_mode_override")
+    validator = QueryValidator()
+    result = validator.validate_query_result(
+        benchmark_type="tpcds",
+        query_id="86",
+        actual_row_count=TPCDS_SUBSCALE_ROW_COUNTS[0.01]["86"],
+        scale_factor=0.01,
+    )
+    assert result.is_valid
+    assert result.validation_mode == ValidationMode.EXACT
 
 
 def test_tpcds_subscale_corrupt_reference_degrades_gracefully() -> None:

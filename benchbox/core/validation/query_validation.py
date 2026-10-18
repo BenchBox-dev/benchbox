@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import logging
+import os
 import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 
 import benchbox.core.expected_results  # noqa: F401
-from benchbox.core.expected_results.models import ValidationMode, ValidationResult
+from benchbox.core.expected_results.models import ExpectedQueryResult, ValidationMode, ValidationResult
 from benchbox.core.expected_results.registry import LoadOutcome, get_registry
 from benchbox.core.expected_results.ssb_results import normalize_ssb_query_id
 from benchbox.core.expected_results.tpcds_results import (
@@ -26,7 +27,7 @@ _PARAMETER_SENSITIVE_QUERY_IDS_BY_BENCHMARK: dict[str, frozenset[str]] = {
 }
 
 
-_NON_REFERENCE_SEED_EXCLUDED_BENCHMARKS: frozenset[str] = frozenset({"tpcds"})
+_NON_REFERENCE_SEED_EXCLUDED_BENCHMARKS: frozenset[str] = frozenset({"tpcds", "tpc-ds"})
 _stream_seed_override_warned: set[str] = set()
 _stream_seed_override_lock = threading.Lock()
 
@@ -143,6 +144,33 @@ class QueryValidator:
 
         return query_id_str
 
+    def _apply_tpcds_validation_mode(
+        self,
+        benchmark_type: str,
+        scale_factor: float | None,
+        expected_result: ExpectedQueryResult,
+    ) -> ExpectedQueryResult:
+        if benchmark_type.lower() not in ("tpcds", "tpc-ds"):
+            return expected_result
+        import dataclasses
+
+        context_mode = get_validation_mode_context()
+        env_mode_str = os.environ.get("BENCHBOX_QUERY_VALIDATION_MODE")
+        if (scale_factor or 1.0) == 1.0:
+            run_mode = self._resolve_tpcds_run_mode(benchmark_type)
+            if run_mode is not None and run_mode != expected_result.validation_mode:
+                return dataclasses.replace(expected_result, validation_mode=run_mode)
+        elif context_mode is not None:
+            if context_mode != expected_result.validation_mode:
+                return dataclasses.replace(expected_result, validation_mode=context_mode)
+        elif env_mode_str is not None:
+            norm_env = env_mode_str.strip().lower()
+            if norm_env in ("skip", "disabled"):
+                return dataclasses.replace(expected_result, validation_mode=ValidationMode.SKIP)
+            if norm_env in ("exact", "loose", "range"):
+                return dataclasses.replace(expected_result, validation_mode=ValidationMode(norm_env))
+        return expected_result
+
     def validate_query_result(
         self,
         benchmark_type: str,
@@ -202,12 +230,8 @@ class QueryValidator:
                 error_message=error_msg,
             )
 
-        if expected_result is not None and benchmark_type.lower() == "tpcds":
-            run_mode = self._resolve_tpcds_run_mode(benchmark_type)
-            if run_mode is not None and run_mode != expected_result.validation_mode:
-                import dataclasses
-
-                expected_result = dataclasses.replace(expected_result, validation_mode=run_mode)
+        if expected_result is not None:
+            expected_result = self._apply_tpcds_validation_mode(benchmark_type, scale_factor, expected_result)
 
         if expected_result is None:
             if stream_id is not None and stream_id > 0:
