@@ -354,3 +354,21 @@ def test_lineorder_dates_are_valid_datekeys(tmp_path):
         assert lo_orderdate in date_keys
 
         datetime.strptime(str(lo_commitdate), "%Y%m%d")
+
+
+def test_generate_data_unaffected_by_global_random_state(tmp_path):
+    import random
+
+    baseline_dir = tmp_path / "baseline"
+    baseline = SSBDataGenerator(scale_factor=0.001, output_dir=baseline_dir)
+    baseline_result = baseline.generate_data(tables=["customer"])
+    baseline_content = Path(baseline_result["customer"]).read_bytes()
+
+    perturbed_dir = tmp_path / "perturbed"
+    perturbed = SSBDataGenerator(scale_factor=0.001, output_dir=perturbed_dir)
+    SSBDataGenerator(scale_factor=0.001, output_dir=tmp_path / "other")
+    random.random()
+    perturbed_result = perturbed.generate_data(tables=["customer"])
+    perturbed_content = Path(perturbed_result["customer"]).read_bytes()
+
+    assert perturbed_content == baseline_content
