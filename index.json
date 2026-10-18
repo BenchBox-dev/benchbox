@@ -21814,13 +21814,11 @@
     "sql-transpiler-maintenance-decision": {
       "claim": null,
       "needs": [
-        "sql-transpiler-comparison-evidence",
-        "polyglot-source-aware-division-spike",
-        "polyglot-benchbox-integration-assessment"
+        "sqlglot-soft-fork-adoption"
       ],
       "priority": "low",
       "status": "open",
-      "title": "Choose BenchBox SQL transpiler maintenance strategy from execution and patch evidence"
+      "title": "Record the selected SQLGlot downstream maintenance strategy and delivery evidence"
     },
     "sqlglot-dialect-translation-code-review-implementation": {
       "claim": null,
