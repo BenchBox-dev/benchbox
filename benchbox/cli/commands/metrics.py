@@ -45,7 +45,7 @@ def metrics_group():
         "refresh functions RF1 and RF2 (--benchmark-option\n"
         "tpch_refresh_functions=true) on consecutive update sets, with at least\n"
         "two throughput streams. Refresh functions run on DuckDB, SQLite,\n"
-        "PostgreSQL, Snowflake, SingleStore and the adapters built on them. For\n"
+        "PostgreSQL, Snowflake and SingleStore. For\n"
         "any other pair the command reports Power@Size and Throughput@Size and\n"
         "lists why QphH@Size is unavailable. QphDS@Size is not computed because\n"
         "BenchBox does not run the TPC-DS data maintenance phases it requires.\n"

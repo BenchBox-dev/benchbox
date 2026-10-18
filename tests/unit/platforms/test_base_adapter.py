@@ -3358,6 +3358,12 @@ class TestExceptionPathsForThroughputAndMaintenance:
             ("benchbox.platforms.singlestore", "SingleStoreAdapter", True),
             ("benchbox.platforms.snowflake", "SnowflakeAdapter", True),
             ("benchbox.platforms.redshift", "RedshiftAdapter", False),
+            ("benchbox.platforms.cedardb", "CedarDBAdapter", False),
+            ("benchbox.platforms.citus", "CitusAdapter", False),
+            ("benchbox.platforms.paradedb", "ParadeDBAdapter", False),
+            ("benchbox.platforms.pg_duckdb", "PgDuckDBAdapter", False),
+            ("benchbox.platforms.pg_mooncake", "PgMooncakeAdapter", False),
+            ("benchbox.platforms.timescaledb", "TimescaleDBAdapter", False),
         ],
     )
     def test_refresh_capability_matches_verified_platforms(self, module_name, class_name, expected):
