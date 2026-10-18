@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Tests (fake clock/fetch) cover: producer in_progress then success -> proceeds; in_progress beyond the cap -> fails with a clear message; concluded failure -> fails immediately; 503 then success -> proceeds; three 503s -> fails; 404/403 -> no retry; digest mismatch -> no retry",
+    "The total added wait is bounded below the job timeout (assertion or test)",
+    "Provenance and digest verification code paths unchanged (diff review recorded)",
+    "PR merged in benchbox-site under that repo's gates (required checks green)"
+  ],
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs every line. FAIL if any failed producer can pass or any non-transient error is retried.",
+  "description": "Site repo items (BenchBox-dev/benchbox-site): read that repo's AGENTS.md first and follow its worktree, test and PR rules (G2); decision D6 authorizes PRs and merges there.\nConfirmed: site run 39137456105 failed at 'deploy resolve' with 'bundle:fetch: producing run concluded null' (scripts/bundle-fetch.mjs producingRunErrors line ~24 requires conclusion success). The core site-inputs run 39137257094 dispatches from inside its build job, so the consumer can start before the producer run has a conclusion; that run completed successfully (updated 14:56:34Z) after the consumer failed (14:47:37Z). Why its conclusion stayed null for 100+ seconds after its jobs ended is UNEXPLAINED (record any finding). Separately run 38933325082 failed on 'gh run download ... site-deploy-receipt-...: HTTP 503: 503 Egress is over the account limit' (deploy/lib/github.ts downloadReceipt ~line 80) with no retry.\nWork: (1) when the producing run status is not completed, poll with bounded backoff until it completes (total wait cap 10 minutes, well under the 45-minute job timeout), then require conclusion success; a producing run that concluded failure/cancelled/timed_out fails immediately with no wait; (2) retry artifact and receipt downloads on HTTP 5xx and network errors only, at most 3 attempts with 5/15/45 second backoff; never retry 4xx, digest mismatches or gate failures; log each retry.\nGuardrails: the digest and provenance checks are untouched; retries are bounded and visible; no change that treats a failed producer as success.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox-site/actions/runs/39137456105",
+    "https://github.com/BenchBox-dev/benchbox-site/actions/runs/38933325082"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7ac6538e56f6607b35a3f600",
+      "at": "2026-10-18T20:23:11Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "967b7152db4d49c7bc35656684af0024",
+      "session_id": "cab8a4e762844fd9912c504ebfd76c56"
+    }
+  ]
+}
