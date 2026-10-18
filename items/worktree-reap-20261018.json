@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "make worktree-reap prints one line per linked worktree with its verdict (remove, keep, or ambiguous) and the reason, and changes nothing",
+    "APPLY=1 removes only worktrees the dry run marks remove, with the same per-worktree checks as make worktree-finish APPLY=1, and prints what it removed",
+    "The primary clone, the current worktree, locked worktrees, and worktrees with uncommitted, untracked, or unpushed work are never removed",
+    "Tests cover each verdict and the refusal cases"
+  ],
+  "context": "Local worktree count was 175 on 2026-10-17.",
+  "description": "Local linked worktrees accumulate because close-out removes them one at a time with make worktree-finish, and that step is often skipped. Add make worktree-reap: a dry run lists every linked worktree whose branch is merged or deleted on origin and that has no uncommitted or unpushed work; APPLY=1 removes those worktrees and their local branches; anything ambiguous is reported for the owner, never removed. Build on the existing worktree-audit and worktree-finish evaluation so the safety rules stay in one place.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:515fc6c5ed940969bed3c6eb",
+      "at": "2026-10-18T13:13:29Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "492defee4d274b59bc8ce6e1e64942c4",
+      "session_id": "47d0479093c54bd8bbf6c9bf3930003f"
+    }
+  ]
+}

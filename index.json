@@ -26910,6 +26910,13 @@
       "status": "done",
       "title": "Orphaned results-explorer build artifacts in pool-01 break make pr-preflight for the next claimant"
     },
+    "worktree-reap-20261018": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Add make worktree-reap to remove merged, clean worktrees in bulk"
+    },
     "worktree-release-force-does-not-force-past-dirty-tree-20260806": {
       "claim": null,
       "needs": [],
