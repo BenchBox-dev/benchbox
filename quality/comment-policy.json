@@ -73,7 +73,7 @@
       "provenance": "_sources/README.md"
     },
     {
-      "path": "_project/scripts/vendor/todo_db-0.9.1-py3-none-any.whl",
+      "path": "_project/scripts/vendor/todo_db-0.10.1-py3-none-any.whl",
       "owner": "todo-db",
       "provenance": "_project/scripts/pyproject.toml"
     }
