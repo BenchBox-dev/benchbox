@@ -8568,6 +8568,15 @@
       "status": "open",
       "title": "Replace copied downloads with canonical GitHub links and legacy redirects"
     },
+    "docs-mig-site-baseline-build": {
+      "claim": null,
+      "needs": [
+        "docs-mig-core-freeze"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Capture reproducible pre-migration site evidence"
+    },
     "docs-mig-site-bundle-schema4": {
       "claim": null,
       "needs": [
