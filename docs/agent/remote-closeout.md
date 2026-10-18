@@ -54,8 +54,9 @@ In the primary clone, the closer may:
 - run these targets, which store their records under `~/.benchbox/reviews/`
   and change no repository file, local branch, or config:
   `make pr-arm-remote`, `make pr-landing-remote-bind`,
-  `make pr-landing-remote-manifest`, `make pr-landing-remote-record`,
-  `make pr-landing-remote-withdraw`, and `make pr-landing-remote-ready`.
+  `make pr-landing-remote-manifest`, `make pr-landing-remote-review`,
+  `make pr-landing-remote-record`, `make pr-landing-remote-withdraw`, and
+  `make pr-landing-remote-ready`.
 
 It never checks out a change, edits a working-tree file, creates or moves a
 local branch, changes local Git config, commits, pushes, or arms with a raw
@@ -138,6 +139,34 @@ binding, every record in the order stored, the open withdrawal if there is one,
 and every arm. An arm that condition 7 allowed only because the owner explained
 a change stores the owner's statement, passed as
 `OWNER_EXPLAINED="<statement>"`.
+
+## Review run
+
+`make pr-landing-remote-review PR=<n> HEAD=<sha> BUILDER_HEAD=<sha>` starts the
+reviewer, builds its record, publishes the findings, and stores the record as
+`make pr-landing-remote-record` does. `MODEL=<codex model>` picks the model,
+which otherwise comes from the Codex configuration. `DRY_RUN=1` prints the
+record and publishes and stores nothing, so it needs no `BUILDER_HEAD`.
+
+The target needs a binding. It fetches and pins the base, head, and digest as
+the manifest target does, and refuses if the live head is not `HEAD`. In a new
+temporary directory outside the repository it exports the head tree with
+`git archive`, then writes the diff, the raw manifest, the PR title and body,
+the bound item's description and acceptance criteria, and the blocking findings
+from earlier reviews that are still open. It runs `codex exec` in a read-only
+sandbox on that directory, which makes the reviewer a different model family
+from the Claude builders, and deletes the directory afterwards. The prompt is
+`scripts/remote_review_prompt.txt`.
+
+Each finding has a `path:line` location in the head version, its reasoning, and
+a severity of Critical, Required, or Nit. The target computes the disposition:
+`approve` only when there is no new Critical or Required finding and no earlier
+one is still open. It posts the findings as one review, with Critical and
+Required findings inline where the line is in the diff and the rest, and every
+Nit, in the review body. On a re-review the reviewer marks each earlier finding
+fixed or open, and the target resolves only the threads of findings marked
+fixed. The PR's file keeps each blocking finding with its thread ID, and the
+Codex version and prompt digest of each run.
 
 ## Arm conditions
 

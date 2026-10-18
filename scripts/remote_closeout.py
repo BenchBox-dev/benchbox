@@ -8,8 +8,13 @@ import hashlib
 import json
 import os
 import re
+import string
 import subprocess
 import sys
+import tarfile
+import tempfile
+import tomllib
+import uuid
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from pathlib import Path
@@ -18,7 +23,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import batch_integration
 import pr_landing
 
-CLI_DESCRIPTION = "Bind, record, arm, withdraw, and re-arm a cloud-built pull request from fetched objects alone."
+CLI_DESCRIPTION = (
+    "Bind, review, record, arm, withdraw, and re-arm a cloud-built pull request from fetched objects alone."
+)
 
 REPOSITORY = "BenchBox-dev/BenchBox"
 BASE_BRANCH = "develop"
@@ -28,6 +35,7 @@ ENV_PREFIX = "REMOTE_CLOSEOUT_"
 TRACKER_CONFIG = pr_landing.REPO_ROOT / ".todo-db" / "config.json"
 FETCH = ["git", "-c", "gc.auto=0", "-c", "maintenance.auto=false", "fetch", "--no-tags", "origin"]
 VIEW_FIELDS = "number,state,isDraft,labels,reviewDecision,headRefOid,headRefName,baseRefName,id,isCrossRepository"
+REVIEW_VIEW_FIELDS = f"{VIEW_FIELDS},title,body"
 OBSERVED_FIELDS = ("labels", "draft", "threads")
 DISPOSITIONS = ("approve", "changes-requested")
 FINDING_FIELDS = ("location", "reasoning", "severity")
@@ -36,6 +44,55 @@ PASSING_CONCLUSIONS = frozenset({"success", "neutral", "skipped"})
 PR_RE = re.compile(r"[1-9][0-9]*")
 DIGEST_RE = re.compile(r"[0-9a-f]{64}")
 BRANCH_RE = re.compile(r"[A-Za-z0-9._/-]+")
+MODEL_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/-]*")
+LOCATION_RE = re.compile(r"(?P<path>.+?)(?::(?P<line>[1-9][0-9]*))?")
+HUNK_RE = re.compile(r"@@ -[0-9]+(?:,(?P<old>[0-9]+))? \+(?P<start>[0-9]+)(?:,(?P<new>[0-9]+))? @@")
+REVIEW_PROMPT = Path(__file__).resolve().parent / "remote_review_prompt.txt"
+CODEX_TIMEOUT = 3600
+SEVERITIES = ("Critical", "Required", "Nit")
+BLOCKING = frozenset({"Critical", "Required"})
+MARKS = ("fixed", "open")
+DIFF = [
+    "git",
+    "diff",
+    "--no-ext-diff",
+    "--no-textconv",
+    "--no-color",
+    "--unified=3",
+    "--src-prefix=a/",
+    "--dst-prefix=b/",
+    "--no-renames",
+]
+THREAD_FIELDS = "id isResolved isOutdated comments(first:1) { nodes { body path pullRequestReview { databaseId } } }"
+RESOLVE_THREAD = """
+  mutation($thread:ID!) {
+    resolveReviewThread(input:{threadId:$thread}) { thread { id isResolved } }
+  }
+"""
+
+
+def _object_schema(properties: dict[str, dict]) -> dict:
+    return {"type": "object", "additionalProperties": False, "required": list(properties), "properties": properties}
+
+
+OUTPUT_SCHEMA = _object_schema(
+    {
+        "findings": {
+            "type": "array",
+            "items": _object_schema(
+                {
+                    "location": {"type": "string"},
+                    "reasoning": {"type": "string"},
+                    "severity": {"type": "string", "enum": list(SEVERITIES)},
+                }
+            ),
+        },
+        "previous_findings": {
+            "type": "array",
+            "items": _object_schema({"id": {"type": "string"}, "status": {"type": "string", "enum": list(MARKS)}}),
+        },
+    }
+)
 
 Runner = pr_landing.Runner
 LandingError = pr_landing.LandingError
@@ -77,12 +134,16 @@ RECORD_CHECKS: dict[str, tuple[Callable[[object], bool], str]] = {
 BINDING_FIELDS = (("pr_number", "pr_number"), ("head_branch", "head_branch"), ("pr_node_id", "node_id"))
 
 
-def live_run(cmd: list[str]) -> tuple[int, str]:
-    proc = subprocess.run(cmd, capture_output=True, timeout=300, check=False)
+def live_run(cmd: list[str], timeout: int = 300) -> tuple[int, str]:
+    proc = subprocess.run(cmd, capture_output=True, stdin=subprocess.DEVNULL, timeout=timeout, check=False)
     stdout = proc.stdout.decode("utf-8", "surrogateescape")
     if proc.returncode == 0:
         return 0, stdout
     return proc.returncode, stdout + proc.stderr.decode("utf-8", "surrogateescape")
+
+
+def codex_run(cmd: list[str]) -> tuple[int, str]:
+    return live_run(cmd, timeout=CODEX_TIMEOUT)
 
 
 def _now() -> str:
@@ -122,7 +183,15 @@ def store_path(repo: str, number: int) -> Path:
 def _load_store(path: Path, repo: str, number: int) -> dict:
     identity = {"schema": STORE_SCHEMA, "repository": repo, "pr_number": number}
     if not path.exists():
-        return {**identity, "binding": None, "records": [], "withdrawal": None, "arms": []}
+        return {
+            **identity,
+            "binding": None,
+            "records": [],
+            "withdrawal": None,
+            "arms": [],
+            "review_findings": [],
+            "review_runs": [],
+        }
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
@@ -143,8 +212,8 @@ def _locked_store(repo: str, number: int) -> Iterator[tuple[Path, dict]]:
         yield path, _load_store(path, repo, number)
 
 
-def _view(run: Runner, repo: str, number: int) -> dict:
-    code, out = run(["gh", "pr", "view", str(number), "--repo", repo, "--json", VIEW_FIELDS])
+def _view(run: Runner, repo: str, number: int, fields: str = VIEW_FIELDS) -> dict:
+    code, out = run(["gh", "pr", "view", str(number), "--repo", repo, "--json", fields])
     if code != 0:
         raise LandingError(f"cannot read PR #{number}: {out.strip()[:200]}")
     view = json.loads(out)
@@ -231,7 +300,7 @@ def fetch_develop(run: Runner) -> str:
     return fetched
 
 
-def compute_manifest(run: Runner, head: str, develop: str) -> tuple[str, str]:
+def pin_manifest(run: Runner, head: str, develop: str) -> tuple[str, str]:
     code, out = run(["git", "merge-base", head, develop])
     base = out.strip()
     if code != 0 or not _sha(base):
@@ -239,10 +308,19 @@ def compute_manifest(run: Runner, head: str, develop: str) -> tuple[str, str]:
     code, out = run(["git", "diff", "--raw", "--no-renames", "--no-abbrev", base, head])
     if code != 0:
         raise LandingError(f"git diff --raw {_short(base)} {_short(head)} failed: {out.strip()[:200]}")
-    return base, hashlib.sha256(out.encode("utf-8", "surrogateescape")).hexdigest()
+    return base, out
 
 
-def tracker_batches(run: Runner, config_path: Path = TRACKER_CONFIG) -> dict:
+def manifest_digest(listing: str) -> str:
+    return hashlib.sha256(listing.encode("utf-8", "surrogateescape")).hexdigest()
+
+
+def compute_manifest(run: Runner, head: str, develop: str) -> tuple[str, str]:
+    base, listing = pin_manifest(run, head, develop)
+    return base, manifest_digest(listing)
+
+
+def _tracker_file(run: Runner, name: str, config_path: Path) -> object:
     try:
         config = json.loads(config_path.read_text(encoding="utf-8"))
         state_repo = pr_landing.github_repository(config["state_remote"])
@@ -257,16 +335,34 @@ def tracker_batches(run: Runner, config_path: Path = TRACKER_CONFIG) -> dict:
             "api",
             "-H",
             "Accept: application/vnd.github.raw+json",
-            f"repos/{state_repo}/contents/index.json?ref={branch}",
+            f"repos/{state_repo}/contents/{name}?ref={branch}",
         ]
     )
     if code != 0:
-        raise LandingError(f"cannot read the tracker batch registry from {state_repo}@{branch}: {out.strip()[:200]}")
-    index = json.loads(out)
+        raise LandingError(f"cannot read the tracker's {name} from {state_repo}@{branch}: {out.strip()[:200]}")
+    try:
+        return json.loads(out)
+    except ValueError as exc:
+        raise LandingError(f"the tracker's {name} on {state_repo}@{branch} is not JSON: {exc}") from exc
+
+
+def tracker_batches(run: Runner, config_path: Path = TRACKER_CONFIG) -> dict:
+    index = _tracker_file(run, "index.json", config_path)
     batches = index.get("batches", {}) if isinstance(index, dict) else None
     if not isinstance(batches, dict):
         raise LandingError("the tracker index has no readable batch registry")
     return batches
+
+
+def tracker_item(run: Runner, item: str, config_path: Path = TRACKER_CONFIG) -> dict:
+    if len(item) > pr_landing.MAX_TODO_ID_LEN or not pr_landing.TODO_ID_RE.fullmatch(item):
+        raise LandingError(f"the bound item {item!r} is not a tracker item ID")
+    data = _tracker_file(run, f"items/{item}.json", config_path)
+    description = data.get("description") if isinstance(data, dict) else None
+    acceptance = data.get("acceptance", []) if isinstance(data, dict) else None
+    if not isinstance(description, str) or not isinstance(acceptance, list) or not all(map(_text, acceptance)):
+        raise LandingError(f"tracker item {item!r} has no readable description and acceptance criteria")
+    return {"id": item, "description": description, "acceptance": acceptance}
 
 
 def _same_repository(value: object, repo: str) -> bool:
@@ -606,35 +702,39 @@ def _read_record(record_file: str | None) -> dict:
     return record
 
 
+def _store_record(run: Runner, repo: str, number: int, state: dict, record: dict, builder_head: str) -> None:
+    binding = state.get("binding")
+    if binding is None:
+        raise Refused(f"no binding is recorded for PR #{number}; bind it before storing a record")
+    disagreements = [field for field, bound in BINDING_FIELDS if record[field] != binding.get(bound)]
+    if record["pr_number"] != number:
+        disagreements.append("pr_number")
+    if disagreements:
+        raise Refused(
+            f"the record's {', '.join(sorted(set(disagreements)))} disagree with the binding for PR #{number}"
+        )
+    view = _view(run, repo, number)
+    live_identity = _identity_refusals(binding, view, number)
+    if live_identity:
+        raise Refused("\n".join(live_identity))
+    state["records"].append(
+        {
+            **record,
+            "builder_head": builder_head,
+            "recorded_at": _now(),
+            "observed_head": view.get("headRefOid"),
+            "observation": observe(run, repo, view),
+        }
+    )
+
+
 def _record(pr: str | None, record_file: str | None, builder_head: str | None, repo: str | None, run: Runner) -> int:
     repo = _repository(repo)
     number = _pr_number(pr)
     builder_head = _revision(builder_head, "BUILDER_HEAD")
     record = _read_record(record_file)
     with _locked_store(repo, number) as (path, state):
-        binding = state.get("binding")
-        if binding is None:
-            raise Refused(f"no binding is recorded for PR #{number}; bind it before storing a record")
-        disagreements = [field for field, bound in BINDING_FIELDS if record[field] != binding.get(bound)]
-        if record["pr_number"] != number:
-            disagreements.append("pr_number")
-        if disagreements:
-            raise Refused(
-                f"the record's {', '.join(sorted(set(disagreements)))} disagree with the binding for PR #{number}"
-            )
-        view = _view(run, repo, number)
-        live_identity = _identity_refusals(binding, view, number)
-        if live_identity:
-            raise Refused("\n".join(live_identity))
-        state["records"].append(
-            {
-                **record,
-                "builder_head": builder_head,
-                "recorded_at": _now(),
-                "observed_head": view.get("headRefOid"),
-                "observation": observe(run, repo, view),
-            }
-        )
+        _store_record(run, repo, number, state, record, builder_head)
         pr_landing._write_json_atomic(path, state)
     print(f"stored a {record['disposition']} record for PR #{number} at {_short(record['head_sha'])} in {path}")
     return 0
@@ -649,6 +749,386 @@ def _manifest(pr: str | None, head: str | None, repo: str | None, run: Runner) -
         raise Refused(f"GitHub reports head {_short(fetched)} for PR #{number}, not HEAD {_short(head)}")
     base, digest = compute_manifest(run, head, fetch_develop(run))
     print(json.dumps({"pr_number": number, "head_sha": head, "base_sha": base, "manifest_digest": digest}, indent=2))
+    return 0
+
+
+def _dry_run(value: str | None) -> bool:
+    if value not in (None, "", "1"):
+        raise Refused(f"DRY_RUN must be 1 or unset, got {value!r}")
+    return value == "1"
+
+
+def codex_config_path() -> Path:
+    home = os.environ.get("CODEX_HOME")
+    return (Path(home).expanduser() if home else Path.home() / ".codex") / "config.toml"
+
+
+def _codex_model(model: str | None) -> str:
+    if not model:
+        path = codex_config_path()
+        try:
+            model = tomllib.loads(path.read_text(encoding="utf-8")).get("model")
+        except (OSError, tomllib.TOMLDecodeError) as exc:
+            raise Refused(f"MODEL is required: no default Codex model is readable from {path}: {exc}") from exc
+        if model is None:
+            raise Refused(f"MODEL is required: {path} sets no default Codex model")
+    if not isinstance(model, str) or not MODEL_RE.fullmatch(model):
+        raise Refused(f"MODEL must name a Codex model, got {model!r}")
+    return model
+
+
+def _review_view(run: Runner, repo: str, number: int, binding: dict, head: str) -> dict:
+    view = _view(run, repo, number, REVIEW_VIEW_FIELDS)
+    reasons = _identity_refusals(binding, view, number)
+    if view.get("headRefOid") != head:
+        reasons.append(f"the live PR head {_short(view.get('headRefOid'))} is not HEAD {_short(head)}")
+    if reasons:
+        raise Refused("\n".join(reasons))
+    return view
+
+
+def changed_lines(diff: str) -> dict[str, set[int]]:
+    lines: dict[str, set[int]] = {}
+    path: str | None = None
+    old = new = 0
+    for line in diff.split("\n"):
+        if old > 0 or new > 0:
+            tag = line[:1]
+            old -= tag in (" ", "-")
+            new -= tag in (" ", "+")
+            continue
+        if line.startswith("diff --git "):
+            path = None
+        elif line.startswith("+++ "):
+            target = line.removeprefix("+++ ")
+            path = target.removeprefix("b/") if target.startswith("b/") else None
+        elif path is not None and (match := HUNK_RE.match(line)):
+            start = int(match["start"])
+            old = int(match["old"] or 1)
+            new = int(match["new"] or 1)
+            lines.setdefault(path, set()).update(range(start, start + new))
+    return lines
+
+
+def _placement(location: str, lines: Mapping[str, set[int]]) -> tuple[str, int] | None:
+    match = LOCATION_RE.fullmatch(location.strip())
+    if match is None or match["line"] is None:
+        return None
+    line = int(match["line"])
+    return (match["path"], line) if line in lines.get(match["path"], set()) else None
+
+
+def _export_head(run: Runner, head: str, tree: Path) -> None:
+    archive = tree.parent / "head.tar"
+    code, out = run(["git", "archive", "--format=tar", f"--output={archive}", head])
+    try:
+        if code != 0:
+            raise LandingError(f"git archive {_short(head)} failed: {out.strip()[:200]}")
+        with tarfile.open(archive) as tar:
+            tar.extractall(tree, filter="data")
+    except tarfile.TarError as exc:
+        raise LandingError(f"cannot export the tree of {_short(head)}: {exc}") from exc
+    finally:
+        archive.unlink(missing_ok=True)
+
+
+def _json_text(value: object) -> str:
+    return json.dumps(value, indent=2, ensure_ascii=False) + "\n"
+
+
+def _prepare_input(
+    run: Runner,
+    workdir: Path,
+    view: dict,
+    pinned: tuple[str, str, str],
+    item: dict | None,
+    previous: Sequence[dict],
+) -> str:
+    base, head, listing = pinned
+    _export_head(run, head, workdir / "head")
+    code, diff = run([*DIFF, base, head])
+    if code != 0:
+        raise LandingError(f"git diff {_short(base)} {_short(head)} failed: {diff.strip()[:200]}")
+    pull_request = {
+        "number": view["number"],
+        "title": str(view.get("title") or ""),
+        "body": str(view.get("body") or ""),
+        "base_sha": base,
+        "head_sha": head,
+    }
+    texts = {
+        "diff.patch": diff,
+        "manifest.txt": listing,
+        "pull_request.json": _json_text(pull_request),
+        "previous_findings.json": _json_text(
+            [{field: entry[field] for field in ("id", "head_sha", *FINDING_FIELDS)} for entry in previous]
+        ),
+    }
+    if item is not None:
+        texts["tracker_item.json"] = _json_text(item)
+    inputs = workdir / "input"
+    inputs.mkdir()
+    (workdir / "run").mkdir()
+    for name, text in texts.items():
+        (inputs / name).write_text(text, encoding="utf-8", errors="surrogateescape")
+    return diff
+
+
+def review_prompt(workdir: Path, number: int, base: str, head: str) -> str:
+    template = string.Template(REVIEW_PROMPT.read_text(encoding="utf-8"))
+    return template.substitute(pr_number=number, inputs=workdir / "input", base_sha=base, head_sha=head)
+
+
+def _codex_events(out: str) -> list[dict]:
+    events: list[dict] = []
+    for line in out.splitlines():
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(event, dict):
+            events.append(event)
+    return events
+
+
+def _codex_failure(events: Sequence[dict], out: str) -> str:
+    messages: list[str] = []
+    for event in events:
+        error = event.get("error")
+        if isinstance(error, dict) and _text(error.get("message")):
+            messages.append(str(error["message"]))
+        elif event.get("type") == "error" and _text(event.get("message")):
+            messages.append(str(event["message"]))
+    return messages[-1] if messages else out.strip()[-500:]
+
+
+def _run_reviewer(codex: Runner, workdir: Path, model: str, prompt: str) -> tuple[str, str, str]:
+    schema = workdir / "run" / "schema.json"
+    output = workdir / "run" / "output.json"
+    schema.write_text(_json_text(OUTPUT_SCHEMA), encoding="utf-8")
+    code, version = codex(["codex", "--version"])
+    version = version.strip()
+    if code != 0 or not version:
+        raise LandingError(f"codex --version failed: {version[:200]}")
+    code, out = codex(
+        [
+            "codex",
+            "exec",
+            "-s",
+            "read-only",
+            "--ephemeral",
+            "--skip-git-repo-check",
+            "--json",
+            "-C",
+            str(workdir / "head"),
+            "--output-schema",
+            str(schema),
+            "-o",
+            str(output),
+            "-m",
+            model,
+            prompt,
+        ]
+    )
+    events = _codex_events(out)
+    if code != 0:
+        raise Refused(f"codex exec failed with exit code {code}: {_codex_failure(events, out)}")
+    try:
+        text = output.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise Refused(f"codex exec wrote no final message: {exc}") from exc
+    threads = [str(e["thread_id"]) for e in events if e.get("type") == "thread.started" and _text(e.get("thread_id"))]
+    return text, threads[0] if threads else f"{version} {uuid.uuid4()}", version
+
+
+def reviewer_output(text: str, previous_ids: Sequence[str]) -> tuple[list[dict], dict[str, str]]:
+    try:
+        data = json.loads(text)
+    except ValueError as exc:
+        raise Refused(f"the reviewer's final message is not JSON: {exc}") from exc
+    if not isinstance(data, dict) or set(data) != {"findings", "previous_findings"}:
+        raise Refused("the reviewer's final message is not the object the output schema describes")
+    findings, marks = data["findings"], data["previous_findings"]
+    if not isinstance(findings, list) or not all(
+        _text_object(finding, FINDING_FIELDS) and finding["severity"] in SEVERITIES for finding in findings
+    ):
+        raise Refused(
+            "the reviewer returned a finding without a location, reasoning, and Critical/Required/Nit severity"
+        )
+    if not isinstance(marks, list) or not all(
+        _text_object(mark, ("id", "status")) and mark["status"] in MARKS for mark in marks
+    ):
+        raise Refused("the reviewer returned a previous finding without an id and a fixed/open status")
+    marked = sorted(mark["id"] for mark in marks)
+    if marked != sorted(previous_ids):
+        raise Refused(f"the reviewer marked previous findings {marked}, but the open ones are {sorted(previous_ids)}")
+    return findings, {mark["id"]: mark["status"] for mark in marks}
+
+
+def _comment_body(finding: Mapping[str, str]) -> str:
+    return f"Independent reviewer, {finding['severity']}: {finding['reasoning']}"
+
+
+def review_payload(head: str, findings: Sequence[dict], lines: Mapping[str, set[int]]) -> tuple[dict, list[int]]:
+    inline: list[tuple[int, str, int]] = []
+    listed: list[str] = []
+    nits: list[str] = []
+    for index, finding in enumerate(findings):
+        entry = f"- {finding['severity']}, `{finding['location']}`: {finding['reasoning']}"
+        place = _placement(finding["location"], lines) if finding["severity"] in BLOCKING else None
+        if place is not None:
+            inline.append((index, *place))
+        elif finding["severity"] in BLOCKING:
+            listed.append(entry)
+        else:
+            nits.append(entry)
+    body = [f"Findings from the independent reviewer at {head}."]
+    if listed:
+        body.extend(["", "Critical and Required findings outside the changed lines:", *listed])
+    if nits:
+        body.extend(["", "Nits:", *nits])
+    comments = [
+        {"path": path, "line": line, "side": "RIGHT", "body": _comment_body(findings[index])}
+        for index, path, line in inline
+    ]
+    payload = {"commit_id": head, "event": "COMMENT", "body": "\n".join(body), "comments": comments}
+    return payload, [index for index, _, _ in inline]
+
+
+def _publish(run: Runner, repo: str, number: int, payload: dict, request: Path) -> int:
+    request.write_text(json.dumps(payload), encoding="utf-8")
+    code, out = run(["gh", "api", "--method", "POST", f"repos/{repo}/pulls/{number}/reviews", "--input", str(request)])
+    if code != 0:
+        raise LandingError(f"posting the review to PR #{number} failed: {out.strip()[:300]}")
+    posted = json.loads(out)
+    if not isinstance(posted, dict) or not isinstance(posted.get("id"), int):
+        raise LandingError(f"GitHub returned no review ID for PR #{number}")
+    return posted["id"]
+
+
+def _normalized(text: object) -> str:
+    return str(text or "").replace("\r\n", "\n").strip()
+
+
+def _thread_ids(run: Runner, repo: str, number: int, review_id: int, comments: Sequence[dict]) -> list[str | None]:
+    posted: list[tuple[str, str, str]] = []
+    for thread in pr_landing.review_threads(run, repo, number, THREAD_FIELDS):
+        nodes = (thread.get("comments") or {}).get("nodes") if isinstance(thread, dict) else None
+        first = nodes[0] if isinstance(nodes, list) and nodes and isinstance(nodes[0], dict) else {}
+        if (first.get("pullRequestReview") or {}).get("databaseId") == review_id:
+            posted.append((str(first.get("path")), _normalized(first.get("body")), str(thread["id"])))
+    ids: list[str | None] = []
+    for comment in comments:
+        match = next((entry for entry in posted if entry[:2] == (comment["path"], _normalized(comment["body"]))), None)
+        if match is not None:
+            posted.remove(match)
+        ids.append(match[2] if match else None)
+    return ids
+
+
+def _resolve_thread(run: Runner, thread_id: str) -> None:
+    code, out = run(["gh", "api", "graphql", "-f", f"query={RESOLVE_THREAD}", "-f", f"thread={thread_id}"])
+    try:
+        resolved = code == 0 and json.loads(out)["data"]["resolveReviewThread"]["thread"]["isResolved"] is True
+    except (KeyError, TypeError, ValueError):
+        resolved = False
+    if not resolved:
+        raise LandingError(f"resolving review thread {thread_id} failed: {out.strip()[:200]}")
+
+
+def _review(
+    pr: str | None,
+    head: str | None,
+    builder_head: str | None,
+    model: str | None,
+    dry_run: str | None,
+    repo: str | None,
+    run: Runner,
+    codex: Runner,
+) -> int:
+    repo = _repository(repo)
+    number = _pr_number(pr)
+    head = _revision(head, "HEAD")
+    dry = _dry_run(dry_run)
+    builder_head = builder_head if dry else _revision(builder_head, "BUILDER_HEAD")
+    model = _codex_model(model)
+    with _locked_store(repo, number) as (path, state):
+        binding = state.get("binding")
+        if binding is None:
+            raise Refused(f"no binding is recorded for PR #{number}; bind it before reviewing")
+        view = _review_view(run, repo, number, binding, head)
+        fetched = fetch_pr_head(run, repo, number)
+        if fetched != head:
+            raise Refused(f"GitHub reports head {_short(fetched)} for PR #{number}, not HEAD {_short(head)}")
+        base, listing = pin_manifest(run, head, fetch_develop(run))
+        item = tracker_item(run, binding["item"]) if binding.get("item") else None
+        ledger = state.setdefault("review_findings", [])
+        previous = [entry for entry in ledger if entry["status"] == "open"]
+        with tempfile.TemporaryDirectory(prefix="benchbox-remote-review-") as tmp:
+            workdir = Path(tmp)
+            diff = _prepare_input(run, workdir, view, (base, head, listing), item, previous)
+            prompt = review_prompt(workdir, number, base, head)
+            text, run_id, version = _run_reviewer(codex, workdir, model, prompt)
+            findings, marks = reviewer_output(text, [entry["id"] for entry in previous])
+            still_open = [entry for entry in previous if marks[entry["id"]] == "open"]
+            blocking = [finding for finding in findings if finding["severity"] in BLOCKING]
+            record = {
+                "pr_number": number,
+                "head_branch": binding["head_branch"],
+                "pr_node_id": binding["node_id"],
+                "base_sha": base,
+                "head_sha": head,
+                "manifest_digest": manifest_digest(listing),
+                "findings": [*findings, *({field: entry[field] for field in FINDING_FIELDS} for entry in still_open)],
+                "disposition": "changes-requested" if blocking or still_open else "approve",
+                "reviewer": {"model": model, "run_id": run_id},
+            }
+            problems = record_problems(record)
+            if problems:
+                raise LandingError("the built record is invalid: " + "; ".join(problems))
+            if dry:
+                print(json.dumps(record, indent=2))
+                return 0
+            _review_view(run, repo, number, binding, head)
+            payload, inline = review_payload(head, findings, changed_lines(diff))
+            review_id = _publish(run, repo, number, payload, workdir / "run" / "review.json") if findings else None
+            threads = _thread_ids(run, repo, number, review_id, payload["comments"]) if review_id and inline else []
+            thread_of = dict(zip(inline, threads, strict=True))
+            fixed = [entry for entry in previous if marks[entry["id"]] == "fixed"]
+            for entry in fixed:
+                if entry["thread_id"]:
+                    _resolve_thread(run, entry["thread_id"])
+        _store_record(run, repo, number, state, record, str(builder_head))
+        record_index = len(state["records"]) - 1
+        for entry in fixed:
+            entry.update(status="fixed", fixed_at_head=head)
+        for index, finding in enumerate(findings):
+            if finding["severity"] in BLOCKING:
+                ledger.append(
+                    {
+                        "id": f"F{len(ledger) + 1}",
+                        "record_index": record_index,
+                        "head_sha": head,
+                        **{field: finding[field] for field in FINDING_FIELDS},
+                        "thread_id": thread_of.get(index),
+                        "status": "open",
+                        "fixed_at_head": None,
+                    }
+                )
+        state.setdefault("review_runs", []).append(
+            {
+                "record_index": record_index,
+                "codex_version": version,
+                "prompt_sha256": hashlib.sha256(REVIEW_PROMPT.read_bytes()).hexdigest(),
+                "review_id": review_id,
+                "resolved_threads": [entry["thread_id"] for entry in fixed if entry["thread_id"]],
+            }
+        )
+        pr_landing._write_json_atomic(path, state)
+    unplaced = [index for index, thread in thread_of.items() if thread is None]
+    if unplaced:
+        print(f"warning: {len(unplaced)} inline finding(s) have no matching review thread", file=sys.stderr)
+    print(f"stored a {record['disposition']} record for PR #{number} at {_short(head)} in {path}")
     return 0
 
 
@@ -678,6 +1158,21 @@ def record(
 
 def manifest(pr: str | None, head: str | None, repo: str = REPOSITORY, run: Runner = live_run) -> int:
     return _guarded("pr-landing-remote-manifest", lambda: _manifest(pr, head, repo, run))
+
+
+def review(
+    pr: str | None,
+    head: str | None,
+    builder_head: str | None = None,
+    model: str | None = None,
+    dry_run: str | None = None,
+    repo: str = REPOSITORY,
+    run: Runner = live_run,
+    codex: Runner = codex_run,
+) -> int:
+    return _guarded(
+        "pr-landing-remote-review", lambda: _review(pr, head, builder_head, model, dry_run, repo, run, codex)
+    )
 
 
 def arm(
@@ -719,6 +1214,7 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None
         "bind": ("PR", "BRANCH", "ITEM"),
         "record": ("PR", "RECORD", "BUILDER_HEAD"),
         "manifest": ("PR", "HEAD"),
+        "review": ("PR", "HEAD", "BUILDER_HEAD", "MODEL", "DRY_RUN"),
         "arm": ("PR", "HEAD", "OWNER_EXPLAINED"),
         "withdraw": ("PR",),
         "ready": ("PR", "HEAD", "OWNER_EXPLAINED"),
@@ -734,6 +1230,8 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None
         return record(args.pr, args.record, args.builder_head, args.repo)
     if args.command == "manifest":
         return manifest(args.pr, args.head, args.repo)
+    if args.command == "review":
+        return review(args.pr, args.head, args.builder_head, args.model, args.dry_run, args.repo)
     if args.command == "withdraw":
         return withdraw(args.pr, args.repo)
     action = arm if args.command == "arm" else ready

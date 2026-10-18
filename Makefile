@@ -1225,8 +1225,8 @@ pr-arm:
 	@uv run -- python scripts/pr_arm.py
 
 REMOTE_CLOSEOUT_TARGETS := pr-arm-remote pr-landing-remote-bind pr-landing-remote-record \
-	pr-landing-remote-manifest pr-landing-remote-withdraw pr-landing-remote-ready
-REMOTE_CLOSEOUT_VARIABLES := PR HEAD REPO BRANCH ITEM RECORD BUILDER_HEAD OWNER_EXPLAINED
+	pr-landing-remote-manifest pr-landing-remote-review pr-landing-remote-withdraw pr-landing-remote-ready
+REMOTE_CLOSEOUT_VARIABLES := PR HEAD REPO BRANCH ITEM RECORD BUILDER_HEAD OWNER_EXPLAINED MODEL DRY_RUN
 .PHONY: $(REMOTE_CLOSEOUT_TARGETS)
 $(foreach name,$(REMOTE_CLOSEOUT_VARIABLES),$(eval $(REMOTE_CLOSEOUT_TARGETS): override $(name) := $$(value $(name))))
 $(foreach name,$(REMOTE_CLOSEOUT_VARIABLES),$(eval $(REMOTE_CLOSEOUT_TARGETS): export REMOTE_CLOSEOUT_$(name) := $$($(name))))
@@ -1239,6 +1239,8 @@ pr-landing-remote-record:
 	@uv run --no-project -- python scripts/remote_closeout.py record
 pr-landing-remote-manifest:
 	@uv run --no-project -- python scripts/remote_closeout.py manifest
+pr-landing-remote-review:
+	@uv run --no-project -- python scripts/remote_closeout.py review
 pr-landing-remote-withdraw:
 	@uv run --no-project -- python scripts/remote_closeout.py withdraw
 pr-landing-remote-ready:
