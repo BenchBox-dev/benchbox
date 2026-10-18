@@ -5,7 +5,7 @@
     "Preview deploy of that candidate with probes, receipt and a rollback-by-receipt drill to the last Sphinx artifact",
     "Pre-deploy visual comparison of the assembled candidate exists; dev-loop-property-ledger visual row updated with the real guard and evidence"
   ],
-  "context": "Because of D13 there is no mixed-version window in production. landing/shared stays until astro-site-54 because Sphinx keeps rendering every route until the release cutover. Resumption 2026-10-04: code on wip/astro-52 (head 64837e7f, worktree /home/user/BenchBox.wt-astro-52 in session 68d30365), two independent reviews, final PASS. routes.yml pins renderer: sphinx; the cutover PR flips it to auto. Single-renderer selection from the release tag tree, mixed-renderer refusal in assembly and the mixed_version gate, pre-deploy visual comparison bound to release_sha+candidate sha256+baseline sha256 (vars SITE_DEPLOY_VISUAL_APPROVED_BINDING / SITE_DEPLOY_VISUAL_APPROVAL_REASON, not yet created), /docs/dev/ link rebase, ledger row updated. Remaining acceptance: preview deploy of an all-Astro candidate with probes, receipt and rollback drill needs owner github-pages approval and dlv2-62. site-split-01 (2026-10-07): renderer now single (auto) and production deploys green (site-deploy runs 37532428364, 37406123669); preview/rollback-drill evidence superseded by site-split-25 (shadow) and site-split-30 (rehearsal incl. rollback drill). Remaining verification owned by site-split-25 and site-split-30. Do not finish here.\n\n2026-10-09 tracker review: this item's code shipped in #2685 and production deploys are green (site-deploy runs 37532428364, 37406123669). site-split-99-closeout should fold this astro-site chain into the site-split items. Not closed here, because this item's own text defers closing to the site-split items.",
+  "context": "Dropped 2026-10-17 as superseded (owner chose \"Drop delivered, re-scope rest\"). The site-split ADR replaced the core site-deploy renderer plan (D4 Node deploy plane, D12); core site-deploy and routes.yml were deleted (#3096), so there is one renderer and no mixed artifact to refuse. benchbox-site deploy/gates/ ports the dlv2-60 gates (privacy, explorer-compat, links, origin, snapshot-digest, files); probes, receipts and rollback-by-receipt are in deploy.yml and deploy/lib. The preview, probes, receipt and rollback drill ran on next.benchbox.dev (site-split-30: rollback 37968525517, forward 37990423381). ADR D11 waived the drill to a Sphinx artifact. The visual guard is the advisory visual.yml (ADR D8), recorded in the dev-loop-property-ledger row \"Public-site visual acceptance\".",
   "description": "After dlv2-62, site-deploy is the only production writer. Extend routes.yml and assembly so the renderer is selected per artifact, not per route:\n- Sphinx for every route until the latest release tag contains website/ and all migrated content.\n- From that release on, Astro for every route: / and /docs/ from the release tag; /docs/dev/ and /blog/ from trunk; /results/ from the Explorer artifact plus corpus snapshot, each pinned by its own SHA and digest. The API reference is release-pinned.\nAssembly must refuse a mixed-renderer artifact (D13), and this is covered by tests.\n\nKeep every dlv2-60 gate: per-route source SHA, corpus SHA, artifact sha256, privacy, explorer-compat (both orders), corpus bijection, digest, cross-route link check, post-deploy probes, receipts, rollback-by-receipt.\n\nVisual guard: dev-loop-property-ledger.md maps \"Public-site visual acceptance\" to site-deploy route and digest probes. Those prove availability and artifact identity, not layout. Name the real layout guard and its evidence: the required CI context for trunk renders, plus a visual capture of the assembled release-sourced candidate compared with the last production artifact before deploy. Update the ledger row to match.",
   "links": [
     "dlv2-60-publication-integration",
@@ -54,6 +54,14 @@
       "op": "update",
       "op_id": "318e43570b304e638867fe6e4cef9a51",
       "session_id": "05afd70780334fa0b0e411a688cf8f7a"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-18T00:49:17Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "5218b8e49e0d484ebc9c2474a5ffd03d",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
     }
   ]
 }
