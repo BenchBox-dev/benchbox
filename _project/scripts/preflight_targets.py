@@ -59,7 +59,8 @@ def _test_index(test_files: list[str]) -> dict[str, list[str]]:
 
 
 def _module_name(path: str) -> str:
-    return ".".join(PurePosixPath(path).with_suffix("").parts)
+    parts = PurePosixPath(path).with_suffix("").parts
+    return ".".join(parts[:-1] if parts[-1] == "__init__" else parts)
 
 
 def _imported_modules(repo: Path, path: str) -> set[str]:
@@ -95,17 +96,17 @@ def _helper_importers(repo: Path, helpers: list[str], test_files: list[str]) -> 
     }
 
 
-def _conftest_subtree(conftest: str, test_files: list[str]) -> list[str]:
-    directory = PurePosixPath(conftest).parent
-    subtree = [path for path in test_files if directory in PurePosixPath(path).parents]
-    return subtree if len(subtree) <= CONFTEST_SUBTREE_LIMIT else []
+def _package_subtree(path: str, test_files: list[str]) -> list[str] | None:
+    directory = PurePosixPath(path).parent
+    subtree = [test for test in test_files if directory in PurePosixPath(test).parents]
+    return subtree if len(subtree) <= CONFTEST_SUBTREE_LIMIT else None
 
 
 def _smoke_platform(test: str) -> str | None:
     stem = PurePosixPath(test).stem
-    if not test.startswith(SMOKE_TESTS_ROOT) or "_smoke" not in stem:
+    if not test.startswith(SMOKE_TESTS_ROOT) or not stem.endswith("_smoke"):
         return None
-    return stem.removeprefix("test_").split("_smoke", 1)[0]
+    return stem.removeprefix("test_").removesuffix("_smoke")
 
 
 def _platform_smoke_tests(path: str, test_files: list[str]) -> list[str]:
@@ -149,9 +150,13 @@ def map_tests(repo: Path, paths: list[str]) -> list[str]:
             if (repo / path).is_file():
                 selected.add(path)
         elif pure.parts[:1] == (TESTS_ROOT,):
-            if pure.name == "conftest.py":
-                selected.update(_conftest_subtree(path, test_files))
-            elif pure.name != "__init__.py":
+            if pure.name in {"conftest.py", "__init__.py"}:
+                subtree = _package_subtree(path, test_files)
+                if subtree is not None:
+                    selected.update(subtree)
+                    if pure.name == "__init__.py":
+                        helpers.append(path)
+            else:
                 helpers.append(path)
         elif path.startswith(SOURCE_ROOTS):
             module = pure.stem

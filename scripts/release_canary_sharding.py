@@ -226,12 +226,14 @@ def verify_required_cases(evidence_path: Path, checked_sha: str, nodeids_path: P
     _validate_required_outcomes(evidence["node_outcomes"], required)
 
 
-def verify_medium_shards(artifact_root: Path, checked_sha: str) -> None:
-    collection_root = artifact_root / f"t2-medium-nodeids-{checked_sha}"
+def verify_medium_shards(
+    artifact_root: Path, checked_sha: str, workflow: str = "ci.yml", artifact_prefix: str = "t2-medium"
+) -> None:
+    collection_root = artifact_root / f"{artifact_prefix}-nodeids-{checked_sha}"
     node_ids = read_node_ids(collection_root / "medium-nodeids.txt")
     collection = json.loads((collection_root / "medium-collection.json").read_text(encoding="utf-8"))
     expected = {
-        "workflow": "ci.yml",
+        "workflow": workflow,
         "job": "medium-collect",
         "commit_sha": checked_sha,
         "marker_expression": MEDIUM_MARKER_EXPRESSION,
@@ -249,7 +251,7 @@ def verify_medium_shards(artifact_root: Path, checked_sha: str) -> None:
         assigned = partition_node_ids(node_ids, index, MEDIUM_SHARD_COUNT)
         if not assigned:
             raise ValueError("medium shard assignment is empty")
-        shard_root = artifact_root / f"t2-medium-shard-{index}-{checked_sha}"
+        shard_root = artifact_root / f"{artifact_prefix}-shard-{index}-{checked_sha}"
         evidence = json.loads((shard_root / f"shard-{index}-execution.json").read_text(encoding="utf-8"))
         if not isinstance(evidence, dict) or (
             evidence.get("commit_sha") != checked_sha
@@ -298,6 +300,8 @@ def _build_parser() -> argparse.ArgumentParser:
     verify_parser = subparsers.add_parser("verify-medium", help="verify exact medium shard coverage")
     verify_parser.add_argument("--artifacts", type=Path, required=True)
     verify_parser.add_argument("--checked-sha", required=True)
+    verify_parser.add_argument("--workflow", default="ci.yml")
+    verify_parser.add_argument("--artifact-prefix", default="t2-medium")
     required_parser = subparsers.add_parser(
         "verify-required", help="verify a run executed exactly the required cases and passed all of them"
     )
@@ -340,7 +344,7 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "verify-required":
             verify_required_cases(args.evidence, args.checked_sha, args.nodeids)
         else:
-            verify_medium_shards(args.artifacts, args.checked_sha)
+            verify_medium_shards(args.artifacts, args.checked_sha, args.workflow, args.artifact_prefix)
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(f"release-canary sharding error: {exc}", file=sys.stderr)
         return 1

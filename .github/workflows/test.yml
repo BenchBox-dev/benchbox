@@ -354,6 +354,34 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  medium-coverage:
+    name: medium-coverage
+    needs: [medium-collect, medium]
+    if: ${{ !cancelled() && needs.medium-collect.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/release_canary_sharding.py
+          sparse-checkout-cone-mode: false
+
+      - name: Download complete medium shard evidence
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          pattern: release-medium-*-${{ github.sha }}
+          path: release-medium-evidence
+          merge-multiple: false
+
+      - name: Verify complete medium shard coverage
+        run: >-
+          python scripts/release_canary_sharding.py verify-medium --artifacts release-medium-evidence
+          --checked-sha "${{ github.sha }}" --workflow test.yml --artifact-prefix release-medium
+
   correctness-gate:
     name: correctness-gate
     runs-on: ubuntu-latest
@@ -518,7 +546,7 @@ jobs:
 
   release-required-result:
     name: release-required-result
-    needs: [test, integration, medium, correctness-gate, test-package, release-readiness]
+    needs: [test, integration, medium, medium-coverage, correctness-gate, test-package, release-readiness]
     if: ${{ always() && github.event_name == 'pull_request' && github.base_ref == 'release' }}
     runs-on: ubuntu-latest
     steps:
@@ -527,6 +555,7 @@ jobs:
           FAST_TEST_RESULT: ${{ needs.test.result }}
           INTEGRATION_RESULT: ${{ needs.integration.result }}
           MEDIUM_RESULT: ${{ needs.medium.result }}
+          MEDIUM_COVERAGE_RESULT: ${{ needs.medium-coverage.result }}
           CORRECTNESS_RESULT: ${{ needs.correctness-gate.result }}
           PACKAGE_RESULT: ${{ needs.test-package.result }}
           RELEASE_READINESS_RESULT: ${{ needs.release-readiness.result }}
@@ -538,6 +567,7 @@ jobs:
             "test (ubuntu-latest, 3.12)=$FAST_TEST_RESULT" \
             "integration=$INTEGRATION_RESULT" \
             "medium=$MEDIUM_RESULT" \
+            "medium-coverage=$MEDIUM_COVERAGE_RESULT" \
             "correctness-gate=$CORRECTNESS_RESULT" \
             "test-package=$PACKAGE_RESULT" \
             "release-readiness=$RELEASE_READINESS_RESULT"; do

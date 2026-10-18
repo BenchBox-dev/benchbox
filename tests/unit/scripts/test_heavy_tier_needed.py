@@ -248,8 +248,15 @@ def test_suite_wide_test_configuration_needs_the_heavy_tier(tmp_path: Path, monk
     monkeypatch.setattr(heavy, "BROAD_CONFTEST_MODULES", 2)
 
     assert heavy.broad_test_infrastructure(
-        ["tests/unit/conftest.py", "tests/unit/core/conftest.py", "pytest.ini", "benchbox/core/x.py"], tmp_path
-    ) == ["tests/unit/conftest.py", "pytest.ini"]
+        [
+            "tests/unit/conftest.py",
+            "tests/unit/__init__.py",
+            "tests/unit/core/conftest.py",
+            "pytest.ini",
+            "benchbox/core/x.py",
+        ],
+        tmp_path,
+    ) == ["tests/unit/conftest.py", "tests/unit/__init__.py", "pytest.ini"]
     result = heavy.heavy_needed(_decision(["tests/unit/conftest.py"]), "absent", tmp_path)
     assert result["heavy_needed"] is True
     assert "test-infrastructure carve-out" in result["reason"]

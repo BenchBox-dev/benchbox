@@ -223,8 +223,22 @@ def test_platform_smoke_mapping_needs_the_whole_platform_name(repo: Path) -> Non
     assert pt.map_tests(repo, ["benchbox/platforms/cloud_shared.py"]) == []
     assert pt.map_tests(repo, ["benchbox/platforms/presto_trino_utils.py", "benchbox/platforms/starrocks/x.py"]) == [
         "tests/integration/platforms/test_presto_smoke.py",
-        "tests/integration/platforms/test_starrocks_smoke_resource_heavy.py",
     ]
+
+
+def test_changed_test_package_init_selects_its_package_and_importers(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write(repo, "tests/fixtures/__init__.py", "")
+    _write(repo, "tests/fixtures/test_inside.py")
+    _write(repo, "tests/unit/test_user.py", "from tests.fixtures import data\n")
+
+    assert pt.map_tests(repo, ["tests/fixtures/__init__.py"]) == [
+        "tests/fixtures/test_inside.py",
+        "tests/unit/test_user.py",
+    ]
+    monkeypatch.setattr(pt, "CONFTEST_SUBTREE_LIMIT", 0)
+    assert pt.map_tests(repo, ["tests/fixtures/__init__.py"]) == []
 
 
 def test_conftest_limit_matches_the_heavy_tier_carve_out() -> None:

@@ -206,6 +206,9 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
         "Hosted partitioning binds the shared collection artifact to this SHA; local test-medium runs the full set."
     ),
     ("test.yml", "medium", "Run medium tests"): "Covered by the local `test-medium` target.",
+    ("test.yml", "medium-coverage", "Verify complete medium shard coverage"): (
+        "Hosted evidence proves the four release shard assignments executed once; local test-medium runs the full set."
+    ),
     ("ci.yml", "code-test", "Pre-build the assertion-rewrite cache"): (
         "Cache warm-up for the fast lane; it asserts nothing and only shortens collection in the step after it."
     ),

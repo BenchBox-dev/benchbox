@@ -123,7 +123,7 @@ def broad_test_infrastructure(changed_paths: Iterable[str], repo_root: Path) -> 
         pure = PurePosixPath(path)
         if path == "pytest.ini":
             broad.append(path)
-        elif pure.name == "conftest.py" and pure.parts[:1] == ("tests",):
+        elif pure.name in {"conftest.py", "__init__.py"} and pure.parts[:1] == ("tests",):
             modules = sum(1 for _ in (repo_root / pure.parent).rglob("test_*.py"))
             if modules > BROAD_CONFTEST_MODULES:
                 broad.append(path)
