@@ -91,11 +91,12 @@ ORDER BY l_returnflag, l_linestatus
 
 def _rewrite_presto_array_aggregation(query: str, dialect: str = "presto") -> str:
     tree = sqlglot.parse_one(query, read=dialect)
-    with_ = tree.args["with_"].transform(
+    with_ = tree.find(exp.With).transform(
         lambda node: _ordered_array(node.expressions[0], dialect) if isinstance(node, exp.List) else node
     )
     outer = sqlglot.parse_one(_PRESTO_UNNEST_AGGREGATION, read=dialect)
-    outer.set("with_", with_)
+    for cte in with_.expressions:
+        outer.with_(cte.alias, as_=cte.this, copy=False)
     return outer.sql(dialect=dialect)
 
 
@@ -120,7 +121,7 @@ def _qualify_postgres_columns(query: str, columns: dict[str, str]) -> str:
 
 def _rewrite_postgres_dual(query: str) -> str:
     tree = sqlglot.parse_one(query, read="postgres")
-    replacement = sqlglot.parse_one("SELECT * FROM (VALUES (1)) AS dual(dual_col)", read="postgres").args["from_"].this
+    replacement = sqlglot.parse_one("SELECT * FROM (VALUES (1)) AS dual(dual_col)", read="postgres").find(exp.From).this
     for subquery in tree.find_all(exp.Subquery):
         inner = subquery.this
         if subquery.alias != "dual" or not isinstance(inner, exp.Select) or len(inner.expressions) != 1:

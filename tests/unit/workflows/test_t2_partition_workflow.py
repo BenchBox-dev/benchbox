@@ -38,6 +38,7 @@ def test_correctness_partitions_preserve_each_gate_once() -> None:
     expected = {
         "make test-correctness-gate",
         "make tpchavoc-equivalence-report",
+        "make tpchavoc-sqlglot-minimum-check",
         "make tpchavoc-dataframe-equivalence-report",
     }
     for gate in GATES:

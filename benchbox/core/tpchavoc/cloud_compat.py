@@ -56,10 +56,10 @@ def rewrite_cloud_variant(query_id: str, query: str, target_dialect: str) -> str
     if has_filter:
         tree = tree.transform(_rewrite_bigquery_filter)
     if query_id in _BIGQUERY_FROMLESS_IDS:
-        one_row_source = sqlglot.parse_one("SELECT 1 FROM UNNEST([1])", read="bigquery").args["from_"]
+        one_row_source = sqlglot.parse_one("SELECT 1 FROM UNNEST([1])", read="bigquery").find(exp.From).this
         for select in tree.find_all(exp.Select):
-            if select.args.get("where") is not None and select.args.get("from_") is None:
-                select.set("from_", one_row_source.copy())
+            if select.args.get("where") is not None and not (select.args.get("from_") or select.args.get("from")):
+                select.from_(one_row_source.copy(), copy=False)
     if column_name := _BIGQUERY_HAVING_COLUMNS.get(query_id):
         for having in tree.find_all(exp.Having):
             for column in having.find_all(exp.Column):

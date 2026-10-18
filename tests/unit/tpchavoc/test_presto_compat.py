@@ -72,14 +72,25 @@ def test_presto_array_aggregation_uses_presto_functions(presto_trino_queries):
     dialect, queries = presto_trino_queries
     for query_id in PRESTO_ARRAY_AGGREGATION_VARIANT_IDS:
         query = queries[query_id]
-        assert "LIST" not in query.upper().replace("ARRAY_AGG", ""), (dialect, query_id)
-        assert "CROSS JOIN UNNEST(quantities, prices, discounts, taxes)" in query, (dialect, query_id)
-        assert "REDUCE(" not in query, (dialect, query_id)
         tree = sqlglot.parse_one(query, read=dialect)
-        assert [agg.sql(dialect=dialect) for agg in tree.find_all(exp.ArrayAgg)] == [
-            f'ARRAY_AGG("{column}" ORDER BY l_orderkey, l_linenumber)'
-            for column in ("l_quantity", "l_extendedprice", "l_discount", "l_tax")
-        ]
+        with_ = tree.find(exp.With)
+        assert with_ is not None and with_.expressions[0].alias == "aggregated"
+        arrays = list(with_.find_all(exp.ArrayAgg))
+        assert len(arrays) == 4
+        assert {aggregate.find(exp.Column).name for aggregate in arrays} == {
+            "l_quantity",
+            "l_extendedprice",
+            "l_discount",
+            "l_tax",
+        }
+        for aggregate in arrays:
+            order = aggregate.find(exp.Order)
+            assert order is not None
+            assert [ordered.this.name for ordered in order.expressions] == ["l_orderkey", "l_linenumber"]
+        unnest = tree.find(exp.Unnest)
+        assert unnest is not None
+        assert [column.name for column in unnest.expressions] == ["quantities", "prices", "discounts", "taxes"]
+        assert unnest.alias_column_names == ["quantity", "price", "discount", "tax"]
 
 
 @pytest.mark.parametrize("platform", ("presto", "trino"))
