@@ -10108,6 +10108,13 @@
       "status": "done",
       "title": "Fast-lane headroom reserved for a named program is silently consumed by unrelated PRs"
     },
+    "fast-lane-curation-and-ci-changed-medium-test": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Run changed medium tests in CI code-test and release curation dry-run"
+    },
     "fast-lane-decouple-ceiling-contention": {
       "claim": null,
       "needs": [

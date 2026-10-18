@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "scripts/release_curation_dry_run.py evaluates changed tests under (fast or medium) selection on curated release tree",
+    "scripts/release_curation_dry_run.py exits non-zero if all selected tests were stripped without executing validation",
+    ".github/workflows/ci.yml code-test runs changed medium tests when test files are modified in PRs",
+    "Unit tests for release_curation_dry_run.py in tests/unit/scripts/ pass"
+  ],
+  "context": "Decision A1 in fast-lane remediation plan: Ensure PRs touching medium tests still run them before merge, and release-curation dry-run validates changed medium tests on the curated release tree.",
+  "description": "Update scripts/release_curation_dry_run.py and .github/workflows/ci.yml code-test to exercise changed medium tests in PRs, preventing coverage regression when over-budget tests are moved from fast to medium.",
+  "sessions": [
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:583acf13c5bd57c889a0a6d0",
+      "at": "2026-10-18T03:06:02Z",
+      "client": "antigravity-client",
+      "op": "create",
+      "op_id": "eb6c1e3d2b6a4ca2a07bf5e8f356f2db",
+      "session_id": "3d3966853b9243b9a8a4edf367cb475b"
+    }
+  ]
+}
