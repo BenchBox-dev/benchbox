@@ -5,7 +5,7 @@
     "Each template has a benefit-rule verdict, and its evidence state is updated in a merged PR.",
     "Any template change the verdict calls for is filed, or made through the profile and generator."
   ],
-  "context": "Snowflake part measured in the 2026-10-15/17 trial campaign (#3074 cb611b0ca). TPC-DS sf100 shows BENEFIT (ratio 0.761). TPC-H sf10/sf100 and TPC-DS sf10 show no detectable effect. Automatic clustering credits 0.000. Final estimate 70.927 of 85 credits. Owner, 2026-10-15, Claude session e0e74e6b, question dialog: \"C0–C4 under the 85 cap\" and \"Approve one probe\". The runs used plain `benchbox run` plus a helper, not the harness. Not done: template_evidence.yaml is unchanged, and no Databricks run has happened. The Snowflake trial has ended; Databricks spend needs owner approval.\n\nOpen questions for the owner: close this item on the Snowflake results and file Databricks separately? And should the Snowflake verdicts (TPC-DS sf100 BENEFIT, the others no effect) go into template_evidence.yaml through a PR?",
+  "context": "Snowflake part measured in the 2026-10-15/17 trial campaign (#3074 cb611b0ca): TPC-DS sf100 BENEFIT (ratio 0.761), TPC-H sf10/sf100 and TPC-DS sf10 no detectable effect; automatic clustering credits 0.000; final estimate 70.927 of 85 credits. Owner, 2026-10-15, Claude session e0e74e6b, question dialog: \"C0–C4 under the 85 cap\" and \"Approve one probe\". The runs used plain `benchbox run` plus a helper, not the harness.\n\nOwner, 2026-10-18, in a Claude Code session: record the Snowflake verdicts as plain labels (\"plain labels, create a follow up to address the issue comprehensively\"). PR #3117 adds a warehouse_size evidence scope for managed-cloud runs and the four Snowflake entries (X-Small, engine 10.37.102) as a documented ADR-003 exception; follow-up template-evidence-calibration-provenance-20261018.\n\nStill to do: Databricks (no run yet; spend needs owner approval). The Snowflake trial has ended.",
   "description": "## Problem\nThe Databricks and Snowflake tuned templates have no benefit evidence. The harness gains cloud support in `cloud-tuned-benefit-measurement-20261008`; this item runs it.\n\n## Change\n- Once both live certifications have passed, run the harness for TPC-H on Databricks and Snowflake, and TPC-DS if the approved budget allows. Use arms `notuning` and tuned, with both arms settled.\n- Record clustering state, settle condition, load and maintenance time, cost and CIs.\n- Apply the benefit rule, record a verdict per template and tier, and update the evidence states in `benchbox/core/tuning/profiles/template_evidence.yaml`.\n\n## Decision gates\n- Each live run needs explicit owner approval naming the command, maximum runtime, maximum cost (the harness `--max-cost`), log path and stop condition. Without it, do not start.\n- The owner picks the scale factor(s). The evidence records that they are far below the vendors' 1 TB / multi-TB guidance.\n\n## Guardrails (must preserve)\n- Use dedicated database names; never shared ones.\n- Never relax a certification assertion.\n- Stop at the approved cost cap.\n\n## Process guardrails\n- One PR per item against `develop`, via the AGENTS.md worktree flow (`make worktree-claim BRANCH=...`, `make agent-write-preflight`).\n- Stage explicit paths; never `git add -A`.\n- No live cloud runs without explicit owner approval stating the command, maximum runtime, log path and stop condition.",
   "links": [
     "https://docs.snowflake.com/en/user-guide/tables-clustering-keys",
@@ -66,6 +66,14 @@
       "client": "claude-code",
       "op": "update",
       "op_id": "607ecdb3109d4cc8b426f98290fd0a3f",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-18T03:22:05Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "14d091595cee4473ac3297b87e60678f",
       "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
     }
   ]
