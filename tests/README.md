@@ -201,6 +201,17 @@ Its marker selection excludes slow, stress, resource-heavy, and live
 integration tests. Product-critical tests that need a different selection
 belong in an explicit workflow or correctness gate.
 
+Every code PR still runs the medium tests that `make pr-preflight` maps from
+its changed paths (`_project/scripts/preflight_targets.py`), in the
+`code-test` job's "Run medium tests for changed paths" step. A changed test
+module selects itself; a source module selects `test_<module>.py`; a test
+helper selects the tests that import it; a `conftest.py` selects its directory
+when that holds at most 200 test modules; a platform module selects its
+`tests/integration/platforms` smoke test; and `SOURCE_GUARD_TESTS` names the
+drift guards that check a source prefix, such as the module-size guard for any
+`benchbox/` change. Everything else in the medium tier runs after merge in
+`trunk.yml` and on release PRs.
+
 ### Quick Development Testing
 Where a `make` target is followed by a `pytest` command, the two are equivalent. `make test-fast` runs the curated fast
 lane. The `tests/unit/benchmarks/test_tpch_core.py` command runs one benchmark's tests. For coverage, `make

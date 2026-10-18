@@ -285,6 +285,7 @@ for release PR correctness. It aggregates:
 - the required fast lane
 - the bounded real-result correctness gate (`make test-correctness-gate`)
 - the credential-free integration-not-slow suite
+- the complete medium tier, in four shards
 - the isolated exact-one-wheel package smoke
 - dependency upper-bound checks
 - release-branch curation checks

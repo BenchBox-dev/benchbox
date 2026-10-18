@@ -34,6 +34,8 @@ from run_comment_policy import TRUSTED_FILES, parser_environment, resolve_base
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 ROOT = Path(__file__).resolve().parents[3]
+DEVELOPMENT_TREE = (ROOT / "AGENTS.md").is_file()
+RELEASE_TREE_SKIP = "_project scripts are not in this checkout (release tree)"
 EMPTY_POLICY = {"version": 1, "external": [], "completed": [], "exceptions": []}
 
 
@@ -1628,6 +1630,7 @@ def test_shell_dynamic_execution_requires_adapter() -> None:
     assert not scan("a.sh", 'printf "%s" "eval # input data"', "bash")
 
 
+@pytest.mark.skipif(not (ROOT / "_project/scripts/dependency_audit").is_dir(), reason=RELEASE_TREE_SKIP)
 @pytest.mark.parametrize("module_name", ["check_deps", "scan_imports"])
 def test_markdown_parser_dependency_is_backed_by_import_sites(module_name: str, tmp_path: Path) -> None:
     spec = importlib.util.spec_from_file_location(
@@ -3134,6 +3137,8 @@ def test_reviewed_process_argv_entries_match_current_sources() -> None:
     from comment_execution import REVIEWED_PROCESS_ARGV, PythonBindings
 
     for path, argv in REVIEWED_PROCESS_ARGV:
+        if not DEVELOPMENT_TREE and not (ROOT / path).exists():
+            continue
         tree = ast.parse((ROOT / path).read_text(encoding="utf-8"))
         bindings = PythonBindings(tree)
         assert any(isinstance(node, ast.Call) and bindings.reviewed_argv(path, node) for node in ast.walk(tree)), (
@@ -3379,6 +3384,7 @@ def test_structured_command_keys_are_scanned(path: str, source: str, lang: str, 
     assert [f.kind for f in scan(path, source, lang)] == [kind]
 
 
+@pytest.mark.skipif(not (ROOT / "_project/scripts/build_joinorder_data.py").exists(), reason=RELEASE_TREE_SKIP)
 def test_reviewed_joinorder_copy_where_clause_is_an_integer_id_list() -> None:
     tree = ast.parse((ROOT / "_project/scripts/build_joinorder_data.py").read_text(encoding="utf-8"))
     assignments = {

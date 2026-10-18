@@ -393,6 +393,7 @@ class TestReleaseInfrastructure:
         assert set(result_job["needs"]) == {
             "test",
             "integration",
+            "medium",
             "correctness-gate",
             "test-package",
             "release-readiness",
@@ -410,6 +411,19 @@ class TestReleaseInfrastructure:
             "Release-required checks passed.",
         ]:
             assert expected in aggregate_run_text
+
+    def test_release_required_result_runs_the_complete_medium_tier(self):
+        jobs = _workflow("test.yml")["jobs"]
+        collect_text = _workflow_job_run_text("test.yml", "medium-collect")
+        shard_text = _workflow_job_run_text("test.yml", "medium")
+
+        assert "github.base_ref == 'release'" in jobs["medium-collect"]["if"]
+        assert jobs["medium"]["needs"] == "medium-collect"
+        assert jobs["medium"]["strategy"]["matrix"]["shard_index"] == [0, 1, 2, 3]
+        assert "pytest --collect-only" in collect_text and "--ignore" not in collect_text
+        assert '-m "medium and not (slow or stress or resource_heavy or live_integration)"' in shard_text
+        assert '"${node_ids[@]}"' in shard_text
+        assert '"medium=$MEDIUM_RESULT"' in _workflow_job_run_text("test.yml", "release-required-result")
 
     def test_release_docs_name_required_contexts(self):
         docs_paths = [

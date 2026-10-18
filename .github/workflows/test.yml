@@ -237,6 +237,110 @@ jobs:
         run: |
           uv run -- python -m pytest tests/integration -m "integration and not (slow or stress or resource_heavy or live_integration)" --tb=short --maxfail=5 --timeout=300
 
+  medium-collect:
+    name: medium-collect
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.base_ref == 'release')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Collect the complete medium tier
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p t2-artifacts
+          BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest --collect-only -q -n 0 \
+            -m "medium and not (slow or stress or resource_heavy or live_integration)" \
+            > t2-artifacts/medium-collect.txt
+          count=$(grep -Eo '^[0-9]+/[0-9]+ tests collected' t2-artifacts/medium-collect.txt | tail -1 | cut -d/ -f1)
+          test -n "$count"
+          uv run -- python scripts/release_canary_sharding.py collect \
+            --input t2-artifacts/medium-collect.txt \
+            --nodeids-output t2-artifacts/medium-nodeids.txt \
+            --summary-output t2-artifacts/medium-collection.json \
+            --expected-count "$count" --shard-count 4 \
+            --workflow test.yml --job medium-collect \
+            --marker-expression "medium and not (slow or stress or resource_heavy or live_integration)" \
+            --checked-ref "${{ github.ref }}" --checked-sha "${{ github.sha }}"
+
+      - name: Upload medium collection evidence
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: release-medium-nodeids-${{ github.sha }}
+          path: t2-artifacts/
+          if-no-files-found: error
+          retention-days: 7
+
+  medium:
+    name: medium (shard ${{ matrix.shard_index }})
+    needs: medium-collect
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard_index: [0, 1, 2, 3]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Download medium collection evidence
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: release-medium-nodeids-${{ github.sha }}
+          path: t2-artifacts
+
+      - name: Partition the complete medium tier
+        env:
+          SHARD_INDEX: ${{ matrix.shard_index }}
+        run: |
+          uv run -- python scripts/release_canary_sharding.py shard \
+            --input t2-artifacts/medium-nodeids.txt \
+            --nodeids-output "t2-artifacts/shard-${SHARD_INDEX}-nodeids.txt" \
+            --summary-output "t2-artifacts/shard-${SHARD_INDEX}-summary.json" \
+            --shard-index "$SHARD_INDEX" --shard-count 4 \
+            --workflow test.yml --job medium \
+            --marker-expression "medium and not (slow or stress or resource_heavy or live_integration)" \
+            --collection-summary t2-artifacts/medium-collection.json --checked-sha "${{ github.sha }}"
+
+      - name: Run medium tests
+        shell: bash
+        env:
+          SHARD_INDEX: ${{ matrix.shard_index }}
+        run: |
+          set -euo pipefail
+          test -s "t2-artifacts/shard-${SHARD_INDEX}-nodeids.txt"
+          mapfile -t node_ids < "t2-artifacts/shard-${SHARD_INDEX}-nodeids.txt"
+          BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest \
+            -m "medium and not (slow or stress or resource_heavy or live_integration)" \
+            --tb=short --timeout=60 -n 5 "${node_ids[@]}"
+
   correctness-gate:
     name: correctness-gate
     runs-on: ubuntu-latest
@@ -401,7 +505,7 @@ jobs:
 
   release-required-result:
     name: release-required-result
-    needs: [test, integration, correctness-gate, test-package, release-readiness]
+    needs: [test, integration, medium, correctness-gate, test-package, release-readiness]
     if: ${{ always() && github.event_name == 'pull_request' && github.base_ref == 'release' }}
     runs-on: ubuntu-latest
     steps:
@@ -409,6 +513,7 @@ jobs:
         env:
           FAST_TEST_RESULT: ${{ needs.test.result }}
           INTEGRATION_RESULT: ${{ needs.integration.result }}
+          MEDIUM_RESULT: ${{ needs.medium.result }}
           CORRECTNESS_RESULT: ${{ needs.correctness-gate.result }}
           PACKAGE_RESULT: ${{ needs.test-package.result }}
           RELEASE_READINESS_RESULT: ${{ needs.release-readiness.result }}
@@ -419,6 +524,7 @@ jobs:
           for pair in \
             "test (ubuntu-latest, 3.12)=$FAST_TEST_RESULT" \
             "integration=$INTEGRATION_RESULT" \
+            "medium=$MEDIUM_RESULT" \
             "correctness-gate=$CORRECTNESS_RESULT" \
             "test-package=$PACKAGE_RESULT" \
             "release-readiness=$RELEASE_READINESS_RESULT"; do
