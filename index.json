@@ -21967,6 +21967,13 @@
       "status": "open",
       "title": "ship-no-ship: service core (config, App auth, discovery, queue, outbox, heartbeat) and the doctor harness"
     },
+    "ssns-prepublication-hardening": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "ship-no-ship: merge the public-repository hardening (README notice, tag-on-main, zip64 and skipped-file checks)"
+    },
     "stabilize-full-test-suite-failures": {
       "claim": null,
       "needs": [],

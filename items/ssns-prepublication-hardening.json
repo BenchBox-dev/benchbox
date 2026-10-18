@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "#19 merged with green CI"
+  ],
+  "context": "#19 open at 3ab9d99, all 9 CI checks green, independent agent review MERGE. Owner said \"Proceed\" on the release-workflow change. The agent's merge was refused by the session permission check; owner merges or allows. The repository went public before this merged (owner go), so the README notice is not yet live.",
+  "description": "Plan section 16 step P0, now joeharris76/ship-no-ship#19. README says outside contributions are not accepted and outside text is untrusted; release.yml checks the tag's commit is on a fresh fetch of main before any repository code runs; verify_wheel.py validates zip64 extra fields and disk start; check_publish_safety.py lists every skipped object, keys skip allowances by blob ID, finds history submodules, and CI uses --fail-on-skipped.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51",
+      "at": "2026-10-18T00:57:50Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "9524e98253fd44af99af23499d1ad7df",
+      "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    }
+  ]
+}
