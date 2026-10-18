@@ -4,7 +4,7 @@
     "MCP config construction either shares the CLI resolution function, or a parity test asserts that both give the same `DatabaseConfig` for the same inputs.",
     "fabric-lakehouse and Trino register specs for the options their adapters read, and the per-platform parity test covers them."
   ],
-  "context": "These are follow-ups from the option-resolution PR (#2983); start them only after it merges. The precedence order is ADR D5: explicit > tuning > legacy > default, and conflicting explicit values raise. The tests to extend are `tests/unit/cli/test_option_resolution.py` and `tests/unit/cli/test_platform_options_reach_adapters.py`.",
+  "context": "These are follow-ups from the option-resolution PR (#2983), which merged on 2026-10-16 (9a0947f74); this item is ready. The precedence order is ADR D5: explicit > tuning > legacy > default, and conflicting explicit values raise. The tests to extend are `tests/unit/cli/test_option_resolution.py` and `tests/unit/cli/test_platform_options_reach_adapters.py`. Owner, 2026-10-15, Claude session e0e74e6b, question dialog: \"Keep follow-up tracker items\".",
   "description": "These are gaps left by the single option-resolution path in #2983:\n- Interactive-mode platform options (`_interactive_platform_options`, near `benchbox/cli/commands/run.py:1857`) are applied after `create_config` and skip the explicit layer. So they get no precedence check and no alias resolution.\n- MCP builds `DatabaseConfig` directly instead of through `create_config`. That is correct today, because MCP has no saved-profile layer, but it is a second path that can drift.\n- fabric-lakehouse registers only the shared driver and plan specs.\n- Trino has no `host` spec.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/2983"
@@ -17,6 +17,14 @@
       "op": "create",
       "op_id": "2405bcbfb1864d2ba513cfc303178d8a",
       "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    },
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd",
+      "at": "2026-10-18T00:00:14Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "244a2312529a41248ab3caa5944107dd",
+      "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
     }
   ]
 }
