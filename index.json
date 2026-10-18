@@ -1052,7 +1052,7 @@
         "astro-site-32-port-docs-generators"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Port the landing page and the /prompts composer to Astro with behaviour parity"
     },
     "astro-site-36-site-metadata-and-404": {
