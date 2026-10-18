@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import collections
 import datetime as _dt
+import importlib.util
 import json
 import math
 import pathlib
@@ -15,11 +16,15 @@ COMPANION_SUFFIXES = (".manifest.json", ".plans.json", ".tuning.json", ".applied
 LEGACY_MANIFEST_NAME = "submission-manifest.json"
 
 MINIMUM_PLATFORMS_PER_COHORT = 3
+DOCUMENTED_SHALLOW_COHORTS = {
+    ("tpch", "0.01"): frozenset({"datafusion", "duckdb"}),
+    ("tpch", "0.1"): frozenset({"datafusion", "duckdb"}),
+    ("tpch", "1.0"): frozenset({"duckdb"}),
+}
 NON_CLEAN_VALIDATION_STATUSES = frozenset(
     {"failed", "interrupted", "partial", "error", "not_run", "not_validated", "uncertain", "unknown"}
 )
 NON_CLEAN_TRANSLATION_STATUSES = frozenset({"fallback", "failed"})
-UNOFFICIAL_COMPLIANCE_CLASSES = frozenset({"unofficial_nonstandard", "unofficial_subscale"})
 PHASE_ALIASES = {"standard": "power"}
 EXECUTION_RUN_TYPES = frozenset({"measurement", "warmup"})
 PASS_STATUSES = frozenset({"SUCCESS", "PASS", "pass", "success"})
@@ -37,6 +42,14 @@ APPLIED_TUNING_STATUSES = frozenset({"applied_unverified", "applied_verified"})
 POWER_SCORE_BENCHMARKS = frozenset({"tpch", "tpcds"})
 THROUGHPUT_SCORE_BENCHMARKS = frozenset({"tpch", "tpcds"})
 THROUGHPUT_PHASE = "throughput"
+MINIMUM_THROUGHPUT_STREAMS = 2
+THROUGHPUT_STREAM_QUERY_IDS = {
+    "tpch": frozenset(str(number) for number in range(1, 23)),
+    "tpcds": frozenset(str(number) for number in range(1, 100)),
+}
+KNOWN_DEFECTIVE_DATA = "known_defective_data"
+TPCDS_VARIANT_BASES = ("14", "23", "24", "39")
+THROUGHPUT_USABLE_STATUSES = frozenset({"SUCCESS", "PASS"})
 UTC = _dt.timezone.utc
 DATE_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")
 TIMESTAMP_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-]\d{2}:\d{2})?$")
@@ -72,6 +85,43 @@ def _load_bundle(bundle: pathlib.Path) -> dict:
         raise CorpusReadError(f"ERROR reading {bundle}: {exc}") from exc
 
 
+def _load_repo_module(name: str, relative_path: str):
+    module_path = pathlib.Path(__file__).resolve().parents[1] / relative_path
+    spec = importlib.util.spec_from_file_location(name, module_path)
+    if spec is None or spec.loader is None or not module_path.is_file():
+        raise CorpusReadError(f"ERROR cannot load {module_path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+SUBSCALE_POLICY = _load_repo_module("_benchbox_subscale_policy", "benchbox/core/results/subscale_policy.py")
+
+
+def _load_export_anonymized_errors():
+    try:
+        from benchbox.validation.bundle import export_anonymized_errors
+
+        return export_anonymized_errors
+    except ImportError:
+        pass
+    return _load_repo_module("_benchbox_validation_bundle", "benchbox/validation/bundle.py").export_anonymized_errors
+
+
+def unanonymized_bundle_errors(bundles: list[pathlib.Path]) -> list[str]:
+    export_anonymized_errors = _load_export_anonymized_errors()
+    errors: list[str] = []
+    for bundle in bundles:
+        try:
+            payload = _load_bundle(bundle)
+        except CorpusReadError as exc:
+            errors.append(f"{bundle}: {exc}")
+            continue
+        errors.extend(f"{bundle}: {message}" for message in export_anonymized_errors(payload))
+    return errors
+
+
 def _phase_executed(phase: object) -> bool:
     if not isinstance(phase, dict) or not phase:
         return False
@@ -92,6 +142,147 @@ def bundle_phase(payload: dict) -> str:
     if _phase_executed(phases.get("throughput_test")):
         return "throughput"
     return "unknown"
+
+
+def _configured_stream_count(payload: dict) -> int | None:
+    for section_name in ("run", "config"):
+        stream_count = _mapping(payload.get(section_name)).get("streams")
+        if isinstance(stream_count, int) and not isinstance(stream_count, bool):
+            return stream_count
+        if isinstance(stream_count, float) and stream_count.is_integer():
+            return int(stream_count)
+    return None
+
+
+def _throughput_stream_count_mismatch(payload: dict) -> tuple[int, int] | None:
+    throughput = _mapping(_mapping(payload.get("phases")).get("throughput_test"))
+    if str(throughput.get("status") or "").upper() != "COMPLETED":
+        return None
+    configured_count = _configured_stream_count(payload)
+    stream_results = throughput.get("stream_results")
+    if configured_count is None or not isinstance(stream_results, list):
+        return None
+    if len(stream_results) == configured_count:
+        return None
+    return configured_count, len(stream_results)
+
+
+def _stream_id(raw: object) -> int | None:
+    if isinstance(raw, bool):
+        return None
+    if isinstance(raw, int):
+        return raw
+    if isinstance(raw, float) and raw.is_integer():
+        return int(raw)
+    if isinstance(raw, str) and raw.strip().isascii() and raw.strip().isdigit():
+        return int(raw.strip())
+    return None
+
+
+def _logical_query_id(raw: object) -> str | None:
+    if not isinstance(raw, str):
+        return None
+    text = raw.strip()
+    upper = text.upper()
+    if upper.startswith("QUERY_"):
+        text = text[6:]
+    elif upper.startswith("QUERY"):
+        text = text[5:]
+    elif upper.startswith("Q") and len(text) > 1 and (text[1].isdigit() or text[1].islower()):
+        text = text[1:]
+    text = text.strip()
+    if "." in text:
+        base, _, extension = text.rpartition(".")
+        if extension.isalpha():
+            text = base.strip()
+    if not text:
+        return None
+    match = re.fullmatch(r"(\d+)([A-Za-z]+)?", text)
+    if match:
+        digits, suffix = match.groups()
+        return f"{digits}{suffix.lower() if suffix else ''}"
+    return text
+
+
+def _fold_tpcds_variants(observed: set[str]) -> set[str]:
+    folded = set(observed)
+    for base in TPCDS_VARIANT_BASES:
+        folded.discard(base)
+        if {f"{base}a", f"{base}b"} <= folded:
+            folded.add(base)
+    return folded
+
+
+def _throughput_stream_ids(streams: list) -> list[int] | None:
+    stream_ids: list[int] = []
+    for entry in streams:
+        stream_id = _stream_id(entry.get("stream_id")) if isinstance(entry, dict) else None
+        if stream_id is None or entry.get("success") is not True:
+            return None
+        stream_ids.append(stream_id)
+    return stream_ids if sorted(stream_ids) == list(range(1, len(stream_ids) + 1)) else None
+
+
+def _usable_queries_by_stream(payload: dict) -> dict[int, set[str]] | None:
+    rows = payload.get("queries")
+    observed: dict[int, set[str]] = {}
+    for row in rows if isinstance(rows, list) else []:
+        data = _mapping(row)
+        status = data.get("status")
+        if not isinstance(status, str) or status.upper() not in THROUGHPUT_USABLE_STATUSES:
+            continue
+        try:
+            duration = float(data.get("ms"))
+        except (TypeError, ValueError):
+            continue
+        if not math.isfinite(duration) or duration < 1.0:
+            continue
+        if str(data.get("run_type") or "measurement").strip().lower() != "measurement":
+            continue
+        query_id = _logical_query_id(data.get("id"))
+        if query_id is None:
+            continue
+        stream_id = _stream_id(data.get("stream", data.get("stream_id", 0)))
+        if stream_id is None:
+            return None
+        if stream_id != 0:
+            observed.setdefault(stream_id, set()).add(query_id)
+    return observed
+
+
+def _throughput_streams_incomplete(payload: dict) -> bool:
+    block = _mapping(_mapping(payload.get("phases")).get("throughput_test"))
+    if str(block.get("status") or "").upper() != "COMPLETED":
+        return False
+    streams = block.get("stream_results")
+    if not isinstance(streams, list) or not streams:
+        return True
+    stream_ids = _throughput_stream_ids(streams)
+    if stream_ids is None:
+        return True
+    raw_benchmark = _mapping(payload.get("benchmark")).get("id")
+    benchmark = raw_benchmark.strip().casefold() if isinstance(raw_benchmark, str) else None
+    canonical = THROUGHPUT_STREAM_QUERY_IDS.get(benchmark)
+    if canonical is None:
+        return False
+    observed = _usable_queries_by_stream(payload)
+    if observed is None or len(stream_ids) < MINIMUM_THROUGHPUT_STREAMS:
+        return True
+    if benchmark == "tpcds":
+        observed = {stream_id: _fold_tpcds_variants(ids) for stream_id, ids in observed.items()}
+    if not set(observed) <= set(stream_ids):
+        return True
+    return any(not canonical <= observed.get(stream_id, set()) for stream_id in stream_ids)
+
+
+def _throughput_streams_succeeded(payload: dict) -> bool:
+    block = _mapping(_mapping(payload.get("phases")).get("throughput_test"))
+    streams = block.get("stream_results")
+    return (
+        isinstance(streams, list)
+        and bool(streams)
+        and all(isinstance(stream, dict) and stream.get("success") is True for stream in streams)
+    )
 
 
 def _stream_count(payload: dict) -> int | None:
@@ -325,7 +516,18 @@ def _tpc_metric(payload: dict, name: str) -> float | None:
 
 
 def _power_score(payload: dict) -> float | None:
-    return _tpc_metric(payload, "power_at_size")
+    recorded = _tpc_metric(payload, "power_at_size")
+    benchmark = _mapping(payload.get("benchmark"))
+    compliance = SUBSCALE_POLICY.effective_compliance_class(
+        benchmark.get("id"), benchmark.get("scale_factor"), benchmark.get("compliance_class")
+    )
+    if compliance != SUBSCALE_POLICY.SUBSCALE_COMPLIANCE_CLASS:
+        return recorded
+    queries = payload.get("queries")
+    power, _ = SUBSCALE_POLICY.subscale_power_at_size(
+        benchmark.get("id"), recorded, queries if isinstance(queries, list) else [], benchmark.get("scale_factor")
+    )
+    return power
 
 
 def _throughput_phase_clean(payload: dict) -> bool:
@@ -335,7 +537,11 @@ def _throughput_phase_clean(payload: dict) -> bool:
     streams = block.get("stream_results")
     if not isinstance(streams, list) or not streams:
         return False
-    if not all(isinstance(stream, dict) and stream.get("success") is True for stream in streams):
+    if _throughput_stream_count_mismatch(payload) is not None:
+        return False
+    if _throughput_streams_incomplete(payload):
+        return False
+    if not _throughput_streams_succeeded(payload):
         return False
     return not block.get("errors") and not block.get("outstanding_work")
 
@@ -365,17 +571,48 @@ def _primary_metric_reason(payload: dict, display: list[tuple[str, float | None,
     return None
 
 
-def exclusion_reason(payload: dict) -> str | None:
+def sidecar_known_defects(bundle: pathlib.Path) -> list[str]:
+    manifest_path = bundle.parent / f"{bundle.stem}.manifest.json"
+    try:
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    if not isinstance(payload, dict):
+        return []
+    recorded = payload.get("known_defects")
+    if not isinstance(recorded, list):
+        return []
+    return [item for item in recorded if isinstance(item, str) and item]
+
+
+def exclusion_reason(payload: dict, bundle: pathlib.Path | None = None) -> str | None:
+    if bundle is not None and sidecar_known_defects(bundle):
+        return KNOWN_DEFECTIVE_DATA
     benchmark = _mapping(payload.get("benchmark"))
-    compliance = benchmark.get("compliance_class")
-    if compliance is not None and str(compliance) in UNOFFICIAL_COMPLIANCE_CLASSES:
+    compliance = SUBSCALE_POLICY.effective_compliance_class(
+        benchmark.get("id"), benchmark.get("scale_factor"), benchmark.get("compliance_class")
+    )
+    if compliance in SUBSCALE_POLICY.RANKING_EXCLUDED_COMPLIANCE_CLASSES:
         return "unofficial_compliance"
     if failed_query_count(payload):
         return "failed_queries"
+    if bundle_phase(payload) == THROUGHPUT_PHASE and _throughput_stream_count_mismatch(payload) is not None:
+        return "stream_count_mismatch"
+    if (
+        bundle_phase(payload) == THROUGHPUT_PHASE
+        and _throughput_streams_succeeded(payload)
+        and _throughput_streams_incomplete(payload)
+    ):
+        return "incomplete_throughput_streams"
     if bundle_validation_status(payload) in NON_CLEAN_VALIDATION_STATUSES:
         return "validation_not_clean"
     if not _tuning_applied(payload):
         return "tuning_not_applied"
+    platform_section = payload.get("platform")
+    if isinstance(platform_section, dict):
+        gateway = platform_section.get("gateway")
+        if isinstance(gateway, dict) and gateway.get("routed"):
+            return "gateway_routed"
     display = _display_timings(payload)
     timing = _timing_exclusion(display, _logical_query_count(payload, display))
     if timing is not None:
@@ -383,8 +620,8 @@ def exclusion_reason(payload: dict) -> str | None:
     return _primary_metric_reason(payload, display)
 
 
-def bundle_rankable(payload: dict) -> bool:
-    return exclusion_reason(payload) is None
+def bundle_rankable(payload: dict, bundle: pathlib.Path | None = None) -> bool:
+    return exclusion_reason(payload, bundle) is None
 
 
 def cohort_phase_suffix(payload: dict) -> str:
@@ -402,6 +639,16 @@ def _cohort_key(payload: dict) -> CohortKey:
     except Exception as exc:
         raise CorpusReadError(f"ERROR missing cohort fields: {exc}") from exc
     return (benchmark_id, f"{scale_factor}{cohort_phase_suffix(payload)}")
+
+
+_VARIANT_PLATFORM_SUFFIX_RE = re.compile(r"[-_]trust[-_](?:ci|community|local|unknown)", re.IGNORECASE)
+
+
+def _variant_aware_identity(payload: dict, platform_name: str) -> str:
+    from benchbox.core.results.execution_variant import published_variant_id
+
+    base = _VARIANT_PLATFORM_SUFFIX_RE.sub("", platform_name).strip().lower().replace(" ", "-")
+    return published_variant_id(payload, base)
 
 
 def _comparison_identity(bundle: pathlib.Path, payload: dict) -> str:
@@ -423,9 +670,9 @@ def _comparison_identity(bundle: pathlib.Path, payload: dict) -> str:
                     if candidate and str(candidate) != "unknown":
                         version = candidate
                         break
+        identity = _variant_aware_identity(payload, str(platform))
     except Exception as exc:
         raise CorpusReadError(f"ERROR reading platform identity from {bundle}: {exc}") from exc
-    identity = str(platform)
     if version and str(version) != "unknown":
         identity = f"{identity} v{str(version)[:120]}"
     return identity
@@ -482,8 +729,15 @@ def cohort_platforms(bundles: list[pathlib.Path]) -> dict[CohortKey, set[str]]:
     cohorts: collections.defaultdict[CohortKey, set[str]] = collections.defaultdict(set)
     for bundle in bundles:
         payload = _load_bundle(bundle)
+        mismatch = _throughput_stream_count_mismatch(payload) if bundle_phase(payload) == THROUGHPUT_PHASE else None
+        if mismatch is not None:
+            configured_count, recorded_count = mismatch
+            raise CorpusReadError(
+                f"ERROR throughput stream count mismatch in {bundle}: configured={configured_count}, "
+                f"stream_results={recorded_count}"
+            )
         identities = cohorts[_cohort_key(payload)]
-        if bundle_rankable(payload):
+        if bundle_rankable(payload, bundle):
             identities.add(_comparison_identity(bundle, payload))
     return dict(cohorts)
 
@@ -547,6 +801,20 @@ def shallow_cohorts(cohorts: dict[CohortKey, set[str]]) -> dict[CohortKey, set[s
     return {key: platforms for key, platforms in cohorts.items() if 0 < len(platforms) < MINIMUM_PLATFORMS_PER_COHORT}
 
 
+def documented_shallow_cohorts(
+    bundles: list[pathlib.Path], cohorts: dict[CohortKey, set[str]]
+) -> dict[CohortKey, set[str]]:
+    shallow = shallow_cohorts(cohorts)
+    documented: dict[CohortKey, set[str]] = {}
+    for bundle in bundles:
+        if not sidecar_known_defects(bundle):
+            continue
+        key = _cohort_key(_load_bundle(bundle))
+        if key in shallow and DOCUMENTED_SHALLOW_COHORTS.get(key) == shallow[key]:
+            documented[key] = shallow[key]
+    return documented
+
+
 def unranked_cohorts(cohorts: dict[CohortKey, set[str]]) -> list[CohortKey]:
     return sorted(key for key, platforms in cohorts.items() if not platforms)
 
@@ -556,6 +824,17 @@ def main(bundles_dir: pathlib.Path | None = None, *, as_of: _dt.date | None = No
     as_of = as_of or utc_today()
     bundles = discover_bundles(bundles_dir)
     print(f"Found {len(bundles)} bundles")
+
+    try:
+        unanonymized = unanonymized_bundle_errors(bundles)
+    except CorpusReadError as exc:
+        print(exc)
+        return 1
+    if unanonymized:
+        print(f"ERROR: {len(unanonymized)} anonymization finding(s); unanonymized bundles cannot merge:")
+        for message in unanonymized:
+            print(f"  {message}")
+        return 1
 
     try:
         cohorts = cohort_platforms(bundles)
@@ -585,15 +864,30 @@ def main(bundles_dir: pathlib.Path | None = None, *, as_of: _dt.date | None = No
     print(format_recency_report(overall, per_cohort, as_of=as_of))
 
     low = shallow_cohorts(cohorts)
-    if low:
-        print(f"\nWARN: {len(low)} cohort(s) have <3 comparison identities: { {k: len(v) for k, v in low.items()} }")
+    documented_low = documented_shallow_cohorts(bundles, cohorts)
+    unexpected = {key: platforms for key, platforms in low.items() if documented_low.get(key) != platforms}
+    if unexpected:
+        print(
+            f"\nWARN: {len(unexpected)} cohort(s) have <3 comparison identities: "
+            f"{ {k: len(v) for k, v in unexpected.items()} }"
+        )
         return 1
+    if low:
+        print(f"\nDOCUMENTED SHALLOW: {len(low)} cohort(s) below the floor with known-defective exclusions:")
+        for key, platforms in sorted(low.items()):
+            print(f"  {key[0]} SF={key[1]}: {sorted(platforms)}")
 
     unranked = unranked_cohorts(cohorts)
     if unranked:
         print(f"\nUNRANKED: {len(unranked)} cohort(s) have no rankable bundle and publish no ranking: {unranked}")
     ranked = len(cohorts) - len(unranked)
-    print(f"\nAll {ranked} ranked cohort(s) meet the >={MINIMUM_PLATFORMS_PER_COHORT}-identity depth criterion.")
+    if low:
+        print(
+            f"\n{ranked - len(low)} ranked cohort(s) meet the >={MINIMUM_PLATFORMS_PER_COHORT}-identity "
+            f"depth criterion; {len(low)} documented shallow cohort(s) listed above."
+        )
+    else:
+        print(f"\nAll {ranked} ranked cohort(s) meet the >={MINIMUM_PLATFORMS_PER_COHORT}-identity depth criterion.")
     return 0
 
 
