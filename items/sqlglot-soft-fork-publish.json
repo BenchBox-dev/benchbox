@@ -1,12 +1,12 @@
 {
   "acceptance": [
-    "Owner approval explicitly covers the concrete candidate artifacts/version/hashes; missing publishing settings or credentials remain an owner-only blocker and are not bypassed.",
-    "Publish the correct downstream name/version, immutable artifacts and explicit downstream tag without upstream-named jobs or automatic docs/changelog writes.",
-    "Fresh public pip and uv installations resolve the expected version, provenance and package hashes and preserve upstream SQLGlot coexistence.",
-    "Record public artifact/install evidence, then finish this item. Do not substitute local path/VCS-only developer overrides or mark publication done before live verification."
+    "Canonical repository is BenchBox-dev/benchbox-sqlglot and existing history, tags, PRs and upstream relationship remain intact.",
+    "Deterministic exporter produces a private benchbox._vendor.sqlglot runtime from a pinned clean commit, preserving license, py.typed, version, manifest, upstream/fork SHAs and per-file hashes.",
+    "No active workflow can publish a separate benchbox-sqlglot PyPI project; old waiting release cancelled and no upload performed.",
+    "Native source/compiled and relocated runtime checks pass; reviewed fork PR merged and exact immutable source recorded for adoption."
   ],
-  "context": "Transfer complete2026-10-18: canonical BenchBox-dev/sqlglot, unchanged repository ID1368421376 and upstream tobymao/sqlglot relationship. Old release run39123289409 cancelled with no upload. Publishing environment24628212051 retained required human reviewerjoeharris76. Origin updated to organization; owned release worktree now branchfix/benchbox-organization-release at original main59b65e5f. Implemented metadata URLs, release repository guard, personal-owner rejection test, manifest revision30.23.0.2, package README and maintenance instructions. Local native make check running. Current claim generatione75cfad8f9334628a2ea8b45135fdbda. Previous30.23.0.1 hashes/tag immutable historical evidence, not authorization for replacement bytes. Need current-head PR/CI merge then organization-owned main candidate build/verification and exact-artifact approval. Authenticated browser access being rechecked for PyPI publisher; required new ownerBenchBox-dev reposqlglot workflowbenchbox-release.yml environmentbenchbox-sqlglot-pypi. Adoption remains unclaimed pending publication.",
-  "description": "Publish the verified BenchBox-dev owned benchbox-sqlglot release after exact-artifact approval. Transfer the existing fork without losing history, update repository metadata and publishing identity guards, retain the30.23.0.1 tag and use30.23.0.2 for replacement bytes. Verify source/artifact CI, organization-controlled environment and PyPI trusted publisher. Fresh public pip/uv coexistence proof is required before BenchBox adoption.",
+  "context": "Owner explicitly approved vendoring instead of separate publication and named canonical BenchBox-dev/benchbox-sqlglot. Repo renamed in place, ID1368421376 unchanged, origin updated. Original30.23.0.1tag remains. ForkVendoring agent editing source tooling in owned releaseWT; ConsumerMigration editing known BenchBox consumers in shared ownedWT. Parent owns integration/governance/guard/packaging and all checks. Existing claim generatione75cfad8f9334628a2ea8b45135fdbda. Need deterministic private exporter then merge fork and pin immutable source in BenchBox. No PyPI publisher setup or production upload is authorized/needed in revised plan.",
+  "description": "Supersedes separate PyPI publication per the owner's explicit 2026-10-18 vendoring approval. Keep maintained source in BenchBox-dev/benchbox-sqlglot, preserve upstream history and immutable refs, remove production package publication, and implement deterministic clean-source export to benchbox._vendor.sqlglot with license, exact provenance and per-file hashes. Review and merge fork changes through native source/compiled/relocated-runtime checks. Runtime shipping and installed BenchBox proof belong to adoption.",
   "links": [
     "https://github.com/joeharris76/sqlglot/actions/runs/39093404507",
     "https://github.com/joeharris76/sqlglot/actions/runs/39093404507/artifacts/12123572445",
@@ -138,6 +138,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "c05fc5c5f77b401d94a7852492934d8e",
+      "session_id": "a5197da3d60b4447b3b0ac38e65a8fbc"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:00f9896dc298dff5fa33ec9d",
+      "at": "2026-10-18T12:57:27Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "095049cf7bec4a5f8468303735f28830",
       "session_id": "a5197da3d60b4447b3b0ac38e65a8fbc"
     }
   ]

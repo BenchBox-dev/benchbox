@@ -21983,7 +21983,7 @@
       ],
       "priority": "medium-high",
       "status": "active",
-      "title": "Publish the verified BenchBox SQLGlot release with owner approval"
+      "title": "Prepare the maintained SQLGlot source for private BenchBox vendoring"
     },
     "sqlglot-soft-fork-source": {
       "claim": null,
