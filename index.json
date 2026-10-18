@@ -21909,10 +21909,15 @@
       "title": "Re-test SSB tuned template with merge-settle and decide keep/adjust/disable"
     },
     "ssns-go-public": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-19T00:56:58Z",
+        "generation": "7a15f25680f848edb6bd1ee4c8b9cd96",
+        "renewals": 0,
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "ship-no-ship: audit, make the repository public and apply protections"
     },
     "ssns-n1-bootstrap": {
