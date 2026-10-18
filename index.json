@@ -14878,10 +14878,15 @@
       "title": "Oracle read evidence still accepts reads that show none of the head file's content"
     },
     "oracle-review-cancel-race-20261016": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-19T00:49:51Z",
+        "generation": "2b6cd4c70a7b41979d79ebc067ea4ca6",
+        "renewals": 0,
+        "worker": "mcp:tbh:joe@joe-mac-mini.local:3ce222eaad5d12493e27d4cc"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Stop concurrent runs from cancelling the verdict-triggered oracle-review run"
     },
     "oracle-review-codex-limit-fallback-20261006": {
