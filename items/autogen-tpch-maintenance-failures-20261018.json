@@ -7,7 +7,7 @@
     "PR merged with required checks green (oracle review if a soundness path changes)",
     "Canary and durations proof is done in autogen-canary-verify-20261018 and autogen-nightly-dispatch-verify-20261018"
   ],
-  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs classification evidence for all four plus green Linux runs. FAIL if a test is relaxed without GATE-E evidence. Existing related items: ci-retry-artifact-collision-breaks-canary-gate (separate aggregator bug).",
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs classification evidence for all four plus green Linux runs. FAIL if a test is relaxed without GATE-E evidence. Existing related items: ci-retry-artifact-collision-breaks-canary-gate (separate aggregator bug).\nPre-publication (AGENTS.md): self-review with the code review action and fix every Critical and Required finding before make pr-open (G13).",
   "description": "Confirmed in run 39125986956 (develop 3b3cfbcaa) and canary issue #2887 comment of run 39127140235: four tests fail. (1) tests/integration/test_plan_capture_combined_divergence.py::test_real_combined_power_maintenance_checkpoint_captures_pre_mutation_plan: 'RF2 did not delete the identified oldest order - test setup invalid' (remaining == 1). (2) tests/integration/test_tpc_compliance_integration.py::TestTPCHCompliance::test_tpch_maintenance_test_integration: result.rf2_operations == 0 with errors [\"RF1 pair 1 failed: 'Mock' object is not subscriptable\"]. (3) tests/integration/test_tpch_official_benchmark.py::TestTPCHOfficialBenchmark::test_all_phases_enabled: phases.maintenance.return_value.run_maintenance_test.called is False. (4) tests/integration/test_tpch_refresh_integration.py::test_dbgen_update_sets_succeed_with_long_output_paths: assert 108 > 111 (the runner's tmp path is shorter than the hardcoded padding assumes).\nThe canary failure set changed day to day since 2026-10-09 (last green c419dd2d1), so these are several regressions, not one. Whether (1)-(3) are product regressions or stale tests is NOT established (INFERENCE: (4) is a test-environment assumption).\nGATE-E per failure: bisect or inspect the culprit change in c419dd2d1..3b3cfbcaa and classify product regression vs test defect with evidence. Product regression: fix the product and keep the test. Test defect: edit the test only when the culprit PR/commit states the behavior change was intentional; otherwise treat it as a product bug. Ambiguous: create a finding follow-up and block this item; never edit a test to make it pass without that evidence (G6). For (4) compute the padding from the actual temp base length while preserving the long-path intent (confirm the intent from the test and its history).",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/issues/2887",
@@ -20,6 +20,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "7c60743d44bc47fd965719aa4e459d5d",
+      "session_id": "cab8a4e762844fd9912c504ebfd76c56"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7ac6538e56f6607b35a3f600",
+      "at": "2026-10-18T20:27:47Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c435876018784ef39723f57efc3e871e",
       "session_id": "cab8a4e762844fd9912c504ebfd76c56"
     }
   ]
