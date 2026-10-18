@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Cause identified (test fixture, location, or machine)",
+    "Slow doctor fixtures made fast, or the slowness explained",
+    "Local suite time recorded and compared with CI"
+  ],
+  "context": "May be the same machine-wide stall as BenchBox item bound-datagen-sync-and-investigate-io-stall; check that first.",
+  "description": "On 2026-10-17 a local pytest run of ship-no-ship (main plus the doctor PR, from a worktree under the agent scratch directory) sat for more than 10 minutes using 3.7 s of CPU, in an uninterruptible wait (state U). It was killed at about 54%. A rerun passed (1449 passed, 1 skipped) but took 609 s; the slowest steps were doctor test setups (19.5 s and 12.4 s) and a discovery test (21 s). Unknown whether this is test code, temp-dir location, or a machine-wide macOS I/O stall.",
+  "links": [
+    "bound-datagen-sync-and-investigate-io-stall"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51",
+      "at": "2026-10-18T01:02:16Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "c3527eb7592a4191aac7f90afd78bfca",
+      "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    }
+  ]
+}

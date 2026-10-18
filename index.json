@@ -22090,6 +22090,13 @@
       "status": "done",
       "title": "ship-no-ship: audit, make the repository public and apply protections"
     },
+    "ssns-local-test-suite-stall": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "ship-no-ship: the local test suite takes 10 minutes on the Mac and one run stalled"
+    },
     "ssns-n1-bootstrap": {
       "claim": null,
       "needs": [],
