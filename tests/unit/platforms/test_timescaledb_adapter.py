@@ -186,8 +186,8 @@ class TestTimescaleDBAdapter:
         assert adapter.supports_tuning_type(TuningType.CLUSTERING) is True
         assert adapter.supports_tuning_type(TuningType.PRIMARY_KEYS) is True
         assert adapter.supports_tuning_type(TuningType.FOREIGN_KEYS) is True
-        assert adapter.supports_tuning_type(TuningType.DISTRIBUTION) is False
-        assert adapter.supports_tuning_type(TuningType.SORTING) is False
+        assert adapter.supports_tuning_type(TuningType.DISTRIBUTION) is True
+        assert adapter.supports_tuning_type(TuningType.SORTING) is True
 
     def test_get_platform_info_basic(self, timescale_stubs):
         adapter = TimescaleDBAdapter(
@@ -445,3 +445,188 @@ class TestTimescaleDBCoverage:
         assert stats == {}
         assert loading_time == 0.1
         assert extra is None
+
+
+@pytest.mark.parametrize("column_type", ["integer", "text"])
+def test_native_partition_rejects_non_temporal_column(timescale_stubs, column_type):
+    from benchbox.core.tuning.applied_ledger import AppliedTuningLedger
+    from benchbox.core.tuning.interface import TableTuning, TuningColumn
+
+    adapter = TimescaleDBAdapter()
+    adapter._applied_tuning_ledger = AppliedTuningLedger()
+    connection = Mock()
+    connection.cursor.return_value.fetchone.return_value = (column_type,)
+    tuning = TableTuning(
+        table_name="events",
+        partitioning=[TuningColumn("event_time", column_type, 1)],
+    )
+    adapter._apply_native_table_tuning(connection, "events", tuning)
+    assert "events" not in adapter._hypertables
+    assert not adapter._applied_tuning_ledger.statements
+    assert adapter._applied_tuning_ledger.dropped[0].intent == "partitioning:events"
+
+
+def test_native_catalog_mismatch_does_not_claim_satisfaction(timescale_stubs):
+    from benchbox.core.tuning.interface import TuningColumn, TuningType
+
+    adapter = TimescaleDBAdapter()
+    cursor = Mock()
+    cursor.fetchall.return_value = [("other_time",)]
+    requested = {
+        TuningType.PARTITIONING: [TuningColumn("event_time", "DATE", 1)],
+        TuningType.SORTING: [],
+        TuningType.CLUSTERING: [],
+        TuningType.DISTRIBUTION: [],
+    }
+    with pytest.raises(ValueError, match="Hypertable catalog mismatch"):
+        adapter._verify_native_table_tuning(cursor, "events", requested)
+
+
+def test_native_layout_success_records_catalog_evidence(timescale_stubs, monkeypatch):
+    from unittest.mock import Mock
+
+    import benchbox.platforms.timescaledb as timescaledb_module
+    from benchbox.core.tuning.applied_ledger import AppliedTuningLedger
+    from benchbox.core.tuning.interface import TableTuning, TuningColumn
+
+    class _FakeComposed:
+        def __init__(self, text):
+            self._text = text
+
+        def as_string(self, connection):
+            return self._text
+
+        def format(self, *args, **kwargs):
+            return _FakeComposed(self._text)
+
+    fake_psql = Mock()
+    fake_psql.Identifier.side_effect = lambda *parts: _FakeComposed('"public"."events"')
+    fake_psql.Literal.side_effect = lambda value: _FakeComposed(f"'{value}'")
+    fake_psql.SQL.side_effect = lambda text: _FakeComposed(text)
+    monkeypatch.setattr(timescaledb_module, "psql", fake_psql)
+
+    adapter = TimescaleDBAdapter()
+    adapter._applied_tuning_ledger = AppliedTuningLedger()
+    cursor = Mock()
+    cursor.fetchone.return_value = ("date",)
+    cursor.fetchall.side_effect = [
+        [("event_time",)],
+        [],
+        [("amount", None, 1, True, False), ("category", 1, None, None, None)],
+    ]
+    connection = Mock()
+    connection.cursor.return_value = cursor
+    tuning = TableTuning(
+        table_name="events",
+        partitioning=[TuningColumn("event_time", "DATE", 1)],
+        sorting=[TuningColumn("amount", "NUMERIC", 1)],
+        clustering=[TuningColumn("category", "INTEGER", 1)],
+    )
+    adapter._apply_native_table_tuning(connection, "events", tuning)
+    assert "events" in adapter._hypertables
+    assert not adapter._applied_tuning_ledger.dropped
+    satisfied = {entry.intent for entry in adapter._applied_tuning_ledger.satisfied}
+    assert satisfied == {"partitioning:events", "sorting:events", "clustering:events"}
+    statements = [statement.statement for statement in adapter._applied_tuning_ledger.statements]
+    assert any("create_hypertable" in statement for statement in statements)
+    assert any("timescaledb.compress" in statement for statement in statements)
+
+
+def test_native_space_dimension_mismatch_fails(timescale_stubs):
+    from benchbox.core.tuning.interface import TuningColumn, TuningType
+
+    adapter = TimescaleDBAdapter()
+    cursor = Mock()
+    cursor.fetchall.side_effect = [[("event_time",)], [("wrong_space",)]]
+    requested = {
+        TuningType.PARTITIONING: [TuningColumn("event_time", "DATE", 1)],
+        TuningType.SORTING: [],
+        TuningType.CLUSTERING: [],
+        TuningType.DISTRIBUTION: [TuningColumn("category", "INTEGER", 1)],
+    }
+    with pytest.raises(ValueError, match="Space dimension catalog mismatch"):
+        adapter._verify_native_table_tuning(cursor, "events", requested)
+
+
+def test_native_sorting_extra_non_time_column_fails(timescale_stubs):
+    from benchbox.core.tuning.interface import TuningColumn, TuningType
+
+    adapter = TimescaleDBAdapter()
+    cursor = Mock()
+    cursor.fetchall.side_effect = [
+        [("event_time",)],
+        [],
+        [("amount", None, 1, True, False), ("intruder", None, 2, True, False)],
+    ]
+    requested = {
+        TuningType.PARTITIONING: [TuningColumn("event_time", "DATE", 1)],
+        TuningType.SORTING: [TuningColumn("amount", "NUMERIC", 1)],
+        TuningType.CLUSTERING: [],
+        TuningType.DISTRIBUTION: [],
+    }
+    with pytest.raises(ValueError, match="Compression ordering catalog mismatch"):
+        adapter._verify_native_table_tuning(cursor, "events", requested)
+
+
+def test_native_segmentation_order_must_match(timescale_stubs):
+    from benchbox.core.tuning.interface import TuningColumn, TuningType
+
+    adapter = TimescaleDBAdapter()
+    cursor = Mock()
+    cursor.fetchall.side_effect = [
+        [("event_time",)],
+        [],
+        [("category", 1, None, None, None), ("region", 2, None, None, None)],
+    ]
+    requested = {
+        TuningType.PARTITIONING: [TuningColumn("event_time", "DATE", 1)],
+        TuningType.SORTING: [],
+        TuningType.CLUSTERING: [
+            TuningColumn("region", "INTEGER", 1),
+            TuningColumn("category", "INTEGER", 2),
+        ],
+        TuningType.DISTRIBUTION: [],
+    }
+    with pytest.raises(ValueError, match="Compression segmentation catalog mismatch"):
+        adapter._verify_native_table_tuning(cursor, "events", requested)
+
+
+def test_native_verify_failure_records_no_success_statements(timescale_stubs, monkeypatch):
+    from unittest.mock import Mock
+
+    import benchbox.platforms.timescaledb as timescaledb_module
+    from benchbox.core.tuning.applied_ledger import AppliedTuningLedger
+    from benchbox.core.tuning.interface import TableTuning, TuningColumn
+
+    class _FakeComposed:
+        def __init__(self, text):
+            self._text = text
+
+        def as_string(self, connection):
+            return self._text
+
+        def format(self, *args, **kwargs):
+            return _FakeComposed(self._text)
+
+    fake_psql = Mock()
+    fake_psql.Identifier.side_effect = lambda *parts: _FakeComposed('"public"."events"')
+    fake_psql.Literal.side_effect = lambda value: _FakeComposed(f"'{value}'")
+    fake_psql.SQL.side_effect = lambda text: _FakeComposed(text)
+    monkeypatch.setattr(timescaledb_module, "psql", fake_psql)
+
+    adapter = TimescaleDBAdapter()
+    adapter._applied_tuning_ledger = AppliedTuningLedger()
+    cursor = Mock()
+    cursor.fetchone.return_value = ("date",)
+    cursor.fetchall.side_effect = [[("other_time",)], [], []]
+    connection = Mock()
+    connection.cursor.return_value = cursor
+    tuning = TableTuning(
+        table_name="events",
+        partitioning=[TuningColumn("event_time", "DATE", 1)],
+    )
+    adapter._apply_native_table_tuning(connection, "events", tuning)
+    assert "events" not in adapter._hypertables
+    assert not adapter._applied_tuning_ledger.statements
+    assert not adapter._applied_tuning_ledger.satisfied
+    assert adapter._applied_tuning_ledger.dropped

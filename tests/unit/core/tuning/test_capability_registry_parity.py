@@ -332,9 +332,7 @@ _NOT_RENDERED: dict[str, frozenset[str]] = {
     "spark": frozenset({"check_constraints", "partitioning", "unique_constraints"}),
     "sqlite": frozenset({"check_constraints", "unique_constraints"}),
     "starrocks": frozenset({"check_constraints", "foreign_keys", "unique_constraints"}),
-    "timescaledb": frozenset(
-        {"check_constraints", "clustering", "distribution", "partitioning", "sorting", "unique_constraints"}
-    ),
+    "timescaledb": frozenset({"check_constraints", "unique_constraints"}),
     "trino": frozenset(
         {
             "check_constraints",
@@ -385,7 +383,7 @@ _RENDERED: dict[str, frozenset[str]] = {
     "spark": frozenset({"foreign_keys", "primary_keys", "sorting"}),
     "sqlite": frozenset({"foreign_keys", "primary_keys"}),
     "starrocks": frozenset({"distribution", "partitioning", "primary_keys", "sorting"}),
-    "timescaledb": frozenset({"foreign_keys", "primary_keys"}),
+    "timescaledb": frozenset({"clustering", "distribution", "foreign_keys", "partitioning", "primary_keys", "sorting"}),
     "trino": frozenset({"foreign_keys"}),
 }
 

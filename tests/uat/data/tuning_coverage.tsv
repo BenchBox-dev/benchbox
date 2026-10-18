@@ -373,7 +373,7 @@ pg-mooncake	nyctaxi	basic_constraints	waived	basic constraints are acceptable un
 pg-mooncake	flightdata	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 pg-mooncake	datavault	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 pg-mooncake	vector_search	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-timescaledb	tpch	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
+timescaledb	tpch	tuned_template	done	benchmark-specific tuned template exists	examples/tunings/timescaledb/tpch_tuned.yaml
 timescaledb	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 timescaledb	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 timescaledb	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-

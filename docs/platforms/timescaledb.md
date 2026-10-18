@@ -126,6 +126,41 @@ The commands run, in order: a TPC-H smoke test on TigerData cloud, TSBS on self-
 | `compression_after` | `7 days` | Age threshold for compression |
 | `service_url` | none | Parsed for cloud mode (`TIGERDATA_SERVICE_URL` or fallback) |
 
+## Tuning files
+
+Run the native TPC-H profile with:
+
+```bash
+benchbox run --platform timescaledb --benchmark tpch --scale 0.01 \
+  --phases generate,load,power --seed 42 \
+  --tuning examples/tunings/timescaledb/tpch_tuned.yaml \
+  --platform-option chunk_interval='1 year' --non-interactive
+```
+
+Each tuned table needs exactly one partition column with a server-side `DATE`
+or timestamp type. That column becomes its hypertable time dimension. The first
+distribution column, when present, becomes the native space dimension; every
+distribution and clustering column, in tuning order, becomes
+`timescaledb.compress_segmentby` in that exact order. Sorting columns become
+`timescaledb.compress_orderby` in tuning order; TimescaleDB may append the time
+column after the requested keys, and only that suffix is accepted. Sorting or
+segmentation requests enable compression, even when the platform's
+`compression_enabled` default is false. These are compression-layout settings,
+not a guarantee that all rows have already been compressed or that ordinary
+query output is sorted.
+
+The tuning file selects columns; `chunk_interval` and `compression_after`
+platform options select the intervals. An explicit layout request takes
+precedence over the generic compression switch. Without a table tuning entry,
+the existing automatic conversion of a column named `time` is unchanged.
+
+TimescaleDB requires unique indexes and primary keys to include every partition
+dimension. The example disables primary and foreign keys rather than changing
+the benchmark's logical keys. Incompatible requests are recorded as not applied
+with the server error. Native requests are checked against
+`timescaledb_information.dimensions` and `compression_settings`; successful
+readback is recorded with the corresponding intent in the applied tuning ledger.
+
 ## SSL Requirements
 
 TigerData cloud requires TLS. BenchBox defaults cloud mode to `sslmode=require`. `sslmode=verify-full` is not yet configured by default in BenchBox.

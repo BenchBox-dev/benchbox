@@ -84,3 +84,6 @@ snowflake:
           _project/analysis/snowflake-trial-exit/tuned-vs-untuned-tpcds-sf10.json:
           tuned/untuned 0.925 (95% CI 0.898-0.958), no detectable effect;
           campaign rule (95% CI bound vs 0.95/1.05), outside the harness, no A/A calibration
+timescaledb:
+  tpch:
+    measurements: []
