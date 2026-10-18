@@ -15968,15 +15968,10 @@
       "title": "`make pr-open` titles a multi-commit PR with the branch name, which becomes the squash commit subject"
     },
     "pr-open-rest-path-20261018": {
-      "claim": {
-        "expires_at": "2026-10-19T14:20:01Z",
-        "generation": "d41c0d78073d4243863469eef3ad73e3",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:515fc6c5ed940969bed3c6eb"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Make make pr-open work without GraphQL"
     },
     "pr-open-stacked-draft-support-20261015": {
