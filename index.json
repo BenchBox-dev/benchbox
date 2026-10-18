@@ -1042,7 +1042,7 @@
         "astro-site-03-visual-change-procedure"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Write the authored API contract pages and retire the autodoc reference"
     },
     "astro-site-35-landing-and-prompts-port": {
