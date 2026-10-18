@@ -1505,10 +1505,10 @@
     },
     "autogen-tpch-maintenance-failures-20261018": {
       "claim": {
-        "expires_at": "2026-10-19T21:33:28Z",
-        "generation": "c3fa636699224aabb8597b5a0e386edd",
+        "expires_at": "2026-10-19T22:37:18Z",
+        "generation": "e088d0def2fd41629510b89f4bae32a9",
         "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7ac6538e56f6607b35a3f600"
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
       },
       "needs": [
         "autogen-issues-decisions-20261018"
