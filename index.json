@@ -1375,6 +1375,15 @@
       "status": "open",
       "title": "Reopen instead of recreating nightly T3 issues, and comment only when the failure changes"
     },
+    "autogen-site-core-reporter-lifecycle-20261018": {
+      "claim": null,
+      "needs": [
+        "autogen-issues-decisions-20261018"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Give the core site-inputs failure reporter a close path and failure classes"
+    },
     "autogen-site-parent-lookup-regression-guard-20261018": {
       "claim": null,
       "needs": [
