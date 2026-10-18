@@ -21,7 +21,7 @@ from benchbox.core.schemas import (
     DryRunResult,
     SystemProfile,
 )
-from benchbox.platforms import get_platform_adapter
+from benchbox.platforms import get_adapter, get_platform_adapter
 
 
 def _extract_df_write_tuning(write_config: Any) -> dict[str, Any]:
@@ -134,11 +134,15 @@ class DryRunExecutor:
                 result.platform_config = platform_config
 
                 platform_adapter = None
-                if execution_mode != "dataframe" or self._has_sql_adapter(database_config.type):
-                    try:
+                try:
+                    if execution_mode == "dataframe":
+                        platform_adapter = self._build_dataframe_adapter(
+                            database_config, benchmark_config, platform_config
+                        )
+                    else:
                         platform_adapter = get_platform_adapter(database_config.type, **platform_config)
-                    except Exception as e:
-                        result.warnings.append(f"Platform adapter initialization failed: {e}")
+                except Exception as e:
+                    result.warnings.append(f"Platform adapter initialization failed: {e}")
                 result.deployment = getattr(platform_adapter, "deployment_selected", None) or result.deployment
 
             platform_type = database_config.type if database_config else None
@@ -196,10 +200,71 @@ class DryRunExecutor:
 
         return result
 
-    @staticmethod
-    def _has_sql_adapter(platform_type: str) -> bool:
-        canonical_name = PlatformRegistry.resolve_platform_name(platform_type)
-        return canonical_name in PlatformRegistry.get_available_platforms()
+    def _build_dataframe_adapter(
+        self,
+        database_config: DatabaseConfig,
+        benchmark_config: BenchmarkConfig,
+        platform_config: dict[str, Any],
+    ):
+        from benchbox.core.deployment import DEPLOYMENT_SELECTOR_OPTION
+        from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
+        from benchbox.core.platform_config import DATABASE_ONLY_PLATFORM_OPTIONS
+        from benchbox.core.platform_manifest import get_all_platform_aliases
+
+        excluded_config_keys = {
+            "benchmark",
+            "connection_string",
+            "driver_auto_install",
+            "driver_auto_install_used",
+            "driver_package",
+            "driver_runtime_path",
+            "driver_runtime_python_executable",
+            "driver_runtime_strategy",
+            "driver_version",
+            "driver_version_actual",
+            "driver_version_resolved",
+            "dry_run",
+            "execution_engine",
+            "execution_mode",
+            "force",
+            "force_recreate",
+            "gateway",
+            "memory_limit",
+            "name",
+            "options",
+            "scale_factor",
+            "thread_limit",
+            "type",
+        }
+        options = database_config.options if isinstance(database_config.options, dict) else {}
+        platform_key = database_config.type.lower()
+        registered_option_names = PlatformHookRegistry.list_option_specs(
+            get_all_platform_aliases().get(platform_key, platform_key)
+        )
+        adapter_kwargs: dict[str, Any] = {
+            "working_dir": self.output_dir,
+            "verbose": False,
+            "very_verbose": False,
+            "tuning_config": benchmark_config.options.get("df_tuning_config")
+            if benchmark_config is not None and isinstance(benchmark_config.options, dict)
+            else None,
+            "execution_engine": getattr(database_config, "execution_engine", None) or "default",
+        }
+        adapter_kwargs.update(
+            {
+                key: value
+                for key, value in options.items()
+                if key in registered_option_names and key not in DATABASE_ONLY_PLATFORM_OPTIONS
+            }
+        )
+        adapter_kwargs.update({key: value for key, value in platform_config.items() if key not in excluded_config_keys})
+        adapter_kwargs.pop("deployment", None)
+        return get_adapter(
+            database_config.type,
+            mode="dataframe",
+            deployment=options.get(DEPLOYMENT_SELECTOR_OPTION),
+            **adapter_kwargs,
+        )
 
     @staticmethod
     def _resolve_execution_mode(database_config: Optional[DatabaseConfig]) -> str:
