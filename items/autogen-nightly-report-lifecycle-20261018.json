@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "Tests (extend tests/unit/workflows/test_nightly_t3_workflow.py or add a sibling) run the extracted report step under bash with a stub gh on PATH and assert the exact gh calls for: failure/no issue -> create; failure/closed 3 days ago -> reopen+comment; failure/closed 20 days ago -> create; failure/open/same signature -> no comment; failure/open/new signature -> comment; success/open -> comment+close; cancelled/open -> comment only; cancelled/none -> nothing; skipped -> nothing",
+    "Replay test uses the #2827 -> #2874 timeline and shows reopen instead of a new issue",
+    "Signature separates mirror legs from database legs for docker (test)",
+    "Workflow permissions unchanged (assertion in test); no new label creation call added",
+    "nightly-t3.md Issues section describes R1-R5 and the unchanged owner response policy",
+    "PR merged with a success oracle-review verdict (no stand-in) and required checks green; live behavior is proven by autogen-nightly-dispatch-verify-20261018"
+  ],
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs every line with evidence. FAIL if a passing run no longer closes an open issue, if cancelled can close, or if the job gains permissions. Verify the quoted lines against current nightly-v2.yml before editing (G12). The durations behavior change is a separate item that needs this one (same file).",
+  "description": "Confirmed from the report job (.github/workflows/nightly-v2.yml, 'Open, update, or close one issue per domain', about lines 1058-1115) and the runbook (docs/internal/nightly-t3.md 'Issues'): a failing domain comments on every red run; a passing run closes the issue; the next red run creates a new issue; cancelled and skipped results change nothing (the '*)' branch), so Windows 50-minute timeouts were silent. Four domains account for 13 of the 17 nightly issues (durations 5, docker 3, perf 3, linkcheck 2); e.g. durations issue #2827 was closed by a green run and #2874 opened about 8 hours later.\nDecision D1 (behavior to implement):\nR1 failure + open issue: comment only if the failed-job signature differs from the signature recorded in the last bot comment (store it as a hidden marker in the comment body).\nR2 failure + no open issue: if the most recently closed issue for the t3:<domain> label was closed within 14 days, reopen it and comment; otherwise create a new issue.\nR3 success + open issue: comment and close (runbook rule unchanged).\nR4 cancelled: if an issue is open, comment 'no verdict (cancelled or timed out)' once per run; never create, never close. skipped: no change.\nR5 signature = sorted names of the failed jobs for the domain; for docker and throughput-cedardb list mirror-leg and database-leg jobs separately. Keep one label per domain; add no new labels.\nUpdate docs/internal/nightly-t3.md (Issues section) in the same change. The report job stays the only job with issues: write and gains no new permission or secret.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/issues/2874",
+    "https://github.com/BenchBox-dev/benchbox/issues/2906",
+    "item:autogen-durations-decouple-from-correctness-20261018"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7ac6538e56f6607b35a3f600",
+      "at": "2026-10-18T20:21:32Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "2833ac357c7248cc8a553bf8bc580bc7",
+      "session_id": "cab8a4e762844fd9912c504ebfd76c56"
+    }
+  ]
+}
