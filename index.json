@@ -14813,6 +14813,15 @@
       "status": "open",
       "title": "BenchBox: switch the oracle to the local executor"
     },
+    "oracle-local-o8-engine-installed-required": {
+      "claim": null,
+      "needs": [
+        "oracle-local-b4-cutover"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "BenchBox owner: make oracle-engine-installed a required check"
+    },
     "oracle-map-staged-gate-scale-and-label-vocabulary": {
       "claim": null,
       "needs": [],

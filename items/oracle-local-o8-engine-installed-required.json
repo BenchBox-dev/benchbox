@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "Ruleset lists oracle-engine-installed as required"
+  ],
+  "description": "Plan owner action O8, at the first engine bump after B4. Add oracle-engine-installed to BenchBox's required checks (repository admin), so an engine bump cannot merge before the new version is installed on the Mac.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51",
+      "at": "2026-10-18T01:01:09Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "84a37fa4b02d4d4996c7f5b9451f17df",
+      "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    }
+  ]
+}
