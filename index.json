@@ -22003,6 +22003,15 @@
       "status": "open",
       "title": "ship-no-ship owner: create the service role users from install --print"
     },
+    "ssns-o3-app-key-permissions": {
+      "claim": null,
+      "needs": [
+        "ssns-o2-role-users"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "ship-no-ship owner: App key, permissions and sandbox repository"
+    },
     "ssns-prepublication-hardening": {
       "claim": null,
       "needs": [],

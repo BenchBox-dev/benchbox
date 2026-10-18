@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "doctor key_paths_check passes",
+    "Installation shows Actions: write and Issues: write",
+    "App installed on the sandbox repository"
+  ],
+  "description": "Plan owner action O3 plus the App checklist. Generate a second App private key and place it at <data>/keys/<lowercase>.pem owned by _ssnsd (section 4); set the App's Actions and Issues permissions to Read and write and approve them on the installation; install the App on the private sandbox repository BenchBox-dev/ship-no-ship-sandbox.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51",
+      "at": "2026-10-18T00:58:58Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "2bf4137826924365acacb09ca8f8807b",
+      "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    }
+  ]
+}
