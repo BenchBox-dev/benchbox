@@ -1069,6 +1069,10 @@ jobs:
         if: matrix.partition == 'b'
         run: make tpchavoc-equivalence-report
 
+      - name: Check TPC-Havoc rewrites at the SQLGlot minimum
+        if: matrix.partition == 'b'
+        run: make tpchavoc-sqlglot-minimum-check
+
       - name: Run TPC-Havoc DataFrame variant-equivalence gate
         if: matrix.partition == 'a'
         run: make tpchavoc-dataframe-equivalence-report

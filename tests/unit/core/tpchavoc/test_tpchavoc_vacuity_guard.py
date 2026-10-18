@@ -241,3 +241,43 @@ def test_q8_v7_and_q14_v7_coalesce_empty_filtered_numerator_groups():
         assert divergences == []
     finally:
         conn.close()
+
+
+def _build_q18_tie_fixture():
+    import duckdb
+
+    from benchbox.core.tpchavoc.benchmark import TPCHavocBenchmark
+
+    conn = duckdb.connect(":memory:")
+    benchmark = TPCHavocBenchmark(scale_factor=0.01)
+    conn.execute(
+        """
+        CREATE TABLE customer AS SELECT 1 AS c_custkey, 'customer' AS c_name;
+        CREATE TABLE orders AS
+            SELECT i AS o_orderkey, 1 AS o_custkey,
+                DATE '1995-01-01' AS o_orderdate, 100000.00 AS o_totalprice
+            FROM range(1, 102) AS t(i);
+        CREATE TABLE lineitem AS
+            SELECT i AS l_orderkey, 50 AS l_quantity
+            FROM range(1, 102) AS t(i) CROSS JOIN range(7);
+        """
+    )
+    return conn, benchmark
+
+
+def test_q18_variants_return_bounded_top_n_on_rank_ties():
+    conn, benchmark = _build_q18_tie_fixture()
+    try:
+        assert len(conn.execute(benchmark.get_query(18)).fetchall()) == 100
+        for variant_id in range(1, 11):
+            rows = conn.execute(benchmark.get_query(f"18_v{variant_id}")).fetchall()
+            assert len(rows) <= 100, f"18_v{variant_id}"
+        assert len(conn.execute(benchmark.get_query("18_v9")).fetchall()) == 100
+
+        legacy_rank_top_n = (
+            "WITH order_quantities AS (SELECT 1 AS x, rank() OVER (ORDER BY 1) AS r "
+            "FROM range(101) AS t(i)) SELECT x FROM order_quantities WHERE r <= 100"
+        )
+        assert len(conn.execute(legacy_rank_top_n).fetchall()) == 101
+    finally:
+        conn.close()

@@ -34,7 +34,7 @@ variants:
 - id: 9
   description: 'Window functions (OLAP): Use window functions for ranking'
   sql: |
-    with order_quantities as (select c.c_name, c.c_custkey, o.o_orderkey, o.o_orderdate, o.o_totalprice, sum(l.l_quantity) as total_qty, rank() over (order by o.o_totalprice desc, o.o_orderdate) as price_rank from customer c, orders o, lineitem l where c.c_custkey = o.o_custkey and o.o_orderkey = l.l_orderkey group by c.c_name, c.c_custkey, o.o_orderkey, o.o_orderdate, o.o_totalprice having sum(l.l_quantity) > 300) select c_name, c_custkey, o_orderkey, o_orderdate, o_totalprice, total_qty from order_quantities where price_rank <= 100
+    with order_quantities as (select c.c_name, c.c_custkey, o.o_orderkey, o.o_orderdate, o.o_totalprice, sum(l.l_quantity) as total_qty, row_number() over (order by o.o_totalprice desc, o.o_orderdate, o.o_orderkey) as price_rank from customer c, orders o, lineitem l where c.c_custkey = o.o_custkey and o.o_orderkey = l.l_orderkey group by c.c_name, c.c_custkey, o.o_orderkey, o.o_orderdate, o.o_totalprice having sum(l.l_quantity) > 300) select c_name, c_custkey, o_orderkey, o_orderdate, o_totalprice, total_qty from order_quantities order by price_rank limit 100
 - id: 10
   description: 'CASE expressions: Use CASE for conditional logic'
   sql: |

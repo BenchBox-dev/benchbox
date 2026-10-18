@@ -226,6 +226,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- TPC-Havoc dialect rewrites now use the public SQLGlot query-builder API, so
+  the Presto-family array aggregation, PostgreSQL dual-source, and BigQuery
+  from-less rewrites render at the declared SQLGlot minimum instead of raising
+  a version-specific AST key error. A correctness-gate step replays the
+  affected rewrite suites at that minimum.
+- TPC-Havoc Q18 variant 9 now keeps a deterministic ranking window with an
+  outer top-100 cutoff, so tied orders at the boundary return exactly 100 rows
+  like the canonical query instead of every tied row.
+
 - Tuned runs on PostgreSQL and the platforms built on it no longer stop with
   "Failed to write the tuned-run marker". Statements that return no rows, such
   as the tuning metadata `CREATE TABLE`, no longer try to fetch rows.
