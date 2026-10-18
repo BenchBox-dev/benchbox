@@ -23809,10 +23809,15 @@
       "title": "Decide tpcds_obt DataFrame-SQL correspondence achievability"
     },
     "tpcds-obt-empty-queries-conversion-20261017": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-19T04:09:41Z",
+        "generation": "9fa87b42f3484865b2e583c981a3e51b",
+        "renewals": 0,
+        "worker": "mcp:tbh:joe@joe-mac-mini.local:3ce222eaad5d12493e27d4cc"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Fix the 17 TPC-DS OBT statements that return no rows because of query conversion errors"
     },
     "tpcds-obt-query-expansion": {
