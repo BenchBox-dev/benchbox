@@ -21913,6 +21913,13 @@
       "status": "done",
       "title": "Re-test SSB tuned template with merge-settle and decide keep/adjust/disable"
     },
+    "ssns-n1-bootstrap": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "ship-no-ship: bootstrap the uv workspace, CI and publish-safety checks"
+    },
     "stabilize-full-test-suite-failures": {
       "claim": null,
       "needs": [],

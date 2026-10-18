@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "CI green on empty packages"
+  ],
+  "context": "Done: joeharris76/ship-no-ship#1 merged. Plan: ~/.benchbox/handoffs/2026-10-16-oracle-local-reviewer-plan-handoff.md section 7.",
+  "description": "Plan step N1 of the local-reviewer effort (ship-no-ship replaces BenchBox's hosted oracle reviewers with reviews run on the owner's Mac). uv workspace, engine and service package skeletons, MIT LICENSE, README, SECURITY, CI (ruff, ty, pytest on ubuntu and macOS), secret scanner, publish-safety test.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51",
+      "at": "2026-10-18T00:52:32Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "9a6361fcb6af4ddeadc8a548e595cd43",
+      "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    }
+  ]
+}
