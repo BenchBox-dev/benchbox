@@ -4,7 +4,7 @@
 
 Every rule registered in `benchbox.sql_compat` is listed below. The registry is the authoritative source of compatibility policy; this document is regenerated from it. See [adr-sql-compat-phase-aware-pipeline.md](../development/adr/adr-sql-compat-phase-aware-pipeline.md) for the design.
 
-**Total registered rules:** 566
+**Total registered rules:** 575
 
 **Platforms covered:** 35
 
@@ -44,7 +44,7 @@ Every rule registered in `benchbox.sql_compat` is listed below. The registry is 
 | synapse | - | - | - | - | - | 1 | - | 1 |
 | timescale | - | - | - | - | 3 | - | - | 3 |
 | timescaledb | 3 | - | - | 10 | - | - | 9 | 22 |
-| trino | - | - | - | - | 2 | 1 | - | 3 |
+| trino | - | - | - | 9 | 2 | 1 | - | 12 |
 | tsql | - | - | - | - | 2 | - | - | 2 |
 | velox | - | - | - | 11 | - | 1 | - | 12 |
 
@@ -763,6 +763,15 @@ Every rule registered in `benchbox.sql_compat` is listed below. The registry is 
 
 | phase | scope | action | support | failure mode | rule_id |
 |---|---|---|---|---|---|
+| query_adapter | benchmark=tpchavoc, query=10_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.trino.tpchavoc.10_v7.inline_select_alias` |
+| query_adapter | benchmark=tpchavoc, query=11_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.trino.tpchavoc.11_v7.inline_select_alias` |
+| query_adapter | benchmark=tpchavoc, query=1_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.trino.tpchavoc.1_v7.array_aggregation` |
+| query_adapter | benchmark=tpchavoc, query=2_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.trino.tpchavoc.2_v7.window_filter_to_if` |
+| query_adapter | benchmark=tpchavoc, query=3_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.trino.tpchavoc.3_v7.inline_select_alias` |
+| query_adapter | benchmark=tpchavoc, query=4_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.trino.tpchavoc.4_v7.inline_select_alias` |
+| query_adapter | benchmark=tpchavoc, query=5_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.trino.tpchavoc.5_v7.inline_select_alias` |
+| query_adapter | benchmark=tpchavoc, query=7_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.trino.tpchavoc.7_v7.inline_select_alias` |
+| query_adapter | benchmark=tpchavoc, query=9_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.trino.tpchavoc.9_v7.inline_select_alias` |
 | schema_emit | benchmark=transaction_primitives | rewrite_ddl | INFORMATIONAL | SILENT_CORRUPTION | `schema_emit.trino.transaction_primitives.pk_not_enforced` |
 | schema_emit | benchmark=write_primitives | rewrite_ddl | INFORMATIONAL | SILENT_CORRUPTION | `schema_emit.trino.write_primitives.pk_not_enforced` |
 | ddl_optimize | platform-wide | rewrite_ddl | REWRITTEN | SYNTAX_ERROR | `ddl_optimize.trino.all.optimize_table_definition` |

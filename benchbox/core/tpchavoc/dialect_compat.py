@@ -18,6 +18,7 @@ PRESTO_WINDOW_FILTER_VARIANT_IDS = frozenset({"2_v7"})
 PRESTO_ARRAY_AGGREGATION_VARIANT_IDS = frozenset({"1_v7"})
 _CLOUD_DIALECTS = frozenset({"bigquery", "databricks", "snowflake"})
 _POSTGRES_DIALECTS = frozenset({"postgres", "postgresql"})
+_PRESTO_TRINO_DIALECTS = frozenset({"presto", "trino", "athena"})
 
 
 def rewrite_dialect_variant(query_id: str, query: str, target_dialect: str) -> str:
@@ -28,13 +29,13 @@ def rewrite_dialect_variant(query_id: str, query: str, target_dialect: str) -> s
         return _rewrite_clickhouse_filters(query)
     if target == "datafusion" and query_id in DATAFUSION_EMPTY_GROUP_VARIANT_IDS:
         return _drop_empty_grouping(query)
-    if target == "presto":
+    if target in _PRESTO_TRINO_DIALECTS:
         if query_id in PRESTO_ALIAS_VARIANT_IDS:
-            query = _inline_select_aliases(query, "presto")
+            query = _inline_select_aliases(query, target)
         if query_id in PRESTO_WINDOW_FILTER_VARIANT_IDS:
-            query = _rewrite_window_filters(query, "presto")
+            query = _rewrite_window_filters(query, target)
         if query_id in PRESTO_ARRAY_AGGREGATION_VARIANT_IDS:
-            query = _rewrite_presto_array_aggregation(query)
+            query = _rewrite_presto_array_aggregation(query, target)
     if target in _POSTGRES_DIALECTS:
         if query_id in POSTGRES_ALIAS_VARIANT_IDS:
             query = _inline_select_aliases(query, "postgres")
@@ -89,14 +90,14 @@ ORDER BY l_returnflag, l_linestatus
 """
 
 
-def _rewrite_presto_array_aggregation(query: str) -> str:
-    tree = sqlglot.parse_one(query, read="presto")
+def _rewrite_presto_array_aggregation(query: str, dialect: str = "presto") -> str:
+    tree = sqlglot.parse_one(query, read=dialect)
     with_ = tree.args["with_"].transform(
-        lambda node: _ordered_array(node.expressions[0], "presto") if isinstance(node, exp.List) else node
+        lambda node: _ordered_array(node.expressions[0], dialect) if isinstance(node, exp.List) else node
     )
-    outer = sqlglot.parse_one(_PRESTO_UNNEST_AGGREGATION, read="presto")
+    outer = sqlglot.parse_one(_PRESTO_UNNEST_AGGREGATION, read=dialect)
     outer.set("with_", with_)
-    return outer.sql(dialect="presto")
+    return outer.sql(dialect=dialect)
 
 
 def _window_filter_node(node: exp.Expression) -> exp.Expression:
