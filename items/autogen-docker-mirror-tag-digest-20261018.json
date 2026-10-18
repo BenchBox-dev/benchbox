@@ -6,7 +6,7 @@
     "t3:docker compose files pull Postgres from the GHCR mirror reference",
     "PR merged with a success oracle-review verdict (no stand-in) and required checks green; nightly-t3.md docker row accurate"
   ],
-  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs every line with evidence. FAIL if any image pin or digest check is relaxed, if a secret is added, or if the dispatch proof is missing. The T3 docker legs going green is proven by autogen-nightly-dispatch-verify-20261018, not here.",
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs every line with evidence. FAIL if any image pin or digest check is relaxed, if a secret is added, or if the dispatch proof is missing. The T3 docker legs going green is proven by autogen-nightly-dispatch-verify-20261018, not here.\nPre-publication (AGENTS.md): self-review with the code review action and fix every Critical and Required finding before make pr-open (G13).",
   "description": "Confirmed in nightly-v2 run 39125986956: mirror-images (clickhouse) and (trino) fail at 'Verify pinned digest and mirror image' with: Invalid source name docker://docker.io/clickhouse/clickhouse-server:25.8@sha256:0152dd51... : Docker references with both a tag and digest are currently not supported (same for trinodb/trino:480@sha256:1565e8ca...). skopeo rejects name:tag@sha256 sources. The mirror never lands, then t3:docker clickhouse and trino fail with 'manifest unknown' on the GHCR pull. CedarDB (digest-only pin) mirrors fine. Separately the t3:docker postgres leg failed once with 'toomanyrequests: Data limit exceeded' (Docker Hub anonymous pull): Postgres is pulled directly from Docker Hub and is not mirrored. The subagent hypothesis 'GHCR permission denied' is refuted by the log.\nWork: derive the skopeo source reference without the tag for tag+digest pins (keep the pinned digest and the digest-equality check); add Postgres to the mirror set through the same workflow (no new secrets). Files to re-verify: .github/workflows/mirror-ci-images.yml, the mirror jobs in .github/workflows/nightly-v2.yml, docker/clickhouse, docker/trino, docker/cedardb and the Postgres compose file used by t3:docker, docs/internal/nightly-t3.md docker row.\nGATE-B (Postgres): if the Postgres compose image has no sha256 pin, pin it by resolving the currently used tag with docker buildx imagetools inspect, record digest and date in the PR, then mirror. If other workflows also pull Postgres from Docker Hub, list them in context but change only what shares the same compose file.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/issues/2906",
@@ -19,6 +19,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "e79452b14c2246e4ab750b5b958f1a23",
+      "session_id": "cab8a4e762844fd9912c504ebfd76c56"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7ac6538e56f6607b35a3f600",
+      "at": "2026-10-18T20:27:20Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e31d4ed270a74afb8aabd97ae16cc295",
       "session_id": "cab8a4e762844fd9912c504ebfd76c56"
     }
   ]
