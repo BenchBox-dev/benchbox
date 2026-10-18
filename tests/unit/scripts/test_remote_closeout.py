@@ -11,6 +11,7 @@ import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -872,7 +873,7 @@ class FakeCodex:
     def runs(self) -> list[Path]:
         return sorted(self.state.glob("call-*"), key=lambda path: int(path.name.removeprefix("call-")))
 
-    def read(self, run: Path, name: str) -> object:
+    def read(self, run: Path, name: str) -> Any:
         return json.loads((run / name).read_text(encoding="utf-8"))
 
     def argv(self, run: Path) -> list[str]:

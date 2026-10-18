@@ -111,8 +111,9 @@ OUTPUT_SCHEMA = _object_schema(
 
 
 def _kill_group(pid: int) -> None:
-    with contextlib.suppress(ProcessLookupError, PermissionError):
-        os.killpg(pid, signal.SIGKILL)
+    if hasattr(signal, "SIGKILL"):
+        with contextlib.suppress(ProcessLookupError, PermissionError):
+            os.killpg(pid, signal.SIGKILL)
 
 
 def _warn(message: str) -> None:
