@@ -8545,6 +8545,15 @@
       "status": "open",
       "title": "Verify documentation-data bundles without changing published output"
     },
+    "docs-mig-site-ts-generators": {
+      "claim": null,
+      "needs": [
+        "docs-mig-site-bundle-schema4"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Generate query, compatibility and tuning pages in TypeScript"
+    },
     "docs-move-internal-to-internal-root": {
       "claim": null,
       "needs": [],
