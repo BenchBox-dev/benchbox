@@ -22155,6 +22155,15 @@
       "status": "open",
       "title": "ship-no-ship: adopt-and-operate docs"
     },
+    "ssns-o12-pypi-trusted-publishing": {
+      "claim": null,
+      "needs": [
+        "ssns-v010-release"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "ship-no-ship owner: decide on PyPI projects with Trusted Publishing"
+    },
     "ssns-o2-role-users": {
       "claim": null,
       "needs": [

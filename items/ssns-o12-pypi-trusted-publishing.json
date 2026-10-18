@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "Owner decision recorded; if yes, release.yml publishes through Trusted Publishing"
+  ],
+  "description": "Plan owner action O12, a separate later decision. Create the PyPI projects and a Trusted Publisher. BenchBox keeps the vendored hash-pinned wheel as its trust root either way.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51",
+      "at": "2026-10-18T01:01:36Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "5a3c083dc2bd40f4967d4ad9c765b1d8",
+      "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    }
+  ]
+}
