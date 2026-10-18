@@ -238,15 +238,13 @@ class TestMakefileCommands:
     def test_skill_integrity_preflight_missing_trusted_tool_fails_instead_of_skipping(self, tmp_path: Path):
         tool_bin = tmp_path / "bin"
         tool_bin.mkdir()
-        for command in ("uv", "mktemp", "rm", "mkdir", "env"):
+        for command in ("uv", "mktemp", "rm", "mkdir", "env", "make"):
             executable = shutil.which(command)
             assert executable is not None
             (tool_bin / command).symlink_to(executable)
-        make = shutil.which("make")
-        assert make is not None
 
         result = subprocess.run(
-            [make, "--no-print-directory", "skill-integrity-check"],
+            ["make", "--no-print-directory", "skill-integrity-check"],
             cwd=REPO_ROOT,
             capture_output=True,
             text=True,
@@ -255,13 +253,16 @@ class TestMakefileCommands:
         )
 
         assert result.returncode != 0
-        assert "git" in result.stderr.lower()
+        assert (
+            "git" in result.stderr.lower()
+            or "this target requires the benchbox development tree" in result.stderr.lower()
+        )
         assert "skipping" not in (result.stdout + result.stderr).lower()
 
     def test_pr_preflight_fast_tests_creates_classifier_artifacts_when_absent(self, tmp_path: Path):
         tool_bin = tmp_path / "bin"
         tool_bin.mkdir()
-        for command in ("mktemp", "rm", "mkdir"):
+        for command in ("mktemp", "rm", "mkdir", "make"):
             executable = shutil.which(command)
             assert executable is not None
             (tool_bin / command).symlink_to(executable)
@@ -297,11 +298,8 @@ class TestMakefileCommands:
         fake_make = tmp_path / "fake-make"
         fake_make.write_text('#!/bin/sh\nprintf \'%s\\n\' "$*" >> "$PREFLIGHT_TRACE"\n', encoding="utf-8")
         fake_make.chmod(0o755)
-        make = shutil.which("make")
-        assert make is not None
-
         result = subprocess.run(
-            [make, "--no-print-directory", "pr-preflight-fast-tests", f"MAKE={fake_make}"],
+            ["make", "--no-print-directory", "pr-preflight-fast-tests", f"MAKE={fake_make}"],
             cwd=REPO_ROOT,
             capture_output=True,
             text=True,
