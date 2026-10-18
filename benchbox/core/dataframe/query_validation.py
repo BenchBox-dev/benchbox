@@ -160,12 +160,9 @@ def _apply_reference_row_counts(
 
 
 def _tpcds_row_reference_parameters(seed: int | None, row: dict[str, Any]) -> bool:
-    if not tpcds_subscale_reference_seed(seed):
-        return False
     stream_id = row.get("stream_id", row.get("stream"))
-    if stream_id is None:
-        return True
-    return isinstance(stream_id, int) and not isinstance(stream_id, bool) and stream_id == 0
+    sid = stream_id if isinstance(stream_id, int) and not isinstance(stream_id, bool) else 0
+    return tpcds_subscale_reference_seed(seed, sid)
 
 
 def _normalize_tpcds_query_id(query_id: object) -> str:
@@ -182,11 +179,13 @@ def _validate_tpcds_subscale_row_count(
 ) -> ValidationResult:
     import os
 
+    from benchbox.core.expected_results.tpcds_results import parse_validation_mode
     from benchbox.core.validation.query_validation import get_validation_mode_context
 
     context_mode = get_validation_mode_context()
-    env_mode = os.environ.get("BENCHBOX_QUERY_VALIDATION_MODE", "").lower()
-    if context_mode == ValidationMode.SKIP or env_mode in ("skip", "disabled"):
+    env_mode = parse_validation_mode(os.environ.get("BENCHBOX_QUERY_VALIDATION_MODE"))
+    run_mode = context_mode or env_mode
+    if run_mode == ValidationMode.SKIP:
         return ValidationResult(
             is_valid=True,
             query_id=query_id,

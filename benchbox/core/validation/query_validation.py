@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -26,7 +27,7 @@ _PARAMETER_SENSITIVE_QUERY_IDS_BY_BENCHMARK: dict[str, frozenset[str]] = {
 }
 
 
-_NON_REFERENCE_SEED_EXCLUDED_BENCHMARKS: frozenset[str] = frozenset({"tpcds"})
+_NON_REFERENCE_SEED_EXCLUDED_BENCHMARKS: frozenset[str] = frozenset({"tpcds", "tpc-ds"})
 _stream_seed_override_warned: set[str] = set()
 _stream_seed_override_lock = threading.Lock()
 
@@ -202,12 +203,15 @@ class QueryValidator:
                 error_message=error_msg,
             )
 
-        if expected_result is not None and benchmark_type.lower() == "tpcds":
-            run_mode = self._resolve_tpcds_run_mode(benchmark_type)
-            if run_mode is not None and run_mode != expected_result.validation_mode:
-                import dataclasses
+        if expected_result is not None and benchmark_type.lower() in ("tpcds", "tpc-ds"):
+            context_mode = get_validation_mode_context()
+            env_mode_str = os.environ.get("BENCHBOX_QUERY_VALIDATION_MODE")
+            if context_mode is not None or env_mode_str is not None or (scale_factor or 1.0) == 1.0:
+                run_mode = self._resolve_tpcds_run_mode(benchmark_type)
+                if run_mode is not None and run_mode != expected_result.validation_mode:
+                    import dataclasses
 
-                expected_result = dataclasses.replace(expected_result, validation_mode=run_mode)
+                    expected_result = dataclasses.replace(expected_result, validation_mode=run_mode)
 
         if expected_result is None:
             if stream_id is not None and stream_id > 0:

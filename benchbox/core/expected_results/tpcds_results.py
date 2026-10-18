@@ -26,6 +26,9 @@ def _load_subscale_reference() -> dict:
     try:
         payload = json.loads(_SUBSCALE_REFERENCE_PATH.read_text(encoding="utf-8"))
         if not isinstance(payload, dict) or payload.get("benchmark") != "tpcds":
+            logger.warning(
+                f"TPC-DS subscale row-count reference must describe the tpcds benchmark: {_SUBSCALE_REFERENCE_PATH}"
+            )
             return {}
         return payload
     except (OSError, ValueError) as exc:
@@ -60,12 +63,14 @@ def _materialize_subscale_reference() -> tuple[dict[float, dict[str, int]], froz
 def tpcds_subscale_expected_row_counts(scale_factor: float) -> dict[str, int] | None:
     for recorded_scale, counts in TPCDS_SUBSCALE_ROW_COUNTS.items():
         if math.isclose(recorded_scale, scale_factor, rel_tol=1e-9):
-            return counts
+            return dict(counts)
     return None
 
 
-def tpcds_subscale_reference_seed(seed: int | None) -> bool:
-    return seed is None or seed == 1
+def tpcds_subscale_reference_seed(seed: int | None, stream_id: int | None = 0) -> bool:
+    from benchbox.core.tpcds.power_test import power_parameter_seed
+
+    return power_parameter_seed(seed, stream_id or 0) == TPCDS_REFERENCE_RNGSEED
 
 
 def set_query_validation_mode(mode: ValidationMode | None) -> None:

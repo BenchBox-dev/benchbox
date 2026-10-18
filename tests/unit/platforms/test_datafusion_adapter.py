@@ -1174,7 +1174,9 @@ class TestDataFusionColumnTypeMapping:
 
         assert DataFusionAdapter._map_schema_type_to_pyarrow("DECIMAL(15,2)", pa) == pa.decimal128(15, 2)
         assert DataFusionAdapter._map_schema_type_to_pyarrow("NUMERIC(15, 2)", pa) == pa.decimal128(15, 2)
-        assert DataFusionAdapter._map_schema_type_to_pyarrow("DECIMAL(10)", pa) == pa.decimal128(10, 2)
+        assert DataFusionAdapter._map_schema_type_to_pyarrow("DECIMAL(10)", pa) == pa.decimal128(10, 0)
+        assert DataFusionAdapter._map_schema_type_to_pyarrow("DECIMAL", pa) == pa.decimal128(18, 2)
+        assert DataFusionAdapter._map_schema_type_to_pyarrow("DECIMAL(100)", pa) == pa.float64()
         assert DataFusionAdapter._map_schema_type_to_pyarrow("DOUBLE", pa) == pa.float64()
         assert DataFusionAdapter._map_schema_type_to_pyarrow("FLOAT", pa) == pa.float64()
 

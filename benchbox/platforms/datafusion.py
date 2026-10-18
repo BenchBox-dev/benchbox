@@ -1103,8 +1103,14 @@ class DataFusionAdapter(NoConstraintEnforcementMixin, PlatformAdapter):
             return pa.date32()
         if col_type.startswith(("DECIMAL", "NUMERIC")):
             match = re.search(r"\(\s*(\d+)\s*(?:,\s*(\d+)\s*)?\)", col_type)
-            precision = int(match.group(1)) if match else 18
-            scale = int(match.group(2)) if match and match.group(2) is not None else 2
+            if match:
+                precision = int(match.group(1))
+                scale = int(match.group(2)) if match.group(2) is not None else 0
+            else:
+                precision = 18
+                scale = 2
+            if not (1 <= precision <= 76 and 0 <= scale <= precision):
+                return pa.float64()
             if precision > 38:
                 return pa.decimal256(precision, scale)
             return pa.decimal128(precision, scale)

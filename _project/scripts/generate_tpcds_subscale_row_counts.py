@@ -95,16 +95,16 @@ def _count_on_engines(scale_factor: float, work_root: Path) -> dict[str, dict[st
                     entry["duckdb"] = len(connection.execute(sql).fetchall())
                 else:
                     entry["datafusion"] = sum(batch.num_rows for batch in context.sql(sql).collect())
-            alt_counts = []
+            alt_counts: dict[str, list[int]] = {"duckdb": [], "datafusion": []}
             for alt_seed in ALT_RNGSEEDS:
                 for engine, dialect in (("duckdb", "duckdb"), ("datafusion", "datafusion")):
                     alt_sql = bench.get_query(
                         number, seed=alt_seed, scale_factor=scale_factor, dialect=dialect, variant=variant
                     )
                     if engine == "duckdb":
-                        alt_counts.append(len(connection.execute(alt_sql).fetchall()))
+                        alt_counts["duckdb"].append(len(connection.execute(alt_sql).fetchall()))
                     else:
-                        alt_counts.append(sum(batch.num_rows for batch in context.sql(alt_sql).collect()))
+                        alt_counts["datafusion"].append(sum(batch.num_rows for batch in context.sql(alt_sql).collect()))
             entry["alt_seed_counts"] = alt_counts
             counts[query_id] = entry
     finally:
@@ -126,7 +126,13 @@ def _build_reference(work_root: Path) -> dict:
         agreed: dict[str, int] = {}
         scale_excluded: list[str] = []
         for query_id, entry in counts.items():
-            if any(entry["duckdb"] != alt_count for alt_count in entry.get("alt_seed_counts", [])):
+            alt_counts_by_engine = entry.get("alt_seed_counts", {})
+            is_sensitive = any(
+                entry[engine] != alt_count
+                for engine, alt_counts in alt_counts_by_engine.items()
+                for alt_count in alt_counts
+            )
+            if is_sensitive:
                 sensitive.add(query_id)
             if entry["duckdb"] == entry["datafusion"]:
                 agreed[query_id] = entry["duckdb"]
