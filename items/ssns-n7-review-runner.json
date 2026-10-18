@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Scripted fake CLIs cover: verdict, all-absent, DO NOT SHIP, injection text and a credential symlink, head moves mid-attempt and between finalize and POST, child starting a new session, output rewritten after exit, oversize and non-regular output, scan hit, scan unreadable, restart mid-slot twice, proof posts only status and comment",
+    "macOS-marked tests run the wrapper across two real throwaway users",
+    "main.py calls release_held, Heartbeat.payload and a real Effects; supersede and cancel are wired",
+    "Adversarial review by external agents before merge (security-sensitive)"
+  ],
+  "context": "Not started. Estimate 2.5-3.5 d; N6 overran its estimate after adversarial review, expect the same here.",
+  "description": "Plan step N7. run-review supervisor (validate, reviewer-side checkout, start, timeout, kill by group/session/UID, capture, in-wrapper credential scan, cancel); execute.py (select loop over captured attempts, checkpoints, pre-write revalidation, post, record dispatch, proof mode); alerts.py; main.py. Also wire the pieces that exist but nothing production calls yet: Discovery.release_held, Heartbeat.payload, a real Effects implementation, and supersede/cancel of queued work.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51",
+      "at": "2026-10-18T00:58:02Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "bd2de42cc9cd44e188fb5ae7cd8a1ca6",
+      "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    }
+  ]
+}
