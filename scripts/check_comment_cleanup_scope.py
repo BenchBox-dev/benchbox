@@ -1231,6 +1231,8 @@ def _verify_rollout_evidence(root: Path, owner: str, filename: str, digest: str,
     evidence_path = "_project/analysis/batch-rollout-evidence.json"
     raw = head_blob(root, evidence_path, staged)
     if raw is None:
+        if owner == "todo-db":
+            raise ValueError(f"evidence ledger is required for {owner}: missing {evidence_path}")
         return
     try:
         data = json.loads(raw.decode("utf-8"))
@@ -1242,19 +1244,33 @@ def _verify_rollout_evidence(root: Path, owner: str, filename: str, digest: str,
         origin = str(artifact.get("origin", ""))
         if "GitHub release" not in origin:
             raise ValueError(f"evidence ledger artifact origin must be a GitHub release, found {origin!r}")
+        build = artifact.get("build", {})
+        if not isinstance(build, dict) or not isinstance(build.get("source_input"), str):
+            raise ValueError("evidence ledger must record build.source_input")
+        if not re.search(r"v\S+\s*\([a-f0-9]{40}\)", build["source_input"]):
+            raise ValueError(
+                f"evidence ledger source_input must name release tag and full SHA, found {build['source_input']!r}"
+            )
+        repro = build.get("reproducibility", {})
+        if not isinstance(repro, dict) or repro.get("matching_sha256") != digest:
+            raise ValueError("evidence ledger reproducibility matching_sha256 does not match wheel")
     except (json.JSONDecodeError, UnicodeError, AttributeError) as exc:
         raise ValueError(f"malformed rollout evidence ledger: {exc}") from exc
 
 
 def _wheel_metadata(wheel: bytes, owner: str) -> email.message.Message:
     with zipfile.ZipFile(io.BytesIO(wheel)) as archive:
+        all_metadata = [name for name in archive.namelist() if name.endswith(".dist-info/METADATA")]
+        if len(all_metadata) != 1:
+            raise ValueError(
+                f"wheel METADATA does not match: wheel must carry exactly one dist-info/METADATA file, found {all_metadata}"
+            )
         parts = [re.escape(p) for p in re.split(r"[-_.]+", owner) if p]
         norm = r"[-_.]".join(parts)
         pattern = re.compile(rf"^{norm}-[^/]+\.dist-info/METADATA$", re.IGNORECASE)
-        metadata_paths = [name for name in archive.namelist() if pattern.match(name)]
-        if len(metadata_paths) != 1:
-            raise ValueError(f"wheel METADATA does not match: dist-info must match {owner}, found {metadata_paths}")
-        raw = archive.read(metadata_paths[0])
+        if not pattern.match(all_metadata[0]):
+            raise ValueError(f"wheel METADATA does not match: dist-info must match {owner}, found {all_metadata[0]}")
+        raw = archive.read(all_metadata[0])
         try:
             text = raw.decode("utf-8")
         except UnicodeError as exc:

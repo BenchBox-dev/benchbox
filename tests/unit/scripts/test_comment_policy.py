@@ -10,7 +10,7 @@ import sys
 import urllib.request
 from copy import deepcopy
 from datetime import date, timedelta
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 import check_comment_policy
@@ -2804,6 +2804,7 @@ def test_dependency_replacements_fail_closed(
         "replacement-unbound",
         "replacement-mismatched-lock",
         "replacement-invalid-metadata",
+        "missing-rollout-evidence",
     ],
 )
 def test_dependency_removed_only_by_a_verified_policy_wheel_bump(
@@ -2829,6 +2830,7 @@ def test_dependency_removed_only_by_a_verified_policy_wheel_bump(
         "replacement-unbound": [replacement],
         "replacement-mismatched-lock": [replacement],
         "replacement-invalid-metadata": [replacement],
+        "missing-rollout-evidence": [replacement],
     }[case]
 
     meta_version = bump_version if case != "replacement-invalid-metadata" else "0.8.1"
@@ -2861,6 +2863,23 @@ def test_dependency_removed_only_by_a_verified_policy_wheel_bump(
     policy_file.write_text(
         json.dumps({"version": 1, "external": head_external, "completed": [], "exceptions": []}), encoding="utf-8"
     )
+
+    if case != "missing-rollout-evidence":
+        evidence_file = tmp_path / "_project/analysis/batch-rollout-evidence.json"
+        evidence_file.parent.mkdir(parents=True, exist_ok=True)
+        raw_hash = hashlib.sha256(new_wheel).hexdigest()
+        evidence_data = {
+            "artifact": {
+                "filename": PurePosixPath(replacement["path"]).name,
+                "sha256": raw_hash,
+                "origin": "GitHub release asset",
+                "build": {
+                    "source_input": f"git archive v{bump_version} (0123456789012345678901234567890123456789)",
+                    "reproducibility": {"matching_sha256": raw_hash},
+                },
+            }
+        }
+        evidence_file.write_text(json.dumps(evidence_data), encoding="utf-8")
 
     if case == "bumped":
         assert scope.immutable_dependency_artifacts(tmp_path, "base", records, rules, external) == set()
