@@ -1238,13 +1238,22 @@ def test_a_thread_records_the_severity_the_oracle_titled_its_finding_with(monkey
 
 SHA_3030 = "f" * 40
 ATTESTER = {"login": "joeharris76", "type": "User"}
+CLEAN_REVIEW = "External review: codex\n\nVerified clean: no findings on the merged diff."
+NO_SIGNAL_BODY = (
+    f"<!-- soundness-gap:{SHA_3030} -->\n"
+    f"Commit `{SHA_3030}` (#2915) changed paths on the soundness list and merged to develop.\n\n"
+    "Why it is listed: no completed review after the last content commit.\n\n"
+    "Soundness-path files:\n- `scripts/check_comment_policy.py`\n\n"
+    "Next step: run an external adversarial review of the commit (codex, muse or agy), post it as a "
+    "comment, and either record a clean result here or open a fix or revert pull request."
+)
 
 
-def gap_issue(number, state="open", sha=SHA_3030):
-    return {"number": number, "state": state, "body": f"<!-- soundness-gap:{sha} -->\nCommit `{sha}`"}
+def gap_issue(number, state="open", body=NO_SIGNAL_BODY):
+    return {"number": number, "state": state, "body": body}
 
 
-def external_review(body="External review: codex\n\nNo findings.", user=ATTESTER):
+def external_review(body=CLEAN_REVIEW, user=ATTESTER):
     return {"user": user, "body": body, "html_url": "https://example.test/comment/1"}
 
 
@@ -1267,29 +1276,108 @@ def gap_env(monkeypatch):
     return env
 
 
-def reviewed_entry():
-    pull = merged_pull(comments=(standin(HEAD, at=STANDIN_AT),))
+def reviewed_entry(**overrides):
+    pull = merged_pull(comments=(standin(HEAD, at=STANDIN_AT),), **overrides)
     return digest.classify(SHA_3030, "change", ["AGENTS.md"], pull)
 
 
-def unreviewed_entry():
-    return digest.classify(SHA_3030, "change", ["AGENTS.md"], evidence(number=8))
+def unreviewed_entry(**overrides):
+    return digest.classify(SHA_3030, "change", ["AGENTS.md"], evidence(number=8, **overrides))
 
 
-def test_an_open_gap_issue_whose_entry_no_longer_needs_attention_is_closed_with_evidence(gap_env):
+def thread_body(severity="Medium", reviewed=True):
+    threads = (oracle_thread(severity),)
+    if reviewed:
+        entry = reviewed_entry(threads=threads)
+    else:
+        entry = digest.classify(SHA_3030, "change", ["AGENTS.md"], evidence(number=8, threads=threads))
+    return digest.gap_issue_body(entry)
+
+
+def test_a_no_signal_issue_in_the_shape_already_open_is_closed_once_a_signal_appears(gap_env):
     gap_env["issues"] = [gap_issue(30)]
     gap_env["entries"][SHA_3030] = reviewed_entry()
     closures = digest.gap_closures("o/r", [])
     assert [(closure.number, closure.sha) for closure in closures] == [(30, SHA_3030)]
     assert closures[0].comment == (
         f"<!-- soundness-gap-closed:{SHA_3030} -->\n"
-        f"Closing: the digest re-evaluated `{SHA_3030}` (#7) and it no longer needs attention.\n\n"
+        f"Closing: the issue was opened because `{SHA_3030}` (#7) had no review signal, and the digest now "
+        "finds one.\n\n"
         "Review signal: stand-in."
     )
     digest.close_gap_issues("o/r", closures)
     assert gap_env["ran"] == [
         ["gh", "issue", "close", "30", "--repo", "o/r", "--reason", "completed", "--comment", closures[0].comment]
     ]
+
+
+def test_an_issue_the_digest_opens_for_a_missing_signal_is_closed_once_a_signal_appears(gap_env):
+    gap_env["issues"] = [gap_issue(30, body=digest.gap_issue_body(unreviewed_entry()))]
+    gap_env["entries"][SHA_3030] = reviewed_entry()
+    assert [closure.number for closure in digest.gap_closures("o/r", [])] == [30]
+
+
+def test_a_no_signal_issue_stays_open_while_the_entry_has_no_signal(gap_env):
+    gap_env["issues"] = [gap_issue(33)]
+    gap_env["entries"][SHA_3030] = unreviewed_entry()
+    assert digest.gap_closures("o/r", []) == []
+    digest.close_gap_issues("o/r", [])
+    assert gap_env["ran"] == []
+
+
+def test_a_no_signal_issue_closes_on_the_signal_whatever_the_threads_now_say(gap_env):
+    gap_env["issues"] = [gap_issue(30)]
+    gap_env["entries"][SHA_3030] = reviewed_entry(threads=(oracle_thread("High"),))
+    assert [closure.number for closure in digest.gap_closures("o/r", [])] == [30]
+
+
+@pytest.mark.parametrize("severity", ["High", "Medium"], ids=["override", "deferred"])
+@pytest.mark.parametrize("live_threads", [(), ("unresolved",)], ids=["deleted", "unresolved"])
+def test_a_thread_issue_is_never_closed_by_changing_its_threads(gap_env, severity, live_threads):
+    gap_env["issues"] = [gap_issue(40, body=thread_body(severity))]
+    threads = tuple(
+        digest.Thread(resolved=False, started_by="benchbox-oracle", first_comment_sha=HEAD, severity=severity)
+        for _ in live_threads
+    )
+    gap_env["entries"][SHA_3030] = reviewed_entry(threads=threads)
+    assert digest.gap_closures("o/r", []) == []
+
+
+def test_a_mixed_reason_issue_is_not_closed_by_re_evaluation(gap_env):
+    body = thread_body(reviewed=False)
+    assert "no completed review after the last content commit; 1 reviewer thread(s)" in body
+    gap_env["issues"] = [gap_issue(41, body=body)]
+    gap_env["entries"][SHA_3030] = reviewed_entry()
+    assert digest.gap_closures("o/r", []) == []
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        f"<!-- soundness-gap:{SHA_3030} -->\nno reason given",
+        f"<!-- soundness-gap:{SHA_3030} -->\nWhy it is listed: x",
+    ],
+    ids=["no-reason", "unterminated"],
+)
+def test_an_issue_with_an_unparseable_reason_is_not_closed_by_re_evaluation(gap_env, body):
+    gap_env["issues"] = [gap_issue(42, body=body)]
+    gap_env["entries"][SHA_3030] = reviewed_entry()
+    assert digest.gap_closures("o/r", []) == []
+
+
+def test_an_issue_with_no_merged_pull_request_is_not_closed_by_re_evaluation(gap_env):
+    body = digest.gap_issue_body(digest.classify(SHA_3030, "direct push", ["AGENTS.md"], None))
+    gap_env["issues"] = [gap_issue(43, body=body)]
+    gap_env["entries"][SHA_3030] = reviewed_entry()
+    assert digest.gap_closures("o/r", []) == []
+
+
+@pytest.mark.parametrize("severity", ["High", "Medium"], ids=["override", "deferred"])
+def test_an_attester_review_closes_a_thread_issue(gap_env, severity):
+    gap_env["issues"] = [gap_issue(44, body=thread_body(severity))]
+    gap_env["comments"]["repos/o/r/issues/44/comments"] = [external_review()]
+    assert [closure.number for closure in digest.gap_closures("o/r", [])] == [44]
+    assert gap_env["fetched"] == []
 
 
 def test_an_attester_external_review_on_the_issue_closes_it(gap_env):
@@ -1310,10 +1398,31 @@ def test_an_attester_external_review_on_the_issue_closes_it(gap_env):
         external_review(user={"login": "joeharris76", "type": "Bot"}),
         external_review(user={"login": "chatgpt-codex-connector[bot]", "type": "Bot"}),
         external_review(body="Looks fine to me."),
-        external_review(body="External review: gemini"),
-        external_review(body="I agree with the External review: codex above."),
+        external_review(body="External review: gemini\n\nVerified clean."),
+        external_review(body="I agree with the\nExternal review: codex\n\nVerified clean."),
+        external_review(body="Verified clean.\n\nExternal review: codex"),
+        external_review(body="Reviewer: codex (queued)\n\nVerified clean."),
+        external_review(body="Soundness review: codex\n\nVerified clean."),
+        external_review(body="External review: codex\n\nNo findings."),
+        external_review(body="External review: codex\n\n- **High**: a defect\n\nVerified clean."),
+        external_review(body="External review: codex\n\n**Low**: a nit\n\nVerified clean."),
+        external_review(body="External review: codex\n\nNot Verified clean yet."),
     ],
-    ids=["non-attester", "attester-bot", "connector", "no-marker", "unlisted-reviewer", "mid-line"],
+    ids=[
+        "non-attester",
+        "attester-bot",
+        "connector",
+        "no-marker",
+        "unlisted-reviewer",
+        "heading-not-first",
+        "heading-last",
+        "reviewer-queued",
+        "soundness-review-form",
+        "no-clean-line",
+        "high-finding",
+        "low-finding",
+        "clean-not-line-start",
+    ],
 )
 def test_a_comment_that_does_not_qualify_never_closes_a_gap_issue(gap_env, comment):
     gap_env["issues"] = [gap_issue(32)]
@@ -1322,12 +1431,15 @@ def test_a_comment_that_does_not_qualify_never_closes_a_gap_issue(gap_env, comme
     assert digest.gap_closures("o/r", []) == []
 
 
-def test_an_issue_whose_entry_still_needs_attention_stays_open(gap_env):
-    gap_env["issues"] = [gap_issue(33)]
+def test_the_clean_form_may_follow_leading_whitespace_and_name_any_listed_reviewer(gap_env):
+    gap_env["issues"] = [gap_issue(45)]
     gap_env["entries"][SHA_3030] = unreviewed_entry()
-    assert digest.gap_closures("o/r", []) == []
-    digest.close_gap_issues("o/r", [])
-    assert gap_env["ran"] == []
+    gap_env["comments"]["repos/o/r/issues/45/comments"] = [
+        external_review(body="\n External review: agy\nVerified clean")
+    ]
+    assert [closure.summary for closure in digest.gap_closures("o/r", [])] == [
+        "external review by agy from joeharris76"
+    ]
 
 
 def test_a_closed_gap_issue_is_never_read_or_modified(gap_env):
@@ -1353,14 +1465,20 @@ def test_an_entry_from_the_run_is_reused_instead_of_read_again(gap_env):
 
 
 def test_the_closure_list_names_each_issue():
-    closure = digest.Closure(30, SHA_3030, "no longer needs attention (stand-in)", "comment")
+    closure = digest.Closure(30, SHA_3030, "review signal found (stand-in)", "comment")
     assert (
         digest.render_closures([closure])
-        == "\nGap issues to close:\n- #30 (`fffffffff`): no longer needs attention (stand-in)"
+        == "\nGap issues to close:\n- #30 (`fffffffff`): review signal found (stand-in)"
     )
     assert digest.render_closures([]) == "\nGap issues to close:\nNone."
 
 
-def test_an_external_review_heading_is_recognised_on_pull_request_comments_too():
-    comment = digest.Comment("joeharris76", "External review: agy\n\nClean.", AFTER, "User")
+@pytest.mark.parametrize("body", ["External review: agy\n\nVerified clean.", "External review: codex"])
+def test_the_attested_review_form_is_not_a_pull_request_comment_signal(body):
+    comment = digest.Comment("joeharris76", body, AFTER, "User")
+    assert digest.review_signals(evidence(comments=(comment,))) == ()
+
+
+def test_a_reviewer_line_on_a_pull_request_comment_is_still_a_signal():
+    comment = digest.Comment("joeharris76", "Reviewer: agy\n\nClean.", AFTER, "User")
     assert digest.review_signals(evidence(comments=(comment,))) == ("external-review:agy",)

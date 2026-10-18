@@ -179,9 +179,8 @@ its final content:
 - for merges before the cut-over (2026-10-09 00:16 UTC), the Codex
   connector's submitted review of the last content commit (or of a later
   base-only refresh merge), or its thumbs-up reaction; or
-- an external review posted as a PR comment naming its reviewer
-  (`External review: codex`, `muse` or `agy`; `Reviewer: ...` also counts),
-  from a listed attester.
+- an external review posted as a PR comment from a listed attester naming its
+  reviewer on a `Reviewer: codex`, `muse` or `agy` line (or `Soundness review:`).
 
 The reaction and comment must come after the last content commit and before
 the merge. A review submitted after the merge, or still pending, does not
@@ -208,14 +207,28 @@ commit) or `no review signal` (no signal, or no merged pull request). An agent
 runs the external review and either records a clean result on the issue or
 opens a fix or revert pull request.
 
-Every run also re-evaluates each open gap issue, whatever its age, against the
-same rules. It closes the issue with a comment that records the evidence, and
-that opens with a `soundness-gap-closed` marker, in two cases: the commit no
-longer needs attention, or a listed attester (`STANDIN_ATTESTERS` in
-`_project/scripts/oracle_review_check.py`) posted a comment on the issue that
-starts with `External review: codex`, `muse` or `agy`. A comment from anyone
-else never closes an issue, and a closed issue is never reopened or edited. A
-run without `--apply` lists the issues it would close.
+Every run also re-evaluates each open gap issue, whatever its age. A closure
+comment records the evidence and opens with a `soundness-gap-closed` marker.
+Two things close an issue, and nothing else does:
+
+- A comment on the issue from a listed attester (`STANDIN_ATTESTERS` in
+  `_project/scripts/oracle_review_check.py`, a `User` account) closes any gap
+  issue. The comment must start with `External review: codex`, `muse` or
+  `agy`, have a line beginning `Verified clean`, and contain no line with a
+  `**Critical**: `, `**High**: `, `**Medium**: ` or `**Low**: ` finding. A
+  `Reviewer:` or `Soundness review:` line, a heading that is not first, or any
+  listed finding does not close it.
+- Re-evaluation closes only an issue whose `Why it is listed` line is exactly
+  `no completed review after the last content commit`, when the digest now
+  finds a review signal for the commit (the signals above, all bounded by the
+  merge window). Thread state is never an input: an issue opened for a
+  reviewer thread (override of an oracle High finding or deferred finding), for
+  a merge with no pull request, or for several reasons at once, and an issue
+  whose body cannot be parsed, never closes by re-evaluation, so unresolving or
+  deleting a thread changes nothing.
+
+A closed issue is never reopened or edited. A run without `--apply` lists the
+issues it would close.
 
 The checkpoint lives in the body of the one issue labelled
 `soundness-merge-digest` and must be on the first-parent history of

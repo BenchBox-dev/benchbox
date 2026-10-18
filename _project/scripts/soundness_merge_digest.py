@@ -45,10 +45,13 @@ GAP_LABEL = "soundness-review-gap"
 CHECKPOINT_PATTERN = re.compile(r"<!-- soundness-digest-checkpoint: ([0-9a-f]{40}) -->")
 GAP_MARKER = re.compile(r"<!-- soundness-gap:([0-9a-f]{40}) -->")
 EXTERNAL_REVIEW_PATTERN = re.compile(
-    r"(?im)^[ \t]*(?:[-*+][ \t]+)?(?:\**(?:external[ \t]+)?reviewer\**[ \t]*:\**|(?:soundness|external)[ \t]+review:)"
-    r"[ \t]*(?:external[ \t]+)?(codex|muse|agy)\b"
+    r"(?im)^[ \t]*(?:[-*+][ \t]+)?(?:\**(?:external[ \t]+)?reviewer\**[ \t]*:\**|soundness[ \t]+review:)[ \t]*(?:external[ \t]+)?(codex|muse|agy)\b"
 )
-FINDING_SEVERITY = re.compile(r"\*\*(Critical|High|Medium|Low)\*\*:")
+ATTESTED_REVIEW = re.compile(r"\s*External review: (codex|muse|agy)\b")
+CLEAN_LINE = re.compile(r"(?m)^Verified clean\b")
+GAP_REASON = re.compile(r"Why it is listed: ([^\n]*)\.\n")
+REASON_NO_REVIEW = "no completed review after the last content commit"
+FINDING_SEVERITY = re.compile(r"\*\*(Critical|High|Medium|Low)\*\*: ")
 OVERRIDDEN_SEVERITIES = frozenset({"Critical", "High"})
 CLASS_OVERRIDE = "override of an oracle High finding"
 CLASS_DEFERRED = "deferred finding"
@@ -161,7 +164,7 @@ class Entry:
         if self.pull is None:
             reasons.append("no merged pull request")
         elif not self.signals:
-            reasons.append("no completed review after the last content commit")
+            reasons.append(REASON_NO_REVIEW)
         if self.unreviewed_threads:
             reasons.append(f"{self.unreviewed_threads} reviewer thread(s) resolved with no later commit")
         return tuple(reasons)
@@ -299,8 +302,10 @@ def gap_issue_body(entry: Entry) -> str:
         f"Soundness-path files:\n{files}\n\n"
         "Next step: run an external adversarial review of the commit (codex, muse or agy). A listed attester closes "
         "this issue by posting a comment that starts with `External review: codex`, `External review: muse` or "
-        "`External review: agy`. Otherwise open a fix or revert pull request. A later digest run also closes this "
-        "issue when the commit no longer needs attention."
+        "`External review: agy`, has a line beginning `Verified clean`, and lists no `**Severity**:` finding. "
+        "Otherwise open a fix or revert pull request. A later digest run also closes this issue when it was opened "
+        "for a missing review signal and the digest now finds one; an issue opened for a reviewer thread is closed "
+        "only by an attester's review."
     )
 
 
@@ -615,13 +620,21 @@ def open_gap_issues(repo: str, entries: Sequence[Entry]) -> list[str]:
     return opened
 
 
+def is_attested_review(body: str) -> bool:
+    return (
+        ATTESTED_REVIEW.match(body) is not None
+        and CLEAN_LINE.search(body) is not None
+        and FINDING_SEVERITY.search(body) is None
+    )
+
+
 def attested_review(comments: Sequence[dict[str, Any]]) -> dict[str, Any] | None:
     for comment in comments:
         user = comment.get("user") or {}
         if (
             user.get("login") in STANDIN_ATTESTERS
             and user.get("type") == "User"
-            and EXTERNAL_REVIEW_PATTERN.search(comment.get("body") or "")
+            and is_attested_review(comment.get("body") or "")
         ):
             return comment
     return None
@@ -631,16 +644,17 @@ def resolved_closure(number: int, entry: Entry) -> Closure:
     assert entry.pull is not None
     comment = (
         f"<!-- soundness-gap-closed:{entry.sha} -->\n"
-        f"Closing: the digest re-evaluated `{entry.sha}` (#{entry.pull.number}) and it no longer needs attention.\n\n"
+        f"Closing: the issue was opened because `{entry.sha}` (#{entry.pull.number}) had no review signal, and the "
+        f"digest now finds one.\n\n"
         f"Review signal: {', '.join(entry.signals)}."
     )
-    return Closure(number, entry.sha, f"no longer needs attention ({', '.join(entry.signals)})", comment)
+    return Closure(number, entry.sha, f"review signal found ({', '.join(entry.signals)})", comment)
 
 
 def attested_closure(number: int, sha: str, review: dict[str, Any]) -> Closure:
-    match = EXTERNAL_REVIEW_PATTERN.search(review["body"])
+    match = ATTESTED_REVIEW.match(review["body"])
     assert match is not None
-    reviewer, login = match.group(1).lower(), review["user"]["login"]
+    reviewer, login = match.group(1), review["user"]["login"]
     comment = (
         f"<!-- soundness-gap-closed:{sha} -->\n"
         f"Closing: {login} recorded an external review by {reviewer} of `{sha}`.\n\n"
@@ -655,6 +669,11 @@ def render_closures(closures: Sequence[Closure]) -> str:
     return "\n".join(lines)
 
 
+def opened_for_missing_signal(issue: dict[str, Any]) -> bool:
+    match = GAP_REASON.search(issue.get("body") or "")
+    return match is not None and match.group(1) == REASON_NO_REVIEW
+
+
 def gap_closures(repo: str, entries: Sequence[Entry]) -> list[Closure]:
     evaluated = {entry.sha: entry for entry in entries}
     closures: list[Closure] = []
@@ -663,15 +682,13 @@ def gap_closures(repo: str, entries: Sequence[Entry]) -> list[Closure]:
         if issue.get("state") != "open" or marker is None:
             continue
         sha = marker.group(1)
-        entry = evaluated.get(sha) or collect_entry(repo, sha)
-        if entry is None:
-            continue
-        if not entry.needs_attention:
-            closures.append(resolved_closure(issue["number"], entry))
-            continue
         review = attested_review(gh_pages(f"repos/{repo}/issues/{issue['number']}/comments"))
         if review is not None:
             closures.append(attested_closure(issue["number"], sha, review))
+        elif opened_for_missing_signal(issue):
+            entry = evaluated.get(sha) or collect_entry(repo, sha)
+            if entry is not None and entry.pull is not None and entry.signals:
+                closures.append(resolved_closure(issue["number"], entry))
     return closures
 
 
