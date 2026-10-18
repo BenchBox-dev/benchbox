@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Docs lint passes",
+    "Examples pass validate-config"
+  ],
+  "description": "Plan step N9. architecture.md, config-reference.md, adopting.md, operating-macos.md (install, reboot checkpoint, recovery steps, rotation, upgrades, rollback, kill), threat-model.md, examples.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51",
+      "at": "2026-10-18T00:58:15Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "91a5cc29e8db453492924677f7f334da",
+      "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    }
+  ]
+}

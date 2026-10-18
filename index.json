@@ -21985,6 +21985,15 @@
       "status": "open",
       "title": "ship-no-ship: macOS install kit (launchd, sudoers, install --print, reboot resume, live check)"
     },
+    "ssns-n9-docs": {
+      "claim": null,
+      "needs": [
+        "ssns-n8-macos-install-kit"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "ship-no-ship: adopt-and-operate docs"
+    },
     "ssns-prepublication-hardening": {
       "claim": null,
       "needs": [],
