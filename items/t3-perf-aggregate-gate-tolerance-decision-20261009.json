@@ -6,7 +6,7 @@
     "t3:perf passes in a nightly-v2 verification dispatch after the change",
     "docs/development/perf-smoke.md no longer says the workflow runs per PR, and its advice to re-run once matches the decision"
   ],
-  "context": "2026-10-10: PR #2859 merged. Verification run 38027036252: t3:liveness green; t3:perf failed 640 vs 547 ms. Local macOS A/B (-6.8%) did not reproduce #2852 slowdown, but per finding R3 the hosted failure is not proven noise. Root cause on hosted runners unresolved. Item t3-perf-execution-variants-regression-20261010 is blocked on owner investigation/calibration decision with findings on #2778. This item waits on that resolution.",
+  "context": "2026-10-10: PR #2859 merged. Verification run 38027036252: t3:liveness green; t3:perf failed 640 vs 547 ms. Local macOS A/B (-6.8%) did not reproduce #2852 slowdown, but per finding R3 the hosted failure is not proven noise. Root cause on hosted runners unresolved. Item t3-perf-execution-variants-regression-20261010 is blocked on owner investigation/calibration decision with findings on #2778. This item waits on that resolution.\n\n2026-10-18 review addendum (autogen-issues-decisions-20261018): in perf run 37784986221 the log reported 'Regressed: 2' but listed only Q8 (9.00 -> 10.10 ms, +12.22%) while Total Execution Time improved 22.64%. The committed baseline (_project/baselines/perf_smoke_duckdb_tpch_001.json) holds integer-millisecond per-query values (8.00, 9.00, 10.00, 11.00, 12.00 ms), so a 10% threshold on roughly 10 ms queries sits inside the baseline's own quantization (+-0.5 ms is +-5%). The second regressed metric was not identified. t3:perf was not red in nightly-v2 run 39125986956. Treat the quantization as an input when deriving the floor.",
   "description": "Decision (owner, 2026-10-09): option (c). The aggregate check (Total Execution Time and Average Query Time) fails only when the aggregate is both more than the percentage threshold slower and more than an absolute number of milliseconds slower. Keep the 10% threshold and the per-query gate (10% and 7 ms) unchanged.\n\nWork:\n- Add an aggregate floor to `benchbox compare` (benchbox/cli/commands/compare.py; today --min-regression-delta applies to per-query checks only, compare.py:284 \"Aggregate metrics are judged by percentage alone\"), for example `--min-aggregate-regression-delta`.\n- Derive the floor from the same-runner-class spread and record the method next to the baseline (docs/development/perf-smoke.md). Same-class totals so far: 539.8, 542.9, 546.4, 548.9, 586.1 and 604.7 ms, a spread of about 65 ms.\n- Pass the floor in nightly-v2.yml (lines 213-214) and perf-smoke.yml (lines 59-60).\n\nOptions considered and not chosen: keep 10% alone (red most nights); raise to 15% (as arbitrary as 10% with six samples); report-only aggregates (loses the uniform-slowdown signal); rolling same-class history or two consecutive red nights (more machinery, delays signal); larger scale factor or more iterations (more runner time). Revisit (e) if the floor still fails on noise once more same-class samples exist.\n\nEvidence:\n- The aggregate is the sum of the same 66 per-query timings (22 queries x 3 iterations, about 8 ms each) that the per-query check judges.\n- In run 37991400931 all 22 queries slowed together (+2.7% to +45.8%) on the baseline's own runner class (AMD EPYC 7763): host noise, not a code regression.\n- The gate does not measure orchestration overhead: run.total_duration_ms is not compared.\n- perf-smoke.yml runs only on pull requests to the release branch (perf-smoke.yml:3-5), so the \"Per-PR\" title and wording in docs/development/perf-smoke.md are wrong.\n- t3:perf failed in 11 of the last 12 nightly-v2 runs.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/issues/2778"
@@ -117,6 +117,14 @@
       "op": "update",
       "op_id": "2a2fd7f569e741c19bb9948053b28b26",
       "session_id": "375a0fea891d4422bf14885cd09fb269"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7ac6538e56f6607b35a3f600",
+      "at": "2026-10-18T20:24:57Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e1b590f94bce43f0b8fa758cd7507d4f",
+      "session_id": "cab8a4e762844fd9912c504ebfd76c56"
     }
   ]
 }
