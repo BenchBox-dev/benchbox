@@ -21361,12 +21361,7 @@
       "title": "Pilot sf100 then expand tuned/untuned at large scale within reserve"
     },
     "snowflake-tuned-live-certification-20261001": {
-      "claim": {
-        "expires_at": "2026-10-19T00:30:39Z",
-        "generation": "60aa040de8484f038427a5aef6a3fa0f",
-        "renewals": 0,
-        "worker": "mcp:claude-code:joe@joe-mac-mini.local:cf8bfa3ae0b85f7089dd3acd"
-      },
+      "claim": null,
       "needs": [
         "tuning-no-midrun-destructive-db-handling-20261001",
         "tuning-portable-metadata-store-20261001",
@@ -21374,7 +21369,7 @@
         "tuning-requested-vs-rendered-reconciliation-20261001"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Live-certify a tuned Snowflake run (no mid-run DROP, metadata persists, CLUSTERING_KEY shape, applied_verified)"
     },
     "snowflake-tuned-runs-no-clustering-settle-20261013": {
