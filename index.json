@@ -20885,15 +20885,10 @@
       "title": "Prune the 36 site-parity allowances for broken links that now resolve"
     },
     "site-publishing-guide-rewrite-20261017": {
-      "claim": {
-        "expires_at": "2026-10-19T11:53:00Z",
-        "generation": "79832222abf344f6a2b09cc99a2102df",
-        "renewals": 0,
-        "worker": "mcp:tbh:joe@joe-mac-mini.local:77fbca394bd06462bafe34af"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Rewrite the site's blog publishing guide for the split repos"
     },
     "site-release-pinned-docs-20261017": {
