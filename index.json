@@ -1100,7 +1100,7 @@
         "dlv2-62-publication-cutover-and-retirement"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "dropped",
       "title": "Add an Astro renderer to site-deploy with an all-or-nothing renderer invariant and an explicit visual guard"
     },
     "astro-site-53-cutover": {
