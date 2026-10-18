@@ -15792,10 +15792,15 @@
       "title": "Route post-merge failures to the correct owner before proposing a revert"
     },
     "postgres-cluster-plus-sort-same-table-20261017": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-19T04:10:24Z",
+        "generation": "92f2c60f014a471ca939438d811b7730",
+        "renewals": 0,
+        "worker": "mcp:tbh:joe@joe-mac-mini.local:3ce222eaad5d12493e27d4cc"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "PostgreSQL drops the sort request when one table asks for both clustering and sorting"
     },
     "postgres-extension-benchmarking-infrastructure": {
