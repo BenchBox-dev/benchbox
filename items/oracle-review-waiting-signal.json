@@ -2,7 +2,7 @@
   "acceptance": [
     "Agreed behavior (code or documented reading) so a waiting verdict is never misread as a refusal."
   ],
-  "context": "Found during the 2026-10-13 session: the waiting state was twice misread as a verdict refusal across PRs #2948 and #2915, delaying merges while the oracle was simply still working.",
+  "context": "Unblocked 2026-10-18: the blocking pair (ci-stale + cancel-race) merged in PR #3111. Ready to implement: show waiting-for-review as pending instead of failed, following the pending reporting decided by that fix. Not started; work stopped 2026-10-18.",
   "description": "The oracle-review CI check exits failure while merely awaiting a verdict for the head, which reads identically to a refusal. Consider reporting pending/neutral until a verdict exists for the head, failing only on refusal, expiry, or SHIP-with-unresolved-threads; or document the reading so the next session does not chase a non-defect.",
   "sessions": [
     {
@@ -12,6 +12,14 @@
       "op": "create",
       "op_id": "1538bc12ff994319b1734f59539e43ce",
       "session_id": "be2b066e755a4a4bb3ff24b1b46fe0b7"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:3ce222eaad5d12493e27d4cc",
+      "at": "2026-10-18T11:44:53Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "6bd85f22c1624d73acb30c06de130a74",
+      "session_id": "d2c53a64af484bf0b44e45ae35143611"
     }
   ]
 }
