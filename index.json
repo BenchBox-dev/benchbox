@@ -8498,6 +8498,15 @@
       "status": "open",
       "title": "Replace core references to relocated pages with canonical URLs"
     },
+    "docs-mig-core-docs-data-export": {
+      "claim": null,
+      "needs": [
+        "docs-mig-adr-ownership"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Export generated documentation data without rendering Markdown"
+    },
     "docs-mig-core-relocate-contract-sql": {
       "claim": null,
       "needs": [
