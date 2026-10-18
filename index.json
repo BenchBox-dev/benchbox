@@ -22031,9 +22031,9 @@
     },
     "ssb-sql-query-row-count-validation-20261017": {
       "claim": {
-        "expires_at": "2026-10-19T03:43:05Z",
-        "generation": "745d6a0a2cd447b78e30a12b6680eb94",
-        "renewals": 0,
+        "expires_at": "2026-10-19T03:54:13Z",
+        "generation": "0307791409c74ea18a3859798c468310",
+        "renewals": 1,
         "worker": "mcp:tbh:joe@joe-mac-mini.local:3ce222eaad5d12493e27d4cc"
       },
       "needs": [],
