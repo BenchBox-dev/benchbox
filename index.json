@@ -1031,7 +1031,7 @@
         "astro-site-22-shared-layout-shell"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Port the blog to an Astro collection with identical post URLs and an unchanged Atom feed"
     },
     "astro-site-34-api-reference-implementation": {
