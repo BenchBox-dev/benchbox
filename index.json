@@ -2855,10 +2855,15 @@
       "title": "\"CLI: Detect and Skip Unneeded Data Generation ✅\""
     },
     "cli-force-datagen-not-reaching-adapter-force-recreate-20261016": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-19T00:29:15Z",
+        "generation": "440f285e04ac42fe98edb620bb1190dc",
+        "renewals": 0,
+        "worker": "mcp:tbh:joe@joe-mac-mini.local:3ce222eaad5d12493e27d4cc"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "`--force datagen` never reaches the adapter's force_recreate"
     },
     "cli-guided-run-enhancements-completed": {
