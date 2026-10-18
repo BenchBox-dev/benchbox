@@ -27,7 +27,7 @@ STORE_ENV = "BENCHBOX_REVIEWS_DIR"
 ENV_PREFIX = "REMOTE_CLOSEOUT_"
 TRACKER_CONFIG = pr_landing.REPO_ROOT / ".todo-db" / "config.json"
 FETCH = ["git", "-c", "gc.auto=0", "-c", "maintenance.auto=false", "fetch", "--no-tags", "origin"]
-VIEW_FIELDS = "number,state,isDraft,labels,reviewDecision,headRefOid,headRefName,baseRefName,id"
+VIEW_FIELDS = "number,state,isDraft,labels,reviewDecision,headRefOid,headRefName,baseRefName,id,isCrossRepository"
 OBSERVED_FIELDS = ("labels", "draft", "threads")
 DISPOSITIONS = ("approve", "changes-requested")
 FINDING_FIELDS = ("location", "reasoning", "severity")
@@ -221,7 +221,7 @@ def fetch_pr_head(run: Runner, repo: str, number: int) -> str:
 
 
 def fetch_develop(run: Runner) -> str:
-    fetched = _fetch(run, BASE_BRANCH)
+    fetched = _fetch(run, f"refs/heads/{BASE_BRANCH}")
     tracking = _rev_parse(run, f"refs/remotes/origin/{BASE_BRANCH}")
     if fetched != tracking:
         raise Refused(
@@ -297,6 +297,15 @@ def batch_refusals(batches: Mapping[str, object], repo: str, view: dict, item: s
     return reasons
 
 
+def _worktree_batch_id(run: Runner, path: str) -> str | None:
+    code, out = run(["git", "-C", path, "config", "--worktree", "--get", f"{batch_integration.CONFIG_PREFIX}.id"])
+    if code == 1:
+        return None
+    if code != 0:
+        raise LandingError(f"cannot read the batch configuration of worktree {path}: {out.strip()[:200]}")
+    return out.strip() or None
+
+
 def feature_worktree_refusals(run: Runner, branch: str) -> list[str]:
     code, out = run(["git", "worktree", "list", "--porcelain"])
     if code != 0:
@@ -306,8 +315,8 @@ def feature_worktree_refusals(run: Runner, branch: str) -> list[str]:
     for line in out.splitlines():
         if line.startswith("worktree "):
             path = line.removeprefix("worktree ")
-        elif line == f"branch refs/heads/{branch}" and path is not None and Path(path).is_dir():
-            batch_id = batch_integration._config_get(Path(path), "id")
+        elif line == f"branch refs/heads/{branch}" and path is not None:
+            batch_id = _worktree_batch_id(run, path)
             if batch_id:
                 reasons.append(
                     f"condition 1: feature-mode PR: worktree {path} records batch {batch_id!r} on its branch"
@@ -327,6 +336,8 @@ def _eligibility_refusals(
 ) -> list[str]:
     branch = str(view.get("headRefName") or "")
     reasons: list[str] = []
+    if view.get("isCrossRepository") is not False:
+        reasons.append("condition 1: fork PR: its head is not a branch of this repository, where cloud builders push")
     if view.get("baseRefName") != BASE_BRANCH:
         reasons.append(f"condition 1: stacked PR: it targets {view.get('baseRefName')!r}, not {BASE_BRANCH!r}")
     reasons.extend(
@@ -409,7 +420,8 @@ def _readiness_refusals(view: dict, observation: dict, verdicts: Mapping[str, di
     if any(not thread["resolved"] and not thread["outdated"] for thread in observation["threads"]):
         reasons.append("condition 6: an unresolved, non-outdated review thread is open")
     reasons.extend(
-        f"condition 6: required check {name!r} failed with conclusion {conclusion!r}; pending checks do not block arming"
+        f"condition 6: required check {name!r} failed with conclusion {conclusion!r}; "
+        "pending checks do not block arming"
         for name, conclusion in failing_required_checks(verdicts)
     )
     return reasons
@@ -460,7 +472,14 @@ def evaluate(
 def _transition_refusals(state: dict, *, ready: bool) -> list[str]:
     withdrawal = state.get("withdrawal")
     if not ready:
-        return ["the PR is withdrawn; re-arm it with make pr-landing-remote-ready"] if withdrawal else []
+        if withdrawal:
+            return ["the PR is withdrawn; re-arm it with make pr-landing-remote-ready"]
+        if state["arms"]:
+            return [
+                "the PR was already armed; withdraw it with make pr-landing-remote-withdraw, "
+                "then use make pr-landing-remote-ready"
+            ]
+        return []
     if not withdrawal:
         return ["no withdrawal is recorded; ready re-arms only a PR that make pr-landing-remote-withdraw withdrew"]
     if len(state["records"]) <= withdrawal["records_before"]:
@@ -556,6 +575,8 @@ def _bind(pr: str | None, branch: str | None, item: str | None, repo: str | None
         state["binding"] = {**binding, "recorded_at": _now()}
         pr_landing._write_json_atomic(path, state)
     print(f"bound PR #{number} ({branch}, {view['id']}) in {path}")
+    if not item:
+        print("no ITEM was given, so the tracker batch-member check will be skipped for this PR")
     return 0
 
 

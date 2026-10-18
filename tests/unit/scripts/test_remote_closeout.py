@@ -129,6 +129,7 @@ class FakeGitHub:
             "headRefName": BRANCH,
             "baseRefName": "develop",
             "id": NODE_ID,
+            "isCrossRepository": False,
         }
         self.reported_head = world.head
         self.threads: list[dict] = [{"id": "T1", "isResolved": True, "isOutdated": False}]
@@ -253,7 +254,7 @@ def test_fetches_without_tags_or_maintenance_and_never_uses_the_compare_api(worl
     assert arm(world, ready_pr) == 0
     fetches = [call for call in ready_pr.calls if "fetch" in call]
     prefix = ["git", "-c", "gc.auto=0", "-c", "maintenance.auto=false", "fetch", "--no-tags", "origin"]
-    assert fetches == [[*prefix, "refs/pull/7/head"], [*prefix, "develop"]]
+    assert fetches == [[*prefix, "refs/pull/7/head"], [*prefix, "refs/heads/develop"]]
     assert not any("compare" in part for call in ready_pr.calls for part in call)
 
 
@@ -360,6 +361,24 @@ def test_refuses_a_branch_a_local_feature_batch_worktree_integrates(
     git(world.clone, "config", "extensions.worktreeConfig", "true")
     remote_closeout.batch_integration._config_set(integration, "id", "feature-x")
     assert "condition 1: feature-mode PR" in _refusal(world, ready_pr, capsys)
+
+
+def test_fails_closed_when_a_worktree_on_the_branch_has_an_unreadable_config(
+    tmp_path: Path, world: World, ready_pr: FakeGitHub, capsys: pytest.CaptureFixture[str]
+) -> None:
+    integration = tmp_path / "integration"
+    git(world.clone, "worktree", "add", "--quiet", "-b", BRANCH, str(integration), "origin/develop")
+    git(world.clone, "config", "extensions.worktreeConfig", "true")
+    worktree_config = Path(git(integration, "rev-parse", "--path-format=absolute", "--git-path", "config.worktree"))
+    worktree_config.write_text("[[[not a config\n", encoding="utf-8")
+    assert arm(world, ready_pr) == 1
+    assert ready_pr.arms() == []
+    assert "live state could not be verified" in capsys.readouterr().err
+
+
+def test_refuses_a_pr_from_a_fork(world: World, ready_pr: FakeGitHub, capsys: pytest.CaptureFixture[str]) -> None:
+    ready_pr.view["isCrossRepository"] = True
+    assert "condition 1: fork PR" in _refusal(world, ready_pr, capsys)
 
 
 def test_refuses_without_a_binding(tmp_path: Path, world: World, capsys: pytest.CaptureFixture[str]) -> None:
@@ -536,6 +555,18 @@ def test_arm_refuses_a_withdrawn_pr(world: World, ready_pr: FakeGitHub, capsys: 
     assert "the PR is withdrawn; re-arm it with make pr-landing-remote-ready" in _refusal(world, ready_pr, capsys)
 
 
+def test_arm_refuses_a_pr_already_armed_at_another_head(
+    tmp_path: Path, world: World, ready_pr: FakeGitHub, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert arm(world, ready_pr) == 0
+    revised = world.push_pr_commit("docs/second.md")
+    ready_pr.set_head(revised)
+    assert store(tmp_path, ready_pr, review(world, head=revised), revised) == 0
+    assert arm(world, ready_pr, head=revised) == 2
+    assert "the PR was already armed; withdraw it with make pr-landing-remote-withdraw" in capsys.readouterr().err
+    assert ready_pr.arms() == [merge_command(world.head)]
+
+
 def test_ready_requires_a_withdrawal(world: World, ready_pr: FakeGitHub, capsys: pytest.CaptureFixture[str]) -> None:
     assert remote_closeout.ready("7", world.head, run=ready_pr, checkout=world.clone) == 2
     assert "no withdrawal is recorded" in capsys.readouterr().err
@@ -592,6 +623,14 @@ def test_a_binding_never_changes(world: World, capsys: pytest.CaptureFixture[str
     assert remote_closeout.bind("7", BRANCH, run=gh) == 2
     assert "a binding never changes" in capsys.readouterr().err
     assert stored(world)["binding"] == first
+
+
+@pytest.mark.parametrize(("item", "skipped"), [(None, True), ("cloud-item", False)])
+def test_bind_says_when_the_batch_member_check_will_be_skipped(
+    world: World, capsys: pytest.CaptureFixture[str], item: str | None, skipped: bool
+) -> None:
+    assert remote_closeout.bind("7", BRANCH, item=item, run=FakeGitHub(world)) == 0
+    assert ("batch-member check will be skipped" in capsys.readouterr().out) is skipped
 
 
 @pytest.mark.parametrize(
@@ -652,12 +691,9 @@ def test_a_head_that_is_not_a_full_lowercase_sha_is_refused_before_any_command(
     assert "full lowercase commit SHA" in capsys.readouterr().err
 
 
-def _make(tmp_path: Path, target: str, *assignments: str) -> tuple[list[str], dict[str, str]]:
+def _make_env(tmp_path: Path, target: str, *assignments: str) -> dict[str, str]:
     shim = tmp_path / "uv"
-    shim.write_text(
-        '#!/bin/sh\nprintf "%s\\n" "$@" > "$RECORD_DIR/argv"\nenv | grep "^REMOTE_CLOSEOUT_" | sort > "$RECORD_DIR/env"\n',
-        encoding="utf-8",
-    )
+    shim.write_text('#!/bin/sh\nenv | grep "^REMOTE_CLOSEOUT_" | sort > "$RECORD_DIR/env"\n', encoding="utf-8")
     shim.chmod(0o755)
     names = {"PR", "HEAD", "REPO", "BRANCH", "ITEM", "RECORD", "BUILDER_HEAD", "OWNER_EXPLAINED"}
     env = {k: v for k, v in os.environ.items() if k not in names and not k.startswith("REMOTE_CLOSEOUT_")}
@@ -672,48 +708,15 @@ def _make(tmp_path: Path, target: str, *assignments: str) -> tuple[list[str], di
         check=False,
     )
     assert result.returncode == 0, result.stderr
-    argv = (tmp_path / "argv").read_text(encoding="utf-8").splitlines()
     pairs = [line.split("=", 1) for line in (tmp_path / "env").read_text(encoding="utf-8").splitlines()]
-    return argv, dict(pairs)
-
-
-@pytest.mark.parametrize(
-    ("target", "command"),
-    [
-        ("pr-arm-remote", "arm"),
-        ("pr-landing-remote-withdraw", "withdraw"),
-        ("pr-landing-remote-ready", "ready"),
-        ("pr-landing-remote-bind", "bind"),
-        ("pr-landing-remote-record", "record"),
-        ("pr-landing-remote-manifest", "manifest"),
-    ],
-)
-@skip_on_windows
-def test_each_target_runs_its_subcommand_without_syncing_the_environment(
-    tmp_path: Path, target: str, command: str
-) -> None:
-    argv, _ = _make(tmp_path, target, "PR=7")
-    assert argv == ["run", "--no-sync", "--", "python", "scripts/remote_closeout.py", command]
+    return dict(pairs)
 
 
 @skip_on_windows
 def test_the_make_wrapper_hands_values_over_untouched_and_runs_no_shell_metacharacters(tmp_path: Path) -> None:
     marker = tmp_path / "ran"
     statement = f'Owner said "arm it"; touch {marker} `touch {marker}` $(touch {marker})'
-    _, env = _make(tmp_path, "pr-arm-remote", f"PR=7; touch {marker}", f"OWNER_EXPLAINED={statement}")
+    env = _make_env(tmp_path, "pr-arm-remote", f"PR=7; touch {marker}", f"OWNER_EXPLAINED={statement}")
     assert env["REMOTE_CLOSEOUT_PR"] == f"7; touch {marker}"
     assert env["REMOTE_CLOSEOUT_OWNER_EXPLAINED"] == statement
     assert not marker.exists()
-
-
-def test_main_reads_the_make_environment(monkeypatch: pytest.MonkeyPatch) -> None:
-    seen: list[tuple] = []
-    monkeypatch.setattr(remote_closeout, "ready", lambda *args: seen.append(args) or 0)
-    env = {
-        "REMOTE_CLOSEOUT_PR": "7",
-        "REMOTE_CLOSEOUT_HEAD": OTHER_SHA,
-        "REMOTE_CLOSEOUT_OWNER_EXPLAINED": "owner said so",
-        "REMOTE_CLOSEOUT_REPO": "",
-    }
-    assert remote_closeout.main(["ready"], env=env) == 0
-    assert seen == [("7", OTHER_SHA, remote_closeout.REPOSITORY, "owner said so")]

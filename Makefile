@@ -1227,17 +1227,17 @@ $(foreach name,$(REMOTE_CLOSEOUT_VARIABLES),$(eval $(REMOTE_CLOSEOUT_TARGETS): o
 $(foreach name,$(REMOTE_CLOSEOUT_VARIABLES),$(eval $(REMOTE_CLOSEOUT_TARGETS): export REMOTE_CLOSEOUT_$(name) := $$($(name))))
 $(REMOTE_CLOSEOUT_TARGETS): export PYTHONDONTWRITEBYTECODE := 1
 pr-arm-remote:
-	@uv run --no-sync -- python scripts/remote_closeout.py arm
+	@uv run --no-project -- python scripts/remote_closeout.py arm
 pr-landing-remote-bind:
-	@uv run --no-sync -- python scripts/remote_closeout.py bind
+	@uv run --no-project -- python scripts/remote_closeout.py bind
 pr-landing-remote-record:
-	@uv run --no-sync -- python scripts/remote_closeout.py record
+	@uv run --no-project -- python scripts/remote_closeout.py record
 pr-landing-remote-manifest:
-	@uv run --no-sync -- python scripts/remote_closeout.py manifest
+	@uv run --no-project -- python scripts/remote_closeout.py manifest
 pr-landing-remote-withdraw:
-	@uv run --no-sync -- python scripts/remote_closeout.py withdraw
+	@uv run --no-project -- python scripts/remote_closeout.py withdraw
 pr-landing-remote-ready:
-	@uv run --no-sync -- python scripts/remote_closeout.py ready
+	@uv run --no-project -- python scripts/remote_closeout.py ready
 
 .PHONY: trunk-revert
 trunk-revert:
