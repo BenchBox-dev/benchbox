@@ -28,7 +28,7 @@ jobs:
       contents: read
       packages: write
     with:
-      images: '["clickhouse", "trino"]'
+      images: '["clickhouse", "trino", "postgres"]'
 
   mirror-cedardb:
     uses: ./.github/workflows/mirror-ci-images.yml
@@ -67,6 +67,7 @@ jobs:
       CLICKHOUSE_MEMORY_LIMIT: 4g
       CLICKHOUSE_IMAGE: ghcr.io/benchbox-dev/clickhouse:25.8@sha256:0152dd511befe6a2c2ef53e930726179669b08116da78500b37c51c96ff5ee77
       TRINO_IMAGE: ghcr.io/benchbox-dev/trino:480@sha256:1565e8cac299a32dd9177a4da2d748da4ceb9f1560a9c409d1d18fd72ea5253e
+      POSTGRES_IMAGE: ghcr.io/benchbox-dev/postgres:18@sha256:74935e72241653ca55e0414067e6d8763aceb8a810eb51b452253ec3dcfc4336
     steps:
       - name: Checkout code
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
@@ -83,7 +84,6 @@ jobs:
         run: uv sync --group dev
 
       - name: Authenticate to GHCR
-        if: ${{ matrix.service != 'postgres' }}
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin

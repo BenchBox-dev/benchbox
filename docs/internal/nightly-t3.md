@@ -13,7 +13,7 @@ red domain does not hide the others, and each domain uploads its own artifacts.
 
 | Label | Job | What it checks |
 |-------|-----|----------------|
-| `t3:docker` | `docker` | PostgreSQL, ClickHouse, and Trino live suites against the compose stacks in `docker/`. |
+| `t3:docker` | `docker` | PostgreSQL, ClickHouse, and Trino live suites against the compose stacks in `docker/`. Each stack pulls its digest-pinned image from the matching `ghcr.io/benchbox-dev/` mirror (`postgres`, `clickhouse`, `trino`) populated by the `mirror-images` job. |
 | `t3:cloud` | `cloud` | Credentialed live plan-capture tests for Snowflake, BigQuery, Redshift, and MotherDuck. Off by default. |
 | `t3:perf` | `perf` | DuckDB TPC-H SF=0.01 power phase compared with the committed baseline; fails on a regression above 10%. |
 | `t3:matrix` | `matrix` | Wheel build and install smoke on Python 3.11 to 3.14 across Ubuntu, macOS, and Windows, plus one bundled `dbgen` and one `dsdgen` run per runner. |
