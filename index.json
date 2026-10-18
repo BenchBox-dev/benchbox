@@ -8489,6 +8489,15 @@
       "status": "open",
       "title": "Define published documentation ownership and supersede the split decision"
     },
+    "docs-mig-core-doc-paths-to-urls": {
+      "claim": null,
+      "needs": [
+        "docs-mig-adr-ownership"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Replace core references to relocated pages with canonical URLs"
+    },
     "docs-mig-core-relocate-contract-sql": {
       "claim": null,
       "needs": [
