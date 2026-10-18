@@ -4,9 +4,11 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
-from collections.abc import Sequence
+import time
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -26,8 +28,8 @@ skip_on_windows = pytest.mark.skipif(
 )
 
 
-def _load():
-    spec = importlib.util.spec_from_file_location("remote_closeout", ROOT / "scripts/remote_closeout.py")
+def _load(name: str):
+    spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / f"{name}.py")
     assert spec is not None
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
@@ -36,7 +38,8 @@ def _load():
     return module
 
 
-remote_closeout = _load()
+remote_closeout = _load("remote_closeout")
+remote_review = _load("remote_review")
 pr_landing = remote_closeout.pr_landing
 
 
@@ -85,13 +88,15 @@ def isolated(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv(remote_closeout.STORE_ENV, str(tmp_path / "reviews"))
 
 
-def build_world(tmp_path: Path, changed: str = "docs/note.md") -> World:
+def build_world(tmp_path: Path, changed: str = "docs/note.md", base_files: Mapping[str, str] | None = None) -> World:
     origin = tmp_path / "origin.git"
     seed = tmp_path / "seed"
     git(tmp_path, "init", "--quiet", "--bare", "-b", "develop", str(origin))
     git(tmp_path, "init", "--quiet", "-b", "develop", str(seed))
-    (seed / "README.md").write_text("base\n", encoding="utf-8")
-    git(seed, "add", "README.md")
+    for path, text in {"README.md": "base\n", **(base_files or {})}.items():
+        (seed / path).parent.mkdir(parents=True, exist_ok=True)
+        (seed / path).write_text(text, encoding="utf-8")
+    git(seed, "add", ".")
     git(seed, "commit", "--quiet", "-m", "base")
     base = git(seed, "rev-parse", "HEAD")
     git(seed, "remote", "add", "origin", str(origin))
@@ -144,6 +149,8 @@ class FakeGitHub:
         self.items: dict[str, dict] = {}
         self.reviews: list[dict] = []
         self.resolved: list[str] = []
+        self.post_failures: list[str] = []
+        self.post_attempts: list[dict] = []
 
     def set_head(self, head: str) -> None:
         self.view["headRefOid"] = head
@@ -182,24 +189,17 @@ class FakeGitHub:
             page = {"nodes": self.threads, "pageInfo": {"hasNextPage": False, "endCursor": None}}
             return 0, json.dumps({"data": {"repository": {"pullRequest": {"reviewThreads": page}}}})
         if cmd[:4] == ["gh", "api", "--method", "POST"] and cmd[4] == f"repos/{REPO}/pulls/7/reviews":
-            payload = json.loads(Path(cmd[cmd.index("--input") + 1]).read_text(encoding="utf-8"))
-            review_id = 100 + len(self.reviews)
-            self.reviews.append(payload)
-            for comment in payload["comments"]:
-                first = {
-                    "body": comment["body"],
-                    "path": comment["path"],
-                    "pullRequestReview": {"databaseId": review_id},
-                }
-                self.threads.append(
-                    {
-                        "id": f"RT{len(self.threads)}",
-                        "isResolved": False,
-                        "isOutdated": False,
-                        "comments": {"nodes": [first]},
-                    }
-                )
-            return 0, json.dumps({"id": review_id, "node_id": f"PRR_{review_id}"})
+            return self._post_review(json.loads(Path(cmd[cmd.index("--input") + 1]).read_text(encoding="utf-8")))
+        if cmd[:3] == ["gh", "api", "--paginate"] and cmd[3] == f"repos/{REPO}/pulls/7/reviews":
+            marker = re.search(r"benchbox-remote-review [0-9a-f]+", cmd[-1])
+            commit = re.search(r'\.commit_id == "([0-9a-f]+)"', cmd[-1])
+            assert marker and commit
+            matches = [
+                str(review["id"])
+                for review in self.reviews
+                if review["commit_id"] == commit[1] and marker[0] in review["body"]
+            ]
+            return 0, "".join(f"{match}\n" for match in matches)
         if cmd[:2] == ["gh", "api"] and "/check-runs" in cmd[2]:
             head = cmd[2].split("/commits/")[1].split("/")[0]
             runs = [
@@ -216,6 +216,29 @@ class FakeGitHub:
 
     def arms(self) -> list[list[str]]:
         return [call for call in self.calls if call[:3] == ["gh", "pr", "merge"] and "--auto" in call]
+
+    def _post_review(self, payload: dict) -> tuple[int, str]:
+        self.post_attempts.append(payload)
+        failure = self.post_failures.pop(0) if self.post_failures else None
+        if failure == "422" and payload["comments"]:
+            return 1, "gh: Unprocessable Entity (HTTP 422): Line could not be resolved"
+        if failure == "error":
+            return 1, "gh: Bad Gateway (HTTP 502)"
+        review_id = 100 + len(self.reviews)
+        self.reviews.append({"id": review_id, **payload})
+        for comment in payload["comments"]:
+            first = {"body": comment["body"], "path": comment["path"], "pullRequestReview": {"databaseId": review_id}}
+            self.threads.append(
+                {
+                    "id": f"RT{len(self.threads)}",
+                    "isResolved": False,
+                    "isOutdated": False,
+                    "comments": {"nodes": [first]},
+                }
+            )
+        if failure == "lost":
+            return 1, "gh: Bad Gateway (HTTP 502)"
+        return 0, json.dumps({"id": review_id, "node_id": f"PRR_{review_id}"})
 
 
 def review(world: World, head: str | None = None, **overrides) -> dict:
@@ -761,16 +784,10 @@ def test_the_make_wrapper_hands_values_over_untouched_and_runs_no_shell_metachar
 
 
 @skip_on_windows
-def test_the_review_target_hands_model_and_dry_run_to_the_review_subcommand(tmp_path: Path) -> None:
+def test_the_review_target_hands_model_and_dry_run_to_the_review_script(tmp_path: Path) -> None:
     env = _make_env(tmp_path, "pr-landing-remote-review", "PR=7", f"HEAD={OTHER_SHA}", "MODEL=gpt-x", "DRY_RUN=1")
-    assert (tmp_path / "argv").read_text(encoding="utf-8").split() == [
-        "run",
-        "--no-project",
-        "--",
-        "python",
-        "scripts/remote_closeout.py",
-        "review",
-    ]
+    argv = (tmp_path / "argv").read_text(encoding="utf-8").split()
+    assert argv == ["run", "--no-project", "--", "python", "scripts/remote_review.py"]
     assert env["REMOTE_CLOSEOUT_HEAD"] == OTHER_SHA
     assert env["REMOTE_CLOSEOUT_MODEL"] == "gpt-x"
     assert env["REMOTE_CLOSEOUT_DRY_RUN"] == "1"
@@ -778,62 +795,84 @@ def test_the_review_target_hands_model_and_dry_run_to_the_review_subcommand(tmp_
 
 
 FAKE_CODEX = """
+import fcntl
 import json
 import os
 import shutil
+import subprocess
 import sys
+import time
 from pathlib import Path
 
+STATE = Path(__STATE__)
+LOCK = Path(__LOCK__)
 args = sys.argv[1:]
-state = Path(os.environ["FAKE_CODEX_STATE"])
 if args == ["--version"]:
     print("codex-cli 9.9.9")
     raise SystemExit(0)
-snapshot = state / f"call-{len(list(state.glob('call-*')))}"
-shutil.copytree(Path(args[args.index("-C") + 1]).parent, snapshot)
+snapshot = STATE / f"call-{len(list(STATE.glob('call-*')))}"
+shutil.copytree(Path(args[args.index("-C") + 1]).parent, snapshot, symlinks=True)
 (snapshot / "argv.json").write_text(json.dumps(args))
-behaviour = json.loads((state / "next.json").read_text())
+(snapshot / "env.json").write_text(json.dumps(dict(os.environ)))
+lock_free = True
+if LOCK.exists():
+    with LOCK.open("a") as handle:
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            lock_free = False
+(snapshot / "lock_free.json").write_text(json.dumps(lock_free))
+behaviour = json.loads((STATE / "next.json").read_text())
+if "refresh" in behaviour:
+    Path(os.environ["CODEX_HOME"], "auth.json").write_text(behaviour["refresh"])
+if behaviour.get("hang"):
+    child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+    (STATE / "child.pid").write_text(str(child.pid))
+    time.sleep(60)
+print(json.dumps({"type": "thread.started", "thread_id": "thread-0042"}))
 if "fail" in behaviour:
-    print(json.dumps({"type": "thread.started", "thread_id": "thread-0042"}))
     print(json.dumps({"type": "error", "message": behaviour["fail"]}))
     raise SystemExit(1)
-print(json.dumps({"type": "thread.started", "thread_id": "thread-0042"}))
 Path(args[args.index("-o") + 1]).write_text(behaviour["output"])
 """
+ORIGINAL_LOGIN = '{"tokens": "original"}'
 
 
 class FakeCodex:
-    def __init__(self, state: Path) -> None:
+    def __init__(self, state: Path, home: Path) -> None:
         self.state = state
+        self.home = home
 
-    def respond(self, findings: Sequence[dict] = (), previous: Sequence[dict] = ()) -> None:
-        self.respond_raw(json.dumps({"findings": list(findings), "previous_findings": list(previous)}))
+    def behave(self, **behaviour: object) -> None:
+        (self.state / "next.json").write_text(json.dumps(behaviour), encoding="utf-8")
 
-    def respond_raw(self, output: str) -> None:
-        (self.state / "next.json").write_text(json.dumps({"output": output}), encoding="utf-8")
-
-    def fail(self, message: str) -> None:
-        (self.state / "next.json").write_text(json.dumps({"fail": message}), encoding="utf-8")
+    def respond(self, findings: Sequence[dict] = (), previous: Sequence[dict] = (), **behaviour: object) -> None:
+        output = json.dumps({"findings": list(findings), "previous_findings": list(previous)})
+        self.behave(output=output, **behaviour)
 
     def runs(self) -> list[Path]:
         return sorted(self.state.glob("call-*"), key=lambda path: int(path.name.removeprefix("call-")))
 
+    def read(self, run: Path, name: str) -> object:
+        return json.loads((run / name).read_text(encoding="utf-8"))
+
     def argv(self, run: Path) -> list[str]:
-        return json.loads((run / "argv.json").read_text(encoding="utf-8"))
+        return self.read(run, "argv.json")
 
 
 @pytest.fixture
 def codex(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> FakeCodex:
-    bin_dir = tmp_path / "bin"
-    state = tmp_path / "codex-state"
-    bin_dir.mkdir()
-    state.mkdir()
-    script = bin_dir / "codex"
-    script.write_text(f"#!{sys.executable}\n{FAKE_CODEX}", encoding="utf-8")
-    script.chmod(0o755)
+    bin_dir, state, home = tmp_path / "bin", tmp_path / "codex-state", tmp_path / "codex-home"
+    for directory in (bin_dir, state, home):
+        directory.mkdir()
+    (home / "auth.json").write_text(ORIGINAL_LOGIN, encoding="utf-8")
+    lock = remote_closeout.store_path(REPO, 7).with_name("pr-7.json.lock")
+    script = FAKE_CODEX.replace("__STATE__", repr(str(state))).replace("__LOCK__", repr(str(lock)))
+    (bin_dir / "codex").write_text(f"#!{sys.executable}\n{script}", encoding="utf-8")
+    (bin_dir / "codex").chmod(0o755)
     monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
-    monkeypatch.setenv("FAKE_CODEX_STATE", str(state))
-    fake = FakeCodex(state)
+    monkeypatch.setenv("CODEX_HOME", str(home))
+    fake = FakeCodex(state, home)
     fake.respond()
     return fake
 
@@ -853,7 +892,20 @@ def run_review(world: World, gh: FakeGitHub, head: str | None = None, **kwargs) 
     head = head or world.head
     options = {"model": "gpt-test", **kwargs}
     builder_head = None if options.get("dry_run") else head
-    return remote_closeout.review("7", head, builder_head, run=gh, **options)
+    return remote_review.review("7", head, builder_head, run=gh, checkout=world.clone, **options)
+
+
+def commit_pr_files(world: World, files: Mapping[str, str], links: Mapping[str, str] | None = None) -> str:
+    git(world.seed, "switch", "--quiet", BRANCH)
+    for path, text in files.items():
+        (world.seed / path).parent.mkdir(parents=True, exist_ok=True)
+        (world.seed / path).write_text(text, encoding="utf-8")
+    for path, target in (links or {}).items():
+        os.symlink(target, world.seed / path)
+    git(world.seed, "add", ".")
+    git(world.seed, "commit", "--quiet", "-m", "revise")
+    git(world.seed, "push", "--quiet", "--force", "origin", f"{BRANCH}:refs/pull/7/head")
+    return git(world.seed, "rev-parse", "HEAD")
 
 
 RECORD_FIELDS = tuple(remote_closeout.RECORD_CHECKS)
@@ -881,7 +933,7 @@ def test_review_stores_a_record_with_a_computed_disposition_and_publishes_its_fi
         "disposition": "changes-requested",
         "reviewer": {"model": "gpt-test", "run_id": "thread-0042"},
     }
-    assert entry["builder_head"] == world.head
+    assert (entry["builder_head"], entry["published"]) == (world.head, True)
     assert remote_closeout.record_problems({field: entry[field] for field in RECORD_FIELDS}) == []
     [posted] = bound.reviews
     assert (posted["event"], posted["commit_id"]) == ("COMMENT", world.head)
@@ -893,22 +945,23 @@ def test_review_stores_a_record_with_a_computed_disposition_and_publishes_its_fi
             "body": "Independent reviewer, Required: the note is wrong",
         }
     ]
-    assert posted["body"] == "\n".join(
-        [
-            f"Findings from the independent reviewer at {world.head}.",
-            "",
-            "Critical and Required findings outside the changed lines:",
-            "- Critical, `README.md:1`: the readme claims too much",
-            "",
-            "Nits:",
-            "- Nit, `docs/note.md`: tone",
-        ]
-    )
+    marker, *body = posted["body"].split("\n")
+    assert re.fullmatch(r"<!-- benchbox-remote-review [0-9a-f]{32} -->", marker)
+    assert body == [
+        f"Findings from the independent reviewer at {world.head}.",
+        "",
+        "Critical and Required findings outside the changed lines:",
+        "- Critical, `README.md:1`: the readme claims too much",
+        "",
+        "Nits:",
+        "- Nit, `docs/note.md`: tone",
+    ]
     assert "gpt-test" not in json.dumps(posted)
     assert [(f["id"], f["location"], f["thread_id"], f["status"]) for f in stored(world)["review_findings"]] == [
         ("F1", "docs/note.md:1", "RT1", "open"),
         ("F2", "README.md:1", None, "open"),
     ]
+    assert [thread["id"] for thread in entry["observation"]["threads"]] == ["RT1", "T1"]
 
 
 @pytest.mark.parametrize(
@@ -929,7 +982,10 @@ def test_the_disposition_approves_only_without_critical_or_required_findings(
     assert bool(bound.reviews) is published
 
 
-def test_the_reviewer_runs_read_only_on_inputs_exported_outside_the_repository(world: World, codex: FakeCodex) -> None:
+def test_the_reviewer_reads_the_head_tree_and_base_rules_exported_outside_the_repository(
+    tmp_path: Path, codex: FakeCodex
+) -> None:
+    world = build_world(tmp_path, base_files={"AGENTS.md": "base rules\n", "docs/agent/review.md": "base doc\n"})
     head = world.push_pr_commit("AGENTS.md")
     gh = FakeGitHub(world)
     gh.set_head(head)
@@ -938,35 +994,109 @@ def test_the_reviewer_runs_read_only_on_inputs_exported_outside_the_repository(w
     assert run_review(world, gh, head) == 0
     [run] = codex.runs()
     argv = codex.argv(run)
-    assert argv[:7] == ["exec", "-s", "read-only", "--ephemeral", "--skip-git-repo-check", "--json", "-C"]
-    assert argv[argv.index("-m") + 1] == "gpt-test"
-    exported = Path(argv[argv.index("-C") + 1])
-    assert not exported.parent.exists()
-    assert not exported.is_relative_to(world.clone) and not exported.is_relative_to(ROOT)
+    workdir = Path(argv[argv.index("-C") + 1]).parent
+    assert Path(argv[argv.index("-C") + 1]) == workdir / "input"
+    assert not workdir.exists()
+    assert not workdir.is_relative_to(world.clone) and not workdir.is_relative_to(ROOT)
     tree, inputs = run / "head", run / "input"
     assert sorted(path.relative_to(tree).as_posix() for path in tree.rglob("*") if path.is_file()) == [
         "AGENTS.md",
         "README.md",
+        "docs/agent/review.md",
         "docs/note.md",
     ]
     assert (tree / "AGENTS.md").read_text(encoding="utf-8") == "AGENTS.md revision\n"
+    assert (inputs / "rules" / "AGENTS.md").read_text(encoding="utf-8") == "base rules\n"
+    assert (inputs / "rules" / "docs" / "agent" / "review.md").read_text(encoding="utf-8") == "base doc\n"
     assert (inputs / "diff.patch").read_text(encoding="utf-8") == git(
         world.seed, "diff", "--no-renames", world.base, head
     ) + "\n"
     assert hashlib.sha256((inputs / "manifest.txt").read_bytes()).hexdigest() == world.digest(world.base, head)
-    assert json.loads((inputs / "tracker_item.json").read_text(encoding="utf-8")) == {
+    assert codex.read(inputs, "tracker_item.json") == {
         "id": "cloud-item",
         "description": "Add a note",
         "acceptance": ["The note exists"],
     }
-    assert json.loads((inputs / "pull_request.json").read_text(encoding="utf-8"))["title"] == "Add a cloud note"
-    assert json.loads((inputs / "previous_findings.json").read_text(encoding="utf-8")) == []
-    schema = json.loads(Path(run / "run" / "schema.json").read_text(encoding="utf-8"))
-    severity = schema["properties"]["findings"]["items"]["properties"]["severity"]
-    assert severity["enum"] == ["Critical", "Required", "Nit"]
+    assert codex.read(inputs, "pull_request.json")["title"] == "Add a cloud note"
+    assert codex.read(inputs, "previous_findings.json") == []
+    schema = codex.read(run / "run", "schema.json")
+    assert schema["properties"]["findings"]["items"]["properties"]["severity"]["enum"] == [
+        "Critical",
+        "Required",
+        "Nit",
+    ]
     prompt = argv[-1]
-    for expected in ("pull request #7", world.base, head, str(exported.parent / "input"), "acceptance criteria"):
+    for expected in ("pull request #7", world.base, head, str(workdir / "head"), str(workdir / "input"), "rules/"):
         assert expected in prompt
+
+
+def test_the_reviewer_runs_isolated_from_user_config_secrets_and_the_network(
+    world: World, bound: FakeGitHub, codex: FakeCodex, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("GH_TOKEN", "gh-secret")
+    monkeypatch.setenv("OPENAI_API_KEY", "openai-secret")
+    (codex.home / "config.toml").write_text('model = "gpt-test"\n[mcp_servers.todo]\ncommand = "todo"\n')
+    assert run_review(world, bound) == 0
+    [run] = codex.runs()
+    argv = codex.argv(run)
+    workdir = Path(argv[argv.index("-C") + 1]).parent
+    env = codex.read(run, "env.json")
+    assert set(env) - {"__CF_USER_TEXT_ENCODING"} == {"PATH", "HOME", "CODEX_HOME", "LANG"}
+    assert (env["HOME"], env["CODEX_HOME"]) == (str(workdir / "home"), str(workdir / "home" / ".codex"))
+    assert sorted(path.name for path in (run / "home" / ".codex").iterdir()) == ["auth.json"]
+    assert (run / "home" / ".codex" / "auth.json").read_text(encoding="utf-8") == ORIGINAL_LOGIN
+    assert argv[:7] == [
+        "exec",
+        "--ignore-user-config",
+        "--ignore-rules",
+        "--ephemeral",
+        "--skip-git-repo-check",
+        "--json",
+        "-C",
+    ]
+    assert "-s" not in argv and "--sandbox" not in argv
+    settings = [argv[index + 1] for index, value in enumerate(argv) if value == "-c"]
+    profile = remote_review.PERMISSION_PROFILE
+    filesystem = json.dumps({":minimal": "read", str(workdir / "input"): "read", str(workdir / "head"): "read"})
+    assert settings == [
+        f'default_permissions="{profile}"',
+        f"permissions.{profile}.filesystem={filesystem.replace(': ', '=').replace(', ', ',')}",
+        f"permissions.{profile}.network={{enabled=false}}",
+        'web_search="disabled"',
+        "mcp_servers={}",
+    ]
+    disabled = {argv[index + 1] for index, value in enumerate(argv) if value == "--disable"}
+    assert {"apps", "plugins", "hooks", "memories", "computer_use", "browser_use"} <= disabled
+
+
+def test_a_login_codex_refreshes_during_the_review_is_kept(world: World, bound: FakeGitHub, codex: FakeCodex) -> None:
+    codex.respond(refresh='{"tokens": "rotated"}')
+    assert run_review(world, bound, dry_run="1") == 0
+    assert (codex.home / "auth.json").read_text(encoding="utf-8") == '{"tokens": "rotated"}'
+
+
+def test_the_head_tree_ignores_export_attributes_and_skips_symlinks_that_leave_it(
+    world: World, bound: FakeGitHub, codex: FakeCodex
+) -> None:
+    files = {
+        ".gitattributes": "hidden.txt export-ignore\nsubst.txt export-subst\n",
+        "hidden.txt": "kept\n",
+        "subst.txt": "$Format:%H$\n",
+    }
+    links = {"inside": "README.md", "escape": "../../outside", "absolute": "/etc/hosts"}
+    head = commit_pr_files(world, files, links)
+    bound.set_head(head)
+    assert run_review(world, bound, head, dry_run="1") == 0
+    [run] = codex.runs()
+    tree = run / "head"
+    assert (tree / "hidden.txt").read_text(encoding="utf-8") == "kept\n"
+    assert (tree / "subst.txt").read_text(encoding="utf-8") == "$Format:%H$\n"
+    assert os.readlink(tree / "inside") == "README.md"
+    assert not (tree / "escape").is_symlink() and not (tree / "absolute").is_symlink()
+    assert (run / "input" / "skipped_entries.txt").read_text(encoding="utf-8").splitlines() == [
+        "absolute: symlink to /etc/hosts, which points outside the tree",
+        "escape: symlink to ../../outside, which points outside the tree",
+    ]
 
 
 def test_review_changes_no_working_tree_file_branch_or_git_config(
@@ -978,17 +1108,21 @@ def test_review_changes_no_working_tree_file_branch_or_git_config(
     assert local_state(world.clone) == before
 
 
-def test_a_dry_run_prints_the_record_and_publishes_and_stores_nothing(
+def test_a_dry_run_prints_the_record_and_creates_publishes_and_stores_nothing(
     world: World, bound: FakeGitHub, codex: FakeCodex, capsys: pytest.CaptureFixture[str]
 ) -> None:
+    store = remote_closeout.store_path(REPO, 7)
+    store.with_name("pr-7.json.lock").unlink()
+    before = store.read_text(encoding="utf-8")
     codex.respond([finding("docs/note.md:1", "Required")])
+    capsys.readouterr()
     assert run_review(world, bound, dry_run="1") == 0
     printed = json.loads(capsys.readouterr().out)
     assert (printed["disposition"], printed["head_sha"]) == ("changes-requested", world.head)
     assert remote_closeout.record_problems(printed) == []
     assert bound.reviews == []
-    assert stored(world)["records"] == []
-    assert stored(world)["review_findings"] == []
+    assert sorted(path.name for path in store.parent.iterdir()) == ["pr-7.json"]
+    assert store.read_text(encoding="utf-8") == before
 
 
 def _review_refusal(world: World, gh: FakeGitHub, capsys: pytest.CaptureFixture[str], code: int = 2, **kwargs) -> str:
@@ -1024,6 +1158,23 @@ def test_review_stops_when_the_fetched_head_is_not_the_head_github_reports(
     assert codex.runs() == []
 
 
+def test_review_refuses_when_the_head_moves_while_the_reviewer_runs(
+    world: World, bound: FakeGitHub, codex: FakeCodex, capsys: pytest.CaptureFixture[str]
+) -> None:
+    real = remote_review._run_reviewer
+
+    def moving(*args, **kwargs):
+        outcome = real(*args, **kwargs)
+        bound.set_head(OTHER_SHA)
+        return outcome
+
+    codex.respond([finding("docs/note.md:1", "Required")])
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(remote_review, "_run_reviewer", moving)
+        err = _review_refusal(world, bound, capsys)
+    assert f"the live PR head {OTHER_SHA[:12]} is not HEAD {world.head[:12]}" in err
+
+
 def test_review_fails_closed_when_the_bound_item_cannot_be_read(
     world: World, codex: FakeCodex, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -1038,7 +1189,7 @@ def test_review_refuses_without_builder_head_before_any_command(
     world: World, bound: FakeGitHub, codex: FakeCodex, capsys: pytest.CaptureFixture[str]
 ) -> None:
     calls = len(bound.calls)
-    assert remote_closeout.review("7", world.head, None, model="gpt-test", run=bound) == 2
+    assert remote_review.review("7", world.head, None, model="gpt-test", run=bound) == 2
     assert "BUILDER_HEAD must be a full lowercase commit SHA" in capsys.readouterr().err
     assert len(bound.calls) == calls
     assert codex.runs() == []
@@ -1047,7 +1198,7 @@ def test_review_refuses_without_builder_head_before_any_command(
 def test_review_reports_the_codex_error_when_the_reviewer_fails(
     world: World, bound: FakeGitHub, codex: FakeCodex, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    codex.fail("You've hit your usage limit. Try again at 12:23 PM.")
+    codex.behave(fail="You've hit your usage limit. Try again at 12:23 PM.")
     err = _review_refusal(world, bound, capsys)
     assert "codex exec failed with exit code 1: You've hit your usage limit. Try again at 12:23 PM." in err
 
@@ -1070,25 +1221,20 @@ def test_review_reports_the_codex_error_when_the_reviewer_fails(
 def test_review_refuses_reviewer_output_it_cannot_trust(
     world: World, bound: FakeGitHub, codex: FakeCodex, capsys: pytest.CaptureFixture[str], output: str, expected: str
 ) -> None:
-    codex.respond_raw(output)
+    codex.behave(output=output)
     assert expected in _review_refusal(world, bound, capsys)
 
 
 @pytest.mark.parametrize(("config", "recorded"), [('model = "gpt-configured"\n', "gpt-configured"), ("", None)])
 def test_review_takes_the_default_model_from_the_codex_configuration(
-    tmp_path: Path,
     world: World,
     bound: FakeGitHub,
     codex: FakeCodex,
-    monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
     config: str,
     recorded: str | None,
 ) -> None:
-    home = tmp_path / "codex-home"
-    home.mkdir()
-    (home / "config.toml").write_text(config, encoding="utf-8")
-    monkeypatch.setenv("CODEX_HOME", str(home))
+    (codex.home / "config.toml").write_text(config, encoding="utf-8")
     code = run_review(world, bound, model=None)
     if recorded is None:
         assert code == 2
@@ -1113,7 +1259,7 @@ def test_a_re_review_resolves_only_the_threads_of_findings_marked_fixed(
     bound.set_head(revised)
     codex.respond([], previous=[{"id": "F1", "status": "fixed"}, {"id": "F2", "status": "open"}])
     assert run_review(world, bound, revised) == 0
-    shown = json.loads((codex.runs()[-1] / "input" / "previous_findings.json").read_text(encoding="utf-8"))
+    shown = codex.read(codex.runs()[-1] / "input", "previous_findings.json")
     assert [(entry["id"], entry["reasoning"], entry["head_sha"]) for entry in shown] == [
         ("F1", "first", world.head),
         ("F2", "second", world.head),
@@ -1121,11 +1267,7 @@ def test_a_re_review_resolves_only_the_threads_of_findings_marked_fixed(
     assert bound.resolved == ["RT1"]
     assert len(bound.reviews) == 1
     latest = stored(world)["records"][-1]
-    assert (latest["head_sha"], latest["disposition"], latest["findings"]) == (
-        revised,
-        "changes-requested",
-        [second],
-    )
+    assert (latest["head_sha"], latest["disposition"], latest["findings"]) == (revised, "changes-requested", [second])
 
     codex.respond([], previous=[{"id": "F1", "status": "open"}])
     assert run_review(world, bound, revised) == 2
@@ -1151,3 +1293,113 @@ def test_a_body_only_blocking_finding_marked_fixed_resolves_no_thread(
     assert run_review(world, bound) == 0
     assert bound.resolved == []
     assert stored(world)["records"][-1]["disposition"] == "approve"
+
+
+def test_a_failed_publication_leaves_the_new_record_latest_until_a_rerun_publishes_it(
+    world: World, bound: FakeGitHub, codex: FakeCodex, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert run_review(world, bound) == 0
+    assert stored(world)["records"][-1]["disposition"] == "approve"
+    codex.respond([finding("README.md:1", "Critical"), finding("docs/note.md:1", "Required")])
+    bound.post_failures = ["error"]
+    assert run_review(world, bound) == 1
+    latest = stored(world)["records"][-1]
+    assert (latest["disposition"], latest["published"]) == ("changes-requested", False)
+    assert bound.reviews == []
+    assert "the latest record's findings are not all published" in _refusal(world, bound, capsys)
+
+    codex.respond([], previous=[{"id": "F1", "status": "open"}, {"id": "F2", "status": "open"}])
+    assert run_review(world, bound) == 0
+    assert len(bound.reviews) == 1
+    state = stored(world)
+    assert [record["published"] for record in state["records"]] == [True, True, True]
+    assert [(entry["id"], entry["thread_id"]) for entry in state["review_findings"]] == [("F1", None), ("F2", "RT1")]
+    assert state["records"][-1]["disposition"] == "changes-requested"
+
+
+def test_a_review_github_kept_but_did_not_acknowledge_is_not_posted_twice(
+    world: World, bound: FakeGitHub, codex: FakeCodex
+) -> None:
+    codex.respond([finding("docs/note.md:1", "Required")])
+    bound.post_failures = ["lost"]
+    assert run_review(world, bound) == 1
+    assert len(bound.reviews) == 1
+    codex.respond([], previous=[{"id": "F1", "status": "open"}])
+    assert run_review(world, bound) == 0
+    assert (len(bound.reviews), len(bound.post_attempts)) == (1, 1)
+    assert stored(world)["review_findings"][0]["thread_id"] == "RT1"
+
+
+def test_inline_comments_github_rejects_move_into_the_review_body(
+    world: World, bound: FakeGitHub, codex: FakeCodex
+) -> None:
+    codex.respond([finding("docs/note.md:1", "Required", "the note is wrong")])
+    bound.post_failures = ["422"]
+    assert run_review(world, bound) == 0
+    assert len(bound.post_attempts) == 2
+    [posted] = bound.reviews
+    assert posted["comments"] == []
+    assert posted["body"].split("\n")[-2:] == [
+        "Critical and Required findings GitHub would not place on the diff:",
+        "- Required, `docs/note.md:1`: the note is wrong",
+    ]
+    assert stored(world)["review_findings"][0]["thread_id"] is None
+    assert stored(world)["records"][-1]["published"] is True
+
+
+def test_record_refuses_an_approve_record_while_blocking_findings_are_open(
+    tmp_path: Path, world: World, bound: FakeGitHub, codex: FakeCodex, capsys: pytest.CaptureFixture[str]
+) -> None:
+    codex.respond([finding("docs/note.md:1", "Required")])
+    assert run_review(world, bound) == 0
+    capsys.readouterr()
+    assert store(tmp_path, bound, review(world), world.head) == 2
+    assert "an approve record cannot be stored while blocking findings F1 are open" in capsys.readouterr().err
+    assert len(stored(world)["records"]) == 1
+
+
+def test_the_reviewer_runs_without_holding_the_review_store_lock(
+    world: World, bound: FakeGitHub, codex: FakeCodex
+) -> None:
+    assert run_review(world, bound) == 0
+    [run] = codex.runs()
+    assert codex.read(run, "lock_free.json") is True
+
+
+def test_review_waits_only_a_bounded_time_for_the_review_store_lock(
+    world: World,
+    bound: FakeGitHub,
+    codex: FakeCodex,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    import fcntl
+
+    monkeypatch.setattr(remote_review, "LOCK_WAIT", 0.3)
+    codex.respond([finding("docs/note.md:1", "Required")])
+    with remote_closeout.store_path(REPO, 7).with_name("pr-7.json.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        err = _review_refusal(world, bound, capsys)
+    assert "another close-out command held the review store for PR #7 for over 0.3 seconds" in err
+
+
+def test_a_reviewer_that_hangs_is_killed_with_its_process_group(
+    world: World,
+    bound: FakeGitHub,
+    codex: FakeCodex,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(remote_review, "CODEX_TIMEOUT", 2)
+    codex.behave(hang=True)
+    assert "codex did not finish within 2 seconds" in _review_refusal(world, bound, capsys)
+    child = int((codex.state / "child.pid").read_text(encoding="utf-8"))
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        try:
+            os.kill(child, 0)
+        except ProcessLookupError:
+            break
+        time.sleep(0.1)
+    else:
+        pytest.fail(f"the reviewer's child process {child} survived the timeout")

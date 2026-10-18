@@ -143,30 +143,50 @@ a change stores the owner's statement, passed as
 ## Review run
 
 `make pr-landing-remote-review PR=<n> HEAD=<sha> BUILDER_HEAD=<sha>` starts the
-reviewer, builds its record, publishes the findings, and stores the record as
-`make pr-landing-remote-record` does. `MODEL=<codex model>` picks the model,
-which otherwise comes from the Codex configuration. `DRY_RUN=1` prints the
-record and publishes and stores nothing, so it needs no `BUILDER_HEAD`.
+reviewer, builds its record, stores it as `make pr-landing-remote-record` does,
+and publishes the findings. `MODEL=<codex model>` picks the model, which
+otherwise comes from the Codex configuration. `DRY_RUN=1` prints the record and
+creates, publishes, and stores nothing, so it needs no `BUILDER_HEAD`.
 
 The target needs a binding. It fetches and pins the base, head, and digest as
 the manifest target does, and refuses if the live head is not `HEAD`. In a new
-temporary directory outside the repository it exports the head tree with
-`git archive`, then writes the diff, the raw manifest, the PR title and body,
-the bound item's description and acceptance criteria, and the blocking findings
-from earlier reviews that are still open. It runs `codex exec` in a read-only
-sandbox on that directory, which makes the reviewer a different model family
-from the Claude builders, and deletes the directory afterwards. The prompt is
-`scripts/remote_review_prompt.txt`.
+temporary directory outside the repository it writes the head tree from
+`git ls-tree` and `git cat-file`, so `.gitattributes` export rules cannot hide
+or rewrite a file, and checks every blob against its ID. Symlinks that point
+outside the tree are left out and listed. Beside the tree it writes the diff,
+the raw manifest, the PR title and body, the bound item's description and
+acceptance criteria, `AGENTS.md` and `docs/agent/` as they stand at the base,
+and the blocking findings from earlier reviews that are still open. The rules
+come from the base so that a change cannot rewrite the standard it is judged
+by. The prompt is `scripts/remote_review_prompt.txt`.
+
+It then runs `codex exec`, which makes the reviewer a different model family
+from the Claude builders. Codex runs without the user's Codex configuration,
+MCP servers, hooks, memories, plugins, or rules, with a copy of the Codex login
+in a temporary home and only `PATH`, `HOME`, `CODEX_HOME`, and `LANG` in its
+environment. Its sandbox can read only the head tree and the review inputs, and
+can neither write nor reach the network. The review store is not locked while
+Codex runs, so `make pr-landing-remote-withdraw` is never kept waiting. The
+target deletes the temporary directory afterwards, first copying back a login
+Codex refreshed during the run if the original is unchanged.
 
 Each finding has a `path:line` location in the head version, its reasoning, and
 a severity of Critical, Required, or Nit. The target computes the disposition:
 `approve` only when there is no new Critical or Required finding and no earlier
-one is still open. It posts the findings as one review, with Critical and
-Required findings inline where the line is in the diff and the rest, and every
-Nit, in the review body. On a re-review the reviewer marks each earlier finding
-fixed or open, and the target resolves only the threads of findings marked
-fixed. The PR's file keeps each blocking finding with its thread ID, and the
-Codex version and prompt digest of each run.
+one is still open. Under the store lock it checks again that the binding, the
+open findings, and the live head are unchanged, stores the record, and only
+then publishes, so the latest record is always the newest review. It posts the
+findings as one review, with Critical and Required findings inline where the
+line is in the diff, and the rest and every Nit in the review body; if GitHub
+refuses an inline comment, the comments move into the body. On a re-review the
+reviewer marks each earlier finding fixed or open, and the target resolves only
+the threads of findings marked fixed. The PR's file keeps each blocking finding
+with its thread ID, and each run's Codex version, prompt digest, and publication
+steps. Until every step is done the record is unpublished and
+`make pr-arm-remote` refuses it; the next run finishes the steps first, finding
+an already posted review by its hidden marker instead of posting it again.
+`make pr-landing-remote-record` refuses an `approve` record while a blocking
+finding is open.
 
 ## Arm conditions
 

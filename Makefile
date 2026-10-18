@@ -1240,7 +1240,7 @@ pr-landing-remote-record:
 pr-landing-remote-manifest:
 	@uv run --no-project -- python scripts/remote_closeout.py manifest
 pr-landing-remote-review:
-	@uv run --no-project -- python scripts/remote_closeout.py review
+	@uv run --no-project -- python scripts/remote_review.py
 pr-landing-remote-withdraw:
 	@uv run --no-project -- python scripts/remote_closeout.py withdraw
 pr-landing-remote-ready:
