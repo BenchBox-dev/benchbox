@@ -1,0 +1,30 @@
+{
+  "acceptance": [
+    "pip-installed BenchBox wheel/sdist metadata and uv.lock select the same published downstream release, with no developer-only source override; current runtime import inventory migrates completely.",
+    "Ruff TID251 rejects public SQLGlot imports in benchbox/; narrow research/upstream comparison exemptions are explicit. Pickle/type/mock/container/notebook/active-doc references are audited without rewriting historical evidence.",
+    "Upgrade guard parses TOML dependency identity and schema1 _project/sqlglot-upstream/runtime-baseline.json; reruns on artifact/source identity changes and handles acknowledged PASS outcomes without repeated false failures; malformed/missing baselines and unexpected behavior fail closed.",
+    "Per-retirement evidence covers translate_sql_query, DialectTranslationMixin.translate_sql and BaseBenchmark.translate_query as applicable, identify=True and postgres-normalized cross-dialect probes. Mixed helpers retain BenchBox-specific behavior.",
+    "Targeted wrapper/delegation/SQLiteQ6/BigQuery/AST/repro/generator/guard tests, configured Ruff+ty, comment-policy, compatibility-doc checks, and native preflight pass; actual BenchBox wheel and sdist run outside checkout with pip/uv and upstream present.",
+    "Initial rollback drill restores the entire pre-migration BenchBox import/dependency baseline using publicSQLGlot30.18.0 and passes key baseline tests; later-fork downgrade procedure is documented.",
+    "Accepted ADR supersedes only the no-fork/main-release-line choice and documents ownership, versioning, source/fork boundary, refresh and rollback. Review disposition record and plan are durable and linked.",
+    "Native make pr-open/pr-arm workflow reaches verified merge with all required checks and current-head oracle review; post-merge evidence is refreshed and tracker closes only after those outcomes."
+  ],
+  "context": "Serial batch member; do not bypass publication or BigQuery done gates. Preserve primary clone and other agents' worktrees. User's current task authorizes plan/review remediation and implementation through BenchBox merge, but publication approval remains separate.",
+  "description": "In the owned BenchBox.wt-sqlglot-soft-fork branch, refresh from develop containing the merged BigQuery prerequisite after the downstream package is public. Replace sqlglot with the exact tested benchbox-sqlglot release using uv dependency commands. Migrate all current runtime/AST users, active tests/tools and mocks to benchbox_sqlglot. Add Ruff banned-api protection and TOML-based source identity/runtime-baseline guard; preserve isolated raw upstream probes. Retire only proved redundant syntax fixes, retaining SQLiteQ6 exact bounds, physical DDL, variants and semantic policy. Update ADR/docs and verify installed BenchBox artifacts and rollback.",
+  "links": [
+    "/Users/joe/Developer/BenchBox.wt-sqlglot-soft-fork/_project/decisions/sqlglot-soft-fork-plan.md",
+    "/Users/joe/Developer/BenchBox.wt-sqlglot-soft-fork/_project/decisions/sqlglot-soft-fork-review.md",
+    "https://github.com/joeharris76/sqlglot",
+    "https://github.com/BenchBox-dev/BenchBox"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:codex-mcp-client:joe@joe-mac-mini.local:e0ab14b9d48e92582f492d05",
+      "at": "2026-10-18T00:59:41Z",
+      "client": "codex-mcp-client",
+      "op": "create",
+      "op_id": "e0afc37ec0714ca0adff6cf0d87bdca6",
+      "session_id": "5626a6dfe7d44c419c7db613d1059c06"
+    }
+  ]
+}
