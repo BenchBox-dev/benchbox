@@ -15793,9 +15793,9 @@
     },
     "postgres-cluster-plus-sort-same-table-20261017": {
       "claim": {
-        "expires_at": "2026-10-19T04:10:24Z",
-        "generation": "92f2c60f014a471ca939438d811b7730",
-        "renewals": 0,
+        "expires_at": "2026-10-19T04:22:11Z",
+        "generation": "0b7470bd7ed74e668b84af7fcce7eeca",
+        "renewals": 1,
         "worker": "mcp:tbh:joe@joe-mac-mini.local:3ce222eaad5d12493e27d4cc"
       },
       "needs": [],
