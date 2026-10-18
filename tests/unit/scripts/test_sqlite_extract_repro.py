@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import sys
 from pathlib import Path
 
 import pytest
+
+from benchbox._vendor import sqlglot as bundled_sqlglot
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -26,6 +29,7 @@ def test_execution_report(monkeypatch, capsys, translated, expected, exit_code, 
     spec = importlib.util.spec_from_file_location("sqlite_extract_repro", path)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
+    monkeypatch.setitem(sys.modules, "sqlglot", bundled_sqlglot)
     spec.loader.exec_module(module)
     monkeypatch.setattr(module, "cases", lambda: [("witness", "postgres", "SELECT source", expected)])
     monkeypatch.setattr(module, "translated_trap_cases", list)
@@ -57,6 +61,7 @@ def test_translated_counterexamples_gate_verdict(monkeypatch, capsys, trap_trans
     spec = importlib.util.spec_from_file_location("sqlite_extract_repro_traps", path)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
+    monkeypatch.setitem(sys.modules, "sqlglot", bundled_sqlglot)
     spec.loader.exec_module(module)
     monkeypatch.setattr(module, "cases", lambda: [("witness", "postgres", "SELECT source", [(2020,)])])
     monkeypatch.setattr(module, "translated_trap_cases", lambda: [("trap", "postgres", "SELECT trap", trap_expected)])

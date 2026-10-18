@@ -1,5 +1,26 @@
 # SQLGlot upstream contribution prep
 
+## Active BenchBox runtime
+
+BenchBox uses the pinned private runtime wheel from
+[`BenchBox-dev/benchbox-sqlglot`](https://github.com/BenchBox-dev/benchbox-sqlglot).
+Only the `.whl` and pin metadata are bundled under `benchbox/_vendor/`; source
+stays in the fork. `make sqlglot-repro-retirement-check` verifies the wheel hash
+and the acknowledged pass/unsupported outcomes in `scripts/sqlglot_runtime_baseline.json`.
+An acknowledged passing case is not a recurring retirement failure.
+
+The generated-case pilot exercises BenchBox's real wrapper and parses with the
+same bundled runtime. Replay uses the checkout's pinned wheel and rejects a
+different recorded runtime version. The standalone upstream repros remain
+separate comparisons and must run in an isolated environment. The historical
+contribution evidence below does not describe the current bundled runtime.
+
+The standalone JOB authoring tool retains its own public SQLGlot dependency in
+`_project/scripts/pyproject.toml`; its ASTs do not cross into BenchBox runtime
+translation. The import ban exempts that tool and the two isolated upstream
+comparison probes, not the generated-case pilot or self-binding detector.
+
+
 Drafted bug reports and a feature request for the SQLGlot project, plus the
 minimal reproducer harness that pins each defect to a specific SQLGlot
 version. SQLite extraction has an
@@ -16,7 +37,7 @@ source-dialect selection, syntax support and result semantics.
 The extraction report now includes a standalone SQLite execution reproducer:
 
 ```bash
-uv run --no-project --with sqlglot==30.18.0 -- python _project/sqlglot-upstream/repros/sqlite_extract.py
+uv run --no-project --isolated --with sqlglot==30.18.0 -- python _project/sqlglot-upstream/repros/sqlite_extract.py
 ```
 
 It returns 1 for observed translation failures and 2 for infrastructure errors.
@@ -51,7 +72,7 @@ version. Human review precedes upstream publication.
 ## Run the harness
 
 ```bash
-uv run --with sqlglot==30.6.0 python _project/sqlglot-upstream/repros/repro_all.py
+uv run --no-project --isolated --with sqlglot==30.6.0 -- python _project/sqlglot-upstream/repros/repro_all.py
 ```
 
 Exit code is zero only if all syntax/capability observations pass. A PASS is

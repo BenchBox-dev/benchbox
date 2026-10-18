@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import pytest
-import sqlglot
-from sqlglot import exp
 
+from benchbox._vendor import sqlglot
+from benchbox._vendor.sqlglot import exp
 from benchbox.core.dryrun import DryRunExecutor
 from benchbox.core.schemas import BenchmarkConfig
 from benchbox.core.tpchavoc.benchmark import TPCHavocBenchmark

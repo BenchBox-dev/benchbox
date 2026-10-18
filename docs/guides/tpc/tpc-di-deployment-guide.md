@@ -85,7 +85,7 @@ python -c "from benchbox import TPCDI; print('TPC-DI installation successful')"
 conda create -n benchbox python=3.11
 conda activate benchbox
 
-conda install numpy sqlglot pytest
+conda install numpy pytest
 
 uv add benchbox
 ```
@@ -1162,7 +1162,7 @@ def run_diagnostics():
     print(f"Python version: {sys.version}")
     print(f"Python executable: {sys.executable}")
 
-    packages = ['benchbox', 'numpy', 'sqlglot', 'pytest']
+    packages = ['benchbox', 'numpy', 'benchbox._vendor.sqlglot', 'pytest']
     for package in packages:
         try:
             module = importlib.import_module(package)

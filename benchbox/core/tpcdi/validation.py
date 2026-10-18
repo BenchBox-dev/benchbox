@@ -9,8 +9,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Optional, Union
 
-import sqlglot
-
+from benchbox._vendor import sqlglot
 from benchbox.utils.printing import emit
 
 logger = logging.getLogger(__name__)

@@ -720,7 +720,7 @@ class DSQGenBinary:
         cleaned_sql = re.sub(r"\n\s+", "\n", cleaned_sql)
 
         try:
-            import sqlglot
+            from benchbox._vendor import sqlglot
 
             for source_dialect in ["postgres", "mysql", "sqlite", None]:
                 try:

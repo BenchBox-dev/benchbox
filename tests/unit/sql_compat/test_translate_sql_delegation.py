@@ -43,7 +43,7 @@ class TestTranslateSqlIdentityPolicy:
 
 
 class TestTranslateSqlDialectNormalization:
-    @patch("sqlglot.transpile")
+    @patch("benchbox._vendor.sqlglot.transpile")
     def test_datafusion_normalized_to_postgres(self, mock_transpile):
         mock_transpile.return_value = ["SELECT col FROM t"]
         a = _Adapter(dialect="datafusion")
@@ -51,7 +51,7 @@ class TestTranslateSqlDialectNormalization:
         _, kwargs = mock_transpile.call_args
         assert kwargs["write"] == "postgres"
 
-    @patch("sqlglot.transpile")
+    @patch("benchbox._vendor.sqlglot.transpile")
     def test_netezza_source_normalized_to_postgres(self, mock_transpile):
         mock_transpile.return_value = ["SELECT col FROM t"]
         a = _Adapter(dialect="snowflake")
@@ -59,7 +59,7 @@ class TestTranslateSqlDialectNormalization:
         _, kwargs = mock_transpile.call_args
         assert kwargs["read"] == "postgres"
 
-    @patch("sqlglot.transpile")
+    @patch("benchbox._vendor.sqlglot.transpile")
     def test_duckdb_source_passes_through_unchanged(self, mock_transpile):
         mock_transpile.return_value = ["SELECT col FROM t"]
         a = _Adapter(dialect="snowflake")
@@ -110,7 +110,7 @@ class TestTranslateSqlMultiStatement:
     def test_error_returns_original_sql(self):
         sql = "CREATE TABLE t (id INTEGER)"
         a = _Adapter(dialect="snowflake")
-        with patch("sqlglot.transpile", side_effect=Exception("boom")):
+        with patch("benchbox._vendor.sqlglot.transpile", side_effect=Exception("boom")):
             result = a.translate_sql(sql, source_dialect="duckdb")
         assert result == sql
 
@@ -121,7 +121,7 @@ class TestTranslateSqlMultiStatement:
         real_import = builtins.__import__
 
         def raising_import(name, globals=None, locals=None, fromlist=(), level=0):
-            if name == "sqlglot":
+            if name == "benchbox._vendor" and "sqlglot" in fromlist:
                 raise ImportError("boom")
             return real_import(name, globals, locals, fromlist, level)
 

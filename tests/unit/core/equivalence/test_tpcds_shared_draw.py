@@ -7,9 +7,9 @@ from types import SimpleNamespace
 
 import duckdb
 import pytest
-import sqlglot
-from sqlglot import exp
 
+from benchbox._vendor import sqlglot
+from benchbox._vendor.sqlglot import exp
 from benchbox.core.equivalence import cross_surface
 from benchbox.core.equivalence.builders import base, tpcds
 from benchbox.core.equivalence.dataframe_surface import SurfaceDivergence

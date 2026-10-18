@@ -46,7 +46,7 @@ jobs:
 
       - name: Run type checking
         run: |
-          uv run ty check
+          make typecheck
 
       - name: Run fast tests
         run: |
@@ -107,7 +107,7 @@ jobs:
 
       - name: Run type checking
         run: |
-          uv run ty check
+          make typecheck
 
       - name: Run fast tests
         run: |
@@ -432,6 +432,7 @@ jobs:
       - name: Build package
         run: |
           uv build
+          uv run -- python -m scripts.verify_sqlglot_runtime_distribution dist/*.whl dist/*.tar.gz
 
       - name: Test package installation
         shell: bash

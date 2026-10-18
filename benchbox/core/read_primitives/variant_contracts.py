@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from functools import lru_cache
 from typing import TYPE_CHECKING
 
-import sqlglot
-from sqlglot import exp
+from benchbox._vendor import sqlglot
+from benchbox._vendor.sqlglot import exp
 
 if TYPE_CHECKING:
     from benchbox.core.read_primitives.catalog import PrimitiveCatalog, PrimitiveQuery

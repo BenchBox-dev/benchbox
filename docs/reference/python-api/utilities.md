@@ -98,7 +98,7 @@ postgresql
 
 **Supported Dialects**:
 
-SQLGlot 30.21.0 registers these dialect names, among others. The function passes them through unchanged:
+The bundled SQLGlot runtime (based on upstream 30.23.0) registers these dialect names, among others. The function passes them through unchanged:
 
 - **Cloud**: athena, bigquery, databricks, redshift, snowflake
 - **Open Source**: clickhouse, duckdb, mysql, postgres, sqlite
@@ -106,7 +106,7 @@ SQLGlot 30.21.0 registers these dialect names, among others. The function passes
 - **Big Data**: drill, druid, hive, presto, spark, spark2, trino
 - **Other**: doris, dune, materialize, prql, risingwave, starrocks, tableau
 
-BenchBox accepts any SQLGlot release from 25.6.0 up to, but not including, 31.0.0, so the registered names can differ with the release that is installed.
+BenchBox ships its pinned pure-Python SQLGlot wheel from [BenchBox-dev/benchbox-sqlglot](https://github.com/BenchBox-dev/benchbox-sqlglot) inside the BenchBox wheel and sdist. No separate SQLGlot installation, Git fetch or custom package index is required. Runtime imports use `benchbox._vendor.sqlglot`; a public `sqlglot` installation does not select BenchBox's translator. See the [SQLGlot ADR](../../development/adr/adr-sqlglot-use-and-non-use.md) for pin refresh and rollback.
 
 **Usage in Benchmarks**:
 

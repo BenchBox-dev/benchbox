@@ -19,7 +19,7 @@ EXPECTED_MODE = "advisory_with_age"
 EXPECTED_OWNER = "@joeharris76"
 EXPECTED_MAX_AGE_DAYS = 7
 EXPECTED_REPLAY_COMMAND_TEMPLATE = (
-    "uv run --with sqlglot=={sqlglot_version} -- python _project/sqlglot-upstream/repros/generator.py "
+    "uv run -- python _project/sqlglot-upstream/repros/generator.py "
     "--seed {seed} --source-dialect {source_dialect} --target-dialect {target_dialect} "
     "--failure-artifact {failure_artifact} --replay {failure_artifact}"
 )

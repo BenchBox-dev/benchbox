@@ -323,7 +323,7 @@ class TestStarRocksAdapter:
     def test_sql_translation(self, mock_pymysql):
         adapter = StarRocksAdapter()
 
-        with patch("sqlglot.transpile") as mock_transpile:
+        with patch("benchbox._vendor.sqlglot.transpile") as mock_transpile:
             mock_transpile.return_value = ['SELECT * FROM "table"']
             result = adapter.translate_sql("SELECT * FROM table", "duckdb")
             assert result == 'SELECT * FROM "table";'

@@ -64,9 +64,8 @@ def validate_tpcds_gate_data(data: CrossSurfaceData) -> None:
 def build_tpcds_duckdb(
     scale_factor: float, output_dir: Path, *, seed: int | None = None, stream_id: int = 0
 ) -> CrossSurfaceData:
-    import sqlglot
-    from sqlglot import exp
-
+    from benchbox._vendor import sqlglot
+    from benchbox._vendor.sqlglot import exp
     from benchbox.core.equivalence.builders.base import _load_duckdb_cell
     from benchbox.core.tpcds.dataframe_queries import TPCDS_DATAFRAME_QUERIES
     from benchbox.core.tpcds.dataframe_queries.parameter_adapters import ADAPTERS

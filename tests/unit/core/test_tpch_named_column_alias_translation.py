@@ -1,8 +1,8 @@
 import duckdb
 import pytest
-import sqlglot
-from sqlglot import exp
 
+from benchbox._vendor import sqlglot
+from benchbox._vendor.sqlglot import exp
 from benchbox.core.tpch.benchmark import TPCHBenchmark
 from benchbox.core.tpchavoc.benchmark import TPCHavocBenchmark
 

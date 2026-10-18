@@ -19,12 +19,11 @@ BENCHMARK_API_SURFACE = "beta-public"
 RUN_WITH_PLATFORM_API_SURFACE = "beta-public"
 
 if TYPE_CHECKING:
-    import sqlglot
-
+    from benchbox._vendor import sqlglot
     from benchbox.core.results.models import BenchmarkResults
 else:
     try:
-        import sqlglot
+        from benchbox._vendor import sqlglot
     except ImportError:
         sqlglot = None
 
@@ -397,7 +396,7 @@ class BaseBenchmark(BenchmarkResultValidationMixin, VerbosityMixin, ABC):
 
     def translate_query(self, query_id: Union[int, str], dialect: str) -> str:
         if sqlglot is None:
-            raise ImportError("sqlglot is required for query translation. Install it with `pip install sqlglot`.")
+            raise ImportError("Bundled benchbox._vendor.sqlglot runtime is unavailable; reinstall BenchBox.")
 
         from benchbox.utils.dialect_utils import normalize_dialect_for_sqlglot
 

@@ -198,14 +198,12 @@ class TPCDIQueryManager(ParameterizedQueryManager):
 
     def translate_query_text(self, query: str, dialect: str) -> str:
         try:
-            import sqlglot
+            from benchbox._vendor import sqlglot
 
             translated = sqlglot.transpile(query, read="ansi", write=dialect)
             return translated[0] if translated else query
         except ImportError:
-            raise ImportError(
-                "sqlglot is required for SQL dialect translation. Install with: pip install sqlglot"
-            ) from None
+            raise ImportError("Bundled benchbox._vendor.sqlglot runtime is unavailable; reinstall BenchBox.") from None
         except Exception as e:
             emit(f"Warning: Failed to translate query to {dialect}: {e}")
             return query

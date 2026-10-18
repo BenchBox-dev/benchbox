@@ -653,8 +653,8 @@ class TestG11ViewProjectionCompliance:
         assert "platform_index_rows" in names
 
     def test_every_view_projection_is_bare_column_or_whitelisted_passthrough(self, db_path: Path) -> None:
-        import sqlglot
-        from sqlglot import exp
+        from benchbox._vendor import sqlglot
+        from benchbox._vendor.sqlglot import exp
 
         with _connect(db_path) as con:
             views = self._iter_views(con)

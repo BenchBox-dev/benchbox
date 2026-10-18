@@ -23,7 +23,7 @@ pytestmark = [
 
 class TestSQLiteDiscountBoundaries:
     def test_qualified_nested_bounds_and_translation_metadata(self):
-        import sqlglot
+        from benchbox._vendor import sqlglot
 
         query = (
             "SELECT 0.06 + 0.01 FROM lineitem AS l "
@@ -43,8 +43,8 @@ class TestSQLiteDiscountBoundaries:
 
     @pytest.mark.parametrize("center, low, high", [("0.06", "0.05", "0.07"), ("0.07", "0.06", "0.08")])
     def test_only_discount_bounds_are_folded(self, center, low, high):
-        import sqlglot
-        from sqlglot import exp
+        from benchbox._vendor import sqlglot
+        from benchbox._vendor.sqlglot import exp
 
         query = (
             f"SELECT 0.06 + 0.01 AS untouched FROM lineitem "
@@ -231,8 +231,8 @@ class TestSQLiteDiscountBoundaries:
 
     @pytest.mark.parametrize("dialect", ["duckdb", "postgres", "mysql"])
     def test_non_sqlite_bounds_are_unchanged(self, dialect):
-        import sqlglot
-        from sqlglot import exp
+        from benchbox._vendor import sqlglot
+        from benchbox._vendor.sqlglot import exp
 
         query = "SELECT * FROM lineitem WHERE l_discount BETWEEN 0.06 - 0.01 AND 0.06 + 0.01"
         actual = sqlglot.parse_one(translate_sql_query(query, target_dialect=dialect), read=dialect)
@@ -314,6 +314,55 @@ class TestSQLiteDiscountBoundaries:
         finally:
             sqlite.close()
             reference.close()
+
+
+@pytest.mark.parametrize("surface", ["utility", "mixin", "benchmark"])
+@pytest.mark.parametrize(
+    "expression, expected",
+    [
+        ("DATE '1994-01-01'", "1994-01-01"),
+        ("CAST('1994-01-01' AS DATE)", "1994-01-01"),
+        ("DATE '1994-01-01' + INTERVAL '1' DAY", "1994-01-02 00:00:00"),
+        ("DATE '1994-01-02' - INTERVAL '1' DAY", "1994-01-01 00:00:00"),
+        ("CAST('1994-01-01' AS DATE) + INTERVAL '7' DAY", "1994-01-08 00:00:00"),
+        ("EXTRACT(YEAR FROM DATE '1994-06-15')", 1994),
+        ("EXTRACT(MONTH FROM DATE '1994-06-15')", 6),
+        ("EXTRACT(DAY FROM DATE '1994-06-15')", 15),
+        ("EXTRACT(YEAR FROM CAST('1994-06-15' AS DATE))", 1994),
+        ("EXTRACT(MONTH FROM CAST('1994-06-15' AS DATE))", 6),
+        ("EXTRACT(DAY FROM CAST('1994-06-15' AS DATE))", 15),
+        ("CAST(DATE '1994-01-01' AS TEXT)", "1994-01-01"),
+        ("DATE '2000-02-28' + INTERVAL '1' DAY", "2000-02-29 00:00:00"),
+        ("DATE '2000-03-01' - INTERVAL '1' DAY", "2000-02-29 00:00:00"),
+        ("EXTRACT(DAY FROM DATE '1994-01-01' + INTERVAL '1' DAY)", 2),
+        ("EXTRACT(YEAR FROM DATE '2020-06-01') / 3 > 673", 1),
+        ("CAST(EXTRACT(YEAR FROM DATE '2020-06-01') AS INTEGER) / 3 > 673", 0),
+        ("2020 / 3 > 673", 0),
+        ("-EXTRACT(YEAR FROM DATE '2020-06-01') / 3 < -673", 1),
+        ("(SELECT y / 3 > 673 FROM (SELECT EXTRACT(YEAR FROM DATE '2020-06-01') AS y) AS t)", 1),
+        ("CAST(NULL AS DATE) + INTERVAL '1' DAY", None),
+        ("DATE '2024-02-29' + INTERVAL '1' HOUR", "2024-02-29 01:00:00"),
+    ],
+)
+def test_bundled_sqlite_translation_execution(surface, expression, expected):
+    import logging
+    import sqlite3
+    from types import SimpleNamespace
+
+    from benchbox.base import BaseBenchmark
+    from benchbox.platforms.base.dialect_translation import DialectTranslationMixin
+
+    query = f"SELECT {expression} AS result"
+    if surface == "utility":
+        translated = translate_sql_query(query, "sqlite", source_dialect="netezza", identify=True, strict=True)
+    elif surface == "mixin":
+        adapter = SimpleNamespace(dialect="sqlite", logger=logging.getLogger(__name__))
+        translated = DialectTranslationMixin.translate_sql(adapter, query, source_dialect="netezza", strict=True)
+    else:
+        benchmark = SimpleNamespace(get_query=lambda query_id: query)
+        translated = BaseBenchmark.translate_query(benchmark, "date-case", "sqlite")
+    with sqlite3.connect(":memory:") as connection:
+        assert connection.execute(translated).fetchall() == [(expected,)]
 
 
 class TestDialectNormalization:

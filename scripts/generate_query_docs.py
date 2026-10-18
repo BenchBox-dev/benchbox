@@ -105,8 +105,7 @@ def _fence(code: str, lang: str) -> str:
 
 def _prettify_sql(sql: str, dialect: str) -> str:
     try:
-        import sqlglot
-
+        from benchbox._vendor import sqlglot
         from benchbox.utils.dialect_utils import normalize_dialect_for_sqlglot
 
         read = normalize_dialect_for_sqlglot(dialect) if dialect != "default" else None

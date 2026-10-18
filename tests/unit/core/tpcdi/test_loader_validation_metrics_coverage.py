@@ -105,7 +105,7 @@ def test_loader_index_optimize_truncate_paths(monkeypatch: pytest.MonkeyPatch):
     conn = _ExecConn(fetch_value=(0,))
     loader = TPCDIDataLoader(conn, dialect="duckdb")
 
-    monkeypatch.setattr("sqlglot.transpile", lambda *args, **kwargs: [args[0]])
+    monkeypatch.setattr("benchbox._vendor.sqlglot.transpile", lambda *args, **kwargs: [args[0]])
     index_results = loader.create_indexes(conn)
     assert any(index_results.values())
 
@@ -146,7 +146,7 @@ def test_validator_run_paths_and_aggregate(monkeypatch: pytest.MonkeyPatch, caps
         ValidationRule("ok", "select 0", 0, "ok desc", category="integrity"),
         ValidationRule("warn", "select 1", 0, "warn desc", category="completeness", severity="warning"),
     ]
-    monkeypatch.setattr("sqlglot.transpile", lambda *args, **kwargs: [args[0]])
+    monkeypatch.setattr("benchbox._vendor.sqlglot.transpile", lambda *args, **kwargs: [args[0]])
 
     ok = validator.run_validation(validator.validation_rules[0])
     assert ok.passed is True

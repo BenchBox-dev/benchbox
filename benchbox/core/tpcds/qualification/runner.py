@@ -17,6 +17,7 @@ from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
+from benchbox._vendor import sqlglot
 from benchbox.core.expected_results.loader import TpcdsAnswerBlock, parse_tpcds_answer_values
 from benchbox.core.tpcds.qualification.classification import (
     CHAR_PADDING,
@@ -423,6 +424,13 @@ def emit(path: Path, event: dict[str, Any]) -> None:
         stream.flush()
 
 
+def _bundled_sqlglot_identity() -> str:
+    from benchbox import _vendor
+
+    pin = json.loads(Path(_vendor.__file__).with_name("sqlglot.json").read_text(encoding="utf-8"))
+    return f"{pin['version']}+{pin['fork_sha'][:12]}.{pin['sha256'][:12]}"
+
+
 def prepare(answers_dir: Path) -> dict[str, Any]:
     from benchbox.core.tpcds.c_tools import DSQGenBinary
     from benchbox.core.tpcds.dataframe_queries import TPCDS_DATAFRAME_QUERIES
@@ -480,8 +488,12 @@ def prepare(answers_dir: Path) -> dict[str, Any]:
         "answer_manifest_sha256": sha256(_INPUTS),
         "source_head": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
         "dependencies": {
-            name: importlib.metadata.version(name)
-            for name in ("duckdb", "polars", "pandas", "datafusion", "pyarrow", "sqlglot")
+            **{
+                name: importlib.metadata.version(name)
+                for name in ("duckdb", "polars", "pandas", "datafusion", "pyarrow")
+            },
+            "sqlglot": sqlglot.__version__,
+            "benchbox-sqlglot": _bundled_sqlglot_identity(),
         },
     }
 

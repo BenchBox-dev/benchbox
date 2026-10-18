@@ -9,9 +9,9 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Iterable
 
-import sqlglot
-from sqlglot import exp
-from sqlglot.optimizer.scope import Scope, build_scope
+from benchbox._vendor import sqlglot
+from benchbox._vendor.sqlglot import exp
+from benchbox._vendor.sqlglot.optimizer.scope import Scope, build_scope
 
 CLI_DESCRIPTION = (
     "Static detector for correlated-subquery self-binding in benchmark SQL.\n"

@@ -436,7 +436,7 @@ def test_dataframe_only_platforms_stay_out_of_metadata_ddl_scope():
 
 @pytest.mark.parametrize("registry_platform,adapter_name,adapter_dialect,sqlglot_read", _metadata_ddl_registry_cases())
 def test_metadata_ddl_parses_for_target_dialect(registry_platform, adapter_name, adapter_dialect, sqlglot_read):
-    import sqlglot
+    from benchbox._vendor import sqlglot
 
     by_config = TuningMetadataManager(_Adapter(config_type=registry_platform))
     by_name = TuningMetadataManager(_Adapter(platform_name=adapter_name))

@@ -365,7 +365,7 @@ class TestPlatformAdapter:
         sql = "SELECT * FROM table"
         assert adapter.translate_sql(sql) == sql
 
-    @patch("sqlglot.transpile")
+    @patch("benchbox._vendor.sqlglot.transpile")
     def test_sql_translation_with_dialect(self, mock_transpile):
         adapter = MockPlatformAdapter()
         adapter._dialect = "postgresql"
@@ -376,7 +376,7 @@ class TestPlatformAdapter:
         mock_transpile.assert_called_once_with("SELECT * FROM table", read="duckdb", write="postgresql", identify=True)
         assert result == 'SELECT * FROM "table";'
 
-    @patch("sqlglot.transpile")
+    @patch("benchbox._vendor.sqlglot.transpile")
     def test_sql_translation_error_handling(self, mock_transpile):
         adapter = MockPlatformAdapter()
         adapter._dialect = "postgresql"

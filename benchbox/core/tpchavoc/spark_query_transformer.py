@@ -5,8 +5,8 @@ from __future__ import annotations
 
 import logging
 
-import sqlglot
-from sqlglot import exp
+from benchbox._vendor import sqlglot
+from benchbox._vendor.sqlglot import exp
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +92,7 @@ class SparkTPCHavocQueryTransformer:
         return tree.sql(dialect="spark")
 
     def _wrap_bare_scalars(self, node):
-        from sqlglot import exp
+        from benchbox._vendor.sqlglot import exp
 
         if isinstance(node, exp.Subquery):
             return exp.First(this=node)

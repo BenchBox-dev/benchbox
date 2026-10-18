@@ -12,8 +12,8 @@ from pathlib import Path
 from typing import Any, Callable, Optional, Union, cast
 
 import pandas as pd
-import sqlglot
 
+from benchbox._vendor import sqlglot
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 logger = logging.getLogger(__name__)

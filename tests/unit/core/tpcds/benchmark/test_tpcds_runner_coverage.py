@@ -121,7 +121,8 @@ def test_quoted_duckdb_q90_rewrite_defaults_to_nullif_zero_denominator(tpcds_ben
 @pytest.mark.parametrize("pmc,expected", [(0, None), (2, 0.5)])
 def test_translated_tsql_q90_guards_zero_without_changing_nonzero_ratio(tpcds_benchmark, pmc, expected):
     import duckdb
-    import sqlglot
+
+    from benchbox._vendor import sqlglot
 
     query = 'SELECT CAST("amc" AS DECIMAL(15, 4))/CAST("pmc" AS DECIMAL(15, 4)) AS am_pm_ratio FROM counts'
     translated = tpcds_benchmark.translate_query_text(query, "duckdb", "tsql")

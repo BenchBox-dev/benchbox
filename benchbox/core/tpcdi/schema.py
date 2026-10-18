@@ -2,8 +2,9 @@ import logging
 from pathlib import Path
 from typing import Any, Optional, cast
 
-import sqlglot
 import yaml
+
+from benchbox._vendor import sqlglot
 
 from .schema_extensions import EXTENSION_TABLES, get_extended_table_order, get_foreign_key_constraints
 

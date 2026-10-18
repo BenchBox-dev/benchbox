@@ -82,7 +82,7 @@ class TestBigQueryQualifyTableNames:
     def test_unparseable_query_falls_back_to_tpch_list(self):
 
         adapter = _make_adapter(project_id="my-proj", dataset_id="my_dataset")
-        with patch("sqlglot.parse_one", side_effect=ValueError("no parse")):
+        with patch("benchbox._vendor.sqlglot.parse_one", side_effect=ValueError("no parse")):
             result = adapter._qualify_table_names("SELECT * FROM lineitem")
         assert result == "SELECT * FROM `my-proj.my_dataset.LINEITEM`"
 

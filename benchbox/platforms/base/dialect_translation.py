@@ -45,7 +45,7 @@ class DialectTranslationMixin:
         fingerprint = _fingerprint_sql(sql) if translation_collection_active() else None
 
         try:
-            import sqlglot
+            from benchbox._vendor import sqlglot
 
             should_identify = tgt not in NO_IDENTIFY_DIALECTS
 

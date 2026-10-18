@@ -76,8 +76,12 @@ runs, concurrent calls on one instance are not supported, and
 
 SQL adapters implement `PlatformAdapter` (`benchbox/platforms/base/adapter.py`):
 connection lifecycle, platform DDL, bulk load, and per-query execution.
-Queries are defined once per benchmark and translated per dialect with
-sqlglot; heavy SDK imports stay lazy until the platform is actually used.
+Queries are defined once per benchmark and translated per dialect with the
+private `benchbox._vendor.sqlglot` runtime. Its pinned pure-Python wheel comes
+from [BenchBox-dev/benchbox-sqlglot](https://github.com/BenchBox-dev/benchbox-sqlglot)
+and ships inside the BenchBox wheel and sdist; ordinary builds and installs
+do not fetch Git or a custom package index. SQLGlot source stays in the fork.
+Heavy SDK imports stay lazy until the platform is actually used.
 
 ### DataFrame path
 

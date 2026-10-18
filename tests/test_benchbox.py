@@ -40,7 +40,7 @@ class TestBenchBox(unittest.TestCase):
         self.assertIsInstance(query1, str)
         self.assertIn("SELECT", query1.upper())
 
-    @mock.patch("sqlglot.transpile")
+    @mock.patch("benchbox._vendor.sqlglot.transpile")
     @mock.patch("benchbox.utils.dialect_utils.normalize_dialect_for_sqlglot")
     def test_translate_query(self, mock_normalize, mock_transpile) -> None:
         mock_query = "SELECT * FROM customer WHERE c_custkey = 1"

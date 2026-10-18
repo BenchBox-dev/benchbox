@@ -369,6 +369,7 @@ jobs:
             exit 1
           fi
           uv run --locked --no-dev -- python scripts/verify_distribution_binaries.py dist/*.whl dist/*.tar.gz
+          uv run --locked --no-dev -- python -m scripts.verify_sqlglot_runtime_distribution dist/*.whl dist/*.tar.gz
           (cd dist && sha256sum -- *.whl *.tar.gz > SHA256SUMS)
           cat dist/SHA256SUMS
 

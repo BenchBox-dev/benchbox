@@ -86,7 +86,7 @@ def test_schema_helpers_and_manager_paths(monkeypatch: pytest.MonkeyPatch):
     conn = _Conn()
     qconn = _QueryConn()
 
-    monkeypatch.setattr("sqlglot.transpile", lambda sql, **_kwargs: [sql])
+    monkeypatch.setattr("benchbox._vendor.sqlglot.transpile", lambda sql, **_kwargs: [sql])
     manager.create_schema(conn, dialect="duckdb")
     translated = manager.translate_schema("standard", "duckdb")
     table_schema = manager.get_table_schema("DimCustomer")

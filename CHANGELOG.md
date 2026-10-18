@@ -198,6 +198,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **BenchBox bundles a patched SQLGlot runtime.** SQL translation now uses a
+  pinned, pure-Python SQLGlot 30.23.0 build with three carried fixes, shipped as
+  a wheel inside BenchBox and imported from `benchbox._vendor.sqlglot`. Installing
+  BenchBox no longer installs public `sqlglot`; an independently installed
+  `sqlglot` is unaffected, but its SQL expression objects cannot be passed to
+  BenchBox. The first import reads the bundled archive directly, which added about
+  0.3 seconds to a cold interpreter in one measurement.
 - **Subscale TPC-H and TPC-DS results are ranked and labelled
   "Subscale · Unofficial".** Runs below SF 1 now record Power@Size with an
   `"unofficial": true` marker instead of suppressing it, and the Results

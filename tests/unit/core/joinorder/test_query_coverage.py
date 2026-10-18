@@ -35,6 +35,6 @@ def test_query_15_avoids_reserved_alias_for_local_engines() -> None:
 
 @pytest.mark.parametrize("query_id", JoinOrderQueryManager().get_query_ids())
 def test_canonical_queries_parse_with_sqlglot(query_id: str) -> None:
-    sqlglot = pytest.importorskip("sqlglot")
+    from benchbox._vendor import sqlglot
 
     sqlglot.parse_one(JoinOrderQueryManager().get_query(query_id), read="postgres")

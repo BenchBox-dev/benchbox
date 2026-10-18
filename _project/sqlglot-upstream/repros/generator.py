@@ -15,8 +15,8 @@ except Exception as import_error:  # pragma: no cover
     raise SystemExit(2) from import_error
 
 try:
-    import sqlglot as _sqlglot
-    from sqlglot.errors import ParseError
+    from benchbox._vendor import sqlglot as _sqlglot
+    from benchbox._vendor.sqlglot.errors import ParseError
 except Exception as import_error:  # pragma: no cover
     print(f"generator SQLGlot import error: {type(import_error).__name__}: {import_error}", file=sys.stderr)
     raise SystemExit(2) from import_error
@@ -28,7 +28,7 @@ SHAPES = ("target_to_target", "postgres_to_target")
 SCHEMA = "sqlglot-generator-failure-v1"
 SUMMARY_SCHEMA = "sqlglot-generator-summary-v1"
 REPLAY_COMMAND_TEMPLATE = (
-    "uv run --with sqlglot=={sqlglot_version} -- python _project/sqlglot-upstream/repros/generator.py "
+    "uv run -- python _project/sqlglot-upstream/repros/generator.py "
     "--seed {seed} --source-dialect {source_dialect} --target-dialect {target_dialect} "
     "--failure-artifact {failure_artifact} --replay {failure_artifact}"
 )

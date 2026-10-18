@@ -731,7 +731,7 @@ def driver_bindings(source_path: str) -> DriverBindings:
 
 def bindings_of(module: types.ModuleType) -> DriverBindings:
     source_path = getattr(module, "__file__", None)
-    if not source_path or not source_path.endswith(".py"):
+    if not source_path or not source_path.endswith(".py") or not Path(source_path).is_file():
         return DriverBindings()
     return driver_bindings(source_path)
 

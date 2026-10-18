@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import sqlglot
-from sqlglot import exp
+from benchbox._vendor import sqlglot
+from benchbox._vendor.sqlglot import exp
 
 _BIGQUERY_FROMLESS_IDS = frozenset({"7_v8", "12_v8", "13_v8", "18_v4"})
 _BIGQUERY_HAVING_COLUMNS = {"5_v4": "revenue", "11_v4": "value"}

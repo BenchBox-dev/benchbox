@@ -4,8 +4,8 @@
 from __future__ import annotations
 
 import pytest
-import sqlglot
 
+from benchbox._vendor import sqlglot
 from benchbox.platforms.spark_query_transformer import (
     DUAL_VARIANT_IDS,
     GROUP_BY_EMPTY_VARIANT_IDS,
