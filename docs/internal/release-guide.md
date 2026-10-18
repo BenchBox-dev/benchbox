@@ -278,7 +278,7 @@ raw commit subjects, which step 3 requires you to curate anyway.
    It creates or verifies `vX.Y.Z` at that exact commit without checking out a
    local `release` branch. A mismatched local or remote tag stops finalization.
 5. Pushes an absent remote tag — which fires `.github/workflows/release.yml`:
-   `dependency-bounds` → `build` (with `SOURCE_DATE_EPOCH` from the tag
+   `dependency-bounds` and `sqlglot-upstream-freshness` → `build` (with `SOURCE_DATE_EPOCH` from the tag
    commit) → `publish` (PyPI trusted publisher) → `github-release` →
    `test-installation` (cross-platform pip install verification).
    The GitHub Release step extracts a non-empty, curated changelog section and
@@ -477,7 +477,16 @@ problem it finds. It verifies that:
   (`_project/scripts/check_uv_lock_revision.py`);
 - every top-level path is accounted for (`scripts/check_release_curation.py`);
 - no capped dependency reached its bound
-  (`scripts/check_dependency_bounds.py --fail-on=cap-reached`).
+  (`scripts/check_dependency_bounds.py --fail-on=cap-reached`);
+- the bundled SQLGlot runtime is based on the newest upstream release
+  (`scripts/check_sqlglot_upstream_freshness.py`). A newer upstream tag fails
+  the check until the fork is refreshed and the new wheel adopted (see
+  `downstream/MAINTAINING.md` in `BenchBox-dev/benchbox-sqlglot`). If a refresh
+  must be deferred, add a waiver for exactly that tag to
+  `scripts/sqlglot_refresh_waiver.json` with `tag`, `reason`, `approved` and
+  `expires` (at most 31 days after approval); the owner reviews it like any
+  release-enforcement change. The check needs network access to the upstream
+  repository and fails when it is unreachable.
 
 Both targets need the full development tree, because the lock-revision check
 lives under `_project/`.

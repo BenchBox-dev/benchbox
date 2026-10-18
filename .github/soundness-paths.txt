@@ -88,6 +88,8 @@ file	scripts/update_version.py
 file	scripts/generate_changelog_entry.py
 file	scripts/check_release_curation.py
 file	scripts/check_dependency_bounds.py
+file	scripts/check_sqlglot_upstream_freshness.py
+file	scripts/sqlglot_refresh_waiver.json
 file	_project/scripts/check_uv_lock_revision.py
 file	_project/decisions/single-repo-migration.md
 file	.github/workflows/release.yml

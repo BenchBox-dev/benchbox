@@ -187,6 +187,11 @@ def check_dependency_bounds(root: Path, runner: Runner) -> list[str]:
     return _delegated("dependency bounds", [sys.executable, str(script), "--fail-on=cap-reached"], root, runner)
 
 
+def check_sqlglot_upstream_freshness(root: Path, runner: Runner) -> list[str]:
+    script = root / "scripts" / "check_sqlglot_upstream_freshness.py"
+    return _delegated("sqlglot upstream freshness", [sys.executable, str(script), "--root", str(root)], root, runner)
+
+
 def run_checks(root: Path, version: str, runner: Runner = run_command, *, baseline_ref: str | None = None) -> list[str]:
     problems: list[str] = []
     if normalize_version(version) is None:
@@ -196,6 +201,7 @@ def run_checks(root: Path, version: str, runner: Runner = run_command, *, baseli
     problems += check_uv_lock_revision(root, runner, baseline_ref or latest_release_tag(root, before_version=version))
     problems += check_release_curation(root, runner)
     problems += check_dependency_bounds(root, runner)
+    problems += check_sqlglot_upstream_freshness(root, runner)
     return problems
 
 
@@ -336,6 +342,8 @@ def select_candidate(root: Path, base_sha: str) -> tuple[bool, str]:
         "scripts/generate_changelog_entry.py",
         "scripts/check_release_curation.py",
         "scripts/check_dependency_bounds.py",
+        "scripts/check_sqlglot_upstream_freshness.py",
+        "scripts/sqlglot_refresh_waiver.json",
         "_project/scripts/check_uv_lock_revision.py",
         "_project/decisions/single-repo-migration.md",
         "Makefile",
