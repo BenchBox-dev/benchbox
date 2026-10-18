@@ -537,7 +537,7 @@ def test_candidate_check_is_required_on_pull_requests_without_changing_legacy_pu
 
     workflow = yaml.safe_load((REPO_ROOT / ".github/workflows/ci.yml").read_text())
     classifier = workflow["jobs"]["ci-paths"]
-    assert "if" not in classifier
+    assert classifier.get("if") == "${{ !(github.event.action == 'edited' && !github.event.changes.base) }}"
     steps = classifier["steps"]
     selection = next(step for step in steps if step.get("id") == "release")
     assert selection["env"]["EVENT_BASE_SHA"] == "${{ github.event.pull_request.base.sha }}"
