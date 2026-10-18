@@ -54,7 +54,10 @@ class World:
 
     def digest(self, base: str, head: str) -> str:
         raw = subprocess.run(
-            ["git", "diff", "--raw", "--no-renames", base, head], cwd=self.seed, check=True, capture_output=True
+            ["git", "diff", "--raw", "--no-renames", "--no-abbrev", base, head],
+            cwd=self.seed,
+            check=True,
+            capture_output=True,
         ).stdout
         return hashlib.sha256(raw).hexdigest()
 
@@ -264,6 +267,18 @@ def test_manifest_reports_the_merge_base_and_digest_a_record_must_carry(
     assert printed["manifest_digest"] == world.digest(world.base, world.head)
 
 
+def test_the_digest_does_not_depend_on_core_abbrev(world: World, capsys: pytest.CaptureFixture[str]) -> None:
+    git(world.seed, "config", "core.abbrev", "7")
+    expected = world.digest(world.base, world.head)
+    gh = FakeGitHub(world)
+    digests = set()
+    for abbrev in ("4", "12", "40"):
+        git(world.clone, "config", "core.abbrev", abbrev)
+        assert remote_closeout.manifest("7", world.head, run=gh) == 0
+        digests.add(json.loads(capsys.readouterr().out)["manifest_digest"])
+    assert digests == {expected}
+
+
 def _refusal(world: World, gh: FakeGitHub, capsys: pytest.CaptureFixture[str], **kwargs) -> str:
     assert arm(world, gh, **kwargs) == 2
     assert gh.arms() == []
@@ -455,7 +470,8 @@ def test_refuses_a_failing_required_check_but_not_a_pending_one(
 ) -> None:
     ready_pr.conclusions["core"] = conclusion
     assert arm(world, ready_pr) == (2 if refused else 0)
-    assert (f"condition 6: required check 'core' concluded {conclusion!r}" in capsys.readouterr().err) is refused
+    expected = f"condition 6: required check 'core' failed with conclusion {conclusion!r}"
+    assert (expected in capsys.readouterr().err) is refused
 
 
 def test_refuses_a_changed_observation_unless_the_owner_explained_it(

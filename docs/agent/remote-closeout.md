@@ -51,8 +51,11 @@ In the primary clone, the closer may:
 - fetch `develop` with the same `git -c` and `--no-tags` options;
 - read the fetched objects with commands such as `git diff`, `git merge-base`,
   and `git show`;
-- run `make pr-arm-remote` and the `make pr-landing-remote-bind`, `-manifest`,
-  `-record`, `-withdraw`, and `-ready` targets.
+- run these targets, which store their records under `~/.benchbox/reviews/`
+  and change no repository file, local branch, or config:
+  `make pr-arm-remote`, `make pr-landing-remote-bind`,
+  `make pr-landing-remote-manifest`, `make pr-landing-remote-record`,
+  `make pr-landing-remote-withdraw`, and `make pr-landing-remote-ready`.
 
 It never checks out a change, edits a working-tree file, creates or moves a
 local branch, changes local Git config, commits, pushes, or arms with a raw
@@ -74,7 +77,7 @@ The record contains:
 | PR number, head branch, PR node ID | The PR the record is for |
 | Base SHA | Merge-base of the head with `origin/develop` |
 | Head SHA | The commit reviewed |
-| Manifest digest | Digest of `git diff --raw --no-renames <base> <head>` |
+| Manifest digest | SHA-256 of `git diff --raw --no-renames --no-abbrev <base> <head>` |
 | Findings | Each with location, reasoning, and severity |
 | Disposition | `approve` or `changes-requested` |
 | Reviewer | Model and run ID |
@@ -108,8 +111,10 @@ make pr-landing-remote-bind PR=<n> BRANCH=<head branch> ITEM=<tracker item>
 ID GitHub reports, and the item, and it never changes afterwards.
 
 `make pr-landing-remote-manifest PR=<n> HEAD=<sha>` fetches as above and prints
-the base SHA and manifest digest to pin the reviewer to. The digest is the
-SHA-256 of the exact output of `git diff --raw --no-renames <base> <head>`.
+the base SHA and manifest digest. The reviewer takes both from this target
+rather than computing them itself. The digest is the SHA-256 of the exact
+output of `git diff --raw --no-renames --no-abbrev <base> <head>`, whose full
+blob IDs do not depend on `core.abbrev`.
 
 The reviewer returns its record as a JSON object with exactly these fields:
 `pr_number`, `head_branch`, `pr_node_id`, `base_sha`, `head_sha`,

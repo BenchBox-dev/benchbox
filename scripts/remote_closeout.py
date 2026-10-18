@@ -236,7 +236,7 @@ def compute_manifest(run: Runner, head: str, develop: str) -> tuple[str, str]:
     base = out.strip()
     if code != 0 or not _sha(base):
         raise LandingError(f"git merge-base {_short(head)} {_short(develop)} failed: {base[:200]}")
-    code, out = run(["git", "diff", "--raw", "--no-renames", base, head])
+    code, out = run(["git", "diff", "--raw", "--no-renames", "--no-abbrev", base, head])
     if code != 0:
         raise LandingError(f"git diff --raw {_short(base)} {_short(head)} failed: {out.strip()[:200]}")
     return base, hashlib.sha256(out.encode("utf-8", "surrogateescape")).hexdigest()
@@ -409,7 +409,7 @@ def _readiness_refusals(view: dict, observation: dict, verdicts: Mapping[str, di
     if any(not thread["resolved"] and not thread["outdated"] for thread in observation["threads"]):
         reasons.append("condition 6: an unresolved, non-outdated review thread is open")
     reasons.extend(
-        f"condition 6: required check {name!r} concluded {conclusion!r}"
+        f"condition 6: required check {name!r} failed with conclusion {conclusion!r}; pending checks do not block arming"
         for name, conclusion in failing_required_checks(verdicts)
     )
     return reasons
