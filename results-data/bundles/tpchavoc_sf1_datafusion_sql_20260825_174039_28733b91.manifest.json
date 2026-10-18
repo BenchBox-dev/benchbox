@@ -6,6 +6,7 @@
   "result_source": "internal",
   "submitted_by": "maintainer",
   "known_defects": [
-    "defective-macdbgen-addresses"
+    "defective-macdbgen-addresses",
+    "defective-tpchavoc-variant-divergence"
   ]
 }
