@@ -26202,9 +26202,9 @@
     },
     "validate-corpus-known-defects-parity-20261017": {
       "claim": {
-        "expires_at": "2026-10-19T00:50:41Z",
-        "generation": "6cc2d06d74d346988ca97d418f5dd1bc",
-        "renewals": 0,
+        "expires_at": "2026-10-19T01:05:55Z",
+        "generation": "904ab60aa17349f0a53824058c3e1d17",
+        "renewals": 1,
         "worker": "mcp:tbh:joe@joe-mac-mini.local:3ce222eaad5d12493e27d4cc"
       },
       "needs": [],
