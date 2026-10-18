@@ -21941,12 +21941,17 @@
       "title": "ship-no-ship: configure base branch, path manifest and workflow names per policy"
     },
     "ssns-n4-local-executor": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-19T00:56:11Z",
+        "generation": "f7b544fb2103472f86e53bb7753fbee9",
+        "renewals": 0,
+        "worker": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51"
+      },
       "needs": [
         "ssns-n3-engine-config-v2"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "ship-no-ship: local executor handoff, state generations and record-state in the engine"
     },
     "ssns-n5-release-workflow": {
