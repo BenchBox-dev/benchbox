@@ -2029,7 +2029,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          IDS="$(gh run list --repo "$REPO" --workflow oracle-review.yml --limit 100 --json databaseId,headSha,event,conclusion --jq '[.[] | select(.headSha == env.HEAD_SHA and .event == "pull_request" and .conclusion == "failure") | .databaseId] | join(" ")')"
+          IDS="$(gh run list --repo "$REPO" --workflow oracle-review.yml --limit 100 --json databaseId,headSha,event,conclusion --jq '[.[] | select(.headSha == env.HEAD_SHA and (.event == "pull_request" or .event == "pull_request_review") and .conclusion == "failure") | .databaseId] | join(" ")')"
           for id in $IDS; do
-            gh run rerun "$id" --failed --repo "$REPO"
+            gh run rerun "$id" --failed --repo "$REPO" || echo "::warning::could not rerun run $id; skipping"
           done
