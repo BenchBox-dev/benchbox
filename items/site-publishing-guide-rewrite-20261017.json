@@ -4,7 +4,7 @@
     "Every command in it runs in the site repo",
     "A dry run of the checklist on an existing draft succeeds"
   ],
-  "context": "Found 2026-10-17 while removing the replay fidelity check (site #44, 8812af7ac) and re-checked against site main 8812af7. Listed as a follow-up in site-split-99.",
+  "context": "Implemented in benchbox-site PR #45 (branch fix/publishing-guide-rewrite, commit 801672288): PUBLISHING.md rewritten for drafts/ -> blog/ in-repo flow; all named commands verified to exist; repository-boundary lint passes. Site repo has no auto-merge; PR waits on CI then manual squash merge. After merge, take and finish. blog-skill-site-paths-20261017 follows this guide.",
   "description": "benchbox-site drafts/PUBLISHING.md still describes the single-repo flow. Examples:\n- line 7: \"Blog content is developed under `_blog/` in the single `BenchBox-dev/BenchBox` repository\";\n- line 9: posts go live \"when the change is replayed into that repository\", a replay process that ended when site #44 removed the fidelity check;\n- lines 57 and 63: `uv run python scripts/blog_content_validation.py`, a script that exists in neither repo (and Python is banned from the site, ADR D9);\n- lines 112-150 and 167-175: copy to `docs/blog/` and edit the `docs/blog/index.md` toctree, which are core Sphinx paths deleted in #3096.\n\nAn author following it today cannot publish a post. Rewrite it for drafts/ to blog/ inside the site repo, with the site's own validation commands.",
   "sessions": [
     {
@@ -31,6 +31,14 @@
       "generation": "1c13685d4b814dfbac2ecfdce0a3c44f",
       "op": "take",
       "op_id": "8d13a319431c4409bba1256d426d3d43",
+      "session_id": "d2c53a64af484bf0b44e45ae35143611"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:3ce222eaad5d12493e27d4cc",
+      "at": "2026-10-18T04:25:41Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "ebd5b33122fc4cc5abccef1a774d73e7",
       "session_id": "d2c53a64af484bf0b44e45ae35143611"
     }
   ]
