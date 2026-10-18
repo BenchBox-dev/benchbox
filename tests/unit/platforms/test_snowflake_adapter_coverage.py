@@ -1589,6 +1589,22 @@ class TestCacheControlReceiptPersistence:
         payload = SnowflakeAdapter._snowflake_compute_metadata({}, {})
         assert "cache_control" not in payload
 
+    def test_compute_metadata_records_where_the_warehouse_size_came_from(self):
+        from benchbox.platforms.snowflake import SnowflakeAdapter
+
+        observed = SnowflakeAdapter._snowflake_compute_metadata(
+            {"warehouse_size": "MEDIUM"}, {"warehouse_size": "X-Small", "warehouse_state": "STARTED"}
+        )
+        assert (observed["warehouse_size"], observed["warehouse_size_source"]) == ("X-Small", "observed")
+
+        fallback = SnowflakeAdapter._snowflake_compute_metadata(
+            {"warehouse_size": "MEDIUM"}, {"warehouse_state": "STARTED"}
+        )
+        assert fallback["source"] == "observed"
+        assert (fallback["warehouse_size"], fallback["warehouse_size_source"]) == ("MEDIUM", "requested")
+
+        assert "warehouse_size_source" not in SnowflakeAdapter._snowflake_compute_metadata({}, {})
+
     def test_explicitly_enabled_cache_records_receipt_without_session_probe(self):
         from unittest.mock import Mock, patch
 

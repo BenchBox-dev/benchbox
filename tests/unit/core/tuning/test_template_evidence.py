@@ -102,11 +102,13 @@ def test_registry_entries_carry_tiered_evidence():
                 memory = measurement["memory"]
                 assert isinstance(memory, dict), f"{platform}/{benchmark}"
                 assert set(memory) == {"basis", "value"}, f"{platform}/{benchmark}"
-                assert memory["basis"] in {"container_limit", "host_total_gb"}
+                assert memory["basis"] in {"container_limit", "host_total_gb", "warehouse_size"}
                 value = memory["value"]
                 if memory["basis"] == "host_total_gb":
                     assert isinstance(value, (int, float)) and not isinstance(value, bool)
                     assert value > 0
+                elif memory["basis"] == "warehouse_size":
+                    assert isinstance(value, str) and value.strip(), f"{platform}/{benchmark}"
                 else:
                     assert isinstance(value, (str, int, float)) and not isinstance(value, bool)
                     assert value.strip() if isinstance(value, str) else value > 0
@@ -512,5 +514,159 @@ def test_evidence_state_for_run_requires_captured_memory_scope(monkeypatch):
             system_profile={"memory_gb": 16},
             engine_version="v1",
         )
+        == "unmeasured"
+    )
+
+
+MANAGED_CLOUD = {"platform_runtime": {"runtime_type": "managed_cloud"}}
+X_SMALL = {
+    "warehouse_size": "X-Small",
+    "warehouse_size_source": "observed",
+    "multi_cluster_warehouse": False,
+    "max_cluster_count": 1,
+    "source": "observed",
+}
+
+
+def _warehouse_registry(monkeypatch):
+    monkeypatch.setattr(
+        template_evidence,
+        "_REGISTRY",
+        {
+            "snowflake": {
+                "tpch": {
+                    "measurements": [
+                        _measurement(
+                            "measured-benefit",
+                            scale_factor=10.0,
+                            memory={"basis": "warehouse_size", "value": "X-Small"},
+                            engine_version="10.37.102",
+                        )
+                    ]
+                }
+            }
+        },
+    )
+
+
+def _snowflake_state(*, execution_environment=MANAGED_CLOUD, platform_compute=X_SMALL, engine_version="10.37.102"):
+    return evidence_state_for_run(
+        "examples/tunings/snowflake/tpch_tuned.yaml",
+        "Snowflake",
+        "TPC-H",
+        tunings_applied={"table_tunings": {}},
+        scale_factor=10.0,
+        execution_environment=execution_environment,
+        engine_version=engine_version,
+        platform_compute=platform_compute,
+    )
+
+
+def test_managed_cloud_run_matches_warehouse_size_entry(monkeypatch):
+    _warehouse_registry(monkeypatch)
+    assert _snowflake_state() == "measured-benefit"
+
+
+@pytest.mark.parametrize(
+    "platform_compute",
+    [
+        {**X_SMALL, "warehouse_size": "Small"},
+        {**X_SMALL, "multi_cluster_warehouse": True},
+        {**X_SMALL, "multi_cluster_warehouse": "true"},
+        {**X_SMALL, "max_cluster_count": 3},
+        {**X_SMALL, "warehouse_size_source": "requested"},
+        {**X_SMALL, "source": "observed", "warehouse_size_source": "requested"},
+        {key: value for key, value in X_SMALL.items() if key != "warehouse_size_source"},
+        {key: value for key, value in X_SMALL.items() if key != "warehouse_size"},
+        {**X_SMALL, "warehouse_size": "  "},
+        None,
+    ],
+)
+def test_managed_cloud_run_without_matching_single_warehouse_stays_unmeasured(monkeypatch, platform_compute):
+    _warehouse_registry(monkeypatch)
+    assert _snowflake_state(platform_compute=platform_compute) == "unmeasured"
+
+
+def test_managed_cloud_run_on_other_engine_version_stays_unmeasured(monkeypatch):
+    _warehouse_registry(monkeypatch)
+    assert _snowflake_state(engine_version="10.38.0") == "unmeasured"
+    assert _snowflake_state(engine_version=None) == "unmeasured"
+
+
+def test_warehouse_size_applies_only_to_managed_cloud_runs(monkeypatch):
+    _warehouse_registry(monkeypatch)
+    assert _snowflake_state(execution_environment={"platform_runtime": {"runtime_type": "remote_server"}}) == (
+        "unmeasured"
+    )
+    assert _snowflake_state(execution_environment={}) == "unmeasured"
+
+
+def test_platform_compute_does_not_change_local_or_container_scope(monkeypatch):
+    monkeypatch.setattr(
+        template_evidence,
+        "_REGISTRY",
+        {
+            "duckdb": {
+                "tpch": {
+                    "measurements": [
+                        _measurement("measured-benefit", memory={"basis": "container_limit", "value": 1024}),
+                        _measurement("measured-neutral"),
+                    ]
+                }
+            }
+        },
+    )
+    common = {
+        "tunings_applied": {"table_tunings": {}},
+        "scale_factor": 1.0,
+        "engine_version": "v1",
+        "platform_compute": X_SMALL,
+    }
+    assert (
+        evidence_state_for_run(
+            "examples/tunings/duckdb/tpch_tuned.yaml",
+            "DuckDB",
+            "TPC-H",
+            execution_environment={"container": {"memory_limit": 1024}},
+            **common,
+        )
+        == "measured-benefit"
+    )
+    assert (
+        evidence_state_for_run(
+            "examples/tunings/duckdb/tpch_tuned.yaml",
+            "DuckDB",
+            "TPC-H",
+            execution_environment={"platform_runtime": {"runtime_type": "local_process"}},
+            system_profile={"memory_gb": 16},
+            **common,
+        )
+        == "measured-neutral"
+    )
+
+
+@pytest.mark.parametrize(
+    ("benchmark_key", "scale_factor", "state"),
+    [
+        ("tpch", 100.0, "measured-neutral"),
+        ("tpch", 10.0, "measured-neutral"),
+        ("tpcds", 100.0, "measured-benefit"),
+        ("tpcds", 10.0, "measured-neutral"),
+    ],
+)
+def test_shipped_registry_reports_snowflake_campaign_state(benchmark_key, scale_factor, state):
+    load_registry(refresh=True)
+    arguments = {
+        "tunings_applied": {"table_tunings": {}},
+        "scale_factor": scale_factor,
+        "execution_environment": MANAGED_CLOUD,
+        "engine_version": "10.37.102",
+        "platform_compute": X_SMALL,
+    }
+    source_file = f"examples/tunings/snowflake/{benchmark_key}_tuned.yaml"
+    assert evidence_state_for_run(source_file, "Snowflake", benchmark_key, **arguments) == state
+    assert evidence_warning("Snowflake", benchmark_key, source_file=source_file, **arguments) is None
+    assert (
+        evidence_state_for_run(source_file, "Snowflake", benchmark_key, **{**arguments, "platform_compute": None})
         == "unmeasured"
     )

@@ -361,6 +361,7 @@ def _print_template_evidence_warning(result: Any, *, quiet: bool) -> None:
         execution_environment=getattr(result, "execution_environment", None),
         system_profile=getattr(result, "system_profile", None),
         engine_version=_tuning_evidence_engine_version(result),
+        platform_compute=getattr(result, "platform_compute", None),
     )
     if message is not None:
         console.print(message, soft_wrap=True)

@@ -138,3 +138,34 @@ def test_duckdb_tuned_run_without_engine_metadata_stays_unmeasured(tmp_path, mon
     payload = _tuned_run_payload(tmp_path)
     assert payload is not None
     assert payload["platform"]["tuning"]["template_evidence"] == "unmeasured"
+
+
+@pytest.mark.parametrize(("warehouse_size", "warned"), (("X-Small", False), ("Small", True)))
+def test_snowflake_warning_follows_recorded_warehouse_size(warehouse_size, warned, monkeypatch):
+    from types import SimpleNamespace
+
+    from benchbox.cli.commands import run as run_command
+
+    template_evidence.load_registry(refresh=True)
+    printed: list[str] = []
+    monkeypatch.setattr(run_command.console, "print", lambda message, **_: printed.append(message))
+    result = SimpleNamespace(
+        platform="snowflake",
+        benchmark_name="tpcds",
+        tuning_source_file="examples/tunings/snowflake/tpcds_tuned.yaml",
+        tunings_applied={"table_tunings": {}},
+        scale_factor=100.0,
+        execution_environment={"platform_runtime": {"runtime_type": "managed_cloud"}},
+        system_profile=None,
+        platform_info={"engine_version": "10.37.102"},
+        platform_compute={
+            "warehouse_size": warehouse_size,
+            "warehouse_size_source": "observed",
+            "multi_cluster_warehouse": False,
+            "source": "observed",
+        },
+    )
+
+    run_command._print_template_evidence_warning(result, quiet=False)
+
+    assert bool(printed) is warned

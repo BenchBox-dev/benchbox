@@ -37,6 +37,50 @@ duckdb:
     measurements: []
 snowflake:
   tpch:
-    measurements: []
+    measurements:
+      - state: measured-neutral
+        scale_factor: 100.0
+        memory:
+          basis: warehouse_size
+          value: X-Small
+        engine_version: "10.37.102"
+        measured_on: "2026-10-15"
+        evidence: >-
+          _project/analysis/snowflake-trial-exit/tuned-vs-untuned-tpch-sf100.json:
+          tuned/untuned 0.914 (95% CI 0.834-0.996), no detectable effect;
+          campaign rule (95% CI bound vs 0.95/1.05), outside the harness, no A/A calibration
+      - state: measured-neutral
+        scale_factor: 10.0
+        memory:
+          basis: warehouse_size
+          value: X-Small
+        engine_version: "10.37.102"
+        measured_on: "2026-10-16"
+        evidence: >-
+          _project/analysis/snowflake-trial-exit/tuned-vs-untuned-tpch-sf10.json:
+          tuned/untuned 0.979 (95% CI 0.919-1.043), no detectable effect;
+          campaign rule (95% CI bound vs 0.95/1.05), outside the harness, no A/A calibration
   tpcds:
-    measurements: []
+    measurements:
+      - state: measured-benefit
+        scale_factor: 100.0
+        memory:
+          basis: warehouse_size
+          value: X-Small
+        engine_version: "10.37.102"
+        measured_on: "2026-10-16"
+        evidence: >-
+          _project/analysis/snowflake-trial-exit/tuned-vs-untuned-tpcds-sf100.json:
+          tuned/untuned 0.761 (95% CI 0.730-0.793), benefit;
+          campaign rule (95% CI bound vs 0.95/1.05), outside the harness, no A/A calibration
+      - state: measured-neutral
+        scale_factor: 10.0
+        memory:
+          basis: warehouse_size
+          value: X-Small
+        engine_version: "10.37.102"
+        measured_on: "2026-10-16"
+        evidence: >-
+          _project/analysis/snowflake-trial-exit/tuned-vs-untuned-tpcds-sf10.json:
+          tuned/untuned 0.925 (95% CI 0.898-0.958), no detectable effect;
+          campaign rule (95% CI bound vs 0.95/1.05), outside the harness, no A/A calibration

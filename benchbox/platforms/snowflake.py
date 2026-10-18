@@ -416,6 +416,11 @@ class SnowflakeAdapter(PlatformAdapter):
             "warehouse_size": compute.get("warehouse_size")
             or config.get("compute_size")
             or config.get("warehouse_size"),
+            "warehouse_size_source": "observed"
+            if compute.get("warehouse_size")
+            else "requested"
+            if config.get("compute_size") or config.get("warehouse_size")
+            else None,
             "warehouse_type": compute.get("warehouse_type"),
             "warehouse_state": compute.get("warehouse_state"),
             "min_cluster_count": compute.get("min_cluster_count"),
