@@ -194,7 +194,8 @@ The standard gates are intentionally split by the risk they are meant to catch:
 
 The `medium-test` job in `.github/workflows/ci.yml` runs `make test-medium`,
 but only when the heavy tier is needed: code-routed pull requests that touch
-soundness paths or packaging
+soundness paths, packaging, `pytest.ini`, or a `conftest.py` that covers more
+than 200 test modules
 (`scripts/heavy_tier_needed.py` reports `heavy-needed == 'true'`). Ordinary
 code-change PRs skip it, so do not assume medium coverage ran on a routine PR.
 Its marker selection excludes slow, stress, resource-heavy, and live
@@ -206,7 +207,8 @@ its changed paths (`_project/scripts/preflight_targets.py`), in the
 `code-test` job's "Run medium tests for changed paths" step. A changed test
 module selects itself; a source module selects `test_<module>.py`; a test
 helper selects the tests that import it; a `conftest.py` selects its directory
-when that holds at most 200 test modules; a platform module selects its
+when that holds at most 200 test modules (a broader one runs the full medium
+shards through the heavy tier); a platform module selects its
 `tests/integration/platforms` smoke test; and `SOURCE_GUARD_TESTS` names the
 drift guards that check a source prefix, such as the module-size guard for any
 `benchbox/` change. Everything else in the medium tier runs after merge in

@@ -858,6 +858,7 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           set -euo pipefail
+          : "${BASE_SHA:?the pull request base SHA is required to map changed paths to tests}"
           targets="$RUNNER_TEMP/medium-targets.txt"
           uv run -- python _project/scripts/preflight_targets.py tests --base-ref "$BASE_SHA" > "$targets"
           if [ ! -s "$targets" ]; then

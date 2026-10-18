@@ -101,17 +101,23 @@ def _conftest_subtree(conftest: str, test_files: list[str]) -> list[str]:
     return subtree if len(subtree) <= CONFTEST_SUBTREE_LIMIT else []
 
 
+def _smoke_platform(test: str) -> str | None:
+    stem = PurePosixPath(test).stem
+    if not test.startswith(SMOKE_TESTS_ROOT) or "_smoke" not in stem:
+        return None
+    return stem.removeprefix("test_").split("_smoke", 1)[0]
+
+
 def _platform_smoke_tests(path: str, test_files: list[str]) -> list[str]:
     if not path.startswith(PLATFORMS_ROOT):
         return []
-    platform = PurePosixPath(path[len(PLATFORMS_ROOT) :]).parts[0].removesuffix(".py").split("_")[0]
-    return [
-        test
-        for test in test_files
-        if test.startswith(SMOKE_TESTS_ROOT)
-        and "_smoke" in PurePosixPath(test).stem
-        and PurePosixPath(test).stem.removeprefix("test_").split("_")[0] == platform
-    ]
+    platform = PurePosixPath(path[len(PLATFORMS_ROOT) :]).parts[0].removesuffix(".py")
+    selected = []
+    for test in test_files:
+        smoke = _smoke_platform(test)
+        if smoke and (platform == smoke or platform.startswith(f"{smoke}_") or smoke.startswith(f"{platform}_")):
+            selected.append(test)
+    return selected
 
 
 def _guard_tests(path: str, test_files: list[str]) -> list[str]:

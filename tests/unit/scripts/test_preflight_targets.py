@@ -210,3 +210,24 @@ def test_source_guard_tests_exist() -> None:
     missing = [test for tests in pt.SOURCE_GUARD_TESTS.values() for test in tests if not (root / test).is_file()]
 
     assert missing == []
+
+
+def test_platform_smoke_mapping_needs_the_whole_platform_name(repo: Path) -> None:
+    for path in (
+        "tests/integration/platforms/test_cloud_spark_smoke.py",
+        "tests/integration/platforms/test_presto_smoke.py",
+        "tests/integration/platforms/test_starrocks_smoke_resource_heavy.py",
+    ):
+        _write(repo, path)
+
+    assert pt.map_tests(repo, ["benchbox/platforms/cloud_shared.py"]) == []
+    assert pt.map_tests(repo, ["benchbox/platforms/presto_trino_utils.py", "benchbox/platforms/starrocks/x.py"]) == [
+        "tests/integration/platforms/test_presto_smoke.py",
+        "tests/integration/platforms/test_starrocks_smoke_resource_heavy.py",
+    ]
+
+
+def test_conftest_limit_matches_the_heavy_tier_carve_out() -> None:
+    from scripts import heavy_tier_needed
+
+    assert pt.CONFTEST_SUBTREE_LIMIT == heavy_tier_needed.BROAD_CONFTEST_MODULES

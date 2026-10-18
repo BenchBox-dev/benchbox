@@ -3136,15 +3136,19 @@ def test_reviewed_process_argv_is_exact() -> None:
 def test_reviewed_process_argv_entries_match_current_sources() -> None:
     from comment_execution import REVIEWED_PROCESS_ARGV, PythonBindings
 
+    checked = 0
     for path, argv in REVIEWED_PROCESS_ARGV:
-        if not DEVELOPMENT_TREE and not (ROOT / path).exists():
+        if not (ROOT / path).exists():
+            assert not DEVELOPMENT_TREE and path.startswith("_project/"), (path, argv)
             continue
+        checked += 1
         tree = ast.parse((ROOT / path).read_text(encoding="utf-8"))
         bindings = PythonBindings(tree)
         assert any(isinstance(node, ast.Call) and bindings.reviewed_argv(path, node) for node in ast.walk(tree)), (
             path,
             argv,
         )
+    assert checked
 
 
 def test_absolute_literal_path_executable_is_resolved() -> None:

@@ -7,11 +7,12 @@ import os
 import subprocess
 import sys
 import tempfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Callable, Iterable
 
 PREDICATE_REPO_PATH = "_project/scripts/soundness_paths.py"
 POLICY_PATHS = (PREDICATE_REPO_PATH, ".github/soundness-paths.txt")
+BROAD_CONFTEST_MODULES = 200
 
 
 class HeavyTierError(RuntimeError):
@@ -116,6 +117,19 @@ def soundness_touched(
     return False, "no soundness path touched under either predicate copy"
 
 
+def broad_test_infrastructure(changed_paths: Iterable[str], repo_root: Path) -> list[str]:
+    broad = []
+    for path in changed_paths:
+        pure = PurePosixPath(path)
+        if path == "pytest.ini":
+            broad.append(path)
+        elif pure.name == "conftest.py" and pure.parts[:1] == ("tests",):
+            modules = sum(1 for _ in (repo_root / pure.parent).rglob("test_*.py"))
+            if modules > BROAD_CONFTEST_MODULES:
+                broad.append(path)
+    return broad
+
+
 def heavy_needed(
     decision: dict[str, Any],
     base_ref: str,
@@ -137,6 +151,12 @@ def heavy_needed(
             return {"heavy_needed": False, "reason": "not a code-routed tree; the light lane already covers it"}
         if decision["packaging_needed"]:
             return {"heavy_needed": True, "reason": "packaging paths touched (packaging carve-out)"}
+        broad = broad_test_infrastructure(changed, repo_root)
+        if broad:
+            return {
+                "heavy_needed": True,
+                "reason": f"suite-wide test configuration touched: {', '.join(broad)} (test-infrastructure carve-out)",
+            }
         touched, reason = soundness_touched(changed, base_ref, repo_root, read_base, read_pr)
         if touched:
             return {"heavy_needed": True, "reason": f"{reason} (soundness carve-out)"}
