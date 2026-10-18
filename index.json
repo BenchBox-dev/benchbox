@@ -21958,6 +21958,15 @@
       "status": "done",
       "title": "ship-no-ship: reproducible release workflow and wheel verifier"
     },
+    "ssns-n6-service-core-doctor": {
+      "claim": null,
+      "needs": [
+        "ssns-n5-release-workflow"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "ship-no-ship: service core (config, App auth, discovery, queue, outbox, heartbeat) and the doctor harness"
+    },
     "stabilize-full-test-suite-failures": {
       "claim": null,
       "needs": [],
