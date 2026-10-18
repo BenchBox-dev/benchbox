@@ -22012,6 +22012,15 @@
       "status": "open",
       "title": "ship-no-ship owner: App key, permissions and sandbox repository"
     },
+    "ssns-o4-cli-signin": {
+      "claim": null,
+      "needs": [
+        "ssns-o2-role-users"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "ship-no-ship owner: sign in each reviewer CLI as its role user"
+    },
     "ssns-prepublication-hardening": {
       "claim": null,
       "needs": [],

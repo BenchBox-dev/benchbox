@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "doctor CLI auth status passes for every enabled reviewer"
+  ],
+  "context": "N11: if the claude keychain login fails headless or after a reboot, stop and ask the owner.",
+  "description": "Plan owner action O4. claude (interactive), codex (device code), muse and agy, each signed in as its own role user.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51",
+      "at": "2026-10-18T00:59:04Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "a7c089243c844c59876db1eb6f204b93",
+      "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    }
+  ]
+}
