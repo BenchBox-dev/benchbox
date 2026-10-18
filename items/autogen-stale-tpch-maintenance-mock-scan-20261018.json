@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "A list of candidate tests with a classification (real coverage, vacuous, or stale) and evidence",
+    "Vacuous or stale tests are fixed to exercise the intended path, with failing-before/passing-after evidence",
+    "PR merged with required checks green"
+  ],
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11, guardrails G1-G12; read first). Follow-up created by the controller during the batch; not part of the batch set; do not take it during the batch. Rubric: PASS needs the classified list and fixes. FAIL if any test is only skipped.",
+  "description": "Follow-up from the TPC-H item: PR #3004 replaced synthetic maintenance with DBGen update sets and skips adapters that do not declare supports_refresh_functions; four tests were stale because of it. Other tests may use Mock connections or mock adapters without that declaration and pass only because they no longer reach maintenance (silent loss of coverage), or are in tiers the canary has not run yet. Work: find them (grep for maintenance/RF1/RF2 with Mock adapters), classify each as covering real behavior or vacuous, fix or report. Guardrail: do not delete assertions or skip tests to make them pass.",
+  "links": [
+    "item:autogen-tpch-maintenance-failures-20261018"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a",
+      "at": "2026-10-18T23:47:59Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "758dd625da2c4ba5b65cddd7b4454abd",
+      "session_id": "0722acca462b419aa525d939aedd0290"
+    }
+  ]
+}
