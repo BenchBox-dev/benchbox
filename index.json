@@ -8545,6 +8545,16 @@
       "status": "open",
       "title": "Verify documentation-data bundles without changing published output"
     },
+    "docs-mig-site-contract-checks": {
+      "claim": null,
+      "needs": [
+        "docs-mig-site-bundle-schema4",
+        "docs-mig-core-doc-contracts-export"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Enforce code-documentation contracts in site CI"
+    },
     "docs-mig-site-ts-generators": {
       "claim": null,
       "needs": [
