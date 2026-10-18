@@ -15,12 +15,16 @@ pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 def test_bigquery_rewrites_all_filtered_aggregates_and_known_subqueries():
     benchmark = TPCHavocBenchmark(scale_factor=0.1)
-    translated = TPCHBenchmark.get_queries(benchmark, dialect="bigquery")
+    raw_queries = TPCHBenchmark.get_queries(benchmark)
     queries = benchmark.get_queries(dialect="bigquery")
 
     assert len(queries) == 220
-    assert {query_id for query_id, query in translated.items() if " FILTER(" in query} == BIGQUERY_FILTER_IDS
-    assert all(" FILTER(" not in query for query in queries.values())
+    assert {
+        query_id
+        for query_id, query in raw_queries.items()
+        if " filter(" in query.lower() or " filter (" in query.lower()
+    } == BIGQUERY_FILTER_IDS
+    assert all(" FILTER(" not in query.upper() and " FILTER (" not in query.upper() for query in queries.values())
     assert "COUNTIF(" in queries["1_v6"]
     assert "COUNT(DISTINCT IF(" in queries["16_v7"]
     for query_id in ("7_v8", "12_v8", "13_v8", "18_v4"):
@@ -33,18 +37,23 @@ def test_bigquery_rewrites_all_filtered_aggregates_and_known_subqueries():
 
 def test_filtered_aggregate_rewrite_preserves_null_and_distinct_semantics():
     source = """
-        SELECT SUM(x) FILTER(WHERE keep), AVG(x) FILTER(WHERE keep),
-               MIN(x) FILTER(WHERE keep), COUNT(*) FILTER(WHERE keep),
-               COUNT(x) FILTER(WHERE keep), COUNT(DISTINCT x) FILTER(WHERE keep)
-        FROM (VALUES (1, TRUE), (1, TRUE), (NULL, TRUE), (2, FALSE), (3, NULL)) AS t(x, keep)
+        SELECT SUM(x) FILTER (WHERE keep), AVG(x) FILTER (WHERE keep),
+               MIN(x) FILTER (WHERE keep), COUNT(*) FILTER (WHERE keep),
+               COUNT(x) FILTER (WHERE keep), COUNT(DISTINCT x) FILTER (WHERE keep)
+        FROM (
+            SELECT 1 AS x, TRUE AS keep
+            UNION ALL SELECT 1, TRUE
+            UNION ALL SELECT NULL, TRUE
+            UNION ALL SELECT 2, FALSE
+            UNION ALL SELECT 3, NULL
+        ) AS t
     """
     expected = duckdb.sql(source).fetchall()
-    translated = sqlglot.transpile(source, read="duckdb", write="bigquery")[0]
-    rewritten = rewrite_cloud_variant("1_v6", translated, "bigquery")
-    executable = sqlglot.transpile(rewritten, read="bigquery", write="duckdb")[0]
-
-    assert " FILTER(" not in rewritten
-    assert duckdb.sql(executable).fetchall() == expected
+    for candidate in (source, sqlglot.transpile(source, read="duckdb", write="bigquery")[0]):
+        rewritten = rewrite_cloud_variant("1_v6", candidate, "bigquery")
+        executable = sqlglot.transpile(rewritten, read="bigquery", write="duckdb")[0]
+        assert " FILTER(" not in rewritten.upper() and " FILTER (" not in rewritten.upper()
+        assert duckdb.sql(executable).fetchall() == expected
 
 
 def test_q1_v7_native_array_rewrite_parses_but_stays_skipped_until_live_compile():
