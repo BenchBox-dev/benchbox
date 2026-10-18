@@ -5,8 +5,8 @@
     "No workflow references a deleted label or secret (G4)",
     "Post-cleanup branch/label/secret-name lists archived"
   ],
-  "context": "muse M12/M13.\n\n2026-10-09 tracker review: the secret rule changed from \"no reference anywhere in the repo\" to \"no workflow consumes it\". Tracker specs and decision records under _project/ still mention these names and stay as history. dlv2-62 is no longer a need; the publication branch is owned by site-split-54-publication-github-cleanup. The label for quarantined tests is nightly-quarantine. dlv2-f3 and dlv2-01 are done and were removed from needs. The step that does not wait for the release path was split into dlv2-80a-github-cleanup-queue-era.",
-  "description": "Pre-approved admin changes (standing approvals); G5 backups and archive tags first. The release-independent cleanup (queue-era branches, develop-red labels, unused todo-db secrets) moved to dlv2-80a-github-cleanup-queue-era.\n\nAfter dlv2-53 and dlv2-42 have removed the code that uses them:\n- Branch: `release` (removed with dlv2-53; archive tag first).\n- Labels: incident:release-canary-red (used by release-canary.yml:530 and scripts/release_canary_incident.py:26) and no-auto-merge (used by scripts/pr_landing.py:55).\n- Any branches, labels or secrets that dlv2-70's workflow deletions leave unused.\n\nOut of scope here: the `publication` branch, environment, secrets and App belong to site-split-54-publication-github-cleanup.\n\nKeep the secrets CODECOV_TOKEN (D6) and RULESET_DRIFT_TOKEN (D7).",
+  "context": "Re-planned 2026-10-17. This item will likely run in a later session; its needs (dlv2-53, dlv2-70 via dlv2-22, dlv2-42, dlv2-80a) are not close. dlv2-80a is ready now and does not wait on the release path.",
+  "description": "Final GitHub cleanup after the code that uses these objects is gone. Updated 2026-10-17: site-split-54-publication-github-cleanup is done, so it is no longer an unmet need (live unmet total is 4: dlv2-53, dlv2-70, dlv2-42, dlv2-80a). The release branch deletion is owned by dlv2-53 alone (archive tag first); this item only verifies it is gone and must not re-list it as its own deletion step (claude NEW-10).\n\nAfter dlv2-53 and dlv2-42 have removed the code that uses them:\n- Labels: incident:release-canary-red (used by release-canary.yml and scripts/release_canary_incident.py) and no-auto-merge (used by scripts/pr_landing.py) — delete only when no workflow or script references them. Note AGENTS.md records a 2026-10-15 amendment to keep no-auto-merge; re-check that decision at execution time and record the owner's current answer before deleting it.\n- Any branches, labels, or secrets that dlv2-70 workflow deletions leave unused, listed with a keep/delete reason each.\n\nPre-approved admin changes only with G5 backups and archive tags first. Keep secrets CODECOV_TOKEN and RULESET_DRIFT_TOKEN. Out of scope: publication objects (owned by site-split-54, done).",
   "sessions": [
     {
       "actor": "mcp:claude-code:joe@joe-mac-mini.local:ea32adff11bd0f17607daca2",
@@ -47,6 +47,14 @@
       "op": "update",
       "op_id": "a0a3a75672154d4090c64f08fb9a84fb",
       "session_id": "05afd70780334fa0b0e411a688cf8f7a"
+    },
+    {
+      "actor": "mcp:tbh:joe@joe-mac-mini.local:047f7cbfbbf519bd65fe7eca",
+      "at": "2026-10-18T11:40:20Z",
+      "client": "tbh",
+      "op": "update",
+      "op_id": "0a6ead9cc750463487c8006d74b01627",
+      "session_id": "b88f90bbf0854ed0a599432bfe5fd099"
     }
   ]
 }
