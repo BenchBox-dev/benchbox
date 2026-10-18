@@ -1504,12 +1504,17 @@
       "title": "Let the results mirror build again: cover every validator module and test the list"
     },
     "autogen-tpch-maintenance-failures-20261018": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-19T21:33:28Z",
+        "generation": "c3fa636699224aabb8597b5a0e386edd",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7ac6538e56f6607b35a3f600"
+      },
       "needs": [
         "autogen-issues-decisions-20261018"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Fix the four failing TPC-H slow-tier tests behind the release canary and t3:durations"
     },
     "autogen-windows-t3-fast-failures-20261018": {
