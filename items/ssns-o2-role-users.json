@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Users exist with planned homes and no login shell",
+    "doctor groups and accounts checks pass"
+  ],
+  "description": "Plan owner action O2. Owner runs the user-creation commands that ship-no-ship-service install --print emits (_ssnsd plus one role user per CLI: _ssnsclaude, _ssnscodex, _ssnsmuse, _ssnsagy) and confirms none is in staff or admin.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51",
+      "at": "2026-10-18T00:58:51Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "0456510f87cf43c781dfa8f7db683638",
+      "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    }
+  ]
+}

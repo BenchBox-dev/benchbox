@@ -21994,6 +21994,15 @@
       "status": "open",
       "title": "ship-no-ship: adopt-and-operate docs"
     },
+    "ssns-o2-role-users": {
+      "claim": null,
+      "needs": [
+        "ssns-n8-macos-install-kit"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "ship-no-ship owner: create the service role users from install --print"
+    },
     "ssns-prepublication-hardening": {
       "claim": null,
       "needs": [],
