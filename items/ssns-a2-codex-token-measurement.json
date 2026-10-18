@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Results recorded in the BenchBox decision record (B3)"
+  ],
+  "context": "If the token is readable, the owner decides before B4 whether accepting that risk (D13) stands or the per-CLI user design (D4) is revisited.",
+  "description": "Plan gate A2. As _ssnscodex, can a codex shell under --sandbox read-only read $CODEX_HOME/auth.json? Can claude's Read or muse's file tools leave the workspace? Is a project .codex/config.toml ignored?",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:joe@joe-mac-mini.local:3a1f85dda8ad190af063bb51",
+      "at": "2026-10-18T00:59:29Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "9981560b46dd44b5b4ef7940ccbe4514",
+      "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    }
+  ]
+}

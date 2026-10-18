@@ -21917,6 +21917,15 @@
       "status": "open",
       "title": "ship-no-ship activation A1: reviewer logins survive a reboot"
     },
+    "ssns-a2-codex-token-measurement": {
+      "claim": null,
+      "needs": [
+        "ssns-o6-install-and-doctor"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "ship-no-ship activation A2: measure whether reviewers can read their own credentials"
+    },
     "ssns-go-public": {
       "claim": null,
       "needs": [],
