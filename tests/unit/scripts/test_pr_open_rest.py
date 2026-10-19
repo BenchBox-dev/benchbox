@@ -173,7 +173,10 @@ def test_reused_pr_updates_only_changed_fields_in_one_request(
     else:
         assert len(patches) == 1
         fields = _fields(patches[0])
-        actual = {key: body_file.read_text() if value == f"@{body_file}" else value for key, value in fields.items()}
+        actual = {
+            key: body_file.read_text(encoding="utf-8") if value == f"@{body_file}" else value
+            for key, value in fields.items()
+        }
         assert actual == expected
     assert gh.api("POST") == []
 
