@@ -1469,17 +1469,12 @@
       "title": "Follow-up (outside the remediation batch): sequence explorer read-model version bumps between core and site"
     },
     "autogen-site-core-reporter-lifecycle-20261018": {
-      "claim": {
-        "expires_at": "2026-10-20T15:52:36Z",
-        "generation": "8b8005895e9a44c280902e206f954020",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
-      },
+      "claim": null,
       "needs": [
         "autogen-issues-decisions-20261018"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Give the core site-inputs failure reporter a close path and failure classes"
     },
     "autogen-site-deploy-reporter-lifecycle-20261018": {
