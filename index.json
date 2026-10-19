@@ -25498,10 +25498,15 @@
       "title": "Extend rendered-SQL clause contract to partition_by/order_by previews"
     },
     "tuning-pg-duckdb-native-layout-20261017": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-20T00:11:20Z",
+        "generation": "c2e59798feae43dd830c6b155b007ff8",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a00a661093086d4fdaf97c3f"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "pg_duckdb: fix the claimed-but-skipped layout tuning, and add a native method"
     },
     "tuning-pg-mooncake-native-layout-20261017": {
