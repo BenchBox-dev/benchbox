@@ -159,8 +159,9 @@ reviewer, builds its record, stores it as `make pr-landing-remote-record` does,
 and publishes the findings. `REVIEWER=codex` is the default. `MODEL=<model>`
 picks that backend's model: otherwise Codex uses its configuration and Claude
 uses `sonnet`. `REVIEWER=claude` starts Claude directly. A failed Codex run falls
-back once to Claude `sonnet` only when its error text contains `usage limit`,
-ignoring case. Every other Codex failure refuses without a fallback.
+back once to Claude `sonnet` only when a Codex error event reports a usage
+limit, ignoring case. Output text that merely mentions a usage limit, and every
+other Codex failure, refuses without a fallback.
 `DRY_RUN=1` prints the record and creates, publishes, and stores nothing, so it
 needs no `BUILDER_HEAD`. Temporary review inputs are still prepared and removed.
 `make pr-landing-remote-review PR=<n> RESUME=1` runs no reviewer: it only
@@ -200,13 +201,15 @@ integration are disabled. Built-in agent names may still appear in CLI
 metadata, but there is no agent tool to invoke them.
 
 Claude receives only `PATH`, `HOME`, and `LANG`, with an isolated home and
-configuration directory outside the readable roots. The target copies only
-the Claude OAuth login from the existing `.credentials.json` or, on macOS,
-the `Claude Code-credentials` keychain entry into a private credentials file.
-The model cannot read this file. It does not receive API keys, other
-environment credentials, MCP logins, or the user's configuration. `--bare` is
-not used because it disables the existing subscription login. The installed
-CLI must support all isolation flags or the target refuses to run it.
+configuration directory outside the readable roots. The target stages the
+OAuth login, without its refresh token, from the existing `.credentials.json`
+or, on macOS, the `Claude Code-credentials` keychain entry into a private
+credentials file; an expired login refuses before launch. The
+refresh token is never staged, so a review cannot rotate or invalidate the
+user's real login. The model cannot read this file. It does not receive API
+keys, other environment credentials, MCP logins, or the user's configuration.
+`--bare` is not used because it disables the existing subscription login. The
+installed CLI must support all isolation flags or the target refuses to run it.
 
 The review store is not locked while either reviewer runs, so
 `make pr-landing-remote-withdraw` is never kept waiting; the target then waits

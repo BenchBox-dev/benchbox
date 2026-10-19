@@ -14,6 +14,7 @@ import string
 import subprocess
 import sys
 import tempfile
+import time
 import tomllib
 import uuid
 from collections.abc import Callable, Iterator, Mapping, Sequence
@@ -488,7 +489,7 @@ def _codex_events(out: str) -> list[dict]:
     return events
 
 
-def _codex_failure(events: Sequence[dict], out: str) -> str:
+def _codex_failure(events: Sequence[dict], out: str) -> tuple[str, bool]:
     messages: list[str] = []
     for event in events:
         error = event.get("error")
@@ -496,7 +497,7 @@ def _codex_failure(events: Sequence[dict], out: str) -> str:
             messages.append(str(error["message"]))
         elif event.get("type") == "error" and closeout._text(event.get("message")):
             messages.append(str(event["message"]))
-    return messages[-1] if messages else out.strip()[-500:]
+    return (messages[-1], True) if messages else (out.strip()[-500:], False)
 
 
 def _run_codex(codex: CodexRunner, workdir: Path, model: str, prompt: str) -> tuple[str, str, str, str]:
@@ -511,8 +512,8 @@ def _run_codex(codex: CodexRunner, workdir: Path, model: str, prompt: str) -> tu
         _keep_refreshed_login(env, login)
     events = _codex_events(out)
     if code != 0:
-        failure = _codex_failure(events, out)
-        refused = UsageLimit if "usage limit" in failure.casefold() else Refused
+        failure, structured = _codex_failure(events, out)
+        refused = UsageLimit if structured and "usage limit" in failure.casefold() else Refused
         raise refused(f"codex exec failed with exit code {code}: {failure}")
     try:
         text = (workdir / "run" / "output.json").read_text(encoding="utf-8")
@@ -548,7 +549,14 @@ def _claude_login() -> bytes:
             raise ValueError("no OAuth access token")
     except (KeyError, TypeError, ValueError) as exc:
         raise Refused("claude is not logged in: no valid Claude Code OAuth login") from exc
-    return _json_text({"claudeAiOauth": oauth}).encode("utf-8")
+    staged: dict[str, object] = {key: value for key, value in oauth.items() if key != "refreshToken"}
+    expires = oauth.get("expiresAt")
+    if isinstance(expires, (int, float)) and not isinstance(expires, bool):
+        staged["expiresAt"] = expires
+        expires_seconds = expires / 1000 if expires > 10_000_000_000 else expires
+        if expires_seconds <= time.time():
+            raise Refused("claude login has expired; run claude interactively to refresh it, then retry")
+    return _json_text({"claudeAiOauth": staged}).encode("utf-8")
 
 
 def _claude_env(workdir: Path) -> dict[str, str]:

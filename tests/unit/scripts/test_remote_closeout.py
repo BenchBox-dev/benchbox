@@ -850,6 +850,9 @@ if behaviour.get("hang"):
     (STATE / "child.pid").write_text(str(child.pid))
     time.sleep(60)
 print(json.dumps({"type": "thread.started", "thread_id": "thread-0042"}))
+if "raw_fail" in behaviour:
+    print(json.dumps({"type": "item.completed", "item": {"text": behaviour["raw_fail"]}}))
+    raise SystemExit(1)
 if "fail" in behaviour:
     print(json.dumps({"type": "error", "message": behaviour["fail"]}))
     raise SystemExit(1)
@@ -947,7 +950,16 @@ def claude(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, denied_roots: tuple[
     for directory in (bin_dir, state, home):
         directory.mkdir()
     (home / ".credentials.json").write_text(
-        json.dumps({"claudeAiOauth": {"accessToken": "claude-test-login"}, "mcpOAuth": {"secret": "excluded"}}),
+        json.dumps(
+            {
+                "claudeAiOauth": {
+                    "accessToken": "claude-test-login",
+                    "refreshToken": "claude-test-refresh",
+                    "scopes": ["user:inference"],
+                },
+                "mcpOAuth": {"secret": "excluded"},
+            }
+        ),
         encoding="utf-8",
     )
     (bin_dir / "claude").write_text(
@@ -1352,6 +1364,20 @@ def test_review_falls_back_to_claude_only_on_a_codex_usage_limit(
     assert argv[argv.index("--model") + 1] == "sonnet"
 
 
+def test_review_refuses_an_unstructured_codex_failure_mentioning_a_usage_limit(
+    world: World,
+    bound: FakeGitHub,
+    codex: FakeCodex,
+    claude: FakeCodex,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    codex.behave(raw_fail="the diff mentions a usage limit")
+    refusal = _review_refusal(world, bound, capsys)
+    assert "codex exec failed with exit code 1" in refusal
+    assert claude.runs() == []
+    assert stored(world)["records"] == []
+
+
 @pytest.mark.parametrize("message", ["authentication failed", "network failure", "permission denied", "quota exceeded"])
 def test_review_reports_other_codex_failures_without_falling_back(
     world: World,
@@ -1716,11 +1742,25 @@ def test_claude_is_confined_to_read_only_tools_and_an_isolated_login(
     assert env["HOME"] == str(workdir / "claude-home")
     config = snapshot / "claude-home" / ".claude"
     assert [path.name for path in config.iterdir()] == [".credentials.json"]
-    assert claude.read(config, ".credentials.json") == {"claudeAiOauth": {"accessToken": "claude-test-login"}}
+    assert claude.read(config, ".credentials.json") == {
+        "claudeAiOauth": {"accessToken": "claude-test-login", "scopes": ["user:inference"]}
+    }
     assert (config / ".credentials.json").stat().st_mode & 0o777 == 0o600
     assert (snapshot / "input" / "diff.patch").is_file()
     assert (snapshot / "head" / "docs" / "note.md").is_file()
     assert not workdir.exists()
+
+
+def test_claude_refuses_an_expired_login_before_launching(
+    world: World, bound: FakeGitHub, claude: FakeCodex, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (claude.home / ".credentials.json").write_text(
+        json.dumps({"claudeAiOauth": {"accessToken": "claude-test-login", "expiresAt": 1}}),
+        encoding="utf-8",
+    )
+    assert "claude login has expired" in _review_refusal(world, bound, capsys, reviewer="claude", model=None)
+    assert claude.runs() == []
+    assert stored(world)["records"] == []
 
 
 def test_claude_dry_run_changes_no_store_or_github_state(
