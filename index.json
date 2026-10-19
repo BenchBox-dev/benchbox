@@ -8592,7 +8592,8 @@
       "claim": null,
       "needs": [
         "docs-mig-site-bundle-schema4",
-        "docs-mig-tpc-eula-gate"
+        "docs-mig-tpc-eula-gate",
+        "docs-mig-activate-schema4"
       ],
       "priority": "high",
       "status": "open",
