@@ -6,7 +6,7 @@
     "PR merged with required checks green",
     "A lookup error aborts the run without creating or editing any issue (test)"
   ],
-  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs every line. FAIL if a label is introduced or a duplicate would still be created. Low priority; do not let it block other items.\nPre-publication (AGENTS.md): self-review with the code review action and fix every Critical and Required finding before make pr-open (G13).",
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs every line. FAIL if a label is introduced or a duplicate would still be created. Low priority; do not let it block other items.\nPre-publication (AGENTS.md): self-review with the code review action and fix every Critical and Required finding before make pr-open (G13).\n\nRepair pushed to corePR3167 head691d51c9b46ce016006eba86ede12504583a3177. None/malformed/404 scan abort; incomplete search falls back; oldest-first scan uncapped, general get_all unchanged; CLI logs mechanism. Original e1dd7b36e produces duplicate#9999 in regression; current22tests pass. Live HTTP-traced process finds1508 via search,35GETs and zero writes. Preflight/comment-policy/typecheck passed; five-axis review no Critical/Required. Oracle/hold/plan queued. Auto-merge disabled during repair; arm only after current-head oracle success per policy.",
   "description": "Confirmed in source: _project/scripts/green_unmerged_sweep.py:489-496 find_pinned_issue calls get_all(.../issues, state=all) and get_all stops at 10 pages of 100 (:398-414). Issues and PRs share numbers, so the original pinned issue #1508 fell outside the window (#2531 - #1508 = 1023) and #2531 was created as a duplicate (closed 2026-10-08 'duplicate of #1508'). The job is scheduled daily (nightly.yml, green-unmerged-sweep) and still affects the next write. Impact is a duplicate pinned issue, not a missed alert.\nWork: look the pinned issue up by its body marker (<!-- green-unmerged-sweep -->) via the search API or another unbounded mechanism, keeping the existing title check and the reopen-if-closed behavior. The script deliberately uses no label; do not add one.\nGATE-I: if the search API cannot return the pinned issue (rate limit or index lag), fall back to a label-free paginated scan sorted oldest first and record which mechanism was used. A lookup error must abort the run; it must never fall through to creating an issue.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/issues/2531"
@@ -44,6 +44,14 @@
       "generation": "0341ab6fad044d8d87dbe480d84725b7",
       "op": "release",
       "op_id": "f453c73690974903aefaeee13f74588a",
+      "session_id": "0722acca462b419aa525d939aedd0290"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a",
+      "at": "2026-10-19T16:09:24Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "61595cee55294f858fa4341a78d71adf",
       "session_id": "0722acca462b419aa525d939aedd0290"
     }
   ]
