@@ -273,8 +273,12 @@ Data and pipeline changes reach the site automatically. After each successful
 push to `develop`, `.github/workflows/site-inputs.yml` builds the certified
 `site-inputs-<sha>` bundle and sends a `core-bundle` dispatch to the site
 repository, whose deploy fetches and verifies that bundle.
-A failed bundle build, or a site deploy that cannot use the bundle, opens or
-updates a `site-bundle-failed` issue in this repository.
+A failed bundle build opens or updates a `site-bundle-failed` issue in this
+repository. The reporter comments only when the failure class or the failing
+commit is new, and the next successful bundle build on `develop` comments on
+and closes issues the reporter opened itself; it never closes incidents owned
+by the site-side deploy relay. A run marked as an expected-failure probe never
+opens, comments, or closes an incident.
 
 The site, the Results Explorer app, the landing page, the blog and blog drafts
 live only in `benchbox-site`. To change them, open a pull request there.
