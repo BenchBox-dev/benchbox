@@ -15530,6 +15530,13 @@
       "status": "open",
       "title": "muse SHIP verdicts on file-list briefs are self-attested"
     },
+    "oracle-standin-doc-contradicts-checker": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Fix stand-in approval docs: the check rejects comments that quote the owner"
+    },
     "oracle-strike-count-distinct-patches-20261008": {
       "claim": null,
       "needs": [],
