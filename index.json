@@ -433,10 +433,15 @@
       "title": "Instruction anchor checks match raw substrings, so reflowing a paragraph fails as semantic drift"
     },
     "agent-instruction-audit-git-identity-return-type": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-20T00:17:22Z",
+        "generation": "5184f6c408a2443da7915cc0b14e4ba5",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6e21d202a3cbd56690913269"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Fix agent instruction audit Git identity return typing"
     },
     "agent-instruction-behavioral-eval-and-pr-1318-landing": {
