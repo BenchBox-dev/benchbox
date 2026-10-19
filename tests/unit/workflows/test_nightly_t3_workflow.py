@@ -549,8 +549,9 @@ def test_failed_duration_samples_keep_both_reports_and_regenerated_artifact(
         '  if [[ "$arg" == --junitxml=* ]]; then\n'
         '    report="${arg#--junitxml=}"\n'
         '    case "$report" in *fast*) tier=fast; rc="$FAST_EXIT" ;; *slow*) tier=slow; rc="$SLOW_EXIT" ;; esac\n'
+        '    body="/>"; if [ "$rc" = "1" ]; then body="><failure message=\\"boom\\"/></testcase>"; fi\n'
         '    printf \'<testsuite tests="1"><testcase classname="tests.unit.test_sample" '
-        'name="test_%s" time="1.2"/></testsuite>\' "$tier" > "$report"\n'
+        'name="test_%s" time="1.2"%s</testsuite>\' "$tier" "$body" > "$report"\n'
         '  fi\ndone\necho "measurement $tier"\nexit "$rc"\n',
         encoding="utf-8",
     )

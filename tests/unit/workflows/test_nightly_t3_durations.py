@@ -124,3 +124,24 @@ def test_an_unparseable_junit_report_fails(tmp_path: Path, verdict: str) -> None
 
     assert result.returncode != 0, result.stdout + result.stderr
     assert "slow duration sample has an unparseable JUnit report" in result.stdout
+
+
+@pytest.mark.parametrize("failing_tier", ["fast", "slow"])
+def test_a_passing_verdict_with_a_failing_report_fails(tmp_path: Path, failing_tier: str) -> None:
+    other = "slow" if failing_tier == "fast" else "fast"
+    result = _run_final(tmp_path, {"fast": "0", "slow": "0"}, {failing_tier: FAILING, other: PASSING})
+
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert f"{failing_tier} duration sample reported success but its JUnit report records failures" in result.stdout
+    assert "tests.slow.test_bad::test_broken[param]" in result.stdout
+    assert "::warning::" not in result.stdout
+
+
+@pytest.mark.parametrize("failing_tier", ["fast", "slow"])
+def test_a_failing_verdict_with_a_clean_report_fails(tmp_path: Path, failing_tier: str) -> None:
+    other = "slow" if failing_tier == "fast" else "fast"
+    result = _run_final(tmp_path, {failing_tier: "1", other: "0"}, {"fast": PASSING, "slow": PASSING})
+
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert f"{failing_tier} duration sample reported test failures but its JUnit report records none" in result.stdout
+    assert "::warning::" not in result.stdout

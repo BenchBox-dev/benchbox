@@ -1050,9 +1050,15 @@ jobs:
               failed=1
               continue
             fi
-            if [ "$rc" = "1" ]; then
+            if [ "$rc" = "0" ] && [ -n "$ids" ]; then
+              echo "::error::${tier} duration sample reported success but its JUnit report records failures: $(printf '%s' "$ids" | paste -sd ',' - | sed 's/,/, /g')"
+              failed=1
+            elif [ "$rc" = "1" ] && [ -z "$ids" ]; then
+              echo "::error::${tier} duration sample reported test failures but its JUnit report records none."
+              failed=1
+            elif [ "$rc" = "1" ]; then
               names="$(printf '%s' "$ids" | paste -sd ',' - | sed 's/,/, /g')"
-              echo "::warning::${tier} duration sample had failing tests (gated by the PR, trunk and release canary lanes): ${names:-none recorded in JUnit}"
+              echo "::warning::${tier} duration sample had failing tests (gated by the PR, trunk and release canary lanes): ${names}"
             fi
           done
           exit "$failed"
