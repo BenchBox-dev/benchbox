@@ -69,11 +69,11 @@ The benchmark includes **23 transaction operations** organized into key transact
 
 Tests basic transaction commit and rollback behavior with varying data volumes:
 
-- **transaction_commit_small** - Commits 10 INSERT operations
-- **transaction_commit_medium** - Commits 100 INSERT operations
-- **transaction_commit_large** - Commits 1000 INSERT operations
-- **transaction_rollback_small** - Rolls back 3 INSERT operations
-- **transaction_rollback_medium** - Rolls back 100 INSERT operations
+- **[transaction_commit_small](queries/transaction_primitives/transaction-commit-small.md)** - Commits 10 INSERT operations
+- **[transaction_commit_medium](queries/transaction_primitives/transaction-commit-medium.md)** - Commits 100 INSERT operations
+- **[transaction_commit_large](queries/transaction_primitives/transaction-commit-large.md)** - Commits 1000 INSERT operations
+- **[transaction_rollback_small](queries/transaction_primitives/transaction-rollback-small.md)** - Rolls back 3 INSERT operations
+- **[transaction_rollback_medium](queries/transaction_primitives/transaction-rollback-medium.md)** - Rolls back 100 INSERT operations
 
 **Purpose**: Validate transaction commit/rollback performance at different scales and ensure all changes are persisted or undone atomically.
 
@@ -81,8 +81,8 @@ Tests basic transaction commit and rollback behavior with varying data volumes:
 
 Tests advanced transaction control with nested savepoints:
 
-- **transaction_savepoint_nested** - Tests nested SAVEPOINTs with partial rollback
-- **transaction_savepoint_deep_nesting** - Tests deep savepoint nesting with selective rollback at different levels
+- **[transaction_savepoint_nested](queries/transaction_primitives/transaction-savepoint-nested.md)** - Tests nested SAVEPOINTs with partial rollback
+- **[transaction_savepoint_deep_nesting](queries/transaction_primitives/transaction-savepoint-deep-nesting.md)** - Tests deep savepoint nesting with selective rollback at different levels
 
 **Purpose**: Validate savepoint functionality for complex transaction workflows with partial rollback capabilities.
 
@@ -92,9 +92,9 @@ Tests advanced transaction control with nested savepoints:
 
 Tests transaction isolation guarantees at different levels:
 
-- **transaction_isolation_read_committed** - Tests READ COMMITTED isolation level
-- **transaction_isolation_repeatable_read** - Tests REPEATABLE READ isolation level
-- **transaction_isolation_serializable** - Tests SERIALIZABLE isolation level
+- **[transaction_isolation_read_committed](queries/transaction_primitives/transaction-isolation-read-committed.md)** - Tests READ COMMITTED isolation level
+- **[transaction_isolation_repeatable_read](queries/transaction_primitives/transaction-isolation-repeatable-read.md)** - Tests REPEATABLE READ isolation level
+- **[transaction_isolation_serializable](queries/transaction_primitives/transaction-isolation-serializable.md)** - Tests SERIALIZABLE isolation level
 
 **Purpose**: Verify correct implementation of SQL standard isolation levels and their impact on concurrent transaction behavior and locking overhead.
 
@@ -102,14 +102,14 @@ Tests transaction isolation guarantees at different levels:
 
 Tests complex transactions with multiple DML statements:
 
-- **transaction_mixed_dml_small** - Mixed INSERT/UPDATE/DELETE within single transaction (small scale)
-- **transaction_mixed_dml_medium** - Mixed DML operations on multiple rows with JOINs
-- **transaction_insert_update_chain** - Dependent INSERT then UPDATE on same rows within transaction
-- **transaction_delete_insert_same_key** - DELETE then re-INSERT of same primary key within transaction
-- **transaction_read_your_writes** - Tests that transaction sees its own uncommitted changes
-- **transaction_insert_with_subquery** - INSERT...SELECT from same table within transaction
-- **transaction_multi_table_writes** - Writes to multiple tables within single transaction
-- **transaction_long_running_mixed** - Long-running transaction with many statements to measure log/lock overhead
+- **[transaction_mixed_dml_small](queries/transaction_primitives/transaction-mixed-dml-small.md)** - Mixed INSERT/UPDATE/DELETE within single transaction (small scale)
+- **[transaction_mixed_dml_medium](queries/transaction_primitives/transaction-mixed-dml-medium.md)** - Mixed DML operations on multiple rows with JOINs
+- **[transaction_insert_update_chain](queries/transaction_primitives/transaction-insert-update-chain.md)** - Dependent INSERT then UPDATE on same rows within transaction
+- **[transaction_delete_insert_same_key](queries/transaction_primitives/transaction-delete-insert-same-key.md)** - DELETE then re-INSERT of same primary key within transaction
+- **[transaction_read_your_writes](queries/transaction_primitives/transaction-read-your-writes.md)** - Tests that transaction sees its own uncommitted changes
+- **[transaction_insert_with_subquery](queries/transaction_primitives/transaction-insert-with-subquery.md)** - INSERT...SELECT from same table within transaction
+- **[transaction_multi_table_writes](queries/transaction_primitives/transaction-multi-table-writes.md)** - Writes to multiple tables within single transaction
+- **[transaction_long_running_mixed](queries/transaction_primitives/transaction-long-running-mixed.md)** - Long-running transaction with many statements to measure log/lock overhead
 
 **Purpose**: Validate atomicity and consistency across multiple dependent operations, ensuring transactions can read their own uncommitted changes and handle complex multi-statement patterns.
 
@@ -117,11 +117,11 @@ Tests complex transactions with multiple DML statements:
 
 Tests advanced database transaction capabilities:
 
-- **transaction_truncate_in_transaction** - Tests TRUNCATE within transaction and rollback behavior
-- **transaction_create_temp_table** - Tests transaction-scoped temporary table creation and usage
-- **transaction_with_cte** - Tests complex CTE (Common Table Expression) within transaction
-- **transaction_nested_subquery_updates** - Tests UPDATE with nested subqueries within transaction
-- **transaction_rollback_after_error** - Tests automatic rollback behavior after constraint violation
+- **[transaction_truncate_in_transaction](queries/transaction_primitives/transaction-truncate-in-transaction.md)** - Tests TRUNCATE within transaction and rollback behavior
+- **[transaction_create_temp_table](queries/transaction_primitives/transaction-create-temp-table.md)** - Tests transaction-scoped temporary table creation and usage
+- **[transaction_with_cte](queries/transaction_primitives/transaction-with-cte.md)** - Tests complex CTE (Common Table Expression) within transaction
+- **[transaction_nested_subquery_updates](queries/transaction_primitives/transaction-nested-subquery-updates.md)** - Tests UPDATE with nested subqueries within transaction
+- **[transaction_rollback_after_error](queries/transaction_primitives/transaction-rollback-after-error.md)** - Tests automatic rollback behavior after constraint violation
 
 **Purpose**: Validate advanced transaction features including DDL in transactions, CTEs, complex subqueries, and error handling semantics.
 

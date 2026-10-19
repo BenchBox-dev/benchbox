@@ -150,11 +150,11 @@ platform and scale.
 
 | Query | Focus | Key Features |
 |-------|-------|-------------|
-| **Q1.1** | Year-based aggregation | Simple date filter, discount range, quantity filter |
-| **Q1.2** | Month-based aggregation | Month granularity, quantity range filter |
-| **Q1.3** | Week-based aggregation | Week granularity, refined quantity range |
+| **[Q1.1](queries/ssb/q1-1.md)** | Year-based aggregation | Simple date filter, discount range, quantity filter |
+| **[Q1.2](queries/ssb/q1-2.md)** | Month-based aggregation | Month granularity, quantity range filter |
+| **[Q1.3](queries/ssb/q1-3.md)** | Week-based aggregation | Week granularity, refined quantity range |
 
-**Example Query (Q1.1)**:
+**Example Query ([Q1.1](queries/ssb/q1-1.md))**:
 ```sql
 SELECT sum(lo_extendedprice*lo_discount) as revenue
 FROM lineorder, date
@@ -170,11 +170,11 @@ WHERE lo_orderdate = d_datekey
 
 | Query | Focus | Key Features |
 |-------|-------|-------------|
-| **Q2.1** | Brand category analysis | Part category filter, supplier region |
-| **Q2.2** | Brand range analysis | Brand range filter, supplier region |
-| **Q2.3** | Specific brand analysis | Single brand focus, supplier region |
+| **[Q2.1](queries/ssb/q2-1.md)** | Brand category analysis | Part category filter, supplier region |
+| **[Q2.2](queries/ssb/q2-2.md)** | Brand range analysis | Brand range filter, supplier region |
+| **[Q2.3](queries/ssb/q2-3.md)** | Specific brand analysis | Single brand focus, supplier region |
 
-**Example Query (Q2.1)**:
+**Example Query ([Q2.1](queries/ssb/q2-1.md))**:
 ```sql
 SELECT sum(lo_revenue), d_year, p_brand1
 FROM lineorder, date, part, supplier
@@ -193,12 +193,12 @@ ORDER BY d_year, p_brand1;
 
 | Query | Focus | Key Features |
 |-------|-------|-------------|
-| **Q3.1** | Customer nation analysis | Customer and supplier nations |
-| **Q3.2** | City-level analysis | Customer city, supplier city |
-| **Q3.3** | Specific city analysis | Single customer city focus |
-| **Q3.4** | Regional analysis | Customer and supplier regions |
+| **[Q3.1](queries/ssb/q3-1.md)** | Customer nation analysis | Customer and supplier nations |
+| **[Q3.2](queries/ssb/q3-2.md)** | City-level analysis | Customer city, supplier city |
+| **[Q3.3](queries/ssb/q3-3.md)** | Specific city analysis | Single customer city focus |
+| **[Q3.4](queries/ssb/q3-4.md)** | Regional analysis | Customer and supplier regions |
 
-**Example Query (Q3.1)**:
+**Example Query ([Q3.1](queries/ssb/q3-1.md))**:
 ```sql
 SELECT c_nation, s_nation, d_year, sum(lo_revenue) as revenue
 FROM customer, lineorder, supplier, date
@@ -218,11 +218,11 @@ ORDER BY d_year asc, revenue desc;
 
 | Query | Focus | Key Features |
 |-------|-------|-------------|
-| **Q4.1** | Regional profit analysis | Customer and supplier regions, profit calculation |
-| **Q4.2** | Nation-specific profit | Single customer nation, profit trends |
-| **Q4.3** | City-specific profit | Customer city, part category, profit analysis |
+| **[Q4.1](queries/ssb/q4-1.md)** | Regional profit analysis | Customer and supplier regions, profit calculation |
+| **[Q4.2](queries/ssb/q4-2.md)** | Nation-specific profit | Single customer nation, profit trends |
+| **[Q4.3](queries/ssb/q4-3.md)** | City-specific profit | Customer city, part category, profit analysis |
 
-**Example Query (Q4.1)**:
+**Example Query ([Q4.1](queries/ssb/q4-1.md))**:
 ```sql
 SELECT d_year, c_nation, sum(lo_revenue - lo_supplycost) as profit
 FROM date, customer, supplier, part, lineorder

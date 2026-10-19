@@ -104,10 +104,10 @@ platform and scale.
 
 ### Complexity Patterns
 
-- **Simple Queries** (Q1, Q6): Single table aggregation
-- **Medium Queries** (Q3, Q5, Q10): Multi-table joins with aggregation
-- **Complex Queries** (Q2, Q15, Q20, Q21): Nested subqueries, correlated queries
-- **Analytical Queries** (Q7, Q8, Q9): Time-series and trend analysis
+- **Simple Queries** ([Q1](queries/tpch/q1.md), [Q6](queries/tpch/q6.md)): Single table aggregation
+- **Medium Queries** ([Q3](queries/tpch/q3.md), [Q5](queries/tpch/q5.md), [Q10](queries/tpch/q10.md)): Multi-table joins with aggregation
+- **Complex Queries** ([Q2](queries/tpch/q2.md), [Q15](queries/tpch/q15.md), [Q20](queries/tpch/q20.md), [Q21](queries/tpch/q21.md)): Nested subqueries, correlated queries
+- **Analytical Queries** ([Q7](queries/tpch/q7.md), [Q8](queries/tpch/q8.md), [Q9](queries/tpch/q9.md)): Time-series and trend analysis
 
 ## Official TPC-H Metrics
 
@@ -293,17 +293,17 @@ for i, stream_info in enumerate(tpch.get_all_streams_info()):
 ### Query Complexity Categories
 
 **Simple Queries (low complexity):**
-- Q1, Q6: Single-table aggregation with simple predicates
-- Q14: Simple join with CASE expression
+- [Q1](queries/tpch/q1.md), [Q6](queries/tpch/q6.md): Single-table aggregation with simple predicates
+- [Q14](queries/tpch/q14.md): Simple join with CASE expression
 
 **Moderate Queries (medium complexity):**
-- Q3, Q5, Q7, Q10, Q12: Multi-table joins with moderate complexity
-- Q4, Q13: EXISTS/outer join patterns
+- [Q3](queries/tpch/q3.md), [Q5](queries/tpch/q5.md), [Q7](queries/tpch/q7.md), [Q10](queries/tpch/q10.md), [Q12](queries/tpch/q12.md): Multi-table joins with moderate complexity
+- [Q4](queries/tpch/q4.md), [Q13](queries/tpch/q13.md): EXISTS/outer join patterns
 
 **Complex Queries (high complexity):**
-- Q2, Q15, Q17, Q20, Q21: Complex nested subqueries
-- Q8, Q9: Multi-year analytical queries
-- Q16, Q18, Q19, Q22: Complex filtering and ranking
+- [Q2](queries/tpch/q2.md), [Q15](queries/tpch/q15.md), [Q17](queries/tpch/q17.md), [Q20](queries/tpch/q20.md), [Q21](queries/tpch/q21.md): Complex nested subqueries
+- [Q8](queries/tpch/q8.md), [Q9](queries/tpch/q9.md): Multi-year analytical queries
+- [Q16](queries/tpch/q16.md), [Q18](queries/tpch/q18.md), [Q19](queries/tpch/q19.md), [Q22](queries/tpch/q22.md): Complex filtering and ranking
 
 **Note:** Actual execution times vary significantly based on platform, hardware, configuration, and data characteristics. Run benchmarks to measure performance for your specific environment.
 

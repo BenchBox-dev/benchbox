@@ -126,8 +126,8 @@ The benchmark includes **112 write operations** across 6 categories:
 - Error handling (duplicate sources)
 - ETL aggregation with running totals
 - Window function deduplication (ROW_NUMBER pattern)
-- SCD Type 2 dimension maintenance (`merge_scd_type2_basic`,
-  `merge_scd_type2_no_change`, `merge_scd_type2_new_keys_only`), which closes the
+- SCD Type 2 dimension maintenance ([`merge_scd_type2_basic`](queries/write_primitives/merge-scd-type2-basic.md),
+  [`merge_scd_type2_no_change`](queries/write_primitives/merge-scd-type2-no-change.md), [`merge_scd_type2_new_keys_only`](queries/write_primitives/merge-scd-type2-new-keys-only.md)), which closes the
   current version of a changed business key and opens a new one, expressed as
   portable UPDATE + INSERT against the dedicated `scd2_ops_*` dimension tables
   (no `APPLY CHANGES INTO` / declarative-pipeline syntax, so it runs unchanged on

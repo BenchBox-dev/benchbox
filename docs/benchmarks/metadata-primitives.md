@@ -113,7 +113,7 @@ WHERE table_schema NOT IN ('information_schema', 'pg_catalog')
 ORDER BY table_name;
 ```
 
-The first query is `schema_list_tables` (list all tables). The second is `schema_list_views` (list all views).
+The first query is [`schema_list_tables`](queries/metadata_primitives/schema-list-tables.md) (list all tables). The second is [`schema_list_views`](queries/metadata_primitives/schema-list-views.md) (list all views).
 
 ### Column Introspection
 
@@ -129,7 +129,7 @@ GROUP BY data_type
 ORDER BY count DESC;
 ```
 
-The first query is `column_for_table` (get columns for a specific table). The second is `column_types` (get the column type distribution).
+The first query is [`column_for_table`](queries/metadata_primitives/column-for-table.md) (get columns for a specific table). The second is [`column_data_types`](queries/metadata_primitives/column-data-types.md) (get the column type distribution).
 
 ### Table Statistics
 
@@ -140,7 +140,7 @@ FROM information_schema.tables
 WHERE table_type = 'BASE TABLE';
 ```
 
-This query is `stats_table_sizes` (get table sizes and row estimates).
+This query is [`stats_table_sizes`](queries/metadata_primitives/stats-table-sizes.md) (get table sizes and row estimates).
 
 ### Query Introspection
 

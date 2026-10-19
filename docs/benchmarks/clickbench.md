@@ -111,28 +111,28 @@ statement for your platform and scale.
 
 ### Basic Aggregation Queries (Q1-Q7)
 
-**Q1: Simple Count**
+**[Q1](queries/clickbench/q1.md): Simple Count**
 ```sql
 SELECT COUNT(*) FROM hits;
 ```
 - **Purpose**: Test basic table scanning performance
 - **Performance focus**: Sequential scan optimization
 
-**Q2: Filtered Count**
+**[Q2](queries/clickbench/q2.md): Filtered Count**
 ```sql
 SELECT COUNT(*) FROM hits WHERE AdvEngineID <> 0;
 ```
 - **Purpose**: Test filtering with aggregation
 - **Performance focus**: Predicate evaluation during scan
 
-**Q3: Multiple Aggregations**
+**[Q3](queries/clickbench/q3.md): Multiple Aggregations**
 ```sql
 SELECT SUM(AdvEngineID), COUNT(*), AVG(ResolutionWidth) FROM hits;
 ```
 - **Purpose**: Test multiple aggregation functions
 - **Performance focus**: Aggregation pipeline efficiency
 
-**Q5: Distinct Count**
+**[Q5](queries/clickbench/q5.md): Distinct Count**
 ```sql
 SELECT COUNT(DISTINCT UserID) FROM hits;
 ```
@@ -141,7 +141,7 @@ SELECT COUNT(DISTINCT UserID) FROM hits;
 
 ### Grouping and Ordering Queries (Q8-Q19)
 
-**Q8: Basic GROUP BY**
+**[Q8](queries/clickbench/q8.md): Basic GROUP BY**
 ```sql
 SELECT AdvEngineID, COUNT(*) FROM hits
 WHERE AdvEngineID <> 0
@@ -151,7 +151,7 @@ ORDER BY COUNT(*) DESC;
 - **Purpose**: Test basic grouping with ordering
 - **Performance focus**: Hash aggregation and sorting
 
-**Q9: Distinct Users by Region**
+**[Q9](queries/clickbench/q9.md): Distinct Users by Region**
 ```sql
 SELECT RegionID, COUNT(DISTINCT UserID) AS u FROM hits
 GROUP BY RegionID
@@ -161,7 +161,7 @@ LIMIT 10;
 - **Purpose**: Test complex aggregation with TOP-N
 - **Performance focus**: Distinct counting within groups
 
-**Q13: Search Phrase Analysis**
+**[Q13](queries/clickbench/q13.md): Search Phrase Analysis**
 ```sql
 SELECT SearchPhrase, COUNT(*) AS c FROM hits
 WHERE SearchPhrase <> ''
@@ -174,14 +174,14 @@ LIMIT 10;
 
 ### String Operations Queries (Q20-Q29)
 
-**Q21: String Pattern Matching**
+**[Q21](queries/clickbench/q21.md): String Pattern Matching**
 ```sql
 SELECT COUNT(*) FROM hits WHERE URL LIKE '%google%';
 ```
 - **Purpose**: Test string pattern matching performance
 - **Performance focus**: Text search optimization
 
-**Q22: Complex String Analysis**
+**[Q22](queries/clickbench/q22.md): Complex String Analysis**
 ```sql
 SELECT SearchPhrase, MIN(URL), COUNT(*) AS c FROM hits
 WHERE URL LIKE '%google%' AND SearchPhrase <> ''
@@ -192,7 +192,7 @@ LIMIT 10;
 - **Purpose**: Test combined string operations with grouping
 - **Performance focus**: String processing with aggregation
 
-**Q29: Regex Operations**
+**[Q29](queries/clickbench/q29.md): Regex Operations**
 ```sql
 SELECT REGEXP_REPLACE(Referer, '^https?://(?:www\\.)?([^/]+)/.*$', '\\1') AS k,
        AVG(LENGTH(Referer)) AS l,
@@ -210,7 +210,7 @@ LIMIT 25;
 
 ### Complex Analytics Queries (Q30-Q43)
 
-**Q30: Wide Aggregation**
+**[Q30](queries/clickbench/q30.md): Wide Aggregation**
 ```sql
 SELECT SUM(ResolutionWidth), SUM(ResolutionWidth + 1), ..., SUM(ResolutionWidth + 89)
 FROM hits;
@@ -218,7 +218,7 @@ FROM hits;
 - **Purpose**: Test wide query processing (89 aggregation columns)
 - **Performance focus**: Expression evaluation and vectorization
 
-**Q37: Time Series Analysis**
+**[Q37](queries/clickbench/q37.md): Time Series Analysis**
 ```sql
 SELECT SUM(ResolutionWidth),
        SUM(ResolutionWidth + 1),
@@ -231,7 +231,7 @@ LIMIT 10;
 - **Purpose**: Test temporal grouping with expressions
 - **Performance focus**: Time-based aggregation optimization
 
-**Q43: Advanced-level Analytics**
+**[Q43](queries/clickbench/q43.md): Advanced-level Analytics**
 ```sql
 SELECT CounterID,
        AVG(LENGTH(URL)) AS l,
@@ -284,8 +284,8 @@ print(f"HITS table has {len(schema[0]['columns'])} columns")
 > never appear in the generated data. The effect is that empty `|` `|`
 > fields load as empty strings, not NULL. This is required for
 > compatibility with the official ClickBench workload: the HITS schema
-> declares columns as `NOT NULL`, and many queries (e.g. Q11-Q15, Q22,
-> Q23, Q25-Q29, Q31, Q32, Q37, Q38) filter empties with
+> declares columns as `NOT NULL`, and many queries (e.g. [Q11](queries/clickbench/q11.md)-[Q15](queries/clickbench/q15.md), [Q22](queries/clickbench/q22.md),
+> [Q23](queries/clickbench/q23.md), [Q25](queries/clickbench/q25.md)-[Q29](queries/clickbench/q29.md), [Q31](queries/clickbench/q31.md), [Q32](queries/clickbench/q32.md), [Q37](queries/clickbench/q37.md), [Q38](queries/clickbench/q38.md)) filter empties with
 > `<column> <> ''`. If you load the data via a different path (custom
 > COPY, `read_csv(nullstr='')`, etc.), apply the same empty-as-empty
 > policy or the result validator will diverge from the reference answers.
@@ -705,31 +705,31 @@ if successful_queries:
 
 ### Query Performance Patterns
 
-**Scan Queries (Q1, Q2, Q7):**
+**Scan Queries ([Q1](queries/clickbench/q1.md), [Q2](queries/clickbench/q2.md), [Q7](queries/clickbench/q7.md)):**
 - **Primary bottleneck**: Sequential scan speed and basic filtering
 - **Optimization targets**: Column scanning, SIMD operations, predicate pushdown
 - **Typical performance**: Milliseconds to seconds
 - **Scaling characteristics**: Linear with data size
 
-**Aggregation Queries (Q3-Q6):**
+**Aggregation Queries ([Q3](queries/clickbench/q3.md)-[Q6](queries/clickbench/q6.md)):**
 - **Primary bottleneck**: Aggregation function computation
 - **Optimization targets**: Vectorized aggregation, parallel execution
 - **Typical performance**: Seconds for large datasets
 - **Scaling characteristics**: Sub-linear with good optimization
 
-**Grouping Queries (Q8-Q19):**
+**Grouping Queries ([Q8](queries/clickbench/q8.md)-[Q19](queries/clickbench/q19.md)):**
 - **Primary bottleneck**: Hash table construction and group management
 - **Optimization targets**: Hash aggregation algorithms, memory efficiency
 - **Typical performance**: Seconds to tens of seconds
 - **Scaling characteristics**: Depends on cardinality and memory
 
-**String Operations (Q20-Q29):**
+**String Operations ([Q20](queries/clickbench/q20.md)-[Q29](queries/clickbench/q29.md)):**
 - **Primary bottleneck**: String processing and pattern matching
 - **Optimization targets**: String function optimization, regex engines
 - **Typical performance**: Highly variable, can be slow
 - **Scaling characteristics**: Often super-linear for complex operations
 
-**Complex Analytics (Q30-Q43):**
+**Complex Analytics ([Q30](queries/clickbench/q30.md)-[Q43](queries/clickbench/q43.md)):**
 - **Primary bottleneck**: Multiple complex operations combined
 - **Optimization targets**: Query plan optimization, vectorization
 - **Typical performance**: Minutes for large datasets

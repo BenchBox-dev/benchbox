@@ -100,21 +100,21 @@ platform and scale.
 ### Query Categories by Complexity
 
 **Reporting Queries (Simple Aggregation):**
-- Q1, Q6, Q11, Q13: Basic aggregation with simple grouping
+- [Q1](queries/tpcds/q1.md), [Q6](queries/tpcds/q6.md), [Q11](queries/tpcds/q11.md), [Q13](queries/tpcds/q13.md): Basic aggregation with simple grouping
 - Focus on fundamental aggregation performance
 
 **Interactive Queries (Medium Complexity):**
-- Q3, Q7, Q19, Q27, Q42: Multi-table joins with moderate complexity
+- [Q3](queries/tpcds/q3.md), [Q7](queries/tpcds/q7.md), [Q19](queries/tpcds/q19.md), [Q27](queries/tpcds/q27.md), [Q42](queries/tpcds/q42.md): Multi-table joins with moderate complexity
 - Window functions and ranking operations
 - Typical business intelligence patterns
 
 **Deep Analytics (High Complexity):**
-- Q14a/14b, Q23a/23b, Q24a/24b: Advanced-level analytical patterns
+- [Q14a/14b](queries/tpcds/q14.md), [Q23a/23b](queries/tpcds/q23.md), [Q24a/24b](queries/tpcds/q24.md): Advanced-level analytical patterns
 - Complex joins and mathematical calculations
 - Multi-level aggregation and correlation analysis
 
 **Data Mining Queries (Very High Complexity):**
-- Q64, Q67, Q70, Q86: Statistical analysis and data mining patterns
+- [Q64](queries/tpcds/q64.md), [Q67](queries/tpcds/q67.md), [Q70](queries/tpcds/q70.md), [Q86](queries/tpcds/q86.md): Statistical analysis and data mining patterns
 - Customer segmentation and behavior analysis
 - Advanced-level window functions and analytical operations
 
@@ -122,21 +122,21 @@ platform and scale.
 
 | Feature | Example Queries | Description |
 |---------|----------------|-------------|
-| **Window Functions** | Q17, Q25, Q47, Q51 | ROW_NUMBER(), RANK(), LAG/LEAD |
-| **Multi-CTE Analysis** | Q14a, Q23a | Chained CTEs for cross-channel analysis |
-| **ROLLUP/CUBE** | Q5, Q18, Q77 | OLAP aggregation operations |
-| **Complex Joins** | Q64, Q78, Q95 | 6+ table joins with multiple predicates |
-| **Correlation Analysis** | Q35, Q38, Q87 | Cross-channel correlation patterns |
-| **Time Series** | Q12, Q20, Q21 | Year-over-year and temporal analysis |
-| **Ranking/Top-N** | Q37, Q40, Q52 | Customer and product ranking |
-| **Statistical Functions** | Q9, Q46, Q98 | STDDEV, VARIANCE, CORR |
+| **Window Functions** | [Q17](queries/tpcds/q17.md), [Q25](queries/tpcds/q25.md), [Q47](queries/tpcds/q47.md), [Q51](queries/tpcds/q51.md) | ROW_NUMBER(), RANK(), LAG/LEAD |
+| **Multi-CTE Analysis** | [Q14a](queries/tpcds/q14.md), [Q23a](queries/tpcds/q23.md) | Chained CTEs for cross-channel analysis |
+| **ROLLUP/CUBE** | [Q5](queries/tpcds/q5.md), [Q18](queries/tpcds/q18.md), [Q77](queries/tpcds/q77.md) | OLAP aggregation operations |
+| **Complex Joins** | [Q64](queries/tpcds/q64.md), [Q78](queries/tpcds/q78.md), [Q95](queries/tpcds/q95.md) | 6+ table joins with multiple predicates |
+| **Correlation Analysis** | [Q35](queries/tpcds/q35.md), [Q38](queries/tpcds/q38.md), [Q87](queries/tpcds/q87.md) | Cross-channel correlation patterns |
+| **Time Series** | [Q12](queries/tpcds/q12.md), [Q20](queries/tpcds/q20.md), [Q21](queries/tpcds/q21.md) | Year-over-year and temporal analysis |
+| **Ranking/Top-N** | [Q37](queries/tpcds/q37.md), [Q40](queries/tpcds/q40.md), [Q52](queries/tpcds/q52.md) | Customer and product ranking |
+| **Statistical Functions** | [Q9](queries/tpcds/q9.md), [Q46](queries/tpcds/q46.md), [Q98](queries/tpcds/q98.md) | STDDEV, VARIANCE, CORR |
 
 ### Query Variants
 
-Some queries have variants (e.g., Q14a/Q14b) that test slightly different patterns:
-- **Query 14a/14b**: Different approaches to cross-channel analysis
-- **Query 23a/23b**: Alternative cross-channel query patterns
-- **Query 24a/24b**: Different aggregation strategies
+Some queries have variants (e.g., [Q14a/Q14b](queries/tpcds/q14.md)) that test slightly different patterns:
+- **[Query 14a/14b](queries/tpcds/q14.md)**: Different approaches to cross-channel analysis
+- **[Query 23a/23b](queries/tpcds/q23.md)**: Alternative cross-channel query patterns
+- **[Query 24a/24b](queries/tpcds/q24.md)**: Different aggregation strategies
 
 ## Usage Examples
 
@@ -283,9 +283,9 @@ This can change the SQL of these queries when the scale factor is not 1:
 
 | Scale factor | Queries whose SQL can differ |
 |--------------|------------------------------|
-| 0.01 and 0.1 | Q9, Q44, Q46, Q68 |
-| 10 | Q9, Q44, Q46, Q68, plus Q1, Q16, Q27, Q34, Q36, Q73 |
-| 100 and above | Q9, Q44, Q46, Q68, plus Q1, Q16, Q27, Q33, Q34, Q36, Q43, Q73 |
+| 0.01 and 0.1 | [Q9](queries/tpcds/q9.md), [Q44](queries/tpcds/q44.md), [Q46](queries/tpcds/q46.md), [Q68](queries/tpcds/q68.md) |
+| 10 | [Q9](queries/tpcds/q9.md), [Q44](queries/tpcds/q44.md), [Q46](queries/tpcds/q46.md), [Q68](queries/tpcds/q68.md), plus [Q1](queries/tpcds/q1.md), [Q16](queries/tpcds/q16.md), [Q27](queries/tpcds/q27.md), [Q34](queries/tpcds/q34.md), [Q36](queries/tpcds/q36.md), [Q73](queries/tpcds/q73.md) |
+| 100 and above | [Q9](queries/tpcds/q9.md), [Q44](queries/tpcds/q44.md), [Q46](queries/tpcds/q46.md), [Q68](queries/tpcds/q68.md), plus [Q1](queries/tpcds/q1.md), [Q16](queries/tpcds/q16.md), [Q27](queries/tpcds/q27.md), [Q33](queries/tpcds/q33.md), [Q34](queries/tpcds/q34.md), [Q36](queries/tpcds/q36.md), [Q43](queries/tpcds/q43.md), [Q73](queries/tpcds/q73.md) |
 
 For a given seed some of these queries can come out the same at both scales,
 because the random values they draw can coincide.
@@ -300,21 +300,21 @@ queries above, so don't compare those queries one for one with newer results.
 ### Query Complexity Categories
 
 **Simple Queries (low complexity):**
-- Q1, Q6, Q11, Q13: Simple aggregation queries
-- Q16, Q21, Q32: Basic joins with simple predicates
+- [Q1](queries/tpcds/q1.md), [Q6](queries/tpcds/q6.md), [Q11](queries/tpcds/q11.md), [Q13](queries/tpcds/q13.md): Simple aggregation queries
+- [Q16](queries/tpcds/q16.md), [Q21](queries/tpcds/q21.md), [Q32](queries/tpcds/q32.md): Basic joins with simple predicates
 
 **Moderate Queries (medium complexity):**
-- Q3, Q7, Q19, Q27: Multi-table joins with moderate complexity
-- Q25, Q29, Q43: Window functions and ranking
-- Q52, Q55, Q59: Customer analysis patterns
+- [Q3](queries/tpcds/q3.md), [Q7](queries/tpcds/q7.md), [Q19](queries/tpcds/q19.md), [Q27](queries/tpcds/q27.md): Multi-table joins with moderate complexity
+- [Q25](queries/tpcds/q25.md), [Q29](queries/tpcds/q29.md), [Q43](queries/tpcds/q43.md): Window functions and ranking
+- [Q52](queries/tpcds/q52.md), [Q55](queries/tpcds/q55.md), [Q59](queries/tpcds/q59.md): Customer analysis patterns
 
 **Complex Queries (high complexity):**
-- Q14a/b, Q23a/b, Q24a/b: Advanced-level analytical patterns
-- Q64, Q67, Q78: Complex joins and correlations
-- Q95, Q98: Statistical and data mining operations
+- [Q14a/b](queries/tpcds/q14.md), [Q23a/b](queries/tpcds/q23.md), [Q24a/b](queries/tpcds/q24.md): Advanced-level analytical patterns
+- [Q64](queries/tpcds/q64.md), [Q67](queries/tpcds/q67.md), [Q78](queries/tpcds/q78.md): Complex joins and correlations
+- [Q95](queries/tpcds/q95.md), [Q98](queries/tpcds/q98.md): Statistical and data mining operations
 
 **Very Complex Queries (highest complexity):**
-- Q70, Q86: Extremely complex analytical patterns
+- [Q70](queries/tpcds/q70.md), [Q86](queries/tpcds/q86.md): Extremely complex analytical patterns
 - Queries with large intermediate result sets
 - Multi-level aggregation with complex predicates
 
@@ -562,10 +562,10 @@ complex_results = benchmark.benchmark_query_set(complex_queries)
 4. **Check file formats** - Verify pipe-delimited format and encoding
 
 ### Query Execution
-1. **Start with simple queries** - Test Q1, Q6, Q11 first
+1. **Start with simple queries** - Test [Q1](queries/tpcds/q1.md), [Q6](queries/tpcds/q6.md), [Q11](queries/tpcds/q11.md) first
 2. **Use appropriate timeouts** - Complex queries can run for hours
 3. **Monitor resource usage** - Watch memory consumption for large queries
-4. **Test query variants** - Include both Q14a and Q14b in testing
+4. **Test query variants** - Include both [Q14a](queries/tpcds/q14.md) and [Q14b](queries/tpcds/q14.md) in testing
 
 ### Performance Testing
 1. **Warm-up runs** - Execute queries multiple times for stable timings

@@ -69,19 +69,19 @@ The skew distribution is applied to key columns that affect join cardinality and
 The benchmark uses the standard 22 TPC-H queries, unchanged from the base benchmark. This allows direct comparison between uniform and skewed data performance:
 
 ### Scan-Heavy Queries
-- Q1, Q6: Large aggregations on lineitem
+- [Q1](queries/tpch_skew/q1.md), [Q6](queries/tpch_skew/q6.md): Large aggregations on lineitem
 - Most affected by data volume, less by skew
 
 ### Join-Heavy Queries
-- Q3, Q5, Q7, Q8, Q9, Q10, Q21: Multi-table joins
+- [Q3](queries/tpch_skew/q3.md), [Q5](queries/tpch_skew/q5.md), [Q7](queries/tpch_skew/q7.md), [Q8](queries/tpch_skew/q8.md), [Q9](queries/tpch_skew/q9.md), [Q10](queries/tpch_skew/q10.md), [Q21](queries/tpch_skew/q21.md): Multi-table joins
 - **Most affected by skew** - cardinality estimation errors compound
 
 ### Subquery Queries
-- Q2, Q4, Q11, Q15, Q17, Q18, Q20, Q22: Correlated subqueries
+- [Q2](queries/tpch_skew/q2.md), [Q4](queries/tpch_skew/q4.md), [Q11](queries/tpch_skew/q11.md), [Q15](queries/tpch_skew/q15.md), [Q17](queries/tpch_skew/q17.md), [Q18](queries/tpch_skew/q18.md), [Q20](queries/tpch_skew/q20.md), [Q22](queries/tpch_skew/q22.md): Correlated subqueries
 - Affected by both skew and optimizer strategy selection
 
 ### Complex Analytics
-- Q13, Q14, Q16, Q19: Aggregation with complex predicates
+- [Q13](queries/tpch_skew/q13.md), [Q14](queries/tpch_skew/q14.md), [Q16](queries/tpch_skew/q16.md), [Q19](queries/tpch_skew/q19.md): Aggregation with complex predicates
 - Variable impact depending on selectivity
 
 ## Usage Examples
@@ -181,7 +181,7 @@ for benchmark, name in [(uniform, "Uniform"), (skewed, "Skewed")]:
     print(f"{name} Q3: {result['execution_time']:.3f}s")
 ```
 
-The uniform standard TPC-H run is the baseline, and the heavy-skew run is the test. Q3 (Shipping Priority) is a join-heavy query, so skew affects it the most.
+The uniform standard TPC-H run is the baseline, and the heavy-skew run is the test. [Q3](queries/tpch_skew/q3.md) (Shipping Priority) is a join-heavy query, so skew affects it the most.
 
 ## CLI Options (`--benchmark-option`)
 
@@ -217,15 +217,15 @@ The first command runs a heavy skew distribution, and the second lists all prese
 ### Impact of Skew on Query Performance
 
 **Low Impact:**
-- Q1, Q6: Simple scans and aggregations
+- [Q1](queries/tpch_skew/q1.md), [Q6](queries/tpch_skew/q6.md): Simple scans and aggregations
 - Performance dominated by I/O, not join strategies
 
 **Medium Impact:**
-- Q2, Q4, Q11, Q15: Subqueries with moderate join complexity
+- [Q2](queries/tpch_skew/q2.md), [Q4](queries/tpch_skew/q4.md), [Q11](queries/tpch_skew/q11.md), [Q15](queries/tpch_skew/q15.md): Subqueries with moderate join complexity
 - Cardinality estimation errors affect plan selection
 
 **High Impact:**
-- Q3, Q5, Q7, Q8, Q9, Q10, Q21: Complex multi-way joins
+- [Q3](queries/tpch_skew/q3.md), [Q5](queries/tpch_skew/q5.md), [Q7](queries/tpch_skew/q7.md), [Q8](queries/tpch_skew/q8.md), [Q9](queries/tpch_skew/q9.md), [Q10](queries/tpch_skew/q10.md), [Q21](queries/tpch_skew/q21.md): Complex multi-way joins
 - Skew causes significant cardinality estimation errors
 - Wrong join order selection common with naive optimizers
 

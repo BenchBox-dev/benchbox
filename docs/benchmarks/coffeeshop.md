@@ -63,34 +63,34 @@ Exploded fact table with 1-5 lines per order.
 
 ### Sales Analysis (SA*)
 
-**SA1**: Daily revenue and order volume by region
-**SA2**: Top products by revenue for a given year
-**SA3**: Monthly performance metrics
-**SA4**: Revenue share by region
-**SA5**: Top-performing locations by revenue
+**[SA1](queries/coffeeshop/sa1.md)**: Daily revenue and order volume by region
+**[SA2](queries/coffeeshop/sa2.md)**: Top products by revenue for a given year
+**[SA3](queries/coffeeshop/sa3.md)**: Monthly performance metrics
+**[SA4](queries/coffeeshop/sa4.md)**: Revenue share by region
+**[SA5](queries/coffeeshop/sa5.md)**: Top-performing locations by revenue
 
 ### Product Mix (PR*)
 
-**PR1**: Product mix and revenue by subcategory
-**PR2**: Price-band distribution across order lines
+**[PR1](queries/coffeeshop/pr1.md)**: Product mix and revenue by subcategory
+**[PR2](queries/coffeeshop/pr2.md)**: Price-band distribution across order lines
 **PR3**: Product performance ranking
 
 ### Trend Analysis (TR*)
 
-**TR1**: Month-over-month revenue trends
+**[TR1](queries/coffeeshop/tr1.md)**: Month-over-month revenue trends
 **TR2**: Year-over-year comparisons
 **TR3**: Seasonal pattern detection
 
 ### Time Analysis (TM*)
 
-**TM1**: Peak hour analysis
+**[TM1](queries/coffeeshop/tm1.md)**: Peak hour analysis
 **TM2**: Weekday vs weekend patterns
 **TM3**: Time-of-day revenue distribution
 
 ### Quality Checks (QC*)
 
-**QC1**: Data completeness validation
-**QC2**: Referential integrity checks
+**[QC1](queries/coffeeshop/qc1.md)**: Data completeness validation
+**[QC2](queries/coffeeshop/qc2.md)**: Referential integrity checks
 **QC3**: Business rule validation
 
 ## Quick Start
@@ -161,7 +161,7 @@ Validate performance with:
 
 ### Sales Analysis
 
-SA1: daily revenue and order volume by region.
+[SA1](queries/coffeeshop/sa1.md): daily revenue and order volume by region.
 
 ```sql
 SELECT
@@ -179,7 +179,7 @@ ORDER BY ol.order_date, dl.region;
 
 ### Product Analysis
 
-PR1: product mix and revenue by subcategory.
+[PR1](queries/coffeeshop/pr1.md): product mix and revenue by subcategory.
 
 ```sql
 SELECT
@@ -210,7 +210,7 @@ ORDER BY revenue DESC;
 
 **Development**: Use DuckDB with scale factor 0.001-0.01 for fast iteration
 
-**CI/CD**: Use scale factor 0.01 with key queries (SA1, SA2, PR1) for regression testing
+**CI/CD**: Use scale factor 0.01 with key queries ([SA1](queries/coffeeshop/sa1.md), [SA2](queries/coffeeshop/sa2.md), [PR1](queries/coffeeshop/pr1.md)) for regression testing
 
 **Production Evaluation**: Use scale factor 1.0+ on target platform for realistic performance testing
 

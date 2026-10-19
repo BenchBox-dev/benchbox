@@ -119,10 +119,10 @@ statement for your platform and scale.
 
 | Category | Queries | Pattern |
 |----------|---------|---------|
-| **Simple** | Q1, Q6 | Single link + satellite, aggregation |
-| **Medium** | Q3, Q4, Q10, Q12, Q14 | 3-5 table joins |
-| **Complex** | Q2, Q5, Q7, Q8, Q9 | 8+ table chains with subqueries |
-| **Advanced** | Q15, Q17, Q20, Q21 | CTEs, correlated subqueries, EXISTS |
+| **Simple** | [Q1](queries/datavault/q1.md), [Q6](queries/datavault/q6.md) | Single link + satellite, aggregation |
+| **Medium** | [Q3](queries/datavault/q3.md), [Q4](queries/datavault/q4.md), [Q10](queries/datavault/q10.md), [Q12](queries/datavault/q12.md), [Q14](queries/datavault/q14.md) | 3-5 table joins |
+| **Complex** | [Q2](queries/datavault/q2.md), [Q5](queries/datavault/q5.md), [Q7](queries/datavault/q7.md), [Q8](queries/datavault/q8.md), [Q9](queries/datavault/q9.md) | 8+ table chains with subqueries |
+| **Advanced** | [Q15](queries/datavault/q15.md), [Q17](queries/datavault/q17.md), [Q20](queries/datavault/q20.md), [Q21](queries/datavault/q21.md) | CTEs, correlated subqueries, EXISTS |
 
 ### Example Query (Q1 - Pricing Summary)
 
