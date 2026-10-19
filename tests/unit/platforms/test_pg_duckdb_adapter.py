@@ -164,7 +164,7 @@ class TestPgDuckDBAdapter:
         assert adapter.supports_tuning_type(TuningType.PRIMARY_KEYS) is True
         assert adapter.supports_tuning_type(TuningType.FOREIGN_KEYS) is True
         assert adapter.supports_tuning_type(TuningType.DISTRIBUTION) is False
-        assert adapter.supports_tuning_type(TuningType.SORTING) is False
+        assert adapter.supports_tuning_type(TuningType.SORTING) is True
 
     def test_get_platform_info_basic(self, pg_duckdb_stubs):
         adapter = PgDuckDBAdapter(

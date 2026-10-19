@@ -303,7 +303,7 @@ class PgDuckDBAdapter(PostgreSQLAdapter):
                 first_type = columns[0].type.upper()
                 expected_strategy = (
                     "RANGE"
-                    if ("DATE" in first_type or "TIME" in first_type)
+                    if ("DATE" in first_type or "TIMESTAMP" in first_type)
                     else "HASH"
                     if "INT" in first_type
                     else "LIST"
@@ -615,7 +615,7 @@ class PgDuckDBAdapter(PostgreSQLAdapter):
             entries=entries,
         )
 
-    _supported_tuning_type_names = ("PARTITIONING", "CLUSTERING", "PRIMARY_KEYS", "FOREIGN_KEYS")
+    _supported_tuning_type_names = ("PARTITIONING", "CLUSTERING", "SORTING", "PRIMARY_KEYS", "FOREIGN_KEYS")
 
 
 _build_pg_duckdb_config = make_platform_config_builder(
