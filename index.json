@@ -1497,17 +1497,12 @@
       "title": "Wait for the producing run to finish and retry transient GitHub errors in the site deploy fetch"
     },
     "autogen-site-parent-lookup-regression-guard-20261018": {
-      "claim": {
-        "expires_at": "2026-10-20T15:10:31Z",
-        "generation": "a84bad45f4b74dfd817c0af21629377a",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
-      },
+      "claim": null,
       "needs": [
         "autogen-issues-decisions-20261018"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Confirm the site-inputs parent-bundle lookup fix is pinned by a regression test"
     },
     "autogen-site-probe-mismatch-diagnosis-20261018": {
