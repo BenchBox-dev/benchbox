@@ -667,8 +667,14 @@ def test_post_load_cluster_records_catalog_evidence(pg_duckdb_stubs):
     adapter._applied_tuning_ledger = AppliedTuningLedger()
     connection = Mock()
     connection.autocommit = False
-    rows = [(101, 1, "l_orderkey"), (101, 2, "l_linenumber"), (102, 1, "l_orderkey"), (102, 2, "l_linenumber")]
-    connection.cursor.return_value.fetchall.side_effect = [rows, rows]
+    cluster_rows = [
+        (201, 101, 1, "l_orderkey"),
+        (201, 101, 2, "l_linenumber"),
+        (202, 102, 1, "l_orderkey"),
+        (202, 102, 2, "l_linenumber"),
+    ]
+    pre_rows = [*cluster_rows, (299, 101, 1, "l_partkey")]
+    connection.cursor.return_value.fetchall.side_effect = [pre_rows, cluster_rows, [(101,), (102,)]]
     performed = adapter.apply_post_load_tunings("lineitem", _layout_config(), connection)
     assert performed is True
     assert not adapter._applied_tuning_ledger.dropped
@@ -684,7 +690,7 @@ def test_post_load_cluster_catalog_mismatch_records_failure(pg_duckdb_stubs):
     adapter._applied_tuning_ledger = AppliedTuningLedger()
     connection = Mock()
     connection.autocommit = False
-    connection.cursor.return_value.fetchall.return_value = [(101, 1, "other_column")]
+    connection.cursor.return_value.fetchall.return_value = [(201, 101, 1, "other_column")]
     with pytest.raises(ValueError, match="Index catalog mismatch before CLUSTER"):
         adapter.apply_post_load_tunings("lineitem", _layout_config(), connection)
     assert not adapter._applied_tuning_ledger.satisfied

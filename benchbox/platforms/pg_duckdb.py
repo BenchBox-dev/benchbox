@@ -300,7 +300,7 @@ class PgDuckDBAdapter(PostgreSQLAdapter):
                 inside = definition[definition.find("(") + 1 : definition.rfind(")")]
                 observed = [part.strip().strip('"').lower() for part in inside.split(",") if part.strip()]
                 expected = [column.name.lower() for column in columns]
-                first_type = columns[0].type.upper()
+                first_type = (columns[0].type or "").upper()
                 expected_strategy = (
                     "RANGE"
                     if ("DATE" in first_type or "TIMESTAMP" in first_type)
@@ -353,7 +353,7 @@ class PgDuckDBAdapter(PostgreSQLAdapter):
             for statement in statements:
                 if statement.lstrip().upper().startswith("CLUSTER"):
                     groups = self._index_column_groups(cursor, table_name, clustered_only=False)
-                    if not groups or any(group != expected for group in groups):
+                    if not any(columns == expected for _relid, columns in groups):
                         raise ValueError(
                             f"Index catalog mismatch before CLUSTER for {table_name}: "
                             f"expected {expected}, observed {groups}"
@@ -371,11 +371,17 @@ class PgDuckDBAdapter(PostgreSQLAdapter):
                     cursor.execute(statement)
                 executed.append(statement)
             groups = self._index_column_groups(cursor, table_name, clustered_only=True)
-            if not groups or any(group != expected for group in groups):
+            leaves = self._partition_leaf_oids(cursor, table_name)
+            clustered_tables = {relid for relid, _columns in groups}
+            if (
+                not groups
+                or any(columns != expected for _relid, columns in groups)
+                or not set(leaves) <= clustered_tables
+            ):
                 raise ValueError(
                     f"Clustered index catalog mismatch for {table_name}: expected {expected}, observed {groups}"
                 )
-            observed = groups[0]
+            observed = groups[0][1]
         except Exception as exc:
             self._record_post_load_failure(
                 ledger,
@@ -475,28 +481,55 @@ class PgDuckDBAdapter(PostgreSQLAdapter):
         ]
         return [column.name.lower() for column in sorted(combined, key=lambda column: column.order)]
 
-    def _index_column_groups(self, cursor: Any, table_name: str, *, clustered_only: bool) -> list[list[str]]:
+    def _execute_catalog_query(self, cursor: Any, query: str, params: tuple) -> list:
+        cursor.execute("SET duckdb.force_execution = false")
+        try:
+            cursor.execute(query, params)
+            return cursor.fetchall()
+        finally:
+            cursor.execute(f"SET duckdb.force_execution = {'true' if self.force_execution else 'false'}")
+
+    def _index_column_groups(
+        self, cursor: Any, table_name: str, *, clustered_only: bool
+    ) -> list[tuple[Any, list[str]]]:
         clustered_filter = "AND i.indisclustered" if clustered_only else ""
-        cursor.execute(
+        rows = self._execute_catalog_query(
+            cursor,
             "WITH RECURSIVE tree AS ("
             "SELECT c.oid FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
-            "WHERE n.nspname = %s AND c.relname = %s "
+            "WHERE n.nspname::text = %s AND c.relname::text = %s "
             "UNION ALL "
             "SELECT i.inhrelid FROM pg_inherits i JOIN tree ON tree.oid = i.inhparent"
             ") "
-            "SELECT i.indrelid, k.pos, a.attname FROM pg_index i "
+            "SELECT i.indexrelid::bigint, i.indrelid::bigint, k.pos, a.attname FROM pg_index i "
             "JOIN tree ON tree.oid = i.indrelid "
             "JOIN LATERAL unnest(string_to_array(i.indkey::text, ' ')::smallint[]) "
             "WITH ORDINALITY AS k(attnum, pos) ON true "
             "JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = k.attnum "
             f"WHERE true {clustered_filter} "
-            "ORDER BY i.indrelid, k.pos",
+            "ORDER BY i.indexrelid, k.pos",
             (self.schema, table_name.lower()),
         )
-        groups: dict[Any, list[tuple[int, str]]] = {}
-        for indrelid, pos, attname in cursor.fetchall():
-            groups.setdefault(indrelid, []).append((int(pos), str(attname).lower()))
-        return [[name for _pos, name in sorted(entries)] for entries in groups.values()]
+        groups: dict[Any, tuple[Any, list[tuple[int, str]]]] = {}
+        for indexrelid, indrelid, pos, attname in rows:
+            _table, entries = groups.setdefault(indexrelid, (indrelid, []))
+            entries.append((int(pos), str(attname).lower()))
+        return [(indrelid, [name for _pos, name in sorted(entries)]) for indrelid, entries in groups.values()]
+
+    def _partition_leaf_oids(self, cursor: Any, table_name: str) -> list[Any]:
+        rows = self._execute_catalog_query(
+            cursor,
+            "WITH RECURSIVE tree AS ("
+            "SELECT c.oid, c.relkind FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+            "WHERE n.nspname::text = %s AND c.relname::text = %s "
+            "UNION ALL "
+            "SELECT c.oid, c.relkind FROM pg_inherits i JOIN tree ON tree.oid = i.inhparent "
+            "JOIN pg_class c ON c.oid = i.inhrelid"
+            ") "
+            "SELECT oid::bigint FROM tree WHERE relkind = 'r'",
+            (self.schema, table_name.lower()),
+        )
+        return [row[0] for row in rows]
 
     def configure_for_benchmark(self, connection: Any, benchmark_type: str) -> None:
         super().configure_for_benchmark(connection, benchmark_type)
