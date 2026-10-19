@@ -1329,17 +1329,12 @@
       "title": "Dispatch the release canary after the TPC-H fixes and close #2887 with evidence"
     },
     "autogen-cedardb-uat-validation-and-baseline-tuning-20261018": {
-      "claim": {
-        "expires_at": "2026-10-20T17:20:54Z",
-        "generation": "d44febd5b68246fb8216638fad6cac63",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
-      },
+      "claim": null,
       "needs": [
         "autogen-issues-decisions-20261018"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Make the CedarDB nightly cell pass publication validation and explain baseline tuning statements"
     },
     "autogen-docker-mirror-tag-digest-20261018": {
