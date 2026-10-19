@@ -21,7 +21,7 @@ skill = tidy-perms
 skill = todo
 
 source = https://github.com/joeharris76/skill-sync-skills.git
-rev = 48be0487de361c0f12e0b5ac5bc84cf832da1dd0
+rev = 030941f359ad7f8580623e0bfc553f8b6d78d697
 dir = skills
 skill = shared-agent-execution
 

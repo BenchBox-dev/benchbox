@@ -14,13 +14,68 @@ from flag drift. Do not run those checks proactively.
   forbid edits, commits, pushes, and other mutations.
 - Do not add flags that remove workspace, sandbox, or tool boundaries.
 
+## Roles, CLI IDs, and effort
+
+Use the workload roles and fallback order in [Agent Execution](../SKILL.md).
+Live OMP assignments take precedence over those portable defaults. Resolve
+the selected model to the external harness's ID before dispatch; do not copy
+an OMP thinking suffix such as `:auto` into a CLI `--model` argument.
+
+### Model identifiers
+
+| OMP selector | External harness | CLI model ID |
+|---|---|---|
+| `muse-code/muse-wonder-1.0-contributor` | `muse` | `muse-wonder-1.0-contributor` |
+| `muse-code/muse-spark-1.3-contributor` | `muse` | `muse-spark-1.3-contributor` |
+| `anthropic/claude-fable-5` | `claude` | `claude-fable-5` |
+| `openai-codex/gpt-6-astra` | `codex` | `gpt-6-astra` |
+| `openai-codex/gpt-6.1-sol` | `codex` | `gpt-6.1-sol` |
+| `openai-codex/gpt-6-luna` | `codex` | `gpt-6-luna` |
+| `google-antigravity/gemini-3.8-flash` | `agy` | `gemini-3.8-flash-low`, `gemini-3.8-flash-medium`, `gemini-3.8-flash-high` |
+| `google-antigravity/gemini-4-argon` | `agy` | `gemini-4-argon-high` (recognized; completion unverified) |
+
+Only contributor-variant Muse models are selected. Argon's OMP support does
+not prove external CLI completion support. Other harnesses have separate
+catalogs; do not infer that stripping a provider prefix makes a valid ID.
+
+### Effort translation
+
+Do not assume an external CLI implements OMP's adaptive `auto`. For the
+commands below, use the concrete effort selected by Agent Execution:
+`medium` normally (including routine review), `low` for mechanical/scouting
+work, and `high` for deep planning, adversarial review, or complex research
+and vision. This is a fixed approximation, not adaptive reasoning. Explicit
+user effort overrides win.
+
+| Harness | Effort argument | Supported values |
+|---|---|---|
+| `codex` | `-c model_reasoning_effort="$EFFORT"` | `low`, `medium`, `high`, `xhigh`, `max`, `ultra` |
+| `claude` | `--effort "$EFFORT"` | `low`, `medium`, `high`, `xhigh`, `max` |
+| `muse` | `--reasoning-effort "$EFFORT"` | `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `ultra` |
+| `agy` | Model suffix; omit `--effort` | `-low`, `-medium`, `-high` where the model lists that variant |
+| `grok` | `--reasoning-effort "$EFFORT"` | `low`, `medium`, `high`, `xhigh` |
+| `pi`, `prime-agent` | `--thinking "$EFFORT"` | `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max` |
+
+Select only values supported by the chosen model, not merely its harness.
+Maximum effort is reserved for an explicitly required final adversarial
+review; use the chosen model's documented maximum. `agy` never gains an
+invented maximum suffix: its highest listed variant is `-high`.
+
+External processes do not inherit OMP retry or quota settings. For ordinary
+dispatches, attempt the role's eligible fallbacks explicitly. For a named
+reviewer panel, report a failed member as absent rather than silently
+replacing it. Filter the author family from every independent-review
+candidate, including the primary, and stop if no eligible candidate remains.
+
+Model roles do not grant permissions, enter plan mode, or enable an advisor.
+Those capabilities require the command boundaries and dispatch modes below.
+
 ## Frontier Lab Harnesses
 
 - **codex**
-  - Worker (Write): `codex exec -C "$WORKSPACE" --model "$MODEL" --sandbox workspace-write "$PROMPT"`
-  - Reviewer (Hard Read-Only): `codex exec -C "$WORKSPACE" --model "$MODEL" --sandbox read-only "$PROMPT"`
+  - Worker (Write): `codex exec -C "$WORKSPACE" --model "$MODEL" --sandbox workspace-write -c model_reasoning_effort="$EFFORT" "$PROMPT"`
+  - Reviewer (Hard Read-Only): `codex exec -C "$WORKSPACE" --model "$MODEL" --sandbox read-only -c model_reasoning_effort="$EFFORT" "$PROMPT"`
   - Known-good models: `gpt-6-astra`, `gpt-6.1-sol`, `gpt-6-luna`
-  - Effort: Optional `-c model_reasoning_effort="<level>"`
 - **claude**
   - Worker (Write): `(cd "$WORKSPACE" && claude --print --model "$MODEL" --effort "$EFFORT" "$PROMPT")`
   - Reviewer (Hard Read-Only): `(cd "$WORKSPACE" && claude --print --tools Read,Grep,Glob --model "$MODEL" --effort "$EFFORT" "$PROMPT")`
@@ -29,9 +84,13 @@ from flag drift. Do not run those checks proactively.
   - Worker (Write): `(cd "$WORKSPACE" && agy --model "$MODEL" --print="$PROMPT")`
   - Reviewer (Soft Read-Only): `(cd "$WORKSPACE" && agy --model "$MODEL" --mode plan --print="$PROMPT")`
   - Known-good models: `gemini-3.8-flash-high`, `gemini-3.8-flash-medium`, `gemini-3.8-flash-low`
-  - Note: Tier is the `-low` / `-medium` / `-high` model suffix. Never pass
+  - Note: Effort is the `-low` / `-medium` / `-high` model suffix. Never pass
     `--effort` alongside a suffixed model: `agy` rejects the pair
     (`--model X conflicts with --effort=Y`), including `--effort max`.
+  - Recognized model ID: `gemini-4-argon-high`. Model selection accepts it,
+    but external completion remains unverified. Report a blocked response
+    and apply the dispatch's explicit fallback or named-reviewer failure
+    policy; do not treat native OMP completion as proof for this harness.
   - Note: Headless `--print` runs cannot approve tool use. A prompt that needs
     the reviewer to run commands (read the repo, run `git`) is auto-denied and
     returns nothing with exit 0, so keep `agy` prompts self-contained with the
@@ -44,7 +103,9 @@ from flag drift. Do not run those checks proactively.
 - **muse**
   - Worker (Write): `muse exec --workspace "$WORKSPACE" --disable-approval --model "$MODEL" --reasoning-effort "$EFFORT" "$PROMPT"`
   - Reviewer (Hard Read-Only): `muse exec --workspace "$WORKSPACE" --disable-approval --disable-write --disable-shell --model "$MODEL" --reasoning-effort "$EFFORT" "$PROMPT"`
-  - Known-good models: `muse-spark-1.3-contributor`, `muse-spark-1.3`
+  - Known-good models: `muse-wonder-1.0-contributor`, `muse-spark-1.3-contributor`
+  - Only contributor variants are selected; non-contributor Muse IDs are
+    outside this policy.
   - Note: Unset invalid credentials with `env -u META_API_KEY` before execution.
 
 ## Extensible and Community Harnesses
@@ -141,11 +202,21 @@ re-dispatched with weaker boundaries.
 
 ### Diversity
 
-Exclude models from the authoring agent's own family, because self-review does
-not add an independent viewpoint. When the author is a Claude model, review with
-`codex`, `grok`, `muse`, or `agy`. Keep the tier the work needs: Tier 1 for a
-final adversarial gate, Tier 2 for routine review. A user-named reviewer or a
-user-set effort overrides this default.
+Exclude models from the authoring agent's own family from every candidate: the
+role default, each fallback, and any user-suggested substitute. Self-review
+does not add an independent viewpoint. When the author is a Muse model,
+`muse` members are ineligible, so the `review` chain reduces to `codex`
+`gpt-6-astra` then `claude` `claude-fable-5` then `agy` `gemini-4-argon-high`;
+the same family filter applies when the author is a Claude, Codex, or Gemini
+model. Fail closed: if the filter leaves no eligible model, report the panel
+as blocked instead of reviewing with an excluded family member.
+
+Match effort to the work: `high` for deep or adversarial review, `medium` for
+routine review, `maximum` only when the user explicitly requires a final
+adversarial gate. A user-named reviewer or a user-set effort overrides these
+defaults, but a user-named reviewer from the author's own family is still
+ineligible: report it as a gate blocker and offer a substitute rather than
+running it.
 
 ### Brief delivery
 
