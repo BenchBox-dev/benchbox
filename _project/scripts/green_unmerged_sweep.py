@@ -14,7 +14,7 @@ import urllib.parse
 import urllib.request
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
@@ -486,18 +486,70 @@ def fetch_open_prs(client: GitHubClient, owner: str, repo: str) -> list[dict[str
     return normalized
 
 
-def find_pinned_issue(client: GitHubClient, owner: str, repo: str) -> dict[str, Any] | None:
-    issues = client.get_all(f"repos/{owner}/{repo}/issues", {"state": "all"})
-    for item in issues:
-        if "pull_request" in item:
-            continue
-        if item.get("title") == PINNED_ISSUE_TITLE and DIGEST_BODY_MARKER in (item.get("body") or ""):
-            return item
+def find_pinned_issue(
+    client: GitHubClient,
+    owner: str,
+    repo: str,
+    *,
+    record_mechanism: Callable[[str], None] | None = None,
+) -> dict[str, Any] | None:
+    try:
+        query = f'repo:{owner}/{repo} is:issue in:title "{PINNED_ISSUE_TITLE}"'
+        encoded = urllib.parse.urlencode({"q": query})
+        search_res = client.get_one(f"search/issues?{encoded}")
+        if isinstance(search_res, dict) and "items" in search_res:
+            candidates: list[dict[str, Any]] = []
+            for item in search_res["items"]:
+                if "pull_request" in item:
+                    continue
+                if item.get("title") == PINNED_ISSUE_TITLE and DIGEST_BODY_MARKER in (item.get("body") or ""):
+                    candidates.append(item)
+            if candidates:
+                candidates.sort(key=lambda x: int(x["number"]))
+                if record_mechanism:
+                    record_mechanism("search")
+                return candidates[0]
+    except Exception:
+        pass
+
+    try:
+        page = 1
+        while True:
+            params = {
+                "state": "all",
+                "sort": "created",
+                "direction": "asc",
+                "per_page": "100",
+                "page": str(page),
+            }
+            page_items = client.get_one(f"repos/{owner}/{repo}/issues?{urllib.parse.urlencode(params)}")
+            if not page_items or not isinstance(page_items, list):
+                break
+            for item in page_items:
+                if "pull_request" in item:
+                    continue
+                if item.get("title") == PINNED_ISSUE_TITLE and DIGEST_BODY_MARKER in (item.get("body") or ""):
+                    if record_mechanism:
+                        record_mechanism("oldest_first_scan")
+                    return item
+            if len(page_items) < 100:
+                break
+            page += 1
+    except Exception as err:
+        raise RuntimeError(f"Pinned issue lookup failed closed: {err}") from err
+
     return None
 
 
-def upsert_pinned_issue(client: GitHubClient, owner: str, repo: str, body: str) -> str:
-    existing = find_pinned_issue(client, owner, repo)
+def upsert_pinned_issue(
+    client: GitHubClient,
+    owner: str,
+    repo: str,
+    body: str,
+    *,
+    record_mechanism: Callable[[str], None] | None = None,
+) -> str:
+    existing = find_pinned_issue(client, owner, repo, record_mechanism=record_mechanism)
     if existing is None:
         created = client.post(
             f"repos/{owner}/{repo}/issues",
