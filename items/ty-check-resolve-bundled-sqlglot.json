@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Either ty resolves the namespace without a wrapper (for example via configuration) or the wrapper becomes the single type-check command.",
+    "The two CI guards collapse to one; the pinned boundary and parity tests are updated in the same change.",
+    "Editor diagnostics for benchbox._vendor.sqlglot are not noisy."
+  ],
+  "description": "ty reports about 680 warnings (unresolved-import, possibly-missing-attribute) for benchbox._vendor.sqlglot because the runtime is a zip archive. A wheel-aware wrapper (scripts/typecheck.py, make typecheck) extracts typing data to a temp directory, and CI now runs both it and the plain 'uv run ty check'. The plain command and its pinned test (test_ci_lint_environment_boundary) still see unresolved imports, and editors and LSPs do too.",
+  "links": [
+    "scripts/typecheck.py",
+    "tests/unit/scripts/test_ci_lint_environment_boundary.py",
+    "Makefile"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:294e68659711a060d19711d3",
+      "at": "2026-10-19T00:13:43Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1671c788735e43fdb09fc06fd929c730",
+      "session_id": "5fc71a2e25aa4324a26f0d500fc3289e"
+    }
+  ]
+}
