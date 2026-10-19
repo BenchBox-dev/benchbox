@@ -8574,17 +8574,12 @@
       "title": "Freeze source ownership and pin the cutover snapshot"
     },
     "docs-mig-core-relocate-contract-sql": {
-      "claim": {
-        "expires_at": "2026-10-20T14:53:59Z",
-        "generation": "e85cf113c52a4c9fbc14ec63065a8b42",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7043d4c3f317252a997ee7d2"
-      },
+      "claim": null,
       "needs": [
         "docs-mig-adr-ownership"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Relocate the Explorer SQL schema contract out of published docs"
     },
     "docs-mig-core-removal": {
