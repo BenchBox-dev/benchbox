@@ -50,11 +50,22 @@ def validate_transitions(root: Path, transitions: Any, tracked: set[str]) -> Non
             raise ValueError(f"transition {name!r} must list at least one source")
         for source in sources:
             repo_path(source, ("docs",))
-            require_source(root, source, tracked)
         destination(record["core_destination"])
         destination(record["site_destination"])
         if not isinstance(record["action"], str) or not record["action"]:
             raise ValueError(f"transition {name!r} must name its action")
+        if record["action"] == "relocate-core-contract":
+            dest = record["core_destination"]
+            if dest and dest in tracked:
+                require_source(root, dest, tracked)
+                if any(s in tracked for s in sources):
+                    raise ValueError(f"transition {name!r} destination {dest!r} exists but source is still tracked")
+            else:
+                for source in sources:
+                    require_source(root, source, tracked)
+        else:
+            for source in sources:
+                require_source(root, source, tracked)
     landing = transitions["readme_landing"]
     if landing["sources"] != [LANDING_SOURCE]:
         raise ValueError(f"readme_landing sources must be exactly {[LANDING_SOURCE]!r}")

@@ -944,7 +944,7 @@ def _doc_block_columns(text: str, start: str, end: str, prefix: str = "") -> lis
 
 
 class TestSchemaDocMatchesBuiltSchema:
-    DOC_PATH = Path(__file__).resolve().parents[4] / "docs" / "development" / "browser-duckdb-schema.sql"
+    DOC_PATH = Path(__file__).resolve().parents[4] / "_project" / "design" / "browser-duckdb-schema.sql"
 
     def _doc_text(self) -> str:
         return self.DOC_PATH.read_text(encoding="utf-8")
