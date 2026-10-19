@@ -4,7 +4,7 @@
     "#2887 has an evidence comment and is closed by a green canary result, or remains open with the distinct remaining failures listed and follow-ups created",
     "No release-readiness setting or ruleset was touched"
   ],
-  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs the four tests green in a live canary run. FAIL if #2887 is closed by hand against a red canary. Never poll: record WAITING with the run id and end the invocation.\nDispatch started: https://github.com/BenchBox-dev/benchbox/actions/runs/39282916789; workflow_dispatch on develop head e1dd7b36e3d9d3a051245df62bddd9f565b3ed16. release-canary.yml has no dispatch inputs and checks out develop explicitly. Gate snapshot queued. Next: read completed run once, inspect four target tests and unrelated failures; issue2887 close only on green; no oracle or ruleset changes.",
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs the four tests green in a live canary run. FAIL if #2887 is closed by hand against a red canary. Never poll: record WAITING with the run id and end the invocation.\nDispatch started: https://github.com/BenchBox-dev/benchbox/actions/runs/39282916789; workflow_dispatch on develop head e1dd7b36e3d9d3a051245df62bddd9f565b3ed16. release-canary.yml has no dispatch inputs and checks out develop explicitly. Gate snapshot queued. Next: read completed run once, inspect four target tests and unrelated failures; issue2887 close only on green; no oracle or ruleset changes.\n\n### Completion Evidence\nRelease-canary run 39282916789 (workflow_dispatch on develop e1dd7b36e, after TPC-H fixes merged): completed success. 729 tests, 0 failures, 0 errors, 1 skipped across 6 shards (JUnit totals). All four W7 target files ran with zero failures: test_tpch_official_benchmark (15), test_tpch_refresh_integration (9), test_tpc_compliance_integration (10), test_plan_capture_combined_divergence (3). #2887 already closed by reporter on earlier green run 39276101822; evidence comment posted on this run (comment 6273023016); issue stays closed. No ruleset/setting touched.",
   "description": "Verification and hosted-write item (D7, D8). After the TPC-H failure fixes have merged, dispatch release-canary.yml on develop (read its dispatch inputs first). The canary reporter closes #2887 itself on a green run; verify rather than duplicate.\nExpected: the four tests behind the 2026-10-17/18 failures are green. The canary failure set has changed daily since 2026-10-09, so other failures may exist: if the canary is red for different tests, record each test id, comment on #2887 with the evidence and create one follow-up item per distinct cause; this item then finishes only if the four target tests pass.\nRelated existing item with a separate aggregator bug that can mask results: ci-retry-artifact-collision-breaks-canary-gate (do not fix here; check the run is not affected).",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/issues/2887",
@@ -52,6 +52,14 @@
       "generation": "786da7ee2dc843c984f6082107cb20d8",
       "op": "take",
       "op_id": "c300e5fde4de49b9905a1f20d6f228ae",
+      "session_id": "0722acca462b419aa525d939aedd0290"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a",
+      "at": "2026-10-19T17:21:28Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "cf10ed1372f64854a9115f5d583c2692",
       "session_id": "0722acca462b419aa525d939aedd0290"
     }
   ]
