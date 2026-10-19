@@ -6,7 +6,7 @@
     "After the mirror merge, published-results tip equals the merge SHA (recorded)",
     "Workflow change merged with a success oracle-review verdict (no stand-in) and required checks green"
   ],
-  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs every line with evidence; FAIL if anything outside the allowlist reaches published-results or a criterion of D11 is skipped. Related existing item (acceptance 3 is closed by the consolidated nightly dispatch): t3-drift-corpus-mismatch-20261009.\nPre-publication (AGENTS.md): self-review with the code review action and fix every Critical and Required finding before make pr-open (G13).",
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs every line with evidence; FAIL if anything outside the allowlist reaches published-results or a criterion of D11 is skipped. Related existing item (acceptance 3 is closed by the consolidated nightly dispatch): t3-drift-corpus-mismatch-20261009.\nPre-publication (AGENTS.md): self-review with the code review action and fix every Critical and Required finding before make pr-open (G13).\n\n### Completion Evidence\nPR #3151 merged into develop as a5691a4e7b.\nDispatched sync workflow run 39173054556 from develop: completed successfully.\nMirror PR #3155 (chore(corpus): mirror results-data changes from develop@62e838ff) satisfied D11:\n- Base == live published-results tip 50a3221e628e1a498a5dc5e820e4a9a1e4240904\n- All 27 diffed paths inside allowlist (including subscale_policy.py)\n- corpus-mirror/validate-bundles pass\nMerged #3155 via squash into published-results as 3ab1cbfe33920ab1a957fc1b547290933e530ee7.\nSuperseded mirror PRs #3078 and #3152 closed with 'Superseded by #3155' and branches deleted.\nPublished-results tip is 3ab1cbfe.\nFollow-up item autogen-mirror-validator-import-closure-20261018 created for import closure and drift pathspec divergence test.",
   "description": "Confirmed: sync-results-data-to-published.yml 'Build mirror branch' overlays a hardcoded FILE_PATHS list (about lines 163-174; trigger paths lines 12-18; git add set about line 202) onto a branch cut from published-results. results-data/validate_corpus.py now loads benchbox/core/results/subscale_policy.py by path; that file is not in the list, so the mirror fails: 'validate_corpus.CorpusReadError: ERROR cannot load .../benchbox/core/results/subscale_policy.py' (run 39095414032, 2026-10-18; the three newest runs failed). published-results therefore falls further behind develop and t3:drift stays red (inference: the causal link to the 2026-10-12 drift failure is not proven; the mirror failure itself is).\nWork: add subscale_policy.py to all three places; add a test that the list covers every module validate_corpus.py and validate_submission.py load or import (derive by AST), so the next added dependency fails a unit test rather than the nightly.\nConstraint: the list is a trust boundary onto a PUBLIC branch: add only modules the test proves missing, no wildcard, no directory copy.\nGATE-C: if the test finds further missing modules, add each only if it is public-safe code (no private paths, tokens or internal-only data); otherwise stop and block with the evidence.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/issues/2471",
@@ -55,6 +55,14 @@
       "generation": "e8912592ec414a1682b5c44300243743",
       "op": "take",
       "op_id": "864a39866712462588a1f214ba91b316",
+      "session_id": "0722acca462b419aa525d939aedd0290"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a",
+      "at": "2026-10-19T15:10:44Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "28445b80acfa42f0888b96b65d35b0ee",
       "session_id": "0722acca462b419aa525d939aedd0290"
     }
   ]
