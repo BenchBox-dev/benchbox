@@ -8493,10 +8493,15 @@
       "title": "Activate schema-4 publication only after deployed consumer support"
     },
     "docs-mig-adr-ownership": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-20T00:14:24Z",
+        "generation": "241f423dcdf64b5a99f592e50cea546c",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7043d4c3f317252a997ee7d2"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Define published documentation ownership and supersede the split decision"
     },
     "docs-mig-core-bundle-schema4": {
