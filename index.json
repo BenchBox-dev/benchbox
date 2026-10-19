@@ -1488,17 +1488,12 @@
       "title": "Split site deploy failure relay by failure class, close it on a successful deploy, and mark expected rejections"
     },
     "autogen-site-fetch-wait-and-retry-20261018": {
-      "claim": {
-        "expires_at": "2026-10-20T15:22:42Z",
-        "generation": "34f6ae744e2142e78e27faa67ec13887",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
-      },
+      "claim": null,
       "needs": [
         "autogen-issues-decisions-20261018"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Wait for the producing run to finish and retry transient GitHub errors in the site deploy fetch"
     },
     "autogen-site-parent-lookup-regression-guard-20261018": {
