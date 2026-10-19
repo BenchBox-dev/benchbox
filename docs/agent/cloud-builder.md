@@ -2,10 +2,10 @@
 
 This contract applies to an agent that implements one BenchBox change in a
 cloud session, such as Claude Code on the web or Codex Cloud. The cloud session
-builds and verifies the change, then pushes one branch. A local session owns
-the tracker claim, the independent review, and close-out through the existing
-`make pr-open` and `make pr-arm` path, or the checkout-free path in
-`docs/agent/remote-closeout.md` once its targets exist.
+builds and verifies the change, pushes one branch, and opens its pull request.
+A local closer owns the tracker claim, independent review, and arming through
+`docs/agent/remote-closeout.md` for eligible PRs. Ineligible PRs use the linked
+worktree close-out below.
 
 Nothing here depends on one vendor's hooks, skills, or subagents. Cloud clones
 do not contain the gitignored `.agents/skills` mirror, so this file and
@@ -105,18 +105,20 @@ cost the whole session, so the builder checks them first.
    reasoning, a reproduction when one applies, and its confidence. Fix Critical
    and Required findings and rerun step 5. Report the rest.
 
-9. **Commit and push.** Stage explicit paths and write durable commit messages.
-   Push the session branch. Do not open a pull request or poll CI. Never arm
-   or merge a pull request, resolve review threads, change labels or draft
-   state, or post an approval: those belong to close-out and to the owner.
-   After the hand-off, push again only when the local session hands back a
-   review finding or CI failure.
+9. **Publish.** Stage explicit paths and write durable commit messages.
+   Push the session branch, then run `make pr-open` with a PR body describing
+   the change and verification. Do not set `READY=1`. Report the PR URL and
+   exact head SHA. Never arm or merge a pull request, resolve review threads,
+   change labels or draft state, or post an approval: those belong to the
+   closer and the owner. After reporting, push again only when the closer
+   hands back a review finding or CI failure, after disabling auto-merge.
 
-## Hand-off
+## Builder report
 
-End the session with this report:
+Return this report to the closer and record it in the item's tracker context
+when tracker access is available:
 
-- branch and head SHA;
+- PR URL, branch and exact head SHA;
 - the `cloud-verify` summary table for that head;
 - behavior commands and observed output, or why none applied;
 - the regression-test proof, for bug fixes;
@@ -127,10 +129,15 @@ End the session with this report:
 The report is the builder's claim, not proof. Readiness comes from the
 independent review and exact-head hosted CI.
 
-## Local close-out
+## Close-out
 
-`make worktree-create` creates only new branches, so check out the pushed
-branch directly and pin the human identity:
+For an eligible PR, the closer follows `docs/agent/remote-closeout.md` without
+creating a worktree. Bind the builder's reported PR and head, obtain an
+independent review record, then arm through `make pr-arm-remote`. The closer
+withdraws auto-merge before asking the builder for any revision.
+
+For an ineligible PR, use a linked worktree. `make worktree-create` creates only
+new branches, so check out the pushed branch directly and pin the human identity:
 
 ```bash
 git fetch origin <branch>
@@ -140,17 +147,12 @@ cd ../BenchBox.wt-<slug>
 make agent-write-preflight
 ```
 
-If the builder could not use a standard branch name, create a standard branch
-with `make worktree-create` instead, run `git fetch origin <builder-branch>`
-in it, and cherry-pick the builder's commits with
-`git cherry-pick "$(git merge-base HEAD FETCH_HEAD)..FETCH_HEAD"`.
-Cherry-picking keeps the human author.
+Keep the builder's branch even if the platform assigned a nonstandard name:
+the existing PR already points to it.
 
-Then run `make pr-open`, the independent review, and `make pr-arm`. If CI fails
-after arming, start the revision transaction with `make pr-landing-start` and
-`make pr-landing-withdraw` before anyone edits again. A builder may then push the
-fix to the same branch; fetch it into the close-out worktree before
+The builder has already opened the PR. Run the independent review and
+`make pr-arm` from the close-out worktree. If CI fails after arming, start the
+revision transaction with `make pr-landing-start` and
+`make pr-landing-withdraw` before handing a finding or CI failure back to the
+builder. Fetch its revised branch into the close-out worktree before
 `make pr-landing-ready`.
-
-For an eligible PR, the checkout-free close-out in
-`docs/agent/remote-closeout.md` replaces this worktree once its targets exist.
