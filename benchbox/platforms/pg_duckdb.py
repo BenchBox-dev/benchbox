@@ -284,18 +284,18 @@ class PgDuckDBAdapter(PostgreSQLAdapter):
                 if not columns:
                     continue
                 label = f"partitioning:{config_name} ({', '.join(column.name for column in columns)})"
-                cursor.execute(
+                rows = self._execute_catalog_query(
+                    cursor,
                     "SELECT pg_get_partkeydef(c.oid) FROM pg_class c "
                     "JOIN pg_namespace n ON n.oid = c.relnamespace "
-                    "WHERE n.nspname = %s AND c.relname = %s AND c.relkind = 'p'",
+                    "WHERE n.nspname::text = %s AND c.relname::text = %s AND c.relkind = 'p'",
                     (self.schema, str(config_name).lower()),
                 )
-                row = cursor.fetchone()
-                if not row:
+                if not rows:
                     if ledger is not None:
                         ledger.record_dropped(label, "catalog readback: table is not a partitioned table")
                     continue
-                definition = str(row[0])
+                definition = str(rows[0][0])
                 strategy = definition.split("(", 1)[0].strip().upper()
                 inside = definition[definition.find("(") + 1 : definition.rfind(")")]
                 observed = [part.strip().strip('"').lower() for part in inside.split(",") if part.strip()]

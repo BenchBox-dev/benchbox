@@ -711,7 +711,10 @@ def test_partitioning_catalog_readback_records_satisfaction(pg_duckdb_stubs):
         table="lineitem",
     )
     connection = Mock()
-    connection.cursor.return_value.fetchone.return_value = ("RANGE (l_shipdate)",)
+    connection.cursor.return_value.fetchall.return_value = [("RANGE (l_shipdate)",)]
     adapter._verify_partitioning_catalog(connection)
+    executed = [call.args[0] for call in connection.cursor.return_value.execute.call_args_list]
+    assert executed[0] == "SET duckdb.force_execution = false"
+    assert any("pg_get_partkeydef" in statement for statement in executed[1:])
     satisfied = {entry.intent for entry in adapter._applied_tuning_ledger.satisfied}
     assert satisfied == {"partitioning:lineitem (l_shipdate)"}
