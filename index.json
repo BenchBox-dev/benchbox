@@ -22440,6 +22440,13 @@
       "status": "open",
       "title": "Record the selected SQLGlot downstream maintenance strategy and delivery evidence"
     },
+    "sqlglot-bundled-import-startup-cost": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Reduce first-import cost of the zip-loaded SQLGlot runtime"
+    },
     "sqlglot-bundled-runtime-advisory-visibility": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Measure the delta in a real benchbox CLI command that translates SQL, on macOS and Linux.",
+    "Decide whether lazy import, pre-warming or another approach removes it without unpacking source; record the decision.",
+    "If a regression budget applies to CLI startup, confirm it is met."
+  ],
+  "description": "Measured on macOS arm64: a fresh interpreter importing SQLGlot and translating 'SELECT 1' took a median 373 ms from the bundled zip versus 70 ms from an unpacked, bytecode-cached install. The cost was accepted for the first release but never optimized or measured in CLI startup or short-lived runs.",
+  "links": [
+    "benchbox/_vendor/__init__.py",
+    "_project/decisions/sqlglot-soft-fork-plan.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:294e68659711a060d19711d3",
+      "at": "2026-10-19T00:13:45Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "161de17f424546259b6a20c1701da772",
+      "session_id": "5fc71a2e25aa4324a26f0d500fc3289e"
+    }
+  ]
+}
