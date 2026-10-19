@@ -18,7 +18,7 @@ and rollback throughout.
 
 | # | Decision | Resolution |
 |---|---|---|
-| D1 | Where user docs live | Core. Docs change with code: about 20 core tests lock code against doc text, `README.md` has 26 relative `docs/` links, and `benchbox/utils/version.py:61` reads `docs/README.md`. The site gets docs through the bundle. |
+| D1 | Where user docs live | Superseded by [published documentation ownership](adr-site-docs-ownership.md). Original resolution: Core. Docs change with code: about 20 core tests lock code against doc text, `README.md` has 26 relative `docs/` links, and `benchbox/utils/version.py:61` reads `docs/README.md`. The site gets docs through the bundle. |
 | D2 | Repo | `BenchBox-dev/benchbox-site`, public, default branch `main`, squash-merge only. The owner creates it empty. |
 | D3 | Rehearsal host | `next.benchbox.dev`; the owner adds the DNS record before the batch. A project Pages subpath breaks root-absolute links. |
 | D4 | Deploy control plane | Replaced, not moved: a minimal Node plane in the site repo. The Python `site_deploy` package stays in core until the site removal deletes it. Corpus and snapshot checks become core attestations. |
@@ -33,7 +33,7 @@ and rollback throughout.
 | D13 | Runner pool | Measure first. Site receipts record queue time and merge-to-live latency; decide after a month. |
 | D14 | Oracle review | Amended 2026-10-07. Soundness paths are never narrowed ahead of a deletion. C1 only *adds* `scripts/site_inputs.py` and `_project/scripts/explorer_pipeline/browser_fixtures.py` as soundness files. C2 removes the entries for the files it deletes, in the same commit, and keeps `prefix .github/workflows/`, `prefix publication/` and `prefix scripts/publication/`. Core PRs that touch soundness paths request the Codex connector; if it is unavailable, the owner posts the stand-in comment after the agent has dispositioned every blocking `oracle-review-shadow` finding on that head. Amended 2026-10-09: the self-hosted oracle replaced the Codex connector, so core PRs that touch soundness paths need the oracle's success review of the head; the stand-in applies when the oracle cannot pass it. See [`docs/internal/oracle-review-v2.md`](../oracle-review-v2.md). |
 | D15 | External links | A nightly lychee job in the site repo opens or updates one issue. It never blocks a deploy. |
-| D16 | Bundle compatibility | `schema` is an integer major. Additive changes keep it; removals and renames bump it. The site supports N and N-1, proven by a CI matrix. Core lands a change first, the site second. |
+| D16 | Bundle compatibility | Refined by [published documentation ownership](adr-site-docs-ownership.md#bundle-compatibility-and-activation). `schema` is an integer major; removals and renames bump it, and exact member sets are checked per schema. The site supports adjacent majors, proven in CI. Core producer capability lands first without changing default emission; compatible site support is deployed second; new-schema emission activates only afterward. The original “core first” ordering does not authorize publishing a bundle unsupported by the deployed site. |
 | D17 | Ruleset edit | One hosted-ruleset change only: remove the `landing` required context from ruleset 15611785, right after the site removal merges. No other ruleset change. |
 | D18 | Publication clean-up | Push the archive tag, record the before-state, then delete the `publication` branch, the `publication-attestation` environment and its secrets, and `PUBLICATION_APP_ID`/`PUBLICATION_APP_PRIVATE_KEY`. Uninstall the publication App if the API allows; otherwise the owner does. |
 | D19 | First production deploy | The owner approves it live in chat during the production cutover pause. Later deploys are automatic. |
@@ -44,7 +44,10 @@ and rollback throughout.
 
 No Python source in the site repo, no JS/TS source in core. Run-time
 third-party tools are allowed. The site-inputs bundle schema uses integer
-majors; the site supports N and N-1 for one release; core lands first.
+majors; the site supports adjacent majors for one release. Producer capability
+lands first, then compatible site support deploys, then new emission activates.
+See the [ownership decision](adr-site-docs-ownership.md) for the documentation
+schema transition and the supersession of core-owned published prose.
 
 The bundle includes each tracked TPC-DS or TPC-H EULA only when that benchmark's
 query templates are selected; the site publishes it beside those query
