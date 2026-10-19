@@ -68,15 +68,15 @@ def _walk(selection_input: SelectionInput, absences: dict[str, str]) -> list[str
         attempts.append(_absent(len(attempts) + 1, step.reviewer.name, absences.get(step.reviewer.name, "error")))
 
 
-def test_missing_or_unknown_author_label_means_claude(policy: Policy) -> None:
-    assert excluded_families((), policy) == {"claude"}
-    assert excluded_families(("author-family:grok",), policy) == {"claude"}
+def test_missing_or_unknown_author_label_means_muse(policy: Policy) -> None:
+    assert excluded_families((), policy) == {"muse"}
+    assert excluded_families(("author-family:grok",), policy) == {"muse"}
     assert excluded_families(("author-family:codex",), policy) == {"codex"}
     assert excluded_families(("author-family:codex", "author-family:muse"), policy) == {"codex", "muse"}
 
 
 def test_low_medium_for_a_claude_author_skips_claude(policy: Policy) -> None:
-    assert _walk(_input(policy, "low-medium"), {}) == [
+    assert _walk(_input(policy, "low-medium", ("author-family:claude",)), {}) == [
         "codex-deep",
         "muse-routine",
         "gemini-routine",
@@ -132,7 +132,7 @@ def test_quota_absence_skips_the_whole_pool(policy: Policy) -> None:
 
 
 def test_very_high_codex_quota_still_reaches_muse_deep(policy: Policy) -> None:
-    step = next_step(_input(policy, "very-high"), [_absent(1, "codex-deep", "quota")])
+    step = next_step(_input(policy, "very-high", ("author-family:claude",)), [_absent(1, "codex-deep", "quota")])
     assert step.reviewer is not None and step.reviewer.name == "muse-deep"
 
 
@@ -199,7 +199,7 @@ def test_oversize_brief_leaves_everyone_absent(policy: Policy) -> None:
 
 
 def test_disabled_reviewer_is_named_with_its_reason(policy: Policy) -> None:
-    selection_input = _input(policy, "low-medium")
+    selection_input = _input(policy, "low-medium", ("author-family:claude",))
     chain = [
         replace(reviewer, enabled=False, disabled_reason="off") if reviewer.name == "gemini-routine" else reviewer
         for reviewer in selection_input.chain

@@ -205,7 +205,7 @@ def test_an_incomplete_verdict_in_an_artifact_never_passes(policy: Policy, tmp_p
 
 
 def test_all_absent_is_pending_and_names_every_reviewer(policy: Policy, tmp_path: Path) -> None:
-    plan = _plan(policy, tier="very-high", labels=())
+    plan = _plan(policy, tier="very-high", labels=("author-family:claude",))
     _write(tmp_path, 1, "codex-deep", missing=Absence("quota", "limit"))
     _write(tmp_path, 2, "muse-deep", missing=Absence("auth", "bad key"))
     loaded, step, errors = _decide(policy, plan, tmp_path)
@@ -551,7 +551,7 @@ def test_an_oversize_plan_finalizes_pending_for_its_size_and_names_the_ways_forw
 
 
 def test_an_inline_plan_with_every_reviewer_absent_stays_retryable(policy: Policy, tmp_path: Path) -> None:
-    plan = _plan(policy, tier="very-high", labels=())
+    plan = _plan(policy, tier="very-high", labels=("author-family:claude",))
     _write(tmp_path, 1, "codex-deep", missing=Absence("quota", "limit"))
     _write(tmp_path, 2, "muse-deep", missing=Absence("auth", "bad key"))
     loaded, step, errors = _decide(policy, plan, tmp_path)
@@ -585,7 +585,7 @@ def test_a_held_plan_finalizes_to_a_pending_status_with_no_decision_or_marker(
 
 
 def test_a_long_status_description_is_cut_to_the_status_limit(policy: Policy, tmp_path: Path) -> None:
-    plan = _plan(policy, tier="very-high", labels=())
+    plan = _plan(policy, tier="very-high", labels=("author-family:claude",))
     _write(tmp_path, 1, "codex-deep", missing=Absence("quota", "limit " * 60))
     _write(tmp_path, 2, "muse-deep", missing=Absence("auth", "bad key"))
     loaded, step, errors = _decide(policy, plan, tmp_path)

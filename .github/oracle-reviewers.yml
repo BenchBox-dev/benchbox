@@ -6,7 +6,7 @@ bot_login: benchbox-oracle
 brief_max_bytes: 100000
 max_attempts: 5
 author_label_prefix: "author-family:"
-default_author_family: claude
+default_author_family: muse
 tier_labels:
   "oracle-tier:low-medium": low-medium
   "oracle-tier:medium-high": medium-high

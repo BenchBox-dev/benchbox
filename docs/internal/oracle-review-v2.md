@@ -234,12 +234,11 @@ profiles off Muse-authored changes.
 The author's family comes only from `author-family:<family>` pull request
 labels, one or more of which may apply; the pull request body is never
 parsed for provenance, and families are never inferred from configured
-defaults or model roles. A missing or unknown label excludes `claude`, the
-long-standing default. OMP's own default worker is a Muse model, so a
-Muse-authored change with no label would still exclude only Claude: label
-every actual author family on the pull request, including
-`author-family:muse` for Muse-authored changes. OMP is a harness, never a
-family, and Gemini work is labelled with the canonical `agy` family.
+defaults or model roles. A missing or unknown label excludes `muse`,
+matching the current OMP default worker. Label every actual author family
+on the pull request when it differs from that default, including
+`author-family:claude` for Claude-authored changes. OMP is a harness, never
+a family, and Gemini work is labelled with the canonical `agy` family.
 
 ## Evidence that a review happened
 
