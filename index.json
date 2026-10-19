@@ -8638,7 +8638,8 @@
       "claim": null,
       "needs": [
         "docs-mig-site-bundle-schema4",
-        "docs-mig-core-doc-contracts-export"
+        "docs-mig-core-doc-contracts-export",
+        "docs-mig-activate-schema4"
       ],
       "priority": "high",
       "status": "open",
