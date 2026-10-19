@@ -1241,7 +1241,7 @@ pr-arm:
 
 REMOTE_CLOSEOUT_TARGETS := pr-arm-remote pr-landing-remote-bind pr-landing-remote-record \
 	pr-landing-remote-manifest pr-landing-remote-review pr-landing-remote-withdraw pr-landing-remote-ready
-REMOTE_CLOSEOUT_VARIABLES := PR HEAD REPO BRANCH ITEM RECORD BUILDER_HEAD OWNER_EXPLAINED MODEL DRY_RUN RESUME
+REMOTE_CLOSEOUT_VARIABLES := PR HEAD REPO BRANCH ITEM RECORD BUILDER_HEAD OWNER_EXPLAINED MODEL REVIEWER DRY_RUN RESUME
 .PHONY: $(REMOTE_CLOSEOUT_TARGETS)
 $(foreach name,$(REMOTE_CLOSEOUT_VARIABLES),$(eval $(REMOTE_CLOSEOUT_TARGETS): override $(name) := $$(value $(name))))
 $(foreach name,$(REMOTE_CLOSEOUT_VARIABLES),$(eval $(REMOTE_CLOSEOUT_TARGETS): export REMOTE_CLOSEOUT_$(name) := $$($(name))))
