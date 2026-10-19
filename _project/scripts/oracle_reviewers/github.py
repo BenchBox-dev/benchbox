@@ -23,10 +23,11 @@ class GitHubError(RuntimeError):
 
 def _gh(*args: str, accept: str | None = None) -> str:
     argv = ["gh", "api", *(("-H", f"Accept: {accept}") if accept else ()), *args]
-    result = subprocess.run(argv, capture_output=True, text=True, check=False)
+    result = subprocess.run(argv, capture_output=True, check=False)
     if result.returncode != 0:
-        raise GitHubError(f"gh api {' '.join(args)} failed: {result.stderr.strip()[:500]}")
-    return result.stdout
+        detail = result.stderr.decode("utf-8", errors="replace").strip()[:500]
+        raise GitHubError(f"gh api {' '.join(args)} failed: {detail}")
+    return result.stdout.decode("utf-8", errors="replace")
 
 
 def get_json(path: str) -> Any:
