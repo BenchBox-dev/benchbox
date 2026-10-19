@@ -25,6 +25,7 @@ class Reviewer:
     pool: str
     model: str
     effort: str
+    role: str
     read_only: str
     reads_files: bool
     timeout_minutes: int
@@ -40,6 +41,7 @@ class Reviewer:
             "family": self.family,
             "pool": self.pool,
             "model": self.model,
+            "role": self.role,
             "effort": self.effort,
             "read_only": self.read_only,
             "reads_files": self.reads_files,
@@ -59,6 +61,7 @@ class Reviewer:
             pool=data["pool"],
             model=data["model"],
             effort=data["effort"],
+            role=data["role"],
             read_only=data["read_only"],
             reads_files=bool(data["reads_files"]),
             timeout_minutes=int(data["timeout_minutes"]),
@@ -145,6 +148,7 @@ def _reviewer(name: str, data: Mapping[str, Any], pools: tuple[str, ...]) -> Rev
         pool=data.get("pool", ""),
         model=data.get("model", ""),
         effort=data.get("effort", ""),
+        role=data.get("role", ""),
         read_only=data.get("read_only", ""),
         reads_files=data.get("reads_files"),
         timeout_minutes=data.get("timeout_minutes", 0),
@@ -154,6 +158,7 @@ def _reviewer(name: str, data: Mapping[str, Any], pools: tuple[str, ...]) -> Rev
         disabled_reason=data.get("disabled_reason", ""),
     )
     _require(reviewer.harness in HARNESSES, f"reviewer {name} has unknown harness {reviewer.harness!r}")
+    _require(reviewer.role == "review", f"reviewer {name} has unknown role {reviewer.role!r}")
     _require(reviewer.pool in pools, f"reviewer {name} has unknown pool {reviewer.pool!r}")
     _require(reviewer.family in HARNESSES, f"reviewer {name} has unknown family {reviewer.family!r}")
     _require(bool(reviewer.model) and bool(reviewer.effort), f"reviewer {name} needs a model and an effort")

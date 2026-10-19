@@ -16,6 +16,9 @@ then live OMP role aliases when they exist, then the portable defaults below.
 `review` and `research` are custom OMP aliases, not automatic features: select
 them explicitly or bind an agent to them. Portable callers select the workload
 role themselves and translate its model through the harness reference.
+Role `@alias` selectors (for example `@review`) resolve only when that alias
+is configured in live OMP settings; otherwise dispatch the role's full
+`provider/model` default, with `--thinking auto` on OMP.
 
 ## Workload Roles
 
@@ -31,20 +34,28 @@ advisor, or guarantees independent review on its own.
 | `plan` | `anthropic/claude-fable-5:auto` | Planning, decomposition, architecture. |
 | `review` | `openai-codex/gpt-6-astra:auto` | Independent review and adversarial gates. |
 | `research` | `google-antigravity/gemini-4-argon:auto` | Complex research and synthesis; use `task` for bounded collection. |
-| `task` | `muse-code/muse-spark-1.3-contributor:auto` | Bounded implementation and delegated workers, including mechanical `sonic` work. |
+| `task` | `muse-code/muse-spark-1.3-contributor:auto` | Bounded implementation and delegated workers. |
 | `commit` | `muse-code/muse-spark-1.3-contributor:auto` | Commit-message and changelog generation, not Git authorization. |
 | `vision` | `google-antigravity/gemini-4-argon:auto` | Image-question helpers; not image generation or every attached image. |
 | `advisor` | `anthropic/claude-fable-5:auto` | Advisory second opinions. |
 
 Every Muse model MUST be the contributor variant. Never copy an OMP `:auto`
-selector into an external CLI model ID; resolve each role or fallback name to
-the harness-specific identifier in
+selector into a non-OMP external CLI model ID; resolve each role or fallback
+name to the harness-specific identifier in
 [references/external-harnesses.md](references/external-harnesses.md).
-External processes do not inherit OMP retry or quota settings.
+Non-OMP external processes do not inherit OMP retry or quota settings. An
+external `omp` dispatch runs under the same live local settings (retry,
+fallback chains, quota handling) unless a per-run `--config` overlay
+constrains it; independent reviewers MUST carry that overlay to disable
+cross-model fallback.
 
 Native `task` agent model precedence matters: agent settings can shadow
-frontmatter. For a task-specific choice, use eval invocation-local selection
-or an explicit external command rather than relying on frontmatter alone.
+frontmatter. For a task-specific choice, use the eval bridge's invocation-local
+model override or an explicit external command instead of frontmatter alone.
+OMP's `task` and `sonic` are agent names, distinct from the `task` model role.
+`sonic` is the mechanical worker; routing it to `@task` changes only its model,
+not its instructions or limits. `smol` can serve lightweight helpers without
+replacing a write-capable worker's agent definition.
 
 ## Role-Local Fallbacks
 
@@ -52,7 +63,7 @@ These are portable fallback defaults, not overrides of a live OMP chain.
 Keep fallback configuration role-local; model-wide chains can shadow it.
 Resolve each model name to the documented harness identifier.
 
-- `default`: Codex Sol6.1, Fable, Argon.
+- `default`: Codex `gpt-6.1-sol`, Fable, Argon.
 - `smol`: Spark contributor, Luna.
 - `task`, `commit`: Flash, Luna.
 - `slow`, `plan`: Astra, Wonder contributor, Argon.
@@ -68,6 +79,8 @@ OMP dispatches keep effort `auto`, capped at `xhigh` unless an explicit final
 review requires `max`; per-dispatch overrides honor user intent. This `auto`
 is not portable: external harnesses without `auto` support need an explicit
 concrete effort, which is a manual approximation, not an adaptive equivalent.
+External `omp` is the exception: it takes `--thinking auto` natively. The
+concrete mapping below is for non-OMP harnesses only.
 
 - Default to `medium`.
 - `low` for mechanical or scouting work (`smol`, bulk coverage).
@@ -92,10 +105,15 @@ Choose the dispatch mode from the delegated role:
   one-shot Worker or Reviewer command. Invocations such as `--print`, `exec`,
   `--single`, or equivalents are not Manager-capable unless a separate verified
   continuation channel supplies every required capability; they remain valid
-  Worker or Reviewer choices.
+  Worker or Reviewer choices. Headless `omp --print` is Worker/Reviewer only:
+  it processes prompts and exits without exposing a Manager's coordination
+  channel. `omp --mode rpc` and `acp` may serve a Manager only when the same
+  checks pass for the live process; flags alone do not prove the capability.
 - **Worker:** use a write-capable mode only within the authorized workspace or
   sandbox. Require the repository's narrowest proving check and explicit-path
-  staging; never permit `git add -A`.
+  staging; never permit `git add -A`. For external `omp`, scope the Worker to
+  an authorized dedicated worktree passed via `--cwd`; `--cwd` selects the
+  working directory and is not a sandbox.
 - **Reviewer:** use a separate dispatch that did not author the work. Prefer a
   hard read-only sandbox or tool allowlist. A plan mode is soft read-only and
   requires explicit findings-only instructions that forbid edits, commits,

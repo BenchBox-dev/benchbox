@@ -20,36 +20,39 @@ retry:
   sweep_max_dispatches: 5
 pools: [claude, codex, muse, agy]
 reviewers:
-  opus:
+  claude-deep:
     harness: claude
     family: claude
     pool: claude
-    model: claude-opus-5-5
-    effort: medium
+    model: claude-fable-5
+    effort: high
+    role: review
     read_only: hard
     reads_files: true
     timeout_minutes: 30
     turn_cap: 60
-    allowed_tiers: [very-high]
+    allowed_tiers: [medium-high, very-high]
     enabled: true
-  sonnet:
+  claude-routine:
     harness: claude
     family: claude
     pool: claude
-    model: claude-sonnet-5-5
+    model: claude-fable-5
     effort: medium
+    role: review
     read_only: hard
     reads_files: true
     timeout_minutes: 25
     turn_cap: 60
-    allowed_tiers: [low-medium, medium-high]
+    allowed_tiers: [low-medium]
     enabled: true
-  sol:
+  codex-deep:
     harness: codex
     family: codex
     pool: codex
-    model: gpt-6.1-sol
+    model: gpt-6-astra
     effort: medium
+    role: review
     read_only: hard
     reads_files: true
     timeout_minutes: 25
@@ -57,12 +60,13 @@ reviewers:
     allowed_tiers: [low-medium, medium-high, very-high]
     enabled: false
     disabled_reason: "the OpenAI API project behind OPENAI_API_KEY has no quota"
-  luna:
+  codex-routine:
     harness: codex
     family: codex
     pool: codex
-    model: gpt-6-luna
-    effort: high
+    model: gpt-6.1-sol
+    effort: medium
+    role: review
     read_only: hard
     reads_files: true
     timeout_minutes: 25
@@ -70,40 +74,69 @@ reviewers:
     allowed_tiers: [low-medium, medium-high]
     enabled: false
     disabled_reason: "the OpenAI API project behind OPENAI_API_KEY has no quota"
-  muse:
+  muse-deep:
     harness: muse
     family: muse
     pool: muse
-    model: muse-spark-1.3-contributor
-    effort: medium
+    model: muse-wonder-1.0-contributor
+    effort: high
+    role: review
     read_only: hard
     reads_files: true
     timeout_minutes: 25
     turn_cap: 80
-    allowed_tiers: [low-medium, medium-high]
+    allowed_tiers: [medium-high, very-high]
     enabled: true
-  agy:
+  muse-routine:
+    harness: muse
+    family: muse
+    pool: muse
+    model: muse-wonder-1.0-contributor
+    effort: medium
+    role: review
+    read_only: hard
+    reads_files: true
+    timeout_minutes: 25
+    turn_cap: 80
+    allowed_tiers: [low-medium]
+    enabled: true
+  gemini-routine:
     harness: agy
     family: agy
     pool: agy
     model: gemini-3.8-flash-medium
     effort: medium
+    role: review
     read_only: soft
     reads_files: false
     timeout_minutes: 20
     turn_cap: null
-    allowed_tiers: [low-medium, medium-high]
+    allowed_tiers: [low-medium]
     enabled: true
+  gemini-deep:
+    harness: agy
+    family: agy
+    pool: agy
+    model: gemini-4-argon-high
+    effort: high
+    role: review
+    read_only: soft
+    reads_files: false
+    timeout_minutes: 20
+    turn_cap: null
+    allowed_tiers: [low-medium, medium-high, very-high]
+    enabled: false
+    disabled_reason: "argon completion is unverified on the hosted agy harness"
 tiers:
   low-medium:
-    order: [luna, muse, agy, sonnet, sol]
+    order: [codex-deep, claude-routine, gemini-deep, muse-routine, gemini-routine, codex-routine]
     diversity_exempt: []
   medium-high:
-    order: [sonnet, sol, luna, muse, agy]
+    order: [codex-deep, claude-deep, gemini-deep, muse-deep, codex-routine]
     diversity_exempt: []
   very-high:
-    order: [opus, sol]
-    diversity_exempt: [opus]
+    order: [codex-deep, claude-deep, gemini-deep, muse-deep]
+    diversity_exempt: []
 classifier:
   area_depth: 3
   small_max_lines: 150
