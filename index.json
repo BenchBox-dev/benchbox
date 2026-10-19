@@ -1515,17 +1515,12 @@
       "title": "Diagnose the one or two byte-mismatched pages that fail post-deploy probes, and record them in the receipt"
     },
     "autogen-site-snapshot-digest-cause-20261018": {
-      "claim": {
-        "expires_at": "2026-10-20T15:13:56Z",
-        "generation": "902e0c63e8654c2392651fa457e46f92",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
-      },
+      "claim": null,
       "needs": [
         "autogen-issues-decisions-20261018"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Establish whether the 2026-10-14 snapshot-digest gate failures were a stable change or nondeterminism"
     },
     "autogen-site-verify-and-close-20261018": {
