@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Both approved items merge through live remote close-out without local implementation worktrees",
+    "First-minute repository/fetch/push checks are observed, not inferred from session creation",
+    "Verification report includes exact sandbox-only test failures, timings and available actual costs; unknown costs stay unknown",
+    "At least one actual CI/review-finding revision round-trip is observed; otherwise explicitly report unmet criterion",
+    "Coverage-map proposal and Codex Cloud setup instructions follow the evidence"
+  ],
+  "context": "Owner decisions in chat: builders open their own PRs; live remote arming on eligible PRs; Claude fallback when Codex quota exhausted; try CLI dispatch first; Claude first/Codex after; select and show exact pair (pair approved serially); coverage map after pilot. Cleanup authorized separately: ambiguous worktrees with unique or uncertain work must remain. The private archived throwaway repository deletion was denied HTTP 403; granting the deletion scope needs owner interactive authorization. First pilot session https://claude.ai/code/session_013RBimgPpv9Lc6WmzA5FMHz created from primary checkout because CLI upload rejects linked worktrees with worktree configuration; follow-up sends successfully but CLI returns no transcript. Browser access unavailable; no builder result or PR observed. Second pilot not dispatched until first completes. No further design decision pending; authenticated cloud observation and GitHub deletion permission are access prerequisites.",
+  "description": "Run agent-instruction-audit-git-identity-return-type then harden-complexity-checker-cli-arguments-20260811 in Claude cloud sessions. Builders implement/test/self-review/open PRs, closer obtains independent head-bound review then uses live remote close-out on eligible PRs. No local item implementation worktrees. Exercise at least one genuine review/CI hand-back before accepting the full pilot; do not fabricate a failure. Derive coverage-map work from exact cloud test failures afterward; run Codex Cloud pilot after Claude.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6e21d202a3cbd56690913269",
+      "at": "2026-10-19T00:24:30Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "af8e13abc25e440b8a2a409f9dd4f425",
+      "session_id": "66089e161dd148bdbce1a568dc5e3d28"
+    }
+  ]
+}

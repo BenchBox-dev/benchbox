@@ -3575,6 +3575,13 @@
       "status": "done",
       "title": "Cloud adapters tell users to run configuration commands the CLI rejects"
     },
+    "cloud-dev-loop-pilot-20261019": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Prove checkout-free close-out on two serial Claude cloud items"
+    },
     "cloud-dw-sorted-data-ingestion": {
       "claim": null,
       "needs": [
