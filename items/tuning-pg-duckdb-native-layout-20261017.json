@@ -5,7 +5,7 @@
     "Live TPC-H SF0.01 tuned run, with the evidence recorded in the PR",
     "Platform docs page describes the method"
   ],
-  "context": "Owner request 2026-10-17: \"There should be a method for tuning these platforms.\"",
+  "context": "Owner request 2026-10-17: There should be a method for tuning these platforms.\n\nImplementation in /Users/joe/Developer/BenchBox.wt-pg-duckdb-native-tuning, branch feat/pg-duckdb-native-tuning, base origin/develop 0f5ed3aa7. Enables inherited PostgreSQL PARTITION BY (create_schema) and CREATE INDEX + CLUSTER (post-load) for heap tables; PgDuckDBDDLGenerator no longer strips CLUSTER from preview. Catalog verification: pg_get_partkeydef after schema creation; pg_index.indisclustered with ordered columns (partition-tree aware) before recording post-load success. CLUSTER commits its index first and runs in autocommit (cannot run in a transaction block). Capability registry + parity maps mark partitioning/clustering/sorting rendered; deleted the source-drift test that pinned sorting as not rendered. Added examples/tunings/pg-duckdb/tpch_tuned.yaml, docs section, regenerated support matrix + tuning coverage.\nLive: Apple container pgduckdb/pgduckdb:17-main (pg_duckdb 1.2.0, PG 17.11) port 55440. TPC-H SF0.01 seed 42 generate,load,power PASSED; tuning outcome 6 executed / 0 failed / 0 dropped. Export tpch_sf001_pg_duckdb_sql_20261018_201733_34592b96.json: satisfied partitioning:lineitem/orders via partkeydef, sorting:lineitem/orders via indisclustered; validation PASSED, 22 queries COMPLETED.\nFocused tests 309 passed via pr-preflight (after fixing CLUSTER txn and partitioned indisclustered semantics found live). Full fast suite and self-review pending. Remaining: address review findings, commit, make pr-open, oracle/CI, pr-arm, merge, cleanup container, finish.",
   "description": "pg_duckdb declares PARTITIONING and CLUSTERING as supported (benchbox/platforms/pg_duckdb.py:383) but skips both at execution (pg_duckdb.py:42-43: execution_partitioning_supported = False, post_load_index_cluster_supported = False). Its DDL generator (PgDuckDBDDLGenerator) also drops CLUSTER from the preview statements. Decide the method for each table kind: CLUSTER and partitioning for heap tables (CLUSTER succeeded on a pg_duckdb plain heap table in the pgduckdb/pgduckdb:17-main image during the #3092 verification), and sort order on load for DuckDB-backed or Parquet-backed tables. Implement it with ledger evidence, and make the claimed tuning types match what is applied.",
   "sessions": [
     {
@@ -31,6 +31,14 @@
       "generation": "c2e59798feae43dd830c6b155b007ff8",
       "op": "take",
       "op_id": "b2e60da836474ff0a238d2d60fa9b5b0",
+      "session_id": "1c132956646e412ba1ebcfb0aef362c3"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a00a661093086d4fdaf97c3f",
+      "at": "2026-10-19T00:20:46Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e91e6315eaea40f78bc705a846c380b0",
       "session_id": "1c132956646e412ba1ebcfb0aef362c3"
     }
   ]
