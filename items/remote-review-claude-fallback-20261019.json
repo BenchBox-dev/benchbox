@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Codex usage-limit failure can fall back to the isolated Claude backend; other Codex failures refuse",
+    "Explicit REVIEWER=claude uses the same review record and publication invariants",
+    "Real isolation probe denies credentials, primary clone, /tmp, writes, commands, network and custom MCP access",
+    "A real dry-run produces a valid record without publication",
+    "Focused tests and required CI pass, PR merged"
+  ],
+  "context": "Owner choices in chat: Claude subagent fallback; live close-out for eligible pilot PRs. Claude CLI 2.1.302 supports --restricted, --safe-mode, a read-only tool allowlist and strict MCP configuration. Work in feat/remote-review-fallback; agent ClaudeFallbackReviewer owns implementation. No new same-family owner-approval gate is authorized.",
+  "description": "Owner approved a Claude-subagent fallback for checkout-free review when Codex is unavailable because of its usage limit. Share the existing pinned-input, computed-disposition, publication and record pipeline. Restrict file tools to exported base-rule inputs and head tree, disable commands/network/MCP/user customization, and disclose the fallback family without adding an unapproved arm gate. Preserve other Codex errors as refusals.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6e21d202a3cbd56690913269",
+      "at": "2026-10-19T00:18:39Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "11ce358840b64061a9b7eb414e24a226",
+      "session_id": "66089e161dd148bdbce1a568dc5e3d28"
+    }
+  ]
+}

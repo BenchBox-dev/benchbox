@@ -18727,6 +18727,13 @@
       "status": "done",
       "title": "Add a Codex reviewer that produces remote close-out review records"
     },
+    "remote-review-claude-fallback-20261019": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Use an isolated Claude reviewer when Codex quota is exhausted"
+    },
     "remove-alpha-backward-compatibility-surface": {
       "claim": null,
       "needs": [],
