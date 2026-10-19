@@ -22426,6 +22426,13 @@
       "status": "open",
       "title": "Record the selected SQLGlot downstream maintenance strategy and delivery evidence"
     },
+    "sqlglot-bundled-runtime-advisory-visibility": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Make security advisories visible for the bundled SQLGlot runtime"
+    },
     "sqlglot-dialect-translation-code-review-implementation": {
       "claim": null,
       "needs": [],

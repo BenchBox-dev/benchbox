@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Determine whether the existing dependency audit (_project/scripts/dependency_audit, audit-deps) or any advisory scanner reports on the bundled wheel; record the result.",
+    "If not, add an automated check that maps the pinned upstream version to published SQLGlot advisories and fails or alerts on a match, with a test.",
+    "The release guide names the check and who acts on it."
+  ],
+  "description": "BenchBox now ships SQLGlot as a private wheel inside package data (benchbox/_vendor). Package-level dependency scanners and advisory feeds key on declared requirements, so a CVE in SQLGlot no longer surfaces against BenchBox. The inventory row in docs/internal/dependency-inventory.md records the bundle by hand only.",
+  "links": [
+    "benchbox/_vendor/sqlglot.json",
+    "docs/internal/dependency-inventory.md",
+    "scripts/check_sqlglot_upstream_freshness.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:294e68659711a060d19711d3",
+      "at": "2026-10-19T00:13:35Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c894a865508745518c814c1ea7310b4d",
+      "session_id": "5fc71a2e25aa4324a26f0d500fc3289e"
+    }
+  ]
+}
