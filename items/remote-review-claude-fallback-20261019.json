@@ -6,7 +6,7 @@
     "A real dry-run produces a valid record without publication",
     "Focused tests and required CI pass, PR merged"
   ],
-  "context": "Implemented on feat/remote-review-fallback: c42ca7ddf plus fix commit 71bf492fd. PR #3163 opened and armed 2026-10-19; merge pending CI. Independent contract review found 2 Required defects, both fixed: (1) Codex usage-limit classification now only from structured error events, with regression test for unstructured output mentioning the phrase; (2) Claude login staging drops refreshToken and refuses expired logins — real probes proved accessToken+expiresAt-only staging fails Claude CLI auth (Not logged in) while login-minus-refreshToken authenticates. Focused suite 123 passed; real REVIEWER=claude DRY_RUN=1 on PR #3143 head a0997e75 returned approve in ~54s with no publication. Codex-based security reviewer agent failed twice on Codex usage limit (the motivating failure); parent verified credential/isolation paths directly plus real isolation probe by implementing agent.",
+  "context": "PR #3163 merged 2026-10-19T01:00:19Z (head 71bf492fd). Acceptance met: Codex usage-limit-only fallback + explicit REVIEWER=claude share record/publication pipeline; real isolation probe and real DRY_RUN on PR #3143 passed (~54s, approve); 123 focused tests pass. Cannot claim/finish from this session: worker already holds live claim on agent-instruction-audit-git-identity-return-type (pilot). Finish this item after pilot claim resolves.",
   "description": "Owner approved a Claude-subagent fallback for checkout-free review when Codex is unavailable because of its usage limit. Share the existing pinned-input, computed-disposition, publication and record pipeline. Restrict file tools to exported base-rule inputs and head tree, disable commands/network/MCP/user customization, and disclose the fallback family without adding an unapproved arm gate. Preserve other Codex errors as refusals.",
   "sessions": [
     {
@@ -23,6 +23,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "126ed797c43c45d7a1aa9978e8892e50",
+      "session_id": "66089e161dd148bdbce1a568dc5e3d28"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6e21d202a3cbd56690913269",
+      "at": "2026-10-19T01:02:00Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d2cb41a22ba745dc8a6db0ae763a60b8",
       "session_id": "66089e161dd148bdbce1a568dc5e3d28"
     }
   ]
