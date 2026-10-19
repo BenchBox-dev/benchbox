@@ -5,7 +5,7 @@
     "Either a merged PR with the added tests (required checks green; scripts/site_inputs.py-adjacent soundness paths need oracle review) or a recorded finding that coverage is already complete",
     "The script-version hazard is recorded with a keep-or-fix decision and reason"
   ],
-  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs the case-to-test mapping and, if tests were added, proof they fail on the old logic. FAIL if a test was added that passes on the old logic. Core repo item.\nPre-publication (AGENTS.md): self-review with the code review action and fix every Critical and Required finding before make pr-open (G13).",
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs the case-to-test mapping and, if tests were added, proof they fail on the old logic. FAIL if a test was added that passes on the old logic. Core repo item.\nPre-publication (AGENTS.md): self-review with the code review action and fix every Critical and Required finding before make pr-open (G13).\n\n### Completion Evidence\nPR #3162 merged into develop as 96bc11fdcbeb4f2e54637bcfe2b3458bda3fc54a.\nEvidence: GATE-K - 7 of 8 shape x path cells already pinned by existing tests; 8th cell (untrusted producing run x deployed-parent path) added as test_deployed_parent_refuses_bundle_from_an_untrusted_run. Fail-before on pre-#2987 script fails with exact buggy call actions/workflows/site-inputs.yml/runs?...&head_sha=a9c80901...; passes on develop. 47 tests pass. Five-axis review clean.",
   "description": "Verified root cause of 25 of the 37 comments on core issue #2979 (2026-10-15T12:02Z to 2026-10-16T14:34Z, every develop push): the parent lookup (scripts/site_inputs_parent.py after #2955 'Resolve site-inputs bundle parents by commit SHA', 210f965bd, and #2988 'parent bundles on the production-deployed core SHA', b92c91f8e) filtered workflow runs by head_sha equal to the bundle's core SHA. For workflow_run-triggered bundles the run's head_sha is not the bundled core SHA (run 38673016998 has head_sha 5bce4dbe... while its artifact is site-inputs-a9c80901...), so the lookup returned 'missing' for an artifact that existed ('site-inputs bundle for deployed parent a9c80901... is missing', run 38916758608). Fixed by #2987 (7ae0fad48, 2026-10-16T14:31Z): find parent bundles by artifact name and verify the producing run.\nWork: verify tests/unit/scripts/test_site_inputs_parent.py pins the exact shape (run head_sha differs from artifact core SHA; trusted trunk run; expired artifact; untrusted producing run) for both parent_bundle_state and the deployed-parent path; add any missing case. Record the script-version hazard (the bundle build checks out the triggering commit, so a fixed script does not repair builds for older triggers) in context; no change unless trivial.\nIf the tests already pin every case, finish with the evidence and no PR.\nGATE-K: if every listed case is already pinned by a named test, finish without a PR after recording the mapping; if any case is missing, add the test (and only the test) in a PR.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/issues/2979",
@@ -53,6 +53,14 @@
       "generation": "a84bad45f4b74dfd817c0af21629377a",
       "op": "take",
       "op_id": "6fa36f37e76343b095757bcf649e13fc",
+      "session_id": "0722acca462b419aa525d939aedd0290"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a",
+      "at": "2026-10-19T15:10:35Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ae40db65b87647a8add17cf97c8c4d98",
       "session_id": "0722acca462b419aa525d939aedd0290"
     }
   ]
