@@ -242,3 +242,104 @@ class TestCedarDBConfigBuilder:
         assert isinstance(config, DatabaseConfig)
         assert config.type == "cedardb"
         assert config.name == "CedarDB"
+
+
+class _GucRejectingCursor:
+    rejected = ("random_page_cost",)
+
+    def __init__(self, executed):
+        self.executed = executed
+
+    def execute(self, statement, *args, **kwargs):
+        if any(name in statement for name in self.rejected):
+            raise RuntimeError(f'cannot change configuration parameter "{self.rejected[0]}"')
+        self.executed.append(statement)
+
+    def close(self):
+        return None
+
+
+class _GucRejectingConnection:
+    def __init__(self):
+        self.executed = []
+
+    def cursor(self):
+        return _GucRejectingCursor(self.executed)
+
+    def commit(self):
+        return None
+
+    def rollback(self):
+        return None
+
+
+def _session_ledger_after_configure(adapter, benchmark_type):
+    from benchbox.core.tuning.applied_ledger import PHASE_SESSION, AppliedTuningLedger, recording_connection
+
+    ledger = AppliedTuningLedger()
+    connection = _GucRejectingConnection()
+    adapter.configure_for_benchmark(recording_connection(connection, ledger, PHASE_SESSION), benchmark_type)
+    return ledger, connection
+
+
+def _validator_errors_for_ledger(tmp_path, ledger):
+    from benchbox.core.results.exporter import ResultExporter
+    from benchbox.validation.bundle import validate_bundles
+    from tests.fixtures.result_dict_fixtures import make_benchmark_results
+
+    result = make_benchmark_results(
+        benchmark_name="TPC-H",
+        platform="cedardb",
+        execution_id="cedardb-baseline-exec",
+        duration_seconds=3.0,
+        total_queries=1,
+        successful_queries=1,
+        query_results=[{"query_id": "Q1", "execution_time": 1.0, "status": "SUCCESS", "rows_returned": 4}],
+        validation_status="PASSED",
+        validation_details={},
+        applied_tuning_ledger=None if ledger.is_empty() else ledger.to_payload(status="not_applicable"),
+    )
+    local = ResultExporter(output_dir=tmp_path, anonymize=False).export_result(result, ["json"])["json"]
+    return [error for result in validate_bundles([local]) for error in result.errors]
+
+
+class TestCedarDBBaselineSessionLedger:
+    @pytest.mark.parametrize("benchmark_type", ["olap", "oltp"])
+    def test_baseline_records_no_session_statements(self, cedardb_stubs, benchmark_type):
+        adapter = CedarDBAdapter()
+        assert adapter.tuning_enabled is False
+
+        ledger, connection = _session_ledger_after_configure(adapter, benchmark_type)
+
+        assert ledger.statements == []
+        assert connection.executed == []
+
+    def test_baseline_result_passes_public_privacy_validation(self, cedardb_stubs, tmp_path):
+        adapter = CedarDBAdapter()
+        ledger, _ = _session_ledger_after_configure(adapter, "olap")
+
+        errors = _validator_errors_for_ledger(tmp_path, ledger)
+
+        assert not [error for error in errors if "unanonymized tuning" in error], errors
+
+    def test_tuned_olap_session_pack_is_applied_and_recorded(self, cedardb_stubs):
+        adapter = CedarDBAdapter(tuning_enabled=True)
+
+        ledger, connection = _session_ledger_after_configure(adapter, "olap")
+
+        assert connection.executed == [
+            "SET enable_seqscan = on",
+            "SET enable_hashjoin = on",
+            "SET enable_mergejoin = on",
+            "SET cpu_tuple_cost = 0.01",
+        ]
+        assert [entry.status for entry in ledger.statements] == ["executed"] * 4
+
+    def test_tuned_session_pack_never_issues_rejected_random_page_cost(self, cedardb_stubs):
+        for benchmark_type in ("olap", "oltp"):
+            adapter = CedarDBAdapter(tuning_enabled=True)
+
+            ledger, _ = _session_ledger_after_configure(adapter, benchmark_type)
+
+            assert all("random_page_cost" not in entry.statement for entry in ledger.statements)
+            assert all(entry.status == "executed" for entry in ledger.statements)
