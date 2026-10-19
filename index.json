@@ -1319,13 +1319,18 @@
       "title": "Make auto-revert-on-failure signature-aware so persistent red does not blame every subsequent merge"
     },
     "autogen-canary-verify-20261018": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-20T17:21:24Z",
+        "generation": "786da7ee2dc843c984f6082107cb20d8",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
+      },
       "needs": [
         "autogen-issues-decisions-20261018",
         "autogen-tpch-maintenance-failures-20261018"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Dispatch the release canary after the TPC-H fixes and close #2887 with evidence"
     },
     "autogen-cedardb-uat-validation-and-baseline-tuning-20261018": {
