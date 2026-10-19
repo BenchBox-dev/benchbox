@@ -8688,6 +8688,13 @@
       "status": "open",
       "title": "Generate query, compatibility and tuning pages in TypeScript"
     },
+    "docs-mig-tpc-adjacent-eulas": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Place canonical TPC notices beside query templates before retiring site downloads"
+    },
     "docs-mig-tpc-eula-gate": {
       "claim": null,
       "needs": [],
