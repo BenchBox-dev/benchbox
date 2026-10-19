@@ -11,6 +11,11 @@ on:
         description: "Base SHA for the validator_parity attestation (default: the newest bundled ancestor on develop)"
         required: false
         default: ""
+      expected_rejection:
+        description: "Mark this run as an expected-failure probe: it never opens, comments, or closes an incident"
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: site-inputs
@@ -30,6 +35,9 @@ jobs:
       (github.event.workflow_run.event == 'push' &&
        github.event.workflow_run.head_branch == 'develop' &&
        github.event.workflow_run.conclusion == 'success')
+    outputs:
+      core_sha: ${{ steps.shas.outputs.core_sha }}
+      failure_class: ${{ steps.shas.outputs.failure_class }}
     steps:
       - name: Checkout trunk head
         if: github.event_name != 'workflow_dispatch'
@@ -143,13 +151,61 @@ jobs:
           REPO: ${{ github.repository }}
           CORE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          FAILURE_CLASS: ${{ needs.build.outputs.failure_class }}
+          EXPECTED_REJECTION: ${{ inputs.expected_rejection }}
         run: |
           set -euo pipefail
-          BODY="$(printf 'The site-inputs bundle build failed for core commit %s.\n\nRun: %s\n\nThe next successful bundle on develop takes the newest good bundle as its parent, so its validator_parity range still covers this commit. Close this issue once a bundle succeeds again.\n' "$CORE_SHA" "$RUN_URL")"
+          if [ "${EXPECTED_REJECTION:-}" = "true" ]; then
+            exit 0
+          fi
+          case "${FAILURE_CLASS:-}" in
+            parent-bundle-missing|not-trunk-certified|other) CLASS="$FAILURE_CLASS" ;;
+            *) CLASS="other" ;;
+          esac
+          MARKER="<!-- site-bundle-reporter class=${CLASS} sha=${CORE_SHA} -->"
+          BODY="$(printf 'The site-inputs bundle build failed for core commit %s.\n\nRun: %s\n\nThe next successful bundle on develop takes the newest good bundle as its parent, so its validator_parity range still covers this commit. Close this issue once a bundle succeeds again.\n\n%s\n' "$CORE_SHA" "$RUN_URL" "$MARKER")"
           NUMBER="$(gh issue list --repo "$REPO" --label site-bundle-failed --state open --json number --jq '.[0].number // empty')"
-          if [ -n "$NUMBER" ]; then
-            gh issue comment "$NUMBER" --repo "$REPO" --body "$BODY"
-          else
+          if [ -z "$NUMBER" ]; then
             gh label create site-bundle-failed --repo "$REPO" --color B60205 --description "The core site-inputs bundle build failed" --force
             gh issue create --repo "$REPO" --title "Site-inputs bundle build failed" --label site-bundle-failed --body "$BODY"
+          else
+            LAST_BODY="$(gh issue view "$NUMBER" --repo "$REPO" --json body,comments --jq '[(.body // "")] + [.comments[].body] | map(select(contains("site-bundle-reporter"))) | last // empty')"
+            LAST_MARKER="$(printf '%s' "$LAST_BODY" | grep -o '<!-- site-bundle-reporter class=[^ ][^ ]* sha=[^ ][^ ]* -->' | tail -n 1 || true)"
+            if [ "$LAST_MARKER" = "$MARKER" ]; then
+              exit 0
+            fi
+            gh issue comment "$NUMBER" --repo "$REPO" --body "$BODY"
           fi
+
+  close-failure:
+    name: close the bundle-failure issue
+    needs: build
+    if: success()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Comment and close the site-bundle-failed issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          CORE_SHA: ${{ needs.build.outputs.core_sha || github.event.workflow_run.head_sha || github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EXPECTED_REJECTION: ${{ inputs.expected_rejection }}
+        run: |
+          set -euo pipefail
+          if [ "${EXPECTED_REJECTION:-}" = "true" ]; then
+            exit 0
+          fi
+          NUMBER="$(gh issue list --repo "$REPO" --label site-bundle-failed --state open --json number --jq '.[0].number // empty')"
+          if [ -z "$NUMBER" ]; then
+            exit 0
+          fi
+          TITLE="$(gh issue view "$NUMBER" --repo "$REPO" --json title --jq '.title')"
+          if [ "$TITLE" != "Site-inputs bundle build failed" ]; then
+            exit 0
+          fi
+          BODY="$(printf 'The site-inputs bundle build succeeded for core commit %s.\n\nRun: %s\n\nThe newest good bundle is usable as a parent again, so this incident is closed.\n' "$CORE_SHA" "$RUN_URL")"
+          gh issue comment "$NUMBER" --repo "$REPO" --body "$BODY"
+          gh issue close "$NUMBER" --repo "$REPO"

@@ -27,6 +27,32 @@ class ParentResolutionError(RuntimeError):
     pass
 
 
+class ParentBundleMissingError(ParentResolutionError):
+    pass
+
+
+class NotTrunkCertifiedError(ParentResolutionError):
+    pass
+
+
+FAILURE_CLASS_OTHER = "other"
+FAILURE_CLASS_PARENT_BUNDLE_MISSING = "parent-bundle-missing"
+FAILURE_CLASS_NOT_TRUNK_CERTIFIED = "not-trunk-certified"
+FAILURE_CLASSES = (
+    FAILURE_CLASS_PARENT_BUNDLE_MISSING,
+    FAILURE_CLASS_NOT_TRUNK_CERTIFIED,
+    FAILURE_CLASS_OTHER,
+)
+
+
+def failure_class(error: ParentResolutionError) -> str:
+    if isinstance(error, NotTrunkCertifiedError):
+        return FAILURE_CLASS_NOT_TRUNK_CERTIFIED
+    if isinstance(error, ParentBundleMissingError):
+        return FAILURE_CLASS_PARENT_BUNDLE_MISSING
+    return FAILURE_CLASS_OTHER
+
+
 def _git(*cmd: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(["git", *cmd], cwd=str(ROOT), check=False, text=True, capture_output=True)
 
@@ -64,15 +90,15 @@ def decide_parent(
         if state == "bundle":
             return (dispatch_parent, "bundle")
         if state == "expired":
-            raise ParentResolutionError(f"site-inputs bundle for parent {dispatch_parent} is expired")
+            raise ParentBundleMissingError(f"site-inputs bundle for parent {dispatch_parent} is expired")
         pooled = [sha for sha in bundled_shas if sha.strip()]
         if not pooled:
             return (dispatch_parent, "dispatch")
-        raise ParentResolutionError(f"no site-inputs bundle attested on parent {dispatch_parent}")
+        raise ParentBundleMissingError(f"no site-inputs bundle attested on parent {dispatch_parent}")
     for candidate in bundled_shas:
         if candidate and candidate != core_sha and is_ancestor_fn(candidate, core_sha):
             return (candidate, "bundle")
-    raise ParentResolutionError(f"no unexpired develop bundle is an ancestor of {core_sha}; {RECOVERY_SUFFIX}")
+    raise ParentBundleMissingError(f"no unexpired develop bundle is an ancestor of {core_sha}; {RECOVERY_SUFFIX}")
 
 
 def decide_certified_by(
@@ -92,7 +118,7 @@ def decide_certified_by(
             and str(run.get("conclusion")) == "success"
         ):
             return str(run.get("databaseId"))
-    raise ParentResolutionError(f"no successful trunk.yml push run on {core_sha}")
+    raise NotTrunkCertifiedError(f"no successful trunk.yml push run on {core_sha}")
 
 
 def recent_trunk_runs(repo: str, limit: int = 20) -> list[dict]:
@@ -323,7 +349,7 @@ def decide_deployed_parent(
         raise ParentResolutionError(f"deployed parent {deployed_sha} is not an ancestor of {core_sha}")
     state = parent_state_fn(deployed_sha)
     if state != "bundle":
-        raise ParentResolutionError(f"site-inputs bundle for deployed parent {deployed_sha} is {state}")
+        raise ParentBundleMissingError(f"site-inputs bundle for deployed parent {deployed_sha} is {state}")
     return (deployed_sha, "bundle")
 
 
@@ -375,6 +401,10 @@ def main(argv: Sequence[str] | None = None, environ: dict[str, str] | None = Non
         )
     except ParentResolutionError as error:
         print(str(error), file=sys.stderr)
+        output = env.get("GITHUB_OUTPUT", "")
+        if output:
+            with open(output, "a", encoding="utf-8") as handle:
+                handle.write(f"failure_class={failure_class(error)}\n")
         return 1
     output = env.get("GITHUB_OUTPUT", "")
     lines = [f"parent_sha={parent_sha}", f"parent_source={parent_source}", f"certified_by={certified_by}"]

@@ -420,3 +420,51 @@ def test_workflow_path_with_a_ref_suffix_is_accepted(monkeypatch: pytest.MonkeyP
     fields = f"{REPO}\t.github/workflows/site-inputs.yml@refs/heads/develop\tdevelop\tsuccess"
     _gh_fixture(monkeypatch, _artifact_routes("false", BUNDLE_RUN_ID, fields))
     assert parent_mod.parent_bundle_state(DEPLOYED_SHA, REPO) == "bundle"
+
+
+def test_expired_parent_bundle_maps_to_parent_bundle_missing_class() -> None:
+    with pytest.raises(parent_mod.ParentBundleMissingError):
+        parent_mod.decide_parent(CORE, PARENT, [OTHER], _ancestor_ok, lambda sha: "expired")
+
+
+def test_parent_without_attested_bundle_maps_to_parent_bundle_missing_class() -> None:
+    with pytest.raises(parent_mod.ParentBundleMissingError):
+        parent_mod.decide_parent(CORE, PARENT, [OTHER], _ancestor_ok, lambda sha: "missing")
+
+
+def test_automatic_run_without_bundled_ancestor_maps_to_parent_bundle_missing_class() -> None:
+    with pytest.raises(parent_mod.ParentBundleMissingError):
+        parent_mod.decide_parent(CORE, None, [], _ancestor_ok, lambda sha: "missing")
+
+
+def test_deployed_parent_without_bundle_maps_to_parent_bundle_missing_class() -> None:
+    with pytest.raises(parent_mod.ParentBundleMissingError):
+        parent_mod.decide_deployed_parent(CORE, PARENT, _ancestor_ok, lambda sha: "missing")
+
+
+def test_uncertified_core_sha_maps_to_not_trunk_certified_class() -> None:
+    with pytest.raises(parent_mod.NotTrunkCertifiedError):
+        parent_mod.decide_certified_by(CORE, "", [])
+
+
+def test_non_ancestor_dispatch_parent_maps_to_other_class() -> None:
+    with pytest.raises(parent_mod.ParentResolutionError) as excinfo:
+        parent_mod.decide_parent(CORE, PARENT, [OTHER], _ancestor_no, lambda sha: "bundle")
+    assert parent_mod.failure_class(excinfo.value) == "other"
+
+
+def test_failure_class_names_the_three_reporter_classes() -> None:
+    assert parent_mod.failure_class(parent_mod.ParentBundleMissingError("x")) == "parent-bundle-missing"
+    assert parent_mod.failure_class(parent_mod.NotTrunkCertifiedError("x")) == "not-trunk-certified"
+    assert parent_mod.failure_class(parent_mod.ParentResolutionError("x")) == "other"
+
+
+def test_failure_classes_lists_every_reporter_class() -> None:
+    assert set(parent_mod.FAILURE_CLASSES) == {"parent-bundle-missing", "not-trunk-certified", "other"}
+
+
+def test_main_records_the_failure_class_for_step_outputs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    output = tmp_path / "github-output"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    assert parent_mod.main(["--core-sha", "not-a-sha", "--repo", "example/repo", "--run-id", "1"]) == 1
+    assert output.read_text(encoding="utf-8").splitlines() == ["failure_class=other"]
