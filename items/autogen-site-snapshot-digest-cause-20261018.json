@@ -4,7 +4,7 @@
     "Outcome (a) or (b) stated with the evidence; for (b) a failing-before/passing-after regression test and a merged PR in the repo that owns the nondeterminism",
     "No repository variable or setting was changed"
   ],
-  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs the four digests and a stated outcome. FAIL if a variable was set or the gate was loosened.\nPre-publication (AGENTS.md): self-review with the code review action and fix every Critical and Required finding before make pr-open (G13).",
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs the four digests and a stated outcome. FAIL if a variable was set or the gate was loosened.\nPre-publication (AGENTS.md): self-review with the code review action and fix every Critical and Required finding before make pr-open (G13).\n\n### Completion Evidence\nGATE-L and Acceptance Evidence:\nRetrieved canonical digests from all four failed deploy runs on BenchBox-dev/benchbox-site:\n1. Run 38615186053 (2026-10-14T18:31:47Z, https://github.com/BenchBox-dev/benchbox-site/actions/runs/38615186053):\n   deployed: 2c1a0fbbd749aeb76ec3b03b1e9a1ea3235fba2470503d04003a35d9d9daf1d2\n   candidate: b33aef4be7fde32a83d3cfe87c9c26c3035304d21215ec1d3bc01b4ea5273960\n2. Run 38619713842 (2026-10-14T19:03:33Z, https://github.com/BenchBox-dev/benchbox-site/actions/runs/38619713842):\n   deployed: 2c1a0fbbd749aeb76ec3b03b1e9a1ea3235fba2470503d04003a35d9d9daf1d2\n   candidate: b33aef4be7fde32a83d3cfe87c9c26c3035304d21215ec1d3bc01b4ea5273960\n3. Run 38622713758 (2026-10-14T19:30:43Z, https://github.com/BenchBox-dev/benchbox-site/actions/runs/38622713758):\n   deployed: 2c1a0fbbd749aeb76ec3b03b1e9a1ea3235fba2470503d04003a35d9d9daf1d2\n   candidate: b33aef4be7fde32a83d3cfe87c9c26c3035304d21215ec1d3bc01b4ea5273960\n4. Run 38627439350 (2026-10-14T20:06:39Z, https://github.com/BenchBox-dev/benchbox-site/actions/runs/38627439350):\n   deployed: 2c1a0fbbd749aeb76ec3b03b1e9a1ea3235fba2470503d04003a35d9d9daf1d2\n   candidate: b33aef4be7fde32a83d3cfe87c9c26c3035304d21215ec1d3bc01b4ea5273960\n\nOutcome: (a) Deterministic, stable change. Candidate digest was 100% identical (b33aef4be7fde32a83d3cfe87c9c26c3035304d21215ec1d3bc01b4ea5273960) across all 4 runs. No nondeterminism. Per benchbox-site AGENTS.md, this was an intentional content update requiring owner approval variables (SITE_SNAPSHOT_APPROVED_CHANGE: 2c1a0fbb...->b33aef4b...).\nNo repository variable or setting was changed.",
   "description": "Site repo items (BenchBox-dev/benchbox-site): read that repo's AGENTS.md first and follow its worktree, test and PR rules (G2); decision D6 authorizes PRs and merges there.\nConfirmed: four site deploys on 2026-10-14 (runs 38615186053, 38619713842, 38622713758, 38627439350) failed the snapshot_digest gate: 'corpus is unchanged but the snapshot contents changed: canonical digest 2c1a0fbb... became b33aef4b...' (deploy/gates/snapshot-digest.ts). UNKNOWN: whether the 'became' digest was identical across the four runs (a deterministic content change that needed the approval variables) or differed (nondeterministic snapshot build).\nWork: read the four gate lines, record the digests, then (a) identical: record it as a deterministic change and finish with evidence, no code; (b) different: find the nondeterminism source (snapshot build in core, or canonical-digest.ts) and fix it with a regression test.\nGuardrail: never set SITE_SNAPSHOT_APPROVED_CHANGE or SITE_SNAPSHOT_APPROVAL_REASON (repository variables are owner-only, G5).\nGATE-L: the outcome (stable change versus nondeterminism) is decided only from the four recorded digests; if the digests cannot be retrieved from the retained logs or artifacts, record that and block rather than guessing.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox-site/actions/runs/38615186053",
@@ -42,6 +42,14 @@
       "generation": "902e0c63e8654c2392651fa457e46f92",
       "op": "take",
       "op_id": "fe84eff1fe564bb59516ad154c8e9f84",
+      "session_id": "0722acca462b419aa525d939aedd0290"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a",
+      "at": "2026-10-19T15:13:59Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f92b95208b9745f9aeac460c47c9c397",
       "session_id": "0722acca462b419aa525d939aedd0290"
     }
   ]
