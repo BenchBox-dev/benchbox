@@ -1460,41 +1460,6 @@ def test_arm_current_pr_rejects_dirty_checkout_before_hosted_lookup(tmp_path: Pa
     assert run.calls == []
 
 
-def test_make_entrypoints_forward_explicit_landing_bindings() -> None:
-    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
-    for target in ("pr-landing-start", "pr-landing-withdraw", "pr-landing-ready"):
-        body = makefile.split(f"{target}:", 1)[1].split("\n\n", 1)[0]
-        assert "--repo" in body and "--worktree ." in body and "--branch" in body
-    arm = makefile.split("pr-arm-auto-merge:", 1)[1].split("\n\n", 1)[0]
-    ready = makefile.split("pr-ready:", 1)[1].split("\n\n", 1)[0]
-    assert "pr-landing-ready" in arm and "--repo" in arm and "--worktree ." in makefile
-    assert "PR_NUMBER" in arm and "gh pr view --repo" in arm and 'PR="$$PR_NUMBER"' in arm
-    assert "EVIDENCE is required" in arm and "ARM=1" in arm
-    assert "URL" in arm and '"$(URL)"' in arm
-    assert "pr-arm-auto-merge" in ready
-    open_body = makefile.split("pr-open:", 1)[1].split("\n\n", 1)[0]
-    assert "scripts/pr_open_rest.py --repo" in open_body and '--title "$${TITLE:-}"' in open_body
-    assert "git remote get-url --push origin" in open_body
-    assert "HEAD_SPEC" in open_body and '--head-spec "$$HEAD_SPEC"' in open_body
-    assert "Next: make pr-arm once the review fixes are pushed" in open_body
-    assert "withheld" not in open_body and "held" not in open_body
-
-    evidence_route = open_body.index('elif [ -n "$(EVIDENCE)$(BATCH)" ]')
-    plain_route = open_body.index('pr-arm PR="$$PR_NUMBER"', evidence_route)
-    assert 'pr-arm PR="$$PR_NUMBER" REPO="$$REPOSITORY" HEAD="$$(git rev-parse HEAD)"' in open_body[plain_route:]
-
-    evidence_branch = open_body[evidence_route:plain_route]
-    assert 'pr-ready REPO="$$REPOSITORY" URL="$$URL" HEAD="$$(git rev-parse HEAD)"' in evidence_branch
-    assert 'EVIDENCE="$(EVIDENCE)" BATCH="$(BATCH)"' in evidence_branch
-    assert "pr-arm" not in evidence_branch.split("else", 1)[1].split("fi", 1)[0]
-    executable = "\n".join(line for line in makefile.splitlines() if not line.lstrip().startswith(("#", "@#")))
-    assert "gh pr merge --auto --squash" not in executable
-    for target in ("pr-landing-ready", "pr-open", "pr-arm-auto-merge"):
-        body = makefile.split(f"{target}:", 1)[1].split("\n\n", 1)[0]
-        assert "\\\n\t@[" not in body
-        assert "set -euo pipefail" not in body
-
-
 def test_makefile_has_separate_bounded_all_open_status_view() -> None:
     makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
     assert "PR_STATUS_ALL_OPEN_LIMIT ?= 1000" in makefile

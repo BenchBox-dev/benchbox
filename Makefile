@@ -1123,6 +1123,10 @@ pr-content-guard:
 	fi
 
 .PHONY: pr-open
+pr-open: override TITLE := $(value TITLE)
+pr-open: export PR_OPEN_TITLE := $(TITLE)
+pr-open: override PR_BODY_FILE := $(value PR_BODY_FILE)
+pr-open: export PR_OPEN_BODY_FILE := $(PR_BODY_FILE)
 pr-open:
 	@set -eu; \
 	$(MAKE) -s agent-write-preflight; \
@@ -1130,8 +1134,8 @@ pr-open:
 	case "$$CURRENT" in \
 		develop|main|release) echo "Refusing to open PR from $$CURRENT — switch to a feature branch."; exit 1 ;; \
 	esac; \
-	if [ -n "$(PR_BODY_FILE)" ] && [ ! -f "$(PR_BODY_FILE)" ]; then \
-		echo "PR_BODY_FILE does not exist: $(PR_BODY_FILE)" >&2; \
+	if [ -n "$$PR_OPEN_BODY_FILE" ] && [ ! -f "$$PR_OPEN_BODY_FILE" ]; then \
+		echo "PR_BODY_FILE does not exist: $$PR_OPEN_BODY_FILE" >&2; \
 		exit 1; \
 	fi; \
 	REPOSITORY="$(or $(REPO),BenchBox-dev/BenchBox)"; \
@@ -1172,7 +1176,7 @@ pr-open:
 	$(MAKE) -s pr-conflict-scan BRANCH="$$CURRENT" REPO="$$REPOSITORY" || true; \
 	git push -u origin "$$CURRENT" || { echo "Push failed for $$CURRENT — aborting before opening a PR (remote branch may be stale)." >&2; exit 1; }; \
 	PUBLISHED=$$(uv run -- python scripts/pr_open_rest.py --repo "$$REPOSITORY" --head-owner "$$ORIGIN_OWNER" \
-		--branch "$$CURRENT" --head-spec "$$HEAD_SPEC" --title "$${TITLE:-}" --body-file "$(PR_BODY_FILE)"); \
+		--branch "$$CURRENT" --head-spec "$$HEAD_SPEC" --title "$$PR_OPEN_TITLE" --body-file "$$PR_OPEN_BODY_FILE"); \
 	PR_STATUS="$${PUBLISHED%% *}"; \
 	PR_NUMBER="$${PUBLISHED#* }"; \
 	URL="$${PR_NUMBER#* }"; \
@@ -1225,6 +1229,14 @@ oracle-review-recover: export ORACLE_REVIEW_PR := $(PR)
 oracle-review-recover: export ORACLE_REVIEW_REPO := $(or $(REPO),BenchBox-dev/BenchBox)
 oracle-review-recover:
 	@uv run -- python scripts/oracle_review_recover.py
+
+.PHONY: pr-rerun
+pr-rerun: override PR := $(value PR)
+pr-rerun: override REPO := $(value REPO)
+pr-rerun: export PR_RERUN_PR := $(PR)
+pr-rerun: export PR_RERUN_REPO := $(or $(REPO),BenchBox-dev/BenchBox)
+pr-rerun:
+	@uv run -- python scripts/pr_rerun.py
 
 .PHONY: pr-arm
 pr-arm: override PR := $(value PR)

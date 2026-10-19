@@ -31,8 +31,14 @@ def _log(*commits: tuple[str, str]) -> str:
     return "".join(f"{subject}\x1f{body}\n\x1e\n" for subject, body in commits)
 
 
-def _pull(owner: str, ref: str, number: int = 42) -> dict:
-    return {"number": number, "html_url": URL, "head": {"ref": ref, "repo": {"owner": {"login": owner}}}}
+def _pull(owner: str, ref: str, number: int = 42, *, title: str = "", body: str = "") -> dict:
+    return {
+        "number": number,
+        "html_url": URL,
+        "head": {"ref": ref, "repo": {"owner": {"login": owner}}},
+        "title": title,
+        "body": body,
+    }
 
 
 class FakeGh:
@@ -138,6 +144,60 @@ def test_reuse_without_body_file_leaves_pr_untouched() -> None:
 
     assert pr.status == "reused"
     assert gh.api("PATCH") == [] and gh.api("POST") == []
+
+
+@pytest.mark.parametrize(
+    ("title", "body", "expected"),
+    [
+        ("fix: existing", "Existing body.\n", {}),
+        ("  fix: existing ", "Existing body.\r\n\r\n", {}),
+        ("fix: changed", "Existing body.\n", {"title": "fix: changed"}),
+        (None, "Changed body.\n", {"body": "Changed body.\n"}),
+        ("fix: changed", "Changed body.\n", {"title": "fix: changed", "body": "Changed body.\n"}),
+        (None, "", {"body": ""}),
+    ],
+)
+def test_reused_pr_updates_only_changed_fields_in_one_request(
+    tmp_path: Path, title: str | None, body: str, expected: dict[str, str]
+) -> None:
+    body_file = tmp_path / "body.md"
+    body_file.write_text(body)
+    gh = FakeGh([_pull("BenchBox-dev", "feat/widget", title="fix: existing", body="Existing body.\n")])
+
+    pr = pr_open_rest.publish(REPO, "BenchBox-dev", "feat/widget", "feat/widget", title, body_file, gh)
+
+    assert pr == pr_open_rest.PublishedPr("reused", 42, URL)
+    patches = gh.api("PATCH")
+    if not expected:
+        assert patches == []
+    else:
+        assert len(patches) == 1
+        fields = _fields(patches[0])
+        actual = {
+            key: body_file.read_text(encoding="utf-8") if value == f"@{body_file}" else value
+            for key, value in fields.items()
+        }
+        assert actual == expected
+    assert gh.api("POST") == []
+
+
+def test_explicit_title_only_does_not_overwrite_body() -> None:
+    gh = FakeGh([_pull("BenchBox-dev", "feat/widget", title="fix: existing", body="Keep this body.")])
+
+    pr_open_rest.publish(REPO, "BenchBox-dev", "feat/widget", "feat/widget", "fix: changed", None, gh)
+
+    assert _fields(gh.api("PATCH")[0]) == {"title": "fix: changed"}
+
+
+def test_reused_pr_body_read_failure_does_not_edit(tmp_path: Path) -> None:
+    gh = FakeGh([_pull("BenchBox-dev", "feat/widget", title="fix: existing")])
+
+    with pytest.raises(OSError):
+        pr_open_rest.publish(
+            REPO, "BenchBox-dev", "feat/widget", "feat/widget", "fix: changed", tmp_path / "missing", gh
+        )
+
+    assert gh.api("PATCH") == []
 
 
 def test_cross_repository_head_filters_by_fork_owner_and_creates_with_owner_prefix() -> None:
