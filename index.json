@@ -8482,6 +8482,16 @@
       "status": "done",
       "title": "docs linkcheck turns transient external-site timeouts into a red CI job"
     },
+    "docs-mig-activate-schema4": {
+      "claim": null,
+      "needs": [
+        "docs-mig-core-bundle-schema4",
+        "docs-mig-site-bundle-schema4"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Activate schema-4 publication only after deployed consumer support"
+    },
     "docs-mig-adr-ownership": {
       "claim": null,
       "needs": [],
