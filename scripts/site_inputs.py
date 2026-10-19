@@ -156,7 +156,7 @@ def build_contract(out: Path) -> None:
         "snapshot_schema_version": EXPLORER_BUILD_CONTRACT_VERSION,
         "read_model_version": EXPLORER_READ_MODEL_VERSION,
         "tuning_vocabulary": list(MODES),
-        "browser_duckdb_schema_sql": (ROOT / "docs/development/browser-duckdb-schema.sql").read_text(encoding="utf-8"),
+        "browser_duckdb_schema_sql": (ROOT / "_project/design/browser-duckdb-schema.sql").read_text(encoding="utf-8"),
     }
     out.write_text(json.dumps(contract, indent=2) + "\n", encoding="utf-8")
 

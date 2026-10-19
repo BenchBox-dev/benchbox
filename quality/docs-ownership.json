@@ -111,7 +111,6 @@
     "docs/development/adr/adr-tpcdi-enhanced-parallel-support-decision.md": "site-owned",
     "docs/development/adr/adr-tpchavoc-submission-variant-coverage.md": "site-owned",
     "docs/development/architecture-design.md": "site-owned",
-    "docs/development/browser-duckdb-schema.sql": "core-only",
     "docs/development/data-dependencies.md": "site-owned",
     "docs/development/data-sharing.md": "site-owned",
     "docs/development/db-api-2.md": "site-owned",

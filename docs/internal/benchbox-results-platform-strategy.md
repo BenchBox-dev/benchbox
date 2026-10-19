@@ -842,7 +842,7 @@ and derive all navigation from DuckDB.
 ### Ten Canonical DuckDB Tables and Views
 
 All ten surfaces must exist with stable schemas before W3 (frontend migration) begins.
-The frozen DDL is in `docs/development/browser-duckdb-schema.sql`.
+The frozen DDL is in `_project/design/browser-duckdb-schema.sql`.
 
 | # | Name | Kind | Serves |
 |---|------|------|--------|
@@ -951,7 +951,7 @@ hand-patched.
 
 **Research gate exit criterion met when:** RG-1 and RG-3 are measured (after W2 DB build),
 all others are GREEN or have an accepted-risk note above, and the frozen schema in
-`docs/development/browser-duckdb-schema.sql` is committed alongside this decision record.
+`_project/design/browser-duckdb-schema.sql` is committed alongside this decision record.
 
 ## External Sources
 

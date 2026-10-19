@@ -250,3 +250,20 @@ def test_cli_rejects_stale_marker_selector(
     else:
         selector["source"] = "scripts/missing.py"
     assert_failure(run_cli(root, manifest), *fragments)
+
+
+def test_cli_handles_completed_contract_relocation(ownership_repo: tuple[Path, dict[str, Any]]) -> None:
+    root, manifest = ownership_repo
+    sql_source = "docs/development/browser-duckdb-schema.sql"
+    sql_dest = "_project/design/browser-duckdb-schema.sql"
+    write_file(root, sql_dest, "CREATE TABLE test;\n")
+    git(root, "add", sql_dest)
+    git(root, "rm", "-f", sql_source)
+    del manifest["files"][sql_source]
+    result = run_cli(root, manifest)
+    assert result.returncode == 0, result.stderr
+
+    write_file(root, sql_source, "stale source\n")
+    git(root, "add", sql_source)
+    manifest["files"][sql_source] = "core-only"
+    assert_failure(run_cli(root, manifest), "exists but source is still tracked")
