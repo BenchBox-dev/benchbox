@@ -14,6 +14,7 @@ import string
 import subprocess
 import sys
 import tempfile
+import time
 import tomllib
 import uuid
 from collections.abc import Callable, Iterator, Mapping, Sequence
@@ -24,7 +25,7 @@ import pr_landing
 import remote_closeout as closeout
 
 CLI_DESCRIPTION = (
-    "Run the independent Codex reviewer on a bound cloud-built pull request, then publish and store its record."
+    "Run a fresh read-only reviewer on a bound cloud-built pull request, then publish and store its record."
 )
 
 PROMPT = Path(__file__).resolve().parent / "remote_review_prompt.txt"
@@ -42,6 +43,24 @@ RULE_PATHS = ("AGENTS.md", "docs/agent")
 LOCATION_RE = re.compile(r"(?P<path>.+?)(?::(?P<line>[1-9][0-9]*))?")
 HUNK_RE = re.compile(r"@@ -[0-9]+(?:,(?P<old>[0-9]+))? \+(?P<start>[0-9]+)(?:,(?P<new>[0-9]+))? @@")
 MODEL_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/-]*")
+CLAUDE_MODEL = "sonnet"
+CLAUDE_FLAGS = (
+    "--safe-mode",
+    "--restricted",
+    "--tools",
+    "--allowedTools",
+    "--permission-mode",
+    "--permission-prompts",
+    "--setting-sources",
+    "--strict-mcp-config",
+    "--mcp-config",
+    "--disable-slash-commands",
+    "--no-session-persistence",
+    "--no-chrome",
+    "--add-dir",
+    "--output-format",
+    "--json-schema",
+)
 DIFF = [
     "git",
     "diff",
@@ -83,6 +102,10 @@ LandingError = closeout.LandingError
 
 
 class DeadStep(LandingError):
+    pass
+
+
+class UsageLimit(Refused):
     pass
 
 
@@ -137,13 +160,14 @@ def codex_run(cmd: list[str], env: Mapping[str, str]) -> tuple[int, str]:
         stderr=subprocess.STDOUT,
         env=dict(env),
         start_new_session=True,
+        cwd=cmd[cmd.index("--add-dir") + 1] if cmd[0] == "claude" and "-p" in cmd else None,
     )
     try:
         out, _ = proc.communicate(timeout=CODEX_TIMEOUT)
     except subprocess.TimeoutExpired:
         _kill_group(proc.pid)
         _drain(proc)
-        raise Refused(f"codex did not finish within {CODEX_TIMEOUT} seconds; its process group was killed") from None
+        raise Refused(f"{cmd[0]} did not finish within {CODEX_TIMEOUT} seconds; its process group was killed") from None
     except BaseException:
         _kill_group(proc.pid)
         _drain(proc)
@@ -465,7 +489,7 @@ def _codex_events(out: str) -> list[dict]:
     return events
 
 
-def _codex_failure(events: Sequence[dict], out: str) -> str:
+def _codex_failure(events: Sequence[dict], out: str) -> tuple[str, bool]:
     messages: list[str] = []
     for event in events:
         error = event.get("error")
@@ -473,12 +497,10 @@ def _codex_failure(events: Sequence[dict], out: str) -> str:
             messages.append(str(error["message"]))
         elif event.get("type") == "error" and closeout._text(event.get("message")):
             messages.append(str(event["message"]))
-    return messages[-1] if messages else out.strip()[-500:]
+    return (messages[-1], True) if messages else (out.strip()[-500:], False)
 
 
-def _run_reviewer(codex: CodexRunner, workdir: Path, model: str, prompt: str) -> tuple[str, str, str]:
-    (workdir / "run").mkdir()
-    (workdir / "run" / "schema.json").write_text(_json_text(OUTPUT_SCHEMA), encoding="utf-8")
+def _run_codex(codex: CodexRunner, workdir: Path, model: str, prompt: str) -> tuple[str, str, str, str]:
     env, login = _isolated_env(workdir)
     try:
         code, version = codex(["codex", "--version"], env)
@@ -490,7 +512,9 @@ def _run_reviewer(codex: CodexRunner, workdir: Path, model: str, prompt: str) ->
         _keep_refreshed_login(env, login)
     events = _codex_events(out)
     if code != 0:
-        raise Refused(f"codex exec failed with exit code {code}: {_codex_failure(events, out)}")
+        failure, structured = _codex_failure(events, out)
+        refused = UsageLimit if structured and "usage limit" in failure.casefold() else Refused
+        raise refused(f"codex exec failed with exit code {code}: {failure}")
     try:
         text = (workdir / "run" / "output.json").read_text(encoding="utf-8")
     except OSError as exc:
@@ -500,7 +524,132 @@ def _run_reviewer(codex: CodexRunner, workdir: Path, model: str, prompt: str) ->
         for event in events
         if event.get("type") == "thread.started" and closeout._text(event.get("thread_id"))
     ]
-    return text, threads[0] if threads else f"{version} {uuid.uuid4()}", version
+    run_id = threads[0] if threads else f"{version} {uuid.uuid4()}"
+    return text, f"openai:{run_id}", version, model
+
+
+def _claude_login() -> bytes:
+    source = Path(os.environ.get("CLAUDE_CONFIG_DIR", str(Path.home() / ".claude"))) / ".credentials.json"
+    try:
+        login = source.read_bytes()
+    except FileNotFoundError:
+        if sys.platform != "darwin":
+            raise Refused(f"claude is not logged in: cannot read {source}") from None
+        result = subprocess.run(
+            ["/usr/bin/security", "find-generic-password", "-s", "Claude Code-credentials", "-w"],
+            capture_output=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            raise Refused("claude is not logged in: cannot read the Claude Code login from the keychain") from None
+        login = result.stdout
+    try:
+        oauth = json.loads(login)["claudeAiOauth"]
+        if not isinstance(oauth, dict) or not closeout._text(oauth.get("accessToken")):
+            raise ValueError("no OAuth access token")
+    except (KeyError, TypeError, ValueError) as exc:
+        raise Refused("claude is not logged in: no valid Claude Code OAuth login") from exc
+    staged: dict[str, object] = {key: value for key, value in oauth.items() if key != "refreshToken"}
+    expires = oauth.get("expiresAt")
+    if isinstance(expires, (int, float)) and not isinstance(expires, bool):
+        staged["expiresAt"] = expires
+        expires_seconds = expires / 1000 if expires > 10_000_000_000 else expires
+        if expires_seconds <= time.time():
+            raise Refused("claude login has expired; run claude interactively to refresh it, then retry")
+    return _json_text({"claudeAiOauth": staged}).encode("utf-8")
+
+
+def _claude_env(workdir: Path) -> dict[str, str]:
+    home = workdir / "claude-home"
+    config = home / ".claude"
+    config.mkdir(parents=True)
+    auth = config / ".credentials.json"
+    auth.touch(mode=0o600)
+    auth.write_bytes(_claude_login())
+    return {
+        "PATH": os.environ.get("PATH", os.defpath),
+        "HOME": str(home),
+        "LANG": os.environ.get("LANG", "C.UTF-8"),
+    }
+
+
+def claude_command(workdir: Path, model: str, prompt: str) -> list[str]:
+    return [
+        "claude",
+        "-p",
+        "--safe-mode",
+        "--restricted",
+        "--tools",
+        "Read,Glob,Grep",
+        "--allowedTools",
+        "Read,Glob,Grep",
+        "--permission-mode",
+        "dontAsk",
+        "--permission-prompts",
+        "none",
+        "--setting-sources",
+        "",
+        "--strict-mcp-config",
+        "--mcp-config",
+        '{"mcpServers":{}}',
+        "--disable-slash-commands",
+        "--no-session-persistence",
+        "--no-chrome",
+        "--add-dir",
+        str(workdir / "input"),
+        str(workdir / "head"),
+        "--output-format",
+        "json",
+        "--json-schema",
+        json.dumps(OUTPUT_SCHEMA),
+        "--model",
+        model,
+        "--",
+        prompt,
+    ]
+
+
+def _run_claude(cli: CodexRunner, workdir: Path, model: str, prompt: str) -> tuple[str, str, str, str]:
+    env = _claude_env(workdir)
+    code, help_text = cli(["claude", "--help"], env)
+    missing = [flag for flag in CLAUDE_FLAGS if flag not in help_text]
+    if code != 0 or missing:
+        raise Refused(f"claude cannot enforce reviewer isolation: required flags unavailable: {', '.join(missing)}")
+    code, version = cli(["claude", "--version"], env)
+    version = version.strip()
+    if code != 0 or not version:
+        raise LandingError(f"claude --version failed: {version[:200]}")
+    code, out = cli(claude_command(workdir, model, prompt), env)
+    try:
+        result = json.loads(out)
+    except ValueError as exc:
+        raise Refused("claude -p returned no JSON result") from exc
+    if not isinstance(result, dict):
+        raise Refused("claude -p returned no JSON result object")
+    if code != 0 or result.get("is_error"):
+        raise Refused(f"claude -p failed with exit code {code}: {str(result.get('result', 'review failed'))[:500]}")
+    output = result.get("structured_output")
+    run_id = result.get("session_id")
+    if not isinstance(output, dict) or not closeout._text(run_id):
+        raise Refused("claude -p returned no structured review or session ID")
+    models = result.get("modelUsage")
+    if isinstance(models, dict) and len(models) == 1:
+        model = next(iter(models))
+    return _json_text(output), f"anthropic:{run_id}", version, model
+
+
+def _run_reviewer(
+    cli: CodexRunner, workdir: Path, model: str, prompt: str, reviewer: str = "codex"
+) -> tuple[str, str, str, str]:
+    (workdir / "run").mkdir()
+    (workdir / "run" / "schema.json").write_text(_json_text(OUTPUT_SCHEMA), encoding="utf-8")
+    if reviewer == "claude":
+        return _run_claude(cli, workdir, model, prompt)
+    try:
+        return _run_codex(cli, workdir, model, prompt)
+    except UsageLimit:
+        _warn("Codex usage limit reached; using a fresh Claude reviewer (anthropic family)")
+        return _run_claude(cli, workdir, CLAUDE_MODEL, prompt)
 
 
 def reviewer_output(text: str, previous_ids: Sequence[str]) -> tuple[list[dict], dict[str, str]]:
@@ -796,7 +945,7 @@ def _store(
             {
                 "record_index": record_index,
                 "head_sha": head,
-                "codex_version": review["codex_version"],
+                "reviewer_version": review["reviewer_version"],
                 "prompt_sha256": hashlib.sha256(PROMPT.read_bytes()).hexdigest(),
                 "steps": steps,
             }
@@ -833,6 +982,7 @@ def _review(
     repo: str | None,
     run: Runner,
     codex: CodexRunner,
+    reviewer: str,
     checkout: Path,
 ) -> int:
     repo = closeout._repository(repo)
@@ -840,7 +990,11 @@ def _review(
     head = closeout._revision(head, "HEAD")
     dry = _flag("DRY_RUN", dry_run)
     builder_head = builder_head if dry else closeout._revision(builder_head, "BUILDER_HEAD")
-    model = _codex_model(model)
+    if reviewer not in ("codex", "claude"):
+        raise Refused(f"REVIEWER must be codex or claude, got {reviewer!r}")
+    model = _codex_model(model) if reviewer == "codex" else model or CLAUDE_MODEL
+    if not isinstance(model, str) or not MODEL_RE.fullmatch(model):
+        raise Refused(f"MODEL must name a reviewer model, got {model!r}")
     snapshot = closeout._load_store(closeout.store_path(repo, number), repo, number)
     binding = snapshot.get("binding")
     if binding is None:
@@ -857,7 +1011,9 @@ def _review(
     workdir = Path(tempfile.mkdtemp(prefix="benchbox-remote-review-", dir=runs_root())).resolve()
     try:
         diff = _prepare_input(run, checkout, workdir, view, (base, head, listing), item, previous)
-        text, run_id, version = _run_reviewer(codex, workdir, model, review_prompt(workdir, number, base, head))
+        text, run_id, version, model = _run_reviewer(
+            codex, workdir, model, review_prompt(workdir, number, base, head), reviewer
+        )
     finally:
         shutil.rmtree(workdir, ignore_errors=True)
     findings, marks = reviewer_output(text, [entry["id"] for entry in previous])
@@ -880,7 +1036,7 @@ def _review(
     if dry:
         print(json.dumps(record, indent=2))
         return 0
-    review = {"record": record, "findings": findings, "marks": marks, "diff": diff, "codex_version": version}
+    review = {"record": record, "findings": findings, "marks": marks, "diff": diff, "reviewer_version": version}
     path, steps = _store(run, repo, number, snapshot, review, str(builder_head))
     print(
         f"stored a {record['disposition']} record for PR #{number} at {closeout._short(head)} in {path} "
@@ -899,10 +1055,11 @@ def review(
     run: Runner = closeout.live_run,
     codex: CodexRunner = codex_run,
     checkout: Path = Path("."),
+    reviewer: str = "codex",
 ) -> int:
     return closeout._guarded(
         "pr-landing-remote-review",
-        lambda: _review(pr, head, builder_head, model, dry_run, repo, run, codex, checkout),
+        lambda: _review(pr, head, builder_head, model, dry_run, repo, run, codex, reviewer, checkout),
     )
 
 
@@ -918,12 +1075,14 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None
 
     parser = argparse.ArgumentParser(description=CLI_DESCRIPTION)
     parser.add_argument("--repo", default=selected("REPO") or closeout.REPOSITORY)
-    for name in ("PR", "HEAD", "BUILDER_HEAD", "MODEL", "DRY_RUN", "RESUME"):
+    for name in ("PR", "HEAD", "BUILDER_HEAD", "MODEL", "REVIEWER", "DRY_RUN", "RESUME"):
         parser.add_argument(f"--{name.lower().replace('_', '-')}", default=selected(name))
     args = parser.parse_args(argv)
     if args.resume is not None:
         return resume(args.pr, args.repo, flag=args.resume)
-    return review(args.pr, args.head, args.builder_head, args.model, args.dry_run, args.repo)
+    return review(
+        args.pr, args.head, args.builder_head, args.model, args.dry_run, args.repo, reviewer=args.reviewer or "codex"
+    )
 
 
 if __name__ == "__main__":

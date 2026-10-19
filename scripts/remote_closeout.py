@@ -554,6 +554,12 @@ def _arm(
         reasons.extend(found)
         if reasons:
             raise Refused("\n".join(reasons))
+        reviewer = state["records"][-1]["reviewer"]
+        prefix = reviewer["run_id"].partition(":")[0]
+        family = prefix if prefix in ("openai", "anthropic") else "unknown"
+        print(f"reviewer family: {family}; model: {reviewer['model']}; run: {reviewer['run_id']}")
+        if family == "anthropic":
+            print("Claude-family review: less independent when the builder is also Claude-family.")
         code, out = run(
             ["gh", "pr", "merge", str(number), "--repo", repo, "--squash", "--auto", "--match-head-commit", head]
         )

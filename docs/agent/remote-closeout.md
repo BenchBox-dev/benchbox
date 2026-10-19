@@ -71,6 +71,11 @@ pinned base and head, reviews it against the item's acceptance criteria and the
 repository rules, and returns a record to the closer. It writes nothing to
 GitHub.
 
+Codex is the default reviewer. Claude is the fallback when Codex reports a usage
+limit, or the selected reviewer with `REVIEWER=claude`. A Claude review is less
+independent when the builder is also Claude-family. The closer discloses the
+reviewer's family when arming; this is not another owner-approval condition.
+
 The record contains:
 
 | Field | Meaning |
@@ -81,7 +86,7 @@ The record contains:
 | Manifest digest | SHA-256 of `git diff --raw --no-renames --no-abbrev <base> <head>` |
 | Findings | Each with location, reasoning, and severity |
 | Disposition | `approve` or `changes-requested` |
-| Reviewer | Model and run ID |
+| Reviewer | Model and family-prefixed run ID |
 
 The closer stores each record, with its observation of the PR's labels, draft
 state, and threads, under `~/.benchbox/reviews/`, outside the repository. The
@@ -121,8 +126,15 @@ The reviewer returns its record as a JSON object with exactly these fields:
 `pr_number`, `head_branch`, `pr_node_id`, `base_sha`, `head_sha`,
 `manifest_digest`, `findings` (a list of objects with exactly `location`,
 `reasoning`, and `severity`), `disposition`, and `reviewer` (an object with
-exactly `model` and `run_id`). The closer publishes the findings, then stores
-the record with the head the builder's latest report names:
+exactly `model` and `run_id`).
+
+The `reviewer` field keeps that exact two-field shape. Runs started by the
+review target prefix `run_id` with `openai:` or `anthropic:` so the backend is
+unambiguous even when the selected model is an alias. Older and manually
+supplied records without either prefix have an unknown family.
+
+The closer publishes the findings, then stores the record with the head the
+builder's latest report names:
 
 ```bash
 make pr-landing-remote-record PR=<n> RECORD=<record.json> BUILDER_HEAD=<sha>
@@ -144,9 +156,14 @@ a change stores the owner's statement, passed as
 
 `make pr-landing-remote-review PR=<n> HEAD=<sha> BUILDER_HEAD=<sha>` starts the
 reviewer, builds its record, stores it as `make pr-landing-remote-record` does,
-and publishes the findings. `MODEL=<codex model>` picks the model, which
-otherwise comes from the Codex configuration. `DRY_RUN=1` prints the record and
-creates, publishes, and stores nothing, so it needs no `BUILDER_HEAD`.
+and publishes the findings. `REVIEWER=codex` is the default. `MODEL=<model>`
+picks that backend's model: otherwise Codex uses its configuration and Claude
+uses `sonnet`. `REVIEWER=claude` starts Claude directly. A failed Codex run falls
+back once to Claude `sonnet` only when a Codex error event reports a usage
+limit, ignoring case. Output text that merely mentions a usage limit, and every
+other Codex failure, refuses without a fallback.
+`DRY_RUN=1` prints the record and creates, publishes, and stores nothing, so it
+needs no `BUILDER_HEAD`. Temporary review inputs are still prepared and removed.
 `make pr-landing-remote-review PR=<n> RESUME=1` runs no reviewer: it only
 finishes the publication steps an earlier run left pending.
 
@@ -165,33 +182,55 @@ and the blocking findings from earlier reviews that are still open. The rules
 come from the base so that a change cannot rewrite the standard it is judged
 by. The prompt is `scripts/remote_review_prompt.txt`.
 
-It then runs `codex exec`, which makes the reviewer a different model family
-from the Claude builders. Codex runs without the user's Codex configuration,
+Codex runs through `codex exec`, without the user's Codex configuration,
 MCP servers, hooks, memories, plugins, or rules, with a copy of the Codex login
 in a temporary home and only `PATH`, `HOME`, `CODEX_HOME`, and `LANG` in its
 environment. Its sandbox can read the head tree, the review inputs, and the
 system files that commands need to run, and nothing else: not `/tmp`,
 `/var/tmp`, or any home directory. It can write nowhere and has no network.
-The review store is not locked while Codex runs, so
+
+Claude runs through `claude -p` with `--safe-mode`, `--restricted`, and only
+`Read`, `Glob`, and `Grep` available. Its working directory is the input
+directory, and `--add-dir` adds only the head tree. Restricted mode confines
+all file tools to those two directories, including reads through symlinks.
+No shell, write, web, network, agent, or skill tool is available. Safe mode,
+empty setting sources, disabled slash commands, and strict empty MCP
+configuration prevent user and head-tree settings, hooks, memory, CLAUDE.md,
+custom agents, skills, and plugins from loading. Session persistence and Chrome
+integration are disabled. Built-in agent names may still appear in CLI
+metadata, but there is no agent tool to invoke them.
+
+Claude receives only `PATH`, `HOME`, and `LANG`, with an isolated home and
+configuration directory outside the readable roots. The target stages the
+OAuth login, without its refresh token, from the existing `.credentials.json`
+or, on macOS, the `Claude Code-credentials` keychain entry into a private
+credentials file; an expired login refuses before launch. The
+refresh token is never staged, so a review cannot rotate or invalidate the
+user's real login. The model cannot read this file. It does not receive API
+keys, other environment credentials, MCP logins, or the user's configuration.
+`--bare` is not used because it disables the existing subscription login. The
+installed CLI must support all isolation flags or the target refuses to run it.
+
+The review store is not locked while either reviewer runs, so
 `make pr-landing-remote-withdraw` is never kept waiting; the target then waits
-up to three minutes for the lock. A Codex run that exceeds an hour is killed
-with its process group. The target deletes the temporary directory afterwards,
-first copying back a login Codex refreshed during the run if the original is
-unchanged and not a symlink.
+up to three minutes for the lock. A run that exceeds an hour is killed
+with its process group. The target deletes the temporary directory afterwards.
+For Codex it first copies back a login refreshed during the run if the original
+is unchanged and not a symlink.
 
 Each finding has a `path:line` location in the head version, its reasoning, and
 a severity of Critical, Required, or Nit. The target computes the disposition:
 `approve` only when there is no new Critical or Required finding and no earlier
 one is still open. Under the store lock it checks again that the binding, the
 open findings, and the live head are unchanged and that the PR was not armed
-while Codex ran, which needs a withdrawal first. It then stores the record, and
+while the reviewer ran, which needs a withdrawal first. It then stores the record, and
 only then publishes, so the latest record is always the newest review. It posts the
 findings as one review, with Critical and Required findings inline where the
 line is in the diff, and the rest and every Nit in the review body; if GitHub
 refuses an inline comment, the comments move into the body. On a re-review the
 reviewer marks each earlier finding fixed or open, and the target resolves only
 the threads of findings marked fixed. The PR's file keeps each blocking finding
-with its thread ID, and each run's Codex version, prompt digest, and publication
+with its thread ID, and each run's reviewer version, prompt digest, and publication
 steps. Until every step is done the record is unpublished and
 `make pr-arm-remote` refuses it. The next run, or `RESUME=1`, finishes the
 steps first, finding an already posted review by its hidden marker instead of
@@ -224,6 +263,10 @@ time, and refuses otherwise:
    requested changes or unresolved threads, and has no failing required check.
 7. Labels, draft state, and thread state match the observation stored with the
    record, or the owner has explained the change in the current request.
+
+Before arming, the target prints the reviewer's family, model, and run ID. It
+flags an `anthropic:` run as less independent for Claude-built code, without
+adding a refusal or requiring `OWNER_EXPLAINED` for the reviewer's family.
 
 It then arms pinned to `HEAD`, as `make pr-arm` does, and the closer monitors
 the PR to merge under `[WRITE-CLOSEOUT-001]`.

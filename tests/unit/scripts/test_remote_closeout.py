@@ -803,12 +803,13 @@ def test_the_make_wrapper_hands_values_over_untouched_and_runs_no_shell_metachar
 
 @skip_on_windows
 def test_the_review_target_hands_its_options_to_the_review_script(tmp_path: Path) -> None:
-    options = ("PR=7", f"HEAD={OTHER_SHA}", "MODEL=gpt-x", "DRY_RUN=1", "RESUME=1")
+    options = ("PR=7", f"HEAD={OTHER_SHA}", "MODEL=gpt-x", "REVIEWER=claude", "DRY_RUN=1", "RESUME=1")
     env = _make_env(tmp_path, "pr-landing-remote-review", *options)
     argv = (tmp_path / "argv").read_text(encoding="utf-8").split()
     assert argv == ["run", "--no-project", "--", "python", "scripts/remote_review.py"]
     assert env["REMOTE_CLOSEOUT_HEAD"] == OTHER_SHA
     assert env["REMOTE_CLOSEOUT_MODEL"] == "gpt-x"
+    assert env["REMOTE_CLOSEOUT_REVIEWER"] == "claude"
     assert env["REMOTE_CLOSEOUT_DRY_RUN"] == env["REMOTE_CLOSEOUT_RESUME"] == "1"
     assert env["PYTHONDONTWRITEBYTECODE"] == "1"
 
@@ -849,6 +850,9 @@ if behaviour.get("hang"):
     (STATE / "child.pid").write_text(str(child.pid))
     time.sleep(60)
 print(json.dumps({"type": "thread.started", "thread_id": "thread-0042"}))
+if "raw_fail" in behaviour:
+    print(json.dumps({"type": "item.completed", "item": {"text": behaviour["raw_fail"]}}))
+    raise SystemExit(1)
 if "fail" in behaviour:
     print(json.dumps({"type": "error", "message": behaviour["fail"]}))
     raise SystemExit(1)
@@ -900,6 +904,70 @@ def codex(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, denied_roots: tuple[s
     (bin_dir / "codex").chmod(0o755)
     monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
     monkeypatch.setenv("CODEX_HOME", str(home))
+    fake = FakeCodex(state, home)
+    fake.respond()
+    return fake
+
+
+FAKE_CLAUDE = """
+import json
+import os
+import shutil
+import sys
+from pathlib import Path
+
+STATE = Path(__STATE__)
+args = sys.argv[1:]
+behaviour = json.loads((STATE / "next.json").read_text())
+if args == ["--help"]:
+    print(behaviour.get("help", "--safe-mode --restricted --tools --allowedTools --permission-mode "
+          "--permission-prompts --setting-sources --strict-mcp-config --mcp-config --disable-slash-commands "
+          "--no-session-persistence --no-chrome --add-dir --output-format --json-schema"))
+    raise SystemExit(0)
+if args == ["--version"]:
+    print("2.1.302 (Claude Code)")
+    raise SystemExit(0)
+snapshot = STATE / f"call-{len(list(STATE.glob('call-*')))}"
+shutil.copytree(Path.cwd().parent, snapshot, symlinks=True)
+(snapshot / "argv.json").write_text(json.dumps(args))
+(snapshot / "env.json").write_text(json.dumps(dict(os.environ)))
+(snapshot / "cwd.json").write_text(json.dumps(str(Path.cwd())))
+if "fail" in behaviour:
+    print(json.dumps({"is_error": True, "result": behaviour["fail"]}))
+    raise SystemExit(1)
+print(json.dumps({
+    "is_error": False,
+    "session_id": "claude-session-42",
+    "structured_output": json.loads(behaviour["output"]),
+    "modelUsage": {"claude-sonnet-4-6": {"inputTokens": 100}},
+}))
+"""
+
+
+@pytest.fixture
+def claude(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, denied_roots: tuple[str, str]) -> FakeCodex:
+    bin_dir, state, home = tmp_path / "claude-bin", tmp_path / "claude-state", tmp_path / "claude-config"
+    for directory in (bin_dir, state, home):
+        directory.mkdir()
+    (home / ".credentials.json").write_text(
+        json.dumps(
+            {
+                "claudeAiOauth": {
+                    "accessToken": "claude-test-login",
+                    "refreshToken": "claude-test-refresh",
+                    "scopes": ["user:inference"],
+                },
+                "mcpOAuth": {"secret": "excluded"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (bin_dir / "claude").write_text(
+        f"#!{sys.executable}\n{FAKE_CLAUDE.replace('__STATE__', repr(str(state)))}", encoding="utf-8"
+    )
+    (bin_dir / "claude").chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(home))
     fake = FakeCodex(state, home)
     fake.respond()
     return fake
@@ -959,7 +1027,7 @@ def test_review_stores_a_record_with_a_computed_disposition_and_publishes_its_fi
         "manifest_digest": world.digest(world.base, world.head),
         "findings": findings,
         "disposition": "changes-requested",
-        "reviewer": {"model": "gpt-test", "run_id": "thread-0042"},
+        "reviewer": {"model": "gpt-test", "run_id": "openai:thread-0042"},
     }
     assert (entry["builder_head"], entry["published"]) == (world.head, True)
     assert remote_closeout.record_problems({field: entry[field] for field in RECORD_FIELDS}) == []
@@ -1274,12 +1342,55 @@ def test_review_refuses_without_builder_head_before_any_command(
     assert codex.runs() == []
 
 
-def test_review_reports_the_codex_error_when_the_reviewer_fails(
-    world: World, bound: FakeGitHub, codex: FakeCodex, capsys: pytest.CaptureFixture[str]
+@pytest.mark.parametrize("message", ["You've hit your usage limit. Try again at 12:23 PM.", "USAGE LIMIT reached"])
+def test_review_falls_back_to_claude_only_on_a_codex_usage_limit(
+    world: World,
+    bound: FakeGitHub,
+    codex: FakeCodex,
+    claude: FakeCodex,
+    message: str,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
-    codex.behave(fail="You've hit your usage limit. Try again at 12:23 PM.")
-    err = _review_refusal(world, bound, capsys)
-    assert "codex exec failed with exit code 1: You've hit your usage limit. Try again at 12:23 PM." in err
+    codex.behave(fail=message)
+    claude.respond([finding("docs/note.md:1", "Required")])
+    assert run_review(world, bound) == 0
+    record = stored(world)["records"][-1]
+    assert record["reviewer"] == {"model": "claude-sonnet-4-6", "run_id": "anthropic:claude-session-42"}
+    assert record["disposition"] == "changes-requested"
+    assert record["published"] is True
+    assert len(codex.runs()) == len(claude.runs()) == len(bound.reviews) == 1
+    assert "Codex usage limit reached" in capsys.readouterr().err
+    argv = claude.argv(claude.runs()[0])
+    assert argv[argv.index("--model") + 1] == "sonnet"
+
+
+def test_review_refuses_an_unstructured_codex_failure_mentioning_a_usage_limit(
+    world: World,
+    bound: FakeGitHub,
+    codex: FakeCodex,
+    claude: FakeCodex,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    codex.behave(raw_fail="the diff mentions a usage limit")
+    refusal = _review_refusal(world, bound, capsys)
+    assert "codex exec failed with exit code 1" in refusal
+    assert claude.runs() == []
+    assert stored(world)["records"] == []
+
+
+@pytest.mark.parametrize("message", ["authentication failed", "network failure", "permission denied", "quota exceeded"])
+def test_review_reports_other_codex_failures_without_falling_back(
+    world: World,
+    bound: FakeGitHub,
+    codex: FakeCodex,
+    claude: FakeCodex,
+    message: str,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    codex.behave(fail=message)
+    assert f"codex exec failed with exit code 1: {message}" in _review_refusal(world, bound, capsys)
+    assert claude.runs() == []
+    assert stored(world)["records"] == []
 
 
 @pytest.mark.parametrize(
@@ -1559,3 +1670,159 @@ def test_review_refuses_to_store_when_the_pr_was_armed_while_the_reviewer_ran(
         patch.setattr(remote_review, "_run_reviewer", armed_meanwhile)
         err = _review_refusal(world, bound, capsys)
     assert "PR #7 was armed while the reviewer ran; withdraw it with make pr-landing-remote-withdraw" in err
+
+
+def test_claude_is_an_explicit_backend_with_the_same_record_and_publication_pipeline(
+    world: World, bound: FakeGitHub, codex: FakeCodex, claude: FakeCodex
+) -> None:
+    claude.respond([finding("docs/note.md:1", "Required")])
+    assert run_review(world, bound, reviewer="claude", model=None) == 0
+    state = stored(world)
+    assert state["records"][-1]["reviewer"] == {
+        "model": "claude-sonnet-4-6",
+        "run_id": "anthropic:claude-session-42",
+    }
+    assert state["records"][-1]["disposition"] == "changes-requested"
+    assert state["review_runs"][-1]["reviewer_version"] == "2.1.302 (Claude Code)"
+    assert len(bound.reviews) == 1
+    assert codex.runs() == []
+    claude.respond([], previous=[{"id": "F1", "status": "fixed"}])
+    assert run_review(world, bound, reviewer="claude", model=None) == 0
+    assert stored(world)["records"][-1]["disposition"] == "approve"
+    assert bound.resolved == ["RT1"]
+
+
+def test_claude_is_confined_to_read_only_tools_and_an_isolated_login(
+    world: World, bound: FakeGitHub, claude: FakeCodex, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("GH_TOKEN", "gh-secret")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "api-secret")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "oauth-secret")
+    (claude.home / "settings.json").write_text('{"hooks": {"SessionStart": []}}', encoding="utf-8")
+    assert run_review(world, bound, reviewer="claude", model="opus") == 0
+    [snapshot] = claude.runs()
+    argv = claude.argv(snapshot)
+    inputs = Path(argv[argv.index("--add-dir") + 1])
+    workdir = inputs.parent
+    assert claude.read(snapshot, "cwd.json") == str(inputs)
+    assert argv == [
+        "-p",
+        "--safe-mode",
+        "--restricted",
+        "--tools",
+        "Read,Glob,Grep",
+        "--allowedTools",
+        "Read,Glob,Grep",
+        "--permission-mode",
+        "dontAsk",
+        "--permission-prompts",
+        "none",
+        "--setting-sources",
+        "",
+        "--strict-mcp-config",
+        "--mcp-config",
+        '{"mcpServers":{}}',
+        "--disable-slash-commands",
+        "--no-session-persistence",
+        "--no-chrome",
+        "--add-dir",
+        str(inputs),
+        str(workdir / "head"),
+        "--output-format",
+        "json",
+        "--json-schema",
+        json.dumps(remote_review.OUTPUT_SCHEMA),
+        "--model",
+        "opus",
+        "--",
+        remote_review.review_prompt(workdir, 7, world.base, world.head),
+    ]
+    env = claude.read(snapshot, "env.json")
+    assert set(env) - {"__CF_USER_TEXT_ENCODING"} == {"PATH", "HOME", "LANG"}
+    assert env["HOME"] == str(workdir / "claude-home")
+    config = snapshot / "claude-home" / ".claude"
+    assert [path.name for path in config.iterdir()] == [".credentials.json"]
+    assert claude.read(config, ".credentials.json") == {
+        "claudeAiOauth": {"accessToken": "claude-test-login", "scopes": ["user:inference"]}
+    }
+    assert (config / ".credentials.json").stat().st_mode & 0o777 == 0o600
+    assert (snapshot / "input" / "diff.patch").is_file()
+    assert (snapshot / "head" / "docs" / "note.md").is_file()
+    assert not workdir.exists()
+
+
+def test_claude_refuses_an_expired_login_before_launching(
+    world: World, bound: FakeGitHub, claude: FakeCodex, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (claude.home / ".credentials.json").write_text(
+        json.dumps({"claudeAiOauth": {"accessToken": "claude-test-login", "expiresAt": 1}}),
+        encoding="utf-8",
+    )
+    assert "claude login has expired" in _review_refusal(world, bound, capsys, reviewer="claude", model=None)
+    assert claude.runs() == []
+    assert stored(world)["records"] == []
+
+
+def test_claude_dry_run_changes_no_store_or_github_state(
+    world: World, bound: FakeGitHub, claude: FakeCodex, capsys: pytest.CaptureFixture[str]
+) -> None:
+    path = remote_closeout.store_path(REPO, 7)
+    lock = path.with_name("pr-7.json.lock")
+    lock.unlink()
+    before = path.read_bytes()
+    claude.respond([finding("docs/note.md:1", "Nit")])
+    capsys.readouterr()
+    assert run_review(world, bound, reviewer="claude", model=None, dry_run="1") == 0
+    record = json.loads(capsys.readouterr().out)
+    assert record["reviewer"]["run_id"].startswith("anthropic:")
+    assert set(record) == set(RECORD_FIELDS)
+    assert path.read_bytes() == before
+    assert not lock.exists()
+    assert list((world.clone.parent / "review-runs").glob("benchbox-remote-review-*")) == []
+    assert bound.reviews == []
+
+
+def test_claude_refuses_when_the_cli_cannot_enforce_isolation(
+    world: World, bound: FakeGitHub, claude: FakeCodex, capsys: pytest.CaptureFixture[str]
+) -> None:
+    claude.respond(help="--tools")
+    assert "claude cannot enforce reviewer isolation" in _review_refusal(
+        world, bound, capsys, reviewer="claude", model=None
+    )
+    assert claude.runs() == []
+    assert stored(world)["records"] == []
+
+
+def test_a_claude_failure_never_becomes_a_record_or_another_fallback(
+    world: World, bound: FakeGitHub, claude: FakeCodex, capsys: pytest.CaptureFixture[str]
+) -> None:
+    claude.behave(fail="usage limit")
+    assert "claude -p failed with exit code 1: usage limit" in _review_refusal(
+        world, bound, capsys, reviewer="claude", model=None
+    )
+    assert len(claude.runs()) == 1
+    assert stored(world)["records"] == []
+
+
+def test_arming_discloses_a_claude_review_without_a_new_owner_approval_gate(
+    world: World, bound: FakeGitHub, claude: FakeCodex, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert run_review(world, bound, reviewer="claude", model=None) == 0
+    capsys.readouterr()
+    assert arm(world, bound) == 0
+    out = capsys.readouterr().out
+    assert "reviewer family: anthropic; model: claude-sonnet-4-6" in out
+    assert "less independent when the builder is also Claude-family" in out
+    assert stored(world)["arms"][-1]["owner_explained"] is None
+
+
+def test_claude_publication_can_resume_without_rerunning_the_reviewer(
+    world: World, bound: FakeGitHub, claude: FakeCodex
+) -> None:
+    claude.respond([finding("docs/note.md:1", "Required")])
+    bound.post_failures = ["error"]
+    assert run_review(world, bound, reviewer="claude", model=None) == 1
+    assert stored(world)["records"][-1]["published"] is False
+    assert remote_review.resume("7", run=bound) == 0
+    assert stored(world)["records"][-1]["published"] is True
+    assert len(claude.runs()) == 1
