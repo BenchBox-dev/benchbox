@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "`_gh` returns str for API responses containing non-UTF-8 bytes, using replacement characters, instead of raising UnicodeDecodeError.",
+    "A regression test feeds non-UTF-8 bytes through `_gh`/`get_diff` and asserts the decoded output.",
+    "Existing oracle-reviewer unit tests and workflow tests pass; the fix PR under test receives a normal oracle review (clean UTF-8 diff) and merges.",
+    "After the fix lands, the oracle-verdict workflow successfully plans a review of PR 3168 instead of crashing."
+  ],
+  "context": "Unblocks docs-mig-tpc-adjacent-eulas (PR 3168), whose diff contains canonical Windows-1252 EULA.txt files that must stay byte-identical. The oracle-verdict plan step crashed in `_project/scripts/oracle_reviewers/github.py:get_diff` because `subprocess.run(..., text=True)` strictly decodes stdout as UTF-8. This fix changes nothing about review criteria: it only replaces undecodable bytes with U+FFFD so review proceeds on the decodable remainder. The fix PR itself carries no binary files, so the oracle reviews it normally. Guardrails G1-G11 and stop conditions from the batch apply; soundness-prefix change requires oracle review (G6).",
+  "description": "Fix a crash in the oracle reviewers GitHub API helper: `_gh` in `_project/scripts/oracle_reviewers/github.py` runs `gh api` with `text=True`, so any response containing non-UTF-8 bytes (for example a PR diff touching the canonical Windows-1252 TPC EULA files) raises UnicodeDecodeError and fails the oracle-verdict workflow instead of producing a review. Capture bytes and decode with errors=replace for both stdout and the stderr detail in the GitHubError path. Add a regression test with non-UTF-8 fixture bytes. No change to review selection, verdict logic, or required checks.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7043d4c3f317252a997ee7d2",
+      "at": "2026-10-19T17:15:04Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "7d536bb322e5482db92dccadfb570de0",
+      "session_id": "d66556e19a274eaea3762c21d3e37dd7"
+    }
+  ]
+}

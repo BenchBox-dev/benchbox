@@ -8626,6 +8626,13 @@
       "status": "open",
       "title": "Replace copied downloads with canonical GitHub links and legacy redirects"
     },
+    "docs-mig-oracle-diff-decode": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Fix oracle reviewer crash on non-UTF-8 PR diffs"
+    },
     "docs-mig-site-baseline-build": {
       "claim": null,
       "needs": [
