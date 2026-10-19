@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Add an executable MySQL (or compatible) check, or document that retirement is manual only.",
+    "Baseline schema and guard tests reflect the chosen policy."
+  ],
+  "description": "The runtime baseline case mysql-percentile-decorator only parses transpiled SQL; MySQL has no native PERCENTILE_CONT and nothing is executed against MySQL. After an oracle finding, a passing MySQL case can no longer retire the workaround (the guard requires decision 'retain'), so the CASE/NULL proxy can never be retired automatically.",
+  "links": [
+    "scripts/check_sqlglot_repro_retirement.py",
+    "scripts/sqlglot_runtime_baseline.json"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:294e68659711a060d19711d3",
+      "at": "2026-10-19T00:13:51Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "aed516aa9ede48cba268c9cfb0de9c1b",
+      "session_id": "5fc71a2e25aa4324a26f0d500fc3289e"
+    }
+  ]
+}

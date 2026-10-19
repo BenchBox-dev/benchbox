@@ -22468,6 +22468,13 @@
       "status": "done",
       "title": "✅ SQLGlot Dialect Translation Code Review Implementation"
     },
+    "sqlglot-mysql-retirement-needs-execution-evidence": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Give the MySQL SQLGlot workaround retirement check real execution evidence"
+    },
     "sqlglot-repro-harness-wrapper-call-shape": {
       "claim": null,
       "needs": [],
