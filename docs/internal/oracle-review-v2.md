@@ -58,8 +58,11 @@ Without the App secrets, the `post` job logs the result and succeeds.
    the change, applies the rerun rules and writes a 0600 brief. A fork's
    soundness change gets a pending `fork: owner review` status and never
    reaches a reviewer job. A change with no soundness path gets `success`.
-2. `select-N` picks the next reviewer from the tier's order, skipping the
-   author's family, disabled reviewers, quota-exhausted pools and, when the
+2. `select-N` picks the next reviewer from the risk tier's order. Every
+   reviewer carries the `review` workload role, and the posted review names
+   the role, model and effort next to the risk tier. Selection skips the
+   author's family at every tier with no exemption, disabled reviewers,
+   quota-exhausted pools and, when the
    diff exceeds the brief cap, any reviewer that is not hard read-only with
    `reads_files: true`.
 3. `attempt-N-<harness>` runs that reviewer on a detached, credential-free
@@ -200,6 +203,43 @@ merge digest reads both for good, because it reads merged history. A list of mor
 an invalid verdict, because every reviewer would then fail in turn and leave
 the pull request pending.
 
+## Workload role
+
+The `low-medium`, `medium-high` and `very-high` tiers are review depth for
+the risk of the change, kept from the shadow and protocol records; they are
+not model quality tiers. Every reviewer in `.github/oracle-reviewers.yml`
+carries the `review` workload role, resolved to a harness-specific model.
+Reviewer ids name the family and the depth profile: `claude-routine` and
+`claude-deep` run Fable 5 at `medium` and `high` effort,
+`codex-routine` runs Sol and `codex-deep` runs Astra, `muse-routine` and
+`muse-deep` run the Wonder contributor at `medium` and `high` effort, and
+`gemini-routine` runs Flash `-medium` with `gemini-deep` (Argon `-high`)
+held as a fallback. Effort is always a concrete CLI value; only OMP
+dispatches use `auto`. The policy rejects any reviewer whose role is not
+`review`, and the plan chain and the posted review carry the role next to
+the model, effort and risk tier.
+
+Reviewer order prefers the role defaults Astra, then Fable, then Argon where
+available. Codex has no hosted quota, so both codex profiles stay disabled
+with their tier places kept; a local subscription is not hosted quota and
+never re-enables them. Argon stays disabled until its completion is verified
+on the hosted agy harness, which reads `GEMINI_API_KEY` with
+`modelProvider: "gemini"`: local OMP success through `google-antigravity`
+proves nothing about the hosted route. The deep Muse profile,
+`muse-deep`, is the high-effort fallback for very-high changes whose author
+is not Muse, so a Claude-authored very-high change still gets an
+independent review while codex is off; the family filter below keeps Muse
+profiles off Muse-authored changes.
+
+The author's family comes only from `author-family:<family>` pull request
+labels, one or more of which may apply; the pull request body is never
+parsed for provenance, and families are never inferred from configured
+defaults or model roles. A missing or unknown label excludes `muse`,
+matching the current OMP default worker. Label every actual author family
+on the pull request when it differs from that default, including
+`author-family:claude` for Claude-authored changes. OMP is a harness, never
+a family, and Gemini work is labelled with the canonical `agy` family.
+
 ## Evidence that a review happened
 
 A verdict without a defect can be hollow: a reviewer that could not read the
@@ -283,14 +323,19 @@ These checks must pass before the cut-over that makes the context required.
   enters the `oracle` environment; a `pull_request` run from the pull request
   branch cannot.
 - **P3:** each reviewer authenticates in CI. A reviewer that cannot is set to
-  `enabled: false` with a `disabled_reason`. agy is enabled with its own
-  job in every slot, and the workflow has five slots so the longest chain
-  fits when every reviewer is enabled. The codex reviewers, sol and luna, are
-  disabled because the OpenAI API project behind `OPENAI_API_KEY` has no
-  quota; their jobs and tier places stay, so setting `enabled: true` on each
-  re-enables them. While they are off, very high is reviewed by opus alone
-  (diversity-exempt), and the lower tiers by sonnet, muse and agy, skipping the
-  author's family.
+  `enabled: false` with a `disabled_reason`. gemini-routine is enabled with
+  its own job in every slot, and the workflow has five slots so the longest
+  chain of enabled reviewers (three) fits. The claude profiles run Fable 5,
+  `claude-deep` at `high` effort for deep and very-high review and
+  `claude-routine` at `medium` for routine review; the muse profiles run the
+  Wonder contributor, `muse-deep` at `high` effort so Claude-authored
+  very-high changes keep an independent reviewer while codex is off, and
+  `gemini-routine` runs Flash `-medium`. The codex profiles, `codex-deep`
+  (Astra) and `codex-routine` (Sol), are disabled because the OpenAI API
+  project behind `OPENAI_API_KEY` has no quota; their jobs and tier places
+  stay, so setting `enabled: true` on each re-enables them. `gemini-deep`
+  (Argon) is disabled until its completion is verified on the hosted agy
+  harness. Every tier skips the author's family with no exemption.
 - **P4:** capture each reviewer's quota, authentication and outage output from
   real runs. The attempt artifact's `diagnostic` field holds one redacted line
   of the output, at most 300 characters, with credentials and long tokens

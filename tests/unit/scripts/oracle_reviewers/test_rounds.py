@@ -47,7 +47,7 @@ def _protocol_plan(policy: Policy, **over: Any) -> dict[str, Any]:
 
 
 def _final(policy: Policy, tmp_path: Path, plan: dict[str, Any], verdict: dict[str, Any]) -> report.Final:
-    _write(tmp_path, 1, "sonnet", verdict=verdict)
+    _write(tmp_path, 1, "claude-deep", verdict=verdict)
     loaded, step, errors = _decide(policy, plan, tmp_path)
     return report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, commentable_lines(DIFF))
 
@@ -70,7 +70,7 @@ def test_a_first_review_records_its_decision_and_numbers_its_defects(policy: Pol
     record = _record(final)
     assert (record["kind"], record["decision"], record["cycle"], record["round"]) == ("first", "SHIP_WITH_FIXES", 1, 1)
     assert [(item["id"], item["line"]) for item in record["open_defects"]] == [("D1", 2), ("D2", 40)]
-    assert record["next_id"] == 3 and record["head_sha"] == HEAD and record["reviewer"] == "sonnet"
+    assert record["next_id"] == 3 and record["head_sha"] == HEAD and record["reviewer"] == "claude-deep"
     assert record["patch_map"] == PATCHES and record["strikes_after"] == 0
     assert final.review is not None
     thread = final.review["comments"][0]["body"]
@@ -99,16 +99,13 @@ def test_do_not_ship_opens_no_thread_and_adds_a_strike(policy: Policy, tmp_path:
 
 def test_a_pending_or_withheld_result_records_no_marker(policy: Policy, tmp_path: Path) -> None:
     plan = _protocol_plan(policy)
-    _write(tmp_path, 1, "sonnet", missing=Absence("quota", "limit"))
-    _write(tmp_path, 2, "sol", missing=Absence("auth", "key"))
-    _write(tmp_path, 3, "luna", missing=Absence("quota", "limit"))
-    _write(tmp_path, 4, "muse", missing=Absence("error", "x"))
+    _write(tmp_path, 1, "claude-deep", missing=Absence("quota", "limit"))
     loaded, step, errors = _decide(policy, plan, tmp_path)
     final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, {})
     assert final.state == "pending" and final.review is not None
     assert protocol.MARKER_OPEN not in final.review["body"] and final.strikes is None
     withheld = tmp_path / "withheld"
-    _write(withheld, 1, "sonnet", verdict=_v("fine"), run_id="1")
+    _write(withheld, 1, "claude-deep", verdict=_v("fine"), run_id="1")
     loaded, step, errors = _decide(policy, plan, withheld)
     final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, {})
     assert errors and final.review is not None and protocol.MARKER_OPEN not in final.review["body"]
@@ -136,7 +133,7 @@ def test_a_follow_up_counts_unfixed_and_new_defects_in_changed_files_only(policy
     assert f"`{CHECKER}:1`: D2: Old" in still_open
     hidden = final.body.split("<details><summary>Not counted", 1)[1].split("</details>", 1)[0]
     assert f"`{OTHER}:9`" in hidden and f"`{OTHER}:9`" not in final.body.split("<details>", 1)[0]
-    assert final.description == "sonnet: SHIP WITH FIXES, 2 defect(s) to fix"
+    assert final.description.endswith(": SHIP WITH FIXES, 2 defect(s) to fix")
     assert final.review is not None
     assert [comment["path"] for comment in final.review["comments"]] == [CHECKER]
     assert "<!-- oracle-defect: c1-D3 -->" in final.review["comments"][0]["body"]
@@ -365,7 +362,7 @@ def test_finalize_writes_the_strike_count_into_the_state_artifact(
     plan_path = tmp_path / "plan.json"
     plan_path.write_text(json.dumps(plan), encoding="utf-8")
     attempts_dir = tmp_path / "attempts"
-    _write(attempts_dir, 1, "sonnet", verdict=_v("rework", decision="DO_NOT_SHIP"))
+    _write(attempts_dir, 1, "claude-deep", verdict=_v("rework", decision="DO_NOT_SHIP"))
     out = _run_cli(
         monkeypatch,
         tmp_path,

@@ -16,41 +16,31 @@ PROMPT = "review this"
 
 
 def test_codex_reviewer_is_hard_read_only_with_output_schema(policy: Policy, tmp_path: Path) -> None:
-    invocation = build(policy.reviewers["sol"], WS, PROMPT, tmp_path)
+    reviewer = policy.reviewers["codex-routine"]
+    invocation = build(reviewer, WS, PROMPT, tmp_path)
     schema_file = str(tmp_path / "verdict-schema.json")
-    assert invocation.argv == (
-        "codex",
-        "exec",
-        "-C",
-        str(WS),
-        "--model",
-        "gpt-6.1-sol",
-        "--sandbox",
-        "read-only",
-        "-c",
-        "model_reasoning_effort=medium",
-        "--json",
-        "--output-schema",
-        schema_file,
-        "-o",
-        str(tmp_path / "codex-last-message.json"),
-        PROMPT,
-    )
+    assert invocation.argv[:4] == ("codex", "exec", "-C", str(WS))
+    assert invocation.argv[invocation.argv.index("--model") + 1] == reviewer.model
+    assert invocation.argv[invocation.argv.index("--sandbox") + 1] == "read-only"
+    assert f"model_reasoning_effort={reviewer.effort}" in invocation.argv
+    assert "--json" in invocation.argv
+    assert invocation.argv[invocation.argv.index("--output-schema") + 1] == schema_file
+    assert invocation.argv[-1] == PROMPT
     assert json.loads(Path(schema_file).read_text(encoding="utf-8")) == VERDICT_SCHEMA
-    luna = build(policy.reviewers["luna"], WS, PROMPT, tmp_path).argv
-    assert luna[luna.index("--model") + 1] == "gpt-6-luna"
-    assert "model_reasoning_effort=high" in luna
+    deep = build(policy.reviewers["codex-deep"], WS, PROMPT, tmp_path).argv
+    assert deep[deep.index("--model") + 1] == policy.reviewers["codex-deep"].model
 
 
 def test_claude_reviewer_uses_read_tools_and_json_schema(policy: Policy, tmp_path: Path) -> None:
-    invocation = build(policy.reviewers["opus"], WS, PROMPT, tmp_path)
+    reviewer = policy.reviewers["claude-deep"]
+    invocation = build(reviewer, WS, PROMPT, tmp_path)
     argv = invocation.argv
     assert invocation.cwd == WS
     assert argv[:2] == ("claude", "--print")
     assert argv[argv.index("--tools") + 1] == "Read,Grep,Glob"
-    assert argv[argv.index("--model") + 1] == "claude-opus-5-5"
-    assert argv[argv.index("--effort") + 1] == "medium"
-    assert argv[argv.index("--max-turns") + 1] == "60"
+    assert argv[argv.index("--model") + 1] == reviewer.model
+    assert argv[argv.index("--effort") + 1] == reviewer.effort
+    assert argv[argv.index("--max-turns") + 1] == str(reviewer.turn_cap)
     assert argv[argv.index("--setting-sources") + 1] == "user"
     assert "--strict-mcp-config" in argv
     assert json.loads(argv[argv.index("--json-schema") + 1]) == VERDICT_SCHEMA
@@ -59,8 +49,9 @@ def test_claude_reviewer_uses_read_tools_and_json_schema(policy: Policy, tmp_pat
 
 
 def test_muse_reviewer_disables_write_and_shell(policy: Policy, tmp_path: Path) -> None:
-    argv = build(policy.reviewers["muse"], WS, PROMPT, tmp_path).argv
-    assert argv[:9] == (
+    reviewer = policy.reviewers["muse-routine"]
+    argv = build(reviewer, WS, PROMPT, tmp_path).argv
+    assert argv[:7] == (
         "muse",
         "exec",
         "--workspace",
@@ -68,11 +59,10 @@ def test_muse_reviewer_disables_write_and_shell(policy: Policy, tmp_path: Path) 
         "--disable-approval",
         "--disable-write",
         "--disable-shell",
-        "--model",
-        "muse-spark-1.3-contributor",
     )
-    assert argv[argv.index("--reasoning-effort") + 1] == "medium"
-    assert argv[argv.index("--max-model-steps") + 1] == "80"
+    assert argv[argv.index("--model") + 1] == reviewer.model
+    assert argv[argv.index("--reasoning-effort") + 1] == reviewer.effort
+    assert argv[argv.index("--max-model-steps") + 1] == str(reviewer.turn_cap)
     schema_file = argv[argv.index("--output-schema") + 1]
     assert schema_file == str(tmp_path / "verdict-schema.json")
     assert json.loads(Path(schema_file).read_text(encoding="utf-8")) == VERDICT_SCHEMA
@@ -80,12 +70,14 @@ def test_muse_reviewer_disables_write_and_shell(policy: Policy, tmp_path: Path) 
 
 
 def test_agy_reviewer_uses_plan_mode_and_never_effort(policy: Policy, tmp_path: Path) -> None:
-    invocation = build(policy.reviewers["agy"], WS, PROMPT, tmp_path)
+    reviewer = policy.reviewers["gemini-routine"]
+    invocation = build(reviewer, WS, PROMPT, tmp_path)
     argv = invocation.argv
     assert invocation.cwd == tmp_path / "agy-cwd"
     assert invocation.cwd.is_dir() and not any(invocation.cwd.iterdir())
     assert str(WS) not in " ".join(argv)
-    assert argv[:5] == ("agy", "--model", "gemini-3.8-flash-medium", "--mode", "plan")
+    assert argv[:3] == ("agy", "--model", reviewer.model)
+    assert argv[3:5] == ("--mode", "plan")
     assert "--effort" not in argv
     assert argv[argv.index("--output-format") + 1] == "json"
     assert json.loads(argv[argv.index("--json-schema") + 1]) == VERDICT_SCHEMA

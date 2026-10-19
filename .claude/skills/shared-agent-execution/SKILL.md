@@ -1,54 +1,92 @@
 ---
 name: agent-execution
-description: Select model tiers, map reasoning effort, and dispatch delegated work through native or external agent harnesses. Use when a workflow must choose an agent model or effort level, or launch a manager, worker, or independent reviewer; do not use for direct, undelegated tool calls.
+description: Select OMP workload roles, map reasoning effort, and dispatch delegated work through native or external agent harnesses. Use when a workflow must choose an agent role or effort level, or launch a manager, worker, or independent reviewer; do not use for direct, undelegated tool calls.
 ---
 
 # Agent Execution
 
 Use this component when another skill delegates work and needs a consistent
-model tier, reasoning effort, or agent harness configuration. The calling skill
+workload role, reasoning effort, or agent harness configuration. The calling skill
 continues to own task decomposition, authorization, workspace isolation, and
 acceptance criteria.
 
-## Model Tiers
+This skill is a portable fallback for other agents and contexts. It never
+overrides live OMP configuration. Precedence is: explicit user choice first,
+then live OMP role aliases when they exist, then the portable defaults below.
+`review` and `research` are custom OMP aliases, not automatic features: select
+them explicitly or bind an agent to them. Portable callers select the workload
+role themselves and translate its model through the harness reference.
+Role `@alias` selectors (for example `@review`) resolve only when that alias
+is configured in live OMP settings; otherwise dispatch the role's full
+`provider/model` default, with `--thinking auto` on OMP.
 
-Tiers describe operating roles, not absolute quality rankings. Match models to
-task complexity and risk.
+## Workload Roles
 
-*Selection Rule*: Pick the tier here. For native dispatch, choose the listed
-tier model directly. When an external harness is selected, take its exact
-harness-specific identifier from
-[references/external-harnesses.md](references/external-harnesses.md). Default
-reasoning effort to `medium`. Use maximum effort only for Tier 1 adversarial
-review; use `low` for mechanical bulk work. For `agy`, effort is the
-`-low` / `-medium` / `-high` model suffix: Tier 1 takes the `-high` model with
-no `--effort` flag.
+Roles describe workload fit, not a quality hierarchy. A role never
+auto-classifies a prompt, grants permissions, enters plan mode, enables an
+advisor, or guarantees independent review on its own.
 
-- **Tier 1: Strategic**
-  - Models: `gpt-6-astra`, `claude-fable-5`, `grok-4.6`, `gemini-3.8-flash-high`
-  - Usage: Strategic planning, architecture, high-risk tradeoffs, and final adversarial review.
-- **Tier 2: Generalist**
-  - Models: `gpt-6.1-sol`, `claude-opus-5-5`, `grok-4.5`, `gemini-3.8-flash-medium`, `muse-spark-1.3`
-  - Usage: Management, decomposition, integration, investigation, and routine review.
-- **Tier 3: Contributor**
-  - Models: `gpt-6-luna`, `claude-sonnet-5-5`, `gemini-3.8-flash-low`, `gemini-3.8-flash-tiered`, `muse-spark-1.3-contributor`
-  - Usage: Focused implementation, bounded research, bulk work, and parallel coverage.
-
-## Reasoning Effort Reference
-
-| Harness | CLI Flag / Option | Supported Values (Lowest to Highest) |
+| Role | Portable default (effort `auto`) | Use for |
 | :--- | :--- | :--- |
-| **pi** | `--thinking <level>` | `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max` |
-| **claude** | `--effort <level>` | `low`, `medium`, `high`, `xhigh`, `max` |
-| **muse** | `--reasoning-effort <EFFORT>` | `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `ultra` |
-| **agy** | model suffix `-low` / `-medium` / `-high` (omit `--effort`) | tier is the model variant; `--effort` with a suffixed model is rejected |
-| **grok** | `--reasoning-effort <EFFORT>` | `low`, `medium`, `high`, `xhigh` |
-| **codex** | `-c model_reasoning_effort="<level>"` | `low`, `medium`, `high`, `xhigh`, `max`, `ultra` |
-| **prime-agent** | `--thinking <level>` | `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max` |
+| `default` | `muse-code/muse-wonder-1.0-contributor:auto` | General implementation and management. |
+| `smol` | `google-antigravity/gemini-3.8-flash:auto` | Mechanical bulk work, scouting, low-risk coverage. |
+| `slow` | `anthropic/claude-fable-5:auto` | Hard reasoning, high-risk tradeoffs. |
+| `plan` | `anthropic/claude-fable-5:auto` | Planning, decomposition, architecture. |
+| `review` | `openai-codex/gpt-6-astra:auto` | Independent review and adversarial gates. |
+| `research` | `google-antigravity/gemini-4-argon:auto` | Complex research and synthesis; use `task` for bounded collection. |
+| `task` | `muse-code/muse-spark-1.3-contributor:auto` | Bounded implementation and delegated workers. |
+| `commit` | `muse-code/muse-spark-1.3-contributor:auto` | Commit-message and changelog generation, not Git authorization. |
+| `vision` | `google-antigravity/gemini-4-argon:auto` | Image-question helpers; not image generation or every attached image. |
+| `advisor` | `anthropic/claude-fable-5:auto` | Advisory second opinions. |
 
-For `jcode`, `opencode`, `hermes`, `goose`, and `aider`, effort is selected via
-model variants (e.g. `gemini-3.8-flash-tiered`, `:thinking` suffix) or provider
-settings.
+Every Muse model MUST be the contributor variant. Never copy an OMP `:auto`
+selector into a non-OMP external CLI model ID; resolve each role or fallback
+name to the harness-specific identifier in
+[references/external-harnesses.md](references/external-harnesses.md).
+Non-OMP external processes do not inherit OMP retry or quota settings. An
+external `omp` dispatch runs under the same live local settings (retry,
+fallback chains, quota handling) unless a per-run `--config` overlay
+constrains it; independent reviewers MUST carry that overlay to disable
+cross-model fallback.
+
+Native `task` agent model precedence matters: agent settings can shadow
+frontmatter. For a task-specific choice, use the eval bridge's invocation-local
+model override or an explicit external command instead of frontmatter alone.
+OMP's `task` and `sonic` are agent names, distinct from the `task` model role.
+`sonic` is the mechanical worker; routing it to `@task` changes only its model,
+not its instructions or limits. `smol` can serve lightweight helpers without
+replacing a write-capable worker's agent definition.
+
+## Role-Local Fallbacks
+
+These are portable fallback defaults, not overrides of a live OMP chain.
+Keep fallback configuration role-local; model-wide chains can shadow it.
+Resolve each model name to the documented harness identifier.
+
+- `default`: Codex `gpt-6.1-sol`, Fable, Argon.
+- `smol`: Spark contributor, Luna.
+- `task`, `commit`: Flash, Luna.
+- `slow`, `plan`: Astra, Wonder contributor, Argon.
+- `review`: Fable, Argon. Exclude the author's family from the primary and
+  every fallback; fail closed if none qualifies. The static defaults exclude
+  Muse but still need filtering when the author is Claude, Codex, or Gemini.
+- `research`, `vision`: Wonder contributor, Sol6.1.
+- `advisor`: Astra, Argon.
+
+## Effort Translation
+
+OMP dispatches keep effort `auto`, capped at `xhigh` unless an explicit final
+review requires `max`; per-dispatch overrides honor user intent. This `auto`
+is not portable: external harnesses without `auto` support need an explicit
+concrete effort, which is a manual approximation, not an adaptive equivalent.
+External `omp` is the exception: it takes `--thinking auto` natively. The
+concrete mapping below is for non-OMP harnesses only.
+
+- Default to `medium`.
+- `low` for mechanical or scouting work (`smol`, bulk coverage).
+- `medium` for routine review; `high` for deep planning, adversarial review,
+  or complex research and vision (`slow`, `plan`, `review`, `research`, `vision`).
+- Maximum effort only when final adversarial review explicitly requires it.
 
 ## Dispatch Rules
 
@@ -67,14 +105,23 @@ Choose the dispatch mode from the delegated role:
   one-shot Worker or Reviewer command. Invocations such as `--print`, `exec`,
   `--single`, or equivalents are not Manager-capable unless a separate verified
   continuation channel supplies every required capability; they remain valid
-  Worker or Reviewer choices.
+  Worker or Reviewer choices. Headless `omp --print` is Worker/Reviewer only:
+  it processes prompts and exits without exposing a Manager's coordination
+  channel. `omp --mode rpc` and `acp` may serve a Manager only when the same
+  checks pass for the live process; flags alone do not prove the capability.
 - **Worker:** use a write-capable mode only within the authorized workspace or
   sandbox. Require the repository's narrowest proving check and explicit-path
-  staging; never permit `git add -A`.
+  staging; never permit `git add -A`. For external `omp`, scope the Worker to
+  an authorized dedicated worktree passed via `--cwd`; `--cwd` selects the
+  working directory and is not a sandbox.
 - **Reviewer:** use a separate dispatch that did not author the work. Prefer a
   hard read-only sandbox or tool allowlist. A plan mode is soft read-only and
   requires explicit findings-only instructions that forbid edits, commits,
   pushes, and other mutations.
+
+For review panels, exclude the author family from every candidate and fail
+closed when no eligible model remains. Never silently substitute another model
+for a user-named reviewer; report the absence as a gate blocker.
 
 When selecting an external or headless harness, read
 [references/external-harnesses.md](references/external-harnesses.md), choose the

@@ -14,13 +14,178 @@ from flag drift. Do not run those checks proactively.
   forbid edits, commits, pushes, and other mutations.
 - Do not add flags that remove workspace, sandbox, or tool boundaries.
 
+## Roles, CLI IDs, and effort
+
+Use the workload roles and fallback order in [Agent Execution](../SKILL.md).
+Live OMP assignments take precedence over those portable defaults. Resolve
+the selected model to the external harness's ID before dispatch; do not copy
+an OMP thinking suffix such as `:auto` into a non-OMP CLI `--model` argument.
+External `omp` is the exception: it accepts OMP selectors natively, including
+`--thinking auto` and a configured `@alias` (see the OMP section below).
+
+### Model identifiers
+
+| OMP selector | External harness | CLI model ID |
+|---|---|---|
+| `muse-code/muse-wonder-1.0-contributor` | `muse` | `muse-wonder-1.0-contributor` |
+| `muse-code/muse-spark-1.3-contributor` | `muse` | `muse-spark-1.3-contributor` |
+| `anthropic/claude-fable-5` | `claude` | `claude-fable-5` |
+| `openai-codex/gpt-6-astra` | `codex` | `gpt-6-astra` |
+| `openai-codex/gpt-6.1-sol` | `codex` | `gpt-6.1-sol` |
+| `openai-codex/gpt-6-luna` | `codex` | `gpt-6-luna` |
+| `google-antigravity/gemini-3.8-flash` | `agy` | `gemini-3.8-flash-low`, `gemini-3.8-flash-medium`, `gemini-3.8-flash-high` |
+| `google-antigravity/gemini-4-argon` | `agy` | `gemini-4-argon-high` (recognized; completion unverified) |
+
+Only contributor-variant Muse models are selected. Argon's OMP support does
+not prove external CLI completion support. Other harnesses have separate
+catalogs; do not infer that stripping a provider prefix makes a valid ID.
+
+### Effort translation
+
+Do not assume a non-OMP external CLI implements OMP's adaptive `auto`. For the
+non-OMP commands below, use the concrete effort selected by Agent Execution:
+`medium` normally (including routine review), `low` for mechanical/scouting
+work, and `high` for deep planning, adversarial review, or complex research
+and vision. This is a fixed approximation, not adaptive reasoning. Explicit
+user effort overrides win. External `omp` keeps the native adaptive selector:
+pass `--thinking auto` (capped at `xhigh` unless a final review explicitly
+requires `max`), exactly as for native OMP dispatches.
+
+| Harness | Effort argument | Supported values |
+|---|---|---|
+| `omp` | `--thinking "$EFFORT"` | `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, `auto` (`auto` only here) |
+| `codex` | `-c model_reasoning_effort="$EFFORT"` | `low`, `medium`, `high`, `xhigh`, `max`, `ultra` |
+| `claude` | `--effort "$EFFORT"` | `low`, `medium`, `high`, `xhigh`, `max` |
+| `muse` | `--reasoning-effort "$EFFORT"` | `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `ultra` |
+| `agy` | Model suffix; omit `--effort` | `-low`, `-medium`, `-high` where the model lists that variant |
+| `grok` | `--reasoning-effort "$EFFORT"` | `low`, `medium`, `high`, `xhigh` |
+| `pi`, `prime-agent` | `--thinking "$EFFORT"` | `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max` |
+
+Select only values supported by the chosen model, not merely its harness.
+Maximum effort is reserved for an explicitly required final adversarial
+review; use the chosen model's documented maximum. `agy` never gains an
+invented maximum suffix: its highest listed variant is `-high`.
+
+Non-OMP external processes do not inherit OMP retry or quota settings. An
+external `omp` dispatch DOES run under the live local settings (retry,
+fallback chains, quota handling): constrain it per run with a `--config`
+overlay (see the OMP section below). For ordinary
+dispatches, attempt the role's eligible fallbacks explicitly. For a named
+reviewer panel, report a failed member as absent rather than silently
+replacing it. Filter the author family from every independent-review
+candidate, including the primary and every fallback hop, and stop if no
+eligible candidate remains.
+
+Model roles do not grant permissions, enter plan mode, or enable an advisor.
+Those capabilities require the command boundaries and dispatch modes below.
+
+## OMP (first-class external harness)
+
+External `omp` is OMP itself invoked headless from another process: same model
+catalog, same role names, same native `--thinking auto`, and the same live
+local settings (retry, fallback chains, quota handling). It is separate from
+`pi`: never substitute one for the other. Precedence is explicit user choice,
+then live OMP settings, then the portable role defaults in Agent Execution.
+
+### Model identifiers and role aliases
+
+- `$MODEL` is an OMP selector: a configured `@alias` (for example `@review`,
+  `@task`) or a full `provider/model` ID (for example
+  `openai-codex/gpt-6-astra`).
+- `@alias` selectors resolve only when that alias is configured in live OMP
+  `modelRoles`. When the alias is absent, dispatch the role's full
+  `provider/model` portable default instead of failing or guessing.
+- Every Muse model MUST be the contributor variant.
+- Independent reviewers disable the advisor in their overlay, rather than
+  relying on the caller's current setting or omitting `--advisor`.
+
+### Commands
+
+- **Worker (Write):**
+  `omp --cwd "$WORKSPACE" --print --model "$MODEL" --thinking "$EFFORT" --no-title --no-session --max-time "$TIMEOUT" "$PROMPT"`
+  - `$WORKSPACE` MUST be an authorized dedicated worktree. `--cwd` selects the
+    working directory; it is not a sandbox, so scope and authorization come
+    from the worktree itself.
+  - Confirmation automation (`--approval-mode`, `--auto-approve`) is allowed
+    only within that already-bounded write scope.
+- **Reviewer (Soft Read-Only, neutral launch directory and isolation overlay):**
+  `omp --cwd "$REVIEW_CWD" --add-dir "$WORKSPACE" --print --model "$MODEL" --thinking "$EFFORT" --tools read,grep,glob --no-extensions --no-lsp --no-skills --no-rules --approval-mode always-ask --no-title --no-session --config "$OVERLAY" --max-time "$TIMEOUT" "$PROMPT"`
+  - `$REVIEW_CWD` is a clean, caller-owned temporary directory outside the
+    reviewed checkout. `$WORKSPACE` is a dedicated detached worktree at the
+    reviewed revision, provided only as an additional read workspace. Use
+    absolute paths in the brief.
+  - `$OVERLAY` is a trusted, caller-owned private file outside the reviewed
+    checkout. It pins these safety settings above project and global config:
+    ```yaml
+    mcp:
+      enableProjectConfig: false
+    advisor:
+      enabled: false
+    retry:
+      modelFallback: false
+      usageAwareFallback: false
+    contextPromotion:
+      enabled: false
+    prewalk:
+      enabled: false
+      auto: "off"
+    ```
+  - Project custom-tool modules can execute during startup before tool
+    filtering, and can widen the visible tool set. Never launch a reviewer
+    with the reviewed checkout as `--cwd`, even with the overlay. Keeping
+    it only in `--add-dir` avoids its ambient tool, extension, and MCP
+    discovery. Re-verify that boundary after runtime discovery changes.
+  - The overlay also excludes project MCP configuration, but neither it
+    nor `--no-extensions` is a process or filesystem sandbox.
+  - Cross-model retry, proactive quota routing, context promotion, prewalk,
+    and the advisor cannot introduce a second model into this review. If
+    the selected model fails, report it absent and let the caller select
+    the next author-independent candidate.
+  - `--no-title` avoids title generation, `--no-session` avoids persisting
+    review history, and `--max-time` bounds the run.
+- Without the neutral directory, trusted overlay, and tool-inventory check,
+  do not use OMP for repository review. A detached worktree alone cannot
+  prevent arbitrary startup code from executing. Use another documented
+  reviewer harness if the required setup cannot be established.
+
+### Invocation limits and Manager boundary
+
+- Headless `omp --print` processes prompts and exits. It does not expose the
+  continuation and coordination channel required for a Manager.
+- `omp --mode rpc` and `acp` are continuation channels, not Manager proof.
+  Use them for a Manager only after verifying identity, resume, live status,
+  interrupt, and worker/reviewer coordination for that process. RPC goals
+  do not continue unless `goal.continuationModes` includes `"rpc"`.
+- Tool restriction is not a process or filesystem sandbox.
+
+### Reviewer tool-inventory preflight
+
+Before the one-shot `--print` review, run this RPC probe with the same
+neutral directory, additional workspace, model, effort, and safety overlay.
+Proceed only when the executable check prints `true`. If the process ends
+silently, diagnose transport or overlay errors before dispatch.
+
+```bash
+review_tools=$(printf '%s\n' '{"id":"review-tools","type":"get_state"}' |
+  omp --mode rpc --no-ui --cwd "$REVIEW_CWD" --add-dir "$WORKSPACE" \
+    --model "$MODEL" --thinking "$EFFORT" --tools read,grep,glob \
+    --no-extensions --no-lsp --no-skills --no-rules \
+    --approval-mode always-ask --no-title --no-session \
+    --config "$OVERLAY" --max-time "$TIMEOUT" |
+  jq -r 'select(.id == "review-tools") | [.data.dumpTools[].name] | sort | join(",")')
+[ "$review_tools" = "glob,grep,read" ] || {
+    echo "unexpected reviewer tools: $review_tools" >&2
+    exit 2
+}
+printf '%s\n' true
+```
+
 ## Frontier Lab Harnesses
 
 - **codex**
-  - Worker (Write): `codex exec -C "$WORKSPACE" --model "$MODEL" --sandbox workspace-write "$PROMPT"`
-  - Reviewer (Hard Read-Only): `codex exec -C "$WORKSPACE" --model "$MODEL" --sandbox read-only "$PROMPT"`
+  - Worker (Write): `codex exec -C "$WORKSPACE" --model "$MODEL" --sandbox workspace-write -c model_reasoning_effort="$EFFORT" "$PROMPT"`
+  - Reviewer (Hard Read-Only): `codex exec -C "$WORKSPACE" --model "$MODEL" --sandbox read-only -c model_reasoning_effort="$EFFORT" "$PROMPT"`
   - Known-good models: `gpt-6-astra`, `gpt-6.1-sol`, `gpt-6-luna`
-  - Effort: Optional `-c model_reasoning_effort="<level>"`
 - **claude**
   - Worker (Write): `(cd "$WORKSPACE" && claude --print --model "$MODEL" --effort "$EFFORT" "$PROMPT")`
   - Reviewer (Hard Read-Only): `(cd "$WORKSPACE" && claude --print --tools Read,Grep,Glob --model "$MODEL" --effort "$EFFORT" "$PROMPT")`
@@ -29,9 +194,13 @@ from flag drift. Do not run those checks proactively.
   - Worker (Write): `(cd "$WORKSPACE" && agy --model "$MODEL" --print="$PROMPT")`
   - Reviewer (Soft Read-Only): `(cd "$WORKSPACE" && agy --model "$MODEL" --mode plan --print="$PROMPT")`
   - Known-good models: `gemini-3.8-flash-high`, `gemini-3.8-flash-medium`, `gemini-3.8-flash-low`
-  - Note: Tier is the `-low` / `-medium` / `-high` model suffix. Never pass
+  - Note: Effort is the `-low` / `-medium` / `-high` model suffix. Never pass
     `--effort` alongside a suffixed model: `agy` rejects the pair
     (`--model X conflicts with --effort=Y`), including `--effort max`.
+  - Recognized model ID: `gemini-4-argon-high`. Model selection accepts it,
+    but external completion remains unverified. Report a blocked response
+    and apply the dispatch's explicit fallback or named-reviewer failure
+    policy; do not treat native OMP completion as proof for this harness.
   - Note: Headless `--print` runs cannot approve tool use. A prompt that needs
     the reviewer to run commands (read the repo, run `git`) is auto-denied and
     returns nothing with exit 0, so keep `agy` prompts self-contained with the
@@ -44,7 +213,9 @@ from flag drift. Do not run those checks proactively.
 - **muse**
   - Worker (Write): `muse exec --workspace "$WORKSPACE" --disable-approval --model "$MODEL" --reasoning-effort "$EFFORT" "$PROMPT"`
   - Reviewer (Hard Read-Only): `muse exec --workspace "$WORKSPACE" --disable-approval --disable-write --disable-shell --model "$MODEL" --reasoning-effort "$EFFORT" "$PROMPT"`
-  - Known-good models: `muse-spark-1.3-contributor`, `muse-spark-1.3`
+  - Known-good models: `muse-wonder-1.0-contributor`, `muse-spark-1.3-contributor`
+  - Only contributor variants are selected; non-contributor Muse IDs are
+    outside this policy.
   - Note: Unset invalid credentials with `env -u META_API_KEY` before execution.
 
 ## Extensible and Community Harnesses
@@ -52,9 +223,15 @@ from flag drift. Do not run those checks proactively.
 - **pi**
   - Worker (Write): `(cd "$WORKSPACE" && pi --print --model "$MODEL" --thinking "$EFFORT" "$PROMPT")`
   - Reviewer (Hard Read-Only): `(cd "$WORKSPACE" && pi --print --tools read,grep,find,ls --model "$MODEL" --thinking "$EFFORT" "$PROMPT")`
-  - Known-good models: `openai-codex/gpt-6-astra`, `openai-codex/gpt-6-sol`, `openai-codex/gpt-6-luna`, `anthropic/claude-fable-5`, `anthropic/claude-opus-5-5`, `anthropic/claude-sonnet-5`, `xai/grok-4.6`, `xai/grok-4.5`, `muse-spark/muse-spark-1.2-contributor`
-  - Note: pi's catalog lags the native CLIs. Use only IDs that
-    `pi --list-models` reports.
+  - Catalog-listed role models: `anthropic/claude-fable-5`,
+    `meta/muse-spark-1.3-contributor`. Model listing is not completion or
+    authentication proof; use only identifiers reported by the installed
+    `pi --list-models`.
+  - Do not infer an OMP provider prefix. A catalog that lists GPT models under
+    `openai` does not establish a subscription-backed `openai-codex` route.
+    If the required coding-plan model is absent, use its native harness
+    rather than silently switching to a billable API provider. Do not replace
+    an unavailable Wonder contributor with the non-contributor Wonder entry.
 - **jcode**
   - Worker (Write): `jcode run -C "$WORKSPACE" --model "$MODEL" "$PROMPT"`
   - Reviewer (Hard Read-Only): `jcode run -C "$WORKSPACE" --disable-base-tools --tools read --model "$MODEL" "$PROMPT"`
@@ -90,12 +267,16 @@ Classify each member before dispatch:
 | Classification | Harnesses | Workspace |
 |---|---|---|
 | Hard Read-Only | `codex --sandbox read-only`, `claude --tools Read,Grep,Glob`, `muse --disable-write --disable-shell`, `pi --tools read,...`, `jcode --tools read`, `prime-agent --tools read,...`, `hermes --tools read,search` | The reviewed worktree is acceptable. |
-| Soft Read-Only | `agy --mode plan`, `grok --permission-mode plan`, `opencode --agent plan`, `goose review`, `aider --chat-mode ask` | A dedicated detached worktree at the reviewed revision. |
+| Soft Read-Only | `agy --mode plan`, `grok --permission-mode plan`, `opencode --agent plan`, `goose review`, `aider --chat-mode ask`, `omp` with the neutral launch directory, trusted overlay, and verified read-only tool inventory | A dedicated detached worktree at the reviewed revision. |
 
 A Soft Read-Only mode is an instruction, not an enforced sandbox. Never run
 two Soft Read-Only members, or a Soft Read-Only member and any writer, in the
 same worktree at the same time. Create the isolation worktree from the exact
-revision under review and remove it after the panel reports:
+revision under review and remove it after the panel reports. Set `HARNESS`
+to the chosen harness and build `REVIEW_COMMAND` as a Bash argument array
+from its documented command after creating `REVIEW_WT`. For OMP, that array
+must use the clean `REVIEW_CWD` as `--cwd` and `REVIEW_WT` as `--add-dir`;
+complete its tool-inventory preflight before dispatch.
 
 ```bash
 # Create isolation worktree outside the repository to prevent nesting and collisions:
@@ -104,7 +285,12 @@ git -C "$WORKSPACE" worktree add --detach "$REVIEW_WT" "$REVISION"
 
 # Dispatch Soft Read-Only member in background in its own process group:
 set -m
-(cd "$REVIEW_WT" && ...) &
+LAUNCH_CWD="$REVIEW_WT"
+if [ "$HARNESS" = omp ]; then
+    LAUNCH_CWD="$REVIEW_CWD"
+fi
+[ "${#REVIEW_COMMAND[@]}" -gt 0 ] || exit 2
+(cd "$LAUNCH_CWD" && "${REVIEW_COMMAND[@]}") &
 REVIEW_PID=$!
 set +m
 
@@ -141,11 +327,26 @@ re-dispatched with weaker boundaries.
 
 ### Diversity
 
-Exclude models from the authoring agent's own family, because self-review does
-not add an independent viewpoint. When the author is a Claude model, review with
-`codex`, `grok`, `muse`, or `agy`. Keep the tier the work needs: Tier 1 for a
-final adversarial gate, Tier 2 for routine review. A user-named reviewer or a
-user-set effort overrides this default.
+Exclude models from the authoring agent's own family from every candidate: the
+role default, each fallback, and any user-suggested substitute. Self-review
+does not add an independent viewpoint. This filter covers live retry hops, not
+just the primary: an external `omp` reviewer inherits the global
+`retry.fallbackChains`, whose entries can belong to the author's family even
+when the primary is safe, so the reviewer overlay MUST set
+`retry.modelFallback: false` and a failed reviewer is reported absent rather
+than retried into an excluded family. When the author is a Muse model,
+`muse` members are ineligible, so the `review` chain reduces to `codex`
+`gpt-6-astra` then `claude` `claude-fable-5` then `agy` `gemini-4-argon-high`;
+the same family filter applies when the author is a Claude, Codex, or Gemini
+model. Fail closed: if the filter leaves no eligible model, report the panel
+as blocked instead of reviewing with an excluded family member.
+
+Match effort to the work: `high` for deep or adversarial review, `medium` for
+routine review, `maximum` only when the user explicitly requires a final
+adversarial gate. A user-named reviewer or a user-set effort overrides these
+defaults, but a user-named reviewer from the author's own family is still
+ineligible: report it as a gate blocker and offer a substitute rather than
+running it.
 
 ### Brief delivery
 

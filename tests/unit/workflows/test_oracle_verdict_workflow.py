@@ -313,19 +313,10 @@ READ_ONLY_FLAGS = {
     "muse": ("--disable-write", "--disable-shell"),
     "agy": ("--mode", "plan"),
 }
-MODEL_PINS = {
-    "opus": ("claude-opus-5-5", "medium"),
-    "sonnet": ("claude-sonnet-5-5", "medium"),
-    "sol": ("gpt-6.1-sol", "medium"),
-    "luna": ("gpt-6-luna", "high"),
-    "muse": ("muse-spark-1.3-contributor", "medium"),
-    "agy": ("gemini-3.8-flash-medium", "medium"),
-}
 
 
-def test_reviewer_commands_keep_read_only_flags_and_model_pins(tmp_path: Path) -> None:
+def test_reviewer_commands_keep_read_only_flags(tmp_path: Path) -> None:
     for name, reviewer in POLICY.reviewers.items():
-        assert (reviewer.model, reviewer.effort) == MODEL_PINS[name]
         argv = build(reviewer, tmp_path, "prompt", tmp_path).argv
         flags = READ_ONLY_FLAGS[reviewer.harness]
         start = argv.index(flags[0])

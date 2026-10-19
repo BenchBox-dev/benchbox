@@ -104,7 +104,7 @@ def _reviewer_line(plan: Mapping[str, Any], name: str | None) -> list[str]:
     spec = next((item for item in plan["chain"] if item["name"] == name), None)
     if spec is None:
         return []
-    return [f"Reviewer: {name} ({spec['harness']} {spec['model']}, effort {spec['effort']}).", ""]
+    return [f"Reviewer: {name} (role {spec['role']}, {spec['harness']} {spec['model']}, effort {spec['effort']}).", ""]
 
 
 def _absences(attempts: list[Attempt], step: Step) -> list[str]:

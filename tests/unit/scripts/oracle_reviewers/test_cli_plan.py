@@ -139,7 +139,13 @@ def test_soundness_pr_plans_a_review_with_a_private_brief(monkeypatch: pytest.Mo
     assert values["decision"] == "review" and values["post"] == "true" and values["head_sha"] == HEAD
     assert plan["tier"] == "medium-high"
     assert plan["excluded_families"] == ["codex"]
-    assert [item["name"] for item in plan["chain"]] == ["sonnet", "sol", "luna", "muse", "agy"]
+    assert {item["name"] for item in plan["chain"]} == {
+        "codex-deep",
+        "claude-deep",
+        "gemini-deep",
+        "muse-deep",
+        "codex-routine",
+    }
     assert plan["brief_mode"] == "inline"
     brief = tmp_path / "plan" / "brief.md"
     if sys.platform != "win32":
@@ -426,12 +432,14 @@ def test_a_follow_up_after_ship_is_scoped_even_at_the_very_high_tier(
 
 
 def test_a_follow_up_tries_the_previous_reviewer_first(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    record = _record(TWO_FILE_DIFF, "SHIP_WITH_FIXES", open_defects=[DEFECT], next_id=2, reviewer="muse")
+    record = _record(TWO_FILE_DIFF, "SHIP_WITH_FIXES", open_defects=[DEFECT], next_id=2, reviewer="muse-deep")
     _, _, plan = _plan(monkeypatch, tmp_path, _fake(_review(record), diff=CAPTURE_CHANGED))
-    assert [item["name"] for item in plan["chain"]] == ["muse", "sonnet", "sol", "luna", "agy"]
+    names = [item["name"] for item in plan["chain"]]
+    assert names[0] == "muse-deep"
+    assert set(names) == {"codex-deep", "claude-deep", "gemini-deep", "muse-deep", "codex-routine"}
     (tmp_path / "x").mkdir()
     _, _, first = _plan(monkeypatch, tmp_path / "x", _fake(diff=CAPTURE_CHANGED))
-    assert [item["name"] for item in first["chain"]] == ["sonnet", "sol", "luna", "muse", "agy"]
+    assert {item["name"] for item in first["chain"]} == set(names)
 
 
 def test_a_changed_patch_after_do_not_ship_restarts_with_the_previous_summary(

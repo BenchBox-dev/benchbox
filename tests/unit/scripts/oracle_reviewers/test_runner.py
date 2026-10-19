@@ -68,7 +68,7 @@ def _review(
     head: str,
     prompt: str = "brief",
     *,
-    reviewer: str = "muse",
+    reviewer: str = "muse-routine",
     brief_mode: str = "inline",
     required: tuple[str, ...] = (),
     rules: dict | None = None,
@@ -270,7 +270,7 @@ def _plan_dir(policy: Policy, tmp_path: Path, head: str, scope: str, brief: str,
         "brief_mode": "inline",
         "max_defects": 10,
         "scope": scope,
-        "chain": [policy.reviewers["muse"].to_json()],
+        "chain": [policy.reviewers["muse-routine"].to_json()],
     }
     (plan_dir / "plan.json").write_text(json.dumps(plan), encoding="utf-8")
     (plan_dir / "brief.md").write_text(brief, encoding="utf-8")
@@ -295,7 +295,7 @@ def _run_review(
             "--slot",
             "1",
             "--reviewer",
-            "muse",
+            "muse-routine",
             "--harness",
             "muse",
             "--workspace",
@@ -475,7 +475,9 @@ def test_claude_must_read_every_required_file_on_a_file_list_brief(
     workspace, head = _workspace(tmp_path)
     resolved = [(path.format(ws=workspace.resolve()), error) for path, error in reads]
     _claude_says(tmp_path, monkeypatch, resolved)
-    outcome = _review(policy, tmp_path, workspace, head, reviewer="sonnet", brief_mode=brief_mode, required=("a.txt",))
+    outcome = _review(
+        policy, tmp_path, workspace, head, reviewer="claude-deep", brief_mode=brief_mode, required=("a.txt",)
+    )
     assert (outcome.missing is None and outcome.verdict is not None) is accepted
     if not accepted:
         assert outcome.missing is not None and outcome.missing.kind == absence.INCOMPLETE
@@ -489,7 +491,9 @@ def test_a_codex_ship_without_any_read_command_is_a_hollow_review(
     workspace, head = _workspace(tmp_path)
     hollow = {"summary": "I could not review the files because I may not run commands.", "files_examined": ["a.txt"]}
     _codex_says(tmp_path, monkeypatch, [{"type": "turn.completed"}], **hollow)
-    outcome = _review(policy, tmp_path, workspace, head, reviewer="sol", brief_mode="file-list", required=("a.txt",))
+    outcome = _review(
+        policy, tmp_path, workspace, head, reviewer="codex-routine", brief_mode="file-list", required=("a.txt",)
+    )
     assert outcome.verdict is None
     assert outcome.missing is not None and outcome.missing.kind == absence.INCOMPLETE
     assert outcome.missing.detail == "the verdict would ship but its trace shows no successful file read"
@@ -513,7 +517,9 @@ def test_a_codex_file_list_review_needs_a_successful_read_of_each_required_file(
 ) -> None:
     workspace, head = _workspace(tmp_path)
     _codex_says(tmp_path, monkeypatch, [event])
-    outcome = _review(policy, tmp_path, workspace, head, reviewer="sol", brief_mode="file-list", required=("a.txt",))
+    outcome = _review(
+        policy, tmp_path, workspace, head, reviewer="codex-routine", brief_mode="file-list", required=("a.txt",)
+    )
     assert (outcome.missing is None) is accepted
 
 
@@ -525,7 +531,7 @@ def test_codex_quota_reported_in_the_event_stream_is_quota(
     error = {"type": "turn.failed", "error": {"message": "You've hit your usage limit. Resets in 2h"}}
     body = f"print(__import__('json').dumps({error!r}))\nraise SystemExit(1)"
     _fake_muse(tmp_path, monkeypatch, body, name="codex")
-    outcome = _review(policy, tmp_path, workspace, head, reviewer="sol")
+    outcome = _review(policy, tmp_path, workspace, head, reviewer="codex-routine")
     assert outcome.missing is not None and outcome.missing.kind == absence.QUOTA
     assert outcome.missing.reset_at == NOW + timedelta(hours=2)
 
@@ -545,7 +551,7 @@ def test_an_unclassified_codex_failure_names_its_error_event(
 ) -> None:
     workspace, head = _workspace(tmp_path)
     _codex_error_event(tmp_path, monkeypatch, "stream disconnected before completion")
-    outcome = _review(policy, tmp_path, workspace, head, reviewer="sol")
+    outcome = _review(policy, tmp_path, workspace, head, reviewer="codex-routine")
     assert outcome.missing is not None and outcome.missing.detail == "exit code 1"
     assert outcome.diagnostic == "ERROR: stream disconnected before completion"
 
@@ -556,7 +562,7 @@ def test_a_codex_quota_error_event_is_a_quota_absence(
 ) -> None:
     workspace, head = _workspace(tmp_path)
     _codex_error_event(tmp_path, monkeypatch, "Quota exceeded. Check your plan and billing details.")
-    outcome = _review(policy, tmp_path, workspace, head, reviewer="sol")
+    outcome = _review(policy, tmp_path, workspace, head, reviewer="codex-routine")
     assert outcome.missing is not None and outcome.missing.kind == "quota"
     assert outcome.missing.detail == "ERROR: Quota exceeded. Check your plan and billing details."
     assert outcome.diagnostic == "ERROR: Quota exceeded. Check your plan and billing details."
@@ -581,7 +587,7 @@ def test_agy_without_its_api_key_is_an_auth_absence_before_running(
     workspace, head = _workspace(tmp_path)
     _fake_muse(tmp_path, monkeypatch, "raise SystemExit('must not run')", name="agy")
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    outcome = _review(policy, tmp_path, workspace, head, reviewer="agy")
+    outcome = _review(policy, tmp_path, workspace, head, reviewer="gemini-routine")
     assert outcome.missing is not None and outcome.missing.kind == absence.AUTH
     assert outcome.missing.detail == "GEMINI_API_KEY is not set"
 
@@ -595,7 +601,7 @@ def test_agy_runs_outside_the_pull_request_checkout(
     body = f"import os\nassert not os.path.exists('a.txt'), os.getcwd()\nprint({json.dumps(envelope)})"
     _fake_muse(tmp_path, monkeypatch, body, name="agy")
     monkeypatch.setenv("GEMINI_API_KEY", "test-key-value")
-    outcome = _review(policy, tmp_path, workspace, head, reviewer="agy")
+    outcome = _review(policy, tmp_path, workspace, head, reviewer="gemini-routine")
     assert outcome.missing is None
     assert outcome.verdict == {**VERDICT, "defect_count": 0}
 
@@ -632,15 +638,15 @@ def test_a_file_list_review_stages_the_whole_diff(
 
 
 @skip_on_windows
-@pytest.mark.parametrize("reviewer", ["sol", "sonnet", "muse"])
+@pytest.mark.parametrize("reviewer", ["codex-routine", "claude-deep", "muse-routine"])
 def test_a_do_not_ship_is_never_discarded_for_missing_read_evidence(
     policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, reviewer: str
 ) -> None:
     workspace, head = _workspace(tmp_path)
     rework = {"decision": "DO_NOT_SHIP", "summary": "rework", "files_examined": []}
-    if reviewer == "sol":
+    if reviewer == "codex-routine":
         _codex_says(tmp_path, monkeypatch, [], **rework)
-    elif reviewer == "sonnet":
+    elif reviewer == "claude-deep":
         _claude_says(tmp_path, monkeypatch, [], **rework)
     else:
         _muse_says(tmp_path, monkeypatch, **rework)
@@ -713,12 +719,12 @@ def _judged(outcome: runner.ReviewOutcome, rules: dict):
     return protocol.judge_planned(validate(outcome.verdict, trusted=True), {"max_defects": 10, "protocol": rules})
 
 
-@pytest.mark.parametrize("reviewer", ["sol", "sonnet"])
+@pytest.mark.parametrize("reviewer", ["codex-routine", "claude-deep"])
 def test_a_follow_up_ship_with_only_an_unchanged_file_defect_still_needs_reads(
     policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, reviewer: str
 ) -> None:
     workspace, head = _two_files(tmp_path)
-    if reviewer == "sol":
+    if reviewer == "codex-routine":
         _codex_says(tmp_path, monkeypatch, [{"type": "turn.completed"}], defects=[OUTSIDE])
     else:
         _claude_says(tmp_path, monkeypatch, [], defects=[OUTSIDE])
@@ -738,12 +744,12 @@ def test_a_follow_up_ship_with_only_an_unchanged_file_defect_still_needs_reads(
     )
 
 
-@pytest.mark.parametrize("reviewer", ["sol", "sonnet"])
+@pytest.mark.parametrize("reviewer", ["codex-routine", "claude-deep"])
 def test_a_follow_up_that_read_the_changed_files_ships_with_the_unchanged_defect_not_counted(
     policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, reviewer: str
 ) -> None:
     workspace, head = _two_files(tmp_path)
-    if reviewer == "sol":
+    if reviewer == "codex-routine":
         _codex_says(tmp_path, monkeypatch, [_command("/bin/zsh -lc 'cat -n a.txt'", "1 a")], defects=[OUTSIDE])
     else:
         _claude_says(tmp_path, monkeypatch, [("a.txt", False)], defects=[OUTSIDE])
@@ -768,7 +774,14 @@ def test_a_follow_up_defect_in_a_changed_file_needs_no_reads(
     workspace, head = _two_files(tmp_path)
     _codex_says(tmp_path, monkeypatch, [{"type": "turn.completed"}], decision="SHIP", defects=[INSIDE, OUTSIDE])
     outcome = _review(
-        policy, tmp_path, workspace, head, reviewer="sol", brief_mode="file-list", required=("a.txt",), rules=FOLLOW_UP
+        policy,
+        tmp_path,
+        workspace,
+        head,
+        reviewer="codex-routine",
+        brief_mode="file-list",
+        required=("a.txt",),
+        rules=FOLLOW_UP,
     )
     judged = _judged(outcome, FOLLOW_UP)
     assert judged.decision == "SHIP_WITH_FIXES"
@@ -783,7 +796,14 @@ def test_a_follow_up_leaving_a_prior_defect_open_needs_no_reads(
     rules = {**FOLLOW_UP, "prior": [prior]}
     _codex_says(tmp_path, monkeypatch, [{"type": "turn.completed"}], defects=[OUTSIDE])
     outcome = _review(
-        policy, tmp_path, workspace, head, reviewer="sol", brief_mode="file-list", required=("a.txt",), rules=rules
+        policy,
+        tmp_path,
+        workspace,
+        head,
+        reviewer="codex-routine",
+        brief_mode="file-list",
+        required=("a.txt",),
+        rules=rules,
     )
     assert _judged(outcome, rules).decision == "SHIP_WITH_FIXES"
 
@@ -794,7 +814,9 @@ def test_a_first_round_file_list_defect_needs_no_reads(
 ) -> None:
     workspace, head = _two_files(tmp_path)
     _codex_says(tmp_path, monkeypatch, [{"type": "turn.completed"}], decision="SHIP", defects=[defect])
-    outcome = _review(policy, tmp_path, workspace, head, reviewer="sol", brief_mode="file-list", required=("a.txt",))
+    outcome = _review(
+        policy, tmp_path, workspace, head, reviewer="codex-routine", brief_mode="file-list", required=("a.txt",)
+    )
     assert _judged(outcome, {}).decision == "SHIP_WITH_FIXES"
 
 
