@@ -6,7 +6,7 @@
     "nightly-t3.md t3:durations row matches the new rule",
     "PR merged with a success oracle-review verdict (no stand-in) and required checks green; live proof via autogen-nightly-dispatch-verify-20261018"
   ],
-  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs every line. FAIL if GATE-D is empty-handed but the change still lands, or if a missing verdict can pass. Durations also feeds test_durations.json: confirm regeneration still works when failures are present.\nPre-publication (AGENTS.md): self-review with the code review action and fix every Critical and Required finding before make pr-open (G13).",
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs every line. FAIL if GATE-D is empty-handed but the change still lands, or if a missing verdict can pass. Durations also feeds test_durations.json: confirm regeneration still works when failures are present.\nPre-publication (AGENTS.md): self-review with the code review action and fix every Critical and Required finding before make pr-open (G13).\n\nGate snapshot: oracle-verdict SUCCESS on 13ccc0de1 (SHIP, prior D1 fixed). Only failing check is stale oracle-review runs 39277219667/39278530028 from before the fix. Non-oracle CI green (medium-test shard 0 completed). D5 forbids agent rerun: OWNER ACTION needed — rerun the failed oracle-review check, then armed auto-merge fires.",
   "description": "Decision D3 (owner chose to decouple): t3:durations should not duplicate the release canary. Confirmed: in run 39125986956 the slow tier (672 selected, 4 failed) failed the domain through the final step 'Require successful sampled tests' (.github/workflows/nightly-v2.yml about lines 1012-1024), and the same four tests are the release canary failures on the same commit (3b3cfbcaa). The runbook documents the old rule (docs/internal/nightly-t3.md line ~30: failed sampled tests fail the domain, missing verdicts fail closed).\nGATE-D (precondition, record the result): prove the canary selection ((slow or resource_heavy) and not (stress or live_integration)) is a superset of the durations slow tier (slow and not (stress or resource_heavy or live_integration)) with pytest --collect-only -q set difference; record counts; also record that the fast-tier tests run in PR/trunk lanes. If the slow-tier difference is non-empty, do not decouple those tests: either add them to the canary selection in a separately reviewed change or block the item.\nNew behavior: the domain fails only when a verdict file is missing, pytest exits >1 (usage, internal or no-tests), junit is missing or unparseable, or duration tooling fails. pytest exit 1 (test failures) emits a ::warning:: naming the failing test ids, retains artifacts and passes. Update the runbook row.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/issues/2874",
@@ -45,6 +45,14 @@
       "generation": "ca4f5c42ef814662bf3867a6fe044594",
       "op": "release",
       "op_id": "536b61ecf9204163b18806da53837800",
+      "session_id": "0722acca462b419aa525d939aedd0290"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a",
+      "at": "2026-10-19T17:33:27Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1fd6cfc80fc948829e8ac3661181d1fe",
       "session_id": "0722acca462b419aa525d939aedd0290"
     }
   ]
