@@ -5,7 +5,7 @@
     "PR merged with required checks green and a success oracle verdict (workflow paths); no mirror PR is merged outside D11"
   ],
   "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11, guardrails G1-G12; read first). Follow-up created by the controller during the batch; not part of the batch set; do not take it during the batch. Rubric: PASS needs the decisions and the divergence test.",
-  "description": "Follow-up from the sync list item. (1) results-data/validate_corpus.py:648 has an unguarded function-local import of benchbox.core.results.execution_variant, which depends on benchbox.core.execution_variant and platform_manifest, modules the mirror never copies; it only bites if validate_corpus.py runs on published-results without the full package. (2) corpus-drift-check.yml uses a smaller pathspec that omits benchbox/core/results/subscale_policy.py. Work: decide per case whether to mirror the modules, make the import tolerant, or leave validation to develop CI; make the drift pathspec agree with the sync workflow list and add a test that fails when they diverge. Guardrail: the mirror allowlist is a trust boundary onto a public branch (no wildcards, public-safe code only).",
+  "description": "Follow-up from the sync list item. (1) results-data/validate_corpus.py:648 has an unguarded function-local import of benchbox.core.results.execution_variant, which depends on benchbox.core.execution_variant and platform_manifest, modules the mirror never copies; it only bites if validate_corpus.py runs on published-results without the full package. (2) corpus-drift-check.yml uses a smaller pathspec that omits benchbox/core/results/subscale_policy.py. Work: decide per case whether to mirror the modules, make the import tolerant, or leave validation to develop CI; make the drift pathspec agree with the sync workflow list and add a test that fails when they diverge. Guardrail: the mirror allowlist is a trust boundary onto a public branch (no wildcards, public-safe code only). Formal review (G13): run the code review action as a separate pass before make pr-open; fix all Critical/Required findings.",
   "links": [
     "item:t3-drift-corpus-mismatch-20261009"
   ],
@@ -16,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "2f8c84d59b4248fbb6edef38f827fb40",
+      "session_id": "0722acca462b419aa525d939aedd0290"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a",
+      "at": "2026-10-19T00:31:22Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9f0c655bd0d44e88b903f20fd97c649a",
       "session_id": "0722acca462b419aa525d939aedd0290"
     }
   ]
