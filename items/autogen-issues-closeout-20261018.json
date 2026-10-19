@@ -7,7 +7,7 @@
     "Every follow-up item above exists, is open, is not claimed by the batch, and is listed with its gate or hold date"
   ],
   "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs the table and complete mapping. FAIL if a finding has no disposition. Closing this item ends the batch.",
-  "description": "Final item. Re-run the issue inventory (gh issue list --state all, bot authors, open vs closed, comments per open bot issue) and compare with the baseline recorded in the decisions item (63 issues, 55 bot, 14 of 15 open; open bot issues: 14; #2979 had 37 comments; 13 of 17 nightly issues were repeats of four domains). Record a before/after table. Map each accepted finding of the 2026-10-18 review to the item and merge SHA that addressed it, or to the re-homed item (perf floor, comment-policy base-read, Windows stall, contract sequencing). Confirm no hosted write exceeded D7/D11. List what remains open and why.\nFollow-ups created during the batch and outside it (list each as remaining work in the report): autogen-scheduled-run-confirmation-20261018 (held until 2026-10-20), autogen-postgres-pinning-and-mirror-consistency-20261018, autogen-mirror-validator-import-closure-20261018, autogen-stale-tpch-maintenance-mock-scan-20261018, autogen-pg-family-baseline-session-statements-20261018, autogen-site-contract-bump-sequencing-20261018 (held until 2026-11-18).",
+  "description": "Final item. Re-run the issue inventory (gh issue list --state all, bot authors, open vs closed, comments per open bot issue) and compare with the baseline recorded in the decisions item (63 issues, 55 bot, 14 of 15 open; open bot issues: 14; #2979 had 37 comments; 13 of 17 nightly issues were repeats of four domains). Record a before/after table. Map each accepted finding of the 2026-10-18 review to the item and merge SHA that addressed it, or to the re-homed item (perf floor, comment-policy base-read, Windows stall, contract sequencing). Confirm no hosted write exceeded D7/D11. List what remains open and why.\nFollow-ups created during the batch and outside it (list each as remaining work in the report): autogen-scheduled-run-confirmation-20261018 (held until 2026-10-20), autogen-postgres-pinning-and-mirror-consistency-20261018, autogen-mirror-validator-import-closure-20261018, autogen-stale-tpch-maintenance-mock-scan-20261018, autogen-pg-family-baseline-session-statements-20261018, autogen-site-contract-bump-sequencing-20261018 (held until 2026-11-18). autogen-windows-sqlglot-failures-20261018 (needs W8).",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/issues"
   ],
@@ -26,6 +26,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "3b2e7905d5ce4faa938446e808178b34",
+      "session_id": "0722acca462b419aa525d939aedd0290"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a",
+      "at": "2026-10-19T00:31:33Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "dad1de0f6f91413abd4de7ed2cb1c5e9",
       "session_id": "0722acca462b419aa525d939aedd0290"
     }
   ]
