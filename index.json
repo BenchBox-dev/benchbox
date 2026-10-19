@@ -1548,17 +1548,12 @@
       "title": "Scan for other tests that still drive TPC-H maintenance through Mock connections or adapters without refresh support"
     },
     "autogen-sync-validator-file-list-20261018": {
-      "claim": {
-        "expires_at": "2026-10-20T15:10:40Z",
-        "generation": "e8912592ec414a1682b5c44300243743",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
-      },
+      "claim": null,
       "needs": [
         "autogen-issues-decisions-20261018"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Let the results mirror build again: cover every validator module and test the list"
     },
     "autogen-tpch-maintenance-failures-20261018": {
