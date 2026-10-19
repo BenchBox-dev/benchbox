@@ -8700,7 +8700,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "blocked",
       "title": "Place canonical TPC notices beside query templates before retiring site downloads"
     },
     "docs-mig-tpc-eula-gate": {
