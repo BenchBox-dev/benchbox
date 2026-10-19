@@ -22475,6 +22475,13 @@
       "status": "open",
       "title": "Give the MySQL SQLGlot workaround retirement check real execution evidence"
     },
+    "sqlglot-refresh-one-command-benchbox-adoption": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Script the BenchBox side of an upstream SQLGlot refresh"
+    },
     "sqlglot-repro-harness-wrapper-call-shape": {
       "claim": null,
       "needs": [],

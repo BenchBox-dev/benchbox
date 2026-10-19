@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "One documented command (or workflow_dispatch workflow) takes a verified fork wheel, adopts it, runs the retirement and baseline checks, and prepares the BenchBox change for a PR.",
+    "It refuses unverified or dirty wheels and does not publish anything.",
+    "Covered by a test using a fixture wheel."
+  ],
+  "description": "Fork-side refresh is tooled (downstream.refresh candidate/integrate, make benchbox-dist/benchbox-check) and the freshness gate now blocks releases when upstream is ahead. Adopting the new wheel in BenchBox is still manual: build and verify the wheel, run scripts.sync_sqlglot_runtime --wheel, update the runtime baseline, and open a PR. Nothing opens the refresh PR or drives these steps in order.",
+  "links": [
+    "scripts/sync_sqlglot_runtime.py",
+    "scripts/check_sqlglot_upstream_freshness.py",
+    "https://github.com/BenchBox-dev/benchbox-sqlglot"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:294e68659711a060d19711d3",
+      "at": "2026-10-19T00:13:54Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "fab99765607b4f13a27bf2c054aa8562",
+      "session_id": "5fc71a2e25aa4324a26f0d500fc3289e"
+    }
+  ]
+}
