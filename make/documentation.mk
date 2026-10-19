@@ -4,6 +4,7 @@ docs-linkcheck: query-docs
 
 .PHONY: docs-validate
 docs-validate:
+	@uv run -- python scripts/check_docs_ownership.py
 	@echo "Validating example file references..."
 	@uv run -- python scripts/validate_example_references.py
 	@echo ""

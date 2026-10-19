@@ -39,6 +39,8 @@ code-ci:
   - "_project/evals/agent-instructions/**"
   - "_project/config/**"
   - "_project/compat/**"
+  - "quality/docs-ownership.json"
+  - "make/documentation.mk"
   - "docs/**.py"
   - "docs/**.css"
   - "docs/**.html"
