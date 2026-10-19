@@ -9,6 +9,7 @@ import pytest
 
 pytestmark = [
     pytest.mark.unit,
+    pytest.mark.medium,
 ]
 
 ROOT = Path(__file__).resolve().parents[3]
