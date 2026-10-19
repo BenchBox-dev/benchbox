@@ -22454,6 +22454,13 @@
       "status": "open",
       "title": "Make security advisories visible for the bundled SQLGlot runtime"
     },
+    "sqlglot-bundled-runtime-windows-verification": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Verify the zip-loaded SQLGlot runtime on Windows"
+    },
     "sqlglot-dialect-translation-code-review-implementation": {
       "claim": null,
       "needs": [],

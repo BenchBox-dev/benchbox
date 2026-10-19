@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Run the installed-package smoke (benchbox-sqlglot import, translation, coexistence with public sqlglot, uninstall) on windows-latest in CI.",
+    "Fix any path-separator or zipimport issue found.",
+    "Record the result in the release guide's verification list."
+  ],
+  "description": "The installed-wheel smoke, coexistence and rollback checks ran on macOS arm64 and hosted Ubuntu only. benchbox._vendor appends '<archive>.zip/benchbox/_vendor' to __path__, which relies on zipimport path handling; no Windows run was performed this session.",
+  "links": [
+    "benchbox/_vendor/__init__.py",
+    "scripts/verify_sqlglot_runtime_distribution.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:294e68659711a060d19711d3",
+      "at": "2026-10-19T00:13:48Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "140057585db14e87aefb3558eaad6e51",
+      "session_id": "5fc71a2e25aa4324a26f0d500fc3289e"
+    }
+  ]
+}
