@@ -8697,7 +8697,9 @@
     },
     "docs-mig-tpc-eula-gate": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "docs-mig-tpc-adjacent-eulas"
+      ],
       "priority": "critical",
       "status": "open",
       "title": "Verify TPC notices before removing query downloads"
