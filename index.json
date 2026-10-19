@@ -8540,11 +8540,13 @@
     "docs-mig-core-freeze": {
       "claim": null,
       "needs": [
+        "docs-mig-adr-ownership",
+        "docs-mig-core-doc-paths-to-urls",
         "docs-mig-ts-parity-gate",
         "docs-mig-site-contract-checks",
         "docs-mig-legacy-downloads-redirects",
         "docs-mig-history-filter",
-        "docs-mig-adr-ownership"
+        "docs-mig-activate-schema4"
       ],
       "priority": "critical",
       "status": "open",
