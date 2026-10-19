@@ -15509,6 +15509,13 @@
       "status": "open",
       "title": "Oracle reviewers check out only the head commit, so they cannot see the base and often say the base commit was unavailable"
     },
+    "oracle-reviewer-coverage-incomplete-on-large-diffs": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Oracle verdict stays pending when its only available reviewer cannot read every changed file"
+    },
     "oracle-runner-integrity-lows-20261008": {
       "claim": null,
       "needs": [],

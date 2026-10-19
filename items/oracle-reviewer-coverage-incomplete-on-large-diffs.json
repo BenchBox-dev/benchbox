@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Identify why muse skips files it was asked to cover and whether reruns, a file cap or brief ordering is the cause.",
+    "Make a retry path that actually reruns the reviewer on the same head (or document the exact trigger).",
+    "Report which reviewers are required and alert when quota or availability leaves none."
+  ],
+  "description": "On PR #3139 the muse reviewer finished 'incomplete' because it did not examine eight workflow files, and the other reviewers were unavailable (OpenAI quota exhausted, same-family skip, diff over the agy brief cap). The verdict stayed pending and the PR could only merge through a stand-in. A /oracle-review comment started no new run. Large soundness-path diffs will hit this again.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3139",
+    ".github/workflows/oracle-verdict.yml",
+    ".github/workflows/oracle-review.yml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:294e68659711a060d19711d3",
+      "at": "2026-10-19T00:13:40Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "51d654bd2c3143faa718f853f1edf6bf",
+      "session_id": "5fc71a2e25aa4324a26f0d500fc3289e"
+    }
+  ]
+}
