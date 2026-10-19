@@ -1515,12 +1515,17 @@
       "title": "Attribute a site probe mismatch using recorded byte hashes and cache headers"
     },
     "autogen-site-probe-mismatch-diagnosis-20261018": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-20T17:21:14Z",
+        "generation": "17dde1b69cae4f0faa8f6a0b9c2169f0",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
+      },
       "needs": [
         "autogen-issues-decisions-20261018"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Diagnose the one or two byte-mismatched pages that fail post-deploy probes, and record them in the receipt"
     },
     "autogen-site-snapshot-digest-cause-20261018": {
