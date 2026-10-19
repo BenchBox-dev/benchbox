@@ -644,3 +644,68 @@ class TestPgDuckDBNativeComparison:
             result = adapter.run_native_comparison(query_results, query_sql_map, scale_factor=1.0)
 
         assert result is None
+
+
+def _layout_config():
+    from benchbox.core.tuning.interface import TableTuning, TuningColumn, UnifiedTuningConfiguration
+
+    config = UnifiedTuningConfiguration()
+    config.primary_keys.enabled = False
+    config.unique_constraints.enabled = False
+    config.table_tunings["lineitem"] = TableTuning(
+        table_name="lineitem",
+        partitioning=[TuningColumn("l_shipdate", "DATE", 1)],
+        sorting=[TuningColumn("l_orderkey", "INTEGER", 1), TuningColumn("l_linenumber", "INTEGER", 2)],
+    )
+    return config
+
+
+def test_post_load_cluster_records_catalog_evidence(pg_duckdb_stubs):
+    from benchbox.core.tuning.applied_ledger import AppliedTuningLedger
+
+    adapter = PgDuckDBAdapter()
+    adapter._applied_tuning_ledger = AppliedTuningLedger()
+    connection = Mock()
+    connection.autocommit = False
+    rows = [(101, 1, "l_orderkey"), (101, 2, "l_linenumber"), (102, 1, "l_orderkey"), (102, 2, "l_linenumber")]
+    connection.cursor.return_value.fetchall.side_effect = [rows, rows]
+    performed = adapter.apply_post_load_tunings("lineitem", _layout_config(), connection)
+    assert performed is True
+    assert not adapter._applied_tuning_ledger.dropped
+    satisfied = {entry.intent for entry in adapter._applied_tuning_ledger.satisfied}
+    assert satisfied == {"sorting:lineitem (l_orderkey, l_linenumber)"}
+    assert len(adapter._applied_tuning_ledger.statements) == 2
+
+
+def test_post_load_cluster_catalog_mismatch_records_failure(pg_duckdb_stubs):
+    from benchbox.core.tuning.applied_ledger import STATEMENT_FAILED, AppliedTuningLedger
+
+    adapter = PgDuckDBAdapter()
+    adapter._applied_tuning_ledger = AppliedTuningLedger()
+    connection = Mock()
+    connection.autocommit = False
+    connection.cursor.return_value.fetchall.return_value = [(101, 1, "other_column")]
+    with pytest.raises(ValueError, match="Index catalog mismatch before CLUSTER"):
+        adapter.apply_post_load_tunings("lineitem", _layout_config(), connection)
+    assert not adapter._applied_tuning_ledger.satisfied
+    assert adapter._applied_tuning_ledger.statements
+    assert all(s.status == STATEMENT_FAILED for s in adapter._applied_tuning_ledger.statements)
+
+
+def test_partitioning_catalog_readback_records_satisfaction(pg_duckdb_stubs):
+    from benchbox.core.tuning.applied_ledger import PHASE_DDL, AppliedTuningLedger
+
+    adapter = PgDuckDBAdapter()
+    adapter.tuning_enabled = True
+    adapter.unified_tuning_configuration = _layout_config()
+    adapter._applied_tuning_ledger = AppliedTuningLedger()
+    adapter._applied_tuning_ledger.record(
+        "CREATE TABLE lineitem (l_shipdate DATE) PARTITION BY RANGE (l_shipdate)",
+        PHASE_DDL,
+        table="lineitem",
+    )
+    connection = Mock()
+    connection.cursor.return_value.fetchone.return_value = ("RANGE (l_shipdate)",)
+    adapter._verify_partitioning_catalog(connection)
+    satisfied = {entry.intent for entry in adapter._applied_tuning_ledger.satisfied}
+    assert satisfied == {"partitioning:lineitem (l_shipdate)"}

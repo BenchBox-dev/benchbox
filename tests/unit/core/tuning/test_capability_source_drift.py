@@ -280,12 +280,6 @@ def test_coverage_20260716_aliases_resolve_to_canonical_registry_key(alias, cano
     assert canonical in PLATFORM_TUNING_CAPABILITIES
 
 
-def test_pg_duckdb_sorting_has_a_registry_entry():
-    capability = get_capability("pg-duckdb", TuningType.SORTING)
-    assert capability is not None
-    assert capability.rendered_via == "none"
-
-
 def _discover_generator_registry_keys() -> frozenset[str]:
     source = inspect.getsource(get_ddl_generator)
     tree = ast.parse(source)

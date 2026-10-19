@@ -35,6 +35,9 @@ duckdb:
     measurements: []
   joinorder:
     measurements: []
+pg-duckdb:
+  tpch:
+    measurements: []
 snowflake:
   tpch:
     measurements:

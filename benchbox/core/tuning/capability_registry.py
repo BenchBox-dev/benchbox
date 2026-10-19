@@ -954,40 +954,28 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         ),
     },
     "pg-duckdb": {
-        _T.PARTITIONING: _none(
-            "pg_duckdb_inherited_postgresql_noop",
-            "core.tuning.generators.pg_duckdb.PgDuckDBDDLGenerator delegates to "
-            "PostgreSQLDDLGenerator.generate_tuning_clauses (pg_duckdb.py:81), which computes a real "
-            "PARTITION BY RANGE/LIST/HASH clause from tuned columns (postgresql.py:130-139) for dry-run "
-            "preview. benchbox/platforms/pg_duckdb.py's PgDuckDBAdapter defines no create_schema/"
-            "apply_table_tunings/generate_tuning_clause override at all -- it inherits PostgreSQLAdapter's "
-            'verbatim, and PostgreSQLAdapter.generate_tuning_clause unconditionally returns "" while '
-            "apply_table_tunings is a no-op (postgresql.py:894-902) regardless of input, so neither "
-            "PostgreSQL nor pg_duckdb renders PARTITION BY at execution time. NOTE: this appears to also "
-            "affect this registry's existing 'postgresql' entry, which describes PARTITIONING/CLUSTERING "
-            "as rendered via 'adapter_mixin:PostgreSQLAdapter.generate_tuning_clause' -- that claim could "
-            "not be corroborated by a repo-wide call-site search either. Auditing/correcting the existing "
-            "postgresql entry is out of this TODO's scope (scope_limit is the 9 newly-covered platforms); "
-            "flagged here, not fixed.",
+        _T.PARTITIONING: _ddl(
+            "postgresql_partition_by_date_domain",
+            "PgDuckDBAdapter enables PostgreSQLAdapter.create_schema partitioning: the "
+            "PostgreSQLDDLGenerator PARTITION BY clause (RANGE for date columns, HASH for integers, "
+            "LIST otherwise) plus child partitions (yearly RANGE children and a DEFAULT partition "
+            "for RANGE; fixed children without a DEFAULT partition for HASH). Skipped, and recorded "
+            "as dropped, while primary or unique keys are requested. The adapter verifies the "
+            "strategy and columns from pg_get_partkeydef after schema creation.",
         ),
-        _T.CLUSTERING: _none(
-            "pg_duckdb_inherited_postgresql_noop",
-            "PgDuckDBDDLGenerator deliberately filters CLUSTER out of the inherited post_create_statements "
-            "(pg_duckdb.py:83-88, DuckDB's vectorized engine bypasses index-based scan ordering) for "
-            "dry-run preview, but the point is moot at execution time: see PARTITIONING entry -- "
-            "PgDuckDBAdapter never runs any post_create_statements via the inherited no-op "
-            "apply_table_tunings/generate_tuning_clause path.",
+        _T.CLUSTERING: _post_load(
+            "postgresql_index_cluster",
+            "After each heap table loads, PgDuckDBAdapter.apply_post_load_tunings runs CREATE INDEX "
+            "on the merged clustering and sorting columns (ordered by tuning order across both "
+            "lists), then CLUSTER USING that index. Index columns are verified from pg_index before "
+            "CLUSTER commits, and indisclustered is verified per partition afterwards; CLUSTER itself "
+            "runs in autocommit because it cannot run inside a transaction block.",
         ),
-        _T.SORTING: _none(
-            "pg_duckdb_inherited_postgresql_noop",
-            "PostgreSQLDDLGenerator treats SORTING as CLUSTERING -- a shared code path (postgresql.py:"
-            "141-159) appends both a CREATE INDEX and a CLUSTER post_create_statement for either tuning "
-            "type. PgDuckDBDDLGenerator's inherited generate_tuning_clauses runs that same path before its "
-            "filter (pg_duckdb.py:83-88) strips only the CLUSTER statement by prefix match, so a tuned "
-            "SORTING config's CREATE INDEX still surfaces in dry-run preview, same as CLUSTERING. Same "
-            "execution-time no-op as CLUSTERING/PARTITIONING regardless: PgDuckDBAdapter never runs "
-            "post_create_statements via the inherited no-op apply_table_tunings/generate_tuning_clause "
-            "path.",
+        _T.SORTING: _post_load(
+            "postgresql_index_cluster",
+            "Same CREATE INDEX plus CLUSTER as CLUSTERING. Sorting columns merge with clustering "
+            "columns into one index ordered by tuning order, so sorting is realized by the same "
+            "clustered index rather than a separate ordering.",
         ),
         **_pk_fk_entries(),
         **_no_unique_check_entries(
