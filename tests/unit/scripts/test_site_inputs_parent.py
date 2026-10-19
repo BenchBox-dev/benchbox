@@ -365,6 +365,15 @@ def test_deployed_parent_resolves_when_the_bundle_run_head_differs(monkeypatch: 
     ) == (DEPLOYED_SHA, "bundle")
 
 
+def test_deployed_parent_refuses_bundle_from_an_untrusted_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    untrusted = f"{REPO}\t.github/workflows/site-inputs.yml\tfeature\tsuccess"
+    _gh_fixture(monkeypatch, _artifact_routes("false", BUNDLE_RUN_ID, untrusted))
+    with pytest.raises(RuntimeError, match=f"site-inputs bundle for deployed parent {DEPLOYED_SHA} is missing"):
+        parent_mod.decide_deployed_parent(
+            CORE, DEPLOYED_SHA, lambda parent, core: True, lambda sha: parent_mod.parent_bundle_state(sha, REPO)
+        )
+
+
 def test_expired_bundle_from_a_trunk_run_is_reported_expired(monkeypatch: pytest.MonkeyPatch) -> None:
     _gh_fixture(monkeypatch, _artifact_routes("true", BUNDLE_RUN_ID, TRUNK_BUNDLE_RUN))
     assert parent_mod.parent_bundle_state(DEPLOYED_SHA, REPO) == "expired"
