@@ -486,6 +486,22 @@ def fetch_open_prs(client: GitHubClient, owner: str, repo: str) -> list[dict[str
     return normalized
 
 
+def _validated_issue_page(payload: Any) -> list[dict[str, Any]]:
+    if not isinstance(payload, list):
+        raise ValueError("Expected an issue list")
+    for item in payload:
+        if (
+            not isinstance(item, dict)
+            or type(item.get("number")) is not int
+            or item["number"] <= 0
+            or not isinstance(item.get("title"), str)
+            or "body" not in item
+            or (item["body"] is not None and not isinstance(item["body"], str))
+        ):
+            raise ValueError("Malformed issue record")
+    return payload
+
+
 def find_pinned_issue(
     client: GitHubClient,
     owner: str,
@@ -495,20 +511,16 @@ def find_pinned_issue(
 ) -> dict[str, Any] | None:
     try:
         query = f'repo:{owner}/{repo} is:issue in:title "{PINNED_ISSUE_TITLE}"'
-        encoded = urllib.parse.urlencode({"q": query})
+        encoded = urllib.parse.urlencode({"q": query, "sort": "created", "order": "asc", "per_page": "100"})
         search_res = client.get_one(f"search/issues?{encoded}")
-        if isinstance(search_res, dict) and "items" in search_res:
-            candidates: list[dict[str, Any]] = []
-            for item in search_res["items"]:
+        if isinstance(search_res, dict) and search_res.get("incomplete_results") is False:
+            for item in _validated_issue_page(search_res.get("items")):
                 if "pull_request" in item:
                     continue
-                if item.get("title") == PINNED_ISSUE_TITLE and DIGEST_BODY_MARKER in (item.get("body") or ""):
-                    candidates.append(item)
-            if candidates:
-                candidates.sort(key=lambda x: int(x["number"]))
-                if record_mechanism:
-                    record_mechanism("search")
-                return candidates[0]
+                if item["title"] == PINNED_ISSUE_TITLE and DIGEST_BODY_MARKER in (item["body"] or ""):
+                    if record_mechanism:
+                        record_mechanism("search")
+                    return item
     except Exception:
         pass
 
@@ -522,9 +534,9 @@ def find_pinned_issue(
                 "per_page": "100",
                 "page": str(page),
             }
-            page_items = client.get_one(f"repos/{owner}/{repo}/issues?{urllib.parse.urlencode(params)}")
-            if not page_items or not isinstance(page_items, list):
-                break
+            page_items = _validated_issue_page(
+                client.get_one(f"repos/{owner}/{repo}/issues?{urllib.parse.urlencode(params)}")
+            )
             for item in page_items:
                 if "pull_request" in item:
                     continue
@@ -538,6 +550,8 @@ def find_pinned_issue(
     except Exception as err:
         raise RuntimeError(f"Pinned issue lookup failed closed: {err}") from err
 
+    if record_mechanism:
+        record_mechanism("oldest_first_scan")
     return None
 
 
@@ -692,14 +706,25 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print(build_digest(classified, now=now, repo=args.repo))
 
-    if args.apply:
+    def record_mechanism(mechanism: str) -> None:
+        print(f"digest issue lookup: {mechanism}", file=sys.stderr)
+
+    if not args.apply:
+        try:
+            existing = find_pinned_issue(client, owner, repo, record_mechanism=record_mechanism)
+        except RuntimeError as err:
+            print(f"::error::{err}", file=sys.stderr)
+            return 1
+        outcome = f"would update issue #{existing['number']}" if existing else "would create issue"
+        print(f"digest issue: {outcome} (read-only)", file=sys.stderr)
+    else:
         should_have_issue = bool(hits)
         if should_have_issue:
             body = build_digest(classified, now=now, repo=args.repo)
-            outcome = upsert_pinned_issue(client, owner, repo, body)
+            outcome = upsert_pinned_issue(client, owner, repo, body, record_mechanism=record_mechanism)
             print(f"digest issue: {outcome}", file=sys.stderr)
         else:
-            existing = find_pinned_issue(client, owner, repo)
+            existing = find_pinned_issue(client, owner, repo, record_mechanism=record_mechanism)
             existing_body = (existing or {}).get("body") or ""
             stale = "No stranded PRs" not in existing_body or "develop post-merge is RED" in existing_body
             if existing is not None and stale:

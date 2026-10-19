@@ -36,12 +36,19 @@ class FakeGitHubClient:
         self.scan_error = scan_error
         self.created_issues: list[dict[str, Any]] = []
         self.patched_issues: list[tuple[str, dict[str, Any]]] = []
+        self.paths: list[str] = []
+
+    def get_all(self, path: str, params: dict[str, str] | None = None) -> list[dict[str, Any]]:
+        assert path.endswith("/issues")
+        assert params == {"state": "all"}
+        return sorted(self.paginated_issues, key=lambda item: item["number"], reverse=True)[:1000]
 
     def get_one(self, path: str) -> Any:
+        self.paths.append(path)
         if path.startswith("search/issues"):
             if self.search_error is not None:
                 raise self.search_error
-            return {"items": self.search_items if self.search_items is not None else []}
+            return {"items": self.search_items if self.search_items is not None else [], "incomplete_results": False}
 
         if path.startswith("repos/") and "/issues?" in path:
             if self.scan_error is not None:
@@ -52,8 +59,11 @@ class FakeGitHubClient:
             query = parse_qs(parsed.query)
             page = int(query.get("page", ["1"])[0])
             per_page = int(query.get("per_page", ["100"])[0])
+            assert query["sort"] == ["created"]
+            assert query["direction"] == ["asc"]
             start = (page - 1) * per_page
-            return self.paginated_issues[start : start + per_page]
+            issues = sorted(self.paginated_issues, key=lambda item: item["number"])
+            return issues[start : start + per_page]
 
         return None
 
@@ -99,18 +109,16 @@ def test_fallback_to_oldest_first_scan_when_search_empty() -> None:
 
 def test_pinned_issue_beyond_1000_records_is_updated_not_duplicated() -> None:
     pinned = _make_pinned_issue(1508, "open")
-    issues = [{"number": i, "title": f"Issue {i}", "body": "regular issue"} for i in range(1, 1051)]
-    issues.append(pinned)
+    issues = [{"number": i, "title": f"Issue {i}", "body": "regular issue"} for i in range(1, 2601)]
+    issues[1507] = pinned
     client = FakeGitHubClient(search_items=[], paginated_issues=issues)
-    mechanisms: list[str] = []
 
-    result = sweep.upsert_pinned_issue(client, "owner", "repo", "new digest", record_mechanism=mechanisms.append)
+    result = sweep.upsert_pinned_issue(client, "owner", "repo", "new digest")
     assert "updated issue #1508" in result
     assert len(client.created_issues) == 0
     assert len(client.patched_issues) == 1
     assert client.patched_issues[0][0] == "repos/owner/repo/issues/1508"
     assert client.patched_issues[0][1] == {"body": "new digest"}
-    assert mechanisms == ["oldest_first_scan"]
 
 
 def test_reopen_if_closed_and_no_label() -> None:
@@ -138,3 +146,99 @@ def test_lookup_error_aborts_without_creating_or_editing() -> None:
 
     assert len(client.created_issues) == 0
     assert len(client.patched_issues) == 0
+
+
+@pytest.mark.parametrize(
+    "payload", [None, {}, {"message": "Not Found"}, "bad", [None], [{}], [{"number": 1, "title": "issue", "body": 42}]]
+)
+def test_malformed_scan_aborts_without_writes(payload: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    client = FakeGitHubClient()
+    monkeypatch.setattr(client, "get_one", lambda path: payload)
+    with pytest.raises(RuntimeError, match="Pinned issue lookup failed closed"):
+        sweep.upsert_pinned_issue(client, "owner", "repo", "new digest")
+    assert client.created_issues == []
+    assert client.patched_issues == []
+
+
+def test_scan_error_after_full_page_aborts_without_writes(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = FakeGitHubClient()
+    first_page = [{"number": i, "title": "regular", "body": None} for i in range(1, 101)]
+    responses = iter([None, first_page, None])
+    monkeypatch.setattr(client, "get_one", lambda path: next(responses))
+    with pytest.raises(RuntimeError, match="Pinned issue lookup failed closed"):
+        sweep.upsert_pinned_issue(client, "owner", "repo", "new digest")
+    assert client.created_issues == []
+    assert client.patched_issues == []
+
+
+def test_valid_exhausted_scan_allows_label_free_creation() -> None:
+    client = FakeGitHubClient()
+    mechanisms: list[str] = []
+    assert (
+        sweep.upsert_pinned_issue(client, "owner", "repo", "digest", record_mechanism=mechanisms.append)
+        == "created issue #9999"
+    )
+    assert client.created_issues[0]["body"] == {"title": sweep.PINNED_ISSUE_TITLE, "body": "digest"}
+    assert mechanisms == ["oldest_first_scan"]
+
+
+def test_search_requests_canonical_oldest_match() -> None:
+    from urllib.parse import parse_qs, urlparse
+
+    client = FakeGitHubClient(search_items=[_make_pinned_issue(1508), _make_pinned_issue(2531)])
+    assert sweep.find_pinned_issue(client, "owner", "repo")["number"] == 1508
+    query = parse_qs(urlparse(client.paths[0]).query)
+    assert query["sort"] == ["created"]
+    assert query["order"] == ["asc"]
+
+
+@pytest.mark.parametrize(
+    "search_payload",
+    [
+        None,
+        {},
+        {"items": None, "incomplete_results": False},
+        {"items": [_make_pinned_issue(2531)], "incomplete_results": True},
+    ],
+)
+def test_unreliable_search_uses_scan(search_payload: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    client = FakeGitHubClient(paginated_issues=[_make_pinned_issue(1508)])
+    get_one = client.get_one
+    monkeypatch.setattr(client, "get_one", lambda path: search_payload if path.startswith("search/") else get_one(path))
+    assert sweep.find_pinned_issue(client, "owner", "repo")["number"] == 1508
+
+
+@pytest.mark.parametrize("apply", [False, True])
+def test_cli_records_actual_lookup_mechanism(
+    apply: bool, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    client = FakeGitHubClient(paginated_issues=[_make_pinned_issue(1508)])
+    monkeypatch.setattr(sweep, "resolve_token", lambda: "test-token")
+    monkeypatch.setattr(sweep, "GitHubClient", lambda token: client)
+    monkeypatch.setattr(sweep, "fetch_open_prs", lambda *args: [])
+    assert sweep.main(["--repo", "owner/repo", *(["--apply"] if apply else [])]) == 0
+    stderr = capsys.readouterr().err
+    assert "digest issue lookup: oldest_first_scan" in stderr
+    if not apply:
+        assert "would update issue #1508" in stderr
+        assert client.created_issues == []
+        assert client.patched_issues == []
+
+
+def test_http_404_scan_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    import urllib.error
+
+    client = sweep.GitHubClient("test-token")
+    writes: list[str] = []
+    monkeypatch.setattr(
+        sweep.urllib.request,
+        "urlopen",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            urllib.error.HTTPError("https://api.github.com", 404, "Not Found", {}, None)
+        ),
+    )
+    monkeypatch.setattr(client, "post", lambda *args: writes.append("post"))
+    monkeypatch.setattr(client, "patch", lambda *args: writes.append("patch"))
+    with pytest.raises(RuntimeError, match="Pinned issue lookup failed closed"):
+        sweep.upsert_pinned_issue(client, "owner", "repo", "digest")
+    assert writes == []

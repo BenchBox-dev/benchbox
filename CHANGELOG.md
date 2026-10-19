@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The green-unmerged sweep locates the original marker-tagged digest issue
+  beyond the newest 1,000 issues/PRs, preferring oldest-created search matches
+  and falling back to an uncapped oldest-first scan without labels. Malformed
+  or failed scans abort instead of creating duplicates. Read-only and apply
+  runs report the lookup mechanism; closed digest issues still reopen on upsert.
+
 ### Documentation
 
 - A new reference page, Tuning Platform Support
