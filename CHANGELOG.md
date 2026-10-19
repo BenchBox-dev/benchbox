@@ -242,6 +242,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   outer top-100 cutoff, so tied orders at the boundary return exactly 100 rows
   like the canonical query instead of every tied row.
 
+- `make pr-open` updates supplied PR title and body fields in one REST request
+  only when their text changes. Repeating the command no longer rewrites an
+  unchanged body. `make pr-rerun` retries CI directly instead of using a PR edit.
+
 - Tuned runs on PostgreSQL and the platforms built on it no longer stop with
   "Failed to write the tuned-run marker". Statements that return no rows, such
   as the tuning metadata `CREATE TABLE`, no longer try to fetch rows.

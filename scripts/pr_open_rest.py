@@ -80,7 +80,7 @@ def default_body(commits: Sequence[Commit]) -> str:
     return "\n".join(f"- {commit.subject}" for commit in commits)
 
 
-def find_open_pr(run: Runner, repo: str, head_owner: str, branch: str) -> PublishedPr | None:
+def find_open_pr(run: Runner, repo: str, head_owner: str, branch: str) -> dict[str, object] | None:
     cmd = ["gh", "api", "--method", "GET", f"repos/{repo}/pulls", "-f", f"head={head_owner}:{branch}"]
     cmd += ["-f", f"base={BASE_BRANCH}", "-f", "state=open", "-f", "per_page=100"]
     pulls = _json(_check(run, cmd, "open PR lookup"), "open PR lookup")
@@ -92,7 +92,7 @@ def find_open_pr(run: Runner, repo: str, head_owner: str, branch: str) -> Publis
         head = pull.get("head") or {}
         owner = ((head.get("repo") or {}).get("owner") or {}).get("login") or (head.get("user") or {}).get("login")
         if str(owner).lower() == head_owner.lower() and head.get("ref") == branch:
-            return _pr_from(pull, "reused")
+            return pull
     return None
 
 
@@ -113,10 +113,19 @@ def publish(
 ) -> PublishedPr:
     existing = find_open_pr(run, repo, head_owner, branch)
     if existing is not None:
+        pr = _pr_from(existing, "reused")
+        fields = []
+        if title and title.strip() != str(existing.get("title") or "").strip():
+            fields += ["-f", f"title={title}"]
         if body_file is not None:
-            cmd = ["gh", "api", "--method", "PATCH", f"repos/{repo}/pulls/{existing.number}"]
-            _check(run, cmd + ["-F", f"body=@{body_file}"], "PR body update")
-        return existing
+            body = body_file.read_text(encoding="utf-8")
+            current_body = str(existing.get("body") or "")
+            if body.replace("\r\n", "\n").rstrip() != current_body.replace("\r\n", "\n").rstrip():
+                fields += ["-F", f"body=@{body_file}"]
+        if fields:
+            cmd = ["gh", "api", "--method", "PATCH", f"repos/{repo}/pulls/{pr.number}"]
+            _check(run, cmd + fields, "PR text update")
+        return pr
     commits = branch_commits(run)
     resolved_title = title or default_title(commits)
     cmd = ["gh", "api", "--method", "POST", f"repos/{repo}/pulls"]
@@ -143,7 +152,7 @@ def main(argv: Sequence[str] | None = None, run: Runner = live_run) -> int:
         return 1
     try:
         pr = publish(args.repo, args.head_owner, args.branch, args.head_spec, args.title or None, body_file, run)
-    except PrOpenError as exc:
+    except (PrOpenError, OSError) as exc:
         print(f"pr-open: {exc}", file=sys.stderr)
         return 1
     print(f"{pr.status} {pr.number} {pr.url}")

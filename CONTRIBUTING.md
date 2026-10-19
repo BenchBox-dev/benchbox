@@ -53,7 +53,7 @@ Required CI on `develop` reports five unit results (`core`, `explorer`, `results
 
 ## Development Workflow
 
-The canonical loop is **branch → edit → preflight → `make pr-open` → arm → monitor to merge**. Once the branch is finished, arm it with `make pr-arm`, which checks the live PR for a hold and arms auto-merge on the exact head; GitHub merges it when its required checks are green. After the merge, `trunk.yml` tests `develop`; if it fails because of your change, revert first with `make trunk-revert PR=<n>`. You are done when the PR is merged, not when it is open or green: re-arm (`make pr-arm` again) after a spurious failure and fix and push after a real failure. Stop and hand back only for the exceptions listed in `AGENTS.md` `[WRITE-CLOSEOUT-001]`.
+The canonical loop is **branch → edit → preflight → `make pr-open` → arm → monitor to merge**. Once the branch is finished, arm it with `make pr-arm`, which checks the live PR for a hold and arms auto-merge on the exact head; GitHub merges it when its required checks are green. After the merge, `trunk.yml` tests `develop`; if it fails because of your change, revert first with `make trunk-revert PR=<n>`. You are done when the PR is merged, not when it is open or green: after a spurious failure, re-run the failed jobs with `make pr-rerun` and re-arm (`make pr-arm` again); after a real failure, fix and push. Stop and hand back only for the exceptions listed in `AGENTS.md` `[WRITE-CLOSEOUT-001]`.
 
 1. **Create a feature worktree off `develop`.** Agents must keep the main clone read-only:
 
@@ -92,11 +92,16 @@ The canonical loop is **branch → edit → preflight → `make pr-open` → arm
 
    ```bash
    make pr-preflight
-   make pr-open
+   make pr-open TITLE="fix(scope): what the change does" PR_BODY_FILE=pr-body.md
    ```
 
    `make pr-preflight` runs the local lint and the path-aware content guard or fast tests. `make pr-open` pushes and
-   runs `gh pr create --base develop`; it refuses to run from `develop` or `release`.
+   uses the GitHub REST API; it refuses to run from `develop` or `release`. Without `TITLE`, a new PR uses the
+   oldest branch commit's subject. On an existing PR, `make pr-open` pushes and then updates only supplied title
+   and body fields that differ from the current text, together in one request. Omitting a field preserves it;
+   line-ending and trailing-whitespace differences do not cause an edit. Pass the final text when you open the PR;
+   after a fix, update it in the `make pr-open` that pushes the fix. Leave out figures that change with each push,
+   such as test counts. Use `make pr-rerun`, not a title or body edit, to retry CI.
 
 5. **Arm it and monitor until it merges:**
 
