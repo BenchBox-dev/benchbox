@@ -8660,7 +8660,8 @@
     "docs-mig-site-ts-generators": {
       "claim": null,
       "needs": [
-        "docs-mig-site-bundle-schema4"
+        "docs-mig-site-bundle-schema4",
+        "docs-mig-activate-schema4"
       ],
       "priority": "high",
       "status": "open",
