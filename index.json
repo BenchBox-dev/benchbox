@@ -22657,8 +22657,7 @@
         "sqlglot-fork-f3-duckdb-all-keyword",
         "sqlglot-fork-f4-questdb-generator",
         "sqlglot-fork-f5-adapter-rewrites-api",
-        "sqlglot-fork-b3-checker-wrapper-mode",
-        "sqlglot-fork-b2-migrate-direct-importers"
+        "sqlglot-fork-b3-checker-wrapper-mode"
       ],
       "priority": "medium-high",
       "status": "open",
