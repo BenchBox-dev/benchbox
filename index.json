@@ -22725,7 +22725,7 @@
     "sqlglot-fork-adapter-databricks-safe-division": {
       "claim": null,
       "needs": [
-        "sqlglot-fork-a2-adopt-adapter-wheel"
+        "sqlglot-fork-a1-adopt-wrapper-wheel"
       ],
       "priority": "high",
       "status": "open",
