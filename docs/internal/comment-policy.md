@@ -37,7 +37,11 @@ Other tools:
 - `make comment-policy-report` lists every violation, including old ones. It
   fails only if configuration or parsing fails.
 - The pre-commit hook checks staged files, with the same result as
-  `make comment-policy-check`.
+  `make comment-policy-check` for the files you changed. It scans only the
+  files that differ from the base, and falls back to every file in a completed
+  scope when the commit changes `quality/comment-policy.json`, the cleanup
+  scope policy, or removes an exception. Expired exceptions and the policy
+  ownership checks run on every commit.
 - `scripts/check_comment_policy.py --path <prefix>` checks one file or
   directory.
 

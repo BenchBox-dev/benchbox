@@ -294,6 +294,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `run_official_benchmark` warn and run the same drivers as `benchbox run`.
   They need `adapter=` and at least 2 streams. `TPCDSOfficialBenchmark` now
   uses the scale factor you configure.
+- **Comment-policy hook.** The pre-commit hook scans only staged files that
+  differ from the base and validates consumers with one index read. A commit
+  that changes the policy still scans every completed scope.
 
 ### Fixed
 

@@ -291,6 +291,85 @@ def test_transition_worktree_and_staged_content(tmp_path: Path) -> None:
     assert main([*args, "--staged"]) == 1
 
 
+def completed_repo(tmp_path: Path) -> str:
+    git_repo(tmp_path, "x = 1\n")
+    (tmp_path / "quality/comment-policy.json").write_text(
+        json.dumps(policy(completed=["a.py", "b.py"])), encoding="utf-8"
+    )
+    (tmp_path / "b.py").write_text("# inherited\ny = 1\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "b.py", "quality/comment-policy.json"], check=True)
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(tmp_path),
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "-c",
+            "commit.gpgsign=false",
+            "commit",
+            "-qm",
+            "completed scope",
+        ],
+        check=True,
+    )
+    return subprocess.check_output(["git", "-C", str(tmp_path), "rev-parse", "HEAD"], text=True).strip()
+
+
+def test_staged_scan_covers_only_changed_sources(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    base = completed_repo(tmp_path)
+    args = ["--root", str(tmp_path), "--mode", "transition", "--base", base]
+    assert main(args) == 1
+    (tmp_path / "a.py").write_text("x = 2\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "a.py"], check=True)
+    capsys.readouterr()
+    assert main([*args, "--staged"]) == 0
+    assert "1 source files" in capsys.readouterr().out
+    (tmp_path / "a.py").write_text("# added\nx = 2\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "a.py"], check=True)
+    capsys.readouterr()
+    assert main([*args, "--staged"]) == 1
+    output = capsys.readouterr().out
+    assert "a.py:1: CP comment" in output
+    assert "b.py" not in output
+
+
+@pytest.mark.parametrize("target", ["quality/comment-policy.json", "quality/comment-cleanup-scope.json"])
+def test_staged_scan_stays_global_when_policy_changes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], target: str
+) -> None:
+    base = completed_repo(tmp_path)
+    args = ["--root", str(tmp_path), "--mode", "transition", "--base", base, "--staged"]
+    (tmp_path / "quality/comment-policy.json").write_text(
+        json.dumps(policy(completed=["a.py", "b.py", "c.py"])), encoding="utf-8"
+    )
+    subprocess.run(["git", "-C", str(tmp_path), "add", "quality/comment-policy.json"], check=True)
+    capsys.readouterr()
+    assert main(args) == 1
+    assert "b.py:1: CP comment" in capsys.readouterr().out
+
+
+def test_staged_consumer_validation_reads_the_index_once(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    git_repo(tmp_path, "x = 1\n")
+    entries = [{**exception(), "consumer": "a.py"} for _ in range(5)]
+    calls: list[tuple[str, ...]] = []
+    real_git = check_comment_policy.git
+
+    def counting_git(root: Path, *args: str) -> bytes:
+        calls.append(args)
+        return real_git(root, *args)
+
+    monkeypatch.setattr(check_comment_policy, "git", counting_git)
+    check_comment_policy.validate_consumers(tmp_path, policy(exceptions=entries), staged=True)
+    assert calls == [("ls-files", "-z", "--cached")]
+    with pytest.raises(ValueError, match="exception consumer missing: gone.py"):
+        check_comment_policy.validate_consumers(
+            tmp_path, policy(exceptions=[{**exception(), "consumer": "gone.py"}]), staged=True
+        )
+
+
 def test_expired_policy_fails_owner_transition_but_not_inherited_advisory(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

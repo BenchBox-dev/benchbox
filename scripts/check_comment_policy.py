@@ -334,23 +334,26 @@ def source_paths(root: Path, staged: bool) -> list[str]:
     return paths
 
 
-def path_present(root: Path, path: str, staged: bool) -> bool:
+def indexed_paths(root: Path) -> set[str]:
+    return set(git(root, "ls-files", "-z", "--cached").decode().split("\0")) - {""}
+
+
+def path_present(root: Path, path: str, staged: bool, indexed: set[str] | None = None) -> bool:
     if staged:
-        return (
-            subprocess.run(["git", "-C", str(root), "cat-file", "-e", f":{path}"], capture_output=True).returncode == 0
-        )
+        return path in (indexed if indexed is not None else indexed_paths(root))
     return (root / path).is_file()
 
 
 def validate_consumers(root: Path, policy: dict, staged: bool = False) -> None:
+    indexed = indexed_paths(root) if staged else None
     for entry in policy["exceptions"]:
-        if not path_present(root, entry["consumer"], staged):
+        if not path_present(root, entry["consumer"], staged, indexed):
             raise ValueError(f"exception consumer missing: {entry['consumer']}")
     for entry in policy["external"]:
         validate_path(entry["provenance"])
-        if not path_present(root, entry["provenance"], staged):
+        if not path_present(root, entry["provenance"], staged, indexed):
             raise ValueError(f"external provenance missing: {entry['provenance']}")
-        if entry["path"].endswith(".whl") and not path_present(root, entry["path"], staged):
+        if entry["path"].endswith(".whl") and not path_present(root, entry["path"], staged, indexed):
             raise ValueError(f"external wheel missing: {entry['path']}")
 
 
@@ -435,11 +438,9 @@ def main(argv: list[str] | None = None) -> int:
             )
             if not args.staged:
                 changed.update(git(root, "ls-files", "--others", "--exclude-standard", "-z").decode().split("\0"))
-            paths = [
-                path
-                for path in paths
-                if path in changed or any(matches(path, scope) for scope in [*policy["completed"], *revoked])
-            ]
+            global_change = bool(revoked) or POLICY_PATH in changed or SCOPE_POLICY_PATH in changed
+            scopes = [] if args.staged and not global_change else [*policy["completed"], *revoked]
+            paths = [path for path in paths if path in changed or any(matches(path, scope) for scope in scopes)]
         policy_owner_failure = (
             args.mode == "transition" and POLICY_PATH in changed and bool(expired_policy_findings(policy))
         )
