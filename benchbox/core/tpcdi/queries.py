@@ -11,7 +11,7 @@ from functools import lru_cache
 from typing import Any, Optional
 
 from benchbox.core.query_manager import ParameterizedQueryManager, copy_query_metadata
-from benchbox.utils.printing import emit
+from benchbox.utils.dialect_utils import translate_sql_query
 
 from .query_analytics import TPCDIAnalyticalQueries
 from .query_etl import TPCDIETLQueries
@@ -197,13 +197,4 @@ class TPCDIQueryManager(ParameterizedQueryManager):
         }
 
     def translate_query_text(self, query: str, dialect: str) -> str:
-        try:
-            from benchbox._vendor import sqlglot
-
-            translated = sqlglot.transpile(query, read="ansi", write=dialect)
-            return translated[0] if translated else query
-        except ImportError:
-            raise ImportError("Bundled benchbox._vendor.sqlglot runtime is unavailable; reinstall BenchBox.") from None
-        except Exception as e:
-            emit(f"Warning: Failed to translate query to {dialect}: {e}")
-            return query
+        return translate_sql_query(query, dialect, source_dialect="ansi", identify=False)
