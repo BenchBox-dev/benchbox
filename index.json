@@ -2128,15 +2128,10 @@
       "title": "Add a mechanical hold marker for withheld publications"
     },
     "blog-queue-drift-check": {
-      "claim": {
-        "expires_at": "2026-10-21T13:03:35Z",
-        "generation": "f8f97e8e981246c3b65310c447045d2d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6d5eb9aefd704c065efcdb3f"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Add CI check for publication queue, series-plan, and index consistency"
     },
     "blog-scd2-sf1-scale-row": {
