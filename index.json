@@ -22713,6 +22713,15 @@
       "status": "open",
       "title": "BigQuery adapter: enable the fork safe_division option and decide its result impact"
     },
+    "sqlglot-fork-adapter-clickhouse-safe-division": {
+      "claim": null,
+      "needs": [
+        "sqlglot-fork-a2-adopt-adapter-wheel"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "ClickHouse adapter: enable the fork safe_division option and decide its result impact"
+    },
     "sqlglot-fork-adapter-databricks-safe-division": {
       "claim": null,
       "needs": [

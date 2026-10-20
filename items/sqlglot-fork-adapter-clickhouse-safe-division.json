@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "The ClickHouse adapter requests safe_division through apply_rewrite; output over its existing unit-test inputs is identical or the differences are listed and approved.",
+    "A recorded owner decision states whether results published with the old behavior need a note or a rerun.",
+    "make pr-preflight, make comment-policy-check, make compat-docs-check, make sqlglot-repro-retirement-check, make typecheck and the clickhouse unit tests pass; PR merged."
+  ],
+  "description": "ClickHouseQueryTransformer carries its own safe_division/NULLIF and fix_decimal_division_by_zero. Found in plan review as a fourth division safeguard. The adapter must pass the fork's safe_division option explicitly so behavior is unchanged before the local helper is deleted, and the owner must decide whether the semantic (zero divisor returns NULL) affects published results.",
+  "links": [
+    "_project/decisions/sqlglot-fork-transpilation-plan.md",
+    "benchbox/platforms/clickhouse/query_transformer.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T16:00:42Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b817ee2aeac94266bf1e77b242354263",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}
