@@ -25563,6 +25563,13 @@
       "status": "done",
       "title": "Trino Platform Adapter"
     },
+    "trunk-red-stops-further-merges": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "A red post-merge Trunk run must stop further merges and surface the culprit"
+    },
     "trunk-red-translate-query-called-twice-after-3185": {
       "claim": null,
       "needs": [],

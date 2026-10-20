@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "A red Trunk run on develop names the culprit PR and blocks arming or merging of other PRs until develop is green or a revert is merged (workflow or check, with a test of the decision logic).",
+    "make trunk-revert PR=<n> succeeds from a linked worktree (reproduce the lifecycle ID error, fix it, add a regression test in tests/unit/scripts/test_trunk_revert.py).",
+    "docs/internal/develop-post-merge-gaps.md states the final behavior and its remaining bound."
+  ],
+  "description": "After PR 3185 merged, the Trunk run failed 14 minutes later. Nothing reverted the change or stopped further merges; pr-open only refuses new PRs after develop has been red for 30 minutes, and develop was red for about 39 minutes before anyone acted. The documented recovery (make trunk-revert PR=<n>) failed when run from a linked worktree: make worktree-create raised 'Worktree already carries immutable lifecycle ID' for the new revert worktree, so the revert had to be done by hand.",
+  "links": [
+    "scripts/trunk_revert.py",
+    "docs/internal/pr-triage.md",
+    "docs/internal/develop-post-merge-gaps.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T20:55:30Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "899b0917b6f2479989340bd1fa18fce8",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}
