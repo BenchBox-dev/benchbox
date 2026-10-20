@@ -11,6 +11,7 @@ RULES = ClassifierRules(
     gate_paths=("gate/*", ".github/oracle-reviewers.yml"),
     logic_paths=("logic/*", "*validation*"),
     data_paths=("data/*",),
+    exempt_paths=("docs/*", "*.md"),
 )
 
 
@@ -22,13 +23,38 @@ def _scope(*files: ChangedFile, pred: bool = True) -> SoundnessScope:
     return soundness_scope(list(files), RULES, lambda path: pred)
 
 
-def test_files_outside_soundness_and_gate_paths_are_out_of_scope() -> None:
+def test_docs_only_and_markdown_only_changes_are_out_of_scope() -> None:
     result = _scope(_file("docs/index.md"), _file("README.md"), pred=False)
     assert result.soundness is False
-    assert result.reasons == ("no soundness path changed",)
+    assert result.reasons == ("only exempt paths changed",)
     assert result.paths == ()
     assert result.gate_paths == ()
     assert result.logic_paths == ()
+
+
+def test_empty_file_list_is_out_of_scope() -> None:
+    result = soundness_scope([], RULES, lambda path: True)
+    assert result.soundness is False
+    assert result.reasons == ("only exempt paths changed",)
+    assert result.paths == ()
+
+
+def test_code_outside_the_soundness_list_requires_review() -> None:
+    result = _scope(_file("src/app.py"), pred=False)
+    assert result.soundness is True
+    assert result.gate_paths == ()
+    assert result.logic_paths == ()
+    assert result.reasons == ("changes 1 files outside the exempt paths",)
+    assert result.paths == ("src/app.py",)
+
+
+def test_soundness_list_hits_are_noted_in_the_fallback_reason() -> None:
+    result = _scope(_file("src/app.py"))
+    assert result.soundness is True
+    assert result.reasons == (
+        "changes 1 files outside the exempt paths",
+        "touches soundness paths: src/app.py",
+    )
 
 
 def test_gate_pattern_keeps_a_file_in_scope_without_soundness_predicate() -> None:
@@ -68,25 +94,32 @@ def test_data_only_files_in_scope_use_the_fallback_reason() -> None:
     assert result.soundness is True
     assert result.gate_paths == ()
     assert result.logic_paths == ()
-    assert result.reasons == ("touches 2 soundness paths outside gate and logic areas",)
+    assert result.reasons == (
+        "changes 2 files outside the exempt paths",
+        "touches soundness paths: data/q1.out, data/q2.out",
+    )
     assert result.paths == ("data/q1.out", "data/q2.out")
 
 
-def test_previous_path_matches_gate_and_logic() -> None:
+def test_previous_path_matches_gate() -> None:
     renamed_gate = _scope(_file("elsewhere.py", previous="gate/policy.py"))
     assert renamed_gate.soundness is True
     assert renamed_gate.gate_paths == ("gate/policy.py",)
     assert renamed_gate.paths == ("elsewhere.py", "gate/policy.py")
-    renamed_logic = _scope(_file("elsewhere.py", previous="logic/equivalence.py"), pred=False)
-    assert renamed_logic.soundness is False
-    in_scope_logic = soundness_scope(
-        [_file("elsewhere.py", previous="logic/equivalence.py")],
-        RULES,
-        lambda path: path == "logic/equivalence.py",
-    )
-    assert in_scope_logic.soundness is True
-    assert in_scope_logic.logic_paths == ("logic/equivalence.py",)
-    assert renamed_logic.paths == ()
+
+
+def test_rename_from_docs_into_code_requires_review() -> None:
+    result = _scope(_file("benchbox/new.py", previous="docs/old.md"), pred=False)
+    assert result.soundness is True
+    assert result.paths == ("benchbox/new.py", "docs/old.md")
+    assert result.reasons == ("changes 1 files outside the exempt paths",)
+
+
+def test_rename_within_exempt_paths_stays_out_of_scope() -> None:
+    result = _scope(_file("docs/new.md", previous="docs/old.md"), pred=False)
+    assert result.soundness is False
+    assert result.reasons == ("only exempt paths changed",)
+    assert result.paths == ()
 
 
 def test_live_policy_data_answer_uses_the_fallback_reason(policy: Policy) -> None:
@@ -98,7 +131,10 @@ def test_live_policy_data_answer_uses_the_fallback_reason(policy: Policy) -> Non
     assert result.soundness is True
     assert result.gate_paths == ()
     assert result.logic_paths == ()
-    assert result.reasons == ("touches 1 soundness paths outside gate and logic areas",)
+    assert result.reasons == (
+        "changes 1 files outside the exempt paths",
+        f"touches soundness paths: {path}",
+    )
 
 
 def test_to_json_from_json_round_trip() -> None:

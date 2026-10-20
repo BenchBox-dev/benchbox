@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import json
 import os
 import re
@@ -10,9 +11,8 @@ import urllib.error
 import urllib.request
 from collections.abc import Callable, Iterable
 from datetime import datetime
+from pathlib import Path
 from typing import Any, TypeVar
-
-from soundness_paths import any_soundness_path
 
 ORACLE_LOGIN = "benchbox-oracle"
 ORACLE = "oracle"
@@ -118,7 +118,7 @@ def decide(
     comments: Iterable[dict[str, Any]] = (),
 ) -> tuple[int, str]:
     if not paths(files):
-        return PASS, "oracle-review: not a soundness path change"
+        return PASS, "oracle-review: only exempt paths changed"
 
     base_time = _parse_time(base_date) if base_date else None
     head_reviews = [
@@ -218,10 +218,26 @@ def fetch_files(token: str, repo: str, pr: int) -> list[dict[str, Any]]:
     return _paginate(token, f"/repos/{repo}/pulls/{pr}/files")
 
 
-def path_matcher(listed_files: int, changed_files: int) -> Callable[[Iterable[str]], bool]:
+def _exempt_paths() -> tuple[str, ...]:
+    try:
+        from oracle_reviewers.policy import load_policy
+
+        return load_policy(Path(".github/oracle-reviewers.yml")).classifier.exempt_paths
+    except Exception:
+        return ()
+
+
+def path_matcher(
+    listed_files: int, changed_files: int, exempt_paths: Iterable[str] = ()
+) -> Callable[[Iterable[str]], bool]:
     if listed_files < changed_files:
         return lambda _paths: True
-    return any_soundness_path
+    exempt = tuple(exempt_paths)
+
+    def needs_review(paths: Iterable[str]) -> bool:
+        return not all(any(fnmatch.fnmatchcase(path, pattern) for pattern in exempt) for path in paths)
+
+    return needs_review
 
 
 def fetch_reviews(token: str, repo: str, pr: int) -> list[dict[str, Any]]:
@@ -311,9 +327,9 @@ def main(argv: list[str] | None = None) -> int:
         head_sha = pull["head"]["sha"]
         items = fetch_files(token, args.repo, args.pr)
         files = changed_paths(items)
-        matcher = path_matcher(len(items), pull["changed_files"])
+        matcher = path_matcher(len(items), pull["changed_files"], _exempt_paths())
         if not matcher(files):
-            print("oracle-review: not a soundness path change")
+            print("oracle-review: only exempt paths changed")
             return PASS
         reviews = fetch_reviews(token, args.repo, args.pr)
         threads = fetch_threads(token, args.repo, args.pr)

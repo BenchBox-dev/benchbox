@@ -5,8 +5,9 @@
 ```{tags} contributor, operations, ci
 ```
 
-`.github/workflows/oracle-verdict.yml` reviews soundness-path pull requests
-with agent CLIs and posts a non-required `oracle-verdict` status and a review
+`.github/workflows/oracle-verdict.yml` uses agent CLIs to review every pull
+request except changes confined to exempt paths, and posts a non-required
+`oracle-verdict` status and a review
 through the owner's GitHub App. The required `oracle-review` check reads that
 App's pull request reviews (see Cut-over). The policy lives in
 `.github/oracle-reviewers.yml`. The decision records are
@@ -91,8 +92,10 @@ Without the App secrets, the `post` job logs the result and succeeds.
 1. `plan` holds no secret. It resolves the pull request and its head through
    the API, refuses closed, draft and non-`develop` pull requests, classifies
    the change, applies the rerun rules and writes a 0600 brief. A fork's
-   soundness change gets a pending `fork: owner review` status and never
-   reaches a reviewer job. A change with no soundness path gets `success`.
+   change outside the exempt paths gets a pending `fork: owner review` status
+   and never reaches a reviewer job. A change touching only exempt paths
+   (`docs/*`, `*.md` and `_project/todo-db-export/*`, from
+   `classifier.exempt_paths` in `.github/oracle-reviewers.yml`) gets `success`.
 2. `select-1` asks Jev, through a direct call to TypeSafe's
    `/v1/systemone` API, for the change's size bucket, review capability,
    review template and per-file priority. The bucket names one reviewer in
@@ -143,10 +146,9 @@ every review from the App's Bot account, page by page, and ignores dismissed rev
 reviews without a marker. A review with more than one marker, or a marker that
 does not decode, holds the result pending, as does a review list that cannot be
 read. Pending results write no marker.
-
 A file's patch hash ignores the `index` line and hunk line numbers, except for
 binary files, so a rebase that leaves the pull request's changes alone keeps
-every hash. Prose files outside soundness paths are left out.
+every hash. Prose files outside the review scope are left out.
 
 | Situation | Action |
 |---|---|

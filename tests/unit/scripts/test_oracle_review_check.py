@@ -53,7 +53,7 @@ def _oracle(**kwargs: Any) -> tuple[int, str]:
         kwargs.pop("files", SOUNDNESS_FILES),
         kwargs.pop("reviews", [_oracle_review()]),
         kwargs.pop("threads", []),
-        kwargs.pop("paths", oracle_review_check.any_soundness_path),
+        kwargs.pop("paths", oracle_review_check.path_matcher(2, 2, oracle_review_check._exempt_paths())),
         kwargs.pop("base_date", None),
         kwargs.pop("comments", []),
     )
@@ -63,8 +63,12 @@ def _decide(**kwargs: Any) -> tuple[int, str]:
     return _oracle(**{"reviews": [], **kwargs})
 
 
-def test_non_soundness_change_skips() -> None:
-    assert _decide(files=OTHER_FILES) == (0, "oracle-review: not a soundness path change")
+def test_exempt_only_change_skips() -> None:
+    assert _decide(files=OTHER_FILES) == (0, "oracle-review: only exempt paths changed")
+
+
+def test_code_outside_the_soundness_list_needs_review() -> None:
+    assert _decide(files=["benchbox/utils/row_compare.py"])[0] == 1
 
 
 def test_oracle_success_review_on_the_head_passes() -> None:
@@ -132,7 +136,7 @@ def test_open_oracle_threads_block_but_other_threads_do_not() -> None:
     assert _oracle(threads=others)[0] == 0
 
 
-def test_rename_out_of_a_soundness_path_is_a_soundness_change() -> None:
+def test_rename_with_a_non_exempt_side_needs_review() -> None:
     files = oracle_review_check.changed_paths(
         [{"filename": "docs/moved.py", "previous_filename": "benchbox/core/equivalence/checker.py"}]
     )
@@ -140,20 +144,38 @@ def test_rename_out_of_a_soundness_path_is_a_soundness_change() -> None:
     assert _decide(files=files)[0] == 1
 
 
+def test_rename_within_exempt_paths_skips() -> None:
+    files = oracle_review_check.changed_paths([{"filename": "docs/new.md", "previous_filename": "docs/old.md"}])
+    assert _decide(files=files) == (0, "oracle-review: only exempt paths changed")
+
+
 def test_changed_paths_without_a_rename_keeps_only_the_filename() -> None:
     assert oracle_review_check.changed_paths([{"filename": "README.md"}]) == ["README.md"]
 
 
-def test_truncated_file_list_is_treated_as_a_soundness_change() -> None:
+def test_truncated_file_list_needs_review() -> None:
     matcher = oracle_review_check.path_matcher(listed_files=3000, changed_files=3001)
     assert matcher(OTHER_FILES) is True
     assert _decide(files=OTHER_FILES, paths=matcher)[0] == 1
 
 
-def test_complete_file_list_uses_the_soundness_predicate() -> None:
-    matcher = oracle_review_check.path_matcher(listed_files=2, changed_files=2)
+def test_complete_file_list_uses_the_exempt_paths() -> None:
+    matcher = oracle_review_check.path_matcher(listed_files=2, changed_files=2, exempt_paths=("docs/*", "*.md"))
     assert matcher(OTHER_FILES) is False
     assert matcher(SOUNDNESS_FILES) is True
+
+
+def test_exempt_paths_come_from_the_reviewer_policy() -> None:
+    assert oracle_review_check._exempt_paths() == ("docs/*", "*.md", "_project/todo-db-export/*")
+
+
+def test_unreadable_policy_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    def broken(path: object) -> object:
+        raise ValueError("bad policy")
+
+    monkeypatch.setattr("oracle_reviewers.policy.load_policy", broken)
+    assert oracle_review_check._exempt_paths() == ()
+    assert oracle_review_check.path_matcher(1, 1, ())(["README.md"]) is True
 
 
 def test_review_before_a_retarget_waits() -> None:

@@ -169,6 +169,9 @@ def _environment(tmp_path: Path, pulls: list[Any], checker_exit: int, checker_me
         "sys.exit(int(os.environ['FAKE_CHECKER_EXIT']))\n"
     )
     checker.chmod(0o755)
+    uv = tmp_path / "uv"
+    uv.write_text('#!/bin/bash\nwhile [ "$1" != python ]; do shift; done\nshift\nexec python "$@"\n')
+    uv.chmod(0o755)
     return {
         **os.environ,
         "PATH": f"{tmp_path}{os.pathsep}{os.environ['PATH']}",
@@ -200,7 +203,7 @@ def _dispatch(
     pulls: list[Any],
     *,
     checker_exit: int = 0,
-    checker_message: str = "oracle-review: not a soundness path change",
+    checker_message: str = "oracle-review: only exempt paths changed",
     **env_changes: str,
 ) -> tuple[subprocess.CompletedProcess[str], dict[str, str]]:
     env = _environment(tmp_path, pulls, checker_exit, checker_message)
@@ -218,7 +221,7 @@ def _dispatch(
 
 @pytest.mark.parametrize(
     "message",
-    ["oracle-review: not a soundness path change", f"oracle-review: pass (oracle review of {HEAD})"],
+    ["oracle-review: only exempt paths changed", f"oracle-review: pass (oracle review of {HEAD})"],
 )
 def test_dispatch_checks_current_head_around_every_checker_success(tmp_path: Path, message: str) -> None:
     result, outputs = _dispatch(tmp_path, [_pull(), _pull(), _pull()], checker_message=message)

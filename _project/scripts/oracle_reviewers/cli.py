@@ -179,7 +179,7 @@ def command_plan(args: argparse.Namespace) -> int:
     plan["scope_reasons"] = list(scope.reasons)
     if not scope.soundness:
         plan["decision"] = SUCCESS
-        plan["decision_reason"] = "no soundness path changed"
+        plan["decision_reason"] = "only exempt paths changed"
         return _finish_plan(out_dir, plan)
     if (pull["head"].get("repo") or {}).get("full_name") != repo:
         plan["decision"] = FORK
@@ -556,7 +556,7 @@ def command_finalize(args: argparse.Namespace) -> int:
         raise SystemExit("oracle-verdict: the plan belongs to another run")
     now = _now()
     if plan["decision"] == SUCCESS:
-        final = report.fixed(retry.SUCCESS, "no soundness path changed")
+        final = report.fixed(retry.SUCCESS, "only exempt paths changed")
     elif plan["decision"] == FORK:
         final = report.fixed(retry.PENDING, "fork: owner review")
     elif plan["decision"] == HOLD:

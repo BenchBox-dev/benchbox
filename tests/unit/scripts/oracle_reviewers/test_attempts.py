@@ -386,7 +386,7 @@ def test_cli_finalize_fixed_decisions(
     )
     assert out["state"] == state and out["has_state"] == "false" and out["comment"] == "false"
     status = json.loads((tmp_path / "o" / "status.json").read_text(encoding="utf-8"))
-    assert status["description"] == ("no soundness path changed" if decision == "success" else "fork: owner review")
+    assert status["description"] == ("only exempt paths changed" if decision == "success" else "fork: owner review")
 
 
 def test_verdict_comes_from_the_terminal_reviewer_slot(policy: Policy, tmp_path: Path) -> None:
