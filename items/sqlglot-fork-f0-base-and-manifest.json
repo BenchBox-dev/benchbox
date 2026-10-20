@@ -1,10 +1,11 @@
 {
   "acceptance": [
-    "The relation between the pinned fork commit and fork main is verified and recorded in the PR description.",
-    "downstream/patches.json accepts status 'original' with source, paths, tests and reason; tests/test_downstream_contract.py validates it and no longer hard-codes the three-patch set.",
+    "downstream/patches.json accepts status 'original' (new files only; source may be a fork commit) and carried patches that touch fork-added code; tests/test_downstream_contract.py validates both and no longer hard-codes the three-patch set.",
+    "downstream/refresh.py candidate and integrate handle original entries; the local Git refresh fixture covers a refresh with one carried-new-feature patch and one original file and passes.",
+    "downstream/MAINTAINING.md and README no longer say the base is 'upstream plus the three carried patches' and describe the original/carried rule.",
     "make check, make benchbox-dist and make benchbox-check pass in the fork; PR merged through its required checks."
   ],
-  "description": "First fork slice of _project/decisions/sqlglot-fork-transpilation-plan.md. The pinned fork commit (6de7947) and fork main (fdf7145) relation is unverified. patches.json only knows carried, upstreamed and excluded statuses, and test_manifest_source_boundaries hard-codes the admitted set. Add status 'original' for fork-original work and update the contract test. Work in BenchBox-dev/benchbox-sqlglot on a named branch and worktree.",
+  "description": "First fork slice of _project/decisions/sqlglot-fork-transpilation-plan.md. patches.json only knows carried, upstreamed and excluded statuses; test_manifest_source_boundaries hard-codes the admitted set and requires a 40-hex source per entry. downstream/refresh.py (owned_paths, carried, candidate, integrate) replays only carried patches and fails on conflicts outside carried paths, so fork work that edits upstream-owned files (dialects/__init__.py DIALECTS/MODULE_BY_DIALECT, the Dialects enum, existing generators) would break the next upstream refresh if recorded as 'original'. Policy: edits to upstream-owned files are carried patches with 'fix: retain <ID>' commits; status 'original' is limited to wholly new files. Make the manifest, refresh tooling, its Git fixture and docs support this. The pinned fork commit 6de7947 is already an ancestor of main fdf7145 (no reconciliation needed).",
   "links": [
     "_project/decisions/sqlglot-fork-transpilation-plan.md",
     "https://github.com/BenchBox-dev/benchbox-sqlglot"
@@ -16,6 +17,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "a77523dd8a68499fa55df23bb13b703c",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T16:01:27Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e221a8f0411248e2be649c386a4d7236",
       "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
     }
   ]

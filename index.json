@@ -22845,7 +22845,7 @@
       "needs": [],
       "priority": "medium-high",
       "status": "open",
-      "title": "Fork: reconcile pinned base with main and record fork-original work in patches.json"
+      "title": "Fork: manifest and refresh tooling support for fork-original work"
     },
     "sqlglot-fork-f0b-real-engine-ci": {
       "claim": null,
