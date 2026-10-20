@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Decide trim versus raise the budget with a recorded reason",
+    "Headroom restored or a policy stated"
+  ],
+  "context": "Noticed during #3109 closeout.",
+  "description": "make agent-instructions-check reports active_bytes=16474 and warns it is within 26 of the 16500 budget (the budget was 16000 when #3109 first failed at 16031). Every addition to AGENTS.md now fails the check; #3109 had to move its sentence to CONTRIBUTING.md.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:afd83494ecacfcdab965057e",
+      "at": "2026-10-20T12:59:23Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "39fac528ebf0401e8f091f2b003c34a6",
+      "session_id": "8202d1c5316f41c897a0af067e2c8e9e"
+    }
+  ]
+}

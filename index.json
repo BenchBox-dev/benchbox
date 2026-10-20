@@ -455,6 +455,13 @@
       "status": "done",
       "title": "Run the real Claude Code + Codex behavioral evaluation and land PR #1318 green"
     },
+    "agent-instruction-budget-headroom": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Agent instruction budget has 26 bytes of headroom"
+    },
     "agent-instruction-budget-merged-over-limit": {
       "claim": null,
       "needs": [],
