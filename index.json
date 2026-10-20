@@ -1412,7 +1412,12 @@
       "title": "Close the remaining validator import gaps between the results mirror and the drift check"
     },
     "autogen-nightly-dispatch-verify-20261018": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-21T16:37:52Z",
+        "generation": "f231311cbbf84b4481428990f6ece880",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
+      },
       "needs": [
         "autogen-issues-decisions-20261018",
         "autogen-docker-mirror-tag-digest-20261018",
@@ -1424,7 +1429,7 @@
         "autogen-cedardb-uat-validation-and-baseline-tuning-20261018"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Dispatch nightly-v2 on merged develop, check each fixed domain, and close the stale alert issues with evidence"
     },
     "autogen-nightly-report-lifecycle-20261018": {
