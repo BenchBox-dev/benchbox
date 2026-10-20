@@ -14602,6 +14602,15 @@
       "status": "done",
       "title": "Mirror validate-bundles rejects maintainer seed corpus with summary.validation=partial"
     },
+    "mirrored-file-local-imports-audit-20261020": {
+      "claim": null,
+      "needs": [
+        "autogen-mirror-validator-import-closure-20261018"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "Audit function-local imports in the files mirrored to published-results"
+    },
     "modin-cudf-and-dask-adapter-integration-into-cross-platform": {
       "claim": null,
       "needs": [],
