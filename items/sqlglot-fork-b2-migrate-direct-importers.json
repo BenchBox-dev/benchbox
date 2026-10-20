@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "The bypass-test allowlist is empty or contains only documented parse/inspect uses with reasons.",
+    "Per-area unit tests pass for each PR; make pr-preflight, make comment-policy-check and make typecheck pass on each head.",
+    "Three PRs merged."
+  ],
+  "description": "About 20 modules call the vendored SQLGlot directly (tpcdi loader/queries, tpcds c_tools, flightdata queries, tpcds_obt query_conversion, read_primitives variant_contracts, etl scd_processor, schema, validation, scripts/generate_query_docs.py and others). Migrate them to translate_sql_query / translate_ddl / apply_rewrite in three PRs (TPC-DI; TPC-DS/OBT/FlightData/read_primitives; schema/validation/etl/scripts), shrinking the bypass-test allowlist each time. Callers that only parse or inspect (no dialect output) may keep direct use if the bypass test allows it explicitly with a reason.",
+  "links": [
+    "_project/decisions/sqlglot-fork-transpilation-plan.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T15:43:47Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "878b65d0e0e24c43b58abd63ea2d8fcf",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}
