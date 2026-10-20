@@ -162,26 +162,46 @@ release-blocking `t3:*` issue. Linux correctness evidence remains separate from
 the deferred Darwin digest certification.
 
 TestPyPI rehearsals must exercise refusal paths and verify installed hashes.
-Production PyPI retains owner approval. The existing `release.yml` remains
-operational until its approved replacement is accepted.
+Production PyPI retains owner approval. The legacy `release.yml` stays
+available through `workflow_dispatch` only, so a `v*` tag push never starts
+two publishers.
 
 ## Publishing workflow
 
-`.github/workflows/release-v2.yml` is dispatched by hand with a tag input
-while the legacy path keeps its `v*` tag trigger; the trigger flip is part of
-retiring the legacy path, after the first new-path PyPI release. Pre-release
-tags (for example `v0.5.0-rc.1`) publish to TestPyPI only; final tags publish
-to PyPI. Tags must be annotated (`git tag -a`); the admission consumer refuses
-lightweight tags. The workflow never rebuilds artifacts, never falls back to
-an older trunk run, and must not be run after a trunk rerun on the tagged
-commit, because a rerun changes the admitted hashes. Before publishing, the
-publish job re-checks the hosted tag object and peeled commit against the
-admission receipt (`scripts/release_tag_recheck.py`), refuses while an issue
-carrying the `release-blocking` label is open
-(`scripts/release_blocker_check.py`; the gate passes when no maintainer has
-applied that label), and runs the ruleset drift check without the readiness
-override variables. PyPI and TestPyPI trusted publishers are bound to the
-workflow file name, so the owner must register `release-v2.yml` publishers
-before the first rehearsal. Recovery from an expired or superseded artifact
-is a fresh qualifying trunk artifact plus full downstream revalidation, never
-an older-success fallback.
+`.github/workflows/release-v2.yml` starts on a `v*` tag push, or by hand with a
+`tag` input to re-run a tag whose first run failed before publishing. Tags are
+PEP 440 with a `v` prefix. Pre-release tags (`v0.5.0rc1`) publish to TestPyPI
+only; final tags (`v0.5.0`) publish to PyPI. Tags must be annotated
+(`git tag -a`); the admission consumer refuses lightweight tags. The workflow
+never rebuilds artifacts, never falls back to an older trunk run, and must not
+be run after a trunk rerun on the tagged commit, because a rerun changes the
+admitted hashes.
+
+Gates, in order:
+
+1. `admit` runs `make release-check`, the ruleset drift check without the
+   readiness override variables, the `release-blocking` issue check
+   (`scripts/release_blocker_check.py`; it passes when no maintainer has applied
+   that label), then `scripts/release_artifact_consumer.py admit`. Admission
+   also checks the `benchbox/_binaries` tree committed at the tag against the
+   distributions.
+2. The install matrix installs the staged wheel on Python 3.11 to 3.14 across
+   Linux, macOS, and Windows.
+3. Release UAT runs the `release-gate-*.yaml` configs against the staged wheel
+   with the checkout package hidden, then runs `make uat-gate-check` with the
+   digest of the staged distributions. The gate is red when any stage skipped,
+   pruned, or could not reach a required cell, or recorded another digest.
+4. The publish job waits for environment approval, re-checks the hosted tag
+   object and peeled commit against the admission receipt
+   (`scripts/release_tag_recheck.py`), stages only the verified files, attests
+   their hashes, and publishes them to `test-pypi` or `pypi`.
+
+Verify a published release with `gh attestation verify <file> --repo
+BenchBox-dev/BenchBox --signer-workflow
+BenchBox-dev/BenchBox/.github/workflows/release-v2.yml`.
+
+PyPI and TestPyPI trusted publishers are bound to the workflow file name, so
+the owner must register `release-v2.yml` publishers before the first
+rehearsal. Recovery from an expired or superseded artifact is a fresh
+qualifying trunk artifact plus full downstream revalidation, never an
+older-success fallback.

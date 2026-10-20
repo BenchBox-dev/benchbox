@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime as _dt
 import hashlib
 import json
+import os
 import signal
 import subprocess
 import sys
@@ -704,6 +705,13 @@ def _artifact_digest(path: Path) -> str | None:
         return None
 
 
+def _distribution_digest() -> str | None:
+    digest_file = os.environ.get("RELEASE_DIST_DIGEST_FILE")
+    if not digest_file:
+        return None
+    return _artifact_digest(Path(digest_file))
+
+
 def _collect_artifact_digests(log_dir: Path) -> dict[str, str | None]:
     return {
         "cells_jsonl": _artifact_digest(log_dir / "cells.jsonl"),
@@ -748,6 +756,7 @@ def _write_gate_summary_artifact(
         cross_scale_floor=(report_summary.cross_scale_floor if report_summary is not None else None),
         cross_scale_floor_breached=(report_summary.cross_scale_floor_breached if report_summary is not None else None),
         artifact_digests=_collect_artifact_digests(log_dir),
+        distribution_digest=_distribution_digest(),
         verdict=gate_summary.derive_verdict(
             dry_run=config.dry_run,
             aborted=aborted_phase is not None,

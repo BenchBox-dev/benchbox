@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import datetime as _dt
+import hashlib
 import json
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
@@ -1655,3 +1657,96 @@ def test_report_cli_json_surfaces_died_mid_platform_from_the_sidecar(tmp_path: P
     assert payload["died_mid_platform"] == 171
     assert payload["total_defined"] == 172
     assert exit_code == 1
+
+
+def _release_gate_stages(**second_stage_overrides):
+    from tests.uat import gate_summary
+
+    names = gate_summary.EXPECTED_RELEASE_GATE_STAGES
+    return [
+        _stage_summary(names[0], "2026-07-10T10:00:00"),
+        _stage_summary(names[1], "2026-07-10T12:00:00", **second_stage_overrides),
+        _stage_summary(names[2], "2026-07-10T14:00:00"),
+    ]
+
+
+@pytest.mark.parametrize(
+    "counter",
+    [
+        "skipped",
+        "unreachable",
+        "startup_failed",
+        "died_mid_platform",
+        "compatibility_pruned",
+        "early_stop_pruned",
+        "registry_pruned",
+    ],
+)
+def test_combined_evidence_red_when_a_required_cell_was_not_executed(counter: str):
+    from tests.uat import gate_summary
+
+    accounting = gate_summary.PhaseAccounting(attempted=5, passed=5, total_defined=6, **{counter: 1})
+    evidence = gate_summary.build_combined_evidence(
+        _release_gate_stages(accounting=accounting),
+        ordering_violations=(),
+        generated_at=_dt.datetime(2026, 7, 10, 15),
+    )
+    assert evidence.verdict == "red"
+    assert any("required cell" in reason and f"{counter}=1" in reason for reason in evidence.reasons)
+
+
+def test_combined_evidence_red_when_a_stage_attempted_no_cells():
+    from tests.uat import gate_summary
+
+    evidence = gate_summary.build_combined_evidence(
+        _release_gate_stages(accounting=gate_summary.PhaseAccounting()),
+        ordering_violations=(),
+        generated_at=_dt.datetime(2026, 7, 10, 15),
+    )
+    assert evidence.verdict == "red"
+    assert any("no cells attempted" in reason for reason in evidence.reasons)
+
+
+def test_combined_evidence_binds_every_stage_to_the_admitted_distribution():
+    from tests.uat import gate_summary
+
+    digest = "d" * 64
+    stages = [replace(stage, distribution_digest=digest) for stage in _release_gate_stages()]
+    evidence = gate_summary.build_combined_evidence(
+        stages,
+        ordering_violations=(),
+        generated_at=_dt.datetime(2026, 7, 10, 15),
+        expected_distribution_digest=digest,
+    )
+    assert evidence.verdict == "green"
+    assert evidence.distribution_digest == digest
+
+
+@pytest.mark.parametrize("recorded", [None, "e" * 64])
+def test_combined_evidence_red_when_a_stage_ran_against_another_distribution(recorded):
+    from tests.uat import gate_summary
+
+    digest = "d" * 64
+    stages = [replace(stage, distribution_digest=digest) for stage in _release_gate_stages()]
+    stages[1] = replace(stages[1], distribution_digest=recorded)
+    evidence = gate_summary.build_combined_evidence(
+        stages,
+        ordering_violations=(),
+        generated_at=_dt.datetime(2026, 7, 10, 15),
+        expected_distribution_digest=digest,
+    )
+    assert evidence.verdict == "red"
+    assert evidence.distribution_digest is None
+    assert any("distribution digest" in reason for reason in evidence.reasons)
+
+
+def test_gate_summary_records_the_digest_of_the_admitted_distribution_file(tmp_path, monkeypatch):
+    from tests.uat import orchestrator
+
+    digest_file = tmp_path / "dist-digest.txt"
+    digest_file.write_bytes(b"abc  benchbox-0.5.0rc1-py3-none-any.whl\n")
+    monkeypatch.setenv("RELEASE_DIST_DIGEST_FILE", str(digest_file))
+    assert orchestrator._distribution_digest() == hashlib.sha256(digest_file.read_bytes()).hexdigest()
+
+    monkeypatch.delenv("RELEASE_DIST_DIGEST_FILE")
+    assert orchestrator._distribution_digest() is None

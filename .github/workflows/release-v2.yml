@@ -1,10 +1,12 @@
 name: Release v2
 
 on:
+  push:
+    tags: ['v*']
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Annotated release tag to publish (for example v0.5.0-rc.1 for TestPyPI, v0.5.0 for PyPI)'
+        description: 'Annotated release tag to publish (for example v0.5.0rc1 for TestPyPI, v0.5.0 for PyPI)'
         required: true
         type: string
 
@@ -12,7 +14,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: release-v2-${{ inputs.tag }}
+  group: release-v2-${{ inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -29,34 +31,34 @@ jobs:
     steps:
       - name: Validate tag shape
         env:
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
-          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc|dev)\.[0-9]+)?$ ]]; then
-            echo "::error::Tag '$RELEASE_TAG' is not a vX.Y.Z or vX.Y.Z-(alpha|beta|rc|dev).N tag."
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+((a|b|rc)[0-9]+)?$ ]]; then
+            echo "::error::Tag '$RELEASE_TAG' is not a PEP 440 vX.Y.Z or vX.Y.Z(a|b|rc)N tag."
             exit 1
           fi
 
       - name: Route pre-releases to TestPyPI only
         id: route
         env:
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
-          if [[ "$RELEASE_TAG" == *-* ]]; then
-            echo "target=test-pypi" >> "$GITHUB_OUTPUT"
-          else
+          if [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "target=pypi" >> "$GITHUB_OUTPUT"
+          else
+            echo "target=test-pypi" >> "$GITHUB_OUTPUT"
           fi
 
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ inputs.tag || github.ref_name }}
           fetch-depth: 0
 
       - name: Require an annotated tag
         env:
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
           kind="$(git cat-file -t "$RELEASE_TAG")"
@@ -75,7 +77,7 @@ jobs:
 
       - name: Verify the pre-tag state
         env:
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
           version="${RELEASE_TAG#v}"
@@ -88,7 +90,7 @@ jobs:
           set -euo pipefail
           test -n "$RULESET_DRIFT_TOKEN"
           unset RELEASE_READINESS_OVERRIDE_SHA RELEASE_READINESS_OVERRIDE_REASON
-          uv run -- python scripts/ruleset_drift_check.py --token "$RULESET_DRIFT_TOKEN"
+          uv run -- python scripts/ruleset_drift_check.py --token "$RULESET_DRIFT_TOKEN" --require-bypass-actor-visibility
 
       - name: Refuse open release-blocking issues
         env:
@@ -99,7 +101,7 @@ jobs:
         id: admit
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
           uv run -- python scripts/release_artifact_consumer.py admit \
@@ -111,7 +113,7 @@ jobs:
       - name: Upload the admitted directory
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
-          name: admitted-${{ inputs.tag }}
+          name: admitted-${{ inputs.tag || github.ref_name }}
           path: admitted/
           retention-days: 7
           if-no-files-found: error
@@ -132,7 +134,7 @@ jobs:
       - name: Download the admitted directory
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
-          name: admitted-${{ inputs.tag }}
+          name: admitted-${{ inputs.tag || github.ref_name }}
           path: admitted
 
       - name: Set up Python ${{ matrix.python-version }}
@@ -143,7 +145,7 @@ jobs:
       - name: Stage and install the admitted wheel
         shell: bash
         env:
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
           HEAD_SHA: ${{ needs.admit.outputs.head_sha }}
         run: |
           set -euo pipefail
@@ -159,15 +161,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
+      - name: Name the distribution digest file
+        run: echo "RELEASE_DIST_DIGEST_FILE=$RUNNER_TEMP/dist-digest.txt" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ inputs.tag || github.ref_name }}
 
       - name: Download the admitted directory
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
-          name: admitted-${{ inputs.tag }}
-          path: admitted
+          name: admitted-${{ inputs.tag || github.ref_name }}
+          path: ${{ runner.temp }}/admitted
 
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
@@ -177,44 +182,62 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
 
-      - name: Install the admitted wheel and bind its digest to the UAT evidence
+      - name: Install the admitted wheel and record its digest
         env:
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
           HEAD_SHA: ${{ needs.admit.outputs.head_sha }}
         run: |
           set -euo pipefail
           uv sync --group dev
-          uv run -- python scripts/release_admitted_dist.py --admitted admitted --tag "$RELEASE_TAG" --sha "$HEAD_SHA" --stage staged
-          uv pip install --python .venv/bin/python staged/*.whl
-          (cd staged && sha256sum -- *.whl *.tar.gz) > dist-digest.txt
-          cat dist-digest.txt
-          .venv/bin/python -c "import benchbox, pathlib; print(benchbox.__version__, pathlib.Path(benchbox.__file__).resolve())"
+          uv run -- python scripts/release_admitted_dist.py --admitted "$RUNNER_TEMP/admitted" --tag "$RELEASE_TAG" --sha "$HEAD_SHA" --stage "$RUNNER_TEMP/staged"
+          uv pip install --python .venv/bin/python "$RUNNER_TEMP"/staged/*.whl
+          (cd "$RUNNER_TEMP/staged" && sha256sum -- *.whl *.tar.gz) > "$RELEASE_DIST_DIGEST_FILE"
+          cat "$RELEASE_DIST_DIGEST_FILE"
 
       - name: Hide the checkout package so UAT imports the admitted wheel
-        run: mv benchbox benchbox.checkout
+        run: |
+          set -euo pipefail
+          git ls-files -z benchbox | xargs -0 git update-index --assume-unchanged
+          mv benchbox "$RUNNER_TEMP/benchbox.checkout"
 
       - name: Run the release-gate UAT configs against the admitted distribution
-        env:
-          RELEASE_DIST_DIGEST_FILE: dist-digest.txt
         run: |
           set -euo pipefail
           .venv/bin/python -c "import benchbox, pathlib; path = pathlib.Path(benchbox.__file__).resolve(); assert 'site-packages' in path.parts, path"
+          logs="$HOME/Developer/benchmark_runs/logs"
+          stage=0
           for config in tests/uat/configs/release-gate-*.yaml; do
+            stage=$((stage + 1))
             make uat-sweep CONFIG="$config"
+            latest="$(ls -1dt "$logs"/uat_* | head -n 1)"
+            echo "$latest" > "$RUNNER_TEMP/stage$stage.dir"
           done
+          test "$stage" -eq 3
+          make uat-gate-check \
+            STAGE1="$(cat "$RUNNER_TEMP/stage1.dir")" \
+            STAGE2="$(cat "$RUNNER_TEMP/stage2.dir")" \
+            STAGE3="$(cat "$RUNNER_TEMP/stage3.dir")" \
+            OUTPUT="$RUNNER_TEMP/uat-gate-summary.json" \
+            DIST_DIGEST="$(sha256sum "$RELEASE_DIST_DIGEST_FILE" | cut -d' ' -f1)"
 
       - name: Restore the checkout package
         if: always()
-        run: mv benchbox.checkout benchbox
+        run: |
+          set -euo pipefail
+          if [ -d "$RUNNER_TEMP/benchbox.checkout" ]; then
+            mv "$RUNNER_TEMP/benchbox.checkout" benchbox
+          fi
+          git ls-files -z benchbox | xargs -0 git update-index --no-assume-unchanged
 
       - name: Upload UAT evidence with the distribution digest
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
-          name: release-uat-${{ inputs.tag }}
+          name: release-uat-${{ inputs.tag || github.ref_name }}
           path: |
-            dist-digest.txt
-            ~/Developer/benchmark_runs/
+            ${{ runner.temp }}/dist-digest.txt
+            ${{ runner.temp }}/uat-gate-summary.json
+            ~/Developer/benchmark_runs/logs/
           retention-days: 30
           if-no-files-found: warn
 
@@ -233,13 +256,13 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ inputs.tag || github.ref_name }}
           fetch-depth: 0
 
       - name: Download the admitted directory
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
-          name: admitted-${{ inputs.tag }}
+          name: admitted-${{ inputs.tag || github.ref_name }}
           path: admitted
 
       - name: Set up Python
@@ -252,7 +275,7 @@ jobs:
 
       - name: Re-check the hosted tag after approval
         env:
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
           git fetch origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG" --force
@@ -260,7 +283,7 @@ jobs:
 
       - name: Stage only the verified distributions
         env:
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
           HEAD_SHA: ${{ needs.admit.outputs.head_sha }}
         run: |
           set -euo pipefail
@@ -303,18 +326,18 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ inputs.tag || github.ref_name }}
 
       - name: Download the admitted directory
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
-          name: admitted-${{ inputs.tag }}
+          name: admitted-${{ inputs.tag || github.ref_name }}
           path: admitted
 
       - name: Create the GitHub release from the admitted distributions
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
           HEAD_SHA: ${{ needs.admit.outputs.head_sha }}
         shell: bash
         run: |

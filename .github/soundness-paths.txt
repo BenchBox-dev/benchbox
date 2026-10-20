@@ -84,6 +84,9 @@ file	scripts/ci_units.py
 file	scripts/ci_unit_result.py
 file	scripts/release_flow.py
 file	scripts/release_artifact_consumer.py
+file	scripts/release_admitted_dist.py
+file	scripts/release_tag_recheck.py
+file	scripts/release_blocker_check.py
 file	scripts/update_version.py
 file	scripts/generate_changelog_entry.py
 file	scripts/check_release_curation.py
@@ -93,6 +96,7 @@ file	scripts/sqlglot_refresh_waiver.json
 file	_project/scripts/check_uv_lock_revision.py
 file	_project/decisions/single-repo-migration.md
 file	.github/workflows/release.yml
+file	.github/workflows/release-v2.yml
 prefix	benchbox/_binaries/
 file	benchbox/utils/binary_manifest.py
 file	scripts/bundled_binary_manifest.py

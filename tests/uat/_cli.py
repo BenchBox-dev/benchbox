@@ -296,6 +296,7 @@ def _handle_gate_check(args: argparse.Namespace) -> int:
         summaries,
         ordering_violations=ordering_violations,
         generated_at=_dt.datetime.now(),
+        expected_distribution_digest=args.expected_distribution_digest,
     )
     output = Path(args.output).expanduser()
     gate_summary.write_combined_evidence(output, evidence)
@@ -586,6 +587,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "--output",
         default=str(Path(__file__).resolve().parents[2] / "_project" / "release-evidence" / "uat-gate-summary.json"),
         help="Combined release-evidence output path (default: _project/release-evidence/uat-gate-summary.json)",
+    )
+    gate_check.add_argument(
+        "--expected-distribution-digest",
+        default=None,
+        help="SHA-256 of the admitted distribution digest file every stage must have recorded",
     )
     _set_handler(gate_check, _handle_gate_check)
 

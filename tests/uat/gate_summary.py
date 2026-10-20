@@ -68,6 +68,7 @@ class GateSummary:
     verdict: str
     abort_kind: str | None = None
     artifact_digests: dict[str, str | None] | None = None
+    distribution_digest: str | None = None
     version: int = GATE_SUMMARY_SCHEMA_VERSION
 
     def to_json_dict(self) -> dict:
@@ -117,10 +118,34 @@ class CombinedGateEvidence:
     ordering_violations: tuple[str, ...]
     reasons: tuple[str, ...]
     stage_artifact_digests: dict[str, dict[str, str | None]] | None = None
+    distribution_digest: str | None = None
     version: int = COMBINED_EVIDENCE_SCHEMA_VERSION
 
     def to_json_dict(self) -> dict:
         return asdict(self)
+
+
+REQUIRED_CELL_SHORTFALL_COUNTERS = (
+    "skipped",
+    "unreachable",
+    "startup_failed",
+    "died_mid_platform",
+    "compatibility_pruned",
+    "early_stop_pruned",
+    "registry_pruned",
+)
+
+
+def required_cell_shortfalls(summary: GateSummary) -> list[str]:
+    accounting = summary.accounting
+    shortfalls = [
+        f"{counter}={getattr(accounting, counter)}"
+        for counter in REQUIRED_CELL_SHORTFALL_COUNTERS
+        if getattr(accounting, counter)
+    ]
+    if accounting.attempted <= 0:
+        shortfalls.append("no cells attempted")
+    return shortfalls
 
 
 def build_combined_evidence(
@@ -128,6 +153,7 @@ def build_combined_evidence(
     *,
     ordering_violations: Sequence[str],
     generated_at: _dt.datetime,
+    expected_distribution_digest: str | None = None,
 ) -> CombinedGateEvidence:
     reasons: list[str] = []
     if len(stage_summaries) != 3:
@@ -164,6 +190,14 @@ def build_combined_evidence(
                 "git rev-parse failed to capture provenance — regenerate evidence "
                 "from a repo checkout where `git rev-parse HEAD` succeeds"
             )
+        shortfalls = required_cell_shortfalls(stage)
+        if shortfalls:
+            reasons.append(f"stage {stage.config_name!r} did not execute every required cell: {', '.join(shortfalls)}")
+        if expected_distribution_digest is not None and stage.distribution_digest != expected_distribution_digest:
+            reasons.append(
+                f"stage {stage.config_name!r} ran against distribution digest "
+                f"{stage.distribution_digest or 'absent'}, expected {expected_distribution_digest}"
+            )
         if stage.artifact_digests is None:
             reasons.append(
                 f"stage {stage.config_name!r} has no artifact digests: "
@@ -194,6 +228,7 @@ def build_combined_evidence(
         ordering_violations=tuple(ordering_violations),
         reasons=tuple(reasons),
         stage_artifact_digests=stage_artifact_digests,
+        distribution_digest=expected_distribution_digest if verdict == VERDICT_GREEN else None,
     )
 
 
