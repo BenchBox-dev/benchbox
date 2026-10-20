@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "translate_ddl exists in benchbox/utils/dialect_utils.py with tests; pin and baseline updated; make sqlglot-repro-retirement-check passes.",
+    "Golden-corpus differences listed in the PR with a result-version note.",
+    "make pr-preflight, make comment-policy-check, make compat-docs-check and make typecheck pass; PR merged."
+  ],
+  "description": "Adopt the wheel containing the F7 and F8 fork slices with the standard build, verify and pin procedure, and add a golden-corpus test comparing the existing DDL rule outputs (all 26 registered rules over their unit-test inputs, including tests/unit/core/sql_compat and tests/unit/platforms DDL tests) with transpile_ddl. Add translate_ddl to the wrapper. No deletion in this PR.",
+  "links": [
+    "_project/decisions/sqlglot-fork-transpilation-plan.md",
+    "benchbox/sql_compat/rules/ddl_optimize/"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T15:45:06Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "fb3f3010772d4c049772028cacb3745c",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}

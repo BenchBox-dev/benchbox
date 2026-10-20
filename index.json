@@ -22673,6 +22673,17 @@
       "status": "open",
       "title": "BenchBox: adopt the fork wheel containing adapter rewrites, safe_division and TPC-DI/ClickBench generators"
     },
+    "sqlglot-fork-a3-adopt-ddl-wheel": {
+      "claim": null,
+      "needs": [
+        "sqlglot-fork-f7-ddl-core",
+        "sqlglot-fork-f8-engine-specific-ddl",
+        "sqlglot-fork-a2-adopt-adapter-wheel"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "BenchBox: adopt the fork wheel containing DdlOptions and engine-specific DDL"
+    },
     "sqlglot-fork-adr-ownership": {
       "claim": null,
       "needs": [],
