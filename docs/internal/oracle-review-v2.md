@@ -65,13 +65,24 @@ are set. The tailnet policy must:
 - grant `tag:oracle-ci` only `tcp:8765` on the broker host.
 
 The Tailscale OIDC credential carries the `auth_keys` write scope and
-`tag:oracle-ci`, with its subject restricted to this repository's `oracle`
-environment. Add `TS_OAUTH_CLIENT_ID`, `TS_AUDIENCE`, `OMP_AUTH_BROKER_URL`
+`tag:oracle-ci`. This repository uses GitHub's immutable OIDC subject, so
+restrict the credential's subject to
+`repo:BenchBox-dev@319264189/benchbox@1135770337:environment:oracle`; the
+name-only form is rejected with a 403. Add `TS_OAUTH_CLIENT_ID`,
+`TS_AUDIENCE`, `OMP_AUTH_BROKER_URL`
 (`https://<host>.<tailnet>.ts.net:8765`) and `OMP_AUTH_BROKER_TOKEN` to the
 `oracle` environment. Rotate the broker token with
 `omp auth-broker token --regenerate`, restart the agent with
 `launchctl kickstart -k gui/$(id -u)/dev.omp.auth-broker`, and update the
 secret. Disable key expiry for the broker host in the Tailscale console.
+
+The broker serves credentials, not model roles. Store the owner's
+`~/.omp/agent/config.yml`, which maps each role alias to a model and its
+fallback chain, as the `OMP_AGENT_CONFIG` secret, and refresh it after
+changing roles:
+`gh secret set OMP_AGENT_CONFIG --env oracle < ~/.omp/agent/config.yml`.
+Attempt jobs fail without it, because role aliases would otherwise resolve
+to OMP's built-in models.
 
 Without the App secrets, the `post` job logs the result and succeeds.
 
