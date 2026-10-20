@@ -22679,7 +22679,7 @@
       "needs": [
         "sqlglot-fork-f7-ddl-core",
         "sqlglot-fork-f8-engine-specific-ddl",
-        "sqlglot-fork-a2-adopt-adapter-wheel"
+        "sqlglot-fork-a1-adopt-wrapper-wheel"
       ],
       "priority": "medium-high",
       "status": "open",
