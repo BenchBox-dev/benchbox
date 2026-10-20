@@ -270,8 +270,9 @@ checkout before it records it; a failed check records the reviewer as absent
   a verdict that would be judged SHIP must name, in `files_examined`, every
   soundness-path file under review that still exists at the head (in a
   follow-up, the files changed since the last review), and OMP's event stream
-  must show a successful `read` of each of those files, or a `grep` of it that
-  found matches. That
+  must show a successful `read` of each of those files, or a `grep` whose
+  reported matches include that file. A `grep` over several paths credits
+  only the files it reports as matched. That
   includes a follow-up whose only defects are in unchanged files: those
   defects are not counted, so the follow-up would ship and still needs the
   files named and read. A verdict that would fail (DO NOT SHIP, a defect

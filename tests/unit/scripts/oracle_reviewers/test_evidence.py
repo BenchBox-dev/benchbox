@@ -24,7 +24,9 @@ OMP_STREAM = (
 ).read_text(encoding="utf-8")
 
 
-def _tool_events(name: str, path: str, *, is_error: bool, output: str = "match") -> str:
+def _tool_events(
+    name: str, path: str, *, is_error: bool, output: str = "match", matched: tuple[str, ...] | None = None
+) -> str:
     call = {
         "type": "message_end",
         "message": {
@@ -40,6 +42,7 @@ def _tool_events(name: str, path: str, *, is_error: bool, output: str = "match")
             "toolName": name,
             "isError": is_error,
             "content": [{"type": "text", "text": output}],
+            **({} if matched is None else {"details": {"files": list(matched)}}),
         },
     }
     return f"{json.dumps(call)}\n{json.dumps(result)}\n"
@@ -68,26 +71,34 @@ def _finding(file: str = "pkg/a.py", line: int = 2, end_line: int | None = None)
 
 
 def test_omp_trace_reads_the_recorded_review_stream() -> None:
-    assert trace("omp", OMP_STREAM).reads == ("/workspace/benchbox/core/equivalence/checker.py", "/workspace")
+    checker = "/workspace/benchbox/core/equivalence/checker.py"
+    assert trace("omp", OMP_STREAM).reads == (checker, checker)
     assert unread(
         "omp", ["benchbox/core/equivalence/checker.py", "pkg/b.py"], trace("omp", OMP_STREAM), Path("/workspace")
     ) == ["pkg/b.py"]
 
 
 @pytest.mark.parametrize(
-    ("name", "is_error", "output", "reads"),
+    ("name", "is_error", "output", "matched", "reads"),
     [
-        ("read", False, "line", ("pkg/a.py:10-40",)),
-        ("grep", False, "pkg/a.py\n*12|def f", ("pkg/a.py:10-40",)),
-        ("grep", False, "No matches found", ()),
-        ("read", True, "Path not found", ()),
-        ("glob", False, "pkg/a.py", ()),
+        ("read", False, "line", None, ("pkg/a.py:10-40",)),
+        ("grep", False, "pkg/a.py\n*12|def f", ("pkg/a.py",), ("pkg/a.py",)),
+        ("grep", False, "pkg/a.py\n*12|def f", None, ()),
+        ("grep", False, "No matches found", (), ()),
+        ("read", True, "Path not found", None, ()),
+        ("glob", False, "pkg/a.py", ("pkg/a.py",), ()),
     ],
 )
 def test_omp_trace_counts_only_reads_that_returned_content(
-    name: str, is_error: bool, output: str, reads: tuple[str, ...]
+    name: str, is_error: bool, output: str, matched: tuple[str, ...] | None, reads: tuple[str, ...]
 ) -> None:
-    assert trace("omp", _tool_events(name, "pkg/a.py:10-40", is_error=is_error, output=output)).reads == reads
+    events = _tool_events(name, "pkg/a.py:10-40", is_error=is_error, output=output, matched=matched)
+    assert trace("omp", events).reads == reads
+
+
+def test_multi_path_grep_credits_only_the_files_that_matched(tmp_path: Path) -> None:
+    events = _tool_events("grep", "pkg/a.py;pkg/b.py", is_error=False, output="pkg/a.py\n*3|x", matched=("pkg/a.py",))
+    assert unread("omp", ["pkg/a.py", "pkg/b.py"], trace("omp", events), tmp_path) == ["pkg/b.py"]
 
 
 def test_unread_strips_omp_read_selectors_and_splits_path_lists(tmp_path: Path) -> None:

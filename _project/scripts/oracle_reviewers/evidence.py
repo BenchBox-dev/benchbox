@@ -49,13 +49,20 @@ def _found_content(message: dict) -> bool:
     return not text.strip().startswith(OMP_NO_MATCHES)
 
 
+def _grep_matches(message: dict) -> tuple[str, ...]:
+    details = message.get("details")
+    files = details.get("files") if isinstance(details, dict) else None
+    return tuple(path for path in files if isinstance(path, str) and path) if isinstance(files, list) else ()
+
+
 def _omp_reads(stdout: str) -> tuple[str, ...]:
     calls: dict[str, str] = {}
-    succeeded: set[str] = set()
+    results: dict[str, tuple[str, ...] | None] = {}
     for message in _completed_messages(stdout):
         if message.get("role") == "toolResult":
             if _found_content(message):
-                succeeded.add(str(message.get("toolCallId")))
+                matched = _grep_matches(message) if message.get("toolName") == "grep" else None
+                results[str(message.get("toolCallId"))] = matched
             continue
         if message.get("role") != "assistant" or not isinstance(message.get("content"), list):
             continue
@@ -65,7 +72,13 @@ def _omp_reads(stdout: str) -> tuple[str, ...]:
             arguments = block.get("arguments")
             if isinstance(arguments, dict) and isinstance(arguments.get("path"), str):
                 calls[str(block.get("id"))] = arguments["path"]
-    return tuple(path for call, path in calls.items() if call in succeeded and path)
+    reads: list[str] = []
+    for call, path in calls.items():
+        if call not in results or not path:
+            continue
+        matched = results[call]
+        reads.extend((path,) if matched is None else matched)
+    return tuple(reads)
 
 
 def trace(harness: str, stdout: str) -> Trace:
