@@ -15381,6 +15381,13 @@
       "status": "done",
       "title": "Verify the oracle follow-up sequence end to end after its last change merges"
     },
+    "oracle-jev-gateway-gap": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Jev classification has no serving omp: auth-gateway 404s typesafe/* on host and pinned CI build"
+    },
     "oracle-local-b1-engine-pin": {
       "claim": null,
       "needs": [

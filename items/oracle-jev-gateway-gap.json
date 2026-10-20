@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Slot-1 select classifies a real PR through a live Jev call in CI (or the Jev dependency is replaced), on the pinned omp build."
+  ],
+  "description": "The OMP cutover routes slot-1 reviewer selection through JevSession, which spawns `omp auth-gateway stdio` and asks model typesafe/jev-1.14.0. No available omp serves that model: the container's pinned Linux arm64 build (18.12.1, same version family as CI's pinned x64 build) answers 404 No available model matches for jev-1.14.0, jev-latest, and jev-preview, with and without TYPESAFE_API_KEY set, despite the typesafe credential being present and the catalog row existing. The host (18.12.3) 404s identically, and plain `omp --print --model typesafe/jev-latest` reports model not found. Anthropic chat through the same gateway path works, so credential sharing is fine; only the typesafe judge route is missing. Until this is resolved, every merged-cutover run will fall into slot-1 pending (classification unavailable) and never reach a reviewer. Either vendor the Jev capability into a pinned omp build, or replace the live-Jev classification dependency before merge.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3170"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-20T02:54:18Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b7c04d5bd3a54d8ba6ecb1ed8ab4bca3",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
+    }
+  ]
+}
