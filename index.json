@@ -22684,6 +22684,16 @@
       "status": "open",
       "title": "BenchBox: adopt the fork wheel containing DdlOptions and engine-specific DDL"
     },
+    "sqlglot-fork-a4-adopt-havoc-wheel": {
+      "claim": null,
+      "needs": [
+        "sqlglot-fork-f9-havoc-datafusion-rewrites",
+        "sqlglot-fork-a3-adopt-ddl-wheel"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "BenchBox: adopt the fork wheel containing the TPC-Havoc and DataFusion named rewrites"
+    },
     "sqlglot-fork-adr-ownership": {
       "claim": null,
       "needs": [],

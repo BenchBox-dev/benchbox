@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "apply_rewrite exists in benchbox/utils/dialect_utils.py with tests; pin and baseline updated; make sqlglot-repro-retirement-check passes.",
+    "Golden-corpus differences listed in the PR with a result-version note.",
+    "make pr-preflight, make comment-policy-check, make compat-docs-check and make typecheck pass; PR merged."
+  ],
+  "description": "Adopt the wheel containing F9 with the standard build, verify and pin procedure. Add apply_rewrite to the wrapper and a golden-corpus test over tests/unit/core/tpchavoc and the DataFusion and Spark transformer test inputs. No deletion in this PR.",
+  "links": [
+    "_project/decisions/sqlglot-fork-transpilation-plan.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T15:45:21Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "fe6c45812f924012a9ff0a20240ac180",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}
