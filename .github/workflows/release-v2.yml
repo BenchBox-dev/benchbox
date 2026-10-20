@@ -159,7 +159,7 @@ jobs:
     name: release UAT
     needs: admit
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 360
     steps:
       - name: Name the distribution digest file
         run: echo "RELEASE_DIST_DIGEST_FILE=$RUNNER_TEMP/dist-digest.txt" >> "$GITHUB_ENV"
@@ -188,8 +188,8 @@ jobs:
           HEAD_SHA: ${{ needs.admit.outputs.head_sha }}
         run: |
           set -euo pipefail
-          uv sync --group dev
-          uv run -- python scripts/release_admitted_dist.py --admitted "$RUNNER_TEMP/admitted" --tag "$RELEASE_TAG" --sha "$HEAD_SHA" --stage "$RUNNER_TEMP/staged"
+          uv sync --group dev --extra clickhouse-local --extra clickhouse-server --extra lakesail --extra databend --extra influxdb --extra singlestore
+          uv run --no-sync -- python scripts/release_admitted_dist.py --admitted "$RUNNER_TEMP/admitted" --tag "$RELEASE_TAG" --sha "$HEAD_SHA" --stage "$RUNNER_TEMP/staged"
           uv pip install --python .venv/bin/python "$RUNNER_TEMP"/staged/*.whl
           (cd "$RUNNER_TEMP/staged" && sha256sum -- *.whl *.tar.gz) > "$RELEASE_DIST_DIGEST_FILE"
           cat "$RELEASE_DIST_DIGEST_FILE"
@@ -201,6 +201,8 @@ jobs:
           mv benchbox "$RUNNER_TEMP/benchbox.checkout"
 
       - name: Run the release-gate UAT configs against the admitted distribution
+        env:
+          UV_NO_SYNC: '1'
         run: |
           set -euo pipefail
           .venv/bin/python -c "import benchbox, pathlib; path = pathlib.Path(benchbox.__file__).resolve(); assert 'site-packages' in path.parts, path"
@@ -213,6 +215,7 @@ jobs:
             echo "$latest" > "$RUNNER_TEMP/stage$stage.dir"
           done
           test "$stage" -eq 3
+          .venv/bin/python -c "import benchbox, pathlib; path = pathlib.Path(benchbox.__file__).resolve(); assert 'site-packages' in path.parts, path"
           make uat-gate-check \
             STAGE1="$(cat "$RUNNER_TEMP/stage1.dir")" \
             STAGE2="$(cat "$RUNNER_TEMP/stage2.dir")" \
@@ -250,7 +253,7 @@ jobs:
       name: ${{ needs.admit.outputs.target }}
       url: ${{ needs.admit.outputs.target == 'test-pypi' && 'https://test.pypi.org/p/benchbox' || 'https://pypi.org/p/benchbox' }}
     permissions:
-      contents: write
+      contents: read
       id-token: write
       attestations: write
     steps:

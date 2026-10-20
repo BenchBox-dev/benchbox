@@ -125,27 +125,20 @@ class CombinedGateEvidence:
         return asdict(self)
 
 
-REQUIRED_CELL_SHORTFALL_COUNTERS = (
-    "skipped",
-    "unreachable",
-    "startup_failed",
-    "died_mid_platform",
-    "compatibility_pruned",
-    "early_stop_pruned",
-    "registry_pruned",
-)
-
-
 def required_cell_shortfalls(summary: GateSummary) -> list[str]:
     accounting = summary.accounting
-    shortfalls = [
-        f"{counter}={getattr(accounting, counter)}"
-        for counter in REQUIRED_CELL_SHORTFALL_COUNTERS
-        if getattr(accounting, counter)
-    ]
+    planned_pruning = accounting.compatibility_pruned + accounting.registry_pruned + accounting.early_stop_pruned
+    shortfalls = {
+        "skipped": max(accounting.skipped - planned_pruning, 0),
+        "unreachable": accounting.unreachable,
+        "startup_failed": accounting.startup_failed,
+        "died_mid_platform": accounting.died_mid_platform,
+        "early_stop_pruned": accounting.early_stop_pruned,
+    }
+    reasons = [f"{name}={count}" for name, count in shortfalls.items() if count]
     if accounting.attempted <= 0:
-        shortfalls.append("no cells attempted")
-    return shortfalls
+        reasons.append("no cells attempted")
+    return reasons
 
 
 def build_combined_evidence(

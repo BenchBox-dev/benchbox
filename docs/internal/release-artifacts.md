@@ -189,8 +189,10 @@ Gates, in order:
    Linux, macOS, and Windows.
 3. Release UAT runs the `release-gate-*.yaml` configs against the staged wheel
    with the checkout package hidden, then runs `make uat-gate-check` with the
-   digest of the staged distributions. The gate is red when any stage skipped,
-   pruned, or could not reach a required cell, or recorded another digest.
+   digest of the staged distributions. The gate is red when any stage skipped a
+   cell the config does not prune by design, lost cells to early-stop pruning,
+   could not reach or start a required platform, attempted no cells, or recorded
+   another digest.
 4. The publish job waits for environment approval, re-checks the hosted tag
    object and peeled commit against the admission receipt
    (`scripts/release_tag_recheck.py`), stages only the verified files, attests

@@ -1671,28 +1671,41 @@ def _release_gate_stages(**second_stage_overrides):
 
 
 @pytest.mark.parametrize(
-    "counter",
+    ("fields", "reason_fragment"),
     [
-        "skipped",
-        "unreachable",
-        "startup_failed",
-        "died_mid_platform",
-        "compatibility_pruned",
-        "early_stop_pruned",
-        "registry_pruned",
+        ({"skipped": 1}, "skipped=1"),
+        ({"unreachable": 1}, "unreachable=1"),
+        ({"startup_failed": 1}, "startup_failed=1"),
+        ({"died_mid_platform": 1}, "died_mid_platform=1"),
+        ({"skipped": 2, "early_stop_pruned": 2}, "early_stop_pruned=2"),
+        ({"skipped": 3, "compatibility_pruned": 2}, "skipped=1"),
     ],
 )
-def test_combined_evidence_red_when_a_required_cell_was_not_executed(counter: str):
+def test_combined_evidence_red_when_a_required_cell_was_not_executed(fields: dict, reason_fragment: str):
     from tests.uat import gate_summary
 
-    accounting = gate_summary.PhaseAccounting(attempted=5, passed=5, total_defined=6, **{counter: 1})
+    accounting = gate_summary.PhaseAccounting(attempted=5, passed=5, total_defined=6, **fields)
     evidence = gate_summary.build_combined_evidence(
         _release_gate_stages(accounting=accounting),
         ordering_violations=(),
         generated_at=_dt.datetime(2026, 7, 10, 15),
     )
     assert evidence.verdict == "red"
-    assert any("required cell" in reason and f"{counter}=1" in reason for reason in evidence.reasons)
+    assert any("required cell" in reason and reason_fragment in reason for reason in evidence.reasons)
+
+
+def test_combined_evidence_allows_cells_the_config_prunes_by_design():
+    from tests.uat import gate_summary
+
+    accounting = gate_summary.PhaseAccounting(
+        attempted=5, passed=5, skipped=7, compatibility_pruned=4, registry_pruned=3, total_defined=12
+    )
+    evidence = gate_summary.build_combined_evidence(
+        _release_gate_stages(accounting=accounting),
+        ordering_violations=(),
+        generated_at=_dt.datetime(2026, 7, 10, 15),
+    )
+    assert evidence.verdict == "green"
 
 
 def test_combined_evidence_red_when_a_stage_attempted_no_cells():
