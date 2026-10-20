@@ -11,10 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The bundled SQLGlot runtime moves from 30.23.0.2 to 30.24.0.1 (upstream
   v30.24.0, fork commit `4bea533be2d9`). A translation corpus of every shipped
-  benchmark query across 20 target dialects changes in 20 of 25,240 outputs:
-  `STDDEV`/`VARIANCE` on MySQL-family targets now emit the sample forms,
-  DuckDB `ARRAY_SORT` emits `LIST_SORT`, BigQuery `APPROX_QUANTILE` emits
-  `APPROX_QUANTILES(..., 2)[1]`, and StarRocks keeps the `PIVOT` clause.
+  benchmark query across 20 target dialects changes in 20 of 25,240 outputs.
+  Results published before this change for the affected queries and dialects
+  were computed with different SQL and should be rerun:
+  - TPC-DI `AQ5`, `AQ6`, `AQ9` and read_primitives `statistical_variance_stddev`
+    on MySQL, Doris, StarRocks and SingleStore: `STDDEV` now emits
+    `STDDEV_SAMP` (and `VARIANCE` emits `VAR_SAMP`). Earlier results used the
+    population deviation/variance on these targets; they now use the sample
+    form (16 outputs: 12 TPC-DI, 4 read_primitives).
+  - read_primitives `array_sort` and `array_distinct` on DuckDB: `ARRAY_SORT`
+    now emits `LIST_SORT`.
+  - read_primitives `approx_quantile_groupby` on BigQuery: `APPROX_QUANTILE`
+    now emits `APPROX_QUANTILES(x, 2)[1]`.
+  - read_primitives `pivot_basic` on StarRocks: the `PIVOT` clause was
+    previously dropped, yielding a non-pivoting query, and is now emitted.
 
 ### Fixed
 
