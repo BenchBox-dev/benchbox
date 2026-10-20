@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -281,17 +282,22 @@ def test_parse_plain_and_fenced_output() -> None:
         parse_output("text", "Here is my review: " + json.dumps(_verdict()))
 
 
-def test_repeated_identical_output_is_one_verdict() -> None:
+def test_more_than_one_json_value_is_not_a_verdict() -> None:
     text = json.dumps(_verdict())
-    assert parse_output("text", f"{text}\n{text}\n") == _verdict()
-    assert parse_output("text", f"{text} {text}") == _verdict()
-    other = json.dumps(_verdict(summary="different"))
-    with pytest.raises(VerdictError, match=r"Extra data \(2 different values\)"):
-        parse_output("text", f"{text}\n{other}")
-    with pytest.raises(VerdictError, match="not JSON: Extra data"):
-        parse_output("text", f"{text}\nDone.")
+    for joined in (f"{text}\n{text}\n", f"{text}\nDone."):
+        with pytest.raises(VerdictError, match="not JSON: Extra data"):
+            parse_output("text", joined)
     with pytest.raises(VerdictError, match="not JSON: Expecting value"):
         parse_output("omp", _omp_line(text) + "\n" + _omp_line("Done."))
+
+
+def test_a_recorded_multi_turn_omp_review_yields_its_final_verdict() -> None:
+    stream = (
+        Path(__file__).resolve().parents[3] / "fixtures" / "oracle_reviewers" / "omp_multi_turn_review.jsonl"
+    ).read_text(encoding="utf-8")
+    assert sum('"type":"message_end"' in line and '"role":"assistant"' in line for line in stream.splitlines()) > 1
+    verdict = validate(parse_output("omp", stream))
+    assert (verdict.decision, verdict.files_examined) == ("SHIP", ("benchbox/core/equivalence/checker.py",))
 
 
 def test_commentable_lines_follow_the_right_side_of_hunks() -> None:

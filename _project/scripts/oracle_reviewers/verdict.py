@@ -34,7 +34,6 @@ FINDING_KEYS = ("severity", "file", "line", "end_line", "title", "detail")
 OPTIONAL_FINDING_KEYS = frozenset({"end_line"})
 PRIOR_KEYS = ("id", "status", "evidence")
 VERDICT_KEYS = ("status", "incomplete_reason", "decision", "summary", "files_examined", "defects", "prior_defects")
-TEXT_HARNESSES = frozenset({"text"})
 
 VERDICT_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -277,23 +276,6 @@ def _stream_result(text: str) -> Any:
     return None
 
 
-def _repeated_value(text: str) -> Any:
-    decoder = json.JSONDecoder()
-    values: list[Any] = []
-    index = 0
-    while index < len(text):
-        try:
-            value, index = decoder.raw_decode(text, index)
-        except json.JSONDecodeError as exc:
-            raise VerdictError("the reviewer output is not JSON: Extra data") from exc
-        values.append(value)
-        while index < len(text) and text[index].isspace():
-            index += 1
-    distinct = len({json.dumps(value, sort_keys=True) for value in values})
-    _require(distinct == 1, f"the reviewer output is not JSON: Extra data ({distinct} different values)")
-    return values[0]
-
-
 def extract_omp_text(stdout: str) -> str:
     final = ""
     for line in stdout.splitlines():
@@ -325,8 +307,6 @@ def parse_output(harness: str, text: str) -> Any:
         payload = json.loads(stripped)
     except json.JSONDecodeError as exc:
         payload = _stream_result(text) if harness == "claude" else None
-        if payload is None and harness in TEXT_HARNESSES and exc.msg == "Extra data":
-            payload = _repeated_value(stripped)
         if payload is None:
             raise VerdictError(f"the reviewer output is not JSON: {exc.msg}") from exc
     if harness == "claude":

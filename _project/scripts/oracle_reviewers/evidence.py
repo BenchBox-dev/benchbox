@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import re
 from collections.abc import Iterable
@@ -12,7 +13,9 @@ INLINE = "inline"
 _LINE_SUFFIX = re.compile(r":\d+(?:-\d+)?$")
 
 
-TRACED: tuple[str, ...] = ()
+TRACED = ("omp",)
+OMP_READERS = frozenset({"read", "grep"})
+_OMP_SELECTOR = re.compile(r"(?::(?:raw|[\d,+-]+))+$")
 CITATION_PREFIX = "Citation not found in the head commit"
 
 
@@ -21,12 +24,43 @@ class Trace:
     reads: tuple[str, ...] = ()
 
 
+def _completed_messages(stdout: str) -> Iterable[dict]:
+    for line in stdout.splitlines():
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(event, dict) and event.get("type") == "message_end" and isinstance(event.get("message"), dict):
+            yield event["message"]
+
+
+def _omp_reads(stdout: str) -> tuple[str, ...]:
+    calls: dict[str, str] = {}
+    succeeded: set[str] = set()
+    for message in _completed_messages(stdout):
+        if message.get("role") == "toolResult" and message.get("isError") is False:
+            succeeded.add(str(message.get("toolCallId")))
+            continue
+        if message.get("role") != "assistant" or not isinstance(message.get("content"), list):
+            continue
+        for block in message["content"]:
+            if not isinstance(block, dict) or block.get("type") != "toolCall" or block.get("name") not in OMP_READERS:
+                continue
+            arguments = block.get("arguments")
+            if isinstance(arguments, dict) and isinstance(arguments.get("path"), str):
+                calls[str(block.get("id"))] = arguments["path"]
+    return tuple(path for call, path in calls.items() if call in succeeded and path)
+
+
 def trace(harness: str, stdout: str) -> Trace:
-    return Trace()
+    return Trace(_omp_reads(stdout)) if harness == "omp" else Trace()
 
 
 def unread(harness: str, required: Iterable[str], run: Trace, workspace: Path) -> list[str]:
-    return []
+    if harness not in TRACED:
+        return []
+    read = {relative(_OMP_SELECTOR.sub("", path), workspace) for path in run.reads}
+    return [path for path in required if path not in read]
 
 
 def relative(path: str, workspace: Path) -> str:
