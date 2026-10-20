@@ -102,6 +102,7 @@ class TestPostgreSQLAdapter:
             username="testuser",
             password="testpass",
             schema="analytics",
+            tuning_enabled=True,
         )
         shared_connection = Mock()
 
@@ -375,7 +376,7 @@ class TestPostgreSQLAdapter:
         mock_cursor = Mock()
         mock_conn.cursor.return_value = mock_cursor
 
-        adapter = PostgreSQLAdapter()
+        adapter = PostgreSQLAdapter(tuning_enabled=True)
 
         adapter.configure_for_benchmark(mock_conn, "olap")
 
@@ -388,7 +389,7 @@ class TestPostgreSQLAdapter:
         mock_cursor = Mock()
         mock_conn.cursor.return_value = mock_cursor
 
-        adapter = PostgreSQLAdapter()
+        adapter = PostgreSQLAdapter(tuning_enabled=True)
 
         adapter.configure_for_benchmark(mock_conn, "oltp")
 
