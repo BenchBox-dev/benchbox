@@ -180,14 +180,6 @@ tpch-subscale-row-counts-regen:
 tpchavoc-equivalence-report:
 	uv run -- python -m benchbox.core.tpchavoc.equivalence
 
-.PHONY: tpchavoc-sqlglot-minimum-check
-tpchavoc-sqlglot-minimum-check:
-	uv run --with sqlglot==25.6.0 -- python -m pytest -n 0 --tb=short \
-		tests/unit/tpchavoc/test_presto_compat.py \
-		"tests/unit/tpchavoc/test_cloud_compat.py::test_bigquery_rewrites_all_filtered_aggregates_and_known_subqueries" \
-		"tests/unit/tpchavoc/test_cloud_compat.py::test_filtered_aggregate_rewrite_preserves_null_and_distinct_semantics" \
-		"tests/unit/tpchavoc/test_dialect_compat.py::test_postgres_dual_variant_uses_values_source"
-
 .PHONY: tpchavoc-equivalence-report-postgres
 tpchavoc-equivalence-report-postgres:
 	uv run -- python -m benchbox.core.tpchavoc.equivalence --engine postgres
