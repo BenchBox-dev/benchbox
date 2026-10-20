@@ -15870,6 +15870,13 @@
       "status": "done",
       "title": "pg_analytics (ParadeDB) and Citus extension support"
     },
+    "pg-duckdb-baseline-force-execution-decision-20261020": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Decide whether pg_duckdb baseline runs must re-assert duckdb.force_execution per run"
+    },
     "pg-duckdb-native-comparison": {
       "claim": null,
       "needs": [],
