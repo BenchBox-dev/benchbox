@@ -1,11 +1,11 @@
 {
   "acceptance": [
-    "safe_division defaults off; with it on, output matches the BenchBox helpers; semantic change (zero divisor returns NULL) is documented in the fork README.",
+    "safe_division defaults off; with it on, output matches the BenchBox helpers for BigQuery, Snowflake, Databricks and ClickHouse; the semantic change (zero divisor returns NULL) is documented in the fork README.",
     "Alias dedupe preserves the existing skip rules (SELECT *, ORDER/GROUP references) and handles nested selects, with tests.",
-    "Real-engine proof: Databricks TRY_DIVIDE and alias behavior run on local PySpark; BigQuery and Snowflake get AST tests and the missing real-engine evidence is recorded as a gap in the PR.",
+    "Real-engine proof: Databricks TRY_DIVIDE and alias behavior run on local PySpark; BigQuery and Snowflake get AST tests and the gap is recorded.",
     "Fork make check, make benchbox-dist and make benchbox-check pass; PR merged."
   ],
-  "description": "Create the fork's sqlglot/benchbox/ package. Move the adapter-side AST rewrites: BigQuery SAFE_DIVIDE, Snowflake NULLIF divisor and Databricks TRY_DIVIDE behind one opt-in safe_division option (off by default); Databricks duplicate-output-alias suffixing; a function returning unqualified Table nodes (BigQuery dataset-state stays in the adapter); Databricks PRIMARY KEY NULLS FIRST/LAST removal as generator behavior.",
+  "description": "Add the fork's rewrite API (sqlglot/benchbox/ package is created by F1). Move the adapter-side AST rewrites: BigQuery SAFE_DIVIDE, Snowflake NULLIF divisor, Databricks TRY_DIVIDE and ClickHouse decimal division behind one opt-in safe_division option (off by default); Databricks duplicate-output-alias suffixing; a function returning unqualified Table nodes (BigQuery dataset state stays in the adapter); the TPC-DI flag-column fold taking the column list as an argument; Databricks PRIMARY KEY NULLS FIRST/LAST removal as generator behavior. These run at execution time on already-translated SQL, so BenchBox reaches them through apply_rewrite added in the first adoption.",
   "links": [
     "_project/decisions/sqlglot-fork-transpilation-plan.md",
     "benchbox/platforms/bigquery.py",
@@ -19,6 +19,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "415a69e70aee4973a8e437f681627b38",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T16:01:46Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f398e65368a3463dada7e76584432326",
       "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
     }
   ]

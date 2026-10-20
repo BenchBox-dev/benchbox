@@ -22910,7 +22910,9 @@
     "sqlglot-fork-f5-adapter-rewrites-api": {
       "claim": null,
       "needs": [
-        "sqlglot-fork-f0-base-and-manifest"
+        "sqlglot-fork-f0-base-and-manifest",
+        "sqlglot-fork-f0b-real-engine-ci",
+        "sqlglot-fork-f1-platform-dialects"
       ],
       "priority": "medium-high",
       "status": "open",
