@@ -6,7 +6,7 @@ Accepted (codifies existing practice as of 2026-05-03).
 
 **Runtime**: BenchBox ships a pinned pure-Python wheel from
 [`BenchBox-dev/benchbox-sqlglot`](https://github.com/BenchBox-dev/benchbox-sqlglot),
-based on upstream 30.23.0 with three bounded downstream patches. The runtime
+based on upstream 30.24.0 with three bounded downstream patches. The runtime
 imports as `benchbox._vendor.sqlglot`, not the public `sqlglot` package.
 
 **Maintenance protocol**: Re-review on each immutable fork-pin refresh, when

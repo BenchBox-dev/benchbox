@@ -61,17 +61,18 @@ class ClickBenchBenchmark(GeneratorOutputDirMixin, SimpleBenchmarkMixin, DataGen
 
     def translate_query_text(self, query: str, dialect: str) -> str:
 
-        try:
-            from benchbox._vendor import sqlglot
+        from benchbox.utils.dialect_utils import translate_sql_query
 
-            translated = sqlglot.transpile(query, read="clickhouse", write=dialect.lower())[0]
-            if dialect.lower() == "snowflake":
-                translated = _rewrite_snowflake_regex_groups(translated)
-            return translated
-        except ImportError:
-            return query
-        except Exception:
-            return query
+        translated = translate_sql_query(
+            query,
+            dialect,
+            source_dialect="clickhouse",
+            identify=False,
+            strict=True,
+        )
+        if dialect.lower() == "snowflake":
+            translated = _rewrite_snowflake_regex_groups(translated)
+        return translated
 
     def get_query(self, query_id: Union[int, str], *, params: Optional[dict[str, Any]] = None) -> str:
 
