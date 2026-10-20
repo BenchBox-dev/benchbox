@@ -22786,7 +22786,10 @@
       "claim": null,
       "needs": [
         "sqlglot-fork-a2-adopt-adapter-wheel",
-        "sqlglot-fork-d1-delete-wrapper-fixups"
+        "sqlglot-fork-d1-delete-wrapper-fixups",
+        "sqlglot-fork-adapter-bigquery-safe-division",
+        "sqlglot-fork-adapter-snowflake-safe-division",
+        "sqlglot-fork-adapter-databricks-safe-division"
       ],
       "priority": "medium-high",
       "status": "open",

@@ -1,10 +1,10 @@
 {
   "acceptance": [
     "rg finds none of the deleted functions; adapter unit tests under tests/unit/platforms and tests/unit/core/tpcdi pass.",
-    "Adapter output is unchanged except where listed in the A2 golden-corpus differences.",
-    "make pr-preflight, make comment-policy-check, make compat-docs-check and make typecheck pass; PR merged."
+    "Adapter output is unchanged except where listed in the cumulative corpus differences.",
+    "make pr-preflight, make comment-policy-check, make compat-docs-check, make sqlglot-repro-retirement-check and make typecheck pass; PR merged."
   ],
-  "description": "After A2, delete _safeguard_division and related helpers in bigquery.py, snowflake.py and databricks/adapter.py (call the fork with safe_division where the adapter's behavior is unchanged), _deduplicate_output_aliases, _fix_databricks_sql_syntax, the unqualified-table scan (adapter keeps dataset state), cloud_shared TPC-DI regexes, core/tpcdi regex rewrites and ClickBench _rewrite_snowflake_regex_groups. Adapters that need a behavior change to enable safe_division are tracked by the three high-priority adapter follow-up items and must not be changed silently here.",
+  "description": "After A2 and after each adapter passes safe_division=True through apply_rewrite (the three follow-up items), delete _safeguard_division and related helpers in bigquery.py, snowflake.py and databricks/adapter.py, _deduplicate_output_aliases (now a fork rewrite), _fix_databricks_sql_syntax, the unqualified-table scan (adapter keeps dataset state), cloud_shared TPC-DI regexes, core/tpcdi regex rewrites and ClickBench _rewrite_snowflake_regex_groups. Deleting a safeguard without enabling safe_division would silently restore zero-divisor errors, so the order is enforced by the needs edges.",
   "links": [
     "_project/decisions/sqlglot-fork-transpilation-plan.md"
   ],
@@ -15,6 +15,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "10bd243e75b643e6b5c5a1d62718e1a1",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T16:03:16Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f5deda6a3e1847fba6650d84c726eb9b",
       "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
     }
   ]
