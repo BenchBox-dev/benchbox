@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Every listed rewrite has fork tests; ClickHouse and StarRocks rewrites execute on chdb or a container, others per the F0b gap list.",
+    "The fork contains no TPC-DS query ids or benchmark names; Q10/Q35 and Q58 handling is expressed generically with BenchBox passing arguments.",
+    "Output differences versus the BenchBox implementations over their unit-test inputs are listed in the PR.",
+    "Fork make check, make benchbox-dist and make benchbox-check pass; PR merged."
+  ],
+  "description": "Rewrites found during plan review that no other item covers: ClickHouseQueryTransformer (platforms/clickhouse/query_transformer.py, used by clickhouse/workload.py:861 and tpchavoc/equivalence.py:587, including its own safe_division/NULLIF and fix_decimal_division_by_zero), StarRocks execute-time rewrites (starrocks/workload.py:500-503: reserved aliases, ANSI SUBSTRING, identifiers, subquery aliases), TPC-DS ClickHouse Q10/Q35 overrides (core/tpcds/benchmark/clickhouse_overrides.py), and the TPC-DS runner's _normalize_interval_syntax and _fix_query58_ambiguity (core/tpcds/benchmark/runner.py:543-584). Move the mechanism into the fork as generator behavior or named rewrites; ClickHouse division reuses the safe_division option. Query ids and benchmark names stay in BenchBox.",
+  "links": [
+    "_project/decisions/sqlglot-fork-transpilation-plan.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T16:00:16Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "dcedf70f1c2143b4aa3bc60cfe59f10e",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}
