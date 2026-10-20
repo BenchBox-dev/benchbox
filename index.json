@@ -22799,6 +22799,15 @@
       "status": "open",
       "title": "Fork: reconcile pinned base with main and record fork-original work in patches.json"
     },
+    "sqlglot-fork-f0b-real-engine-ci": {
+      "claim": null,
+      "needs": [
+        "sqlglot-fork-f0-base-and-manifest"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Fork: real-engine CI for execution tests (in-process engines, containers, Python 3.9 constraint)"
+    },
     "sqlglot-fork-f1-platform-dialects": {
       "claim": null,
       "needs": [

@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "A fork CI job executes at least one translated statement on each obtainable engine (sqlite, duckdb, datafusion, chdb and every container listed), and the job fails if an engine that should be present is missing.",
+    "Execution tests skip with a named reason locally when an engine is absent; make check still passes on Python 3.9-3.15.",
+    "tests/test_downstream_contract.py (candidate workflow job set) is updated and passes; a documented gap list names every platform with no obtainable engine.",
+    "Fork make check, make benchbox-dist and make benchbox-check pass; PR merged."
+  ],
+  "description": "The fork's package-test.yml runs make check on Python 3.9-3.15 with no services, and a contract test fixes the job set of benchbox-candidate.yml. The owner requires every moved piece to be proven by executing the translated SQL on a real engine. Add the infrastructure: optional test dependencies (duckdb, datafusion, chdb, pyspark) and a dedicated workflow or job with service containers (Postgres, QuestDB, Trino, StarRocks, Doris, SingleStore) where available. Execution tests must skip cleanly with a named reason when an engine is absent so the existing Python 3.9-3.15 matrix keeps passing, and the candidate workflow contract test is updated deliberately. Engines that cannot be obtained are recorded in a single gap list in the fork docs.",
+  "links": [
+    "_project/decisions/sqlglot-fork-transpilation-plan.md",
+    "https://github.com/BenchBox-dev/benchbox-sqlglot"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T15:59:59Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "fec9041d3e364bb4835595ae759f4776",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}
