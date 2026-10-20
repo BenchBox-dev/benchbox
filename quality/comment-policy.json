@@ -37302,7 +37302,7 @@
       "path": "tests/unit/publication/test_validator_parity.py",
       "symbol": "test_parity_executes_real_payloads_in_an_isolated_slim_checkout",
       "text": "unresolved executable source: sys.executable",
-      "payload": "sha256:1e9d0cde5060ef1125110c02d89c95e3c5906f04d0e511c2c2a9c58accd46cd3",
+      "payload": "sha256:4703a6b8d07a87cd19aace3825abae4e19f699c752c93b880e88e3fa2cafdc98",
       "finding_kind": "payload-error",
       "kind": "fixture",
       "consumer": "tests/unit/publication/test_validator_parity.py",
