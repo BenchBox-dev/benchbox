@@ -25549,6 +25549,13 @@
       "status": "done",
       "title": "Trino Platform Adapter"
     },
+    "trunk-red-translate-query-called-twice-after-3185": {
+      "claim": null,
+      "needs": [],
+      "priority": "critical",
+      "status": "open",
+      "title": "develop is red: test_translate_query sees normalize_dialect_for_sqlglot called twice after #3185"
+    },
     "tsbs-devops-dataframe-sql-id-mapping": {
       "claim": null,
       "needs": [],

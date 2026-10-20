@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "test_translate_query passes on develop, by fixing the test or the double call, or by make trunk-revert PR=3185",
+    "Newest trunk.yml run on develop is green",
+    "Decide why the PR's own CI did not run this test before merge"
+  ],
+  "context": "Found while trying to push PR #3184. Not caused by it. The cause is inferred from the failing test and the merge order, not diagnosed in the code. No revert or fix was made.",
+  "description": "trunk.yml run 39487739590 on ef67c6c11 (refactor: route SQL translation bypass paths through translate_sql_query, #3185) failed in medium-test (shard 1): 'FAILED tests/test_benchbox.py::TestBenchBox::test_translate_query - AssertionError: Expected normalize_dialect_for_sqlglot to be called once. Called 2 times.' (1 failed, 3691 passed). The previous trunk run on 93f01fbe6 (#3189) passed. While develop is red make pr-open refuses to push any non-revert branch ('develop has been red for 38 minutes'), so no PR can be updated. The test is in the medium tier, so it only ran after merge.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/39487739590"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:afd83494ecacfcdab965057e",
+      "at": "2026-10-20T20:49:31Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f5a11d59035b4f7fb52e7c83397cb8ba",
+      "session_id": "8202d1c5316f41c897a0af067e2c8e9e"
+    }
+  ]
+}
