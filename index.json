@@ -22974,13 +22974,18 @@
       "title": "Fork: SQLite generator absorbs date/interval, EXTRACT, DATE_TRUNC and discount-bound folding"
     },
     "sqlglot-fork-f3-duckdb-all-keyword": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-21T20:35:41Z",
+        "generation": "77cb600b57c04a6db44100fd3c99d48c",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d"
+      },
       "needs": [
         "sqlglot-fork-f0-base-and-manifest",
         "sqlglot-fork-f0b-real-engine-ci"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Fork: DuckDB generator keeps bare ALL in GROUP BY / ORDER BY under identify=True"
     },
     "sqlglot-fork-f4-questdb-generator": {
