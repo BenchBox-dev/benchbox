@@ -22679,6 +22679,15 @@
       "status": "open",
       "title": "Fork: explicit dialects for Netezza, Greenplum, Vertica, DataFusion and QuestDB, plus PLATFORM_DIALECTS"
     },
+    "sqlglot-fork-f2-sqlite-generator": {
+      "claim": null,
+      "needs": [
+        "sqlglot-fork-f0-base-and-manifest"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Fork: SQLite generator absorbs date/interval, EXTRACT, DATE_TRUNC and discount-bound folding"
+    },
     "sqlglot-mysql-retirement-needs-execution-evidence": {
       "claim": null,
       "needs": [],
