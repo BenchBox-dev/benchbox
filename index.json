@@ -11666,10 +11666,15 @@
       "title": "G7b: prove Pages publish on the first post-transfer push to release"
     },
     "github-run-conclusion-delay-unexplained-20261020": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-21T21:57:37Z",
+        "generation": "708ec29a8eb04d93afe9bf28e9c3e429",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Explain why the core site-inputs run showed no conclusion for over 100 seconds after its jobs ended"
     },
     "github-token-approval-capability-followup": {
