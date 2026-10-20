@@ -1584,12 +1584,17 @@
       "title": "Fix seven Windows-only SQLGlot test failures seen in the t3:windows branch run"
     },
     "autogen-windows-t3-fast-failures-20261018": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-21T12:57:59Z",
+        "generation": "556e5e9b414e48e1bc19c0adb2c3609c",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
+      },
       "needs": [
         "autogen-issues-decisions-20261018"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Fix the five Windows-only t3:windows fast-test failures"
     },
     "automate-corpus-inventory-generation": {
