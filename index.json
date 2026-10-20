@@ -15625,6 +15625,13 @@
       "status": "done",
       "title": "A failing oracle-review run from before the oracle's review stays on the head and blocks merge until rerun by hand"
     },
+    "oracle-review-stale-failure-recurrence-20261020": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Stop a landed oracle verdict from leaving a red oracle-review check on armed PRs"
+    },
     "oracle-review-thread-reply-run-churn-20261008": {
       "claim": null,
       "needs": [],
