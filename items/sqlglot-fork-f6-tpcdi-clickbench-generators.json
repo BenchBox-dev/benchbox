@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Each idiom has generator tests; generic parts execute on duckdb, ClickHouse parts on chdb or a container; engines not obtainable are recorded as gaps.",
+    "Output differences versus the existing BenchBox regexes over their unit-test inputs are listed in the PR.",
+    "Fork make check, make benchbox-dist and make benchbox-check pass; PR merged."
+  ],
+  "description": "BenchBox rewrites TPC-DI SQLite idioms (JULIANDAY, DATE('now'), DATE +/- INTERVAL, = 1/0 flag columns) with regexes for BigQuery, Databricks, ClickHouse and DataFusion (cloud_shared.py, core/tpcdi/benchmark.py), and ClickBench Snowflake regex-group escaping is a string replace. Move the idiom conversions into the fork's generators; the flag-column list is passed as an argument. Query ids and benchmark names must not appear in the fork.",
+  "links": [
+    "_project/decisions/sqlglot-fork-transpilation-plan.md",
+    "benchbox/platforms/cloud_shared.py",
+    "benchbox/core/tpcdi/benchmark.py",
+    "benchbox/core/clickbench/benchmark.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T15:43:40Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "40efcee6fb7d40b98a1c289c3034def5",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}

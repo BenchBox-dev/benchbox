@@ -22706,6 +22706,15 @@
       "status": "open",
       "title": "Fork: safe_division option, output-alias dedupe, unqualified-table API and Databricks PK NULLS handling"
     },
+    "sqlglot-fork-f6-tpcdi-clickbench-generators": {
+      "claim": null,
+      "needs": [
+        "sqlglot-fork-f0-base-and-manifest"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Fork: TPC-DI SQLite idioms and ClickBench regex escaping as generator behavior"
+    },
     "sqlglot-mysql-retirement-needs-execution-evidence": {
       "claim": null,
       "needs": [],
