@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Pin (version, fork_sha, upstream_sha, sha256, archive) updated and make sqlglot-repro-retirement-check passes against the exact wheel.",
+    "Golden-corpus test added and its differences (if any) are listed in the PR with a result-version note.",
+    "make pr-preflight, make comment-policy-check, make compat-docs-check and make typecheck pass; PR merged through make pr-open and make pr-arm.",
+    "Post-merge: wheel builds from develop and imports as benchbox._vendor.sqlglot without loading public sqlglot."
+  ],
+  "description": "Build and verify the fork wheel (downstream.build, downstream.verify, make benchbox-dist, make benchbox-check) from a clean pinned fork checkout after the listed fork slices merge, adopt it with python -m scripts.sync_sqlglot_runtime --wheel, update benchbox/_vendor/sqlglot.json and the runtime baseline identity, and add a golden-corpus test that runs the old BenchBox fix-ups and the fork output over the existing test inputs and lists every difference. No deletion in this PR.",
+  "links": [
+    "_project/decisions/sqlglot-fork-transpilation-plan.md",
+    "scripts/sync_sqlglot_runtime.py",
+    "benchbox/_vendor/sqlglot.json"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T15:44:32Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "89d37b3216994b95ab103bc36c3088f8",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}

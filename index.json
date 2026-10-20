@@ -22649,6 +22649,19 @@
       "status": "done",
       "title": "✅ SQLGlot Dialect Translation Code Review Implementation"
     },
+    "sqlglot-fork-a1-adopt-wrapper-wheel": {
+      "claim": null,
+      "needs": [
+        "sqlglot-fork-f1-platform-dialects",
+        "sqlglot-fork-f2-sqlite-generator",
+        "sqlglot-fork-f3-duckdb-all-keyword",
+        "sqlglot-fork-f4-questdb-generator",
+        "sqlglot-fork-b3-checker-wrapper-mode"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "BenchBox: adopt the fork wheel containing the wrapper-level fixes and explicit dialects"
+    },
     "sqlglot-fork-adr-ownership": {
       "claim": null,
       "needs": [],
