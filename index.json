@@ -22964,18 +22964,13 @@
       "title": "Fork: ClickHouse, StarRocks and TPC-DS runner rewrites as fork rewrites and generator behavior"
     },
     "sqlglot-fork-f2-sqlite-generator": {
-      "claim": {
-        "expires_at": "2026-10-21T19:59:37Z",
-        "generation": "e255128fc3fa4bf39c11b467563e1bea",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d"
-      },
+      "claim": null,
       "needs": [
         "sqlglot-fork-f0-base-and-manifest",
         "sqlglot-fork-f0b-real-engine-ci"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Fork: SQLite generator absorbs date/interval, EXTRACT, DATE_TRUNC and discount-bound folding"
     },
     "sqlglot-fork-f3-duckdb-all-keyword": {
