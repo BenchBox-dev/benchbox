@@ -22799,11 +22799,11 @@
       "claim": null,
       "needs": [
         "sqlglot-fork-a3-adopt-ddl-wheel",
-        "sqlglot-fork-d2-delete-adapter-rewrites"
+        "sqlglot-fork-d1-delete-wrapper-fixups"
       ],
       "priority": "medium-high",
       "status": "open",
-      "title": "BenchBox: delete DDL rule bodies and adapter DDL methods, rewire BaseDdlOptimizer to translate_ddl"
+      "title": "BenchBox: rewire BaseDdlOptimizer and SingleStore DDL to translate_ddl and delete their rule bodies"
     },
     "sqlglot-fork-d3b-delete-ddl-engine-families": {
       "claim": null,

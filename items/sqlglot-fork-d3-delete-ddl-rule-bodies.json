@@ -1,10 +1,10 @@
 {
   "acceptance": [
-    "rg finds none of the deleted rule bodies or adapter DDL methods; the registry rows remain and test_registry_integrity.py, test_compat_lint_clean.py and the inventory drift check pass.",
-    "tests/unit/sql_compat, tests/unit/core/sql_compat and tests/unit/platforms DDL tests pass; SingleStore runtime rules produce the same DDL except where the A3 corpus differences list it.",
-    "make compat-docs-check, make comment-policy-check, make typecheck and make pr-preflight pass; PR merged."
+    "rg finds none of the deleted SingleStore rule bodies or adapter DDL methods; registry rows remain and test_registry_integrity.py, test_compat_lint_clean.py and the inventory drift check pass.",
+    "tests/unit/sql_compat, tests/unit/core/sql_compat and tests/unit/platforms/test_singlestore_adapter.py pass; SingleStore DDL is unchanged except where the A3 corpus lists differences.",
+    "make compat-docs-check, make sqlglot-repro-retirement-check, make comment-policy-check, make typecheck and make pr-preflight pass; PR merged."
   ],
-  "description": "BaseDdlOptimizer currently dispatches with getattr(self, transformer_id) to adapter methods (for example singlestore.py optimize and key-injection methods). Rewire it to call translate_ddl with DdlOptions built from adapter config and tuning data (SingleStore key tables and reference list stay in BenchBox), and delete the rule bodies in sql_compat/rules/ddl_optimize and the adapter methods and platforms/base/ddl_helpers.py text helpers in the same change, so DDL never raises AttributeError. Keep the 22 governance-anchor registry rows, re-pointed at fork API names.",
+  "description": "Only SingleStore inherits BaseDdlOptimizer (singlestore.py:75); other adapters call their own DDL methods and are handled by the d3b and d3c items. Rewire BaseDdlOptimizer (it dispatches with getattr(self, transformer_id)) to call translate_ddl with DdlOptions built from adapter config and tuning data (SingleStore key tables and the reference list stay in BenchBox), and delete the SingleStore rule bodies, adapter methods and platforms/base/ddl_helpers.py text helpers they use in the same change so DDL never raises AttributeError. Keep governance-anchor registry rows, re-pointed at fork API names.",
   "links": [
     "_project/decisions/sqlglot-fork-transpilation-plan.md"
   ],
@@ -15,6 +15,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "d8157f3c1a8f46539a439d974c52af12",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T16:03:20Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "287e0b3fa13541e09f25d2bbaf8b508b",
       "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
     }
   ]
