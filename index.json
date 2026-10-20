@@ -22755,15 +22755,10 @@
       "title": "Record the permanent-fork transpilation ownership decision as an ADR"
     },
     "sqlglot-fork-b1-route-bypasses-through-wrapper": {
-      "claim": {
-        "expires_at": "2026-10-21T17:03:05Z",
-        "generation": "eabd090a338348f3b04019508fd3b7bd",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "BenchBox: route direct-transpile bypasses through translate_sql_query and add a bypass test"
     },
     "sqlglot-fork-b2-migrate-direct-importers": {
