@@ -180,3 +180,16 @@ def test_calibrated_text_after_a_successful_exit_is_never_an_absence() -> None:
 def test_calibrated_text_without_a_failing_exit_is_not_quota_or_auth(exit_code: int | None) -> None:
     result = _classify("omp", exit_code, stderr="rate_limit_error: slow down")
     assert result.kind not in (absence.QUOTA, absence.AUTH)
+
+
+@pytest.mark.parametrize("secret", ["broker-secret-value", "sk-ant-oat01-abcdef0123"])
+@pytest.mark.parametrize("cut", [3, 9, 15])
+def test_unparsed_redacts_a_secret_split_by_the_tail_limit(secret: str, cut: int) -> None:
+    prefix = "the reviewer wrote this before the secret "
+    filler = "w " * ((absence.UNPARSED_LIMIT - len(secret) + cut) // 2)
+    text = prefix + secret + filler
+    fragment = text[-absence.UNPARSED_LIMIT :].split("w ", 1)[0]
+    assert fragment and secret.endswith(fragment) and fragment != secret
+    excerpt = absence.unparsed(text, [secret])
+    assert fragment not in excerpt
+    assert excerpt.startswith("\u2026") and len(excerpt) == absence.UNPARSED_LIMIT + 1

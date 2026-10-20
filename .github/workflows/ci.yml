@@ -1382,7 +1382,7 @@ jobs:
         run: >-
           uvx --from 'codespell[toml]==2.4.3' codespell
           --ignore-words .codespell-ignore.txt
-          --skip "*.pyc,_build,*.json,*.lock,*.svg,*.min.js,*.min.css,_binaries,*.tpl,*.dst,*.tbl,_sources,benchmark_runs,*.dat,*.pdf,_project,htmlcov,.venv"
+          --skip "*.pyc,_build,*.json,*.jsonl,*.lock,*.svg,*.min.js,*.min.css,_binaries,*.tpl,*.dst,*.tbl,_sources,benchmark_runs,*.dat,*.pdf,_project,htmlcov,.venv"
 
   core:
     name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'core (text edit)' || 'core' }}
