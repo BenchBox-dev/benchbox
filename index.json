@@ -8250,7 +8250,8 @@
     "dlv2-52-release-rehearsal-and-first-release": {
       "claim": null,
       "needs": [
-        "dlv2-52a-testpypi-rehearsal"
+        "dlv2-52a-testpypi-rehearsal",
+        "dlv2-22-nightly-t3-shadow"
       ],
       "priority": "high",
       "status": "open",
