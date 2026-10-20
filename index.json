@@ -22688,6 +22688,15 @@
       "status": "open",
       "title": "Fork: SQLite generator absorbs date/interval, EXTRACT, DATE_TRUNC and discount-bound folding"
     },
+    "sqlglot-fork-f3-duckdb-all-keyword": {
+      "claim": null,
+      "needs": [
+        "sqlglot-fork-f0-base-and-manifest"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Fork: DuckDB generator keeps bare ALL in GROUP BY / ORDER BY under identify=True"
+    },
     "sqlglot-mysql-retirement-needs-execution-evidence": {
       "claim": null,
       "needs": [],

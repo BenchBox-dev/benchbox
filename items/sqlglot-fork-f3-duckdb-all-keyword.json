@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Both probes (read=duckdb and read=postgres, write=duckdb, identify=True) emit bare ALL, proven by executing the SQL on duckdb.",
+    "Fork make check, make benchbox-dist and make benchbox-check pass; PR merged.",
+    "The fix is prepared as a candidate for an upstream submission and the PR notes its upstream status."
+  ],
+  "description": "identify=True quotes ALL in GROUP BY ALL / ORDER BY ALL on the read=postgres, write=duckdb path (direct duckdb->duckdb is already fixed upstream). BenchBox _restore_group_order_by_all_keyword repairs it with a regex; baseline cases duckdb-group-by-all and duckdb-order-by-all are retain. Fix it in the fork's DuckDB generator.",
+  "links": [
+    "_project/decisions/sqlglot-fork-transpilation-plan.md",
+    "_project/sqlglot-upstream/README.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T15:43:34Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "01ab7aa7e110456eb5085f4126f1d7bb",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}
