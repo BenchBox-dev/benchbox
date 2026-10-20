@@ -218,6 +218,17 @@ jobs:
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/omp" --version | tee -a "$GITHUB_STEP_SUMMARY"
 
+      - name: Install the owner's OMP model roles
+        env:
+          OMP_AGENT_CONFIG: ${{ secrets.OMP_AGENT_CONFIG }}
+        run: |
+          if [ -z "$OMP_AGENT_CONFIG" ]; then
+            echo "oracle-verdict: error: OMP_AGENT_CONFIG is not set, so role aliases would resolve to built-in models" >&2
+            exit 1
+          fi
+          mkdir -p "$HOME/.omp/agent"
+          printf '%s\n' "$OMP_AGENT_CONFIG" > "$HOME/.omp/agent/config.yml"
+
       - name: Join the tailnet to reach the credential broker
         if: env.HAS_TAILNET == 'true'
         uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd
@@ -362,6 +373,17 @@ jobs:
           chmod +x "$RUNNER_TEMP/omp"
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/omp" --version | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Install the owner's OMP model roles
+        env:
+          OMP_AGENT_CONFIG: ${{ secrets.OMP_AGENT_CONFIG }}
+        run: |
+          if [ -z "$OMP_AGENT_CONFIG" ]; then
+            echo "oracle-verdict: error: OMP_AGENT_CONFIG is not set, so role aliases would resolve to built-in models" >&2
+            exit 1
+          fi
+          mkdir -p "$HOME/.omp/agent"
+          printf '%s\n' "$OMP_AGENT_CONFIG" > "$HOME/.omp/agent/config.yml"
 
       - name: Join the tailnet to reach the credential broker
         if: env.HAS_TAILNET == 'true'
@@ -508,6 +530,17 @@ jobs:
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/omp" --version | tee -a "$GITHUB_STEP_SUMMARY"
 
+      - name: Install the owner's OMP model roles
+        env:
+          OMP_AGENT_CONFIG: ${{ secrets.OMP_AGENT_CONFIG }}
+        run: |
+          if [ -z "$OMP_AGENT_CONFIG" ]; then
+            echo "oracle-verdict: error: OMP_AGENT_CONFIG is not set, so role aliases would resolve to built-in models" >&2
+            exit 1
+          fi
+          mkdir -p "$HOME/.omp/agent"
+          printf '%s\n' "$OMP_AGENT_CONFIG" > "$HOME/.omp/agent/config.yml"
+
       - name: Join the tailnet to reach the credential broker
         if: env.HAS_TAILNET == 'true'
         uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd
@@ -653,6 +686,17 @@ jobs:
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/omp" --version | tee -a "$GITHUB_STEP_SUMMARY"
 
+      - name: Install the owner's OMP model roles
+        env:
+          OMP_AGENT_CONFIG: ${{ secrets.OMP_AGENT_CONFIG }}
+        run: |
+          if [ -z "$OMP_AGENT_CONFIG" ]; then
+            echo "oracle-verdict: error: OMP_AGENT_CONFIG is not set, so role aliases would resolve to built-in models" >&2
+            exit 1
+          fi
+          mkdir -p "$HOME/.omp/agent"
+          printf '%s\n' "$OMP_AGENT_CONFIG" > "$HOME/.omp/agent/config.yml"
+
       - name: Join the tailnet to reach the credential broker
         if: env.HAS_TAILNET == 'true'
         uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd
@@ -797,6 +841,17 @@ jobs:
           chmod +x "$RUNNER_TEMP/omp"
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/omp" --version | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Install the owner's OMP model roles
+        env:
+          OMP_AGENT_CONFIG: ${{ secrets.OMP_AGENT_CONFIG }}
+        run: |
+          if [ -z "$OMP_AGENT_CONFIG" ]; then
+            echo "oracle-verdict: error: OMP_AGENT_CONFIG is not set, so role aliases would resolve to built-in models" >&2
+            exit 1
+          fi
+          mkdir -p "$HOME/.omp/agent"
+          printf '%s\n' "$OMP_AGENT_CONFIG" > "$HOME/.omp/agent/config.yml"
 
       - name: Join the tailnet to reach the credential broker
         if: env.HAS_TAILNET == 'true'
