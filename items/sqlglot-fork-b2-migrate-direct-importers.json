@@ -1,10 +1,11 @@
 {
   "acceptance": [
-    "The bypass-test allowlist is empty or contains only documented parse/inspect uses with reasons.",
-    "Per-area unit tests pass for each PR; make pr-preflight, make comment-policy-check and make typecheck pass on each head.",
+    "The bypass-test allowlist contains only documented parse-only uses with reasons.",
+    "Each PR includes a corpus diff over the area's existing inputs and states any behavior change (read dialect, quoting).",
+    "Per-area unit tests pass; make pr-preflight, make comment-policy-check, make compat-docs-check, make sqlglot-repro-retirement-check and make typecheck pass on each head.",
     "Three PRs merged."
   ],
-  "description": "About 20 modules call the vendored SQLGlot directly (tpcdi loader/queries, tpcds c_tools, flightdata queries, tpcds_obt query_conversion, read_primitives variant_contracts, etl scd_processor, schema, validation, scripts/generate_query_docs.py and others). Migrate them to translate_sql_query / translate_ddl / apply_rewrite in three PRs (TPC-DI; TPC-DS/OBT/FlightData/read_primitives; schema/validation/etl/scripts), shrinking the bypass-test allowlist each time. Callers that only parse or inspect (no dialect output) may keep direct use if the bypass test allows it explicitly with a reason.",
+  "description": "About 20 modules call the vendored SQLGlot directly (tpcdi loader/queries/schema, tpcds c_tools, flightdata queries, tpcds_obt query_conversion, read_primitives variant_contracts, etl scd_processor, schema, validation, scripts/generate_query_docs.py and others). Migrate them to translate_sql_query in three PRs (TPC-DI; TPC-DS/OBT/FlightData/read_primitives; schema/validation/etl/scripts), using scope='schema_ddl' for DDL as tpcds_obt does. translate_ddl and apply_rewrite arrive in later adoptions, so this item must not use them. TPC-DI reads read='ansi', which the fork's Dialects enum lacks: through the wrapper it may start translating where it previously fell back to the original query, so each PR carries a corpus diff and passes identify explicitly. Parse-only callers may stay, listed with a reason in the bypass-test allowlist.",
   "links": [
     "_project/decisions/sqlglot-fork-transpilation-plan.md"
   ],
@@ -15,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "878b65d0e0e24c43b58abd63ea2d8fcf",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T16:02:25Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3644105da4084262a022bf1ef008e796",
       "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
     }
   ]
