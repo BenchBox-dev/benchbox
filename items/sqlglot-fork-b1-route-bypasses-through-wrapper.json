@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "The three bypass paths call translate_sql_query; their duplicated fix-ups are removed.",
+    "ClickBench translation failure raises or logs a typed error instead of returning the original query silently, with a test.",
+    "A new AST-scanning test fails when a module outside the wrapper and sql_compat calls transpile, parse_one or .sql on the vendored module; remaining known offenders are listed in an explicit, shrinking allowlist owned by sqlglot-fork-b2-migrate-direct-importers.",
+    "make pr-preflight, make comment-policy-check, make typecheck and tests/unit/sql_compat/test_translate_sql_delegation.py pass."
+  ],
+  "description": "platforms/base/dialect_translation.py duplicates the DuckDB ALL restore and SQLite fix-up on its own transpile call; base.py translate_query and core/clickbench/benchmark.py also call the fork directly, and ClickBench silently swallows every exception. Route them through the existing wrapper, replace the silent fallback with a logged typed error, and add a repository test that fails on direct vendored-SQLGlot calls outside the wrapper and benchbox/sql_compat/. Existing fork behavior only; no fork change needed.",
+  "links": [
+    "_project/decisions/sqlglot-fork-transpilation-plan.md",
+    "benchbox/platforms/base/dialect_translation.py",
+    "benchbox/base.py",
+    "benchbox/core/clickbench/benchmark.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T15:42:49Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "35728bee8c5b4964bcb7085d1fa5d4a3",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}

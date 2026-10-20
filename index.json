@@ -22649,6 +22649,13 @@
       "status": "done",
       "title": "✅ SQLGlot Dialect Translation Code Review Implementation"
     },
+    "sqlglot-fork-b1-route-bypasses-through-wrapper": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "BenchBox: route direct-transpile bypasses through translate_sql_query and add a bypass test"
+    },
     "sqlglot-fork-f0-base-and-manifest": {
       "claim": null,
       "needs": [],
