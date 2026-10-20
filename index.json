@@ -21628,6 +21628,13 @@
       "status": "open",
       "title": "Fix the 15 broken fragment links that are live on benchbox.dev today"
     },
+    "site-explorer-vite-high-advisory-blocks-ci-20261020": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Resolve the new high-severity vite advisory failing site CI audit"
+    },
     "site-landing-cards-from-bundle-20261017": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "The advisories are read and the vite exposure (dev server vs build) stated",
+    "Site ci is green on main with the audit step passing without a new unexplained allowlist entry",
+    "PR 53 can merge"
+  ],
+  "context": "Found 2026-10-20 during the follow-up batch. Evidence is from that session; re-verify before editing. Unclaimed.",
+  "description": "benchbox-site ci run 39505312110 (PR 53) fails the audit job: \"audit:high: high finding in vite (ghsa-698v-4r3x-3vcv, ghsa-r825-w8mm-5pxw, ghsa-587h-7wmj-h5pm) is not allowlisted\" from explorer/scripts/audit-high.mjs. Main CI was green at the last push, so the advisories are new. This blocks every site PR, including the probe-wait fix (PR 53, which changes only deploy/ files). Work: check the advisories, upgrade vite to the patched release within the repo dependency rules if available and verify the explorer build and browser suite; allowlist only with a documented expiry if no patch exists. Guardrail: do not weaken the audit gate, and do not allowlist a reachable finding without reasoning.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a",
+      "at": "2026-10-20T23:22:31Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "5f58038b48544caea7532f7be7d502f1",
+      "session_id": "0722acca462b419aa525d939aedd0290"
+    }
+  ]
+}
