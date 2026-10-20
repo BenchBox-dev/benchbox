@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The bundled SQLGlot runtime moves from 30.23.0.2 to 30.24.0.1 (upstream
+  v30.24.0, fork commit `4bea533be2d9`). A translation corpus of every shipped
+  benchmark query across 20 target dialects changes in 20 of 25,240 outputs:
+  `STDDEV`/`VARIANCE` on MySQL-family targets now emit the sample forms,
+  DuckDB `ARRAY_SORT` emits `LIST_SORT`, BigQuery `APPROX_QUANTILE` emits
+  `APPROX_QUANTILES(..., 2)[1]`, and StarRocks keeps the `PIVOT` clause.
+
 ### Fixed
 
 - PostgreSQL-family baseline runs (PostgreSQL, TimescaleDB, pg_duckdb,
