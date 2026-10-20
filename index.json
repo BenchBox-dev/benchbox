@@ -16638,6 +16638,13 @@
       "status": "done",
       "title": "Bind PR readiness to the reviewed head and withdraw it before revisions"
     },
+    "pr-stale-base-inflates-oracle-tier": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "A PR compared against a stale base is reviewed at the wrong oracle tier"
+    },
     "pr-workflow-cloud-env-compat": {
       "claim": null,
       "needs": [],
