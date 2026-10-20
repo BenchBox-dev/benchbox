@@ -2175,6 +2175,13 @@
       "status": "open",
       "title": "Investigate the macOS I/O stall that hung local validation, and bound the unbounded sync calls in the data generators"
     },
+    "boundary-check-hook-scope": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Document or tighten boundary-check pre-commit scope gaps"
+    },
     "bounded-correctness-gate-value-oracle": {
       "claim": null,
       "needs": [],

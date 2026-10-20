@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Documented scope states what the hook does and does not cover",
+    "No change to CI behavior, which remains fail-closed where it matters"
+  ],
+  "context": "Pre-existing design, surfaced during PR #48 review (Muse Spark 1.3 F1/F2, GPT-6 Astra findings) and confirmed by reproduction. CI checkouts are clean committed trees, so the merge path stays fail-closed.",
+  "description": "The repository boundary pre-commit hook scans worktree bytes for index-listed paths: a staged-but-uncommitted violation with a clean worktree passes locally, and untracked files are never scanned. Record the scope explicitly or tighten the hook if the bypass matters.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox-site/pull/48"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6d5eb9aefd704c065efcdb3f",
+      "at": "2026-10-20T00:22:53Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "5ac03cb344e34e338e7ff58df9c95aff",
+      "session_id": "67334470b26243a3844fd44a4b63d142"
+    }
+  ]
+}
