@@ -3,6 +3,11 @@
 **Status**: Accepted
 **Date**: 2026-04-20
 
+**Superseded in part**: [The SQLGlot fork owns transpilation](adr-sqlglot-fork-owns-transpilation.md)
+moves the SQL rewrites and DDL rule bodies described below into the fork, which BenchBox
+reaches only through `translate_sql_query` and its sibling wrappers. The phase taxonomy,
+the skip policy and the capability registry in this ADR remain in force.
+
 The shipped subsystem lives at [`benchbox/sql_compat/`](../../../benchbox/sql_compat/). Generated
 references regenerated from the registry by `scripts/generate_compat_docs.py`:
 
