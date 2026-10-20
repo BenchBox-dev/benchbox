@@ -246,8 +246,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ClickBench Q19 and Q43 now use the wrapper's SQLite fix-ups, and the
   `datafusion`, `netezza`, `ansi`, `standard`, `vertica` and `greenplum`
   dialects now translate through the wrapper's PostgreSQL mapping where they
-  previously returned the ClickHouse text unchanged. Result-version note:
-  ClickBench results for those dialects are not comparable with earlier runs.
+  previously returned the ClickHouse text unchanged (all 43 queries on each of
+  those six targets; DataFusion included). Result-version note: ClickBench
+  results on SQLite (Q19, Q43) and on those six targets were computed with
+  different SQL before this change, are not comparable with earlier runs, and
+  should be rerun.
 
 - **BenchBox bundles a patched SQLGlot runtime.** SQL translation now uses a
   pinned, pure-Python SQLGlot 30.23.0 build with three carried fixes, shipped as
