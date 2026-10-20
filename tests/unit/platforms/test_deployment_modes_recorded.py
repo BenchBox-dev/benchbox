@@ -13,7 +13,7 @@ from click.testing import CliRunner
 import benchbox.platforms.databend.adapter as databend_module
 import benchbox.platforms.postgresql as postgresql_module
 import benchbox.platforms.timescaledb as timescaledb_module
-from benchbox.cli.commands.run import run
+from benchbox.cli.commands.run import dry_run_filename_prefix, run
 from benchbox.cli.config import ConfigManager
 from benchbox.core.deployment import deployment_class
 from benchbox.core.platform_manifest import PLATFORM_MANIFEST_BY_KEY
@@ -151,6 +151,22 @@ def test_timescaledb_cloud_selector_is_accepted_by_the_run_command(tmp_path: Pat
     assert result.exit_code == 0, result.output
     assert payload["warnings"] == []
     assert payload["platform_config"]["options"]["_deployment_selector"] == "cloud"
+
+
+@pytest.mark.parametrize(
+    ("platform", "expected"),
+    [("timescaledb:cloud", "tpch_timescaledb~cloud"), ("duckdb", "tpch_duckdb"), ("data-only", "tpch_data-only")],
+)
+def test_dry_run_filename_prefix_has_no_path_reserved_characters(platform: str, expected: str) -> None:
+    assert dry_run_filename_prefix("tpch", platform) == expected
+
+
+def test_dry_run_files_for_a_deployment_selector_are_named_without_a_colon(tmp_path: Path) -> None:
+    _result, _payload = _dry_run(tmp_path, "timescaledb:cloud", "host=db.example.com", "password=secret")
+
+    names = [path.name for path in tmp_path.rglob("tpch_*")]
+    assert names
+    assert not any(":" in name for name in names)
 
 
 @pytest.mark.parametrize("platform", sorted(RECORDED_PLATFORMS))

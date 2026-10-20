@@ -46,7 +46,7 @@ def test_frozen_history_skill_references_and_code_pass(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     "path",
     [
-        str(Path("_project", "handoffs", "2026-10-15-new-topic.md")),
+        Path("_project", "handoffs", "2026-10-15-new-topic.md").as_posix(),
         ".claude/handoffs/resume.md",
         ".todo-batch/batch-ledger.txt",
         "docs/internal/snowflake-trial-exit-adversarial-review-handoff.md",

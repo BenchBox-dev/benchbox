@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The green-unmerged sweep locates the original marker-tagged digest issue
+  beyond the newest 1,000 issues/PRs, preferring oldest-created search matches
+  and falling back to an uncapped oldest-first scan without labels. Malformed
+  or failed scans abort instead of creating duplicates. Read-only and apply
+  runs report the lookup mechanism; closed digest issues still reopen on upsert.
+
 ### Documentation
 
 - A new reference page, Tuning Platform Support
@@ -241,9 +249,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - TPC-Havoc dialect rewrites now use the public SQLGlot query-builder API, so
   the Presto-family array aggregation, PostgreSQL dual-source, and BigQuery
-  from-less rewrites render at the declared SQLGlot minimum instead of raising
-  a version-specific AST key error. A correctness-gate step replays the
-  affected rewrite suites at that minimum.
+  from-less rewrites no longer depend on version-specific AST dictionary keys.
+  The minimum-version replay gate added for those rewrites is retired: all
+  translation now runs on the bundled SQLGlot runtime, whose freshness is
+  enforced by the release gate instead.
 - TPC-Havoc Q18 variant 9 now keeps a deterministic ranking window with an
   outer top-100 cutoff, so tied orders at the boundary return exactly 100 rows
   like the canonical query instead of every tied row.
@@ -252,6 +261,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   only when their text changes. Repeating the command no longer rewrites an
   unchanged body. `make pr-rerun` retries CI directly instead of using a PR edit.
 
+- `benchbox run --dry-run` with a deployment selector such as
+  `--platform timescaledb:cloud` no longer fails on Windows. The preview files
+  are named `tpch_timescaledb~cloud_<timestamp>.*` instead of using a colon,
+  which Windows file names cannot contain.
 - CedarDB baseline runs no longer issue or record the PostgreSQL planner
   session settings, so a local result no longer carries session statements
   that the public privacy validation rejects as unanonymized. The settings

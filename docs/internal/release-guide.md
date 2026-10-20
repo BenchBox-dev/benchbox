@@ -277,7 +277,10 @@ raw commit subjects, which step 3 requires you to curate anyway.
    `origin/release` and tags, then checks that the merge commit is on `release`.
    It creates or verifies `vX.Y.Z` at that exact commit without checking out a
    local `release` branch. A mismatched local or remote tag stops finalization.
-5. Pushes an absent remote tag — which fires `.github/workflows/release.yml`:
+5. Pushes an absent remote tag. The tag is lightweight, so `release-v2.yml`
+   starts on the push and refuses it at its annotated-tag check; that failure is
+   expected on this path. `release.yml` no longer starts on a tag push, so run it
+   by hand with `gh workflow run release.yml --ref vX.Y.Z`:
    `dependency-bounds` and `sqlglot-upstream-freshness` → `build` (with `SOURCE_DATE_EPOCH` from the tag
    commit) → `publish` (PyPI trusted publisher) → `github-release` →
    `test-installation` (cross-platform pip install verification).
@@ -449,11 +452,14 @@ recovery version through this same flow.
 
 `release-prep` and `release-check` prepare release content in an ordinary pull
 request against `develop`. They do not replace `release-cut` and
-`release-finalize` above. Do not tag the merged develop commit until the
-replacement publisher has passed its exact `trunk.yml` distribution artifact, attestation,
-installed-artifact matrix, and release acceptance checks. The legacy
-`release.yml` publisher requires `origin/release` ancestry and rejects develop
-tags. Passing the content check alone does not authorize tagging or publication.
+`release-finalize` above, which remain the legacy path and publish through
+`release.yml` run by hand (`gh workflow run release.yml --ref vX.Y.Z`). The
+publisher for this path is `.github/workflows/release-v2.yml`, which starts when
+an annotated `vX.Y.Z` tag is pushed. Tag the merged develop commit only after
+its `trunk.yml` push run is green, because the workflow publishes that run's
+`dist-artifact` and never rebuilds. Use a PEP 440 version: `VERSION=0.5.0rc1`
+and tag `v0.5.0rc1` for a TestPyPI rehearsal, then `VERSION=0.5.0` and tag
+`v0.5.0` for PyPI. See `release-artifacts.md` for the gates it runs.
 
 ```bash
 make release-prep VERSION=X.Y.Z [SINCE_REF=<ref>]

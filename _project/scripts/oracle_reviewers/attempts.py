@@ -131,7 +131,7 @@ def load(directory: Path, plan: Mapping[str, Any], run_id: str) -> LoadedAttempt
                     errors,
                     f"{path.name}: invalid slot",
                 ),
-                _check(data["reviewer"] in chain, errors, f"{path.name}: reviewer outside the tier chain"),
+                _check(data["reviewer"] in chain, errors, f"{path.name}: reviewer outside the bucket chain"),
                 _check(data["outcome"] in (VERDICT_OUTCOME, ABSENT_OUTCOME), errors, f"{path.name}: bad outcome"),
                 _check(path.name == artifact_name(data["slot"]), errors, f"{path.name}: file name and slot differ"),
             )

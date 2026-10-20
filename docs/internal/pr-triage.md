@@ -178,6 +178,21 @@ Both sweeps upsert a single marker-tagged tracking issue while their
 respective queue is non-empty, and patch it to the empty state exactly
 once when it drains — never a per-run flood of new issues.
 
+The green-unmerged sweep finds its issue by exact title and the
+`<!-- green-unmerged-sweep -->` body marker, without labels. Search requests
+oldest-created matches first, so a newer duplicate does not replace the original.
+Unavailable, malformed, incomplete, or empty search results fall back to a
+label-free, oldest-first scan with no page cap. Only a valid exhausted scan
+permits creation; malformed pages (including a missing/404 response) and scan
+errors abort before any issue write. Closed matches are reopened on digest upsert.
+The general-purpose API pagination cap is unchanged.
+
+Run `uv run -- python _project/scripts/green_unmerged_sweep.py --repo BenchBox-dev/benchbox`
+without `--apply` for a read-only process smoke. Stderr records `search` or
+`oldest_first_scan` and the existing issue number (or that creation would be
+needed); neither this mode nor `--json` writes issues. `--apply` records the same
+lookup mechanism before updating the digest.
+
 ## Red develop tip
 
 `.github/workflows/trunk.yml` tests `develop` on pushes (fast lane,

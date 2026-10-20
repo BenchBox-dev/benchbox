@@ -133,8 +133,9 @@ def tag_protection_findings(
         elif any(pattern == "~ALL" or _tag_glob_covers(pattern) for pattern in exclude):
             issues.append(f"ref exclude={exclude!r} negates coverage of {TAG_REF_PATTERN}")
         rule_types = {rule.get("type") for rule in ruleset.get("rules") or [] if isinstance(rule, dict)}
-        if "creation" not in rule_types:
-            issues.append("no 'creation' rule")
+        for required_rule in ("creation", "update", "deletion"):
+            if required_rule not in rule_types:
+                issues.append(f"no '{required_rule}' rule")
         if require_bypass_actor_visibility and "bypass_actors" not in ruleset:
             issues.append("bypass actors are not visible to this token")
         elif ruleset.get("bypass_actors") == []:
@@ -146,7 +147,10 @@ def tag_protection_findings(
         if not issues:
             return []
         problems.append(f"{name}: " + "; ".join(issues))
-    return [f"no active tag ruleset covers {TAG_REF_PATTERN} with a creation rule -- " + " | ".join(problems)]
+    return [
+        f"no active tag ruleset covers {TAG_REF_PATTERN} with creation, update and deletion rules -- "
+        + " | ".join(problems)
+    ]
 
 
 def tag_bypass_advisory(rulesets: list[dict[str, Any]]) -> list[str]:

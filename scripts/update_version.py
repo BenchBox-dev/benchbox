@@ -31,7 +31,7 @@ PYPROJECT_PROJECT_HEADER_PATTERN = re.compile(r"^\s*\[project\]\s*(?:#.*)?$", re
 
 DOC_RELEASE_PATTERN = re.compile(
     r"(?P<prefix>Current\s+release\s*:?\s*)(?P<marker>`?)v?"
-    r"(?P<version>\d+\.\d+\.\d+(?:-[\w\.]+)?)(?P=marker)(?P<suffix>[\.]?)",
+    r"(?P<version>\d+\.\d+\.\d+(?:-[\w\.]+|(?:a|b|rc)\d+)?)(?P=marker)(?P<suffix>[\.]?)",
     re.IGNORECASE,
 )
 

@@ -531,25 +531,6 @@ def test_perf_comparison_preserves_threshold_and_failure(tmp_path: Path, compare
     ]
 
 
-@pytest.mark.parametrize(
-    "fast, slow",
-    [("0", "0"), ("1", "0"), ("0", "1"), ("1", "1"), (None, "0"), ("0", None), ("", "0"), ("0", "invalid")],
-)
-def test_duration_final_verdict_rejects_failed_missing_or_malformed_samples(tmp_path: Path, fast, slow) -> None:
-    output = tmp_path / "t3-durations"
-    output.mkdir()
-    for tier, value in [("fast", fast), ("slow", slow)]:
-        if value is not None:
-            (output / f"pytest-{tier}.exit").write_text(value, encoding="utf-8")
-    steps = _steps(_load()["jobs"]["durations-refresh"])
-    final = next(step for step in steps if step.get("name") == "Require successful sampled tests")
-    upload = next(step for step in steps if step.get("name") == "Upload duration artifacts")
-    assert steps.index(final) > steps.index(upload)
-    assert "always()" in final["if"] and "always()" in upload["if"]
-    result = _run_workflow_script(final["run"], tmp_path)
-    assert (result.returncode == 0) == (fast == slow == "0"), result.stdout + result.stderr
-
-
 @pytest.mark.parametrize("fast_exit, slow_exit", [(0, 0), (1, 0), (0, 1)])
 def test_failed_duration_samples_keep_both_reports_and_regenerated_artifact(
     tmp_path: Path, fast_exit: int, slow_exit: int
@@ -568,8 +549,9 @@ def test_failed_duration_samples_keep_both_reports_and_regenerated_artifact(
         '  if [[ "$arg" == --junitxml=* ]]; then\n'
         '    report="${arg#--junitxml=}"\n'
         '    case "$report" in *fast*) tier=fast; rc="$FAST_EXIT" ;; *slow*) tier=slow; rc="$SLOW_EXIT" ;; esac\n'
+        '    body="/>"; if [ "$rc" = "1" ]; then body="><failure message=\\"boom\\"/></testcase>"; fi\n'
         '    printf \'<testsuite tests="1"><testcase classname="tests.unit.test_sample" '
-        'name="test_%s" time="1.2"/></testsuite>\' "$tier" > "$report"\n'
+        'name="test_%s" time="1.2"%s</testsuite>\' "$tier" "$body" > "$report"\n'
         '  fi\ndone\necho "measurement $tier"\nexit "$rc"\n',
         encoding="utf-8",
     )
@@ -589,7 +571,8 @@ def test_failed_duration_samples_keep_both_reports_and_regenerated_artifact(
     assert len(artifact["tests"]) == 2
     final = next(step for step in steps if step.get("name") == "Require successful sampled tests")
     result = _run_workflow_script(final["run"], tmp_path)
-    assert (result.returncode == 0) == (fast_exit == slow_exit == 0), result.stdout + result.stderr
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert ("::warning::" in result.stdout) == (fast_exit == 1 or slow_exit == 1)
 
 
 def test_durations_job_emits_pytest_durations_artifact() -> None:

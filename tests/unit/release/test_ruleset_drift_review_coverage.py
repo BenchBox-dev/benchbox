@@ -33,7 +33,13 @@ def _load_review_enforcement():
 _rre = _load_review_enforcement()
 
 
-def _tag_ruleset(*, name="v-tag-restricted", enforcement="active", include=("refs/tags/v*",), rule_types=("creation",)):
+def _tag_ruleset(
+    *,
+    name="v-tag-restricted",
+    enforcement="active",
+    include=("refs/tags/v*",),
+    rule_types=("creation", "update", "deletion"),
+):
     return {
         "name": name,
         "target": "tag",
@@ -170,6 +176,12 @@ def test_tag_protection_satisfied_by_active_v_tag_creation_ruleset():
     findings = _rre.tag_protection_findings([_tag_ruleset()])
     assert findings == []
     assert _rre.is_tag_creation_protected([_tag_ruleset()])
+
+
+def test_tag_protection_refuses_creation_only_ruleset():
+    findings = _rre.tag_protection_findings([_tag_ruleset(rule_types=("creation",))])
+    assert findings and "no 'update' rule" in findings[0] and "no 'deletion' rule" in findings[0]
+    assert not _rre.is_tag_creation_protected([_tag_ruleset(rule_types=("creation",))])
 
 
 def test_tag_protection_satisfied_when_ref_is_all_tags():

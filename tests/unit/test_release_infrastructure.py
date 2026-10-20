@@ -225,10 +225,7 @@ class TestReleaseInfrastructure:
         assert "jobs" in workflow
 
         on_events = workflow[True]
-        assert "push" in on_events
-        assert "tags" in on_events["push"]
-        assert "v*" in on_events["push"]["tags"]
-        assert "workflow_dispatch" in on_events
+        assert set(on_events) == {"workflow_dispatch"}
 
         jobs = workflow["jobs"]
         required_jobs = ["dependency-bounds", "build", "publish", "github-release", "test-installation"]

@@ -371,7 +371,7 @@ class TestGenerateStreamQueriesQgen:
             str(work_dir),
         ]
 
-    def test_bundled_qgen_uses_the_first_query_in_each_stream_permutation(self, tmp_path):
+    def test_bundled_qgen_uses_the_first_query_in_each_stream_permutation(self, tmp_path, monkeypatch):
         qgen = get_tpc_compiler(auto_compile=False).get_binary_path("qgen")
         if qgen is None:
             pytest.skip("bundled qgen binary is unavailable")
@@ -389,6 +389,7 @@ class TestGenerateStreamQueriesQgen:
             "DSS_QUERY": str(query_dir),
             "PATH": os.pathsep.join([str(qgen.parent), os.environ.get("PATH", "")]),
         }
+        monkeypatch.setenv("PATH", env["PATH"])
         first_query_signatures = {
             14: "as promo_revenue",
             21: "as numwait",

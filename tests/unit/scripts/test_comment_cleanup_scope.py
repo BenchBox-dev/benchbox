@@ -1655,6 +1655,10 @@ def test_staged_head_blob_distinguishes_an_absent_path_from_a_git_failure(tmp_pa
         scope.head_blob(tmp_path / "not-a-repository", "src/a.py", True)
 
 
+def _file_read_permissions_are_enforced() -> bool:
+    return sys.platform != "win32" and os.geteuid() != 0
+
+
 def test_head_blob_rejects_a_directory_or_unreadable_path_as_a_policy_error(tmp_path: Path) -> None:
     root, _ = _git_repo_with(tmp_path, {"src/a.py": "x = 1\n"})
 
@@ -1662,8 +1666,8 @@ def test_head_blob_rejects_a_directory_or_unreadable_path_as_a_policy_error(tmp_
         scope.head_blob(root, "src", False)
     assert scope.head_blob(root, "src", True) is None
 
-    if os.geteuid() == 0:
-        pytest.skip("root can read files without read permission")
+    if not _file_read_permissions_are_enforced():
+        return
     target = root / "src/a.py"
     target.chmod(0)
     try:

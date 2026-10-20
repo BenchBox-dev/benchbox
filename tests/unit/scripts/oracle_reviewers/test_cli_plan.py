@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import stat
-import sys
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -22,8 +21,8 @@ REPO = "BenchBox-dev/BenchBox"
 HEAD = "a" * 40
 BASE = "b" * 40
 DIFF = "diff --git a/x b/x\n"
-MERGE_BASE = "e" * 40
 MODE = "100644"
+BUCKETS = ["trivial", "small", "medium", "large", "huge", "max"]
 
 
 def _pull(**over: Any) -> dict[str, Any]:
@@ -31,7 +30,6 @@ def _pull(**over: Any) -> dict[str, Any]:
         "number": 7,
         "state": "open",
         "draft": False,
-        "labels": [{"name": "author-family:codex"}],
         "base": {"ref": "develop", "sha": BASE},
         "head": {"sha": HEAD, "repo": {"full_name": REPO}},
     }
@@ -46,18 +44,17 @@ class FakeGitHub:
         files: list[dict[str, Any]],
         state: State | None = None,
         threads: Sequence[dict[str, Any]] | None = (),
-        diff: str = DIFF,
+        diff: str | None = DIFF,
     ) -> None:
         self.pull = pull
         self.files = files
         self.state = state
         self.threads = None if threads is None else list(threads)
         self.diff = diff
-        self.diff_reads = 0
-        self.merge_base: str | None = MERGE_BASE
-        self.modes: dict[str, str] = {}
         self.dispatched: list[int] = []
         self.reviews: list[dict[str, Any]] | None = []
+        self.reread_sha: str | None = None
+        self._pull_reads = 0
 
     def install(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(github, "get_json", self._json)
@@ -74,11 +71,10 @@ class FakeGitHub:
         return self.reviews
 
     def _json(self, path: str) -> dict[str, Any]:
-        if "/compare/" in path:
-            return {"merge_base_commit": {"sha": self.merge_base}}
-        if "/git/trees/" in path:
-            tree = [{"path": item["filename"], "mode": self.modes.get(item["filename"], MODE)} for item in self.files]
-            return {"truncated": False, "tree": tree}
+        if path == f"repos/{REPO}/pulls/7":
+            self._pull_reads += 1
+            if self._pull_reads > 1 and self.reread_sha is not None:
+                return {**self.pull, "head": {"sha": self.reread_sha, "repo": {"full_name": REPO}}}
         return self.pull
 
     def _threads(self, repo: str, pr: int) -> list[dict[str, Any]]:
@@ -86,8 +82,7 @@ class FakeGitHub:
             raise github.GitHubError("threads unavailable")
         return self.threads
 
-    def _diff(self, repo: str, pr: int) -> str:
-        self.diff_reads += 1
+    def _diff(self, repo: str, pr: int) -> str | None:
         return self.diff
 
     def _paginated(self, path: str) -> list[dict[str, Any]]:
@@ -131,29 +126,45 @@ def _plan(
 
 
 SOUNDNESS = [{"filename": "benchbox/core/equivalence/checker.py", "additions": 4, "deletions": 1}]
+CHECKER = "benchbox/core/equivalence/checker.py"
+CAPTURE = "benchbox/core/expected_results/registry.py"
 
 
-def test_soundness_pr_plans_a_review_with_a_private_brief(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_soundness_pr_plans_a_review_over_the_bucket_chain(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     code, values, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), SOUNDNESS))
     assert code == 0
     assert values["decision"] == "review" and values["post"] == "true" and values["head_sha"] == HEAD
-    assert plan["tier"] == "medium-high"
-    assert plan["excluded_families"] == ["codex"]
-    assert {item["name"] for item in plan["chain"]} == {
-        "codex-deep",
-        "claude-deep",
-        "gemini-deep",
-        "muse-deep",
-        "codex-routine",
-    }
+    assert plan["scope_paths"] == [CHECKER]
+    assert plan["gate_paths"] == []
+    assert any("comparison, validation or result logic" in reason for reason in plan["scope_reasons"])
+    assert [item["name"] for item in plan["chain"]] == BUCKETS
+    assert {item["harness"] for item in plan["chain"]} == {"omp"}
+    assert "tier" not in plan and "excluded_families" not in plan
     assert plan["brief_mode"] == "inline"
-    brief = tmp_path / "plan" / "brief.md"
-    if sys.platform != "win32":
-        assert stat.S_IMODE(brief.stat().st_mode) == 0o600
-    assert HEAD in brief.read_text(encoding="utf-8")
-    assert plan["max_defects"] == 10
-    assert plan["evidence_files"] == ["benchbox/core/equivalence/checker.py"]
-    assert "blocking" not in plan
+    assert plan["scope"] == "full" and plan["reviewed_head"] is None and plan["restart_summary"] is None
+    assert plan["diff_inline"] is not None and plan["reviewed_files"] == [
+        {"path": CHECKER, "previous_path": None, "additions": 4, "deletions": 1, "status": ""}
+    ]
+    assert plan["unchanged_files"] == [] and plan["untracked_files"] == []
+    assert plan["max_defects"] == 10 and plan["brief_max_bytes"] == 100000
+    assert plan["evidence_files"] == [CHECKER]
+    assert plan["protocol"]["kind"] == "first" and plan["protocol"]["prior"] == []
+    assert plan["protocol"]["strikes"] == 0 and plan["open_findings"] == {}
+    patch = tmp_path / "plan" / "diff.patch"
+    assert stat.S_IMODE(patch.stat().st_mode) == 0o600
+    assert patch.read_text(encoding="utf-8") == DIFF
+    assert not (tmp_path / "plan" / "brief.md").exists()
+
+
+def test_gate_only_change_is_reviewed_with_gate_paths(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    gate = "_project/scripts/oracle_reviewers/cli.py"
+    files = [{"filename": gate, "additions": 2, "deletions": 0}]
+    _, values, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), files))
+    assert values["decision"] == "review"
+    assert plan["scope_paths"] == [gate] and plan["gate_paths"] == [gate]
+    assert any("gate" in reason for reason in plan["scope_reasons"])
+    assert plan["evidence_files"] == [gate]
+    assert [item["name"] for item in plan["chain"]] == BUCKETS
 
 
 def test_evidence_files_are_the_soundness_files_present_at_the_head(
@@ -167,13 +178,16 @@ def test_evidence_files_are_the_soundness_files_present_at_the_head(
     _, values, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), files))
     assert values["decision"] == "review"
     assert plan["evidence_files"] == ["benchbox/core/equivalence/checker.py"]
+    assert plan["scope_paths"] == ["benchbox/core/equivalence/checker.py", "benchbox/core/equivalence/gone.py"]
 
 
 def test_non_soundness_pr_posts_success_without_reviewers(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     files = [{"filename": "README.md", "additions": 1, "deletions": 0}]
     _, values, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), files))
     assert values["decision"] == "success" and values["post"] == "true"
-    assert plan["chain"] == []
+    assert plan["chain"] == [] and plan["scope_paths"] == [] and plan["gate_paths"] == []
+    assert plan["decision_reason"] == "no soundness path changed"
+    assert not (tmp_path / "plan" / "diff.patch").exists()
 
 
 def test_fork_pr_never_reaches_a_reviewer(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -181,8 +195,8 @@ def test_fork_pr_never_reaches_a_reviewer(monkeypatch: pytest.MonkeyPatch, tmp_p
     _, values, plan = _plan(monkeypatch, tmp_path, FakeGitHub(pull, SOUNDNESS))
     assert values["decision"] == "fork" and values["post"] == "true"
     assert plan["decision_reason"] == "fork: owner review"
-    assert plan["chain"] == []
-    assert not (tmp_path / "plan" / "brief.md").exists()
+    assert plan["chain"] == [] and plan["scope_paths"] == [CHECKER]
+    assert not (tmp_path / "plan" / "diff.patch").exists()
 
 
 @pytest.mark.parametrize(
@@ -203,8 +217,17 @@ def test_guards_skip_without_posting(
 
 def test_stale_event_head_is_left_to_the_newer_run(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     event = {"action": "synchronize", "pull_request": {"head": {"sha": "c" * 40}}}
-    _, values, _ = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), SOUNDNESS), event=event)
+    _, values, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), SOUNDNESS), event=event)
     assert values["decision"] == "skip"
+    assert "newer head" in plan["decision_reason"]
+
+
+def test_moved_head_is_left_to_the_newer_run(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    fake = FakeGitHub(_pull(), SOUNDNESS)
+    fake.reread_sha = "d" * 40
+    _, values, plan = _plan(monkeypatch, tmp_path, fake)
+    assert values["decision"] == "skip" and values["post"] == "false"
+    assert "head moved" in plan["decision_reason"]
 
 
 def test_comment_run_resolves_the_head_through_the_api(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -239,10 +262,20 @@ def test_comment_rerun_after_a_decisive_result_is_refused(monkeypatch: pytest.Mo
     assert "already has a success result" in plan["decision_reason"]
 
 
+def test_manual_retry_inside_backoff_waits_for_the_next_slot(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    now = datetime.now(UTC)
+    state = State(7, HEAD, "pending", now, (now,), pending_cause="all-absent")
+    _, values, plan = _plan(
+        monkeypatch, tmp_path, FakeGitHub(_pull(), SOUNDNESS, state), event_name="issue_comment", event={}
+    )
+    assert values["decision"] == "skip" and values["post"] == "false"
+    assert "backoff" in plan["decision_reason"]
+
+
 def test_pending_pool_reset_is_carried_into_the_plan(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     later = datetime.now(UTC) + timedelta(hours=2)
     earlier = datetime.now(UTC) - timedelta(hours=1)
-    state = State(7, "c" * 40, "pending", earlier, (), {"claude": later, "codex": earlier})
+    state = State(7, "c" * 40, "pending", earlier, (), {"claude": later})
     _, _, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), SOUNDNESS, state))
     assert plan["pool_blocked_until"] == {"claude": later.isoformat()}
 
@@ -284,8 +317,6 @@ def test_sweep_skips_draft_and_fork_prs(monkeypatch: pytest.MonkeyPatch, tmp_pat
     assert looked_up == []
 
 
-CHECKER = "benchbox/core/equivalence/checker.py"
-CAPTURE = "benchbox/core/expected_results/registry.py"
 TWO_FILES = [
     {"filename": CHECKER, "additions": 4, "deletions": 1, "sha": "1" * 40},
     {"filename": CAPTURE, "additions": 2, "deletions": 0, "sha": "2" * 40},
@@ -310,8 +341,8 @@ def _record(diff: str, decision: str, **over: Any) -> dict[str, Any]:
         "decision": decision,
         "head_sha": OLD_HEAD,
         "base_ref": "develop",
-        "reviewer": "sol",
-        "tier": "medium-high",
+        "reviewer": "medium",
+        "tier": "medium",
         "strikes_after": 1 if decision == "DO_NOT_SHIP" else 0,
         "open_defects": [],
         "next_id": 1,
@@ -341,7 +372,9 @@ def _review(record: dict[str, Any] | None, **over: Any) -> dict[str, Any]:
     return review
 
 
-def _fake(*reviews: dict[str, Any], files: list[dict[str, Any]] | None = None, diff: str = TWO_FILE_DIFF, **pull: Any):
+def _fake(
+    *reviews: dict[str, Any], files: list[dict[str, Any]] | None = None, diff: str | None = TWO_FILE_DIFF, **pull: Any
+):
     fake = FakeGitHub(_pull(**pull), files if files is not None else TWO_FILES, diff=diff)
     fake.reviews = list(reviews)
     return fake
@@ -359,7 +392,10 @@ def test_no_review_history_gives_a_first_full_review(monkeypatch: pytest.MonkeyP
     assert values["decision"] == "review" and plan["scope"] == "full"
     assert plan["protocol"]["kind"] == "first" and plan["protocol"]["cycle"] == 1
     assert plan["protocol"]["prior"] == [] and plan["protocol"]["strikes"] == 0
-    assert "Leave prior_defects empty." in (tmp_path / "plan" / "brief.md").read_text(encoding="utf-8")
+    assert [item["name"] for item in plan["chain"]] == BUCKETS
+    assert sorted(item["path"] for item in plan["reviewed_files"]) == [CHECKER, CAPTURE]
+    assert plan["diff_inline"] is not None and "checker change" in plan["diff_inline"]
+    assert (tmp_path / "plan" / "diff.patch").read_text(encoding="utf-8") == TWO_FILE_DIFF
 
 
 @pytest.mark.parametrize("diff", [TWO_FILE_DIFF, REBASED], ids=["identical", "rebased"])
@@ -375,8 +411,21 @@ def test_an_unchanged_patch_carries_the_decision_without_a_reviewer(
     _, values, plan = _plan(monkeypatch, tmp_path, fake)
     assert values["decision"] == "carry" and values["post"] == "true"
     assert plan["reviewed_head"] == OLD_HEAD and plan["chain"] == []
-    assert plan["protocol"]["previous"]["decision"] == decision
-    assert not (tmp_path / "plan" / "brief.md").exists()
+    assert plan["protocol"]["kind"] == "carry" and plan["protocol"]["previous"]["decision"] == decision
+    assert not (tmp_path / "plan" / "diff.patch").exists()
+
+
+def test_a_code_change_outside_soundness_paths_is_followed_up(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    helper = "benchbox/utils/row_compare.py"
+    files = [*TWO_FILES, {"filename": helper, "additions": 3, "deletions": 1, "sha": "7" * 40}]
+    section = f"diff --git a/{helper} b/{helper}\n--- a/{helper}\n+++ b/{helper}\n@@ -1,1 +1,2 @@\n a\n+helper\n"
+    record = _record(TWO_FILE_DIFF + section, "SHIP")
+    fake = _fake(_review(record), files=files, diff=TWO_FILE_DIFF + section.replace("+helper", "+helper changed"))
+    _, values, plan = _plan(monkeypatch, tmp_path, fake)
+    assert values["decision"] == "review" and plan["scope"] == "changed"
+    assert plan["protocol"]["changed"] == [helper] and plan["evidence_files"] == []
+    assert plan["unchanged_files"] == [CHECKER, CAPTURE] and plan["untracked_files"] == []
+    assert plan["scope_paths"] == [CHECKER, CAPTURE]
 
 
 def test_a_file_leaving_the_pull_request_gets_a_full_follow_up_not_a_carry(
@@ -412,34 +461,33 @@ def test_a_follow_up_after_ship_with_fixes_reviews_only_the_changed_file(
     assert (rules["kind"], rules["cycle"], rules["round"], rules["next_id"]) == ("follow-up", 1, 2, 2)
     assert rules["prior"] == [DEFECT] and rules["changed"] == [CAPTURE]
     assert plan["evidence_files"] == [CAPTURE]
-    brief = (tmp_path / "plan" / "brief.md").read_text(encoding="utf-8")
-    assert "capture fixed" in brief and "checker change" not in brief
-    assert f"- D1 (High) {CAPTURE}:2: Drops a row" in brief
-    assert "Give each of them a status in prior_defects" in brief
+    assert [item["path"] for item in plan["reviewed_files"]] == [CAPTURE]
+    assert plan["unchanged_files"] == [CHECKER] and plan["untracked_files"] == []
+    assert plan["reviewed_head"] == OLD_HEAD and plan["restart_summary"] is None
+    assert plan["follow_up_reviewer"] == "medium"
+    assert plan["diff_inline"] is not None and "capture fixed" in plan["diff_inline"]
+    assert "checker change" not in plan["diff_inline"]
+    assert (tmp_path / "plan" / "diff.patch").read_text(encoding="utf-8") == CAPTURE_CHANGED
 
 
-def test_a_follow_up_after_ship_is_scoped_even_at_the_very_high_tier(
+def test_a_follow_up_after_ship_scopes_to_the_changed_file_without_tiers(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    record = _record(TWO_FILE_DIFF, "SHIP", tier="very-high", reviewer="opus")
-    fake = _fake(_review(record), diff=CAPTURE_CHANGED, labels=[{"name": "oracle-tier:very-high"}])
-    _, values, plan = _plan(monkeypatch, tmp_path, fake)
-    assert values["decision"] == "review" and plan["scope"] == "changed" and plan["tier"] == "very-high"
+    record = _record(TWO_FILE_DIFF, "SHIP", reviewer="large", tier="large")
+    _, values, plan = _plan(monkeypatch, tmp_path, _fake(_review(record), diff=CAPTURE_CHANGED))
+    assert values["decision"] == "review" and plan["scope"] == "changed"
     assert plan["protocol"]["kind"] == "follow-up" and plan["protocol"]["prior"] == []
-    assert "Leave prior_defects empty. An earlier review decided SHIP" in (tmp_path / "plan" / "brief.md").read_text(
-        encoding="utf-8"
-    )
+    assert plan["follow_up_reviewer"] == "large"
+    assert "tier" not in plan
 
 
 def test_a_follow_up_tries_the_previous_reviewer_first(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    record = _record(TWO_FILE_DIFF, "SHIP_WITH_FIXES", open_defects=[DEFECT], next_id=2, reviewer="muse-deep")
+    record = _record(TWO_FILE_DIFF, "SHIP_WITH_FIXES", open_defects=[DEFECT], next_id=2, reviewer="large")
     _, _, plan = _plan(monkeypatch, tmp_path, _fake(_review(record), diff=CAPTURE_CHANGED))
-    names = [item["name"] for item in plan["chain"]]
-    assert names[0] == "muse-deep"
-    assert set(names) == {"codex-deep", "claude-deep", "gemini-deep", "muse-deep", "codex-routine"}
+    assert plan["follow_up_reviewer"] == "large"
     (tmp_path / "x").mkdir()
     _, _, first = _plan(monkeypatch, tmp_path / "x", _fake(diff=CAPTURE_CHANGED))
-    assert {item["name"] for item in first["chain"]} == set(names)
+    assert [item["name"] for item in first["chain"]] == BUCKETS and first["follow_up_reviewer"] is None
 
 
 def test_a_changed_patch_after_do_not_ship_restarts_with_the_previous_summary(
@@ -449,28 +497,21 @@ def test_a_changed_patch_after_do_not_ship_restarts_with_the_previous_summary(
     _, values, plan = _plan(monkeypatch, tmp_path, _fake(_review(record), diff=CAPTURE_CHANGED))
     assert values["decision"] == "review" and plan["scope"] == "full"
     assert (plan["protocol"]["kind"], plan["protocol"]["cycle"], plan["protocol"]["strikes"]) == ("first", 2, 1)
-    brief = (tmp_path / "plan" / "brief.md").read_text(encoding="utf-8")
-    assert "decided DO NOT SHIP" in brief and "The comparator ignores NULL ordering." in brief
-    assert "checker change" in brief and "capture fixed" in brief
+    assert plan["restart_summary"] == "The comparator ignores NULL ordering."
+    assert sorted(item["path"] for item in plan["reviewed_files"]) == [CHECKER, CAPTURE]
+    patch = (tmp_path / "plan" / "diff.patch").read_text(encoding="utf-8")
+    assert "checker change" in patch and "capture fixed" in patch
 
 
-@pytest.mark.parametrize(
-    ("over", "pull", "reason"),
-    [
-        ({"base_ref": "release"}, {}, "the base changed from release to develop"),
-        ({"tier": "low-medium"}, {}, "the tier changed from low-medium to medium-high"),
-    ],
-)
-def test_a_retarget_or_tier_change_restarts_and_keeps_strikes(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, over: dict, pull: dict, reason: str
-) -> None:
+def test_a_retarget_restarts_and_keeps_strikes(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     struck = _record(TWO_FILE_DIFF.replace("a\n+", "z\n+"), "DO_NOT_SHIP", head_sha="e" * 40)
-    latest = _record(TWO_FILE_DIFF, "SHIP", **over)
-    fake = _fake(_review(struck, id=1), _review(latest, id=2, submitted_at="2026-10-08T11:00:00Z"), **pull)
+    latest = _record(TWO_FILE_DIFF, "SHIP", base_ref="release")
+    fake = _fake(_review(struck, id=1), _review(latest, id=2, submitted_at="2026-10-08T11:00:00Z"))
     _, values, plan = _plan(monkeypatch, tmp_path, fake)
     assert values["decision"] == "review" and plan["scope"] == "full"
     assert plan["protocol"]["kind"] == "first" and plan["protocol"]["cycle"] == 2
-    assert plan["protocol"]["reason"] == reason and plan["protocol"]["strikes"] == 1
+    assert plan["protocol"]["reason"] == "the base changed from release to develop"
+    assert plan["protocol"]["strikes"] == 1
 
 
 def test_a_head_that_already_has_a_decision_runs_no_reviewer(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -488,6 +529,7 @@ def _strike(n: int, head: str = "e" * 40) -> dict[str, Any]:
 def test_the_third_do_not_ship_refuses_further_review(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     _, values, plan = _plan(monkeypatch, tmp_path, _fake(_strike(1), _strike(2), _strike(3)))
     assert values["decision"] == "refused" and values["post"] == "true"
+    assert plan["protocol"]["kind"] == "refused"
     assert plan["protocol"]["strikes"] == 3 and plan["chain"] == []
     (tmp_path / "two").mkdir()
     _, values, _ = _plan(monkeypatch, tmp_path / "two", _fake(_strike(1), _strike(2)))
@@ -517,8 +559,9 @@ def test_strikes_count_distinct_decisive_patches_and_never_carried_ones(
 def test_the_state_artifact_can_raise_the_strike_count(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     fake = _fake(_strike(1))
     fake.state = State(7, "e" * 40, "failure", datetime.now(UTC) - timedelta(hours=1), strikes=3)
-    _, values, _ = _plan(monkeypatch, tmp_path, fake)
+    _, values, plan = _plan(monkeypatch, tmp_path, fake)
     assert values["decision"] == "refused"
+    assert plan["protocol"]["kind"] == "refused"
 
 
 def test_a_reopen_does_not_reset_the_history(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -604,31 +647,16 @@ def test_a_binary_change_is_never_mistaken_for_an_unchanged_patch() -> None:
     assert protocol.file_patches(text.format("222", 1)) == protocol.file_patches(text.format("333", 9))
 
 
-HELPER = "benchbox/utils/row_compare.py"
-
-
-def test_a_code_change_outside_soundness_paths_is_followed_up(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    files = [*TWO_FILES, {"filename": HELPER, "additions": 3, "deletions": 1, "sha": "7" * 40}]
-    helper = f"diff --git a/{HELPER} b/{HELPER}\n--- a/{HELPER}\n+++ b/{HELPER}\n@@ -1,1 +1,2 @@\n a\n+helper\n"
-    record = _record(TWO_FILE_DIFF + helper, "SHIP")
-    fake = _fake(_review(record), files=files, diff=TWO_FILE_DIFF + helper.replace("+helper", "+helper changed"))
-    _, values, plan = _plan(monkeypatch, tmp_path, fake)
-    assert values["decision"] == "review" and plan["scope"] == "changed"
-    assert plan["protocol"]["changed"] == [HELPER] and plan["evidence_files"] == []
-    brief = (tmp_path / "plan" / "brief.md").read_text(encoding="utf-8")
-    unchanged = brief.split("identical since:", 1)[1].split("Review the first list", 1)[0]
-    assert CHECKER in unchanged and CAPTURE in unchanged and HELPER not in unchanged
-
-
-def test_prose_is_listed_apart_from_a_scoped_follow_up(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_prose_is_untracked_apart_from_a_scoped_follow_up(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     readme = {"filename": "README.md", "additions": 1, "deletions": 0, "sha": "9" * 40}
     record = _record(TWO_FILE_DIFF, "SHIP")
     _, values, plan = _plan(
         monkeypatch, tmp_path, _fake(_review(record), files=[*TWO_FILES, readme], diff=CAPTURE_CHANGED)
     )
     assert values["decision"] == "review" and plan["scope"] == "changed"
-    brief = (tmp_path / "plan" / "brief.md").read_text(encoding="utf-8")
-    assert "README.md" in brief.split("not compared with that review:", 1)[1]
+    assert [item["path"] for item in plan["reviewed_files"]] == [CAPTURE]
+    assert plan["unchanged_files"] == [CHECKER] and plan["untracked_files"] == ["README.md"]
+    assert plan["evidence_files"] == [CAPTURE]
 
 
 def test_a_text_data_file_is_tracked_like_code(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -639,6 +667,31 @@ def test_a_text_data_file_is_tracked_like_code(monkeypatch: pytest.MonkeyPatch, 
     changed = TWO_FILE_DIFF + section.replace("+b", "+c")
     _, values, plan = _plan(monkeypatch, tmp_path, _fake(_review(record), files=files, diff=changed))
     assert values["decision"] == "review" and plan["protocol"]["changed"] == [data]
+
+
+def test_open_threads_are_recorded_as_open_findings(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    threads = [
+        {
+            "author": "benchbox-oracle[bot]",
+            "author_type": "Bot",
+            "resolved": False,
+            "path": CAPTURE,
+            "body": "**High**: Drops a row",
+        },
+        {"author": "someone", "author_type": "User", "resolved": False, "path": CAPTURE, "body": "**High**: Noise"},
+    ]
+    _, values, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), SOUNDNESS, threads=threads))
+    assert values["decision"] == "review"
+    assert plan["open_findings"] == {fingerprint(CAPTURE, "Drops a row"): "High"}
+
+
+def test_unreadable_threads_are_noted_not_fatal(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _, values, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), SOUNDNESS, threads=None))
+    assert values["decision"] == "review"
+    assert plan["open_findings"] == {}
+    assert "none are suppressed" in capsys.readouterr().out
 
 
 def test_an_oversize_head_is_not_retried_until_a_new_push(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

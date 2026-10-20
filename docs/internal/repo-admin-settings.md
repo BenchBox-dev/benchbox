@@ -416,11 +416,29 @@ The predicate flags a ruleset that:
   GitHub's fnmatch ref-glob semantics. An `include` or `exclude` of
   `refs/tags/*` counts the same as the literal `refs/tags/v*`; matching is not
   limited to a byte-identical string.
-- lacks a `creation` rule
+- lacks a `creation`, `update`, or `deletion` rule. Without `update` and
+  `deletion`, an actor with write access can delete a published `v*` tag and
+  re-push it, or move it, after the release workflow admitted its commit.
 - has `bypass_actors` explicitly set to `[]`. A structurally valid ruleset with
   zero bypass actors would block `make release-finalize`'s
   `git push origin v$(VERSION)` and break releases, so this is a finding, not
   an advisory.
+
+Adding the `update` and `deletion` rules is an owner settings change. As an
+admin, either add the two rules in the ruleset's settings page (Settings,
+Rules, Rulesets, `v-tag-restricted`, Restrict updates, Restrict deletions) or
+run:
+
+```bash
+gh api repos/BenchBox-dev/BenchBox/rulesets/18774756 \
+  | jq '{name, target, enforcement, conditions, bypass_actors,
+         rules: ((.rules | map({type})) + [{type: "update"}, {type: "deletion"}] | unique_by(.type))}' \
+  | gh api -X PUT repos/BenchBox-dev/BenchBox/rulesets/18774756 --input -
+```
+
+Re-run `scripts/ruleset_drift_check.py` with an admin token afterwards. The
+bypass actor still lets the release identity create tags; it can also move or
+delete them, so the release workflow re-checks the hosted tag at publish time.
 
 A non-empty `bypass_actors` list is not a failure, because
 `make release-finalize` needs a bypass path to tag. The check instead prints a

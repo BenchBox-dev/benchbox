@@ -109,9 +109,6 @@ MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "code-lint", "Untracked skill-mirror drift guard (cloud parity)"): "ci-lint",
     ("ci.yml", "code-lint", "Check for unsafe patch() string paths in tests"): "ci-lint",
     ("ci.yml", "correctness-gate", "Run the required local-engine cases"): "test-required-local-cases",
-    ("ci.yml", "correctness-gate", "Check TPC-Havoc rewrites at the SQLGlot minimum"): (
-        "tpchavoc-sqlglot-minimum-check"
-    ),
     ("ci.yml", "correctness-gate", "Run the polars-df smoke and cross-surface gates on Polars 2.0.0"): (
         "polars-df-compat-check"
     ),

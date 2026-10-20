@@ -17,6 +17,8 @@ from oracle_review_check import (
     STANDIN_ATTESTERS,
     _attested_shas,
     latest_base_change,
+    standin_not_before,
+    verdict_state,
 )
 
 ORACLE_VERDICT_LINE = re.compile(
@@ -41,9 +43,19 @@ BASE_BRANCH = "develop"
 STATE_LABEL = "soundness-merge-digest"
 GAP_LABEL = "soundness-review-gap"
 CHECKPOINT_PATTERN = re.compile(r"<!-- soundness-digest-checkpoint: ([0-9a-f]{40}) -->")
+GAP_MARKER = re.compile(r"<!-- soundness-gap:([0-9a-f]{40}) -->")
 EXTERNAL_REVIEW_PATTERN = re.compile(
     r"(?im)^[ \t]*(?:[-*+][ \t]+)?(?:\**(?:external[ \t]+)?reviewer\**[ \t]*:\**|soundness[ \t]+review:)[ \t]*(?:external[ \t]+)?(codex|muse|agy)\b"
 )
+ATTESTED_REVIEW = re.compile(r"\s*External review: (codex|muse|agy)\b")
+CLEAN_LINE = re.compile(r"(?m)^Verified clean\b")
+GAP_REASON = re.compile(r"Why it is listed: ([^\n]*)\.\n")
+REASON_NO_REVIEW = "no completed review after the last content commit"
+FINDING_SEVERITY = re.compile(r"\*\*(Critical|High|Medium|Low)\*\*: ")
+OVERRIDDEN_SEVERITIES = frozenset({"Critical", "High"})
+CLASS_OVERRIDE = "override of an oracle High finding"
+CLASS_DEFERRED = "deferred finding"
+CLASS_NO_SIGNAL = "no review signal"
 CONNECTOR_LOGINS = frozenset({"chatgpt-codex-connector", "chatgpt-codex-connector[bot]"})
 CONNECTOR_CUTOFF = "2026-10-09T00:16:30Z"
 THREAD_PAGE = 100
@@ -86,6 +98,7 @@ class Thread:
     resolved: bool
     started_by: str
     first_comment_sha: str
+    severity: str = ""
 
 
 @dataclass(frozen=True)
@@ -133,19 +146,45 @@ class Entry:
         return self.pull is None or not self.signals or self.unreviewed_threads > 0
 
     @property
+    def reason_classes(self) -> tuple[str, ...]:
+        classes: list[str] = []
+        if self.pull is not None:
+            threads = flagged_threads(self.pull)
+            if any(is_overridden_finding(thread) for thread in threads):
+                classes.append(CLASS_OVERRIDE)
+            if any(not is_overridden_finding(thread) for thread in threads):
+                classes.append(CLASS_DEFERRED)
+        if self.pull is None or not self.signals:
+            classes.append(CLASS_NO_SIGNAL)
+        return tuple(classes)
+
+    @property
     def reasons(self) -> tuple[str, ...]:
         reasons: list[str] = []
         if self.pull is None:
             reasons.append("no merged pull request")
         elif not self.signals:
-            reasons.append("no completed review after the last content commit")
+            reasons.append(REASON_NO_REVIEW)
         if self.unreviewed_threads:
             reasons.append(f"{self.unreviewed_threads} reviewer thread(s) resolved with no later commit")
         return tuple(reasons)
 
 
-def _latest_oracle_review(evidence: PullEvidence, shas: frozenset[str] | set[str]) -> Review | None:
-    candidates = [
+@dataclass(frozen=True)
+class Closure:
+    number: int
+    sha: str
+    summary: str
+    comment: str
+
+
+def finding_severity(body: str) -> str:
+    match = FINDING_SEVERITY.match(body)
+    return match.group(1) if match else ""
+
+
+def _oracle_reviews(evidence: PullEvidence, shas: frozenset[str] | set[str]) -> list[Review]:
+    return [
         review
         for review in evidence.reviews
         if review.login == f"{ORACLE_LOGIN}[bot]"
@@ -154,18 +193,15 @@ def _latest_oracle_review(evidence: PullEvidence, shas: frozenset[str] | set[str
         and review.commit_sha in shas
         and evidence.base_changed_at < review.submitted_at <= evidence.merged_at
     ]
-    return max(candidates, key=lambda review: review.submitted_at, default=None)
+
+
+def _review_verdict(review: Review) -> str | None:
+    return verdict_state(review.body, review.commit_sha, ORACLE_VERDICT_LINE)
 
 
 def _oracle_success(evidence: PullEvidence) -> bool:
-    latest = _latest_oracle_review(evidence, set(evidence.content_shas))
-    verdict = ORACLE_VERDICT_LINE.match(latest.body) if latest else None
-    return (
-        latest is not None
-        and verdict is not None
-        and verdict.group("state") == "success"
-        and verdict.group("sha") == latest.commit_sha
-    )
+    latest = max(_oracle_reviews(evidence, evidence.content_shas), key=lambda review: review.submitted_at, default=None)
+    return latest is not None and _review_verdict(latest) == "success"
 
 
 def review_signals(evidence: PullEvidence) -> tuple[str, ...]:
@@ -190,8 +226,13 @@ def review_signals(evidence: PullEvidence) -> tuple[str, ...]:
         r.login in CONNECTOR_LOGINS and r.content == "+1" and in_window(r.created_at) for r in evidence.reactions
     ):
         signals.append("connector-approval")
-    head_verdict = _latest_oracle_review(evidence, {evidence.commits[-1].sha}) if evidence.commits else None
-    standin_after = max(evidence.base_changed_at, head_verdict.submitted_at if head_verdict else "")
+    head_reviews = _oracle_reviews(evidence, {evidence.commits[-1].sha}) if evidence.commits else []
+    standin_after = (
+        standin_not_before(
+            evidence.base_changed_at, ((review.submitted_at, _review_verdict(review)) for review in head_reviews)
+        )
+        or ""
+    )
     for comment in evidence.comments:
         match = EXTERNAL_REVIEW_PATTERN.search(comment.body)
         attester = comment.login in STANDIN_ATTESTERS and comment.user_type == "User"
@@ -208,14 +249,22 @@ def review_signals(evidence: PullEvidence) -> tuple[str, ...]:
     return tuple(dict.fromkeys(signals))
 
 
-def unreviewed_thread_count(evidence: PullEvidence) -> int:
-    return sum(
-        1
+def flagged_threads(evidence: PullEvidence) -> tuple[Thread, ...]:
+    return tuple(
+        thread
         for thread in evidence.threads
         if thread.resolved
         and thread.started_by != evidence.author
         and thread.first_comment_sha in evidence.content_shas
     )
+
+
+def unreviewed_thread_count(evidence: PullEvidence) -> int:
+    return len(flagged_threads(evidence))
+
+
+def is_overridden_finding(thread: Thread) -> bool:
+    return thread.started_by.removesuffix("[bot]") == ORACLE_LOGIN and thread.severity in OVERRIDDEN_SEVERITIES
 
 
 def classify(sha: str, subject: str, files: Sequence[str], pull: PullEvidence | None) -> Entry:
@@ -249,9 +298,14 @@ def gap_issue_body(entry: Entry) -> str:
         f"<!-- soundness-gap:{entry.sha} -->\n"
         f"Commit `{entry.sha}` ({pull}) changed paths on the soundness list and merged to develop.\n\n"
         f"Why it is listed: {'; '.join(entry.reasons)}.\n\n"
+        f"Reason class: {'; '.join(entry.reason_classes)}.\n\n"
         f"Soundness-path files:\n{files}\n\n"
-        "Next step: run an external adversarial review of the commit (codex, muse or agy), post it as a "
-        "comment, and either record a clean result here or open a fix or revert pull request."
+        "Next step: run an external adversarial review of the commit (codex, muse or agy). A listed attester closes "
+        "this issue by posting a comment that starts with `External review: codex`, `External review: muse` or "
+        "`External review: agy`, has a line beginning `Verified clean`, and lists no `**Severity**:` finding. "
+        "Otherwise open a fix or revert pull request. A later digest run also closes this issue when it was opened "
+        "for a missing review signal and the digest now finds one; an issue opened for a reviewer thread is closed "
+        "only by an attester's review."
     )
 
 
@@ -319,7 +373,7 @@ def collect_threads(repo: str, number: int) -> tuple[Thread, ...]:
             pageInfo { hasNextPage }
             nodes {
               isResolved
-              comments(first: 1) { nodes { author { login } originalCommit { oid } } }
+              comments(first: 1) { nodes { author { login } originalCommit { oid } body } }
             }
           }
         }
@@ -354,6 +408,7 @@ def collect_threads(repo: str, number: int) -> tuple[Thread, ...]:
                     resolved=bool(node["isResolved"]),
                     started_by=(first.get("author") or {}).get("login", ""),
                     first_comment_sha=(first.get("originalCommit") or {}).get("oid", ""),
+                    severity=finding_severity(first.get("body") or ""),
                 )
             )
     except (KeyError, IndexError, TypeError) as exc:
@@ -483,13 +538,14 @@ def soundness_files(sha: str, files: Sequence[str], *, cwd: Path | None = None) 
     return [path for path in files if path in matched or path in GOVERNANCE_PATHS]
 
 
+def collect_entry(repo: str, sha: str) -> Entry | None:
+    files = soundness_files(sha, commit_files(sha))
+    return classify(sha, commit_subject(sha), files, collect_pull(repo, sha)) if files else None
+
+
 def collect_entries(repo: str, ref: str, since: str) -> list[Entry]:
-    entries: list[Entry] = []
-    for sha in merged_commits(ref, since):
-        files = soundness_files(sha, commit_files(sha))
-        if files:
-            entries.append(classify(sha, commit_subject(sha), files, collect_pull(repo, sha)))
-    return entries
+    entries = (collect_entry(repo, sha) for sha in merged_commits(ref, since))
+    return [entry for entry in entries if entry is not None]
 
 
 def find_state_issue(repo: str) -> dict[str, Any] | None:
@@ -533,9 +589,13 @@ def write_checkpoint(repo: str, sha: str, report: str) -> None:
         run(["gh", "issue", "edit", str(issue["number"]), "--repo", repo, "--body", body])
 
 
+def list_gap_issues(repo: str) -> list[dict[str, Any]]:
+    return gh_pages(f"repos/{repo}/issues?labels={GAP_LABEL}&state=all&per_page=100")
+
+
 def open_gap_issues(repo: str, entries: Sequence[Entry]) -> list[str]:
     run(["gh", "label", "create", GAP_LABEL, "--repo", repo, "--force", "--color", "b60205"])
-    existing = gh_pages(f"repos/{repo}/issues?labels={GAP_LABEL}&state=all&per_page=100")
+    existing = list_gap_issues(repo)
     known = "\n".join(issue.get("body") or "" for issue in existing)
     opened: list[str] = []
     for entry in entries:
@@ -558,6 +618,96 @@ def open_gap_issues(repo: str, entries: Sequence[Entry]) -> list[str]:
             )
             opened.append(entry.sha)
     return opened
+
+
+def is_attested_review(body: str) -> bool:
+    return (
+        ATTESTED_REVIEW.match(body) is not None
+        and CLEAN_LINE.search(body) is not None
+        and FINDING_SEVERITY.search(body) is None
+    )
+
+
+def attested_review(comments: Sequence[dict[str, Any]]) -> dict[str, Any] | None:
+    for comment in comments:
+        user = comment.get("user") or {}
+        if (
+            user.get("login") in STANDIN_ATTESTERS
+            and user.get("type") == "User"
+            and is_attested_review(comment.get("body") or "")
+        ):
+            return comment
+    return None
+
+
+def resolved_closure(number: int, entry: Entry) -> Closure:
+    assert entry.pull is not None
+    comment = (
+        f"<!-- soundness-gap-closed:{entry.sha} -->\n"
+        f"Closing: the issue was opened because `{entry.sha}` (#{entry.pull.number}) had no review signal, and the "
+        f"digest now finds one.\n\n"
+        f"Review signal: {', '.join(entry.signals)}."
+    )
+    return Closure(number, entry.sha, f"review signal found ({', '.join(entry.signals)})", comment)
+
+
+def attested_closure(number: int, sha: str, review: dict[str, Any]) -> Closure:
+    match = ATTESTED_REVIEW.match(review["body"])
+    assert match is not None
+    reviewer, login = match.group(1), review["user"]["login"]
+    comment = (
+        f"<!-- soundness-gap-closed:{sha} -->\n"
+        f"Closing: {login} recorded an external review by {reviewer} of `{sha}`.\n\n"
+        f"Evidence: {review.get('html_url', '')}"
+    )
+    return Closure(number, sha, f"external review by {reviewer} from {login}", comment)
+
+
+def render_closures(closures: Sequence[Closure]) -> str:
+    lines = ["", "Gap issues to close:"]
+    lines += [f"- #{closure.number} (`{closure.sha[:9]}`): {closure.summary}" for closure in closures] or ["None."]
+    return "\n".join(lines)
+
+
+def opened_for_missing_signal(issue: dict[str, Any]) -> bool:
+    match = GAP_REASON.search(issue.get("body") or "")
+    return match is not None and match.group(1) == REASON_NO_REVIEW
+
+
+def gap_closures(repo: str, entries: Sequence[Entry]) -> list[Closure]:
+    evaluated = {entry.sha: entry for entry in entries}
+    closures: list[Closure] = []
+    for issue in list_gap_issues(repo):
+        marker = GAP_MARKER.search(issue.get("body") or "")
+        if issue.get("state") != "open" or marker is None:
+            continue
+        sha = marker.group(1)
+        review = attested_review(gh_pages(f"repos/{repo}/issues/{issue['number']}/comments"))
+        if review is not None:
+            closures.append(attested_closure(issue["number"], sha, review))
+        elif opened_for_missing_signal(issue):
+            entry = evaluated.get(sha) or collect_entry(repo, sha)
+            if entry is not None and entry.pull is not None and entry.signals:
+                closures.append(resolved_closure(issue["number"], entry))
+    return closures
+
+
+def close_gap_issues(repo: str, closures: Sequence[Closure]) -> None:
+    for closure in closures:
+        run(
+            [
+                "gh",
+                "issue",
+                "close",
+                str(closure.number),
+                "--repo",
+                repo,
+                "--reason",
+                "completed",
+                "--comment",
+                closure.comment,
+            ]
+        )
 
 
 def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
@@ -598,10 +748,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         entries = collect_entries(args.repo, until, since)
         report = render(entries, since=since, until=until)
         print(report)
+        closures = gap_closures(args.repo, entries)
+        print(render_closures(closures))
         if args.apply:
             opened = open_gap_issues(args.repo, entries)
+            close_gap_issues(args.repo, closures)
             write_checkpoint(args.repo, until, report)
-            print(f"\nOpened {len(opened)} issue(s); checkpoint is {until[:9]}.")
+            print(f"\nOpened {len(opened)} issue(s), closed {len(closures)}; checkpoint is {until[:9]}.")
     except (ReadError, KeyError, TypeError, ValueError) as exc:
         print(f"soundness-merge-digest: {exc!s}; the checkpoint was not advanced", file=sys.stderr)
         return 2

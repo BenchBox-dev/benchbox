@@ -555,7 +555,6 @@ def test_candidate_check_is_required_on_pull_requests_without_changing_legacy_pu
     aggregate = next(step for step in core["steps"] if step.get("id") == "aggregate")
     assert "--always ci-paths" in aggregate["run"]
     assert "origin/release" in (REPO_ROOT / ".github/workflows/release.yml").read_text()
-    assert "Do not tag the merged develop commit" in (REPO_ROOT / "docs/internal/release-guide.md").read_text()
 
 
 def test_make_targets_exist_and_legacy_release_targets_are_kept() -> None:

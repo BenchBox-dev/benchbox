@@ -537,6 +537,10 @@ def _derive_execution_type(phases: list[str]) -> str:
 from benchbox.cli.verbose_logging import setup_verbose_logging as setup_verbose_logging
 
 
+def dry_run_filename_prefix(benchmark: str, platform: str) -> str:
+    return f"{benchmark}_{platform.replace(':', '~')}"
+
+
 def _force_recreate_requested(s: types.SimpleNamespace) -> bool:
     return bool(s.force_regenerate or s.parsed_platform_options.get("force_recreate"))
 
@@ -1247,7 +1251,9 @@ def _run_dry_run(s: types.SimpleNamespace) -> None:
 
     dry_run_executor.display_dry_run_results(dry_run_result)
 
-    filename_prefix = f"{s.benchmark}_{'data-only' if s.execution_mode == 'data_only' else s.platform}"
+    filename_prefix = dry_run_filename_prefix(
+        s.benchmark, "data-only" if s.execution_mode == "data_only" else s.platform
+    )
     saved_files = dry_run_executor.save_dry_run_results(dry_run_result, filename_prefix)
 
     console.print("\n[green]✅ Dry run completed[/green]")
