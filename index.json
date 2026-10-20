@@ -11658,6 +11658,13 @@
       "status": "done",
       "title": "G7b: prove Pages publish on the first post-transfer push to release"
     },
+    "github-run-conclusion-delay-unexplained-20261020": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Explain why the core site-inputs run showed no conclusion for over 100 seconds after its jobs ended"
+    },
     "github-token-approval-capability-followup": {
       "claim": null,
       "needs": [
