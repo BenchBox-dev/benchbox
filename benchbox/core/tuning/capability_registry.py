@@ -456,14 +456,24 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         ),
     },
     "paradedb": {
-        _T.PARTITIONING: _none(
-            "postgresql_ddl_generator:preview_only",
-            "ParadeDBAdapter subclasses PostgreSQLAdapter with no DDL override: identical "
-            "execution gap to postgresql (preview computes PARTITION BY, execution renders nothing).",
+        _T.PARTITIONING: _ddl(
+            "postgresql_partition_by_date_domain",
+            "ParadeDBAdapter inherits PostgreSQLAdapter heap-table partitioning: PARTITION BY (RANGE for "
+            "date columns, HASH for integers, LIST otherwise) plus child partitions at CREATE TABLE time, "
+            "skipped and recorded as dropped while primary or unique keys are requested. The strategy and "
+            "columns are verified from pg_get_partkeydef after schema creation. Benchmark tables are "
+            "ordinary heap tables; pg_search adds BM25 indexes only and is not involved.",
         ),
-        _T.CLUSTERING: _none(
-            "postgresql_ddl_generator:preview_only",
-            "Same inherited execution gap as PARTITIONING.",
+        _T.CLUSTERING: _post_load(
+            "postgresql_index_cluster",
+            "After each heap table loads, CREATE INDEX on the merged clustering and sorting columns, then "
+            "CLUSTER USING that index (autocommit, since CLUSTER cannot run in a transaction block). Index "
+            "columns are verified before CLUSTER commits and indisclustered per partition afterwards.",
+        ),
+        _T.SORTING: _post_load(
+            "postgresql_index_cluster",
+            "Same CREATE INDEX plus CLUSTER as CLUSTERING; sorting columns merge with clustering columns "
+            "into one index ordered by tuning order.",
         ),
         _T.BLOOM_FILTERS: _none("unimplemented", "Compatible per the legacy map; no adapter implementation."),
         _T.MATERIALIZED_VIEWS: _none("unimplemented", "Compatible per the legacy map; no adapter implementation."),

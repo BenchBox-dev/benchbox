@@ -11,7 +11,6 @@ from benchbox.core.tuning.interface import TableTuning, TuningColumn, UnifiedTun
 from benchbox.platforms.base.sql_execution import execute_sql_query
 from benchbox.platforms.cedardb import CedarDBAdapter
 from benchbox.platforms.citus import CitusAdapter
-from benchbox.platforms.paradedb import ParadeDBAdapter
 from benchbox.platforms.pg_mooncake import PgMooncakeAdapter
 from benchbox.platforms.postgresql import PostgreSQLAdapter
 from benchbox.platforms.timescaledb import TimescaleDBAdapter
@@ -39,28 +38,55 @@ def adapter(monkeypatch) -> PostgreSQLAdapter:
 
 
 class _FakeCursor:
-    def __init__(self, executed: list[str], fail_on: str | None = None):
-        self._executed = executed
-        self._fail_on = fail_on
+    def __init__(self, connection: _FakeConnection):
+        self._connection = connection
+        self._rows: list[tuple] = []
 
     def execute(self, statement, *args, **kwargs):
-        if self._fail_on and str(statement).startswith(self._fail_on):
+        text = str(statement)
+        if text.startswith("WITH RECURSIVE"):
+            self._rows = self._connection.catalog_rows(text)
+            return
+        if self._connection.fail_on and text.startswith(self._connection.fail_on):
             raise RuntimeError("cluster failed")
-        self._executed.append(str(statement))
+        self._connection.executed.append(text)
+
+    def fetchall(self):
+        return self._rows
 
     def close(self):
         return None
 
 
 class _FakeConnection:
-    def __init__(self, fail_on: str | None = None):
+    def __init__(
+        self,
+        fail_on: str | None = None,
+        indexed_columns: tuple[str, ...] = ("l_shipdate",),
+        leaves: tuple[int, ...] = (101,),
+        clustered_leaves: tuple[int, ...] | None = None,
+    ):
         self.executed: list[str] = []
         self.commits = 0
         self.rollbacks = 0
-        self._fail_on = fail_on
+        self.autocommit = False
+        self.fail_on = fail_on
+        self._indexed_columns = indexed_columns
+        self._leaves = leaves
+        self._clustered_leaves = leaves if clustered_leaves is None else clustered_leaves
+
+    def catalog_rows(self, query: str) -> list[tuple]:
+        if "relkind = 'r'" in query:
+            return [(leaf,) for leaf in self._leaves]
+        visible = self._clustered_leaves if "i.indisclustered" in query else self._leaves
+        return [
+            (200 + leaf, leaf, position, name)
+            for leaf in visible
+            for position, name in enumerate(self._indexed_columns, start=1)
+        ]
 
     def cursor(self):
-        return _FakeCursor(self.executed, self._fail_on)
+        return _FakeCursor(self)
 
     def commit(self):
         self.commits += 1
@@ -117,7 +143,7 @@ def test_post_load_executes_and_records_the_statements(adapter):
         "CREATE INDEX IF NOT EXISTS idx_lineitem_cluster ON lineitem (L_SHIPDATE)",
         "CLUSTER lineitem USING idx_lineitem_cluster",
     ]
-    assert connection.commits == 1
+    assert connection.commits == 2
     recorded = [(item.statement, item.phase, item.status) for item in adapter._applied_tuning_ledger.statements]
     assert recorded == [
         ("CREATE INDEX IF NOT EXISTS idx_lineitem_cluster ON lineitem (L_SHIPDATE)", PHASE_POST_LOAD, "executed"),
@@ -125,19 +151,51 @@ def test_post_load_executes_and_records_the_statements(adapter):
     ]
 
 
-def test_failed_cluster_is_recorded_as_failed_and_not_applied(adapter):
+def test_failed_cluster_keeps_the_committed_index_and_drops_the_intent(adapter):
     config = _config(clustering=_columns("L_SHIPDATE"))
     connection = _FakeConnection(fail_on="CLUSTER")
 
     adapter.run_post_load_tunings("lineitem", config, connection)
 
-    assert connection.rollbacks == 1 and connection.commits == 0
     ledger = adapter._applied_tuning_ledger
-    assert [item.status for item in ledger.statements] == ["failed", "failed"]
-    assert ledger.executed_statements == []
+    assert [(item.statement.split(" ", 1)[0], item.status) for item in ledger.statements] == [
+        ("CREATE", "executed"),
+        ("CLUSTER", "failed"),
+    ]
+    assert connection.autocommit is False
     assert adapter._post_load_maintenance_errors == 1
-    adapter._reconcile_requested_tuning(config)
-    assert ledger.overall_status(tuning_enabled=True, has_config=True) == "failed"
+    assert [item.intent for item in ledger.dropped] == ["clustering:LINEITEM (L_SHIPDATE)"]
+    assert ledger.satisfied == []
+
+
+def test_index_columns_that_differ_from_the_request_block_cluster(adapter):
+    config = _config(clustering=_columns("L_SHIPDATE"))
+    connection = _FakeConnection(indexed_columns=("l_orderkey",))
+
+    adapter.run_post_load_tunings("lineitem", config, connection)
+
+    ledger = adapter._applied_tuning_ledger
+    assert connection.rollbacks == 1
+    assert all(item.status == "failed" for item in ledger.statements)
+    assert not any(item.statement.startswith("CLUSTER") and item.status == "executed" for item in ledger.statements)
+
+
+@pytest.mark.parametrize(
+    "leaves, clustered_leaves",
+    [((101,), ()), ((101, 102), (101,))],
+    ids=["nothing-clustered", "one-partition-missed"],
+)
+def test_unverified_cluster_keeps_the_durable_statements_and_drops_the_intent(adapter, leaves, clustered_leaves):
+    config = _config(clustering=_columns("L_SHIPDATE"))
+    connection = _FakeConnection(leaves=leaves, clustered_leaves=clustered_leaves)
+
+    adapter.run_post_load_tunings("lineitem", config, connection)
+
+    ledger = adapter._applied_tuning_ledger
+    assert [item.status for item in ledger.statements] == ["executed", "executed"]
+    assert ledger.satisfied == []
+    assert [item.intent for item in ledger.dropped] == ["clustering:LINEITEM (L_SHIPDATE)"]
+    assert connection.rollbacks == 1
 
 
 def test_recorded_index_satisfies_reconciliation(adapter):
@@ -158,7 +216,7 @@ def test_clustered_sort_skips_the_sorted_ingestion_drop(adapter):
 
 @pytest.mark.parametrize(
     "adapter_class",
-    [CedarDBAdapter, CitusAdapter, ParadeDBAdapter, PgMooncakeAdapter, TimescaleDBAdapter],
+    [CedarDBAdapter, CitusAdapter, PgMooncakeAdapter, TimescaleDBAdapter],
 )
 def test_family_variants_do_not_cluster(adapter_class):
     tuning = _config(clustering=_columns("L_SHIPDATE")).table_tunings["LINEITEM"]

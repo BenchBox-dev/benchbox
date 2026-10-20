@@ -12,7 +12,6 @@ from benchbox.core.tuning.interface import TableTuning, TuningColumn, UnifiedTun
 from benchbox.platforms.base.sql_execution import execute_sql_query
 from benchbox.platforms.cedardb import CedarDBAdapter
 from benchbox.platforms.citus import CitusAdapter
-from benchbox.platforms.paradedb import ParadeDBAdapter
 from benchbox.platforms.pg_mooncake import PgMooncakeAdapter
 from benchbox.platforms.postgresql import PARTITIONING_WITH_KEYS_REASON, PostgreSQLAdapter
 from benchbox.platforms.timescaledb import TimescaleDBAdapter
@@ -119,9 +118,17 @@ def test_untuned_and_unpartitioned_tables_are_unchanged(adapter):
 class _FakeCursor:
     def __init__(self, executed: list[str]):
         self._executed = executed
+        self._rows: list[tuple] = []
 
     def execute(self, statement, *args, **kwargs):
-        self._executed.append(str(statement))
+        text = str(statement)
+        if "pg_get_partkeydef" in text:
+            self._rows = [("RANGE (l_shipdate)",)]
+            return
+        self._executed.append(text)
+
+    def fetchall(self):
+        return self._rows
 
     def close(self):
         return None
@@ -153,11 +160,23 @@ def test_create_schema_executes_and_records_the_partitioned_table(adapter, monke
     assert connection.executed[-1] == "CREATE TABLE lineitem_default PARTITION OF lineitem DEFAULT;"
     adapter._reconcile_requested_tuning(adapter.unified_tuning_configuration)
     assert adapter._applied_tuning_ledger.dropped == []
+    assert [item.intent for item in adapter._applied_tuning_ledger.satisfied] == ["partitioning:LINEITEM (L_SHIPDATE)"]
+
+
+def test_adapters_that_do_not_partition_never_query_the_partition_catalog(adapter, monkeypatch):
+    adapter.unified_tuning_configuration = _config()
+    monkeypatch.setattr(adapter, "execution_partitioning_supported", False)
+    connection = Mock()
+
+    adapter._verify_partitioning_catalog(connection)
+
+    connection.cursor.assert_not_called()
+    assert adapter._applied_tuning_ledger.dropped == []
 
 
 @pytest.mark.parametrize(
     "adapter_class",
-    [CedarDBAdapter, CitusAdapter, ParadeDBAdapter, PgMooncakeAdapter, TimescaleDBAdapter],
+    [CedarDBAdapter, CitusAdapter, PgMooncakeAdapter, TimescaleDBAdapter],
 )
 def test_family_variants_do_not_partition(adapter_class):
     assert adapter_class.execution_partitioning_supported is False
