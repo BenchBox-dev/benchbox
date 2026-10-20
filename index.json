@@ -8256,10 +8256,10 @@
     },
     "dlv2-51-release-yml-v2": {
       "claim": {
-        "expires_at": "2026-10-21T12:15:52Z",
-        "generation": "0eff949e581a409bab67dd407ed764bc",
-        "renewals": 1,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02ecc32be2127e4ca837bb5b"
+        "expires_at": "2026-10-21T15:39:04Z",
+        "generation": "77057a96d5d84855b31f9642b43f0fb5",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c9d0d8b2d49f16fd4a8ae851"
       },
       "needs": [
         "dlv2-50-release-prep-targets"

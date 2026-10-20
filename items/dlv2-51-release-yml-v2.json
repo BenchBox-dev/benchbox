@@ -148,6 +148,17 @@
       "op": "update",
       "op_id": "f9db8783a17140d4a202fcb1822aaad9",
       "session_id": "71c5e2f8e01b45ee9135c39878be87c3"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c9d0d8b2d49f16fd4a8ae851",
+      "at": "2026-10-20T15:39:04Z",
+      "client": "omp-coding-agent",
+      "displaced": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02ecc32be2127e4ca837bb5b",
+      "generation": "77057a96d5d84855b31f9642b43f0fb5",
+      "op": "takeover",
+      "op_id": "f1aba230186f48d69a9533e06e1c34e2",
+      "reason": "This is the same working session continued after an MCP server restart; the holder identity was replaced by mcp:omp-coding-agent:...:c9d0d8b2d49f16fd4a8ae851 (last update 2026-10-20T13:25Z), so the old identity can no longer renew or finish. PR #3172 for this item has merged.",
+      "session_id": "71c5e2f8e01b45ee9135c39878be87c3"
     }
   ]
 }
