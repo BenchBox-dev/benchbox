@@ -22992,7 +22992,7 @@
     "sqlglot-freshness-gate-blocks-all-prs-v30-24-0": {
       "claim": null,
       "needs": [],
-      "priority": "critical",
+      "priority": "high",
       "status": "open",
       "title": "SQLGlot v30.24.0 release makes the freshness gate fail ci-paths for every PR"
     },
