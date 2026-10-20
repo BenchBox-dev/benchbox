@@ -22697,6 +22697,15 @@
       "status": "open",
       "title": "Fork: DuckDB generator keeps bare ALL in GROUP BY / ORDER BY under identify=True"
     },
+    "sqlglot-fork-f5-adapter-rewrites-api": {
+      "claim": null,
+      "needs": [
+        "sqlglot-fork-f0-base-and-manifest"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Fork: safe_division option, output-alias dedupe, unqualified-table API and Databricks PK NULLS handling"
+    },
     "sqlglot-mysql-retirement-needs-execution-evidence": {
       "claim": null,
       "needs": [],
