@@ -2,8 +2,9 @@
   "acceptance": [
     "Fork generator produces the SQL the BenchBox helpers produce for DATE +/- INTERVAL, EXTRACT, DATE_TRUNC and month intervals, proven by tests that execute the SQL on sqlite3 and compare values and types.",
     "The generic BETWEEN fold has execution tests and does not reference TPC-H names.",
+    "The change edits upstream-owned generators, so it is recorded as carried patches (extending the sqlite-date-* patches) with fix: retain commits and patches.json entries.",
     "Output differences versus the BenchBox helpers over the existing tests/unit/utils/test_dialect_utils.py inputs are listed in the PR.",
-    "Fork make check, make benchbox-dist and make benchbox-check pass; PR merged; patches.json updated."
+    "Fork make check, make benchbox-dist and make benchbox-check pass; PR merged."
   ],
   "description": "BenchBox _fix_sqlite_unsupported_syntax (regex) and _fold_sqlite_discount_bounds still run after translation; the runtime baseline lists sqlite-unknown-extract and sqlite-month-interval as retain. Move the behavior into the fork's SQLite generator as extensions of the carried sqlite-date-* patches, and expose the BETWEEN literal-arithmetic fold as a generic fork rewrite (BenchBox keeps the lineitem gate as an argument).",
   "links": [
@@ -18,6 +19,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "a9bea7233b8048d88953dc2755ff02de",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T16:01:35Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "13f6f17ae9ff4c5882255b659d3c6b46",
       "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
     }
   ]
