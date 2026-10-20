@@ -371,6 +371,25 @@ def normalize_dialect_for_sqlglot(dialect: str) -> str:
     return dialect_mapping.get(dialect_lower, dialect_lower)
 
 
+def split_sql_statements(sql: str, source_dialect: str) -> list[str]:
+    try:
+        from benchbox._vendor import sqlglot
+
+        tokens = sqlglot.Dialect.get_or_raise(normalize_dialect_for_sqlglot(source_dialect)).tokenize(sql)
+    except Exception:
+        return [sql]
+
+    statements: list[str] = []
+    statement_start = 0
+    for token in tokens:
+        if token.token_type == sqlglot.TokenType.SEMICOLON:
+            statements.append(sql[statement_start : token.start])
+            statement_start = token.end + 1
+    statements.append(sql[statement_start:])
+    non_empty = [statement.strip() for statement in statements if statement.strip()]
+    return non_empty or [sql]
+
+
 def translate_sql_query(
     query: str,
     target_dialect: str,
