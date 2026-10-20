@@ -111,7 +111,11 @@ from a checkout that no other principal can write.
 Limits inside that boundary:
 
 - The hosted tag is read once, at the fetch. A move during admission is not
-  detected; the tag ruleset is what forbids moves.
+  detected by admission itself; the publishing workflow re-checks the hosted
+  tag object and peeled commit after approval, and the tag ruleset forbids
+  moves by other collaborators. The ruleset bypass actor is the same account
+  the agent runs as, so the workflow re-check is the control that binds that
+  account.
 - `release_flow.py` and `benchbox/utils/clock.py` are loaded into the
   credential-bearing process from the consumer's own directory, so they are
   trusted exactly as the consumer script is.
@@ -129,8 +133,9 @@ Limits inside that boundary:
 An admitted directory crosses a job boundary, an artifact upload and download,
 before a publisher uses it. `scripts/release_admitted_dist.py` runs in the job
 that publishes and confirms the directory is still the admitted one. It is
-offline: it builds, downloads, and publishes nothing, and no workflow calls it
-yet.
+offline: it builds, downloads, and publishes nothing.
+`.github/workflows/release-v2.yml` calls it in its install, UAT, publish, and
+GitHub-release jobs.
 
 The tag and commit come from the publishing run (`github.ref_name` and
 `github.sha`), never from the directory. The directory must match its admission
@@ -157,5 +162,48 @@ release-blocking `t3:*` issue. Linux correctness evidence remains separate from
 the deferred Darwin digest certification.
 
 TestPyPI rehearsals must exercise refusal paths and verify installed hashes.
-Production PyPI retains owner approval. The existing `release.yml` remains
-operational until its approved replacement is accepted.
+Production PyPI retains owner approval. The legacy `release.yml` stays
+available through `workflow_dispatch` only, so a `v*` tag push never starts
+two publishers.
+
+## Publishing workflow
+
+`.github/workflows/release-v2.yml` starts on a `v*` tag push, or by hand with a
+`tag` input to re-run a tag whose first run failed before publishing. Tags are
+PEP 440 with a `v` prefix. Pre-release tags (`v0.5.0rc1`) publish to TestPyPI
+only; final tags (`v0.5.0`) publish to PyPI. Tags must be annotated
+(`git tag -a`); the admission consumer refuses lightweight tags. The workflow
+never rebuilds artifacts, never falls back to an older trunk run, and must not
+be run after a trunk rerun on the tagged commit, because a rerun changes the
+admitted hashes.
+
+Gates, in order:
+
+1. `admit` runs `make release-check`, the ruleset drift check without the
+   readiness override variables, the `release-blocking` issue check
+   (`scripts/release_blocker_check.py`; it passes when no maintainer has applied
+   that label), then `scripts/release_artifact_consumer.py admit`. Admission
+   also checks the `benchbox/_binaries` tree committed at the tag against the
+   distributions.
+2. The install matrix installs the staged wheel on Python 3.11 to 3.14 across
+   Linux, macOS, and Windows.
+3. Release UAT runs the `release-gate-*.yaml` configs against the staged wheel
+   with the checkout package hidden, then runs `make uat-gate-check` with the
+   digest of the staged distributions. The gate is red when any stage skipped a
+   cell the config does not prune by design, lost cells to early-stop pruning,
+   could not reach or start a required platform, attempted no cells, or recorded
+   another digest.
+4. The publish job waits for environment approval, re-checks the hosted tag
+   object and peeled commit against the admission receipt
+   (`scripts/release_tag_recheck.py`), stages only the verified files, attests
+   their hashes, and publishes them to `test-pypi` or `pypi`.
+
+Verify a published release with `gh attestation verify <file> --repo
+BenchBox-dev/BenchBox --signer-workflow
+BenchBox-dev/BenchBox/.github/workflows/release-v2.yml`.
+
+PyPI and TestPyPI trusted publishers are bound to the workflow file name, so
+the owner must register `release-v2.yml` publishers before the first
+rehearsal. Recovery from an expired or superseded artifact is a fresh
+qualifying trunk artifact plus full downstream revalidation, never an
+older-success fallback.

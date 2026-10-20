@@ -1559,7 +1559,8 @@ uat-gate-check:
 		--stage1 "$(STAGE1)" \
 		--stage2 "$(STAGE2)" \
 		--stage3 "$(STAGE3)" \
-		$(if $(OUTPUT),--output "$(OUTPUT)",)
+		$(if $(OUTPUT),--output "$(OUTPUT)",) \
+		$(if $(DIST_DIGEST),--expected-distribution-digest "$(DIST_DIGEST)",)
 
 .PHONY: uat-execute
 uat-execute:

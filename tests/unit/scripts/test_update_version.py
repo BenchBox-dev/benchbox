@@ -85,3 +85,12 @@ def test_update_version_in_pyproject_reports_missing_project_table(tmp_path, mon
     assert update_version.get_current_version_from_pyproject() is None
     assert not update_version.update_version_in_pyproject("0.4.1")
     assert pyproject.read_text(encoding="utf-8") == original
+
+
+@pytest.mark.parametrize("marker", ["`", ""])
+@pytest.mark.parametrize("version", ["0.5.0rc1", "0.5.0b2", "0.5.0"])
+def test_doc_release_marker_reads_the_whole_version(marker, version):
+    match = update_version.DOC_RELEASE_PATTERN.search(f"Current release: {marker}v{version}{marker}.")
+
+    assert match is not None
+    assert match.group("version") == version
