@@ -23019,18 +23019,13 @@
       "title": "Fork: safe_division option, output-alias dedupe, unqualified-table API and Databricks PK NULLS handling"
     },
     "sqlglot-fork-f6-tpcdi-clickbench-generators": {
-      "claim": {
-        "expires_at": "2026-10-21T22:42:38Z",
-        "generation": "04f1dfbb75264e8fa1ac7cc75272638c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d"
-      },
+      "claim": null,
       "needs": [
         "sqlglot-fork-f0-base-and-manifest",
         "sqlglot-fork-f0b-real-engine-ci"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Fork: TPC-DI SQLite idioms and ClickBench regex escaping as generator behavior"
     },
     "sqlglot-fork-f7-ddl-core": {
