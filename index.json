@@ -22670,6 +22670,15 @@
       "status": "open",
       "title": "Fork: reconcile pinned base with main and record fork-original work in patches.json"
     },
+    "sqlglot-fork-f1-platform-dialects": {
+      "claim": null,
+      "needs": [
+        "sqlglot-fork-f0-base-and-manifest"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Fork: explicit dialects for Netezza, Greenplum, Vertica, DataFusion and QuestDB, plus PLATFORM_DIALECTS"
+    },
     "sqlglot-mysql-retirement-needs-execution-evidence": {
       "claim": null,
       "needs": [],
