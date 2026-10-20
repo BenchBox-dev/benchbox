@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "medium-collect job time reduced by at least 60 s at the median over 10 PR runs",
+    "Collection evidence and the shard coverage check are unchanged: the collected node ids are identical to the single-process collection",
+    "Approach reuses or shares the unit job's pre-build step rather than adding a second implementation"
+  ],
+  "context": "Investigated at the user's request. The cold/warm numbers are from a local macOS run; the CI step medians are from GitHub job timings. Not yet verified that the pre-build step reproduces the saving on CI runners. Shards also start cold and may share the same cost; not measured.",
+  "description": "medium-collect (ci.yml) is on the critical path: every medium shard needs it. Over the 18 most recent completed PR runs its job time was 119-183 s (median 154 s), of which the 'Collect the complete medium tier' step was a median 108 s (max 131 s), checkout 15 s (fetch-depth 0), dependency install 21 s. Locally the same command (pytest --collect-only -q -n 0 -m <medium expression>, 46,519 tests collected, 31,752 deselected, 14,767 kept) took 13.4 s with a warm __pycache__ and 49.9 s after deleting tests/**/__pycache__, so the cost is mostly compiling and assertion-rewriting the test modules on a fresh checkout, not the marker selection. The unit job already avoids this with a 'Pre-build the assertion-rewrite cache' step that collects the test files in nproc parallel chunks (ci.yml around line 817); medium-collect has no such step and collects single-process (-n 0). Directory-level timings with a warm cache: tests/unit 13 s (12,192 medium), tests/integration 4 s (1,181), everything else under 3 s combined.",
+  "links": [
+    "ci-rebalance-medium-shards"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:afd83494ecacfcdab965057e",
+      "at": "2026-10-20T16:51:29Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "cefa359c20da4d289ae077936c3fb391",
+      "session_id": "8202d1c5316f41c897a0af067e2c8e9e"
+    }
+  ]
+}
