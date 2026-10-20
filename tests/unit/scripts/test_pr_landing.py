@@ -3,6 +3,9 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import os
+import shlex
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -1460,39 +1463,119 @@ def test_arm_current_pr_rejects_dirty_checkout_before_hosted_lookup(tmp_path: Pa
     assert run.calls == []
 
 
-def test_make_entrypoints_forward_explicit_landing_bindings() -> None:
+def _dry_run(*arguments: str) -> list[str]:
+    result = subprocess.run(["make", "-n", *arguments], cwd=ROOT, capture_output=True, text=True, check=True)
+    return shlex.split(result.stdout.replace("\\\n", " "))
+
+
+def _adjacent(tokens: list[str]) -> set[tuple[str, str]]:
+    return set(zip(tokens, tokens[1:], strict=False))
+
+
+@pytest.mark.skipif(shutil.which("make") is None, reason="needs GNU Make")
+@pytest.mark.parametrize("target", ["pr-landing-start", "pr-landing-withdraw", "pr-landing-ready"])
+def test_landing_targets_pass_the_repository_worktree_and_branch(target: str) -> None:
+    tokens = _dry_run(target, "REPO=o/r", "BRANCH=feat/x", "PR=3", "HEAD=abc", "EVIDENCE=e.json")
+
+    assert "scripts/pr_landing.py" in tokens
+    assert {("--repo", "o/r"), ("--worktree", "."), ("--branch", "feat/x")} <= _adjacent(tokens)
+
+
+@pytest.mark.skipif(shutil.which("make") is None, reason="needs GNU Make")
+def test_pr_ready_with_evidence_runs_the_readiness_transaction_and_arms_the_exact_head() -> None:
+    tokens = _dry_run("pr-ready", "REPO=o/r", "BRANCH=feat/x", "PR=3", "HEAD=abc", "EVIDENCE=e.json")
+
+    assert "pr-arm-auto-merge" in tokens
+    assert {("--expected-head", "abc"), ("--evidence-json", "e.json")} <= _adjacent(tokens)
+    assert "--arm" in tokens
+
+
+@pytest.mark.skipif(shutil.which("make") is None, reason="needs GNU Make")
+def test_pr_ready_without_evidence_arms_through_pr_arm_and_never_calls_gh_merge() -> None:
+    tokens = _dry_run("pr-ready", "REPO=o/r", "PR=3", "HEAD=abc")
+
+    assert "pr-arm" in tokens and "PR=3" in tokens and "HEAD=abc" in tokens
+    assert not {"merge", "--auto"} <= set(tokens)
+
+
+_RECORDER = """#!{python}
+import json, os, sys
+with open(os.environ["CALLS"], "a", encoding="utf-8") as handle:
+    handle.write(json.dumps([os.path.basename(sys.argv[0]), sys.argv[1:]]) + "\\n")
+if "scripts/pr_open_rest.py" in sys.argv:
+    print(os.environ["PUBLISH"], 7, "https://github.com/BenchBox-dev/BenchBox/pull/7")
+"""
+_GIT = """#!/bin/sh
+case "$1 $2" in
+  "branch --show-current") echo feat/x ;;
+  "remote get-url") echo git@github.com:BenchBox-dev/BenchBox.git ;;
+  "rev-parse HEAD") echo 1111111111111111111111111111111111111111 ;;
+esac
+exit 0
+"""
+
+
+def _run_pr_open(tmp_path: Path, publish: str, *variables: str) -> list[list[object]]:
+    stubs = tmp_path / "bin"
+    work = tmp_path / "work"
+    stubs.mkdir(parents=True)
+    work.mkdir(parents=True)
+    for name, body in (
+        ("git", _GIT),
+        ("uv", _RECORDER.format(python=sys.executable)),
+        ("fake-make", _RECORDER.format(python=sys.executable)),
+    ):
+        (stubs / name).write_text(body, encoding="utf-8")
+        (stubs / name).chmod(0o755)
     makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
-    for target in ("pr-landing-start", "pr-landing-withdraw", "pr-landing-ready"):
-        body = makefile.split(f"{target}:", 1)[1].split("\n\n", 1)[0]
-        assert "--repo" in body and "--worktree ." in body and "--branch" in body
-    arm = makefile.split("pr-arm-auto-merge:", 1)[1].split("\n\n", 1)[0]
-    ready = makefile.split("pr-ready:", 1)[1].split("\n\n", 1)[0]
-    assert "pr-landing-ready" in arm and "--repo" in arm and "--worktree ." in makefile
-    assert "PR_NUMBER" in arm and "gh pr view --repo" in arm and 'PR="$$PR_NUMBER"' in arm
-    assert "EVIDENCE is required" in arm and "ARM=1" in arm
-    assert "URL" in arm and '"$(URL)"' in arm
-    assert "pr-arm-auto-merge" in ready
-    open_body = makefile.split("pr-open:", 1)[1].split("\n\n", 1)[0]
-    assert "scripts/pr_open_rest.py --repo" in open_body and '--title "$$PR_OPEN_TITLE"' in open_body
-    assert "git remote get-url --push origin" in open_body
-    assert "HEAD_SPEC" in open_body and '--head-spec "$$HEAD_SPEC"' in open_body
-    assert "Next: make pr-arm once the review fixes are pushed" in open_body
-    assert "withheld" not in open_body and "held" not in open_body
+    start = makefile.index(".PHONY: pr-open\n")
+    (work / "Makefile").write_text(makefile[start : makefile.index("\n\n", start)] + "\n", encoding="utf-8")
+    calls = tmp_path / "calls.jsonl"
+    env = {**os.environ, "PATH": f"{stubs}{os.pathsep}{os.environ['PATH']}", "CALLS": str(calls), "PUBLISH": publish}
+    subprocess.run(
+        ["make", "-s", "pr-open", f"MAKE={stubs / 'fake-make'}", *variables],
+        cwd=work,
+        env=env,
+        check=True,
+        capture_output=True,
+    )
+    return [json.loads(line) for line in calls.read_text(encoding="utf-8").splitlines()]
 
-    evidence_route = open_body.index('elif [ -n "$(EVIDENCE)$(BATCH)" ]')
-    plain_route = open_body.index('pr-arm PR="$$PR_NUMBER"', evidence_route)
-    assert 'pr-arm PR="$$PR_NUMBER" REPO="$$REPOSITORY" HEAD="$$(git rev-parse HEAD)"' in open_body[plain_route:]
 
-    evidence_branch = open_body[evidence_route:plain_route]
-    assert 'pr-ready REPO="$$REPOSITORY" URL="$$URL" HEAD="$$(git rev-parse HEAD)"' in evidence_branch
-    assert 'EVIDENCE="$(EVIDENCE)" BATCH="$(BATCH)"' in evidence_branch
-    assert "pr-arm" not in evidence_branch.split("else", 1)[1].split("fi", 1)[0]
-    executable = "\n".join(line for line in makefile.splitlines() if not line.lstrip().startswith(("#", "@#")))
-    assert "gh pr merge --auto --squash" not in executable
-    for target in ("pr-landing-ready", "pr-open", "pr-arm-auto-merge"):
-        body = makefile.split(f"{target}:", 1)[1].split("\n\n", 1)[0]
-        assert "\\\n\t@[" not in body
-        assert "set -euo pipefail" not in body
+def _makes(calls: list[list[object]]) -> list[list[str]]:
+    return [list(map(str, args)) for name, args in calls if name == "fake-make"]
+
+
+@pytest.mark.skipif(shutil.which("make") is None, reason="needs GNU Make")
+def test_pr_open_hands_the_title_and_head_to_the_publisher_and_does_not_arm_by_default(tmp_path: Path) -> None:
+    title = """fix: it's "quoted" $HOME $(touch sentinel) `touch sentinel2`"""
+    calls = _run_pr_open(tmp_path, "created", f"TITLE={title}")
+
+    (publisher,) = [args for name, args in calls if name == "uv" and "scripts/pr_open_rest.py" in args]
+    assert {("--title", title), ("--head-spec", "feat/x"), ("--branch", "feat/x")} <= _adjacent(publisher)
+    assert not [m for m in _makes(calls) if "pr-arm" in m or "pr-ready" in m]
+    assert not (tmp_path / "work" / "sentinel").exists() and not (tmp_path / "work" / "sentinel2").exists()
+
+
+@pytest.mark.skipif(shutil.which("make") is None, reason="needs GNU Make")
+@pytest.mark.parametrize("publish", ["created", "reused"])
+def test_pr_open_ready_arms_the_pushed_head_through_pr_arm(tmp_path: Path, publish: str) -> None:
+    makes = _makes(_run_pr_open(tmp_path, publish, "READY=1"))
+
+    (arm,) = [m for m in makes if "pr-arm" in m]
+    assert {"PR=7", "HEAD=1111111111111111111111111111111111111111"} <= set(arm)
+    assert not [m for m in makes if "pr-ready" in m]
+
+
+@pytest.mark.skipif(shutil.which("make") is None, reason="needs GNU Make")
+def test_pr_open_with_evidence_arms_only_a_reused_pr(tmp_path: Path) -> None:
+    reused = _makes(_run_pr_open(tmp_path / "reused", "reused", "READY=1", "EVIDENCE=e.json"))
+    (ready,) = [m for m in reused if "pr-ready" in m]
+    assert {"EVIDENCE=e.json", "URL=https://github.com/BenchBox-dev/BenchBox/pull/7"} <= set(ready)
+    assert not [m for m in reused if "pr-arm" in m]
+
+    created = _makes(_run_pr_open(tmp_path / "created", "created", "READY=1", "EVIDENCE=e.json"))
+    assert not [m for m in created if "pr-arm" in m or "pr-ready" in m]
 
 
 def test_makefile_has_separate_bounded_all_open_status_view() -> None:
