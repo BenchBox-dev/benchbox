@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "The soundness path list includes the translation wrapper and its routing callers; tests/unit/scripts/test_soundness_paths.py pins each added path.",
+    "A PR touching any of them runs the medium tier and the oracle review (shown by a test or a dry-run of the path classifier).",
+    "The list change is merged with a current-head oracle success review."
+  ],
+  "description": "PR 3185 changed benchbox/base.py and benchbox/utils/dialect_utils.py and its description said ClickBench results change, but .github/soundness-paths.txt lists neither file, so the PR's CI skipped the medium tier and oracle-review skipped its review. The break (tests/test_benchbox.py::test_translate_query, shard 1 of the medium tier) first appeared in the post-merge Trunk run 14 minutes later. Files whose output feeds published results must count as soundness paths: at least benchbox/utils/dialect_utils.py, benchbox/base.py, benchbox/platforms/base/dialect_translation.py and the vendored runtime consumers that translate SQL. Changing the list is itself a soundness-path change and needs oracle review.",
+  "links": [
+    ".github/soundness-paths.txt",
+    "_project/scripts/soundness_paths.py",
+    "https://github.com/BenchBox-dev/benchbox/pull/3185"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T20:55:24Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "7b7a9360a93d42b29eec634a8ebdd1f4",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}

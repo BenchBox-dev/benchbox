@@ -22345,6 +22345,13 @@
       "status": "dropped",
       "title": "SOUNDNESS_PREFIXES exact-file entries match by prefix, so .bak siblings are gated"
     },
+    "soundness-paths-cover-translation-wrapper": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Add the SQL translation wrapper paths to the soundness path list"
+    },
     "soundness-pr-drain-signal": {
       "claim": null,
       "needs": [],
