@@ -389,6 +389,22 @@ def test_validator_runs_without_the_benchbox_package_until_an_identity_is_needed
     assert "tpch SF=1.0: 0 identities ([]) [UNRANKED" in capsys.readouterr().out
 
 
+def test_validator_fails_closed_when_the_identity_module_is_not_mirrored(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _write_bundle(tmp_path, "rankable.json", benchmark="tpch", scale=1.0, platform="DuckDB")
+    for name in [name for name in sys.modules if name == "benchbox" or name.startswith("benchbox.")]:
+        monkeypatch.setitem(sys.modules, name, None)
+    monkeypatch.setitem(sys.modules, "benchbox.core.results.execution_variant", None)
+
+    validator = _load_validator()
+
+    assert validator.main(tmp_path) == 1
+    output = capsys.readouterr().out
+    assert "needs the full benchbox package" in output
+    assert "Cohorts:" not in output
+
+
 _FULL_QUERY_COUNTS = {"tpch": 22, "tpcds": 99}
 
 

@@ -292,6 +292,38 @@ def test_drift_check_ignores_derived_inventory_difference() -> None:
     assert "results-data/corpus-inventory.json" not in path_specs
 
 
+def _drift_check_pathspecs() -> list[str]:
+    workflow = yaml.safe_load(DRIFT_WORKFLOW_PATH.read_text(encoding="utf-8"))
+    compare = next(
+        step
+        for step in workflow["jobs"]["corpus-drift"]["steps"]
+        if step.get("name") == "Compare the mirrored corpus paths (directional)"
+    )
+    return shlex.split(compare["run"].split("PATHSPECS=(", 1)[1].split(")", 1)[0])
+
+
+def test_drift_check_pathspec_matches_sync_list_except_derived_inventory() -> None:
+    _, compare_paths, copy_paths = _mirrored_runtime_paths()
+    drift_paths = _drift_check_pathspecs()
+
+    assert sorted(drift_paths) == sorted(set(drift_paths))
+    assert sorted(drift_paths) == sorted(set(compare_paths) - {"results-data/corpus-inventory.json"})
+    assert sorted(drift_paths) == sorted([BUNDLES_DIR, *copy_paths])
+    assert not [path for path in drift_paths if "*" in path]
+
+
+def test_mirror_allowlist_excludes_modules_the_variant_identity_import_needs() -> None:
+    triggers, compare_paths, copy_paths = _mirrored_runtime_paths()
+    unmirrored = {
+        "benchbox/core/results/execution_variant.py",
+        "benchbox/core/execution_variant.py",
+        "benchbox/core/platform_manifest.py",
+    }
+
+    for paths in (triggers, compare_paths, copy_paths, _drift_check_pathspecs()):
+        assert not unmirrored & set(paths)
+
+
 VALIDATOR_ROOTS = ("results-data/validate_corpus.py", "scripts/validate_submission.py")
 
 

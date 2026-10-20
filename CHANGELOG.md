@@ -174,6 +174,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   results pass the public privacy validation. ClickBench translation raises an
   error instead of returning untranslated ClickHouse SQL.
 
+- The nightly corpus drift check now compares every file the results mirror
+  copies (validator, shared policy modules and publication scripts), not only
+  the corpus documents, and a test fails if its pathspec diverges from the
+  mirror workflow's file list. `results-data/validate_corpus.py` now stops with
+  an explicit message when the execution-variant identity module is absent
+  (as on `published-results`) instead of a bare import error.
+
 ### Documentation
 
 - **Tuning platform support.** A new reference page lists, for every platform,
