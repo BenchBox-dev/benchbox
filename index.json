@@ -2100,15 +2100,10 @@
       "title": "Blog - Evaluate Databricks APPLY CHANGES INTO vs Standard SQL MERGE for SCD Type 2"
     },
     "blog-frontmatter-structure-check": {
-      "claim": {
-        "expires_at": "2026-10-21T13:03:53Z",
-        "generation": "28a02d4605a94a87a57f54ad6e26895c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6d5eb9aefd704c065efcdb3f"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Validate blog filename/date agreement, required fields, and toctree coverage"
     },
     "blog-preview-artifact-scoping": {
