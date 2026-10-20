@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "The changed-file selection also picks tests that import or patch a changed module (static import and mock.patch target scan), shown by a test that selects test_benchbox.py when benchbox/base.py changes.",
+    "A documented bound states what the selection still cannot see and which tier covers it.",
+    "make pr-preflight uses the improved selection; CI parity tests and make pr-preflight pass."
+  ],
+  "description": "The PR test step maps changed source files to tests by file name (benchbox/base.py to test_base.py), so PR 3185 never ran tests/test_benchbox.py, which mocks translate_query internals. The failing test only ran in the post-merge Trunk medium tier. A mapping by name misses tests that import or patch the changed module under another name.",
+  "links": [
+    "scripts/pr_preflight.py",
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/39487739590"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T20:55:27Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1c7da85118874a799da9d08ad684e7e7",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}

@@ -16577,6 +16577,13 @@
       "status": "open",
       "title": "make pr-arm reads stale remote head right after push and refuses"
     },
+    "pr-changed-tests-miss-name-mismatched-tests": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Changed-file test selection misses tests whose file name does not match the source"
+    },
     "pr-edit-cancels-ci-and-leaves-red-rows-20261017": {
       "claim": null,
       "needs": [],
