@@ -222,12 +222,7 @@ def render_review(
         "files_block": files_block,
         "diff_path": diff_path,
     }
-    if diff_text is not None:
-        try:
-            return _fitting(template_name, assemble_values(**{**base, "diff_text": diff_text}), max_bytes)
-        except OversizeError:
-            pass
-    return _fitting(template_name, assemble_values(**{**base, "diff_text": None}), max_bytes)
+    return _fitting(template_name, assemble_values(**{**base, "diff_text": diff_text}), max_bytes)
 
 
 def _fitting(template_name: str, values: Mapping[str, object], max_bytes: int) -> str:

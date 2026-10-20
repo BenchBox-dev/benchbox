@@ -5,7 +5,13 @@ import re
 import pytest
 
 from _project.scripts.oracle_reviewers.classify import Classification, FileRow
-from _project.scripts.oracle_reviewers.render import SLOT_MAX_BYTES, render, render_file_priority, render_review
+from _project.scripts.oracle_reviewers.render import (
+    SLOT_MAX_BYTES,
+    OversizeError,
+    render,
+    render_file_priority,
+    render_review,
+)
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -148,9 +154,9 @@ def test_gate_paths_never_appear_outside_the_fences() -> None:
     assert "1 review-machinery file(s) changed" in before_fences
 
 
-def test_an_inline_diff_over_its_slot_cap_falls_back_to_the_file_list() -> None:
-    text = _review(_classification(()), "+" * (SLOT_MAX_BYTES["change_data"] + 1))
-    assert "+" * 1000 not in text
+def test_an_inline_diff_over_its_slot_cap_is_refused() -> None:
+    with pytest.raises(OversizeError):
+        _review(_classification(()), "+" * (SLOT_MAX_BYTES["change_data"] + 1))
 
 
 def test_file_priority_is_cut_to_fit_its_slot() -> None:

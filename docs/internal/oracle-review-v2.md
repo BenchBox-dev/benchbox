@@ -85,7 +85,9 @@ Without the App secrets, the `post` job logs the result and succeeds.
 2. `select-1` asks Jev, through a direct call to TypeSafe's
    `/v1/systemone` API, for the change's size bucket, review capability,
    review template and per-file priority. The bucket names one reviewer in
-   `.github/oracle-reviewers.yml`. Later slots reuse that classification.
+   `.github/oracle-reviewers.yml`. A change to review machinery always gets
+   the `gate` template and at least the `large` bucket. Later slots reuse
+   that classification.
    Selection skips disabled reviewers, quota-exhausted pools and, when the
    diff exceeds the brief cap, any reviewer that is not hard read-only with
    `reads_files: true`.
@@ -140,7 +142,7 @@ every hash. Prose files outside soundness paths are left out.
 | No marker yet | first round: a full review |
 | Three DO NOT SHIP decisions | refused: one review per head, no reviewer runs |
 | The latest decision is on this head | nothing runs |
-| Base branch or size bucket changed | new cycle with a full review; strikes are kept |
+| Base branch changed | new cycle with a full review; strikes are kept |
 | Patch unchanged (a rebase or a prose-only change) | the decision is carried to the new head |
 | Latest SHIP or SHIP WITH FIXES, patch changed | follow-up on the changed files |
 | Latest DO NOT SHIP, patch changed | new cycle with a full review that quotes the previous summary |

@@ -9,6 +9,7 @@ from .policy import SIZE_BUCKETS
 
 CONFIDENCE_BAR = 0.60
 MAX_SCORED_FILES = 40
+GATE_BUCKET_FLOOR = "large"
 
 SIZE_QUESTION = {
     "type": "choice",
@@ -211,10 +212,11 @@ def apply_rules(
     template, template_probs, _ = _choice(template_answer)
     if template not in ("standard", "deep", "gate"):
         raise ValueError(f"unknown template {template!r}")
-    if gate_flags and template == "standard":
-        template = "deep"
+    if gate_flags:
+        template = "gate"
+        bucket = SIZE_BUCKETS[max(SIZE_BUCKETS.index(bucket), SIZE_BUCKETS.index(GATE_BUCKET_FLOOR))]
     elif template_probs.get(template, 0.0) < CONFIDENCE_BAR:
-        template = "gate" if gate_flags else "standard"
+        template = "standard"
     return bucket, capability, template, size_confidence
 
 

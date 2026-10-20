@@ -55,11 +55,13 @@ def test_low_confidence_capability_falls_to_routine() -> None:
     assert capability == "routine"
 
 
-def test_gate_flags_floor_the_template() -> None:
-    _, _, template, _ = apply_rules(_answer("large", 0.9), _answer("deep", 0.9), _answer("standard", 0.95), ["g.yml"])
-    assert template == "deep"
-    _, _, template, _ = apply_rules(_answer("large", 0.9), _answer("deep", 0.9), _answer("deep", 0.4), ["g.yml"])
-    assert template == "gate"
+def test_gate_flags_force_the_gate_template_and_a_bucket_floor() -> None:
+    bucket, _, template, _ = apply_rules(
+        _answer("trivial", 0.95), _answer("deep", 0.9), _answer("standard", 0.95), ["g.yml"]
+    )
+    assert (bucket, template) == ("large", "gate")
+    bucket, _, template, _ = apply_rules(_answer("huge", 0.9), _answer("deep", 0.9), _answer("deep", 0.9), ["g.yml"])
+    assert (bucket, template) == ("huge", "gate")
     _, _, template, _ = apply_rules(_answer("large", 0.9), _answer("deep", 0.9), _answer("deep", 0.4), [])
     assert template == "standard"
 
