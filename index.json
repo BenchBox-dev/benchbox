@@ -23058,6 +23058,15 @@
       "status": "open",
       "title": "Fork: named AST rewrites for TPC-Havoc variants, Spark transformer and DataFusion workarounds"
     },
+    "sqlglot-fork-leftover-runner-overrides": {
+      "claim": null,
+      "needs": [
+        "sqlglot-fork-f10-clickhouse-starrocks-tpcds-rewrites"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Decide and move the TPC-DS runner overrides and TPC-DI value-changing rewrites left in BenchBox after F10"
+    },
     "sqlglot-fork-refresh-v30-24-0": {
       "claim": null,
       "needs": [],

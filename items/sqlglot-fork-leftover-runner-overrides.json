@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Each listed override is classified (generic rewrite in the fork, benchmark data with mechanism in the fork, or removed) with the owner decision recorded for the value-changing rewrite.",
+    "Moved rewrites have fork-side real-engine tests and an old-vs-new difference list.",
+    "rg shows none of the moved functions remain in BenchBox."
+  ],
+  "description": "F10 left these in BenchBox: TPC-DS ClickHouse Q47, Q57, Q66, Q90 and the Postgres rollup overrides (regex or whole-query overrides in core/tpcds/benchmark/runner.py), the TPC-DI double-count rewrite (turns SELECT COUNT(*) FROM (SELECT COUNT(*) ...) into a source row count for ClickHouse/StarRocks/Doris, which changes the returned value), and the ClickHouse FROM VALUES (1) rewrite (belongs with the F9 dual rewrite; Doris reports FROM (VALUES (1)) AS d(c) as not implemented). The goal requires no BenchBox module to hold fork translation logic after the move, so each needs a decision: generic named fork rewrite, benchmark data kept in BenchBox with only the mechanism in the fork, or removal with a published-results note. The double-count rewrite changes a value, so the owner decides before it moves.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T23:16:59Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "cec274b37cd943489b56f72602d8aa65",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}
