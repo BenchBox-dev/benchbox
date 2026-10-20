@@ -377,9 +377,19 @@ run for a pull request event checks, before and after the checker, that the
 head it was triggered for is still the pull request's head; a run for a
 superseded head fails rather than report on a head it was not created for.
 
-The stand-in attestation must be posted after the oracle's latest review of
-the head, so overriding a failing verdict is a deliberate act; it never
-overrides an open thread.
+The stand-in attestation must be posted after the oracle's latest decisive
+verdict (`success` or `failure`) on the head, so overriding a failing verdict
+is a deliberate act; a later review that carries no decisive verdict, such as
+`pending`, does not void it, and it never overrides an open thread.
+
+The merge digest applies the same window to merged history, and it files a
+`soundness-review-gap` issue for a commit it cannot account for. An attester's
+comment closes any such issue: it must start with `External review: codex`,
+`muse` or `agy`, have a line beginning `Verified clean`, and list no
+`**Critical**: `, `**High**: `, `**Medium**: ` or `**Low**: ` finding. A later
+digest run closes by itself only an issue opened because a commit had no
+review signal, and only once the digest finds one; an issue opened for a
+reviewer thread, or for several reasons, closes only on an attester's review.
 
 The Codex connector is no longer a signal. The daily soundness merge digest
 still accepts a connector review or thumbs-up for merges before the cut-over
