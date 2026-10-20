@@ -2114,10 +2114,15 @@
       "title": "Scope site-preview artifact upload and decouple it from the required CI gate"
     },
     "blog-preview-artifact-trust": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-21T13:04:19Z",
+        "generation": "547929104a90411ba351471d434052e0",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6d5eb9aefd704c065efcdb3f"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Bind preview artifacts to their source commit"
     },
     "blog-publication-hold-marker": {
