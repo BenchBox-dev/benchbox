@@ -15386,7 +15386,7 @@
       "needs": [],
       "priority": "high",
       "status": "open",
-      "title": "Jev classification has no serving omp: auth-gateway 404s typesafe/* on host and pinned CI build"
+      "title": "Jev classification failed through omp auth-gateway; oracle now calls TypeSafe directly"
     },
     "oracle-local-b1-engine-pin": {
       "claim": null,
