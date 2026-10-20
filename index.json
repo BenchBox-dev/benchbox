@@ -2106,6 +2106,13 @@
       "status": "open",
       "title": "Scope site-preview artifact upload and decouple it from the required CI gate"
     },
+    "blog-preview-artifact-trust": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Bind preview artifacts to their source commit"
+    },
     "blog-publication-hold-marker": {
       "claim": null,
       "needs": [],

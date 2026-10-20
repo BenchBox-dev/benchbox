@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "A downloaded artifact is traceable to its source commit without trusting operator discipline",
+    "Docs describe the residual trust assumption if full binding is overkill"
+  ],
+  "context": "L2 blind spots from both follow-up reviews. PUBLISHING.md mitigates by asking authors to identify the inspected run, but nothing binds the served bytes to the reviewed commit, and the artifact uploads before e2e/audit finish.",
+  "description": "The site-preview artifact carries no in-band commit stamp, so serving a superseded run's bytes is undetectable in the preview itself, and it can be inspected while parallel e2e/audit jobs are still red. Stamp the artifact with its commit or document the trust assumption.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox-site/pull/46"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6d5eb9aefd704c065efcdb3f",
+      "at": "2026-10-20T00:22:57Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "77a230b840ad4e7ab3518f3efd0247e8",
+      "session_id": "67334470b26243a3844fd44a4b63d142"
+    }
+  ]
+}
