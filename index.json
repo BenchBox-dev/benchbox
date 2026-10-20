@@ -22751,6 +22751,15 @@
       "status": "open",
       "title": "Fork: DdlOptions and transpile_ddl core (constraint stripping, CREATE OR REPLACE, SingleStore key clauses)"
     },
+    "sqlglot-fork-f8-engine-specific-ddl": {
+      "claim": null,
+      "needs": [
+        "sqlglot-fork-f7-ddl-core"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Fork: engine-specific DDL (ClickHouse, Doris, StarRocks, Hive-family, Redshift, Delta/Iceberg) through DdlOptions"
+    },
     "sqlglot-mysql-retirement-needs-execution-evidence": {
       "claim": null,
       "needs": [],

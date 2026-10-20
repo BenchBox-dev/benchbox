@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Every rule in the plan's DDL table has a transpile_ddl test; rules with an obtainable engine (chdb or container for ClickHouse, Trino, StarRocks, Doris, Postgres, PySpark) execute the DDL and compare the created schema.",
+    "Engines not obtainable (Athena, Fabric, Synapse, Redshift, managed Databricks) are recorded as documented gaps in the PR, for sign-off.",
+    "No benchmark table names in the fork; fork make check, make benchbox-dist and make benchbox-check pass; PRs merged."
+  ],
+  "description": "Extend transpile_ddl to the config-driven and tuning-driven rules: ClickHouse Nullable strip, MergeTree, ORDER BY; Doris and StarRocks key models and type maps; Presto/Trino/Spark/Velox/Lakesail Hive and Delta/Iceberg/ORC/Parquet clauses; Athena external tables; Fabric/Synapse schema prefix and distribution; Redshift DISTSTYLE/SORTKEY; Databricks catalog-managed TBLPROPERTIES; pg_mooncake heap-then-mirror. Adapter config and tuning values arrive as DdlOptions fields. Expect two PRs.",
+  "links": [
+    "_project/decisions/sqlglot-fork-transpilation-plan.md",
+    "benchbox/sql_compat/rules/ddl_optimize/"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T15:44:17Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e4a00887005549b282f8c023ef1fe0d8",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}
