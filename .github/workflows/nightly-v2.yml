@@ -1012,13 +1012,53 @@ jobs:
       - name: Require successful sampled tests
         if: ${{ always() }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
           failed=0
           for tier in fast slow; do
             verdict="t3-durations/pytest-${tier}.exit"
-            if [ ! -f "$verdict" ] || [ "$(cat "$verdict")" != "0" ]; then
-              echo "::error::${tier} duration sample failed or has no successful pytest verdict."
+            junit="t3-durations/junit-${tier}.xml"
+            if [ ! -f "$verdict" ]; then
+              echo "::error::${tier} duration sample has no pytest verdict."
               failed=1
+              continue
+            fi
+            rc="$(cat "$verdict")"
+            case "$rc" in
+              0 | 1) ;;
+              *)
+                echo "::error::${tier} duration sample ended with pytest exit '${rc}'."
+                failed=1
+                continue
+                ;;
+            esac
+            if [ ! -f "$junit" ]; then
+              echo "::error::${tier} duration sample has no JUnit report."
+              failed=1
+              continue
+            fi
+            if ! ids="$(python3 - "$junit" <<'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+
+          root = ET.parse(sys.argv[1]).getroot()
+          for case in root.iter("testcase"):
+              if case.find("failure") is not None or case.find("error") is not None:
+                  print(f"{case.get('classname', '')}::{case.get('name', '')}")
+          PY
+            )"; then
+              echo "::error::${tier} duration sample has an unparseable JUnit report."
+              failed=1
+              continue
+            fi
+            if [ "$rc" = "0" ] && [ -n "$ids" ]; then
+              echo "::error::${tier} duration sample reported success but its JUnit report records failures: $(printf '%s' "$ids" | paste -sd ',' - | sed 's/,/, /g')"
+              failed=1
+            elif [ "$rc" = "1" ] && [ -z "$ids" ]; then
+              echo "::error::${tier} duration sample reported test failures but its JUnit report records none."
+              failed=1
+            elif [ "$rc" = "1" ]; then
+              names="$(printf '%s' "$ids" | paste -sd ',' - | sed 's/,/, /g')"
+              echo "::warning::${tier} duration sample had failing tests (gated by the PR, trunk and release canary lanes): ${names}"
             fi
           done
           exit "$failed"
