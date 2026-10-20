@@ -4,7 +4,7 @@
     "Each is pinned by sha256; those on rate-limited public paths use the GHCR mirror or have a recorded reason",
     "Workflow tests cover the change; PR merged with required checks green (oracle review for workflow paths)"
   ],
-  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11, guardrails G1-G12; read first). Follow-up created by the controller during the batch; not part of the batch set; do not take it during the batch. Rubric: PASS needs the reference inventory and tests. FAIL if any image stays unpinned.",
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11, guardrails G1-G12; read first). Follow-up created by the controller during the batch; not part of the batch set; do not take it during the batch. Rubric: PASS needs the reference inventory and tests. FAIL if any image stays unpinned.\n\nCHECKPOINT 2026-10-20: PR #3187 head 95cb19295 armed, awaiting oracle verdict (workflow path). Inventory of 7 refs in PR body; integration job moved to GHCR mirror with shared compose digest; nightly.yml pg17 service (still scheduled) pinned by sha256 on ECR; extension compose digests pinned. 3 new workflow tests (92 pass), not shown failing on base. NEXT: after merge re-take, record SHA, finish.",
   "description": "Follow-up from the docker mirror item. nightly.yml uses an unpinned public.ecr.aws/docker/library/postgres:17 service container (nightly.yml is being retired by dlv2-70-retire-scheduled-workflows, so confirm first whether it still runs), and docker-integration.yml uses the ECR default in docker/postgresql/docker-compose.yml rather than the GHCR mirror. Work: for each remaining caller decide pin-only versus mirror, apply the smallest consistent change, keep digest-equality checks. Guardrail: no unpinned references, no new secrets. Formal review (G13): run the code review action as a separate pass before make pr-open; fix all Critical/Required findings.",
   "links": [
     "item:dlv2-70-retire-scheduled-workflows"
@@ -24,6 +24,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "50eab55f30d640359c8e2736d3c5ed74",
+      "session_id": "0722acca462b419aa525d939aedd0290"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a",
+      "at": "2026-10-20T18:24:51Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "4ff254b7085546c58c06a8cc53291971",
       "session_id": "0722acca462b419aa525d939aedd0290"
     }
   ]
