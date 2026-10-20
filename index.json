@@ -22860,17 +22860,12 @@
       "title": "Fork: manifest and refresh tooling support for fork-original work"
     },
     "sqlglot-fork-f0b-real-engine-ci": {
-      "claim": {
-        "expires_at": "2026-10-21T16:35:33Z",
-        "generation": "c3c05995a917487f8b63ca7c6db91199",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d"
-      },
+      "claim": null,
       "needs": [
         "sqlglot-fork-f0-base-and-manifest"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Fork: real-engine CI for execution tests (in-process engines, containers, Python 3.9 constraint)"
     },
     "sqlglot-fork-f1-platform-dialects": {
