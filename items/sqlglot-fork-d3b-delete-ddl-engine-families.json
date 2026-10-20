@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "A table in the PR lists every call site and the adapter state mapped into DdlOptions; rg finds none of the deleted methods.",
+    "Adapter unit tests pass; DDL for each adapter matches the A3 golden corpus except listed differences.",
+    "make compat-docs-check, make sqlglot-repro-retirement-check, make comment-policy-check, make typecheck and make pr-preflight pass; PRs merged."
+  ],
+  "description": "These adapters call their own DDL methods directly, not BaseDdlOptimizer (firebolt.py:719, databend/adapter.py:273, starrocks/workload.py:95, clickhouse/workload.py:185-189, doris). For each, list every create-schema call site, build DdlOptions from adapter state (ClickHouse tuning clauses and nullable keys; StarRocks table_tunings; Doris key model), call translate_ddl, then delete the adapter DDL methods and their rule bodies, keeping the governance row. One PR per adapter family if over about 300 lines.",
+  "links": [
+    "_project/decisions/sqlglot-fork-transpilation-plan.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T16:00:19Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "30b31d3eb21a4496874f94e180c305b4",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}
