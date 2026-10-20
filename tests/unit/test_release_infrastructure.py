@@ -1171,7 +1171,7 @@ class TestVersionConsistency:
 
         import re
 
-        semver_pattern = r"^\d+\.\d+\.\d+(-\w+)?$"
+        semver_pattern = r"^\d+\.\d+\.\d+(-\w+|(a|b|rc)\d+)?$"
         assert re.match(semver_pattern, version), f"Version {version} should follow semantic versioning"
 
     def test_version_in_init_file(self):

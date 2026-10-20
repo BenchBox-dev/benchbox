@@ -217,7 +217,7 @@ options. Do not put credentials in configuration files that you commit.
 > **BenchBox is BETA software.** The CLI and core workflows are usable, but
 > public APIs may change before 1.0.
 
-Current release: v0.4.2.
+Current release: v0.5.0rc1.
 
 Support labels describe the stability of each public surface. The
 `benchbox.experimental` namespace has no compatibility guarantee and can change

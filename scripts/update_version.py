@@ -198,11 +198,11 @@ def run_version_consistency_check() -> tuple[bool, str]:
 
 
 def validate_version_format(version: str) -> bool:
-    pattern = r"^\d+\.\d+\.\d+(?:-(?:alpha|beta|rc|dev)(?:\.\d+)?)?$"
+    pattern = r"^\d+\.\d+\.\d+(?:-(?:alpha|beta|rc|dev)(?:\.\d+)?|(?:a|b|rc)\d+)?$"
 
     if not re.match(pattern, version):
         print(f"Error: Version '{version}' does not follow semantic versioning format")
-        print("Expected format: MAJOR.MINOR.PATCH[-alpha.N|-beta.N|-rc.N|-dev]")
+        print("Expected format: MAJOR.MINOR.PATCH[-alpha.N|-beta.N|-rc.N|-dev|aN|bN|rcN]")
         return False
 
     return True
