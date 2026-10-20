@@ -6,6 +6,7 @@
     "A new AST-scanning test fails when a module outside the wrapper and benchbox/sql_compat calls transpile, parse_one or .sql on the vendored module; remaining offenders are listed in an explicit, shrinking allowlist; parse-only uses that must stay (DataFrame translation, equivalence cross_surface, tpcds qualification runner) are listed with reasons.",
     "make pr-preflight, make comment-policy-check, make compat-docs-check, make sqlglot-repro-retirement-check, make typecheck and tests/unit/sql_compat/test_translate_sql_delegation.py pass; PR merged."
   ],
+  "context": "Draft PR https://github.com/BenchBox-dev/benchbox/pull/3185 (head bcde33dc1, branch feat/sqlglot-route-bypasses, worktree ../BenchBox.wt-sqlglot-b1). Not merged: stopped on owner decision. Corpus test over all 43 ClickBench queries found routing changes that feed published results: sqlite Q19 and Q43 now get the wrapper's SQLite fix-ups (STRFTIME), and datafusion, netezza, ansi, standard, vertica, greenplum previously threw in transpile, were swallowed and ran untranslated ClickHouse text; they now translate through the postgres mapping (all 43 queries differ, DataFusion ClickBench results affected). No Snowflake quoting/case change (identify=False kept). BaseBenchmark.translate_query now drops quoting for no-identify dialects (not corpus-diffed). Awaiting owner choice: accept the changes with a result-version note, or keep ClickBench output byte-identical. Remaining checks (CI, oracle) not yet run on this head. Also open upstream decision: SQLGlot v30.24.0 conflicts with carried patch postgres-extract-return-types.",
   "description": "platforms/base/dialect_translation.py duplicates the DuckDB ALL restore and SQLite fix-up on its own transpile call; base.py translate_query and core/clickbench/benchmark.py also call the fork directly, and ClickBench silently swallows every exception. Route them through the existing wrapper, replace the silent fallback with a logged typed error, and add a repository test that fails on direct vendored-SQLGlot calls outside the wrapper and benchbox/sql_compat/. Existing fork behavior only; no fork change needed.",
   "links": [
     "_project/decisions/sqlglot-fork-transpilation-plan.md",
@@ -37,6 +38,14 @@
       "generation": "eabd090a338348f3b04019508fd3b7bd",
       "op": "take",
       "op_id": "6ba490646af54dce8c06b0cd1bdbf693",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T17:34:58Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d3a33140190c4811b28d19e4cdfb4eec",
       "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
     }
   ]
