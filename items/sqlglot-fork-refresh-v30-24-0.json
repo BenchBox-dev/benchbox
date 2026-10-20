@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "downstream.refresh candidate --tag v30.24.0 succeeds with all three carried patches retained (or any retirement is justified with execution-based equivalence evidence); conflicts are resolved explicitly and each retained patch keeps one 'fix: retain <ID>' commit.",
+    "The EXTRACT return-type, SQLite extraction/division and SQLite interval tests pass on the candidate; each carried patch's equivalence tests are retained.",
+    "downstream.refresh integrate produces a descendant integration branch from fork main; the fork refresh PR is merged with make check, make benchbox-dist, make benchbox-check and the engine CI jobs green; downstream/patches.json records upstream tag v30.24.0 and its commit.",
+    "The BenchBox freshness check (scripts/check_sqlglot_upstream_freshness.py) passes once the new wheel is adopted in BenchBox (adoption PR merged), with the pin, hash and runtime baseline identity updated and make sqlglot-repro-retirement-check passing.",
+    "Fork actual maintainer effort (conflict count, time) is recorded in the PR."
+  ],
+  "description": "Upstream tagged v30.24.0 (2026-10-20); the BenchBox release freshness gate now fails and carried patch postgres-extract-return-types does not apply (git apply --3way exit 1). Read-only diff of v30.23.0...v30.24.0 shows upstream touched dialects/postgres.py (ISO week formats), generators/postgres.py (to_int import and quarter interval handling), parsers/postgres.py and parsers/redshift.py (IsPredicatePrecedence) and optimizer/annotate_types.py, with no EXTRACT return-type fix seen in those hunks. Owner decision: rebase and rework conflicting patches. Procedure per downstream/MAINTAINING.md: downstream.refresh candidate then integrate on a descendant branch from fork main, source and compiled checks, then adopt in BenchBox. This item ends with the fork refresh merged and a verified wheel built from the recorded fork commit; BenchBox adoption of that wheel is a separate BenchBox PR (the first-adoption item or a dedicated refresh adoption PR).",
+  "links": [
+    "_project/decisions/sqlglot-fork-transpilation-plan.md",
+    "https://github.com/BenchBox-dev/benchbox-sqlglot",
+    "scripts/check_sqlglot_upstream_freshness.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T18:13:59Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1ad9bdab4f2a4011bdd21c3ff34de559",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}
