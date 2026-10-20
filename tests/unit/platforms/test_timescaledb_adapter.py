@@ -416,7 +416,7 @@ class TestTimescaleDBCoverage:
         assert info["configuration"]["chunk_count"] == 9
 
     def test_configure_for_benchmark_handles_timescaledb_setting_failure(self, timescale_stubs) -> None:
-        adapter = TimescaleDBAdapter()
+        adapter = TimescaleDBAdapter(tuning_enabled=True)
         cursor = Mock()
         cursor.execute.side_effect = RuntimeError("setting blocked")
         conn = Mock()

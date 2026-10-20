@@ -42,39 +42,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   runs are about 2x faster on TPC-H joins, the TPC-H template no longer
   partitions `LINEITEM` and `ORDERS`, and tuned loads wait for background
   merges. Tuning maintenance on ClickHouse, Redshift, Databricks and Snowflake
-  now runs after each table loads. ClickHouse `OPTIMIZE` needs
+  runs after each table loads; ClickHouse `OPTIMIZE` needs
   `--platform-option optimize_after_load=true`.
 - **Spark, LakeSail and Velox results are not comparable with earlier ones.**
-  Untuned runs use engine defaults for adaptive execution and shuffle
-  settings, and per-query times no longer include clearing the session cache.
-  A tuning file's `spark` map applies on Velox and is ignored on LakeSail.
+  Untuned runs use engine defaults for adaptive execution and shuffle, and
+  per-query times no longer include clearing the session cache. A tuning
+  file's `spark` map applies on Velox and is ignored on LakeSail.
 - **Cached databases are rebuilt once in some cases.** DuckDB `auto` runs no
-  longer request CHECK constraints, and tuning configurations with nested
-  settings get a new generated database name. Drop the old databases if you
-  no longer need them.
+  longer request CHECK constraints, and nested tuning settings change the
+  generated database name. Drop the old databases.
 - **TPC-H maintenance only runs on adapters that support refresh.** DuckDB,
-  SQLite, PostgreSQL and the adapters built on it, Snowflake and SingleStore
-  apply the DBGen update sets. Other adapters skip the phase and leave data
-  unchanged. Refresh functions in Power and Throughput are opt-in with
-  `tpch_refresh_functions=true`.
+  SQLite, PostgreSQL and its derivatives, Snowflake and SingleStore apply the
+  update sets; other adapters skip the phase. Refresh functions in Power and
+  Throughput need `tpch_refresh_functions=true`.
 - **Several options that were ignored now take effect.** DuckDB `threads` and
   `temp_directory`, SQLite `database_path`, `database_name` and `timeout`, and
-  a `--platform-option` value equal to its default now apply, and the last one
-  overrides a saved credential profile. Remove an option you do not want
-  applied.
+  a `--platform-option` value equal to its default now apply, overriding a
+  saved credential profile. Remove an option you do not want applied.
 - **Dask and Polars engine changes.** Dask `use_distributed=false` with
-  `scheduler_address` fails; use
-  `--execution-engine distributed --platform-option scheduler_address=...`.
-  Polars `--tuning auto` no longer switches to streaming on small hosts, and
+  `scheduler_address` fails; use `--execution-engine distributed`. Polars
+  `--tuning auto` no longer switches to streaming on small hosts, and
   `write_primitives` on `polars-df` refuses a non-default engine.
 - **Comparisons refuse mixed variants.** `benchbox compare` and MCP
   `compare_results` refuse results whose deployment, execution engine or
   gateway differ unless you pass `--allow-heterogeneous-comparison`.
 - **Result bundles use additive schema 2.3.** Readers must accept it. Older
   bundles remain readable.
-- **BenchBox bundles its own SQLGlot.** Installing BenchBox no longer installs
-  public `sqlglot`, and expression objects from a separate `sqlglot` install
-  cannot be passed to BenchBox.
+- **BenchBox bundles its own SQLGlot, and some translated SQL changed.**
+  Installing BenchBox no longer installs public `sqlglot`, and expression
+  objects from a separate `sqlglot` install cannot be passed to BenchBox. Rerun
+  earlier results for these queries: `STDDEV` and `VARIANCE` on MySQL, Doris,
+  StarRocks and SingleStore now use the sample form (TPC-DI AQ5, AQ6 and AQ9,
+  read_primitives `statistical_variance_stddev`); `array_sort` and
+  `array_distinct` on DuckDB; `approx_quantile_groupby` on BigQuery; and
+  `pivot_basic` on StarRocks, which used to lose its PIVOT clause. ClickBench
+  on SQLite (Q19, Q43) and on DataFusion, Netezza, ANSI, standard, Vertica and
+  Greenplum targets now uses different SQL, so earlier results there are not
+  comparable.
 - **SingleStore has no `cloud` mode.** Use `--platform singlestore` for Helios
   and self-managed clusters. `databend:self-hosted` now connects over HTTP on
   port 8000 by default.
@@ -98,23 +102,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   record Power@Size marked unofficial and rank in their own "Subscale ·
   Unofficial" cohort. `benchbox submit` and `benchbox publish` still refuse
   them.
-- **TPC-H row counts at scale factors 0.01 and 0.1.** SQL and DataFrame runs
-  check every query against exact counts, so DataFrame runs no longer report
-  UNCERTAIN there.
+- **TPC-H row counts at scale factors 0.01 and 0.1.** Every query is checked
+  against exact counts, so DataFrame runs no longer report UNCERTAIN there.
 - **TPC-H refresh functions and QphH@Size.** Power can include RF1 and RF2,
   Throughput can run a concurrent refresh stream, and `benchbox metrics qphh`
   prints QphH@Size when both results carry refresh evidence.
 - **More tuning on PostgreSQL.** Tuned runs apply date and hash partitioning,
   and index and cluster tuned columns after each load.
 - **Clearer tuning evidence.** Tuned results list requests the platform ignored
-  in `platform.tuning.applied.dropped`. DuckDB constraints are checked against
-  the catalog, and DataFrame tuned profiles and curated ClickHouse templates
-  ship. `benchbox tuning platforms` lists Spark with its own capabilities,
-  and `benchbox tuning validate` accepts SQL tuning files.
+  in `platform.tuning.applied.dropped`. DataFrame tuned profiles and curated
+  ClickHouse templates ship, `benchbox tuning platforms` lists Spark with its
+  own capabilities, and `benchbox tuning validate` accepts SQL tuning files.
 - **Session and engine details in results.** Spark, LakeSail and Velox runs
-  record the live session configuration and warn when a requested setting did
-  not take effect. DuckDB, SQLite and DataFusion results record the engine
-  version.
+  record the live session configuration and warn when a setting did not take
+  effect. DuckDB, SQLite and DataFusion results record the engine version.
 
 ### Changed
 
@@ -135,10 +136,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   only some constraint types no longer requests the rest. Primary-key tuning
   on ClickHouse and chDB reaches `applied_verified`. Spark's `tuned` session
   settings now apply once and survive the defaults.
-- **Dry runs.** `--dry-run --tuning tuned` shows the tuning DDL even when the
-  platform driver is not installed, and notes tuning the platform skips.
-  TSBS DevOps previews its queries, and saved credentials no longer appear in
-  preview files.
+- **Dry runs.** `--dry-run --tuning tuned` shows the tuning DDL without the
+  platform driver and notes tuning the platform skips. TSBS DevOps previews its
+  queries, and saved credentials no longer appear in preview files.
 - **Data and runs.** `--force datagen` and `--force all` regenerate data and
   recreate the database. Load-only runs exit 0 after a successful load. Sorted
   ingestion no longer runs unsafe rewrites on Athena, Azure Synapse and
@@ -146,10 +146,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   are reordered.
 - **Platform options.** Alias platform names such as `sqlite3` and `pg_duckdb`
   accept their options. Options now reach EMR Serverless, Dataproc, Synapse
-  Spark, Fabric, PySpark and Snowpark Connect. Redshift accepts
+  Spark, Fabric, PySpark and Snowpark Connect, and Redshift accepts
   `workgroup_name` and `cluster_identifier`. A saved credential profile no
-  longer blocks command-line compute settings. A `--platform-option` value
-  equal to its default now overrides a saved profile.
+  longer blocks command-line compute settings.
 - **Platforms.** Athena Spark starts a session, and `athena-spark` accepts its
   documented options. `benchbox run --platform quanton` builds its
   configuration. InfluxDB accepts `mode` and `deployment_mode`. Databricks
@@ -157,14 +156,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Results and reports.** `benchbox report rankings` lists imported runs.
   `benchbox compare` and `benchbox report` no longer mix deployments.
   Anonymized bundles drop the compute resource name. The MCP server no longer
-  reconfigures Python's root logger.
+  reconfigures Python's root logger. PostgreSQL-family baseline runs no longer
+  issue planner session settings, which belong to tuned runs only, so baseline
+  results pass the public privacy validation. ClickBench translation raises an
+  error instead of returning untranslated ClickHouse SQL.
 
 ### Documentation
 
 - **Tuning platform support.** A new reference page lists, for every platform,
   the shipped templates and the tuning types applied at execution.
-- **Corrected `--platform-option` examples.** Examples across the guides use
-  keys the CLI accepts, and guides no longer use deprecated spellings.
+- **Corrected `--platform-option` examples** use keys the CLI accepts.
 
 ## [0.4.2] - 2026-10-05
 

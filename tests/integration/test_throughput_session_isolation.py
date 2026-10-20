@@ -241,6 +241,7 @@ class TestPostgreSQLIndependentConnectionIsolatesSessions:
             shared_connection.close()
 
     def test_stream_session_replays_setup_tuning(self, postgresql_adapter) -> None:
+        postgresql_adapter.tuning_enabled = True
         shared_connection = postgresql_adapter.create_connection()
         try:
             stream_connection = postgresql_adapter.new_stream_connection(shared_connection, benchmark_type="olap")
@@ -250,6 +251,25 @@ class TestPostgreSQLIndependentConnectionIsolatesSessions:
                 assert work_mem == "256MB", f"stream work_mem not replayed: {work_mem!r}"
                 page_cost = stream.connection.execute("SHOW random_page_cost").fetchone()[0]
                 assert page_cost == "1.1", f"stream missing OLAP tuning replay: random_page_cost={page_cost!r}"
+            finally:
+                stream.close()
+        finally:
+            shared_connection.close()
+
+    def test_baseline_stream_session_keeps_server_planner_defaults(self, postgresql_adapter) -> None:
+        assert postgresql_adapter.tuning_enabled is False
+        shared_connection = postgresql_adapter.create_connection()
+        try:
+            stream_connection = postgresql_adapter.new_stream_connection(shared_connection, benchmark_type="olap")
+            stream = PlatformAdapterConnection(stream_connection, postgresql_adapter)
+            try:
+                work_mem = stream.connection.execute("SHOW work_mem").fetchone()[0]
+                assert work_mem == "256MB", f"stream work_mem not replayed: {work_mem!r}"
+                page_cost = stream.connection.execute("SHOW random_page_cost").fetchone()[0]
+                server_default = shared_connection.execute("SHOW random_page_cost").fetchone()[0]
+                assert page_cost == server_default, (
+                    f"baseline stream changed planner settings: random_page_cost={page_cost!r} vs {server_default!r}"
+                )
             finally:
                 stream.close()
         finally:

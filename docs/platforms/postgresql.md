@@ -136,6 +136,10 @@ random_page_cost = 1.1
 
 The three `SET` statements are connection-level settings, which you set through platform options. The last three lines (`shared_buffers`, `effective_io_concurrency` and `random_page_cost`) are server-level settings that belong in `postgresql.conf`.
 
+### Session Settings
+
+Tuned runs apply planner session settings (`enable_seqscan`, `enable_hashjoin`, `enable_mergejoin`, `random_page_cost`, `cpu_tuple_cost` for OLAP; `synchronous_commit`, `random_page_cost` for OLTP) during `configure_for_benchmark()`. Baseline runs apply none, so the result carries no session statements and the server's planner defaults stay in effect. The same holds for the PostgreSQL-compatible adapters built on this one: TimescaleDB (`timescaledb.enable_chunk_skipping`), pg_duckdb, pg_mooncake, Citus and ParadeDB. pg_duckdb still routes queries through its configured engine on every run, because that choice is made when the connection is created.
+
 ### Tuning Mode
 
 BenchBox supports automatic tuning configuration:
