@@ -84,6 +84,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `pr-hold.yml` | product-safety | Required `hold` check: fails while the `no-auto-merge` label is present, on every label change |
 | `pricing-data-drift-check.yml` | product-safety | Pricing data integrity |
 | `release.yml` | product-safety | Release publishing |
+| `release-v2.yml` | product-safety | Tag-triggered publication of the admitted trunk artifacts: annotated tag, latest-run admission, install matrix, artifact-bound UAT, publish-time tag re-check, attestation |
 | `release-canary.yml` | product-safety | Release canary protection |
 | `seed-corpus.yml` | product-safety | Corpus seeding |
 | `site-inputs.yml` | product-safety | Versioned site-inputs bundle build, attestation, artifact upload and site dispatch |

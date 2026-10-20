@@ -180,3 +180,15 @@ def test_workflow_attests_the_staged_distributions():
     attest = next(s for s in publish["steps"] if "attest-build-provenance" in s.get("uses", ""))
     assert "staged/*.whl" in attest["with"]["subject-path"]
     assert "staged/*.tar.gz" in attest["with"]["subject-path"]
+
+
+def test_only_admission_checks_out_the_mutable_tag_ref():
+    for name, job in _jobs().items():
+        for step in job["steps"]:
+            if "actions/checkout" not in step.get("uses", ""):
+                continue
+            ref = step.get("with", {}).get("ref")
+            if name == "admit":
+                assert ref == "${{ inputs.tag || github.ref_name }}"
+            else:
+                assert ref == "${{ needs.admit.outputs.head_sha }}", f"{name} must check out the admitted commit"

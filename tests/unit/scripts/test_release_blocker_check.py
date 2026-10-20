@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = [pytest.mark.unit, pytest.mark.fast]
+
 SPEC = importlib.util.spec_from_file_location(
     "release_blocker_check", Path(__file__).resolve().parents[3] / "scripts" / "release_blocker_check.py"
 )

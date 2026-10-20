@@ -130,6 +130,8 @@ jobs:
         python-version: ['3.11', '3.12', '3.13', '3.14']
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ needs.admit.outputs.head_sha }}
 
       - name: Download the admitted directory
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
@@ -166,7 +168,7 @@ jobs:
 
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
-          ref: ${{ inputs.tag || github.ref_name }}
+          ref: ${{ needs.admit.outputs.head_sha }}
 
       - name: Download the admitted directory
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
@@ -259,7 +261,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
-          ref: ${{ inputs.tag || github.ref_name }}
+          ref: ${{ needs.admit.outputs.head_sha }}
           fetch-depth: 0
 
       - name: Download the admitted directory
@@ -281,7 +283,6 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
-          git fetch origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG" --force
           python3 scripts/release_tag_recheck.py --admitted admitted --tag "$RELEASE_TAG"
 
       - name: Stage only the verified distributions
@@ -329,7 +330,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
-          ref: ${{ inputs.tag || github.ref_name }}
+          ref: ${{ needs.admit.outputs.head_sha }}
 
       - name: Download the admitted directory
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
