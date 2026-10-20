@@ -40,20 +40,13 @@ class TestBenchBox(unittest.TestCase):
         self.assertIsInstance(query1, str)
         self.assertIn("SELECT", query1.upper())
 
-    @mock.patch("benchbox._vendor.sqlglot.transpile")
-    @mock.patch("benchbox.utils.dialect_utils.normalize_dialect_for_sqlglot")
-    def test_translate_query(self, mock_normalize, mock_transpile) -> None:
-        mock_query = "SELECT * FROM customer WHERE c_custkey = 1"
-        mock_transpile.return_value = ["SELECT * FROM customer WHERE c_custkey = 1"]
-        mock_normalize.return_value = "postgres"
+    def test_translate_query(self) -> None:
+        query = "SELECT * FROM customer WHERE c_custkey = 1"
 
-        with mock.patch.object(self.tpch, "get_query", return_value=mock_query):
+        with mock.patch.object(self.tpch, "get_query", return_value=query):
             translated_query = self.tpch.translate_query(1, dialect="postgres")
 
-            self.assertIsInstance(translated_query, str)
-            self.assertIn("SELECT", translated_query.upper())
-            mock_normalize.assert_called_once_with("postgres")
-            mock_transpile.assert_called_once_with(mock_query, read="postgres", write="postgres", identify=True)
+        self.assertEqual(translated_query, query)
 
 
 if __name__ == "__main__":
