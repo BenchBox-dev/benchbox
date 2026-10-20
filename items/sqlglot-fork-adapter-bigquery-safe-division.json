@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "BigQuery adapter requests safe_division through the wrapper; adapter output over the existing tests/unit/platforms/test_bigquery_adapter.py inputs is identical or the differences are listed and approved.",
+    "A recorded owner decision states whether results published with the old behavior need a note or a rerun.",
+    "make pr-preflight and typecheck pass; PR merged."
+  ],
+  "description": "The BigQuery adapter applies SAFE_DIVIDE through _safeguard_division_by_zero (bigquery.py). The fork exposes this as an opt-in safe_division option, off by default. The adapter must pass it explicitly so behavior is unchanged, and the change must be reviewed because a zero divisor returns NULL instead of an error, which can change published results. Logged by owner decision as a high-priority follow-up to the transpilation move.",
+  "links": [
+    "_project/decisions/sqlglot-fork-transpilation-plan.md",
+    "benchbox/platforms/bigquery.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T15:45:41Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "531375d383f84c4eb57f105a480f1974",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}

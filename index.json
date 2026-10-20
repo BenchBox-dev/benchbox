@@ -22694,6 +22694,15 @@
       "status": "open",
       "title": "BenchBox: adopt the fork wheel containing the TPC-Havoc and DataFusion named rewrites"
     },
+    "sqlglot-fork-adapter-bigquery-safe-division": {
+      "claim": null,
+      "needs": [
+        "sqlglot-fork-a2-adopt-adapter-wheel"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "BigQuery adapter: enable the fork safe_division option and decide its result impact"
+    },
     "sqlglot-fork-adr-ownership": {
       "claim": null,
       "needs": [],
