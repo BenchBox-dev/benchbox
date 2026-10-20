@@ -4,7 +4,7 @@
     "Vacuous or stale tests are fixed to exercise the intended path, with failing-before/passing-after evidence",
     "PR merged with required checks green"
   ],
-  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11, guardrails G1-G12; read first). Follow-up created by the controller during the batch; not part of the batch set; do not take it during the batch. Rubric: PASS needs the classified list and fixes. FAIL if any test is only skipped.",
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11, guardrails G1-G12; read first). Follow-up created by the controller during the batch; not part of the batch set; do not take it during the batch. Rubric: PASS needs the classified list and fixes. FAIL if any test is only skipped.\n\n### Completion Evidence\nOUTCOME: no change needed; no PR. Scan at develop b3038f1a2 using a throwaway pytest plugin that logged every call to the four refresh-support gates (refresh_unsupported_reason, require_refresh_support in benchbox/core/tpch/refresh.py, and their callers official_benchmark.py, platform_power.py, platforms/base/execution.py) with test id and adapter support. Ran all 81 test files mentioning maintenance/official_benchmark/refresh_functions/tpch_refresh (excluding tpcds, tpcdi, dataframe): 2941 passed, 0 failed (a full tests/unit+integration run hit a 3000s timeout at ~99%, so it was not used as proof). Also statically read every test stubbing _execute_tpch_maintenance_test/_execute_maintenance_test/TPCHMaintenanceTest. Classification: every test that reaches the gate with an unsupported adapter asserts the refusal/skip (real coverage); tests with supports_refresh_functions=True exercise the maintenance path; SQLite/DuckDB integration tests use real engines; stubs are intentional dispatch seams. Zero vacuous, zero stale. Limitation: dataframe and tpcds/tpcdi paths were out of scope. Branch name differed (fix/ prefix) because make worktree-create rejects test/.",
   "description": "Follow-up from the TPC-H item: PR #3004 replaced synthetic maintenance with DBGen update sets and skips adapters that do not declare supports_refresh_functions; four tests were stale because of it. Other tests may use Mock connections or mock adapters without that declaration and pass only because they no longer reach maintenance (silent loss of coverage), or are in tiers the canary has not run yet. Work: find them (grep for maintenance/RF1/RF2 with Mock adapters), classify each as covering real behavior or vacuous, fix or report. Guardrail: do not delete assertions or skip tests to make them pass. Formal review (G13): run the code review action as a separate pass before make pr-open; fix all Critical/Required findings.",
   "links": [
     "item:autogen-tpch-maintenance-failures-20261018"
@@ -33,6 +33,14 @@
       "generation": "6e804680f5664f6f9e8845128c7d2b47",
       "op": "take",
       "op_id": "6b4e0047302946c7acc2f4ba668f5f6c",
+      "session_id": "0722acca462b419aa525d939aedd0290"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a",
+      "at": "2026-10-20T17:48:22Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a8ad96179c874196bc51d1dcd4dd1bab",
       "session_id": "0722acca462b419aa525d939aedd0290"
     }
   ]
