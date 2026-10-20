@@ -22971,15 +22971,10 @@
       "title": "Fork: named AST rewrites for TPC-Havoc variants, Spark transformer and DataFusion workarounds"
     },
     "sqlglot-fork-refresh-v30-24-0": {
-      "claim": {
-        "expires_at": "2026-10-21T18:14:14Z",
-        "generation": "8fb4163ce48b41e49fa13e408f7440b3",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Fork: refresh onto upstream v30.24.0, reworking conflicting carried patches"
     },
     "sqlglot-freshness-gate-blocks-all-prs-v30-24-0": {
