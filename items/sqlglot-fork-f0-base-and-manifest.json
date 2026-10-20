@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "The relation between the pinned fork commit and fork main is verified and recorded in the PR description.",
+    "downstream/patches.json accepts status 'original' with source, paths, tests and reason; tests/test_downstream_contract.py validates it and no longer hard-codes the three-patch set.",
+    "make check, make benchbox-dist and make benchbox-check pass in the fork; PR merged through its required checks."
+  ],
+  "description": "First fork slice of _project/decisions/sqlglot-fork-transpilation-plan.md. The pinned fork commit (6de7947) and fork main (fdf7145) relation is unverified. patches.json only knows carried, upstreamed and excluded statuses, and test_manifest_source_boundaries hard-codes the admitted set. Add status 'original' for fork-original work and update the contract test. Work in BenchBox-dev/benchbox-sqlglot on a named branch and worktree.",
+  "links": [
+    "_project/decisions/sqlglot-fork-transpilation-plan.md",
+    "https://github.com/BenchBox-dev/benchbox-sqlglot"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T15:42:45Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a77523dd8a68499fa55df23bb13b703c",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}

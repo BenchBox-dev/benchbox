@@ -22649,6 +22649,13 @@
       "status": "done",
       "title": "✅ SQLGlot Dialect Translation Code Review Implementation"
     },
+    "sqlglot-fork-f0-base-and-manifest": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Fork: reconcile pinned base with main and record fork-original work in patches.json"
+    },
     "sqlglot-mysql-retirement-needs-execution-evidence": {
       "claim": null,
       "needs": [],
