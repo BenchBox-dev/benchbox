@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Editorial PRs still get a downloadable preview artifact",
+    "Non-editorial PRs skip the upload or it no longer gates merge",
+    "PUBLISHING.md describes the actual behavior"
+  ],
+  "context": "Found by two independent adversarial reviewers (Muse Spark 1.3 review of PR #46; GPT-6 Astra review of the same diff) during the Oct 19 blog-workflow session. PR #46's artifact measured 115,039,640 bytes with 7-day retention.",
+  "description": "The site-preview artifact upload added in PR #46 (.github/workflows/ci.yml, inside the required checks job, PR-event only) runs on every pull request regardless of whether it touches publishable content, and an artifact-service failure fails the required ci gate. Gate the upload on publication-relevant paths or move it out of the required job.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox-site/pull/46"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6d5eb9aefd704c065efcdb3f",
+      "at": "2026-10-20T00:22:38Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "410ad501d86347d8a41910d42d299945",
+      "session_id": "67334470b26243a3844fd44a4b63d142"
+    }
+  ]
+}

@@ -2092,6 +2092,13 @@
       "status": "done",
       "title": "Blog - Evaluate Databricks APPLY CHANGES INTO vs Standard SQL MERGE for SCD Type 2"
     },
+    "blog-preview-artifact-scoping": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Scope site-preview artifact upload and decouple it from the required CI gate"
+    },
     "blog-scd2-sf1-scale-row": {
       "claim": null,
       "needs": [],
