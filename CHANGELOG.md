@@ -254,6 +254,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   only when their text changes. Repeating the command no longer rewrites an
   unchanged body. `make pr-rerun` retries CI directly instead of using a PR edit.
 
+- `benchbox run --dry-run` with a deployment selector such as
+  `--platform timescaledb:cloud` no longer fails on Windows. The preview files
+  are named `tpch_timescaledb~cloud_<timestamp>.*` instead of using a colon,
+  which Windows file names cannot contain.
 - CedarDB baseline runs no longer issue or record the PostgreSQL planner
   session settings, so a local result no longer carries session statements
   that the public privacy validation rejects as unanonymized. The settings

@@ -27,14 +27,28 @@ def _make_real_iceberg_table(table_dir: Path) -> None:
     from pyiceberg.types import LongType, NestedField
 
     catalog = SqlCatalog("rs-test", uri=f"sqlite:///{table_dir.parent}/cat.db", warehouse=str(table_dir.parent))
-    catalog.create_namespace_if_not_exists("ns")
-    table = catalog.create_table(
-        "ns.t",
-        schema=Schema(NestedField(1, "o_orderkey", LongType())),
-        location=local_iceberg_location(table_dir),
-        properties={"format-version": "2"},
-    )
-    table.overwrite(pa.table({"o_orderkey": [1]}))
+    try:
+        catalog.create_namespace_if_not_exists("ns")
+        table = catalog.create_table(
+            "ns.t",
+            schema=Schema(NestedField(1, "o_orderkey", LongType())),
+            location=local_iceberg_location(table_dir),
+            properties={"format-version": "2"},
+        )
+        table.overwrite(pa.table({"o_orderkey": [1]}))
+    finally:
+        catalog.engine.dispose()
+
+
+def test_iceberg_fixture_catalog_releases_its_database_handle(tmp_path: Path) -> None:
+    from sqlalchemy.engine import Engine
+
+    table_dir = tmp_path / "orders"
+    with patch.object(Engine, "dispose", autospec=True, side_effect=Engine.dispose) as dispose:
+        _make_real_iceberg_table(table_dir)
+
+    dispose.assert_called_once()
+    (tmp_path / "cat.db").unlink()
 
 
 class TestRedshiftAdapter:
