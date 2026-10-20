@@ -15548,6 +15548,13 @@
       "status": "open",
       "title": "Distinguish oracle-review waiting state from verdict failure"
     },
+    "oracle-reviewer-backend-capacity": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Restore oracle deep-reviewer capacity or record stand-in as the normal path"
+    },
     "oracle-reviewer-checkout-has-no-base-commit-20261009": {
       "claim": null,
       "needs": [],

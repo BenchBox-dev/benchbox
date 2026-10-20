@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Each deep-reviewer backend is either restored to working order or its outage is recorded with an owner and expected resolution.",
+    "A muse-authored PR can receive a deep review from at least one backend without requiring a same-family exception, or the same-family skip is documented as intended with the stand-in path as the explicit fallback.",
+    "The oracle-review required check passes on a clean PR without owner intervention. (Observed failing state: PR 3170 verdict pending with zero findings, 2026-10-19.)"
+  ],
+  "context": "Observed 2026-10-19 on PR 3170: the oracle verdict came back pending with no findings because every backend was unavailable: claude-deep absent (error), codex-deep disabled (no OpenAI API quota), gemini-deep disabled (unverified harness), muse-deep skipped (same model family as the PR author). With three backends down and the fourth skipping same-family authors, every agent-authored PR falls back to owner stand-in attestation, which defeats the gate. Owner/ops decision; no code change is assumed.",
+  "description": "Three of four oracle deep-reviewer backends are unavailable (claude-deep errors, codex-deep has no quota, gemini-deep is disabled) and muse-deep skips PRs authored by the same model family, so agent-authored PRs cannot receive any deep review and the oracle-review required check can only pass via owner stand-in. Restore at least one backend or record an explicit policy decision that stand-in attestation is the normal path for agent-authored PRs.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7043d4c3f317252a997ee7d2",
+      "at": "2026-10-20T00:20:56Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "cedb4f286f68461189fc4614f3b4c157",
+      "session_id": "d66556e19a274eaea3762c21d3e37dd7"
+    }
+  ]
+}
