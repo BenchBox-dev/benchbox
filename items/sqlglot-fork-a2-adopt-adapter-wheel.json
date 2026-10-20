@@ -4,6 +4,7 @@
     "Cumulative golden-corpus differences listed in the PR with a result-version note.",
     "make pr-preflight, make comment-policy-check, make compat-docs-check and make typecheck pass; PR merged."
   ],
+  "context": "From F6 (fork PR #14): TPC-DI day differences become whole days on every target (SQLite previously produced fractional days; ClickHouse nested JULIANDAY form was previously broken). The corpus diff in this adoption must show this; stop for owner approval if it touches published TPC-DI results. The FROM VALUES(1) and double-count rewrites for ClickHouse/StarRocks/Doris stay in BenchBox until F10/A5.",
   "description": "Standard adoption (build from a recorded fork commit, verify, sync_sqlglot_runtime --wheel, pin and baseline update) for the wheel containing F6, with the cumulative golden-corpus test over every moved area so far. No deletion in this PR.",
   "links": [
     "_project/decisions/sqlglot-fork-transpilation-plan.md"
@@ -23,6 +24,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "ee1d05a7b6d64e07836cd2a27dcc9644",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T22:42:50Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "028fb37fe00c43b3b0c7f32c0332a57d",
       "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
     }
   ]
