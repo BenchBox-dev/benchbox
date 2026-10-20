@@ -9,3 +9,5 @@
 /_sources/tpc-ds/answer_sets/** -text
 /benchbox/_binaries/** -text
 /tools/skill-sync -text
+
+/CHANGELOG.md merge=union
