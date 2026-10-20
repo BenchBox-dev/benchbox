@@ -295,13 +295,13 @@ def _repeated_value(text: str) -> Any:
 
 
 def extract_omp_text(stdout: str) -> str:
-    texts = []
+    final = ""
     for line in stdout.splitlines():
         try:
             event = json.loads(line)
         except ValueError:
             continue
-        if not isinstance(event, dict):
+        if not isinstance(event, dict) or event.get("type") != "message_end":
             continue
         message = event.get("message")
         if not isinstance(message, dict) or message.get("role") != "assistant":
@@ -309,10 +309,12 @@ def extract_omp_text(stdout: str) -> str:
         content = message.get("content")
         if not isinstance(content, list):
             continue
-        for block in content:
-            if isinstance(block, dict) and block.get("type") == "text" and isinstance(block.get("text"), str):
-                texts.append(block["text"])
-    return "".join(texts)
+        final = "".join(
+            block["text"]
+            for block in content
+            if isinstance(block, dict) and block.get("type") == "text" and isinstance(block.get("text"), str)
+        )
+    return final
 
 
 def parse_output(harness: str, text: str) -> Any:

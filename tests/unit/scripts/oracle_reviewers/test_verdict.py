@@ -217,25 +217,44 @@ def test_validation_sanitizes_and_truncates_text() -> None:
     assert REDACTED in finding.detail
 
 
-def _omp_line(text: str, role: str = "assistant", block_type: str = "text") -> str:
-    return json.dumps({"message": {"role": role, "content": [{"type": block_type, "text": text}]}})
+def _omp_line(text: str, role: str = "assistant", block_type: str = "text", event: str = "message_end") -> str:
+    return json.dumps({"type": event, "message": {"role": role, "content": [{"type": block_type, "text": text}]}})
 
 
-def test_extract_omp_text_concatenates_assistant_text_in_order() -> None:
-    stdout = "\n".join([_omp_line("first "), _omp_line("second")])
-    assert extract_omp_text(stdout) == "first second"
+def test_extract_omp_text_keeps_only_the_final_assistant_message() -> None:
+    stdout = "\n".join(
+        [
+            _omp_line("Let me read the diff first.", event="message_start"),
+            _omp_line("Let me read the diff first."),
+            _omp_line("Let me read the diff first.", event="turn_end"),
+            _omp_line('{"verdict": "SHIP"}', event="message_start"),
+            _omp_line('{"verdict": "SHIP"}'),
+            _omp_line('{"verdict": "SHIP"}', event="turn_end"),
+        ]
+    )
+    assert extract_omp_text(stdout) == '{"verdict": "SHIP"}'
 
 
 def test_extract_omp_text_ignores_thinking_tool_and_non_assistant_blocks() -> None:
     stdout = "\n".join(
         [
-            _omp_line("ignore me", block_type="thinking"),
-            _omp_line("skip tool", block_type="tool_use"),
-            _omp_line("user words", role="user"),
             "not json at all",
             json.dumps([1, 2]),
-            json.dumps({"message": "nope"}),
-            _omp_line("kept"),
+            json.dumps({"type": "message_end", "message": "nope"}),
+            _omp_line("user words", role="user"),
+            json.dumps(
+                {
+                    "type": "message_end",
+                    "message": {
+                        "role": "assistant",
+                        "content": [
+                            {"type": "thinking", "text": "ignore me"},
+                            {"type": "tool_use", "text": "skip tool"},
+                            {"type": "text", "text": "kept"},
+                        ],
+                    },
+                }
+            ),
         ]
     )
     assert extract_omp_text(stdout) == "kept"
@@ -271,7 +290,7 @@ def test_repeated_identical_output_is_one_verdict() -> None:
         parse_output("text", f"{text}\n{other}")
     with pytest.raises(VerdictError, match="not JSON: Extra data"):
         parse_output("text", f"{text}\nDone.")
-    with pytest.raises(VerdictError, match="not JSON: Extra data"):
+    with pytest.raises(VerdictError, match="not JSON: Expecting value"):
         parse_output("omp", _omp_line(text) + "\n" + _omp_line("Done."))
 
 

@@ -56,7 +56,9 @@ def _fake_omp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, body: str) -> Non
 
 
 def _envelope(payload: object) -> str:
-    return json.dumps({"message": {"role": "assistant", "content": [{"type": "text", "text": payload}]}})
+    return json.dumps(
+        {"type": "message_end", "message": {"role": "assistant", "content": [{"type": "text", "text": payload}]}}
+    )
 
 
 def _review(
@@ -152,13 +154,14 @@ def test_envelope_thinking_blocks_are_ignored(policy: Policy, tmp_path: Path, mo
     workspace, head = _workspace(tmp_path)
     envelope = json.dumps(
         {
+            "type": "message_end",
             "message": {
                 "role": "assistant",
                 "content": [
                     {"type": "thinking", "thinking": "hmm"},
                     {"type": "text", "text": json.dumps(VERDICT)},
                 ],
-            }
+            },
         }
     )
     _fake_omp(tmp_path, monkeypatch, f"print({json.dumps(envelope)})")
