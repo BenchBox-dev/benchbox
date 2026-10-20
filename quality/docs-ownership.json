@@ -105,6 +105,7 @@
     "docs/development/adr/adr-read-primitives-cloud-variants.md": "site-owned",
     "docs/development/adr/adr-runtime-composition-boundary.md": "site-owned",
     "docs/development/adr/adr-sql-compat-phase-aware-pipeline.md": "site-owned",
+    "docs/development/adr/adr-sqlglot-fork-owns-transpilation.md": "site-owned",
     "docs/development/adr/adr-sqlglot-use-and-non-use.md": "site-owned",
     "docs/development/adr/adr-subscale-tpc-ranking-policy.md": "site-owned",
     "docs/development/adr/adr-textcharts-extraction.md": "site-owned",
