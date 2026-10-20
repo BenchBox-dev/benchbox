@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "A non-UTF-8 file with an arbitrary name under benchbox/ fails the scan with a clear skipped-file or decode finding instead of an unhandled UnicodeDecodeError.",
+    "The existing dead-host and allowlist assertions keep their exact behavior on decodable files.",
+    "Focused tests for the scanner pass."
+  ],
+  "context": "Found 2026-10-19 while implementing docs-mig-tpc-adjacent-eulas (PR 3168): adding canonical Windows-1252 EULA.txt copies under benchbox/_binaries crashed test_shipped_package_does_not_cite_dead_docs_host and test_shipped_package_benchbox_hosts_are_allowlisted with UnicodeDecodeError, because _shipped_text_files reads every matched file as UTF-8. PR 3168 works around it with a filename allowlist (EULA.txt, NOTICE.txt). Any future non-UTF-8 file with a different name reintroduces the crash. The scanner should treat undecodable bytes as a skip or an explicit finding, not an exception. Independent of the docs migration; no batch ordering constraint.",
+  "description": "tests/unit/cli/test_shipped_docs_urls.py scans every file under benchbox/ with a matching suffix as UTF-8 text. A non-UTF-8 file with a name outside the hardcoded EULA.txt/NOTICE.txt allowlist crashes both shipped-host tests with UnicodeDecodeError instead of producing a test finding. Make the scanner robust: skip undecodable files explicitly or surface them as findings, and add a regression test with a non-UTF-8 fixture filename that is not allowlisted.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7043d4c3f317252a997ee7d2",
+      "at": "2026-10-20T00:20:30Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "669ff8b1da61476d9538853cc1b74f52",
+      "session_id": "d66556e19a274eaea3762c21d3e37dd7"
+    }
+  ]
+}

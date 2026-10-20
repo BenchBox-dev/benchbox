@@ -21139,6 +21139,13 @@
       "status": "done",
       "title": "Ship discoverable templates with the installed package (package resources) so --tuning tuned works outside a repo checkout"
     },
+    "shipped-host-scan-binary-robustness": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Shipped-host URL scan crashes on non-UTF-8 files outside its filename allowlist"
+    },
     "shipping-the-normalize-plan-literals-cli-flag-and-surfacing": {
       "claim": null,
       "needs": [],
