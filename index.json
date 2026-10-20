@@ -22694,6 +22694,15 @@
       "status": "open",
       "title": "BenchBox: make the retirement checker exercise the wrapper and fix the baseline's workaround paths"
     },
+    "sqlglot-fork-d1-delete-wrapper-fixups": {
+      "claim": null,
+      "needs": [
+        "sqlglot-fork-a1-adopt-wrapper-wheel"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "BenchBox: delete wrapper fix-ups, dialect normalization and the QuestDB rewriter"
+    },
     "sqlglot-fork-f0-base-and-manifest": {
       "claim": null,
       "needs": [],
