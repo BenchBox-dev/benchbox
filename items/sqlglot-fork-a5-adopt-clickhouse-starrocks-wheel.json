@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Pin and baseline updated; make sqlglot-repro-retirement-check passes against the exact wheel.",
+    "Cumulative golden-corpus differences listed in the PR with a result-version note.",
+    "make pr-preflight, make comment-policy-check, make compat-docs-check and make typecheck pass; PR merged."
+  ],
+  "description": "Standard adoption (build from a recorded fork commit, verify, sync_sqlglot_runtime --wheel, pin and baseline update) for the wheel containing F10, with the cumulative golden-corpus test over every moved area. No deletion in this PR.",
+  "links": [
+    "_project/decisions/sqlglot-fork-transpilation-plan.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T16:00:30Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9f227cd88d994e31ae7589ba0f8b49a5",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}
