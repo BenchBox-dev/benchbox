@@ -2709,6 +2709,13 @@
       "status": "done",
       "title": "Keep release notes user-focused and in line with earlier entries"
     },
+    "changelog-merge-conflict-churn-20261020": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Reduce CHANGELOG.md merge conflicts between concurrent PRs"
+    },
     "changelog-parallel-pr-conflicts-20261014": {
       "claim": null,
       "needs": [],
