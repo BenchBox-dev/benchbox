@@ -1347,13 +1347,18 @@
       "title": "Fix the CI image mirror for tag-plus-digest pins and stop pulling Postgres unmirrored"
     },
     "autogen-durations-decouple-from-correctness-20261018": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-21T12:57:50Z",
+        "generation": "a1c7a350f3884d049f7498554058765b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
+      },
       "needs": [
         "autogen-issues-decisions-20261018",
         "autogen-nightly-report-lifecycle-20261018"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Make t3:durations fail only when duration tooling fails, after proving the canary covers the slow tier"
     },
     "autogen-gap-digest-stand-in-and-closure-20261018": {
