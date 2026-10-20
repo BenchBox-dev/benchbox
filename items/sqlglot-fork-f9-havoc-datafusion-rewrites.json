@@ -2,10 +2,11 @@
   "acceptance": [
     "Each named rewrite has tests on representative queries; execution on duckdb, datafusion (in process), chdb or PySpark where the target dialect has an obtainable engine; others recorded as gaps.",
     "The fork contains no TPC-H query ids or benchmark names; rewrite names are generic.",
+    "For DataFusion Q11/Q16/Q18/Q20, the PR states whether a generic rewrite exists; if not, it states the owner decision requested (reclassify as BenchBox query_source variants) instead of merging a partial rewrite.",
     "Output differences versus the BenchBox transformers over their unit-test inputs are listed in the PR.",
     "Fork make check, make benchbox-dist and make benchbox-check pass; PRs merged."
   ],
-  "description": "Expose the pure AST logic of benchbox/core/tpchavoc/dialect_compat.py, cloud_compat.py, core/spark_query_transformer.py and the DataFusion Q11/Q16/Q18/Q20 transformer as named rewrites taking (expression, dialect, **args): inline select aliases, window-filter rewrite, Presto array aggregation, ClickHouse and BigQuery filter rewrites, drop empty grouping, ordered array aggregation, scalar group-by and dual rewrites, postgres column qualification and dual to values. Convert the Snowflake GROUP BY () and BigQuery NULLS LAST text replaces to generator behavior. Variant id sets, qualified-column tables and the variant to rewrite dispatch table stay in BenchBox. Expect two PRs; DataFusion rules are re-implemented as AST rules because they exist only as TPC-H text regexes.",
+  "description": "Expose the pure AST logic of benchbox/core/tpchavoc/dialect_compat.py, cloud_compat.py, core/tpchavoc/spark_query_transformer.py and the DataFusion Q11/Q16/Q18/Q20 transformer as named rewrites taking (expression, dialect, **args). Convert the Snowflake GROUP BY () and BigQuery NULLS LAST text replaces to generator behavior. Variant id sets, qualified-column tables, _BIGQUERY_FROMLESS_IDS and the dispatch table stay in BenchBox. DataFusion Q11 and Q20 are whole-query hand-written replacements (datafusion_query_transformer.py:49-82,136-188): a generic AST version is new decorrelation work, and answers must be validated against TPC-H reference answers, which only BenchBox holds. Expect two PRs.",
   "links": [
     "_project/decisions/sqlglot-fork-transpilation-plan.md",
     "benchbox/core/tpchavoc/dialect_compat.py",
@@ -19,6 +20,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "3f64a1283b6447488efd2617e406102d",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T16:01:57Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e8cb2575cded43c2975266910d556382",
       "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
     }
   ]

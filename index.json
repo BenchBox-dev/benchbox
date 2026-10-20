@@ -22951,7 +22951,8 @@
     "sqlglot-fork-f9-havoc-datafusion-rewrites": {
       "claim": null,
       "needs": [
-        "sqlglot-fork-f5-adapter-rewrites-api"
+        "sqlglot-fork-f5-adapter-rewrites-api",
+        "sqlglot-fork-f0b-real-engine-ci"
       ],
       "priority": "medium-high",
       "status": "open",
