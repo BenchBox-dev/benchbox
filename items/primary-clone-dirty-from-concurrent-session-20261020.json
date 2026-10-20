@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "The writer is identified or the edits are recorded as unattributed with evidence checked",
+    "The edits live in a worktree or were deliberately dropped by their owner",
+    "git status in the primary clone is empty"
+  ],
+  "context": "Found 2026-10-20 during the follow-up batch. Evidence is from that session; re-verify before editing. Unclaimed.",
+  "description": "The dirty-primary guard (merged 2026-10-20) now fails commits in every worktree while the primary has uncommitted changes. At 19:20 EDT on 2026-10-20 three tracked files appeared modified (written 2 s apart, after all batch workers had reported idle): _project/decisions/sqlglot-soft-fork-plan.md, docs/development/adr/adr-sql-compat-phase-aware-pipeline.md, docs/development/adr/adr-sqlglot-use-and-non-use.md (16 lines added). Related worktrees exist: BenchBox.wt-adr-ownership, wt-checker-wrapper, wt-sqlglot-floor-residual. Work: identify the writer (session history, the worktree for branch docs/adr-sqlglot-fork-ownership), move the edits into that worktree, and confirm the primary is clean. Never discard another session's edits. Also decide whether the guard needs a clearer message pointing at the likely cause.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a",
+      "at": "2026-10-20T23:22:42Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "8dd99dedac5645839835061469264d8b",
+      "session_id": "0722acca462b419aa525d939aedd0290"
+    }
+  ]
+}

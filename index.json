@@ -16945,6 +16945,13 @@
       "status": "open",
       "title": "Detect uncommitted agent edits in the primary clone, not only commits and pr-open"
     },
+    "primary-clone-dirty-from-concurrent-session-20261020": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Find who writes to the primary clone and stop them now that the dirty guard blocks commits"
+    },
     "process-spend-versus-product-spend-decision": {
       "claim": null,
       "needs": [],
