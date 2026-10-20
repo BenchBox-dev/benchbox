@@ -1,11 +1,12 @@
 {
   "acceptance": [
-    "Each new dialect has tests/dialects tests (validate_identity/validate_all) and the Dialects enum, DIALECTS and MODULE_BY_DIALECT entries; relocate.py allowlists need no change or the change is justified in the PR.",
-    "PLATFORM_DIALECTS covers every platform registered in BenchBox and raises on an unknown platform; a fork test enumerates the mapping.",
-    "Real-engine proof: Netezza date +/- int output executes on Postgres (container) and DataFusion output executes on the in-process datafusion package; any platform without an obtainable engine is recorded as a gap in the PR.",
+    "Each new dialect has tests/dialects tests (validate_identity/validate_all); registry and enum edits are carried patches with fix: retain commits; relocate.py allowlists need no change or the change is justified.",
+    "The date-arithmetic rewrite takes column types or a schema as an argument, contains no TPC-DS names, and has execution tests on Postgres (container) proving date +/- int semantics.",
+    "DataFusion dialect output executes on the in-process datafusion package; engines not obtainable are listed in the PR against the F0b gap list.",
+    "The PR states the key space BenchBox must map (standard, ansi, netezza and each platform) so D1 can implement the mapping.",
     "Fork make check, make benchbox-dist and make benchbox-check pass; PR merged."
   ],
-  "description": "normalize_dialect_for_sqlglot maps netezza, greenplum, vertica, datafusion and ansi/standard onto postgres in BenchBox. Replace that with explicit fork dialects (thin Postgres subclasses where appropriate; QuestDB as a Trino/Postgres-based dialect skeleton) following the Dune pattern (dialects/, parsers/, generators/, Dialects enum, DIALECTS and MODULE_BY_DIALECT), including the Netezza reader rule date +/- int to INTERVAL. Export a PLATFORM_DIALECTS mapping (BenchBox platform name to dialect name) covering every supported platform. A missing platform must raise.",
+  "description": "normalize_dialect_for_sqlglot maps netezza, greenplum, vertica, datafusion and ansi/standard onto postgres in BenchBox. Callers pass 'standard' (datavault/benchmark.py:274, tpcds_obt/benchmark.py:412,421), 'ansi' (tpcdi/queries.py:203) and 'netezza' (translate_sql_query defaults). Add explicit fork dialects (thin Postgres subclasses where appropriate; QuestDB as a dialect skeleton) following the Dune pattern (dialects/, parsers/, generators/, Dialects enum, DIALECTS and MODULE_BY_DIALECT). Edits to upstream-owned registry files are carried patches per the F0 policy. This slice also creates the fork's sqlglot/benchbox/ package. The platform-to-dialect mapping lives in BenchBox's platform registry, not the fork; the fork only provides the dialects and documents how ansi/standard aliases resolve. fix_postgres_date_arithmetic is a postgres-target post-processor keyed on d_date column names, not a Netezza reader rule: expose it as a fork rewrite that takes column types or a schema as arguments, with the date-column gate data staying in BenchBox.",
   "links": [
     "_project/decisions/sqlglot-fork-transpilation-plan.md",
     "benchbox/utils/dialect_utils.py"
@@ -17,6 +18,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "0a27337da37943c4acc7af3af3630543",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T16:01:31Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6933a9fc245b48b4857a2b997695e038",
       "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
     }
   ]

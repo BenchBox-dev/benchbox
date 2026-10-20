@@ -22859,11 +22859,12 @@
     "sqlglot-fork-f1-platform-dialects": {
       "claim": null,
       "needs": [
-        "sqlglot-fork-f0-base-and-manifest"
+        "sqlglot-fork-f0-base-and-manifest",
+        "sqlglot-fork-f0b-real-engine-ci"
       ],
       "priority": "medium-high",
       "status": "open",
-      "title": "Fork: explicit dialects for Netezza, Greenplum, Vertica, DataFusion and QuestDB, plus PLATFORM_DIALECTS"
+      "title": "Fork: explicit dialects for Netezza, Greenplum, Vertica, DataFusion and QuestDB; TPC-DS date-arithmetic rewrite"
     },
     "sqlglot-fork-f10-clickhouse-starrocks-tpcds-rewrites": {
       "claim": null,
