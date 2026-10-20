@@ -3,7 +3,7 @@
     "A nightly-v2 dispatch with run_drift=true after PR #2837 merges shows the t3:drift job green with all five checks (corpus, privacy, validator, cross-surface baseline, pricing) passing",
     "Issue #2471 is closed by the reporter, or the reason it stayed open is recorded on the issue"
   ],
-  "context": "Live nightly-v2 run 37991400931 completed. The t3:drift corpus check failed because published-results is 25 paths behind develop (develop-ahead or content-changed); 10 paths exist only on published-results as accepted archive submissions and are not drift. Pricing, validator and baseline drift checks did not report failures. Issue #2471 has comment https://github.com/BenchBox-dev/BenchBox/issues/2471#issuecomment-6089964920. Blocked on t3-drift-corpus-mismatch-20261009; no issue closure claimed.\n\n2026-10-09 tracker review: needs now point at t3-drift-corpus-mismatch-20261009 (the pricing refresh, t3-drift-pricing-refresh-20261008, is done). Status changed from blocked to open because readiness now comes from needs. Run 37991400931 results: pricing, validator, privacy and baseline passed; corpus failed. The corpus cause is seven unmerged mirror PRs; the fix is merging #2837.",
+  "context": "Live nightly-v2 run 37991400931 completed. The t3:drift corpus check failed because published-results is 25 paths behind develop (develop-ahead or content-changed); 10 paths exist only on published-results as accepted archive submissions and are not drift. Pricing, validator and baseline drift checks did not report failures. Issue #2471 has comment https://github.com/BenchBox-dev/BenchBox/issues/2471#issuecomment-6089964920. Blocked on t3-drift-corpus-mismatch-20261009; no issue closure claimed.\n\n2026-10-09 tracker review: needs now point at t3-drift-corpus-mismatch-20261009 (the pricing refresh, t3-drift-pricing-refresh-20261008, is done). Status changed from blocked to open because readiness now comes from needs. Run 37991400931 results: pricing, validator, privacy and baseline passed; corpus failed. The corpus cause is seven unmerged mirror PRs; the fix is merging #2837.\n\nNOTE 2026-10-20: acceptance 1 names \"after PR #2837 merges\". That PR was superseded by the D11 mirror flow (mirror PR #3155 merged as 3ab1cbfe; sync validator list fixed in #3151). nightly-v2 dispatch https://github.com/BenchBox-dev/benchbox/actions/runs/39426567670 (run_drift=true) shows t3:drift green and #2471 closed. The acceptance text should be rewritten to drop the PR #2837 precondition, then this item can be unblocked and finished; needs an owner or planning decision because it rewrites a recorded acceptance.",
   "description": "After the corpus mirror PR #2837 merges (tracked by t3-drift-corpus-mismatch-20261009), dispatch nightly-v2.yml with run_drift=true (scheduled runs evaluate drift on Mondays only, so the issue would otherwise stay open until the next Monday). Confirm all five drift checks pass in the t3:drift job: corpus, privacy, validator, cross-surface baseline and pricing. The Report job should then close issue #2471. If a check fails, record which one and why on the issue rather than re-dispatching.\n\nResult of the first dispatch, run 37991400931: the pricing, validator, privacy and baseline checks passed; the corpus check failed.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/issues/2471"
@@ -56,6 +56,14 @@
       "op": "update",
       "op_id": "190154ed296d442c9cb0a1424059d359",
       "session_id": "3e7fe4d5d9904fa9a6d58ca7e8a7216f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a",
+      "at": "2026-10-20T20:22:56Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "391742dc1c8745a98874926e9a33013c",
+      "session_id": "0722acca462b419aa525d939aedd0290"
     }
   ]
 }
