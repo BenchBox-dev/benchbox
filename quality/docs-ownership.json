@@ -23,6 +23,7 @@
     "docs/agent/identity-instruction-boundary.md": "core-only",
     "docs/agent/merge-authority.md": "core-only",
     "docs/agent/pr-review-evidence.md": "core-only",
+    "docs/agent/primary-clone-guard.md": "core-only",
     "docs/agent/remote-closeout.md": "core-only",
     "docs/agent/review-protocol-legacy.md": "core-only",
     "docs/agent/review-protocol.md": "core-only",

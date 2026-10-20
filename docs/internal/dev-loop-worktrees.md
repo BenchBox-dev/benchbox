@@ -36,6 +36,10 @@ clone to reinstall, then rerun preflight in the linked worktree. On a cold
 primary clone, the primary-clone `uv run` command may provision the environment;
 linked-worktree preflight never installs or repairs shared hooks.
 
+`make agent-write-preflight` and `make pr-preflight` also fail when the primary
+clone has uncommitted tracked changes, naming the paths; see
+`docs/agent/primary-clone-guard.md`.
+
 The branch must use one of the repository's feature prefixes: `chore/`,
 `fix/`, `feat/`, or `docs/`. The standard base is `origin/develop`.
 Creation checks both local and `origin` branch refs before creating anything,
