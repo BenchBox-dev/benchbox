@@ -16939,15 +16939,10 @@
       "title": "Confirm vendor pricing data may be redistributed in the BenchBox wheel"
     },
     "primary-clone-dirty-edit-guard-20261020": {
-      "claim": {
-        "expires_at": "2026-10-21T23:24:15Z",
-        "generation": "6b09265b99d4493ba0bca1f947b39c12",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Detect uncommitted agent edits in the primary clone, not only commits and pr-open"
     },
     "primary-clone-dirty-from-concurrent-session-20261020": {
