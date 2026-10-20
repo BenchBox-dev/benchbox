@@ -22900,7 +22900,8 @@
     "sqlglot-fork-f4-questdb-generator": {
       "claim": null,
       "needs": [
-        "sqlglot-fork-f1-platform-dialects"
+        "sqlglot-fork-f1-platform-dialects",
+        "sqlglot-fork-f0b-real-engine-ci"
       ],
       "priority": "medium-high",
       "status": "open",

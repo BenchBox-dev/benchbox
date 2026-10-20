@@ -1,9 +1,9 @@
 {
   "acceptance": [
     "Each rewrite has dialect tests including the nested-parentheses CTE case that the regex mishandles.",
-    "Real-engine proof: generated SQL executes on a QuestDB container in the fork CI; if the container cannot run in the fork's CI, the gap is recorded and sign-off requested before merge.",
+    "Real-engine proof: generated SQL executes on a QuestDB container in the fork CI (F0b); if the container cannot run there, the gap is recorded and sign-off requested before merge.",
     "Output differences versus questdb_rewriter.py over tests/unit/platforms/test_questdb_rewriter*.py inputs are listed in the PR.",
-    "patches.json records the dialect as status 'original'; fork make check, make benchbox-dist and make benchbox-check pass; PR merged."
+    "New dialect files may be status 'original'; edits to upstream-owned files are carried patches. Fork make check, make benchbox-dist and make benchbox-check pass; PR merged."
   ],
   "description": "Replace benchbox/platforms/questdb_rewriter.py (three regexes and one AST rewrite) with a QuestDB dialect generator: comma joins to explicit joins, INTERVAL +/- n DAY/MONTH/YEAR to dateadd('d'|'M'|'y', ...), SUBSTRING FROM/FOR to the supported form, and WITH name(cols) AS to the supported form. The AST version must handle nested parentheses, which the current CTE regex does not. QuestDB is a fork-original dialect; the upstream feature request draft stays in _project/sqlglot-upstream/issues/06-questdb-dialect-feature-request.md.",
   "links": [
@@ -18,6 +18,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "dc2e1719b124488aade4f4dd73bd4d9e",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T16:01:42Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "0c9128b950284378be23b2b0db8206b4",
       "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
     }
   ]
