@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Failure message names the stale base and the fix",
+    "Or the check tolerates a wheel bump that exists on origin/develop"
+  ],
+  "context": "Seen in the takeover worktree BenchBox.wt-pr-text. Low urgency; workaround is a fresh worktree from origin/develop.",
+  "description": "The comment-policy ownership baseline pins _project/scripts/vendor/todo_db-0.9.1-py3-none-any.whl. Once develop replaced it with 0.10.1, a branch still on the old base failed make comment-policy-check with 'immutable dependency binding changed' and an earlier run with 'No such file or directory'. The only fix was rebuilding on a current develop base. make pr-refresh refuses from a stale branch path and the error does not say to rebase.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:afd83494ecacfcdab965057e",
+      "at": "2026-10-20T12:59:20Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "0dbd1d04a222497baf3df078d5795a5c",
+      "session_id": "8202d1c5316f41c897a0af067e2c8e9e"
+    }
+  ]
+}
