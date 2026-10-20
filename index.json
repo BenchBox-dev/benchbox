@@ -22827,7 +22827,8 @@
       "claim": null,
       "needs": [
         "sqlglot-fork-a4-adopt-havoc-wheel",
-        "sqlglot-fork-d3-delete-ddl-rule-bodies"
+        "sqlglot-fork-b2-migrate-direct-importers",
+        "sqlglot-fork-d1-delete-wrapper-fixups"
       ],
       "priority": "medium-high",
       "status": "open",
