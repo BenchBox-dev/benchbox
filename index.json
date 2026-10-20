@@ -4997,6 +4997,13 @@
       "status": "open",
       "title": "Resolve shell payload coverage errors blocking the required comment-policy gate"
     },
+    "comment-policy-staged-hook-runtime-20261020": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Make the comment-policy commit hook finish in seconds for a small commit"
+    },
     "comment-policy-strict-mode-reconciliation": {
       "claim": null,
       "needs": [],
