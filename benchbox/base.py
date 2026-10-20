@@ -398,13 +398,16 @@ class BaseBenchmark(BenchmarkResultValidationMixin, VerbosityMixin, ABC):
         if sqlglot is None:
             raise ImportError("Bundled benchbox._vendor.sqlglot runtime is unavailable; reinstall BenchBox.")
 
-        from benchbox.utils.dialect_utils import SQLTranslationError, translate_sql_query
+        from benchbox.utils.dialect_utils import normalize_dialect_for_sqlglot
 
         query = self.get_query(query_id)
 
+        normalized_dialect = normalize_dialect_for_sqlglot(dialect)
+
         try:
-            return translate_sql_query(query, dialect, source_dialect="postgres", identify=True, strict=True)
-        except SQLTranslationError as e:
+            translated = sqlglot.transpile(query, read="postgres", write=normalized_dialect, identify=True)[0]
+            return translated
+        except (ValueError, AttributeError) as e:
             raise ValueError(f"Error translating to dialect '{dialect}': {e}") from e
 
     @property
