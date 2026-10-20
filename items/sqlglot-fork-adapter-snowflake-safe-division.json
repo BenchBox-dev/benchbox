@@ -1,10 +1,10 @@
 {
   "acceptance": [
-    "Snowflake adapter requests safe_division through the wrapper; output over tests/unit/platforms/test_snowflake_sql_generation.py inputs is identical or the differences are listed and approved.",
+    "Snowflake adapter requests safe_division through apply_rewrite; output over tests/unit/platforms/test_snowflake_sql_generation.py inputs is identical or the differences are listed and approved.",
     "A recorded owner decision states whether results published with the old behavior need a note or a rerun.",
-    "make pr-preflight and typecheck pass; PR merged."
+    "make pr-preflight, make comment-policy-check, make compat-docs-check, make sqlglot-repro-retirement-check, make typecheck and the Snowflake unit tests pass; PR merged."
   ],
-  "description": "The Snowflake adapter wraps divisors in NULLIF(divisor, 0) through _safeguard_snowflake_division (snowflake.py). The fork exposes this as opt-in safe_division. The adapter must pass it explicitly so behavior is unchanged, and the change must be reviewed because it alters semantics for zero divisors and can change published results. Logged by owner decision as a high-priority follow-up.",
+  "description": "The Snowflake adapter wraps divisors in NULLIF(divisor, 0) through _safeguard_snowflake_division (snowflake.py:1165, 1317). The fork exposes this as opt-in safe_division, reached through apply_rewrite. The adapter must pass it explicitly so behavior is unchanged before the local safeguard is deleted (the d2 item depends on this one). The owner also reviews whether the semantic affects published results.",
   "links": [
     "_project/decisions/sqlglot-fork-transpilation-plan.md",
     "benchbox/platforms/snowflake.py"
@@ -16,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "6894ac95d0f24957b2feec704338919b",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T16:03:35Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "10a92f079d604097a821c5aa793f25e3",
       "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
     }
   ]
