@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "transpile_ddl covers the 'pure strip/convert' rules from the plan with tests that execute the produced DDL on sqlite, duckdb or Postgres (container) and compare the created schema.",
+    "SingleStore emitters take keys as arguments; no TPC-H table names exist in the fork; SingleStore execution evidence uses a container or is recorded as a gap.",
+    "DdlOptions is frozen, typed and documented in the fork README.",
+    "Fork make check, make benchbox-dist and make benchbox-check pass; PR merged."
+  ],
+  "description": "Owner emphasis: DDL transpilation is first class. Add a frozen DdlOptions dataclass and transpile_ddl in sqlglot/benchbox/ddl.py. Core behaviors: strip primary/foreign keys and UNIQUE/REFERENCES (postgresql, ducklake, questdb, databend, firebolt), CREATE OR REPLACE (snowflake, bigquery, databricks), and SingleStore SHARD KEY, SORT KEY and REFERENCE TABLE clause emitters. Benchmark data (shard/sort key tables, reference table list) stays in BenchBox and arrives via DdlOptions.",
+  "links": [
+    "_project/decisions/sqlglot-fork-transpilation-plan.md",
+    "benchbox/sql_compat/rules/ddl_optimize/"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T15:43:44Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "8cfe647d32444f5e84bfc6821d83e0d4",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}

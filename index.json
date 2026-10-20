@@ -22715,6 +22715,15 @@
       "status": "open",
       "title": "Fork: TPC-DI SQLite idioms and ClickBench regex escaping as generator behavior"
     },
+    "sqlglot-fork-f7-ddl-core": {
+      "claim": null,
+      "needs": [
+        "sqlglot-fork-f0-base-and-manifest"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Fork: DdlOptions and transpile_ddl core (constraint stripping, CREATE OR REPLACE, SingleStore key clauses)"
+    },
     "sqlglot-mysql-retirement-needs-execution-evidence": {
       "claim": null,
       "needs": [],
