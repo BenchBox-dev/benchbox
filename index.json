@@ -8235,9 +8235,9 @@
     },
     "dlv2-51-release-yml-v2": {
       "claim": {
-        "expires_at": "2026-10-21T11:47:17Z",
+        "expires_at": "2026-10-21T12:15:52Z",
         "generation": "0eff949e581a409bab67dd407ed764bc",
-        "renewals": 0,
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02ecc32be2127e4ca837bb5b"
       },
       "needs": [
