@@ -4,7 +4,7 @@
     "Next-version release-prep merged and readiness report delivered to owner",
     "After the owner's release: PyPI run URL, hashes match the admitted trunk dist-artifact SHA256SUMS, attestation verifies, t3:install green"
   ],
-  "context": "Supersedes the earlier combined rehearsal+release text. 2026-10-17 adversarial review (codex + claude): rehearsal split to dlv2-52a so it can run before dlv2-22; this item retains dlv2-22 as a hard need. Version is 0.5.0 per docs/development/adr/adr-core-execution-variants.md:552 (canonical names ship in 0.5.0); the citation path docs/internal/adr/adr-core-execution-variants.md in the original brief was stale. History: v0.4.2 shipped legacy 2026-10-05 (PR #2668, 627496f04, run 37304421548).",
+  "context": "Supersedes the earlier combined rehearsal+release text. Rehearsal is split to dlv2-52a so it can run before dlv2-22. Owner decision 2026-10-20: the TestPyPI rehearsal may start before dlv2-22; only the real PyPI publish waits for dlv2-22 (nightly T3 shadow), whose blockers are not on the release path. The need on dlv2-22 is therefore carried as a hard gate in this item's description and must be re-checked live before the owner is asked to tag v0.5.0, not as a tracker need. Version is 0.5.0 per docs/development/adr/adr-core-execution-variants.md D13 (line 547; canonical names ship in 0.5.0). History: v0.4.2 shipped legacy 2026-10-05 (PR #2668, 627496f04, run 37304421548).",
   "description": "First real PyPI release on the new path. The TestPyPI rehearsal moved to dlv2-52a-testpypi-rehearsal (2026-10-17 adversarial review: codex Required + claude F9(3) implemented as a tracker split, not a design note). This item keeps the dlv2-22 gate: a green nightly T3 run is required before a real PyPI release, and no part of this item may be rehearsed around that gate.\n\nAgent (pre-approved): run make release-prep VERSION=0.5.0, merge the release-prep PR, wait for its trunk.yml push run on develop to finish green, then STOP: report readiness (rehearsal evidence from dlv2-52a, candidate commit, hashes) to the owner. EXPECTED STOP: the owner creates the annotated v0.5.0 tag (git tag -a; lightweight tags are refused) and approves the pypi environment deployment. The owner hand-off window must be stated and kept well inside the 90-day artifact retention; GitHub cancels deployments waiting for approval after 30 days (claude NEW-12). After the owner's release, the agent verifies hashes against the admitted SHA256SUMS, attestation with the expected signer workflow, and pypi-latest installability (t3:install), then finishes the item.\n\nAuthority note (claude NEW-3, accepted): agents share the owner account (ADR D4); the v-tag bypass actor and pypi environment (can_admins_bypass true, prevent_self_review false) do not mechanically stop the agent account. The STOP above is enforced by agent discipline, and the publish-time tag re-check in dlv2-51 is the machine control. State this plainly in the readiness report; do not describe the ruleset or environment as a human gate that binds the agent.\n\nGuardrails: never rebuild; never fall back to an older trunk run; no trunk reruns on the tagged commit; every pypi publish needs the owner's approval in this item, every time.",
   "sessions": [
     {
@@ -78,6 +78,14 @@
       "op": "update",
       "op_id": "de2eb38456724140a10c251ef29fdce2",
       "session_id": "b88f90bbf0854ed0a599432bfe5fd099"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02ecc32be2127e4ca837bb5b",
+      "at": "2026-10-20T11:55:38Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "df638328a3d244c886e866bb42550d80",
+      "session_id": "4e4c9ed2f997469297fab5a3c6bd1c11"
     }
   ]
 }
