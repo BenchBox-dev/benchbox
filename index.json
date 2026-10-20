@@ -22656,11 +22656,13 @@
         "sqlglot-fork-f2-sqlite-generator",
         "sqlglot-fork-f3-duckdb-all-keyword",
         "sqlglot-fork-f4-questdb-generator",
-        "sqlglot-fork-b3-checker-wrapper-mode"
+        "sqlglot-fork-f5-adapter-rewrites-api",
+        "sqlglot-fork-b3-checker-wrapper-mode",
+        "sqlglot-fork-b2-migrate-direct-importers"
       ],
       "priority": "medium-high",
       "status": "open",
-      "title": "BenchBox: adopt the fork wheel containing the wrapper-level fixes and explicit dialects"
+      "title": "BenchBox: adopt the first fork wheel (dialects, generator fixes, rewrite API) and add apply_rewrite"
     },
     "sqlglot-fork-a2-adopt-adapter-wheel": {
       "claim": null,
