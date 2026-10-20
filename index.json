@@ -2121,15 +2121,10 @@
       "title": "Bind preview artifacts to their source commit"
     },
     "blog-publication-hold-marker": {
-      "claim": {
-        "expires_at": "2026-10-21T13:03:44Z",
-        "generation": "ab7bbd16d3e4463a905adb3f573f36a1",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6d5eb9aefd704c065efcdb3f"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Add a mechanical hold marker for withheld publications"
     },
     "blog-queue-drift-check": {
