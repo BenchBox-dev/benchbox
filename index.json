@@ -2107,10 +2107,15 @@
       "title": "Validate blog filename/date agreement, required fields, and toctree coverage"
     },
     "blog-preview-artifact-scoping": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-21T13:03:26Z",
+        "generation": "dfbedccc87df457cb967d2337b1281f8",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6d5eb9aefd704c065efcdb3f"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Scope site-preview artifact upload and decouple it from the required CI gate"
     },
     "blog-preview-artifact-trust": {
