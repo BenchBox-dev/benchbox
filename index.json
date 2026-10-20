@@ -19219,10 +19219,15 @@
       "title": "Restore lightweight fast test lane with comprehensive test reclassification"
     },
     "restore-pr-landing-entrypoint-test": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-21T14:11:11Z",
+        "generation": "3713ed95028541478d2406ee8ecd0aee",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:afd83494ecacfcdab965057e"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Restore the deleted pr-landing Makefile entrypoint test"
     },
     "restrict-primary-foreign-key-configuration-to-tuning-yaml-only": {
