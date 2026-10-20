@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Pin and baseline updated; make sqlglot-repro-retirement-check passes against the exact wheel.",
+    "Golden-corpus differences listed in the PR with a result-version note.",
+    "make pr-preflight, make comment-policy-check, make compat-docs-check and make typecheck pass; PR merged."
+  ],
+  "description": "Same procedure as the first adoption (clean pinned fork build, verify, sync_sqlglot_runtime --wheel, pin and baseline update) for the wheel containing the F5 and F6 fork slices. Include a golden-corpus test over the existing BigQuery, Snowflake, Databricks, TPC-DI and ClickBench unit-test inputs. No deletion in this PR.",
+  "links": [
+    "_project/decisions/sqlglot-fork-transpilation-plan.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T15:44:48Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "d85793170f8741999dbee61ea5902a39",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}

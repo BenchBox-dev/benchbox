@@ -22662,6 +22662,17 @@
       "status": "open",
       "title": "BenchBox: adopt the fork wheel containing the wrapper-level fixes and explicit dialects"
     },
+    "sqlglot-fork-a2-adopt-adapter-wheel": {
+      "claim": null,
+      "needs": [
+        "sqlglot-fork-f5-adapter-rewrites-api",
+        "sqlglot-fork-f6-tpcdi-clickbench-generators",
+        "sqlglot-fork-a1-adopt-wrapper-wheel"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "BenchBox: adopt the fork wheel containing adapter rewrites, safe_division and TPC-DI/ClickBench generators"
+    },
     "sqlglot-fork-adr-ownership": {
       "claim": null,
       "needs": [],
