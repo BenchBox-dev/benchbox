@@ -248,7 +248,7 @@ class TestPgDuckDBExtensionVerification:
         assert force_exec_set
 
     def test_postgres_engine_sets_force_execution_false(self, pg_duckdb_stubs):
-        adapter = PgDuckDBAdapter(execution_engine="postgres")
+        adapter = PgDuckDBAdapter(execution_engine="postgres", tuning_enabled=True)
         cursor = Mock()
         adapter._apply_pgduckdb_session_gucs(cursor)
         cursor.execute.assert_called_once_with("SET duckdb.force_execution = false")

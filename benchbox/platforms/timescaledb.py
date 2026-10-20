@@ -670,6 +670,9 @@ class TimescaleDBAdapter(PostgreSQLAdapter):
         return platform_info
 
     def configure_for_benchmark(self, connection: Any, benchmark_type: str) -> None:
+        if not self.tuning_enabled:
+            return
+
         super().configure_for_benchmark(connection, benchmark_type)
 
         cursor = connection.cursor()

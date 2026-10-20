@@ -7,8 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The bundled SQLGlot runtime moves from 30.23.0.2 to 30.24.0.1 (upstream
+  v30.24.0, fork commit `4bea533be2d9`). A translation corpus of every shipped
+  benchmark query across 20 target dialects changes in 20 of 25,240 outputs.
+  Results published before this change for the affected queries and dialects
+  were computed with different SQL and should be rerun:
+  - TPC-DI `AQ5`, `AQ6`, `AQ9` and read_primitives `statistical_variance_stddev`
+    on MySQL, Doris, StarRocks and SingleStore: `STDDEV` now emits
+    `STDDEV_SAMP` (and `VARIANCE` emits `VAR_SAMP`). Earlier results used the
+    population deviation/variance on these targets; they now use the sample
+    form (16 outputs: 12 TPC-DI, 4 read_primitives).
+  - read_primitives `array_sort` and `array_distinct` on DuckDB: `ARRAY_SORT`
+    now emits `LIST_SORT`.
+  - read_primitives `approx_quantile_groupby` on BigQuery: `APPROX_QUANTILE`
+    now emits `APPROX_QUANTILES(x, 2)[1]`.
+  - read_primitives `pivot_basic` on StarRocks: the `PIVOT` clause was
+    previously dropped, yielding a non-pivoting query, and is now emitted.
+
 ### Fixed
 
+- PostgreSQL-family baseline runs (PostgreSQL, TimescaleDB, pg_duckdb,
+  pg_mooncake, Citus, ParadeDB) no longer issue the planner session settings
+  (`enable_seqscan`, `enable_hashjoin`, `enable_mergejoin`, `random_page_cost`,
+  `cpu_tuple_cost`, `synchronous_commit`, `timescaledb.enable_chunk_skipping`,
+  `duckdb.force_execution`) through the recording connection. A baseline is
+  platform defaults only, so the settings apply on tuned runs only and baseline
+  results no longer fail the public privacy validation with an unanonymized
+  tuning statement. Validation rules and floors are unchanged.
 - The green-unmerged sweep locates the original marker-tagged digest issue
   beyond the newest 1,000 issues/PRs, preferring oldest-created search matches
   and falling back to an uncapped oldest-first scan without labels. Malformed
@@ -74,6 +101,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   public submissions require a private salt.
 
 ### Added
+
+- A repository test fails when a module outside `benchbox/utils/dialect_utils.py`
+  and `benchbox/sql_compat/` calls `transpile`, `parse_one`, `parse` or `.sql(`
+  on the vendored SQLGlot, except for an explicit shrinking allowlist.
 
 - Tuned PostgreSQL runs now apply requested partitioning: date columns get
   yearly `RANGE` partitions over the benchmark's date domain plus a `DEFAULT`
@@ -205,6 +236,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   do not receive `benchbox run`'s execution-engine selection.
 
 ### Changed
+
+- `DialectTranslationMixin.translate_sql`, `BaseBenchmark.translate_query` and
+  ClickBench query translation now call `translate_sql_query` with an explicit
+  `identify` argument instead of calling the vendored SQLGlot directly, so the
+  DuckDB `ALL` restore and SQLite fix-ups are applied in one place. ClickBench
+  translation raises `SQLTranslationError` instead of silently returning the
+  untranslated ClickHouse SQL. Output differences caused by routing: SQLite
+  ClickBench Q19 and Q43 now use the wrapper's SQLite fix-ups, and the
+  `datafusion`, `netezza`, `ansi`, `standard`, `vertica` and `greenplum`
+  dialects now translate through the wrapper's PostgreSQL mapping where they
+  previously returned the ClickHouse text unchanged (all 43 queries on each of
+  those six targets; DataFusion included). Result-version note: ClickBench
+  results on SQLite (Q19, Q43) and on those six targets were computed with
+  different SQL before this change, are not comparable with earlier runs, and
+  should be rerun.
 
 - **BenchBox bundles a patched SQLGlot runtime.** SQL translation now uses a
   pinned, pure-Python SQLGlot 30.23.0 build with three carried fixes, shipped as

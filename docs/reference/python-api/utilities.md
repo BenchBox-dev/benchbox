@@ -98,7 +98,7 @@ postgresql
 
 **Supported Dialects**:
 
-The bundled SQLGlot runtime (based on upstream 30.23.0) registers these dialect names, among others. The function passes them through unchanged:
+The bundled SQLGlot runtime (based on upstream 30.24.0) registers these dialect names, among others. The function passes them through unchanged:
 
 - **Cloud**: athena, bigquery, databricks, redshift, snowflake
 - **Open Source**: clickhouse, duckdb, mysql, postgres, sqlite
