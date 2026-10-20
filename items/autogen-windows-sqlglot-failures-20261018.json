@@ -4,7 +4,7 @@
     "Fixes merged with required checks green",
     "A branch windows-latest run shows the 7 tests passing with no new failures"
   ],
-  "context": "Program: autogen-issues-decisions-20261018 (D9: fix, no quarantine; G6, G10, G13 apply). Follow-up created by the controller during the batch; not part of the batch set; do not take it during the batch. Rubric: PASS needs the per-test causes and a green Windows run. FAIL if any test is skipped or quarantined.",
+  "context": "Program: autogen-issues-decisions-20261018 (D9: fix, no quarantine; G6, G10, G13 apply). Follow-up created by the controller during the batch; not part of the batch set; do not take it during the batch. Rubric: PASS needs the per-test causes and a green Windows run. FAIL if any test is skipped or quarantined.\n\nCHECKPOINT 2026-10-20: PR #3188 head 56137e241 armed (no workflow path, no oracle needed). Causes: 6 failures from CRLF checkout of benchbox/_vendor/SQLGLOT_LICENSE.txt (.gitattributes rule added) vs byte-compare in check_runtime; nested-archive probe asserted forward slashes while zipimport reports backslashes on Windows; BigQuery SqlCatalog engine now disposed. Windows proof: Nightly T3 dispatch 39467654899 (pre-rebase head 751675012): t3:windows junit 30430 tests, 0 failures/errors, all 7 targets pass. Worker follow-up: undisposed SqlCatalog in tests/unit/utils/test_iceberg_layout.py:85 and format_converters/test_iceberg_converter.py. Note: worker first stray-edited the primary clone (since restored). NEXT: after merge re-take, record SHA, finish; then t3:windows can go green (#2964).",
   "description": "Follow-up from the Windows item (run 39175974009, branch fix/windows-t3-fast-failures): six failures in tests/unit/scripts/test_check_sqlglot_repro_retirement.py (plain-text SQLGlot notice differs from bundled wheel license, plus regex mismatches) and one in tests/unit/scripts/test_sync_sqlglot_runtime.py::test_repository_runtime_loads_from_nested_archive_without_import_path_changes (CalledProcessError). Out of scope for the five targeted failures; they keep t3:windows red. Work: reproduce the Windows cause for each, fix root cause, prove with a branch workflow_dispatch on windows-latest. Also check the BigQuery test helper with the same undisposed SqlCatalog pattern noted by the worker (tests/unit/platforms/test_bigquery_adapter.py:38). Guardrails: no quarantine/skip (D9, G6); formal review before PR (G13).",
   "sessions": [
     {
@@ -13,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "5183e0d85d21426ba914cc460c90dec9",
+      "session_id": "0722acca462b419aa525d939aedd0290"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a",
+      "at": "2026-10-20T18:24:55Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "30f7181890714722859cea6afde6127e",
       "session_id": "0722acca462b419aa525d939aedd0290"
     }
   ]
