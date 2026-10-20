@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "rg finds none of the deleted functions; tests/unit/platforms/clickhouse, starrocks and tests/unit/core/tpcds pass.",
+    "make compat-docs-check, make sqlglot-repro-retirement-check, make comment-policy-check, make typecheck and make pr-preflight pass; PR merged.",
+    "After merge, every item classified 'moves' in the plan no longer exists in BenchBox (verified by rg) and the bypass test allowlist holds only reasoned parse-only entries."
+  ],
+  "description": "After A5, delete ClickHouseQueryTransformer and its division helpers, the StarRocks execute-time rewrites, the TPC-DS ClickHouse Q10/Q35 overrides and the runner's interval normalization and Q58 processors, calling apply_rewrite with BenchBox-held query-id data. ClickHouse must already pass safe_division explicitly.",
+  "links": [
+    "_project/decisions/sqlglot-fork-transpilation-plan.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T16:00:50Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "0a2889c77b13482db4a3a35ebb0ec4e3",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}
