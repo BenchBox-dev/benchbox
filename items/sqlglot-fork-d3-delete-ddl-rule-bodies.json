@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "rg finds none of the deleted rule bodies or adapter DDL methods; the registry rows remain and test_registry_integrity.py, test_compat_lint_clean.py and the inventory drift check pass.",
+    "tests/unit/sql_compat, tests/unit/core/sql_compat and tests/unit/platforms DDL tests pass; SingleStore runtime rules produce the same DDL except where the A3 corpus differences list it.",
+    "make compat-docs-check, make comment-policy-check, make typecheck and make pr-preflight pass; PR merged."
+  ],
+  "description": "BaseDdlOptimizer currently dispatches with getattr(self, transformer_id) to adapter methods (for example singlestore.py optimize and key-injection methods). Rewire it to call translate_ddl with DdlOptions built from adapter config and tuning data (SingleStore key tables and reference list stay in BenchBox), and delete the rule bodies in sql_compat/rules/ddl_optimize and the adapter methods and platforms/base/ddl_helpers.py text helpers in the same change, so DDL never raises AttributeError. Keep the 22 governance-anchor registry rows, re-pointed at fork API names.",
+  "links": [
+    "_project/decisions/sqlglot-fork-transpilation-plan.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T15:45:18Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "d8157f3c1a8f46539a439d974c52af12",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}

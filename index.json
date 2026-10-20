@@ -22735,6 +22735,16 @@
       "status": "open",
       "title": "BenchBox: delete adapter AST safeguards, alias dedupe and TPC-DI/ClickBench regex rewrites"
     },
+    "sqlglot-fork-d3-delete-ddl-rule-bodies": {
+      "claim": null,
+      "needs": [
+        "sqlglot-fork-a3-adopt-ddl-wheel",
+        "sqlglot-fork-d2-delete-adapter-rewrites"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "BenchBox: delete DDL rule bodies and adapter DDL methods, rewire BaseDdlOptimizer to translate_ddl"
+    },
     "sqlglot-fork-f0-base-and-manifest": {
       "claim": null,
       "needs": [],
