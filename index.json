@@ -27499,6 +27499,13 @@
       "status": "done",
       "title": "todo create --verify splits on :: and silently truncates pytest node-id commands"
     },
+    "verify-pg-integration-after-baseline-fix-20261020": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Run the Docker PostgreSQL integration tests after the PG-family baseline fix"
+    },
     "verify-rungs-contend-on-the-test-lock-20260805": {
       "claim": null,
       "needs": [],
