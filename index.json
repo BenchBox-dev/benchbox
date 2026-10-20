@@ -22943,13 +22943,18 @@
       "title": "Fork: real-engine CI for execution tests (in-process engines, containers, Python 3.9 constraint)"
     },
     "sqlglot-fork-f1-platform-dialects": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-21T20:36:03Z",
+        "generation": "46545cc7154e420cb15dcc056b0d3cbe",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d"
+      },
       "needs": [
         "sqlglot-fork-f0-base-and-manifest",
         "sqlglot-fork-f0b-real-engine-ci"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Fork: explicit dialects for Netezza, Greenplum, Vertica, DataFusion and QuestDB; TPC-DS date-arithmetic rewrite"
     },
     "sqlglot-fork-f10-clickhouse-starrocks-tpcds-rewrites": {
