@@ -3,8 +3,8 @@
     "make pr-open or oracle planning detects a base sha that is not the merge base with origin/develop and either refreshes it or fails with a clear message",
     "Test covers the stale-base case"
   ],
-  "context": "Workaround used: gh pr close then gh pr reopen. Not a root-caused GitHub behaviour; the cause of the stale base is unverified.",
-  "description": "PR #3109 was pushed after its branch had been merged with a newer develop. GitHub kept comparing it against an old base (base sha 27f7a7d1f, changed_files 481, additions 14532, 46 commits) while the real change was 11 files. gh pr diff failed with HTTP 406 (over 300 files) and the oracle planned a very-high tier ('2247 code lines across 13 areas', soundness paths touched), where the first reviewer errored. Closing and reopening the PR refreshed the base (0f5ed3aa7, 11 files, 4 commits) and the oracle then reported 'no soundness path changed'. Neither make pr-open nor the oracle detects the mismatch between the PR's recorded base and origin/develop.",
+  "context": "Workaround used: close and reopen. Evidence is a single occurrence.",
+  "description": "PR #3109 (head a6acef0d9) was pushed after its branch had been merged with a newer develop. The GitHub API kept reporting an old base (base sha 27f7a7d1f, changed_files 481, additions 14532, 46 commits) while the real change against origin/develop was 11 files. gh pr diff failed with HTTP 406 (over 300 files) and the oracle planned tier very-high ('2247 code lines across 13 areas', soundness paths touched). After gh pr close then gh pr reopen the API reported base 0f5ed3aa7, 11 files, 4 commits and the oracle reported 'no soundness path changed'. Cause not established: it may be GitHub's lazy recomputation rather than anything BenchBox does. Related: oracle-coverage-gate-large-prs-20261017 covers oracle handling of genuinely large PRs; this item is about a wrongly large PR.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3109"
   ],
@@ -15,6 +15,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "a30c01bf063f4115ac878d4ec4603f7a",
+      "session_id": "8202d1c5316f41c897a0af067e2c8e9e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:afd83494ecacfcdab965057e",
+      "at": "2026-10-20T13:13:50Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7dbf4bdb6e914378b30c01e2a2b952d5",
       "session_id": "8202d1c5316f41c897a0af067e2c8e9e"
     }
   ]
