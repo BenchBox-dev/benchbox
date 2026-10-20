@@ -2099,6 +2099,13 @@
       "status": "open",
       "title": "Scope site-preview artifact upload and decouple it from the required CI gate"
     },
+    "blog-queue-drift-check": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Add CI check for publication queue, series-plan, and index consistency"
+    },
     "blog-scd2-sf1-scale-row": {
       "claim": null,
       "needs": [],

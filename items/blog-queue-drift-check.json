@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "A drafts-only or links-only break is caught before merge",
+    "The check covers queue-to-file set equality, not just link resolution"
+  ],
+  "context": "The 26-to-26 queue/filesystem equality and 78-link integrity were verified with one-off throwaway scripts during PR #46 review (Gemini) and implementation verification; nothing in CI re-runs them. Raised as L2 blind spots by both follow-up reviewers.",
+  "description": "Add a CI check that fails when a drafts article lacks a queue row (or vice versa), when a queue/plan relative link breaks, and when a blog post misses its index toctree entry. Today all three drift silently.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox-site/pull/46"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6d5eb9aefd704c065efcdb3f",
+      "at": "2026-10-20T00:22:41Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "17d9148f3ece4bfe80f58d9a2721739d",
+      "session_id": "67334470b26243a3844fd44a4b63d142"
+    }
+  ]
+}
