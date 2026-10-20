@@ -53,7 +53,7 @@ def _oracle(**kwargs: Any) -> tuple[int, str]:
         kwargs.pop("files", SOUNDNESS_FILES),
         kwargs.pop("reviews", [_oracle_review()]),
         kwargs.pop("threads", []),
-        kwargs.pop("paths", oracle_review_check.path_matcher(2, 2, oracle_review_check._exempt_paths())),
+        kwargs.pop("paths", oracle_review_check.path_matcher(2, 2, *oracle_review_check._review_rules())),
         kwargs.pop("base_date", None),
         kwargs.pop("comments", []),
     )
@@ -69,6 +69,18 @@ def test_exempt_only_change_skips() -> None:
 
 def test_code_outside_the_soundness_list_needs_review() -> None:
     assert _decide(files=["benchbox/utils/row_compare.py"])[0] == 1
+
+
+def test_gate_template_matching_the_markdown_exemption_needs_review() -> None:
+    assert _decide(files=["_project/scripts/oracle_reviewers/templates/gate.md"])[0] == 1
+
+
+def test_soundness_manifest_beats_the_markdown_exemption() -> None:
+    assert _decide(files=[".github/PULL_REQUEST_TEMPLATE.md"])[0] == 1
+
+
+def test_exempt_docs_are_skipped() -> None:
+    assert _decide(files=["docs/foo.md"]) == (0, "oracle-review: only exempt paths changed")
 
 
 def test_oracle_success_review_on_the_head_passes() -> None:
@@ -165,8 +177,18 @@ def test_complete_file_list_uses_the_exempt_paths() -> None:
     assert matcher(SOUNDNESS_FILES) is True
 
 
-def test_exempt_paths_come_from_the_reviewer_policy() -> None:
-    assert oracle_review_check._exempt_paths() == ("docs/*", "*.md", "_project/todo-db-export/*")
+def test_gate_paths_beat_the_exemption() -> None:
+    matcher = oracle_review_check.path_matcher(
+        listed_files=1, changed_files=1, exempt_paths=("*.md",), gate_paths=("gate/*",)
+    )
+    assert matcher(["gate/policy.md"]) is True
+    assert matcher(["docs/notes.md"]) is False
+
+
+def test_review_rules_come_from_the_reviewer_policy() -> None:
+    exempt, gate = oracle_review_check._review_rules()
+    assert exempt == ("docs/*", "*.md", "_project/todo-db-export/*")
+    assert "_project/scripts/oracle_reviewers/*" in gate
 
 
 def test_unreadable_policy_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -174,8 +196,8 @@ def test_unreadable_policy_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None
         raise ValueError("bad policy")
 
     monkeypatch.setattr("oracle_reviewers.policy.load_policy", broken)
-    assert oracle_review_check._exempt_paths() == ()
-    assert oracle_review_check.path_matcher(1, 1, ())(["README.md"]) is True
+    assert oracle_review_check._review_rules() == ((), ())
+    assert oracle_review_check.path_matcher(1, 1)(["README.md"]) is True
 
 
 def test_review_before_a_retarget_waits() -> None:

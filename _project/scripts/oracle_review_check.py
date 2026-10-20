@@ -14,6 +14,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, TypeVar
 
+from soundness_paths import is_soundness_path
+
 ORACLE_LOGIN = "benchbox-oracle"
 ORACLE = "oracle"
 ORACLE_CONTEXT = "oracle-verdict"
@@ -218,24 +220,37 @@ def fetch_files(token: str, repo: str, pr: int) -> list[dict[str, Any]]:
     return _paginate(token, f"/repos/{repo}/pulls/{pr}/files")
 
 
-def _exempt_paths() -> tuple[str, ...]:
+def _review_rules() -> tuple[tuple[str, ...], tuple[str, ...]]:
     try:
         from oracle_reviewers.policy import load_policy
 
-        return load_policy(Path(".github/oracle-reviewers.yml")).classifier.exempt_paths
+        classifier = load_policy(Path(".github/oracle-reviewers.yml")).classifier
+        return classifier.exempt_paths, classifier.gate_paths
     except Exception:
-        return ()
+        return (), ()
+
+
+def _path_needs_review(path: str, exempt: tuple[str, ...], gate: tuple[str, ...]) -> bool:
+    if is_soundness_path(path):
+        return True
+    if any(fnmatch.fnmatchcase(path, pattern) for pattern in gate):
+        return True
+    return not any(fnmatch.fnmatchcase(path, pattern) for pattern in exempt)
 
 
 def path_matcher(
-    listed_files: int, changed_files: int, exempt_paths: Iterable[str] = ()
+    listed_files: int,
+    changed_files: int,
+    exempt_paths: Iterable[str] = (),
+    gate_paths: Iterable[str] = (),
 ) -> Callable[[Iterable[str]], bool]:
     if listed_files < changed_files:
         return lambda _paths: True
     exempt = tuple(exempt_paths)
+    gate = tuple(gate_paths)
 
     def needs_review(paths: Iterable[str]) -> bool:
-        return not all(any(fnmatch.fnmatchcase(path, pattern) for pattern in exempt) for path in paths)
+        return any(_path_needs_review(path, exempt, gate) for path in paths)
 
     return needs_review
 
@@ -327,7 +342,7 @@ def main(argv: list[str] | None = None) -> int:
         head_sha = pull["head"]["sha"]
         items = fetch_files(token, args.repo, args.pr)
         files = changed_paths(items)
-        matcher = path_matcher(len(items), pull["changed_files"], _exempt_paths())
+        matcher = path_matcher(len(items), pull["changed_files"], *_review_rules())
         if not matcher(files):
             print("oracle-review: only exempt paths changed")
             return PASS

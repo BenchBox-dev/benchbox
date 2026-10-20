@@ -459,6 +459,18 @@ def test_a_code_change_outside_soundness_paths_is_followed_up(monkeypatch: pytes
     assert plan["scope_paths"] == [CHECKER, CAPTURE, helper]
 
 
+def test_a_follow_up_changing_only_a_gate_template_reviews_it(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    template = "_project/scripts/oracle_reviewers/templates/gate.md"
+    files = [*TWO_FILES, {"filename": template, "additions": 1, "deletions": 1, "sha": "7" * 40}]
+    section = f"diff --git a/{template} b/{template}\n--- a/{template}\n+++ b/{template}\n@@ -1,1 +1,2 @@\n a\n+gate\n"
+    record = _record(TWO_FILE_DIFF + section, "SHIP")
+    fake = _fake(_review(record), files=files, diff=TWO_FILE_DIFF + section.replace("+gate", "+gate changed"))
+    _, values, plan = _plan(monkeypatch, tmp_path, fake)
+    assert values["decision"] == "review" and plan["scope"] == "changed"
+    assert plan["protocol"]["changed"] == [template] and plan["evidence_files"] == [template]
+    assert template in plan["scope_paths"] and template in plan["gate_paths"]
+
+
 def test_a_file_leaving_the_pull_request_gets_a_full_follow_up_not_a_carry(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

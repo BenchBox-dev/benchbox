@@ -8,7 +8,7 @@ from _project.scripts.oracle_reviewers.policy import ClassifierRules, Policy
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 RULES = ClassifierRules(
-    gate_paths=("gate/*", ".github/oracle-reviewers.yml"),
+    gate_paths=("gate/*", ".github/oracle-reviewers.yml", "_project/scripts/oracle_reviewers/*"),
     logic_paths=("logic/*", "*validation*"),
     data_paths=("data/*",),
     exempt_paths=("docs/*", "*.md"),
@@ -57,11 +57,28 @@ def test_soundness_list_hits_are_noted_in_the_fallback_reason() -> None:
     )
 
 
-def test_gate_pattern_keeps_a_file_in_scope_without_soundness_predicate() -> None:
-    result = _scope(_file(".github/oracle-reviewers.yml"), pred=False)
+def test_gate_template_matching_the_markdown_exemption_still_needs_review() -> None:
+    result = _scope(_file("_project/scripts/oracle_reviewers/templates/gate.md"), pred=False)
     assert result.soundness is True
-    assert result.gate_paths == (".github/oracle-reviewers.yml",)
-    assert result.reasons == ("changes the gate: .github/oracle-reviewers.yml",)
+    assert result.gate_paths == ("_project/scripts/oracle_reviewers/templates/gate.md",)
+    assert result.reasons == ("changes the gate: _project/scripts/oracle_reviewers/templates/gate.md",)
+
+
+def test_soundness_manifest_beats_the_markdown_exemption() -> None:
+    path = ".github/PULL_REQUEST_TEMPLATE.md"
+    result = soundness_scope([_file(path)], RULES, lambda candidate: candidate == path)
+    assert result.soundness is True
+    assert result.gate_paths == ()
+    assert result.reasons == (
+        "changes 1 files outside the exempt paths",
+        f"touches soundness paths: {path}",
+    )
+
+
+def test_exempt_docs_stay_out_of_scope() -> None:
+    result = soundness_scope([_file("docs/foo.md")], RULES, lambda candidate: candidate == "other")
+    assert result.soundness is False
+    assert result.reasons == ("only exempt paths changed",)
 
 
 def test_gate_matches_are_recorded_with_reasons() -> None:
