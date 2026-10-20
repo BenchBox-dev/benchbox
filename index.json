@@ -22649,6 +22649,13 @@
       "status": "done",
       "title": "✅ SQLGlot Dialect Translation Code Review Implementation"
     },
+    "sqlglot-fork-adr-ownership": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Record the permanent-fork transpilation ownership decision as an ADR"
+    },
     "sqlglot-fork-b1-route-bypasses-through-wrapper": {
       "claim": null,
       "needs": [],

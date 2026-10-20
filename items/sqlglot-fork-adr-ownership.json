@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "A new ADR states the ownership split, the superseded parts of the two ADRs, and the upstreaming policy (generally useful fixes still offered upstream).",
+    "The two existing ADRs and the soft-fork plan point to it and no longer state a contradicting boundary.",
+    "make pr-preflight and the docs checks pass; PR merged."
+  ],
+  "description": "Owner decision: the fork is permanent and owns transpilation; BenchBox keeps benchmark definitions, execution, validation, DataFrame translation and governance. docs/development/adr/adr-sql-compat-phase-aware-pipeline.md, adr-sqlglot-use-and-non-use.md and _project/decisions/sqlglot-soft-fork-plan.md still describe a bounded, retirable fork and keep engine bugs, physical DDL and variants in BenchBox. Write adr-sqlglot-fork-owns-transpilation.md (supersedes in part) and update the three documents so they do not contradict it.",
+  "links": [
+    "_project/decisions/sqlglot-fork-transpilation-plan.md",
+    "docs/development/adr/adr-sql-compat-phase-aware-pipeline.md",
+    "docs/development/adr/adr-sqlglot-use-and-non-use.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T15:42:52Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "38a12fbe83d04e0dbd1073ef86474a6a",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}
