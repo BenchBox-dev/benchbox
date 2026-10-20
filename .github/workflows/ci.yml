@@ -815,22 +815,7 @@ jobs:
         run: uv run -- python scripts/release_curation_dry_run.py --changed-since "$BASE_SHA"
 
       - name: Pre-build the assertion-rewrite cache
-        run: |
-          find tests \( -name 'test_*.py' -o -name '*_test.py' \) -not -path '*/__pycache__/*' | sort \
-            | awk -v n="$(nproc)" -v dir="$RUNNER_TEMP" '{ print > (dir "/rewrite-chunk." (NR % n)) }'
-          pids=()
-          for chunk in "$RUNNER_TEMP"/rewrite-chunk.*; do
-            xargs uv run -- python -m pytest --collect-only -q -n 0 -p no:cacheprovider < "$chunk" > "$chunk.log" 2>&1 &
-            pids+=("$!:$chunk")
-          done
-          for entry in "${pids[@]}"; do
-            status=0
-            wait "${entry%%:*}" || status=$?
-            if [ "$status" -ne 0 ] && [ "$status" -ne 5 ]; then
-              echo "::warning::Assertion-rewrite warm-up chunk ${entry#*:} exited $status"
-              tail -n 20 "${entry#*:}.log"
-            fi
-          done
+        run: bash scripts/prebuild_rewrite_cache.sh
 
       - name: Run fast tests
         env:
@@ -920,6 +905,9 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --group dev
+
+      - name: Pre-build the assertion-rewrite cache
+        run: bash scripts/prebuild_rewrite_cache.sh
 
       - name: Collect the complete medium tier
         shell: bash
