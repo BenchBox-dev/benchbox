@@ -13066,6 +13066,13 @@
       "status": "done",
       "title": "ledger_tables misses ALTER TABLE targets (Snowflake bounding works by accident) and the introspector row-cap truncation triggers on pre-filter counts"
     },
+    "lefthook-missing-message-on-core-hooks-20261020": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Find out why core commits and rebases print \"Can't find lefthook in PATH\""
+    },
     "legacy-anonymization-api-weak-scheme": {
       "claim": null,
       "needs": [],
