@@ -4,7 +4,7 @@
     "Site ci is green on main with the audit step passing without a new unexplained allowlist entry",
     "PR 53 can merge"
   ],
-  "context": "Found 2026-10-20 during the follow-up batch. Evidence is from that session; re-verify before editing. Unclaimed.",
+  "context": "Found 2026-10-20 during the follow-up batch. Evidence is from that session; re-verify before editing. Unclaimed.\n\nCHECKPOINT 2026-10-20: all three advisories are in launch-editor <= 2.14.1 bundled by vite (high: GHSA-587h-7wmj-h5pm Windows existsSync bypass; medium: GHSA-698v-4r3x-3vcv, GHSA-r825-w8mm-5pxw). Dev-server exposure [INFERENCE: production build not traced]. Site PR 54 (head 3cc37e99a) bumps explorer vite 6.4.3 -> 6.4.4 (launch-editor 2.14.2); audit:high passes locally with no new allowlist entry; lint:comments, lint:guard, test:deploy, explorer 2116 and website 352 tests, build pass. CI pending, not merged (site auto-merge off). NEXT: squash-merge PR 54 when ci is green, rebase PR 53 on main, confirm main ci audit green, finish.",
   "description": "benchbox-site ci run 39505312110 (PR 53) fails the audit job: \"audit:high: high finding in vite (ghsa-698v-4r3x-3vcv, ghsa-r825-w8mm-5pxw, ghsa-587h-7wmj-h5pm) is not allowlisted\" from explorer/scripts/audit-high.mjs. Main CI was green at the last push, so the advisories are new. This blocks every site PR, including the probe-wait fix (PR 53, which changes only deploy/ files). Work: check the advisories, upgrade vite to the patched release within the repo dependency rules if available and verify the explorer build and browser suite; allowlist only with a documented expiry if no patch exists. Guardrail: do not weaken the audit gate, and do not allowlist a reachable finding without reasoning.",
   "sessions": [
     {
@@ -13,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "5f58038b48544caea7532f7be7d502f1",
+      "session_id": "0722acca462b419aa525d939aedd0290"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a",
+      "at": "2026-10-20T23:54:46Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6e8e85230bb741f8a880ca79c017d7ae",
       "session_id": "0722acca462b419aa525d939aedd0290"
     }
   ]
