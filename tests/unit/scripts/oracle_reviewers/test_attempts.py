@@ -9,19 +9,20 @@ import pytest
 
 from _project.scripts.oracle_reviewers import attempts, cli, report, retry, selection
 from _project.scripts.oracle_reviewers.absence import Absence
+from _project.scripts.oracle_reviewers.classify import Classification
 from _project.scripts.oracle_reviewers.dedup import fingerprint, marker
 from _project.scripts.oracle_reviewers.diff import commentable_lines
 from _project.scripts.oracle_reviewers.policy import Policy
 from _project.scripts.oracle_reviewers.retry import ALL_ABSENT, INTEGRITY, OVERSIZE, UNREPORTED
-from _project.scripts.oracle_reviewers.selection import Attempt, SelectionInput, Step, excluded_families
+from _project.scripts.oracle_reviewers.selection import Attempt, SelectionInput, Step
 from _project.scripts.oracle_reviewers.verdict import Finding, validate
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 
 @pytest.fixture
-def policy(codex_enabled_policy: Policy) -> Policy:
-    return codex_enabled_policy
+def policy(policy: Policy) -> Policy:
+    return policy
 
 
 CHECKER = "benchbox/core/equivalence/checker.py"
@@ -39,31 +40,67 @@ DIFF = """diff --git a/benchbox/core/equivalence/checker.py b/benchbox/core/equi
 """
 
 
-def _plan(policy: Policy, tier: str = "medium-high", labels: tuple[str, ...] = ("author-family:muse",)) -> dict:
+def _plan(policy: Policy, buckets: tuple[str, ...] = ("small", "medium")) -> dict:
     return {
         "schema": 1,
         "mode": "shadow",
         "status_context": policy.status_context,
+        "bot_login": policy.bot_login,
         "findings_delivery": "comment",
         "repo": "BenchBox-dev/BenchBox",
         "pr": 7,
         "run_id": RUN_ID,
         "base_sha": "b" * 40,
+        "base_ref": "develop",
         "head_sha": HEAD,
         "decision": "review",
         "decision_reason": "",
-        "tier": tier,
-        "tier_reasons": ["changes comparison logic"],
         "max_defects": policy.protocol.max_defects,
-        "chain": [reviewer.to_json() for reviewer in policy.chain(tier)],
-        "diversity_exempt": list(policy.tiers[tier].diversity_exempt),
-        "excluded_families": sorted(excluded_families(labels, policy)),
+        "brief_max_bytes": policy.brief_max_bytes,
+        "evidence_files": [CHECKER],
+        "chain": [policy.reviewers[bucket].to_json() for bucket in buckets],
+        "buckets": dict(policy.buckets),
+        "follow_up_reviewer": None,
+        "scope_paths": [CHECKER],
+        "gate_paths": [],
+        "scope_reasons": [],
+        "reviewed_files": [
+            {"path": CHECKER, "previous_path": CHECKER, "additions": 1, "deletions": 0, "status": "modified"}
+        ],
+        "unchanged_files": [],
+        "untracked_files": [],
+        "restart_summary": None,
+        "diff_inline": DIFF,
         "brief_mode": "inline",
+        "scope": "full",
+        "reviewed_head": None,
+        "open_findings": {},
+        "protocol": {
+            "kind": "first",
+            "reason": "first review of this pull request",
+            "cycle": 1,
+            "round": 1,
+            "base_ref": "develop",
+            "patch_map": {},
+            "patch_digest": "d" * 32,
+            "strikes": 0,
+            "max_do_not_ship": 3,
+            "prior": [],
+            "next_id": 1,
+            "changed": None,
+            "previous": None,
+        },
         "max_attempts": policy.max_attempts,
         "pool_blocked_until": {},
         "manual": False,
         "previous_state": None,
     }
+
+
+def _classification(bucket: str = "small") -> Classification:
+    return Classification(
+        size_bucket=bucket, capability="routine", template="standard", confidence=0.9, gate_flags=(), files=()
+    )
 
 
 def _finding(severity: str, line: int = 2) -> dict[str, Any]:
@@ -114,8 +151,8 @@ def _decide(policy: Policy, plan: dict, directory: Path):
 
 def test_absence_then_clean_verdict_passes(policy: Policy, tmp_path: Path) -> None:
     plan = {**_plan(policy), "findings_delivery": "review"}
-    _write(tmp_path, 1, "codex-deep", missing=Absence("timeout", "slow"))
-    _write(tmp_path, 2, "claude-deep", verdict=_v("ok"))
+    _write(tmp_path, 1, "small", missing=Absence("timeout", "slow"))
+    _write(tmp_path, 2, "medium", verdict=_v("ok"))
     loaded, step, errors = _decide(policy, plan, tmp_path)
     assert errors == []
     assert step.kind == selection.PASS
@@ -124,18 +161,18 @@ def test_absence_then_clean_verdict_passes(policy: Policy, tmp_path: Path) -> No
     assert final.description.endswith(": SHIP")
     assert final.review is not None and final.review["comments"] == []
     assert "Decision: **SHIP**." in final.review["body"]
-    assert "codex-deep: absent (timeout)" in final.review["body"]
+    assert "small: absent (timeout)" in final.review["body"]
 
 
 def test_ship_with_fixes_fails_and_splits_defects(policy: Policy, tmp_path: Path) -> None:
     plan = _plan(policy)
     findings = [_finding("High", 2), _finding("Low", 40)]
-    _write(tmp_path, 1, "codex-deep", verdict=_v("bad", findings))
+    _write(tmp_path, 1, "small", verdict=_v("bad", findings))
     loaded, step, errors = _decide(policy, plan, tmp_path)
     assert step.kind == selection.FAIL
     final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, commentable_lines(DIFF))
     assert final.state == "failure"
-    assert final.description == "codex-deep: SHIP WITH FIXES, 2 defect(s) to fix"
+    assert final.description == "small: SHIP WITH FIXES, 2 defect(s) to fix"
     inline, outside = final.body.split("**Defects outside the diff**")
     assert "checker.py:2`" in inline and "checker.py:40`" in outside
     assert "@someone" not in final.body and "https://" not in final.body
@@ -144,7 +181,7 @@ def test_ship_with_fixes_fails_and_splits_defects(policy: Policy, tmp_path: Path
 
 def test_review_delivery_builds_line_threads_only_inside_the_diff(policy: Policy, tmp_path: Path) -> None:
     plan = {**_plan(policy), "findings_delivery": "review"}
-    _write(tmp_path, 1, "codex-deep", verdict=_v("bad", [_finding("High", 2), _finding("Low", 40)]))
+    _write(tmp_path, 1, "small", verdict=_v("bad", [_finding("High", 2), _finding("Low", 40)]))
     loaded, step, errors = _decide(policy, plan, tmp_path)
     final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, commentable_lines(DIFF))
     assert final.review is not None
@@ -157,11 +194,11 @@ def test_review_delivery_builds_line_threads_only_inside_the_diff(policy: Policy
 
 def test_artifact_from_another_run_or_head_is_rejected(policy: Policy, tmp_path: Path) -> None:
     plan = _plan(policy)
-    _write(tmp_path, 1, "codex-deep", verdict=_v("", []), run_id="1")
+    _write(tmp_path, 1, "small", verdict=_v("", []), run_id="1")
     _, _, errors = _decide(policy, plan, tmp_path)
     assert any("another run" in error for error in errors)
     other = tmp_path / "head"
-    _write(other, 1, "codex-deep", verdict=_v("", []), head_sha="c" * 40)
+    _write(other, 1, "small", verdict=_v("", []), head_sha="c" * 40)
     loaded, step, errors = _decide(policy, plan, other)
     assert any("another head" in error for error in errors)
     final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, {})
@@ -171,49 +208,49 @@ def test_artifact_from_another_run_or_head_is_rejected(policy: Policy, tmp_path:
 
 def test_out_of_order_reviewer_fails_the_replay(policy: Policy, tmp_path: Path) -> None:
     plan = _plan(policy)
-    _write(tmp_path, 1, "muse-deep", verdict=_v("", []))
+    _write(tmp_path, 1, "medium", verdict=_v("", []))
     loaded, step, errors = _decide(policy, plan, tmp_path)
-    assert errors == ["slot 1 ran muse-deep, but the policy selects codex-deep"]
+    assert errors == ["slot 1 ran medium, but the policy selects small"]
     assert report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, {}).state == "pending"
 
 
 def test_reviewer_outside_the_chain_is_rejected(policy: Policy, tmp_path: Path) -> None:
-    plan = _plan(policy, tier="very-high", labels=())
-    _write(tmp_path, 1, "claude-routine", verdict=_v("", []))
+    plan = _plan(policy, ("max",))
+    _write(tmp_path, 1, "small", verdict=_v("", []))
     _, _, errors = _decide(policy, plan, tmp_path)
-    assert any("outside the tier chain" in error for error in errors)
+    assert any("outside the bucket chain" in error for error in errors)
 
 
 def test_invalid_verdict_counts_as_absent(policy: Policy, tmp_path: Path) -> None:
     plan = _plan(policy)
-    _write(tmp_path, 1, "codex-deep", verdict=_v("", [{"severity": "Severe"}]))
+    _write(tmp_path, 1, "small", verdict=_v("", [{"severity": "Severe"}]))
     loaded, step, errors = _decide(policy, plan, tmp_path)
     assert errors == []
     assert loaded.attempts[0].absence == "invalid"
-    assert step.reviewer is not None and step.reviewer.name == "claude-deep"
+    assert step.reviewer is not None and step.reviewer.name == "medium"
 
 
 def test_an_incomplete_verdict_in_an_artifact_never_passes(policy: Policy, tmp_path: Path) -> None:
     plan = _plan(policy)
     incomplete = {**_v("could not read"), "status": "incomplete", "decision": "NONE", "incomplete_reason": "no access"}
-    _write(tmp_path, 1, "codex-deep", verdict=incomplete)
+    _write(tmp_path, 1, "small", verdict=incomplete)
     loaded, step, errors = _decide(policy, plan, tmp_path)
     assert errors == []
-    assert loaded.attempts[0] == Attempt(1, "codex-deep", selection.ABSENT, "incomplete", "no access")
+    assert loaded.attempts[0] == Attempt(1, "small", selection.ABSENT, "incomplete", "no access")
     assert loaded.verdicts == {}
-    assert step.kind == selection.REVIEW and step.reviewer is not None and step.reviewer.name == "claude-deep"
+    assert step.kind == selection.REVIEW and step.reviewer is not None and step.reviewer.name == "medium"
 
 
 def test_all_absent_is_pending_and_names_every_reviewer(policy: Policy, tmp_path: Path) -> None:
-    plan = _plan(policy, tier="very-high", labels=("author-family:claude",))
-    _write(tmp_path, 1, "codex-deep", missing=Absence("quota", "limit"))
-    _write(tmp_path, 2, "muse-deep", missing=Absence("auth", "bad key"))
+    plan = _plan(policy)
+    _write(tmp_path, 1, "small", missing=Absence("timeout", "slow"))
+    _write(tmp_path, 2, "medium", missing=Absence("quota", "limit"))
     loaded, step, errors = _decide(policy, plan, tmp_path)
     final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, {})
     assert final.state == "pending"
-    assert final.description.startswith("pending: codex-deep: absent (quota")
+    assert final.description.startswith("pending: small: absent (timeout")
     assert len(final.description) <= 140
-    assert "codex-deep: absent (quota)" in final.body and "muse-deep: absent (auth)" in final.body
+    assert "small: absent (timeout)" in final.body and "medium: absent (quota)" in final.body
     assert final.pending_cause == ALL_ABSENT
 
 
@@ -242,15 +279,28 @@ def test_cli_select_finalize_and_ensure_attempt(
 ) -> None:
     plan_dir = tmp_path / "plan"
     plan_dir.mkdir()
-    (plan_dir / "plan.json").write_text(json.dumps(_plan(policy)), encoding="utf-8")
+    (plan_dir / "plan.json").write_text(json.dumps(_plan(policy, ("small",))), encoding="utf-8")
     (plan_dir / "diff.patch").write_text(DIFF, encoding="utf-8")
+    (plan_dir / "classification.json").write_text(json.dumps(_classification("small").to_json()), encoding="utf-8")
     attempts_dir = tmp_path / "attempts"
     attempts_dir.mkdir()
     plan_path = str(plan_dir / "plan.json")
+    classification_path = str(plan_dir / "classification.json")
+    monkeypatch.setattr(cli, "_classify_plan", lambda plan: _classification("small"))
     out = _run_cli(
-        monkeypatch, tmp_path, "select", "--plan", plan_path, "--attempts-dir", str(attempts_dir), "--slot", "1"
+        monkeypatch,
+        tmp_path,
+        "select",
+        "--plan",
+        plan_path,
+        "--attempts-dir",
+        str(attempts_dir),
+        "--slot",
+        "1",
+        "--classification",
+        classification_path,
     )
-    assert out == {"reviewer": "codex-deep", "harness": "codex"}
+    assert out == {"reviewer": "small", "harness": "omp"}
     _run_cli(
         monkeypatch,
         tmp_path,
@@ -260,19 +310,25 @@ def test_cli_select_finalize_and_ensure_attempt(
         "--slot",
         "1",
         "--reviewer",
-        "codex-deep",
+        "small",
         "--out-dir",
         str(attempts_dir),
     )
     out = _run_cli(
-        monkeypatch, tmp_path, "select", "--plan", plan_path, "--attempts-dir", str(attempts_dir), "--slot", "2"
+        monkeypatch,
+        tmp_path,
+        "select",
+        "--plan",
+        plan_path,
+        "--attempts-dir",
+        str(attempts_dir),
+        "--slot",
+        "2",
+        "--classification",
+        classification_path,
     )
-    assert out == {"reviewer": "claude-deep", "harness": "claude"}
-    stale = _run_cli(
-        monkeypatch, tmp_path, "select", "--plan", plan_path, "--attempts-dir", str(attempts_dir), "--slot", "3"
-    )
-    assert stale == {"reviewer": "", "harness": ""}
-    _write(attempts_dir, 2, "claude-deep", verdict=_v("", [_finding("Critical")]))
+    assert out == {"reviewer": "", "harness": ""}
+    _write(attempts_dir, 1, "small", verdict=_v("", [_finding("Critical")]))
     final_dir = tmp_path / "final"
     out = _run_cli(
         monkeypatch,
@@ -284,6 +340,8 @@ def test_cli_select_finalize_and_ensure_attempt(
         str(attempts_dir),
         "--out-dir",
         str(final_dir),
+        "--classification",
+        classification_path,
     )
     assert out == {"state": "failure", "comment": "true", "review": "false", "has_state": "true"}
     status = json.loads((final_dir / "status.json").read_text(encoding="utf-8"))
@@ -331,13 +389,13 @@ def test_cli_finalize_fixed_decisions(
     assert status["description"] == ("no soundness path changed" if decision == "success" else "fork: owner review")
 
 
-def test_verdict_comes_from_the_terminal_reviewer_slot(policy: Policy) -> None:
+def test_verdict_comes_from_the_terminal_reviewer_slot(policy: Policy, tmp_path: Path) -> None:
     plan = _plan(policy)
     decisive = validate(_v("decisive", [_finding("High", 2)]))
     later = validate(_v("later", [_finding("Low", 40)]))
-    codex_deep = Step(selection.FAIL, policy.reviewers["codex-deep"], ("codex-deep: blocking findings",))
-    attempts_list = [Attempt(1, "codex-deep", selection.FAIL), Attempt(2, "claude-deep", selection.PASS)]
-    final = report.finalize(plan, codex_deep, [], attempts_list, {1: decisive, 2: later}, commentable_lines(DIFF))
+    small = Step(selection.FAIL, policy.reviewers["small"], ("small: blocking findings",))
+    attempts_list = [Attempt(1, "small", selection.FAIL), Attempt(2, "medium", selection.PASS)]
+    final = report.finalize(plan, small, [], attempts_list, {1: decisive, 2: later}, commentable_lines(DIFF))
     assert final.state == "failure"
     assert "decisive" in final.body and "later" not in final.body
     assert "checker.py:2`" in final.body and "checker.py:40`" not in final.body
@@ -346,7 +404,7 @@ def test_verdict_comes_from_the_terminal_reviewer_slot(policy: Policy) -> None:
 
 def test_defect_outside_the_diff_still_fails(policy: Policy, tmp_path: Path) -> None:
     plan = _plan(policy)
-    _write(tmp_path, 1, "codex-deep", verdict=_v("bad", [_finding("Critical", 400)]))
+    _write(tmp_path, 1, "small", verdict=_v("bad", [_finding("Critical", 400)]))
     loaded, step, errors = _decide(policy, plan, tmp_path)
     final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, commentable_lines(DIFF))
     assert step.kind == selection.FAIL
@@ -356,9 +414,9 @@ def test_defect_outside_the_diff_still_fails(policy: Policy, tmp_path: Path) -> 
     assert OUTSIDE_NOTE in final.body
 
 
-def _review_final(policy: Policy, tmp_path: Path, findings: list[dict[str, Any]], tier: str = "medium-high"):
-    plan = {**_plan(policy, tier), "findings_delivery": "review"}
-    _write(tmp_path, 1, "codex-deep", verdict=_v("s", findings))
+def _review_final(policy: Policy, tmp_path: Path, findings: list[dict[str, Any]], bucket: str = "small"):
+    plan = {**_plan(policy, (bucket,)), "findings_delivery": "review"}
+    _write(tmp_path, 1, bucket, verdict=_v("s", findings))
     loaded, step, errors = _decide(policy, plan, tmp_path)
     return report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, commentable_lines(DIFF))
 
@@ -376,9 +434,9 @@ def test_review_delivery_opens_a_thread_for_every_defect_on_a_diff_line(policy: 
     assert OUTSIDE_NOTE not in final.body
 
 
-@pytest.mark.parametrize("tier", ["medium-high", "very-high"])
-def test_severity_never_gates_a_listed_defect(policy: Policy, tmp_path: Path, tier: str) -> None:
-    final = _review_final(policy, tmp_path, [_finding("Low", 2)], tier=tier)
+@pytest.mark.parametrize("bucket", ["small", "medium"])
+def test_severity_never_gates_a_listed_defect(policy: Policy, tmp_path: Path, bucket: str) -> None:
+    final = _review_final(policy, tmp_path, [_finding("Low", 2)], bucket=bucket)
     assert final.state == "failure"
     assert "Decision: **SHIP WITH FIXES**." in final.body
 
@@ -392,7 +450,7 @@ def test_review_delivery_keeps_a_defect_outside_the_diff_in_the_body(policy: Pol
 
 def test_comment_delivery_still_lists_every_finding_on_a_diff_line(policy: Policy, tmp_path: Path) -> None:
     plan = _plan(policy)
-    _write(tmp_path, 1, "codex-deep", verdict=_v("s", [_finding("High", 2), _finding("Low", 1)]))
+    _write(tmp_path, 1, "small", verdict=_v("s", [_finding("High", 2), _finding("Low", 1)]))
     loaded, step, errors = _decide(policy, plan, tmp_path)
     final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, commentable_lines(DIFF))
     assert final.review is None
@@ -444,7 +502,7 @@ def test_the_fingerprint_ignores_the_line_range() -> None:
 
 def test_review_threads_carry_a_fingerprint_marker(policy: Policy, tmp_path: Path) -> None:
     plan = {**_plan(policy), "findings_delivery": "review"}
-    _write(tmp_path, 1, "codex-deep", verdict=_v("bad", [_finding("High", 2)]))
+    _write(tmp_path, 1, "small", verdict=_v("bad", [_finding("High", 2)]))
     loaded, step, errors = _decide(policy, plan, tmp_path)
     final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, commentable_lines(DIFF))
     assert final.review is not None
@@ -454,7 +512,7 @@ def test_review_threads_carry_a_fingerprint_marker(policy: Policy, tmp_path: Pat
 def test_findings_already_open_are_not_posted_again_but_still_block(policy: Policy, tmp_path: Path) -> None:
     plan = {**_plan(policy), "findings_delivery": "review", "open_findings": [fingerprint(CHECKER, "High issue")]}
     findings = [_finding("High", 2), _finding("Critical", 2)]
-    _write(tmp_path, 1, "codex-deep", verdict=_v("bad", findings))
+    _write(tmp_path, 1, "small", verdict=_v("bad", findings))
     loaded, step, errors = _decide(policy, plan, tmp_path)
     final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, commentable_lines(DIFF))
     assert final.state == "failure"
@@ -468,7 +526,7 @@ def test_second_run_with_every_finding_open_adds_no_thread(policy: Policy, tmp_p
     findings = [_finding("High", 2), _finding("Low", 40)]
     prints = [fingerprint(CHECKER, "High issue"), fingerprint(CHECKER, "Low issue")]
     plan = {**_plan(policy), "findings_delivery": "review", "open_findings": prints}
-    _write(tmp_path, 1, "codex-deep", verdict=_v("bad", findings))
+    _write(tmp_path, 1, "small", verdict=_v("bad", findings))
     loaded, step, errors = _decide(policy, plan, tmp_path)
     final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, commentable_lines(DIFF))
     assert final.review is not None and final.review["comments"] == []
@@ -479,11 +537,12 @@ def test_a_pending_run_posts_its_diagnostics_as_a_review(
     policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     plan_path = tmp_path / "plan.json"
-    plan_path.write_text(json.dumps({**_plan(policy), "findings_delivery": "review"}), encoding="utf-8")
+    plan = {**_plan(policy, ("small",)), "findings_delivery": "review"}
+    plan_path.write_text(json.dumps(plan), encoding="utf-8")
+    classification_path = tmp_path / "classification.json"
+    classification_path.write_text(json.dumps(_classification("small").to_json()), encoding="utf-8")
     attempts_dir = tmp_path / "attempts"
-    _write(attempts_dir, 1, "codex-deep", missing=Absence("auth", "bad key"))
-    _write(attempts_dir, 2, "claude-deep", missing=Absence("quota", "limit"))
-    _write(attempts_dir, 3, "codex-routine", missing=Absence("quota", "limit"))
+    _write(attempts_dir, 1, "small", missing=Absence("auth", "bad key"))
     out = _run_cli(
         monkeypatch,
         tmp_path,
@@ -494,16 +553,18 @@ def test_a_pending_run_posts_its_diagnostics_as_a_review(
         str(attempts_dir),
         "--out-dir",
         str(tmp_path / "o"),
+        "--classification",
+        str(classification_path),
     )
     assert out["state"] == "pending" and out["review"] == "true" and out["comment"] == "false"
     review = json.loads((tmp_path / "o" / "review.json").read_text(encoding="utf-8"))
     assert review["body"].startswith(f"### oracle-verdict: pending for `{HEAD}`")
-    assert review["comments"] == [] and "codex-deep: absent (auth)" in review["body"]
+    assert review["comments"] == [] and "small: absent (auth)" in review["body"]
 
 
 def test_withheld_result_is_posted_as_a_pending_review(policy: Policy, tmp_path: Path) -> None:
     plan = {**_plan(policy), "findings_delivery": "review"}
-    _write(tmp_path, 1, "codex-deep", verdict=_v("", []), run_id="1")
+    _write(tmp_path, 1, "small", verdict=_v("", []), run_id="1")
     loaded, step, errors = _decide(policy, plan, tmp_path)
     final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, {})
     assert final.state == "pending" and final.review is not None
@@ -513,7 +574,7 @@ def test_withheld_result_is_posted_as_a_pending_review(policy: Policy, tmp_path:
 def test_an_oversize_plan_finalizes_pending_for_its_size_and_names_the_ways_forward(
     policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    plan = {**_plan(policy, tier="very-high", labels=()), "brief_mode": "oversize", "findings_delivery": "review"}
+    plan = {**_plan(policy, ("max",)), "brief_mode": "oversize", "findings_delivery": "review"}
     plan_path = tmp_path / "plan.json"
     plan_path.write_text(json.dumps(plan), encoding="utf-8")
     attempts_dir = tmp_path / "attempts"
@@ -551,9 +612,9 @@ def test_an_oversize_plan_finalizes_pending_for_its_size_and_names_the_ways_forw
 
 
 def test_an_inline_plan_with_every_reviewer_absent_stays_retryable(policy: Policy, tmp_path: Path) -> None:
-    plan = _plan(policy, tier="very-high", labels=("author-family:claude",))
-    _write(tmp_path, 1, "codex-deep", missing=Absence("quota", "limit"))
-    _write(tmp_path, 2, "muse-deep", missing=Absence("auth", "bad key"))
+    plan = _plan(policy)
+    _write(tmp_path, 1, "small", missing=Absence("timeout", "slow"))
+    _write(tmp_path, 2, "medium", missing=Absence("auth", "bad key"))
     loaded, step, errors = _decide(policy, plan, tmp_path)
     final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, {})
     assert final.pending_cause == ALL_ABSENT
@@ -585,9 +646,9 @@ def test_a_held_plan_finalizes_to_a_pending_status_with_no_decision_or_marker(
 
 
 def test_a_long_status_description_is_cut_to_the_status_limit(policy: Policy, tmp_path: Path) -> None:
-    plan = _plan(policy, tier="very-high", labels=("author-family:claude",))
-    _write(tmp_path, 1, "codex-deep", missing=Absence("quota", "limit " * 60))
-    _write(tmp_path, 2, "muse-deep", missing=Absence("auth", "bad key"))
+    plan = _plan(policy)
+    _write(tmp_path, 1, "small", missing=Absence("error", "limit " * 60))
+    _write(tmp_path, 2, "medium", missing=Absence("auth", "bad key"))
     loaded, step, errors = _decide(policy, plan, tmp_path)
     final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, {})
     full = "pending: " + "; ".join(step.reasons)
@@ -595,3 +656,47 @@ def test_a_long_status_description_is_cut_to_the_status_limit(policy: Policy, tm
     assert len(final.description) == report.DESCRIPTION_LIMIT == 140
     assert final.description == full[:139] + "…"
     assert report.status_payload(plan, final, "u")["description"] == final.description
+
+
+def test_selection_maps_the_bucket_through_the_policy(policy: Policy) -> None:
+    plan = {**_plan(policy, ("trivial", "small", "medium")), "buckets": {"small": "medium"}}
+    chain = cli._selection(plan, _classification("small")).chain
+    assert [reviewer.name for reviewer in chain] == ["medium"]
+
+
+def test_a_follow_up_keeps_the_previous_reviewer_and_ignores_the_bucket(policy: Policy) -> None:
+    plan = {**_plan(policy, ("small", "large")), "follow_up_reviewer": "large"}
+    assert [reviewer.name for reviewer in cli._selection(plan, _classification("small")).chain] == ["large"]
+
+
+def test_a_follow_up_from_a_retired_reviewer_falls_back_to_the_bucket(policy: Policy) -> None:
+    plan = {**_plan(policy, ("small", "large")), "follow_up_reviewer": None}
+    plan["protocol"] = {**plan["protocol"], "kind": "follow-up"}
+    assert [reviewer.name for reviewer in cli._selection(plan, _classification("small")).chain] == ["small"]
+
+
+@pytest.mark.parametrize("error", [KeyError("size"), ValueError("unknown size bucket 'xl'"), TypeError("bad")])
+def test_a_malformed_jev_answer_leaves_the_slot_pending(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, error: Exception
+) -> None:
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_text(json.dumps(_plan(policy, ("small",))), encoding="utf-8")
+
+    def broken(plan: dict[str, Any]) -> Classification:
+        raise error
+
+    monkeypatch.setattr(cli, "_classify_plan", broken)
+    out = _run_cli(
+        monkeypatch,
+        tmp_path,
+        "select",
+        "--plan",
+        str(plan_path),
+        "--attempts-dir",
+        str(tmp_path / "attempts"),
+        "--slot",
+        "1",
+        "--classification",
+        str(tmp_path / "classification.json"),
+    )
+    assert out == {"reviewer": "", "harness": ""}

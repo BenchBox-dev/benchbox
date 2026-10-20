@@ -30,24 +30,48 @@ its own.
 3. Add these environment secrets to `oracle`:
    - `ORACLE_APP_ID` and `ORACLE_APP_PRIVATE_KEY`, used only by the `post`
      job;
-   - `CLAUDE_CODE_OAUTH_TOKEN`, from `claude setup-token`, used only by the
-     claude jobs;
-   - `OPENAI_API_KEY`, used only by the codex jobs through
-     `codex login --with-api-key`;
-   - `META_API_KEY`, used only by the muse jobs. Each muse job installs the
-     latest `muse-stable` release through `https://dev.meta.ai/install.sh`,
-     unpinned, and writes the installed version to its job summary. A
-     compromised download would run with this key and a read-only checkout of
-     this public repository, and nothing else. The owner accepted that on
-     2026-10-05 and confirmed it on 2026-10-09.
-   - `GEMINI_API_KEY`, a Gemini API key from Google AI Studio, used only by
-     the agy jobs. Each agy job installs a pinned Antigravity CLI release
-     from Google's public bucket, checks its SHA-256, and sets
-     `modelProvider: "gemini"` so the CLI reads the key from the
-     environment. Until the secret exists, each agy attempt is recorded as
-     `auth: GEMINI_API_KEY is not set` without running the CLI.
+   - `TYPESAFE_API_KEY`, used only by `select-1` to classify the change with
+     TypeSafe's Jev model;
+   - the reviewer credentials, used only by the `attempt-N-omp` jobs. Either
+     set `OMP_AUTH_BROKER_URL` and `OMP_AUTH_BROKER_TOKEN` for an OMP auth
+     broker that holds the owner's subscription logins, or set provider
+     credentials directly: `CLAUDE_CODE_OAUTH_TOKEN` (from
+     `claude setup-token`, passed to OMP as `ANTHROPIC_OAUTH_TOKEN`),
+     `OPENAI_API_KEY`, `META_API_KEY` and `GEMINI_API_KEY`. Unset secrets are
+     not passed. Only providers with a credential can serve a fallback.
 4. Remove `CLAUDE_CODE_OAUTH_TOKEN` from the repository secrets, because
    same-repository pull request workflows can read those.
+
+Each attempt job installs a pinned OMP Linux build and checks its SHA-256
+before running it.
+
+### Credential broker
+
+The broker runs on the owner's Mac, not in a container, so it shares the
+owner's OMP credential store and is the only process that refreshes OAuth
+tokens. A launchd agent (`~/Library/LaunchAgents/dev.omp.auth-broker.plist`)
+runs `omp auth-broker serve --bind=127.0.0.1:8765 --trust-proxy-headers`, and
+`tailscale serve --bg --https=8765 http://127.0.0.1:8765` publishes it to the
+tailnet only, over HTTPS. Reviews reach it only while the Mac is awake and
+online; otherwise attempts are absent and the hourly sweep retries.
+
+Each attempt job joins the tailnet through `tailscale/github-action` with
+GitHub's OIDC token (`id-token: write`), so no long-lived Tailscale secret
+is stored. The step runs only when `TS_OAUTH_CLIENT_ID` and `TS_AUDIENCE`
+are set. The tailnet policy must:
+
+- own `tag:oracle-ci` (`tagOwners`), and limit the default allow-all rule's
+  source to `autogroup:member`, so tagged nodes match nothing else;
+- grant `tag:oracle-ci` only `tcp:8765` on the broker host.
+
+The Tailscale OIDC credential carries the `auth_keys` write scope and
+`tag:oracle-ci`, with its subject restricted to this repository's `oracle`
+environment. Add `TS_OAUTH_CLIENT_ID`, `TS_AUDIENCE`, `OMP_AUTH_BROKER_URL`
+(`https://<host>.<tailnet>.ts.net:8765`) and `OMP_AUTH_BROKER_TOKEN` to the
+`oracle` environment. Rotate the broker token with
+`omp auth-broker token --regenerate`, restart the agent with
+`launchctl kickstart -k gui/$(id -u)/dev.omp.auth-broker`, and update the
+secret. Disable key expiry for the broker host in the Tailscale console.
 
 Without the App secrets, the `post` job logs the result and succeeds.
 
@@ -58,20 +82,22 @@ Without the App secrets, the `post` job logs the result and succeeds.
    the change, applies the rerun rules and writes a 0600 brief. A fork's
    soundness change gets a pending `fork: owner review` status and never
    reaches a reviewer job. A change with no soundness path gets `success`.
-2. `select-N` picks the next reviewer from the risk tier's order. Every
-   reviewer carries the `review` workload role, and the posted review names
-   the role, model and effort next to the risk tier. Selection skips the
-   author's family at every tier with no exemption, disabled reviewers,
-   quota-exhausted pools and, when the
+2. `select-1` asks Jev, through a direct call to TypeSafe's
+   `/v1/systemone` API, for the change's size bucket, review capability,
+   review template and per-file priority. The bucket names one reviewer in
+   `.github/oracle-reviewers.yml`. A change to review machinery always gets
+   the `gate` template and at least the `large` bucket. Later slots reuse
+   that classification.
+   Selection skips disabled reviewers, quota-exhausted pools and, when the
    diff exceeds the brief cap, any reviewer that is not hard read-only with
    `reads_files: true`.
-3. `attempt-N-<harness>` runs that reviewer on a detached, credential-free
-   checkout of the head. A Codex job first allows unprivileged user namespaces
-   (`kernel.apparmor_restrict_unprivileged_userns=0`), which the Ubuntu 24.04
-   runner restricts; without that, the Codex read-only sandbox cannot start and
-   Codex reports its review incomplete. It never runs pull request code. The result is an
-   artifact with the run ID, head SHA, reviewer and either a validated verdict
-   or an absence.
+3. `attempt-N-omp` runs that reviewer through OMP on a detached,
+   credential-free checkout of the head. OMP starts in an empty working
+   directory with the checkout added as a read-only workspace, the tools
+   limited to `read,grep,glob`, and a trusted overlay that turns off project
+   MCP config, the advisor, context promotion and prewalk. It never runs pull
+   request code. The result is an artifact with the run ID, head SHA, reviewer
+   and either a validated verdict or an absence.
 4. `post` re-validates every artifact from this run, replays the selection,
    and posts the status and the findings. `findings_delivery` in
    `.github/oracle-reviewers.yml` chooses how:
@@ -95,7 +121,7 @@ a hidden marker, `<!-- oracle-protocol: v1 ... -->`, written by code after the
 sanitised model text, which cannot contain an HTML comment; defect file paths
 are escaped the same way. It records the
 cycle and round, the kind of round, the decision, the head, the base branch,
-the reviewer, the tier, the strike count, the open defects with their ids, and
+the reviewer, the size bucket (in the marker's `tier` field), the strike count, the open defects with their ids, and
 a hash of each changed file's patch (an 8-hex path hash and a 16-hex patch hash;
 a marker over 4 KB keeps only the aggregate digest, which is computed from the
 full-length patch hashes). The per-file map fits for about 200 changed files
@@ -116,7 +142,7 @@ every hash. Prose files outside soundness paths are left out.
 | No marker yet | first round: a full review |
 | Three DO NOT SHIP decisions | refused: one review per head, no reviewer runs |
 | The latest decision is on this head | nothing runs |
-| Base branch or tier changed | new cycle with a full review; strikes are kept |
+| Base branch changed | new cycle with a full review; strikes are kept |
 | Patch unchanged (a rebase or a prose-only change) | the decision is carried to the new head |
 | Latest SHIP or SHIP WITH FIXES, patch changed | follow-up on the changed files |
 | Latest DO NOT SHIP, patch changed | new cycle with a full review that quotes the previous summary |
@@ -135,7 +161,7 @@ counts as not fixed. Unfixed earlier defects stay open, and a new
 defect counts only in a file changed since the last review; new defects in
 other files are listed, collapsed and capped at five, as not counted. More
 than 10 open defects in total give DO NOT SHIP. The previous reviewer is tried
-first. A follow-up runs at every tier, including very high.
+first. A follow-up runs for every size bucket.
 
 The oracle never resolves a review thread. A follow-up lists the defects it
 verified as fixed, and the author resolves those threads. Each new thread
@@ -203,42 +229,20 @@ merge digest reads both for good, because it reads merged history. A list of mor
 an invalid verdict, because every reviewer would then fail in turn and leave
 the pull request pending.
 
-## Workload role
+## Model selection
 
-The `low-medium`, `medium-high` and `very-high` tiers are review depth for
-the risk of the change, kept from the shadow and protocol records; they are
-not model quality tiers. Every reviewer in `.github/oracle-reviewers.yml`
-carries the `review` workload role, resolved to a harness-specific model.
-Reviewer ids name the family and the depth profile: `claude-routine` and
-`claude-deep` run Fable 5 at `medium` and `high` effort,
-`codex-routine` runs Sol and `codex-deep` runs Astra, `muse-routine` and
-`muse-deep` run the Wonder contributor at `medium` and `high` effort, and
-`gemini-routine` runs Flash `-medium` with `gemini-deep` (Argon `-high`)
-held as a fallback. Effort is always a concrete CLI value; only OMP
-dispatches use `auto`. The policy rejects any reviewer whose role is not
-`review`, and the plan chain and the posted review carry the role next to
-the model, effort and risk tier.
+Each reviewer in `.github/oracle-reviewers.yml` names an OMP role alias,
+not a model: `trivial` and `small` use `@smol`, `medium` uses `@default`,
+`large` uses `@review`, `huge` uses `@plan` and `max` uses `@slow`. OMP
+resolves the role to a model and, when that model hits a usage limit or an
+outage, walks the role's own fallback chain. The oracle does not restate
+models or chains, and its overlay leaves OMP's retry settings alone. An
+empty `effort` takes the role's thinking level.
 
-Reviewer order prefers the role defaults Astra, then Fable, then Argon where
-available. Codex has no hosted quota, so both codex profiles stay disabled
-with their tier places kept; a local subscription is not hosted quota and
-never re-enables them. Argon stays disabled until its completion is verified
-on the hosted agy harness, which reads `GEMINI_API_KEY` with
-`modelProvider: "gemini"`: local OMP success through `google-antigravity`
-proves nothing about the hosted route. The deep Muse profile,
-`muse-deep`, is the high-effort fallback for very-high changes whose author
-is not Muse, so a Claude-authored very-high change still gets an
-independent review while codex is off; the family filter below keeps Muse
-profiles off Muse-authored changes.
-
-The author's family comes only from `author-family:<family>` pull request
-labels, one or more of which may apply; the pull request body is never
-parsed for provenance, and families are never inferred from configured
-defaults or model roles. A missing or unknown label excludes `muse`,
-matching the current OMP default worker. Label every actual author family
-on the pull request when it differs from that default, including
-`author-family:claude` for Claude-authored changes. OMP is a harness, never
-a family, and Gemini work is labelled with the canonical `agy` family.
+The review records the reviewer name from the policy, not the model that
+answered. Reviews do not exclude the author's model family: the owner chose
+role-based selection with OMP fallback over family exclusion, so a change
+written by one model family can be reviewed by the same family.
 
 ## Evidence that a review happened
 
@@ -254,35 +258,19 @@ checkout before it records it; a failed check records the reviewer as absent
 - When the brief lists files instead of carrying the diff (`file-list` mode),
   a verdict that would be judged SHIP must name, in `files_examined`, every
   soundness-path file under review that still exists at the head (in a
-  follow-up, the files changed since the last review), and the reviewer's
-  trace must show it read each one. That includes a follow-up whose
-  only defects are in unchanged files: those defects are not counted, so the
-  follow-up would ship and still needs the reads. A verdict that would fail
-  (DO NOT SHIP, a defect counted in scope, or an earlier defect not fixed)
-  needs no read evidence. Claude runs with
-  `--output-format stream-json`, and each file needs a successful Read or Grep
-  that names it; the structured-output call does not count. Codex runs with
-  `--json`, and each file needs a successful content-reading command (`cat`,
-  `sed`, `head`, `tail`, `nl`, `awk`, `grep` or `rg` on the file, or `git
-  show`, `git diff` or `git blame`) with that exact path as an operand. A
-  listing, an existence check, `echo`, a search of a directory, a path used as
-  a search pattern and a read of the staged diff do not count.
+  follow-up, the files changed since the last review). That includes a
+  follow-up whose only defects are in unchanged files: those defects are not
+  counted, so the follow-up would ship and still needs the files named. A
+  verdict that would fail (DO NOT SHIP, a defect counted in scope, or an
+  earlier defect not fixed) needs no such list. OMP's output carries no read
+  trace, so the check relies on `files_examined` and the defect citations.
 - An inline brief carries the diff, so no read is required there.
 
-The brief no longer forbids running commands. Its `<<read-rule>>` slot is
-filled per harness when the review runs: Codex may run read-only shell
-commands (`cat`, `sed -n`, `head`, `rg`, `git show` and similar) but nothing
-that writes, builds, tests or uses the network, and its `--sandbox read-only`
-still blocks writes; Claude reads with Read, Grep and Glob; muse uses its
-workspace file tools with shell disabled. A file-list brief also gets the
-whole pull request diff staged in the checkout.
-
-muse and agy leave no trace of what they read, so for them only the citation
-check and the reviewer's own `files_examined` apply. agy also cannot read files
-in headless plan mode (its reads are denied), so it has `reads_files: false`
-and never takes a file-list brief. The workflow-level group for the pull request
-serializes runs on one pull request; the attempt jobs have no concurrency group
-of their own.
+The brief no longer forbids running commands, but OMP's tool list holds only
+`read`, `grep` and `glob`, so the reviewer cannot write or run anything. A
+file-list brief also gets the whole pull request diff staged in the checkout.
+The workflow-level group for the pull request serializes runs on one pull
+request; the attempt jobs have no concurrency group of their own.
 
 ## Commands
 
@@ -322,30 +310,17 @@ These checks must pass before the cut-over that makes the context required.
 - **P2:** a `pull_request_target` run from a same-repository test pull request
   enters the `oracle` environment; a `pull_request` run from the pull request
   branch cannot.
-- **P3:** each reviewer authenticates in CI. A reviewer that cannot is set to
-  `enabled: false` with a `disabled_reason`. gemini-routine is enabled with
-  its own job in every slot, and the workflow has five slots so the longest
-  chain of enabled reviewers (three) fits. The claude profiles run Fable 5,
-  `claude-deep` at `high` effort for deep and very-high review and
-  `claude-routine` at `medium` for routine review; the muse profiles run the
-  Wonder contributor, `muse-deep` at `high` effort so Claude-authored
-  very-high changes keep an independent reviewer while codex is off, and
-  `gemini-routine` runs Flash `-medium`. The codex profiles, `codex-deep`
-  (Astra) and `codex-routine` (Sol), are disabled because the OpenAI API
-  project behind `OPENAI_API_KEY` has no quota; their jobs and tier places
-  stay, so setting `enabled: true` on each re-enables them. `gemini-deep`
-  (Argon) is disabled until its completion is verified on the hosted agy
-  harness. Every tier skips the author's family with no exemption.
+- **P3:** each reviewer authenticates in CI through the configured broker or
+  provider secrets. A reviewer that cannot is set to `enabled: false` with a
+  `disabled_reason`. The workflow has five slots.
 - **P4:** capture each reviewer's quota, authentication and outage output from
   real runs. The attempt artifact's `diagnostic` field holds one redacted line
   of the output, at most 300 characters, with credentials and long tokens
   removed; raw output is never uploaded. Add the messages to the `CALIBRATED_*_PATTERNS` tables in
   `_project/scripts/oracle_reviewers/absence.py`; until then they count as
-  errors, which never pass. A quota absence skips the reviewer's whole pool
-  for the rest of the run, and in later runs until the reset time the CLI
-  reported, or for one hour (`QUOTA_BACKOFF` in `selection.py`) when it
-  reported none, such as Codex's `Quota exceeded. Check your plan and billing
-  details.`
+  errors, which never pass. A quota absence means OMP's fallback chain was
+  also exhausted. It skips the reviewer's whole pool for the rest of the run,
+  and in later runs for one hour (`QUOTA_BACKOFF` in `selection.py`).
 
 ## Cut-over
 

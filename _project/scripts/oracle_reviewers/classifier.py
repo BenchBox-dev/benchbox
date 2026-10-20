@@ -5,7 +5,7 @@ from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from .policy import TIERS, ClassifierRules, Policy
+from .policy import ClassifierRules
 
 
 @dataclass(frozen=True)
@@ -42,84 +42,62 @@ class ChangedFile:
 
 
 @dataclass(frozen=True)
-class Classification:
+class SoundnessScope:
     soundness: bool
-    tier: str | None
-    computed_tier: str | None
     reasons: tuple[str, ...]
-    soundness_paths: tuple[str, ...]
+    paths: tuple[str, ...]
+    gate_paths: tuple[str, ...]
+    logic_paths: tuple[str, ...]
 
     def to_json(self) -> dict[str, Any]:
         return {
             "soundness": self.soundness,
-            "tier": self.tier,
-            "computed_tier": self.computed_tier,
             "reasons": list(self.reasons),
-            "soundness_paths": list(self.soundness_paths),
+            "paths": list(self.paths),
+            "gate_paths": list(self.gate_paths),
+            "logic_paths": list(self.logic_paths),
         }
+
+    @classmethod
+    def from_json(cls, data: Mapping[str, Any]) -> SoundnessScope:
+        return cls(
+            soundness=bool(data["soundness"]),
+            reasons=tuple(data.get("reasons", [])),
+            paths=tuple(data.get("paths", [])),
+            gate_paths=tuple(data.get("gate_paths", [])),
+            logic_paths=tuple(data.get("logic_paths", [])),
+        )
 
 
 def _matches(path: str, patterns: Iterable[str]) -> bool:
     return any(fnmatch.fnmatchcase(path, pattern) for pattern in patterns)
 
 
-def _area(path: str, depth: int) -> str:
-    parts = path.split("/")[:-1]
-    return "/".join(parts[:depth]) or "."
-
-
-def _rank(tier: str) -> int:
-    return TIERS.index(tier)
-
-
-def label_tier(labels: Iterable[str], tier_labels: Mapping[str, str]) -> str | None:
-    tiers = [tier_labels[label] for label in labels if label in tier_labels]
-    return max(tiers, key=_rank) if tiers else None
-
-
-def computed_tier(files: list[ChangedFile], rules: ClassifierRules) -> tuple[str, list[str]]:
-    reasons: list[str] = []
-    gate = sorted({path for item in files for path in item.paths if _matches(path, rules.gate_paths)})
-    code = [item for item in files if not all(_matches(path, rules.data_paths) for path in item.paths)]
-    logic = sorted({path for item in code for path in item.paths if _matches(path, rules.logic_paths)})
-    lines = sum(item.lines for item in code)
-    areas = {_area(path, rules.area_depth) for item in code for path in item.paths}
-    if gate:
-        reasons.append("changes the gate: " + ", ".join(gate))
-    if len(areas) >= rules.large_min_areas and lines >= rules.large_min_lines:
-        reasons.append(f"large multi-area diff: {lines} code lines across {len(areas)} areas")
-    if reasons:
-        return "very-high", reasons
-    if logic:
-        reasons.append("changes comparison, validation or result logic: " + ", ".join(logic))
-    if lines > rules.small_max_lines:
-        reasons.append(f"{lines} code lines exceed {rules.small_max_lines}")
-    if len(areas) > 1:
-        reasons.append(f"touches {len(areas)} areas")
-    if reasons:
-        return "medium-high", reasons
-    return "low-medium", ["data-only or small single-area change"]
-
-
-def classify(
+def soundness_scope(
     files: list[ChangedFile],
-    labels: Iterable[str],
-    policy: Policy,
+    rules: ClassifierRules,
     is_soundness_path: Callable[[str], bool],
-) -> Classification:
-    rules = policy.classifier
+) -> SoundnessScope:
     in_scope = [
         item
         for item in files
         if any(is_soundness_path(path) or _matches(path, rules.gate_paths) for path in item.paths)
     ]
     if not in_scope:
-        return Classification(False, None, None, ("no soundness path changed",), ())
-    tier, reasons = computed_tier(in_scope, rules)
-    raised = label_tier(labels, policy.tier_labels)
-    final = tier
-    if raised is not None and _rank(raised) > _rank(tier):
-        final = raised
-        reasons.append(f"label raised the tier from {tier} to {raised}")
+        return SoundnessScope(False, ("no soundness path changed",), (), (), ())
+    gate = sorted({path for item in in_scope for path in item.paths if _matches(path, rules.gate_paths)})
+    code = [item for item in in_scope if not all(_matches(path, rules.data_paths) for path in item.paths)]
+    logic = sorted({path for item in code for path in item.paths if _matches(path, rules.logic_paths)})
+    reasons = []
+    if gate:
+        reasons.append("changes the gate: " + ", ".join(gate))
+    if logic:
+        reasons.append("changes comparison, validation or result logic: " + ", ".join(logic))
+    if not reasons:
+        reasons.append(f"touches {len(in_scope)} soundness paths outside gate and logic areas")
     paths = tuple(sorted({path for item in in_scope for path in item.paths}))
-    return Classification(True, final, tier, tuple(reasons), paths)
+    return SoundnessScope(True, tuple(reasons), paths, tuple(gate), tuple(logic))
+
+
+def matching(paths: Iterable[str], patterns: Iterable[str]) -> list[str]:
+    return sorted({path for path in paths if _matches(path, patterns)})

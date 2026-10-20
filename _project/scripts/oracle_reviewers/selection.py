@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
 
-from .policy import Policy, Reviewer
+from .policy import Reviewer
 
 PASS = "pass"
 FAIL = "fail"
@@ -21,7 +21,7 @@ class Attempt:
     slot: int
     reviewer: str
     outcome: str
-    absence: str | None = None
+    absence: str = ""
     detail: str = ""
     reset_at: datetime | None = None
 
@@ -36,8 +36,6 @@ class Step:
 @dataclass(frozen=True)
 class SelectionInput:
     chain: Sequence[Reviewer]
-    diversity_exempt: frozenset[str]
-    excluded_families: frozenset[str]
     brief_mode: str
     max_attempts: int
     now: datetime
@@ -47,8 +45,6 @@ class SelectionInput:
     def from_plan(cls, plan: Mapping[str, Any], now: datetime) -> SelectionInput:
         return cls(
             chain=[Reviewer.from_json(item) for item in plan["chain"]],
-            diversity_exempt=frozenset(plan["diversity_exempt"]),
-            excluded_families=frozenset(plan["excluded_families"]),
             brief_mode=plan["brief_mode"],
             max_attempts=int(plan["max_attempts"]),
             now=now,
@@ -56,13 +52,6 @@ class SelectionInput:
                 pool: datetime.fromisoformat(value) for pool, value in plan.get("pool_blocked_until", {}).items()
             },
         )
-
-
-def excluded_families(labels: Iterable[str], policy: Policy) -> frozenset[str]:
-    prefix = policy.author_label_prefix
-    named = {label[len(prefix) :] for label in labels if label.startswith(prefix)}
-    known = frozenset(name for name in named if name in policy.families)
-    return known or frozenset({policy.default_author_family})
 
 
 def _skip_reason(
@@ -76,8 +65,6 @@ def _skip_reason(
         return f"absent ({attempt.absence}{': ' + attempt.detail if attempt.detail else ''})"
     if not reviewer.enabled:
         return f"disabled ({reviewer.disabled_reason})"
-    if reviewer.family in selection.excluded_families and reviewer.name not in selection.diversity_exempt:
-        return f"skipped: same family as the author ({reviewer.family})"
     if reviewer.pool in quota_pools:
         return f"skipped: {reviewer.pool} pool out of quota in this run"
     blocked_until = selection.pool_blocked_until.get(reviewer.pool)

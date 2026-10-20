@@ -20,25 +20,24 @@ INCOMPLETE = "incomplete"
 KINDS = (OK, QUOTA, AUTH, TIMEOUT, INVALID, EMPTY, ERROR, INCOMPLETE)
 
 CALIBRATED_QUOTA_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {
-    "agy": (re.compile(r"RESOURCE_EXHAUSTED \(code 429\)"),),
-    "claude": (re.compile(r"You[\u2019']ve hit your session limit"),),
-    "codex": (
-        re.compile(r"^ERROR: You[\u2019']ve hit your usage limit", re.MULTILINE),
-        re.compile(r"^ERROR: Quota exceeded\. Check your plan and billing details\.", re.MULTILINE),
+    "omp": (
+        re.compile(r"rate_limit_error"),
+        re.compile(r"would exceed your account's rate limit"),
+        re.compile(r"429 Too Many Requests"),
+        re.compile(r"retry-after-ms=\d+"),
     ),
-    "muse": (),
 }
 CALIBRATED_AUTH_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {
-    "agy": (re.compile(r"API key not valid\. Please pass a valid API key\."),),
-    "claude": (re.compile(r"Failed to authenticate\. API Error: 401[^\"\n]*"),),
-    "codex": (re.compile(r"^ERROR: unexpected status 401 Unauthorized", re.MULTILINE),),
-    "muse": (re.compile(r"authentication failed: your API key from META_API_KEY was rejected"),),
+    "omp": (
+        re.compile(r"401[^\n]{0,80}"),
+        re.compile(r"[Uu]nauthorized"),
+        re.compile(r"invalid[_\s-]?api[_\s-]?key"),
+        re.compile(r"No API key found for [\w-]+"),
+        re.compile(r"invalid_grant"),
+    ),
 }
 CALIBRATED_EMPTY_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {
-    "agy": (re.compile(r"no output (?:was )?produced.*auto-denied", re.IGNORECASE | re.DOTALL),),
-    "claude": (),
-    "codex": (),
-    "muse": (),
+    "omp": (),
 }
 
 _RESET = re.compile(r"Resets in\s+(?P<duration>(?:\d+\s*[dhms]\s*)+)", re.IGNORECASE)
@@ -77,8 +76,17 @@ _MONTHS = {
 }
 _LONG_TOKEN = re.compile(r"[A-Za-z0-9_\-]{32,}")
 EXCERPT_LIMIT = 300
-REQUIRED_CREDENTIAL = {"agy": "GEMINI_API_KEY"}
-CREDENTIAL_ENV = ("CLAUDE_CODE_OAUTH_TOKEN", "OPENAI_API_KEY", "CODEX_API_KEY", "META_API_KEY", "GEMINI_API_KEY")
+CREDENTIAL_ENV = (
+    "CLAUDE_CODE_OAUTH_TOKEN",
+    "OPENAI_API_KEY",
+    "CODEX_API_KEY",
+    "META_API_KEY",
+    "GEMINI_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "ANTHROPIC_OAUTH_TOKEN",
+    "TYPESAFE_API_KEY",
+    "OMP_AUTH_BROKER_TOKEN",
+)
 
 
 @dataclass(frozen=True)
@@ -171,7 +179,8 @@ def excerpt(stdout: str, stderr: str, credentials: Iterable[str] = ()) -> str:
     lines = lines or [line.strip() for line in stdout.splitlines() if line.strip()]
     if not lines:
         return ""
-    text = lines[-1][: EXCERPT_LIMIT * 4]
+    errors = [line for line in lines if line.startswith("error:")]
+    text = (errors or lines)[-1][: EXCERPT_LIMIT * 4]
     for credential in credentials:
         if len(credential) >= 8:
             text = text.replace(credential, REDACTED)

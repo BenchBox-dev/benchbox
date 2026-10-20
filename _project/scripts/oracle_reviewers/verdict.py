@@ -34,7 +34,7 @@ FINDING_KEYS = ("severity", "file", "line", "end_line", "title", "detail")
 OPTIONAL_FINDING_KEYS = frozenset({"end_line"})
 PRIOR_KEYS = ("id", "status", "evidence")
 VERDICT_KEYS = ("status", "incomplete_reason", "decision", "summary", "files_examined", "defects", "prior_defects")
-TEXT_HARNESSES = frozenset({"muse", "text"})
+TEXT_HARNESSES = frozenset({"text"})
 
 VERDICT_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -294,7 +294,30 @@ def _repeated_value(text: str) -> Any:
     return values[0]
 
 
+def extract_omp_text(stdout: str) -> str:
+    texts = []
+    for line in stdout.splitlines():
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(event, dict):
+            continue
+        message = event.get("message")
+        if not isinstance(message, dict) or message.get("role") != "assistant":
+            continue
+        content = message.get("content")
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "text" and isinstance(block.get("text"), str):
+                texts.append(block["text"])
+    return "".join(texts)
+
+
 def parse_output(harness: str, text: str) -> Any:
+    if harness == "omp":
+        return parse_output("text", extract_omp_text(text))
     stripped = _strip_fence(text)
     try:
         payload = json.loads(stripped)
