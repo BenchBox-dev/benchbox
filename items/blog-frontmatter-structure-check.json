@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "A post with mismatched filename/date, missing required frontmatter, or missing toctree entry fails the build with file:line",
+    "Existing 17 posts still convert cleanly"
+  ],
+  "context": "The merged guard (PR #46, hardened in #48) rejects only draft-status markers. Date-format/filename agreement, required blogpost/date/author/tags fields, and toctree membership remain manual per PUBLISHING.md steps 3-4. Raised as L2 blind spots by both follow-up reviewers.",
+  "description": "Extend converter validation for blog sources: filename-to-date agreement, required frontmatter presence, and blog/index.md toctree coverage. Keep it structural, not editorial.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox-site/pull/48"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6d5eb9aefd704c065efcdb3f",
+      "at": "2026-10-20T00:22:47Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "d9c01fe871bb4c24a31d13cf2664599a",
+      "session_id": "67334470b26243a3844fd44a4b63d142"
+    }
+  ]
+}

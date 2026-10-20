@@ -2092,6 +2092,13 @@
       "status": "done",
       "title": "Blog - Evaluate Databricks APPLY CHANGES INTO vs Standard SQL MERGE for SCD Type 2"
     },
+    "blog-frontmatter-structure-check": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Validate blog filename/date agreement, required fields, and toctree coverage"
+    },
     "blog-preview-artifact-scoping": {
       "claim": null,
       "needs": [],
