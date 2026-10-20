@@ -250,6 +250,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `--platform timescaledb:cloud` no longer fails on Windows. The preview files
   are named `tpch_timescaledb~cloud_<timestamp>.*` instead of using a colon,
   which Windows file names cannot contain.
+- CedarDB baseline runs no longer issue or record the PostgreSQL planner
+  session settings, so a local result no longer carries session statements
+  that the public privacy validation rejects as unanonymized. The settings
+  now apply on tuned runs only, and `random_page_cost`, which CedarDB rejects
+  with "cannot change configuration parameter", is no longer sent.
 
 - Tuned runs on PostgreSQL and the platforms built on it no longer stop with
   "Failed to write the tuned-run marker". Statements that return no rows, such

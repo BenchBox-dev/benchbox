@@ -9,8 +9,8 @@
 
 CedarDB (formerly Umbra, from TU Munich) is a high-performance standalone RDBMS
 supporting both OLAP and OLTP workloads over the PostgreSQL wire protocol.
-BenchBox drives CedarDB through its PostgreSQL adapter, with OLAP-tuned session
-defaults and standard `COPY` for bulk loading.
+BenchBox drives CedarDB through its PostgreSQL adapter, with session defaults
+on tuned runs and standard `COPY` for bulk loading.
 
 ## Features
 
@@ -18,7 +18,7 @@ defaults and standard `COPY` for bulk loading.
 - **PostgreSQL-compatible** - standard Postgres drivers (`psycopg`), tools (`psql`, DBeaver, DataGrip)
 - **Standalone** - not a Postgres extension; its own engine and storage
 - **Bulk loading** - standard PostgreSQL `COPY` is fully supported
-- **OLAP-tuned defaults** - session-level settings applied at connection time
+- **Tuned-run session settings** - planner and commit settings applied at connection time on tuned runs only
 
 ## Deployment Modes
 
@@ -70,9 +70,11 @@ tuning are not yet verified.
 
 ## Notes
 
-- Data types, functions, and COPY syntax follow PostgreSQL. OLAP session
-  defaults (planner GUCs, page-cost tuning) are applied automatically during
-  `configure_for_benchmark()` - no CLI flag is required.
+- Data types, functions, and COPY syntax follow PostgreSQL. Tuned runs apply
+  planner session settings (`enable_seqscan`, `enable_hashjoin`,
+  `enable_mergejoin`, `cpu_tuple_cost`) during `configure_for_benchmark()`;
+  baseline runs apply none. `random_page_cost` is not sent because CedarDB
+  rejects it.
 - CedarDB is positioned as an HTAP engine - transactional workloads such as
   Transaction Primitives will also run.
 - For large scale factors, prefer `--compression zstd` on staged data files to

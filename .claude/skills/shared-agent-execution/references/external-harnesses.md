@@ -30,6 +30,9 @@ External `omp` is the exception: it accepts OMP selectors natively, including
 | `muse-code/muse-wonder-1.0-contributor` | `muse` | `muse-wonder-1.0-contributor` |
 | `muse-code/muse-spark-1.3-contributor` | `muse` | `muse-spark-1.3-contributor` |
 | `anthropic/claude-fable-5` | `claude` | `claude-fable-5` |
+| `anthropic/claude-opus-5-5` | `claude` | `claude-opus-5-5` |
+| `anthropic/claude-sonnet-5-5` | `claude` | `claude-sonnet-5-5` |
+| `anthropic/claude-haiku-5-5` | `claude` | `claude-haiku-5-5` |
 | `openai-codex/gpt-6-astra` | `codex` | `gpt-6-astra` |
 | `openai-codex/gpt-6.1-sol` | `codex` | `gpt-6.1-sol` |
 | `openai-codex/gpt-6-luna` | `codex` | `gpt-6-luna` |
@@ -42,14 +45,12 @@ catalogs; do not infer that stripping a provider prefix makes a valid ID.
 
 ### Effort translation
 
-Do not assume a non-OMP external CLI implements OMP's adaptive `auto`. For the
-non-OMP commands below, use the concrete effort selected by Agent Execution:
-`medium` normally (including routine review), `low` for mechanical/scouting
-work, and `high` for deep planning, adversarial review, or complex research
-and vision. This is a fixed approximation, not adaptive reasoning. Explicit
-user effort overrides win. External `omp` keeps the native adaptive selector:
-pass `--thinking auto` (capped at `xhigh` unless a final review explicitly
-requires `max`), exactly as for native OMP dispatches.
+Do not assume a non-OMP external CLI implements adaptive effort. Use the
+concrete effort named by the selected role: `medium` for simple and common
+work, and `high` for planning, review, research, or vision. This is a fixed
+approximation, not adaptive reasoning. Explicit user effort
+overrides win. External `omp` uses the same concrete `--thinking` value
+unless the user explicitly requests adaptive effort.
 
 | Harness | Effort argument | Supported values |
 |---|---|---|
