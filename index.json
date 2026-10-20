@@ -22775,7 +22775,8 @@
     "sqlglot-fork-d1-delete-wrapper-fixups": {
       "claim": null,
       "needs": [
-        "sqlglot-fork-a1-adopt-wrapper-wheel"
+        "sqlglot-fork-a1-adopt-wrapper-wheel",
+        "sqlglot-fork-b2-migrate-direct-importers"
       ],
       "priority": "medium-high",
       "status": "open",
