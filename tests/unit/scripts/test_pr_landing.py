@@ -1463,8 +1463,19 @@ def test_arm_current_pr_rejects_dirty_checkout_before_hosted_lookup(tmp_path: Pa
     assert run.calls == []
 
 
-def _dry_run(*arguments: str) -> list[str]:
-    result = subprocess.run(["make", "-n", *arguments], cwd=ROOT, capture_output=True, text=True, check=True)
+requires_posix_make = pytest.mark.skipif(
+    os.name == "nt" or shutil.which("make") is None,
+    reason="needs GNU Make and a POSIX shell; the stubs are shell scripts",
+)
+
+
+def _dry_run(tmp_path: Path, *arguments: str) -> list[str]:
+    stubs = tmp_path / "dry-run-bin"
+    stubs.mkdir()
+    (stubs / "gh").write_text('#!/bin/sh\necho "dry run must not call gh: $*" >&2\nexit 99\n', encoding="utf-8")
+    (stubs / "gh").chmod(0o755)
+    env = {**os.environ, "PATH": f"{stubs}{os.pathsep}{os.environ['PATH']}"}
+    result = subprocess.run(["make", "-n", *arguments], cwd=ROOT, env=env, capture_output=True, text=True, check=True)
     return shlex.split(result.stdout.replace("\\\n", " "))
 
 
@@ -1472,30 +1483,44 @@ def _adjacent(tokens: list[str]) -> set[tuple[str, str]]:
     return set(zip(tokens, tokens[1:], strict=False))
 
 
-@pytest.mark.skipif(shutil.which("make") is None, reason="needs GNU Make")
+@requires_posix_make
 @pytest.mark.parametrize("target", ["pr-landing-start", "pr-landing-withdraw", "pr-landing-ready"])
-def test_landing_targets_pass_the_repository_worktree_and_branch(target: str) -> None:
-    tokens = _dry_run(target, "REPO=o/r", "BRANCH=feat/x", "PR=3", "HEAD=abc", "EVIDENCE=e.json")
+def test_landing_targets_pass_the_repository_worktree_and_branch(target: str, tmp_path: Path) -> None:
+    tokens = _dry_run(tmp_path, target, "REPO=o/r", "BRANCH=feat/x", "PR=3", "HEAD=abc", "EVIDENCE=e.json")
 
     assert "scripts/pr_landing.py" in tokens
     assert {("--repo", "o/r"), ("--worktree", "."), ("--branch", "feat/x")} <= _adjacent(tokens)
 
 
-@pytest.mark.skipif(shutil.which("make") is None, reason="needs GNU Make")
-def test_pr_ready_with_evidence_runs_the_readiness_transaction_and_arms_the_exact_head() -> None:
-    tokens = _dry_run("pr-ready", "REPO=o/r", "BRANCH=feat/x", "PR=3", "HEAD=abc", "EVIDENCE=e.json")
+@requires_posix_make
+def test_pr_ready_with_evidence_runs_the_readiness_transaction_and_arms_the_exact_head(tmp_path: Path) -> None:
+    tokens = _dry_run(tmp_path, "pr-ready", "REPO=o/r", "BRANCH=feat/x", "PR=3", "HEAD=abc", "EVIDENCE=e.json")
 
     assert "pr-arm-auto-merge" in tokens
     assert {("--expected-head", "abc"), ("--evidence-json", "e.json")} <= _adjacent(tokens)
     assert "--arm" in tokens
 
 
-@pytest.mark.skipif(shutil.which("make") is None, reason="needs GNU Make")
-def test_pr_ready_without_evidence_arms_through_pr_arm_and_never_calls_gh_merge() -> None:
-    tokens = _dry_run("pr-ready", "REPO=o/r", "PR=3", "HEAD=abc")
+@requires_posix_make
+def test_pr_ready_without_evidence_arms_through_pr_arm_and_never_calls_gh_merge(tmp_path: Path) -> None:
+    tokens = _dry_run(tmp_path, "pr-ready", "REPO=o/r", "PR=3", "HEAD=abc")
 
     assert "pr-arm" in tokens and "PR=3" in tokens and "HEAD=abc" in tokens
     assert not {"merge", "--auto"} <= set(tokens)
+
+
+@requires_posix_make
+def test_pr_arm_auto_merge_refuses_to_arm_without_readiness_evidence() -> None:
+    result = subprocess.run(
+        ["make", "pr-arm-auto-merge", "PR=3", "HEAD=abc", "REPO=o/r"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert "EVIDENCE" in result.stderr
 
 
 _RECORDER = """#!{python}
@@ -1546,7 +1571,7 @@ def _makes(calls: list[list[object]]) -> list[list[str]]:
     return [list(map(str, args)) for name, args in calls if name == "fake-make"]
 
 
-@pytest.mark.skipif(shutil.which("make") is None, reason="needs GNU Make")
+@requires_posix_make
 def test_pr_open_hands_the_title_and_head_to_the_publisher_and_does_not_arm_by_default(tmp_path: Path) -> None:
     title = """fix: it's "quoted" $HOME $(touch sentinel) `touch sentinel2`"""
     calls = _run_pr_open(tmp_path, "created", f"TITLE={title}")
@@ -1557,7 +1582,7 @@ def test_pr_open_hands_the_title_and_head_to_the_publisher_and_does_not_arm_by_d
     assert not (tmp_path / "work" / "sentinel").exists() and not (tmp_path / "work" / "sentinel2").exists()
 
 
-@pytest.mark.skipif(shutil.which("make") is None, reason="needs GNU Make")
+@requires_posix_make
 @pytest.mark.parametrize("publish", ["created", "reused"])
 def test_pr_open_ready_arms_the_pushed_head_through_pr_arm(tmp_path: Path, publish: str) -> None:
     makes = _makes(_run_pr_open(tmp_path, publish, "READY=1"))
@@ -1567,7 +1592,7 @@ def test_pr_open_ready_arms_the_pushed_head_through_pr_arm(tmp_path: Path, publi
     assert not [m for m in makes if "pr-ready" in m]
 
 
-@pytest.mark.skipif(shutil.which("make") is None, reason="needs GNU Make")
+@requires_posix_make
 def test_pr_open_with_evidence_arms_only_a_reused_pr(tmp_path: Path) -> None:
     reused = _makes(_run_pr_open(tmp_path / "reused", "reused", "READY=1", "EVIDENCE=e.json"))
     (ready,) = [m for m in reused if "pr-ready" in m]
