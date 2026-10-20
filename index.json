@@ -16628,6 +16628,13 @@
       "status": "dropped",
       "title": "Verify the complete PR process against incident replays and live operating targets"
     },
+    "pr-rerun-live-verification": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Exercise make pr-rerun against live GitHub"
+    },
     "pr-review-followups-2026-08-20": {
       "claim": null,
       "needs": [],

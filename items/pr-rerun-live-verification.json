@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "A real failed run is re-run with --failed and a run with a cancelled job is re-run in full, with output recorded",
+    "Refusal paths (running CI, shared head, retarget) shown live or marked untestable",
+    "Any field mismatch fixed with a test"
+  ],
+  "context": "Gap from closing out PR #3109; its unit tests alone do not prove the live behaviour.",
+  "description": "scripts/pr_rerun.py was merged with 24 unit tests against a fake gh. It was never run against a real failed CI run: the REST fields (path, head_repository.full_name, base_ref_changed timeline events, job conclusions) and the rerun / rerun --failed calls are unverified live. The 'not-a-text-edit-run' rule relies on ci-paths being skipped, which was only observed on the probe PR.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:afd83494ecacfcdab965057e",
+      "at": "2026-10-20T12:59:14Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "4d19fe829c0a4fdab494064d7c463909",
+      "session_id": "8202d1c5316f41c897a0af067e2c8e9e"
+    }
+  ]
+}
