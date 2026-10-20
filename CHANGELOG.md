@@ -235,9 +235,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - TPC-Havoc dialect rewrites now use the public SQLGlot query-builder API, so
   the Presto-family array aggregation, PostgreSQL dual-source, and BigQuery
-  from-less rewrites render at the declared SQLGlot minimum instead of raising
-  a version-specific AST key error. A correctness-gate step replays the
-  affected rewrite suites at that minimum.
+  from-less rewrites no longer depend on version-specific AST dictionary keys.
+  The minimum-version replay gate added for those rewrites is retired: all
+  translation now runs on the bundled SQLGlot runtime, whose freshness is
+  enforced by the release gate instead.
 - TPC-Havoc Q18 variant 9 now keeps a deterministic ranking window with an
   outer top-100 cutoff, so tied orders at the boundary return exactly 100 rows
   like the canonical query instead of every tied row.
