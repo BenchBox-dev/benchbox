@@ -164,6 +164,7 @@ def test_parity_executes_real_payloads_in_an_isolated_slim_checkout(tmp_path: Pa
         "scripts/publication/validator_parity.py",
         "benchbox/validation/bundle.py",
         "benchbox/core/results/query_status.py",
+        "benchbox/core/results/timing_fields.py",
         "benchbox/core/results/schema_policy.py",
     ]
     for path in runtime:
