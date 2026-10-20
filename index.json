@@ -22882,12 +22882,17 @@
       "title": "BenchBox: migrate the remaining direct vendored-SQLGlot callers to the wrapper"
     },
     "sqlglot-fork-b3-checker-wrapper-mode": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-21T23:36:54Z",
+        "generation": "3b64dd6cdb0045bdb2d6f12183f63be4",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d"
+      },
       "needs": [
         "sqlglot-fork-b1-route-bypasses-through-wrapper"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "BenchBox: make the retirement checker exercise the wrapper and fix the baseline's workaround paths"
     },
     "sqlglot-fork-d1-delete-wrapper-fixups": {
