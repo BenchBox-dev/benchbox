@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "A held article moved into blog/ on main is caught mechanically, or the hold convention is documented as social-only with owner sign-off"
+  ],
+  "context": "Explicitly deferred during the Oct 19 session: no demonstrated failure yet, and it would add the automation the cleanup deliberately avoided. Applies to withheld post 17 (drafts/building-benchbox/drafts/17-results-explorer-qualifies-comparisons.md) and any future held release.",
+  "description": "The publication hold is purely social: a normalized held branch builds green and is mergeable by anyone. Add a mechanical hold marker (e.g. draft-PR convention with a merge guard, or a hold flag the converter rejects) so withholding does not depend on the merger remembering.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6d5eb9aefd704c065efcdb3f",
+      "at": "2026-10-20T00:22:44Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "08ccad67feea4b52a44d0e1d8c1c4868",
+      "session_id": "67334470b26243a3844fd44a4b63d142"
+    }
+  ]
+}

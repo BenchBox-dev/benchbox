@@ -2099,6 +2099,13 @@
       "status": "open",
       "title": "Scope site-preview artifact upload and decouple it from the required CI gate"
     },
+    "blog-publication-hold-marker": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Add a mechanical hold marker for withheld publications"
+    },
     "blog-queue-drift-check": {
       "claim": null,
       "needs": [],
