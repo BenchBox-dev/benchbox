@@ -1,6 +1,6 @@
 services:
   pg-duckdb:
-    image: pgduckdb/pgduckdb:18-v1.1.1
+    image: pgduckdb/pgduckdb:18-v1.1.1@sha256:44c88eb9207971af1d7f9804a37429b1bb36f413cd8d7118c81e1288ddde85d1
     container_name: benchbox-pg-duckdb-test
     environment:
       POSTGRES_USER: benchbox
@@ -20,7 +20,7 @@ services:
     shm_size: "256mb"
 
   pg-mooncake:
-    image: mooncakelabs/pg_mooncake:latest
+    image: mooncakelabs/pg_mooncake:latest@sha256:230731437d5fb1f091c4b1f1ddb27bad419088f44119a8e2d1937ea6cf11c9aa
     container_name: benchbox-pg-mooncake-test
     environment:
       POSTGRES_USER: benchbox
