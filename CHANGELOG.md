@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   platform defaults only, so the settings apply on tuned runs only and baseline
   results no longer fail the public privacy validation with an unanonymized
   tuning statement. Validation rules and floors are unchanged.
+- The bundled SQLGlot licence notice keeps LF line endings in Windows checkouts and
+  the nested-archive import probe accepts Windows path separators, so the SQLGlot
+  runtime tests pass on Windows. The BigQuery Iceberg test helper disposes its
+  catalog engine.
 - The green-unmerged sweep locates the original marker-tagged digest issue
   beyond the newest 1,000 issues/PRs, preferring oldest-created search matches
   and falling back to an uncapped oldest-first scan without labels. Malformed
