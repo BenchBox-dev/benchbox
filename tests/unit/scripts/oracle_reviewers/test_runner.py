@@ -221,6 +221,18 @@ def test_an_unparsable_answer_keeps_the_end_of_the_final_message(
 
 
 @skip_on_windows
+def test_an_empty_final_message_keeps_the_stderr_excerpt(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _workspace(tmp_path)
+    body = f"print({json.dumps(_reads('a.txt'))})\nsys.stderr.write('error: stream ended after a tool call\\n')"
+    _fake_omp(tmp_path, monkeypatch, body)
+    outcome = _review(policy, tmp_path, workspace, head)
+    assert outcome.missing is not None and outcome.missing.kind == absence.INVALID
+    assert outcome.diagnostic == "error: stream ended after a tool call"
+
+
+@skip_on_windows
 def test_rate_limit_error_is_quota_with_its_reset(
     policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

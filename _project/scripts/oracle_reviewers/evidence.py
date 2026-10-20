@@ -16,6 +16,7 @@ _LINE_SUFFIX = re.compile(r":\d+(?:-\d+)?$")
 TRACED = ("omp",)
 OMP_READERS = frozenset({"read", "grep"})
 _OMP_SELECTOR = re.compile(r"(?::(?:raw|[\d,+-]+))+$")
+OMP_NO_MATCHES = "No matches found"
 CITATION_PREFIX = "Citation not found in the head commit"
 
 
@@ -34,12 +35,27 @@ def _completed_messages(stdout: str) -> Iterable[dict]:
             yield event["message"]
 
 
+def _found_content(message: dict) -> bool:
+    if message.get("isError") is not False:
+        return False
+    if message.get("toolName") != "grep":
+        return True
+    content = message.get("content")
+    text = (
+        "".join(block.get("text", "") for block in content if isinstance(block, dict) and block.get("type") == "text")
+        if isinstance(content, list)
+        else ""
+    )
+    return not text.strip().startswith(OMP_NO_MATCHES)
+
+
 def _omp_reads(stdout: str) -> tuple[str, ...]:
     calls: dict[str, str] = {}
     succeeded: set[str] = set()
     for message in _completed_messages(stdout):
-        if message.get("role") == "toolResult" and message.get("isError") is False:
-            succeeded.add(str(message.get("toolCallId")))
+        if message.get("role") == "toolResult":
+            if _found_content(message):
+                succeeded.add(str(message.get("toolCallId")))
             continue
         if message.get("role") != "assistant" or not isinstance(message.get("content"), list):
             continue
@@ -59,7 +75,8 @@ def trace(harness: str, stdout: str) -> Trace:
 def unread(harness: str, required: Iterable[str], run: Trace, workspace: Path) -> list[str]:
     if harness not in TRACED:
         return []
-    read = {relative(_OMP_SELECTOR.sub("", path), workspace) for path in run.reads}
+    parts = (part.strip() for path in run.reads for part in path.split(";"))
+    read = {relative(_OMP_SELECTOR.sub("", part), workspace) for part in parts if part}
     return [path for path in required if path not in read]
 
 

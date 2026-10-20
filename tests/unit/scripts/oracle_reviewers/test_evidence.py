@@ -24,7 +24,7 @@ OMP_STREAM = (
 ).read_text(encoding="utf-8")
 
 
-def _tool_events(name: str, path: str, *, is_error: bool) -> str:
+def _tool_events(name: str, path: str, *, is_error: bool, output: str = "match") -> str:
     call = {
         "type": "message_end",
         "message": {
@@ -32,13 +32,17 @@ def _tool_events(name: str, path: str, *, is_error: bool) -> str:
             "content": [{"type": "toolCall", "id": "c1", "name": name, "arguments": {"path": path}}],
         },
     }
-    result = {"type": "message_end", "message": {"role": "toolResult", "toolCallId": "c1", "isError": is_error}}
+    result = {
+        "type": "message_end",
+        "message": {
+            "role": "toolResult",
+            "toolCallId": "c1",
+            "toolName": name,
+            "isError": is_error,
+            "content": [{"type": "text", "text": output}],
+        },
+    }
     return f"{json.dumps(call)}\n{json.dumps(result)}\n"
-
-
-from _project.scripts.oracle_reviewers.verdict import Finding, Verdict
-
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 
 def _verdict(examined: tuple[str, ...] = (), defects: tuple[Finding, ...] = ()) -> Verdict:
@@ -71,21 +75,25 @@ def test_omp_trace_reads_the_recorded_review_stream() -> None:
 
 
 @pytest.mark.parametrize(
-    ("name", "is_error", "reads"),
+    ("name", "is_error", "output", "reads"),
     [
-        ("read", False, ("pkg/a.py:10-40",)),
-        ("grep", False, ("pkg/a.py:10-40",)),
-        ("read", True, ()),
-        ("glob", False, ()),
+        ("read", False, "line", ("pkg/a.py:10-40",)),
+        ("grep", False, "pkg/a.py\n*12|def f", ("pkg/a.py:10-40",)),
+        ("grep", False, "No matches found", ()),
+        ("read", True, "Path not found", ()),
+        ("glob", False, "pkg/a.py", ()),
     ],
 )
-def test_omp_trace_counts_only_successful_reads(name: str, is_error: bool, reads: tuple[str, ...]) -> None:
-    assert trace("omp", _tool_events(name, "pkg/a.py:10-40", is_error=is_error)).reads == reads
+def test_omp_trace_counts_only_reads_that_returned_content(
+    name: str, is_error: bool, output: str, reads: tuple[str, ...]
+) -> None:
+    assert trace("omp", _tool_events(name, "pkg/a.py:10-40", is_error=is_error, output=output)).reads == reads
 
 
-def test_unread_strips_omp_read_selectors(tmp_path: Path) -> None:
-    run = Trace(("pkg/a.py:10-40", "pkg/b.py:raw", "pkg/c.py:5+20:raw"))
-    assert unread("omp", ["pkg/a.py", "pkg/b.py", "pkg/c.py", "pkg/d.py"], run, tmp_path) == ["pkg/d.py"]
+def test_unread_strips_omp_read_selectors_and_splits_path_lists(tmp_path: Path) -> None:
+    run = Trace(("pkg/a.py:10-40", "pkg/b.py:raw", "pkg/c.py:5+20:raw", f"{tmp_path}/pkg/e.py; pkg/f.py:1-9"))
+    required = ["pkg/a.py", "pkg/b.py", "pkg/c.py", "pkg/d.py", "pkg/e.py", "pkg/f.py"]
+    assert unread("omp", required, run, tmp_path) == ["pkg/d.py"]
 
 
 def test_untraced_harnesses_have_no_trace() -> None:

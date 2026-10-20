@@ -193,5 +193,6 @@ def excerpt(stdout: str, stderr: str, credentials: Iterable[str] = ()) -> str:
 
 
 def unparsed(text: str, credentials: Iterable[str] = ()) -> str:
-    tail = text[-UNPARSED_LIMIT:]
-    return ("\u2026" if len(text) > UNPARSED_LIMIT else "") + _redact(tail, credentials, UNPARSED_LIMIT)
+    redacted = _redact(text, credentials, 2 * len(text) + 64)
+    tail = redacted[-UNPARSED_LIMIT:]
+    return ("\u2026" if len(redacted) > UNPARSED_LIMIT else "") + tail
