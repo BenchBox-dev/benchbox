@@ -15629,7 +15629,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Oracle reviewers keep failing: opus exits 1 and the OpenAI reviewer has no quota"
     },
     "oracle-reviewer-backend-capacity": {
