@@ -2190,15 +2190,10 @@
       "title": "Investigate the macOS I/O stall that hung local validation, and bound the unbounded sync calls in the data generators"
     },
     "boundary-check-hook-scope": {
-      "claim": {
-        "expires_at": "2026-10-21T13:04:10Z",
-        "generation": "25f34ac2d4f7482a8ac4dbcac1fd2a51",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6d5eb9aefd704c065efcdb3f"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Document or tighten boundary-check pre-commit scope gaps"
     },
     "bounded-correctness-gate-value-oracle": {
