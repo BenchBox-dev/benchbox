@@ -163,6 +163,33 @@ def test_worktree_create_publishes_immutable_provenance(tmp_path: Path) -> None:
     assert data["deletion_authorized"] is False
 
 
+@pytest.mark.parametrize(
+    "prefix", ["feat", "fix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore", "revert"]
+)
+def test_worktree_create_accepts_every_conventional_commit_type(tmp_path: Path, prefix: str) -> None:
+    repo = init_repo_with_origin(tmp_path / "repo")
+    env = make_test_env(tmp_path / "home")
+    linked = tmp_path / "wt-prefix"
+
+    res = make_target(repo, "worktree-create", f"BRANCH={prefix}/some-slug", f"WORKTREE_PATH={linked}", env=env)
+
+    assert res.returncode == 0, res.stderr
+    assert run(["git", "branch", "--show-current"], linked).stdout.strip() == f"{prefix}/some-slug"
+
+
+@pytest.mark.parametrize("branch", ["wip/some-slug", "test/", "feature/x", "plain"])
+def test_worktree_create_rejection_lists_allowed_prefixes(tmp_path: Path, branch: str) -> None:
+    repo = init_repo_with_origin(tmp_path / "repo")
+    env = make_test_env(tmp_path / "home")
+    linked = tmp_path / "wt-bad"
+
+    res = make_target(repo, "worktree-create", f"BRANCH={branch}", f"WORKTREE_PATH={linked}", env=env)
+
+    assert res.returncode != 0
+    assert "feat/ fix/ docs/ style/ refactor/ perf/ test/ build/ ci/ chore/ revert/" in res.stderr
+    assert not linked.exists()
+
+
 def test_worktree_create_with_controller_binding(tmp_path: Path) -> None:
     repo = init_repo_with_origin(tmp_path / "repo")
     env = make_test_env(tmp_path / "home")
