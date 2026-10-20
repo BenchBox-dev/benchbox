@@ -22703,6 +22703,15 @@
       "status": "open",
       "title": "BigQuery adapter: enable the fork safe_division option and decide its result impact"
     },
+    "sqlglot-fork-adapter-snowflake-safe-division": {
+      "claim": null,
+      "needs": [
+        "sqlglot-fork-a2-adopt-adapter-wheel"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Snowflake adapter: enable the fork safe_division option and decide its result impact"
+    },
     "sqlglot-fork-adr-ownership": {
       "claim": null,
       "needs": [],
