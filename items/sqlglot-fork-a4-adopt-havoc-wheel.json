@@ -1,7 +1,8 @@
 {
   "acceptance": [
-    "apply_rewrite exists in benchbox/utils/dialect_utils.py with tests; pin and baseline updated; make sqlglot-repro-retirement-check passes.",
-    "Golden-corpus differences listed in the PR with a result-version note.",
+    "apply_rewrite exposes the Havoc, Spark and DataFusion rewrites with tests; pin and baseline updated; the PR records the fork commit; make sqlglot-repro-retirement-check passes.",
+    "DataFusion Q11, Q16, Q18 and Q20 outputs are validated against the TPC-H reference answers in BenchBox (not in the fork); any rule not replaced by a generic rewrite stays in BenchBox with the owner decision recorded.",
+    "Cumulative golden-corpus differences listed in the PR with a result-version note.",
     "make pr-preflight, make comment-policy-check, make compat-docs-check and make typecheck pass; PR merged."
   ],
   "description": "Adopt the wheel containing F9 with the standard build, verify and pin procedure. Add apply_rewrite to the wrapper and a golden-corpus test over tests/unit/core/tpchavoc and the DataFusion and Spark transformer test inputs. No deletion in this PR.",
@@ -15,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "fe6c45812f924012a9ff0a20240ac180",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T16:03:23Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "37e0689132ef4d5cb66278a91310f322",
       "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
     }
   ]
