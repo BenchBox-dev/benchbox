@@ -22921,7 +22921,8 @@
     "sqlglot-fork-f6-tpcdi-clickbench-generators": {
       "claim": null,
       "needs": [
-        "sqlglot-fork-f0-base-and-manifest"
+        "sqlglot-fork-f0-base-and-manifest",
+        "sqlglot-fork-f0b-real-engine-ci"
       ],
       "priority": "medium-high",
       "status": "open",
