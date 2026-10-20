@@ -3003,7 +3003,7 @@
       "needs": [],
       "priority": "high",
       "status": "open",
-      "title": "Rebalance the medium-tier shards so shard 3 stops being the critical path"
+      "title": "Rebalance the medium-tier shards: shard 0 is the slowest, not shard 3"
     },
     "ci-retry-artifact-collision-breaks-canary-gate": {
       "claim": null,

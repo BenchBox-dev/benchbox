@@ -5,8 +5,8 @@
     "Medium critical path shorter than the pre-shrink unit chain",
     "Shard coverage evidence still verifies every collected test"
   ],
-  "context": "From the CI timing analysis in this session. Related open item ci-amplab-generate-data-timeout-flake covers the generate_data timeout flake itself.",
-  "description": "After the fast tier shrank, shard 3 of medium-test received most of the moved tests. The last timing analysis (runs to 2026-10-18 17:02Z) shows shard 3 at about 841 s against 496-630 s for the others; the critical path ci-paths -> medium-collect -> medium-test (shard 3) -> core is 17.0 min against 16.5 min before, so end-to-end CI on PRs that run medium shards is about 3% slower. An even split would be about 620 s per shard, a chain of roughly 800 s. A later run showed shard 0 at 16m53s with tests/test_h2odb.py::TestH2ODB::test_generate_data alone taking 353 s, so partitioning should weight by recorded duration rather than count.",
+  "context": "Corrected after review: the original item named shard 3 from stale data. Related open item ci-amplab-generate-data-timeout-flake covers the generate_data timeout.",
+  "description": "Medium-test shards are assigned round-robin over the sorted node ids (scripts/release_canary_sharding.py partition_node_ids: ordered[shard_index::shard_count]), which balances test count, not time. Measured over the 20 most recent completed PR CI runs with all four shards (2026-10-19 14:09Z to 2026-10-20 12:41Z), shard 0 was the slowest in 20 of 20. Typical times were shard 0 at 640-1040 s against 330-700 s for the others, because a few very slow tests land on shard 0 (tests/test_h2odb.py::TestH2ODB::test_generate_data alone took 353 s on run 39180253922, tests/test_ssb.py generate_data 95 s). An earlier analysis (runs to 2026-10-18 17:02Z) found shard 3 slowest at 841 s; that no longer holds after later changes, so re-measure before choosing a fix. The claim that medium-shard PRs are 3% slower end to end comes from that earlier analysis and is not re-verified here.",
   "links": [
     "https://claude.ai/artifact/LjQocGvpr9RkJwMAAp18Z4",
     "ci-amplab-generate-data-timeout-flake"
@@ -18,6 +18,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "0f27cc731e064dc893b42874e035b5f5",
+      "session_id": "8202d1c5316f41c897a0af067e2c8e9e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:afd83494ecacfcdab965057e",
+      "at": "2026-10-20T13:13:37Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1e15843cbc104281af736b100766ed93",
       "session_id": "8202d1c5316f41c897a0af067e2c8e9e"
     }
   ]
