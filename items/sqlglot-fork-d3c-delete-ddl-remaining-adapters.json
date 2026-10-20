@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "A table in each PR lists call sites and the adapter state mapped into DdlOptions; rg finds none of the deleted methods.",
+    "Adapter unit tests pass; DDL matches the A3 golden corpus except listed differences; engines without local execution are recorded as gaps.",
+    "make compat-docs-check, make sqlglot-repro-retirement-check, make comment-policy-check, make typecheck and make pr-preflight pass; PRs merged."
+  ],
+  "description": "Remaining adapters with DDL rules: Athena (athena.py:582), Redshift (redshift.py:1104), Synapse, Fabric, Databricks, Spark, Lakesail, Velox, Presto, Trino, BigQuery, Snowflake, DuckLake, PostgreSQL, pg_mooncake and QuestDB (partitioning and designated timestamp). For each, list the create-schema call sites, map adapter state into DdlOptions, call translate_ddl, delete adapter DDL methods and rule bodies, and keep the governance rows. QuestDB also switches its dialect constant from postgres to questdb here if not already done. Split into several PRs by family.",
+  "links": [
+    "_project/decisions/sqlglot-fork-transpilation-plan.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T16:00:22Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "52be3d1d7540460abfd1a1f420450d27",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}
