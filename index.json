@@ -22755,6 +22755,16 @@
       "status": "open",
       "title": "BenchBox: delete DDL rule bodies and adapter DDL methods, rewire BaseDdlOptimizer to translate_ddl"
     },
+    "sqlglot-fork-d4-delete-havoc-datafusion-transformers": {
+      "claim": null,
+      "needs": [
+        "sqlglot-fork-a4-adopt-havoc-wheel",
+        "sqlglot-fork-d3-delete-ddl-rule-bodies"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "BenchBox: delete TPC-Havoc, Spark and DataFusion query transformers"
+    },
     "sqlglot-fork-f0-base-and-manifest": {
       "claim": null,
       "needs": [],

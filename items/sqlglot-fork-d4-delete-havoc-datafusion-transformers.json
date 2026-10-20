@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "rg finds none of the deleted rewrite functions; dispatch tables call apply_rewrite.",
+    "tests/unit/core/tpchavoc and tests/unit/platforms pass; make compat-docs-check, make comment-policy-check, make typecheck and make pr-preflight pass; PR merged.",
+    "After merge, every item in _project/decisions/sqlglot-fork-transpilation-plan.md classified 'moves' no longer exists in BenchBox (verified by rg), and the bypass test allowlist is empty."
+  ],
+  "description": "After A4, delete benchbox/core/tpchavoc/dialect_compat.py rewrite bodies, cloud_compat.py rewrite bodies, core/spark_query_transformer.py with its platforms shim, and the DataFusion query transformer. Keep variant id sets, POSTGRES_QUALIFIED_COLUMNS, _BIGQUERY_HAVING_COLUMNS and the variant to rewrite dispatch table, which call apply_rewrite. Remove the questdb_rewriter.py and datafusion_query_transformer.py exemptions in tests/unit/.../test_abc_conformance.py (if still present). Re-point query_adapter transformer_id strings; regenerate compat docs.",
+  "links": [
+    "_project/decisions/sqlglot-fork-transpilation-plan.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T15:45:38Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "4fa011bf93de42909785285b11698968",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}
