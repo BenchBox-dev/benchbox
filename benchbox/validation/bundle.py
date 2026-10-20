@@ -677,7 +677,7 @@ def _validate_query_timing_fields(index: int, q: dict, vr: ValidationResult) -> 
         value = q.get(key)
         if value is not None and (isinstance(value, bool) or not isinstance(value, int) or value < 0):
             vr.error(f"queries[{index}].{key} must be a non-negative int, got {value!r}")
-    if "platform_timing" not in q:
+    if q.get("platform_timing") is None:
         return
     for problem in platform_timing_problems(q["platform_timing"]):
         vr.error(f"queries[{index}].platform_timing {problem}")

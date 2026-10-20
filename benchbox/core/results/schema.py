@@ -37,7 +37,7 @@ from benchbox.core.results.schema_policy import (
     supports_row_count_validation,
 )
 from benchbox.core.results.subscale_policy import NONSTANDARD_COMPLIANCE_CLASS, unofficial_metric_marker
-from benchbox.core.results.timing_fields import bundle_timing_field_paths, run_timing_problems
+from benchbox.core.results.timing_fields import bundle_timing_field_paths, platform_timing_problems, run_timing_problems
 from benchbox.validation.bundle import REQUIRED_TOP_KEYS
 
 if TYPE_CHECKING:
@@ -196,6 +196,21 @@ def _validate_timing_fields(payload: Mapping[str, Any], version: Any, run: Mappi
     run_problems = run_timing_problems(run)
     if run_problems:
         raise SchemaV2ValidationError(f"run.{run_problems[0]}")
+    queries = payload.get("queries")
+    if not isinstance(queries, list):
+        return
+    for index, query in enumerate(queries):
+        if not isinstance(query, Mapping):
+            continue
+        for key in ("request_count", "result_bytes"):
+            count = query.get(key)
+            if count is not None and (isinstance(count, bool) or not isinstance(count, int) or count < 0):
+                raise SchemaV2ValidationError(f"queries[{index}].{key} must be a non-negative int, got {count!r}")
+        if query.get("platform_timing") is None:
+            continue
+        query_problems = platform_timing_problems(query["platform_timing"])
+        if query_problems:
+            raise SchemaV2ValidationError(f"queries[{index}].platform_timing {query_problems[0]}")
 
 
 def build_result_payload(result: BenchmarkResults, *, sanitize_platform_secrets: bool = True) -> dict[str, Any]:

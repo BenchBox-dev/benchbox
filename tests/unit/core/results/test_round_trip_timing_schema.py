@@ -125,6 +125,7 @@ def test_absent_producers_do_not_fill_timing_fields():
         ({"platform_timing": {"status": "valid", "platform_ms": float("nan")}}, "platform_ms must be"),
         ({"platform_timing": {"status": "valid", "platform_ms": 1, "platfrom_ms": 2}}, "unknown field"),
         ({"platform_timing": {"status": "valid", "platform_ms": 1, "requests": [{"kind": "query"}]}}, "attempt"),
+        ({"platform_timing": {"status": ["valid"]}}, "status must be one of"),
     ],
 )
 def test_contract_rejects_malformed_timing_fields(fields, message):
@@ -141,6 +142,7 @@ def _query_errors(query: dict) -> list[str]:
 def test_bundle_validator_accepts_well_formed_query_timing():
     assert _query_errors({"request_count": 1, "result_bytes": 0, "platform_timing": PLATFORM_TIMING}) == []
     assert _query_errors({"platform_timing": {"status": "unavailable", "reason": "lookup failed"}}) == []
+    assert _query_errors({"platform_timing": None}) == []
 
 
 @pytest.mark.parametrize(
@@ -154,6 +156,7 @@ def test_bundle_validator_accepts_well_formed_query_timing():
         ({"platform_timing": {}}, "status must be one of"),
         ({"platform_timing": {"status": "valid"}}, "requires platform_ms"),
         ({"platform_timing": {"status": "unavailable"}}, "requires a reason"),
+        ({"platform_timing": {"status": ["valid"]}}, "status must be one of"),
         ({"platform_timing": {"status": "valid", "platform_ms": 1, "extra": 1}}, "unknown field 'extra'"),
     ],
 )
@@ -182,6 +185,8 @@ def test_bundle_validator_accepts_well_formed_run_timing():
         ({"platform_timing": []}, "run.platform_timing must be an object"),
         ({"platform_timing": {}}, "run.platform_timing.source"),
         ({"platform_timing": {**RUN_TIMING["platform_timing"], "coverage": 1.2}}, "run.platform_timing.coverage"),
+        ({"timing_method": [2]}, "run.timing_method"),
+        ({"net_estimate_status": {"x": 1}}, "run.net_estimate_status"),
         ({"platform_timing": {**RUN_TIMING["platform_timing"], "definition": "other"}}, "platform_timing.definition"),
     ],
 )
@@ -210,3 +215,16 @@ def test_bundle_validator_allows_2_4_fields_in_2_4_bundles():
     vr = ValidationResult(path="<test>")
     _validate_timing_field_versions(_bundle_2_4(), "2.4", vr)
     assert vr.errors == []
+
+
+def test_schema_validator_rejects_malformed_query_timing():
+    bundle = _bundle_2_4()
+    bundle["queries"][0]["platform_timing"] = {"status": "valid"}
+    with pytest.raises(SchemaV2ValidationError, match="requires platform_ms"):
+        SchemaV2Validator().validate(bundle)
+
+
+def test_schema_validator_accepts_null_query_platform_timing():
+    bundle = _bundle_2_4()
+    bundle["queries"][0]["platform_timing"] = None
+    SchemaV2Validator().validate(bundle)

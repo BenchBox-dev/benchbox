@@ -55,7 +55,8 @@ def _request_problems(index: int, request: Any) -> list[str]:
     attempt = request.get("attempt")
     if not _is_non_negative_int(attempt) or attempt < 1:
         problems.append(f"{prefix}.attempt must be a positive int")
-    if request.get("kind") not in PLATFORM_REQUEST_KINDS:
+    kind = request.get("kind")
+    if not isinstance(kind, str) or kind not in PLATFORM_REQUEST_KINDS:
         problems.append(f"{prefix}.kind must be one of {sorted(PLATFORM_REQUEST_KINDS)}")
     fields = request.get("fields")
     if not isinstance(fields, Mapping):
@@ -74,7 +75,7 @@ def platform_timing_problems(value: Any) -> list[str]:
         return ["must be an object"]
     problems = [f"has unknown field {key!r}" for key in sorted(set(value) - PLATFORM_TIMING_FIELDS)]
     status = value.get("status")
-    if status not in PLATFORM_TIMING_STATUSES:
+    if not isinstance(status, str) or status not in PLATFORM_TIMING_STATUSES:
         problems.append(f"status must be one of {sorted(PLATFORM_TIMING_STATUSES)}, got {status!r}")
     source = value.get("source")
     if source is not None and not _non_empty_string(source):
@@ -86,7 +87,7 @@ def platform_timing_problems(value: Any) -> list[str]:
     if status == "valid" and value.get("platform_ms") is None:
         problems.append("status 'valid' requires platform_ms")
     reason = value.get("reason")
-    if status in {"suspect", "unavailable"} and not _non_empty_string(reason):
+    if isinstance(status, str) and status in {"suspect", "unavailable"} and not _non_empty_string(reason):
         problems.append(f"status {status!r} requires a reason")
     elif reason is not None and not _non_empty_string(reason):
         problems.append("reason must be a non-empty string")
@@ -106,10 +107,12 @@ def platform_timing_problems(value: Any) -> list[str]:
 def run_timing_problems(run: Mapping[str, Any]) -> list[str]:
     problems: list[str] = []
     timing_method = run.get("timing_method")
-    if timing_method is not None and (isinstance(timing_method, bool) or timing_method not in KNOWN_TIMING_METHODS):
+    if timing_method is not None and (type(timing_method) is not int or timing_method not in KNOWN_TIMING_METHODS):
         problems.append(f"timing_method must be one of {sorted(KNOWN_TIMING_METHODS)}, got {timing_method!r}")
     net_estimate_status = run.get("net_estimate_status")
-    if net_estimate_status is not None and net_estimate_status not in NET_ESTIMATE_STATUSES:
+    if net_estimate_status is not None and (
+        not isinstance(net_estimate_status, str) or net_estimate_status not in NET_ESTIMATE_STATUSES
+    ):
         problems.append(
             f"net_estimate_status must be one of {sorted(NET_ESTIMATE_STATUSES)}, got {net_estimate_status!r}"
         )
@@ -125,7 +128,7 @@ def run_timing_problems(run: Mapping[str, Any]) -> list[str]:
     if not _non_empty_string(platform_timing.get("source")):
         problems.append("platform_timing.source must be a non-empty string")
     definition = platform_timing.get("definition")
-    if definition not in PLATFORM_TIMING_DEFINITIONS:
+    if not isinstance(definition, str) or definition not in PLATFORM_TIMING_DEFINITIONS:
         problems.append(
             f"platform_timing.definition must be one of {sorted(PLATFORM_TIMING_DEFINITIONS)}, got {definition!r}"
         )
