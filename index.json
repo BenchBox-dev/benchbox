@@ -22715,6 +22715,15 @@
       "status": "open",
       "title": "Fork: DuckDB generator keeps bare ALL in GROUP BY / ORDER BY under identify=True"
     },
+    "sqlglot-fork-f4-questdb-generator": {
+      "claim": null,
+      "needs": [
+        "sqlglot-fork-f1-platform-dialects"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Fork: QuestDB generator (comma joins, dateadd, substring, CTE column lists)"
+    },
     "sqlglot-fork-f5-adapter-rewrites-api": {
       "claim": null,
       "needs": [
