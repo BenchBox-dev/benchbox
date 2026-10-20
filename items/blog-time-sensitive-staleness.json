@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Time-sensitive rows carry a last-verified date or equivalent signal",
+    "Series-plan insight cells with prices/terms fall under the same discipline or are sourced from the queue"
+  ],
+  "context": "L3 reframe from the follow-up review: the new machinery certifies form, not freshness. Eleven Medium free-trial rows plus cloud-cost figures age silently; PUBLICATION_SCHEDULE.md already notes terms change fast.",
+  "description": "Add staleness signalling for time-sensitive publication rows (trial terms, pricing, credit figures), including figures embedded in series-plan insight cells that sit outside the queue's re-verify discipline.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6d5eb9aefd704c065efcdb3f",
+      "at": "2026-10-20T00:22:50Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f41594549ea94fa8b2caf208aec06d57",
+      "session_id": "67334470b26243a3844fd44a4b63d142"
+    }
+  ]
+}

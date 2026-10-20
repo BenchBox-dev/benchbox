@@ -2134,6 +2134,13 @@
       "status": "open",
       "title": "Point the blog skill at the site repo's drafts/ guides instead of core's removed _blog/"
     },
+    "blog-time-sensitive-staleness": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Signal staleness for time-sensitive benchmark content"
+    },
     "bodo-dataframe-platform": {
       "claim": null,
       "needs": [
