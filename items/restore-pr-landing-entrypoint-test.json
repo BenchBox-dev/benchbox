@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Test restored from the pre-ac5bb05da version with the pr-open assertions matching the REST publisher (scripts/pr_open_rest.py, TITLE, --head-spec)",
+    "Test fails when any of the pinned Makefile properties is removed",
+    "Passes in make pr-preflight"
+  ],
+  "context": "Found while closing out PR #3109. Regression introduced by the takeover session; not noticed before merge because the file diff showed only deletions in a test file.",
+  "description": "The merge of the PR text and pr-rerun change (ac5bb05da) deleted the whole test_make_entrypoints_forward_explicit_landing_bindings from tests/unit/scripts/test_pr_landing.py (35 lines) while resolving a conflict that only concerned the pr-open assertions. That test also pinned --repo, --worktree . and --branch on pr-landing-start/withdraw/ready, the pr-arm-auto-merge and pr-ready routing, the EVIDENCE/BATCH branch, and the absence of raw gh pr merge --auto. None of that is covered now.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3109"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:afd83494ecacfcdab965057e",
+      "at": "2026-10-20T12:59:03Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "341031e5d3de4c1d83e5f5248725beaa",
+      "session_id": "8202d1c5316f41c897a0af067e2c8e9e"
+    }
+  ]
+}
