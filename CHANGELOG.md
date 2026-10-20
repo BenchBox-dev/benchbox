@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- PostgreSQL-family baseline runs (PostgreSQL, TimescaleDB, pg_duckdb,
+  pg_mooncake, Citus, ParadeDB) no longer issue the planner session settings
+  (`enable_seqscan`, `enable_hashjoin`, `enable_mergejoin`, `random_page_cost`,
+  `cpu_tuple_cost`, `synchronous_commit`, `timescaledb.enable_chunk_skipping`,
+  `duckdb.force_execution`) through the recording connection. A baseline is
+  platform defaults only, so the settings apply on tuned runs only and baseline
+  results no longer fail the public privacy validation with an unanonymized
+  tuning statement. Validation rules and floors are unchanged.
 - The green-unmerged sweep locates the original marker-tagged digest issue
   beyond the newest 1,000 issues/PRs, preferring oldest-created search matches
   and falling back to an uncapped oldest-first scan without labels. Malformed

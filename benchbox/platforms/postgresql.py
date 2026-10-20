@@ -774,6 +774,9 @@ class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
         return None
 
     def configure_for_benchmark(self, connection: Any, benchmark_type: str) -> None:
+        if not self.tuning_enabled:
+            return
+
         cursor = connection.cursor()
 
         if benchmark_type == "olap":
