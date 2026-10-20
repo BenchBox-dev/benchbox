@@ -1366,12 +1366,17 @@
       "title": "Make the soundness digest agree with the gate on stand-ins and close gap issues on evidence"
     },
     "autogen-green-unmerged-pinned-lookup-20261018": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-21T12:58:33Z",
+        "generation": "7c402c1bc73d4297b986e6b118e6b017",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
+      },
       "needs": [
         "autogen-issues-decisions-20261018"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Find the green-unmerged pinned issue by marker instead of scanning the newest 1000 records"
     },
     "autogen-issues-closeout-20261018": {
