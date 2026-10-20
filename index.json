@@ -12071,6 +12071,15 @@
       "status": "done",
       "title": "Iceberg table format support testing"
     },
+    "iceberg-test-catalog-handle-leaks-20261020": {
+      "claim": null,
+      "needs": [
+        "autogen-windows-sqlglot-failures-20261018"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "Dispose the Iceberg SqlCatalog engine in the remaining test helpers"
+    },
     "implement-cli-progress-tracking-and-execution-reporting": {
       "claim": null,
       "needs": [],
