@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Databricks adapter requests safe_division through the wrapper; output over tests/unit/platforms/test_databricks_adapter.py inputs is identical or the differences are listed and approved.",
+    "A recorded owner decision states whether results published with the old behavior need a note or a rerun.",
+    "make pr-preflight and typecheck pass; PR merged."
+  ],
+  "description": "The Databricks adapter rewrites division to TRY_DIVIDE through _safeguard_databricks_division (databricks/adapter.py) alongside alias deduplication. The fork exposes this as opt-in safe_division. The adapter must pass it explicitly so behavior is unchanged, and the change must be reviewed because it alters semantics for zero divisors and can change published results. Logged by owner decision as a high-priority follow-up.",
+  "links": [
+    "_project/decisions/sqlglot-fork-transpilation-plan.md",
+    "benchbox/platforms/databricks/adapter.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T15:45:47Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "29fa167da43c430ca948ab2e915805ef",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}
