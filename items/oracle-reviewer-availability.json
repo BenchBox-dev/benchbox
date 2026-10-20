@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Reviewer failure reasons are written to the job log",
+    "Opus exit cause identified",
+    "Owner decision recorded on the OpenAI quota"
+  ],
+  "context": "Unresolved. Quota change is owner-only.",
+  "description": "On PR #3109 head a6acef0d9 the oracle posted 'opus: absent (error)' and 'sol: disabled (the OpenAI API project behind OPENAI_API_KEY has no quota)'; the attempt-1 Claude job ended 'slot 1: opus absent (error: exit code 1)' after about 4 minutes with no diagnostic in the log. oracle-review failed until the PR was reopened. Earlier sessions recorded the same pattern (muse invalid JSON, luna exit 1). The cause of the opus exit is not identified and the quota is an owner-only action.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3109"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:afd83494ecacfcdab965057e",
+      "at": "2026-10-20T12:59:11Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "8781f46f8e844fe2804c24e45e7d2d46",
+      "session_id": "8202d1c5316f41c897a0af067e2c8e9e"
+    }
+  ]
+}

@@ -15611,6 +15611,13 @@
       "status": "open",
       "title": "Distinguish oracle-review waiting state from verdict failure"
     },
+    "oracle-reviewer-availability": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Oracle reviewers keep failing: opus exits 1 and the OpenAI reviewer has no quota"
+    },
     "oracle-reviewer-backend-capacity": {
       "claim": null,
       "needs": [],
