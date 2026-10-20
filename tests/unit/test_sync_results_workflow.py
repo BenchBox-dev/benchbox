@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import ast
+import importlib.util
+import json
 import shlex
 import subprocess
+import sys
 from pathlib import Path, PurePosixPath
 
 import pytest
@@ -322,6 +325,39 @@ def test_mirror_allowlist_excludes_modules_the_variant_identity_import_needs() -
 
     for paths in (triggers, compare_paths, copy_paths, _drift_check_pathspecs()):
         assert not unmirrored & set(paths)
+
+
+def test_validator_fails_closed_when_the_identity_module_is_not_mirrored(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    bundle = {
+        "benchmark": {"id": "tpch", "scale_factor": 1.0, "test_type": "power"},
+        "platform": {"name": "DuckDB"},
+        "run": {"timestamp": "2026-08-01T12:00:00"},
+        "export": {"anonymized": True},
+        "summary": {
+            "queries": {"total": 2, "passed": 2, "failed": 0},
+            "validation": "passed",
+            "tpc_metrics": {"power_at_size": 1.0},
+        },
+        "queries": [
+            {"id": "Q1", "ms": 10.0, "run_type": "measurement", "status": "SUCCESS"},
+            {"id": "Q2", "ms": 12.0, "run_type": "measurement", "status": "SUCCESS"},
+        ],
+    }
+    (tmp_path / "rankable.json").write_text(json.dumps(bundle), encoding="utf-8")
+    for name in [name for name in sys.modules if name == "benchbox" or name.startswith("benchbox.")]:
+        monkeypatch.setitem(sys.modules, name, None)
+    monkeypatch.setitem(sys.modules, "benchbox.core.results.execution_variant", None)
+    spec = importlib.util.spec_from_file_location("validate_corpus", REPO_ROOT / "results-data" / "validate_corpus.py")
+    assert spec and spec.loader
+    validator = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(validator)
+
+    assert validator.main(tmp_path) == 1
+    output = capsys.readouterr().out
+    assert "needs the full benchbox package" in output
+    assert "Cohorts:" not in output
 
 
 VALIDATOR_ROOTS = ("results-data/validate_corpus.py", "scripts/validate_submission.py")
