@@ -22672,6 +22672,15 @@
       "status": "open",
       "title": "BenchBox: migrate the remaining direct vendored-SQLGlot callers to the wrapper"
     },
+    "sqlglot-fork-b3-checker-wrapper-mode": {
+      "claim": null,
+      "needs": [
+        "sqlglot-fork-b1-route-bypasses-through-wrapper"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "BenchBox: make the retirement checker exercise the wrapper and fix the baseline's workaround paths"
+    },
     "sqlglot-fork-f0-base-and-manifest": {
       "claim": null,
       "needs": [],

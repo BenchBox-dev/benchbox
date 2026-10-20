@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Baseline schema, checker and make sqlglot-repro-retirement-check support wrapper cases; malformed or missing cases still fail closed, with tests.",
+    "A unit test shows a wrapper output change fails the checker while the direct-transpile check still passes.",
+    "The mysql workaround path in the baseline points at the real code.",
+    "make pr-preflight, make comment-policy-check and make typecheck pass; PR merged."
+  ],
+  "description": "scripts/check_sqlglot_repro_retirement.py calls the vendored transpile directly, so wrapper output can change while the check passes. Add an 'entry' field (transpile or wrapper) plus platform and optional ddl_options to baseline cases. Wrapper cases call translate_sql_query / translate_ddl / apply_rewrite and must execute on the named engine and match expected rows. Fix the mysql-percentile-decorator workaround path (the baseline names dialect_compat.py, which has no percentile logic). Keep the README rule that retirement needs both read=<target> and read=postgres probes to pass with the helper removed.",
+  "links": [
+    "_project/decisions/sqlglot-fork-transpilation-plan.md",
+    "scripts/check_sqlglot_repro_retirement.py",
+    "scripts/sqlglot_runtime_baseline.json"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T15:43:50Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "20c27dcc6d234a75a7266a16ef6654ce",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}
