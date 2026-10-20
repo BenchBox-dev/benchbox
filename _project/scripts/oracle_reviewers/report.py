@@ -68,7 +68,7 @@ def _record(
         "head_sha": plan["head_sha"],
         "base_ref": rules["base_ref"],
         "reviewer": reviewer,
-        "tier": plan.get("tier") or "",
+        "tier": reviewer,
         "strikes_after": strikes_after,
         "open_defects": open_defects,
         "next_id": next_id,
@@ -95,8 +95,6 @@ def _header(plan: Mapping[str, Any], state: str) -> list[str]:
     if plan.get("mode") == "shadow":
         lines += ["Shadow mode: this result is advisory and does not replace the required `oracle-review` check.", ""]
     lines += ["This result supersedes those for earlier heads; their open review threads still apply.", ""]
-    if plan.get("tier"):
-        lines += [f"Tier: {plan['tier']} ({'; '.join(plan.get('tier_reasons', []))}).", ""]
     return lines
 
 
@@ -104,7 +102,8 @@ def _reviewer_line(plan: Mapping[str, Any], name: str | None) -> list[str]:
     spec = next((item for item in plan["chain"] if item["name"] == name), None)
     if spec is None:
         return []
-    return [f"Reviewer: {name} (role {spec['role']}, {spec['harness']} {spec['model']}, effort {spec['effort']}).", ""]
+    effort = f", effort {spec['effort']}" if spec.get("effort") else ""
+    return [f"Reviewer: {name} (role {spec['role']}, {spec['harness']} {spec['model']}{effort}).", ""]
 
 
 def _absences(attempts: list[Attempt], step: Step) -> list[str]:

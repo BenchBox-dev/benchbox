@@ -244,7 +244,6 @@ def plan_round(
     *,
     head_sha: str,
     base_ref: str,
-    tier: str,
     digest: str,
     patches: Mapping[str, str],
     paths: Sequence[str],
@@ -264,8 +263,6 @@ def plan_round(
     restart = latest["cycle"] + 1
     if latest["base_ref"] != base_ref:
         return Round(FIRST, f"the base changed from {latest['base_ref']} to {base_ref}", restart, 1, latest)
-    if latest["tier"] != tier:
-        return Round(FIRST, f"the tier changed from {latest['tier']} to {tier}", restart, 1, latest)
     if latest["decision"] == REFUSED:
         return Round(FIRST, "the strike limit no longer applies", restart, 1, latest)
     if latest["patch_digest"] == digest:

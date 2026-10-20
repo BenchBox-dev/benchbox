@@ -1,16 +1,10 @@
-version: 1
+version: 2
 mode: enforce
 status_context: oracle-verdict
 findings_delivery: review
 bot_login: benchbox-oracle
 brief_max_bytes: 100000
 max_attempts: 5
-author_label_prefix: "author-family:"
-default_author_family: muse
-tier_labels:
-  "oracle-tier:low-medium": low-medium
-  "oracle-tier:medium-high": medium-high
-  "oracle-tier:very-high": very-high
 protocol:
   max_defects: 10
   max_do_not_ship: 3
@@ -18,130 +12,82 @@ retry:
   daily_budget: 6
   backoff_start_minutes: 60
   sweep_max_dispatches: 5
-pools: [claude, codex, muse, agy]
+pools: [claude]
 reviewers:
-  claude-deep:
-    harness: claude
+  trivial:
+    harness: omp
     family: claude
     pool: claude
-    model: claude-fable-5
-    effort: high
+    model: "@smol"
+    effort: ""
+    role: review
+    read_only: hard
+    reads_files: true
+    timeout_minutes: 15
+    enabled: true
+  small:
+    harness: omp
+    family: claude
+    pool: claude
+    model: "@smol"
+    effort: ""
+    role: review
+    read_only: hard
+    reads_files: true
+    timeout_minutes: 20
+    enabled: true
+  medium:
+    harness: omp
+    family: claude
+    pool: claude
+    model: "@default"
+    effort: ""
+    role: review
+    read_only: hard
+    reads_files: true
+    timeout_minutes: 25
+    enabled: true
+  large:
+    harness: omp
+    family: claude
+    pool: claude
+    model: "@review"
+    effort: ""
     role: review
     read_only: hard
     reads_files: true
     timeout_minutes: 30
-    turn_cap: 60
-    allowed_tiers: [medium-high, very-high]
     enabled: true
-  claude-routine:
-    harness: claude
+  huge:
+    harness: omp
     family: claude
     pool: claude
-    model: claude-fable-5
-    effort: medium
+    model: "@plan"
+    effort: ""
     role: review
     read_only: hard
     reads_files: true
-    timeout_minutes: 25
-    turn_cap: 60
-    allowed_tiers: [low-medium]
+    timeout_minutes: 40
     enabled: true
-  codex-deep:
-    harness: codex
-    family: codex
-    pool: codex
-    model: gpt-6-astra
-    effort: medium
+  max:
+    harness: omp
+    family: claude
+    pool: claude
+    model: "@slow"
+    effort: ""
     role: review
     read_only: hard
     reads_files: true
-    timeout_minutes: 25
-    turn_cap: null
-    allowed_tiers: [low-medium, medium-high, very-high]
-    enabled: false
-    disabled_reason: "the OpenAI API project behind OPENAI_API_KEY has no quota"
-  codex-routine:
-    harness: codex
-    family: codex
-    pool: codex
-    model: gpt-6.1-sol
-    effort: medium
-    role: review
-    read_only: hard
-    reads_files: true
-    timeout_minutes: 25
-    turn_cap: null
-    allowed_tiers: [low-medium, medium-high]
-    enabled: false
-    disabled_reason: "the OpenAI API project behind OPENAI_API_KEY has no quota"
-  muse-deep:
-    harness: muse
-    family: muse
-    pool: muse
-    model: muse-wonder-1.0-contributor
-    effort: high
-    role: review
-    read_only: hard
-    reads_files: true
-    timeout_minutes: 25
-    turn_cap: 80
-    allowed_tiers: [medium-high, very-high]
+    timeout_minutes: 45
     enabled: true
-  muse-routine:
-    harness: muse
-    family: muse
-    pool: muse
-    model: muse-wonder-1.0-contributor
-    effort: medium
-    role: review
-    read_only: hard
-    reads_files: true
-    timeout_minutes: 25
-    turn_cap: 80
-    allowed_tiers: [low-medium]
-    enabled: true
-  gemini-routine:
-    harness: agy
-    family: agy
-    pool: agy
-    model: gemini-3.8-flash-medium
-    effort: medium
-    role: review
-    read_only: soft
-    reads_files: false
-    timeout_minutes: 20
-    turn_cap: null
-    allowed_tiers: [low-medium]
-    enabled: true
-  gemini-deep:
-    harness: agy
-    family: agy
-    pool: agy
-    model: gemini-4-argon-high
-    effort: high
-    role: review
-    read_only: soft
-    reads_files: false
-    timeout_minutes: 20
-    turn_cap: null
-    allowed_tiers: [low-medium, medium-high, very-high]
-    enabled: false
-    disabled_reason: "argon completion is unverified on the hosted agy harness"
-tiers:
-  low-medium:
-    order: [codex-deep, claude-routine, gemini-deep, muse-routine, gemini-routine, codex-routine]
-    diversity_exempt: []
-  medium-high:
-    order: [codex-deep, claude-deep, gemini-deep, muse-deep, codex-routine]
-    diversity_exempt: []
-  very-high:
-    order: [codex-deep, claude-deep, gemini-deep, muse-deep]
-    diversity_exempt: []
+buckets:
+  trivial: trivial
+  small: small
+  medium: medium
+  large: large
+  huge: huge
+  max: max
 classifier:
-  area_depth: 3
-  small_max_lines: 150
-  large_min_lines: 800
-  large_min_areas: 3
   gate_paths:
     - .github/oracle-reviewers.yml
     - .github/soundness-paths.txt

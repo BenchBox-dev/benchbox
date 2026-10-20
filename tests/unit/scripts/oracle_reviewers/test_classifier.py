@@ -2,123 +2,117 @@ from __future__ import annotations
 
 import pytest
 
-from _project.scripts.oracle_reviewers.classifier import ChangedFile, classify
-from _project.scripts.oracle_reviewers.policy import Policy
-from _project.scripts.soundness_paths import is_soundness_path
+from _project.scripts.oracle_reviewers.classifier import ChangedFile, SoundnessScope, matching, soundness_scope
+from _project.scripts.oracle_reviewers.policy import ClassifierRules, Policy
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
-
-def _file(path: str, additions: int = 5, deletions: int = 0, previous: str | None = None) -> ChangedFile:
-    return ChangedFile(path, previous, additions, deletions)
-
-
-def _classify(policy: Policy, *files: ChangedFile, labels: tuple[str, ...] = ()):
-    return classify(list(files), labels, policy, is_soundness_path)
+RULES = ClassifierRules(
+    gate_paths=("gate/*", ".github/oracle-reviewers.yml"),
+    logic_paths=("logic/*", "*validation*"),
+    data_paths=("data/*",),
+)
 
 
-def test_non_soundness_change_is_out_of_scope(policy: Policy) -> None:
-    result = _classify(policy, _file("README.md"), _file("docs/index.md"))
+def _file(path: str, previous: str | None = None) -> ChangedFile:
+    return ChangedFile(path, previous, 5, 0)
+
+
+def _scope(*files: ChangedFile, pred: bool = True) -> SoundnessScope:
+    return soundness_scope(list(files), RULES, lambda path: pred)
+
+
+def test_files_outside_soundness_and_gate_paths_are_out_of_scope() -> None:
+    result = _scope(_file("docs/index.md"), _file("README.md"), pred=False)
     assert result.soundness is False
-    assert result.tier is None
+    assert result.reasons == ("no soundness path changed",)
+    assert result.paths == ()
+    assert result.gate_paths == ()
+    assert result.logic_paths == ()
 
 
-def test_answer_files_are_low_medium_whatever_their_size(policy: Policy) -> None:
-    result = _classify(
-        policy,
-        _file("_sources/tpc-h/dbgen/answers/q1.out", 5000, 5000),
-        _file("_sources/tpc-ds/answer_sets/q2.ans", 3000),
-    )
+def test_gate_pattern_keeps_a_file_in_scope_without_soundness_predicate() -> None:
+    result = _scope(_file(".github/oracle-reviewers.yml"), pred=False)
     assert result.soundness is True
-    assert result.tier == "low-medium"
+    assert result.gate_paths == (".github/oracle-reviewers.yml",)
+    assert result.reasons == ("changes the gate: .github/oracle-reviewers.yml",)
 
 
-def test_small_single_area_code_change_is_low_medium(policy: Policy) -> None:
-    result = _classify(policy, _file("scripts/publication/validator_parity.py", 20, 3))
-    assert result.tier == "low-medium"
+def test_gate_matches_are_recorded_with_reasons() -> None:
+    result = _scope(_file("gate/policy.py"))
+    assert result.soundness is True
+    assert result.gate_paths == ("gate/policy.py",)
+    assert result.reasons == ("changes the gate: gate/policy.py",)
+    assert result.paths == ("gate/policy.py",)
 
 
-@pytest.mark.parametrize(
-    "path",
-    [
-        "benchbox/core/equivalence/checker.py",
-        "benchbox/core/validation/engines.py",
-        "benchbox/platforms/base/result_capture.py",
-        "benchbox/core/results/result_digest.py",
-    ],
-)
-def test_comparison_validation_and_capture_logic_is_medium_high(policy: Policy, path: str) -> None:
-    assert _classify(policy, _file(path, 2)).tier == "medium-high"
-
-
-def test_larger_or_multi_area_code_diff_is_medium_high(policy: Policy) -> None:
-    assert _classify(policy, _file("scripts/publication/validator_parity.py", 200)).tier == "medium-high"
-    assert (
-        _classify(
-            policy, _file("scripts/publication/validator_parity.py"), _file("benchbox/core/equivalence/x.py")
-        ).tier
-        == "medium-high"
+def test_logic_matches_are_recorded_with_reasons() -> None:
+    result = _scope(_file("logic/equivalence.py"), _file("scripts/validation.py"))
+    assert result.soundness is True
+    assert result.logic_paths == ("logic/equivalence.py", "scripts/validation.py")
+    assert result.reasons == (
+        "changes comparison, validation or result logic: logic/equivalence.py, scripts/validation.py",
     )
 
 
-@pytest.mark.parametrize(
-    "path",
-    [
-        "_project/scripts/oracle_review_check.py",
-        ".github/workflows/oracle-review.yml",
-        ".github/workflows/oracle-verdict.yml",
-        ".github/soundness-paths.txt",
-        "_project/scripts/soundness_paths.py",
-        "_project/scripts/ruleset_review_enforcement.py",
-    ],
-)
-def test_gate_changes_are_very_high(policy: Policy, path: str) -> None:
-    assert _classify(policy, _file(path, 1)).tier == "very-high"
-
-
-def test_every_gate_path_is_a_soundness_path_in_the_manifest(policy: Policy) -> None:
-    samples = [pattern.replace("*", "selection.py") for pattern in policy.classifier.gate_paths]
-    assert ".github/oracle-reviewers.yml" in samples and "_project/scripts/oracle_reviewers/selection.py" in samples
-    assert [path for path in samples if not is_soundness_path(path)] == []
-
-
-def test_gate_files_missing_from_the_manifest_are_still_in_scope(policy: Policy) -> None:
-    for path in (".github/oracle-reviewers.yml", "_project/scripts/oracle_reviewers/selection.py"):
-        result = classify([_file(path, 1)], (), policy, lambda _path: False)
-        assert result.soundness is True
-        assert result.tier == "very-high"
-
-
-def test_renaming_a_gate_file_away_is_very_high(policy: Policy) -> None:
-    result = _classify(policy, _file("scripts/elsewhere.py", 0, 0, previous="_project/scripts/soundness_paths.py"))
-    assert result.tier == "very-high"
-
-
-def test_large_multi_area_diff_is_very_high(policy: Policy) -> None:
-    result = _classify(
-        policy,
-        _file("scripts/publication/validator_parity.py", 400),
-        _file("benchbox/core/equivalence/b.py", 300),
-        _file("publication/ledger-seed.json", 200),
+def test_gate_and_logic_reasons_combine() -> None:
+    result = _scope(_file("gate/policy.py"), _file("logic/equivalence.py"))
+    assert result.reasons == (
+        "changes the gate: gate/policy.py",
+        "changes comparison, validation or result logic: logic/equivalence.py",
     )
-    assert result.tier == "very-high"
 
 
-def test_label_raises_the_tier(policy: Policy) -> None:
-    result = _classify(policy, _file("_sources/tpc-h/dbgen/answers/q1.out"), labels=("oracle-tier:very-high",))
-    assert result.computed_tier == "low-medium"
-    assert result.tier == "very-high"
+def test_data_only_files_in_scope_use_the_fallback_reason() -> None:
+    result = _scope(_file("data/q1.out"), _file("data/q2.out"))
+    assert result.soundness is True
+    assert result.gate_paths == ()
+    assert result.logic_paths == ()
+    assert result.reasons == ("touches 2 soundness paths outside gate and logic areas",)
+    assert result.paths == ("data/q1.out", "data/q2.out")
 
 
-def test_label_never_lowers_the_tier(policy: Policy) -> None:
-    result = _classify(policy, _file(".github/soundness-paths.txt"), labels=("oracle-tier:low-medium",))
-    assert result.tier == "very-high"
-    result = _classify(
-        policy, _file("benchbox/core/equivalence/checker.py"), labels=("oracle-tier:low-medium", "other")
+def test_previous_path_matches_gate_and_logic() -> None:
+    renamed_gate = _scope(_file("elsewhere.py", previous="gate/policy.py"))
+    assert renamed_gate.soundness is True
+    assert renamed_gate.gate_paths == ("gate/policy.py",)
+    assert renamed_gate.paths == ("elsewhere.py", "gate/policy.py")
+    renamed_logic = _scope(_file("elsewhere.py", previous="logic/equivalence.py"), pred=False)
+    assert renamed_logic.soundness is False
+    in_scope_logic = soundness_scope(
+        [_file("elsewhere.py", previous="logic/equivalence.py")],
+        RULES,
+        lambda path: path == "logic/equivalence.py",
     )
-    assert result.tier == "medium-high"
+    assert in_scope_logic.soundness is True
+    assert in_scope_logic.logic_paths == ("logic/equivalence.py",)
+    assert renamed_logic.paths == ()
 
 
-def test_unrelated_labels_are_ignored(policy: Policy) -> None:
-    result = _classify(policy, _file("_sources/tpc-h/dbgen/answers/q1.out"), labels=("tier:very-high",))
-    assert result.tier == "low-medium"
+def test_live_policy_data_answer_uses_the_fallback_reason(policy: Policy) -> None:
+    from _project.scripts.soundness_paths import is_soundness_path
+
+    path = "_sources/tpc-h/dbgen/answers/q1.out"
+    assert is_soundness_path(path) is True
+    result = soundness_scope([_file(path)], policy.classifier, is_soundness_path)
+    assert result.soundness is True
+    assert result.gate_paths == ()
+    assert result.logic_paths == ()
+    assert result.reasons == ("touches 1 soundness paths outside gate and logic areas",)
+
+
+def test_to_json_from_json_round_trip() -> None:
+    result = _scope(_file("gate/policy.py"), _file("logic/equivalence.py"))
+    assert SoundnessScope.from_json(result.to_json()) == result
+
+
+def test_from_json_defaults_missing_collections() -> None:
+    result = SoundnessScope.from_json({"soundness": False})
+    assert result == SoundnessScope(False, (), (), (), ())
+
+
+def test_matching_returns_sorted_hits() -> None:
+    assert matching(["logic/b.py", "docs/a.md", "logic/a.py"], RULES.logic_paths) == [
+        "logic/a.py",
+        "logic/b.py",
+    ]

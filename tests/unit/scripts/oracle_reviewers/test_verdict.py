@@ -13,6 +13,7 @@ from _project.scripts.oracle_reviewers.verdict import (
     VERDICT_SCHEMA,
     VerdictError,
     comment_span,
+    extract_omp_text,
     parse_output,
     place,
     sanitize,
@@ -216,33 +217,62 @@ def test_validation_sanitizes_and_truncates_text() -> None:
     assert REDACTED in finding.detail
 
 
-def test_parse_claude_envelope_prefers_structured_output() -> None:
-    envelope = {"type": "result", "is_error": False, "result": "text", "structured_output": _verdict()}
-    assert parse_output("claude", json.dumps(envelope)) == _verdict()
-    envelope = {"type": "result", "is_error": False, "result": json.dumps(_verdict())}
-    assert parse_output("claude", json.dumps(envelope)) == _verdict()
-    with pytest.raises(VerdictError):
-        parse_output("claude", json.dumps({"is_error": True, "result": "limit"}))
+def _omp_line(text: str, role: str = "assistant", block_type: str = "text") -> str:
+    return json.dumps({"message": {"role": role, "content": [{"type": block_type, "text": text}]}})
+
+
+def test_extract_omp_text_concatenates_assistant_text_in_order() -> None:
+    stdout = "\n".join([_omp_line("first "), _omp_line("second")])
+    assert extract_omp_text(stdout) == "first second"
+
+
+def test_extract_omp_text_ignores_thinking_tool_and_non_assistant_blocks() -> None:
+    stdout = "\n".join(
+        [
+            _omp_line("ignore me", block_type="thinking"),
+            _omp_line("skip tool", block_type="tool_use"),
+            _omp_line("user words", role="user"),
+            "not json at all",
+            json.dumps([1, 2]),
+            json.dumps({"message": "nope"}),
+            _omp_line("kept"),
+        ]
+    )
+    assert extract_omp_text(stdout) == "kept"
+
+
+def test_extract_omp_text_with_no_assistant_text_is_empty() -> None:
+    assert extract_omp_text("not json\n" + json.dumps({"type": "system"})) == ""
+
+
+def test_parse_omp_envelope_reads_the_verdict() -> None:
+    stdout = "\n".join([_omp_line("thinking aloud", block_type="thinking"), _omp_line(json.dumps(_verdict()))])
+    assert parse_output("omp", stdout) == _verdict()
+
+
+def test_parse_omp_envelope_without_a_verdict_is_not_json() -> None:
+    with pytest.raises(VerdictError, match="not JSON"):
+        parse_output("omp", _omp_line("just chatting"))
 
 
 def test_parse_plain_and_fenced_output() -> None:
-    assert parse_output("muse", json.dumps(_verdict())) == _verdict()
-    assert parse_output("muse", "```json\n" + json.dumps(_verdict()) + "\n```") == _verdict()
+    assert parse_output("text", json.dumps(_verdict())) == _verdict()
+    assert parse_output("text", "```json\n" + json.dumps(_verdict()) + "\n```") == _verdict()
     with pytest.raises(VerdictError):
-        parse_output("muse", "Here is my review: " + json.dumps(_verdict()))
+        parse_output("text", "Here is my review: " + json.dumps(_verdict()))
 
 
 def test_repeated_identical_output_is_one_verdict() -> None:
     text = json.dumps(_verdict())
-    assert parse_output("muse", f"{text}\n{text}\n") == _verdict()
+    assert parse_output("text", f"{text}\n{text}\n") == _verdict()
     assert parse_output("text", f"{text} {text}") == _verdict()
     other = json.dumps(_verdict(summary="different"))
     with pytest.raises(VerdictError, match=r"Extra data \(2 different values\)"):
-        parse_output("muse", f"{text}\n{other}")
+        parse_output("text", f"{text}\n{other}")
     with pytest.raises(VerdictError, match="not JSON: Extra data"):
-        parse_output("muse", f"{text}\nDone.")
+        parse_output("text", f"{text}\nDone.")
     with pytest.raises(VerdictError, match="not JSON: Extra data"):
-        parse_output("codex", f"{text}\n{text}")
+        parse_output("omp", _omp_line(text) + "\n" + _omp_line("Done."))
 
 
 def test_commentable_lines_follow_the_right_side_of_hunks() -> None:
@@ -324,31 +354,7 @@ def test_model_text_cannot_carry_an_html_comment(variant: str) -> None:
         assert "oracle-" in text
 
 
-def test_parse_agy_envelope_reads_the_response() -> None:
-    envelope = {"status": "SUCCESS", "response": json.dumps(_verdict()), "num_turns": "3"}
-    assert parse_output("agy", json.dumps(envelope)) == _verdict()
-    with pytest.raises(VerdictError, match="no response"):
-        parse_output("agy", json.dumps({**envelope, "response": ""}))
-    with pytest.raises(VerdictError, match="reports an error"):
-        parse_output("agy", json.dumps({**envelope, "status": "ERROR"}))
-
-
 @pytest.mark.parametrize("count", [-1, True, 0])
 def test_a_trusted_defect_count_must_cover_the_listed_defects(count: Any) -> None:
     with pytest.raises(VerdictError):
         validate(_verdict(_finding(), defect_count=count), trusted=True)
-
-
-def test_parse_claude_stream_reads_the_final_result_event() -> None:
-    stream = "\n".join(
-        [
-            json.dumps({"type": "system", "subtype": "init"}),
-            json.dumps({"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Read"}]}}),
-            json.dumps({"type": "result", "is_error": False, "structured_output": _verdict(), "num_turns": 3}),
-        ]
-    )
-    assert parse_output("claude", stream) == _verdict()
-    with pytest.raises(VerdictError, match="not JSON"):
-        parse_output("claude", json.dumps({"type": "system"}) + "\nnot json")
-    with pytest.raises(VerdictError, match="not JSON"):
-        parse_output("muse", stream)

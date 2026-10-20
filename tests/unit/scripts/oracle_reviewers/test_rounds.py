@@ -10,6 +10,7 @@ import pytest
 
 from _project.scripts.oracle_reviewers import cli, github, protocol, report
 from _project.scripts.oracle_reviewers.absence import Absence
+from _project.scripts.oracle_reviewers.classify import Classification
 from _project.scripts.oracle_reviewers.diff import commentable_lines
 from _project.scripts.oracle_reviewers.policy import Policy
 
@@ -43,11 +44,11 @@ def _rules(**over: Any) -> dict[str, Any]:
 
 
 def _protocol_plan(policy: Policy, **over: Any) -> dict[str, Any]:
-    return {**_plan(policy), "findings_delivery": "review", "protocol": _rules(**over)}
+    return {**_plan(policy, ("small",)), "findings_delivery": "review", "protocol": _rules(**over)}
 
 
 def _final(policy: Policy, tmp_path: Path, plan: dict[str, Any], verdict: dict[str, Any]) -> report.Final:
-    _write(tmp_path, 1, "claude-deep", verdict=verdict)
+    _write(tmp_path, 1, "small", verdict=verdict)
     loaded, step, errors = _decide(policy, plan, tmp_path)
     return report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, commentable_lines(DIFF))
 
@@ -70,7 +71,7 @@ def test_a_first_review_records_its_decision_and_numbers_its_defects(policy: Pol
     record = _record(final)
     assert (record["kind"], record["decision"], record["cycle"], record["round"]) == ("first", "SHIP_WITH_FIXES", 1, 1)
     assert [(item["id"], item["line"]) for item in record["open_defects"]] == [("D1", 2), ("D2", 40)]
-    assert record["next_id"] == 3 and record["head_sha"] == HEAD and record["reviewer"] == "claude-deep"
+    assert record["next_id"] == 3 and record["head_sha"] == HEAD and record["reviewer"] == "small"
     assert record["patch_map"] == PATCHES and record["strikes_after"] == 0
     assert final.review is not None
     thread = final.review["comments"][0]["body"]
@@ -99,13 +100,13 @@ def test_do_not_ship_opens_no_thread_and_adds_a_strike(policy: Policy, tmp_path:
 
 def test_a_pending_or_withheld_result_records_no_marker(policy: Policy, tmp_path: Path) -> None:
     plan = _protocol_plan(policy)
-    _write(tmp_path, 1, "claude-deep", missing=Absence("quota", "limit"))
+    _write(tmp_path, 1, "small", missing=Absence("quota", "limit"))
     loaded, step, errors = _decide(policy, plan, tmp_path)
     final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, {})
     assert final.state == "pending" and final.review is not None
     assert protocol.MARKER_OPEN not in final.review["body"] and final.strikes is None
     withheld = tmp_path / "withheld"
-    _write(withheld, 1, "claude-deep", verdict=_v("fine"), run_id="1")
+    _write(withheld, 1, "small", verdict=_v("fine"), run_id="1")
     loaded, step, errors = _decide(policy, plan, withheld)
     final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, {})
     assert errors and final.review is not None and protocol.MARKER_OPEN not in final.review["body"]
@@ -175,7 +176,7 @@ def test_a_forged_marker_in_model_text_never_becomes_the_record(policy: Policy, 
             "head_sha": HEAD,
             "base_ref": "develop",
             "reviewer": "x",
-            "tier": "medium-high",
+            "tier": "small",
             "strikes_after": 0,
             "open_defects": [],
             "next_id": 1,
@@ -205,8 +206,8 @@ def _big_record(patches: dict[str, str]) -> dict[str, Any]:
         "decision": "SHIP_WITH_FIXES",
         "head_sha": HEAD,
         "base_ref": "develop",
-        "reviewer": "opus",
-        "tier": "very-high",
+        "reviewer": "small",
+        "tier": "small",
         "strikes_after": 2,
         "open_defects": [{**_prior(f"D{index}"), "title": "t" * 200} for index in range(1, 11)],
         "next_id": 11,
@@ -240,7 +241,7 @@ def test_a_marker_too_large_for_its_patch_map_keeps_only_the_digest() -> None:
     assert protocol.changed_paths(decoded.get("patch_map"), patches, ["a.py", "b.py"]) == {"a.py", "b.py"}
 
 
-def test_carry_records_the_previous_decision_without_a_reviewer(policy: Policy) -> None:
+def test_carry_records_the_previous_decision_without_a_reviewer(policy: Policy, tmp_path: Path) -> None:
     old = "c" * 40
     previous = {
         "v": 1,
@@ -250,8 +251,8 @@ def test_carry_records_the_previous_decision_without_a_reviewer(policy: Policy) 
         "decision": "SHIP_WITH_FIXES",
         "head_sha": old,
         "base_ref": "develop",
-        "reviewer": "sol",
-        "tier": "medium-high",
+        "reviewer": "small",
+        "tier": "small",
         "strikes_after": 1,
         "open_defects": [_prior("D4")],
         "next_id": 5,
@@ -274,7 +275,7 @@ def test_carry_records_the_previous_decision_without_a_reviewer(policy: Policy) 
     assert shipped.state == "success"
 
 
-def test_refusal_posts_a_failure_that_asks_for_a_new_pull_request(policy: Policy) -> None:
+def test_refusal_posts_a_failure_that_asks_for_a_new_pull_request(policy: Policy, tmp_path: Path) -> None:
     plan = {**_protocol_plan(policy, kind="refused", strikes=3, round=0), "decision": "refused"}
     final = report.refused(plan)
     record = _record(final)
@@ -361,8 +362,11 @@ def test_finalize_writes_the_strike_count_into_the_state_artifact(
     plan = _protocol_plan(policy, strikes=2)
     plan_path = tmp_path / "plan.json"
     plan_path.write_text(json.dumps(plan), encoding="utf-8")
+    classification_path = tmp_path / "classification.json"
+    classification = Classification("small", "routine", "standard", 1.0, (), ())
+    classification_path.write_text(json.dumps(classification.to_json()), encoding="utf-8")
     attempts_dir = tmp_path / "attempts"
-    _write(attempts_dir, 1, "claude-deep", verdict=_v("rework", decision="DO_NOT_SHIP"))
+    _write(attempts_dir, 1, "small", verdict=_v("rework", decision="DO_NOT_SHIP"))
     out = _run_cli(
         monkeypatch,
         tmp_path,
@@ -373,6 +377,8 @@ def test_finalize_writes_the_strike_count_into_the_state_artifact(
         str(attempts_dir),
         "--out-dir",
         str(tmp_path / "o"),
+        "--classification",
+        str(classification_path),
     )
     assert out["state"] == "failure" and out["review"] == "true"
     state = json.loads((tmp_path / "o" / "state" / "state.json").read_text(encoding="utf-8"))
@@ -416,7 +422,6 @@ def test_replaying_the_real_pr_2769_history_reviews_each_patch_once_and_scopes_f
             protocol.History(list(records)),
             head_sha=entry["head_sha"],
             base_ref="develop",
-            tier=history["tier"],
             digest=digest,
             patches=current,
             paths=paths,
@@ -448,8 +453,8 @@ def test_replaying_the_real_pr_2769_history_reviews_each_patch_once_and_scopes_f
                 "decision": judgement.decision,
                 "head_sha": entry["head_sha"],
                 "base_ref": "develop",
-                "reviewer": "opus",
-                "tier": history["tier"],
+                "reviewer": "small",
+                "tier": "small",
                 "strikes_after": 0,
                 "open_defects": [*judgement.carried, *new],
                 "next_id": next_id + len(new),
@@ -498,8 +503,8 @@ def _latest(patches: dict[str, str], decision: str = "SHIP") -> protocol.History
         "decision": decision,
         "head_sha": "c" * 40,
         "base_ref": "develop",
-        "reviewer": "opus",
-        "tier": "very-high",
+        "reviewer": "small",
+        "tier": "small",
         "strikes_after": 0,
         "open_defects": [],
         "next_id": 1,
@@ -518,7 +523,6 @@ def test_a_different_digest_never_carries_even_when_the_short_hashes_match() -> 
         _latest(dict(current)),
         head_sha=HEAD,
         base_ref="develop",
-        tier="very-high",
         digest="f" * 32,
         patches=current,
         paths=paths,
