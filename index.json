@@ -1555,17 +1555,12 @@
       "title": "Verify the site pipeline after the fixes and close core issue #2979 with evidence"
     },
     "autogen-stale-tpch-maintenance-mock-scan-20261018": {
-      "claim": {
-        "expires_at": "2026-10-21T17:48:17Z",
-        "generation": "6e804680f5664f6f9e8845128c7d2b47",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
-      },
+      "claim": null,
       "needs": [
         "autogen-tpch-maintenance-failures-20261018"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Scan for other tests that still drive TPC-H maintenance through Mock connections or adapters without refresh support"
     },
     "autogen-sync-validator-file-list-20261018": {
