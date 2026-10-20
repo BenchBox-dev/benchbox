@@ -23764,12 +23764,17 @@
       "title": "Clean up stale auto-mirror branches/PRs after sync workflow runs in prod"
     },
     "t3-drift-corpus-mismatch-20261009": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-21T16:37:41Z",
+        "generation": "570fde16feb04c1bab521a3818c8bf82",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
+      },
       "needs": [
         "autogen-sync-validator-file-list-20261018"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Investigate corpus drift reported by nightly-v2 verification"
     },
     "t3-drift-dispatch-verify-20261008": {
