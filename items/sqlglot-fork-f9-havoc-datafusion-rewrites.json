@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "Each named rewrite has tests on representative queries; execution on duckdb, datafusion (in process), chdb or PySpark where the target dialect has an obtainable engine; others recorded as gaps.",
+    "The fork contains no TPC-H query ids or benchmark names; rewrite names are generic.",
+    "Output differences versus the BenchBox transformers over their unit-test inputs are listed in the PR.",
+    "Fork make check, make benchbox-dist and make benchbox-check pass; PRs merged."
+  ],
+  "description": "Expose the pure AST logic of benchbox/core/tpchavoc/dialect_compat.py, cloud_compat.py, core/spark_query_transformer.py and the DataFusion Q11/Q16/Q18/Q20 transformer as named rewrites taking (expression, dialect, **args): inline select aliases, window-filter rewrite, Presto array aggregation, ClickHouse and BigQuery filter rewrites, drop empty grouping, ordered array aggregation, scalar group-by and dual rewrites, postgres column qualification and dual to values. Convert the Snowflake GROUP BY () and BigQuery NULLS LAST text replaces to generator behavior. Variant id sets, qualified-column tables and the variant to rewrite dispatch table stay in BenchBox. Expect two PRs; DataFusion rules are re-implemented as AST rules because they exist only as TPC-H text regexes.",
+  "links": [
+    "_project/decisions/sqlglot-fork-transpilation-plan.md",
+    "benchbox/core/tpchavoc/dialect_compat.py",
+    "benchbox/core/tpchavoc/cloud_compat.py",
+    "benchbox/core/spark_query_transformer.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T15:44:20Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "3f64a1283b6447488efd2617e406102d",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}

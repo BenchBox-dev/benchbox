@@ -22760,6 +22760,15 @@
       "status": "open",
       "title": "Fork: engine-specific DDL (ClickHouse, Doris, StarRocks, Hive-family, Redshift, Delta/Iceberg) through DdlOptions"
     },
+    "sqlglot-fork-f9-havoc-datafusion-rewrites": {
+      "claim": null,
+      "needs": [
+        "sqlglot-fork-f5-adapter-rewrites-api"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Fork: named AST rewrites for TPC-Havoc variants, Spark transformer and DataFusion workarounds"
+    },
     "sqlglot-mysql-retirement-needs-execution-evidence": {
       "claim": null,
       "needs": [],
