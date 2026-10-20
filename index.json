@@ -17287,6 +17287,13 @@
       "status": "done",
       "title": "Slim down published-results to corpus-only and mirror UAT-20260502 onto it"
     },
+    "published-results-sqlglot-translation-rerun": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Flag or rerun published results computed with superseded SQL translations"
+    },
     "purge-stale-agent-identity-remediation-instructions": {
       "claim": null,
       "needs": [],
