@@ -27700,6 +27700,13 @@
       "status": "open",
       "title": "Find the cause of the Windows fast-test stalls at 90-95%"
     },
+    "windows-fast-tests-dispatchable-workflow-20261020": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Add a narrow dispatchable windows-latest fast-test workflow"
+    },
     "windows-file-format-unreadable-test-capability": {
       "claim": null,
       "needs": [],
