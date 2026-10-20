@@ -6,6 +6,7 @@
     "make pr-preflight, make comment-policy-check, make compat-docs-check and make typecheck pass; PR merged through make pr-open and make pr-arm.",
     "Post-merge: wheel builds from develop and imports as benchbox._vendor.sqlglot without loading public sqlglot."
   ],
+  "context": "Fork F2 (PR 9, c240958c) and F3 (PR 10, a9195ced) merged; fork main a9195ced. Behavior differences versus the BenchBox helpers that the adoption corpus and owner review must cover: (1) duckdb DATE('1998-09-01') + INTERVAL '10' DAY now emits DATETIME(DATE(..), '10 DAY') executing to '1998-09-11 00:00:00' (helper gave DATE(.., '+10 day') = '1998-09-11'); a BenchBox test asserting the old string needs updating; (2) month-end month/year offsets (DATE '2024-01-31' + INTERVAL '1' MONTH; 2024-02-29 + 1 YEAR) now raise UnsupportedError where the helper silently rolled over to wrong dates; (3) DATE_PART('year', d) to sqlite now raises where the helper rewrote it (no BenchBox test input uses it); (4) DATE_TRUNC now yields STRFTIME forms; (5) ORDER BY ALL is restored structurally (sole unquoted unqualified ALL item in a query-level ORDER BY only); baseline duckdb-order-by-all changes from unsupported/BinderException to pass rows [[1]]. Items 1, 2 and 3 may change published results: the adoption PR must stop for owner approval if its corpus shows any difference. Fork wheel not yet built for adoption (needs F1, F4, F5 and B3 first).",
   "description": "Build and verify the fork wheel (downstream.build, downstream.verify, make benchbox-dist, make benchbox-check) from a clean checkout at a recorded fork commit after the listed fork slices merge, adopt it with python -m scripts.sync_sqlglot_runtime --wheel, update benchbox/_vendor/sqlglot.json and the runtime baseline, and add apply_rewrite to benchbox/utils/dialect_utils.py (adapter slices need it: their rewrites run at execution time on already-translated SQL at bigquery.py:1544-1555, snowflake.py:1165, databricks/adapter.py:2473-2474). Update baseline expected outcomes the new wheel changes (write=questdb now succeeds; duckdb-order-by-all no longer raises BinderException). Add a cumulative golden-corpus test that runs the old BenchBox fix-ups and the fork output over the existing test inputs of every area touched and lists every difference. No deletion in this PR.",
   "links": [
     "_project/decisions/sqlglot-fork-transpilation-plan.md",
@@ -35,6 +36,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "7168753f5c494bb3a67a176960478b6e",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-20T20:35:55Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f1e5af7cd29945479da003c72d8963e3",
       "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
     }
   ]
