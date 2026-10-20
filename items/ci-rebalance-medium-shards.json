@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Partitioning balances by recorded per-test duration",
+    "Worst-shard time within about 15% of the mean across at least 10 PR runs",
+    "Medium critical path shorter than the pre-shrink unit chain",
+    "Shard coverage evidence still verifies every collected test"
+  ],
+  "context": "From the CI timing analysis in this session. Related open item ci-amplab-generate-data-timeout-flake covers the generate_data timeout flake itself.",
+  "description": "After the fast tier shrank, shard 3 of medium-test received most of the moved tests. The last timing analysis (runs to 2026-10-18 17:02Z) shows shard 3 at about 841 s against 496-630 s for the others; the critical path ci-paths -> medium-collect -> medium-test (shard 3) -> core is 17.0 min against 16.5 min before, so end-to-end CI on PRs that run medium shards is about 3% slower. An even split would be about 620 s per shard, a chain of roughly 800 s. A later run showed shard 0 at 16m53s with tests/test_h2odb.py::TestH2ODB::test_generate_data alone taking 353 s, so partitioning should weight by recorded duration rather than count.",
+  "links": [
+    "https://claude.ai/artifact/LjQocGvpr9RkJwMAAp18Z4",
+    "ci-amplab-generate-data-timeout-flake"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:afd83494ecacfcdab965057e",
+      "at": "2026-10-20T12:59:06Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "0f27cc731e064dc893b42874e035b5f5",
+      "session_id": "8202d1c5316f41c897a0af067e2c8e9e"
+    }
+  ]
+}

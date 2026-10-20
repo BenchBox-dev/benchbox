@@ -2991,6 +2991,13 @@
       "status": "done",
       "title": "CI savings reviews must account for same-event workflow fan-out"
     },
+    "ci-rebalance-medium-shards": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Rebalance the medium-tier shards so shard 3 stops being the critical path"
+    },
     "ci-retry-artifact-collision-breaks-canary-gate": {
       "claim": null,
       "needs": [],
