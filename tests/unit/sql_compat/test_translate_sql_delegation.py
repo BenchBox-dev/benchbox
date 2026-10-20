@@ -167,25 +167,3 @@ class TestTranslateSqlAdapterSnapshots:
         result = a.translate_sql(self.CREATE_TABLE_SQL, source_dialect="duckdb")
         has_quoted = '"lineitem"' in result or "`lineitem`" in result or "[lineitem]" in result
         assert has_quoted == expect_quoted, f"dialect={dialect!r}: expected quoted={expect_quoted}, result={result!r}"
-
-
-class TestTranslateSqlDelegatesToWrapper:
-    def test_each_statement_goes_through_translate_sql_query_with_explicit_identify(self):
-        a = _Adapter(dialect="snowflake")
-        with patch(
-            "benchbox.utils.dialect_utils.translate_sql_query",
-            side_effect=lambda statement, *args, **kwargs: statement.upper(),
-        ) as wrapper:
-            result = a.translate_sql("select 1;\n\nselect 2", source_dialect="duckdb")
-
-        assert result == "SELECT 1;\n\nSELECT 2;"
-        assert wrapper.call_count == 2
-        for call in wrapper.call_args_list:
-            assert call.kwargs["identify"] is True
-            assert call.kwargs["source_dialect"] == "duckdb"
-
-    def test_semicolon_inside_string_literal_does_not_split_statement(self):
-        a = _Adapter(dialect="duckdb")
-        result = a.translate_sql("SELECT 'a;b' AS c", source_dialect="snowflake")
-        assert result.count(";") == 2
-        assert "'a;b'" in result

@@ -102,10 +102,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- A repository test fails when a module outside `benchbox/utils/dialect_utils.py`
-  and `benchbox/sql_compat/` calls `transpile`, `parse_one`, `parse` or `.sql(`
-  on the vendored SQLGlot, except for an explicit shrinking allowlist.
-
 - Tuned PostgreSQL runs now apply requested partitioning: date columns get
   yearly `RANGE` partitions over the benchmark's date domain plus a `DEFAULT`
   partition, integer columns get `HASH` partitions. Partitioning requests no
@@ -236,21 +232,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   do not receive `benchbox run`'s execution-engine selection.
 
 ### Changed
-
-- `DialectTranslationMixin.translate_sql`, `BaseBenchmark.translate_query` and
-  ClickBench query translation now call `translate_sql_query` with an explicit
-  `identify` argument instead of calling the vendored SQLGlot directly, so the
-  DuckDB `ALL` restore and SQLite fix-ups are applied in one place. ClickBench
-  translation raises `SQLTranslationError` instead of silently returning the
-  untranslated ClickHouse SQL. Output differences caused by routing: SQLite
-  ClickBench Q19 and Q43 now use the wrapper's SQLite fix-ups, and the
-  `datafusion`, `netezza`, `ansi`, `standard`, `vertica` and `greenplum`
-  dialects now translate through the wrapper's PostgreSQL mapping where they
-  previously returned the ClickHouse text unchanged (all 43 queries on each of
-  those six targets; DataFusion included). Result-version note: ClickBench
-  results on SQLite (Q19, Q43) and on those six targets were computed with
-  different SQL before this change, are not comparable with earlier runs, and
-  should be rerun.
 
 - **BenchBox bundles a patched SQLGlot runtime.** SQL translation now uses a
   pinned, pure-Python SQLGlot 30.23.0 build with three carried fixes, shipped as

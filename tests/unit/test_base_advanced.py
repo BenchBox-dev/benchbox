@@ -623,17 +623,19 @@ class TestMockBaseBenchmarkQueryTranslation:
     def setup_method(self):
         self.benchmark = MockBaseBenchmark()
 
-    def test_translate_query_routes_through_wrapper_with_explicit_identify(self):
-        with patch("benchbox.utils.dialect_utils.translate_sql_query", return_value="SELECT 1") as wrapper:
-            result = self.benchmark.translate_query(1, "mysql")
-
-        assert result == "SELECT 1"
-        wrapper.assert_called_once_with(
-            "SELECT * FROM table1", "mysql", source_dialect="postgres", identify=True, strict=True
-        )
-
     def test_translate_query_success(self):
-        assert self.benchmark.translate_query(1, "mysql") == "SELECT * FROM `table1`"
+        with patch("benchbox.base.sqlglot") as mock_sqlglot:
+            with patch("benchbox.utils.dialect_utils.normalize_dialect_for_sqlglot") as mock_normalize:
+                mock_normalize.return_value = "mysql"
+                mock_sqlglot.transpile.return_value = ["SELECT * FROM table1"]
+
+                result = self.benchmark.translate_query(1, "mysql")
+
+                assert result == "SELECT * FROM table1"
+                mock_normalize.assert_called_once_with("mysql")
+                mock_sqlglot.transpile.assert_called_once_with(
+                    "SELECT * FROM table1", read="postgres", write="mysql", identify=True
+                )
 
     def test_translate_query_invalid_query_id(self):
         with pytest.raises(ValueError, match="Invalid query ID"):
@@ -644,13 +646,20 @@ class TestMockBaseBenchmarkQueryTranslation:
             self.benchmark.translate_query(1, "mysql")
 
     def test_translate_query_unsupported_dialect(self):
-        with pytest.raises(ValueError, match="Error translating to dialect"):
-            self.benchmark.translate_query(1, "unsupported")
+        with patch("benchbox.base.sqlglot") as mock_sqlglot:
+            mock_sqlglot.transpile.side_effect = ValueError("Unsupported dialect")
 
-    def test_translate_query_wraps_transpile_failure(self):
-        with patch("benchbox._vendor.sqlglot.transpile", side_effect=ValueError("boom")):
             with pytest.raises(ValueError, match="Error translating to dialect"):
-                self.benchmark.translate_query(1, "mysql")
+                self.benchmark.translate_query(1, "unsupported")
+
+    def test_translate_query_with_parameters(self):
+        with patch("benchbox.base.sqlglot") as mock_sqlglot:
+            mock_sqlglot.transpile.return_value = ["SELECT * FROM table1 WHERE name = 'test'"]
+
+            result = self.benchmark.translate_query(1, "mysql")
+
+            mock_sqlglot.transpile.assert_called_once()
+            assert result == "SELECT * FROM table1 WHERE name = 'test'"
 
 
 class TestMockBaseBenchmarkBackwardCompatibility:
