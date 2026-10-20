@@ -1437,17 +1437,12 @@
       "title": "Reopen instead of recreating nightly T3 issues, and comment only when the failure changes"
     },
     "autogen-pg-family-baseline-session-statements-20261018": {
-      "claim": {
-        "expires_at": "2026-10-21T18:24:36Z",
-        "generation": "7e44caf994154bb8abc58d4291c614d2",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
-      },
+      "claim": null,
       "needs": [
         "autogen-cedardb-uat-validation-and-baseline-tuning-20261018"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Stop PostgreSQL-family baseline results from recording session tuning statements that fail validation"
     },
     "autogen-postgres-pinning-and-mirror-consistency-20261018": {
