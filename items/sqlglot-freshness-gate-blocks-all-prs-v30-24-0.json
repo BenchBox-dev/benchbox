@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Fork refreshed and wheel adopted, or a reviewed waiver for v30.24.0 recorded by the owner",
+    "ci-paths passes again on a new PR",
+    "Decide whether the freshness gate should block every PR or run on a schedule or only at release, so an upstream release cannot stop all merging"
+  ],
+  "context": "Found while verifying PR #3184. Not caused by it. Adopting a wheel needs work in the benchbox-sqlglot repository, which was not touched. A waiver is a reviewed owner decision, so none was added.",
+  "description": "From 2026-10-20 about 17:20Z, ci-paths 'Check release content' fails on every PR with: 'sqlglot upstream freshness FAILED: bundled SQLGlot is based on upstream v30.23.0 but v30.24.0 is released; refresh the fork (see downstream/MAINTAINING.md in https://github.com/BenchBox-dev/benchbox-sqlglot) and adopt the new wheel, or record a reviewed waiver for v30.24.0 in scripts/sqlglot_refresh_waiver.json'. Seen on PR #3184 (run 39465643741): ci-paths failed, so core, docs, explorer, results-data and tooling all fail. Runs at 16:44Z and 17:03Z passed, so the gate began failing when upstream released. scripts/sqlglot_refresh_waiver.json currently has no waivers. The gate came in with #3148 and runs inside release-check on every PR, so any upstream SQLGlot release blocks all merging until a human refreshes the fork or waives it. No PR or issue addressing it was found when checked.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3184"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:afd83494ecacfcdab965057e",
+      "at": "2026-10-20T17:30:36Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "2c7c9114d3964f3698c894638c00e176",
+      "session_id": "8202d1c5316f41c897a0af067e2c8e9e"
+    }
+  ]
+}

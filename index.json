@@ -22975,6 +22975,13 @@
       "status": "open",
       "title": "Fork: named AST rewrites for TPC-Havoc variants, Spark transformer and DataFusion workarounds"
     },
+    "sqlglot-freshness-gate-blocks-all-prs-v30-24-0": {
+      "claim": null,
+      "needs": [],
+      "priority": "critical",
+      "status": "open",
+      "title": "SQLGlot v30.24.0 release makes the freshness gate fail ci-paths for every PR"
+    },
     "sqlglot-mysql-retirement-needs-execution-evidence": {
       "claim": null,
       "needs": [],
