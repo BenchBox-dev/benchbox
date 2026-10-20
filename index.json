@@ -8235,10 +8235,10 @@
     },
     "dlv2-51-release-yml-v2": {
       "claim": {
-        "expires_at": "2026-10-19T11:55:47Z",
-        "generation": "da1db86b4bfa4b4eb344338f0fe81b93",
-        "renewals": 1,
-        "worker": "mcp:tbh:joe@joe-mac-mini.local:047f7cbfbbf519bd65fe7eca"
+        "expires_at": "2026-10-21T11:47:17Z",
+        "generation": "0eff949e581a409bab67dd407ed764bc",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02ecc32be2127e4ca837bb5b"
       },
       "needs": [
         "dlv2-50-release-prep-targets"
