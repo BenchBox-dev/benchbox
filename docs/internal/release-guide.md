@@ -319,24 +319,10 @@ then PR back to `develop`. This realigns all five version sources
 (`benchbox/__init__.py`, `pyproject.toml` and the three `Current release:` doc
 markers) with the latest published release, so `develop` no longer trails PyPI.
 
-The fast guard
-`tests/unit/release/test_changelog_tag_guard.py::test_repo_release_accounting_matches_*`
-pins the published version as its own literal. Keep that literal at the version
-PyPI currently serves: on the release branch it stays at the previous release,
-and it moves to the new version only in the develop version-sync PR after
-publication (renaming the test, for example from `..._matches_v041_...` to
-`..._matches_v042_...`, as #2669 did). The same timing applies to the
-CHANGELOG `[Unreleased]` compare link: on the release branch it still starts at
-the previous release's tag, and it moves to the new tag in the version-sync PR.
-Moving either at cut time fails the required test job, because
-`check_release_accounting` validates what PyPI serves, not what the release
-branch is about to publish. No tooling updates the literal today; automating
-that move means extending `scripts/update_version.py`, which currently has no
-reference to it. It stays
-a literal rather than reading
-`pyproject.toml`, because that is exactly what the accounting check validates;
-deriving it from the checked source would let a sync to an unpublished version
-pass. Only PyPI is authoritative for publication state.
+No unit test pins the repository to the published version. A release-prep PR on
+`develop` raises the declared version before PyPI serves it, so a test that compared
+`pyproject.toml` with PyPI would fail every release-prep PR. PyPI remains the
+authority for publication state; the command below checks it on demand.
 
 After the synchronization PR is prepared, verify it against PyPI's live
 publication state rather than assuming the newest git tag was published:

@@ -13,7 +13,6 @@ from benchbox.platforms.base.sql_execution import execute_sql_query
 from benchbox.platforms.cedardb import CedarDBAdapter
 from benchbox.platforms.citus import CitusAdapter
 from benchbox.platforms.paradedb import ParadeDBAdapter
-from benchbox.platforms.pg_duckdb import PgDuckDBAdapter
 from benchbox.platforms.pg_mooncake import PgMooncakeAdapter
 from benchbox.platforms.postgresql import PARTITIONING_WITH_KEYS_REASON, PostgreSQLAdapter
 from benchbox.platforms.timescaledb import TimescaleDBAdapter
@@ -158,7 +157,7 @@ def test_create_schema_executes_and_records_the_partitioned_table(adapter, monke
 
 @pytest.mark.parametrize(
     "adapter_class",
-    [CedarDBAdapter, CitusAdapter, ParadeDBAdapter, PgDuckDBAdapter, PgMooncakeAdapter, TimescaleDBAdapter],
+    [CedarDBAdapter, CitusAdapter, ParadeDBAdapter, PgMooncakeAdapter, TimescaleDBAdapter],
 )
 def test_family_variants_do_not_partition(adapter_class):
     assert adapter_class.execution_partitioning_supported is False

@@ -31,6 +31,7 @@ development/adr/adr-published-identifier-field-set.md
 development/adr/adr-read-primitives-cloud-variants.md
 development/adr/adr-runtime-composition-boundary.md
 development/adr/adr-sql-compat-phase-aware-pipeline.md
+development/adr/adr-sqlglot-fork-owns-transpilation.md
 development/adr/adr-sqlglot-use-and-non-use.md
 development/adr/adr-subscale-tpc-ranking-policy.md
 development/adr/adr-textcharts-extraction.md

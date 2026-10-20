@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.check_sqlglot_repro_retirement import BASELINE, REPO_ROOT, check, load_baseline
+from scripts.check_sqlglot_repro_retirement import BASELINE, EXECUTORS, REPO_ROOT, check, load_baseline, observe_case
 from scripts.sync_sqlglot_runtime import check_runtime
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -56,7 +56,7 @@ def test_same_version_changed_source_requires_baseline_review(guarded_repository
         load_baseline(guarded_repository, identity)
 
 
-@pytest.mark.parametrize("field", ["source", "target", "call_shape", "expected", "workaround"])
+@pytest.mark.parametrize("field", ["source", "target", "entry", "expected", "workaround"])
 def test_incomplete_baseline_fails_closed(guarded_repository: Path, field: str) -> None:
     change_baseline(guarded_repository, lambda data: data["cases"][0].pop(field))
     with pytest.raises((ValueError, KeyError)):
@@ -95,3 +95,101 @@ def test_external_dependency_cannot_replace_bundled_runtime(guarded_repository: 
     )
     with pytest.raises(ValueError, match="external SQLGlot"):
         check(guarded_repository, "HEAD")
+
+
+def baseline_case(case_id: str) -> dict:
+    baseline = json.loads((REPO_ROOT / BASELINE).read_text(encoding="utf-8"))
+    return next(case for case in baseline["cases"] if case["id"] == case_id)
+
+
+def test_wrapper_output_change_fails_while_direct_transpile_passes(
+    guarded_repository: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import benchbox.utils.dialect_utils as dialect_utils
+
+    direct = baseline_case("postgres-extract-fractional-division")
+    wrapped = baseline_case("wrapper-sqlite-fractional-extract")
+    assert observe_case(direct) == direct["expected"]
+    assert observe_case(wrapped) == wrapped["expected"]
+
+    monkeypatch.setattr(dialect_utils, "_fix_sqlite_unsupported_syntax", lambda sql: "SELECT 0")
+    assert observe_case(direct) == direct["expected"]
+    assert observe_case(wrapped) == {"outcome": "pass", "rows": [[0]]}
+    with pytest.raises(ValueError, match="wrapper-sqlite-fractional-extract"):
+        check(guarded_repository, "HEAD")
+
+
+def test_wrapper_failure_reports_underlying_error_type() -> None:
+    case = baseline_case("questdb-dialect")
+    assert case["entry"] == "wrapper"
+    assert observe_case(case) == {"outcome": "unsupported", "error_type": "ValueError"}
+
+
+def test_unknown_entry_fails_closed(guarded_repository: Path) -> None:
+    change_baseline(guarded_repository, lambda data: data["cases"][0].update(entry="translate_ddl"))
+    with pytest.raises(ValueError, match="Malformed"):
+        check(guarded_repository, "HEAD")
+
+
+def test_platform_requires_wrapper_entry(guarded_repository: Path) -> None:
+    change_baseline(guarded_repository, lambda data: data["cases"][0].update(platform="sqlite"))
+    with pytest.raises(ValueError, match="Malformed"):
+        check(guarded_repository, "HEAD")
+
+
+def flip_questdb(data: dict, *, drop_path: bool) -> None:
+    case = next(case for case in data["cases"] if case["id"] == "questdb-dialect")
+    case.update(target="postgres", platform="questdb", entry="wrapper", expected={"outcome": "pass", "rows": [[1]]})
+    case["workaround"] = {"decision": "fork-covered", "reason": "Covered by the fork under QuestDB execution."}
+    if not drop_path:
+        case["workaround"]["path"] = "benchbox/utils/dialect_utils.py"
+
+
+@pytest.mark.parametrize("drop_path", [True, False])
+def test_questdb_case_flips_to_fork_covered_under_executor(guarded_repository: Path, drop_path: bool) -> None:
+    change_baseline(guarded_repository, lambda data: flip_questdb(data, drop_path=drop_path))
+    seen: list[str] = []
+
+    def questdb(sql: str) -> list[list[int]]:
+        seen.append(sql)
+        return [[1]]
+
+    check(guarded_repository, "HEAD", {**EXECUTORS, "questdb": questdb})
+    assert seen == ["SELECT 1"]
+
+
+def test_questdb_rows_must_match_executor_output(guarded_repository: Path) -> None:
+    change_baseline(guarded_repository, lambda data: flip_questdb(data, drop_path=True))
+    with pytest.raises(ValueError, match="questdb-dialect"):
+        check(guarded_repository, "HEAD", {**EXECUTORS, "questdb": lambda sql: [[2]]})
+
+
+def test_questdb_without_endpoint_fails_closed(guarded_repository: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("BENCHBOX_QUESTDB_DSN", raising=False)
+    change_baseline(guarded_repository, lambda data: flip_questdb(data, drop_path=True))
+    with pytest.raises(RuntimeError, match="BENCHBOX_QUESTDB_DSN"):
+        check(guarded_repository, "HEAD")
+
+
+def test_fork_covered_without_executor_is_rejected(guarded_repository: Path) -> None:
+    change_baseline(guarded_repository, lambda data: flip_questdb(data, drop_path=True))
+    executors = {name: executor for name, executor in EXECUTORS.items() if name != "questdb"}
+    with pytest.raises(ValueError, match="Passing cases require"):
+        check(guarded_repository, "HEAD", executors)
+
+
+def test_retained_workaround_requires_existing_path(guarded_repository: Path) -> None:
+    change_baseline(guarded_repository, lambda data: data["cases"][4]["workaround"].pop("path"))
+    with pytest.raises(ValueError, match="Malformed"):
+        check(guarded_repository, "HEAD")
+
+
+def test_missing_declared_path_is_malformed_even_when_fork_covered(guarded_repository: Path) -> None:
+    change_baseline(guarded_repository, lambda data: data["cases"][0]["workaround"].update(path="gone.py"))
+    with pytest.raises(ValueError, match="Malformed"):
+        check(guarded_repository, "HEAD")
+
+
+def test_mysql_workaround_path_names_real_code() -> None:
+    path = baseline_case("mysql-percentile-decorator")["workaround"]["path"]
+    assert "PERCENTILE_CONT" in (REPO_ROOT / path).read_text(encoding="utf-8")

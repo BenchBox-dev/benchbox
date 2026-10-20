@@ -76,6 +76,7 @@ _MONTHS = {
 }
 _LONG_TOKEN = re.compile(r"[A-Za-z0-9_\-]{32,}")
 EXCERPT_LIMIT = 300
+UNPARSED_LIMIT = 2000
 CREDENTIAL_ENV = (
     "CLAUDE_CODE_OAUTH_TOKEN",
     "OPENAI_API_KEY",
@@ -174,15 +175,24 @@ def classify(
     return Absence(OK)
 
 
+def _redact(text: str, credentials: Iterable[str], limit: int) -> str:
+    for credential in credentials:
+        if len(credential) >= 8:
+            text = text.replace(credential, REDACTED)
+    return _LONG_TOKEN.sub(REDACTED, sanitize(text, limit))
+
+
 def excerpt(stdout: str, stderr: str, credentials: Iterable[str] = ()) -> str:
     lines = [line.strip() for line in stderr.splitlines() if line.strip()]
     lines = lines or [line.strip() for line in stdout.splitlines() if line.strip()]
     if not lines:
         return ""
     errors = [line for line in lines if line.startswith("error:")]
-    text = (errors or lines)[-1][: EXCERPT_LIMIT * 4]
-    for credential in credentials:
-        if len(credential) >= 8:
-            text = text.replace(credential, REDACTED)
-    text = _LONG_TOKEN.sub(REDACTED, sanitize(text, EXCERPT_LIMIT * 4))
+    text = _redact((errors or lines)[-1][: EXCERPT_LIMIT * 4], credentials, EXCERPT_LIMIT * 4)
     return text if len(text) <= EXCERPT_LIMIT else text[: EXCERPT_LIMIT - 1] + "\u2026"
+
+
+def unparsed(text: str, credentials: Iterable[str] = ()) -> str:
+    redacted = _redact(text, credentials, 2 * len(text) + 64)
+    tail = redacted[-UNPARSED_LIMIT:]
+    return ("\u2026" if len(redacted) > UNPARSED_LIMIT else "") + tail

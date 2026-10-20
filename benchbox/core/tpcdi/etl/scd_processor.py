@@ -12,8 +12,8 @@ from typing import Any, Optional, Union
 
 import pandas as pd
 
-from benchbox._vendor import sqlglot
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.dialect_utils import translate_sql_query
 
 logger = logging.getLogger(__name__)
 
@@ -240,7 +240,7 @@ class EnhancedSCDType2Processor:
 
         try:
             if self.dialect != "duckdb":
-                query = sqlglot.transpile(query, read="duckdb", write=self.dialect)[0]
+                query = translate_sql_query(query, self.dialect, source_dialect="duckdb", identify=False)
 
             cursor = self.connection.execute(query)
             columns = [desc[0] for desc in cursor.description]

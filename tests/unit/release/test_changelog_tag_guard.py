@@ -261,11 +261,6 @@ def test_repo_changelog_has_no_untagged_released_section_on_this_branch():
     assert ok, f"CHANGELOG.md claims untagged version(s): {untagged}"
 
 
-def test_repo_release_accounting_matches_v042_published_state():
-    ok, errors = gce.check_release_accounting(REPO_ROOT, "0.4.2")
-    assert ok, "\n".join(errors)
-
-
 def test_current_branch_falls_back_to_github_head_ref(tmp_path, monkeypatch):
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     subprocess.run(

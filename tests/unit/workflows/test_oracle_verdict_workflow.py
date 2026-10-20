@@ -25,6 +25,7 @@ REVIEW_SECRETS = {
     "OMP_AUTH_BROKER_TOKEN",
     "TS_OAUTH_CLIENT_ID",
     "TS_AUDIENCE",
+    "OMP_AGENT_CONFIG",
 }
 APP_SECRETS = {"ORACLE_APP_ID", "ORACLE_APP_PRIVATE_KEY"}
 SHA_PIN = re.compile(r"^[\w.-]+/[\w.-]+@[0-9a-f]{40}$")
@@ -93,6 +94,14 @@ def test_attempt_jobs_join_the_tailnet_before_the_reviewer_runs() -> None:
         assert join["with"]["tags"] == "tag:oracle-ci", name
         assert "oauth-secret" not in join["with"] and "authkey" not in join["with"], name
         assert join["if"] == "env.HAS_TAILNET == 'true'", name
+
+
+def test_attempt_jobs_install_the_owner_roles_before_the_reviewer_runs() -> None:
+    for name, job in _attempt_jobs().items():
+        names = [step["name"] for step in job["steps"]]
+        install = names.index("Install the owner's OMP model roles")
+        assert install < names.index("Run the reviewer"), name
+        assert job["steps"][install]["env"] == {"OMP_AGENT_CONFIG": "${{ secrets.OMP_AGENT_CONFIG }}"}, name
 
 
 def test_concurrency_is_per_pull_request_and_ignores_unrelated_events() -> None:

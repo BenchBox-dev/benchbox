@@ -65,13 +65,24 @@ are set. The tailnet policy must:
 - grant `tag:oracle-ci` only `tcp:8765` on the broker host.
 
 The Tailscale OIDC credential carries the `auth_keys` write scope and
-`tag:oracle-ci`, with its subject restricted to this repository's `oracle`
-environment. Add `TS_OAUTH_CLIENT_ID`, `TS_AUDIENCE`, `OMP_AUTH_BROKER_URL`
+`tag:oracle-ci`. This repository uses GitHub's immutable OIDC subject, so
+restrict the credential's subject to
+`repo:BenchBox-dev@319264189/benchbox@1135770337:environment:oracle`; the
+name-only form is rejected with a 403. Add `TS_OAUTH_CLIENT_ID`,
+`TS_AUDIENCE`, `OMP_AUTH_BROKER_URL`
 (`https://<host>.<tailnet>.ts.net:8765`) and `OMP_AUTH_BROKER_TOKEN` to the
 `oracle` environment. Rotate the broker token with
 `omp auth-broker token --regenerate`, restart the agent with
 `launchctl kickstart -k gui/$(id -u)/dev.omp.auth-broker`, and update the
 secret. Disable key expiry for the broker host in the Tailscale console.
+
+The broker serves credentials, not model roles. Store the owner's
+`~/.omp/agent/config.yml`, which maps each role alias to a model and its
+fallback chain, as the `OMP_AGENT_CONFIG` secret, and refresh it after
+changing roles:
+`gh secret set OMP_AGENT_CONFIG --env oracle < ~/.omp/agent/config.yml`.
+Attempt jobs fail without it, because role aliases would otherwise resolve
+to OMP's built-in models.
 
 Without the App secrets, the `post` job logs the result and succeeds.
 
@@ -258,13 +269,19 @@ checkout before it records it; a failed check records the reviewer as absent
 - When the brief lists files instead of carrying the diff (`file-list` mode),
   a verdict that would be judged SHIP must name, in `files_examined`, every
   soundness-path file under review that still exists at the head (in a
-  follow-up, the files changed since the last review). That includes a
-  follow-up whose only defects are in unchanged files: those defects are not
-  counted, so the follow-up would ship and still needs the files named. A
-  verdict that would fail (DO NOT SHIP, a defect counted in scope, or an
-  earlier defect not fixed) needs no such list. OMP's output carries no read
-  trace, so the check relies on `files_examined` and the defect citations.
+  follow-up, the files changed since the last review), and OMP's event stream
+  must show a successful `read` of each of those files, or a `grep` whose
+  reported matches include that file. A `grep` over several paths credits
+  only the files it reports as matched. That
+  includes a follow-up whose only defects are in unchanged files: those
+  defects are not counted, so the follow-up would ship and still needs the
+  files named and read. A verdict that would fail (DO NOT SHIP, a defect
+  counted in scope, or an earlier defect not fixed) needs neither.
 - An inline brief carries the diff, so no read is required there.
+
+The verdict is the text of the reviewer's final assistant message, taken from
+its `message_end` event; remarks the reviewer makes between tool calls are
+ignored. A final message that is not exactly one JSON verdict is invalid.
 
 The brief no longer forbids running commands, but OMP's tool list holds only
 `read`, `grep` and `glob`, so the reviewer cannot write or run anything. A
@@ -315,12 +332,35 @@ These checks must pass before the cut-over that makes the context required.
   `disabled_reason`. The workflow has five slots.
 - **P4:** capture each reviewer's quota, authentication and outage output from
   real runs. The attempt artifact's `diagnostic` field holds one redacted line
-  of the output, at most 300 characters, with credentials and long tokens
-  removed; raw output is never uploaded. Add the messages to the `CALIBRATED_*_PATTERNS` tables in
+  of the output, at most 300 characters. When the answer is not a valid
+  verdict, it holds instead the last 2,000 characters of the reviewer's final
+  message. Both have credentials and long tokens removed; raw output is never
+  uploaded. Add the messages to the `CALIBRATED_*_PATTERNS` tables in
   `_project/scripts/oracle_reviewers/absence.py`; until then they count as
   errors, which never pass. A quota absence means OMP's fallback chain was
   also exhausted. It skips the reviewer's whole pool for the rest of the run,
   and in later runs for one hour (`QUOTA_BACKOFF` in `selection.py`).
+
+## Changing the reviewer harness
+
+The harness boundary is OMP's command line, its JSON event stream and its
+configuration, none of which the unit tests can check by themselves. A change
+to `commands.py`, `verdict.py`, `evidence.py`, `runner.py`, the reviewer
+policy or the attempt jobs must also:
+
+- keep `tests/fixtures/oracle_reviewers/omp_multi_turn_review.jsonl` a real
+  recording. When OMP's output changes, record a new one with
+  `omp --print --mode json` on a review that writes text, calls `read` and
+  `grep`, and then answers. Replace machine paths and check it for
+  credentials. Never hand-edit it into the shape the code expects.
+- be smoke-tested before merge by running `runner.review` on a file-list
+  brief, with the reviewer and model that CI will select and the
+  configuration stored in `OMP_AGENT_CONFIG`. The reviewer must take at least
+  two turns, and the result must be a verdict that passes the evidence check.
+  After merge, dispatch a run on a soundness pull request to confirm it in
+  CI. Repeat both after any change to routing or bucket floors.
+- be self-reviewed across every module at the harness boundary listed above
+  and its tests, not a chosen subset.
 
 ## Cut-over
 

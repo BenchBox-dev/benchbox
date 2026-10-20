@@ -30,7 +30,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 DOCUMENTATION_VERSION_PATHS = tuple(PROJECT_ROOT / path for path in _ADDITIONAL_VERSION_PATHS)
 
 _DOC_VERSION_PATTERN = re.compile(
-    r"Current\s+release\s*:?\s*`?v?(?P<version>\d+\.\d+\.\d+(?:-[\w\.]+)?)`?",
+    r"Current\s+release\s*:?\s*`?v?(?P<version>\d+\.\d+\.\d+(?:-[\w\.]+|(?:a|b|rc)\d+)?)`?",
     re.IGNORECASE,
 )
 
@@ -57,8 +57,10 @@ class _SemVer:
 
 _SEMVER_PATTERN = re.compile(
     r"^(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)"
-    r"(?:-(?P<label>alpha|beta|rc|dev)(?:\.(?P<number>\d+))?)?$"
+    r"(?:-(?P<label>alpha|beta|rc|dev)(?:\.(?P<number>\d+))?|(?P<pep_label>a|b|rc)(?P<pep_number>\d+))?$"
 )
+
+_PEP440_LABELS = {"a": "alpha", "b": "beta", "rc": "rc"}
 
 _PRE_RELEASE_ORDER = {
     None: 5,
@@ -75,8 +77,13 @@ def _parse_semver(version: str) -> _SemVer:
     if not match:
         raise ValueError(f"Invalid BenchBox semantic version: '{version}'")
 
-    label = match.group("label")
-    number_str = match.group("number")
+    pep_label = match.group("pep_label")
+    if pep_label:
+        label = _PEP440_LABELS[pep_label]
+        number_str = match.group("pep_number")
+    else:
+        label = match.group("label")
+        number_str = match.group("number")
 
     return _SemVer(
         major=int(match.group("major")),

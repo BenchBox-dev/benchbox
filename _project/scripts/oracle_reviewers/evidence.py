@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import re
 from collections.abc import Iterable
@@ -12,7 +13,10 @@ INLINE = "inline"
 _LINE_SUFFIX = re.compile(r":\d+(?:-\d+)?$")
 
 
-TRACED: tuple[str, ...] = ()
+TRACED = ("omp",)
+OMP_READERS = frozenset({"read", "grep"})
+_OMP_SELECTOR = re.compile(r"(?::(?:raw|[\d,+-]+))+$")
+OMP_NO_MATCHES = "No matches found"
 CITATION_PREFIX = "Citation not found in the head commit"
 
 
@@ -21,12 +25,72 @@ class Trace:
     reads: tuple[str, ...] = ()
 
 
+def _completed_messages(stdout: str) -> Iterable[dict]:
+    for line in stdout.splitlines():
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(event, dict) and event.get("type") == "message_end" and isinstance(event.get("message"), dict):
+            yield event["message"]
+
+
+def _found_content(message: dict) -> bool:
+    if message.get("isError") is not False:
+        return False
+    if message.get("toolName") != "grep":
+        return True
+    content = message.get("content")
+    text = (
+        "".join(block.get("text", "") for block in content if isinstance(block, dict) and block.get("type") == "text")
+        if isinstance(content, list)
+        else ""
+    )
+    return not text.strip().startswith(OMP_NO_MATCHES)
+
+
+def _grep_matches(message: dict) -> tuple[str, ...]:
+    details = message.get("details")
+    files = details.get("files") if isinstance(details, dict) else None
+    return tuple(path for path in files if isinstance(path, str) and path) if isinstance(files, list) else ()
+
+
+def _omp_reads(stdout: str) -> tuple[str, ...]:
+    calls: dict[str, str] = {}
+    results: dict[str, tuple[str, ...] | None] = {}
+    for message in _completed_messages(stdout):
+        if message.get("role") == "toolResult":
+            if _found_content(message):
+                matched = _grep_matches(message) if message.get("toolName") == "grep" else None
+                results[str(message.get("toolCallId"))] = matched
+            continue
+        if message.get("role") != "assistant" or not isinstance(message.get("content"), list):
+            continue
+        for block in message["content"]:
+            if not isinstance(block, dict) or block.get("type") != "toolCall" or block.get("name") not in OMP_READERS:
+                continue
+            arguments = block.get("arguments")
+            if isinstance(arguments, dict) and isinstance(arguments.get("path"), str):
+                calls[str(block.get("id"))] = arguments["path"]
+    reads: list[str] = []
+    for call, path in calls.items():
+        if call not in results or not path:
+            continue
+        matched = results[call]
+        reads.extend((path,) if matched is None else matched)
+    return tuple(reads)
+
+
 def trace(harness: str, stdout: str) -> Trace:
-    return Trace()
+    return Trace(_omp_reads(stdout)) if harness == "omp" else Trace()
 
 
 def unread(harness: str, required: Iterable[str], run: Trace, workspace: Path) -> list[str]:
-    return []
+    if harness not in TRACED:
+        return []
+    parts = (part.strip() for path in run.reads for part in path.split(";"))
+    read = {relative(_OMP_SELECTOR.sub("", part), workspace) for part in parts if part}
+    return [path for path in required if path not in read]
 
 
 def relative(path: str, workspace: Path) -> str:

@@ -9,7 +9,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Optional, Union
 
-from benchbox._vendor import sqlglot
+from benchbox.utils.dialect_utils import translate_sql_query
 from benchbox.utils.printing import emit
 
 logger = logging.getLogger(__name__)
@@ -230,10 +230,7 @@ class TPCDIValidator:
         try:
             sql = rule.sql
             if self.dialect != "standard":
-                try:
-                    sql = sqlglot.transpile(rule.sql, read="postgres", write=self.dialect)[0]
-                except Exception as e:
-                    logger.warning(f"SQL translation failed for {rule.name}: {e}")
+                sql = translate_sql_query(rule.sql, self.dialect, source_dialect="postgres", identify=False)
 
             if hasattr(self.connection, "execute"):
                 cursor_result = self.connection.execute(sql).fetchone()
