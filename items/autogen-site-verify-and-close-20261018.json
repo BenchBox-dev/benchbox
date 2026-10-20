@@ -6,7 +6,7 @@
     "#2979 carries an evidence comment; it is closed only when the conditions above hold, otherwise it stays open with the remaining causes listed",
     "No other issue is reopened or closed"
   ],
-  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs live run evidence, not unit tests. FAIL if #2979 is closed with an unresolved cause or without a green post-fix deploy. Never wait or poll: if no qualifying run exists yet, record WAITING with the exact check to run.",
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11 and guardrails G1-G12; read it first). Source: review of BenchBox-dev/benchbox issues on 2026-10-18; line numbers below are leads to re-verify (G12). Rubric: PASS needs live run evidence, not unit tests. FAIL if #2979 is closed with an unresolved cause or without a green post-fix deploy. Never wait or poll: if no qualifying run exists yet, record WAITING with the exact check to run.\n\n### Completion Evidence\nGreen post-fix runs: core site-inputs 39297476581 (develop 0da022869, contains S2a) build success; site deploys 39294571211/39295338434/39298016285 success. No post-fix failure comments (#2979 last comment 2026-10-18T20:27Z, before merges); zero site-bundle-undeployed issues. Live close path observed: close-failure job ran in 39297476581 and correctly did nothing (title guard: it closes only the reporter-owned title, not the old relay issue). #2979 LEFT OPEN per acceptance: probe-mismatch root cause unresolved, tracked in autogen-site-probe-mismatch-attribution-20261019. Evidence comment 6280315205 posted. No other issue opened/closed.",
   "description": "Verification and hosted-write item (D7, D8). After the site and core reporter, fetch, parent-lookup, snapshot and probe items have merged, show with run evidence that the pipeline works and close the stale incident.\nSteps (each gate snapshot once per invocation, G10): (1) list recent core site-inputs runs on develop and site deploy runs (the batch's own merges produce them); identify at least one core bundle build and one site deploy that ran with the merged fixes and succeeded; (2) confirm the open site-bundle-failed / site-bundle-undeployed issues received no new comment for a failure of a class the fixes address after the merge SHAs; (3) confirm a successful run closed any relay issue it should have (live check of the new close path); (4) comment on #2979 with the evidence (merge SHAs, run URLs, the six-cause table: 25 parent lookup, 4 snapshot digest, 3 contract version, 1 egress 503, 3 probe mismatch, 1 producer race) and close it ONLY if the latest site deploy and core bundle runs are green and no unresolved cause remains.\nIf a cause remains unresolved (for example the probe-mismatch diagnosis found platform behavior it could not fix), comment with the evidence, leave #2979 open, and create a follow-up item.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/issues/2979"
@@ -27,6 +27,14 @@
       "generation": "e1c57c5e69fd46b3af0bc469a77742bd",
       "op": "take",
       "op_id": "beb2300552ac4f1ca5b53458cdee8869",
+      "session_id": "0722acca462b419aa525d939aedd0290"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a",
+      "at": "2026-10-20T00:21:25Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6e27b938547943c5befe3a46e3fd8b99",
       "session_id": "0722acca462b419aa525d939aedd0290"
     }
   ]
