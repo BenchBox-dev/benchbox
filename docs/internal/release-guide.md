@@ -205,7 +205,9 @@ the gate.
 stopping on a conflict. Two branches that each add a bullet under
 `[Unreleased]` combine cleanly. The release-curation and tag-guard checks read
 only the resulting file, and `release-cut` merges `origin/release` with
-`-s ours`, which ignores merge drivers, so none of them changes behavior.
+`-s ours`, which ignores merge drivers, so none of them changes behavior. `.gitattributes` is a development file that
+`release-cut` removes, so the union rule applies on `develop` and its feature
+branches only, not on the release tree; the rule's test skips there.
 
 Caveats:
 

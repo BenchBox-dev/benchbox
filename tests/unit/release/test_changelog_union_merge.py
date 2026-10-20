@@ -7,7 +7,14 @@ import pytest
 
 from tests.utilities.paths import REPO_ROOT
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [
+    pytest.mark.unit,
+    pytest.mark.fast,
+    pytest.mark.skipif(
+        not (REPO_ROOT / ".gitattributes").is_file(),
+        reason=".gitattributes is dev-only; release-cut removes it from the release tree",
+    ),
+]
 
 BASE = "# Changelog\n\n## [Unreleased]\n\n### Fixed\n\n- existing\n\n## [0.5.0] - 2026-10-01\n\n- old\n"
 
