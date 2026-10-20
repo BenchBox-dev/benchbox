@@ -22846,10 +22846,15 @@
       "title": "BenchBox: delete the ClickHouse, StarRocks and TPC-DS runner rewrites"
     },
     "sqlglot-fork-f0-base-and-manifest": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-21T16:22:53Z",
+        "generation": "523177a05c594ef9b37242dcbc8fa9fc",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Fork: manifest and refresh tooling support for fork-original work"
     },
     "sqlglot-fork-f0b-real-engine-ci": {
