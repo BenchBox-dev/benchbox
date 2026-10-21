@@ -4,6 +4,7 @@
     "A documented bound states what the selection still cannot see and which tier covers it.",
     "make pr-preflight uses the improved selection; CI parity tests and make pr-preflight pass."
   ],
+  "context": "2026-10-21: in PR CI this is superseded by coverage selection (#3200, #3224) plus the importer scan for uncovered code; remaining scope is local make pr-preflight, which still maps by name.",
   "description": "The PR test step maps changed source files to tests by file name (benchbox/base.py to test_base.py), so PR 3185 never ran tests/test_benchbox.py, which mocks translate_query internals. The failing test only ran in the post-merge Trunk medium tier. A mapping by name misses tests that import or patch the changed module under another name.",
   "links": [
     "scripts/pr_preflight.py",
@@ -35,6 +36,14 @@
       "op": "finish",
       "op_id": "af91a4d9354d4b0aa0bb8cb8fb750591",
       "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T12:47:05Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ab62913f1b9b4ff4a82b1007c82605b5",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
     }
   ]
 }
