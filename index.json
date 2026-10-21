@@ -23592,7 +23592,7 @@
         "ssns-n8-macos-install-kit"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "dropped",
       "title": "ship-no-ship owner: create the service role users from install --print"
     },
     "ssns-o3-app-key-permissions": {
