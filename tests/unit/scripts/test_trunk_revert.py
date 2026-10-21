@@ -403,7 +403,6 @@ def _git(cwd: Path, *args: str, env: dict[str, str] | None = None) -> str:
     return done.stdout.strip()
 
 
-@pytest.mark.medium
 @pytest.mark.skipif(sys.platform == "win32", reason="make worktree-* targets are POSIX shell tooling")
 def test_worktree_create_succeeds_when_invoked_from_a_linked_worktree(tmp_path: Path) -> None:
     home = tmp_path / "home"
