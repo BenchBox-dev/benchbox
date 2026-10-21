@@ -22935,13 +22935,18 @@
       "title": "BenchBox: adopt the fork wheel with the SQLite day-offset fix, BigQuery window NULLS handling and row-source rewrites"
     },
     "sqlglot-fork-a2-adopt-adapter-wheel": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-22T22:52:47Z",
+        "generation": "094d6f2b320b4d378cc2f78b32b9617b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d"
+      },
       "needs": [
         "sqlglot-fork-f6-tpcdi-clickbench-generators",
         "sqlglot-fork-a1-adopt-wrapper-wheel"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "BenchBox: adopt the fork wheel containing TPC-DI and ClickBench generator behavior"
     },
     "sqlglot-fork-a3-adopt-ddl-wheel": {
