@@ -15627,7 +15627,7 @@
         "oracle-local-b4-cutover"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "BenchBox owner: make oracle-engine-installed a required check"
     },
     "oracle-map-staged-gate-scale-and-label-vocabulary": {
