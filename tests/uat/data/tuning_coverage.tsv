@@ -329,7 +329,7 @@ influxdb	nyctaxi	basic_constraints	waived	basic constraints are acceptable until
 influxdb	flightdata	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 influxdb	datavault	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 influxdb	vector_search	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-pg-duckdb	tpch	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
+pg-duckdb	tpch	tuned_template	done	benchmark-specific tuned template exists	examples/tunings/pg-duckdb/tpch_tuned.yaml
 pg-duckdb	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 pg-duckdb	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 pg-duckdb	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-

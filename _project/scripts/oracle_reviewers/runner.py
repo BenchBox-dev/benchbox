@@ -14,7 +14,7 @@ from typing import Any
 from . import absence, evidence, protocol
 from .commands import Invocation, build
 from .policy import Reviewer
-from .verdict import INCOMPLETE, SHIP, VerdictError, parse_output, validate
+from .verdict import INCOMPLETE, SHIP, VerdictError, extract_omp_text, parse_output, validate
 
 
 @dataclass(frozen=True)
@@ -89,9 +89,17 @@ def execute(invocation: Invocation, timeout_seconds: int) -> RunResult:
     return RunResult(process.returncode, stdout or "", stderr or "", False)
 
 
+def _credentials() -> list[str]:
+    return [os.environ.get(name, "") for name in absence.CREDENTIAL_ENV]
+
+
 def _diagnostic(result: RunResult) -> str:
-    credentials = [os.environ.get(name, "") for name in absence.CREDENTIAL_ENV]
-    return absence.excerpt(result.stdout, result.stderr, credentials)
+    return absence.excerpt(result.stdout, result.stderr, _credentials())
+
+
+def _unparsed(harness: str, output: str, fallback: str) -> str:
+    text = extract_omp_text(output) if harness == "omp" else output
+    return absence.unparsed(text, _credentials()) if text.strip() else fallback
 
 
 def review(
@@ -136,7 +144,8 @@ def review(
     try:
         verdict = validate(parse_output(reviewer.harness, output))
     except VerdictError as exc:
-        return ReviewOutcome(None, absence.Absence(absence.INVALID, str(exc)), diagnostic)
+        unparsed = _unparsed(reviewer.harness, output, diagnostic)
+        return ReviewOutcome(None, absence.Absence(absence.INVALID, str(exc)), unparsed)
     if verdict.status == INCOMPLETE:
         reason = verdict.incomplete_reason or "the reviewer reported its review incomplete"
         return ReviewOutcome(None, absence.Absence(absence.INCOMPLETE, reason), diagnostic)

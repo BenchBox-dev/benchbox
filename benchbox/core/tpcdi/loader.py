@@ -13,8 +13,8 @@ from typing import Any, Callable, Optional, Union, cast
 
 import pandas as pd
 
-from benchbox._vendor import sqlglot
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.dialect_utils import translate_sql_query
 
 logger = logging.getLogger(__name__)
 
@@ -158,10 +158,7 @@ class TPCDIDataLoader:
         for index_name, sql in indexes.items():
             try:
                 if self.dialect != "standard":
-                    try:
-                        sql = sqlglot.transpile(sql, read="postgres", write=self.dialect)[0]
-                    except Exception as e:
-                        logger.warning(f"SQL translation failed for index {index_name}: {e}")
+                    sql = translate_sql_query(sql, self.dialect, source_dialect="postgres", identify=False)
 
                 if hasattr(connection, "execute"):
                     connection.execute(sql)

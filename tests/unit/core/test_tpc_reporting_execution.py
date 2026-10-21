@@ -575,6 +575,9 @@ def test_tpcds_c_tools_and_dsqgen_helpers(monkeypatch: pytest.MonkeyPatch, tmp_p
     out_sql = dsq._clean_sql(dirty)
     assert "'abc'" in out_sql.lower()
     assert "interval '3 day'" in out_sql.lower()
+    two_part = dsq._clean_sql("select a from t1;\nselect b from t2;\n")
+    assert "t1" in two_part.lower()
+    assert "t2" in two_part.lower()
 
 
 class _FakeMaintenanceCursor:

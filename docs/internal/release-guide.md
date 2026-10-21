@@ -198,6 +198,29 @@ section shipped (0.2.1, 39 bullets over 139 lines). A longer draft means the
 curation is not done yet — group and cut further rather than working around
 the gate.
 
+### Changelog merges
+
+`.gitattributes` sets `/CHANGELOG.md merge=union`, so a local `git merge`,
+`git rebase`, or `git cherry-pick` keeps both sides' added lines instead of
+stopping on a conflict. Two branches that each add a bullet under
+`[Unreleased]` combine cleanly. The release-curation and tag-guard checks read
+only the resulting file, and `release-cut` merges `origin/release` with
+`-s ours`, which ignores merge drivers, so none of them changes behavior. `.gitattributes` is a development file that
+`release-cut` removes, so the union rule applies on `develop` and its feature
+branches only, not on the release tree; the rule's test skips there.
+
+Caveats:
+
+- Union never reports a conflict, so review the merged `[Unreleased]` text.
+- It keeps both sides of a line both branches edited: two rewordings of the
+  same bullet both survive, and the older wording must be deleted by hand.
+- It merges by line, not by bullet. Continuation lines that two new bullets
+  share verbatim (for example identical wrapped text) collapse into one copy,
+  which can leave one bullet short of its tail. Reread multi-line bullets.
+- GitHub's server-side merge and the web conflict editor do not run custom
+  drivers. Rebase onto `origin/develop` locally before pushing, as the PR flow
+  already requires.
+
 ### Tests on the release tree
 
 The release PR's required jobs run the fast and medium tiers on the curated
@@ -319,24 +342,10 @@ then PR back to `develop`. This realigns all five version sources
 (`benchbox/__init__.py`, `pyproject.toml` and the three `Current release:` doc
 markers) with the latest published release, so `develop` no longer trails PyPI.
 
-The fast guard
-`tests/unit/release/test_changelog_tag_guard.py::test_repo_release_accounting_matches_*`
-pins the published version as its own literal. Keep that literal at the version
-PyPI currently serves: on the release branch it stays at the previous release,
-and it moves to the new version only in the develop version-sync PR after
-publication (renaming the test, for example from `..._matches_v041_...` to
-`..._matches_v042_...`, as #2669 did). The same timing applies to the
-CHANGELOG `[Unreleased]` compare link: on the release branch it still starts at
-the previous release's tag, and it moves to the new tag in the version-sync PR.
-Moving either at cut time fails the required test job, because
-`check_release_accounting` validates what PyPI serves, not what the release
-branch is about to publish. No tooling updates the literal today; automating
-that move means extending `scripts/update_version.py`, which currently has no
-reference to it. It stays
-a literal rather than reading
-`pyproject.toml`, because that is exactly what the accounting check validates;
-deriving it from the checked source would let a sync to an unpublished version
-pass. Only PyPI is authoritative for publication state.
+No unit test pins the repository to the published version. A release-prep PR on
+`develop` raises the declared version before PyPI serves it, so a test that compared
+`pyproject.toml` with PyPI would fail every release-prep PR. PyPI remains the
+authority for publication state; the command below checks it on demand.
 
 After the synchronization PR is prepared, verify it against PyPI's live
 publication state rather than assuming the newest git tag was published:

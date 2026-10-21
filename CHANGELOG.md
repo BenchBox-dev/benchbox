@@ -9,1140 +9,176 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- The bundled SQLGlot runtime moves from 30.23.0.2 to 30.24.0.1 (upstream
-  v30.24.0, fork commit `4bea533be2d9`). A translation corpus of every shipped
-  benchmark query across 20 target dialects changes in 20 of 25,240 outputs.
-  Results published before this change for the affected queries and dialects
-  were computed with different SQL and should be rerun:
-  - TPC-DI `AQ5`, `AQ6`, `AQ9` and read_primitives `statistical_variance_stddev`
-    on MySQL, Doris, StarRocks and SingleStore: `STDDEV` now emits
-    `STDDEV_SAMP` (and `VARIANCE` emits `VAR_SAMP`). Earlier results used the
-    population deviation/variance on these targets; they now use the sample
-    form (16 outputs: 12 TPC-DI, 4 read_primitives).
-  - read_primitives `array_sort` and `array_distinct` on DuckDB: `ARRAY_SORT`
-    now emits `LIST_SORT`.
-  - read_primitives `approx_quantile_groupby` on BigQuery: `APPROX_QUANTILE`
-    now emits `APPROX_QUANTILES(x, 2)[1]`.
-  - read_primitives `pivot_basic` on StarRocks: the `PIVOT` clause was
-    previously dropped, yielding a non-pivoting query, and is now emitted.
+- TPC-DI schema, query, loader, validation and SCD translation now call
+  `translate_sql_query` with explicit `identify=False` instead of the vendored
+  SQLGlot directly, so the DuckDB `ALL` restore and SQLite fix-ups apply there
+  too. Output differences caused by routing: `TPCDIQueryManager.translate_query_text`
+  now translates through the wrapper's PostgreSQL mapping of `ansi` instead of
+  returning the original text after an unknown-dialect error, and the
+  `datafusion` target now translates TPC-DI DDL and validation SQL through the
+  same mapping where it previously returned the PostgreSQL text unchanged.
+  Translation failures in strict mode now raise `SQLTranslationError` instead of
+  being logged and skipped.
+
+## [0.5.0rc1] - 2026-10-20
+
+### Before you upgrade
+
+- **BREAKING: Tuning validation fails on tuning the platform does not apply.**
+  Earlier releases accepted these files and ran without the tuning. Run
+  `benchbox tuning validate --platform <platform>` on your saved tuning files
+  first; each error names the tuning type and why it is not applied. Unique
+  and check constraints fail everywhere, because no benchmark schema carries
+  them, and files that leave them out no longer request them. Layout tuning
+  fails on BigQuery, Redshift, Trino, Azure Synapse and other platforms that
+  only preview it. Redshift sorting needs `sorted_ingestion_mode` set to `auto`
+  or `force`. Databricks and Fabric Warehouse reject partitioning. Primary and
+  foreign keys fail where the adapter removes them, including Athena.
+- **BREAKING: Some option spellings are deprecated and stop working in 0.6.0.**
+  Each logs one warning per run. Use `--platform name:mode` instead of
+  `deployment_mode`, `mode`, `sail_mode` and similar options. Use
+  `compute_resource` and `compute_size` instead of vendor names such as
+  `warehouse`, `engine_name`, `workgroup` and `cluster_id`. Use
+  `--execution-engine streaming` instead of `--polars-streaming`. Saved
+  configurations and credential profiles keep working until then.
+- **BREAKING: A selector and an option that disagree now fail.** For example,
+  `--platform firebolt:core --platform-option deployment_mode=cloud` stops
+  before any work. A compute value that disagrees with the same value spelled
+  another way stops the run too. Pass one spelling.
+- **Throughput and Power results are not comparable with 0.4.2.** Throughput
+  streams are numbered 1 to S instead of 0 to S-1, and TPC-H power iterations
+  all use stream 00. Throughput now honors `--queries` and `validation_mode`,
+  and a run limited to a query subset reports no Throughput@Size. A saved
+  `stream_timeout_seconds` now applies to throughput runs; remove it from your
+  config file to keep each benchmark's default.
+- **ClickHouse tuned results are not comparable with earlier ones.** Tuned
+  runs are about 2x faster on TPC-H joins, the TPC-H template no longer
+  partitions `LINEITEM` and `ORDERS`, and tuned loads wait for background
+  merges. Tuning maintenance on ClickHouse, Redshift, Databricks and Snowflake
+  runs after each table loads; ClickHouse `OPTIMIZE` needs
+  `--platform-option optimize_after_load=true`.
+- **Spark, LakeSail and Velox results are not comparable with earlier ones.**
+  Untuned runs use engine defaults for adaptive execution and shuffle, and
+  per-query times no longer include clearing the session cache. A tuning
+  file's `spark` map applies on Velox and is ignored on LakeSail.
+- **Cached databases are rebuilt once in some cases.** DuckDB `auto` runs no
+  longer request CHECK constraints, and nested tuning settings change the
+  generated database name. Drop the old databases.
+- **TPC-H maintenance only runs on adapters that support refresh.** DuckDB,
+  SQLite, PostgreSQL and its derivatives, Snowflake and SingleStore apply the
+  update sets; other adapters skip the phase. Refresh functions in Power and
+  Throughput need `tpch_refresh_functions=true`.
+- **Several options that were ignored now take effect.** DuckDB `threads` and
+  `temp_directory`, SQLite `database_path`, `database_name` and `timeout`, and
+  a `--platform-option` value equal to its default now apply, overriding a
+  saved credential profile. Remove an option you do not want applied.
+- **Dask and Polars engine changes.** Dask `use_distributed=false` with
+  `scheduler_address` fails; use `--execution-engine distributed`. Polars
+  `--tuning auto` no longer switches to streaming on small hosts, and
+  `write_primitives` on `polars-df` refuses a non-default engine.
+- **Comparisons refuse mixed variants.** `benchbox compare` and MCP
+  `compare_results` refuse results whose deployment, execution engine or
+  gateway differ unless you pass `--allow-heterogeneous-comparison`.
+- **Result bundles use additive schema 2.3.** Readers must accept it. Older
+  bundles remain readable.
+- **BenchBox bundles its own SQLGlot, and some translated SQL changed.**
+  Installing BenchBox no longer installs public `sqlglot`, and expression
+  objects from a separate `sqlglot` install cannot be passed to BenchBox. Rerun
+  earlier results for these queries: `STDDEV` and `VARIANCE` on MySQL, Doris,
+  StarRocks and SingleStore now use the sample form (TPC-DI AQ5, AQ6 and AQ9,
+  read_primitives `statistical_variance_stddev`); `array_sort` and
+  `array_distinct` on DuckDB; `approx_quantile_groupby` on BigQuery; and
+  `pivot_basic` on StarRocks, which used to lose its PIVOT clause. ClickBench
+  on SQLite (Q19, Q43) and on DataFusion, Netezza, ANSI, standard, Vertica and
+  Greenplum targets now uses different SQL, so earlier results there are not
+  comparable.
+- **SingleStore has no `cloud` mode.** Use `--platform singlestore` for Helios
+  and self-managed clusters. `databend:self-hosted` now connects over HTTP on
+  port 8000 by default.
+
+### Added
+
+- **Execution engines.** `--execution-engine` and the MCP `execution_engine`
+  parameter choose how a query runs, checked against what the platform
+  declares. Polars supports `default`, `in-memory` and `streaming`, Dask
+  `threaded` and `distributed`, and pg-duckdb `duckdb` and `postgres`. Results
+  record the requested, applied and observed engine.
+- **Deployment selectors everywhere.** `--platform firebolt:cloud`,
+  `pg-duckdb:motherduck`, `influxdb:core`, `ducklake:postgres_catalog`,
+  `velox:remote`, `lakesail:distributed` and `timescaledb:cloud` work end to
+  end, in MCP, and in Python as `DatabaseConfig(type="timescaledb:cloud")`.
+  Results record the selected deployment, and variants rank separately.
+- **Compute resource and size.** Platforms share `compute_resource` and
+  `compute_size` options in place of vendor names. Results record them, and
+  public bundles drop the resource name.
+- **Subscale results are ranked.** TPC-H and TPC-DS runs below scale factor 1
+  record Power@Size marked unofficial and rank in their own "Subscale ·
+  Unofficial" cohort. `benchbox submit` and `benchbox publish` still refuse
+  them.
+- **TPC-H row counts at scale factors 0.01 and 0.1.** Every query is checked
+  against exact counts, so DataFrame runs no longer report UNCERTAIN there.
+- **TPC-H refresh functions and QphH@Size.** Power can include RF1 and RF2,
+  Throughput can run a concurrent refresh stream, and `benchbox metrics qphh`
+  prints QphH@Size when both results carry refresh evidence.
+- **More tuning on PostgreSQL.** Tuned runs apply date and hash partitioning,
+  and index and cluster tuned columns after each load.
+- **Clearer tuning evidence.** Tuned results list requests the platform ignored
+  in `platform.tuning.applied.dropped`. DataFrame tuned profiles and curated
+  ClickHouse templates ship, `benchbox tuning platforms` lists Spark with its
+  own capabilities, and `benchbox tuning validate` accepts SQL tuning files.
+- **Session and engine details in results.** Spark, LakeSail and Velox runs
+  record the live session configuration and warn when a setting did not take
+  effect. DuckDB, SQLite and DataFusion results record the engine version.
+
+### Changed
+
+- **`--tuning tuned` fallback messages** name what each platform applies, such
+  as "OLAP session pack" for ClickHouse.
+- **Publishing fails closed.** `benchbox publish` verifies the anonymized files
+  before copying them, and submission validation rejects unreadable plan,
+  tuning and applied-tuning companion files.
+- **Legacy throughput APIs are deprecated.** `run_throughput_test` and
+  `run_official_benchmark` warn and run the same drivers as `benchbox run`.
+  They need `adapter=` and at least 2 streams. `TPCDSOfficialBenchmark` now
+  uses the scale factor you configure.
 
 ### Fixed
 
-- PostgreSQL-family baseline runs (PostgreSQL, TimescaleDB, pg_duckdb,
-  pg_mooncake, Citus, ParadeDB) no longer issue the planner session settings
-  (`enable_seqscan`, `enable_hashjoin`, `enable_mergejoin`, `random_page_cost`,
-  `cpu_tuple_cost`, `synchronous_commit`, `timescaledb.enable_chunk_skipping`,
-  `duckdb.force_execution`) through the recording connection. A baseline is
-  platform defaults only, so the settings apply on tuned runs only and baseline
-  results no longer fail the public privacy validation with an unanonymized
-  tuning statement. Validation rules and floors are unchanged.
-- The green-unmerged sweep locates the original marker-tagged digest issue
-  beyond the newest 1,000 issues/PRs, preferring oldest-created search matches
-  and falling back to an uncapped oldest-first scan without labels. Malformed
-  or failed scans abort instead of creating duplicates. Read-only and apply
-  runs report the lookup mechanism; closed digest issues still reopen on upsert.
+- **Tuning.** Tuned PostgreSQL runs no longer stop on the tuned-run marker.
+  Tuned SQLite TPC-DS runs load without foreign keys. A tuning file that sets
+  only some constraint types no longer requests the rest. Primary-key tuning
+  on ClickHouse and chDB reaches `applied_verified`. Spark's `tuned` session
+  settings now apply once and survive the defaults.
+- **Dry runs.** `--dry-run --tuning tuned` shows the tuning DDL without the
+  platform driver and notes tuning the platform skips. TSBS DevOps previews its
+  queries, and saved credentials no longer appear in preview files.
+- **Data and runs.** `--force datagen` and `--force all` regenerate data and
+  recreate the database. Load-only runs exit 0 after a successful load. Sorted
+  ingestion no longer runs unsafe rewrites on Athena, Azure Synapse and
+  Redshift. Generated database names stay stable when nested tuning keys
+  are reordered.
+- **Platform options.** Alias platform names such as `sqlite3` and `pg_duckdb`
+  accept their options. Options now reach EMR Serverless, Dataproc, Synapse
+  Spark, Fabric, PySpark and Snowpark Connect, and Redshift accepts
+  `workgroup_name` and `cluster_identifier`. A saved credential profile no
+  longer blocks command-line compute settings.
+- **Platforms.** Athena Spark starts a session, and `athena-spark` accepts its
+  documented options. `benchbox run --platform quanton` builds its
+  configuration. InfluxDB accepts `mode` and `deployment_mode`. Databricks
+  `compute_resource` sets the warehouse HTTP path.
+- **Results and reports.** `benchbox report rankings` lists imported runs.
+  `benchbox compare` and `benchbox report` no longer mix deployments.
+  Anonymized bundles drop the compute resource name. The MCP server no longer
+  reconfigures Python's root logger. PostgreSQL-family baseline runs no longer
+  issue planner session settings, which belong to tuned runs only, so baseline
+  results pass the public privacy validation. ClickBench translation raises an
+  error instead of returning untranslated ClickHouse SQL.
 
 ### Documentation
 
-- A new reference page, Tuning Platform Support
-  (`docs/reference/tuning-platform-support.md`), lists for every platform in
-  the tuning capability registry the shipped templates, the tuning types
-  applied at execution and those that are not, whether the Spark session map
-  applies, whether a catalog introspector exists, and whether a tuned run can
-  reach `applied_verified`. It is generated from the registry
-  (`make tuning-support-matrix`) and a test fails when it drifts. The
-  introspection receipts design note now describes DuckDB's in-place sort and
-  its satisfied index re-create.
-
-- The LakeSail documentation no longer says the CLI has no `--platform-option`
-  keys. `--platform lakesail:distributed` selects distributed mode, and
-  `endpoint` and `adaptive_enabled` are accepted as `--platform-option` keys.
-
-- The Explorer read model is at version 16 with execution-variant identity:
-  the pipeline records `variant_id`, `variant_label`, the requested execution
-  engine and gateway routing on every result, cohort and leaderboard row.
-  Two bundles that differ only in requested engine rank as separate variants
-  ("Polars (streaming)" beside "Polars"), and gateway-routed runs are
-  excluded from native ranking with `ranking_exclusion_reason=gateway_routed`.
-  Existing corpus values are unchanged: bundles without variant data keep
-  `variant_id` equal to the platform id.
-- The new-platform acceptance checklist and both adding-platform guides describe the reserved option words,
-  the deprecated-alias rule and the manifest `execution_engines` declaration with a `polars-df` worked example.
-  A scaffold script (`scripts/new_platform_scaffold.py --kind sql|dataframe`) prints the expected file plan
-  with manifest and adapter stubs; its output carries no reserved canonical keys and its adapter stub returns
-  the platform-default engine receipt.
-
-- The Polars version-matrix reproduction instructions now use
-  `--execution-engine` for default, in-memory and streaming setups, and identify
-  the earlier `engine` option name used by the recorded bundles.
-- Every `--platform-option` example in the documentation and in
-  `benchbox run --help` examples now uses a key the CLI accepts without a
-  deprecation warning, and a test runs each example through the CLI option
-  parser. Examples that used rejected keys (connection settings such as
-  `host`, `account` or `project_id`, Databricks `http_path`, Spark `master`)
-  now show the saved credentials, environment variable, Python API argument
-  or platform selector that does set them, or were removed where BenchBox
-  has no way to set the value. Deprecated spellings are replaced: Snowflake
-  `warehouse` and Firebolt `engine`/`engine_name` by `compute_resource`,
-  ClickHouse `mode=local` by `--platform clickhouse-server` or
-  `--platform clickhouse-local`, Velox `deployment=` by
-  `--platform velox:local|remote`, and Polars `streaming=true` by
-  `--execution-engine streaming`. The Polars Python API reference no longer
-  lists the removed `--polars-streaming` argparse flag, and the Athena Spark
-  page no longer documents environment variables BenchBox does not read.
-- The Polars version-matrix methodology and findings state what the
-  preliminary probe observed for Polars 1.35.2 on the streaming engine: the
-  TPC-DS cross-surface check at scale factor 0.01 failed on queries 5, 14, 27
-  and 67, and the probe did not determine whether Polars or the BenchBox
-  DataFrame query code caused it. The methodology also notes that the
-  committed bundles were recorded under the earlier `engine` option name.
-- Public result-analysis and submission guidance no longer exposes concrete
-  identifier-pseudonymization recipes or cross-submission salt reuse details;
-  public submissions require a private salt.
-
-### Added
-
-- A repository test fails when a module outside `benchbox/utils/dialect_utils.py`
-  and `benchbox/sql_compat/` calls `transpile`, `parse_one`, `parse` or `.sql(`
-  on the vendored SQLGlot, except for an explicit shrinking allowlist.
-
-- Tuned PostgreSQL runs now apply requested partitioning: date columns get
-  yearly `RANGE` partitions over the benchmark's date domain plus a `DEFAULT`
-  partition, integer columns get `HASH` partitions. Partitioning requests no
-  longer fail validation on PostgreSQL. While primary or unique keys are
-  requested, partitioning is skipped and recorded as not applied, because
-  PostgreSQL requires those keys to include the partition column. The
-  PostgreSQL-compatible platforms are unchanged.
-- Tuned PostgreSQL runs now apply requested clustering and sorting: after each
-  table loads, BenchBox creates an index on the tuned columns and clusters the
-  table on it, and records both statements in the applied-tuning ledger. These
-  requests no longer fail validation on PostgreSQL. The PostgreSQL-compatible
-  platforms are unchanged.
-
-- `benchbox tuning platforms` lists Spark with its own capabilities and marks
-  the platforms that apply a tuning file's `spark` session map (Spark and
-  Velox). `benchbox tuning init --platform spark` ends the sample with a
-  commented example of the map, and `tuning show`, `tuning validate` and
-  `--dry-run` list it as a property and value table. A non-empty `spark` map
-  on a platform that does not apply it is recorded as dropped in the
-  applied-tuning ledger, in addition to the validation warning.
-
-- Spark, LakeSail and Velox runs now read the session configuration back from
-  the live session at three points: when the session is created, after
-  BenchBox applies its settings, and just before the first measured query.
-  Bundles record the redacted values and any discrepancies in
-  `platform.effective_session_config` (versioned block, see the result-format
-  reference), and the console warns before the queries run when a setting
-  BenchBox asked for did not take effect, when `spark-defaults.conf` or
-  `PYSPARK_SUBMIT_ARGS` supplied a setting, or when a setting changed before
-  the run. Untuned runs carry the block too. Engines that cannot report their
-  configuration are marked `not_readable`. Older bundles load unchanged.
-
-- Python callers can select a deployment mode with the same selector as
-  `--platform`: `DatabaseConfig(type="timescaledb:cloud", ...)` or
-  `DatabaseConfig(type="lakesail-df:distributed", ...)`. The config resolves
-  the selector when it is built, so `type` holds the base platform, the mode
-  reaches the adapter without a deprecation warning, and a DataFrame alias sets
-  `execution_mode="dataframe"`. This replaces the deprecated `deployment_mode`
-  option, which still works with its warning until 0.6.0. Dry-run results now
-  record the selected deployment in a `deployment` field and print it in the
-  summary.
-
-- MCP responses from `run_benchmark`, `start_benchmark`, `get_benchmark_status`, `cancel_benchmark` and
-  `get_benchmark_result` carry a `deprecations` list of `{option, replacement, removed_in, message}`. It is empty
-  when nothing deprecated was used. `replacement` names the MCP parameter or platform name to use, never a CLI
-  flag. Dry runs and validate-only calls report it too.
-
-- Manifest capability `gateways` declares intermediary query routers (`espresso`, `greybeam`, `custom`)
-  with route targets and engine classes; each requires a host. Snowflake and Databricks declare gateways.
-  No adapter routes queries through a gateway yet, so `benchbox run --gateway` accepts only `native`;
-  any declared gateway fails before work starts with "gateway routing is not implemented for <platform> yet".
-  The gateway connection options (`gateway_host`, `gateway_port`, `gateway_protocol`, `gateway_ca_bundle`,
-  `gateway_ocsp_fail_open`, `allow_insecure_gateway`) are typed: the port must be an integer from 1 to 65535
-  and the two flags must be booleans. MCP rejects them. A result bundle with a routed gateway records
-  `platform.gateway` with `name` and `routed: true` and the top-level `tpc_compliant: false`.
-
-- TPC-H refresh functions are opt-in for Power and Throughput. Power includes RF1/RF2 in its 24-term score and Throughput runs a concurrent RF stream; update sets and failures are recorded. QphH@Size is exported only when official-run and refresh-evidence gates pass.
-
-- Result schema 2.3 supports execution-engine receipts, query engine observations,
-  compute resource and size, selected deployment, routed gateway, and variant identity.
-  Fields are omitted until producers supply them. Legacy engine requests map on read
-  without changing legacy variant identity; explicit requests survive JSON re-export.
-  Publication drops compute resource names and hashes gateway hosts.
-
-- The cross-surface equivalence gate accepts `--execution-engine`; its Make
-  targets pass `EXECUTION_ENGINE` through to the Polars DataFrame adapter.
-  Baseline updates reject explicit engine selection to preserve the shared
-  divergence baseline.
-
-- Platforms declare a `compute_resource` and, where the vendor bills a size,
-  a `compute_size` setting. Vendor names (`warehouse`, `engine_name`,
-  `workgroup`, `cluster_id`, `spark_pool_name`, `service_id`,
-  `application_id`, `cluster_identifier`, `cluster_name`, `warehouse_id`,
-  `engine_size`, `cluster_size` and others) keep working as deprecated
-  aliases with a once-per-run warning and are removed in 0.6.0. Results
-  record the canonical resource kind and size alongside the legacy fields;
-  publication drops the resource name. Fabric Data Warehouse uses `database`
-  as the canonical name with `warehouse` as a deprecated alias, and Athena
-  Spark uses `runtime_version` with `engine_version` as a deprecated alias.
-
-- Adapters read `compute_resource` and `compute_size` before their vendor
-  keys when built through the adapter factory or `from_config`: Athena Spark
-  (workgroup), EMR Serverless (application), Dataproc (cluster), Synapse Spark
-  and Fabric Spark (Spark pool), Databricks DataFrame (cluster), Athena
-  (workgroup), Firebolt (engine and engine size), ClickHouse Cloud (service)
-  and Quanton (cluster size). The vendor keys still work as deprecated
-  aliases.
-
-- Result bundles now record the factory-resolved deployment as
-  `platform.deployment.selected` with `selected_class`, and non-default
-  deployments appear in `platform.variant` (for example `firebolt~cloud`).
-  The `--platform name:mode` selector is the canonical spelling on every
-  platform that declares deployment modes; `--platform firebolt:cloud`,
-  `pg-duckdb:motherduck`, `influxdb:core`, `ducklake:postgres_catalog`,
-  `velox:remote`, and `lakesail:distributed` now work end to end, and
-  LakeSail `distributed` really selects the distributed adapter.
-- The native deployment keys are deprecated aliases of the selector and warn
-  once per run: Velox `deployment`, LakeSail `sail_mode`, InfluxDB `mode`,
-  ClickHouse `deployment_mode` and `mode` (the MCP `deployment_mode` key is
-  retained and resolves the same way), Firebolt `deployment_mode` and
-  `firebolt_mode`, DuckLake `deployment_mode`, pg-duckdb `deployment_mode`.
-  Saved configurations and credential profiles holding these keys keep
-  working, and a selector on the command line overrides them. The aliases
-  are removed in 0.6.0.
-- The core `execution_engine` setting selects which execution machinery runs a
-  query. `benchbox run --execution-engine` sits next to `--mode`, and MCP
-  `run_benchmark`/`start_benchmark` accept `execution_engine`; both validate
-  against the platform manifest and fail before any work on undeclared values.
-  Polars DataFrame runs record a receipt with requested, applied and observed
-  values, including literal collect arguments in published bundles. Tuning files
-  and deprecated streaming aliases record their selected engine as the request.
-  The Polars `engine` platform option is removed; the Polars
-  `streaming` option, `--polars-streaming` and the MCP Polars `streaming` key
-  are deprecated aliases for the streaming engine.
-
-- pg-duckdb declares selectable `duckdb` and `postgres` engines, and Dask
-  declares `threaded` and `distributed`. Databricks SQL and Velox record their
-  observed engines without exposing selectors. Legacy `force_execution` and
-  `use_distributed` options warn and map to their canonical engine values.
-
-- Polars DataFrame maintenance operations materialize lazy frames with the
-  execution engine they are given. The TPC-DI DataFrame ETL and the
-  transaction-primitives manager pass the run's engine to them. The
-  `write_primitives` benchmark's timed DataFrame operations run on DuckDB, not
-  on the Polars engine, so that benchmark refuses a non-default engine (see
-  Fixed). The DataFrame comparison suite, profiling, validation and
-  dataframe-surface equivalence checks use Polars' default engine; these paths
-  do not receive `benchbox run`'s execution-engine selection.
-
-### Changed
-
-- `DialectTranslationMixin.translate_sql`, `BaseBenchmark.translate_query` and
-  ClickBench query translation now call `translate_sql_query` with an explicit
-  `identify` argument instead of calling the vendored SQLGlot directly, so the
-  DuckDB `ALL` restore and SQLite fix-ups are applied in one place. ClickBench
-  translation raises `SQLTranslationError` instead of silently returning the
-  untranslated ClickHouse SQL. Output differences caused by routing: SQLite
-  ClickBench Q19 and Q43 now use the wrapper's SQLite fix-ups, and the
-  `datafusion`, `netezza`, `ansi`, `standard`, `vertica` and `greenplum`
-  dialects now translate through the wrapper's PostgreSQL mapping where they
-  previously returned the ClickHouse text unchanged (all 43 queries on each of
-  those six targets; DataFusion included). Result-version note: ClickBench
-  results on SQLite (Q19, Q43) and on those six targets were computed with
-  different SQL before this change, are not comparable with earlier runs, and
-  should be rerun.
-
-- **BenchBox bundles a patched SQLGlot runtime.** SQL translation now uses a
-  pinned, pure-Python SQLGlot 30.23.0 build with three carried fixes, shipped as
-  a wheel inside BenchBox and imported from `benchbox._vendor.sqlglot`. Installing
-  BenchBox no longer installs public `sqlglot`; an independently installed
-  `sqlglot` is unaffected, but its SQL expression objects cannot be passed to
-  BenchBox. The first import reads the bundled archive directly, which added about
-  0.3 seconds to a cold interpreter in one measurement.
-- **Subscale TPC-H and TPC-DS results are ranked and labelled
-  "Subscale · Unofficial".** Runs below SF 1 now record Power@Size with an
-  `"unofficial": true` marker instead of suppressing it, and the Results
-  Explorer and `results-data/validate_corpus.py` rank them in their own
-  cohort. Non-standard runs at SF 1 and above stay unranked with suppressed
-  metrics. QphH@Size is still never computed for subscale runs, and
-  `benchbox submit` and `benchbox publish` still refuse them. Older bundles
-  without a compliance class are read as subscale below SF 1, so they keep
-  their rankings and gain the label. Fourteen published subscale bundles
-  stored no Power@Size; the Explorer derives it from their exported query
-  timings and marks it "derived". Cohort headers, rank rows, run receipts,
-  the compare page, Power@Size chart titles and CSV/JSON exports carry the
-  label. The Explorer read model moves to version 17 for the new
-  `power_score_source` column.
-- **TPC-H runs at SF 0.01 and SF 0.1 check every query's row count.** TPC
-  publishes answer files only at SF 1, so these scales used to check table
-  row counts only, and DataFrame runs reported UNCERTAIN. A new BenchBox
-  reference holds exact counts for all 22 queries at qgen's default
-  parameters, generated from bundled dbgen data and confirmed on DuckDB and
-  DataFusion. SQL and DataFrame runs now fail a query whose count differs.
-  Seeded runs skip the queries whose count depends on the parameters at that
-  scale (Q2, Q9, Q11, Q13, Q16, Q18, Q20 and Q21 at SF 0.01) and check the
-  rest, so they report UNCERTAIN unless a checked query fails. DataFusion SQL can return no rows for Q15, because it stores money
-  columns as floating point and the two revenue sums can differ; that query
-  now fails instead of passing silently.
-
-### Fixed
-
-- TPC-Havoc dialect rewrites now use the public SQLGlot query-builder API, so
-  the Presto-family array aggregation, PostgreSQL dual-source, and BigQuery
-  from-less rewrites no longer depend on version-specific AST dictionary keys.
-  The minimum-version replay gate added for those rewrites is retired: all
-  translation now runs on the bundled SQLGlot runtime, whose freshness is
-  enforced by the release gate instead.
-- TPC-Havoc Q18 variant 9 now keeps a deterministic ranking window with an
-  outer top-100 cutoff, so tied orders at the boundary return exactly 100 rows
-  like the canonical query instead of every tied row.
-
-- `make pr-open` updates supplied PR title and body fields in one REST request
-  only when their text changes. Repeating the command no longer rewrites an
-  unchanged body. `make pr-rerun` retries CI directly instead of using a PR edit.
-
-- `benchbox run --dry-run` with a deployment selector such as
-  `--platform timescaledb:cloud` no longer fails on Windows. The preview files
-  are named `tpch_timescaledb~cloud_<timestamp>.*` instead of using a colon,
-  which Windows file names cannot contain.
-- CedarDB baseline runs no longer issue or record the PostgreSQL planner
-  session settings, so a local result no longer carries session statements
-  that the public privacy validation rejects as unanonymized. The settings
-  now apply on tuned runs only, and `random_page_cost`, which CedarDB rejects
-  with "cannot change configuration parameter", is no longer sent.
-
-- Tuned runs on PostgreSQL and the platforms built on it no longer stop with
-  "Failed to write the tuned-run marker". Statements that return no rows, such
-  as the tuning metadata `CREATE TABLE`, no longer try to fetch rows.
-
-- ClickHouse and chDB runs that request primary keys now record the
-  `CREATE TABLE` whose `ORDER BY` comes from the declared key, and the
-  ClickHouse catalog check reads `system.tables.primary_key`, so a
-  `--tuning auto` run (primary keys only) reaches `applied_verified` instead
-  of recording the primary-key request as not applied.
-
-- Tuning validation and `benchbox tuning init` treat a platform variant such
-  as `duckdb:memory` like its base platform, so the sample configuration for a
-  variant includes the same layout tunings as the base platform.
-- `benchbox tuning init` lists only the constraint types the sample
-  configuration enables, and the `--tuning auto` notice on SQL platforms no
-  longer claims unique and check constraints are enabled.
-- Requesting materialized views on Doris now reports that BenchBox does not
-  create them on Doris, instead of a generic unsupported-type error.
-- `benchbox run --dry-run --tuning tuned` on a cloud platform whose driver is
-  not installed (for example Snowflake or Databricks) now shows the tuning DDL
-  preview from that platform's generator, with a warning that no platform
-  configuration was available. Before, the preview was silently empty.
-- Tuned dry runs now show a note above the tuning DDL preview when it is
-  generator output that execution does not run, and name each requested
-  tuning type that the platform does not apply at execution (also saved as
-  `ddl_preview_notes` in the dry-run JSON). The DuckDB preview lists the sort and
-  cluster indexes and the transactional sort rewrite that a real run executes.
-  The Athena preview no longer contains a `-- Note: PARTITIONED BY ...`
-  placeholder line.
-- Tuned and `--tuning auto` TPC-DS runs on SQLite no longer fail during data
-  loading. TPC-DS generated data does not satisfy every declared foreign key,
-  so SQLite now creates TPC-DS tables without foreign keys, as DuckDB already
-  did, and both record the requested foreign keys as dropped with that reason
-  instead of the generic "adapter rendered no statement".
-- The shipped DuckDB TPC-DS tuned template no longer requests foreign keys,
-  which DuckDB never applies to TPC-DS. Tuned DuckDB TPC-DS runs now reach
-  `applied_verified`; the tables and query plans are unchanged.
-- On DuckDB, the sort index that a tuned run re-creates after the in-place
-  sort rewrite is now recorded in the applied-tuning ledger as `satisfied` by
-  the original `CREATE INDEX`, not as a second executed statement, because
-  the rewrite keeps the index and the re-create does nothing. The run's
-  verification status does not change, but the applied-ledger hash of sorted
-  DuckDB runs does. The ClickHouse tuning introspector now escapes
-  backslashes as well as quotes in its table filter.
-
-- SQLite runs now honour `--platform-option database_name=<name>`. The run
-  creates and uses `<name>.db` in the benchmark's database directory. Before,
-  the option was ignored and the run used the default
-  `<benchmark>_<scale>_notuning_noconstraints.sqlite` file. Runs without the
-  option keep the default name.
-- A `DatabaseConfig` whose `type` used a `<platform>:<mode>` selector no longer
-  breaks registry and credential lookups, puts `:` in database file names,
-  falls back to the no-op DDL generator for TimescaleDB, or drops the
-  deployment from the dry-run output.
-- DataFrame runs built from Python config keep their platform options: a
-  `lakesail-df` (or other `-df`) config no longer loses `endpoint` and the
-  other registered options, and the selected deployment reaches
-  `LakeSailDataFrameAdapter`, which records it as `deployment_selected`
-  instead of passing it to Spark as a session setting. Dry runs of DataFrame
-  configs no longer report "Unsupported platform: lakesail-df".
-- `benchbox run --platform lakesail-df:distributed` keeps the deployment and
-  its DataFrame mode; before, the `:distributed` suffix was dropped.
-- Dry runs of TSBS DevOps (`benchbox run --benchmark tsbs_devops --dry-run`
-  and the Python API) preview the queries instead of reporting
-  "Unknown benchmark: tsbs_devops".
-- The LakeSail, LakeSail DataFrame, LakeSail-vs-Spark, TigerData and InfluxDB
-  getting-started examples select their deployment with the selector and
-  dry-run without a deprecation warning. The LakeSail DataFrame and InfluxDB
-  examples, whose dry runs and real runs called APIs that no longer exist,
-  now use `execute_example_dry_run` and `BenchmarkOrchestrator.execute_benchmark`;
-  the LakeSail-vs-Spark example gains `--dry-run OUTPUT_DIR`.
-
-- A tuning file that sets only some constraint types (for example
-  `primary_keys: {enabled: true}`) no longer fails validation with
-  "requested unique_constraints is not applied at execution". Leaving out
-  `unique_constraints` or `check_constraints` now means the file does not
-  request them; before, the omitted keys defaulted to enabled.
-
-- `benchbox run --force datagen` and `--force all` now regenerate TPC-H data
-  that is already valid on disk. Before, the data generator never received the
-  force request and logged "Skipping data generation (existing data is valid)".
-  TPC-Havoc, Write Primitives and Transaction Primitives had the same problem.
-  The force request now reaches every benchmark that accepts it. Runs without
-  `--force` still reuse valid data.
-
-- Load-only runs (`--phases generate,load`) on SQL platforms exit 0 again
-  after a successful load. Before, every such run loaded the data and then
-  failed with "'NoneType' object has no attribute 'overall_status'" because
-  the applied-tuning ledger was never created outside the full benchmark run.
-  A load that fails still exits non-zero.
-
-- `--force datagen` (and `--force all`) drops and recreates an existing
-  benchmark database. Before, the request stayed nested in the platform
-  options, so adapters saw `force_recreate=False` and reused the old database.
-  Dry runs now record the same `force_recreate` value the real run uses.
-  `--platform-option force_recreate=true` already worked and is unchanged.
-
-- InfluxDB and LakeSail `deployment_mode` are now deprecated aliases of the
-  `--platform influxdb:core|cloud` and `--platform lakesail:local|distributed`
-  selectors, like their `mode` and `sail_mode` spellings. Before, supplying
-  them logged no deprecation notice, and the 0.6.0 removal of the aliases would
-  have missed them. A run that does not pass the option logs no notice.
-
-- Generated database names now stay the same when nested tuning configuration keys are reordered.
-
-- Spark, LakeSail and Velox untuned runs now use engine defaults for AQE, CBO,
-  shuffle partitions and broadcast thresholds unless an explicit adapter option
-  sets them; tuned runs keep the curated values. Cache disabling and Spark's
-  driver and executor memory and core settings still apply in every mode, and
-  Spark no longer forces a Hadoop compression codec list. These harness
-  settings are recorded in the tuning ledger separately from applied tuning,
-  with sensitive values redacted.
-
-- Sorted ingestion no longer runs unsafe CTAS rewrites on Athena, Azure Synapse
-  and Redshift. Athena's rewrite read from the table it was replacing and always
-  failed; Synapse left an unsorted original plus an orphan `__ctas_sort` copy
-  while reporting the table as sorted; Redshift's copy lost its distribution,
-  encodings and constraints. The `ctas` method now runs no SQL on these
-  platforms, and the run records the sort as not applied with the reason.
-  Redshift `vacuum_sort` is unchanged.
-
-- The Dask error for `use_distributed=false` with `scheduler_address` now tells
-  you to use the `distributed` engine, instead of first suggesting `threaded`,
-  which cannot connect to a scheduler.
-
-- The Velox Docker entrypoint and the Velox guides select the deployment with
-  `--platform velox:local` or `velox:remote` instead of the deprecated
-  `deployment` option, so container runs no longer log a deprecation warning.
-  `check_explorer_compat.py --help` shows examples for the current Explorer
-  read-model version and every example runs. The pg_duckdb option table lists
-  the `schema` option again. Guides, examples, the landing quickstarts and the
-  `benchbox run --help` text no longer use deprecated spellings: LakeSail
-  `sail_mode`, ClickHouse and InfluxDB `mode`, Snowflake and Databend
-  `warehouse`, and Polars `streaming=True`. The Firebolt and Fabric Warehouse
-  error messages no longer recommend deprecated options.
-
-- A `--platform-option` value now overrides a saved credential profile even
-  when it equals the option's default. Before, `--platform-option
-  host=localhost` against a saved `host: prod.example.com` connected to
-  `prod.example.com`, so table creation and loads ran against the saved host.
-  This affected the PostgreSQL family, Trino, Presto and the MySQL-wire
-  platforms.
-- Platform names that the registry accepts as aliases (`sqlite3`,
-  `azure_synapse`, `pg_duckdb`, `fabric_lakehouse`) now accept the same
-  `--platform-option` keys as their canonical names, where they used to fail
-  with "does not accept platform-specific options".
-- The ClickHouse, DuckDB and SQLite option definitions now register when
-  `benchbox.platforms` is imported, so Python and MCP callers see the same
-  options as the command line. An invalid integer or number option value is
-  reported as a platform option error instead of a traceback.
-- Options that have no effect now log one warning per run and are left out of
-  the platform information a result records, instead of being recorded as if
-  they had been applied. Under the Dask `threaded` execution engine this covers
-  `n_workers`, `threads_per_worker`, `memory_limit` and `spill_directory`, and
-  the spill setting from a tuning file, which only the `distributed` engine's
-  local cluster uses. LakeSail `sail_workers` always warns, because the Sail
-  server takes no worker count from BenchBox. The Dask documentation example now
-  sets `threads_per_worker` with `--execution-engine distributed`. The LakeSail
-  documentation, deployment modes page and manifest now say that `distributed`
-  connects to an external Sail server without starting a local one, and does not
-  create a multi-node run.
-
-- Error messages for incomplete Azure Synapse, Fabric Warehouse and Databricks
-  configuration no longer tell you to set `SYNAPSE_*`, `FABRIC_*` or
-  `DATABRICKS_HTTP_PATH` environment variables, which BenchBox never read.
-  They now name the supported ways to configure credentials: `benchbox setup`
-  where the platform has it, the platform section of
-  `~/.benchbox/credentials.yaml` (values may reference environment variables as
-  `${VAR}`), and `--platform-option`. The Databricks DBFS credential check no
-  longer lists `DATABRICKS_HTTP_PATH`, and the unused
-  `build_fabric_spark_config_from_env` helper is removed. Tests:
-  `tests/unit/platforms/test_credential_error_messages.py`.
-
-- MCP accepts `<platform>:<mode>` platform names when the manifest declares the mode, for example
-  `clickhouse:server`, and `connection_profile` on ClickHouse is checked against the resolved deployment
-  instead of requiring the deprecated `deployment_mode`. `velox:remote` stays rejected.
-  `dry_run` and `validate_only` now apply `execution_engine`, `platform_options` and the platform selector through the
-  same validation as a real run and show them in the response. The contract no longer lists the `mode` alias
-  that the allowlist always rejected.
-
-- `--platform-option` values now reach the platforms that build their
-  configuration through the default path. EMR Serverless, Dataproc, Synapse
-  Spark, Fabric Spark and Snowpark Connect receive `compute_resource` (and
-  Snowpark Connect `compute_size`), Fabric Warehouse receives `server`, `workspace`, `database`,
-  `auth_method`, `tenant_id`, `client_id`, `client_secret` and `staging_path`,
-  and PySpark receives `driver_memory` and `shuffle_partitions`. Previously the
-  values were parsed and recorded but the adapter fell back to its own
-  defaults. Spark also forwards `java_home`. The recorded `platform_options`
-  keep their shape.
-- The DuckDB `threads` option now sets the thread limit, ahead of the value
-  derived from the system profile, and `temp_directory` now sets the spill
-  directory when the connection opens. The SQLite `database_path` and `timeout`
-  options now take effect, so the "database path configuration" error points
-  at an option that works. The plan options `plan_max_depth` and
-  `plan_capture_timeout_seconds` also reach the DuckDB and SQLite adapters.
-  Without these options the DuckDB connection runs the same statements as
-  before. Tests: `tests/unit/cli/test_platform_options_reach_adapters.py`.
-- `benchbox report rankings` lists imported runs. The results database stored
-  the lowercase `passed` that result bundles carry, while the ranking and
-  status filters matched `PASSED`, so rankings were always empty after
-  `benchbox report import`. The database now stores the status in uppercase,
-  every status filter ignores case, and opening an existing database upgrades
-  it to schema version 3, which uppercases the stored statuses. Result
-  bundles and their identifiers are unchanged.
-- Public result bundles no longer carry the compute resource name in raw
-  platform metadata. When a bundle held the platform's compute block under
-  `platform.raw_metadata.platform_compute`, a Snowflake warehouse, Redshift
-  workgroup or cluster, Databricks warehouse, Firebolt engine or ClickHouse
-  Cloud service name stayed in clear text there; anonymization now drops
-  `resource` from that block as it already did from `platform.compute`.
-  `resource_kind`, `size` and the observed execution engine stay readable.
-  Published bundles are unchanged.
-- The MCP server no longer reconfigures Python's root logger. Importing
-  `benchbox.mcp.server` leaves logging untouched, and `create_server` sets the
-  level and a single stderr handler on the `benchbox` logger only, so an
-  embedding application keeps control of its own logging. The stdio transport
-  still writes nothing to stdout. Covered by `TestServerLoggingScope` in
-  `tests/unit/mcp/test_mcp_stdout_isolation.py`.
-- TimescaleDB and Databend deployment modes can now be selected and are
-  recorded. `--platform timescaledb:cloud` was refused, and
-  `TimescaleDBAdapter.from_config` dropped `deployment_mode`. Both platforms now
-  accept `name:mode` for each mode the manifest declares, and record the choice
-  as `platform.deployment.selected`, so Timescale Cloud and self-hosted runs, and
-  Databend Cloud and self-hosted runs, get separate variant ids (for example
-  `timescaledb~cloud`, `databend~self-hosted`). Runs that select no mode keep
-  the platform id they had. `databend:self-hosted` connects over HTTP on port
-  8000 unless you set `ssl` or `port`.
-- The deployment option aliases (`deployment_mode`, `mode`, `deployment`,
-  `sail_mode`, `firebolt_mode`) now come from the one deprecated-alias table.
-  Before, a second hand-written list beside it decided which platforms accept
-  the `name:mode` selector. TimescaleDB and Databend `deployment_mode` are
-  deprecated aliases of the selector and are removed in 0.6.0, like the others.
-- Dry-run previews no longer write saved credentials or connection secrets in
-  clear. The JSON and YAML preview files written by `benchbox run --dry-run`
-  apply the same redaction as result bundles to the benchmark, database and
-  platform configuration: secret options such as a Quanton `api_key` or a
-  Snowflake or Redshift `password`, and user names, become `<redacted>`; the
-  user and password in a URI, such as `gateway_host=https://user:pass@host`,
-  become `****`.
-  Other options, such as `compute_size` and hosts, stay readable. The real run
-  still receives the credentials.
-- The new-platform scaffold emits a manifest entry that passes the manifest
-  validator the package runs at import. The entry sets `default_mode` and the
-  required metadata fields; an SQL entry names the adapter `class_name` and
-  the next registration order, and a DataFrame entry adds the `<key>-df` alias
-  instead of an SQL adapter. The DataFrame stub extends the expression-family
-  adapter rather than the SQL `PlatformAdapter`, at the path the file plan
-  names (`benchbox/platforms/dataframe/<key>_df.py`). Both stubs define a
-  `resolve_execution_engine` hook. `--output-dir` writes the entry as
-  `manifest-entry.json`, and the script exits with an error naming the problem
-  when the entry fails validation, for example a key that already exists.
-- The Explorer compatibility checker is tested the way the publication deploy
-  workflow runs it, as a script, and its fallback read-model version is tested
-  against the Explorer contract version.
-- Public result exports keep an execution engine name readable under an
-  `engine` key inside an engine receipt's native settings
-  (`platform.execution_engine.applied_native` and its copy under
-  `platform.raw_config`) for every platform, when the value is `default`, an
-  engine a platform declares in the manifest, or a gateway route target.
-  Before, only Polars engine names in `collect_kwargs.engine` stayed readable
-  and other platforms' engine names were hashed there. Engine names under any
-  other key or path, undeclared values, and identifiers such as hosts or
-  databases inside the receipt are still hashed or redacted.
-- Athena Spark can start a session. BenchBox no longer sends an engine
-  version in the `StartSession` request; the AWS SDK rejected that field on
-  every attempt, because the Spark-enabled workgroup sets the engine version.
-  `runtime_version` (and its deprecated alias `engine_version`) is now
-  recorded in results as requested, with `runtime_version_source: requested`,
-  and is not recorded when you do not set it. A rejected session request now
-  fails as a configuration error naming the workgroup.
-- `benchbox run --platform athena-spark` accepts the documented platform
-  options (`s3_staging_dir`, `region`, `database`, `runtime_version`, DPU
-  sizes and timeouts) and passes them, with `compute_resource`, to the
-  adapter. Before, every option except `compute_resource` was rejected and
-  the workgroup never reached the adapter.
-- A new result bundle now joins the Explorer row and the corpus depth identity
-  of earlier bundles of the same platform. A default Polars run is `polars`
-  ("Polars"), not a separate `polars-df` row labelled "Polars (polars-df)", and
-  a DuckDB rerun no longer counts as a second identity in its cohort. The
-  Explorer and `results-data/validate_corpus.py` build the variant from the
-  display-name platform ID plus the suffix from the same core function the
-  result writer uses, and read the requested engine through the legacy reader,
-  so a streaming run is `polars+streaming` ("Polars (streaming)") in both. The
-  stored `platform.variant` value is unchanged (`polars-df+streaming`). The
-  depth report now lists platform IDs (`duckdb`) instead of display names.
-- Spark `tuned` session configuration (`platform_optimizations.spark`) is now
-  applied once per run in `SparkAdapter.configure_for_benchmark`, after the OLAP
-  defaults, so tuned values survive. The tuning file wins over BenchBox defaults
-  and adapter options (reported when it shadows one); engine-refused or
-  mismatched keys are recorded as failed ledger statements and warned. Result
-  metadata reports the live tuned values for shuffle partitions and adaptive
-  execution.
-- Tuning validation now rejects tuning requests the platform cannot execute,
-  and platforms without tuning coverage error on unsupported types like
-  covered platforms. The registry corrects several platforms' coverage
-  (Postgres family, Doris, SingleStore, Databend, Starburst, MotherDuck,
-  DataFusion, and fabric-warehouse, which now has its own entry instead of
-  sharing Databricks'), and the sample and fallback configuration builders
-  only enable tuning the target platform supports. Layout tuning on
-  BigQuery, Redshift, Trino and Synapse now errors until their execution
-  support lands.
-- Tuned load-only runs (`--phases generate,load`) now go through the same
-  apply → load → reconcile → metadata → ledger/receipt → export lifecycle as
-  full runs, so a load-only bundle never carries a tuned mode without
-  `platform.tuning`. Adapters without the full lifecycle refuse tuned load-only
-  runs with an actionable error instead.
-- Result metadata records genuine engine versions (`engine_version`, `engine_version_source: sql_query`) for DuckDB, SQLite and DataFusion queried directly from the active connection rather than package versions.
-- A successful physical sort rewrite (CTAS or constraint-preserving in-place sort)
-  is recorded as an executed post-load ledger statement and shown in the run
-  receipt as attested (`Recorded; not catalog-checkable`). Attested evidence never
-  satisfies catalog-verifiable intents and never promotes a run to verified on
-  its own.
-- ClickHouse tuning introspection bounds table queries in SQL by ledger tables and measures snapshot truncation directly on raw query results.
-- The Atom feed uses canonical `/blog/` self and entry links while retaining stable entry IDs for existing subscribers.
-- Deprecated option aliases now show their warning. The Polars `streaming`
-  option, `--polars-streaming`, Dask `use_distributed`, pg-duckdb
-  `force_execution`, vendor compute names (including Athena Spark
-  `engine_version`) and native deployment keys each log one warning per run,
-  on the CLI (including `--dry-run`) and in the MCP server log. The warning names the spelling you supplied, its replacement
-  and the release that removes it (0.6.0). Most of these were Python
-  `DeprecationWarning`s, which Python hides by default, and a long-running MCP
-  server warned only once per process. ClickHouse `mode=local` now prints one
-  warning instead of two and no longer names `deployment_mode`.
-- `--polars-streaming` now records `resolution: legacy_option`, like the
-  Polars `streaming` option and the MCP `streaming` key, instead of
-  `explicit`.
-- `benchbox compare`, the MCP `compare_results` tool and `benchbox report`
-  no longer mix execution variants. `benchbox compare` treated every bundle
-  as the `local` deployment, so a self-hosted run and a cloud run compared as
-  one variant; MCP `compare_results` did not check variants at all; and the
-  report database averaged every run of a platform, benchmark and scale
-  together. Compare and MCP `compare_results` now refuse and name the part
-  that differs, for example `deployment differs (self-hosted vs cloud)`; the
-  CLI still accepts `--allow-heterogeneous-comparison`. A bundle without a
-  selected deployment uses the platform's default deployment, so earlier
-  bundles still compare with new default runs. `benchbox report regressions`
-  and `benchbox report trends` compare each run only with runs of the same
-  deployment, requested engine and gateway, and show that variant. Results
-  added with `benchbox report import` now count in trends and regressions;
-  their lowercase `passed` validation status excluded them before.
-- Redshift accepts `--platform-option workgroup_name=…`,
-  `cluster_identifier=…` and `compute_resource=…`. Each failed before with
-  "Ambiguous compute resource". A native key selects its kind, and a bare
-  `compute_resource` names the workgroup on a Serverless host and the cluster
-  on a provisioned host. A `cluster_identifier` is no longer also used as the
-  workgroup name.
-- A saved credential profile no longer blocks command-line compute and
-  deployment settings. Before, a Snowflake `warehouse`, Firebolt
-  `engine_name` or `engine_size`, ClickHouse Cloud `service_id` or Redshift
-  `workgroup_name` saved by `benchbox setup` made the same setting on the
-  command line fail as a conflict, and a saved LakeSail `sail_mode` blocked
-  `--platform lakesail:distributed`. The command line now wins, and errors
-  name the values you supplied.
-- Result bundles from Snowflake, Firebolt, ClickHouse Cloud and Databricks
-  now record `platform.compute.resource`, `resource_kind` and `size`. Before,
-  only Redshift and platforms using the default metadata builder recorded
-  them. Databricks records the warehouse size it observes.
-- Databricks `compute_resource` now sets the HTTP path
-  `/sql/1.0/warehouses/<id>`, so a run no longer needs `http_path` from
-  `benchbox setup` or the environment, and it overrides an auto-detected
-  path. The conflict check accepts the `/warehouses/` and `/endpoints/` forms
-  and ignores a query string such as `?o=123`.
-- `--platform-option mode=…` and `deployment_mode=…` work for InfluxDB.
-  Before, the CLI rejected them as unknown options, because they were
-  registered only when the InfluxDB adapter package was imported.
-- `benchbox run --platform quanton` builds its configuration instead of
-  failing with a missing config builder, and a saved `cluster_size` is no
-  longer overridden by the `compute_size` default.
-- Result bundles from `benchbox run` and MCP `run_benchmark` now record the
-  requested engine as `config.execution_engine`, for SQL and DataFrame runs
-  alike (`default` when none was requested). The field was defined by result
-  schema 2.3 but never written by a real run.
-- A default Polars DataFrame run passes no `engine` argument to `collect()`,
-  as before execution engines were added, so Polars itself chooses. The
-  bundle records `collect_kwargs: {}` and still records the engine Polars
-  uses as `applied` (`auto` on Polars 1.44.2). Explicit, tuning-file and
-  legacy-option engines still pass `engine=<name>`.
-- `benchbox run` and MCP `run_benchmark` refuse a non-default execution
-  engine for a benchmark whose timed DataFrame work does not run on the
-  platform's engine, before generating data, and name the benchmark. The
-  `write_primitives` benchmark is the only such benchmark: on `polars-df` it
-  ran its timed operations on DuckDB while the result was labelled with the
-  requested Polars engine.
-- TPC-DI DataFrame ETL maintenance and the transaction-primitives DataFrame
-  manager now receive the run's execution engine; before, they always used
-  the default.
-- The cross-surface equivalence gate's dtype check collects Polars frames
-  through the adapter, so it uses the requested engine like the row check. An
-  unsupported `--execution-engine` value, or one given without the expression
-  backend, is now a usage error instead of a traceback.
-- The DataFrame tuning templates (`DataFrameTuningLoader.get_template`,
-  `get_optimized_template` and `get_memory_constrained_template`) no longer set
-  `engine_affinity` or `streaming_mode` for Polars.
-- The DataFrame smart-defaults low-memory message no longer says it enables
-  streaming mode, which it has not done since automatic tuning stopped
-  choosing an engine.
-- Bundles from platforms without selectable execution engines, such as DuckDB
-  and pandas, now record the default engine receipt in
-  `platform.execution_engine`: requested `default`, applied `null`,
-  resolution `platform_default` and observed `not_captured`. The platform
-  variant stays `duckdb` or `pandas-df`. The legacy `streaming` mapping now
-  applies only to Polars DataFrame bundles and reads only
-  `config.platform_options.streaming`, so an older DuckDB or SQL Polars bundle
-  with that option no longer reads as a streaming variant.
-- SQL `PolarsAdapter(streaming=True)` logs a deprecation warning once per run
-  and runs on the default engine, instead of raising
-  `UnsupportedExecutionEngineError`. The option has no effect on this adapter
-  and is rejected from 0.6.0, as it was a no-op in 0.4.2. `streaming=False` is
-  accepted silently, and the bundle records the default engine receipt.
-- Databricks result bundles no longer present the warehouse `enable_photon`
-  setting as an observed engine. `platform.execution_engine` records `photon`
-  or `standard` as `applied`, with `applied_class` and
-  `applied_native.enable_photon`, and leaves `applied` empty when the setting
-  cannot be read. `observed` stays `not_captured` with `observed_source` `none`,
-  because the setting does not show which engine ran a query.
-- A saved credential profile that contains `execution_engine` is no longer
-  ignored without a message. The run fails before any work starts and the
-  error names `--execution-engine` as the way to choose the engine. The key was
-  never a valid profile key.
-
-### Before you upgrade
-- Spark tuning validation no longer borrows the Databricks rules. Spark has its
-  own capability entry: Liquid Clustering, Z-Ordering and the other Databricks
-  layout types are reported as unsupported on Spark, partitioning stays
-  unsupported, sorting is applied only on Delta tables, and keys stay accepted.
-  Spark runs that use a Databricks template no longer show that template's
-  measured evidence label. Delta stays an alias for Databricks.
-- A tuning file's `platform_optimizations.spark` map now applies on Velox the
-  same way as on Spark (set, read back, and recorded in the applied-tuning
-  ledger). On LakeSail it is no longer reported as applied: LakeSail accepts
-  settings it ignores, so validation warns and each key is recorded as a
-  dropped intent, which keeps such runs from being reported as verified.
-- Athena tables no longer carry PRIMARY KEY or FOREIGN KEY clauses. Athena's
-  CREATE EXTERNAL TABLE has no constraint syntax, so BenchBox now removes them
-  before creating each table, and a tuning file that asks for primary or
-  foreign keys on Athena fails validation with an error that says the
-  platform does not apply them. Turn those keys off in Athena tuning files.
-- The tuning policy generation is now `adr-003-spark-baseline`. Spark,
-  LakeSail and Velox results recorded under `adr-003` or earlier are not
-  comparable with new ones, because untuned runs no longer set AQE, CBO,
-  shuffle-partition or broadcast-threshold values. The Explorer warns when a
-  comparison spans the two generations.
-- The standalone TPC-H maintenance phase now applies DBGen update sets instead
-  of synthetic rows, and runs only on adapters that declare refresh support:
-  DuckDB, SQLite, PostgreSQL and the adapters built on it, Snowflake, and
-  SingleStore. On other adapters, including ClickHouse, Databricks, BigQuery,
-  Trino and Redshift, the phase no longer modifies data. It completes with one
-  skipped `maintenance_not_supported` row.
-- `benchbox metrics qphh` and `benchbox calculate-qphh` still print
-  Power@Size and Throughput@Size and exit 0 for TPC-H result pairs. They now
-  also print QphH@Size when both files carry official refresh evidence, and
-  otherwise list the reasons QphH@Size is not reported. JSON output adds
-  `refresh_included` and either `qphh_at_size` or `qphh_unavailable`.
-- Runs with `tpch_refresh_functions=true` fail before any work on adapters
-  without refresh support and on DataFrame engines.
-- Runs whose tuning configuration contains nested mappings (for example per-table
-  settings) get a different generated database name once, because the name now
-  ignores the order of nested keys. BenchBox does not find the database an
-  earlier release created for the same configuration, so it creates a new one
-  and loads the data again. Drop the old database if you no longer need it.
-  Names for flat configurations do not change.
-- Dask `use_distributed=false` together with `scheduler_address` now fails with
-  an error. In 0.4.2 it connected to the scheduler. To connect to an existing
-  scheduler, use the `distributed` engine:
-  `--execution-engine distributed --platform-option scheduler_address=tcp://host:8786`.
-- A `--platform-option` value that equals the option's default now overrides a
-  saved credential profile, as any other value already did. If a run relied on
-  the saved value winning, remove the `--platform-option` or save the value you
-  want.
-- Result metadata for Dask runs on the `threaded` engine no longer contains
-  `n_workers`, `threads_per_worker`, `memory_limit`, `spill_to_disk` or
-  `spill_directory`, and LakeSail metadata no longer contains `sail_workers`.
-  Those settings never changed the run. Use `--execution-engine distributed`
-  to size a Dask local cluster. The options stay accepted, and each one now
-  logs a warning.
-- DuckDB `--platform-option threads=N` and `temp_directory=<path>`, and SQLite
-  `--platform-option database_path=<path>` and `timeout=<seconds>`, were
-  accepted but ignored in earlier releases. Commands and saved configurations
-  that already pass them now change the thread count, spill directory, database
-  file and connection timeout of the run. Remove an option you do not want
-  applied.
-- SingleStore no longer declares a `cloud` deployment mode. The adapter connects
-  by host and never behaved differently for Helios, so recording the mode would
-  have been false evidence. Use `--platform singlestore` for both Helios and
-  self-managed clusters; both record the same deployment.
-- `databend:self-hosted` connects over plain HTTP (port 8000) by default, where
-  `databend` and `databend:cloud` keep HTTPS on port 443. Runs that use
-  `--platform databend` with `ssl=false` are unchanged.
-- `benchbox compare` and MCP `compare_results` now refuse two results whose
-  deployment, requested execution engine or gateway differ. Pass
-  `--allow-heterogeneous-comparison` to the CLI to compare them anyway.
-  `benchbox report regressions` lists each variant separately.
-- Default Polars DataFrame runs record
-  `platform.execution_engine.applied_native.collect_kwargs` as `{}` instead of
-  `{"engine": "auto"}`, because BenchBox no longer passes the engine argument
-  when you request none. `requested`, `applied` and `platform.variant` do not
-  change.
-- `benchbox run --benchmark write_primitives --platform polars-df` with
-  `--execution-engine` other than `default`, a tuning file that selects an
-  engine, or the deprecated Polars `streaming` option now fails before any
-  work. Run that benchmark with the default engine.
-- Polars tuning templates from `DataFrameTuningLoader` no longer select the
-  `in-memory` or `streaming` engine. Pass `--execution-engine` to choose one.
-- Athena Spark `runtime_version` no longer tries to choose the Spark engine
-  version. Set the version on the workgroup; BenchBox records the value you
-  pass as requested.
-- Deprecated-alias warnings are now WARNING log records from the
-  `benchbox.core.deprecation_notices` logger instead of `DeprecationWarning`s.
-  Code that filtered or asserted on `DeprecationWarning` for these aliases
-  must read the log instead. `--quiet` still hides them.
-- `--platform-option deployment_mode=...` for InfluxDB and LakeSail now logs a
-  deprecation notice and stops working in 0.6.0. Use `--platform influxdb:core`,
-  `--platform influxdb:cloud`, `--platform lakesail:local` or
-  `--platform lakesail:distributed`.
-- Runs that pass `--polars-streaming` record
-  `platform.execution_engine.resolution` as `legacy_option` instead of
-  `explicit`. The requested and applied engines and `platform.variant` do not
-  change.
-- Vendor compute names now warn once per run; move saved configurations and
-  credential profiles to `compute_resource` and `compute_size` (Fabric Data
-  Warehouse: `database`; Athena Spark: `runtime_version`). The old names stop
-  working in 0.6.0. A compute value on the command line overrides the saved
-  credential profile, and the saved profile overrides a default. Two
-  spellings that disagree in the same place (for example `warehouse` and
-  `compute_resource` both on the command line, or both in one saved profile)
-  stop the run before any work and name both values. On Databricks a
-  `compute_resource` sets the HTTP path to `/sql/1.0/warehouses/<id>`; an
-  `http_path` from the same place that names a different warehouse stops the
-  run naming both values.
-- `benchbox setup --platform snowflake` now saves the warehouse as
-  `compute_resource`. Profiles saved earlier with `warehouse` keep working
-  until 0.6.0.
-
-- Result bundles now use additive schema 2.3. Readers must accept this version.
-  Older bundles remain readable and published bundles and IDs are unchanged.
-
-- **Deployment selection is explicit and fail-closed.** A `--platform
-  name:mode` selector that disagrees with a deployment platform option (for
-  example `--platform firebolt:core --platform-option deployment_mode=cloud`)
-  now fails before any work starts instead of silently picking one; pass one
-  spelling. Unknown deployment values are rejected the same way.
-- **Polars automatic tuning no longer selects a streaming engine on small hosts.**
-  `--tuning auto` and `--tuning tuned` on Polars no longer switch to the
-  streaming engine on hosts under 16 GB; the engine stays at `default` on
-  every host. Use `--execution-engine streaming` instead. Tuning files you
-  wrote yourself that set `execution.engine_affinity` or
-  `execution.streaming_mode` are still honored.
-
-- **ClickHouse tuned runs are faster, and their results are not comparable with earlier ones.**
-  The tuned session settings no longer switch the join algorithm to
-  `grace_hash`, which made joins about 2× slower on SF1 TPC-H. The ClickHouse
-  TPC-H tuned template no longer partitions `LINEITEM` and `ORDERS` by month;
-  the date sort keys stay, and they give the same date-range pruning, so the
-  recorded tuning configuration of that template changes. TPC-H Q21 on tuned
-  server runs now sets `join_algorithm = 'hash'` for that statement so it fits
-  the 5.25 GiB memory envelope. A tuned server-mode load
-  now waits, up to 10 minutes, for background merges to finish before the first
-  query, and the wait is not counted as load time. Don't compare tuned
-  ClickHouse timings recorded before this change with results after it.
-- CLI help, MCP descriptions and benchmark descriptions use explicit metadata.
-  Python API references retain public contracts independently of source docstrings.
-  Generated query implementations and regional price resolvers no longer assign
-  explanatory `__doc__` text. Code that reads those docstrings should use query
-  metadata or the API reference; callable names, signatures and query behavior
-  are preserved.
-
-- **Tuning maintenance runs after the load.** ClickHouse `OPTIMIZE TABLE ...
-  FINAL`, Redshift `ANALYZE` and `VACUUM`, Databricks Delta `OPTIMIZE` and
-  `ANALYZE`, and Snowflake `RESUME RECLUSTER` ran before any data was loaded,
-  on empty tables. They now run after each table loads. ClickHouse `OPTIMIZE`
-  is off unless you set the `optimize_after_load` platform option to `true`.
-  Redshift keeps its existing isolated `VACUUM` and `ANALYZE` pass over every
-  loaded table, so the tuning step adds an `ANALYZE` only when `auto_analyze`
-  is off. Databricks does not repeat its load-time `OPTIMIZE` on a table the
-  tuning step already optimized. A load-only run (`--phases generate,load`)
-  does not run Redshift's isolated pass, so it no longer vacuums tuned tables;
-  the next benchmark run does.
-  Data-loading time, in total and per table, excludes this maintenance; its
-  time is reported as `phases.post_load_maintenance`.
-- **ClickHouse primary keys and tuned sort keys.** With a tuned sort key,
-  `primary_keys.enabled: false` now takes effect and emits no `PRIMARY KEY`
-  clause. Before, it was ignored and a date-first sort key such as
-  `(O_ORDERDATE, O_ORDERKEY)` stopped schema creation with a ClickHouse error.
-  An enabled primary key that is not a prefix of the tuned sort key now fails
-  before any table is created, with a message that says to put the key columns
-  first or disable `primary_keys`.
-- **DuckDB `auto` and `tuned-fallback` runs no longer enable CHECK
-  constraints.** CHECK constraints cannot be confirmed from the catalog, so
-  these DuckDB configurations no longer request them, matching the shipped
-  DuckDB templates. No shipped benchmark schema emits a CHECK constraint, so
-  the tables are unchanged, and other platforms are unchanged. These DuckDB
-  runs record a different `requested_config_hash`, and their cached database
-  is rebuilt on the next run (for example `tpch_sf001_custom_pk_fk_uniq_check`
-  becomes `tpch_sf001_custom_pk_fk_uniq`).
-- **Spark, LakeSail and Velox per-query times no longer include `clearCache()`.**
-  With `disable_cache` on (the default), these adapters cleared the session
-  cache inside each query's timer. They now clear it before the timer starts,
-  so recorded query times can drop compared with earlier runs. On a shared
-  session another stream's clear can still overlap a timed query during
-  throughput and stays inside the throughput total time. Don't compare their
-  per-query times recorded before this change with results after it.
-- **A throughput run limited to a query subset reports no Throughput@Size.**
-  Subset runs follow filtered parameter positions and are not TPC-compliant.
-  The run still succeeds and reports query throughput.
-- **Throughput now honors `validation_mode` and `--queries`.** TPC-H
-  throughput ignored `validation_mode`, so `--validation-mode disabled` still
-  failed streams on a row-count mismatch. Neither TPC-H nor TPC-DS throughput
-  read the query subset, so `--queries 1,6 --phases power,throughput` ran the
-  subset in the power phase and every query in the throughput phase. Both now
-  follow the options, and each stream runs its own permutation filtered to the
-  subset.
-- **A saved stream timeout now applies to throughput runs.**
-  `execution.concurrent_queries.stream_timeout_seconds` used to be read by
-  nothing; it now sets the timeout of every TPC-H and TPC-DS throughput stream
-  (0 disables it), and `cancel_on_timeout` next to it stops a timed-out stream
-  before its next query. Config files written by `ExecutionConfigHelper`
-  (`apply_performance_profile`, `optimize_for_system`, or any settings update)
-  or by an earlier default often hold 1800, 3600, 7200 or 10800. A TPC-DS
-  stream that runs longer than a saved value now times out and the run
-  reports no Throughput@Size, where before it ran for the 7200 s default.
-  Check `execution.concurrent_queries.stream_timeout_seconds` in your config
-  file and remove it to keep each benchmark's default (3600 s for TPC-H, 7200 s
-  for TPC-DS). The helper no longer writes a stream timeout unless you set one,
-  and each throughput run prints the effective timeout and where it came from.
-- **A stream count of 1 is no longer raised to 2.** `BenchmarkConfig.concurrency`
-  and `RunConfig.concurrent_streams` default to `None`, which runs the
-  2-stream default. An explicit count below 2 is rejected when the run
-  includes throughput. Saved runs that recorded 1 replay as not set.
-- **Legacy throughput APIs now run the supported drivers and are deprecated.**
-  `PlatformAdapter.run_throughput_test`, `TPCDSBenchmark.run_throughput_test`,
-  `TPCDSBenchmark.run_official_benchmark`,
-  `TPCDSOfficialBenchmark.run_official_benchmark` and
-  `TPCHOfficialBenchmark.run_official_benchmark` emit a `DeprecationWarning`
-  and run the same throughput drivers as `benchbox run`: the dsqgen-based
-  TPC-DS driver (per-stream seeds and permutations, no more shuffled stream
-  order) and the TPC-H driver. The adapter entry point refuses platforms that
-  cannot serve concurrent streams, opens one session per stream and takes the
-  shared connection as `connection`; a `connection_factory` argument is
-  rejected. The other four now require `adapter=` and raise `TypeError`
-  without it, because a bare connection factory cannot be checked for safe
-  concurrent sessions; `TPCDSBenchmark.run_throughput_test` also needs
-  `connection=`. All of them refuse fewer than 2 streams, and none reports
-  Throughput@Size when a stream failed (`throughput_at_size` is `None`).
-  `query_timeout`, `max_retries` and `output_dir` on
-  `TPCDSBenchmark.run_throughput_test` no longer have any effect and warn when
-  you change them. Power@Size from `TPCDSBenchmark.run_power_test` is withheld
-  when a query fails.
-- **`TPCDSOfficialBenchmark` and `TPCHOfficialBenchmark` work end to end.**
-  `TPCDSOfficialBenchmark` used scale factor 1 for the power and throughput
-  tests whatever scale you configured; it now uses the configured scale, and
-  it publishes no Power@Size unless every power query succeeded.
-  `TPCHOfficialBenchmark` ran methods that `TPCHBenchmark` doesn't have and
-  `TPCH.run_official_benchmark` failed with a `TypeError`; both now run the
-  TPC-H power, throughput and maintenance tests and report each metric only
-  from a complete phase.
-- **TPC-H Power@Size changes.** Warm-up and measured power iterations now all
-  run stream 00, so they use its query ordering and substitution parameters
-  instead of streams 1, 2 and 3, in SQL and DataFrame runs. SQL runs now
-  also check row counts on every measured iteration under the default
-  validation mode. Power results are not comparable with earlier bundles.
-- **Throughput streams are numbered 1 to S.** TPC-H and TPC-DS throughput runs
-  used streams 0 to S-1, so stream 0 repeated the power ordering. Stream 0 is
-  now left to the power test and a new stream S takes its place, which changes
-  the queries and parameters each run executes. Throughput results are not
-  comparable with earlier bundles. TPC-DS power ordering is unchanged.
-- **TPC-H Q13 accepts 41 or 42 rows under non-reference seeds.** Its row count
-  depends on the two comment words the seed picks, so a valid throughput
-  stream no longer fails against the answer-file count of 42. Runs with the
-  default parameters still require 42.
-- **Throughput results record how streams are numbered.** The new key
-  `phases.throughput_test.stream_numbering` holds the basis and the first
-  stream id. `run.streams` in a combined run now counts throughput streams
-  only.
-- **Tuned results list tuning requests the platform ignored.** After the data
-  loads on a SQL platform, every requested table layout, enabled constraint type
-  that the benchmark declares, and enabled platform optimization with no
-  executed, failed or skipped statement is
-  recorded in `platform.tuning.applied.dropped`. The reason is the capability
-  registry's note, or `adapter rendered no statement`. Before, platforms that
-  render nothing, such as the PostgreSQL family, BigQuery, Trino, the managed
-  Spark platforms and DataFusion, reported `noop` with an empty list. A
-  dropped intent keeps a run from `applied_verified`, and a run whose only
-  outcomes are drops stays `noop`. A constraint type the benchmark does not
-  declare is not a request: no shipped benchmark declares `UNIQUE` or `CHECK`
-  constraints, so enabling them records nothing, while declared primary or
-  foreign keys that the platform does not render are dropped. Intents a
-  `CREATE TABLE` realized, such as an inline primary key or a ClickHouse
-  `PARTITION BY`, are listed in `satisfied`. StarRocks tuned runs with primary
-  keys now record the rendered `PRIMARY KEY` clause, so their applied ledger
-  hash changes and a keys-only tuned run reports `applied_unverified` instead of
-  `noop`.
-  DuckDB sorting requires both sorted-ingestion and matching-index evidence.
-  Requested columns must match the ordered index prefix; leading, intervening,
-  or expression keys do not count as evidence.
-  On Redshift, `VACUUM SORT ONLY` over an existing key no longer counts as
-  applying the requested sort columns.
-- `benchbox tuning init --platform polars` profiles (`optimized`, `streaming`
-  and `memory-constrained`) no longer set `engine_affinity` or `streaming_mode`,
-  so a run with a generated file uses the default engine. The command prints
-  how to choose the engine at run time; pass `--execution-engine` (for example
-  `--execution-engine streaming`). Tuning files that already set
-  `engine_affinity` keep working and record `resolution` `tuning_profile`.
-- Tuning validation now fails when a configuration asks for tuning that the
-  platform does not apply during a run. Earlier releases accepted these
-  configurations and ran without the tuning. Run `benchbox tuning validate
-  --platform <platform>` on your saved tuning files before you upgrade; each
-  error names the tuning type and why it is not applied. Remove the setting
-  or use a platform that applies it. Platforms that apply tuning in part are
-  checked type by type. The new errors are:
-  - `unique_constraints` and `check_constraints` fail on every platform with
-    registry coverage when a tuning file enables them, because no benchmark
-    schema carries those clauses. A tuning file that leaves either key out
-    does not request it. The packaged DuckDB and Snowflake templates and the
-    matching `examples/tunings` files now disable both. Tuning files that
-    leave out these keys get a different configuration hash, and so a new
-    generated database name, once.
-  - Layout tuning fails on BigQuery (`partitioning`, `clustering`), Redshift
-    (`partitioning`, `distribution`), Trino and
-    Azure Synapse (all four layout types). These adapters build the clauses
-    for dry-run previews but do not apply them when tables are created. Other
-    platforms that only preview layout tuning fail the same way (for example
-    the Postgres family, Doris, Firebolt, QuestDB, SingleStore and
-    TimescaleDB).
-  - Redshift `sorting` fails while `sorted_ingestion_mode` is `off`, which is
-    the default, because the adapter sorts tables only when sorted ingestion
-    is on. Set `sorted_ingestion_mode` to `auto` or `force` to keep the
-    request.
-  - `partitioning` fails on Databricks, and so on the `spark` and `delta`
-    platform names that resolve to it. The adapter builds the clause for
-    previews only and never adds it when tables are created. Fabric Warehouse
-    no longer shares the Databricks rules and also rejects `partitioning`.
-  - `primary_keys` and `foreign_keys` fail where the adapter removes that
-    constraint from table definitions: primary keys on Databend, Doris,
-    Firebolt, QuestDB, Trino and Presto; foreign keys on ClickHouse, Databend,
-    Doris, Firebolt, QuestDB, SingleStore and StarRocks. Constraints that
-    DataFusion and MotherDuck do not create fail the same way.
-  - Platforms without registry coverage now report unsupported tuning types as
-    errors where earlier releases reported warnings, and default tuning
-    configurations on platforms that drop tuning report errors where they
-    reported warnings.
-
-### Added
-
-- **Decision record for core execution-variant settings.** A new ADR,
-  `docs/development/adr/adr-core-execution-variants.md`, defines the
-  platform-neutral settings `execution_engine`, `compute_resource`,
-  `compute_size` and `gateway`, how results record and identify them, and how
-  existing platform-specific keys such as Polars `streaming` and Databend
-  `warehouse` become deprecated aliases. Documentation only; no behavior
-  changes yet.
-- **Execution-engine declarations in the platform manifest.** Platforms can
-  now declare the execution engines they support, each with one of a fixed set
-  of engine classes, and the manifest rejects unknown classes, a declared
-  `default`, and an engine name that means different classes on different
-  platforms. Polars declares `auto`, `in-memory` and `streaming`. Every
-  adapter gains a `resolve_execution_engine` hook that accepts only `default`
-  until the platform maps its engines. A new test fails when a platform
-  registers a bare option key such as `engine`, `mode` or `warehouse`. No
-  command-line, MCP or result behavior changes yet.
-- **Curated ClickHouse tuning templates.** TPC-H, SSB, and TPC-DS ship tuned
-  templates for ClickHouse, so `--tuning tuned` there applies sort keys and
-  partitions instead of falling back to session settings.
-- **DataFrame tuned profiles.** `--tuning tuned` on Polars, pandas, and cuDF
-  now resolves the curated `examples/tunings/dataframe/<platform>_optimized.yaml`
-  profile and records mode `tuned`. Platforms without a profile, such as Dask,
-  still resolve to `tuned-fallback`.
-- **`benchbox tuning validate` accepts SQL tuning files.** For example,
-  `benchbox tuning validate examples/tunings/duckdb/tpch_tuned.yaml --platform
-  duckdb` checks the file against the platform's capabilities.
-- **Applied ledger `satisfied` list.** When a platform realizes a requested
-  sort through `ORDER BY` in `CREATE TABLE`, as ClickHouse and StarRocks do,
-  the ledger records it as satisfied by that statement instead of dropped.
-  Sorts that no executed statement realized are still dropped. This lets
-  ClickHouse tuned runs reach `applied_verified`.
-- **DuckDB constraints are checked against the catalog.** Primary keys,
-  unique constraints and foreign keys in a tuned DuckDB `CREATE TABLE` are
-  compared with `duckdb_constraints()`. Keys must match on the same columns in
-  the same order, and a foreign key must also reference the same table and
-  columns. A tuned DuckDB run with the shipped TPC-H template now reaches
-  `applied_verified`. A `CHECK` clause in a `CREATE TABLE`, and constraints on
-  every other platform, still keep a run at `applied_unverified`. So does a
-  `CREATE TABLE` holding a backslash directly before a single or double
-  quote, which some engines read as an escaped quote the scanner cannot
-  mask, or holding a dollar-quoted string whose tag carries non-ASCII
-  characters; so do a
-  DuckDB `CREATE TABLE` whose constraints sit next to list syntax (`[...]`),
-  and a constrained table whose name also exists in another schema or
-  attached database. On those
-  platforms this now also holds when the same `CREATE TABLE` carries a
-  verified sort, partition or cluster key; before, the constraint was ignored
-  there. Receipt entries for constraints carry `kind: "constraint"` and a
-  `constraint_type`. Quoted non-ASCII table names, such as "É", are now found
-  consistently with DuckDB's `lower(table_name)` catalog filters.
-- **Tuning statements issued through `.sql()` and `.query()` are recorded.**
-  Spark, PySpark, LakeSail, Velox, DataFusion and BigQuery tuned schema DDL now
-  reaches the applied-tuning ledger, so a tuned Spark run no longer reports
-  `noop`. BigQuery statements are recorded with the final state of the job, not
-  at submission. Multi-statement strings are split before recording, so a
-  leading `SET` can no longer hide a tuning statement. Schema capture also
-  recognises `PARTITIONED BY`, `CLUSTERED BY`, `DISTKEY`, `DISTSTYLE`,
-  `DUPLICATE KEY`, `PRIMARY INDEX`, `distribution =`, `partitioning =`,
-  `sorted_by` and `bucketed_by`.
-  Spark table definitions now put `USING <format>` before a trailing
-  `PARTITIONED BY` or `CLUSTER BY`, which Spark requires.
-
-- **Template benefit evidence is tiered.** Results distinguish `unmeasured`, `measured-benefit`, `measured-neutral`, and `measured-regression`; measured states require matching scale, engine version, and captured memory scope.
-
-### Changed
-
-- **CI database images no longer depend on repeated anonymous Docker Hub pulls.**
-  PostgreSQL uses Amazon ECR Public. ClickHouse and Trino use authenticated
-  GHCR mirrors pinned by digest; scheduled jobs contact Docker Hub only to copy
-  a missing digest. CedarDB retains its digest-pinned mirror. DuckDB and
-  CedarDB throughput checks run independently, while their combined commit
-  status reports either failure. CI and Documentation install pinned codespell
-  with uv instead of building a Docker action.
-
-- **The `--tuning tuned` fallback names what each platform applies.** The
-  message said "using basic constraints" everywhere. It now says "engine
-  runtime defaults (streaming)" for Polars and "OLAP session pack" for
-  ClickHouse, for example.
-- **Public result publishing fails closed after anonymization.** `benchbox
-  publish` verifies the redacted primary and diagnostic companions before
-  copying them, preserves `.override.json` companions, and submission
-  validation rejects unreadable `.plans.json`, `.tuning.json`, and `.applied.json`
-  companions.
-
-### Fixed
-
-- **Databricks tuned templates keep unrendered constraints disabled.** Their
-  unique and check constraint flags now match the disabled baseline instead of
-  inheriting enabled model defaults when omitted.
+- **Tuning platform support.** A new reference page lists, for every platform,
+  the shipped templates and the tuning types applied at execution.
+- **Corrected `--platform-option` examples** use keys the CLI accepts.
 
 ## [0.4.2] - 2026-10-05
 
@@ -2081,6 +1117,7 @@ benchbox run --platform polars-df --benchmark tpch --scale 0.01
 - **PyPI**: [pypi.org/project/benchbox](https://pypi.org/project/benchbox/)
 
 [Unreleased]: https://github.com/BenchBox-dev/BenchBox/compare/v0.4.2...HEAD
+[0.5.0rc1]: https://github.com/BenchBox-dev/BenchBox/compare/v0.4.2...v0.5.0rc1
 [0.4.2]: https://github.com/BenchBox-dev/BenchBox/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/BenchBox-dev/BenchBox/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/BenchBox-dev/BenchBox/compare/v0.3.1...v0.4.0

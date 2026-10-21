@@ -142,7 +142,7 @@ class TestFamilies:
         }
         assert _status(adapter) == NOOP
 
-    @pytest.mark.parametrize("platform", ["cedardb", "citus", "paradedb", "pg-duckdb", "pg-mooncake"])
+    @pytest.mark.parametrize("platform", ["cedardb", "citus", "paradedb", "pg-mooncake"])
     def test_postgres_family_variants_drop_every_layout_intent(self, platform):
         adapter = _tuned(_Adapter(type=platform))
 

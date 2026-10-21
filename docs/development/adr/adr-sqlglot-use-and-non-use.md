@@ -4,6 +4,11 @@
 
 Accepted (codifies existing practice as of 2026-05-03).
 
+**Superseded in part**: [The SQLGlot fork owns transpilation](adr-sqlglot-fork-owns-transpilation.md)
+replaces the boundary below that keeps engine bugs, physical DDL and benchmark-neutral
+rewrites in BenchBox, and replaces the retirement protocol as the way to remove them.
+Benchmark-keyed data, execution, validation and DataFrame translation stay in BenchBox.
+
 **Runtime**: BenchBox ships a pinned pure-Python wheel from
 [`BenchBox-dev/benchbox-sqlglot`](https://github.com/BenchBox-dev/benchbox-sqlglot),
 based on upstream 30.24.0 with three bounded downstream patches. The runtime

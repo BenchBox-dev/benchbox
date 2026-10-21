@@ -31,6 +31,10 @@ a matching `<benchmark>_notuning.yaml`):
   using their date partition columns, with compression ordering and segmentation.
   Constraints are disabled because the benchmark's logical keys do not include
   the time dimensions.
+- `pg-duckdb/` - `tpch`. Partitions `lineitem` and `orders` by their date
+  columns and clusters them on their order keys after load. Constraints are
+  disabled because the benchmark's logical keys do not include the partition
+  columns.
 
 DataFrame platforms live under `dataframe/` with a flat
 `<platform>_<profile>.yaml` naming (e.g. `polars_optimized.yaml`,

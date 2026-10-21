@@ -189,12 +189,17 @@ resolution and tag-creation protection remain checked.
 
 Explicit cryptographic tag signatures are dropped. Release integrity relies on:
 
-1. The `v-tag-restricted` ruleset preventing unauthorized tag creation or mutation.
+1. The `v-tag-restricted` ruleset, which restricts creation, update and deletion of
+   `refs/tags/v*` for everyone except its bypass actor. The bypass actor is the
+   maintainer account that agents also run as, so the ruleset does not bind that
+   account; control 5 does.
 2. Verification that the tagged commit exists on `develop` and its latest exact-commit
    `trunk.yml` push run on that branch succeeded, without falling back to older success.
 3. Admission of the exact wheel and sdist from that run's successful `dist-artifact`
    job, with matching producer-attempt evidence and SHA-256 hashes for release upload.
 4. GitHub Actions build provenance attestations.
+5. A publish-time re-check, in the publishing job after environment approval, that the
+   hosted tag object and its peeled commit still equal the admission receipt.
 
 ## Standing Administrative Approvals
 

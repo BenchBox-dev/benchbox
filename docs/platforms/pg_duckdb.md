@@ -134,6 +134,38 @@ benchmark that configures parallel scan threads with `postgres_scan_threads`.
 | `force_execution` | - | Deprecated alias: `true` selects `duckdb`; `false` selects `postgres` |
 | `postgres_scan_threads` | `0` (auto) | Threads for parallel PostgreSQL table scanning |
 
+## Tuning files
+
+Run the native TPC-H profile with:
+
+```bash
+benchbox run --platform pg-duckdb --benchmark tpch --scale 0.01 \
+  --phases generate,load,power --seed 42 \
+  --tuning examples/tunings/pg-duckdb/tpch_tuned.yaml --non-interactive
+```
+
+BenchBox tables on pg_duckdb are PostgreSQL heap tables, so the PostgreSQL
+layout method applies. A partitioning column renders `PARTITION BY` at
+`CREATE TABLE` time (RANGE for dates, HASH for integers, LIST otherwise).
+RANGE tunings get yearly child partitions over the benchmark date domain plus
+a DEFAULT partition; HASH tunings get fixed hash partitions without one.
+Partitioning is skipped, and recorded as not applied, while primary or unique
+keys are requested, because PostgreSQL requires those keys to include the
+partition column; the example therefore disables them.
+
+After load, clustering and sorting columns merge into one index ordered by
+tuning order across both lists, and `CLUSTER` rewrites the table in index
+order. For partitioned tables the leaf partitions carry the clustered indexes.
+`CLUSTER` cannot run inside a transaction block, so its index commits first
+and `CLUSTER` runs in autocommit. The index columns are verified from
+`pg_index` before that commit, and `indisclustered` is verified for every
+partition afterwards; partitioning strategy and columns are verified from
+`pg_get_partkeydef`. A pre-commit mismatch is recorded as a failed statement.
+A post-commit verification failure records the durable statements as executed
+but the intent as not satisfied, with the verification error as the reason.
+This is a heap-layout method only; it does not sort data inside DuckDB or
+Parquet files.
+
 ## How It Works
 
 pg_duckdb accelerates queries by routing them through DuckDB's vectorized execution engine:

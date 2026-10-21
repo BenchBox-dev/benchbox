@@ -2,6 +2,12 @@
 
 ## Objective and completion
 
+> **Superseded in part**: the fork is permanent and owns transpilation, so the "bounded
+> patch series" and retirement framing below no longer describe the end state. See
+> `docs/development/adr/adr-sqlglot-fork-owns-transpilation.md` and
+> `_project/decisions/sqlglot-fork-transpilation-plan.md`. The distribution, bootstrap and
+> immutable-wheel mechanics in this record still apply.
+
 Maintain the SQLGlot soft fork in `BenchBox-dev/benchbox-sqlglot`, preserving
 upstream ancestry and a bounded tested patch series. BenchBox ships only its
 pinned pure-Python runtime wheel, not an unpacked SQLGlot source tree. The
