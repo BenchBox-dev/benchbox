@@ -558,6 +558,37 @@ def _fake_run(stdout: str) -> object:
     return _run
 
 
+def test_list_map_artifacts_reads_trunk_runs_with_get_requests(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    first, second = "a" * 40, "b" * 40
+    commands: list[list[str]] = []
+
+    def _run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        commands.append(command)
+        endpoint = command[4]
+        if endpoint.endswith("/workflows/trunk.yml/runs"):
+            return subprocess.CompletedProcess(command, 0, f"11\t{first}\n12\t{second}\n13\tnot-a-sha\n", "")
+        if endpoint.endswith("/runs/11/artifacts"):
+            return subprocess.CompletedProcess(command, 0, "", "")
+        rows = f"t2-coverage-map-{second}\t2026-10-20T00:00:00Z\nt2-coverage-map-{first}\t2026-10-19T00:00:00Z\n"
+        return subprocess.CompletedProcess(command, 0, rows, "")
+
+    monkeypatch.setattr(sel.subprocess, "run", _run)
+    found = list(sel._list_map_artifacts(repo, "o/r", "t2-coverage-map-"))
+    assert found == [(f"t2-coverage-map-{second}", 12, "2026-10-20T00:00:00Z")]
+    assert [command[2:4] for command in commands] == [["--method", "GET"]] * 3
+    assert commands[0][7:9] == ["-f", "branch=develop"]
+    assert f"name=t2-coverage-map-{second}" in commands[2]
+
+
+def test_list_map_artifacts_reports_api_failures(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def _run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(command, 1, "", "HTTP 500")
+
+    monkeypatch.setattr(sel.subprocess, "run", _run)
+    with pytest.raises(sel.SelectionError, match="HTTP 500"):
+        list(sel._list_map_artifacts(repo, "o/r", "t2-coverage-map-"))
+
+
 def test_fetch_map_skips_runs_failing_provenance(repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sel, "_github_slug", lambda _repo: "o/r")
     monkeypatch.setattr(

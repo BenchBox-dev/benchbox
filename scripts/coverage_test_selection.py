@@ -10,6 +10,7 @@ import re
 import shlex
 import subprocess
 import sys
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 
@@ -526,28 +527,37 @@ def _github_slug(repo: Path) -> str:
     return slug
 
 
-def _list_map_artifacts(repo: Path, slug: str, prefix: str) -> list[tuple[str, int, str]]:
-    query = (
-        ".artifacts[] | "
-        f'select(.expired == false and (.name | startswith("{prefix}"))) | '
-        '"\\(.name)\\t\\(.workflow_run.id)\\t\\(.created_at)"'
-    )
-    proc = subprocess.run(
-        ["gh", "api", f"repos/{slug}/actions/artifacts", "--paginate", "-F", "per_page=100", "--jq", query],
-        cwd=repo,
-        text=True,
-        capture_output=True,
-        timeout=120,
-    )
+def _gh_get(repo: Path, endpoint: str, params: dict[str, str], query: str) -> list[str]:
+    command = ["gh", "api", "--method", "GET", endpoint, "--jq", query]
+    for key, value in params.items():
+        command += ["-f", f"{key}={value}"]
+    proc = subprocess.run(command, cwd=repo, text=True, capture_output=True, timeout=120)
     if proc.returncode != 0:
-        raise SelectionError(f"cannot list coverage map artifacts: {proc.stderr.strip()}")
-    entries: list[tuple[str, int, str]] = []
-    for line in proc.stdout.splitlines():
-        name, run, created = _split_row(line)
-        if name and run.isdigit() and created:
-            entries.append((name, int(run), created))
-    entries.sort(key=lambda entry: entry[2], reverse=True)
-    return entries
+        raise SelectionError(f"cannot query {endpoint}: {proc.stderr.strip() or proc.stdout.strip()}")
+    return proc.stdout.splitlines()
+
+
+def _list_map_artifacts(repo: Path, slug: str, prefix: str) -> Iterator[tuple[str, int, str]]:
+    runs = _gh_get(
+        repo,
+        f"repos/{slug}/actions/workflows/{PurePosixPath(TRUNK_WORKFLOW_PATH).name}/runs",
+        {"branch": "develop", "event": "push", "per_page": str(MAX_MAP_BEHIND_COMMITS)},
+        '.workflow_runs[] | "\\(.id)\\t\\(.head_sha)"',
+    )
+    for line in runs:
+        run, head, _ = _split_row(line)
+        if not run.isdigit() or not _SHA_RE.match(head):
+            continue
+        rows = _gh_get(
+            repo,
+            f"repos/{slug}/actions/runs/{run}/artifacts",
+            {"name": f"{prefix}{head}"},
+            '.artifacts[] | select(.expired == false) | "\\(.name)\\t\\(.created_at)"',
+        )
+        for row in rows:
+            name, created, _ = _split_row(row)
+            if name == f"{prefix}{head}":
+                yield name, int(run), created
 
 
 def _split_row(line: str) -> tuple[str, str, str]:
