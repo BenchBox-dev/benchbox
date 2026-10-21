@@ -143,6 +143,8 @@ SAFE_DIVISION_SQL = {
     "window_divisor": "SELECT mkt / SUM(volume) OVER (PARTITION BY o_year) FROM t",
     "decimal_literal_divisor": "SELECT a / 0.5 FROM t",
     "no_division": "SELECT a + b FROM t",
+    "literal_divisor_integer": "SELECT a / 12 FROM t",
+    "nested_window_sum": "SELECT SUM(x) * 100 / SUM(SUM(x)) OVER (PARTITION BY c) FROM t GROUP BY c",
 }
 
 SETTINGS_SQL = {
