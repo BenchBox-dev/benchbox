@@ -22768,12 +22768,7 @@
       "title": "✅ SQLGlot Dialect Translation Code Review Implementation"
     },
     "sqlglot-fork-a1-adopt-wrapper-wheel": {
-      "claim": {
-        "expires_at": "2026-10-22T01:13:58Z",
-        "generation": "2ee4e7ce797342c698380353d78dad94",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d"
-      },
+      "claim": null,
       "needs": [
         "sqlglot-fork-f1-platform-dialects",
         "sqlglot-fork-f2-sqlite-generator",
@@ -22783,7 +22778,7 @@
         "sqlglot-fork-b3-checker-wrapper-mode"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "BenchBox: adopt the first fork wheel (dialects, generator fixes, rewrite API) and add apply_rewrite"
     },
     "sqlglot-fork-a2-adopt-adapter-wheel": {
