@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Unknown platform raises in strict and non-strict modes, with a test per platform key class.",
+    "Rewrites are expressible as translate_sql_query arguments; text processors removed or restricted; adapters migrated; golden corpus unchanged or listed.",
+    "Single registry mapping with a correctness test; bypass scanner covers the listed import forms and does not exempt sql_compat; multi-statement input handled explicitly; telemetry recorded for apply_rewrite and translate_ddl."
+  ],
+  "description": "Adversarial review M6/M7/L1/L6: (M6) an unknown platform does not raise in normal runs: strict defaults to False so translate_sql_query returns untranslated source SQL (runner.py:279-297, dialect_utils.py:383-407), contradicting the ADR; unknown dialect is a configuration error and must always raise UnknownSqlDialectError. (M7) translate_sql_query still takes text pre/post-processors (interval normalizer, Q58 regex) so translation logic can live outside the fork; apply_rewrite on a string re-parses and regenerates translated SQL without identify (dialect_utils.py:437-441), re-rendering every Databricks/ClickHouse/Snowflake query; prefer passing named rewrites into translate_sql_query and applying them to the tree before generation. The platform-to-dialect mapping has three homes (adapter get_target_dialect, registry platform_family config_inheritance.py:80-91, PLATFORM_DIALECTS); the plan put it in the registry; add a test that each platform resolves to the intended dialect, not just that names resolve. (L1) the bypass scanner misses Dialect.generate, aliased transpile, optimizer imports and importlib loading, pins counts so a call can be swapped, and exempts benchbox/sql_compat/. (L6) translate_sql_query returns only the first statement silently even in strict mode; apply_rewrite/translate_ddl record no translation outcomes (schema-translation counts drop after D3).",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-21T22:51:47Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "95a94989b29f4f4395a0bad474bd4de6",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}

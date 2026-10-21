@@ -23306,6 +23306,15 @@
       "status": "open",
       "title": "Fork CI: constrain engine jobs to the engine versions BenchBox supports and record versions in evidence"
     },
+    "sqlglot-fork-review-m6-m7-wrapper-contract": {
+      "claim": null,
+      "needs": [
+        "sqlglot-fork-d5-delete-clickhouse-starrocks-rewrites"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "BenchBox wrapper contract: unknown platform always raises; rewrites apply before generation; one dialect-mapping home"
+    },
     "sqlglot-fork-review-m8-row-source-guard": {
       "claim": null,
       "needs": [],
