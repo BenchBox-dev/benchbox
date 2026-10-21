@@ -15876,6 +15876,15 @@
       "status": "done",
       "title": "Clear the two remaining orphans on test/freeze-bulk-path-coverage"
     },
+    "owner-oracle-gate-required-20261021": {
+      "claim": null,
+      "needs": [
+        "oracle-gate-status-20261021"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Owner: require oracle-gate (App-pinned) alongside oracle-review"
+    },
     "package-coffeeshop-seeds-and-restore-reference-parity": {
       "claim": null,
       "needs": [],
