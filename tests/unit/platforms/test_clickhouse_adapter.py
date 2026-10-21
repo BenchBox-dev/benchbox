@@ -1678,6 +1678,28 @@ class TestClickHouseQueryTransformerSafeDivision:
         assert "NULLIF(SUM(volume), 0) OVER" not in result
 
 
+class TestClickHouseQueryTransformerForkSafeDivision:
+    def _transform(self, sql: str):
+        from benchbox.platforms.clickhouse.query_transformer import ClickHouseQueryTransformer
+
+        transformer = ClickHouseQueryTransformer()
+        return transformer.transform(sql), transformer
+
+    def test_nullable_decimal_divisor_is_wrapped(self):
+        result, transformer = self._transform("SELECT a / CAST(b AS Nullable(Decimal(15, 4))) FROM t")
+        assert "nullIf(CAST(b AS Nullable(Decimal(15, 4))), 0)" in result
+        assert "safe_division" in transformer.get_transformations_applied()
+
+    def test_scaled_numerator_window_divisor_is_wrapped(self):
+        result, _ = self._transform("SELECT SUM(x) * 100 / SUM(SUM(x)) OVER (PARTITION BY c) FROM t GROUP BY c")
+        assert "nullIf(SUM(SUM(x)) OVER (PARTITION BY c), 0)" in result
+
+    def test_literal_divisor_untouched_and_not_recorded(self):
+        result, transformer = self._transform("SELECT a / 12 FROM t")
+        assert "nullIf" not in result
+        assert "safe_division" not in transformer.get_transformations_applied()
+
+
 class TestClickHouseQueryTransformerCaseNormalization:
     def _transformer(self):
         from benchbox.platforms.clickhouse.query_transformer import ClickHouseQueryTransformer

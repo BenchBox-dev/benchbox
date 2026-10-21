@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import re
 
+from benchbox.utils.dialect_utils import apply_rewrite
 from benchbox.utils.sql_parsing import find_matching_parenthesis
 
 logger = logging.getLogger(__name__)
@@ -18,8 +19,7 @@ class ClickHouseQueryTransformer:
 
         query = self.normalize_case(query)
         query = self.fix_type_casts(query)
-        query = self.safe_division(query)
-        query = self.fix_decimal_division_by_zero(query)
+        query = self.apply_fork_safe_division(query)
 
         if self.verbose and self.transformations_applied:
             logger.debug(f"Applied transformations: {', '.join(self.transformations_applied)}")
@@ -110,6 +110,12 @@ class ClickHouseQueryTransformer:
             self.transformations_applied.append("subquery_aliasing")
 
         return query
+
+    def apply_fork_safe_division(self, query: str) -> str:
+        rewritten = apply_rewrite("safe_division", query, "clickhouse")
+        if rewritten.lower().count("nullif(") > query.lower().count("nullif("):
+            self.transformations_applied.append("safe_division")
+        return rewritten
 
     def safe_division(self, query: str) -> str:
         original_query = query
