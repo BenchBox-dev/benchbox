@@ -1014,25 +1014,24 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
     },
     "pg-mooncake": {
         _T.PARTITIONING: _none(
-            "columnstore_manages_own_layout",
-            "core.tuning.generators.pg_mooncake.PgMooncakeDDLGenerator.generate_tuning_clauses always "
-            "returns an empty TuningClauses() regardless of input (pg_mooncake.py:61-81) -- by design, "
-            "since Parquet/Iceberg columnstore tables manage their own storage layout. Consistent (not "
-            "divergent) with the adapter: benchbox/platforms/pg_mooncake.py's PgMooncakeAdapter.supports_"
-            "tuning_type unconditionally returns False for every tuning type (pg_mooncake.py:544-546), and "
-            "_transform_create_statement is a deliberate passthrough that leaves the heap-table DDL "
-            "unchanged for the bulk COPY load path (pg_mooncake.py:196-204) -- tuning is promoted away "
-            "entirely once mooncake.create_table mirrors the loaded heap table.",
+            "mirror_not_shaped_by_source_partitioning",
+            "The tables queried are mooncake columnstore mirrors created by mooncake.create_table from the "
+            "loaded heap table. Partitioning the source heap table does not reach them: the mirror is one "
+            "unpartitioned table, and probing an initial copy of a range-partitioned source showed every mirror "
+            "Parquet file spanning the full key range. No tuning-file key reaches the mirror's layout, so the "
+            "platform rejects the request when the tuning file loads.",
         ),
-        _T.CLUSTERING: _none(
-            "columnstore_manages_own_layout",
-            "Same as PARTITIONING: the generator always returns empty clauses, and "
-            "supports_tuning_type() is unconditionally False.",
+        _T.CLUSTERING: _post_load(
+            "postgresql_index_cluster_before_mirror",
+            "CREATE INDEX then CLUSTER run on the loaded heap table before mooncake.create_table mirrors it; "
+            "the mirror's initial copy reads the heap in physical order, so its Parquet files inherit the sort "
+            "order. Satisfied only after the heap index is verified and the mirror's Parquet files are read back "
+            "and found ordered on the tuned columns.",
         ),
-        _T.SORTING: _none(
-            "columnstore_manages_own_layout",
-            "Same as PARTITIONING: the generator always returns empty clauses, and "
-            "supports_tuning_type() is unconditionally False.",
+        _T.SORTING: _post_load(
+            "postgresql_index_cluster_before_mirror",
+            "Same CREATE INDEX plus CLUSTER on the source heap as CLUSTERING; sorting columns merge with "
+            "clustering columns into one index ordered by tuning order.",
         ),
         **_pk_fk_entries(),
         **_no_unique_check_entries(

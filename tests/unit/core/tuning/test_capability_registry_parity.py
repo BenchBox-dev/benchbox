@@ -296,7 +296,7 @@ _NOT_RENDERED: dict[str, frozenset[str]] = {
     "mysql": frozenset({"check_constraints", "partitioning", "unique_constraints"}),
     "paradedb": frozenset({"bloom_filters", "check_constraints", "materialized_views", "unique_constraints"}),
     "pg-duckdb": frozenset({"check_constraints", "unique_constraints"}),
-    "pg-mooncake": frozenset({"check_constraints", "clustering", "partitioning", "sorting", "unique_constraints"}),
+    "pg-mooncake": frozenset({"check_constraints", "partitioning", "unique_constraints"}),
     "postgresql": frozenset({"bloom_filters", "check_constraints", "materialized_views", "unique_constraints"}),
     "presto": frozenset(
         {
@@ -369,7 +369,7 @@ _RENDERED: dict[str, frozenset[str]] = {
     "mysql": frozenset({"foreign_keys", "primary_keys"}),
     "paradedb": frozenset({"clustering", "foreign_keys", "partitioning", "primary_keys", "sorting"}),
     "pg-duckdb": frozenset({"clustering", "foreign_keys", "partitioning", "primary_keys", "sorting"}),
-    "pg-mooncake": frozenset({"foreign_keys", "primary_keys"}),
+    "pg-mooncake": frozenset({"clustering", "foreign_keys", "primary_keys", "sorting"}),
     "postgresql": frozenset({"clustering", "foreign_keys", "partitioning", "primary_keys", "sorting"}),
     "presto": frozenset({"foreign_keys"}),
     "questdb": frozenset({}),

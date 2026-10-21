@@ -43,6 +43,10 @@ a matching `<benchmark>_notuning.yaml`):
   `part` columnar and clusters `orders` by date after load. Constraints are
   disabled because distributed tables cannot enforce keys that omit the
   distribution column.
+- `pg-mooncake/` - `tpch`. Sorts `lineitem` by ship date and `orders` by order
+  date. The sort is applied to the heap table before it is mirrored into the
+  columnstore, and is verified from the mirror's Parquet files. Constraints are
+  disabled.
 
 DataFrame platforms live under `dataframe/` with a flat
 `<platform>_<profile>.yaml` naming (e.g. `polars_optimized.yaml`,
