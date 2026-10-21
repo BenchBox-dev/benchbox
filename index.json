@@ -16587,15 +16587,10 @@
       "title": "make pr-arm reads stale remote head right after push and refuses"
     },
     "pr-changed-tests-miss-name-mismatched-tests": {
-      "claim": {
-        "expires_at": "2026-10-22T12:41:19Z",
-        "generation": "a463a0591db14ea59a636ed9a53472b2",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Changed-file test selection misses tests whose file name does not match the source"
     },
     "pr-edit-cancels-ci-and-leaves-red-rows-20261017": {
