@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Reproduction and the affected published SQLite bundles listed.",
+    "Loader fix (owner approval for touching engine execution/loader code) with a regression test comparing SUM/COUNT results with DuckDB on nullable data.",
+    "Published SQLite results affected are flagged for rerun (local reruns approved only for SQLite)."
+  ],
+  "description": "The SQLite rerun found the SQLite data loader stores NULLs as empty text in numeric columns (405,815 such cells in TPC-DS SF0.1). A SUM over all-empty values returns 0.0 where DuckDB returns NULL, which breaks TPC-DS Q12/Q20/Q98 versus DuckDB; nulling the empty strings in a copy makes all three match. This likely affects every SQLite run on nullable data (tpcds, ssb, clickbench, h2odb, amplab, coffeeshop, read_primitives). This is loader/execution behavior, outside the transpilation move, so it needs owner scoping before any change. Determine which loader produced the published SQLite bundles in results-data/bundles and whether they carry empty-text NULLs, then fix the loader so NULLs load as NULL, with a regression test on a nullable column.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-21T21:00:45Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e148e20cf51b4ee3848295ffa0ea3c83",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}
