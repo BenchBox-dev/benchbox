@@ -2142,9 +2142,11 @@ class BigQueryAdapter(PlatformAdapter):
         if "/" not in query:
             return query
 
-        from benchbox.utils.dialect_utils import apply_rewrite
+        from benchbox.utils.dialect_utils import apply_rewrite, contains_division
 
         try:
+            if not contains_division(query, "bigquery"):
+                return query
             return apply_rewrite("safe_division", query, "bigquery")
         except Exception as e:
             self.log_very_verbose(f"Division safeguard skipped (unparseable BigQuery SQL): {e}")

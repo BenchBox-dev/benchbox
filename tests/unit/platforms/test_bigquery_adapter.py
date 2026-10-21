@@ -2691,6 +2691,12 @@ class TestApplySafeDivision:
         assert adapter._apply_safe_division(query) == query
 
     @patch("benchbox.platforms.bigquery.bigquery")
+    def test_slash_outside_division_leaves_text_unchanged(self, mock_bigquery):
+        adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
+        query = "select  a  from `T` where b = 'N/A' and c = 'x/y'"
+        assert adapter._apply_safe_division(query) == query
+
+    @patch("benchbox.platforms.bigquery.bigquery")
     def test_unparseable_query_unchanged(self, mock_bigquery):
         adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
         query = "SELEC ((( / b"
