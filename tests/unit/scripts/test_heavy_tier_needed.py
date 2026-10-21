@@ -260,3 +260,18 @@ def test_suite_wide_test_configuration_needs_the_heavy_tier(tmp_path: Path, monk
     result = heavy.heavy_needed(_decision(["tests/unit/conftest.py"]), "absent", tmp_path)
     assert result["heavy_needed"] is True
     assert "test-infrastructure carve-out" in result["reason"]
+
+
+def test_selection_logic_changes_need_the_heavy_tier(tmp_path: Path) -> None:
+    assert heavy.broad_test_infrastructure(["scripts/coverage_test_selection.py", "benchbox/core/x.py"], tmp_path) == [
+        "scripts/coverage_test_selection.py"
+    ]
+    for path in heavy.SELECTION_LOGIC_PATHS:
+        result = heavy.heavy_needed(
+            _decision([path]),
+            "absent",
+            tmp_path,
+            selection={"escalate": False, "reason": "selected by coverage impact"},
+        )
+        assert result["heavy_needed"] is True, path
+        assert "test-infrastructure carve-out" in result["reason"]
