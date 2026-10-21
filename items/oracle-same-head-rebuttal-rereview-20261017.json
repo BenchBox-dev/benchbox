@@ -7,7 +7,7 @@
     "Withdrawals must carry citations verified by mark_citations and never auto-resolve threads",
     "Replay fixture of #3222: a docs-only rebuttal on the same head is re-judged, not carried"
   ],
-  "context": "Second case 2026-10-21: #3222 Medium finding answered by a docs-only commit; the oracle carried the old verdict (patch digest excludes prose) and skipped /oracle-review ('already has a failure result'); the only way out was a stand-in. Prior unpublished work: commit 75deb2153 on branch fix/oracle-same-head-rebuttal (11 files, 2026-10-18, no PR, base stale) in an abandoned muse worktree; cherry-pick it into a fresh worktree rather than touching that worktree. ship-no-ship-gate-parity-20261021 ports this upstream.",
+  "context": "In PR #3233 (branch fix/oracle-same-head-rerereview). Trigger narrowed for security: the oracle found that a pull_request_review_comment trigger runs PR-controlled workflow code with secrets, so thread replies no longer start a round; rebuttals arrive via /oracle-review comments (default-branch context) and pushes, and a push that leaves a thread disputed upgrades to a forced follow-up. Forced rounds only after SHIP/SHIP WITH FIXES, at most 2 per head; withdrawals need a citation in files_examined that resolves to a head line; no auto-resolve.",
   "description": "On #3092 the oracle (muse) raised \"Schema-qualified CLUSTER uses unqualified index name\" (thread 4302987072) and kept it open on head 9d7b7a148 and head 397a4b3f3. PostgreSQL's `CLUSTER table USING index_name` accepts only an unqualified index name; the qualified form failed live on PostgreSQL 17 with `syntax error at or near \".\"`. A reply with that evidence plus a `/oracle-review` comment did not trigger a re-review: the verdict plan skipped with \"head 9d7b7a148... already has a failure result\" (_project/scripts/oracle_reviewers/retry.py:84; protocol.py:263). The only way forward was another commit. The next review then reported \"New tests explicitly assert the D2 buggy SQL\", and only a rebase and another head got SHIP, which called the finding \"not a correctness defect\". The PR needed an owner decision in between. There are two gaps: (1) no same-head re-review after an author rebuttal; (2) the reviewer brief does not ask the reviewer to weigh thread replies or check the claimed SQL grammar.",
   "sessions": [
     {
@@ -24,6 +24,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "429b763597844b0ba499e9617051119c",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T15:22:36Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b5d0bf862fdb48d7a655bd1b4dfb0aa8",
       "session_id": "a9046e3fb7d74eefb823245a0b359b69"
     }
   ]
