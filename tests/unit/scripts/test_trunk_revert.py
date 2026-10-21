@@ -446,6 +446,8 @@ def test_worktree_create_succeeds_when_invoked_from_a_linked_worktree(tmp_path: 
     created = create(repo, "fix/first", first)
     assert created.returncode == 0, created.stderr
     _git(first, "config", "--worktree", "benchbox.seeded-inherited", "leaked", env=env)
+    _git(first, "config", "--worktree", "--add", "benchbox.seeded-multi", "one", env=env)
+    _git(first, "config", "--worktree", "--add", "benchbox.seeded-multi", "two", env=env)
 
     probe = tmp_path / "wt-probe"
     _git(first, "worktree", "add", "-q", "-b", "fix/probe", str(probe), "origin/develop", env=env)
