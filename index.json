@@ -3015,9 +3015,9 @@
     "ci-rebalance-medium-shards": {
       "claim": null,
       "needs": [],
-      "priority": "high",
+      "priority": "medium",
       "status": "open",
-      "title": "Rebalance the medium-tier shards: shard 0 is the slowest, not shard 3"
+      "title": "Keep the medium-shard duration file current and extend the weighted split to trunk and release workflows"
     },
     "ci-retry-artifact-collision-breaks-canary-gate": {
       "claim": null,
