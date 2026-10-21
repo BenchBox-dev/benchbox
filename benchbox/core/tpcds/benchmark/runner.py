@@ -32,7 +32,7 @@ from ..c_tools import TPCDSCTools
 from ..compliance import validate_tpcds_scale
 from ..generator import TPCDSDataGenerator
 from ..queries import TPCDSQueryManager
-from ..schema import TABLES
+from ..schema import TABLES, DataType
 from .clickhouse_overrides import rewrite_q10_for_clickhouse, rewrite_q35_for_clickhouse
 from .config import MaintenanceTestConfig, ThroughputTestConfig
 from .results import (
@@ -70,6 +70,11 @@ def _aggregate_stream_results(stream_results: list[dict[str, Any]], start_time: 
         "errors": [r["error"] for r in stream_results if r.get("error")],
         "stream_results": stream_results,
     }
+
+
+_DATE_COLUMNS = tuple(
+    sorted({column.name for table in TABLES for column in table.columns if column.data_type == DataType.DATE})
+)
 
 
 class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
@@ -566,22 +571,24 @@ class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         return query
 
     def translate_query_text(self, query: str, source_dialect: str, target_dialect: str) -> str:
-        from benchbox.utils.dialect_utils import fix_postgres_date_arithmetic, translate_sql_query
+        from benchbox.utils.dialect_utils import apply_rewrite, translate_sql_query
 
         src = (source_dialect or "netezza").lower()
         tgt = (target_dialect or src).lower()
 
-        post_procs = [self._fix_query58_ambiguity]
+        pre_procs = [self._normalize_interval_syntax]
         if tgt == "postgres":
-            post_procs.append(fix_postgres_date_arithmetic)
+            pre_procs.append(
+                lambda sql: apply_rewrite("date_integer_arithmetic_to_interval", sql, src, date_columns=_DATE_COLUMNS)
+            )
 
         return translate_sql_query(
             query=query,
             target_dialect=tgt,
             source_dialect=src,
             identify=True,
-            pre_processors=[self._normalize_interval_syntax],
-            post_processors=post_procs,
+            pre_processors=pre_procs,
+            post_processors=[self._fix_query58_ambiguity],
         )
 
     def generate_table_data(self, table_name: str, output_dir: Optional[str] = None) -> Iterator[str]:

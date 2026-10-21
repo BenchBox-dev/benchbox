@@ -9,7 +9,7 @@ import pytest
 from benchbox.platforms.base.dialect_translation import DialectTranslationMixin
 from benchbox.utils.dialect_utils import (
     NO_IDENTIFY_DIALECTS,
-    normalize_dialect_for_sqlglot,
+    resolve_sql_dialect,
     translate_sql_query,
 )
 
@@ -27,12 +27,27 @@ class _ExasolHost(DialectTranslationMixin):
 class TestExasolIdentifierPolicy:
     def test_exasol_is_a_no_identify_target(self):
 
-        assert frozenset({"clickhouse", "postgres", "snowflake", "exasol"}) == NO_IDENTIFY_DIALECTS
+        assert (
+            frozenset(
+                {
+                    "clickhouse",
+                    "postgres",
+                    "snowflake",
+                    "exasol",
+                    "questdb",
+                    "netezza",
+                    "greenplum",
+                    "vertica",
+                    "datafusion",
+                }
+            )
+            == NO_IDENTIFY_DIALECTS
+        )
 
-    def test_normalize_passes_exasol_through(self):
+    def test_resolve_passes_exasol_through(self):
 
-        assert normalize_dialect_for_sqlglot("exasol") == "exasol"
-        assert normalize_dialect_for_sqlglot("EXASOL") == "exasol"
+        assert resolve_sql_dialect("exasol") == "exasol"
+        assert resolve_sql_dialect("EXASOL") == "exasol"
 
     def test_tpch_ddl_emits_unquoted_identifiers(self):
 

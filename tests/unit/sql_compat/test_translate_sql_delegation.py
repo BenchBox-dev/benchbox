@@ -9,6 +9,7 @@ import pytest
 
 from benchbox.platforms.base.dialect_translation import DialectTranslationMixin
 from benchbox.utils.dialect_utils import (
+    SQLTranslationError,
     sql_translation_context,
     summarize_sql_translation_outcomes,
 )
@@ -42,30 +43,35 @@ class TestTranslateSqlIdentityPolicy:
         assert result != ""
 
 
-class TestTranslateSqlDialectNormalization:
-    @patch("benchbox._vendor.sqlglot.transpile")
-    def test_datafusion_normalized_to_postgres(self, mock_transpile):
-        mock_transpile.return_value = ["SELECT col FROM t"]
+class TestTranslateSqlDialectResolution:
+    def test_datafusion_target_resolves_to_the_fork_datafusion_dialect(self):
         a = _Adapter(dialect="datafusion")
-        a.translate_sql("SELECT col FROM t", source_dialect="duckdb")
-        _, kwargs = mock_transpile.call_args
-        assert kwargs["write"] == "postgres"
+        with sql_translation_context(strict=True) as outcomes:
+            a.translate_sql("SELECT col FROM t", source_dialect="duckdb")
+        assert outcomes[0].normalized_target_dialect == "datafusion"
 
-    @patch("benchbox._vendor.sqlglot.transpile")
-    def test_netezza_source_normalized_to_postgres(self, mock_transpile):
-        mock_transpile.return_value = ["SELECT col FROM t"]
-        a = _Adapter(dialect="snowflake")
-        a.translate_sql("SELECT col FROM t", source_dialect="netezza")
-        _, kwargs = mock_transpile.call_args
-        assert kwargs["read"] == "postgres"
+    def test_influxdb_target_resolves_to_datafusion(self):
+        a = _Adapter(dialect="influxdb")
+        with sql_translation_context(strict=True) as outcomes:
+            a.translate_sql("SELECT col FROM t", source_dialect="duckdb")
+        assert outcomes[0].normalized_target_dialect == "datafusion"
 
-    @patch("benchbox._vendor.sqlglot.transpile")
-    def test_duckdb_source_passes_through_unchanged(self, mock_transpile):
-        mock_transpile.return_value = ["SELECT col FROM t"]
+    def test_netezza_source_resolves_to_the_fork_netezza_dialect(self):
         a = _Adapter(dialect="snowflake")
-        a.translate_sql("SELECT col FROM t", source_dialect="duckdb")
-        _, kwargs = mock_transpile.call_args
-        assert kwargs["read"] == "duckdb"
+        with sql_translation_context(strict=True) as outcomes:
+            a.translate_sql("SELECT col FROM t", source_dialect="netezza")
+        assert outcomes[0].normalized_source_dialect == "netezza"
+
+    def test_duckdb_source_passes_through_unchanged(self):
+        a = _Adapter(dialect="snowflake")
+        with sql_translation_context(strict=True) as outcomes:
+            a.translate_sql("SELECT col FROM t", source_dialect="duckdb")
+        assert outcomes[0].normalized_source_dialect == "duckdb"
+
+    def test_unknown_target_dialect_fails_in_strict_mode(self):
+        a = _Adapter(dialect="not_a_platform")
+        with pytest.raises(SQLTranslationError):
+            a.translate_sql("SELECT col FROM t", source_dialect="duckdb", strict=True)
 
 
 class TestTranslateSqlDuckDBPostfix:
@@ -117,7 +123,7 @@ class TestTranslateSqlMultiStatement:
     def test_error_returns_original_sql(self):
         sql = "CREATE TABLE t (id INTEGER)"
         a = _Adapter(dialect="snowflake")
-        with patch("benchbox._vendor.sqlglot.transpile", side_effect=Exception("boom")):
+        with patch("benchbox._vendor.sqlglot.parse_one", side_effect=Exception("boom")):
             result = a.translate_sql(sql, source_dialect="duckdb")
         assert result == sql
 

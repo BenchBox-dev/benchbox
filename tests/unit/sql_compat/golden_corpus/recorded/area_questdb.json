@@ -1,22 +1,6 @@
 {
-  "rewriter.adapter_select_lineitem.identify": {
-    "fork": "SELECT * FROM \"lineitem\"",
-    "legacy": "SELECT * FROM lineitem"
-  },
-  "rewriter.adapter_select_test.identify": {
-    "fork": "SELECT * FROM \"test\"",
-    "legacy": "SELECT * FROM test"
-  },
-  "rewriter.adapter_select_where.identify": {
-    "fork": "SELECT * FROM \"test\" WHERE \"id\" > 5",
-    "legacy": "SELECT * FROM test WHERE id > 5"
-  },
-  "rewriter.composition_comma_join.identify": {
-    "fork": "SELECT \"l\".\"l_orderkey\" FROM \"lineitem\" AS \"l\" JOIN \"orders\" AS \"o\" ON \"l\".\"l_orderkey\" = \"o\".\"o_orderkey\" WHERE \"l\".\"l_quantity\" > 5",
-    "legacy": "SELECT l.l_orderkey FROM lineitem AS l JOIN orders AS o ON l.l_orderkey = o.o_orderkey WHERE l.l_quantity > 5"
-  },
   "rewriter.composition_cte_column_list.identify": {
-    "fork": "WITH \"revenue0\" AS (SELECT \"s_suppkey\" AS \"supplier_no\", 1.0 AS \"total_revenue\" FROM \"partsupp\") SELECT * FROM \"revenue0\"",
+    "fork": "WITH revenue0 AS (SELECT s_suppkey AS supplier_no, 1.0 AS total_revenue FROM partsupp) SELECT * FROM revenue0",
     "legacy": "WITH revenue0 AS (SELECT s_suppkey, 1.0 FROM partsupp) SELECT * FROM revenue0"
   },
   "rewriter.composition_cte_column_list.plain": {
@@ -32,7 +16,7 @@
     "legacy": "SELECT dateadd('d', -90, CAST('1998-12-01' AS DATE))"
   },
   "rewriter.composition_interval_with_join.identify": {
-    "fork": "SELECT \"l\".\"l_orderkey\" FROM \"lineitem\" AS \"l\" JOIN \"orders\" AS \"o\" ON \"l\".\"l_orderkey\" = \"o\".\"o_orderkey\" WHERE \"o\".\"o_orderdate\" > DATEADD('d', -90, CAST('1998-12-01' AS DATE))",
+    "fork": "SELECT l.l_orderkey FROM lineitem AS l JOIN orders AS o ON l.l_orderkey = o.o_orderkey WHERE o.o_orderdate > DATEADD('d', -90, CAST('1998-12-01' AS DATE))",
     "legacy": "SELECT l.l_orderkey FROM lineitem AS l JOIN orders AS o ON l.l_orderkey = o.o_orderkey WHERE o.o_orderdate > dateadd('d', -90, CAST('1998-12-01' AS DATE))"
   },
   "rewriter.composition_interval_with_join.plain": {
@@ -40,23 +24,15 @@
     "legacy": "SELECT l.l_orderkey FROM lineitem AS l JOIN orders AS o ON l.l_orderkey = o.o_orderkey WHERE o.o_orderdate > dateadd('d', -90, CAST('1998-12-01' AS DATE))"
   },
   "rewriter.composition_multi_stage.identify": {
-    "fork": "WITH \"rev\" AS (SELECT \"s_suppkey\" AS \"sno\", 1.0 AS \"total\" FROM \"partsupp\") SELECT SUBSTRING(\"c_phone\", 1, 2) FROM \"customer\" AS \"c\" JOIN \"orders\" AS \"o\" ON \"c\".\"c_custkey\" = \"o\".\"o_custkey\"",
+    "fork": "WITH rev AS (SELECT s_suppkey AS sno, 1.0 AS total FROM partsupp) SELECT SUBSTRING(c_phone, 1, 2) FROM customer AS c JOIN orders AS o ON c.c_custkey = o.o_custkey",
     "legacy": "WITH rev AS (SELECT s_suppkey, 1.0 FROM partsupp) SELECT substring(c_phone, 1, 2) FROM customer AS c JOIN orders AS o ON c.c_custkey = o.o_custkey"
   },
   "rewriter.composition_multi_stage.plain": {
     "fork": "WITH rev AS (SELECT s_suppkey AS sno, 1.0 AS total FROM partsupp) SELECT SUBSTRING(c_phone, 1, 2) FROM customer AS c JOIN orders AS o ON c.c_custkey = o.o_custkey",
     "legacy": "WITH rev AS (SELECT s_suppkey, 1.0 FROM partsupp) SELECT substring(c_phone, 1, 2) FROM customer AS c JOIN orders AS o ON c.c_custkey = o.o_custkey"
   },
-  "rewriter.composition_plain.identify": {
-    "fork": "SELECT \"l_orderkey\" FROM \"lineitem\" WHERE \"l_quantity\" > 10",
-    "legacy": "SELECT l_orderkey FROM lineitem WHERE l_quantity > 10"
-  },
-  "rewriter.cte_and_outer.identify": {
-    "fork": "WITH \"cte\" AS (SELECT \"a\".\"x\" FROM \"t1\" AS \"a\" JOIN \"t2\" AS \"b\" ON \"a\".\"id\" = \"b\".\"id\") SELECT \"c\".\"x\" FROM \"cte\" AS \"c\" JOIN \"t3\" AS \"e\" ON \"c\".\"x\" = \"e\".\"x\"",
-    "legacy": "WITH cte AS (SELECT a.x FROM t1 AS a JOIN t2 AS b ON a.id = b.id) SELECT c.x FROM cte AS c JOIN t3 AS e ON c.x = e.x"
-  },
   "rewriter.cte_column_list.identify": {
-    "fork": "WITH \"revenue\" AS (SELECT \"s_suppkey\" AS \"supplier_no\", SUM(\"x\") AS \"total\" FROM \"s\" GROUP BY \"s_suppkey\") SELECT * FROM \"revenue\"",
+    "fork": "WITH revenue AS (SELECT s_suppkey AS supplier_no, SUM(x) AS total FROM s GROUP BY s_suppkey) SELECT * FROM revenue",
     "legacy": "WITH revenue AS (SELECT s_suppkey, SUM(x) FROM s GROUP BY s_suppkey) SELECT * FROM revenue"
   },
   "rewriter.cte_column_list.plain": {
@@ -64,35 +40,23 @@
     "legacy": "WITH revenue AS (SELECT s_suppkey, SUM(x) FROM s GROUP BY s_suppkey) SELECT * FROM revenue"
   },
   "rewriter.cte_column_list_two_ctes.identify": {
-    "fork": "WITH \"a\" AS (SELECT 1 AS \"x\", 2 AS \"y\"), \"b\" AS (SELECT 3 AS \"z\") SELECT * FROM \"a\" CROSS JOIN \"b\"",
+    "fork": "WITH a AS (SELECT 1 AS x, 2 AS y), b AS (SELECT 3 AS z) SELECT * FROM a CROSS JOIN b",
     "legacy": "WITH a AS (SELECT 1, 2), b(z) AS (SELECT 3) SELECT * FROM a CROSS JOIN b"
   },
   "rewriter.cte_column_list_two_ctes.plain": {
     "fork": "WITH a AS (SELECT 1 AS x, 2 AS y), b AS (SELECT 3 AS z) SELECT * FROM a CROSS JOIN b",
     "legacy": "WITH a AS (SELECT 1, 2), b(z) AS (SELECT 3) SELECT * FROM a CROSS JOIN b"
   },
-  "rewriter.cte_comma_join.identify": {
-    "fork": "WITH \"ctr\" AS (SELECT \"sr_customer_sk\", SUM(\"sr_return_amt\") AS \"ctr_total_return\" FROM \"store_returns\" JOIN \"date_dim\" ON \"sr_returned_date_sk\" = \"d_date_sk\" WHERE \"d_year\" = 2000 GROUP BY \"sr_customer_sk\") SELECT * FROM \"ctr\" WHERE \"ctr_total_return\" > 1000",
-    "legacy": "WITH ctr AS (SELECT sr_customer_sk, SUM(sr_return_amt) AS ctr_total_return FROM store_returns JOIN date_dim ON sr_returned_date_sk = d_date_sk WHERE d_year = 2000 GROUP BY sr_customer_sk) SELECT * FROM ctr WHERE ctr_total_return > 1000"
-  },
-  "rewriter.cte_no_column_list.identify": {
-    "fork": "WITH \"revenue\" AS (SELECT \"s_suppkey\" FROM \"s\") SELECT * FROM \"revenue\"",
-    "legacy": "WITH revenue AS (SELECT s_suppkey FROM s) SELECT * FROM revenue"
-  },
   "rewriter.cte_q15_pattern.identify": {
-    "fork": "WITH \"revenue0\" AS (SELECT \"l_suppkey\" AS \"supplier_no\", SUM(\"l_extendedprice\") AS \"total_revenue\" FROM \"lineitem\" GROUP BY \"l_suppkey\") SELECT \"s_suppkey\" FROM \"supplier\" CROSS JOIN \"revenue0\" WHERE \"s_suppkey\" = \"revenue0\".\"supplier_no\"",
+    "fork": "WITH revenue0 AS (SELECT l_suppkey AS supplier_no, SUM(l_extendedprice) AS total_revenue FROM lineitem GROUP BY l_suppkey) SELECT s_suppkey FROM supplier CROSS JOIN revenue0 WHERE s_suppkey = revenue0.supplier_no",
     "legacy": "WITH revenue0 AS (SELECT l_suppkey, SUM(l_extendedprice) FROM lineitem GROUP BY l_suppkey) SELECT s_suppkey FROM supplier CROSS JOIN revenue0 WHERE s_suppkey = revenue0.supplier_no"
   },
   "rewriter.cte_q15_pattern.plain": {
     "fork": "WITH revenue0 AS (SELECT l_suppkey AS supplier_no, SUM(l_extendedprice) AS total_revenue FROM lineitem GROUP BY l_suppkey) SELECT s_suppkey FROM supplier CROSS JOIN revenue0 WHERE s_suppkey = revenue0.supplier_no",
     "legacy": "WITH revenue0 AS (SELECT l_suppkey, SUM(l_extendedprice) FROM lineitem GROUP BY l_suppkey) SELECT s_suppkey FROM supplier CROSS JOIN revenue0 WHERE s_suppkey = revenue0.supplier_no"
   },
-  "rewriter.explicit_join.identify": {
-    "fork": "SELECT \"l\".\"x\" FROM \"lineitem\" AS \"l\" JOIN \"orders\" AS \"o\" ON \"l\".\"id\" = \"o\".\"id\" WHERE \"l\".\"qty\" > 5",
-    "legacy": "SELECT l.x FROM lineitem AS l JOIN orders AS o ON l.id = o.id WHERE l.qty > 5"
-  },
   "rewriter.interval_ansi_date_literal_day.identify": {
-    "fork": "SELECT \"l_returnflag\" FROM \"lineitem\" WHERE \"l_shipdate\" <= DATEADD('d', -90, CAST('1998-12-01' AS DATE))",
+    "fork": "SELECT l_returnflag FROM lineitem WHERE l_shipdate <= DATEADD('d', -90, CAST('1998-12-01' AS DATE))",
     "legacy": "SELECT l_returnflag FROM lineitem WHERE l_shipdate <= dateadd('d', -90, CAST('1998-12-01' AS DATE))"
   },
   "rewriter.interval_ansi_date_literal_day.plain": {
@@ -100,7 +64,7 @@
     "legacy": "SELECT l_returnflag FROM lineitem WHERE l_shipdate <= dateadd('d', -90, CAST('1998-12-01' AS DATE))"
   },
   "rewriter.interval_ansi_date_literal_month.identify": {
-    "fork": "SELECT \"o\" FROM \"orders\" WHERE \"o_orderdate\" < DATEADD('M', 3, CAST('1993-07-01' AS DATE))",
+    "fork": "SELECT o FROM orders WHERE o_orderdate < DATEADD('M', 3, CAST('1993-07-01' AS DATE))",
     "legacy": "SELECT o FROM orders WHERE o_orderdate < dateadd('M', 3, CAST('1993-07-01' AS DATE))"
   },
   "rewriter.interval_ansi_date_literal_month.plain": {
@@ -108,7 +72,7 @@
     "legacy": "SELECT o FROM orders WHERE o_orderdate < dateadd('M', 3, CAST('1993-07-01' AS DATE))"
   },
   "rewriter.interval_ansi_date_literal_year.identify": {
-    "fork": "SELECT SUM(\"x\") FROM \"lineitem\" WHERE \"l_shipdate\" < DATEADD('y', 1, CAST('1994-01-01' AS DATE))",
+    "fork": "SELECT SUM(x) FROM lineitem WHERE l_shipdate < DATEADD('y', 1, CAST('1994-01-01' AS DATE))",
     "legacy": "SELECT SUM(x) FROM lineitem WHERE l_shipdate < dateadd('y', 1, CAST('1994-01-01' AS DATE))"
   },
   "rewriter.interval_ansi_date_literal_year.plain": {
@@ -116,7 +80,7 @@
     "legacy": "SELECT SUM(x) FROM lineitem WHERE l_shipdate < dateadd('y', 1, CAST('1994-01-01' AS DATE))"
   },
   "rewriter.interval_cast_minus_day.identify": {
-    "fork": "SELECT DATEADD('d', -90, CAST('1998-12-01' AS DATE)) AS \"d\" FROM \"x\"",
+    "fork": "SELECT DATEADD('d', -90, CAST('1998-12-01' AS DATE)) AS d FROM x",
     "legacy": "SELECT dateadd('d', -90, CAST('1998-12-01' AS DATE)) AS d FROM x"
   },
   "rewriter.interval_cast_minus_day.plain": {
@@ -124,19 +88,15 @@
     "legacy": "SELECT dateadd('d', -90, CAST('1998-12-01' AS DATE)) AS d FROM x"
   },
   "rewriter.interval_cast_plus_day.identify": {
-    "fork": "SELECT DATEADD('d', 30, CAST('1995-03-15' AS DATE)) FROM \"x\"",
+    "fork": "SELECT DATEADD('d', 30, CAST('1995-03-15' AS DATE)) FROM x",
     "legacy": "SELECT dateadd('d', 30, CAST('1995-03-15' AS DATE)) FROM x"
   },
   "rewriter.interval_cast_plus_day.plain": {
     "fork": "SELECT DATEADD('d', 30, CAST('1995-03-15' AS DATE)) FROM x",
     "legacy": "SELECT dateadd('d', 30, CAST('1995-03-15' AS DATE)) FROM x"
   },
-  "rewriter.interval_hour_unsupported_unit.identify": {
-    "fork": "SELECT \"col\" + INTERVAL '2 HOUR' FROM \"x\"",
-    "legacy": "SELECT col + INTERVAL '2 HOUR' FROM x"
-  },
   "rewriter.interval_inline_day_form.identify": {
-    "fork": "SELECT DATEADD('d', -7, \"col\") FROM \"x\"",
+    "fork": "SELECT DATEADD('d', -7, col) FROM x",
     "legacy": "SELECT dateadd('d', -7, col) FROM x"
   },
   "rewriter.interval_inline_day_form.plain": {
@@ -144,7 +104,7 @@
     "legacy": "SELECT dateadd('d', -7, col) FROM x"
   },
   "rewriter.interval_inline_unit_form.identify": {
-    "fork": "SELECT DATEADD('M', 3, \"col\") FROM \"x\"",
+    "fork": "SELECT DATEADD('M', 3, col) FROM x",
     "legacy": "SELECT dateadd('M', 3, col) FROM x"
   },
   "rewriter.interval_inline_unit_form.plain": {
@@ -160,7 +120,7 @@
     "legacy": "SELECT dateadd('y', 1, CAST('1996-02-29' AS DATE))"
   },
   "rewriter.interval_minus_year_col.identify": {
-    "fork": "SELECT DATEADD('y', -1, \"col\") FROM \"x\"",
+    "fork": "SELECT DATEADD('y', -1, col) FROM x",
     "legacy": "SELECT dateadd('y', -1, col) FROM x"
   },
   "rewriter.interval_minus_year_col.plain": {
@@ -176,7 +136,7 @@
     "legacy": "SELECT dateadd('M', 1, CAST('1995-01-31' AS DATE))"
   },
   "rewriter.interval_nested_expression.identify": {
-    "fork": "SELECT DATEADD('d', 2, (DATEADD('d', 1, \"d\"))) FROM \"x\"",
+    "fork": "SELECT DATEADD('d', 2, (DATEADD('d', 1, d))) FROM x",
     "legacy": "SELECT (dateadd('d', 1, d)) + INTERVAL '2 DAY' FROM x"
   },
   "rewriter.interval_nested_expression.plain": {
@@ -184,59 +144,15 @@
     "legacy": "SELECT (dateadd('d', 1, d)) + INTERVAL '2 DAY' FROM x"
   },
   "rewriter.interval_plus_month_col.identify": {
-    "fork": "SELECT DATEADD('M', 3, \"col\") FROM \"x\"",
+    "fork": "SELECT DATEADD('M', 3, col) FROM x",
     "legacy": "SELECT dateadd('M', 3, col) FROM x"
   },
   "rewriter.interval_plus_month_col.plain": {
     "fork": "SELECT DATEADD('M', 3, col) FROM x",
     "legacy": "SELECT dateadd('M', 3, col) FROM x"
   },
-  "rewriter.interval_week_unsupported_unit.identify": {
-    "fork": "SELECT \"col\" + INTERVAL '1 WEEK' FROM \"x\"",
-    "legacy": "SELECT col + INTERVAL '1 WEEK' FROM x"
-  },
-  "rewriter.mixed_explicit_implicit.identify": {
-    "fork": "SELECT \"a\".\"x\", \"b\".\"y\", \"c\".\"z\" FROM \"a\" JOIN \"b\" ON \"a\".\"bid\" = \"b\".\"id\" JOIN \"c\" ON \"b\".\"cid\" = \"c\".\"id\" WHERE \"a\".\"val\" > 5",
-    "legacy": "SELECT a.x, b.y, c.z FROM a JOIN b ON a.bid = b.id JOIN c ON b.cid = c.id WHERE a.val > 5"
-  },
-  "rewriter.multiple_ctes.identify": {
-    "fork": "WITH \"cte1\" AS (SELECT \"a\".\"x\" FROM \"t1\" AS \"a\" JOIN \"t2\" AS \"b\" ON \"a\".\"id\" = \"b\".\"id\"), \"cte2\" AS (SELECT \"c\".\"x\" FROM \"t3\" AS \"c\" JOIN \"t4\" AS \"d\" ON \"c\".\"id\" = \"d\".\"id\") SELECT * FROM \"cte1\" JOIN \"cte2\" ON \"cte1\".\"x\" = \"cte2\".\"x\"",
-    "legacy": "WITH cte1 AS (SELECT a.x FROM t1 AS a JOIN t2 AS b ON a.id = b.id), cte2 AS (SELECT c.x FROM t3 AS c JOIN t4 AS d ON c.id = d.id) SELECT * FROM cte1 JOIN cte2 ON cte1.x = cte2.x"
-  },
-  "rewriter.no_interval.identify": {
-    "fork": "SELECT * FROM \"x\" WHERE \"x\".\"qty\" > 5",
-    "legacy": "SELECT * FROM x WHERE x.qty > 5"
-  },
-  "rewriter.no_substring.identify": {
-    "fork": "SELECT \"c_name\" FROM \"customer\"",
-    "legacy": "SELECT c_name FROM customer"
-  },
-  "rewriter.outer_and_inner_comma.identify": {
-    "fork": "SELECT \"p\".\"p_name\", \"s\".\"s_name\" FROM \"part\" AS \"p\" JOIN \"supplier\" AS \"s\" ON \"p\".\"p_suppkey\" = \"s\".\"s_suppkey\" WHERE \"p\".\"p_size\" > (SELECT AVG(\"ps\".\"ps_supplycost\") FROM \"partsupp\" AS \"ps\" JOIN \"supplier\" AS \"s2\" ON \"ps\".\"ps_suppkey\" = \"s2\".\"s_suppkey\")",
-    "legacy": "SELECT p.p_name, s.s_name FROM part AS p JOIN supplier AS s ON p.p_suppkey = s.s_suppkey WHERE p.p_size > (SELECT AVG(ps.ps_supplycost) FROM partsupp AS ps JOIN supplier AS s2 ON ps.ps_suppkey = s2.s_suppkey)"
-  },
-  "rewriter.predicateless_cross.identify": {
-    "fork": "SELECT * FROM \"a\" CROSS JOIN \"b\"",
-    "legacy": "SELECT * FROM a CROSS JOIN b"
-  },
-  "rewriter.single_table.identify": {
-    "fork": "SELECT * FROM \"lineitem\" WHERE \"l_quantity\" > 10",
-    "legacy": "SELECT * FROM lineitem WHERE l_quantity > 10"
-  },
-  "rewriter.string_literal_comma.identify": {
-    "fork": "SELECT 'hello, world' FROM \"x\" WHERE \"x\".\"id\" = 1",
-    "legacy": "SELECT 'hello, world' FROM x WHERE x.id = 1"
-  },
-  "rewriter.subquery_exists.identify": {
-    "fork": "SELECT \"t\".\"x\" FROM \"t\" WHERE EXISTS(SELECT * FROM \"store_sales\" JOIN \"date_dim\" ON \"ss_sold_date_sk\" = \"d_date_sk\" WHERE \"d_year\" = 2002)",
-    "legacy": "SELECT t.x FROM t WHERE EXISTS(SELECT * FROM store_sales JOIN date_dim ON ss_sold_date_sk = d_date_sk WHERE d_year = 2002)"
-  },
-  "rewriter.subquery_in.identify": {
-    "fork": "SELECT \"t\".\"x\" FROM \"t\" WHERE \"t\".\"id\" IN (SELECT \"a\".\"id\" FROM \"a\" JOIN \"b\" ON \"a\".\"bid\" = \"b\".\"id\")",
-    "legacy": "SELECT t.x FROM t WHERE t.id IN (SELECT a.id FROM a JOIN b ON a.bid = b.id)"
-  },
   "rewriter.substring_comma_form.identify": {
-    "fork": "SELECT SUBSTRING(\"c_phone\", 1, 2) FROM \"customer\"",
+    "fork": "SELECT SUBSTRING(c_phone, 1, 2) FROM customer",
     "legacy": "SELECT substring(c_phone, 1, 2) FROM customer"
   },
   "rewriter.substring_comma_form.plain": {
@@ -244,7 +160,7 @@
     "legacy": "SELECT substring(c_phone, 1, 2) FROM customer"
   },
   "rewriter.substring_expression_arg.identify": {
-    "fork": "SELECT SUBSTRING(UPPER(\"c_name\"), 2, 5) FROM \"customer\"",
+    "fork": "SELECT SUBSTRING(UPPER(c_name), 2, 5) FROM customer",
     "legacy": "SELECT substring(UPPER(c_name), 2, 5) FROM customer"
   },
   "rewriter.substring_expression_arg.plain": {
@@ -252,7 +168,7 @@
     "legacy": "SELECT substring(UPPER(c_name), 2, 5) FROM customer"
   },
   "rewriter.substring_from_for.identify": {
-    "fork": "SELECT SUBSTRING(\"c_phone\", 1, 2) FROM \"customer\"",
+    "fork": "SELECT SUBSTRING(c_phone, 1, 2) FROM customer",
     "legacy": "SELECT substring(c_phone, 1, 2) FROM customer"
   },
   "rewriter.substring_from_for.plain": {
@@ -260,7 +176,7 @@
     "legacy": "SELECT substring(c_phone, 1, 2) FROM customer"
   },
   "rewriter.substring_from_only.identify": {
-    "fork": "SELECT SUBSTRING(\"c_phone\", 3, LENGTH(\"c_phone\")) FROM \"customer\"",
+    "fork": "SELECT SUBSTRING(c_phone, 3, LENGTH(c_phone)) FROM customer",
     "legacy": "SELECT substring(c_phone, 3) FROM customer"
   },
   "rewriter.substring_from_only.plain": {
@@ -268,59 +184,23 @@
     "legacy": "SELECT substring(c_phone, 3) FROM customer"
   },
   "rewriter.substring_q22_pattern.identify": {
-    "fork": "SELECT SUBSTRING(\"c_phone\", 1, 2) AS \"cntrycode\" FROM \"customer\" WHERE SUBSTRING(\"c_phone\", 1, 2) IN ('13', '17')",
+    "fork": "SELECT SUBSTRING(c_phone, 1, 2) AS cntrycode FROM customer WHERE SUBSTRING(c_phone, 1, 2) IN ('13', '17')",
     "legacy": "SELECT substring(c_phone, 1, 2) AS cntrycode FROM customer WHERE substring(c_phone, 1, 2) IN ('13', '17')"
   },
   "rewriter.substring_q22_pattern.plain": {
     "fork": "SELECT SUBSTRING(c_phone, 1, 2) AS cntrycode FROM customer WHERE SUBSTRING(c_phone, 1, 2) IN ('13', '17')",
     "legacy": "SELECT substring(c_phone, 1, 2) AS cntrycode FROM customer WHERE substring(c_phone, 1, 2) IN ('13', '17')"
   },
-  "rewriter.three_table_comma.identify": {
-    "fork": "SELECT \"l\".\"l_orderkey\", \"o\".\"o_orderdate\", \"c\".\"c_name\" FROM \"lineitem\" AS \"l\" JOIN \"orders\" AS \"o\" ON \"l\".\"l_orderkey\" = \"o\".\"o_orderkey\" JOIN \"customer\" AS \"c\" ON \"o\".\"o_custkey\" = \"c\".\"c_custkey\" WHERE \"l\".\"l_quantity\" > 10",
-    "legacy": "SELECT l.l_orderkey, o.o_orderdate, c.c_name FROM lineitem AS l JOIN orders AS o ON l.l_orderkey = o.o_orderkey JOIN customer AS c ON o.o_custkey = c.c_custkey WHERE l.l_quantity > 10"
-  },
-  "rewriter.three_table_valid.identify": {
-    "fork": "SELECT \"l\".\"x\", \"o\".\"y\", \"c\".\"z\" FROM \"lineitem\" AS \"l\" JOIN \"orders\" AS \"o\" ON \"l\".\"l_orderkey\" = \"o\".\"o_orderkey\" JOIN \"customer\" AS \"c\" ON \"o\".\"o_custkey\" = \"c\".\"c_custkey\"",
-    "legacy": "SELECT l.x, o.y, c.z FROM lineitem AS l JOIN orders AS o ON l.l_orderkey = o.o_orderkey JOIN customer AS c ON o.o_custkey = c.c_custkey"
-  },
   "rewriter.tpch_q1_interval_pattern.identify": {
-    "fork": "SELECT \"l_returnflag\" FROM \"lineitem\" WHERE \"l_shipdate\" <= DATEADD('d', -90, CAST('1998-12-01' AS DATE))",
+    "fork": "SELECT l_returnflag FROM lineitem WHERE l_shipdate <= DATEADD('d', -90, CAST('1998-12-01' AS DATE))",
     "legacy": "SELECT l_returnflag FROM lineitem WHERE l_shipdate <= dateadd('d', -90, CAST('1998-12-01' AS DATE))"
   },
   "rewriter.tpch_q1_interval_pattern.plain": {
     "fork": "SELECT l_returnflag FROM lineitem WHERE l_shipdate <= DATEADD('d', -90, CAST('1998-12-01' AS DATE))",
     "legacy": "SELECT l_returnflag FROM lineitem WHERE l_shipdate <= dateadd('d', -90, CAST('1998-12-01' AS DATE))"
   },
-  "rewriter.tpch_q3_pattern.identify": {
-    "fork": "SELECT \"l\".\"l_orderkey\", SUM(\"l\".\"l_extendedprice\" * (1 - \"l\".\"l_discount\")) AS \"revenue\" FROM \"customer\" AS \"c\" JOIN \"orders\" AS \"o\" ON \"c\".\"c_custkey\" = \"o\".\"o_custkey\" JOIN \"lineitem\" AS \"l\" ON \"l\".\"l_orderkey\" = \"o\".\"o_orderkey\" WHERE \"c\".\"c_mktsegment\" = 'BUILDING' AND \"o\".\"o_orderdate\" < CAST('1995-03-15' AS DATE) AND \"l\".\"l_shipdate\" > CAST('1995-03-15' AS DATE) GROUP BY \"l\".\"l_orderkey\", \"o\".\"o_orderdate\" ORDER BY \"revenue\" DESC, \"o\".\"o_orderdate\" LIMIT 10",
-    "legacy": "SELECT l.l_orderkey, SUM(l.l_extendedprice * (1 - l.l_discount)) AS revenue FROM customer AS c JOIN orders AS o ON c.c_custkey = o.o_custkey JOIN lineitem AS l ON l.l_orderkey = o.o_orderkey WHERE c.c_mktsegment = 'BUILDING' AND o.o_orderdate < CAST('1995-03-15' AS DATE) AND l.l_shipdate > CAST('1995-03-15' AS DATE) GROUP BY l.l_orderkey, o.o_orderdate ORDER BY revenue DESC, o.o_orderdate LIMIT 10"
-  },
-  "rewriter.tpch_q5_pattern.identify": {
-    "fork": "SELECT \"n\".\"n_name\", SUM(\"l\".\"l_extendedprice\" * (1 - \"l\".\"l_discount\")) AS \"revenue\" FROM \"customer\" AS \"c\" JOIN \"orders\" AS \"o\" ON \"c\".\"c_custkey\" = \"o\".\"o_custkey\" JOIN \"lineitem\" AS \"l\" ON \"l\".\"l_orderkey\" = \"o\".\"o_orderkey\" JOIN \"supplier\" AS \"s\" ON \"l\".\"l_suppkey\" = \"s\".\"s_suppkey\" JOIN \"nation\" AS \"n\" ON \"s\".\"s_nationkey\" = \"n\".\"n_nationkey\" WHERE \"c\".\"c_nationkey\" = \"s\".\"s_nationkey\" AND \"n\".\"n_name\" = 'FRANCE' GROUP BY \"n\".\"n_name\" ORDER BY \"revenue\" DESC",
-    "legacy": "SELECT n.n_name, SUM(l.l_extendedprice * (1 - l.l_discount)) AS revenue FROM customer AS c JOIN orders AS o ON c.c_custkey = o.o_custkey JOIN lineitem AS l ON l.l_orderkey = o.o_orderkey JOIN supplier AS s ON l.l_suppkey = s.s_suppkey JOIN nation AS n ON s.s_nationkey = n.n_nationkey WHERE c.c_nationkey = s.s_nationkey AND n.n_name = 'FRANCE' GROUP BY n.n_name ORDER BY revenue DESC"
-  },
-  "rewriter.two_table_comma.identify": {
-    "fork": "SELECT \"l\".\"x\", \"o\".\"y\" FROM \"lineitem\" AS \"l\" JOIN \"orders\" AS \"o\" ON \"l\".\"l_orderkey\" = \"o\".\"o_orderkey\" WHERE \"l\".\"quantity\" > 10",
-    "legacy": "SELECT l.x, o.y FROM lineitem AS l JOIN orders AS o ON l.l_orderkey = o.o_orderkey WHERE l.quantity > 10"
-  },
-  "rewriter.two_table_filter.identify": {
-    "fork": "SELECT \"a\".\"x\", \"b\".\"y\" FROM \"a\" JOIN \"b\" ON \"a\".\"x\" = \"b\".\"x\" WHERE \"a\".\"z\" > 1",
-    "legacy": "SELECT a.x, b.y FROM a JOIN b ON a.x = b.x WHERE a.z > 1"
-  },
-  "rewriter.two_table_no_filter.identify": {
-    "fork": "SELECT \"l\".\"x\", \"o\".\"y\" FROM \"lineitem\" AS \"l\" JOIN \"orders\" AS \"o\" ON \"l\".\"l_orderkey\" = \"o\".\"o_orderkey\"",
-    "legacy": "SELECT l.x, o.y FROM lineitem AS l JOIN orders AS o ON l.l_orderkey = o.o_orderkey"
-  },
-  "rewriter.two_table_only_join_pred.identify": {
-    "fork": "SELECT \"a\".\"x\" FROM \"a\" JOIN \"b\" ON \"a\".\"id\" = \"b\".\"id\"",
-    "legacy": "SELECT a.x FROM a JOIN b ON a.id = b.id"
-  },
-  "rewriter.unconnected_cross.identify": {
-    "fork": "SELECT * FROM \"a\" CROSS JOIN \"b\" WHERE \"a\".\"val\" > 5",
-    "legacy": "SELECT * FROM a CROSS JOIN b WHERE a.val > 5"
-  },
   "tpch.q1.identify": {
-    "fork": "SELECT \"l_returnflag\", \"l_linestatus\", SUM(\"l_quantity\") AS \"sum_qty\", SUM(\"l_extendedprice\") AS \"sum_base_price\", SUM(\"l_extendedprice\" * (1 - \"l_discount\")) AS \"sum_disc_price\", SUM(\"l_extendedprice\" * (1 - \"l_discount\") * (1 + \"l_tax\")) AS \"sum_charge\", AVG(\"l_quantity\") AS \"avg_qty\", AVG(\"l_extendedprice\") AS \"avg_price\", AVG(\"l_discount\") AS \"avg_disc\", COUNT(*) AS \"count_order\" FROM \"lineitem\" WHERE \"l_shipdate\" <= DATEADD('d', -68, CAST('1998-12-01' AS DATE)) GROUP BY \"l_returnflag\", \"l_linestatus\" ORDER BY \"l_returnflag\", \"l_linestatus\"",
+    "fork": "SELECT l_returnflag, l_linestatus, SUM(l_quantity) AS sum_qty, SUM(l_extendedprice) AS sum_base_price, SUM(l_extendedprice * (1 - l_discount)) AS sum_disc_price, SUM(l_extendedprice * (1 - l_discount) * (1 + l_tax)) AS sum_charge, AVG(l_quantity) AS avg_qty, AVG(l_extendedprice) AS avg_price, AVG(l_discount) AS avg_disc, COUNT(*) AS count_order FROM lineitem WHERE l_shipdate <= DATEADD('d', -68, CAST('1998-12-01' AS DATE)) GROUP BY l_returnflag, l_linestatus ORDER BY l_returnflag, l_linestatus",
     "legacy": "SELECT l_returnflag, l_linestatus, SUM(l_quantity) AS sum_qty, SUM(l_extendedprice) AS sum_base_price, SUM(l_extendedprice * (1 - l_discount)) AS sum_disc_price, SUM(l_extendedprice * (1 - l_discount) * (1 + l_tax)) AS sum_charge, AVG(l_quantity) AS avg_qty, AVG(l_extendedprice) AS avg_price, AVG(l_discount) AS avg_disc, COUNT(*) AS count_order FROM lineitem WHERE l_shipdate <= dateadd('d', -68, CAST('1998-12-01' AS DATE)) GROUP BY l_returnflag, l_linestatus ORDER BY l_returnflag, l_linestatus"
   },
   "tpch.q1.plain": {
@@ -328,31 +208,23 @@
     "legacy": "SELECT l_returnflag, l_linestatus, SUM(l_quantity) AS sum_qty, SUM(l_extendedprice) AS sum_base_price, SUM(l_extendedprice * (1 - l_discount)) AS sum_disc_price, SUM(l_extendedprice * (1 - l_discount) * (1 + l_tax)) AS sum_charge, AVG(l_quantity) AS avg_qty, AVG(l_extendedprice) AS avg_price, AVG(l_discount) AS avg_disc, COUNT(*) AS count_order FROM lineitem WHERE l_shipdate <= dateadd('d', -68, CAST('1998-12-01' AS DATE)) GROUP BY l_returnflag, l_linestatus ORDER BY l_returnflag, l_linestatus"
   },
   "tpch.q10.identify": {
-    "fork": "SELECT \"c_custkey\", \"c_name\", SUM(\"l_extendedprice\" * (1 - \"l_discount\")) AS \"revenue\", \"c_acctbal\", \"n_name\", \"c_address\", \"c_phone\", \"c_comment\" FROM \"customer\" JOIN \"orders\" ON \"c_custkey\" = \"o_custkey\" JOIN \"lineitem\" ON \"l_orderkey\" = \"o_orderkey\" JOIN \"nation\" ON \"c_nationkey\" = \"n_nationkey\" WHERE \"o_orderdate\" >= CAST('1993-11-01' AS DATE) AND \"o_orderdate\" < DATEADD('M', 3, CAST('1993-11-01' AS DATE)) AND \"l_returnflag\" = 'R' GROUP BY \"c_custkey\", \"c_name\", \"c_acctbal\", \"c_phone\", \"n_name\", \"c_address\", \"c_comment\" ORDER BY \"revenue\" DESC LIMIT 20",
+    "fork": "SELECT c_custkey, c_name, SUM(l_extendedprice * (1 - l_discount)) AS revenue, c_acctbal, n_name, c_address, c_phone, c_comment FROM customer JOIN orders ON c_custkey = o_custkey JOIN lineitem ON l_orderkey = o_orderkey JOIN nation ON c_nationkey = n_nationkey WHERE o_orderdate >= CAST('1993-11-01' AS DATE) AND o_orderdate < DATEADD('M', 3, CAST('1993-11-01' AS DATE)) AND l_returnflag = 'R' GROUP BY c_custkey, c_name, c_acctbal, c_phone, n_name, c_address, c_comment ORDER BY revenue DESC LIMIT 20",
     "legacy": "SELECT c_custkey, c_name, SUM(l_extendedprice * (1 - l_discount)) AS revenue, c_acctbal, n_name, c_address, c_phone, c_comment FROM customer JOIN orders ON c_custkey = o_custkey JOIN lineitem ON l_orderkey = o_orderkey JOIN nation ON c_nationkey = n_nationkey WHERE o_orderdate >= CAST('1993-11-01' AS DATE) AND o_orderdate < dateadd('M', 3, CAST('1993-11-01' AS DATE)) AND l_returnflag = 'R' GROUP BY c_custkey, c_name, c_acctbal, c_phone, n_name, c_address, c_comment ORDER BY revenue DESC LIMIT 20"
   },
   "tpch.q10.plain": {
     "fork": "SELECT c_custkey, c_name, SUM(l_extendedprice * (1 - l_discount)) AS revenue, c_acctbal, n_name, c_address, c_phone, c_comment FROM customer JOIN orders ON c_custkey = o_custkey JOIN lineitem ON l_orderkey = o_orderkey JOIN nation ON c_nationkey = n_nationkey WHERE o_orderdate >= CAST('1993-11-01' AS DATE) AND o_orderdate < DATEADD('M', 3, CAST('1993-11-01' AS DATE)) AND l_returnflag = 'R' GROUP BY c_custkey, c_name, c_acctbal, c_phone, n_name, c_address, c_comment ORDER BY revenue DESC LIMIT 20",
     "legacy": "SELECT c_custkey, c_name, SUM(l_extendedprice * (1 - l_discount)) AS revenue, c_acctbal, n_name, c_address, c_phone, c_comment FROM customer JOIN orders ON c_custkey = o_custkey JOIN lineitem ON l_orderkey = o_orderkey JOIN nation ON c_nationkey = n_nationkey WHERE o_orderdate >= CAST('1993-11-01' AS DATE) AND o_orderdate < dateadd('M', 3, CAST('1993-11-01' AS DATE)) AND l_returnflag = 'R' GROUP BY c_custkey, c_name, c_acctbal, c_phone, n_name, c_address, c_comment ORDER BY revenue DESC LIMIT 20"
   },
-  "tpch.q11.identify": {
-    "fork": "SELECT \"ps_partkey\", SUM(\"ps_supplycost\" * \"ps_availqty\") AS \"value\" FROM \"partsupp\" JOIN \"supplier\" ON \"ps_suppkey\" = \"s_suppkey\" JOIN \"nation\" ON \"s_nationkey\" = \"n_nationkey\" WHERE \"n_name\" = 'JAPAN' GROUP BY \"ps_partkey\" HAVING SUM(\"ps_supplycost\" * \"ps_availqty\") > (SELECT SUM(\"ps_supplycost\" * \"ps_availqty\") * 0.0001000000 FROM \"partsupp\" JOIN \"supplier\" ON \"ps_suppkey\" = \"s_suppkey\" JOIN \"nation\" ON \"s_nationkey\" = \"n_nationkey\" WHERE \"n_name\" = 'JAPAN') ORDER BY \"value\" DESC",
-    "legacy": "SELECT ps_partkey, SUM(ps_supplycost * ps_availqty) AS value FROM partsupp JOIN supplier ON ps_suppkey = s_suppkey JOIN nation ON s_nationkey = n_nationkey WHERE n_name = 'JAPAN' GROUP BY ps_partkey HAVING SUM(ps_supplycost * ps_availqty) > (SELECT SUM(ps_supplycost * ps_availqty) * 0.0001000000 FROM partsupp JOIN supplier ON ps_suppkey = s_suppkey JOIN nation ON s_nationkey = n_nationkey WHERE n_name = 'JAPAN') ORDER BY value DESC"
-  },
   "tpch.q12.identify": {
-    "fork": "SELECT \"l_shipmode\", SUM(CASE WHEN \"o_orderpriority\" = '1-URGENT' OR \"o_orderpriority\" = '2-HIGH' THEN 1 ELSE 0 END) AS \"high_line_count\", SUM(CASE WHEN \"o_orderpriority\" <> '1-URGENT' AND \"o_orderpriority\" <> '2-HIGH' THEN 1 ELSE 0 END) AS \"low_line_count\" FROM \"orders\" JOIN \"lineitem\" ON \"o_orderkey\" = \"l_orderkey\" WHERE \"l_shipmode\" IN ('FOB', 'REG AIR') AND \"l_commitdate\" < \"l_receiptdate\" AND \"l_shipdate\" < \"l_commitdate\" AND \"l_receiptdate\" >= CAST('1993-01-01' AS DATE) AND \"l_receiptdate\" < DATEADD('y', 1, CAST('1993-01-01' AS DATE)) GROUP BY \"l_shipmode\" ORDER BY \"l_shipmode\"",
+    "fork": "SELECT l_shipmode, SUM(CASE WHEN o_orderpriority = '1-URGENT' OR o_orderpriority = '2-HIGH' THEN 1 ELSE 0 END) AS high_line_count, SUM(CASE WHEN o_orderpriority <> '1-URGENT' AND o_orderpriority <> '2-HIGH' THEN 1 ELSE 0 END) AS low_line_count FROM orders JOIN lineitem ON o_orderkey = l_orderkey WHERE l_shipmode IN ('FOB', 'REG AIR') AND l_commitdate < l_receiptdate AND l_shipdate < l_commitdate AND l_receiptdate >= CAST('1993-01-01' AS DATE) AND l_receiptdate < DATEADD('y', 1, CAST('1993-01-01' AS DATE)) GROUP BY l_shipmode ORDER BY l_shipmode",
     "legacy": "SELECT l_shipmode, SUM(CASE WHEN o_orderpriority = '1-URGENT' OR o_orderpriority = '2-HIGH' THEN 1 ELSE 0 END) AS high_line_count, SUM(CASE WHEN o_orderpriority <> '1-URGENT' AND o_orderpriority <> '2-HIGH' THEN 1 ELSE 0 END) AS low_line_count FROM orders JOIN lineitem ON o_orderkey = l_orderkey WHERE l_shipmode IN ('FOB', 'REG AIR') AND l_commitdate < l_receiptdate AND l_shipdate < l_commitdate AND l_receiptdate >= CAST('1993-01-01' AS DATE) AND l_receiptdate < dateadd('y', 1, CAST('1993-01-01' AS DATE)) GROUP BY l_shipmode ORDER BY l_shipmode"
   },
   "tpch.q12.plain": {
     "fork": "SELECT l_shipmode, SUM(CASE WHEN o_orderpriority = '1-URGENT' OR o_orderpriority = '2-HIGH' THEN 1 ELSE 0 END) AS high_line_count, SUM(CASE WHEN o_orderpriority <> '1-URGENT' AND o_orderpriority <> '2-HIGH' THEN 1 ELSE 0 END) AS low_line_count FROM orders JOIN lineitem ON o_orderkey = l_orderkey WHERE l_shipmode IN ('FOB', 'REG AIR') AND l_commitdate < l_receiptdate AND l_shipdate < l_commitdate AND l_receiptdate >= CAST('1993-01-01' AS DATE) AND l_receiptdate < DATEADD('y', 1, CAST('1993-01-01' AS DATE)) GROUP BY l_shipmode ORDER BY l_shipmode",
     "legacy": "SELECT l_shipmode, SUM(CASE WHEN o_orderpriority = '1-URGENT' OR o_orderpriority = '2-HIGH' THEN 1 ELSE 0 END) AS high_line_count, SUM(CASE WHEN o_orderpriority <> '1-URGENT' AND o_orderpriority <> '2-HIGH' THEN 1 ELSE 0 END) AS low_line_count FROM orders JOIN lineitem ON o_orderkey = l_orderkey WHERE l_shipmode IN ('FOB', 'REG AIR') AND l_commitdate < l_receiptdate AND l_shipdate < l_commitdate AND l_receiptdate >= CAST('1993-01-01' AS DATE) AND l_receiptdate < dateadd('y', 1, CAST('1993-01-01' AS DATE)) GROUP BY l_shipmode ORDER BY l_shipmode"
   },
-  "tpch.q13.identify": {
-    "fork": "SELECT \"c_count\", COUNT(*) AS \"custdist\" FROM (SELECT \"c_custkey\", COUNT(\"o_orderkey\") FROM \"customer\" LEFT OUTER JOIN \"orders\" ON \"c_custkey\" = \"o_custkey\" AND \"o_comment\" NOT LIKE '%special%packages%' GROUP BY \"c_custkey\") AS \"c_orders\"(\"c_custkey\", \"c_count\") GROUP BY \"c_count\" ORDER BY \"custdist\" DESC, \"c_count\" DESC",
-    "legacy": "SELECT c_count, COUNT(*) AS custdist FROM (SELECT c_custkey, COUNT(o_orderkey) FROM customer LEFT OUTER JOIN orders ON c_custkey = o_custkey AND o_comment NOT LIKE '%special%packages%' GROUP BY c_custkey) AS c_orders(c_custkey, c_count) GROUP BY c_count ORDER BY custdist DESC, c_count DESC"
-  },
   "tpch.q14.identify": {
-    "fork": "SELECT 100.00 * SUM(CASE WHEN \"p_type\" LIKE 'PROMO%' THEN \"l_extendedprice\" * (1 - \"l_discount\") ELSE 0 END) / SUM(\"l_extendedprice\" * (1 - \"l_discount\")) AS \"promo_revenue\" FROM \"lineitem\" JOIN \"part\" ON \"l_partkey\" = \"p_partkey\" WHERE \"l_shipdate\" >= CAST('1993-04-01' AS DATE) AND \"l_shipdate\" < DATEADD('M', 1, CAST('1993-04-01' AS DATE))",
+    "fork": "SELECT 100.00 * SUM(CASE WHEN p_type LIKE 'PROMO%' THEN l_extendedprice * (1 - l_discount) ELSE 0 END) / SUM(l_extendedprice * (1 - l_discount)) AS promo_revenue FROM lineitem JOIN part ON l_partkey = p_partkey WHERE l_shipdate >= CAST('1993-04-01' AS DATE) AND l_shipdate < DATEADD('M', 1, CAST('1993-04-01' AS DATE))",
     "legacy": "SELECT 100.00 * SUM(CASE WHEN p_type LIKE 'PROMO%' THEN l_extendedprice * (1 - l_discount) ELSE 0 END) / SUM(l_extendedprice * (1 - l_discount)) AS promo_revenue FROM lineitem JOIN part ON l_partkey = p_partkey WHERE l_shipdate >= CAST('1993-04-01' AS DATE) AND l_shipdate < dateadd('M', 1, CAST('1993-04-01' AS DATE))"
   },
   "tpch.q14.plain": {
@@ -360,59 +232,31 @@
     "legacy": "SELECT 100.00 * SUM(CASE WHEN p_type LIKE 'PROMO%' THEN l_extendedprice * (1 - l_discount) ELSE 0 END) / SUM(l_extendedprice * (1 - l_discount)) AS promo_revenue FROM lineitem JOIN part ON l_partkey = p_partkey WHERE l_shipdate >= CAST('1993-04-01' AS DATE) AND l_shipdate < dateadd('M', 1, CAST('1993-04-01' AS DATE))"
   },
   "tpch.q15.identify": {
-    "fork": "WITH \"revenue\" AS (SELECT \"l_suppkey\" AS \"supplier_no\", SUM(\"l_extendedprice\" * (1 - \"l_discount\")) AS \"total_revenue\" FROM \"lineitem\" WHERE \"l_shipdate\" >= CAST('1995-07-01' AS DATE) AND \"l_shipdate\" < DATEADD('M', 3, CAST('1995-07-01' AS DATE)) GROUP BY \"l_suppkey\") SELECT \"s_suppkey\", \"s_name\", \"s_address\", \"s_phone\", \"total_revenue\" FROM \"supplier\" JOIN \"revenue\" ON \"s_suppkey\" = \"supplier_no\" WHERE \"total_revenue\" = (SELECT MAX(\"total_revenue\") FROM \"revenue\") ORDER BY \"s_suppkey\"",
+    "fork": "WITH revenue AS (SELECT l_suppkey AS supplier_no, SUM(l_extendedprice * (1 - l_discount)) AS total_revenue FROM lineitem WHERE l_shipdate >= CAST('1995-07-01' AS DATE) AND l_shipdate < DATEADD('M', 3, CAST('1995-07-01' AS DATE)) GROUP BY l_suppkey) SELECT s_suppkey, s_name, s_address, s_phone, total_revenue FROM supplier JOIN revenue ON s_suppkey = supplier_no WHERE total_revenue = (SELECT MAX(total_revenue) FROM revenue) ORDER BY s_suppkey",
     "legacy": "WITH revenue AS (SELECT l_suppkey, SUM(l_extendedprice * (1 - l_discount)) FROM lineitem WHERE l_shipdate >= CAST('1995-07-01' AS DATE) AND l_shipdate < dateadd('M', 3, CAST('1995-07-01' AS DATE)) GROUP BY l_suppkey) SELECT s_suppkey, s_name, s_address, s_phone, total_revenue FROM supplier JOIN revenue ON s_suppkey = supplier_no WHERE total_revenue = (SELECT MAX(total_revenue) FROM revenue) ORDER BY s_suppkey"
   },
   "tpch.q15.plain": {
     "fork": "WITH revenue AS (SELECT l_suppkey AS supplier_no, SUM(l_extendedprice * (1 - l_discount)) AS total_revenue FROM lineitem WHERE l_shipdate >= CAST('1995-07-01' AS DATE) AND l_shipdate < DATEADD('M', 3, CAST('1995-07-01' AS DATE)) GROUP BY l_suppkey) SELECT s_suppkey, s_name, s_address, s_phone, total_revenue FROM supplier JOIN revenue ON s_suppkey = supplier_no WHERE total_revenue = (SELECT MAX(total_revenue) FROM revenue) ORDER BY s_suppkey",
     "legacy": "WITH revenue AS (SELECT l_suppkey, SUM(l_extendedprice * (1 - l_discount)) FROM lineitem WHERE l_shipdate >= CAST('1995-07-01' AS DATE) AND l_shipdate < dateadd('M', 3, CAST('1995-07-01' AS DATE)) GROUP BY l_suppkey) SELECT s_suppkey, s_name, s_address, s_phone, total_revenue FROM supplier JOIN revenue ON s_suppkey = supplier_no WHERE total_revenue = (SELECT MAX(total_revenue) FROM revenue) ORDER BY s_suppkey"
   },
-  "tpch.q16.identify": {
-    "fork": "SELECT \"p_brand\", \"p_type\", \"p_size\", COUNT(DISTINCT \"ps_suppkey\") AS \"supplier_cnt\" FROM \"partsupp\" JOIN \"part\" ON \"p_partkey\" = \"ps_partkey\" WHERE \"p_brand\" <> 'Brand#41' AND \"p_type\" NOT LIKE 'MEDIUM BURNISHED%' AND \"p_size\" IN (4, 22, 35, 31, 47, 44, 30, 11) AND NOT \"ps_suppkey\" IN (SELECT \"s_suppkey\" FROM \"supplier\" WHERE \"s_comment\" LIKE '%Customer%Complaints%') GROUP BY \"p_brand\", \"p_type\", \"p_size\" ORDER BY \"supplier_cnt\" DESC, \"p_brand\", \"p_type\", \"p_size\"",
-    "legacy": "SELECT p_brand, p_type, p_size, COUNT(DISTINCT ps_suppkey) AS supplier_cnt FROM partsupp JOIN part ON p_partkey = ps_partkey WHERE p_brand <> 'Brand#41' AND p_type NOT LIKE 'MEDIUM BURNISHED%' AND p_size IN (4, 22, 35, 31, 47, 44, 30, 11) AND NOT ps_suppkey IN (SELECT s_suppkey FROM supplier WHERE s_comment LIKE '%Customer%Complaints%') GROUP BY p_brand, p_type, p_size ORDER BY supplier_cnt DESC, p_brand, p_type, p_size"
-  },
-  "tpch.q17.identify": {
-    "fork": "SELECT SUM(\"l_extendedprice\") / 7.0 AS \"avg_yearly\" FROM \"lineitem\" JOIN \"part\" ON \"p_partkey\" = \"l_partkey\" WHERE \"p_brand\" = 'Brand#12' AND \"p_container\" = 'SM BAG' AND \"l_quantity\" < (SELECT 0.2 * AVG(\"l_quantity\") FROM \"lineitem\" WHERE \"l_partkey\" = \"p_partkey\")",
-    "legacy": "SELECT SUM(l_extendedprice) / 7.0 AS avg_yearly FROM lineitem JOIN part ON p_partkey = l_partkey WHERE p_brand = 'Brand#12' AND p_container = 'SM BAG' AND l_quantity < (SELECT 0.2 * AVG(l_quantity) FROM lineitem WHERE l_partkey = p_partkey)"
-  },
-  "tpch.q18.identify": {
-    "fork": "SELECT \"c_name\", \"c_custkey\", \"o_orderkey\", \"o_orderdate\", \"o_totalprice\", SUM(\"l_quantity\") FROM \"customer\" JOIN \"orders\" ON \"c_custkey\" = \"o_custkey\" JOIN \"lineitem\" ON \"o_orderkey\" = \"l_orderkey\" WHERE \"o_orderkey\" IN (SELECT \"l_orderkey\" FROM \"lineitem\" GROUP BY \"l_orderkey\" HAVING SUM(\"l_quantity\") > 313) GROUP BY \"c_name\", \"c_custkey\", \"o_orderkey\", \"o_orderdate\", \"o_totalprice\" ORDER BY \"o_totalprice\" DESC, \"o_orderdate\" LIMIT 100",
-    "legacy": "SELECT c_name, c_custkey, o_orderkey, o_orderdate, o_totalprice, SUM(l_quantity) FROM customer JOIN orders ON c_custkey = o_custkey JOIN lineitem ON o_orderkey = l_orderkey WHERE o_orderkey IN (SELECT l_orderkey FROM lineitem GROUP BY l_orderkey HAVING SUM(l_quantity) > 313) GROUP BY c_name, c_custkey, o_orderkey, o_orderdate, o_totalprice ORDER BY o_totalprice DESC, o_orderdate LIMIT 100"
-  },
-  "tpch.q19.identify": {
-    "fork": "SELECT SUM(\"l_extendedprice\" * (1 - \"l_discount\")) AS \"revenue\" FROM \"lineitem\" CROSS JOIN \"part\" WHERE (\"p_partkey\" = \"l_partkey\" AND \"p_brand\" = 'Brand#13' AND \"p_container\" IN ('SM CASE', 'SM BOX', 'SM PACK', 'SM PKG') AND \"l_quantity\" >= 6 AND \"l_quantity\" <= 6 + 10 AND \"p_size\" BETWEEN 1 AND 5 AND \"l_shipmode\" IN ('AIR', 'AIR REG') AND \"l_shipinstruct\" = 'DELIVER IN PERSON') OR (\"p_partkey\" = \"l_partkey\" AND \"p_brand\" = 'Brand#43' AND \"p_container\" IN ('MED BAG', 'MED BOX', 'MED PKG', 'MED PACK') AND \"l_quantity\" >= 11 AND \"l_quantity\" <= 11 + 10 AND \"p_size\" BETWEEN 1 AND 10 AND \"l_shipmode\" IN ('AIR', 'AIR REG') AND \"l_shipinstruct\" = 'DELIVER IN PERSON') OR (\"p_partkey\" = \"l_partkey\" AND \"p_brand\" = 'Brand#55' AND \"p_container\" IN ('LG CASE', 'LG BOX', 'LG PACK', 'LG PKG') AND \"l_quantity\" >= 27 AND \"l_quantity\" <= 27 + 10 AND \"p_size\" BETWEEN 1 AND 15 AND \"l_shipmode\" IN ('AIR', 'AIR REG') AND \"l_shipinstruct\" = 'DELIVER IN PERSON')",
-    "legacy": "SELECT SUM(l_extendedprice * (1 - l_discount)) AS revenue FROM lineitem CROSS JOIN part WHERE (p_partkey = l_partkey AND p_brand = 'Brand#13' AND p_container IN ('SM CASE', 'SM BOX', 'SM PACK', 'SM PKG') AND l_quantity >= 6 AND l_quantity <= 6 + 10 AND p_size BETWEEN 1 AND 5 AND l_shipmode IN ('AIR', 'AIR REG') AND l_shipinstruct = 'DELIVER IN PERSON') OR (p_partkey = l_partkey AND p_brand = 'Brand#43' AND p_container IN ('MED BAG', 'MED BOX', 'MED PKG', 'MED PACK') AND l_quantity >= 11 AND l_quantity <= 11 + 10 AND p_size BETWEEN 1 AND 10 AND l_shipmode IN ('AIR', 'AIR REG') AND l_shipinstruct = 'DELIVER IN PERSON') OR (p_partkey = l_partkey AND p_brand = 'Brand#55' AND p_container IN ('LG CASE', 'LG BOX', 'LG PACK', 'LG PKG') AND l_quantity >= 27 AND l_quantity <= 27 + 10 AND p_size BETWEEN 1 AND 15 AND l_shipmode IN ('AIR', 'AIR REG') AND l_shipinstruct = 'DELIVER IN PERSON')"
-  },
-  "tpch.q2.identify": {
-    "fork": "SELECT \"s_acctbal\", \"s_name\", \"n_name\", \"p_partkey\", \"p_mfgr\", \"s_address\", \"s_phone\", \"s_comment\" FROM \"part\" JOIN \"supplier\" ON \"p_partkey\" = \"ps_partkey\" JOIN \"partsupp\" ON \"s_suppkey\" = \"ps_suppkey\" JOIN \"nation\" ON \"s_nationkey\" = \"n_nationkey\" JOIN \"region\" ON \"n_regionkey\" = \"r_regionkey\" WHERE \"p_size\" = 38 AND \"p_type\" LIKE '%STEEL' AND \"r_name\" = 'ASIA' AND \"ps_supplycost\" = (SELECT MIN(\"ps_supplycost\") FROM \"partsupp\" JOIN \"supplier\" ON \"p_partkey\" = \"ps_partkey\" JOIN \"nation\" ON \"s_suppkey\" = \"ps_suppkey\" JOIN \"region\" ON \"s_nationkey\" = \"n_nationkey\" WHERE \"n_regionkey\" = \"r_regionkey\" AND \"r_name\" = 'ASIA') ORDER BY \"s_acctbal\" DESC, \"n_name\", \"s_name\", \"p_partkey\" LIMIT 100",
-    "legacy": "SELECT s_acctbal, s_name, n_name, p_partkey, p_mfgr, s_address, s_phone, s_comment FROM part JOIN supplier ON p_partkey = ps_partkey JOIN partsupp ON s_suppkey = ps_suppkey JOIN nation ON s_nationkey = n_nationkey JOIN region ON n_regionkey = r_regionkey WHERE p_size = 38 AND p_type LIKE '%STEEL' AND r_name = 'ASIA' AND ps_supplycost = (SELECT MIN(ps_supplycost) FROM partsupp JOIN supplier ON p_partkey = ps_partkey JOIN nation ON s_suppkey = ps_suppkey JOIN region ON s_nationkey = n_nationkey WHERE n_regionkey = r_regionkey AND r_name = 'ASIA') ORDER BY s_acctbal DESC, n_name, s_name, p_partkey LIMIT 100"
-  },
   "tpch.q20.identify": {
-    "fork": "SELECT \"s_name\", \"s_address\" FROM \"supplier\" JOIN \"nation\" ON \"s_nationkey\" = \"n_nationkey\" WHERE \"s_suppkey\" IN (SELECT \"ps_suppkey\" FROM \"partsupp\" WHERE \"ps_partkey\" IN (SELECT \"p_partkey\" FROM \"part\" WHERE \"p_name\" LIKE 'ivory%') AND \"ps_availqty\" > (SELECT 0.5 * SUM(\"l_quantity\") FROM \"lineitem\" WHERE \"l_partkey\" = \"ps_partkey\" AND \"l_suppkey\" = \"ps_suppkey\" AND \"l_shipdate\" >= CAST('1996-01-01' AS DATE) AND \"l_shipdate\" < DATEADD('y', 1, CAST('1996-01-01' AS DATE)))) AND \"n_name\" = 'KENYA' ORDER BY \"s_name\"",
+    "fork": "SELECT s_name, s_address FROM supplier JOIN nation ON s_nationkey = n_nationkey WHERE s_suppkey IN (SELECT ps_suppkey FROM partsupp WHERE ps_partkey IN (SELECT p_partkey FROM part WHERE p_name LIKE 'ivory%') AND ps_availqty > (SELECT 0.5 * SUM(l_quantity) FROM lineitem WHERE l_partkey = ps_partkey AND l_suppkey = ps_suppkey AND l_shipdate >= CAST('1996-01-01' AS DATE) AND l_shipdate < DATEADD('y', 1, CAST('1996-01-01' AS DATE)))) AND n_name = 'KENYA' ORDER BY s_name",
     "legacy": "SELECT s_name, s_address FROM supplier JOIN nation ON s_nationkey = n_nationkey WHERE s_suppkey IN (SELECT ps_suppkey FROM partsupp WHERE ps_partkey IN (SELECT p_partkey FROM part WHERE p_name LIKE 'ivory%') AND ps_availqty > (SELECT 0.5 * SUM(l_quantity) FROM lineitem WHERE l_partkey = ps_partkey AND l_suppkey = ps_suppkey AND l_shipdate >= CAST('1996-01-01' AS DATE) AND l_shipdate < dateadd('y', 1, CAST('1996-01-01' AS DATE)))) AND n_name = 'KENYA' ORDER BY s_name"
   },
   "tpch.q20.plain": {
     "fork": "SELECT s_name, s_address FROM supplier JOIN nation ON s_nationkey = n_nationkey WHERE s_suppkey IN (SELECT ps_suppkey FROM partsupp WHERE ps_partkey IN (SELECT p_partkey FROM part WHERE p_name LIKE 'ivory%') AND ps_availqty > (SELECT 0.5 * SUM(l_quantity) FROM lineitem WHERE l_partkey = ps_partkey AND l_suppkey = ps_suppkey AND l_shipdate >= CAST('1996-01-01' AS DATE) AND l_shipdate < DATEADD('y', 1, CAST('1996-01-01' AS DATE)))) AND n_name = 'KENYA' ORDER BY s_name",
     "legacy": "SELECT s_name, s_address FROM supplier JOIN nation ON s_nationkey = n_nationkey WHERE s_suppkey IN (SELECT ps_suppkey FROM partsupp WHERE ps_partkey IN (SELECT p_partkey FROM part WHERE p_name LIKE 'ivory%') AND ps_availqty > (SELECT 0.5 * SUM(l_quantity) FROM lineitem WHERE l_partkey = ps_partkey AND l_suppkey = ps_suppkey AND l_shipdate >= CAST('1996-01-01' AS DATE) AND l_shipdate < dateadd('y', 1, CAST('1996-01-01' AS DATE)))) AND n_name = 'KENYA' ORDER BY s_name"
   },
-  "tpch.q21.identify": {
-    "fork": "SELECT \"s_name\", COUNT(*) AS \"numwait\" FROM \"supplier\" JOIN \"lineitem\" AS \"l1\" ON \"s_nationkey\" = \"n_nationkey\" JOIN \"orders\" ON \"s_suppkey\" = \"l1\".\"l_suppkey\" JOIN \"nation\" ON \"o_orderkey\" = \"l1\".\"l_orderkey\" WHERE \"o_orderstatus\" = 'F' AND \"l1\".\"l_receiptdate\" > \"l1\".\"l_commitdate\" AND EXISTS(SELECT * FROM \"lineitem\" AS \"l2\" WHERE \"l2\".\"l_orderkey\" = \"l1\".\"l_orderkey\" AND \"l2\".\"l_suppkey\" <> \"l1\".\"l_suppkey\") AND NOT EXISTS(SELECT * FROM \"lineitem\" AS \"l3\" WHERE \"l3\".\"l_orderkey\" = \"l1\".\"l_orderkey\" AND \"l3\".\"l_suppkey\" <> \"l1\".\"l_suppkey\" AND \"l3\".\"l_receiptdate\" > \"l3\".\"l_commitdate\") AND \"n_name\" = 'PERU' GROUP BY \"s_name\" ORDER BY \"numwait\" DESC, \"s_name\" LIMIT 100",
-    "legacy": "SELECT s_name, COUNT(*) AS numwait FROM supplier JOIN lineitem AS l1 ON s_nationkey = n_nationkey JOIN orders ON s_suppkey = l1.l_suppkey JOIN nation ON o_orderkey = l1.l_orderkey WHERE o_orderstatus = 'F' AND l1.l_receiptdate > l1.l_commitdate AND EXISTS(SELECT * FROM lineitem AS l2 WHERE l2.l_orderkey = l1.l_orderkey AND l2.l_suppkey <> l1.l_suppkey) AND NOT EXISTS(SELECT * FROM lineitem AS l3 WHERE l3.l_orderkey = l1.l_orderkey AND l3.l_suppkey <> l1.l_suppkey AND l3.l_receiptdate > l3.l_commitdate) AND n_name = 'PERU' GROUP BY s_name ORDER BY numwait DESC, s_name LIMIT 100"
-  },
   "tpch.q22.identify": {
-    "fork": "SELECT \"cntrycode\", COUNT(*) AS \"numcust\", SUM(\"c_acctbal\") AS \"totacctbal\" FROM (SELECT SUBSTRING(\"c_phone\", 1, 2) AS \"cntrycode\", \"c_acctbal\" FROM \"customer\" WHERE SUBSTRING(\"c_phone\", 1, 2) IN ('24', '33', '31', '10', '15', '28', '23') AND \"c_acctbal\" > (SELECT AVG(\"c_acctbal\") FROM \"customer\" WHERE \"c_acctbal\" > 0.00 AND SUBSTRING(\"c_phone\", 1, 2) IN ('24', '33', '31', '10', '15', '28', '23')) AND NOT EXISTS(SELECT * FROM \"orders\" WHERE \"o_custkey\" = \"c_custkey\")) AS \"custsale\" GROUP BY \"cntrycode\" ORDER BY \"cntrycode\"",
+    "fork": "SELECT cntrycode, COUNT(*) AS numcust, SUM(c_acctbal) AS totacctbal FROM (SELECT SUBSTRING(c_phone, 1, 2) AS cntrycode, c_acctbal FROM customer WHERE SUBSTRING(c_phone, 1, 2) IN ('24', '33', '31', '10', '15', '28', '23') AND c_acctbal > (SELECT AVG(c_acctbal) FROM customer WHERE c_acctbal > 0.00 AND SUBSTRING(c_phone, 1, 2) IN ('24', '33', '31', '10', '15', '28', '23')) AND NOT EXISTS(SELECT * FROM orders WHERE o_custkey = c_custkey)) AS custsale GROUP BY cntrycode ORDER BY cntrycode",
     "legacy": "SELECT cntrycode, COUNT(*) AS numcust, SUM(c_acctbal) AS totacctbal FROM (SELECT substring(c_phone, 1, 2) AS cntrycode, c_acctbal FROM customer WHERE substring(c_phone, 1, 2) IN ('24', '33', '31', '10', '15', '28', '23') AND c_acctbal > (SELECT AVG(c_acctbal) FROM customer WHERE c_acctbal > 0.00 AND substring(c_phone, 1, 2) IN ('24', '33', '31', '10', '15', '28', '23')) AND NOT EXISTS(SELECT * FROM orders WHERE o_custkey = c_custkey)) AS custsale GROUP BY cntrycode ORDER BY cntrycode"
   },
   "tpch.q22.plain": {
     "fork": "SELECT cntrycode, COUNT(*) AS numcust, SUM(c_acctbal) AS totacctbal FROM (SELECT SUBSTRING(c_phone, 1, 2) AS cntrycode, c_acctbal FROM customer WHERE SUBSTRING(c_phone, 1, 2) IN ('24', '33', '31', '10', '15', '28', '23') AND c_acctbal > (SELECT AVG(c_acctbal) FROM customer WHERE c_acctbal > 0.00 AND SUBSTRING(c_phone, 1, 2) IN ('24', '33', '31', '10', '15', '28', '23')) AND NOT EXISTS(SELECT * FROM orders WHERE o_custkey = c_custkey)) AS custsale GROUP BY cntrycode ORDER BY cntrycode",
     "legacy": "SELECT cntrycode, COUNT(*) AS numcust, SUM(c_acctbal) AS totacctbal FROM (SELECT substring(c_phone, 1, 2) AS cntrycode, c_acctbal FROM customer WHERE substring(c_phone, 1, 2) IN ('24', '33', '31', '10', '15', '28', '23') AND c_acctbal > (SELECT AVG(c_acctbal) FROM customer WHERE c_acctbal > 0.00 AND substring(c_phone, 1, 2) IN ('24', '33', '31', '10', '15', '28', '23')) AND NOT EXISTS(SELECT * FROM orders WHERE o_custkey = c_custkey)) AS custsale GROUP BY cntrycode ORDER BY cntrycode"
   },
-  "tpch.q3.identify": {
-    "fork": "SELECT \"l_orderkey\", SUM(\"l_extendedprice\" * (1 - \"l_discount\")) AS \"revenue\", \"o_orderdate\", \"o_shippriority\" FROM \"customer\" JOIN \"orders\" ON \"c_custkey\" = \"o_custkey\" JOIN \"lineitem\" ON \"l_orderkey\" = \"o_orderkey\" WHERE \"c_mktsegment\" = 'FURNITURE' AND \"o_orderdate\" < CAST('1995-03-17' AS DATE) AND \"l_shipdate\" > CAST('1995-03-17' AS DATE) GROUP BY \"l_orderkey\", \"o_orderdate\", \"o_shippriority\" ORDER BY \"revenue\" DESC, \"o_orderdate\" LIMIT 10",
-    "legacy": "SELECT l_orderkey, SUM(l_extendedprice * (1 - l_discount)) AS revenue, o_orderdate, o_shippriority FROM customer JOIN orders ON c_custkey = o_custkey JOIN lineitem ON l_orderkey = o_orderkey WHERE c_mktsegment = 'FURNITURE' AND o_orderdate < CAST('1995-03-17' AS DATE) AND l_shipdate > CAST('1995-03-17' AS DATE) GROUP BY l_orderkey, o_orderdate, o_shippriority ORDER BY revenue DESC, o_orderdate LIMIT 10"
-  },
   "tpch.q4.identify": {
-    "fork": "SELECT \"o_orderpriority\", COUNT(*) AS \"order_count\" FROM \"orders\" WHERE \"o_orderdate\" >= CAST('1995-07-01' AS DATE) AND \"o_orderdate\" < DATEADD('M', 3, CAST('1995-07-01' AS DATE)) AND EXISTS(SELECT * FROM \"lineitem\" WHERE \"l_orderkey\" = \"o_orderkey\" AND \"l_commitdate\" < \"l_receiptdate\") GROUP BY \"o_orderpriority\" ORDER BY \"o_orderpriority\"",
+    "fork": "SELECT o_orderpriority, COUNT(*) AS order_count FROM orders WHERE o_orderdate >= CAST('1995-07-01' AS DATE) AND o_orderdate < DATEADD('M', 3, CAST('1995-07-01' AS DATE)) AND EXISTS(SELECT * FROM lineitem WHERE l_orderkey = o_orderkey AND l_commitdate < l_receiptdate) GROUP BY o_orderpriority ORDER BY o_orderpriority",
     "legacy": "SELECT o_orderpriority, COUNT(*) AS order_count FROM orders WHERE o_orderdate >= CAST('1995-07-01' AS DATE) AND o_orderdate < dateadd('M', 3, CAST('1995-07-01' AS DATE)) AND EXISTS(SELECT * FROM lineitem WHERE l_orderkey = o_orderkey AND l_commitdate < l_receiptdate) GROUP BY o_orderpriority ORDER BY o_orderpriority"
   },
   "tpch.q4.plain": {
@@ -420,7 +264,7 @@
     "legacy": "SELECT o_orderpriority, COUNT(*) AS order_count FROM orders WHERE o_orderdate >= CAST('1995-07-01' AS DATE) AND o_orderdate < dateadd('M', 3, CAST('1995-07-01' AS DATE)) AND EXISTS(SELECT * FROM lineitem WHERE l_orderkey = o_orderkey AND l_commitdate < l_receiptdate) GROUP BY o_orderpriority ORDER BY o_orderpriority"
   },
   "tpch.q5.identify": {
-    "fork": "SELECT \"n_name\", SUM(\"l_extendedprice\" * (1 - \"l_discount\")) AS \"revenue\" FROM \"customer\" JOIN \"orders\" ON \"c_custkey\" = \"o_custkey\" JOIN \"lineitem\" ON \"l_orderkey\" = \"o_orderkey\" JOIN \"supplier\" ON \"l_suppkey\" = \"s_suppkey\" JOIN \"nation\" ON \"c_nationkey\" = \"s_nationkey\" JOIN \"region\" ON \"s_nationkey\" = \"n_nationkey\" WHERE \"n_regionkey\" = \"r_regionkey\" AND \"r_name\" = 'AMERICA' AND \"o_orderdate\" >= CAST('1993-01-01' AS DATE) AND \"o_orderdate\" < DATEADD('y', 1, CAST('1993-01-01' AS DATE)) GROUP BY \"n_name\" ORDER BY \"revenue\" DESC",
+    "fork": "SELECT n_name, SUM(l_extendedprice * (1 - l_discount)) AS revenue FROM customer JOIN orders ON c_custkey = o_custkey JOIN lineitem ON l_orderkey = o_orderkey JOIN supplier ON l_suppkey = s_suppkey JOIN nation ON c_nationkey = s_nationkey JOIN region ON s_nationkey = n_nationkey WHERE n_regionkey = r_regionkey AND r_name = 'AMERICA' AND o_orderdate >= CAST('1993-01-01' AS DATE) AND o_orderdate < DATEADD('y', 1, CAST('1993-01-01' AS DATE)) GROUP BY n_name ORDER BY revenue DESC",
     "legacy": "SELECT n_name, SUM(l_extendedprice * (1 - l_discount)) AS revenue FROM customer JOIN orders ON c_custkey = o_custkey JOIN lineitem ON l_orderkey = o_orderkey JOIN supplier ON l_suppkey = s_suppkey JOIN nation ON c_nationkey = s_nationkey JOIN region ON s_nationkey = n_nationkey WHERE n_regionkey = r_regionkey AND r_name = 'AMERICA' AND o_orderdate >= CAST('1993-01-01' AS DATE) AND o_orderdate < dateadd('y', 1, CAST('1993-01-01' AS DATE)) GROUP BY n_name ORDER BY revenue DESC"
   },
   "tpch.q5.plain": {
@@ -428,23 +272,11 @@
     "legacy": "SELECT n_name, SUM(l_extendedprice * (1 - l_discount)) AS revenue FROM customer JOIN orders ON c_custkey = o_custkey JOIN lineitem ON l_orderkey = o_orderkey JOIN supplier ON l_suppkey = s_suppkey JOIN nation ON c_nationkey = s_nationkey JOIN region ON s_nationkey = n_nationkey WHERE n_regionkey = r_regionkey AND r_name = 'AMERICA' AND o_orderdate >= CAST('1993-01-01' AS DATE) AND o_orderdate < dateadd('y', 1, CAST('1993-01-01' AS DATE)) GROUP BY n_name ORDER BY revenue DESC"
   },
   "tpch.q6.identify": {
-    "fork": "SELECT SUM(\"l_extendedprice\" * \"l_discount\") AS \"revenue\" FROM \"lineitem\" WHERE \"l_shipdate\" >= CAST('1993-01-01' AS DATE) AND \"l_shipdate\" < DATEADD('y', 1, CAST('1993-01-01' AS DATE)) AND \"l_discount\" BETWEEN 0.07 - 0.01 AND 0.07 + 0.01 AND \"l_quantity\" < 25",
+    "fork": "SELECT SUM(l_extendedprice * l_discount) AS revenue FROM lineitem WHERE l_shipdate >= CAST('1993-01-01' AS DATE) AND l_shipdate < DATEADD('y', 1, CAST('1993-01-01' AS DATE)) AND l_discount BETWEEN 0.07 - 0.01 AND 0.07 + 0.01 AND l_quantity < 25",
     "legacy": "SELECT SUM(l_extendedprice * l_discount) AS revenue FROM lineitem WHERE l_shipdate >= CAST('1993-01-01' AS DATE) AND l_shipdate < dateadd('y', 1, CAST('1993-01-01' AS DATE)) AND l_discount BETWEEN 0.07 - 0.01 AND 0.07 + 0.01 AND l_quantity < 25"
   },
   "tpch.q6.plain": {
     "fork": "SELECT SUM(l_extendedprice * l_discount) AS revenue FROM lineitem WHERE l_shipdate >= CAST('1993-01-01' AS DATE) AND l_shipdate < DATEADD('y', 1, CAST('1993-01-01' AS DATE)) AND l_discount BETWEEN 0.07 - 0.01 AND 0.07 + 0.01 AND l_quantity < 25",
     "legacy": "SELECT SUM(l_extendedprice * l_discount) AS revenue FROM lineitem WHERE l_shipdate >= CAST('1993-01-01' AS DATE) AND l_shipdate < dateadd('y', 1, CAST('1993-01-01' AS DATE)) AND l_discount BETWEEN 0.07 - 0.01 AND 0.07 + 0.01 AND l_quantity < 25"
-  },
-  "tpch.q7.identify": {
-    "fork": "SELECT \"supp_nation\", \"cust_nation\", \"l_year\", SUM(\"volume\") AS \"revenue\" FROM (SELECT \"n1\".\"n_name\" AS \"supp_nation\", \"n2\".\"n_name\" AS \"cust_nation\", EXTRACT(YEAR FROM \"l_shipdate\") AS \"l_year\", \"l_extendedprice\" * (1 - \"l_discount\") AS \"volume\" FROM \"supplier\" JOIN \"lineitem\" ON \"s_suppkey\" = \"l_suppkey\" JOIN \"orders\" ON \"o_orderkey\" = \"l_orderkey\" JOIN \"customer\" ON \"c_custkey\" = \"o_custkey\" CROSS JOIN \"nation\" AS \"n1\" JOIN \"nation\" AS \"n2\" ON \"s_nationkey\" = \"n1\".\"n_nationkey\" WHERE \"c_nationkey\" = \"n2\".\"n_nationkey\" AND ((\"n1\".\"n_name\" = 'MOZAMBIQUE' AND \"n2\".\"n_name\" = 'UNITED KINGDOM') OR (\"n1\".\"n_name\" = 'UNITED KINGDOM' AND \"n2\".\"n_name\" = 'MOZAMBIQUE')) AND \"l_shipdate\" BETWEEN CAST('1995-01-01' AS DATE) AND CAST('1996-12-31' AS DATE)) AS \"shipping\" GROUP BY \"supp_nation\", \"cust_nation\", \"l_year\" ORDER BY \"supp_nation\", \"cust_nation\", \"l_year\"",
-    "legacy": "SELECT supp_nation, cust_nation, l_year, SUM(volume) AS revenue FROM (SELECT n1.n_name AS supp_nation, n2.n_name AS cust_nation, EXTRACT(YEAR FROM l_shipdate) AS l_year, l_extendedprice * (1 - l_discount) AS volume FROM supplier JOIN lineitem ON s_suppkey = l_suppkey JOIN orders ON o_orderkey = l_orderkey JOIN customer ON c_custkey = o_custkey CROSS JOIN nation AS n1 JOIN nation AS n2 ON s_nationkey = n1.n_nationkey WHERE c_nationkey = n2.n_nationkey AND ((n1.n_name = 'MOZAMBIQUE' AND n2.n_name = 'UNITED KINGDOM') OR (n1.n_name = 'UNITED KINGDOM' AND n2.n_name = 'MOZAMBIQUE')) AND l_shipdate BETWEEN CAST('1995-01-01' AS DATE) AND CAST('1996-12-31' AS DATE)) AS shipping GROUP BY supp_nation, cust_nation, l_year ORDER BY supp_nation, cust_nation, l_year"
-  },
-  "tpch.q8.identify": {
-    "fork": "SELECT \"o_year\", SUM(CASE WHEN \"nation\" = 'MOZAMBIQUE' THEN \"volume\" ELSE 0 END) / SUM(\"volume\") AS \"mkt_share\" FROM (SELECT EXTRACT(YEAR FROM \"o_orderdate\") AS \"o_year\", \"l_extendedprice\" * (1 - \"l_discount\") AS \"volume\", \"n2\".\"n_name\" AS \"nation\" FROM \"part\" JOIN \"supplier\" ON \"p_partkey\" = \"l_partkey\" JOIN \"lineitem\" ON \"s_suppkey\" = \"l_suppkey\" JOIN \"orders\" ON \"l_orderkey\" = \"o_orderkey\" JOIN \"customer\" ON \"o_custkey\" = \"c_custkey\" CROSS JOIN \"nation\" AS \"n1\" JOIN \"nation\" AS \"n2\" ON \"c_nationkey\" = \"n1\".\"n_nationkey\" JOIN \"region\" ON \"n1\".\"n_regionkey\" = \"r_regionkey\" WHERE \"r_name\" = 'AFRICA' AND \"s_nationkey\" = \"n2\".\"n_nationkey\" AND \"o_orderdate\" BETWEEN CAST('1995-01-01' AS DATE) AND CAST('1996-12-31' AS DATE) AND \"p_type\" = 'PROMO POLISHED TIN') AS \"all_nations\" GROUP BY \"o_year\" ORDER BY \"o_year\"",
-    "legacy": "SELECT o_year, SUM(CASE WHEN nation = 'MOZAMBIQUE' THEN volume ELSE 0 END) / SUM(volume) AS mkt_share FROM (SELECT EXTRACT(YEAR FROM o_orderdate) AS o_year, l_extendedprice * (1 - l_discount) AS volume, n2.n_name AS nation FROM part JOIN supplier ON p_partkey = l_partkey JOIN lineitem ON s_suppkey = l_suppkey JOIN orders ON l_orderkey = o_orderkey JOIN customer ON o_custkey = c_custkey CROSS JOIN nation AS n1 JOIN nation AS n2 ON c_nationkey = n1.n_nationkey JOIN region ON n1.n_regionkey = r_regionkey WHERE r_name = 'AFRICA' AND s_nationkey = n2.n_nationkey AND o_orderdate BETWEEN CAST('1995-01-01' AS DATE) AND CAST('1996-12-31' AS DATE) AND p_type = 'PROMO POLISHED TIN') AS all_nations GROUP BY o_year ORDER BY o_year"
-  },
-  "tpch.q9.identify": {
-    "fork": "SELECT \"nation\", \"o_year\", SUM(\"amount\") AS \"sum_profit\" FROM (SELECT \"n_name\" AS \"nation\", EXTRACT(YEAR FROM \"o_orderdate\") AS \"o_year\", \"l_extendedprice\" * (1 - \"l_discount\") - \"ps_supplycost\" * \"l_quantity\" AS \"amount\" FROM \"part\" JOIN \"supplier\" ON \"s_suppkey\" = \"l_suppkey\" JOIN \"lineitem\" ON \"ps_suppkey\" = \"l_suppkey\" JOIN \"partsupp\" ON \"ps_partkey\" = \"l_partkey\" JOIN \"orders\" ON \"p_partkey\" = \"l_partkey\" JOIN \"nation\" ON \"o_orderkey\" = \"l_orderkey\" WHERE \"s_nationkey\" = \"n_nationkey\" AND \"p_name\" LIKE '%thistle%') AS \"profit\" GROUP BY \"nation\", \"o_year\" ORDER BY \"nation\", \"o_year\" DESC",
-    "legacy": "SELECT nation, o_year, SUM(amount) AS sum_profit FROM (SELECT n_name AS nation, EXTRACT(YEAR FROM o_orderdate) AS o_year, l_extendedprice * (1 - l_discount) - ps_supplycost * l_quantity AS amount FROM part JOIN supplier ON s_suppkey = l_suppkey JOIN lineitem ON ps_suppkey = l_suppkey JOIN partsupp ON ps_partkey = l_partkey JOIN orders ON p_partkey = l_partkey JOIN nation ON o_orderkey = l_orderkey WHERE s_nationkey = n_nationkey AND p_name LIKE '%thistle%') AS profit GROUP BY nation, o_year ORDER BY nation, o_year DESC"
   }
 }

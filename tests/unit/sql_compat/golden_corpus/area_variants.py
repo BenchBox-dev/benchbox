@@ -14,7 +14,7 @@ from benchbox.core.tpchavoc.spark_query_transformer import (
 )
 from benchbox.core.tpchavoc.variants import VARIANT_REGISTRY
 from benchbox.platforms.datafusion_query_transformer import DataFusionQueryTransformer
-from benchbox.utils.dialect_utils import apply_rewrite, normalize_dialect_for_sqlglot
+from benchbox.utils.dialect_utils import apply_rewrite, resolve_sql_dialect
 from tests.unit.platforms.test_datafusion_query_transformer import Q11_SQL, Q16_SQL, Q18_SQL, Q20_SQL
 from tests.unit.sql_compat.golden_corpus import Case
 
@@ -53,7 +53,7 @@ def _tpch_schema() -> dict[str, dict[str, str]]:
 
 
 def _fork(sql: str, dialect: str, *steps: tuple[str, dict]) -> str:
-    resolved = "datafusion" if dialect == "datafusion" else normalize_dialect_for_sqlglot(dialect)
+    resolved = resolve_sql_dialect(dialect)
     tree = sqlglot.parse_one(sql, read=resolved)
     for name, args in steps:
         tree = apply_rewrite(name, tree, dialect, **args)

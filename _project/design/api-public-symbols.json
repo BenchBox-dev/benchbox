@@ -804,14 +804,14 @@
    "signature": "(pyproject_data: 'Mapping[str, object]', lock_data: 'Mapping[str, object]') -> 'list[str]'"
   },
   {
-   "symbol": "benchbox.utils.dialect_utils.normalize_dialect_for_sqlglot",
+   "symbol": "benchbox.utils.dialect_utils.resolve_sql_dialect",
    "module": "benchbox.utils.dialect_utils",
-   "name": "normalize_dialect_for_sqlglot",
+   "name": "resolve_sql_dialect",
    "kind": "function",
    "area": "utilities",
    "aliases": [],
    "extras": [],
-   "signature": "(dialect: str) -> str"
+   "signature": "(platform_or_dialect: str) -> str"
   },
   {
    "symbol": "benchbox.utils.scale_factor.format_benchmark_name",

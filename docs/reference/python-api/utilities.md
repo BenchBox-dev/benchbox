@@ -14,11 +14,11 @@ Complete Python API reference for BenchBox utility functions.
 
 ## Overview
 
-BenchBox provides utility functions for common tasks like SQL dialect translation. These utilities simplify cross-database benchmarking and platform-specific optimizations. This page covers dialect normalization and query translation; the other utility modules are listed in {doc}`utilities-index`.
+BenchBox provides utility functions for common tasks like SQL dialect translation. These utilities simplify cross-database benchmarking and platform-specific optimizations. This page covers dialect resolution and query translation; the other utility modules are listed in {doc}`utilities-index`.
 
 **Available Utilities**:
 
-- **Dialect Translation**: SQL dialect normalization and query translation
+- **Dialect Translation**: SQL dialect resolution and query translation
 
 ## Dialect Translation
 
@@ -36,64 +36,63 @@ The examples below demonstrate dialect translation capabilities - you can use tr
 database connections, but BenchBox's built-in platform adapters are limited to the supported platforms listed above.
 ```
 
-### SQL Dialect Normalization
+### SQL Dialect Resolution
 
-#### `benchbox.utils.dialect_utils.normalize_dialect_for_sqlglot`
+#### `benchbox.utils.dialect_utils.resolve_sql_dialect`
 
-<span id="benchbox.utils.dialect_utils.normalize_dialect_for_sqlglot"></span>
+<span id="benchbox.utils.dialect_utils.resolve_sql_dialect"></span>
 
-Returns the SQLGlot dialect name to use for a database name, mapping a few databases that SQLGlot lacks onto PostgreSQL.
+Returns the dialect that the bundled SQLGlot runtime uses for a platform or dialect name. `translate_sql_query` and `apply_rewrite` call it for every dialect they receive.
 
-**Import:** `from benchbox.utils.dialect_utils import normalize_dialect_for_sqlglot` · **Extras:** none
+**Import:** `from benchbox.utils.dialect_utils import resolve_sql_dialect` · **Extras:** none
 
 ##### Parameters
 
 | Name | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `dialect` | `str` | required | The dialect or database name. Matching ignores case but not surrounding spaces. |
+| `platform_or_dialect` | `str` | required | A BenchBox platform key, an alias from the table below, or a dialect name the bundled runtime provides. Matching ignores case and surrounding spaces; `-` and `_` are interchangeable. |
 
 ##### Returns
 
-`str`: the lower-case form of `dialect`, except for these names, which return `"postgres"`:
+`str`: the dialect name the bundled runtime provides. Names the runtime provides, such as `duckdb`, `netezza`, `greenplum`, `vertica`, `datafusion` and `questdb`, resolve to themselves. `PLATFORM_DIALECTS` maps the other keys:
 
-| Name | Result |
+| Key | Result |
 | --- | --- |
-| `netezza` | `postgres` |
-| `greenplum` | `postgres` |
-| `vertica` | `postgres` |
-| `datafusion` | `postgres` |
-| `ansi` | `postgres` |
-| `standard` | `postgres` |
-
-Every other name is returned lower-cased and unchanged. The function does not check that SQLGlot knows the result: `"postgresql"` and `"not_a_dialect"` pass through as given, and `None` or `""` returns `""`.
+| `ansi`, `standard` | `postgres` |
+| `postgresql`, `timescaledb`, `pg_mooncake`, `pg_duckdb`, `cedardb`, `paradedb`, `citus`, `firebolt` | `postgres` |
+| `influxdb` | `datafusion` (InfluxDB 3 runs the DataFusion SQL engine) |
+| `motherduck`, `ducklake` | `duckdb` |
+| `clickhouse_local`, `clickhouse_server`, `clickhouse_cloud` | `clickhouse` |
+| `starburst` | `trino` |
+| `databricks_df` | `databricks` |
+| `databend`, `snowpark_connect` | `snowflake` |
+| `synapse`, `fabric_dw`, `fabric_lakehouse` | `tsql` |
+| `glue`, `emr_serverless`, `athena_spark`, `dataproc`, `dataproc_serverless`, `fabric_spark`, `synapse_spark`, `velox`, `lakesail`, `quanton`, `pyspark` | `spark` |
 
 ##### Raises
 
-Nothing it raises itself. A value that is neither a string nor empty, such as `5`, raises `AttributeError`.
+`UnknownSqlDialectError` (a `ValueError`) for an empty value, a DataFrame-only platform, or any name that is neither in `PLATFORM_DIALECTS` nor a dialect the runtime provides. There is no fallback to PostgreSQL.
 
 ##### Example
 
 ```python
-from benchbox.utils.dialect_utils import normalize_dialect_for_sqlglot
+from benchbox.utils.dialect_utils import UnknownSqlDialectError, resolve_sql_dialect
 
-normalized = normalize_dialect_for_sqlglot("netezza")
-assert normalized == "postgres"
+assert resolve_sql_dialect("standard") == "postgres"
+assert resolve_sql_dialect("Netezza") == "netezza"
+assert resolve_sql_dialect("influxdb") == "datafusion"
+assert resolve_sql_dialect("SNOWFLAKE") == "snowflake"
 
-normalized = normalize_dialect_for_sqlglot("duckdb")
-assert normalized == "duckdb"
-
-normalized = normalize_dialect_for_sqlglot("SNOWFLAKE")
-assert normalized == "snowflake"
-
-print(normalize_dialect_for_sqlglot("postgresql"))
-print(repr(normalize_dialect_for_sqlglot(None)))
+try:
+    resolve_sql_dialect("not_a_dialect")
+except UnknownSqlDialectError as error:
+    print(error)
 ```
 
-Netezza maps to PostgreSQL. Supported dialects pass through unchanged, and matching is case-insensitive.
+Registered platform keys and runtime dialect names resolve; an unknown name raises.
 
 ```text
-postgresql
-''
+No fork SQL dialect for 'not_a_dialect'; register the platform in PLATFORM_DIALECTS
 ```
 
 **Supported Dialects**:
@@ -104,7 +103,7 @@ The bundled SQLGlot runtime (based on upstream 30.24.0) registers these dialect 
 - **Open Source**: clickhouse, duckdb, mysql, postgres, sqlite
 - **Enterprise**: oracle, teradata, tsql (SQL Server)
 - **Big Data**: drill, druid, hive, presto, spark, spark2, trino
-- **Other**: doris, dune, materialize, prql, risingwave, starrocks, tableau
+- **Other**: datafusion, doris, dune, greenplum, materialize, netezza, prql, questdb, risingwave, starrocks, tableau, vertica
 
 BenchBox ships its pinned pure-Python SQLGlot wheel from [BenchBox-dev/benchbox-sqlglot](https://github.com/BenchBox-dev/benchbox-sqlglot) inside the BenchBox wheel and sdist. No separate SQLGlot installation, Git fetch or custom package index is required. Runtime imports use `benchbox._vendor.sqlglot`; a public `sqlglot` installation does not select BenchBox's translator. See the [SQLGlot ADR](../../development/adr/adr-sqlglot-use-and-non-use.md) for pin refresh and rollback.
 
@@ -112,15 +111,13 @@ BenchBox ships its pinned pure-Python SQLGlot wheel from [BenchBox-dev/benchbox-
 
 ```python
 from benchbox.tpch import TPCH
-from benchbox.utils.dialect_utils import normalize_dialect_for_sqlglot
 
 benchmark = TPCH(scale_factor=1.0)
 
-target_dialect = normalize_dialect_for_sqlglot("netezza")
-query_netezza = benchmark.get_query(1, dialect=target_dialect)
+query_netezza = benchmark.get_query(1, dialect="netezza")
 ```
 
-The example gets Q1 translated for Netezza, which uses the PostgreSQL dialect.
+The example gets Q1 translated for Netezza, which the bundled runtime provides as its own dialect.
 
 ### Query Translation
 
@@ -254,7 +251,7 @@ Applies one named rewrite from the bundled SQLGlot runtime to SQL that is alread
 
 - `name`: a public expression rewrite in `benchbox._vendor.sqlglot.benchbox` (`safe_division`, `deduplicate_output_aliases`, `flag_comparisons_to_boolean`, `fold_between_literal_arithmetic`, `date_integer_arithmetic_to_interval`, and the engine, compatibility and subquery rewrites). An unknown name raises `ValueError`.
 - `sql_or_expression`: a SQL string, parsed and printed with `dialect`, or a parsed expression. The result has the same type as the input.
-- `dialect`: the dialect of the SQL, normalized like `translate_sql_query` (see `normalize_dialect_for_sqlglot`). A rewrite that takes a `dialect` argument receives the normalized name automatically.
+- `dialect`: the dialect of the SQL, resolved like `translate_sql_query` (see `resolve_sql_dialect`). A rewrite that takes a `dialect` argument receives the resolved name automatically.
 - `**args`: the rewrite's own arguments. Gates such as column and table names are always arguments; the runtime holds no benchmark data.
 
 ```python
@@ -492,14 +489,14 @@ Validate SQL dialect translation quality. The `validate_dialect_support` method 
 
 ```python
 from benchbox.tpch import TPCH
-from benchbox.utils.dialect_utils import normalize_dialect_for_sqlglot
+from benchbox.utils.dialect_utils import resolve_sql_dialect
 
 class DialectValidator:
     def __init__(self, benchmark):
         self.benchmark = benchmark
 
     def validate_dialect_support(self, dialect: str) -> dict:
-        normalized = normalize_dialect_for_sqlglot(dialect)
+        normalized = resolve_sql_dialect(dialect)
 
         results = {
             "dialect": dialect,
@@ -551,38 +548,33 @@ for dialect in dialects_to_validate:
             print(f"    Q{error['query_id']}: {error['error'][:60]}...")
 ```
 
-The last block of the output, where `netezza` is normalized to `postgres`:
+The last block of the output, where `netezza` resolves to the bundled runtime's own `netezza` dialect:
 
 ```text
-NETEZZA → postgres: ✓ SUPPORTED
+NETEZZA → netezza: ✓ SUPPORTED
   Translated: 5/5
 ```
 
 ### Custom Dialect Handling
 
-Handle custom or proprietary database dialects. The handler maps custom dialects to the closest SQLGlot-supported dialect. Exasol ships its own SQLGlot dialect, so the identity entry (a native dialect with no fallback) keeps the generic fallback branch from defaulting it to postgres. Vertica uses PostgreSQL syntax, Greenplum is PostgreSQL-based, Yellowbrick uses PostgreSQL syntax, and MonetDB has PostgreSQL compatibility. `get_fallback_dialect` first tries the official normalization, then checks the custom mappings when no official mapping was found. The example translates one query for Vertica and one for Greenplum:
+Handle custom or proprietary database dialects. `resolve_sql_dialect` raises `UnknownSqlDialectError` for a name it does not know, so the handler maps those custom names to the closest dialect the runtime provides. Exasol, Vertica and Greenplum ship their own dialects in the runtime and resolve directly. Yellowbrick uses PostgreSQL syntax and MonetDB has PostgreSQL compatibility, so the handler maps both to postgres. The example translates one query for Vertica and one for Greenplum:
 
 ```python
 from benchbox.tpcds import TPCDS
-from benchbox.utils.dialect_utils import normalize_dialect_for_sqlglot
+from benchbox.utils.dialect_utils import UnknownSqlDialectError, resolve_sql_dialect
 
 class CustomDialectHandler:
     CUSTOM_DIALECT_MAP = {
-        "exasol": "exasol",
-        "vertica": "postgres",
-        "greenplum": "postgres",
         "yellowbrick": "postgres",
         "monetdb": "postgres",
     }
 
     @classmethod
     def get_fallback_dialect(cls, dialect: str) -> str:
-        normalized = normalize_dialect_for_sqlglot(dialect)
-
-        if normalized == dialect.lower():
-            return cls.CUSTOM_DIALECT_MAP.get(dialect.lower(), "postgres")
-
-        return normalized
+        try:
+            return resolve_sql_dialect(dialect)
+        except UnknownSqlDialectError:
+            return cls.CUSTOM_DIALECT_MAP[dialect.lower()]
 
     @classmethod
     def translate_for_custom_dialect(
@@ -610,8 +602,8 @@ q2_greenplum = CustomDialectHandler.translate_for_custom_dialect(
 ```
 
 ```text
-Translating 1 for vertica (using postgres dialect)
-Translating 2 for greenplum (using postgres dialect)
+Translating 1 for vertica (using vertica dialect)
+Translating 2 for greenplum (using greenplum dialect)
 ```
 
 TPC-DS query IDs are integers, so the example passes `1` and `2`; a string such as `"Q1"` raises `TypeError`.
@@ -632,12 +624,12 @@ TPC-DS query IDs are integers, so the example passes `1` and `2`; a string such 
        print(f"Translation needs adjustment: {e}")
    ```
 
-2. **Use dialect normalization**: Normalize dialects before translation. The example normalizes the dialect before use.
+2. **Resolve dialects before translation**: Resolve platform names to runtime dialects before translation. The example resolves the dialect before use; an unknown name raises `UnknownSqlDialectError`.
 
    ```python
-   from benchbox.utils.dialect_utils import normalize_dialect_for_sqlglot
+   from benchbox.utils.dialect_utils import resolve_sql_dialect
 
-   target_dialect = normalize_dialect_for_sqlglot(user_input_dialect)
+   target_dialect = resolve_sql_dialect(user_input_dialect)
    query = benchmark.translate_query(1, target_dialect)
    ```
 
@@ -682,14 +674,14 @@ TPC-DS query IDs are integers, so the example passes `1` and `2`; a string such 
 
 ### Unsupported Dialect
 
-**Problem**: `ValueError: Error translating to dialect 'xyz': Unknown dialect 'xyz'.`
+**Problem**: `ValueError: Error translating to dialect 'xyz': ... No fork SQL dialect for 'xyz'; register the platform in PLATFORM_DIALECTS`. `translate_sql_query` raises `SQLTranslationError` in strict mode and records a fallback otherwise.
 
-**Solutions**: (1) check whether the dialect needs normalization (`normalize_dialect_for_sqlglot("netezza")` returns `"postgres"`); (2) fall back to PostgreSQL, the most compatible dialect; (3) check the SQLGlot documentation for supported dialects at [sqlglot.com/sqlglot/dialects.html](https://sqlglot.com/sqlglot/dialects.html).
+**Solutions**: (1) check that the name is a BenchBox platform key or a dialect the bundled runtime provides (`resolve_sql_dialect("netezza")` returns `"netezza"`, and `resolve_sql_dialect("standard")` returns `"postgres"`); (2) register the platform in `PLATFORM_DIALECTS`; (3) check the SQLGlot documentation for supported dialects at [sqlglot.com/sqlglot/dialects.html](https://sqlglot.com/sqlglot/dialects.html).
 
 ```python
-from benchbox.utils.dialect_utils import normalize_dialect_for_sqlglot
+from benchbox.utils.dialect_utils import resolve_sql_dialect
 
-normalized = normalize_dialect_for_sqlglot("netezza")
+resolved = resolve_sql_dialect("netezza")
 
 try:
     query = benchmark.translate_query(1, "custom_db")

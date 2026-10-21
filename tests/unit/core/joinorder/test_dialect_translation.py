@@ -94,7 +94,7 @@ def test_translation_preserves_portable_alias_for_query_15(job_benchmark: JoinOr
     assert '"at"' not in translated
 
 
-@pytest.mark.parametrize("dialect", ["bogus-engine", "", "postgresql"])
+@pytest.mark.parametrize("dialect", ["bogus-engine", ""])
 def test_unknown_dialect_falls_back_to_canonical_text(job_benchmark: JoinOrderBenchmark, dialect: str) -> None:
     canonical = JoinOrderQueryManager().get_all_queries()
 

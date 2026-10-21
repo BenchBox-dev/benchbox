@@ -32,7 +32,7 @@ ADAPTER_DIALECTS: dict[str, str] = {
     "timescaledb": "postgres",
     "pg-duckdb": "postgres",
     "pg-mooncake": "postgres",
-    "questdb": "postgres",
+    "questdb": "questdb",
     "cedardb": "postgres",
     "synapse": "tsql",
     "pyspark": "spark",
@@ -62,7 +62,7 @@ ADAPTER_DIALECTS: dict[str, str] = {
 }
 
 
-NON_SQL_DIALECTS = {"influxdb": "line protocol measurements", "dataframe": "expression/schema API"}
+NON_SQL_DIALECTS = {"dataframe": "expression/schema API"}
 
 DDL_INPUT = "CREATE TABLE t (id INTEGER NOT NULL, name VARCHAR(20), amt DECIMAL(10,2), d DATE, PRIMARY KEY (id))"
 QUERY_INPUT = "SELECT name, SUM(amt) AS s FROM t WHERE d >= DATE '2020-01-01' GROUP BY name ORDER BY s DESC LIMIT 5"
@@ -151,6 +151,14 @@ EXPECTED_SQL: dict[str, tuple[str, str]] = {
         "SELECT `name`, SUM(`amt`) AS `s` FROM `t` WHERE `d` >= CAST('2020-01-01' AS DATE) GROUP BY `name` "
         "ORDER BY CASE WHEN SUM(`amt`) IS NULL THEN 1 ELSE 0 END DESC, SUM(`amt`) DESC LIMIT 5;",
     ),
+    "questdb": (
+        "CREATE TABLE t (id INT NOT NULL, name VARCHAR(20), amt DECIMAL(10, 2), d DATE, PRIMARY KEY (id));",
+        "SELECT name, SUM(amt) AS s FROM t WHERE d >= CAST('2020-01-01' AS DATE) GROUP BY name ORDER BY s DESC LIMIT 5;",
+    ),
+    "influxdb": (
+        "CREATE TABLE t (id INT NOT NULL, name VARCHAR(20), amt DECIMAL(10, 2), d DATE, PRIMARY KEY (id));",
+        "SELECT name, SUM(amt) AS s FROM t WHERE d >= CAST('2020-01-01' AS DATE) GROUP BY name ORDER BY s DESC LIMIT 5;",
+    ),
 }
 
 ADAPTER_COORDINATES = {key: (module, class_name) for key, module, class_name in get_adapter_imports()}
@@ -194,7 +202,7 @@ def test_non_sql_platforms_reject_strict_sql_translation(key: str) -> None:
     from benchbox.utils.dialect_utils import SQLTranslationError
 
     adapter = _bare_adapter(key)
-    with pytest.raises(SQLTranslationError, match="Unknown dialect"):
+    with pytest.raises(SQLTranslationError, match="No fork SQL dialect"):
         adapter.translate_sql(DDL_INPUT, strict=True)
 
 

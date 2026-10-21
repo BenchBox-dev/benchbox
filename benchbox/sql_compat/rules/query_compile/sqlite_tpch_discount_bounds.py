@@ -10,7 +10,7 @@ REGISTRY.register(
         support_level=SupportLevel.REWRITTEN,
         failure_mode=FailureMode.SILENT_CORRUPTION,
         payload=RewriteQueryPayload(
-            transformer_id="benchbox.utils.dialect_utils._fold_sqlite_discount_bounds",
+            transformer_id="fold_between_literal_arithmetic",
             description="Fold isolated numeric literal Add/Sub l_discount BETWEEN bounds to exact numeric literals",
         ),
         reason="SQLite REAL arithmetic can exclude inclusive TPC-H Q6 discount endpoints; normalize exact literal bounds",

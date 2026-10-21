@@ -125,7 +125,11 @@ def test_wrapper_output_change_fails_while_direct_transpile_passes(
     assert observe_case(direct) == direct["expected"]
     assert observe_case(wrapped) == wrapped["expected"]
 
-    monkeypatch.setattr(dialect_utils, "_fix_sqlite_unsupported_syntax", lambda sql: "SELECT 0")
+    from benchbox._vendor import sqlglot
+
+    monkeypatch.setattr(
+        dialect_utils, "apply_rewrite", lambda name, expression, dialect, **args: sqlglot.parse_one("SELECT 0")
+    )
     assert observe_case(direct) == direct["expected"]
     assert observe_case(wrapped) == {"outcome": "pass", "rows": [[0]]}
     with pytest.raises(ValueError, match="wrapper-sqlite-fractional-extract"):
@@ -135,7 +139,7 @@ def test_wrapper_output_change_fails_while_direct_transpile_passes(
 def test_wrapper_failure_reports_underlying_error_type() -> None:
     case = {**baseline_case("questdb-dialect"), "target": "not_a_dialect"}
     assert case["entry"] == "wrapper"
-    assert observe_case(case) == {"outcome": "unsupported", "error_type": "ValueError"}
+    assert observe_case(case) == {"outcome": "unsupported", "error_type": "UnknownSqlDialectError"}
 
 
 def test_unknown_entry_fails_closed(guarded_repository: Path) -> None:
@@ -192,7 +196,11 @@ def test_fork_covered_without_executor_is_rejected(guarded_repository: Path) -> 
 
 
 def test_retained_workaround_requires_existing_path(guarded_repository: Path) -> None:
-    change_baseline(guarded_repository, lambda data: data["cases"][5]["workaround"].pop("path"))
+    def drop_path(data):
+        case = next(case for case in data["cases"] if case["id"] == "mysql-percentile-decorator")
+        case["workaround"].pop("path")
+
+    change_baseline(guarded_repository, drop_path)
     with pytest.raises(ValueError, match="Malformed"):
         check(guarded_repository, "HEAD")
 
