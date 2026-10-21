@@ -159,7 +159,7 @@ every hash. Prose files outside the review scope are left out.
 | Patch unchanged (a rebase or a prose-only change) | the decision is carried to the new head |
 | Latest SHIP or SHIP WITH FIXES, patch changed | follow-up on the changed files |
 | Latest DO NOT SHIP, patch changed | new cycle with a full review that quotes the previous summary |
-
+| Author rebuttal (`/oracle-review` comment, or a push after a `Dispute:` thread reply), head unchanged | forced follow-up that rejudges the disputed defects, at most twice per patch |
 A move of the base commit alone does not restart a cycle. A diff that cannot be
 read, a file list that is truncated, or a file missing from the diff never
 carries a decision, and neither does a file leaving the pull request: each
@@ -175,6 +175,26 @@ defect counts only in a file changed since the last review; new defects in
 other files are listed, collapsed and capped at five, as not counted. More
 than 10 open defects in total give DO NOT SHIP. The previous reviewer is tried
 first. A follow-up runs for every size bucket.
+
+A forced follow-up rejudges rather than skips: its brief adds the disputed
+threads under "Disputed findings", with each reply quoted as data, and tells
+the reviewer to confirm each disputed defect as not fixed or withdraw it with
+an examined head-commit file and line that refutes it. A withdrawal without
+such a citation counts as not fixed, and a defect the reviewer marks fixed on
+an unchanged patch counts as not fixed too, so only evidenced withdrawals
+leave the open list, and they are reported separately as never defects. On a
+forced round the judge counts a withdrawal without a file-and-line citation
+as not fixed; the head-commit existence check still happens when citations
+are marked.
+A thread reply counts as a dispute only when a reply from someone other than
+the oracle bot contains a line starting with `Dispute:` that states the case
+against the defect. A plain acknowledgement such as `done` is not a dispute.
+A forced re-review runs only after a SHIP or SHIP WITH FIXES decision, never
+after DO NOT SHIP. The third forced re-review of one patch is refused with a
+message to change the patch or ask the owner for a stand-in: empty commits and
+rebases keep the patch digest, so they share the patch's budget instead of
+resetting it. Ordinary follow-ups never consume this budget, and a push that
+disputes nothing is still carried, not rejudged.
 
 The oracle never resolves a review thread. A follow-up lists the defects it
 verified as fixed, and the author resolves those threads. Each new thread
@@ -303,7 +323,14 @@ request; the attempt jobs have no concurrency group of their own.
 - `/oracle-review` at the start of a top-level pull request comment, from an
   owner, member or collaborator, reruns the review on the current head. A reply
   on a review thread or a line comment does not trigger it, because those are
-  review comments, not issue comments.
+  review comments, not issue comments. A manual rerun may re-review the same
+  head after a decisive result, bounded by the daily retry budget and the
+  doubling backoff, so an author can dispute a finding with a `Dispute:` reply
+  on its thread without a new commit. A manual rerun with no `Dispute:` reply
+  leaves the head's decision in place instead of forcing another re-review.
+  The new brief carries unresolved thread replies as disputed findings and
+  asks the reviewer to confirm or withdraw each disputed defect with a reason,
+  checking any claimed grammar or documented behaviour.
 - `gh workflow run oracle-verdict.yml --ref develop -f pr=<number>`
   does the same. A dispatch from any other ref is refused.
 - An hourly schedule retries pull requests whose last result on the current

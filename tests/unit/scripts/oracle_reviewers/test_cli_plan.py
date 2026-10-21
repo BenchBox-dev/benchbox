@@ -284,13 +284,15 @@ def test_dispatch_outside_develop_is_refused(monkeypatch: pytest.MonkeyPatch, tm
     assert values == {}
 
 
-def test_comment_rerun_after_a_decisive_result_is_refused(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_comment_rerun_after_a_decisive_result_replans_the_same_head(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     state = State(7, HEAD, "success", datetime.now(UTC) - timedelta(hours=3))
     _, values, plan = _plan(
         monkeypatch, tmp_path, FakeGitHub(_pull(), SOUNDNESS, state), event_name="issue_comment", event={}
     )
-    assert values["decision"] == "skip" and values["post"] == "false"
-    assert "already has a success result" in plan["decision_reason"]
+    assert values["decision"] == "review" and values["post"] == "true"
+    assert "manual same-head re-review within budget" in plan["decision_reason"]
 
 
 def test_manual_retry_inside_backoff_waits_for_the_next_slot(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -753,3 +755,140 @@ def test_an_oversize_head_is_not_retried_until_a_new_push(monkeypatch: pytest.Mo
     pushed.mkdir()
     _, values, plan = _plan(monkeypatch, pushed, FakeGitHub(_pull(), SOUNDNESS, oversize))
     assert values["decision"] == "review" and plan["brief_mode"] == "inline"
+
+
+def _decided_head(open_defects: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    return _record(TWO_FILE_DIFF, "SHIP_WITH_FIXES", head_sha=HEAD, open_defects=open_defects or [DEFECT], next_id=2)
+
+
+def _disputed_thread() -> dict[str, Any]:
+    return {
+        "author": "benchbox-oracle[bot]",
+        "author_type": "Bot",
+        "resolved": False,
+        "path": CAPTURE,
+        "body": "**High**: Drops a row",
+        "replies": [
+            {
+                "author": "joe",
+                "author_type": "User",
+                "body": "Dispute: pkg/kept.py:12 keeps the row, so the defect is wrong.",
+            }
+        ],
+    }
+
+
+def _acked_thread() -> dict[str, Any]:
+    return {
+        "author": "benchbox-oracle[bot]",
+        "author_type": "Bot",
+        "resolved": False,
+        "path": CAPTURE,
+        "body": "**High**: Drops a row",
+        "replies": [{"author": "joe", "author_type": "User", "body": "done"}],
+    }
+
+
+def _thread_fake(record: dict[str, Any], threads: list[dict[str, Any]]) -> FakeGitHub:
+    fake = FakeGitHub(_pull(), TWO_FILES, threads=threads, diff=TWO_FILE_DIFF)
+    fake.reviews = [_review(record)]
+    return fake
+
+
+def test_comment_on_a_decided_head_forces_a_same_head_rereview(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    event = {"action": "created", "issue": {"number": 7, "pull_request": {}}, "comment": {"body": "/oracle-review"}}
+    _, values, plan = _plan(
+        monkeypatch,
+        tmp_path,
+        _thread_fake(_decided_head(), [_disputed_thread()]),
+        event_name="issue_comment",
+        event=event,
+    )
+    assert values["decision"] == "review" and values["post"] == "true"
+    assert plan["manual"] is True
+    assert plan["protocol"]["kind"] == "follow-up" and plan["protocol"]["forced"] is True
+
+
+def test_comment_without_a_dispute_leaves_the_decided_head_in_place(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    event = {"action": "created", "issue": {"number": 7, "pull_request": {}}, "comment": {"body": "/oracle-review"}}
+    _, values, plan = _plan(
+        monkeypatch, tmp_path, _thread_fake(_decided_head(), [_acked_thread()]), event_name="issue_comment", event=event
+    )
+    assert values["decision"] == "skip" and values["post"] == "false"
+    assert plan["manual"] is True
+
+
+def test_push_with_a_disputed_thread_upgrades_carry_to_a_forced_rereview(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    record = _record(TWO_FILE_DIFF, "SHIP_WITH_FIXES", open_defects=[DEFECT], next_id=2)
+    _, values, plan = _plan(monkeypatch, tmp_path, _thread_fake(record, [_disputed_thread()]))
+    assert values["decision"] == "review" and values["post"] == "true"
+    assert plan["manual"] is False
+    assert plan["protocol"]["kind"] == "follow-up" and plan["protocol"]["forced"] is True
+    assert len(plan["disputes"]) == 1
+
+
+def test_push_with_only_an_acknowledgement_still_carries(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    record = _record(TWO_FILE_DIFF, "SHIP_WITH_FIXES", open_defects=[DEFECT], next_id=2)
+    _, values, plan = _plan(monkeypatch, tmp_path, _thread_fake(record, [_acked_thread()]))
+    assert values["decision"] == "carry" and values["post"] == "true"
+    assert plan["manual"] is False
+    assert plan["protocol"]["kind"] == "carry" and plan["protocol"]["forced"] is False
+    assert plan.get("disputes", []) == []
+
+
+def test_a_changed_patch_with_a_dispute_takes_the_ordinary_follow_up_path(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    record = _record(TWO_FILE_DIFF, "SHIP_WITH_FIXES", open_defects=[DEFECT], next_id=2)
+    fake = FakeGitHub(_pull(), TWO_FILES, threads=[_disputed_thread()], diff=CAPTURE_CHANGED)
+    fake.reviews = [_review(record)]
+    _, values, plan = _plan(monkeypatch, tmp_path, fake)
+    assert values["decision"] == "review" and values["post"] == "true"
+    assert plan["protocol"]["kind"] == "follow-up" and plan["protocol"]["forced"] is False
+
+
+@pytest.mark.parametrize(
+    "comment",
+    [
+        {"body": "Not a defect.", "user": {"login": "joe", "type": "User"}, "in_reply_to_id": 11},
+        {"body": "Not a defect.", "user": {"login": "joe", "type": "User"}},
+        {"body": "Noted.", "user": {"login": "benchbox-oracle[bot]", "type": "Bot"}, "in_reply_to_id": 11},
+    ],
+    ids=["thread-reply", "top-level", "bot-reply"],
+)
+def test_review_comment_events_never_plan(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, comment: dict[str, Any]
+) -> None:
+    _, values, plan = _plan(
+        monkeypatch,
+        tmp_path,
+        _thread_fake(_decided_head(), [_disputed_thread()]),
+        event_name="pull_request_review_comment",
+        event={"action": "created", "comment": comment},
+    )
+    assert values["decision"] == "skip" and values["post"] == "false"
+    assert plan["manual"] is False
+
+
+def test_guard_posts_a_forced_follow_up_once_and_skips_the_duplicate(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    event = {"action": "created", "issue": {"number": 7, "pull_request": {}}, "comment": {"body": "/oracle-review"}}
+    fake = _thread_fake(_decided_head(), [_disputed_thread()])
+    _, values, plan = _plan(monkeypatch, tmp_path, fake, event_name="issue_comment", event=event)
+    assert values["decision"] == "review" and plan["protocol"]["forced"] is True
+    plan_path = tmp_path / "plan" / "plan.json"
+    output = tmp_path / "guard.out"
+    output.write_text("", encoding="utf-8")
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    fake.install(monkeypatch)
+    assert cli.main(["guard", "--plan", str(plan_path)]) == 0
+    assert dict(line.split("=", 1) for line in output.read_text(encoding="utf-8").splitlines())["skip"] == "false"
+    posted = {**_decided_head(), "round": 2, "kind": "follow-up", "forced": True}
+    fake.reviews = [_review(_decided_head()), _review(posted, id=2, submitted_at="2026-10-08T11:00:00Z")]
+    assert cli.main(["guard", "--plan", str(plan_path)]) == 0
+    assert dict(line.split("=", 1) for line in output.read_text(encoding="utf-8").splitlines())["skip"] == "true"
