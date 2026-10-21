@@ -300,6 +300,12 @@ are cut by maintainers via the version-branch flow documented in
 Use `make release-cut-abort VERSION=X.Y.Z` to back out an uncommitted cut from
 the worktree that created it.
 
+`CHANGELOG.md` uses Git's union merge driver (`.gitattributes`), so entries two
+branches add under the same heading merge or rebase locally without a
+conflict. Skim the merged `[Unreleased]` text afterward; see
+[the release guide](docs/internal/release-guide.md#changelog-merges) for the
+caveats.
+
 We follow semantic versioning.
 
 ## License

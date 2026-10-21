@@ -198,6 +198,29 @@ section shipped (0.2.1, 39 bullets over 139 lines). A longer draft means the
 curation is not done yet — group and cut further rather than working around
 the gate.
 
+### Changelog merges
+
+`.gitattributes` sets `/CHANGELOG.md merge=union`, so a local `git merge`,
+`git rebase`, or `git cherry-pick` keeps both sides' added lines instead of
+stopping on a conflict. Two branches that each add a bullet under
+`[Unreleased]` combine cleanly. The release-curation and tag-guard checks read
+only the resulting file, and `release-cut` merges `origin/release` with
+`-s ours`, which ignores merge drivers, so none of them changes behavior. `.gitattributes` is a development file that
+`release-cut` removes, so the union rule applies on `develop` and its feature
+branches only, not on the release tree; the rule's test skips there.
+
+Caveats:
+
+- Union never reports a conflict, so review the merged `[Unreleased]` text.
+- It keeps both sides of a line both branches edited: two rewordings of the
+  same bullet both survive, and the older wording must be deleted by hand.
+- It merges by line, not by bullet. Continuation lines that two new bullets
+  share verbatim (for example identical wrapped text) collapse into one copy,
+  which can leave one bullet short of its tail. Reread multi-line bullets.
+- GitHub's server-side merge and the web conflict editor do not run custom
+  drivers. Rebase onto `origin/develop` locally before pushing, as the PR flow
+  already requires.
+
 ### Tests on the release tree
 
 The release PR's required jobs run the fast and medium tiers on the curated
