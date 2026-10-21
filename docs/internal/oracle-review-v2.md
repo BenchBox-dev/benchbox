@@ -456,6 +456,15 @@ run for a pull request event checks, before and after the checker, that the
 head it was triggered for is still the pull request's head; a run for a
 superseded head fails rather than report on a head it was not created for.
 
+GitHub Actions has no event for resolving a review thread, so resolving the
+oracle's last thread starts no `oracle-review` run. When the oracle posts a
+success verdict together with threads, the run its review starts fails on
+those open threads and stays red after they are resolved. After resolving the
+threads, run `make oracle-review-recover PR=<number>` (add
+`REPO=<owner/repo>` outside the default repository); the failing check's
+message names this command. The checker's decision is unchanged: it passes
+only with a success verdict on the head and no unresolved oracle thread.
+
 The stand-in attestation must be posted after the oracle's latest decisive
 verdict (`success` or `failure`) on the head, so overriding a failing verdict
 is a deliberate act; a later review that carries no decisive verdict, such as
