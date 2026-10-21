@@ -162,6 +162,7 @@ jobs:
             -m "medium and not (slow or stress or resource_heavy or live_integration)" \
             --tb=short --timeout=60 -n 5 --durations=25 \
             -p pytest_cov --cov --cov-config=scripts/coverage_map.ini --cov-context=test --cov-report= \
+            -p scripts.pytest_coverage_timeout \
             -p scripts.pytest_shard_evidence \
             --assigned-nodeids "t2-artifacts/shard-${SHARD_INDEX}-nodeids.txt" \
             --shard-evidence "t2-artifacts/shard-${SHARD_INDEX}-execution.json" \
