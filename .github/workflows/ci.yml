@@ -999,6 +999,7 @@ jobs:
             --nodeids-output t2-artifacts/medium-nodeids.txt \
             --summary-output t2-artifacts/medium-collection.json \
             --expected-count "$count" --shard-count 4 \
+            --durations tests/fixtures/medium_shard_durations.json \
             --workflow ci.yml --job medium-collect \
             --marker-expression "medium and not (slow or stress or resource_heavy or live_integration)" \
             --checked-ref "${{ github.ref }}" --checked-sha "${{ github.sha }}"
@@ -1056,7 +1057,8 @@ jobs:
             --shard-index "$SHARD_INDEX" --shard-count 4 \
             --workflow ci.yml --job medium-test \
             --marker-expression "medium and not (slow or stress or resource_heavy or live_integration)" \
-            --collection-summary t2-artifacts/medium-collection.json --checked-sha "${{ github.sha }}"
+            --collection-summary t2-artifacts/medium-collection.json --checked-sha "${{ github.sha }}" \
+            --durations tests/fixtures/medium_shard_durations.json
 
       - name: Run medium speed tier
         shell: bash
@@ -1081,6 +1083,7 @@ jobs:
             -p scripts.pytest_shard_evidence \
             --assigned-nodeids "t2-artifacts/shard-${SHARD_INDEX}-nodeids.txt" \
             --shard-evidence "t2-artifacts/shard-${SHARD_INDEX}-execution.json" \
+            --junitxml "t2-artifacts/shard-${SHARD_INDEX}-junit.xml" \
             --checked-sha "${{ github.sha }}" "${node_ids[@]}"
 
       - name: Record kernel memory events for the medium shard
@@ -1465,6 +1468,7 @@ jobs:
           sparse-checkout: |
             scripts/ci_unit_result.py
             scripts/release_canary_sharding.py
+            tests/fixtures/medium_shard_durations.json
           sparse-checkout-cone-mode: false
 
       - name: Download complete medium shard evidence
@@ -1477,7 +1481,9 @@ jobs:
 
       - name: Verify complete medium shard coverage
         if: needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true'
-        run: python scripts/release_canary_sharding.py verify-medium --artifacts t2-evidence --checked-sha "${{ github.sha }}"
+        run: >-
+          python scripts/release_canary_sharding.py verify-medium --artifacts t2-evidence
+          --checked-sha "${{ github.sha }}" --durations tests/fixtures/medium_shard_durations.json
 
       - name: Aggregate core result
         id: aggregate

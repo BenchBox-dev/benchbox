@@ -1,0 +1,2972 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-21T03:49:17Z",
+  "source": "Medium shard junit reports from CI run 39538637499",
+  "default_seconds": 0.027812,
+  "tests": {
+    "tests/e2e/test_cli_options.py::TestBenchmarkSelection::test_benchmark_clickbench": {
+      "p95_seconds": 0.367
+    },
+    "tests/e2e/test_cli_options.py::TestBenchmarkSelection::test_benchmark_tpcds": {
+      "p95_seconds": 1.522
+    },
+    "tests/e2e/test_cli_options.py::TestBenchmarkSelection::test_benchmark_tpch": {
+      "p95_seconds": 0.447
+    },
+    "tests/e2e/test_cli_options.py::test_tuning_modes[tuned]": {
+      "p95_seconds": 0.254
+    },
+    "tests/examples/test_getting_started_examples.py::test_duckdb_tpch_power_generates_data": {
+      "p95_seconds": 4.595
+    },
+    "tests/integration/mcp/test_durable_execution_engine.py::test_start_benchmark_carries_the_requested_engine_into_the_bundle": {
+      "p95_seconds": 6.721
+    },
+    "tests/integration/mcp/test_durable_jobs.py::test_multiprocess_claims_respect_global_running_limit": {
+      "p95_seconds": 4.639
+    },
+    "tests/integration/mcp/test_durable_jobs.py::test_multiprocess_claims_respect_per_principal_running_limit": {
+      "p95_seconds": 5.468
+    },
+    "tests/integration/mcp/test_durable_jobs.py::test_start_and_status_report_deprecations_and_accept_deployment_selectors": {
+      "p95_seconds": 0.529
+    },
+    "tests/integration/mcp/test_multiworker_acceptance.py::test_remote_contract_survives_alternating_workers": {
+      "p95_seconds": 0.632
+    },
+    "tests/integration/mcp/test_transport_contract_parity.py::test_stdio_and_streamable_http_publish_identical_contracts": {
+      "p95_seconds": 2.094
+    },
+    "tests/integration/test_amplab_cross_surface_equivalence.py::test_amplab_dataframe_surface_equivalent_to_sql": {
+      "p95_seconds": 4.38
+    },
+    "tests/integration/test_cli_subprocess_architecture.py::test_dry_run_preserves_explicit_phase_selection": {
+      "p95_seconds": 7.053
+    },
+    "tests/integration/test_cli_subprocess_architecture.py::test_invalid_platform_returns_nonzero": {
+      "p95_seconds": 4.685
+    },
+    "tests/integration/test_cli_subprocess_architecture.py::test_validate_rejects_malformed_explicit_config": {
+      "p95_seconds": 1.841
+    },
+    "tests/integration/test_clickbench_cross_surface_equivalence.py::test_clickbench_dataframe_surface_equivalent_to_sql": {
+      "p95_seconds": 13.203
+    },
+    "tests/integration/test_coffeeshop_cross_surface_equivalence.py::test_coffeeshop_dataframe_surface_equivalent_to_sql": {
+      "p95_seconds": 16.517
+    },
+    "tests/integration/test_compat_lint_clean.py::test_athena_runtime_ddl_rewrite_is_represented_in_governance_inventory": {
+      "p95_seconds": 0.742
+    },
+    "tests/integration/test_compat_lint_clean.py::test_bigquery_runtime_ddl_rewrite_is_represented_in_governance_inventory": {
+      "p95_seconds": 1.768
+    },
+    "tests/integration/test_compat_lint_clean.py::test_ddl_drift_check_is_clean": {
+      "p95_seconds": 1.347
+    },
+    "tests/integration/test_compat_lint_clean.py::test_ddl_governance_statuses_distinguish_runtime_governance_and_no_rewrite_platforms": {
+      "p95_seconds": 1.785
+    },
+    "tests/integration/test_cross_surface_execution_engine.py::test_gate_dtype_comparison_collects_every_frame_with_the_requested_engine": {
+      "p95_seconds": 13.59
+    },
+    "tests/integration/test_cross_surface_execution_engine.py::test_gate_row_comparison_collects_every_frame_with_the_requested_engine": {
+      "p95_seconds": 8.783
+    },
+    "tests/integration/test_dask_dataframe_integration.py::TestDaskDataFrameIntegration::test_groupby_with_nunique": {
+      "p95_seconds": 0.252
+    },
+    "tests/integration/test_dask_dataframe_integration.py::TestDaskTPCHQueryExecution::test_q1_pricing_summary_pandas_impl": {
+      "p95_seconds": 0.279
+    },
+    "tests/integration/test_database_integration.py::TestDatabaseIntegration::test_concurrent_database_access": {
+      "p95_seconds": 0.316
+    },
+    "tests/integration/test_database_integration.py::TestDatabaseIntegration::test_database_connection_management": {
+      "p95_seconds": 0.358
+    },
+    "tests/integration/test_database_integration.py::TestDatabaseIntegration::test_database_resource_management": {
+      "p95_seconds": 0.701
+    },
+    "tests/integration/test_database_integration.py::TestDatabaseIntegration::test_partial_data_loading[table_subset3]": {
+      "p95_seconds": 0.269
+    },
+    "tests/integration/test_dataframe_adapter_smoke.py::TestCrossPlatformConsistency::test_filter_produces_same_row_count": {
+      "p95_seconds": 6.215
+    },
+    "tests/integration/test_dataframe_adapter_smoke.py::TestCrossPlatformConsistency::test_group_by_produces_same_row_count": {
+      "p95_seconds": 16.35
+    },
+    "tests/integration/test_dataframe_adapter_smoke.py::TestCrossPlatformConsistency::test_join_produces_same_row_count": {
+      "p95_seconds": 10.43
+    },
+    "tests/integration/test_dataframe_adapter_smoke.py::TestPySparkSmoke::test_chained_operations": {
+      "p95_seconds": 9.477
+    },
+    "tests/integration/test_dataframe_adapter_smoke.py::TestPySparkSmoke::test_dataframe_level_sum": {
+      "p95_seconds": 0.583
+    },
+    "tests/integration/test_dataframe_adapter_smoke.py::TestPySparkSmoke::test_filter_with_expressions": {
+      "p95_seconds": 0.786
+    },
+    "tests/integration/test_dataframe_adapter_smoke.py::TestPySparkSmoke::test_group_by_with_aggregations": {
+      "p95_seconds": 2.001
+    },
+    "tests/integration/test_dataframe_adapter_smoke.py::TestPySparkSmoke::test_join_left_on_right_on": {
+      "p95_seconds": 1.688
+    },
+    "tests/integration/test_dataframe_adapter_smoke.py::TestPySparkSmoke::test_sort_multiple_columns": {
+      "p95_seconds": 2.154
+    },
+    "tests/integration/test_dataframe_adapter_smoke.py::TestPySparkSmoke::test_unique": {
+      "p95_seconds": 1.695
+    },
+    "tests/integration/test_dataframe_csv_empty_string_null_semantics.py::test_csv_direct_keeps_empty_string_when_null_marker_is_none[pyspark]": {
+      "p95_seconds": 1.76
+    },
+    "tests/integration/test_dataframe_csv_empty_string_null_semantics.py::test_csv_direct_preserves_null_when_null_marker_is_empty_string[pyspark]": {
+      "p95_seconds": 1.169
+    },
+    "tests/integration/test_dataframe_maintenance_operations.py::TestIcebergMaintenanceIntegration::test_insert_and_query_workflow": {
+      "p95_seconds": 1.703
+    },
+    "tests/integration/test_dataframe_maintenance_operations.py::TestIcebergMaintenanceIntegration::test_insert_append_mode": {
+      "p95_seconds": 3.565
+    },
+    "tests/integration/test_dataframe_maintenance_operations.py::TestMaintenanceCapabilitiesConsistency::test_iceberg_capabilities_match_spec": {
+      "p95_seconds": 0.931
+    },
+    "tests/integration/test_datavault_cross_surface_equivalence.py::test_datavault_dataframe_surface_equivalent_to_sql": {
+      "p95_seconds": 7.957
+    },
+    "tests/integration/test_deprecation_warnings_visible.py::test_athena_spark_engine_version_alias_shows_one_warning": {
+      "p95_seconds": 3.778
+    },
+    "tests/integration/test_deprecation_warnings_visible.py::test_clickhouse_mode_alias_names_only_the_supplied_key": {
+      "p95_seconds": 7.069
+    },
+    "tests/integration/test_deprecation_warnings_visible.py::test_compute_alias_shows_one_warning": {
+      "p95_seconds": 6.06
+    },
+    "tests/integration/test_deprecation_warnings_visible.py::test_mcp_server_warns_once_per_run": {
+      "p95_seconds": 3.224
+    },
+    "tests/integration/test_deprecation_warnings_visible.py::test_polars_streaming_flag_warns_once_and_records_legacy_option": {
+      "p95_seconds": 11.22
+    },
+    "tests/integration/test_deprecation_warnings_visible.py::test_polars_streaming_option_shows_one_warning": {
+      "p95_seconds": 7.876
+    },
+    "tests/integration/test_duckdb_integration.py::TestBenchmarkExecution::test_benchmark_category_execution": {
+      "p95_seconds": 0.486
+    },
+    "tests/integration/test_duckdb_integration.py::TestBenchmarkExecution::test_benchmark_info_integration": {
+      "p95_seconds": 0.465
+    },
+    "tests/integration/test_duckdb_integration.py::TestBenchmarkExecution::test_benchmark_run_integration": {
+      "p95_seconds": 0.584
+    },
+    "tests/integration/test_duckdb_integration.py::TestBenchmarkExecution::test_concurrent_execution": {
+      "p95_seconds": 0.711
+    },
+    "tests/integration/test_duckdb_integration.py::TestDuckDBConnection::test_extensions_setup": {
+      "p95_seconds": 1.12
+    },
+    "tests/integration/test_duckdb_integration.py::TestDuckDBOLAPFeatures::test_olap_null_handling": {
+      "p95_seconds": 0.468
+    },
+    "tests/integration/test_execution_engine_recording.py::test_cli_polars_run_records_requested_engine_and_collect_kwargs[engine_args0-streaming-collect_kwargs0-polars-df+streaming]": {
+      "p95_seconds": 18.689
+    },
+    "tests/integration/test_execution_engine_recording.py::test_cli_polars_run_records_requested_engine_and_collect_kwargs[engine_args1-default-collect_kwargs1-polars-df]": {
+      "p95_seconds": 13.743
+    },
+    "tests/integration/test_execution_engine_recording.py::test_cli_run_on_a_platform_without_engines_records_the_default_receipt[duckdb-duckdb]": {
+      "p95_seconds": 8.12
+    },
+    "tests/integration/test_execution_engine_recording.py::test_cli_run_on_a_platform_without_engines_records_the_default_receipt[pandas-df-pandas-df]": {
+      "p95_seconds": 9.451
+    },
+    "tests/integration/test_execution_engine_recording.py::test_cli_tuning_init_profile_then_run_records_the_default_engine[memory-constrained]": {
+      "p95_seconds": 18.225
+    },
+    "tests/integration/test_execution_engine_recording.py::test_cli_tuning_init_profile_then_run_records_the_default_engine[optimized]": {
+      "p95_seconds": 16.367
+    },
+    "tests/integration/test_execution_engine_recording.py::test_cli_tuning_init_profile_then_run_records_the_default_engine[streaming]": {
+      "p95_seconds": 10.094
+    },
+    "tests/integration/test_execution_engine_recording.py::test_cli_write_primitives_with_non_default_engine_fails_before_work[explicit]": {
+      "p95_seconds": 4.145
+    },
+    "tests/integration/test_execution_engine_recording.py::test_cli_write_primitives_with_non_default_engine_fails_before_work[legacy_option]": {
+      "p95_seconds": 7.521
+    },
+    "tests/integration/test_execution_engine_recording.py::test_cli_write_primitives_with_non_default_engine_fails_before_work[tuning_file]": {
+      "p95_seconds": 5.351
+    },
+    "tests/integration/test_execution_engine_recording.py::test_mcp_run_benchmark_records_requested_engine_and_collect_kwargs[default-expected_engines1]": {
+      "p95_seconds": 3.493
+    },
+    "tests/integration/test_execution_engine_recording.py::test_mcp_run_benchmark_records_requested_engine_and_collect_kwargs[streaming-expected_engines0]": {
+      "p95_seconds": 5.39
+    },
+    "tests/integration/test_execution_engine_recording.py::test_mcp_write_primitives_with_non_default_engine_fails_before_work": {
+      "p95_seconds": 0.285
+    },
+    "tests/integration/test_execution_engine_sources.py::test_cli_agreeing_sources_resolve_to_the_highest_precedence[explicit-tuning-legacy]": {
+      "p95_seconds": 8.264
+    },
+    "tests/integration/test_execution_engine_sources.py::test_cli_agreeing_sources_resolve_to_the_highest_precedence[legacy]": {
+      "p95_seconds": 7.324
+    },
+    "tests/integration/test_execution_engine_sources.py::test_cli_agreeing_sources_resolve_to_the_highest_precedence[tuning-legacy]": {
+      "p95_seconds": 15.208
+    },
+    "tests/integration/test_execution_engine_sources.py::test_cli_explicit_engine_conflicting_with_the_tuning_file_fails_before_any_work": {
+      "p95_seconds": 4.663
+    },
+    "tests/integration/test_execution_engine_sources.py::test_mcp_explicit_engine_and_legacy_streaming_key_agree": {
+      "p95_seconds": 2.963
+    },
+    "tests/integration/test_h2odb_cross_surface_equivalence.py::test_h2odb_dataframe_surface_equivalent_to_sql": {
+      "p95_seconds": 4.495
+    },
+    "tests/integration/test_hosted_submission.py::test_hosted_submission_401_prompts_refresh_and_retries": {
+      "p95_seconds": 0.535
+    },
+    "tests/integration/test_hosted_submission.py::test_hosted_submission_idempotent_resubmit_returns_existing_url": {
+      "p95_seconds": 0.532
+    },
+    "tests/integration/test_hosted_submission.py::test_hosted_submission_retries_first_5xx_with_same_idempotency_key": {
+      "p95_seconds": 0.521
+    },
+    "tests/integration/test_hosted_submission.py::test_hosted_submission_success_polls_and_records_history": {
+      "p95_seconds": 0.536
+    },
+    "tests/integration/test_joinorder_synthetic_cross_surface_equivalence.py::test_joinorder_synthetic_dataframe_surface_equivalent_to_sql": {
+      "p95_seconds": 22.008
+    },
+    "tests/integration/test_legacy_throughput_routing_real_adapters.py::TestAdapterEntryPoint::test_supported_adapter_returns_the_legacy_keys": {
+      "p95_seconds": 3.483
+    },
+    "tests/integration/test_legacy_throughput_routing_real_adapters.py::TestAdapterEntryPoint::test_unsupported_adapter_is_refused": {
+      "p95_seconds": 1.903
+    },
+    "tests/integration/test_legacy_throughput_routing_real_adapters.py::TestTPCDSBenchmarkThroughput::test_connection_factory_is_optional_and_warns_when_given": {
+      "p95_seconds": 7.032
+    },
+    "tests/integration/test_legacy_throughput_routing_real_adapters.py::TestTPCDSBenchmarkThroughput::test_missing_adapter_is_refused": {
+      "p95_seconds": 2.883
+    },
+    "tests/integration/test_legacy_throughput_routing_real_adapters.py::TestTPCDSBenchmarkThroughput::test_official_run_with_supported_adapter": {
+      "p95_seconds": 1.284
+    },
+    "tests/integration/test_legacy_throughput_routing_real_adapters.py::TestTPCDSBenchmarkThroughput::test_supported_adapter_runs_and_warns": {
+      "p95_seconds": 2.883
+    },
+    "tests/integration/test_legacy_throughput_routing_real_adapters.py::TestTPCDSOfficialBenchmark::test_supported_adapter_runs_throughput_and_warns": {
+      "p95_seconds": 2.46
+    },
+    "tests/integration/test_legacy_throughput_routing_real_adapters.py::TestTPCHOfficialBenchmark::test_facade_forwards_the_adapter": {
+      "p95_seconds": 3.609
+    },
+    "tests/integration/test_legacy_throughput_routing_real_adapters.py::TestTPCHOfficialBenchmark::test_missing_adapter_is_refused": {
+      "p95_seconds": 3.631
+    },
+    "tests/integration/test_legacy_throughput_routing_real_adapters.py::TestTPCHOfficialBenchmark::test_supported_adapter_runs_throughput_and_warns": {
+      "p95_seconds": 5.893
+    },
+    "tests/integration/test_legacy_throughput_routing_real_adapters.py::TestTPCHOfficialBenchmark::test_unsupported_adapter_is_refused_and_publishes_no_metric": {
+      "p95_seconds": 5.651
+    },
+    "tests/integration/test_load_only_cli_exit_status.py::test_successful_load_only_run_exits_zero_with_load_summary[duckdb-sql-tuned]": {
+      "p95_seconds": 9.302
+    },
+    "tests/integration/test_load_only_cli_exit_status.py::test_successful_load_only_run_exits_zero_with_load_summary[duckdb-sql]": {
+      "p95_seconds": 7.445
+    },
+    "tests/integration/test_load_only_cli_exit_status.py::test_successful_load_only_run_exits_zero_with_load_summary[polars-dataframe]": {
+      "p95_seconds": 13.121
+    },
+    "tests/integration/test_nyctaxi_combined.py::TestBenchmarkMultiTypeIntegration::test_benchmark_multi_type_generates_all_files": {
+      "p95_seconds": 0.436
+    },
+    "tests/integration/test_nyctaxi_combined.py::TestCrossTypeQueries::test_all_cross_type_queries_execute": {
+      "p95_seconds": 1.145
+    },
+    "tests/integration/test_nyctaxi_combined.py::TestCrossTypeQueries::test_cross_fare_comparison_query": {
+      "p95_seconds": 1.12
+    },
+    "tests/integration/test_nyctaxi_combined.py::TestCrossTypeQueries::test_cross_geographic_coverage_query": {
+      "p95_seconds": 0.847
+    },
+    "tests/integration/test_nyctaxi_combined.py::TestCrossTypeQueries::test_cross_market_share_query": {
+      "p95_seconds": 0.541
+    },
+    "tests/integration/test_open_table_formats.py::TestDeltaLakeFormatSmoke::test_delta_duckdb_query_via_delta_scan": {
+      "p95_seconds": 0.815
+    },
+    "tests/integration/test_open_table_formats.py::TestDuckLakeDataLoadingHandlers::test_duckdb_ducklake_handler_load": {
+      "p95_seconds": 0.268
+    },
+    "tests/integration/test_open_table_formats.py::TestDuckLakeFormatSmoke::test_ducklake_sharded_files": {
+      "p95_seconds": 0.25
+    },
+    "tests/integration/test_open_table_formats.py::TestDuckLakeMaintenanceOperations::test_ducklake_delete_rows": {
+      "p95_seconds": 0.27
+    },
+    "tests/integration/test_open_table_formats.py::TestDuckLakeMaintenanceOperations::test_ducklake_insert_rows": {
+      "p95_seconds": 0.396
+    },
+    "tests/integration/test_open_table_formats.py::TestDuckLakeMaintenanceOperations::test_ducklake_update_rows": {
+      "p95_seconds": 0.399
+    },
+    "tests/integration/test_open_table_formats.py::TestIcebergFormatSmoke::test_iceberg_conversion_and_structure": {
+      "p95_seconds": 1.045
+    },
+    "tests/integration/test_open_table_formats.py::TestIcebergFormatSmoke::test_iceberg_metadata_structure": {
+      "p95_seconds": 0.595
+    },
+    "tests/integration/test_plan_capture_cli_realpath_review.py::TestPlanCaptureCLIRealpath::test_show_plan_json_format_from_real_bundle": {
+      "p95_seconds": 0.399
+    },
+    "tests/integration/test_plan_capture_gate.py::test_plan_capture_gate_catches_planted_defect": {
+      "p95_seconds": 3.697
+    },
+    "tests/integration/test_read_primitives_cross_surface_equivalence.py::test_read_primitives_dataframe_surface_equivalent_to_sql": {
+      "p95_seconds": 120.158
+    },
+    "tests/integration/test_read_primitives_cross_surface_equivalence.py::test_read_primitives_expression_frame_dtypes_match_sql": {
+      "p95_seconds": 7.496
+    },
+    "tests/integration/test_read_primitives_identify_regression.py::TestIdentifyTrueIntegrationWithTranslation::test_translation_pipeline_handles_identify_true": {
+      "p95_seconds": 0.253
+    },
+    "tests/integration/test_read_primitives_identify_regression.py::TestReadPrimitivesIdentifyRegression::test_translation_consistency_across_dialects": {
+      "p95_seconds": 0.26
+    },
+    "tests/integration/test_read_primitives_integration.py::TestPrimitivesIntegration::test_end_to_end_small_dataset": {
+      "p95_seconds": 5.006
+    },
+    "tests/integration/test_read_primitives_integration.py::TestPrimitivesIntegration::test_query_sql_validity": {
+      "p95_seconds": 0.451
+    },
+    "tests/integration/test_read_primitives_integration.py::TestReadPrimitivesBenchmarkExtended::test_run_benchmark_timing_and_results": {
+      "p95_seconds": 0.456
+    },
+    "tests/integration/test_ssb_clickhouse_integration.py::TestSSBClickHouseIntegration::test_ssb_data_loading_with_clickhouse": {
+      "p95_seconds": 1.334
+    },
+    "tests/integration/test_ssb_clickhouse_integration.py::TestSSBClickHouseIntegration::test_ssb_query_execution_clickhouse": {
+      "p95_seconds": 0.636
+    },
+    "tests/integration/test_ssb_cross_surface_equivalence.py::test_ssb_dataframe_surface_equivalent_to_sql": {
+      "p95_seconds": 19.189
+    },
+    "tests/integration/test_ssb_cross_surface_equivalence.py::test_ssb_previously_empty_queries_now_discriminate": {
+      "p95_seconds": 10.849
+    },
+    "tests/integration/test_ssb_cross_surface_equivalence.py::test_ssb_sql_reference_row_counts_match_the_recorded_expectations": {
+      "p95_seconds": 6.409
+    },
+    "tests/integration/test_throughput_session_isolation.py::TestSQLiteIndependentStreamConnections::test_identical_concurrent_reads_never_see_another_streams_state": {
+      "p95_seconds": 0.352
+    },
+    "tests/integration/test_throughput_stream_count.py::test_throughput_stream_count_default_preserved_via_real_pipeline_shape": {
+      "p95_seconds": 3.27
+    },
+    "tests/integration/test_throughput_stream_count.py::test_throughput_stream_count_explicit_single_stream_is_rejected[concurrent_streams]": {
+      "p95_seconds": 6.388
+    },
+    "tests/integration/test_throughput_stream_count.py::test_throughput_stream_count_explicit_single_stream_is_rejected[num_streams]": {
+      "p95_seconds": 5.188
+    },
+    "tests/integration/test_throughput_stream_count.py::test_throughput_stream_count_legacy_num_streams_key_still_wins": {
+      "p95_seconds": 4.479
+    },
+    "tests/integration/test_throughput_stream_count.py::test_throughput_stream_count_tpcds_matches_requested": {
+      "p95_seconds": 2.382
+    },
+    "tests/integration/test_throughput_stream_count.py::test_throughput_stream_count_tpch_matches_requested[4-4]": {
+      "p95_seconds": 6.031
+    },
+    "tests/integration/test_throughput_stream_count.py::test_throughput_stream_count_tpch_matches_requested[8-8]": {
+      "p95_seconds": 6.158
+    },
+    "tests/integration/test_throughput_strict_engine.py::TestHungStreamDeferredClose::test_run_connection_stays_open_until_the_hung_stream_ends": {
+      "p95_seconds": 5.237
+    },
+    "tests/integration/test_throughput_strict_engine.py::TestTPCHMaintenanceOnSQLite::test_failed_refresh_function_row_carries_the_engine_error[file_backed]": {
+      "p95_seconds": 9.219
+    },
+    "tests/integration/test_throughput_strict_engine.py::TestTPCHMaintenanceOnSQLite::test_failed_refresh_function_row_carries_the_engine_error[in_memory]": {
+      "p95_seconds": 2.682
+    },
+    "tests/integration/test_throughput_strict_engine.py::TestTPCHMaintenanceOnSQLite::test_refresh_functions_succeed[file_backed]": {
+      "p95_seconds": 5.777
+    },
+    "tests/integration/test_throughput_strict_engine.py::TestTPCHMaintenanceOnSQLite::test_refresh_functions_succeed[in_memory]": {
+      "p95_seconds": 12.043
+    },
+    "tests/integration/test_throughput_strict_engine.py::TestTPCHThroughputOnSQLite::test_all_queries_succeed_on_isolated_stream_connections": {
+      "p95_seconds": 1.512
+    },
+    "tests/integration/test_throughput_strict_engine.py::TestTPCHThroughputOnSQLite::test_failing_query_fails_the_stream_and_withholds_the_metric": {
+      "p95_seconds": 0.531
+    },
+    "tests/integration/test_throughput_strict_engine.py::TestTPCHThroughputOnSQLite::test_throughput_sql_is_translated_to_the_sqlite_dialect": {
+      "p95_seconds": 1.472
+    },
+    "tests/integration/test_throughput_strict_engine.py::TestTPCHThroughputOnSQLite::test_untranslated_sql_is_rejected_by_the_engine": {
+      "p95_seconds": 0.56
+    },
+    "tests/integration/test_tpcdi_phase3_benchmark.py::TestTPCDIPhase3BenchmarkIntegration::test_component_error_isolation": {
+      "p95_seconds": 5.179
+    },
+    "tests/integration/test_tpcdi_phase3_benchmark.py::TestTPCDIPhase3BenchmarkIntegration::test_data_quality_monitoring_phase": {
+      "p95_seconds": 5.826
+    },
+    "tests/integration/test_tpcdi_phase3_benchmark.py::TestTPCDIPhase3BenchmarkIntegration::test_enhanced_scd_processing_phase": {
+      "p95_seconds": 6.267
+    },
+    "tests/integration/test_tpcdi_phase3_benchmark.py::TestTPCDIPhase3PerformanceIntegration::test_quality_monitoring_performance": {
+      "p95_seconds": 9.448
+    },
+    "tests/integration/test_tpcds_duckdb_dialect.py::TestTPCDSDuckDBDialectIntegration::test_top_level_tpcds_class_dialect_support": {
+      "p95_seconds": 2.579
+    },
+    "tests/integration/test_tpcds_obt_etl.py::test_all_queries_execute_against_obt_data": {
+      "p95_seconds": 2.478
+    },
+    "tests/integration/test_tpcds_obt_etl.py::test_transform_runs_end_to_end_with_duckdb": {
+      "p95_seconds": 0.941
+    },
+    "tests/integration/test_tpcds_obt_parameter_draws.py::test_query_returns_rows_with_dsqgen_parameters[12]": {
+      "p95_seconds": 9.237
+    },
+    "tests/integration/test_tpcds_obt_parameter_draws.py::test_query_returns_rows_with_dsqgen_parameters[20]": {
+      "p95_seconds": 6.975
+    },
+    "tests/integration/test_tpcds_obt_parameter_draws.py::test_query_returns_rows_with_dsqgen_parameters[26]": {
+      "p95_seconds": 7.076
+    },
+    "tests/integration/test_tpcds_obt_parameter_draws.py::test_query_returns_rows_with_dsqgen_parameters[33]": {
+      "p95_seconds": 10.654
+    },
+    "tests/integration/test_tpcds_obt_parameter_draws.py::test_query_returns_rows_with_dsqgen_parameters[34]": {
+      "p95_seconds": 0.986
+    },
+    "tests/integration/test_tpcds_obt_parameter_draws.py::test_query_returns_rows_with_dsqgen_parameters[43]": {
+      "p95_seconds": 0.402
+    },
+    "tests/integration/test_tpcds_obt_parameter_draws.py::test_query_returns_rows_with_dsqgen_parameters[56]": {
+      "p95_seconds": 0.483
+    },
+    "tests/integration/test_tpcds_obt_parameter_draws.py::test_query_returns_rows_with_dsqgen_parameters[60]": {
+      "p95_seconds": 1.072
+    },
+    "tests/integration/test_tpcds_obt_parameter_draws.py::test_query_returns_rows_with_dsqgen_parameters[66]": {
+      "p95_seconds": 0.672
+    },
+    "tests/integration/test_tpcds_obt_parameter_draws.py::test_query_returns_rows_with_dsqgen_parameters[74]": {
+      "p95_seconds": 0.419
+    },
+    "tests/integration/test_tpcds_obt_parameter_draws.py::test_query_returns_rows_with_dsqgen_parameters[75]": {
+      "p95_seconds": 0.367
+    },
+    "tests/integration/test_tpcds_obt_parameter_draws.py::test_query_returns_rows_with_dsqgen_parameters[7]": {
+      "p95_seconds": 0.795
+    },
+    "tests/integration/test_tpcds_obt_parameter_draws.py::test_query_returns_rows_with_dsqgen_parameters[89]": {
+      "p95_seconds": 0.677
+    },
+    "tests/integration/test_tpcds_obt_parameter_draws.py::test_query_returns_rows_with_dsqgen_parameters[98]": {
+      "p95_seconds": 0.393
+    },
+    "tests/integration/test_tpch_skew_duckdb.py::TestTPCHSkewDuckDBIntegration::test_queries_available": {
+      "p95_seconds": 0.709
+    },
+    "tests/integration/test_tpchavoc_dataframe_variant_equivalence.py::test_fixed_dataframe_variant_families_equivalent_to_canonical": {
+      "p95_seconds": 9.953
+    },
+    "tests/integration/test_tpchavoc_duckdb.py::TestTPCHavocDuckDBIntegration::test_export_variant_queries": {
+      "p95_seconds": 0.515
+    },
+    "tests/integration/test_tpchavoc_variant_equivalence.py::test_fixed_variant_families_equivalent_to_canonical": {
+      "p95_seconds": 11.395
+    },
+    "tests/integration/test_tpchavoc_variant_equivalence.py::test_q16_variants_equivalent_across_complaint_supplier_cardinalities": {
+      "p95_seconds": 5.811
+    },
+    "tests/integration/test_write_primitives_duckdb.py::TestWritePrimitivesBulkLoad::test_bulk_load_operation_categories_complete": {
+      "p95_seconds": 0.312
+    },
+    "tests/integration/test_write_primitives_duckdb.py::TestWritePrimitivesConsolidatedOperations::test_consolidated_operations_category_filtering": {
+      "p95_seconds": 0.274
+    },
+    "tests/integration/test_write_primitives_duckdb.py::TestWritePrimitivesConsolidatedOperations::test_delete_gdpr_suppliers_1pct": {
+      "p95_seconds": 0.675
+    },
+    "tests/integration/test_write_primitives_duckdb.py::TestWritePrimitivesConsolidatedOperations::test_gdpr_deletions_are_data_dependent": {
+      "p95_seconds": 0.321
+    },
+    "tests/integration/test_write_primitives_duckdb.py::TestWritePrimitivesConsolidatedOperations::test_merge_deduplication_window_function": {
+      "p95_seconds": 0.281
+    },
+    "tests/integration/test_write_primitives_duckdb.py::TestWritePrimitivesConsolidatedOperations::test_merge_etl_aggregation_pattern": {
+      "p95_seconds": 0.262
+    },
+    "tests/integration/test_write_primitives_duckdb.py::TestWritePrimitivesDuckDBBenchmarkRuns::test_benchmark_handles_errors_gracefully": {
+      "p95_seconds": 0.551
+    },
+    "tests/integration/test_write_primitives_duckdb.py::TestWritePrimitivesDuckDBBenchmarkRuns::test_run_benchmark_all_operations": {
+      "p95_seconds": 3.434
+    },
+    "tests/integration/test_write_primitives_duckdb.py::TestWritePrimitivesDuckDBBenchmarkRuns::test_run_benchmark_by_category": {
+      "p95_seconds": 0.879
+    },
+    "tests/integration/test_write_primitives_duckdb.py::TestWritePrimitivesDuckDBExecution::test_execute_ddl_create_table_as_select": {
+      "p95_seconds": 0.481
+    },
+    "tests/integration/test_write_primitives_duckdb.py::TestWritePrimitivesDuckDBExecution::test_execute_ddl_truncate": {
+      "p95_seconds": 0.292
+    },
+    "tests/integration/test_write_primitives_duckdb.py::TestWritePrimitivesDuckDBExecution::test_execute_delete_selective_10pct": {
+      "p95_seconds": 0.264
+    },
+    "tests/integration/test_write_primitives_duckdb.py::TestWritePrimitivesDuckDBExecution::test_execute_insert_batch_10": {
+      "p95_seconds": 0.448
+    },
+    "tests/integration/test_write_primitives_duckdb.py::TestWritePrimitivesDuckDBExecution::test_execute_insert_select": {
+      "p95_seconds": 0.278
+    },
+    "tests/integration/test_write_primitives_duckdb.py::TestWritePrimitivesDuckDBExecution::test_execute_update_single_row_pk": {
+      "p95_seconds": 0.296
+    },
+    "tests/integration/test_write_primitives_duckdb.py::TestWritePrimitivesDuckDBLifecycle::test_is_setup_validates_tables": {
+      "p95_seconds": 0.277
+    },
+    "tests/integration/test_write_primitives_duckdb.py::TestWritePrimitivesDuckDBLifecycle::test_setup_with_force_recreates_tables": {
+      "p95_seconds": 0.309
+    },
+    "tests/integration/test_write_primitives_duckdb.py::TestWritePrimitivesSCD2DuckDB::test_basic_validates_green_on_small_custom_fixture": {
+      "p95_seconds": 0.339
+    },
+    "tests/integration/test_write_primitives_duckdb.py::TestWritePrimitivesSCD2DuckDB::test_basic_wrong_insert_count_fails_cardinality_bound": {
+      "p95_seconds": 0.3
+    },
+    "tests/integration/test_write_primitives_duckdb.py::TestWritePrimitivesSCD2DuckDB::test_new_keys_only_no_rows_closed_scoped_to_new_keys": {
+      "p95_seconds": 0.479
+    },
+    "tests/integration/test_write_primitives_duckdb.py::TestWritePrimitivesSCD2DuckDB::test_no_change_companion_check_is_load_bearing": {
+      "p95_seconds": 0.284
+    },
+    "tests/integration/test_write_primitives_duckdb.py::TestWritePrimitivesSCD2DuckDB::test_scd2_basic_is_repeatable": {
+      "p95_seconds": 0.728
+    },
+    "tests/integration/test_write_primitives_duckdb.py::TestWritePrimitivesSCD2DuckDB::test_scd2_basic_write_is_idempotent_without_cleanup": {
+      "p95_seconds": 0.287
+    },
+    "tests/integration/test_write_primitives_duckdb.py::TestWritePrimitivesSCD2DuckDB::test_scd2_new_keys_only_inserts_without_closing": {
+      "p95_seconds": 0.319
+    },
+    "tests/integration/test_write_primitives_duckdb.py::TestWritePrimitivesSCD2DuckDB::test_scd2_no_change_is_idempotent": {
+      "p95_seconds": 0.311
+    },
+    "tests/integration/test_write_primitives_duckdb.py::TestWritePrimitivesSCD2DuckDB::test_scd2_ops_succeed_and_legacy_merge_skipped_under_duckdb_platform_key": {
+      "p95_seconds": 0.36
+    },
+    "tests/integration/test_write_primitives_execution.py::TestWritePrimitivesBasic::test_benchmark_initialization": {
+      "p95_seconds": 0.276
+    },
+    "tests/integration/test_write_primitives_execution.py::TestWritePrimitivesBasic::test_get_benchmark_info": {
+      "p95_seconds": 0.544
+    },
+    "tests/integration/test_write_primitives_execution.py::TestWritePrimitivesBasic::test_get_create_tables_sql": {
+      "p95_seconds": 0.468
+    },
+    "tests/integration/tpch/test_tpch_benchmark.py::TestTPCHBenchmarkIntegration::test_benchmark_with_different_scale_factors": {
+      "p95_seconds": 0.305
+    },
+    "tests/integration/validation/test_read_primitives_variant_parity.py::test_clickhouse_list_transform_matches_duckdb_reference": {
+      "p95_seconds": 0.963
+    },
+    "tests/integration/validation/test_read_primitives_variant_parity.py::test_clickhouse_struct_construction_matches_duckdb_reference": {
+      "p95_seconds": 1.183
+    },
+    "tests/integration/validation/test_read_primitives_variant_parity.py::test_clickhouse_variants_match_duckdb_reference[array_agg_distinct]": {
+      "p95_seconds": 0.778
+    },
+    "tests/integration/validation/test_read_primitives_variant_parity.py::test_clickhouse_variants_match_duckdb_reference[array_agg_simple]": {
+      "p95_seconds": 0.669
+    },
+    "tests/integration/worktree/test_batch_skill_delivery.py::test_installed_runtime_handshake_exposes_registered_batch_tools": {
+      "p95_seconds": 2.097
+    },
+    "tests/integration/worktree/test_worktree_audit.py::test_fixture_clean_active_worktree": {
+      "p95_seconds": 0.31
+    },
+    "tests/integration/worktree/test_worktree_audit.py::test_fixture_detached_worktree": {
+      "p95_seconds": 0.266
+    },
+    "tests/integration/worktree/test_worktree_finish_preview.py::test_make_target_worktree_finish": {
+      "p95_seconds": 0.719
+    },
+    "tests/integration/worktree/test_worktree_lifecycle_metadata.py::test_malformed_metadata_evaluates_safely": {
+      "p95_seconds": 0.291
+    },
+    "tests/integration/worktree/test_worktree_lifecycle_metadata.py::test_manual_release_caller_owned_worktree": {
+      "p95_seconds": 0.388
+    },
+    "tests/integration/worktree/test_worktree_lifecycle_metadata.py::test_worktree_create_publishes_immutable_provenance": {
+      "p95_seconds": 0.281
+    },
+    "tests/integration/worktree/test_worktree_lifecycle_metadata.py::test_worktree_isolation_and_no_cross_leakage": {
+      "p95_seconds": 0.388
+    },
+    "tests/integration/worktree/test_worktree_reap.py::test_apply_reevaluates_and_continues_past_a_candidate_that_changed": {
+      "p95_seconds": 0.495
+    },
+    "tests/integration/worktree/test_worktree_reap.py::test_apply_removes_only_remove_verdicts": {
+      "p95_seconds": 0.559
+    },
+    "tests/integration/worktree/test_worktree_reap.py::test_dry_run_reports_every_worktree_with_a_verdict_and_changes_nothing": {
+      "p95_seconds": 0.872
+    },
+    "tests/integration/worktree/test_worktree_reap.py::test_each_target_branch_is_refreshed_once_per_run": {
+      "p95_seconds": 0.414
+    },
+    "tests/integration/worktree/test_worktree_reap.py::test_undecidable_pr_evidence_is_ambiguous": {
+      "p95_seconds": 0.306
+    },
+    "tests/integration/worktree/test_worktree_release_dirty_guard.py::test_concurrent_worktree_create_cannot_rollback_the_winner": {
+      "p95_seconds": 2.234
+    },
+    "tests/test_amplab.py::TestAMPLab::test_generate_data": {
+      "p95_seconds": 0.262
+    },
+    "tests/test_base.py::TestBaseBenchmark::test_initialization": {
+      "p95_seconds": 0.312
+    },
+    "tests/test_base.py::TestBaseBenchmark::test_real_data_generation": {
+      "p95_seconds": 3.029
+    },
+    "tests/test_benchmark_validator.py::TestBenchmarkValidator::test_benchmark_validation_no_benchbox": {
+      "p95_seconds": 0.862
+    },
+    "tests/test_benchmark_validator.py::TestBenchmarkValidator::test_interface_validation": {
+      "p95_seconds": 1.834
+    },
+    "tests/test_benchmark_validator.py::TestBenchmarkValidator::test_load_benchmark_class_invalid": {
+      "p95_seconds": 1.525
+    },
+    "tests/test_benchmark_validator.py::TestBenchmarkValidator::test_mock_benchmark_validation": {
+      "p95_seconds": 2.461
+    },
+    "tests/test_clickbench.py::TestClickBench::test_generate_data": {
+      "p95_seconds": 118.959
+    },
+    "tests/test_h2odb.py::TestH2ODB::test_generate_data": {
+      "p95_seconds": 363.969
+    },
+    "tests/test_ssb.py::TestSSB::test_generate_data": {
+      "p95_seconds": 93.011
+    },
+    "tests/test_tpcdi.py::TestTPCDI::test_generate_data": {
+      "p95_seconds": 34.606
+    },
+    "tests/uat/test_docker_assets.py::test_container_name_budget_fits_every_config_and_platform[10]": {
+      "p95_seconds": 0.517
+    },
+    "tests/uat/test_docker_assets.py::test_container_name_budget_fits_every_config_and_platform[1]": {
+      "p95_seconds": 0.502
+    },
+    "tests/uat/test_no_cli_surface_drift.py::test_uat_did_not_modify_benchbox_cli_surface": {
+      "p95_seconds": 0.285
+    },
+    "tests/uat/test_runner.py::test_run_cell_marks_timeout": {
+      "p95_seconds": 1.235
+    },
+    "tests/uat/test_runner_timeout_process_group.py::test_run_cell_runs_the_child_in_its_own_session": {
+      "p95_seconds": 2.236
+    },
+    "tests/uat/test_runner_timeout_process_group.py::test_run_cell_timeout_kills_the_whole_process_group_not_just_the_child": {
+      "p95_seconds": 2.24
+    },
+    "tests/uat/test_sweep_durability.py::test_sweep_cancel_reaps_orphaned_child_no_survivor": {
+      "p95_seconds": 0.564
+    },
+    "tests/uat/test_timeouts.py::test_cancellation_kills_trapping_child_and_grandchild": {
+      "p95_seconds": 0.522
+    },
+    "tests/uat/test_timeouts.py::test_kill_ladder_completes_sigkill_when_interrupted_during_grace": {
+      "p95_seconds": 0.327
+    },
+    "tests/uat/test_timeouts.py::test_run_with_timeout_drains_noisy_pipe_on_timeout": {
+      "p95_seconds": 1.232
+    },
+    "tests/uat/test_timeouts.py::test_run_with_timeout_kills_grandchild_process": {
+      "p95_seconds": 1.237
+    },
+    "tests/uat/test_timeouts.py::test_run_with_timeout_kills_runaway_child": {
+      "p95_seconds": 1.225
+    },
+    "tests/uat/test_timeouts.py::test_zero_timeout_cancellation_kills_trapping_child_and_grandchild": {
+      "p95_seconds": 0.519
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[aggregation_distinct]": {
+      "p95_seconds": 11.01
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[aggregation_distinct_groupby]": {
+      "p95_seconds": 8.609
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[aggregation_groupby_large]": {
+      "p95_seconds": 7.628
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[aggregation_groupby_small]": {
+      "p95_seconds": 11.687
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[aggregation_materialize]": {
+      "p95_seconds": 0.583
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[aggregation_materialize_subquery]": {
+      "p95_seconds": 1.108
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[aggregation_partition]": {
+      "p95_seconds": 0.472
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[aggregation_selective]": {
+      "p95_seconds": 0.456
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[aggregation_simple]": {
+      "p95_seconds": 0.326
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[any_value_simple]": {
+      "p95_seconds": 0.362
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[any_value_with_filter]": {
+      "p95_seconds": 0.394
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[approx_count_distinct_groupby]": {
+      "p95_seconds": 0.791
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[approx_count_distinct_simple]": {
+      "p95_seconds": 0.536
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[array_agg_distinct]": {
+      "p95_seconds": 0.445
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[array_agg_simple]": {
+      "p95_seconds": 0.762
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[array_contains]": {
+      "p95_seconds": 0.565
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[array_distinct]": {
+      "p95_seconds": 0.457
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[array_length]": {
+      "p95_seconds": 0.329
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[array_min_max]": {
+      "p95_seconds": 0.553
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[array_slice]": {
+      "p95_seconds": 0.41
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[array_unnest]": {
+      "p95_seconds": 0.345
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[asof_join_basic]": {
+      "p95_seconds": 0.856
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[broadcast_join_four_tables]": {
+      "p95_seconds": 0.505
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[broadcast_join_three_tables]": {
+      "p95_seconds": 0.432
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[broadcast_join_two_tables]": {
+      "p95_seconds": 0.647
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[empty_build_join]": {
+      "p95_seconds": 0.691
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[exchange_broadcast]": {
+      "p95_seconds": 0.822
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[exchange_merge]": {
+      "p95_seconds": 0.44
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[exchange_shuffle]": {
+      "p95_seconds": 0.257
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[filter_in_predicate_selective]": {
+      "p95_seconds": 0.467
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[fulltext_phrase_search]": {
+      "p95_seconds": 1.97
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[groupby_all_complex]": {
+      "p95_seconds": 0.542
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[groupby_bigint_highndv]": {
+      "p95_seconds": 0.296
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[groupby_bigint_pk]": {
+      "p95_seconds": 0.259
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[groupby_decimal_lowndv]": {
+      "p95_seconds": 0.382
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[json_aggregates]": {
+      "p95_seconds": 0.299
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[json_extract_simple]": {
+      "p95_seconds": 0.273
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[list_reduce]": {
+      "p95_seconds": 0.33
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[long_predicate]": {
+      "p95_seconds": 0.537
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[map_access]": {
+      "p95_seconds": 0.277
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[max_by_complex]": {
+      "p95_seconds": 1.146
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[max_by_simple]": {
+      "p95_seconds": 0.899
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[max_by_with_ties]": {
+      "p95_seconds": 0.462
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[min_by_complex]": {
+      "p95_seconds": 0.395
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[min_by_simple]": {
+      "p95_seconds": 1.109
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[min_by_with_ties]": {
+      "p95_seconds": 0.623
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[optimizer_constant_folding]": {
+      "p95_seconds": 0.344
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[optimizer_distinct_elimination]": {
+      "p95_seconds": 0.374
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[optimizer_groupjoin]": {
+      "p95_seconds": 0.305
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[optimizer_join_reordering]": {
+      "p95_seconds": 0.756
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[optimizer_limit_pushdown]": {
+      "p95_seconds": 0.462
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[optimizer_union_optimization]": {
+      "p95_seconds": 0.589
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[orderby_all_desc]": {
+      "p95_seconds": 0.276
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[orderby_all_simple]": {
+      "p95_seconds": 0.324
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[orderby_bigint]": {
+      "p95_seconds": 0.386
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[orderby_multi]": {
+      "p95_seconds": 0.304
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[pivot_basic]": {
+      "p95_seconds": 0.499
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[predicate_ordering_subquery]": {
+      "p95_seconds": 0.277
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[qualify_cume_dist]": {
+      "p95_seconds": 0.522
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[qualify_dense_rank]": {
+      "p95_seconds": 0.321
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[qualify_lag_lead]": {
+      "p95_seconds": 0.373
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[qualify_ntile]": {
+      "p95_seconds": 0.702
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[qualify_percentile]": {
+      "p95_seconds": 0.406
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[qualify_row_number]": {
+      "p95_seconds": 0.399
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[shuffle_full_join_one_to_many_string_with_groupby]": {
+      "p95_seconds": 0.484
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[shuffle_inner_join_one_to_many_string_with_groupby]": {
+      "p95_seconds": 0.288
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[shuffle_inner_join_union_all_with_groupby]": {
+      "p95_seconds": 0.288
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[shuffle_left_join_one_to_many_string_with_groupby]": {
+      "p95_seconds": 0.307
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[string_equal_predicate_lower]": {
+      "p95_seconds": 1.222
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[string_ilike_predicate_end]": {
+      "p95_seconds": 1.086
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[string_ilike_predicate_multi]": {
+      "p95_seconds": 0.827
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[unpivot_basic]": {
+      "p95_seconds": 0.374
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[window_lead_lag_same_frame]": {
+      "p95_seconds": 0.413
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[window_rank]": {
+      "p95_seconds": 0.357
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[window_running_sum]": {
+      "p95_seconds": 0.313
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestAllRunnableQueriesExecute::test_expression_impl_executes[window_unbounded_frame]": {
+      "p95_seconds": 0.284
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestArrayOrdering::test_array_length_orders_by_count_then_key": {
+      "p95_seconds": 0.33
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestArrayOrdering::test_array_slice_keeps_descending_top_orders": {
+      "p95_seconds": 0.3
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestMapConstruction::test_map_access_values": {
+      "p95_seconds": 0.316
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestPySparkSkipList::test_non_skipped_queries_do_not_use_unsupported_apis": {
+      "p95_seconds": 18.264
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestPySparkSkipList::test_skip_list_contains_raw_polars_impls": {
+      "p95_seconds": 0.283
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestWindowMethods::test_cume_dist_range_and_top_row": {
+      "p95_seconds": 0.763
+    },
+    "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py::TestWindowMethods::test_percent_rank_range_and_top_row": {
+      "p95_seconds": 0.452
+    },
+    "tests/unit/benchmarks/test_write_primitives_core.py::TestConsolidatedOperations::test_consolidated_operations_not_in_wrong_categories": {
+      "p95_seconds": 0.311
+    },
+    "tests/unit/benchmarks/test_write_primitives_core.py::TestConsolidatedOperations::test_gdpr_deletion_5pct_exists_in_delete_category": {
+      "p95_seconds": 0.264
+    },
+    "tests/unit/benchmarks/test_write_primitives_core.py::TestSCD2Operations::test_merge_category_count_increased_by_three": {
+      "p95_seconds": 0.439
+    },
+    "tests/unit/benchmarks/test_write_primitives_core.py::TestSCD2Operations::test_scd2_ops_do_not_touch_merge_ops_target": {
+      "p95_seconds": 0.349
+    },
+    "tests/unit/benchmarks/test_write_primitives_core.py::TestWriteOperationsManager::test_get_operation": {
+      "p95_seconds": 0.443
+    },
+    "tests/unit/benchmarks/test_write_primitives_core.py::TestWriteOperationsManager::test_get_operations_by_category": {
+      "p95_seconds": 0.503
+    },
+    "tests/unit/benchmarks/test_write_primitives_core.py::TestWriteOperationsManager::test_manager_initialization": {
+      "p95_seconds": 0.424
+    },
+    "tests/unit/benchmarks/test_write_primitives_core.py::TestWritePrimitivesBenchmark::test_get_create_tables_sql": {
+      "p95_seconds": 0.432
+    },
+    "tests/unit/benchmarks/test_write_primitives_core.py::TestWritePrimitivesBenchmark::test_get_operations_by_category": {
+      "p95_seconds": 0.435
+    },
+    "tests/unit/benchmarks/test_write_primitives_core.py::TestWritePrimitivesCatalog::test_bulk_load_operations_have_file_dependencies": {
+      "p95_seconds": 0.411
+    },
+    "tests/unit/benchmarks/test_write_primitives_core.py::TestWritePrimitivesCatalog::test_catalog_categories": {
+      "p95_seconds": 0.624
+    },
+    "tests/unit/benchmarks/test_write_primitives_core.py::TestWritePrimitivesCatalog::test_catalog_operation_count": {
+      "p95_seconds": 1.03
+    },
+    "tests/unit/benchmarks/test_write_primitives_core.py::TestWritePrimitivesCatalog::test_catalog_validation_queries": {
+      "p95_seconds": 0.871
+    },
+    "tests/unit/benchmarks/test_write_primitives_generator.py::TestErrorHandling::test_corrupted_metadata_file_handled_gracefully": {
+      "p95_seconds": 0.403
+    },
+    "tests/unit/benchmarks/test_write_primitives_generator.py::TestErrorHandling::test_lock_timeout_returns_false": {
+      "p95_seconds": 0.524
+    },
+    "tests/unit/benchmarks/test_write_primitives_generator.py::TestErrorHandling::test_missing_metadata_file_handled_gracefully": {
+      "p95_seconds": 0.435
+    },
+    "tests/unit/cli/test_cli_startup_imports.py::test_main_attribute_resolves_to_submodule_before_explicit_import": {
+      "p95_seconds": 1.876
+    },
+    "tests/unit/cli/test_compute_settings_end_to_end.py::test_clickhouse_cloud_command_line_service_overrides_the_saved_profile": {
+      "p95_seconds": 0.292
+    },
+    "tests/unit/cli/test_compute_settings_end_to_end.py::test_databricks_command_line_warehouse_replaces_the_saved_http_path": {
+      "p95_seconds": 0.587
+    },
+    "tests/unit/cli/test_compute_settings_end_to_end.py::test_firebolt_command_line_engine_overrides_the_saved_profile": {
+      "p95_seconds": 0.253
+    },
+    "tests/unit/cli/test_compute_settings_end_to_end.py::test_influxdb_mode_option_is_accepted": {
+      "p95_seconds": 0.402
+    },
+    "tests/unit/cli/test_compute_settings_end_to_end.py::test_influxdb_option_specs_register_without_importing_the_adapter_package[benchbox.cli.main]": {
+      "p95_seconds": 1.662
+    },
+    "tests/unit/cli/test_compute_settings_end_to_end.py::test_influxdb_option_specs_register_without_importing_the_adapter_package[benchbox.mcp.server]": {
+      "p95_seconds": 3.39
+    },
+    "tests/unit/cli/test_compute_settings_end_to_end.py::test_influxdb_option_specs_register_without_importing_the_adapter_package[benchbox.platforms]": {
+      "p95_seconds": 2.094
+    },
+    "tests/unit/cli/test_compute_settings_end_to_end.py::test_quanton_saved_cluster_size_wins_over_the_spec_default": {
+      "p95_seconds": 0.424
+    },
+    "tests/unit/cli/test_compute_settings_end_to_end.py::test_snowflake_command_line_warehouse_overrides_the_saved_profile[compute_resource=BIG_WH-native-keys]": {
+      "p95_seconds": 0.261
+    },
+    "tests/unit/cli/test_compute_settings_end_to_end.py::test_snowflake_command_line_warehouse_overrides_the_saved_profile[compute_resource=BIG_WH-wizard]": {
+      "p95_seconds": 0.265
+    },
+    "tests/unit/cli/test_compute_settings_end_to_end.py::test_snowflake_saved_profile_applies_without_command_line_values[native-keys]": {
+      "p95_seconds": 0.257
+    },
+    "tests/unit/cli/test_configuration_guidance.py::test_advertised_connection_options_are_accepted_by_the_cli[athena-s3_staging_dir-s3://benchbox-athena-staging/results]": {
+      "p95_seconds": 0.261
+    },
+    "tests/unit/cli/test_configuration_guidance.py::test_advertised_connection_options_are_accepted_by_the_cli[clickhouse-server-host-my-clickhouse.example.com]": {
+      "p95_seconds": 0.392
+    },
+    "tests/unit/cli/test_configuration_guidance.py::test_advertised_connection_options_are_accepted_by_the_cli[fabric_dw-warehouse-example-warehouse]": {
+      "p95_seconds": 0.294
+    },
+    "tests/unit/cli/test_configuration_guidance.py::test_advertised_connection_options_are_accepted_by_the_cli[spark-driver_memory-8g]": {
+      "p95_seconds": 0.3
+    },
+    "tests/unit/cli/test_dryrun_preview_redaction.py::test_saved_redshift_password_is_redacted_from_every_preview_file": {
+      "p95_seconds": 0.255
+    },
+    "tests/unit/cli/test_exceptions.py::TestBenchboxCLIErrors::test_base_cli_error": {
+      "p95_seconds": 0.268
+    },
+    "tests/unit/cli/test_exceptions.py::TestBenchboxCLIErrors::test_cloud_storage_error": {
+      "p95_seconds": 0.284
+    },
+    "tests/unit/cli/test_exceptions.py::TestBenchboxCLIErrors::test_configuration_error": {
+      "p95_seconds": 0.475
+    },
+    "tests/unit/cli/test_execution_engine_sources_end_to_end.py::test_saved_profile_without_an_execution_engine_still_builds[redshift-profile1]": {
+      "p95_seconds": 0.334
+    },
+    "tests/unit/cli/test_normalize_plan_literals_flag.py::TestNormalizePlanLiteralsFingerprintInResults::test_normalized_fingerprint_absent_without_flag": {
+      "p95_seconds": 5.376
+    },
+    "tests/unit/cli/test_normalize_plan_literals_flag.py::TestNormalizePlanLiteralsFingerprintInResults::test_normalized_fingerprint_present_when_flag_set": {
+      "p95_seconds": 8.926
+    },
+    "tests/unit/cli/test_option_resolution.py::test_cli_value_equal_to_the_default_overrides_the_saved_profile[postgresql-host-localhost-prod.example.com]": {
+      "p95_seconds": 0.54
+    },
+    "tests/unit/cli/test_option_resolution.py::test_cli_value_equal_to_the_default_overrides_the_saved_profile[trino-table_format-memory-hive]": {
+      "p95_seconds": 0.339
+    },
+    "tests/unit/cli/test_option_resolution.py::test_cli_value_that_differs_from_the_default_still_overrides_the_saved_profile": {
+      "p95_seconds": 0.277
+    },
+    "tests/unit/cli/test_option_resolution.py::test_option_specs_register_when_only_the_platforms_package_is_imported[clickhouse]": {
+      "p95_seconds": 2.101
+    },
+    "tests/unit/cli/test_option_resolution.py::test_option_specs_register_when_only_the_platforms_package_is_imported[duckdb]": {
+      "p95_seconds": 2.72
+    },
+    "tests/unit/cli/test_option_resolution.py::test_option_specs_register_when_only_the_platforms_package_is_imported[postgresql]": {
+      "p95_seconds": 1.297
+    },
+    "tests/unit/cli/test_option_resolution.py::test_option_specs_register_when_only_the_platforms_package_is_imported[sqlite]": {
+      "p95_seconds": 1.278
+    },
+    "tests/unit/cli/test_platform_options_reach_adapters.py::test_adapter_is_constructed_without_platform_options[spark]": {
+      "p95_seconds": 0.255
+    },
+    "tests/unit/cli/test_platform_options_reach_adapters.py::test_duckdb_threads_and_temp_directory_are_applied_to_the_connection": {
+      "p95_seconds": 0.497
+    },
+    "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[dataproc-compute_resource]": {
+      "p95_seconds": 0.367
+    },
+    "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[duckdb-temp_directory]": {
+      "p95_seconds": 0.293
+    },
+    "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[fabric-spark-compute_resource]": {
+      "p95_seconds": 0.451
+    },
+    "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[fabric_dw-database]": {
+      "p95_seconds": 0.389
+    },
+    "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[fabric_dw-workspace]": {
+      "p95_seconds": 0.34
+    },
+    "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[snowpark-connect-compute_size]": {
+      "p95_seconds": 0.255
+    },
+    "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[spark-driver_memory]": {
+      "p95_seconds": 0.422
+    },
+    "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[sqlite-check_same_thread]": {
+      "p95_seconds": 0.315
+    },
+    "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[sqlite-timeout]": {
+      "p95_seconds": 0.318
+    },
+    "tests/unit/cli/test_platform_options_reach_adapters.py::test_sqlite_database_path_and_timeout_reach_the_connection": {
+      "p95_seconds": 0.432
+    },
+    "tests/unit/cli/test_quiet_mode.py::test_quiet_mode_suppresses_decorative_output_generate_phase": {
+      "p95_seconds": 5.891
+    },
+    "tests/unit/cli/test_run_command_options.py::TestDryRunDataOnlyMode::test_dry_run_data_only_skips_platform": {
+      "p95_seconds": 0.253
+    },
+    "tests/unit/cli/test_run_command_options.py::TestDryRunValidation::test_dry_run_rejects_invalid_query_subset_without_saving_preview": {
+      "p95_seconds": 0.866
+    },
+    "tests/unit/cli/test_run_template_evidence_warning.py::test_duckdb_notuning_run_has_no_evidence_warning": {
+      "p95_seconds": 5.252
+    },
+    "tests/unit/cli/test_run_template_evidence_warning.py::test_duckdb_tuned_run_warns_and_records_unmeasured_evidence": {
+      "p95_seconds": 14.875
+    },
+    "tests/unit/cli/test_run_template_evidence_warning.py::test_duckdb_tuned_run_without_engine_metadata_stays_unmeasured": {
+      "p95_seconds": 10.273
+    },
+    "tests/unit/cli/test_run_tuning_verification_summary.py::test_duckdb_tuned_run_prints_tuning_verification_summary": {
+      "p95_seconds": 11.168
+    },
+    "tests/unit/core/coffeeshop/test_coffeeshop_benchmark.py::TestCoffeeShopBenchmarkLoadAndRun::test_dim_locations_loaded": {
+      "p95_seconds": 0.366
+    },
+    "tests/unit/core/coffeeshop/test_coffeeshop_benchmark.py::TestCoffeeShopBenchmarkLoadAndRun::test_order_lines_loaded": {
+      "p95_seconds": 0.808
+    },
+    "tests/unit/core/coffeeshop/test_coffeeshop_benchmark.py::TestCoffeeShopBenchmarkLoadAndRun::test_run_benchmark_avg_time_positive": {
+      "p95_seconds": 0.569
+    },
+    "tests/unit/core/coffeeshop/test_coffeeshop_benchmark.py::TestCoffeeShopBenchmarkLoadAndRun::test_run_benchmark_query_id_correct": {
+      "p95_seconds": 0.399
+    },
+    "tests/unit/core/coffeeshop/test_coffeeshop_benchmark.py::TestCoffeeShopBenchmarkLoadAndRun::test_run_benchmark_returns_query_results": {
+      "p95_seconds": 0.358
+    },
+    "tests/unit/core/coffeeshop/test_coffeeshop_benchmark.py::TestCoffeeShopBenchmarkLoadAndRun::test_run_benchmark_success_flag": {
+      "p95_seconds": 1.093
+    },
+    "tests/unit/core/datavault/test_compressed_source_buffers.py::test_compressed_shards_under_memory_pressure": {
+      "p95_seconds": 7.875
+    },
+    "tests/unit/core/equivalence/test_dataframe_id_mapping.py::test_dataframe_ids_map_to_sql_ids": {
+      "p95_seconds": 3.004
+    },
+    "tests/unit/core/equivalence/test_datafusion_cross_surface.py::test_cross_surface_import_does_not_load_datafusion_sdk": {
+      "p95_seconds": 1.29
+    },
+    "tests/unit/core/equivalence/test_frame_api_check.py::test_all_registered_query_modules_call_real_frame_methods": {
+      "p95_seconds": 1.315
+    },
+    "tests/unit/core/equivalence/test_tpcds_gate_scale.py::test_gate_sql_and_bindings_use_the_generated_data_scale": {
+      "p95_seconds": 7.87
+    },
+    "tests/unit/core/equivalence/test_tpcds_shared_draw.py::test_all_103_statements_match_real_dsqgen_power_sql_and_share_captured_bindings[default]": {
+      "p95_seconds": 12.637
+    },
+    "tests/unit/core/equivalence/test_tpcds_shared_draw.py::test_all_103_statements_match_real_dsqgen_power_sql_and_share_captured_bindings[seed42-stream1]": {
+      "p95_seconds": 5.578
+    },
+    "tests/unit/core/equivalence/test_tpcds_shared_draw.py::test_builder_refuses_incomplete_coverage_before_data_generation[default-adapter]": {
+      "p95_seconds": 3.157
+    },
+    "tests/unit/core/equivalence/test_tpcds_shared_draw.py::test_builder_refuses_incomplete_coverage_before_data_generation[default-binding]": {
+      "p95_seconds": 7.093
+    },
+    "tests/unit/core/equivalence/test_tpcds_shared_draw.py::test_builder_refuses_incomplete_coverage_before_data_generation[default-implementation]": {
+      "p95_seconds": 2.68
+    },
+    "tests/unit/core/equivalence/test_tpcds_shared_draw.py::test_builder_refuses_incomplete_coverage_before_data_generation[default-registry]": {
+      "p95_seconds": 3.524
+    },
+    "tests/unit/core/equivalence/test_tpcds_shared_draw.py::test_builder_refuses_incomplete_coverage_before_data_generation[seed42-stream1-adapter]": {
+      "p95_seconds": 5.13
+    },
+    "tests/unit/core/equivalence/test_tpcds_shared_draw.py::test_builder_refuses_incomplete_coverage_before_data_generation[seed42-stream1-binding]": {
+      "p95_seconds": 8.146
+    },
+    "tests/unit/core/equivalence/test_tpcds_shared_draw.py::test_builder_refuses_incomplete_coverage_before_data_generation[seed42-stream1-implementation]": {
+      "p95_seconds": 13.202
+    },
+    "tests/unit/core/flightdata/test_dataframe_queries.py::TestQueryRegistration::test_benchmark_exposes_registry_without_pandas_import": {
+      "p95_seconds": 1.895
+    },
+    "tests/unit/core/joinorder/test_dataframe_query_capabilities.py::test_generated_expression_queries_match_tiny_duckdb_oracle": {
+      "p95_seconds": 1.334
+    },
+    "tests/unit/core/joinorder/test_dataframe_query_capabilities.py::test_generated_pandas_queries_match_tiny_duckdb_oracle": {
+      "p95_seconds": 7.203
+    },
+    "tests/unit/core/joinorder/test_dataframe_query_capabilities.py::test_generated_pandas_query_aggregation_supports_lazy_dask_frame": {
+      "p95_seconds": 1.001
+    },
+    "tests/unit/core/joinorder/test_dialect_translation.py::test_adapter_runtime_receives_translated_queries": {
+      "p95_seconds": 0.335
+    },
+    "tests/unit/core/joinorder/test_dialect_translation.py::test_facade_passes_dialect_through": {
+      "p95_seconds": 0.351
+    },
+    "tests/unit/core/joinorder/test_dialect_translation.py::test_get_queries_translates_all_113[clickhouse]": {
+      "p95_seconds": 0.333
+    },
+    "tests/unit/core/joinorder/test_dialect_translation.py::test_get_queries_translates_all_113[duckdb]": {
+      "p95_seconds": 0.348
+    },
+    "tests/unit/core/joinorder/test_dialect_translation.py::test_get_queries_translates_all_113[postgres]": {
+      "p95_seconds": 0.301
+    },
+    "tests/unit/core/joinorder/test_dialect_translation.py::test_get_queries_translates_all_113[sqlite]": {
+      "p95_seconds": 0.337
+    },
+    "tests/unit/core/joinorder/test_dialect_translation.py::test_get_queries_translates_all_113[trino]": {
+      "p95_seconds": 0.412
+    },
+    "tests/unit/core/joinorder/test_dialect_translation.py::test_translated_queries_explain_against_engine_ddl[duckdb]": {
+      "p95_seconds": 0.808
+    },
+    "tests/unit/core/joinorder/test_dialect_translation.py::test_translated_queries_explain_against_engine_ddl[sqlite]": {
+      "p95_seconds": 0.515
+    },
+    "tests/unit/core/joinorder/test_dialect_translation.py::test_unknown_dialect_falls_back_to_canonical_text[bogus-engine]": {
+      "p95_seconds": 1.506
+    },
+    "tests/unit/core/joinorder/test_dialect_translation.py::test_unknown_dialect_falls_back_to_canonical_text[postgresql]": {
+      "p95_seconds": 0.994
+    },
+    "tests/unit/core/load_testing/test_executor.py::TestConcurrentLoadExecutor::test_basic_execution": {
+      "p95_seconds": 1.008
+    },
+    "tests/unit/core/load_testing/test_executor.py::TestConcurrentLoadExecutor::test_calculates_throughput": {
+      "p95_seconds": 1.008
+    },
+    "tests/unit/core/load_testing/test_executor.py::TestConcurrentLoadExecutor::test_handles_connection_failure": {
+      "p95_seconds": 0.509
+    },
+    "tests/unit/core/load_testing/test_executor.py::TestConcurrentLoadExecutor::test_handles_query_failure": {
+      "p95_seconds": 0.506
+    },
+    "tests/unit/core/load_testing/test_executor.py::TestConcurrentLoadExecutor::test_queue_metrics_collected": {
+      "p95_seconds": 0.508
+    },
+    "tests/unit/core/load_testing/test_executor.py::TestConcurrentLoadExecutor::test_tracks_max_concurrency": {
+      "p95_seconds": 0.608
+    },
+    "tests/unit/core/load_testing/test_executor.py::TestConcurrentLoadExecutor::test_tracks_stream_results": {
+      "p95_seconds": 0.514
+    },
+    "tests/unit/core/load_testing/test_executor.py::TestConcurrentLoadExecutorEdgeCases::test_exception_in_query_execution": {
+      "p95_seconds": 0.509
+    },
+    "tests/unit/core/load_testing/test_executor.py::TestConcurrentLoadExecutorEdgeCases::test_high_concurrency": {
+      "p95_seconds": 0.514
+    },
+    "tests/unit/core/load_testing/test_executor.py::TestConcurrentLoadExecutorEdgeCases::test_single_query_per_stream": {
+      "p95_seconds": 0.507
+    },
+    "tests/unit/core/load_testing/test_executor.py::TestExecutorBoundedWaitsAndClocks::test_hung_stream_does_not_block_the_run_forever": {
+      "p95_seconds": 0.607
+    },
+    "tests/unit/core/load_testing/test_executor.py::TestExecutorBoundedWaitsAndClocks::test_run_duration_ignores_wall_clock_steps": {
+      "p95_seconds": 0.312
+    },
+    "tests/unit/core/load_testing/test_executor.py::TestExecutorLatencyAndAbandonedStreams::test_abandoned_stream_is_stopped_between_queries_and_reported_outstanding": {
+      "p95_seconds": 0.817
+    },
+    "tests/unit/core/load_testing/test_executor.py::TestExecutorLatencyAndAbandonedStreams::test_latency_percentiles_ignore_wall_clock_steps": {
+      "p95_seconds": 0.309
+    },
+    "tests/unit/core/load_testing/test_executor.py::TestExecutorLatencyAndAbandonedStreams::test_non_positive_query_timeout_is_rejected[0]": {
+      "p95_seconds": 0.426
+    },
+    "tests/unit/core/load_testing/test_multi_writer.py::test_multi_writer_executor_routes_roles": {
+      "p95_seconds": 0.605
+    },
+    "tests/unit/core/load_testing/test_multi_writer.py::test_multi_writer_pattern_drives_duckdb_writers_and_readers": {
+      "p95_seconds": 5.061
+    },
+    "tests/unit/core/load_testing/test_multi_writer.py::test_undifferentiated_phase_keeps_default_factory": {
+      "p95_seconds": 0.407
+    },
+    "tests/unit/core/load_testing/test_pool_tester.py::TestConnectionPoolTester::test_connection_churn": {
+      "p95_seconds": 0.605
+    },
+    "tests/unit/core/load_testing/test_pool_tester.py::TestConnectionPoolTester::test_connection_time_tracking": {
+      "p95_seconds": 1.104
+    },
+    "tests/unit/core/load_testing/test_pool_tester.py::TestConnectionPoolTester::test_detects_pool_exhaustion": {
+      "p95_seconds": 1.504
+    },
+    "tests/unit/core/load_testing/test_pool_tester.py::TestConnectionPoolTester::test_pool_limit_test": {
+      "p95_seconds": 1.107
+    },
+    "tests/unit/core/load_testing/test_pool_tester.py::TestConnectionPoolTester::test_pool_under_load": {
+      "p95_seconds": 0.508
+    },
+    "tests/unit/core/load_testing/test_pool_tester.py::TestConnectionPoolTester::test_recommendations_generated": {
+      "p95_seconds": 0.604
+    },
+    "tests/unit/core/load_testing/test_pool_tester.py::TestConnectionPoolTesterEdgeCases::test_connection_close_error": {
+      "p95_seconds": 1.054
+    },
+    "tests/unit/core/load_testing/test_pool_tester.py::TestConnectionPoolTesterEdgeCases::test_health_check_failure": {
+      "p95_seconds": 1.007
+    },
+    "tests/unit/core/load_testing/test_pool_tester.py::TestConnectionPoolTesterEdgeCases::test_immediate_connection_failure": {
+      "p95_seconds": 1.007
+    },
+    "tests/unit/core/load_testing/test_pool_tester.py::TestConnectionPoolTesterEdgeCases::test_slow_connection": {
+      "p95_seconds": 1.855
+    },
+    "tests/unit/core/nyctaxi/test_downloader.py::TestDataDownload::test_download_creates_files": {
+      "p95_seconds": 5.357
+    },
+    "tests/unit/core/nyctaxi/test_downloader.py::TestDataDownload::test_download_returns_table_files": {
+      "p95_seconds": 3.179
+    },
+    "tests/unit/core/nyctaxi/test_nyctaxi_benchmark.py::TestGenerateData::test_generate_creates_files": {
+      "p95_seconds": 3.52
+    },
+    "tests/unit/core/nyctaxi/test_nyctaxi_benchmark.py::TestGenerateData::test_generate_returns_paths": {
+      "p95_seconds": 5.296
+    },
+    "tests/unit/core/nyctaxi/test_nyctaxi_benchmark.py::TestGenerateData::test_tables_populated_after_generate": {
+      "p95_seconds": 5.211
+    },
+    "tests/unit/core/read_primitives/test_benchmark_variants.py::TestBenchmarkWithActualCatalog::test_cloud_dialects_skip_mysql_fulltext_queries[bigquery]": {
+      "p95_seconds": 0.536
+    },
+    "tests/unit/core/read_primitives/test_benchmark_variants.py::TestBenchmarkWithActualCatalog::test_cloud_dialects_skip_mysql_fulltext_queries[snowflake]": {
+      "p95_seconds": 0.278
+    },
+    "tests/unit/core/read_primitives/test_benchmark_variants.py::TestBenchmarkWithActualCatalog::test_get_queries_with_duckdb_translates_correctly": {
+      "p95_seconds": 0.254
+    },
+    "tests/unit/core/read_primitives/test_benchmark_variants.py::TestModernSQLFeatures::test_bigquery_skips_unsupported_queries": {
+      "p95_seconds": 0.285
+    },
+    "tests/unit/core/read_primitives/test_benchmark_variants.py::TestModernSQLFeatures::test_bigquery_statistical_variants_remain_exact": {
+      "p95_seconds": 0.264
+    },
+    "tests/unit/core/read_primitives/test_benchmark_variants.py::TestModernSQLFeatures::test_catalog_has_group_by_all_queries": {
+      "p95_seconds": 0.411
+    },
+    "tests/unit/core/read_primitives/test_benchmark_variants.py::TestModernSQLFeatures::test_clickhouse_skips_pivot_queries": {
+      "p95_seconds": 0.336
+    },
+    "tests/unit/core/read_primitives/test_benchmark_variants.py::TestModernSQLFeatures::test_cloud_array_and_ordering_variants_keep_the_measured_operations": {
+      "p95_seconds": 0.367
+    },
+    "tests/unit/core/read_primitives/test_benchmark_variants.py::TestModernSQLFeatures::test_cloud_json_and_struct_variants_preserve_result_shapes": {
+      "p95_seconds": 0.275
+    },
+    "tests/unit/core/read_primitives/test_benchmark_variants.py::TestModernSQLFeatures::test_datafusion_skips_non_comparable_semistructured_fallbacks": {
+      "p95_seconds": 0.359
+    },
+    "tests/unit/core/results/test_query_execution_contract.py::test_direct_typed_construction_rejects_invalid_correctness_values[execution_order-False]": {
+      "p95_seconds": 0.307
+    },
+    "tests/unit/core/results/test_query_execution_contract.py::test_legacy_query_result_producer_literals_have_an_explicit_field_policy": {
+      "p95_seconds": 3.935
+    },
+    "tests/unit/core/test_concurrency_executor_and_joinorder.py::TestConcurrentLoadExecutor::test_queue_metrics": {
+      "p95_seconds": 0.507
+    },
+    "tests/unit/core/test_concurrency_executor_and_joinorder.py::TestConcurrentLoadExecutor::test_resource_monitoring": {
+      "p95_seconds": 0.508
+    },
+    "tests/unit/core/test_concurrency_executor_and_joinorder.py::TestConcurrentLoadExecutor::test_run_basic": {
+      "p95_seconds": 0.312
+    },
+    "tests/unit/core/test_concurrency_executor_and_joinorder.py::TestConcurrentLoadExecutor::test_run_connection_factory_failure": {
+      "p95_seconds": 0.305
+    },
+    "tests/unit/core/test_concurrency_executor_and_joinorder.py::TestConcurrentLoadExecutor::test_run_query_execution_exception": {
+      "p95_seconds": 0.307
+    },
+    "tests/unit/core/test_concurrency_executor_and_joinorder.py::TestConcurrentLoadExecutor::test_run_with_failures": {
+      "p95_seconds": 0.306
+    },
+    "tests/unit/core/test_gateway_capability.py::test_platform_option_registration_includes_gateway_options_without_the_cli": {
+      "p95_seconds": 2.239
+    },
+    "tests/unit/core/test_platform_registry_behavioral.py::TestPlatformManifest::test_dataframe_availability_typo_is_detected_and_restoration_passes": {
+      "p95_seconds": 1.204
+    },
+    "tests/unit/core/test_platform_registry_behavioral.py::TestPlatformManifest::test_generated_inventory_and_semantic_surfaces_are_current": {
+      "p95_seconds": 2.001
+    },
+    "tests/unit/core/test_platform_registry_behavioral.py::TestPlatformManifest::test_static_manifest_import_does_not_load_optional_sdks": {
+      "p95_seconds": 1.258
+    },
+    "tests/unit/core/test_query_catalog.py::TestDeterminism::test_repeated_renders_are_identical[tpcds_obt]": {
+      "p95_seconds": 6.888
+    },
+    "tests/unit/core/test_query_catalog.py::TestGetSqlRender::test_dialect_none_reports_default_and_skips_translation": {
+      "p95_seconds": 0.273
+    },
+    "tests/unit/core/test_query_catalog.py::TestGetSqlRender::test_first_query_of_every_benchmark_renders[read_primitives]": {
+      "p95_seconds": 0.576
+    },
+    "tests/unit/core/test_query_catalog.py::TestGetSqlRender::test_first_query_of_every_benchmark_renders[tpcds]": {
+      "p95_seconds": 1.241
+    },
+    "tests/unit/core/test_query_catalog.py::TestGetSqlRender::test_first_query_of_every_benchmark_renders[tpchavoc]": {
+      "p95_seconds": 0.866
+    },
+    "tests/unit/core/test_query_catalog.py::TestListQueryIds::test_every_registered_benchmark_has_queries[tpcds]": {
+      "p95_seconds": 4.244
+    },
+    "tests/unit/core/test_query_catalog.py::TestListQueryIds::test_every_registered_benchmark_has_queries[tpcds_obt]": {
+      "p95_seconds": 2.246
+    },
+    "tests/unit/core/test_query_catalog.py::TestListQueryIds::test_every_registered_benchmark_has_queries[tpchavoc]": {
+      "p95_seconds": 1.048
+    },
+    "tests/unit/core/test_query_catalog.py::TestQuerySourcePath::test_path_when_present_exists_on_disk[tpcds]": {
+      "p95_seconds": 1.173
+    },
+    "tests/unit/core/test_query_catalog.py::TestQuerySourcePath::test_path_when_present_exists_on_disk[tpcds_obt]": {
+      "p95_seconds": 1.179
+    },
+    "tests/unit/core/test_query_catalog.py::TestQuerySourcePath::test_path_when_present_exists_on_disk[tpchavoc]": {
+      "p95_seconds": 0.564
+    },
+    "tests/unit/core/test_tpch_named_column_alias_translation.py::test_q13_translation_returns_same_rows_as_original[bigquery]": {
+      "p95_seconds": 3.052
+    },
+    "tests/unit/core/test_tpch_named_column_alias_translation.py::test_q13_translation_returns_same_rows_as_original[doris]": {
+      "p95_seconds": 2.838
+    },
+    "tests/unit/core/test_tpch_named_column_alias_translation.py::test_q13_translation_returns_same_rows_as_original[mysql]": {
+      "p95_seconds": 5.225
+    },
+    "tests/unit/core/test_tpch_named_column_alias_translation.py::test_q13_translation_returns_same_rows_as_original[sqlite]": {
+      "p95_seconds": 4.905
+    },
+    "tests/unit/core/throughput/test_containment.py::TestAwaitQuiescence::test_boundary_stays_contained_until_termination_then_releases": {
+      "p95_seconds": 0.305
+    },
+    "tests/unit/core/throughput/test_containment.py::TestOutstandingOwnershipState::test_queued_stream_is_cancelled_never_outstanding": {
+      "p95_seconds": 1.206
+    },
+    "tests/unit/core/throughput/test_runner.py::TestHungStreamDoesNotBlockInterpreterExit::test_process_exits_while_a_timed_out_stream_is_still_running": {
+      "p95_seconds": 2.553
+    },
+    "tests/unit/core/throughput/test_runner.py::TestStreamRunnerNonBlockingShutdown::test_cooperative_cancel_with_real_set_event_still_cancels": {
+      "p95_seconds": 0.394
+    },
+    "tests/unit/core/throughput/test_runner.py::TestStreamRunnerNonBlockingShutdown::test_queued_stream_never_starts_after_max_workers_throttled_timeout": {
+      "p95_seconds": 3.057
+    },
+    "tests/unit/core/throughput/test_runner.py::TestStreamRunnerSettlementEdges::test_stream_cancelled_before_start_is_not_counted_as_executed": {
+      "p95_seconds": 0.604
+    },
+    "tests/unit/core/throughput/test_throughput_query_correctness.py::TestTPCHPregenerationTranslationContext::test_non_strict_translation_falls_back_and_records_the_fallback": {
+      "p95_seconds": 0.367
+    },
+    "tests/unit/core/throughput/test_throughput_query_correctness.py::TestTPCHPregenerationTranslationContext::test_pregeneration_records_one_outcome_per_stream_query": {
+      "p95_seconds": 0.272
+    },
+    "tests/unit/core/throughput/test_throughput_query_correctness.py::TestTPCHPregenerationTranslationContext::test_strict_translation_fails_the_query_when_pregeneration_falls_back": {
+      "p95_seconds": 0.379
+    },
+    "tests/unit/core/throughput/test_throughput_query_correctness.py::TestTPCHThroughputDialect::test_stream_sql_equals_power_path_sql_for_the_same_query_seed_and_stream[cedardb]": {
+      "p95_seconds": 0.656
+    },
+    "tests/unit/core/throughput/test_throughput_query_correctness.py::TestTPCHThroughputDialect::test_stream_sql_equals_power_path_sql_for_the_same_query_seed_and_stream[duckdb]": {
+      "p95_seconds": 0.341
+    },
+    "tests/unit/core/throughput/test_throughput_query_correctness.py::TestTPCHThroughputDialect::test_stream_sql_equals_power_path_sql_for_the_same_query_seed_and_stream[ducklake]": {
+      "p95_seconds": 0.322
+    },
+    "tests/unit/core/throughput/test_throughput_query_correctness.py::TestTPCHThroughputDialect::test_stream_sql_equals_power_path_sql_for_the_same_query_seed_and_stream[pg-mooncake]": {
+      "p95_seconds": 0.336
+    },
+    "tests/unit/core/throughput/test_throughput_query_correctness.py::TestTPCHThroughputDialect::test_stream_sql_equals_power_path_sql_for_the_same_query_seed_and_stream[postgresql]": {
+      "p95_seconds": 0.317
+    },
+    "tests/unit/core/throughput/test_throughput_query_correctness.py::TestTPCHThroughputDialect::test_stream_sql_equals_power_path_sql_for_the_same_query_seed_and_stream[singlestore]": {
+      "p95_seconds": 0.329
+    },
+    "tests/unit/core/throughput/test_throughput_query_correctness.py::TestTPCHThroughputDialect::test_stream_sql_equals_power_path_sql_for_the_same_query_seed_and_stream[spark]": {
+      "p95_seconds": 0.36
+    },
+    "tests/unit/core/throughput/test_throughput_query_correctness.py::TestTPCHThroughputDialect::test_stream_sql_equals_power_path_sql_for_the_same_query_seed_and_stream[sqlite]": {
+      "p95_seconds": 0.295
+    },
+    "tests/unit/core/tpcdi/test_etl_sources.py::TestCSVSourceFormat::test_generate_data_returns_string": {
+      "p95_seconds": 0.39
+    },
+    "tests/unit/core/tpcdi/test_etl_sources.py::TestFixedWidthSourceFormat::test_generate_data_returns_string": {
+      "p95_seconds": 7.211
+    },
+    "tests/unit/core/tpcdi/test_etl_sources.py::TestPipeDelimitedSourceFormat::test_generate_data_returns_string": {
+      "p95_seconds": 0.346
+    },
+    "tests/unit/core/tpcdi/test_etl_sources.py::TestSourceDataGenerator::test_generate_incremental_data": {
+      "p95_seconds": 0.323
+    },
+    "tests/unit/core/tpcdi/test_etl_sources.py::TestSourceDataGenerator::test_get_data_statistics_after_generation": {
+      "p95_seconds": 0.372
+    },
+    "tests/unit/core/tpcds/generator/test_default_compression_manifest.py::test_parallel_default_compression_records_every_chunk": {
+      "p95_seconds": 0.954
+    },
+    "tests/unit/core/tpcds/generator/test_default_compression_manifest.py::test_single_threaded_default_compression_records_every_table": {
+      "p95_seconds": 0.502
+    },
+    "tests/unit/core/tpcds/test_null_semantics.py::test_mixed_direction_sort_then_limit_matches_pandas_on_dask[7]": {
+      "p95_seconds": 0.257
+    },
+    "tests/unit/core/tpcds/test_null_semantics.py::test_q71_and_q76_run_on_dask_and_keep_a_null_total": {
+      "p95_seconds": 1.836
+    },
+    "tests/unit/core/tpcds/test_parameter_adapters.py::TestGateBuilderWiring::test_other_lookups_between_lookup_and_execution_do_not_lose_the_binding": {
+      "p95_seconds": 3.293
+    },
+    "tests/unit/core/tpcds/test_parameter_adapters.py::TestGateBuilderWiring::test_the_binding_applies_only_while_the_query_runs": {
+      "p95_seconds": 3.42
+    },
+    "tests/unit/core/tpcds/test_parameter_adapters.py::TestGateBuilderWiring::test_the_binding_is_removed_even_when_the_query_fails": {
+      "p95_seconds": 7.046
+    },
+    "tests/unit/core/tpcds/test_parameter_adapters.py::TestGateBuilderWiring::test_the_shared_registry_object_is_not_modified_and_every_query_is_bound": {
+      "p95_seconds": 6.776
+    },
+    "tests/unit/core/tpcds/test_parameter_adapters.py::test_the_batch_adapters_bind_the_values_that_are_in_the_sql": {
+      "p95_seconds": 0.32
+    },
+    "tests/unit/core/tpcds/test_parameter_binding_coverage.py::test_runs_draw_different_values": {
+      "p95_seconds": 4.363
+    },
+    "tests/unit/core/tpcds/test_parameter_consumption_inventory.py::test_derived_value_flag_marks_arithmetic_on_a_drawn_value": {
+      "p95_seconds": 1.871
+    },
+    "tests/unit/core/tpcds/test_parameter_consumption_inventory.py::test_every_query_is_classified": {
+      "p95_seconds": 1.822
+    },
+    "tests/unit/core/tpcds/test_parameter_consumption_inventory.py::test_hard_coded_queries_stay_within_the_adapter_budget": {
+      "p95_seconds": 1.026
+    },
+    "tests/unit/core/tpcds/test_parameter_consumption_inventory.py::test_incomplete_runs_are_the_known_ones": {
+      "p95_seconds": 1.108
+    },
+    "tests/unit/core/tpcds/test_parameter_consumption_inventory.py::test_numpy_refuses_the_stand_in_instead_of_expanding_it": {
+      "p95_seconds": 1.27
+    },
+    "tests/unit/core/tpcds/test_parameter_name_completeness.py::test_adapter_reads_every_drawn_name_that_reaches_the_sql[10]": {
+      "p95_seconds": 3.946
+    },
+    "tests/unit/core/tpcds/test_parameter_name_completeness.py::test_adapter_reads_every_drawn_name_that_reaches_the_sql[11]": {
+      "p95_seconds": 4.08
+    },
+    "tests/unit/core/tpcds/test_parameter_name_completeness.py::test_adapter_reads_every_drawn_name_that_reaches_the_sql[12]": {
+      "p95_seconds": 1.744
+    },
+    "tests/unit/core/tpcds/test_parameter_name_completeness.py::test_adapter_reads_every_drawn_name_that_reaches_the_sql[13]": {
+      "p95_seconds": 1.683
+    },
+    "tests/unit/core/tpcds/test_parameter_name_completeness.py::test_lint_sees_every_key_the_adapter_returns[59]": {
+      "p95_seconds": 0.385
+    },
+    "tests/unit/core/tpcds/test_parameter_name_completeness.py::test_lint_sees_every_key_the_adapter_returns[5]": {
+      "p95_seconds": 0.328
+    },
+    "tests/unit/core/tpcds/test_production_binding.py::TestSQLAndDataFrameBindTheSameValues::test_every_adapted_query[42-0]": {
+      "p95_seconds": 6.995
+    },
+    "tests/unit/core/tpcds/test_production_binding.py::TestSQLAndDataFrameBindTheSameValues::test_every_adapted_query[42-1]": {
+      "p95_seconds": 6.818
+    },
+    "tests/unit/core/tpcds/test_production_binding.py::TestSQLAndDataFrameBindTheSameValues::test_every_adapted_query[None-0]": {
+      "p95_seconds": 15.693
+    },
+    "tests/unit/core/tpcds/test_production_binding.py::TestSQLAndDataFrameBindTheSameValues::test_every_adapted_query[None-1]": {
+      "p95_seconds": 15.517
+    },
+    "tests/unit/core/tpcds/test_production_binding.py::test_second_statement_variants_bind_the_sql_power_test_draw[42-0]": {
+      "p95_seconds": 2.065
+    },
+    "tests/unit/core/tpcds/test_production_binding.py::test_second_statement_variants_bind_the_sql_power_test_draw[42-1]": {
+      "p95_seconds": 1.264
+    },
+    "tests/unit/core/tpcds/test_production_binding.py::test_second_statement_variants_bind_the_sql_power_test_draw[None-0]": {
+      "p95_seconds": 1.107
+    },
+    "tests/unit/core/tpcds/test_production_binding.py::test_second_statement_variants_bind_the_sql_power_test_draw[None-1]": {
+      "p95_seconds": 2.119
+    },
+    "tests/unit/core/tpcds/test_q93_subscale_reason.py::test_q93_draws_a_reason_the_generated_table_contains[0.25-18]": {
+      "p95_seconds": 0.341
+    },
+    "tests/unit/core/tpcds/test_qualification_numeric_ties.py::test_qualification_numeric_ties_match_generated_q77_and_reject_wrong_amounts_and_order[datafusion]": {
+      "p95_seconds": 0.269
+    },
+    "tests/unit/core/tpcds/test_qualification_runner.py::test_query_timeout_terminates_a_stalled_worker_and_retains_the_query": {
+      "p95_seconds": 0.326
+    },
+    "tests/unit/core/tpcds/test_qualification_values.py::test_every_query_renders_from_the_specification_values_independent_of_the_seed": {
+      "p95_seconds": 2.338
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_benchmark.py::test_clickhouse_monthly_queries_materialize_nested_aggregates[47]": {
+      "p95_seconds": 0.369
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_benchmark.py::test_clickhouse_monthly_queries_materialize_nested_aggregates[57]": {
+      "p95_seconds": 0.663
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_benchmark.py::test_clickhouse_q66_materializes_monthly_aliases": {
+      "p95_seconds": 0.709
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_benchmark.py::test_get_query_and_execute_query": {
+      "p95_seconds": 0.64
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_benchmark.py::test_spark_dialect_translates_space_containing_aliases": {
+      "p95_seconds": 2.761
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_all_query_column_references_exist_in_schema": {
+      "p95_seconds": 1.299
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_cross_channel_exists_correlates_on_bill_customer[10]": {
+      "p95_seconds": 0.405
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_cross_channel_exists_correlates_on_bill_customer[35]": {
+      "p95_seconds": 0.639
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_cross_channel_exists_correlates_on_bill_customer[69]": {
+      "p95_seconds": 0.989
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_customer_queries_drop_current_pointer_equalities[15]": {
+      "p95_seconds": 0.79
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_customer_queries_drop_current_pointer_equalities[19]": {
+      "p95_seconds": 0.51
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_customer_queries_drop_current_pointer_equalities[35]": {
+      "p95_seconds": 0.641
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_customer_queries_drop_current_pointer_equalities[45]": {
+      "p95_seconds": 0.649
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_customer_queries_drop_current_pointer_equalities[69]": {
+      "p95_seconds": 0.382
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_customer_queries_drop_current_pointer_equalities[6]": {
+      "p95_seconds": 0.417
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_customer_queries_drop_current_pointer_equalities[8]": {
+      "p95_seconds": 0.638
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_every_parameter_renders_the_dsqgen_draw": {
+      "p95_seconds": 2.15
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_explicit_parameters_override_the_draw": {
+      "p95_seconds": 0.354
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_get_query_by_int_uses_index_order": {
+      "p95_seconds": 0.346
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_get_query_returns_formatted_sql": {
+      "p95_seconds": 0.638
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_global_aggregates_legitimately_return_one_row[16]": {
+      "p95_seconds": 0.748
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_global_aggregates_legitimately_return_one_row[28]": {
+      "p95_seconds": 0.401
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_global_aggregates_legitimately_return_one_row[88]": {
+      "p95_seconds": 0.731
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_global_aggregates_legitimately_return_one_row[90]": {
+      "p95_seconds": 1.004
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_global_aggregates_legitimately_return_one_row[94]": {
+      "p95_seconds": 0.686
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_global_aggregates_legitimately_return_one_row[95]": {
+      "p95_seconds": 0.385
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_global_aggregates_legitimately_return_one_row[96]": {
+      "p95_seconds": 0.364
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_grouped_queries_can_legitimately_return_one_group[18]": {
+      "p95_seconds": 0.64
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_grouped_queries_can_legitimately_return_one_group[27]": {
+      "p95_seconds": 0.656
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_grouped_queries_can_legitimately_return_one_group[36]": {
+      "p95_seconds": 0.383
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_indexed_overrides_accept_template_and_log_spellings[REASON.01]": {
+      "p95_seconds": 0.348
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_indexed_overrides_accept_template_and_log_spellings[REASON.1]": {
+      "p95_seconds": 0.638
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_invalid_query_id_raises": {
+      "p95_seconds": 0.638
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_multi_warehouse_exists_is_correlated[16]": {
+      "p95_seconds": 0.42
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_multi_warehouse_exists_is_correlated[94]": {
+      "p95_seconds": 0.347
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_q16_counts_multi_warehouse_order_without_return": {
+      "p95_seconds": 0.699
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_q1_returns_customer_above_store_average": {
+      "p95_seconds": 1.053
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_q44_resolves_product_names_from_ranked_items": {
+      "p95_seconds": 0.399
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_q44_returns_ranked_items": {
+      "p95_seconds": 0.394
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_q54_revenue_joins_my_customers": {
+      "p95_seconds": 0.632
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_q58_averages_week_lookup": {
+      "p95_seconds": 0.651
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_q78_excludes_returned_sales": {
+      "p95_seconds": 0.905
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_q78_returns_store_sales_with_other_channel_sales": {
+      "p95_seconds": 0.386
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_q8_has_diverse_zip_codes": {
+      "p95_seconds": 0.645
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_q91_uses_returning_demographics": {
+      "p95_seconds": 0.633
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_q93_binds_the_drawn_reason": {
+      "p95_seconds": 0.404
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_q95_multi_warehouse_and_return_sets_are_correlated": {
+      "p95_seconds": 0.358
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_queries_parse_in_duckdb": {
+      "p95_seconds": 2.587
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_queries_reference_only_obt_table": {
+      "p95_seconds": 2.189
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_query_two_filters_multiple_channels": {
+      "p95_seconds": 0.394
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_rendering_is_deterministic_for_a_seed": {
+      "p95_seconds": 1.872
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_return_queries_use_return_date_role[1]": {
+      "p95_seconds": 1.029
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_return_queries_use_return_date_role[30]": {
+      "p95_seconds": 0.654
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_return_queries_use_return_date_role[81]": {
+      "p95_seconds": 0.406
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_return_queries_use_return_date_role[83]": {
+      "p95_seconds": 0.364
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_return_state_uses_returning_address_role[30]": {
+      "p95_seconds": 0.648
+    },
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py::test_return_state_uses_returning_address_role[81]": {
+      "p95_seconds": 0.648
+    },
+    "tests/unit/core/tpch/test_q17_spark_execution.py::test_q17_spark_expression_client_matches_sql[all_null-lakesail]": {
+      "p95_seconds": 2.47
+    },
+    "tests/unit/core/tpch/test_q17_spark_execution.py::test_q17_spark_expression_client_matches_sql[all_null-pyspark]": {
+      "p95_seconds": 2.151
+    },
+    "tests/unit/core/tpch/test_q17_spark_execution.py::test_q17_spark_expression_client_matches_sql[empty-lakesail]": {
+      "p95_seconds": 4.186
+    },
+    "tests/unit/core/tpch/test_q17_spark_execution.py::test_q17_spark_expression_client_matches_sql[empty-pyspark]": {
+      "p95_seconds": 3.639
+    },
+    "tests/unit/core/tpch/test_q17_spark_execution.py::test_q17_spark_expression_client_matches_sql[nonempty-lakesail]": {
+      "p95_seconds": 2.241
+    },
+    "tests/unit/core/tpch/test_q17_spark_execution.py::test_q17_spark_expression_client_matches_sql[nonempty-pyspark]": {
+      "p95_seconds": 1.895
+    },
+    "tests/unit/core/tuning/test_capability_registry_parity.py::TestBenchmarkDdlAndAdapterBehavior::test_benchmark_ddl_ignores_layout_flags_in_tree": {
+      "p95_seconds": 1.156
+    },
+    "tests/unit/core/tuning/test_capability_registry_parity.py::TestBenchmarkDdlAndAdapterBehavior::test_unique_check_rendering_is_vacuous_in_tree": {
+      "p95_seconds": 1.4
+    },
+    "tests/unit/core/tuning/test_capability_registry_parity.py::TestBenchmarkDdlAndAdapterBehavior::test_vacuity_discovery_covers_all_benchmarks": {
+      "p95_seconds": 1.782
+    },
+    "tests/unit/core/tuning/test_capability_source_drift.py::test_adapter_mixin_rendering_mechanisms_are_live_and_nonempty": {
+      "p95_seconds": 2.042
+    },
+    "tests/unit/core/tuning/test_tpc_tuning_template_parity.py::test_generated_cloud_templates_match_checked_in_files": {
+      "p95_seconds": 1.621
+    },
+    "tests/unit/core/write_primitives/test_benchmark_execution.py::TestBigQueryBatchAndMergeCoverage::test_merge_ops_have_bigquery_override[merge_overlap_50pct]": {
+      "p95_seconds": 0.606
+    },
+    "tests/unit/core/write_primitives/test_benchmark_execution.py::TestBigQueryBatchAndMergeCoverage::test_merge_ops_have_bigquery_override[merge_simple_upsert_small]": {
+      "p95_seconds": 0.548
+    },
+    "tests/unit/core/write_primitives/test_benchmark_execution.py::TestDatabricksIndexAndBulkCoverage::test_partial_source_merges_list_columns_on_databricks[merge_computed_values]": {
+      "p95_seconds": 0.535
+    },
+    "tests/unit/core/write_primitives/test_benchmark_execution.py::TestDatabricksIndexAndBulkCoverage::test_partial_source_merges_list_columns_on_databricks[merge_with_join_condition]": {
+      "p95_seconds": 0.472
+    },
+    "tests/unit/core/write_primitives/test_benchmark_execution.py::TestExecuteOperation::test_execute_operation_skips_postgres_merge_shorthand": {
+      "p95_seconds": 0.53
+    },
+    "tests/unit/core/write_primitives/test_benchmark_execution.py::TestExecuteOperation::test_execute_operation_skips_unsupported_datafusion_category": {
+      "p95_seconds": 0.527
+    },
+    "tests/unit/core/write_primitives/test_benchmark_execution.py::TestQuoteIdentifier::test_databricks_uses_backticks": {
+      "p95_seconds": 0.521
+    },
+    "tests/unit/core/write_primitives/test_benchmark_execution.py::TestReplacePlaceholders::test_file_path_placeholder": {
+      "p95_seconds": 0.472
+    },
+    "tests/unit/core/write_primitives/test_benchmark_execution.py::TestSnowflakeCatalogCoverage::test_conflict_op_uses_merge_on_snowflake": {
+      "p95_seconds": 0.546
+    },
+    "tests/unit/core/write_primitives/test_benchmark_execution.py::TestSnowflakeMergeAndIndexCoverage::test_merge_ops_use_explicit_values_on_snowflake[merge_overlap_50pct]": {
+      "p95_seconds": 0.508
+    },
+    "tests/unit/core/write_primitives/test_benchmark_execution.py::TestTableExists::test_table_exists_unexpected_error": {
+      "p95_seconds": 0.511
+    },
+    "tests/unit/core/write_primitives/test_benchmark_execution.py::test_cleanup_auxiliary_files_missing_dir_is_noop": {
+      "p95_seconds": 0.48
+    },
+    "tests/unit/core/write_primitives/test_benchmark_execution.py::test_extract_rows_affected_no_rowcount_returns_minus_one": {
+      "p95_seconds": 0.521
+    },
+    "tests/unit/core/write_primitives/test_benchmark_execution.py::test_get_effective_write_sql_platform_override_sql": {
+      "p95_seconds": 0.521
+    },
+    "tests/unit/core/write_primitives/test_benchmark_execution.py::test_get_population_sql_scd2_uses_sqlite_date_functions": {
+      "p95_seconds": 0.514
+    },
+    "tests/unit/core/write_primitives/test_benchmark_execution.py::test_get_schema_returns_normalized_dict": {
+      "p95_seconds": 0.468
+    },
+    "tests/unit/core/write_primitives/test_benchmark_execution.py::test_run_benchmark_all_operations": {
+      "p95_seconds": 0.524
+    },
+    "tests/unit/core/write_primitives/test_benchmark_execution.py::test_setup_force_drops_existing_tables": {
+      "p95_seconds": 0.51
+    },
+    "tests/unit/core/write_primitives/test_benchmark_operations.py::TestEffectiveWriteSqlFallbackKey::test_no_fallback_preserves_exact_match": {
+      "p95_seconds": 0.545
+    },
+    "tests/unit/core/write_primitives/test_benchmark_operations.py::TestEffectiveWriteSqlSkipOrder::test_scd2_null_override_skips_on_datafusion": {
+      "p95_seconds": 0.468
+    },
+    "tests/unit/core/write_primitives/test_benchmark_operations.py::TestRunOperationValidation::test_passes_with_matching_row_count": {
+      "p95_seconds": 0.519
+    },
+    "tests/unit/core/write_primitives/test_benchmark_operations.py::test_trino_sketch_headlines_skip_before_execution[sketch_query_topk_combine]": {
+      "p95_seconds": 0.515
+    },
+    "tests/unit/core/write_primitives/test_benchmark_operations.py::test_unsupported_sketch_parameter_sweeps_skip_adapter_overrides[trino-sketch_query_theta_union_merge_lgk10]": {
+      "p95_seconds": 0.452
+    },
+    "tests/unit/core/write_primitives/test_benchmark_operations.py::test_unsupported_sketch_parameter_sweeps_skip_adapter_overrides[trino-sketch_query_topk_combine_lgmm10]": {
+      "p95_seconds": 0.507
+    },
+    "tests/unit/core/write_primitives/test_write_primitives_benchmark_coverage.py::TestExecuteDataframeWorkload::test_measurement_iterations_respected": {
+      "p95_seconds": 0.552
+    },
+    "tests/unit/core/write_primitives/test_write_primitives_benchmark_coverage.py::TestGetBenchmarkInfo::test_total_operations_positive": {
+      "p95_seconds": 0.538
+    },
+    "tests/unit/core/write_primitives/test_write_primitives_benchmark_coverage.py::TestGetEffectiveWriteSql::test_no_override_returns_write_sql": {
+      "p95_seconds": 0.534
+    },
+    "tests/unit/core/write_primitives/test_write_primitives_benchmark_coverage.py::TestGetEffectiveWriteSql::test_platform_override_applied": {
+      "p95_seconds": 0.537
+    },
+    "tests/unit/core/write_primitives/test_write_primitives_benchmark_coverage.py::TestQueryAccessors::test_get_queries_by_category_returns_subset": {
+      "p95_seconds": 0.552
+    },
+    "tests/unit/core/write_primitives/test_write_primitives_benchmark_coverage.py::TestSelectDataframeOperationIds::test_filters_by_q_prefixed_id": {
+      "p95_seconds": 0.522
+    },
+    "tests/unit/core/write_primitives/test_write_primitives_benchmark_coverage.py::TestTeardown::test_drops_all_staging_tables": {
+      "p95_seconds": 0.525
+    },
+    "tests/unit/examples/test_examples_unified_runner.py::TestUnifiedRunner::test_create_platform_specific_args_duckdb": {
+      "p95_seconds": 0.37
+    },
+    "tests/unit/examples/test_examples_unified_runner.py::TestUnifiedRunnerIntegration::test_unified_runner_help": {
+      "p95_seconds": 2.709
+    },
+    "tests/unit/examples/test_examples_unified_runner.py::TestUnifiedRunnerIntegration::test_unified_runner_list_platforms": {
+      "p95_seconds": 3.975
+    },
+    "tests/unit/fixtures/test_database_fixtures.py::TestBasicUsage::test_with_extensions": {
+      "p95_seconds": 0.932
+    },
+    "tests/unit/fixtures/test_database_fixtures.py::TestCustomDatabases::test_multiple_custom_databases": {
+      "p95_seconds": 1.139
+    },
+    "tests/unit/fixtures/test_database_fixtures.py::TestCustomDatabases::test_with_custom_configuration": {
+      "p95_seconds": 1.024
+    },
+    "tests/unit/fixtures/test_database_fixtures.py::TestDatabaseFixtureConsistency::test_all_fixtures_basic_functionality": {
+      "p95_seconds": 0.98
+    },
+    "tests/unit/fixtures/test_database_fixtures.py::TestDatabaseFixtureConsistency::test_parameterized_fixture_consistency[memory_with_extensions]": {
+      "p95_seconds": 0.865
+    },
+    "tests/unit/fixtures/test_database_fixtures.py::TestFixtureConfiguration::test_extension_loading": {
+      "p95_seconds": 1.024
+    },
+    "tests/unit/fixtures/test_database_fixtures.py::TestMigrationPatterns::test_best_pattern_custom_needs": {
+      "p95_seconds": 0.894
+    },
+    "tests/unit/fixtures/test_database_fixtures.py::TestMigrationPatterns::test_new_pattern_with_extensions": {
+      "p95_seconds": 1.044
+    },
+    "tests/unit/fixtures/test_database_fixtures.py::TestMigrationPatterns::test_old_pattern_with_extensions": {
+      "p95_seconds": 0.958
+    },
+    "tests/unit/fixtures/test_database_fixtures.py::TestParameterizedFixtures::test_with_all_database_types[memory_with_extensions]": {
+      "p95_seconds": 1.018
+    },
+    "tests/unit/fixtures/test_database_fixtures.py::TestParameterizedFixtures::test_with_specific_configs[performance]": {
+      "p95_seconds": 0.871
+    },
+    "tests/unit/fixtures/test_database_fixtures.py::TestPerformanceFixtures::test_with_performance_database": {
+      "p95_seconds": 0.971
+    },
+    "tests/unit/fixtures/test_database_fixtures.py::TestUtilityFunctions::test_create_database_outside_fixture": {
+      "p95_seconds": 0.909
+    },
+    "tests/unit/fixtures/test_database_fixtures.py::TestUtilityFunctions::test_custom_configuration_class": {
+      "p95_seconds": 0.887
+    },
+    "tests/unit/mcp/test_durable_jobs.py::test_outstanding_streams_the_worker_never_tracked_keep_the_job_quarantined": {
+      "p95_seconds": 0.561
+    },
+    "tests/unit/mcp/test_durable_jobs.py::test_untracked_stream_keeps_the_job_unobserved_even_while_tracked_work_still_runs": {
+      "p95_seconds": 0.534
+    },
+    "tests/unit/mcp/test_mcp_deprecations.py::TestDryRunAppliesSettings::test_validate_only_echoes_the_resolved_selection": {
+      "p95_seconds": 0.481
+    },
+    "tests/unit/mcp/test_mcp_stdout_isolation.py::TestNoStdoutLeakage::test_server_creation_no_stdout": {
+      "p95_seconds": 0.467
+    },
+    "tests/unit/mcp/test_mcp_stdout_isolation.py::TestServerLoggingScope::test_importing_the_server_module_leaves_the_root_logger_alone": {
+      "p95_seconds": 3.138
+    },
+    "tests/unit/mcp/test_mcp_tool_handlers.py::TestRunBenchmarkToolSuccess::test_export_failure_does_not_break_response": {
+      "p95_seconds": 15.027
+    },
+    "tests/unit/monitoring/test_resource_monitoring.py::test_resource_monitor_get_current_usage": {
+      "p95_seconds": 0.305
+    },
+    "tests/unit/monitoring/test_resource_monitoring.py::test_resource_monitor_records_cpu_metrics": {
+      "p95_seconds": 0.308
+    },
+    "tests/unit/monitoring/test_resource_monitoring.py::test_resource_monitor_start_stop": {
+      "p95_seconds": 0.307
+    },
+    "tests/unit/monitoring/test_resource_monitoring.py::test_resource_monitor_tracks_peak_memory": {
+      "p95_seconds": 0.308
+    },
+    "tests/unit/monitoring/test_resource_monitoring.py::test_resource_monitor_updates_monitor_gauges": {
+      "p95_seconds": 0.306
+    },
+    "tests/unit/platforms/base/test_link_probe.py::test_probe_statement_overhead_hung_execute_returns_timeout": {
+      "p95_seconds": 0.509
+    },
+    "tests/unit/platforms/base/test_tuning_trust.py::test_every_in_tree_ledger_phase_producer_uses_a_closed_set_member": {
+      "p95_seconds": 6.955
+    },
+    "tests/unit/platforms/base/test_tuning_trust.py::test_no_module_emits_a_retired_phase_alias": {
+      "p95_seconds": 5.304
+    },
+    "tests/unit/platforms/dataframe/test_datafusion_rank_nulls.py::test_datafusion_partitioned_ranks_match_translated_sql_with_nulls_and_ties[False-True-min-rank]": {
+      "p95_seconds": 0.512
+    },
+    "tests/unit/platforms/dataframe/test_polars_execution_engine.py::TestExecutionEngineReachesWriteAndMaintenance::test_write_benchmark_manager_uses_resolved_engine[csv-auto]": {
+      "p95_seconds": 0.276
+    },
+    "tests/unit/platforms/dataframe/test_polars_execution_engine.py::TestExecutionEngineReachesWriteAndMaintenance::test_write_benchmark_manager_uses_resolved_engine[parquet-streaming]": {
+      "p95_seconds": 0.251
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkAggregationMethods::test_aggregation_in_groupby": {
+      "p95_seconds": 1.66
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkAggregationMethods::test_count": {
+      "p95_seconds": 0.271
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkAggregationMethods::test_mean": {
+      "p95_seconds": 0.48
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkAggregationMethods::test_min": {
+      "p95_seconds": 0.462
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkAggregationMethods::test_sum": {
+      "p95_seconds": 0.972
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkAggregationMethods::test_when": {
+      "p95_seconds": 0.457
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkDataFrameAdapter::test_context_manager": {
+      "p95_seconds": 0.598
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkDataFrameAdapter::test_session_lifecycle": {
+      "p95_seconds": 0.724
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkDataFrameOperations::test_rename_columns": {
+      "p95_seconds": 0.605
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkDataFrameOperations::test_union_all": {
+      "p95_seconds": 1.83
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkDataFrameOperations::test_union_all_single": {
+      "p95_seconds": 0.635
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkDataLoading::test_collect_dataframe": {
+      "p95_seconds": 0.966
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkDataLoading::test_get_row_count": {
+      "p95_seconds": 1.928
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkDataLoading::test_read_csv_basic": {
+      "p95_seconds": 1.165
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkDataLoading::test_read_csv_with_delimiter": {
+      "p95_seconds": 1.139
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkDataLoading::test_read_parquet": {
+      "p95_seconds": 1.584
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkExpressionMethods::test_cast_string": {
+      "p95_seconds": 0.428
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkExpressionMethods::test_date_sub": {
+      "p95_seconds": 0.478
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkExpressionMethods::test_lit_integer": {
+      "p95_seconds": 0.469
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkExpressionMethods::test_lit_string": {
+      "p95_seconds": 0.481
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkQueryExecution::test_filter_query": {
+      "p95_seconds": 2.062
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkQueryExecution::test_simple_select_query": {
+      "p95_seconds": 2.139
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkScalarExtraction::test_scalar_empty_dataframe_raises": {
+      "p95_seconds": 1.493
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkScalarExtraction::test_scalar_first_column_multicolumn_df": {
+      "p95_seconds": 1.189
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkScalarExtraction::test_scalar_float_value": {
+      "p95_seconds": 0.797
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkScalarExtraction::test_scalar_multiple_rows_raises": {
+      "p95_seconds": 0.758
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkScalarExtraction::test_scalar_string_value": {
+      "p95_seconds": 1.145
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkScalarExtraction::test_scalar_two_rows_raises": {
+      "p95_seconds": 1.123
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkScalarExtraction::test_scalar_via_context": {
+      "p95_seconds": 1.161
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkScalarExtraction::test_scalar_with_column_name": {
+      "p95_seconds": 1.178
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkSpecificFeatures::test_get_first_row": {
+      "p95_seconds": 0.733
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkSpecificFeatures::test_get_first_row_empty": {
+      "p95_seconds": 0.744
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkSpecificFeatures::test_register_table": {
+      "p95_seconds": 1.428
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkSpecificFeatures::test_sql_execution": {
+      "p95_seconds": 1.264
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkSpecificFeatures::test_to_pandas": {
+      "p95_seconds": 2.198
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkSpecificFeatures::test_to_polars": {
+      "p95_seconds": 2.176
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkTableLoading::test_load_table_csv": {
+      "p95_seconds": 0.679
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkTableLoading::test_load_table_parquet": {
+      "p95_seconds": 2.083
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkWindowFunctions::test_cast_python_int_is_64_bit": {
+      "p95_seconds": 1.584
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkWindowFunctions::test_sort_alias_list_keeps_order": {
+      "p95_seconds": 1.393
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkWindowFunctions::test_window_cume_dist": {
+      "p95_seconds": 0.305
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkWindowFunctions::test_window_descending_multi_key": {
+      "p95_seconds": 0.857
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkWindowFunctions::test_window_lag": {
+      "p95_seconds": 0.807
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkWindowFunctions::test_window_lag_default_ordering": {
+      "p95_seconds": 0.262
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkWindowFunctions::test_window_lead": {
+      "p95_seconds": 0.364
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkWindowFunctions::test_window_percent_rank": {
+      "p95_seconds": 0.319
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkWindowFunctions::test_window_rank_with_ties": {
+      "p95_seconds": 1.203
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkWindowFunctions::test_window_row_number": {
+      "p95_seconds": 1.114
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkWindowFunctions::test_window_single_row_partition": {
+      "p95_seconds": 1.254
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df.py::TestPySparkWindowFunctions::test_window_sum": {
+      "p95_seconds": 1.244
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df_fallback_branches.py::test_window_count_star_uses_lit_one": {
+      "p95_seconds": 0.624
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df_session_branches.py::TestPySparkSessionBranches::test_read_csv_restores_empty_strings": {
+      "p95_seconds": 0.657
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df_session_branches.py::TestPySparkSessionBranches::test_read_csv_trailing_delimiter_drops_dummy": {
+      "p95_seconds": 0.636
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df_session_branches.py::TestPySparkSessionBranches::test_to_polars_via_arrow": {
+      "p95_seconds": 1.805
+    },
+    "tests/unit/platforms/dataframe/test_pyspark_df_session_branches.py::TestPySparkSessionBranches::test_window_count_star": {
+      "p95_seconds": 2.504
+    },
+    "tests/unit/platforms/pyspark/test_pyspark_sql_smoke.py::test_schema_creation_and_loading": {
+      "p95_seconds": 2.17
+    },
+    "tests/unit/platforms/pyspark/test_pyspark_sql_smoke.py::test_select_one": {
+      "p95_seconds": 0.639
+    },
+    "tests/unit/platforms/test_adapter_lifecycle.py::test_connection_stays_open_until_a_timed_out_stream_finishes": {
+      "p95_seconds": 5.274
+    },
+    "tests/unit/platforms/test_base_adapter.py::TestDeferredConnectionClose::test_close_waits_for_leaked_workers_after_result_capture_consumed_the_result": {
+      "p95_seconds": 0.355
+    },
+    "tests/unit/platforms/test_base_adapter.py::TestNormalizeBenchmarkIdDerivedBenchmarks::test_normalize_benchmark_id_derived[tpchavoc-tpchavoc]": {
+      "p95_seconds": 0.413
+    },
+    "tests/unit/platforms/test_bigquery_adapter.py::TestBigQueryAdapter::test_direct_loading_with_chunked_files": {
+      "p95_seconds": 1.016
+    },
+    "tests/unit/platforms/test_bigquery_adapter.py::TestBigQueryAdapter::test_prepare_iceberg_uris_points_at_metadata_file": {
+      "p95_seconds": 0.358
+    },
+    "tests/unit/platforms/test_bigquery_adapter.py::TestBigQueryCreateSemanticsStagingAndManifest::test_shared_manifest_keeps_both_benchmarks_provenance_rows": {
+      "p95_seconds": 0.26
+    },
+    "tests/unit/platforms/test_bigquery_adapter.py::TestConvertToBigqueryTable::test_foreign_key_reference_qualified_and_not_enforced": {
+      "p95_seconds": 3.93
+    },
+    "tests/unit/platforms/test_deployment_alias_notices.py::test_spec_default_deployment_records_no_notice[influxdb]": {
+      "p95_seconds": 1.195
+    },
+    "tests/unit/platforms/test_deployment_alias_notices.py::test_supplied_deployment_option_records_one_removal_notice[lakesail-deployment_mode=distributed-lakesail:distributed]": {
+      "p95_seconds": 0.302
+    },
+    "tests/unit/platforms/test_duckdb_behavioral.py::TestExtensionsAndVersion::test_httpfs_extension_loads": {
+      "p95_seconds": 0.315
+    },
+    "tests/unit/platforms/test_duckdb_behavioral.py::TestExtensionsAndVersion::test_json_extension_loads": {
+      "p95_seconds": 0.342
+    },
+    "tests/unit/platforms/test_lakesail_adapter.py::TestLakeSailServerLifecycle::test_auto_start_server_success": {
+      "p95_seconds": 1.009
+    },
+    "tests/unit/platforms/test_no_midrun_destructive_ops.py::test_case_is_not_silently_vacuous[athena-spark]": {
+      "p95_seconds": 1.679
+    },
+    "tests/unit/platforms/test_no_midrun_destructive_ops.py::test_case_is_not_silently_vacuous[athena]": {
+      "p95_seconds": 2.443
+    },
+    "tests/unit/platforms/test_no_midrun_destructive_ops.py::test_case_is_not_silently_vacuous[bigquery]": {
+      "p95_seconds": 2.524
+    },
+    "tests/unit/platforms/test_no_midrun_destructive_ops.py::test_case_is_not_silently_vacuous[cedardb]": {
+      "p95_seconds": 3.081
+    },
+    "tests/unit/platforms/test_no_midrun_destructive_ops.py::test_force_recreate_still_acts_at_the_first_connection[velox]": {
+      "p95_seconds": 0.473
+    },
+    "tests/unit/platforms/test_offline_adapter_missing_sdks.py::test_all_adapter_semantics_with_vendor_sdk_imports_blocked": {
+      "p95_seconds": 1.823
+    },
+    "tests/unit/platforms/test_offline_adapter_missing_sdks.py::test_child_refuses_to_run_with_assertions_disabled": {
+      "p95_seconds": 0.597
+    },
+    "tests/unit/platforms/test_plan_capture_errors.py::test_capture_phase_replaces_owned_connection_after_timeout": {
+      "p95_seconds": 1.008
+    },
+    "tests/unit/platforms/test_plan_capture_errors.py::test_capture_phase_skips_remaining_on_caller_connection_timeout": {
+      "p95_seconds": 1.005
+    },
+    "tests/unit/platforms/test_plan_capture_errors.py::test_capture_timeout_returns_promptly": {
+      "p95_seconds": 1.004
+    },
+    "tests/unit/platforms/test_plan_capture_errors.py::test_capture_timeout_strict_mode_raises_promptly": {
+      "p95_seconds": 1.008
+    },
+    "tests/unit/platforms/test_plan_capture_errors.py::test_plan_capture_timeout_records_failure": {
+      "p95_seconds": 1.004
+    },
+    "tests/unit/platforms/test_spark_coverage.py::TestExecuteQuery::test_cache_clearing_is_outside_the_timed_window": {
+      "p95_seconds": 0.311
+    },
+    "tests/unit/platforms/test_throughput_run_options.py::TestStreamTimeoutOptions::test_run_config_timeout_and_cancellation_reach_the_streams[False-22]": {
+      "p95_seconds": 1.009
+    },
+    "tests/unit/platforms/test_throughput_run_options.py::TestStreamTimeoutOptions::test_run_config_timeout_and_cancellation_reach_the_streams[True-2]": {
+      "p95_seconds": 1.015
+    },
+    "tests/unit/scripts/explorer_pipeline/test_duckdb_readonly_fuzz.py::TestReadOnlyFuzz::test_full_fuzz_leaves_bench_file_byte_stable": {
+      "p95_seconds": 1.3
+    },
+    "tests/unit/scripts/explorer_pipeline/test_pipeline.py::TestExplorerPipelineRun::test_sidecar_in_root_bundles_dir_overrides_all_flat_bundles": {
+      "p95_seconds": 1.174
+    },
+    "tests/unit/scripts/explorer_pipeline/test_pipeline.py::TestExplorerPipelineRun::test_unpublishable_rebuild_preserves_last_known_good_output": {
+      "p95_seconds": 0.484
+    },
+    "tests/unit/scripts/explorer_pipeline/test_pipeline.py::TestStagedOutputGuards::test_symlinked_bundles_destination_is_rejected": {
+      "p95_seconds": 0.356
+    },
+    "tests/unit/scripts/explorer_pipeline/test_pipeline.py::test_mismatched_query_sets_are_not_ranked": {
+      "p95_seconds": 2.721
+    },
+    "tests/unit/scripts/explorer_pipeline/test_pipeline.py::test_partial_query_set_exclusion_reaches_every_read_model_consumer": {
+      "p95_seconds": 3.805
+    },
+    "tests/unit/scripts/explorer_pipeline/test_transformer.py::TestPublishedCorpusResolvesExecutionMode::test_every_published_bundle_resolves": {
+      "p95_seconds": 0.864
+    },
+    "tests/unit/scripts/explorer_pipeline/test_transformer.py::TestPublishedCorpusResolvesExecutionMode::test_resolved_mode_agrees_with_the_filename_suffix": {
+      "p95_seconds": 0.445
+    },
+    "tests/unit/scripts/explorer_pipeline/test_variant_identity_end_to_end.py::test_depth_gate_counts_reruns_once_and_streaming_separately": {
+      "p95_seconds": 0.373
+    },
+    "tests/unit/scripts/explorer_pipeline/test_variant_identity_end_to_end.py::test_pipeline_joins_default_reruns_to_legacy_rows": {
+      "p95_seconds": 1.971
+    },
+    "tests/unit/scripts/oracle_reviewers/test_runner.py::test_execute_kills_on_timeout": {
+      "p95_seconds": 1.007
+    },
+    "tests/unit/scripts/publication/test_check_explorer_compat.py::test_script_help_examples_name_the_current_version_and_all_run": {
+      "p95_seconds": 22.719
+    },
+    "tests/unit/scripts/publication/test_check_explorer_compat.py::test_script_runs_as_the_deploy_workflow_invokes_it": {
+      "p95_seconds": 5.158
+    },
+    "tests/unit/scripts/publication/test_ledger_seed.py::test_cli_classifies_forced_legacy_overlay": {
+      "p95_seconds": 1.162
+    },
+    "tests/unit/scripts/publication/test_ledger_seed.py::test_cli_regenerates_committed_seed_content": {
+      "p95_seconds": 1.095
+    },
+    "tests/unit/scripts/publication/test_ledger_seed.py::test_isolated_replay_mirror_drift_breaks_bidirectional": {
+      "p95_seconds": 0.303
+    },
+    "tests/unit/scripts/test_browser_fixtures_port.py::test_generate_builds_a_read_model_with_every_fixture_role": {
+      "p95_seconds": 5.234
+    },
+    "tests/unit/scripts/test_check_api_contract_symbols.py::test_known_failure_is_expected_and_not_recorded": {
+      "p95_seconds": 0.274
+    },
+    "tests/unit/scripts/test_check_api_contract_symbols.py::test_known_failure_with_different_error_fails": {
+      "p95_seconds": 0.407
+    },
+    "tests/unit/scripts/test_check_api_contract_symbols.py::test_record_then_strict_check_passes": {
+      "p95_seconds": 0.359
+    },
+    "tests/unit/scripts/test_check_api_contract_symbols.py::test_unrecorded_is_reported_but_only_fails_when_strict": {
+      "p95_seconds": 0.442
+    },
+    "tests/unit/scripts/test_check_project_references.py::TestBaselineRoundTrip::test_baseline_exists_and_gate_passes": {
+      "p95_seconds": 0.381
+    },
+    "tests/unit/scripts/test_check_release_curation.py::test_curated_release_removes_dangling_project_test_and_runs_retained_tests": {
+      "p95_seconds": 3.874
+    },
+    "tests/unit/scripts/test_check_windows_antipatterns.py::test_repository_baseline_is_current": {
+      "p95_seconds": 11.904
+    },
+    "tests/unit/scripts/test_comment_policy.py::test_reviewed_process_argv_entries_match_current_sources": {
+      "p95_seconds": 0.779
+    },
+    "tests/unit/scripts/test_corpus_cohort_depth.py::test_every_committed_cohort_meets_the_platform_floor": {
+      "p95_seconds": 0.282
+    },
+    "tests/unit/scripts/test_corpus_cohort_depth.py::test_validator_agrees_with_the_explorer_on_every_committed_bundle": {
+      "p95_seconds": 2.211
+    },
+    "tests/unit/scripts/test_corpus_cohort_depth.py::test_validator_agrees_with_the_explorer_on_the_throughput_stream_count[clean]": {
+      "p95_seconds": 0.407
+    },
+    "tests/unit/scripts/test_corpus_privacy_invariant.py::test_anonymizing_the_corpus_twice_matches_anonymizing_it_once": {
+      "p95_seconds": 16.806
+    },
+    "tests/unit/scripts/test_corpus_privacy_invariant.py::test_no_corpus_file_exposes_a_private_path": {
+      "p95_seconds": 0.951
+    },
+    "tests/unit/scripts/test_corpus_privacy_invariant.py::test_rederived_corpus_publishes_byte_identically_to_what_is_stored": {
+      "p95_seconds": 8.865
+    },
+    "tests/unit/scripts/test_generate_changelog_entry.py::test_since_ref_ignores_squashed_commit_when_new_patch_touches_same_file": {
+      "p95_seconds": 0.97
+    },
+    "tests/unit/scripts/test_local_validation.py::test_wait_on_fd_reports_progress_and_acquisition": {
+      "p95_seconds": 0.511
+    },
+    "tests/unit/scripts/test_local_validation.py::test_wait_on_fd_timeout_reports_holder": {
+      "p95_seconds": 0.312
+    },
+    "tests/unit/scripts/test_make_timing.py::test_concurrent_appends_of_large_records_do_not_interleave": {
+      "p95_seconds": 0.558
+    },
+    "tests/unit/scripts/test_make_timing.py::test_concurrent_runs_append_whole_lines": {
+      "p95_seconds": 0.721
+    },
+    "tests/unit/scripts/test_new_platform_scaffold.py::test_cli_rejects_a_key_the_manifest_already_owns": {
+      "p95_seconds": 2.018
+    },
+    "tests/unit/scripts/test_new_platform_scaffold.py::test_emitted_manifest_entry_passes_the_real_manifest_validator[dataframe]": {
+      "p95_seconds": 1.395
+    },
+    "tests/unit/scripts/test_new_platform_scaffold.py::test_emitted_manifest_entry_passes_the_real_manifest_validator[sql]": {
+      "p95_seconds": 1.265
+    },
+    "tests/unit/scripts/test_new_platform_scaffold.py::test_stub_file_matches_the_file_plan[dataframe]": {
+      "p95_seconds": 2.195
+    },
+    "tests/unit/scripts/test_new_platform_scaffold.py::test_stub_file_matches_the_file_plan[sql]": {
+      "p95_seconds": 1.341
+    },
+    "tests/unit/scripts/test_pytest_shard_evidence.py::test_actual_pytest_shard_execution[call-skip-2]": {
+      "p95_seconds": 0.389
+    },
+    "tests/unit/scripts/test_pytest_shard_evidence.py::test_actual_pytest_shard_execution[complete-2]": {
+      "p95_seconds": 0.603
+    },
+    "tests/unit/scripts/test_pytest_shard_evidence.py::test_actual_pytest_shard_execution[failure-2]": {
+      "p95_seconds": 0.386
+    },
+    "tests/unit/scripts/test_pytest_shard_evidence.py::test_actual_pytest_shard_execution[missing-2]": {
+      "p95_seconds": 0.596
+    },
+    "tests/unit/scripts/test_pytest_shard_evidence.py::test_actual_pytest_shard_execution[skip-2]": {
+      "p95_seconds": 0.371
+    },
+    "tests/unit/scripts/test_pytest_shard_evidence.py::test_actual_pytest_shard_execution[teardown-failure-0]": {
+      "p95_seconds": 0.253
+    },
+    "tests/unit/scripts/test_pytest_shard_evidence.py::test_actual_pytest_shard_execution[teardown-failure-2]": {
+      "p95_seconds": 0.621
+    },
+    "tests/unit/scripts/test_pytest_shard_evidence.py::test_actual_pytest_shard_execution[xfail-2]": {
+      "p95_seconds": 0.382
+    },
+    "tests/unit/scripts/test_pytest_shard_evidence.py::test_actual_pytest_shard_execution[xpass-2]": {
+      "p95_seconds": 0.594
+    },
+    "tests/unit/scripts/test_pytest_shard_evidence.py::test_real_medium_receipts_reject_missing_or_inconsistent_outcomes[skip-0]": {
+      "p95_seconds": 0.955
+    },
+    "tests/unit/scripts/test_pytest_shard_evidence.py::test_real_medium_receipts_reject_missing_or_inconsistent_outcomes[skip-2]": {
+      "p95_seconds": 1.428
+    },
+    "tests/unit/scripts/test_pytest_shard_evidence.py::test_real_medium_receipts_reject_missing_or_inconsistent_outcomes[xfail-no-reason-0]": {
+      "p95_seconds": 1.163
+    },
+    "tests/unit/scripts/test_pytest_shard_evidence.py::test_real_medium_receipts_reject_missing_or_inconsistent_outcomes[xfail-no-reason-2]": {
+      "p95_seconds": 2.714
+    },
+    "tests/unit/scripts/test_pytest_shard_evidence.py::test_real_medium_receipts_reject_missing_or_inconsistent_outcomes[xfail-whitespace-0]": {
+      "p95_seconds": 0.766
+    },
+    "tests/unit/scripts/test_pytest_shard_evidence.py::test_real_medium_receipts_reject_missing_or_inconsistent_outcomes[xfail-whitespace-2]": {
+      "p95_seconds": 1.584
+    },
+    "tests/unit/scripts/test_pytest_shard_evidence.py::test_real_medium_receipts_reject_missing_or_inconsistent_outcomes[xpass-no-reason-0]": {
+      "p95_seconds": 1.153
+    },
+    "tests/unit/scripts/test_pytest_shard_evidence.py::test_real_medium_receipts_reject_missing_or_inconsistent_outcomes[xpass-no-reason-2]": {
+      "p95_seconds": 2.825
+    },
+    "tests/unit/scripts/test_release_artifact_execution.py::test_download_failure_reaps_real_child_and_removes_partial[stall]": {
+      "p95_seconds": 0.318
+    },
+    "tests/unit/scripts/test_release_artifact_execution.py::test_inherited_pipe_writer_cannot_hold_download_cleanup[False]": {
+      "p95_seconds": 8.091
+    },
+    "tests/unit/scripts/test_release_artifact_execution.py::test_inherited_pipe_writer_cannot_hold_download_cleanup[True]": {
+      "p95_seconds": 8.095
+    },
+    "tests/unit/scripts/test_release_artifact_execution.py::test_stalled_admission_leaves_no_output_or_partial_stage": {
+      "p95_seconds": 0.35
+    },
+    "tests/unit/scripts/test_release_flow.py::test_cli_check_reports_all_problems_and_exits_nonzero": {
+      "p95_seconds": 2.186
+    },
+    "tests/unit/scripts/test_release_flow.py::test_missing_preparation_marker_fails_before_any_write": {
+      "p95_seconds": 2.097
+    },
+    "tests/unit/scripts/test_release_flow.py::test_prep_updates_every_marker_and_drafts_the_changelog[1.2.3-rc.1]": {
+      "p95_seconds": 4.311
+    },
+    "tests/unit/scripts/test_release_flow.py::test_prep_updates_every_marker_and_drafts_the_changelog[1.2.3]": {
+      "p95_seconds": 4.338
+    },
+    "tests/unit/scripts/test_remote_closeout.py::test_a_body_only_blocking_finding_marked_fixed_resolves_no_thread": {
+      "p95_seconds": 0.327
+    },
+    "tests/unit/scripts/test_remote_closeout.py::test_a_deleted_thread_abandons_its_step_and_leaves_the_record_unpublished": {
+      "p95_seconds": 0.411
+    },
+    "tests/unit/scripts/test_remote_closeout.py::test_a_failed_publication_leaves_the_new_record_latest_until_a_rerun_publishes_it": {
+      "p95_seconds": 0.471
+    },
+    "tests/unit/scripts/test_remote_closeout.py::test_a_re_review_resolves_only_the_threads_of_findings_marked_fixed": {
+      "p95_seconds": 0.623
+    },
+    "tests/unit/scripts/test_remote_closeout.py::test_a_review_github_kept_but_did_not_acknowledge_is_not_posted_twice": {
+      "p95_seconds": 0.38
+    },
+    "tests/unit/scripts/test_remote_closeout.py::test_a_reviewer_that_hangs_is_killed_with_its_process_group": {
+      "p95_seconds": 2.133
+    },
+    "tests/unit/scripts/test_remote_closeout.py::test_arming_discloses_a_claude_review_without_a_new_owner_approval_gate": {
+      "p95_seconds": 0.251
+    },
+    "tests/unit/scripts/test_remote_closeout.py::test_claude_is_an_explicit_backend_with_the_same_record_and_publication_pipeline": {
+      "p95_seconds": 0.673
+    },
+    "tests/unit/scripts/test_remote_closeout.py::test_resume_finishes_pending_publication_without_running_the_reviewer": {
+      "p95_seconds": 0.273
+    },
+    "tests/unit/scripts/test_remote_closeout.py::test_review_falls_back_to_claude_only_on_a_codex_usage_limit[USAGE LIMIT reached]": {
+      "p95_seconds": 0.295
+    },
+    "tests/unit/scripts/test_remote_closeout.py::test_review_stores_a_record_with_a_computed_disposition_and_publishes_its_findings": {
+      "p95_seconds": 0.277
+    },
+    "tests/unit/scripts/test_remote_closeout.py::test_review_waits_only_a_bounded_time_for_the_review_store_lock": {
+      "p95_seconds": 0.791
+    },
+    "tests/unit/scripts/test_remote_closeout.py::test_the_reviewer_reads_the_head_tree_and_base_rules_exported_outside_the_repository": {
+      "p95_seconds": 0.254
+    },
+    "tests/unit/scripts/test_required_case_evidence.py::test_the_command_line_exits_non_zero_for_a_skipped_required_case": {
+      "p95_seconds": 0.544
+    },
+    "tests/unit/scripts/test_soundness_merge_digest.py::test_connector_review_of_the_last_content_commit_is_a_signal": {
+      "p95_seconds": 0.414
+    },
+    "tests/unit/scripts/test_soundness_merge_digest.py::test_the_governance_files_stay_protected_when_the_manifest_does_not_list_them[_project/scripts/soundness_merge_digest.py]": {
+      "p95_seconds": 0.304
+    },
+    "tests/unit/scripts/test_tpcds_platform_identity.py::test_manifest_is_deterministic_on_one_platform_and_covers_the_pinned_seed": {
+      "p95_seconds": 5.165
+    },
+    "tests/unit/scripts/test_validate_submission.py::test_checked_in_corpus_satisfies_public_integrity_policy": {
+      "p95_seconds": 0.769
+    },
+    "tests/unit/test_agent_write_preflight.py::test_configured_hook_allows_linked_worktree_commit": {
+      "p95_seconds": 0.526
+    },
+    "tests/unit/test_agent_write_preflight.py::test_configured_hook_requires_primary_clone_declaration_and_preserves_escape_hatches": {
+      "p95_seconds": 0.808
+    },
+    "tests/unit/test_canary_impact_live.py::TestLiveTree::test_every_collected_file_has_a_per_file_edge": {
+      "p95_seconds": 90.924
+    },
+    "tests/unit/test_canary_impact_live.py::TestLiveTree::test_known_regressions_are_selected[2384c3ee7-tests/unit/scripts/test_validate_submission_resource_heavy.py]": {
+      "p95_seconds": 72.388
+    },
+    "tests/unit/test_canary_impact_live.py::TestLiveTree::test_known_regressions_are_selected[5e9284a2c-tests/unit/core/flightdata/test_flightdata_benchmark_resource_heavy.py]": {
+      "p95_seconds": 63.817
+    },
+    "tests/unit/test_canary_impact_live.py::TestLiveTree::test_known_regressions_are_selected[68fb5a071-tests/integration/test_tpcdi_full_benchmark.py]": {
+      "p95_seconds": 92.68
+    },
+    "tests/unit/test_canary_impact_live.py::TestLiveTree::test_medium_single_module_diff_selects_subset": {
+      "p95_seconds": 35.265
+    },
+    "tests/unit/test_canary_impact_live.py::TestLiveTree::test_monitoring_lazy_export_selects_resource_monitoring": {
+      "p95_seconds": 32.762
+    },
+    "tests/unit/test_cli_dryrun_real_execution.py::TestDryRunExecutorPlatformIntegration::test_invalid_query_subset_fails_instead_of_saving_empty_preview": {
+      "p95_seconds": 0.607
+    },
+    "tests/unit/test_coffeeshop.py::TestCoffeeShopBenchmark::test_default_output_dir_matches_basebenchmark": {
+      "p95_seconds": 0.313
+    },
+    "tests/unit/test_coffeeshop.py::TestCoffeeShopBenchmark::test_generate_data": {
+      "p95_seconds": 0.349
+    },
+    "tests/unit/test_coffeeshop.py::TestCoffeeShopGenerator::test_default_output_directory_uses_datagen_path": {
+      "p95_seconds": 0.325
+    },
+    "tests/unit/test_coffeeshop.py::TestCoffeeShopGenerator::test_generate_data_row_counts": {
+      "p95_seconds": 0.301
+    },
+    "tests/unit/test_coffeeshop.py::TestCoffeeShopGenerator::test_generation_is_deterministic_across_runs": {
+      "p95_seconds": 0.584
+    },
+    "tests/unit/test_connection_interface_consistency.py::TestConnectionInterfaceConsistency::test_tpc_benchmarks_accept_connection_objects_functionally": {
+      "p95_seconds": 0.546
+    },
+    "tests/unit/test_cross_surface_applicability.py::test_abandoned_correspondences_stay_abandoned": {
+      "p95_seconds": 1.312
+    },
+    "tests/unit/test_cross_surface_applicability.py::test_bounded_scale_rejecting_benchmarks_are_not_cheaply_gateable": {
+      "p95_seconds": 1.17
+    },
+    "tests/unit/test_cross_surface_applicability.py::test_committed_artifact_is_current": {
+      "p95_seconds": 2.287
+    },
+    "tests/unit/test_cross_surface_applicability.py::test_w2_fallback_set_is_exactly_the_registry_less_benchmarks": {
+      "p95_seconds": 2.208
+    },
+    "tests/unit/test_error_handling.py::TestFileSystemEdgeCases::test_concurrent_file_access": {
+      "p95_seconds": 7.481
+    },
+    "tests/unit/test_error_handling.py::TestFileSystemEdgeCases::test_special_characters_in_paths": {
+      "p95_seconds": 1.099
+    },
+    "tests/unit/test_error_handling.py::TestRecoveryAndCleanupScenarios::test_partial_data_generation_recovery": {
+      "p95_seconds": 6.266
+    },
+    "tests/unit/test_leak_detector.py::test_a_leak_by_the_last_test_is_still_detected_next_to_a_module_fixture": {
+      "p95_seconds": 0.589
+    },
+    "tests/unit/test_leak_detector.py::test_a_module_fixture_restoring_state_is_not_blamed_on_the_last_test": {
+      "p95_seconds": 0.426
+    },
+    "tests/unit/test_leak_detector.py::test_expected_failure_cannot_hide_a_leak": {
+      "p95_seconds": 2.532
+    },
+    "tests/unit/test_leak_detector.py::test_finalizer_leak_is_detected_after_all_teardown": {
+      "p95_seconds": 1.682
+    },
+    "tests/unit/test_leak_detector.py::test_first_import_of_registered_module_is_not_reported_as_a_leak[import benchbox.platforms.credentials.bigquery]": {
+      "p95_seconds": 1.577
+    },
+    "tests/unit/test_leak_detector.py::test_first_import_of_registered_module_is_not_reported_as_a_leak[import rich.prompt]": {
+      "p95_seconds": 1.728
+    },
+    "tests/unit/test_leak_detector.py::test_leak_restored_when_another_finalizer_fails": {
+      "p95_seconds": 1.62
+    },
+    "tests/unit/test_leak_detector.py::test_leaking_test_fails_at_teardown_and_next_test_is_clean[bigquery.Confirm = object()-benchbox.platforms.credentials.bigquery.Confirm]": {
+      "p95_seconds": 1.541
+    },
+    "tests/unit/test_leak_detector.py::test_leaking_test_fails_at_teardown_and_next_test_is_clean[ci._config_provider = object()-benchbox.utils.config_interface._config_provider]": {
+      "p95_seconds": 2.7
+    },
+    "tests/unit/test_leak_detector.py::test_leaking_test_fails_at_teardown_and_next_test_is_clean[del os.environ[\"EXISTING_PROBE\"]-env[EXISTING_PROBE]]": {
+      "p95_seconds": 2.718
+    },
+    "tests/unit/test_leak_detector.py::test_leaking_test_fails_at_teardown_and_next_test_is_clean[os.chdir(\"changed\")-cwd]": {
+      "p95_seconds": 1.679
+    },
+    "tests/unit/test_leak_detector.py::test_leaking_test_fails_at_teardown_and_next_test_is_clean[os.environ[\"EXISTING_PROBE\"] = \"changed-secret\"-env[EXISTING_PROBE]]": {
+      "p95_seconds": 1.661
+    },
+    "tests/unit/test_leak_detector.py::test_leaking_test_fails_at_teardown_and_next_test_is_clean[os.environ[\"LEAKY_PROBE\"] = \"secret-value\"-env[LEAKY_PROBE]]": {
+      "p95_seconds": 2.706
+    },
+    "tests/unit/test_leak_detector.py::test_leaking_test_fails_at_teardown_and_next_test_is_clean[printing._QUIET = True-benchbox.utils.printing._QUIET]": {
+      "p95_seconds": 2.609
+    },
+    "tests/unit/test_leak_detector.py::test_leaking_test_fails_at_teardown_and_next_test_is_clean[replacement = types.ModuleType(\"replacement\"); sys.modules[\"benchbox.platforms.credentials.bigquery\"] = replacement; credentials.bigquery = replacement-sys.modules[benchbox.platforms.credentials.bigquery]]": {
+      "p95_seconds": 1.78
+    },
+    "tests/unit/test_leak_detector.py::test_leaking_test_fails_at_teardown_and_next_test_is_clean[rich.prompt.Confirm = object()-rich.prompt.Confirm]": {
+      "p95_seconds": 1.594
+    },
+    "tests/unit/test_leak_detector.py::test_restored_monkeypatch_and_generator_teardown_pass": {
+      "p95_seconds": 2.56
+    },
+    "tests/unit/test_ledger_coverage.py::test_cutover_lists_every_test_with_a_ledger_row": {
+      "p95_seconds": 1.947
+    },
+    "tests/unit/test_marker_strategy.py::test_persistent_database_fixtures_require_database_or_integration_marker": {
+      "p95_seconds": 3.668
+    },
+    "tests/unit/test_marker_strategy.py::test_routine_test_modules_have_a_single_top_level_speed_marker": {
+      "p95_seconds": 5.783
+    },
+    "tests/unit/test_marker_strategy.py::test_starrocks_resource_heavy_smoke_stays_in_integration_smoke_lane": {
+      "p95_seconds": 5.637
+    },
+    "tests/unit/test_marker_strategy.py::test_tree_has_no_fast_or_medium_decorators": {
+      "p95_seconds": 3.32
+    },
+    "tests/unit/test_optional_engines_helpers.py::test_importing_optional_helpers_does_not_load_engines_or_change_environment": {
+      "p95_seconds": 1.215
+    },
+    "tests/unit/test_patch_safety.py::test_no_unsafe_patch_string_calls": {
+      "p95_seconds": 0.338
+    },
+    "tests/unit/test_query_generation_preflight.py::test_tpcds_power_preflight_detects_generation_failures": {
+      "p95_seconds": 2.009
+    },
+    "tests/unit/test_release_infrastructure.py::TestReleaseInfrastructure::test_cli_entry_point_works": {
+      "p95_seconds": 1.29
+    },
+    "tests/unit/test_release_infrastructure.py::TestReleaseInfrastructure::test_import_benchbox_does_not_pull_pandas": {
+      "p95_seconds": 1.118
+    },
+    "tests/unit/test_release_infrastructure.py::TestReleaseInfrastructure::test_import_benchbox_succeeds_without_pandas": {
+      "p95_seconds": 1.03
+    },
+    "tests/unit/test_release_infrastructure.py::TestReleaseInfrastructure::test_no_incorrect_repository_references": {
+      "p95_seconds": 0.363
+    },
+    "tests/unit/test_release_infrastructure.py::TestReleaseWorkflowValidation::test_workflows_are_valid_yaml": {
+      "p95_seconds": 0.543
+    },
+    "tests/unit/test_required_local_cases.py::test_every_required_case_is_a_node_pytest_collects": {
+      "p95_seconds": 2.886
+    },
+    "tests/unit/test_self_binding_detector.py::test_all_current_tpchavoc_variants_are_clean": {
+      "p95_seconds": 0.682
+    },
+    "tests/unit/test_session_isolation.py::test_a_parallel_run_still_waits_for_the_shared_lock": {
+      "p95_seconds": 0.573
+    },
+    "tests/unit/test_session_isolation.py::test_a_run_that_also_selects_unmarked_tests_stays_isolated": {
+      "p95_seconds": 0.635
+    },
+    "tests/unit/test_session_isolation.py::test_a_run_that_deselects_live_tests_is_isolated": {
+      "p95_seconds": 0.613
+    },
+    "tests/unit/test_session_isolation.py::test_a_run_that_selects_live_tests_keeps_the_callers_home": {
+      "p95_seconds": 0.986
+    },
+    "tests/unit/test_session_isolation.py::test_a_serial_run_does_not_wait_for_the_shared_lock": {
+      "p95_seconds": 0.364
+    },
+    "tests/unit/test_session_isolation.py::test_home_is_isolated_before_conftest_and_collection[False]": {
+      "p95_seconds": 0.423
+    },
+    "tests/unit/test_session_isolation.py::test_home_is_isolated_before_conftest_and_collection[True]": {
+      "p95_seconds": 0.368
+    },
+    "tests/unit/test_session_isolation.py::test_the_documented_lock_bypass_is_honored_by_a_parallel_run": {
+      "p95_seconds": 0.951
+    },
+    "tests/unit/test_standardized_test_commands.py::TestMakefileCommands::test_correctness_gate_nodeid_collects_under_stress": {
+      "p95_seconds": 2.28
+    },
+    "tests/unit/test_standardized_test_commands.py::TestMakefileCommands::test_pytest_timeout_kills_hanging_test": {
+      "p95_seconds": 1.439
+    },
+    "tests/unit/test_sync_results_workflow.py::test_unguarded_import_detector[import importlib\\nimportlib.import_module('benchbox.core.schemas')\\n-expected6]": {
+      "p95_seconds": 0.48
+    },
+    "tests/unit/test_tpcdi_phase1.py::TestIntegration::test_repeated_generation_resets_all_private_rngs": {
+      "p95_seconds": 1.459
+    },
+    "tests/unit/test_tpcdi_phase1.py::TestIntegration::test_schema_and_generator_compatibility": {
+      "p95_seconds": 1.295
+    },
+    "tests/unit/test_tpcdi_phase1.py::TestTPCDIPhase1Complete::test_phase1_complete_implementation": {
+      "p95_seconds": 5.159
+    },
+    "tests/unit/test_tpcds_enhanced.py::TestTPCDSBenchmarkEnhanced::test_get_queries_dialect_error_handling": {
+      "p95_seconds": 1.773
+    },
+    "tests/unit/test_xdist_safety.py::test_pytest_run_with_faulthandler_timeout_exits_as_usage_error": {
+      "p95_seconds": 0.753
+    },
+    "tests/unit/tpcds/test_get_queries_scale.py::test_get_queries_is_not_rendered_at_scale_factor_one[44]": {
+      "p95_seconds": 1.167
+    },
+    "tests/unit/tpcds/test_get_queries_scale.py::test_get_queries_is_not_rendered_at_scale_factor_one[9]": {
+      "p95_seconds": 2.259
+    },
+    "tests/unit/tpcds/test_get_queries_scale.py::test_get_queries_matches_get_query_at_the_data_scale[44]": {
+      "p95_seconds": 2.156
+    },
+    "tests/unit/tpcds/test_get_queries_scale.py::test_get_queries_matches_get_query_at_the_data_scale[9]": {
+      "p95_seconds": 1.223
+    },
+    "tests/unit/tpchavoc/test_cloud_compat.py::test_bigquery_rewrites_all_filtered_aggregates_and_known_subqueries": {
+      "p95_seconds": 2.264
+    },
+    "tests/unit/tpchavoc/test_cloud_compat.py::test_databricks_reuses_spark_variant_rewrites": {
+      "p95_seconds": 0.658
+    },
+    "tests/unit/tpchavoc/test_cloud_compat.py::test_snowflake_empty_group_rewrite_is_targeted": {
+      "p95_seconds": 2.274
+    },
+    "tests/unit/tpchavoc/test_dialect_compat.py::test_dry_run_uses_production_dialect_rewrites_and_query_subset[ClickHouseLocalAdapter-query_ids1-required_fragments1- FILTER(]": {
+      "p95_seconds": 0.627
+    },
+    "tests/unit/tpchavoc/test_dialect_compat.py::test_dry_run_uses_production_dialect_rewrites_and_query_subset[DataFusionAdapter-query_ids0-required_fragments0-GROUP BY ()]": {
+      "p95_seconds": 0.591
+    },
+    "tests/unit/tpchavoc/test_query_manager.py::test_no_unsubstituted_tokens_in_any_variant": {
+      "p95_seconds": 0.603
+    },
+    "tests/unit/utils/format_converters/test_ducklake_converter.py::TestDuckLakeConversion::test_conversion_result_metadata": {
+      "p95_seconds": 0.466
+    },
+    "tests/unit/utils/format_converters/test_ducklake_converter.py::TestDuckLakeConversion::test_convert_sharded_files": {
+      "p95_seconds": 0.443
+    },
+    "tests/unit/utils/format_converters/test_ducklake_converter.py::TestDuckLakeConversion::test_convert_single_file": {
+      "p95_seconds": 0.415
+    },
+    "tests/unit/utils/format_converters/test_ducklake_converter.py::TestDuckLakeConversion::test_convert_with_empty_strings_as_null": {
+      "p95_seconds": 0.518
+    },
+    "tests/unit/utils/format_converters/test_ducklake_converter.py::TestDuckLakeConversion::test_overwrite_existing_table": {
+      "p95_seconds": 0.625
+    },
+    "tests/unit/utils/format_converters/test_ducklake_converter.py::TestDuckLakeConversion::test_progress_callback": {
+      "p95_seconds": 0.462
+    },
+    "tests/unit/utils/format_converters/test_ducklake_converter.py::TestDuckLakeTableRead::test_read_ducklake_table": {
+      "p95_seconds": 0.529
+    },
+    "tests/unit/utils/format_converters/test_vortex_converter_coverage.py::test_duckdb_write_failure_logs_warning": {
+      "p95_seconds": 0.839
+    },
+    "tests/unit/utils/test_system_info.py::TestGetCPUInfo::test_get_cpu_info_real_system": {
+      "p95_seconds": 2.005
+    },
+    "tests/unit/utils/test_system_info.py::TestSystemInfoIntegration::test_system_info_consistency": {
+      "p95_seconds": 2.01
+    },
+    "tests/unit/utils/test_timeout_manager.py::TestTimeoutContextManager::test_timeout_context_manager_with_timeout_no_raise": {
+      "p95_seconds": 0.305
+    },
+    "tests/unit/utils/test_timeout_manager.py::TestTimeoutContextManager::test_timeout_context_manager_with_timeout_raises": {
+      "p95_seconds": 0.309
+    },
+    "tests/unit/utils/test_timeout_manager.py::TestTimeoutManager::test_timeout_context_with_timeout_no_raise": {
+      "p95_seconds": 0.305
+    },
+    "tests/unit/utils/test_timeout_manager.py::TestTimeoutManager::test_timeout_context_with_timeout_raises": {
+      "p95_seconds": 0.31
+    },
+    "tests/unit/utils/test_timeout_manager_behavioral.py::TestNestedTimeoutContexts::test_inner_timeout_fires_before_outer": {
+      "p95_seconds": 0.306
+    },
+    "tests/unit/utils/test_timeout_manager_behavioral.py::TestNestedTimeoutContexts::test_inner_timeout_raises_without_affecting_outer": {
+      "p95_seconds": 0.305
+    },
+    "tests/unit/utils/test_timeout_manager_behavioral.py::TestTimeoutContextManagerConvenience::test_raise_on_timeout_false_returns_context": {
+      "p95_seconds": 0.306
+    },
+    "tests/unit/utils/test_timeout_manager_behavioral.py::TestTimeoutContextManagerConvenience::test_timeout_fires_when_work_is_slow": {
+      "p95_seconds": 0.305
+    },
+    "tests/unit/utils/test_timeout_manager_behavioral.py::TestTimeoutContextManagerConvenience::test_timeout_raises_by_default": {
+      "p95_seconds": 0.309
+    },
+    "tests/unit/utils/test_timeout_manager_behavioral.py::TestTimeoutContextUsagePatterns::test_timer_cleaned_up_after_timeout": {
+      "p95_seconds": 0.305
+    },
+    "tests/unit/utils/test_timeout_manager_behavioral.py::TestTimeoutErrorAttributes::test_error_from_context_has_correct_fields": {
+      "p95_seconds": 0.306
+    },
+    "tests/unit/workflows/test_nightly_t3_report_lifecycle.py::test_cancelled_leg_never_masks_a_failure_or_closes": {
+      "p95_seconds": 0.701
+    },
+    "tests/unit/workflows/test_nightly_t3_report_lifecycle.py::test_cancelled_on_open_issue_comments_without_closing": {
+      "p95_seconds": 0.465
+    },
+    "tests/unit/workflows/test_nightly_t3_report_lifecycle.py::test_cancelled_without_an_issue_changes_nothing": {
+      "p95_seconds": 0.446
+    },
+    "tests/unit/workflows/test_nightly_t3_report_lifecycle.py::test_failure_after_a_recent_close_reopens_and_comments": {
+      "p95_seconds": 0.822
+    },
+    "tests/unit/workflows/test_nightly_t3_report_lifecycle.py::test_failure_after_an_old_close_creates_a_new_issue": {
+      "p95_seconds": 0.758
+    },
+    "tests/unit/workflows/test_nightly_t3_report_lifecycle.py::test_failure_on_open_issue_with_new_signature_comments": {
+      "p95_seconds": 0.486
+    },
+    "tests/unit/workflows/test_nightly_t3_report_lifecycle.py::test_failure_on_open_issue_with_same_signature_adds_no_comment": {
+      "p95_seconds": 0.467
+    },
+    "tests/unit/workflows/test_nightly_t3_report_lifecycle.py::test_failure_on_open_issue_without_a_recorded_signature_comments": {
+      "p95_seconds": 0.769
+    },
+    "tests/unit/workflows/test_nightly_t3_report_lifecycle.py::test_failure_without_an_issue_creates_one": {
+      "p95_seconds": 0.754
+    },
+    "tests/unit/workflows/test_nightly_t3_report_lifecycle.py::test_mirror_leg_failure_after_database_leg_failure_comments_on_open_issue": {
+      "p95_seconds": 0.49
+    },
+    "tests/unit/workflows/test_nightly_t3_report_lifecycle.py::test_replay_of_the_durations_timeline_reopens_instead_of_creating": {
+      "p95_seconds": 0.99
+    },
+    "tests/unit/workflows/test_nightly_t3_report_lifecycle.py::test_signature_separates_mirror_legs_from_database_legs[docker-mirror-images-t3:docker]": {
+      "p95_seconds": 1.646
+    },
+    "tests/unit/workflows/test_nightly_t3_report_lifecycle.py::test_signature_separates_mirror_legs_from_database_legs[throughput-cedardb-mirror-cedardb-t3:throughput-cedardb]": {
+      "p95_seconds": 1.502
+    },
+    "tests/unit/workflows/test_nightly_t3_report_lifecycle.py::test_skipped_changes_nothing_even_with_an_open_issue": {
+      "p95_seconds": 0.701
+    },
+    "tests/unit/workflows/test_nightly_t3_report_lifecycle.py::test_success_on_open_issue_comments_and_closes": {
+      "p95_seconds": 0.737
+    },
+    "tests/unit/workflows/test_nightly_t3_report_lifecycle.py::test_success_without_an_issue_changes_nothing": {
+      "p95_seconds": 0.476
+    },
+    "tests/unit/workflows/test_nightly_t3_workflow.py::test_report_attributes_cedardb_mirror_failure_to_the_cedardb_domain": {
+      "p95_seconds": 0.826
+    },
+    "tests/unit/workflows/test_nightly_t3_workflow.py::test_report_keeps_mirror_failures_visible_and_optional_skips_unchanged[failure-skipped-False-create]": {
+      "p95_seconds": 0.789
+    },
+    "tests/unit/workflows/test_nightly_t3_workflow.py::test_report_keeps_mirror_failures_visible_and_optional_skips_unchanged[failure-success-False-create]": {
+      "p95_seconds": 0.596
+    },
+    "tests/unit/workflows/test_nightly_t3_workflow.py::test_report_keeps_mirror_failures_visible_and_optional_skips_unchanged[failure-success-True-comment]": {
+      "p95_seconds": 0.471
+    },
+    "tests/unit/workflows/test_nightly_t3_workflow.py::test_report_keeps_mirror_failures_visible_and_optional_skips_unchanged[success-failure-False-create]": {
+      "p95_seconds": 0.802
+    },
+    "tests/unit/workflows/test_nightly_t3_workflow.py::test_report_keeps_mirror_failures_visible_and_optional_skips_unchanged[success-skipped-True-None]": {
+      "p95_seconds": 0.737
+    },
+    "tests/unit/workflows/test_nightly_t3_workflow.py::test_report_keeps_mirror_failures_visible_and_optional_skips_unchanged[success-success-True-close]": {
+      "p95_seconds": 0.502
+    },
+    "tests/unit/workflows/test_nightly_t3_workflow.py::test_schedule_does_not_collide_with_other_workflows": {
+      "p95_seconds": 0.547
+    },
+    "tests/unit/workflows/test_nightly_throughput_uat_contract.py::test_throughput_jobs_have_only_read_permissions": {
+      "p95_seconds": 0.451
+    },
+    "tests/unit/workflows/test_release_canary_shard_evidence.py::test_a_real_pytest_run_publishes_real_per_test_durations": {
+      "p95_seconds": 0.796
+    },
+    "tests/unit/workflows/test_release_canary_shard_evidence.py::test_a_real_pytest_that_collected_nothing_is_not_published_as_a_capture": {
+      "p95_seconds": 0.691
+    },
+    "tests/unit/workflows/test_seed_corpus_pr_base.py::test_seed_pseudonyms_follow_the_salt": {
+      "p95_seconds": 4.095
+    },
+    "tests/unit/workflows/test_seed_corpus_pr_base.py::test_seed_staging_anonymizes_plans_companions": {
+      "p95_seconds": 1.177
+    },
+    "tests/unit/workflows/test_seed_corpus_pr_base.py::test_seed_staging_fails_closed_without_the_salt": {
+      "p95_seconds": 2.149
+    },
+    "tests/unit/workflows/test_seed_corpus_pr_base.py::test_seed_staging_redacts_applied_tuning_statements": {
+      "p95_seconds": 2.102
+    },
+    "tests/unit/workflows/test_seed_corpus_pr_base.py::test_seed_staging_refuses_plans_with_raw_explain_output": {
+      "p95_seconds": 1.285
+    },
+    "tests/unit/workflows/test_seed_corpus_pr_base.py::test_seed_workflow_never_stages_uncertain_bundles": {
+      "p95_seconds": 4.119
+    },
+    "tests/unit/workflows/test_seed_corpus_pr_base.py::test_seed_workflow_skips_unrankable_bundles[payload0-validation_not_clean]": {
+      "p95_seconds": 1.245
+    },
+    "tests/unit/workflows/test_seed_corpus_pr_base.py::test_seed_workflow_skips_unrankable_bundles[payload1-no_queries]": {
+      "p95_seconds": 1.218
+    },
+    "tests/unit/workflows/test_seed_corpus_pr_base.py::test_seed_workflow_skips_unrankable_bundles[payload2-insufficient_valid_queries]": {
+      "p95_seconds": 2.166
+    },
+    "tests/unit/workflows/test_seed_corpus_pr_base.py::test_seed_workflow_stages_clean_bundles_anonymized": {
+      "p95_seconds": 2.016
+    },
+    "tests/unit/workflows/test_stacked_pr_base_guard.py::test_stacked_pr_base_guard_passes_integration_bases[published-results-True]": {
+      "p95_seconds": 0.514
+    },
+    "tests/unit/workflows/test_trunk_workflow.py::test_builds_the_release_distribution_on_each_push_to_develop": {
+      "p95_seconds": 0.505
+    },
+    "tests/unit/workflows/test_validate_submission_corpus_allowlist.py::test_corpus_allowlist_step_fails_closed_on_disallowed_path": {
+      "p95_seconds": 2.228
+    },
+    "tests/unit/workflows/test_validate_submission_corpus_allowlist.py::test_corpus_allowlist_step_passes_for_only_supported_data": {
+      "p95_seconds": 2.077
+    }
+  }
+}
