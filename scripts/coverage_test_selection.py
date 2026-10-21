@@ -882,15 +882,17 @@ def junit_case_node_id(classname: str, name: str, file_attr: str | None = None) 
     return f"{node}::{name}", path
 
 
-def failed_node_ids(paths: list[Path]) -> tuple[list[str], int]:
+def failed_node_ids(paths: list[Path]) -> tuple[list[str], int, list[str]]:
     failed: set[str] = set()
     parsed = 0
+    unparsed: list[str] = []
     for path in paths:
         if not path.is_file():
             continue
         try:
             root = ET.parse(path).getroot()
         except (ET.ParseError, UnicodeDecodeError):
+            unparsed.append(str(path))
             continue
         parsed += 1
         for case in root.iter("testcase"):
@@ -898,12 +900,12 @@ def failed_node_ids(paths: list[Path]) -> tuple[list[str], int]:
                 continue
             node, _ = junit_case_node_id(case.get("classname", ""), case.get("name", ""), case.get("file"))
             failed.add(node)
-    return sorted(failed), parsed
+    return sorted(failed), parsed, unparsed
 
 
 def shadow_misses(selected: list[str], failed: list[str]) -> list[str]:
     have = set(selected)
-    files = {entry.split("::")[0] for entry in selected}
+    files = {entry for entry in selected if "::" not in entry}
     return sorted({node for node in failed if node not in have and node.split("::")[0] not in files})
 
 
@@ -941,11 +943,15 @@ def _cmd_misses(args: argparse.Namespace) -> int:
     junit_paths = _miss_junit_paths(args.junit)
     if not junit_paths:
         notes.append("no junit reports")
-    failed, parsed = failed_node_ids(junit_paths)
+    failed, parsed, unparsed = failed_node_ids(junit_paths)
     if junit_paths and not parsed:
         notes.append("no junit reports parsed")
+    notes.extend(f"cannot parse junit report {name}" for name in unparsed)
     report = miss_report(selected, failed)
-    report.update({"available": not notes, "reason": "; ".join(notes)})
+    if notes:
+        report.update({"missed": [], "would_escalate": None, "available": False, "reason": "; ".join(notes)})
+    else:
+        report.update({"available": True, "reason": ""})
     lines = ["## Shadow selection misses"]
     picked = f"{len(selected)} test" if len(selected) == 1 else f"{len(selected)} tests"
     broken = f"{len(failed)} test" if len(failed) == 1 else f"{len(failed)} tests"
@@ -953,12 +959,14 @@ def _cmd_misses(args: argparse.Namespace) -> int:
         lines.append(f"Shadow selection misses: not available ({'; '.join(notes)}).")
     elif not failed:
         lines.append(f"No failures in the medium-test shards; shadow selection of {picked} has nothing to miss.")
+        lines.append(f"Would escalate on misses: {'yes' if report['would_escalate'] else 'no'}.")
     elif not report["missed"]:
         lines.append(f"No misses: all {broken} were covered by the shadow selection of {picked}.")
+        lines.append(f"Would escalate on misses: {'yes' if report['would_escalate'] else 'no'}.")
     else:
         lines.append(f"Shadow selection of {picked} missed {len(report['missed'])} of {broken}.")
         lines.extend(f"- {node}" for node in report["missed"])
-    lines.append(f"Would escalate on misses: {'yes' if report['would_escalate'] else 'no'}.")
+        lines.append(f"Would escalate on misses: {'yes' if report['would_escalate'] else 'no'}.")
     for line in lines:
         _append_summary(args.summary, line)
     if args.json_out is not None:

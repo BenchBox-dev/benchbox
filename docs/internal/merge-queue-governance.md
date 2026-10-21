@@ -55,7 +55,7 @@ fails it. Checks run on the pull request head, which need not be current with
 
 ### Shadow selection miss report
 
-`core` also measures the shadow selection. After the heavy medium-test shards finish, the aggregate downloads the shard junit reports and the `coverage-selection-<pr>-<sha>` artifact, runs `scripts/coverage_test_selection.py misses`, and writes a `Shadow selection misses` section to the step summary plus a `coverage-selection-misses-<pr>-<sha>` artifact (`selected_count`, `failed`, `missed`, `would_escalate`). A failed test counts as missed when neither its node ID nor its file path was selected. The step reports only and never fails the job; missing inputs report `not available`.
+`core` also measures the shadow selection. After the heavy medium-test shards finish, the aggregate downloads the shard junit reports and the `coverage-selection-<pr>-<sha>` artifact, runs `scripts/coverage_test_selection.py misses`, and writes a `Shadow selection misses` section to the step summary plus a `coverage-selection-misses-<pr>-<sha>` artifact (`selected_count`, `failed`, `missed`, `would_escalate`). A failed test counts as missed when neither its node ID nor its bare file path is in the selection; a selected sibling node does not cover it. When the selection or any junit report is missing or unparseable, the step reports `not available` with no escalation verdict instead of a clean bill. The step reports only and never fails the job.
 
 ---
 

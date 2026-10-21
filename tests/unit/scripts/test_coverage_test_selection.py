@@ -997,8 +997,9 @@ def test_failed_node_ids_counts_failures_and_errors(tmp_path: Path) -> None:
             ("tests.unit.c.test_three", "test_skip", None),
         ],
     )
-    failed, parsed = sel.failed_node_ids([report])
+    failed, parsed, unparsed = sel.failed_node_ids([report])
     assert parsed == 1
+    assert unparsed == []
     assert failed == [
         "tests/unit/a/test_one.py::test_broke",
         "tests/unit/b/test_two.py::TestGroup::test_blew_up[param]",
@@ -1043,7 +1044,9 @@ def test_misses_cli_reports_not_available_on_missing_inputs(tmp_path: Path) -> N
     assert loaded["selected_count"] == 0
     assert loaded["failed"] == []
     assert loaded["missed"] == []
-    assert loaded["would_escalate"] is False
+    assert loaded["would_escalate"] is None
+    assert loaded["available"] is False
+    assert "Would escalate on misses:" not in body
 
 
 def test_misses_cli_lists_only_failures_outside_selection(tmp_path: Path) -> None:
@@ -1083,11 +1086,14 @@ def test_misses_cli_lists_only_failures_outside_selection(tmp_path: Path) -> Non
     body = summary.read_text(encoding="utf-8")
     assert "## Shadow selection misses" in body
     assert "tests/unit/z/test_nine.py::test_broke" in body
-    assert "tests/unit/a/test_one.py::test_flaky" not in body
+    assert "tests/unit/a/test_one.py::test_flaky" in body
     assert "tests/unit/b/test_two.py::TestGroup::test_bad" not in body
     loaded = json.loads(payload.read_text(encoding="utf-8"))
     assert loaded["selected_count"] == 2
-    assert loaded["missed"] == ["tests/unit/z/test_nine.py::test_broke"]
+    assert loaded["missed"] == [
+        "tests/unit/a/test_one.py::test_flaky",
+        "tests/unit/z/test_nine.py::test_broke",
+    ]
     assert loaded["would_escalate"] is True
 
 
@@ -1121,3 +1127,48 @@ def test_misses_cli_reports_clean_run_when_no_failures(tmp_path: Path) -> None:
     assert loaded["available"] is True
     assert loaded["missed"] == []
     assert loaded["would_escalate"] is False
+
+
+def test_shadow_misses_flags_unselected_sibling_node() -> None:
+    selected = ["tests/unit/a/test_one.py::test_keep", "tests/unit/b/test_two.py"]
+    assert sel.shadow_misses(selected, ["tests/unit/a/test_one.py::test_flaky"]) == [
+        "tests/unit/a/test_one.py::test_flaky"
+    ]
+    assert sel.shadow_misses(selected, ["tests/unit/b/test_two.py::TestGroup::test_bad"]) == []
+
+
+def test_misses_cli_reports_unavailable_on_corrupt_junit(tmp_path: Path) -> None:
+    selection = tmp_path / "coverage-selection.json"
+    selection.write_text(json.dumps({"selected": ["tests/unit/a/test_one.py::test_keep"]}), encoding="utf-8")
+    valid = tmp_path / "shard-0-junit.xml"
+    _write_junit(valid, [("tests.unit.a.test_one", "test_broke", "failure")])
+    corrupt = tmp_path / "shard-1-junit.xml"
+    corrupt.write_text("<testsuites><testsuite><testcase", encoding="utf-8")
+    summary = tmp_path / "summary.md"
+    payload = tmp_path / "misses.json"
+    assert (
+        sel.main(
+            [
+                "misses",
+                "--selection-in",
+                str(selection),
+                "--junit",
+                str(valid),
+                "--junit",
+                str(corrupt),
+                "--json-out",
+                str(payload),
+                "--summary",
+                str(summary),
+            ]
+        )
+        == 0
+    )
+    body = summary.read_text(encoding="utf-8")
+    assert "## Shadow selection misses" in body
+    assert "not available" in body
+    assert "Would escalate on misses:" not in body
+    loaded = json.loads(payload.read_text(encoding="utf-8"))
+    assert loaded["available"] is False
+    assert loaded["missed"] == []
+    assert loaded["would_escalate"] is None
