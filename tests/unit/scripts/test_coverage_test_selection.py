@@ -1129,6 +1129,23 @@ def test_misses_cli_reports_clean_run_when_no_failures(tmp_path: Path) -> None:
     assert loaded["would_escalate"] is False
 
 
+def test_misses_cli_reports_not_available_when_shards_are_missing(tmp_path: Path) -> None:
+    selection = tmp_path / "coverage-selection.json"
+    selection.write_text(json.dumps({"selected": ["tests/unit/a/test_one.py::test_keep"]}), encoding="utf-8")
+    reports = tmp_path / "junit"
+    reports.mkdir()
+    for shard in range(3):
+        _write_junit(reports / f"shard-{shard}-junit.xml", [("tests.unit.a.test_one", "test_keep", None)])
+    payload = tmp_path / "misses.json"
+    base = ["misses", "--selection-in", str(selection), "--junit", str(reports), "--json-out", str(payload)]
+    assert sel.main([*base, "--expected-shards", "4"]) == 0
+    loaded = json.loads(payload.read_text(encoding="utf-8"))
+    assert loaded["available"] is False
+    assert "only 3 of 4 shard junit reports parsed" in loaded["reason"]
+    assert sel.main([*base, "--expected-shards", "3"]) == 0
+    assert json.loads(payload.read_text(encoding="utf-8"))["available"] is True
+
+
 def test_shadow_misses_flags_unselected_sibling_node() -> None:
     selected = ["tests/unit/a/test_one.py::test_keep", "tests/unit/b/test_two.py"]
     assert sel.shadow_misses(selected, ["tests/unit/a/test_one.py::test_flaky"]) == [

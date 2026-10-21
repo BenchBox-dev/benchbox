@@ -946,6 +946,8 @@ def _cmd_misses(args: argparse.Namespace) -> int:
     failed, parsed, unparsed = failed_node_ids(junit_paths)
     if junit_paths and not parsed:
         notes.append("no junit reports parsed")
+    elif args.expected_shards is not None and parsed < args.expected_shards:
+        notes.append(f"only {parsed} of {args.expected_shards} shard junit reports parsed")
     notes.extend(f"cannot parse junit report {name}" for name in unparsed)
     report = miss_report(selected, failed)
     if notes:
@@ -1015,6 +1017,7 @@ def build_parser() -> argparse.ArgumentParser:
     misses_parser = sub.add_parser("misses")
     misses_parser.add_argument("--selection-in", type=Path, default=None)
     misses_parser.add_argument("--junit", type=Path, action="append", default=None)
+    misses_parser.add_argument("--expected-shards", type=int, default=None)
     misses_parser.add_argument("--json-out", type=Path, default=None)
     misses_parser.add_argument("--summary", type=Path, default=None)
     misses_parser.set_defaults(func=_cmd_misses)

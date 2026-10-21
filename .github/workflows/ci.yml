@@ -1517,6 +1517,7 @@ jobs:
           python scripts/coverage_test_selection.py misses \
             "${selection_args[@]}" \
             "${junit_args[@]}" \
+            --expected-shards 4 \
             --json-out coverage-selection-misses.json \
             --summary "$GITHUB_STEP_SUMMARY"
 
