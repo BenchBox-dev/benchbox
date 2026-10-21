@@ -218,6 +218,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   partitioning (`pg_get_partkeydef`) and clustering (`pg_index.indisclustered`, per
   partition) are verified against the catalog. A verification failure after commit
   records the durable statements as executed and the intent as not satisfied.
+- TPC-DI `EQ8` and `EQ6` now use decimal literals where the arithmetic is meant to be
+  exact. `EQ8` computes the error resolution rates as `45.0 / 50 * 100`,
+  `13.0 / 15 * 100`, `2.0 / 3 * 100` and `20.0 / 25 * 100`; `EQ6` computes the memory
+  headroom term as `(1000 - N) / 10.0`. Engines that apply integer division to integer
+  literals (PostgreSQL semantics, SQLite) previously returned a resolution rate of `0`
+  for `45 / 50 * 100` instead of `90`, and truncated the `EQ6` memory headroom
+  (`93` rather than `93.6`). The recorded EQ6 and EQ8 results in published TPC-DI
+  bundles hold timings and row counts only, so no recorded field changes.
 
 ### Fixed
 
