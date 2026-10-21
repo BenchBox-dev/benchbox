@@ -22909,6 +22909,15 @@
       "status": "done",
       "title": "BenchBox: adopt the first fork wheel (dialects, generator fixes, rewrite API) and add apply_rewrite"
     },
+    "sqlglot-fork-a1b-adopt-wheel-3": {
+      "claim": null,
+      "needs": [
+        "sqlglot-fork-a1-adopt-wrapper-wheel"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "BenchBox: adopt the fork wheel with the SQLite day-offset fix, BigQuery window NULLS handling and row-source rewrites"
+    },
     "sqlglot-fork-a2-adopt-adapter-wheel": {
       "claim": null,
       "needs": [

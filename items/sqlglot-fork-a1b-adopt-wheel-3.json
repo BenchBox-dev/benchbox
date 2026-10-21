@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Fork revision-bump PR merged; wheel built from a clean checkout at the recorded commit, verified (downstream.verify, make benchbox-dist, make benchbox-check); pin, hash and baseline updated.",
+    "Shipped-query corpus diff against 30.24.0.2 is in the PR body and every difference is explained; any difference outside the expected set stops for owner approval.",
+    "make pr-preflight, comment-policy-check, compat-docs-check, sqlglot-repro-retirement-check and typecheck pass; BenchBox PR merged; post-merge Trunk green."
+  ],
+  "description": "Fork main now contains merges after wheel 30.24.0.2: PR #23 (drop_literal_row_source, flatten_count_of_count; no FROM VALUES or DUAL in any dialect output), PR #24 (carried patch bigquery-window-nulls-ordering), PR #25 (carried patch sqlite-day-offset-date: whole-day offsets on DATE emit DATE(x,'n DAY') so the boundary-day row is kept), PR #26 (duckdb<2 CI constraint). Build and verify the next wheel (30.24.0.3) from a clean fork checkout at a recorded commit via a fork revision-bump PR as in PR #22, adopt it (pin, hash, baseline), refresh the golden corpus accepted sets, and run the full shipped-query translation corpus diff against 30.24.0.2. Expected differences: 28 queries on SQLite (TPC-DS 21/40 lower-bound BETWEEN, 13 upper-bound queries, obt equivalents, TPC-H 1) now use DATE(...) day offsets; Q17 variant 4 dead-leg dual forms; BigQuery value-window NULLS handling. Owner decisions already given: fix in fork and rerun SQLite results; most-correct-result rule.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-21T13:51:25Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f1ff7f0a8012422c853fabba5a15b3c6",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}
