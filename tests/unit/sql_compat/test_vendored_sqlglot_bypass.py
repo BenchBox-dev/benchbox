@@ -248,3 +248,19 @@ def test_wrapper_is_the_only_allowed_fork_rewrite_module():
     assert FORK_REWRITE_ALLOWED_PATHS == ("benchbox/_vendor/", "benchbox/utils/dialect_utils.py")
     allowed_wrapper = (REPO_ROOT / "benchbox/utils/dialect_utils.py").read_text(encoding="utf-8")
     assert imports_fork_rewrites(allowed_wrapper)
+
+
+def test_fork_ddl_scanner_detects_each_import_form():
+    assert imports_fork_rewrites("from benchbox._vendor.sqlglot.benchbox import ddl\n")
+    assert imports_fork_rewrites("from benchbox._vendor.sqlglot.benchbox.ddl import DdlOptions, transpile_ddl\n")
+    assert imports_fork_rewrites("from benchbox._vendor.sqlglot.benchbox.layout import TableLayout\n")
+    assert imports_fork_rewrites("import benchbox._vendor.sqlglot.benchbox.ddl_engines\n")
+    assert imports_fork_rewrites("import importlib\nimportlib.import_module('benchbox._vendor.sqlglot.benchbox.ddl')\n")
+
+
+def test_wrapper_exposes_translate_ddl_as_the_only_fork_ddl_entry():
+    from benchbox.utils import dialect_utils
+
+    assert callable(dialect_utils.translate_ddl)
+    offenders = [path for path in scan_fork_rewrite_imports() if path != "benchbox/utils/dialect_utils.py"]
+    assert offenders == []

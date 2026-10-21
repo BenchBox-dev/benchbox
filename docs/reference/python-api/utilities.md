@@ -275,6 +275,32 @@ print(
 SELECT 1 FROM lineitem WHERE l_discount BETWEEN 0.05 AND 0.07
 ```
 
+### DDL Translation
+
+#### `benchbox.utils.dialect_utils.translate_ddl`
+
+```python
+def translate_ddl(ddl: str, target_dialect: str, source_dialect: str = "standard", identify: bool = True, **options) -> list[str]: ...
+```
+
+Translates DDL for `target_dialect` and applies the structural changes of the bundled SQLGlot runtime's `DdlOptions`: constraint stripping, `CREATE OR REPLACE`, type maps, schema qualification and the engine-specific table layout. It returns one string per statement. It is the only sanctioned entry to the runtime's DDL module.
+
+**Parameters**:
+
+- `ddl`: one or more statements in `source_dialect`.
+- `target_dialect`, `source_dialect`: normalized like `translate_sql_query`. Identifier quoting is skipped for the dialects in `NO_IDENTIFY_DIALECTS`, as it is there.
+- `**options`: any `DdlOptions` field (`strip_primary_keys`, `strip_foreign_keys`, `or_replace`, `type_map`, `schema`, `table_suffix`, ...). `default_layout` and the values of `layouts` are `TableLayout` field mappings, and `singlestore` is a `SingleStoreKeys` field mapping. An unknown option raises `ValueError`.
+
+```python
+from benchbox.utils.dialect_utils import translate_ddl
+
+print(translate_ddl("CREATE TABLE t (a INT, b VARCHAR(10))", "clickhouse", source_dialect="duckdb", default_layout={"engine": "MergeTree()"}))
+```
+
+```text
+['CREATE TABLE t (a Nullable(Int32), b Nullable(String)) ENGINE=MergeTree() ORDER BY tuple()']
+```
+
 ## Execution Configuration
 
 ### `benchbox.utils.ExecutionConfigHelper`
