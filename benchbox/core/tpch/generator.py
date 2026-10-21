@@ -32,6 +32,7 @@ from benchbox.utils.datagen_manifest import (
     resolve_compression_metadata,
 )
 from benchbox.utils.file_format import COMPRESSION_EXTENSIONS, detect_data_format
+from benchbox.utils.filesystem_flush import flush_filesystem
 from benchbox.utils.scale_factor import format_scale_factor
 from benchbox.utils.stale_artifact_pruning import TableArtifactPattern, prune_stale_table_artifacts
 from benchbox.utils.tpc_compilation import CompilationStatus, ensure_tpc_binaries
@@ -554,8 +555,7 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
                     stderr=subprocess.PIPE,
                 )
 
-                with contextlib.suppress(FileNotFoundError, subprocess.SubprocessError):
-                    subprocess.run(["sync"], check=False, capture_output=True)
+                flush_filesystem(logger=self.logger)
 
                 import time
 

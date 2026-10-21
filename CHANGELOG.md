@@ -211,6 +211,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - BigQuery creates the store with `CREATE TABLE IF NOT EXISTS`; the adapter used
     to rewrite the plain `CREATE TABLE` to `CREATE OR REPLACE`, so each new manager
     emptied the table and its marker.
+- TPC-H and TPC-DS data generation no longer hang when the filesystem cannot
+  flush. Both ran the global `sync` command with no timeout; a process stuck in
+  uninterruptible I/O wait cannot be signalled, so generation waited as long as
+  the stall lasted. The flush now has a 30 second bound, is abandoned when it
+  does not finish, and logs a warning that timing measurements may include
+  unflushed writes.
 - Post-load clustering on PostgreSQL-family adapters no longer fails with
   `CLUSTER cannot run inside a transaction block`. Plain `postgresql` runs with a
   clustering or sorting tuning previously recorded the `CREATE INDEX` and `CLUSTER`
