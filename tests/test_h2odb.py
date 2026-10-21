@@ -17,6 +17,8 @@ from .fixtures.benchmark_test_mixin import BenchmarkTestMixin
 
 pytestmark = pytest.mark.medium
 
+GENERATE_DATA_SCALE_FACTOR = 0.01
+
 
 @pytest.mark.h2odb
 class TestH2ODB:
@@ -24,11 +26,12 @@ class TestH2ODB:
     def h2odb(self, small_scale_factor: float, temp_dir: Path) -> H2ODB:
         return H2ODB(scale_factor=small_scale_factor, output_dir=temp_dir)
 
-    @pytest.mark.timeout(600)
-    def test_generate_data(self, h2odb: H2ODB) -> None:
+    def test_generate_data(self, temp_dir: Path) -> None:
+        h2odb = H2ODB(scale_factor=GENERATE_DATA_SCALE_FACTOR, output_dir=temp_dir)
         data_paths = h2odb.generate_data()
 
         expected_tables = ["trips"]
+        expected_row_counts = {"trips": int(10_000_000 * GENERATE_DATA_SCALE_FACTOR)}
 
         assert isinstance(data_paths, dict), "generate_data should return a dictionary"
 
@@ -37,6 +40,10 @@ class TestH2ODB:
 
         for _table_name, path in data_paths.items():
             assert Path(path).exists(), f"Generated file {path} does not exist"
+
+        for table_name, expected_row_count in expected_row_counts.items():
+            with open(data_paths[table_name], encoding="utf-8") as data_file:
+                assert sum(1 for _ in data_file) == expected_row_count, table_name
 
     def test_get_queries(self, h2odb: H2ODB) -> None:
         queries = h2odb.get_queries()
