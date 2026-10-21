@@ -225,6 +225,21 @@ def named_changed_files(repo: Path, base_sha: str, head: str = "HEAD") -> list[C
     return [ChangedFile(path=name, old_path=name, status="modified") for name in out.splitlines() if name]
 
 
+def _emergency_fallback(repo: Path, base_sha: str) -> list[str]:
+    if not base_sha:
+        raise SelectionError("cannot compute a fallback selection without a base SHA")
+    try:
+        out = _git(repo, "diff", "--name-only", "--no-renames", f"{base_sha}...HEAD", "--")
+    except subprocess.CalledProcessError as exc:
+        raise SelectionError(f"cannot list {base_sha}...HEAD: {exc.stderr.strip()}") from exc
+    names = [line for line in out.splitlines() if line]
+    entries = [ChangedFile(path=name, old_path=name, status="modified") for name in names]
+    fallback = preflight_targets.map_tests(repo, _fallback_inputs(entries))
+    sources = [name for name in names if name.endswith(".py") and not _is_test_file(name)]
+    importers = source_importers(repo, sources)
+    return sorted(set(fallback) | {test for tests in importers.values() for test in tests})
+
+
 def probe_lines(start: int, count: int) -> list[int]:
     if count > 0:
         return list(range(start, start + count))
@@ -727,7 +742,11 @@ def _cmd_select(args: argparse.Namespace) -> int:
             map_note = "; ".join(note for note in (map_note, base_note) if note) or map_note
         result = select_tests(repo, mapping, files, base_sha, decision=decision, map_note=map_note)
     except Exception as exc:
-        fallback = preflight_targets.map_tests(repo, [])
+        try:
+            fallback = _emergency_fallback(repo, base_sha)
+        except Exception as fallback_exc:
+            print(f"coverage selection failed: {exc}; fallback failed: {fallback_exc}", file=sys.stderr)
+            return 2
         result = {
             "escalate": True,
             "reason": f"escalated to the full tier: coverage selection failed: {exc}",

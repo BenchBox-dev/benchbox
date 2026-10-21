@@ -936,7 +936,7 @@ jobs:
             exit 0
           fi
           echo "Medium tests selected by coverage impact: ${#node_ids[@]}"
-          printf '%s\n' "${node_ids[@]}" | head -n 50
+          printf '%s\n' "${node_ids[@]:0:50}"
           status=0
           BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest "${node_ids[@]}" \
             -m "medium and not (slow or stress or resource_heavy or live_integration)" \

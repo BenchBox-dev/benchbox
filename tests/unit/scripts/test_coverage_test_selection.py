@@ -729,6 +729,81 @@ def test_heavy_cli_accepts_a_selection_file(repo: Path, tmp_path: Path) -> None:
     assert heavy.main(["--decision-in", str(decision), "--selection-in", str(selection), "--repo-root", str(repo)]) == 0
 
 
+def test_select_parse_failure_falls_back_to_changed_paths(
+    repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    map_sha = _head(repo)
+    _write(repo, "scripts/tool.py", "x = 2\n")
+    _commit_all(repo)
+    map_path = tmp_path / "map.json"
+    map_path.write_text(json.dumps(_mapping(repo, map_sha)), encoding="utf-8")
+    nodeids = tmp_path / "nodeids.txt"
+    payload = tmp_path / "selection.json"
+
+    def _boom(header: str, block: list[str]) -> sel.ChangedFile:
+        raise sel.SelectionError("cannot parse diff block")
+
+    monkeypatch.setattr(sel, "parse_diff", _boom)
+    monkeypatch.chdir(repo)
+    assert (
+        sel.main(
+            [
+                "select",
+                "--map",
+                str(map_path),
+                "--base-sha",
+                map_sha,
+                "--nodeids-out",
+                str(nodeids),
+                "--json-out",
+                str(payload),
+                "--repo-root",
+                str(repo),
+            ]
+        )
+        == 0
+    )
+    result = json.loads(payload.read_text(encoding="utf-8"))
+    assert result["escalate"] is True
+    assert "coverage selection failed" in result["reason"]
+    selected = nodeids.read_text(encoding="utf-8").splitlines()
+    assert selected
+    assert "tests/unit/test_tool.py" in selected
+
+
+def test_select_total_failure_exits_nonzero(repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    map_sha = _head(repo)
+    _write(repo, "scripts/tool.py", "x = 2\n")
+    _commit_all(repo)
+    map_path = tmp_path / "map.json"
+    map_path.write_text(json.dumps(_mapping(repo, map_sha)), encoding="utf-8")
+    payload = tmp_path / "selection.json"
+
+    def _boom(*args: object, **kwargs: object) -> object:
+        raise sel.SelectionError("boom")
+
+    monkeypatch.setattr(sel, "parse_diff", _boom)
+    monkeypatch.setattr(sel.preflight_targets, "map_tests", _boom)
+    monkeypatch.chdir(repo)
+    assert (
+        sel.main(
+            [
+                "select",
+                "--map",
+                str(map_path),
+                "--base-sha",
+                map_sha,
+                "--json-out",
+                str(payload),
+                "--repo-root",
+                str(repo),
+            ]
+        )
+        == 2
+    )
+    assert not payload.is_file()
+
+
 def test_prune_missing_nodeids_keeps_collectable_and_file_targets(repo: Path) -> None:
     node_ids = [
         "tests/unit/core/test_engine.py::test_x",
