@@ -159,5 +159,6 @@ tests/unit/workflows/test_validate_submission_override_approval.py
 tests/unit/workflows/test_validate_submission_trusted_checkout.py
 tests/unit/workflows/test_validate_submission_vendor_gate.py
 tests/unit/workflows/test_validate_submission_workflow_guard_mirror.py
+tests/unit/workflows/test_windows_fast_workflow.py
 tests/unit/workflows/test_workflow_context_availability.py
 tests/unit/workflows/test_workflow_expression_contexts.py
