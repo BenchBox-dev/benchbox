@@ -2,6 +2,7 @@
   "acceptance": [
     "Owner decision recorded; if yes, release.yml publishes through Trusted Publishing"
   ],
+  "context": "Closed by owner decision: the ship-no-ship design is not being pursued at present.",
   "description": "Plan owner action O12, a separate later decision. Create the PyPI projects and a Trusted Publisher. BenchBox keeps the vendored hash-pinned wheel as its trust root either way.",
   "sessions": [
     {
@@ -11,6 +12,14 @@
       "op": "create",
       "op_id": "5a3c083dc2bd40f4967d4ad9c765b1d8",
       "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T20:24:04Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "be42a926412a4610b433b36e639ec9fb",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
     }
   ]
 }
