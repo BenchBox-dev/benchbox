@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Heavy jobs and the core aggregate expectations depend on heavy-needed alone",
+    "A PR changing only scripts/heavy_tier_needed.py runs medium-test shards 0-3 and correctness-gate (observed on a real run)",
+    "A PR changing only .github/path-filters.yml runs the heavy tier; router files are in SELECTION_LOGIC_PATHS and .github/soundness-paths.txt; the selection-logic check runs before the needs_code_ci return",
+    "path_filter_decision evaluates the base copy of path-filters.yml (unit test with a PR that edits the rules)",
+    "Test modules develop added or changed since the map SHA are selected (unit test)"
+  ],
+  "description": "ci.yml gates the heavy jobs on heavy-needed == 'true' && unit-core == 'true' (ci.yml:967, 1019, 1108; core aggregate 1475, 1483, 1500-1502). unit-core excludes scripts/**, _project/scripts/** and .github/**, so a PR changing only scripts/coverage_test_selection.py, scripts/path_filter_decision.py or .github/path-filters.yml gets heavy_needed=true and still no heavy tier. Also: .github/path-filters.yml, scripts/path_filter_decision.py, scripts/ci_units.py and .github/ci-units.yml are not selection-logic or soundness paths; heavy_tier_needed returns before the selection-logic check when needs_code_ci is false; path_filter_decision reads path-filters.yml from the PR checkout (DEFAULT_RULES, :17) instead of the base. Also add test modules that develop added or changed between the map SHA and the PR base to the selection (tests added after the map are otherwise invisible).",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T12:44:31Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "2dbcb4c0e7654eaab3a32f8a9861c344",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
+    }
+  ]
+}

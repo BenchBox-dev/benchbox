@@ -2924,6 +2924,15 @@
       "status": "done",
       "title": "CI `test (ubuntu-latest, 3.12)` hits its 45-minute timeout while the same suite takes about 6.5 minutes locally"
     },
+    "ci-heavy-tier-runs-on-escalation-20261021": {
+      "claim": null,
+      "needs": [
+        "cov-select-shadow-mode-20261021"
+      ],
+      "priority": "critical",
+      "status": "open",
+      "title": "Run the heavy tier whenever heavy-tier escalation says so, and route CI-router changes to it"
+    },
     "ci-lint-local-parity-pin": {
       "claim": null,
       "needs": [
