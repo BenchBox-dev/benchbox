@@ -15486,6 +15486,13 @@
       "status": "done",
       "title": "Make the oracle coverage map disclose oracle STRENGTH and SCALE, not just existence"
     },
+    "oracle-evidence-crediting-20261021": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Credit oracle evidence only for files actually read"
+    },
     "oracle-followup-read-bypass-out-of-scope-defect-20261009": {
       "claim": null,
       "needs": [],
