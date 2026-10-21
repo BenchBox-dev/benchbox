@@ -1552,7 +1552,7 @@ class BigQueryAdapter(PlatformAdapter):
             if re.sub(r"[^a-z0-9]", "", (benchmark_type or "").lower()).startswith("tpcdi"):
                 translated_query = self._apply_tpcdi_bigquery_rewrites(translated_query)
 
-            translated_query = self._safeguard_division_by_zero(translated_query)
+            translated_query = self._apply_safe_division(translated_query)
 
             if "`" in translated_query:
                 translated_query = self._normalize_table_names_case(translated_query)
@@ -2137,6 +2137,20 @@ class BigQueryAdapter(PlatformAdapter):
         from benchbox.platforms.cloud_shared import rewrite_tpcdi_for_bigquery
 
         return rewrite_tpcdi_for_bigquery(query)
+
+    def _apply_safe_division(self, query: str) -> str:
+        if "/" not in query:
+            return query
+
+        from benchbox.utils.dialect_utils import apply_rewrite, contains_division
+
+        try:
+            if not contains_division(query, "bigquery"):
+                return query
+            return apply_rewrite("safe_division", query, "bigquery")
+        except Exception as e:
+            self.log_very_verbose(f"Division safeguard skipped (unparseable BigQuery SQL): {e}")
+            return query
 
     def _safeguard_division_by_zero(self, query: str) -> str:
         try:
