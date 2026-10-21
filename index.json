@@ -15820,15 +15820,10 @@
       "title": "muse SHIP verdicts on file-list briefs are self-attested"
     },
     "oracle-standin-arming-digest-20261021": {
-      "claim": {
-        "expires_at": "2026-10-22T18:01:20Z",
-        "generation": "f1f6e87aaeae41849ea6e118ae1f6613",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Report stand-in overrides of any severity and PRs armed while Trunk was red"
     },
     "oracle-standin-doc-contradicts-checker": {
