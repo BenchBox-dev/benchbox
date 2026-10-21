@@ -447,6 +447,12 @@ def test_worktree_create_succeeds_when_invoked_from_a_linked_worktree(tmp_path: 
     assert created.returncode == 0, created.stderr
     _git(first, "config", "--worktree", "benchbox.seeded-inherited", "leaked", env=env)
 
+    probe = tmp_path / "wt-probe"
+    _git(first, "worktree", "add", "-q", "-b", "fix/probe", str(probe), "origin/develop", env=env)
+    assert _git(probe, "config", "--worktree", "--get", "benchbox.seeded-inherited", env=env) == "leaked"
+    assert _git(probe, "config", "--worktree", "--get", "benchbox.worktree.lifecycle-id", env=env)
+    _git(first, "worktree", "remove", "--force", str(probe), env=env)
+
     nested = create(first, "fix/revert-1", second)
     assert nested.returncode == 0, nested.stderr
 
