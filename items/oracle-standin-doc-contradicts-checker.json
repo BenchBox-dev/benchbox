@@ -4,7 +4,7 @@
     "A unit test pins that a stand-in with extra text is rejected and an exact one accepted (extend tests/unit/scripts/test_oracle_review_check.py if not already covered).",
     "Document, or fix, that both oracle-review runs must be rerun after a stand-in or thread resolution."
   ],
-  "context": "Delivered in the same PR as oracle-standin-arming-digest-20261021; finish both together.",
+  "context": "Done in #3230 (merge dc01122e9): docs/agent/merge-authority.md states the exact stand-in body, the owner's instruction in a separate comment, and that both oracle-review runs need a rerun after a stand-in or thread resolution; exact-form acceptance and extra-text rejection are covered by existing checker and digest tests.",
   "description": "docs/agent/merge-authority.md says to quote the owner's instruction in the stand-in comment, but _project/scripts/oracle_review_check.py matches the whole comment body against 'Stand-in oracle review: APPROVE <sha>' (fullmatch), so any extra text makes the attestation invalid. A comment with a quote failed during PR #3139 and cost two check cycles. Related: the two oracle-review runs (synchronize, submitted) each need a manual rerun after a stand-in or thread resolution.",
   "links": [
     "docs/agent/merge-authority.md",
@@ -34,6 +34,14 @@
       "generation": "0ba9083119d24f4db38ecb9e9ec3d34a",
       "op": "take",
       "op_id": "50053f47f9564813be300cac58ff78cd",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T18:01:33Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c3f556a91ceb49828f2e873733ebb8d5",
       "session_id": "a9046e3fb7d74eefb823245a0b359b69"
     }
   ]
