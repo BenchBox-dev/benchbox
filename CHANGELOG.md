@@ -175,6 +175,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A pull request title or body edit no longer leaves an armed pull request blocked
+  with every required check green. The CI run such an edit starts now reports each
+  required check (`core`, `explorer`, `results-data`, `docs`, `tooling`) by copying
+  the verdict of the newest full CI run on the same head commit, waiting while that
+  run is in progress. Before, its required jobs were skipped under other names, and
+  GitHub kept the pull request blocked until a push or a close and reopen started a
+  full run.
+
 - Post-load clustering on PostgreSQL-family adapters no longer fails with
   `CLUSTER cannot run inside a transaction block`. Plain `postgresql` runs with a
   clustering or sorting tuning previously recorded the `CREATE INDEX` and `CLUSTER`

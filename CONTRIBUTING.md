@@ -101,7 +101,8 @@ The canonical loop is **branch → edit → preflight → `make pr-open` → arm
    and body fields that differ from the current text, together in one request. Omitting a field preserves it;
    line-ending and trailing-whitespace differences do not cause an edit. Pass the final text when you open the PR;
    after a fix, update it in the `make pr-open` that pushes the fix. Leave out figures that change with each push,
-   such as test counts. Use `make pr-rerun`, not a title or body edit, to retry CI.
+   such as test counts. Use `make pr-rerun`, not a title or body edit, to retry CI: an edit runs no tests and
+   only copies the verdict of the newest full CI run on the same commit.
 
 5. **Arm it and monitor until it merges:**
 

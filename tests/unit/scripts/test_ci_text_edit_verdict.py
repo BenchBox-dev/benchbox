@@ -1,0 +1,82 @@
+from __future__ import annotations
+
+from typing import Any
+
+import pytest
+
+from scripts.ci_text_edit_verdict import FAIL, PASS, TEXT_EDIT_RUN_NAME, WAIT, decide
+
+pytestmark = [pytest.mark.unit, pytest.mark.fast]
+
+CURRENT = 500
+REPO_RUNS = "https://github.com/o/r/actions/runs"
+
+
+def run(run_id: int, status: str = "completed", title: str = "CI") -> dict[str, Any]:
+    return {"id": run_id, "status": status, "display_title": title}
+
+
+def check(
+    run_id: int, conclusion: str | None, *, name: str = "core", started: str = "2026-10-21T10:00:00Z", check_id: int = 1
+) -> dict[str, Any]:
+    return {
+        "id": check_id,
+        "name": name,
+        "status": "completed" if conclusion else "in_progress",
+        "conclusion": conclusion,
+        "started_at": started,
+        "html_url": f"{REPO_RUNS}/{run_id}/job/{check_id}",
+    }
+
+
+def test_copies_success_from_the_full_run() -> None:
+    assert (
+        decide("core", CURRENT, [run(100), run(CURRENT, "in_progress", TEXT_EDIT_RUN_NAME)], [check(100, "success")])[0]
+        == PASS
+    )
+
+
+@pytest.mark.parametrize("conclusion", ["failure", "cancelled", "skipped", "timed_out"])
+def test_anything_but_success_fails(conclusion: str) -> None:
+    assert decide("core", CURRENT, [run(100)], [check(100, conclusion)])[0] == FAIL
+
+
+def test_waits_while_a_full_run_is_in_progress_even_after_an_older_success() -> None:
+    runs = [run(100), run(200, "in_progress")]
+    assert decide("core", CURRENT, runs, [check(100, "success")])[0] == WAIT
+
+
+def test_the_newest_full_run_decides() -> None:
+    runs = [run(100), run(200)]
+    assert (
+        decide("core", CURRENT, runs, [check(100, "success", check_id=1), check(200, "failure", check_id=2)])[0] == FAIL
+    )
+    assert (
+        decide("core", CURRENT, runs, [check(100, "failure", check_id=1), check(200, "success", check_id=2)])[0] == PASS
+    )
+
+
+def test_a_rerun_attempt_in_the_same_run_supersedes_the_first() -> None:
+    checks = [
+        check(100, "failure", started="2026-10-21T10:00:00Z", check_id=1),
+        check(100, "success", started="2026-10-21T11:00:00Z", check_id=2),
+    ]
+    assert decide("core", CURRENT, [run(100)], checks)[0] == PASS
+
+
+def test_text_edit_runs_never_count_as_full_runs() -> None:
+    runs = [run(300, title=TEXT_EDIT_RUN_NAME)]
+    assert decide("core", CURRENT, runs, [check(300, "success")])[0] == WAIT
+
+
+def test_waits_when_no_full_run_exists() -> None:
+    assert decide("core", CURRENT, [run(CURRENT, "in_progress", TEXT_EDIT_RUN_NAME)], [])[0] == WAIT
+
+
+def test_fails_when_the_full_run_reported_no_such_check() -> None:
+    assert decide("core", CURRENT, [run(100)], [check(100, "success", name="docs")])[0] == FAIL
+
+
+def test_ignores_checks_from_other_workflows_and_unfinished_checks() -> None:
+    checks = [check(999, "success", check_id=1), check(100, None, check_id=2)]
+    assert decide("core", CURRENT, [run(100)], checks)[0] == FAIL

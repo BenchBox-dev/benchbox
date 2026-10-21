@@ -8,6 +8,8 @@ from typing import Any
 import pytest
 import yaml
 
+from scripts.ci_text_edit_verdict import TEXT_EDIT_RUN_NAME
+
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -15,6 +17,7 @@ WORKFLOW = ROOT / ".github/workflows/ci.yml"
 ADMIN_SETTINGS = ROOT / "docs/internal/repo-admin-settings.md"
 TEXT_EDIT = "github.event.action == 'edited' && !github.event.changes.base"
 ROOT_JOBS = ("comment-policy", "ci-paths")
+VERDICT_JOB = "text-edit-verdict"
 RUN_ID = 900
 PR_NUMBER = 42
 
@@ -195,6 +198,8 @@ def name_problems(workflow: dict[str, Any], required: set[str]) -> list[str]:
     problems: list[str] = []
     published: set[str] = set()
     for job_id, job in workflow["jobs"].items():
+        if job_id == VERDICT_JOB:
+            continue
         name = str(job.get("name", job_id))
         for label, event in {**TEXT_EVENTS, **OTHER_EVENTS}.items():
             value = str(evaluate(name, event)) if "github.event" in name else name
@@ -203,6 +208,14 @@ def name_problems(workflow: dict[str, Any], required: set[str]) -> list[str]:
             if label not in TEXT_EVENTS:
                 published.add(value)
     problems += [f"no job publishes required name {name!r}" for name in sorted(required - published)]
+    verdict = workflow["jobs"].get(VERDICT_JOB)
+    if verdict is None:
+        return [*problems, f"no {VERDICT_JOB} job reports the required names on a text edit"]
+    if verdict.get("name") != "${{ matrix.unit }}":
+        problems.append(f"{VERDICT_JOB} is not named after its matrix unit")
+    units = set(verdict.get("strategy", {}).get("matrix", {}).get("unit", []))
+    problems += [f"a text edit reports no {name!r} check" for name in sorted(required - units)]
+    problems += [f"a text edit reports {name!r}, which is not a required check" for name in sorted(units - required)]
     return problems
 
 
@@ -210,6 +223,19 @@ def guard_problems(workflow: dict[str, Any]) -> list[str]:
     jobs = workflow["jobs"]
     problems: list[str] = []
     for job_id, job in jobs.items():
+        if job_id == VERDICT_JOB:
+            condition = str(job.get("if", "${{ true }}"))
+            problems += [
+                f"{job_id} skips a {label} edit"
+                for label, event in TEXT_EVENTS.items()
+                if not evaluate(condition, event)
+            ]
+            problems += [
+                f"{job_id} runs on {label}" for label, event in OTHER_EVENTS.items() if evaluate(condition, event)
+            ]
+            if _needs(job):
+                problems.append(f"{job_id} waits on jobs that a text edit skips")
+            continue
         guarded = job_id in ROOT_JOBS or _runs_after_skips(job)
         if guarded:
             for label, event in TEXT_EVENTS.items():
@@ -220,6 +246,21 @@ def guard_problems(workflow: dict[str, Any]) -> list[str]:
                     problems.append(f"{job_id} does not run on {label}")
         elif not _reaches_paths(jobs, job_id):
             problems.append(f"{job_id} neither carries the text-edit guard nor needs ci-paths")
+    return problems
+
+
+def run_name_problems(workflow: dict[str, Any]) -> list[str]:
+    run_name = str(workflow.get("run-name", ""))
+    problems = [
+        f"a {label} edit run is not named {TEXT_EDIT_RUN_NAME!r}"
+        for label, event in TEXT_EVENTS.items()
+        if evaluate(run_name, event) != TEXT_EDIT_RUN_NAME
+    ]
+    problems += [
+        f"a {label} run is named like a text edit"
+        for label, event in OTHER_EVENTS.items()
+        if evaluate(run_name, event) == TEXT_EDIT_RUN_NAME
+    ]
     return problems
 
 
@@ -242,12 +283,16 @@ def test_only_text_edits_count_as_text_edits() -> None:
     assert not any(evaluate(TEXT_EDIT, event) for event in OTHER_EVENTS.values())
 
 
-def test_text_edit_runs_publish_no_required_check_name() -> None:
+def test_text_edit_runs_publish_required_names_only_from_the_verdict_job() -> None:
     assert name_problems(_workflow(), _required_names()) == []
 
 
-def test_text_edit_runs_execute_no_job() -> None:
+def test_text_edit_runs_execute_only_the_verdict_job() -> None:
     assert guard_problems(_workflow()) == []
+
+
+def test_text_edit_runs_are_named_so_the_verdict_job_ignores_them() -> None:
+    assert run_name_problems(_workflow()) == []
 
 
 def test_text_edit_runs_cancel_nothing() -> None:
@@ -288,6 +333,26 @@ def _shared_group(workflow: dict[str, Any]) -> None:
     workflow["concurrency"]["group"] = "ci-${{ github.event.pull_request.number || github.ref }}"
 
 
+def _verdict_on_every_event(workflow: dict[str, Any]) -> None:
+    workflow["jobs"][VERDICT_JOB]["if"] = "${{ true }}"
+
+
+def _verdict_waits_on_ci_paths(workflow: dict[str, Any]) -> None:
+    workflow["jobs"][VERDICT_JOB]["needs"] = ["ci-paths"]
+
+
+def _verdict_drops_a_unit(workflow: dict[str, Any]) -> None:
+    workflow["jobs"][VERDICT_JOB]["strategy"]["matrix"]["unit"].remove("docs")
+
+
+def _verdict_removed(workflow: dict[str, Any]) -> None:
+    del workflow["jobs"][VERDICT_JOB]
+
+
+def _run_name_unmarked(workflow: dict[str, Any]) -> None:
+    workflow["run-name"] = "CI"
+
+
 @pytest.mark.parametrize(
     ("change", "check"),
     [
@@ -296,6 +361,11 @@ def _shared_group(workflow: dict[str, Any]) -> None:
         (_descendant_always, "guards"),
         (_root_unguarded, "guards"),
         (_shared_group, "concurrency"),
+        (_verdict_on_every_event, "guards"),
+        (_verdict_waits_on_ci_paths, "guards"),
+        (_verdict_drops_a_unit, "names"),
+        (_verdict_removed, "names"),
+        (_run_name_unmarked, "run-name"),
     ],
 )
 def test_checks_catch_regressions(change: Any, check: str) -> None:
@@ -304,5 +374,7 @@ def test_checks_catch_regressions(change: Any, check: str) -> None:
         assert name_problems(workflow, _required_names())
     elif check == "guards":
         assert guard_problems(workflow)
+    elif check == "run-name":
+        assert run_name_problems(workflow)
     else:
         assert concurrency_problems(workflow)

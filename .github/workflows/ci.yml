@@ -1,4 +1,5 @@
 name: CI
+run-name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'CI (text edit)' || 'CI' }}
 
 
 env:
@@ -1710,3 +1711,33 @@ jobs:
           set -euo pipefail
           gh run cancel "${{ github.run_id }}" --repo "${{ github.repository }}" || true
           sleep 90
+
+  text-edit-verdict:
+    name: ${{ matrix.unit }}
+    if: ${{ github.event.action == 'edited' && !github.event.changes.base }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      actions: read
+      checks: read
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        unit: [core, explorer, results-data, docs, tooling]
+    steps:
+      - name: Checkout the verdict helper
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          sparse-checkout: scripts/ci_text_edit_verdict.py
+          sparse-checkout-cone-mode: false
+
+      - name: Report the full CI run's verdict for this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          python scripts/ci_text_edit_verdict.py --repo "${{ github.repository }}"
+          --sha "${{ github.event.pull_request.head.sha }}" --unit "${{ matrix.unit }}"
+          --run-id "${{ github.run_id }}"
