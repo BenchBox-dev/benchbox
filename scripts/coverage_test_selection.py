@@ -112,6 +112,10 @@ def _junit_failed_nodeids(junit_files: list[Path], repo: Path) -> list[str]:
             if not name:
                 continue
             filename = _junit_case_filename(repo, (case.get("file") or "").strip(), classname)
+            if filename is not None:
+                module = filename[:-3].replace("/", ".") if filename.endswith(".py") else filename
+                if classname and classname != module and not classname.startswith(module + "."):
+                    filename = _junit_case_filename(repo, "", classname)
             if filename is None:
                 continue
             module = filename[:-3].replace("/", ".") if filename.endswith(".py") else filename
@@ -120,7 +124,7 @@ def _junit_failed_nodeids(junit_files: list[Path], repo: Path) -> list[str]:
             elif classname.startswith(module + "."):
                 parts = [filename, *classname[len(module) + 1 :].split("."), name]
             else:
-                parts = [filename, classname.replace(".", "::"), name]
+                continue
             failed.add("::".join(part for part in parts if part))
     return sorted(failed)
 
@@ -1151,17 +1155,23 @@ def _junit_module_parts(classname: str) -> tuple[list[str], list[str]]:
     return parts, extra
 
 
-def junit_case_node_id(classname: str, name: str, file_attr: str | None = None) -> tuple[str, str]:
+def junit_case_node_id(
+    classname: str, name: str, file_attr: str | None = None, repo: Path | None = None
+) -> tuple[str, str]:
+    filename: str | None = None
+    if repo is not None:
+        filename = _junit_case_filename(repo, file_attr or "", classname)
+    if filename is None:
+        filename = file_attr
     path: str | None = None
     extra: list[str] = []
-    if file_attr:
-        stem = file_attr[: -len(".py")] if file_attr.endswith(".py") else file_attr
+    if filename:
+        stem = filename[: -len(".py")] if filename.endswith(".py") else filename
         dotted = stem.replace("/", ".")
-        if not classname or classname == dotted:
-            path = file_attr
-        elif classname.startswith(dotted + "."):
-            path = file_attr
-            extra = classname[len(dotted) + 1 :].split(".")
+        if not classname or classname == dotted or classname.startswith(dotted + "."):
+            path = filename
+            if classname and classname != dotted:
+                extra = classname[len(dotted) + 1 :].split(".")
     if path is None:
         module, extra = _junit_module_parts(classname)
         path = "/".join(module) + ".py"
@@ -1169,7 +1179,7 @@ def junit_case_node_id(classname: str, name: str, file_attr: str | None = None) 
     return f"{node}::{name}", path
 
 
-def failed_node_ids(paths: list[Path]) -> tuple[list[str], int, list[str]]:
+def failed_node_ids(paths: list[Path], repo: Path | None = None) -> tuple[list[str], int, list[str]]:
     failed: set[str] = set()
     parsed = 0
     unparsed: list[str] = []
@@ -1185,7 +1195,7 @@ def failed_node_ids(paths: list[Path]) -> tuple[list[str], int, list[str]]:
         for case in root.iter("testcase"):
             if case.find("failure") is None and case.find("error") is None:
                 continue
-            node, _ = junit_case_node_id(case.get("classname", ""), case.get("name", ""), case.get("file"))
+            node, _ = junit_case_node_id(case.get("classname", ""), case.get("name", ""), case.get("file"), repo)
             failed.add(node)
     return sorted(failed), parsed, unparsed
 
@@ -1230,7 +1240,7 @@ def _cmd_misses(args: argparse.Namespace) -> int:
     junit_paths = _miss_junit_paths(args.junit)
     if not junit_paths:
         notes.append("no junit reports")
-    failed, parsed, unparsed = failed_node_ids(junit_paths)
+    failed, parsed, unparsed = failed_node_ids(junit_paths, args.repo_root)
     if junit_paths and not parsed:
         notes.append("no junit reports parsed")
     elif args.expected_shards is not None and parsed < args.expected_shards:

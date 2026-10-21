@@ -322,6 +322,21 @@ def test_build_map_derives_failed_nodes_without_file_attributes(tmp_path: Path, 
     assert mapping["failed_nodes"] == ["tests/unit/core/test_engine.py::test_x"]
 
 
+def test_build_map_derives_failed_nodes_from_classname_on_file_mismatch(tmp_path: Path, repo: Path) -> None:
+    base = str(repo / "benchbox/base.py")
+    data = _coverage_data(tmp_path, {base: {4: ["tests/test_benchbox.py::test_translate|run"]}})
+    junit = tmp_path / "junit.xml"
+    junit.write_text(
+        '<?xml version="1.0"?><testsuite>'
+        '<testcase file="tests/unit/a/test_base.py" classname="tests.unit.core.test_engine.TestSub"'
+        ' name="test_inherited"><failure>boom</failure></testcase>'
+        "</testsuite>",
+        encoding="utf-8",
+    )
+    mapping = sel.build_map([data], repo, _head(repo), junit_files=[junit])
+    assert mapping["failed_nodes"] == ["tests/unit/core/test_engine.py::TestSub::test_inherited"]
+
+
 def test_build_map_rejects_a_junit_shortfall_against_the_data_files(tmp_path: Path, repo: Path) -> None:
     data = _coverage_data(tmp_path, {str(repo / "benchbox/base.py"): {4: ["tests/test_benchbox.py::test_translate"]}})
     out = tmp_path / "map.json"
