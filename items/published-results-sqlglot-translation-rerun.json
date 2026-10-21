@@ -4,7 +4,7 @@
     "Each affected result is marked per the results provenance policy (flagged or superseded) or scheduled for rerun; the decision per group is recorded.",
     "No live-cloud runs are performed without owner approval; local-engine reruns are listed separately from cloud reruns."
   ],
-  "context": "Added from the ClickHouse safe-division adoption (PR #3235, merge 97cdb5c62): TPC-H Q14 and TPC-DS Q12, Q20, Q49, Q98 on ClickHouse now wrap divisors the old regex missed in nullIf(x, 0); results differ only when a zero divisor occurs (error/inf -> NULL). execution_time_seconds for ClickHouse no longer includes the rewrite (small timing shift). Also: the ClickHouse transform now raises ParseError on SQL SQLGlot cannot parse, while the Databricks and Snowflake paths return the query unchanged; D5 (sqlglot-fork-d5-delete-clickhouse-starrocks-rewrites) must make this consistent (pass unparseable SQL through unchanged, matching the other adapters, unless owner says otherwise).",
+  "context": "SQLite exact-division adoption (owner accepted all 90 changed texts, 2026-10-21): published SQLite bundles in results-data/bundles that ran changed queries and need local SQLite rerun/replacement (SQLite reruns approved, local only; bundles not modified by agents): coffeeshop sf001/sf01/sf1 (QC1, SA1, SA3, SA4; QC1 and SA3 rows change), read_primitives sf001/sf01 (decimal_arithmetic, timeseries_trend_analysis), tpch sf001/sf01/sf1 (Q8, rows identical), tpch_skew sf001/sf01/sf1 (Q8, rows identical), tpcds sf1 (Q1 only; unaffected). TPC-DI EQ6/EQ8 are corrected at the query text in a separate PR (EQ8 resolution rate 0 -> 90 on integer-division engines). Earlier-recorded: published SQLite TPC-H/Skew Q1 bundles rows identical; no published bundle contains TPC-DS Q21/Q40 (boundary-day fix unaffected). Further SQLite findings (loader empty-text NULLs, integer division in TPC-DS Q21, Havoc 1_v7/1_v9) are separate items.",
   "description": "Two accepted translation changes (BenchBox PRs 3189 and 3185, 2026-10-21) alter the SQL BenchBox generates, so results published before them used different SQL. Affected: TPC-DI AQ5, AQ6, AQ9 on mysql, doris, starrocks and singlestore (STDDEV was population deviation, now STDDEV_SAMP); read_primitives statistical_variance_stddev on the same four dialects; read_primitives array_sort and array_distinct on duckdb (LIST_SORT); approx_quantile_groupby on bigquery (APPROX_QUANTILES(x,2)[1]); pivot_basic on starrocks (PIVOT was dropped); ClickBench on sqlite Q19 and Q43 and on datafusion, netezza, ansi, standard, vertica and greenplum (previously ran untranslated ClickHouse text). The release notes already state this. Decide per published result whether to flag it, supersede it or rerun it.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3189",
@@ -34,6 +34,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "4d6f996a868845dba7e137522ec63b36",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-21T22:04:20Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5e568fbc8a18478d84f5d0c22adc5dae",
       "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
     }
   ]
