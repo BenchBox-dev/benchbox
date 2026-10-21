@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -217,25 +218,44 @@ def test_validation_sanitizes_and_truncates_text() -> None:
     assert REDACTED in finding.detail
 
 
-def _omp_line(text: str, role: str = "assistant", block_type: str = "text") -> str:
-    return json.dumps({"message": {"role": role, "content": [{"type": block_type, "text": text}]}})
+def _omp_line(text: str, role: str = "assistant", block_type: str = "text", event: str = "message_end") -> str:
+    return json.dumps({"type": event, "message": {"role": role, "content": [{"type": block_type, "text": text}]}})
 
 
-def test_extract_omp_text_concatenates_assistant_text_in_order() -> None:
-    stdout = "\n".join([_omp_line("first "), _omp_line("second")])
-    assert extract_omp_text(stdout) == "first second"
+def test_extract_omp_text_keeps_only_the_final_assistant_message() -> None:
+    stdout = "\n".join(
+        [
+            _omp_line("Let me read the diff first.", event="message_start"),
+            _omp_line("Let me read the diff first."),
+            _omp_line("Let me read the diff first.", event="turn_end"),
+            _omp_line('{"verdict": "SHIP"}', event="message_start"),
+            _omp_line('{"verdict": "SHIP"}'),
+            _omp_line('{"verdict": "SHIP"}', event="turn_end"),
+        ]
+    )
+    assert extract_omp_text(stdout) == '{"verdict": "SHIP"}'
 
 
 def test_extract_omp_text_ignores_thinking_tool_and_non_assistant_blocks() -> None:
     stdout = "\n".join(
         [
-            _omp_line("ignore me", block_type="thinking"),
-            _omp_line("skip tool", block_type="tool_use"),
-            _omp_line("user words", role="user"),
             "not json at all",
             json.dumps([1, 2]),
-            json.dumps({"message": "nope"}),
-            _omp_line("kept"),
+            json.dumps({"type": "message_end", "message": "nope"}),
+            _omp_line("user words", role="user"),
+            json.dumps(
+                {
+                    "type": "message_end",
+                    "message": {
+                        "role": "assistant",
+                        "content": [
+                            {"type": "thinking", "text": "ignore me"},
+                            {"type": "tool_use", "text": "skip tool"},
+                            {"type": "text", "text": "kept"},
+                        ],
+                    },
+                }
+            ),
         ]
     )
     assert extract_omp_text(stdout) == "kept"
@@ -262,17 +282,22 @@ def test_parse_plain_and_fenced_output() -> None:
         parse_output("text", "Here is my review: " + json.dumps(_verdict()))
 
 
-def test_repeated_identical_output_is_one_verdict() -> None:
+def test_more_than_one_json_value_is_not_a_verdict() -> None:
     text = json.dumps(_verdict())
-    assert parse_output("text", f"{text}\n{text}\n") == _verdict()
-    assert parse_output("text", f"{text} {text}") == _verdict()
-    other = json.dumps(_verdict(summary="different"))
-    with pytest.raises(VerdictError, match=r"Extra data \(2 different values\)"):
-        parse_output("text", f"{text}\n{other}")
-    with pytest.raises(VerdictError, match="not JSON: Extra data"):
-        parse_output("text", f"{text}\nDone.")
-    with pytest.raises(VerdictError, match="not JSON: Extra data"):
+    for joined in (f"{text}\n{text}\n", f"{text}\nDone."):
+        with pytest.raises(VerdictError, match="not JSON: Extra data"):
+            parse_output("text", joined)
+    with pytest.raises(VerdictError, match="not JSON: Expecting value"):
         parse_output("omp", _omp_line(text) + "\n" + _omp_line("Done."))
+
+
+def test_a_recorded_multi_turn_omp_review_yields_its_final_verdict() -> None:
+    stream = (
+        Path(__file__).resolve().parents[3] / "fixtures" / "oracle_reviewers" / "omp_multi_turn_review.jsonl"
+    ).read_text(encoding="utf-8")
+    assert sum('"type":"message_end"' in line and '"role":"assistant"' in line for line in stream.splitlines()) > 1
+    verdict = validate(parse_output("omp", stream))
+    assert (verdict.decision, verdict.files_examined) == ("SHIP", ("benchbox/core/equivalence/checker.py",))
 
 
 def test_commentable_lines_follow_the_right_side_of_hunks() -> None:

@@ -4,7 +4,7 @@ from typing import Any, Optional, cast
 
 import yaml
 
-from benchbox._vendor import sqlglot
+from benchbox.utils.dialect_utils import SCHEMA_DDL_SCOPE, translate_sql_query
 
 from .schema_extensions import EXTENSION_TABLES, get_extended_table_order, get_foreign_key_constraints
 
@@ -106,11 +106,9 @@ class TPCDISchemaManager:
             sql = get_create_table_sql(table_name, "standard")
 
             if dialect != "standard":
-                try:
-                    statements.append(sqlglot.transpile(sql, read="postgres", write=dialect)[0])
-                except Exception as e:
-                    logger.warning(f"SQLGlot translation failed for {table_name}: {e}")
-                    statements.append(sql)
+                statements.append(
+                    translate_sql_query(sql, dialect, source_dialect="postgres", identify=False, scope=SCHEMA_DDL_SCOPE)
+                )
             else:
                 statements.append(sql)
 
@@ -120,11 +118,11 @@ class TPCDISchemaManager:
         translated = []
 
         for sql in self.get_create_table_ddl(from_dialect):
-            try:
-                translated.append(sqlglot.transpile(sql, read=from_dialect, write=to_dialect)[0])
-            except Exception as e:
-                logger.error(f"Translation failed from {from_dialect} to {to_dialect}: {e}")
-                translated.append(sql)
+            translated.append(
+                translate_sql_query(
+                    sql, to_dialect, source_dialect=from_dialect, identify=False, scope=SCHEMA_DDL_SCOPE
+                )
+            )
 
         return translated
 

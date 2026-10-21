@@ -492,3 +492,22 @@ def test_latest_state_pairs_each_artifact_name_with_its_own_workflow(
     downloaded = _state_sources(monkeypatch, {name: [_artifact(1)]}, {"1": _run(path=path)})
     assert github.latest_state(REPO, 7) is None
     assert downloaded == []
+
+
+def test_gh_decodes_non_utf8_diff_bytes_with_replacement(monkeypatch: pytest.MonkeyPatch) -> None:
+    payload = b"diff --git a/EULA.txt b/EULA.txt\n\x93smart quote\x94\n"
+
+    def fake_run(argv: list[str], **kwargs: Any) -> subprocess.CompletedProcess[bytes]:
+        return subprocess.CompletedProcess(argv, 0, payload, b"")
+
+    monkeypatch.setattr(github.subprocess, "run", fake_run)
+    assert github.get_diff(REPO, PR) == payload.decode("utf-8", errors="replace")
+
+
+def test_gh_reports_decodable_stderr_on_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_run(argv: list[str], **kwargs: Any) -> subprocess.CompletedProcess[bytes]:
+        return subprocess.CompletedProcess(argv, 1, b"", b"\xffailure")
+
+    monkeypatch.setattr(github.subprocess, "run", fake_run)
+    with pytest.raises(github.GitHubError, match="ailure"):
+        github._gh("repos/x")

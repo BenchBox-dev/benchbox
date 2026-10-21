@@ -18,6 +18,7 @@ pytestmark = [
 
 
 SCRIPT = REPO_ROOT / "scripts" / "agent_write_preflight.sh"
+CLEAN_SCRIPT = REPO_ROOT / "scripts" / "check_primary_clone_clean.sh"
 
 HUMAN_IDENTITY = {
     "GIT_AUTHOR_NAME": "Joe Harris",
@@ -55,8 +56,9 @@ def _install_configured_write_hook(repo: Path) -> None:
     scripts = repo / "scripts"
     scripts.mkdir()
     (scripts / SCRIPT.name).write_text(SCRIPT.read_text(encoding="utf-8"), encoding="utf-8")
-    guard = REPO_ROOT / "scripts" / "agent_pre_commit_guard.sh"
-    (scripts / guard.name).write_text(guard.read_text(encoding="utf-8"), encoding="utf-8")
+    for name in ("agent_pre_commit_guard.sh", "check_primary_clone_clean.sh"):
+        companion = REPO_ROOT / "scripts" / name
+        (scripts / name).write_text(companion.read_text(encoding="utf-8"), encoding="utf-8")
     (repo / ".pre-commit-config.yaml").write_text(
         "repos:\n"
         "  - repo: local\n"
@@ -216,6 +218,69 @@ def test_configured_hook_allows_linked_worktree_commit(tmp_path: Path) -> None:
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def _dirty_primary_with_linked(tmp_path: Path) -> tuple[Path, Path]:
+    primary, linked = _linked_worktree(tmp_path)
+    (primary / "README.md").write_text("stray agent edit\n", encoding="utf-8")
+    return primary, linked
+
+
+def _run_check_in(linked: Path, primary: Path, *, extra_env: dict[str, str] | None = None):
+    env = {**os.environ, **HUMAN_IDENTITY, "BENCHBOX_AGENT_PRIMARY_CLONE": str(primary)}
+    for key in ("BENCHBOX_ALLOW_MAIN_CLONE_WRITE", "ALLOW_MAIN_CLONE_WRITE", "BENCHBOX_EPHEMERAL_CLONE"):
+        env.pop(key, None)
+    env.update(extra_env or {})
+    return _run_script(CLEAN_SCRIPT, cwd=linked, env=env)
+
+
+def test_dirty_primary_clone_check_fails_naming_changed_paths(tmp_path: Path) -> None:
+    primary, linked = _dirty_primary_with_linked(tmp_path)
+
+    result = _run_check_in(linked, primary)
+
+    assert result.returncode == 1
+    assert "uncommitted tracked changes" in result.stderr
+    assert "README.md" in result.stderr
+    assert (primary / "README.md").read_text(encoding="utf-8") == "stray agent edit\n"
+
+
+def test_clean_primary_clone_check_passes(tmp_path: Path) -> None:
+    primary, linked = _linked_worktree(tmp_path)
+    (primary / "untracked.txt").write_text("scratch\n", encoding="utf-8")
+
+    result = _run_check_in(linked, primary)
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_write_preflight_fails_from_worktree_when_primary_is_dirty(tmp_path: Path) -> None:
+    primary, linked = _dirty_primary_with_linked(tmp_path)
+    _write_generated_hook(primary, sys.executable)
+
+    result = _run_script(
+        SCRIPT.resolve(),
+        cwd=linked,
+        env={**os.environ, **HUMAN_IDENTITY, "BENCHBOX_AGENT_PRIMARY_CLONE": str(primary)},
+    )
+
+    assert result.returncode == 1
+    assert "README.md" in result.stderr
+
+
+def test_dirty_primary_check_honors_declared_main_clone_write(tmp_path: Path) -> None:
+    primary, linked = _dirty_primary_with_linked(tmp_path)
+
+    result = _run_check_in(linked, primary, extra_env={"BENCHBOX_ALLOW_MAIN_CLONE_WRITE": "1"})
+
+    assert result.returncode == 0
+
+
+def test_pr_preflight_runs_dirty_primary_check() -> None:
+    makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    target = makefile.split("\npr-preflight:", maxsplit=1)[1].split("\n.PHONY:", maxsplit=1)[0]
+
+    assert "scripts/check_primary_clone_clean.sh" in target
 
 
 def test_claude_pr_command_runs_write_preflight_before_pr_workflow() -> None:

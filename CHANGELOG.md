@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- TPC-DI schema, query, loader, validation and SCD translation now call
+  `translate_sql_query` with explicit `identify=False` instead of the vendored
+  SQLGlot directly, so the DuckDB `ALL` restore and SQLite fix-ups apply there
+  too. Output differences caused by routing: `TPCDIQueryManager.translate_query_text`
+  now translates through the wrapper's PostgreSQL mapping of `ansi` instead of
+  returning the original text after an unknown-dialect error, and the
+  `datafusion` target now translates TPC-DI DDL and validation SQL through the
+  same mapping where it previously returned the PostgreSQL text unchanged.
+  Translation failures in strict mode now raise `SQLTranslationError` instead of
+  being logged and skipped.
+
+### Fixed
+
+- The bundled SQLGlot licence notice keeps LF line endings in Windows checkouts and
+  the nested-archive import probe accepts Windows path separators, so the SQLGlot
+  runtime tests pass on Windows. The BigQuery Iceberg test helper disposes its
+  catalog engine.
+
 ## [0.5.0rc1] - 2026-10-20
 
 ### Before you upgrade

@@ -136,7 +136,7 @@ repos:
       - id: codespell
         args:
           - --ignore-words=.codespell-ignore.txt
-          - --skip=*.pyc,_build,_binaries/*,benchbox/_binaries/*,*.json,*.lock,*.svg,*.min.js,*.min.css,*.csv
+          - --skip=*.pyc,_build,_binaries/*,benchbox/_binaries/*,*.json,*.jsonl,*.lock,*.svg,*.min.js,*.min.css,*.csv
           - --quiet-level=2
         stages: [pre-commit]
         exclude: ^(_sources/|\.claude/skills/|_project/todo-db-export/|_project/audits/)

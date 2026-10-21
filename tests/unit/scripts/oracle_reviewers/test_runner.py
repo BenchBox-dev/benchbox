@@ -56,7 +56,19 @@ def _fake_omp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, body: str) -> Non
 
 
 def _envelope(payload: object) -> str:
-    return json.dumps({"message": {"role": "assistant", "content": [{"type": "text", "text": payload}]}})
+    return json.dumps(
+        {"type": "message_end", "message": {"role": "assistant", "content": [{"type": "text", "text": payload}]}}
+    )
+
+
+def _reads(*paths: str) -> str:
+    lines = []
+    for index, path in enumerate(paths):
+        call = {"type": "toolCall", "id": f"r{index}", "name": "read", "arguments": {"path": path}}
+        lines.append(json.dumps({"type": "message_end", "message": {"role": "assistant", "content": [call]}}))
+        result = {"role": "toolResult", "toolCallId": f"r{index}", "toolName": "read", "isError": False}
+        lines.append(json.dumps({"type": "message_end", "message": result}))
+    return "\n".join(lines)
 
 
 def _review(
@@ -83,8 +95,9 @@ def _review(
     )
 
 
-def _omp_says(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, **over: object) -> None:
-    _fake_omp(tmp_path, monkeypatch, f"print({json.dumps(_envelope(json.dumps({**VERDICT, **over})))})")
+def _omp_says(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, reads: tuple[str, ...] = (), **over: object) -> None:
+    stdout = "\n".join([_reads(*reads), _envelope(json.dumps({**VERDICT, **over}))])
+    _fake_omp(tmp_path, monkeypatch, f"print({json.dumps(stdout)})")
 
 
 def _omp_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stderr: str, exit_code: int) -> None:
@@ -152,13 +165,14 @@ def test_envelope_thinking_blocks_are_ignored(policy: Policy, tmp_path: Path, mo
     workspace, head = _workspace(tmp_path)
     envelope = json.dumps(
         {
+            "type": "message_end",
             "message": {
                 "role": "assistant",
                 "content": [
                     {"type": "thinking", "thinking": "hmm"},
                     {"type": "text", "text": json.dumps(VERDICT)},
                 ],
-            }
+            },
         }
     )
     _fake_omp(tmp_path, monkeypatch, f"print({json.dumps(envelope)})")
@@ -186,6 +200,36 @@ def test_diagnostic_is_an_excerpt_not_the_raw_output(
     monkeypatch.setenv("META_API_KEY", "should-not-appear")
     outcome = _review(policy, tmp_path, workspace, head)
     assert outcome.diagnostic == "fatal: quota"
+
+
+@skip_on_windows
+def test_an_unparsable_answer_keeps_the_end_of_the_final_message(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _workspace(tmp_path)
+    monkeypatch.setenv("OMP_AUTH_BROKER_TOKEN", "broker-secret-value")
+    answer = "word " * 700 + json.dumps(VERDICT) + "\ntoken broker-secret-value\nAll done."
+    _fake_omp(
+        tmp_path, monkeypatch, f"print({json.dumps(_envelope('Let me look.'))})\nprint({json.dumps(_envelope(answer))})"
+    )
+    outcome = _review(policy, tmp_path, workspace, head)
+    assert outcome.missing is not None and outcome.missing.kind == absence.INVALID
+    assert outcome.diagnostic.startswith("\u2026") and outcome.diagnostic.endswith("All done.")
+    assert "broker-secret-value" not in outcome.diagnostic and "[redacted]" in outcome.diagnostic
+    assert "Let me look." not in outcome.diagnostic
+    assert len(outcome.diagnostic) <= absence.UNPARSED_LIMIT + 1
+
+
+@skip_on_windows
+def test_an_empty_final_message_keeps_the_stderr_excerpt(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _workspace(tmp_path)
+    body = f"print({json.dumps(_reads('a.txt'))})\nsys.stderr.write('error: stream ended after a tool call\\n')"
+    _fake_omp(tmp_path, monkeypatch, body)
+    outcome = _review(policy, tmp_path, workspace, head)
+    assert outcome.missing is not None and outcome.missing.kind == absence.INVALID
+    assert outcome.diagnostic == "error: stream ended after a tool call"
 
 
 @skip_on_windows
@@ -371,9 +415,8 @@ def _run_review(
 
 
 def _capture_prompt_body(tmp_path: Path) -> str:
-    return (
-        f"open('{tmp_path}/prompt.txt', 'w').write(sys.argv[-1])\nprint({json.dumps(_envelope(json.dumps(VERDICT)))})"
-    )
+    stdout = "\n".join([_reads("a.txt"), _envelope(json.dumps(VERDICT))])
+    return f"open('{tmp_path}/prompt.txt', 'w').write(sys.argv[-1])\nprint({json.dumps(stdout)})"
 
 
 @skip_on_windows
@@ -487,7 +530,7 @@ def test_a_file_list_ship_must_examine_every_required_file(
     head = subprocess.run(
         ["git", "-C", str(workspace), "rev-parse", "HEAD"], check=True, capture_output=True, text=True
     ).stdout.strip()
-    _omp_says(tmp_path, monkeypatch, files_examined=["a.txt"])
+    _omp_says(tmp_path, monkeypatch, reads=("a.txt", "b.txt"), files_examined=["a.txt"])
     short = _review(policy, tmp_path, workspace, head, brief_mode="file-list", required=("a.txt", "b.txt"))
     assert short.missing == absence.Absence(absence.INCOMPLETE, "the verdict would ship but did not examine b.txt")
     inline = _review(policy, tmp_path, workspace, head, brief_mode="inline", required=("a.txt", "b.txt"))
@@ -495,11 +538,29 @@ def test_a_file_list_ship_must_examine_every_required_file(
 
 
 @skip_on_windows
+def test_a_file_list_ship_must_have_read_every_file_it_claims(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _two_files(tmp_path)
+    _omp_says(tmp_path, monkeypatch, reads=("a.txt:1-5",), files_examined=["a.txt", "b.txt"])
+    outcome = _review(policy, tmp_path, workspace, head, brief_mode="file-list", required=("a.txt", "b.txt"))
+    assert outcome.missing == absence.Absence(
+        absence.INCOMPLETE, "the verdict would ship but its trace shows no read of b.txt"
+    )
+    _omp_says(tmp_path, monkeypatch, files_examined=["a.txt", "b.txt"])
+    unread = _review(policy, tmp_path, workspace, head, brief_mode="file-list", required=("a.txt", "b.txt"))
+    assert unread.missing == absence.Absence(
+        absence.INCOMPLETE, "the verdict would ship but its trace shows no successful file read"
+    )
+
+
+@skip_on_windows
 def test_absolute_examined_paths_inside_the_workspace_count(
     policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     workspace, head = _workspace(tmp_path)
-    _omp_says(tmp_path, monkeypatch, files_examined=[str(workspace.resolve() / "a.txt")])
+    resolved = str(workspace.resolve() / "a.txt")
+    _omp_says(tmp_path, monkeypatch, reads=(resolved,), files_examined=[resolved])
     outcome = _review(policy, tmp_path, workspace, head, brief_mode="file-list", required=("a.txt",))
     assert outcome.missing is None
 
@@ -581,11 +642,11 @@ def _judged(outcome: runner.ReviewOutcome, rules: dict):
 
 
 @skip_on_windows
-def test_a_follow_up_ship_with_an_unchanged_file_defect_counts_correctly_without_reads(
+def test_a_follow_up_ship_with_an_unchanged_file_defect_counts_correctly(
     policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     workspace, head = _two_files(tmp_path)
-    _omp_says(tmp_path, monkeypatch, defects=[OUTSIDE])
+    _omp_says(tmp_path, monkeypatch, reads=("a.txt",), defects=[OUTSIDE])
     outcome = _review(policy, tmp_path, workspace, head, brief_mode="file-list", required=("a.txt",), rules=FOLLOW_UP)
     judged = _judged(outcome, FOLLOW_UP)
     assert judged.decision == "SHIP"
@@ -628,11 +689,11 @@ def test_a_first_round_file_list_defect_needs_no_reads(
 
 
 @pytest.mark.parametrize(("examined", "accepted"), [([], False), (["a.txt"], True)], ids=["unlisted", "listed"])
-def test_an_untraced_follow_up_ship_with_an_unchanged_file_defect_must_list_the_changed_files(
+def test_a_follow_up_ship_with_an_unchanged_file_defect_must_list_the_changed_files(
     policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, examined: list[str], accepted: bool
 ) -> None:
     workspace, head = _two_files(tmp_path)
-    _omp_says(tmp_path, monkeypatch, files_examined=examined, defects=[OUTSIDE])
+    _omp_says(tmp_path, monkeypatch, reads=("a.txt",), files_examined=examined, defects=[OUTSIDE])
     outcome = _review(policy, tmp_path, workspace, head, brief_mode="file-list", required=("a.txt",), rules=FOLLOW_UP)
     if accepted:
         assert _judged(outcome, FOLLOW_UP).decision == "SHIP"

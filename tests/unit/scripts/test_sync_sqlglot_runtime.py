@@ -94,7 +94,7 @@ original = list(sys.path)
 from benchbox._vendor import sqlglot
 assert sys.path == original
 assert isinstance(sqlglot.__loader__, zipimport.zipimporter)
-assert '.whl.zip/benchbox/_vendor/sqlglot/' in sqlglot.__file__
+assert '.whl.zip/benchbox/_vendor/sqlglot/' in sqlglot.__file__.replace(chr(92), '/')
 assert importlib.resources.files(sqlglot).joinpath('LICENSE').read_text().startswith('MIT License')
 expression = sqlglot.parse_one('SELECT 1')
 assert pickle.loads(pickle.dumps(expression)) == expression

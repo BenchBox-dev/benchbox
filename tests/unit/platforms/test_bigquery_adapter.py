@@ -36,14 +36,17 @@ def _make_real_iceberg_table(table_dir: Path) -> None:
     from pyiceberg.types import LongType, NestedField, StringType
 
     catalog = SqlCatalog("bq-test", uri=f"sqlite:///{table_dir.parent}/cat.db", warehouse=str(table_dir.parent))
-    catalog.create_namespace_if_not_exists("ns")
-    table = catalog.create_table(
-        "ns.t",
-        schema=Schema(NestedField(1, "id", LongType()), NestedField(2, "name", StringType())),
-        location=local_iceberg_location(table_dir),
-        properties={"format-version": "2"},
-    )
-    table.overwrite(pa.table({"id": [1], "name": ["a"]}))
+    try:
+        catalog.create_namespace_if_not_exists("ns")
+        table = catalog.create_table(
+            "ns.t",
+            schema=Schema(NestedField(1, "id", LongType()), NestedField(2, "name", StringType())),
+            location=local_iceberg_location(table_dir),
+            properties={"format-version": "2"},
+        )
+        table.overwrite(pa.table({"id": [1], "name": ["a"]}))
+    finally:
+        catalog.engine.dispose()
 
 
 @pytest.mark.usefixtures("dependencies_available")
