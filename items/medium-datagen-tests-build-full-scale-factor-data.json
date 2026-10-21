@@ -1,11 +1,13 @@
 {
   "acceptance": [
-    "The generate_data tests run in seconds at a reduced scale factor, or a recorded reason shows a full-size run is needed",
-    "No other test changes behaviour because of the fixture change",
-    "The trunk duration file is rebuilt after the change so shard weights reflect it"
+    "The four generate_data tests run in seconds at a reduced scale, or a recorded reason shows a full-size run is needed",
+    "No other test changes behaviour; the shared small_scale_factor fixture is not changed unless its other users are checked",
+    "TPCDI's parallel FactTrade path stays covered by a PR-tier test",
+    "tests/fixtures/medium_shard_durations.json is regenerated from a PR CI medium run after the change",
+    "The next trunk-coverage run still maps the generator lines to these tests"
   ],
   "context": "Raised by the user on 2026-10-21 after the trunk shard measurement. Related: ci-amplab-generate-data-timeout-flake, ci-rebalance-medium-shards, and PR #3222 which raised the timeouts for these tests on trunk instead of reducing their work.",
-  "description": "tests/fixtures/benchmark_fixtures.py sets SCALE_FACTORS small, medium and large all to 1.0 (unchanged since the initial release), and the small_scale_factor fixture returns it. tests/test_h2odb.py, test_clickbench.py, test_tpcdi.py and test_ssb.py use that fixture and call generate_data(), which for H2ODB writes int(10,000,000 * scale_factor) rows from a pure Python loop (benchbox/core/h2odb/generator.py _generate_trips_data). On trunk run 39633248681 (coverage on, 4 shards, -n 5): H2ODB 525 s, ClickBench 452 s, SSB 163 s, TPCDI 109 s; together 1,249 s of about 5,033 s total test time. The tests only assert that the returned dict has the expected tables and the files exist. Not yet checked: whether any other test depends on the 1.0 value, why the fixture was never lowered, and how long these tests take without coverage (the pull-request workflow).",
+  "description": "The small_scale_factor fixture these tests actually receive is tests/fixtures/utility_fixtures.py:67 and returns 1.0 (SCALE_FACTORS in tests/fixtures/benchmark_fixtures.py is not loaded as a plugin and is not the source; the first version of this item named it wrongly). tests/test_h2odb.py, test_clickbench.py, test_tpcdi.py and test_ssb.py call generate_data() at scale factor 1.0; for H2ODB that is int(10,000,000 * scale_factor) rows from a pure Python loop. Each test only asserts the returned table names and that the files exist. Measured on trunk run 39633248681 (coverage on, since changed): H2ODB 525 s, ClickBench 452 s, SSB 163 s, TPCDI 109 s. PR runs without coverage (p95 from run 39538637499): 364, 119, 93 and 35 s, which is 611 s of 2,994 s of medium time.\n\nREVIEW (read-only, 2026-10-21; full report at /tmp/datagen-review.md, not durable): at scale 0.01 for H2ODB, ClickBench and SSB, and 0.11 for TPCDI, the generators execute the same lines as at full size (measured with the coverage API on the generators, not on the four tests under pytest). TPCDI needs num_trades > 100000 for its parallel path (scale >= 0.11); at 0.01 that path is skipped. SSB at 0.001 misses 3 region-branch lines. Minimum working scales: SSB 0.0005, TPCDI 0.001, H2ODB and ClickBench 0.00001. Recommended option: give each test_generate_data its own instance at an explicit scale (copy tests/test_amplab.py:27-28), drop the 600/300 s timeout markers, optionally assert the row count; leave the shared fixture alone (about 15 test files use it, effects unverified). Estimated saving about 595 s of PR medium time, unmeasured on CI. Open: no per-PR test would then run TPCDI's parallel path at 1M trades (memory); a slow full-size test could cover that.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:afd83494ecacfcdab965057e",
@@ -13,6 +15,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "5845e778e2e34ccca0dab8103cc376bc",
+      "session_id": "8202d1c5316f41c897a0af067e2c8e9e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:afd83494ecacfcdab965057e",
+      "at": "2026-10-21T20:04:17Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8fa31a41003d4827bf27c604f6546d1e",
       "session_id": "8202d1c5316f41c897a0af067e2c8e9e"
     }
   ]
