@@ -3,7 +3,7 @@
     "The stalling test or fixture is identified, with the evidence recorded, and fixed or skipped on Windows with a stated reason; or the owner accepts the cause as unknown after a stated period of nightly-v2 Windows runs without a stall",
     "Windows fast-test runs in nightly-v2 capture faulthandler or per-worker output when a leg stalls"
   ],
-  "context": "Four consecutive nightly.yml runs from 2026-10-10 to 2026-10-13 (38048554571, 38136544803, 38257581119, 38318801976) completed all eight Windows fast-test legs with assertion failures and no stall, so the predecessor's criterion 2 is met by observation. The stalling test or fixture was never identified and nothing was changed, so the cause is unknown. nightly.yml is being retired; the next evidence will come from the nightly-v2 Windows leg. On the next stall, capture faulthandler or per-worker output.",
+  "context": "Four consecutive nightly.yml runs from 2026-10-10 to 2026-10-13 (38048554571, 38136544803, 38257581119, 38318801976) completed all eight Windows fast-test legs with assertion failures and no stall, so the predecessor's criterion 2 is met by observation. The stalling test or fixture was never identified and nothing was changed, so the cause is unknown. nightly.yml is being retired; the next evidence will come from the nightly-v2 Windows leg. On the next stall, capture faulthandler or per-worker output.\n\n### Completion Evidence (2026-10-20)\nNo xdist teardown hang exists in the logs. The \"stall at 90-95%\" was a speed problem: t3:windows had a 50-minute budget and about 38-39k collected items, so on slow days it was cancelled at 82-90% progress (runs 38280346119, 38419716422, 38736964482; jobs 114915849825, 115373518431, 116428610835), still printing progress until the cancel; runs 38567807727, 38901575824, 39029650977 finished in 42-45 min. Commit 3b3cfbcaa (#3124, reclassify over-budget modules to medium, Oct 18) cut items to about 30.1k [INFERENCE: nothing else found that reduces the count]. Post-change t3:windows runs: 39125986956 (30120 items, 20:21), 39175974009 (30266, 23:52), 39425219191 (30345, 24:11), 39426567670 (30345, 19:56), 39467654899 (30425, 23:46, 29790 passed 636 skipped, success; first fully green). windows-fast dispatch run 39529231051 on develop: 30536 collected, 29887 passed 650 skipped in 1382.71 s, success, pytest exited normally. Handoff _project/handoffs/2026-10-09-ci-devloop-batch-handoff.md lines 356-357 state a hang; logs contradict it. No fix, no PR, no diagnostic branch. Residual: item count growing (30120 -> 30536 in 3 days), 24 min vs 50-minute budget leaves about 2x; t3:windows prints no per-test durations; job conclusion \"cancelled\" hid the slowness (new defects, not filed here).",
   "description": "Successor to windows-pytest-xdist-teardown-hang-20261009, which was closed on 2026-10-15 citing an owner decision to accept criterion 1 as not reproducible. No owner message says that; the closing agent wrote it. The owner chose \"Reopen it\" (2026-10-15, Claude session e0e74e6b, question dialog). A done item cannot be reopened, so the open criterion moves here.\n\nThe Windows fast-test run stalled part-way through (progress stops at 90-95% until the job is cancelled) on Python 3.11 in every nightly.yml run from 2026-10-05, and on 3.12 on 2026-10-03 and 2026-10-07. The PyEval_SaveThread fatal error is a side effect of cancellation, not the cause. See the predecessor item for the run list.",
   "links": [
     "item:windows-pytest-xdist-teardown-hang-20261009",
@@ -25,6 +25,14 @@
       "generation": "5f5970f847ba4687843a33fbd8fedc42",
       "op": "take",
       "op_id": "cc467ead8ad04cb893c6cb3b1c7de109",
+      "session_id": "0722acca462b419aa525d939aedd0290"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a",
+      "at": "2026-10-21T02:12:59Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9ab3a3f334e84bf2a27486a5c059ddbb",
       "session_id": "0722acca462b419aa525d939aedd0290"
     }
   ]
