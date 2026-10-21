@@ -1209,37 +1209,39 @@ class IcebergFileHandler(FileFormatHandler):
                 uri=f"sqlite:///{catalog_db}",
                 warehouse=warehouse_path,
             )
-
-            table_identifier = ("benchbox", validated_table)
             try:
-                iceberg_table = catalog.load_table(table_identifier)
-            except Exception:
-                catalog.register_table(table_identifier, str(file_path))
-                iceberg_table = catalog.load_table(table_identifier)
+                table_identifier = ("benchbox", validated_table)
+                try:
+                    iceberg_table = catalog.load_table(table_identifier)
+                except Exception:
+                    catalog.register_table(table_identifier, str(file_path))
+                    iceberg_table = catalog.load_table(table_identifier)
 
-            arrow_table = iceberg_table.scan().to_arrow()
-            row_count = arrow_table.num_rows
+                arrow_table = iceberg_table.scan().to_arrow()
+                row_count = arrow_table.num_rows
 
-            if row_count == 0:
-                return 0
+                if row_count == 0:
+                    return 0
 
-            data = arrow_table.to_pylist()
+                data = arrow_table.to_pylist()
 
-            column_names = arrow_table.schema.names
-            validated_columns = [validate_sql_identifier(col, "column name") for col in column_names]
-            placeholders = ",".join(["?" for _ in validated_columns])
-            columns_str = ",".join(validated_columns)
+                column_names = arrow_table.schema.names
+                validated_columns = [validate_sql_identifier(col, "column name") for col in column_names]
+                placeholders = ",".join(["?" for _ in validated_columns])
+                columns_str = ",".join(validated_columns)
 
-            insert_sql = f"INSERT INTO {validated_table} ({columns_str}) VALUES ({placeholders})"
+                insert_sql = f"INSERT INTO {validated_table} ({columns_str}) VALUES ({placeholders})"
 
-            data_tuples = [tuple(row[col] for col in column_names) for row in data]
+                data_tuples = [tuple(row[col] for col in column_names) for row in data]
 
-            batch_size = 1000
-            for i in range(0, len(data_tuples), batch_size):
-                batch = data_tuples[i : i + batch_size]
-                connection.executemany(insert_sql, batch)
+                batch_size = 1000
+                for i in range(0, len(data_tuples), batch_size):
+                    batch = data_tuples[i : i + batch_size]
+                    connection.executemany(insert_sql, batch)
 
-            return row_count
+                return row_count
+            finally:
+                catalog.engine.dispose()
 
         finally:
             if catalog_fd is not None:
