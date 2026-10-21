@@ -106,3 +106,20 @@ def test_distribution_job_verifies_exact_distributions_before_binding_and_upload
 def test_tpcds_repeat_and_draw_checks_run_after_each_merge() -> None:
     commands = [step.get("run", "") for step in _workflow()["jobs"]["tpcds-parity-draws"]["steps"]]
     assert "make tpcds-cross-surface-draws-report" in commands
+
+
+def test_medium_tier_runs_uninstrumented_with_real_timeouts() -> None:
+    runs = "\n".join(step.get("run", "") for step in _workflow()["jobs"]["medium-test"]["steps"])
+    assert "pytest_cov" not in runs
+    assert "--cov" not in runs
+    assert "COVERAGE_" not in runs
+    assert "pytest_coverage_timeout" not in runs
+    assert "--timeout=60" in runs
+
+
+def test_medium_tier_keeps_duration_sharding_without_a_coverage_map_job() -> None:
+    jobs = _workflow()["jobs"]
+    assert "medium-coverage-map" not in jobs
+    assert "coverage" not in " ".join(jobs).lower()
+    runs = "\n".join(step.get("run", "") for step in jobs["medium-test"]["steps"])
+    assert "--durations tests/fixtures/medium_shard_durations.json" in runs

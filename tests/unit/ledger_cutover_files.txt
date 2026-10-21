@@ -152,6 +152,7 @@ tests/unit/workflows/test_seed_corpus_pr_base.py
 tests/unit/workflows/test_site_inputs_workflow.py
 tests/unit/workflows/test_stacked_pr_base_guard.py
 tests/unit/workflows/test_t2_partition_workflow.py
+tests/unit/workflows/test_trunk_coverage_workflow.py
 tests/unit/workflows/test_trunk_workflow.py
 tests/unit/workflows/test_validate_submission_changed_bundles.py
 tests/unit/workflows/test_validate_submission_comment_security.py

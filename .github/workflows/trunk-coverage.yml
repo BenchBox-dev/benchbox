@@ -1,0 +1,263 @@
+name: Trunk coverage
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+  schedule:
+    - cron: "17 7 * * *"
+
+concurrency:
+  group: trunk-coverage
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  medium-collect:
+    name: medium-collect
+    if: ${{ github.event_name != 'schedule' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Collect the complete medium tier
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p t2-artifacts
+          BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest --collect-only -q -n 0 \
+            -m "medium and not (slow or stress or resource_heavy or live_integration)" \
+            > t2-artifacts/medium-collect.txt
+          count=$(grep -Eo '^[0-9]+/[0-9]+ tests collected' t2-artifacts/medium-collect.txt | tail -1 | cut -d/ -f1)
+          test -n "$count"
+          uv run -- python scripts/release_canary_sharding.py collect \
+            --input t2-artifacts/medium-collect.txt \
+            --nodeids-output t2-artifacts/medium-nodeids.txt \
+            --summary-output t2-artifacts/medium-collection.json \
+            --expected-count "$count" --shard-count 4 \
+            --workflow trunk-coverage.yml --job medium-collect \
+            --marker-expression "medium and not (slow or stress or resource_heavy or live_integration)" \
+            --checked-ref "${{ github.ref }}" --checked-sha "${{ github.sha }}" \
+            --durations tests/fixtures/medium_shard_durations.json
+
+      - name: Upload medium collection evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: t2-medium-nodeids-${{ github.sha }}
+          path: t2-artifacts/
+          if-no-files-found: error
+          retention-days: 30
+
+  medium-test:
+    name: medium-test (shard ${{ matrix.shard_index }})
+    if: ${{ github.event_name != 'schedule' }}
+    needs: medium-collect
+    runs-on: ubuntu-latest
+    timeout-minutes: 33
+    strategy:
+      fail-fast: false
+      matrix:
+        shard_index: [0, 1, 2, 3]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Download medium collection evidence
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: t2-medium-nodeids-${{ github.sha }}
+          path: t2-artifacts
+
+      - name: Partition the complete medium tier
+        env:
+          SHARD_INDEX: ${{ matrix.shard_index }}
+        run: |
+          uv run -- python scripts/release_canary_sharding.py shard \
+            --input t2-artifacts/medium-nodeids.txt \
+            --nodeids-output "t2-artifacts/shard-${SHARD_INDEX}-nodeids.txt" \
+            --summary-output "t2-artifacts/shard-${SHARD_INDEX}-summary.json" \
+            --shard-index "$SHARD_INDEX" --shard-count 4 \
+            --workflow trunk-coverage.yml --job medium-test \
+            --marker-expression "medium and not (slow or stress or resource_heavy or live_integration)" \
+            --collection-summary t2-artifacts/medium-collection.json --checked-sha "${{ github.sha }}" \
+            --durations tests/fixtures/medium_shard_durations.json
+
+      - name: Run medium speed tier
+        shell: bash
+        env:
+          SHARD_INDEX: ${{ matrix.shard_index }}
+          COVERAGE_CORE: ctrace
+          COVERAGE_FILE: t2-artifacts/coverage-shard-${{ matrix.shard_index }}.dat
+        run: |
+          set -euo pipefail
+          test -s "t2-artifacts/shard-${SHARD_INDEX}-nodeids.txt"
+          mapfile -t node_ids < "t2-artifacts/shard-${SHARD_INDEX}-nodeids.txt"
+          sample_resources() {
+            while sleep 30; do
+              echo "[resources $(date -u +%H:%M:%S)] $(free -m | awk '/Mem:/ {print "used_mb=" $3 " available_mb=" $7}') load=$(cut -d' ' -f1-3 /proc/loadavg)"
+              ps -eo pid,rss,etimes,comm --sort=-rss | awk 'NR <= 4 {print "  " $0}'
+            done
+          }
+          sample_resources &
+          sampler=$!
+          trap 'pkill -P "${sampler}" 2>/dev/null || true; kill "${sampler}" 2>/dev/null || true' EXIT
+          BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest \
+            -m "medium and not (slow or stress or resource_heavy or live_integration)" \
+            --tb=short --timeout=60 -n 5 --durations=25 \
+            --junitxml "t2-artifacts/shard-${SHARD_INDEX}-junit.xml" \
+            -p pytest_cov --cov --cov-config=scripts/coverage_map.ini --cov-context=test --cov-report= \
+            -p scripts.pytest_coverage_timeout \
+            -p scripts.pytest_shard_evidence \
+            --assigned-nodeids "t2-artifacts/shard-${SHARD_INDEX}-nodeids.txt" \
+            --shard-evidence "t2-artifacts/shard-${SHARD_INDEX}-execution.json" \
+            --checked-sha "${{ github.sha }}" "${node_ids[@]}"
+
+      - name: Record kernel memory events for the medium shard
+        if: always()
+        shell: bash
+        run: |
+          free -m
+          sudo dmesg -T 2>/dev/null | grep -iE 'out of memory|oom-kill|killed process' | tail -20 || true
+
+      - name: Upload medium shard evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: t2-medium-shard-${{ matrix.shard_index }}-${{ github.sha }}
+          path: t2-artifacts/
+          if-no-files-found: error
+          retention-days: 30
+
+  medium-coverage-map:
+    name: medium-coverage-map
+    needs: medium-test
+    if: ${{ always() && github.event_name != 'schedule' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Download medium shard evidence
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          pattern: t2-medium-shard-*-${{ github.sha }}
+          path: t2-shards
+          merge-multiple: false
+
+      - name: Build the coverage test map
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob globstar
+          data_args=()
+          for shard in t2-shards/**/coverage-shard-*.dat; do
+            data_args+=(--data "$shard")
+          done
+          junit_args=()
+          for report in t2-shards/**/shard-*-junit.xml; do
+            junit_args+=(--junit "$report")
+          done
+          test "${#data_args[@]}" -gt 0
+          uv run -- python scripts/coverage_test_selection.py build-map \
+            "${data_args[@]}" \
+            "${junit_args[@]}" \
+            --sha "${{ github.sha }}" \
+            --expected-shards 4 \
+            --out t2-coverage-map/map.json
+          test -s t2-coverage-map/map.json
+
+      - name: Upload coverage test map
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: t2-coverage-map-${{ github.sha }}
+          path: t2-coverage-map/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Verify the published map resolves
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin develop
+          python scripts/coverage_test_selection.py fetch-map \
+            --base-sha "${{ github.sha }}" \
+            --dest-dir /tmp/coverage-map-check \
+            --json-out /tmp/coverage-map-check.json
+          python - <<'EOF'
+          import json
+          import sys
+          payload = json.load(open("/tmp/coverage-map-check.json"))
+          if payload["status"] != "found" or payload["sha"] != "${{ github.sha }}":
+              print(f"self-fetch failed: {payload}", file=sys.stderr)
+              sys.exit(1)
+          print(f"self-fetch ok: {payload['sha']}")
+          EOF
+
+  coverage-map-staleness:
+    name: coverage-map-staleness
+    if: ${{ github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+
+      - name: Open, update, or close the coverage map staleness issue
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/coverage_map_staleness.py
