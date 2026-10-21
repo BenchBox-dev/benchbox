@@ -284,28 +284,42 @@ def test_pure_addition_probes_neighbouring_old_lines(repo: Path) -> None:
     assert "tests/test_benchbox.py::test_translate" in result["selected"]
 
 
-def test_uncovered_lines_add_importing_tests(repo: Path) -> None:
+def test_uncovered_lines_escalate_and_keep_importing_tests(repo: Path) -> None:
     map_sha = _head(repo)
     _write(repo, "benchbox/core/engine.py", "x = 1\ny = 2\n")
     _write(repo, "tests/unit/core/test_engine.py", "from benchbox.core.engine import x\n")
     _commit_all(repo)
     files = sel.changed_files(repo, map_sha)
     result = sel.select_tests(repo, _mapping(repo, map_sha), files, _head(repo))
-    assert result["escalate"] is False
+    assert result["escalate"] is True
+    assert "no recorded test executed: benchbox/core/engine.py" in result["reason"]
     assert "tests/unit/core/test_engine.py" in result["importer_tests"]
     assert "tests/unit/core/test_engine.py" in result["selected"]
     assert result["uncovered_sources"] == ["benchbox/core/engine.py"]
 
 
-def test_new_source_file_selects_fallback_and_importers(repo: Path) -> None:
+def test_new_source_file_escalates_and_keeps_importers(repo: Path) -> None:
     map_sha = _head(repo)
     _write(repo, "benchbox/core/fresh.py", "x = 1\n")
     _write(repo, "tests/unit/core/test_fresh.py", "from benchbox.core.fresh import x\n")
     _commit_all(repo)
     files = sel.changed_files(repo, map_sha)
     result = sel.select_tests(repo, _mapping(repo, map_sha), files, _head(repo))
-    assert result["escalate"] is False
+    assert result["escalate"] is True
+    assert "benchbox/core/fresh.py" in result["reason"]
     assert "tests/unit/core/test_fresh.py" in result["selected"]
+
+
+def test_shared_test_plugin_change_escalates(repo: Path) -> None:
+    map_sha = _head(repo)
+    _write(repo, "tests/conftest.py", "FIXTURE = 1\n")
+    _write(repo, "tests/fixtures/database_fixtures.py", "DB = 1\n")
+    _commit_all(repo)
+    files = sel.changed_files(repo, map_sha)
+    result = sel.select_tests(repo, _mapping(repo, map_sha), files, _head(repo))
+    assert result["escalate"] is True
+    assert "tests/conftest.py" in result["reason"]
+    assert "tests/fixtures/database_fixtures.py" in result["reason"]
 
 
 def test_missing_map_escalates_with_fallback(repo: Path) -> None:
@@ -428,7 +442,7 @@ def test_stale_coverage_node_ids_are_dropped(repo: Path, monkeypatch: pytest.Mon
     assert "no tests selected" in result["reason"]
 
 
-def test_zero_hunk_modified_source_counts_as_uncovered(repo: Path) -> None:
+def test_zero_hunk_modified_source_escalates(repo: Path) -> None:
     map_sha = _head(repo)
     _write(repo, "tests/unit/core/test_engine.py", "from benchbox.core.engine import x\n")
     _commit_all(repo)
@@ -441,7 +455,8 @@ def test_zero_hunk_modified_source_counts_as_uncovered(repo: Path) -> None:
         )
     ]
     result = sel.select_tests(repo, _mapping(repo, map_sha), files, _head(repo))
-    assert result["escalate"] is False
+    assert result["escalate"] is True
+    assert "no recorded test executed: benchbox/core/engine.py" in result["reason"]
     assert result["uncovered_sources"] == ["benchbox/core/engine.py"]
     assert "tests/unit/core/test_engine.py" in result["importer_tests"]
     assert "tests/unit/core/test_engine.py" in result["selected"]
@@ -474,7 +489,7 @@ def test_map_sha_outside_base_ancestry_escalates(repo: Path) -> None:
     assert result["behind_commits"] is None
 
 
-def test_pure_rename_selects_tests_on_old_and_new_paths(repo: Path) -> None:
+def test_pure_rename_escalates_and_keeps_tests_on_the_old_path(repo: Path) -> None:
     map_sha = _head(repo)
     base_sha = map_sha
     _git(repo, "mv", "benchbox/core/engine.py", "benchbox/core/motor.py")
@@ -482,7 +497,8 @@ def test_pure_rename_selects_tests_on_old_and_new_paths(repo: Path) -> None:
     files = sel.changed_files(repo, base_sha)
     assert [(entry.path, entry.status) for entry in files] == [("benchbox/core/motor.py", "renamed")]
     result = sel.select_tests(repo, _mapping(repo, map_sha), files, base_sha)
-    assert result["escalate"] is False
+    assert result["escalate"] is True
+    assert "benchbox/core/motor.py" in result["reason"]
     assert "tests/unit/core/test_engine.py::test_x" in result["selected"]
 
 
@@ -500,7 +516,7 @@ def test_pure_rename_of_non_python_resource_escalates(repo: Path) -> None:
     assert "assets/banner.png" in result["reason"]
 
 
-def test_pr_change_against_base_selects_reverted_lines(repo: Path) -> None:
+def test_file_changed_on_develop_since_the_map_escalates(repo: Path) -> None:
     map_sha = _head(repo)
     _write(repo, "benchbox/core/engine.py", "x = 2\n")
     _commit_all(repo)
@@ -511,7 +527,8 @@ def test_pr_change_against_base_selects_reverted_lines(repo: Path) -> None:
     files = sel.changed_files(repo, base_sha)
     assert [entry.path for entry in files] == ["benchbox/core/engine.py"]
     result = sel.select_tests(repo, _mapping(repo, map_sha), files, base_sha)
-    assert result["escalate"] is False
+    assert result["escalate"] is True
+    assert "no recorded test executed: benchbox/core/engine.py" in result["reason"]
     assert "tests/unit/core/test_engine.py" in result["selected"]
 
 

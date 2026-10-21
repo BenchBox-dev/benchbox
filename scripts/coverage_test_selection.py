@@ -469,6 +469,8 @@ def select_tests(
     code_routed = decision is None or decision.get("needs_code_ci") is not False
     if non_python and code_routed:
         reasons.append(f"non-Python changes need the full tier: {', '.join(sorted(non_python))}")
+    if uncovered and code_routed:
+        reasons.append(f"changed Python code no recorded test executed: {', '.join(sorted(uncovered))}")
     changed_tests = sorted(
         {
             entry.path
