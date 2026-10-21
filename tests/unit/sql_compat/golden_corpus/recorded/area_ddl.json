@@ -1,0 +1,878 @@
+{
+  "athena_csv:double_array": {
+    "fork": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY<DOUBLE>[256]) ROW FORMAT DELIMITED FIELDS TERMINATED BY ', ' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/vectors/'",
+    "legacy": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY(DOUBLE)[256]) ROW FORMAT DELIMITED FIELDS TERMINATED BY ', ' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/vectors/'"
+  },
+  "athena_csv:float_array": {
+    "fork": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY<DOUBLE>[128]) ROW FORMAT DELIMITED FIELDS TERMINATED BY ', ' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/vectors/'",
+    "legacy": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY(DOUBLE)[128]) ROW FORMAT DELIMITED FIELDS TERMINATED BY ', ' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/vectors/'"
+  },
+  "athena_csv:lineitem_codec": {
+    "fork": "CREATE EXTERNAL TABLE IF NOT EXISTS LineItem(l_orderkey BIGINT, l_comment STRING, l_extendedprice DECIMAL(15, 2)) ROW FORMAT DELIMITED FIELDS TERMINATED BY ', ' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/lineitem/'",
+    "legacy": "CREATE EXTERNAL TABLE IF NOT EXISTS lineitem(l_orderkey BIGINT, l_comment STRING, l_extendedprice DECIMAL(15, 2)) ROW FORMAT DELIMITED FIELDS TERMINATED BY ', ' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/lineitem/'"
+  },
+  "athena_csv:time_column": {
+    "fork": "CREATE EXTERNAL TABLE IF NOT EXISTS metrics(time TIMESTAMP, metric_time TIMESTAMP, hostname STRING) ROW FORMAT DELIMITED FIELDS TERMINATED BY ', ' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/metrics/'",
+    "legacy": "CREATE EXTERNAL TABLE IF NOT EXISTS metrics(time TIMESTAMP, metric_time TIME, hostname STRING) ROW FORMAT DELIMITED FIELDS TERMINATED BY ', ' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/metrics/'"
+  },
+  "athena_other:double_array": {
+    "fork": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY<DOUBLE>[256]) ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/vectors/' TBLPROPERTIES('skip.header.line.count'='0')",
+    "legacy": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY(DOUBLE)[256]) ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/vectors/' TBLPROPERTIES('skip.header.line.count'='0')"
+  },
+  "athena_other:float_array": {
+    "fork": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY<DOUBLE>[128]) ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/vectors/' TBLPROPERTIES('skip.header.line.count'='0')",
+    "legacy": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY(DOUBLE)[128]) ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/vectors/' TBLPROPERTIES('skip.header.line.count'='0')"
+  },
+  "athena_other:lineitem_codec": {
+    "fork": "CREATE EXTERNAL TABLE IF NOT EXISTS LineItem(l_orderkey BIGINT, l_comment STRING, l_extendedprice DECIMAL(15, 2)) ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/lineitem/' TBLPROPERTIES('skip.header.line.count'='0')",
+    "legacy": "CREATE EXTERNAL TABLE IF NOT EXISTS lineitem(l_orderkey BIGINT, l_comment STRING, l_extendedprice DECIMAL(15, 2)) ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/lineitem/' TBLPROPERTIES('skip.header.line.count'='0')"
+  },
+  "athena_other:time_column": {
+    "fork": "CREATE EXTERNAL TABLE IF NOT EXISTS metrics(time TIMESTAMP, metric_time TIMESTAMP, hostname STRING) ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/metrics/' TBLPROPERTIES('skip.header.line.count'='0')",
+    "legacy": "CREATE EXTERNAL TABLE IF NOT EXISTS metrics(time TIMESTAMP, metric_time TIME, hostname STRING) ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/metrics/' TBLPROPERTIES('skip.header.line.count'='0')"
+  },
+  "athena_parquet:double_array": {
+    "fork": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY<DOUBLE>[256]) STORED AS PARQUET LOCATION 's3://bucket/prefix/db/vectors/'",
+    "legacy": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY(DOUBLE)[256]) STORED AS PARQUET LOCATION 's3://bucket/prefix/db/vectors/'"
+  },
+  "athena_parquet:float_array": {
+    "fork": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY<DOUBLE>[128]) STORED AS PARQUET LOCATION 's3://bucket/prefix/db/vectors/'",
+    "legacy": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY(DOUBLE)[128]) STORED AS PARQUET LOCATION 's3://bucket/prefix/db/vectors/'"
+  },
+  "athena_parquet:lineitem_codec": {
+    "fork": "CREATE EXTERNAL TABLE IF NOT EXISTS LineItem(l_orderkey BIGINT, l_comment STRING, l_extendedprice DECIMAL(15, 2)) STORED AS PARQUET LOCATION 's3://bucket/prefix/db/lineitem/'",
+    "legacy": "CREATE EXTERNAL TABLE IF NOT EXISTS lineitem(l_orderkey BIGINT, l_comment STRING, l_extendedprice DECIMAL(15, 2)) STORED AS PARQUET LOCATION 's3://bucket/prefix/db/lineitem/'"
+  },
+  "athena_parquet:time_column": {
+    "fork": "CREATE EXTERNAL TABLE IF NOT EXISTS metrics(time TIMESTAMP, metric_time TIMESTAMP, hostname STRING) STORED AS PARQUET LOCATION 's3://bucket/prefix/db/metrics/'",
+    "legacy": "CREATE EXTERNAL TABLE IF NOT EXISTS metrics(time TIMESTAMP, metric_time TIME, hostname STRING) STORED AS PARQUET LOCATION 's3://bucket/prefix/db/metrics/'"
+  },
+  "bigquery:bare_varchar": {
+    "fork": "CREATE OR REPLACE TABLE `proj.ds`.t(c STRING)",
+    "legacy": "CREATE OR REPLACE TABLE `proj.ds.T`(c STRING)"
+  },
+  "bigquery:char_with_length": {
+    "fork": "CREATE OR REPLACE TABLE `proj.ds`.t(c STRING(10))",
+    "legacy": "CREATE OR REPLACE TABLE `proj.ds.T`(c STRING(10))"
+  },
+  "bigquery:decimal_precision": {
+    "fork": "CREATE OR REPLACE TABLE `proj.ds`.t(price NUMERIC(15, 2))",
+    "legacy": "CREATE OR REPLACE TABLE `proj.ds.T`(price NUMERIC(15, 2))"
+  },
+  "bigquery:double_array": {
+    "fork": "CREATE OR REPLACE TABLE `proj.ds`.vectors(id INT64, embedding ARRAY<FLOAT64>[256])",
+    "legacy": "CREATE OR REPLACE TABLE `proj.ds.VECTORS`(id INT64, embedding ARRAY<FLOAT64>[256])"
+  },
+  "bigquery:events_tuned": {
+    "fork": "CREATE OR REPLACE TABLE `proj.ds`.events(event_id INT64, event_date DATE, payload STRING(50))",
+    "legacy": "CREATE OR REPLACE TABLE `proj.ds.EVENTS`(event_id INT64, event_date DATE, payload STRING(50))"
+  },
+  "bigquery:float_array": {
+    "fork": "CREATE OR REPLACE TABLE `proj.ds`.vectors(id INT64, embedding ARRAY<FLOAT64>[128])",
+    "legacy": "CREATE OR REPLACE TABLE `proj.ds.VECTORS`(id INT64, embedding ARRAY<FLOAT64>[128])"
+  },
+  "bigquery:if_not_exists": {
+    "fork": "CREATE TABLE IF NOT EXISTS `proj.ds`.t(a INT64, b STRING(10))",
+    "legacy": "CREATE TABLE IF NOT EXISTS `proj.ds.T`(a INT64, b STRING(10))"
+  },
+  "bigquery:lineitem_codec": {
+    "fork": "CREATE OR REPLACE TABLE `proj.ds`.LineItem(l_orderkey INT64, l_comment STRING(44), l_extendedprice NUMERIC(15, 2), PRIMARY KEY(l_orderkey))",
+    "legacy": "CREATE OR REPLACE TABLE `proj.ds.LINEITEM`(l_orderkey INT64, l_comment STRING(44), l_extendedprice NUMERIC(15, 2), PRIMARY KEY(l_orderkey) NOT ENFORCED)"
+  },
+  "bigquery:nullable_numeric": {
+    "fork": "CREATE OR REPLACE TABLE `proj.ds`.t(amount NUMERIC(10, 2), next_col INT64, tail STRING(5))",
+    "legacy": "CREATE OR REPLACE TABLE `proj.ds.T`(amount NUMERIC(10, 2), next_col INT64, tail STRING(5))"
+  },
+  "bigquery:pk_inline": {
+    "fork": "CREATE OR REPLACE TABLE `proj.ds`.t(a INT64 PRIMARY KEY, b STRING)",
+    "legacy": "CREATE OR REPLACE TABLE `proj.ds.T`(a INT64, b STRING, PRIMARY KEY(a) NOT ENFORCED)"
+  },
+  "bigquery:pk_middle": {
+    "fork": "CREATE OR REPLACE TABLE `proj.ds`.t(a INT64, PRIMARY KEY(a), b STRING)",
+    "legacy": "CREATE OR REPLACE TABLE `proj.ds.T`(a INT64, PRIMARY KEY(a) NOT ENFORCED, b STRING)"
+  },
+  "bigquery:pk_named": {
+    "fork": "CREATE OR REPLACE TABLE `proj.ds`.t(a INT64, CONSTRAINT pk PRIMARY KEY(a))",
+    "legacy": "CREATE OR REPLACE TABLE `proj.ds.T`(a INT64, CONSTRAINT pk PRIMARY KEY(a) NOT ENFORCED)"
+  },
+  "bigquery:pk_trailing": {
+    "fork": "CREATE OR REPLACE TABLE `proj.ds`.t(a INT64, b STRING, PRIMARY KEY(a))",
+    "legacy": "CREATE OR REPLACE TABLE `proj.ds.T`(a INT64, b STRING, PRIMARY KEY(a) NOT ENFORCED)"
+  },
+  "bigquery:text_string_types": {
+    "fork": "CREATE OR REPLACE TABLE `proj.ds`.t(a STRING, b STRING, c INT64, d DATETIME, e BOOL)",
+    "legacy": "CREATE OR REPLACE TABLE `proj.ds.T`(a STRING, b STRING, c INT64, d DATETIME, e BOOL)"
+  },
+  "bigquery:time_column": {
+    "fork": "CREATE OR REPLACE TABLE `proj.ds`.metrics(time DATETIME, metric_time TIME, hostname STRING(64), PRIMARY KEY(time, hostname))",
+    "legacy": "CREATE OR REPLACE TABLE `proj.ds.METRICS`(time DATETIME, metric_time TIME, hostname STRING(64), PRIMARY KEY(time, hostname) NOT ENFORCED)"
+  },
+  "bigquery:tpcds_call_center": {
+    "fork": "CREATE OR REPLACE TABLE `proj.ds`.call_center(cc_call_center_sk INT64 NOT NULL, cc_call_center_id STRING(16) NOT NULL, cc_rec_start_date DATE, cc_rec_end_date DATE, cc_closed_date_sk INT64, cc_open_date_sk INT64, cc_name STRING(50), cc_class STRING(50), cc_employees INT64, cc_sq_ft INT64, cc_hours STRING(20), cc_manager STRING(40), cc_mkt_id INT64, cc_mkt_class STRING(50), cc_mkt_desc STRING(100), cc_market_manager STRING(40), cc_division INT64, cc_division_name STRING(50), cc_company INT64, cc_company_name STRING(50), cc_street_number STRING(10), cc_street_name STRING(60), cc_street_type STRING(15), cc_suite_number STRING(10), cc_city STRING(60), cc_county STRING(30), cc_state STRING(2), cc_zip STRING(10), cc_country STRING(20), cc_gmt_offset NUMERIC(15, 2), cc_tax_percentage NUMERIC(15, 2))",
+    "legacy": "CREATE OR REPLACE TABLE `proj.ds.CALL_CENTER`(cc_call_center_sk INT64 NOT NULL, cc_call_center_id STRING(16) NOT NULL, cc_rec_start_date DATE, cc_rec_end_date DATE, cc_closed_date_sk INT64, cc_open_date_sk INT64, cc_name STRING(50), cc_class STRING(50), cc_employees INT64, cc_sq_ft INT64, cc_hours STRING(20), cc_manager STRING(40), cc_mkt_id INT64, cc_mkt_class STRING(50), cc_mkt_desc STRING(100), cc_market_manager STRING(40), cc_division INT64, cc_division_name STRING(50), cc_company INT64, cc_company_name STRING(50), cc_street_number STRING(10), cc_street_name STRING(60), cc_street_type STRING(15), cc_suite_number STRING(10), cc_city STRING(60), cc_county STRING(30), cc_state STRING(2), cc_zip STRING(10), cc_country STRING(20), cc_gmt_offset NUMERIC(15, 2), cc_tax_percentage NUMERIC(15, 2))"
+  },
+  "bigquery:tpcds_store_sales": {
+    "fork": "CREATE OR REPLACE TABLE `proj.ds`.store_sales(ss_sold_date_sk INT64, ss_sold_time_sk INT64, ss_item_sk INT64 NOT NULL, ss_customer_sk INT64, ss_cdemo_sk INT64, ss_hdemo_sk INT64, ss_addr_sk INT64, ss_store_sk INT64, ss_promo_sk INT64, ss_ticket_number INT64 NOT NULL, ss_quantity INT64, ss_wholesale_cost NUMERIC(15, 2), ss_list_price NUMERIC(15, 2), ss_sales_price NUMERIC(15, 2), ss_ext_discount_amt NUMERIC(15, 2), ss_ext_sales_price NUMERIC(15, 2), ss_ext_wholesale_cost NUMERIC(15, 2), ss_ext_list_price NUMERIC(15, 2), ss_ext_tax NUMERIC(15, 2), ss_coupon_amt NUMERIC(15, 2), ss_net_paid NUMERIC(15, 2), ss_net_paid_inc_tax NUMERIC(15, 2), ss_net_profit NUMERIC(15, 2))",
+    "legacy": "CREATE OR REPLACE TABLE `proj.ds.STORE_SALES`(ss_sold_date_sk INT64, ss_sold_time_sk INT64, ss_item_sk INT64 NOT NULL, ss_customer_sk INT64, ss_cdemo_sk INT64, ss_hdemo_sk INT64, ss_addr_sk INT64, ss_store_sk INT64, ss_promo_sk INT64, ss_ticket_number INT64 NOT NULL, ss_quantity INT64, ss_wholesale_cost NUMERIC(15, 2), ss_list_price NUMERIC(15, 2), ss_sales_price NUMERIC(15, 2), ss_ext_discount_amt NUMERIC(15, 2), ss_ext_sales_price NUMERIC(15, 2), ss_ext_wholesale_cost NUMERIC(15, 2), ss_ext_list_price NUMERIC(15, 2), ss_ext_tax NUMERIC(15, 2), ss_coupon_amt NUMERIC(15, 2), ss_net_paid NUMERIC(15, 2), ss_net_paid_inc_tax NUMERIC(15, 2), ss_net_profit NUMERIC(15, 2))"
+  },
+  "bigquery:tpch_customer": {
+    "fork": "CREATE OR REPLACE TABLE `proj.ds`.customer(c_custkey INT64 NOT NULL, c_name STRING(25) NOT NULL, c_address STRING(40) NOT NULL, c_nationkey INT64 NOT NULL, c_phone STRING(15) NOT NULL, c_acctbal NUMERIC(15, 2) NOT NULL, c_mktsegment STRING(10) NOT NULL, c_comment STRING(117) NOT NULL, PRIMARY KEY(c_custkey), FOREIGN KEY(c_nationkey) REFERENCES nation(n_nationkey))",
+    "legacy": "CREATE OR REPLACE TABLE `proj.ds.CUSTOMER`(c_custkey INT64 NOT NULL, c_name STRING(25) NOT NULL, c_address STRING(40) NOT NULL, c_nationkey INT64 NOT NULL, c_phone STRING(15) NOT NULL, c_acctbal NUMERIC(15, 2) NOT NULL, c_mktsegment STRING(10) NOT NULL, c_comment STRING(117) NOT NULL, PRIMARY KEY(c_custkey) NOT ENFORCED, FOREIGN KEY(c_nationkey) REFERENCES `proj.ds.NATION`(n_nationkey) NOT ENFORCED)"
+  },
+  "bigquery:tpch_lineitem": {
+    "fork": "CREATE OR REPLACE TABLE `proj.ds`.lineitem(l_orderkey INT64 NOT NULL, l_partkey INT64 NOT NULL, l_suppkey INT64 NOT NULL, l_linenumber INT64 NOT NULL, l_quantity NUMERIC(15, 2) NOT NULL, l_extendedprice NUMERIC(15, 2) NOT NULL, l_discount NUMERIC(15, 2) NOT NULL, l_tax NUMERIC(15, 2) NOT NULL, l_returnflag STRING(1) NOT NULL, l_linestatus STRING(1) NOT NULL, l_shipdate DATE NOT NULL, l_commitdate DATE NOT NULL, l_receiptdate DATE NOT NULL, l_shipinstruct STRING(25) NOT NULL, l_shipmode STRING(10) NOT NULL, l_comment STRING(44) NOT NULL, PRIMARY KEY(l_orderkey, l_linenumber), FOREIGN KEY(l_orderkey) REFERENCES orders(o_orderkey), FOREIGN KEY(l_partkey) REFERENCES part(p_partkey), FOREIGN KEY(l_suppkey) REFERENCES supplier(s_suppkey))",
+    "legacy": "CREATE OR REPLACE TABLE `proj.ds.LINEITEM`(l_orderkey INT64 NOT NULL, l_partkey INT64 NOT NULL, l_suppkey INT64 NOT NULL, l_linenumber INT64 NOT NULL, l_quantity NUMERIC(15, 2) NOT NULL, l_extendedprice NUMERIC(15, 2) NOT NULL, l_discount NUMERIC(15, 2) NOT NULL, l_tax NUMERIC(15, 2) NOT NULL, l_returnflag STRING(1) NOT NULL, l_linestatus STRING(1) NOT NULL, l_shipdate DATE NOT NULL, l_commitdate DATE NOT NULL, l_receiptdate DATE NOT NULL, l_shipinstruct STRING(25) NOT NULL, l_shipmode STRING(10) NOT NULL, l_comment STRING(44) NOT NULL, PRIMARY KEY(l_orderkey, l_linenumber) NOT ENFORCED, FOREIGN KEY(l_orderkey) REFERENCES `proj.ds.ORDERS`(o_orderkey) NOT ENFORCED, FOREIGN KEY(l_partkey) REFERENCES `proj.ds.PART`(p_partkey) NOT ENFORCED, FOREIGN KEY(l_suppkey) REFERENCES `proj.ds.SUPPLIER`(s_suppkey) NOT ENFORCED)"
+  },
+  "bigquery:tpch_nation": {
+    "fork": "CREATE OR REPLACE TABLE `proj.ds`.nation(n_nationkey INT64 NOT NULL, n_name STRING(25) NOT NULL, n_regionkey INT64 NOT NULL, n_comment STRING(152), PRIMARY KEY(n_nationkey), FOREIGN KEY(n_regionkey) REFERENCES region(r_regionkey))",
+    "legacy": "CREATE OR REPLACE TABLE `proj.ds.NATION`(n_nationkey INT64 NOT NULL, n_name STRING(25) NOT NULL, n_regionkey INT64 NOT NULL, n_comment STRING(152), PRIMARY KEY(n_nationkey) NOT ENFORCED, FOREIGN KEY(n_regionkey) REFERENCES `proj.ds.REGION`(r_regionkey) NOT ENFORCED)"
+  },
+  "bigquery:tpch_orders": {
+    "fork": "CREATE OR REPLACE TABLE `proj.ds`.orders(o_orderkey INT64 NOT NULL, o_custkey INT64 NOT NULL, o_orderstatus STRING(1) NOT NULL, o_totalprice NUMERIC(15, 2) NOT NULL, o_orderdate DATE NOT NULL, o_orderpriority STRING(15) NOT NULL, o_clerk STRING(15) NOT NULL, o_shippriority INT64 NOT NULL, o_comment STRING(79) NOT NULL, PRIMARY KEY(o_orderkey), FOREIGN KEY(o_custkey) REFERENCES customer(c_custkey))",
+    "legacy": "CREATE OR REPLACE TABLE `proj.ds.ORDERS`(o_orderkey INT64 NOT NULL, o_custkey INT64 NOT NULL, o_orderstatus STRING(1) NOT NULL, o_totalprice NUMERIC(15, 2) NOT NULL, o_orderdate DATE NOT NULL, o_orderpriority STRING(15) NOT NULL, o_clerk STRING(15) NOT NULL, o_shippriority INT64 NOT NULL, o_comment STRING(79) NOT NULL, PRIMARY KEY(o_orderkey) NOT ENFORCED, FOREIGN KEY(o_custkey) REFERENCES `proj.ds.CUSTOMER`(c_custkey) NOT ENFORCED)"
+  },
+  "bigquery:tpch_part": {
+    "fork": "CREATE OR REPLACE TABLE `proj.ds`.part(p_partkey INT64 NOT NULL, p_name STRING(55) NOT NULL, p_mfgr STRING(25) NOT NULL, p_brand STRING(10) NOT NULL, p_type STRING(25) NOT NULL, p_size INT64 NOT NULL, p_container STRING(10) NOT NULL, p_retailprice NUMERIC(15, 2) NOT NULL, p_comment STRING(23) NOT NULL, PRIMARY KEY(p_partkey))",
+    "legacy": "CREATE OR REPLACE TABLE `proj.ds.PART`(p_partkey INT64 NOT NULL, p_name STRING(55) NOT NULL, p_mfgr STRING(25) NOT NULL, p_brand STRING(10) NOT NULL, p_type STRING(25) NOT NULL, p_size INT64 NOT NULL, p_container STRING(10) NOT NULL, p_retailprice NUMERIC(15, 2) NOT NULL, p_comment STRING(23) NOT NULL, PRIMARY KEY(p_partkey) NOT ENFORCED)"
+  },
+  "bigquery:tpch_partsupp": {
+    "fork": "CREATE OR REPLACE TABLE `proj.ds`.partsupp(ps_partkey INT64 NOT NULL, ps_suppkey INT64 NOT NULL, ps_availqty INT64 NOT NULL, ps_supplycost NUMERIC(15, 2) NOT NULL, ps_comment STRING(199) NOT NULL, PRIMARY KEY(ps_partkey, ps_suppkey), FOREIGN KEY(ps_partkey) REFERENCES part(p_partkey), FOREIGN KEY(ps_suppkey) REFERENCES supplier(s_suppkey))",
+    "legacy": "CREATE OR REPLACE TABLE `proj.ds.PARTSUPP`(ps_partkey INT64 NOT NULL, ps_suppkey INT64 NOT NULL, ps_availqty INT64 NOT NULL, ps_supplycost NUMERIC(15, 2) NOT NULL, ps_comment STRING(199) NOT NULL, PRIMARY KEY(ps_partkey, ps_suppkey) NOT ENFORCED, FOREIGN KEY(ps_partkey) REFERENCES `proj.ds.PART`(p_partkey) NOT ENFORCED, FOREIGN KEY(ps_suppkey) REFERENCES `proj.ds.SUPPLIER`(s_suppkey) NOT ENFORCED)"
+  },
+  "bigquery:tpch_region": {
+    "fork": "CREATE OR REPLACE TABLE `proj.ds`.region(r_regionkey INT64 NOT NULL, r_name STRING(25) NOT NULL, r_comment STRING(152), PRIMARY KEY(r_regionkey))",
+    "legacy": "CREATE OR REPLACE TABLE `proj.ds.REGION`(r_regionkey INT64 NOT NULL, r_name STRING(25) NOT NULL, r_comment STRING(152), PRIMARY KEY(r_regionkey) NOT ENFORCED)"
+  },
+  "bigquery:tpch_supplier": {
+    "fork": "CREATE OR REPLACE TABLE `proj.ds`.supplier(s_suppkey INT64 NOT NULL, s_name STRING(25) NOT NULL, s_address STRING(40) NOT NULL, s_nationkey INT64 NOT NULL, s_phone STRING(15) NOT NULL, s_acctbal NUMERIC(15, 2) NOT NULL, s_comment STRING(101) NOT NULL, PRIMARY KEY(s_suppkey), FOREIGN KEY(s_nationkey) REFERENCES nation(n_nationkey))",
+    "legacy": "CREATE OR REPLACE TABLE `proj.ds.SUPPLIER`(s_suppkey INT64 NOT NULL, s_name STRING(25) NOT NULL, s_address STRING(40) NOT NULL, s_nationkey INT64 NOT NULL, s_phone STRING(15) NOT NULL, s_acctbal NUMERIC(15, 2) NOT NULL, s_comment STRING(101) NOT NULL, PRIMARY KEY(s_suppkey) NOT ENFORCED, FOREIGN KEY(s_nationkey) REFERENCES `proj.ds.NATION`(n_nationkey) NOT ENFORCED)"
+  },
+  "clickhouse_default:bare_varchar": {
+    "fork": "CREATE TABLE t(c String) ENGINE=MergeTree() ORDER BY tuple()",
+    "legacy": "CREATE TABLE t(c VARCHAR) ENGINE=MergeTree() ORDER BY tuple()"
+  },
+  "clickhouse_default:char_with_length": {
+    "fork": "CREATE TABLE t(c String) ENGINE=MergeTree() ORDER BY tuple()",
+    "legacy": "CREATE TABLE t(c CHAR(10)) ENGINE=MergeTree() ORDER BY tuple()"
+  },
+  "clickhouse_default:decimal_precision": {
+    "fork": "CREATE TABLE t(price Decimal(15, 2)) ENGINE=MergeTree() ORDER BY tuple()",
+    "legacy": "CREATE TABLE t(price DECIMAL(15, 2)) ENGINE=MergeTree() ORDER BY tuple()"
+  },
+  "clickhouse_default:double_array": {
+    "fork": "CREATE TABLE vectors(id Int64, embedding Array(Float64)) ENGINE=MergeTree() ORDER BY tuple()",
+    "legacy": "CREATE TABLE vectors(id BIGINT, embedding Array(Float64)) ENGINE=MergeTree() ORDER BY tuple()"
+  },
+  "clickhouse_default:events_tuned": {
+    "fork": "CREATE TABLE events(event_id Int32, event_date DATE, payload String) ENGINE=MergeTree() ORDER BY tuple()",
+    "legacy": "CREATE TABLE events(event_id INT, event_date DATE, payload VARCHAR(50)) ENGINE=MergeTree() ORDER BY tuple()"
+  },
+  "clickhouse_default:float_array": {
+    "fork": "CREATE TABLE vectors(id Int64, embedding Array(Float32)) ENGINE=MergeTree() ORDER BY tuple()",
+    "legacy": "CREATE TABLE vectors(id BIGINT, embedding Array(Float32)) ENGINE=MergeTree() ORDER BY tuple()"
+  },
+  "clickhouse_default:if_not_exists": {
+    "fork": "CREATE TABLE IF NOT EXISTS t(a Int32, b String) ENGINE=MergeTree() ORDER BY tuple()",
+    "legacy": "CREATE TABLE IF NOT EXISTS t(a INT, b VARCHAR(10)) ENGINE=MergeTree() ORDER BY tuple()"
+  },
+  "clickhouse_default:lineitem_codec": {
+    "fork": "CREATE TABLE LineItem(l_orderkey Int64, l_comment String, l_extendedprice Decimal(15, 2), PRIMARY KEY(l_orderkey)) ENGINE=MergeTree() ORDER BY(l_orderkey)",
+    "legacy": "CREATE TABLE LineItem(l_orderkey BIGINT, l_comment VARCHAR(44), l_extendedprice DECIMAL(15, 2), PRIMARY KEY(l_orderkey)) ENGINE=MergeTree() ORDER BY(l_orderkey)"
+  },
+  "clickhouse_default:nullable_numeric": {
+    "fork": "CREATE TABLE t(amount Decimal(10, 2), next_col Int32, tail String) ENGINE=MergeTree() ORDER BY tuple()",
+    "legacy": "CREATE TABLE t(amount DECIMAL(10, 2), next_col INT, tail VARCHAR(5)) ENGINE=MergeTree() ORDER BY tuple()"
+  },
+  "clickhouse_default:pk_inline": {
+    "fork": "CREATE TABLE t(a Int32 PRIMARY KEY, b String) ENGINE=MergeTree() ORDER BY(a)",
+    "legacy": "CREATE TABLE t(a INT PRIMARY KEY, b TEXT) ENGINE=MergeTree() ORDER BY(a)"
+  },
+  "clickhouse_default:pk_middle": {
+    "fork": "CREATE TABLE t(a Int32, PRIMARY KEY(a), b String) ENGINE=MergeTree() ORDER BY(a)",
+    "legacy": "CREATE TABLE t(a INT, PRIMARY KEY(a), b TEXT) ENGINE=MergeTree() ORDER BY(a)"
+  },
+  "clickhouse_default:pk_named": {
+    "fork": "CREATE TABLE t(a Int32, CONSTRAINT pk PRIMARY KEY(a)) ENGINE=MergeTree() ORDER BY(a)",
+    "legacy": "CREATE TABLE t(a INT, CONSTRAINT pk PRIMARY KEY(a)) ENGINE=MergeTree() ORDER BY(CONSTRAINT, a)"
+  },
+  "clickhouse_default:pk_trailing": {
+    "fork": "CREATE TABLE t(a Int32, b String, PRIMARY KEY(a)) ENGINE=MergeTree() ORDER BY(a)",
+    "legacy": "CREATE TABLE t(a INT, b TEXT, PRIMARY KEY(a)) ENGINE=MergeTree() ORDER BY(a)"
+  },
+  "clickhouse_default:text_string_types": {
+    "fork": "CREATE TABLE t(a String, b String, c Int16, d DateTime, e Bool) ENGINE=MergeTree() ORDER BY tuple()",
+    "legacy": "CREATE TABLE t(a TEXT, b STRING, c SMALLINT, d TIMESTAMP, e BOOLEAN) ENGINE=MergeTree() ORDER BY tuple()"
+  },
+  "clickhouse_default:time_column": {
+    "fork": "CREATE TABLE metrics(time DateTime, metric_time String, hostname String, PRIMARY KEY(time, hostname)) ENGINE=MergeTree() ORDER BY(time, hostname)",
+    "legacy": "CREATE TABLE metrics(time TIMESTAMP, metric_time String, hostname VARCHAR(64), PRIMARY KEY(time, hostname)) ENGINE=MergeTree() ORDER BY(time, hostname)"
+  },
+  "clickhouse_default:tpcds_call_center": {
+    "fork": "CREATE TABLE call_center(cc_call_center_sk Int32 NOT NULL, cc_call_center_id String NOT NULL, cc_rec_start_date DATE, cc_rec_end_date DATE, cc_closed_date_sk Int32, cc_open_date_sk Int32, cc_name String, cc_class String, cc_employees Int32, cc_sq_ft Int32, cc_hours String, cc_manager String, cc_mkt_id Int32, cc_mkt_class String, cc_mkt_desc String, cc_market_manager String, cc_division Int32, cc_division_name String, cc_company Int32, cc_company_name String, cc_street_number String, cc_street_name String, cc_street_type String, cc_suite_number String, cc_city String, cc_county String, cc_state String, cc_zip String, cc_country String, cc_gmt_offset Decimal(15, 2), cc_tax_percentage Decimal(15, 2)) ENGINE=MergeTree() ORDER BY tuple()",
+    "legacy": "CREATE TABLE call_center(cc_call_center_sk INT NOT NULL, cc_call_center_id CHAR(16) NOT NULL, cc_rec_start_date DATE, cc_rec_end_date DATE, cc_closed_date_sk INT, cc_open_date_sk INT, cc_name VARCHAR(50), cc_class VARCHAR(50), cc_employees INT, cc_sq_ft INT, cc_hours CHAR(20), cc_manager VARCHAR(40), cc_mkt_id INT, cc_mkt_class CHAR(50), cc_mkt_desc VARCHAR(100), cc_market_manager VARCHAR(40), cc_division INT, cc_division_name VARCHAR(50), cc_company INT, cc_company_name CHAR(50), cc_street_number CHAR(10), cc_street_name VARCHAR(60), cc_street_type CHAR(15), cc_suite_number CHAR(10), cc_city VARCHAR(60), cc_county VARCHAR(30), cc_state CHAR(2), cc_zip CHAR(10), cc_country VARCHAR(20), cc_gmt_offset DECIMAL(15, 2), cc_tax_percentage DECIMAL(15, 2)) ENGINE=MergeTree() ORDER BY tuple()"
+  },
+  "clickhouse_default:tpcds_store_sales": {
+    "fork": "CREATE TABLE store_sales(ss_sold_date_sk Int32, ss_sold_time_sk Int32, ss_item_sk Int32 NOT NULL, ss_customer_sk Int32, ss_cdemo_sk Int32, ss_hdemo_sk Int32, ss_addr_sk Int32, ss_store_sk Int32, ss_promo_sk Int32, ss_ticket_number Int32 NOT NULL, ss_quantity Int32, ss_wholesale_cost Decimal(15, 2), ss_list_price Decimal(15, 2), ss_sales_price Decimal(15, 2), ss_ext_discount_amt Decimal(15, 2), ss_ext_sales_price Decimal(15, 2), ss_ext_wholesale_cost Decimal(15, 2), ss_ext_list_price Decimal(15, 2), ss_ext_tax Decimal(15, 2), ss_coupon_amt Decimal(15, 2), ss_net_paid Decimal(15, 2), ss_net_paid_inc_tax Decimal(15, 2), ss_net_profit Decimal(15, 2)) ENGINE=MergeTree() ORDER BY tuple()",
+    "legacy": "CREATE TABLE store_sales(ss_sold_date_sk INT, ss_sold_time_sk INT, ss_item_sk INT NOT NULL, ss_customer_sk INT, ss_cdemo_sk INT, ss_hdemo_sk INT, ss_addr_sk INT, ss_store_sk INT, ss_promo_sk INT, ss_ticket_number INT NOT NULL, ss_quantity INT, ss_wholesale_cost DECIMAL(15, 2), ss_list_price DECIMAL(15, 2), ss_sales_price DECIMAL(15, 2), ss_ext_discount_amt DECIMAL(15, 2), ss_ext_sales_price DECIMAL(15, 2), ss_ext_wholesale_cost DECIMAL(15, 2), ss_ext_list_price DECIMAL(15, 2), ss_ext_tax DECIMAL(15, 2), ss_coupon_amt DECIMAL(15, 2), ss_net_paid DECIMAL(15, 2), ss_net_paid_inc_tax DECIMAL(15, 2), ss_net_profit DECIMAL(15, 2)) ENGINE=MergeTree() ORDER BY tuple()"
+  },
+  "clickhouse_default:tpch_customer": {
+    "fork": "CREATE TABLE customer(c_custkey Int32 NOT NULL, c_name String NOT NULL, c_address String NOT NULL, c_nationkey Int32 NOT NULL, c_phone String NOT NULL, c_acctbal Decimal(15, 2) NOT NULL, c_mktsegment String NOT NULL, c_comment String NOT NULL, PRIMARY KEY(c_custkey), FOREIGN KEY(c_nationkey) REFERENCES nation(n_nationkey)) ENGINE=MergeTree() ORDER BY(c_custkey)",
+    "legacy": "CREATE TABLE customer(c_custkey INT NOT NULL, c_name VARCHAR(25) NOT NULL, c_address VARCHAR(40) NOT NULL, c_nationkey INT NOT NULL, c_phone CHAR(15) NOT NULL, c_acctbal DECIMAL(15, 2) NOT NULL, c_mktsegment CHAR(10) NOT NULL, c_comment VARCHAR(117) NOT NULL, PRIMARY KEY(c_custkey), FOREIGN KEY(c_nationkey) REFERENCES nation(n_nationkey)) ENGINE=MergeTree() ORDER BY(c_custkey)"
+  },
+  "clickhouse_default:tpch_lineitem": {
+    "fork": "CREATE TABLE lineitem(l_orderkey Int32 NOT NULL, l_partkey Int32 NOT NULL, l_suppkey Int32 NOT NULL, l_linenumber Int32 NOT NULL, l_quantity Decimal(15, 2) NOT NULL, l_extendedprice Decimal(15, 2) NOT NULL, l_discount Decimal(15, 2) NOT NULL, l_tax Decimal(15, 2) NOT NULL, l_returnflag String NOT NULL, l_linestatus String NOT NULL, l_shipdate DATE NOT NULL, l_commitdate DATE NOT NULL, l_receiptdate DATE NOT NULL, l_shipinstruct String NOT NULL, l_shipmode String NOT NULL, l_comment String NOT NULL, PRIMARY KEY(l_orderkey, l_linenumber), FOREIGN KEY(l_orderkey) REFERENCES orders(o_orderkey), FOREIGN KEY(l_partkey) REFERENCES part(p_partkey), FOREIGN KEY(l_suppkey) REFERENCES supplier(s_suppkey)) ENGINE=MergeTree() ORDER BY(l_orderkey, l_linenumber)",
+    "legacy": "CREATE TABLE lineitem(l_orderkey INT NOT NULL, l_partkey INT NOT NULL, l_suppkey INT NOT NULL, l_linenumber INT NOT NULL, l_quantity DECIMAL(15, 2) NOT NULL, l_extendedprice DECIMAL(15, 2) NOT NULL, l_discount DECIMAL(15, 2) NOT NULL, l_tax DECIMAL(15, 2) NOT NULL, l_returnflag CHAR(1) NOT NULL, l_linestatus CHAR(1) NOT NULL, l_shipdate DATE NOT NULL, l_commitdate DATE NOT NULL, l_receiptdate DATE NOT NULL, l_shipinstruct CHAR(25) NOT NULL, l_shipmode CHAR(10) NOT NULL, l_comment VARCHAR(44) NOT NULL, PRIMARY KEY(l_orderkey, l_linenumber), FOREIGN KEY(l_orderkey) REFERENCES orders(o_orderkey), FOREIGN KEY(l_partkey) REFERENCES part(p_partkey), FOREIGN KEY(l_suppkey) REFERENCES supplier(s_suppkey)) ENGINE=MergeTree() ORDER BY(l_orderkey, l_linenumber)"
+  },
+  "clickhouse_default:tpch_nation": {
+    "fork": "CREATE TABLE nation(n_nationkey Int32 NOT NULL, n_name String NOT NULL, n_regionkey Int32 NOT NULL, n_comment String, PRIMARY KEY(n_nationkey), FOREIGN KEY(n_regionkey) REFERENCES region(r_regionkey)) ENGINE=MergeTree() ORDER BY(n_nationkey)",
+    "legacy": "CREATE TABLE nation(n_nationkey INT NOT NULL, n_name CHAR(25) NOT NULL, n_regionkey INT NOT NULL, n_comment VARCHAR(152), PRIMARY KEY(n_nationkey), FOREIGN KEY(n_regionkey) REFERENCES region(r_regionkey)) ENGINE=MergeTree() ORDER BY(n_nationkey)"
+  },
+  "clickhouse_default:tpch_orders": {
+    "fork": "CREATE TABLE orders(o_orderkey Int32 NOT NULL, o_custkey Int32 NOT NULL, o_orderstatus String NOT NULL, o_totalprice Decimal(15, 2) NOT NULL, o_orderdate DATE NOT NULL, o_orderpriority String NOT NULL, o_clerk String NOT NULL, o_shippriority Int32 NOT NULL, o_comment String NOT NULL, PRIMARY KEY(o_orderkey), FOREIGN KEY(o_custkey) REFERENCES customer(c_custkey)) ENGINE=MergeTree() ORDER BY(o_orderkey)",
+    "legacy": "CREATE TABLE orders(o_orderkey INT NOT NULL, o_custkey INT NOT NULL, o_orderstatus CHAR(1) NOT NULL, o_totalprice DECIMAL(15, 2) NOT NULL, o_orderdate DATE NOT NULL, o_orderpriority CHAR(15) NOT NULL, o_clerk CHAR(15) NOT NULL, o_shippriority INT NOT NULL, o_comment VARCHAR(79) NOT NULL, PRIMARY KEY(o_orderkey), FOREIGN KEY(o_custkey) REFERENCES customer(c_custkey)) ENGINE=MergeTree() ORDER BY(o_orderkey)"
+  },
+  "clickhouse_default:tpch_part": {
+    "fork": "CREATE TABLE part(p_partkey Int32 NOT NULL, p_name String NOT NULL, p_mfgr String NOT NULL, p_brand String NOT NULL, p_type String NOT NULL, p_size Int32 NOT NULL, p_container String NOT NULL, p_retailprice Decimal(15, 2) NOT NULL, p_comment String NOT NULL, PRIMARY KEY(p_partkey)) ENGINE=MergeTree() ORDER BY(p_partkey)",
+    "legacy": "CREATE TABLE part(p_partkey INT NOT NULL, p_name VARCHAR(55) NOT NULL, p_mfgr CHAR(25) NOT NULL, p_brand CHAR(10) NOT NULL, p_type VARCHAR(25) NOT NULL, p_size INT NOT NULL, p_container CHAR(10) NOT NULL, p_retailprice DECIMAL(15, 2) NOT NULL, p_comment VARCHAR(23) NOT NULL, PRIMARY KEY(p_partkey)) ENGINE=MergeTree() ORDER BY(p_partkey)"
+  },
+  "clickhouse_default:tpch_partsupp": {
+    "fork": "CREATE TABLE partsupp(ps_partkey Int32 NOT NULL, ps_suppkey Int32 NOT NULL, ps_availqty Int32 NOT NULL, ps_supplycost Decimal(15, 2) NOT NULL, ps_comment String NOT NULL, PRIMARY KEY(ps_partkey, ps_suppkey), FOREIGN KEY(ps_partkey) REFERENCES part(p_partkey), FOREIGN KEY(ps_suppkey) REFERENCES supplier(s_suppkey)) ENGINE=MergeTree() ORDER BY(ps_partkey, ps_suppkey)",
+    "legacy": "CREATE TABLE partsupp(ps_partkey INT NOT NULL, ps_suppkey INT NOT NULL, ps_availqty INT NOT NULL, ps_supplycost DECIMAL(15, 2) NOT NULL, ps_comment VARCHAR(199) NOT NULL, PRIMARY KEY(ps_partkey, ps_suppkey), FOREIGN KEY(ps_partkey) REFERENCES part(p_partkey), FOREIGN KEY(ps_suppkey) REFERENCES supplier(s_suppkey)) ENGINE=MergeTree() ORDER BY(ps_partkey, ps_suppkey)"
+  },
+  "clickhouse_default:tpch_region": {
+    "fork": "CREATE TABLE region(r_regionkey Int32 NOT NULL, r_name String NOT NULL, r_comment String, PRIMARY KEY(r_regionkey)) ENGINE=MergeTree() ORDER BY(r_regionkey)",
+    "legacy": "CREATE TABLE region(r_regionkey INT NOT NULL, r_name CHAR(25) NOT NULL, r_comment VARCHAR(152), PRIMARY KEY(r_regionkey)) ENGINE=MergeTree() ORDER BY(r_regionkey)"
+  },
+  "clickhouse_default:tpch_supplier": {
+    "fork": "CREATE TABLE supplier(s_suppkey Int32 NOT NULL, s_name String NOT NULL, s_address String NOT NULL, s_nationkey Int32 NOT NULL, s_phone String NOT NULL, s_acctbal Decimal(15, 2) NOT NULL, s_comment String NOT NULL, PRIMARY KEY(s_suppkey), FOREIGN KEY(s_nationkey) REFERENCES nation(n_nationkey)) ENGINE=MergeTree() ORDER BY(s_suppkey)",
+    "legacy": "CREATE TABLE supplier(s_suppkey INT NOT NULL, s_name CHAR(25) NOT NULL, s_address VARCHAR(40) NOT NULL, s_nationkey INT NOT NULL, s_phone CHAR(15) NOT NULL, s_acctbal DECIMAL(15, 2) NOT NULL, s_comment VARCHAR(101) NOT NULL, PRIMARY KEY(s_suppkey), FOREIGN KEY(s_nationkey) REFERENCES nation(n_nationkey)) ENGINE=MergeTree() ORDER BY(s_suppkey)"
+  },
+  "clickhouse_no_primary_keys:pk_inline": {
+    "fork": "CREATE TABLE t(a Int32 PRIMARY KEY, b String) ENGINE=MergeTree() ORDER BY(a)",
+    "legacy": "CREATE TABLE t(a INT PRIMARY KEY, b TEXT) ENGINE=MergeTree() ORDER BY(a)"
+  },
+  "clickhouse_no_primary_keys:pk_middle": {
+    "fork": "CREATE TABLE t(a Int32, PRIMARY KEY(a), b String) ENGINE=MergeTree() ORDER BY(a)",
+    "legacy": "CREATE TABLE t(a INT, PRIMARY KEY(a), b TEXT) ENGINE=MergeTree() ORDER BY(a)"
+  },
+  "clickhouse_no_primary_keys:tpch_lineitem": {
+    "fork": "CREATE TABLE lineitem(l_orderkey Int32 NOT NULL, l_partkey Int32 NOT NULL, l_suppkey Int32 NOT NULL, l_linenumber Int32 NOT NULL, l_quantity Decimal(15, 2) NOT NULL, l_extendedprice Decimal(15, 2) NOT NULL, l_discount Decimal(15, 2) NOT NULL, l_tax Decimal(15, 2) NOT NULL, l_returnflag String NOT NULL, l_linestatus String NOT NULL, l_shipdate DATE NOT NULL, l_commitdate DATE NOT NULL, l_receiptdate DATE NOT NULL, l_shipinstruct String NOT NULL, l_shipmode String NOT NULL, l_comment String NOT NULL, PRIMARY KEY(l_orderkey, l_linenumber), FOREIGN KEY(l_orderkey) REFERENCES orders(o_orderkey), FOREIGN KEY(l_partkey) REFERENCES part(p_partkey), FOREIGN KEY(l_suppkey) REFERENCES supplier(s_suppkey)) ENGINE=MergeTree() ORDER BY(l_orderkey, l_linenumber)",
+    "legacy": "CREATE TABLE lineitem(l_orderkey INT NOT NULL, l_partkey INT NOT NULL, l_suppkey INT NOT NULL, l_linenumber INT NOT NULL, l_quantity DECIMAL(15, 2) NOT NULL, l_extendedprice DECIMAL(15, 2) NOT NULL, l_discount DECIMAL(15, 2) NOT NULL, l_tax DECIMAL(15, 2) NOT NULL, l_returnflag CHAR(1) NOT NULL, l_linestatus CHAR(1) NOT NULL, l_shipdate DATE NOT NULL, l_commitdate DATE NOT NULL, l_receiptdate DATE NOT NULL, l_shipinstruct CHAR(25) NOT NULL, l_shipmode CHAR(10) NOT NULL, l_comment VARCHAR(44) NOT NULL, PRIMARY KEY(l_orderkey, l_linenumber), FOREIGN KEY(l_orderkey) REFERENCES orders(o_orderkey), FOREIGN KEY(l_partkey) REFERENCES part(p_partkey), FOREIGN KEY(l_suppkey) REFERENCES supplier(s_suppkey)) ENGINE=MergeTree() ORDER BY(l_orderkey, l_linenumber)"
+  },
+  "clickhouse_no_primary_keys:tpch_orders": {
+    "fork": "CREATE TABLE orders(o_orderkey Int32 NOT NULL, o_custkey Int32 NOT NULL, o_orderstatus String NOT NULL, o_totalprice Decimal(15, 2) NOT NULL, o_orderdate DATE NOT NULL, o_orderpriority String NOT NULL, o_clerk String NOT NULL, o_shippriority Int32 NOT NULL, o_comment String NOT NULL, PRIMARY KEY(o_orderkey), FOREIGN KEY(o_custkey) REFERENCES customer(c_custkey)) ENGINE=MergeTree() ORDER BY(o_orderkey)",
+    "legacy": "CREATE TABLE orders(o_orderkey INT NOT NULL, o_custkey INT NOT NULL, o_orderstatus CHAR(1) NOT NULL, o_totalprice DECIMAL(15, 2) NOT NULL, o_orderdate DATE NOT NULL, o_orderpriority CHAR(15) NOT NULL, o_clerk CHAR(15) NOT NULL, o_shippriority INT NOT NULL, o_comment VARCHAR(79) NOT NULL, PRIMARY KEY(o_orderkey), FOREIGN KEY(o_custkey) REFERENCES customer(c_custkey)) ENGINE=MergeTree() ORDER BY(o_orderkey)"
+  },
+  "clickhouse_nullable:nullable_numeric": {
+    "fork": "CREATE TABLE t(amount Nullable(Decimal(10, 2)), next_col Nullable(Int32), tail String) ENGINE=MergeTree() ORDER BY tuple()",
+    "legacy": "CREATE TABLE t(amount Nullable(DECIMAL(10, 2)), next_col Nullable(INT), tail VARCHAR(5)) ENGINE=MergeTree() ORDER BY tuple()"
+  },
+  "clickhouse_nullable:tpcds_call_center": {
+    "fork": "CREATE TABLE call_center(cc_call_center_sk Int32 NOT NULL, cc_call_center_id String NOT NULL, cc_rec_start_date Nullable(DATE), cc_rec_end_date Nullable(DATE), cc_closed_date_sk Nullable(Int32), cc_open_date_sk Nullable(Int32), cc_name Nullable(String), cc_class Nullable(String), cc_employees Nullable(Int32), cc_sq_ft Nullable(Int32), cc_hours Nullable(String), cc_manager Nullable(String), cc_mkt_id Nullable(Int32), cc_mkt_class Nullable(String), cc_mkt_desc Nullable(String), cc_market_manager Nullable(String), cc_division Nullable(Int32), cc_division_name Nullable(String), cc_company Nullable(Int32), cc_company_name Nullable(String), cc_street_number Nullable(String), cc_street_name Nullable(String), cc_street_type Nullable(String), cc_suite_number Nullable(String), cc_city Nullable(String), cc_county Nullable(String), cc_state Nullable(String), cc_zip Nullable(String), cc_country Nullable(String), cc_gmt_offset Nullable(Decimal(15, 2)), cc_tax_percentage Nullable(Decimal(15, 2))) ENGINE=MergeTree() ORDER BY tuple()",
+    "legacy": "CREATE TABLE call_center(cc_call_center_sk INT NOT NULL, cc_call_center_id CHAR(16) NOT NULL, cc_rec_start_date Nullable(DATE), cc_rec_end_date Nullable(DATE), cc_closed_date_sk Nullable(INT), cc_open_date_sk Nullable(INT), cc_name Nullable(VARCHAR(50)), cc_class Nullable(VARCHAR(50)), cc_employees Nullable(INT), cc_sq_ft Nullable(INT), cc_hours Nullable(CHAR(20)), cc_manager Nullable(VARCHAR(40)), cc_mkt_id Nullable(INT), cc_mkt_class Nullable(CHAR(50)), cc_mkt_desc Nullable(VARCHAR(100)), cc_market_manager Nullable(VARCHAR(40)), cc_division Nullable(INT), cc_division_name Nullable(VARCHAR(50)), cc_company Nullable(INT), cc_company_name Nullable(CHAR(50)), cc_street_number Nullable(CHAR(10)), cc_street_name Nullable(VARCHAR(60)), cc_street_type Nullable(CHAR(15)), cc_suite_number Nullable(CHAR(10)), cc_city Nullable(VARCHAR(60)), cc_county Nullable(VARCHAR(30)), cc_state Nullable(CHAR(2)), cc_zip Nullable(CHAR(10)), cc_country Nullable(VARCHAR(20)), cc_gmt_offset Nullable(DECIMAL(15, 2)), cc_tax_percentage Nullable(DECIMAL(15, 2))) ENGINE=MergeTree() ORDER BY tuple()"
+  },
+  "clickhouse_nullable:tpcds_store_sales": {
+    "fork": "CREATE TABLE store_sales(ss_sold_date_sk Nullable(Int32), ss_sold_time_sk Nullable(Int32), ss_item_sk Int32 NOT NULL, ss_customer_sk Nullable(Int32), ss_cdemo_sk Nullable(Int32), ss_hdemo_sk Nullable(Int32), ss_addr_sk Nullable(Int32), ss_store_sk Nullable(Int32), ss_promo_sk Nullable(Int32), ss_ticket_number Int32 NOT NULL, ss_quantity Nullable(Int32), ss_wholesale_cost Nullable(Decimal(15, 2)), ss_list_price Nullable(Decimal(15, 2)), ss_sales_price Nullable(Decimal(15, 2)), ss_ext_discount_amt Nullable(Decimal(15, 2)), ss_ext_sales_price Nullable(Decimal(15, 2)), ss_ext_wholesale_cost Nullable(Decimal(15, 2)), ss_ext_list_price Nullable(Decimal(15, 2)), ss_ext_tax Nullable(Decimal(15, 2)), ss_coupon_amt Nullable(Decimal(15, 2)), ss_net_paid Nullable(Decimal(15, 2)), ss_net_paid_inc_tax Nullable(Decimal(15, 2)), ss_net_profit Nullable(Decimal(15, 2))) ENGINE=MergeTree() ORDER BY tuple()",
+    "legacy": "CREATE TABLE store_sales(ss_sold_date_sk Nullable(INT), ss_sold_time_sk Nullable(INT), ss_item_sk INT NOT NULL, ss_customer_sk Nullable(INT), ss_cdemo_sk Nullable(INT), ss_hdemo_sk Nullable(INT), ss_addr_sk Nullable(INT), ss_store_sk Nullable(INT), ss_promo_sk Nullable(INT), ss_ticket_number INT NOT NULL, ss_quantity Nullable(INT), ss_wholesale_cost Nullable(DECIMAL(15, 2)), ss_list_price Nullable(DECIMAL(15, 2)), ss_sales_price Nullable(DECIMAL(15, 2)), ss_ext_discount_amt Nullable(DECIMAL(15, 2)), ss_ext_sales_price Nullable(DECIMAL(15, 2)), ss_ext_wholesale_cost Nullable(DECIMAL(15, 2)), ss_ext_list_price Nullable(DECIMAL(15, 2)), ss_ext_tax Nullable(DECIMAL(15, 2)), ss_coupon_amt Nullable(DECIMAL(15, 2)), ss_net_paid Nullable(DECIMAL(15, 2)), ss_net_paid_inc_tax Nullable(DECIMAL(15, 2)), ss_net_profit Nullable(DECIMAL(15, 2))) ENGINE=MergeTree() ORDER BY tuple()"
+  },
+  "clickhouse_nullable:tpch_orders": {
+    "fork": "CREATE TABLE orders(o_orderkey Int32 NOT NULL, o_custkey Int32 NOT NULL, o_orderstatus String NOT NULL, o_totalprice Decimal(15, 2) NOT NULL, o_orderdate DATE NOT NULL, o_orderpriority String NOT NULL, o_clerk String NOT NULL, o_shippriority Int32 NOT NULL, o_comment String NOT NULL, PRIMARY KEY(o_orderkey), FOREIGN KEY(o_custkey) REFERENCES customer(c_custkey)) ENGINE=MergeTree() ORDER BY(o_orderkey)",
+    "legacy": "CREATE TABLE orders(o_orderkey INT NOT NULL, o_custkey INT NOT NULL, o_orderstatus CHAR(1) NOT NULL, o_totalprice DECIMAL(15, 2) NOT NULL, o_orderdate DATE NOT NULL, o_orderpriority CHAR(15) NOT NULL, o_clerk CHAR(15) NOT NULL, o_shippriority INT NOT NULL, o_comment VARCHAR(79) NOT NULL, PRIMARY KEY(o_orderkey), FOREIGN KEY(o_custkey) REFERENCES customer(c_custkey)) ENGINE=MergeTree() ORDER BY(o_orderkey)"
+  },
+  "clickhouse_tuned:nopk_partition_and_sort": {
+    "fork": "CREATE TABLE lineitem(l_orderkey Int32, l_shipdate DATE) ENGINE=MergeTree() PARTITION BY(toYYYYMM(l_shipdate)) ORDER BY(l_orderkey)",
+    "legacy": "CREATE TABLE lineitem(l_orderkey Int32, l_shipdate Date) ENGINE=MergeTree() PARTITION BY(toYYYYMM(l_shipdate)) ORDER BY(l_orderkey)"
+  },
+  "clickhouse_tuned:nopk_partition_only": {
+    "fork": "CREATE TABLE lineitem(l_orderkey Int32, l_shipdate DATE) ENGINE=MergeTree() PARTITION BY(toYYYYMM(l_shipdate)) ORDER BY tuple()",
+    "legacy": "CREATE TABLE lineitem(l_orderkey Int32, l_shipdate Date) ENGINE=MergeTree() PARTITION BY(toYYYYMM(l_shipdate)) ORDER BY tuple()"
+  },
+  "clickhouse_tuned:nopk_sort_only": {
+    "fork": "CREATE TABLE lineitem(l_orderkey Int32, l_shipdate DATE) ENGINE=MergeTree() ORDER BY(l_orderkey, l_linenumber)",
+    "legacy": "CREATE TABLE lineitem(l_orderkey Int32, l_shipdate Date) ENGINE=MergeTree() ORDER BY(l_orderkey, l_linenumber)"
+  },
+  "clickhouse_tuned:pk_partition_only": {
+    "fork": "CREATE TABLE lineitem(l_orderkey Int32 NOT NULL, l_partkey Int32 NOT NULL, l_suppkey Int32 NOT NULL, l_linenumber Int32 NOT NULL, l_quantity Decimal(15, 2) NOT NULL, l_extendedprice Decimal(15, 2) NOT NULL, l_discount Decimal(15, 2) NOT NULL, l_tax Decimal(15, 2) NOT NULL, l_returnflag String NOT NULL, l_linestatus String NOT NULL, l_shipdate DATE NOT NULL, l_commitdate DATE NOT NULL, l_receiptdate DATE NOT NULL, l_shipinstruct String NOT NULL, l_shipmode String NOT NULL, l_comment String NOT NULL, PRIMARY KEY(l_orderkey, l_linenumber), FOREIGN KEY(l_orderkey) REFERENCES orders(o_orderkey), FOREIGN KEY(l_partkey) REFERENCES part(p_partkey), FOREIGN KEY(l_suppkey) REFERENCES supplier(s_suppkey)) ENGINE=MergeTree() PARTITION BY(toYYYYMM(l_shipdate)) ORDER BY(l_orderkey, l_linenumber)",
+    "legacy": "CREATE TABLE lineitem(l_orderkey INT NOT NULL, l_partkey INT NOT NULL, l_suppkey INT NOT NULL, l_linenumber INT NOT NULL, l_quantity DECIMAL(15, 2) NOT NULL, l_extendedprice DECIMAL(15, 2) NOT NULL, l_discount DECIMAL(15, 2) NOT NULL, l_tax DECIMAL(15, 2) NOT NULL, l_returnflag CHAR(1) NOT NULL, l_linestatus CHAR(1) NOT NULL, l_shipdate DATE NOT NULL, l_commitdate DATE NOT NULL, l_receiptdate DATE NOT NULL, l_shipinstruct CHAR(25) NOT NULL, l_shipmode CHAR(10) NOT NULL, l_comment VARCHAR(44) NOT NULL, PRIMARY KEY(l_orderkey, l_linenumber), FOREIGN KEY(l_orderkey) REFERENCES orders(o_orderkey), FOREIGN KEY(l_partkey) REFERENCES part(p_partkey), FOREIGN KEY(l_suppkey) REFERENCES supplier(s_suppkey)) ENGINE=MergeTree() PARTITION BY(toYYYYMM(l_shipdate)) ORDER BY(l_orderkey, l_linenumber)"
+  },
+  "clickhouse_tuned:pk_sort_only": {
+    "fork": "CREATE TABLE lineitem(l_orderkey Int32 NOT NULL, l_partkey Int32 NOT NULL, l_suppkey Int32 NOT NULL, l_linenumber Int32 NOT NULL, l_quantity Decimal(15, 2) NOT NULL, l_extendedprice Decimal(15, 2) NOT NULL, l_discount Decimal(15, 2) NOT NULL, l_tax Decimal(15, 2) NOT NULL, l_returnflag String NOT NULL, l_linestatus String NOT NULL, l_shipdate DATE NOT NULL, l_commitdate DATE NOT NULL, l_receiptdate DATE NOT NULL, l_shipinstruct String NOT NULL, l_shipmode String NOT NULL, l_comment String NOT NULL, FOREIGN KEY(l_orderkey) REFERENCES orders(o_orderkey), FOREIGN KEY(l_partkey) REFERENCES part(p_partkey), FOREIGN KEY(l_suppkey) REFERENCES supplier(s_suppkey)) ENGINE=MergeTree() ORDER BY(l_orderkey, l_linenumber) PRIMARY KEY(l_orderkey, l_linenumber)",
+    "legacy": "CREATE TABLE lineitem(l_orderkey INT NOT NULL, l_partkey INT NOT NULL, l_suppkey INT NOT NULL, l_linenumber INT NOT NULL, l_quantity DECIMAL(15, 2) NOT NULL, l_extendedprice DECIMAL(15, 2) NOT NULL, l_discount DECIMAL(15, 2) NOT NULL, l_tax DECIMAL(15, 2) NOT NULL, l_returnflag CHAR(1) NOT NULL, l_linestatus CHAR(1) NOT NULL, l_shipdate DATE NOT NULL, l_commitdate DATE NOT NULL, l_receiptdate DATE NOT NULL, l_shipinstruct CHAR(25) NOT NULL, l_shipmode CHAR(10) NOT NULL, l_comment VARCHAR(44) NOT NULL, FOREIGN KEY(l_orderkey) REFERENCES orders(o_orderkey), FOREIGN KEY(l_partkey) REFERENCES part(p_partkey), FOREIGN KEY(l_suppkey) REFERENCES supplier(s_suppkey)) ENGINE=MergeTree() ORDER BY(l_orderkey, l_linenumber) PRIMARY KEY(l_orderkey, l_linenumber)"
+  },
+  "databend:pk_inline": {
+    "fork": "CREATE TABLE t(a INT, b VARCHAR)",
+    "legacy": "CREATE TABLE t(a INT PRIMARY KEY, b VARCHAR)"
+  },
+  "databend:pk_named": {
+    "fork": "CREATE TABLE t(a INT)",
+    "legacy": "CREATE TABLE t(a INT, CONSTRAINT pk)"
+  },
+  "databricks_delta_no_auto_optimize:bare_varchar": {
+    "fork": "CREATE OR REPLACE TABLE t(c STRING) USING DELTA",
+    "legacy": "CREATE OR REPLACE TABLE t(c STRING) USING DELTA TBLPROPERTIES()"
+  },
+  "databricks_delta_no_auto_optimize:char_with_length": {
+    "fork": "CREATE OR REPLACE TABLE t(c CHAR(10)) USING DELTA",
+    "legacy": "CREATE OR REPLACE TABLE t(c CHAR(10)) USING DELTA TBLPROPERTIES()"
+  },
+  "databricks_delta_no_auto_optimize:comment_prefix": {
+    "fork": "/* header */ CREATE OR REPLACE TABLE t(a INT) USING DELTA",
+    "legacy": "/* header */ CREATE OR REPLACE TABLE t(a INT) USING DELTA TBLPROPERTIES()"
+  },
+  "databricks_delta_no_auto_optimize:decimal_precision": {
+    "fork": "CREATE OR REPLACE TABLE t(price DECIMAL(15, 2)) USING DELTA",
+    "legacy": "CREATE OR REPLACE TABLE t(price DECIMAL(15, 2)) USING DELTA TBLPROPERTIES()"
+  },
+  "databricks_delta_no_auto_optimize:double_array": {
+    "fork": "CREATE OR REPLACE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>[256]) USING DELTA",
+    "legacy": "CREATE OR REPLACE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>[256]) USING DELTA TBLPROPERTIES()"
+  },
+  "databricks_delta_no_auto_optimize:events_tuned": {
+    "fork": "CREATE OR REPLACE TABLE events(event_id INT, event_date DATE, payload VARCHAR(50)) USING DELTA",
+    "legacy": "CREATE OR REPLACE TABLE events(event_id INT, event_date DATE, payload VARCHAR(50)) USING DELTA TBLPROPERTIES()"
+  },
+  "databricks_delta_no_auto_optimize:float_array": {
+    "fork": "CREATE OR REPLACE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>[128]) USING DELTA",
+    "legacy": "CREATE OR REPLACE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>[128]) USING DELTA TBLPROPERTIES()"
+  },
+  "databricks_delta_no_auto_optimize:if_not_exists": {
+    "fork": "CREATE TABLE IF NOT EXISTS t(a INT, b VARCHAR(10)) USING DELTA",
+    "legacy": "CREATE TABLE IF NOT EXISTS t(a INT, b VARCHAR(10)) USING DELTA TBLPROPERTIES()"
+  },
+  "databricks_delta_no_auto_optimize:lineitem_codec": {
+    "fork": "CREATE OR REPLACE TABLE LineItem(l_orderkey BIGINT, l_comment VARCHAR(44), l_extendedprice DECIMAL(15, 2), PRIMARY KEY(l_orderkey)) USING DELTA",
+    "legacy": "CREATE OR REPLACE TABLE LineItem(l_orderkey BIGINT, l_comment VARCHAR(44), l_extendedprice DECIMAL(15, 2), PRIMARY KEY(l_orderkey)) USING DELTA TBLPROPERTIES()"
+  },
+  "databricks_delta_no_auto_optimize:nullable_numeric": {
+    "fork": "CREATE OR REPLACE TABLE t(amount DECIMAL(10, 2), next_col INT, tail VARCHAR(5)) USING DELTA",
+    "legacy": "CREATE OR REPLACE TABLE t(amount DECIMAL(10, 2), next_col INT, tail VARCHAR(5)) USING DELTA TBLPROPERTIES()"
+  },
+  "databricks_delta_no_auto_optimize:pk_inline": {
+    "fork": "CREATE OR REPLACE TABLE t(a INT PRIMARY KEY, b STRING) USING DELTA",
+    "legacy": "CREATE OR REPLACE TABLE t(a INT PRIMARY KEY, b STRING) USING DELTA TBLPROPERTIES()"
+  },
+  "databricks_delta_no_auto_optimize:pk_middle": {
+    "fork": "CREATE OR REPLACE TABLE t(a INT, PRIMARY KEY(a), b STRING) USING DELTA",
+    "legacy": "CREATE OR REPLACE TABLE t(a INT, PRIMARY KEY(a), b STRING) USING DELTA TBLPROPERTIES()"
+  },
+  "databricks_delta_no_auto_optimize:pk_named": {
+    "fork": "CREATE OR REPLACE TABLE t(a INT, CONSTRAINT pk PRIMARY KEY(a)) USING DELTA",
+    "legacy": "CREATE OR REPLACE TABLE t(a INT, CONSTRAINT pk PRIMARY KEY(a)) USING DELTA TBLPROPERTIES()"
+  },
+  "databricks_delta_no_auto_optimize:pk_trailing": {
+    "fork": "CREATE OR REPLACE TABLE t(a INT, b STRING, PRIMARY KEY(a)) USING DELTA",
+    "legacy": "CREATE OR REPLACE TABLE t(a INT, b STRING, PRIMARY KEY(a)) USING DELTA TBLPROPERTIES()"
+  },
+  "databricks_delta_no_auto_optimize:text_string_types": {
+    "fork": "CREATE OR REPLACE TABLE t(a STRING, b STRING, c SMALLINT, d TIMESTAMP, e BOOLEAN) USING DELTA",
+    "legacy": "CREATE OR REPLACE TABLE t(a STRING, b STRING, c SMALLINT, d TIMESTAMP, e BOOLEAN) USING DELTA TBLPROPERTIES()"
+  },
+  "databricks_delta_no_auto_optimize:time_column": {
+    "fork": "CREATE OR REPLACE TABLE metrics(time TIMESTAMP, metric_time TIMESTAMP, hostname VARCHAR(64), PRIMARY KEY(time, hostname)) USING DELTA",
+    "legacy": "CREATE OR REPLACE TABLE metrics(time TIMESTAMP, metric_time TIMESTAMP, hostname VARCHAR(64), PRIMARY KEY(time, hostname)) USING DELTA TBLPROPERTIES()"
+  },
+  "databricks_delta_no_auto_optimize:tpcds_call_center": {
+    "fork": "CREATE OR REPLACE TABLE call_center(cc_call_center_sk INT NOT NULL, cc_call_center_id CHAR(16) NOT NULL, cc_rec_start_date DATE, cc_rec_end_date DATE, cc_closed_date_sk INT, cc_open_date_sk INT, cc_name VARCHAR(50), cc_class VARCHAR(50), cc_employees INT, cc_sq_ft INT, cc_hours CHAR(20), cc_manager VARCHAR(40), cc_mkt_id INT, cc_mkt_class CHAR(50), cc_mkt_desc VARCHAR(100), cc_market_manager VARCHAR(40), cc_division INT, cc_division_name VARCHAR(50), cc_company INT, cc_company_name CHAR(50), cc_street_number CHAR(10), cc_street_name VARCHAR(60), cc_street_type CHAR(15), cc_suite_number CHAR(10), cc_city VARCHAR(60), cc_county VARCHAR(30), cc_state CHAR(2), cc_zip CHAR(10), cc_country VARCHAR(20), cc_gmt_offset DECIMAL(15, 2), cc_tax_percentage DECIMAL(15, 2)) USING DELTA",
+    "legacy": "CREATE OR REPLACE TABLE call_center(cc_call_center_sk INT NOT NULL, cc_call_center_id CHAR(16) NOT NULL, cc_rec_start_date DATE, cc_rec_end_date DATE, cc_closed_date_sk INT, cc_open_date_sk INT, cc_name VARCHAR(50), cc_class VARCHAR(50), cc_employees INT, cc_sq_ft INT, cc_hours CHAR(20), cc_manager VARCHAR(40), cc_mkt_id INT, cc_mkt_class CHAR(50), cc_mkt_desc VARCHAR(100), cc_market_manager VARCHAR(40), cc_division INT, cc_division_name VARCHAR(50), cc_company INT, cc_company_name CHAR(50), cc_street_number CHAR(10), cc_street_name VARCHAR(60), cc_street_type CHAR(15), cc_suite_number CHAR(10), cc_city VARCHAR(60), cc_county VARCHAR(30), cc_state CHAR(2), cc_zip CHAR(10), cc_country VARCHAR(20), cc_gmt_offset DECIMAL(15, 2), cc_tax_percentage DECIMAL(15, 2)) USING DELTA TBLPROPERTIES()"
+  },
+  "databricks_delta_no_auto_optimize:tpcds_store_sales": {
+    "fork": "CREATE OR REPLACE TABLE store_sales(ss_sold_date_sk INT, ss_sold_time_sk INT, ss_item_sk INT NOT NULL, ss_customer_sk INT, ss_cdemo_sk INT, ss_hdemo_sk INT, ss_addr_sk INT, ss_store_sk INT, ss_promo_sk INT, ss_ticket_number INT NOT NULL, ss_quantity INT, ss_wholesale_cost DECIMAL(15, 2), ss_list_price DECIMAL(15, 2), ss_sales_price DECIMAL(15, 2), ss_ext_discount_amt DECIMAL(15, 2), ss_ext_sales_price DECIMAL(15, 2), ss_ext_wholesale_cost DECIMAL(15, 2), ss_ext_list_price DECIMAL(15, 2), ss_ext_tax DECIMAL(15, 2), ss_coupon_amt DECIMAL(15, 2), ss_net_paid DECIMAL(15, 2), ss_net_paid_inc_tax DECIMAL(15, 2), ss_net_profit DECIMAL(15, 2)) USING DELTA",
+    "legacy": "CREATE OR REPLACE TABLE store_sales(ss_sold_date_sk INT, ss_sold_time_sk INT, ss_item_sk INT NOT NULL, ss_customer_sk INT, ss_cdemo_sk INT, ss_hdemo_sk INT, ss_addr_sk INT, ss_store_sk INT, ss_promo_sk INT, ss_ticket_number INT NOT NULL, ss_quantity INT, ss_wholesale_cost DECIMAL(15, 2), ss_list_price DECIMAL(15, 2), ss_sales_price DECIMAL(15, 2), ss_ext_discount_amt DECIMAL(15, 2), ss_ext_sales_price DECIMAL(15, 2), ss_ext_wholesale_cost DECIMAL(15, 2), ss_ext_list_price DECIMAL(15, 2), ss_ext_tax DECIMAL(15, 2), ss_coupon_amt DECIMAL(15, 2), ss_net_paid DECIMAL(15, 2), ss_net_paid_inc_tax DECIMAL(15, 2), ss_net_profit DECIMAL(15, 2)) USING DELTA TBLPROPERTIES()"
+  },
+  "databricks_delta_no_auto_optimize:tpch_customer": {
+    "fork": "CREATE OR REPLACE TABLE customer(c_custkey INT NOT NULL, c_name VARCHAR(25) NOT NULL, c_address VARCHAR(40) NOT NULL, c_nationkey INT NOT NULL, c_phone CHAR(15) NOT NULL, c_acctbal DECIMAL(15, 2) NOT NULL, c_mktsegment CHAR(10) NOT NULL, c_comment VARCHAR(117) NOT NULL, PRIMARY KEY(c_custkey), FOREIGN KEY(c_nationkey) REFERENCES nation(n_nationkey)) USING DELTA",
+    "legacy": "CREATE OR REPLACE TABLE customer(c_custkey INT NOT NULL, c_name VARCHAR(25) NOT NULL, c_address VARCHAR(40) NOT NULL, c_nationkey INT NOT NULL, c_phone CHAR(15) NOT NULL, c_acctbal DECIMAL(15, 2) NOT NULL, c_mktsegment CHAR(10) NOT NULL, c_comment VARCHAR(117) NOT NULL, PRIMARY KEY(c_custkey), FOREIGN KEY(c_nationkey) REFERENCES nation(n_nationkey)) USING DELTA TBLPROPERTIES()"
+  },
+  "databricks_delta_no_auto_optimize:tpch_lineitem": {
+    "fork": "CREATE OR REPLACE TABLE lineitem(l_orderkey INT NOT NULL, l_partkey INT NOT NULL, l_suppkey INT NOT NULL, l_linenumber INT NOT NULL, l_quantity DECIMAL(15, 2) NOT NULL, l_extendedprice DECIMAL(15, 2) NOT NULL, l_discount DECIMAL(15, 2) NOT NULL, l_tax DECIMAL(15, 2) NOT NULL, l_returnflag CHAR(1) NOT NULL, l_linestatus CHAR(1) NOT NULL, l_shipdate DATE NOT NULL, l_commitdate DATE NOT NULL, l_receiptdate DATE NOT NULL, l_shipinstruct CHAR(25) NOT NULL, l_shipmode CHAR(10) NOT NULL, l_comment VARCHAR(44) NOT NULL, PRIMARY KEY(l_orderkey, l_linenumber), FOREIGN KEY(l_orderkey) REFERENCES orders(o_orderkey), FOREIGN KEY(l_partkey) REFERENCES part(p_partkey), FOREIGN KEY(l_suppkey) REFERENCES supplier(s_suppkey)) USING DELTA",
+    "legacy": "CREATE OR REPLACE TABLE lineitem(l_orderkey INT NOT NULL, l_partkey INT NOT NULL, l_suppkey INT NOT NULL, l_linenumber INT NOT NULL, l_quantity DECIMAL(15, 2) NOT NULL, l_extendedprice DECIMAL(15, 2) NOT NULL, l_discount DECIMAL(15, 2) NOT NULL, l_tax DECIMAL(15, 2) NOT NULL, l_returnflag CHAR(1) NOT NULL, l_linestatus CHAR(1) NOT NULL, l_shipdate DATE NOT NULL, l_commitdate DATE NOT NULL, l_receiptdate DATE NOT NULL, l_shipinstruct CHAR(25) NOT NULL, l_shipmode CHAR(10) NOT NULL, l_comment VARCHAR(44) NOT NULL, PRIMARY KEY(l_orderkey, l_linenumber), FOREIGN KEY(l_orderkey) REFERENCES orders(o_orderkey), FOREIGN KEY(l_partkey) REFERENCES part(p_partkey), FOREIGN KEY(l_suppkey) REFERENCES supplier(s_suppkey)) USING DELTA TBLPROPERTIES()"
+  },
+  "databricks_delta_no_auto_optimize:tpch_nation": {
+    "fork": "CREATE OR REPLACE TABLE nation(n_nationkey INT NOT NULL, n_name CHAR(25) NOT NULL, n_regionkey INT NOT NULL, n_comment VARCHAR(152), PRIMARY KEY(n_nationkey), FOREIGN KEY(n_regionkey) REFERENCES region(r_regionkey)) USING DELTA",
+    "legacy": "CREATE OR REPLACE TABLE nation(n_nationkey INT NOT NULL, n_name CHAR(25) NOT NULL, n_regionkey INT NOT NULL, n_comment VARCHAR(152), PRIMARY KEY(n_nationkey), FOREIGN KEY(n_regionkey) REFERENCES region(r_regionkey)) USING DELTA TBLPROPERTIES()"
+  },
+  "databricks_delta_no_auto_optimize:tpch_orders": {
+    "fork": "CREATE OR REPLACE TABLE orders(o_orderkey INT NOT NULL, o_custkey INT NOT NULL, o_orderstatus CHAR(1) NOT NULL, o_totalprice DECIMAL(15, 2) NOT NULL, o_orderdate DATE NOT NULL, o_orderpriority CHAR(15) NOT NULL, o_clerk CHAR(15) NOT NULL, o_shippriority INT NOT NULL, o_comment VARCHAR(79) NOT NULL, PRIMARY KEY(o_orderkey), FOREIGN KEY(o_custkey) REFERENCES customer(c_custkey)) USING DELTA",
+    "legacy": "CREATE OR REPLACE TABLE orders(o_orderkey INT NOT NULL, o_custkey INT NOT NULL, o_orderstatus CHAR(1) NOT NULL, o_totalprice DECIMAL(15, 2) NOT NULL, o_orderdate DATE NOT NULL, o_orderpriority CHAR(15) NOT NULL, o_clerk CHAR(15) NOT NULL, o_shippriority INT NOT NULL, o_comment VARCHAR(79) NOT NULL, PRIMARY KEY(o_orderkey), FOREIGN KEY(o_custkey) REFERENCES customer(c_custkey)) USING DELTA TBLPROPERTIES()"
+  },
+  "databricks_delta_no_auto_optimize:tpch_part": {
+    "fork": "CREATE OR REPLACE TABLE part(p_partkey INT NOT NULL, p_name VARCHAR(55) NOT NULL, p_mfgr CHAR(25) NOT NULL, p_brand CHAR(10) NOT NULL, p_type VARCHAR(25) NOT NULL, p_size INT NOT NULL, p_container CHAR(10) NOT NULL, p_retailprice DECIMAL(15, 2) NOT NULL, p_comment VARCHAR(23) NOT NULL, PRIMARY KEY(p_partkey)) USING DELTA",
+    "legacy": "CREATE OR REPLACE TABLE part(p_partkey INT NOT NULL, p_name VARCHAR(55) NOT NULL, p_mfgr CHAR(25) NOT NULL, p_brand CHAR(10) NOT NULL, p_type VARCHAR(25) NOT NULL, p_size INT NOT NULL, p_container CHAR(10) NOT NULL, p_retailprice DECIMAL(15, 2) NOT NULL, p_comment VARCHAR(23) NOT NULL, PRIMARY KEY(p_partkey)) USING DELTA TBLPROPERTIES()"
+  },
+  "databricks_delta_no_auto_optimize:tpch_partsupp": {
+    "fork": "CREATE OR REPLACE TABLE partsupp(ps_partkey INT NOT NULL, ps_suppkey INT NOT NULL, ps_availqty INT NOT NULL, ps_supplycost DECIMAL(15, 2) NOT NULL, ps_comment VARCHAR(199) NOT NULL, PRIMARY KEY(ps_partkey, ps_suppkey), FOREIGN KEY(ps_partkey) REFERENCES part(p_partkey), FOREIGN KEY(ps_suppkey) REFERENCES supplier(s_suppkey)) USING DELTA",
+    "legacy": "CREATE OR REPLACE TABLE partsupp(ps_partkey INT NOT NULL, ps_suppkey INT NOT NULL, ps_availqty INT NOT NULL, ps_supplycost DECIMAL(15, 2) NOT NULL, ps_comment VARCHAR(199) NOT NULL, PRIMARY KEY(ps_partkey, ps_suppkey), FOREIGN KEY(ps_partkey) REFERENCES part(p_partkey), FOREIGN KEY(ps_suppkey) REFERENCES supplier(s_suppkey)) USING DELTA TBLPROPERTIES()"
+  },
+  "databricks_delta_no_auto_optimize:tpch_region": {
+    "fork": "CREATE OR REPLACE TABLE region(r_regionkey INT NOT NULL, r_name CHAR(25) NOT NULL, r_comment VARCHAR(152), PRIMARY KEY(r_regionkey)) USING DELTA",
+    "legacy": "CREATE OR REPLACE TABLE region(r_regionkey INT NOT NULL, r_name CHAR(25) NOT NULL, r_comment VARCHAR(152), PRIMARY KEY(r_regionkey)) USING DELTA TBLPROPERTIES()"
+  },
+  "databricks_delta_no_auto_optimize:tpch_supplier": {
+    "fork": "CREATE OR REPLACE TABLE supplier(s_suppkey INT NOT NULL, s_name CHAR(25) NOT NULL, s_address VARCHAR(40) NOT NULL, s_nationkey INT NOT NULL, s_phone CHAR(15) NOT NULL, s_acctbal DECIMAL(15, 2) NOT NULL, s_comment VARCHAR(101) NOT NULL, PRIMARY KEY(s_suppkey), FOREIGN KEY(s_nationkey) REFERENCES nation(n_nationkey)) USING DELTA",
+    "legacy": "CREATE OR REPLACE TABLE supplier(s_suppkey INT NOT NULL, s_name CHAR(25) NOT NULL, s_address VARCHAR(40) NOT NULL, s_nationkey INT NOT NULL, s_phone CHAR(15) NOT NULL, s_acctbal DECIMAL(15, 2) NOT NULL, s_comment VARCHAR(101) NOT NULL, PRIMARY KEY(s_suppkey), FOREIGN KEY(s_nationkey) REFERENCES nation(n_nationkey)) USING DELTA TBLPROPERTIES()"
+  },
+  "databricks_delta_no_auto_optimize:using_present": {
+    "fork": "CREATE OR REPLACE TABLE t(a INT) USING PARQUET",
+    "legacy": "CREATE OR REPLACE TABLE t(a INT) USING PARQUET TBLPROPERTIES()"
+  },
+  "doris_partitioned:pk_named": {
+    "fork": "CREATE TABLE t(a INT) DUPLICATE KEY(a) DISTRIBUTED BY HASH(a) BUCKETS 10 PROPERTIES('replication_num'='1', 'storage_medium'='HDD')",
+    "legacy": "CREATE TABLE t(a INT, CONSTRAINT pk) DUPLICATE KEY(a) DISTRIBUTED BY HASH(a) BUCKETS 10 PROPERTIES('replication_num'='1', 'storage_medium'='HDD')"
+  },
+  "doris_plain:pk_named": {
+    "fork": "CREATE TABLE t(a INT) DUPLICATE KEY(a) DISTRIBUTED BY HASH(a) BUCKETS 10 PROPERTIES('replication_num'='1', 'storage_medium'='HDD')",
+    "legacy": "CREATE TABLE t(a INT, CONSTRAINT pk) DUPLICATE KEY(a) DISTRIBUTED BY HASH(a) BUCKETS 10 PROPERTIES('replication_num'='1', 'storage_medium'='HDD')"
+  },
+  "fabric:bare_varchar": {
+    "fork": "CREATE TABLE [dbo].[t]([c] VARCHAR)",
+    "legacy": "CREATE TABLE [t]([c] VARCHAR)"
+  },
+  "fabric:char_with_length": {
+    "fork": "CREATE TABLE [dbo].[t]([c] CHAR(10))",
+    "legacy": "CREATE TABLE [t]([c] CHAR(10))"
+  },
+  "fabric:decimal_precision": {
+    "fork": "CREATE TABLE [dbo].[t]([price] NUMERIC(15, 2))",
+    "legacy": "CREATE TABLE [t]([price] NUMERIC(15, 2))"
+  },
+  "fabric:double_array": {
+    "fork": "CREATE TABLE [dbo].[vectors]([id] BIGINT, [embedding] ARRAY<FLOAT>[256])",
+    "legacy": "CREATE TABLE [vectors]([id] BIGINT, [embedding] ARRAY<FLOAT>[256])"
+  },
+  "fabric:events_tuned": {
+    "fork": "CREATE TABLE [dbo].[events]([event_id] INT, [event_date] DATE, [payload] VARCHAR(50))",
+    "legacy": "CREATE TABLE [events]([event_id] INT, [event_date] DATE, [payload] VARCHAR(50))"
+  },
+  "fabric:float_array": {
+    "fork": "CREATE TABLE [dbo].[vectors]([id] BIGINT, [embedding] ARRAY<FLOAT>[128])",
+    "legacy": "CREATE TABLE [vectors]([id] BIGINT, [embedding] ARRAY<FLOAT>[128])"
+  },
+  "fabric:if_not_exists": {
+    "fork": "IF NOT EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME='t' AND TABLE_SCHEMA='dbo') EXEC('CREATE TABLE [dbo].[t]([a] INT, [b] VARCHAR(10))')",
+    "legacy": "IF NOT EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME='t') EXEC('CREATE TABLE [t]([a] INT, [b] VARCHAR(10))')"
+  },
+  "fabric:lineitem_codec": {
+    "fork": "CREATE TABLE [dbo].[LineItem]([l_orderkey] BIGINT, [l_comment] VARCHAR(44), [l_extendedprice] NUMERIC(15, 2), PRIMARY KEY([l_orderkey]))",
+    "legacy": "CREATE TABLE [LineItem]([l_orderkey] BIGINT, [l_comment] VARCHAR(44), [l_extendedprice] NUMERIC(15, 2), PRIMARY KEY([l_orderkey]))"
+  },
+  "fabric:nullable_numeric": {
+    "fork": "CREATE TABLE [dbo].[t]([amount] NUMERIC(10, 2), [next_col] INT, [tail] VARCHAR(5))",
+    "legacy": "CREATE TABLE [t]([amount] NUMERIC(10, 2), [next_col] INT, [tail] VARCHAR(5))"
+  },
+  "fabric:pk_inline": {
+    "fork": "CREATE TABLE [dbo].[t]([a] INT PRIMARY KEY, [b] VARCHAR(MAX))",
+    "legacy": "CREATE TABLE [t]([a] INT PRIMARY KEY, [b] VARCHAR(MAX))"
+  },
+  "fabric:pk_middle": {
+    "fork": "CREATE TABLE [dbo].[t]([a] INT, PRIMARY KEY([a]), [b] VARCHAR(MAX))",
+    "legacy": "CREATE TABLE [t]([a] INT, PRIMARY KEY([a]), [b] VARCHAR(MAX))"
+  },
+  "fabric:pk_named": {
+    "fork": "CREATE TABLE [dbo].[t]([a] INT, CONSTRAINT [pk] PRIMARY KEY([a]))",
+    "legacy": "CREATE TABLE [t]([a] INT, CONSTRAINT [pk] PRIMARY KEY([a]))"
+  },
+  "fabric:pk_trailing": {
+    "fork": "CREATE TABLE [dbo].[t]([a] INT, [b] VARCHAR(MAX), PRIMARY KEY([a]))",
+    "legacy": "CREATE TABLE [t]([a] INT, [b] VARCHAR(MAX), PRIMARY KEY([a]))"
+  },
+  "fabric:text_string_types": {
+    "fork": "CREATE TABLE [dbo].[t]([a] VARCHAR(MAX), [b] VARCHAR(MAX), [c] SMALLINT, [d] DATETIME2, [e] BIT)",
+    "legacy": "CREATE TABLE [t]([a] VARCHAR(MAX), [b] VARCHAR(MAX), [c] SMALLINT, [d] DATETIME2, [e] BIT)"
+  },
+  "fabric:time_column": {
+    "fork": "CREATE TABLE [dbo].[metrics]([time] DATETIME2, [metric_time] TIME, [hostname] VARCHAR(64), PRIMARY KEY([time], [hostname]))",
+    "legacy": "CREATE TABLE [metrics]([time] DATETIME2, [metric_time] TIME, [hostname] VARCHAR(64), PRIMARY KEY([time], [hostname]))"
+  },
+  "fabric:tpcds_call_center": {
+    "fork": "CREATE TABLE [dbo].[call_center]([cc_call_center_sk] INT NOT NULL, [cc_call_center_id] CHAR(16) NOT NULL, [cc_rec_start_date] DATE, [cc_rec_end_date] DATE, [cc_closed_date_sk] INT, [cc_open_date_sk] INT, [cc_name] VARCHAR(50), [cc_class] VARCHAR(50), [cc_employees] INT, [cc_sq_ft] INT, [cc_hours] CHAR(20), [cc_manager] VARCHAR(40), [cc_mkt_id] INT, [cc_mkt_class] CHAR(50), [cc_mkt_desc] VARCHAR(100), [cc_market_manager] VARCHAR(40), [cc_division] INT, [cc_division_name] VARCHAR(50), [cc_company] INT, [cc_company_name] CHAR(50), [cc_street_number] CHAR(10), [cc_street_name] VARCHAR(60), [cc_street_type] CHAR(15), [cc_suite_number] CHAR(10), [cc_city] VARCHAR(60), [cc_county] VARCHAR(30), [cc_state] CHAR(2), [cc_zip] CHAR(10), [cc_country] VARCHAR(20), [cc_gmt_offset] NUMERIC(15, 2), [cc_tax_percentage] NUMERIC(15, 2))",
+    "legacy": "CREATE TABLE [call_center]([cc_call_center_sk] INT NOT NULL, [cc_call_center_id] CHAR(16) NOT NULL, [cc_rec_start_date] DATE, [cc_rec_end_date] DATE, [cc_closed_date_sk] INT, [cc_open_date_sk] INT, [cc_name] VARCHAR(50), [cc_class] VARCHAR(50), [cc_employees] INT, [cc_sq_ft] INT, [cc_hours] CHAR(20), [cc_manager] VARCHAR(40), [cc_mkt_id] INT, [cc_mkt_class] CHAR(50), [cc_mkt_desc] VARCHAR(100), [cc_market_manager] VARCHAR(40), [cc_division] INT, [cc_division_name] VARCHAR(50), [cc_company] INT, [cc_company_name] CHAR(50), [cc_street_number] CHAR(10), [cc_street_name] VARCHAR(60), [cc_street_type] CHAR(15), [cc_suite_number] CHAR(10), [cc_city] VARCHAR(60), [cc_county] VARCHAR(30), [cc_state] CHAR(2), [cc_zip] CHAR(10), [cc_country] VARCHAR(20), [cc_gmt_offset] NUMERIC(15, 2), [cc_tax_percentage] NUMERIC(15, 2))"
+  },
+  "fabric:tpcds_store_sales": {
+    "fork": "CREATE TABLE [dbo].[store_sales]([ss_sold_date_sk] INT, [ss_sold_time_sk] INT, [ss_item_sk] INT NOT NULL, [ss_customer_sk] INT, [ss_cdemo_sk] INT, [ss_hdemo_sk] INT, [ss_addr_sk] INT, [ss_store_sk] INT, [ss_promo_sk] INT, [ss_ticket_number] INT NOT NULL, [ss_quantity] INT, [ss_wholesale_cost] NUMERIC(15, 2), [ss_list_price] NUMERIC(15, 2), [ss_sales_price] NUMERIC(15, 2), [ss_ext_discount_amt] NUMERIC(15, 2), [ss_ext_sales_price] NUMERIC(15, 2), [ss_ext_wholesale_cost] NUMERIC(15, 2), [ss_ext_list_price] NUMERIC(15, 2), [ss_ext_tax] NUMERIC(15, 2), [ss_coupon_amt] NUMERIC(15, 2), [ss_net_paid] NUMERIC(15, 2), [ss_net_paid_inc_tax] NUMERIC(15, 2), [ss_net_profit] NUMERIC(15, 2))",
+    "legacy": "CREATE TABLE [store_sales]([ss_sold_date_sk] INT, [ss_sold_time_sk] INT, [ss_item_sk] INT NOT NULL, [ss_customer_sk] INT, [ss_cdemo_sk] INT, [ss_hdemo_sk] INT, [ss_addr_sk] INT, [ss_store_sk] INT, [ss_promo_sk] INT, [ss_ticket_number] INT NOT NULL, [ss_quantity] INT, [ss_wholesale_cost] NUMERIC(15, 2), [ss_list_price] NUMERIC(15, 2), [ss_sales_price] NUMERIC(15, 2), [ss_ext_discount_amt] NUMERIC(15, 2), [ss_ext_sales_price] NUMERIC(15, 2), [ss_ext_wholesale_cost] NUMERIC(15, 2), [ss_ext_list_price] NUMERIC(15, 2), [ss_ext_tax] NUMERIC(15, 2), [ss_coupon_amt] NUMERIC(15, 2), [ss_net_paid] NUMERIC(15, 2), [ss_net_paid_inc_tax] NUMERIC(15, 2), [ss_net_profit] NUMERIC(15, 2))"
+  },
+  "fabric:tpch_customer": {
+    "fork": "CREATE TABLE [dbo].[customer]([c_custkey] INT NOT NULL, [c_name] VARCHAR(25) NOT NULL, [c_address] VARCHAR(40) NOT NULL, [c_nationkey] INT NOT NULL, [c_phone] CHAR(15) NOT NULL, [c_acctbal] NUMERIC(15, 2) NOT NULL, [c_mktsegment] CHAR(10) NOT NULL, [c_comment] VARCHAR(117) NOT NULL, PRIMARY KEY([c_custkey]), FOREIGN KEY([c_nationkey]) REFERENCES [nation]([n_nationkey]))",
+    "legacy": "CREATE TABLE [customer]([c_custkey] INT NOT NULL, [c_name] VARCHAR(25) NOT NULL, [c_address] VARCHAR(40) NOT NULL, [c_nationkey] INT NOT NULL, [c_phone] CHAR(15) NOT NULL, [c_acctbal] NUMERIC(15, 2) NOT NULL, [c_mktsegment] CHAR(10) NOT NULL, [c_comment] VARCHAR(117) NOT NULL, PRIMARY KEY([c_custkey]), FOREIGN KEY([c_nationkey]) REFERENCES [nation]([n_nationkey]))"
+  },
+  "fabric:tpch_lineitem": {
+    "fork": "CREATE TABLE [dbo].[lineitem]([l_orderkey] INT NOT NULL, [l_partkey] INT NOT NULL, [l_suppkey] INT NOT NULL, [l_linenumber] INT NOT NULL, [l_quantity] NUMERIC(15, 2) NOT NULL, [l_extendedprice] NUMERIC(15, 2) NOT NULL, [l_discount] NUMERIC(15, 2) NOT NULL, [l_tax] NUMERIC(15, 2) NOT NULL, [l_returnflag] CHAR(1) NOT NULL, [l_linestatus] CHAR(1) NOT NULL, [l_shipdate] DATE NOT NULL, [l_commitdate] DATE NOT NULL, [l_receiptdate] DATE NOT NULL, [l_shipinstruct] CHAR(25) NOT NULL, [l_shipmode] CHAR(10) NOT NULL, [l_comment] VARCHAR(44) NOT NULL, PRIMARY KEY([l_orderkey], [l_linenumber]), FOREIGN KEY([l_orderkey]) REFERENCES [orders]([o_orderkey]), FOREIGN KEY([l_partkey]) REFERENCES [part]([p_partkey]), FOREIGN KEY([l_suppkey]) REFERENCES [supplier]([s_suppkey]))",
+    "legacy": "CREATE TABLE [lineitem]([l_orderkey] INT NOT NULL, [l_partkey] INT NOT NULL, [l_suppkey] INT NOT NULL, [l_linenumber] INT NOT NULL, [l_quantity] NUMERIC(15, 2) NOT NULL, [l_extendedprice] NUMERIC(15, 2) NOT NULL, [l_discount] NUMERIC(15, 2) NOT NULL, [l_tax] NUMERIC(15, 2) NOT NULL, [l_returnflag] CHAR(1) NOT NULL, [l_linestatus] CHAR(1) NOT NULL, [l_shipdate] DATE NOT NULL, [l_commitdate] DATE NOT NULL, [l_receiptdate] DATE NOT NULL, [l_shipinstruct] CHAR(25) NOT NULL, [l_shipmode] CHAR(10) NOT NULL, [l_comment] VARCHAR(44) NOT NULL, PRIMARY KEY([l_orderkey], [l_linenumber]), FOREIGN KEY([l_orderkey]) REFERENCES [orders]([o_orderkey]), FOREIGN KEY([l_partkey]) REFERENCES [part]([p_partkey]), FOREIGN KEY([l_suppkey]) REFERENCES [supplier]([s_suppkey]))"
+  },
+  "fabric:tpch_nation": {
+    "fork": "CREATE TABLE [dbo].[nation]([n_nationkey] INT NOT NULL, [n_name] CHAR(25) NOT NULL, [n_regionkey] INT NOT NULL, [n_comment] VARCHAR(152), PRIMARY KEY([n_nationkey]), FOREIGN KEY([n_regionkey]) REFERENCES [region]([r_regionkey]))",
+    "legacy": "CREATE TABLE [nation]([n_nationkey] INT NOT NULL, [n_name] CHAR(25) NOT NULL, [n_regionkey] INT NOT NULL, [n_comment] VARCHAR(152), PRIMARY KEY([n_nationkey]), FOREIGN KEY([n_regionkey]) REFERENCES [region]([r_regionkey]))"
+  },
+  "fabric:tpch_orders": {
+    "fork": "CREATE TABLE [dbo].[orders]([o_orderkey] INT NOT NULL, [o_custkey] INT NOT NULL, [o_orderstatus] CHAR(1) NOT NULL, [o_totalprice] NUMERIC(15, 2) NOT NULL, [o_orderdate] DATE NOT NULL, [o_orderpriority] CHAR(15) NOT NULL, [o_clerk] CHAR(15) NOT NULL, [o_shippriority] INT NOT NULL, [o_comment] VARCHAR(79) NOT NULL, PRIMARY KEY([o_orderkey]), FOREIGN KEY([o_custkey]) REFERENCES [customer]([c_custkey]))",
+    "legacy": "CREATE TABLE [orders]([o_orderkey] INT NOT NULL, [o_custkey] INT NOT NULL, [o_orderstatus] CHAR(1) NOT NULL, [o_totalprice] NUMERIC(15, 2) NOT NULL, [o_orderdate] DATE NOT NULL, [o_orderpriority] CHAR(15) NOT NULL, [o_clerk] CHAR(15) NOT NULL, [o_shippriority] INT NOT NULL, [o_comment] VARCHAR(79) NOT NULL, PRIMARY KEY([o_orderkey]), FOREIGN KEY([o_custkey]) REFERENCES [customer]([c_custkey]))"
+  },
+  "fabric:tpch_part": {
+    "fork": "CREATE TABLE [dbo].[part]([p_partkey] INT NOT NULL, [p_name] VARCHAR(55) NOT NULL, [p_mfgr] CHAR(25) NOT NULL, [p_brand] CHAR(10) NOT NULL, [p_type] VARCHAR(25) NOT NULL, [p_size] INT NOT NULL, [p_container] CHAR(10) NOT NULL, [p_retailprice] NUMERIC(15, 2) NOT NULL, [p_comment] VARCHAR(23) NOT NULL, PRIMARY KEY([p_partkey]))",
+    "legacy": "CREATE TABLE [part]([p_partkey] INT NOT NULL, [p_name] VARCHAR(55) NOT NULL, [p_mfgr] CHAR(25) NOT NULL, [p_brand] CHAR(10) NOT NULL, [p_type] VARCHAR(25) NOT NULL, [p_size] INT NOT NULL, [p_container] CHAR(10) NOT NULL, [p_retailprice] NUMERIC(15, 2) NOT NULL, [p_comment] VARCHAR(23) NOT NULL, PRIMARY KEY([p_partkey]))"
+  },
+  "fabric:tpch_partsupp": {
+    "fork": "CREATE TABLE [dbo].[partsupp]([ps_partkey] INT NOT NULL, [ps_suppkey] INT NOT NULL, [ps_availqty] INT NOT NULL, [ps_supplycost] NUMERIC(15, 2) NOT NULL, [ps_comment] VARCHAR(199) NOT NULL, PRIMARY KEY([ps_partkey], [ps_suppkey]), FOREIGN KEY([ps_partkey]) REFERENCES [part]([p_partkey]), FOREIGN KEY([ps_suppkey]) REFERENCES [supplier]([s_suppkey]))",
+    "legacy": "CREATE TABLE [partsupp]([ps_partkey] INT NOT NULL, [ps_suppkey] INT NOT NULL, [ps_availqty] INT NOT NULL, [ps_supplycost] NUMERIC(15, 2) NOT NULL, [ps_comment] VARCHAR(199) NOT NULL, PRIMARY KEY([ps_partkey], [ps_suppkey]), FOREIGN KEY([ps_partkey]) REFERENCES [part]([p_partkey]), FOREIGN KEY([ps_suppkey]) REFERENCES [supplier]([s_suppkey]))"
+  },
+  "fabric:tpch_region": {
+    "fork": "CREATE TABLE [dbo].[region]([r_regionkey] INT NOT NULL, [r_name] CHAR(25) NOT NULL, [r_comment] VARCHAR(152), PRIMARY KEY([r_regionkey]))",
+    "legacy": "CREATE TABLE [region]([r_regionkey] INT NOT NULL, [r_name] CHAR(25) NOT NULL, [r_comment] VARCHAR(152), PRIMARY KEY([r_regionkey]))"
+  },
+  "fabric:tpch_supplier": {
+    "fork": "CREATE TABLE [dbo].[supplier]([s_suppkey] INT NOT NULL, [s_name] CHAR(25) NOT NULL, [s_address] VARCHAR(40) NOT NULL, [s_nationkey] INT NOT NULL, [s_phone] CHAR(15) NOT NULL, [s_acctbal] NUMERIC(15, 2) NOT NULL, [s_comment] VARCHAR(101) NOT NULL, PRIMARY KEY([s_suppkey]), FOREIGN KEY([s_nationkey]) REFERENCES [nation]([n_nationkey]))",
+    "legacy": "CREATE TABLE [supplier]([s_suppkey] INT NOT NULL, [s_name] CHAR(25) NOT NULL, [s_address] VARCHAR(40) NOT NULL, [s_nationkey] INT NOT NULL, [s_phone] CHAR(15) NOT NULL, [s_acctbal] NUMERIC(15, 2) NOT NULL, [s_comment] VARCHAR(101) NOT NULL, PRIMARY KEY([s_suppkey]), FOREIGN KEY([s_nationkey]) REFERENCES [nation]([n_nationkey]))"
+  },
+  "firebolt:lineitem_codec": {
+    "fork": "CREATE TABLE LineItem(l_orderkey BIGINT, l_comment TEXT, l_extendedprice NUMERIC(15, 2))",
+    "legacy": "CREATE TABLE lineitem(l_orderkey BIGINT, l_comment TEXT, l_extendedprice NUMERIC(15, 2))"
+  },
+  "helper_strip_primary_keys:double_array": {
+    "fork": "CREATE TABLE vectors(id BIGINT, embedding DOUBLE PRECISION[256])",
+    "legacy": "CREATE TABLE vectors(id BIGINT, embedding DOUBLE[256])"
+  },
+  "helper_strip_primary_keys:float_array": {
+    "fork": "CREATE TABLE vectors(id BIGINT, embedding DOUBLE PRECISION[128])",
+    "legacy": "CREATE TABLE vectors(id BIGINT, embedding FLOAT[128])"
+  },
+  "helper_strip_primary_keys:text_string_types": {
+    "fork": "CREATE TABLE t(a TEXT, b TEXT, c SMALLINT, d TIMESTAMP, e BOOLEAN)",
+    "legacy": "CREATE TABLE t(a TEXT, b STRING, c SMALLINT, d TIMESTAMP, e BOOLEAN)"
+  },
+  "helper_strip_primary_keys:with_properties": {
+    "fork": "CREATE TABLE t(a INT) WITH(FORMAT='PARQUET')",
+    "legacy": "CREATE TABLE t(a INT) WITH(format='PARQUET')"
+  },
+  "helper_strip_with_properties:with_properties": {
+    "fork": "CREATE TABLE t(a INT) WITH(FORMAT='PARQUET')",
+    "legacy": "CREATE TABLE t(a INT)"
+  },
+  "lakesail_parquet:comment_prefix": {
+    "fork": "/* Generated */ CREATE TABLE t(a INT) USING PARQUET",
+    "legacy": "CREATE TABLE t(a INT) USING PARQUET"
+  },
+  "lakesail_parquet:double_array": {
+    "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>[256]) USING PARQUET",
+    "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>) USING PARQUET"
+  },
+  "lakesail_parquet:float_array": {
+    "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>[128]) USING PARQUET",
+    "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>) USING PARQUET"
+  },
+  "lakesail_parquet:pk_named": {
+    "fork": "CREATE TABLE t(a INT) USING PARQUET",
+    "legacy": "CREATE TABLE t(a INT, CONSTRAINT pk PRIMARY KEY(a)) USING PARQUET"
+  },
+  "presto_hive:lineitem_codec": {
+    "fork": "CREATE TABLE \"LineItem\"(l_orderkey BIGINT, l_comment VARCHAR(44), l_extendedprice DECIMAL(15, 2)) WITH(format='PARQUET')",
+    "legacy": "CREATE TABLE lineitem(l_orderkey BIGINT, l_comment VARCHAR(44), l_extendedprice DECIMAL(15, 2)) WITH(format='PARQUET')"
+  },
+  "presto_iceberg:lineitem_codec": {
+    "fork": "CREATE TABLE \"LineItem\"(l_orderkey BIGINT, l_comment VARCHAR(44), l_extendedprice DECIMAL(15, 2))",
+    "legacy": "CREATE TABLE lineitem(l_orderkey BIGINT, l_comment VARCHAR(44), l_extendedprice DECIMAL(15, 2))"
+  },
+  "questdb_day:lineitem_codec": {
+    "fork": "CREATE TABLE LineItem(l_orderkey BIGINT, l_comment VARCHAR(44), l_extendedprice DECIMAL(15, 2))",
+    "legacy": "CREATE TABLE LineItem(l_orderkey BIGINT, l_comment VARCHAR(44), l_extendedprice DECIMAL(15, 2)) timestamp(l_shipdate) PARTITION BY DAY"
+  },
+  "questdb_day:tpch_customer": {
+    "fork": "CREATE TABLE customer(c_custkey INT NOT NULL, c_name VARCHAR(25) NOT NULL, c_address VARCHAR(40) NOT NULL, c_nationkey INT NOT NULL, c_phone CHAR(15) NOT NULL, c_acctbal DECIMAL(15, 2) NOT NULL, c_mktsegment CHAR(10) NOT NULL, c_comment VARCHAR(117) NOT NULL)",
+    "legacy": "CREATE TABLE customer(c_custkey INT NOT NULL, c_name VARCHAR(25) NOT NULL, c_address VARCHAR(40) NOT NULL, c_nationkey INT NOT NULL, c_phone CHAR(15) NOT NULL, c_acctbal DECIMAL(15, 2) NOT NULL, c_mktsegment SYMBOL, c_comment VARCHAR(117) NOT NULL)"
+  },
+  "questdb_day:tpch_lineitem": {
+    "fork": "CREATE TABLE lineitem(l_orderkey INT NOT NULL, l_partkey INT NOT NULL, l_suppkey INT NOT NULL, l_linenumber INT NOT NULL, l_quantity DECIMAL(15, 2) NOT NULL, l_extendedprice DECIMAL(15, 2) NOT NULL, l_discount DECIMAL(15, 2) NOT NULL, l_tax DECIMAL(15, 2) NOT NULL, l_returnflag CHAR(1) NOT NULL, l_linestatus CHAR(1) NOT NULL, l_shipdate DATE NOT NULL, l_commitdate DATE NOT NULL, l_receiptdate DATE NOT NULL, l_shipinstruct CHAR(25) NOT NULL, l_shipmode CHAR(10) NOT NULL, l_comment VARCHAR(44) NOT NULL)",
+    "legacy": "CREATE TABLE lineitem(l_orderkey INT NOT NULL, l_partkey INT NOT NULL, l_suppkey INT NOT NULL, l_linenumber INT NOT NULL, l_quantity DECIMAL(15, 2) NOT NULL, l_extendedprice DECIMAL(15, 2) NOT NULL, l_discount DECIMAL(15, 2) NOT NULL, l_tax DECIMAL(15, 2) NOT NULL, l_returnflag SYMBOL, l_linestatus SYMBOL, l_shipdate TIMESTAMP NOT NULL, l_commitdate TIMESTAMP NOT NULL, l_receiptdate TIMESTAMP NOT NULL, l_shipinstruct SYMBOL, l_shipmode SYMBOL, l_comment VARCHAR(44) NOT NULL) timestamp(l_shipdate) PARTITION BY DAY"
+  },
+  "questdb_day:tpch_nation": {
+    "fork": "CREATE TABLE nation(n_nationkey INT NOT NULL, n_name CHAR(25) NOT NULL, n_regionkey INT NOT NULL, n_comment VARCHAR(152))",
+    "legacy": "CREATE TABLE nation(n_nationkey INT NOT NULL, n_name SYMBOL, n_regionkey INT NOT NULL, n_comment VARCHAR(152))"
+  },
+  "questdb_day:tpch_orders": {
+    "fork": "CREATE TABLE orders(o_orderkey INT NOT NULL, o_custkey INT NOT NULL, o_orderstatus CHAR(1) NOT NULL, o_totalprice DECIMAL(15, 2) NOT NULL, o_orderdate DATE NOT NULL, o_orderpriority CHAR(15) NOT NULL, o_clerk CHAR(15) NOT NULL, o_shippriority INT NOT NULL, o_comment VARCHAR(79) NOT NULL)",
+    "legacy": "CREATE TABLE orders(o_orderkey INT NOT NULL, o_custkey INT NOT NULL, o_orderstatus SYMBOL, o_totalprice DECIMAL(15, 2) NOT NULL, o_orderdate TIMESTAMP NOT NULL, o_orderpriority SYMBOL, o_clerk CHAR(15) NOT NULL, o_shippriority INT NOT NULL, o_comment VARCHAR(79) NOT NULL) timestamp(o_orderdate) PARTITION BY DAY"
+  },
+  "questdb_day:tpch_part": {
+    "fork": "CREATE TABLE part(p_partkey INT NOT NULL, p_name VARCHAR(55) NOT NULL, p_mfgr CHAR(25) NOT NULL, p_brand CHAR(10) NOT NULL, p_type VARCHAR(25) NOT NULL, p_size INT NOT NULL, p_container CHAR(10) NOT NULL, p_retailprice DECIMAL(15, 2) NOT NULL, p_comment VARCHAR(23) NOT NULL)",
+    "legacy": "CREATE TABLE part(p_partkey INT NOT NULL, p_name VARCHAR(55) NOT NULL, p_mfgr SYMBOL, p_brand SYMBOL, p_type SYMBOL, p_size INT NOT NULL, p_container SYMBOL, p_retailprice DECIMAL(15, 2) NOT NULL, p_comment VARCHAR(23) NOT NULL)"
+  },
+  "questdb_day:tpch_region": {
+    "fork": "CREATE TABLE region(r_regionkey INT NOT NULL, r_name CHAR(25) NOT NULL, r_comment VARCHAR(152))",
+    "legacy": "CREATE TABLE region(r_regionkey INT NOT NULL, r_name SYMBOL, r_comment VARCHAR(152))"
+  },
+  "questdb_default:lineitem_codec": {
+    "fork": "CREATE TABLE LineItem(l_orderkey BIGINT, l_comment VARCHAR(44), l_extendedprice DECIMAL(15, 2))",
+    "legacy": "CREATE TABLE LineItem(l_orderkey BIGINT, l_comment VARCHAR(44), l_extendedprice DECIMAL(15, 2)) timestamp(l_shipdate) PARTITION BY MONTH"
+  },
+  "questdb_default:tpch_customer": {
+    "fork": "CREATE TABLE customer(c_custkey INT NOT NULL, c_name VARCHAR(25) NOT NULL, c_address VARCHAR(40) NOT NULL, c_nationkey INT NOT NULL, c_phone CHAR(15) NOT NULL, c_acctbal DECIMAL(15, 2) NOT NULL, c_mktsegment CHAR(10) NOT NULL, c_comment VARCHAR(117) NOT NULL)",
+    "legacy": "CREATE TABLE customer(c_custkey INT NOT NULL, c_name VARCHAR(25) NOT NULL, c_address VARCHAR(40) NOT NULL, c_nationkey INT NOT NULL, c_phone CHAR(15) NOT NULL, c_acctbal DECIMAL(15, 2) NOT NULL, c_mktsegment SYMBOL, c_comment VARCHAR(117) NOT NULL)"
+  },
+  "questdb_default:tpch_lineitem": {
+    "fork": "CREATE TABLE lineitem(l_orderkey INT NOT NULL, l_partkey INT NOT NULL, l_suppkey INT NOT NULL, l_linenumber INT NOT NULL, l_quantity DECIMAL(15, 2) NOT NULL, l_extendedprice DECIMAL(15, 2) NOT NULL, l_discount DECIMAL(15, 2) NOT NULL, l_tax DECIMAL(15, 2) NOT NULL, l_returnflag CHAR(1) NOT NULL, l_linestatus CHAR(1) NOT NULL, l_shipdate DATE NOT NULL, l_commitdate DATE NOT NULL, l_receiptdate DATE NOT NULL, l_shipinstruct CHAR(25) NOT NULL, l_shipmode CHAR(10) NOT NULL, l_comment VARCHAR(44) NOT NULL)",
+    "legacy": "CREATE TABLE lineitem(l_orderkey INT NOT NULL, l_partkey INT NOT NULL, l_suppkey INT NOT NULL, l_linenumber INT NOT NULL, l_quantity DECIMAL(15, 2) NOT NULL, l_extendedprice DECIMAL(15, 2) NOT NULL, l_discount DECIMAL(15, 2) NOT NULL, l_tax DECIMAL(15, 2) NOT NULL, l_returnflag SYMBOL, l_linestatus SYMBOL, l_shipdate TIMESTAMP NOT NULL, l_commitdate TIMESTAMP NOT NULL, l_receiptdate TIMESTAMP NOT NULL, l_shipinstruct SYMBOL, l_shipmode SYMBOL, l_comment VARCHAR(44) NOT NULL) timestamp(l_shipdate) PARTITION BY MONTH"
+  },
+  "questdb_default:tpch_nation": {
+    "fork": "CREATE TABLE nation(n_nationkey INT NOT NULL, n_name CHAR(25) NOT NULL, n_regionkey INT NOT NULL, n_comment VARCHAR(152))",
+    "legacy": "CREATE TABLE nation(n_nationkey INT NOT NULL, n_name SYMBOL, n_regionkey INT NOT NULL, n_comment VARCHAR(152))"
+  },
+  "questdb_default:tpch_orders": {
+    "fork": "CREATE TABLE orders(o_orderkey INT NOT NULL, o_custkey INT NOT NULL, o_orderstatus CHAR(1) NOT NULL, o_totalprice DECIMAL(15, 2) NOT NULL, o_orderdate DATE NOT NULL, o_orderpriority CHAR(15) NOT NULL, o_clerk CHAR(15) NOT NULL, o_shippriority INT NOT NULL, o_comment VARCHAR(79) NOT NULL)",
+    "legacy": "CREATE TABLE orders(o_orderkey INT NOT NULL, o_custkey INT NOT NULL, o_orderstatus SYMBOL, o_totalprice DECIMAL(15, 2) NOT NULL, o_orderdate TIMESTAMP NOT NULL, o_orderpriority SYMBOL, o_clerk CHAR(15) NOT NULL, o_shippriority INT NOT NULL, o_comment VARCHAR(79) NOT NULL) timestamp(o_orderdate) PARTITION BY MONTH"
+  },
+  "questdb_default:tpch_part": {
+    "fork": "CREATE TABLE part(p_partkey INT NOT NULL, p_name VARCHAR(55) NOT NULL, p_mfgr CHAR(25) NOT NULL, p_brand CHAR(10) NOT NULL, p_type VARCHAR(25) NOT NULL, p_size INT NOT NULL, p_container CHAR(10) NOT NULL, p_retailprice DECIMAL(15, 2) NOT NULL, p_comment VARCHAR(23) NOT NULL)",
+    "legacy": "CREATE TABLE part(p_partkey INT NOT NULL, p_name VARCHAR(55) NOT NULL, p_mfgr SYMBOL, p_brand SYMBOL, p_type SYMBOL, p_size INT NOT NULL, p_container SYMBOL, p_retailprice DECIMAL(15, 2) NOT NULL, p_comment VARCHAR(23) NOT NULL)"
+  },
+  "questdb_default:tpch_region": {
+    "fork": "CREATE TABLE region(r_regionkey INT NOT NULL, r_name CHAR(25) NOT NULL, r_comment VARCHAR(152))",
+    "legacy": "CREATE TABLE region(r_regionkey INT NOT NULL, r_name SYMBOL, r_comment VARCHAR(152))"
+  },
+  "questdb_none:lineitem_codec": {
+    "fork": "CREATE TABLE LineItem(l_orderkey BIGINT, l_comment VARCHAR(44), l_extendedprice DECIMAL(15, 2))",
+    "legacy": "CREATE TABLE LineItem(l_orderkey BIGINT, l_comment VARCHAR(44), l_extendedprice DECIMAL(15, 2)) timestamp(l_shipdate)"
+  },
+  "questdb_none:tpch_customer": {
+    "fork": "CREATE TABLE customer(c_custkey INT NOT NULL, c_name VARCHAR(25) NOT NULL, c_address VARCHAR(40) NOT NULL, c_nationkey INT NOT NULL, c_phone CHAR(15) NOT NULL, c_acctbal DECIMAL(15, 2) NOT NULL, c_mktsegment CHAR(10) NOT NULL, c_comment VARCHAR(117) NOT NULL)",
+    "legacy": "CREATE TABLE customer(c_custkey INT NOT NULL, c_name VARCHAR(25) NOT NULL, c_address VARCHAR(40) NOT NULL, c_nationkey INT NOT NULL, c_phone CHAR(15) NOT NULL, c_acctbal DECIMAL(15, 2) NOT NULL, c_mktsegment SYMBOL, c_comment VARCHAR(117) NOT NULL)"
+  },
+  "questdb_none:tpch_lineitem": {
+    "fork": "CREATE TABLE lineitem(l_orderkey INT NOT NULL, l_partkey INT NOT NULL, l_suppkey INT NOT NULL, l_linenumber INT NOT NULL, l_quantity DECIMAL(15, 2) NOT NULL, l_extendedprice DECIMAL(15, 2) NOT NULL, l_discount DECIMAL(15, 2) NOT NULL, l_tax DECIMAL(15, 2) NOT NULL, l_returnflag CHAR(1) NOT NULL, l_linestatus CHAR(1) NOT NULL, l_shipdate DATE NOT NULL, l_commitdate DATE NOT NULL, l_receiptdate DATE NOT NULL, l_shipinstruct CHAR(25) NOT NULL, l_shipmode CHAR(10) NOT NULL, l_comment VARCHAR(44) NOT NULL)",
+    "legacy": "CREATE TABLE lineitem(l_orderkey INT NOT NULL, l_partkey INT NOT NULL, l_suppkey INT NOT NULL, l_linenumber INT NOT NULL, l_quantity DECIMAL(15, 2) NOT NULL, l_extendedprice DECIMAL(15, 2) NOT NULL, l_discount DECIMAL(15, 2) NOT NULL, l_tax DECIMAL(15, 2) NOT NULL, l_returnflag SYMBOL, l_linestatus SYMBOL, l_shipdate TIMESTAMP NOT NULL, l_commitdate TIMESTAMP NOT NULL, l_receiptdate TIMESTAMP NOT NULL, l_shipinstruct SYMBOL, l_shipmode SYMBOL, l_comment VARCHAR(44) NOT NULL) timestamp(l_shipdate)"
+  },
+  "questdb_none:tpch_nation": {
+    "fork": "CREATE TABLE nation(n_nationkey INT NOT NULL, n_name CHAR(25) NOT NULL, n_regionkey INT NOT NULL, n_comment VARCHAR(152))",
+    "legacy": "CREATE TABLE nation(n_nationkey INT NOT NULL, n_name SYMBOL, n_regionkey INT NOT NULL, n_comment VARCHAR(152))"
+  },
+  "questdb_none:tpch_orders": {
+    "fork": "CREATE TABLE orders(o_orderkey INT NOT NULL, o_custkey INT NOT NULL, o_orderstatus CHAR(1) NOT NULL, o_totalprice DECIMAL(15, 2) NOT NULL, o_orderdate DATE NOT NULL, o_orderpriority CHAR(15) NOT NULL, o_clerk CHAR(15) NOT NULL, o_shippriority INT NOT NULL, o_comment VARCHAR(79) NOT NULL)",
+    "legacy": "CREATE TABLE orders(o_orderkey INT NOT NULL, o_custkey INT NOT NULL, o_orderstatus SYMBOL, o_totalprice DECIMAL(15, 2) NOT NULL, o_orderdate TIMESTAMP NOT NULL, o_orderpriority SYMBOL, o_clerk CHAR(15) NOT NULL, o_shippriority INT NOT NULL, o_comment VARCHAR(79) NOT NULL) timestamp(o_orderdate)"
+  },
+  "questdb_none:tpch_part": {
+    "fork": "CREATE TABLE part(p_partkey INT NOT NULL, p_name VARCHAR(55) NOT NULL, p_mfgr CHAR(25) NOT NULL, p_brand CHAR(10) NOT NULL, p_type VARCHAR(25) NOT NULL, p_size INT NOT NULL, p_container CHAR(10) NOT NULL, p_retailprice DECIMAL(15, 2) NOT NULL, p_comment VARCHAR(23) NOT NULL)",
+    "legacy": "CREATE TABLE part(p_partkey INT NOT NULL, p_name VARCHAR(55) NOT NULL, p_mfgr SYMBOL, p_brand SYMBOL, p_type SYMBOL, p_size INT NOT NULL, p_container SYMBOL, p_retailprice DECIMAL(15, 2) NOT NULL, p_comment VARCHAR(23) NOT NULL)"
+  },
+  "questdb_none:tpch_region": {
+    "fork": "CREATE TABLE region(r_regionkey INT NOT NULL, r_name CHAR(25) NOT NULL, r_comment VARCHAR(152))",
+    "legacy": "CREATE TABLE region(r_regionkey INT NOT NULL, r_name SYMBOL, r_comment VARCHAR(152))"
+  },
+  "redshift:lineitem_codec": {
+    "fork": "CREATE TABLE \"LineItem\"(l_orderkey BIGINT, l_comment VARCHAR(44), l_extendedprice DECIMAL(15, 2), PRIMARY KEY(l_orderkey)) DISTSTYLE AUTO SORTKEY AUTO",
+    "legacy": "CREATE TABLE lineitem(l_orderkey BIGINT, l_comment VARCHAR(44), l_extendedprice DECIMAL(15, 2), PRIMARY KEY(l_orderkey)) DISTSTYLE AUTO SORTKEY AUTO"
+  },
+  "redshift:sortkey_present": {
+    "fork": "CREATE TABLE t(a INT) SORTKEY(a) DISTSTYLE AUTO SORTKEY AUTO",
+    "legacy": "CREATE TABLE t(a INT) SORTKEY(a) DISTSTYLE AUTO"
+  },
+  "singlestore:double_array": {
+    "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE)[256], SHARD KEY())",
+    "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>[256], SHARD KEY())"
+  },
+  "singlestore:float_array": {
+    "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE)[128], SHARD KEY())",
+    "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>[128], SHARD KEY())"
+  },
+  "singlestore:lineitem_codec": {
+    "fork": "CREATE TABLE LineItem(l_orderkey BIGINT, l_comment VARCHAR(44), l_extendedprice DECIMAL(15, 2), PRIMARY KEY(l_orderkey), SHARD KEY(l_orderkey), SORT KEY(l_orderkey))",
+    "legacy": "CREATE TABLE lineitem(l_orderkey BIGINT, l_comment VARCHAR(44), l_extendedprice DECIMAL(15, 2), PRIMARY KEY(l_orderkey), SHARD KEY(l_orderkey), SORT KEY(l_orderkey))"
+  },
+  "singlestore:text_string_types": {
+    "fork": "CREATE TABLE t(a TEXT, b TEXT, c SMALLINT, d TIMESTAMP, e BOOLEAN, SHARD KEY())",
+    "legacy": "CREATE TABLE t(a TEXT, b TEXT, c SMALLINT, d DATETIME, e BOOLEAN, SHARD KEY())"
+  },
+  "singlestore:time_column": {
+    "fork": "CREATE TABLE metrics(time TIMESTAMP, metric_time TIME, hostname VARCHAR(64), PRIMARY KEY(time, hostname))",
+    "legacy": "CREATE TABLE metrics(time DATETIME, metric_time TIME, hostname VARCHAR(64), PRIMARY KEY(time, hostname))"
+  },
+  "snowflake:quoted_identifiers": {
+    "fork": "CREATE OR REPLACE TABLE hits(\"WatchID\" BIGINT NOT NULL, note VARCHAR DEFAULT 'keep me lower')",
+    "legacy": "CREATE OR REPLACE TABLE \"HITS\"(\"WATCHID\" BIGINT NOT NULL, \"NOTE\" VARCHAR DEFAULT 'keep me lower')"
+  },
+  "spark_delta:comment_prefix": {
+    "fork": "/* Generated */ CREATE TABLE t(a INT) USING DELTA",
+    "legacy": "CREATE TABLE t(a INT) USING DELTA"
+  },
+  "spark_delta:double_array": {
+    "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>[256]) USING DELTA",
+    "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>) USING DELTA"
+  },
+  "spark_delta:float_array": {
+    "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>[128]) USING DELTA",
+    "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>) USING DELTA"
+  },
+  "spark_delta:using_present": {
+    "fork": "CREATE TABLE t(a INT) USING PARQUET",
+    "legacy": "CREATE TABLE t(a INT) USING DELTA"
+  },
+  "spark_mixin:delta_cluster": {
+    "fork": "CREATE TABLE orders(o_orderkey BIGINT, o_orderdate DATE, o_comment VARCHAR(79)) USING DELTA CLUSTER BY(o_orderkey) TBLPROPERTIES('delta.autoOptimize.optimizeWrite'='true', 'delta.autoOptimize.autoCompact'='true')",
+    "legacy": "CREATE TABLE orders(o_orderkey BIGINT, o_orderdate DATE, o_comment VARCHAR(79)) USING DELTA CLUSTER BY(o_orderkey) TBLPROPERTIES('delta.autoOptimize.autoCompact'='true', 'delta.autoOptimize.optimizeWrite'='true')"
+  },
+  "spark_mixin:delta_distribution_zorder": {
+    "fork": "CREATE TABLE orders(o_orderkey BIGINT, o_orderdate DATE, o_comment VARCHAR(79)) USING DELTA TBLPROPERTIES('delta.autoOptimize.optimizeWrite'='true', 'delta.autoOptimize.autoCompact'='true')",
+    "legacy": "CREATE TABLE orders(o_orderkey BIGINT, o_orderdate DATE, o_comment VARCHAR(79)) USING DELTA TBLPROPERTIES('delta.autoOptimize.autoCompact'='true', 'delta.autoOptimize.optimizeWrite'='true')"
+  },
+  "spark_mixin:delta_partition": {
+    "fork": "CREATE TABLE orders(o_orderkey BIGINT, o_orderdate DATE, o_comment VARCHAR(79)) USING DELTA PARTITIONED BY(o_orderdate) TBLPROPERTIES('delta.autoOptimize.optimizeWrite'='true', 'delta.autoOptimize.autoCompact'='true')",
+    "legacy": "CREATE TABLE orders(o_orderkey BIGINT, o_orderdate DATE, o_comment VARCHAR(79)) USING DELTA PARTITIONED BY(o_orderdate) TBLPROPERTIES('delta.autoOptimize.autoCompact'='true', 'delta.autoOptimize.optimizeWrite'='true')"
+  },
+  "spark_mixin:delta_untuned": {
+    "fork": "CREATE TABLE orders(o_orderkey BIGINT, o_orderdate DATE, o_comment VARCHAR(79)) USING DELTA TBLPROPERTIES('delta.autoOptimize.optimizeWrite'='true', 'delta.autoOptimize.autoCompact'='true')",
+    "legacy": "CREATE TABLE orders(o_orderkey BIGINT, o_orderdate DATE, o_comment VARCHAR(79)) USING DELTA TBLPROPERTIES('delta.autoOptimize.autoCompact'='true', 'delta.autoOptimize.optimizeWrite'='true')"
+  },
+  "spark_mixin:hive_bucketed": {
+    "fork": "CREATE TABLE orders(o_orderkey BIGINT, o_orderdate DATE, o_comment VARCHAR(79)) CLUSTERED BY(o_orderkey) SORTED BY(o_orderdate) INTO 32 BUCKETS STORED AS PARQUET",
+    "legacy": "CREATE TABLE orders(o_orderkey BIGINT, o_orderdate DATE, o_comment VARCHAR(79)) STORED AS PARQUET CLUSTERED BY(o_orderkey) SORTED BY(o_orderdate) INTO 32 BUCKETS"
+  },
+  "spark_mixin:hive_partition": {
+    "fork": "CREATE TABLE orders(o_orderkey BIGINT, o_comment VARCHAR(79)) PARTITIONED BY(o_orderdate DATE) STORED AS PARQUET",
+    "legacy": "CREATE TABLE orders(o_orderkey BIGINT, o_orderdate DATE, o_comment VARCHAR(79)) STORED AS PARQUET PARTITIONED BY(o_orderdate DATE)"
+  },
+  "spark_mixin:iceberg_partition": {
+    "fork": "CREATE TABLE orders(o_orderkey BIGINT, o_orderdate DATE, o_comment VARCHAR(79)) USING ICEBERG PARTITIONED BY(MONTHS(o_orderdate))",
+    "legacy": "CREATE TABLE orders(o_orderkey BIGINT, o_orderdate DATE, o_comment VARCHAR(79)) USING ICEBERG PARTITIONED BY(months(o_orderdate))"
+  },
+  "spark_mixin:parquet_partition_sort": {
+    "fork": "CREATE TABLE orders(o_orderkey BIGINT, o_orderdate DATE, o_comment VARCHAR(79)) USING PARQUET PARTITIONED BY(o_orderdate)",
+    "legacy": "CREATE TABLE orders(o_orderkey BIGINT, o_orderdate DATE, o_comment VARCHAR(79)) USING PARQUET PARTITIONED BY(o_orderdate) SORTED BY(o_orderkey)"
+  },
+  "spark_orc:comment_prefix": {
+    "fork": "/* Generated */ CREATE TABLE t(a INT) USING ORC",
+    "legacy": "CREATE TABLE t(a INT) USING ORC"
+  },
+  "spark_orc:double_array": {
+    "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>[256]) USING ORC",
+    "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>) USING ORC"
+  },
+  "spark_orc:float_array": {
+    "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>[128]) USING ORC",
+    "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>) USING ORC"
+  },
+  "spark_orc:pk_named": {
+    "fork": "CREATE TABLE t(a INT) USING ORC",
+    "legacy": "CREATE TABLE t(a INT, CONSTRAINT pk PRIMARY KEY(a)) USING ORC"
+  },
+  "spark_orc:using_present": {
+    "fork": "CREATE TABLE t(a INT) USING PARQUET",
+    "legacy": "CREATE TABLE t(a INT) USING ORC"
+  },
+  "spark_parquet:comment_prefix": {
+    "fork": "/* Generated */ CREATE TABLE t(a INT) USING PARQUET",
+    "legacy": "CREATE TABLE t(a INT) USING PARQUET"
+  },
+  "spark_parquet:double_array": {
+    "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>[256]) USING PARQUET",
+    "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>) USING PARQUET"
+  },
+  "spark_parquet:float_array": {
+    "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>[128]) USING PARQUET",
+    "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>) USING PARQUET"
+  },
+  "spark_parquet:pk_named": {
+    "fork": "CREATE TABLE t(a INT) USING PARQUET",
+    "legacy": "CREATE TABLE t(a INT, CONSTRAINT pk PRIMARY KEY(a)) USING PARQUET"
+  },
+  "starrocks:char_with_length": {
+    "fork": "CREATE TABLE t(c VARCHAR(65533)) DUPLICATE KEY(c) DISTRIBUTED BY HASH(c) BUCKETS 8",
+    "legacy": "CREATE TABLE t(c CHAR(10)) DUPLICATE KEY(c) DISTRIBUTED BY HASH(c) BUCKETS 8"
+  },
+  "starrocks:double_array": {
+    "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>) DUPLICATE KEY(id) DISTRIBUTED BY HASH(id) BUCKETS 8",
+    "legacy": "CREATE TABLE vectors(id BIGINT, embedding DOUBLE[256]) DUPLICATE KEY(id) DISTRIBUTED BY HASH(id) BUCKETS 8"
+  },
+  "starrocks:events_tuned": {
+    "fork": "CREATE TABLE events(event_id INT, event_date DATE, payload VARCHAR(65533)) DUPLICATE KEY(event_id) DISTRIBUTED BY HASH(event_id) BUCKETS 8",
+    "legacy": "CREATE TABLE events(event_id INT, event_date DATE, payload VARCHAR(50)) DUPLICATE KEY(event_id) DISTRIBUTED BY HASH(event_id) BUCKETS 8"
+  },
+  "starrocks:if_not_exists": {
+    "fork": "CREATE TABLE IF NOT EXISTS t(a INT, b VARCHAR(65533)) DUPLICATE KEY(a) DISTRIBUTED BY HASH(a) BUCKETS 8",
+    "legacy": "CREATE TABLE IF NOT EXISTS t(a INT, b VARCHAR(10)) DUPLICATE KEY(a) DISTRIBUTED BY HASH(a) BUCKETS 8"
+  },
+  "starrocks:lineitem_codec": {
+    "fork": "CREATE TABLE LineItem(l_orderkey BIGINT, l_comment VARCHAR(65533), l_extendedprice DECIMAL(15, 2)) PRIMARY KEY(l_orderkey) DISTRIBUTED BY HASH(l_orderkey) BUCKETS 8",
+    "legacy": "CREATE TABLE LineItem(l_orderkey BIGINT, l_comment VARCHAR(44), l_extendedprice DECIMAL(15, 2)) DUPLICATE KEY(l_orderkey) DISTRIBUTED BY HASH(l_orderkey) BUCKETS 8"
+  },
+  "starrocks:nullable_numeric": {
+    "fork": "CREATE TABLE t(amount DECIMAL(10, 2), next_col INT, tail VARCHAR(65533)) DUPLICATE KEY(amount) DISTRIBUTED BY HASH(amount) BUCKETS 8",
+    "legacy": "CREATE TABLE t(amount DECIMAL(10, 2), next_col INT, tail VARCHAR(5)) DUPLICATE KEY(amount) DISTRIBUTED BY HASH(amount) BUCKETS 8"
+  },
+  "starrocks:pk_inline": {
+    "fork": "CREATE TABLE t(a INT, b VARCHAR(65533)) PRIMARY KEY(a) DISTRIBUTED BY HASH(a) BUCKETS 8",
+    "legacy": "CREATE TABLE t(a INT, b VARCHAR(65533)) DUPLICATE KEY(a) DISTRIBUTED BY HASH(a) BUCKETS 8"
+  },
+  "starrocks:pk_middle": {
+    "fork": "CREATE TABLE t(a INT, b VARCHAR(65533)) PRIMARY KEY(a) DISTRIBUTED BY HASH(a) BUCKETS 8",
+    "legacy": "CREATE TABLE t(a INT, b VARCHAR(65533)) DUPLICATE KEY(a) DISTRIBUTED BY HASH(a) BUCKETS 8"
+  },
+  "starrocks:pk_named": {
+    "fork": "CREATE TABLE t(a INT) PRIMARY KEY(a) DISTRIBUTED BY HASH(a) BUCKETS 8",
+    "legacy": "CREATE TABLE t(a INT, CONSTRAINT pk) DUPLICATE KEY(a) DISTRIBUTED BY HASH(a) BUCKETS 8"
+  },
+  "starrocks:pk_trailing": {
+    "fork": "CREATE TABLE t(a INT, b VARCHAR(65533)) PRIMARY KEY(a) DISTRIBUTED BY HASH(a) BUCKETS 8",
+    "legacy": "CREATE TABLE t(a INT, b VARCHAR(65533)) DUPLICATE KEY(a) DISTRIBUTED BY HASH(a) BUCKETS 8"
+  },
+  "starrocks:time_column": {
+    "fork": "CREATE TABLE metrics(time DATETIME, metric_time VARCHAR(10), hostname VARCHAR(65533)) DUPLICATE KEY(time) DISTRIBUTED BY HASH(time) BUCKETS 8",
+    "legacy": "CREATE TABLE metrics(time DATETIME, metric_time VARCHAR(10), hostname VARCHAR(64)) DUPLICATE KEY(time) DISTRIBUTED BY HASH(time) BUCKETS 8"
+  },
+  "starrocks:tpcds_call_center": {
+    "fork": "CREATE TABLE call_center(cc_call_center_sk INT NOT NULL, cc_call_center_id VARCHAR(65533) NOT NULL, cc_rec_start_date DATE, cc_rec_end_date DATE, cc_closed_date_sk INT, cc_open_date_sk INT, cc_name VARCHAR(65533), cc_class VARCHAR(65533), cc_employees INT, cc_sq_ft INT, cc_hours VARCHAR(65533), cc_manager VARCHAR(65533), cc_mkt_id INT, cc_mkt_class VARCHAR(65533), cc_mkt_desc VARCHAR(65533), cc_market_manager VARCHAR(65533), cc_division INT, cc_division_name VARCHAR(65533), cc_company INT, cc_company_name VARCHAR(65533), cc_street_number VARCHAR(65533), cc_street_name VARCHAR(65533), cc_street_type VARCHAR(65533), cc_suite_number VARCHAR(65533), cc_city VARCHAR(65533), cc_county VARCHAR(65533), cc_state VARCHAR(65533), cc_zip VARCHAR(65533), cc_country VARCHAR(65533), cc_gmt_offset DECIMAL(15, 2), cc_tax_percentage DECIMAL(15, 2)) DUPLICATE KEY(cc_call_center_sk) DISTRIBUTED BY HASH(cc_call_center_sk) BUCKETS 8",
+    "legacy": "CREATE TABLE call_center(cc_call_center_sk INT NOT NULL, cc_call_center_id CHAR(16) NOT NULL, cc_rec_start_date DATE, cc_rec_end_date DATE, cc_closed_date_sk INT, cc_open_date_sk INT, cc_name VARCHAR(50), cc_class VARCHAR(50), cc_employees INT, cc_sq_ft INT, cc_hours CHAR(20), cc_manager VARCHAR(40), cc_mkt_id INT, cc_mkt_class CHAR(50), cc_mkt_desc VARCHAR(100), cc_market_manager VARCHAR(40), cc_division INT, cc_division_name VARCHAR(50), cc_company INT, cc_company_name CHAR(50), cc_street_number CHAR(10), cc_street_name VARCHAR(60), cc_street_type CHAR(15), cc_suite_number CHAR(10), cc_city VARCHAR(60), cc_county VARCHAR(30), cc_state CHAR(2), cc_zip CHAR(10), cc_country VARCHAR(20), cc_gmt_offset DECIMAL(15, 2), cc_tax_percentage DECIMAL(15, 2)) DUPLICATE KEY(cc_call_center_sk) DISTRIBUTED BY HASH(cc_call_center_sk) BUCKETS 8"
+  },
+  "starrocks:tpch_customer": {
+    "fork": "CREATE TABLE customer(c_custkey INT NOT NULL, c_name VARCHAR(65533) NOT NULL, c_address VARCHAR(65533) NOT NULL, c_nationkey INT NOT NULL, c_phone VARCHAR(65533) NOT NULL, c_acctbal DECIMAL(15, 2) NOT NULL, c_mktsegment VARCHAR(65533) NOT NULL, c_comment VARCHAR(65533) NOT NULL) PRIMARY KEY(c_custkey) DISTRIBUTED BY HASH(c_custkey) BUCKETS 8",
+    "legacy": "CREATE TABLE customer(c_custkey INT NOT NULL, c_name VARCHAR(25) NOT NULL, c_address VARCHAR(40) NOT NULL, c_nationkey INT NOT NULL, c_phone CHAR(15) NOT NULL, c_acctbal DECIMAL(15, 2) NOT NULL, c_mktsegment CHAR(10) NOT NULL, c_comment VARCHAR(117) NOT NULL) PRIMARY KEY(c_custkey) DISTRIBUTED BY HASH(c_custkey) BUCKETS 8"
+  },
+  "starrocks:tpch_lineitem": {
+    "fork": "CREATE TABLE lineitem(l_orderkey INT NOT NULL, l_partkey INT NOT NULL, l_suppkey INT NOT NULL, l_linenumber INT NOT NULL, l_quantity DECIMAL(15, 2) NOT NULL, l_extendedprice DECIMAL(15, 2) NOT NULL, l_discount DECIMAL(15, 2) NOT NULL, l_tax DECIMAL(15, 2) NOT NULL, l_returnflag VARCHAR(65533) NOT NULL, l_linestatus VARCHAR(65533) NOT NULL, l_shipdate DATE NOT NULL, l_commitdate DATE NOT NULL, l_receiptdate DATE NOT NULL, l_shipinstruct VARCHAR(65533) NOT NULL, l_shipmode VARCHAR(65533) NOT NULL, l_comment VARCHAR(65533) NOT NULL) DUPLICATE KEY(l_orderkey) DISTRIBUTED BY HASH(l_orderkey) BUCKETS 8",
+    "legacy": "CREATE TABLE lineitem(l_orderkey INT NOT NULL, l_partkey INT NOT NULL, l_suppkey INT NOT NULL, l_linenumber INT NOT NULL, l_quantity DECIMAL(15, 2) NOT NULL, l_extendedprice DECIMAL(15, 2) NOT NULL, l_discount DECIMAL(15, 2) NOT NULL, l_tax DECIMAL(15, 2) NOT NULL, l_returnflag CHAR(1) NOT NULL, l_linestatus CHAR(1) NOT NULL, l_shipdate DATE NOT NULL, l_commitdate DATE NOT NULL, l_receiptdate DATE NOT NULL, l_shipinstruct CHAR(25) NOT NULL, l_shipmode CHAR(10) NOT NULL, l_comment VARCHAR(44) NOT NULL) DUPLICATE KEY(l_orderkey) DISTRIBUTED BY HASH(l_orderkey) BUCKETS 8"
+  },
+  "starrocks:tpch_nation": {
+    "fork": "CREATE TABLE nation(n_nationkey INT NOT NULL, n_name VARCHAR(65533) NOT NULL, n_regionkey INT NOT NULL, n_comment VARCHAR(65533)) PRIMARY KEY(n_nationkey) DISTRIBUTED BY HASH(n_nationkey) BUCKETS 8",
+    "legacy": "CREATE TABLE nation(n_nationkey INT NOT NULL, n_name CHAR(25) NOT NULL, n_regionkey INT NOT NULL, n_comment VARCHAR(152)) PRIMARY KEY(n_nationkey) DISTRIBUTED BY HASH(n_nationkey) BUCKETS 8"
+  },
+  "starrocks:tpch_orders": {
+    "fork": "CREATE TABLE orders(o_orderkey INT NOT NULL, o_custkey INT NOT NULL, o_orderstatus VARCHAR(65533) NOT NULL, o_totalprice DECIMAL(15, 2) NOT NULL, o_orderdate DATE NOT NULL, o_orderpriority VARCHAR(65533) NOT NULL, o_clerk VARCHAR(65533) NOT NULL, o_shippriority INT NOT NULL, o_comment VARCHAR(65533) NOT NULL) PRIMARY KEY(o_orderkey) DISTRIBUTED BY HASH(o_orderkey) BUCKETS 8",
+    "legacy": "CREATE TABLE orders(o_orderkey INT NOT NULL, o_custkey INT NOT NULL, o_orderstatus CHAR(1) NOT NULL, o_totalprice DECIMAL(15, 2) NOT NULL, o_orderdate DATE NOT NULL, o_orderpriority CHAR(15) NOT NULL, o_clerk CHAR(15) NOT NULL, o_shippriority INT NOT NULL, o_comment VARCHAR(79) NOT NULL) PRIMARY KEY(o_orderkey) DISTRIBUTED BY HASH(o_orderkey) BUCKETS 8"
+  },
+  "starrocks:tpch_part": {
+    "fork": "CREATE TABLE part(p_partkey INT NOT NULL, p_name VARCHAR(65533) NOT NULL, p_mfgr VARCHAR(65533) NOT NULL, p_brand VARCHAR(65533) NOT NULL, p_type VARCHAR(65533) NOT NULL, p_size INT NOT NULL, p_container VARCHAR(65533) NOT NULL, p_retailprice DECIMAL(15, 2) NOT NULL, p_comment VARCHAR(65533) NOT NULL) PRIMARY KEY(p_partkey) DISTRIBUTED BY HASH(p_partkey) BUCKETS 8",
+    "legacy": "CREATE TABLE part(p_partkey INT NOT NULL, p_name VARCHAR(55) NOT NULL, p_mfgr CHAR(25) NOT NULL, p_brand CHAR(10) NOT NULL, p_type VARCHAR(25) NOT NULL, p_size INT NOT NULL, p_container CHAR(10) NOT NULL, p_retailprice DECIMAL(15, 2) NOT NULL, p_comment VARCHAR(23) NOT NULL) PRIMARY KEY(p_partkey) DISTRIBUTED BY HASH(p_partkey) BUCKETS 8"
+  },
+  "starrocks:tpch_partsupp": {
+    "fork": "CREATE TABLE partsupp(ps_partkey INT NOT NULL, ps_suppkey INT NOT NULL, ps_availqty INT NOT NULL, ps_supplycost DECIMAL(15, 2) NOT NULL, ps_comment VARCHAR(65533) NOT NULL) PRIMARY KEY(ps_partkey, ps_suppkey) DISTRIBUTED BY HASH(ps_partkey) BUCKETS 8",
+    "legacy": "CREATE TABLE partsupp(ps_partkey INT NOT NULL, ps_suppkey INT NOT NULL, ps_availqty INT NOT NULL, ps_supplycost DECIMAL(15, 2) NOT NULL, ps_comment VARCHAR(199) NOT NULL) PRIMARY KEY(ps_partkey, ps_suppkey) DISTRIBUTED BY HASH(ps_partkey) BUCKETS 8"
+  },
+  "starrocks:tpch_region": {
+    "fork": "CREATE TABLE region(r_regionkey INT NOT NULL, r_name VARCHAR(65533) NOT NULL, r_comment VARCHAR(65533)) PRIMARY KEY(r_regionkey) DISTRIBUTED BY HASH(r_regionkey) BUCKETS 8",
+    "legacy": "CREATE TABLE region(r_regionkey INT NOT NULL, r_name CHAR(25) NOT NULL, r_comment VARCHAR(152)) PRIMARY KEY(r_regionkey) DISTRIBUTED BY HASH(r_regionkey) BUCKETS 8"
+  },
+  "starrocks:tpch_supplier": {
+    "fork": "CREATE TABLE supplier(s_suppkey INT NOT NULL, s_name VARCHAR(65533) NOT NULL, s_address VARCHAR(65533) NOT NULL, s_nationkey INT NOT NULL, s_phone VARCHAR(65533) NOT NULL, s_acctbal DECIMAL(15, 2) NOT NULL, s_comment VARCHAR(65533) NOT NULL) PRIMARY KEY(s_suppkey) DISTRIBUTED BY HASH(s_suppkey) BUCKETS 8",
+    "legacy": "CREATE TABLE supplier(s_suppkey INT NOT NULL, s_name CHAR(25) NOT NULL, s_address VARCHAR(40) NOT NULL, s_nationkey INT NOT NULL, s_phone CHAR(15) NOT NULL, s_acctbal DECIMAL(15, 2) NOT NULL, s_comment VARCHAR(101) NOT NULL) PRIMARY KEY(s_suppkey) DISTRIBUTED BY HASH(s_suppkey) BUCKETS 8"
+  },
+  "synapse_replicate:if_not_exists": {
+    "fork": "IF NOT EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME='t' AND TABLE_SCHEMA='dbo') EXEC('CREATE TABLE [dbo].[t]([a] INT, [b] VARCHAR(10)) WITH(DISTRIBUTION=REPLICATE)')",
+    "legacy": "IF NOT EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME='t') EXEC('CREATE TABLE [t]([a] INT, [b] VARCHAR(10))')"
+  },
+  "synapse_round_robin:if_not_exists": {
+    "fork": "IF NOT EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME='t' AND TABLE_SCHEMA='dbo') EXEC('CREATE TABLE [dbo].[t]([a] INT, [b] VARCHAR(10)) WITH(DISTRIBUTION=ROUND_ROBIN)')",
+    "legacy": "IF NOT EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME='t') EXEC('CREATE TABLE [t]([a] INT, [b] VARCHAR(10))')"
+  },
+  "trino_delta:lineitem_codec": {
+    "fork": "CREATE TABLE \"LineItem\"(l_orderkey BIGINT, l_comment VARCHAR(44), l_extendedprice DECIMAL(15, 2))",
+    "legacy": "CREATE TABLE lineitem(l_orderkey BIGINT, l_comment VARCHAR(44), l_extendedprice DECIMAL(15, 2))"
+  },
+  "trino_hive:lineitem_codec": {
+    "fork": "CREATE TABLE \"LineItem\"(l_orderkey BIGINT, l_comment VARCHAR(44), l_extendedprice DECIMAL(15, 2)) WITH(format='PARQUET')",
+    "legacy": "CREATE TABLE lineitem(l_orderkey BIGINT, l_comment VARCHAR(44), l_extendedprice DECIMAL(15, 2)) WITH(format='PARQUET')"
+  },
+  "trino_iceberg:lineitem_codec": {
+    "fork": "CREATE TABLE \"LineItem\"(l_orderkey BIGINT, l_comment VARCHAR(44), l_extendedprice DECIMAL(15, 2)) WITH(format='PARQUET')",
+    "legacy": "CREATE TABLE lineitem(l_orderkey BIGINT, l_comment VARCHAR(44), l_extendedprice DECIMAL(15, 2)) WITH(format='PARQUET')"
+  },
+  "trino_memory:lineitem_codec": {
+    "fork": "CREATE TABLE \"LineItem\"(l_orderkey BIGINT, l_comment VARCHAR(44), l_extendedprice DECIMAL(15, 2))",
+    "legacy": "CREATE TABLE lineitem(l_orderkey BIGINT, l_comment VARCHAR(44), l_extendedprice DECIMAL(15, 2))"
+  }
+}

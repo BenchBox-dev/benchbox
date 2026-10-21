@@ -1,0 +1,250 @@
+{
+  "baseline-sqlite-month-interval": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT DATE('2024-01-31', '+1 month')"
+  },
+  "baseline-wrapper-sqlite-month-interval": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT DATE('2024-01-31', '+1 month')"
+  },
+  "sqlite-syntax-column-minus-interval-year-netezza": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT \"o_orderdate\" - INTERVAL '1' YEAR FROM \"orders\""
+  },
+  "sqlite-syntax-column-minus-interval-year-postgres": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT \"o_orderdate\" - INTERVAL '1' YEAR FROM \"orders\""
+  },
+  "sqlite-syntax-column-plus-interval-day-netezza": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT \"o_orderdate\" + INTERVAL '30' DAY FROM \"orders\""
+  },
+  "sqlite-syntax-column-plus-interval-day-postgres": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT \"o_orderdate\" + INTERVAL '30' DAY FROM \"orders\""
+  },
+  "sqlite-syntax-column-plus-interval-month-netezza": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT \"o_orderdate\" + INTERVAL '3' MONTH FROM \"orders\""
+  },
+  "sqlite-syntax-column-plus-interval-month-postgres": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT \"o_orderdate\" + INTERVAL '3' MONTH FROM \"orders\""
+  },
+  "sqlite-syntax-date-leap-day-year-netezza": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT DATE('2024-02-29', '+1 year')"
+  },
+  "sqlite-syntax-date-leap-day-year-postgres": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT DATE('2024-02-29', '+1 year')"
+  },
+  "sqlite-syntax-date-month-end-month-netezza": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT DATE('2024-01-31', '+1 month')"
+  },
+  "sqlite-syntax-date-month-end-month-postgres": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT DATE('2024-01-31', '+1 month')"
+  },
+  "sqlite-syntax-date-part-month-netezza": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT CAST(STRFTIME('%m', \"o_orderdate\") AS INTEGER) FROM \"orders\""
+  },
+  "sqlite-syntax-date-part-month-postgres": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT CAST(STRFTIME('%m', \"o_orderdate\") AS INTEGER) FROM \"orders\""
+  },
+  "sqlite-syntax-date-part-year-netezza": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT CAST(STRFTIME('%Y', \"o_orderdate\") AS INTEGER) FROM \"orders\""
+  },
+  "sqlite-syntax-date-part-year-postgres": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT CAST(STRFTIME('%Y', \"o_orderdate\") AS INTEGER) FROM \"orders\""
+  },
+  "sqlite-syntax-date-plus-quarter-netezza": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT DATE('2024-02-29') + INTERVAL '1' QUARTER"
+  },
+  "sqlite-syntax-date-plus-quarter-postgres": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT DATE('2024-02-29') + INTERVAL '1' QUARTER"
+  },
+  "sqlite-syntax-date-plus-week-netezza": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT DATE('2024-02-29') + INTERVAL '2' WEEK"
+  },
+  "sqlite-syntax-date-plus-week-postgres": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT DATE('2024-02-29') + INTERVAL '2' WEEK"
+  },
+  "sqlite-syntax-date-trunc-expression-netezza": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT STRFTIME('%Y-%m-01 00:00:00', \"o_orderdate\" + INTERVAL '1' DAY) FROM \"orders\""
+  },
+  "sqlite-syntax-date-trunc-expression-postgres": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT STRFTIME('%Y-%m-01 00:00:00', \"o_orderdate\" + INTERVAL '1' DAY) FROM \"orders\""
+  },
+  "sqlite-syntax-date-trunc-quarter-column-netezza": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT TIMESTAMP_TRUNC(\"EventTime\", QUARTER) FROM \"hits\""
+  },
+  "sqlite-syntax-date-trunc-quarter-column-postgres": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT TIMESTAMP_TRUNC(\"EventTime\", QUARTER) FROM \"hits\""
+  },
+  "sqlite-syntax-date-trunc-week-column-netezza": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT TIMESTAMP_TRUNC(\"EventTime\", WEEK) FROM \"hits\""
+  },
+  "sqlite-syntax-date-trunc-week-column-postgres": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT TIMESTAMP_TRUNC(\"EventTime\", WEEK) FROM \"hits\""
+  },
+  "sqlite-syntax-extract-dow-netezza": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT EXTRACT(DOW FROM \"o_orderdate\") FROM \"orders\""
+  },
+  "sqlite-syntax-extract-dow-postgres": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT EXTRACT(DOW FROM \"o_orderdate\") FROM \"orders\""
+  },
+  "sqlite-syntax-extract-doy-netezza": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT EXTRACT(DOY FROM \"o_orderdate\") FROM \"orders\""
+  },
+  "sqlite-syntax-extract-doy-postgres": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT EXTRACT(DOY FROM \"o_orderdate\") FROM \"orders\""
+  },
+  "sqlite-syntax-extract-epoch-netezza": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT EXTRACT(EPOCH FROM \"o_orderdate\") FROM \"orders\""
+  },
+  "sqlite-syntax-extract-epoch-postgres": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT EXTRACT(EPOCH FROM \"o_orderdate\") FROM \"orders\""
+  },
+  "sqlite-syntax-extract-hour-date-netezza": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT EXTRACT(HOUR FROM CAST('1994-06-15 10:20:30' AS TIMESTAMP))"
+  },
+  "sqlite-syntax-extract-hour-date-postgres": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT EXTRACT(HOUR FROM CAST('1994-06-15 10:20:30' AS TIMESTAMP))"
+  },
+  "sqlite-syntax-extract-minute-ts-netezza": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT EXTRACT(MINUTE FROM CAST('1994-06-15 10:20:30' AS TIMESTAMP))"
+  },
+  "sqlite-syntax-extract-minute-ts-postgres": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT EXTRACT(MINUTE FROM CAST('1994-06-15 10:20:30' AS TIMESTAMP))"
+  },
+  "sqlite-syntax-extract-quarter-netezza": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT EXTRACT(QUARTER FROM \"o_orderdate\") FROM \"orders\""
+  },
+  "sqlite-syntax-extract-quarter-postgres": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT EXTRACT(QUARTER FROM \"o_orderdate\") FROM \"orders\""
+  },
+  "sqlite-syntax-extract-second-ts-netezza": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT EXTRACT(SECOND FROM CAST('1994-06-15 10:20:30' AS TIMESTAMP))"
+  },
+  "sqlite-syntax-extract-second-ts-postgres": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT EXTRACT(SECOND FROM CAST('1994-06-15 10:20:30' AS TIMESTAMP))"
+  },
+  "sqlite-syntax-extract-week-netezza": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT EXTRACT(WEEK FROM \"o_orderdate\") FROM \"orders\""
+  },
+  "sqlite-syntax-extract-week-postgres": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT EXTRACT(WEEK FROM \"o_orderdate\") FROM \"orders\""
+  },
+  "sqlite-syntax-extract-year-from-interval-sum-netezza": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT CAST(STRFTIME('%Y', \"o_orderdate\" + INTERVAL '1' YEAR) AS INTEGER) FROM \"orders\""
+  },
+  "sqlite-syntax-extract-year-from-interval-sum-postgres": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT CAST(STRFTIME('%Y', \"o_orderdate\" + INTERVAL '1' YEAR) AS INTEGER) FROM \"orders\""
+  },
+  "sqlite-syntax-timestamp-plus-day-netezza": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT CAST('2024-01-01 10:00:00' AS TIMESTAMP) + INTERVAL '1' DAY"
+  },
+  "sqlite-syntax-timestamp-plus-day-postgres": {
+    "fork": "<UnsupportedError>",
+    "legacy": "SELECT CAST('2024-01-01 10:00:00' AS TIMESTAMP) + INTERVAL '1' DAY"
+  },
+  "tpcds-date-column-case-when-netezza-postgres": {
+    "fork": "SELECT CASE WHEN d_date + INTERVAL '5 DAY' > d_date THEN 1 ELSE 0 END FROM date_dim",
+    "legacy": "SELECT CASE WHEN d_date + INTERVAL '5' DAY > d_date THEN 1 ELSE 0 END FROM date_dim"
+  },
+  "tpcds-date-column-in-select-and-where-netezza-postgres": {
+    "fork": "SELECT d_date + INTERVAL '1 DAY' AS nd FROM date_dim WHERE d_date - INTERVAL '1 DAY' >= CAST('2000-01-01' AS DATE)",
+    "legacy": "SELECT d_date + INTERVAL '1' DAY AS nd FROM date_dim WHERE d_date - INTERVAL '1' DAY >= CAST('2000-01-01' AS DATE)"
+  },
+  "tpcds-date-column-in-string-netezza-postgres": {
+    "fork": "SELECT 'd_date + 5' AS note FROM date_dim",
+    "legacy": "SELECT 'd_date + INTERVAL '5' DAY' AS note FROM date_dim"
+  },
+  "tpcds-date-column-uppercase-netezza-postgres": {
+    "fork": "SELECT D_DATE + INTERVAL '5 DAY' FROM date_dim",
+    "legacy": "SELECT D_DATE + INTERVAL '5' DAY FROM date_dim"
+  },
+  "tpcds-date-minus-7-netezza-postgres": {
+    "fork": "SELECT * FROM t WHERE d_date - INTERVAL '7 DAY' < CURRENT_TIMESTAMP",
+    "legacy": "SELECT * FROM t WHERE d_date - INTERVAL '7' DAY < CURRENT_TIMESTAMP"
+  },
+  "tpcds-date-plus-5-gt-netezza-postgres": {
+    "fork": "SELECT * FROM t WHERE d_date + INTERVAL '5 DAY' > CURRENT_TIMESTAMP",
+    "legacy": "SELECT * FROM t WHERE d_date + INTERVAL '5' DAY > CURRENT_TIMESTAMP"
+  },
+  "tpcds-date-plus-decimal-netezza-postgres": {
+    "fork": "SELECT d_date + 5.5 FROM date_dim",
+    "legacy": "SELECT d_date + INTERVAL '5' DAY.5 FROM date_dim"
+  },
+  "tpcds-date-plus-expression-netezza-postgres": {
+    "fork": "SELECT d_date + 5 * 2 FROM date_dim",
+    "legacy": "SELECT d_date + INTERVAL '5' DAY * 2 FROM date_dim"
+  },
+  "tpcds-date-sk-minus-integer-netezza-postgres": {
+    "fork": "SELECT d_date_sk - 7 FROM date_dim WHERE d_date_sk - 7 > 0",
+    "legacy": "SELECT d_date_sk - INTERVAL '7' DAY FROM date_dim WHERE d_date_sk - INTERVAL '7' DAY > 0"
+  },
+  "tpcds-date-sk-plus-integer-netezza-postgres": {
+    "fork": "SELECT d_date_sk + 1 FROM date_dim",
+    "legacy": "SELECT d_date_sk + INTERVAL '1' DAY FROM date_dim"
+  },
+  "tpcds-multiple-date-arithmetic-netezza-postgres": {
+    "fork": "SELECT * FROM t WHERE d_date + INTERVAL '5 DAY' > CURRENT_TIMESTAMP AND d_date - INTERVAL '10 DAY' < CURRENT_TIMESTAMP",
+    "legacy": "SELECT * FROM t WHERE d_date + INTERVAL '5' DAY > CURRENT_TIMESTAMP AND d_date - INTERVAL '10' DAY < CURRENT_TIMESTAMP"
+  },
+  "tpcds-preserves-other-arithmetic-netezza-postgres": {
+    "fork": "SELECT price * 2 + tax FROM t WHERE d_date + INTERVAL '5 DAY' > CURRENT_TIMESTAMP",
+    "legacy": "SELECT price * 2 + tax FROM t WHERE d_date + INTERVAL '5' DAY > CURRENT_TIMESTAMP"
+  },
+  "tpcds-q72-pattern-netezza-postgres": {
+    "fork": "SELECT * FROM a, b AS d1, b AS d3 WHERE d3.d_date > d1.d_date + INTERVAL '5 DAY'",
+    "legacy": "SELECT * FROM a, b AS d1, b AS d3 WHERE d3.d_date > d1.d_date + INTERVAL '5' DAY"
+  },
+  "tpcds-qualified-date-plus-30-netezza-postgres": {
+    "fork": "SELECT * FROM t WHERE d1.d_date + INTERVAL '30 DAY' > d2.d_date",
+    "legacy": "SELECT * FROM t WHERE d1.d_date + INTERVAL '30' DAY > d2.d_date"
+  },
+  "tpcds-sold-date-sk-arithmetic-netezza-postgres": {
+    "fork": "SELECT ss_sold_date_sk + 30 FROM store_sales",
+    "legacy": "SELECT ss_sold_date_sk + INTERVAL '30' DAY FROM store_sales"
+  },
+  "tpcds-template-q72-netezza-postgres": {
+    "fork": "SELECT i_item_desc, w_warehouse_name, d1.d_week_seq, SUM(CASE WHEN p_promo_sk IS NULL THEN 1 ELSE 0 END) AS no_promo, SUM(CASE WHEN p_promo_sk IS NOT NULL THEN 1 ELSE 0 END) AS promo, COUNT(*) AS total_cnt FROM catalog_sales JOIN inventory ON (cs_item_sk = inv_item_sk) JOIN warehouse ON (w_warehouse_sk = inv_warehouse_sk) JOIN item ON (i_item_sk = cs_item_sk) JOIN customer_demographics ON (cs_bill_cdemo_sk = cd_demo_sk) JOIN household_demographics ON (cs_bill_hdemo_sk = hd_demo_sk) JOIN date_dim AS d1 ON (cs_sold_date_sk = d1.d_date_sk) JOIN date_dim AS d2 ON (inv_date_sk = d2.d_date_sk) JOIN date_dim AS d3 ON (cs_ship_date_sk = d3.d_date_sk) LEFT OUTER JOIN promotion ON (cs_promo_sk = p_promo_sk) LEFT OUTER JOIN catalog_returns ON (cr_item_sk = cs_item_sk AND cr_order_number = cs_order_number) WHERE d1.d_week_seq = d2.d_week_seq AND inv_quantity_on_hand < cs_quantity AND d3.d_date > d1.d_date + INTERVAL '5 DAY' AND hd_buy_potential = '1' AND d1.d_year = 2000 AND cd_marital_status = '1' GROUP BY i_item_desc, w_warehouse_name, d1.d_week_seq ORDER BY total_cnt DESC, i_item_desc, w_warehouse_name, d1.d_week_seq",
+    "legacy": "SELECT i_item_desc, w_warehouse_name, d1.d_week_seq, SUM(CASE WHEN p_promo_sk IS NULL THEN 1 ELSE 0 END) AS no_promo, SUM(CASE WHEN p_promo_sk IS NOT NULL THEN 1 ELSE 0 END) AS promo, COUNT(*) AS total_cnt FROM catalog_sales JOIN inventory ON (cs_item_sk = inv_item_sk) JOIN warehouse ON (w_warehouse_sk = inv_warehouse_sk) JOIN item ON (i_item_sk = cs_item_sk) JOIN customer_demographics ON (cs_bill_cdemo_sk = cd_demo_sk) JOIN household_demographics ON (cs_bill_hdemo_sk = hd_demo_sk) JOIN date_dim AS d1 ON (cs_sold_date_sk = d1.d_date_sk) JOIN date_dim AS d2 ON (inv_date_sk = d2.d_date_sk) JOIN date_dim AS d3 ON (cs_ship_date_sk = d3.d_date_sk) LEFT OUTER JOIN promotion ON (cs_promo_sk = p_promo_sk) LEFT OUTER JOIN catalog_returns ON (cr_item_sk = cs_item_sk AND cr_order_number = cs_order_number) WHERE d1.d_week_seq = d2.d_week_seq AND inv_quantity_on_hand < cs_quantity AND d3.d_date > d1.d_date + INTERVAL '5' DAY AND hd_buy_potential = '1' AND d1.d_year = 2000 AND cd_marital_status = '1' GROUP BY i_item_desc, w_warehouse_name, d1.d_week_seq ORDER BY total_cnt DESC, i_item_desc, w_warehouse_name, d1.d_week_seq"
+  }
+}
