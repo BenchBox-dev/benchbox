@@ -15693,6 +15693,13 @@
       "status": "done",
       "title": "oracle-review has no fallback when Codex connector hits usage limits"
     },
+    "oracle-review-pin-pyyaml-20261021": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Pin PyYAML in the required oracle-review check"
+    },
     "oracle-review-quota-fallback": {
       "claim": null,
       "needs": [],
