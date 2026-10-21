@@ -3,6 +3,7 @@
     "Agent sessions authenticate as the separate identity (gh api user)",
     "A stand-in posted by that identity is rejected by the gate"
   ],
+  "context": "Owner-only: needs a GitHub App or fine-grained token created by the repository owner.",
   "description": "Agents run gh with the owner's token (scopes admin:org, gist, repo, workflow), and oracle_review_check STANDIN_ATTESTERS={'joeharris76'} checks only the login, so any agent can post a stand-in attestation. Create a GitHub App or fine-grained PAT for agents without admin or workflow scope and not in STANDIN_ATTESTERS; switch agent gh auth to it; keep stand-in attestation to a human-only identity.",
   "sessions": [
     {
@@ -11,6 +12,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "cb94873a7df9464782566d79f17386b7",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T12:47:16Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ad85fe5370cb462cb9281ff3a234e8ce",
       "session_id": "a9046e3fb7d74eefb823245a0b359b69"
     }
   ]
