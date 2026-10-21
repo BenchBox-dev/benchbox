@@ -208,12 +208,20 @@ def test_lookup_hits_separates_covered_and_missed_lines() -> None:
     assert sel.lookup_hits({}, nodes, [4]) == (set(), [4], set())
 
 
-def test_lookup_hits_skips_non_statement_lines() -> None:
+def test_lookup_hits_treats_non_statement_lines_as_missed() -> None:
     nodes = ["tests/test_benchbox.py::test_translate"]
     entry = {"lines": {"4": [0]}, "statements": [4]}
     hits, missed, _ = sel.lookup_hits(entry, nodes, [2, 4])
     assert hits == {"tests/test_benchbox.py::test_translate"}
-    assert missed == []
+    assert missed == [2]
+
+
+def test_lookup_hits_without_a_statement_table_checks_every_line() -> None:
+    nodes = ["tests/test_benchbox.py::test_translate"]
+    entry = {"lines": {"4": [0]}}
+    hits, missed, _ = sel.lookup_hits(entry, nodes, [2, 4])
+    assert hits == {"tests/test_benchbox.py::test_translate"}
+    assert missed == [2]
 
 
 def test_lookup_hits_reports_setup_phase_hits() -> None:
@@ -296,6 +304,48 @@ def test_build_map_records_failed_nodes_from_junit(tmp_path: Path, repo: Path) -
     )
     mapping = sel.build_map([data], repo, _head(repo), junit_files=[junit])
     assert mapping["failed_nodes"] == ["tests/unit/core/test_engine.py::test_x"]
+
+
+def test_build_map_derives_failed_nodes_without_file_attributes(tmp_path: Path, repo: Path) -> None:
+    base = str(repo / "benchbox/base.py")
+    data = _coverage_data(tmp_path, {base: {4: ["tests/test_benchbox.py::test_translate|run"]}})
+    junit = tmp_path / "junit-xunit2.xml"
+    junit.write_text(
+        '<?xml version="1.0"?><testsuite>'
+        '<testcase classname="tests.unit.core.test_engine" name="test_x">'
+        "<failure>boom</failure></testcase>"
+        '<testcase classname="tests.unit.core.test_engine" name="test_ok"/>'
+        "</testsuite>",
+        encoding="utf-8",
+    )
+    mapping = sel.build_map([data], repo, _head(repo), junit_files=[junit])
+    assert mapping["failed_nodes"] == ["tests/unit/core/test_engine.py::test_x"]
+
+
+def test_build_map_rejects_a_junit_shortfall_against_the_data_files(tmp_path: Path, repo: Path) -> None:
+    data = _coverage_data(tmp_path, {str(repo / "benchbox/base.py"): {4: ["tests/test_benchbox.py::test_translate"]}})
+    out = tmp_path / "map.json"
+    assert (
+        sel.main(
+            [
+                "build-map",
+                "--data",
+                str(data),
+                "--junit",
+                str(tmp_path / "missing-*.xml"),
+                "--expected-shards",
+                "1",
+                "--sha",
+                _head(repo),
+                "--out",
+                str(out),
+                "--repo-root",
+                str(repo),
+            ]
+        )
+        == 1
+    )
+    assert not out.is_file()
 
 
 def test_read_map_rejects_bad_envelopes(tmp_path: Path, repo: Path) -> None:
@@ -415,7 +465,7 @@ def test_pure_addition_probes_neighbouring_old_lines(repo: Path) -> None:
     assert "tests/test_benchbox.py::test_translate" in result["selected"]
 
 
-def test_statement_filtering_ignores_non_statement_lines(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_non_statement_lines_escalate_instead_of_narrowing(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sel, "SELECTION_SHADOW", False)
     head = _head(repo)
     files = [
@@ -427,9 +477,23 @@ def test_statement_filtering_ignores_non_statement_lines(repo: Path, monkeypatch
         )
     ]
     result = sel.select_tests(repo, _mapping(repo, head), files, head)
-    assert result["escalate"] is False
-    assert result["uncovered_sources"] == []
+    assert result["escalate"] is True
+    assert result["uncovered_sources"] == ["benchbox/base.py"]
     assert "tests/test_benchbox.py::test_translate" in result["selected"]
+
+
+def test_build_map_omits_statements_when_analysis_fails(
+    tmp_path: Path, repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base = str(repo / "benchbox/base.py")
+    data = _coverage_data(tmp_path, {base: {4: ["tests/test_benchbox.py::test_translate|run"]}})
+    monkeypatch.setattr(sel, "_statement_lines", lambda _repo, _data, _files: {})
+    mapping = sel.build_map([data], repo, _head(repo))
+    entry = mapping["files"]["benchbox/base.py"]
+    assert "statements" not in entry
+    hits, missed, _ = sel.lookup_hits(entry, mapping["nodes"], [4, 6])
+    assert hits == {"tests/test_benchbox.py::test_translate"}
+    assert missed == [6]
 
 
 def test_uncovered_lines_escalate_and_keep_importing_tests(repo: Path) -> None:

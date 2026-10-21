@@ -30,7 +30,9 @@ def test_runs_on_develop_push_and_on_demand_with_a_daily_staleness_tick() -> Non
 
 
 def test_coverage_runs_cancel_each_other() -> None:
-    assert _workflow()["concurrency"] == {"group": "trunk-coverage", "cancel-in-progress": True}
+    concurrency = _workflow()["concurrency"]
+    assert concurrency["cancel-in-progress"] is True
+    assert concurrency["group"] == "trunk-coverage-${{ github.event_name }}"
 
 
 def test_is_read_only_by_default() -> None:
@@ -39,7 +41,7 @@ def test_is_read_only_by_default() -> None:
 
 def test_only_the_staleness_job_may_touch_issues() -> None:
     jobs = _workflow()["jobs"]
-    assert jobs["coverage-map-staleness"]["permissions"] == {"contents": "read", "issues": "write"}
+    assert jobs["coverage-map-staleness"]["permissions"] == {"contents": "read", "actions": "read", "issues": "write"}
     for name, job in jobs.items():
         if name != "coverage-map-staleness":
             assert "issues" not in job.get("permissions", {}), name
@@ -54,6 +56,7 @@ def test_four_coverage_shards_use_ctrace_and_test_phase_contexts() -> None:
     assert "--cov-context=test" in runs
     assert "scripts/coverage_map.ini" in runs
     assert "--junitxml" in runs
+    assert "-o junit_family=xunit1" in runs
 
 
 def test_map_job_requires_all_four_shards_and_declares_it() -> None:

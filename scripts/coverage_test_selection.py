@@ -82,7 +82,18 @@ def _relative_name(repo: Path, filename: str) -> str | None:
         return None
 
 
-def _junit_failed_nodeids(junit_files: list[Path]) -> list[str]:
+def _junit_case_filename(repo: Path, filename: str, classname: str) -> str | None:
+    if filename:
+        return filename
+    parts = [part for part in classname.split(".") if part]
+    for width in range(len(parts), 0, -1):
+        candidate = "/".join(parts[:width]) + ".py"
+        if (repo / candidate).is_file():
+            return candidate
+    return None
+
+
+def _junit_failed_nodeids(junit_files: list[Path], repo: Path) -> list[str]:
     import xml.etree.ElementTree as ET
 
     failed: set[str] = set()
@@ -94,10 +105,12 @@ def _junit_failed_nodeids(junit_files: list[Path]) -> list[str]:
         for case in root.iter("testcase"):
             if case.find("failure") is None and case.find("error") is None:
                 continue
-            filename = (case.get("file") or "").strip()
             name = (case.get("name") or "").strip()
             classname = (case.get("classname") or "").strip()
-            if not filename or not name:
+            if not name:
+                continue
+            filename = _junit_case_filename(repo, (case.get("file") or "").strip(), classname)
+            if filename is None:
                 continue
             module = filename[:-3].replace("/", ".") if filename.endswith(".py") else filename
             if not classname or classname == module:
@@ -165,8 +178,9 @@ def build_map(data_files: list[Path], repo: Path, sha: str, junit_files: list[Pa
     for rel, lines in by_line.items():
         entry: dict[str, object] = {
             "lines": {str(lineno): sorted(positions[node] for node in hit) for lineno, hit in sorted(lines.items())},
-            "statements": statements.get(rel, []),
         }
+        if rel in statements:
+            entry["statements"] = statements[rel]
         setup = setup_by_line.get(rel, {})
         if setup:
             entry["setup"] = {
@@ -178,7 +192,7 @@ def build_map(data_files: list[Path], repo: Path, sha: str, junit_files: list[Pa
         "sha": sha,
         "nodes": nodes,
         "files": files,
-        "failed_nodes": _junit_failed_nodeids(list(junit_files or [])),
+        "failed_nodes": _junit_failed_nodeids(list(junit_files or []), repo),
     }
 
 
@@ -380,6 +394,7 @@ def lookup_hits(entry: dict, nodes: list[str], lines: list[int]) -> tuple[set[st
     missed: list[int] = []
     for lineno in lines:
         if statements is not None and lineno not in statements:
+            missed.append(lineno)
             continue
         names = _entry_nodes(entry, nodes, lineno, "lines")
         if names:
@@ -952,6 +967,13 @@ def _cmd_build_map(args: argparse.Namespace) -> int:
         return 1
     junit_files = [path for pattern in (args.junit or []) for path in sorted(pattern.parent.glob(pattern.name))]
     junit_files = [path for path in junit_files if path.is_file()]
+    if args.junit is not None and len(junit_files) < len(data_files):
+        print(
+            f"expected one junit report per coverage data file, found {len(junit_files)} "
+            f"for {len(data_files)} data file(s)",
+            file=sys.stderr,
+        )
+        return 1
     try:
         mapping = build_map(data_files, args.repo_root, args.sha, junit_files=junit_files)
     except (OSError, ValueError, RuntimeError) as exc:
