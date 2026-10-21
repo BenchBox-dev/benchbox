@@ -1248,6 +1248,13 @@ def test_junit_case_node_id_prefers_file_attribute_without_classname() -> None:
     )
 
 
+def test_junit_case_node_id_derives_module_from_classname_on_mismatch() -> None:
+    assert sel.junit_case_node_id("tests.unit.b.test_sub.TestSub", "test_inherited", "tests/unit/a/test_base.py") == (
+        "tests/unit/b/test_sub.py::TestSub::test_inherited",
+        "tests/unit/b/test_sub.py",
+    )
+
+
 def test_failed_node_ids_counts_failures_and_errors(tmp_path: Path) -> None:
     report = tmp_path / "shard-0-junit.xml"
     _write_junit(

@@ -1162,9 +1162,6 @@ def junit_case_node_id(classname: str, name: str, file_attr: str | None = None) 
         elif classname.startswith(dotted + "."):
             path = file_attr
             extra = classname[len(dotted) + 1 :].split(".")
-        else:
-            path = file_attr
-            extra = classname.split(".")
     if path is None:
         module, extra = _junit_module_parts(classname)
         path = "/".join(module) + ".py"
