@@ -1610,7 +1610,7 @@ def test_still_open_bullets_come_only_from_open_finding_sections():
             "",
             "</details>",
             "",
-            "**Reviewers**",
+            "**Reviewers not available**",
             "",
             "- **Low** `c.py:3`: D3: prose",
             "",
@@ -1646,16 +1646,32 @@ def armed_pull(*armed_at):
     return evidence(armed_at=tuple(armed_at))
 
 
+def red_only(pull, runs):
+    red, _ = digest.red_armings("o/r", [pull], runs)
+    return red
+
+
 def test_arming_while_trunk_is_red_is_flagged():
-    arming = digest.red_armings([armed_pull("2026-10-21T11:41:17Z")], [TRUNK_RED, TRUNK_GREEN])[0]
+    arming = red_only(armed_pull("2026-10-21T11:41:17Z"), [TRUNK_RED, TRUNK_GREEN])[0]
     assert (arming.number, arming.armed_at, arming.conclusion) == (7, "2026-10-21T11:41:17Z", "failure")
     assert (arming.run_id, arming.run_head, arming.completed_at) == (39555893700, "a" * 9, "2026-10-21T07:47:46Z")
 
 
 def test_a_run_completed_after_the_arming_does_not_count():
     late_green = trunk_run(9, "2026-10-21T12:32:24Z", "success", "b" * 40)
-    assert digest.red_armings([armed_pull("2026-10-21T11:41:17Z")], [late_green, TRUNK_RED]) != []
-    assert digest.red_armings([armed_pull("2026-10-21T11:41:17Z")], [late_green]) == []
+    assert red_only(armed_pull("2026-10-21T11:41:17Z"), [late_green, TRUNK_RED]) != []
+    red, unknown = digest.red_armings("o/r", [armed_pull("2026-10-21T11:41:17Z")], [late_green])
+    assert red == []
+    assert [item.reason for item in unknown] == [
+        "no completed trunk.yml push run on develop finished before the arming"
+    ]
+
+
+def test_no_trunk_history_marks_the_arming_unknown():
+    red, unknown = digest.red_armings("o/r", [armed_pull("2026-10-21T11:41:17Z")], [])
+    assert red == []
+    assert [(item.number, item.armed_at) for item in unknown] == [(7, "2026-10-21T11:41:17Z")]
+    assert unknown[0].reason == "no trunk.yml push run on develop existed yet"
 
 
 @pytest.mark.parametrize(
@@ -1669,13 +1685,59 @@ def test_a_run_completed_after_the_arming_does_not_count():
     ids=["green", "cancelled", "timed-out", "no-runs"],
 )
 def test_only_red_trunk_conclusions_are_flagged(runs, expected):
-    assert [arming.conclusion for arming in digest.red_armings([armed_pull("2026-10-21T11:41:17Z")], runs)] == expected
+    assert [arming.conclusion for arming in red_only(armed_pull("2026-10-21T11:41:17Z"), runs)] == expected
 
 
 def test_an_unfinished_trunk_run_is_not_the_newest_completed():
     running = trunk_run(9, "2026-10-21T11:40:00Z", None, "b" * 40, status="in_progress")
-    assert digest.red_armings([armed_pull("2026-10-21T11:41:17Z")], [running, TRUNK_RED]) != []
-    assert digest.red_armings([armed_pull("2026-10-21T11:41:17Z")], [running]) == []
+    assert red_only(armed_pull("2026-10-21T11:41:17Z"), [running, TRUNK_RED]) != []
+    red, unknown = digest.red_armings("o/r", [armed_pull("2026-10-21T11:41:17Z")], [running])
+    assert red == []
+    assert [item.reason for item in unknown] == [
+        "no completed trunk.yml push run on develop finished before the arming"
+    ]
+
+
+def rerun_run(run_id=9, created="2026-10-21T11:30:00Z", updated="2026-10-21T12:30:00Z"):
+    return {
+        "id": run_id,
+        "status": "completed",
+        "conclusion": "success",
+        "head_sha": "b" * 40,
+        "created_at": created,
+        "updated_at": updated,
+        "run_attempt": 2,
+    }
+
+
+def test_a_rerun_after_the_arming_resolves_to_the_attempt_current_then(monkeypatch):
+    first = {"conclusion": "failure", "updated_at": "2026-10-21T11:35:00Z"}
+    monkeypatch.setattr(digest, "trunk_attempt", lambda repo, run_id, attempt: first)
+    red, unknown = digest.red_armings("o/r", [armed_pull("2026-10-21T11:41:17Z")], [rerun_run(), TRUNK_RED])
+    assert unknown == []
+    assert [(arming.run_id, arming.conclusion, arming.completed_at) for arming in red] == [
+        (9, "failure", "2026-10-21T11:35:00Z")
+    ]
+
+
+def test_a_rerun_whose_first_attempt_postdates_the_arming_is_not_counted(monkeypatch):
+    first = {"conclusion": "failure", "updated_at": "2026-10-21T11:50:00Z"}
+    monkeypatch.setattr(digest, "trunk_attempt", lambda repo, run_id, attempt: first)
+    red, unknown = digest.red_armings("o/r", [armed_pull("2026-10-21T11:41:17Z")], [rerun_run()])
+    assert red == []
+    assert [item.reason for item in unknown] == [
+        "no completed trunk.yml push run on develop finished before the arming"
+    ]
+
+
+def test_an_unresolvable_rerun_marks_the_arming_unknown(monkeypatch):
+    def broken(repo, run_id, attempt):
+        raise digest.ReadError("attempt gone")
+
+    monkeypatch.setattr(digest, "trunk_attempt", broken)
+    red, unknown = digest.red_armings("o/r", [armed_pull("2026-10-21T11:41:17Z")], [rerun_run()])
+    assert red == []
+    assert [item.reason for item in unknown] == ["trunk run state was unresolvable: attempt gone"]
 
 
 def test_render_red_armings_names_the_run():
@@ -1684,6 +1746,15 @@ def test_render_red_armings_names_the_run():
     assert "- #7 armed at 2026-10-21T11:41:17Z" in text
     assert "was failure (run 39555893700, `aaaaaaaaa`, completed 2026-10-21T07:47:46Z)" in text
     assert digest.render_red_armings([]).endswith("None.")
+
+
+def test_render_red_armings_reports_unknown_trunk_state():
+    unknown = digest.UnknownArming(7, "2026-10-21T11:41:17Z", "no completed trunk.yml push run on develop existed yet")
+    text = digest.render_red_armings([], [unknown])
+    assert (
+        "- #7 armed at 2026-10-21T11:41:17Z; trunk state unknown (no completed trunk.yml push run on develop existed yet)."
+        in text
+    )
 
 
 def test_collect_pull_records_auto_merge_armings(monkeypatch):
@@ -1755,3 +1826,71 @@ def test_a_dry_run_reports_overrides_and_armings(stubbed, monkeypatch, capsys):
     assert "| #7 | `aaaaaaaaa` | joeharris76 | 1s | Medium |" in out
     assert "- #7 armed at 2026-10-02T11:50:00Z" in out
     assert "was failure (run 1, `aaaaaaaaa`, completed 2026-10-02T09:00:00Z)" in out
+
+
+def test_fetch_trunk_runs_paginates_to_a_short_page(monkeypatch):
+    seen = []
+
+    def fake_json(*args):
+        seen.append(args[1])
+        query = dict(part.split("=", 1) for part in args[1].split("?", 1)[1].split("&"))
+        if query["page"] == "1":
+            return {"workflow_runs": [{"id": index} for index in range(100)]}
+        return {"workflow_runs": [{"id": 100}]}
+
+    monkeypatch.setattr(digest, "gh_json", fake_json)
+    assert [run["id"] for run in digest.fetch_trunk_runs("o/r")] == list(range(101))
+    assert any(endpoint.endswith("page=2") for endpoint in seen)
+
+
+def test_a_failed_supplement_leaves_the_gap_gate_running(stubbed, monkeypatch, capsys):
+    def broken(repo, ref, since):
+        raise digest.ReadError("window gone")
+
+    monkeypatch.setattr(digest, "collect_window_pulls", broken)
+    assert digest.main(["--apply"]) == 0
+    assert "unavailable for this window: window gone" in capsys.readouterr().out
+    assert stubbed["checkpoint"] == [HEAD]
+
+
+def test_a_bold_line_that_is_not_a_verdict_section_does_not_close_the_findings():
+    body = "\n".join(
+        [
+            "**Still open**",
+            "",
+            "- **Medium** `a.py:1`: D1: open",
+            "",
+            "**Note**",
+            "",
+            "- **High** `b.py:2`: D2: still open",
+        ]
+    )
+    assert digest.still_open_severities(body) == ["Medium", "High"]
+
+
+def test_a_withdrawn_mention_inside_text_does_not_close_the_findings():
+    body = "\n".join(
+        [
+            "**Still open**",
+            "",
+            "- **Medium** `a.py:1`: D1: mentions Withdrawn: handling",
+            "",
+            "- **Low** `c.py:3`: D3: open",
+        ]
+    )
+    assert digest.still_open_severities(body) == ["Medium", "Low"]
+
+
+def test_a_known_closed_section_ends_the_findings():
+    body = "\n".join(
+        [
+            "**Still open**",
+            "",
+            "- **Medium** `a.py:1`: D1: open",
+            "",
+            "**Reviewers not available**",
+            "",
+            "- absentee",
+        ]
+    )
+    assert digest.still_open_severities(body) == ["Medium"]

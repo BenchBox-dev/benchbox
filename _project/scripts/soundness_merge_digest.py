@@ -64,10 +64,20 @@ MAX_PULL_COMMITS = 250
 PULL_EVENTS = frozenset({"pull_request", "pull_request_target"})
 ARMING_EVENTS = frozenset({"auto_merge_enabled", "auto_squash_enabled", "auto_rebase_enabled"})
 TRUNK_WORKFLOW = "trunk.yml"
+TRUNK_RUN_PAGES = 10
 RED_CONCLUSIONS = frozenset({"failure", "timed_out"})
 OWNER_INSTRUCTION = "Owner instruction"
-WITHDRAWN_MARKER = "Withdrawn:"
-OPEN_SECTION_PREFIXES = ("Still open", "Defects ")
+OPEN_DEFECT_SECTIONS = frozenset(
+    {
+        "Still open",
+        "Still open from earlier reviews",
+        "Defects on diff lines",
+        "Defects outside the diff",
+        "Defects without a review thread",
+        "Defects already open as review threads, not posted again",
+    }
+)
+KNOWN_CLOSED_SECTIONS = frozenset({"Result withheld: the run's artifacts failed validation", "Reviewers not available"})
 SECTION_HEADING = re.compile(r"^\*\*(.+?)\*\*$")
 DEFECT_BULLET = re.compile(r"^[-*]\s+\*\*(Critical|High|Medium|Low)\*\*")
 WITHDRAWN_HEADING = re.compile(r"^\s*(?:\*\*)?Withdrawn:(?:\*\*)?\s*(.*)$")
@@ -210,6 +220,13 @@ class RedArming:
     run_id: int | None
     run_head: str
     completed_at: str
+
+
+@dataclass(frozen=True)
+class UnknownArming:
+    number: int
+    armed_at: str
+    reason: str
 
 
 @dataclass(frozen=True)
@@ -356,12 +373,16 @@ def still_open_severities(body: str) -> list[str]:
         line = raw.strip()
         if not line:
             continue
-        if WITHDRAWN_MARKER in line:
+        if WITHDRAWN_HEADING.match(line):
             in_open = False
             continue
         heading = SECTION_HEADING.match(line)
         if heading is not None:
-            in_open = heading.group(1).startswith(OPEN_SECTION_PREFIXES)
+            title = heading.group(1)
+            if title in OPEN_DEFECT_SECTIONS:
+                in_open = True
+            elif title in KNOWN_CLOSED_SECTIONS:
+                in_open = False
             continue
         if in_open:
             match = DEFECT_BULLET.match(line)
@@ -748,36 +769,74 @@ def collect_window_pulls(repo: str, ref: str, since: str) -> list[PullEvidence]:
 
 
 def fetch_trunk_runs(repo: str) -> list[dict[str, Any]]:
-    runs = gh_json(
-        "api",
-        f"repos/{repo}/actions/workflows/{TRUNK_WORKFLOW}/runs"
-        f"?branch={BASE_BRANCH}&event=push&status=completed&per_page=100",
-    )
-    return runs["workflow_runs"]
+    runs: list[dict[str, Any]] = []
+    for page in range(1, TRUNK_RUN_PAGES + 1):
+        batch = gh_json(
+            "api",
+            f"repos/{repo}/actions/workflows/{TRUNK_WORKFLOW}/runs"
+            f"?branch={BASE_BRANCH}&event=push&status=completed&per_page=100&page={page}",
+        )["workflow_runs"]
+        runs.extend(batch)
+        if len(batch) < 100:
+            break
+    return runs
 
 
-def red_armings(pulls: Sequence[PullEvidence], trunk_runs: Sequence[Mapping[str, Any]]) -> list[RedArming]:
-    completed = [run for run in trunk_runs if run.get("status", "completed") == "completed" and run.get("updated_at")]
-    found: list[RedArming] = []
+def trunk_attempt(repo: str, run_id: int, attempt: int) -> dict[str, Any]:
+    return gh_json("api", f"repos/{repo}/actions/runs/{run_id}/attempts/{attempt}")
+
+
+def trunk_run_state(repo: str, run: Mapping[str, Any], armed_at: str) -> tuple[bool, str | None, str]:
+    if run.get("status", "completed") != "completed":
+        return (False, None, "")
+    updated = run.get("updated_at") or ""
+    if (run.get("run_attempt") or 1) <= 1 or updated <= armed_at:
+        return (bool(updated) and updated <= armed_at, run.get("conclusion"), updated)
+    attempt = run.get("run_attempt") or 1
+    while attempt > 1:
+        attempt -= 1
+        record = trunk_attempt(repo, run.get("id"), attempt)
+        stamp = record.get("updated_at") or ""
+        if stamp and stamp <= armed_at:
+            return (True, record.get("conclusion"), stamp)
+    return (False, None, "")
+
+
+def unknown_trunk_reason(trunk_runs: Sequence[Mapping[str, Any]], armed_at: str) -> str:
+    if not any((run.get("created_at") or "") <= armed_at for run in trunk_runs):
+        return "no trunk.yml push run on develop existed yet"
+    return "no completed trunk.yml push run on develop finished before the arming"
+
+
+def red_armings(
+    repo: str, pulls: Sequence[PullEvidence], trunk_runs: Sequence[Mapping[str, Any]]
+) -> tuple[list[RedArming], list[UnknownArming]]:
+    red: list[RedArming] = []
+    unknown: list[UnknownArming] = []
     for pull in pulls:
         for armed_at in pull.armed_at:
-            prior = [run for run in completed if run["updated_at"] <= armed_at]
-            if not prior:
+            try:
+                states = []
+                for run in trunk_runs:
+                    if (run.get("created_at") or "") > armed_at:
+                        continue
+                    completed, conclusion, stamp = trunk_run_state(repo, run, armed_at)
+                    if completed and stamp:
+                        states.append((stamp, conclusion or "unknown", run))
+            except (ReadError, KeyError, TypeError, ValueError) as exc:
+                unknown.append(UnknownArming(pull.number, armed_at, f"trunk run state was unresolvable: {exc}"))
                 continue
-            newest = max(prior, key=lambda run: run["updated_at"])
-            conclusion = newest.get("conclusion") or "unknown"
+            if not states:
+                unknown.append(UnknownArming(pull.number, armed_at, unknown_trunk_reason(trunk_runs, armed_at)))
+                continue
+            stamp, conclusion, run = max(states, key=lambda state: state[0])
             if conclusion in RED_CONCLUSIONS:
-                found.append(
-                    RedArming(
-                        pull.number,
-                        armed_at,
-                        conclusion,
-                        newest.get("id"),
-                        (newest.get("head_sha") or "")[:9],
-                        newest.get("updated_at") or "",
-                    )
+                red.append(
+                    RedArming(pull.number, armed_at, conclusion, run.get("id"), (run.get("head_sha") or "")[:9], stamp)
                 )
-    return sorted(found, key=lambda arming: (arming.armed_at, arming.number))
+    red.sort(key=lambda arming: (arming.armed_at, arming.number))
+    unknown.sort(key=lambda arming: (arming.armed_at, arming.number))
+    return red, unknown
 
 
 def render_standin_overrides(overrides: Sequence[StandinOverride]) -> str:
@@ -801,19 +860,21 @@ def render_standin_overrides(overrides: Sequence[StandinOverride]) -> str:
     return "\n".join(lines)
 
 
-def render_red_armings(armings: Sequence[RedArming]) -> str:
+def render_red_armings(armings: Sequence[RedArming], unknowns: Sequence[UnknownArming] = ()) -> str:
     lines = [
         "",
         "Armed while Trunk was red: PRs with auto-merge enabled while the newest completed "
         "trunk.yml push run on develop was red.",
     ]
-    if not armings:
+    if not armings and not unknowns:
         return "\n".join(lines + ["None."])
     for arming in armings:
         lines.append(
             f"- #{arming.number} armed at {arming.armed_at}; the newest completed trunk.yml push run on develop "
             f"was {arming.conclusion} (run {arming.run_id}, `{arming.run_head}`, completed {arming.completed_at})."
         )
+    for item in unknowns:
+        lines.append(f"- #{item.number} armed at {item.armed_at}; trunk state unknown ({item.reason}).")
     return "\n".join(lines)
 
 
@@ -1025,12 +1086,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         if since not in run(["git", "rev-list", "--first-parent", until]).split():
             raise ReadError(f"checkpoint {since[:9]} is not on the first-parent history of {args.ref}")
         entries = collect_entries(args.repo, until, since)
-        pulls = collect_window_pulls(args.repo, until, since)
-        overrides = standin_overrides(pulls)
-        armings = red_armings(pulls, fetch_trunk_runs(args.repo))
-        withdrawals = withdrawn_findings(pulls)
-        report = render(entries, since=since, until=until)
-        report += render_standin_overrides(overrides) + render_red_armings(armings) + render_withdrawals(withdrawals)
+        try:
+            pulls = collect_window_pulls(args.repo, until, since)
+            overrides = standin_overrides(pulls)
+            red, unknowable = red_armings(args.repo, pulls, fetch_trunk_runs(args.repo))
+            withdrawals = withdrawn_findings(pulls)
+            supplement = (
+                render_standin_overrides(overrides)
+                + render_red_armings(red, unknowable)
+                + render_withdrawals(withdrawals)
+            )
+        except (ReadError, KeyError, TypeError, ValueError) as exc:
+            supplement = (
+                f"\nStand-in overrides, red-trunk armings, and withdrawals are unavailable for this window: {exc}."
+            )
+        report = render(entries, since=since, until=until) + supplement
         print(report)
         closures = gap_closures(args.repo, entries)
         print(render_closures(closures))
