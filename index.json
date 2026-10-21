@@ -23326,15 +23326,10 @@
       "title": "Fork: SQLite date arithmetic gaps (TPC-DS Q72 date + integer, DATE_TRUNC on DATE)"
     },
     "sqlglot-fork-review-m4-engine-versions": {
-      "claim": {
-        "expires_at": "2026-10-22T23:38:01Z",
-        "generation": "d7ddd194c9dc4a52a8913641d98d5775",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c196539bd596dfa2c5536f3b"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Fork CI: constrain engine jobs to the engine versions BenchBox supports and record versions in evidence"
     },
     "sqlglot-fork-review-m6-m7-wrapper-contract": {
