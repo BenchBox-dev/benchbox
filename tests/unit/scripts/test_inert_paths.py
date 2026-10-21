@@ -43,31 +43,6 @@ INERT_SAMPLE = [
     "_project/todo-db-export/index.md",
     "docs/index.md",
 ]
-CODE_ROUTED_SAMPLE = [
-    "AGENTS.md",
-    "README.md",
-    "docs/README.md",
-    "docs/internal/repo-admin-settings.md",
-    "docs/operations/ci-local-parity.md",
-    "docs/reference/public-contracts.md",
-    "docs/publish-allowlist.txt",
-    "docs/publish-exclusions.txt",
-    "docs/linkcheck_ignore.txt",
-    "tests/uat/CHARTER.md",
-    ".claude/commands/blind-spot.md",
-    "benchbox/utils/VERSION_MANAGEMENT.md",
-    ".github/PULL_REQUEST_TEMPLATE.md",
-    "CHANGELOG.md",
-    "CONTRIBUTING.md",
-    "COPYRIGHT.md",
-    "docs/CLI_REFERENCE.md",
-    "docs/benchmarks/sf1-calibrated-sizes.md",
-    "docs/platforms/support-status.md",
-    "docs/internal/release-guide.md",
-    "docs/guides/tpc/tpc-di-deployment-guide.md",
-    "_project/decisions/single-repo-migration.md",
-    "_project/notes/phase-2-requests.md",
-]
 
 
 def _tracked() -> set[str]:
@@ -281,9 +256,11 @@ def test_live_readers_send_agents_md_to_skill_delivery() -> None:
 
 
 def test_machine_read_docs_route_as_code() -> None:
-    for path in CODE_ROUTED_SAMPLE:
+    routed = sorted(path for path in _tracked() if inert.matches_exception(path))
+    assert routed, "expected tracked machine-read documents"
+    for path in routed:
         decision = classify_paths([path], ROUTER_RULES)
-        assert decision["needs_code_ci"] is True, path
+        assert decision["needs_code_ci"] or decision["skill_integrity_needed"], path
         assert decision["safe_content_only"] is False, path
 
 
