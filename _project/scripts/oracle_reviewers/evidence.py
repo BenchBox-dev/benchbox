@@ -144,6 +144,10 @@ def _withdrawal_verified(evidence: str, workspace: Path, examined: frozenset[str
     return False
 
 
+def withdrawal_cited(evidence_text: str | None) -> bool:
+    return _WITHDRAWAL_CITATION.search(evidence_text or "") is not None
+
+
 def mark_citations(verdict: Verdict, workspace: Path) -> Verdict:
     marked = []
     for finding in verdict.defects:

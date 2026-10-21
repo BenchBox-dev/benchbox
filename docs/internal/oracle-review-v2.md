@@ -182,7 +182,10 @@ the reviewer to confirm each disputed defect as not fixed or withdraw it with
 an examined head-commit file and line that refutes it. A withdrawal without
 such a citation counts as not fixed, and a defect the reviewer marks fixed on
 an unchanged patch counts as not fixed too, so only evidenced withdrawals
-leave the open list, and they are reported separately as never defects. A
+leave the open list, and they are reported separately as never defects. On a
+forced round the judge counts a withdrawal without a file-and-line citation
+as not fixed; the head-commit existence check still happens when citations
+are marked.
 A thread reply counts as a dispute only when a reply from someone other than
 the oracle bot contains a line starting with `Dispute:` that states the case
 against the defect. A plain acknowledgement such as `done` is not a dispute.
@@ -323,7 +326,8 @@ request; the attempt jobs have no concurrency group of their own.
   review comments, not issue comments. A manual rerun may re-review the same
   head after a decisive result, bounded by the daily retry budget and the
   doubling backoff, so an author can dispute a finding with a `Dispute:` reply
-  on its thread without a new commit.
+  on its thread without a new commit. A manual rerun with no `Dispute:` reply
+  leaves the head's decision in place instead of forcing another re-review.
   The new brief carries unresolved thread replies as disputed findings and
   asks the reviewer to confirm or withdraw each disputed defect with a reason,
   checking any claimed grammar or documented behaviour.

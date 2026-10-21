@@ -798,11 +798,26 @@ def _thread_fake(record: dict[str, Any], threads: list[dict[str, Any]]) -> FakeG
 def test_comment_on_a_decided_head_forces_a_same_head_rereview(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     event = {"action": "created", "issue": {"number": 7, "pull_request": {}}, "comment": {"body": "/oracle-review"}}
     _, values, plan = _plan(
-        monkeypatch, tmp_path, _thread_fake(_decided_head(), []), event_name="issue_comment", event=event
+        monkeypatch,
+        tmp_path,
+        _thread_fake(_decided_head(), [_disputed_thread()]),
+        event_name="issue_comment",
+        event=event,
     )
     assert values["decision"] == "review" and values["post"] == "true"
     assert plan["manual"] is True
     assert plan["protocol"]["kind"] == "follow-up" and plan["protocol"]["forced"] is True
+
+
+def test_comment_without_a_dispute_leaves_the_decided_head_in_place(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    event = {"action": "created", "issue": {"number": 7, "pull_request": {}}, "comment": {"body": "/oracle-review"}}
+    _, values, plan = _plan(
+        monkeypatch, tmp_path, _thread_fake(_decided_head(), [_acked_thread()]), event_name="issue_comment", event=event
+    )
+    assert values["decision"] == "skip" and values["post"] == "false"
+    assert plan["manual"] is True
 
 
 def test_push_with_a_disputed_thread_upgrades_carry_to_a_forced_rereview(

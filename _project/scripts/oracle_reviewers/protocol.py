@@ -10,6 +10,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
+from .evidence import withdrawal_cited
 from .policy import SEVERITIES
 from .verdict import COMPLETE, DO_NOT_SHIP, FIXED, NOT_FIXED, SHIP, SHIP_WITH_FIXES, WITHDRAWN, Finding, Verdict
 
@@ -356,8 +357,14 @@ def judge(
     if verdict.status != COMPLETE:
         raise ValueError("only a complete review can be judged")
     statuses = {item.id: item.status for item in verdict.prior_defects}
+    cited = {item.id: item.evidence for item in verdict.prior_defects}
     if rejudge_fixed:
-        statuses = {key: (NOT_FIXED if value == FIXED else value) for key, value in statuses.items()}
+        statuses = {
+            key: (
+                NOT_FIXED if value == FIXED or (value == WITHDRAWN and not withdrawal_cited(cited.get(key))) else value
+            )
+            for key, value in statuses.items()
+        }
     carried = tuple(item for item in prior if statuses.get(item["id"], NOT_FIXED) == NOT_FIXED)
     fixed = tuple(item["id"] for item in prior if statuses.get(item["id"], NOT_FIXED) == FIXED)
     withdrawn = tuple(item["id"] for item in prior if statuses.get(item["id"]) == WITHDRAWN)

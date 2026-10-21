@@ -106,3 +106,22 @@ def test_judge_rejudges_fixed_as_open_on_a_forced_round() -> None:
     judgement = judge(fixed, 10, prior, rejudge_fixed=True)
     assert judgement.decision == "SHIP_WITH_FIXES" and judgement.carried == (prior[0],)
     assert judgement.fixed == () and judgement.withdrawn == ()
+
+
+def test_judge_rejudges_an_uncited_withdrawal_as_open_on_a_forced_round() -> None:
+    prior = [{"id": "D1", "severity": "High", "file": "a.py", "line": 1, "end_line": None, "title": "t1"}]
+    verdict = _verdict(
+        "SHIP_WITH_FIXES", [], prior_defects=[{"id": "D1", "status": "withdrawn", "evidence": "never a defect"}]
+    )
+    judgement = judge(verdict, 10, prior, rejudge_fixed=True)
+    assert judgement.decision == "SHIP_WITH_FIXES" and judgement.carried == (prior[0],)
+    assert judgement.withdrawn == ()
+
+
+def test_judge_keeps_a_cited_withdrawal_on_a_forced_round() -> None:
+    prior = [{"id": "D1", "severity": "High", "file": "a.py", "line": 1, "end_line": None, "title": "t1"}]
+    verdict = _verdict(
+        "SHIP", [], prior_defects=[{"id": "D1", "status": "withdrawn", "evidence": "never a defect: a.py:1"}]
+    )
+    judgement = judge(verdict, 10, prior, rejudge_fixed=True)
+    assert judgement.decision == "SHIP" and judgement.withdrawn == ("D1",)

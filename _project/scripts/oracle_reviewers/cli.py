@@ -182,7 +182,7 @@ def _dispute_step(
 ) -> tuple[list[dict[str, Any]] | None, protocol.Round]:
     if step.kind not in (protocol.SKIP, protocol.CARRY):
         return None, step
-    if manual or event_name != "pull_request_target":
+    if not manual and event_name != "pull_request_target":
         return None, step
     try:
         threads = github.review_threads(plan["repo"], plan["pr"])
@@ -284,7 +284,7 @@ def command_plan(args: argparse.Namespace) -> int:
     full_diff = github.get_diff(repo, pr)
     complete = full_diff is not None and len(files) >= int(pull.get("changed_files") or 0)
     strike_count = max(protocol.strikes(found.records), previous.strikes if previous else 0)
-    step = _protocol_round(plan, policy, found, scoped, full_diff if complete else None, strike_count, force=manual)
+    step = _protocol_round(plan, policy, found, scoped, full_diff if complete else None, strike_count)
     threads, step = _dispute_step(
         plan,
         policy,
