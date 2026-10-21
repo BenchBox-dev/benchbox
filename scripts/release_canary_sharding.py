@@ -103,9 +103,9 @@ def _node_ids_sha256(node_ids: Sequence[str]) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def _load_binding(durations_path: Path | None) -> tuple[Durations | None, dict[str, str]]:
+def _load_binding(durations_path: Path | None) -> tuple[Durations | None, dict[str, str | None]]:
     if durations_path is None:
-        return None, {}
+        return None, {"durations_sha256": None}
     digest = hashlib.sha256(durations_path.read_bytes()).hexdigest()
     return load_durations(durations_path), {"durations_sha256": digest}
 
@@ -163,7 +163,7 @@ def collect_node_ids(
             "shard_count": shard_count,
             "shard_counts": shard_counts,
             "node_ids_sha256": _node_ids_sha256(node_ids),
-            **binding,
+            **{key: value for key, value in binding.items() if value is not None},
         },
     )
     if github_output is not None:
@@ -221,7 +221,7 @@ def write_shard(
             "total_count": len(node_ids),
             "source_node_ids_sha256": _node_ids_sha256(node_ids),
             "node_ids_sha256": _node_ids_sha256(shard_node_ids),
-            **binding,
+            **{key: value for key, value in binding.items() if value is not None},
         },
     )
     return len(shard_node_ids)

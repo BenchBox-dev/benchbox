@@ -122,7 +122,14 @@ def test_collection_and_shard_manifests_conserve_node_ids(tmp_path: Path):
     assert sorted(assigned) == sorted(nodeids.read_text(encoding="utf-8").splitlines())
 
 
-def _medium_artifacts(root: Path, sha: str, workflow: str = "ci.yml", prefix: str = "t2-medium") -> list[str]:
+def _medium_artifacts(
+    root: Path,
+    sha: str,
+    workflow: str = "ci.yml",
+    prefix: str = "t2-medium",
+    durations_path: Path | None = None,
+) -> list[str]:
+    durations = load_durations(durations_path) if durations_path is not None else None
     collection = root / f"{prefix}-nodeids-{sha}"
     collection.mkdir()
     raw = collection / "raw.txt"
@@ -138,6 +145,7 @@ def _medium_artifacts(root: Path, sha: str, workflow: str = "ci.yml", prefix: st
         workflow=workflow,
         job="medium-collect",
         marker_expression=MEDIUM_MARKER_EXPRESSION,
+        durations_path=durations_path,
     )
     for index in range(MEDIUM_SHARD_COUNT):
         shard = root / f"{prefix}-shard-{index}-{sha}"
@@ -153,8 +161,9 @@ def _medium_artifacts(root: Path, sha: str, workflow: str = "ci.yml", prefix: st
             marker_expression=MEDIUM_MARKER_EXPRESSION,
             collection_summary=collection / "medium-collection.json",
             checked_sha=sha,
+            durations_path=durations_path,
         )
-        assigned = partition_node_ids(ids, index, MEDIUM_SHARD_COUNT)
+        assigned = partition_node_ids(ids, index, MEDIUM_SHARD_COUNT, durations)
         (shard / f"shard-{index}-execution.json").write_text(
             json.dumps(
                 {
@@ -443,12 +452,9 @@ def test_update_test_durations_keeps_slow_tests_and_records_the_default_for_the_
     assert loaded.default_seconds == pytest.approx(0.1)
 
 
-def test_shard_refuses_a_collection_built_with_different_durations(tmp_path: Path):
-    node_ids, durations = _skewed_node_ids()
+def _collect(tmp_path: Path, node_ids: list[str], durations_path: Path | None) -> dict:
     collect_input = tmp_path / "collect.txt"
     collect_input.write_text("\n".join(node_ids) + "\n", encoding="utf-8")
-    mine = _durations_file(tmp_path / "mine.json", dict(durations.tests))
-    other = _durations_file(tmp_path / "other.json", {**durations.tests, node_ids[0]: 7.0})
     collect_node_ids(
         collect_input,
         tmp_path / "nodeids.txt",
@@ -459,9 +465,9 @@ def test_shard_refuses_a_collection_built_with_different_durations(tmp_path: Pat
         workflow="ci.yml",
         job="medium-collect",
         marker_expression=MEDIUM_MARKER_EXPRESSION,
-        durations_path=mine,
+        durations_path=durations_path,
     )
-    arguments = {
+    return {
         "shard_index": 0,
         "shard_count": 4,
         "workflow": "ci.yml",
@@ -471,10 +477,62 @@ def test_shard_refuses_a_collection_built_with_different_durations(tmp_path: Pat
         "checked_sha": "a" * 40,
     }
 
-    assert write_shard(
-        tmp_path / "nodeids.txt", tmp_path / "s.txt", tmp_path / "s.json", **arguments, durations_path=mine
+
+def _shard(tmp_path: Path, arguments: dict, durations_path: Path | None) -> int:
+    return write_shard(
+        tmp_path / "nodeids.txt", tmp_path / "s.txt", tmp_path / "s.json", **arguments, durations_path=durations_path
     )
+
+
+def test_shard_refuses_a_collection_built_with_different_durations(tmp_path: Path):
+    node_ids, durations = _skewed_node_ids()
+    mine = _durations_file(tmp_path / "mine.json", dict(durations.tests))
+    other = _durations_file(tmp_path / "other.json", {**durations.tests, node_ids[0]: 7.0})
+    arguments = _collect(tmp_path, node_ids, mine)
+
+    assert _shard(tmp_path, arguments, mine)
     with pytest.raises(ValueError, match="collection evidence does not match"):
-        write_shard(
-            tmp_path / "nodeids.txt", tmp_path / "s.txt", tmp_path / "s.json", **arguments, durations_path=other
-        )
+        _shard(tmp_path, arguments, other)
+
+
+def _uniform_node_ids() -> tuple[list[str], dict[str, float]]:
+    return [f"tests/unit/test_{index:03d}.py::test_case" for index in range(8)], {}
+
+
+def test_the_uniform_fixture_gives_the_same_shard_counts_with_and_without_durations():
+    node_ids, tests = _uniform_node_ids()
+    durations = Durations(tests, default_seconds=1.0)
+
+    assert [len(partition_node_ids(node_ids, i, 4)) for i in range(4)] == [
+        len(partition_node_ids(node_ids, i, 4, durations)) for i in range(4)
+    ]
+
+
+def test_shard_refuses_a_duration_collection_when_the_consumer_omits_the_durations(tmp_path: Path):
+    node_ids, tests = _uniform_node_ids()
+    mine = _durations_file(tmp_path / "mine.json", tests)
+    arguments = _collect(tmp_path, node_ids, mine)
+
+    with pytest.raises(ValueError, match="collection evidence does not match"):
+        _shard(tmp_path, arguments, None)
+
+
+def test_shard_refuses_a_round_robin_collection_when_the_consumer_supplies_durations(tmp_path: Path):
+    node_ids, tests = _uniform_node_ids()
+    mine = _durations_file(tmp_path / "mine.json", tests)
+    arguments = _collect(tmp_path, node_ids, None)
+
+    assert _shard(tmp_path, arguments, None)
+    assert "durations_sha256" not in json.loads((tmp_path / "collection.json").read_text(encoding="utf-8"))
+    with pytest.raises(ValueError, match="collection evidence does not match"):
+        _shard(tmp_path, arguments, mine)
+
+
+def test_verify_medium_shards_refuses_duration_bound_evidence_when_the_consumer_omits_the_durations(tmp_path: Path):
+    sha = "a" * 40
+    mine = _durations_file(tmp_path / "mine.json", {})
+    _medium_artifacts(tmp_path, sha, durations_path=mine)
+
+    verify_medium_shards(tmp_path, sha, durations_path=mine)
+    with pytest.raises(ValueError, match="medium collection does not match"):
+        verify_medium_shards(tmp_path, sha)
