@@ -40,6 +40,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   same mapping where it previously returned the PostgreSQL text unchanged.
   Translation failures in strict mode now raise `SQLTranslationError` instead of
   being logged and skipped.
+- **ClickHouse zero-divisor handling now comes from the bundled SQLGlot runtime.**
+  `ClickHouseQueryTransformer.transform` requests the runtime's `safe_division`
+  rewrite through `apply_rewrite`, which wraps every non-literal divisor as
+  `nullIf(divisor, 0)`, including `Nullable(Decimal)` casts. The previous regex
+  missed divisors after a scaled numerator (`x * 100 / SUM(x) OVER (...)`,
+  TPC-DS Q12, Q20 and Q98), TPC-DS Q49's `CAST(...) / CAST(...)` ratios and
+  TPC-H Q14's `... END) / SUM(...)`; a zero divisor in those expressions
+  previously raised an error or produced `inf` and now returns NULL. Results
+  differ only when a zero divisor occurs. The query text is also re-rendered by
+  SQLGlot (comma joins become `CROSS JOIN`, `date 'x'` becomes `CAST('x' AS DATE)`,
+  `NULLIF` becomes `nullIf`), which is semantically equivalent. A query SQLGlot
+  cannot parse now fails with `ParseError` before reaching ClickHouse.
+  `execution_time_seconds` for ClickHouse queries now starts after the query
+  rewrite, so it measures only the engine call.
 - **BREAKING: the ParadeDB platform now requires `pg_search`, not `pg_analytics`.**
   Current ParadeDB images no longer ship `pg_analytics`, so the adapter could not
   connect to them. The supported image is `paradedb/paradedb:0.26.2-pg18`

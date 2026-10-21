@@ -81,15 +81,15 @@ def test_no_transform_leaves_sql_unchanged():
 def test_clickhouse_execute_transform_mirrors_production_sequence():
 
     out = _clickhouse_execute_transform("SELECT revenue / SUM(quantity) FROM t")
-    assert "revenue / NULLIF(SUM(quantity), 0)" in out
+    assert "revenue / nullIf(SUM(quantity), 0)" in out
     assert out.rstrip().endswith("SETTINGS joined_subquery_requires_alias = 0")
 
 
 def test_clickhouse_execute_transform_keeps_windowed_divisor_intact():
 
     out = _clickhouse_execute_transform("SELECT mkt / SUM(volume) OVER (PARTITION BY o_year) FROM t")
-    assert "NULLIF(SUM(volume) OVER (PARTITION BY o_year), 0)" in out
-    assert "NULLIF(SUM(volume), 0) OVER" not in out
+    assert "nullIf(SUM(volume) OVER (PARTITION BY o_year), 0)" in out
+    assert "nullIf(SUM(volume), 0) OVER" not in out
 
 
 @pytest.mark.parametrize(
