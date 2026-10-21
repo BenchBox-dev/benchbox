@@ -2,7 +2,7 @@
   "acceptance": [
     "gh api repos/BenchBox-dev/benchbox/rulesets/15611785 lists oracle-gate with the App integration_id"
   ],
-  "context": "Ready for the owner: #3229 merged and oracle-gate posts live. Exact step: GitHub > BenchBox-dev/benchbox > Settings > Rules > ruleset 15611785 (develop) > Require status checks > add 'oracle-gate' with source set to the benchbox-oracle App (app id 5201041); keep oracle-review. API equivalent: GET repos/BenchBox-dev/benchbox/rulesets/15611785, append {\"context\":\"oracle-gate\",\"integration_id\":5201041} to required_status_checks, PUT it back. Current required contexts: core, explorer, results-data, docs, tooling, oracle-review, hold.",
+  "context": "Owner reported ruleset updated. Live GET repos/BenchBox-dev/benchbox/rulesets/15611785 verified required_status_checks contains {\"context\":\"oracle-gate\",\"integration_id\":5201041}; oracle-review and core/explorer/results-data/docs/tooling/hold retained. Acceptance satisfied. Next dependency: oracle-gate-consumers-cutover-20261021; do not remove oracle-review until that migration is merged and verified.",
   "description": "Repository admin action. In ruleset 15611785 (develop) add required status check context oracle-gate with the integration_id of the benchbox-oracle App, keeping oracle-review required for now, so no window exists where neither is required.",
   "sessions": [
     {
@@ -28,6 +28,14 @@
       "op": "update",
       "op_id": "d551cdf536204ff984af6b48fc60bb9f",
       "session_id": "a9046e3fb7d74eefb823245a0b359b69"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d",
+      "at": "2026-10-21T23:37:52Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9188bccbed4d4657b35f0fc972fee841",
+      "session_id": "a4962e9a0d58442bae2ec42c3d79c405"
     }
   ]
 }
