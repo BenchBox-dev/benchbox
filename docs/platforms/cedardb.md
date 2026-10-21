@@ -65,8 +65,7 @@ surface.
 CedarDB inherits the PostgreSQL dialect, so it can in principle run any BenchBox
 benchmark supported on PostgreSQL - TPC-H, TPC-DS, SSB, Join Order, Read
 Primitives, Write Primitives, Transaction Primitives, and similar. Individual
-benchmark/tuning combinations require validation; partitioning and clustering
-tuning are not yet verified.
+benchmark/tuning combinations require validation.
 
 ## Notes
 
@@ -79,6 +78,22 @@ tuning are not yet verified.
   Transaction Primitives will also run.
 - For large scale factors, prefer `--compression zstd` on staged data files to
   speed up `COPY`.
+
+## Tuning files
+
+Run the hash-partitioning profile with:
+
+```bash
+benchbox run --platform cedardb --benchmark tpch --scale 0.01 \
+  --phases generate,load,power --seed 42 \
+  --tuning examples/tunings/cedardb/tpch_tuned.yaml --non-interactive
+```
+
+The CedarDB reference documents one table-layout control that BenchBox can drive: `CREATE TABLE ... PARTITION BY HASH (columns)`. The reference states that CedarDB partitions such a table automatically, creating up to 1024 partitions lazily on insert, so BenchBox emits only the `PARTITION BY HASH` clause and no explicit partitions. Only `HASH` partitioning is implemented (the server answers `RANGE` with "partition strategy not implemented yet"), so a date or any other partitioning column is also hashed. Probing CedarDB v2026-09-29 showed that, unlike PostgreSQL, it does not require a primary or unique key to include the partition columns (a unique key outside the partition key is created and enforced), so partitioning and primary keys can be requested together. Foreign keys can be requested too, but a TPC-H load with them enabled failed with foreign key violations from the order in which the tables load, so the example leaves them off.
+
+Each partitioning request is recorded as applied only after `pg_get_partkeydef` is read back and shows `HASH` on the requested columns; anything else is recorded as not applied with the observed definition.
+
+Clustering and sorting are rejected when the tuning file loads, with the reason in the error. CedarDB v2026-09-29 answers `CLUSTER` with "CLUSTER not implemented yet", and its B-tree indexes never set `indisclustered`, so no tuning-file key can physically order rows. The table option `WITH (compression = zstd | none)` and the indexes CedarDB creates for keys are not tuning-file controls.
 
 ## See Also
 

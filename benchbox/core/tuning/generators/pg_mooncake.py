@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from benchbox.core.tuning.ddl_generator import TuningClauses
 from benchbox.core.tuning.generators.postgresql import PostgreSQLDDLGenerator
+from benchbox.core.tuning.interface import TableTuning as RuntimeTableTuning
 
 if TYPE_CHECKING:
     from benchbox.core.tuning.ddl_generator import ColumnDefinition
@@ -30,7 +31,14 @@ class PgMooncakeDDLGenerator(PostgreSQLDDLGenerator):
         table_tuning: TableTuning | None,
         platform_opts: PlatformOptimizationConfiguration | None = None,
     ) -> TuningClauses:
-        return TuningClauses()
+        if table_tuning is None:
+            return TuningClauses()
+        layout_only = RuntimeTableTuning(
+            table_name=table_tuning.table_name,
+            clustering=table_tuning.clustering,
+            sorting=table_tuning.sorting,
+        )
+        return super().generate_tuning_clauses(layout_only, platform_opts)
 
     def generate_create_table_ddl(
         self,

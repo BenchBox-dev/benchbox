@@ -10,8 +10,6 @@ from benchbox.core.tuning.ddl_generator import get_ddl_generator
 from benchbox.core.tuning.interface import TableTuning, TuningColumn, UnifiedTuningConfiguration
 from benchbox.platforms.base.sql_execution import execute_sql_query
 from benchbox.platforms.cedardb import CedarDBAdapter
-from benchbox.platforms.citus import CitusAdapter
-from benchbox.platforms.pg_mooncake import PgMooncakeAdapter
 from benchbox.platforms.postgresql import PostgreSQLAdapter
 from benchbox.platforms.timescaledb import TimescaleDBAdapter
 
@@ -216,7 +214,7 @@ def test_clustered_sort_skips_the_sorted_ingestion_drop(adapter):
 
 @pytest.mark.parametrize(
     "adapter_class",
-    [CedarDBAdapter, CitusAdapter, PgMooncakeAdapter, TimescaleDBAdapter],
+    [CedarDBAdapter, TimescaleDBAdapter],
 )
 def test_family_variants_do_not_cluster(adapter_class):
     tuning = _config(clustering=_columns("L_SHIPDATE")).table_tunings["LINEITEM"]

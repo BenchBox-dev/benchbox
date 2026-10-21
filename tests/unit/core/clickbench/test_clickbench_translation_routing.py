@@ -30,10 +30,16 @@ UNCHANGED_BY_ROUTING_DIALECTS = (
     "tsql",
     "oracle",
     "exasol",
+    "sqlite",
+    "datafusion",
+    "netezza",
+    "vertica",
+    "greenplum",
 )
 
-SQLITE_REWRITTEN_QUERY_IDS = frozenset({"Q19", "Q43"})
-ALIAS_DIALECTS_UNKNOWN_TO_SQLGLOT = ("datafusion", "netezza", "ansi", "standard", "vertica", "greenplum")
+SQLITE_STRFTIME_QUERY_IDS = frozenset({"Q19", "Q43"})
+ALIAS_DIALECTS_UNKNOWN_TO_SQLGLOT = ("ansi", "standard")
+ALIAS_DIALECTS_MAPPED_TO_POSTGRES = ("datafusion", "netezza", "ansi", "standard", "vertica", "greenplum")
 
 
 def translate_before_routing(query: str, dialect: str) -> str:
@@ -71,9 +77,8 @@ def test_routing_leaves_sqlglot_dialect_output_unchanged(clickbench, clickbench_
     assert differing_query_ids(clickbench, clickbench_queries, dialect) == set()
 
 
-def test_routing_changes_sqlite_output_only_for_wrapper_fixups(clickbench, clickbench_queries):
-    assert differing_query_ids(clickbench, clickbench_queries, "sqlite") == SQLITE_REWRITTEN_QUERY_IDS
-    for query_id in SQLITE_REWRITTEN_QUERY_IDS:
+def test_sqlite_output_uses_strftime_for_date_truncation(clickbench, clickbench_queries):
+    for query_id in SQLITE_STRFTIME_QUERY_IDS:
         translated = clickbench.translate_query_text(clickbench_queries[query_id], "sqlite")
         assert "STRFTIME" in translated
 
@@ -83,6 +88,12 @@ def test_routing_translates_aliases_previously_returned_untranslated(clickbench,
     assert differing_query_ids(clickbench, clickbench_queries, dialect) == set(clickbench_queries)
     for query_id, query in clickbench_queries.items():
         assert translate_before_routing(query, dialect) == query
+        assert clickbench.translate_query_text(query, dialect) == clickbench.translate_query_text(query, "postgres")
+
+
+@pytest.mark.parametrize("dialect", ALIAS_DIALECTS_MAPPED_TO_POSTGRES)
+def test_alias_dialects_translate_like_postgres(clickbench, clickbench_queries, dialect):
+    for query in clickbench_queries.values():
         assert clickbench.translate_query_text(query, dialect) == clickbench.translate_query_text(query, "postgres")
 
 

@@ -10,6 +10,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
+from .evidence import withdrawal_cited
 from .policy import SEVERITIES
 from .verdict import COMPLETE, DO_NOT_SHIP, FIXED, NOT_FIXED, SHIP, SHIP_WITH_FIXES, WITHDRAWN, Finding, Verdict
 
@@ -68,6 +69,7 @@ class Judgement:
     carried: tuple[dict[str, Any], ...] = ()
     fixed: tuple[str, ...] = ()
     not_counted: tuple[Finding, ...] = ()
+    withdrawn: tuple[str, ...] = ()
 
     @property
     def label(self) -> str:
@@ -86,6 +88,7 @@ class Round:
     number: int = 1
     previous: Mapping[str, Any] | None = None
     changed: frozenset[str] | None = None
+    forced: bool = False
 
 
 @dataclass
@@ -173,10 +176,13 @@ def _valid_defect(item: Any) -> bool:
     )
 
 
+def _valid_patches(patches: Any) -> bool:
+    return isinstance(patches, dict) and all(isinstance(v, str) for v in patches.values())
+
+
 def _valid_record(record: Any) -> bool:
-    if not isinstance(record, dict) or not RECORD_KEYS <= set(record) <= RECORD_KEYS | {"patch_map"}:
+    if not isinstance(record, dict) or not RECORD_KEYS <= set(record) <= RECORD_KEYS | {"patch_map", "forced"}:
         return False
-    patches = record.get("patch_map")
     return (
         record["v"] == MARKER_VERSION
         and record["kind"] in KINDS
@@ -186,9 +192,10 @@ def _valid_record(record: Any) -> bool:
         and re.fullmatch(r"[0-9a-f]{40}", str(record["head_sha"])) is not None
         and all(isinstance(record[key], str) for key in ("base_ref", "reviewer", "tier", "patch_digest", "summary"))
         and isinstance(record["carried"], bool)
+        and ("forced" not in record or isinstance(record["forced"], bool))
         and isinstance(record["open_defects"], list)
         and all(_valid_defect(item) for item in record["open_defects"])
-        and (patches is None or (isinstance(patches, dict) and all(isinstance(v, str) for v in patches.values())))
+        and (record.get("patch_map") is None or _valid_patches(record["patch_map"]))
     )
 
 
@@ -239,6 +246,42 @@ def strikes(records: Iterable[Mapping[str, Any]]) -> int:
     )
 
 
+FORCED_ROUND_LIMIT = 2
+
+
+def forced_rounds(records: Iterable[Mapping[str, Any]], digest: str) -> int:
+    return sum(
+        1
+        for record in records
+        if record.get("patch_digest") == digest and record.get("kind") == FOLLOW_UP and record.get("forced")
+    )
+
+
+def _forced_round(
+    records: Iterable[Mapping[str, Any]],
+    *,
+    digest: str,
+    latest: Mapping[str, Any],
+    paths: Sequence[str],
+    reason: str,
+) -> Round:
+    if forced_rounds(records, digest) >= FORCED_ROUND_LIMIT:
+        return Round(
+            SKIP,
+            f"the patch already had {FORCED_ROUND_LIMIT} forced re-reviews;"
+            " change the patch or ask the owner for a stand-in",
+        )
+    return Round(
+        FOLLOW_UP,
+        reason,
+        latest["cycle"],
+        latest["round"] + 1,
+        latest,
+        frozenset(paths),
+        True,
+    )
+
+
 def plan_round(
     found: History,
     *,
@@ -249,6 +292,7 @@ def plan_round(
     paths: Sequence[str],
     strike_count: int,
     max_do_not_ship: int,
+    force: bool = False,
 ) -> Round:
     latest = found.latest
     if strike_count >= max_do_not_ship:
@@ -259,6 +303,16 @@ def plan_round(
     if latest is None:
         return Round(FIRST, "first review of this pull request")
     if latest["head_sha"] == head_sha:
+        if force and latest["decision"] in (SHIP, SHIP_WITH_FIXES):
+            return _forced_round(
+                found.records,
+                digest=digest,
+                latest=latest,
+                paths=paths,
+                reason=(
+                    f"forced re-review after {LABELS[latest['decision']]}: an author rebuttal disputes an open finding"
+                ),
+            )
         return Round(SKIP, f"head {head_sha} already has a {LABELS[latest['decision']]} decision")
     restart = latest["cycle"] + 1
     if latest["base_ref"] != base_ref:
@@ -266,6 +320,17 @@ def plan_round(
     if latest["decision"] == REFUSED:
         return Round(FIRST, "the strike limit no longer applies", restart, 1, latest)
     if latest["patch_digest"] == digest:
+        if force and latest["decision"] in (SHIP, SHIP_WITH_FIXES):
+            return _forced_round(
+                found.records,
+                digest=digest,
+                latest=latest,
+                paths=paths,
+                reason=(
+                    f"the patch is unchanged since head {latest['head_sha']},"
+                    " but an author rebuttal disputes an open finding: forced re-review"
+                ),
+            )
         return Round(
             CARRY, f"the patch is unchanged since head {latest['head_sha']}", latest["cycle"], latest["round"], latest
         )
@@ -287,12 +352,22 @@ def judge(
     max_defects: int,
     prior: Sequence[Mapping[str, Any]] = (),
     changed: Iterable[str] | None = None,
+    rejudge_fixed: bool = False,
 ) -> Judgement:
     if verdict.status != COMPLETE:
         raise ValueError("only a complete review can be judged")
     statuses = {item.id: item.status for item in verdict.prior_defects}
+    cited = {item.id: item.evidence for item in verdict.prior_defects}
+    if rejudge_fixed:
+        statuses = {
+            key: (
+                NOT_FIXED if value == FIXED or (value == WITHDRAWN and not withdrawal_cited(cited.get(key))) else value
+            )
+            for key, value in statuses.items()
+        }
     carried = tuple(item for item in prior if statuses.get(item["id"], NOT_FIXED) == NOT_FIXED)
-    fixed = tuple(item["id"] for item in prior if statuses.get(item["id"]) in (FIXED, WITHDRAWN))
+    fixed = tuple(item["id"] for item in prior if statuses.get(item["id"], NOT_FIXED) == FIXED)
+    withdrawn = tuple(item["id"] for item in prior if statuses.get(item["id"]) == WITHDRAWN)
     scope = None if changed is None else frozenset(changed)
     counted = tuple(item for item in verdict.defects if scope is None or item.file in scope)
     outside = tuple(item for item in verdict.defects if item not in counted)[:NOT_COUNTED_LIMIT]
@@ -303,16 +378,16 @@ def judge(
         if total > max_defects:
             note = f" The review left {total} defects open, more than the {max_defects} allowed."
         summary = _clip(verdict.summary, DO_NOT_SHIP_SUMMARY - len(note)) + note
-        return Judgement(DO_NOT_SHIP, (), summary, fixed=fixed)
+        return Judgement(DO_NOT_SHIP, (), summary, fixed=fixed, withdrawn=withdrawn)
     if carried or counted:
-        return Judgement(SHIP_WITH_FIXES, counted, verdict.summary, carried, fixed, outside)
-    return Judgement(SHIP, (), verdict.summary, (), fixed, outside)
+        return Judgement(SHIP_WITH_FIXES, counted, verdict.summary, carried, fixed, outside, withdrawn)
+    return Judgement(SHIP, (), verdict.summary, (), fixed, outside, withdrawn)
 
 
 def judge_planned(verdict: Verdict, plan: Mapping[str, Any]) -> Judgement:
     rules = plan.get("protocol") or {}
     changed = rules.get("changed") if rules.get("kind") == FOLLOW_UP else None
-    return judge(verdict, int(plan["max_defects"]), rules.get("prior", ()), changed)
+    return judge(verdict, int(plan["max_defects"]), rules.get("prior", ()), changed, bool(rules.get("forced")))
 
 
 def defect_entry(defect_id: str, finding: Finding) -> dict[str, Any]:

@@ -1,6 +1,6 @@
 services:
   timescaledb:
-    image: timescale/timescaledb:latest-pg18
+    image: timescale/timescaledb:latest-pg18@sha256:0fcff5761363809d1242f2261a3482197b5a5337407f8b97a976fb174206d579
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: benchbox

@@ -1,0 +1,162 @@
+{
+  "clickhouse.add_query_settings.ddl": {
+    "fork": "CREATE TABLE foo (id Int32) ENGINE=MergeTree() ORDER BY id",
+    "legacy": "CREATE TABLE foo (id Int32) ENGINE = MergeTree() ORDER BY id"
+  },
+  "clickhouse.add_query_settings.existing_settings": {
+    "fork": "SELECT 1 FROM t SETTINGS joined_subquery_requires_alias = 0",
+    "legacy": "SELECT 1 FROM t SETTINGS joined_subquery_requires_alias = 1 SETTINGS joined_subquery_requires_alias = 0"
+  },
+  "clickhouse.add_query_settings.insert": {
+    "fork": "INSERT INTO t VALUES ((1))",
+    "legacy": "INSERT INTO t VALUES (1)"
+  },
+  "clickhouse.add_query_settings.lowercase_select": {
+    "fork": "SELECT a FROM t SETTINGS joined_subquery_requires_alias = 0",
+    "legacy": "select a from t SETTINGS joined_subquery_requires_alias = 0"
+  },
+  "clickhouse.add_query_settings.q66_like": {
+    "fork": "SELECT w_warehouse_name, sum(jan_sales) AS jan_sales FROM (SELECT w_warehouse_name, sum(CASE WHEN d_moy = 1 THEN ws_ext_list_price ELSE 0 END) AS jan_sales FROM web_sales JOIN date_dim ON ws_sold_date_sk = d_date_sk UNION ALL SELECT w_warehouse_name, sum(CASE WHEN d_moy = 1 THEN cs_ext_list_price ELSE 0 END) AS jan_sales FROM catalog_sales JOIN date_dim ON cs_sold_date_sk = d_date_sk) GROUP BY w_warehouse_name SETTINGS joined_subquery_requires_alias = 0",
+    "legacy": "SELECT w_warehouse_name, sum(jan_sales) as jan_sales FROM (SELECT w_warehouse_name, sum(CASE WHEN d_moy=1 THEN ws_ext_list_price ELSE 0 END) as jan_sales FROM web_sales JOIN date_dim ON ws_sold_date_sk = d_date_sk UNION ALL SELECT w_warehouse_name, sum(CASE WHEN d_moy=1 THEN cs_ext_list_price ELSE 0 END) as jan_sales FROM catalog_sales JOIN date_dim ON cs_sold_date_sk = d_date_sk) GROUP BY w_warehouse_name SETTINGS joined_subquery_requires_alias = 0"
+  },
+  "clickhouse.fix_decimal_division_by_zero.non_nullable_decimal": {
+    "fork": "SELECT a / nullIf(CAST(b AS Decimal(15, 4)), 0) FROM t",
+    "legacy": "SELECT a / CAST(b AS Decimal(15, 4)) FROM t"
+  },
+  "clickhouse.fix_decimal_division_by_zero.nullable_decimal_18_2": {
+    "fork": "SELECT x / nullIf(CAST(y AS Nullable(Decimal(18, 2))), 0) FROM t",
+    "legacy": "SELECT x / NULLIF(CAST(y AS Nullable(Decimal(18, 2))), 0) FROM t"
+  },
+  "clickhouse.fix_decimal_division_by_zero.nullable_decimal_divisor": {
+    "fork": "SELECT a / nullIf(CAST(b AS Nullable(Decimal(15, 4))), 0) FROM t",
+    "legacy": "SELECT a / NULLIF(CAST(b AS Nullable(Decimal(15, 4))), 0) FROM t"
+  },
+  "clickhouse.fix_decimal_division_by_zero.plain_division": {
+    "fork": "SELECT a / nullIf(b, 0) FROM t",
+    "legacy": "SELECT a / b FROM t"
+  },
+  "clickhouse.fix_type_casts.coalesce_zero": {
+    "fork": "SELECT COALESCE(x, CAST(0 AS Decimal(15, 2))), COALESCE(y.z, CAST(0 AS Decimal(15, 2))) FROM t",
+    "legacy": "SELECT COALESCE(x, CAST(0 AS Decimal(15,2))), COALESCE(y.z, CAST(0 AS Decimal(15,2))) FROM t"
+  },
+  "clickhouse.fix_type_casts.else_zero": {
+    "fork": "SELECT CASE WHEN a > 1 THEN b ELSE CAST(0 AS Decimal(15, 2)) END FROM t",
+    "legacy": "SELECT CASE WHEN a > 1 THEN b ELSE CAST(0 AS Decimal(15,2)) END FROM t"
+  },
+  "clickhouse.fix_type_casts.q6_between": {
+    "fork": "SELECT 1 FROM lineitem WHERE l_discount BETWEEN 0.06 - 0.01 AND 0.06 + 0.01",
+    "legacy": "SELECT 1 FROM lineitem WHERE l_discount between 0.06 - 0.01 and 0.06 + 0.01"
+  },
+  "clickhouse.fix_type_casts.string_literal": {
+    "fork": "SELECT 'THEN 0.0' AS s, 'a + 0.0' AS u FROM t",
+    "legacy": "SELECT 'THEN CAST(0 AS Decimal(15,2))' AS s, 'a + CAST(0 AS Decimal(15,2))' AS u FROM t"
+  },
+  "clickhouse.fix_type_casts.then_else_zero": {
+    "fork": "SELECT CASE WHEN a THEN CAST(0 AS Decimal(15, 2)) ELSE CAST(0 AS Decimal(15, 2)) END FROM t",
+    "legacy": "SELECT CASE WHEN a THEN CAST(0 AS Decimal(15,2)) ELSE CAST(0 AS Decimal(15,2)) END FROM t"
+  },
+  "clickhouse.fix_type_casts.zero_arithmetic": {
+    "fork": "SELECT col + CAST(0 AS Decimal(15, 2)), col - CAST(0 AS Decimal(15, 2)) FROM t",
+    "legacy": "SELECT col + CAST(0 AS Decimal(15,2)), col - CAST(0 AS Decimal(15,2)) FROM t"
+  },
+  "clickhouse.fix_type_casts.zero_in_parens": {
+    "fork": "SELECT (x + CAST(0 AS Decimal(15, 2))) FROM t",
+    "legacy": "SELECT (x + 0.0) FROM t"
+  },
+  "clickhouse.normalize_case.already_lower": {
+    "fork": "SELECT sr_fee, d_year FROM store_returns CROSS JOIN date_dim",
+    "legacy": "SELECT sr_fee, d_year FROM store_returns, date_dim"
+  },
+  "clickhouse.normalize_case.string_literal": {
+    "fork": "SELECT sr_fee FROM store_returns WHERE note = 'SR_FEE and D_YEAR'",
+    "legacy": "SELECT sr_fee FROM store_returns WHERE note = 'sr_fee and d_year'"
+  },
+  "clickhouse.pipeline.unit.normalize_case.string_literal": {
+    "fork": "SELECT sr_fee FROM store_returns WHERE note = 'SR_FEE and D_YEAR' SETTINGS joined_subquery_requires_alias = 0",
+    "legacy": "SELECT sr_fee FROM store_returns WHERE note = 'sr_fee and d_year' SETTINGS joined_subquery_requires_alias = 0"
+  },
+  "clickhouse.pipeline.unit.type_casts.string_literal": {
+    "fork": "SELECT 'THEN 0.0' AS s, 'a + 0.0' AS u FROM t SETTINGS joined_subquery_requires_alias = 0",
+    "legacy": "SELECT 'THEN CAST(0 AS Decimal(15,2))' AS s, 'a + CAST(0 AS Decimal(15,2))' AS u FROM t SETTINGS joined_subquery_requires_alias = 0"
+  },
+  "clickhouse.pipeline.unit.type_casts.zero_in_parens": {
+    "fork": "SELECT (x + CAST(0 AS Decimal(15, 2))) FROM t SETTINGS joined_subquery_requires_alias = 0",
+    "legacy": "SELECT (x + 0.0) FROM t SETTINGS joined_subquery_requires_alias = 0"
+  },
+  "clickhouse.safe_division.already_nullif": {
+    "fork": "SELECT a / nullIf(b, 0) FROM t",
+    "legacy": "SELECT a / NULLIF(b, 0) FROM t"
+  },
+  "clickhouse.safe_division.function_call": {
+    "fork": "SELECT total / nullIf(COUNT(*), 0) FROM t",
+    "legacy": "SELECT total / NULLIF(COUNT(*), 0) FROM t"
+  },
+  "clickhouse.safe_division.multiple": {
+    "fork": "SELECT a / nullIf(b, 0), c / nullIf(d, 0) FROM t",
+    "legacy": "SELECT a / NULLIF(b, 0), c / NULLIF(d, 0) FROM t"
+  },
+  "clickhouse.safe_division.parenthesized_divisor": {
+    "fork": "SELECT revenue / nullIf(((store_sales + web_sales) / 2), 0) FROM metrics",
+    "legacy": "SELECT revenue / NULLIF(((store_sales + web_sales) / 2), 0) FROM metrics"
+  },
+  "clickhouse.safe_division.string_literal": {
+    "fork": "SELECT 'a/b' AS label, x / nullIf(y, 0) FROM t",
+    "legacy": "SELECT 'a/b' AS label, x / NULLIF(y, 0) FROM t"
+  },
+  "clickhouse.safe_division.sum_function": {
+    "fork": "SELECT revenue / nullIf(SUM(quantity), 0) FROM t",
+    "legacy": "SELECT revenue / NULLIF(SUM(quantity), 0) FROM t"
+  },
+  "clickhouse.safe_division.window_divisor": {
+    "fork": "SELECT mkt / nullIf(SUM(volume) OVER (PARTITION BY o_year), 0) FROM t",
+    "legacy": "SELECT mkt / NULLIF(SUM(volume) OVER (PARTITION BY o_year), 0) FROM t"
+  },
+  "starrocks.reserved_alias.value": {
+    "fork": "SELECT x AS value FROM t",
+    "legacy": "SELECT x AS `value` FROM t"
+  },
+  "starrocks.unit.subquery_exists": {
+    "fork": "SELECT * FROM t WHERE EXISTS(SELECT 1 FROM s WHERE s.id = t.id)",
+    "legacy": "SELECT * FROM t WHERE EXISTS (SELECT 1 FROM s WHERE s.id = t.id)"
+  },
+  "starrocks.unit.subquery_implicit_alias": {
+    "fork": "SELECT * FROM (SELECT 1 AS x) AS sq",
+    "legacy": "SELECT * FROM (SELECT 1 AS x) sq"
+  },
+  "starrocks.unit.subquery_join": {
+    "fork": "SELECT * FROM t JOIN (SELECT id FROM s) AS `_sq0` ON t.id = id",
+    "legacy": "SELECT * FROM t JOIN (SELECT id FROM s) ON t.id = id"
+  },
+  "starrocks.unit.subquery_nested": {
+    "fork": "SELECT * FROM (SELECT * FROM (SELECT 1 AS x) AS `_sq1`) AS `_sq0`",
+    "legacy": "SELECT * FROM (SELECT * FROM (SELECT 1 AS x)) AS `_sq0`"
+  },
+  "starrocks.unit.substring_nested_function": {
+    "fork": "SELECT SUBSTRING(LOWER(col), 1, 3) FROM t",
+    "legacy": "SELECT SUBSTRING(LOWER(col) FROM 1 FOR 3) FROM t"
+  },
+  "tpcds_clickhouse_override.q10.seed1": {
+    "fork": "SELECT cd_gender, cd_marital_status, cd_education_status, COUNT(*) AS cnt1, cd_purchase_estimate, COUNT(*) AS cnt2, cd_credit_rating, COUNT(*) AS cnt3, cd_dep_count, COUNT(*) AS cnt4, cd_dep_employed_count, COUNT(*) AS cnt5, cd_dep_college_count, COUNT(*) AS cnt6 FROM customer AS c CROSS JOIN customer_address AS ca CROSS JOIN customer_demographics WHERE c.c_current_addr_sk = ca.ca_address_sk AND ca_county IN ('McKenzie County', 'Adams County', 'Grant County', 'Saguache County', 'Waseca County') AND cd_demo_sk = c.c_current_cdemo_sk AND c.c_customer_sk IN (SELECT ss_customer_sk FROM store_sales CROSS JOIN date_dim WHERE ss_sold_date_sk = d_date_sk AND d_year = 2002 AND d_moy BETWEEN 2 AND 2 + 3) AND (c.c_customer_sk IN (SELECT ws_bill_customer_sk FROM web_sales CROSS JOIN date_dim WHERE ws_sold_date_sk = d_date_sk AND d_year = 2002 AND d_moy BETWEEN 2 AND 2 + 3) OR c.c_customer_sk IN (SELECT cs_ship_customer_sk FROM catalog_sales CROSS JOIN date_dim WHERE cs_sold_date_sk = d_date_sk AND d_year = 2002 AND d_moy BETWEEN 2 AND 2 + 3)) GROUP BY cd_gender, cd_marital_status, cd_education_status, cd_purchase_estimate, cd_credit_rating, cd_dep_count, cd_dep_employed_count, cd_dep_college_count ORDER BY cd_gender, cd_marital_status, cd_education_status, cd_purchase_estimate, cd_credit_rating, cd_dep_count, cd_dep_employed_count, cd_dep_college_count LIMIT 100",
+    "legacy": "SELECT cd_gender, cd_marital_status, cd_education_status, COUNT(*) AS cnt1, cd_purchase_estimate, COUNT(*) AS cnt2, cd_credit_rating, COUNT(*) AS cnt3, cd_dep_count, COUNT(*) AS cnt4, cd_dep_employed_count, COUNT(*) AS cnt5, cd_dep_college_count, COUNT(*) AS cnt6 FROM customer AS c, customer_address AS ca, customer_demographics WHERE c.c_current_addr_sk = ca.ca_address_sk AND ca_county IN ('McKenzie County', 'Adams County', 'Grant County', 'Saguache County', 'Waseca County') AND cd_demo_sk = c.c_current_cdemo_sk AND c.c_customer_sk IN (SELECT ss_customer_sk FROM store_sales, date_dim WHERE ss_sold_date_sk = d_date_sk AND d_year = 2002 AND d_moy BETWEEN 2 AND 2 + 3) AND (c.c_customer_sk IN (SELECT ws_bill_customer_sk FROM web_sales, date_dim WHERE ws_sold_date_sk = d_date_sk AND d_year = 2002 AND d_moy BETWEEN 2 AND 2 + 3) OR c.c_customer_sk IN (SELECT cs_ship_customer_sk FROM catalog_sales, date_dim WHERE cs_sold_date_sk = d_date_sk AND d_year = 2002 AND d_moy BETWEEN 2 AND 2 + 3)) GROUP BY cd_gender, cd_marital_status, cd_education_status, cd_purchase_estimate, cd_credit_rating, cd_dep_count, cd_dep_employed_count, cd_dep_college_count ORDER BY cd_gender, cd_marital_status, cd_education_status, cd_purchase_estimate, cd_credit_rating, cd_dep_count, cd_dep_employed_count, cd_dep_college_count LIMIT 100"
+  },
+  "tpcds_clickhouse_override.q10.seed2": {
+    "fork": "SELECT cd_gender, cd_marital_status, cd_education_status, COUNT(*) AS cnt1, cd_purchase_estimate, COUNT(*) AS cnt2, cd_credit_rating, COUNT(*) AS cnt3, cd_dep_count, COUNT(*) AS cnt4, cd_dep_employed_count, COUNT(*) AS cnt5, cd_dep_college_count, COUNT(*) AS cnt6 FROM customer AS c CROSS JOIN customer_address AS ca CROSS JOIN customer_demographics WHERE c.c_current_addr_sk = ca.ca_address_sk AND ca_county IN ('Ontario County', 'Washington County', 'Bradley County', 'Newton County', 'Camas County') AND cd_demo_sk = c.c_current_cdemo_sk AND c.c_customer_sk IN (SELECT ss_customer_sk FROM store_sales CROSS JOIN date_dim WHERE ss_sold_date_sk = d_date_sk AND d_year = 2001 AND d_moy BETWEEN 3 AND 3 + 3) AND (c.c_customer_sk IN (SELECT ws_bill_customer_sk FROM web_sales CROSS JOIN date_dim WHERE ws_sold_date_sk = d_date_sk AND d_year = 2001 AND d_moy BETWEEN 3 AND 3 + 3) OR c.c_customer_sk IN (SELECT cs_ship_customer_sk FROM catalog_sales CROSS JOIN date_dim WHERE cs_sold_date_sk = d_date_sk AND d_year = 2001 AND d_moy BETWEEN 3 AND 3 + 3)) GROUP BY cd_gender, cd_marital_status, cd_education_status, cd_purchase_estimate, cd_credit_rating, cd_dep_count, cd_dep_employed_count, cd_dep_college_count ORDER BY cd_gender, cd_marital_status, cd_education_status, cd_purchase_estimate, cd_credit_rating, cd_dep_count, cd_dep_employed_count, cd_dep_college_count LIMIT 100",
+    "legacy": "SELECT cd_gender, cd_marital_status, cd_education_status, COUNT(*) AS cnt1, cd_purchase_estimate, COUNT(*) AS cnt2, cd_credit_rating, COUNT(*) AS cnt3, cd_dep_count, COUNT(*) AS cnt4, cd_dep_employed_count, COUNT(*) AS cnt5, cd_dep_college_count, COUNT(*) AS cnt6 FROM customer AS c, customer_address AS ca, customer_demographics WHERE c.c_current_addr_sk = ca.ca_address_sk AND ca_county IN ('Ontario County', 'Washington County', 'Bradley County', 'Newton County', 'Camas County') AND cd_demo_sk = c.c_current_cdemo_sk AND c.c_customer_sk IN (SELECT ss_customer_sk FROM store_sales, date_dim WHERE ss_sold_date_sk = d_date_sk AND d_year = 2001 AND d_moy BETWEEN 3 AND 3 + 3) AND (c.c_customer_sk IN (SELECT ws_bill_customer_sk FROM web_sales, date_dim WHERE ws_sold_date_sk = d_date_sk AND d_year = 2001 AND d_moy BETWEEN 3 AND 3 + 3) OR c.c_customer_sk IN (SELECT cs_ship_customer_sk FROM catalog_sales, date_dim WHERE cs_sold_date_sk = d_date_sk AND d_year = 2001 AND d_moy BETWEEN 3 AND 3 + 3)) GROUP BY cd_gender, cd_marital_status, cd_education_status, cd_purchase_estimate, cd_credit_rating, cd_dep_count, cd_dep_employed_count, cd_dep_college_count ORDER BY cd_gender, cd_marital_status, cd_education_status, cd_purchase_estimate, cd_credit_rating, cd_dep_count, cd_dep_employed_count, cd_dep_college_count LIMIT 100"
+  },
+  "tpcds_clickhouse_override.q10.seed3": {
+    "fork": "SELECT cd_gender, cd_marital_status, cd_education_status, COUNT(*) AS cnt1, cd_purchase_estimate, COUNT(*) AS cnt2, cd_credit_rating, COUNT(*) AS cnt3, cd_dep_count, COUNT(*) AS cnt4, cd_dep_employed_count, COUNT(*) AS cnt5, cd_dep_college_count, COUNT(*) AS cnt6 FROM customer AS c CROSS JOIN customer_address AS ca CROSS JOIN customer_demographics WHERE c.c_current_addr_sk = ca.ca_address_sk AND ca_county IN ('Kossuth County', 'Hampshire County', 'Litchfield County', 'Burleson County', 'Miller County') AND cd_demo_sk = c.c_current_cdemo_sk AND c.c_customer_sk IN (SELECT ss_customer_sk FROM store_sales CROSS JOIN date_dim WHERE ss_sold_date_sk = d_date_sk AND d_year = 2000 AND d_moy BETWEEN 4 AND 4 + 3) AND (c.c_customer_sk IN (SELECT ws_bill_customer_sk FROM web_sales CROSS JOIN date_dim WHERE ws_sold_date_sk = d_date_sk AND d_year = 2000 AND d_moy BETWEEN 4 AND 4 + 3) OR c.c_customer_sk IN (SELECT cs_ship_customer_sk FROM catalog_sales CROSS JOIN date_dim WHERE cs_sold_date_sk = d_date_sk AND d_year = 2000 AND d_moy BETWEEN 4 AND 4 + 3)) GROUP BY cd_gender, cd_marital_status, cd_education_status, cd_purchase_estimate, cd_credit_rating, cd_dep_count, cd_dep_employed_count, cd_dep_college_count ORDER BY cd_gender, cd_marital_status, cd_education_status, cd_purchase_estimate, cd_credit_rating, cd_dep_count, cd_dep_employed_count, cd_dep_college_count LIMIT 100",
+    "legacy": "SELECT cd_gender, cd_marital_status, cd_education_status, COUNT(*) AS cnt1, cd_purchase_estimate, COUNT(*) AS cnt2, cd_credit_rating, COUNT(*) AS cnt3, cd_dep_count, COUNT(*) AS cnt4, cd_dep_employed_count, COUNT(*) AS cnt5, cd_dep_college_count, COUNT(*) AS cnt6 FROM customer AS c, customer_address AS ca, customer_demographics WHERE c.c_current_addr_sk = ca.ca_address_sk AND ca_county IN ('Kossuth County', 'Hampshire County', 'Litchfield County', 'Burleson County', 'Miller County') AND cd_demo_sk = c.c_current_cdemo_sk AND c.c_customer_sk IN (SELECT ss_customer_sk FROM store_sales, date_dim WHERE ss_sold_date_sk = d_date_sk AND d_year = 2000 AND d_moy BETWEEN 4 AND 4 + 3) AND (c.c_customer_sk IN (SELECT ws_bill_customer_sk FROM web_sales, date_dim WHERE ws_sold_date_sk = d_date_sk AND d_year = 2000 AND d_moy BETWEEN 4 AND 4 + 3) OR c.c_customer_sk IN (SELECT cs_ship_customer_sk FROM catalog_sales, date_dim WHERE cs_sold_date_sk = d_date_sk AND d_year = 2000 AND d_moy BETWEEN 4 AND 4 + 3)) GROUP BY cd_gender, cd_marital_status, cd_education_status, cd_purchase_estimate, cd_credit_rating, cd_dep_count, cd_dep_employed_count, cd_dep_college_count ORDER BY cd_gender, cd_marital_status, cd_education_status, cd_purchase_estimate, cd_credit_rating, cd_dep_count, cd_dep_employed_count, cd_dep_college_count LIMIT 100"
+  },
+  "tpcds_clickhouse_override.q35.seed1": {
+    "fork": "SELECT ca_state, cd_gender, cd_marital_status, cd_dep_count, COUNT(*) AS cnt1, AVG(cd_dep_count) AS aggone1, STDDEV_SAMP(cd_dep_count) AS aggtwo1, MAX(cd_dep_count) AS aggthree1, cd_dep_employed_count, COUNT(*) AS cnt2, AVG(cd_dep_employed_count) AS aggone2, STDDEV_SAMP(cd_dep_employed_count) AS aggtwo2, MAX(cd_dep_employed_count) AS aggthree2, cd_dep_college_count, COUNT(*) AS cnt3, AVG(cd_dep_college_count) AS aggone3, STDDEV_SAMP(cd_dep_college_count) AS aggtwo3, MAX(cd_dep_college_count) AS aggthree3 FROM customer AS c CROSS JOIN customer_address AS ca CROSS JOIN customer_demographics WHERE c.c_current_addr_sk = ca.ca_address_sk AND cd_demo_sk = c.c_current_cdemo_sk AND c.c_customer_sk IN (SELECT ss_customer_sk FROM store_sales CROSS JOIN date_dim WHERE ss_sold_date_sk = d_date_sk AND d_year = 2001 AND d_qoy < 4) AND (c.c_customer_sk IN (SELECT ws_bill_customer_sk FROM web_sales CROSS JOIN date_dim WHERE ws_sold_date_sk = d_date_sk AND d_year = 2001 AND d_qoy < 4) OR c.c_customer_sk IN (SELECT cs_ship_customer_sk FROM catalog_sales CROSS JOIN date_dim WHERE cs_sold_date_sk = d_date_sk AND d_year = 2001 AND d_qoy < 4)) GROUP BY ca_state, cd_gender, cd_marital_status, cd_dep_count, cd_dep_employed_count, cd_dep_college_count ORDER BY ca_state, cd_gender, cd_marital_status, cd_dep_count, cd_dep_employed_count, cd_dep_college_count LIMIT 100",
+    "legacy": "SELECT ca_state, cd_gender, cd_marital_status, cd_dep_count, COUNT(*) AS cnt1, AVG(cd_dep_count) AS aggone1, STDDEV_SAMP(cd_dep_count) AS aggtwo1, MAX(cd_dep_count) AS aggthree1, cd_dep_employed_count, COUNT(*) AS cnt2, AVG(cd_dep_employed_count) AS aggone2, STDDEV_SAMP(cd_dep_employed_count) AS aggtwo2, MAX(cd_dep_employed_count) AS aggthree2, cd_dep_college_count, COUNT(*) AS cnt3, AVG(cd_dep_college_count) AS aggone3, STDDEV_SAMP(cd_dep_college_count) AS aggtwo3, MAX(cd_dep_college_count) AS aggthree3 FROM customer AS c, customer_address AS ca, customer_demographics WHERE c.c_current_addr_sk = ca.ca_address_sk AND cd_demo_sk = c.c_current_cdemo_sk AND c.c_customer_sk IN (SELECT ss_customer_sk FROM store_sales, date_dim WHERE ss_sold_date_sk = d_date_sk AND d_year = 2001 AND d_qoy < 4) AND (c.c_customer_sk IN (SELECT ws_bill_customer_sk FROM web_sales, date_dim WHERE ws_sold_date_sk = d_date_sk AND d_year = 2001 AND d_qoy < 4) OR c.c_customer_sk IN (SELECT cs_ship_customer_sk FROM catalog_sales, date_dim WHERE cs_sold_date_sk = d_date_sk AND d_year = 2001 AND d_qoy < 4)) GROUP BY ca_state, cd_gender, cd_marital_status, cd_dep_count, cd_dep_employed_count, cd_dep_college_count ORDER BY ca_state, cd_gender, cd_marital_status, cd_dep_count, cd_dep_employed_count, cd_dep_college_count LIMIT 100"
+  },
+  "tpcds_clickhouse_override.q35.seed2": {
+    "fork": "SELECT ca_state, cd_gender, cd_marital_status, cd_dep_count, COUNT(*) AS cnt1, STDDEV_SAMP(cd_dep_count) AS aggone1, AVG(cd_dep_count) AS aggtwo1, STDDEV_SAMP(cd_dep_count) AS aggthree1, cd_dep_employed_count, COUNT(*) AS cnt2, STDDEV_SAMP(cd_dep_employed_count) AS aggone2, AVG(cd_dep_employed_count) AS aggtwo2, STDDEV_SAMP(cd_dep_employed_count) AS aggthree2, cd_dep_college_count, COUNT(*) AS cnt3, STDDEV_SAMP(cd_dep_college_count) AS aggone3, AVG(cd_dep_college_count) AS aggtwo3, STDDEV_SAMP(cd_dep_college_count) AS aggthree3 FROM customer AS c CROSS JOIN customer_address AS ca CROSS JOIN customer_demographics WHERE c.c_current_addr_sk = ca.ca_address_sk AND cd_demo_sk = c.c_current_cdemo_sk AND c.c_customer_sk IN (SELECT ss_customer_sk FROM store_sales CROSS JOIN date_dim WHERE ss_sold_date_sk = d_date_sk AND d_year = 1999 AND d_qoy < 4) AND (c.c_customer_sk IN (SELECT ws_bill_customer_sk FROM web_sales CROSS JOIN date_dim WHERE ws_sold_date_sk = d_date_sk AND d_year = 1999 AND d_qoy < 4) OR c.c_customer_sk IN (SELECT cs_ship_customer_sk FROM catalog_sales CROSS JOIN date_dim WHERE cs_sold_date_sk = d_date_sk AND d_year = 1999 AND d_qoy < 4)) GROUP BY ca_state, cd_gender, cd_marital_status, cd_dep_count, cd_dep_employed_count, cd_dep_college_count ORDER BY ca_state, cd_gender, cd_marital_status, cd_dep_count, cd_dep_employed_count, cd_dep_college_count LIMIT 100",
+    "legacy": "SELECT ca_state, cd_gender, cd_marital_status, cd_dep_count, COUNT(*) AS cnt1, STDDEV_SAMP(cd_dep_count) AS aggone1, AVG(cd_dep_count) AS aggtwo1, STDDEV_SAMP(cd_dep_count) AS aggthree1, cd_dep_employed_count, COUNT(*) AS cnt2, STDDEV_SAMP(cd_dep_employed_count) AS aggone2, AVG(cd_dep_employed_count) AS aggtwo2, STDDEV_SAMP(cd_dep_employed_count) AS aggthree2, cd_dep_college_count, COUNT(*) AS cnt3, STDDEV_SAMP(cd_dep_college_count) AS aggone3, AVG(cd_dep_college_count) AS aggtwo3, STDDEV_SAMP(cd_dep_college_count) AS aggthree3 FROM customer AS c, customer_address AS ca, customer_demographics WHERE c.c_current_addr_sk = ca.ca_address_sk AND cd_demo_sk = c.c_current_cdemo_sk AND c.c_customer_sk IN (SELECT ss_customer_sk FROM store_sales, date_dim WHERE ss_sold_date_sk = d_date_sk AND d_year = 1999 AND d_qoy < 4) AND (c.c_customer_sk IN (SELECT ws_bill_customer_sk FROM web_sales, date_dim WHERE ws_sold_date_sk = d_date_sk AND d_year = 1999 AND d_qoy < 4) OR c.c_customer_sk IN (SELECT cs_ship_customer_sk FROM catalog_sales, date_dim WHERE cs_sold_date_sk = d_date_sk AND d_year = 1999 AND d_qoy < 4)) GROUP BY ca_state, cd_gender, cd_marital_status, cd_dep_count, cd_dep_employed_count, cd_dep_college_count ORDER BY ca_state, cd_gender, cd_marital_status, cd_dep_count, cd_dep_employed_count, cd_dep_college_count LIMIT 100"
+  },
+  "tpcds_clickhouse_override.q35.seed3": {
+    "fork": "SELECT ca_state, cd_gender, cd_marital_status, cd_dep_count, COUNT(*) AS cnt1, SUM(cd_dep_count) AS aggone1, MAX(cd_dep_count) AS aggtwo1, MIN(cd_dep_count) AS aggthree1, cd_dep_employed_count, COUNT(*) AS cnt2, SUM(cd_dep_employed_count) AS aggone2, MAX(cd_dep_employed_count) AS aggtwo2, MIN(cd_dep_employed_count) AS aggthree2, cd_dep_college_count, COUNT(*) AS cnt3, SUM(cd_dep_college_count) AS aggone3, MAX(cd_dep_college_count) AS aggtwo3, MIN(cd_dep_college_count) AS aggthree3 FROM customer AS c CROSS JOIN customer_address AS ca CROSS JOIN customer_demographics WHERE c.c_current_addr_sk = ca.ca_address_sk AND cd_demo_sk = c.c_current_cdemo_sk AND c.c_customer_sk IN (SELECT ss_customer_sk FROM store_sales CROSS JOIN date_dim WHERE ss_sold_date_sk = d_date_sk AND d_year = 2002 AND d_qoy < 4) AND (c.c_customer_sk IN (SELECT ws_bill_customer_sk FROM web_sales CROSS JOIN date_dim WHERE ws_sold_date_sk = d_date_sk AND d_year = 2002 AND d_qoy < 4) OR c.c_customer_sk IN (SELECT cs_ship_customer_sk FROM catalog_sales CROSS JOIN date_dim WHERE cs_sold_date_sk = d_date_sk AND d_year = 2002 AND d_qoy < 4)) GROUP BY ca_state, cd_gender, cd_marital_status, cd_dep_count, cd_dep_employed_count, cd_dep_college_count ORDER BY ca_state, cd_gender, cd_marital_status, cd_dep_count, cd_dep_employed_count, cd_dep_college_count LIMIT 100",
+    "legacy": "SELECT ca_state, cd_gender, cd_marital_status, cd_dep_count, COUNT(*) AS cnt1, SUM(cd_dep_count) AS aggone1, MAX(cd_dep_count) AS aggtwo1, MIN(cd_dep_count) AS aggthree1, cd_dep_employed_count, COUNT(*) AS cnt2, SUM(cd_dep_employed_count) AS aggone2, MAX(cd_dep_employed_count) AS aggtwo2, MIN(cd_dep_employed_count) AS aggthree2, cd_dep_college_count, COUNT(*) AS cnt3, SUM(cd_dep_college_count) AS aggone3, MAX(cd_dep_college_count) AS aggtwo3, MIN(cd_dep_college_count) AS aggthree3 FROM customer AS c, customer_address AS ca, customer_demographics WHERE c.c_current_addr_sk = ca.ca_address_sk AND cd_demo_sk = c.c_current_cdemo_sk AND c.c_customer_sk IN (SELECT ss_customer_sk FROM store_sales, date_dim WHERE ss_sold_date_sk = d_date_sk AND d_year = 2002 AND d_qoy < 4) AND (c.c_customer_sk IN (SELECT ws_bill_customer_sk FROM web_sales, date_dim WHERE ws_sold_date_sk = d_date_sk AND d_year = 2002 AND d_qoy < 4) OR c.c_customer_sk IN (SELECT cs_ship_customer_sk FROM catalog_sales, date_dim WHERE cs_sold_date_sk = d_date_sk AND d_year = 2002 AND d_qoy < 4)) GROUP BY ca_state, cd_gender, cd_marital_status, cd_dep_count, cd_dep_employed_count, cd_dep_college_count ORDER BY ca_state, cd_gender, cd_marital_status, cd_dep_count, cd_dep_employed_count, cd_dep_college_count LIMIT 100"
+  }
+}

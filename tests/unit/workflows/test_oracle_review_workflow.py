@@ -80,6 +80,12 @@ def test_job_invokes_the_script_with_the_pull_request_number_and_token() -> None
     assert "MERGE_GROUP_REF" not in step["run"]
 
 
+def test_checker_dependency_is_pinned() -> None:
+    run = next(step["run"] for step in _load()["jobs"]["oracle-review"]["steps"] if SCRIPT in step.get("run", ""))
+    assert "--with pyyaml==6.0.3" in run
+    assert "--with pyyaml " not in run.replace("--with pyyaml==6.0.3", "")
+
+
 def test_required_signal_matches_the_oracle_policy_mode() -> None:
     steps = _load()["jobs"]["oracle-review"]["steps"]
     run = next(step["run"] for step in steps if SCRIPT in step.get("run", ""))

@@ -1,0 +1,43 @@
+{
+ "event": "synchronize",
+ "pr": 3222,
+ "rounds": [
+  {
+   "defects": [
+    {
+     "file": "benchbox/core/equivalence/checker.py",
+     "line": 42,
+     "severity": "High",
+     "title": "Schema-qualified index name breaks the qualified-table case"
+    }
+   ],
+   "event": "synchronize",
+   "head_sha": "1111111111111111111111111111111111111111",
+   "patches": {
+    "benchbox/core/equivalence/checker.py": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "docs/internal/migration.md": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+   }
+  },
+  {
+   "defects": [],
+   "disputed": [
+    {
+     "path": "benchbox/core/equivalence/checker.py",
+     "replies": [
+      {
+       "author": "app-author",
+       "body": "PostgreSQL rejects the qualified form, so the defect is wrong: docs/internal/migration.md:12 shows the unqualified name the grammar requires."
+      }
+     ],
+     "title": "High: Schema-qualified index name breaks the qualified-table case"
+    }
+   ],
+   "event": "synchronize",
+   "head_sha": "2222222222222222222222222222222222222222",
+   "patches": {
+    "benchbox/core/equivalence/checker.py": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "docs/internal/migration.md": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+   }
+  }
+ ]
+}

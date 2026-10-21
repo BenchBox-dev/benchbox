@@ -884,6 +884,7 @@ class ClickHouseWorkloadMixin:
                     f"Query {query_id}: Applied transformations: {', '.join(transformer.get_transformations_applied())}"
                 )
 
+            start_time = mono_time()
             result = connection.execute(transformed_query)
 
             execution_time = elapsed_seconds(start_time)

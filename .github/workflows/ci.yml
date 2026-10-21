@@ -169,6 +169,7 @@ jobs:
         run: |
           python scripts/path_filter_decision.py \
             --base-ref "${{ github.event.pull_request.base.sha }}" \
+            --rules-base-ref "${{ github.event.pull_request.base.sha }}" \
             --json-out ci-path-decision.json \
             --lists-dir .ci-paths \
             --github-output "$GITHUB_OUTPUT" \
@@ -242,12 +243,12 @@ jobs:
       - name: Upload coverage selection
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
-          name: coverage-selection-${{ github.sha }}
+          name: coverage-selection-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
           path: |
             coverage-selection.json
             coverage-nodeids.txt
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 14
 
       - name: Decide heavy-tier need
         id: heavy
@@ -565,6 +566,11 @@ jobs:
     needs: ci-paths
     if: ${{ needs.ci-paths.outputs.code-tests-needed == 'true' }}
     runs-on: ubuntu-latest
+    services:
+      questdb:
+        image: questdb/questdb:10.0.1
+        ports:
+          - 8812:8812
     steps:
       - name: Checkout code
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
@@ -595,6 +601,7 @@ jobs:
         continue-on-error: true
         env:
           BASE_REF: ${{ github.event.pull_request.base.sha }}
+          BENCHBOX_QUESTDB_DSN: postgresql://admin:quest@127.0.0.1:8812/qdb
         run: make sqlglot-repro-retirement-check
 
       - name: Stale _project/ reference check
@@ -911,7 +918,7 @@ jobs:
       - name: Download coverage selection
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
-          name: coverage-selection-${{ github.sha }}
+          name: coverage-selection-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
           path: coverage-selection
 
       - name: Run medium tests for changed paths
@@ -964,7 +971,7 @@ jobs:
   medium-collect:
     name: medium-collect
     needs: ci-paths
-    if: ${{ needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }}
+    if: ${{ needs.ci-paths.outputs.heavy-needed == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -1016,7 +1023,7 @@ jobs:
   medium-test:
     name: medium-test (shard ${{ matrix.shard_index }})
     needs: [ci-paths, medium-collect]
-    if: ${{ !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) && needs.medium-collect.result == 'success' && needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }}
+    if: ${{ !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) && needs.medium-collect.result == 'success' && needs.ci-paths.outputs.heavy-needed == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
@@ -1105,7 +1112,7 @@ jobs:
   correctness-gate:
     name: correctness-gate (${{ matrix.partition }})
     needs: ci-paths
-    if: ${{ needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }}
+    if: ${{ needs.ci-paths.outputs.heavy-needed == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 65
     strategy:
@@ -1472,7 +1479,7 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Download complete medium shard evidence
-        if: needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true'
+        if: needs.ci-paths.outputs.heavy-needed == 'true'
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
           pattern: t2-medium-*-${{ github.sha }}
@@ -1480,7 +1487,7 @@ jobs:
           merge-multiple: false
 
       - name: Verify complete medium shard coverage
-        if: needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true'
+        if: needs.ci-paths.outputs.heavy-needed == 'true'
         run: >-
           python scripts/release_canary_sharding.py verify-medium --artifacts t2-evidence
           --checked-sha "${{ github.sha }}" --durations tests/fixtures/medium_shard_durations.json
@@ -1497,9 +1504,9 @@ jobs:
             --always ci-paths \
             --expect code-lint=${{ needs.ci-paths.outputs.code-tests-needed == 'true' }} \
             --expect code-test=${{ needs.ci-paths.outputs.code-tests-needed == 'true' }} \
-            --expect medium-collect=${{ needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }} \
-            --expect medium-test=${{ needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }} \
-            --expect correctness-gate=${{ needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }} \
+            --expect medium-collect=${{ needs.ci-paths.outputs.heavy-needed == 'true' }} \
+            --expect medium-test=${{ needs.ci-paths.outputs.heavy-needed == 'true' }} \
+            --expect correctness-gate=${{ needs.ci-paths.outputs.heavy-needed == 'true' }} \
             --expect tpch-binary-framing=${{ needs.ci-paths.outputs.heavy-needed == 'true' || needs.ci-paths.outputs.framing-needed == 'true' }} \
             --expect tuning-liveness=${{ needs.ci-paths.outputs.tuning-paths-changed == 'true' }} \
             --expect package-smoke=${{ needs.ci-paths.outputs.packaging-needed == 'true' }} \

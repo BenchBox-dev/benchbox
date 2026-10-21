@@ -80,7 +80,7 @@ def decide_rerun(
     rules: RetryRules,
 ) -> RerunDecision:
     same_head = previous is not None and previous.head_sha == head_sha
-    if same_head and previous is not None and previous.outcome in DECISIVE and not new_diff:
+    if same_head and previous is not None and previous.outcome in DECISIVE and not new_diff and not manual:
         return RerunDecision(False, f"head {head_sha} already has a {previous.outcome} result")
     if same_head and previous is not None and previous.outcome == PENDING and not new_diff:
         if previous.pending_cause != ALL_ABSENT:
@@ -98,6 +98,8 @@ def decide_rerun(
         ready_at = previous.updated_at + wait
         if now < ready_at:
             return RerunDecision(False, f"backoff: the next retry is allowed after {ready_at.isoformat()}")
+        if previous.outcome in DECISIVE:
+            return RerunDecision(True, "manual same-head re-review within budget")
     return RerunDecision(True, "retry within budget")
 
 

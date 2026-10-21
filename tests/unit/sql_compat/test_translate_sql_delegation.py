@@ -89,7 +89,14 @@ class TestTranslateSqlSQLitePostfix:
         a = _Adapter(dialect="sqlite")
         result = a.translate_sql(sql, source_dialect="duckdb")
         assert "INTERVAL" not in result
-        assert "DATE('1998-09-01', '+10 day')" in result
+        assert "DATE(DATE('1998-09-01'), '10 DAY')" in result
+
+    def test_date_interval_evaluates_to_date_text(self):
+        import sqlite3
+
+        a = _Adapter(dialect="sqlite")
+        result = a.translate_sql("SELECT DATE('1998-09-01') + INTERVAL '10' DAY", source_dialect="duckdb")
+        assert sqlite3.connect(":memory:").execute(result.rstrip(";")).fetchall() == [("1998-09-11",)]
 
 
 class TestTranslateSqlMultiStatement:

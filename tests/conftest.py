@@ -426,7 +426,7 @@ def pytest_terminal_summary(terminalreporter, config, exitstatus) -> None:
 
         threshold = 80.0
 
-        cov = coverage.Coverage(data_file=".coverage", config_file="pyproject.toml")
+        cov = coverage.Coverage(data_file=os.environ.get("COVERAGE_FILE", ".coverage"), config_file="pyproject.toml")
         cov.load()
 
         buf = io.StringIO()

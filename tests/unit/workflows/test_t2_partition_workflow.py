@@ -18,7 +18,7 @@ MOVED_STEPS = {
     ),
     "b": ("Run in-process plan-capture gate", "Run the polars-df smoke and cross-surface gates on Polars 2.0.0"),
 }
-HEAVY_CONDITION = "${{ needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }}"
+HEAVY_CONDITION = "${{ needs.ci-paths.outputs.heavy-needed == 'true' }}"
 
 
 def _jobs(filename: str) -> dict:
@@ -99,6 +99,9 @@ def test_medium_selection_and_receipts_gate_core() -> None:
     medium = jobs["medium-test"]
     assert medium["strategy"] == {"fail-fast": False, "matrix": {"shard_index": [0, 1, 2, 3]}}
     assert medium["needs"] == ["ci-paths", "medium-collect"]
+    for name in ("medium-collect", "medium-test", "correctness-gate"):
+        assert jobs[name]["if"].endswith("needs.ci-paths.outputs.heavy-needed == 'true' }}")
+        assert "unit-core" not in jobs[name]["if"]
     selector = "medium and not (slow or stress or resource_heavy or live_integration)"
     collect_text = "\n".join(step.get("run", "") for step in jobs["medium-collect"]["steps"])
     medium_text = "\n".join(step.get("run", "") for step in medium["steps"])
@@ -112,7 +115,7 @@ def test_medium_selection_and_receipts_gate_core() -> None:
     core_text = "\n".join(step.get("run", "") for step in jobs["core"]["steps"])
     for job in ("medium-collect", "medium-test", "correctness-gate"):
         assert job in jobs["core"]["needs"]
-        assert f"--expect {job}=" in core_text
+        assert f"--expect {job}={HEAVY_CONDITION}" in core_text
     assert "verify-medium" in core_text
 
 

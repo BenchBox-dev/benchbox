@@ -8,6 +8,7 @@ import pytest
 from _project.scripts.oracle_reviewers.evidence import (
     CITATION_PREFIX,
     INLINE,
+    UNVERIFIED_WITHDRAWAL,
     Trace,
     check,
     mark_citations,
@@ -15,7 +16,7 @@ from _project.scripts.oracle_reviewers.evidence import (
     trace,
     unread,
 )
-from _project.scripts.oracle_reviewers.verdict import Finding, Verdict
+from _project.scripts.oracle_reviewers.verdict import Finding, PriorDefect, Verdict
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -24,9 +25,7 @@ OMP_STREAM = (
 ).read_text(encoding="utf-8")
 
 
-def _tool_events(
-    name: str, path: str, *, is_error: bool, output: str = "match", matched: tuple[str, ...] | None = None
-) -> str:
+def _tool_events(name: str, path: str, *, is_error: bool, output: str = "match") -> str:
     call = {
         "type": "message_end",
         "message": {
@@ -42,7 +41,7 @@ def _tool_events(
             "toolName": name,
             "isError": is_error,
             "content": [{"type": "text", "text": output}],
-            **({} if matched is None else {"details": {"files": list(matched)}}),
+            "details": {"files": ["pkg/unrelated.py"]},
         },
     }
     return f"{json.dumps(call)}\n{json.dumps(result)}\n"
@@ -72,33 +71,57 @@ def _finding(file: str = "pkg/a.py", line: int = 2, end_line: int | None = None)
 
 def test_omp_trace_reads_the_recorded_review_stream() -> None:
     checker = "/workspace/benchbox/core/equivalence/checker.py"
-    assert trace("omp", OMP_STREAM).reads == (checker, checker)
-    assert unread(
-        "omp", ["benchbox/core/equivalence/checker.py", "pkg/b.py"], trace("omp", OMP_STREAM), Path("/workspace")
-    ) == ["pkg/b.py"]
+    run = trace("omp", OMP_STREAM)
+    assert run.reads == (checker,)
+    assert run.greps == ("/workspace",)
+    assert unread("omp", ["benchbox/core/equivalence/checker.py", "pkg/b.py"], run, Path("/workspace")) == ["pkg/b.py"]
 
 
 @pytest.mark.parametrize(
-    ("name", "is_error", "output", "matched", "reads"),
+    ("name", "is_error", "output", "reads", "greps"),
     [
-        ("read", False, "line", None, ("pkg/a.py:10-40",)),
-        ("grep", False, "pkg/a.py\n*12|def f", ("pkg/a.py",), ("pkg/a.py",)),
-        ("grep", False, "pkg/a.py\n*12|def f", None, ()),
+        ("read", False, "line", ("pkg/a.py:10-40",), ()),
+        ("grep", False, "pkg/a.py\n*12|def f", (), ("pkg/a.py:10-40",)),
         ("grep", False, "No matches found", (), ()),
-        ("read", True, "Path not found", None, ()),
-        ("glob", False, "pkg/a.py", ("pkg/a.py",), ()),
+        ("read", True, "Path not found", (), ()),
+        ("glob", False, "pkg/a.py", (), ()),
     ],
 )
 def test_omp_trace_counts_only_reads_that_returned_content(
-    name: str, is_error: bool, output: str, matched: tuple[str, ...] | None, reads: tuple[str, ...]
+    name: str, is_error: bool, output: str, reads: tuple[str, ...], greps: tuple[str, ...]
 ) -> None:
-    events = _tool_events(name, "pkg/a.py:10-40", is_error=is_error, output=output, matched=matched)
-    assert trace("omp", events).reads == reads
+    events = _tool_events(name, "pkg/a.py:10-40", is_error=is_error, output=output)
+    run = trace("omp", events)
+    assert (run.reads, run.greps) == (reads, greps)
 
 
-def test_multi_path_grep_credits_only_the_files_that_matched(tmp_path: Path) -> None:
-    events = _tool_events("grep", "pkg/a.py;pkg/b.py", is_error=False, output="pkg/a.py\n*3|x", matched=("pkg/a.py",))
-    assert unread("omp", ["pkg/a.py", "pkg/b.py"], trace("omp", events), tmp_path) == ["pkg/b.py"]
+def test_multi_path_grep_credits_nothing(tmp_path: Path) -> None:
+    events = _tool_events("grep", "pkg/a.py;pkg/b.py", is_error=False, output="pkg/a.py\n*3|x")
+    assert unread("omp", ["pkg/a.py", "pkg/b.py"], trace("omp", events), tmp_path) == ["pkg/a.py", "pkg/b.py"]
+
+
+def test_single_file_grep_credits_the_requested_file_not_the_reported_matches(tmp_path: Path) -> None:
+    target = tmp_path / "pkg" / "a.py"
+    target.parent.mkdir(parents=True)
+    target.write_text("x = 1\n", encoding="utf-8")
+    events = _tool_events("grep", "pkg/a.py", is_error=False, output="pkg/a.py\n*1|x")
+    assert unread("omp", ["pkg/a.py", "pkg/unrelated.py"], trace("omp", events), tmp_path) == ["pkg/unrelated.py"]
+
+
+def test_single_file_grep_with_absolute_path_credits_the_file(tmp_path: Path) -> None:
+    target = tmp_path / "pkg" / "a.py"
+    target.parent.mkdir(parents=True)
+    target.write_text("x = 1\n", encoding="utf-8")
+    events = _tool_events("grep", str(target), is_error=False, output="match")
+    assert unread("omp", ["pkg/a.py"], trace("omp", events), tmp_path) == []
+
+
+def test_directory_grep_credits_nothing(tmp_path: Path) -> None:
+    target = tmp_path / "pkg" / "a.py"
+    target.parent.mkdir(parents=True)
+    target.write_text("x = 1\n", encoding="utf-8")
+    events = _tool_events("grep", "pkg", is_error=False, output="pkg/a.py\n*1|x")
+    assert unread("omp", ["pkg/a.py"], trace("omp", events), tmp_path) == ["pkg/a.py"]
 
 
 def test_unread_strips_omp_read_selectors_and_splits_path_lists(tmp_path: Path) -> None:
@@ -216,6 +239,25 @@ def test_check_requires_an_omp_read_of_every_required_file(
     assert found == problem
 
 
+def test_check_accepts_a_single_file_grep_for_each_required_file(tmp_path: Path) -> None:
+    target = tmp_path / "pkg" / "a.py"
+    target.parent.mkdir(parents=True)
+    target.write_text("x = 1\n", encoding="utf-8")
+    verdict = _verdict(examined=("pkg/a.py", "pkg/b.py"))
+    assert (
+        check(
+            verdict,
+            ships=True,
+            harness="omp",
+            brief_mode="summary",
+            workspace=tmp_path,
+            required=["pkg/a.py", "pkg/b.py"],
+            run=Trace((), ("pkg/a.py", "pkg/a.py;pkg/b.py", "pkg")),
+        )
+        == "the verdict would ship but its trace shows no read of pkg/b.py"
+    )
+
+
 def test_check_skips_inline_and_non_shipping_verdicts(tmp_path: Path) -> None:
     workspace = tmp_path / "ws"
     workspace.mkdir()
@@ -281,3 +323,48 @@ def test_check_truncates_long_missing_lists(tmp_path: Path) -> None:
     assert problem is not None
     assert problem.endswith("and 2 more")
     assert "pkg/g.py" not in problem
+
+
+def _withdrawn_verdict(evidence: str, examined: tuple[str, ...] = ("pkg/a.py",)) -> Verdict:
+    return Verdict(
+        status="complete",
+        incomplete_reason="",
+        decision="SHIP",
+        summary="summary",
+        files_examined=examined,
+        defects=(),
+        prior_defects=(PriorDefect(id="D1", status="withdrawn", evidence=evidence),),
+    )
+
+
+def test_mark_citations_keeps_a_withdrawal_with_a_head_commit_citation(tmp_path: Path) -> None:
+    workspace = tmp_path / "ws"
+    (workspace / "pkg").mkdir(parents=True)
+    (workspace / "pkg" / "a.py").write_text("one\ntwo\nthree\n")
+    marked = mark_citations(_withdrawn_verdict("never a defect: pkg/a.py:2 keeps the row"), workspace)
+    assert marked.prior_defects[0].status == "withdrawn"
+
+
+def test_mark_citations_reopens_a_withdrawal_without_a_verifiable_citation(tmp_path: Path) -> None:
+    workspace = tmp_path / "ws"
+    (workspace / "pkg").mkdir(parents=True)
+    (workspace / "pkg" / "a.py").write_text("one\ntwo\nthree\n")
+    marked = mark_citations(_withdrawn_verdict("never a defect"), workspace)
+    assert marked.prior_defects[0].status == "not_fixed"
+    assert UNVERIFIED_WITHDRAWAL in marked.prior_defects[0].evidence
+
+
+def test_mark_citations_reopens_a_withdrawal_citing_a_missing_line(tmp_path: Path) -> None:
+    workspace = tmp_path / "ws"
+    (workspace / "pkg").mkdir(parents=True)
+    (workspace / "pkg" / "a.py").write_text("one\ntwo\n")
+    marked = mark_citations(_withdrawn_verdict("never a defect: pkg/a.py:9"), workspace)
+    assert marked.prior_defects[0].status == "not_fixed"
+
+
+def test_mark_citations_reopens_a_withdrawal_citing_an_unexamined_file(tmp_path: Path) -> None:
+    workspace = tmp_path / "ws"
+    (workspace / "pkg").mkdir(parents=True)
+    (workspace / "pkg" / "a.py").write_text("one\ntwo\nthree\n")
+    marked = mark_citations(_withdrawn_verdict("never a defect: pkg/a.py:2", ()), workspace)
+    assert marked.prior_defects[0].status == "not_fixed"

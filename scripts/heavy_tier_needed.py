@@ -19,6 +19,10 @@ SELECTION_LOGIC_PATHS = frozenset(
         "scripts/coverage_map.ini",
         "_project/scripts/preflight_targets.py",
         "scripts/heavy_tier_needed.py",
+        ".github/path-filters.yml",
+        "scripts/path_filter_decision.py",
+        "scripts/ci_units.py",
+        ".github/ci-units.yml",
     }
 )
 
@@ -156,6 +160,12 @@ def heavy_needed(
         ):
             raise HeavyTierError("decision has no unambiguous changed_paths list of strings")
         needs_code_ci = decision["needs_code_ci"]
+        broad = broad_test_infrastructure(changed, repo_root)
+        if broad:
+            return {
+                "heavy_needed": True,
+                "reason": f"suite-wide test configuration touched: {', '.join(broad)} (test-infrastructure carve-out)",
+            }
         if not needs_code_ci:
             return {"heavy_needed": False, "reason": "not a code-routed tree; the light lane already covers it"}
         if selection is not None:
@@ -169,12 +179,6 @@ def heavy_needed(
                 }
         if decision["packaging_needed"]:
             return {"heavy_needed": True, "reason": "packaging paths touched (packaging carve-out)"}
-        broad = broad_test_infrastructure(changed, repo_root)
-        if broad:
-            return {
-                "heavy_needed": True,
-                "reason": f"suite-wide test configuration touched: {', '.join(broad)} (test-infrastructure carve-out)",
-            }
         touched, reason = soundness_touched(changed, base_ref, repo_root, read_base, read_pr)
         if touched:
             return {"heavy_needed": True, "reason": f"{reason} (soundness carve-out)"}

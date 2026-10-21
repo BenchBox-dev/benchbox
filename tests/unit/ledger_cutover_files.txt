@@ -82,6 +82,7 @@ tests/unit/scripts/test_inline_applied_ledger_bounds.py
 tests/unit/scripts/test_local_validation.py
 tests/unit/scripts/test_migrate_clickhouse_labels.py
 tests/unit/scripts/test_mirror_partial_validation_policy.py
+tests/unit/scripts/test_oracle_gate.py
 tests/unit/scripts/test_oracle_review_check.py
 tests/unit/scripts/test_path_filter_decision.py
 tests/unit/scripts/test_perf_smoke_baseline.py
@@ -141,6 +142,7 @@ tests/unit/workflows/test_corpus_trust_boundary.py
 tests/unit/workflows/test_docker_integration_workflow.py
 tests/unit/workflows/test_nightly_legacy_test_job.py
 tests/unit/workflows/test_nightly_t3_workflow.py
+tests/unit/workflows/test_oracle_gate_workflow.py
 tests/unit/workflows/test_oracle_verdict_workflow.py
 tests/unit/workflows/test_oracle_review_workflow.py
 tests/unit/workflows/test_published_results_base_ci.py
@@ -150,6 +152,7 @@ tests/unit/workflows/test_seed_corpus_pr_base.py
 tests/unit/workflows/test_site_inputs_workflow.py
 tests/unit/workflows/test_stacked_pr_base_guard.py
 tests/unit/workflows/test_t2_partition_workflow.py
+tests/unit/workflows/test_trunk_coverage_workflow.py
 tests/unit/workflows/test_trunk_workflow.py
 tests/unit/workflows/test_validate_submission_changed_bundles.py
 tests/unit/workflows/test_validate_submission_comment_security.py

@@ -35,10 +35,19 @@ duckdb:
     measurements: []
   joinorder:
     measurements: []
+cedardb:
+  tpch:
+    measurements: []
+citus:
+  tpch:
+    measurements: []
 paradedb:
   tpch:
     measurements: []
 pg-duckdb:
+  tpch:
+    measurements: []
+pg-mooncake:
   tpch:
     measurements: []
 snowflake:

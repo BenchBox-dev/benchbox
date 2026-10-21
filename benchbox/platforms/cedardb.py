@@ -22,7 +22,10 @@ CEDARDB_DEFAULT_PORT = 5432
 
 
 class CedarDBAdapter(PostgreSQLAdapter):
-    execution_partitioning_supported = False
+    execution_partitioning_supported = True
+    partitioning_generator_platform = "cedardb"
+    partitioning_conflicts_with_keys = False
+    forced_partition_strategy = "HASH"
     post_load_index_cluster_supported = False
     supports_refresh_functions = False
     plan_capture_phase_eligible = True
@@ -178,7 +181,7 @@ class CedarDBAdapter(PostgreSQLAdapter):
             self.logger.warning(f"Failed to drop database {db_name}: {e}")
             raise
 
-    _supported_tuning_type_names = ("PRIMARY_KEYS", "FOREIGN_KEYS")
+    _supported_tuning_type_names = ("PARTITIONING", "PRIMARY_KEYS", "FOREIGN_KEYS")
 
 
 _build_cedardb_config = make_platform_config_builder(

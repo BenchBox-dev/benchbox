@@ -55,7 +55,7 @@ query($owner: String!, $name: String!, $number: Int!, $after: String) {
         nodes {
           isResolved
           path
-          comments(first: 1) { nodes { author { __typename login } body } }
+          comments(first: 50) { nodes { author { __typename login } body } }
         }
       }
     }
@@ -76,7 +76,8 @@ def review_threads(repo: str, pr: int) -> list[dict[str, Any]]:
             raise GitHubError(f"GitHub GraphQL returned errors: {payload['errors']}")
         connection = payload["data"]["repository"]["pullRequest"]["reviewThreads"]
         for node in connection["nodes"]:
-            first = (node["comments"]["nodes"] or [{}])[0]
+            comments = node["comments"]["nodes"] or [{}]
+            first = comments[0]
             threads.append(
                 {
                     "resolved": node["isResolved"],
@@ -84,6 +85,14 @@ def review_threads(repo: str, pr: int) -> list[dict[str, Any]]:
                     "author": (first.get("author") or {}).get("login"),
                     "author_type": (first.get("author") or {}).get("__typename"),
                     "body": first.get("body") or "",
+                    "replies": [
+                        {
+                            "author": (item.get("author") or {}).get("login"),
+                            "author_type": (item.get("author") or {}).get("__typename"),
+                            "body": item.get("body") or "",
+                        }
+                        for item in comments[1:]
+                    ],
                 }
             )
         if not connection["pageInfo"]["hasNextPage"]:

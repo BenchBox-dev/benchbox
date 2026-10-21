@@ -1333,6 +1333,16 @@ class TestNormalizeDatabricksQuery:
         result = adapter._normalize_databricks_query("SELECT x / y FROM t")
         assert "TRY_DIVIDE" in result
 
+    def test_nested_division_rewrites_every_division(self):
+        adapter = self._make_adapter()
+        result = adapter._normalize_databricks_query("SELECT (a / b) / c FROM t")
+        assert result.count("TRY_DIVIDE") == 2
+
+    def test_unparseable_query_is_returned_unchanged(self):
+        adapter = self._make_adapter()
+        query = "SELECT x / FROM WHERE ("
+        assert adapter._normalize_databricks_query(query) == query
+
 
 class TestConvertToDeltaTable:
     def _make_adapter(self, **kwargs):

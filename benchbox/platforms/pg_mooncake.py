@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import time
 from typing import Any
 
@@ -26,9 +27,13 @@ except ImportError:
     psycopg_sql = None
 
 
+MIRROR_ORDER_MAX_DESCENT_RATIO = 0.05
+MIRROR_LOCATION_PATTERN = re.compile(r"^[A-Za-z0-9_./:@=+,~ -]+$")
+
+
 class PgMooncakeAdapter(PostgreSQLAdapter):
     execution_partitioning_supported = False
-    post_load_index_cluster_supported = False
+    post_load_index_cluster_supported = True
     supports_refresh_functions = False
     plan_capture_phase_eligible = True
 
@@ -91,6 +96,7 @@ class PgMooncakeAdapter(PostgreSQLAdapter):
 
     def __init__(self, **config):
         super().__init__(**config)
+        self._pending_cluster_claims: dict[str, tuple[Any, list[str]]] = {}
 
         self.storage_mode = config.get("storage_mode", "local")
 
@@ -188,17 +194,118 @@ class PgMooncakeAdapter(PostgreSQLAdapter):
         connection: Any,
         data_dir: str | os.PathLike,
     ) -> tuple[dict[str, int], float, None]:
+        self._pending_cluster_claims = {}
+        mirrored: set[str] = set()
         table_stats, loading_time, extra = super().load_data(benchmark, connection, data_dir)
         loaded_tables = [table for table, rows in table_stats.items() if rows > 0]
-        if loaded_tables:
-            table_stats = self._promote_loaded_tables_to_mooncake(connection, loaded_tables, table_stats)
+        try:
+            if loaded_tables:
+                table_stats = self._promote_loaded_tables_to_mooncake(connection, loaded_tables, table_stats, mirrored)
+        finally:
+            self._settle_cluster_claims(connection, mirrored, table_stats)
         return table_stats, loading_time, extra
+
+    def _record_cluster_satisfied(
+        self,
+        ledger: Any,
+        table_name: str,
+        effective_config: Any,
+        observed: list[str],
+        evidence: str | None = None,
+    ) -> bool:
+        if evidence is None:
+            self._pending_cluster_claims[table_name.lower()] = (effective_config, observed)
+            return True
+        return super()._record_cluster_satisfied(ledger, table_name, effective_config, observed, evidence)
+
+    def _settle_cluster_claims(self, connection: Any, mirrored: set[str], row_counts: dict[str, int]) -> None:
+        claims, self._pending_cluster_claims = self._pending_cluster_claims, {}
+        ledger = getattr(self, "_applied_tuning_ledger", None)
+        if ledger is None or not claims:
+            return
+        cursor = connection.cursor()
+        try:
+            for table_name, (effective_config, observed) in claims.items():
+                if table_name not in mirrored:
+                    self._drop_cluster_intents(
+                        ledger,
+                        table_name,
+                        effective_config,
+                        "table was not mirrored to the columnstore (no rows, or mirroring did not complete), "
+                        "so the clustered heap order reaches no queried table",
+                    )
+                    continue
+                try:
+                    mirror = self._mirror_order_evidence(cursor, table_name, observed, row_counts.get(table_name))
+                except Exception as exc:
+                    connection.rollback()
+                    self._drop_cluster_intents(
+                        ledger, table_name, effective_config, f"columnstore mirror readback failed: {exc}"
+                    )
+                    continue
+                evidence = f"pg_index indisclustered catalog readback on the source heap: {observed}; {mirror}"
+                if not self._record_cluster_satisfied(ledger, table_name, effective_config, observed, evidence):
+                    self._drop_cluster_intents(
+                        ledger,
+                        table_name,
+                        effective_config,
+                        "no recorded CREATE INDEX statement to attach the mirror readback to",
+                    )
+        finally:
+            cursor.close()
+            connection.rollback()
+
+    def _mirror_order_evidence(
+        self, cursor: Any, table_name: str, columns: list[str], expected_rows: int | None = None
+    ) -> str:
+        if not self._validate_identifier(self.schema) or not self._validate_identifier(table_name):
+            raise ValueError("table or schema is not a plain identifier")
+        if not all(self._validate_identifier(column) for column in columns):
+            raise ValueError("clustered columns include a name that is not a plain identifier")
+        rows = self._execute_catalog_query(
+            cursor,
+            'SELECT iceberg_warehouse_location FROM mooncake.list_tables() WHERE "table" = %s',
+            (f"{self.schema}.{table_name}",),
+        )
+        if not rows:
+            raise ValueError("table is not registered with moonlink")
+        database = self._execute_catalog_query(cursor, "SELECT current_database()", ())[0][0]
+        location = str(rows[0][0]).rstrip("/")
+        directory = f"{location}/{database}/{self.schema}.{table_name}"
+        if not MIRROR_LOCATION_PATTERN.match(directory):
+            raise ValueError(f"warehouse path {directory!r} cannot be read back safely")
+        pattern = f"{directory}/data/*.parquet"
+        key = "{" + ", ".join(f"'c{index}': \"{column}\"" for index, column in enumerate(columns)) + "}"
+        inner = (
+            f"WITH r AS (SELECT filename, file_row_number, {key} AS k "
+            f"FROM read_parquet('{pattern}', filename = true, file_row_number = true)), "
+            "p AS (SELECT filename, k, lag(k) OVER (PARTITION BY filename ORDER BY file_row_number) AS pk FROM r), "
+            "f AS (SELECT filename, count(*) AS n, count(*) FILTER (WHERE k < pk) AS d FROM p GROUP BY filename) "
+            "SELECT count(*) AS files, coalesce(sum(n), 0) AS n, coalesce(max(d::DOUBLE / n), 0) AS worst FROM f"
+        )
+        files, total, worst = self._execute_catalog_query(
+            cursor, f"SELECT * FROM duckdb.query($mooncake_order${inner}$mooncake_order$)", ()
+        )[0]
+        if not files or not total:
+            raise ValueError(f"no mirror data files found at {pattern}")
+        if expected_rows is not None and int(total) != expected_rows:
+            raise ValueError(f"mirror data files hold {int(total)} rows, expected {expected_rows}")
+        if worst > MIRROR_ORDER_MAX_DESCENT_RATIO:
+            raise ValueError(
+                f"mirror data files are not ordered by {columns}: worst file has {worst:.1%} adjacent rows "
+                f"out of order (limit {MIRROR_ORDER_MAX_DESCENT_RATIO:.0%})"
+            )
+        return (
+            f"mirror Parquet readback: {int(total)} rows in {int(files)} data files, worst file has "
+            f"{float(worst):.2%} adjacent rows out of order on {columns}"
+        )
 
     def _promote_loaded_tables_to_mooncake(
         self,
         connection: Any,
         table_names: list[str],
         table_stats: dict[str, int],
+        mirrored: set[str] | None = None,
     ) -> dict[str, int]:
         if not self._validate_identifier(self.schema):
             raise ValueError(f"Invalid pg_mooncake schema identifier: {self.schema}")
@@ -214,21 +321,38 @@ class PgMooncakeAdapter(PostgreSQLAdapter):
 
                 staging_table = self._mooncake_staging_table_name(table_name_lower)
                 qualified_table = self._qualified_identifier(table_name_lower)
+                qualified_staging = self._qualified_identifier(staging_table)
                 source_name = self._mooncake_table_reference(staging_table)
                 target_name = self._mooncake_table_reference(table_name_lower)
 
                 cursor.execute(f'ALTER TABLE {qualified_table} RENAME TO "{staging_table}"')
-                cursor.execute("CALL mooncake.create_table(%s, %s)", (target_name, source_name))
+                connection.commit()
+                try:
+                    cursor.execute("CALL mooncake.create_table(%s, %s)", (target_name, source_name))
+                    connection.commit()
+                except Exception:
+                    connection.rollback()
+                    self._restore_source_table_name(cursor, connection, qualified_staging, table_name_lower)
+                    raise
+                if mirrored is not None:
+                    mirrored.add(table_name_lower)
                 cursor.execute(f"SELECT COUNT(*) FROM {qualified_table}")
                 updated_stats[table_name_lower] = cursor.fetchone()[0]
-
-            connection.commit()
+                connection.commit()
         except Exception:
             connection.rollback()
             raise
         finally:
             cursor.close()
         return updated_stats
+
+    def _restore_source_table_name(self, cursor: Any, connection: Any, qualified_staging: str, table_name: str) -> None:
+        try:
+            cursor.execute(f'ALTER TABLE {qualified_staging} RENAME TO "{table_name}"')
+            connection.commit()
+        except Exception as exc:
+            connection.rollback()
+            self.logger.warning(f"Could not restore the heap table name {table_name} after a mirror failure: {exc}")
 
     def _mooncake_staging_table_name(self, table_name: str) -> str:
         suffix_budget = 63 - len("__bb_moon_src_")
@@ -448,8 +572,7 @@ class PgMooncakeAdapter(PostgreSQLAdapter):
         finally:
             cursor.close()
 
-    def supports_tuning_type(self, tuning_type: Any) -> bool:
-        return False
+    _supported_tuning_type_names = ("CLUSTERING", "SORTING")
 
 
 _build_pg_mooncake_config = make_platform_config_builder(

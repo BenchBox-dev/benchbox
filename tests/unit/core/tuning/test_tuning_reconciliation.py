@@ -431,7 +431,7 @@ class TestDropReasons:
         [
             ("bigquery", "partitioning", TuningType.PARTITIONING),
             ("bigquery", "clustering", TuningType.CLUSTERING),
-            ("cedardb", "partitioning", TuningType.PARTITIONING),
+            ("cedardb", "clustering", TuningType.CLUSTERING),
             ("redshift", "distribution", TuningType.DISTRIBUTION),
             ("trino", "sorting", TuningType.SORTING),
             ("duckdb", "partitioning", TuningType.PARTITIONING),
@@ -483,6 +483,25 @@ class TestDDLRealizedIntents:
             ("partitioning:LINEITEM (L_SHIPDATE)", 1, DDL_REALIZED_REASON),
             ("sorting:LINEITEM (L_ORDERKEY, L_LINENUMBER)", 1, DDL_REALIZED_REASON),
         ]
+
+    def test_an_intent_dropped_by_a_readback_is_not_also_satisfied_by_its_statement(self):
+        ledger = AppliedTuningLedger()
+        ledger.record(CLICKHOUSE_DDL, PHASE_DDL)
+        ledger.record_dropped("partitioning:LINEITEM (L_SHIPDATE)", "catalog verification failed")
+
+        _reconcile(_config(partitioning=_columns("L_SHIPDATE")), ledger, "chdb")
+
+        assert [item.intent for item in ledger.dropped] == ["partitioning:LINEITEM (L_SHIPDATE)"]
+        assert ledger.satisfied == []
+
+    def test_a_drop_for_other_columns_does_not_suppress_the_statement_that_realizes_this_intent(self):
+        ledger = AppliedTuningLedger()
+        ledger.record(CLICKHOUSE_DDL, PHASE_DDL)
+        ledger.record_dropped("partitioning:LINEITEM (L_ORDERKEY)", "catalog verification failed")
+
+        _reconcile(_config(partitioning=_columns("L_SHIPDATE")), ledger, "chdb")
+
+        assert [item.intent for item in ledger.satisfied] == ["partitioning:LINEITEM (L_SHIPDATE)"]
 
     def test_existing_sorted_ingestion_satisfied_entry_is_not_duplicated(self):
         ledger = AppliedTuningLedger()

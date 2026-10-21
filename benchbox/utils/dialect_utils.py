@@ -490,6 +490,49 @@ def translate_sql_query(
         return query
 
 
+FORK_REWRITE_MODULES = ("rewrites", "engine_rewrites", "compat", "subqueries")
+
+
+def _fork_rewrite(name: str) -> Callable[..., object]:
+    import importlib
+    import inspect
+
+    if not name.startswith("_"):
+        for module_name in FORK_REWRITE_MODULES:
+            module = importlib.import_module(f"benchbox._vendor.sqlglot.benchbox.{module_name}")
+            function = getattr(module, name, None)
+            if (
+                inspect.isfunction(function)
+                and function.__module__ == module.__name__
+                and "copy" in inspect.signature(function).parameters
+            ):
+                return function
+    raise ValueError(f"Unknown fork rewrite: {name!r}")
+
+
+def apply_rewrite(name: str, sql_or_expression, dialect: str, **args):
+    import inspect
+
+    function = _fork_rewrite(name)
+    resolved = normalize_dialect_for_sqlglot(dialect.lower())
+    if "dialect" in inspect.signature(function).parameters:
+        args.setdefault("dialect", resolved)
+    if isinstance(sql_or_expression, str):
+        from benchbox._vendor import sqlglot
+
+        expression = sqlglot.parse_one(sql_or_expression, read=resolved)
+        return function(expression, **args).sql(dialect=resolved)
+    return function(sql_or_expression, **args)
+
+
+def contains_division(sql: str, dialect: str) -> bool:
+    from benchbox._vendor import sqlglot
+    from benchbox._vendor.sqlglot import exp
+
+    resolved = normalize_dialect_for_sqlglot(dialect.lower())
+    return sqlglot.parse_one(sql, read=resolved).find(exp.Div) is not None
+
+
 def fix_postgres_date_arithmetic(query: str) -> str:
     import re
 

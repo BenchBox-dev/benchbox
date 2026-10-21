@@ -8,9 +8,12 @@ from _project.scripts.oracle_reviewers.classify import Classification, FileRow
 from _project.scripts.oracle_reviewers.render import (
     SLOT_MAX_BYTES,
     OversizeError,
+    dispute_listing,
+    prior_listing,
     render,
     render_file_priority,
     render_review,
+    select_prior_rule,
 )
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -164,3 +167,35 @@ def test_file_priority_is_cut_to_fit_its_slot() -> None:
     text = render_file_priority(rows)
     assert len(text.encode("utf-8")) <= SLOT_MAX_BYTES["file_priority"]
     assert text.splitlines()[0] == f"{rows[0][0]} | 3 | high"
+
+
+def test_prior_listing_starts_each_row_with_the_bare_id() -> None:
+    rows = prior_listing([{"id": "D3", "severity": "High", "file": "a.py", "line": 4, "end_line": None, "title": "t"}])
+    assert rows == "D3 High a.py:4 t"
+
+
+def test_dispute_listing_shows_each_path_with_its_replies() -> None:
+    text = dispute_listing(
+        [
+            {
+                "path": "pkg/a.py",
+                "title": "Drops a row",
+                "replies": [{"author": "joe", "body": "Not a defect."}, {"author": "ann", "body": "Agreed."}],
+            }
+        ]
+    )
+    assert "- pkg/a.py: Drops a row" in text
+    assert "reply by joe: Not a defect." in text and "reply by ann: Agreed." in text
+
+
+def test_dispute_listing_truncates_a_long_reply_body() -> None:
+    text = dispute_listing([{"path": "pkg/a.py", "title": "t", "replies": [{"author": "joe", "body": "x" * 2000}]}])
+    assert len(text) < 2000 and "reply by joe" in text
+
+
+def test_select_prior_rule_adds_the_dispute_rule_only_with_disputes() -> None:
+    prior: list[dict[str, object]] = [{"id": "D1"}]
+    assert "Disputed findings" in select_prior_rule(prior, None, 10, True)
+    assert "Disputed findings" not in select_prior_rule(prior, None, 10)
+    assert "Disputed findings" not in select_prior_rule(prior, None, 10, False)
+    assert "Disputed findings" not in select_prior_rule(None, "head", 10, True)

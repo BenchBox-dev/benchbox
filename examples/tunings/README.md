@@ -38,6 +38,18 @@ a matching `<benchmark>_notuning.yaml`):
 - `paradedb/` - `tpch`. Same heap-layout profile as `pg-duckdb/`: partitions
   `lineitem` and `orders` by their date columns and clusters them on their
   order keys after load, with constraints disabled.
+- `citus/` - `tpch`. Hash-distributes `lineitem` and `orders` on their order
+  keys so they colocate, replicates the other tables as reference tables, stores
+  `part` columnar and clusters `orders` by date after load. Constraints are
+  disabled because distributed tables cannot enforce keys that omit the
+  distribution column.
+- `pg-mooncake/` - `tpch`. Sorts `lineitem` by ship date and `orders` by order
+  date. The sort is applied to the heap table before it is mirrored into the
+  columnstore, and is verified from the mirror's Parquet files. Constraints are
+  disabled.
+- `cedardb/` - `tpch`. Hash-partitions `lineitem` and `orders` on their order
+  keys and keeps primary keys on. CedarDB creates the partitions itself, and
+  foreign keys are off because bulk `COPY` violates them by load order.
 
 DataFrame platforms live under `dataframe/` with a flat
 `<platform>_<profile>.yaml` naming (e.g. `polars_optimized.yaml`,

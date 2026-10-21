@@ -85,18 +85,25 @@ def _coverage_data(tmp_path: Path, files: dict[str, dict[int, list[str]]]) -> Pa
 
 def _mapping(repo: Path, sha: str) -> dict:
     del repo
+    nodes = [
+        "tests/test_benchbox.py::test_translate",
+        "tests/unit/core/test_engine.py::test_x",
+    ]
     return {
-        "version": sel.MAP_VERSION,
+        "version": 2,
         "sha": sha,
+        "nodes": nodes,
         "files": {
             "benchbox/core/engine.py": {
-                "1": ["tests/unit/core/test_engine.py::test_x"],
+                "lines": {"1": [1]},
+                "statements": [1],
             },
             "benchbox/base.py": {
-                "4": ["tests/test_benchbox.py::test_translate"],
-                "5": ["tests/test_benchbox.py::test_translate"],
+                "lines": {"4": [0], "5": [0]},
+                "statements": [4, 5],
             },
         },
+        "failed_nodes": [],
     }
 
 
@@ -192,12 +199,38 @@ def test_parse_diff_rejects_blocks_without_paths() -> None:
 
 
 def test_lookup_hits_separates_covered_and_missed_lines() -> None:
-    index = {"benchbox/base.py": {"4": ["tests/test_benchbox.py::test_translate"], "5": []}}
-    hits, missed = sel.lookup_hits(index, "benchbox/base.py", [4, 5, 6])
+    nodes = ["tests/test_benchbox.py::test_translate"]
+    entry = {"lines": {"4": [0], "5": []}, "statements": [4, 5, 6]}
+    hits, missed, setup_hits = sel.lookup_hits(entry, nodes, [4, 5, 6])
     assert hits == {"tests/test_benchbox.py::test_translate"}
     assert missed == [5, 6]
-    assert sel.lookup_hits(index, "benchbox/other.py", [1]) == (set(), [1])
-    assert sel.lookup_hits({}, "benchbox/base.py", [4]) == (set(), [4])
+    assert setup_hits == set()
+    assert sel.lookup_hits({}, nodes, [4]) == (set(), [4], set())
+
+
+def test_lookup_hits_treats_non_statement_lines_as_missed() -> None:
+    nodes = ["tests/test_benchbox.py::test_translate"]
+    entry = {"lines": {"4": [0]}, "statements": [4]}
+    hits, missed, _ = sel.lookup_hits(entry, nodes, [2, 4])
+    assert hits == {"tests/test_benchbox.py::test_translate"}
+    assert missed == [2]
+
+
+def test_lookup_hits_without_a_statement_table_checks_every_line() -> None:
+    nodes = ["tests/test_benchbox.py::test_translate"]
+    entry = {"lines": {"4": [0]}}
+    hits, missed, _ = sel.lookup_hits(entry, nodes, [2, 4])
+    assert hits == {"tests/test_benchbox.py::test_translate"}
+    assert missed == [2]
+
+
+def test_lookup_hits_reports_setup_phase_hits() -> None:
+    nodes = ["tests/test_benchbox.py::test_translate"]
+    entry = {"lines": {"4": [0]}, "statements": [4], "setup": {"4": [0]}}
+    hits, missed, setup_hits = sel.lookup_hits(entry, nodes, [4])
+    assert hits == {"tests/test_benchbox.py::test_translate"}
+    assert missed == []
+    assert setup_hits == {"tests/test_benchbox.py::test_translate"}
 
 
 def test_build_map_merges_shards_and_strips_contexts(tmp_path: Path, repo: Path) -> None:
@@ -211,16 +244,108 @@ def test_build_map_merges_shards_and_strips_contexts(tmp_path: Path, repo: Path)
     mapping = sel.build_map([first, second], repo, _head(repo))
     assert mapping["version"] == sel.MAP_VERSION
     assert mapping["sha"] == _head(repo)
-    assert mapping["files"]["benchbox/base.py"] == {
-        "4": ["tests/test_benchbox.py::test_translate"],
-        "5": ["tests/test_benchbox.py::test_translate"],
-    }
+    assert mapping["nodes"] == ["tests/test_benchbox.py::test_translate"]
+    entry = mapping["files"]["benchbox/base.py"]
+    assert entry["lines"] == {"4": [0], "5": [0]}
+    assert 4 in entry["statements"]
+    assert 5 in entry["statements"]
+    assert entry["setup"] == {"5": [0]}
     assert "benchbox/core/engine.py" not in mapping["files"]
+    assert mapping["failed_nodes"] == []
+
+
+def test_build_map_setup_phase_expands_selection_to_module(
+    tmp_path: Path, repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(sel, "SELECTION_SHADOW", False)
+    base = str(repo / "benchbox/base.py")
+    first_node = "tests/test_benchbox.py::test_translate"
+    second_node = "tests/test_benchbox.py::test_other"
+    first = _coverage_data(tmp_path, {base: {4: [f"{first_node}|setup"]}})
+    second = _coverage_data(tmp_path, {base: {5: [f"{second_node}|run"]}})
+    head = _head(repo)
+    mapping = sel.build_map([first, second], repo, head)
+    assert mapping["nodes"] == [second_node, first_node]
+    entry = mapping["files"]["benchbox/base.py"]
+    assert entry["lines"] == {"4": [1], "5": [0]}
+    assert all(isinstance(index, int) for indices in entry["lines"].values() for index in indices)
+    assert set(entry["statements"]) >= {4, 5}
+    assert entry["setup"] == {"4": [1]}
+    files = [
+        sel.ChangedFile(
+            path="benchbox/base.py",
+            old_path="benchbox/base.py",
+            status="modified",
+            old_ranges=[(4, 1)],
+        )
+    ]
+    result = sel.select_tests(repo, mapping, files, head)
+    assert first_node in result["coverage_tests"]
+    assert second_node in result["selected"]
+    assert result["escalate"] is False
 
 
 def test_build_map_skips_files_outside_the_repo(tmp_path: Path, repo: Path) -> None:
     outside = _coverage_data(tmp_path, {"/elsewhere/other.py": {1: ["tests/test_x.py::test_y|run"]}})
     assert sel.build_map([outside], repo, _head(repo))["files"] == {}
+
+
+def test_build_map_records_failed_nodes_from_junit(tmp_path: Path, repo: Path) -> None:
+    base = str(repo / "benchbox/base.py")
+    data = _coverage_data(tmp_path, {base: {4: ["tests/test_benchbox.py::test_translate|run"]}})
+    junit = tmp_path / "junit.xml"
+    junit.write_text(
+        '<?xml version="1.0"?><testsuite>'
+        '<testcase file="tests/unit/core/test_engine.py" name="test_x">'
+        "<failure>boom</failure></testcase>"
+        '<testcase file="tests/unit/core/test_engine.py" name="test_ok"/>'
+        "</testsuite>",
+        encoding="utf-8",
+    )
+    mapping = sel.build_map([data], repo, _head(repo), junit_files=[junit])
+    assert mapping["failed_nodes"] == ["tests/unit/core/test_engine.py::test_x"]
+
+
+def test_build_map_derives_failed_nodes_without_file_attributes(tmp_path: Path, repo: Path) -> None:
+    base = str(repo / "benchbox/base.py")
+    data = _coverage_data(tmp_path, {base: {4: ["tests/test_benchbox.py::test_translate|run"]}})
+    junit = tmp_path / "junit-xunit2.xml"
+    junit.write_text(
+        '<?xml version="1.0"?><testsuite>'
+        '<testcase classname="tests.unit.core.test_engine" name="test_x">'
+        "<failure>boom</failure></testcase>"
+        '<testcase classname="tests.unit.core.test_engine" name="test_ok"/>'
+        "</testsuite>",
+        encoding="utf-8",
+    )
+    mapping = sel.build_map([data], repo, _head(repo), junit_files=[junit])
+    assert mapping["failed_nodes"] == ["tests/unit/core/test_engine.py::test_x"]
+
+
+def test_build_map_rejects_a_junit_shortfall_against_the_data_files(tmp_path: Path, repo: Path) -> None:
+    data = _coverage_data(tmp_path, {str(repo / "benchbox/base.py"): {4: ["tests/test_benchbox.py::test_translate"]}})
+    out = tmp_path / "map.json"
+    assert (
+        sel.main(
+            [
+                "build-map",
+                "--data",
+                str(data),
+                "--junit",
+                str(tmp_path / "missing-*.xml"),
+                "--expected-shards",
+                "1",
+                "--sha",
+                _head(repo),
+                "--out",
+                str(out),
+                "--repo-root",
+                str(repo),
+            ]
+        )
+        == 1
+    )
+    assert not out.is_file()
 
 
 def test_read_map_rejects_bad_envelopes(tmp_path: Path, repo: Path) -> None:
@@ -232,13 +357,20 @@ def test_read_map_rejects_bad_envelopes(tmp_path: Path, repo: Path) -> None:
     with pytest.raises(sel.SelectionError):
         sel.read_map(path)
     path.write_text(json.dumps({**good, "version": 999}), encoding="utf-8")
-    with pytest.raises(sel.SelectionError):
+    with pytest.raises(sel.SelectionError, match="rebuild"):
         sel.read_map(path)
     path.write_text(json.dumps({**good, "sha": "xyz"}), encoding="utf-8")
     with pytest.raises(sel.SelectionError):
         sel.read_map(path)
     with pytest.raises(sel.SelectionError):
         sel.read_map(tmp_path / "absent.json")
+
+
+def test_read_map_rejects_v1_maps_with_rebuild(repo: Path, tmp_path: Path) -> None:
+    path = tmp_path / "map.json"
+    path.write_text(json.dumps({"version": 1, "sha": _head(repo), "files": {}}), encoding="utf-8")
+    with pytest.raises(sel.SelectionError, match="rebuild"):
+        sel.read_map(path)
 
 
 def test_changed_files_detects_rename_with_old_ranges(repo: Path) -> None:
@@ -258,7 +390,8 @@ def test_changed_files_detects_rename_with_old_ranges(repo: Path) -> None:
     assert entries["benchbox/core/motor.py"].old_ranges == [(20, 1)]
 
 
-def test_selection_unites_coverage_changed_tests_and_fallback(repo: Path) -> None:
+def test_selection_unites_coverage_changed_tests_and_fallback(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sel, "SELECTION_SHADOW", False)
     map_sha = _head(repo)
     _write(repo, "benchbox/core/engine.py", "x = 2\n")
     _write(repo, "tests/unit/test_unrelated.py", "y = 2\n")
@@ -271,6 +404,54 @@ def test_selection_unites_coverage_changed_tests_and_fallback(repo: Path) -> Non
     assert "tests/unit/core/test_engine.py" in result["fallback_tests"]
     assert result["map_sha"] == map_sha
     assert result["behind_commits"] == 0
+    assert result["failed_nodes"] == []
+    assert result["estimated_runtime_seconds"] >= 0
+
+
+def test_shadow_mode_escalates_while_reporting_a_clean_selection(repo: Path) -> None:
+    assert sel.SELECTION_SHADOW is True
+    map_sha = _head(repo)
+    _write(repo, "benchbox/core/engine.py", "x = 2\n")
+    _write(repo, "tests/unit/test_unrelated.py", "y = 2\n")
+    _commit_all(repo)
+    files = sel.changed_files(repo, map_sha)
+    result = sel.select_tests(repo, _mapping(repo, map_sha), files, map_sha)
+    assert result["escalate"] is True
+    assert result["shadow"] is True
+    assert result["would_escalate"] is False
+    assert result["would_escalate_reasons"] == []
+    assert result["reason"].startswith("shadow mode:")
+    assert result["elapsed_seconds"] >= 0
+    assert result["peak_rss_mb"] > 0
+    assert "tests/unit/core/test_engine.py::test_x" in result["selected"]
+
+
+def test_shadow_mode_records_would_escalate_reasons(repo: Path) -> None:
+    assert sel.SELECTION_SHADOW is True
+    map_sha = _head(repo)
+    _write(repo, "benchbox/core/engine.py", "x = 2\n")
+    _write(repo, "benchbox/core/fresh.py", "y = 3\n")
+    _commit_all(repo)
+    files = sel.changed_files(repo, map_sha)
+    result = sel.select_tests(repo, _mapping(repo, map_sha), files, map_sha)
+    assert result["escalate"] is True
+    assert result["would_escalate"] is True
+    assert result["would_escalate_reasons"] == ["changed Python code no recorded test executed: benchbox/core/fresh.py"]
+    assert result["reason"].startswith("shadow mode:")
+
+
+def test_shadow_off_restores_the_computed_selection(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sel, "SELECTION_SHADOW", False)
+    map_sha = _head(repo)
+    _write(repo, "benchbox/core/engine.py", "x = 2\n")
+    _write(repo, "tests/unit/test_unrelated.py", "y = 2\n")
+    _commit_all(repo)
+    files = sel.changed_files(repo, map_sha)
+    result = sel.select_tests(repo, _mapping(repo, map_sha), files, map_sha)
+    assert result["escalate"] is False
+    assert "shadow" not in result
+    assert "would_escalate" not in result
+    assert "tests/unit/core/test_engine.py::test_x" in result["selected"]
 
 
 def test_pure_addition_probes_neighbouring_old_lines(repo: Path) -> None:
@@ -284,28 +465,94 @@ def test_pure_addition_probes_neighbouring_old_lines(repo: Path) -> None:
     assert "tests/test_benchbox.py::test_translate" in result["selected"]
 
 
-def test_uncovered_lines_add_importing_tests(repo: Path) -> None:
+def test_non_statement_lines_escalate_instead_of_narrowing(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sel, "SELECTION_SHADOW", False)
+    head = _head(repo)
+    files = [
+        sel.ChangedFile(
+            path="benchbox/base.py",
+            old_path="benchbox/base.py",
+            status="modified",
+            old_ranges=[(2, 1), (4, 1)],
+        )
+    ]
+    result = sel.select_tests(repo, _mapping(repo, head), files, head)
+    assert result["escalate"] is True
+    assert result["uncovered_sources"] == ["benchbox/base.py"]
+    assert "tests/test_benchbox.py::test_translate" in result["selected"]
+
+
+def test_build_map_omits_statements_when_analysis_fails(
+    tmp_path: Path, repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base = str(repo / "benchbox/base.py")
+    data = _coverage_data(tmp_path, {base: {4: ["tests/test_benchbox.py::test_translate|run"]}})
+    monkeypatch.setattr(sel, "_statement_lines", lambda _repo, _data, _files: {})
+    mapping = sel.build_map([data], repo, _head(repo))
+    entry = mapping["files"]["benchbox/base.py"]
+    assert "statements" not in entry
+    hits, missed, _ = sel.lookup_hits(entry, mapping["nodes"], [4, 6])
+    assert hits == {"tests/test_benchbox.py::test_translate"}
+    assert missed == [6]
+
+
+def test_uncovered_lines_escalate_and_keep_importing_tests(repo: Path) -> None:
     map_sha = _head(repo)
     _write(repo, "benchbox/core/engine.py", "x = 1\ny = 2\n")
     _write(repo, "tests/unit/core/test_engine.py", "from benchbox.core.engine import x\n")
     _commit_all(repo)
     files = sel.changed_files(repo, map_sha)
     result = sel.select_tests(repo, _mapping(repo, map_sha), files, _head(repo))
-    assert result["escalate"] is False
+    assert result["escalate"] is True
+    assert "no recorded test executed: benchbox/core/engine.py" in result["reason"]
     assert "tests/unit/core/test_engine.py" in result["importer_tests"]
     assert "tests/unit/core/test_engine.py" in result["selected"]
     assert result["uncovered_sources"] == ["benchbox/core/engine.py"]
 
 
-def test_new_source_file_selects_fallback_and_importers(repo: Path) -> None:
+def test_new_source_file_escalates_and_keeps_importers(repo: Path) -> None:
     map_sha = _head(repo)
     _write(repo, "benchbox/core/fresh.py", "x = 1\n")
     _write(repo, "tests/unit/core/test_fresh.py", "from benchbox.core.fresh import x\n")
     _commit_all(repo)
     files = sel.changed_files(repo, map_sha)
     result = sel.select_tests(repo, _mapping(repo, map_sha), files, _head(repo))
-    assert result["escalate"] is False
+    assert result["escalate"] is True
+    assert "benchbox/core/fresh.py" in result["reason"]
     assert "tests/unit/core/test_fresh.py" in result["selected"]
+
+
+def test_shared_test_plugin_change_escalates(repo: Path) -> None:
+    map_sha = _head(repo)
+    _write(repo, "tests/conftest.py", "FIXTURE = 1\n")
+    _write(repo, "tests/fixtures/database_fixtures.py", "DB = 1\n")
+    _commit_all(repo)
+    files = sel.changed_files(repo, map_sha)
+    result = sel.select_tests(repo, _mapping(repo, map_sha), files, _head(repo))
+    assert result["escalate"] is True
+    assert "tests/conftest.py" in result["reason"]
+    assert "tests/fixtures/database_fixtures.py" in result["reason"]
+
+
+def test_failed_nodes_join_selection_without_code_change(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sel, "SELECTION_SHADOW", False)
+    head = _head(repo)
+    mapping = _mapping(repo, head)
+    mapping["failed_nodes"] = ["tests/unit/core/test_engine.py::test_x"]
+    result = sel.select_tests(repo, mapping, [], head)
+    assert result["failed_nodes"] == ["tests/unit/core/test_engine.py::test_x"]
+    assert "tests/unit/core/test_engine.py::test_x" in result["selected"]
+    assert result["escalate"] is False
+
+
+def test_failed_nodes_missing_from_checkout_are_dropped(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sel, "SELECTION_SHADOW", False)
+    head = _head(repo)
+    mapping = _mapping(repo, head)
+    mapping["failed_nodes"] = ["tests/unit/core/test_absent.py::test_x"]
+    result = sel.select_tests(repo, mapping, [], head)
+    assert result["failed_nodes"] == []
+    assert result["escalate"] is False
 
 
 def test_missing_map_escalates_with_fallback(repo: Path) -> None:
@@ -326,7 +573,8 @@ def test_unreadable_map_note_escalates(repo: Path) -> None:
     assert "boom" in result["reason"]
 
 
-def test_stale_map_escalates_past_the_named_limit(repo: Path) -> None:
+def test_stale_map_escalates_past_the_named_limit(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sel, "SELECTION_SHADOW", False)
     assert sel.MAX_MAP_BEHIND_COMMITS == 50
     map_sha = _head(repo)
     for _ in range(sel.MAX_MAP_BEHIND_COMMITS + 1):
@@ -341,19 +589,63 @@ def test_stale_map_escalates_past_the_named_limit(repo: Path) -> None:
     assert fresh["behind_commits"] == 0
 
 
-def test_selection_over_the_named_limit_escalates(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_selection_over_the_runtime_limit_escalates(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sel, "SELECTION_SHADOW", False)
+    assert sel.MAX_SELECTION_RUNTIME_SECONDS == 900
     map_sha = _head(repo)
     _write(repo, "benchbox/core/engine.py", "x = 2\n")
     _commit_all(repo)
     files = sel.changed_files(repo, map_sha)
-    monkeypatch.setattr(sel, "MAX_SELECTED_NODEIDS", 1)
-    result = sel.select_tests(repo, _mapping(repo, map_sha), files, map_sha)
+    node = "tests/unit/core/test_engine.py::test_x"
+    result = sel.select_tests(
+        repo, _mapping(repo, map_sha), files, map_sha, durations={node: 1000.0}, durations_default=0.0
+    )
     assert result["escalate"] is True
-    assert "exceeds" in result["reason"]
-    assert set(result["selected"]) == set(result["fallback_tests"]) | set(result["importer_tests"])
+    assert "estimated runtime" in result["reason"]
+    assert set(result["selected"]) == (
+        set(result["fallback_tests"])
+        | set(result["importer_tests"])
+        | set(result["develop_changed_tests"])
+        | set(result["failed_nodes"])
+    )
 
 
-def test_inert_paths_never_escalate(repo: Path) -> None:
+def test_selection_under_the_runtime_limit_does_not_escalate(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sel, "SELECTION_SHADOW", False)
+    map_sha = _head(repo)
+    _write(repo, "benchbox/core/engine.py", "x = 2\n")
+    _commit_all(repo)
+    files = sel.changed_files(repo, map_sha)
+    node = "tests/unit/core/test_engine.py::test_x"
+    result = sel.select_tests(
+        repo, _mapping(repo, map_sha), files, map_sha, durations={node: 1.0}, durations_default=1.0
+    )
+    assert result["escalate"] is False
+    assert node in result["selected"]
+    assert result["estimated_runtime_seconds"] <= sel.MAX_SELECTION_RUNTIME_SECONDS
+
+
+def test_selection_over_the_argv_limit_escalates(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sel, "SELECTION_SHADOW", False)
+    assert sel.MAX_ARGV_NODEIDS == 10000
+    monkeypatch.setattr(sel, "MAX_ARGV_NODEIDS", 1)
+    map_sha = _head(repo)
+    _write(repo, "benchbox/core/engine.py", "x = 2\n")
+    _commit_all(repo)
+    files = sel.changed_files(repo, map_sha)
+    result = sel.select_tests(repo, _mapping(repo, map_sha), files, map_sha, durations={}, durations_default=0.0)
+    assert result["escalate"] is True
+    assert "argv limit" in result["reason"]
+    assert set(result["selected"]) == (
+        set(result["fallback_tests"])
+        | set(result["importer_tests"])
+        | set(result["develop_changed_tests"])
+        | set(result["failed_nodes"])
+    )
+
+
+def test_inert_paths_never_escalate(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sel, "SELECTION_SHADOW", False)
     map_sha = _head(repo)
     _write(repo, "docs/guide.md", "# changed\n")
     _write(repo, "CHANGELOG.md", "# changed\n")
@@ -383,7 +675,8 @@ def test_non_python_change_escalates_only_for_code_routed_trees(repo: Path) -> N
     assert unknown["escalate"] is True
 
 
-def test_deleted_source_still_matches_coverage_by_old_path(repo: Path) -> None:
+def test_deleted_source_still_matches_coverage_by_old_path(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sel, "SELECTION_SHADOW", False)
     map_sha = _head(repo)
     (repo / "benchbox/core/engine.py").unlink()
     _commit_all(repo)
@@ -428,7 +721,7 @@ def test_stale_coverage_node_ids_are_dropped(repo: Path, monkeypatch: pytest.Mon
     assert "no tests selected" in result["reason"]
 
 
-def test_zero_hunk_modified_source_counts_as_uncovered(repo: Path) -> None:
+def test_zero_hunk_modified_source_escalates(repo: Path) -> None:
     map_sha = _head(repo)
     _write(repo, "tests/unit/core/test_engine.py", "from benchbox.core.engine import x\n")
     _commit_all(repo)
@@ -441,7 +734,8 @@ def test_zero_hunk_modified_source_counts_as_uncovered(repo: Path) -> None:
         )
     ]
     result = sel.select_tests(repo, _mapping(repo, map_sha), files, _head(repo))
-    assert result["escalate"] is False
+    assert result["escalate"] is True
+    assert "no recorded test executed: benchbox/core/engine.py" in result["reason"]
     assert result["uncovered_sources"] == ["benchbox/core/engine.py"]
     assert "tests/unit/core/test_engine.py" in result["importer_tests"]
     assert "tests/unit/core/test_engine.py" in result["selected"]
@@ -474,7 +768,7 @@ def test_map_sha_outside_base_ancestry_escalates(repo: Path) -> None:
     assert result["behind_commits"] is None
 
 
-def test_pure_rename_selects_tests_on_old_and_new_paths(repo: Path) -> None:
+def test_pure_rename_escalates_and_keeps_tests_on_the_old_path(repo: Path) -> None:
     map_sha = _head(repo)
     base_sha = map_sha
     _git(repo, "mv", "benchbox/core/engine.py", "benchbox/core/motor.py")
@@ -482,7 +776,8 @@ def test_pure_rename_selects_tests_on_old_and_new_paths(repo: Path) -> None:
     files = sel.changed_files(repo, base_sha)
     assert [(entry.path, entry.status) for entry in files] == [("benchbox/core/motor.py", "renamed")]
     result = sel.select_tests(repo, _mapping(repo, map_sha), files, base_sha)
-    assert result["escalate"] is False
+    assert result["escalate"] is True
+    assert "benchbox/core/motor.py" in result["reason"]
     assert "tests/unit/core/test_engine.py::test_x" in result["selected"]
 
 
@@ -500,7 +795,7 @@ def test_pure_rename_of_non_python_resource_escalates(repo: Path) -> None:
     assert "assets/banner.png" in result["reason"]
 
 
-def test_pr_change_against_base_selects_reverted_lines(repo: Path) -> None:
+def test_file_changed_on_develop_since_the_map_escalates(repo: Path) -> None:
     map_sha = _head(repo)
     _write(repo, "benchbox/core/engine.py", "x = 2\n")
     _commit_all(repo)
@@ -511,7 +806,8 @@ def test_pr_change_against_base_selects_reverted_lines(repo: Path) -> None:
     files = sel.changed_files(repo, base_sha)
     assert [entry.path for entry in files] == ["benchbox/core/engine.py"]
     result = sel.select_tests(repo, _mapping(repo, map_sha), files, base_sha)
-    assert result["escalate"] is False
+    assert result["escalate"] is True
+    assert "no recorded test executed: benchbox/core/engine.py" in result["reason"]
     assert "tests/unit/core/test_engine.py" in result["selected"]
 
 
@@ -527,7 +823,7 @@ def test_build_map_rejects_unexpected_shard_count(repo: Path, tmp_path: Path) ->
 
 def test_trusted_run_head_accepts_trunk_push_runs(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     sha = "a" * 40
-    stdout = "\n".join([sha, ".github/workflows/trunk.yml", "push", "develop", "o/r"]) + "\n"
+    stdout = "\n".join([sha, ".github/workflows/trunk-coverage.yml", "push", "develop", "o/r"]) + "\n"
 
     def _run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
         return subprocess.CompletedProcess(args, 0, stdout, "")
@@ -536,9 +832,16 @@ def test_trusted_run_head_accepts_trunk_push_runs(repo: Path, monkeypatch: pytes
     assert sel._trusted_run_head(repo, "o/r", 7) == sha
 
 
+def test_trusted_run_head_accepts_dispatched_runs_on_develop(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    sha = "b" * 40
+    stdout = "\n".join([sha, ".github/workflows/trunk-coverage.yml", "workflow_dispatch", "develop", "o/r"]) + "\n"
+    monkeypatch.setattr(sel.subprocess, "run", _fake_run(stdout))
+    assert sel._trusted_run_head(repo, "o/r", 9) == sha
+
+
 def test_trusted_run_head_rejects_untrusted_runs(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     sha = "a" * 40
-    good = [sha, ".github/workflows/trunk.yml", "push", "develop", "o/r"]
+    good = [sha, ".github/workflows/trunk-coverage.yml", "push", "develop", "o/r"]
     cases = [
         ["not-a-sha", good[1], good[2], good[3], good[4]],
         [good[0], ".github/workflows/ci.yml", good[2], good[3], good[4]],
@@ -551,11 +854,52 @@ def test_trusted_run_head_rejects_untrusted_runs(repo: Path, monkeypatch: pytest
         assert sel._trusted_run_head(repo, "o/r", 7) is None
 
 
+def test_trusted_run_head_reports_api_failures(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def _run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(command, 1, "", "HTTP 500")
+
+    monkeypatch.setattr(sel.subprocess, "run", _run)
+    with pytest.raises(sel.SelectionError, match="HTTP 500"):
+        sel._trusted_run_head(repo, "o/r", 7)
+
+
 def _fake_run(stdout: str) -> object:
     def _run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
         return subprocess.CompletedProcess(args, 0, stdout, "")
 
     return _run
+
+
+def test_list_map_artifacts_reads_trunk_runs_with_get_requests(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    first, second = "a" * 40, "b" * 40
+    commands: list[list[str]] = []
+
+    def _run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        commands.append(command)
+        endpoint = command[4]
+        if endpoint.endswith("/workflows/trunk-coverage.yml/runs"):
+            runs = f"11\t{first}\tpush\n12\t{second}\tworkflow_dispatch\n13\tnot-a-sha\tpush\n14\t{first}\tschedule\n"
+            return subprocess.CompletedProcess(command, 0, runs, "")
+        if endpoint.endswith("/runs/11/artifacts"):
+            return subprocess.CompletedProcess(command, 0, "", "")
+        rows = f"t2-coverage-map-{second}\t2026-10-20T00:00:00Z\nt2-coverage-map-{first}\t2026-10-19T00:00:00Z\n"
+        return subprocess.CompletedProcess(command, 0, rows, "")
+
+    monkeypatch.setattr(sel.subprocess, "run", _run)
+    found = list(sel._list_map_artifacts(repo, "o/r", "t2-coverage-map-"))
+    assert found == [(f"t2-coverage-map-{second}", 12, "2026-10-20T00:00:00Z")]
+    assert [command[2:4] for command in commands] == [["--method", "GET"]] * 3
+    assert commands[0][7:9] == ["-f", "branch=develop"]
+    assert f"name=t2-coverage-map-{second}" in commands[2]
+
+
+def test_list_map_artifacts_reports_api_failures(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def _run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(command, 1, "", "HTTP 500")
+
+    monkeypatch.setattr(sel.subprocess, "run", _run)
+    with pytest.raises(sel.SelectionError, match="HTTP 500"):
+        list(sel._list_map_artifacts(repo, "o/r", "t2-coverage-map-"))
 
 
 def test_fetch_map_skips_runs_failing_provenance(repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -566,6 +910,22 @@ def test_fetch_map_skips_runs_failing_provenance(repo: Path, tmp_path: Path, mon
     monkeypatch.setattr(sel, "_trusted_run_head", lambda _repo, _slug, _run: None)
     result = sel.fetch_map(repo, _head(repo), tmp_path / "maps")
     assert result["status"] == "missing"
+
+
+def test_fetch_map_lookup_failed_on_artifact_error(
+    repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(sel, "_github_slug", lambda _repo: "o/r")
+
+    def _boom(_repo: Path, _slug: str, _prefix: str) -> object:
+        raise sel.SelectionError("boom")
+
+    monkeypatch.setattr(sel, "_list_map_artifacts", _boom)
+    result = sel.fetch_map(repo, _head(repo), tmp_path / "maps")
+    assert result["status"] == "lookup-failed"
+    assert result["sha"] is None
+    assert "boom" in result["reason"]
+    assert "::warning::" not in capsys.readouterr().out
 
 
 def test_read_downloaded_map_prefers_matching_map_json(repo: Path, tmp_path: Path) -> None:
@@ -592,12 +952,12 @@ def test_read_downloaded_map_scans_past_mismatched_candidates(repo: Path, tmp_pa
 
 
 def test_select_cli_writes_nodeids_and_json(repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sel, "SELECTION_SHADOW", False)
     map_sha = _head(repo)
     _write(repo, "benchbox/core/engine.py", "x = 2\n")
     _commit_all(repo)
     map_path = tmp_path / "map.json"
     map_path.write_text(json.dumps(_mapping(repo, map_sha)), encoding="utf-8")
-    nodeids = tmp_path / "nodeids.txt"
     payload = tmp_path / "selection.json"
     monkeypatch.chdir(repo)
     assert (
@@ -608,8 +968,6 @@ def test_select_cli_writes_nodeids_and_json(repo: Path, tmp_path: Path, monkeypa
                 str(map_path),
                 "--base-sha",
                 map_sha,
-                "--nodeids-out",
-                str(nodeids),
                 "--json-out",
                 str(payload),
                 "--repo-root",
@@ -618,7 +976,8 @@ def test_select_cli_writes_nodeids_and_json(repo: Path, tmp_path: Path, monkeypa
         )
         == 0
     )
-    assert "tests/unit/core/test_engine.py::test_x" in nodeids.read_text(encoding="utf-8").splitlines()
+    selected = json.loads(payload.read_text(encoding="utf-8"))["selected"]
+    assert "tests/unit/core/test_engine.py::test_x" in selected
     assert json.loads(payload.read_text(encoding="utf-8"))["escalate"] is False
 
 
@@ -642,7 +1001,7 @@ def test_fetch_map_reports_missing_without_hiding_the_reason(
 
     monkeypatch.setattr(sel, "_github_slug", _boom)
     result = sel.fetch_map(repo, _head(repo), tmp_path / "maps")
-    assert result["status"] == "missing"
+    assert result["status"] == "lookup-failed"
     assert result["sha"] is None
     assert "gh is not installed" in result["reason"]
 
@@ -737,7 +1096,6 @@ def test_select_parse_failure_falls_back_to_changed_paths(
     _commit_all(repo)
     map_path = tmp_path / "map.json"
     map_path.write_text(json.dumps(_mapping(repo, map_sha)), encoding="utf-8")
-    nodeids = tmp_path / "nodeids.txt"
     payload = tmp_path / "selection.json"
 
     def _boom(header: str, block: list[str]) -> sel.ChangedFile:
@@ -753,8 +1111,6 @@ def test_select_parse_failure_falls_back_to_changed_paths(
                 str(map_path),
                 "--base-sha",
                 map_sha,
-                "--nodeids-out",
-                str(nodeids),
                 "--json-out",
                 str(payload),
                 "--repo-root",
@@ -766,9 +1122,7 @@ def test_select_parse_failure_falls_back_to_changed_paths(
     result = json.loads(payload.read_text(encoding="utf-8"))
     assert result["escalate"] is True
     assert "coverage selection failed" in result["reason"]
-    selected = nodeids.read_text(encoding="utf-8").splitlines()
-    assert selected
-    assert "tests/unit/test_tool.py" in selected
+    assert "tests/unit/test_tool.py" in result["selected"]
 
 
 def test_select_total_failure_exits_nonzero(repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -848,3 +1202,36 @@ def test_prune_cli_rewrites_nodeids(repo: Path, tmp_path: Path) -> None:
         "tests/unit/core/test_engine.py::test_x",
         "tests/unit/core/test_engine.py",
     ]
+
+
+def test_develop_added_tests_join_the_selection(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sel, "SELECTION_SHADOW", False)
+    map_sha = _head(repo)
+    _write(repo, "tests/unit/test_develop_added.py", "def test_added():\n    assert True\n")
+    _commit_all(repo)
+    base_sha = _head(repo)
+    _write(repo, "benchbox/core/engine.py", "x = 2\n")
+    _commit_all(repo)
+    files = sel.changed_files(repo, base_sha)
+    assert [entry.path for entry in files] == ["benchbox/core/engine.py"]
+    result = sel.select_tests(repo, _mapping(repo, map_sha), files, base_sha)
+    assert result["develop_changed_tests"] == ["tests/unit/test_develop_added.py"]
+    assert "tests/unit/test_develop_added.py" in result["selected"]
+    assert "tests/unit/core/test_engine.py::test_x" in result["selected"]
+    assert result["escalate"] is False
+
+
+def test_develop_changed_tests_exclude_files_missing_from_the_checkout(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(sel, "SELECTION_SHADOW", False)
+    map_sha = _head(repo)
+    _write(repo, "tests/unit/test_develop_added.py", "def test_added():\n    assert True\n")
+    _commit_all(repo)
+    base_sha = _head(repo)
+    (repo / "tests/unit/test_develop_added.py").unlink()
+    _write(repo, "benchbox/core/engine.py", "x = 2\n")
+    _commit_all(repo)
+    files = sel.changed_files(repo, base_sha)
+    result = sel.select_tests(repo, _mapping(repo, map_sha), files, base_sha)
+    assert result["develop_changed_tests"] == []

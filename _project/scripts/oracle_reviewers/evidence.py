@@ -7,7 +7,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from .verdict import Finding, Verdict
+from .verdict import NOT_FIXED, WITHDRAWN, Finding, Verdict
 
 INLINE = "inline"
 _LINE_SUFFIX = re.compile(r":\d+(?:-\d+)?$")
@@ -18,11 +18,16 @@ OMP_READERS = frozenset({"read", "grep"})
 _OMP_SELECTOR = re.compile(r"(?::(?:raw|[\d,+-]+))+$")
 OMP_NO_MATCHES = "No matches found"
 CITATION_PREFIX = "Citation not found in the head commit"
+_WITHDRAWAL_CITATION = re.compile(r"(?P<path>[A-Za-z0-9_][A-Za-z0-9_./-]*\.[A-Za-z0-9]+):(?P<line>\d+)")
+UNVERIFIED_WITHDRAWAL = (
+    "the withdrawal names no examined head-commit file and line that refutes it, so it counts as not fixed"
+)
 
 
 @dataclass(frozen=True)
 class Trace:
     reads: tuple[str, ...] = ()
+    greps: tuple[str, ...] = ()
 
 
 def _completed_messages(stdout: str) -> Iterable[dict]:
@@ -49,20 +54,13 @@ def _found_content(message: dict) -> bool:
     return not text.strip().startswith(OMP_NO_MATCHES)
 
 
-def _grep_matches(message: dict) -> tuple[str, ...]:
-    details = message.get("details")
-    files = details.get("files") if isinstance(details, dict) else None
-    return tuple(path for path in files if isinstance(path, str) and path) if isinstance(files, list) else ()
-
-
-def _omp_reads(stdout: str) -> tuple[str, ...]:
-    calls: dict[str, str] = {}
-    results: dict[str, tuple[str, ...] | None] = {}
+def _omp_reads(stdout: str) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    calls: dict[str, tuple[str, str]] = {}
+    found: dict[str, str] = {}
     for message in _completed_messages(stdout):
         if message.get("role") == "toolResult":
             if _found_content(message):
-                matched = _grep_matches(message) if message.get("toolName") == "grep" else None
-                results[str(message.get("toolCallId"))] = matched
+                found[str(message.get("toolCallId"))] = str(message.get("toolName"))
             continue
         if message.get("role") != "assistant" or not isinstance(message.get("content"), list):
             continue
@@ -71,18 +69,17 @@ def _omp_reads(stdout: str) -> tuple[str, ...]:
                 continue
             arguments = block.get("arguments")
             if isinstance(arguments, dict) and isinstance(arguments.get("path"), str):
-                calls[str(block.get("id"))] = arguments["path"]
-    reads: list[str] = []
-    for call, path in calls.items():
-        if call not in results or not path:
-            continue
-        matched = results[call]
-        reads.extend((path,) if matched is None else matched)
-    return tuple(reads)
+                calls[str(block.get("id"))] = (str(block.get("name")), arguments["path"])
+    reads = [path for call, (name, path) in calls.items() if name == "read" and path and call in found]
+    greps = [path for call, (name, path) in calls.items() if name == "grep" and path and call in found]
+    return tuple(reads), tuple(greps)
 
 
 def trace(harness: str, stdout: str) -> Trace:
-    return Trace(_omp_reads(stdout)) if harness == "omp" else Trace()
+    if harness != "omp":
+        return Trace()
+    reads, greps = _omp_reads(stdout)
+    return Trace(reads, greps)
 
 
 def unread(harness: str, required: Iterable[str], run: Trace, workspace: Path) -> list[str]:
@@ -90,6 +87,15 @@ def unread(harness: str, required: Iterable[str], run: Trace, workspace: Path) -
         return []
     parts = (part.strip() for path in run.reads for part in path.split(";"))
     read = {relative(_OMP_SELECTOR.sub("", part), workspace) for part in parts if part}
+    root = os.path.realpath(workspace)
+    for path in run.greps:
+        request = path.strip()
+        if not request or ";" in request:
+            continue
+        candidate = relative(_OMP_SELECTOR.sub("", request), workspace)
+        target = os.path.realpath(os.path.join(root, candidate))
+        if target.startswith(root + os.sep) and os.path.isfile(target):
+            read.add(candidate)
     return [path for path in required if path not in read]
 
 
@@ -124,13 +130,39 @@ def _citation_error(finding: Finding, workspace: Path) -> str | None:
     return None
 
 
+def _withdrawal_verified(evidence: str, workspace: Path, examined: frozenset[str]) -> bool:
+    for match in _WITHDRAWAL_CITATION.finditer(evidence or ""):
+        line = int(match.group("line"))
+        if line < 1:
+            continue
+        cited = match.group("path").removeprefix("./")
+        if cited not in examined:
+            continue
+        count = _line_count(workspace, cited)
+        if count is not None and line <= count:
+            return True
+    return False
+
+
+def withdrawal_cited(evidence_text: str | None) -> bool:
+    return _WITHDRAWAL_CITATION.search(evidence_text or "") is not None
+
+
 def mark_citations(verdict: Verdict, workspace: Path) -> Verdict:
     marked = []
     for finding in verdict.defects:
         error = _citation_error(finding, workspace)
         detail = f"{CITATION_PREFIX}: {error}. {finding.detail}".rstrip() if error else finding.detail
         marked.append(replace(finding, detail=detail))
-    return replace(verdict, defects=tuple(marked))
+    examined = frozenset(verdict.files_examined)
+    priors = []
+    for prior in verdict.prior_defects:
+        if prior.status == WITHDRAWN and not _withdrawal_verified(prior.evidence, workspace, examined):
+            note = f"{prior.evidence} {UNVERIFIED_WITHDRAWAL}".strip()
+            priors.append(replace(prior, status=NOT_FIXED, evidence=note))
+        else:
+            priors.append(prior)
+    return replace(verdict, defects=tuple(marked), prior_defects=tuple(priors))
 
 
 def _shown(paths: list[str]) -> str:
@@ -151,7 +183,7 @@ def check(
         return None
     needed = sorted(set(required))
     if harness in TRACED:
-        if not run.reads:
+        if not run.reads and not run.greps:
             return "the verdict would ship but its trace shows no successful file read"
         missing = unread(harness, needed, run, workspace)
         if missing:
