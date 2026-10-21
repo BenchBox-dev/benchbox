@@ -15609,7 +15609,7 @@
         "oracle-local-b5-remove-hosted-reviewers"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "BenchBox: delete the in-repo oracle engine"
     },
     "oracle-local-o10-delete-reviewer-secrets": {
