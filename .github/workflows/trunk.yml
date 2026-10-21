@@ -71,7 +71,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p t2-artifacts
-          BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest --collect-only -q -n 0 \
+          BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest --collect-only -q -n 0 --assert=plain \
             -m "medium and not (slow or stress or resource_heavy or live_integration)" \
             > t2-artifacts/medium-collect.txt
           count=$(grep -Eo '^[0-9]+/[0-9]+ tests collected' t2-artifacts/medium-collect.txt | tail -1 | cut -d/ -f1)
